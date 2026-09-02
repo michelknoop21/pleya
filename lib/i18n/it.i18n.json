@@ -705,6 +705,10 @@
     "failedToDeleteProfile": "Impossibile eliminare ${displayName}",
     "failedToRate": "Impossibile aggiornare la valutazione"
   },
+  "notices": {
+    "playbackFileUnavailableTitle": "File non disponibile",
+    "playbackFileUnavailableBody": "Il server non riesce a raggiungere il file video. Controlla che l'unità o la cartella in cui si trova sia ancora collegata."
+  },
   "libraries": {
     "title": "Librerie",
     "fallbackTitle": "Libreria",
@@ -1476,6 +1480,7 @@
     "sourceLabel": "Fonte: ${source}",
     "change": "Cambia",
     "playbackFailedTitle": "Impossibile riprodurre questa fonte.",
+    "detailLoadFailedTitle": "Impossibile caricare questo titolo.",
     "chooseAnotherSource": "Scegli un'altra fonte",
     "rowSemantics": "Fonte ${index} di ${count}: ${description}",
     "preferredServer": "Server preferito",
@@ -1554,7 +1559,8 @@
     }
   },
   "tvNavigation": {
-    "activeDestination": "sezione corrente"
+    "activeDestination": "sezione corrente",
+    "attentionRequired": "richiede attenzione"
   },
   "tvMyPleya": {
     "groupContent": "I miei contenuti",
@@ -1583,5 +1589,14 @@
       "tile": "${title}. ${subtitle}",
       "tileWithCount": "${title}. ${subtitle}. ${count}"
     }
+  },
+  "tvContextMenu": {
+    "title": "Azioni",
+    "menuSemantics": "Azione ${index} di ${count}: ${label}",
+    "noUsableSource": "Al momento nessuna fonte è raggiungibile, quindi questo non può essere modificato adesso.",
+    "doneOnAll": "Eseguito su tutte le ${count} fonti",
+    "doneOnSome": "Eseguito su ${done} di ${total} fonti. Le altre verranno ritentate quando torneranno online.",
+    "doneOnSomeNoRetry": "Eseguito su ${done} di ${total} fonti.",
+    "failed": "Non ha funzionato"
   }
 }

@@ -62,6 +62,7 @@ class TranslationsJa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsJa connections = _TranslationsConnectionsJa._(_root);
 	@override late final _TranslationsDiscoverJa discover = _TranslationsDiscoverJa._(_root);
 	@override late final _TranslationsErrorsJa errors = _TranslationsErrorsJa._(_root);
+	@override late final _TranslationsNoticesJa notices = _TranslationsNoticesJa._(_root);
 	@override late final _TranslationsLibrariesJa libraries = _TranslationsLibrariesJa._(_root);
 	@override late final _TranslationsAboutJa about = _TranslationsAboutJa._(_root);
 	@override late final _TranslationsServerSelectionJa serverSelection = _TranslationsServerSelectionJa._(_root);
@@ -91,6 +92,7 @@ class TranslationsJa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsUnifiedCatalogJa unifiedCatalog = _TranslationsUnifiedCatalogJa._(_root);
 	@override late final _TranslationsTvNavigationJa tvNavigation = _TranslationsTvNavigationJa._(_root);
 	@override late final _TranslationsTvMyPleyaJa tvMyPleya = _TranslationsTvMyPleyaJa._(_root);
+	@override late final _TranslationsTvContextMenuJa tvContextMenu = _TranslationsTvContextMenuJa._(_root);
 }
 
 // Path: app
@@ -919,6 +921,17 @@ class _TranslationsErrorsJa extends TranslationsErrorsEn {
 	@override String get failedToRate => '評価を更新できませんでした';
 }
 
+// Path: notices
+class _TranslationsNoticesJa extends TranslationsNoticesEn {
+	_TranslationsNoticesJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => 'ファイルが利用できません';
+	@override String get playbackFileUnavailableBody => 'サーバーが動画ファイルにアクセスできません。ファイルが保存されているドライブやフォルダが接続されているか確認してください。';
+}
+
 // Path: libraries
 class _TranslationsLibrariesJa extends TranslationsLibrariesEn {
 	_TranslationsLibrariesJa._(TranslationsJa root) : this._root = root, super.internal(root);
@@ -1738,6 +1751,7 @@ class _TranslationsSourcePickerJa extends TranslationsSourcePickerEn {
 	@override String sourceLabel({required Object source}) => 'ソース: ${source}';
 	@override String get change => '変更';
 	@override String get playbackFailedTitle => 'このソースは再生できませんでした。';
+	@override String get detailLoadFailedTitle => 'このタイトルを読み込めませんでした。';
 	@override String get chooseAnotherSource => '別のソースを選択';
 	@override String rowSemantics({required Object count, required Object index, required Object description}) => 'ソース ${count} 件中 ${index} 件目: ${description}';
 	@override String get preferredServer => '優先サーバー';
@@ -1779,6 +1793,7 @@ class _TranslationsTvNavigationJa extends TranslationsTvNavigationEn {
 
 	// Translations
 	@override String get activeDestination => '現在のセクション';
+	@override String get attentionRequired => '要確認';
 }
 
 // Path: tvMyPleya
@@ -1811,6 +1826,22 @@ class _TranslationsTvMyPleyaJa extends TranslationsTvMyPleyaEn {
 	@override String get aboutSubtitle => 'バージョンとライセンス';
 	@override String get logoutSubtitle => 'このデバイスからログアウト';
 	@override late final _TranslationsTvMyPleyaSemanticsJa semantics = _TranslationsTvMyPleyaSemanticsJa._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuJa extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'アクション';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => 'アクション ${index}/${count}: ${label}';
+	@override String get noUsableSource => '現在利用できるソースがないため、今は変更できません。';
+	@override String doneOnAll({required Object count}) => '${count}件すべてのソースで完了しました';
+	@override String doneOnSome({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。残りはオンラインに戻り次第再試行されます。';
+	@override String doneOnSomeNoRetry({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。';
+	@override String get failed => 'うまくいきませんでした';
 }
 
 // Path: search.filters
@@ -2890,6 +2921,8 @@ extension on TranslationsJa {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => '${displayName}への切替に失敗しました',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => '${displayName}の削除に失敗しました',
 			'errors.failedToRate' => '評価を更新できませんでした',
+			'notices.playbackFileUnavailableTitle' => 'ファイルが利用できません',
+			'notices.playbackFileUnavailableBody' => 'サーバーが動画ファイルにアクセスできません。ファイルが保存されているドライブやフォルダが接続されているか確認してください。',
 			'libraries.title' => 'ライブラリ',
 			'libraries.fallbackTitle' => 'ライブラリ',
 			'libraries.scanLibraryFiles' => 'ライブラリファイルをスキャン',
@@ -3258,10 +3291,10 @@ extension on TranslationsJa {
 			'companionRemote.pairing.discoveryDescription' => '同じPlexアカウントのPleyaデバイスがここに表示されます',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '接続中...',
-			'companionRemote.pairing.searchingForDevices' => 'デバイスを検索中...',
-			'companionRemote.pairing.noDevicesFound' => 'ネットワーク上にデバイスが見つかりません',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.searchingForDevices' => 'デバイスを検索中...',
+			'companionRemote.pairing.noDevicesFound' => 'ネットワーク上にデバイスが見つかりません',
 			'companionRemote.pairing.noDevicesHint' => 'デスクトップでPleyaを開き、同じWiFiを使用してください',
 			'companionRemote.pairing.availableDevices' => '利用可能なデバイス',
 			'companionRemote.pairing.manualConnection' => '手動接続',
@@ -3588,6 +3621,7 @@ extension on TranslationsJa {
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'ソース: ${source}',
 			'sourcePicker.change' => '変更',
 			'sourcePicker.playbackFailedTitle' => 'このソースは再生できませんでした。',
+			'sourcePicker.detailLoadFailedTitle' => 'このタイトルを読み込めませんでした。',
 			'sourcePicker.chooseAnotherSource' => '別のソースを選択',
 			'sourcePicker.rowSemantics' => ({required Object count, required Object index, required Object description}) => 'ソース ${count} 件中 ${index} 件目: ${description}',
 			'sourcePicker.preferredServer' => '優先サーバー',
@@ -3649,6 +3683,7 @@ extension on TranslationsJa {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'すべてのシリーズを表示、完全なカタログを開きます',
 			'unifiedCatalog.home.featured' => '注目作品',
 			'tvNavigation.activeDestination' => '現在のセクション',
+			'tvNavigation.attentionRequired' => '要確認',
 			'tvMyPleya.groupContent' => 'マイコンテンツ',
 			'tvMyPleya.groupSources' => 'ライブラリとソース',
 			'tvMyPleya.groupPleya' => 'Pleya',
@@ -3673,6 +3708,13 @@ extension on TranslationsJa {
 			'tvMyPleya.logoutSubtitle' => 'このデバイスからログアウト',
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'アクション',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'アクション ${index}/${count}: ${label}',
+			'tvContextMenu.noUsableSource' => '現在利用できるソースがないため、今は変更できません。',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => '${count}件すべてのソースで完了しました',
+			'tvContextMenu.doneOnSome' => ({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。残りはオンラインに戻り次第再試行されます。',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。',
+			'tvContextMenu.failed' => 'うまくいきませんでした',
 			_ => null,
 		};
 	}

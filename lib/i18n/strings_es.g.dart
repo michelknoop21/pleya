@@ -62,6 +62,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsEs connections = _TranslationsConnectionsEs._(_root);
 	@override late final _TranslationsDiscoverEs discover = _TranslationsDiscoverEs._(_root);
 	@override late final _TranslationsErrorsEs errors = _TranslationsErrorsEs._(_root);
+	@override late final _TranslationsNoticesEs notices = _TranslationsNoticesEs._(_root);
 	@override late final _TranslationsLibrariesEs libraries = _TranslationsLibrariesEs._(_root);
 	@override late final _TranslationsAboutEs about = _TranslationsAboutEs._(_root);
 	@override late final _TranslationsServerSelectionEs serverSelection = _TranslationsServerSelectionEs._(_root);
@@ -91,6 +92,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsUnifiedCatalogEs unifiedCatalog = _TranslationsUnifiedCatalogEs._(_root);
 	@override late final _TranslationsTvNavigationEs tvNavigation = _TranslationsTvNavigationEs._(_root);
 	@override late final _TranslationsTvMyPleyaEs tvMyPleya = _TranslationsTvMyPleyaEs._(_root);
+	@override late final _TranslationsTvContextMenuEs tvContextMenu = _TranslationsTvContextMenuEs._(_root);
 }
 
 // Path: app
@@ -919,6 +921,17 @@ class _TranslationsErrorsEs extends TranslationsErrorsEn {
 	@override String get failedToRate => 'No se pudo actualizar la calificación';
 }
 
+// Path: notices
+class _TranslationsNoticesEs extends TranslationsNoticesEn {
+	_TranslationsNoticesEs._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => 'Archivo no disponible';
+	@override String get playbackFileUnavailableBody => 'El servidor no puede acceder al archivo de vídeo. Comprueba que la unidad o carpeta en la que se encuentra siga conectada.';
+}
+
 // Path: libraries
 class _TranslationsLibrariesEs extends TranslationsLibrariesEn {
 	_TranslationsLibrariesEs._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1738,6 +1751,7 @@ class _TranslationsSourcePickerEs extends TranslationsSourcePickerEn {
 	@override String sourceLabel({required Object source}) => 'Fuente: ${source}';
 	@override String get change => 'Cambiar';
 	@override String get playbackFailedTitle => 'No se pudo reproducir esta fuente.';
+	@override String get detailLoadFailedTitle => 'No se pudo cargar este título.';
 	@override String get chooseAnotherSource => 'Elegir otra fuente';
 	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Fuente ${index} de ${count}: ${description}';
 	@override String get preferredServer => 'Servidor preferido';
@@ -1779,6 +1793,7 @@ class _TranslationsTvNavigationEs extends TranslationsTvNavigationEn {
 
 	// Translations
 	@override String get activeDestination => 'sección actual';
+	@override String get attentionRequired => 'requiere atención';
 }
 
 // Path: tvMyPleya
@@ -1811,6 +1826,22 @@ class _TranslationsTvMyPleyaEs extends TranslationsTvMyPleyaEn {
 	@override String get aboutSubtitle => 'Versión y licencias';
 	@override String get logoutSubtitle => 'Cerrar sesión en este dispositivo';
 	@override late final _TranslationsTvMyPleyaSemanticsEs semantics = _TranslationsTvMyPleyaSemanticsEs._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuEs extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuEs._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Acciones';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => 'Acción ${index} de ${count}: ${label}';
+	@override String get noUsableSource => 'Actualmente no hay ninguna fuente disponible, así que esto no se puede cambiar ahora mismo.';
+	@override String doneOnAll({required Object count}) => 'Hecho en las ${count} fuentes';
+	@override String doneOnSome({required Object done, required Object total}) => 'Hecho en ${done} de ${total} fuentes. El resto se reintentará cuando vuelvan a estar en línea.';
+	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Hecho en ${done} de ${total} fuentes.';
+	@override String get failed => 'Eso no ha funcionado';
 }
 
 // Path: search.filters
@@ -2890,6 +2921,8 @@ extension on TranslationsEs {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Error al cambiar al perfil ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Error al eliminar ${displayName}',
 			'errors.failedToRate' => 'No se pudo actualizar la calificación',
+			'notices.playbackFileUnavailableTitle' => 'Archivo no disponible',
+			'notices.playbackFileUnavailableBody' => 'El servidor no puede acceder al archivo de vídeo. Comprueba que la unidad o carpeta en la que se encuentra siga conectada.',
 			'libraries.title' => 'Bibliotecas',
 			'libraries.fallbackTitle' => 'Biblioteca',
 			'libraries.scanLibraryFiles' => 'Escanear Archivos de la Biblioteca',
@@ -3258,10 +3291,10 @@ extension on TranslationsEs {
 			'companionRemote.pairing.discoveryDescription' => 'Los dispositivos Pleya con la misma cuenta Plex aparecen aquí',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Conectando...',
-			'companionRemote.pairing.searchingForDevices' => 'Buscando dispositivos...',
-			'companionRemote.pairing.noDevicesFound' => 'No se encontraron dispositivos en tu red',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.searchingForDevices' => 'Buscando dispositivos...',
+			'companionRemote.pairing.noDevicesFound' => 'No se encontraron dispositivos en tu red',
 			'companionRemote.pairing.noDevicesHint' => 'Abre Pleya en escritorio y usa el mismo WiFi',
 			'companionRemote.pairing.availableDevices' => 'Dispositivos disponibles',
 			'companionRemote.pairing.manualConnection' => 'Conexión manual',
@@ -3588,6 +3621,7 @@ extension on TranslationsEs {
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'Fuente: ${source}',
 			'sourcePicker.change' => 'Cambiar',
 			'sourcePicker.playbackFailedTitle' => 'No se pudo reproducir esta fuente.',
+			'sourcePicker.detailLoadFailedTitle' => 'No se pudo cargar este título.',
 			'sourcePicker.chooseAnotherSource' => 'Elegir otra fuente',
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Fuente ${index} de ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Servidor preferido',
@@ -3649,6 +3683,7 @@ extension on TranslationsEs {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Ver todas las series, abre el catálogo completo',
 			'unifiedCatalog.home.featured' => 'Destacado',
 			'tvNavigation.activeDestination' => 'sección actual',
+			'tvNavigation.attentionRequired' => 'requiere atención',
 			'tvMyPleya.groupContent' => 'Mi contenido',
 			'tvMyPleya.groupSources' => 'Bibliotecas y fuentes',
 			'tvMyPleya.groupPleya' => 'Pleya',
@@ -3673,6 +3708,13 @@ extension on TranslationsEs {
 			'tvMyPleya.logoutSubtitle' => 'Cerrar sesión en este dispositivo',
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'Acciones',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Acción ${index} de ${count}: ${label}',
+			'tvContextMenu.noUsableSource' => 'Actualmente no hay ninguna fuente disponible, así que esto no se puede cambiar ahora mismo.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Hecho en las ${count} fuentes',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Hecho en ${done} de ${total} fuentes. El resto se reintentará cuando vuelvan a estar en línea.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Hecho en ${done} de ${total} fuentes.',
+			'tvContextMenu.failed' => 'Eso no ha funcionado',
 			_ => null,
 		};
 	}

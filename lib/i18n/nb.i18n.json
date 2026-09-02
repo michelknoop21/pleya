@@ -705,6 +705,10 @@
     "failedToDeleteProfile": "Kunne ikke slette ${displayName}",
     "failedToRate": "Kunne ikke oppdatere vurderingen"
   },
+  "notices": {
+    "playbackFileUnavailableTitle": "Filen er ikke tilgjengelig",
+    "playbackFileUnavailableBody": "Serveren får ikke tilgang til videofilen. Sjekk at stasjonen eller mappen den ligger i, fortsatt er tilkoblet."
+  },
   "libraries": {
     "title": "Biblioteker",
     "fallbackTitle": "Bibliotek",
@@ -1476,6 +1480,7 @@
     "sourceLabel": "Kilde: ${source}",
     "change": "Endre",
     "playbackFailedTitle": "Denne kilden kunne ikke spilles av.",
+    "detailLoadFailedTitle": "Denne tittelen kunne ikke lastes inn.",
     "chooseAnotherSource": "Velg en annen kilde",
     "rowSemantics": "Kilde ${index} av ${count}: ${description}",
     "preferredServer": "Foretrukket server",
@@ -1554,7 +1559,8 @@
     }
   },
   "tvNavigation": {
-    "activeDestination": "gjeldende del"
+    "activeDestination": "gjeldende del",
+    "attentionRequired": "krever oppmerksomhet"
   },
   "tvMyPleya": {
     "groupContent": "Mitt innhold",
@@ -1583,5 +1589,14 @@
       "tile": "${title}. ${subtitle}",
       "tileWithCount": "${title}. ${subtitle}. ${count}"
     }
+  },
+  "tvContextMenu": {
+    "title": "Handlinger",
+    "menuSemantics": "Handling ${index} av ${count}: ${label}",
+    "noUsableSource": "Ingen kilde er tilgjengelig akkurat nå, så dette kan ikke endres nå.",
+    "doneOnAll": "Utført på alle ${count} kilder",
+    "doneOnSome": "Utført på ${done} av ${total} kilder. Resten forsøkes på nytt når de er online igjen.",
+    "doneOnSomeNoRetry": "Utført på ${done} av ${total} kilder.",
+    "failed": "Det fungerte ikke"
   }
 }

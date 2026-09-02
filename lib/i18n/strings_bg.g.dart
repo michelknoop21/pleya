@@ -62,6 +62,7 @@ class TranslationsBg extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsBg connections = _TranslationsConnectionsBg._(_root);
 	@override late final _TranslationsDiscoverBg discover = _TranslationsDiscoverBg._(_root);
 	@override late final _TranslationsErrorsBg errors = _TranslationsErrorsBg._(_root);
+	@override late final _TranslationsNoticesBg notices = _TranslationsNoticesBg._(_root);
 	@override late final _TranslationsLibrariesBg libraries = _TranslationsLibrariesBg._(_root);
 	@override late final _TranslationsAboutBg about = _TranslationsAboutBg._(_root);
 	@override late final _TranslationsServerSelectionBg serverSelection = _TranslationsServerSelectionBg._(_root);
@@ -91,6 +92,7 @@ class TranslationsBg extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsUnifiedCatalogBg unifiedCatalog = _TranslationsUnifiedCatalogBg._(_root);
 	@override late final _TranslationsTvNavigationBg tvNavigation = _TranslationsTvNavigationBg._(_root);
 	@override late final _TranslationsTvMyPleyaBg tvMyPleya = _TranslationsTvMyPleyaBg._(_root);
+	@override late final _TranslationsTvContextMenuBg tvContextMenu = _TranslationsTvContextMenuBg._(_root);
 }
 
 // Path: app
@@ -919,6 +921,17 @@ class _TranslationsErrorsBg extends TranslationsErrorsEn {
 	@override String get failedToRate => 'Оценката не можа да бъде обновена';
 }
 
+// Path: notices
+class _TranslationsNoticesBg extends TranslationsNoticesEn {
+	_TranslationsNoticesBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => 'Файлът не е наличен';
+	@override String get playbackFileUnavailableBody => 'Сървърът не може да достигне видеофайла. Проверете дали дискът или папката, в която се намира, все още са свързани.';
+}
+
 // Path: libraries
 class _TranslationsLibrariesBg extends TranslationsLibrariesEn {
 	_TranslationsLibrariesBg._(TranslationsBg root) : this._root = root, super.internal(root);
@@ -1738,6 +1751,7 @@ class _TranslationsSourcePickerBg extends TranslationsSourcePickerEn {
 	@override String sourceLabel({required Object source}) => 'Източник: ${source}';
 	@override String get change => 'Промяна';
 	@override String get playbackFailedTitle => 'Този източник не можа да бъде възпроизведен.';
+	@override String get detailLoadFailedTitle => 'Заглавието не можа да бъде заредено.';
 	@override String get chooseAnotherSource => 'Изберете друг източник';
 	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Източник ${index} от ${count}: ${description}';
 	@override String get preferredServer => 'Предпочитан сървър';
@@ -1779,6 +1793,7 @@ class _TranslationsTvNavigationBg extends TranslationsTvNavigationEn {
 
 	// Translations
 	@override String get activeDestination => 'текущ раздел';
+	@override String get attentionRequired => 'изисква внимание';
 }
 
 // Path: tvMyPleya
@@ -1811,6 +1826,22 @@ class _TranslationsTvMyPleyaBg extends TranslationsTvMyPleyaEn {
 	@override String get aboutSubtitle => 'Версия и лицензи';
 	@override String get logoutSubtitle => 'Изход от това устройство';
 	@override late final _TranslationsTvMyPleyaSemanticsBg semantics = _TranslationsTvMyPleyaSemanticsBg._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuBg extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Действия';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => 'Действие ${index} от ${count}: ${label}';
+	@override String get noUsableSource => 'В момента няма достъпен източник, затова това не може да се промени сега.';
+	@override String doneOnAll({required Object count}) => 'Готово за всички ${count} източника';
+	@override String doneOnSome({required Object done, required Object total}) => 'Готово за ${done} от ${total} източника. Останалите ще бъдат опитани отново, когато са отново онлайн.';
+	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Готово за ${done} от ${total} източника.';
+	@override String get failed => 'Това не проработи';
 }
 
 // Path: search.filters
@@ -2890,6 +2921,8 @@ extension on TranslationsBg {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Неуспешна смяна към ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Неуспешно изтриване на ${displayName}',
 			'errors.failedToRate' => 'Оценката не можа да бъде обновена',
+			'notices.playbackFileUnavailableTitle' => 'Файлът не е наличен',
+			'notices.playbackFileUnavailableBody' => 'Сървърът не може да достигне видеофайла. Проверете дали дискът или папката, в която се намира, все още са свързани.',
 			'libraries.title' => 'Библиотеки',
 			'libraries.fallbackTitle' => 'Библиотека',
 			'libraries.scanLibraryFiles' => 'Сканирай файловете на библиотеката',
@@ -3258,10 +3291,10 @@ extension on TranslationsBg {
 			'companionRemote.pairing.discoveryDescription' => 'Pleya устройства със същия Plex акаунт се показват тук',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Свързване...',
-			'companionRemote.pairing.searchingForDevices' => 'Търсене на устройства...',
-			'companionRemote.pairing.noDevicesFound' => 'Не са намерени устройства във вашата мрежа',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.searchingForDevices' => 'Търсене на устройства...',
+			'companionRemote.pairing.noDevicesFound' => 'Не са намерени устройства във вашата мрежа',
 			'companionRemote.pairing.noDevicesHint' => 'Отворете Pleya на настолен компютър и използвайте същия WiFi',
 			'companionRemote.pairing.availableDevices' => 'Налични устройства',
 			'companionRemote.pairing.manualConnection' => 'Ръчно свързване',
@@ -3588,6 +3621,7 @@ extension on TranslationsBg {
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'Източник: ${source}',
 			'sourcePicker.change' => 'Промяна',
 			'sourcePicker.playbackFailedTitle' => 'Този източник не можа да бъде възпроизведен.',
+			'sourcePicker.detailLoadFailedTitle' => 'Заглавието не можа да бъде заредено.',
 			'sourcePicker.chooseAnotherSource' => 'Изберете друг източник',
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Източник ${index} от ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Предпочитан сървър',
@@ -3649,6 +3683,7 @@ extension on TranslationsBg {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Виж всички сериали, отваря пълния каталог',
 			'unifiedCatalog.home.featured' => 'Препоръчано',
 			'tvNavigation.activeDestination' => 'текущ раздел',
+			'tvNavigation.attentionRequired' => 'изисква внимание',
 			'tvMyPleya.groupContent' => 'Моето съдържание',
 			'tvMyPleya.groupSources' => 'Библиотеки и източници',
 			'tvMyPleya.groupPleya' => 'Pleya',
@@ -3673,6 +3708,13 @@ extension on TranslationsBg {
 			'tvMyPleya.logoutSubtitle' => 'Изход от това устройство',
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'Действия',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Действие ${index} от ${count}: ${label}',
+			'tvContextMenu.noUsableSource' => 'В момента няма достъпен източник, затова това не може да се промени сега.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Готово за всички ${count} източника',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Готово за ${done} от ${total} източника. Останалите ще бъдат опитани отново, когато са отново онлайн.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Готово за ${done} от ${total} източника.',
+			'tvContextMenu.failed' => 'Това не проработи',
 			_ => null,
 		};
 	}

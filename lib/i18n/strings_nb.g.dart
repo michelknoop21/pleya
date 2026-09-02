@@ -62,6 +62,7 @@ class TranslationsNb extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsNb connections = _TranslationsConnectionsNb._(_root);
 	@override late final _TranslationsDiscoverNb discover = _TranslationsDiscoverNb._(_root);
 	@override late final _TranslationsErrorsNb errors = _TranslationsErrorsNb._(_root);
+	@override late final _TranslationsNoticesNb notices = _TranslationsNoticesNb._(_root);
 	@override late final _TranslationsLibrariesNb libraries = _TranslationsLibrariesNb._(_root);
 	@override late final _TranslationsAboutNb about = _TranslationsAboutNb._(_root);
 	@override late final _TranslationsServerSelectionNb serverSelection = _TranslationsServerSelectionNb._(_root);
@@ -91,6 +92,7 @@ class TranslationsNb extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsUnifiedCatalogNb unifiedCatalog = _TranslationsUnifiedCatalogNb._(_root);
 	@override late final _TranslationsTvNavigationNb tvNavigation = _TranslationsTvNavigationNb._(_root);
 	@override late final _TranslationsTvMyPleyaNb tvMyPleya = _TranslationsTvMyPleyaNb._(_root);
+	@override late final _TranslationsTvContextMenuNb tvContextMenu = _TranslationsTvContextMenuNb._(_root);
 }
 
 // Path: app
@@ -919,6 +921,17 @@ class _TranslationsErrorsNb extends TranslationsErrorsEn {
 	@override String get failedToRate => 'Kunne ikke oppdatere vurderingen';
 }
 
+// Path: notices
+class _TranslationsNoticesNb extends TranslationsNoticesEn {
+	_TranslationsNoticesNb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => 'Filen er ikke tilgjengelig';
+	@override String get playbackFileUnavailableBody => 'Serveren får ikke tilgang til videofilen. Sjekk at stasjonen eller mappen den ligger i, fortsatt er tilkoblet.';
+}
+
 // Path: libraries
 class _TranslationsLibrariesNb extends TranslationsLibrariesEn {
 	_TranslationsLibrariesNb._(TranslationsNb root) : this._root = root, super.internal(root);
@@ -1738,6 +1751,7 @@ class _TranslationsSourcePickerNb extends TranslationsSourcePickerEn {
 	@override String sourceLabel({required Object source}) => 'Kilde: ${source}';
 	@override String get change => 'Endre';
 	@override String get playbackFailedTitle => 'Denne kilden kunne ikke spilles av.';
+	@override String get detailLoadFailedTitle => 'Denne tittelen kunne ikke lastes inn.';
 	@override String get chooseAnotherSource => 'Velg en annen kilde';
 	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Kilde ${index} av ${count}: ${description}';
 	@override String get preferredServer => 'Foretrukket server';
@@ -1779,6 +1793,7 @@ class _TranslationsTvNavigationNb extends TranslationsTvNavigationEn {
 
 	// Translations
 	@override String get activeDestination => 'gjeldende del';
+	@override String get attentionRequired => 'krever oppmerksomhet';
 }
 
 // Path: tvMyPleya
@@ -1811,6 +1826,22 @@ class _TranslationsTvMyPleyaNb extends TranslationsTvMyPleyaEn {
 	@override String get aboutSubtitle => 'Versjon og lisenser';
 	@override String get logoutSubtitle => 'Logg ut på denne enheten';
 	@override late final _TranslationsTvMyPleyaSemanticsNb semantics = _TranslationsTvMyPleyaSemanticsNb._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuNb extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuNb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Handlinger';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => 'Handling ${index} av ${count}: ${label}';
+	@override String get noUsableSource => 'Ingen kilde er tilgjengelig akkurat nå, så dette kan ikke endres nå.';
+	@override String doneOnAll({required Object count}) => 'Utført på alle ${count} kilder';
+	@override String doneOnSome({required Object done, required Object total}) => 'Utført på ${done} av ${total} kilder. Resten forsøkes på nytt når de er online igjen.';
+	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Utført på ${done} av ${total} kilder.';
+	@override String get failed => 'Det fungerte ikke';
 }
 
 // Path: search.filters
@@ -2890,6 +2921,8 @@ extension on TranslationsNb {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Kunne ikke bytte til ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Kunne ikke slette ${displayName}',
 			'errors.failedToRate' => 'Kunne ikke oppdatere vurderingen',
+			'notices.playbackFileUnavailableTitle' => 'Filen er ikke tilgjengelig',
+			'notices.playbackFileUnavailableBody' => 'Serveren får ikke tilgang til videofilen. Sjekk at stasjonen eller mappen den ligger i, fortsatt er tilkoblet.',
 			'libraries.title' => 'Biblioteker',
 			'libraries.fallbackTitle' => 'Bibliotek',
 			'libraries.scanLibraryFiles' => 'Skann bibliotekfiler',
@@ -3258,10 +3291,10 @@ extension on TranslationsNb {
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheter med samme Plex-konto vises her',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Kobler til...',
-			'companionRemote.pairing.searchingForDevices' => 'Søker etter enheter...',
-			'companionRemote.pairing.noDevicesFound' => 'Ingen enheter funnet på nettverket ditt',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.searchingForDevices' => 'Søker etter enheter...',
+			'companionRemote.pairing.noDevicesFound' => 'Ingen enheter funnet på nettverket ditt',
 			'companionRemote.pairing.noDevicesHint' => 'Åpne Pleya på desktop og bruk samme WiFi',
 			'companionRemote.pairing.availableDevices' => 'Tilgjengelige enheter',
 			'companionRemote.pairing.manualConnection' => 'Manuell tilkobling',
@@ -3588,6 +3621,7 @@ extension on TranslationsNb {
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'Kilde: ${source}',
 			'sourcePicker.change' => 'Endre',
 			'sourcePicker.playbackFailedTitle' => 'Denne kilden kunne ikke spilles av.',
+			'sourcePicker.detailLoadFailedTitle' => 'Denne tittelen kunne ikke lastes inn.',
 			'sourcePicker.chooseAnotherSource' => 'Velg en annen kilde',
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Kilde ${index} av ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Foretrukket server',
@@ -3649,6 +3683,7 @@ extension on TranslationsNb {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Se alle serier, åpner den komplette katalogen',
 			'unifiedCatalog.home.featured' => 'Fremhevet',
 			'tvNavigation.activeDestination' => 'gjeldende del',
+			'tvNavigation.attentionRequired' => 'krever oppmerksomhet',
 			'tvMyPleya.groupContent' => 'Mitt innhold',
 			'tvMyPleya.groupSources' => 'Biblioteker og kilder',
 			'tvMyPleya.groupPleya' => 'Pleya',
@@ -3673,6 +3708,13 @@ extension on TranslationsNb {
 			'tvMyPleya.logoutSubtitle' => 'Logg ut på denne enheten',
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'Handlinger',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Handling ${index} av ${count}: ${label}',
+			'tvContextMenu.noUsableSource' => 'Ingen kilde er tilgjengelig akkurat nå, så dette kan ikke endres nå.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Utført på alle ${count} kilder',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Utført på ${done} av ${total} kilder. Resten forsøkes på nytt når de er online igjen.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Utført på ${done} av ${total} kilder.',
+			'tvContextMenu.failed' => 'Det fungerte ikke',
 			_ => null,
 		};
 	}

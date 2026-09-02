@@ -62,6 +62,7 @@ class TranslationsSv extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsSv connections = _TranslationsConnectionsSv._(_root);
 	@override late final _TranslationsDiscoverSv discover = _TranslationsDiscoverSv._(_root);
 	@override late final _TranslationsErrorsSv errors = _TranslationsErrorsSv._(_root);
+	@override late final _TranslationsNoticesSv notices = _TranslationsNoticesSv._(_root);
 	@override late final _TranslationsLibrariesSv libraries = _TranslationsLibrariesSv._(_root);
 	@override late final _TranslationsAboutSv about = _TranslationsAboutSv._(_root);
 	@override late final _TranslationsServerSelectionSv serverSelection = _TranslationsServerSelectionSv._(_root);
@@ -91,6 +92,7 @@ class TranslationsSv extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsUnifiedCatalogSv unifiedCatalog = _TranslationsUnifiedCatalogSv._(_root);
 	@override late final _TranslationsTvNavigationSv tvNavigation = _TranslationsTvNavigationSv._(_root);
 	@override late final _TranslationsTvMyPleyaSv tvMyPleya = _TranslationsTvMyPleyaSv._(_root);
+	@override late final _TranslationsTvContextMenuSv tvContextMenu = _TranslationsTvContextMenuSv._(_root);
 }
 
 // Path: app
@@ -919,6 +921,17 @@ class _TranslationsErrorsSv extends TranslationsErrorsEn {
 	@override String get failedToRate => 'Det gick inte att uppdatera betyget';
 }
 
+// Path: notices
+class _TranslationsNoticesSv extends TranslationsNoticesEn {
+	_TranslationsNoticesSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => 'Filen är inte tillgänglig';
+	@override String get playbackFileUnavailableBody => 'Servern kan inte nå videofilen. Kontrollera att enheten eller mappen den ligger i fortfarande är ansluten.';
+}
+
 // Path: libraries
 class _TranslationsLibrariesSv extends TranslationsLibrariesEn {
 	_TranslationsLibrariesSv._(TranslationsSv root) : this._root = root, super.internal(root);
@@ -1738,6 +1751,7 @@ class _TranslationsSourcePickerSv extends TranslationsSourcePickerEn {
 	@override String sourceLabel({required Object source}) => 'Källa: ${source}';
 	@override String get change => 'Ändra';
 	@override String get playbackFailedTitle => 'Den här källan kunde inte spelas upp.';
+	@override String get detailLoadFailedTitle => 'Den här titeln kunde inte läsas in.';
 	@override String get chooseAnotherSource => 'Välj en annan källa';
 	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Källa ${index} av ${count}: ${description}';
 	@override String get preferredServer => 'Föredragen server';
@@ -1779,6 +1793,7 @@ class _TranslationsTvNavigationSv extends TranslationsTvNavigationEn {
 
 	// Translations
 	@override String get activeDestination => 'aktuellt avsnitt';
+	@override String get attentionRequired => 'kräver uppmärksamhet';
 }
 
 // Path: tvMyPleya
@@ -1811,6 +1826,22 @@ class _TranslationsTvMyPleyaSv extends TranslationsTvMyPleyaEn {
 	@override String get aboutSubtitle => 'Version och licenser';
 	@override String get logoutSubtitle => 'Logga ut på den här enheten';
 	@override late final _TranslationsTvMyPleyaSemanticsSv semantics = _TranslationsTvMyPleyaSemanticsSv._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuSv extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Åtgärder';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => 'Åtgärd ${index} av ${count}: ${label}';
+	@override String get noUsableSource => 'Ingen källa är tillgänglig just nu, så detta kan inte ändras nu.';
+	@override String doneOnAll({required Object count}) => 'Klart på alla ${count} källor';
+	@override String doneOnSome({required Object done, required Object total}) => 'Klart på ${done} av ${total} källor. Resten försöks igen när de är online igen.';
+	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Klart på ${done} av ${total} källor.';
+	@override String get failed => 'Det gick inte';
 }
 
 // Path: search.filters
@@ -2890,6 +2921,8 @@ extension on TranslationsSv {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Misslyckades att byta till ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Misslyckades att ta bort ${displayName}',
 			'errors.failedToRate' => 'Det gick inte att uppdatera betyget',
+			'notices.playbackFileUnavailableTitle' => 'Filen är inte tillgänglig',
+			'notices.playbackFileUnavailableBody' => 'Servern kan inte nå videofilen. Kontrollera att enheten eller mappen den ligger i fortfarande är ansluten.',
 			'libraries.title' => 'Bibliotek',
 			'libraries.fallbackTitle' => 'Bibliotek',
 			'libraries.scanLibraryFiles' => 'Skanna biblioteksfiler',
@@ -3258,10 +3291,10 @@ extension on TranslationsSv {
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheter med samma Plex-konto visas här',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Ansluter...',
-			'companionRemote.pairing.searchingForDevices' => 'Söker efter enheter...',
-			'companionRemote.pairing.noDevicesFound' => 'Inga enheter hittades i ditt nätverk',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.searchingForDevices' => 'Söker efter enheter...',
+			'companionRemote.pairing.noDevicesFound' => 'Inga enheter hittades i ditt nätverk',
 			'companionRemote.pairing.noDevicesHint' => 'Öppna Pleya på desktop och använd samma WiFi',
 			'companionRemote.pairing.availableDevices' => 'Tillgängliga enheter',
 			'companionRemote.pairing.manualConnection' => 'Manuell anslutning',
@@ -3588,6 +3621,7 @@ extension on TranslationsSv {
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'Källa: ${source}',
 			'sourcePicker.change' => 'Ändra',
 			'sourcePicker.playbackFailedTitle' => 'Den här källan kunde inte spelas upp.',
+			'sourcePicker.detailLoadFailedTitle' => 'Den här titeln kunde inte läsas in.',
 			'sourcePicker.chooseAnotherSource' => 'Välj en annan källa',
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Källa ${index} av ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Föredragen server',
@@ -3649,6 +3683,7 @@ extension on TranslationsSv {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Visa alla serier, öppnar hela katalogen',
 			'unifiedCatalog.home.featured' => 'Utvalt',
 			'tvNavigation.activeDestination' => 'aktuellt avsnitt',
+			'tvNavigation.attentionRequired' => 'kräver uppmärksamhet',
 			'tvMyPleya.groupContent' => 'Mitt innehåll',
 			'tvMyPleya.groupSources' => 'Bibliotek och källor',
 			'tvMyPleya.groupPleya' => 'Pleya',
@@ -3673,6 +3708,13 @@ extension on TranslationsSv {
 			'tvMyPleya.logoutSubtitle' => 'Logga ut på den här enheten',
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'Åtgärder',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Åtgärd ${index} av ${count}: ${label}',
+			'tvContextMenu.noUsableSource' => 'Ingen källa är tillgänglig just nu, så detta kan inte ändras nu.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Klart på alla ${count} källor',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Klart på ${done} av ${total} källor. Resten försöks igen när de är online igen.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Klart på ${done} av ${total} källor.',
+			'tvContextMenu.failed' => 'Det gick inte',
 			_ => null,
 		};
 	}

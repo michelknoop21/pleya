@@ -62,6 +62,7 @@ class TranslationsKo extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsKo connections = _TranslationsConnectionsKo._(_root);
 	@override late final _TranslationsDiscoverKo discover = _TranslationsDiscoverKo._(_root);
 	@override late final _TranslationsErrorsKo errors = _TranslationsErrorsKo._(_root);
+	@override late final _TranslationsNoticesKo notices = _TranslationsNoticesKo._(_root);
 	@override late final _TranslationsLibrariesKo libraries = _TranslationsLibrariesKo._(_root);
 	@override late final _TranslationsAboutKo about = _TranslationsAboutKo._(_root);
 	@override late final _TranslationsServerSelectionKo serverSelection = _TranslationsServerSelectionKo._(_root);
@@ -91,6 +92,7 @@ class TranslationsKo extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsUnifiedCatalogKo unifiedCatalog = _TranslationsUnifiedCatalogKo._(_root);
 	@override late final _TranslationsTvNavigationKo tvNavigation = _TranslationsTvNavigationKo._(_root);
 	@override late final _TranslationsTvMyPleyaKo tvMyPleya = _TranslationsTvMyPleyaKo._(_root);
+	@override late final _TranslationsTvContextMenuKo tvContextMenu = _TranslationsTvContextMenuKo._(_root);
 }
 
 // Path: app
@@ -919,6 +921,17 @@ class _TranslationsErrorsKo extends TranslationsErrorsEn {
 	@override String get failedToRate => '평점을 업데이트하지 못했습니다';
 }
 
+// Path: notices
+class _TranslationsNoticesKo extends TranslationsNoticesEn {
+	_TranslationsNoticesKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => '파일을 사용할 수 없음';
+	@override String get playbackFileUnavailableBody => '서버가 동영상 파일에 접근할 수 없습니다. 파일이 있는 드라이브나 폴더가 여전히 연결되어 있는지 확인하세요.';
+}
+
 // Path: libraries
 class _TranslationsLibrariesKo extends TranslationsLibrariesEn {
 	_TranslationsLibrariesKo._(TranslationsKo root) : this._root = root, super.internal(root);
@@ -1738,6 +1751,7 @@ class _TranslationsSourcePickerKo extends TranslationsSourcePickerEn {
 	@override String sourceLabel({required Object source}) => '소스: ${source}';
 	@override String get change => '변경';
 	@override String get playbackFailedTitle => '이 소스를 재생할 수 없습니다.';
+	@override String get detailLoadFailedTitle => '이 제목을 불러올 수 없습니다.';
 	@override String get chooseAnotherSource => '다른 소스 선택';
 	@override String rowSemantics({required Object count, required Object index, required Object description}) => '소스 ${count}개 중 ${index}번째: ${description}';
 	@override String get preferredServer => '기본 서버';
@@ -1779,6 +1793,7 @@ class _TranslationsTvNavigationKo extends TranslationsTvNavigationEn {
 
 	// Translations
 	@override String get activeDestination => '현재 섹션';
+	@override String get attentionRequired => '확인 필요';
 }
 
 // Path: tvMyPleya
@@ -1811,6 +1826,22 @@ class _TranslationsTvMyPleyaKo extends TranslationsTvMyPleyaEn {
 	@override String get aboutSubtitle => '버전 및 라이선스';
 	@override String get logoutSubtitle => '이 기기에서 로그아웃';
 	@override late final _TranslationsTvMyPleyaSemanticsKo semantics = _TranslationsTvMyPleyaSemanticsKo._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuKo extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '작업';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => '작업 ${index}/${count}: ${label}';
+	@override String get noUsableSource => '현재 연결 가능한 소스가 없어 지금은 변경할 수 없습니다.';
+	@override String doneOnAll({required Object count}) => '${count}개 소스 모두에서 완료됨';
+	@override String doneOnSome({required Object total, required Object done}) => '${total}개 중 ${done}개 소스에서 완료됨. 나머지는 다시 온라인 상태가 되면 재시도됩니다.';
+	@override String doneOnSomeNoRetry({required Object total, required Object done}) => '${total}개 중 ${done}개 소스에서 완료됨.';
+	@override String get failed => '작동하지 않았습니다';
 }
 
 // Path: search.filters
@@ -2890,6 +2921,8 @@ extension on TranslationsKo {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => '${displayName}으로 전환할 수 없습니다',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => '${displayName}을(를) 삭제할 수 없습니다',
 			'errors.failedToRate' => '평점을 업데이트하지 못했습니다',
+			'notices.playbackFileUnavailableTitle' => '파일을 사용할 수 없음',
+			'notices.playbackFileUnavailableBody' => '서버가 동영상 파일에 접근할 수 없습니다. 파일이 있는 드라이브나 폴더가 여전히 연결되어 있는지 확인하세요.',
 			'libraries.title' => '미디어 라이브러리',
 			'libraries.fallbackTitle' => '라이브러리',
 			'libraries.scanLibraryFiles' => '미디어 라이브러리 파일 스캔',
@@ -3258,10 +3291,10 @@ extension on TranslationsKo {
 			'companionRemote.pairing.discoveryDescription' => '같은 Plex 계정의 Pleya 기기가 여기에 표시됩니다',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '연결 중...',
-			'companionRemote.pairing.searchingForDevices' => '기기 검색 중...',
-			'companionRemote.pairing.noDevicesFound' => '네트워크에서 기기를 찾을 수 없습니다',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.searchingForDevices' => '기기 검색 중...',
+			'companionRemote.pairing.noDevicesFound' => '네트워크에서 기기를 찾을 수 없습니다',
 			'companionRemote.pairing.noDevicesHint' => '데스크톱에서 Pleya를 열고 같은 WiFi를 사용하세요',
 			'companionRemote.pairing.availableDevices' => '사용 가능한 기기',
 			'companionRemote.pairing.manualConnection' => '수동 연결',
@@ -3588,6 +3621,7 @@ extension on TranslationsKo {
 			'sourcePicker.sourceLabel' => ({required Object source}) => '소스: ${source}',
 			'sourcePicker.change' => '변경',
 			'sourcePicker.playbackFailedTitle' => '이 소스를 재생할 수 없습니다.',
+			'sourcePicker.detailLoadFailedTitle' => '이 제목을 불러올 수 없습니다.',
 			'sourcePicker.chooseAnotherSource' => '다른 소스 선택',
 			'sourcePicker.rowSemantics' => ({required Object count, required Object index, required Object description}) => '소스 ${count}개 중 ${index}번째: ${description}',
 			'sourcePicker.preferredServer' => '기본 서버',
@@ -3649,6 +3683,7 @@ extension on TranslationsKo {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => '모든 시리즈 보기, 전체 카탈로그 열기',
 			'unifiedCatalog.home.featured' => '추천 작품',
 			'tvNavigation.activeDestination' => '현재 섹션',
+			'tvNavigation.attentionRequired' => '확인 필요',
 			'tvMyPleya.groupContent' => '내 콘텐츠',
 			'tvMyPleya.groupSources' => '라이브러리 및 소스',
 			'tvMyPleya.groupPleya' => 'Pleya',
@@ -3673,6 +3708,13 @@ extension on TranslationsKo {
 			'tvMyPleya.logoutSubtitle' => '이 기기에서 로그아웃',
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => '작업',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => '작업 ${index}/${count}: ${label}',
+			'tvContextMenu.noUsableSource' => '현재 연결 가능한 소스가 없어 지금은 변경할 수 없습니다.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => '${count}개 소스 모두에서 완료됨',
+			'tvContextMenu.doneOnSome' => ({required Object total, required Object done}) => '${total}개 중 ${done}개 소스에서 완료됨. 나머지는 다시 온라인 상태가 되면 재시도됩니다.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object total, required Object done}) => '${total}개 중 ${done}개 소스에서 완료됨.',
+			'tvContextMenu.failed' => '작동하지 않았습니다',
 			_ => null,
 		};
 	}

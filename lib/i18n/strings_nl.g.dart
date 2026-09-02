@@ -98,6 +98,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsUnifiedCatalogNl unifiedCatalog = _TranslationsUnifiedCatalogNl._(_root);
 	@override late final _TranslationsTvNavigationNl tvNavigation = _TranslationsTvNavigationNl._(_root);
 	@override late final _TranslationsTvMyPleyaNl tvMyPleya = _TranslationsTvMyPleyaNl._(_root);
+	@override late final _TranslationsTvContextMenuNl tvContextMenu = _TranslationsTvContextMenuNl._(_root);
 }
 
 // Path: states
@@ -2086,6 +2087,7 @@ class _TranslationsSourcePickerNl extends TranslationsSourcePickerEn {
 	@override String sourceLabel({required Object source}) => 'Bron: ${source}';
 	@override String get change => 'Wijzigen';
 	@override String get playbackFailedTitle => 'Deze bron kon niet worden afgespeeld.';
+	@override String get detailLoadFailedTitle => 'Deze titel kon niet worden geladen.';
 	@override String get chooseAnotherSource => 'Andere bron kiezen';
 	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Bron ${index} van ${count}: ${description}';
 	@override String get preferredServer => 'Voorkeursserver';
@@ -2127,6 +2129,7 @@ class _TranslationsTvNavigationNl extends TranslationsTvNavigationEn {
 
 	// Translations
 	@override String get activeDestination => 'huidige sectie';
+	@override String get attentionRequired => 'vereist aandacht';
 }
 
 // Path: tvMyPleya
@@ -2159,6 +2162,22 @@ class _TranslationsTvMyPleyaNl extends TranslationsTvMyPleyaEn {
 	@override String get aboutSubtitle => 'Versie en licenties';
 	@override String get logoutSubtitle => 'Afmelden op dit apparaat';
 	@override late final _TranslationsTvMyPleyaSemanticsNl semantics = _TranslationsTvMyPleyaSemanticsNl._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuNl extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Acties';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => 'Actie ${index} van ${count}: ${label}';
+	@override String get noUsableSource => 'Er is momenteel geen bron bereikbaar, dus dit kan nu niet worden gewijzigd.';
+	@override String doneOnAll({required Object count}) => 'Gereed op alle ${count} bronnen';
+	@override String doneOnSome({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.';
+	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen.';
+	@override String get failed => 'Dat is niet gelukt';
 }
 
 // Path: search.filters
@@ -4303,6 +4322,7 @@ extension on TranslationsNl {
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'Bron: ${source}',
 			'sourcePicker.change' => 'Wijzigen',
 			'sourcePicker.playbackFailedTitle' => 'Deze bron kon niet worden afgespeeld.',
+			'sourcePicker.detailLoadFailedTitle' => 'Deze titel kon niet worden geladen.',
 			'sourcePicker.chooseAnotherSource' => 'Andere bron kiezen',
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Bron ${index} van ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Voorkeursserver',
@@ -4364,6 +4384,7 @@ extension on TranslationsNl {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle series bekijken, opent de volledige catalogus',
 			'unifiedCatalog.home.featured' => 'Uitgelicht',
 			'tvNavigation.activeDestination' => 'huidige sectie',
+			'tvNavigation.attentionRequired' => 'vereist aandacht',
 			'tvMyPleya.groupContent' => 'Mijn content',
 			'tvMyPleya.groupSources' => 'Bibliotheken en bronnen',
 			'tvMyPleya.groupPleya' => 'Pleya',
@@ -4388,6 +4409,13 @@ extension on TranslationsNl {
 			'tvMyPleya.logoutSubtitle' => 'Afmelden op dit apparaat',
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'Acties',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Actie ${index} van ${count}: ${label}',
+			'tvContextMenu.noUsableSource' => 'Er is momenteel geen bron bereikbaar, dus dit kan nu niet worden gewijzigd.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Gereed op alle ${count} bronnen',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen.',
+			'tvContextMenu.failed' => 'Dat is niet gelukt',
 			_ => null,
 		};
 	}

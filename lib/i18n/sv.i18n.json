@@ -705,6 +705,10 @@
     "failedToDeleteProfile": "Misslyckades att ta bort ${displayName}",
     "failedToRate": "Det gick inte att uppdatera betyget"
   },
+  "notices": {
+    "playbackFileUnavailableTitle": "Filen är inte tillgänglig",
+    "playbackFileUnavailableBody": "Servern kan inte nå videofilen. Kontrollera att enheten eller mappen den ligger i fortfarande är ansluten."
+  },
   "libraries": {
     "title": "Bibliotek",
     "fallbackTitle": "Bibliotek",
@@ -1476,6 +1480,7 @@
     "sourceLabel": "Källa: ${source}",
     "change": "Ändra",
     "playbackFailedTitle": "Den här källan kunde inte spelas upp.",
+    "detailLoadFailedTitle": "Den här titeln kunde inte läsas in.",
     "chooseAnotherSource": "Välj en annan källa",
     "rowSemantics": "Källa ${index} av ${count}: ${description}",
     "preferredServer": "Föredragen server",
@@ -1554,7 +1559,8 @@
     }
   },
   "tvNavigation": {
-    "activeDestination": "aktuellt avsnitt"
+    "activeDestination": "aktuellt avsnitt",
+    "attentionRequired": "kräver uppmärksamhet"
   },
   "tvMyPleya": {
     "groupContent": "Mitt innehåll",
@@ -1583,5 +1589,14 @@
       "tile": "${title}. ${subtitle}",
       "tileWithCount": "${title}. ${subtitle}. ${count}"
     }
+  },
+  "tvContextMenu": {
+    "title": "Åtgärder",
+    "menuSemantics": "Åtgärd ${index} av ${count}: ${label}",
+    "noUsableSource": "Ingen källa är tillgänglig just nu, så detta kan inte ändras nu.",
+    "doneOnAll": "Klart på alla ${count} källor",
+    "doneOnSome": "Klart på ${done} av ${total} källor. Resten försöks igen när de är online igen.",
+    "doneOnSomeNoRetry": "Klart på ${done} av ${total} källor.",
+    "failed": "Det gick inte"
   }
 }

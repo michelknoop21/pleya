@@ -62,6 +62,7 @@ class TranslationsZh extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsZh connections = _TranslationsConnectionsZh._(_root);
 	@override late final _TranslationsDiscoverZh discover = _TranslationsDiscoverZh._(_root);
 	@override late final _TranslationsErrorsZh errors = _TranslationsErrorsZh._(_root);
+	@override late final _TranslationsNoticesZh notices = _TranslationsNoticesZh._(_root);
 	@override late final _TranslationsLibrariesZh libraries = _TranslationsLibrariesZh._(_root);
 	@override late final _TranslationsAboutZh about = _TranslationsAboutZh._(_root);
 	@override late final _TranslationsServerSelectionZh serverSelection = _TranslationsServerSelectionZh._(_root);
@@ -91,6 +92,7 @@ class TranslationsZh extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsUnifiedCatalogZh unifiedCatalog = _TranslationsUnifiedCatalogZh._(_root);
 	@override late final _TranslationsTvNavigationZh tvNavigation = _TranslationsTvNavigationZh._(_root);
 	@override late final _TranslationsTvMyPleyaZh tvMyPleya = _TranslationsTvMyPleyaZh._(_root);
+	@override late final _TranslationsTvContextMenuZh tvContextMenu = _TranslationsTvContextMenuZh._(_root);
 }
 
 // Path: app
@@ -919,6 +921,17 @@ class _TranslationsErrorsZh extends TranslationsErrorsEn {
 	@override String get failedToRate => '无法更新评分';
 }
 
+// Path: notices
+class _TranslationsNoticesZh extends TranslationsNoticesEn {
+	_TranslationsNoticesZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => '文件不可用';
+	@override String get playbackFileUnavailableBody => '服务器无法访问该视频文件。请检查其所在的驱动器或文件夹是否仍处于连接状态。';
+}
+
 // Path: libraries
 class _TranslationsLibrariesZh extends TranslationsLibrariesEn {
 	_TranslationsLibrariesZh._(TranslationsZh root) : this._root = root, super.internal(root);
@@ -1738,6 +1751,7 @@ class _TranslationsSourcePickerZh extends TranslationsSourcePickerEn {
 	@override String sourceLabel({required Object source}) => '来源：${source}';
 	@override String get change => '更改';
 	@override String get playbackFailedTitle => '无法播放此来源。';
+	@override String get detailLoadFailedTitle => '无法加载此标题。';
 	@override String get chooseAnotherSource => '选择其他来源';
 	@override String rowSemantics({required Object index, required Object count, required Object description}) => '第 ${index} 个来源，共 ${count} 个：${description}';
 	@override String get preferredServer => '首选服务器';
@@ -1779,6 +1793,7 @@ class _TranslationsTvNavigationZh extends TranslationsTvNavigationEn {
 
 	// Translations
 	@override String get activeDestination => '当前板块';
+	@override String get attentionRequired => '需要注意';
 }
 
 // Path: tvMyPleya
@@ -1811,6 +1826,22 @@ class _TranslationsTvMyPleyaZh extends TranslationsTvMyPleyaEn {
 	@override String get aboutSubtitle => '版本与许可';
 	@override String get logoutSubtitle => '在此设备上退出登录';
 	@override late final _TranslationsTvMyPleyaSemanticsZh semantics = _TranslationsTvMyPleyaSemanticsZh._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuZh extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '操作';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => '操作 ${index}/${count}：${label}';
+	@override String get noUsableSource => '当前没有可用的来源，因此暂时无法更改此设置。';
+	@override String doneOnAll({required Object count}) => '已在全部 ${count} 个来源完成';
+	@override String doneOnSome({required Object total, required Object done}) => '已在 ${total} 个来源中的 ${done} 个完成。其余来源恢复在线后将重试。';
+	@override String doneOnSomeNoRetry({required Object total, required Object done}) => '已在 ${total} 个来源中的 ${done} 个完成。';
+	@override String get failed => '操作未成功';
 }
 
 // Path: search.filters
@@ -2890,6 +2921,8 @@ extension on TranslationsZh {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => '无法切换到 ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => '无法删除 ${displayName}',
 			'errors.failedToRate' => '无法更新评分',
+			'notices.playbackFileUnavailableTitle' => '文件不可用',
+			'notices.playbackFileUnavailableBody' => '服务器无法访问该视频文件。请检查其所在的驱动器或文件夹是否仍处于连接状态。',
 			'libraries.title' => '媒体库',
 			'libraries.fallbackTitle' => '媒体库',
 			'libraries.scanLibraryFiles' => '扫描媒体库文件',
@@ -3258,10 +3291,10 @@ extension on TranslationsZh {
 			'companionRemote.pairing.discoveryDescription' => '使用同一 Plex 账号的 Pleya 设备会显示在这里',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '正在连接...',
-			'companionRemote.pairing.searchingForDevices' => '正在搜索设备...',
-			'companionRemote.pairing.noDevicesFound' => '未在网络上找到设备',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.searchingForDevices' => '正在搜索设备...',
+			'companionRemote.pairing.noDevicesFound' => '未在网络上找到设备',
 			'companionRemote.pairing.noDevicesHint' => '在桌面端打开 Pleya 并使用同一 WiFi',
 			'companionRemote.pairing.availableDevices' => '可用设备',
 			'companionRemote.pairing.manualConnection' => '手动连接',
@@ -3588,6 +3621,7 @@ extension on TranslationsZh {
 			'sourcePicker.sourceLabel' => ({required Object source}) => '来源：${source}',
 			'sourcePicker.change' => '更改',
 			'sourcePicker.playbackFailedTitle' => '无法播放此来源。',
+			'sourcePicker.detailLoadFailedTitle' => '无法加载此标题。',
 			'sourcePicker.chooseAnotherSource' => '选择其他来源',
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => '第 ${index} 个来源，共 ${count} 个：${description}',
 			'sourcePicker.preferredServer' => '首选服务器',
@@ -3649,6 +3683,7 @@ extension on TranslationsZh {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => '查看所有剧集，打开完整目录',
 			'unifiedCatalog.home.featured' => '精选',
 			'tvNavigation.activeDestination' => '当前板块',
+			'tvNavigation.attentionRequired' => '需要注意',
 			'tvMyPleya.groupContent' => '我的内容',
 			'tvMyPleya.groupSources' => '媒体库与来源',
 			'tvMyPleya.groupPleya' => 'Pleya',
@@ -3673,6 +3708,13 @@ extension on TranslationsZh {
 			'tvMyPleya.logoutSubtitle' => '在此设备上退出登录',
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => '操作',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => '操作 ${index}/${count}：${label}',
+			'tvContextMenu.noUsableSource' => '当前没有可用的来源，因此暂时无法更改此设置。',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => '已在全部 ${count} 个来源完成',
+			'tvContextMenu.doneOnSome' => ({required Object total, required Object done}) => '已在 ${total} 个来源中的 ${done} 个完成。其余来源恢复在线后将重试。',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object total, required Object done}) => '已在 ${total} 个来源中的 ${done} 个完成。',
+			'tvContextMenu.failed' => '操作未成功',
 			_ => null,
 		};
 	}

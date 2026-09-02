@@ -1795,6 +1795,7 @@
     "sourceLabel": "Bron: ${source}",
     "change": "Wijzigen",
     "playbackFailedTitle": "Deze bron kon niet worden afgespeeld.",
+    "detailLoadFailedTitle": "Deze titel kon niet worden geladen.",
     "chooseAnotherSource": "Andere bron kiezen",
     "rowSemantics": "Bron ${index} van ${count}: ${description}",
     "preferredServer": "Voorkeursserver",
@@ -1873,7 +1874,8 @@
     }
   },
   "tvNavigation": {
-    "activeDestination": "huidige sectie"
+    "activeDestination": "huidige sectie",
+    "attentionRequired": "vereist aandacht"
   },
   "tvMyPleya": {
     "groupContent": "Mijn content",
@@ -1902,5 +1904,14 @@
       "tile": "${title}. ${subtitle}",
       "tileWithCount": "${title}. ${subtitle}. ${count}"
     }
+  },
+  "tvContextMenu": {
+    "title": "Acties",
+    "menuSemantics": "Actie ${index} van ${count}: ${label}",
+    "noUsableSource": "Er is momenteel geen bron bereikbaar, dus dit kan nu niet worden gewijzigd.",
+    "doneOnAll": "Gereed op alle ${count} bronnen",
+    "doneOnSome": "Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.",
+    "doneOnSomeNoRetry": "Gereed op ${done} van ${total} bronnen.",
+    "failed": "Dat is niet gelukt"
   }
 }
