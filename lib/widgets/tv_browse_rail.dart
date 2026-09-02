@@ -891,7 +891,11 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     }
 
     if (widget.onBack != null) {
-      final backResult = handleBackKeyAction(event, widget.onBack!);
+      // A focus move, not a dismissal: `LibrariesScreen` passes `focusTabBar`
+      // here. Claiming Back for it inside a nested TV route made the section
+      // unleavable, because Flutter stops walking ancestors at the first
+      // `handled` and the shell's pop never ran.
+      final backResult = handleBackKeyFocusMove(context, event, widget.onBack!);
       if (backResult != KeyEventResult.ignored) return backResult;
     }
 

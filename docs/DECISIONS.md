@@ -1689,3 +1689,76 @@ zichtbaar" niet. Kijklijst en Aanvragen draaiden op een ander maatsysteem (`Medi
 `GridSizeCalculator`, gestuurd door `SettingsService.libraryDensity`) en zijn op TV op de gedeelde
 `TvCatalogGrid`-geometrie gezet; de zeven andere `MediaGridGeometry`-call-sites en alle niet-TV-paden
 zijn ongemoeid. Registerrij B22.
+
+## DEC-088: focus-entry en Back-eigendom van een geneste TV-route horen bij de shell, niet bij het scherm
+
+**Date:** 2026-09-02
+**Status:** accepted
+
+**Context:** Op de echte Apple TV was Mijn Pleya onbedienbaar, en dat is met Pleya Verify in de
+tvOS-simulator met echte HID-invoer gereproduceerd (`docs/tvos-my-pleya-audit-2026-09-02.md`, bewijs
+in `.build/pleya-verify/tvos-my-pleya-sections-1788370856568`). SELECT op een tegel opende de route,
+maar de focus landde op de content-`FocusScope` zelf, DOWN deed niets, en Menu verplaatste de ring
+naar de tabstrip zonder de sectie te sluiten. Er was geen weg terug naar de hub.
+
+Drie oorzaken stapelden. `tv_my_pleya_navigator.dart` maakte voor acht van de tien secties een
+`GlobalKey` die aan geen widget werd gegeven, zodat de enige focus-entry van de shell
+(`route.screenKey?.currentState is FocusableTab`) nooit matchte. Zes secties hebben sowieso geen
+`FocusableTab`, en drie daarvan zijn `StatelessWidget`s, dus voor die drie kan een sleutel per
+definitie geen `State` opleveren. En `focusActiveTabIfReady()` geeft `void` terug, dus de aanroeper
+kon niet zien dat er niets gebeurde en consumeerde de gewapende focus-intentie met een aanroep die
+niets deed.
+
+De vastgelopen Menu is een vierde, aparte oorzaak. Flutter stuurt een toets eerst naar de gefocuste
+node en loopt alleen omhoog zolang het antwoord `ignored` is. `TvBrowseRail` draait
+`handleBackKeyAction` op zijn eigen `onBack`, en `LibrariesScreen` geeft daar `focusTabBar` aan mee:
+een focusverplaatsing binnen het scherm. De rail antwoordt `handled`, de wandeling stopt, en de
+`popNested`-stap komt nooit aan de beurt. Dat is precies wat `TvRootShell` in zijn eigen documentatie
+verbiedt.
+
+**Decision:** Focus-entry en Back-eigendom van een geneste TV-route liggen bij de shell.
+
+`TvNestedSurface` omhult elke geneste route, ook die van de catalogus. Hij vraagt eerst het scherm
+zelf, want een scherm dat zijn onthouden positie kent weet het beter dan een algemene regel, en valt
+anders terug op de eerste focusbare afstammeling van de route. Daarmee werkt entry voor een
+`StatelessWidget` net zo goed als voor een scherm met een volledig contract, en hangt hij niet langer
+aan een sleutel die iemand vergat door te geven. `focusEntry()` geeft terug of er een echt doel om
+focus gevraagd is, zodat een nog ladend scherm de gewapende intentie laat staan in plaats van hem op
+te souperen. De herhaling is begrensd op vijf seconden, stopt zodra de focus binnen is, en wordt bij
+`dispose` afgebroken: een herhaling die zijn widget overleeft is dezelfde soort fout als de
+tijdelijke overrides waar `TemporaryOverride` voor bestaat.
+
+`TvNestedBackOwner` markeert de subboom van een geneste route, en `handleBackKeyFocusMove` is de
+variant van de backafhandeling voor een `onBack` die een focusverplaatsing is. Die trekt zich binnen
+zo'n route terug. Een echte afwijzing (dialoog, sheet, overlay) blijft `handleBackKeyAction` gebruiken
+en houdt dus voorrang, want dat is precies het geval waarin een afstammeling Back hóórt op te eten.
+`TvBrowseRail` is de enige omgezette aanroepplek, omdat dat de enige is die aantoonbaar vastliep.
+
+**Bewijs:** dezelfde route, dezelfde echte HID-invoer, na de wijziging. Logs en diagnose (geen
+`FocusableTab`, sleutel hing nergens aan) opent op `ActionBar[0]`, RIGHT loopt naar `ActionBar[1]`,
+en Menu zet `tvNestedRoute` terug op null met de tegel weer gefocust. Servers (een
+`StatelessWidget`) doet hetzelfde. Bundels:
+`.build/pleya-verify/tvos-my-pleya-section-logs-1788373241707` en
+`tvos-my-pleya-section-servers-1788373614514`.
+
+## DEC-089: verticale navigatie in het Mijn Pleya-raster volgt de rijen, niet een vaste stap
+
+**Date:** 2026-09-02
+**Status:** accepted
+
+**Context:** In de simulator sprong DOWN vanaf Servers, de tweede tegel van een rij van drie, naar
+Over, de derde tegel van de rij eronder. `_verticalNeighbour` stapte `TvMyPleyaLayout.tilesPerRow`
+plaatsen door de platte sleutellijst. Dat is alleen "één rij omlaag" wanneer elke rij vol is, en de
+platte lijst begint bovendien met de profielactie, die geen deel van het raster uitmaakt. Twee
+fouten die optellen, en beide zichtbaar zodra een groep minder tegels heeft dan het raster breed is,
+wat op elke fixture zonder Seerr en zonder downloads het geval is.
+
+**Decision:** Een groep is een rij. De kolom is de index van de tegel binnen zijn eigen groep, en de
+buur is dezelfde kolom in de aangrenzende groep, afgekapt op de breedte van die groep. Vanaf de
+bovenste rij landt UP op de profielactie, die zelf verder omhoog naar de topnavigatie gaat; vanaf de
+onderste rij blijft DOWN staan in plaats van naar de laatste tegel van de pagina te springen, wat
+klemmen op `keys.last` vanuit elke kolom deed.
+
+Drie regressietests in `test/screens/tv/tv_my_pleya_screen_test.dart` leggen dit vast, en ze zijn met
+een negatieve controle nagelopen: alle drie worden rood zodra de oude implementatie wordt
+teruggezet.

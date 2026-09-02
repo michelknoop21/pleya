@@ -303,6 +303,57 @@ void main() {
       expect(focusedLabel(), TvMyPleyaSection.watchTogether.tileFocusKey);
     });
 
+    // Up/down. Reproduced on the simulator before it was written: DOWN from
+    // Servers, the second tile of a three-tile row, landed on Over — the
+    // *third* tile of the row below. Two errors compounded in one line. The
+    // old `_verticalNeighbour` stepped `tilesPerRow` (four) places through the
+    // flat key order, which is only "one row down" when every row is full, and
+    // the flat order begins with the profile action, which is no part of the
+    // grid at all.
+    //
+    // This harness renders Bibliotheken · Servers · Watch Together as the
+    // first row and the four-tile Pleya group below it, so it is exactly the
+    // short-row case, and the column has to be preserved across it.
+    testWidgets('Down keeps the column when the row above is shorter than the grid', (tester) async {
+      await pump(tester);
+
+      state(tester).focusKey(TvMyPleyaSection.servers.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+
+      expect(
+        focusedLabel(),
+        TvMyPleyaSection.logs.tileFocusKey,
+        reason: 'Servers is column 1; column 1 of the row below is Logs en diagnose, not Over',
+      );
+
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), TvMyPleyaSection.servers.tileFocusKey, reason: 'and Up is its exact inverse');
+    });
+
+    testWidgets('Down from the first column lands on the first column below, not one place off', (tester) async {
+      await pump(tester);
+
+      state(tester).focusKey(TvMyPleyaSection.libraries.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+
+      expect(focusedLabel(), TvMyPleyaSection.settings.tileFocusKey);
+    });
+
+    testWidgets('Down from the bottom row stays put instead of snapping to the last tile', (tester) async {
+      await pump(tester);
+
+      // Logs is column 1 of the last row. Clamping to `keys.last` used to send
+      // it to Uitloggen from any column — a tile three places to the right,
+      // which reads as the grid jumping sideways.
+      state(tester).focusKey(TvMyPleyaSection.logs.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+
+      expect(focusedLabel(), TvMyPleyaSection.logs.tileFocusKey);
+    });
+
     // Hoofdstuk 18.3 allows every conditional tile at once, and that page is
     // taller than the frame — `tv_shell_my_pleya_full.png` pictures it running
     // off the bottom. Every test above it runs the short hub, which fits, so

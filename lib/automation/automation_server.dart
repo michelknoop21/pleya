@@ -18,6 +18,7 @@ import 'automation_input.dart';
 import 'automation_overlay.dart';
 import 'automation_focus_log.dart';
 import 'automation_registry.dart';
+import 'automation_route_state.dart';
 import 'automation_screen.dart';
 import 'automation_signin.dart';
 import 'automation_wait.dart';
@@ -60,6 +61,7 @@ const Map<String, String> _kRouteMethods = {
   '/v1/events': 'GET',
   '/v1/automation_ids': 'GET',
   '/v1/viewport': 'GET',
+  '/v1/route': 'GET',
   '/v1/logs': 'GET',
   '/v1/wait': 'POST',
   '/v1/input/key': 'POST',
@@ -230,6 +232,8 @@ class AutomationServer {
         });
       case '/v1/automation_ids':
         await _respondJson(request, {'ids': AutomationIds.catalog()});
+      case '/v1/route':
+        await _respondJson(request, AutomationRouteState.instance.toJson());
       case '/v1/viewport':
         await _respondJson(request, _viewportSnapshot());
       case '/v1/logs':

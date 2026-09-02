@@ -24,6 +24,8 @@ import 'package:provider/provider.dart';
 
 import '../../focus/focus_memory_tracker.dart';
 import '../../focus/focusable_wrapper.dart';
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_screen.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
 import '../../mixins/refreshable.dart';
@@ -293,75 +295,86 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
     final ringGap = TvMyPleyaLayout.tileFocusRingGap * scale;
     final textInset = EdgeInsets.symmetric(horizontal: ringGap);
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.only(
-        left: TvTopNavLayout.pageInset * scale - ringGap,
-        right: TvTopNavLayout.pageInset * scale - ringGap,
-        bottom: TvCatalogLayout.topSafeInset * scale,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: textInset,
-            child: Text(
-              t.navigation.myPleya,
-              style: TextStyle(
-                color: tk.text,
-                fontSize: TvMyPleyaLayout.pageTitleFontSize * scale,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.2,
-              ),
-            ),
-          ),
-          SizedBox(height: TvMyPleyaLayout.titleGap * scale),
-          Padding(
-            padding: textInset,
-            child: _ProfileHeader(
-              profile: profile,
-              servers: servers,
-              scale: scale,
-              node: nodes.get(_switchProfileKey, debugLabel: _switchProfileKey),
-              onSwitchProfile: widget.onSwitchProfile,
-              onExitUp: widget.onExitUp,
-              onNavigateDown: () => focusKey(keys.length > 1 ? keys[1] : null),
-            ),
-          ),
-          for (final group in groups) ...[
-            SizedBox(height: TvMyPleyaLayout.groupGap * scale),
+    // Its own screen id. `screen.main` is mounted for the entire session and
+    // says nothing about which destination is showing, so without this the
+    // hub is indistinguishable from every other page in `/v1/screens`.
+    // Ready as soon as it builds: the tiles are derived from providers that
+    // are already resolved by the time this runs, and a hub that renders is a
+    // hub you can use.
+    return AutomationScreen(
+      id: AutomationIds.screenMyPleya,
+      readiness: () => const AutomationReadiness.ready(),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          left: TvTopNavLayout.pageInset * scale - ringGap,
+          right: TvTopNavLayout.pageInset * scale - ringGap,
+          bottom: TvCatalogLayout.topSafeInset * scale,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             Padding(
               padding: textInset,
               child: Text(
-                group.label,
+                t.navigation.myPleya,
                 style: TextStyle(
-                  color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-                  fontSize: TvMyPleyaLayout.groupLabelFontSize * scale,
-                  fontWeight: FontWeight.w600,
+                  color: tk.text,
+                  fontSize: TvMyPleyaLayout.pageTitleFontSize * scale,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
                 ),
               ),
             ),
-            SizedBox(height: TvMyPleyaLayout.groupLabelGap * scale),
-            _TileRow(
-              tiles: group.tiles,
-              scale: scale,
-              nodes: nodes,
-              keys: keys,
-              onFocusKey: focusKey,
-              onOpen: (tile) => tile.section == null ? widget.onSignOut() : widget.onOpenSection(tile.section!),
-            ),
-          ],
-          SizedBox(height: TvMyPleyaLayout.footerGap * scale),
-          Padding(
-            padding: textInset,
-            child: Text(
-              t.tvMyPleya.signedInAs(name: profile?.displayName ?? '', version: _appVersion ?? ''),
-              style: TextStyle(
-                color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-                fontSize: TvMyPleyaLayout.footerFontSize * scale,
+            SizedBox(height: TvMyPleyaLayout.titleGap * scale),
+            Padding(
+              padding: textInset,
+              child: _ProfileHeader(
+                profile: profile,
+                servers: servers,
+                scale: scale,
+                node: nodes.get(_switchProfileKey, debugLabel: _switchProfileKey),
+                onSwitchProfile: widget.onSwitchProfile,
+                onExitUp: widget.onExitUp,
+                onNavigateDown: () => focusKey(keys.length > 1 ? keys[1] : null),
               ),
             ),
-          ),
-        ],
+            for (final group in groups) ...[
+              SizedBox(height: TvMyPleyaLayout.groupGap * scale),
+              Padding(
+                padding: textInset,
+                child: Text(
+                  group.label,
+                  style: TextStyle(
+                    color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
+                    fontSize: TvMyPleyaLayout.groupLabelFontSize * scale,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              SizedBox(height: TvMyPleyaLayout.groupLabelGap * scale),
+              _TileRow(
+                tiles: group.tiles,
+                scale: scale,
+                nodes: nodes,
+                keys: keys,
+                groups: groups,
+                onFocusKey: focusKey,
+                onOpen: (tile) => tile.section == null ? widget.onSignOut() : widget.onOpenSection(tile.section!),
+              ),
+            ],
+            SizedBox(height: TvMyPleyaLayout.footerGap * scale),
+            Padding(
+              padding: textInset,
+              child: Text(
+                t.tvMyPleya.signedInAs(name: profile?.displayName ?? '', version: _appVersion ?? ''),
+                style: TextStyle(
+                  color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
+                  fontSize: TvMyPleyaLayout.footerFontSize * scale,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -382,6 +395,7 @@ class _TileRow extends StatelessWidget {
     required this.scale,
     required this.nodes,
     required this.keys,
+    required this.groups,
     required this.onFocusKey,
     required this.onOpen,
   });
@@ -390,6 +404,10 @@ class _TileRow extends StatelessWidget {
   final double scale;
   final FocusMemoryTracker nodes;
   final List<String> keys;
+
+  /// Every group on the page, in order. One group is one visual row, which is
+  /// what up/down has to move by — see [_verticalNeighbour].
+  final List<TvMyPleyaGroup> groups;
   final void Function(String? key) onFocusKey;
   final ValueChanged<TvMyPleyaTile> onOpen;
 
@@ -446,17 +464,34 @@ class _TileRow extends StatelessWidget {
     return (target < 0 || target >= keys.length) ? null : keys[target];
   }
 
-  /// Up/down moves a whole row: [TvMyPleyaLayout.tilesPerRow] steps through the
-  /// flat order, clamped to the ends. From the top row, UP lands on the profile
-  /// header, which is the first entry in [keys] — and from there the header's
-  /// own handler continues up to the top navigation.
+  /// Up/down moves one visual row, keeping the column.
+  ///
+  /// It used to step [TvMyPleyaLayout.tilesPerRow] places through the flat
+  /// order instead, which is only the same thing when every row is full and
+  /// nothing precedes the grid. Neither holds: the profile header is the first
+  /// entry in [keys] while being no part of the grid, and a group with three
+  /// tiles is still one row. Both errors compound, and the result was
+  /// reproducible on the simulator — DOWN from Servers, the second tile of a
+  /// three-tile row, landed on Over, the *third* tile of the row below.
+  ///
+  /// A row is a group, so the column is the tile's index within its own group
+  /// and the neighbour is the same column in the adjacent group, clamped to
+  /// that group's width. From the top row UP lands on the profile header,
+  /// whose own handler continues up to the top navigation; from the bottom row
+  /// DOWN stays put rather than snapping to the last tile of the page, which
+  /// is what clamping to [keys.last] used to do from any column.
   String? _verticalNeighbour(String key, int direction) {
-    final index = keys.indexOf(key);
-    if (index < 0) return null;
-    final target = index + direction * TvMyPleyaLayout.tilesPerRow;
-    if (target < 0) return keys.first;
-    if (target >= keys.length) return keys.last;
-    return keys[target];
+    for (var g = 0; g < groups.length; g++) {
+      final column = groups[g].tiles.indexWhere((tile) => tile.focusKey == key);
+      if (column < 0) continue;
+      final target = g + direction;
+      if (target < 0) return keys.first;
+      if (target >= groups.length) return null;
+      final row = groups[target].tiles;
+      if (row.isEmpty) return null;
+      return row[column < row.length ? column : row.length - 1].focusKey;
+    }
+    return null;
   }
 }
 
@@ -494,6 +529,17 @@ class _Tile extends StatelessWidget {
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
       borderRadius: radius,
+      // Suffixed by section name, not by index: the tile order follows what
+      // the profile actually has (Aanvragen only with a Seerr server), so an
+      // index would address a different section on a different fixture.
+      // `logout` for the one tile that opens nothing.
+      automationId: AutomationIds.myPleyaTile,
+      automationInstance: tile.section?.name ?? 'logout',
+      automationRole: 'grid.item',
+      // The bounds a focus-ring measurement needs are the wrapper's, which is
+      // what the ring is drawn around — not the inner fill, which sits a
+      // `tileFocusRingGap` inside it.
+      automationState: () => <String, Object?>{'title': tile.title, if (tile.count != null) 'count': tile.count},
       // Hoofdstuk 33.8: menu tiles do not scale. Twelve boxes where one grows
       // reads as an unstable wall; the ring and the lighter fill are enough.
       disableScale: true,

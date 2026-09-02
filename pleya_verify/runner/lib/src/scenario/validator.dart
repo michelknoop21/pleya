@@ -2,6 +2,7 @@ import '../engine/geometry_assertions.dart';
 import 'automation_id_catalog.dart';
 import 'automation_id_grammar.dart';
 import 'model.dart';
+import 'remote_keys.dart';
 
 /// Structurally validates an already-parsed [Scenario]: the disjoint
 /// setup/step vocabularies ([C9]), the tvOS tap-forbidden rule ([C2] —
@@ -58,6 +59,9 @@ List<ScenarioError> validateScenario(Scenario scenario, AutomationIdCatalog cata
           ),
         );
       }
+    }
+    if (step.verb == 'press') {
+      _validatePress(step, scenario, errors);
     }
     _validateStepBody(step, scenario, catalog, errors);
   }
@@ -123,6 +127,36 @@ Iterable<String> _findIdRefs(Object? args) sync* {
     for (final item in args) {
       yield* _findIdRefs(item);
     }
+  }
+}
+
+/// A `press` names a key from the one shared remote vocabulary, and may only
+/// ask for a hold on a target that can actually hold a key down.
+///
+/// Both halves move a failure that used to need a full build, install and
+/// launch into the millisecond the file is read. `scripts/tvos_sim.sh` dies
+/// with `onbekende toets` on a typo, and `/v1/input/key` answers 400
+/// `unknownKey` — both of them minutes after the run started, and both after
+/// the scenario has already changed the app's state.
+void _validatePress(ScenarioStep step, Scenario scenario, List<ScenarioError> errors) {
+  final PressStep press;
+  try {
+    press = parsePressArgs(step.args);
+  } on PressArgsException catch (e) {
+    errors.add(ScenarioError(sourcePath: scenario.sourcePath, line: step.line, message: e.message));
+    return;
+  }
+  if (press.isLongPress && !_isTvosTarget(scenario.target)) {
+    errors.add(
+      ScenarioError(
+        sourcePath: scenario.sourcePath,
+        line: step.line,
+        message:
+            "a long press ('holdMs') is only supported on a tvOS target — '${scenario.target}' presses through "
+            '/v1/input/key, which synthesizes one indivisible key press with no down/up split, so a hold there '
+            'would silently be an ordinary press',
+      ),
+    );
   }
 }
 

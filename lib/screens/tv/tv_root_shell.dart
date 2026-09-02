@@ -44,6 +44,7 @@ import '../../navigation/main_screen_scope.dart';
 import '../../navigation/tv/tv_destination.dart';
 import '../../navigation/tv/tv_content_focus_authority.dart';
 import '../../navigation/tv/tv_navigation_coordinator.dart';
+import '../../navigation/tv/tv_nested_surface.dart';
 import '../../profiles/profile.dart';
 import '../../theme/mono_tokens.dart';
 import '../../widgets/overlay_sheet.dart';
@@ -272,7 +273,16 @@ class TvRootShell extends StatelessWidget {
                                       child: TickerMode(enabled: nested == null, child: screens!),
                                     ),
                                   ),
-                                  if (nested != null) Builder(builder: nested.builder),
+                                  // Every nested route, not only Mijn Pleya's:
+                                  // the catalog routes open the same way and
+                                  // have the same focus-entry problem the
+                                  // moment their content lands late.
+                                  if (nested != null)
+                                    TvNestedSurface(
+                                      key: nested.surfaceKey,
+                                      route: nested,
+                                      child: Builder(builder: nested.builder),
+                                    ),
                                 ],
                               );
                             },

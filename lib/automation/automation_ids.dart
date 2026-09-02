@@ -74,6 +74,25 @@ class AutomationIds {
   /// One row in [mediaDetailEpisodeList]. Instanceable: suffixed `[<index>]`.
   static const String mediaDetailEpisodeListItem = 'media-detail.episode-list.item';
 
+  /// The Mijn Pleya hub as a screen. Its own `AutomationScreen`, because
+  /// `screen.main` is mounted for the whole session and says nothing about
+  /// which destination is on show.
+  static const String screenMyPleya = 'screen.my_pleya';
+
+  /// One tile on the Mijn Pleya hub. Instanceable, suffixed with the
+  /// `TvMyPleyaSection.name` it opens (`my_pleya.tile[watchlist]`) — a name
+  /// rather than an index, because the tile order changes with what the
+  /// profile actually has (Requests only with a Seerr server, Live TV only
+  /// with a tuner) and an index would silently address a different section
+  /// on a different fixture.
+  static const String myPleyaTile = 'my_pleya.tile';
+
+  /// The root of the section a tile opened, suffixed the same way
+  /// (`my_pleya.section[watchlist]`). Presence of this node is what makes
+  /// "SELECT opened the right thing" assertable; its bounds are what make
+  /// the page insets and the seam under the top bar measurable.
+  static const String myPleyaSection = 'my_pleya.section';
+
   /// The video player's rendering surface (`lib/mpv/video.dart`).
   static const String playerSurface = 'player.surface';
 
@@ -86,6 +105,8 @@ class AutomationIds {
     mediaDetailEpisodeListItem,
     discoverRail,
     discoverRailItem,
+    myPleyaTile,
+    myPleyaSection,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -114,6 +135,9 @@ class AutomationIds {
     {'id': discoverSafeArea, 'role': 'region', 'instanceable': false},
     {'id': mediaDetailEpisodeList, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailEpisodeListItem, 'role': 'list.item', 'instanceable': true},
+    {'id': screenMyPleya, 'role': 'screen', 'instanceable': false},
+    {'id': myPleyaTile, 'role': 'grid.item', 'instanceable': true},
+    {'id': myPleyaSection, 'role': 'region', 'instanceable': true},
     {'id': playerSurface, 'role': 'surface', 'instanceable': false},
   ];
 }

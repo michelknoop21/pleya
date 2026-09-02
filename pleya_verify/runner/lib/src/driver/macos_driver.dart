@@ -290,6 +290,9 @@ class MacosDriver implements VerificationDriver {
   Future<Map<String, Object?>> viewport() => _requireClient().viewport();
 
   @override
+  Future<Map<String, Object?>> route() => _requireClient().route();
+
+  @override
   Future<List<Map<String, Object?>>> screensSnapshot() async {
     final result = await _requireClient().screens();
     return (result['screens'] as List).cast<Map<String, Object?>>();
@@ -434,7 +437,14 @@ class MacosDriver implements VerificationDriver {
   }
 
   @override
-  Future<void> press(String key) async {
+  Future<void> press(String key, {Duration? hold}) async {
+    if (hold != null) {
+      throw UnsupportedError(
+        'press hold: /v1/input/key synthesizes one indivisible key press with no down/up split, so this target '
+        'cannot express a long press — only the tvOS driver (idb HID) can. The scenario validator rejects '
+        'holdMs outside a tvOS target before a run gets this far.',
+      );
+    }
     await _requireClient().inputKey(key);
   }
 

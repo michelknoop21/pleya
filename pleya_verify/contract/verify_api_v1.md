@@ -107,6 +107,11 @@ Emitted vandaag, met de bron per naam:
 - `focus.changed` (`{"from": "...", "to": "..."}`) — `AutomationFocusLog`, elke
   focuswissel.
 - `screen.changed` (`AutomationRouteObserver`) — een routetransitie.
+- `route.changed` (`{"destination": "...", "nested": "...", "tab": "..."}`,
+  `AutomationRouteState`) — de TV-shell of de hoofdtab verplaatst zich. Alleen
+  bij een echte verandering, zodat een `ChangeNotifier` die om andere redenen
+  afgaat de ring niet volschrijft. Het bijbehorende opvraagbare antwoord staat
+  in `GET /v1/route`.
 - `screen.ready` (`{"id": "..."}`, `AutomationScreen`) — het moment dat een
   gemount scherm z'n readiness-transitie naar `ready` maakt.
 - `navigation.tab_changed` (`{"from": "...", "to": "..."}`, `main_screen.dart`)
@@ -181,6 +186,36 @@ boot, of een test zonder widget-tree) — nooit een crash. Waarden komen uit
 "overleeft-profielsessie-remounts"-seam die `main.dart`'s `_rootPinPrompt`
 gebruikt. Nodig voor `insideViewport`-geometrie (Fase 7). Triggert geen
 events.
+
+### `GET /v1/route`
+
+Geen parameters. 200 met JSON:
+
+```json
+{"activeTab": "myPleya", "tvDestination": "myPleya", "tvNestedRoute": "tvMyPleya_watchlist", "navigatorDepth": 0, "navigatorStack": []}
+```
+
+Waar de app *nu* staat, als opvraagbare waarde in plaats van een gebeurtenis.
+Alle vier de bestaande antwoorden op die vraag schieten tekort: `screen.changed`
+en `navigation.tab_changed` zijn transities, dus wie een moment te laat kijkt
+ziet niets; `/v1/screens` noemt de vier gemounte `AutomationScreen`s, en in een
+shell van `IndexedStack`en is gemount iets anders dan zichtbaar; en de
+`nav.*`-knopen in `/v1/ui_tree` dragen wel `state: {active: true}`, maar alleen
+voor de hoofdbalk — wat er *binnen* een bestemming open staat zeggen ze niet.
+
+Daardoor was een geneste TV-route onzichtbaar voor automatisering: SELECT op een
+Mijn Pleya-tegel en helemaal niets indrukken leverden dezelfde waarneembare
+staat op, en "heeft Back echt de hub teruggebracht?" was met bewijs niet te
+beantwoorden. `activeTab` is `NavigationTabId.name`, `tvDestination` is
+`TvDestinationId.name` (null buiten TV), `tvNestedRoute` is `TvNestedRoute.id`
+van wat de actieve bestemming boven haar wortel toont (null bij de wortel zelf).
+`navigatorStack` is de profiel-`Navigator`, waarvan de meeste routes naamloos
+zijn: de diepte is het betrouwbare deel, de namen zijn meegenomen waar ze
+bestaan.
+
+Een echte verandering emit `route.changed`; een herhaling niet, zodat een
+`ChangeNotifier` die om andere redenen afgaat (een focusring die langs de balk
+loopt) de gebeurtenissenring niet volschrijft.
 
 ### `GET /v1/logs?since=N`
 

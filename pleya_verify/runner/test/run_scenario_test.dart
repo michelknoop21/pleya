@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -122,8 +123,34 @@ class FakeDriver implements VerificationDriver {
   @override
   Future<Uint8List> screenshot() async => Uint8List.fromList([1, 2, 3]);
 
+  /// Every press this driver was asked for, in order — `key` plus the hold
+  /// in milliseconds (null for a short press). What the engine's `press`
+  /// dispatch is actually asserted against.
+  final List<({String key, int? holdMs})> presses = [];
+
+  /// Lets a test make a press *do* something, so the engine's before/after
+  /// record has a real difference to notice.
+  void Function(String key, Duration? hold)? onPress;
+
   @override
-  Future<void> press(String key) async {}
+  Future<void> press(String key, {Duration? hold}) async {
+    presses.add((key: key, holdMs: hold?.inMilliseconds));
+    onPress?.call(key, hold);
+  }
+
+  @override
+  Future<Map<String, Object?>> route() async => {
+    'activeTab': activeTab,
+    'tvDestination': null,
+    'tvNestedRoute': nestedRoute,
+    'navigatorDepth': 0,
+    'navigatorStack': const <String>[],
+  };
+
+  /// Route fields the engine's input observation reads back. Public so a
+  /// test can move them between presses and prove the record noticed.
+  String? activeTab;
+  String? nestedRoute;
 
   @override
   Future<void> typeText(String text) async {}
@@ -172,6 +199,80 @@ void main() {
 
     final manifest = File('${result.bundleDir.path}/manifest.json').readAsStringSync();
     expect(manifest, contains('"result": "PASS"'));
+  });
+
+  group('a press is recorded by what it changed, not by whether it returned', () {
+    test('a press that moves the app records before, after, changed and the events between', () async {
+      final scenario = parseScenarioString(
+        'name: press.observed\ntarget: macos\nsetup:\n  - launch\nsteps:\n  - press: select\n',
+        sourcePath: 'inline.yaml',
+      );
+      final driver = FakeDriver()..nestedRoute = null;
+      driver.onPress = (_, _) => driver.nestedRoute = 'tvMyPleya_watchlist';
+
+      final result = await runScenario(
+        scenario: scenario,
+        scenarioSource: 'name: press.observed\n',
+        driver: driver,
+        repoRoot: repoRoot,
+      );
+
+      expect(result.passed, isTrue);
+      final manifest =
+          jsonDecode(File('${result.bundleDir.path}/manifest.json').readAsStringSync()) as Map<String, Object?>;
+      final press = (manifest['steps'] as List).cast<Map<String, Object?>>().firstWhere((s) => s['verb'] == 'press');
+
+      expect(press['key'], 'select');
+      expect(press['hold_ms'], isNull);
+      expect(press['input_route'], isNotNull);
+      expect(press['changed'], isTrue);
+      expect((press['before'] as Map)['route'], isA<Map<String, Object?>>());
+      expect(((press['before'] as Map)['route'] as Map)['tvNestedRoute'], isNull);
+      expect(((press['after'] as Map)['route'] as Map)['tvNestedRoute'], 'tvMyPleya_watchlist');
+      expect(press['events'], isA<List<Object?>>());
+    });
+
+    test('a press the app ignores records changed: false — the finding, not a green step', () async {
+      final scenario = parseScenarioString(
+        'name: press.inert\ntarget: macos\nsetup:\n  - launch\nsteps:\n  - press: down\n',
+        sourcePath: 'inline.yaml',
+      );
+      final driver = FakeDriver();
+
+      final result = await runScenario(
+        scenario: scenario,
+        scenarioSource: 'name: press.inert\n',
+        driver: driver,
+        repoRoot: repoRoot,
+      );
+
+      final manifest =
+          jsonDecode(File('${result.bundleDir.path}/manifest.json').readAsStringSync()) as Map<String, Object?>;
+      final press = (manifest['steps'] as List).cast<Map<String, Object?>>().firstWhere((s) => s['verb'] == 'press');
+      expect(press['ok'], isTrue, reason: 'the driver call succeeded');
+      expect(press['changed'], isFalse, reason: 'and the app did nothing — the record has to say both');
+    });
+
+    test('a long press reaches the driver as a hold, and the manifest names it', () async {
+      final scenario = parseScenarioString(
+        'name: press.hold\ntarget: tvos-sim\nsetup:\n  - launch\nsteps:\n  - press: {key: select, holdMs: 1200}\n',
+        sourcePath: 'inline.yaml',
+      );
+      final driver = FakeDriver();
+
+      final result = await runScenario(
+        scenario: scenario,
+        scenarioSource: 'name: press.hold\n',
+        driver: driver,
+        repoRoot: repoRoot,
+      );
+
+      expect(driver.presses, [(key: 'select', holdMs: 1200)]);
+      final manifest =
+          jsonDecode(File('${result.bundleDir.path}/manifest.json').readAsStringSync()) as Map<String, Object?>;
+      final press = (manifest['steps'] as List).cast<Map<String, Object?>>().firstWhere((s) => s['verb'] == 'press');
+      expect(press['hold_ms'], 1200);
+    });
   });
 
   test('assert on an id the driver never reports fails the run and still writes a bundle', () async {

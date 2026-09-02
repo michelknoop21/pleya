@@ -4,6 +4,7 @@ import 'my_pleya_screen.dart';
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 import '../automation/automation_event_log.dart';
+import '../automation/automation_route_state.dart';
 import '../automation/automation_ids.dart';
 import '../automation/automation_navigation_hooks.dart';
 import '../automation/automation_screen.dart';
@@ -16,6 +17,7 @@ import '../navigation/tv/tv_destination.dart';
 import '../navigation/tv/tv_live_tv_capability.dart';
 import '../navigation/tv/tv_content_focus_authority.dart';
 import '../navigation/tv/tv_navigation_coordinator.dart';
+import '../navigation/tv/tv_nested_surface.dart';
 import 'tv/tv_movies_screen.dart';
 import 'tv/tv_series_screen.dart';
 import 'tv/tv_my_pleya_navigator.dart';
@@ -1919,6 +1921,7 @@ class _MainScreenState extends State<MainScreen>
       // normal build never accumulates event history for nothing.
       if (kPleyaVerify) {
         AutomationEventLog.instance.emit('navigation.tab_changed', {'from': previousTab.name, 'to': tab.name});
+        AutomationRouteState.instance.updateTab(tab.name);
       }
 
       // Notify previous screen it's being hidden
@@ -1992,13 +1995,17 @@ class _MainScreenState extends State<MainScreen>
   }
 
   /// Puts the focus inside the nested route currently on top, once it exists.
+  ///
+  /// Delegates to [TvNestedSurface], which asks the screen's own
+  /// `FocusableTab` first and falls back to the first focusable control in the
+  /// route's subtree. The old body did only the first half, against a
+  /// `screenKey` that eight of the ten Mijn Pleya sections never attached to
+  /// anything — so for those it matched nothing, requested nothing, and the
+  /// section opened with the remote on empty space and no way back.
   void _focusTvNestedRoute() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final route = _tvNav.activeNestedRoute;
-      if (route?.screenKey?.currentState case final FocusableTab focusable) {
-        focusable.focusActiveTabIfReady();
-      }
+      _tvNav.activeNestedRoute?.surfaceKey.currentState?.focusEntry();
     });
   }
 

@@ -13,7 +13,7 @@ void main() {
     final forbidden = ['VerifyClient', 'http.', 'package:http'];
 
     for (final methodStart in const [
-      'Future<void> press(String key) async {',
+      'Future<void> press(String key, {Duration? hold}) async {',
       'Future<void> typeText(String text) async {',
       'Future<void> tap(double x, double y) {',
     ]) {

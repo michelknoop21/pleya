@@ -93,6 +93,15 @@ ids:
   - id: media-detail.episode-list.item
     role: list.item
     instanceable: true
+  - id: screen.my_pleya
+    role: screen
+    instanceable: false
+  - id: my_pleya.tile
+    role: grid.item
+    instanceable: true
+  - id: my_pleya.section
+    role: region
+    instanceable: true
   - id: player.surface
     role: surface
     instanceable: false

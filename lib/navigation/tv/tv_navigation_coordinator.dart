@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../automation/automation_route_state.dart';
+import '../../automation/pleya_verify.dart';
 import '../navigation_tabs.dart';
 import 'tv_destination.dart';
+import 'tv_nested_surface.dart';
 
 /// Owns the TV root shell's navigation state: which destination is active,
 /// which navigation item the remote is on, and where the focus was inside each
@@ -22,7 +25,27 @@ import 'tv_destination.dart';
 /// conditional Live TV slot appearing cannot shift what any other destination
 /// remembers; an index would have.
 class TvNavigationCoordinator extends ChangeNotifier {
-  TvNavigationCoordinator({TvDestinationId initial = tvRootDestination}) : _active = initial, _focused = initial;
+  TvNavigationCoordinator({TvDestinationId initial = tvRootDestination}) : _active = initial, _focused = initial {
+    _publishRoute();
+  }
+
+  /// Where the TV shell stands, published for `/v1/route`.
+  ///
+  /// Hooked into [notifyListeners] rather than sprinkled over the eight
+  /// mutators, because every one of them already ends in a notify and a ninth
+  /// added later would otherwise be the one that forgets. [AutomationRouteState]
+  /// itself drops a repeat, so the focus-ring moves that also notify (and change
+  /// no route) cost nothing.
+  @override
+  void notifyListeners() {
+    _publishRoute();
+    super.notifyListeners();
+  }
+
+  void _publishRoute() {
+    if (!kPleyaVerify) return;
+    AutomationRouteState.instance.updateTv(destination: _active.name, nestedRoute: activeNestedRoute?.id);
+  }
 
   TvDestinationId _active;
   TvDestinationId _focused;
@@ -267,7 +290,7 @@ class TvDestinationFocusMemory {
 /// shell is binding on all eight references, which is why "Alle films" belongs
 /// here and a detail page does not.
 class TvNestedRoute {
-  const TvNestedRoute({required this.id, required this.builder, this.restoreFocusKey, this.screenKey});
+  TvNestedRoute({required this.id, required this.builder, this.restoreFocusKey, this.screenKey});
 
   /// Stable identity, used to recognise a re-push of the same screen.
   final String id;
@@ -282,5 +305,20 @@ class TvNestedRoute {
   /// nothing focused is a route a remote cannot use. Lives on the route rather
   /// than being made per push, so it survives for as long as the route is on
   /// the stack.
+  ///
+  /// Optional, and no longer the mechanism focus entry depends on: it is the
+  /// *preferred* answer where a screen has one, and [surfaceKey] is the answer
+  /// for the six sections that have no `FocusableTab` to ask — three of which
+  /// are `StatelessWidget`s, so no key could ever resolve to a `State` for
+  /// them. See [TvNestedSurface].
   final GlobalKey? screenKey;
+
+  /// Reaches the [TvNestedSurface] the shell wraps every nested route in.
+  ///
+  /// Created here rather than in the builder, for the reason the route's own
+  /// existence is: `pushNested` discards a re-push of the same id, so the
+  /// route object on the stack is stable while a freshly built one is not. A
+  /// key made inside `builder` would be new on every rebuild and would resolve
+  /// to a state nobody else can reach.
+  final GlobalKey<TvNestedSurfaceState> surfaceKey = GlobalKey<TvNestedSurfaceState>();
 }

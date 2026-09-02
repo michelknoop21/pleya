@@ -28,6 +28,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../watch_together/screens/watch_together_screen.dart';
 import '../now_watching_screen.dart';
@@ -69,21 +71,33 @@ TvNestedRoute tvMyPleyaNestedRoute(TvMyPleyaSection section, {GlobalKey? librari
         TvMyPleyaSection.watchlist => watchlistKey,
         _ => GlobalKey(debugLabel: 'tvMyPleya_${section.name}'),
       },
-      builder: (context) => switch (section) {
-        TvMyPleyaSection.watchlist => WatchlistScreen(key: watchlistKey),
-        TvMyPleyaSection.requests => const SeerrDiscoverScreen(),
-        TvMyPleyaSection.downloads => const DownloadsScreen(),
-        // Keyed so the hoofdstuk 6.4 adapter can reach the same
-        // `loadLibraryByKey` the rail's library rows have always called.
-        // Keyed by the route's own `screenKey`, which for this section *is*
-        // `librariesKey`; a second key here would leave one of them resolving
-        // to nothing.
-        TvMyPleyaSection.libraries => LibrariesScreen(key: librariesKey),
-        TvMyPleyaSection.servers => const TvServersScreen(),
-        TvMyPleyaSection.activity => const NowWatchingScreen(),
-        TvMyPleyaSection.watchTogether => const WatchTogetherScreen(),
-        TvMyPleyaSection.settings => const SettingsScreen(),
-        TvMyPleyaSection.logs => const LogsScreen(),
-        TvMyPleyaSection.about => const AboutScreen(),
-      },
+      // Addressable, and measurable. Without a node here the whole nested
+      // surface was invisible to `/v1/ui_tree`: a scenario could press SELECT
+      // on a tile and had no way to assert that anything opened, let alone
+      // that it opened with the right page insets under the top bar. The
+      // instance is the section name, matching the tile that opened it, so
+      // `my_pleya.tile[settings]` and `my_pleya.section[settings]` name the
+      // two ends of one journey.
+      builder: (context) => AutomationNode(
+        id: AutomationIds.myPleyaSection,
+        instance: section.name,
+        role: 'region',
+        child: switch (section) {
+          TvMyPleyaSection.watchlist => WatchlistScreen(key: watchlistKey),
+          TvMyPleyaSection.requests => const SeerrDiscoverScreen(),
+          TvMyPleyaSection.downloads => const DownloadsScreen(),
+          // Keyed so the hoofdstuk 6.4 adapter can reach the same
+          // `loadLibraryByKey` the rail's library rows have always called.
+          // Keyed by the route's own `screenKey`, which for this section *is*
+          // `librariesKey`; a second key here would leave one of them resolving
+          // to nothing.
+          TvMyPleyaSection.libraries => LibrariesScreen(key: librariesKey),
+          TvMyPleyaSection.servers => const TvServersScreen(),
+          TvMyPleyaSection.activity => const NowWatchingScreen(),
+          TvMyPleyaSection.watchTogether => const WatchTogetherScreen(),
+          TvMyPleyaSection.settings => const SettingsScreen(),
+          TvMyPleyaSection.logs => const LogsScreen(),
+          TvMyPleyaSection.about => const AboutScreen(),
+        },
+      ),
     );
