@@ -17,6 +17,7 @@ import 'package:pleya/screens/search_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/platform_detector.dart';
@@ -36,6 +37,13 @@ void main() {
   setUp(() async {
     resetSharedPreferencesForTest();
     SettingsService.resetForTesting();
+    // `StorageService` first: `BaseSharedPreferencesService`'s shared cache
+    // future is created by whichever subclass asks first, and a second
+    // subclass's `onInit()` never actually completing when it asks second
+    // is a real, if latent, ordering bug — invisible everywhere else because
+    // nothing else awaits `HiddenLibrariesProvider`'s own storage-backed init
+    // to completion, but the B17 tests below do exactly that.
+    await StorageService.getInstance();
     await SettingsService.getInstance();
   });
 
@@ -379,6 +387,120 @@ void main() {
     expect(find.text('ABC Movie'), findsNothing);
 
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  // B17: hidden libraries are a hard visibility boundary (hoofdstuk 22), and
+  // TV search reads them synchronously off `HiddenLibrariesProvider` rather
+  // than awaiting its own readiness (see the comment in `_performSearch`).
+  // These prove the seam that actually closes the gap: a hide or unhide that
+  // lands after a search already has results on screen reruns that same
+  // query through `_onHiddenLibrariesChanged`, with a dedup guard so a
+  // notification that left the effective set unchanged costs nothing. The
+  // same listener is what corrects the narrower cold-start race this row
+  // is actually about (a query submitted before persisted visibility has
+  // loaded) — `_initialize()` ends with the same unconditional notify a
+  // hide/unhide fires, so the mechanism is one and the same; that specific
+  // timing window is not independently reproduced here; it collapses too
+  // reliably under `flutter_test`'s own scheduling to assert on directly
+  // without asserting a false negative.
+  group('B17: hidden-library visibility and TV search', () {
+    Future<GlobalKey<State<SearchScreen>>> pumpTvSearch(
+      WidgetTester tester, {
+      required MediaServerClient client,
+      required HiddenLibrariesProvider hiddenLibraries,
+    }) async {
+      TvDetectionService.debugSetAppleTVOverride(null);
+      await TvDetectionService.getInstance(forceTv: true);
+      TvDetectionService.setForceTVSync(true);
+      addTearDown(() => TvDetectionService.setForceTVSync(false));
+
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      final key = GlobalKey<State<SearchScreen>>();
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
+              ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
+            ],
+            child: MaterialApp(
+              theme: monoTheme(dark: true),
+              home: SearchScreen(key: key),
+            ),
+          ),
+        ),
+      );
+      return key;
+    }
+
+    testWidgets('a library hidden after a result is already on screen removes it', (tester) async {
+      final client = _FakeMediaServerClient(items: [_dune('dune-visible', 'srv', libraryId: 'lib-visible')]);
+      final hiddenLibraries = HiddenLibrariesProvider();
+      addTearDown(hiddenLibraries.dispose);
+      await hiddenLibraries.ensureInitialized();
+
+      final key = await pumpTvSearch(tester, client: client, hiddenLibraries: hiddenLibraries);
+      (key.currentState! as SearchInputFocusable).setSearchQuery('dune');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+      expect(find.text('Dune'), findsOneWidget, reason: 'the library is visible so far');
+
+      await hiddenLibraries.hideLibrary('srv:lib-visible');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Dune'),
+        findsNothing,
+        reason: 'a title from a library hidden mid-session must not linger as an activation candidate',
+      );
+    });
+
+    testWidgets('unhiding a library brings its result back', (tester) async {
+      final client = _FakeMediaServerClient(items: [_dune('dune-toggle', 'srv', libraryId: 'lib-toggle')]);
+      final storage = await StorageService.getInstance();
+      await storage.saveHiddenLibraries({'srv:lib-toggle'});
+      final hiddenLibraries = HiddenLibrariesProvider();
+      addTearDown(hiddenLibraries.dispose);
+      await hiddenLibraries.ensureInitialized();
+
+      final key = await pumpTvSearch(tester, client: client, hiddenLibraries: hiddenLibraries);
+      (key.currentState! as SearchInputFocusable).setSearchQuery('dune');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+      expect(find.text('Dune'), findsNothing, reason: 'starts hidden');
+
+      await hiddenLibraries.unhideLibrary('srv:lib-toggle');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Dune'), findsOneWidget, reason: 'the source can come back once unhidden');
+    });
+
+    testWidgets('a hidden-library change that leaves the effective set unchanged reruns nothing', (tester) async {
+      final client = _FakeMediaServerClient(items: [_dune('dune-plain', 'srv', libraryId: 'lib-plain')]);
+      final hiddenLibraries = HiddenLibrariesProvider();
+      addTearDown(hiddenLibraries.dispose);
+      await hiddenLibraries.ensureInitialized();
+
+      final key = await pumpTvSearch(tester, client: client, hiddenLibraries: hiddenLibraries);
+      (key.currentState! as SearchInputFocusable).setSearchQuery('dune');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+      expect(client.queries, hasLength(1));
+
+      // Provider-initiated notification with nothing actually changed — the
+      // same shape as `_initialize()`'s own unconditional notify.
+      await hiddenLibraries.refresh();
+      await tester.pumpAndSettle();
+
+      expect(
+        client.queries,
+        hasLength(1),
+        reason: 'a notification that left the effective hidden set unchanged must not cost a second fan-out',
+      );
+    });
   });
 }
 

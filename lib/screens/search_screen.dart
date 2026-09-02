@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:pleya/widgets/app_icon.dart';
@@ -13,6 +14,7 @@ import '../i18n/strings.g.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../models/seerr/seerr_media.dart';
+import '../providers/hidden_libraries_provider.dart';
 import '../providers/seerr_provider.dart';
 import '../widgets/focusable_filter_chip.dart';
 import '../widgets/focusable_list_tile.dart';
@@ -135,6 +137,14 @@ class _SearchScreenState extends State<SearchScreen>
   String? _focusResultsForQuery;
   _SearchFilter _activeFilter = _SearchFilter.all;
   List<String> _history = const [];
+  // TV only (B17): set in initState so dispose can remove the same listener
+  // without touching context after the tree may have started tearing down.
+  HiddenLibrariesProvider? _hiddenLibrariesForTvRefresh;
+  // The hidden set the last dispatched fan-out actually used — compared
+  // against on every provider change so a notification that left the
+  // effective set unchanged (the provider's own init, or a hide/unhide of a
+  // library no result here belongs to) does not cost a second fan-out.
+  Set<String> _lastSearchedHiddenLibraryKeys = const {};
 
   // Jellyseerr/Overseerr fallback: an explicit, one-shot search the user
   // triggers when a title isn't in their library (never per-keystroke).
@@ -154,6 +164,17 @@ class _SearchScreenState extends State<SearchScreen>
     // persisted value rather than an empty placeholder.
     unawaited(context.hiddenLibraries.ensureInitialized());
     if (PlatformDetector.isTV()) {
+      // B17: a library hidden or unhidden after this screen already has
+      // results must not leave a stale membership on screen — re-run the same
+      // query through the same fan-out, so the filter is applied exactly
+      // where every other search result is, before grouping. This also
+      // catches the provider's own first-load notification (`_initialize()`
+      // ends with one `notifyListeners()` regardless of whether the set
+      // changed): if a query was submitted before the persisted visibility
+      // loaded — the cold-start race this row is about — it dispatched
+      // against whatever was in memory at that instant, and this rerun
+      // corrects it against the real set the moment it lands.
+      _hiddenLibrariesForTvRefresh = context.hiddenLibraries..addListener(_onHiddenLibrariesChanged);
       unawaited(
         SpeechSearchService.instance.isSupported().then((supported) {
           setStateIfMounted(() => _voiceSearchSupported = supported);
@@ -252,9 +273,26 @@ class _SearchScreenState extends State<SearchScreen>
   void dispose() {
     _searchDebounce.cancel();
     _searchController.removeListener(_onSearchChanged);
+    _hiddenLibrariesForTvRefresh?.removeListener(_onHiddenLibrariesChanged);
     _searchFocusNode.dispose();
     _firstResultFocusNode.dispose();
     super.dispose();
+  }
+
+  /// B17: re-runs the last search when the hidden-library set changes under
+  /// it, so a title from a library that was just hidden does not linger as an
+  /// activation candidate, and one that was just unhidden can come back. Also
+  /// the correction path for the cold-start race (see `_performSearch`):
+  /// `_initialize()` fires this same notification once, on the same
+  /// condition, and a set that turns out unchanged is a no-op below rather
+  /// than a second fan-out for nothing.
+  void _onHiddenLibrariesChanged() {
+    if (!mounted) return;
+    final query = _lastSearchedQuery;
+    if (query.isEmpty) return;
+    final current = context.hiddenLibraries.hiddenLibraryKeys;
+    if (setEquals(current, _lastSearchedHiddenLibraryKeys)) return;
+    unawaited(_performSearch(query));
   }
 
   void _onSearchChanged() {
@@ -373,10 +411,27 @@ class _SearchScreenState extends State<SearchScreen>
       // submitted. Awaiting on this path instead would put an async gap
       // between the keystroke and the fan-out, and it broke the screen's own
       // tests by moving the client call a microtask later than the harness
-      // expects — a real signal that this is not the place for it.
+      // expects — confirmed again while closing B17: the widget-test harness
+      // does not guarantee the provider is done loading by the time a search
+      // dispatches even after a settled pump, so gating the dispatch on
+      // readiness is not a fix, it is the same bug wearing a condition.
+      //
+      // B17's actual fix is the read-and-correct pair below plus the
+      // `_onHiddenLibrariesChanged` listener registered in `initState` (TV
+      // only): a query submitted before storage finishes loading still
+      // dispatches immediately against whatever is in memory (unchanged
+      // behaviour, so no new async gap), but `_initialize()` ends with its own
+      // `notifyListeners()` regardless of whether the set changed — the same
+      // signal a later hide/unhide fires — so the already-armed listener
+      // reruns this same query the instant the real set lands, before a user
+      // can plausibly have acted on the uncorrected screen. The filter is
+      // still applied before grouping; it is just applied twice when the
+      // first pass ran on a stale set, not applied late.
+      final hiddenLibraries = context.hiddenLibraries;
+      _lastSearchedHiddenLibraryKeys = hiddenLibraries.hiddenLibraryKeys;
       final aggregated = await multiServerProvider.aggregationService.searchAcrossServers(
         query,
-        hiddenLibraryKeys: context.hiddenLibraries.hiddenLibraryKeys,
+        hiddenLibraryKeys: _lastSearchedHiddenLibraryKeys,
       );
       if (!mounted || isStale()) return;
       // Not one server answered → this is a connection failure, not an empty
