@@ -7,6 +7,9 @@ import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_filter.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/library_filter_result.dart';
 import 'package:pleya/services/unified_catalog/source_cursor.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/theme/mono_theme.dart';
@@ -578,4 +581,100 @@ void main() {
       );
     });
   });
+
+  // J14, reclassified from "unresolved product contract" to "proof gap": the
+  // panel's own doc comments (`_buildOptions`, `_zoneHeight`) already spell out
+  // both rules below, and hoofdstuk 10.6 names Status/Genre/Jaar/Servers/
+  // Bibliotheken as the panel's sections — what was missing was a regression
+  // test for the two rules that were never exercised, not a missing decision.
+  group('J14: empty panel sections', () {
+    final library = (
+      serverId: ServerId('nas'),
+      serverName: 'NAS',
+      libraryId: '1',
+      libraryTitle: 'Films 4K',
+      backend: MediaBackend.plex,
+    );
+
+    Future<void> openOnGenre(WidgetTester tester, {MediaServerClient? Function(String serverId)? clientFor}) async {
+      await tester.pumpWidget(
+        _shell(
+          (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () => showTvCatalogFilterPanel(
+                  context,
+                  selection: UnifiedCatalogFilterSelection.empty,
+                  capabilities: unifiedFilterCapabilitiesFor([library.backend]),
+                  libraries: [library],
+                  initialSection: TvCatalogFilterSection.genre,
+                  clientFor: clientFor ?? (_) => null,
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a supported category with zero values shows noValues, not an unsupported state or a blank pane', (
+      tester,
+    ) async {
+      await openOnGenre(tester);
+
+      expect(
+        find.text(t.unifiedCatalog.filters.genre),
+        findsOneWidget,
+        reason: 'Genre is capability-supported here — a zero-value result must not drop it from the rail',
+      );
+      expect(find.text(t.unifiedCatalog.filters.noValues), findsOneWidget);
+      expect(
+        find.text(t.unifiedCatalog.filters.someUnavailable),
+        findsNothing,
+        reason: 'that note is for a category the backend cannot execute at all — this one can, it just has nothing',
+      );
+      // The rest of the panel is intact: this is an explained empty section,
+      // not a broken screen.
+      expect(find.text(t.unifiedCatalog.filters.status), findsOneWidget);
+      expect(find.text(t.unifiedCatalog.filters.servers), findsOneWidget);
+      expect(find.text(t.unifiedCatalog.filters.apply), findsOneWidget);
+    });
+
+    testWidgets('the zone stays the same height with values as without them', (tester) async {
+      await openOnGenre(tester);
+      final emptyApplyY = tester.getTopLeft(find.text(t.unifiedCatalog.filters.apply)).dy;
+      await _press(tester, LogicalKeyboardKey.escape);
+
+      await openOnGenre(tester, clientFor: (_) => _GenreValuesClient());
+      final filledApplyY = tester.getTopLeft(find.text(t.unifiedCatalog.filters.apply)).dy;
+
+      expect(find.text('Comedy'), findsOneWidget, reason: 'the fake client did feed real values through');
+      expect(
+        filledApplyY,
+        emptyApplyY,
+        reason:
+            'hoofdstuk 10.6/_zoneHeight: the zone is a fixed box, so filling it must not move the footer '
+            'below it — a collapsing/expanding zone is exactly the layout jump this row guards against',
+      );
+    });
+  });
+}
+
+/// Feeds one cached genre pair straight through `loadUnifiedFilterOptions`,
+/// bypassing the Plex-only "categories without values" follow-up call this
+/// panel doesn't need to prove J14.
+class _GenreValuesClient implements MediaServerClient {
+  @override
+  Future<LibraryFilterResult> fetchLibraryFiltersWithValues(String libraryId) async => LibraryFilterResult(
+    filters: const [],
+    cachedValues: {
+      'genre': [MediaFilterValue(key: 'g1', title: 'Comedy'), MediaFilterValue(key: 'g2', title: 'Drama')],
+    },
+  );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
