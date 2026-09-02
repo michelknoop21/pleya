@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,7 +8,11 @@ import 'package:pleya/focus/dpad_navigator.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/library_filter_result.dart';
 import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_filter.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/services/unified_catalog/source_cursor.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/theme/mono_theme.dart';
@@ -68,6 +74,45 @@ Future<void> _activateByLabel(WidgetTester tester, String label, {int index = 0}
   expect(focus.hasPrimaryFocus, isTrue, reason: 'the control under test must actually hold the focus');
   SelectKeyUpSuppressor.clearSuppression();
   await _press(tester, LogicalKeyboardKey.select);
+}
+
+/// A client that answers exactly one question: which filter values a library
+/// has. That is the only method `loadUnifiedFilterOptions` calls on a non-Plex
+/// client, so this is the whole seam and not a stand-in for a backend.
+///
+/// [values] null means "never answers", which is how the loading state is
+/// reached without a timer or a real network.
+class _FilterValuesClient implements MediaServerClient {
+  _FilterValuesClient({required this.genres});
+
+  /// Null hangs forever; a list resolves immediately.
+  final List<String>? genres;
+
+  @override
+  Future<LibraryFilterResult> fetchLibraryFiltersWithValues(String libraryId) {
+    final answer = genres;
+    if (answer == null) return Completer<LibraryFilterResult>().future;
+    return Future.value(
+      LibraryFilterResult(
+        filters: const [],
+        cachedValues: {
+          'genre': [for (final genre in answer) MediaFilterValue(key: genre, title: genre)],
+        },
+      ),
+    );
+  }
+
+  @override
+  MediaBackend get backend => MediaBackend.jellyfin;
+
+  @override
+  ServerCapabilities get capabilities => ServerCapabilities.jellyfin;
+
+  @override
+  ServerId get serverId => ServerId('nas');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -575,6 +620,230 @@ void main() {
         hasCheckmark(tester, sortLabel(UnifiedCatalogSort.titleDesc)),
         isFalse,
         reason: 'gaining focus must not read as gaining a selection nobody chose',
+      );
+    });
+  });
+
+  // J14: lege panelsecties. Het register hield deze rij als klasse C aan met
+  // als reden dat geen enkel hoofdstuk "een panelsectie" definieert. Die audit
+  // keek naar de scope-picker en het contextmenu; het filterpaneel implementeert
+  // de invariant wél, in drie stukken die hieronder elk hun eigen test krijgen.
+  //
+  // Het productgedrag verandert hier niet. Dit is bewijs voor wat er al staat.
+  group('J14: empty panel sections', () {
+    final libraries = <CatalogLibrary>[
+      (
+        serverId: ServerId('nas'),
+        serverName: 'NAS',
+        libraryId: '1',
+        libraryTitle: 'Films 4K',
+        backend: MediaBackend.plex,
+      ),
+      (
+        serverId: ServerId('attic'),
+        serverName: 'Zolder',
+        libraryId: '2',
+        libraryTitle: 'Movies',
+        backend: MediaBackend.jellyfin,
+      ),
+    ];
+
+    // Plex plus Jellyfin is hoofdstuk 28's canonieke fixture, en die set
+    // ondersteunt élke categorie. Dat is precies wat deze rij nodig heeft: een
+    // categorie die ondersteund is en tóch nul waarden heeft, zodat "leeg" niet
+    // met "niet ondersteund" verward kan worden.
+    final capabilities = unifiedFilterCapabilitiesFor(libraries.map((l) => l.backend));
+
+    /// Opens the production panel on [section].
+    ///
+    /// [genres] null gives a client that never answers (the loading state);
+    /// an empty list gives no client at all, which is how a real fan-out that
+    /// found nothing looks from here; a non-empty list gives those genres.
+    Future<void> open(
+      WidgetTester tester, {
+      required TvCatalogFilterSection section,
+      List<String> genres = const [],
+      bool hangs = false,
+      bool settle = true,
+    }) async {
+      // A bare shell first, so a panel from a previous state in the same test
+      // is really gone. `OverlaySheetHost` keeps its element across a
+      // `pumpWidget` of the same shape, and its entry with it, and the second
+      // tap would then land on an overlay instead of on the button.
+      await tester.pumpWidget(_shell((context) => const SizedBox()));
+      await tester.pumpWidget(
+        _shell(
+          (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () => showTvCatalogFilterPanel(
+                  context,
+                  selection: UnifiedCatalogFilterSelection.empty,
+                  capabilities: capabilities,
+                  libraries: libraries,
+                  initialSection: section,
+                  clientFor: (_) => hangs
+                      ? _FilterValuesClient(genres: null)
+                      : (genres.isEmpty ? null : _FilterValuesClient(genres: genres)),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      if (settle) {
+        await tester.pumpAndSettle();
+      } else {
+        await tester.pump();
+        await tester.pump();
+      }
+    }
+
+    /// Renders the production panel directly, under a maximum size rather than
+    /// a fixed one.
+    ///
+    /// Not through `showTvCatalogFilterPanel` like the test above, and
+    /// deliberately: the geometry claim is about the panel's own zone, so the
+    /// overlay's entry animation and its viewport-derived sizing are noise that
+    /// would have to be identical in both states rather than reasoned about.
+    ///
+    /// The **maximum** matters more than it looks. A fixed-height box would
+    /// hand the zone its height from outside, and then this test passes with
+    /// `_zoneHeight` deleted — which is exactly what the negative control
+    /// caught on the first attempt. Under a loose constraint the panel's Column
+    /// is `MainAxisSize.min`, so a zone that sized itself to its content really
+    /// does shrink the panel and pull the footer up, and the assertions below
+    /// have something to fail on.
+    Future<void> render(WidgetTester tester, {required List<String> genres}) async {
+      await tester.pumpWidget(
+        _shell(
+          (context) => Scaffold(
+            body: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900, maxHeight: 500),
+                child: TvCatalogFilterPanel(
+                  // A fresh State per render. The panel loads its values once,
+                  // in `initState`, and has no reason to reload on an update —
+                  // so without a distinct key the second render would keep the
+                  // first one's genres and never reach the empty state at all.
+                  key: ValueKey(genres.join('|')),
+                  selection: UnifiedCatalogFilterSelection.empty,
+                  capabilities: capabilities,
+                  libraries: libraries,
+                  initialSection: TvCatalogFilterSection.genre,
+                  onApply: (_) {},
+                  onClose: () {},
+                  clientFor: (_) => genres.isEmpty ? null : _FilterValuesClient(genres: genres),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    /// The zone `_zoneHeight` sizes: the box that holds the rail and the
+    /// options together, and the thing that must not resize when a category
+    /// turns out to be empty.
+    ///
+    /// Reached through the `LayoutBuilder` rather than by key, because there is
+    /// no key and adding one would be a production change this row does not
+    /// need. It is the first `SizedBox` under that builder, which is the one
+    /// the height is set on.
+    Finder zone() => find.descendant(of: find.byType(LayoutBuilder), matching: find.byType(SizedBox)).first;
+
+    testWidgets('a supported category with no values shows the no-values line, not a void', (tester) async {
+      await open(tester, section: TvCatalogFilterSection.genre);
+
+      // The category survives: it is supported, so it is in the rail even
+      // though it has nothing to offer right now.
+      expect(
+        find.text(t.unifiedCatalog.filters.genre),
+        findsOneWidget,
+        reason: 'an empty value set is not the same as an unexecutable category',
+      );
+      // And it is still the *active* one. `_resolveInitialSection` falls back
+      // only for a category this source set cannot execute; falling back because
+      // the values happen to be empty would drop the user somewhere they never
+      // asked to be.
+      expect(
+        find.text(t.unifiedCatalog.filters.noValues),
+        findsOneWidget,
+        reason: 'the content zone says why it is empty rather than being empty',
+      );
+      expect(
+        find.text(t.unifiedCatalog.filters.someUnavailable),
+        findsNothing,
+        reason: 'nothing was left out of the rail, so nothing may apologise for it',
+      );
+      // A control from another category would mean the panel had quietly
+      // switched away from genre.
+      expect(find.text(t.unifiedCatalog.filters.unwatched), findsNothing, reason: 'no fallback to Status');
+    });
+
+    testWidgets('the no-values line is inside the zone, which keeps its size', (tester) async {
+      // The same configuration twice, and only the value set differs.
+      await render(tester, genres: const ['Drama', 'Komedie']);
+      expect(find.text('Drama'), findsOneWidget, reason: 'state A has to really have values, or B proves nothing');
+      final filled = tester.getSize(zone());
+      final filledApply = tester.getTopLeft(find.text(t.unifiedCatalog.filters.apply));
+
+      final filledPanel = tester.getSize(find.byType(TvCatalogFilterPanel));
+
+      await render(tester, genres: const []);
+      expect(find.text(t.unifiedCatalog.filters.noValues), findsOneWidget);
+      expect(find.text('Drama'), findsNothing, reason: 'state B really is the empty one');
+      final empty = tester.getSize(zone());
+
+      expect(
+        tester.getSize(find.byType(TvCatalogFilterPanel)),
+        filledPanel,
+        reason: 'the panel itself must not shrink around an empty category',
+      );
+
+      expect(
+        empty.height,
+        filled.height,
+        reason: 'a panel sized to its active category jumps every time the focus walks the rail',
+      );
+      // Equal-but-collapsed would pass the line above, so the zone is also
+      // checked against what it holds: the note alone is a single line of text,
+      // and the zone is several rows tall by contract.
+      final note = tester.getSize(find.text(t.unifiedCatalog.filters.noValues));
+      expect(empty.height, greaterThan(note.height * 3), reason: 'the zone did not collapse onto its content');
+
+      // The note lives inside that fixed box rather than next to it. Compared
+      // edge by edge rather than with `Rect.contains`, which excludes its own
+      // right and bottom edge and would fail a note that sits flush against one.
+      final zoneRect = tester.getRect(zone());
+      final noteRect = tester.getRect(find.text(t.unifiedCatalog.filters.noValues));
+      expect(noteRect.top, greaterThanOrEqualTo(zoneRect.top));
+      expect(noteRect.bottom, lessThanOrEqualTo(zoneRect.bottom));
+      expect(noteRect.left, greaterThanOrEqualTo(zoneRect.left));
+      expect(noteRect.right, lessThanOrEqualTo(zoneRect.right));
+
+      // And nothing under the zone moved, which is the part the user sees.
+      expect(
+        tester.getTopLeft(find.text(t.unifiedCatalog.filters.apply)),
+        filledApply,
+        reason: 'the footer is where the empty state would push it if the zone gave way',
+      );
+    });
+
+    testWidgets('loading and no-values are different states, not one blank', (tester) async {
+      // The seam already exists: `clientFor` is injectable and
+      // `_isLoadingOptions` is set synchronously in initState, so a client that
+      // never answers holds the panel in its loading state with no timer.
+      await open(tester, section: TvCatalogFilterSection.genre, hangs: true, settle: false);
+
+      expect(find.text(t.common.loading), findsOneWidget);
+      expect(
+        find.text(t.unifiedCatalog.filters.noValues),
+        findsNothing,
+        reason: '"there are none" is a different claim from "we have not looked yet"',
       );
     });
   });

@@ -18,9 +18,10 @@ het afvinkbare register; het architectuurdocument houdt alleen de regels en de c
   afvinken; het register als geheel sluit pas bij de laatste fase die het raakt.
 - Rijen worden nooit verwijderd. Een geschrapt scenario gaat naar `n.v.t.` met een korte reden.
 
-Bijgewerkt: 2026-09-02 (na de fase-9-eindaudit: 180 van de 189 rijen `covered`; de negen die
-overblijven zijn de geclassificeerde: vijf hardwarerijen, drie geregistreerde debts — I21, I24 en het
-nieuwe B16 — en J14). Aangemaakt in fase 0. Fase 1 (unified identity foundation) dekt register C
+Bijgewerkt: 2026-09-02 (na de fase-9-eindaudit, en daarna J14 gesloten als proof gap: 181 van de 189
+rijen `covered`; de acht die overblijven zijn de geclassificeerde: vijf hardwarerijen en drie
+geregistreerde debts — I21, I24 en B16. Er staat geen onopgelost productcontract meer in dit
+register). Aangemaakt in fase 0. Fase 1 (unified identity foundation) dekt register C
 (C1-C24) volledig af — zie de vindplaatsen in de tabel hieronder. De overige categorieën blijven
 `open` tot de fase die ze raakt.
 
@@ -127,6 +128,18 @@ vraagt — "kom terug bij een écht nieuw, niet-gedefinieerd productcontract" �
 geclassificeerd in plaats van zelf ingevuld. Verplaatst van WP11 naar hier; blijft in het register
 staan als `open`/klasse C tot er een productantwoord is.
 
+> **Achterhaald op 2 september 2026. J14 is geen klasse C maar een proof gap, en is nu `covered`.**
+> De alinea hierboven blijft staan omdat hij niet onjuist was over wat hij onderzocht — hij was
+> onvolledig. De audit zocht "een panelsectie" in `tv_action_scope_picker.dart` en
+> `tv_unified_context_menu.dart`, waar inderdaad niets zit voorbij `sectionGap`-witruimte, en keek
+> niet in `tv_catalog_filter_panel.dart`. Dáár staat de invariant volledig uitgevoerd, in drie
+> stukken: `_availableSections`/`_supports` laten een niet-uitvoerbare categorie weg in plaats van
+> hem leeg te tekenen, `_buildOptions` geeft een ondersteunde categorie zonder waarden een expliciete
+> `noValues`-regel, en `_zoneHeight` houdt de contentzone op dezelfde hoogte zodat een lege categorie
+> geen verticale sprong veroorzaakt. Er was dus wél aantoonbare bestaande correctheid; er was alleen
+> geen test. Zie de rij zelf verderop voor het bewijs. Geen productcontract toegevoegd en geen
+> productiecode gewijzigd — dit is een herclassificatie op grond van code die er al stond.
+
 **J7 was tijdens fase 9 klasse A, en is dat na herbeoordeling niet.** De eerste lezing was dat RTL-acceptatie zonder rechts-naar-links locale niet vast te stellen is, zoals J2/J4/J8/J9 zonder toestel. Dat gaat niet op: hoofdstuk 25 somt vijf concrete clausules op, en vier daarvan zijn met een `Directionality`-override in een widgettest te keuren, zonder locale en zonder toestel. Bij het schrijven van die tests bleken er twee werkelijk stuk — het leesscrim en het titelblok stonden hardgecodeerd op links — dus de klasse-A-lezing verklaarde een echte bug tot niet-vaststelbaar. Het onderscheid dat overblijft: de clausules zijn nu bewezen, een visuele sweep over een echte RTL-locale blijft onmogelijk zolang Pleya er geen verscheept, maar dát is niet wat deze rij vraagt.
 
 **I17 is tijdens fase 9 alsnog klasse A geworden.** De existing-proof-first-audit van WP11 vond geen
@@ -137,7 +150,7 @@ of de Android-systeemknop het juiste doet op die stack is precies de klasse waar
 vallen, en alleen op een echt Android TV-toestel vast te stellen. Verplaatst van WP11 naar hier in
 plaats van als losse open rij te laten staan.
 
-### Buiten fase 9 (9 rijen)
+### Buiten fase 9 (8 rijen)
 
 | # | Klasse | Reden |
 | --- | --- | --- |
@@ -148,7 +161,7 @@ plaats van als losse open rij te laten staan.
 | I17 | A | De Android TV-hardware-terugknop is alleen op een echt toestel vast te stellen — zie de noot hierboven. |
 | I21 | B | Geregistreerde fase-5-debt: 7.4 en 10.6 noemen de Play/Pause-snelkoppeling "mag", en de zichtbare knop blijft de primaire route. Vervalt als fase-9-code het catalogusheaderpad wijzigt. |
 | I24 | B | Geregistreerde integration-test debt: schakel 2 loopt door `MainScreen`, dat geen enkele test monteert. Geen productiebug (statisch nagelopen). Vervalt als fase-9-code `_focusSidebar` of de nav-nodes raakt. |
-| J14 | C | Onopgelost productcontract: geen enkel hoofdstuk of DEC definieert "een panelsectie" — zie de noot hierboven en de rij zelf verderop in dit register. |
+| B16 | B | Geregistreerde debt uit de fase-9-eindaudit: `query.kind` bereikt de Pleya Server-wire niet, en client-side filteren zou de offsetrekening van de cursorledger breken terwijl het protocol bevroren is (PS-5). De lokale-mapkant is wél gedekt. Vervalt zodra het protocolvenster opengaat. |
 
 Fase 10A voegt daar één rij aan toe, langs dezelfde regel en om dezelfde reden:
 
@@ -207,7 +220,8 @@ Vier aantekeningen bij die verdeling:
   `covered` te heten, en "WP11 ✅ gesloten" hierboven gaat alleen over WP11's eigen backloglijst — het
   betekent niet dat elke nog openstaande fase-9-rij dicht is.
 - **J3, J6, J10, J11, J12, J13, J14, J15 zijn wél automatiseerbaar** en horen daarom niet bij de
-  vijf hardwarerijen. `monoTheme({dark, oled})` maakt de themavarianten goedkoop, en een kleinere
+  vijf hardwarerijen. Dat is inmiddels ook waargemaakt: J14 was de laatste van die acht die nog
+  openstond en is op 2 september 2026 gesloten met widgettests tegen het productiefilterpaneel. `monoTheme({dark, oled})` maakt de themavarianten goedkoop, en een kleinere
   logische surface is een `binding.window`-instelling, geen toestel.
 - **G1–G8 hangen aan één functie**, `selectRepresentativeWatchState`. Bij het openen van fase 9 week
   die op drie punten af van hoofdstuk 13.2; de G-groep is tijdens fase 9 zelf herschreven om te
@@ -860,7 +874,7 @@ worden staan óók nog in de `IndexedStack`, zodat er twee exemplaren tegelijk g
 | J11 | OLED theme | test/goldens/tv_hero_billboard_theme_golden_test.dart (`J11: OLED only changes bg to pure black — surface, text and ink stay identical to dark`) — `mono_theme.dart`'s eigen tokentabel bewezen: `bg` gaat van `#141414` naar zuiver `#000000` en `surface` stapt één trede mee (`#1F1F1F` → `#141414`), maar `surfaceElevated`, `outline`, `text` en `textMuted` zijn byte-identiek aan dark, en `isLight` blijft `false` zodat het H20-lichtthemapad niet per ongeluk meeloopt. Gerenderd op dezelfde felgele plaatsvervangende artwork als H20 zodat een regressie in `artworkScrimAlpha`/`onArtworkInk` onder OLED evengoed zichtbaar zou zijn: test/goldens/tv_hero_billboard_oled_theme.png | covered |
 | J12 | Focusglow bij eerste/laatste card | N.v.t. voor de unified-oppervlakken. `FocusableWrapper.useFocusGlow` (die `FocusGlowOverlay` naar de root-Overlay tilt, precies om de eerste/laatste-card-occlusie uit issue #1231 op te lossen) staat standaard uit, en geen enkele fase-5/6/8-kaart (`TvExpandableMediaTile`, `TvUnifiedMediaCard`) zet hem aan — beide draaien op `FocusIndicatorMode.delegated` zonder glow. `grep -rn "useFocusGlow" lib/` buiten `focusable_wrapper.dart`/`focus_builders.dart` zelf heeft precies twee treffers — `tv_browse_rail.dart` (`useFocusGlow: fullCardLayout`) en `focusable_media_card.dart` (`useFocusGlow: widget.fullBleedImage`) — allebei legacy pre-fase-8 code, buiten de scope van dit register. Geen hoofdstuk van docs/tvos-unified-experience.md noemt een focusgloed-vereiste. Een test tegen de unified kaarten zou dus niets echts bewijzen — dit is een bevinding over de scope, geen bewijsgat | covered |
 | J13 | Panel met veel sources | test/widgets/tv/tv_media_source_picker_test.dart (groep `J13: a panel with many sources`, `twenty sources render without overflowing, and every one is reachable by D-pad`) — `TvSourceRowList` draait al op een echte `ListView.separated`/`ScrollController`, alleen ongetest; twintig bronnen renderen zonder overflow en de laatste rij is met de afstandsbediening bereikbaar | covered |
-| J14 | Lege panelsecties | klasse C — geen enkel hoofdstuk of DEC definieert wat "een panelsectie" is, laat staan welk panel, dus ook niet wat een lege sectie zou moeten tonen; de existing-proof-first-audit vond nergens in de TV-panelen een sectieconcept voorbij `sectionGap`-witruimte (destijds gecontroleerd in `tv_action_scope_picker.dart` en `tv_unified_context_menu.dart`; de eerste is met DEC-075 verwijderd). Niet zelf ingevuld — zie hoofdstuk "Fase-9-classificatie van de open rijen" | klasse C |
+| J14 | Lege panelsecties | test/widgets/tv/tv_catalog_foundation_test.dart (groep `J14: empty panel sections`, drie tests: `a supported category with no values shows the no-values line, not a void`, `the no-values line is inside the zone, which keeps its size`, `loading and no-values are different states, not one blank`) plus de bestaande `a backend that cannot filter omits genre, year and status, not servers` voor de eerste invariant. Productie is `lib/widgets/tv/tv_catalog_filter_panel.dart`: `TvCatalogFilterSection` met `_availableSections`/`_supports`, `_buildOptions` en `_zoneHeight`. **Nul productiewijzigingen** — de rij was een proof gap, geen gat in het gedrag; de klasse-C-lezing keek naar de verkeerde panelen en is achterhaald (zie de gemarkeerde noot in "Fase-9-classificatie van de open rijen"). Drie invarianten bewezen: een niet-uitvoerbare categorie wordt weggelaten in plaats van leeg getekend en verantwoord met één `someUnavailable`-regel; een ondersteunde categorie met nul waarden houdt zijn plek in de rail, blijft de actieve categorie (geen terugval omdat de waardeset leeg is) en toont een expliciete `noValues`-regel zonder unsupported-waarschuwing; en die lege staat houdt dezelfde zonehoogte, dezelfde panelhoogte en dezelfde footerpositie als dezelfde categorie mét waarden, met de regel binnen die zone. `loading` en `noValues` zijn daarbij aparte staten: de seam is `clientFor` plus `_isLoadingOptions`, dus een client die nooit antwoordt bewijst het onderscheid zonder timer of netwerk. Twee negatieve controles echt gedraaid: de `noValues`-tak als `SizedBox.shrink()` maakt alle drie de tests rood, en de zonehoogte verlagen voor de lege state maakt de geometrietest rood (paneel 404,4 tegen 230,3). Eén ding valt er bewust buiten: dat de zone bij een ruim paneel op de ideale hoogte *aftopt* in plaats van mee te groeien is een andere eigenschap dan "een lege categorie springt niet", en die claimt deze rij niet | covered |
 | J15 | Selected versus focused | test/widgets/tv/tv_catalog_foundation_test.dart (groep `J15: selected versus focused on a sort/filter option row`, `the selected row keeps its checkmark after focus moves away from it`) — `TvCatalogOptionRow` was al gebouwd met drie onafhankelijke lagen (base fill voor selected, additieve sheen voor focus, plus een vinkje) precies om de DEC-053-val te vermijden; de test bewijst dat het vinkje blijft staan als focus weggaat en niet meeloopt naar een rij die alleen focus krijgt | covered |
 | J16 | Focus verandert de layout niet | test/widgets/tv/tv_unified_media_grid_test.dart (`focus moves nothing but the focused card`) — het raster is een `Column` van `Row`s en een `Row` is zo hoog als zijn hoogste kind, dus een kaart die bij focus groeit tilt zijn hele rij op en duwt de rijen eronder omlaag terwijl de gebruiker ernaar kijkt. De test legt alle negenendertig andere kaarten vast vóór en na de focus. Toegevoegd in fase 5; het gedrag zelf staat in hoofdstuk 10.2b ("ruimtelijk stabiel") | covered |
 | J17 | D-pad LEFT/RIGHT tussen de hero-CTA's onder een gespiegelde volgorde | test/widgets/tv/tv_rtl_contract_test.dart (groep `J17: D-pad LEFT/RIGHT across the hero CTAs follows the rendered geometry`, zeven tests) — het productbesluit dat hier ontbrak is genomen op 1 september 2026: **spatial D-pad navigation volgt de gerenderde geometrie, niet de logische actievolgorde**. Semantics en focus zijn twee contracten; hoofdstuk 25 laat de leesvolgorde en de CTA-compositie spiegelen, maar Links betekent op een afstandsbediening de knop die je links ziet liggen. De `Row` in `tv_hero_billboard_carousel.dart` spiegelde zijn kinderen al (dat *is* clausule 2), maar `onNavigateRight` op Afspelen sprong naar Meer info op lijstpositie, dus onder RTL wandelde Rechts de focus naar links over het scherm. `_actions` leest nu de `Directionality` in de subtree van de rij zelf en leidt daar de linker- en rechterbuur uit af (`_stepFrom`), zodat er één autoriteit is voor plaatsing én traversal in plaats van twee tabellen die opnieuw uit elkaar kunnen lopen. De carouselclausule verandert niet mee: Links van de linkerrand blijft de vorige slide en Rechts van de rechterrand de volgende, in beide richtingen — clausule 5 meet dat nu vanaf de CTA op de *rand* in plaats van vanaf een vaste knop, want de rand is een positie en geen knop. Bewezen met een echte `Directionality`-override, geen locale nodig; en tegen de verkeerde soort fix afgedekt: twee tests leggen vast dat de labels aan hun eigen control gebonden blijven en dat Afspelen nog steeds `play` activeert en Meer info `details`, zodat een oplossing die de focusnodes verwisselt in plaats van de bedrading niet groen kan worden. Negatieve controle gedraaid: met de oude lijstvolgorde terug vallen precies de twee RTL-traversaltests, de dead-end-test en de RTL-helft van clausule 5 om, terwijl beide LTR-tests groen blijven. Alle goldens bleven byte-identiek | covered |
@@ -899,7 +913,7 @@ P-mark, die volgens datzelfde hoofdstuk juist rood blijft als branddetail. Er is
 die het ene hertint en het andere niet, dus elke oplossing is een merkbeslissing: een tweede asset
 met donkere letters, alleen de mark op licht, of een andere behandeling van de lockup. Geen enkel
 hoofdstuk, DEC of north-starbeeld dekt dat af — alle acht referentiebeelden van hoofdstuk 33 zijn
-donker. Dat is exact de klasse waarin J14 al zit, en de regel bovenaan dit register schrijft voor dat
+donker. Dat is exact de klasse waarin J14 toen zat, en de regel bovenaan dit register schrijft voor dat
 zo'n geval eerst een vastgelegd gedrag krijgt en pas daarna een fix. Fase 10A is bovendien harding
 zonder visuele art direction, dus de keuze hoort niet in deze fase gemaakt te worden.
 
@@ -924,6 +938,16 @@ gedrag geclassificeerd, en juist omdat het níet vastligt is de rij klasse C en 
 register op 187 brengt. J19 is er op 2 september 2026 bij gekomen, bij het oplossen van J18, wat het
 op 188 brengt.
 
+Stand na J14 (2 september 2026, na de eindaudit hieronder): **181 `covered` en 8 niet-`covered`**, op
+een register van 189, en daarmee **nul onopgeloste productcontracten**. De eindaudit hieronder noemde
+zichzelf de eindstand van de fase en was dat op dat moment ook; J14 is er dezelfde dag alsnog
+uitgevallen, en niet door een productbesluit. De rij bleek geen klasse C maar een proof gap: het
+gedrag stond al in `tv_catalog_filter_panel.dart` en er was alleen geen test. Nul productiewijzigingen,
+twee negatieve controles gedraaid. Wat overblijft is uitsluitend geclassificeerd: vijf hardwarerijen
+(J2, J4, J8, J9, I17) en drie geregistreerde debts (I21, I24, B16). Per categorie is dat A 20 van 20,
+B 15 van 16, C 24 van 24, D 15 van 15, E 15 van 15, F 21 van 21, G 14 van 14, H 21 van 21, I 21 van
+24 en J 15 van 19.
+
 Stand bij het sluiten van fase 9 (2 september 2026, na de eindaudit): **180 `covered` en 9
 niet-`covered`**, op een register van 189. Dit is de eindstand van de fase; de regels hieronder zijn
 de tussenstanden in omgekeerde volgorde en blijven staan omdat ze de weg ernaartoe vastleggen. Wat
@@ -939,7 +963,9 @@ overblijft is uitsluitend geclassificeerd werk, geen gewone functionele of bewij
   aan de cursorledger te rekenen terwijl het protocol bevroren is.
 - **één onopgelost productcontract (klasse C):** J14. Er is geen hoofdstuk en geen DEC die definieert
   wat "een panelsectie" is, dus er is ook geen gedrag om tegen te testen. Blijft `open`; niet
-  stilzwijgend geherclassificeerd en niet `covered` gemaakt.
+  stilzwijgend geherclassificeerd en niet `covered` gemaakt. *(Nog diezelfde dag achterhaald: het
+  gedrag bleek wél te bestaan, in het filterpaneel in plaats van in de panelen waar de audit keek.
+  Zie de stand hierboven en de rij zelf. Ook dat is niet stilzwijgend gegaan.)*
 
 Per categorie is dat A 20 van 20, B 15 van 16, C 24 van 24, D 15 van 15, E 15 van 15, F 21 van 21,
 G 14 van 14, H 21 van 21, I 21 van 24 en J 14 van 19.
