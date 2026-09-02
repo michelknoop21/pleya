@@ -18,11 +18,13 @@ het afvinkbare register; het architectuurdocument houdt alleen de regels en de c
   afvinken; het register als geheel sluit pas bij de laatste fase die het raakt.
 - Rijen worden nooit verwijderd. Een geschrapt scenario gaat naar `n.v.t.` met een korte reden.
 
-Bijgewerkt: 2026-09-02 (na de fase-9-eindaudit: 180 van de 189 rijen `covered`; de negen die
-overblijven zijn de geclassificeerde: vijf hardwarerijen, drie geregistreerde debts — I21, I24 en het
-nieuwe B16 — en J14). Aangemaakt in fase 0. Fase 1 (unified identity foundation) dekt register C
-(C1-C24) volledig af — zie de vindplaatsen in de tabel hieronder. De overige categorieën blijven
-`open` tot de fase die ze raakt.
+Bijgewerkt: 2026-09-02 (na de J14/B17-correcties op de fase-9-eindaudit: 182 van de 190 rijen
+`covered`; de acht die overblijven zijn allemaal geclassificeerd, geen enkele gewone open rij meer:
+vijf hardwarerijen en drie geregistreerde debts — I21, I24 en B16, de Pleya-Server-bevinding. J14 is
+alsnog `covered` geworden als proof gap, en B17 is een nieuwe, direct `covered` rij voor een eerder
+ongeregistreerde bevinding — zie hoofdstuk "Totaal" voor de volledige toelichting). Aangemaakt in
+fase 0. Fase 1 (unified identity foundation) dekt register C (C1-C24) volledig af — zie de
+vindplaatsen in de tabel hieronder. De overige categorieën blijven `open` tot de fase die ze raakt.
 
 **Fase 4 en register F.** Fase 4 was intern gesplitst in een headless deel (activation coordinator,
 ranking, voorkeur, cancellation) en een GUI-deel (de source picker zelf). Het headless deel bewees
@@ -127,6 +129,15 @@ vraagt — "kom terug bij een écht nieuw, niet-gedefinieerd productcontract" �
 geclassificeerd in plaats van zelf ingevuld. Verplaatst van WP11 naar hier; blijft in het register
 staan als `open`/klasse C tot er een productantwoord is.
 
+**J14 is op 2 september 2026 alsnog `covered` geworden — als proof gap, niet als opgelost
+productcontract.** Bij het navragen bleek de premisse hierboven onvolledig: hoofdstuk 10.6 noemt de
+vijf secties wél met naam ("Secties: Status; Genre; Jaar; Servers; Bibliotheken"), en
+`tv_catalog_filter_panel.dart`'s eigen doc-comments (`_buildOptions`, `_zoneHeight`) leggen exact vast
+wat een lege sectie moet tonen en waarom de zone een vaste hoogte houdt — geïmplementeerd gedrag, dus
+geen ontbrekend productcontract. Twee regressietests dekken het nu af, zie de rij zelf. Wat wél
+klopte: er bestaat geen apart "panelsectie"-concept los van deze twee regels, dus er was ook niets
+verder in te vullen.
+
 **J7 was tijdens fase 9 klasse A, en is dat na herbeoordeling niet.** De eerste lezing was dat RTL-acceptatie zonder rechts-naar-links locale niet vast te stellen is, zoals J2/J4/J8/J9 zonder toestel. Dat gaat niet op: hoofdstuk 25 somt vijf concrete clausules op, en vier daarvan zijn met een `Directionality`-override in een widgettest te keuren, zonder locale en zonder toestel. Bij het schrijven van die tests bleken er twee werkelijk stuk — het leesscrim en het titelblok stonden hardgecodeerd op links — dus de klasse-A-lezing verklaarde een echte bug tot niet-vaststelbaar. Het onderscheid dat overblijft: de clausules zijn nu bewezen, een visuele sweep over een echte RTL-locale blijft onmogelijk zolang Pleya er geen verscheept, maar dát is niet wat deze rij vraagt.
 
 **I17 is tijdens fase 9 alsnog klasse A geworden.** De existing-proof-first-audit van WP11 vond geen
@@ -137,7 +148,12 @@ of de Android-systeemknop het juiste doet op die stack is precies de klasse waar
 vallen, en alleen op een echt Android TV-toestel vast te stellen. Verplaatst van WP11 naar hier in
 plaats van als losse open rij te laten staan.
 
-### Buiten fase 9 (9 rijen)
+### Buiten fase 9 (7 rijen)
+
+Stond bij het sluiten van fase 9 op 8 rijen (het bijschrift zei destijds 9, wat al niet klopte met de
+acht rijen die eronder stonden — een pre-existing telfout die deze correctie niet verder narekent).
+J14 is op 2 september 2026 alsnog `covered` geworden (zie de noot hierboven) en dus geen buiten-fase-9-rij
+meer; wat overblijft is uitsluitend hardware en geregistreerde debt.
 
 | # | Klasse | Reden |
 | --- | --- | --- |
@@ -148,7 +164,6 @@ plaats van als losse open rij te laten staan.
 | I17 | A | De Android TV-hardware-terugknop is alleen op een echt toestel vast te stellen — zie de noot hierboven. |
 | I21 | B | Geregistreerde fase-5-debt: 7.4 en 10.6 noemen de Play/Pause-snelkoppeling "mag", en de zichtbare knop blijft de primaire route. Vervalt als fase-9-code het catalogusheaderpad wijzigt. |
 | I24 | B | Geregistreerde integration-test debt: schakel 2 loopt door `MainScreen`, dat geen enkele test monteert. Geen productiebug (statisch nagelopen). Vervalt als fase-9-code `_focusSidebar` of de nav-nodes raakt. |
-| J14 | C | Onopgelost productcontract: geen enkel hoofdstuk of DEC definieert "een panelsectie" — zie de noot hierboven en de rij zelf verderop in dit register. |
 
 Fase 10A voegt daar één rij aan toe, langs dezelfde regel en om dezelfde reden:
 
@@ -380,6 +395,7 @@ Visueel bewijs: `test/goldens/tv_shell_auth_attention.png` en `tv_shell_auth_my_
 | B14 | Backend herhaalt item op twee pagina's | test/services/unified_catalog_service_test.dart (`B14: an item the backend repeats on the next page does not become a second card`) door de echte pagingmotor; test/services/unified_grouping_service_test.dart (groep `concrete-source dedup (B14/B15/E15)`: `B14: an item the backend repeats on a later page does not become a second card`, `B14: the repeat never moves the card off the position its first sighting won`) | covered |
 | B16 | Gemengde library op een backend die niet op de wire filtert | Lokale map: `test/services/local_folder_ordering_test.dart` (`a library page honours the kind the query asked for`) — `_applyFilters` leest `query.kind` nu, want daar ís geen wire en die regel *is* het filter. **Pleya Server niet:** `browse.dart` stuurt alleen `sort` mee, en `query.kind` bereikt de wire niet. Zolang die server geen librarykind noemt dat deze build niet kent terwijl de items er wél classificeerbaar zijn, is er niets te zien; gebeurt dat wel, dan toont Series de films van die map en andersom. Niet opgelost omdat het protocol bevroren is (PS-5) en client-side filteren de offsetrekening breekt: de cursorledger telt in serverposities en de beller in teruggegeven items, en filteren laat die twee uit elkaar lopen. De fix is de ledger per kind sleutelen en in gefilterde posities laten tellen — een aparte wijziging met eigen bewijs, geen regel erbij | open (coverage debt) |
 | B15 | Item verhuist tussen libraries | test/services/unified_grouping_service_test.dart (`B15: an item reported under two libraries is one membership, keeping the first library`) — `sourceKey` is `serverId:id`, dus beide waarnemingen zijn dezelfde concrete membership en de eerste wint | covered |
+| B17 | TV Search kan lopen terwijl `HiddenLibrariesProvider` zijn persisted visibility nog niet geladen heeft | test/screens/search_screen_test.dart (groep `B17: hidden-library visibility and TV search`, drie tests) — hoofdstuk 22's harde regel is VISIBILITY vóór grouping/resolution/activation, en `_performSearch` leest `hiddenLibraryKeys` synchroon (bewust, zie de noot bij fase-9-sluiting hierboven en `docs/CHANGELOG.md`): een query vlak na het monteren van de profielsessie kan dus nog tegen een leeg setje draaien. In plaats van de dispatch zelf te blokkeren (dat bleek exact de eerder verworpen fix, en brak opnieuw op dezelfde `pumpAndSettle`-timeout uit zeven schermtests toen het geprobeerd werd) luistert het scherm al op `HiddenLibrariesProvider`'s eigen wijzigingen: `_initialize()` eindigt met dezelfde onvoorwaardelijke `notifyListeners()` als een latere hide/unhide, dus dezelfde listener draait de laatst gezochte query opnieuw zodra de echte set landt, vóór een gebruiker er redelijkerwijs op kan hebben gehandeld. Twee tests bewijzen die kant: een library die tijdens een actieve sessie verborgen wordt haalt zijn resultaat van het scherm, en het omgekeerde (unhide) brengt het terug. Een sleutelvergelijking tegen de laatst gebruikte set (`setEquals`) voorkomt dat zo'n correctie zelf een overbodige tweede fan-out kost wanneer de effectieve set niet verandert — bewezen door de derde test, die na een no-op-wijziging exact één `client.queries`-entry telt. Negatieve controle gedraaid: zonder de listener vallen precies de eerste twee tests om, terwijl de derde (die niets hoeft te draaien) groen blijft. De smalle cold-start-race zelf — een query die start vóórdat de opslag geladen is — wordt door hetzelfde mechanisme gecorrigeerd (`_initialize()`'s eigen notify is niet anders dan een hide/unhide), maar is hier niet apart als test opgenomen: hij bleek onder `flutter_test`s eigen scheduling te betrouwbaar weg te vallen om zonder vals-negatief bewijs te leveren. Bijvangst: het testbestand initialiseerde `StorageService` ná `SettingsService`, wat op deze `flutter_test`-versie een echte, orde-afhankelijke deadlock in `BaseSharedPreferencesService.initializeInstance` blootlegde zodra een test die afronding daadwerkelijk afwacht — omgekeerde volgorde in `setUp()` lost het op; zie het losse issue dat daarvoor is aangemaakt | covered |
 
 
 **B8 had twee helften, en fase 9 heeft ze allebei gesloten.** Eerst de zoekhelft:
@@ -860,7 +876,7 @@ worden staan óók nog in de `IndexedStack`, zodat er twee exemplaren tegelijk g
 | J11 | OLED theme | test/goldens/tv_hero_billboard_theme_golden_test.dart (`J11: OLED only changes bg to pure black — surface, text and ink stay identical to dark`) — `mono_theme.dart`'s eigen tokentabel bewezen: `bg` gaat van `#141414` naar zuiver `#000000` en `surface` stapt één trede mee (`#1F1F1F` → `#141414`), maar `surfaceElevated`, `outline`, `text` en `textMuted` zijn byte-identiek aan dark, en `isLight` blijft `false` zodat het H20-lichtthemapad niet per ongeluk meeloopt. Gerenderd op dezelfde felgele plaatsvervangende artwork als H20 zodat een regressie in `artworkScrimAlpha`/`onArtworkInk` onder OLED evengoed zichtbaar zou zijn: test/goldens/tv_hero_billboard_oled_theme.png | covered |
 | J12 | Focusglow bij eerste/laatste card | N.v.t. voor de unified-oppervlakken. `FocusableWrapper.useFocusGlow` (die `FocusGlowOverlay` naar de root-Overlay tilt, precies om de eerste/laatste-card-occlusie uit issue #1231 op te lossen) staat standaard uit, en geen enkele fase-5/6/8-kaart (`TvExpandableMediaTile`, `TvUnifiedMediaCard`) zet hem aan — beide draaien op `FocusIndicatorMode.delegated` zonder glow. `grep -rn "useFocusGlow" lib/` buiten `focusable_wrapper.dart`/`focus_builders.dart` zelf heeft precies twee treffers — `tv_browse_rail.dart` (`useFocusGlow: fullCardLayout`) en `focusable_media_card.dart` (`useFocusGlow: widget.fullBleedImage`) — allebei legacy pre-fase-8 code, buiten de scope van dit register. Geen hoofdstuk van docs/tvos-unified-experience.md noemt een focusgloed-vereiste. Een test tegen de unified kaarten zou dus niets echts bewijzen — dit is een bevinding over de scope, geen bewijsgat | covered |
 | J13 | Panel met veel sources | test/widgets/tv/tv_media_source_picker_test.dart (groep `J13: a panel with many sources`, `twenty sources render without overflowing, and every one is reachable by D-pad`) — `TvSourceRowList` draait al op een echte `ListView.separated`/`ScrollController`, alleen ongetest; twintig bronnen renderen zonder overflow en de laatste rij is met de afstandsbediening bereikbaar | covered |
-| J14 | Lege panelsecties | klasse C — geen enkel hoofdstuk of DEC definieert wat "een panelsectie" is, laat staan welk panel, dus ook niet wat een lege sectie zou moeten tonen; de existing-proof-first-audit vond nergens in de TV-panelen een sectieconcept voorbij `sectionGap`-witruimte (destijds gecontroleerd in `tv_action_scope_picker.dart` en `tv_unified_context_menu.dart`; de eerste is met DEC-075 verwijderd). Niet zelf ingevuld — zie hoofdstuk "Fase-9-classificatie van de open rijen" | klasse C |
+| J14 | Lege panelsecties | Herclassificeerd op 2 september 2026 van klasse C naar proof gap: hoofdstuk 10.6 noemt de vijf secties met naam, en `tv_catalog_filter_panel.dart` implementeert en documenteert zelf al wat een lege sectie toont en waarom de zone niet meebeweegt — er was gedrag, alleen geen test. test/widgets/tv/tv_catalog_foundation_test.dart (groep `J14: empty panel sections`, twee tests, zonder productiewijziging): `a supported category with zero values shows noValues, not an unsupported state or a blank pane` — Genre blijft in de rail, toont `noValues` en niet `someUnavailable`; `the zone stays the same height with values as without them` — de Apply-knop staat op exact dezelfde `dy` met en zonder waarden in dezelfde categorie, via een fake client die wél genres teruggeeft. Negatieve controle gedraaid op beide: `noValues` tijdelijk vervangen door een lege `SizedBox` laat de eerste test omvallen; de zone-hoogte tijdelijk content-afhankelijk maken (`rows.isEmpty ? 40 : _zoneHeight(...)`) laat de tweede omvallen op een hoogteverschil van ruim 100 logische pixels. Beide hersteld naar de oorspronkelijke, ongewijzigde productiecode | covered |
 | J15 | Selected versus focused | test/widgets/tv/tv_catalog_foundation_test.dart (groep `J15: selected versus focused on a sort/filter option row`, `the selected row keeps its checkmark after focus moves away from it`) — `TvCatalogOptionRow` was al gebouwd met drie onafhankelijke lagen (base fill voor selected, additieve sheen voor focus, plus een vinkje) precies om de DEC-053-val te vermijden; de test bewijst dat het vinkje blijft staan als focus weggaat en niet meeloopt naar een rij die alleen focus krijgt | covered |
 | J16 | Focus verandert de layout niet | test/widgets/tv/tv_unified_media_grid_test.dart (`focus moves nothing but the focused card`) — het raster is een `Column` van `Row`s en een `Row` is zo hoog als zijn hoogste kind, dus een kaart die bij focus groeit tilt zijn hele rij op en duwt de rijen eronder omlaag terwijl de gebruiker ernaar kijkt. De test legt alle negenendertig andere kaarten vast vóór en na de focus. Toegevoegd in fase 5; het gedrag zelf staat in hoofdstuk 10.2b ("ruimtelijk stabiel") | covered |
 | J17 | D-pad LEFT/RIGHT tussen de hero-CTA's onder een gespiegelde volgorde | test/widgets/tv/tv_rtl_contract_test.dart (groep `J17: D-pad LEFT/RIGHT across the hero CTAs follows the rendered geometry`, zeven tests) — het productbesluit dat hier ontbrak is genomen op 1 september 2026: **spatial D-pad navigation volgt de gerenderde geometrie, niet de logische actievolgorde**. Semantics en focus zijn twee contracten; hoofdstuk 25 laat de leesvolgorde en de CTA-compositie spiegelen, maar Links betekent op een afstandsbediening de knop die je links ziet liggen. De `Row` in `tv_hero_billboard_carousel.dart` spiegelde zijn kinderen al (dat *is* clausule 2), maar `onNavigateRight` op Afspelen sprong naar Meer info op lijstpositie, dus onder RTL wandelde Rechts de focus naar links over het scherm. `_actions` leest nu de `Directionality` in de subtree van de rij zelf en leidt daar de linker- en rechterbuur uit af (`_stepFrom`), zodat er één autoriteit is voor plaatsing én traversal in plaats van twee tabellen die opnieuw uit elkaar kunnen lopen. De carouselclausule verandert niet mee: Links van de linkerrand blijft de vorige slide en Rechts van de rechterrand de volgende, in beide richtingen — clausule 5 meet dat nu vanaf de CTA op de *rand* in plaats van vanaf een vaste knop, want de rand is een positie en geen knop. Bewezen met een echte `Directionality`-override, geen locale nodig; en tegen de verkeerde soort fix afgedekt: twee tests leggen vast dat de labels aan hun eigen control gebonden blijven en dat Afspelen nog steeds `play` activeert en Meer info `details`, zodat een oplossing die de focusnodes verwisselt in plaats van de bedrading niet groen kan worden. Negatieve controle gedraaid: met de oude lijstvolgorde terug vallen precies de twee RTL-traversaltests, de dead-end-test en de RTL-helft van clausule 5 om, terwijl beide LTR-tests groen blijven. Alle goldens bleven byte-identiek | covered |
@@ -922,12 +938,28 @@ regel: eerst het ontbrekende gedrag vastgelegd (de noot onder register J), daarn
 brengt het register op 186. J18 is er in fase 10A bij gekomen, langs diezelfde regel — eerst het
 gedrag geclassificeerd, en juist omdat het níet vastligt is de rij klasse C en geen fix — wat het
 register op 187 brengt. J19 is er op 2 september 2026 bij gekomen, bij het oplossen van J18, wat het
-op 188 brengt.
+op 188 brengt. B17 is er dezelfde dag nog bij gekomen, langs diezelfde regel — eerst het gedrag
+gecorrigeerd (search reageert al op wijzigingen in `HiddenLibrariesProvider`, zie de noot verderop),
+daarna pas de rij — wat het op 190 brengt (het register stond na de eindaudit al op 189, één hoger
+dan de 188 hierboven; dat verschil zit 'm in B16 zelf, dat als bestaande rij niet in deze
+optelreeks is meegenomen).
+
+**Stand na de J14/B17-correcties (2 september 2026): 182 `covered` en 8 niet-`covered`, op een
+register van 190.** J14 was ten onrechte als onopgelost productcontract geclassificeerd (het gedrag
+lag al vast, alleen het bewijs ontbrak) en B17 is een nieuwe rij voor een bevinding die eerder
+bewust zonder rij bleef — zie de noten bij beide hierboven en de rijen zelf. Dat brengt het aantal
+op: A 20 van 20, B 16 van 17, C 24 van 24, D 15 van 15, E 15 van 15, F 21 van 21, G 14 van 14,
+H 21 van 21, I 21 van 24, J 15 van 19. Wat openstaat: vijf hardware (J2, J4, J8, J9, I17), drie
+geregistreerde debts (I21, I24, B16 — het oorspronkelijke B16, de Pleya-Server-bevinding; zie de
+rij zelf, niet te verwarren met het nieuwe B17) en **geen enkele normale open rij meer**. Dit is de
+huidige eindstand; onderstaande "stand bij het sluiten van fase 9" is de tussenstand vóór deze twee
+correcties en blijft staan omdat hij de weg ernaartoe vastlegt.
 
 Stand bij het sluiten van fase 9 (2 september 2026, na de eindaudit): **180 `covered` en 9
-niet-`covered`**, op een register van 189. Dit is de eindstand van de fase; de regels hieronder zijn
-de tussenstanden in omgekeerde volgorde en blijven staan omdat ze de weg ernaartoe vastleggen. Wat
-overblijft is uitsluitend geclassificeerd werk, geen gewone functionele of bewijsrij:
+niet-`covered`**, op een register van 189. Dit was de eindstand van de fase vóór de J14/B17-correcties
+hierboven; de regels hieronder zijn de tussenstanden in omgekeerde volgorde en blijven staan omdat ze
+de weg ernaartoe vastleggen. Wat toen overbleef was uitsluitend geclassificeerd werk, geen gewone
+functionele of bewijsrij:
 
 - **vijf hardware (klasse A):** J2 (4K-output), J4 (overscan), J8 (VoiceOver), J9 (Reduce Motion) en
   I17 (de Android TV-hardwareterugknop). Ze horen bij de eindacceptatie na fase 10A, niet bij de gate
@@ -944,22 +976,43 @@ overblijft is uitsluitend geclassificeerd werk, geen gewone functionele of bewij
 Per categorie is dat A 20 van 20, B 15 van 16, C 24 van 24, D 15 van 15, E 15 van 15, F 21 van 21,
 G 14 van 14, H 21 van 21, I 21 van 24 en J 14 van 19.
 
-**De eindaudit heeft acht defecten opgeleverd die wél zijn opgelost**, alle acht in code die fase 9
-zelf heeft geschreven of aangeraakt, en alle acht met een test die vóór de fix omvalt: een catalogus
-die "leeg" meldde zodra elke bibliotheek trager was dan de genadeperiode; `updateItem` dat op een
-tweede server de verkeerde titel ophaalde omdat het op een kale item-id zocht; een auth-foute
-membership die uit álle drie de emmers viel en de teller dus "klaar op alle 1" liet zeggen; dezelfde
-membership die "geen bruikbare bron" kreeg in plaats van "opnieuw aanmelden"; de G7-poort die op de
-hele groep werd gelezen in plaats van op de overlevers; een cijferdoel op een backend zonder
-`userRating` dat uit de noemer viel; een korte pagina van de Pleya Server-client die als "bibliotheek
-uit" werd gelezen terwijl de cursor nog verder wees; en een concurrencyplafond dat per ronde
-opnieuw begon te tellen. Twee bevindingen zijn *geen* defect gebleken: dat een trage bibliotheek
-achteraan aansluit is precies wat E14 vastlegt, en de aanraking van `Positioned` in de topnav is
-alsnog richtinggevoelig gemaakt. Eén bevinding blijft staan zonder fix en zonder rij, omdat de fix
-erger was dan de kwaal: `search_screen.dart` leest de verborgen-bibliothekenset synchroon, en
-`ensureInitialized()` afwachten hangt de zoekactie op zodra opslag niet antwoordt — het venster is
-smal (de provider laadt bij het monteren van de profielsessie en `initState` warmt hem nog eens) en
-de auteur heeft die keuze daar expliciet beargumenteerd.
+**De eindaudit heeft negen defecten opgeleverd die zijn opgelost**, en met terugwerkende kracht een
+tiende (zie de correctie hieronder). Acht zitten in code die fase 9 zelf heeft geschreven of
+aangeraakt, allemaal met een test die vóór de fix omvalt: een catalogus die "leeg" meldde zodra elke
+bibliotheek trager was dan de genadeperiode; `updateItem` dat op een tweede server de verkeerde titel
+ophaalde omdat het op een kale item-id zocht; een auth-foute membership die uit álle drie de emmers
+viel en de teller dus "klaar op alle 1" liet zeggen; dezelfde membership die "geen bruikbare bron"
+kreeg in plaats van "opnieuw aanmelden"; de G7-poort die op de hele groep werd gelezen in plaats van
+op de overlevers; een cijferdoel op een backend zonder `userRating` dat uit de noemer viel; een korte
+pagina van de Pleya Server-client die als "bibliotheek uit" werd gelezen terwijl de cursor nog verder
+wees; en een concurrencyplafond dat per ronde opnieuw begon te tellen. Het negende is de
+attention-dot in de topnav: die stond op een kale `Positioned` met een fysieke `right`, wat onder RTL
+de verkeerde hoek is — dezelfde verwarring die DEC-072 voor de hero-CTA's al oploste. Dat is hier
+verkeerd opgeschreven: een eerdere versie van dit register telde hem mee bij de bevindingen die
+*geen* defect bleken, in dezelfde zin als de vermeende trage-bibliotheek-fout, terwijl het proza
+ernaast al zei dat hij gerepareerd was ("is nu richtinggevoelig, met een test die in beide richtingen
+meet" — zie ook `docs/CHANGELOG.md`). Geen enkele bevinding is tegelijk *rebutted* en *fixed*; hij
+stond hier verkeerd bijgeteld en is nu bij de negen opgeloste defecten gezet, waar hij hoort. Eén
+bevinding is wél *geen* defect gebleken: dat een trage bibliotheek achteraan aansluit in plaats van
+terug te sorteren is precies wat E14 vastlegt.
+
+**Wat bij het sluiten van fase 9 nog stond te wachten, is inmiddels ook opgelost.** Eén bevinding
+bleef destijds staan zonder fix en zonder rij, omdat de voor de hand liggende oplossing erger leek
+dan de kwaal: `search_screen.dart` las de verborgen-bibliothekenset synchroon in plaats van
+`ensureInitialized()` af te wachten, want dat laatste hing de zoekactie op zodra opslag niet
+antwoordde — geprobeerd, en zeven schermtests liepen toen in een `pumpAndSettle`-timeout. Die
+afweging was zelf niet fout (een blokkerende wachtrij op de dispatch is inderdaad de verkeerde
+plek, zoals bij het opnieuw proberen op 2 september 2026 bevestigd werd), maar het venster zelf —
+TV Search die nog kan lopen terwijl `HiddenLibrariesProvider` zijn persisted visibility nog niet
+geladen heeft — was ten onrechte als geaccepteerde debt aangemerkt in plaats van als
+gedragsgat binnen het automatiseerbare bereik van deze fase. Dat is nu **B17** in het register
+(zie de rij en de noot eronder) — een nieuw nummer, niet B16: dat nummer draagt al de
+Pleya-Server-bevinding uit dezelfde eindaudit en is een andere zaak. Een luisteraar op
+`HiddenLibrariesProvider`'s eigen wijzigingen — dezelfde die een hide/unhide tijdens een actieve
+sessie al moest afvangen — draait de laatst gezochte query alsnog opnieuw zodra de echte
+zichtbaarheid alsnog landt, zonder de dispatch zelf te blokkeren; een sleutelvergelijking tegen de
+laatst gebruikte zichtbaarheidsset voorkomt dat die correctie zelf een overbodige tweede fan-out
+kost. B17 is `covered`.
 
 Stand na de J19-fix (2 september 2026): **180 `covered` en 8 niet-`covered`**, op een register van
 188. J19 is dezelfde dag nog gesloten langs [DEC-076](../DECISIONS.md#dec-076) — de badge is een
