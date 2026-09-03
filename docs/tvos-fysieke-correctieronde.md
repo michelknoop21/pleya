@@ -75,7 +75,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | OVR1a | `scaleForHeight` heeft ondergrens 0,85, en die is onjuist voor inhoud binnen een TV-paneel: de inhoud wordt ongeveer 1,5 keer te groot | NOT REPRODUCED | n.v.t. |
 | OVR1b | TV-sheets zonder expliciete `presentation` vallen terug op de 400x400-geometrie | FIXED | `96f2d45` |
 | OVR2 | Expliciete TV sheet-presentation wordt door de OVR1b-panelgeometrie overschreven | FIXED | `cf4b6c7` |
-| BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | OPEN | n.v.t. |
+| BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | FIXED, hardware open | `f00e2fe` |
 | FOC1 | Focusring valt buiten de viewport in overlays | OPEN | n.v.t. |
 | ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | OPEN | n.v.t. |
 | LIB1 | Blanco Bibliotheken-pagina als de selectie verdwijnt | OPEN | n.v.t. |
@@ -91,6 +91,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
 | VER3 | De eerste tegel van een rail steekt links buiten de veilige zone | OPEN | n.v.t. |
 | VER4 | Geen fixture levert een rail die lang genoeg is om te scrollen | OPEN | n.v.t. |
+| VER5 | `media-detail.episode-refresh` loopt op de oude zijbalkaanname en haalt de detailpagina niet meer | OPEN | n.v.t. |
 | LAND6 | Een lege landing verbergt de route naar een gevulde catalogus | OPEN | n.v.t. |
 | SYS-1 | Gepushte TV-contentroutes dekken de shell af in plaats van de topnav te houden | IN PROGRESS | n.v.t. |
 | SYS-4 | `StateView` en `EmptyStateWidget` schalen niet op TV | OPEN | n.v.t. |
@@ -1155,28 +1156,96 @@ noemen niets, 1 geeft alleen constraints mee (de bibliotheek-quickpicker, die
 paneel blijft en zijn hoogte houdt) en precies 1 noemt een alignment. Er is dus
 geen tweede geval en geen aanroeper die een uitzondering per scherm nodig heeft.
 
-### BACK1, wat er staat en wat er niet is
+### BACK1, gemeten en opgelost
 
-`AppBarBackButton` is een `GestureDetector` zonder focusnode
-(`lib/widgets/app_bar_back_button.dart:126-146`). Er is nergens in de app een
-focusbare terugknop op TV; terug is volledig toetsgedreven via
-`lib/focus/key_event_utils.dart:58-90`, met een eigen tak voor Apple TV, en de
-TV-oppervlakken geven `onBack`-callbacks door in plaats van een widget.
+De oorspronkelijke waarneming klopte en was niet compleet. `AppBarBackButton`
+is een `MouseRegion` om een `GestureDetector` en draagt nergens een
+`FocusNode`, dus hij staat niet in de traversal-set van de afstandsbediening,
+en tvOS heeft geen cursor om hem mee aan te wijzen. Wat de codelezing er niet
+uit haalde is dat de twee aanroepplekken zich verschillend gedragen, en dat
+dezelfde fout een derde keer in een andere widget zit.
 
-Drie van de vier aanroepplekken tekenen op TV. De TV-tak van de detailpagina
-(`lib/screens/media_detail_screen.dart:3833`), de spelerkop
-(`lib/widgets/video_controls/widgets/video_controls_header.dart:46`, want TV
-neemt bewust het desktop-pad in `video_controls.dart:800`), en de impliciete
-leading van `CustomAppBar` (`lib/widgets/desktop_app_bar.dart:55` en `:190`),
-die op geen enkele platformcontrole let en de knop dus op elke gepushte route
-met `automaticallyImplyLeading` zet.
+**Wat er gemeten is.** Op een TV-detailpagina van 1920 bij 1080: één zichtbare,
+hit-testbare `AppBarBackButton` met nul `Focus`-widgets erin. Op een
+full-window route die op TV gepusht wordt met een `CustomAppBar`: hetzelfde
+beeld. Op diezelfde route, maar geopend als geneste route in de shell: nul.
+Dat laatste is geen toeval en ook geen tweede bug. `buildLeadingSection`
+raadpleegt `ModalRoute.canPop` en verder niets over de invoermodaliteit, en de
+omliggende `ModalRoute` van een geneste route is die van de shell zelf, waarvan
+`canPop` false is. De impliciete leading kwam er dus alleen op het pad dat
+SYS-1 nog moet vervangen. Wie dit met grep leest ziet die asymmetrie niet.
 
-Android TV levert zijn hardware-BACK langs hetzelfde toetspad, dus daar
-verandert weghalen niets aan.
+**De derde plek.** Zoeken op de vorm in plaats van op de klassenaam leverde
+`BottomSheetHeader` op. De terugpijl van een sheet-subpagina ligt daar op een
+`InkResponse` binnen `ExcludeFocusTraversal`. Een gemeten sheet-subpagina op TV
+had nul traversal-bereikbare knopen in zijn kop, met een terugpijl erin. Zelfde
+contract, zelfde defect.
 
-Geen enkele test raakt `AppBarBackButton` of `CustomAppBar` aan. De suite houdt
-een regressie hier vandaag dus niet tegen, en wie dit oplost schrijft die test
-er zelf bij.
+**Root cause.** Niets in de constructie van de knop en niets in de twee
+impliciete-leading-plekken vraagt welke invoermodaliteit het oppervlak bedient.
+Op TV is de app remote-first: `InputModeTracker` zet `InputMode.keyboard` vast
+en verlaat die stand daar nooit.
+
+**Eigenaar van de presentatie** is `AppBarBackButton` zelf, want alle vijf de
+bouwplekken maken die widget. **Eigenaar van de terugroute** is de toets:
+`handleBackKeyAction` en `handleBackKeyNavigation` in
+`lib/focus/key_event_utils.dart`, `tvBackStep` in de shell, en
+`TvNestedRouteScope.dismiss` voor een geneste route.
+
+**De fix** zet de regel op één plek, `showsVisibleBackAffordance()` naast de
+knop. De knop bouwt niets meer wanneer die false is, waarmee een nieuwe
+aanroeper tegen dezelfde fout beschermd is, en beide impliciete-leading-plekken
+raadplegen hem ook, zodat `leading` null blijft en de app bar geen breedte
+reserveert voor een knop die er niet is. Geen enkele aanroeper heeft een eigen
+uitzondering nodig.
+
+**Aanroeperaudit, elf plekken.** Weggehaald op TV: de TV-tak van
+`MediaDetailScreen`, beide impliciete-leading-plekken in `desktop_app_bar.dart`,
+`VideoControlsHeader` (TV neemt bewust het desktop-pad) en `BottomSheetHeader`.
+Ongewijzigd omdat ze al focusbaar zijn: de terugknop in
+`video_player/parts/build.dart` is een `FocusableButton`, en die in
+`tv_info_panel.dart` een `IconButton` met een eigen node. Ongewijzigd omdat ze
+op TV niet tekenen: `settings_screen.dart` en `logs_screen.dart` hebben een
+eigen `_buildTv`-tak, `my_pleya_screen.dart` bestaat daar niet, en
+`watchlist_screen.dart` en `libraries_screen.dart:1626` zetten
+`automaticallyImplyLeading: false`. `FocusedScrollScaffold`, `SettingsPage`,
+`ProfileSwitchScreen` en `WatchTogetherScreen` lopen alle vier via
+`CustomAppBar` en zijn daarmee door de gedeelde poort gedekt.
+
+**Negatieve controle.** Met de productiecode terug op `88d9868` vallen precies
+de zes TV-assertions om en blijven de zes pointer-tweelingen groen, plus de
+geneste zaak die nooit geraakt was. Dat wat rood wordt is de regressie en niet
+iets anders.
+
+**Goldens.** Twee beelden verschuiven, `tv_detail_source_line.png` en
+`tv_detail_no_source_line.png`, allebei met exact 1316 gewijzigde pixels binnen
+de doos van 40 bij 40 op (8,8). Dat is de weggehaalde knop en verder niets, tot
+op de pixel. Ze zijn geregenereerd in een Linux-container die de bestaande
+referenties eerst byte-identiek reproduceerde; daarna is de golden-delta van de
+hele map daar nul. Op macOS blijven ze rood zoals ze dat vóór deze wijziging
+ook waren, want de goldensuite is op deze machine breed rood door
+fontrasterisatie.
+
+**Wat open blijft.** Er is geen bewijs van een echte Apple TV. Pleya Verify kon
+het niet leveren: het enige scenario dat de detailpagina bereikt is
+`media-detail.episode-refresh`, en dat faalt op een stap ervóór. Een
+controlerun op `88d9868` faalt identiek, met dezelfde focus-trace, dus dat is
+geen gevolg van deze wijziging. Het staat als VER5 in de tabel.
+
+### VER5, `media-detail.episode-refresh` haalt de detailpagina niet meer
+
+Het scenario navigeert met `press: left` vanaf Home naar wat het als een
+zijbalk met bibliotheken beschrijft. De focus-trace laat zien wat er werkelijk
+gebeurt: `tvNav_home -> tvNav_search` op die Left, daarna `Content ->
+SearchInput` op de Down erna. Het staat dus in Zoeken en niet in Bibliotheken,
+`library.items_loaded` komt nooit, en het scenario valt om op een `wait_until`
+van 15 seconden. Dat gebeurt op `88d9868` net zo goed als met BACK1 erin.
+
+De aanname in het scenario komt uit de tijd vóór de Unified TV-topnav. Zolang
+die er in staat is er geen enkel Verify-scenario dat de TV-detailpagina opent,
+en is elke bevinding op dat oppervlak alleen met tests en op hardware te
+bewijzen. Het herstel is een navigatiepad dat bij de huidige shell hoort, niet
+een aanpassing aan het product.
 
 ### REV1, Apple Review Jellyfin: Home toont content, Films/Series leeg
 
