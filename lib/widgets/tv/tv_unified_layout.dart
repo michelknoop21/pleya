@@ -765,6 +765,21 @@ class TvDiscoveryLayout {
   /// above it rather than sitting a ring-gap further right.
   static double railLeadInset(double scale) => math.max(0.0, pageInset * scale - cardFocusRingGap * scale);
 
+  /// What a tile grows by when it takes the focus, and therefore the room the
+  /// band has to hold in reserve past its last tile (LAND3).
+  ///
+  /// A tile expands inside the scrollable, so focusing one *grows the content*,
+  /// and that growth arrives over the focus animation: several frames after the
+  /// reveal has already decided where to scroll to. Without this reserve the
+  /// band's `maxScrollExtent` at that moment is the resting content, which is
+  /// short by exactly this much, and the clamp cuts the reveal off at the one
+  /// tile that needs the whole of it: the last one.
+  ///
+  /// The reserve is unconditional rather than added when the last tile takes
+  /// the focus, because a scroll extent that changes with focus is the same
+  /// timing dependency in a different place.
+  static double railFocusHeadroom(double scale) => tileWidth(scale, focused: true) - tileWidth(scale, focused: false);
+
   /// Width a rail has for tiles on a viewport [width].
   static double railUsableWidth(double width, double scale) => math.max(0.0, width - railLeadInset(scale) * 2);
 

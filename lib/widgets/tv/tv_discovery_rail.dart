@@ -597,18 +597,28 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     return ListView.builder(
       controller: _scroll,
       scrollDirection: Axis.horizontal,
-      // The page inset on both sides, and nothing more.
+      // The page inset on both sides, plus the room the last tile needs to
+      // expand into (LAND3).
       //
-      // The report's diagnosis of P9 had a second half — "the last tile has no
-      // trailing room to expand into" — and it does not hold. A tile's
-      // expansion is an `AnimatedContainer` inside the scrollable, so growing
-      // it grows the content: `maxScrollExtent` comes out exactly at the offset
-      // [_revealFocused] wants for the last tile, to the pixel. Reserving
-      // `wideWidth - posterWidth` here as well was written, tested, and removed
-      // when the negative control for it stayed green — it would have parked
-      // ~208 logical pixels of empty band past the end of every row for no
-      // reason. The half of P9 that is real is the scroll, below.
-      padding: EdgeInsets.symmetric(horizontal: lead),
+      // P9 was first read as "the last tile has no trailing room", then argued
+      // away: a tile's expansion is an `AnimatedContainer` inside the
+      // scrollable, so growing it grows the content, and `maxScrollExtent` ends
+      // up exactly at the offset [_revealFocused] wants for the last tile, to
+      // the pixel. That is true, and it is true too late. The reveal is decided
+      // on the frame the focus lands, when nothing in this band is expanded
+      // yet, so the extent it clamps against is the *resting* content and the
+      // target comes out [TvDiscoveryLayout.railFocusHeadroom] short. Walking
+      // the rail hides that, because the tile being left is still wide while
+      // the next one grows. Arriving from elsewhere, on a vertical step or a
+      // restore, does not: on the canonical canvas it put the last tile's right
+      // edge at 1209 on a 1038-wide screen (LAND3).
+      //
+      // So the room is reserved, and it is reserved unconditionally: an extent
+      // that changed with where the focus is would be the same frame-ordering
+      // bug wearing a different hat. Nothing scrolls into it, because every
+      // scroll this rail makes comes from [_revealTarget], which asks for the
+      // offset a tile needs and never for the end of the band.
+      padding: EdgeInsets.only(left: lead, right: lead + TvDiscoveryLayout.railFocusHeadroom(scale)),
       // Lazy by construction: only the tiles the viewport can reach are built,
       // so a rail of forty groups costs the images of the six on screen
       // (hoofdstuk 42).

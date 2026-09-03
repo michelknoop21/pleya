@@ -281,6 +281,46 @@ void main() {
       }
     });
 
+    testWidgets('arriving straight on the last tile still reveals it whole (LAND3)', (tester) async {
+      // The walk above is the easy half. Coming back to a rail from somewhere
+      // else, on a vertical step or the restore after a detail page, lands on
+      // the remembered tile with nothing in this rail expanded, so the band's
+      // content is at its resting width and its scroll extent is short of what
+      // the expansion needs by exactly `wideWidth - posterWidth`.
+      final groups = tvDiscoveryFilmsRow();
+      final rail = await pumpRail(tester, groups);
+      final inset = TvDiscoveryLayout.railLeadInset(0.85);
+
+      expect(rail.focusColumn(groups.length - 1), isTrue);
+      await tester.pumpAndSettle();
+
+      final rect = rectOf(tester, groups.last);
+      expect(rect.right, lessThanOrEqualTo(_canvas.width - inset + 0.5), reason: 'the expanded tile ran off the right');
+      expect(rect.width, closeTo(TvDiscoveryLayout.tileWidth(0.85, focused: true), 0.5));
+    });
+
+    testWidgets('a vertical step onto the last column reveals it whole (LAND3)', (tester) async {
+      // The shape of the hardware report: coming back to a row and landing
+      // straight on its last item. The rail below has nothing expanded when the
+      // step arrives, so this is the surface half of the control above: the
+      // same arithmetic, reached through [TvRailStack] the way production
+      // reaches it.
+      final rails = await pumpRailStack(tester, [row('t', 9), row('b', 9)]);
+      // The stack harness is a taller canvas than the single-rail one, so the
+      // page scale is its own and has to be read rather than assumed.
+      final scale = TvLayoutConstants.scaleOf(tester.element(find.byType(TvDiscoveryRail).first));
+      final inset = TvDiscoveryLayout.railLeadInset(scale);
+
+      expect(rails.first.focusColumn(8), isTrue);
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+
+      expect(focusedTile(), 'b8');
+      final rect = tester.getRect(find.byKey(const ValueKey('b8')));
+      expect(rect.right, lessThanOrEqualTo(1038 - inset + 0.5), reason: 'the expanded tile ran off the right');
+      expect(rect.width, closeTo(TvDiscoveryLayout.tileWidth(scale, focused: true), 0.5));
+    });
+
     testWidgets('a rail that fits does not scroll at all', (tester) async {
       // The trailing room must not turn a short row into a scrolling one under
       // the viewer.
