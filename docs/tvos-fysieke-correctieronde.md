@@ -61,7 +61,7 @@ Branch `claude/netflix-redesign-b4x21v`, uitgaand van `011e770`.
 | TILE1 | Een tegel zonder actie zou de focus klemmen | NOT REPRODUCED | n.v.t. |
 | LAND4 | Verticaal navigeren verliest de horizontale positie | FIXED | `8686f5c` |
 | LAND2 | De projectie van de vorige rail blijft staan | FIXED | `2371c62` |
-| LAND3 | De gefocuste wide card valt rechts buiten beeld | OPEN | n.v.t. |
+| LAND3 | De gefocuste wide card valt rechts buiten beeld | FIXED | `0a60044` |
 | CAT1 | Bovenste rij coverart raakt de veilige bovengrens | OPEN | n.v.t. |
 | CAT2 | Metadata van de onderste rij staat tegen de onderrand | OPEN | n.v.t. |
 | CAT3 | Bron, filters en sortering staan verkeerd gepositioneerd | OPEN | n.v.t. |
@@ -80,6 +80,9 @@ Branch `claude/netflix-redesign-b4x21v`, uitgaand van `011e770`.
 | VER2 | Automation-ids escapen geen blokhaken | DEFERRED | n.v.t. |
 | HERO1 | Framing van het hero-beeld op Home | HARDWARE ONLY | n.v.t. |
 | SEARCH1 | Zoeken benoemt zijn resultaten buiten het railcontract om | DEFERRED | n.v.t. |
+| LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
+| VER3 | De eerste tegel van een rail steekt links buiten de veilige zone | OPEN | n.v.t. |
+| VER4 | Geen fixture levert een rail die lang genoeg is om te scrollen | OPEN | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -297,14 +300,138 @@ Blijft `DEFERRED` tot dat besluit er is.
 ### LAND3, de gefocuste wide card
 
 Michel heeft dit gepreciseerd: het gebeurt bij terugkeren naar de vorige rij,
-direct op het laatste item. Dat maakt het een herstelprobleem en geen gewoon
-reveal-probleem. `focusCurrent()` in `lib/widgets/tv/tv_discovery_rail.dart`
-herstelt de focus op de onthouden tegel, en de reveal wordt daarbij niet opnieuw
-berekend op de uitgeklapte 16:9-breedte.
+direct op het laatste item.
 
-De reveal moet rekenen met de eindmaat van de gefocuste kaart, niet met de
-portretbreedte ervoor of met een tussenstand van de animatie, en met de focusring
-en de pagina-inset erbij.
+#### Waar de hypothese naast zat
+
+De aanname in dit document was dat de reveal niet op de uitgeklapte 16:9-breedte
+gerekend werd. Dat doet hij wel. `_revealTarget` in
+`lib/widgets/tv/tv_discovery_rail.dart` leest de layouttokens en telt netjes
+`tileWidth(scale, focused: true)` bij de linkerrand van de doeltegel op. De fout
+zit in de regel erna.
+
+#### Root cause
+
+`_revealTarget` klemt zijn uitkomst op `position.maxScrollExtent`, en dat is de
+scrollruimte die de band op dát moment heeft. Een tegel klapt uit binnen de
+scrollable, dus focussen groeit de inhoud, maar die groei komt over de
+focusanimatie en dus een paar frames later. Op het frame waarop de reveal beslist
+staat alles nog op rust, en dan is de gemeten ruimte precies
+`tileWidth(focused) - tileWidth(rest)` te kort.
+
+Dat bijt alleen aan het eind van de rij, want daar is die groei ook echt nodig:
+voor de laatste tegel is de gevraagde offset gelijk aan de maximale scrollruimte
+ná het uitklappen, tot op de pixel. Naar rechts lopen verbergt het, omdat de
+tegel die je verlaat nog breed is terwijl de volgende groeit, zodat de inhoud
+tussendoor nooit krimpt. Aankomen vanaf een verticale stap of een herstel heeft
+niets uitgeklapt staan, en loopt er dus wel tegenaan.
+
+Gereproduceerd op het canonieke canvas van 1038 breed, negen tegels, schaal 0,85:
+de gevraagde offset is 550,17 en de gemeten ruimte 342,40. De 207,77 die
+overblijft is exact het verschil tussen de uitgeklapte en de rustende
+tegelbreedte, en de rechterrand van de laatste tegel kwam daardoor op 1209,23
+uit.
+
+#### Waarom de bestaande tests dit misten
+
+De P9-controle die hierover ging loopt de rail naar rechts af, met een comment
+die dat expliciet zegt ("Walk there rather than jumping, so the tile is actually
+built"). Dat is precies het pad waarop het niet misgaat. De comment in `_band`
+had de trailing ruimte bovendien beredeneerd weggehaald, met een negatieve
+controle die groen bleef, en die controle liep over hetzelfde looppad.
+
+#### De fix
+
+De band reserveert de ruimte nu achteraan, als
+`TvDiscoveryLayout.railFocusHeadroom(scale)`, en onvoorwaardelijk. Een
+scrollruimte die meebeweegt met waar de focus staat zou dezelfde
+volgorde-afhankelijkheid op een andere plek zetten. Er scrolt niets die ruimte
+in, want elke scroll van deze rail komt uit `_revealTarget`, en dat vraagt om de
+offset die een tegel nodig heeft en nooit om het eind van de band.
+
+#### Blast radius
+
+Alle vier de oppervlakken die `TvDiscoveryRail` stapelen krijgen de fix via
+dezelfde eigenaar: Home, de Films-landing, de Series-landing en TV Zoeken.
+Buiten bereik en gecontroleerd: Mijn Pleya en de catalogus tekenen een raster,
+en `tv_unified_media_grid.dart` noemt de rail alleen in een comment. Er is geen
+uitzondering per scherm nodig, en `alwaysDescribesCurrent` van SEARCH1 is niet
+aangeraakt.
+
+#### Bewijs
+
+Twee controles in `test/widgets/tv/tv_discovery_rail_test.dart`: aankomen op de
+laatste kolom via `focusColumn`, en dezelfde stap via `TvRailStack` over twee
+gestapelde rails. Met de fix teruggedraaid waren precies die twee rood, op
+1209,23 tegen 1001,95 en op 1299,13 tegen 982,76, en bleven de andere 23
+controles in dat bestand groen.
+
+96 gerichte tests groen over de eigenaar en de vier oppervlakken. De volledige
+suite geeft 6078 groen tegen 6076 op de nullijn, wat exact de twee nieuwe
+controles zijn, met een identieke set van 83 bekende failures: 78 goldens en de
+vijf in het oude `test/widgets/tv_discovery_rail_test.dart`.
+
+Pleya Verify levert hier geen bewijs, en dat is geen keuze maar een gat: zie VER4
+hieronder. Hardware-acceptatie staat nog open.
+
+### LAND5, herstel op een tegel die de band niet gebouwd heeft
+
+Gevonden tijdens LAND3, en bewust niet meegefixt: het is geen oorzaak van LAND3
+en het vraagt een keuze.
+
+`focusGroup` weigert een tegel waarvan de focusnode nog niet bestaat, en de
+aanroeper valt dan terug op de eerste tegel van de rail. Dat staat zo in de code
+en het is daar ook zo bedoeld: een naburige tegel focussen zou de kijker op een
+titel zetten die hij nooit gekozen heeft.
+
+Het gevolg is alleen dat herstel na een detailpagina de onthouden tegel stil
+kwijtraakt zodra die ver genoeg naar rechts staat. Gemeten op het canonieke
+canvas bouwt een band die op offset 0 staat de tegels 0 tot en met 6 van negen,
+dus `focusCurrent()` voor tegel 8 geeft `false` en de kijker komt op tegel 0 uit
+in plaats van waar hij was.
+
+`focusColumn` heeft voor precies dit geval wél een pad: de band springt eerst en
+neemt de focus op het frame waarop de tegel bestaat. De twee methodes doen dus
+iets anders met dezelfde situatie. Het samentrekken is een kleine ingreep, maar
+het verandert wat herstel belooft, en dat hoort een besluit te zijn en geen
+side-fix.
+
+### VER3, de eerste tegel steekt links buiten de veilige zone
+
+`tvos.discovery.overscan` is rood, en stond al rood vóór LAND3. Dezelfde run op
+`f8e0e59` zonder de LAND3-fix geeft byte-identiek dezelfde meting, dus dit is
+niet meegekomen met dat werk.
+
+De assertie die valt is `notClipped(discover.rail.item[0.0],
+discover.safe_area)`: de tegel begint op 67,617 en de veilige zone op 75,48. Het
+verschil van 7,8625 is exact `cardFocusRingGap * scale` bij schaal 1,5725. Dat is
+geen toeval maar de constructie van `railLeadInset`, die de band bewust een
+ringgap naar links trekt zodat de artwork uitlijnt met de kop erboven. De
+meetrect van `FocusableWrapper` is de artwork plus die gap, dus de gap valt
+buiten de veilige zone terwijl de artwork er netjes in staat.
+
+Er zitten dus twee dingen tegenover elkaar die allebei gewild zijn: uitlijnen met
+de kop, en de focusring binnen de veilige zone houden. Wat er moet gebeuren is
+een keuze tussen de inset verruimen en de assertie op de artwork richten in
+plaats van op de meetrect. Niet stil dichttrekken.
+
+### VER4, geen fixture levert een rail die kan scrollen
+
+LAND3 bestaat alleen op een rail die langer is dan het scherm. Geen enkele
+geseede fixture levert er zo een. `catalog.mixed.v1` geeft vijf rails van
+respectievelijk 1, 3, 1, 3 en 1 tegel, afgelezen uit de UI-tree van de
+overscan-run; `catalog.shows.v1` heeft tien afleveringen maar die zitten in een
+serie en niet in een rail.
+
+Dat raakt meer dan LAND3. `tvos.discovery.density` beweert zeven tegels in
+`rail[0]` en `tvos.discovery.overscan` loopt na vijf keer rechts naar
+`item[0.5]`, en met deze fixtures kan geen van beide ooit kloppen. De scrollende
+helft van beide scenario's toetst op dit moment niets.
+
+Wat dit nodig heeft is een fixture met een hub van een tegel of twaalf. Dat is
+opzichzelfstaand werk aan de verificatielaag, geen onderdeel van een bevinding
+uit de correctieronde, en het staat hier zodat het niet opnieuw als verrassing
+opduikt.
 
 ### CAT4, bereikbaarheid van de headercontrols
 
