@@ -67,7 +67,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LAND4 | Verticaal navigeren verliest de horizontale positie | FIXED | `8686f5c` |
 | LAND2 | De projectie van de vorige rail blijft staan | FIXED | `2371c62` |
 | LAND3 | De gefocuste wide card valt rechts buiten beeld | FIXED | `0a60044` |
-| CAT1 | Bovenste rij coverart raakt de veilige bovengrens | OPEN | n.v.t. |
+| CAT1 | Bovenste rij coverart raakt de veilige bovengrens | FIXED, hardware open | `89b1554` |
 | CAT2 | Metadata van de onderste rij staat tegen de onderrand | OPEN | n.v.t. |
 | CAT3 | Bron, filters en sortering staan verkeerd gepositioneerd | OPEN | n.v.t. |
 | CAT4 | Bron, filters en sortering mogelijk onbereikbaar | OPEN | n.v.t. |
@@ -88,6 +88,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
 | VER3 | De eerste tegel van een rail steekt links buiten de veilige zone | OPEN | n.v.t. |
 | VER4 | Geen fixture levert een rail die lang genoeg is om te scrollen | OPEN | n.v.t. |
+| LAND6 | Een lege landing verbergt de route naar een gevulde catalogus | OPEN | n.v.t. |
 | SYS-1 | Gepushte TV-contentroutes dekken de shell af in plaats van de topnav te houden | IN PROGRESS | n.v.t. |
 | SYS-4 | `StateView` en `EmptyStateWidget` schalen niet op TV | OPEN | n.v.t. |
 | OVR2 | Legacy `MediaContextMenu`, rating-sheet, kijklijst-item-sheet en Live TV-sheets vallen op tvOS in een 400x400 bottom sheet | OPEN | n.v.t. |
@@ -399,6 +400,128 @@ vijf in het oude `test/widgets/tv_discovery_rail_test.dart`.
 
 Pleya Verify levert hier geen bewijs, en dat is geen keuze maar een gat: zie VER4
 hieronder. Hardware-acceptatie staat nog open.
+
+### CAT1, de bovenste rij tegen de bovenrand van het raster
+
+Gereproduceerd op een tvOS-simulator met een echte bibliotheek, op Alle films,
+met de focus op de eerste kaart van de bovenste rij. De witte focusring is daar
+recht afgesneden: de zijkanten staan er, de bovenkant en de twee bovenhoeken
+niet. De artwork zelf blijft heel.
+
+#### Waar de omschrijving naast zat
+
+"Raakt de veilige bovengrens" leest als de overscanband van hoofdstuk 8.1, en
+dat is het niet. Op het canonieke canvas staat de bovenste rij op 147 logische
+pixels en de veilige grens op 30, dus er zit ruim honderd pixels tussen. De
+bovengrens die de rij wél raakt is de bovenrand van het scrollvenster van het
+raster, de lijn onder de paginakop waar het venster begint te knippen.
+
+#### Root cause
+
+`TvCatalogGrid.forWidth` rekende de focusgroei uit met
+
+```dart
+final cardHeight = cardWidth / TvCatalogLayout.posterAspectRatio;
+```
+
+en dat is de hoogte van een poster die zo breed is als de hele kaart. De kaart
+die focus opschaalt is een andere doos. Zijn poster is smaller, want die staat
+binnen twee `cardContentInset`s, en zijn totaal is hoger, want de titel en de
+metaregel hangen eronder. `Transform.scale` in `FocusableWrapper` schaalt die
+hele doos om zijn midden, dus de helft van de aangroei gaat omhoog.
+
+Op het canonieke canvas van 1038 breed reserveerde het raster 6,885 logische
+pixels waar de kaart er 8,282 nodig heeft. De 1,397 die overbleven zijn breder
+dan de ring zelf, die 2,5 logische pixel dik is: er wordt niet een stukje van de
+ring afgehaald, de bovenrand verdwijnt in zijn geheel. Alle kolommen van de rij
+tegelijk, want een rij deelt één bovenrand.
+
+Dezelfde uitdrukking zat ook in `bottomSafeInset`, dus onderaan at de ring
+hetzelfde bedrag uit de overscanmarge. Dat is één en dezelfde regel en gaat mee
+met de fix. Het is niet het antwoord op CAT2, dat over de metadata van de
+onderste rij gaat.
+
+#### Waarom de bestaande tests dit misten
+
+De reden staat in de meting zelf. De buitenste `SizedBox` van een kaart zit
+*boven* de `Transform.scale` van `FocusableWrapper`, dus `tester.getRect` op de
+kaart geeft de rustdoos terug of hij nu focus heeft of niet. Elke test die de
+kaart mat zag geen verschil tussen gefocust en niet gefocust. De ring wordt
+getekend op het posterblok binnen de transform, en dat is de rechthoek die je
+moet meten.
+
+#### De fix
+
+De groei hoort bij de kaart en niet bij de kolomrekenaar, dus de aanroeper zegt
+nu welke kaart hij tekent. `TvCatalogGrid` houdt `bottomSafeMargin` als kale
+overscanmarge en krijgt
+
+```dart
+EdgeInsets scrollPadding({required double cardHeight, required double focusScale})
+```
+
+Twee oppervlakken tekenen verschillende kaarten door hetzelfde raster: de
+catalogus met `TvUnifiedMediaCard` op `fullCardFocusScale`, en de kijklijst met
+`WatchlistCard` op `focusScale`. Eén getal dat in de rekenaar wordt uitgerekend
+kon dus per definitie maar voor één van de twee kloppen, en de kijklijst kreeg
+tot nu toe stilzwijgend het verkeerde.
+
+`TvCatalogLayout.cardHeight(cardWidth, scale)` telt de kaart op uit zijn eigen
+tokens. Dat kan omdat niets aan de hoogte van de inhoud afhangt: het titelblok
+is een `SizedBox` van twee regels of de titel ze nodig heeft of niet, en de
+metaregel wordt ook getekend als hij niets te melden heeft. De metaregel wordt
+naar boven afgerond omdat de engine dat ook doet, precies zoals
+`MediaCardGridLayout.captionExtentFor` het al deed, en een test houdt de som en
+de gerenderde kaart tegen elkaar aan.
+
+#### Blast radius
+
+Twee oppervlakken lezen de padding: de catalogus (`tv_unified_media_grid.dart`,
+gedeeld door Alle films en Alle series) en de kijklijst op TV
+(`watchlist_screen.dart`). De vier andere aanroepers van
+`TvCatalogGrid.forWidth` gebruiken alleen `columns`, `cardWidth`, `gutter` en
+`inset` en zijn niet geraakt: de paginakop, de laadplaatshouder, de kaart zelf
+en de niet-TV-tak van de kijklijst. De discovery-rails staan er los van, die
+hebben hun eigen `railFocusHeadroom` uit LAND3.
+
+De inhoud van het raster zakt hierdoor 1,4 logische pixel op het canonieke
+canvas en 2,6 op een 1920-canvas. Dat is precies de ruimte die de ring nodig
+heeft en niets meer; het kolomaantal, de kaartbreedte, de gutters en de zijranden
+veranderen niet.
+
+#### Bewijs
+
+Vier controles in `test/widgets/tv/tv_unified_media_grid_test.dart`: de eerste,
+de middelste en de laatste kolom van de bovenste rij, aankomst van onderaf en
+van opzij, het schaalminimum van 1280x918, en de contracttest die de berekende
+kaarthoogte tegen de gerenderde houdt.
+
+Met de oude uitdrukking teruggezet waren drie van de vier rood, met de ring op
+-1,367 tegen een venster op 0,0. De contracttest bleef groen en hoort groen te
+blijven: die hangt niet aan de padding.
+
+Pleya Verify levert hier geen bewijs. Er is geen scenario dat de catalogus
+opent, en de bestaande fixtures zijn dezelfde die VER4 al als gat beschrijft.
+Hardware-acceptatie staat nog open.
+
+### LAND6, een lege landing verbergt de route naar een gevulde catalogus
+
+Gevonden tijdens CAT1 op de simulator, en bewust niet meegefixt.
+
+`TvDiscoveryLandingScreen` gaat bij een lege railsprojectie naar
+`_buildEmptyOrLoading`, en dat tekent alleen een tekstblok. De actie
+"Alle films" staat in de andere tak, boven de rails. Er is geen andere route
+naar de complete catalogus, dus zonder rails is die pagina onbereikbaar.
+
+Dat is niet hetzelfde als "er is niets". Op de simulator stond de Films-landing
+leeg terwijl Bibliotheken de Jellyfin-bibliotheek Movies met zes films toonde,
+en de catalogus dus wel degelijk iets te tonen had. De hubs kwamen van een
+Pleya Server die offline stond; de bibliotheek stond daar los van.
+
+Wat dit nodig heeft is een besluit over wat de landing toont wanneer zij geen
+hubs heeft maar er wel een zichtbare bibliotheek is. De lege staat de actie
+laten dragen is de kleine ingreep; of de landing in dat geval iets anders hoort
+te tonen is een productvraag.
 
 ### LAND5, herstel op een tegel die de band niet gebouwd heeft
 
