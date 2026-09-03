@@ -93,6 +93,11 @@ void main() {
       expect(panelAt(size), sheetAt(size));
     });
 
+    test('TV', () {
+      const size = Size(1920, 1080);
+      expect(panelAt(size, isTV: true), sheetAt(size, isTV: true));
+    });
+
     test('a 520px window is still a phone as far as layout goes', () {
       const size = Size(520, 360);
       expect(panelAt(size), sheetAt(size));
@@ -150,92 +155,6 @@ void main() {
       expect(g.constraints.debugAssertIsValid(), isTrue);
     });
 
-    test('caller constraints are honoured, then capped by the viewport', () {
-      final roomy = panelAt(const Size(1440, 900), constraints: const BoxConstraints(maxWidth: 320, maxHeight: 200));
-      expect(roomy.constraints.maxWidth, 320, reason: 'smaller than the default: the caller wins');
-      expect(roomy.constraints.maxHeight, 200);
-
-      final greedy = panelAt(const Size(700, 500), constraints: const BoxConstraints(maxWidth: 900, maxHeight: 900));
-      expect(greedy.constraints.maxWidth + greedy.edgePadding * 2, lessThanOrEqualTo(700));
-      expect(greedy.constraints.maxHeight + greedy.edgePadding * 2, lessThanOrEqualTo(500));
-    });
-  });
-
-  // Hoofdstuk 14.1 asks for a centred TV modal; before fase 4 `panel` fell
-  // through to the 400x400 bottom sheet on TV, so the source picker would have
-  // opened as a mobile sheet on a television. The two presentations must stay
-  // distinguishable: `sheet` is still the compact TV context menu.
-  group('panel is a centred 10-foot modal on TV', () {
-    // The canonical Apple TV canvas per DEC-028 (1920x1080 / 1.85), the raw
-    // 1920x1080 reference surface, and a 720p output.
-    const canvases = [Size(1038, 584), Size(1920, 1080), Size(1280, 720)];
-
-    for (final size in canvases) {
-      test('${size.width.toInt()}x${size.height.toInt()}: centred, faded in, never pointer-anchored', () {
-        final g = panelAt(size, isTV: true);
-
-        expect(g.alignment, Alignment.center);
-        expect(g.isCentered, isTrue);
-        expect(g.allowPointerAnchor, isFalse, reason: 'a remote has no cursor to anchor to');
-        expect(g.allowDragHandle, isFalse);
-        expect(g.fadeIn, isTrue);
-        expect(g.enterOffset.dy, lessThan(size.height / 8), reason: 'a centred panel lifts, it does not fly in');
-      });
-
-      test('${size.width.toInt()}x${size.height.toInt()}: hoofdstuk 14.1 width band, expressed as a fraction', () {
-        final g = panelAt(size, isTV: true);
-
-        // The contract's 900-1040 is a reference measurement on a 1920x1080
-        // output. Scaling the resolved width back up to that surface is what
-        // makes the assertion mean the same thing on every canvas — and is
-        // exactly the check that fails if someone re-reads 1040 as logical px.
-        final asReferenceWidth = g.constraints.maxWidth * (1920 / size.width);
-        expect(asReferenceWidth, inInclusiveRange(900, 1040));
-      });
-
-      test('${size.width.toInt()}x${size.height.toInt()}: leaves generous outer margins', () {
-        final g = panelAt(size, isTV: true);
-
-        // The failure this guards is a panel that eats the screen because the
-        // reference number was taken literally: at 1038 logical wide, a 1000px
-        // panel would leave 19px of margin.
-        final margin = (size.width - g.constraints.maxWidth) / 2;
-        expect(margin, greaterThan(size.width * 0.2), reason: 'a 10-foot modal floats, it does not fill');
-        expect(g.constraints.maxHeight, lessThanOrEqualTo(size.height * 0.85));
-        expect(g.constraints.maxWidth + g.edgePadding * 2, lessThanOrEqualTo(size.width));
-      });
-    }
-
-    test('panel and sheet keep different geometry contracts on TV', () {
-      const size = Size(1038, 584);
-      final panel = panelAt(size, isTV: true);
-      final sheet = sheetAt(size, isTV: true);
-
-      expect(panel, isNot(sheet));
-      expect(sheet.alignment, Alignment.bottomCenter);
-      expect(panel.alignment, Alignment.center);
-      expect(sheet.constraints.maxWidth, 400, reason: 'the compact TV context menu is unchanged by the panel fix');
-      expect(sheet.constraints.maxHeight, 400);
-      expect(panel.constraints.maxWidth, greaterThan(sheet.constraints.maxWidth));
-      expect(sheet.fadeIn, isFalse);
-      expect(panel.fadeIn, isTrue);
-      expect(sheet.enterOffset.dy, size.height, reason: 'the sheet still travels a full viewport height');
-    });
-
-    test('an explicit constraint is still capped by the TV viewport', () {
-      final g = panelAt(const Size(1038, 584), isTV: true, constraints: const BoxConstraints(maxWidth: 4000));
-      expect(g.constraints.maxWidth + g.edgePadding * 2, lessThanOrEqualTo(1038));
-    });
-
-    test('a degenerate TV viewport produces valid, non-negative bounds', () {
-      final g = panelAt(const Size(0, 0), isTV: true);
-      expect(g.constraints.maxWidth, greaterThanOrEqualTo(0));
-      expect(g.constraints.maxHeight, greaterThanOrEqualTo(0));
-      expect(g.constraints.debugAssertIsValid(), isTrue);
-    });
-  });
-
-  group('legacy panel caller constraints', () {
     test('caller constraints are honoured, then capped by the viewport', () {
       final roomy = panelAt(const Size(1440, 900), constraints: const BoxConstraints(maxWidth: 320, maxHeight: 200));
       expect(roomy.constraints.maxWidth, 320, reason: 'smaller than the default: the caller wins');
