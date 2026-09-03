@@ -719,7 +719,7 @@ De required-candidate `portable`-gate en de uitgevoerde iOS/tvOS Verify-scenario
 **Consequences:** Pleya Verify Core 1.0 is hiermee compleet: deterministic fixture-backed scenario's, drie platformdrivers (macOS/iOS-sim/tvOS-sim), UI-boom/focus/events/geometrie-assertions, autoritatieve compositor-screenshots als visuele waarheid, complete evidencebundels, false-PASS-verdediging (Fase 12), CLI, MCP-laag (Fase 13), CI-orkestratie (Fase 14), fail-closed control-plane-auth, bounded execution, en redactie-/securityhardening (dit besluit). Bekende, niet-blokkerende grenzen: macOS-hosted-buildsigning in CI, `tvos.library.filters` (DEFERRED voor G13, [DEC-063](#dec-063-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)), en tvOS-D-pad-navigatie binnen het systeemtoetsenbord (niet simuleerbaar, zie CONTRIBUTING.md). Geen nieuwe featurescope geopend; een volgende sessie die verder wil dan Core 1.0 begint bij een expliciet nieuw besluit, niet bij het stilzwijgend heropenen van Fase 1 t/m 15.
 
 
-## DEC-092: fase 1 levert de iPhone-Home als eigen scherm, met de gedeelde tabbalk als open grens
+## DEC-092: fase 1 levert de iPhone-Home als eigen scherm, en de iPad houdt zijn bestaande presentatie
 
 **Date:** 2026-09-03
 **Status:** accepted
@@ -752,9 +752,15 @@ Drie afwijkingen van het plan, alle drie bewust:
 3. De bottom bar is gedeeld met de iPad. Het plan noteert dat zelf (regel 61: een iPad krijgt
    dezelfde vijf slots als een iPhone) en schrijft de restyle in stap 9 toch ongescoped voor, terwijl
    het regressiepunt 8a een gelijk iPad-Home-screenshot vóór en na eist. Die twee kunnen niet allebei
-   waar zijn. De restyle is uitgevoerd zoals stap 9 hem beschrijft, dus de iPad ziet dezelfde nieuwe
-   bar. Dat is de open grens van dit besluit en geen stille keuze: wil Michel de iPad op de oude
-   bar houden, dan is dat een presentatiegrens op de bar die alsnog getrokken moet worden.
+   waar zijn. Het is opgelost in het voordeel van punt 8a: **fase 1 was een iPhone-fase, dus de iPad
+   houdt de bar die hij vóór fase 1 had.** `TabBarPresentation` in `navigation_tabs.dart` heeft twee
+   waarden, `classic` en `unified2026`, en die kiezen alleen verf: dezelfde tabset, dezelfde
+   bestemmingen, dezelfde callbacks. De keuze valt op één plek, in `_buildBottomNavigationBar`, uit
+   één `PlatformDetector.isPhone`-aanroep, en reist als waarde mee naar `toDestination`. Dat is
+   dezelfde vorm als de Home-grens in `discover_screen.dart`: geen platformcheck in de tabitems, geen
+   tweede navigatielogica, en geen iPad-herontwerp. De haptiek bij een tabwissel hangt aan dezelfde
+   waarde, zodat de iPad zich ook in gedrag gedraagt zoals vóór fase 1. Of de iPad de nieuwe bar
+   alsnog overneemt, is een besluit voor de fase die een eigen iPad-authority heeft.
 
 **Consequences:** De twee open Home-details uit DEC-090 paragraaf 10 blijven open. `mobile_hero_actions.dart`
 en `mobile_hero_indicator.dart` bevatten daarvoor een naam en een tijdelijke standaard, expliciet
@@ -763,6 +769,36 @@ gedocumenteerd als plaatshouder en niet als besluit: `HeroSecondaryAction.moreIn
 is ongewijzigd; er is geen bestemming verplaatst of verwijderd. `ios.home.northstar` observeert de
 Home met productcontracten en zonder verify-only gedrag. Fase 2 begint bij een eigen plan, niet bij
 het uitbreiden van dit scherm.
+
+Twee dingen zijn bij het sluiten van fase 1 gemeten in plaats van beredeneerd. Het eerste is de
+iPad: `discover.hero.layout` is met dezelfde gepinde SDK, hetzelfde iPad-toestel, dezelfde fixture,
+dezelfde route en dezelfde captureprocedure gedraaid op `2ec6ba4` en op de fase-1-tip, allebei PASS,
+en van de 4.036.560 pixels verschillen er 1635, allemaal binnen een vak van 155 bij 26 pixels
+linksboven: de klok in de statusbalk. De iPad-driver komt uit `PLEYA_VERIFY_IOS_UDID`, die de
+ios-sim-driver al kende.
+
+Het tweede is wat fase 1 *niet* end-to-end kan bewijzen. Het productpad is er, en het is op
+code- en widgetniveau gedekt (`mobile_activation_test.dart`, `mobile_source_picker_sheet_test.dart`);
+wat ontbreekt is de Verify-infrastructuur om het in één scenario te rijden. De juiste status is
+daarom *productpad geïmplementeerd, gedekt op widgetniveau, volledige Verify-E2E geblokkeerd door
+ontbrekende multi-backend-fixtureinfrastructuur*, en niet "ongetest".
+
+Die blokkade is drieledig, en alle drie de delen zijn nodig. Wie er één bouwt, heeft nog niets:
+
+1. **Een poolable-backendfixture (Plex of Jellyfin).** De huidige fixtureserver spreekt het
+   Pleya-Server-protocol, en `_neverMergedBackends` in `grouping_service.dart` sluit
+   `MediaBackend.pleyaServer` uit van elke samenvoeging. Dat is een **productcontract** zolang de
+   external-id-ondersteuning van Pleya Server (PS-7) niet bestaat, geen technische hobbel die een
+   scenario mag omzeilen: een fixture die toch laat mergen bewijst iets wat het product niet doet.
+2. **Meer dan één fixtureserver per scenario.** `run_scenario.dart` start er precies één en kent één
+   `{{fixture}}`-placeholder. Twee bronnen vragen twee servers met elk een eigen `base_url` en
+   `server_id`.
+3. **Een scenarioverb voor `connectionsSeed`.** `verify_client.dart` heeft de aanroep al en
+   `/v1/connections/seed` staat al in de protocol-allowlist, maar geen enkele verb in
+   `run_scenario.dart` roept hem aan, dus een scenario kan die tweede server niet registreren.
+
+Dat is werk voor een eigen Verify-infrastructuurfase, of voor de productfase die deze E2E-poort
+werkelijk nodig heeft. Het is geen openstaand fase-1-defect.
 
 ## DEC-091: de mobiele hero-presentatie heet mobileFeatured, en de chip-ambiguïteit is opgelost
 

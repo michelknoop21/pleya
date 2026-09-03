@@ -1743,21 +1743,34 @@ class _MainScreenState extends State<MainScreen>
       barTabs: tabs.map((tab) => tab.id).toList(),
     );
     final selectedIndex = tabs.indexWhere((tab) => tab.id == projected);
-    final navigationBar = NavigationBarTheme(
-      data: mobileTabBarTheme(NavigationBarTheme.of(context)),
-      child: NavigationBar(
-        selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
-        onDestinationSelected: (i) {
-          if (i < 0 || i >= tabs.length) return;
-          if (tabs[i].id != _currentTab) Haptics.light();
-          _selectTab(tabs[i].id);
-        },
-        labelBehavior: hideLabels
-            ? NavigationDestinationLabelBehavior.alwaysHide
-            : NavigationDestinationLabelBehavior.alwaysShow,
-        destinations: tabs.map((tab) => _withNavTabAutomation(tab)).toList(),
-      ),
+
+    // The one place the bar's presentation is decided, the same shape as the
+    // Home boundary in `discover_screen.dart`: one `PlatformDetector` call
+    // here, an explicit value passed down, and no platform check inside the
+    // destinations. Fase 1 was an iPhone phase and this bar is shared with the
+    // iPad, so the iPad keeps the presentation it had before fase 1 (DEC-092).
+    final presentation = PlatformDetector.isPhone(context)
+        ? TabBarPresentation.unified2026
+        : TabBarPresentation.classic;
+    final isUnified = presentation == TabBarPresentation.unified2026;
+
+    final bar = NavigationBar(
+      selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
+      onDestinationSelected: (i) {
+        if (i < 0 || i >= tabs.length) return;
+        // Part of the fase-1 presentation, so it stays on the phone side: the
+        // iPad's bar behaves exactly as it did before fase 1.
+        if (isUnified && tabs[i].id != _currentTab) Haptics.light();
+        _selectTab(tabs[i].id);
+      },
+      labelBehavior: hideLabels
+          ? NavigationDestinationLabelBehavior.alwaysHide
+          : NavigationDestinationLabelBehavior.alwaysShow,
+      destinations: tabs.map((tab) => _withNavTabAutomation(tab, presentation)).toList(),
     );
+    final navigationBar = isUnified
+        ? NavigationBarTheme(data: mobileTabBarTheme(NavigationBarTheme.of(context)), child: bar)
+        : bar;
 
     // Netflix mobile: frosted near-black bar. Blur the content scrolling
     // behind it; the translucent color comes from navigationBarTheme.
@@ -1784,8 +1797,21 @@ class _MainScreenState extends State<MainScreen>
             return Stack(
               children: [
                 navigationBar,
-                // The red 18×3 indicator above the active slot is gone: the
-                // active slot itself is red now (fase 1 stap 9).
+                // The classic bar's solid red indicator above the active icon.
+                // The unified bar has none: there the active slot itself is
+                // red (fase 1 stap 9).
+                if (!isUnified && selectedIndex >= 0)
+                  Positioned(
+                    left: itemLeft(selectedIndex) + (itemWidth - 18) / 2,
+                    top: 0,
+                    width: 18,
+                    height: 3,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(color: kAccent, borderRadius: BorderRadius.circular(2)),
+                      ),
+                    ),
+                  ),
                 if (librariesIndex >= 0)
                   Positioned(
                     left: itemLeft(librariesIndex),
@@ -1814,8 +1840,8 @@ class _MainScreenState extends State<MainScreen>
   /// resolves on both the mobile bar and the desktop/TV rail
   /// ([SideNavigationRail] mounts the same id) — iOS Unified 2026 fase 1,
   /// `docs/ios-unified-2026-fase1-plan.md` stap 3.
-  NavigationDestination _withNavTabAutomation(NavigationTab tab) {
-    final destination = tab.toDestination();
+  NavigationDestination _withNavTabAutomation(NavigationTab tab, TabBarPresentation presentation) {
+    final destination = tab.toDestination(presentation: presentation);
     final id = AutomationIds.navTab(tab.id);
     Widget wrap(Widget icon) => AutomationNode(id: id, role: 'nav.item', child: icon);
     return NavigationDestination(

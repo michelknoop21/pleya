@@ -82,7 +82,7 @@ void main() {
     ).firstWhere((tab) => tab.id == NavigationTabId.myPleya);
 
     Future<void> pumpDestination(WidgetTester tester, _FakeActiveProfile provider) async {
-      final destination = myPleyaTab().toDestination();
+      final destination = myPleyaTab().toDestination(presentation: TabBarPresentation.unified2026);
       await tester.pumpWidget(
         ChangeNotifierProvider<ActiveProfileProvider>.value(
           value: provider,
@@ -95,7 +95,7 @@ void main() {
     }
 
     test('the slot keeps a separate selected state, so an avatar is still a tab', () {
-      final destination = myPleyaTab().toDestination();
+      final destination = myPleyaTab().toDestination(presentation: TabBarPresentation.unified2026);
 
       expect(destination.selectedIcon, isNotNull);
       expect(destination.icon, isA<MyPleyaTabIcon>());

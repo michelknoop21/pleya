@@ -44,7 +44,9 @@ void main() {
                 child: NavigationBar(
                   selectedIndex: selected,
                   onDestinationSelected: (i) => setState(() => selected = i),
-                  destinations: tabs.map((tab) => tab.toDestination()).toList(),
+                  destinations: tabs
+                      .map((tab) => tab.toDestination(presentation: TabBarPresentation.unified2026))
+                      .toList(),
                 ),
               ),
             ),
@@ -82,7 +84,9 @@ void main() {
           child: Scaffold(
             bottomNavigationBar: NavigationBar(
               selectedIndex: 0,
-              destinations: _phoneTabs().map((tab) => tab.toDestination()).toList(),
+              destinations: _phoneTabs()
+                  .map((tab) => tab.toDestination(presentation: TabBarPresentation.unified2026))
+                  .toList(),
             ),
           ),
         ),
@@ -90,11 +94,45 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final dots = find.byWidgetPredicate((w) {
-      if (w is! Container) return false;
-      final constraints = w.constraints;
-      return constraints != null && constraints.maxWidth == 5 && constraints.maxHeight == 5;
-    });
-    expect(dots, findsNothing);
+    expect(_dots(), findsNothing);
+  });
+
+  testWidgets('the classic presentation is byte-for-byte the pre-fase-1 bar', (tester) async {
+    // The iPad keeps this one. Fase 1 was an iPhone phase, so everything the
+    // restyle changed has to be absent here: the brand dot is still reserved
+    // above every glyph, no glyph is tinted, and the selected label keeps the
+    // theme's own colour rather than kAccent (DEC-092).
+    final tabs = _phoneTabs();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: monoTheme(dark: true),
+        home: Provider<ActiveProfileProvider?>.value(
+          value: null,
+          child: Scaffold(
+            bottomNavigationBar: NavigationBar(
+              selectedIndex: 0,
+              destinations: tabs.map((tab) => tab.toDestination(presentation: TabBarPresentation.classic)).toList(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(_dots(), findsNWidgets(tabs.length), reason: 'one reserved dot slot per destination');
+    expect(
+      tester.widgetList<NavGlyph>(find.byType(NavGlyph)).where((g) => g.color != null),
+      isEmpty,
+      reason: 'no glyph is tinted in the classic bar',
+    );
+    final selectedLabel = tester.widget<Text>(find.text(tabs.first.getLabel())).style?.color;
+    expect(selectedLabel, isNot(kAccent));
   });
 }
+
+/// The 5×5 brand-dot `Container` the classic bar reserves above every glyph.
+Finder _dots() => find.byWidgetPredicate((w) {
+  if (w is! Container) return false;
+  final constraints = w.constraints;
+  return constraints != null && constraints.maxWidth == 5 && constraints.maxHeight == 5;
+});

@@ -18,8 +18,14 @@ schrijfautoriteit.
 
 De bottom bar is gerestyled zoals stap 9 van het plan hem beschrijft: geen merkstip meer boven de
 glyph, geen rode 18×3-indicator, het actieve slot in rood, en een rode ring om de avatar van Mijn
-Pleya. De tabset is niet aangeraakt. Die bar is gedeeld met de iPad, dus de iPad ziet de nieuwe stijl
-ook; dat punt staat als open grens in DEC-092.
+Pleya. De tabset is niet aangeraakt. Die bar is gedeeld met de iPad, en omdat fase 1 een
+iPhone-fase is houdt de iPad de bar die hij had: `TabBarPresentation` kiest alleen verf, de keuze
+valt op één plek in `main_screen.dart` en reist als waarde mee, net als de Home-grens (DEC-092).
+
+De stand van de poorten, zonder afronding naar boven: analyzer 0 errors en 0 warnings op de bekende
+40 info-lints, testsuite groen op de twee gedocumenteerde `backend_badge`-goldens na, beide
+iOS-simulatorscenario's PASS, en `scripts/ci_checks.sh` **rood** op 10 unused-code- en
+7 unused-files-meldingen die alle zeventien uit F0 komen en die deze fase niet aanraakt.
 
 Zesentachtig nieuwe tests, `ios.home.northstar` als Verify-scenario, en DEC-091 en DEC-092 leggen de
 besluiten en de drie afwijkingen van het plan vast. De twee open Home-details uit DEC-090 (de

@@ -9,26 +9,71 @@ import '../profiles/profile_avatar.dart';
 import '../theme/mono_theme.dart';
 import '../utils/platform_detector.dart';
 
-/// Bottom-nav icon. The active slot is drawn in [kAccent], glyph and label
-/// alike; there is no brand dot above it any more, so every glyph sits on the
-/// same baseline and the bar keeps the height Material gives it. iOS Unified
-/// 2026 fase 1, `docs/ios-unified-2026-fase1-plan.md` stap 9. The selected
-/// label colour is a `NavigationBarTheme` override at the bar itself
-/// (`main_screen.dart`), since the label is Material's, not this widget's.
+/// How a bottom bar paints itself. The tabset, the destinations and every
+/// callback are identical in both: this decides paint, nothing else.
+///
+/// The boundary exists because fase 1 was an iPhone phase and the bottom bar
+/// is one widget shared with the iPad. Same shape as the Home boundary in
+/// `discover_screen.dart`: one `PlatformDetector` call at the shell, an
+/// explicit value passed down, and no platform check anywhere inside the
+/// destinations. [DEC-092] records the decision; fase 2 is where an iPad
+/// authority decides whether the iPad follows.
+enum TabBarPresentation {
+  /// The bar as it stood before iOS Unified 2026 fase 1: a red-to-amber brand
+  /// dot above the active glyph, white label, and a red 18x3 indicator drawn
+  /// over the top edge by the shell. iPad and every other non-phone shell.
+  classic,
+
+  /// The fase-1 bar: no dot, no indicator, and the active slot in [kAccent],
+  /// glyph and label alike. iPhone only.
+  unified2026,
+}
+
+/// Bottom-nav icon in the presentation the shell asked for.
+///
+/// In [TabBarPresentation.classic] the dot slot is always reserved so selected
+/// and unselected icons stay vertically aligned. In
+/// [TabBarPresentation.unified2026] there is no dot, every glyph sits on the
+/// same baseline, and the active one is drawn in [kAccent]; the matching label
+/// colour is a `NavigationBarTheme` override at the bar itself
+/// (`mobileTabBarTheme` in `main_screen.dart`), since the label is Material's,
+/// not this widget's. iOS Unified 2026 fase 1,
+/// `docs/ios-unified-2026-fase1-plan.md` stap 9.
 class _TabIcon extends StatelessWidget {
   final IconData icon;
   final String? svgAsset;
   final bool selected;
+  final TabBarPresentation presentation;
 
   /// Replaces the glyph without touching the slot around it. My Pleya uses it
   /// to show the active profile's avatar.
   final Widget? glyph;
 
-  const _TabIcon({required this.icon, this.svgAsset, required this.selected, this.glyph});
+  const _TabIcon({required this.icon, this.svgAsset, required this.selected, required this.presentation, this.glyph});
 
   @override
   Widget build(BuildContext context) {
-    return glyph ?? NavGlyph(svgAsset: svgAsset, icon: icon, size: 24, color: selected ? kAccent : null);
+    if (presentation == TabBarPresentation.unified2026) {
+      return glyph ?? NavGlyph(svgAsset: svgAsset, icon: icon, size: 24, color: selected ? kAccent : null);
+    }
+    return Column(
+      mainAxisSize: .min,
+      children: [
+        Container(
+          width: 5,
+          height: 5,
+          margin: const EdgeInsets.only(bottom: 3),
+          decoration: selected
+              ? BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(colors: [kAccent, kAccentAlt]),
+                  boxShadow: [BoxShadow(color: kAccent.withValues(alpha: 0.9), blurRadius: 8)],
+                )
+              : null,
+        ),
+        glyph ?? NavGlyph(svgAsset: svgAsset, icon: icon, size: 24),
+      ],
+    );
   }
 }
 
@@ -46,12 +91,15 @@ class _TabIcon extends StatelessWidget {
 /// pixels of noise, and the lock still shows everywhere the profile is
 /// actually chosen.
 ///
-/// Selection is a 2 pt [kAccent] ring around the avatar rather than a tint:
-/// an avatar is a photo, so recolouring it is not available the way it is for
-/// the other four glyphs (fase 1 stap 9). The outer size stays 24 either way,
-/// so the slot does not shift when the tab is selected.
+/// In [TabBarPresentation.unified2026] selection is a 2 pt [kAccent] ring
+/// around the avatar rather than a tint: an avatar is a photo, so recolouring
+/// it is not available the way it is for the other four glyphs (fase 1 stap
+/// 9). The outer size stays 24 either way, so the slot does not shift when the
+/// tab is selected. In [TabBarPresentation.classic] the avatar is drawn plain
+/// and the dot above it carries the selection, exactly as before fase 1.
 class MyPleyaTabIcon extends StatelessWidget {
   final bool selected;
+  final TabBarPresentation presentation;
 
   /// Outer glyph size, matching the other four bottom-bar slots.
   static const double _size = 24;
@@ -59,21 +107,23 @@ class MyPleyaTabIcon extends StatelessWidget {
   /// Ring thickness, taken off the avatar rather than added around it.
   static const double _ringWidth = 2;
 
-  const MyPleyaTabIcon({super.key, required this.selected});
+  const MyPleyaTabIcon({super.key, required this.selected, required this.presentation});
 
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<ActiveProfileProvider?>()?.active;
     if (profile == null) {
-      return _TabIcon(icon: Symbols.account_circle_rounded, selected: selected);
+      return _TabIcon(icon: Symbols.account_circle_rounded, selected: selected, presentation: presentation);
     }
+    final ringed = selected && presentation == TabBarPresentation.unified2026;
     final avatar = ExcludeSemantics(
-      child: ProfileAvatar(profile: profile, size: selected ? _size - 2 * _ringWidth : _size, showLockBadge: false),
+      child: ProfileAvatar(profile: profile, size: ringed ? _size - 2 * _ringWidth : _size, showLockBadge: false),
     );
     return _TabIcon(
       icon: Symbols.account_circle_rounded,
       selected: selected,
-      glyph: selected
+      presentation: presentation,
+      glyph: ringed
           ? Container(
               width: _size,
               height: _size,
@@ -138,20 +188,20 @@ class NavigationTab {
     required this.getLabel,
   });
 
-  NavigationDestination toDestination() {
+  NavigationDestination toDestination({required TabBarPresentation presentation}) {
     // My Pleya is the one slot whose icon is state, not a constant: it shows
     // whoever is signed in. Resolved here rather than at the call site so
     // every bar that renders this tab gets the same treatment.
     if (id == NavigationTabId.myPleya) {
       return NavigationDestination(
-        icon: const MyPleyaTabIcon(selected: false),
-        selectedIcon: const MyPleyaTabIcon(selected: true),
+        icon: MyPleyaTabIcon(selected: false, presentation: presentation),
+        selectedIcon: MyPleyaTabIcon(selected: true, presentation: presentation),
         label: getLabel(),
       );
     }
     return NavigationDestination(
-      icon: _TabIcon(icon: icon, svgAsset: svgAsset, selected: false),
-      selectedIcon: _TabIcon(icon: icon, svgAsset: svgAsset, selected: true),
+      icon: _TabIcon(icon: icon, svgAsset: svgAsset, selected: false, presentation: presentation),
+      selectedIcon: _TabIcon(icon: icon, svgAsset: svgAsset, selected: true, presentation: presentation),
       label: getLabel(),
     );
   }

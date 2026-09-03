@@ -100,6 +100,14 @@ goedgekeurd (`cmp` op elk bestand, 3 september 2026):
 | `serie-detail-comp.png` | `95f341df1aee7d9e` | Serie-detail |
 | `mijn-pleya-comp.png` | `bb12bb4c71197c2b` | Mijn Pleya |
 
+Bij het sluiten van fase 1 is die gelijkheid opnieuw gecontroleerd, niet met `cmp` maar met een
+manifest dat iedereen kan naspelen: `docs/assets/ios-unified/northstar/SHA256SUMS` bevat de SHA-256
+van alle 26 beelden in de map, te controleren met `shasum -a 256 -c SHA256SUMS` vanuit die map. De
+vijf comps kwamen daarbij één op één uit op de bestanden in `~/Downloads/mobile-netflix`, waarvan de
+namen UUID's zijn: `f2881598…` is `home-comp.png`, `df49951c…` is `home-comp-gefilterd.png`,
+`761bba60…` is `serie-detail-comp.png`, `e97565b8…` is `profiel-laden-comp.png` en `706dd620…` is
+`mijn-pleya-comp.png`. Het manifest is vanaf nu de controle; de map buiten de repository is dat niet.
+
 Ze dragen een naam en geen nummer, want de goedgekeurde set is en blijft de 21 genummerde beelden
 `01-series-landing` tot en met `21-activiteit`. De rangorde uit paragraaf 9 verandert niet: waar een
 comp en een mockup elkaar raken wint de mockup. Voor Serie-detail en Mijn Pleya zijn dat mockup 07 en
