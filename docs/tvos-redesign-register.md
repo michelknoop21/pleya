@@ -24,9 +24,9 @@ een andere volgorde afdwingt.
 | SYS-1a | Routecontract: een TV-contentroute opent in de shell in plaats van erboven | PB-1 | DONE | `5cafc10`, DEC-091 |
 | SYS-1b | Detail, collectie en persoon over dat contract | PB-1 | OPEN | |
 | SYS-1c | Geneste routes krijgen de contentbox als `MediaQuery`, nodig voor de detailgeometrie | PB-1 | OPEN | |
-| SYS-2 | BACK1, geen zichtbare onbereikbare terugknop op TV | PB-2 | OPEN | |
-| SYS-3 | TV-overlay- en sheetgeometrie, OVR1-diagnose vóór elke breedte | PB-5 | OPEN | |
-| SYS-4 | Gedeelde staat- en lege-presentatie schaalt op TV | audit | OPEN | |
+| SYS-2 | BACK1, geen zichtbare onbereikbare terugknop op TV | PB-2 | OPEN, geauditeerd | zie onder |
+| SYS-3 | TV-overlay- en sheetgeometrie, OVR1-diagnose vóór elke breedte | PB-5 | OPEN, oorzaak gevonden | zie onder |
+| SYS-4 | Gedeelde staat- en lege-presentatie schaalt op TV | audit | OPEN, geauditeerd | zie onder |
 | SYS-5 | i18n-gaten en hardcoded strings | audit | OPEN | |
 | SYS-6 | Tokenafwijkingen per stuk beoordeeld, met regressiebeelden | tokenaudit | OPEN | |
 | SYS-7 | Automation-ids en Pleya Verify-journeys per heringericht oppervlak | werkwijze | OPEN | |
@@ -92,6 +92,73 @@ Bewijs: `5cafc10`, met `test/screens/tv/tv_content_route_test.dart`, negen tests
 controle en legt het oude gedrag vast: een volledig-venster push dekt de balk af, en na die push
 is niets in de balk nog bereikbaar. De tweede en derde tonen dezelfde subpagina via het nieuwe
 contract, met de balk bereikbaar en de bestemmingsroot eronder blijvend gemonteerd.
+
+## SYS-2, wat de audit vond
+
+`AppBarBackButton` is een `GestureDetector` zonder focusnode, en er is nergens een focusbare
+terugknop op TV. Vier aanroepplekken, waarvan drie op TV tekenen: de TV-tak van de detailpagina
+(`media_detail_screen.dart:3833`), de spelerkop (`video_controls_header.dart:46`, want TV neemt
+bewust het desktop-pad in `video_controls.dart:800`), en de impliciete leading van `CustomAppBar`
+(`desktop_app_bar.dart:55` en `:190`), die op geen enkele platformcontrole let. Die laatste zet de
+knop op elke gepushte route met `automaticallyImplyLeading`, dus ook op persoon, collectie,
+hub-detail, logs, afspeellijst en Nu aan het kijken.
+
+Terug op TV is volledig toetsgedreven: `key_event_utils.dart:58-90` met een eigen tak voor Apple
+TV, en de TV-oppervlakken geven `onBack`-callbacks door in plaats van een widget. Android TV
+levert zijn hardware-BACK langs hetzelfde pad, dus daar verandert weghalen niets aan.
+
+Er is geen enkele test die `AppBarBackButton` of `CustomAppBar` aanraakt. Wie hem weghaalt, moet
+de test er dus zelf bij schrijven; de suite houdt hem nu niet tegen en zou een regressie niet zien.
+
+## SYS-3, de OVR1-oorzaak
+
+Er zijn vier eigenaren van "hoe groot is een TV-overlay", en twee daarvan spreken elkaar tegen op
+een manier die het gemelde gedrag verklaart.
+
+De doosmaat komt uit `_tvPanelGeometry` (`overlay_sheet_geometry.dart:234-267`) en is een fractie
+van de viewport: breedte 1000/1920, hoogte maximaal 0,84. De inhoud van datzelfde paneel
+vermenigvuldigt zijn referentiematen met `TvLayoutConstants.scaleForHeight`
+(`layout_constants.dart:77`), en die is geklemd op `[0.85, 1.35]`.
+
+Op tvOS herschrijft `_AppleTvScale` (`main.dart:1007-1046`) de `MediaQuery` naar schaal 1,85, dus
+het logische canvas is ongeveer 1038 bij 584. De doos rekent daar correct mee. De inhoud niet:
+584/1080 is 0,54, en de klem tilt dat naar 0,85. De inhoud wordt dus ongeveer anderhalf keer
+groter opgemaakt dan de doos waar hij in moet. Dat is precies "valt buiten beeld en voelt te
+groot", en het is onzichtbaar op elk oppervlak waar de hoogte 1080 haalt, dus ook in de goldens.
+De ondergrens van die klem is de systemische fout, niet de breedte van een paneel.
+
+Daarnaast is er een tweede TV-regel in dezelfde host. `_sheetGeometry` (`:299-300`) geeft op TV
+onvoorwaardelijk 400 bij 400, onderaan verankerd. Dat is de 400x400 uit de audit, en hij wordt
+bereikt door alles wat de standaard `presentation: sheet` laat staan. `MediaContextMenu` komt daar
+terecht via `media_context_menu.dart:239`, waar `Platform.isIOS` op tvOS waar is en er geen
+`PlatformDetector.isTV()`-controle naast staat. Elf sheets lopen langs dezelfde helper zonder
+`presentation:` mee te geven, waaronder de beoordelingssheet, de kijklijst-item-sheet, de
+sorteersheet en drie Live TV-sheets. Negen andere oppervlakken kiezen wel expliciet `panel` en
+krijgen daarom de goede geometrie. Een test pint het verschil vandaag vast als bedoeld gedrag
+(`overlay_sheet_geometry_test.dart:209`), dus dat besluit hoort erbij herzien te worden.
+
+`TvPanelTheme` met accent `#F42B1F` staat in `tv_panel_widgets.dart:8-18` en geldt alleen voor het
+infopaneel van de speler. De TV-overlaypanelen halen hun decoratie ergens anders vandaan, uit
+`tv_panel_primitives.dart:32`. "TV-paneel" heeft dus ook twee themaeigenaren.
+
+## SYS-4, wat de audit vond
+
+`StateView` (`state_view.dart`) en `StateMessageWidget` met `EmptyStateWidget`
+(`libraries/state_messages.dart:9-149`) lezen geen viewport, geen platform en geen TV-schaal. De
+maten zijn vast: icoon 48 respectievelijk 64, padding 24, en `titleMedium`, `titleLarge` en
+`bodyMedium` ongeschaald. Op het logische canvas van tvOS landt dat op ongeveer de helft van wat
+tien voet afstand vraagt. De retry-knop is wel focusbaar, dus dit is een maatprobleem en geen
+bereikbaarheidsprobleem.
+
+Ze staan op minstens tien TV-oppervlakken, waaronder de TV-home-feed, Kijklijst, Downloads, de
+vier Seerr-schermen, Zoeken, de afleveringenlijst van detail, en Bibliotheken.
+
+Er bestaat al een goed voorbeeld om naar toe te werken: `_EmptyState` in
+`tv_unified_catalog_screen.dart:800-843` leest `TvLayoutConstants.scaleOf` en de referentiematen
+uit `tv_unified_layout.dart`, en heeft goldens. Hij is alleen privé aan dat ene scherm. Let op dat
+diezelfde klem uit SYS-3 ook onder dit patroon zit, dus SYS-3 gaat er logisch aan vooraf.
+`tv_content_feed.dart:500-512` is een derde, met de hand gemaakte lege staat die de schaal
+helemaal negeert en dus dezelfde fout heeft.
 
 ## Auditbevindingen die werkitem zijn geworden
 

@@ -516,3 +516,56 @@ hoger resolutieplafond, en gewone kaarten houden hun kleinere limieten. De
 globale wissel van `topCenter` naar `center` is afgewezen omdat één vaste
 uitlijning niet alle onderwerpsposities oplost. Alleen heropenen bij een nieuw
 concreet geval van hardware.
+
+### OVR1, de oorzaak is een klem en niet een breedte
+
+Gediagnosticeerd op 3 september 2026, zonder productiecode te wijzigen.
+
+De doos van een TV-paneel komt uit `_tvPanelGeometry`
+(`lib/widgets/overlay_sheet_geometry.dart:234-267`) en is een fractie van de
+viewport. De inhoud van datzelfde paneel schaalt met
+`TvLayoutConstants.scaleForHeight` (`lib/utils/layout_constants.dart:77`), die
+geklemd is op `[0.85, 1.35]`.
+
+Op tvOS herschrijft `_AppleTvScale` (`lib/main.dart:1007-1046`) de `MediaQuery`
+naar schaal 1,85, dus het logische canvas is ongeveer 1038 bij 584. De doos
+rekent daar goed mee. De inhoud niet: 584 gedeeld door 1080 is 0,54, en de klem
+tilt dat naar 0,85. De inhoud wordt dus ongeveer anderhalf keer groter opgemaakt
+dan de doos waar hij in past. Dat is "valt buiten beeld en voelt te groot", en
+het is per definitie onzichtbaar op elk oppervlak dat 1080 hoog is, dus ook in
+de goldens.
+
+De fix hoort bij de ondergrens van die klem, niet bij de breedte van een paneel.
+PB-5 verbiedt expliciet een vaste 760 om dit af te dekken.
+
+Daarnaast staat er een tweede TV-regel in dezelfde host: `_sheetGeometry`
+(`:299-300`) geeft op TV onvoorwaardelijk 400 bij 400. Dat is OVR2. Elf sheets
+komen daar terecht doordat ze `presentation:` niet meegeven, en
+`MediaContextMenu` bovendien doordat `Platform.isIOS` op tvOS waar is
+(`lib/widgets/media_context_menu.dart:239`) zonder een `PlatformDetector.isTV()`
+ernaast. Negen andere oppervlakken kiezen wel `panel` en zijn in orde.
+`test/widgets/overlay_sheet_geometry_test.dart:209` legt het verschil vandaag
+vast als bedoeld gedrag, dus dat besluit hoort mee herzien te worden.
+
+### BACK1, wat er staat en wat er niet is
+
+`AppBarBackButton` is een `GestureDetector` zonder focusnode
+(`lib/widgets/app_bar_back_button.dart:126-146`). Er is nergens in de app een
+focusbare terugknop op TV; terug is volledig toetsgedreven via
+`lib/focus/key_event_utils.dart:58-90`, met een eigen tak voor Apple TV, en de
+TV-oppervlakken geven `onBack`-callbacks door in plaats van een widget.
+
+Drie van de vier aanroepplekken tekenen op TV. De TV-tak van de detailpagina
+(`lib/screens/media_detail_screen.dart:3833`), de spelerkop
+(`lib/widgets/video_controls/widgets/video_controls_header.dart:46`, want TV
+neemt bewust het desktop-pad in `video_controls.dart:800`), en de impliciete
+leading van `CustomAppBar` (`lib/widgets/desktop_app_bar.dart:55` en `:190`),
+die op geen enkele platformcontrole let en de knop dus op elke gepushte route
+met `automaticallyImplyLeading` zet.
+
+Android TV levert zijn hardware-BACK langs hetzelfde toetspad, dus daar
+verandert weghalen niets aan.
+
+Geen enkele test raakt `AppBarBackButton` of `CustomAppBar` aan. De suite houdt
+een regressie hier vandaag dus niet tegen, en wie dit oplost schrijft die test
+er zelf bij.
