@@ -76,7 +76,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | OVR1b | TV-sheets zonder expliciete `presentation` vallen terug op de 400x400-geometrie | FIXED | `96f2d45` |
 | OVR2 | Expliciete TV sheet-presentation wordt door de OVR1b-panelgeometrie overschreven | FIXED | `cf4b6c7` |
 | BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | FIXED, hardware open | `f00e2fe` |
-| FOC1 | Focusring valt buiten de viewport in overlays | OPEN | n.v.t. |
+| FOC1 | Focusring valt buiten de viewport in overlays | FIXED, hardware open | `3b0da2e` |
 | ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | OPEN | n.v.t. |
 | LIB1 | Blanco Bibliotheken-pagina als de selectie verdwijnt | OPEN | n.v.t. |
 | LIB2 | Race bij snel wisselen van bibliotheek | OPEN | n.v.t. |
@@ -1231,6 +1231,65 @@ het niet leveren: het enige scenario dat de detailpagina bereikt is
 `media-detail.episode-refresh`, en dat faalt op een stap ervóór. Een
 controlerun op `88d9868` faalt identiek, met dezelfde focus-trace, dus dat is
 geen gevolg van deze wijziging. Het staat als VER5 in de tabel.
+
+### FOC1, geometrie en niet clipping
+
+Een focusring die buiten beeld valt heeft twee mogelijke oorzaken die op een
+foto niet uit elkaar te houden zijn. Of de ring wordt op een plek getekend die
+het toestel niet toont, of hij wordt wel op een zichtbare plek getekend maar
+door een voorouder weggeknipt. De fixes zijn tegengesteld, en clippen maakt het
+symptoom onzichtbaar zonder het probleem te raken. Deze bevinding had geen
+vooronderzoek in dit document, dus is eerst gemeten welke van de twee het is.
+
+**Wat er gemeten is.** Een wegwerpprobe zette elk TV-overlay op het
+tvOS-canvas van 1038 bij 584 neer, gaf elke focusbare knoop om de beurt focus,
+en vergeleek drie rechthoeken: de layoutbox, de werkelijk getekende box (de
+`Transform.scale` van `FocusableWrapper` geldt voor het kind van de transform
+en niet voor de transform zelf, dus meten op de transform geeft altijd
+schaal 1) en de rect van elke knippende voorouder in de keten naar de root.
+
+Het sorteerpaneel en alle vijf de secties van het filterpaneel kwamen er schoon
+uit. De rijen daar zetten `disableScale` en tekenen hun rand naar binnen, dus
+getekend en layout vallen samen, en de scrollviewport knipt exact op de
+rijgrens. Het contextmenu niet. Op een tegel rechtsonder liep de onderste regel
+tot 555 van de 584, op een tegel linksboven begon de bovenste op 8, en in geen
+van beide gevallen knipte er iets: geen enkele voorouder rapporteerde overlap.
+De regel wordt dus volledig getekend, alleen in de band die een televisie niet
+laat zien. Geometrie.
+
+**Root cause.** `_AppMenuPopupState` in `lib/widgets/app_menu.dart` klemt zijn
+positie met `const edgePadding = 8.0` tegen de kale schermrechthoek, op elk
+platform. Acht pixels is op een telefoon de bedoeling. Op een televisie ligt
+dat ruim binnen de titel-veilige marge die de rest van de TV-UI wel aanhoudt:
+48 opzij, 56 boven en 81 onder, maal de TV-schaal. Alle vier de klemmingen in
+`_resolvePosition` deelden dezelfde fout en dezelfde vorm.
+
+**Eigenaar** is `showAppMenu`, niet de aanroeper. Het contextmenu op een
+tegel, de knop in de folder-boom en de twee menu's in de tv-gids gaan alle vier
+door deze ene positielogica heen, en drie ervan zijn op TV te openen.
+
+**De fix** vervangt de scalaire marge door een `EdgeInsets` die op TV uit
+dezelfde constanten komt als de titel-veilige rechthoek die
+`TvDiscoverySafeArea` meetbaar maakt, en buiten TV acht pixels blijft. De vier
+klemmingen staan nu in één helper die de ondergrens laat winnen wanneer het
+menu niet tussen beide marges past, want klemmen op een ondergrens boven de
+bovengrens is in Dart een assertie.
+
+**Bewijs.** `test/widgets/app_menu_tv_safe_area_test.dart` opent het menu op
+drie schermhoeken op 1920 bij 1080 en eist dat elke regel binnen de
+titel-veilige rechthoek valt, met een vierde test die vastlegt dat een telefoon
+op acht pixels blijft klemmen. De drie TV-tests stonden op de oude
+implementatie rood, met rijen op x=14, x=1906 en y=936 tegen een veilige zone
+van 48 tot 1872 en 56 tot 999; de mobiele test was toen al groen en is dat
+gebleven. `test/widgets` en `test/goldens` gingen van 802 geslaagd en 86
+gefaald naar 805 en 83: precies deze drie, verder niets. De 83 die overblijven
+zijn niet van deze wijziging. Vijf zitten in `tv_discovery_rail_test.dart` en
+falen identiek met en zonder de fix, de rest is de goldensuite, die op macOS
+breed rood staat omdat de referenties op Linux gemaakt zijn.
+
+**Wat open blijft.** Er is geen bewijs van een echte Apple TV. De maat die
+telt is of de bovenste en onderste regel van een contextmenu op het toestel
+volledig zichtbaar zijn, inclusief hun focusindicatie, en dat kan alleen daar.
 
 ### VER5, `media-detail.episode-refresh` haalt de detailpagina niet meer
 
