@@ -35,9 +35,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `02a-all-books.png` | Alle boeken, canonieke startstaat | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 | `02b-all-books-scrolled.png` | Scrollbewijs bij `02a`, laatste rij vrij van de tabbalk | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 | `02c-all-books-controls.png` | Detail: de pill-rij in rust en actief | approved | detailuitsnede, 1179×850 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
-| `03a-filters-status.png` | Filtersheet, canonieke openstaat op Status | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
-| `03b-filters-genre.png` | Filtersheet, Genre open met twee klaargezette keuzes | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
-| `03c-filters-controls.png` | Detail: kop, groepsrij en actiebalk in beide staten | proposed | detailuitsnede, 1179×1860 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `03a-filters-status.png` | Filtersheet, canonieke openstaat op Status | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `03b-filters-genre.png` | Filtersheet, Genre open met twee klaargezette keuzes | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `03c-filters-controls.png` | Detail: kop, groepsrij en actiebalk in beide staten | approved | detailuitsnede, 1179×1860 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -153,7 +153,7 @@ ze eruitzien, niet wat erachter zit.
 Net als bij 01b geldt: de tabbalk mag de laatste rij tijdelijk overlappen, nooit permanent.
 `02b` laat zien hoe ver er onderaan doorgescrold moet kunnen worden.
 
-## Golden 03, Filtersheet (proposed)
+## Golden 03, Filtersheet (approved)
 
 Wat er opengaat achter de Filters-pill uit golden 02. Inhoud van paneel 3 van de comp, uitvoering van
 `04-filters-sheet.png` uit de iOS Unified-set. Drie frames, samen één scherm: `03a` de openstaat met
@@ -161,8 +161,7 @@ Status geselecteerd, `03b` dezelfde sheet met Genre open en twee keuzes klaargez
 detailuitsnede van de kop, de groepsrij en de actiebalk, zodat rust en actief naast elkaar te
 beoordelen zijn.
 
-Er mag nog niet gebouwd worden. Deze golden staat op `proposed` tot Michel de zes keuzes hieronder
-expliciet goedkeurt.
+Golden 03 is op 3 september 2026 goedgekeurd, inclusief de zes keuzes hieronder.
 
 De maatvoering is nagemeten op `04-filters-sheet.png` en overgenomen, niet opnieuw bedacht: sheet
 vanaf 252 pt met 13 pt hoekradius, greep 36 × 5 op 260, linkerkolom 131 breed met een scheidingslijn
