@@ -35,6 +35,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `02a-all-books.png` | Alle boeken, canonieke startstaat | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 | `02b-all-books-scrolled.png` | Scrollbewijs bij `02a`, laatste rij vrij van de tabbalk | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 | `02c-all-books-controls.png` | Detail: de pill-rij in rust en actief | approved | detailuitsnede, 1179×850 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `03a-filters-status.png` | Filtersheet, canonieke openstaat op Status | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `03b-filters-genre.png` | Filtersheet, Genre open met twee klaargezette keuzes | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `03c-filters-controls.png` | Detail: kop, groepsrij en actiebalk in beide staten | proposed | detailuitsnede, 1179×1860 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -150,6 +153,61 @@ ze eruitzien, niet wat erachter zit.
 Net als bij 01b geldt: de tabbalk mag de laatste rij tijdelijk overlappen, nooit permanent.
 `02b` laat zien hoe ver er onderaan doorgescrold moet kunnen worden.
 
+## Golden 03, Filtersheet (proposed)
+
+Wat er opengaat achter de Filters-pill uit golden 02. Inhoud van paneel 3 van de comp, uitvoering van
+`04-filters-sheet.png` uit de iOS Unified-set. Drie frames, samen één scherm: `03a` de openstaat met
+Status geselecteerd, `03b` dezelfde sheet met Genre open en twee keuzes klaargezet, `03c` een
+detailuitsnede van de kop, de groepsrij en de actiebalk, zodat rust en actief naast elkaar te
+beoordelen zijn.
+
+Er mag nog niet gebouwd worden. Deze golden staat op `proposed` tot Michel de zes keuzes hieronder
+expliciet goedkeurt.
+
+De maatvoering is nagemeten op `04-filters-sheet.png` en overgenomen, niet opnieuw bedacht: sheet
+vanaf 252 pt met 13 pt hoekradius, greep 36 × 5 op 260, linkerkolom 131 breed met een scheidingslijn
+van 1 pt, groepsrijen op een steek van 43,5, optierijen op 47,5 met een opgetilde pil van 37 hoog,
+actiebalk 97 hoog met de scheidingslijn op 755. De scrim is één zwarte laag van 60 % over het hele
+frame, de statusbalk inbegrepen; dat is af te lezen aan de referentie, waar de `9:41` op 102 van 255
+uitkomt en de paginaachtergrond op 8 van 20.
+
+**De keuzes die goedgekeurd of afgewezen moeten worden.**
+
+- **Twee panelen, geen lijst met doorklikrijen.** De comp zet `Genre  Alles ›` als rij die ergens
+  naartoe duwt, dus een genre kiezen kost een push en een terug per groep. De Unified-set zet de
+  groepen links en hun keuzes rechts, en daar kost het nul paginawissels. De set wint hier voor de
+  uitvoering, zoals bovenaan afgesproken.
+- **Sorteren zit er niet in.** De comp heeft `Sorteren op · Datum toegevoegd` als laatste rij van de
+  sheet. Golden 02 heeft sorteren al een eigen pill gegeven die zijn waarde draagt, en die is
+  goedgekeurd. Eén instelling op twee plekken is geen keuzevrijheid maar een bron van tegenstrijdige
+  staat, dus de sorteerrij vervalt.
+- **De sheet is een klad, `Toepassen` is het enige moment waarop er iets gebeurt.** Daarom staat de
+  Filters-pill achter de sheet in `03b` nog in rust terwijl er binnen al twee keuzes staan, en daarom
+  staat er rechtsboven `2 gekozen` waar de Unified-set `2 actief` schrijft. Het alternatief, meteen
+  filteren bij elke tik, maakt `Toepassen` een knop zonder werk en laat de gebruiker door een
+  telkens verspringende plank kijken.
+- **`Wissen` staat linksonder naast `Toepassen`, niet rechtsboven.** De comp zet hem in de kop. De
+  set zet de twee handelingen bij elkaar onderin en gebruikt de rechterbovenhoek voor de telling.
+  Onderin winnen ze allebei: wissen en toepassen zijn hetzelfde soort handeling en horen op dezelfde
+  regel. Met niets gekozen staat `Wissen` er wel maar inert, op 50 % inkt.
+- **Vijf groepen: Status, Genre, Series, Auteur, Taal.** Precies de lijst van de comp. De Unified-set
+  heeft daarnaast `Servers` en `Bibliotheken`; die staan hier niet, omdat golden 02 geen bronpill
+  heeft en de comp ze niet toont. Moeten boeken per server te begrenzen zijn, dan is dat een zesde
+  groep en een besluit, geen omissie om er stilletjes bij te zetten.
+- **Status is één keuze, de andere vier zijn meerdere.** De comp zet een vinkje bij precies één
+  status. `Alles` is daarbij de neutrale stand en telt niet mee voor de telling, en dat is waarom
+  `03a` geen `1` naast Status zet terwijl er wel een vinkje staat.
+
+Twee dingen die uit een eerder besluit volgen en hier alleen worden uitgevoerd. De actieve groep
+krijgt een witte randbalk plus een opgetilde rij, niet alleen een getinte achtergrond, want in
+`monoTheme` valt zo'n tint samen met het oppervlak eronder ([DEC-053](../../../DECISIONS.md#dec-053)).
+En de negen genres staan alfabetisch, in hetzelfde aantal als de set, zodat de laatste rij vrij van
+de actiebalk blijft.
+
+**Eis aan de implementatie, niet aan de golden.** De rechterkolom scrollt zelfstandig, de
+groepenkolom blijft staan. Een groep met meer keuzes dan er passen mag dus niet de hele sheet laten
+scrollen, want dan verdwijnt de groep waar je in zit uit beeld.
+
 ## Wat er tegen golden 02 gebouwd is
 
 `lib/screens/books/all_books_screen.dart`, bereikbaar via `Alle boeken ›` op Boeken-home. De
@@ -224,6 +282,20 @@ node render.js nav.html ../../00a-mobile-nav-home-books-inactive.png home
 node render.js nav.html ../../00b-mobile-nav-books-active.png books
 python3 compose.py ../../00a-mobile-nav-home-books-inactive.png ../../00b-mobile-nav-books-active.png ../../00-mobile-nav-books.png
 ```
+
+Golden 03 gaat hetzelfde, met één verschil: `03c` is een detailuitsnede, dus de hoogte gaat als
+vierde argument mee.
+
+```
+cd docs/assets/ebooks/northstar/src/03-filters
+export NODE_PATH=/opt/homebrew/lib/node_modules:/opt/homebrew/lib/node_modules/@playwright/test/node_modules
+node render.js filters.html ../../03a-filters-status.png status
+node render.js filters.html ../../03b-filters-genre.png genre
+node render.js filters.html ../../03c-filters-controls.png controls 620
+```
+
+Op 3 september 2026 leverden twee opeenvolgende runs identieke bestanden op (md5 `c8b57185…`,
+`3c6bacaa…` en `39e74866…`).
 
 `render.js` opent Chromium op 393×852 met `deviceScaleFactor: 3` en wacht op `document.fonts.ready`.
 Op 3 september 2026 leverde deze route vanuit de repo-bron byte-identieke PNG's op (md5

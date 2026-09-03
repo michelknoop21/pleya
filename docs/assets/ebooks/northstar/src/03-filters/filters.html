@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pleya golden 03 · Filters</title>
+<style>
+
+/* Fonts: the app's own Inter cuts (assets/fonts) so metrics match. */
+@font-face{font-family:'Inter';font-weight:400;src:url('../../../../../../assets/fonts/Inter-Regular.otf')}
+@font-face{font-family:'Inter';font-weight:500;src:url('../../../../../../assets/fonts/Inter-Medium.otf')}
+@font-face{font-family:'Inter';font-weight:700;src:url('../../../../../../assets/fonts/Inter-Bold.otf')}
+
+/* Tokens from lib/theme/mono_theme.dart (dark, non-OLED) and the DEC-090 audit §2. */
+:root{
+  --accent:#E5140F; --accent-alt:#FFB020;
+  --bg:#141414; --surface:#1F1F1F; --surface-el:#2F2F2F; --outline:rgba(255,255,255,.12);
+  --ink:#fff; --ink-78:rgba(255,255,255,.78); --ink-70:rgba(255,255,255,.70); --ink-62:rgba(255,255,255,.62); --ink-50:rgba(255,255,255,.5);
+  --bar:#101010;
+  --r-sm:8px; --r-md:12px; --r-card:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:393px;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+html,body{overflow:hidden}
+.screen{position:relative;width:393px;height:852px;overflow:hidden;background:var(--bg)}
+.screen[hidden]{display:none}
+
+/* iOS status bar + Dynamic Island, as in the northstar frames. */
+.status{position:absolute;left:0;right:0;top:0;height:54px;z-index:20;pointer-events:none}
+.status .time{position:absolute;left:38px;top:18px;font-size:17px;font-weight:700;letter-spacing:-.2px}
+.status .island{position:absolute;left:50%;top:11px;width:125px;height:37px;margin-left:-62px;background:#000;border-radius:20px}
+.status .right{position:absolute;right:30px;top:21px;display:flex;gap:7px;align-items:center}
+.sig{display:flex;gap:2px;align-items:flex-end}.sig i{display:block;width:3.5px;background:#fff;border-radius:1px}
+.bat{width:27px;height:13px;border:1.6px solid rgba(255,255,255,.55);border-radius:4px;position:relative}
+.bat::after{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:20px;background:#fff;border-radius:2px}
+.bat::before{content:"";position:absolute;right:-4px;top:3.5px;width:1.8px;height:4px;background:rgba(255,255,255,.55);border-radius:0 2px 2px 0}
+
+/* ---- The page underneath: golden 02, Alle boeken, unchanged. ---- */
+.content{position:absolute;left:0;right:0;top:0;bottom:83px;overflow:hidden}
+.nav{display:flex;align-items:center;gap:14px;padding:66px 16px 0 16px;height:96px}
+.nav .back{width:26px;height:26px;flex:0 0 auto}
+.nav h1{font-size:22px;font-weight:700;letter-spacing:-.3px;flex:1}
+.nav .act{display:flex;align-items:center;gap:16px}
+.pills{display:flex;gap:8px;padding:16px 16px 0 16px}
+.pill{height:36px;padding:0 14px;border-radius:18px;display:flex;align-items:center;gap:7px;
+      font-size:15px;font-weight:500;color:var(--ink);background:var(--surface-el);border:1px solid transparent;white-space:nowrap}
+.pill svg{width:17px;height:17px;flex:0 0 auto}
+.pill.on{background:rgba(229,20,15,.20);border-color:rgba(229,20,15,.75)}
+.pill .badge{min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:var(--accent);color:#fff;
+             font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.meta{display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px 0 16px;
+      font-size:13px;color:var(--ink-62)}
+.meta .sum{color:var(--ink-70)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px 10px;padding:16px 16px 0 16px}
+.gitem{min-width:0}
+.gitem .poster{width:100%;height:171px;border-radius:var(--r-sm);overflow:hidden;position:relative;background:#222}
+.gitem .txt{margin-top:8px;height:62px;overflow:hidden}
+.gitem .cap{font-size:14px;font-weight:500;line-height:18px;max-height:36px;overflow:hidden;white-space:normal;
+            display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.gitem .sub{font-size:12.5px;color:var(--ink-62);line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{position:absolute;left:0;right:0;bottom:0;height:84px;background:var(--bar);border-top:1px solid #1E1E1E;z-index:30}
+.bar .items{display:flex;height:60px}
+.bar .it{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:7px;color:var(--ink-62);gap:5px}
+.bar .it svg{width:26px;height:26px;display:block;fill:currentColor}
+.bar .it span{font-size:11px;font-weight:500;line-height:13px;letter-spacing:.1px}
+.bar .it.on{color:var(--accent)}
+.bar .it .av{width:26px;height:26px;border-radius:50%;background:linear-gradient(150deg,#3d4a8a,#1b2247 60%,#121633);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.home-ind{position:absolute;left:50%;bottom:8px;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#fff}
+
+/* ---- Fixture artwork: repository-safe, drawn in CSS (no commercial covers). ---- */
+.art{position:absolute;inset:0;overflow:hidden}
+.grain{position:absolute;inset:0;opacity:.18;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='.9'/></svg>")}
+.vig{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 40%,rgba(0,0,0,0) 45%,rgba(0,0,0,.55) 100%)}
+.t{position:absolute;left:0;right:0;text-align:center;font-weight:700}
+.t.serif{font-family:Georgia,'Times New Roman',serif;font-weight:400}
+.cv-dune{background:linear-gradient(180deg,#2a1208 0%,#5a2410 38%,#b5561c 70%,#e2893a 100%)}
+.cv-dune .moon{position:absolute;width:56%;padding-top:56%;border-radius:50%;left:22%;top:12%;background:radial-gradient(circle at 35% 35%,#ffd9a0,#e08a3c 55%,#8a3a12 100%);box-shadow:0 0 30px rgba(255,170,90,.55)}
+.cv-dune .dune{position:absolute;left:-10%;right:-10%;bottom:-8%;height:38%;background:radial-gradient(60% 100% at 30% 100%,#3b1a0b,rgba(59,26,11,0) 70%),radial-gradient(70% 100% at 80% 100%,#2a1208,rgba(42,18,8,0) 70%)}
+.cv-messiah{background:linear-gradient(180deg,#07131a,#0d3742 55%,#155a5c)}
+.cv-messiah .moon{position:absolute;width:44%;padding-top:44%;border-radius:50%;left:28%;top:20%;background:radial-gradient(circle at 40% 35%,#ffe1a8,#ef9a3a 60%,#7a3a12);box-shadow:0 0 26px rgba(255,180,100,.5)}
+.cv-children{background:linear-gradient(180deg,#1b0b0b,#5c1a12 50%,#a33a1f)}
+.cv-phm{background:linear-gradient(160deg,#f6c62d 0%,#e9a814 55%,#1c1a12 56%,#101010 100%)}
+.cv-phm .a{bottom:9%;font-size:9px;letter-spacing:2px;color:#f6c62d}
+
+/* ---- Golden 03: the filter sheet ---- */
+/* The scrim covers the whole frame, status bar included: measured on
+   04-filters-sheet.png, where the 9:41 tops out at 102 of 255 and the page
+   background at 8 of 20. That is one black layer at 60 % over everything. */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:40}
+
+/* Sheet geometry, measured on 04-filters-sheet.png: top edge 252 pt, corner
+   radius 13, handle 36x5 at 260, rail 131 wide, action bar 97 tall. */
+.sheet{position:absolute;left:0;right:0;bottom:0;top:252px;background:var(--surface);
+       border-radius:13px 13px 0 0;overflow:hidden;z-index:50}
+.sheet .handle{position:absolute;left:50%;margin-left:-18px;top:8px;width:36px;height:5px;border-radius:3px;background:#575757}
+.sheet .shdr{position:absolute;left:20px;right:20px;top:24px;height:24px;display:flex;align-items:center;justify-content:space-between}
+.sheet .shdr h2{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.sheet .shdr .count{font-size:13.5px;color:var(--ink-62)}
+
+/* Left rail: which group you are editing, and how many choices stand in each.
+   The active group carries a white edge bar plus a raised row, because in
+   monoTheme a container tint alone is the same colour as the sheet (DEC-053). */
+.rail{position:absolute;left:0;top:61px;bottom:97px;width:131px}
+.rail .edge{position:absolute;top:0;bottom:0;right:0;width:1px;background:#303030}
+.rrow{height:43.5px;display:flex;align-items:center;justify-content:space-between;
+      padding:0 16px 0 20px;font-size:15px;color:var(--ink-62);position:relative}
+.rrow .n{font-size:13px;color:var(--ink-62);font-weight:400}
+.rrow.on{background:#2A2A2A;color:#fff;font-weight:700}
+.rrow.on .n{color:#fff;font-weight:500}
+.rrow.on::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:#fff}
+
+/* Right pane: the choices in that group. Row pitch 47.5, selected row a 37 pt
+   raised pill with a check at the end. */
+/* `gap` rather than a margin per row: adjacent vertical margins collapse, which
+   quietly turned the 47.5 pitch into 42.25 and let the list end 40 pt above the
+   action bar. */
+.opts{position:absolute;left:131px;right:0;top:61px;bottom:97px;overflow:hidden;
+      display:flex;flex-direction:column;gap:10.5px;padding:5.25px 0}
+.opt{height:37px;flex:0 0 auto;margin:0 16px;padding:0 16px;border-radius:9px;
+     display:flex;align-items:center;justify-content:space-between;font-size:15.5px;color:var(--ink)}
+.opt.on{background:#3E3E3E}
+.opt svg{width:19px;height:19px;flex:0 0 auto;margin-right:4px}
+
+/* Action bar. Wissen is a plain label so it never competes with Toepassen;
+   with nothing chosen it is there but inert. */
+.act2{position:absolute;left:0;right:0;bottom:0;height:97px;border-top:1px solid #303030}
+.act2 .wis{position:absolute;left:20px;top:15px;height:40px;display:flex;align-items:center;font-size:15px;color:var(--ink)}
+.act2 .wis.off{color:var(--ink-50)}
+.act2 .app{position:absolute;right:20px;top:15px;width:130px;height:40px;border-radius:20px;background:#fff;color:#111;
+           display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700}
+
+/* ---- Specimen frame (03c): the states that are too small to judge in situ. ---- */
+.spec{position:relative;width:393px;background:var(--bg);padding-bottom:28px}
+.spec .lbl{padding:26px 20px 10px 20px;font-size:13px;color:var(--ink-50);letter-spacing:.3px;text-transform:uppercase}
+.spec .box{margin:0 20px;background:var(--surface);border-radius:12px;overflow:hidden}
+.spec .box .rrow{padding-left:20px}
+.spec .split{display:flex}
+.spec .split .l{width:131px;border-right:1px solid #303030}
+.spec .split .r{flex:1;display:flex;flex-direction:column;gap:10.5px;padding:5.25px 0}
+.spec .split .opt{margin:0 16px}
+.spec .hdrspec{position:relative;height:56px}
+.spec .hdrspec .shdr{position:absolute;left:20px;right:20px;top:16px;height:24px;display:flex;align-items:center;justify-content:space-between}
+.spec .hdrspec h2{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.spec .hdrspec .count{font-size:13.5px;color:var(--ink-62)}
+.spec .barspec{position:relative;height:70px}
+.spec .barspec .wis{position:absolute;left:20px;top:15px;height:40px;display:flex;align-items:center;font-size:15px;color:var(--ink)}
+.spec .barspec .wis.off{color:var(--ink-50)}
+.spec .barspec .app{position:absolute;right:20px;top:15px;width:130px;height:40px;border-radius:20px;background:#fff;color:#111;
+                    display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700}
+</style>
+</head>
+<body>
+
+<!-- ================= 03a: sheet opened, nothing chosen ================= -->
+<section class="screen" id="status">
+  <div class="status">
+    <div class="time">9:41</div><div class="island"></div>
+    <div class="right"><div class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:9px"></i><i style="height:12px"></i></div>
+      <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 9.5a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2Zm0-3.6c1.5 0 2.9.6 3.9 1.6l-1.3 1.3A3.7 3.7 0 0 0 8 7.7c-1 0-1.9.4-2.6 1.1L4.1 7.5C5.1 6.5 6.5 5.9 8 5.9Zm0-3.7c2.5 0 4.9 1 6.6 2.7l-1.3 1.3A7.4 7.4 0 0 0 8 4.1c-2 0-3.9.8-5.3 2.2L1.4 4.9A9.3 9.3 0 0 1 8 2.2Z" fill="#fff"/></svg>
+      <div class="bat"></div></div>
+  </div>
+  <div class="content">
+    <div class="nav">
+      <svg class="back" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 7 12l8 8"/></svg>
+      <h1>Alle boeken</h1>
+      <div class="act"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg></div>
+    </div>
+    <div class="pills">
+      <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M3 6h18M6 12h12M10 18h4"/></svg><span>Filters</span></div>
+      <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16m0 0-3.2-3.4M7 20l3.2-3.4M17 20V4m0 0-3.2 3.4M17 4l3.2 3.4"/></svg><span>Titel A&ndash;Z</span></div>
+    </div>
+    <div class="meta"><span>128 boeken</span></div>
+    <div class="grid">
+      <div class="gitem"><div class="poster"><div class="art cv-dune"><div class="moon"></div><div class="dune"></div><div class="t serif" style="font-size:19px;letter-spacing:5px;bottom:12%;color:#f7e2c6">DUNE</div><div class="grain"></div></div></div><div class="txt"><div class="cap">Dune</div><div class="sub">Frank Herbert</div></div></div>
+      <div class="gitem"><div class="poster"><div class="art cv-messiah"><div class="moon"></div><div class="t serif" style="font-size:13px;letter-spacing:2px;bottom:14%;color:#f1e6d0">DUNE<br>MESSIAH</div><div class="grain"></div></div></div><div class="txt"><div class="cap">Dune Messiah</div><div class="sub">Frank Herbert</div></div></div>
+      <div class="gitem"><div class="poster"><div class="art cv-children"><div class="t serif" style="font-size:12px;letter-spacing:1px;line-height:15px;bottom:14%;color:#f6d9c4">CHILDREN<br>OF DUNE</div><div class="grain"></div></div></div><div class="txt"><div class="cap">Children of Dune</div><div class="sub">Frank Herbert</div></div></div>
+    </div>
+  </div>
+  <nav class="bar">
+    <div class="items">
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M11.3 3.3a1 1 0 0 1 1.4 0l8 7.6c.2.2.3.5.3.7V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8.4c0-.3.1-.5.3-.7l8-7.6Z"/></svg><span>Home</span></div>
+      <div class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" style="fill:none"><rect x="3" y="7.5" width="18" height="13" rx="2"/><path d="m8 3 4 4.5L16 3"/></svg><span>Series</span></div>
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M3.5 9.5h17V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19V9.5Zm.6-5.6 15.8 3.3-.5 2.3L3.6 6.2l.5-2.3Zm2.9 0 2.4 2.2-2 .4L5 4.3l2-.4Zm4.2.9 2.4 2.2-2 .4-2.4-2.2 2-.4Zm4.2.9 2.4 2.2-2 .4-2.4-2.2 2-.4Z"/></svg><span>Films</span></div>
+      <div class="it on"><svg viewBox="0 0 24 24"><path d="M11 4.9C9.6 4 7.7 3.5 5.9 3.5c-1.3 0-2.6.2-3.9.7v14.6c0 .3.3.5.6.4 1.1-.4 2.3-.6 3.3-.6 1.8 0 3.7.5 5.1 1.4V4.9Zm2 0v15.1c1.4-.9 3.3-1.4 5.1-1.4 1 0 2.2.2 3.3.6.3.1.6-.1.6-.4V4.2c-1.3-.5-2.6-.7-3.9-.7-1.8 0-3.7.5-5.1 1.4Z"/></svg><span>Boeken</span></div>
+      <div class="it"><div class="av">M</div><span>Mijn Pleya</span></div>
+    </div>
+    <div class="home-ind"></div>
+  </nav>
+
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="shdr"><h2>Filters</h2><span class="count"></span></div>
+    <div class="rail">
+      <div class="rrow on"><span>Status</span><span class="n"></span></div>
+      <div class="rrow"><span>Genre</span><span class="n"></span></div>
+      <div class="rrow"><span>Series</span><span class="n"></span></div>
+      <div class="rrow"><span>Auteur</span><span class="n"></span></div>
+      <div class="rrow"><span>Taal</span><span class="n"></span></div>
+      <div class="edge"></div>
+    </div>
+    <div class="opts">
+      <div class="opt on"><span>Alles</span><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 12.5 5 5 10-11"/></svg></div>
+      <div class="opt"><span>Ongelezen</span></div>
+      <div class="opt"><span>Gelezen</span></div>
+      <div class="opt"><span>Gedownload</span></div>
+    </div>
+    <div class="act2">
+      <div class="wis off">Wissen</div>
+      <div class="app">Toepassen</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 03b: Genre open, two choices staged ================= -->
+<section class="screen" id="genre" hidden>
+  <div class="status">
+    <div class="time">9:41</div><div class="island"></div>
+    <div class="right"><div class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:9px"></i><i style="height:12px"></i></div>
+      <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 9.5a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2Zm0-3.6c1.5 0 2.9.6 3.9 1.6l-1.3 1.3A3.7 3.7 0 0 0 8 7.7c-1 0-1.9.4-2.6 1.1L4.1 7.5C5.1 6.5 6.5 5.9 8 5.9Zm0-3.7c2.5 0 4.9 1 6.6 2.7l-1.3 1.3A7.4 7.4 0 0 0 8 4.1c-2 0-3.9.8-5.3 2.2L1.4 4.9A9.3 9.3 0 0 1 8 2.2Z" fill="#fff"/></svg>
+      <div class="bat"></div></div>
+  </div>
+  <div class="content">
+    <div class="nav">
+      <svg class="back" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 7 12l8 8"/></svg>
+      <h1>Alle boeken</h1>
+      <div class="act"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg></div>
+    </div>
+    <div class="pills">
+      <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M3 6h18M6 12h12M10 18h4"/></svg><span>Filters</span></div>
+      <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16m0 0-3.2-3.4M7 20l3.2-3.4M17 20V4m0 0-3.2 3.4M17 4l3.2 3.4"/></svg><span>Titel A&ndash;Z</span></div>
+    </div>
+    <div class="meta"><span>128 boeken</span></div>
+    <div class="grid">
+      <div class="gitem"><div class="poster"><div class="art cv-dune"><div class="moon"></div><div class="dune"></div><div class="t serif" style="font-size:19px;letter-spacing:5px;bottom:12%;color:#f7e2c6">DUNE</div><div class="grain"></div></div></div><div class="txt"><div class="cap">Dune</div><div class="sub">Frank Herbert</div></div></div>
+      <div class="gitem"><div class="poster"><div class="art cv-messiah"><div class="moon"></div><div class="t serif" style="font-size:13px;letter-spacing:2px;bottom:14%;color:#f1e6d0">DUNE<br>MESSIAH</div><div class="grain"></div></div></div><div class="txt"><div class="cap">Dune Messiah</div><div class="sub">Frank Herbert</div></div></div>
+      <div class="gitem"><div class="poster"><div class="art cv-children"><div class="t serif" style="font-size:12px;letter-spacing:1px;line-height:15px;bottom:14%;color:#f6d9c4">CHILDREN<br>OF DUNE</div><div class="grain"></div></div></div><div class="txt"><div class="cap">Children of Dune</div><div class="sub">Frank Herbert</div></div></div>
+    </div>
+  </div>
+  <nav class="bar">
+    <div class="items">
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M11.3 3.3a1 1 0 0 1 1.4 0l8 7.6c.2.2.3.5.3.7V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8.4c0-.3.1-.5.3-.7l8-7.6Z"/></svg><span>Home</span></div>
+      <div class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" style="fill:none"><rect x="3" y="7.5" width="18" height="13" rx="2"/><path d="m8 3 4 4.5L16 3"/></svg><span>Series</span></div>
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M3.5 9.5h17V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19V9.5Zm.6-5.6 15.8 3.3-.5 2.3L3.6 6.2l.5-2.3Zm2.9 0 2.4 2.2-2 .4L5 4.3l2-.4Zm4.2.9 2.4 2.2-2 .4-2.4-2.2 2-.4Zm4.2.9 2.4 2.2-2 .4-2.4-2.2 2-.4Z"/></svg><span>Films</span></div>
+      <div class="it on"><svg viewBox="0 0 24 24"><path d="M11 4.9C9.6 4 7.7 3.5 5.9 3.5c-1.3 0-2.6.2-3.9.7v14.6c0 .3.3.5.6.4 1.1-.4 2.3-.6 3.3-.6 1.8 0 3.7.5 5.1 1.4V4.9Zm2 0v15.1c1.4-.9 3.3-1.4 5.1-1.4 1 0 2.2.2 3.3.6.3.1.6-.1.6-.4V4.2c-1.3-.5-2.6-.7-3.9-.7-1.8 0-3.7.5-5.1 1.4Z"/></svg><span>Boeken</span></div>
+      <div class="it"><div class="av">M</div><span>Mijn Pleya</span></div>
+    </div>
+    <div class="home-ind"></div>
+  </nav>
+
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="shdr"><h2>Filters</h2><span class="count">2 gekozen</span></div>
+    <div class="rail">
+      <div class="rrow"><span>Status</span><span class="n">1</span></div>
+      <div class="rrow on"><span>Genre</span><span class="n">1</span></div>
+      <div class="rrow"><span>Series</span><span class="n"></span></div>
+      <div class="rrow"><span>Auteur</span><span class="n"></span></div>
+      <div class="rrow"><span>Taal</span><span class="n"></span></div>
+      <div class="edge"></div>
+    </div>
+    <div class="opts">
+      <div class="opt"><span>Biografie</span></div>
+      <div class="opt"><span>Fantasy</span></div>
+      <div class="opt"><span>Filosofie</span></div>
+      <div class="opt"><span>Geschiedenis</span></div>
+      <div class="opt"><span>Literatuur</span></div>
+      <div class="opt"><span>Non-fictie</span></div>
+      <div class="opt"><span>Psychologie</span></div>
+      <div class="opt on"><span>Sciencefiction</span><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 12.5 5 5 10-11"/></svg></div>
+      <div class="opt"><span>Thriller</span></div>
+    </div>
+    <div class="act2">
+      <div class="wis">Wissen</div>
+      <div class="app">Toepassen</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 03c: specimen, the states judged side by side ========= -->
+<section class="spec" id="controls" hidden>
+  <div class="lbl">Kop, zonder en met keuzes</div>
+  <div class="box">
+    <div class="hdrspec"><div class="shdr"><h2>Filters</h2><span class="count"></span></div></div>
+  </div>
+  <div class="box" style="margin-top:10px">
+    <div class="hdrspec"><div class="shdr"><h2>Filters</h2><span class="count">2 gekozen</span></div></div>
+  </div>
+
+  <div class="lbl">Groep in rust, met telling, en actief</div>
+  <div class="box">
+    <div class="split">
+      <div class="l">
+        <div class="rrow"><span>Series</span><span class="n"></span></div>
+        <div class="rrow"><span>Status</span><span class="n">1</span></div>
+        <div class="rrow on"><span>Genre</span><span class="n">1</span></div>
+      </div>
+      <div class="r">
+        <div class="opt"><span>Fantasy</span></div>
+        <div class="opt on"><span>Sciencefiction</span><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 12.5 5 5 10-11"/></svg></div>
+        <div class="opt"><span>Thriller</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lbl">Actiebalk, zonder en met keuzes</div>
+  <div class="box">
+    <div class="barspec" style="border-top:0"><div class="wis off">Wissen</div><div class="app">Toepassen</div></div>
+  </div>
+  <div class="box" style="margin-top:10px">
+    <div class="barspec" style="border-top:0"><div class="wis">Wissen</div><div class="app">Toepassen</div></div>
+  </div>
+</section>
+
+<script>
+  const which = new URLSearchParams(location.search).get('screen') || 'status';
+  document.querySelectorAll('.screen,.spec').forEach(s => { s.hidden = s.id !== which; });
+</script>
+</body>
+</html>
