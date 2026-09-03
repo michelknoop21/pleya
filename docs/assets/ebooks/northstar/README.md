@@ -207,6 +207,55 @@ de actiebalk blijft.
 groepenkolom blijft staan. Een groep met meer keuzes dan er passen mag dus niet de hele sheet laten
 scrollen, want dan verdwijnt de groep waar je in zit uit beeld.
 
+## Wat er tegen golden 03 gebouwd is
+
+`lib/screens/books/widgets/book_filter_sheet.dart` met `lib/books/book_filter.dart` eronder, geopend
+door de Filters-pill op Alle boeken. De maten in `BookFilterSheetMetrics` zijn de gemeten maten van
+de golden, en de sheet houdt de verhouding 600 op 852 aan in plaats van een vaste hoogte, zodat hij
+op een korter toestel niet over de rand loopt.
+
+De sheet gaat open op de dichtstbijzijnde navigator, niet op de root. De browse-UI hangt onder
+`ProfileNavigationScope`, en een route daarboven verliest die scope; dat is de overlay-val uit
+CLAUDE.md.
+
+Bewijs: `pleya_verify/scenarios/books.filters.layout.yaml`, groen op de vastgezette iPhone 15
+Pro-simulator, plus twaalf widgettests in `test/screens/book_filter_sheet_test.dart` en zestien
+eenheidstests in `test/books/book_filter_test.dart`.
+
+De vergelijking van het simulatorbeeld met `03a` legt de sheet op de golden binnen ongeveer één
+punt: bovenrand van de sheet 252 tegen 252, kop op 289,2 tegen 289,2, de vijf groepsrijen op 334,7 /
+378,0 / 421,5 / 465,2 / 508,8 tegen 334,5 / 378,3 / 421,2 / 465,3 / 508,3, de vier keuzes op 337,0 /
+386,2 / 432,0 / 479,7 tegen 336,3 / 385,8 / 431,3 / 479,3, en de Toepassen-pill exact op 243,3 tot
+372,3. De scheidingslijn staat één punt verder naar rechts dan in de golden.
+
+Wat de vergelijking opleverde:
+
+- **Een groepslabel stond bovenin zijn rij in plaats van in het midden.** Een `Stack` geeft zijn
+  niet-gepositioneerde kinderen losse constraints, dus de rij van 43,5 hoog kreeg een label van één
+  regel tekst tegen de bovenrand. Geen enkele test klaagde erover en op een screenshot zonder golden
+  ernaast valt het niet op; het scheelde 11 punt. Opgelost met `StackFit.expand`.
+- **De pill-rij op Alle boeken paste niet meer toen de badge erbij kwam.** Zichtbaar gemaakt door de
+  testfont, waarin elk teken een vierkant em is, maar het probleem is echt: een langer sorteerlabel
+  of een grotere tekstschaal loopt op een echt toestel net zo goed over. De rij scrollt nu
+  horizontaal in plaats van zijn waarde af te knippen. Met Inter en deze twee pills scrollt hij
+  niet.
+
+Bewuste verschillen met het beeld:
+
+- **De statusbalk is niet gedimd, en dat kan ook niet.** In de golden ligt de scrim over het hele
+  frame, statusbalk inbegrepen; op iOS tekent het systeem die balk boven alles wat de app tekent. De
+  pagina eronder is wel precies goed gedimd: 102 van 255 op de paginatitel in allebei.
+- **De golden tekent onderaan geen home-indicator, het toestel wel.** De Toepassen-pill blijft er
+  vrij van; het scenario controleert dat met `insideViewport`.
+- **Negen genres in de golden, zeven in de app.** De golden toont een plank van 128 boeken, de
+  fixture heeft er twaalf, en de rechterkolom komt uit de boeken zelf. Biografie en Thriller staan
+  daarom niet in de lijst. Hetzelfde soort verschil als `128 boeken` tegenover `12 boeken` bij
+  golden 02.
+- **De verify-simulator draait de OLED-variant van `monoTheme`**, met een zwarte pagina in plaats
+  van `#141414`. De sheet zelf klopt, want de books-schermen zetten sinds golden 01b de kleuren van
+  de golden hard neer in plaats van themetokens te lezen. Dat is een bestaande keuze van 01b en 02,
+  geen nieuwe.
+
 ## Wat er tegen golden 02 gebouwd is
 
 `lib/screens/books/all_books_screen.dart`, bereikbaar via `Alle boeken ›` op Boeken-home. De

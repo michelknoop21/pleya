@@ -1789,6 +1789,18 @@
     "filters": "Filters",
     "sortTitleAsc": "Titel A–Z",
     "bookCountLabel": "${count} boeken",
-    "oneBookLabel": "1 boek"
+    "oneBookLabel": "1 boek",
+    "filterStatus": "Status",
+    "filterGenre": "Genre",
+    "filterSeries": "Series",
+    "filterAuthor": "Auteur",
+    "filterLanguage": "Taal",
+    "statusAll": "Alles",
+    "statusUnread": "Ongelezen",
+    "statusRead": "Gelezen",
+    "statusDownloaded": "Gedownload",
+    "filtersClear": "Wissen",
+    "filtersApply": "Toepassen",
+    "filtersChosen": "${count} gekozen"
   }
 }

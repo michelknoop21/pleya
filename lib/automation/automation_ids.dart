@@ -42,6 +42,24 @@ class AutomationIds {
   /// cell rather than the grid because a sliver has no bounds to measure.
   static const String booksGridItem = 'books.grid.item';
 
+  /// The filter sheet behind Alle boeken's Filters pill (approved golden 03).
+  /// A route rather than a page, but a scenario still waits on it, so it
+  /// carries a screen id like the other two.
+  static const String screenBooksFilters = 'screen.books_filters';
+
+  /// One group in that sheet's left rail. Instanceable, suffixed with the
+  /// [BookFilterGroup] name (`[status]`, `[genre]`, …) rather than an index,
+  /// because a group with no options on the shelf is left out and an index
+  /// would then point at a different group.
+  static const String booksFilterGroup = 'books.filter.group';
+
+  /// One choice in the right pane. Instanceable, suffixed with the value it
+  /// filters on.
+  static const String booksFilterOption = 'books.filter.option';
+
+  /// The sheet's Toepassen button: the only place a choice becomes a filter.
+  static const String booksFilterApply = 'books.filter.apply';
+
   /// Boeken-home's three rails, in the order golden 01b puts them.
   static const String booksRailContinue = 'books.rail.continue';
   static const String booksRailRecent = 'books.rail.recent';
@@ -81,6 +99,8 @@ class AutomationIds {
     libraryGridItem,
     mediaDetailEpisodeListItem,
     booksGridItem,
+    booksFilterGroup,
+    booksFilterOption,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -96,6 +116,10 @@ class AutomationIds {
     {'id': screenBooks, 'role': 'screen', 'instanceable': false},
     {'id': screenAllBooks, 'role': 'screen', 'instanceable': false},
     {'id': booksGridItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': screenBooksFilters, 'role': 'screen', 'instanceable': false},
+    {'id': booksFilterGroup, 'role': 'filter.group', 'instanceable': true},
+    {'id': booksFilterOption, 'role': 'filter.option', 'instanceable': true},
+    {'id': booksFilterApply, 'role': 'button', 'instanceable': false},
     {'id': booksRailContinue, 'role': 'rail', 'instanceable': false},
     {'id': booksRailRecent, 'role': 'rail', 'instanceable': false},
     {'id': booksRailSeries, 'role': 'rail', 'instanceable': false},

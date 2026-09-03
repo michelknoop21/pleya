@@ -138,6 +138,9 @@ class DemoBooksSource implements BooksSource {
       progress: 0.48,
       chapterLabel: 'Hoofdstuk 12',
       addedAt: _epoch.subtract(const Duration(days: 30)),
+      genres: const ['Sciencefiction'],
+      language: 'Engels',
+      isDownloaded: true,
     ),
     Book(
       id: 'hail-mary',
@@ -147,6 +150,9 @@ class DemoBooksSource implements BooksSource {
       progress: 0.21,
       chapterLabel: 'Hoofdstuk 5',
       addedAt: _epoch.subtract(const Duration(days: 1)),
+      genres: const ['Sciencefiction'],
+      language: 'Engels',
+      isDownloaded: true,
     ),
     Book(
       id: 'sapiens',
@@ -156,6 +162,9 @@ class DemoBooksSource implements BooksSource {
       progress: 0.03,
       chapterLabel: 'Hoofdstuk 1',
       addedAt: _epoch.subtract(const Duration(days: 2)),
+      genres: const ['Non-fictie', 'Geschiedenis'],
+      language: 'Engels',
+      isDownloaded: true,
     ),
     Book(
       id: '1984',
@@ -163,6 +172,11 @@ class DemoBooksSource implements BooksSource {
       author: 'George Orwell',
       artwork: _nineteen,
       addedAt: _epoch.subtract(const Duration(days: 3)),
+      // Finished, so Status ▸ Gelezen has something to return. Above
+      // isInProgress's 0.995 bound, so it stays out of Verder lezen.
+      progress: 1,
+      genres: const ['Sciencefiction', 'Literatuur'],
+      language: 'Engels',
     ),
     Book(
       id: 'alchemist',
@@ -170,6 +184,8 @@ class DemoBooksSource implements BooksSource {
       author: 'Paulo Coelho',
       artwork: _alchemist,
       addedAt: _epoch.subtract(const Duration(days: 4)),
+      genres: const ['Literatuur', 'Filosofie'],
+      language: 'Nederlands',
     ),
     Book(
       id: 'atomic-habits',
@@ -177,6 +193,8 @@ class DemoBooksSource implements BooksSource {
       author: 'James Clear',
       artwork: _atomic,
       addedAt: _epoch.subtract(const Duration(days: 5)),
+      genres: const ['Non-fictie', 'Psychologie'],
+      language: 'Engels',
     ),
     // The rest of golden 02's shelf. They are all older than the six above, so
     // Recent toegevoegd on Boeken-home still opens on the three golden 01b
@@ -188,6 +206,8 @@ class DemoBooksSource implements BooksSource {
       artwork: _messiah,
       seriesId: 'dune',
       addedAt: _epoch.subtract(const Duration(days: 40)),
+      genres: const ['Sciencefiction'],
+      language: 'Engels',
     ),
     Book(
       id: 'children-of-dune',
@@ -196,6 +216,8 @@ class DemoBooksSource implements BooksSource {
       artwork: _children,
       seriesId: 'dune',
       addedAt: _epoch.subtract(const Duration(days: 41)),
+      genres: const ['Sciencefiction'],
+      language: 'Engels',
     ),
     Book(
       id: 'zeven-zussen-1',
@@ -204,6 +226,9 @@ class DemoBooksSource implements BooksSource {
       artwork: _sevenSisters,
       seriesId: 'zeven-zussen',
       addedAt: _epoch.subtract(const Duration(days: 42)),
+      genres: const ['Literatuur'],
+      language: 'Nederlands',
+      isDownloaded: true,
     ),
     Book(
       id: 'hobbit',
@@ -212,6 +237,11 @@ class DemoBooksSource implements BooksSource {
       artwork: _hobbit,
       seriesId: 'midden-aarde',
       addedAt: _epoch.subtract(const Duration(days: 43)),
+      // Finished, so Status ▸ Gelezen has something to return. Above
+      // isInProgress's 0.995 bound, so it stays out of Verder lezen.
+      progress: 1,
+      genres: const ['Fantasy'],
+      language: 'Nederlands',
     ),
     Book(
       id: 'brave-new-world',
@@ -219,6 +249,8 @@ class DemoBooksSource implements BooksSource {
       author: 'Aldous Huxley',
       artwork: _braveNewWorld,
       addedAt: _epoch.subtract(const Duration(days: 44)),
+      genres: const ['Sciencefiction', 'Literatuur'],
+      language: 'Engels',
     ),
     // The long one, so the grid's two-line title and its truncation are real
     // rather than theoretical.
@@ -228,6 +260,8 @@ class DemoBooksSource implements BooksSource {
       author: 'Harry Mulisch',
       artwork: _discovery,
       addedAt: _epoch.subtract(const Duration(days: 45)),
+      genres: const ['Literatuur', 'Filosofie'],
+      language: 'Nederlands',
     ),
   ];
 

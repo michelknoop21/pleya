@@ -3,14 +3,18 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../../automation/automation_ids.dart';
+import '../../automation/automation_navigation_hooks.dart';
 import '../../automation/automation_node.dart';
 import '../../automation/automation_screen.dart';
+import '../../automation/pleya_verify.dart';
 import '../../books/book.dart';
+import '../../books/book_filter.dart';
 import '../../i18n/strings.g.dart';
 import '../../navigation/main_screen_scope.dart';
 import '../../providers/books_home_provider.dart';
 import '../../widgets/app_icon.dart';
 import 'widgets/book_cover.dart';
+import 'widgets/book_filter_sheet.dart';
 import 'widgets/book_rail.dart';
 
 /// Alle boeken, built against approved golden 02
@@ -20,7 +24,7 @@ import 'widgets/book_rail.dart';
 /// three columns of 114 pt with 10 pt gutters inside a 16 pt page margin, so a
 /// shelf of books and a shelf of films line up. Books get no film metadata —
 /// no year, runtime, resolution or rating — because this is a bookshelf.
-class AllBooksScreen extends StatelessWidget {
+class AllBooksScreen extends StatefulWidget {
   const AllBooksScreen({super.key});
 
   /// Two title lines plus one author line, plus the leading each carries. The
@@ -36,9 +40,50 @@ class AllBooksScreen extends StatelessWidget {
   static String captionKey(String bookId) => 'books.grid.caption.$bookId';
 
   @override
+  State<AllBooksScreen> createState() => _AllBooksScreenState();
+}
+
+class _AllBooksScreenState extends State<AllBooksScreen> {
+  /// What is applied to the shelf right now. The sheet edits a copy; this
+  /// only changes when the reader taps Toepassen (approved golden 03).
+  BookFilter _filter = BookFilter.none;
+
+  @override
+  void initState() {
+    super.initState();
+    if (kPleyaVerify) {
+      AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBooksFilters, _openFilters);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (kPleyaVerify) {
+      AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBooksFilters, _openFilters);
+    }
+    super.dispose();
+  }
+
+  /// The same route the Filters pill opens, so a scenario and a reader arrive
+  /// the same way.
+  Future<void> _openFilters() async {
+    if (!mounted) return;
+    final rows = context.read<BooksHomeProvider?>()?.rows ?? const BooksHomeRows();
+    final applied = await showBookFilterSheet(
+      context,
+      filter: _filter,
+      options: BookFilterOptions.from(books: rows.all, series: rows.series),
+    );
+    // `null` is a dismissal, and dismissing is not clearing.
+    if (applied != null && mounted) setState(() => _filter = applied);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final provider = context.watch<BooksHomeProvider?>();
-    final books = provider?.rows.allByTitle ?? const <Book>[];
+    final rows = provider?.rows ?? const BooksHomeRows();
+    final books = _filter.apply(rows.allByTitle);
+    final options = BookFilterOptions.from(books: rows.all, series: rows.series);
     return AutomationScreen(
       id: AutomationIds.screenAllBooks,
       readiness: () => provider == null || provider.hasLoaded
@@ -48,8 +93,15 @@ class AllBooksScreen extends StatelessWidget {
         body: CustomScrollView(
           slivers: [
             const SliverToBoxAdapter(child: _AllBooksHeader()),
-            const SliverToBoxAdapter(child: _Controls()),
-            SliverToBoxAdapter(child: _ResultLine(count: books.length)),
+            SliverToBoxAdapter(
+              child: _Controls(filter: _filter, onOpenFilters: _openFilters),
+            ),
+            SliverToBoxAdapter(
+              child: _ResultLine(
+                count: books.length,
+                summary: _filter.summaryLabels(statusLabel: bookStatusLabel, options: options).join(' · '),
+              ),
+            ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(BookRailMetrics.pageMargin, 16, BookRailMetrics.pageMargin, 0),
               // The node sits on each cell, not on the grid: a sliver has no
@@ -61,9 +113,9 @@ class AllBooksScreen extends StatelessWidget {
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   crossAxisSpacing: 10,
-                  mainAxisSpacing: _rowGap,
+                  mainAxisSpacing: AllBooksScreen._rowGap,
                   // 114 wide at 2:3 is 171 tall, plus the caption block.
-                  mainAxisExtent: BookRailMetrics.coverHeight + captionHeight,
+                  mainAxisExtent: BookRailMetrics.coverHeight + AllBooksScreen.captionHeight,
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => AutomationNode(
@@ -126,21 +178,34 @@ class _AllBooksHeader extends StatelessWidget {
 
 /// The filter and sort pills from golden 02.
 ///
-/// They are drawn and they do nothing yet, on purpose. Golden 02 approves how
-/// they look; what opens behind Filters is schermgolden 03 and has no approval,
-/// so there is nothing honest to wire them to. Rendering them without a tap
-/// target is the difference between "not built yet" and "built and broken".
-/// The sort pill still tells the truth: the grid really is title A–Z.
+/// Filters opens approved golden 03's sheet and carries its badge. Sorting
+/// still does nothing: golden 02 approved a pill that shows its value, and
+/// what a tap on it should open has no golden. The label is not a lie either
+/// way, because the grid really is title A–Z.
 class _Controls extends StatelessWidget {
-  const _Controls();
+  const _Controls({required this.filter, required this.onOpenFilters});
+
+  final BookFilter filter;
+  final VoidCallback onOpenFilters;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // Scrollable, though at the golden's two pills in Inter it never scrolls.
+    // A pill exists to show its value, so the honest way out of a row that
+    // does not fit — a long sort label, a large text scale, a badge arriving
+    // next to both — is to let it slide, not to ellipsise the value away.
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(BookRailMetrics.pageMargin, 16, BookRailMetrics.pageMargin, 0),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _Pill(icon: Symbols.filter_list_rounded, label: t.books.filters),
+          _Pill(
+            icon: Symbols.filter_list_rounded,
+            label: t.books.filters,
+            badge: filter.chosenCount,
+            onTap: onOpenFilters,
+          ),
           const SizedBox(width: 8),
           _Pill(icon: Symbols.swap_vert_rounded, label: t.books.sortTitleAsc),
         ],
@@ -150,26 +215,44 @@ class _Controls extends StatelessWidget {
 }
 
 class _Pill extends StatelessWidget {
-  const _Pill({required this.icon, required this.label});
+  const _Pill({required this.icon, required this.label, this.badge = 0, this.onTap});
 
   final IconData icon;
   final String label;
 
+  /// How many choices stand behind this pill. Zero draws no badge and leaves
+  /// the pill at rest.
+  final int badge;
+
+  final VoidCallback? onTap;
+
+  static const Color _accent = Color(0xFFE5140F);
+
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(color: const Color(0xFF2F2F2F), borderRadius: BorderRadius.circular(18)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: SizedBox(
-          height: 36,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppIcon(icon, size: 17),
-              const SizedBox(width: 7),
-              Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-            ],
+    final isActive = badge > 0;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isActive ? _accent.withValues(alpha: 0.20) : const Color(0xFF2F2F2F),
+          borderRadius: BorderRadius.circular(18),
+          border: isActive ? Border.all(color: _accent.withValues(alpha: 0.75)) : null,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: SizedBox(
+            height: 36,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppIcon(icon, size: 17),
+                const SizedBox(width: 7),
+                Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                if (isActive) ...[const SizedBox(width: 7), _Badge(count: badge)],
+              ],
+            ),
           ),
         ),
       ),
@@ -177,22 +260,64 @@ class _Pill extends StatelessWidget {
   }
 }
 
-/// How many, on its own line under the pills — where the Unified set puts
-/// `126 titels geladen`. The filter summary sits on the right of this line once
-/// filters exist; until then that side stays empty rather than being filled
-/// with something to look busy.
-class _ResultLine extends StatelessWidget {
-  const _ResultLine({required this.count});
+class _Badge extends StatelessWidget {
+  const _Badge({required this.count});
 
   final int count;
 
   @override
   Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 19),
+      height: 19,
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: _Pill._accent, borderRadius: BorderRadius.circular(10)),
+      child: Text(
+        '$count',
+        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Colors.white),
+      ),
+    );
+  }
+}
+
+/// How many, on its own line under the pills, where the Unified set puts
+/// `126 titels geladen`. With a filter on, what it is sits on the right of the
+/// same line (golden 02c). At rest that side stays empty rather than being
+/// filled with something to look busy.
+class _ResultLine extends StatelessWidget {
+  const _ResultLine({required this.count, required this.summary});
+
+  final int count;
+  final String summary;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(BookRailMetrics.pageMargin, 14, BookRailMetrics.pageMargin, 0),
-      child: Text(
-        count == 1 ? t.books.oneBookLabel : t.books.bookCountLabel(count: count),
-        style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.62)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Text(
+            count == 1 ? t.books.oneBookLabel : t.books.bookCountLabel(count: count),
+            style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.62)),
+          ),
+          if (summary.isNotEmpty) ...[
+            const SizedBox(width: 12),
+            // Ellipsised rather than wrapped: a second line here would push
+            // the whole grid down and break the row rhythm golden 02 fixed.
+            Expanded(
+              child: Text(
+                summary,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.70)),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

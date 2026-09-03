@@ -1,0 +1,42 @@
+name: books.filters.layout
+target: ios-sim
+# The filter sheet against approved golden 03
+# (docs/assets/ebooks/northstar/03a-filters-status.png).
+#
+# REQUIRES `PLEYA_VERIFY_BOOKS=1`, like the other two books scenarios, and for
+# a comparison against the golden also `PLEYA_VERIFY_IOS_UDID=<iPhone 15 Pro>`
+# — the sheet's height is a fraction of the screen, so on any other device the
+# measurements are right and the comparison is not.
+#
+# Three `open` steps, in order. Boeken-home is a nav tab, Alle boeken is a
+# route it pushes, and the sheet is a route Alle boeken pushes. Each only
+# works once the one before it is mounted.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - open: screen.books
+  - open: screen.all_books
+  - open: screen.books_filters
+steps:
+  - wait_until: {id: screen.books_filters, timeout: 15000}
+  - settle: 2000
+  # The opening state: Status is the group in hand, its four choices are the
+  # golden's, and the sheet has not touched the shelf yet.
+  - assert: {id: "books.filter.group[status]", insideViewport: true}
+  - assert: {id: "books.filter.option[all]", insideViewport: true}
+  - assert: {id: "books.filter.option[downloaded]", insideViewport: true}
+  # Toepassen has to be reachable, not merely mounted: it is the only control
+  # on this sheet that changes anything, and the golden puts it above the home
+  # indicator rather than under it.
+  - assert: {id: books.filter.apply, insideViewport: true}
+  - snapshot: filters-status
+  # The groups the shelf can answer are all there. Genre, Series, Auteur and
+  # Taal come from the books themselves, so this also proves the fixture
+  # carries that metadata rather than the rail being hard-coded.
+  - assert: {id: "books.filter.group[genre]", insideViewport: true}
+  - assert: {id: "books.filter.group[series]", insideViewport: true}
+  - assert: {id: "books.filter.group[author]", insideViewport: true}
+  - assert: {id: "books.filter.group[language]", insideViewport: true}
+  - snapshot: filters-groups

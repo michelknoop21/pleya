@@ -72,6 +72,22 @@ class Book {
   /// Sort key for Recent toegevoegd; newest first.
   final DateTime addedAt;
 
+  /// Genres as the source labels them, not as an enum.
+  ///
+  /// Genre is metadata that arrives with a book, in whatever vocabulary the
+  /// library uses; a closed enum here would mean silently dropping every genre
+  /// Pleya had not thought of. The filter sheet builds its list from what the
+  /// shelf actually carries, so an unknown genre shows up rather than
+  /// disappearing. Same reasoning as [author], which is not translated either.
+  final List<String> genres;
+
+  /// The language this edition is in, as a display name from the source.
+  final String? language;
+
+  /// Whether the file is on this device. One of the four Status choices in
+  /// golden 03.
+  final bool isDownloaded;
+
   const Book({
     required this.id,
     required this.title,
@@ -81,6 +97,9 @@ class Book {
     this.seriesId,
     this.progress,
     this.chapterLabel,
+    this.genres = const [],
+    this.language,
+    this.isDownloaded = false,
   });
 
   /// Whether this book belongs in Verder lezen.
@@ -97,6 +116,13 @@ class Book {
   /// `48%`, for the line under a continue-reading title. Rounded down, so a
   /// book never claims a percentage the reader has not reached.
   int get progressPercent => ((progress ?? 0) * 100).floor();
+
+  /// Whether the reader has reached the end.
+  ///
+  /// The same 0.995 bound [isInProgress] uses, for the same reason: a reader
+  /// who is 99.5 % through a long book is done, and asking them to hunt for
+  /// the last page before Pleya agrees is a worse answer than rounding.
+  bool get isFinished => (progress ?? 0) >= 0.995;
 }
 
 /// A series of books, e.g. Dune. Shown as one cover plus a count.

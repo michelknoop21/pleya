@@ -5218,6 +5218,42 @@ class TranslationsBooksEn {
 
 	/// en: '1 book'
 	String get oneBookLabel => '1 book';
+
+	/// en: 'Status'
+	String get filterStatus => 'Status';
+
+	/// en: 'Genre'
+	String get filterGenre => 'Genre';
+
+	/// en: 'Series'
+	String get filterSeries => 'Series';
+
+	/// en: 'Author'
+	String get filterAuthor => 'Author';
+
+	/// en: 'Language'
+	String get filterLanguage => 'Language';
+
+	/// en: 'All'
+	String get statusAll => 'All';
+
+	/// en: 'Unread'
+	String get statusUnread => 'Unread';
+
+	/// en: 'Read'
+	String get statusRead => 'Read';
+
+	/// en: 'Downloaded'
+	String get statusDownloaded => 'Downloaded';
+
+	/// en: 'Clear'
+	String get filtersClear => 'Clear';
+
+	/// en: 'Apply'
+	String get filtersApply => 'Apply';
+
+	/// en: '${count} selected'
+	String filtersChosen({required Object count}) => '${count} selected';
 }
 
 // Path: search.filters
@@ -7664,6 +7700,18 @@ extension on Translations {
 			'books.sortTitleAsc' => 'Title A–Z',
 			'books.bookCountLabel' => ({required Object count}) => '${count} books',
 			'books.oneBookLabel' => '1 book',
+			'books.filterStatus' => 'Status',
+			'books.filterGenre' => 'Genre',
+			'books.filterSeries' => 'Series',
+			'books.filterAuthor' => 'Author',
+			'books.filterLanguage' => 'Language',
+			'books.statusAll' => 'All',
+			'books.statusUnread' => 'Unread',
+			'books.statusRead' => 'Read',
+			'books.statusDownloaded' => 'Downloaded',
+			'books.filtersClear' => 'Clear',
+			'books.filtersApply' => 'Apply',
+			'books.filtersChosen' => ({required Object count}) => '${count} selected',
 			_ => null,
 		};
 	}

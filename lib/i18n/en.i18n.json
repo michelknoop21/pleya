@@ -1860,6 +1860,18 @@
     "filters": "Filters",
     "sortTitleAsc": "Title A–Z",
     "bookCountLabel": "${count} books",
-    "oneBookLabel": "1 book"
+    "oneBookLabel": "1 book",
+    "filterStatus": "Status",
+    "filterGenre": "Genre",
+    "filterSeries": "Series",
+    "filterAuthor": "Author",
+    "filterLanguage": "Language",
+    "statusAll": "All",
+    "statusUnread": "Unread",
+    "statusRead": "Read",
+    "statusDownloaded": "Downloaded",
+    "filtersClear": "Clear",
+    "filtersApply": "Apply",
+    "filtersChosen": "${count} selected"
   }
 }

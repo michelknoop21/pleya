@@ -24,6 +24,18 @@ ids:
   - id: books.grid.item
     role: grid.item
     instanceable: true
+  - id: screen.books_filters
+    role: screen
+    instanceable: false
+  - id: books.filter.group
+    role: filter.group
+    instanceable: true
+  - id: books.filter.option
+    role: filter.option
+    instanceable: true
+  - id: books.filter.apply
+    role: button
+    instanceable: false
   - id: books.rail.continue
     role: rail
     instanceable: false

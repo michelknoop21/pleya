@@ -2087,6 +2087,18 @@ class _TranslationsBooksNl extends TranslationsBooksEn {
 	@override String get sortTitleAsc => 'Titel A–Z';
 	@override String bookCountLabel({required Object count}) => '${count} boeken';
 	@override String get oneBookLabel => '1 boek';
+	@override String get filterStatus => 'Status';
+	@override String get filterGenre => 'Genre';
+	@override String get filterSeries => 'Series';
+	@override String get filterAuthor => 'Auteur';
+	@override String get filterLanguage => 'Taal';
+	@override String get statusAll => 'Alles';
+	@override String get statusUnread => 'Ongelezen';
+	@override String get statusRead => 'Gelezen';
+	@override String get statusDownloaded => 'Gedownload';
+	@override String get filtersClear => 'Wissen';
+	@override String get filtersApply => 'Toepassen';
+	@override String filtersChosen({required Object count}) => '${count} gekozen';
 }
 
 // Path: search.filters
@@ -4104,6 +4116,18 @@ extension on TranslationsNl {
 			'books.sortTitleAsc' => 'Titel A–Z',
 			'books.bookCountLabel' => ({required Object count}) => '${count} boeken',
 			'books.oneBookLabel' => '1 boek',
+			'books.filterStatus' => 'Status',
+			'books.filterGenre' => 'Genre',
+			'books.filterSeries' => 'Series',
+			'books.filterAuthor' => 'Auteur',
+			'books.filterLanguage' => 'Taal',
+			'books.statusAll' => 'Alles',
+			'books.statusUnread' => 'Ongelezen',
+			'books.statusRead' => 'Gelezen',
+			'books.statusDownloaded' => 'Gedownload',
+			'books.filtersClear' => 'Wissen',
+			'books.filtersApply' => 'Toepassen',
+			'books.filtersChosen' => ({required Object count}) => '${count} gekozen',
 			_ => null,
 		};
 	}
