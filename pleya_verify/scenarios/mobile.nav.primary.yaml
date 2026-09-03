@@ -1,8 +1,8 @@
 name: mobile.nav.primary
 target: ios-sim
-# The DEC-069 bottom bar on a real iPhone build: five fixed positions with the
+# The DEC-094 bottom bar on a real iPhone build: five fixed positions with the
 # fourth decided by content. On the fixture profile there are no e-books, no
-# tuner and no kijklijst, so this run covers permutation (d) of DEC-069 point 5
+# tuner and no kijklijst, so this run covers permutation (d) of DEC-094 point 5
 # — the Downloads floor, the case that proves the bar never falls to four slots
 # for want of a candidate.
 #

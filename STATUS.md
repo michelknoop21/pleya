@@ -318,6 +318,28 @@ xcrun devicectl device process launch --console --terminate-existing \
 
 ## Recente sessies
 
+### 2026-09-03 · feat/ebooks
+- **Zes commits**, niet vijf zoals een eerder verslag in de sessie zei: `f60f940` het besluit,
+  `31d8f57` golden 00 goedgekeurd met bron, `bd76296` golden 01 als eerste ronde, `4e91a7f` golden 01b
+  met de gevraagde correcties, `f81321e` golden 01b goedgekeurd, `622fbbf` de Boeken-home-implementatie.
+  De telling stond fout in het verslag, niet in de branch.
+- **Het navigatiebesluit is hernummerd van DEC-069 naar [DEC-094](docs/DECISIONS.md#dec-094).** `main`
+  stond op DEC-068, dus 069 leek vrij, maar `feat/pleyaserver` gebruikt dat nummer al voor de
+  `sid`-authketen en loopt door tot DEC-093. Twee besluiten met hetzelfde nummer overleven een merge
+  niet. Dertien bestanden verwezen ernaar; alle bijgewerkt, het Pleya Server-besluit onaangeraakt.
+- De mobiele balk is nu Home, Series, Films, een capability-gedreven vierde slot en Mijn Pleya, met
+  Zoeken als headericoon. Boeken-home staat er tegen goedgekeurde schermgolden 01b.
+- Het vergelijken van een echte iPhone 15 Pro-simulator met die golden haalde twee fouten boven die
+  geen test zag: de voortgangsbalk lag 113 × 0 op het scherm, en de pagina stond 13 tot 25 punt te
+  laag. Beide gecorrigeerd, uitlijning nu binnen 1 tot 7 punt.
+- Bewijs: `ci_checks.sh` groen (exit 0), 4869 tests geslaagd en 6 overgeslagen, en twee Verify-scenario's
+  groen op de iOS-simulator (`mobile.nav.primary`, `books.home.layout`).
+- Drie visuele afwijkingen staan bewust open en zijn goedgekeurd als implementatie-afwijking, niet als
+  wijziging van het contract: de covers worden getekend omdat er nog geen e-bookbron is, de
+  series-artwork is eenvoudiger, en de avatar is de bestaande ronde `ProfileAvatar`. **Zodra PS-14
+  echte coverdata levert, moeten de cover- en seriesbeelden opnieuw tegen golden 01b beoordeeld
+  worden.**
+
 ### 2026-08-22
 - Twee fixes uit de PS-4-deviceronde gecommit (`d5d1fcd`, `19a7701`) plus de bijgewerkte bevindingenlijst (`d5addfb`). Het afsluitpad van de speler wacht niet meer op de kijkstatusschrijving, de tracker begrenst die op vijf seconden en zet weg wat niet landt; de log-upload houdt een 429-venster vast en leest ook de datumvorm van `Retry-After`.
 - `main` erin gemerged (`50966a2`). Alleen `playback_progress_tracker_test.dart` botste, twee keer aanbouw aan het eind van hetzelfde bestand, dus beide groepen staan er nu naast elkaar. Bewijs op de samengevoegde boom: `ci_checks.sh` volledig groen, 4617 tests geslaagd en 1 overgeslagen.

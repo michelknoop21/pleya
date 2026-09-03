@@ -718,10 +718,16 @@ De required-candidate `portable`-gate en de uitgevoerde iOS/tvOS Verify-scenario
 
 **Consequences:** Pleya Verify Core 1.0 is hiermee compleet: deterministic fixture-backed scenario's, drie platformdrivers (macOS/iOS-sim/tvOS-sim), UI-boom/focus/events/geometrie-assertions, autoritatieve compositor-screenshots als visuele waarheid, complete evidencebundels, false-PASS-verdediging (Fase 12), CLI, MCP-laag (Fase 13), CI-orkestratie (Fase 14), fail-closed control-plane-auth, bounded execution, en redactie-/securityhardening (dit besluit). Bekende, niet-blokkerende grenzen: macOS-hosted-buildsigning in CI, `tvos.library.filters` (DEFERRED voor G13, [DEC-063](#dec-063-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)), en tvOS-D-pad-navigatie binnen het systeemtoetsenbord (niet simuleerbaar, zie CONTRIBUTING.md). Geen nieuwe featurescope geopend; een volgende sessie die verder wil dan Core 1.0 begint bij een expliciet nieuw besluit, niet bij het stilzwijgend heropenen van Fase 1 t/m 15.
 
-## DEC-069: Mobiele primaire navigatie landt vervroegd vanuit ebooks, als capability-gedreven vijfslots-balk
+## DEC-094: Mobiele primaire navigatie landt vervroegd vanuit ebooks, als capability-gedreven vijfslots-balk
 
 **Date:** 2026-09-03
 **Status:** accepted
+
+**Nummer:** dit besluit is op 3 september 2026 hernummerd van DEC-069 naar DEC-094. `main` stond op
+DEC-068, dus 069 leek vrij, maar `feat/pleyaserver` had dat nummer al in gebruik voor de
+`sid`-authketen en loopt door tot DEC-093. Twee besluiten met hetzelfde nummer overleven een merge
+niet als twee besluiten. 094 is over alle branches vrij; het Pleya Server-besluit blijft
+onaangeraakt.
 
 **Context:** De e-books-opdracht kwam met een bindende mockup waarvan de onderste tabbalk `Home · Series · Films · Boeken · Mijn Pleya` toont. Op `feat/ebooks` (gebaseerd op `main`) draait de tabbalk nog volledig op de oude `NavigationTabId`-structuur (`discover, libraries, liveTv, search, watchlist, requests, downloads, settings, myPleya`), met één gecombineerde `libraries`-tab en een vaste vijf-van-negen-selectie via `_mobileTabsInsideMyPleya` in `lib/screens/main_screen.dart`. Op `feat/netflix-mobile` ligt sinds [DEC-090](../../../feat/netflix-mobile/docs/DECISIONS.md#dec-090) op die branch de goedgekeurde iOS Unified 2026-northstar bevroren (commit `011ffdb`, 21 beelden in `docs/assets/ios-unified/northstar/`), met precies die vijfslots-balk `Home · Series · Films · Live TV · Mijn Pleya`. Die entry legt zelf vast dat alleen assets en het auditrapport gecommit zijn: `NavigationTabId`, de tabbalk, de landings en `TvDiscoveryLandingProvider` zijn niet aangeraakt. Search staat in de northstar niet meer in de balk maar als icoon in de headers van Home/Series/Films.
 

@@ -84,7 +84,7 @@ class DiscoverScreen extends StatefulWidget {
 
   /// Which slice of the catalog this instance shows. [DiscoverScope.all] is
   /// Home and the default, so every existing call site keeps its behaviour;
-  /// Series and Films are the same screen with a type filter ([DEC-069]).
+  /// Series and Films are the same screen with a type filter ([DEC-094]).
   final DiscoverScope scope;
 
   /// The hero's pagination-dot row, so tests can measure its real rect
@@ -1431,7 +1431,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                             ],
                           ),
                         ),
-                        // Zoeken. Since [DEC-069] search is not a slot in the
+                        // Zoeken. Since [DEC-094] search is not a slot in the
                         // mobile bar but an icon here, so the five primary
                         // slots can be content destinations. Phone only: the
                         // desktop sidebar and the TV rail still carry Zoeken

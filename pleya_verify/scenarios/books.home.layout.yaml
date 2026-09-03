@@ -14,7 +14,7 @@ target: ios-sim
 # scenario fails at the first wait_until with `screen.books is not
 # ready/present` — which is the honest failure, not a flake.
 #
-# It also covers permutation (a) of DEC-069 point 5: with books available the
+# It also covers permutation (a) of DEC-094 point 5: with books available the
 # bar's fourth slot is Boeken. Permutation (d), the Downloads floor, is
 # `mobile.nav.primary`, which runs without the variable.
 #

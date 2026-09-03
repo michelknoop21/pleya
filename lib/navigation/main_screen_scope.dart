@@ -32,7 +32,7 @@ class MainScreenFocusScope extends InheritedModel<MainScreenScopeAspect> {
   final void Function(String libraryGlobalKey)? selectLibrary;
   final VoidCallback? openSettings;
 
-  /// Opens the Zoeken destination. Since [DEC-069] search is no longer a slot
+  /// Opens the Zoeken destination. Since [DEC-094] search is no longer a slot
   /// in the mobile bar but an icon in the Home/Series/Films/Boeken header, and
   /// a header lives inside a child screen. Same shape as [openSettings]: the
   /// child asks, MainScreen still owns the tab state.

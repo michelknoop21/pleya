@@ -43,7 +43,7 @@ void main() {
     });
 
     test('an unresolved books answer reserves the slot instead of guessing', () {
-      // The flap DEC-069 forbids: treating unknown as "no books" hands the slot
+      // The flap DEC-094 forbids: treating unknown as "no books" hands the slot
       // to Live TV and takes it back one frame later.
       expect(
         PrimaryMobileDestinationPolicy.dynamicDestination(

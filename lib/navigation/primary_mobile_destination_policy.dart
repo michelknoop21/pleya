@@ -37,7 +37,7 @@ class MobileDestinationCapabilities {
 }
 
 /// The single place that decides which destinations the mobile bottom bar
-/// carries, and in which order ([DEC-069](../../docs/DECISIONS.md)).
+/// carries, and in which order ([DEC-094](../../docs/DECISIONS.md)).
 ///
 /// Home, Series and Films are fixed, My Pleya is fixed at the end, and the
 /// fourth slot follows the content the profile actually has: Books, else Live

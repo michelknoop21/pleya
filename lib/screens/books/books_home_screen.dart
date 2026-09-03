@@ -112,7 +112,7 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
 }
 
 /// Wordmark left, search and profile right — the header golden 00 approved and
-/// golden 01b repeats. Search lives here because DEC-069 took it out of the
+/// golden 01b repeats. Search lives here because DEC-094 took it out of the
 /// bottom bar.
 class _BooksHeader extends StatelessWidget {
   const _BooksHeader();

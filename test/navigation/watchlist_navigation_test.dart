@@ -62,7 +62,7 @@ void main() {
     });
 
     test('Series, Films and Boeken never reach the desktop or TV sidebar', () {
-      // DEC-069 adds three phone destinations. The rail already reaches every
+      // DEC-094 adds three phone destinations. The rail already reaches every
       // one of them through Bibliotheken, so it must be byte-for-byte the list
       // it was before, with or without books.
       for (final hasBooks in [false, true]) {
@@ -147,7 +147,7 @@ void main() {
 
   group('the mobile bottom bar', () {
     test('online is Home, Series, Films, the dynamic slot and My Pleya', () {
-      // DEC-069 and golden 00: five fixed positions, the fourth decided by
+      // DEC-094 and golden 00: five fixed positions, the fourth decided by
       // content. With a tuner and no books that fourth slot is Live TV.
       expect(bar(isOffline: false), [
         NavigationTabId.discover,
@@ -181,7 +181,7 @@ void main() {
     });
 
     test('while books are still unknown the slot stays empty rather than flapping', () {
-      // The startup sequence DEC-069 forbids is Boeken -> Live TV -> Boeken.
+      // The startup sequence DEC-094 forbids is Boeken -> Live TV -> Boeken.
       // Four slots settle once; a wrong fourth slot settles twice.
       final booting = bar(isOffline: false, books: BooksAvailability.unknown, hasLiveTv: true);
 

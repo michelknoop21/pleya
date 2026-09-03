@@ -120,7 +120,7 @@ bool shouldRenderMainScreenOffline({
 
 /// The mobile bottom bar's destinations, in display order.
 ///
-/// Since [DEC-069](../../docs/DECISIONS.md) the bar is composed by
+/// Since [DEC-094](../../docs/DECISIONS.md) the bar is composed by
 /// [PrimaryMobileDestinationPolicy] rather than filtered out of the sidebar's
 /// list: its order (Home · Series · Films · [dynamic] · My Pleya) is its own,
 /// and the fourth slot follows the profile's content. Everything the policy
@@ -1086,7 +1086,7 @@ class _MainScreenState extends State<MainScreen>
         switch (tab.id) {
           NavigationTabId.discover => DiscoverScreen(key: _discoverKey),
           // Series and Films are the same Home surface with a type filter,
-          // not two copies of it (DEC-069). Boeken is its own screen, built
+          // not two copies of it (DEC-094). Boeken is its own screen, built
           // against approved golden 01b.
           NavigationTabId.series => DiscoverScreen(key: _seriesKey, scope: DiscoverScope.series),
           NavigationTabId.movies => DiscoverScreen(key: _moviesKey, scope: DiscoverScope.movies),

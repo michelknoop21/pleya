@@ -24,14 +24,14 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 
 | Bestand | Scherm | Status | Viewport | DEC | Datum | Afwijking |
 | --- | --- | --- | --- | --- | --- | --- |
-| `ebooks-northstar-comp.png` | Design North Star, twaalf panelen | bron, niet ter goedkeuring | comp, 1528×1029 | DEC-069 | 2026-09-03 | n.v.t. |
-| `00-mobile-nav-books.png` | Mobiele vijfslots-navigatie met Boeken als vierde bestemming; links Home (Boeken inactief), rechts Boeken actief | approved | 2 × iPhone 15 Pro naast elkaar | DEC-069, DEC-090 | 2026-09-03 | zie onder |
-| `00a-mobile-nav-home-books-inactive.png` | Home, Boeken in slot 4 inactief | approved | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
-| `00b-mobile-nav-books-active.png` | Boeken-tab actief | approved | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
-| `01-books-home.png` | Boeken-home, eerste ronde | vervangen door 01b | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
-| `01b-books-home.png` | Boeken-home, canonieke startstaat | approved | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
-| `01b-books-home-series.png` | Scrollbewijs bij `01b-books-home.png`, geen apart scherm | approved | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
-| `01b-books-home-comp.png` | Beide 01b-frames naast elkaar | approved | 2 × iPhone 15 Pro | DEC-069, DEC-090 | 2026-09-03 | n.v.t. |
+| `ebooks-northstar-comp.png` | Design North Star, twaalf panelen | bron, niet ter goedkeuring | comp, 1528×1029 | DEC-094 | 2026-09-03 | n.v.t. |
+| `00-mobile-nav-books.png` | Mobiele vijfslots-navigatie met Boeken als vierde bestemming; links Home (Boeken inactief), rechts Boeken actief | approved | 2 × iPhone 15 Pro naast elkaar | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `00a-mobile-nav-home-books-inactive.png` | Home, Boeken in slot 4 inactief | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `00b-mobile-nav-books-active.png` | Boeken-tab actief | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `01-books-home.png` | Boeken-home, eerste ronde | vervangen door 01b | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `01b-books-home.png` | Boeken-home, canonieke startstaat | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `01b-books-home-series.png` | Scrollbewijs bij `01b-books-home.png`, geen apart scherm | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `01b-books-home-comp.png` | Beide 01b-frames naast elkaar | approved | 2 × iPhone 15 Pro | DEC-094, DEC-090 | 2026-09-03 | n.v.t. |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -131,7 +131,7 @@ TV te vallen en terug te springen. Boeken zelf is nog een placeholder: het scher
 schermgolden 01 en wordt pas gebouwd na goedkeuring daarvan.
 
 `pleya_verify/scenarios/mobile.nav.primary.yaml` meet de balk op een echte iPhone-simulatorbuild.
-Van de vijf permutaties uit DEC-069 punt 5 is nu alleen de Downloads-bodem te bewijzen; welke drie
+Van de vijf permutaties uit DEC-094 punt 5 is nu alleen de Downloads-bodem te bewijzen; welke drie
 niet, en waarom, staat in het scenario zelf.
 
 ## Opnieuw renderen

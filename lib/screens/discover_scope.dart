@@ -3,7 +3,7 @@ import '../media/media_kind.dart';
 /// Which slice of the catalog a Home surface shows.
 ///
 /// Series and Films are the same screen as Home with a type filter, not two
-/// copies of it ([DEC-069](../../docs/DECISIONS.md)). Keeping them one screen
+/// copies of it ([DEC-094](../../docs/DECISIONS.md)). Keeping them one screen
 /// is what stops the hero, the rails, the layout preferences and the focus
 /// handling from drifting into three versions that have to be fixed three
 /// times.

@@ -231,7 +231,7 @@ class NavigationTab {
   /// destinations and keeps them.
   ///
   /// Series, Films and Boeken are gated the same way, for the same reason and
-  /// for the moment only there ([DEC-069](../../docs/DECISIONS.md)). They are
+  /// for the moment only there ([DEC-094](../../docs/DECISIONS.md)). They are
   /// the phone's primary catalog surfaces; desktop and TV browse through
   /// Bibliotheken, whose sidebar this method also feeds, so leaving them in
   /// would add three rows to a rail that already reaches everything through
