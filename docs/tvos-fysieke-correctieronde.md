@@ -74,6 +74,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | OVR1 | Detail- en contextmenu valt buiten beeld en voelt te groot | GESPLITST in OVR1a en OVR1b | n.v.t. |
 | OVR1a | `scaleForHeight` heeft ondergrens 0,85, en die is onjuist voor inhoud binnen een TV-paneel: de inhoud wordt ongeveer 1,5 keer te groot | NOT REPRODUCED | n.v.t. |
 | OVR1b | TV-sheets zonder expliciete `presentation` vallen terug op de 400x400-geometrie | FIXED | `96f2d45` |
+| OVR2 | Expliciete TV sheet-presentation wordt door de OVR1b-panelgeometrie overschreven | OPEN | n.v.t. |
 | BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | OPEN | n.v.t. |
 | FOC1 | Focusring valt buiten de viewport in overlays | OPEN | n.v.t. |
 | ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | OPEN | n.v.t. |
@@ -1063,6 +1064,36 @@ bij 80 (`video_settings_sheet.dart:336`); op TV komt die nu in het midden in
 plaats van tegen de bovenrand, want `_tvPanelGeometry` centreert altijd. En een
 aanroeper die zelf constraints meegeeft wordt op TV voortaan door de viewport
 geklemd, waar het oude sheet-pad zo'n wens ongemoeid doorliet.
+
+#### OVR2, expliciete presentatie verdwijnt onder de gedeelde TV-doos
+
+Regressie, ontstaan in `96f2d45`. Geregistreerd op 3 september 2026, nog zonder
+wijziging in productiecode.
+
+OVR1b heeft terecht de losse 400x400-fallback voor TV weggehaald. De gekozen
+resolver stuurt sindsdien echter ook sheets die hun presentatie wél expliciet
+opschrijven door dezelfde generieke TV-paneelgeometrie, en die centreert altijd.
+De compacte sync-balk van de speler vraagt `alignment: topCenter` met een eigen
+doos van 900 bij 80 (`video_settings_sheet.dart:336`) en verschijnt op TV nu in
+het midden van het beeld.
+
+Dit item is niet "OVR1b terugdraaien". Het contract van OVR1b blijft gelden voor
+elke TV-sheet die geen presentatie opschrijft: die krijgt de gedeelde TV-veilige
+paneelgeometrie en nooit meer de oude 400x400-doos. Wat erbij hoort is het
+onderscheid dat OVR1b niet maakte. TV-veilig is iets anders dan
+TV-gepaneleerd.
+
+Het contract dat hieronder bewezen moet worden heeft twee helften. Een sheet
+zonder eigen geometrie is een default sheet en volgt OVR1b. Een sheet die
+alignment of constraints meegeeft is een expliciete sheet: die houdt zijn
+uitlijning, houdt zijn gevraagde maat zolang de veilige viewport dat toelaat, en
+wordt alleen geklemd wanneer de viewport dat afdwingt. Klemmen is een maat
+bijstellen, geen presentatie vervangen.
+
+De stand van origin/main hoort er expliciet bij. Op het moment van registreren
+staat main op `183d694` en bevat main OVR1b niet: `96f2d45` en `ec66f1a` staan
+alleen op `claude/netflix-redesign-b4x21v`. Deze regressie is dus nog niet naar
+main gelekt, en de hotfix gaat bovenop `ec66f1a`.
 
 ### BACK1, wat er staat en wat er niet is
 
