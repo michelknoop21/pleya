@@ -164,8 +164,10 @@ oppervlakken kozen wel expliciet `panel` en hadden de goede geometrie al. `Media
 er via een tweede weg terecht, `media_context_menu.dart:239`, waar `Platform.isIOS` op tvOS waar
 is zonder een `PlatformDetector.isTV()`-controle ernaast.
 
-Op TV gaat sindsdien elke presentatie naar `_tvPanelGeometry`, dus beide wegen komen op dezelfde
-doos uit en `media_context_menu.dart:239` hoefde niet te wijzigen. De vier tests die 400 bij 400
+Op TV gaat sindsdien elke presentatie zonder eigen alignment naar `_tvPanelGeometry`, dus beide
+wegen komen op dezelfde doos uit en `media_context_menu.dart:239` hoefde niet te wijzigen. Dat
+"zonder eigen alignment" is later toegevoegd: OVR1b trok aanvankelijk ook de ene aanroeper mee die
+zijn plek zelf kiest, en dat is als OVR2 gerepareerd in `cf4b6c7`. De vier tests die 400 bij 400
 als bedoeld gedrag vastlegden zijn mee herzien. De volledige redenering, met de gemeten waarden
 voor en na, staat in `docs/tvos-fysieke-correctieronde.md`.
 

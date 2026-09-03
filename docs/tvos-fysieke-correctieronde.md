@@ -74,7 +74,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | OVR1 | Detail- en contextmenu valt buiten beeld en voelt te groot | GESPLITST in OVR1a en OVR1b | n.v.t. |
 | OVR1a | `scaleForHeight` heeft ondergrens 0,85, en die is onjuist voor inhoud binnen een TV-paneel: de inhoud wordt ongeveer 1,5 keer te groot | NOT REPRODUCED | n.v.t. |
 | OVR1b | TV-sheets zonder expliciete `presentation` vallen terug op de 400x400-geometrie | FIXED | `96f2d45` |
-| OVR2 | Expliciete TV sheet-presentation wordt door de OVR1b-panelgeometrie overschreven | OPEN | n.v.t. |
+| OVR2 | Expliciete TV sheet-presentation wordt door de OVR1b-panelgeometrie overschreven | FIXED | `cf4b6c7` |
 | BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | OPEN | n.v.t. |
 | FOC1 | Focusring valt buiten de viewport in overlays | OPEN | n.v.t. |
 | ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | OPEN | n.v.t. |
@@ -1094,6 +1094,66 @@ De stand van origin/main hoort er expliciet bij. Op het moment van registreren
 staat main op `183d694` en bevat main OVR1b niet: `96f2d45` en `ec66f1a` staan
 alleen op `claude/netflix-redesign-b4x21v`. Deze regressie is dus nog niet naar
 main gelekt, en de hotfix gaat bovenop `ec66f1a`.
+
+**Afgerond op 3 september 2026 in `cf4b6c7`.**
+
+**Oorzaak.** `resolveOverlaySheetGeometry` kende maar één vraag op TV, namelijk
+of het toestel een televisie is, en stuurde daarna alles naar
+`_tvPanelGeometry`. De aanroeper kon niet zeggen dat hij zijn plek zelf al
+gekozen had, want `alignment` had een niet-nullable standaardwaarde
+`Alignment.bottomCenter` tot in `OverlaySheetController.show`. "Geen mening" en
+"bewust onderaan" waren daardoor dezelfde waarde, en dus was er geen signaal om
+op te beslissen.
+
+**Fix.** `alignment` is van de publieke `show` tot in de resolver `Alignment?`
+geworden, met null als betekenis "de host beslist". Op TV splitst de resolver
+daarop: null gaat naar `_tvPanelGeometry` en houdt OVR1b precies zoals hij was,
+en een genoemde alignment gaat naar `_tvPlacedSheetGeometry`. Die haalt al zijn
+getallen bij `_tvPanelGeometry` op, dus er is nog steeds één eigenaar van de
+vraag hoe groot een TV-overlay mag zijn en hoe ver hij van de rand blijft, en
+verandert alleen de plaatsing. `_sheetGeometry` weet nog altijd niets van
+televisies af.
+
+Er kwam één veld bij, `verticalEdgePadding`, standaard 0. Alleen een oppervlak
+dat zichzelf op een TV plaatst zet hem, want de buitenste band van een televisie
+is overscan: een balk die tegen de bovenste scanlijn plakt verliest zijn eerste
+regel. De layoutdelegate rekent de band per as uit met dezelfde formule, en bij
+0 komt daar exact de oude berekening uit.
+
+Daar zat nog een randgeval in dat hierdoor zichtbaar werd. De delegate gaf zijn
+kind de breedte min twee keer de marge, maar besloot pas tot marge bij `size >
+child + 2 * padding`. Een kind dat die breedte precies vulde viel dus door de
+strikte vergelijking heen en werd tegen de linkerrand gezet, met alle ruimte aan
+de andere kant. Dat raakt ook een desktoppaneel in een venster van 600 breed.
+De band wordt nu geklemd in plaats van vertakt.
+
+De maten van de sync-balk staan voortaan als `kCompactSyncBarAlignment` en
+`kCompactSyncBarConstraints` in `video_settings_sheet.dart`, zodat de test het
+contract leest in plaats van de getallen te herhalen.
+
+**Meting op 1038x584.** Voor: rechthoek 900 bij 80, bovenrand op 252, midden op
+292, oftewel gecentreerd. Na: 900 bij 80, bovenrand op 38,9, midden op 78,9. De
+veilige inset van 38,9 logische px is hoofdstuk 8.1's 72 referentie-px. Een
+gevraagde breedte van 1100 komt terug als 960,15, en de bovenrand blijft op
+38,9: klemmen past een maat aan, het verplaatst geen oppervlak.
+
+**Negatieve controle.** Met alleen de discriminator terug op OVR1b-gedrag vallen
+zes tests om, waaronder de echte caller met `Expected: 38.925 Actual: 252.0` en
+`Expected: topCenter Actual: center`. De default-sheet guards blijven daarbij
+groen, dus wat rood wordt is de regressie en niet de OVR1b-winst. Met de
+discriminator terug zijn alle 58 groen.
+
+**OVR1b-guard.** De 400x400-doos is niet teruggekomen. De guard staat op twee
+plekken: een grep-controle op de resolver en de assertie dat een geplaatste
+TV-sheet nooit op 400 uitkomt maar binnen de band 900 tot 1040 blijft.
+
+**OVR1a.** Niet aangeraakt. `layout_constants.dart` en `tv_unified_layout.dart`
+staan ongewijzigd ten opzichte van `ec66f1a`.
+
+**Audit.** Van de 34 aanroepen in `lib/` gebruiken er 11 expliciet `panel`, 22
+noemen niets, 1 geeft alleen constraints mee (de bibliotheek-quickpicker, die
+paneel blijft en zijn hoogte houdt) en precies 1 noemt een alignment. Er is dus
+geen tweede geval en geen aanroeper die een uitzondering per scherm nodig heeft.
 
 ### BACK1, wat er staat en wat er niet is
 
