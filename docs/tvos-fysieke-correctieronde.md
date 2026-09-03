@@ -69,7 +69,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LAND3 | De gefocuste wide card valt rechts buiten beeld | FIXED | `0a60044` |
 | CAT1 | Bovenste rij coverart raakt de veilige bovengrens | FIXED, hardware open | `89b1554` |
 | CAT2 | Metadata van de onderste rij staat tegen de onderrand | NOT REPRODUCED | n.v.t. |
-| CAT3 | Bron, filters en sortering staan verkeerd gepositioneerd | OPEN | n.v.t. |
+| CAT3 | Bron, filters en sortering staan verkeerd gepositioneerd | FIXED | `675fc2f` |
 | CAT4 | Bron, filters en sortering mogelijk onbereikbaar | OPEN | n.v.t. |
 | OVR1 | Detail- en contextmenu valt buiten beeld en voelt te groot | GESPLITST in OVR1a en OVR1b | n.v.t. |
 | OVR1a | `scaleForHeight` heeft ondergrens 0,85, en die is onjuist voor inhoud binnen een TV-paneel: de inhoud wordt ongeveer 1,5 keer te groot | OPEN | n.v.t. |
@@ -567,6 +567,114 @@ device-run met een écht gevulde bibliotheek, ofwel een simulator-sessie met
 demo-inloggegevens die een catalogus met meerdere rijen laat zien (LAND6's gat
 blokkeert dat nu voor elk account zonder discovery-hubs). Geen productiecode
 gewijzigd; er is niets om terug te draaien als dit later alsnog reproduceert.
+
+### CAT3, de actiecluster hield zich niet aan de canonieke rechterrand
+
+#### Masterlijsthypothese
+
+"Bron, filters en sortering staan verkeerd gepositioneerd." Er stond al een
+niet-bewezen hypothese uit CAT1's onderzoek klaar: titelzone en actiezone
+zouden allebei een flex-verdeling hebben, waardoor vrije ruimte gedeeld werd
+terwijl de actions eigenlijk tegen de canonieke rechter paginarand horen.
+
+#### Reproductie
+
+Tegen de echte `TvCatalogHeaderBar`, binnen `TvShellSurface`, met de echte
+`TvCatalogGrid`-tokens, niet een losse `Row`-test. Gemeten is het rechterranddelta
+van de rechtste actiecapsule (de doos waar de focusring op getekend wordt,
+niet alleen het label) tegen `grid.inset + TvCatalogLayout.cardContentInset(scale)`,
+dezelfde canonieke rechterrand die de catalogusgrid zijn artwork tegen
+uitlijnt.
+
+* Canoniek canvas (1038×584, schaal 0,85), drie acties: delta 0,0, **niet**
+  gereproduceerd.
+* 1920×1080 (de echte referentieresolutie, schaal ongeklemd op 1,0), drie
+  acties: delta 238,5 logische pixels.
+* Canoniek canvas, Bronnen conditioneel afwezig (twee acties): delta 140,7
+  logische pixels.
+
+Op het canonieke canvas zag het er dus goed uit, en dat is precies waarom de
+bestaande goldens, die alleen dat canvas renderen, het nooit vingen.
+
+#### Root cause
+
+`TvCatalogHeaderBar` wikkelde de actiecluster in `Flexible(fit:
+FlexFit.loose)` met dezelfde flexweging (1) als de `Expanded` paginatitel.
+Flutters flex-algoritme verdeelt de vrije ruimte vóór het layouten van de
+flex-children, op basis van die weging: bij twee flex-children van gewicht 1
+elk krijgen ze allebei precies 50% als *maximum*, ongeacht hun eigen inhoud.
+Een `Expanded` (tight fit) vult zijn 50% altijd volledig; een `Flexible`
+(loose fit) mag minder gebruiken, en `SingleChildScrollView` doet dat ook
+echt: hij krimpt naar de breedte van zijn kind zodra dat kind smaller is dan
+de toegewezen maximumbreedte, in plaats van die maximumbreedte te vullen
+zoals een `ListView`/`Viewport` zou doen.
+
+Op het canonieke canvas ligt `TvLayoutConstants.scaleForHeight` tegen zijn
+ondergrens van 0,85 aan geklemd (584/1080 = 0,54, geklemd naar 0,85), wat de
+actiecapsules daar verhoudingsgewijs groot maakt tegenover de 964-brede rij:
+toevallig dicht genoeg bij hun 50%-aandeel om het gat onzichtbaar te maken.
+Bij 1920×1080 is de schaal *niet* geklemd (1080/1080 = 1,0) en groeit de
+inhoud van de acties trager dan de lineair meegroeiende 50%-flexdeling, dus
+het gat wordt zichtbaar. Met Bronnen conditioneel afwezig krimpt de inhoud
+verder terwijl de 50%-share gelijk blijft, met hetzelfde gevolg, al op het
+canonieke canvas.
+
+**FLEX HYPOTHESIS: CONFIRMED.**
+
+#### Waarom de bestaande tests dit misten
+
+Geen enkele test mat het rechterranddelta van de actiecluster tegen de
+canonieke rechterrand, op geen enkele resolutie. De vier bestaande
+`tv_catalog_films_*`-goldens en de bijbehorende states-goldens renderen
+allemaal uitsluitend het canonieke 1038×584-canvas, exact het ene geval waar
+de toevalstreffer het defect verborg. Geen van hen test 1920×1080, en geen
+scenario test Bronnen conditioneel afwezig.
+
+#### De fix
+
+De actiecluster is nu een niet-flexibel `Row`-kind: een `ConstrainedBox`
+(gekapt op de content-breedte van de rij, `width - horizontalInset * 2`, als
+vangnet tegen een `RenderFlex`-overflow in het pathologische geval van een
+titel die tot 0 gekrompen is plus een actieset die zelfs dan niet past) om
+dezelfde `SingleChildScrollView`. Een niet-flex kind wordt door Flutter vóór
+de flex-verdeling gelayout op zijn eigen intrinsieke breedte, dus de titel
+(de enige overgebleven flex-child, `Expanded`) krijgt daadwerkelijk alles wat
+overblijft, en de `Row` plaatst de acties vlak tegen zijn eigen rechterrand,
+ongeacht titellengte of het aantal acties.
+
+#### Blast radius
+
+`TvCatalogHeaderBar` heeft één productiecaller: `TvUnifiedCatalogScreen`,
+gedeeld door Films en Series. Geen andere oppervlakte gebruikt dit widget.
+
+#### Bewijs
+
+Zeven controles in `test/widgets/tv/tv_catalog_header_bar_test.dart`: de
+canonieke canvas in rust, 1920×1080, Bronnen conditioneel afwezig, een korte
+titel, een lange gelokaliseerde titel, een actieve filterbadge, en het
+pathologische-overflow-vangnet.
+
+Met de oude implementatie teruggezet stonden precies de twee controles rood
+die de melding daadwerkelijk reproduceerden (1920×1080, 238,5 tegen een
+tolerantie van 0,5, en Bronnen conditioneel afwezig, 140,7), en bleven de
+overige vijf groen, wat exact de canonieke-canvas-toevalstreffer bevestigt.
+
+De twee bestaande golden-testbestanden voor deze oppervlakte
+(`tv_unified_catalog_golden_test.dart`, 14 tests, en
+`tv_unified_catalog_states_golden_test.dart`, 5 tests) falen op deze HEAD
+zowel vóór als ná de fix op precies dezelfde testnamen: bekende
+omgevingsruis in fontrasterisatie (zie hoofdstuk 29 aldaar), geen regressie.
+`flutter analyze` en `dart format --set-exit-if-changed` op de twee gewijzigde
+bestanden zijn schoon onder de gepinde SDK
+(`/Volumes/SSD/flutter-sdks/3.44.0`, PATH stond op 3.44.4).
+
+CAT1's eigen suite (`test/widgets/tv/tv_unified_media_grid_test.dart`, groep
+`CAT1`) is opnieuw gedraaid en blijft groen: deze fix raakt alleen de header,
+niet de grid.
+
+Pleya Verify levert hier geen bewijs: geen scenario opent de Complete
+Catalog (hetzelfde gat als CAT2 en VER4 al beschrijven; geen duplicaat
+toegevoegd). Hardware-acceptatie staat nog open.
 
 ### LAND6, een lege landing verbergt de route naar een gevulde catalogus
 
