@@ -64,16 +64,17 @@ func TestInfoBeforeAndAfterSetup(t *testing.T) {
 		t.Fatalf("capabilities zijn %+v", before.Capabilities)
 	}
 	// Capabilities is leidend. Kijkstatus staat sinds PS-4 aan, met het
-	// eigendomsmodel en de streamsessies eronder; een afspeelplan, transcodering,
-	// downloads, Live TV, realtime en gebruikers zijn latere fasen en horen dus
-	// nog steeds uit te staan.
+	// eigendomsmodel en de streamsessies eronder, en gebruikers sinds stap 4 van
+	// PS-9; een afspeelplan, transcodering, downloads, Live TV en realtime zijn
+	// latere fasen en horen dus nog steeds uit te staan. Sessions gaat pas aan
+	// bij stap 6, wanneer GET/DELETE /sessions en /auth/logout er zijn.
 	if !before.Capabilities.WatchState || !before.Capabilities.WatchStateOwnership ||
-		!before.Capabilities.StreamSessions {
+		!before.Capabilities.StreamSessions || !before.Capabilities.Users {
 		t.Fatalf("een capability van deze fase staat uit: %+v", before.Capabilities)
 	}
 	if before.Capabilities.PlaybackPlan || before.Capabilities.Transcode ||
 		before.Capabilities.Downloads || before.Capabilities.LiveTV ||
-		before.Capabilities.Realtime || before.Capabilities.Users {
+		before.Capabilities.Realtime {
 		t.Fatalf("een capability staat aan die deze fase niet heeft: %+v", before.Capabilities)
 	}
 	if before.Server.ID == "" {

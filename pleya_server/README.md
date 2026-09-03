@@ -282,6 +282,46 @@ curl -s -H "Authorization: Bearer $A" "$B/search?q=grease"
 curl -s -H "Authorization: Bearer $A" $B/hubs/recently_added
 ```
 
+### Huisgenoten toevoegen
+
+Sinds PS-9 kent de server vier rollen (`owner`, `admin`, `member`, `restricted`) en één recht per
+bibliotheek uit een geordende ladder (`view` < `download` < `manage`). `owner` en `admin` zien elke
+bibliotheek via hun rol en krijgen daar geen rijen voor; `member` en `restricted` zien uitsluitend wat
+ze toegewezen krijgen, en een bibliotheek zonder recht bestaat voor hen niet, ook niet als ze het id
+raden.
+
+Er is in deze fase geen beheerscherm. Dat is PS-11A; het ondersteunde pad is nu deze API.
+
+```sh
+A=<access_token van owner of admin>
+B=http://127.0.0.1:8832/pleya/v1
+
+# Aanmaken. role mag niet owner zijn; die rol ontstaat alleen via /auth/setup.
+curl -s -X POST -H "Authorization: Bearer $A" -H 'Content-Type: application/json' \
+  -d '{"username":"sanne","password":"...","role":"member"}' $B/users
+
+# Wie er zijn. member en restricted zien in dit antwoord alleen zichzelf.
+curl -s -H "Authorization: Bearer $A" $B/users
+
+# Bibliotheekrechten zetten. PUT vervangt de volledige lijst: wat er niet in
+# staat, wordt ingetrokken.
+curl -s -X PUT -H "Authorization: Bearer $A" -H 'Content-Type: application/json' \
+  -d '{"permissions":[{"library_id":"<id>","permission":"view"}]}' \
+  $B/users/<user_id>/permissions
+
+# Rol of wachtwoord wijzigen, en verwijderen. De owner weigert allebei.
+curl -s -X PATCH -H "Authorization: Bearer $A" -H 'Content-Type: application/json' \
+  -d '{"role":"restricted"}' $B/users/<user_id>
+curl -s -X DELETE -H "Authorization: Bearer $A" $B/users/<user_id>
+```
+
+Daarna logt de nieuwe gebruiker gewoon in op `/auth/login` met haar eigen naam en wachtwoord, en
+krijgt ze haar eigen tokenpaar, haar eigen sessie en haar eigen kijkstatus.
+
+Een `restricted`-gebruiker is een `member` met drie verschillen: hij kan nooit `manage` krijgen, hij
+zet zijn eigen wachtwoord niet (alleen owner en admin doen dat), en hij ziet in `GET /users` alleen
+zichzelf. Dat is het Plex Home-kinderprofiel.
+
 De voortgang van een lopende scan staat in `scan_runs` en in de logregels `scan gestart` en
 `scan klaar`. Er is bewust geen endpoint voor: realtime is PS-11, en een trage NAS die lijkt te hangen
 is met een teller die oploopt net zo goed te onderscheiden van een scanner die vastzit.

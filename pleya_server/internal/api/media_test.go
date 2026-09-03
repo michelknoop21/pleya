@@ -256,6 +256,9 @@ func TestStreamTokenNeedsAnExistingVersion(t *testing.T) {
 // Een endpoint dat er half staat is erger dan een endpoint dat er niet is. Deze
 // test is de tegenhanger van de tabelcontrole in internal/migrate: daar staat
 // welke tabellen er niet horen te zijn, hier welke routes.
+//
+// /users staat er sinds stap 4 van PS-9 wel (DEC-067) en is daarom uit deze
+// lijst gehaald; matrixregel 14 in authorize_test.go bewaakt hem verder.
 func TestScopeBoundaryAfterPS4(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())
@@ -263,7 +266,6 @@ func TestScopeBoundaryAfterPS4(t *testing.T) {
 	for _, path := range []string{
 		"/pleya/v1/playback/plan",     // PS-6
 		"/pleya/v1/playback/sessions", // PS-8
-		"/pleya/v1/users",             // PS-9
 		"/pleya/v1/collections",       // PS-9C
 		"/pleya/v1/play-history",      // PS-9P
 		"/pleya/v1/admin/libraries",   // PS-11A

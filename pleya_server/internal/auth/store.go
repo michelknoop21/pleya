@@ -202,26 +202,39 @@ func (s *Store) OwnerUserID(ctx context.Context) (id.ID, error) {
 
 // UpdatePasswordHash herhasht bij een geslaagde login onder lichtere parameters.
 //
-// users.password_hash is sinds PS-9 de bron van waarheid (DEC-065); auth_owner
-// blijft ernaast bestaan als compatibiliteitstabel zolang LoadOwner er nog
-// rechtstreeks uit leest (specificatie 6.5). Beide rijen gaan in dezelfde
-// transactie mee: schrijf je alleen users, dan verifieert de volgende login nog
-// tegen de oude auth_owner-hash; schrijf je alleen auth_owner, dan is de rij
-// die volgens zijn eigen commentaar leidend hoort te zijn stil verouderd.
-func (s *Store) UpdatePasswordHash(ctx context.Context, hash string) error {
+// userID en niet "de owner": sinds stap 4 van PS-9 logt elke rij in users in,
+// dus de herhash moet naar de gebruiker die zojuist inlogde en niet naar de
+// enige die er vroeger was. users.password_hash is de bron van waarheid
+// (DEC-065); auth_owner blijft ernaast bestaan als compatibiliteitstabel zolang
+// LoadOwner er nog rechtstreeks uit leest (specificatie 6.5), en loopt daarom
+// voor de owner in dezelfde transactie mee. Schrijf je alleen users, dan
+// verifieert de volgende LoadOwner-lezing nog tegen de oude hash; schrijf je
+// alleen auth_owner, dan is de leidende rij stil verouderd.
+func (s *Store) UpdatePasswordHash(ctx context.Context, userID id.ID, hash string) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	var role Role
+	err = tx.QueryRow(ctx, `SELECT role FROM users WHERE id = $1 FOR UPDATE`, userID).Scan(&role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrUserNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("rol lezen voor herhash: %w", err)
+	}
+
 	if _, err := tx.Exec(ctx,
-		`UPDATE users SET password_hash = $1, updated_at = now() WHERE role = 'owner'`, hash); err != nil {
+		`UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2`, hash, userID); err != nil {
 		return fmt.Errorf("users.password_hash bijwerken: %w", err)
 	}
-	if _, err := tx.Exec(ctx,
-		`UPDATE auth_owner SET password_hash = $1, updated_at = now() WHERE id = 1`, hash); err != nil {
-		return fmt.Errorf("auth_owner.password_hash bijwerken: %w", err)
+	if role == RoleOwner {
+		if _, err := tx.Exec(ctx,
+			`UPDATE auth_owner SET password_hash = $1, updated_at = now() WHERE id = 1`, hash); err != nil {
+			return fmt.Errorf("auth_owner.password_hash bijwerken: %w", err)
+		}
 	}
 	return tx.Commit(ctx)
 }

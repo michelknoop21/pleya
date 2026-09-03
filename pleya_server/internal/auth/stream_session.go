@@ -138,25 +138,33 @@ func (s *Store) CreateStreamSession(ctx context.Context, subject id.ID, sid id.I
 //
 // Het geheim staat niet in de database; er staat een SHA-256 van, net als bij een
 // refreshtoken. Een databasedump levert dus geen speelbare sessies op.
-func (s *Store) VerifyStreamSession(ctx context.Context, sessionID id.ID, secret string, versionID id.ID, now time.Time) (id.ID, error) {
+//
+// Naast het subject komt de auth-sessie mee waaraan deze browserstreamsessie
+// hangt. Die is nodig op het streampad: copyRange raadpleegt per blok het
+// intrekkingsregister (DEC-066), en zonder die sid zou een lopende
+// browserstream de enige van de drie credentials zijn die een intrekking pas
+// bij de volgende aanvraag ziet. Nil-sid (een rij van vóór migratie 0007) geeft
+// id.Nil, en het register kent die nooit.
+func (s *Store) VerifyStreamSession(ctx context.Context, sessionID id.ID, secret string, versionID id.ID, now time.Time) (id.ID, id.ID, error) {
 	var storedHash []byte
 	var storedSubject id.ID
 	var storedVersion id.ID
 	var expiresAt time.Time
 	var revokedAt *time.Time
 	var authSessionRevokedAt *time.Time
+	var authSessionID *id.ID
 
 	err := s.pool.QueryRow(ctx, `
-		SELECT ss.secret_hash, ss.subject, ss.version_id, ss.expires_at, ss.revoked_at, s.revoked_at
+		SELECT ss.secret_hash, ss.subject, ss.version_id, ss.expires_at, ss.revoked_at, s.revoked_at, ss.session_id
 		FROM stream_sessions ss
 		LEFT JOIN sessions s ON s.id = ss.session_id
 		WHERE ss.id = $1`, sessionID).
-		Scan(&storedHash, &storedSubject, &storedVersion, &expiresAt, &revokedAt, &authSessionRevokedAt)
+		Scan(&storedHash, &storedSubject, &storedVersion, &expiresAt, &revokedAt, &authSessionRevokedAt, &authSessionID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return id.Nil, ErrStreamSessionInvalid
+		return id.Nil, id.Nil, ErrStreamSessionInvalid
 	}
 	if err != nil {
-		return id.Nil, err
+		return id.Nil, id.Nil, err
 	}
 
 	// De geheimvergelijking gaat als eerste en altijd, ook wanneer een van de
@@ -165,9 +173,13 @@ func (s *Store) VerifyStreamSession(ctx context.Context, sessionID id.ID, secret
 	// in de tijd.
 	ok := subtle.ConstantTimeCompare(storedHash, HashOpaque(secret)) == 1
 	if !ok || storedVersion != versionID || revokedAt != nil || authSessionRevokedAt != nil || !now.Before(expiresAt) {
-		return id.Nil, ErrStreamSessionInvalid
+		return id.Nil, id.Nil, ErrStreamSessionInvalid
 	}
-	return storedSubject, nil
+	authSid := id.Nil
+	if authSessionID != nil {
+		authSid = *authSessionID
+	}
+	return storedSubject, authSid, nil
 }
 
 // TouchStreamSession verlengt één sessie en zet alleen die ene opnieuw.

@@ -70,11 +70,13 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			Downloads:           false,
 			LiveTV:              false,
 			Realtime:            false,
-			Users:               false,
-			// Sessions: het schema en de tokenketen bestaan vanaf PS-9-stap 2,
-			// maar GET/DELETE /sessions en POST /auth/logout komen pas in een
-			// latere stap. Zie de vlag zelf in wire.go.
-			Sessions: false,
+			// Users: de vijf endpoints uit DEC-067 staan er sinds stap 4, en
+			// login kent sindsdien elke rij in users en niet alleen de owner.
+			Users: true,
+			// Sessions: aan sinds stap 6. Het schema en de tokenketen kwamen in
+			// stap 2; GET/DELETE /sessions, POST /auth/logout en het
+			// intrekkingsregister maken de belofte pas waar.
+			Sessions: true,
 		},
 		Auth: InfoAuth{
 			Methods:       []string{"password"},
@@ -172,6 +174,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Zonder voltooide setup bestaat er geen enkele gebruiker om tegen te
+	// verifiëren, en dan is "verkeerde inloggegevens" een misleidend antwoord.
 	owner, err := s.opts.Auth.LoadOwner(r.Context())
 	if err != nil {
 		writeInternal(w, s.log, err)
@@ -182,36 +186,42 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Een onbekende gebruiker en een verkeerd wachtwoord geven hetzelfde
-	// antwoord, zodat het bestaan van een account niet lekt. Het wachtwoord wordt
-	// ook bij een verkeerde gebruikersnaam gecontroleerd, want een antwoord dat
-	// meteen terugkomt verraadt net zo goed dat de naam niet klopt.
-	ok, needsRehash, verifyErr := auth.VerifyPassword(req.Password, owner.PasswordHash, s.opts.Argon2)
+	// Sinds stap 4 van PS-9 logt elke rij in users in, niet alleen de owner
+	// (DEC-067). Een onbekende gebruikersnaam en een verkeerd wachtwoord geven
+	// hetzelfde antwoord, en kosten hetzelfde: bij een onbekende naam wordt het
+	// wachtwoord alsnog tegen de owner-hash geverifieerd en de uitkomst
+	// weggegooid. Een antwoord dat meteen terugkomt verraadt net zo goed dat de
+	// naam niet bestaat als een antwoord dat het met zoveel woorden zegt.
+	user, storedHash, lookupErr := s.opts.Auth.UserForLogin(r.Context(), req.Username)
+	known := true
+	if errors.Is(lookupErr, auth.ErrUserNotFound) {
+		known = false
+		storedHash = owner.PasswordHash
+	} else if lookupErr != nil {
+		writeInternal(w, s.log, lookupErr)
+		return
+	}
+
+	ok, needsRehash, verifyErr := auth.VerifyPassword(req.Password, storedHash, s.opts.Argon2)
 	if verifyErr != nil {
 		writeInternal(w, s.log, verifyErr)
 		return
 	}
-	if !ok || req.Username != owner.Username {
+	if !ok || !known {
 		writeError(w, s.log, CodeInvalidCredentials, "invalid credentials", nil)
 		return
 	}
 
 	if needsRehash {
 		if hash, err := auth.HashPassword(req.Password, s.opts.Argon2); err == nil {
-			if err := s.opts.Auth.UpdatePasswordHash(r.Context(), hash); err != nil {
+			if err := s.opts.Auth.UpdatePasswordHash(r.Context(), user.ID, hash); err != nil {
 				s.log.Warn("opnieuw hashen mislukt", "error", err.Error())
 			}
 		}
 	}
 
-	ownerID, err := s.opts.Auth.OwnerUserID(r.Context())
-	if err != nil {
-		writeInternal(w, s.log, err)
-		return
-	}
-
 	s.limiter.reset(limiterKey)
-	s.issueTokens(w, r, ownerID, deviceID(req.DeviceID), deviceName(req.DeviceName))
+	s.issueTokens(w, r, user.ID, deviceID(req.DeviceID), deviceName(req.DeviceName))
 }
 
 type refreshRequest struct {
@@ -262,6 +272,14 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	case auth.RefreshExpired, auth.RefreshUnknown:
 		writeError(w, s.log, CodeTokenInvalid, "refresh token invalid", nil)
 		return
+	}
+
+	// last_seen_at bijwerken hoort hier en niet bij elke aanvraag: een refresh
+	// is per toestel de natuurlijke hartslag, en een schrijfronde per GET zou
+	// een leesserver in een schrijfserver veranderen voor een veld dat alleen in
+	// GET /sessions staat.
+	if err := s.opts.Auth.TouchSession(r.Context(), sid, now); err != nil {
+		s.log.Warn("last_seen_at bijwerken mislukt", "error", err.Error())
 	}
 
 	access, claims, err := s.opts.Signer.Mint(subjectID.String(), sid.String(), auth.TokenAccess, s.opts.AccessTokenTTL, "")

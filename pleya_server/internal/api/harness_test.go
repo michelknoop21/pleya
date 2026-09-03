@@ -49,6 +49,66 @@ type captureEntry struct {
 	Status int    `json:"status"`
 }
 
+// logCapture legt de logregels van de server vast, met hun tijdstip.
+//
+// Nodig voor precies één meting: acceptatiecriterium 3 van PS-9 legt een
+// bovengrens op de tijd tussen een intrekking en het moment dat de server
+// stopt met leveren, en dat moment is aan de clientkant niet te zien. Wat een
+// trage lezer daar meet is de intrekkingslatentie plús het leeglopen van de
+// buffers die al onderweg waren, en dat tweede stuk zegt niets over de server.
+//
+// Foutregels gaan daarnaast gewoon naar stderr, zodat een falende test nog
+// steeds vertelt wat er misging.
+type logCapture struct {
+	mu      sync.Mutex
+	records []logRecord
+	stderr  slog.Handler
+}
+
+type logRecord struct {
+	at      time.Time
+	message string
+}
+
+func newLogCapture() *logCapture {
+	return &logCapture{stderr: slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})}
+}
+
+func (c *logCapture) Enabled(_ context.Context, level slog.Level) bool {
+	return level >= slog.LevelInfo
+}
+
+func (c *logCapture) Handle(ctx context.Context, r slog.Record) error {
+	c.mu.Lock()
+	c.records = append(c.records, logRecord{at: time.Now(), message: r.Message})
+	c.mu.Unlock()
+	if r.Level >= slog.LevelError {
+		return c.stderr.Handle(ctx, r)
+	}
+	return nil
+}
+
+func (c *logCapture) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &logCapture{stderr: c.stderr.WithAttrs(attrs)}
+}
+
+func (c *logCapture) WithGroup(name string) slog.Handler {
+	return &logCapture{stderr: c.stderr.WithGroup(name)}
+}
+
+// firstAfter geeft het tijdstip van de eerste regel met dit bericht na since,
+// of de nulwaarde zolang hij er niet is.
+func (c *logCapture) firstAfter(message string, since time.Time) (time.Time, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, r := range c.records {
+		if r.message == message && r.at.After(since) {
+			return r.at, true
+		}
+	}
+	return time.Time{}, false
+}
+
 type env struct {
 	t       *testing.T
 	server  *api.Server
@@ -63,6 +123,7 @@ type env struct {
 	libs    []catalog.Library
 	argon2  auth.Argon2Params
 	signer  *auth.Signer
+	logs    *logCapture
 }
 
 func newEnv(t *testing.T) *env {
@@ -113,13 +174,14 @@ func newEnv(t *testing.T) *env {
 	light := auth.Argon2Params{Memory: 8 * 1024, Iterations: 1, Parallelism: 1, SaltLength: 16, KeyLength: 32}
 
 	watchStore := watch.NewStore(pool)
+	logs := newLogCapture()
 
 	srv := api.New(api.Options{
 		Catalog:            store,
 		Auth:               authStore,
 		Watch:              watchStore,
 		Signer:             signer,
-		Logger:             slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})),
+		Logger:             slog.New(logs),
 		Ready:              func() bool { return true },
 		ServerID:           serverID,
 		Name:               "Zolder",
@@ -136,7 +198,7 @@ func newEnv(t *testing.T) *env {
 	})
 
 	return &env{t: t, server: srv, store: store, auth: authStore, watch: watchStore, pool: pool,
-		root: root, libs: libs, cap: shared, argon2: light, signer: signer}
+		root: root, libs: libs, cap: shared, argon2: light, signer: signer, logs: logs}
 }
 
 // scanAll draait één volledige scanronde over elke bibliotheek.

@@ -138,6 +138,7 @@ section "5. healthz en readyz"
 section "6. catalogus (PS-2)"
 
 api() { curl -s -m 10 "$BASE/pleya/v1$1" "${@:2}"; }
+status_with_auth() { curl -s -m 10 -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $2" "$1"; }
 
 # De uitdrukking gaat via de omgeving en niet via de opdrachtregel: hij bevat
 # dubbele aanhalingstekens, en die overleven de weg door twee shells niet.
@@ -304,8 +305,69 @@ else
   fail "de kijkstatuslijst is leeg"
 fi
 
+section "gebruikers en sessies (PS-9)"
+
+# Een tweede gebruiker aanmaken, haar één bibliotheek geven, en aantonen dat ze
+# de andere niet ziet. Dat is acceptatiecriterium 1 en 2 in scriptvorm: de
+# Go-tests bewijzen hetzelfde tegen de router, dit bewijst het tegen een
+# draaiende container met een echte database eronder.
+SANNE="$(api /users "${AUTH[@]}" -X POST -H 'Content-Type: application/json' \
+  -d '{"username":"sanne","password":"nog-een-lang-wachtwoord","role":"member"}' | jq_field 'd["id"]')"
+if [ -n "${SANNE:-}" ] && [ "$SANNE" != "None" ]; then
+  ok "een tweede gebruiker aangemaakt via POST /users"
+else
+  fail "POST /users leverde geen gebruiker"
+fi
+
+api "/users/$SANNE/permissions" "${AUTH[@]}" -X PUT -H 'Content-Type: application/json' \
+  -d "{\"permissions\":[{\"library_id\":\"$FILMS\",\"permission\":\"view\"}]}" >/dev/null
+
+SANNE_ACCESS="$(api /auth/login -X POST -H 'Content-Type: application/json' \
+  -d '{"username":"sanne","password":"nog-een-lang-wachtwoord"}' | jq_field 'd["access_token"]')"
+if [ -n "${SANNE_ACCESS:-}" ] && [ "$SANNE_ACCESS" != "None" ]; then
+  ok "de tweede gebruiker logt in met haar eigen wachtwoord"
+else
+  fail "de tweede gebruiker kon niet inloggen"
+fi
+SANNE_AUTH=(-H "Authorization: Bearer $SANNE_ACCESS")
+
+if [ "$(api /libraries "${SANNE_AUTH[@]}" | jq_field 'len(d["items"])')" = "1" ]; then
+  ok "zij ziet één bibliotheek en de owner ziet er twee"
+else
+  fail "de bibliotheekfilter per gebruiker klopt niet"
+fi
+
+if [ "$(api /users "${SANNE_AUTH[@]}" | jq_field 'len(d["items"])')" = "1" ]; then
+  ok "een member ziet in GET /users alleen zichzelf"
+else
+  fail "een member ziet meer gebruikers dan zichzelf"
+fi
+
+# Haar sessie intrekken maakt haar token onmiddellijk ongeldig, en raakt de
+# sessie van de owner niet. Dat is acceptatiecriterium 3 op aanvraagniveau; de
+# gemeten grens tegen een lopende stream staat in de Go-test.
+SANNE_SESSION="$(api "/sessions?user_id=$SANNE" "${AUTH[@]}" | jq_field 'd["items"][0]["id"]')"
+api "/sessions/$SANNE_SESSION" "${AUTH[@]}" -X DELETE >/dev/null
+if [ "$(status_with_auth "$BASE/pleya/v1/libraries" "$SANNE_ACCESS")" = "401" ]; then
+  ok "een ingetrokken sessie maakt het accesstoken meteen ongeldig"
+else
+  fail "het token van een ingetrokken sessie werkt nog"
+fi
+if [ "$(api /libraries "${AUTH[@]}" | jq_field 'len(d["items"])')" = "2" ]; then
+  ok "de sessie van de owner is ongemoeid gebleven"
+else
+  fail "de intrekking raakte een andere sessie"
+fi
+
+# En de owner blijft de owner.
+if [ "$(curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" -X DELETE "$BASE/pleya/v1/users/$SANNE")" = "204" ]; then
+  ok "een gebruiker verwijderen ruimt haar sessies en rechten op"
+else
+  fail "de gebruiker kon niet verwijderd worden"
+fi
+
 # En de latere fasen bestaan nog steeds niet.
-for path in "/pleya/v1/playback/plan" "/pleya/v1/users" "/pleya/v1/collections"; do
+for path in "/pleya/v1/playback/plan" "/pleya/v1/collections"; do
   if [ "$(curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE$path")" = "404" ]; then
     ok "$path bestaat niet"
   else

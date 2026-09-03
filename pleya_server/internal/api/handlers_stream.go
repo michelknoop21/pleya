@@ -112,7 +112,7 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request, versionSco
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		s.copyRange(w, f, 0, size, file.AbsPath)
+		s.copyRange(w, r, f, 0, size, file.AbsPath)
 	case rangePartial:
 		length := end - start + 1
 		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, size))
@@ -122,7 +122,7 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request, versionSco
 			return
 		}
 		w.WriteHeader(http.StatusPartialContent)
-		s.copyRange(w, f, start, length, file.AbsPath)
+		s.copyRange(w, r, f, start, length, file.AbsPath)
 	}
 }
 
@@ -222,16 +222,67 @@ func parseSingleRange(spec string, size int64) (int64, int64, bool) {
 	}
 }
 
-// copyRange stuurt length bytes vanaf start.
-func (s *Server) copyRange(w http.ResponseWriter, f *os.File, start, length int64, path string) {
+// streamBlockBytes is hoeveel bytes copyRange in één keer doorgeeft voordat hij
+// het intrekkingsregister opnieuw raadpleegt.
+//
+// 64 KiB is het compromis dat DEC-066 vraagt: klein genoeg dat de
+// revocatielatentie ruim onder de vastgelegde twee seconden blijft, groot
+// genoeg dat de lus zelf niets kost (een mapopzoeking en een syscallpaar per
+// blok, en bij honderd megabyte per seconde zijn dat een paar duizend rondes).
+// De grens geldt zolang één blok binnen het budget de deur uit gaat; een speler
+// die trager leest dan 32 KiB/s haalt geen enkele videostream, dus dat geval
+// bestaat in de praktijk niet.
+const streamBlockBytes = 64 * 1024
+
+// copyRange stuurt length bytes vanaf start, in blokken, en stopt zodra de
+// sessie van deze aanvraag is ingetrokken.
+//
+// Dit is het aanvraagpad waar acceptatiecriterium 3 het scherpst is. Eén
+// io.CopyN over de hele range, zoals hier tot PS-9 stond, laat een lopende
+// stream doorlopen tot het bestand op is: een ingetrokken sessie zou dan pas
+// merkbaar worden bij de volgende seek. De lus per blok is de invulling die
+// DEC-066 vastlegt, met een in-process register en zonder databaseronde.
+func (s *Server) copyRange(w http.ResponseWriter, r *http.Request, f *os.File, start, length int64, path string) {
 	if _, err := f.Seek(start, io.SeekStart); err != nil {
 		// De header is al de deur uit; er valt geen foutvorm meer te sturen.
 		s.log.Warn("seek in mediabestand mislukt", "path", filepath.Base(path), "error", err.Error())
 		return
 	}
-	if _, err := io.CopyN(w, f, length); err != nil && !errors.Is(err, io.EOF) {
-		// Een speler die de verbinding sluit is de normale gang van zaken bij een
-		// seek, en geen storing.
-		s.log.Debug("stream afgebroken", "path", filepath.Base(path), "error", err.Error())
+
+	sessionID := sessionIDFromContext(r.Context())
+	ctx := r.Context()
+
+	for remaining := length; remaining > 0; {
+		// Vóór elk blok, niet erna: anders gaat er na de intrekking altijd nog
+		// één blok uit.
+		if s.opts.Revocations.IsRevoked(sessionID) {
+			s.log.Info("stream afgebroken; de sessie is ingetrokken",
+				"path", filepath.Base(path), "session", sessionID.String())
+			return
+		}
+		if err := ctx.Err(); err != nil {
+			return
+		}
+
+		block := remaining
+		if block > streamBlockBytes {
+			block = streamBlockBytes
+		}
+		if _, err := io.CopyN(w, f, block); err != nil {
+			if !errors.Is(err, io.EOF) {
+				// Een speler die de verbinding sluit is de normale gang van zaken
+				// bij een seek, en geen storing.
+				s.log.Debug("stream afgebroken", "path", filepath.Base(path), "error", err.Error())
+			}
+			return
+		}
+		remaining -= block
+
+		// Doorspoelen per blok, anders zit een blok in de bufferende
+		// ResponseWriter te wachten terwijl de lus denkt dat hij weg is, en dan
+		// meet de latentiegrens iets anders dan wat de speler ziet.
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		}
 	}
 }

@@ -51,7 +51,7 @@ Gecontroleerd: geen workflow in `.github/workflows/` noemt `pleya_server`, en `s
 er wel is, draai je zelf:
 
 ```sh
-scripts/verify-local.sh        # vijftien secties, 72 controles, van go vet tot een kijkstatusronde
+scripts/verify-local.sh        # vijftien secties, 78 controles, van go vet tot een gebruikersronde
 scripts/verify-protocol.sh     # antwoorden van een draaiende server tegen openapi.yaml
 ../scripts/check_protocol.sh   # het contract zelf, in een gepinde Python-container
 ```
@@ -94,10 +94,22 @@ expliciete mapper ertussen (hoofdstuk 12.1). De foutcode is het contract; het be
 een client mag er nooit op matchen.
 
 **Endpoints die er niet horen te zijn, blijven weg.** Sinds PS-4 antwoorden `stream/{version_id}`,
-beide kijkstatus-endpoints en `POST /auth/stream-session`; `capabilities.watch_state`,
-`watch_state_ownership` en `stream_sessions` staan op `true`. Wat er níét is blijft 404:
-`playback/plan` (PS-6), sessies (PS-8), gebruikers (PS-9), verzamelingen (PS-9C), geschiedenis
-(PS-9P) en beheer (PS-11A). `verify-local.sh` en `TestScopeBoundaryAfterPS4` controleren dat.
+beide kijkstatus-endpoints en `POST /auth/stream-session`; sinds PS-9 de vijf routes onder `/users`
+(DEC-067), `GET`/`DELETE /sessions` en `POST /auth/logout` (DEC-070). `capabilities.watch_state`,
+`watch_state_ownership`, `stream_sessions`, `users` en `sessions` staan daarmee alle vijf op `true`.
+Wat er níét is blijft 404: `playback/plan` (PS-6), afspeelsessies (PS-8), verzamelingen (PS-9C),
+geschiedenis (PS-9P) en beheer (PS-11A). `verify-local.sh` en `TestScopeBoundaryAfterPS4`
+controleren dat.
+
+**Intrekken is in het geheugen, en dat is een keuze met een grens.** `auth.Revocations`
+(`internal/auth/revocation.go`) is een set ingetrokken sessie-ids, gevuld bij het opstarten uit
+`sessions` en geraadpleegd door elk accesstoken, elk streamtoken, elke browserstreamsessie en elk
+blok van `copyRange`. Geen `LISTEN`/`NOTIFY`, geen pub/sub: er is nergens in deze deployment een
+aanname van meerdere instanties (DEC-066). Een tweede instantie zonder opvolger maakt intrekking
+onbetrouwbaar; dat is een geaccepteerde grens en geen gat. `copyRange` is daarom een lus met blokken
+van 64 KiB en geen `io.CopyN` over de hele range: de gemeten bovengrens van twee seconden hangt aan
+die blokgrootte, en `TestRevocationStopsRunningStreamWithinTwoSeconds` meet hem tegen een echte
+`httptest`-server in plaats van hem booleaans af te vinken.
 
 **Kijkstatus heeft een eigenaar.** De zes regels staan in
 [DEC-049](../docs/DECISIONS.md); de beslissing zelf staat als pure functie in

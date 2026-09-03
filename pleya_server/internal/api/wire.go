@@ -54,7 +54,12 @@ type Capabilities struct {
 	Downloads    bool `json:"downloads"`
 	LiveTV       bool `json:"live_tv"`
 	Realtime     bool `json:"realtime"`
-	Users        bool `json:"users"`
+
+	// Users (DEC-067). Aan sinds stap 4 van PS-9: de vijf endpoints onder
+	// /users bestaan, en /auth/login verifieert tegen users en niet meer tegen
+	// alleen de owner-rij. Een client die deze vlag ziet mag ervan uitgaan dat
+	// een tweede gebruiker kan bestaan en kan inloggen.
+	Users bool `json:"users"`
 
 	// PS-4. Twee vlaggen die de client vertellen dat hij de velden uit DEC-049
 	// en het endpoint uit DEC-051 mag gebruiken. WatchStateEvent is gesloten,
@@ -63,10 +68,11 @@ type Capabilities struct {
 	WatchStateOwnership bool `json:"watch_state_ownership"`
 	StreamSessions      bool `json:"stream_sessions"`
 
-	// Sessions (DEC-069). Nog steeds false: het schema en de tokenketen bestaan
-	// vanaf deze stap, maar GET/DELETE /sessions en POST /auth/logout komen pas
-	// in een latere stap van PS-9. Deze vlag gaat pas aan zodra die endpoints er
-	// werkelijk zijn, dezelfde regel als Users hieronder.
+	// Sessions (DEC-069, DEC-070). Aan sinds stap 6 van PS-9. De vlag zegt drie
+	// dingen tegelijk: de client mag device_id en device_name meesturen bij
+	// login en setup, GET/DELETE /sessions en POST /auth/logout bestaan, en een
+	// ingetrokken sessie is binnen twee seconden ongeldig, ook voor een lopende
+	// stream (DEC-066).
 	Sessions bool `json:"sessions"`
 }
 
