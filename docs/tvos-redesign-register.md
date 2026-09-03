@@ -21,7 +21,7 @@ een andere volgorde afdwingt.
 
 | ID | Werkitem | Besluit | Status | SHA / bewijs |
 |----|----------|---------|--------|--------------|
-| SYS-1a | Routecontract: een TV-contentroute opent in de shell in plaats van erboven | PB-1 | DONE | zie onder |
+| SYS-1a | Routecontract: een TV-contentroute opent in de shell in plaats van erboven | PB-1 | DONE | `5cafc10`, DEC-091 |
 | SYS-1b | Detail, collectie en persoon over dat contract | PB-1 | OPEN | |
 | SYS-1c | Geneste routes krijgen de contentbox als `MediaQuery`, nodig voor de detailgeometrie | PB-1 | OPEN | |
 | SYS-2 | BACK1, geen zichtbare onbereikbare terugknop op TV | PB-2 | OPEN | |
@@ -88,7 +88,7 @@ Eerste overgenomen route: de twaalf Instellingen-subpagina's. Die zaten al in ee
 want `SettingsScreen` is er zelf een, en pushten hun eigen subpagina's toch op de
 profielnavigator. Het kind ontsnapte dus aan een shell waar de ouder in bleef staan.
 
-Bewijs: `test/screens/tv/tv_content_route_test.dart`, negen tests. De eerste is de negatieve
+Bewijs: `5cafc10`, met `test/screens/tv/tv_content_route_test.dart`, negen tests. De eerste is de negatieve
 controle en legt het oude gedrag vast: een volledig-venster push dekt de balk af, en na die push
 is niets in de balk nog bereikbaar. De tweede en derde tonen dezelfde subpagina via het nieuwe
 contract, met de balk bereikbaar en de bestemmingsroot eronder blijvend gemonteerd.
