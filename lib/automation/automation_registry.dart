@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import '../utils/log_redaction_manager.dart';
@@ -64,7 +65,7 @@ class AutomationRegistry {
     // produced `a#2`, `b#4`, `a#4` — and two nodes sharing an id in the
     // snapshot is precisely what this suffix exists to prevent.
     final occurrences = <String, int>{};
-    for (final node in _declared.values) {
+    for (final node in _reachableFirst(_declared.values)) {
       var id = node.id;
       final seenBefore = occurrences.update(id, (n) => n + 1, ifAbsent: () => 1);
       if (seenBefore > 1) {
@@ -83,6 +84,106 @@ class AutomationRegistry {
     }
 
     return {'declared': declared, 'discovered': _discoveredFocusables(), 'duplicates': duplicates};
+  }
+
+  /// Registration order, except that a node on screen comes before an
+  /// identically-named node that is not.
+  ///
+  /// Two screens in this app are mounted twice at once. `SettingsScreen` and
+  /// `LibrariesScreen` are `MainScreen` destinations *and* Mijn Pleya
+  /// sections, and `MainScreen` keeps its destinations alive in an
+  /// `IndexedStack` with the inactive ones wrapped in `ExcludeFocus` and
+  /// `TickerMode(enabled: false)`. Both copies register every id in them, and
+  /// the suffix hands the second one `#2`.
+  ///
+  /// Which one got the bare id was decided by registration order, and the
+  /// offstage copy registers first. Two scenarios were measured against the
+  /// wrong screen because of it: `tvos.my-pleya.library-chooser` waited out
+  /// its timeout on a chip that cannot take focus at all, and then read
+  /// `library.header` as "Movies" from the copy nobody had touched while the
+  /// page on screen had already switched to Shows. A scenario naming an id
+  /// means the thing a viewer is looking at.
+  ///
+  /// Two signals, in that order:
+  ///
+  /// 1. **Is it painted?** [_isDisplayed] walks the render tree for an
+  ///    ancestor that hides this subtree. That covers a node with no focus
+  ///    node of its own, which is the case `library.header` needed.
+  /// 2. **Can the remote reach it?** `ExcludeFocus` is how the shell says "not
+  ///    this one", and it is the same signal `TvNestedSurface` relies on.
+  ///
+  /// Deliberately dependency-free: this runs from an HTTP handler, not from a
+  /// build, so it reads the render tree directly rather than through
+  /// `TickerMode.of` or any other inherited lookup that would register the
+  /// registry as a dependent and schedule rebuilds behind a read-only call.
+  Iterable<AutomationDeclaredNode> _reachableFirst(Iterable<AutomationDeclaredNode> nodes) {
+    final byId = <String, int>{};
+    for (final node in nodes) {
+      byId.update(node.id, (n) => n + 1, ifAbsent: () => 1);
+    }
+    if (!byId.values.any((n) => n > 1)) return nodes;
+
+    int rank(AutomationDeclaredNode n) {
+      if (!_isDisplayed(n.contextGetter?.call())) return 2;
+      return (n.focusNode?.canRequestFocus ?? true) ? 0 : 1;
+    }
+
+    // A stable partition per colliding id, so everything else keeps the order
+    // it registered in.
+    final ordered = nodes.toList();
+    final result = <AutomationDeclaredNode>[];
+    final placed = <AutomationDeclaredNode>{};
+    for (final node in ordered) {
+      if (placed.contains(node)) continue;
+      if (byId[node.id] == 1) {
+        result.add(node);
+        placed.add(node);
+        continue;
+      }
+      final group = ordered.where((n) => n.id == node.id).toList();
+      for (var tier = 0; tier <= 2; tier++) {
+        for (final n in group.where((n) => rank(n) == tier)) {
+          result.add(n);
+          placed.add(n);
+        }
+      }
+    }
+    return result;
+  }
+
+  /// Whether anything between this node and the root is hiding it.
+  ///
+  /// Only the two mechanisms this app actually hides things with, and
+  /// unknown-shaped trees answer `true`: a wrong "displayed" leaves the
+  /// ordering exactly as it was before, while a wrong "hidden" would push a
+  /// real node behind a suffix.
+  static bool _isDisplayed(BuildContext? context) {
+    RenderObject? child;
+    try {
+      child = context?.findRenderObject();
+    } catch (_) {
+      return true;
+    }
+    if (child == null) return true;
+
+    var parent = child.parent;
+    while (parent != null) {
+      // `Offstage`, and `Visibility`/`Visibility.maintain`, which compose it.
+      if (parent is RenderOffstage && parent.offstage) return false;
+      if (parent is RenderIndexedStack) {
+        var seen = 0;
+        var found = -1;
+        final target = child;
+        parent.visitChildren((c) {
+          if (identical(c, target)) found = seen;
+          seen++;
+        });
+        if (found >= 0 && found != parent.index) return false;
+      }
+      child = parent;
+      parent = parent.parent;
+    }
+    return true;
   }
 
   /// The `GET /v1/focus` payload: whatever `FocusManager` currently reports
@@ -130,11 +231,35 @@ class AutomationRegistry {
     return discovered;
   }
 
+  /// The node's rect, with position and size in the **same** space.
+  ///
+  /// This used to be `localToGlobal(Offset.zero) & size`, and those two halves
+  /// do not live in the same coordinate system. `localToGlobal` resolves
+  /// through every ancestor transform, `_AppleTvScale`'s `Transform.scale`
+  /// included ([DEC-028] renders Apple TV at 1.85), so the offset came back in
+  /// the 1920x1080 root space. `size` is the box's own local size and stayed in
+  /// the 1038x584 logical space the `MediaQuery` under that transform reports.
+  /// Every rect this endpoint published was therefore 1.85x out of step with
+  /// itself: the hub's tile pitch agreed with the capture at `x * 2` while the
+  /// same tile's painted width agreed at `w * 3.7`.
+  ///
+  /// Nothing caught it because no assertion compared the two halves. A left
+  /// inset measured off `x` looked plausible, `insideViewport` compared a root
+  /// space rect against a logical space viewport and passed anyway on a page
+  /// with margins to spare, and the styling audit measured its inset table off
+  /// screenshots instead.
+  ///
+  /// Transforming the whole rect fixes it in one place. The result is the root
+  /// space, which is also the space hoofdstuk 8 states every TV measurement in
+  /// ("een 1920x1080 TV *output* surface"), so a design token and a reported
+  /// bound are finally the same kind of number. [_viewportSnapshot] reports the
+  /// viewport in that space too, or the pair would just be inconsistent the
+  /// other way round.
   Rect? _boundsOf(BuildContext? context) {
     if (context == null || !context.mounted) return null;
     final renderObject = context.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.attached || !renderObject.hasSize) return null;
-    return renderObject.localToGlobal(Offset.zero) & renderObject.size;
+    return MatrixUtils.transformRect(renderObject.getTransformTo(null), Offset.zero & renderObject.size);
   }
 
   Map<String, Object?> _boundsToJson(Rect bounds) => {
@@ -143,4 +268,21 @@ class AutomationRegistry {
     'width': bounds.width,
     'height': bounds.height,
   };
+}
+
+/// How much bigger one logical pixel at [context] is in the root space.
+///
+/// 1.0 everywhere except Apple TV, where `_AppleTvScale`'s `Transform.scale`
+/// sits between the app's `MediaQuery` and the render view ([DEC-028]). Read
+/// off the render tree rather than from a constant, so it stays honest if that
+/// factor changes or a second transform ever appears above the app.
+///
+/// `/v1/viewport` needs this because [AutomationRegistry] reports bounds in the
+/// root space: a viewport in logical pixels next to root-space bounds is the
+/// same mismatch, only moved. Returns null when it cannot be established.
+double? rootSpaceScaleOf(BuildContext context) {
+  final renderObject = context.findRenderObject();
+  if (renderObject is! RenderBox || !renderObject.attached || !renderObject.hasSize) return null;
+  final unit = MatrixUtils.transformRect(renderObject.getTransformTo(null), const Rect.fromLTWH(0, 0, 1, 1));
+  return unit.width.isFinite && unit.width > 0 ? unit.width : null;
 }
