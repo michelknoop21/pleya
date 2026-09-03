@@ -28,7 +28,10 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `00-mobile-nav-books.png` | Mobiele vijfslots-navigatie met Boeken als vierde bestemming; links Home (Boeken inactief), rechts Boeken actief | approved | 2 × iPhone 15 Pro naast elkaar | DEC-069, DEC-090 | 2026-09-03 | zie onder |
 | `00a-mobile-nav-home-books-inactive.png` | Home, Boeken in slot 4 inactief | approved | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
 | `00b-mobile-nav-books-active.png` | Boeken-tab actief | approved | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
-| `01-books-home.png` | Boeken-home: Verder lezen, Recent toegevoegd, Series | proposed | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
+| `01-books-home.png` | Boeken-home, eerste ronde | vervangen door 01b | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
+| `01b-books-home.png` | Boeken-home in rust: Verder lezen, Recent toegevoegd, Boekenseries | proposed | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
+| `01b-books-home-series.png` | Dezelfde pagina gescrold, zodat de Boekenseries-metadata te beoordelen is | proposed | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
+| `01b-books-home-comp.png` | Beide 01b-frames naast elkaar | proposed | 2 × iPhone 15 Pro | DEC-069, DEC-090 | 2026-09-03 | n.v.t. |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -58,28 +61,35 @@ Bewuste afwijkingen in golden 00:
   die ook op de demoserver staan). Commerciële covers en posters horen niet als golden asset in de
   repository; verhouding, kleurdynamiek en informatiedichtheid zijn wel aangehouden.
 
-## Golden 01, Boeken-home (proposed)
+## Golden 01b, Boeken-home (proposed)
 
 Inhoud komt van paneel 1 van de comp, uitvoering van de iOS Unified-set. De maatvoering is
 nagemeten op `01-series-landing.png`: paginatitel 28 px, rijkop 19 px, covers 110×165 met 12 pt
 tussenruimte en 16 pt paginamarge. Dezelfde schaal als golden 00, want die was al op dezelfde
 referentie gekalibreerd.
 
-Vier punten waarop deze golden een keuze maakt die de comp niet maakt, en die dus expliciet
-goedgekeurd of afgewezen moeten worden:
+Michel heeft op 3 september 2026 vier keuzes goedgekeurd: de link `Alle boeken ›` naast de
+paginatitel, de liggende Verder-lezen-kaart met de cover rechts, `48% · Hoofdstuk 12` in plaats
+van alleen een percentage, en een vaste tabbalk over scrollende inhoud. Dichtheid, covermaat,
+header en compositie liggen daarmee vast en veranderen niet meer.
 
-- **`Alle boeken ›` naast de paginatitel.** De comp heeft die link niet, de Unified-set wel
-  (`Alle series ›`, DEC-068). Zonder de link is er geen route naar de volledige bibliotheek, dus
-  hij staat erin.
-- **De Verder-lezen-kaart.** Een boek heeft geen liggende artwork, alleen een cover. De kaart
-  gebruikt de cover twee keer: onscherp als vulling over de volle breedte, scherp als inzet
-  rechts. De comp toont daar een liggende scène die voor een echt boek niet bestaat. Dit is de
-  enige echte uitvinding in deze golden.
-- **Hoofdstuknummer naast het percentage.** De comp toont op de home alleen `48% gelezen`; het
-  hoofdstuk staat er in het boekdetailpaneel wel bij. Hier staat `48% · Hoofdstuk 12`, omdat dat
-  is waar je verder leest.
-- **De Series-rij loopt onder de tabbalk door.** Dat is zo in de comp en het is wat vertelt dat de
-  pagina doorscrolt. De motieven op die covers zitten daarom in de bovenste helft.
+Wat 01b anders doet dan de eerste ronde, op zijn verzoek:
+
+- **De achtergrond van een Verder-lezen-kaart is cover-derived ambience, geen tweede afdruk van
+  de cover.** Ronde 1 zette dezelfde cover onscherp over de volle breedte; je kon hem herkennen,
+  en bij een lichte, drukke of puur typografische cover valt die truc uit elkaar. De kaart neemt
+  nu alleen kleur en licht van de cover over, in een veld dat geen enkele vorm ervan draagt. De
+  scherpe inzet rechts blijft de enige plek waar de cover zelf staat.
+- **De rail heet `Boekenseries`, niet `Series`.** In dezelfde viewport staat `Series` onderin al
+  voor televisieseries. Eén label met twee betekenissen op één scherm is een fout, geen nuance.
+- **Er is een tweede frame, `01b-books-home-series.png`.** Onder een cover van 150 pt past de
+  metadata in rust niet boven de tabbalk, dus `Dune · 6 boeken` was in het eerste frame niet te
+  beoordelen. Dat frame is dezelfde pagina, gescrold. Het is geen apart scherm.
+
+**Eis aan de implementatie, niet aan de golden.** De tabbalk mag inhoud tijdelijk overlappen,
+nooit permanent onbereikbaar maken. De Boeken-home krijgt dus onderaan genoeg scrollruimte om de
+laatste rij inclusief metadata volledig boven de balk te brengen. Het tweede frame laat zien hoe
+dat eruitziet.
 
 ## Wat er tegen golden 00 gebouwd is
 

@@ -82,7 +82,6 @@ html,body{width:393px;height:852px;overflow:hidden;background:var(--bg);color:va
 
 /* Books: continue-reading wide cards */
 .wide{flex:0 0 auto;width:214px;height:126px;border-radius:var(--r-md);overflow:hidden;position:relative;background:#222}
-.wide .bgart{position:absolute;inset:-20px;filter:blur(14px) saturate(1.2);transform:scale(1.2);opacity:.9}
 .wide .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,20,20,.05),rgba(20,20,20,.78))}
 .wide .txt{position:absolute;left:12px;right:12px;bottom:12px}
 .wide .txt b{display:block;font-size:15px;font-weight:700}
@@ -175,18 +174,31 @@ html,body{width:393px;height:852px;overflow:hidden;background:var(--bg);color:va
    card: blurred to fill the width, sharp as an inset. Measured against the
    comp's panel 1 (card ~200x140pt, next card peeking). */
 .wide{width:236px;height:140px;border-radius:var(--r-card)}
-/* Light blur only. Heavier and the cover stops being recognisable, which is
-   the one thing this card has to do: say which book you are in. */
-.wide .bgart{inset:-16px;filter:blur(9px) saturate(1.18);transform:scale(1.18);opacity:.82}
+/* Cover-derived ambience, not the cover a second time. The field takes its
+   colours and its light from the cover but carries none of its shapes, so a
+   pale, busy or purely typographic cover works here too and the card never
+   reads as the same image printed twice. The sharp inset stays the only place
+   the cover itself is shown. */
+.wide .amb{position:absolute;inset:-24px;filter:blur(22px) saturate(1.25);opacity:.95}
+.amb-dune{background:radial-gradient(46% 62% at 24% 30%,#c86a24,rgba(200,106,36,0) 70%),radial-gradient(52% 66% at 74% 74%,#7d2f10,rgba(125,47,16,0) 72%),linear-gradient(150deg,#3a1a0b,#1d0e06)}
+.amb-phm{background:radial-gradient(44% 58% at 28% 26%,#f0bf2c,rgba(240,191,44,0) 70%),radial-gradient(50% 62% at 78% 78%,#5a4708,rgba(90,71,8,0) 72%),linear-gradient(150deg,#2b2205,#141002)}
+.amb-sapiens{background:radial-gradient(46% 60% at 26% 28%,#e6dcc4,rgba(230,220,196,0) 70%),radial-gradient(46% 58% at 76% 76%,#9c2b1f,rgba(156,43,31,0) 72%),linear-gradient(150deg,#4a4335,#221f18)}
 /* Two scrims, not one: the vertical one seats the progress bar, the
    horizontal one puts the title on a dark field while leaving the cover side
    bright. A single vertical gradient left the title over mid-tone artwork. */
-.wide .scrim{background:linear-gradient(180deg,rgba(20,20,20,.10),rgba(20,20,20,.62)),linear-gradient(90deg,rgba(20,20,20,.86) 0%,rgba(20,20,20,.55) 46%,rgba(20,20,20,.12) 100%)}
+.wide .scrim{background:linear-gradient(180deg,rgba(20,20,20,0),rgba(20,20,20,.46)),linear-gradient(90deg,rgba(20,20,20,.68) 0%,rgba(20,20,20,.34) 48%,rgba(20,20,20,0) 100%)}
 .wide .cover{right:14px;top:14px;width:64px;height:96px;border-radius:6px;box-shadow:0 8px 20px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.14)}
 .wide .txt{left:14px;right:88px;bottom:15px}
 .wide .txt b{font-size:16px;letter-spacing:-.2px;line-height:19px}
 .wide .txt span{font-size:12.5px;margin-top:3px;color:var(--ink-70)}
 .wide .prog{height:3px;background:rgba(255,255,255,.22)}
+/* The second frame is this same page scrolled, nothing else: the header has
+   moved off and the rail has cleared the bar. It exists because the metadata
+   under a 150 pt cover cannot fit above the bar at rest, and it still has to
+   be judged before this golden is approved. */
+.content>.inner{position:absolute;left:0;right:0;top:0}
+.scrolled .content>.inner{top:-206px}
+.scrolled .content::before{content:"";position:absolute;left:0;right:0;top:0;height:112px;z-index:5;background:linear-gradient(180deg,rgba(20,20,20,.93) 0%,rgba(20,20,20,.62) 55%,rgba(20,20,20,0) 100%);pointer-events:none}
 /* Series row: a book series is a stack, so the row shows the cover plus the
    count rather than a first-book title pretending to be the series. The row is
    deliberately cut by the tab bar, as in the comp — it is what says the page
@@ -208,6 +220,7 @@ html,body{width:393px;height:852px;overflow:hidden;background:var(--bg);color:va
   </div>
 
   <div class="content">
+   <div class="inner">
     <div class="hdr">
       <img class="wordmark" src="../../../../../../assets/branding/pleya_wordmark.png" alt="Pleya">
       <div class="actions">
@@ -222,21 +235,21 @@ html,body{width:393px;height:852px;overflow:hidden;background:var(--bg);color:va
       <div class="row-h"><h2>Verder lezen</h2><span class="link">Alles bekijken &rsaquo;</span></div>
       <div class="rail">
         <div class="wide">
-          <div class="bgart art cv-dune"><div class="moon"></div><div class="dune"></div></div>
+          <div class="amb amb-dune"></div>
           <div class="scrim"></div>
           <div class="cover"><div class="art cv-dune"><div class="a">FRANK HERBERT</div><div class="moon"></div><div class="dune"></div><div class="t serif" style="font-size:12px;letter-spacing:3px">DUNE</div></div></div>
           <div class="txt"><b>Dune</b><span>48% &middot; Hoofdstuk 12</span></div>
           <div class="prog"><i style="width:48%"></i></div>
         </div>
         <div class="wide">
-          <div class="bgart art cv-phm"></div>
+          <div class="amb amb-phm"></div>
           <div class="scrim"></div>
           <div class="cover"><div class="art cv-phm"><div class="t" style="font-size:9px;line-height:10px;top:15%">PROJECT<br>HAIL<br>MARY</div><div class="a" style="font-size:5px">ANDY WEIR</div></div></div>
           <div class="txt"><b>Project Hail Mary</b><span>21% &middot; Hoofdstuk 5</span></div>
           <div class="prog"><i style="width:21%"></i></div>
         </div>
         <div class="wide">
-          <div class="bgart art cv-sapiens"></div>
+          <div class="amb amb-sapiens"></div>
           <div class="scrim"></div>
           <div class="cover"><div class="art cv-sapiens"><div class="fp"></div><div class="t serif" style="font-size:12px">Sapiens</div></div></div>
           <div class="txt"><b>Sapiens</b><span>3% &middot; Hoofdstuk 1</span></div>
@@ -256,7 +269,7 @@ html,body{width:393px;height:852px;overflow:hidden;background:var(--bg);color:va
     </div>
 
     <div class="row series-card">
-      <div class="row-h"><h2>Series</h2><span class="link">Alles bekijken &rsaquo;</span></div>
+      <div class="row-h"><h2>Boekenseries</h2><span class="link">Alles bekijken &rsaquo;</span></div>
       <div class="rail">
         <div class="card"><div class="poster"><div class="art cv-messiah"><div class="stars"></div><div class="moon" style="top:10%"></div><div class="t serif" style="font-size:13px;letter-spacing:3px;top:52%">DUNE</div><div class="grain"></div></div></div><div class="cap">Dune</div><div class="sub count">6 boeken</div></div>
         <div class="card"><div class="poster"><div class="art cv-children"><div class="stars"></div><div class="orb" style="top:8%;width:30%;padding-top:30%;left:35%"></div><div class="t serif" style="font-size:12px;line-height:14px;top:46%">DE ZEVEN<br>ZUSSEN</div><div class="grain"></div><div class="vig"></div></div></div><div class="cap">De Zeven Zussen</div><div class="sub count">7 boeken</div></div>
@@ -264,6 +277,7 @@ html,body{width:393px;height:852px;overflow:hidden;background:var(--bg);color:va
         <div class="card"><div class="poster"><div class="art cv-atomic"><div class="t" style="top:20%;font-size:16px;line-height:19px">Atomic<br>Habits</div><div class="dot"></div></div></div><div class="cap">James Clear</div><div class="sub count">2 boeken</div></div>
       </div>
     </div>
+   </div>
   </div>
 
   <nav class="bar">
@@ -278,5 +292,11 @@ html,body{width:393px;height:852px;overflow:hidden;background:var(--bg);color:va
   </nav>
 </section>
 
+<script>
+  // ?screen=series renders the scrolled frame; anything else the frame at rest.
+  if (new URLSearchParams(location.search).get('screen') === 'series') {
+    document.getElementById('books').classList.add('scrolled');
+  }
+</script>
 </body>
 </html>
