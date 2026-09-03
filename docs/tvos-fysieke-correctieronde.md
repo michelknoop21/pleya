@@ -68,7 +68,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LAND2 | De projectie van de vorige rail blijft staan | FIXED | `2371c62` |
 | LAND3 | De gefocuste wide card valt rechts buiten beeld | FIXED | `0a60044` |
 | CAT1 | Bovenste rij coverart raakt de veilige bovengrens | FIXED, hardware open | `89b1554` |
-| CAT2 | Metadata van de onderste rij staat tegen de onderrand | OPEN | n.v.t. |
+| CAT2 | Metadata van de onderste rij staat tegen de onderrand | NOT REPRODUCED | n.v.t. |
 | CAT3 | Bron, filters en sortering staan verkeerd gepositioneerd | OPEN | n.v.t. |
 | CAT4 | Bron, filters en sortering mogelijk onbereikbaar | OPEN | n.v.t. |
 | OVR1 | Detail- en contextmenu valt buiten beeld en voelt te groot | GESPLITST in OVR1a en OVR1b | n.v.t. |
@@ -504,6 +504,67 @@ blijven: die hangt niet aan de padding.
 Pleya Verify levert hier geen bewijs. Er is geen scenario dat de catalogus
 opent, en de bestaande fixtures zijn dezelfde die VER4 al als gat beschrijft.
 Hardware-acceptatie staat nog open.
+
+### CAT2, niet gereproduceerd met de huidige code
+
+#### Masterlijsthypothese
+
+"Metadata van de onderste rij staat tegen de onderrand": spiegelbeeld van CAT1,
+maar dan de titel- en metaregel onder de laatste kaartrij tegen de schermrand
+onderaan in plaats van de focusring bovenaan. CAT1's eigen notitie sluit uit dat
+zijn fix het antwoord is: "Dezelfde uitdrukking zat ook in `bottomSafeInset`...
+Het is niet het antwoord op CAT2."
+
+#### Reproductiepoging
+
+Twee sporen, allebei tegen de echte productiewidgets (`TvUnifiedMediaGrid` onder
+`TvShellSurface`, `TvCatalogGrid.forWidth`, `TvCatalogLayout.cardHeight`, niet
+een losse primitive):
+
+1. **Widget-geometrie**, op het canonieke canvas van CAT1 (1038×584) en op
+   1920×1080, met een grid van veertig kaarten en de echte
+   `TvUnifiedGridFooter`. Focus liep stap voor stap DOWN vanaf kaart 0 naar de
+   laatste kaart, hetzelfde pad dat `FocusableWrapper._scrollIntoView` op een
+   toestel aflegt, niet een handmatige `jumpTo`. Gemeten is de afstand tussen de
+   onderkant van de metaregel van de laatste kaart (de echte `Text`-rect binnen
+   de footer, niet de kaart als geheel) en de onderkant van de viewport.
+2. **tvOS-simulator**, met de demo-inlog die al op het toestel stond. "Films" en
+   "Series" landen allebei op `Nog niets te ontdekken`: dit account heeft geen
+   discovery-hub-inhoud, en LAND6 heeft al vastgelegd dat een lege landing geen
+   andere route naar de complete catalogus biedt. De catalogusgrid zelf was via
+   dit account dus niet bereikbaar: geen `.env`-demologin, geen lokale
+   Jellyfin/Plex-container in deze werkomgeving, geen alternatieve route.
+
+#### Wat spoor 1 laat zien
+
+Op het canonieke canvas, na focus-gedreven navigatie naar de laatste kaart:
+metaregel eindigt op 84,40 logische pixels boven de viewportrand (kaart als
+geheel op 87,27). Op 1920×1080: 117,39 voor de kaart. Dat is ruim boven
+`bottomSafeMargin` (43,79 canoniek) plus de focusgroei (8,28) samen: geen
+clipping, geen randcontact, in geen van de geteste aankomstroutes (rusttoestand
+zonder focus, `jumpTo(maxScrollExtent)`, en stapsgewijze DOWN-navigatie).
+
+Een negatieve controle met CAT1's *oude* formule
+(`cardWidth / posterAspectRatio` in plaats van `TvCatalogLayout.cardHeight`)
+laat zien dat het verschil in gereserveerde onderpadding tussen oud en nieuw
+maar 1,4 logische pixel is: de metaregel zou onder de oude, foutieve formule
+even goed zo'n 83 pixels vrije ruimte hebben gehad. **Dat weerlegt de
+masterlijsthypothese dat CAT1's fix (`89b1554`) CAT2 als bijvangst zou hebben
+opgelost**: het scheelde nooit genoeg om het gerapporteerde "tegen de
+onderrand" te verklaren, dus CAT2's werkelijke oorzaak is met de huidige
+bewijslast niet vastgesteld, niet bevestigd als aanwezig en niet verklaard als
+al opgelost.
+
+#### Status
+
+`NOT REPRODUCED`. Niet gesloten als non-issue: de melding komt van een fysieke
+Apple TV en de code die de metadataregel positioneert is hier op geen enkel
+punt bewezen fout, maar ook niet bewezen goed op een surface met de dichtheid
+en het toestel Michel zag. Wat nodig is om verder te komen: ofwel een fysieke
+device-run met een écht gevulde bibliotheek, ofwel een simulator-sessie met
+demo-inloggegevens die een catalogus met meerdere rijen laat zien (LAND6's gat
+blokkeert dat nu voor elk account zonder discovery-hubs). Geen productiecode
+gewijzigd; er is niets om terug te draaien als dit later alsnog reproduceert.
 
 ### LAND6, een lege landing verbergt de route naar een gevulde catalogus
 
