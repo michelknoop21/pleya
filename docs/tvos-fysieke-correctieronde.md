@@ -59,7 +59,7 @@ Branch `claude/netflix-redesign-b4x21v`, uitgaand van `011e770`.
 | NAV1 | De bovenbalk slaat Home over | FIXED, hardware open | `51186c6` |
 | LAND1 | De landing slaat de eerste contentrail over | FIXED, hardware open | `51186c6` |
 | TILE1 | Een tegel zonder actie zou de focus klemmen | NOT REPRODUCED | n.v.t. |
-| LAND4 | Verticaal navigeren verliest de horizontale positie | OPEN | n.v.t. |
+| LAND4 | Verticaal navigeren verliest de horizontale positie | FIXED | `8686f5c` |
 | LAND2 | De projectie van de vorige rail blijft staan | FIXED | `2371c62` |
 | LAND3 | De gefocuste wide card valt rechts buiten beeld | OPEN | n.v.t. |
 | CAT1 | Bovenste rij coverart raakt de veilige bovengrens | OPEN | n.v.t. |
@@ -79,6 +79,7 @@ Branch `claude/netflix-redesign-b4x21v`, uitgaand van `011e770`.
 | ACT1 | Activiteit is niet te verifiëren | ACCEPTANCE GAP | n.v.t. |
 | VER2 | Automation-ids escapen geen blokhaken | DEFERRED | n.v.t. |
 | HERO1 | Framing van het hero-beeld op Home | HARDWARE ONLY | n.v.t. |
+| SEARCH1 | Zoeken benoemt zijn resultaten buiten het railcontract om | DEFERRED | n.v.t. |
 
 ## Wat er per item bekend is
 
