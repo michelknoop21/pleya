@@ -88,6 +88,12 @@ Eerste overgenomen route: de twaalf Instellingen-subpagina's. Die zaten al in ee
 want `SettingsScreen` is er zelf een, en pushten hun eigen subpagina's toch op de
 profielnavigator. Het kind ontsnapte dus aan een shell waar de ouder in bleef staan.
 
+Testdelta: de volledige suite gaf 6091 geslaagd, 6 overgeslagen en 83 gefaald. Dat is precies de
+bekende nullijn, 78 goldens plus de vijf in `test/widgets/tv_discovery_rail_test.dart`, dus geen
+enkele faler komt hier vandaan. `flutter analyze` gaf nul waarschuwingen en nul fouten. De
+gerichte suites over `test/screens/tv`, `test/navigation`, `test/architecture`,
+`test/widgets/tv` en `test/screens/settings` liepen apart, 574 groen.
+
 Bewijs: `5cafc10`, met `test/screens/tv/tv_content_route_test.dart`, negen tests. De eerste is de negatieve
 controle en legt het oude gedrag vast: een volledig-venster push dekt de balk af, en na die push
 is niets in de balk nog bereikbaar. De tweede en derde tonen dezelfde subpagina via het nieuwe
