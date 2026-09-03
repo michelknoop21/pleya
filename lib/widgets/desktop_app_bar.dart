@@ -46,8 +46,11 @@ class DesktopAppBarSections {
     Widget? effectiveLeading = leading;
 
     // If no leading is provided but automaticallyImplyLeading is true,
-    // create a back button manually so it goes through our padding logic
-    if (leading == null && automaticallyImplyLeading) {
+    // create a back button manually so it goes through our padding logic.
+    // Not on a remote-first surface (PB-2): see [showsVisibleBackAffordance].
+    // Checked here as well as inside the button so `leading` stays null and
+    // the app bar reserves no width for a control that is not there.
+    if (leading == null && automaticallyImplyLeading && showsVisibleBackAffordance()) {
       final parentRoute = ModalRoute.of(context);
       final canPop = parentRoute?.canPop ?? false;
 
@@ -182,7 +185,8 @@ class DesktopTopBar extends StatelessWidget {
         final isFullscreen = FullscreenStateManager().isFullscreen;
 
         Widget? effectiveLeading = leading;
-        if (effectiveLeading == null && automaticallyImplyLeading) {
+        // PB-2, as in [DesktopAppBarSections.buildLeadingSection] above.
+        if (effectiveLeading == null && automaticallyImplyLeading && showsVisibleBackAffordance()) {
           final parentRoute = ModalRoute.of(context);
           final canPop = parentRoute?.canPop ?? false;
 

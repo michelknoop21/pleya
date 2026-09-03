@@ -1,6 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
+
+/// Whether this platform draws a *visible* back affordance at all.
+///
+/// PB-2 of `docs/tvos-redesign-implementatiecontract.md`: on the remote-first
+/// TV surfaces there is no visible back button, because there cannot be a
+/// usable one. [AppBarBackButton] is a `MouseRegion` around a
+/// `GestureDetector` and carries no `FocusNode` of any kind, so it is not in
+/// the remote's traversal set, and tvOS has no cursor to aim at it with
+/// either. Drawn on TV it is a control that claims to be pressable and
+/// provably is not: `InputModeTracker` pins `InputMode.keyboard` for the whole
+/// session there and never leaves it.
+///
+/// Back on TV belongs to the Menu/Back key instead: `handleBackKeyAction` and
+/// `handleBackKeyNavigation` in `lib/focus/key_event_utils.dart`, the shell's
+/// own chain via `tvBackStep`, and `TvNestedRouteScope.dismiss` for a nested
+/// route. Android TV's hardware BACK arrives on that same key path, so nothing
+/// is lost there either.
+///
+/// Touch and pointer surfaces keep their back button: this returns true
+/// everywhere else, and no non-TV platform changes behaviour.
+bool showsVisibleBackAffordance() => !PlatformDetector.isTV();
 
 /// Defines the visual style of the back button
 enum BackButtonStyle {
@@ -92,6 +114,12 @@ class _AppBarBackButtonState extends State<AppBarBackButton> with TickerProvider
 
   @override
   Widget build(BuildContext context) {
+    // The backstop under [showsVisibleBackAffordance]. Every call site checks
+    // it too, because a site that knows the button is gone can also drop the
+    // layout it reserved for one; this guard is what stops a *new* caller from
+    // reintroducing BACK1 without noticing.
+    if (!showsVisibleBackAffordance()) return const SizedBox.shrink();
+
     final theme = Theme.of(context);
     final isDarkTheme = theme.brightness == Brightness.dark;
 

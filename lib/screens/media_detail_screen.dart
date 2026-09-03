@@ -3866,14 +3866,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
               bottom: foregroundBottom,
               child: _buildTvDetailForeground(context, metadata, hideSpoilers: hideSpoilers, scale: detailScale),
             ),
-            Positioned(
-              top: 0,
-              left: 0,
-              child: DesktopAppBarHelper.buildAdjustedLeading(
-                AppBarBackButton(style: BackButtonStyle.circular, onPressed: () => _dismissTvDetail()),
-                context: context,
-              )!,
-            ),
+            // No back button here (PB-2 / BACK1). This branch only ever runs
+            // on TV, where the remote cannot reach an `AppBarBackButton`,
+            // which has no FocusNode, so the arrow was chrome that claimed to
+            // be pressable and was not. Back is `_handleMediaDetailBackKey`
+            // above, which routes Menu/Back to `_dismissTvDetail` for both the
+            // nested and the pushed shape of this screen.
             if (detailHubs.isNotEmpty)
               Positioned(
                 left: 0,
