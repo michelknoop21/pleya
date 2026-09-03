@@ -332,7 +332,11 @@ Gebruikt `profileNavigationRegistry`'s context (`lib/navigation/
 profile_navigation_scope.dart`), niet `rootNavigatorKey`'s: die registry
 bestaat pas zodra een profielsessie gemount is, wat precies de voorwaarde is
 om "open een scherm" betekenis te geven. Vóór een sessie gemount is: 400,
-geen crash op een null-context.
+geen crash op een null-context. `/v1/signin` keert terug zodra de bind klaar is
+en de sessie mount een frame later, dus een `open` er direct achteraan kan die
+400 zien; de runner herprobeert daarom kort op precies die melding in plaats
+van dit endpoint te laten wachten, want "er is nog geen sessie" is een echt
+antwoord en geen tussenstand.
 
 Keert pas terug als het doelscherm `ready` is via `GET /v1/screens`
 (gepolld, dezelfde stijl als `POST /v1/wait`) — nooit een sleep.

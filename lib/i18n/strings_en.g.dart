@@ -5206,6 +5206,18 @@ class TranslationsBooksEn {
 
 	/// en: '1 book'
 	String get oneBook => '1 book';
+
+	/// en: 'Filters'
+	String get filters => 'Filters';
+
+	/// en: 'Title A–Z'
+	String get sortTitleAsc => 'Title A–Z';
+
+	/// en: '${count} books'
+	String bookCountLabel({required Object count}) => '${count} books';
+
+	/// en: '1 book'
+	String get oneBookLabel => '1 book';
 }
 
 // Path: search.filters
@@ -7648,6 +7660,10 @@ extension on Translations {
 			'books.percentRead' => ({required Object percent}) => '${percent}%',
 			'books.bookCount' => ({required Object count}) => '${count} books',
 			'books.oneBook' => '1 book',
+			'books.filters' => 'Filters',
+			'books.sortTitleAsc' => 'Title A–Z',
+			'books.bookCountLabel' => ({required Object count}) => '${count} books',
+			'books.oneBookLabel' => '1 book',
 			_ => null,
 		};
 	}

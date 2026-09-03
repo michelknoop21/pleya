@@ -161,7 +161,18 @@ Future<ScenarioRunResult> runScenario({
           if (screen is! String) {
             throw ArgumentError('open needs a screen id: $screen');
           }
-          final result = await _requireClient(driver, 'open').open(screen);
+          // `sign_in` returns on the bind, and the profile session mounts a
+          // frame or more later, so an `open` right behind it can arrive
+          // before there is a session to open on. That is a real answer from
+          // the app, not a tuning knob on the endpoint, so the retry lives
+          // here: a short bounded wait on exactly that message, and any other
+          // failure still fails immediately.
+          Map<String, Object?> result = await _requireClient(driver, 'open').open(screen);
+          for (var attempt = 0; attempt < 20 && result['ok'] != true; attempt++) {
+            if (!'${result['error']}'.contains('no profile session')) break;
+            await Future<void>.delayed(const Duration(milliseconds: 250));
+            result = await _requireClient(driver, 'open').open(screen);
+          }
           if (result['ok'] != true) {
             throw StateError('open "$screen" failed: ${result['error']} (full response: $result)');
           }
@@ -175,7 +186,12 @@ Future<ScenarioRunResult> runScenario({
           // (a `{{fixture_id:...}}` in an assert step with no running fixture
           // throws the same clear error `fixture_mutate` already does).
           final resolvedArgs =
-              resolvePlaceholders(step.args, fixture, null, seededIds: fixture == null ? const {} : await fixture.seededIds())
+              resolvePlaceholders(
+                    step.args,
+                    fixture,
+                    null,
+                    seededIds: fixture == null ? const {} : await fixture.seededIds(),
+                  )
                   as Map<String, Object?>;
           final (:geometry, :node) = await _dispatchAssert(resolvedArgs, driver);
           if (geometry.isNotEmpty) record['geometry'] = [for (final g in geometry) g.toJson()];
@@ -382,7 +398,8 @@ Future<({List<GeometryAssertionResult> geometry, List<NodeAssertionResult> node}
 
   final hasGeometry = args.keys.any(geometryPredicates.contains);
   final hasNode = args.keys.any(nodeFieldPredicates.contains);
-  if (!hasGeometry && !hasNode) return (geometry: const <GeometryAssertionResult>[], node: const <NodeAssertionResult>[]);
+  if (!hasGeometry && !hasNode)
+    return (geometry: const <GeometryAssertionResult>[], node: const <NodeAssertionResult>[]);
 
   // One fetch of each, shared by every predicate on this step: predicates
   // measured against different frames would not be comparable.
@@ -395,7 +412,8 @@ Future<({List<GeometryAssertionResult> geometry, List<NodeAssertionResult> node}
   final failures = <String>[
     for (final r in geometry.where((r) => !r.verdict.ok))
       '${r.predicate}(${r.subjectId}${r.otherId == null ? '' : ', ${r.otherId}'}): ${r.verdict.message}',
-    for (final r in node.where((r) => !r.ok)) '${r.predicate}(${r.subjectId}${r.key == null ? '' : '.${r.key}'}): ${r.message}',
+    for (final r in node.where((r) => !r.ok))
+      '${r.predicate}(${r.subjectId}${r.key == null ? '' : '.${r.key}'}): ${r.message}',
   ];
   if (failures.isNotEmpty) {
     throw StateError('assert failed: ${failures.join('; ')}');

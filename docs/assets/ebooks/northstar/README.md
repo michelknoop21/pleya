@@ -32,9 +32,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `01b-books-home.png` | Boeken-home, canonieke startstaat | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 | `01b-books-home-series.png` | Scrollbewijs bij `01b-books-home.png`, geen apart scherm | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 | `01b-books-home-comp.png` | Beide 01b-frames naast elkaar | approved | 2 × iPhone 15 Pro | DEC-094, DEC-090 | 2026-09-03 | n.v.t. |
-| `02a-all-books.png` | Alle boeken, canonieke startstaat | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
-| `02b-all-books-scrolled.png` | Scrollbewijs bij `02a`, laatste rij vrij van de tabbalk | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
-| `02c-all-books-controls.png` | Detail: de pill-rij in rust en actief | proposed | detailuitsnede, 1179×850 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `02a-all-books.png` | Alle boeken, canonieke startstaat | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `02b-all-books-scrolled.png` | Scrollbewijs bij `02a`, laatste rij vrij van de tabbalk | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `02c-all-books-controls.png` | Detail: de pill-rij in rust en actief | approved | detailuitsnede, 1179×850 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -101,15 +101,19 @@ nooit permanent onbereikbaar maken. De Boeken-home krijgt dus onderaan genoeg sc
 laatste rij inclusief metadata volledig boven de balk te brengen. Het tweede frame laat zien hoe
 dat eruitziet.
 
-## Golden 02, Alle boeken (proposed)
+## Golden 02, Alle boeken (approved)
 
 De grid-bestemming achter `Alle boeken ›` op Boeken-home. Inhoud van paneel 2 van de comp,
 uitvoering van de iOS Unified-set, aansluitend op goedgekeurde golden 01b. Drie frames, samen één
 scherm: `02a` de startstaat, `02b` dezelfde pagina gescrold, `02c` een detailuitsnede van alleen de
 bedieningsrij zodat de actieve en niet-actieve staat naast elkaar te beoordelen zijn.
 
+Golden 02 is op 3 september 2026 goedgekeurd, inclusief de negen keuzes hieronder.
+
 De filtersheet zit hier bewust niet in. Dat is schermgolden 03 met zijn eigen goedkeuring; de
-Filters-pill in dit beeld opent hem, maar wat er dan opengaat wordt hier niet beslist.
+Filters-pill in dit beeld opent hem, maar wat er dan opengaat wordt hier niet beslist. Tot die
+goedkeuring er is tekent de implementatie de pills wel en opent ze niets: golden 02 keurt goed hoe
+ze eruitzien, niet wat erachter zit.
 
 **De keuzes die de comp niet maakt, en die dus goedgekeurd of afgewezen moeten worden.**
 
@@ -145,6 +149,29 @@ Filters-pill in dit beeld opent hem, maar wat er dan opengaat wordt hier niet be
 
 Net als bij 01b geldt: de tabbalk mag de laatste rij tijdelijk overlappen, nooit permanent.
 `02b` laat zien hoe ver er onderaan doorgescrold moet kunnen worden.
+
+## Wat er tegen golden 02 gebouwd is
+
+`lib/screens/books/all_books_screen.dart`, bereikbaar via `Alle boeken ›` op Boeken-home. De
+grid-maten zijn de gemeten maten: drie kolommen, 10 pt ertussen, 16 pt marge, covers 2:3. De pills
+worden getekend en openen niets, want wat achter Filters zit is golden 03 en heeft geen goedkeuring.
+De sorteerpill liegt niet: het raster is echt titel A–Z.
+
+Bewijs: `pleya_verify/scenarios/books.all.layout.yaml`, groen op een iPhone 15 Pro-simulator.
+
+Wat de vergelijking met de golden opleverde:
+
+- De covertitels waren te groot en braken middenin een woord (`CHILDRE / N OF / DUNE`). De maat
+  hing aan het motief, niet aan de lengte van de titel, dus `1984` en `Brave New World` kregen
+  dezelfde 26 pt. Nu bepaalt de lengte de maat.
+- De automation-node zat om een sliver en had daardoor geen bounds; een geometrie-assertie had niets
+  te meten. De node zit nu per cel, zoals `library.grid.item` al deed.
+
+Twee bewuste verschillen met het beeld:
+
+- **De volgorde.** De golden toont een plank in comp-volgorde, de app sorteert titel A–Z zoals de
+  pill zegt. Het beeld is een mockup, het label is het contract.
+- **Het aantal.** De golden zegt `128 boeken`, de app telt de twaalf die de vaste set heeft.
 
 ## Wat er tegen golden 01b gebouwd is
 

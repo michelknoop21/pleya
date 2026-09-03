@@ -2083,6 +2083,10 @@ class _TranslationsBooksNl extends TranslationsBooksEn {
 	@override String percentRead({required Object percent}) => '${percent}%';
 	@override String bookCount({required Object count}) => '${count} boeken';
 	@override String get oneBook => '1 boek';
+	@override String get filters => 'Filters';
+	@override String get sortTitleAsc => 'Titel A–Z';
+	@override String bookCountLabel({required Object count}) => '${count} boeken';
+	@override String get oneBookLabel => '1 boek';
 }
 
 // Path: search.filters
@@ -4096,6 +4100,10 @@ extension on TranslationsNl {
 			'books.percentRead' => ({required Object percent}) => '${percent}%',
 			'books.bookCount' => ({required Object count}) => '${count} boeken',
 			'books.oneBook' => '1 boek',
+			'books.filters' => 'Filters',
+			'books.sortTitleAsc' => 'Titel A–Z',
+			'books.bookCountLabel' => ({required Object count}) => '${count} boeken',
+			'books.oneBookLabel' => '1 boek',
 			_ => null,
 		};
 	}

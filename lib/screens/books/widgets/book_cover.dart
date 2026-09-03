@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:characters/characters.dart';
 import 'package:flutter/material.dart';
 
 import '../../../books/book.dart';
@@ -52,12 +53,27 @@ class _CoverType extends StatelessWidget {
     // plain or diagonal ground it goes high, because that is where the ground
     // is empty in each case.
     final titleAtTop = artwork.shape == BookArtworkShape.plain || artwork.shape == BookArtworkShape.diagonal;
+    // Size follows the title's length, not its motif. Fixing it per shape put
+    // 26 pt under `1984` and the same 26 pt under `Brave New World`, which then
+    // broke mid-word into `Brave / New / World` across the artwork. Letter
+    // spacing goes the same way: it is what makes a short title look printed
+    // and a long one overflow.
+    final glyphs = title.characters.length;
+    final base = glyphs <= 6
+        ? 24.0
+        : glyphs <= 12
+        ? 16.0
+        : glyphs <= 15
+        ? 12.0
+        : glyphs <= 22
+        ? 11.0
+        : 10.0;
     final titleStyle = TextStyle(
       color: artwork.ink,
-      fontSize: (artwork.shape == BookArtworkShape.eye ? 26 : 15) * scale,
+      fontSize: base * scale,
       height: 1.15,
       fontWeight: artwork.shape == BookArtworkShape.rings ? FontWeight.w500 : FontWeight.w700,
-      letterSpacing: artwork.shape == BookArtworkShape.orb ? 2.4 * scale : 0,
+      letterSpacing: (artwork.shape == BookArtworkShape.orb && glyphs <= 12 ? 2.4 : 0.6) * scale,
     );
     final authorStyle = TextStyle(
       color: artwork.ink.withValues(alpha: 0.72),

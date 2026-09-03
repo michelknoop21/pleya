@@ -90,6 +90,42 @@ class DemoBooksSource implements BooksSource {
     ink: Color(0xFF111111),
     shape: BookArtworkShape.plain,
   );
+  static const _messiah = BookArtwork(
+    base: Color(0xFF0D3742),
+    accent: Color(0xFFEF9A3A),
+    ink: Color(0xFFF1E6D0),
+    shape: BookArtworkShape.orb,
+  );
+  static const _children = BookArtwork(
+    base: Color(0xFF5C1A12),
+    accent: Color(0xFFA33A1F),
+    ink: Color(0xFFF6D9C4),
+    shape: BookArtworkShape.orb,
+  );
+  static const _sevenSisters = BookArtwork(
+    base: Color(0xFF163B4A),
+    accent: Color(0xFFE8E4EA),
+    ink: Color(0xFFEAF2F6),
+    shape: BookArtworkShape.orb,
+  );
+  static const _hobbit = BookArtwork(
+    base: Color(0xFF15522F),
+    accent: Color(0xFFCFE7C6),
+    ink: Color(0xFFEAF5D8),
+    shape: BookArtworkShape.orb,
+  );
+  static const _braveNewWorld = BookArtwork(
+    base: Color(0xFF4A140E),
+    accent: Color(0xFFCFD6DE),
+    ink: Color(0xFFF6D9C4),
+    shape: BookArtworkShape.eye,
+  );
+  static const _discovery = BookArtwork(
+    base: Color(0xFFD2521A),
+    accent: Color(0xFFFFD9A0),
+    ink: Color(0xFFFFF3DF),
+    shape: BookArtworkShape.orb,
+  );
 
   @override
   Future<List<Book>> books() async => [
@@ -141,6 +177,57 @@ class DemoBooksSource implements BooksSource {
       author: 'James Clear',
       artwork: _atomic,
       addedAt: _epoch.subtract(const Duration(days: 5)),
+    ),
+    // The rest of golden 02's shelf. They are all older than the six above, so
+    // Recent toegevoegd on Boeken-home still opens on the three golden 01b
+    // shows; a grid needs more than six to judge density on.
+    Book(
+      id: 'dune-messiah',
+      title: 'Dune Messiah',
+      author: 'Frank Herbert',
+      artwork: _messiah,
+      seriesId: 'dune',
+      addedAt: _epoch.subtract(const Duration(days: 40)),
+    ),
+    Book(
+      id: 'children-of-dune',
+      title: 'Children of Dune',
+      author: 'Frank Herbert',
+      artwork: _children,
+      seriesId: 'dune',
+      addedAt: _epoch.subtract(const Duration(days: 41)),
+    ),
+    Book(
+      id: 'zeven-zussen-1',
+      title: 'De Zeven Zussen',
+      author: 'Lucinda Riley',
+      artwork: _sevenSisters,
+      seriesId: 'zeven-zussen',
+      addedAt: _epoch.subtract(const Duration(days: 42)),
+    ),
+    Book(
+      id: 'hobbit',
+      title: 'De Hobbit',
+      author: 'J.R.R. Tolkien',
+      artwork: _hobbit,
+      seriesId: 'midden-aarde',
+      addedAt: _epoch.subtract(const Duration(days: 43)),
+    ),
+    Book(
+      id: 'brave-new-world',
+      title: 'Brave New World',
+      author: 'Aldous Huxley',
+      artwork: _braveNewWorld,
+      addedAt: _epoch.subtract(const Duration(days: 44)),
+    ),
+    // The long one, so the grid's two-line title and its truncation are real
+    // rather than theoretical.
+    Book(
+      id: 'ontdekking-van-de-hemel',
+      title: 'De ontdekking van de hemel',
+      author: 'Harry Mulisch',
+      artwork: _discovery,
+      addedAt: _epoch.subtract(const Duration(days: 45)),
     ),
   ];
 

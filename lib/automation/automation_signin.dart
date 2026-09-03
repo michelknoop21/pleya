@@ -255,6 +255,9 @@ Future<Map<String, Object?>> _persistConnectionAndBindProfile(
 /// [NavigationTabId] for — `screen.main` needs no tab switch (it's the
 /// always-mounted container), and `screen.media_detail` needs an item id
 /// `/v1/open` doesn't accept yet, so it fails clearly rather than guessing.
+/// The screens `/v1/open` reaches by selecting a nav tab. Screens that are
+/// pushed routes are not in here; they register an opener with
+/// [AutomationNavigationHooks.registerRouteOpener] instead.
 const Map<String, NavigationTabId> _screenToTab = {
   AutomationIds.screenDiscover: NavigationTabId.discover,
   AutomationIds.screenLibraries: NavigationTabId.libraries,
@@ -286,15 +289,17 @@ Future<Map<String, Object?>> handleAutomationOpen(Map<String, Object?> body) asy
   }
 
   NavigationTabId? tab;
-  if (screen != AutomationIds.screenMain) {
+  // A screen is either a nav tab or a route pushed by the screen that owns it.
+  // Alle boeken is the second kind: it hangs off Boeken-home, so no tab
+  // selection reaches it.
+  final isRoute = !_screenToTab.containsKey(screen) && screen != AutomationIds.screenMain;
+  if (screen != AutomationIds.screenMain && !isRoute) {
     tab = _screenToTab[screen];
-    if (tab == null) {
-      return {'ok': false, 'error': 'unsupported screen "$screen" — no nav-tab mapping registered for it yet'};
-    }
-    if (!AutomationNavigationHooks.instance.selectTab(tab)) {
+    if (!AutomationNavigationHooks.instance.selectTab(tab!)) {
       return {'ok': false, 'error': 'MainScreen is not mounted to open a tab on'};
     }
   }
+  var routeOpened = false;
 
   final timeoutMs = (body['timeoutMs'] as num?)?.toInt() ?? 5000;
   final deadline = DateTime.now().add(Duration(milliseconds: timeoutMs));
@@ -304,12 +309,12 @@ Future<Map<String, Object?>> handleAutomationOpen(Map<String, Object?> body) asy
     if (DateTime.now().isAfter(deadline))
       return {'ok': false, 'error': 'timeout waiting for "$screen" to become ready'};
     await Future<void>.delayed(const Duration(milliseconds: 100));
-    // Ask again on every turn. `_selectTab` ignores a destination that is not
-    // visible yet, and a capability-gated one (Boeken, Live TV, Kijklijst)
-    // becomes visible only once its source has answered — which can be after
-    // this call started. One attempt would make those destinations openable or
-    // not depending on timing; this makes the endpoint's promise, "returns
-    // when the screen is ready", true for them too.
+    // Ask again on every turn: a capability-gated destination (Boeken, Live
+    // TV, Kijklijst) only becomes visible once its source has answered, which
+    // can be after this call started.
     if (tab != null) AutomationNavigationHooks.instance.selectTab(tab);
+    // A route is pushed exactly once. Retrying the *lookup* covers the owning
+    // screen still mounting; retrying the push would stack duplicates.
+    if (isRoute && !routeOpened) routeOpened = AutomationNavigationHooks.instance.openRoute(screen);
   }
 }

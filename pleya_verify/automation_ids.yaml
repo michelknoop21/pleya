@@ -18,6 +18,12 @@ ids:
   - id: screen.books
     role: screen
     instanceable: false
+  - id: screen.all_books
+    role: screen
+    instanceable: false
+  - id: books.grid.item
+    role: grid.item
+    instanceable: true
   - id: books.rail.continue
     role: rail
     instanceable: false

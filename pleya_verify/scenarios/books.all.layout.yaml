@@ -1,0 +1,28 @@
+name: books.all.layout
+target: ios-sim
+# Alle boeken against approved golden 02
+# (docs/assets/ebooks/northstar/02a-all-books.png).
+#
+# REQUIRES `PLEYA_VERIFY_BOOKS=1`, like books.home.layout, and for a comparison
+# against the golden also `PLEYA_VERIFY_IOS_UDID=<iPhone 15 Pro>`.
+#
+# Two `open` steps, in order: Boeken-home is a nav tab, Alle boeken is a route
+# that Boeken-home pushes. The second only works once the first is mounted,
+# which is why they are two steps and not one.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - open: screen.books
+  - open: screen.all_books
+steps:
+  - wait_until: {id: screen.all_books, timeout: 15000}
+  - settle: 2000
+  # Three cells across, all on screen. The column count itself is a widget
+  # test's job; what a scenario adds is that they really lay out on a device
+  # and land inside the viewport rather than off the right margin.
+  - assert: {id: "books.grid.item[0]", insideViewport: true}
+  - assert: {id: "books.grid.item[1]", insideViewport: true}
+  - assert: {id: "books.grid.item[2]", insideViewport: true}
+  - snapshot: all-books

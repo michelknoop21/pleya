@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../automation/automation_ids.dart';
+import '../../automation/automation_navigation_hooks.dart';
 import '../../automation/automation_node.dart';
 import '../../automation/automation_screen.dart';
+import '../../automation/pleya_verify.dart';
 import '../../i18n/strings.g.dart';
 import '../../navigation/main_screen_scope.dart';
 import '../../profiles/active_profile_provider.dart';
@@ -11,6 +13,7 @@ import '../../profiles/profile_avatar.dart';
 import '../../providers/books_home_provider.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/pleya_logo.dart';
+import 'all_books_screen.dart';
 import 'widgets/book_rail.dart';
 import 'widgets/continue_reading_card.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -36,6 +39,24 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaitedLoad();
     });
+    if (kPleyaVerify) {
+      AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenAllBooks, _openAllBooks);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (kPleyaVerify) {
+      AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenAllBooks, _openAllBooks);
+    }
+    super.dispose();
+  }
+
+  /// The same push the `Alle boeken ›` link performs, so a scenario and a
+  /// reader take one route rather than two.
+  void _openAllBooks() {
+    if (!mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AllBooksScreen()));
   }
 
   void unawaitedLoad() {
@@ -56,7 +77,7 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
         body: CustomScrollView(
           slivers: [
             const SliverToBoxAdapter(child: _BooksHeader()),
-            SliverToBoxAdapter(child: _PageTitle(onSeeAll: rows.isEmpty ? null : () {})),
+            SliverToBoxAdapter(child: _PageTitle(onSeeAll: rows.isEmpty ? null : _openAllBooks)),
             if (rows.continueReading.isNotEmpty) ...[
               const SliverToBoxAdapter(child: SizedBox(height: 26)),
               SliverToBoxAdapter(

@@ -34,6 +34,14 @@ class AutomationIds {
   /// library, suffixed `[<globalKey>]`.
   static const String sidebarLibraryRow = 'sidebar.library_row';
 
+  /// Alle boeken (approved golden 02), the grid behind Boeken-home's
+  /// `Alle boeken ›`.
+  static const String screenAllBooks = 'screen.all_books';
+
+  /// One cell in that page's grid. Instanceable, suffixed `[<index>]`, and a
+  /// cell rather than the grid because a sliver has no bounds to measure.
+  static const String booksGridItem = 'books.grid.item';
+
   /// Boeken-home's three rails, in the order golden 01b puts them.
   static const String booksRailContinue = 'books.rail.continue';
   static const String booksRailRecent = 'books.rail.recent';
@@ -68,7 +76,12 @@ class AutomationIds {
   /// Base ids a scenario may address as `id[instance]` — see
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
-  static const Set<String> instanceableIds = {sidebarLibraryRow, libraryGridItem, mediaDetailEpisodeListItem};
+  static const Set<String> instanceableIds = {
+    sidebarLibraryRow,
+    libraryGridItem,
+    mediaDetailEpisodeListItem,
+    booksGridItem,
+  };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
   /// and the source `pleya_verify/automation_ids.yaml` is generated from
@@ -81,6 +94,8 @@ class AutomationIds {
     {'id': screenDiscover, 'role': 'screen', 'instanceable': false},
     {'id': screenLibraries, 'role': 'screen', 'instanceable': false},
     {'id': screenBooks, 'role': 'screen', 'instanceable': false},
+    {'id': screenAllBooks, 'role': 'screen', 'instanceable': false},
+    {'id': booksGridItem, 'role': 'grid.item', 'instanceable': true},
     {'id': booksRailContinue, 'role': 'rail', 'instanceable': false},
     {'id': booksRailRecent, 'role': 'rail', 'instanceable': false},
     {'id': booksRailSeries, 'role': 'rail', 'instanceable': false},

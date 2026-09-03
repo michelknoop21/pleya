@@ -20,9 +20,24 @@ class BooksHomeRows {
 
   final List<BookSeries> series;
 
-  const BooksHomeRows({this.continueReading = const [], this.recentlyAdded = const [], this.series = const []});
+  /// Everything the profile has, unordered by any row's rule. Alle boeken
+  /// reads this and applies its own sort, rather than borrowing a row whose
+  /// order means something else.
+  final List<Book> all;
+
+  const BooksHomeRows({
+    this.continueReading = const [],
+    this.recentlyAdded = const [],
+    this.series = const [],
+    this.all = const [],
+  });
 
   bool get isEmpty => continueReading.isEmpty && recentlyAdded.isEmpty && series.isEmpty;
+
+  /// [all] sorted the way Alle boeken shows it by default: title A–Z, case
+  /// and diacritics ignored, so `De Alchemist` and `de alchemist` land in the
+  /// same place.
+  List<Book> get allByTitle => [...all]..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 }
 
 /// Loads Boeken-home's content from a [BooksSource].
@@ -79,6 +94,7 @@ class BooksHomeProvider extends ChangeNotifier {
       ..sort((a, b) => (b.progress ?? 0).compareTo(a.progress ?? 0));
     final recentlyAdded = [...books]..sort((a, b) => b.addedAt.compareTo(a.addedAt));
     return BooksHomeRows(
+      all: books,
       continueReading: continueReading,
       recentlyAdded: recentlyAdded,
       // A series row of one is not a series row; it is a book with extra
