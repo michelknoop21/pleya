@@ -813,6 +813,78 @@ void main() {
     });
   });
 
+  group('LAND4: a vertical step on Home arrives at the column it left from', () {
+    List<MediaItem> films(String prefix, int count) => [
+      for (var i = 0; i < count; i++) _film('$prefix$i', title: '$prefix $i'),
+    ];
+
+    Future<void> bootTwoRows(WidgetTester tester) => boot(
+      tester,
+      hubs: [_hub('top-picks', 'Top Picks', films('tp', 10)), _hub('hidden-gems', 'Hidden Gems', films('hg', 10))],
+    );
+
+    String? focusedTile() {
+      final label = FocusManager.instance.primaryFocus?.debugLabel;
+      const prefix = 'tvDiscoveryTile_';
+      return label != null && label.startsWith(prefix) ? label.substring(prefix.length) : null;
+    }
+
+    testWidgets('DOWN out of a walked row lands under the card it left', (tester) async {
+      await bootTwoRows(tester);
+      final feedRows = rows(tester);
+      expect(feedRows, hasLength(2), reason: 'sanity: two stacked rows');
+
+      tileNode(tester, feedRows.first.hub.groups.first.groupId).requestFocus();
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 4; i++) {
+        await press(tester, LogicalKeyboardKey.arrowRight);
+      }
+      await tester.pumpAndSettle();
+      expect(focusedTile(), feedRows.first.hub.groups[4].groupId);
+
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(focusedTile(), feedRows.last.hub.groups[4].groupId);
+    });
+
+    testWidgets('the row below may remember where it was left, but it does not decide', (tester) async {
+      // The negative control at feed level: a row's scroll offset is its
+      // memory, and geometry read that memory as a destination.
+      await bootTwoRows(tester);
+      final feedRows = rows(tester);
+
+      tileNode(tester, feedRows.last.hub.groups.first.groupId).requestFocus();
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 8; i++) {
+        await press(tester, LogicalKeyboardKey.arrowRight);
+      }
+      await tester.pumpAndSettle();
+      expect(focusedTile(), feedRows.last.hub.groups[8].groupId, reason: 'sanity: the lower row is parked far right');
+
+      tileNode(tester, feedRows.first.hub.groups[1].groupId).requestFocus();
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+
+      expect(focusedTile(), feedRows.last.hub.groups[1].groupId);
+    });
+
+    testWidgets('UP out of the top row still reaches the hero', (tester) async {
+      // The edge the stack deliberately does not own: above the first row is
+      // the billboard, and hoofdstuk 7.3 sends UP back to its last-used CTA.
+      await bootTwoRows(tester);
+      final feedRows = rows(tester);
+
+      tileNode(tester, feedRows.first.hub.groups[3].groupId).requestFocus();
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+
+      expect(focusedTile(), isNull, reason: 'the focus left the rows');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, isNot(startsWith('tvDiscoveryTile_')));
+    });
+  });
+
   group('hoofdstuk 23\'s menu reacts on every row, not only Continue Watching', () {
     testWidgets('marking a hub-row title watched updates that exact card', (tester) async {
       final movie = _film('dune-nas', title: 'Dune', releasedAt: '2024-01-01');

@@ -30,6 +30,7 @@ import 'package:pleya/providers/discover_provider.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/media/unified/unified_media_hub.dart';
 import 'package:pleya/providers/tv_discovery_landing_provider.dart';
 import 'package:pleya/screens/tv/tv_discovery_landing_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
@@ -371,6 +372,119 @@ void main() {
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvDiscoveryViewAll');
   });
 
+  group('LAND4: a vertical step on a landing arrives at the column it left from', () {
+    List<MediaItem> movies(String prefix, int count) => [
+      for (var i = 0; i < count; i++) _movie('$prefix$i', '$prefix $i'),
+    ];
+
+    List<MediaItem> shows(String prefix, int count) => [
+      for (var i = 0; i < count; i++)
+        MediaItem(
+          id: '$prefix$i',
+          backend: MediaBackend.plex,
+          kind: MediaKind.show,
+          title: '$prefix $i',
+          year: 2024,
+          serverId: 'server_1',
+          serverName: 'Server',
+        ),
+    ];
+
+    MediaHub hub(String id, String title, List<MediaItem> items, String type) => MediaHub(
+      id: id,
+      identifier: id,
+      title: title,
+      type: type,
+      items: items,
+      size: items.length,
+      serverId: 'server_1',
+      serverName: 'Server',
+    );
+
+    String? focusedTile() {
+      final label = FocusManager.instance.primaryFocus?.debugLabel;
+      const prefix = 'tvDiscoveryTile_';
+      return label != null && label.startsWith(prefix) ? label.substring(prefix.length) : null;
+    }
+
+    Future<void> press(WidgetTester tester, LogicalKeyboardKey key, {int times = 1}) async {
+      for (var i = 0; i < times; i++) {
+        await tester.sendKeyEvent(key);
+        await tester.pumpAndSettle();
+      }
+    }
+
+    /// The whole contract, run against whichever landing the caller pumped.
+    ///
+    /// One body for both because the two landings are one screen with a
+    /// different `railsOf` — a second copy of these assertions would be a
+    /// second chance to prove only one of them.
+    Future<void> assertColumnIsKept(WidgetTester tester) async {
+      final rails = tester.stateList<TvDiscoveryRailState>(find.byType(TvDiscoveryRail)).toList();
+      expect(rails, hasLength(2), reason: 'sanity: two stacked rails');
+      final top = rails.first.widget.groups;
+      final bottom = rails.last.widget.groups;
+
+      // The lower rail is walked far to the right and left parked there: its
+      // scroll offset is its memory, and memory has no vote in traversal.
+      expect(rails.last.focusGroup(bottom.first.groupId), isTrue);
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowRight, times: 7);
+      expect(focusedTile(), bottom[7].groupId, reason: 'sanity: the lower rail is parked far right');
+
+      expect(rails.first.focusGroup(top[2].groupId), isTrue);
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedTile(), bottom[2].groupId);
+
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(focusedTile(), top[2].groupId, reason: 'and the round trip ends where it started');
+    }
+
+    testWidgets('the Films landing', (tester) async {
+      await pumpLanding(
+        tester,
+        hubs: [
+          hub('recently-added-movies', 'Recently Added', movies('m', 10), 'movie'),
+          hub('top-picks-movies', 'Top Picks', movies('p', 10), 'movie'),
+        ],
+      );
+      await assertColumnIsKept(tester);
+    });
+
+    testWidgets('the Series landing, from the same owner', (tester) async {
+      await pumpLanding(
+        tester,
+        title: t.unifiedCatalog.seriesTitle,
+        railsOf: (landing) => landing.seriesRails,
+        hubs: [
+          hub('recently-added-shows', 'Recently Added', shows('s', 10), 'show'),
+          hub('top-picks-shows', 'Top Picks', shows('q', 10), 'show'),
+        ],
+      );
+      await assertColumnIsKept(tester);
+    });
+
+    testWidgets('UP out of the first rail still reaches the page header', (tester) async {
+      // The edge the stack does not own: above the first rail is the catalog
+      // action, and DEC-068 makes the two a pair.
+      await pumpLanding(
+        tester,
+        hubs: [
+          hub('recently-added-movies', 'Recently Added', movies('m', 10), 'movie'),
+          hub('top-picks-movies', 'Top Picks', movies('p', 10), 'movie'),
+        ],
+      );
+
+      final rails = tester.stateList<TvDiscoveryRailState>(find.byType(TvDiscoveryRail)).toList();
+      expect(rails.first.focusGroup(rails.first.widget.groups[3].groupId), isTrue);
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowUp);
+
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvDiscoveryViewAll');
+    });
+  });
+
   testWidgets('the landing carries no filter or sort chrome', (tester) async {
     await pumpLanding(tester);
 
@@ -396,6 +510,11 @@ pumpLanding(
   String? allTitle,
   List<MediaItem> onDeck = const [],
   List<MediaHub>? hubs,
+
+  /// Which half of the projection the screen reads. The Films and Series
+  /// landings are one implementation with this callback swapped, so a contract
+  /// that has to hold on both is proved by pumping both.
+  List<UnifiedMediaHub> Function(TvDiscoveryLandingProvider)? railsOf,
 }) async {
   resetSharedPreferencesForTest();
   SettingsService.resetForTesting();
@@ -463,7 +582,7 @@ pumpLanding(
                 title: title ?? t.unifiedCatalog.moviesTitle,
                 allTitle: allTitle ?? t.unifiedCatalog.discovery.allMovies,
                 viewAllSemanticLabel: t.unifiedCatalog.discovery.semantics.viewAllMovies,
-                railsOf: (landing) => landing.movieRails,
+                railsOf: railsOf ?? (landing) => landing.movieRails,
                 buildAllScreen: () => const Scaffold(body: Center(child: Text('All Movies'))),
               ),
             ),

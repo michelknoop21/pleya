@@ -191,8 +191,24 @@ class TvDiscoveryRail extends StatefulWidget {
   final String? initialFocusedGroupId;
 
   final ValueChanged<String>? onFocusedGroupChanged;
-  final VoidCallback? onNavigateUp;
-  final VoidCallback? onNavigateDown;
+
+  /// Where UP and DOWN out of this rail go, called with the **column** the step
+  /// leaves from: the index of the tile the remote is standing on.
+  ///
+  /// The column is the whole point (LAND4). A stacked surface reads as one
+  /// spatial plane, so a step to the rail above or below has to arrive at the
+  /// same horizontal position — and only the rail the step leaves knows what
+  /// that position is. Left to Flutter's directional traversal it is decided by
+  /// *screen geometry*, and a rail's screen geometry is its scroll offset,
+  /// which is its focus memory: a rail last walked to its tenth tile is still
+  /// scrolled there, so DOWN from the third tile of the rail above landed on
+  /// its eleventh. Memory is a restoration answer, not a traversal answer.
+  ///
+  /// Null hands the key back to Flutter's traversal, which is the right
+  /// answer at the edges of a stack — off the last rail of TV Search there is a
+  /// vertical result list, and geometry reaches it correctly.
+  final ValueChanged<int>? onNavigateUp;
+  final ValueChanged<int>? onNavigateDown;
 
   /// This rail's position on the page, for Pleya Verify addressing only. Null
   /// leaves the rail and its tiles unregistered, which is what a standalone
@@ -344,6 +360,36 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     );
   }
 
+  /// The offset [_revealFocused] would scroll to for the tile at [index], or
+  /// null when the band is already there or cannot be measured yet.
+  ///
+  /// Split out because the arithmetic is the useful half. It reads layout
+  /// tokens and an index, never a render box, so it answers for a tile that has
+  /// not been built — which is what [focusColumn] needs to move the band to a
+  /// tile the viewport has virtualised away.
+  double? _revealTarget(int index, double scale) {
+    if (!_scroll.hasClients) return null;
+    final position = _scroll.position;
+    if (!position.hasContentDimensions || !position.hasViewportDimension) return null;
+    final viewport = position.viewportDimension;
+    if (viewport <= 0) return null;
+
+    final lead = TvDiscoveryLayout.railLeadInset(scale);
+    final start = lead + index * TvDiscoveryLayout.railPitch(scale);
+    final end = start + TvDiscoveryLayout.tileWidth(scale, focused: true);
+
+    var target = position.pixels;
+    if (end > target + viewport - lead) target = end - viewport + lead;
+    // Second, and deliberately after: when the expanded tile is wider than the
+    // band can show (a narrow window, a test viewport) the left edge is the one
+    // that has to win, or the viewer is looking at the tail of a tile whose
+    // start they cannot see.
+    if (start < target + lead) target = start - lead;
+    target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+    if ((target - position.pixels).abs() < 0.5) return null;
+    return target;
+  }
+
   /// Scrolls the band so the tile at [index] is fully visible **at its focused
   /// width**, inside the page inset on both sides (P9).
   ///
@@ -364,25 +410,8 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   /// band (hoofdstuk 8.1). That is the same rect `tvos.discovery.overscan`
   /// asserts against `discover.safe_area`.
   void _revealFocused(int index, double scale) {
-    if (!_scroll.hasClients) return;
-    final position = _scroll.position;
-    if (!position.hasContentDimensions || !position.hasViewportDimension) return;
-    final viewport = position.viewportDimension;
-    if (viewport <= 0) return;
-
-    final lead = TvDiscoveryLayout.railLeadInset(scale);
-    final start = lead + index * TvDiscoveryLayout.railPitch(scale);
-    final end = start + TvDiscoveryLayout.tileWidth(scale, focused: true);
-
-    var target = position.pixels;
-    if (end > target + viewport - lead) target = end - viewport + lead;
-    // Second, and deliberately after: when the expanded tile is wider than the
-    // band can show (a narrow window, a test viewport) the left edge is the one
-    // that has to win, or the viewer is looking at the tail of a tile whose
-    // start they cannot see.
-    if (start < target + lead) target = start - lead;
-    target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
-    if ((target - position.pixels).abs() < 0.5) return;
+    final target = _revealTarget(index, scale);
+    if (target == null) return;
 
     final duration = reduceMotion(context, FocusTheme.getAnimationDuration(context));
     if (duration == Duration.zero) {
@@ -415,6 +444,61 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     final node = _nodes[groupId];
     if (node == null || !node.canRequestFocus) return false;
     node.requestFocus();
+    return true;
+  }
+
+  /// Takes the focus at [column] — the horizontal position a vertical step
+  /// arrived from — and reports whether this rail could take it (LAND4).
+  ///
+  /// The column is an index and not an x-coordinate, and the two are the same
+  /// thing here: [TvDiscoveryLayout.railPitch] is a function of the page scale
+  /// alone, so every rail on a page lays its tiles on one grid and column *n*
+  /// of any rail is column *n* of every other. "every rail on a page lays its
+  /// tiles on one grid" in `test/widgets/tv/tv_discovery_rail_test.dart` holds
+  /// that against the rendered x-positions. Should a rail ever get its own tile
+  /// width, this is the method that has to start comparing centres instead of
+  /// indices, and nothing else does.
+  ///
+  /// A shorter rail clamps rather than declines: seven tiles with the focus on
+  /// the sixth, stepping into a rail of four, is that rail's fourth. Declining
+  /// would send the step past a rail that is plainly there, which is the one
+  /// thing the contract rules out.
+  bool focusColumn(int column) {
+    if (widget.groups.isEmpty) return false;
+    return _focusIndex(column.clamp(0, widget.groups.length - 1));
+  }
+
+  bool _focusIndex(int index) {
+    final groupId = widget.groups[index].groupId;
+    final node = _nodes[groupId];
+    if (node != null && node.parent != null && node.canRequestFocus) {
+      node.requestFocus();
+      return true;
+    }
+
+    // The tile is not in the built window: the band is a `ListView.builder`, so
+    // a rail parked at its tenth tile has no widget — and therefore no
+    // focusable node — for its second. Move the band first and take the focus
+    // on the frame the tile exists on.
+    //
+    // This is not the post-frame `requestFocus` the LAND4 note rules out. That
+    // one papers over a focus graph that is wrong *now*; here the graph is
+    // right and the target genuinely does not exist yet, because a viewport
+    // decides what exists. The jump rather than an animation is what makes the
+    // next frame the frame: the tile has to be built when the callback runs,
+    // and `_revealFocused`'s own animation would land it several frames later.
+    // No band at all means this rail is not laid out: offstage, or never
+    // built. That is the one case where declining is right, and the caller
+    // carries the step on to the next rail.
+    if (!_scroll.hasClients) return false;
+    final target = _revealTarget(index, _scale);
+    if (target != null) _scroll.jumpTo(target);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final built = _nodes[groupId];
+      if (built != null && built.parent != null && built.canRequestFocus) built.requestFocus();
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
     return true;
   }
 
@@ -563,8 +647,10 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
               _revealFocused(index, scale);
               _warmAround(index);
             },
-            onNavigateUp: widget.onNavigateUp,
-            onNavigateDown: widget.onNavigateDown,
+            // The anchor for the next vertical step is the tile being left,
+            // so LEFT and RIGHT move it without having to say so.
+            onNavigateUp: widget.onNavigateUp == null ? null : () => widget.onNavigateUp!(index),
+            onNavigateDown: widget.onNavigateDown == null ? null : () => widget.onNavigateDown!(index),
             // Hard stops at both ends of the row. Left as `null` these fall
             // through to Flutter's geometric traversal, and on a stacked feed
             // the nearest focusable to the right of a row's last tile is the

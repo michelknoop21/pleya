@@ -57,6 +57,7 @@ class TvContentRow extends StatelessWidget {
     this.initialFocusedGroupId,
     this.onFocusedGroupChanged,
     this.onNavigateUp,
+    this.onNavigateDown,
     this.automationRailIndex,
   });
 
@@ -79,9 +80,12 @@ class TvContentRow extends StatelessWidget {
   final String? initialFocusedGroupId;
   final ValueChanged<String>? onFocusedGroupChanged;
 
-  /// UP out of the first row goes back to the hero's last-used CTA; the rows
-  /// below it keep the rail-to-rail default.
-  final VoidCallback? onNavigateUp;
+  /// Rail to rail, called with the column the step leaves from — see
+  /// [TvDiscoveryRail.onNavigateUp]. UP that runs out of rows above goes back
+  /// to the hero's last-used CTA.
+  final ValueChanged<int>? onNavigateUp;
+
+  final ValueChanged<int>? onNavigateDown;
 
   /// This row's position in the feed, for Pleya Verify addressing only.
   final int? automationRailIndex;
@@ -104,6 +108,7 @@ class TvContentRow extends StatelessWidget {
       onActivate: onActivate,
       onContextMenu: onContextMenu,
       onNavigateUp: onNavigateUp,
+      onNavigateDown: onNavigateDown,
       automationRailIndex: automationRailIndex,
     );
   }

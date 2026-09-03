@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -18,6 +19,7 @@ import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/optimized_media_image.dart';
 import 'package:pleya/widgets/tv/tv_discovery_rail.dart';
+import 'package:pleya/widgets/tv/tv_rail_stack.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 import '../../test_helpers/tv_discovery_artwork.dart';
@@ -135,6 +137,81 @@ void main() {
     await tester.pumpAndSettle();
     return tester.stateList<TvDiscoveryRailState>(find.byType(TvDiscoveryRail)).toList();
   }
+
+  /// The same stack, wired the way every production surface wires it: one
+  /// [TvRailStack] owning UP and DOWN between the rails.
+  ///
+  /// The wiring is the thing under test, so the harness has to carry it. A
+  /// stack of bare rails is what the *old* implementation was — rails with no
+  /// vertical handler at all, leaving the step to Flutter's geometry — which is
+  /// what `pumpTwoRails` still builds, and what the negative control below
+  /// contrasts against.
+  Future<List<TvDiscoveryRailState>> pumpRailStack(WidgetTester tester, List<List<UnifiedMediaGroup>> rows) async {
+    tester.view.physicalSize = const Size(1038, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final stack = TvRailStack();
+    stack.layOut([for (var i = 0; i < rows.length; i++) 'row$i']);
+
+    final theme = monoTheme(dark: true);
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme,
+        home: InputModeTracker(
+          child: Scaffold(
+            backgroundColor: theme.extension<MonoTokens>()!.bg,
+            body: Builder(
+              builder: (context) {
+                final height = TvDiscoveryLayout.railSectionHeight(TvLayoutConstants.scaleOf(context));
+                // A `ListView` and not a `Column`, for the same reason the
+                // production surfaces use one: three rails are taller than a
+                // TV screen, and the page has to scroll rather than overflow.
+                return ListView(
+                  children: [
+                    for (var i = 0; i < rows.length; i++)
+                      SizedBox(
+                        height: height,
+                        child: TvDiscoveryRail(
+                          key: stack.keyFor('row$i'),
+                          title: 'Rij $i',
+                          groups: rows[i],
+                          onActivate: (_) {},
+                          onNavigateUp: stack.up(i),
+                          onNavigateDown: stack.down(i),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return tester.stateList<TvDiscoveryRailState>(find.byType(TvDiscoveryRail)).toList();
+  }
+
+  /// What the remote is standing on, by the debug label
+  /// `TvDiscoveryRailState._nodeFor` gives every tile.
+  String? focusedTile() {
+    final label = FocusManager.instance.primaryFocus?.debugLabel;
+    const prefix = 'tvDiscoveryTile_';
+    return label != null && label.startsWith(prefix) ? label.substring(prefix.length) : null;
+  }
+
+  Future<void> press(WidgetTester tester, LogicalKeyboardKey key, {int times = 1}) async {
+    for (var i = 0; i < times; i++) {
+      await tester.sendKeyEvent(key);
+      await tester.pumpAndSettle();
+    }
+  }
+
+  List<UnifiedMediaGroup> row(String prefix, int count) => [
+    for (var i = 0; i < count; i++) tvDiscoveryGroup('$prefix$i', [_item('$prefix$i', '$prefix$i')]),
+  ];
 
   // ---------------------------------------------------------------------------
   // P9
@@ -372,8 +449,12 @@ void main() {
       // page lands back where they were. That is restoration, and it must
       // survive. What must not survive is the *drawing* of that group: a rail
       // with no focus in it is not describing anything.
-      final top = [tvDiscoveryGroup('t0', [_item('t0', 'Boventitel')])];
-      final bottom = [tvDiscoveryGroup('b0', [_item('b0', 'Ondertitel')])];
+      final top = [
+        tvDiscoveryGroup('t0', [_item('t0', 'Boventitel')]),
+      ];
+      final bottom = [
+        tvDiscoveryGroup('b0', [_item('b0', 'Ondertitel')]),
+      ];
 
       final rails = await pumpTwoRails(tester, top, bottom);
       expect(rails, hasLength(2));
@@ -423,6 +504,178 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Tweede'), findsOneWidget);
       expect(find.text('Eerste'), findsNothing);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // LAND4
+  // ---------------------------------------------------------------------------
+
+  group('LAND4: a vertical step arrives at the column it left from', () {
+    testWidgets('DOWN out of a scrolled rail lands under the tile it left', (tester) async {
+      // The finding: the stack has to read as one plane. Standing on the sixth
+      // tile of a rail and pressing DOWN puts you on the sixth tile of the rail
+      // below, not on whatever the geometry underneath happened to be.
+      final rails = await pumpRailStack(tester, [row('t', 12), row('b', 12)]);
+      expect(rails, hasLength(2));
+
+      rails.first.focusGroup('t0');
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowRight, times: 5);
+      expect(focusedTile(), 't5');
+
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedTile(), 'b5');
+    });
+
+    testWidgets('and UP comes back to the same column', (tester) async {
+      // The round trip is the half that made the old behaviour feel haunted:
+      // walking down and straight back up arrived one tile further along than
+      // it started, because each step was decided by two independently
+      // scrolled bands.
+      final rails = await pumpRailStack(tester, [row('t', 12), row('b', 12)]);
+
+      rails.first.focusGroup('t0');
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowRight, times: 5);
+
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(focusedTile(), 't5');
+    });
+
+    testWidgets('the target rail may remember where it was left, but it does not decide', (tester) async {
+      // The scherpe punt of the contract, and the negative control for it.
+      // A rail's scroll offset *is* its focus memory, so leaving the step to
+      // geometry lets memory decide traversal: this rail was walked to its
+      // tenth tile and is still parked there.
+      final rails = await pumpRailStack(tester, [row('t', 12), row('b', 12)]);
+
+      rails.last.focusGroup('b0');
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowRight, times: 9);
+      expect(focusedTile(), 'b9', reason: 'sanity: the lower rail is parked far to the right');
+
+      rails.first.focusGroup('t2');
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+
+      expect(focusedTile(), 'b2', reason: 'the column the step left from, not the tile the rail remembers');
+    });
+
+    testWidgets('a shorter rail clamps on its last tile rather than declining the step', (tester) async {
+      final rails = await pumpRailStack(tester, [row('t', 8), row('b', 4)]);
+
+      rails.first.focusGroup('t0');
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowRight, times: 6);
+      expect(focusedTile(), 't6');
+
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedTile(), 'b3', reason: 'seven items with the focus on the seventh, into a rail of four');
+    });
+
+    testWidgets('an empty rail is stepped over, a filled one never is', (tester) async {
+      final rails = await pumpRailStack(tester, [row('t', 6), const <UnifiedMediaGroup>[], row('b', 6)]);
+
+      rails.first.focusGroup('t3');
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedTile(), 'b3', reason: 'the empty rail has nothing to stand on, so the step carries past it');
+
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(focusedTile(), 't3', reason: 'and back over it the same way');
+    });
+
+    testWidgets('the tile the step arrives on is fully in view at its expanded width', (tester) async {
+      // A correct focus node is not enough (the LAND3 half of this item): the
+      // rail it landed in has to have moved its own band, or the viewer is
+      // looking at a focus ring off the edge of the screen.
+      final rails = await pumpRailStack(tester, [row('t', 14), row('b', 14)]);
+      final inset = TvDiscoveryLayout.railLeadInset(
+        TvLayoutConstants.scaleOf(tester.element(find.byType(TvDiscoveryRail).first)),
+      );
+
+      rails.first.focusGroup('t0');
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowRight, times: 9);
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedTile(), 'b9');
+
+      final rect = tester.getRect(find.byKey(const ValueKey('b9')));
+      expect(rect.left, greaterThanOrEqualTo(inset - 0.5));
+      expect(rect.right, lessThanOrEqualTo(1038 - inset + 0.5));
+      expect(
+        rect.width,
+        closeTo(
+          TvDiscoveryLayout.tileWidth(
+            TvLayoutConstants.scaleOf(tester.element(find.byType(TvDiscoveryRail).first)),
+            focused: true,
+          ),
+          0.5,
+        ),
+        reason: 'at the width it expands to, not the portrait width it landed at',
+      );
+    });
+
+    testWidgets('a column outside the built window is reached, not approximated', (tester) async {
+      // Virtualisation is why geometry cannot be repaired in place: the tiles
+      // near the target column are not in the tree at all while the band is
+      // parked elsewhere, so nothing on screen can be picked to stand for them.
+      final rails = await pumpRailStack(tester, [row('t', 30), row('b', 30)]);
+
+      rails.last.focusGroup('b0');
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowRight, times: 25);
+      expect(focusedTile(), 'b25');
+      expect(find.byKey(const ValueKey('b1')), findsNothing, reason: 'sanity: the target column is not built');
+
+      rails.first.focusGroup('t1');
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+
+      expect(focusedTile(), 'b1');
+    });
+
+    testWidgets('leaving the stack is still Flutter\'s job', (tester) async {
+      // The edges are deliberately not owned here: above the first rail is a
+      // page header, a hero or a search field, and below the last rail of TV
+      // Search is a vertical result list. A rail at the edge gets no handler,
+      // so the key falls through to the traversal that reaches those.
+      final stack = TvRailStack();
+      stack.layOut(['row0', 'row1']);
+      expect(stack.up(0), isNull);
+      expect(stack.down(1), isNull);
+      expect(stack.up(1), isNotNull);
+      expect(stack.down(0), isNotNull);
+      // Unless the caller names a target for that edge, which is how the
+      // landing gets back to its header and Home gets back to its hero.
+      expect(stack.up(0, whenExhausted: () {}), isNotNull);
+    });
+
+    testWidgets('every rail on a page lays its tiles on one grid', (tester) async {
+      // The invariant that makes "column" and "index" the same word here.
+      // `TvDiscoveryLayout.railPitch` is a function of the page scale alone, so
+      // tile n of one rail sits exactly above tile n of the next. Should a rail
+      // ever get its own tile width, `focusColumn` is the one place that has to
+      // start comparing centres instead of indices.
+      await pumpRailStack(tester, [row('t', 6), row('b', 6)]);
+
+      var compared = 0;
+      for (var i = 0; i < 6; i++) {
+        final top = find.byKey(ValueKey('t$i'));
+        final bottom = find.byKey(ValueKey('b$i'));
+        // Only the tiles both bands actually built: past the right edge the
+        // rails are virtualised, and a tile that does not exist has no column.
+        if (top.evaluate().isEmpty || bottom.evaluate().isEmpty) continue;
+        compared++;
+        expect(
+          tester.getRect(top).left,
+          closeTo(tester.getRect(bottom).left, 0.01),
+          reason: 'tile $i of the two rails must share a column',
+        );
+      }
+      expect(compared, greaterThanOrEqualTo(4), reason: 'sanity: the assertion above actually ran');
     });
   });
 }

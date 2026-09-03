@@ -267,6 +267,128 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  group('LAND4: TV Search stacks rails, so a vertical step keeps its column', () {
+    MediaItem film(String id, String title) => MediaItem(
+      id: id,
+      backend: MediaBackend.plex,
+      kind: MediaKind.movie,
+      title: title,
+      serverId: 'server_1',
+      serverName: 'Server',
+    );
+
+    MediaItem show(String id, String title) => MediaItem(
+      id: id,
+      backend: MediaBackend.plex,
+      kind: MediaKind.show,
+      title: title,
+      serverId: 'server_1',
+      serverName: 'Server',
+    );
+
+    String? focusedTile() {
+      final label = FocusManager.instance.primaryFocus?.debugLabel;
+      const prefix = 'tvDiscoveryTile_';
+      return label != null && label.startsWith(prefix) ? label.substring(prefix.length) : null;
+    }
+
+    Future<List<TvDiscoveryRailState>> pumpResults(WidgetTester tester) async {
+      TvDetectionService.debugSetAppleTVOverride(null);
+      await TvDetectionService.getInstance(forceTv: true);
+      TvDetectionService.setForceTVSync(true);
+      tester.view.devicePixelRatio = 1.0;
+      // Taller than the usual TV fixture on purpose: two result rails have to
+      // be laid out at once for a step between them to mean anything, and a
+      // sliver below the viewport is never built.
+      tester.view.physicalSize = const Size(1280, 1600);
+      addTearDown(() {
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetPhysicalSize();
+      });
+
+      final client = _FakeMediaServerClient(
+        items: [
+          for (var i = 0; i < 8; i++) film('f$i', 'Film $i'),
+          for (var i = 0; i < 8; i++) show('s$i', 'Serie $i'),
+        ],
+      );
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+      final hiddenLibraries = HiddenLibrariesProvider();
+      addTearDown(hiddenLibraries.dispose);
+
+      final key = GlobalKey<State<SearchScreen>>();
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
+              ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
+            ],
+            child: MaterialApp(
+              theme: monoTheme(dark: true),
+              home: SearchScreen(key: key),
+            ),
+          ),
+        ),
+      );
+      (key.currentState! as SearchInputFocusable).setSearchQuery('e');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+      addTearDown(() async => tester.pumpWidget(const SizedBox.shrink()));
+      return tester.stateList<TvDiscoveryRailState>(find.byType(TvDiscoveryRail)).toList();
+    }
+
+    testWidgets('DOWN from the Films rail lands on the same column of the Series rail', (tester) async {
+      final rails = await pumpResults(tester);
+      expect(rails, hasLength(2), reason: 'sanity: a Films rail and a Series rail');
+      final films = rails.first.widget.groups;
+      final series = rails.last.widget.groups;
+
+      // The lower rail is parked far right, so geometry would answer with the
+      // tile it remembers rather than the column the step came from.
+      expect(rails.last.focusGroup(series.first.groupId), isTrue);
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 6; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await tester.pumpAndSettle();
+      }
+      expect(focusedTile(), series[6].groupId, reason: 'sanity: the Series rail is parked far right');
+
+      expect(rails.first.focusGroup(films[2].groupId), isTrue);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(focusedTile(), series[2].groupId);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+      expect(focusedTile(), films[2].groupId, reason: 'and the round trip ends where it started');
+    });
+
+    testWidgets('Search keeps naming its results, which LAND4 does not touch', (tester) async {
+      // Deliberate and load-bearing: on TV Search the caption under a rail is
+      // the only place a result's title appears, so it is a label rather than a
+      // projection of where the remote is. Gating it on focus would hand the
+      // viewer a page of unnamed artwork. LAND4 changes who decides a vertical
+      // step, and nothing about who may describe a tile — see
+      // [TvDiscoveryRail.alwaysDescribesCurrent] and the SEARCH1 row in
+      // docs/tvos-fysieke-correctieronde.md.
+      final rails = await pumpResults(tester);
+
+      expect(
+        rails.map((rail) => rail.widget.alwaysDescribesCurrent),
+        everyElement(isTrue),
+        reason: 'every result rail names its current result, focus or no focus',
+      );
+      // And it is really on screen with the focus nowhere near it.
+      expect(rails.first.focusGroup(rails.first.widget.groups.first.groupId), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.text('Serie 0'), findsWidgets, reason: 'the Series rail is named while the focus is in Films');
+    });
+  });
+
   testWidgets('non-TV search stays source-concrete for the same multi-server match', (tester) async {
     // Same fixture as the TV dedup test above, pumped through the ordinary
     // (non-TV) SearchScreen: mobile/desktop must keep showing one card per

@@ -38,6 +38,7 @@ import '../../utils/layout_constants.dart';
 import '../../widgets/tv/tv_discovery_rail.dart';
 import '../../widgets/tv/tv_discovery_safe_area.dart';
 import '../../widgets/tv/tv_panel_primitives.dart';
+import '../../widgets/tv/tv_rail_stack.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import '../../widgets/tv/tv_view_all_action.dart';
 import 'tv_discovery_activation_mixin.dart';
@@ -101,10 +102,11 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
   // first frame after a re-projection replaced a scrolled-away tile's node.
   final _focusedGroupIdByHubId = <String, String>{};
 
-  // Keyed by hub id, for the same reason the rails themselves are: a
-  // re-projection reorders rows, and a key held by index would hand DOWN out
-  // of the header to whichever rail happened to land first.
-  final _railKeys = <String, GlobalKey<TvDiscoveryRailState>>{};
+  // Who owns UP and DOWN between the rails (LAND4). Keyed by hub id, for the
+  // same reason the rails themselves are: a re-projection reorders rows, and a
+  // key held by index would hand DOWN out of the header to whichever rail
+  // happened to land first.
+  final _rails = TvRailStack();
 
   late DiscoverProvider _discover;
 
@@ -130,6 +132,9 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
     final landing = context.watch<TvDiscoveryLandingProvider>();
     final discover = context.watch<DiscoverProvider>();
     final rails = widget.railsOf(landing);
+    // In draw order, so "the rail below this one" follows the page and not the
+    // order the keys were first created in.
+    _rails.layOut(rails.map((rail) => rail.hubId));
 
     if (rails.isEmpty) {
       return _buildEmptyOrLoading(discover);
@@ -222,10 +227,7 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
                     // the title: a re-projection reorders rows without losing
                     // this rail's own `TvDiscoveryRailState` — its `FocusNode`s,
                     // its scroll position — for a hub that is still there.
-                    key: _railKeys.putIfAbsent(
-                      rails[i].hubId,
-                      () => GlobalKey<TvDiscoveryRailState>(debugLabel: 'tvDiscoveryRail_${rails[i].hubId}'),
-                    ),
+                    key: _rails.keyFor(rails[i].hubId),
                     title: rails[i].title,
                     groups: rails[i].groups,
                     automationRailIndex: i,
@@ -236,10 +238,13 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
                         context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
                     onActivate: (group) => _activate(group),
                     onContextMenu: openDiscoveryContextMenu,
-                    // UP out of the first rail returns to the header action, so
-                    // the two are a pair rather than a one-way trip. Rails below
-                    // keep the rail-to-rail default.
-                    onNavigateUp: i == 0 ? _focusViewAll : null,
+                    // Rail to rail, at the column the step leaves from
+                    // (LAND4). UP that runs out of rails returns to the header
+                    // action, so the two are a pair rather than a one-way trip;
+                    // DOWN off the last rail has nothing below it and is left
+                    // to Flutter, which correctly does nothing.
+                    onNavigateUp: _rails.up(i, whenExhausted: _focusViewAll),
+                    onNavigateDown: _rails.down(i),
                   ),
                 ),
               ],
@@ -264,11 +269,7 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
   /// already walked keeps its place, so going up to the header and back down
   /// returns to the title they were on rather than resetting them to the start
   /// of the row.
-  void _focusFirstRail() {
-    for (final rail in _railStates()) {
-      if (rail.focusCurrent()) return;
-    }
-  }
+  void _focusFirstRail() => _rails.focusFirstCurrent();
 
   /// UP out of the first rail, back to the header action.
   void _focusViewAll() {
@@ -298,13 +299,6 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
     // No header yet (still loading, or an empty projection): the rails are the
     // only thing to land on, and landing on nothing would strand the remote.
     _focusFirstRail();
-  }
-
-  Iterable<TvDiscoveryRailState> _railStates() sync* {
-    for (final key in _railKeys.values) {
-      final state = key.currentState;
-      if (state != null) yield state;
-    }
   }
 
   /// Pushes the fase-5 complete catalog (DEC-064: "Alles bekijken is een

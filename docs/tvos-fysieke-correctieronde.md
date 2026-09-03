@@ -158,6 +158,87 @@ Negatieve controles: zet de oude per-rail-geheugenlogica terug en de
 same-column-test moet rood worden; zet de oude projectiestate terug en de
 projectietest moet rood worden.
 
+#### De audit: wie deelt de primitive
+
+Drie productieoppervlakken stapelen `TvDiscoveryRail`, en verder geen enkele:
+Home (`tv_content_feed.dart` via `tv_content_row.dart`), de Films- en de
+Series-landing (samen één `tv_discovery_landing_screen.dart`), en TV Zoeken
+(`search_screen.dart`). De Mijn Pleya-subpagina's stapelen geen rails maar
+tekenen een `TvMenuGrid`, dus zij vallen buiten dit contract. De catalogus is een
+raster en valt er ook buiten.
+
+#### Wat er misging
+
+De rails hadden helemaal geen verticale handler. UP en DOWN vielen door naar
+Flutters directionele traversal, en die is geometrisch: hij zoekt de focusbare
+node die onder de band van de huidige kaart ligt. Een rail is echter geen
+statisch raster. Hij scrolt, en zijn scrollpositie *is* zijn focusgeheugen. Een
+rail die eerder tot zijn tiende tegel gelopen is staat daar nog steeds geparkeerd,
+dus wat er onder de band ligt is zijn elfde tegel.
+
+Daarmee besliste geheugen de traversal, precies het ding dat hierboven verboden
+is. Gereproduceerd met twee gestapelde rails van twaalf tegels, in
+`test/widgets/tv/tv_discovery_rail_test.dart`:
+
+* vijf keer RIGHT en dan DOWN kwam van `t5` op `b3` uit, twee kolommen naar
+  links, want de bovenste rail was gescrold en de onderste niet;
+* één keer UP daarna kwam op `t6` uit, dus de heenreis en de terugreis waren niet
+  elkaars omgekeerde;
+* met de onderste rail eerst tot `b9` gelopen kwam DOWN vanaf `t2` op `b10` uit.
+
+Er is bovendien een geval waar geometrie principieel niet bij kan. De band is een
+`ListView.builder`, dus terwijl een rail bij zijn vijfentwintigste tegel staat
+bestaan de tegels rond kolom 1 niet in de widgetboom. Er is dan niets op het
+scherm dat voor kolom 1 kan doorgaan.
+
+#### Wat er is veranderd
+
+De rail krijgt `focusColumn(int)`: de kolom die een verticale stap meebrengt,
+geklemd op zijn eigen lengte, met een sprong van de band wanneer de doeltegel
+buiten het gebouwde venster valt. Kolom en index zijn hier hetzelfde woord, want
+`TvDiscoveryLayout.railPitch` hangt alleen van de paginaschaal af: elke rail op
+een pagina legt zijn tegels op één raster. Een test in
+`tv_discovery_rail_test.dart` meet dat na op de gerenderde x-posities. Krijgt een
+rail ooit zijn eigen tegelbreedte, dan is `focusColumn` de enige plek die op
+middens moet gaan vergelijken.
+
+`onNavigateUp` en `onNavigateDown` van de rail zijn `ValueChanged<int>` geworden
+en dragen de kolom waar de stap vandaan komt. Het anker verzet zich daarmee
+vanzelf bij LEFT en RIGHT, zonder aparte staat.
+
+De stapel zelf is `lib/widgets/tv/tv_rail_stack.dart`, één eigenaar die de drie
+oppervlakken delen. Hij houdt de sleutels per rail-id vast, kent de tekenvolgorde
+van de huidige build, en loopt bij een stap door tot een rail de focus aanneemt,
+wat lege rails overslaat en gevulde nooit. De randen bezit hij bewust niet: boven
+de eerste rail staat een paginakop, een hero of een zoekveld, en onder de laatste
+rail van Zoeken staat een verticale resultatenlijst. Daar geeft hij `null` terug
+en pakt Flutters traversal de toets weer op.
+
+De sprong-en-focus voor een tegel buiten het venster is niet de verboden
+post-frame `requestFocus`. Die verbergt een focusgraph die nú fout is; hier klopt
+de graph en bestaat het doel nog niet, omdat een viewport bepaalt wat er bestaat.
+
+#### Bewijs
+
+Negen controles in `test/widgets/tv/tv_discovery_rail_test.dart`: kolom bij DOWN,
+de retour bij UP, geheugen dat niet beslist, klemmen op een kortere rail, een lege
+rail overslaan, een kolom buiten het gebouwde venster, de reveal op uitgeklapte
+breedte, de randen, en het gedeelde raster. Daarbovenop acht op de oppervlakken
+zelf: drie in `tv_content_feed_test.dart`, drie in
+`tv_discovery_landing_screen_test.dart` waar Films en Series ieder apart gepompt
+worden, en twee in `search_screen_test.dart`.
+
+Met de eigenaar teruggezet op zijn oude vorm, alle verticale stappen weer naar de
+geometrie, waren zeven van de negen railcontroles rood en vijf van de acht
+oppervlaktecontroles. Wat groen bleef hoort groen te blijven: de klemtest, waar de
+geometrie toevallig hetzelfde antwoord gaf, de rastertest die een layout-invariant
+vastlegt, de twee randcontroles (UP naar de hero op Home, UP naar de paginakop op
+een landing) en de Zoeken-uitzondering van SEARCH1.
+
+De reveal-helft is meegetest maar lost LAND3 niet op: die gaat over
+`focusCurrent()` bij terugkeer uit een detailpagina, en dat pad is hier niet
+aangeraakt.
+
 ### LAND2, de projectie van de vorige rail
 
 Op Home stond de titel en synopsis van "How to Train Your Dragon" boven de rail
@@ -187,6 +268,30 @@ de poort erop zou een zoekpagina niets leesbaars tonen tot de kijker erin loopt.
 Vier bestaande Search-tests vielen daar prompt over om, wat de zorg bevestigt die
 al in de oude comment stond. Wil je dat Zoeken toch onder hetzelfde contract
 valt, dan is de vervolgvraag waar de resultaattitel dan wél komt te staan.
+
+### SEARCH1, Zoeken benoemt zijn resultaten buiten het railcontract om
+
+TV Zoeken zet `alwaysDescribesCurrent` op de rail-primitive, en dat blijft
+voorlopig staan. Het is geen vergeten uitzondering en geen restje van LAND2.
+
+De reden is dat het beschrijvingsblok op Zoeken op dit moment de enige plek is
+waar de titel van een zoekresultaat te lezen valt voordat de kijker de kaart
+binnengaat. Met de focuspoort erop toont een zoekpagina onbenoemde artwork tot er
+iemand in loopt. Vier bestaande Search-tests vielen daar bij LAND2 prompt over
+om.
+
+Wat dit betekent voor werk dat hier langskomt:
+
+* LAND4 en alles daarna mogen `alwaysDescribesCurrent` niet en passant
+  weghalen. `search_screen_test.dart` bewaakt dat expliciet.
+* Zoeken mag niet worden gelijkgetrokken met Home, Films en Series ten koste van
+  resultaten die dan naamloos op het scherm staan.
+* Wil je Zoeken tóch onder exact hetzelfde railcontract brengen, dan is dat een
+  productbesluit en geen refactor. Het besluit moet eerst vastleggen waar de
+  resultaatnaam dan permanent zichtbaar wordt: op de kaart zelf, in de heading,
+  of ergens anders.
+
+Blijft `DEFERRED` tot dat besluit er is.
 
 ### LAND3, de gefocuste wide card
 

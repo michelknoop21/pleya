@@ -45,6 +45,7 @@ import '../widgets/focusable_media_card.dart';
 import '../widgets/skeletons.dart';
 import '../widgets/state_view.dart';
 import '../widgets/tv/tv_discovery_rail.dart';
+import '../widgets/tv/tv_rail_stack.dart';
 import '../widgets/tv/tv_unified_layout.dart';
 import '../widgets/tv_virtual_keyboard.dart';
 import 'tv/tv_discovery_activation_mixin.dart';
@@ -113,13 +114,14 @@ class _SearchScreenState extends State<SearchScreen>
   // desktop/mobile search stays exactly the source-concrete list it always
   // was (DEC pending: fase 6 is a TV phase, `search_screen.dart` is shared).
   UnifiedSearchProjection? _tvProjection;
-  // TV only: the rail rendering the first non-empty group section, so the
-  // existing "focus the first result" call sites (OSK Done, keyboard
-  // navigate-down, submit-while-results-loaded) can land on it the same way
-  // they landed on `_firstResultFocusNode`'s card in the non-TV list. Rebuilt
-  // fresh every render — `TvDiscoveryRail` keys its own tiles on `groupId`,
-  // this key only ever needs to reach whichever rail is first right now.
-  final _firstTvRailKey = GlobalKey<TvDiscoveryRailState>();
+  // TV only: the group rails of the result page, in the order hoofdstuk 16.1
+  // draws them. It owns two things — reaching the first rail, so the existing
+  // "focus the first result" call sites (OSK Done, keyboard navigate-down,
+  // submit-while-results-loaded) land on it the same way they landed on
+  // `_firstResultFocusNode`'s card in the non-TV list, and UP/DOWN between the
+  // rails at one column (LAND4). Keyed on the section name rather than on a
+  // position: which sections are non-empty changes with every query.
+  final _tvRails = TvRailStack();
   bool _isSearching = false;
   bool _hasSearched = false;
   late final Debounce _searchDebounce;
@@ -826,14 +828,25 @@ class _SearchScreenState extends State<SearchScreen>
       if (projection.other.isNotEmpty) 'other',
     ].firstOrNull;
 
+    // The rails, and only the rails: the four source-concrete sections are
+    // vertical lists of cards, not stacked bands, so they are not part of the
+    // column contract and Flutter's traversal reaches them the way it always
+    // did.
+    final railSections = [
+      if (projection.movies.isNotEmpty) 'movies',
+      if (projection.shows.isNotEmpty) 'shows',
+      if (projection.episodes.isNotEmpty) 'episodes',
+    ];
+    _tvRails.layOut(railSections);
+
     List<Widget> groupSection(String key, String title, List<UnifiedMediaGroup> groups) {
-      final isFirst = key == firstNonEmptySection;
+      final railIndex = railSections.indexOf(key);
       return [
         SliverToBoxAdapter(
           child: SizedBox(
             height: TvDiscoveryLayout.railSectionHeight(scale),
             child: TvDiscoveryRail(
-              key: isFirst ? _firstTvRailKey : ValueKey('search-rail-$title'),
+              key: _tvRails.keyFor(key),
               title: title,
               groups: groups,
               // A result's title lives only in the rail's caption, so here it
@@ -845,6 +858,13 @@ class _SearchScreenState extends State<SearchScreen>
               clientFor: (serverId) => multiServer.serverManager.getClient(ServerId(serverId)),
               onActivate: (group) => activateDiscoveryGroup(group, onManageServers: widget.onManageServers),
               onContextMenu: openDiscoveryContextMenu,
+              // Rail to rail at the same column (LAND4). Only between the three
+              // group rails: above the first one is the search field and below
+              // the last one are the source-concrete result lists, and both are
+              // reached correctly by Flutter's own traversal — which is what a
+              // null handler leaves it to.
+              onNavigateUp: _tvRails.up(railIndex),
+              onNavigateDown: _tvRails.down(railIndex),
             ),
           ),
         ),
@@ -896,7 +916,7 @@ class _SearchScreenState extends State<SearchScreen>
   /// The one "focus the first result" target every submit/keyboard-navigate
   /// call site already used before TV got unified sections. On TV, "first
   /// result" is the first tile of the first discovery rail when one was
-  /// rendered — `_firstTvRailKey` reaches it via
+  /// rendered — `TvRailStack.focusFirstCurrent()` reaches it through
   /// `TvDiscoveryRailState.focusCurrent()`, the same API the discovery
   /// landing uses for restoration — and falls back to `_firstResultFocusNode`
   /// when the projection has no group sections (search matched only
@@ -904,7 +924,7 @@ class _SearchScreenState extends State<SearchScreen>
   /// always falls straight to `_firstResultFocusNode`, unchanged from before
   /// this projection existed.
   void _focusFirstResult() {
-    if (_firstTvRailKey.currentState?.focusCurrent() ?? false) return;
+    if (_tvRails.focusFirstCurrent()) return;
     _firstResultFocusNode.requestFocus();
   }
 

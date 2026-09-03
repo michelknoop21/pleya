@@ -66,8 +66,8 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../state_view.dart';
 import 'tv_content_row.dart';
-import 'tv_discovery_rail.dart';
 import 'tv_hero_billboard_carousel.dart';
+import 'tv_rail_stack.dart';
 import 'tv_unified_layout.dart';
 
 class TvContentFeed extends StatefulWidget {
@@ -89,10 +89,13 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
   final _scroll = ScrollController();
   final _heroKey = GlobalKey<TvHeroBillboardCarouselState>();
 
+  /// Who owns UP and DOWN between the rows (LAND4), and the keys they are
+  /// reached by.
+  ///
   /// Keyed on the stable `hubId` (hoofdstuk 17.5), never on an index: a
   /// re-projection that reorders rows must not hand a row's focus nodes and
   /// scroll position to a different row.
-  final _rowKeys = <String, GlobalKey<TvDiscoveryRailState>>{};
+  final _rowStack = TvRailStack();
 
   /// Hoofdstuk 7.6/19 restoration, by **group id** rather than by index. A row
   /// that gained a source, lost one, or came back shorter still returns the
@@ -100,16 +103,6 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
   /// genuinely gone.
   final _focusedGroupIdByRowId = <String, String>{};
   String? _heroGroupId;
-
-  /// The rows of the last build, in the order they were drawn.
-  ///
-  /// Kept because `_rowKeys` cannot answer "which row is first". It is a map
-  /// filled by `putIfAbsent`, so its iteration order is first-ever-insertion,
-  /// and a Home-layout reorder or a re-projection changes what is on screen
-  /// without changing that. Walking the keys for DOWN out of the hero therefore
-  /// landed on whichever row happened to be built first — right until the
-  /// viewer reordered their Home, and silently wrong after.
-  List<UnifiedMediaHub> _visibleRows = const [];
 
   bool _rowHasFocus = false;
   bool _atTop = true;
@@ -187,13 +180,7 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
   /// to the title they were on. A row whose cards are scrolled out of the band
   /// has no focus node yet and reports false, and the next row down is then the
   /// honest answer.
-  bool _focusFirstRow() {
-    for (final row in _visibleRows) {
-      final state = _rowKeys[row.hubId]?.currentState;
-      if (state != null && state.focusCurrent()) return true;
-    }
-    return false;
-  }
+  bool _focusFirstRow() => _rowStack.focusFirstCurrent();
 
   /// UP out of the first row (hoofdstuk 7.3: "terug naar de laatst gebruikte
   /// hero-CTA"). Falls through to the top navigation when there is no hero.
@@ -387,7 +374,10 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
         : (heroSettled ? _fallbackHero(rows) : const <UnifiedMediaGroup>[]);
     final reserveHeroSpace = heroGroups.isEmpty && !heroSettled;
     _hasHero = heroGroups.isNotEmpty;
-    _visibleRows = rows;
+    // In draw order, so "the row below this one" follows the page rather than
+    // the order the keys were first created in — a Home-layout reorder or a
+    // re-projection changes the former and not the latter.
+    _rowStack.layOut(rows.map((row) => row.hubId));
 
     if (rows.isEmpty && heroGroups.isEmpty && !reserveHeroSpace) return _emptyOrLoading(discover);
 
@@ -462,17 +452,22 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
                         height: TvContentRow.height(scale),
                         child: TvContentRow(
                           hub: rows[i],
-                          railKey: _rowKeys.putIfAbsent(
-                            rows[i].hubId,
-                            () => GlobalKey<TvDiscoveryRailState>(debugLabel: 'tvContentRow_${rows[i].hubId}'),
-                          ),
+                          railKey: _rowStack.keyFor(rows[i].hubId),
                           clientFor: _clientFor,
                           initialFocusedGroupId: _focusedGroupIdByRowId[rows[i].hubId],
                           onFocusedGroupChanged: (id) => _focusedGroupIdByRowId[rows[i].hubId] = id,
                           onActivate: _activate,
                           onContextMenu: (group) =>
                               _openContextMenu(group, isInContinueWatching: rows[i].hubId == continueWatchingHubId),
-                          onNavigateUp: i == 0 && heroGroups.isNotEmpty ? _focusHeroFromFirstRow : null,
+                          // Row to row, at the column the step leaves from
+                          // (LAND4). UP that runs out of rows above goes back
+                          // to the hero; DOWN off the last row has nothing
+                          // below it.
+                          onNavigateUp: _rowStack.up(
+                            i,
+                            whenExhausted: heroGroups.isEmpty ? null : _focusHeroFromFirstRow,
+                          ),
+                          onNavigateDown: _rowStack.down(i),
                           automationRailIndex: i,
                         ),
                       ),
