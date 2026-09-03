@@ -26,6 +26,7 @@ void main() {
         home: TvNestedSurface(
           key: route.surfaceKey,
           route: route,
+          dismiss: ([_]) {},
           child: Builder(builder: route.builder),
         ),
       ),
@@ -126,6 +127,7 @@ void main() {
                   return TvNestedSurface(
                     key: route.surfaceKey,
                     route: route,
+                    dismiss: ([_]) {},
                     child: Builder(builder: route.builder),
                   );
                 },

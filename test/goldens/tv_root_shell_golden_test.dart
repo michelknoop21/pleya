@@ -235,6 +235,7 @@ void main() {
             onKeyEvent: (_) => KeyEventResult.ignored,
             selectLibrary: null,
             openSettings: null,
+            dismissNestedRoute: ([_]) {},
             child: content,
           ),
         ),

@@ -317,6 +317,7 @@ class _ShellHostState extends State<_ShellHost> {
     onKeyEvent: (_) => KeyEventResult.ignored,
     selectLibrary: null,
     openSettings: null,
+    dismissNestedRoute: ([_]) {},
     child: widget.roots == null
         ? const SizedBox.shrink()
         : IndexedStack(
