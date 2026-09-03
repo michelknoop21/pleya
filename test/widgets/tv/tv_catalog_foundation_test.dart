@@ -43,16 +43,15 @@ Widget _shell(WidgetBuilder body) => TranslationProvider(
   ),
 );
 
+/// [alignment] stays null unless a case is specifically about a caller that
+/// places itself: null is what every surface in the app passes, and on a
+/// television the two mean different things (OVR2).
 OverlaySheetGeometry _resolve({
   required OverlaySheetPresentation presentation,
   required bool isTV,
   Size size = const Size(1038, 584),
-}) => resolveOverlaySheetGeometry(
-  presentation: presentation,
-  viewport: size,
-  alignment: Alignment.bottomCenter,
-  isTV: isTV,
-);
+  Alignment? alignment,
+}) => resolveOverlaySheetGeometry(presentation: presentation, viewport: size, alignment: alignment, isTV: isTV);
 
 Future<void> _press(WidgetTester tester, LogicalKeyboardKey key) async {
   await tester.sendKeyDownEvent(key);
@@ -155,6 +154,16 @@ void main() {
       expect(sheet, panel);
       expect(sheet.shadows, hasLength(2));
       expect(sheet.alignment, Alignment.center);
+    });
+
+    // OVR2. A surface that places itself is still lifted off the page, so it
+    // keeps the shadow; what it does not keep is the panel's centring.
+    test('TV + a sheet that placed itself keeps the shadow and loses the centring', () {
+      final placed = _resolve(presentation: OverlaySheetPresentation.sheet, isTV: true, alignment: Alignment.topCenter);
+
+      expect(placed.shadows, hasLength(2));
+      expect(placed.alignment, Alignment.topCenter);
+      expect(placed.verticalEdgePadding, greaterThan(0), reason: 'an edge on a TV is the overscan band');
     });
 
     // The iOS/macOS regression lock. `panel` off TV is the desktop/phone path

@@ -11,7 +11,11 @@ import 'package:pleya/widgets/overlay_sheet_geometry.dart';
 /// is neither: every presentation lands on the 10-foot box of hoofdstuk 14.1,
 /// which is the last group in this file.
 void main() {
-  OverlaySheetGeometry sheetAt(Size size, {bool isTV = false, Alignment alignment = Alignment.bottomCenter}) {
+  /// A caller that names no alignment passes null, which is what almost every
+  /// surface in the app does. Passing `Alignment.bottomCenter` here would say
+  /// something different, and on a television it means something different
+  /// (OVR2), so the two are kept apart in the harness as well.
+  OverlaySheetGeometry sheetAt(Size size, {bool isTV = false, Alignment? alignment}) {
     return resolveOverlaySheetGeometry(
       presentation: OverlaySheetPresentation.sheet,
       viewport: size,
@@ -24,7 +28,7 @@ void main() {
     return resolveOverlaySheetGeometry(
       presentation: OverlaySheetPresentation.panel,
       viewport: size,
-      alignment: Alignment.bottomCenter,
+      alignment: null,
       isTV: isTV,
       explicitConstraints: constraints,
     );
@@ -72,7 +76,7 @@ void main() {
       final g = resolveOverlaySheetGeometry(
         presentation: OverlaySheetPresentation.sheet,
         viewport: const Size(1440, 900),
-        alignment: Alignment.bottomCenter,
+        alignment: null,
         isTV: false,
         explicitConstraints: explicit,
       );
@@ -238,7 +242,7 @@ void main() {
       final g = resolveOverlaySheetGeometry(
         presentation: OverlaySheetPresentation.sheet,
         viewport: const Size(1038, 584),
-        alignment: Alignment.bottomCenter,
+        alignment: null,
         isTV: true,
         explicitConstraints: const BoxConstraints(maxWidth: 4000, maxHeight: 4000),
       );
@@ -257,6 +261,87 @@ void main() {
       expect(g.constraints.maxWidth, greaterThanOrEqualTo(0));
       expect(g.constraints.maxHeight, greaterThanOrEqualTo(0));
       expect(g.constraints.debugAssertIsValid(), isTrue);
+    });
+  });
+
+  // OVR2. OVR1b sent every TV overlay through the panel, including the one
+  // caller in the app that places itself. A television makes a surface safe; it
+  // does not make every surface a panel.
+  group('a caller that names its own placement keeps it on TV', () {
+    const tv = Size(1038, 584);
+    // Hoofdstuk 8.1's horizontal safe inset as a fraction of the 1920 surface,
+    // which is the number _tvPanelGeometry already owns.
+    const inset = 1038 * (72 / 1920);
+
+    OverlaySheetGeometry placed(Alignment alignment, {BoxConstraints? constraints, Size size = tv}) {
+      return resolveOverlaySheetGeometry(
+        presentation: OverlaySheetPresentation.sheet,
+        viewport: size,
+        alignment: alignment,
+        isTV: true,
+        explicitConstraints: constraints,
+      );
+    }
+
+    test('the alignment is the caller\'s, not the panel\'s', () {
+      expect(placed(Alignment.topCenter).alignment, Alignment.topCenter);
+      expect(placed(Alignment.bottomCenter).alignment, Alignment.bottomCenter);
+      expect(placed(Alignment.topCenter), isNot(panelAt(tv, isTV: true)));
+    });
+
+    test('a box that fits is handed back untouched', () {
+      final g = placed(Alignment.topCenter, constraints: const BoxConstraints(maxHeight: 80, maxWidth: 900));
+
+      expect(g.constraints.maxWidth, 900);
+      expect(g.constraints.maxHeight, 80);
+    });
+
+    test('a box that does not fit is clamped, and the alignment still stands', () {
+      final g = placed(Alignment.topCenter, constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 80));
+
+      expect(g.constraints.maxWidth, moreOrLessEquals(tv.width - inset * 2, epsilon: 0.01));
+      expect(g.constraints.maxHeight, 80);
+      expect(g.alignment, Alignment.topCenter, reason: 'clamping a size is not re-placing a surface');
+    });
+
+    test('it keeps both safe insets, so nothing lands in the overscan band', () {
+      final g = placed(Alignment.topCenter, constraints: const BoxConstraints(maxHeight: 80, maxWidth: 900));
+
+      expect(g.edgePadding, moreOrLessEquals(inset, epsilon: 0.01));
+      expect(g.verticalEdgePadding, moreOrLessEquals(inset, epsilon: 0.01));
+    });
+
+    test('it is still a remote-driven surface: no pointer anchor, no drag handle', () {
+      final g = placed(Alignment.bottomCenter);
+
+      expect(g.allowPointerAnchor, isFalse);
+      expect(g.allowDragHandle, isFalse);
+      expect(g.enterOffset.dy, lessThan(tv.height / 8), reason: 'a lift, not a full-viewport slide');
+    });
+
+    test('the old 400x400 TV box is not what a placed sheet falls back to', () {
+      final g = placed(Alignment.bottomCenter);
+
+      expect(g.constraints.maxWidth, isNot(400));
+      expect(g.constraints.maxHeight, isNot(400));
+      expect(g.constraints.maxWidth * (1920 / tv.width), inInclusiveRange(900, 1040));
+    });
+
+    test('off TV a named alignment behaves exactly as it always did', () {
+      final named = resolveOverlaySheetGeometry(
+        presentation: OverlaySheetPresentation.sheet,
+        viewport: const Size(1280, 800),
+        alignment: Alignment.topCenter,
+        isTV: false,
+        explicitConstraints: null,
+      );
+
+      expect(named.alignment, Alignment.topCenter);
+      expect(named.constraints.maxWidth, 700);
+      expect(named.constraints.maxHeight, 400);
+      expect(named.edgePadding, 16);
+      expect(named.verticalEdgePadding, 0, reason: 'only a television needs the vertical inset');
+      expect(named.fadeIn, isFalse);
     });
   });
 

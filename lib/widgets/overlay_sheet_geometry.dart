@@ -39,8 +39,16 @@ class OverlaySheetGeometry {
 
   final BorderRadius borderRadius;
 
-  /// Gap the layout delegate keeps between the sheet and the viewport edges.
+  /// Gap the layout delegate keeps between the sheet and the left and right
+  /// viewport edges.
   final double edgePadding;
+
+  /// Gap the layout delegate keeps between the sheet and the top and bottom
+  /// viewport edges. Zero for every surface that is meant to hug an edge, which
+  /// is every phone and desktop sheet; a television is the exception, because
+  /// its outer band is overscan (hoofdstuk 8.1) and a bar flush against the top
+  /// scanline is a bar with its first line cut off.
+  final double verticalEdgePadding;
 
   /// Whether the horizontal position may follow the last mouse position.
   /// False for a panel: a settings surface has no business tracking the cursor.
@@ -75,6 +83,7 @@ class OverlaySheetGeometry {
     required this.allowDragHandle,
     required this.enterOffset,
     required this.fadeIn,
+    this.verticalEdgePadding = 0,
     this.shadows = const [],
   });
 
@@ -89,6 +98,7 @@ class OverlaySheetGeometry {
       other.constraints == constraints &&
       other.borderRadius == borderRadius &&
       other.edgePadding == edgePadding &&
+      other.verticalEdgePadding == verticalEdgePadding &&
       other.allowPointerAnchor == allowPointerAnchor &&
       other.allowDragHandle == allowDragHandle &&
       other.enterOffset == enterOffset &&
@@ -101,6 +111,7 @@ class OverlaySheetGeometry {
     constraints,
     borderRadius,
     edgePadding,
+    verticalEdgePadding,
     allowPointerAnchor,
     allowDragHandle,
     enterOffset,
@@ -208,33 +219,80 @@ double tvPanelBorderRadius(Size viewport) => viewport.width * (_tvPanelReference
 
 /// Turn a presentation plus a viewport into concrete placement numbers.
 ///
+/// [alignment] is null when the caller never named one. That is not the same as
+/// passing [Alignment.bottomCenter], and the difference decides what happens on
+/// a television: see below.
+///
 /// [explicitConstraints] are the caller's wish. They win over the defaults, but
 /// never over the viewport: a panel that would not fit is shrunk, because a
 /// surface hanging off the screen has no close button.
 OverlaySheetGeometry resolveOverlaySheetGeometry({
   required OverlaySheetPresentation presentation,
   required Size viewport,
-  required Alignment alignment,
+  required Alignment? alignment,
   required bool isTV,
   BoxConstraints? explicitConstraints,
 }) {
+  final resolvedAlignment = alignment ?? Alignment.bottomCenter;
+
   // A television has one answer to "how big is an overlay", and hoofdstuk 14.1
-  // states it: the centred 10-foot modal. The presentation still decides
-  // placement everywhere else, where a context menu belongs at the cursor, but
-  // on TV there is no cursor to anchor to and no bottom edge to hang off: the
-  // bottom of the viewport is the overscan band of hoofdstuk 8.1.
+  // states it: the centred 10-foot modal. That is OVR1b, and it holds for every
+  // surface that names no placement of its own. Eleven of them reach the host
+  // that way and used to fall into a hardcoded 400x400 box flush against the
+  // bottom edge, which on a television is the overscan band of hoofdstuk 8.1.
   //
-  // This is OVR1b. Eleven surfaces reach the host without a `presentation:`
-  // and used to fall into a 400x400 box flush against that edge. One owner for
-  // the TV box fixes all of them, where adding `presentation:` to eleven call
-  // sites would still leave the twelfth wrong.
+  // What OVR1b got wrong, and OVR2 repairs, is the caller that *did* name one.
+  // The compact sync bar of the player asks for topCenter with a box of its own
+  // and was centred anyway. A television makes an overlay safe; it does not
+  // make every overlay a panel. So a stated alignment keeps its edge, and only
+  // its size is negotiated with the viewport.
   if (isTV) {
-    return _tvPanelGeometry(viewport: viewport, explicitConstraints: explicitConstraints);
+    return alignment == null
+        ? _tvPanelGeometry(viewport: viewport, explicitConstraints: explicitConstraints)
+        : _tvPlacedSheetGeometry(viewport: viewport, alignment: alignment, explicitConstraints: explicitConstraints);
   }
   final usePanel = presentation == OverlaySheetPresentation.panel && !ScreenBreakpoints.isMobile(viewport.width);
   return usePanel
       ? _panelGeometry(viewport: viewport, explicitConstraints: explicitConstraints)
-      : _sheetGeometry(viewport: viewport, alignment: alignment, explicitConstraints: explicitConstraints);
+      : _sheetGeometry(viewport: viewport, alignment: resolvedAlignment, explicitConstraints: explicitConstraints);
+}
+
+/// A television overlay that the caller placed itself.
+///
+/// Everything numeric comes from [_tvPanelGeometry], so there is still one
+/// owner for how big a TV overlay may be and how far it stays off the edges.
+/// Only the placement is the caller's: the alignment it named, and the vertical
+/// safe inset that alignment now needs, because a top- or bottom-aligned
+/// surface would otherwise sit in the overscan band.
+///
+/// Note what this deliberately does not do: it does not reach for the old
+/// 400x400 TV box. That number is gone, and [_sheetGeometry] knows nothing
+/// about televisions any more.
+OverlaySheetGeometry _tvPlacedSheetGeometry({
+  required Size viewport,
+  required Alignment alignment,
+  BoxConstraints? explicitConstraints,
+}) {
+  final panel = _tvPanelGeometry(viewport: viewport, explicitConstraints: explicitConstraints);
+  return OverlaySheetGeometry(
+    alignment: alignment,
+    // Already intersected with the safe viewport by _tvPanelGeometry, so a
+    // caller asking for 1100 on a 1038-wide canvas comes back as 960 without
+    // its edge moving.
+    constraints: panel.constraints,
+    borderRadius: panel.borderRadius,
+    edgePadding: panel.edgePadding,
+    verticalEdgePadding: panel.edgePadding,
+    // No pointer on a remote, and no drag handle to grab with one. Both were
+    // true before OVR1b as well; only the box was wrong.
+    allowPointerAnchor: false,
+    allowDragHandle: false,
+    // A lift rather than a full-viewport slide, per hoofdstuk 8.4. A compact
+    // bar flying in over the whole picture is the phone idiom.
+    enterOffset: panel.enterOffset,
+    fadeIn: true,
+    shadows: panel.shadows,
+  );
 }
 
 /// The centred 10-foot modal of hoofdstuk 14.1, and the geometry of every

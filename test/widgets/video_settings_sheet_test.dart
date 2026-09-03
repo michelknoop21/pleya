@@ -7,6 +7,7 @@ import 'package:pleya/mpv/player/player_streams.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/widgets/video_controls/sheets/video_settings_sheet.dart';
 
 import '../test_helpers/prefs.dart';
@@ -64,6 +65,57 @@ void main() {
 
     expect(find.text('Audio Output Mode'), findsOneWidget);
   });
+
+  // OVR2, through the caller that owns the regression rather than through the
+  // resolver alone. The compact sync bar is the one surface in the app that
+  // places itself, and OVR1b centred it on a television. The numbers come from
+  // the production constants, so this cannot drift away from what ships.
+  testWidgets('the compact sync bar keeps its top edge and its box on Apple TV', (tester) async {
+    const tvCanvas = Size(1038, 584);
+    const inset = 1038 * (72 / 1920);
+    TvDetectionService.debugSetAppleTVOverride(true);
+    addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+    await _pumpSheetInHost(tester, canvas: tvCanvas);
+
+    await tester.scrollUntilVisible(find.text('Audio Sync'), 300, scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Audio Sync'));
+    await tester.pumpAndSettle();
+
+    final bar = tester.getRect(
+      find.descendant(of: find.byType(CustomSingleChildLayout), matching: find.byType(Material)).first,
+    );
+
+    expect(bar.width, moreOrLessEquals(kCompactSyncBarConstraints.maxWidth, epsilon: 1));
+    expect(bar.height, moreOrLessEquals(kCompactSyncBarConstraints.maxHeight, epsilon: 1));
+    expect(kCompactSyncBarAlignment, Alignment.topCenter, reason: 'the caller still asks for the top edge');
+    expect(bar.top, moreOrLessEquals(inset, epsilon: 1), reason: 'against the top, one safe inset down');
+    expect(bar.center.dy, lessThan(tvCanvas.height / 4), reason: 'OVR1b put this at 292, the middle of the picture');
+    expect(bar.center.dx, moreOrLessEquals(tvCanvas.width / 2, epsilon: 1));
+  });
+}
+
+Future<void> _pumpSheetInHost(WidgetTester tester, {required Size canvas}) async {
+  tester.view.physicalSize = canvas;
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: ThemeData(extensions: const [_testTokens]),
+      home: OverlaySheetHost(
+        child: Scaffold(
+          body: VideoSettingsSheet(
+            player: _FakeSettingsPlayer(),
+            audioSyncOffset: 0,
+            subtitleSyncOffset: 0,
+            canControl: false,
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpSheet(WidgetTester tester) async {
