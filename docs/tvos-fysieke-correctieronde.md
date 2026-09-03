@@ -111,6 +111,8 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | OFF1 | Geen reconnect-affordance op TV | OPEN | n.v.t. |
 | OFF2 | De offline topnav toont focusbare dode pills | OPEN | n.v.t. |
 | SRCH2 | `people` wordt nooit aan `searchProjection` meegegeven | OPEN | n.v.t. |
+| REV1 | Apple Review Jellyfin: Home toont content, Films/Series leeg en concrete library niet zichtbaar (Apple Review, release-kritiek) | OPEN | n.v.t. |
+| LAND7 | Actieve discovery-rail krijgt geen vaste verticale focuspositie | OPEN | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -765,3 +767,108 @@ verandert weghalen niets aan.
 Geen enkele test raakt `AppBarBackButton` of `CustomAppBar` aan. De suite houdt
 een regressie hier vandaag dus niet tegen, en wie dit oplost schrijft die test
 er zelf bij.
+
+### REV1, Apple Review Jellyfin: Home toont content, Films/Series leeg
+
+Voor Apple Review draait een Jellyfin-demo-server. Op tvOS toont Home content,
+maar Films en Series geven allebei "Niets te ontdekken". Een concrete,
+zichtbare Jellyfin-library lijkt daarnaast niet bereikbaar op de verwachte
+plek.
+
+Dit is functioneel verdacht tegen het Unified TV-contract: Films en Series
+horen alle films respectievelijk series uit alle zichtbare compatibele
+libraries te tonen, Home/Films/Series zijn unified logical surfaces, en Mijn
+Pleya > Bibliotheken is de concrete source/library-interface. Dat Home wel
+content toont bewijst serverconnectie, auth en content-fetching, maar niet dat
+dezelfde library correct meedoet in Films/Series.
+
+Root cause: UNKNOWN / TO BE PROVEN.
+
+Te onderzoeken keten: Jellyfin views → Pleya library model / `LibrariesProvider`
+→ profile visibility → `UnifiedCatalogs.movies` eligibleLibraries →
+`movies.participatingLibraries` → `UnifiedCatalogs.shows` eligibleLibraries →
+`shows.participatingLibraries` → catalog query → resultaten vóór grouping →
+`UnifiedMediaGroup`-grouping → landing projection.
+
+Hypotheses, geen daarvan als root cause te lezen: een gemengde Jellyfin-library,
+een ontbrekende of afwijkende `CollectionType`, een demo-viewstructuur die van
+de fixtures afwijkt, Home die op hubs/latest draait terwijl Films/Series op
+library queries draaien, een Jellyfin-view die buiten catalog eligibility valt,
+of de juiste library die niet bevraagd wordt.
+
+Bij onderzoek moet de echte Jellyfin-demotopologie vastgelegd worden: view-/
+library-id, naam, `CollectionType`/type, parent/context waar relevant,
+visible/hidden, user access, daadwerkelijke movie/show-inhoud, en relevante
+query capabilities.
+
+Acceptatie: bevat de demo-server films, dan toont Films content; bevat hij
+series, dan toont Series content; bevat hij beide, dan tonen beide surfaces
+content. Een concrete zichtbare Jellyfin-library is daarnaast bereikbaar via
+Mijn Pleya > Bibliotheken, waar het productiecontract dat vereist. Een latere
+regressietest bootst de werkelijk gevonden Apple Review-topologie
+protocol-getrouw na.
+
+Non-goals: geen Apple Review special-case, geen demo-server-id hardcoded, geen
+Home-items naar Films/Series kopiëren, geen empty-state verbergen, niet alle
+Jellyfin views blind movie- én show-eligible maken, geen volledige catalog
+preload om lokaal te splitsen, hidden libraries niet zichtbaar maken, het
+paging/no-preload-contract niet breken, geen UI-maskering.
+
+Na de fix moet het tvOS-reviewpad bewijsbaar zijn: Home → Films → Series →
+Mijn Pleya → Bibliotheken → concrete Jellyfin-library → item → detail → Back.
+
+### LAND7, de actieve discovery-rail mist een vaste verticale focuspositie
+
+LAND2 regelt correct dat alleen de actieve rail metadata en synopsis toont.
+LAND4 regelt correct dat `TvRailStack` de verticale rail-naar-rail focus en de
+logische kolom beheert. Op Home ontstaat bij focus op een lagere discovery-rail
+toch een groot leeg zwart gebied tussen de topnav en de actieve rail: de rail
+is technisch zichtbaar, maar niet gepositioneerd als de huidige hoofdsectie van
+de viewport.
+
+Functioneel contract: bij verticale focusoverdracht naar een discovery-rail
+scrollt die rail naar een vaste upper-content anchor. Horizontale beweging
+binnen dezelfde rail verandert de verticale viewport niet.
+
+Verwacht gedrag. DOWN naar een andere rail: de nieuwe rail krijgt focus en de
+pagina/feed scrollt hem naar de canonieke active-rail anchor. UP naar de vorige
+rail: het onthouden item wordt hersteld en de vorige rail staat weer op
+dezelfde anchor. LEFT/RIGHT binnen dezelfde rail: de kaartfocus verandert, de
+verticale page-offset blijft exact gelijk. Detail → Back: de onthouden rail of
+kaart wordt hersteld en staat weer op de canonieke anchor.
+
+Voor de Home-hero geldt een eigen route die hier niet wijzigt: hero → DOWN mag
+de hero grotendeels uit beeld scrollen terwijl de eerste rail op de active
+anchor komt; eerste rail → UP blijft eigendom van de bestaande hero-return
+flow, met hero-terugscrollen en CTA-focus.
+
+Root cause: UNKNOWN / TO BE PROVEN.
+
+Hypothese over eigenaarschap, nog niet geverifieerd tegen de code:
+`TvDiscoveryRail` bezit de horizontale rail en het gefocuste item,
+`TvRailStack` de verticale focusoverdracht, en `TvContentFeed`/de surface de
+verticale page-scroll of -compositie. De viewport-owner hoort waarschijnlijk de
+railpositie te bepalen, maar dat is een hypothese tot de code geaudit is.
+
+Non-goals: LAND2, LAND3 en LAND4 niet heropenen, geen tweede focus-engine, geen
+screen-local negatieve margin, geen arbitraire "100 px omhoog", geen
+`Scrollable.ensureVisible` als dat alleen "ergens zichtbaar" garandeert,
+horizontale traversal mag geen verticale scroll triggeren, geen timing- of
+postFrame-hacks.
+
+Acceptatie: de actieve railheading komt consequent in het bovenste
+contentgebied, de gefocuste kaart blijft volledig focusring-safe, metadata
+staat direct onder de actieve rail, de volgende rail blijft waar mogelijk
+gedeeltelijk zichtbaar. LEFT/RIGHT laat de verticale scroll-offset ongewijzigd.
+DOWN/UP laat de nieuwe actieve rail op dezelfde canonieke anchor landen.
+Hero-return blijft correct.
+
+Te auditeren surfaces bij latere uitvoering: Home, de Films-landing, de
+Series-landing, TV Zoeken. Search- en Home-specifieke chrome mag niet blind
+dezelfde absolute offset krijgen; de anchor moet relatief aan de eigen
+contentviewport bepaald worden.
+
+Negatieve controle bij latere uitvoering: op de oude implementatie laat een
+verticale railwissel de actieve heading aantoonbaar onder de canonieke anchor
+staan (rood); na de fix staat de heading binnen tolerantie op de anchor
+(groen).
