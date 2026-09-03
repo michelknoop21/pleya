@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../utils/platform_detector.dart';
@@ -16,5 +17,14 @@ class TvosSystemNavigationService {
 
     _menuPassthroughEnabled = enabled;
     await _channel.send({'menuPassthroughEnabled': enabled});
+  }
+
+  /// Test-only: clears the last-sent cache so a test can assert on the next
+  /// [setMenuPassthroughEnabled] call regardless of what an earlier test in
+  /// the same isolate already sent (the cache is a static, so it otherwise
+  /// survives across tests in one file).
+  @visibleForTesting
+  static void debugResetMenuPassthroughCache() {
+    _menuPassthroughEnabled = null;
   }
 }
