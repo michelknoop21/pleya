@@ -29,9 +29,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `00a-mobile-nav-home-books-inactive.png` | Home, Boeken in slot 4 inactief | approved | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
 | `00b-mobile-nav-books-active.png` | Boeken-tab actief | approved | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
 | `01-books-home.png` | Boeken-home, eerste ronde | vervangen door 01b | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
-| `01b-books-home.png` | Boeken-home in rust: Verder lezen, Recent toegevoegd, Boekenseries | proposed | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
-| `01b-books-home-series.png` | Dezelfde pagina gescrold, zodat de Boekenseries-metadata te beoordelen is | proposed | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
-| `01b-books-home-comp.png` | Beide 01b-frames naast elkaar | proposed | 2 × iPhone 15 Pro | DEC-069, DEC-090 | 2026-09-03 | n.v.t. |
+| `01b-books-home.png` | Boeken-home, canonieke startstaat | approved | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
+| `01b-books-home-series.png` | Scrollbewijs bij `01b-books-home.png`, geen apart scherm | approved | iPhone 15 Pro, 1179×2556 | DEC-069, DEC-090 | 2026-09-03 | zie onder |
+| `01b-books-home-comp.png` | Beide 01b-frames naast elkaar | approved | 2 × iPhone 15 Pro | DEC-069, DEC-090 | 2026-09-03 | n.v.t. |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -61,14 +61,21 @@ Bewuste afwijkingen in golden 00:
   die ook op de demoserver staan). Commerciële covers en posters horen niet als golden asset in de
   repository; verhouding, kleurdynamiek en informatiedichtheid zijn wel aangehouden.
 
-## Golden 01b, Boeken-home (proposed)
+## Golden 01b, Boeken-home (approved)
 
 Inhoud komt van paneel 1 van de comp, uitvoering van de iOS Unified-set. De maatvoering is
 nagemeten op `01-series-landing.png`: paginatitel 28 px, rijkop 19 px, covers 110×165 met 12 pt
 tussenruimte en 16 pt paginamarge. Dezelfde schaal als golden 00, want die was al op dezelfde
 referentie gekalibreerd.
 
-Michel heeft op 3 september 2026 vier keuzes goedgekeurd: de link `Alle boeken ›` naast de
+Golden 01b is op 3 september 2026 goedgekeurd. De twee frames zijn samen één contract voor één
+scherm: `01b-books-home.png` is de canonieke startstaat van Boeken-home, `01b-books-home-series.png`
+is scrollbewijs bij diezelfde pagina. Ze zijn geen twee schermen en geen twee varianten, en een
+implementatie die het tweede frame als eigen bestemming behandelt volgt deze golden niet.
+
+Bij de goedkeuring hoort dat titels als `Project Hail M…` op deze breedte mogen afbreken.
+
+Eerder, in dezelfde ronde, keurde Michel vier keuzes goed: de link `Alle boeken ›` naast de
 paginatitel, de liggende Verder-lezen-kaart met de cover rechts, `48% · Hoofdstuk 12` in plaats
 van alleen een percentage, en een vaste tabbalk over scrollende inhoud. Dichtheid, covermaat,
 header en compositie liggen daarmee vast en veranderen niet meer.
@@ -90,6 +97,26 @@ Wat 01b anders doet dan de eerste ronde, op zijn verzoek:
 nooit permanent onbereikbaar maken. De Boeken-home krijgt dus onderaan genoeg scrollruimte om de
 laatste rij inclusief metadata volledig boven de balk te brengen. Het tweede frame laat zien hoe
 dat eruitziet.
+
+## Wat er tegen golden 01b gebouwd is
+
+`lib/screens/books/books_home_screen.dart` met `lib/books/` eronder. De rijen komen uit
+`BooksHomeProvider`, de covers worden getekend door `BookCover` omdat er nog geen coverafbeeldingen
+zijn, en de Verder-lezen-kaart tekent cover-derived ambience zoals de golden voorschrijft.
+
+Bewijs: `pleya_verify/scenarios/books.home.layout.yaml` draait op een echte iPhone 15 Pro-simulator,
+dezelfde viewport als de golden, en is groen. Het vergelijken van dat screenshot met deze golden
+haalde twee fouten boven die geen enkele test zag: de voortgangsbalk lag 113 × 0 op het scherm
+(een `Row` centreert, een `ColoredBox` heeft geen eigen hoogte) en de hele pagina stond 13 tot 25
+punt te laag. Beide zijn gecorrigeerd; de uitlijning zit nu binnen 1 tot 7 punt.
+
+Bewuste afwijkingen die blijven staan:
+
+- De covers zijn getekend, niet geladen. Zolang boeken geen coverafbeelding dragen wijkt het detail
+  af van de golden: de series-orbs zijn groter en missen de sterren, en een titel breekt soms over
+  een ander aantal regels. Vorm, kleur en positie kloppen.
+- De avatar is de bestaande ronde `ProfileAvatar`, de golden tekent een afgerond vierkant.
+- Het wordmark is in de app iets breder dan in de golden.
 
 ## Wat er tegen golden 00 gebouwd is
 
