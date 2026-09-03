@@ -27,6 +27,9 @@ library;
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+// `painting` and not `widgets`: this file states geometry, and [EdgeInsets] is
+// the type that says "padding on four sides" without dragging a widget tree in.
+import 'package:flutter/painting.dart';
 
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
@@ -295,6 +298,10 @@ class TvCatalogLayout {
   static const double cardTitleLineHeight = 1.2;
   static const double cardMetaFontSize = 11.5;
 
+  /// Line height of the meta line, named for the same reason the title's is:
+  /// [cardHeight] has to add up the card the footer actually draws.
+  static const double cardMetaLineHeight = 1.2;
+
   /// The meta block under the artwork.
   ///
   /// No horizontal padding, because there is no longer a box to pad inside of:
@@ -303,6 +310,34 @@ class TvCatalogLayout {
   /// the poster and its title.
   static const double cardFooterPaddingVertical = 6;
   static const double cardFooterLineGap = 3;
+
+  /// The height `TvUnifiedMediaCard` lays out for a card [cardWidth] wide, and
+  /// therefore the box that focus scales.
+  ///
+  /// Every term is fixed by the card's own construction rather than by its
+  /// content, which is what makes this a function instead of a measurement: the
+  /// poster is [posterAspectRatio] inside two [cardContentInset]s, the title
+  /// block is a `SizedBox` of two lines whether the title needs them or not,
+  /// and the meta line is drawn even when it has nothing to say. No string on
+  /// the card can change the answer.
+  ///
+  /// The meta line is rounded up because the engine rounds it up: a 9.775px
+  /// line at [cardMetaLineHeight] renders 12 logical pixels tall, not 11.73,
+  /// and font metrics are not this file's to predict to the decimal. Rounding
+  /// the way `MediaCardGridLayout.captionExtentFor` already does keeps this an
+  /// upper bound of what the card lays out: over by at most one pixel, never
+  /// under. `the computed card height bounds the height the card lays out` in
+  /// `tv_unified_media_grid_test.dart` holds the two together.
+  static double cardHeight(double cardWidth, double scale) {
+    final inset = cardContentInset(scale);
+    final posterBlock = (cardWidth - inset * 2) / posterAspectRatio + inset * 2;
+    final footer =
+        cardFooterPaddingVertical * scale * 2 +
+        cardTitleFontSize * scale * cardTitleLineHeight * 2 +
+        cardFooterLineGap * scale +
+        (cardMetaFontSize * scale * cardMetaLineHeight).ceilToDouble();
+    return posterBlock + footer;
+  }
 
   /// The loading placeholder's fills, as alphas on `MonoTokens.text`.
   ///
@@ -479,8 +514,7 @@ class TvCatalogGrid {
     required this.cardWidth,
     required this.gutter,
     required this.inset,
-    required this.bottomSafeInset,
-    required this.focusRingHeadroom,
+    required this.bottomSafeMargin,
   });
 
   final int columns;
@@ -488,32 +522,46 @@ class TvCatalogGrid {
   final double gutter;
   final double inset;
 
-  /// Room under the last row, so nothing the user needs to read — or the focus
-  /// ring — ends up in the overscan band at the bottom edge.
+  /// The overscan margin under the last row, so nothing the user needs to read
+  /// ends up in the band at the bottom edge.
   ///
-  /// Two parts. The safe margin itself converts like every other box
-  /// measurement here, as a fraction of the viewport: on a 16:9 surface
-  /// `x/1080` of the height is exactly `x/1920` of the width, so the vertical
-  /// margin falls out of the same reference the horizontal one uses. It reads
-  /// [TvCatalogLayout.bottomSafeInset], not `topSafeInset`: see there for why
-  /// the two edges no longer share one number. On top of that comes the room a
-  /// focused card needs to grow into, because
-  /// [FocusTheme.fullCardFocusScale] enlarges it about its centre and the bottom
-  /// row has nothing below it to grow into — and directional traversal scrolls
-  /// with `keepVisibleAtEnd`, so without this the ring lands flush against the
-  /// edge of the screen.
-  final double bottomSafeInset;
+  /// It converts like every other box measurement here, as a fraction of the
+  /// viewport: on a 16:9 surface `x/1080` of the height is exactly `x/1920` of
+  /// the width, so the vertical margin falls out of the same reference the
+  /// horizontal one uses. It reads [TvCatalogLayout.bottomSafeInset], not
+  /// `topSafeInset`: see there for why the two edges no longer share one
+  /// number.
+  ///
+  /// The room a focused card needs on top of this is *not* in here. See
+  /// [scrollPadding], and CAT1 for what it costs to fold the two together.
+  final double bottomSafeMargin;
 
-  /// Room *above* the first row, for the half of a focused card's growth that
-  /// goes upward.
+  /// The padding a scrolling grid of cards [cardHeight] tall pays on all four
+  /// sides.
   ///
-  /// [bottomSafeInset] has carried the downward half since fase 5, and the
-  /// upward half was simply missed: the grid's own top padding was zero, so
-  /// row one — the row directional traversal lands on first — had its focus
-  /// ring clipped flat against the top of the scroll viewport. The heading
-  /// above already pays the hoofdstuk 8.1 safe margin, so this is only the
-  /// focus growth, not the margin again.
-  final double focusRingHeadroom;
+  /// Focus enlarges a card about its centre, so half the added height reaches
+  /// past its top edge and half past its bottom one. Inside the grid that
+  /// overhang lands in a gutter and nobody sees it; at the first and the last
+  /// row there is no gutter, only the edge of the scroll viewport, which clips.
+  /// So both ends reserve the growth, and the bottom reserves the overscan
+  /// margin as well.
+  ///
+  /// **The caller states the card it draws.** The first version of this derived
+  /// the growth here, from `cardWidth / posterAspectRatio`, which is the height
+  /// of a poster as wide as the whole card. That is not the box focus scales: the
+  /// real poster is narrower (it sits inside two [TvCatalogLayout.cardContentInset]s)
+  /// and the real card is taller (the title and meta line hang below it). On
+  /// the canonical canvas it reserved 6.885 logical pixels where the card needs
+  /// 8.282, and the 1.4 that were missing are wider than the ring itself: the
+  /// top row's focus ring was cut off flat against the header, corners and all,
+  /// on every column at once. Two surfaces draw different cards through this
+  /// same grid, the catalog's `TvUnifiedMediaCard` and the watchlist's
+  /// `WatchlistCard`, at two different focus scales, so a number computed here
+  /// could only ever be right for one of them.
+  EdgeInsets scrollPadding({required double cardHeight, required double focusScale}) {
+    final growth = cardHeight * (focusScale - 1) / 2;
+    return EdgeInsets.fromLTRB(inset, growth, inset, bottomSafeMargin + growth);
+  }
 
   /// Ideal card width on the 1920-wide reference surface, expressed as a
   /// fraction so it converts like every other box measurement in this file
@@ -575,15 +623,12 @@ class TvCatalogGrid {
     final raw = ideal <= 0 ? minColumns : ((available + gutter) / (ideal + gutter)).round();
     final columns = raw.clamp(minColumns, maxColumns);
     final cardWidth = math.max(0.0, (available - gutter * (columns - 1)) / columns);
-    final cardHeight = cardWidth / TvCatalogLayout.posterAspectRatio;
-    final focusGrowth = cardHeight * (FocusTheme.fullCardFocusScale - 1) / 2;
     return TvCatalogGrid(
       columns: columns,
       cardWidth: cardWidth,
       gutter: gutter,
       inset: inset,
-      bottomSafeInset: width * (TvCatalogLayout.bottomSafeInset / _referenceWidth) + focusGrowth,
-      focusRingHeadroom: focusGrowth,
+      bottomSafeMargin: width * (TvCatalogLayout.bottomSafeInset / _referenceWidth),
     );
   }
 }

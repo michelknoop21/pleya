@@ -24,6 +24,7 @@ import '../widgets/watchlist_item_sheet.dart';
 import '../widgets/watchlist_sort_sheet.dart';
 import '../mixins/refreshable.dart';
 import '../navigation/main_screen_scope.dart';
+import '../focus/focus_theme.dart';
 import '../utils/grid_size_calculator.dart';
 import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
@@ -471,7 +472,11 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
       // Same three insets the catalog grid pays, and for the same reasons: the
       // page margin on the sides, room above for the half of a focused card's
       // growth that goes upward, and the wider bottom band of P12 below.
-      padding: EdgeInsets.fromLTRB(grid.inset, grid.focusRingHeadroom, grid.inset, grid.bottomSafeInset),
+      // The growth is this card's, not the catalog card's: the cell is a tight
+      // constraint, so `cellHeight` is exactly the box that scales, and a
+      // `WatchlistCard` scales by [FocusTheme.focusScale] rather than by the
+      // catalog card's fuller step (CAT1).
+      padding: grid.scrollPadding(cardHeight: cellHeight, focusScale: FocusTheme.focusScale),
       sliver: SliverGrid(
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: grid.columns,

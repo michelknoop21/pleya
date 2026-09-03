@@ -20,8 +20,10 @@ import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
+import 'package:pleya/widgets/tv/tv_unified_media_card.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
 
 import '../../test_helpers/golden.dart';
@@ -400,5 +402,100 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull, reason: 'focusing (which widens a card) must not overflow at the floor');
+  });
+
+  // ---------------------------------------------------------------------------
+  // CAT1: the top row's focus ring against the top of the scroll viewport
+  // ---------------------------------------------------------------------------
+
+  /// The rect the white focus ring is drawn on, in the state it is in now.
+  ///
+  /// The card's outer `SizedBox` is *above* `FocusableWrapper`'s
+  /// `Transform.scale`, so `getRect` on the card reports the resting box whether
+  /// or not it holds the focus, which is exactly how the clipping this group
+  /// guards went unnoticed. The ring lives on the poster block inside the
+  /// transform, and its top edge is the top edge of the whole scaled card.
+  Rect ringOf(WidgetTester tester, String title) {
+    final card = find.ancestor(of: find.text(title), matching: find.byType(TvUnifiedMediaCard));
+    return tester.getRect(find.descendant(of: card, matching: find.byType(AnimatedContainer)).first);
+  }
+
+  Rect viewportOf(WidgetTester tester) => tester.getRect(
+    find.descendant(of: find.byType(TvUnifiedMediaGrid), matching: find.byType(SingleChildScrollView)),
+  );
+
+  Future<void> focusCard(WidgetTester tester, String title) async {
+    Focus.of(tester.element(find.text(title))).requestFocus();
+    await tester.pumpAndSettle();
+  }
+
+  group('CAT1', () {
+    // The canonical canvas of DEC-028, so the numbers in the masterlist entry
+    // and the numbers here are the same numbers.
+    const canvas = Size(1038, 584);
+
+    testWidgets('a focused card in the top row keeps its whole ring inside the viewport', (tester) async {
+      await pumpGrid(tester, count: 40, surfaceSize: canvas);
+      final columns = columnsOf(tester);
+
+      // First, middle and last column of row one. The row shares one top edge,
+      // but a fix that only lands on the column the grid happens to focus first
+      // would pass a test that only asks about card zero.
+      for (final column in {0, columns ~/ 2, columns - 1}) {
+        await focusCard(tester, 'Title $column');
+        final ring = ringOf(tester, 'Title $column');
+        final viewport = viewportOf(tester);
+        expect(
+          ring.top,
+          greaterThanOrEqualTo(viewport.top),
+          reason:
+              'column $column: the ring is drawn at ${ring.top}, the viewport clips at '
+              '${viewport.top}, so ${viewport.top - ring.top} logical pixels of ring, corners '
+              'included, are cut off flat against the header',
+        );
+      }
+    });
+
+    testWidgets('it holds however the remote arrived at the top row', (tester) async {
+      await pumpGrid(tester, count: 40, surfaceSize: canvas);
+      final columns = columnsOf(tester);
+      final viewport = viewportOf(tester);
+
+      // Vertical arrival: down into row two and back up. LAND3 is the standing
+      // reminder that a reveal computed while something else is expanded can be
+      // right on the way there and wrong on the way back.
+      await focusCard(tester, 'Title $columns');
+      await focusCard(tester, 'Title 0');
+      expect(ringOf(tester, 'Title 0').top, greaterThanOrEqualTo(viewport.top), reason: 'after arriving from below');
+
+      // Horizontal arrival: along row one, which is the path that leaves a
+      // neighbour expanded while the next card grows.
+      await focusCard(tester, 'Title 1');
+      expect(ringOf(tester, 'Title 1').top, greaterThanOrEqualTo(viewport.top), reason: 'after a step sideways');
+    });
+
+    testWidgets('and at the scale floor, where the card is a different shape', (tester) async {
+      // The same surface J3 uses: TvLayoutConstants' own floor, and a card
+      // proportioned differently from the canonical one.
+      await pumpGrid(tester, count: 40, surfaceSize: const Size(1280, 918));
+      await focusCard(tester, 'Title 0');
+      expect(ringOf(tester, 'Title 0').top, greaterThanOrEqualTo(viewportOf(tester).top));
+    });
+
+    testWidgets('the computed card height bounds the height the card lays out', (tester) async {
+      // What keeps [TvCatalogLayout.cardHeight] and the card from drifting.
+      // Bounds rather than equals: the engine rounds the meta line's font
+      // metrics up, and the token arithmetic rounds with it. See there.
+      for (final size in const [Size(1038, 584), Size(1280, 918), Size(1920, 1080)]) {
+        await pumpGrid(tester, count: 12, surfaceSize: size);
+        final context = tester.element(find.byType(TvUnifiedMediaGrid));
+        final scale = TvLayoutConstants.scaleOf(context);
+        final grid = TvCatalogGrid.forWidth(size.width, scale: scale);
+        final rendered = tester.getRect(find.byType(TvUnifiedMediaCard).first).height;
+        final computed = TvCatalogLayout.cardHeight(grid.cardWidth, scale);
+        expect(computed, greaterThanOrEqualTo(rendered), reason: 'at $size the reservation must not be short');
+        expect(computed - rendered, lessThan(1.5), reason: 'at $size it must not be padding either');
+      }
+    });
   });
 }

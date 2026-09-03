@@ -49,6 +49,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../focus/focus_theme.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
@@ -343,7 +344,12 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       // row one's ring reaches *above* the first row's box. At zero top
       // padding the scroll viewport clipped it, and the row the remote lands
       // on first was the one row whose focus ring had no top edge.
-      padding: EdgeInsets.fromLTRB(grid.inset, grid.focusRingHeadroom, grid.inset, grid.bottomSafeInset),
+      // Which box grows is the card's business, not the column resolver's, so
+      // the height comes from the card that is actually drawn here (CAT1).
+      padding: grid.scrollPadding(
+        cardHeight: TvCatalogLayout.cardHeight(grid.cardWidth, scale),
+        focusScale: FocusTheme.fullCardFocusScale,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

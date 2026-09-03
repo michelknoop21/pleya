@@ -541,7 +541,7 @@ class _Footer extends StatelessWidget {
             style: TextStyle(
               fontSize: TvCatalogLayout.cardMetaFontSize * scale,
               color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
-              height: 1.2,
+              height: TvCatalogLayout.cardMetaLineHeight,
             ),
           ),
         ],

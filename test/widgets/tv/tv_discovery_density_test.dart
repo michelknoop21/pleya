@@ -19,6 +19,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/theme/mono_theme.dart';
@@ -164,7 +165,8 @@ void main() {
   });
 
   test('the bottom edge clears the overscan band with room to spare (P12)', () {
-    final grid = TvCatalogGrid.forWidth(_canvas.width, scale: 0.85);
+    const scale = 0.85;
+    final grid = TvCatalogGrid.forWidth(_canvas.width, scale: scale);
     // The bare margin, without the focus growth that is spent the moment a
     // bottom-row card is focused.
     final bare = _canvas.width * (TvCatalogLayout.bottomSafeInset / 1920);
@@ -173,7 +175,16 @@ void main() {
       greaterThan(0.07),
       reason: 'a ~5% margin sits *on* the overscan band, not clear of it',
     );
-    expect(grid.bottomSafeInset, greaterThan(bare), reason: 'the focus growth is on top of the margin, not out of it');
+    expect(
+      grid.bottomSafeMargin,
+      closeTo(bare, 0.001),
+      reason: 'the margin itself is the overscan band and nothing else',
+    );
+    final padding = grid.scrollPadding(
+      cardHeight: TvCatalogLayout.cardHeight(grid.cardWidth, scale),
+      focusScale: FocusTheme.fullCardFocusScale,
+    );
+    expect(padding.bottom, greaterThan(bare), reason: 'the focus growth is on top of the margin, not out of it');
     expect(
       TvCatalogLayout.bottomSafeInset,
       greaterThan(TvCatalogLayout.topSafeInset),
