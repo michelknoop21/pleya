@@ -167,7 +167,7 @@ List<TvMyPleyaGroup> buildTvMyPleyaGroups({
         TvMyPleyaTile(
           section: TvMyPleyaSection.settings,
           icon: Symbols.settings_rounded,
-          title: t.common.settings,
+          title: t.settings.title,
           subtitle: t.tvMyPleya.settingsSubtitle,
         ),
         TvMyPleyaTile(

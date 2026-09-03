@@ -12,6 +12,8 @@
 /// the way the simulator did.
 library;
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -104,5 +106,44 @@ void main() {
 
     expect(find.byType(FocusedScrollScaffold), findsOneWidget);
     expect(find.byType(TvPageSurface), findsNothing);
+  });
+
+  testWidgets('forgetting the room you are standing on leaves the remote somewhere', (tester) async {
+    // Codex challenge, finding 5. The new TV grids keep focus nodes by key and
+    // never call `FocusMemoryTracker.pruneExcept`. For a fixed menu that is
+    // harmless. Recent rooms are not fixed: the tile's own held-SELECT menu
+    // deletes the tile you are standing on, which is the exact shape
+    // `side_navigation_rail.dart` carries a comment about — a surface that
+    // still has the focus with no item on it is a menu you can neither move
+    // within nor leave.
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await SettingsService.instance.write(
+      SettingsService.recentRooms,
+      jsonEncode([
+        {'code': 'AAAAA', 'lastUsed': DateTime.now().millisecondsSinceEpoch},
+        {'code': 'BBBBB', 'lastUsed': DateTime.now().subtract(const Duration(days: 1)).millisecondsSinceEpoch},
+      ]),
+    );
+
+    await pumpScreen(tester, tv: true);
+
+    final tiles = tester.widgetList<TvMenuTile>(find.byType(TvMenuTile)).toList();
+    final room = tiles.firstWhere((t) => t.item.key == 'watch_together_room_AAAAA');
+    room.node.requestFocus();
+    await tester.pump();
+    expect(room.node.hasPrimaryFocus, isTrue);
+
+    // The real path a viewer takes: hold SELECT on the tile, pick Remove.
+    room.item.onLongPress!();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(t.watchTogether.removeRoom));
+    await tester.pumpAndSettle();
+
+    expect(find.text('AAAAA'), findsNothing, reason: 'the tile is gone, which is the precondition for the trap');
+    final onSomething = tester.widgetList<TvMenuTile>(find.byType(TvMenuTile)).any((t) => t.node.hasPrimaryFocus);
+    expect(onSomething, isTrue, reason: 'the remote must still be on a tile that exists');
   });
 }

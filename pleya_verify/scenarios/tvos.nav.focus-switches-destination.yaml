@@ -16,10 +16,15 @@ target: tvos-sim
 # bar's rebuild, and the pill's `active` flag is captured at build time. The
 # route endpoint already reports the new destination at that instant.
 #
-# Every assertion here is on a real HID press. There is deliberately no settle
-# between the three RIGHTs beyond what `wait_until` needs: walking the bar
-# faster than the pages behind it load is the case a debounce would break, and
-# the last item focused has to be the one that stays active.
+# Every assertion here is on a real HID press.
+#
+# The walk is done twice on purpose. The first pass waits for the ring and
+# asserts after each step, which is what proves the page follows the focus at
+# all. The last section does it again with nothing between the presses, which
+# is the case a debounce would break: pressing faster than a destination can
+# load has to end on the item last focused and not on whichever page finished
+# loading last. `activate` returning false when nothing changes, and `_selectTab`
+# running only on a real switch, is what makes that safe without a debounce.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -90,3 +95,26 @@ steps:
   - settle: 400
   - assert: {id: nav.search, focused: true, state: {active: true}}
   - snapshot: 06-search-focused-not-entered
+
+  # --- The fast walk: three presses with nothing in between ----------------
+  # Back to Home first, so the burst starts where a viewer starts.
+  - press: right
+  - wait_until: {focused: nav.discover, timeout: 8000}
+  - settle: 1200
+
+  # No `wait_until`, no `settle`. The presses land faster than Series and Films
+  # can build, which is exactly the race a debounce would have introduced and
+  # the one this contract has to survive without one.
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  - settle: 1500
+  - assert: {id: nav.myPleya, focused: true, state: {active: true}}
+  - assert: {id: nav.movies, state: {active: false}}
+  - assert: {id: nav.series, state: {active: false}}
+  - assert: {id: nav.discover, state: {active: false}}
+  # And the destination behind the bar really is the last one, not a page that
+  # won the race by finishing its load first.
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - snapshot: 07-fast-walk

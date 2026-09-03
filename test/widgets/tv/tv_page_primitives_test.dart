@@ -99,6 +99,51 @@ void main() {
       expect(tiles.firstWhere((t) => t.item.key == 'plain').item.onLongPress, isNull);
       expect(tiles.firstWhere((t) => t.item.key == 'menu').item.onLongPress, isNotNull);
     });
+
+    testWidgets('a tile with no action is still reachable, and does not strand the tiles past it', (tester) async {
+      // Codex challenge, finding 3. `TvPageChipBar._step` walks past a capsule
+      // that cannot take the focus; `TvMenuGrid._flatNeighbour` does not, and
+      // `FocusableWrapper` reports the press handled whether or not the
+      // callback moved anything. So the question is whether a grid can ever
+      // hold a tile that refuses focus: Instellingen turns tiles off (an
+      // update check in flight, iCloud unavailable) by passing a null
+      // `onSelect`.
+      final nodes = FocusMemoryTracker(debugLabelPrefix: 'test');
+      addTearDown(nodes.dispose);
+
+      await pump(
+        tester,
+        TvMenuGrid(
+          nodes: nodes,
+          columns: 3,
+          automationInstance: 'test',
+          sections: [
+            TvMenuSection(
+              items: [
+                TvMenuItem(key: 'a', icon: Symbols.wifi_rounded, title: 'A', onSelect: () {}),
+                const TvMenuItem(key: 'b', icon: Symbols.wifi_rounded, title: 'B'),
+                TvMenuItem(key: 'c', icon: Symbols.wifi_rounded, title: 'C', onSelect: () {}),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      nodes.get('a').requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      // A tile without an action keeps its place in the walk rather than being
+      // skipped: it still says what the setting is, and a viewer scanning the
+      // page must be able to stop on it. What must not happen is the press
+      // being swallowed with nothing moving.
+      expect(nodes.get('b').hasPrimaryFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(nodes.get('c').hasPrimaryFocus, isTrue, reason: 'the tiles past it stay reachable');
+    });
   });
 
   group('TvPageChipBar', () {

@@ -13,6 +13,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/screens/settings/logs_screen.dart';
@@ -110,5 +111,39 @@ void main() {
     // The level chips are a choice, not an action, so an empty buffer does not
     // take them away.
     expect(byKey['level_all']!.onSelect, isNotNull);
+  });
+
+  testWidgets('arrows on an empty reader do not throw', (tester) async {
+    // Codex challenge, finding 1. `_buildTv` renders `TvPageBlock` instead of
+    // the `ListView` when there is nothing to show, so `_scrollController` has
+    // no attached position, while the page's own key handler still calls
+    // `_scroll` on UP and DOWN. The mobile path never hits this: its
+    // `CustomScrollView` is always built, empty state included.
+    await pump(tester);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('arrows on a filtered-empty reader do not throw either', (tester) async {
+    // The second door to the same defect: there are lines, but none at this
+    // level, so the reader is a block again.
+    seed();
+    await pump(tester);
+
+    chipNamed(tester, 'level_errors').onSelect!();
+    await tester.pump();
+    MemoryLogOutput.clearLogs();
+    chipNamed(tester, 'level_warnings').onSelect!();
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
   });
 }

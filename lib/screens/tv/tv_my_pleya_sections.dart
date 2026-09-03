@@ -50,7 +50,11 @@ enum TvMyPleyaSection {
     TvMyPleyaSection.servers => t.tvMyPleya.servers,
     TvMyPleyaSection.activity => t.tvMyPleya.activity,
     TvMyPleyaSection.watchTogether => t.watchTogether.title,
-    TvMyPleyaSection.settings => t.common.settings,
+    // `t.settings.title`, not `t.common.settings`. The two differ in Dutch,
+    // "Instellingen" against "Opties", and the section page heading is the
+    // screen's own name. Same rule as Bibliotheken one line up: the tile takes
+    // the name of the thing it opens.
+    TvMyPleyaSection.settings => t.settings.title,
     TvMyPleyaSection.logs => t.tvMyPleya.logs,
     TvMyPleyaSection.about => t.about.title,
   };

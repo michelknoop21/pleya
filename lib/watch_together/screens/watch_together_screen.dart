@@ -334,7 +334,7 @@ class _NotInSessionViewState extends State<_NotInSessionView> with MountedSetSta
                 items: [
                   for (final room in _recentRooms)
                     TvMenuItem(
-                      key: 'watch_together_room_${room.code}',
+                      key: _tvRoomKey(room),
                       icon: Symbols.meeting_room_rounded,
                       title: room.name ?? room.code,
                       // A named room still has to show the code, because the
@@ -486,9 +486,31 @@ class _NotInSessionViewState extends State<_NotInSessionView> with MountedSetSta
   }
 
   Future<void> _removeRoom(RecentRoom room) async {
+    // The remote is very likely standing on this tile: forgetting a room is
+    // reached by holding SELECT on it. Losing the widget under a focused node
+    // hands primary focus back to the enclosing scope, which leaves the page
+    // focused with no item on it — `FocusMemoryTracker.pruneExcept` carries
+    // the same warning, and `side_navigation_rail.dart` recovers from it the
+    // same way: work out where focus should land before the list changes.
+    final survivor = _recentRooms.where((r) => r.code != room.code).firstOrNull;
+
     await RecentRoomsService.removeRoom(room.code);
     setStateIfMounted(() => _recentRooms = RecentRoomsService.getRecentRooms());
+    if (!mounted || !PlatformDetector.isTV()) return;
+
+    _nodes.pruneExcept({for (final r in _recentRooms) _tvRoomKey(r), 'watch_together_create', 'watch_together_join'});
+
+    // Unconditionally, not "only if that tile still held the focus". The menu
+    // that reaches this method is an overlay sheet, and opening it already
+    // moved the focus off the tile, so asking afterwards always answers no.
+    // The viewer is demonstrably on this page and just acted on this tile:
+    // the next room along, or the first action when that was the last one.
+    final target = survivor == null ? 'watch_together_create' : _tvRoomKey(survivor);
+    final node = _nodes.get(target);
+    if (node.canRequestFocus) node.requestFocus();
   }
+
+  static String _tvRoomKey(RecentRoom room) => 'watch_together_room_${room.code}';
 }
 
 class _RenameRoomDialog extends StatefulWidget {

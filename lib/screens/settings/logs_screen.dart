@@ -434,6 +434,15 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
   }
 
   void _scroll(double delta) {
+    // The TV reader is not always a `ListView`. With an empty buffer, or with
+    // a level filter that matches nothing, `_buildTv` renders a block instead
+    // and nothing attaches this controller, while the page's key handler still
+    // routes UP and DOWN here. Reading `.position` then trips
+    // `_positions.isNotEmpty` and the press surfaces as a framework assertion
+    // rather than as "nothing to scroll". One guard here rather than a
+    // condition at each call site: the mobile path always has a viewport, so
+    // this costs it nothing.
+    if (!_scrollController.hasClients) return;
     final pos = _scrollController.position;
     _scrollController.animateTo(
       (pos.pixels + delta).clamp(pos.minScrollExtent, pos.maxScrollExtent),
