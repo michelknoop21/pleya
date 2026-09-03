@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pleya golden 01 · Boeken-home</title>
+<style>
+
+/* Fonts: the app's own Inter cuts (assets/fonts) so metrics match. */
+@font-face{font-family:'Inter';font-weight:400;src:url('../../../../../../assets/fonts/Inter-Regular.otf')}
+@font-face{font-family:'Inter';font-weight:500;src:url('../../../../../../assets/fonts/Inter-Medium.otf')}
+@font-face{font-family:'Inter';font-weight:700;src:url('../../../../../../assets/fonts/Inter-Bold.otf')}
+
+/* Tokens from lib/theme/mono_theme.dart (dark, non-OLED) and the DEC-090 audit §2. */
+:root{
+  --accent:#E5140F; --accent-alt:#FFB020;
+  --bg:#141414; --surface:#1F1F1F; --surface-el:#2F2F2F; --outline:rgba(255,255,255,.12);
+  --ink:#fff; --ink-78:rgba(255,255,255,.78); --ink-70:rgba(255,255,255,.70); --ink-62:rgba(255,255,255,.62); --ink-50:rgba(255,255,255,.5);
+  --bar:#101010;
+  --r-sm:8px; --r-md:12px; --r-card:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:393px;height:852px;overflow:hidden;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.screen{position:relative;width:393px;height:852px;overflow:hidden;background:var(--bg)}
+.screen[hidden]{display:none}
+
+/* iOS status bar + Dynamic Island, as in the northstar frames. */
+.status{position:absolute;left:0;right:0;top:0;height:54px;z-index:20;pointer-events:none}
+.status .time{position:absolute;left:38px;top:18px;font-size:17px;font-weight:700;letter-spacing:-.2px}
+.status .island{position:absolute;left:50%;top:11px;width:125px;height:37px;margin-left:-62px;background:#000;border-radius:20px}
+.status .right{position:absolute;right:30px;top:21px;display:flex;gap:7px;align-items:center}
+.sig{display:flex;gap:2px;align-items:flex-end}.sig i{display:block;width:3.5px;background:#fff;border-radius:1px}
+.bat{width:27px;height:13px;border:1.6px solid rgba(255,255,255,.55);border-radius:4px;position:relative}
+.bat::after{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:20px;background:#fff;border-radius:2px}
+.bat::before{content:"";position:absolute;right:-4px;top:3.5px;width:1.8px;height:4px;background:rgba(255,255,255,.55);border-radius:0 2px 2px 0}
+
+/* Content column */
+.content{position:absolute;left:0;right:0;top:0;bottom:83px;overflow:hidden}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:66px 16px 0 16px;height:96px}
+.wordmark{height:31px;width:auto;display:block;margin-left:0}
+.hdr .actions{display:flex;align-items:center;gap:16px}
+.avatar{width:38px;height:38px;border-radius:9px;background:linear-gradient(150deg,#3d4a8a,#1b2247 60%,#121633);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.avatar.round{border-radius:50%}
+.page-title{display:flex;align-items:baseline;justify-content:space-between;padding:20px 16px 0 16px}
+.page-title h1{font-size:28px;font-weight:700;letter-spacing:-.4px;line-height:34px}
+.page-title .link{font-size:16px;color:var(--ink-62)}
+.row{margin-top:26px}
+.row-h{display:flex;align-items:baseline;justify-content:space-between;padding:0 16px;margin-bottom:12px}
+.row-h h2{font-size:19px;font-weight:700;letter-spacing:-.2px}
+.row-h .link{font-size:15px;color:var(--ink-62)}
+.rail{display:flex;gap:12px;padding:0 16px;overflow:hidden;width:100%}
+.card{flex:0 0 auto;width:110px}
+.poster{width:110px;height:165px;border-radius:var(--r-sm);overflow:hidden;position:relative;background:#222}
+.cap{margin-top:8px;font-size:14px;font-weight:500;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{font-size:12.5px;color:var(--ink-62);line-height:16px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prog{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.18)}
+.prog i{display:block;height:100%;background:var(--accent)}
+
+/* Chips (Home comp) */
+.chips{display:flex;gap:8px;padding:14px 16px 0 16px}
+.chip{height:34px;padding:0 16px;border-radius:17px;border:1px solid rgba(255,255,255,.28);font-size:15px;font-weight:500;display:flex;align-items:center;gap:6px;color:var(--ink)}
+.chip.on{background:rgba(229,20,15,.22);border-color:rgba(229,20,15,.75)}
+
+/* Hero billboard (Home comp) */
+.hero{margin:14px 16px 0 16px;height:312px;border-radius:var(--r-card);overflow:hidden;position:relative;background:#0b1b24}
+.hero .art{position:absolute;inset:0}
+.hero .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,20,20,0) 42%,rgba(20,20,20,.5) 66%,#141414 100%)}
+.hero .body{position:absolute;left:0;right:0;bottom:16px;text-align:center;padding:0 16px}
+.hero .title{font-size:34px;font-weight:700;letter-spacing:7px;text-transform:uppercase;text-shadow:0 2px 14px rgba(0,0,0,.6);line-height:38px}
+.hero .meta{margin-top:8px;font-size:13px;color:var(--ink-78);display:flex;justify-content:center;gap:8px;align-items:center}
+.hero .meta .age{border:1px solid rgba(255,255,255,.5);border-radius:3px;padding:0 4px;font-size:11px;line-height:15px}
+.hero .desc{margin-top:8px;font-size:13px;line-height:18px;color:var(--ink-78);padding:0 8px}
+.hero .ctas{display:flex;gap:10px;margin-top:14px}
+.btn{flex:1;height:44px;border-radius:22px;display:flex;align-items:center;justify-content:center;gap:9px;font-size:16px;font-weight:700}
+.btn.play{background:#fff;color:#111}
+.btn.list{background:rgba(255,255,255,.14);color:#fff;font-weight:500}
+.dots{display:flex;justify-content:center;gap:9px;margin-top:12px}
+.dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.28)}.dots i.on{background:var(--accent)}
+.cw .poster{height:120px}
+.cw .cap{display:flex;justify-content:space-between;align-items:center;font-weight:400;font-size:13px;color:var(--ink-78)}
+.cw .cap svg{opacity:.7}
+
+/* Books: continue-reading wide cards */
+.wide{flex:0 0 auto;width:214px;height:126px;border-radius:var(--r-md);overflow:hidden;position:relative;background:#222}
+.wide .bgart{position:absolute;inset:-20px;filter:blur(14px) saturate(1.2);transform:scale(1.2);opacity:.9}
+.wide .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,20,20,.05),rgba(20,20,20,.78))}
+.wide .txt{position:absolute;left:12px;right:12px;bottom:12px}
+.wide .txt b{display:block;font-size:15px;font-weight:700}
+.wide .txt span{display:block;font-size:12.5px;color:var(--ink-78);margin-top:2px}
+.wide .prog{bottom:0}
+.wide .cover{position:absolute;right:12px;top:12px;width:52px;height:78px;border-radius:4px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,.5)}
+.wide .cover .a{display:none}
+.wide .cover .moon{top:22%}
+.series-card .poster{height:120px;width:110px}
+
+/* Bottom bar: geometry measured on 01-series-landing.png (bar top 768pt, icon centre 788, label 11pt at 806, indicator 839). */
+.bar{position:absolute;left:0;right:0;bottom:0;height:84px;background:var(--bar);border-top:1px solid #1E1E1E;z-index:30}
+.bar .items{display:flex;height:60px}
+.bar .it{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:7px;color:var(--ink-62);gap:5px}
+.bar .it svg{width:26px;height:26px;display:block;fill:currentColor}
+.bar .it span{font-size:11px;font-weight:500;line-height:13px;letter-spacing:.1px}
+.bar .it.on{color:var(--accent)}
+.bar .it .av{width:26px;height:26px;border-radius:50%;background:linear-gradient(150deg,#3d4a8a,#1b2247 60%,#121633);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.bar .it.on .av{box-shadow:0 0 0 2px var(--accent)}
+.home-ind{position:absolute;left:50%;bottom:8px;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#fff}
+
+/* ---- Fixture artwork: repository-safe, drawn in CSS (no commercial covers). ---- */
+.art{position:absolute;inset:0;overflow:hidden}
+.grain{position:absolute;inset:0;opacity:.18;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='.9'/></svg>")}
+.vig{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 40%,rgba(0,0,0,0) 45%,rgba(0,0,0,.55) 100%)}
+.t{position:absolute;left:0;right:0;text-align:center;font-weight:700}
+.t.serif{font-family:Georgia,'Times New Roman',serif;font-weight:400}
+
+/* Books */
+.cv-dune{background:linear-gradient(180deg,#2a1208 0%,#5a2410 38%,#b5561c 70%,#e2893a 100%)}
+.cv-dune .moon{position:absolute;width:56%;padding-top:56%;border-radius:50%;left:22%;top:12%;background:radial-gradient(circle at 35% 35%,#ffd9a0,#e08a3c 55%,#8a3a12 100%);box-shadow:0 0 30px rgba(255,170,90,.55)}
+.cv-dune .dune{position:absolute;left:-10%;right:-10%;bottom:-8%;height:38%;background:radial-gradient(60% 100% at 30% 100%,#3b1a0b,rgba(59,26,11,0) 70%),radial-gradient(70% 100% at 80% 100%,#2a1208,rgba(42,18,8,0) 70%)}
+.cv-dune .t{bottom:12%;font-size:22px;letter-spacing:6px;color:#f7e2c6}
+.cv-dune .a{top:6%;font-size:7px;letter-spacing:2.5px;color:rgba(255,235,210,.8)}
+.cv-messiah{background:linear-gradient(180deg,#07131a,#0d3742 55%,#155a5c)}
+.cv-messiah .moon{position:absolute;width:44%;padding-top:44%;border-radius:50%;left:28%;top:20%;background:radial-gradient(circle at 40% 35%,#ffe1a8,#ef9a3a 60%,#7a3a12);box-shadow:0 0 26px rgba(255,180,100,.5)}
+.cv-messiah .t{bottom:14%;font-size:15px;letter-spacing:4px;color:#f1e6d0}
+.cv-children{background:linear-gradient(180deg,#1b0b0b,#5c1a12 50%,#a33a1f)}
+.cv-children .t{bottom:14%;font-size:13px;letter-spacing:3px;color:#f6d9c4}
+.cv-phm{background:linear-gradient(160deg,#f6c62d 0%,#e9a814 55%,#1c1a12 56%,#101010 100%)}
+.cv-phm .t{top:14%;font-size:18px;line-height:20px;color:#111;letter-spacing:1px}
+.cv-phm .a{bottom:9%;font-size:9px;letter-spacing:2px;color:#f6c62d}
+.cv-sapiens{background:linear-gradient(180deg,#efe7d8,#e7dcc6)}
+.cv-sapiens .fp{position:absolute;width:34%;padding-top:44%;left:33%;top:14%;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%,#3a2f22 0 1px,transparent 1px 3.5px);opacity:.8}
+.cv-sapiens .t{top:60%;font-size:22px;color:#b3261e;letter-spacing:-.5px}
+.cv-sapiens .a{bottom:8%;font-size:7px;letter-spacing:1.5px;color:#4a4034}
+.cv-1984{background:#0c0c0c}
+.cv-1984 .eye{position:absolute;width:64%;padding-top:64%;left:18%;top:14%;border-radius:50%;background:radial-gradient(circle,#0c0c0c 0 28%,#b3261e 29% 34%,#0c0c0c 35% 46%,#cfd6de 47% 60%,#0c0c0c 61%);box-shadow:0 0 22px rgba(179,38,30,.35)}
+.cv-1984 .t{bottom:12%;font-size:28px;color:#e5140f;letter-spacing:1px}
+.cv-alch{background:linear-gradient(180deg,#f08a24,#c8401a 60%,#5b1810)}
+.cv-alch .sun{position:absolute;width:46%;padding-top:46%;border-radius:50%;left:27%;top:16%;background:radial-gradient(circle,#fff0b0,#f7b545 60%,rgba(247,181,69,0) 72%)}
+.cv-alch .t{bottom:13%;font-size:14px;color:#fff3df;letter-spacing:1px}
+.cv-atomic{background:#f4f2ec}
+.cv-atomic .t{top:22%;font-size:20px;line-height:23px;color:#111;letter-spacing:-.5px}
+.cv-atomic .dot{position:absolute;width:12px;height:12px;border-radius:50%;background:#e5140f;left:44%;top:58%}
+.cv-atomic .a{bottom:9%;font-size:8px;letter-spacing:2px;color:#444}
+.cv-hobbit{background:linear-gradient(180deg,#0b2a1c,#15522f 55%,#8fbf5a)}
+.cv-hobbit .t{bottom:12%;font-size:18px;letter-spacing:3px;color:#eaf5d8}
+
+/* Films & series (Blender open-movie titles, as on the demo server) */
+.fm-tos{background:linear-gradient(200deg,#0a1e2c 0%,#123a4f 40%,#0b1a24 100%)}
+.fm-tos .beam{position:absolute;width:140%;height:30%;left:-20%;top:22%;background:linear-gradient(90deg,rgba(255,140,50,0),rgba(255,160,70,.75),rgba(255,140,50,0));transform:rotate(-12deg);filter:blur(8px)}
+.fm-tos .city{position:absolute;left:0;right:0;bottom:0;height:42%;background:linear-gradient(180deg,rgba(5,12,18,0),#050c12 80%)}
+.fm-tos .grid{position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 2px,transparent 2px 26px),repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 2px,transparent 2px 22px);opacity:.7}
+.fm-sintel{background:linear-gradient(180deg,#1a0508,#5a0f14 55%,#c0451c)}
+.fm-sintel .t{bottom:14%;font-size:18px;letter-spacing:5px;color:#ffd9b0}
+.fm-cam{background:linear-gradient(180deg,#f2d27a,#c9902f 60%,#6e4d16)}
+.fm-cam .t{bottom:12%;font-size:11px;letter-spacing:2px;color:#fff3d6;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+.fm-cosmos{background:linear-gradient(180deg,#20114a,#4b2a9a 55%,#c96aa5)}
+.fm-cosmos .t{bottom:12%;font-size:11px;letter-spacing:1.5px;color:#fbe6ff}
+.fm-spring{background:linear-gradient(180deg,#a9d6ea,#5f9fc4 55%,#243f5c)}
+.fm-spring .t{bottom:12%;font-size:18px;letter-spacing:3px;color:#f4fbff}
+.fm-agent{background:linear-gradient(160deg,#ffcb1f 0%,#ffcb1f 48%,#111 49%,#111 100%)}
+.fm-agent .t{bottom:12%;font-size:15px;letter-spacing:1px;color:#ffcb1f}
+.fm-bbb{background:linear-gradient(180deg,#8fd0ff,#bfe6a5 50%,#3f8a3a)}
+.fm-bbb .t{bottom:12%;font-size:12px;letter-spacing:1px;color:#0d2a0e;line-height:14px}
+.fm-ed{background:linear-gradient(180deg,#0f1e21,#2c5257 55%,#7d9ea1)}
+.fm-ed .t{bottom:12%;font-size:11px;letter-spacing:1.5px;color:#e6f6f7}
+.fm-hero{background:linear-gradient(180deg,#0a1e2c,#123a4f)}
+
+.sc{position:absolute;inset:0}
+.hill{position:absolute;left:-10%;right:-10%;bottom:-2%;height:36%;background:rgba(0,0,0,.42);clip-path:polygon(0 100%,0 55%,18% 30%,34% 50%,52% 12%,70% 45%,86% 28%,100% 60%,100% 100%)}
+.hill.b{height:26%;background:rgba(0,0,0,.6);clip-path:polygon(0 100%,0 70%,22% 40%,40% 62%,60% 30%,80% 58%,100% 40%,100% 100%)}
+.orb{position:absolute;width:38%;padding-top:38%;border-radius:50%;left:31%;top:14%;background:radial-gradient(circle at 40% 40%,rgba(255,255,255,.95),rgba(255,255,255,.35) 55%,rgba(255,255,255,0) 72%)}
+.stars{position:absolute;inset:0;background-image:radial-gradient(1.2px 1.2px at 12% 18%,#fff 60%,transparent 62%),radial-gradient(1px 1px at 40% 8%,#fff 60%,transparent 62%),radial-gradient(1.4px 1.4px at 70% 22%,#fff 60%,transparent 62%),radial-gradient(1px 1px at 86% 12%,#fff 60%,transparent 62%),radial-gradient(1.2px 1.2px at 58% 36%,#fff 60%,transparent 62%),radial-gradient(1px 1px at 24% 44%,#fff 60%,transparent 62%),radial-gradient(1px 1px at 80% 48%,#fff 60%,transparent 62%);opacity:.9}
+.fig{position:absolute;left:50%;bottom:8%;width:22%;height:40%;transform:translateX(-50%);background:rgba(0,0,0,.55);clip-path:polygon(38% 0,62% 0,66% 18%,58% 24%,80% 34%,88% 100%,12% 100%,20% 34%,42% 24%,34% 18%)}
+
+/* ---- Golden 01 additions ---- */
+/* Continue-reading card. A book has no landscape artwork, so the cover is the
+   card: blurred to fill the width, sharp as an inset. Measured against the
+   comp's panel 1 (card ~200x140pt, next card peeking). */
+.wide{width:236px;height:140px;border-radius:var(--r-card)}
+/* Light blur only. Heavier and the cover stops being recognisable, which is
+   the one thing this card has to do: say which book you are in. */
+.wide .bgart{inset:-16px;filter:blur(9px) saturate(1.18);transform:scale(1.18);opacity:.82}
+/* Two scrims, not one: the vertical one seats the progress bar, the
+   horizontal one puts the title on a dark field while leaving the cover side
+   bright. A single vertical gradient left the title over mid-tone artwork. */
+.wide .scrim{background:linear-gradient(180deg,rgba(20,20,20,.10),rgba(20,20,20,.62)),linear-gradient(90deg,rgba(20,20,20,.86) 0%,rgba(20,20,20,.55) 46%,rgba(20,20,20,.12) 100%)}
+.wide .cover{right:14px;top:14px;width:64px;height:96px;border-radius:6px;box-shadow:0 8px 20px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.14)}
+.wide .txt{left:14px;right:88px;bottom:15px}
+.wide .txt b{font-size:16px;letter-spacing:-.2px;line-height:19px}
+.wide .txt span{font-size:12.5px;margin-top:3px;color:var(--ink-70)}
+.wide .prog{height:3px;background:rgba(255,255,255,.22)}
+/* Series row: a book series is a stack, so the row shows the cover plus the
+   count rather than a first-book title pretending to be the series. The row is
+   deliberately cut by the tab bar, as in the comp — it is what says the page
+   scrolls. Its motifs therefore sit in the upper half, where they are still
+   visible when the bottom is gone. */
+.series-card .poster{width:110px;height:150px}
+.series-card .t{top:12%;bottom:auto}
+.sub.count{color:var(--ink-50)}
+</style>
+</head>
+<body>
+
+<section class="screen" id="books">
+  <div class="status">
+    <div class="time">9:41</div><div class="island"></div>
+    <div class="right"><div class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:9px"></i><i style="height:12px"></i></div>
+      <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 9.5a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2Zm0-3.6c1.5 0 2.9.6 3.9 1.6l-1.3 1.3A3.7 3.7 0 0 0 8 7.7c-1 0-1.9.4-2.6 1.1L4.1 7.5C5.1 6.5 6.5 5.9 8 5.9Zm0-3.7c2.5 0 4.9 1 6.6 2.7l-1.3 1.3A7.4 7.4 0 0 0 8 4.1c-2 0-3.9.8-5.3 2.2L1.4 4.9A9.3 9.3 0 0 1 8 2.2Z" fill="#fff"/></svg>
+      <div class="bat"></div></div>
+  </div>
+
+  <div class="content">
+    <div class="hdr">
+      <img class="wordmark" src="../../../../../../assets/branding/pleya_wordmark.png" alt="Pleya">
+      <div class="actions">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+        <div class="avatar">M</div>
+      </div>
+    </div>
+
+    <div class="page-title"><h1>Boeken</h1><span class="link">Alle boeken &rsaquo;</span></div>
+
+    <div class="row">
+      <div class="row-h"><h2>Verder lezen</h2><span class="link">Alles bekijken &rsaquo;</span></div>
+      <div class="rail">
+        <div class="wide">
+          <div class="bgart art cv-dune"><div class="moon"></div><div class="dune"></div></div>
+          <div class="scrim"></div>
+          <div class="cover"><div class="art cv-dune"><div class="a">FRANK HERBERT</div><div class="moon"></div><div class="dune"></div><div class="t serif" style="font-size:12px;letter-spacing:3px">DUNE</div></div></div>
+          <div class="txt"><b>Dune</b><span>48% &middot; Hoofdstuk 12</span></div>
+          <div class="prog"><i style="width:48%"></i></div>
+        </div>
+        <div class="wide">
+          <div class="bgart art cv-phm"></div>
+          <div class="scrim"></div>
+          <div class="cover"><div class="art cv-phm"><div class="t" style="font-size:9px;line-height:10px;top:15%">PROJECT<br>HAIL<br>MARY</div><div class="a" style="font-size:5px">ANDY WEIR</div></div></div>
+          <div class="txt"><b>Project Hail Mary</b><span>21% &middot; Hoofdstuk 5</span></div>
+          <div class="prog"><i style="width:21%"></i></div>
+        </div>
+        <div class="wide">
+          <div class="bgart art cv-sapiens"></div>
+          <div class="scrim"></div>
+          <div class="cover"><div class="art cv-sapiens"><div class="fp"></div><div class="t serif" style="font-size:12px">Sapiens</div></div></div>
+          <div class="txt"><b>Sapiens</b><span>3% &middot; Hoofdstuk 1</span></div>
+          <div class="prog"><i style="width:3%"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-h"><h2>Recent toegevoegd</h2><span class="link">Alles bekijken &rsaquo;</span></div>
+      <div class="rail">
+        <div class="card"><div class="poster"><div class="art cv-phm"><div class="t" style="top:13%;font-size:19px;line-height:21px">PROJECT<br>HAIL<br>MARY</div><div class="a">ANDY WEIR</div><div class="grain"></div></div></div><div class="cap">Project Hail Mary</div><div class="sub">Andy Weir</div></div>
+        <div class="card"><div class="poster"><div class="art cv-sapiens"><div class="fp"></div><div class="t serif">Sapiens</div><div class="a">YUVAL NOAH HARARI</div><div class="grain"></div></div></div><div class="cap">Sapiens</div><div class="sub">Yuval Noah Harari</div></div>
+        <div class="card"><div class="poster"><div class="art cv-1984"><div class="eye"></div><div class="t">1984</div><div class="grain"></div></div></div><div class="cap">1984</div><div class="sub">George Orwell</div></div>
+        <div class="card"><div class="poster"><div class="art cv-alch"><div class="sun"></div><div class="t serif">De Alchemist</div><div class="grain"></div><div class="vig"></div></div></div><div class="cap">De Alchemist</div><div class="sub">Paulo Coelho</div></div>
+      </div>
+    </div>
+
+    <div class="row series-card">
+      <div class="row-h"><h2>Series</h2><span class="link">Alles bekijken &rsaquo;</span></div>
+      <div class="rail">
+        <div class="card"><div class="poster"><div class="art cv-messiah"><div class="stars"></div><div class="moon" style="top:10%"></div><div class="t serif" style="font-size:13px;letter-spacing:3px;top:52%">DUNE</div><div class="grain"></div></div></div><div class="cap">Dune</div><div class="sub count">6 boeken</div></div>
+        <div class="card"><div class="poster"><div class="art cv-children"><div class="stars"></div><div class="orb" style="top:8%;width:30%;padding-top:30%;left:35%"></div><div class="t serif" style="font-size:12px;line-height:14px;top:46%">DE ZEVEN<br>ZUSSEN</div><div class="grain"></div><div class="vig"></div></div></div><div class="cap">De Zeven Zussen</div><div class="sub count">7 boeken</div></div>
+        <div class="card"><div class="poster"><div class="art cv-hobbit"><div class="orb" style="top:6%;width:26%;padding-top:26%;left:37%"></div><div class="hill"></div><div class="hill b"></div><div class="t serif" style="font-size:12px;letter-spacing:2px;top:44%">MIDDEN-<br>AARDE</div><div class="grain"></div></div></div><div class="cap">Midden-aarde</div><div class="sub count">4 boeken</div></div>
+        <div class="card"><div class="poster"><div class="art cv-atomic"><div class="t" style="top:20%;font-size:16px;line-height:19px">Atomic<br>Habits</div><div class="dot"></div></div></div><div class="cap">James Clear</div><div class="sub count">2 boeken</div></div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bar">
+    <div class="items">
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M11.3 3.3a1 1 0 0 1 1.4 0l8 7.6c.2.2.3.5.3.7V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8.4c0-.3.1-.5.3-.7l8-7.6Z"/></svg><span>Home</span></div>
+      <div class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" style="fill:none"><rect x="3" y="7.5" width="18" height="13" rx="2"/><path d="m8 3 4 4.5L16 3"/></svg><span>Series</span></div>
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M3.5 9.5h17V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19V9.5Zm.6-5.6 15.8 3.3-.5 2.3L3.6 6.2l.5-2.3Zm2.9 0 2.4 2.2-2 .4L5 4.3l2-.4Zm4.2.9 2.4 2.2-2 .4-2.4-2.2 2-.4Zm4.2.9 2.4 2.2-2 .4-2.4-2.2 2-.4Z"/></svg><span>Films</span></div>
+      <div class="it on"><svg viewBox="0 0 24 24"><path d="M11 4.9C9.6 4 7.7 3.5 5.9 3.5c-1.3 0-2.6.2-3.9.7v14.6c0 .3.3.5.6.4 1.1-.4 2.3-.6 3.3-.6 1.8 0 3.7.5 5.1 1.4V4.9Zm2 0v15.1c1.4-.9 3.3-1.4 5.1-1.4 1 0 2.2.2 3.3.6.3.1.6-.1.6-.4V4.2c-1.3-.5-2.6-.7-3.9-.7-1.8 0-3.7.5-5.1 1.4Z"/></svg><span>Boeken</span></div>
+      <div class="it"><div class="av">M</div><span>Mijn Pleya</span></div>
+    </div>
+    <div class="home-ind"></div>
+  </nav>
+</section>
+
+</body>
+</html>
