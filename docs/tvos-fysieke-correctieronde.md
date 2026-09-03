@@ -72,7 +72,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | CAT3 | Bron, filters en sortering staan verkeerd gepositioneerd | FIXED | `675fc2f` |
 | CAT4 | Bron, filters en sortering mogelijk onbereikbaar | FIXED | `ac040fd` |
 | OVR1 | Detail- en contextmenu valt buiten beeld en voelt te groot | GESPLITST in OVR1a en OVR1b | n.v.t. |
-| OVR1a | `scaleForHeight` heeft ondergrens 0,85, en die is onjuist voor inhoud binnen een TV-paneel: de inhoud wordt ongeveer 1,5 keer te groot | OPEN | n.v.t. |
+| OVR1a | `scaleForHeight` heeft ondergrens 0,85, en die is onjuist voor inhoud binnen een TV-paneel: de inhoud wordt ongeveer 1,5 keer te groot | NOT REPRODUCED | n.v.t. |
 | OVR1b | TV-sheets zonder expliciete `presentation` vallen terug op de 400x400-geometrie | OPEN | n.v.t. |
 | BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | OPEN | n.v.t. |
 | FOC1 | Focusring valt buiten de viewport in overlays | OPEN | n.v.t. |
@@ -974,6 +974,54 @@ te tellen welke oppervlakken zonder `presentation:` binnenkomen. Eén brede
 bevinding "overlay te groot" zou allebei de bewijzen vaag maken. De oplossing
 hoort wel gedeeld te zijn: één eigenaar voor de vraag hoe groot een TV-overlay
 is, niet een correctie per sheet.
+
+#### OVR1a, niet gereproduceerd
+
+Onderzocht op 3 september 2026, zonder productiecode te wijzigen.
+
+De diagnose hierboven klopt rekenkundig en toch niet in de praktijk. Ze klopt in
+de zin dat de klem 0,54 naar 0,85 tilt, zodat inhoud die in rauwe
+referentie-eenheden staat 1,5725 keer te groot uitvalt binnen een doos die wel
+lineair meeschaalt. Ze klopt niet omdat geen enkel TV-paneel zijn inhoud in rauwe
+referentie-eenheden opschrijft.
+
+`tv_unified_layout.dart:14-19` zegt waarom. De basiswaarden in
+`TvSourcePickerLayout` en `TvCatalogLayout` zijn voorgedeeld door precies die
+klem, zodat een basis van 22 op het canonieke canvas als 18,7 logisch rendert en
+daarmee als ongeveer 34 referentie-px.
+
+Gemeten door het echte paneelpad (`OverlaySheetPresentation.panel`, met de
+TV-override aan) op 1038x584, met `scaleOf` op 0,85 binnen het paneel en DEC-028
+op 1,85:
+
+| token | basis | logisch | referentie-px | band 8.3 |
+|-------|-------|---------|---------------|----------|
+| `titleFontSize` | 22 | 18,70 | 34,60 | 32-38 |
+| `rowPrimaryFontSize` | 16,5 | 14,03 | 25,95 | 23-26 |
+| `rowSecondaryFontSize` | 12,5 | 10,63 | 19,66 | 17-20 |
+| paneelbox | n.v.t. | 540,6 | 1000 | 900-1040 (14.1) |
+
+Vier van de vier vallen binnen hun band. De bronkiezer, het contextmenu, het
+filterpaneel en het sorteerpaneel lezen alle vier dezelfde voorgedeelde
+constanten, dus de meting geldt voor alle vier.
+
+De voorgestelde oplossing zou schade aanrichten. Paneelinhoud op de doosbasis
+0,5406 laten schalen zet `titleFontSize` op 22,0 referentie-px,
+`rowPrimaryFontSize` op 16,5 en `rowSecondaryFontSize` op 12,5, alle drie onder
+de ondergrens van hoofdstuk 8.3. Hoofdstuk 14.1 herzien om OVR1a te sluiten
+breekt dus hoofdstuk 8.3.
+
+Twee aannames uit de oorspronkelijke diagnose sneuvelen daarmee. De klem is geen
+fout maar de plaats waar de 10-voetsvergroting gebeurt, en de basiswaarden zijn
+erop afgestemd. En het defect zou onzichtbaar zijn op elk oppervlak van 1080 hoog
+"dus ook in de goldens", terwijl de TV-goldens juist op `kTvGoldenSurfaceSize`
+draaien, `Size(1038, 584)` volgens `test/test_helpers/golden.dart:55`, precies
+het canvas waar de klem actief is.
+
+Het waargenomen hardwaresymptoom blijft staan en wijst naar OVR1b. Een sheet
+zonder `presentation:` belandt in de 400x400-doos van `_sheetGeometry`, en
+`MediaContextMenu` belandt daar via een tweede weg, doordat `Platform.isIOS` op
+tvOS waar is. Dat is een echte verkeerde doos, en het is een eigen item.
 
 ### BACK1, wat er staat en wat er niet is
 
