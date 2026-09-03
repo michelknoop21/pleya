@@ -719,6 +719,89 @@ De required-candidate `portable`-gate en de uitgevoerde iOS/tvOS Verify-scenario
 **Consequences:** Pleya Verify Core 1.0 is hiermee compleet: deterministic fixture-backed scenario's, drie platformdrivers (macOS/iOS-sim/tvOS-sim), UI-boom/focus/events/geometrie-assertions, autoritatieve compositor-screenshots als visuele waarheid, complete evidencebundels, false-PASS-verdediging (Fase 12), CLI, MCP-laag (Fase 13), CI-orkestratie (Fase 14), fail-closed control-plane-auth, bounded execution, en redactie-/securityhardening (dit besluit). Bekende, niet-blokkerende grenzen: macOS-hosted-buildsigning in CI, `tvos.library.filters` (DEFERRED voor G13, [DEC-063](#dec-063-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)), en tvOS-D-pad-navigatie binnen het systeemtoetsenbord (niet simuleerbaar, zie CONTRIBUTING.md). Geen nieuwe featurescope geopend; een volgende sessie die verder wil dan Core 1.0 begint bij een expliciet nieuw besluit, niet bij het stilzwijgend heropenen van Fase 1 t/m 15.
 
 
+## DEC-094: de complete catalogus is een geneste surface, en de bar in mockup 03 en 06 is renderset-inconsistentie
+
+**Date:** 2026-09-03
+**Status:** accepted
+
+**Context:** Fase 3 van [DEC-090](#dec-090-ios-unified-2026-northstar-bevroren-21-mockups-bindend-voor-de-iphone-interface)
+staat in sectie E van [het fase-1-plan](ios-unified-2026-fase1-plan.md) als "Alle films / Alle series
+(03, 04) op `UnifiedCatalogProvider`". Dat is een aanwijzing, geen afbakening, dus de scope is uit de
+authority afgeleid en niet uit die regel overgenomen. Drie dingen bevestigen hem, en het derde was
+niet voorspeld: `UnifiedCatalogs` beschrijft in zijn eigen docstring al "the shared catalog screen
+… deliberately kind-agnostic"; [DEC-093](#dec-093-fase-2-verhuist-de-iphone-rootnavigatie-en-de-ipad-blijft-op-zijn-eigen-tabset)
+noemt `MobilePageTitleRow.onViewAll` met naam als de naad die wacht op "een echte
+`UnifiedCatalog`-UI-consument"; en F0 heeft de volledige i18n voor deze twee schermen al meegebracht
+zonder ze in Dart te gebruiken. `titlesLoaded`, `allSources`, alle zeven `sort`-sleutels, de vijf
+`filters`-categorieën, de vier `states`-blokken: precies het vocabulaire van mockup 03 en 04, en
+niets daarbuiten.
+
+Drie punten volgden er níét ondubbelzinnig uit en zijn aan Michel voorgelegd.
+
+**Decision:**
+
+**1. Een push, en de tabbalk verdwijnt.** Alle films en Alle series zijn geneste catalogussurfaces
+onder de Films- en Series-bestemming, geen zesde en zevende rootbestemming. Films → Alle films →
+detail → speler is één stack, en de terugpijl in mockup 03 is een echte pop. `MobileCatalogScreen`
+wordt met een gewone `MaterialPageRoute` op de profielsessienavigator geduwd, net als detail;
+`MobileLandingScreen` blijft een rootbestemming in de `IndexedStack` en krijgt hier geen tweede
+interne toestand.
+
+**De bar die mockup 03 tekent is voor deze fase aangemerkt als renderset-inconsistentie, en die van
+mockup 06 met hem.** Dat is geen wegredenering van een lastig beeld: detail is vandaag al een push
+die de bar bedekt, en mockup 06 tekent hem er toch onder, dus de bar in deze set volgt de
+implementatie niet. Hem wel behouden zou van de catalogus een toestand ín de Films-tab maken, en
+daarmee focus, schermstaat, automation-ids en later detail alle vier een uitzonderingsbehandeling
+geven. De keuze is hiermee een navigatiecontract: fase 5 houdt voor detail dezelfde push/hide-
+semantiek, en er komt geen bar-preservatiearchitectuur bij. Het raakt de compositie van de
+catalogus- en detailpagina zelf niet, alleen de shell-chrome eromheen.
+
+**2. Het zoekicoon opent de globale zoekbestemming.** Hetzelfde contract als het headerzoekicoon op
+Home, Series en Films, waar fase 2 de naad legde. Het vult niet `UnifiedCatalogQuery.search`. Dat
+veld blijft een enginecapaciteit en krijgt pas een UI-consument als er ooit een catalogus-lokale
+zoekinteractie ontworpen wordt. Anders zou hetzelfde glyph op dezelfde plek twee verschillende dingen
+doen, afhankelijk van welk scherm eronder ligt, en daar geeft de northstar geen aanwijzing voor.
+
+**3. Eén filtermodel, twee ingangen.** De "Alle bronnen"-chip en de categorieën Servers en
+Bibliotheken in het filterpaneel werken op dezelfde `UnifiedCatalogFilterSelection`. De chip opent
+datzelfde paneel, direct op de Servers-sectie; er is geen aparte bronsheet en geen tweede
+bron-state. De chip toont de actuele bronbeperking als zijn eigen label ("Alle bronnen", "2
+bronnen"), en de Filters-badge blijft `activeCount` over álle actieve filters, bronbeperkingen
+inbegrepen. Een actieve bronfilter is daardoor op twee plekken zichtbaar. Dat is dubbele feedback op
+één toestand, niet dubbele toestand.
+
+**Consequences:** `UnifiedCatalogs` is geregistreerd in `profile_session_screen.dart`, lazy op twee
+niveaus: het object bouwt geen catalogus tot er een gevraagd wordt, en een catalogus doet geen
+netwerkwerk tot een scherm `ensureStarted` aanroept. Een profiel dat Alle films nooit opent betaalt
+er niets voor.
+
+De view-instellingen zitten in `MobileCatalogController` en niet in `UnifiedCatalogProvider`, die
+bewust alleen de merge bezit. De volgorde waarin die vier stappen lopen is de kern van dat bestand en
+is met een test vastgelegd in plaats van met een opmerking: een bronbeperking bepaalt welke
+libraries meedoen, de deelnemende libraries bepalen welke backends in de mix zitten, de backends
+bepalen welke itemfilters uitvoerbaar zijn, en pas dan wordt de query gebouwd. Andersom zou één
+Pleya Server-library het genrefilter permanent onderdrukken, terwijl juist die server uitsluiten de
+manier is om het terug te krijgen. `_neverMergedBackends` blijft daarbij het productcontract dat het
+was; er is niets omzeild.
+
+De opgeslagen selectie wordt nooit met de beperkte versie overschreven. `constrainedTo` wordt
+toegepast bij het bouwen van de query en bij het tellen, niet bij het schrijven. Eén ding gaat wél
+terug naar de opslag: een server of bibliotheek die niet meer bestaat, want die sleutel heeft geen rij
+meer in het paneel om hem mee uit te vinken.
+
+Twee zaken die fase 3 niet bewijst, allebei bekend en allebei niet nieuw. Er is **geen Verify-
+scenario** voor deze surface, en dat is dezelfde infrastructuurgrens die DEC-093 al noteerde:
+`tap` in de scenario-DSL neemt coördinaten en geen automation-id, dus geen enkel scenario kan
+apparaatonafhankelijk naar de Films-landing navigeren, laat staan de ingang "Alle films ›" aanraken.
+De automation-ids staan er wel (`screen.catalog`, `catalog.header`, `catalog.controls`,
+`catalog.grid`, `catalog.grid.item` en de twee sheets), zodat het scenario er is zodra de DSL een
+id-tap kent. Tot dan is het gedrag op widgetniveau gedekt. En de multi-source-poort uit DEC-092 staat
+nog steeds open, dus de broncapsule op een grid-kaart is met een fixture niet end-to-end te tonen.
+
+`LibraryBrowseTab` en `FiltersBottomSheet` zijn niet aangeraakt. Ze beantwoorden een andere vraag:
+één bibliotheek op één server, met alfasprong en bron-specifieke filters. Rapport §5 houdt ze daarom
+naast elkaar in plaats van de ene door de andere te vervangen.
+
 ## DEC-093: fase 2 verhuist de iPhone-rootnavigatie, en de iPad blijft op zijn eigen tabset
 
 **Date:** 2026-09-03

@@ -4,6 +4,46 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-03] iOS Unified 2026 fase 3: de complete catalogus
+
+"Alle films" en "Alle series" bestaan. Het zijn één scherm,
+`lib/screens/home/mobile_catalog_screen.dart`, want mockup 03 is dezelfde surface over de andere
+helft van de bibliotheek. Erboven staat de header met terugpijl en zoekicoon, dan de drie rustige
+controls Alle bronnen, Filters en Titel A–Z, dan de regel "126 titels geladen" met de actieve
+filters ernaast, en daaronder het driekoloms 2:3-grid met de kaartfamilie uit fase 1.
+
+De ingang die fase 2 bewust niet tekende doet het nu. `MobilePageTitleRow.onViewAll` was één
+parameter en een test die pinde dat hij leeg was; die test staat er nog, omgedraaid.
+
+Het scherm wordt geduwd en niet als tab gemount, en de tabbalk verdwijnt daarbij. Films → Alle films
+→ detail → speler is één stack, en de terugpijl in de mockup is een echte pop. Dat mockup 03 de bar
+tekent is geen navigatiecontract: mockup 06 tekent hem ook, terwijl detail vandaag al een push is
+die hem bedekt. Michel heeft die twee als renderset-inconsistentie aangemerkt, en fase 5 houdt voor
+detail dezelfde semantiek (DEC-094).
+
+Het filterpaneel is de tweekoloms sheet uit mockup 04: Status, Genre, Jaar, Servers en Bibliotheken
+links met hun aantallen, de waarden rechts, en een voet met alleen Wissen en Toepassen. Wijzigingen
+blijven lokaal tot Toepassen, want de catalogus herstart zijn merge bij elke querywijziging en drie
+genres kiezen zou anders drie volledige herlaadbeurten zijn. Een categorie die de deelnemende
+backends niet kunnen uitvoeren wordt getoond en uitgezet, niet weggelaten: een verdwenen rij lijkt op
+een ontbrekende functie, een rij die zegt waarom is er geen.
+
+Achter dat alles zit de volgorde die het hele bestand bij elkaar houdt, en die staat nu in een test
+in plaats van in een opmerking. Een bronbeperking bepaalt welke libraries meedoen, die bepalen welke
+backends in de mix zitten, die bepalen welke filters uitvoerbaar zijn, en pas dan wordt de query
+gebouwd. Andersom zou één Pleya Server-library het genrefilter permanent onderdrukken, terwijl juist
+die server uitsluiten de manier is om het terug te krijgen. Een genrekeuze die vandaag nergens op
+slaat blijft daarom bewaard en aangevinkt.
+
+`UnifiedCatalogs` is geregistreerd, en daarmee valt de helft van de F0-schuld weg: acht van de
+zeventien `ci_checks`-meldingen zijn verdwenen doordat de catalogus- en filterlaag eindelijk een
+gebruiker heeft. De negen die overblijven horen bij zoeken (fase 4) en bij de schrijfpaden (fase 5).
+
+Er is geen Verify-scenario voor dit scherm, en dat is dezelfde grens die fase 2 al noteerde: `tap`
+in de scenario-DSL neemt coördinaten en geen automation-id, dus geen scenario kan er
+apparaatonafhankelijk naartoe navigeren. De ids liggen klaar. `LibraryBrowseTab` en zijn filtersheet
+zijn niet aangeraakt; die browsen één bibliotheek op één server en blijven dat doen.
+
 ## [2026-09-03] iOS Unified 2026 fase 2: Series, Films en de rootnavigatie
 
 De iPhone-tabbalk is `Home · Series · Films · [Live TV] · Mijn Pleya` geworden, met Series vóór
