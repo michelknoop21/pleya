@@ -108,7 +108,11 @@ class TvHeroArtwork extends StatelessWidget {
         // Top-anchored for the same reason the fullscreen billboard is: a
         // backdrop taller than its slot loses the sky, not the faces.
         alignment: Alignment.topCenter,
-        imageType: ImageType.art,
+        // heroArt, not art: same wide-backdrop handling, but sized against
+        // the TV output surface. On `art`'s 2560 cap this card -- 3538 physical
+        // pixels wide on Apple TV -- received every backdrop 1.38x too small,
+        // and the request box was reshaped to 16:9 on the way out.
+        imageType: ImageType.heroArt,
         fadeInDuration: Duration.zero,
         placeholder: (context, _) => _EmptyHeroArt(tokens: tk),
         errorWidget: (context, _, _) => _EmptyHeroArt(tokens: tk),

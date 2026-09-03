@@ -84,7 +84,9 @@
     "pressBackAgainToExit": "Press back again to exit",
     "decreaseValue": "Decrease $label",
     "increaseValue": "Increase $label",
-    "timedOut": "This took too long. Please try again."
+    "timedOut": "This took too long. Please try again.",
+    "online": "Online",
+    "offline": "Offline"
   },
   "screens": {
     "licenses": "Licenses",
@@ -926,7 +928,8 @@
     "sourceCodeDescription": "Corresponding source for this build (GPL-3.0)",
     "basedOnPlezy": "Based on Plezy",
     "upstreamProject": "Upstream project",
-    "privacyPolicy": "Privacy policy"
+    "privacyPolicy": "Privacy policy",
+    "licence": "Licence"
   },
   "serverSelection": {
     "allServerConnectionsFailed": "Couldn't connect to any servers. Check your network.",
@@ -950,7 +953,14 @@
   "logs": {
     "clearLogs": "Clear Logs",
     "copyLogs": "Copy Logs",
-    "uploadLogs": "Upload Logs"
+    "uploadLogs": "Upload Logs",
+    "refreshLogs": "Refresh",
+    "levelFilter": "Level",
+    "levelAll": "All",
+    "levelWarnings": "Warnings",
+    "levelErrors": "Errors",
+    "noMatchingLogs": "No lines at this level",
+    "lineCount": "${shown} of ${total} lines"
   },
   "licenses": {
     "relatedPackages": "Related Packages",
@@ -1181,7 +1191,11 @@
     "renameRoom": "Rename Room",
     "removeRoom": "Remove",
     "guestSwitchUnavailable": "Couldn't switch — server unavailable for sync",
-    "guestSwitchFailed": "Couldn't switch — content not found on this server"
+    "guestSwitchFailed": "Couldn't switch — content not found on this server",
+    "createSessionHint": "Invite others with a code",
+    "joinSessionHint": "Enter your host's code",
+    "noRecentRooms": "No sessions yet",
+    "noRecentRoomsHint": "A session you create or join appears here"
   },
   "downloads": {
     "title": "Downloads",
@@ -1974,7 +1988,8 @@
     "semantics": {
       "tile": "${title}. ${subtitle}",
       "tileWithCount": "${title}. ${subtitle}. ${count}"
-    }
+    },
+    "libraryCount": "${count} libraries"
   },
   "tvContextMenu": {
     "title": "Actions",

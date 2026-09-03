@@ -62,6 +62,7 @@ class TvRootShell extends StatelessWidget {
     required this.isNavFocused,
     required this.profile,
     required this.onSelectDestination,
+    required this.onFocusDestination,
     required this.onFocusContent,
     required this.onFocusNav,
     required this.onOpenProfiles,
@@ -89,6 +90,12 @@ class TvRootShell extends StatelessWidget {
   final Profile? profile;
 
   final ValueChanged<TvDestinationId> onSelectDestination;
+
+  /// The ring landing on a bar item. On TV that *is* the navigation: the
+  /// destination switches immediately and the remote stays where it is. Wired
+  /// through the host rather than at [TvNavigationCoordinator.focusDestination]
+  /// because switching destination also selects the tab behind it.
+  final ValueChanged<TvDestinationId> onFocusDestination;
 
   /// Down out of the bar.
   ///
@@ -205,7 +212,7 @@ class TvRootShell extends StatelessWidget {
                           nodes: navNodes,
                           profile: profile,
                           onSelect: onSelectDestination,
-                          onFocusDestination: coordinator.focusDestination,
+                          onFocusDestination: onFocusDestination,
                           // DOWN out of the bar is the one press that means
                           // "put me in the content"; `_focusContent` arms the
                           // intent, and whatever can satisfy it consumes it —

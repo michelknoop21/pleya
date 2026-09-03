@@ -63,6 +63,9 @@ ids:
   - id: library.grid.item
     role: grid.item
     instanceable: true
+  - id: library.header
+    role: region
+    instanceable: false
   - id: library.filter.grouping
     role: filter
     instanceable: false
@@ -101,6 +104,18 @@ ids:
     instanceable: true
   - id: my_pleya.section
     role: region
+    instanceable: true
+  - id: my_pleya.section.content
+    role: region
+    instanceable: true
+  - id: my_pleya.section.tile
+    role: grid.item
+    instanceable: true
+  - id: my_pleya.chip
+    role: button
+    instanceable: true
+  - id: my_pleya.log_row
+    role: list.item
     instanceable: true
   - id: player.surface
     role: surface

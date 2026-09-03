@@ -30,6 +30,7 @@ void main() {
   late FocusScopeNode navScope;
   late FocusScopeNode contentScope;
   late List<TvDestinationId> selected;
+  late List<TvDestinationId> ringMoves;
   late int navFocusCalls;
   late int contentFocusCalls;
 
@@ -39,6 +40,7 @@ void main() {
     navScope = FocusScopeNode(debugLabel: 'nav');
     contentScope = FocusScopeNode(debugLabel: 'content');
     selected = [];
+    ringMoves = [];
     navFocusCalls = 0;
     contentFocusCalls = 0;
   });
@@ -52,6 +54,7 @@ void main() {
 
   Future<void> pump(
     WidgetTester tester, {
+    ValueChanged<TvDestinationId>? onFocusDestination,
     Widget? content,
     VoidCallback? onFocusNav,
     ValueChanged<bool>? onOverlaySheetOpenChanged,
@@ -75,6 +78,15 @@ void main() {
               isNavFocused: false,
               profile: null,
               onSelectDestination: selected.add,
+              // What `MainScreen._focusTvDestination` does: the ring landing on
+              // a bar item activates it. The shell only reports; activating is
+              // the host's call, and this harness stands in for that host.
+              onFocusDestination:
+                  onFocusDestination ??
+                  (destination) {
+                    ringMoves.add(destination);
+                    coordinator.activate(destination);
+                  },
               onFocusContent: ({bool restorePreviousFocus = true}) => contentFocusCalls++,
               onFocusNav: onFocusNav ?? () => navFocusCalls++,
               onOpenProfiles: () {},
@@ -382,11 +394,47 @@ void main() {
       expect(find.text(t.navigation.liveTv), findsNothing);
     });
   });
+
+  // The tvOS remote contract revised on 2 September 2026: focus on a bar item
+  // is the navigation, Select is not required.
+  //
+  // The shell's job in that contract is one line — hand the ring's landing to
+  // the host, which activates. It used to hand it to
+  // `TvNavigationCoordinator.focusDestination`, which moves the ring and
+  // changes nothing else; that is the behaviour these guard against coming
+  // back. `main_screen_tv_focus_destination_test.dart` covers what the host
+  // then does with it, including the negative control.
+  group('focus is the destination', () {
+    testWidgets('the ring landing on a bar item is reported to the host', (tester) async {
+      await pump(tester);
+      nodes.get(TvDestinationId.series.focusKey).requestFocus();
+      await tester.pump();
+
+      expect(ringMoves, contains(TvDestinationId.series));
+      // The contract, and the negative control: with the pre-2026-09-02 wiring
+      // the shell called `TvNavigationCoordinator.focusDestination`, which
+      // moves the ring and leaves `active` alone, so this line went red.
+      expect(coordinator.active, TvDestinationId.series);
+      expect(selected, isEmpty, reason: 'a ring move is not a Select');
+    });
+
+    testWidgets('walking the bar reports each landing in order', (tester) async {
+      await pump(tester);
+      ringMoves.clear();
+      for (final d in [TvDestinationId.series, TvDestinationId.movies, TvDestinationId.myPleya]) {
+        nodes.get(d.focusKey).requestFocus();
+        await tester.pump();
+      }
+
+      expect(ringMoves, [TvDestinationId.series, TvDestinationId.movies, TvDestinationId.myPleya]);
+      // The last item walked to is the one that stays active. No intermediate
+      // destination wins a race by finishing its load first.
+      expect(coordinator.active, TvDestinationId.myPleya);
+      expect(selected, isEmpty);
+    });
+  });
 }
 
-/// Stands in for a destination's screen. Deliberately inert: this file is about
-/// the shell around the content, and a real screen would drag its providers in
-/// without proving anything more about the shell.
 class _Destination extends StatelessWidget {
   const _Destination({required this.label});
 

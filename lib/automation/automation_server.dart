@@ -316,16 +316,32 @@ class AutomationServer {
     if (context == null || !context.mounted) return {'available': false};
     final mediaQuery = MediaQuery.maybeOf(context);
     if (mediaQuery == null) return {'available': false};
+    // Reported in the same space as `/v1/ui_tree`'s bounds (see
+    // `AutomationRegistry._boundsOf`): the root space, which on Apple TV is
+    // 1.85x the `MediaQuery` size because `_AppleTvScale` sits between them.
+    // A geometry predicate divides a node's rect by this viewport, so the two
+    // have to agree; publishing `MediaQuery.size` next to root-space bounds is
+    // exactly the mismatch the bounds fix removes.
+    //
+    // `scale` is published rather than left implicit so a caller that needs a
+    // logical-pixel number (a font size, a padding it wants to compare against
+    // a token) can convert instead of guessing, and so a run where the scale
+    // is 1.0 is visibly distinguishable from one where it is not.
+    final scale = rootSpaceScaleOf(context) ?? 1.0;
     return {
       'available': true,
-      'width': mediaQuery.size.width,
-      'height': mediaQuery.size.height,
-      'devicePixelRatio': mediaQuery.devicePixelRatio,
+      'width': mediaQuery.size.width * scale,
+      'height': mediaQuery.size.height * scale,
+      'devicePixelRatio': mediaQuery.devicePixelRatio / scale,
+      'space': 'root',
+      'scale': scale,
+      'logicalWidth': mediaQuery.size.width,
+      'logicalHeight': mediaQuery.size.height,
       'safeArea': {
-        'top': mediaQuery.padding.top,
-        'right': mediaQuery.padding.right,
-        'bottom': mediaQuery.padding.bottom,
-        'left': mediaQuery.padding.left,
+        'top': mediaQuery.padding.top * scale,
+        'right': mediaQuery.padding.right * scale,
+        'bottom': mediaQuery.padding.bottom * scale,
+        'left': mediaQuery.padding.left * scale,
       },
     };
   }

@@ -238,10 +238,25 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
       AutomationDeclaredNode(
         id: id,
         role: widget.automationRole ?? 'focusable',
+        // Both of these read through `widget`, not through the widget this
+        // node happened to be registered from.
+        //
+        // Registration happens once, in initState, and `didUpdateWidget` does
+        // not re-register. Handing over `widget.automationState` therefore
+        // handed over the *first* build's closure, which for a nav pill had
+        // already captured `isActive: false` — so `/v1/ui_tree` went on
+        // reporting the state that node was born with however many times it
+        // rebuilt. The top-nav scenario caught it: `GET /v1/route` reported
+        // the destination had changed to Series while `nav.series.active` was
+        // still false, and the two came from the same frame.
+        //
+        // `widget` is a getter on State and always resolves to the current
+        // configuration, so a thunk through it is live by construction and
+        // there is nothing to keep in sync on rebuild.
         label: widget.semanticLabel,
         focusNode: _focusNode,
         contextGetter: () => mounted ? context : null,
-        state: widget.automationState,
+        state: () => widget.automationState?.call(),
       ),
     );
   }

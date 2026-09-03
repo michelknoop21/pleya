@@ -82,6 +82,12 @@ class PleyaFakeServer {
   /// (most existing tests) don't need to and keep seeing the shared bytes.
   final Map<String, List<int>> artworkById = {};
 
+  /// Artwork ids that can be rendered at any requested width, keyed to a
+  /// generator taking that width. A fixture registers one when the point of
+  /// the run is *what size was asked for*; everything else keeps serving its
+  /// fixed bytes from [artworkById].
+  final Map<String, List<int> Function(int width)> resizableArtwork = {};
+
   /// version id -> playable bytes, auto-populated by [addItem] for every
   /// version it creates. `GET /stream/{version_id}` serves from here.
   final Map<String, List<int>> versionBytes = {};
@@ -213,6 +219,12 @@ class PleyaFakeServer {
     int? episodeCount,
     int? watchedEpisodeCount,
     String? posterId,
+
+    /// The wide backdrop, which is a different artwork from the poster and the
+    /// only one `MediaItem.billboardArt` will draw sharp on a hero. Left null
+    /// by every fixture that predates the hero artwork audit, which is why the
+    /// Home hero rendered its blurred poster-fill fallback there.
+    String? backdropId,
     String? edition,
     Map<String, dynamic>? userState,
     String addedAt = '2026-06-18T21:34:02Z',
@@ -230,7 +242,7 @@ class PleyaFakeServer {
       'child_count': childCount,
       'episode_count': episodeCount,
       'watched_episode_count': watchedEpisodeCount,
-      'artwork': {'poster_id': posterId, 'backdrop_id': null},
+      'artwork': {'poster_id': posterId, 'backdrop_id': backdropId},
       'versions': durationMs == null
           ? <Map<String, dynamic>>[]
           : [
@@ -420,6 +432,15 @@ class PleyaFakeServer {
     }
     if (path.startsWith('/artwork/')) {
       final id = Uri.decodeComponent(path.substring('/artwork/'.length));
+      // A resizable artwork honours `?width=`, the way a real server does.
+      // Without this the fixture answered every width with the same bytes, so
+      // "was the request big enough" was unobservable end to end and the hero
+      // audit could only reason about it from the URL.
+      final recipe = resizableArtwork[id];
+      final asked = int.tryParse(query['width'] ?? '');
+      if (recipe != null && asked != null && asked > 0) {
+        return http.Response.bytes(recipe(asked.clamp(16, 4096)), 200, headers: const {'content-type': 'image/png'});
+      }
       return http.Response.bytes(artworkById[id] ?? artworkBytes, 200, headers: const {'content-type': 'image/png'});
     }
 

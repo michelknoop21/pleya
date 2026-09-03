@@ -7,7 +7,9 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../automation/automation_screen.dart';
+import '../../focus/focus_memory_tracker.dart';
 import '../../focus/focus_theme.dart';
 import '../../focus/focusable_action_bar.dart';
 import '../../focus/dpad_navigator.dart';
@@ -43,7 +45,9 @@ import '../../mixins/item_updatable.dart';
 import '../../i18n/strings.g.dart';
 import '../../theme/mono_tokens.dart';
 import '../../widgets/library_header_bar.dart';
+import '../../widgets/tv/tv_page_chip_bar.dart';
 import 'state_messages.dart';
+import 'tv_library_chooser.dart';
 import 'tabs/library_browse_tab.dart';
 import 'tabs/library_recommended_tab.dart';
 import 'tabs/library_collections_tab.dart';
@@ -114,6 +118,11 @@ class _LibrariesScreenState extends State<LibrariesScreen>
 
   /// Key for the library dropdown menu button.
   final _libraryDropdownKey = GlobalKey<AppMenuButtonState<String>>();
+
+  /// Focus nodes for the TV library chooser. Owned by the State because the
+  /// header rebuilds on every count update, and a node rebuilt underneath the
+  /// remote is a remote that lands nowhere.
+  final FocusMemoryTracker _libraryChooserNodes = FocusMemoryTracker(debugLabelPrefix: 'tvLibraryChooser');
 
   // Dynamic visible tabs and their focus nodes
   List<LibraryTabType> _visibleTabs = LibraryTabType.values;
@@ -367,6 +376,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
   void dispose() {
     _outerScrollController.dispose();
     _headerInfo.dispose();
+    _libraryChooserNodes.dispose();
     for (final node in _tabFocusNodes) {
       node.dispose();
     }
@@ -911,14 +921,26 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       final serverLabel = _hasMultipleServers(visibleLibraries) ? selectedLibrary?.serverName : null;
       return Padding(
         padding: const EdgeInsets.only(left: 4),
-        child: ValueListenableBuilder<LibraryHeaderInfo>(
-          valueListenable: _headerInfo,
-          builder: (context, info, _) => LibraryHeaderTitle(
-            title: selectedLibrary?.title ?? t.libraries.title,
-            subtitle: [
-              if (info.countLabel != null) info.countLabel!,
-              if (serverLabel != null && serverLabel.isNotEmpty) serverLabel,
-            ].join(' · '),
+        // Which library is open, as state rather than as a screenshot. A chip
+        // that draws itself as chosen is not evidence that the page behind it
+        // changed; this is the node `Movies → Shows → Movies` is asserted on.
+        child: AutomationNode(
+          id: AutomationIds.libraryHeader,
+          role: 'region',
+          state: () => <String, Object?>{
+            'library': selectedLibrary?.title,
+            'libraryKey': selectedLibrary?.globalKey,
+            'server': selectedLibrary?.serverName,
+          },
+          child: ValueListenableBuilder<LibraryHeaderInfo>(
+            valueListenable: _headerInfo,
+            builder: (context, info, _) => LibraryHeaderTitle(
+              title: selectedLibrary?.title ?? t.libraries.title,
+              subtitle: [
+                if (info.countLabel != null) info.countLabel!,
+                if (serverLabel != null && serverLabel.isNotEmpty) serverLabel,
+              ].join(' · '),
+            ),
           ),
         ),
       );
@@ -928,12 +950,78 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     return _buildLibraryDropdownTitle(visibleLibraries, groupByServer: groupByServer);
   }
 
+  /// Every visible library, on one line, above the tabs.
+  ///
+  /// This is the fix for what the audit of 2 September 2026 classed E, and the
+  /// only defect in that set that was not about styling. The chain was closed:
+  /// `PlatformDetector.shouldUseSideNavigation` is `isDesktop || isTV`, so on
+  /// tvOS [_buildAppBarTitle] takes the static branch and never reaches
+  /// [_buildLibraryDropdownTitle] — the screen's only picker. Which library you
+  /// got followed from the saved key, or from `visibleLibraries.first`. The
+  /// sidebar that gives desktop its second route does not exist in the TV
+  /// shell, and the opened page's `ui_tree` held no chooser, dropdown or menu
+  /// node at all. Two libraries loaded, one reachable, and a shows library
+  /// sorted first would silently be what the tile marked "Media" showed.
+  ///
+  /// So the chooser is a row of capsules in the TV product's own chip
+  /// language, the active one carrying the outline, and switching is one
+  /// press. Nothing about selection changes: [onSelect] is the same
+  /// [_loadLibraryContent] the mobile dropdown has always called, so the saved
+  /// key, the per-library tab restore and iOS and macOS all keep behaving
+  /// exactly as they did. The rule itself lives in `tv_library_chooser.dart`,
+  /// where it can be checked without mounting this screen.
+  Widget _buildTvLibraryChooser(List<MediaLibrary> visibleLibraries) => Align(
+    // Left, on the tab row's own edge. A `Column` centres what it does not
+    // stretch, and the first run put the chooser floating in the middle of the
+    // page above tabs that start at the left margin — two rows of the same
+    // header disagreeing about where the page begins, which is the defect this
+    // whole round is about.
+    alignment: AlignmentDirectional.centerStart,
+    child: Padding(
+      padding: const EdgeInsetsDirectional.only(start: 4),
+      child: SizedBox(
+        height: TvPageChipBar.heightFor(context),
+        child: TvPageChipBar(
+          singleLine: true,
+          nodes: _libraryChooserNodes,
+          automationInstance: 'libraries',
+          chips: tvLibraryChooserChips(
+            visibleLibraries: visibleLibraries,
+            selectedGlobalKey: _selectedLibraryGlobalKey,
+            onSelect: _loadLibraryContent,
+          ),
+          // DOWN off the chooser lands on the tabs, the next thing down the page.
+          //
+          // UP does nothing on purpose. The chooser is the page's top row, and the
+          // app-bar icons above it are reached the way the header line has always
+          // reached them: RIGHT along the tabs, past the tab's own actions, as
+          // [_buildHeaderBar] documents. Handing UP a second route there would
+          // give the same two icons two paths and make "press UP until you are at
+          // the top" stop being true.
+          onExitDown: () => getTabChipFocusNode(0).requestFocus(),
+        ),
+      ),
+    ),
+  );
+
+  /// Put the remote on the library that is currently open.
+  ///
+  /// The chooser is not where focus lands when the section opens —
+  /// `LibrariesScreen` has its own contract and puts the remote in the
+  /// content, which is right — so this is how the tab row hands it upward.
+  void _focusLibraryChooser() {
+    final key = _selectedLibraryGlobalKey;
+    if (key == null) return;
+    final node = _libraryChooserNodes.get('library_$key');
+    if (node.canRequestFocus) node.requestFocus();
+  }
+
   /// The header line under the library name: text tabs on the left, the active
   /// tab's own actions on the right.
   ///
   /// [showDivider] is off on the TV backdrop, where the rule would cut across
   /// the artwork.
-  Widget _buildHeaderBar({bool showDivider = true}) {
+  Widget _buildHeaderBar({bool showDivider = true, bool hasChooser = false}) {
     void focusAppBarActions() => _actionBarKey.currentState?.requestFocusOnFirst();
 
     return ValueListenableBuilder<LibraryHeaderInfo>(
@@ -960,7 +1048,11 @@ class _LibrariesScreenState extends State<LibrariesScreen>
                 }
                 actions.first.focusNode.requestFocus();
               },
-              onNavigateUpToActions: focusAppBarActions,
+              // UP off the tabs reaches the chooser where there is one, so the
+              // row of libraries is on the vertical path rather than only
+              // reachable by whatever put the focus there first. Without a
+              // chooser the behaviour is unchanged.
+              onNavigateUpToActions: hasChooser ? _focusLibraryChooser : focusAppBarActions,
             ),
         ],
       ),
@@ -1067,15 +1159,26 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     // The header line only exists next to a page heading, so it rides along
     // with the side-nav layout and stays away from the loading/empty states.
     final showHeaderBar = useSideNavigation && selectedLibrary != null;
+    final showTvChooser = showHeaderBar && PlatformDetector.isTV() && tvLibraryChooserVisible(visibleLibraries);
+
+    // Chooser above tabs, in that order, in both places the header line is
+    // mounted — the sliver app bar's `bottom` and the transparent TV bar. A
+    // `PreferredSize` cannot measure its child, so the extra row has to be
+    // declared here as well as drawn.
+    Widget headerColumn({required bool showDivider}) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showTvChooser) _buildTvLibraryChooser(visibleLibraries),
+        _buildHeaderBar(showDivider: showDivider, hasChooser: showTvChooser),
+      ],
+    );
+    final headerHeight = LibraryHeaderMetrics.barHeight + (showTvChooser ? TvPageChipBar.heightFor(context) : 0);
 
     Widget appBar({required bool floating}) => DesktopSliverAppBar(
       title: _buildAppBarTitle(visibleLibraries, selectedLibrary, groupByServer: groupByServerSetting),
       toolbarHeight: showHeaderBar ? LibraryHeaderMetrics.titleHeight : null,
       bottom: showHeaderBar
-          ? PreferredSize(
-              preferredSize: const Size.fromHeight(LibraryHeaderMetrics.barHeight),
-              child: _buildHeaderBar(),
-            )
+          ? PreferredSize(preferredSize: Size.fromHeight(headerHeight), child: headerColumn(showDivider: true))
           : null,
       // When showing the tab content, let the app bar float away with the
       // content. Otherwise (loading / empty / error states) keep it pinned so
@@ -1135,7 +1238,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
                 ),
               ],
             ),
-            if (showHeaderBar) _buildHeaderBar(showDivider: false),
+            if (showHeaderBar) headerColumn(showDivider: false),
           ],
         ),
       );

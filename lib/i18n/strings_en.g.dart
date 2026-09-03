@@ -373,6 +373,12 @@ class TranslationsCommonEn {
 
 	/// en: 'This took too long. Please try again.'
 	String get timedOut => 'This took too long. Please try again.';
+
+	/// en: 'Online'
+	String get online => 'Online';
+
+	/// en: 'Offline'
+	String get offline => 'Offline';
 }
 
 // Path: screens
@@ -2693,6 +2699,9 @@ class TranslationsAboutEn {
 
 	/// en: 'Privacy policy'
 	String get privacyPolicy => 'Privacy policy';
+
+	/// en: 'Licence'
+	String get licence => 'Licence';
 }
 
 // Path: serverSelection
@@ -2774,6 +2783,27 @@ class TranslationsLogsEn {
 
 	/// en: 'Upload Logs'
 	String get uploadLogs => 'Upload Logs';
+
+	/// en: 'Refresh'
+	String get refreshLogs => 'Refresh';
+
+	/// en: 'Level'
+	String get levelFilter => 'Level';
+
+	/// en: 'All'
+	String get levelAll => 'All';
+
+	/// en: 'Warnings'
+	String get levelWarnings => 'Warnings';
+
+	/// en: 'Errors'
+	String get levelErrors => 'Errors';
+
+	/// en: 'No lines at this level'
+	String get noMatchingLogs => 'No lines at this level';
+
+	/// en: '${shown} of ${total} lines'
+	String lineCount({required Object shown, required Object total}) => '${shown} of ${total} lines';
 }
 
 // Path: licenses
@@ -3485,6 +3515,18 @@ class TranslationsWatchTogetherEn {
 
 	/// en: 'Couldn't switch — content not found on this server'
 	String get guestSwitchFailed => 'Couldn\'t switch — content not found on this server';
+
+	/// en: 'Invite others with a code'
+	String get createSessionHint => 'Invite others with a code';
+
+	/// en: 'Enter your host's code'
+	String get joinSessionHint => 'Enter your host\'s code';
+
+	/// en: 'No sessions yet'
+	String get noRecentRooms => 'No sessions yet';
+
+	/// en: 'A session you create or join appears here'
+	String get noRecentRoomsHint => 'A session you create or join appears here';
 }
 
 // Path: downloads
@@ -5389,6 +5431,9 @@ class TranslationsTvMyPleyaEn {
 	String get logoutSubtitle => 'Sign out on this device';
 
 	late final TranslationsTvMyPleyaSemanticsEn semantics = TranslationsTvMyPleyaSemanticsEn.internal(_root);
+
+	/// en: '${count} libraries'
+	String libraryCount({required Object count}) => '${count} libraries';
 }
 
 // Path: tvContextMenu
@@ -6449,6 +6494,8 @@ extension on Translations {
 			'common.decreaseValue' => ({required Object label}) => 'Decrease ${label}',
 			'common.increaseValue' => ({required Object label}) => 'Increase ${label}',
 			'common.timedOut' => 'This took too long. Please try again.',
+			'common.online' => 'Online',
+			'common.offline' => 'Offline',
 			'screens.licenses' => 'Licenses',
 			'screens.switchProfile' => 'Switch Profile',
 			'screens.whoIsWatching' => 'Who\'s watching?',
@@ -6880,10 +6927,10 @@ extension on Translations {
 			'videoControls.tvPanel.tracks' => 'Tracks',
 			'videoControls.tvPanel.options' => 'Options',
 			'videoControls.tvPanel.more' => 'More…',
-			'videoControls.fullscreenButton' => 'Enter fullscreen',
-			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.fullscreenButton' => 'Enter fullscreen',
+			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			'videoControls.alwaysOnTopButton' => 'Always on top',
 			'videoControls.rotationLockButton' => 'Rotation lock',
 			'videoControls.lockScreen' => 'Lock screen',
@@ -7231,6 +7278,7 @@ extension on Translations {
 			'about.basedOnPlezy' => 'Based on Plezy',
 			'about.upstreamProject' => 'Upstream project',
 			'about.privacyPolicy' => 'Privacy policy',
+			'about.licence' => 'Licence',
 			'serverSelection.allServerConnectionsFailed' => 'Couldn\'t connect to any servers. Check your network.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'No servers found for ${username} (${email})',
 			'serverSelection.noServersFoundTitle' => 'No media servers found',
@@ -7249,6 +7297,13 @@ extension on Translations {
 			'logs.clearLogs' => 'Clear Logs',
 			'logs.copyLogs' => 'Copy Logs',
 			'logs.uploadLogs' => 'Upload Logs',
+			'logs.refreshLogs' => 'Refresh',
+			'logs.levelFilter' => 'Level',
+			'logs.levelAll' => 'All',
+			'logs.levelWarnings' => 'Warnings',
+			'logs.levelErrors' => 'Errors',
+			'logs.noMatchingLogs' => 'No lines at this level',
+			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} of ${total} lines',
 			'licenses.relatedPackages' => 'Related Packages',
 			'licenses.license' => 'License',
 			'licenses.licenseNumber' => ({required Object number}) => 'License ${number}',
@@ -7386,6 +7441,8 @@ extension on Translations {
 			'playlists.oneItem' => '1 item',
 			'playlists.emptyPlaylist' => 'This playlist is empty',
 			'playlists.deleteConfirm' => 'Delete Playlist?',
+			_ => null,
+		} ?? switch (path) {
 			'playlists.deleteMessage' => ({required Object name}) => 'Are you sure you want to delete "${name}"?',
 			'playlists.created' => 'Playlist created',
 			'playlists.deleted' => 'Playlist deleted',
@@ -7396,8 +7453,6 @@ extension on Translations {
 			'playlists.errorDeleting' => 'Failed to delete playlist',
 			'playlists.errorLoading' => 'Failed to load playlists',
 			'playlists.errorAdding' => 'Failed to add to playlist',
-			_ => null,
-		} ?? switch (path) {
 			'playlists.errorReordering' => 'Failed to reorder playlist item',
 			'playlists.errorRemoving' => 'Failed to remove from playlist',
 			'watchTogether.title' => 'Watch Together',
@@ -7463,6 +7518,10 @@ extension on Translations {
 			'watchTogether.removeRoom' => 'Remove',
 			'watchTogether.guestSwitchUnavailable' => 'Couldn\'t switch — server unavailable for sync',
 			'watchTogether.guestSwitchFailed' => 'Couldn\'t switch — content not found on this server',
+			'watchTogether.createSessionHint' => 'Invite others with a code',
+			'watchTogether.joinSessionHint' => 'Enter your host\'s code',
+			'watchTogether.noRecentRooms' => 'No sessions yet',
+			'watchTogether.noRecentRoomsHint' => 'A session you create or join appears here',
 			'downloads.title' => 'Downloads',
 			'downloads.manage' => 'Manage',
 			'downloads.tvShows' => 'TV Shows',
@@ -7896,6 +7955,8 @@ extension on Translations {
 			'tautulli.modeApiKey' => 'API key',
 			'tautulli.modeApiKeyHelp' => 'The permanent key from Settings, Web Interface. It grants full access to Tautulli, so use it only if the device token does not work for you.',
 			'tautulli.deviceToken' => 'Device token',
+			_ => null,
+		} ?? switch (path) {
 			'tautulli.apiKey' => 'API key',
 			'tautulli.testConnection' => 'Test connection',
 			'tautulli.save' => 'Save',
@@ -7910,8 +7971,6 @@ extension on Translations {
 			'tautulli.errorModeMismatch' => 'Tautulli rejected this token, and it looks like your permanent API key rather than a device token. Switch to API key above, or register a device in Tautulli and paste that token.',
 			'tautulli.errorUrlRequired' => 'Enter the address of your Tautulli server.',
 			'tautulli.errorTokenRequired' => 'Enter a token.',
-			_ => null,
-		} ?? switch (path) {
 			'tautulli.errorNotTautulli' => 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.',
 			'tautulli.errorServer' => ({required Object code}) => 'Tautulli reported a server error (HTTP ${code}).',
 			'tautulli.errorGeneric' => 'Connecting failed.',
@@ -8174,6 +8233,7 @@ extension on Translations {
 			'tvMyPleya.logoutSubtitle' => 'Sign out on this device',
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvMyPleya.libraryCount' => ({required Object count}) => '${count} libraries',
 			'tvContextMenu.title' => 'Actions',
 			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Action ${index} of ${count}: ${label}',
 			'tvContextMenu.noUsableSource' => 'No source is currently reachable, so this cannot be changed right now.',

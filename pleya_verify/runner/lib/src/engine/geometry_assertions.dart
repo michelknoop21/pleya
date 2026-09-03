@@ -24,7 +24,7 @@ library;
 import '../geometry.dart';
 
 /// Unary predicates: subject rect only.
-const Set<String> unaryGeometryPredicates = {'insideViewport', 'minimumTapTarget'};
+const Set<String> unaryGeometryPredicates = {'insideViewport', 'minimumTapTarget', 'leftInset'};
 
 /// Binary predicates: subject rect against a second node named by id.
 const Set<String> binaryGeometryPredicates = {
@@ -127,6 +127,26 @@ GeometryVerdict _evaluateUnary(String predicate, Object? value, GeoRect subject,
       // A number sets the threshold; `true` takes geometry.dart's default,
       // which is Apple HIG's 44pt.
       return value is num ? minimumTapTarget(subject, minSize: value.toDouble()) : minimumTapTarget(subject);
+    case 'leftInset':
+      // `leftInset: 75.48` asserts the canonical edge; a map may widen the
+      // tolerance for a surface that legitimately pays a focus-ring gap.
+      // Deliberately no bare `true` form: there is no default content edge a
+      // scenario could mean without saying which one.
+      if (value is num) return leftInset(subject, _viewportRect(viewport), expected: value.toDouble());
+      if (value is Map) {
+        final expected = value['expected'];
+        if (expected is! num) {
+          throw const GeometryAssertionException("leftInset needs an 'expected' number");
+        }
+        final tolerance = value['tolerance'];
+        return leftInset(
+          subject,
+          _viewportRect(viewport),
+          expected: expected.toDouble(),
+          tolerance: tolerance is num ? tolerance.toDouble() : 2.0,
+        );
+      }
+      throw GeometryAssertionException('leftInset needs a number or {expected, tolerance}, got: $value');
     default:
       throw GeometryAssertionException('unary geometry predicate not implemented: $predicate');
   }

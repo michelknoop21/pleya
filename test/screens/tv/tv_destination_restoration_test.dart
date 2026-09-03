@@ -309,6 +309,7 @@ class _ShellHostState extends State<_ShellHost> {
     isNavFocused: _isNavFocused,
     profile: null,
     onSelectDestination: selectDestination,
+    onFocusDestination: widget.coordinator.activate,
     onFocusContent: ({bool restorePreviousFocus = true}) => _focusContent(),
     onFocusNav: () => setState(() => _isNavFocused = true),
     onOpenProfiles: () {},

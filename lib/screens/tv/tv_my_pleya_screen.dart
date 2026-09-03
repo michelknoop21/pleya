@@ -130,7 +130,10 @@ List<TvMyPleyaGroup> buildTvMyPleyaGroups({
         TvMyPleyaTile(
           section: TvMyPleyaSection.libraries,
           icon: Symbols.folder_rounded,
-          title: t.navigation.libraries,
+          // The screen's name, not the rail's short label. In Dutch the two
+          // differ — "Bibliotheken" against "Media" — and the audit of
+          // 2 September 2026 counted that as one of three names on one place.
+          title: t.libraries.title,
           subtitle: t.tvMyPleya.librariesSubtitle,
         ),
         TvMyPleyaTile(

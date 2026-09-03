@@ -83,7 +83,9 @@
     "exitFullscreen": "Volledig scherm verlaten",
     "pressBackAgainToExit": "Druk nogmaals op terug om af te sluiten",
     "decreaseValue": "$label verlagen",
-    "increaseValue": "$label verhogen"
+    "increaseValue": "$label verhogen",
+    "online": "Online",
+    "offline": "Offline"
   },
   "screens": {
     "licenses": "Licenties",
@@ -880,7 +882,8 @@
     "sourceCodeDescription": "Bijbehorende broncode van deze build (GPL-3.0)",
     "basedOnPlezy": "Gebaseerd op Plezy",
     "upstreamProject": "Upstream-project",
-    "privacyPolicy": "Privacybeleid"
+    "privacyPolicy": "Privacybeleid",
+    "licence": "Licentie"
   },
   "serverSelection": {
     "allServerConnectionsFailed": "Kon met geen enkele server verbinden. Controleer je netwerk.",
@@ -904,7 +907,14 @@
   "logs": {
     "clearLogs": "Wis logs",
     "copyLogs": "Kopieer logs",
-    "uploadLogs": "Logs uploaden"
+    "uploadLogs": "Logs uploaden",
+    "refreshLogs": "Verversen",
+    "levelFilter": "Niveau",
+    "levelAll": "Alles",
+    "levelWarnings": "Waarschuwingen",
+    "levelErrors": "Fouten",
+    "noMatchingLogs": "Geen regels op dit niveau",
+    "lineCount": "${shown} van ${total} regels"
   },
   "licenses": {
     "relatedPackages": "Gerelateerde pakketten",
@@ -1132,7 +1142,11 @@
     "renameRoom": "Kamer hernoemen",
     "removeRoom": "Verwijderen",
     "guestSwitchUnavailable": "Kon niet schakelen — server niet beschikbaar voor synchronisatie",
-    "guestSwitchFailed": "Kon niet schakelen — inhoud niet gevonden op deze server"
+    "guestSwitchFailed": "Kon niet schakelen — inhoud niet gevonden op deze server",
+    "createSessionHint": "Nodig anderen uit met een code",
+    "joinSessionHint": "Voer de code van je gastheer in",
+    "noRecentRooms": "Nog geen sessies",
+    "noRecentRoomsHint": "Een sessie die je maakt of waaraan je deelneemt verschijnt hier"
   },
   "downloads": {
     "title": "Downloads",
@@ -1903,7 +1917,8 @@
     "semantics": {
       "tile": "${title}. ${subtitle}",
       "tileWithCount": "${title}. ${subtitle}. ${count}"
-    }
+    },
+    "libraryCount": "${count} bibliotheken"
   },
   "tvContextMenu": {
     "title": "Acties",

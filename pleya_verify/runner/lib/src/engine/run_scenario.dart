@@ -210,6 +210,15 @@ Future<ScenarioRunResult> runScenario({
           // diagnostic-only and would happily agree with a broken layout
           // because it renders from the same tree the layout came from.
           record['screenshot_source'] = 'platform-compositor';
+          // A screenshot answers "what does it look like"; the audit question
+          // "where exactly does the content edge sit" needs numbers, and the
+          // only ui_tree a bundle used to keep was the one at teardown. So a
+          // snapshot now captures the measurable half of the same moment
+          // under the same name: the tree the screenshot was taken of, plus
+          // the viewport it was measured against. Additive — every existing
+          // scenario gains the dump without changing what it asserts.
+          bundle.saveUiTree(name, {'viewport': await driver.viewport(), 'tree': await driver.uiTree()});
+          record['ui_tree'] = '$name.json';
         case 'settle':
           // Bare `- settle` keeps the old fixed 500ms; `- settle: 3000` lets
           // a scenario wait out something with no automation-observable

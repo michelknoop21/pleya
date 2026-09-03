@@ -126,6 +126,7 @@ void main() {
                       isNavFocused: false,
                       profile: null,
                       onSelectDestination: (_) {},
+                      onFocusDestination: coordinator.activate,
                       onFocusContent: ({bool restorePreviousFocus = true}) {},
                       onFocusNav: () {},
                       onOpenProfiles: () {},
@@ -379,7 +380,7 @@ void main() {
     testWidgets('Mijn Pleya is on the bar and reachable, which is where the fix lives', (tester) async {
       // The dot is only useful if the destination it marks is present and
       // selectable; the Servers screen under it is the existing management
-      // route (`TvMyPleyaSection.servers` -> `TvServersScreen`), unchanged by
+      // route (`TvMyPleyaSection.servers` -> `TvServersPage`), unchanged by
       // this work package.
       final selected = <TvDestinationId>[];
       tester.view.physicalSize = const Size(1280, 720);
@@ -402,6 +403,7 @@ void main() {
                   isNavFocused: true,
                   profile: null,
                   onSelectDestination: selected.add,
+                  onFocusDestination: coordinator.activate,
                   onFocusContent: ({bool restorePreviousFocus = true}) {},
                   onFocusNav: () {},
                   onOpenProfiles: () {},

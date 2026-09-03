@@ -487,4 +487,68 @@ void main() {
       expect(find.byType(FocusableWrapper), findsNWidgets(withoutLiveTv().length + 1));
     });
   });
+
+  // The tvOS remote contract revised on 2 September 2026: focus on a bar item
+  // *is* the navigation. These pin the bar's half of it — that a ring move
+  // reports a destination and that Select is not what switches.
+  //
+  // `onFocusDestination` was always the seam ("Reports the ring moving.
+  // Distinct from onSelect on purpose"), so what changed is who listens to it
+  // and what they do; the negative control lives at that listener, in
+  // `main_screen_tv_nav_test.dart`, because the old behaviour was the shell
+  // wiring this callback at `TvNavigationCoordinator.focusDestination`, which
+  // moves the ring and stops there.
+  group('focus is the destination', () {
+    testWidgets('walking RIGHT reports every item the ring lands on, and selects nothing', (tester) async {
+      await pump(
+        tester,
+        destinations: TvDestinationId.values.where((d) => d != TvDestinationId.liveTv).toList(),
+        active: TvDestinationId.home,
+      );
+      focus(TvDestinationId.home.focusKey);
+      await tester.pump();
+      ringMoves.clear();
+
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      await press(tester, LogicalKeyboardKey.arrowRight);
+
+      expect(ringMoves, [TvDestinationId.series, TvDestinationId.movies, TvDestinationId.myPleya]);
+      expect(selected, isEmpty, reason: 'Select must not be needed to change destination');
+    });
+
+    testWidgets('the last item walked to is the last one reported, however fast the walk', (tester) async {
+      await pump(
+        tester,
+        destinations: TvDestinationId.values.where((d) => d != TvDestinationId.liveTv).toList(),
+        active: TvDestinationId.home,
+      );
+      focus(TvDestinationId.home.focusKey);
+      await tester.pump();
+      ringMoves.clear();
+
+      // No settle between presses: this is the "faster than pages load" case.
+      for (var i = 0; i < 3; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      }
+      await tester.pumpAndSettle();
+
+      expect(ringMoves.last, TvDestinationId.myPleya);
+      expect(selected, isEmpty);
+    });
+
+    testWidgets('Select still reports the focused destination, for "go into this content"', (tester) async {
+      await pump(
+        tester,
+        destinations: TvDestinationId.values.where((d) => d != TvDestinationId.liveTv).toList(),
+        active: TvDestinationId.movies,
+      );
+      focus(TvDestinationId.movies.focusKey);
+      await tester.pump();
+
+      await press(tester, LogicalKeyboardKey.select);
+
+      expect(selected, [TvDestinationId.movies]);
+    });
+  });
 }

@@ -1953,8 +1953,15 @@ class _MainScreenState extends State<MainScreen>
       _onDiscoverBecameVisible();
     }
 
-    // Focus search input after rebuild so IndexedStack has made it visible
-    if (tab == NavigationTabId.search) {
+    // Focus search input after rebuild so IndexedStack has made it visible.
+    //
+    // Not on the TV shell unless the viewer actually asked to go in. Search
+    // sits left of Home in the bar, so once focus alone switches destinations,
+    // walking LEFT past it would drop the caret into the field and strand the
+    // remote outside the navigation. Same rule as the `!_isTvShell` guard
+    // above, expressed against the one authority instead of a second flag:
+    // DOWN and Select arm an intent, a destination switch does not.
+    if (tab == NavigationTabId.search && (!_isTvShell || _tvContentFocus.hasPendingIntent)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_searchKey.currentState case final SearchInputFocusable searchable) {
           searchable.focusSearchInput();
@@ -2330,6 +2337,7 @@ class _MainScreenState extends State<MainScreen>
       isNavFocused: _isSidebarFocused,
       profile: context.watch<ActiveProfileProvider?>()?.active,
       onSelectDestination: _selectTvDestination,
+      onFocusDestination: _focusTvDestination,
       onFocusContent: _focusContent,
       onFocusNav: _focusSidebar,
       onOpenProfiles: () => unawaited(_openProfilesFromShell()),
@@ -2367,6 +2375,31 @@ class _MainScreenState extends State<MainScreen>
   /// first of the three paths P2 is about, and it is the one the report opened
   /// with — choosing Home dropped the remote onto the billboard's Afspelen pill
   /// before the viewer had asked for anything.
+  /// The ring moved to another item in the top bar, which on TV *is* the
+  /// navigation (hoofdstuk 7.2's remote contract, revised 2 September 2026).
+  ///
+  /// Select is no longer required to change destination, and this is not a
+  /// second way of doing what `_selectTvDestination` does: it deliberately
+  /// never arms a content-focus intent, so the remote stays in the bar while
+  /// the page behind it changes. Walking Home → Series → Films → Mijn Pleya is
+  /// three page changes and zero focus moves.
+  ///
+  /// No debounce. The viewer's remote and the screen have to agree at every
+  /// step, and a delay between the ring landing and the page following is
+  /// exactly the disagreement that would introduce. Each call is idempotent
+  /// per destination — `activate` returns false when nothing changed and
+  /// `_selectTab` only runs on a real change — so pressing RIGHT faster than
+  /// pages load costs extra work, not a wrong final state: the last focused
+  /// item is the last one activated.
+  void _focusTvDestination(TvDestinationId destination) {
+    final changed = _tvNav.activate(destination);
+    // Cancels anything armed against the destination the viewer just left.
+    // Content landing late for a page they have already walked past must not
+    // pull the remote out of the bar.
+    _tvContentFocus.onDestinationFocused();
+    if (changed) _selectTab(destination.tab);
+  }
+
   void _selectTvDestination(TvDestinationId destination) {
     final wasActive = _tvNav.active == destination && _currentTab == destination.tab;
     _tvNav.activate(destination);

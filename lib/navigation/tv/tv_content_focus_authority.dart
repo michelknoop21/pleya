@@ -31,10 +31,25 @@
 ///
 /// | Event | Behaviour |
 /// |---|---|
-/// | Select on a **different** destination | the destination switches, the **bar keeps the focus**, no intent is armed |
-/// | Select on the **already active** destination | [TvContentFocusIntent.restore] — hoofdstuk 7.2's "back where you were", unchanged |
+/// | **Focus** moving to a different bar item | the destination switches under the ring, the **bar keeps the focus**, no intent is armed |
+/// | Select on a **different** destination | cannot happen any more: focus already made it the active one before Select could be pressed |
+/// | Select on the **already active** destination | [TvContentFocusIntent.restore] — hoofdstuk 7.2's "back where you were", and now also what Select on the bar always means |
 /// | **DOWN** out of the bar | [TvContentFocusIntent.primary]. Content ready → satisfied and consumed on the spot. Not ready → stays armed |
 /// | Content arriving late | may only [consume] an intent that is already armed. It never arms one |
+///
+/// ## Focus is the destination
+///
+/// LEFT/RIGHT on the bar changes the page. Select is not required and never
+/// was the only way in, it is simply no longer the *switch*: by the time it is
+/// pressed the focused item is already active, so it lands on the "already
+/// active" row above and means "go into this content" — the same thing DOWN
+/// means, through the same intent, with no second code path.
+///
+/// The half that matters is what stays put. A destination switching under the
+/// ring arms nothing, so a viewer walking the bar keeps the remote in the bar
+/// however slowly the pages behind it load, and a server answering three
+/// destinations later cannot pull them into content they have already walked
+/// past. [onDestinationFocused] is that rule.
 ///
 /// Anything that puts the remote back in the bar [cancel]s: an intent the
 /// viewer has walked away from must not be honoured a second later by a server
@@ -87,6 +102,15 @@ class TvContentFocusAuthority {
   /// to have one home too, or the next surface that activates a destination
   /// gets to invent its own reading of hoofdstuk 7.2 — which is how there came
   /// to be three of these in the first place.
+  /// The ring moved to another bar item, which now switches the page.
+  ///
+  /// Always "change the page, leave the ring": there is no reading of this
+  /// gesture under which the viewer asked to be put inside the content. Any
+  /// intent armed by an earlier press was armed against a destination that is
+  /// no longer on screen, so it is cancelled rather than left to be honoured
+  /// by whichever page finishes loading first.
+  void onDestinationFocused() => cancel();
+
   TvContentFocusIntent? onDestinationSelected({required bool wasActive}) {
     if (!wasActive) {
       // A different destination. The page behind the bar changes and the remote

@@ -40,7 +40,13 @@ enum TvMyPleyaSection {
     TvMyPleyaSection.watchlist => t.watchlist.title,
     TvMyPleyaSection.requests => t.seerr.title,
     TvMyPleyaSection.downloads => t.navigation.downloads,
-    TvMyPleyaSection.libraries => t.navigation.libraries,
+    // `t.libraries.title`, not `t.navigation.libraries`. The two differ in
+    // Dutch — the rail says "Media", the screen says "Bibliotheken" — and the
+    // audit of 2 September 2026 counted three names on one place: a tile
+    // reading Media, a screen heading reading Movies, and a concept called
+    // Bibliotheken. The rail keeps its own short label; the tile takes the
+    // name of the thing it opens.
+    TvMyPleyaSection.libraries => t.libraries.title,
     TvMyPleyaSection.servers => t.tvMyPleya.servers,
     TvMyPleyaSection.activity => t.tvMyPleya.activity,
     TvMyPleyaSection.watchTogether => t.watchTogether.title,

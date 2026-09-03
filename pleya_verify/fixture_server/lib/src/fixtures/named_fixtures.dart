@@ -21,6 +21,9 @@ bool applyNamedFixture(PleyaFakeServer server, String name) {
     case 'catalog.mixed.v1':
       _applyCatalogMixedV1(server);
       return true;
+    case 'catalog.hero-artwork.v1':
+      _applyCatalogHeroArtworkV1(server);
+      return true;
     case 'catalog.empty.v1':
       server.resetCatalog();
       return true;
@@ -183,4 +186,90 @@ void _applyCatalogMixedV1(PleyaFakeServer server) {
 
   server.hubs['recently_added']!.addAll([...movieIds, showId]);
   server.hubs['continue_watching']!.add(movieIds.first);
+}
+
+/// Five films whose backdrops differ only in the two things the Home hero has
+/// to cope with: the source aspect ratio, and where the subject sits inside it.
+///
+/// Built for the hero artwork audit. `catalog.mixed.v1` cannot do this job at
+/// all: every artwork it registers is a 32x32 flat square, which renders the
+/// same however hard the hero crops it, so no crop is visible and none is
+/// measurable. These use [calibrationPng] instead, so each screenshot carries
+/// its own ruler.
+///
+/// The five cases, in carousel order:
+///
+/// | slug      | source | AR   | subject   |
+/// |-----------|--------|------|-----------|
+/// | wide      | 3840x1600 | 2.40 | centre |
+/// | standard  | 1920x1080 | 1.78 | centre |
+/// | narrow    | 1600x1080 | 1.48 | centre |
+/// | left      | 1920x1080 | 1.78 | left, low |
+/// | right     | 1920x1080 | 1.78 | right, high |
+///
+/// `standard` is the common Plex case and `wide` the cinematic one; `narrow`
+/// stands in for artwork that is closer to 3:2 than to 16:9. The last two hold
+/// the aspect ratio still and move only the subject, so a framing verdict
+/// cannot be confused with a ratio verdict.
+void _applyCatalogHeroArtworkV1(PleyaFakeServer server) {
+  const fixture = 'catalog.hero-artwork.v1';
+  server.resetCatalog();
+
+  final libraryId = _mintId(server, fixture, 'library', 'movies');
+  server.addLibrary(id: libraryId, title: 'Movies', kind: 'movies', itemCount: 5);
+
+  const cases = <({String slug, String title, int w, int h, double sx, double sy, int r, int g, int b})>[
+    (slug: 'wide', title: 'Wide 2.40', w: 3840, h: 1600, sx: 0.5, sy: 0.5, r: 40, g: 60, b: 90),
+    (slug: 'standard', title: 'Standard 1.78', w: 1920, h: 1080, sx: 0.5, sy: 0.5, r: 90, g: 50, b: 40),
+    (slug: 'narrow', title: 'Narrow 1.48', w: 1600, h: 1080, sx: 0.5, sy: 0.5, r: 40, g: 80, b: 50),
+    (slug: 'subject-left', title: 'Subject Left Low', w: 1920, h: 1080, sx: 0.22, sy: 0.72, r: 80, g: 70, b: 30),
+    (slug: 'subject-right', title: 'Subject Right High', w: 1920, h: 1080, sx: 0.78, sy: 0.28, r: 70, g: 40, b: 80),
+  ];
+
+  final ids = <String>[];
+  for (final c in cases) {
+    final id = _mintId(server, fixture, 'movie', c.slug);
+    ids.add(id);
+    // Poster and backdrop are separate artworks on a real item, and the hero
+    // only draws the backdrop sharp, so the fixture has to carry both or the
+    // audit measures the poster-fill fallback instead of the thing it is for.
+    final backdropId = '$id-backdrop';
+    // Registered as resizable as well, so the served pixels follow the
+    // requested width and an upscale factor becomes a measurement rather than
+    // an inference from the URL.
+    server.resizableArtwork[backdropId] = (width) => calibrationPng(
+      width: width,
+      height: (width * c.h / c.w).round().clamp(16, 4096),
+      r: c.r,
+      g: c.g,
+      b: c.b,
+      subjectX: c.sx,
+      subjectY: c.sy,
+    );
+    server.artworkById[backdropId] = calibrationPng(
+      width: c.w,
+      height: c.h,
+      r: c.r,
+      g: c.g,
+      b: c.b,
+      subjectX: c.sx,
+      subjectY: c.sy,
+    );
+    // A plain 2:3 poster, so the rails stay honest and the hero's choice
+    // between backdrop and poster stays a real choice.
+    server.artworkById[id] = calibrationPng(width: 600, height: 900, r: c.r, g: c.g, b: c.b);
+    server.addItem(
+      id: id,
+      kind: 'movie',
+      title: c.title,
+      libraryId: libraryId,
+      year: 2020 + ids.length,
+      durationMs: 5400000 + ids.length * 60000,
+      posterId: id,
+      backdropId: backdropId,
+    );
+  }
+
+  server.hubs['recently_added']!.addAll(ids);
+  server.hubs['continue_watching']!.add(ids.first);
 }

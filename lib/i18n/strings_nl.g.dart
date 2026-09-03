@@ -213,6 +213,8 @@ class _TranslationsCommonNl extends TranslationsCommonEn {
 	@override String get pressBackAgainToExit => 'Druk nogmaals op terug om af te sluiten';
 	@override String decreaseValue({required Object label}) => '${label} verlagen';
 	@override String increaseValue({required Object label}) => '${label} verhogen';
+	@override String get online => 'Online';
+	@override String get offline => 'Offline';
 }
 
 // Path: screens
@@ -1083,6 +1085,7 @@ class _TranslationsAboutNl extends TranslationsAboutEn {
 	@override String get basedOnPlezy => 'Gebaseerd op Plezy';
 	@override String get upstreamProject => 'Upstream-project';
 	@override String get privacyPolicy => 'Privacybeleid';
+	@override String get licence => 'Licentie';
 }
 
 // Path: serverSelection
@@ -1128,6 +1131,13 @@ class _TranslationsLogsNl extends TranslationsLogsEn {
 	@override String get clearLogs => 'Wis logs';
 	@override String get copyLogs => 'Kopieer logs';
 	@override String get uploadLogs => 'Logs uploaden';
+	@override String get refreshLogs => 'Verversen';
+	@override String get levelFilter => 'Niveau';
+	@override String get levelAll => 'Alles';
+	@override String get levelWarnings => 'Waarschuwingen';
+	@override String get levelErrors => 'Fouten';
+	@override String get noMatchingLogs => 'Geen regels op dit niveau';
+	@override String lineCount({required Object shown, required Object total}) => '${shown} van ${total} regels';
 }
 
 // Path: licenses
@@ -1412,6 +1422,10 @@ class _TranslationsWatchTogetherNl extends TranslationsWatchTogetherEn {
 	@override String get removeRoom => 'Verwijderen';
 	@override String get guestSwitchUnavailable => 'Kon niet schakelen — server niet beschikbaar voor synchronisatie';
 	@override String get guestSwitchFailed => 'Kon niet schakelen — inhoud niet gevonden op deze server';
+	@override String get createSessionHint => 'Nodig anderen uit met een code';
+	@override String get joinSessionHint => 'Voer de code van je gastheer in';
+	@override String get noRecentRooms => 'Nog geen sessies';
+	@override String get noRecentRoomsHint => 'Een sessie die je maakt of waaraan je deelneemt verschijnt hier';
 }
 
 // Path: downloads
@@ -2162,6 +2176,7 @@ class _TranslationsTvMyPleyaNl extends TranslationsTvMyPleyaEn {
 	@override String get aboutSubtitle => 'Versie en licenties';
 	@override String get logoutSubtitle => 'Afmelden op dit apparaat';
 	@override late final _TranslationsTvMyPleyaSemanticsNl semantics = _TranslationsTvMyPleyaSemanticsNl._(_root);
+	@override String libraryCount({required Object count}) => '${count} bibliotheken';
 }
 
 // Path: tvContextMenu
@@ -2754,6 +2769,8 @@ extension on TranslationsNl {
 			'common.pressBackAgainToExit' => 'Druk nogmaals op terug om af te sluiten',
 			'common.decreaseValue' => ({required Object label}) => '${label} verlagen',
 			'common.increaseValue' => ({required Object label}) => '${label} verhogen',
+			'common.online' => 'Online',
+			'common.offline' => 'Offline',
 			'screens.licenses' => 'Licenties',
 			'screens.switchProfile' => 'Wissel van profiel',
 			'screens.whoIsWatching' => 'Wie is er aan het kijken?',
@@ -3186,10 +3203,10 @@ extension on TranslationsNl {
 			'videoControls.subtitleDownloadFailed' => 'Ondertitel downloaden mislukt',
 			'videoControls.searchLanguages' => 'Talen zoeken...',
 			'videoControls.airplayButton' => 'AirPlay',
-			'userStatus.admin' => 'Beheerder',
-			'userStatus.restricted' => 'Beperkt',
 			_ => null,
 		} ?? switch (path) {
+			'userStatus.admin' => 'Beheerder',
+			'userStatus.restricted' => 'Beperkt',
 			'userStatus.protected' => 'Beschermd',
 			'userStatus.current' => 'HUIDIG',
 			'messages.markedAsWatched' => 'Gemarkeerd als gekeken',
@@ -3491,6 +3508,7 @@ extension on TranslationsNl {
 			'about.basedOnPlezy' => 'Gebaseerd op Plezy',
 			'about.upstreamProject' => 'Upstream-project',
 			'about.privacyPolicy' => 'Privacybeleid',
+			'about.licence' => 'Licentie',
 			'serverSelection.allServerConnectionsFailed' => 'Kon met geen enkele server verbinden. Controleer je netwerk.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'Geen servers gevonden voor ${username} (${email})',
 			'serverSelection.noServersFoundTitle' => 'Geen mediaservers gevonden',
@@ -3509,6 +3527,13 @@ extension on TranslationsNl {
 			'logs.clearLogs' => 'Wis logs',
 			'logs.copyLogs' => 'Kopieer logs',
 			'logs.uploadLogs' => 'Logs uploaden',
+			'logs.refreshLogs' => 'Verversen',
+			'logs.levelFilter' => 'Niveau',
+			'logs.levelAll' => 'Alles',
+			'logs.levelWarnings' => 'Waarschuwingen',
+			'logs.levelErrors' => 'Fouten',
+			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
+			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
 			'licenses.relatedPackages' => 'Gerelateerde pakketten',
 			'licenses.license' => 'Licentie',
 			'licenses.licenseNumber' => ({required Object number}) => 'Licentie ${number}',
@@ -3692,6 +3717,8 @@ extension on TranslationsNl {
 			'watchTogether.leave' => 'Verlaten',
 			'watchTogether.syncing' => 'Synchroniseren...',
 			'watchTogether.joinWatchSession' => 'Kijksessie Deelnemen',
+			_ => null,
+		} ?? switch (path) {
 			'watchTogether.enterCodeHint' => 'Voer 5-teken code in',
 			'watchTogether.pasteFromClipboard' => 'Plakken van klembord',
 			'watchTogether.pleaseEnterCode' => 'Voer een sessiecode in',
@@ -3702,8 +3729,6 @@ extension on TranslationsNl {
 			'watchTogether.sessionCodeCopied' => 'Sessiecode gekopieerd naar klembord',
 			'watchTogether.relayUnreachable' => 'Relay-server onbereikbaar. ISP-blokkering kan Watch Together verhinderen.',
 			'watchTogether.reconnectingToHost' => 'Opnieuw verbinden met host...',
-			_ => null,
-		} ?? switch (path) {
 			'watchTogether.currentPlayback' => 'Huidige weergave',
 			'watchTogether.joinCurrentPlayback' => 'Deelnemen aan huidige weergave',
 			'watchTogether.joinCurrentPlaybackDescription' => 'Ga terug naar wat de host nu kijkt',
@@ -3720,6 +3745,10 @@ extension on TranslationsNl {
 			'watchTogether.removeRoom' => 'Verwijderen',
 			'watchTogether.guestSwitchUnavailable' => 'Kon niet schakelen — server niet beschikbaar voor synchronisatie',
 			'watchTogether.guestSwitchFailed' => 'Kon niet schakelen — inhoud niet gevonden op deze server',
+			'watchTogether.createSessionHint' => 'Nodig anderen uit met een code',
+			'watchTogether.joinSessionHint' => 'Voer de code van je gastheer in',
+			'watchTogether.noRecentRooms' => 'Nog geen sessies',
+			'watchTogether.noRecentRoomsHint' => 'Een sessie die je maakt of waaraan je deelneemt verschijnt hier',
 			'downloads.title' => 'Downloads',
 			'downloads.manage' => 'Beheren',
 			'downloads.tvShows' => 'Series',
@@ -4202,6 +4231,8 @@ extension on TranslationsNl {
 			'seerr.pending' => 'In afwachting',
 			'seerr.approved' => 'Goedgekeurd',
 			'seerr.declined' => 'Afgewezen',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.failed' => 'Mislukt',
 			'seerr.completed' => 'Afgerond',
 			'seerr.requestConfirm' => ({required Object title}) => '"${title}" aanvragen?',
@@ -4216,8 +4247,6 @@ extension on TranslationsNl {
 			'seerr.requestedBy' => ({required Object name}) => 'Aangevraagd door ${name}',
 			'seerr.searchPlaceholder' => 'Zoek een film of serie om aan te vragen',
 			'seerr.byStreamingService' => 'Per streamingdienst',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.showAll' => 'Alles tonen',
 			'seerr.fourK' => 'In 4K aanvragen',
 			'seerr.fourKBadge' => '4K',
@@ -4409,6 +4438,7 @@ extension on TranslationsNl {
 			'tvMyPleya.logoutSubtitle' => 'Afmelden op dit apparaat',
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvMyPleya.libraryCount' => ({required Object count}) => '${count} bibliotheken',
 			'tvContextMenu.title' => 'Acties',
 			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Actie ${index} van ${count}: ${label}',
 			'tvContextMenu.noUsableSource' => 'Er is momenteel geen bron bereikbaar, dus dit kan nu niet worden gewijzigd.',

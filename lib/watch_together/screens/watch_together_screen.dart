@@ -10,6 +10,13 @@ import 'package:provider/provider.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/mounted_set_state_mixin.dart';
 import '../../focus/focusable_button.dart';
+import '../../focus/focus_memory_tracker.dart';
+import '../../theme/mono_tokens.dart';
+import '../../utils/layout_constants.dart';
+import '../../utils/platform_detector.dart';
+import '../../widgets/tv/tv_menu_grid.dart';
+import '../../widgets/tv/tv_page_surface.dart';
+import '../../widgets/tv/tv_unified_layout.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../profiles/active_profile_provider.dart';
@@ -43,6 +50,28 @@ class WatchTogetherScreen extends StatelessWidget {
         // closes it; otherwise the route pops only when [canGoBack] (a guest in
         // an active session can't leave). canGoBack==true also preserves the iOS
         // interactive swipe-back.
+        // The TV branch is here, above the sliver scaffold, and not one level
+        // down inside [_NotInSessionView] where the presentation lives.
+        //
+        // That is not a stylistic preference. `SliverFillRemaining` hands its
+        // child the viewport's remaining extent, and a `TvPageSurface` is a
+        // `SingleChildScrollView`: nesting one inside the scaffold's own
+        // scrollable gives the page no height to lay out in. The first attempt
+        // did exactly that and the evidence was unambiguous — the section's
+        // node was registered in `/v1/ui_tree` and reported no bounds at all.
+        // So on TV the shell's scaffold is not built; the page is the scroll.
+        //
+        // Only the not-in-session half branches. The active session keeps the
+        // shared presentation: it was not part of the audit of 2 September and
+        // has no approved TV layout, and a page that is mostly a participant
+        // list and two destructive buttons is not improved by guessing at one.
+        if (PlatformDetector.isTV() && !watchTogether.isInSession) {
+          return OverlaySheetHost(
+            canPop: canGoBack,
+            child: _NotInSessionView(watchTogether: watchTogether),
+          );
+        }
+
         return OverlaySheetHost(
           canPop: canGoBack,
           child: FocusedScrollScaffold(
@@ -92,6 +121,17 @@ class _NotInSessionViewState extends State<_NotInSessionView> with MountedSetSta
   String? _customRelayUrl;
   List<RecentRoom> _recentRooms = [];
 
+  /// Owned by the State, not rebuilt per frame: the health check and every
+  /// room mutation call `setState`, and a node rebuilt underneath the remote
+  /// is a remote that lands nowhere.
+  final FocusMemoryTracker _nodes = FocusMemoryTracker(debugLabelPrefix: 'tvWatchTogether');
+
+  @override
+  void dispose() {
+    _nodes.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -128,6 +168,8 @@ class _NotInSessionViewState extends State<_NotInSessionView> with MountedSetSta
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    if (PlatformDetector.isTV()) return _buildTv(context);
 
     return Center(
       child: ConstrainedBox(
@@ -214,6 +256,126 @@ class _NotInSessionViewState extends State<_NotInSessionView> with MountedSetSta
           ),
         ),
       ),
+    );
+  }
+
+  /// The approved `watch-together-a` page.
+  ///
+  /// What the audit measured here was a phone screen blown up: the shell's own
+  /// heading, then a second centred one under it, then two buttons a third of
+  /// the screen wide floating in the middle of 1080 lines. On TV the eye starts
+  /// top left, which is where every other page in this product starts.
+  ///
+  /// So the second heading goes, the description becomes the group label above
+  /// the actions it describes, and the two actions become tiles on the
+  /// canonical page edge. Recent rooms are the same rooms the mobile list has
+  /// always shown, in the tile language and with the same held-SELECT menu
+  /// behind them; when there are none the page says so rather than ending.
+  Widget _buildTv(BuildContext context) {
+    final scale = TvLayoutConstants.scaleOf(context);
+    final tk = tokens(context);
+
+    return TvPageSurface(
+      title: t.watchTogether.title,
+      automationInstance: 'watch_together',
+      children: [
+        if (_healthOk == false) ...[
+          TvPageBlock(
+            child: Row(
+              crossAxisAlignment: .start,
+              children: [
+                // The theme maps every container colour onto the surface
+                // underneath it (DEC-053), so an `errorContainer` card would
+                // be a rectangle nobody can see. The glyph carries the warning.
+                Icon(
+                  Symbols.warning_rounded,
+                  size: TvMyPleyaLayout.tileIconSize * scale,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                SizedBox(width: TvMyPleyaLayout.tilePadding * scale),
+                Expanded(
+                  child: Text(
+                    t.watchTogether.relayUnreachable,
+                    style: tvPageBodyStyle(context, alpha: TvMyPleyaLayout.inkSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: TvMyPleyaLayout.groupGap * scale),
+        ],
+        TvMenuGrid(
+          nodes: _nodes,
+          columns: 2,
+          automationInstance: 'watch_together',
+          sections: [
+            TvMenuSection(
+              label: t.watchTogether.description,
+              items: [
+                TvMenuItem(
+                  key: 'watch_together_create',
+                  icon: Symbols.add_rounded,
+                  title: _isCreating ? t.watchTogether.creating : t.watchTogether.createSession,
+                  subtitle: t.watchTogether.createSessionHint,
+                  onSelect: _isBusy ? null : _createSession,
+                ),
+                TvMenuItem(
+                  key: 'watch_together_join',
+                  icon: Symbols.group_add_rounded,
+                  title: _isJoining ? t.watchTogether.joining : t.watchTogether.joinSession,
+                  subtitle: t.watchTogether.joinSessionHint,
+                  onSelect: _isBusy ? null : _joinSession,
+                ),
+              ],
+            ),
+            if (_recentRooms.isNotEmpty)
+              TvMenuSection(
+                label: t.watchTogether.recentRooms,
+                items: [
+                  for (final room in _recentRooms)
+                    TvMenuItem(
+                      key: 'watch_together_room_${room.code}',
+                      icon: Symbols.meeting_room_rounded,
+                      title: room.name ?? room.code,
+                      // A named room still has to show the code, because the
+                      // code is what a viewer reads out to whoever is joining.
+                      value: _enteringRoomCode == room.code
+                          ? t.watchTogether.joining
+                          : (room.name == null ? null : room.code),
+                      onSelect: _isBusy ? null : () => _enterRoom(room),
+                      onLongPress: () => showRecentRoomActions(
+                        context,
+                        onRename: () => _renameRoom(room),
+                        onRemove: () => _removeRoom(room),
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
+        if (_recentRooms.isEmpty) ...[
+          SizedBox(height: TvMyPleyaLayout.groupGap * scale),
+          TvPageGroupLabel(t.watchTogether.recentRooms),
+          TvPageBlock(
+            child: Column(
+              crossAxisAlignment: .start,
+              mainAxisSize: .min,
+              children: [
+                Text(
+                  t.watchTogether.noRecentRooms,
+                  style: TextStyle(
+                    color: tk.text,
+                    fontSize: TvMyPleyaLayout.tileTitleFontSize * scale,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: TvMyPleyaLayout.tileTitleSubtitleGap * scale),
+                Text(t.watchTogether.noRecentRoomsHint, style: tvPageBodyStyle(context)),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -442,29 +604,33 @@ class _RecentRoomTile extends StatelessWidget {
     );
   }
 
-  void _showActions(BuildContext context) {
-    OverlaySheetController.showAdaptive(
-      context,
-      builder: (context) => AppMenuSheet<String>(
-        entries: [
-          AppMenuItem(value: 'rename', icon: Symbols.edit_rounded, label: t.watchTogether.renameRoom),
-          AppMenuItem(
-            value: 'remove',
-            icon: Symbols.delete_rounded,
-            label: t.watchTogether.removeRoom,
-            destructive: true,
-          ),
-        ],
-        onSelected: (value) {
-          if (value == 'rename') {
-            onRename();
-          } else if (value == 'remove') {
-            onRemove();
-          }
-        },
-      ),
-    );
-  }
+  void _showActions(BuildContext context) => showRecentRoomActions(context, onRename: onRename, onRemove: onRemove);
+}
+
+/// Rename or forget a saved room. One definition, because the TV tile and the
+/// mobile list tile offer the same two actions and one of them deletes.
+void showRecentRoomActions(BuildContext context, {required VoidCallback onRename, required VoidCallback onRemove}) {
+  OverlaySheetController.showAdaptive(
+    context,
+    builder: (context) => AppMenuSheet<String>(
+      entries: [
+        AppMenuItem(value: 'rename', icon: Symbols.edit_rounded, label: t.watchTogether.renameRoom),
+        AppMenuItem(
+          value: 'remove',
+          icon: Symbols.delete_rounded,
+          label: t.watchTogether.removeRoom,
+          destructive: true,
+        ),
+      ],
+      onSelected: (value) {
+        if (value == 'rename') {
+          onRename();
+        } else if (value == 'remove') {
+          onRemove();
+        }
+      },
+    ),
+  );
 }
 
 class _ActiveSessionContent extends StatelessWidget {
