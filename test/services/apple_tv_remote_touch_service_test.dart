@@ -469,6 +469,83 @@ void main() {
     });
   });
 
+  group('AppleTvRemoteTouchService directional ownership across a gesture', () {
+    // The physical Apple TV finding, in both places it showed up: LEFT on
+    // Series jumped past Home to Search, and DOWN on a landing jumped past the
+    // first rail. One press, two moves.
+    //
+    // A click on the Siri Remote's ring is a touch *and* a press, and tvOS
+    // reports the two over separate paths — its own recognizer synthesizes the
+    // UIPress arrow, the engine streams the raw coordinates this service turns
+    // into arrows itself. The class already resolves that with a per-gesture
+    // owner, and the mute is symmetric while the owner stands. What was not
+    // symmetric is what survives the start of a touch: `_startTouch` carried a
+    // *swipe* claim across and threw a *native* one away, on the reasoning
+    // that a ring click starts fresh. It does — except when the ring click's
+    // own arrow arrived a few milliseconds before its touch stream did, which
+    // is the ordering the device actually produces. The claim was dropped, the
+    // travel of the same finger crossed the threshold, and the gesture moved
+    // the focus a second time.
+    //
+    // Invisible everywhere it could have been caught: the simulator has no
+    // touch surface (idb injects the key directly, so only one path exists),
+    // and a widget test sends the key straight to the focus tree.
+    test('a native arrow claims the gesture that its own touch stream then starts', () async {
+      final harness = _Harness();
+
+      harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowLeft));
+      harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowLeft));
+
+      // The same physical contact, reported a moment later.
+      harness.advance(const Duration(milliseconds: 8));
+      await harness.send('started', x: 500, y: 500);
+
+      // The travel crosses the threshold 150 ms in. That is past the 120 ms
+      // per-key duplicate window — which is the only thing that was catching
+      // this case, and only ever when the second arrow happened to be the same
+      // key — and well inside the gesture's own ownership grace.
+      harness.advance(const Duration(milliseconds: 150));
+      await harness.send('move', x: 380, y: 500);
+      await harness.send('move', x: 260, y: 500);
+
+      expect(
+        harness.keys,
+        isEmpty,
+        reason: 'the arrow the engine already delivered is the whole gesture; the travel behind it is not a second one',
+      );
+    });
+
+    test('and keeps holding it for as long as the finger is down', () async {
+      final harness = _Harness();
+
+      harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowDown));
+      harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowDown));
+      await harness.send('started', x: 500, y: 500);
+
+      // Well past the post-lift grace, but the finger never left: a claim held
+      // while the touch is live does not expire under it.
+      harness.advance(const Duration(milliseconds: 900));
+      await harness.send('move', x: 500, y: 360);
+
+      expect(harness.keys, isEmpty);
+    });
+
+    test('a touch starting long after an unrelated arrow still swipes', () async {
+      final harness = _Harness();
+
+      harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowLeft));
+      harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowLeft));
+
+      // Past the grace, so this is a new gesture by any reading and the
+      // accumulator owns it.
+      harness.advance(const Duration(milliseconds: 400));
+      await harness.send('started', x: 500, y: 500);
+      await harness.send('move', x: 380, y: 500);
+
+      expect(harness.keys, [LogicalKeyboardKey.arrowLeft]);
+    });
+  });
+
   group('AppleTvRemoteTouchService select trace', () {
     // The correlation id is a separate field from the duplicate-suppression
     // flag on purpose. These tests pin that separation: the flag is cleared by

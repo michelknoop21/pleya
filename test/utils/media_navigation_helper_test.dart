@@ -1,7 +1,12 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/unified/canonical_media_identity.dart';
+import 'package:pleya/media/unified/source_coverage_state.dart';
+import 'package:pleya/media/unified/unified_route_context.dart';
+import 'package:pleya/screens/media_detail_screen.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/utils/media_navigation_helper.dart';
 
@@ -156,6 +161,97 @@ void main() {
       );
       expect(returned, same(episode));
       expect(onRefreshCalls, 0, reason: 'a caller supplying both should not pay for two refreshes of the same return');
+    });
+  });
+
+  // The fase-4 plumbing of hoofdstuk 15: a route may now carry the group it was
+  // reached through. Everything about it is additive, and the point of these is
+  // that a caller that ignores it — which is every caller in the app today — is
+  // handed exactly the route it was handed before.
+  group('unified route context is additive', () {
+    MediaItem movie() => MediaItem(
+      id: 'i1',
+      backend: MediaBackend.plex,
+      kind: MediaKind.movie,
+      title: 'Dune',
+      serverId: 'nas',
+      serverName: 'NAS',
+    );
+
+    UnifiedMediaRouteContext context({List<String> keys = const ['nas:i1', 'attic:i2']}) => UnifiedMediaRouteContext(
+      groupId: 'g1',
+      identity: CanonicalMediaIdentity.movie(title: 'Dune', year: 2021),
+      sourceKey: 'nas:i1',
+      availableSourceKeys: keys,
+      coverage: SourceCoverageState.complete({'nas', 'attic'}),
+      intent: UnifiedActivationIntent.play,
+    );
+
+    test('the route still builds without one, and still returns a bool route', () {
+      expect(mediaDetailRoute(metadata: movie()), isA<PageRoute<bool>>());
+      expect(mediaDetailRoute(metadata: movie(), unifiedRouteContext: context()), isA<PageRoute<bool>>());
+    });
+
+    test('the screen receives the context and the change callback it was given', () {
+      Future<void> change(BuildContext _) async {}
+      final screen = MediaDetailScreen(metadata: movie(), unifiedRouteContext: context(), onChangeSource: change);
+
+      expect(screen.unifiedRouteContext?.sourceKey, 'nas:i1');
+      expect(screen.onChangeSource, same(change));
+    });
+
+    test('omitting them leaves the screen in its pre-fase-4 shape', () {
+      final screen = MediaDetailScreen(metadata: movie());
+
+      expect(screen.unifiedRouteContext, isNull);
+      expect(screen.onChangeSource, isNull);
+    });
+
+    // The override rule: once the user has explicitly changed source on an open
+    // detail page, that page is bound to the concrete item — so Play, and the
+    // episode queue behind it, cannot quietly jump back to the profile default.
+    // Nothing enforces that at runtime; it is true because the route carries a
+    // `MediaItem`, and these pin that it stays that way.
+    test('the detail route is bound to the chosen concrete source, not to the group', () {
+      final chosen = MediaItem(
+        id: 'z1',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'Dune',
+        serverId: 'attic',
+        serverName: 'Zolder',
+      );
+
+      final target = mediaDetailNavigationTargetFor(chosen);
+
+      expect(target.metadata.serverId, 'attic');
+      expect(target.metadata.id, 'z1');
+      final screen = MediaDetailScreen(
+        metadata: target.metadata,
+        unifiedRouteContext: context().withSourceKey('attic:i2'),
+      );
+      // Play on this page reads `metadata`; there is no second candidate on
+      // the screen for it to prefer.
+      expect(screen.metadata.serverId, 'attic');
+      expect(screen.unifiedRouteContext?.sourceKey, 'attic:i2');
+    });
+
+    test('switching source changes the source key and nothing else about the context', () {
+      final before = context();
+      final after = before.withSourceKey('attic:i2');
+
+      expect(after.sourceKey, 'attic:i2');
+      expect(after.groupId, before.groupId);
+      expect(after.availableSourceKeys, before.availableSourceKeys);
+      expect(after.coverage, before.coverage);
+      expect(after.intent, before.intent);
+    });
+
+    test('a single-source group renders no source line at all', () {
+      // Hoofdstuk 15 only shows "Bron: … [ Wijzigen ]" when there is somewhere
+      // else to go; the screen reads exactly this flag.
+      expect(context(keys: const ['nas:i1']).hasAlternativeSources, isFalse);
+      expect(context().hasAlternativeSources, isTrue);
     });
   });
 }

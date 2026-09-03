@@ -62,6 +62,7 @@ class TranslationsDe extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsDe connections = _TranslationsConnectionsDe._(_root);
 	@override late final _TranslationsDiscoverDe discover = _TranslationsDiscoverDe._(_root);
 	@override late final _TranslationsErrorsDe errors = _TranslationsErrorsDe._(_root);
+	@override late final _TranslationsNoticesDe notices = _TranslationsNoticesDe._(_root);
 	@override late final _TranslationsLibrariesDe libraries = _TranslationsLibrariesDe._(_root);
 	@override late final _TranslationsAboutDe about = _TranslationsAboutDe._(_root);
 	@override late final _TranslationsServerSelectionDe serverSelection = _TranslationsServerSelectionDe._(_root);
@@ -87,6 +88,11 @@ class TranslationsDe extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerDe addServer = _TranslationsAddServerDe._(_root);
 	@override late final _TranslationsAddLocalFolderDe addLocalFolder = _TranslationsAddLocalFolderDe._(_root);
 	@override late final _TranslationsPleyaShareDe pleyaShare = _TranslationsPleyaShareDe._(_root);
+	@override late final _TranslationsSourcePickerDe sourcePicker = _TranslationsSourcePickerDe._(_root);
+	@override late final _TranslationsUnifiedCatalogDe unifiedCatalog = _TranslationsUnifiedCatalogDe._(_root);
+	@override late final _TranslationsTvNavigationDe tvNavigation = _TranslationsTvNavigationDe._(_root);
+	@override late final _TranslationsTvMyPleyaDe tvMyPleya = _TranslationsTvMyPleyaDe._(_root);
+	@override late final _TranslationsTvContextMenuDe tvContextMenu = _TranslationsTvContextMenuDe._(_root);
 }
 
 // Path: app
@@ -442,6 +448,7 @@ class _TranslationsSearchDe extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => 'Anderen Suchbegriff versuchen';
 	@override String get searchYourMedia => 'In den eigenen Medien suchen';
 	@override String get enterTitleActorOrKeyword => 'Titel, Schauspieler oder Stichwort eingeben';
+	@override late final _TranslationsSearchFiltersDe filters = _TranslationsSearchFiltersDe._(_root);
 }
 
 // Path: hotkeys
@@ -912,6 +919,17 @@ class _TranslationsErrorsDe extends TranslationsErrorsEn {
 	@override String failedToSwitchProfile({required Object displayName}) => 'Profilwechsel zu ${displayName} fehlgeschlagen';
 	@override String failedToDeleteProfile({required Object displayName}) => 'Löschen von ${displayName} fehlgeschlagen';
 	@override String get failedToRate => 'Bewertung konnte nicht aktualisiert werden';
+}
+
+// Path: notices
+class _TranslationsNoticesDe extends TranslationsNoticesEn {
+	_TranslationsNoticesDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => 'Datei nicht verfügbar';
+	@override String get playbackFileUnavailableBody => 'Der Server kann nicht auf die Videodatei zugreifen. Prüfe, ob das Laufwerk oder der Ordner, auf dem sie liegt, noch verbunden ist.';
 }
 
 // Path: libraries
@@ -1707,6 +1725,140 @@ class _TranslationsPleyaShareDe extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => 'Netzwerk wird gescannt…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerDe extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => 'Wähle, wo abgespielt werden soll';
+	@override String get detailsTitle => 'Wähle eine Quelle für die Details';
+	@override String get availableOnOneServer => 'Auf 1 Server verfügbar';
+	@override String availableOnManyServers({required Object count}) => 'Auf ${count} Servern verfügbar';
+	@override String get oneServerUnchecked => '1 Server konnte nicht geprüft werden';
+	@override String manyServersUnchecked({required Object count}) => '${count} Server konnten nicht geprüft werden';
+	@override String get checkingMoreSources => 'Weitere Quellen werden geprüft…';
+	@override String get lastUsed => 'Zuletzt verwendet';
+	@override String get currentSource => 'Aktuelle Quelle';
+	@override String get unavailable => 'Nicht verfügbar';
+	@override String get signInRequired => 'Erneute Anmeldung erforderlich';
+	@override String resumeAt({required Object position}) => 'Fortsetzen bei ${position}';
+	@override String get watched => 'Gesehen';
+	@override String get noneReachableTitle => 'Derzeit ist keine Quelle erreichbar.';
+	@override String get reauthRequiredTitle => 'Melde dich erneut an, um diesen Titel zu erreichen.';
+	@override String get manageServers => 'Server verwalten';
+	@override String sourceLabel({required Object source}) => 'Quelle: ${source}';
+	@override String get change => 'Ändern';
+	@override String get playbackFailedTitle => 'Diese Quelle konnte nicht abgespielt werden.';
+	@override String get detailLoadFailedTitle => 'Dieser Titel konnte nicht geladen werden.';
+	@override String get chooseAnotherSource => 'Andere Quelle wählen';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Quelle ${index} von ${count}: ${description}';
+	@override String get preferredServer => 'Bevorzugter Server';
+	@override String setPreferredServer({required Object server}) => 'Immer ${server} verwenden';
+}
+
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogDe extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => 'Filme';
+	@override String get seriesTitle => 'Serien';
+	@override String sources({required Object count}) => '${count} Quellen';
+	@override String get allSources => 'Alle Quellen';
+	@override String get oneSource => '1 Quelle';
+	@override String seasons({required Object count}) => '${count} Staffeln';
+	@override String get oneSeason => '1 Staffel';
+	@override String titleCount({required Object count}) => '${count} Titel';
+	@override String get oneTitle => '1 Titel';
+	@override String titlesLoaded({required Object count}) => '${count} Titel geladen';
+	@override String get loadMore => 'Mehr laden';
+	@override String get loadingMore => 'Mehr wird geladen…';
+	@override late final _TranslationsUnifiedCatalogSortDe sort = _TranslationsUnifiedCatalogSortDe._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersDe filters = _TranslationsUnifiedCatalogFiltersDe._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesDe states = _TranslationsUnifiedCatalogStatesDe._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsDe semantics = _TranslationsUnifiedCatalogSemanticsDe._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryDe discovery = _TranslationsUnifiedCatalogDiscoveryDe._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeDe home = _TranslationsUnifiedCatalogHomeDe._(_root);
+}
+
+// Path: tvNavigation
+class _TranslationsTvNavigationDe extends TranslationsTvNavigationEn {
+	_TranslationsTvNavigationDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get activeDestination => 'aktueller Bereich';
+	@override String get attentionRequired => 'erfordert Aufmerksamkeit';
+}
+
+// Path: tvMyPleya
+class _TranslationsTvMyPleyaDe extends TranslationsTvMyPleyaEn {
+	_TranslationsTvMyPleyaDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get groupContent => 'Meine Inhalte';
+	@override String get groupSources => 'Bibliotheken und Quellen';
+	@override String get groupPleya => 'Pleya';
+	@override String serversOnline({required Object online, required Object total}) => '${online} von ${total} Servern online';
+	@override String get noServers => 'Keine Server verbunden';
+	@override String get statusOnline => 'Online';
+	@override String get statusOffline => 'Offline';
+	@override String get servers => 'Server';
+	@override String get activity => 'Aktivität';
+	@override String get logs => 'Protokolle und Diagnose';
+	@override String signedInAs({required Object name, required Object version}) => 'Angemeldet als ${name} · Pleya ${version}';
+	@override String get watchlistSubtitle => 'Gespeicherte Filme und Serien';
+	@override String get requestsSubtitle => 'Anfragen und Entdecken';
+	@override String get downloadsSubtitle => 'Offline und Synchronisierungsregeln';
+	@override String get librariesSubtitle => 'Medien, Sammlungen, Wiedergabelisten';
+	@override String get serversSubtitle => 'Verbindungen und lokale Quellen';
+	@override String get activitySubtitle => 'Läuft gerade, gemeinsam ansehen, Remote';
+	@override String get watchTogetherSubtitle => 'Synchron mit Freunden schauen';
+	@override String get settingsSubtitle => 'Darstellung, Player, Tracker';
+	@override String get logsSubtitle => 'Protokolldateien und Absturzberichte';
+	@override String get aboutSubtitle => 'Version und Lizenzen';
+	@override String get logoutSubtitle => 'Auf diesem Gerät abmelden';
+	@override late final _TranslationsTvMyPleyaSemanticsDe semantics = _TranslationsTvMyPleyaSemanticsDe._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuDe extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Aktionen';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => 'Aktion ${index} von ${count}: ${label}';
+	@override String get noUsableSource => 'Derzeit ist keine Quelle erreichbar, daher kann dies momentan nicht geändert werden.';
+	@override String doneOnAll({required Object count}) => 'Auf allen ${count} Quellen erledigt';
+	@override String doneOnSome({required Object done, required Object total}) => 'Auf ${done} von ${total} Quellen erledigt. Die übrigen werden erneut versucht, sobald sie wieder online sind.';
+	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Auf ${done} von ${total} Quellen erledigt.';
+	@override String get failed => 'Das hat nicht funktioniert';
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersDe extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Alle';
+	@override String get movies => 'Filme';
+	@override String get shows => 'Serien';
+	@override String get episodes => 'Episoden';
+	@override String get people => 'Personen';
+	@override String get other => 'Sonstiges';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsDe extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsDe._(TranslationsDe root) : this._root = root, super.internal(root);
@@ -1984,6 +2136,125 @@ class _TranslationsTrackersLibraryFilterDe extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => 'Nur die unten markierten Bibliotheken synchronisieren.';
 	@override String get libraries => 'Bibliotheken';
 	@override String get noLibraries => 'Keine Bibliotheken verfügbar';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortDe extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Sortieren';
+	@override String get titleAsc => 'Titel A–Z';
+	@override String get titleDesc => 'Titel Z–A';
+	@override String get recentlyAdded => 'Zuletzt hinzugefügt';
+	@override String get oldestAdded => 'Zuerst hinzugefügt';
+	@override String get newestRelease => 'Neueste Veröffentlichung';
+	@override String get oldestRelease => 'Älteste Veröffentlichung';
+	@override String get recentlyWatched => 'Zuletzt gesehen';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersDe extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Filter';
+	@override String get status => 'Status';
+	@override String get genre => 'Genre';
+	@override String get year => 'Jahr';
+	@override String get servers => 'Server';
+	@override String get libraries => 'Bibliotheken';
+	@override String get apply => 'Anwenden';
+	@override String get clearAll => 'Alles zurücksetzen';
+	@override String get all => 'Alle';
+	@override String get unwatched => 'Ungesehen';
+	@override String get unsupported => 'Für die aktuellen Quellen nicht verfügbar';
+	@override String get someUnavailable => 'Einige Filter sind für die ausgewählten Quellen nicht verfügbar';
+	@override String get noValues => 'Nichts zur Auswahl';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesDe extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'Dieser Katalog ist leer';
+	@override String get emptyBody => 'Keine sichtbare Bibliothek enthält etwas für diese Seite.';
+	@override String get filterEmptyTitle => 'Nichts entspricht diesen Filtern';
+	@override String get filterEmptyBody => 'Entferne einen Filter, um mehr Titel zu sehen.';
+	@override String get clearFilters => 'Filter zurücksetzen';
+	@override String get errorTitle => 'Der Katalog konnte nicht geladen werden';
+	@override String get errorBody => 'Kein Server hat geantwortet. Prüfe deine Verbindung und versuche es erneut.';
+	@override String get partialOne => '1 Bibliothek hat nicht geantwortet';
+	@override String partialMany({required Object count}) => '${count} Bibliotheken haben nicht geantwortet';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsDe extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => 'Gesehen';
+	@override String get inProgress => 'Angefangen';
+	@override String get loadingMore => 'Weitere Titel werden geladen';
+}
+
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryDe extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => 'Alle Filme';
+	@override String get allSeries => 'Alle Serien';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => 'Einige Quellen haben nicht geantwortet';
+	@override String get emptyTitle => 'Noch nichts zu entdecken';
+	@override String get emptyBody => 'Keine sichtbare Bibliothek hat hier etwas zu zeigen.';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsDe semantics = _TranslationsUnifiedCatalogDiscoverySemanticsDe._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeDe extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'Empfohlen';
+}
+
+// Path: tvMyPleya.semantics
+class _TranslationsTvMyPleyaSemanticsDe extends TranslationsTvMyPleyaSemanticsEn {
+	_TranslationsTvMyPleyaSemanticsDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsDe extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}, ${count} Titel';
+	@override String position({required Object position, required Object count}) => '${position} von ${count}';
+	@override String get viewAllMovies => 'Alle Filme anzeigen, öffnet den vollständigen Katalog';
+	@override String get viewAllSeries => 'Alle Serien anzeigen, öffnet den vollständigen Katalog';
 }
 
 /// The flat map containing all translations for locale <de>.
@@ -2286,6 +2557,12 @@ extension on TranslationsDe {
 			'search.tryDifferentTerm' => 'Anderen Suchbegriff versuchen',
 			'search.searchYourMedia' => 'In den eigenen Medien suchen',
 			'search.enterTitleActorOrKeyword' => 'Titel, Schauspieler oder Stichwort eingeben',
+			'search.filters.all' => 'Alle',
+			'search.filters.movies' => 'Filme',
+			'search.filters.shows' => 'Serien',
+			'search.filters.episodes' => 'Episoden',
+			'search.filters.people' => 'Personen',
+			'search.filters.other' => 'Sonstiges',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Tastenkürzel festlegen für ${actionName}',
 			'hotkeys.clearShortcut' => 'Kürzel löschen',
 			'hotkeys.noShortcutSet' => 'Keine Tastenkombination festgelegt',
@@ -2500,14 +2777,14 @@ extension on TranslationsDe {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sleep-Timer gesetzt auf ${label}',
 			'messages.noItemsAvailable' => 'Keine Elemente verfügbar',
 			'messages.failedToCreatePlayQueueNoItems' => 'Wiedergabewarteschlange konnte nicht erstellt werden – keine Elemente',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Wiedergabe für ${action} fehlgeschlagen',
 			'messages.switchingToCompatiblePlayer' => 'Wechsle zu kompatiblem Player...',
 			'messages.serverLimitTitle' => 'Wiedergabe fehlgeschlagen',
 			'messages.serverLimitBody' => 'Serverfehler (HTTP 500). Ein Bandbreiten-/Transcoding-Limit lehnte diese Sitzung wohl ab. Bitte den Besitzer um Anpassung.',
 			'messages.logsUploaded' => 'Protokolle hochgeladen',
 			'messages.logsUploadFailed' => 'Protokolle konnten nicht hochgeladen werden',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => 'Protokoll-ID',
 			'subtitlingStyling.text' => 'Text',
 			'subtitlingStyling.border' => 'Rahmen',
@@ -2644,6 +2921,8 @@ extension on TranslationsDe {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Profilwechsel zu ${displayName} fehlgeschlagen',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Löschen von ${displayName} fehlgeschlagen',
 			'errors.failedToRate' => 'Bewertung konnte nicht aktualisiert werden',
+			'notices.playbackFileUnavailableTitle' => 'Datei nicht verfügbar',
+			'notices.playbackFileUnavailableBody' => 'Der Server kann nicht auf die Videodatei zugreifen. Prüfe, ob das Laufwerk oder der Ordner, auf dem sie liegt, noch verbunden ist.',
 			'libraries.title' => 'Mediatheken',
 			'libraries.fallbackTitle' => 'Mediathek',
 			'libraries.scanLibraryFiles' => 'Mediatheksdateien scannen',
@@ -3012,6 +3291,8 @@ extension on TranslationsDe {
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-Geräte mit demselben Plex-Konto erscheinen hier',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Verbinden...',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.searchingForDevices' => 'Suche nach Geräten...',
 			'companionRemote.pairing.noDevicesFound' => 'Keine Geräte in deinem Netzwerk gefunden',
 			'companionRemote.pairing.noDevicesHint' => 'Öffne Pleya auf dem Desktop und nutze dasselbe WiFi',
@@ -3020,8 +3301,6 @@ extension on TranslationsDe {
 			'companionRemote.pairing.cryptoInitFailed' => 'Sichere Verbindung konnte nicht gestartet werden. Melde dich zuerst bei Plex an.',
 			'companionRemote.pairing.validationHostRequired' => 'Bitte Host-Adresse eingeben',
 			'companionRemote.pairing.validationHostFormat' => 'Format muss IP:Port sein (z.B. 192.168.1.100:48632)',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => 'Verbindung hat Zeitlimit überschritten. Nutze auf beiden Geräten dasselbe Netzwerk.',
 			'companionRemote.pairing.sessionNotFound' => 'Gerät nicht gefunden. Stelle sicher, dass Pleya auf dem Host läuft.',
 			'companionRemote.pairing.authFailed' => 'Authentifizierung fehlgeschlagen. Beide Geräte benötigen dasselbe Plex-Konto.',
@@ -3323,6 +3602,119 @@ extension on TranslationsDe {
 			'pleyaShare.notificationText' => 'Andere Pleya-Geräte können deine lokalen Ordner streamen',
 			'pleyaShare.hostDescriptionAndroid' => 'Andere Pleya-Geräte in diesem Netzwerk können deine lokalen Ordner durchsuchen, streamen und herunterladen. Das Teilen läuft mit einer Benachrichtigung im Hintergrund weiter.',
 			'pleyaShare.scanningSubnet' => 'Netzwerk wird gescannt…',
+			'sourcePicker.playTitle' => 'Wähle, wo abgespielt werden soll',
+			'sourcePicker.detailsTitle' => 'Wähle eine Quelle für die Details',
+			'sourcePicker.availableOnOneServer' => 'Auf 1 Server verfügbar',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Auf ${count} Servern verfügbar',
+			'sourcePicker.oneServerUnchecked' => '1 Server konnte nicht geprüft werden',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} Server konnten nicht geprüft werden',
+			'sourcePicker.checkingMoreSources' => 'Weitere Quellen werden geprüft…',
+			'sourcePicker.lastUsed' => 'Zuletzt verwendet',
+			'sourcePicker.currentSource' => 'Aktuelle Quelle',
+			'sourcePicker.unavailable' => 'Nicht verfügbar',
+			'sourcePicker.signInRequired' => 'Erneute Anmeldung erforderlich',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Fortsetzen bei ${position}',
+			'sourcePicker.watched' => 'Gesehen',
+			'sourcePicker.noneReachableTitle' => 'Derzeit ist keine Quelle erreichbar.',
+			'sourcePicker.reauthRequiredTitle' => 'Melde dich erneut an, um diesen Titel zu erreichen.',
+			'sourcePicker.manageServers' => 'Server verwalten',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Quelle: ${source}',
+			'sourcePicker.change' => 'Ändern',
+			'sourcePicker.playbackFailedTitle' => 'Diese Quelle konnte nicht abgespielt werden.',
+			'sourcePicker.detailLoadFailedTitle' => 'Dieser Titel konnte nicht geladen werden.',
+			'sourcePicker.chooseAnotherSource' => 'Andere Quelle wählen',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Quelle ${index} von ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Bevorzugter Server',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Immer ${server} verwenden',
+			'unifiedCatalog.moviesTitle' => 'Filme',
+			'unifiedCatalog.seriesTitle' => 'Serien',
+			'unifiedCatalog.sources' => ({required Object count}) => '${count} Quellen',
+			'unifiedCatalog.allSources' => 'Alle Quellen',
+			'unifiedCatalog.oneSource' => '1 Quelle',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} Staffeln',
+			'unifiedCatalog.oneSeason' => '1 Staffel',
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} Titel',
+			'unifiedCatalog.oneTitle' => '1 Titel',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} Titel geladen',
+			'unifiedCatalog.loadMore' => 'Mehr laden',
+			'unifiedCatalog.loadingMore' => 'Mehr wird geladen…',
+			'unifiedCatalog.sort.title' => 'Sortieren',
+			'unifiedCatalog.sort.titleAsc' => 'Titel A–Z',
+			'unifiedCatalog.sort.titleDesc' => 'Titel Z–A',
+			'unifiedCatalog.sort.recentlyAdded' => 'Zuletzt hinzugefügt',
+			'unifiedCatalog.sort.oldestAdded' => 'Zuerst hinzugefügt',
+			'unifiedCatalog.sort.newestRelease' => 'Neueste Veröffentlichung',
+			'unifiedCatalog.sort.oldestRelease' => 'Älteste Veröffentlichung',
+			'unifiedCatalog.sort.recentlyWatched' => 'Zuletzt gesehen',
+			'unifiedCatalog.filters.title' => 'Filter',
+			'unifiedCatalog.filters.status' => 'Status',
+			'unifiedCatalog.filters.genre' => 'Genre',
+			'unifiedCatalog.filters.year' => 'Jahr',
+			'unifiedCatalog.filters.servers' => 'Server',
+			'unifiedCatalog.filters.libraries' => 'Bibliotheken',
+			'unifiedCatalog.filters.apply' => 'Anwenden',
+			'unifiedCatalog.filters.clearAll' => 'Alles zurücksetzen',
+			'unifiedCatalog.filters.all' => 'Alle',
+			'unifiedCatalog.filters.unwatched' => 'Ungesehen',
+			'unifiedCatalog.filters.unsupported' => 'Für die aktuellen Quellen nicht verfügbar',
+			'unifiedCatalog.filters.someUnavailable' => 'Einige Filter sind für die ausgewählten Quellen nicht verfügbar',
+			'unifiedCatalog.filters.noValues' => 'Nichts zur Auswahl',
+			'unifiedCatalog.states.emptyTitle' => 'Dieser Katalog ist leer',
+			'unifiedCatalog.states.emptyBody' => 'Keine sichtbare Bibliothek enthält etwas für diese Seite.',
+			'unifiedCatalog.states.filterEmptyTitle' => 'Nichts entspricht diesen Filtern',
+			'unifiedCatalog.states.filterEmptyBody' => 'Entferne einen Filter, um mehr Titel zu sehen.',
+			'unifiedCatalog.states.clearFilters' => 'Filter zurücksetzen',
+			'unifiedCatalog.states.errorTitle' => 'Der Katalog konnte nicht geladen werden',
+			'unifiedCatalog.states.errorBody' => 'Kein Server hat geantwortet. Prüfe deine Verbindung und versuche es erneut.',
+			'unifiedCatalog.states.partialOne' => '1 Bibliothek hat nicht geantwortet',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} Bibliotheken haben nicht geantwortet',
+			'unifiedCatalog.semantics.watched' => 'Gesehen',
+			'unifiedCatalog.semantics.inProgress' => 'Angefangen',
+			'unifiedCatalog.semantics.loadingMore' => 'Weitere Titel werden geladen',
+			'unifiedCatalog.discovery.allMovies' => 'Alle Filme',
+			'unifiedCatalog.discovery.allSeries' => 'Alle Serien',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => 'Einige Quellen haben nicht geantwortet',
+			'unifiedCatalog.discovery.emptyTitle' => 'Noch nichts zu entdecken',
+			'unifiedCatalog.discovery.emptyBody' => 'Keine sichtbare Bibliothek hat hier etwas zu zeigen.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} Titel',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} von ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Alle Filme anzeigen, öffnet den vollständigen Katalog',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle Serien anzeigen, öffnet den vollständigen Katalog',
+			'unifiedCatalog.home.featured' => 'Empfohlen',
+			'tvNavigation.activeDestination' => 'aktueller Bereich',
+			'tvNavigation.attentionRequired' => 'erfordert Aufmerksamkeit',
+			'tvMyPleya.groupContent' => 'Meine Inhalte',
+			'tvMyPleya.groupSources' => 'Bibliotheken und Quellen',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} von ${total} Servern online',
+			'tvMyPleya.noServers' => 'Keine Server verbunden',
+			'tvMyPleya.statusOnline' => 'Online',
+			'tvMyPleya.statusOffline' => 'Offline',
+			'tvMyPleya.servers' => 'Server',
+			'tvMyPleya.activity' => 'Aktivität',
+			'tvMyPleya.logs' => 'Protokolle und Diagnose',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Angemeldet als ${name} · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => 'Gespeicherte Filme und Serien',
+			'tvMyPleya.requestsSubtitle' => 'Anfragen und Entdecken',
+			'tvMyPleya.downloadsSubtitle' => 'Offline und Synchronisierungsregeln',
+			'tvMyPleya.librariesSubtitle' => 'Medien, Sammlungen, Wiedergabelisten',
+			'tvMyPleya.serversSubtitle' => 'Verbindungen und lokale Quellen',
+			'tvMyPleya.activitySubtitle' => 'Läuft gerade, gemeinsam ansehen, Remote',
+			'tvMyPleya.watchTogetherSubtitle' => 'Synchron mit Freunden schauen',
+			'tvMyPleya.settingsSubtitle' => 'Darstellung, Player, Tracker',
+			'tvMyPleya.logsSubtitle' => 'Protokolldateien und Absturzberichte',
+			'tvMyPleya.aboutSubtitle' => 'Version und Lizenzen',
+			'tvMyPleya.logoutSubtitle' => 'Auf diesem Gerät abmelden',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'Aktionen',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Aktion ${index} von ${count}: ${label}',
+			'tvContextMenu.noUsableSource' => 'Derzeit ist keine Quelle erreichbar, daher kann dies momentan nicht geändert werden.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Auf allen ${count} Quellen erledigt',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Auf ${done} von ${total} Quellen erledigt. Die übrigen werden erneut versucht, sobald sie wieder online sind.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Auf ${done} von ${total} Quellen erledigt.',
+			'tvContextMenu.failed' => 'Das hat nicht funktioniert',
 			_ => null,
 		};
 	}

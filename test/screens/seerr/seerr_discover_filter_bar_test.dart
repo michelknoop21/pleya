@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
-import 'package:pleya/screens/libraries/library_header.dart';
+import 'package:pleya/widgets/library_header_bar.dart';
 import 'package:pleya/screens/seerr/seerr_discover_filter_bar.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/focusable_filter_chip.dart';

@@ -83,7 +83,9 @@
     "exitFullscreen": "Volledig scherm verlaten",
     "pressBackAgainToExit": "Druk nogmaals op terug om af te sluiten",
     "decreaseValue": "$label verlagen",
-    "increaseValue": "$label verhogen"
+    "increaseValue": "$label verhogen",
+    "online": "Online",
+    "offline": "Offline"
   },
   "screens": {
     "licenses": "Licenties",
@@ -337,7 +339,8 @@
       "movies": "Films",
       "shows": "Series",
       "episodes": "Afleveringen",
-      "people": "Personen"
+      "people": "Personen",
+      "other": "Overig"
     }
   },
   "hotkeys": {
@@ -776,6 +779,8 @@
     "genericErrorTitle": "Er ging iets mis",
     "authFailedTitle": "Aanmelden mislukt",
     "playbackStoppedTitle": "Afspelen gestopt",
+    "playbackFileUnavailableTitle": "Bestand niet beschikbaar",
+    "playbackFileUnavailableBody": "De server kan niet bij het videobestand. Kijk of de schijf of map waar het op staat nog aangesloten is.",
     "playbackSegmentUnavailableBody": "Dit deel van de video is nu niet beschikbaar",
     "playbackConnectionLostBody": "Verbinding met de server verloren",
     "playbackCodecUnsupportedBody": "Dit bestandsformaat wordt niet ondersteund op dit toestel",
@@ -877,7 +882,8 @@
     "sourceCodeDescription": "Bijbehorende broncode van deze build (GPL-3.0)",
     "basedOnPlezy": "Gebaseerd op Plezy",
     "upstreamProject": "Upstream-project",
-    "privacyPolicy": "Privacybeleid"
+    "privacyPolicy": "Privacybeleid",
+    "licence": "Licentie"
   },
   "serverSelection": {
     "allServerConnectionsFailed": "Kon met geen enkele server verbinden. Controleer je netwerk.",
@@ -901,7 +907,14 @@
   "logs": {
     "clearLogs": "Wis logs",
     "copyLogs": "Kopieer logs",
-    "uploadLogs": "Logs uploaden"
+    "uploadLogs": "Logs uploaden",
+    "refreshLogs": "Verversen",
+    "levelFilter": "Niveau",
+    "levelAll": "Alles",
+    "levelWarnings": "Waarschuwingen",
+    "levelErrors": "Fouten",
+    "noMatchingLogs": "Geen regels op dit niveau",
+    "lineCount": "${shown} van ${total} regels"
   },
   "licenses": {
     "relatedPackages": "Gerelateerde pakketten",
@@ -1129,7 +1142,11 @@
     "renameRoom": "Kamer hernoemen",
     "removeRoom": "Verwijderen",
     "guestSwitchUnavailable": "Kon niet schakelen — server niet beschikbaar voor synchronisatie",
-    "guestSwitchFailed": "Kon niet schakelen — inhoud niet gevonden op deze server"
+    "guestSwitchFailed": "Kon niet schakelen — inhoud niet gevonden op deze server",
+    "createSessionHint": "Nodig anderen uit met een code",
+    "joinSessionHint": "Voer de code van je gastheer in",
+    "noRecentRooms": "Nog geen sessies",
+    "noRecentRoomsHint": "Een sessie die je maakt of waaraan je deelneemt verschijnt hier"
   },
   "downloads": {
     "title": "Downloads",
@@ -1771,5 +1788,145 @@
     "onWan": "Van buiten",
     "unavailable": "Tautulli gaf geen antwoord",
     "sidebarLabel": "Nu aan het kijken"
+  },
+  "sourcePicker": {
+    "playTitle": "Kies waar je wilt afspelen",
+    "detailsTitle": "Kies een bron voor de details",
+    "availableOnOneServer": "Beschikbaar op 1 server",
+    "availableOnManyServers": "Beschikbaar op ${count} servers",
+    "oneServerUnchecked": "1 server kon niet worden gecontroleerd",
+    "manyServersUnchecked": "${count} servers konden niet worden gecontroleerd",
+    "checkingMoreSources": "Meer bronnen controleren…",
+    "lastUsed": "Laatst gebruikt",
+    "currentSource": "Huidige bron",
+    "unavailable": "Niet beschikbaar",
+    "signInRequired": "Opnieuw aanmelden vereist",
+    "resumeAt": "Hervatten op ${position}",
+    "watched": "Bekeken",
+    "noneReachableTitle": "Geen bron is momenteel bereikbaar.",
+    "reauthRequiredTitle": "Meld je opnieuw aan om deze titel te bereiken.",
+    "manageServers": "Servers beheren",
+    "sourceLabel": "Bron: ${source}",
+    "change": "Wijzigen",
+    "playbackFailedTitle": "Deze bron kon niet worden afgespeeld.",
+    "detailLoadFailedTitle": "Deze titel kon niet worden geladen.",
+    "chooseAnotherSource": "Andere bron kiezen",
+    "rowSemantics": "Bron ${index} van ${count}: ${description}",
+    "preferredServer": "Voorkeursserver",
+    "setPreferredServer": "Altijd ${server} gebruiken"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Films",
+    "seriesTitle": "Series",
+    "sources": "${count} bronnen",
+    "allSources": "Alle bronnen",
+    "oneSource": "1 bron",
+    "seasons": "${count} seizoenen",
+    "oneSeason": "1 seizoen",
+    "titleCount": "${count} titels",
+    "oneTitle": "1 titel",
+    "titlesLoaded": "${count} titels geladen",
+    "loadMore": "Meer laden",
+    "loadingMore": "Meer laden…",
+    "sort": {
+      "title": "Sorteren",
+      "titleAsc": "Titel A–Z",
+      "titleDesc": "Titel Z–A",
+      "recentlyAdded": "Recent toegevoegd",
+      "oldestAdded": "Oudst toegevoegd",
+      "newestRelease": "Nieuwste release",
+      "oldestRelease": "Oudste release",
+      "recentlyWatched": "Recent bekeken"
+    },
+    "filters": {
+      "title": "Filters",
+      "status": "Status",
+      "genre": "Genre",
+      "year": "Jaar",
+      "servers": "Servers",
+      "libraries": "Bibliotheken",
+      "apply": "Toepassen",
+      "clearAll": "Alles wissen",
+      "all": "Alle",
+      "unwatched": "Niet bekeken",
+      "unsupported": "Niet beschikbaar voor de huidige bronnen",
+      "someUnavailable": "Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen",
+      "noValues": "Niets om uit te kiezen"
+    },
+    "states": {
+      "emptyTitle": "Deze catalogus is leeg",
+      "emptyBody": "Geen zichtbare bibliotheek bevat iets voor deze pagina.",
+      "filterEmptyTitle": "Niets voldoet aan deze filters",
+      "filterEmptyBody": "Wis een filter om meer titels te zien.",
+      "clearFilters": "Filters wissen",
+      "errorTitle": "De catalogus kon niet worden geladen",
+      "errorBody": "Geen enkele server antwoordde. Controleer je verbinding en probeer het opnieuw.",
+      "partialOne": "1 bibliotheek antwoordde niet",
+      "partialMany": "${count} bibliotheken antwoordden niet"
+    },
+    "semantics": {
+      "watched": "Bekeken",
+      "inProgress": "Bezig",
+      "loadingMore": "Meer titels laden"
+    },
+    "discovery": {
+      "allMovies": "Alle films",
+      "allSeries": "Alle series",
+      "episodeLabel": "S${season} A${episode}",
+      "partial": "Niet alle bronnen antwoordden",
+      "emptyTitle": "Nog niets te ontdekken",
+      "emptyBody": "Geen zichtbare bibliotheek heeft hier iets te tonen.",
+      "semantics": {
+        "section": "${title}, ${count} titels",
+        "position": "${position} van ${count}",
+        "viewAllMovies": "Alle films bekijken, opent de volledige catalogus",
+        "viewAllSeries": "Alle series bekijken, opent de volledige catalogus"
+      }
+    },
+    "home": {
+      "featured": "Uitgelicht"
+    }
+  },
+  "tvNavigation": {
+    "activeDestination": "huidige sectie",
+    "attentionRequired": "vereist aandacht"
+  },
+  "tvMyPleya": {
+    "groupContent": "Mijn content",
+    "groupSources": "Bibliotheken en bronnen",
+    "groupPleya": "Pleya",
+    "serversOnline": "${online} van ${total} servers online",
+    "noServers": "Geen servers verbonden",
+    "statusOnline": "Online",
+    "statusOffline": "Offline",
+    "servers": "Servers",
+    "activity": "Activiteit",
+    "logs": "Logs en diagnose",
+    "signedInAs": "Aangemeld als ${name} · Pleya ${version}",
+    "watchlistSubtitle": "Bewaarde films en series",
+    "requestsSubtitle": "Verzoeken en ontdekken",
+    "downloadsSubtitle": "Offline en synchronisatieregels",
+    "librariesSubtitle": "Media, collecties, afspeellijsten",
+    "serversSubtitle": "Verbindingen en lokale bronnen",
+    "activitySubtitle": "Nu kijken, samen kijken, remote",
+    "watchTogetherSubtitle": "Kijk gelijk met vrienden",
+    "settingsSubtitle": "Weergave, speler, trackers",
+    "logsSubtitle": "Logbestanden en crashrapportage",
+    "aboutSubtitle": "Versie en licenties",
+    "logoutSubtitle": "Afmelden op dit apparaat",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    },
+    "libraryCount": "${count} bibliotheken"
+  },
+  "tvContextMenu": {
+    "title": "Acties",
+    "menuSemantics": "Actie ${index} van ${count}: ${label}",
+    "noUsableSource": "Er is momenteel geen bron bereikbaar, dus dit kan nu niet worden gewijzigd.",
+    "doneOnAll": "Gereed op alle ${count} bronnen",
+    "doneOnSome": "Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.",
+    "doneOnSomeNoRetry": "Gereed op ${done} van ${total} bronnen.",
+    "failed": "Dat is niet gelukt"
   }
 }

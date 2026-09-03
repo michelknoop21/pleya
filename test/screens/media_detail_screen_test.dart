@@ -17,6 +17,17 @@ import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/focus/focusable_wrapper.dart';
+import 'package:pleya/media/unified/canonical_media_identity.dart';
+import 'package:pleya/media/unified/source_availability.dart';
+import 'package:pleya/media/unified/source_coverage_state.dart';
+import 'package:pleya/media/unified/unified_media_group.dart';
+import 'package:pleya/media/unified/unified_media_source.dart';
+import 'package:pleya/media/unified/unified_route_context.dart';
+import 'package:pleya/media/unified/unified_watch_state.dart';
+import 'package:pleya/screens/tv/tv_media_source_picker_route.dart';
+import 'package:pleya/screens/tv/tv_unified_activation.dart';
+import 'package:pleya/services/unified_catalog/source_preference_store.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/watchlist_entry.dart';
 import 'package:pleya/media/watchlist_scope.dart';
@@ -37,6 +48,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
@@ -1209,6 +1221,552 @@ void main() {
     });
   });
 
+  // F19/A14 (hoofdstuk 21.7): a detail load that genuinely fails — not
+  // hangs — must offer "Andere bron kiezen" explicitly when the group has
+  // another usable source, through the exact hoofdstuk 15 picker callback.
+  group('F19/A14: detail load failure offers an alternative source', () {
+    UnifiedMediaRouteContext routeContext({required List<String> sourceKeys, required String sourceKey}) =>
+        UnifiedMediaRouteContext(
+          groupId: 'g1',
+          identity: CanonicalMediaIdentity.movie(title: 'Sintel', year: 2010),
+          sourceKey: sourceKey,
+          availableSourceKeys: sourceKeys,
+          coverage: SourceCoverageState.complete(sourceKeys.toSet()),
+          intent: UnifiedActivationIntent.details,
+        );
+
+    MediaItem sintel() => MediaItem(
+      id: 'movie_1',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.movie,
+      title: 'Sintel',
+      serverId: 'server_1',
+      serverName: 'Server',
+    );
+
+    /// Wraps [child] the way `TvRootShell` wraps every pushed detail route in
+    /// production: `InputModeTracker` + `OverlaySheetHost` above it. Without
+    /// this, `showAdaptive` falls back to a plain `showModalBottomSheet`,
+    /// which constrains this TV-styled panel to a width/height no real TV
+    /// route would ever hand it.
+    Widget harness(MultiServerProvider provider, Widget child) => TranslationProvider(
+      child: ChangeNotifierProvider<MultiServerProvider>.value(
+        value: provider,
+        child: MaterialApp(
+          builder: withNoticeLayer(),
+          theme: monoTheme(dark: true),
+          home: InputModeTracker(
+            child: OverlaySheetHost(child: withProfileNavigationScope(child: child)),
+          ),
+        ),
+      ),
+    );
+
+    testWidgets('a failed fetch with an alternative source shows the explicit offer', (tester) async {
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final movie = sintel();
+      final client = _ThrowingMetadataClient();
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      var chooseAnotherCalled = false;
+      await tester.pumpWidget(
+        harness(
+          provider,
+          MediaDetailScreen(
+            metadata: movie,
+            unifiedRouteContext: routeContext(
+              sourceKeys: ['server_1:movie_1', 'server_2:movie_1'],
+              sourceKey: 'server_1:movie_1',
+            ),
+            onChangeSource: (_) async => chooseAnotherCalled = true,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      expect(find.text(t.sourcePicker.detailLoadFailedTitle), findsOneWidget);
+      final chooseAnother = find.text(t.sourcePicker.chooseAnotherSource);
+      expect(chooseAnother, findsOneWidget);
+
+      await _activateByLabel(tester, t.sourcePicker.chooseAnotherSource);
+
+      expect(chooseAnotherCalled, isTrue);
+    });
+
+    testWidgets('closing the offer leaves the page usable, not a dead end', (tester) async {
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final movie = sintel();
+      final client = _ThrowingMetadataClient();
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      await tester.pumpWidget(
+        harness(
+          provider,
+          MediaDetailScreen(
+            metadata: movie,
+            unifiedRouteContext: routeContext(
+              sourceKeys: ['server_1:movie_1', 'server_2:movie_1'],
+              sourceKey: 'server_1:movie_1',
+            ),
+            onChangeSource: (_) async {},
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      await _activateByLabel(tester, t.common.close);
+
+      // No silent failover happened: the same (stale-fallback) metadata is
+      // still what is on screen, not a swapped-in different source.
+      expect(find.text('Sintel'), findsWidgets);
+    });
+
+    testWidgets('a failed fetch with no alternative source never opens the panel', (tester) async {
+      // Hoofdstuk 21.7: "bestaande foutafhandeling" only, when there is
+      // nothing to offer — this must not invent a picker that has nowhere
+      // to send the user.
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final movie = sintel();
+      final client = _ThrowingMetadataClient();
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      // No unifiedRouteContext, no onChangeSource — the plain, non-unified
+      // entry point this screen has always had.
+      await tester.pumpWidget(harness(provider, MediaDetailScreen(metadata: movie)));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text(t.sourcePicker.detailLoadFailedTitle), findsNothing);
+    });
+
+    testWidgets('a single-source route never opens the panel either', (tester) async {
+      // onChangeSource is only ever non-null when hasAlternativeSources is
+      // true (hoofdstuk 15's own gate), so this mirrors that: nothing to
+      // switch to means nothing to offer, even with a route context present.
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final movie = sintel();
+      final client = _ThrowingMetadataClient();
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      await tester.pumpWidget(
+        harness(
+          provider,
+          MediaDetailScreen(
+            metadata: movie,
+            unifiedRouteContext: routeContext(sourceKeys: ['server_1:movie_1'], sourceKey: 'server_1:movie_1'),
+            // No onChangeSource passed — matches the production gate.
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text(t.sourcePicker.detailLoadFailedTitle), findsNothing);
+    });
+
+    testWidgets('a successful load never shows the failure panel', (tester) async {
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final movie = sintel();
+      final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      await tester.pumpWidget(
+        harness(
+          provider,
+          MediaDetailScreen(
+            metadata: movie,
+            unifiedRouteContext: routeContext(
+              sourceKeys: ['server_1:movie_1', 'server_2:movie_1'],
+              sourceKey: 'server_1:movie_1',
+            ),
+            onChangeSource: (_) async {},
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      expect(find.text(t.sourcePicker.detailLoadFailedTitle), findsNothing);
+    });
+  });
+
+  // D14 + the second half of F19/A14's seam: what actually happens when the
+  // offer is taken. The tests above prove the offer appears and the callback
+  // fires; nothing proved that taking it lands you on the other source.
+  //
+  // Driven through the real `activateUnifiedMediaGroup`, so `onChangeSource`
+  // is the production closure (`_changeSourceFromDetail`) and not a stub.
+  group('D14: switching source on an open series detail', () {
+    MediaItem show(String serverId) => MediaItem(
+      id: 'show_1',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.show,
+      title: 'The Show',
+      serverId: serverId,
+      serverName: serverId,
+    );
+
+    MediaItem season(String serverId, int index) => MediaItem(
+      id: 'season_$index',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.season,
+      title: 'Season $index',
+      index: index,
+      leafCount: 1,
+      parentId: 'show_1',
+      serverId: serverId,
+      serverName: serverId,
+    );
+
+    UnifiedMediaSource source(String serverId) =>
+        UnifiedMediaSource.fromItem(show(serverId), availability: SourceAvailability.online);
+
+    UnifiedMediaGroup group() {
+      final sources = [source('server_1'), source('server_2')];
+      return UnifiedMediaGroup(
+        groupId: 'g1',
+        identity: CanonicalMediaIdentity.show(title: 'The Show'),
+        sources: sources,
+        representativeSourceKey: sources.first.sourceKey,
+        watchState: UnifiedWatchState(representativeSourceKey: sources.first.sourceKey),
+      );
+    }
+
+    /// server_1 has one season, server_2 has two — so which source the page is
+    /// reading from is visible on screen rather than inferred.
+    _FakeMediaServerClient clientFor(String serverId, {required int seasons}) => _FakeMediaServerClient(
+      id: serverId,
+      name: serverId,
+      show: show(serverId),
+      childrenByParent: {
+        'show_1': [for (var i = 1; i <= seasons; i++) season(serverId, i)],
+      },
+    );
+
+    testWidgets('taking the offer replaces the route and rebuilds the page from the chosen source', (tester) async {
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final manager = MultiServerManager()
+        ..debugRegisterClientForTesting(clientFor('server_1', seasons: 1))
+        ..debugRegisterClientForTesting(clientFor('server_2', seasons: 2));
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      final observer = _RouteLog();
+      final unified = group();
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: ChangeNotifierProvider<MultiServerProvider>.value(
+            value: provider,
+            child: MaterialApp(
+              navigatorObservers: [observer],
+              // The scope and the overlay host go *above* the navigator, not
+              // inside `home`: the detail route is pushed on this navigator,
+              // so anything it needs — `ProfileNavigationScope`, the sheet
+              // host the picker opens into — has to be an ancestor of the
+              // navigator rather than a sibling of the route it pushes.
+              builder: withNoticeLayer(
+                (context, child) => InputModeTracker(
+                  child: OverlaySheetHost(child: withProfileNavigationScope(child: child!)),
+                ),
+              ),
+              theme: monoTheme(dark: true),
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: FocusableWrapper(
+                      semanticLabel: 'open',
+                      onSelect: () => unawaited(
+                        activateUnifiedMediaGroup(
+                          context,
+                          group: unified,
+                          intent: UnifiedActivationIntent.details,
+                          environment: buildUnifiedActivationEnvironment(
+                            group: unified,
+                            health: unifiedServerHealth(isOnline: (_) => true, authErrorServerIds: const {}),
+                            catalogServerIds: const {'server_1', 'server_2'},
+                            availabilityRevision: ValueNotifier<int>(0),
+                          ),
+                        ),
+                      ),
+                      child: const Text('open'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Two online sources: the coordinator asks rather than guessing.
+      await _activateByLabel(tester, 'open');
+      await tester.pumpAndSettle();
+      expect(find.text(t.sourcePicker.detailsTitle), findsOneWidget);
+
+      await _activateByLabel(tester, 'server_1');
+      await tester.pumpAndSettle();
+      expect(
+        find.text(t.sourcePicker.sourceLabel(source: 'server_1')),
+        findsOneWidget,
+        reason: 'the page says which concrete source it is reading',
+      );
+      expect(find.text('Season 2'), findsNothing, reason: 'server_1 only has one season');
+
+      final pushesBefore = observer.pushes;
+      final popsBefore = observer.pops;
+
+      // Hoofdstuk 15's always-visible "[ Wijzigen ]" chip.
+      await _activateByLabel(tester, t.sourcePicker.change);
+      await tester.pumpAndSettle();
+      expect(find.text(t.sourcePicker.detailsTitle), findsOneWidget, reason: 'the same picker, in details mode');
+
+      await _activateByLabel(tester, 'server_2');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(t.sourcePicker.sourceLabel(source: 'server_2')),
+        findsOneWidget,
+        reason: 'the page is now reading the chosen source, not the one it was opened on',
+      );
+      expect(find.text('Season 2'), findsWidgets, reason: 'and the whole season path came with it (hoofdstuk 15)');
+      expect(
+        observer.pops - popsBefore,
+        1,
+        reason: 'the route is replaced, not stacked: Back must not walk back through the old source',
+      );
+      expect(observer.pushes - pushesBefore, 1);
+
+      await tester.runAsync(() async {
+        expect(await SourcePreferenceStore.read(unified.identity), 'server_2:show_1');
+      });
+    });
+
+    testWidgets('F19/A14: the failure panel is the other door to the same switch', (tester) async {
+      // The tests in the group above stop where the callback fires. This one
+      // takes the offer: the whole chapter-21.7 flow, end to end, through the
+      // production closure — failed load → "Andere bron kiezen" → the picker
+      // → the alternative source's detail page.
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final manager = MultiServerManager()
+        ..debugRegisterClientForTesting(_ThrowingMetadataClient())
+        ..debugRegisterClientForTesting(clientFor('server_2', seasons: 2));
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      final observer = _RouteLog();
+      final unified = group();
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: ChangeNotifierProvider<MultiServerProvider>.value(
+            value: provider,
+            child: MaterialApp(
+              navigatorObservers: [observer],
+              builder: withNoticeLayer(
+                (context, child) => InputModeTracker(
+                  child: OverlaySheetHost(child: withProfileNavigationScope(child: child!)),
+                ),
+              ),
+              theme: monoTheme(dark: true),
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: FocusableWrapper(
+                      semanticLabel: 'open',
+                      onSelect: () => unawaited(
+                        activateUnifiedMediaGroup(
+                          context,
+                          group: unified,
+                          intent: UnifiedActivationIntent.details,
+                          environment: buildUnifiedActivationEnvironment(
+                            group: unified,
+                            health: unifiedServerHealth(isOnline: (_) => true, authErrorServerIds: const {}),
+                            catalogServerIds: const {'server_1', 'server_2'},
+                            availabilityRevision: ValueNotifier<int>(0),
+                          ),
+                        ),
+                      ),
+                      child: const Text('open'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await _activateByLabel(tester, 'open');
+      await tester.pumpAndSettle();
+      await _activateByLabel(tester, 'server_1');
+      await tester.pumpAndSettle();
+      // The panel itself opens from a post-frame callback once the failed load
+      // has settled, which pumpAndSettle above does not wait for.
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(find.text(t.sourcePicker.detailLoadFailedTitle), findsOneWidget);
+
+      await _activateByLabel(tester, t.sourcePicker.chooseAnotherSource);
+      await tester.pumpAndSettle();
+      expect(find.text(t.sourcePicker.detailsTitle), findsOneWidget, reason: 'the offer opens the real picker');
+
+      await _activateByLabel(tester, 'server_2');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(t.sourcePicker.sourceLabel(source: 'server_2')),
+        findsOneWidget,
+        reason: 'taking the offer actually lands on the alternative source',
+      );
+      expect(
+        find.text(t.sourcePicker.detailLoadFailedTitle),
+        findsNothing,
+        reason: 'and the failed page is gone rather than stacked behind the good one',
+      );
+    });
+
+    testWidgets('re-picking the source already open changes nothing at all', (tester) async {
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final manager = MultiServerManager()
+        ..debugRegisterClientForTesting(clientFor('server_1', seasons: 1))
+        ..debugRegisterClientForTesting(clientFor('server_2', seasons: 2));
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      final observer = _RouteLog();
+      final unified = group();
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: ChangeNotifierProvider<MultiServerProvider>.value(
+            value: provider,
+            child: MaterialApp(
+              navigatorObservers: [observer],
+              // The scope and the overlay host go *above* the navigator, not
+              // inside `home`: the detail route is pushed on this navigator,
+              // so anything it needs — `ProfileNavigationScope`, the sheet
+              // host the picker opens into — has to be an ancestor of the
+              // navigator rather than a sibling of the route it pushes.
+              builder: withNoticeLayer(
+                (context, child) => InputModeTracker(
+                  child: OverlaySheetHost(child: withProfileNavigationScope(child: child!)),
+                ),
+              ),
+              theme: monoTheme(dark: true),
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: FocusableWrapper(
+                      semanticLabel: 'open',
+                      onSelect: () => unawaited(
+                        activateUnifiedMediaGroup(
+                          context,
+                          group: unified,
+                          intent: UnifiedActivationIntent.details,
+                          environment: buildUnifiedActivationEnvironment(
+                            group: unified,
+                            health: unifiedServerHealth(isOnline: (_) => true, authErrorServerIds: const {}),
+                            catalogServerIds: const {'server_1', 'server_2'},
+                            availabilityRevision: ValueNotifier<int>(0),
+                          ),
+                        ),
+                      ),
+                      child: const Text('open'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await _activateByLabel(tester, 'open');
+      await tester.pumpAndSettle();
+      await _activateByLabel(tester, 'server_1');
+      await tester.pumpAndSettle();
+
+      final pushesBefore = observer.pushes;
+      final popsBefore = observer.pops;
+
+      await _activateByLabel(tester, t.sourcePicker.change);
+      await tester.pumpAndSettle();
+      await _activateByLabel(tester, 'server_1');
+      await tester.pumpAndSettle();
+
+      expect(
+        observer.pops - popsBefore,
+        0,
+        reason: 'picking the source already open must not replace the route with an identical one',
+      );
+      expect(observer.pushes - pushesBefore, 0);
+      expect(find.text(t.sourcePicker.sourceLabel(source: 'server_1')), findsOneWidget);
+    });
+  });
+
   group('back/menu suppression after a child route pops', () {
     // Non-AppleTV only: handleBackKeyAction's AppleTV branch fires onBack on
     // KeyDownEvent and swallows every KeyUpEvent unconditionally regardless
@@ -1487,6 +2045,34 @@ void main() {
   });
 }
 
+Future<void> _press(WidgetTester tester, LogicalKeyboardKey key) async {
+  await tester.sendKeyDownEvent(key);
+  await tester.sendKeyUpEvent(key);
+  // A bounded settle, not `pumpAndSettle()`: the detail screen behind this
+  // panel runs its own long-lived animations unrelated to this interaction,
+  // and letting the test wait for every scheduled frame to stop entirely can
+  // walk it through an intermediate layout state that legitimately overflows
+  // — a pre-existing fragility in that screen's hero layout, not something
+  // this test is about.
+  for (var i = 0; i < 6; i++) {
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+}
+
+/// Focuses the control showing [label] and presses Select on it.
+///
+/// `FocusableWrapper`/`TvPanelButton` are D-pad widgets and carry no tap
+/// handler at all, so `tester.tap` on one of these silently does nothing —
+/// which is also the honest way to drive a 10-foot surface in a test.
+Future<void> _activateByLabel(WidgetTester tester, String label) async {
+  final focus = Focus.maybeOf(tester.element(find.text(label)), scopeOk: true)!;
+  focus.requestFocus();
+  await tester.pump();
+  expect(focus.hasPrimaryFocus, isTrue, reason: 'the control under test must actually hold the focus');
+  SelectKeyUpSuppressor.clearSuppression();
+  await _press(tester, LogicalKeyboardKey.select);
+}
+
 /// A watchlist source that counts what it was asked for, so a test can tell a
 /// local patch apart from a round trip.
 class _CountingWatchlistSource implements WatchlistSource {
@@ -1569,13 +2155,20 @@ class _FakeMediaServerClient implements MediaServerClient {
     this.childrenPageFutures = const {},
     this.childrenPageErrors = const {},
     this.pendingPlayableDescendants,
+    this.id = 'server_1',
+    this.name = 'Server',
   });
 
-  @override
-  ServerId get serverId => ServerId('server_1');
+  /// D14 mounts two of these at once, so the server a fake speaks for has to
+  /// be a parameter rather than a constant.
+  final String id;
+  final String name;
 
   @override
-  String? get serverName => 'Server';
+  ServerId get serverId => ServerId(id);
+
+  @override
+  String? get serverName => name;
 
   @override
   MediaBackend get backend => MediaBackend.jellyfin;
@@ -1640,4 +2233,41 @@ class _FakeMediaServerClient implements MediaServerClient {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Always throws from `fetchItemWithOnDeck` — the genuine-failure case, as
+/// distinct from `_HangingMetadataClient`'s never-resolves one.
+class _ThrowingMetadataClient implements MediaServerClient {
+  @override
+  ServerId get serverId => ServerId('server_1');
+
+  @override
+  String? get serverName => 'Server';
+
+  @override
+  MediaBackend get backend => MediaBackend.jellyfin;
+
+  @override
+  ServerCapabilities get capabilities => ServerCapabilities.jellyfin;
+
+  @override
+  Future<({MediaItem? item, MediaItem? onDeckEpisode})> fetchItemWithOnDeck(String id) async {
+    throw StateError('server unreachable');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Counts route pushes and pops so "the route is replaced, not stacked" can be
+/// asserted as a number rather than inferred from what happens to be on screen.
+class _RouteLog extends NavigatorObserver {
+  int pushes = 0;
+  int pops = 0;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => pushes++;
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => pops++;
 }

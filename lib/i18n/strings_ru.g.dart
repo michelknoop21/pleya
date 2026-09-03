@@ -62,6 +62,7 @@ class TranslationsRu extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsRu connections = _TranslationsConnectionsRu._(_root);
 	@override late final _TranslationsDiscoverRu discover = _TranslationsDiscoverRu._(_root);
 	@override late final _TranslationsErrorsRu errors = _TranslationsErrorsRu._(_root);
+	@override late final _TranslationsNoticesRu notices = _TranslationsNoticesRu._(_root);
 	@override late final _TranslationsLibrariesRu libraries = _TranslationsLibrariesRu._(_root);
 	@override late final _TranslationsAboutRu about = _TranslationsAboutRu._(_root);
 	@override late final _TranslationsServerSelectionRu serverSelection = _TranslationsServerSelectionRu._(_root);
@@ -87,6 +88,11 @@ class TranslationsRu extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerRu addServer = _TranslationsAddServerRu._(_root);
 	@override late final _TranslationsAddLocalFolderRu addLocalFolder = _TranslationsAddLocalFolderRu._(_root);
 	@override late final _TranslationsPleyaShareRu pleyaShare = _TranslationsPleyaShareRu._(_root);
+	@override late final _TranslationsSourcePickerRu sourcePicker = _TranslationsSourcePickerRu._(_root);
+	@override late final _TranslationsUnifiedCatalogRu unifiedCatalog = _TranslationsUnifiedCatalogRu._(_root);
+	@override late final _TranslationsTvNavigationRu tvNavigation = _TranslationsTvNavigationRu._(_root);
+	@override late final _TranslationsTvMyPleyaRu tvMyPleya = _TranslationsTvMyPleyaRu._(_root);
+	@override late final _TranslationsTvContextMenuRu tvContextMenu = _TranslationsTvContextMenuRu._(_root);
 }
 
 // Path: app
@@ -442,6 +448,7 @@ class _TranslationsSearchRu extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => 'Попробуйте другой запрос';
 	@override String get searchYourMedia => 'Поиск в вашей медиатеке';
 	@override String get enterTitleActorOrKeyword => 'Введите название, актёра или ключевое слово';
+	@override late final _TranslationsSearchFiltersRu filters = _TranslationsSearchFiltersRu._(_root);
 }
 
 // Path: hotkeys
@@ -912,6 +919,17 @@ class _TranslationsErrorsRu extends TranslationsErrorsEn {
 	@override String failedToSwitchProfile({required Object displayName}) => 'Не удалось переключиться на ${displayName}';
 	@override String failedToDeleteProfile({required Object displayName}) => 'Не удалось удалить ${displayName}';
 	@override String get failedToRate => 'Не удалось обновить оценку';
+}
+
+// Path: notices
+class _TranslationsNoticesRu extends TranslationsNoticesEn {
+	_TranslationsNoticesRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => 'Файл недоступен';
+	@override String get playbackFileUnavailableBody => 'Серверу не удаётся получить доступ к видеофайлу. Проверьте, подключён ли диск или папка, где он находится.';
 }
 
 // Path: libraries
@@ -1707,6 +1725,140 @@ class _TranslationsPleyaShareRu extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => 'Сканирование сети…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerRu extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => 'Выберите, где воспроизвести';
+	@override String get detailsTitle => 'Выберите источник для сведений';
+	@override String get availableOnOneServer => 'Доступно на 1 сервере';
+	@override String availableOnManyServers({required Object count}) => 'Доступно на ${count} серверах';
+	@override String get oneServerUnchecked => 'Не удалось проверить 1 сервер';
+	@override String manyServersUnchecked({required Object count}) => 'Не удалось проверить: ${count} серв.';
+	@override String get checkingMoreSources => 'Проверка других источников…';
+	@override String get lastUsed => 'Использован последним';
+	@override String get currentSource => 'Текущий источник';
+	@override String get unavailable => 'Недоступно';
+	@override String get signInRequired => 'Требуется повторный вход';
+	@override String resumeAt({required Object position}) => 'Продолжить с ${position}';
+	@override String get watched => 'Просмотрено';
+	@override String get noneReachableTitle => 'Сейчас ни один источник недоступен.';
+	@override String get reauthRequiredTitle => 'Войдите снова, чтобы открыть эту запись.';
+	@override String get manageServers => 'Управление серверами';
+	@override String sourceLabel({required Object source}) => 'Источник: ${source}';
+	@override String get change => 'Изменить';
+	@override String get playbackFailedTitle => 'Не удалось воспроизвести этот источник.';
+	@override String get detailLoadFailedTitle => 'Не удалось загрузить этот материал.';
+	@override String get chooseAnotherSource => 'Выбрать другой источник';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Источник ${index} из ${count}: ${description}';
+	@override String get preferredServer => 'Предпочитаемый сервер';
+	@override String setPreferredServer({required Object server}) => 'Всегда использовать ${server}';
+}
+
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogRu extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => 'Фильмы';
+	@override String get seriesTitle => 'Сериалы';
+	@override String sources({required Object count}) => 'Источников: ${count}';
+	@override String get allSources => 'Все источники';
+	@override String get oneSource => '1 источник';
+	@override String seasons({required Object count}) => 'Сезонов: ${count}';
+	@override String get oneSeason => '1 сезон';
+	@override String titleCount({required Object count}) => 'Названий: ${count}';
+	@override String get oneTitle => '1 название';
+	@override String titlesLoaded({required Object count}) => 'Загружено названий: ${count}';
+	@override String get loadMore => 'Загрузить ещё';
+	@override String get loadingMore => 'Загрузка…';
+	@override late final _TranslationsUnifiedCatalogSortRu sort = _TranslationsUnifiedCatalogSortRu._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersRu filters = _TranslationsUnifiedCatalogFiltersRu._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesRu states = _TranslationsUnifiedCatalogStatesRu._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsRu semantics = _TranslationsUnifiedCatalogSemanticsRu._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryRu discovery = _TranslationsUnifiedCatalogDiscoveryRu._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeRu home = _TranslationsUnifiedCatalogHomeRu._(_root);
+}
+
+// Path: tvNavigation
+class _TranslationsTvNavigationRu extends TranslationsTvNavigationEn {
+	_TranslationsTvNavigationRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get activeDestination => 'текущий раздел';
+	@override String get attentionRequired => 'требует внимания';
+}
+
+// Path: tvMyPleya
+class _TranslationsTvMyPleyaRu extends TranslationsTvMyPleyaEn {
+	_TranslationsTvMyPleyaRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get groupContent => 'Мой контент';
+	@override String get groupSources => 'Библиотеки и источники';
+	@override String get groupPleya => 'Pleya';
+	@override String serversOnline({required Object online, required Object total}) => '${online} из ${total} серверов в сети';
+	@override String get noServers => 'Нет подключённых серверов';
+	@override String get statusOnline => 'В сети';
+	@override String get statusOffline => 'Не в сети';
+	@override String get servers => 'Серверы';
+	@override String get activity => 'Активность';
+	@override String get logs => 'Журналы и диагностика';
+	@override String signedInAs({required Object name, required Object version}) => 'Вы вошли как ${name} · Pleya ${version}';
+	@override String get watchlistSubtitle => 'Сохранённые фильмы и сериалы';
+	@override String get requestsSubtitle => 'Запросы и подборки';
+	@override String get downloadsSubtitle => 'Офлайн и правила синхронизации';
+	@override String get librariesSubtitle => 'Медиа, коллекции, плейлисты';
+	@override String get serversSubtitle => 'Подключения и локальные источники';
+	@override String get activitySubtitle => 'Сейчас смотрят, совместный просмотр, пульт';
+	@override String get watchTogetherSubtitle => 'Смотрите синхронно с друзьями';
+	@override String get settingsSubtitle => 'Отображение, плеер, трекеры';
+	@override String get logsSubtitle => 'Файлы журналов и отчёты о сбоях';
+	@override String get aboutSubtitle => 'Версия и лицензии';
+	@override String get logoutSubtitle => 'Выйти на этом устройстве';
+	@override late final _TranslationsTvMyPleyaSemanticsRu semantics = _TranslationsTvMyPleyaSemanticsRu._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuRu extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Действия';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => 'Действие ${index} из ${count}: ${label}';
+	@override String get noUsableSource => 'Сейчас нет доступного источника, поэтому это нельзя изменить.';
+	@override String doneOnAll({required Object count}) => 'Выполнено для всех источников (${count})';
+	@override String doneOnSome({required Object done, required Object total}) => 'Выполнено для ${done} из ${total} источников. Остальные будут повторены, когда снова окажутся в сети.';
+	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Выполнено для ${done} из ${total} источников.';
+	@override String get failed => 'Не получилось';
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersRu extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Все';
+	@override String get movies => 'Фильмы';
+	@override String get shows => 'Сериалы';
+	@override String get episodes => 'Эпизоды';
+	@override String get people => 'Люди';
+	@override String get other => 'Другое';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsRu extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsRu._(TranslationsRu root) : this._root = root, super.internal(root);
@@ -1984,6 +2136,125 @@ class _TranslationsTrackersLibraryFilterRu extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => 'Синхронизировать только библиотеки, отмеченные ниже.';
 	@override String get libraries => 'Библиотеки';
 	@override String get noLibraries => 'Библиотеки недоступны';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortRu extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Сортировка';
+	@override String get titleAsc => 'Название А–Я';
+	@override String get titleDesc => 'Название Я–А';
+	@override String get recentlyAdded => 'Недавно добавленные';
+	@override String get oldestAdded => 'Давно добавленные';
+	@override String get newestRelease => 'Новые по выходу';
+	@override String get oldestRelease => 'Старые по выходу';
+	@override String get recentlyWatched => 'Недавно просмотренные';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersRu extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Фильтры';
+	@override String get status => 'Статус';
+	@override String get genre => 'Жанр';
+	@override String get year => 'Год';
+	@override String get servers => 'Серверы';
+	@override String get libraries => 'Библиотеки';
+	@override String get apply => 'Применить';
+	@override String get clearAll => 'Очистить всё';
+	@override String get all => 'Все';
+	@override String get unwatched => 'Непросмотренные';
+	@override String get unsupported => 'Недоступно для текущих источников';
+	@override String get someUnavailable => 'Некоторые фильтры недоступны для выбранных источников';
+	@override String get noValues => 'Нечего выбрать';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesRu extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'Этот каталог пуст';
+	@override String get emptyBody => 'Ни одна видимая библиотека не содержит ничего для этой страницы.';
+	@override String get filterEmptyTitle => 'Ничего не соответствует этим фильтрам';
+	@override String get filterEmptyBody => 'Сбросьте фильтр, чтобы увидеть больше названий.';
+	@override String get clearFilters => 'Сбросить фильтры';
+	@override String get errorTitle => 'Не удалось загрузить каталог';
+	@override String get errorBody => 'Ни один сервер не ответил. Проверьте подключение и повторите попытку.';
+	@override String get partialOne => '1 библиотека не ответила';
+	@override String partialMany({required Object count}) => 'Не ответило библиотек: ${count}';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsRu extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => 'Просмотрено';
+	@override String get inProgress => 'В процессе';
+	@override String get loadingMore => 'Загрузка других названий';
+}
+
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryRu extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => 'Все фильмы';
+	@override String get allSeries => 'Все сериалы';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => 'Некоторые источники не ответили';
+	@override String get emptyTitle => 'Пока нечего открывать';
+	@override String get emptyBody => 'Ни в одной видимой библиотеке здесь нечего показать.';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsRu semantics = _TranslationsUnifiedCatalogDiscoverySemanticsRu._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeRu extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'Рекомендуем';
+}
+
+// Path: tvMyPleya.semantics
+class _TranslationsTvMyPleyaSemanticsRu extends TranslationsTvMyPleyaSemanticsEn {
+	_TranslationsTvMyPleyaSemanticsRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsRu extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}, названий: ${count}';
+	@override String position({required Object position, required Object count}) => '${position} из ${count}';
+	@override String get viewAllMovies => 'Показать все фильмы, открывает полный каталог';
+	@override String get viewAllSeries => 'Показать все сериалы, открывает полный каталог';
 }
 
 /// The flat map containing all translations for locale <ru>.
@@ -2286,6 +2557,12 @@ extension on TranslationsRu {
 			'search.tryDifferentTerm' => 'Попробуйте другой запрос',
 			'search.searchYourMedia' => 'Поиск в вашей медиатеке',
 			'search.enterTitleActorOrKeyword' => 'Введите название, актёра или ключевое слово',
+			'search.filters.all' => 'Все',
+			'search.filters.movies' => 'Фильмы',
+			'search.filters.shows' => 'Сериалы',
+			'search.filters.episodes' => 'Эпизоды',
+			'search.filters.people' => 'Люди',
+			'search.filters.other' => 'Другое',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Назначить клавишу для ${actionName}',
 			'hotkeys.clearShortcut' => 'Очистить клавишу',
 			'hotkeys.noShortcutSet' => 'Сочетание не задано',
@@ -2500,14 +2777,14 @@ extension on TranslationsRu {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Таймер сна установлен на ${label}',
 			'messages.noItemsAvailable' => 'Нет доступных элементов',
 			'messages.failedToCreatePlayQueueNoItems' => 'Не удалось создать очередь воспроизведения — нет элементов',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Не удалось ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Переключение на совместимый плеер...',
 			'messages.serverLimitTitle' => 'Ошибка воспроизведения',
 			'messages.serverLimitBody' => 'Ошибка сервера (HTTP 500). Лимит пропускной способности/транскодирования, вероятно, отклонил сессию. Попросите владельца изменить настройки.',
 			'messages.logsUploaded' => 'Логи загружены',
 			'messages.logsUploadFailed' => 'Не удалось загрузить логи',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => 'ID лога',
 			'subtitlingStyling.text' => 'Текст',
 			'subtitlingStyling.border' => 'Обводка',
@@ -2644,6 +2921,8 @@ extension on TranslationsRu {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Не удалось переключиться на ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Не удалось удалить ${displayName}',
 			'errors.failedToRate' => 'Не удалось обновить оценку',
+			'notices.playbackFileUnavailableTitle' => 'Файл недоступен',
+			'notices.playbackFileUnavailableBody' => 'Серверу не удаётся получить доступ к видеофайлу. Проверьте, подключён ли диск или папка, где он находится.',
 			'libraries.title' => 'Библиотеки',
 			'libraries.fallbackTitle' => 'Библиотека',
 			'libraries.scanLibraryFiles' => 'Сканировать файлы библиотеки',
@@ -3012,6 +3291,8 @@ extension on TranslationsRu {
 			'companionRemote.pairing.discoveryDescription' => 'Устройства Pleya с тем же аккаунтом Plex появятся здесь',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Подключение...',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.searchingForDevices' => 'Поиск устройств...',
 			'companionRemote.pairing.noDevicesFound' => 'Устройства в вашей сети не найдены',
 			'companionRemote.pairing.noDevicesHint' => 'Откройте Pleya на компьютере и используйте тот же WiFi',
@@ -3020,8 +3301,6 @@ extension on TranslationsRu {
 			'companionRemote.pairing.cryptoInitFailed' => 'Не удалось запустить защищенное подключение. Сначала войдите в Plex.',
 			'companionRemote.pairing.validationHostRequired' => 'Введите адрес хоста',
 			'companionRemote.pairing.validationHostFormat' => 'Формат должен быть IP:порт (например, 192.168.1.100:48632)',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => 'Время подключения истекло. Используйте одну сеть на обоих устройствах.',
 			'companionRemote.pairing.sessionNotFound' => 'Устройство не найдено. Убедитесь, что Pleya запущен на хосте.',
 			'companionRemote.pairing.authFailed' => 'Аутентификация не удалась. На обоих устройствах нужен один аккаунт Plex.',
@@ -3323,6 +3602,119 @@ extension on TranslationsRu {
 			'pleyaShare.notificationText' => 'Другие устройства Pleya могут стримить ваши локальные папки',
 			'pleyaShare.hostDescriptionAndroid' => 'Другие устройства Pleya в этой сети могут просматривать, воспроизводить и скачивать ваши локальные папки. Общий доступ продолжает работать в фоне с уведомлением.',
 			'pleyaShare.scanningSubnet' => 'Сканирование сети…',
+			'sourcePicker.playTitle' => 'Выберите, где воспроизвести',
+			'sourcePicker.detailsTitle' => 'Выберите источник для сведений',
+			'sourcePicker.availableOnOneServer' => 'Доступно на 1 сервере',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Доступно на ${count} серверах',
+			'sourcePicker.oneServerUnchecked' => 'Не удалось проверить 1 сервер',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => 'Не удалось проверить: ${count} серв.',
+			'sourcePicker.checkingMoreSources' => 'Проверка других источников…',
+			'sourcePicker.lastUsed' => 'Использован последним',
+			'sourcePicker.currentSource' => 'Текущий источник',
+			'sourcePicker.unavailable' => 'Недоступно',
+			'sourcePicker.signInRequired' => 'Требуется повторный вход',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Продолжить с ${position}',
+			'sourcePicker.watched' => 'Просмотрено',
+			'sourcePicker.noneReachableTitle' => 'Сейчас ни один источник недоступен.',
+			'sourcePicker.reauthRequiredTitle' => 'Войдите снова, чтобы открыть эту запись.',
+			'sourcePicker.manageServers' => 'Управление серверами',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Источник: ${source}',
+			'sourcePicker.change' => 'Изменить',
+			'sourcePicker.playbackFailedTitle' => 'Не удалось воспроизвести этот источник.',
+			'sourcePicker.detailLoadFailedTitle' => 'Не удалось загрузить этот материал.',
+			'sourcePicker.chooseAnotherSource' => 'Выбрать другой источник',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Источник ${index} из ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Предпочитаемый сервер',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Всегда использовать ${server}',
+			'unifiedCatalog.moviesTitle' => 'Фильмы',
+			'unifiedCatalog.seriesTitle' => 'Сериалы',
+			'unifiedCatalog.sources' => ({required Object count}) => 'Источников: ${count}',
+			'unifiedCatalog.allSources' => 'Все источники',
+			'unifiedCatalog.oneSource' => '1 источник',
+			'unifiedCatalog.seasons' => ({required Object count}) => 'Сезонов: ${count}',
+			'unifiedCatalog.oneSeason' => '1 сезон',
+			'unifiedCatalog.titleCount' => ({required Object count}) => 'Названий: ${count}',
+			'unifiedCatalog.oneTitle' => '1 название',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => 'Загружено названий: ${count}',
+			'unifiedCatalog.loadMore' => 'Загрузить ещё',
+			'unifiedCatalog.loadingMore' => 'Загрузка…',
+			'unifiedCatalog.sort.title' => 'Сортировка',
+			'unifiedCatalog.sort.titleAsc' => 'Название А–Я',
+			'unifiedCatalog.sort.titleDesc' => 'Название Я–А',
+			'unifiedCatalog.sort.recentlyAdded' => 'Недавно добавленные',
+			'unifiedCatalog.sort.oldestAdded' => 'Давно добавленные',
+			'unifiedCatalog.sort.newestRelease' => 'Новые по выходу',
+			'unifiedCatalog.sort.oldestRelease' => 'Старые по выходу',
+			'unifiedCatalog.sort.recentlyWatched' => 'Недавно просмотренные',
+			'unifiedCatalog.filters.title' => 'Фильтры',
+			'unifiedCatalog.filters.status' => 'Статус',
+			'unifiedCatalog.filters.genre' => 'Жанр',
+			'unifiedCatalog.filters.year' => 'Год',
+			'unifiedCatalog.filters.servers' => 'Серверы',
+			'unifiedCatalog.filters.libraries' => 'Библиотеки',
+			'unifiedCatalog.filters.apply' => 'Применить',
+			'unifiedCatalog.filters.clearAll' => 'Очистить всё',
+			'unifiedCatalog.filters.all' => 'Все',
+			'unifiedCatalog.filters.unwatched' => 'Непросмотренные',
+			'unifiedCatalog.filters.unsupported' => 'Недоступно для текущих источников',
+			'unifiedCatalog.filters.someUnavailable' => 'Некоторые фильтры недоступны для выбранных источников',
+			'unifiedCatalog.filters.noValues' => 'Нечего выбрать',
+			'unifiedCatalog.states.emptyTitle' => 'Этот каталог пуст',
+			'unifiedCatalog.states.emptyBody' => 'Ни одна видимая библиотека не содержит ничего для этой страницы.',
+			'unifiedCatalog.states.filterEmptyTitle' => 'Ничего не соответствует этим фильтрам',
+			'unifiedCatalog.states.filterEmptyBody' => 'Сбросьте фильтр, чтобы увидеть больше названий.',
+			'unifiedCatalog.states.clearFilters' => 'Сбросить фильтры',
+			'unifiedCatalog.states.errorTitle' => 'Не удалось загрузить каталог',
+			'unifiedCatalog.states.errorBody' => 'Ни один сервер не ответил. Проверьте подключение и повторите попытку.',
+			'unifiedCatalog.states.partialOne' => '1 библиотека не ответила',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => 'Не ответило библиотек: ${count}',
+			'unifiedCatalog.semantics.watched' => 'Просмотрено',
+			'unifiedCatalog.semantics.inProgress' => 'В процессе',
+			'unifiedCatalog.semantics.loadingMore' => 'Загрузка других названий',
+			'unifiedCatalog.discovery.allMovies' => 'Все фильмы',
+			'unifiedCatalog.discovery.allSeries' => 'Все сериалы',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => 'Некоторые источники не ответили',
+			'unifiedCatalog.discovery.emptyTitle' => 'Пока нечего открывать',
+			'unifiedCatalog.discovery.emptyBody' => 'Ни в одной видимой библиотеке здесь нечего показать.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, названий: ${count}',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} из ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Показать все фильмы, открывает полный каталог',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Показать все сериалы, открывает полный каталог',
+			'unifiedCatalog.home.featured' => 'Рекомендуем',
+			'tvNavigation.activeDestination' => 'текущий раздел',
+			'tvNavigation.attentionRequired' => 'требует внимания',
+			'tvMyPleya.groupContent' => 'Мой контент',
+			'tvMyPleya.groupSources' => 'Библиотеки и источники',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} из ${total} серверов в сети',
+			'tvMyPleya.noServers' => 'Нет подключённых серверов',
+			'tvMyPleya.statusOnline' => 'В сети',
+			'tvMyPleya.statusOffline' => 'Не в сети',
+			'tvMyPleya.servers' => 'Серверы',
+			'tvMyPleya.activity' => 'Активность',
+			'tvMyPleya.logs' => 'Журналы и диагностика',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Вы вошли как ${name} · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => 'Сохранённые фильмы и сериалы',
+			'tvMyPleya.requestsSubtitle' => 'Запросы и подборки',
+			'tvMyPleya.downloadsSubtitle' => 'Офлайн и правила синхронизации',
+			'tvMyPleya.librariesSubtitle' => 'Медиа, коллекции, плейлисты',
+			'tvMyPleya.serversSubtitle' => 'Подключения и локальные источники',
+			'tvMyPleya.activitySubtitle' => 'Сейчас смотрят, совместный просмотр, пульт',
+			'tvMyPleya.watchTogetherSubtitle' => 'Смотрите синхронно с друзьями',
+			'tvMyPleya.settingsSubtitle' => 'Отображение, плеер, трекеры',
+			'tvMyPleya.logsSubtitle' => 'Файлы журналов и отчёты о сбоях',
+			'tvMyPleya.aboutSubtitle' => 'Версия и лицензии',
+			'tvMyPleya.logoutSubtitle' => 'Выйти на этом устройстве',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'Действия',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Действие ${index} из ${count}: ${label}',
+			'tvContextMenu.noUsableSource' => 'Сейчас нет доступного источника, поэтому это нельзя изменить.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Выполнено для всех источников (${count})',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Выполнено для ${done} из ${total} источников. Остальные будут повторены, когда снова окажутся в сети.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Выполнено для ${done} из ${total} источников.',
+			'tvContextMenu.failed' => 'Не получилось',
 			_ => null,
 		};
 	}
