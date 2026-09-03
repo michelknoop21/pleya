@@ -43,7 +43,9 @@ class TvCatalogHeaderBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final tk = tokens(context);
     final scale = TvLayoutConstants.scaleOf(context);
-    final grid = TvCatalogGrid.forWidth(MediaQuery.sizeOf(context).width, scale: scale);
+    final width = MediaQuery.sizeOf(context).width;
+    final grid = TvCatalogGrid.forWidth(width, scale: scale);
+    final horizontalInset = grid.inset + TvCatalogLayout.cardContentInset(scale);
 
     return Padding(
       // The top inset is hoofdstuk 8.1's overscan rule — "geen tekst of
@@ -66,11 +68,11 @@ class TvCatalogHeaderBar extends StatelessWidget {
       // band of dead space the north star does not have. Standalone — a golden,
       // a focus test — this page still owns its own top margin.
       padding: EdgeInsets.fromLTRB(
-        grid.inset + TvCatalogLayout.cardContentInset(scale),
+        horizontalInset,
         TvShellSurface.isPresent(context)
             ? 0
             : MediaQuery.sizeOf(context).height * (TvCatalogLayout.topSafeInset / 1080),
-        grid.inset + TvCatalogLayout.cardContentInset(scale),
+        horizontalInset,
         TvCatalogLayout.headerContentGap * scale,
       ),
       child: Row(
@@ -78,12 +80,21 @@ class TvCatalogHeaderBar extends StatelessWidget {
         children: [
           // Hoofdstuk 33.5 is explicit that the controls sit *right* — the
           // heading owns the left edge and the quiet controls balance it
-          // against the opposite page inset. `Expanded` rather than a
-          // `Spacer` beside a `Flexible` title: a Spacer claims the slack
-          // first and leaves the action row too narrow, which clipped "Alle
-          // bronnen" inside its own reverse scroll view. Letting the *title*
-          // take the slack pushes the actions to the margin and still lets
-          // them keep their natural width.
+          // against the opposite page inset. `Expanded` is the *only* flex
+          // child here (CAT3): the actions cluster below is a plain,
+          // unflexed sibling, so Flutter lays it out first at its own
+          // intrinsic width and hands the title everything that is left —
+          // which is what actually pins the actions to the row's own right
+          // edge. Wrapping the actions in `Flexible(fit: FlexFit.loose)`
+          // looked identical on the canonical canvas (its intrinsic width
+          // happens to be close to the 50/50 split flex gives two siblings
+          // of equal weight), but on a real 1920×1080 surface — or with the
+          // Bronnen action conditionally missing — the two widths diverge and
+          // the loose flex only guarantees a *maximum*, not that the actions
+          // reach the edge: it left them floating up to ~240 logical pixels
+          // short of it. A plain child is not shrink-capped by a flex share
+          // at all, so it always renders at its natural width and Row places
+          // it flush against the content box's own right edge.
           Expanded(
             child: Text(
               title,
@@ -101,10 +112,14 @@ class TvCatalogHeaderBar extends StatelessWidget {
             ),
           ),
           SizedBox(width: TvCatalogLayout.titleActionGap * scale),
-          // The actions keep their own size and the title yields, so a long
-          // translation of "Films" never pushes Sort off the line.
-          Flexible(
-            fit: FlexFit.loose,
+          // Capped to the row's own content width, not left unbounded: a
+          // non-flex Row child gets unconstrained main-axis constraints, and
+          // without this cap a title squeezed to nothing plus an
+          // over-wide action set would overflow instead of scrolling. The
+          // cap is the same content box every other measurement on this page
+          // already lines up against, not a screen-specific number.
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: width - horizontalInset * 2),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               reverse: true,
