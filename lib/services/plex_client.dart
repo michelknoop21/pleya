@@ -3399,6 +3399,13 @@ class PlexClient
       if (!data.hasValidVideoUrl) {
         throw PlaybackException(t.messages.fileInfoNotAvailable);
       }
+      // checkFiles=1 already told us the file is not there (unmounted disk,
+      // offline share, moved file). Opening the URL anyway only produces a
+      // 404 that mpv cannot explain; say what is wrong instead.
+      if (!data.hasPlayableVersion) {
+        appLogger.w('Plex reports no accessible file for ${options.metadata.id}; refusing to open the stream');
+        throw PlaybackFileUnavailableException(t.notices.playbackFileUnavailableBody);
+      }
 
       final wantTranscode = !options.qualityPreset.isOriginal;
       if (wantTranscode && options.sessionIdentifier != null && options.transcodeSessionId != null) {
@@ -3751,6 +3758,40 @@ class PlexClient
     );
 
     return identity.pickMatch(_candidatesWithGuids(response));
+  }
+
+  /// Real multi-match override for hoofdstuk 12.8 of
+  /// docs/tvos-unified-experience.md: every guid match counts (a server can
+  /// genuinely hold more than one physical copy of the same title across
+  /// library sections, or via a duplicate scan), where [findByIdentity]
+  /// declines on more than one as an unresolvable ambiguity for its
+  /// single-answer contract. Same two queries as [findByIdentity]; only which
+  /// results survive differs.
+  @override
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async {
+    if (!identity.isSearchable) return const [];
+
+    final guid = identity.guid;
+    if (guid != null && guid.isNotEmpty) {
+      final response = await _getWithFailover('/library/all', queryParameters: {'guid': guid, 'includeGuids': 1});
+      final matches = _extractMetadataList(response);
+      if (matches.isNotEmpty) return matches.map(PlexMappers.mediaItem).toList();
+    }
+
+    final title = identity.title;
+    if (title == null || title.isEmpty) return const [];
+
+    final typeNumber = switch (identity.kind) {
+      MediaKind.movie => PlexMetadataType.movie,
+      MediaKind.show => PlexMetadataType.show,
+      _ => null,
+    };
+    final response = await _getWithFailover(
+      '/library/all',
+      queryParameters: {'title': title, 'includeGuids': 1, 'X-Plex-Container-Size': 20, 'type': ?typeNumber},
+    );
+
+    return identity.pickAllMatches(_candidatesWithGuids(response));
   }
 
   /// Pair every result with the external ids from its `Guid` array. The array
