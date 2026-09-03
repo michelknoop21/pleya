@@ -16,10 +16,14 @@
 /// catalogue, the screens list, `_currentTab` and `_selectTab` all stay in
 /// `MainScreen`, and a `TvDestinationId` resolves to the `NavigationTabId` that
 /// was always there. `ProfileSessionScreen` still owns the one nested
-/// `Navigator` every content route is pushed on. So a deep link, the companion
-/// remote and an offline-mode switch keep working through the paths they
-/// already used, and this file only decides what the root *looks* like and
-/// where the focus goes.
+/// `Navigator`, and it is still the only `Navigator` in the tree — DEC-091 did
+/// not add a second one. What changed since PB-1 is which content routes reach
+/// it: the approved detail, collection, person and settings surfaces now open
+/// through `tv_content_route_registry.dart` onto [coordinator]'s nested stack
+/// instead, so a deep link, the companion remote and an offline-mode switch
+/// keep working through the paths they already used for everything else, and
+/// this file only decides what the root *looks* like and where the focus
+/// goes.
 ///
 /// **Focus ownership.** [SidebarFocusCoordinator] is reused verbatim as the
 /// nav-versus-content authority. Its name says sidebar because that is what it
@@ -70,6 +74,7 @@ class TvRootShell extends StatelessWidget {
     required this.onKeyEvent,
     required this.selectLibrary,
     required this.openSettings,
+    required this.dismissNestedRoute,
     required this.child,
   });
 
@@ -123,6 +128,13 @@ class TvRootShell extends StatelessWidget {
 
   final void Function(String libraryGlobalKey)? selectLibrary;
   final VoidCallback? openSettings;
+
+  /// Closes the active destination's nested route, if any, and restores focus
+  /// the way Back does. Handed to [TvNestedSurface] as [TvNestedRouteScope] so
+  /// a screen it hosts — `MediaDetailScreen`, once PB-1 opens it here too —
+  /// can dismiss itself without knowing whether it is running nested or
+  /// pushed on the profile navigator.
+  final void Function([Object? result]) dismissNestedRoute;
 
   /// The active destination's screen — the same `IndexedStack` the other two
   /// shells host, so switching destinations never rebuilds a provider graph
@@ -288,6 +300,7 @@ class TvRootShell extends StatelessWidget {
                                     TvNestedSurface(
                                       key: nested.surfaceKey,
                                       route: nested,
+                                      dismiss: dismissNestedRoute,
                                       child: Builder(builder: nested.builder),
                                     ),
                                 ],

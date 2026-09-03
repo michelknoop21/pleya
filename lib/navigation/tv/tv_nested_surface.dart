@@ -42,9 +42,15 @@ import 'tv_navigation_coordinator.dart';
 import 'tv_nested_back_owner.dart';
 
 class TvNestedSurface extends StatefulWidget {
-  const TvNestedSurface({super.key, required this.route, required this.child});
+  const TvNestedSurface({super.key, required this.route, required this.dismiss, required this.child});
 
   final TvNestedRoute route;
+
+  /// Closes this route from anywhere inside its subtree. Exposed to
+  /// descendants as [TvNestedRouteScope] — see that class for why a screen
+  /// needs this instead of a plain `Navigator.pop`.
+  final void Function([Object? result]) dismiss;
+
   final Widget child;
 
   @override
@@ -163,6 +169,41 @@ class TvNestedSurfaceState extends State<TvNestedSurface> {
 
   @override
   Widget build(BuildContext context) => TvNestedBackOwner(
-    child: Focus(focusNode: _anchor, canRequestFocus: false, skipTraversal: true, child: widget.child),
+    child: TvNestedRouteScope(
+      dismiss: widget.dismiss,
+      child: Focus(focusNode: _anchor, canRequestFocus: false, skipTraversal: true, child: widget.child),
+    ),
   );
+}
+
+/// Lets a screen close the nested route it is inside without knowing whether
+/// it was opened via [TvNestedRoute] or the profile navigator's `Navigator`.
+///
+/// **Why this exists.** `MediaDetailScreen` is built both ways: pushed as a
+/// full-window route today, and — as PB-1 of
+/// `docs/tvos-redesign-implementatiecontract.md` and its INV-1 invariant
+/// require — nested inside the TV shell for the approved surfaces. A screen
+/// written against `Navigator.pop` alone breaks the moment it is nested: there
+/// is no local route to pop, so `Navigator.canPop(context)` on the ambient
+/// profile navigator answers `false`, and a raw `Navigator.pop` either does
+/// nothing or pops whatever route happens to be on top of a stack this screen
+/// does not own. The screen has to ask how to close *here*, the same reason
+/// [TvNestedBackOwner] is an ambient lookup rather than a constructor flag —
+/// the callers are built far below this widget and cannot be handed a
+/// callback by hand through every layer in between.
+///
+/// `dismiss([result])` completes the enclosing [TvNestedRoute] with `result`
+/// and pops it off the coordinator's stack, restoring focus the same way Back
+/// does. Its absence (`of(context) == null`) is a screen's signal that it was
+/// not nested this time and should fall back to `Navigator.pop`.
+class TvNestedRouteScope extends InheritedWidget {
+  const TvNestedRouteScope({super.key, required this.dismiss, required super.child});
+
+  final void Function([Object? result]) dismiss;
+
+  static TvNestedRouteScope? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<TvNestedRouteScope>();
+
+  @override
+  bool updateShouldNotify(TvNestedRouteScope oldWidget) => !identical(dismiss, oldWidget.dismiss);
 }

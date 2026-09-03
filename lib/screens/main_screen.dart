@@ -2086,8 +2086,13 @@ class _MainScreenState extends State<MainScreen>
 
   /// Back inside a destination (hoofdstuk 7.5 step 2): pop, and put the remote
   /// back on the control that opened the route.
-  bool _popTvNestedRoute() {
-    final popped = _tvNav.popNested();
+  ///
+  /// Doubles as [TvNestedRouteScope.dismiss] (via [TvRootShell.dismissNestedRoute]):
+  /// a screen that closes itself — a save button, a media detail's own Back
+  /// handler — completes its route with [result] the same way `Navigator.pop`
+  /// would have, and gets the same focus restoration a remote-driven Back does.
+  bool _popTvNestedRoute([Object? result]) {
+    final popped = _tvNav.popNested(result);
     if (popped == null) return false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -2375,6 +2380,7 @@ class _MainScreenState extends State<MainScreen>
       onKeyEvent: _handleTvShellKey,
       selectLibrary: _selectLibrary,
       openSettings: _openSettings,
+      dismissNestedRoute: _popTvNestedRoute,
       child: _buildTickerAwareStack(),
     );
   }

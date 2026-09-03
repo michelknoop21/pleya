@@ -12,6 +12,7 @@ import '../automation/automation_node.dart';
 import '../automation/automation_screen.dart';
 import '../automation/pleya_verify.dart';
 import '../navigation/profile_navigation_scope.dart';
+import '../navigation/tv/tv_nested_surface.dart';
 import '../services/device_performance.dart';
 import '../services/image_cache_service.dart';
 import 'package:flutter/services.dart';
@@ -763,14 +764,40 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   KeyEventResult _handleMediaDetailBackKey(FocusNode _, KeyEvent event) {
     if (_consumeBackAfterChildPop(event)) return KeyEventResult.handled;
+    // Nested (PB-1): there is no local route to pop, so `handleBackKeyNavigation`'s
+    // own `Navigator.canPop` guard would answer false and this handler would
+    // stand down for no reason — Back on a nested detail screen is a real
+    // dismissal (DEC-088), and a real dismissal keeps priority over the shell.
+    if (TvNestedRouteScope.of(context) != null) {
+      return handleBackKeyAction(event, _dismissTvDetail);
+    }
     return handleBackKeyNavigation(context, event, result: _watchStateChanged);
+  }
+
+  /// Closes the detail screen, whichever way it was opened.
+  ///
+  /// Nested inside the TV shell (PB-1 of
+  /// `docs/tvos-redesign-implementatiecontract.md`), [TvNestedRouteScope.of]
+  /// completes and pops the route through the coordinator with the same focus
+  /// restoration Back gets. Anything else — the profile navigator's pushed
+  /// route, which every platform still uses until SYS-1b flips detail's own
+  /// call sites — pops through `Navigator` as before. A screen has to ask
+  /// which one applies *here*: `Navigator.pop` alone breaks the moment this
+  /// screen is nested, because there is no local route for it to find.
+  void _dismissTvDetail([Object? result]) {
+    final nested = TvNestedRouteScope.of(context);
+    if (nested != null) {
+      nested.dismiss(result ?? _watchStateChanged);
+      return;
+    }
+    Navigator.pop(context, result ?? _watchStateChanged);
   }
 
   /// Escape hatch out of the metadata loading state. Leaves the pending fetch
   /// to finish (or not) on its own — the state guards are all `mounted`-checked.
   void _cancelMetadataLoad() {
     if (!mounted) return;
-    Navigator.pop(context, _watchStateChanged);
+    _dismissTvDetail();
   }
 
   void _popMediaDetailIfBackNotSuppressed() {
@@ -778,7 +805,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       _suppressBackAfterPop = false;
       return;
     }
-    Navigator.pop(context, _watchStateChanged);
+    _dismissTvDetail();
   }
 
   bool _isTvDetailReadyToReveal(MediaItem metadata) {
@@ -3798,98 +3825,110 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     MediaItem metadata,
     KeyEventResult Function(FocusNode, KeyEvent) handleBack,
   ) {
-    final size = MediaQuery.sizeOf(context);
-    final detailHubs = _tvDetailHubs(metadata);
-    if (widget.initialEpisodeId != null && !_initialEpisodePagingDone) {
-      _maybeLoadMoreForInitialEpisode();
-    }
-    final hideSpoilers = SettingsService.instance.read(SettingsService.hideSpoilers);
-    final detailScale = TvLayoutConstants.scaleForSize(size);
-    final spotlightTop = (size.height * 0.08).clamp(44.0 * detailScale, 110.0 * detailScale).toDouble();
-    final rawRailHeight = _estimateTvDetailRailHeight(size, detailHubs);
-    if (!_tvDetailRevealed && _isTvDetailReadyToReveal(metadata)) {
-      _scheduleTvDetailReveal(rawRailHeight, focusPrimaryAction: metadata.isMovie);
-    }
-    final stableRailHeight = _tvDetailStableRailHeight;
-    final railHeight = stableRailHeight == null || rawRailHeight > stableRailHeight ? rawRailHeight : stableRailHeight;
-    final railTopPadding = 12 * detailScale;
-    final foregroundBottom = (railHeight - railTopPadding) + (_tvDetailActionRailGap * detailScale);
-    final spotlightLeft = (24 * detailScale).clamp(18.0, 40.0).toDouble();
+    // INV-1 (docs/tvos-redesign-implementatiecontract.md): this route can be
+    // nested inside the TV shell, under the top navigation (PB-1), where the
+    // box Flutter actually lays this screen out in is shorter than the
+    // physical window. `MediaQuery.sizeOf` would not notice that — a smaller
+    // layout box does not re-scope MediaQuery — so it would keep reporting the
+    // full window and every measurement below would overshoot the box this
+    // widget was actually given. `constraints`, from the `LayoutBuilder` this
+    // whole screen now builds inside, is that box; `TvCatalogSkeletonGrid` in
+    // `tv_unified_catalog_screen.dart` reads its own height the same way.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        final detailHubs = _tvDetailHubs(metadata);
+        if (widget.initialEpisodeId != null && !_initialEpisodePagingDone) {
+          _maybeLoadMoreForInitialEpisode();
+        }
+        final hideSpoilers = SettingsService.instance.read(SettingsService.hideSpoilers);
+        final detailScale = TvLayoutConstants.scaleForSize(size);
+        final spotlightTop = (size.height * 0.08).clamp(44.0 * detailScale, 110.0 * detailScale).toDouble();
+        final rawRailHeight = _estimateTvDetailRailHeight(size, detailHubs);
+        if (!_tvDetailRevealed && _isTvDetailReadyToReveal(metadata)) {
+          _scheduleTvDetailReveal(rawRailHeight, focusPrimaryAction: metadata.isMovie);
+        }
+        final stableRailHeight = _tvDetailStableRailHeight;
+        final railHeight = stableRailHeight == null || rawRailHeight > stableRailHeight
+            ? rawRailHeight
+            : stableRailHeight;
+        final railTopPadding = 12 * detailScale;
+        final foregroundBottom = (railHeight - railTopPadding) + (_tvDetailActionRailGap * detailScale);
+        final spotlightLeft = (24 * detailScale).clamp(18.0, 40.0).toDouble();
 
-    final revealContent = Stack(
-      fit: StackFit.expand,
-      children: [
-        Positioned(
-          left: spotlightLeft,
-          right: size.width * 0.43,
-          top: spotlightTop,
-          bottom: foregroundBottom,
-          child: _buildTvDetailForeground(context, metadata, hideSpoilers: hideSpoilers, scale: detailScale),
-        ),
-        Positioned(
-          top: 0,
-          left: 0,
-          child: DesktopAppBarHelper.buildAdjustedLeading(
-            AppBarBackButton(
-              style: BackButtonStyle.circular,
-              onPressed: () => Navigator.pop(context, _watchStateChanged),
+        final revealContent = Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned(
+              left: spotlightLeft,
+              right: size.width * 0.43,
+              top: spotlightTop,
+              bottom: foregroundBottom,
+              child: _buildTvDetailForeground(context, metadata, hideSpoilers: hideSpoilers, scale: detailScale),
             ),
-            context: context,
-          )!,
-        ),
-        if (detailHubs.isNotEmpty)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: TvBrowseRail(
-              key: _tvDetailRailKey,
-              hubs: detailHubs,
-              iconForHub: _getTvDetailHubIcon,
-              onFocusedHubItemChanged: _handleTvDetailFocusedRailItemChanged,
-              onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
-              onPlaybackReturned: (item) => unawaited(refreshAfterPlayback(playedItemId: item.id)),
-              onActiveHubChanged: _handleTvDetailHubChanged,
-              onActivateItem: _handleTvDetailRailItemActivated,
-              trailingForHub: _tvDetailTrailingState,
-              onRetryHub: _retryTvDetailHub,
-              onNavigateUp: _focusTvDetailActionRow,
-              onBack: _popMediaDetailIfBackNotSuppressed,
-              tallPosterScale: _tvDetailTallPosterScale,
-              widePosterScaleForHub: _tvDetailWidePosterScaleForHub,
-              initialHubId: _tvDetailInitialHubId(metadata),
-              initialItemId: _tvDetailInitialItemId(metadata),
-              episodePosterModeForHub: _tvDetailEpisodePosterModeForHub,
-              automationIdForHub: _tvDetailAutomationIdForHub,
+            Positioned(
+              top: 0,
+              left: 0,
+              child: DesktopAppBarHelper.buildAdjustedLeading(
+                AppBarBackButton(style: BackButtonStyle.circular, onPressed: () => _dismissTvDetail()),
+                context: context,
+              )!,
             ),
-          ),
-      ],
-    );
-
-    final blockSystemBack = InputModeTracker.shouldBlockSystemBack(context);
-    final content = OverlaySheetHost(
-      // blockSystemBack keeps the route from double-popping on Android keyboard/
-      // TV (the key handler owns dpad back); the host also closes an open sheet.
-      canPop: !blockSystemBack,
-      child: Focus(
-        onKeyEvent: handleBack,
-        child: Scaffold(
-          body: Stack(
-            children: [
-              TvSpotlightBackground(
-                item: metadata,
-                client: _getArtworkMediaClient(context),
-                showInfo: false,
-                localArtworkPathResolver: widget.isOffline ? (path) => _offlineArtworkLocalPath(context, path) : null,
+            if (detailHubs.isNotEmpty)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: TvBrowseRail(
+                  key: _tvDetailRailKey,
+                  hubs: detailHubs,
+                  iconForHub: _getTvDetailHubIcon,
+                  onFocusedHubItemChanged: _handleTvDetailFocusedRailItemChanged,
+                  onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+                  onPlaybackReturned: (item) => unawaited(refreshAfterPlayback(playedItemId: item.id)),
+                  onActiveHubChanged: _handleTvDetailHubChanged,
+                  onActivateItem: _handleTvDetailRailItemActivated,
+                  trailingForHub: _tvDetailTrailingState,
+                  onRetryHub: _retryTvDetailHub,
+                  onNavigateUp: _focusTvDetailActionRow,
+                  onBack: _popMediaDetailIfBackNotSuppressed,
+                  tallPosterScale: _tvDetailTallPosterScale,
+                  widePosterScaleForHub: _tvDetailWidePosterScaleForHub,
+                  initialHubId: _tvDetailInitialHubId(metadata),
+                  initialItemId: _tvDetailInitialItemId(metadata),
+                  episodePosterModeForHub: _tvDetailEpisodePosterModeForHub,
+                  automationIdForHub: _tvDetailAutomationIdForHub,
+                ),
               ),
-              _buildTvDetailRevealGate(revealContent, handleBack),
-            ],
-          ),
-        ),
-      ),
-    );
+          ],
+        );
 
-    return content;
+        final blockSystemBack = InputModeTracker.shouldBlockSystemBack(context);
+        return OverlaySheetHost(
+          // blockSystemBack keeps the route from double-popping on Android keyboard/
+          // TV (the key handler owns dpad back); the host also closes an open sheet.
+          canPop: !blockSystemBack,
+          child: Focus(
+            onKeyEvent: handleBack,
+            child: Scaffold(
+              body: Stack(
+                children: [
+                  TvSpotlightBackground(
+                    item: metadata,
+                    client: _getArtworkMediaClient(context),
+                    showInfo: false,
+                    localArtworkPathResolver: widget.isOffline
+                        ? (path) => _offlineArtworkLocalPath(context, path)
+                        : null,
+                  ),
+                  _buildTvDetailRevealGate(revealContent, handleBack),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildTvDetailForeground(
