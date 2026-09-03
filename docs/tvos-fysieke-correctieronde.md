@@ -73,7 +73,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | CAT4 | Bron, filters en sortering mogelijk onbereikbaar | FIXED | `ac040fd` |
 | OVR1 | Detail- en contextmenu valt buiten beeld en voelt te groot | GESPLITST in OVR1a en OVR1b | n.v.t. |
 | OVR1a | `scaleForHeight` heeft ondergrens 0,85, en die is onjuist voor inhoud binnen een TV-paneel: de inhoud wordt ongeveer 1,5 keer te groot | NOT REPRODUCED | n.v.t. |
-| OVR1b | TV-sheets zonder expliciete `presentation` vallen terug op de 400x400-geometrie | OPEN | n.v.t. |
+| OVR1b | TV-sheets zonder expliciete `presentation` vallen terug op de 400x400-geometrie | FIXED | `96f2d45` |
 | BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | OPEN | n.v.t. |
 | FOC1 | Focusring valt buiten de viewport in overlays | OPEN | n.v.t. |
 | ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | OPEN | n.v.t. |
@@ -1022,6 +1022,47 @@ Het waargenomen hardwaresymptoom blijft staan en wijst naar OVR1b. Een sheet
 zonder `presentation:` belandt in de 400x400-doos van `_sheetGeometry`, en
 `MediaContextMenu` belandt daar via een tweede weg, doordat `Platform.isIOS` op
 tvOS waar is. Dat is een echte verkeerde doos, en het is een eigen item.
+
+#### OVR1b, één eigenaar voor de doos van een TV-overlay
+
+Gereproduceerd en gerepareerd op 3 september 2026.
+
+De reproductie is een widgettest door de echte host op het canonieke canvas
+1038x584, met de TV-override aan en een sheet die geen `presentation:` meegeeft,
+precies zoals elf oppervlakken dat doen. Gemeten rechthoek vóór de fix: 400 breed
+en 400 hoog, met de onderrand op 584. Dat is 740 bij 740 referentie-px op een
+1920x1080-uitvoer, tegen de band 900 tot 1040 van hoofdstuk 14.1, en de onderrand
+raakt de viewportrand, dus hij ligt in de overscanband die hoofdstuk 8.1 juist
+vrijhoudt. De assertie die omviel was het middelpunt: 384 waar 292 hoort.
+
+De eigenaar is `resolveOverlaySheetGeometry`
+(`lib/widgets/overlay_sheet_geometry.dart`). Die stuurde alleen `panel` naar
+`_tvPanelGeometry`; `_sheetGeometry` had daarnaast een eigen TV-tak met 400 bij
+400 en behield de bodemuitlijning van de aanroeper. Op TV gaat nu elke
+presentatie naar `_tvPanelGeometry`, en `_sheetGeometry` kent het begrip TV niet
+meer. Na de fix meet dezelfde rechthoek 540,6 bij 490,6 logisch, oftewel 1000 bij
+907 referentie-px, gecentreerd, met 86 referentie-px lucht boven en onder.
+
+Dat lost het tweede pad meteen mee op. `MediaContextMenu` kiest zijn
+bottom-sheet-tak op `Platform.isIOS`, wat op tvOS waar is
+(`lib/widgets/media_context_menu.dart:239`). Die regel blijft staan: de andere
+tak is een `showMenu` op een aanwijzerpositie, en dat is op een afstandsbediening
+het verkeerde antwoord. Wat er fout aan was, was niet de tak maar de doos
+erachter, en die heeft nu één eigenaar.
+
+Twee besluiten die het oude gedrag vastlegden zijn herzien, want anders staat de
+fix per definitie rood: `sheet` op TV was 400 bij 400 in
+`test/widgets/overlay_sheet_geometry_test.dart` en in
+`test/widgets/overlay_sheet_test.dart`, en `tv_catalog_foundation_test.dart`
+controleerde dat een TV-sheet géén schaduw werpt. Alle drie meten nu dat een
+sheet op TV exact hetzelfde oplevert als een panel.
+
+Twee gevolgen die opzettelijk zijn en die Michel mag afwijzen. De compacte
+sync-balk van de speler vraagt `alignment: topCenter` met een eigen doos van 900
+bij 80 (`video_settings_sheet.dart:336`); op TV komt die nu in het midden in
+plaats van tegen de bovenrand, want `_tvPanelGeometry` centreert altijd. En een
+aanroeper die zelf constraints meegeeft wordt op TV voortaan door de viewport
+geklemd, waar het oude sheet-pad zo'n wens ongemoeid doorliet.
 
 ### BACK1, wat er staat en wat er niet is
 

@@ -43,7 +43,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | SYS-1c | Geneste routes krijgen de contentbox als `MediaQuery`, nodig voor de detailgeometrie | PB-1, INV-1 | OPEN | |
 | SYS-2 | BACK1, geen zichtbare onbereikbare terugknop op TV | PB-2 | OPEN, geauditeerd | zie onder |
 | SYS-3a | OVR1a: de schaalbasis van paneelinhoud op TV | PB-5 | OPEN, oorzaak gevonden | zie onder |
-| SYS-3b | OVR1b: sheets zonder expliciete `presentation` vallen op 400x400 | PB-5 | OPEN, oorzaak gevonden | zie onder |
+| SYS-3b | OVR1b: sheets zonder expliciete `presentation` vallen op 400x400 | PB-5 | DONE | `96f2d45` |
 | SYS-4 | Gedeelde staat- en lege-presentatie schaalt op TV | audit | OPEN, geauditeerd | zie onder |
 | SYS-5 | i18n-gaten en hardcoded strings | audit | OPEN | |
 | SYS-6 | Tokenafwijkingen per stuk beoordeeld, met regressiebeelden | tokenaudit | OPEN | |
@@ -156,15 +156,18 @@ groot", en het is onzichtbaar op elk oppervlak waar de hoogte 1080 haalt, dus oo
 De ondergrens van die klem is de systemische fout, niet de breedte van een paneel. Dat is
 **OVR1a**, en het bewijs ervoor is een meting op een canvas dat niet 1080 hoog is.
 
-**OVR1b** is een tweede TV-regel in dezelfde host. `_sheetGeometry` (`:299-300`) geeft op TV
-onvoorwaardelijk 400 bij 400, onderaan verankerd. Dat is de 400x400 uit de audit, en hij wordt
-bereikt door alles wat de standaard `presentation: sheet` laat staan. `MediaContextMenu` komt daar
-terecht via `media_context_menu.dart:239`, waar `Platform.isIOS` op tvOS waar is en er geen
-`PlatformDetector.isTV()`-controle naast staat. Elf sheets lopen langs dezelfde helper zonder
-`presentation:` mee te geven, waaronder de beoordelingssheet, de kijklijst-item-sheet, de
-sorteersheet en drie Live TV-sheets. Negen andere oppervlakken kiezen wel expliciet `panel` en
-krijgen daarom de goede geometrie. Een test pint het verschil vandaag vast als bedoeld gedrag
-(`overlay_sheet_geometry_test.dart:209`), dus dat besluit hoort erbij herzien te worden.
+**OVR1b** was een tweede TV-regel in dezelfde host, gesloten in `96f2d45`. `_sheetGeometry` gaf op TV
+onvoorwaardelijk 400 bij 400, onderaan verankerd. Dat was de 400x400 uit de audit, bereikt door
+alles wat de standaard `presentation: sheet` liet staan: elf sheets, waaronder de
+beoordelingssheet, de kijklijst-item-sheet, de sorteersheet en drie Live TV-sheets. Negen andere
+oppervlakken kozen wel expliciet `panel` en hadden de goede geometrie al. `MediaContextMenu` kwam
+er via een tweede weg terecht, `media_context_menu.dart:239`, waar `Platform.isIOS` op tvOS waar
+is zonder een `PlatformDetector.isTV()`-controle ernaast.
+
+Op TV gaat sindsdien elke presentatie naar `_tvPanelGeometry`, dus beide wegen komen op dezelfde
+doos uit en `media_context_menu.dart:239` hoefde niet te wijzigen. De vier tests die 400 bij 400
+als bedoeld gedrag vastlegden zijn mee herzien. De volledige redenering, met de gemeten waarden
+voor en na, staat in `docs/tvos-fysieke-correctieronde.md`.
 
 `TvPanelTheme` met accent `#F42B1F` staat in `tv_panel_widgets.dart:8-18` en geldt alleen voor het
 infopaneel van de speler. De TV-overlaypanelen halen hun decoratie ergens anders vandaan, uit
@@ -212,7 +215,7 @@ Hier staan ze bij de werkstroom die ze bezit.
 | ACT-2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | MOC-16, SYS-1 | OPEN |
 | OFF-1 | Geen reconnect-affordance op TV | MOC-23 | OPEN |
 | OFF-2 | Offline topnav toont dode pills | MOC-23, SYS-1 | OPEN |
-| OVR1b | Legacy `MediaContextMenu`, rating-sheet, kijklijst-item-sheet en Live TV-sheets vallen op tvOS in een 400x400 bottom sheet | SYS-3b | OPEN |
+| OVR1b | Legacy `MediaContextMenu`, rating-sheet, kijklijst-item-sheet en Live TV-sheets vallen op tvOS in een 400x400 bottom sheet | SYS-3b | DONE, `96f2d45` |
 | STA-1 | `StateView` en `EmptyStateWidget` schalen niet op TV | SYS-4 | OPEN |
 | SRCH-2 | `people` wordt nooit aan `searchProjection` meegegeven | MOC-13 | OPEN |
 | ACT-3 | `tvMyPleya.activitySubtitle` belooft samen kijken en remote die de tegel niet levert | MOC-16 | OPEN |
