@@ -6,9 +6,11 @@ import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/media_server_client.dart';
+import '../media/unified/unified_media_source.dart';
+import '../services/unified_catalog/grouping_service.dart';
+import '../services/unified_catalog/identity_resolver.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_timeouts.dart';
-import '../utils/external_ids.dart';
 import '../utils/global_key_utils.dart';
 import '../utils/search_relevance.dart';
 import 'multi_server_manager.dart';
@@ -16,6 +18,27 @@ import 'multi_server_manager.dart';
 typedef OnDeckAggregationResult = ({List<MediaItem> items, Set<String> succeededServerIds});
 typedef HubAggregationResult = ({List<MediaHub> hubs, Set<String> succeededServerIds});
 typedef SearchAggregationResult = ({List<MediaItem> items, Set<String> succeededServerIds});
+
+/// Drops items that live in a library the active profile has hidden.
+///
+/// Hoofdstuk 22/31.13 of docs/tvos-unified-experience.md: a hidden library may
+/// not leak into any surface, and the filter belongs **before** grouping,
+/// ranking or capping — not after. Filtering afterwards would let hidden items
+/// consume the result budget, and on the unified path it would have to prune
+/// [UnifiedMediaGroup.sources], which asserts it is never a subset.
+///
+/// Fail-open on an unknown library is deliberate and matches every caller: an
+/// item the backend returns without a `libraryId` (a Plex Discover hit from
+/// `includeExternalMedia`, say) is not in any library, so no hidden key can
+/// name it.
+List<MediaItem> filterHiddenLibraryItems(List<MediaItem> items, Set<String>? hiddenLibraryKeys) {
+  if (hiddenLibraryKeys == null || hiddenLibraryKeys.isEmpty) return items;
+  return items.where((item) {
+    if (item.libraryId == null || item.serverId == null) return true;
+    final globalKey = buildGlobalKey(ServerId(item.serverId!), item.libraryId!);
+    return !hiddenLibraryKeys.contains(globalKey);
+  }).toList();
+}
 
 /// Cross-server aggregation: fans calls out to every online client and
 /// merges the results. Single-server operations now go through the
@@ -29,13 +52,18 @@ class DataAggregationService {
   DataAggregationService(this._serverManager);
 
   /// Online clients, optionally restricted to [serverIds] — delta refreshes
-  /// fan out to newly-online servers only.
+  /// fan out to newly-online servers only. Always visibility-filtered: a
+  /// server the active profile has hidden never contributes here, regardless
+  /// of [serverIds]. [MultiServerManager.onlineClients] itself is NOT
+  /// visibility-filtered (profile visibility lives on the manager but isn't
+  /// applied there), so every aggregation entry point must go through this
+  /// method rather than reading `onlineClients` directly.
   Map<String, MediaServerClient> _clientsFor(Set<String>? serverIds) {
     final clients = _serverManager.onlineClients;
-    if (serverIds == null) return clients;
     return {
       for (final entry in clients.entries)
-        if (serverIds.contains(entry.key)) entry.key: entry.value,
+        if (_serverManager.isServerVisible(ServerId(entry.key)) && (serverIds == null || serverIds.contains(entry.key)))
+          entry.key: entry.value,
     };
   }
 
@@ -106,14 +134,7 @@ class DataAggregationService {
     final allOnDeck = results.expand((result) => result.items).toList();
 
     // Filter out items from hidden libraries
-    List<MediaItem> filteredOnDeck = allOnDeck;
-    if (hiddenLibraryKeys != null && hiddenLibraryKeys.isNotEmpty) {
-      filteredOnDeck = allOnDeck.where((item) {
-        if (item.libraryId == null || item.serverId == null) return true;
-        final globalKey = buildGlobalKey(ServerId(item.serverId!), item.libraryId!);
-        return !hiddenLibraryKeys.contains(globalKey);
-      }).toList();
-    }
+    List<MediaItem> filteredOnDeck = filterHiddenLibraryItems(allOnDeck, hiddenLibraryKeys);
 
     // Watched movies without active progress don't belong in Continue
     // Watching — some servers keep them in the hub while scrobble processing
@@ -176,13 +197,7 @@ class DataAggregationService {
     var candidates = results.expand((result) => result.items).toList();
 
     // Filter out items from hidden libraries.
-    if (hiddenLibraryKeys != null && hiddenLibraryKeys.isNotEmpty) {
-      candidates = candidates.where((item) {
-        if (item.libraryId == null || item.serverId == null) return true;
-        final globalKey = buildGlobalKey(ServerId(item.serverId!), item.libraryId!);
-        return !hiddenLibraryKeys.contains(globalKey);
-      }).toList();
-    }
+    candidates = filterHiddenLibraryItems(candidates, hiddenLibraryKeys);
 
     // Hard films-only: no series, no series fallback.
     candidates = candidates.where((item) => item.kind == MediaKind.movie).toList();
@@ -249,13 +264,7 @@ class DataAggregationService {
 
     var candidates = results.expand((result) => result.items).toList();
 
-    if (hiddenLibraryKeys != null && hiddenLibraryKeys.isNotEmpty) {
-      candidates = candidates.where((item) {
-        if (item.libraryId == null || item.serverId == null) return true;
-        final globalKey = buildGlobalKey(ServerId(item.serverId!), item.libraryId!);
-        return !hiddenLibraryKeys.contains(globalKey);
-      }).toList();
-    }
+    candidates = filterHiddenLibraryItems(candidates, hiddenLibraryKeys);
 
     // Defensive: a backend that ignores the series-level filter must not leak
     // episodes into a shows row.
@@ -294,138 +303,102 @@ class DataAggregationService {
     return limit != null && limit < deduped.length ? deduped.sublist(0, limit) : deduped;
   }
 
+  /// Same dedup this method has always done — bucket by scope+title, then
+  /// only for a shared bucket check whether two items' external ids/guid
+  /// actually agree — now built on the shared unified identity/grouping layer
+  /// (`unified_catalog/identity_resolver.dart`, `unified_catalog/grouping_service.dart`)
+  /// instead of ad hoc private helpers, per
+  /// [DEC-063](../../docs/DECISIONS.md#dec-063) fase 1. `allowWeakFallback:
+  /// false` keeps the merge rule itself exactly what it always was: Continue
+  /// Watching has only ever merged on shared external ids/guid, never on
+  /// title+year alone (see `continueWatchingBucketKey`'s doc comment) — that
+  /// bucket key only ever decides which items are worth an external-id fetch,
+  /// same as before.
   Future<List<MediaItem>> _deduplicateContinueWatching(List<MediaItem> items) async {
     if (items.length < 2) return items;
 
+    final duplicateBuckets = <String>{};
     final bucketCounts = <String, int>{};
     for (final item in items) {
-      final bucket = _continueWatchingTitleBucket(item);
+      final bucket = continueWatchingBucketKey(item);
       if (bucket == null) continue;
-      bucketCounts[bucket] = (bucketCounts[bucket] ?? 0) + 1;
+      final count = (bucketCounts[bucket] ?? 0) + 1;
+      bucketCounts[bucket] = count;
+      if (count > 1) duplicateBuckets.add(bucket);
     }
-
-    final duplicateBuckets = {
-      for (final entry in bucketCounts.entries)
-        if (entry.value > 1) entry.key,
-    };
     if (duplicateBuckets.isEmpty) return items;
 
-    final externalIdLoads = <String, Future<ExternalIds>>{};
-    final identityKeysByIndex = <int, Set<String>>{};
-    final identityKeyLoads = <Future<void>>[];
-    for (var i = 0; i < items.length; i++) {
-      if (!duplicateBuckets.contains(_continueWatchingTitleBucket(items[i]))) continue;
-      final index = i;
-      identityKeyLoads.add(
-        _continueWatchingIdentityKeys(items[index], externalIdLoads).then((keys) => identityKeysByIndex[index] = keys),
-      );
-    }
-    await Future.wait(identityKeyLoads);
+    final resolver = UnifiedIdentityResolver(
+      fetchExternalIds: (serverId, targetId) async {
+        try {
+          final client = _serverManager.getClient(ServerId(serverId));
+          if (client == null) throw StateError('No online client for server $serverId');
+          return await client.fetchExternalIds(targetId);
+        } catch (e, stackTrace) {
+          appLogger.d(
+            'Failed to resolve Continue Watching identity for $serverId:$targetId',
+            error: e,
+            stackTrace: stackTrace,
+          );
+          rethrow;
+        }
+      },
+    );
+    final resolvables = [
+      for (final item in items)
+        ResolvableItem(
+          item: item,
+          scope: continueWatchingScope(item) ?? '',
+          bucketKeyOverride: continueWatchingBucketKey(item),
+          externalIdTarget: _hasOnlineClient(item) ? continueWatchingExternalIdTarget(item) : null,
+          // An episode/season row's external ids are fetched from its
+          // *series*, so they are narrowed to the exact row before they
+          // become a token (hoofdstuk 11.8) — otherwise every episode of one
+          // series would share `episode:tmdb:<series id>` and fold into one
+          // entry. Its own guid needs no such narrowing: it already names the
+          // concrete episode, which is the granularity this groups at.
+          externalIdDiscriminator: continueWatchingOrdinal(item),
+        ),
+    ];
+    final evidence = await resolver.resolveEvidence(resolvables);
 
-    final seenKeys = <String>{};
-    final result = <MediaItem>[];
-    for (var i = 0; i < items.length; i++) {
-      final item = items[i];
-      if (!duplicateBuckets.contains(_continueWatchingTitleBucket(item))) {
-        result.add(item);
-        continue;
-      }
-
-      final identityKeys = identityKeysByIndex[i] ?? const <String>{};
-      if (identityKeys.isEmpty) {
-        result.add(item);
-        continue;
-      }
-
-      if (identityKeys.any(seenKeys.contains)) continue;
-
-      seenKeys.addAll(identityKeys);
-      result.add(item);
-    }
-
-    return result;
-  }
-
-  String? _continueWatchingTitleBucket(MediaItem item) {
-    final scope = _continueWatchingIdentityScope(item);
-    if (scope == null) return null;
-
-    final title = switch (item.kind) {
-      MediaKind.episode || MediaKind.season => item.grandparentTitle ?? item.parentTitle ?? item.title,
-      _ => item.title,
+    // A row with no serverId can never become a UnifiedMediaSource — its
+    // sourceKey is `serverId:id` — and can never legitimately merge with
+    // anything either way. Such a row is set aside before grouping and
+    // spliced back in at its own original position afterward, rather than
+    // letting one malformed item throw and crash dedup for the whole batch
+    // (every other per-item path in this file contains a bad row the same
+    // way instead of losing the good ones next to it).
+    final malformedIndexes = <int>{
+      for (var i = 0; i < items.length; i++)
+        if (items[i].serverId == null || items[i].serverId!.isEmpty) i,
     };
-    final normalized = title?.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-    if (normalized == null || normalized.isEmpty) return null;
-    return '$scope:$normalized';
+
+    final originalIndexOf = <String, int>{};
+    final candidates = <GroupingCandidate>[];
+    for (var i = 0; i < items.length; i++) {
+      if (malformedIndexes.contains(i)) continue;
+      final source = UnifiedMediaSource.fromItem(items[i]);
+      originalIndexOf[source.sourceKey] = i;
+      candidates.add(GroupingCandidate(source: source, evidence: evidence[i]));
+    }
+    final groups = groupUnifiedMediaSources(candidates, allowWeakFallback: false);
+
+    // `sources` preserves candidates' original (recency-sorted) order, so the
+    // first source in each group is the one with the highest recency —
+    // exactly the representative this method has always projected. Grouped
+    // representatives and the set-aside malformed rows are merged back by
+    // original index, so nothing silently changes position.
+    final resultByIndex = <int, MediaItem>{
+      for (final group in groups) originalIndexOf[group.sources.first.sourceKey]!: group.sources.first.item,
+      for (final i in malformedIndexes) i: items[i],
+    };
+    return [for (final i in resultByIndex.keys.toList()..sort()) resultByIndex[i]!];
   }
 
-  Future<Set<String>> _continueWatchingIdentityKeys(
-    MediaItem item,
-    Map<String, Future<ExternalIds>> externalIdLoads,
-  ) async {
-    final scope = _continueWatchingIdentityScope(item);
-    if (scope == null) return const {};
-
-    final keys = <String>{};
+  bool _hasOnlineClient(MediaItem item) {
     final serverId = item.serverId;
-    final targetId = _continueWatchingIdentityTargetId(item);
-    final client = serverId == null ? null : _serverManager.getClient(ServerId(serverId));
-
-    if (client != null && targetId != null && targetId.isNotEmpty) {
-      try {
-        final cacheKey = buildGlobalKey(ServerId(serverId!), targetId);
-        final externalIds = await externalIdLoads.putIfAbsent(cacheKey, () => client.fetchExternalIds(targetId));
-        _addExternalIdentityKeys(keys, scope, externalIds);
-      } catch (e, stackTrace) {
-        appLogger.d(
-          'Failed to resolve Continue Watching identity for ${item.globalKey}',
-          error: e,
-          stackTrace: stackTrace,
-        );
-      }
-    }
-
-    final stableGuid = _stableMediaGuid(item.guid);
-    if (stableGuid != null) {
-      final guidScope = item.kind == MediaKind.episode ? 'episode' : scope;
-      keys.add('$guidScope:guid:$stableGuid');
-    }
-
-    return keys;
-  }
-
-  String? _continueWatchingIdentityScope(MediaItem item) {
-    return switch (item.kind) {
-      MediaKind.episode || MediaKind.season || MediaKind.show => 'show',
-      MediaKind.movie => 'movie',
-      _ => null,
-    };
-  }
-
-  String? _continueWatchingIdentityTargetId(MediaItem item) {
-    return switch (item.kind) {
-      MediaKind.episode => item.grandparentId,
-      MediaKind.season => item.grandparentId ?? item.parentId,
-      MediaKind.show || MediaKind.movie => item.id,
-      _ => null,
-    };
-  }
-
-  void _addExternalIdentityKeys(Set<String> keys, String scope, ExternalIds externalIds) {
-    final imdb = externalIds.imdb?.trim().toLowerCase();
-    if (imdb != null && imdb.isNotEmpty) keys.add('$scope:imdb:$imdb');
-    final tmdb = externalIds.tmdb;
-    if (tmdb != null) keys.add('$scope:tmdb:$tmdb');
-    final tvdb = externalIds.tvdb;
-    if (tvdb != null) keys.add('$scope:tvdb:$tvdb');
-  }
-
-  String? _stableMediaGuid(String? guid) {
-    final value = guid?.trim();
-    if (value == null || value.isEmpty) return null;
-    if (!value.contains('://')) return null;
-    if (value.contains('agents.none://')) return null;
-    return value.toLowerCase();
+    return serverId != null && _serverManager.getClient(ServerId(serverId)) != null;
   }
 
   /// Fetch recommendation hubs from all servers as neutral [MediaHub]s.
@@ -567,12 +540,19 @@ class DataAggregationService {
   /// Per-server failures are contained (that server just contributes nothing),
   /// but the caller needs to tell "every server failed" apart from "nobody has
   /// a match" — otherwise a dead connection renders as a plain "no results".
-  Future<SearchAggregationResult> searchAcrossServers(String query, {int? limit}) async {
+  ///
+  /// [hiddenLibraryKeys] are `serverId:libraryId` keys the active profile has
+  /// hidden; matching results are dropped before ranking.
+  Future<SearchAggregationResult> searchAcrossServers(
+    String query, {
+    int? limit,
+    Set<String>? hiddenLibraryKeys,
+  }) async {
     if (query.trim().isEmpty) {
       return (items: const <MediaItem>[], succeededServerIds: const <String>{});
     }
 
-    final clients = _serverManager.onlineClients;
+    final clients = _clientsFor(null);
     if (clients.isEmpty) return (items: const <MediaItem>[], succeededServerIds: const <String>{});
 
     final resultLimit = limit ?? defaultMediaSearchLimit;
@@ -599,7 +579,13 @@ class DataAggregationService {
       for (final entry in perServer)
         if (entry.serverId != null) entry.serverId!,
     };
-    final allResults = perServer.expand((entry) => entry.items).toList();
+    // Visibility before ranking (hoofdstuk 22/31.13). Search was the only
+    // aggregation entry point without this filter: servers were excluded by
+    // _clientsFor, libraries by nobody. Filtering here rather than in a caller
+    // keeps hidden items from consuming the result budget, and keeps the TV
+    // path honest — searchProjection groups what it is handed, and
+    // UnifiedMediaGroup.sources asserts it is never a subset.
+    final allResults = filterHiddenLibraryItems(perServer.expand((entry) => entry.items).toList(), hiddenLibraryKeys);
     final result = rankMediaSearchResults(allResults, query, limit: resultLimit);
 
     appLogger.i('Found ${result.length} search results across ${succeededServerIds.length} servers');

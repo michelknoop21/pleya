@@ -22,11 +22,13 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_client.dart';
 
-JellyfinConnection _conn() => JellyfinConnection(
-  id: 'srv-1/user-1',
-  baseUrl: 'https://jf.example.com',
+JellyfinConnection _conn() => _connFor(serverId: 'srv-1', baseUrl: 'https://jf.example.com');
+
+JellyfinConnection _connFor({required String serverId, required String baseUrl}) => JellyfinConnection(
+  id: '$serverId/user-1',
+  baseUrl: baseUrl,
   serverName: 'Home',
-  serverMachineId: 'srv-1',
+  serverMachineId: serverId,
   userId: 'user-1',
   userName: 'edde',
   accessToken: 'tok-abc',
@@ -130,6 +132,138 @@ void main() {
       expect(plexRequests.single.queryParameters['limit'], '100');
       expect(plexRequests.single.queryParameters['searchTypes'], 'movies,tv');
       expect(jellyfinRequests.single.queryParameters['Limit'], '100');
+    });
+
+    // B8 / hoofdstuk 22: a hidden library is a hard visibility boundary, and
+    // search is a fan-out like every other. Servers were already excluded by
+    // _clientsFor; libraries were excluded by nobody, so a title in a hidden
+    // library reached the results and — on TV — became a source under a
+    // unified group. These cases pin the boundary at the aggregation layer,
+    // which is where the sibling fan-outs already apply it.
+    group('searchAcrossServers applies hidden-library visibility', () {
+      _StubSearchClient clientWith(List<MediaItem> items, {String id = 'srv-a'}) =>
+          _StubSearchClient(id: id, items: items);
+
+      test('A: a result that only exists in a hidden library is not returned', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([_stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden')]),
+        );
+
+        final result = await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-hidden'});
+
+        expect(result.items, isEmpty);
+        // The server still answered — this is "nothing visible", not "nothing
+        // reachable", and the screen must not render a connection failure.
+        expect(result.succeededServerIds, {'srv-a'});
+      });
+
+      test('B: the same title in a visible and a hidden library keeps only the visible source', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([
+            _stubItem('visible-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-visible'),
+            _stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden'),
+          ]),
+        );
+
+        final result = await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-hidden'});
+
+        expect(result.items.map((i) => i.id), ['visible-1']);
+      });
+
+      test('C: every membership hidden makes the result disappear entirely', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([
+            _stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden'),
+            _stubItem('hidden-2', 'Dune', serverId: 'srv-a', libraryId: 'lib-also-hidden'),
+          ]),
+        );
+
+        final result = await service.searchAcrossServers(
+          'Dune',
+          hiddenLibraryKeys: {'srv-a:lib-hidden', 'srv-a:lib-also-hidden'},
+        );
+
+        expect(result.items, isEmpty);
+      });
+
+      test('D: a hidden source never reaches the caller, so it can never be activated', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([
+            _stubItem('visible-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-visible'),
+            _stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden'),
+          ]),
+        );
+
+        final result = await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-hidden'});
+
+        // Activation resolves against exactly what aggregation returns, so
+        // absence here is the whole guarantee.
+        expect(result.items.any((i) => i.libraryId == 'lib-hidden'), isFalse);
+      });
+
+      test('E: hiding a library and searching again drops the now-stale source', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([
+            _stubItem('visible-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-visible'),
+            _stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden'),
+          ]),
+        );
+
+        final before = await service.searchAcrossServers('Dune', hiddenLibraryKeys: const {});
+        expect(before.items.map((i) => i.id), containsAll(['visible-1', 'hidden-1']));
+
+        final after = await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-hidden'});
+        expect(after.items.map((i) => i.id), ['visible-1']);
+      });
+
+      test('F: unhiding the library brings its source back', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([_stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden')]),
+        );
+
+        expect((await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-hidden'})).items, isEmpty);
+        expect((await service.searchAcrossServers('Dune', hiddenLibraryKeys: const {})).items.map((i) => i.id), [
+          'hidden-1',
+        ]);
+      });
+
+      test('the key is scoped per server: the same library id elsewhere stays visible', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([_stubItem('a-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-1')], id: 'srv-a'),
+        );
+        manager.debugRegisterClientForTesting(
+          clientWith([_stubItem('b-1', 'Dune', serverId: 'srv-b', libraryId: 'lib-1')], id: 'srv-b'),
+        );
+
+        final result = await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-1'});
+
+        expect(result.items.map((i) => i.id), ['b-1']);
+      });
+
+      test('H: callers that pass nothing are unaffected — non-TV keeps its results', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([
+            _stubItem('visible-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-visible'),
+            _stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden'),
+          ]),
+        );
+
+        final result = await service.searchAcrossServers('Dune');
+
+        expect(result.items.map((i) => i.id), containsAll(['visible-1', 'hidden-1']));
+      });
+
+      test('an item with no library is kept — nothing hidden can name it', () async {
+        // Plex /library/search returns Discover hits (includeExternalMedia)
+        // with no librarySectionID. Those are in no library at all, so the
+        // fail-open branch is correct rather than a hole. Same semantics as
+        // the on-deck, latest-movies and hubs fan-outs.
+        manager.debugRegisterClientForTesting(clientWith([_stubItem('no-library', 'Dune', serverId: 'srv-a')]));
+
+        final result = await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-hidden'});
+
+        expect(result.items.map((i) => i.id), ['no-library']);
+      });
     });
 
     test('a hanging server does not hold back the healthy ones', () {
@@ -261,7 +395,17 @@ void main() {
       expect(result.succeededServerIds, {'plex-1'});
     });
 
-    test('getOnDeckFromAllServers hides duplicate show entries by stable show ids', () async {
+    // Hoofdstuk 11.8, upstream half. `_deduplicateContinueWatching` runs
+    // *before* any Home projection sees the row, so a fold here is invisible
+    // downstream — these two tests pin both directions at the aggregation
+    // boundary itself.
+    //
+    // Here: one show sitting in two Plex library sections, so the same next-up
+    // episode is listed twice. Neither row's own guid is usable (Plex's
+    // `agents.none://` marker), so the *only* evidence is the show's tvdb
+    // narrowed by the episode ordinal — edge case D4 — and the duplicate has
+    // to collapse on it.
+    test('getOnDeckFromAllServers hides the same episode listed twice under one stable show id', () async {
       final client = PlexClient.forTesting(
         config: PlexConfig(
           baseUrl: 'https://plex.example.com',
@@ -287,20 +431,24 @@ void main() {
                       {
                         'ratingKey': 'old-episode',
                         'type': 'episode',
-                        'title': 'Episode 1',
+                        'title': 'The Fourth Crossing',
                         'grandparentRatingKey': 'old-show',
                         'grandparentTitle': 'Shared Show',
-                        'guid': 'plex://episode/shared-episode-1',
+                        'guid': 'com.plexapp.agents.none://old-episode',
+                        'parentIndex': 2,
+                        'index': 4,
                         'lastViewedAt': 100,
                         'librarySectionID': 1,
                       },
                       {
                         'ratingKey': 'new-episode',
                         'type': 'episode',
-                        'title': 'Episode 2',
+                        'title': 'The Fourth Crossing',
                         'grandparentRatingKey': 'new-show',
                         'grandparentTitle': 'Shared Show',
-                        'guid': 'plex://episode/shared-episode-2',
+                        'guid': 'com.plexapp.agents.none://new-episode',
+                        'parentIndex': 2,
+                        'index': 4,
                         'lastViewedAt': 200,
                         'librarySectionID': 2,
                       },
@@ -336,6 +484,95 @@ void main() {
 
       expect(result.items.map((item) => item.id), ['new-episode']);
       expect(result.succeededServerIds, {'plex-1'});
+    });
+
+    // The other direction, and the regression that catches the old
+    // series-wide fold: same show, same show tvdb, same everything except the
+    // episode number. Two Continue Watching rows, and the upstream dedup must
+    // not reduce them to one before the Home projection ever sees them.
+    test('getOnDeckFromAllServers keeps two different episodes of one show under one stable show id', () async {
+      final client = PlexClient.forTesting(
+        config: PlexConfig(
+          baseUrl: 'https://plex.example.com',
+          token: 'token',
+          clientIdentifier: 'client-id',
+          product: 'Plezy',
+          version: 'test',
+        ),
+        serverId: ServerId('plex-1'),
+        serverName: 'Plex',
+        httpClient: MockClient((req) async {
+          if (req.url.path == '/hubs') {
+            return _json({
+              'MediaContainer': {
+                'Hub': [
+                  {
+                    'key': '/hubs/home/continueWatching',
+                    'title': 'Continue Watching',
+                    'type': 'mixed',
+                    'hubIdentifier': 'home.continue',
+                    'size': 2,
+                    'Metadata': [
+                      {
+                        'ratingKey': 'episode-s2e4',
+                        'type': 'episode',
+                        'title': 'The Fourth Crossing',
+                        'grandparentRatingKey': 'old-show',
+                        'grandparentTitle': 'Shared Show',
+                        'guid': 'com.plexapp.agents.none://episode-s2e4',
+                        'parentIndex': 2,
+                        'index': 4,
+                        'lastViewedAt': 100,
+                        'librarySectionID': 1,
+                      },
+                      {
+                        'ratingKey': 'episode-s2e5',
+                        'type': 'episode',
+                        'title': 'Slack Water',
+                        'grandparentRatingKey': 'new-show',
+                        'grandparentTitle': 'Shared Show',
+                        'guid': 'com.plexapp.agents.none://episode-s2e5',
+                        'parentIndex': 2,
+                        'index': 5,
+                        'lastViewedAt': 200,
+                        'librarySectionID': 2,
+                      },
+                    ],
+                  },
+                ],
+              },
+            });
+          }
+          if (req.url.path == '/library/metadata/old-show' || req.url.path == '/library/metadata/new-show') {
+            return _json({
+              'MediaContainer': {
+                'Metadata': [
+                  {
+                    'ratingKey': req.url.pathSegments.last,
+                    'type': 'show',
+                    'title': 'Shared Show',
+                    'Guid': [
+                      {'id': 'tvdb://12345'},
+                    ],
+                  },
+                ],
+              },
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      addTearDown(client.close);
+      manager.debugRegisterClientForTesting(client);
+
+      final result = await service.getOnDeckFromAllServers(limit: 10);
+
+      expect(
+        result.items.map((item) => item.id),
+        ['episode-s2e5', 'episode-s2e4'],
+        reason: 'hoofdstuk 11.8: S02E04 and S02E05 are two Continue Watching entries, not one',
+      );
+      expect(result.items.map((item) => (item.parentIndex, item.index)), [(2, 5), (2, 4)]);
     });
 
     test('getOnDeckFromAllServers keeps duplicate titles without stable ids', () async {
@@ -406,6 +643,86 @@ void main() {
       expect(result.items.map((item) => item.id), ['new-unmatched', 'old-unmatched']);
       expect(result.succeededServerIds, {'plex-1'});
     });
+
+    // Fase 1 (docs/DECISIONS.md#dec-063) rewires Continue Watching dedup onto
+    // the shared unified-catalog identity primitives. The new
+    // `grouping_service.dart` those primitives feed *does* merge on title+year
+    // alone when nothing conflicts (hoofdstuk 11.6) — a real capability
+    // improvement fase 3+ eventually gives Continue Watching too. This test
+    // pins that Continue Watching itself does not get that behavior yet: its
+    // compatibility shim in `identity_resolver.dart` only ever merges on
+    // shared external ids/guid, matching every pre-fase-1 build, so this
+    // scenario keeps both movies instead of silently starting to merge them.
+    test(
+      'getOnDeckFromAllServers never merges two movies on title+year alone, unlike the new grouping engine',
+      () async {
+        final client = PlexClient.forTesting(
+          config: PlexConfig(
+            baseUrl: 'https://plex.example.com',
+            token: 'token',
+            clientIdentifier: 'client-id',
+            product: 'Plezy',
+            version: 'test',
+          ),
+          serverId: ServerId('plex-1'),
+          serverName: 'Plex',
+          httpClient: MockClient((req) async {
+            if (req.url.path == '/hubs') {
+              return _json({
+                'MediaContainer': {
+                  'Hub': [
+                    {
+                      'key': '/hubs/home/continueWatching',
+                      'title': 'Continue Watching',
+                      'type': 'mixed',
+                      'hubIdentifier': 'home.continue',
+                      'size': 2,
+                      'Metadata': [
+                        {
+                          'ratingKey': 'old-movie',
+                          'type': 'movie',
+                          'title': 'Shared Title',
+                          'year': 2019,
+                          'viewOffsetMs': 100,
+                          'duration': 1000,
+                          'lastViewedAt': 100,
+                        },
+                        {
+                          'ratingKey': 'new-movie',
+                          'type': 'movie',
+                          'title': 'Shared Title',
+                          'year': 2019,
+                          'viewOffsetMs': 100,
+                          'duration': 1000,
+                          'lastViewedAt': 200,
+                        },
+                      ],
+                    },
+                  ],
+                },
+              });
+            }
+            if (req.url.path == '/library/metadata/old-movie' || req.url.path == '/library/metadata/new-movie') {
+              return _json({
+                'MediaContainer': {
+                  'Metadata': [
+                    {'ratingKey': req.url.pathSegments.last, 'type': 'movie', 'title': 'Shared Title'},
+                  ],
+                },
+              });
+            }
+            return http.Response('unexpected request', 500);
+          }),
+        );
+        addTearDown(client.close);
+        manager.debugRegisterClientForTesting(client);
+
+        final result = await service.getOnDeckFromAllServers(limit: 10);
+
+        expect(result.items.map((item) => item.id), ['new-movie', 'old-movie']);
+        expect(result.succeededServerIds, {'plex-1'});
+      },
+    );
 
     test('getLatestMoviesFromAllServers sorts by release date, films only, addedAt sinks the dateless', () async {
       final client = PlexClient.forTesting(
@@ -694,15 +1011,275 @@ void main() {
       expect(captured.single.queryParameters['count'], defaultHubPreviewLimit.toString());
     });
   });
+
+  // Fase 2 (docs/tvos-unified-experience.md hoofdstuk 27, hoofdstuk 1.1 punt 2):
+  // MultiServerManager.onlineClients itself is NOT visibility-filtered — the
+  // profile visibility filter lives on the manager but only MultiServerProvider
+  // applied it. DataAggregationService._clientsFor() used to read onlineClients
+  // directly, so a profile-hidden server's items could still reach every
+  // cross-server aggregation call. This closes that gap ahead of the unified
+  // fan-out (findAllByIdentity in a later phase), which must never let a
+  // hidden server's items reach identity/grouping.
+  group('DataAggregationService respects profile visibility', () {
+    test('getMediaLibrariesFromAllServers excludes a server hidden by the active profile', () async {
+      final visible = JellyfinClient.forTesting(
+        connection: _connFor(serverId: 'srv-visible', baseUrl: 'https://jf-visible.example.com'),
+        httpClient: MockClient((req) async {
+          if (req.url.path == '/Users/user-1/Views') {
+            return _json({
+              'Items': [
+                {'Id': 'lib-visible', 'Name': 'Visible Library', 'CollectionType': 'movies'},
+              ],
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      final hidden = JellyfinClient.forTesting(
+        connection: _connFor(serverId: 'srv-hidden', baseUrl: 'https://jf-hidden.example.com'),
+        httpClient: MockClient((req) async => http.Response('server should never be called', 500)),
+      );
+      addTearDown(visible.close);
+      addTearDown(hidden.close);
+      manager.debugRegisterJellyfinClientForTesting(visible);
+      manager.debugRegisterJellyfinClientForTesting(hidden);
+      manager.setVisibleServerIds({'srv-visible'});
+
+      final result = await service.getMediaLibrariesFromAllServers();
+
+      expect(result.libraries.map((l) => l.id), ['lib-visible']);
+      expect(result.succeededServerIds, {'srv-visible'});
+    });
+
+    test('an explicit serverIds restriction never re-admits a profile-hidden server', () async {
+      final hidden = JellyfinClient.forTesting(
+        connection: _connFor(serverId: 'srv-hidden', baseUrl: 'https://jf-hidden.example.com'),
+        httpClient: MockClient((req) async => http.Response('server should never be called', 500)),
+      );
+      addTearDown(hidden.close);
+      manager.debugRegisterJellyfinClientForTesting(hidden);
+      manager.setVisibleServerIds(const {});
+
+      final result = await service.getMediaLibrariesFromAllServers(serverIds: {'srv-hidden'});
+
+      expect(result.libraries, isEmpty);
+      expect(result.succeededServerIds, isEmpty);
+    });
+
+    test('a null visibility filter (no active restriction) still sees every online server', () async {
+      final client = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((req) async {
+          if (req.url.path == '/Users/user-1/Views') {
+            return _json({
+              'Items': [
+                {'Id': 'lib-1', 'Name': 'Library 1', 'CollectionType': 'movies'},
+              ],
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      addTearDown(client.close);
+      manager.debugRegisterJellyfinClientForTesting(client);
+      expect(manager.visibleServerIds, isNull);
+
+      final result = await service.getMediaLibrariesFromAllServers();
+
+      expect(result.succeededServerIds, {'srv-1'});
+    });
+
+    // searchAcrossServers reads MultiServerManager.onlineClients directly
+    // instead of going through _clientsFor(), so it missed the fix above:
+    // a profile-hidden server's items could still surface in cross-server
+    // search results. Confirmed independently against an unauthorized
+    // remote commit's claim (see fase-2 handoff) before writing this test.
+    test('searchAcrossServers excludes a server hidden by the active profile', () async {
+      final visible = PlexClient.forTesting(
+        config: PlexConfig(
+          baseUrl: 'https://plex-visible.example.com',
+          token: 'token',
+          clientIdentifier: 'client-id',
+          product: 'Plezy',
+          version: 'test',
+        ),
+        serverId: ServerId('plex-visible'),
+        serverName: 'Visible',
+        httpClient: MockClient((req) async {
+          if (req.url.path == '/library/search') {
+            return _json({
+              'MediaContainer': {
+                'SearchResult': [
+                  {
+                    'score': 100,
+                    'Metadata': {'ratingKey': 'visible-movie', 'type': 'movie', 'title': 'Visible Movie'},
+                  },
+                ],
+              },
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      // A 500 response alone is not a strong enough canary: searchAcrossServers
+      // already contains a per-server search failure, so a hidden server that
+      // gets contacted and errors would still leave the final result looking
+      // correct by accident. Track requests directly instead.
+      final hiddenRequests = <Uri>[];
+      final hidden = PlexClient.forTesting(
+        config: PlexConfig(
+          baseUrl: 'https://plex-hidden.example.com',
+          token: 'token',
+          clientIdentifier: 'client-id',
+          product: 'Plezy',
+          version: 'test',
+        ),
+        serverId: ServerId('plex-hidden'),
+        serverName: 'Hidden',
+        httpClient: MockClient((req) async {
+          hiddenRequests.add(req.url);
+          return http.Response('server should never be called', 500);
+        }),
+      );
+      addTearDown(visible.close);
+      addTearDown(hidden.close);
+      manager.debugRegisterClientForTesting(visible);
+      manager.debugRegisterClientForTesting(hidden);
+      manager.setVisibleServerIds({'plex-visible'});
+
+      final result = await service.searchAcrossServers('Visible Movie');
+
+      expect(result.items.map((i) => i.id), ['visible-movie']);
+      expect(result.succeededServerIds, {'plex-visible'});
+      expect(hiddenRequests, isEmpty, reason: 'a profile-hidden server must never even be asked');
+    });
+  });
+
+  // _deduplicateContinueWatching calls UnifiedMediaSource.fromItem
+  // unconditionally for every item once any duplicate bucket exists in the
+  // batch, and that factory throws on a null/empty MediaItem.serverId (every
+  // MediaItem variant's serverId is a plain nullable String, so this is a
+  // real, reachable shape, not a hypothetical). Confirmed independently
+  // against an unauthorized remote commit's claim (see fase-2 handoff)
+  // before writing this test.
+  group('DataAggregationService Continue Watching tolerates a malformed row', () {
+    test('a duplicate bucket elsewhere in the batch must not crash dedup for a row missing serverId', () async {
+      final good = MediaItem(
+        id: 'good',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Shared Movie',
+        year: 2020,
+        serverId: 's1',
+        lastViewedAt: 200,
+      );
+      // Shares good's bucket key (same normalized title) so
+      // duplicateBuckets is non-empty and the vulnerable path runs, but its
+      // own serverId is missing — the malformed row.
+      final malformed = MediaItem(
+        id: 'malformed',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Shared Movie',
+        year: 2020,
+        lastViewedAt: 100,
+      );
+
+      final result = await service.mergeContinueWatching(const [], [good, malformed]);
+
+      expect(result.map((i) => i.id), ['good', 'malformed'], reason: 'both rows survive at their own recency position');
+    });
+  });
+
+  // Fase-0 baseline for Pleya Unified TV 2026 (docs/tvos-unified-experience.md
+  // hoofdstuk 27): this group locks in the existing DataAggregationService
+  // call-count behavior that fase 0 must not change before any
+  // unified-catalog/pagination work (hoofdstuk 12) lands. It is a tripwire,
+  // not a correctness test: if a later phase changes the fan-out shape (e.g.
+  // batches libraries into one request, or adds a prefetch call), this test
+  // goes red and forces an explicit decision instead of a silent drift in how
+  // many requests Home/Libraries makes per server.
+  group('DataAggregationService call-count baseline', () {
+    test('call-count baseline: 5 libraries across 2 servers fetch in exactly 7 network calls', () async {
+      var serverACalls = 0;
+      var serverBCalls = 0;
+
+      final clientA = JellyfinClient.forTesting(
+        connection: _connFor(serverId: 'srv-a', baseUrl: 'https://jf-a.example.com'),
+        httpClient: MockClient((req) async {
+          serverACalls++;
+          if (req.url.path == '/Users/user-1/Views') {
+            return _json({
+              'Items': [
+                {'Id': 'lib-a1', 'Name': 'Movies A', 'CollectionType': 'movies'},
+                {'Id': 'lib-a2', 'Name': 'Shows A', 'CollectionType': 'tvshows'},
+              ],
+            });
+          }
+          if (req.url.path == '/Users/user-1/Items/Latest') {
+            final parentId = req.url.queryParameters['ParentId']!;
+            return _json({
+              'Items': [
+                {'Id': 'item-$parentId', 'Type': 'Movie', 'Name': 'Latest $parentId', 'ParentLibraryId': parentId},
+              ],
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      final clientB = JellyfinClient.forTesting(
+        connection: _connFor(serverId: 'srv-b', baseUrl: 'https://jf-b.example.com'),
+        httpClient: MockClient((req) async {
+          serverBCalls++;
+          if (req.url.path == '/Users/user-1/Views') {
+            return _json({
+              'Items': [
+                {'Id': 'lib-b1', 'Name': 'Movies B', 'CollectionType': 'movies'},
+                {'Id': 'lib-b2', 'Name': 'Shows B', 'CollectionType': 'tvshows'},
+                {'Id': 'lib-b3', 'Name': 'Docs B', 'CollectionType': 'movies'},
+              ],
+            });
+          }
+          if (req.url.path == '/Users/user-1/Items/Latest') {
+            final parentId = req.url.queryParameters['ParentId']!;
+            return _json({
+              'Items': [
+                {'Id': 'item-$parentId', 'Type': 'Movie', 'Name': 'Latest $parentId', 'ParentLibraryId': parentId},
+              ],
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      addTearDown(clientA.close);
+      addTearDown(clientB.close);
+      manager.debugRegisterJellyfinClientForTesting(clientA);
+      manager.debugRegisterJellyfinClientForTesting(clientB);
+
+      final result = await service.getHubsFromAllServers(useGlobalHubs: false, includePlaybackHubs: false);
+
+      expect(result.succeededServerIds, {'srv-a', 'srv-b'});
+      expect(result.hubs, hasLength(5), reason: 'one hub per library across both servers');
+      // Per server: 1 library-list call ("Views") + 1 "Latest" call per
+      // visible library. Server A has 2 libraries (3 calls), server B has 3
+      // (4 calls). This is the exact, named baseline — not a bound — so a
+      // change in fan-out shape (batching, an added prefetch, a dropped
+      // library-list call) shows up as a hard failure here.
+      expect(serverACalls, 3, reason: '1 Views + 2 Latest for server A (2 libraries)');
+      expect(serverBCalls, 4, reason: '1 Views + 3 Latest for server B (3 libraries)');
+      expect(serverACalls + serverBCalls, 7, reason: 'total network calls for 5 libraries across 2 servers');
+    });
+  });
 }
 
-MediaItem _stubItem(String id, String title) => MediaItem(
+MediaItem _stubItem(String id, String title, {String serverId = 'healthy', String? libraryId}) => MediaItem(
   id: id,
   backend: MediaBackend.plex,
   kind: MediaKind.movie,
   title: title,
-  serverId: 'healthy',
+  serverId: serverId,
   serverName: 'Healthy',
+  libraryId: libraryId,
 );
 
 /// Minimal search-only client. With [hang] it never answers, standing in for a
