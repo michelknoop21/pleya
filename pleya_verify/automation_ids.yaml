@@ -21,6 +21,15 @@ ids:
   - id: nav.discover
     role: nav
     instanceable: false
+  - id: nav.movies
+    role: nav
+    instanceable: false
+  - id: nav.series
+    role: nav
+    instanceable: false
+  - id: nav.books
+    role: nav
+    instanceable: false
   - id: nav.libraries
     role: nav
     instanceable: false
@@ -43,6 +52,9 @@ ids:
     role: nav
     instanceable: false
   - id: nav.myPleya
+    role: nav
+    instanceable: false
+  - id: nav.bar
     role: nav
     instanceable: false
   - id: sidebar.rail

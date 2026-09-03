@@ -516,9 +516,12 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
       case NavigationTabId.watchlist:
         return _kWatchlist;
       case NavigationTabId.myPleya:
-        // Mobile-only destination; the rail never renders it and has nothing
-        // to restore focus to. Returning a key here would silently point the
-        // focus restore at an item that is not mounted.
+      case NavigationTabId.movies:
+      case NavigationTabId.series:
+      case NavigationTabId.books:
+        // Mobile-only destinations; the rail never renders them and has
+        // nothing to restore focus to. Returning a key here would silently
+        // point the focus restore at an item that is not mounted.
         return null;
       case NavigationTabId.downloads:
         return _showDownloads ? _kDownloads : null;

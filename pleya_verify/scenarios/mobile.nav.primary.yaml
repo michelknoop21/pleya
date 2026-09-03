@@ -1,0 +1,52 @@
+name: mobile.nav.primary
+target: ios-sim
+# The DEC-069 bottom bar on a real iPhone build: five fixed positions with the
+# fourth decided by content. On the fixture profile there are no e-books, no
+# tuner and no kijklijst, so this run covers permutation (d) of DEC-069 point 5
+# — the Downloads floor, the case that proves the bar never falls to four slots
+# for want of a candidate.
+#
+# The other three permutations are not provable against this fixture yet and
+# are deliberately not faked here:
+#   (a) Boeken  — needs a books source; today availability comes from the
+#                 `PLEYA_BOOKS` compile-time flag, which the iOS driver's build
+#                 does not pass.
+#   (b) Live TV — `hasLiveTv` is probed through `liveTv.fetchDvrs()`, and a
+#                 Pleya Server connection returns `NoopLiveTvSupport`, so no
+#                 fixture state can turn it on.
+#   (c) Kijklijst — needs a Plex account watchlist, which the fixture has no
+#                 notion of.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - wait_until: {id: nav.bar, timeout: 15000}
+  # IntroGate's cold-start splash paints over an already-ready screen and has
+  # no automation id of its own, so it cannot be waited for — settle past it
+  # before measuring, exactly as discover.hero.layout does.
+  - settle: 3500
+  # The bar itself, then each slot. Presence is the first half: `assert` fails
+  # when an id is absent from the ui tree, so naming the five destinations is
+  # what proves the composition. Geometry is the other half — a slot that
+  # renders off-viewport is a slot nobody can reach, and no widget test
+  # measures that.
+  #
+  # No `minimumTapTarget` here, deliberately. `nav.<id>` is mounted around the
+  # destination's *glyph*, which is 24x24 by design; the hit area is Material's
+  # own `NavigationDestination`, which the node does not wrap and this
+  # assertion would therefore measure wrongly. Asserting 44 against the glyph
+  # fails on a bar that is perfectly usable, which is a false red, and raising
+  # the node to the destination is not available through the Material API.
+  - assert: {id: nav.bar, insideViewport: true}
+  - assert: {id: nav.discover, insideViewport: true}
+  - assert: {id: nav.series, insideViewport: true}
+  - assert: {id: nav.movies, insideViewport: true}
+  - assert: {id: nav.downloads, insideViewport: true}
+  - assert: {id: nav.myPleya, insideViewport: true}
+  # What is *not* in the bar has no assertion form: `assert` can only name an
+  # id that must be there. Zoeken leaving the bar and moving to the header is
+  # covered by the widget tests and by this screenshot.
+  - snapshot: mobile-nav-primary

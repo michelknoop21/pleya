@@ -22,6 +22,10 @@ class AutomationIds {
   /// The nav rail as a whole — bounds for collapse/expand geometry checks.
   static const String sidebarRail = 'sidebar.rail';
 
+  /// The mobile bottom bar as a whole — bounds and slot count. The per-tab
+  /// nodes are [navTab], mounted on both the side rail and this bar.
+  static const String navBar = 'nav.bar';
+
   /// One pinned library row on the nav rail. Instanceable: one per visible
   /// library, suffixed `[<globalKey>]`.
   static const String sidebarLibraryRow = 'sidebar.library_row';
@@ -69,6 +73,7 @@ class AutomationIds {
     {'id': screenLibraries, 'role': 'screen', 'instanceable': false},
     {'id': screenMediaDetail, 'role': 'screen', 'instanceable': false},
     for (final tab in NavigationTabId.values) {'id': navTab(tab), 'role': 'nav', 'instanceable': false},
+    {'id': navBar, 'role': 'nav', 'instanceable': false},
     {'id': sidebarRail, 'role': 'sidebar', 'instanceable': false},
     {'id': sidebarLibraryRow, 'role': 'nav.item', 'instanceable': true},
     {'id': libraryGrid, 'role': 'grid', 'instanceable': false},

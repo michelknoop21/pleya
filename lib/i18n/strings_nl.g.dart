@@ -94,6 +94,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsSeerrNl seerr = _TranslationsSeerrNl._(_root);
 	@override late final _TranslationsTautulliNl tautulli = _TranslationsTautulliNl._(_root);
 	@override late final _TranslationsNowWatchingNl nowWatching = _TranslationsNowWatchingNl._(_root);
+	@override late final _TranslationsUnifiedCatalogNl unifiedCatalog = _TranslationsUnifiedCatalogNl._(_root);
 }
 
 // Path: states
@@ -1144,6 +1145,7 @@ class _TranslationsNavigationNl extends TranslationsNavigationEn {
 
 	// Translations
 	@override String get libraries => 'Media';
+	@override String get books => 'Boeken';
 	@override String get downloads => 'Downloads';
 	@override String get liveTv => 'Live TV';
 	@override String get watchlist => 'Kijklijst';
@@ -2052,6 +2054,17 @@ class _TranslationsNowWatchingNl extends TranslationsNowWatchingEn {
 	@override String get onWan => 'Van buiten';
 	@override String get unavailable => 'Tautulli gaf geen antwoord';
 	@override String get sidebarLabel => 'Nu aan het kijken';
+}
+
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => 'Films';
+	@override String get seriesTitle => 'Series';
 }
 
 // Path: search.filters
@@ -3265,6 +3278,7 @@ extension on TranslationsNl {
 			'licenses.licenseNumber' => ({required Object number}) => 'Licentie ${number}',
 			'licenses.licensesCount' => ({required Object count}) => '${count} licenties',
 			'navigation.libraries' => 'Media',
+			'navigation.books' => 'Boeken',
 			'navigation.downloads' => 'Downloads',
 			'navigation.liveTv' => 'Live TV',
 			'navigation.watchlist' => 'Kijklijst',
@@ -3455,9 +3469,9 @@ extension on TranslationsNl {
 			'watchTogether.reconnectingToHost' => 'Opnieuw verbinden met host...',
 			'watchTogether.currentPlayback' => 'Huidige weergave',
 			'watchTogether.joinCurrentPlayback' => 'Deelnemen aan huidige weergave',
-			'watchTogether.joinCurrentPlaybackDescription' => 'Ga terug naar wat de host nu kijkt',
 			_ => null,
 		} ?? switch (path) {
+			'watchTogether.joinCurrentPlaybackDescription' => 'Ga terug naar wat de host nu kijkt',
 			'watchTogether.failedToOpenCurrentPlayback' => 'Huidige weergave kon niet worden geopend',
 			'watchTogether.participantJoined' => ({required Object name}) => '${name} is toegetreden',
 			'watchTogether.participantLeft' => ({required Object name}) => '${name} heeft de sessie verlaten',
@@ -3969,9 +3983,9 @@ extension on TranslationsNl {
 			'seerr.byStreamingService' => 'Per streamingdienst',
 			'seerr.showAll' => 'Alles tonen',
 			'seerr.fourK' => 'In 4K aanvragen',
-			'seerr.fourKBadge' => '4K',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.fourKBadge' => '4K',
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
 			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => 'Nog ${remaining} van ${limit} aanvragen',
 			'seerr.quotaUnlimited' => 'Onbeperkt aanvragen',
@@ -4054,6 +4068,8 @@ extension on TranslationsNl {
 			'nowWatching.onWan' => 'Van buiten',
 			'nowWatching.unavailable' => 'Tautulli gaf geen antwoord',
 			'nowWatching.sidebarLabel' => 'Nu aan het kijken',
+			'unifiedCatalog.moviesTitle' => 'Films',
+			'unifiedCatalog.seriesTitle' => 'Series',
 			_ => null,
 		};
 	}

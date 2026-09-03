@@ -911,6 +911,7 @@
   },
   "navigation": {
     "libraries": "Media",
+    "books": "Boeken",
     "downloads": "Downloads",
     "liveTv": "Live TV",
     "watchlist": "Kijklijst",
@@ -1771,5 +1772,9 @@
     "onWan": "Van buiten",
     "unavailable": "Tautulli gaf geen antwoord",
     "sidebarLabel": "Nu aan het kijken"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Films",
+    "seriesTitle": "Series"
   }
 }

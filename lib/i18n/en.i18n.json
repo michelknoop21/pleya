@@ -957,6 +957,7 @@
   },
   "navigation": {
     "libraries": "Libraries",
+    "books": "Books",
     "downloads": "Downloads",
     "liveTv": "Live TV",
     "watchlist": "Watchlist",
@@ -1842,5 +1843,9 @@
     "notificationText": "Other Pleya devices can stream your local folders",
     "hostDescriptionAndroid": "Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running in the background with a notification.",
     "scanningSubnet": "Scanning the network…"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Movies",
+    "seriesTitle": "Series"
   }
 }

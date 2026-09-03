@@ -14,6 +14,7 @@ import '../focus/key_event_utils.dart';
 import '../media/ids.dart';
 import '../media/media_server_client.dart';
 import '../profiles/active_profile_provider.dart';
+import '../providers/books_library_provider.dart';
 import '../providers/companion_remote_provider.dart';
 import '../providers/discover_provider.dart';
 import '../providers/hidden_libraries_provider.dart';
@@ -325,6 +326,13 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                 },
               ),
               ChangeNotifierProvider(create: (_) => WatchlistStore()..bindProfile(activeId)),
+              // Books are per profile the same way the kijklijst is: the
+              // navigation policy asks this provider whether the acting user
+              // has e-books, and a provider carried across a switch would
+              // answer for the previous one.
+              ChangeNotifierProvider<BooksLibraryProvider>(
+                create: (_) => BooksLibraryProvider()..refresh(profileId: activeId),
+              ),
               // The kijklijst is rebuilt per profile: its sources, its cache
               // keys and its snapshot are all scoped to the acting user, and a
               // provider carried across a switch would serve the previous

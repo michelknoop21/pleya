@@ -57,6 +57,22 @@ Bewuste afwijkingen in golden 00:
   die ook op de demoserver staan). Commerciële covers en posters horen niet als golden asset in de
   repository; verhouding, kleurdynamiek en informatiedichtheid zijn wel aangehouden.
 
+## Wat er tegen golden 00 gebouwd is
+
+De navigatie-skeleton implementeert de balk uit deze golden: vijf vaste posities, actieve tab als
+rood icoon plus rood label, geen indicatorstreep en geen punt. Die presentatie zit in
+`TabBarPresentation.unified2026` en geldt alleen op de iPhone; de iPad houdt `classic`, zodat een
+scherm waarvoor geen golden bestaat er niet stilzwijgend anders uit gaat zien.
+
+De vierde slot komt uit `PrimaryMobileDestinationPolicy`. Boeken wint, daarna Live TV, Kijklijst en
+Downloads. Zolang de boekenbron nog geen antwoord heeft, blijft de slot leeg in plaats van naar Live
+TV te vallen en terug te springen. Boeken zelf is nog een placeholder: het scherm eronder is
+schermgolden 01 en wordt pas gebouwd na goedkeuring daarvan.
+
+`pleya_verify/scenarios/mobile.nav.primary.yaml` meet de balk op een echte iPhone-simulatorbuild.
+Van de vijf permutaties uit DEC-069 punt 5 is nu alleen de Downloads-bodem te bewijzen; welke drie
+niet, en waarom, staat in het scenario zelf.
+
 ## Opnieuw renderen
 
 De bron van iedere approved golden staat in `src/<golden>/`. Dat wijkt af van DEC-065 en DEC-090,

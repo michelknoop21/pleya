@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/main.dart';
 import 'package:pleya/navigation/navigation_tabs.dart';
+import 'package:pleya/navigation/primary_mobile_destination_policy.dart';
 import 'package:pleya/screens/main_screen.dart';
 
 List<NavigationTabId> _ids(List<NavigationTab> tabs) => tabs.map((tab) => tab.id).toList();
@@ -91,12 +92,7 @@ void main() {
 
   group('main screen bottom navigation tabs', () {
     test('mobile online hides Settings, which now lives behind the gear in My Pleya', () {
-      final tabs = mainScreenBottomNavigationTabs(
-        visibleTabs: allNavigationTabs,
-        isMobile: true,
-        isOffline: false,
-        currentTab: NavigationTabId.discover,
-      );
+      final tabs = mainScreenBottomNavigationTabs(visibleTabs: allNavigationTabs, isMobile: true);
 
       expect(_ids(tabs), isNot(contains(NavigationTabId.settings)));
     });
@@ -108,8 +104,7 @@ void main() {
       final tabs = mainScreenBottomNavigationTabs(
         visibleTabs: offlineTabs,
         isMobile: true,
-        isOffline: true,
-        currentTab: NavigationTabId.downloads,
+        capabilities: const MobileDestinationCapabilities(isOffline: true),
       );
 
       expect(_ids(tabs), [NavigationTabId.downloads]);
@@ -119,12 +114,7 @@ void main() {
       // Changed behaviour: Settings used to reappear as a bar item when
       // selected. It is now reached through the gear in My Pleya, and the bar
       // projects the selection onto My Pleya instead of growing a sixth slot.
-      final tabs = mainScreenBottomNavigationTabs(
-        visibleTabs: allNavigationTabs,
-        isMobile: true,
-        isOffline: false,
-        currentTab: NavigationTabId.settings,
-      );
+      final tabs = mainScreenBottomNavigationTabs(visibleTabs: allNavigationTabs, isMobile: true);
 
       expect(_ids(tabs), isNot(contains(NavigationTabId.settings)));
       expect(
@@ -134,12 +124,7 @@ void main() {
     });
 
     test('non-mobile returns all visible tabs unchanged', () {
-      final tabs = mainScreenBottomNavigationTabs(
-        visibleTabs: allNavigationTabs,
-        isMobile: false,
-        isOffline: false,
-        currentTab: NavigationTabId.discover,
-      );
+      final tabs = mainScreenBottomNavigationTabs(visibleTabs: allNavigationTabs, isMobile: false);
 
       expect(tabs, same(allNavigationTabs));
     });

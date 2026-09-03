@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/navigation/navigation_tabs.dart';
+import 'package:pleya/navigation/primary_mobile_destination_policy.dart';
 import 'package:pleya/screens/main_screen.dart';
 import 'package:pleya/services/base_shared_preferences_service.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -14,7 +15,7 @@ List<NavigationTabId> bar({
   bool hasLiveTv = true,
   bool hasSeerr = true,
   bool hasWatchlist = true,
-  NavigationTabId currentTab = NavigationTabId.discover,
+  BooksAvailability books = BooksAvailability.unavailable,
 }) {
   return ids(
     mainScreenBottomNavigationTabs(
@@ -23,11 +24,16 @@ List<NavigationTabId> bar({
         hasLiveTv: hasLiveTv,
         hasSeerr: hasSeerr,
         hasWatchlist: hasWatchlist,
+        hasBooks: books == BooksAvailability.available,
         isMobile: true,
       ),
       isMobile: true,
-      isOffline: isOffline,
-      currentTab: currentTab,
+      capabilities: MobileDestinationCapabilities(
+        books: books,
+        hasLiveTv: hasLiveTv,
+        hasWatchlist: hasWatchlist,
+        isOffline: isOffline,
+      ),
     ),
   );
 }
@@ -53,6 +59,46 @@ void main() {
       ]);
       expect(withWatchlist.where((id) => id != NavigationTabId.watchlist), without);
       expect(withWatchlist.indexOf(NavigationTabId.watchlist), 4);
+    });
+
+    test('Series, Films and Boeken never reach the desktop or TV sidebar', () {
+      // DEC-069 adds three phone destinations. The rail already reaches every
+      // one of them through Bibliotheken, so it must be byte-for-byte the list
+      // it was before, with or without books.
+      for (final hasBooks in [false, true]) {
+        final rail = ids(
+          NavigationTab.getVisibleTabs(
+            isOffline: false,
+            hasLiveTv: true,
+            hasSeerr: true,
+            hasWatchlist: true,
+            hasBooks: hasBooks,
+            isMobile: false,
+          ),
+        );
+
+        expect(rail, [
+          NavigationTabId.discover,
+          NavigationTabId.libraries,
+          NavigationTabId.liveTv,
+          NavigationTabId.search,
+          NavigationTabId.watchlist,
+          NavigationTabId.requests,
+          NavigationTabId.downloads,
+          NavigationTabId.settings,
+        ], reason: 'hasBooks=$hasBooks');
+      }
+    });
+
+    test('Boeken needs books, not just a phone', () {
+      expect(
+        ids(NavigationTab.getVisibleTabs(isOffline: false, hasBooks: false, isMobile: true)),
+        isNot(contains(NavigationTabId.books)),
+      );
+      expect(
+        ids(NavigationTab.getVisibleTabs(isOffline: false, hasBooks: true, isMobile: true)),
+        contains(NavigationTabId.books),
+      );
     });
 
     test('Live TV still depends on a tuner and nothing else', () {
@@ -100,29 +146,49 @@ void main() {
   });
 
   group('the mobile bottom bar', () {
-    test('online is Home, Libraries, Live TV, Search and My Pleya', () {
+    test('online is Home, Series, Films, the dynamic slot and My Pleya', () {
+      // DEC-069 and golden 00: five fixed positions, the fourth decided by
+      // content. With a tuner and no books that fourth slot is Live TV.
       expect(bar(isOffline: false), [
         NavigationTabId.discover,
-        NavigationTabId.libraries,
+        NavigationTabId.series,
+        NavigationTabId.movies,
         NavigationTabId.liveTv,
-        NavigationTabId.search,
         NavigationTabId.myPleya,
       ]);
     });
 
-    test('never holds Downloads, Requests or Settings while online', () {
+    test('never holds Zoeken, Bibliotheken, Requests or Settings while online', () {
       final tabs = bar(isOffline: false);
 
-      expect(tabs, isNot(contains(NavigationTabId.downloads)));
+      // Zoeken moved to the header icon and Bibliotheken behind My Pleya.
+      expect(tabs, isNot(contains(NavigationTabId.search)));
+      expect(tabs, isNot(contains(NavigationTabId.libraries)));
       expect(tabs, isNot(contains(NavigationTabId.requests)));
       expect(tabs, isNot(contains(NavigationTabId.settings)));
     });
 
-    test('drops to four without a tuner rather than padding out to five', () {
-      expect(bar(isOffline: false, hasLiveTv: false), [
+    test('the fourth slot follows Boeken, Live TV, Kijklijst, Downloads in that order', () {
+      NavigationTabId? fourth(List<NavigationTabId> tabs) => tabs.length == 5 ? tabs[3] : null;
+
+      expect(
+        fourth(bar(isOffline: false, books: BooksAvailability.available, hasLiveTv: true, hasWatchlist: true)),
+        NavigationTabId.books,
+      );
+      expect(fourth(bar(isOffline: false, hasLiveTv: true, hasWatchlist: true)), NavigationTabId.liveTv);
+      expect(fourth(bar(isOffline: false, hasLiveTv: false, hasWatchlist: true)), NavigationTabId.watchlist);
+      expect(fourth(bar(isOffline: false, hasLiveTv: false, hasWatchlist: false)), NavigationTabId.downloads);
+    });
+
+    test('while books are still unknown the slot stays empty rather than flapping', () {
+      // The startup sequence DEC-069 forbids is Boeken -> Live TV -> Boeken.
+      // Four slots settle once; a wrong fourth slot settles twice.
+      final booting = bar(isOffline: false, books: BooksAvailability.unknown, hasLiveTv: true);
+
+      expect(booting, [
         NavigationTabId.discover,
-        NavigationTabId.libraries,
-        NavigationTabId.search,
+        NavigationTabId.series,
+        NavigationTabId.movies,
         NavigationTabId.myPleya,
       ]);
     });
@@ -139,9 +205,32 @@ void main() {
         for (final liveTv in [false, true]) {
           for (final seerr in [false, true]) {
             for (final watchlist in [false, true]) {
-              final tabs = bar(isOffline: offline, hasLiveTv: liveTv, hasSeerr: seerr, hasWatchlist: watchlist);
-              expect(tabs.length, lessThanOrEqualTo(5), reason: 'offline=$offline liveTv=$liveTv seerr=$seerr');
+              for (final books in BooksAvailability.values) {
+                final tabs = bar(
+                  isOffline: offline,
+                  hasLiveTv: liveTv,
+                  hasSeerr: seerr,
+                  hasWatchlist: watchlist,
+                  books: books,
+                );
+                expect(
+                  tabs.length,
+                  lessThanOrEqualTo(5),
+                  reason: 'offline=$offline liveTv=$liveTv seerr=$seerr books=$books',
+                );
+              }
             }
+          }
+        }
+      }
+    });
+
+    test('online it never falls below four, so the shell never looks broken', () {
+      for (final liveTv in [false, true]) {
+        for (final watchlist in [false, true]) {
+          for (final books in BooksAvailability.values) {
+            final tabs = bar(isOffline: false, hasLiveTv: liveTv, hasWatchlist: watchlist, books: books);
+            expect(tabs.length, greaterThanOrEqualTo(4), reason: 'liveTv=$liveTv watchlist=$watchlist books=$books');
           }
         }
       }
@@ -154,24 +243,19 @@ void main() {
         hasSeerr: true,
         hasWatchlist: true,
       );
-      final tabs = mainScreenBottomNavigationTabs(
-        visibleTabs: visible,
-        isMobile: false,
-        isOffline: false,
-        currentTab: NavigationTabId.discover,
-      );
+      final tabs = mainScreenBottomNavigationTabs(visibleTabs: visible, isMobile: false);
 
       expect(ids(tabs), ids(visible));
     });
   });
 
   group('the bottom-bar selection projection', () {
-    test('online, the four bar destinations point at themselves', () {
+    test('online, the bar destinations point at themselves', () {
       for (final id in [
         NavigationTabId.discover,
-        NavigationTabId.libraries,
+        NavigationTabId.series,
+        NavigationTabId.movies,
         NavigationTabId.liveTv,
-        NavigationTabId.search,
       ]) {
         expect(mainScreenSelectedBarTab(currentTab: id, isOffline: false, barTabs: bar(isOffline: false)), id);
       }
@@ -198,6 +282,8 @@ void main() {
       // offline. This covers the frame before that runs.
       for (final id in [
         NavigationTabId.discover,
+        NavigationTabId.series,
+        NavigationTabId.movies,
         NavigationTabId.libraries,
         NavigationTabId.liveTv,
         NavigationTabId.search,
@@ -230,7 +316,7 @@ void main() {
 
     test('every tab projects onto a destination that is actually in the bar', () {
       for (final offline in [false, true]) {
-        final tabs = bar(isOffline: offline);
+        final tabs = bar(isOffline: offline, books: BooksAvailability.available);
         for (final id in NavigationTabId.values) {
           final projected = mainScreenSelectedBarTab(currentTab: id, isOffline: offline, barTabs: tabs);
           expect(
@@ -245,10 +331,16 @@ void main() {
     test('no input ever lands on index -1 or outside the bar', () {
       for (final offline in [false, true]) {
         for (final liveTv in [false, true]) {
-          final tabs = bar(isOffline: offline, hasLiveTv: liveTv);
-          for (final id in NavigationTabId.values) {
-            final index = tabs.indexOf(mainScreenSelectedBarTab(currentTab: id, isOffline: offline, barTabs: tabs));
-            expect(index, inInclusiveRange(0, tabs.length - 1), reason: '$id in offline=$offline liveTv=$liveTv');
+          for (final books in BooksAvailability.values) {
+            final tabs = bar(isOffline: offline, hasLiveTv: liveTv, books: books);
+            for (final id in NavigationTabId.values) {
+              final index = tabs.indexOf(mainScreenSelectedBarTab(currentTab: id, isOffline: offline, barTabs: tabs));
+              expect(
+                index,
+                inInclusiveRange(0, tabs.length - 1),
+                reason: '$id in offline=$offline liveTv=$liveTv books=$books',
+              );
+            }
           }
         }
       }

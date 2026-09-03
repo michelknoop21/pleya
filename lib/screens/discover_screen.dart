@@ -28,6 +28,7 @@ import '../media/media_item.dart';
 import '../media/media_item_types.dart';
 import '../media/media_server_client.dart';
 import '../media/media_hub.dart';
+import 'discover_scope.dart';
 import '../utils/media_image_helper.dart';
 import '../widgets/optimized_media_image.dart' show blurArtwork;
 import '../widgets/home_hero_artwork.dart';
@@ -79,7 +80,12 @@ import '../widgets/companion_remote/remote_session_dialog.dart';
 import 'companion_remote/mobile_remote_screen.dart';
 
 class DiscoverScreen extends StatefulWidget {
-  const DiscoverScreen({super.key});
+  const DiscoverScreen({super.key, this.scope = DiscoverScope.all});
+
+  /// Which slice of the catalog this instance shows. [DiscoverScope.all] is
+  /// Home and the default, so every existing call site keeps its behaviour;
+  /// Series and Films are the same screen with a type filter ([DEC-069]).
+  final DiscoverScope scope;
 
   /// The hero's pagination-dot row, so tests can measure its real rect
   /// against the "Verder kijken" heading directly below the hero.
@@ -116,13 +122,33 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   late final DiscoverProvider _discover;
   int _seenLoadGeneration = 0;
 
-  List<MediaItem> get _onDeck => _discover.onDeck;
+  List<MediaItem> get _onDeck => _scoped(_discover.onDeck);
   // Hero source: newest released films (release-date ordered), not on-deck.
-  List<MediaItem> get _latestMovies => _discover.latestMovies;
+  // Series filters it down to shows, so the Series landing does not open on a
+  // film. An empty result is a hero-less landing, not a wrong one.
+  List<MediaItem> get _latestMovies => _scoped(_discover.latestMovies);
   HomeLayoutProvider? _homeLayout;
   // User layout (hide + reorder) applied here, the single choke point both the
   // mobile sliver loop and the TV rail read from.
-  List<MediaHub> get _hubs => _homeLayout?.apply(_discover.hubs, _hubIdentity) ?? _discover.hubs;
+  List<MediaHub> get _hubs {
+    final laidOut = _homeLayout?.apply(_discover.hubs, _hubIdentity) ?? _discover.hubs;
+    if (!widget.scope.isFiltered) return laidOut;
+    // Filter inside each row and drop the rows that empty out, rather than
+    // keeping a row whose header promises items it no longer has.
+    return [
+      for (final hub in laidOut)
+        if (_scoped(hub.items) case final items when items.isNotEmpty)
+          hub.copyWith(items: items, size: items.length, more: false),
+    ];
+  }
+
+  /// The scope filter, in one place so the hero, Continue Watching and the
+  /// rails cannot disagree about what belongs on this landing.
+  List<MediaItem> _scoped(List<MediaItem> items) {
+    if (!widget.scope.isFiltered) return items;
+    return items.where((item) => widget.scope.admitsKind(item.kind)).toList();
+  }
+
   bool get _hasMoreContinueWatching => _discover.hasMoreContinueWatching;
   bool get _isLoading => _discover.isLoading;
   bool get _areHubsLoading => _discover.areHubsLoading;
@@ -1405,6 +1431,21 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                             ],
                           ),
                         ),
+                        // Zoeken. Since [DEC-069] search is not a slot in the
+                        // mobile bar but an icon here, so the five primary
+                        // slots can be content destinations. Phone only: the
+                        // desktop sidebar and the TV rail still carry Zoeken
+                        // as a destination of its own, and a second entry
+                        // point there would be one too many.
+                        if (PlatformDetector.isPhone(context))
+                          FocusableAction(
+                            onPressed: _openSearch,
+                            child: IconButton(
+                              icon: AppIcon(Symbols.search_rounded, color: foregroundColor),
+                              onPressed: _openSearch,
+                              tooltip: t.common.search,
+                            ),
+                          ),
                         // Server Tasks — Plex-only (`/activities` API has no
                         // Jellyfin equivalent), hide the button entirely on
                         // Jellyfin-only profiles so the chrome doesn't show
@@ -1438,6 +1479,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       ),
     );
   }
+
+  void _openSearch() => MainScreenFocusScope.of(context, listen: false)?.openSearch?.call();
 
   AutomationReadiness _discoverReadiness() {
     if (_discover.isLoading) return const AutomationReadiness.loading('onDeck');

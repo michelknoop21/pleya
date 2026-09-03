@@ -95,6 +95,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsAddServerEn addServer = TranslationsAddServerEn.internal(_root);
 	late final TranslationsAddLocalFolderEn addLocalFolder = TranslationsAddLocalFolderEn.internal(_root);
 	late final TranslationsPleyaShareEn pleyaShare = TranslationsPleyaShareEn.internal(_root);
+	late final TranslationsUnifiedCatalogEn unifiedCatalog = TranslationsUnifiedCatalogEn.internal(_root);
 }
 
 // Path: states
@@ -2797,6 +2798,9 @@ class TranslationsNavigationEn {
 	/// en: 'Libraries'
 	String get libraries => 'Libraries';
 
+	/// en: 'Books'
+	String get books => 'Books';
+
 	/// en: 'Downloads'
 	String get downloads => 'Downloads';
 
@@ -5155,6 +5159,21 @@ class TranslationsPleyaShareEn {
 	String get scanningSubnet => 'Scanning the network…';
 }
 
+// Path: unifiedCatalog
+class TranslationsUnifiedCatalogEn {
+	TranslationsUnifiedCatalogEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Movies'
+	String get moviesTitle => 'Movies';
+
+	/// en: 'Series'
+	String get seriesTitle => 'Series';
+}
+
 // Path: search.filters
 class TranslationsSearchFiltersEn {
 	TranslationsSearchFiltersEn.internal(this._root);
@@ -6770,6 +6789,7 @@ extension on Translations {
 			'licenses.licenseNumber' => ({required Object number}) => 'License ${number}',
 			'licenses.licensesCount' => ({required Object count}) => '${count} licenses',
 			'navigation.libraries' => 'Libraries',
+			'navigation.books' => 'Books',
 			'navigation.downloads' => 'Downloads',
 			'navigation.liveTv' => 'Live TV',
 			'navigation.watchlist' => 'Watchlist',
@@ -6914,9 +6934,9 @@ extension on Translations {
 			'playlists.errorAdding' => 'Failed to add to playlist',
 			'playlists.errorReordering' => 'Failed to reorder playlist item',
 			'playlists.errorRemoving' => 'Failed to remove from playlist',
-			'watchTogether.title' => 'Watch Together',
 			_ => null,
 		} ?? switch (path) {
+			'watchTogether.title' => 'Watch Together',
 			'watchTogether.description' => 'Watch content in sync with friends and family',
 			'watchTogether.createSession' => 'Create Session',
 			'watchTogether.creating' => 'Creating...',
@@ -7428,9 +7448,9 @@ extension on Translations {
 			'tautulli.errorTokenRequired' => 'Enter a token.',
 			'tautulli.errorNotTautulli' => 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.',
 			'tautulli.errorServer' => ({required Object code}) => 'Tautulli reported a server error (HTTP ${code}).',
-			'tautulli.errorGeneric' => 'Connecting failed.',
 			_ => null,
 		} ?? switch (path) {
+			'tautulli.errorGeneric' => 'Connecting failed.',
 			'nowWatching.title' => 'Now watching',
 			'nowWatching.tooltip' => 'See who is watching now',
 			'nowWatching.streams' => ({required Object count}) => '${count} streams',
@@ -7584,6 +7604,8 @@ extension on Translations {
 			'pleyaShare.notificationText' => 'Other Pleya devices can stream your local folders',
 			'pleyaShare.hostDescriptionAndroid' => 'Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running in the background with a notification.',
 			'pleyaShare.scanningSubnet' => 'Scanning the network…',
+			'unifiedCatalog.moviesTitle' => 'Movies',
+			'unifiedCatalog.seriesTitle' => 'Series',
 			_ => null,
 		};
 	}

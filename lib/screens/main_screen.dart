@@ -6,6 +6,7 @@ import 'dart:ui' show ImageFilter;
 import '../automation/automation_event_log.dart';
 import '../automation/automation_ids.dart';
 import '../automation/automation_navigation_hooks.dart';
+import '../automation/automation_node.dart';
 import '../automation/automation_screen.dart';
 import '../automation/pleya_verify.dart';
 import '../media/ids.dart';
@@ -39,7 +40,9 @@ import '../mixins/refreshable.dart';
 import '../widgets/overlay_sheet.dart';
 import '../mixins/tab_visibility_aware.dart';
 import '../navigation/navigation_tabs.dart';
+import '../navigation/primary_mobile_destination_policy.dart';
 import '../navigation/profile_navigation_scope.dart';
+import '../providers/books_library_provider.dart';
 import '../profiles/active_profile_binder.dart';
 import '../profiles/active_profile_provider.dart';
 import '../profiles/plex_home_service.dart';
@@ -65,7 +68,9 @@ import '../utils/desktop_window_padding.dart';
 import '../widgets/side_navigation_rail.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/key_event_utils.dart';
+import 'books/books_placeholder_screen.dart';
 import 'discover_screen.dart';
+import 'discover_scope.dart';
 import 'libraries/library_quick_picker_sheet.dart';
 import 'libraries/libraries_screen.dart';
 import 'livetv/live_tv_screen.dart';
@@ -113,31 +118,49 @@ bool shouldRenderMainScreenOffline({
   return providerOffline || (startupOfflineUntilConnected && !hasVisibleConnectedServers);
 }
 
-/// Destinations that are hidden from the mobile bottom bar because My Pleya
-/// holds them instead.
+/// The mobile bottom bar's destinations, in display order.
 ///
-/// Downloads is the exception offline: with Home, Libraries, Live TV, Search
-/// and Requests all gone there is room for it, and it is what the user came
-/// for.
-const _mobileTabsInsideMyPleya = {
-  NavigationTabId.watchlist,
-  NavigationTabId.downloads,
-  NavigationTabId.requests,
-  NavigationTabId.settings,
-};
-
+/// Since [DEC-069](../../docs/DECISIONS.md) the bar is composed by
+/// [PrimaryMobileDestinationPolicy] rather than filtered out of the sidebar's
+/// list: its order (Home · Series · Films · [dynamic] · My Pleya) is its own,
+/// and the fourth slot follows the profile's content. Everything the policy
+/// does not name — Bibliotheken, Zoeken, Kijklijst, Downloads, Aanvragen,
+/// Instellingen — is reachable through My Pleya and the Home header, exactly as
+/// the destinations behind My Pleya already were.
+///
+/// [visibleTabs] still has the final say: a destination the policy asks for but
+/// that does not exist for this profile (no tuner, no kijklijst, no books) is
+/// dropped rather than rendered as a dead slot.
+///
+/// [capabilities] carries the offline flag too. It used to be a parameter of
+/// its own next to it, which is one truth too many: a call that said offline
+/// here and online there returned an empty bar, and it took a test to notice.
 @visibleForTesting
 List<NavigationTab> mainScreenBottomNavigationTabs({
   required List<NavigationTab> visibleTabs,
   required bool isMobile,
-  required bool isOffline,
-  required NavigationTabId currentTab,
+  MobileDestinationCapabilities capabilities = const MobileDestinationCapabilities(),
 }) {
   if (!isMobile) return visibleTabs;
-  return visibleTabs.where((tab) {
-    if (!_mobileTabsInsideMyPleya.contains(tab.id)) return true;
-    return isOffline && tab.id == NavigationTabId.downloads;
-  }).toList();
+  final byId = {for (final tab in visibleTabs) tab.id: tab};
+  return [for (final id in PrimaryMobileDestinationPolicy.primaryDestinations(capabilities)) ?byId[id]];
+}
+
+/// The mobile bottom bar's own selected-slot colour: the active label turns
+/// [kAccent], matching the active glyph `_TabIcon` already draws in
+/// [TabBarPresentation.unified2026].
+///
+/// Applied at the bar rather than in `monoTheme` on purpose: the theme's
+/// `navigationBarTheme` is inherited by every `NavigationBar` in the app, and
+/// this red is a decision about this one bar.
+NavigationBarThemeData mobileTabBarTheme(NavigationBarThemeData base) {
+  final baseLabel = base.labelTextStyle;
+  return base.copyWith(
+    labelTextStyle: WidgetStateProperty.resolveWith((states) {
+      final style = baseLabel?.resolve(states) ?? const TextStyle();
+      return states.contains(WidgetState.selected) ? style.copyWith(color: kAccent) : style;
+    }),
+  );
 }
 
 /// Which bottom-bar destination should light up for [currentTab].
@@ -162,6 +185,9 @@ NavigationTabId mainScreenSelectedBarTab({
 }) {
   final preferred = switch (currentTab) {
     NavigationTabId.discover ||
+    NavigationTabId.movies ||
+    NavigationTabId.series ||
+    NavigationTabId.books ||
     NavigationTabId.libraries ||
     NavigationTabId.liveTv ||
     NavigationTabId.search => isOffline ? NavigationTabId.downloads : currentTab,
@@ -270,6 +296,8 @@ class _MainScreenState extends State<MainScreen>
   bool _lastHasLiveTv = false;
   bool _lastHasSeerr = false;
   bool _lastHasWatchlist = false;
+  BooksLibraryProvider? _booksProvider;
+  BooksAvailability _lastBooksAvailability = BooksAvailability.unknown;
 
   /// Whether a reconnection attempt is in progress
   bool _isReconnecting = false;
@@ -284,6 +312,11 @@ class _MainScreenState extends State<MainScreen>
 
   late List<Widget> _screens;
   final GlobalKey<State<DiscoverScreen>> _discoverKey = GlobalKey();
+
+  /// Series and Films are their own instances of the Home surface, so each
+  /// keeps its own scroll offset, hero page and refresh state.
+  final GlobalKey<State<DiscoverScreen>> _seriesKey = GlobalKey();
+  final GlobalKey<State<DiscoverScreen>> _moviesKey = GlobalKey();
   final GlobalKey<State<LibrariesScreen>> _librariesKey = GlobalKey();
   final GlobalKey<State<LiveTvScreen>> _liveTvKey = GlobalKey();
   final GlobalKey<State<SearchScreen>> _searchKey = GlobalKey();
@@ -379,6 +412,7 @@ class _MainScreenState extends State<MainScreen>
     } catch (_) {
       _lastHasWatchlist = false;
     }
+    _lastBooksAvailability = context.read<BooksLibraryProvider?>()?.availability ?? BooksAvailability.unknown;
     _currentTab = _defaultTabForMode(_isOffline);
     _lastOnlineTabId = _isOffline ? null : NavigationTabId.discover;
     _autoSwitchedToDownloads = _isOffline && _currentTab == NavigationTabId.downloads;
@@ -842,7 +876,6 @@ class _MainScreenState extends State<MainScreen>
     final seerr = context.read<SeerrProvider>();
     if (seerr != _seerrProvider) {
       _seerrProvider?.removeListener(_handleSeerrChanged);
-      _watchlistProvider?.removeListener(_handleWatchlistChanged);
       _seerrProvider = seerr;
       _seerrProvider!.addListener(_handleSeerrChanged);
     }
@@ -854,6 +887,17 @@ class _MainScreenState extends State<MainScreen>
       _watchlistProvider?.removeListener(_handleWatchlistChanged);
       _watchlistProvider = watchlist;
       _watchlistProvider!.addListener(_handleWatchlistChanged);
+    }
+
+    // And the e-books source, which decides the bar's fourth slot. Until it
+    // answers the slot stays reserved rather than falling to Live TV and back
+    // (see [PrimaryMobileDestinationPolicy.dynamicDestination]).
+    final books = context.read<BooksLibraryProvider?>();
+    if (books != null && books != _booksProvider) {
+      _booksProvider?.removeListener(_handleBooksChanged);
+      _booksProvider = books;
+      _booksProvider!.addListener(_handleBooksChanged);
+      _handleBooksChanged();
     }
 
     // Wire up Companion Remote command routing (host devices only, once)
@@ -947,6 +991,11 @@ class _MainScreenState extends State<MainScreen>
     _offlineModeProvider?.removeListener(_handleOfflineStatusChanged);
     _multiServerProvider?.removeListener(_handleLiveTvChanged);
     _seerrProvider?.removeListener(_handleSeerrChanged);
+    // The kijklijst listener used to be detached inside the Seerr block, where
+    // it fired on a Seerr swap and never on teardown. It belongs here, next to
+    // the other three, together with the books listener.
+    _watchlistProvider?.removeListener(_handleWatchlistChanged);
+    _booksProvider?.removeListener(_handleBooksChanged);
     if (_bindingSettleListener != null) {
       _activeProfileForListener?.removeListener(_bindingSettleListener!);
     }
@@ -1036,6 +1085,13 @@ class _MainScreenState extends State<MainScreen>
       for (final tab in _getVisibleTabs(offline))
         switch (tab.id) {
           NavigationTabId.discover => DiscoverScreen(key: _discoverKey),
+          // Series and Films are the same Home surface with a type filter,
+          // not two copies of it (DEC-069). Boeken is a placeholder until its
+          // own schermgolden is approved; it only reaches a build at all with
+          // `--dart-define=PLEYA_BOOKS=true`.
+          NavigationTabId.series => DiscoverScreen(key: _seriesKey, scope: DiscoverScope.series),
+          NavigationTabId.movies => DiscoverScreen(key: _moviesKey, scope: DiscoverScope.movies),
+          NavigationTabId.books => const BooksPlaceholderScreen(),
           NavigationTabId.libraries => LibrariesScreen(
             key: _librariesKey,
             onLibraryOrderChanged: _onLibraryOrderChanged,
@@ -1065,6 +1121,7 @@ class _MainScreenState extends State<MainScreen>
     hasLiveTv: _hasLiveTv,
     hasSeerr: _hasSeerr,
     hasWatchlist: _hasWatchlist,
+    hasBooks: _lastBooksAvailability == BooksAvailability.available,
     isMobile: _isMobile,
     preferredStartup: SettingsService.instanceOrNull?.read(SettingsService.startupSection),
   );
@@ -1128,6 +1185,19 @@ class _MainScreenState extends State<MainScreen>
     final hasSeerr = _seerrProvider?.isConfigured ?? false;
     if (hasSeerr == _lastHasSeerr) return;
     _lastHasSeerr = hasSeerr;
+    if (!mounted) return;
+
+    setState(() {
+      _screens = _buildScreens(_isOffline);
+      _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
+    });
+    _updateTvosMenuPassthrough();
+  }
+
+  void _handleBooksChanged() {
+    final availability = _booksProvider?.availability ?? BooksAvailability.unknown;
+    if (availability == _lastBooksAvailability) return;
+    _lastBooksAvailability = availability;
     if (!mounted) return;
 
     setState(() {
@@ -1672,6 +1742,16 @@ class _MainScreenState extends State<MainScreen>
   /// Downloads, Requests and Settings.
   bool get _hasWatchlist => _lastHasWatchlist;
 
+  /// The capability snapshot the bar is composed from. One value, read once
+  /// per build, so the tab list, the screens list and the selection projection
+  /// cannot answer from three different moments.
+  MobileDestinationCapabilities get _mobileCapabilities => MobileDestinationCapabilities(
+    books: _lastBooksAvailability,
+    hasLiveTv: _hasLiveTv,
+    hasWatchlist: _hasWatchlist,
+    isOffline: _isOffline,
+  );
+
   /// Whether this build renders the mobile shell. Captured at the top of
   /// [build] so the tab list, the screens list and the bottom bar all answer
   /// from the same value instead of each re-reading the layout.
@@ -1684,6 +1764,7 @@ class _MainScreenState extends State<MainScreen>
       hasLiveTv: _hasLiveTv,
       hasSeerr: _hasSeerr,
       hasWatchlist: _hasWatchlist,
+      hasBooks: _lastBooksAvailability == BooksAvailability.available,
       isMobile: _isMobile,
     );
   }
@@ -1692,8 +1773,7 @@ class _MainScreenState extends State<MainScreen>
     return mainScreenBottomNavigationTabs(
       visibleTabs: _getVisibleTabs(_isOffline),
       isMobile: PlatformDetector.isMobile(context),
-      isOffline: _isOffline,
-      currentTab: _currentTab,
+      capabilities: _mobileCapabilities,
     );
   }
 
@@ -1701,6 +1781,9 @@ class _MainScreenState extends State<MainScreen>
   GlobalKey? _screenKeyFor(NavigationTabId tab) {
     return switch (tab) {
       NavigationTabId.discover => _discoverKey,
+      NavigationTabId.series => _seriesKey,
+      NavigationTabId.movies => _moviesKey,
+      NavigationTabId.books => null,
       NavigationTabId.libraries => _librariesKey,
       NavigationTabId.liveTv => _liveTvKey,
       NavigationTabId.search => _searchKey,
@@ -1720,7 +1803,17 @@ class _MainScreenState extends State<MainScreen>
       barTabs: tabs.map((tab) => tab.id).toList(),
     );
     final selectedIndex = tabs.indexWhere((tab) => tab.id == projected);
-    final navigationBar = NavigationBar(
+
+    // The one place the bar's presentation is decided: one `PlatformDetector`
+    // call here, an explicit value passed down, and no platform check inside
+    // the destinations. Golden 00 is a phone golden and this bar is shared
+    // with the iPad, so the iPad keeps the presentation it had.
+    final presentation = PlatformDetector.isPhone(context)
+        ? TabBarPresentation.unified2026
+        : TabBarPresentation.classic;
+    final isUnified = presentation == TabBarPresentation.unified2026;
+
+    final bar = NavigationBar(
       selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
       onDestinationSelected: (i) {
         if (i >= 0 && i < tabs.length) _selectTab(tabs[i].id);
@@ -1728,8 +1821,11 @@ class _MainScreenState extends State<MainScreen>
       labelBehavior: hideLabels
           ? NavigationDestinationLabelBehavior.alwaysHide
           : NavigationDestinationLabelBehavior.alwaysShow,
-      destinations: tabs.map((tab) => tab.toDestination()).toList(),
+      destinations: tabs.map((tab) => _withNavTabAutomation(tab, presentation)).toList(),
     );
+    final navigationBar = isUnified
+        ? NavigationBarTheme(data: mobileTabBarTheme(NavigationBarTheme.of(context)), child: bar)
+        : bar;
 
     // Netflix mobile: frosted near-black bar. Blur the content scrolling
     // behind it; the translucent color comes from navigationBarTheme.
@@ -1737,55 +1833,79 @@ class _MainScreenState extends State<MainScreen>
       child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18), child: bar),
     );
 
+    Widget withNavBarAutomation(Widget bar) => AutomationNode(id: AutomationIds.navBar, role: 'nav', child: bar);
+
     final librariesIndex = tabs.indexWhere((tab) => tab.id == NavigationTabId.libraries);
-    if (tabs.isEmpty) return frosted(navigationBar);
+    if (tabs.isEmpty) return frosted(withNavBarAutomation(navigationBar));
 
     return frosted(
-      LayoutBuilder(
-        builder: (context, constraints) {
-          if (!constraints.hasBoundedWidth) return navigationBar;
+      withNavBarAutomation(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (!constraints.hasBoundedWidth) return navigationBar;
 
-          final itemWidth = constraints.maxWidth / tabs.length;
-          final isRtl = Directionality.of(context) == TextDirection.rtl;
+            final itemWidth = constraints.maxWidth / tabs.length;
+            final isRtl = Directionality.of(context) == TextDirection.rtl;
 
-          double itemLeft(int index) => isRtl ? constraints.maxWidth - (itemWidth * (index + 1)) : itemWidth * index;
+            double itemLeft(int index) => isRtl ? constraints.maxWidth - (itemWidth * (index + 1)) : itemWidth * index;
 
-          return Stack(
-            children: [
-              navigationBar,
-              // Solid red indicator bar above the active icon.
-              if (selectedIndex >= 0)
-                Positioned(
-                  left: itemLeft(selectedIndex) + (itemWidth - 18) / 2,
-                  top: 0,
-                  width: 18,
-                  height: 3,
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(color: kAccent, borderRadius: BorderRadius.circular(2)),
+            return Stack(
+              children: [
+                navigationBar,
+                // The classic bar's solid red indicator above the active icon.
+                // The unified bar has none: there the active slot itself is red
+                // (golden 00).
+                if (!isUnified && selectedIndex >= 0)
+                  Positioned(
+                    left: itemLeft(selectedIndex) + (itemWidth - 18) / 2,
+                    top: 0,
+                    width: 18,
+                    height: 3,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(color: kAccent, borderRadius: BorderRadius.circular(2)),
+                      ),
                     ),
                   ),
-                ),
-              if (librariesIndex >= 0)
-                Positioned(
-                  left: itemLeft(librariesIndex),
-                  top: 0,
-                  bottom: 0,
-                  width: itemWidth,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    excludeFromSemantics: true,
-                    onLongPress: () {
-                      Feedback.forLongPress(context);
-                      _showLibraryQuickPicker(context);
-                    },
-                    child: const SizedBox.expand(),
+                if (librariesIndex >= 0)
+                  Positioned(
+                    left: itemLeft(librariesIndex),
+                    top: 0,
+                    bottom: 0,
+                    width: itemWidth,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      excludeFromSemantics: true,
+                      onLongPress: () {
+                        Feedback.forLongPress(context);
+                        _showLibraryQuickPicker(context);
+                      },
+                      child: const SizedBox.expand(),
+                    ),
                   ),
-                ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
+    );
+  }
+
+  /// Wraps one tab's icon and selected icon in an [AutomationNode] so
+  /// `nav.<id>` resolves on the mobile bar too, the way
+  /// [SideNavigationRail] already mounts it for the desktop and TV rail.
+  /// Without this the bottom bar carried no automation nodes at all and a
+  /// Pleya Verify scenario could assert nothing about it.
+  NavigationDestination _withNavTabAutomation(NavigationTab tab, TabBarPresentation presentation) {
+    final destination = tab.toDestination(presentation: presentation);
+    final id = AutomationIds.navTab(tab.id);
+    Widget wrap(Widget icon) => AutomationNode(id: id, role: 'nav.item', child: icon);
+    return NavigationDestination(
+      icon: wrap(destination.icon),
+      selectedIcon: destination.selectedIcon == null ? null : wrap(destination.selectedIcon!),
+      label: destination.label,
+      tooltip: destination.tooltip,
+      enabled: destination.enabled,
     );
   }
 
@@ -1879,6 +1999,7 @@ class _MainScreenState extends State<MainScreen>
                         viewportWidth: viewportWidth,
                         selectLibrary: _selectLibrary,
                         openSettings: _openSettings,
+                        openSearch: () => _selectTab(NavigationTabId.search),
                         child: SideNavigationScope(
                           child: Stack(
                             clipBehavior: Clip.hardEdge,
