@@ -4,6 +4,24 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-01] DEC-064's hardwareronde gestart op echte apparaten
+
+Een integratie-gereedheidsaudit vanaf `main` (zie `main`'s eigen `docs/CHANGELOG.md`) wees uit dat
+deze branch al verder is dan `main` weet: PS-5 compleet en getest, PS-9 onderweg, met
+[DEC-064](DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet) als
+geldige toestemming daarvoor. Diezelfde DEC-064 vraagt de PS-5-hardwareronde vóór een merge naar
+`main`, dus die is nu gestart. `flutter run -d macos --release` bouwde en startte een lokale release
+van deze branch (`Pleya.app`, 254,6MB). Voor tvOS bleek de gepairde Apple TV 4K (3e generatie) al
+bereikbaar (`tunnelState: connected`), dus `xcodebuild -workspace tvos/Runner.xcworkspace -scheme
+Runner -configuration Release -destination 'platform=tvOS,id=1528384F-B1C1-5688-BA78-15EE0C57F788'`
+bouwde rechtstreeks voor het echte toestel; `xcrun devicectl device install app` en `device process
+launch` zetten `nl.michelknoop.pleya` erop en starten hem, zonder simulator of TestFlight-omweg.
+
+De vier testtitels per toestel (een Plex- en een Jellyfin-titel die vandaag direct playen, een titel
+die transcodeert met een niet-originele preset, en een TrueHD- of Dolby-titel via een echte AVR) en de
+fysieke playbackbeoordeling staan nog open. Simulator- of Pleya Verify-bewijs telt hier bewust niet
+mee: AC4 is in DEC-064 expliciet een criterium dat uitsluitend met fysieke hardware te bewijzen is.
+
 ## [2026-08-23] PS-5: het toestel vertelt de backend eindelijk wat het aankan
 
 Twee profielen gingen naar Plex en Jellyfin zonder ook maar iets van het toestel te weten. Jellyfin

@@ -1,6 +1,11 @@
 # STATUS · Pleya
 
-_Laatst gewerkt: 2026-08-23 op `feat/pleyaserver`, gepusht tot `dcb3832`. PS-5 opgeleverd, daarna `main` erin gemerged en **build 242 naar TestFlight** voor alle drie de platforms (iOS 16:48, tvOS 16:51, macOS 16:56, alle drie geslaagd). `origin/main` hangt nog op `c6e1ab3`; de vier commits daarboven reisden via deze branch mee_
+_Laatst gewerkt: 2026-09-01. DEC-064's PS-5-hardwareronde is gestart: een macOS-releasebuild draait
+lokaal en een tvOS-build staat geïnstalleerd en gelanceerd op de echte Apple TV
+(`1528384F-B1C1-5688-BA78-15EE0C57F788`). Testtitels en de fysieke playbackbeoordeling wachten op
+Michel. Volledige integratie-gereedheidsaudit die hiertoe leidde staat op `main`'s eigen `STATUS.md`
+en `docs/CHANGELOG.md` (2026-09-01-entry), niet hier gedupliceerd. Vijf lokale commits staan nog niet
+op `origin/feat/pleyaserver` (laatste: `4368635`)._
 
 ## Waar was ik
 
@@ -182,6 +187,16 @@ geeft 24 treffers zonder seizoen, `kind=season` levert ze alsnog, en zonder toke
 
 ## Volgende stap
 
+**DEC-064's hardwareronde afmaken, dan pas naar `main` mergen.** Twee builds staan al klaar: de
+macOS-app draait (`pgrep -f "Pleya.app/Contents/MacOS/Pleya"` bevestigt), en de tvOS-app is
+geïnstalleerd op de echte Apple TV (`nl.michelknoop.pleya`, gelanceerd via `xcrun devicectl device
+process launch`). Per toestel dezelfde vier titels beoordelen (een Plex- en een Jellyfin-titel die
+vandaag direct playen, een titel die transcodeert, en een TrueHD/Dolby-titel via een echte AVR) en het
+resultaat vastleggen. Simulator- of Pleya Verify-bewijs telt hier niet: AC4 is expliciet een
+hardware-only criterium. Alles slaagt: AC4 sluiten met een Roadmap Drift Check, dan de branch
+(inclusief de vijf nog ongepushte lokale commits) mergen naar `main`. Eén regressie: niet mergen,
+eerst repareren op deze branch.
+
 **PS-5 is code complete; de eerstvolgende ontwikkelfase is PS-9** (gebruikers, profielen en
 rechten), volgens de doorloop in `docs/pleya-server-phase-order-deviation.md`. PS-5 blijft
 **opgeleverd, niet gesloten**: acceptatiecriterium 4, geen regressie op echte hardware voor minimaal
@@ -362,6 +377,14 @@ xcrun devicectl device process launch --console --terminate-existing \
 ```
 
 ## Recente sessies
+
+### 2026-09-01
+- DEC-064's PS-5-hardwareronde gestart, vanuit een integratie-gereedheidsaudit die op `main`'s
+  `STATUS.md`/`docs/CHANGELOG.md` staat (deze branch was zelf niet het onderwerp van schrijfacties
+  tijdens de audit). macOS-releasebuild lokaal gestart; tvOS-build gebouwd, geïnstalleerd en
+  gelanceerd op de echte, al bereikbare Apple TV via `xcodebuild -destination
+  'platform=tvOS,id=1528384F-B1C1-5688-BA78-15EE0C57F788'` + `xcrun devicectl device install/launch`.
+  Testtitels en de fysieke playbackbeoordeling (inclusief de TrueHD/Dolby/AVR-check) staan nog open.
 
 ### 2026-08-22
 - Twee fixes uit de PS-4-deviceronde gecommit (`d5d1fcd`, `19a7701`) plus de bijgewerkte bevindingenlijst (`d5addfb`). Het afsluitpad van de speler wacht niet meer op de kijkstatusschrijving, de tracker begrenst die op vijf seconden en zet weg wat niet landt; de log-upload houdt een 429-venster vast en leest ook de datumvorm van `Retry-After`.
