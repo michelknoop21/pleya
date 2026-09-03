@@ -303,7 +303,15 @@
     "hint": "Søk i filmer, serier, musikk...",
     "tryDifferentTerm": "Prøv et annet søkeord",
     "searchYourMedia": "Søk i mediene dine",
-    "enterTitleActorOrKeyword": "Skriv inn tittel, skuespiller eller nøkkelord"
+    "enterTitleActorOrKeyword": "Skriv inn tittel, skuespiller eller nøkkelord",
+    "filters": {
+      "all": "Alle",
+      "movies": "Filmer",
+      "shows": "TV-serier",
+      "episodes": "Episoder",
+      "people": "Personer",
+      "other": "Annet"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Angi snarvei for ${actionName}",
@@ -696,6 +704,10 @@
     "failedToSwitchProfile": "Kunne ikke bytte til ${displayName}",
     "failedToDeleteProfile": "Kunne ikke slette ${displayName}",
     "failedToRate": "Kunne ikke oppdatere vurderingen"
+  },
+  "notices": {
+    "playbackFileUnavailableTitle": "Filen er ikke tilgjengelig",
+    "playbackFileUnavailableBody": "Serveren får ikke tilgang til videofilen. Sjekk at stasjonen eller mappen den ligger i, fortsatt er tilkoblet."
   },
   "libraries": {
     "title": "Biblioteker",
@@ -1447,5 +1459,144 @@
     "notificationText": "Andre Pleya-enheter kan strømme de lokale mappene dine",
     "hostDescriptionAndroid": "Andre Pleya-enheter på dette nettverket kan bla i, strømme og laste ned de lokale mappene dine. Delingen fortsetter i bakgrunnen med et varsel.",
     "scanningSubnet": "Skanner nettverket…"
+  },
+  "sourcePicker": {
+    "playTitle": "Velg hvor du vil spille av",
+    "detailsTitle": "Velg en kilde for detaljene",
+    "availableOnOneServer": "Tilgjengelig på 1 server",
+    "availableOnManyServers": "Tilgjengelig på ${count} servere",
+    "oneServerUnchecked": "1 server kunne ikke kontrolleres",
+    "manyServersUnchecked": "${count} servere kunne ikke kontrolleres",
+    "checkingMoreSources": "Søker etter flere kilder…",
+    "lastUsed": "Sist brukt",
+    "currentSource": "Gjeldende kilde",
+    "unavailable": "Ikke tilgjengelig",
+    "signInRequired": "Du må logge inn igjen",
+    "resumeAt": "Fortsett ved ${position}",
+    "watched": "Sett",
+    "noneReachableTitle": "Ingen kilde er tilgjengelig akkurat nå.",
+    "reauthRequiredTitle": "Logg inn igjen for å nå denne tittelen.",
+    "manageServers": "Administrer servere",
+    "sourceLabel": "Kilde: ${source}",
+    "change": "Endre",
+    "playbackFailedTitle": "Denne kilden kunne ikke spilles av.",
+    "detailLoadFailedTitle": "Denne tittelen kunne ikke lastes inn.",
+    "chooseAnotherSource": "Velg en annen kilde",
+    "rowSemantics": "Kilde ${index} av ${count}: ${description}",
+    "preferredServer": "Foretrukket server",
+    "setPreferredServer": "Bruk alltid ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Filmer",
+    "seriesTitle": "Serier",
+    "sources": "${count} kilder",
+    "allSources": "Alle kilder",
+    "oneSource": "1 kilde",
+    "seasons": "${count} sesonger",
+    "oneSeason": "1 sesong",
+    "titleCount": "${count} titler",
+    "oneTitle": "1 tittel",
+    "titlesLoaded": "${count} titler lastet",
+    "loadMore": "Last inn flere",
+    "loadingMore": "Laster flere…",
+    "sort": {
+      "title": "Sorter",
+      "titleAsc": "Tittel A–Å",
+      "titleDesc": "Tittel Å–A",
+      "recentlyAdded": "Nylig lagt til",
+      "oldestAdded": "Først lagt til",
+      "newestRelease": "Nyeste utgivelse",
+      "oldestRelease": "Eldste utgivelse",
+      "recentlyWatched": "Nylig sett"
+    },
+    "filters": {
+      "title": "Filtre",
+      "status": "Status",
+      "genre": "Sjanger",
+      "year": "År",
+      "servers": "Servere",
+      "libraries": "Biblioteker",
+      "apply": "Bruk",
+      "clearAll": "Tøm alt",
+      "all": "Alle",
+      "unwatched": "Ikke sett",
+      "unsupported": "Ikke tilgjengelig for de gjeldende kildene",
+      "someUnavailable": "Noen filtre er ikke tilgjengelige for de valgte kildene",
+      "noValues": "Ingenting å velge"
+    },
+    "states": {
+      "emptyTitle": "Denne katalogen er tom",
+      "emptyBody": "Ingen synlig bibliotek inneholder noe for denne siden.",
+      "filterEmptyTitle": "Ingenting samsvarer med disse filtrene",
+      "filterEmptyBody": "Tøm et filter for å se flere titler.",
+      "clearFilters": "Tøm filtre",
+      "errorTitle": "Katalogen kunne ikke lastes",
+      "errorBody": "Ingen server svarte. Sjekk tilkoblingen og prøv igjen.",
+      "partialOne": "1 bibliotek svarte ikke",
+      "partialMany": "${count} biblioteker svarte ikke"
+    },
+    "semantics": {
+      "watched": "Sett",
+      "inProgress": "Påbegynt",
+      "loadingMore": "Laster flere titler"
+    },
+    "discovery": {
+      "allMovies": "Alle filmer",
+      "allSeries": "Alle serier",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "Noen kilder svarte ikke",
+      "emptyTitle": "Ingenting å oppdage ennå",
+      "emptyBody": "Ingen synlige biblioteker har noe å vise her.",
+      "semantics": {
+        "section": "${title}, ${count} titler",
+        "position": "${position} av ${count}",
+        "viewAllMovies": "Se alle filmer, åpner den komplette katalogen",
+        "viewAllSeries": "Se alle serier, åpner den komplette katalogen"
+      }
+    },
+    "home": {
+      "featured": "Fremhevet"
+    }
+  },
+  "tvNavigation": {
+    "activeDestination": "gjeldende del",
+    "attentionRequired": "krever oppmerksomhet"
+  },
+  "tvMyPleya": {
+    "groupContent": "Mitt innhold",
+    "groupSources": "Biblioteker og kilder",
+    "groupPleya": "Pleya",
+    "serversOnline": "${online} av ${total} servere tilkoblet",
+    "noServers": "Ingen servere tilkoblet",
+    "statusOnline": "Tilkoblet",
+    "statusOffline": "Frakoblet",
+    "servers": "Servere",
+    "activity": "Aktivitet",
+    "logs": "Logger og diagnostikk",
+    "signedInAs": "Logget inn som ${name} · Pleya ${version}",
+    "watchlistSubtitle": "Lagrede filmer og serier",
+    "requestsSubtitle": "Forespørsler og oppdagelse",
+    "downloadsSubtitle": "Frakoblet og synkroniseringsregler",
+    "librariesSubtitle": "Medier, samlinger, spillelister",
+    "serversSubtitle": "Tilkoblinger og lokale kilder",
+    "activitySubtitle": "Ser nå, se sammen, fjernkontroll",
+    "watchTogetherSubtitle": "Se synkront med venner",
+    "settingsSubtitle": "Visning, spiller, trackere",
+    "logsSubtitle": "Loggfiler og krasjrapporter",
+    "aboutSubtitle": "Versjon og lisenser",
+    "logoutSubtitle": "Logg ut på denne enheten",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
+  },
+  "tvContextMenu": {
+    "title": "Handlinger",
+    "menuSemantics": "Handling ${index} av ${count}: ${label}",
+    "noUsableSource": "Ingen kilde er tilgjengelig akkurat nå, så dette kan ikke endres nå.",
+    "doneOnAll": "Utført på alle ${count} kilder",
+    "doneOnSome": "Utført på ${done} av ${total} kilder. Resten forsøkes på nytt når de er online igjen.",
+    "doneOnSomeNoRetry": "Utført på ${done} av ${total} kilder.",
+    "failed": "Det fungerte ikke"
   }
 }

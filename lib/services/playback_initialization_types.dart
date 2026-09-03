@@ -114,3 +114,11 @@ class PlaybackException implements Exception {
   @override
   String toString() => message;
 }
+
+/// The server knows the media file is out of reach (Plex: every version's
+/// `Part.exists`/`Part.accessible` from `checkFiles=1` says no). Thrown before
+/// a stream URL is ever opened, so the user hears what is wrong instead of a
+/// generic "playback stopped" from mpv's 404.
+class PlaybackFileUnavailableException extends PlaybackException {
+  PlaybackFileUnavailableException(super.message);
+}

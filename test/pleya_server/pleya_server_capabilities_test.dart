@@ -68,6 +68,7 @@ void main() {
       expect(resolved.continueWatchingRemoval, isFalse);
       expect(resolved.trackPreferencePersistence, isFalse);
       expect(resolved.serverFavorites, isFalse);
+      expect(resolved.userRating, isFalse);
       expect(resolved.numericUserRating, isFalse);
       expect(resolved.richMetadataEdit, isFalse);
       expect(resolved.richHubs, isFalse);

@@ -71,6 +71,8 @@ mixin _PleyaServerUnsupportedMethods {
   /// availability count honest.
   Future<MediaItem?> findByIdentity(MediaIdentity identity) async => null;
 
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async => const [];
+
   Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds();
 
   // ── Per-user state: PS-9 ──

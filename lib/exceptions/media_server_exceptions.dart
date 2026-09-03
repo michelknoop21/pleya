@@ -102,3 +102,34 @@ class MediaServerHttpException extends MediaServerException {
     return 'MediaServerHttpException(${parts.join(': ')})';
   }
 }
+
+/// Whether a failed *write* to a media server is worth queueing for a retry
+/// when the server comes back, or is a dead end that reconnecting will never
+/// resolve (hoofdstuk 13.4 point 4, and fase 9's remove-from-Continue-Watching
+/// replay rule).
+///
+/// The distinction matters because a queue entry is a promise to the user:
+/// "the rest will be retried". Queueing a write the backend does not implement,
+/// or one it rejected because the session is no longer valid, turns that
+/// promise into a row that retries forever and never lands.
+///
+/// Not retryable:
+/// - [MediaServerAuthException], and any 401/403 — the user has to sign in
+///   again, which is an action reconnecting does not perform for them.
+/// - [UnsupportedError] — the backend has no such endpoint at all. Jellyfin's
+///   `removeFromContinueWatching` throws exactly this.
+/// - Any other 4xx except 408 (request timeout) and 429 (rate limited), which
+///   are the two client-range statuses that genuinely mean "try again".
+///
+/// Everything else — timeouts, socket errors, 5xx, an unrecognised throw — is
+/// retryable. Erring towards retry is the safe direction: a queued entry that
+/// turns out to be hopeless is capped by `maxSyncAttempts`, while a dropped
+/// one is a write the user was told had been remembered and silently was not.
+bool isRetryableServerWriteFailure(Object error) {
+  if (error is UnsupportedError) return false;
+  if (error is MediaServerAuthException) return false;
+  final status = error is MediaServerHttpException ? error.statusCode : null;
+  if (status == null) return true;
+  if (status == 408 || status == 429) return true;
+  return status < 400 || status >= 500;
+}

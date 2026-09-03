@@ -37,11 +37,13 @@ class AdjacentEpisodes {
 /// [PlaybackStateProvider] so the rest of the player reads prev/next from
 /// the same source.
 class EpisodeNavigationService {
-  /// Cached client-side episode lists, keyed by `seriesId`. Populated by
+  /// Cached client-side episode lists, keyed by `serverId:seriesId` — the
+  /// server belongs in the key because `grandparentId` is server-local, so
+  /// two servers can name their own show the same thing (D11). Populated by
   /// backends without server-side play queues (Jellyfin); Plex skips this
-  /// path entirely. Fetched once per series; subsequent navigation within
-  /// the show re-uses the cache so jumping anywhere doesn't trigger a
-  /// refetch.
+  /// path entirely. Fetched once per series *per server*; subsequent
+  /// navigation within the show re-uses the cache so jumping anywhere doesn't
+  /// trigger a refetch.
   ///
   /// Bounded by [_seriesCacheCapacity] LRU-style: each entry holds up to
   /// 200 episodes (~50–80 KB each at typical metadata sizes), so an
@@ -108,7 +110,17 @@ class EpisodeNavigationService {
     if (metadata.serverId == null || !metadata.isEpisode || metadata.grandparentId == null) {
       return;
     }
+    final serverId = metadata.serverId!;
     final seriesId = metadata.grandparentId!;
+    // The *cache* key carries the server, the context key does not.
+    // `grandparentId` is server-local — two servers can each call their own
+    // show `123` — so caching episode lists under the bare series id lets one
+    // source's list answer for another source's playback, which is the silent
+    // hop between servers hoofdstuk 15 forbids (D11). The context key stays
+    // the bare series id on purpose: [JellyfinSequentialLauncher] writes it
+    // in that shape too, and the guard below compares against whatever it
+    // wrote.
+    final seriesCacheKey = '$serverId:$seriesId';
     // Don't replace a playlist/collection queue with a series queue.
     // The launcher (e.g. [JellyfinSequentialLauncher]) sets contextKey to
     // the playlist/collection id; a series rebuild here would clobber it
@@ -117,9 +129,9 @@ class EpisodeNavigationService {
     if (playbackState.isQueueActive && activeKey != null && activeKey != seriesId) {
       return;
     }
-    var allEpisodes = _readSeriesCache(seriesId);
+    var allEpisodes = _readSeriesCache(seriesCacheKey);
     if (allEpisodes == null) {
-      final client = serverManager.getClient(ServerId(metadata.serverId!));
+      final client = serverManager.getClient(ServerId(serverId));
       if (client == null) return;
       try {
         allEpisodes = await client.fetchClientSideEpisodeQueue(seriesId);
@@ -129,7 +141,7 @@ class EpisodeNavigationService {
       }
       if (allEpisodes == null) return; // backend uses a server-side queue (Plex)
       if (allEpisodes.isEmpty) return; // empty series
-      _writeSeriesCache(seriesId, allEpisodes);
+      _writeSeriesCache(seriesCacheKey, allEpisodes);
     }
     final anchorIdx = allEpisodes.indexWhere((m) => m.id == metadata.id);
     if (anchorIdx < 0) return;

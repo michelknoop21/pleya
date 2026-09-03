@@ -81,6 +81,84 @@ void main() {
       expect(result.availableVersions.last.isPlayable, isTrue);
     });
 
+    // The unmounted-drive case: Plex still hands out a part key, so a URL is
+    // built, but every version is flagged unreadable. hasPlayableVersion is
+    // what lets the client refuse before mpv opens a URL that only 404s.
+    test('reports no playable version when every version is flagged missing', () {
+      final result = parsePlexVideoPlaybackDataFromJson(
+        {
+          'Media': [
+            {
+              'id': 1,
+              'videoResolution': '1080',
+              'Part': [
+                {'id': 10, 'key': '/library/parts/10/file.mkv', 'accessible': false, 'exists': false},
+              ],
+            },
+            {
+              'id': 2,
+              'videoResolution': '720',
+              'Part': [
+                {'id': 20, 'key': '/library/parts/20/file.mkv', 'accessible': false, 'exists': false},
+              ],
+            },
+          ],
+        },
+        baseUrl: 'http://plex:32400',
+        token: 'tok',
+      );
+
+      expect(result.hasValidVideoUrl, isTrue);
+      expect(result.hasPlayableVersion, isFalse);
+    });
+
+    test('reports a playable version when at least one is readable', () {
+      final result = parsePlexVideoPlaybackDataFromJson(
+        {
+          'Media': [
+            {
+              'id': 1,
+              'videoResolution': '1080',
+              'Part': [
+                {'id': 10, 'key': '/library/parts/10/file.mkv', 'accessible': false, 'exists': false},
+              ],
+            },
+            {
+              'id': 2,
+              'videoResolution': '720',
+              'Part': [
+                {'id': 20, 'key': '/library/parts/20/file.mkv', 'accessible': true, 'exists': true},
+              ],
+            },
+          ],
+        },
+        baseUrl: 'http://plex:32400',
+        token: 'tok',
+      );
+
+      expect(result.hasPlayableVersion, isTrue);
+    });
+
+    test('reports a playable version when the server sent no file flags at all', () {
+      final result = parsePlexVideoPlaybackDataFromJson(
+        {
+          'Media': [
+            {
+              'id': 1,
+              'videoResolution': '1080',
+              'Part': [
+                {'id': 10, 'key': '/library/parts/10/file.mkv'},
+              ],
+            },
+          ],
+        },
+        baseUrl: 'http://plex:32400',
+        token: 'tok',
+      );
+
+      expect(result.hasPlayableVersion, isTrue);
+    });
+
     test('uses playable part when the first part is unavailable', () {
       final result = parsePlexVideoPlaybackDataFromJson(
         {

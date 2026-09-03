@@ -62,6 +62,7 @@ class TranslationsSv extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsSv connections = _TranslationsConnectionsSv._(_root);
 	@override late final _TranslationsDiscoverSv discover = _TranslationsDiscoverSv._(_root);
 	@override late final _TranslationsErrorsSv errors = _TranslationsErrorsSv._(_root);
+	@override late final _TranslationsNoticesSv notices = _TranslationsNoticesSv._(_root);
 	@override late final _TranslationsLibrariesSv libraries = _TranslationsLibrariesSv._(_root);
 	@override late final _TranslationsAboutSv about = _TranslationsAboutSv._(_root);
 	@override late final _TranslationsServerSelectionSv serverSelection = _TranslationsServerSelectionSv._(_root);
@@ -87,6 +88,11 @@ class TranslationsSv extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerSv addServer = _TranslationsAddServerSv._(_root);
 	@override late final _TranslationsAddLocalFolderSv addLocalFolder = _TranslationsAddLocalFolderSv._(_root);
 	@override late final _TranslationsPleyaShareSv pleyaShare = _TranslationsPleyaShareSv._(_root);
+	@override late final _TranslationsSourcePickerSv sourcePicker = _TranslationsSourcePickerSv._(_root);
+	@override late final _TranslationsUnifiedCatalogSv unifiedCatalog = _TranslationsUnifiedCatalogSv._(_root);
+	@override late final _TranslationsTvNavigationSv tvNavigation = _TranslationsTvNavigationSv._(_root);
+	@override late final _TranslationsTvMyPleyaSv tvMyPleya = _TranslationsTvMyPleyaSv._(_root);
+	@override late final _TranslationsTvContextMenuSv tvContextMenu = _TranslationsTvContextMenuSv._(_root);
 }
 
 // Path: app
@@ -442,6 +448,7 @@ class _TranslationsSearchSv extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => 'Prova en annan sökterm';
 	@override String get searchYourMedia => 'Sök i dina media';
 	@override String get enterTitleActorOrKeyword => 'Ange en titel, skådespelare eller nyckelord';
+	@override late final _TranslationsSearchFiltersSv filters = _TranslationsSearchFiltersSv._(_root);
 }
 
 // Path: hotkeys
@@ -912,6 +919,17 @@ class _TranslationsErrorsSv extends TranslationsErrorsEn {
 	@override String failedToSwitchProfile({required Object displayName}) => 'Misslyckades att byta till ${displayName}';
 	@override String failedToDeleteProfile({required Object displayName}) => 'Misslyckades att ta bort ${displayName}';
 	@override String get failedToRate => 'Det gick inte att uppdatera betyget';
+}
+
+// Path: notices
+class _TranslationsNoticesSv extends TranslationsNoticesEn {
+	_TranslationsNoticesSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => 'Filen är inte tillgänglig';
+	@override String get playbackFileUnavailableBody => 'Servern kan inte nå videofilen. Kontrollera att enheten eller mappen den ligger i fortfarande är ansluten.';
 }
 
 // Path: libraries
@@ -1707,6 +1725,140 @@ class _TranslationsPleyaShareSv extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => 'Skannar nätverket…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerSv extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => 'Välj var du vill spela upp';
+	@override String get detailsTitle => 'Välj en källa för detaljerna';
+	@override String get availableOnOneServer => 'Tillgänglig på 1 server';
+	@override String availableOnManyServers({required Object count}) => 'Tillgänglig på ${count} servrar';
+	@override String get oneServerUnchecked => '1 server kunde inte kontrolleras';
+	@override String manyServersUnchecked({required Object count}) => '${count} servrar kunde inte kontrolleras';
+	@override String get checkingMoreSources => 'Söker fler källor…';
+	@override String get lastUsed => 'Senast använd';
+	@override String get currentSource => 'Aktuell källa';
+	@override String get unavailable => 'Inte tillgänglig';
+	@override String get signInRequired => 'Inloggning krävs igen';
+	@override String resumeAt({required Object position}) => 'Återuppta vid ${position}';
+	@override String get watched => 'Sedd';
+	@override String get noneReachableTitle => 'Ingen källa går att nå just nu.';
+	@override String get reauthRequiredTitle => 'Logga in igen för att nå den här titeln.';
+	@override String get manageServers => 'Hantera servrar';
+	@override String sourceLabel({required Object source}) => 'Källa: ${source}';
+	@override String get change => 'Ändra';
+	@override String get playbackFailedTitle => 'Den här källan kunde inte spelas upp.';
+	@override String get detailLoadFailedTitle => 'Den här titeln kunde inte läsas in.';
+	@override String get chooseAnotherSource => 'Välj en annan källa';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Källa ${index} av ${count}: ${description}';
+	@override String get preferredServer => 'Föredragen server';
+	@override String setPreferredServer({required Object server}) => 'Använd alltid ${server}';
+}
+
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogSv extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => 'Filmer';
+	@override String get seriesTitle => 'Serier';
+	@override String sources({required Object count}) => '${count} källor';
+	@override String get allSources => 'Alla källor';
+	@override String get oneSource => '1 källa';
+	@override String seasons({required Object count}) => '${count} säsonger';
+	@override String get oneSeason => '1 säsong';
+	@override String titleCount({required Object count}) => '${count} titlar';
+	@override String get oneTitle => '1 titel';
+	@override String titlesLoaded({required Object count}) => '${count} titlar inlästa';
+	@override String get loadMore => 'Läs in fler';
+	@override String get loadingMore => 'Läser in fler…';
+	@override late final _TranslationsUnifiedCatalogSortSv sort = _TranslationsUnifiedCatalogSortSv._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersSv filters = _TranslationsUnifiedCatalogFiltersSv._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesSv states = _TranslationsUnifiedCatalogStatesSv._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsSv semantics = _TranslationsUnifiedCatalogSemanticsSv._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoverySv discovery = _TranslationsUnifiedCatalogDiscoverySv._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeSv home = _TranslationsUnifiedCatalogHomeSv._(_root);
+}
+
+// Path: tvNavigation
+class _TranslationsTvNavigationSv extends TranslationsTvNavigationEn {
+	_TranslationsTvNavigationSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get activeDestination => 'aktuellt avsnitt';
+	@override String get attentionRequired => 'kräver uppmärksamhet';
+}
+
+// Path: tvMyPleya
+class _TranslationsTvMyPleyaSv extends TranslationsTvMyPleyaEn {
+	_TranslationsTvMyPleyaSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get groupContent => 'Mitt innehåll';
+	@override String get groupSources => 'Bibliotek och källor';
+	@override String get groupPleya => 'Pleya';
+	@override String serversOnline({required Object online, required Object total}) => '${online} av ${total} servrar online';
+	@override String get noServers => 'Inga servrar anslutna';
+	@override String get statusOnline => 'Online';
+	@override String get statusOffline => 'Offline';
+	@override String get servers => 'Servrar';
+	@override String get activity => 'Aktivitet';
+	@override String get logs => 'Loggar och diagnostik';
+	@override String signedInAs({required Object name, required Object version}) => 'Inloggad som ${name} · Pleya ${version}';
+	@override String get watchlistSubtitle => 'Sparade filmer och serier';
+	@override String get requestsSubtitle => 'Förfrågningar och upptäck';
+	@override String get downloadsSubtitle => 'Offline och synkroniseringsregler';
+	@override String get librariesSubtitle => 'Media, samlingar, spellistor';
+	@override String get serversSubtitle => 'Anslutningar och lokala källor';
+	@override String get activitySubtitle => 'Ses just nu, se tillsammans, fjärrkontroll';
+	@override String get watchTogetherSubtitle => 'Titta synkroniserat med vänner';
+	@override String get settingsSubtitle => 'Visning, spelare, trackers';
+	@override String get logsSubtitle => 'Loggfiler och kraschrapporter';
+	@override String get aboutSubtitle => 'Version och licenser';
+	@override String get logoutSubtitle => 'Logga ut på den här enheten';
+	@override late final _TranslationsTvMyPleyaSemanticsSv semantics = _TranslationsTvMyPleyaSemanticsSv._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuSv extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Åtgärder';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => 'Åtgärd ${index} av ${count}: ${label}';
+	@override String get noUsableSource => 'Ingen källa är tillgänglig just nu, så detta kan inte ändras nu.';
+	@override String doneOnAll({required Object count}) => 'Klart på alla ${count} källor';
+	@override String doneOnSome({required Object done, required Object total}) => 'Klart på ${done} av ${total} källor. Resten försöks igen när de är online igen.';
+	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Klart på ${done} av ${total} källor.';
+	@override String get failed => 'Det gick inte';
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersSv extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Alla';
+	@override String get movies => 'Filmer';
+	@override String get shows => 'Serier';
+	@override String get episodes => 'Avsnitt';
+	@override String get people => 'Personer';
+	@override String get other => 'Övrigt';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsSv extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsSv._(TranslationsSv root) : this._root = root, super.internal(root);
@@ -1984,6 +2136,125 @@ class _TranslationsTrackersLibraryFilterSv extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => 'Synkronisera endast de bibliotek som markerats nedan.';
 	@override String get libraries => 'Bibliotek';
 	@override String get noLibraries => 'Inga bibliotek tillgängliga';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortSv extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Sortera';
+	@override String get titleAsc => 'Titel A–Ö';
+	@override String get titleDesc => 'Titel Ö–A';
+	@override String get recentlyAdded => 'Nyligen tillagda';
+	@override String get oldestAdded => 'Först tillagda';
+	@override String get newestRelease => 'Senaste släpp';
+	@override String get oldestRelease => 'Äldsta släpp';
+	@override String get recentlyWatched => 'Nyligen sedda';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersSv extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Filter';
+	@override String get status => 'Status';
+	@override String get genre => 'Genre';
+	@override String get year => 'År';
+	@override String get servers => 'Servrar';
+	@override String get libraries => 'Bibliotek';
+	@override String get apply => 'Använd';
+	@override String get clearAll => 'Rensa allt';
+	@override String get all => 'Alla';
+	@override String get unwatched => 'Osedda';
+	@override String get unsupported => 'Inte tillgängligt för de aktuella källorna';
+	@override String get someUnavailable => 'Vissa filter är inte tillgängliga för de valda källorna';
+	@override String get noValues => 'Inget att välja';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesSv extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'Den här katalogen är tom';
+	@override String get emptyBody => 'Inget synligt bibliotek innehåller något för den här sidan.';
+	@override String get filterEmptyTitle => 'Inget matchar de här filtren';
+	@override String get filterEmptyBody => 'Rensa ett filter för att se fler titlar.';
+	@override String get clearFilters => 'Rensa filter';
+	@override String get errorTitle => 'Katalogen kunde inte läsas in';
+	@override String get errorBody => 'Ingen server svarade. Kontrollera anslutningen och försök igen.';
+	@override String get partialOne => '1 bibliotek svarade inte';
+	@override String partialMany({required Object count}) => '${count} bibliotek svarade inte';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsSv extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => 'Sedd';
+	@override String get inProgress => 'Påbörjad';
+	@override String get loadingMore => 'Läser in fler titlar';
+}
+
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoverySv extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoverySv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => 'Alla filmer';
+	@override String get allSeries => 'Alla serier';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => 'Vissa källor svarade inte';
+	@override String get emptyTitle => 'Inget att upptäcka ännu';
+	@override String get emptyBody => 'Inget synligt bibliotek har något att visa här.';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsSv semantics = _TranslationsUnifiedCatalogDiscoverySemanticsSv._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeSv extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'Utvalt';
+}
+
+// Path: tvMyPleya.semantics
+class _TranslationsTvMyPleyaSemanticsSv extends TranslationsTvMyPleyaSemanticsEn {
+	_TranslationsTvMyPleyaSemanticsSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsSv extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}, ${count} titlar';
+	@override String position({required Object position, required Object count}) => '${position} av ${count}';
+	@override String get viewAllMovies => 'Visa alla filmer, öppnar hela katalogen';
+	@override String get viewAllSeries => 'Visa alla serier, öppnar hela katalogen';
 }
 
 /// The flat map containing all translations for locale <sv>.
@@ -2286,6 +2557,12 @@ extension on TranslationsSv {
 			'search.tryDifferentTerm' => 'Prova en annan sökterm',
 			'search.searchYourMedia' => 'Sök i dina media',
 			'search.enterTitleActorOrKeyword' => 'Ange en titel, skådespelare eller nyckelord',
+			'search.filters.all' => 'Alla',
+			'search.filters.movies' => 'Filmer',
+			'search.filters.shows' => 'Serier',
+			'search.filters.episodes' => 'Avsnitt',
+			'search.filters.people' => 'Personer',
+			'search.filters.other' => 'Övrigt',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Sätt genväg för ${actionName}',
 			'hotkeys.clearShortcut' => 'Rensa genväg',
 			'hotkeys.noShortcutSet' => 'Ingen genväg angiven',
@@ -2500,14 +2777,14 @@ extension on TranslationsSv {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sovtimer inställd för ${label}',
 			'messages.noItemsAvailable' => 'Inga objekt tillgängliga',
 			'messages.failedToCreatePlayQueueNoItems' => 'Det gick inte att skapa uppspelningskö – inga objekt',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Kunde inte ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Byter till kompatibel spelare...',
 			'messages.serverLimitTitle' => 'Uppspelningen misslyckades',
 			'messages.serverLimitBody' => 'Serverfel (HTTP 500). En bandbredds-/transkodningsgräns avvisade troligen sessionen. Be ägaren justera den.',
 			'messages.logsUploaded' => 'Loggar uppladdade',
 			'messages.logsUploadFailed' => 'Uppladdning av loggar misslyckades',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => 'Logg-ID',
 			'subtitlingStyling.text' => 'Text',
 			'subtitlingStyling.border' => 'Kantlinje',
@@ -2644,6 +2921,8 @@ extension on TranslationsSv {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Misslyckades att byta till ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Misslyckades att ta bort ${displayName}',
 			'errors.failedToRate' => 'Det gick inte att uppdatera betyget',
+			'notices.playbackFileUnavailableTitle' => 'Filen är inte tillgänglig',
+			'notices.playbackFileUnavailableBody' => 'Servern kan inte nå videofilen. Kontrollera att enheten eller mappen den ligger i fortfarande är ansluten.',
 			'libraries.title' => 'Bibliotek',
 			'libraries.fallbackTitle' => 'Bibliotek',
 			'libraries.scanLibraryFiles' => 'Skanna biblioteksfiler',
@@ -3012,6 +3291,8 @@ extension on TranslationsSv {
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheter med samma Plex-konto visas här',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Ansluter...',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.searchingForDevices' => 'Söker efter enheter...',
 			'companionRemote.pairing.noDevicesFound' => 'Inga enheter hittades i ditt nätverk',
 			'companionRemote.pairing.noDevicesHint' => 'Öppna Pleya på desktop och använd samma WiFi',
@@ -3020,8 +3301,6 @@ extension on TranslationsSv {
 			'companionRemote.pairing.cryptoInitFailed' => 'Kunde inte starta säker anslutning. Logga in på Plex först.',
 			'companionRemote.pairing.validationHostRequired' => 'Ange värdadress',
 			'companionRemote.pairing.validationHostFormat' => 'Format måste vara IP:port (t.ex. 192.168.1.100:48632)',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => 'Anslutningen tog för lång tid. Använd samma nätverk på båda enheter.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhet hittades inte. Kontrollera att Pleya körs på värden.',
 			'companionRemote.pairing.authFailed' => 'Autentisering misslyckades. Båda enheter behöver samma Plex-konto.',
@@ -3323,6 +3602,119 @@ extension on TranslationsSv {
 			'pleyaShare.notificationText' => 'Andra Pleya-enheter kan strömma dina lokala mappar',
 			'pleyaShare.hostDescriptionAndroid' => 'Andra Pleya-enheter i det här nätverket kan bläddra, strömma och ladda ner dina lokala mappar. Delningen fortsätter i bakgrunden med en avisering.',
 			'pleyaShare.scanningSubnet' => 'Skannar nätverket…',
+			'sourcePicker.playTitle' => 'Välj var du vill spela upp',
+			'sourcePicker.detailsTitle' => 'Välj en källa för detaljerna',
+			'sourcePicker.availableOnOneServer' => 'Tillgänglig på 1 server',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Tillgänglig på ${count} servrar',
+			'sourcePicker.oneServerUnchecked' => '1 server kunde inte kontrolleras',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servrar kunde inte kontrolleras',
+			'sourcePicker.checkingMoreSources' => 'Söker fler källor…',
+			'sourcePicker.lastUsed' => 'Senast använd',
+			'sourcePicker.currentSource' => 'Aktuell källa',
+			'sourcePicker.unavailable' => 'Inte tillgänglig',
+			'sourcePicker.signInRequired' => 'Inloggning krävs igen',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Återuppta vid ${position}',
+			'sourcePicker.watched' => 'Sedd',
+			'sourcePicker.noneReachableTitle' => 'Ingen källa går att nå just nu.',
+			'sourcePicker.reauthRequiredTitle' => 'Logga in igen för att nå den här titeln.',
+			'sourcePicker.manageServers' => 'Hantera servrar',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Källa: ${source}',
+			'sourcePicker.change' => 'Ändra',
+			'sourcePicker.playbackFailedTitle' => 'Den här källan kunde inte spelas upp.',
+			'sourcePicker.detailLoadFailedTitle' => 'Den här titeln kunde inte läsas in.',
+			'sourcePicker.chooseAnotherSource' => 'Välj en annan källa',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Källa ${index} av ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Föredragen server',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Använd alltid ${server}',
+			'unifiedCatalog.moviesTitle' => 'Filmer',
+			'unifiedCatalog.seriesTitle' => 'Serier',
+			'unifiedCatalog.sources' => ({required Object count}) => '${count} källor',
+			'unifiedCatalog.allSources' => 'Alla källor',
+			'unifiedCatalog.oneSource' => '1 källa',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} säsonger',
+			'unifiedCatalog.oneSeason' => '1 säsong',
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titlar',
+			'unifiedCatalog.oneTitle' => '1 titel',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titlar inlästa',
+			'unifiedCatalog.loadMore' => 'Läs in fler',
+			'unifiedCatalog.loadingMore' => 'Läser in fler…',
+			'unifiedCatalog.sort.title' => 'Sortera',
+			'unifiedCatalog.sort.titleAsc' => 'Titel A–Ö',
+			'unifiedCatalog.sort.titleDesc' => 'Titel Ö–A',
+			'unifiedCatalog.sort.recentlyAdded' => 'Nyligen tillagda',
+			'unifiedCatalog.sort.oldestAdded' => 'Först tillagda',
+			'unifiedCatalog.sort.newestRelease' => 'Senaste släpp',
+			'unifiedCatalog.sort.oldestRelease' => 'Äldsta släpp',
+			'unifiedCatalog.sort.recentlyWatched' => 'Nyligen sedda',
+			'unifiedCatalog.filters.title' => 'Filter',
+			'unifiedCatalog.filters.status' => 'Status',
+			'unifiedCatalog.filters.genre' => 'Genre',
+			'unifiedCatalog.filters.year' => 'År',
+			'unifiedCatalog.filters.servers' => 'Servrar',
+			'unifiedCatalog.filters.libraries' => 'Bibliotek',
+			'unifiedCatalog.filters.apply' => 'Använd',
+			'unifiedCatalog.filters.clearAll' => 'Rensa allt',
+			'unifiedCatalog.filters.all' => 'Alla',
+			'unifiedCatalog.filters.unwatched' => 'Osedda',
+			'unifiedCatalog.filters.unsupported' => 'Inte tillgängligt för de aktuella källorna',
+			'unifiedCatalog.filters.someUnavailable' => 'Vissa filter är inte tillgängliga för de valda källorna',
+			'unifiedCatalog.filters.noValues' => 'Inget att välja',
+			'unifiedCatalog.states.emptyTitle' => 'Den här katalogen är tom',
+			'unifiedCatalog.states.emptyBody' => 'Inget synligt bibliotek innehåller något för den här sidan.',
+			'unifiedCatalog.states.filterEmptyTitle' => 'Inget matchar de här filtren',
+			'unifiedCatalog.states.filterEmptyBody' => 'Rensa ett filter för att se fler titlar.',
+			'unifiedCatalog.states.clearFilters' => 'Rensa filter',
+			'unifiedCatalog.states.errorTitle' => 'Katalogen kunde inte läsas in',
+			'unifiedCatalog.states.errorBody' => 'Ingen server svarade. Kontrollera anslutningen och försök igen.',
+			'unifiedCatalog.states.partialOne' => '1 bibliotek svarade inte',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} bibliotek svarade inte',
+			'unifiedCatalog.semantics.watched' => 'Sedd',
+			'unifiedCatalog.semantics.inProgress' => 'Påbörjad',
+			'unifiedCatalog.semantics.loadingMore' => 'Läser in fler titlar',
+			'unifiedCatalog.discovery.allMovies' => 'Alla filmer',
+			'unifiedCatalog.discovery.allSeries' => 'Alla serier',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => 'Vissa källor svarade inte',
+			'unifiedCatalog.discovery.emptyTitle' => 'Inget att upptäcka ännu',
+			'unifiedCatalog.discovery.emptyBody' => 'Inget synligt bibliotek har något att visa här.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titlar',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} av ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Visa alla filmer, öppnar hela katalogen',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Visa alla serier, öppnar hela katalogen',
+			'unifiedCatalog.home.featured' => 'Utvalt',
+			'tvNavigation.activeDestination' => 'aktuellt avsnitt',
+			'tvNavigation.attentionRequired' => 'kräver uppmärksamhet',
+			'tvMyPleya.groupContent' => 'Mitt innehåll',
+			'tvMyPleya.groupSources' => 'Bibliotek och källor',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} av ${total} servrar online',
+			'tvMyPleya.noServers' => 'Inga servrar anslutna',
+			'tvMyPleya.statusOnline' => 'Online',
+			'tvMyPleya.statusOffline' => 'Offline',
+			'tvMyPleya.servers' => 'Servrar',
+			'tvMyPleya.activity' => 'Aktivitet',
+			'tvMyPleya.logs' => 'Loggar och diagnostik',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Inloggad som ${name} · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => 'Sparade filmer och serier',
+			'tvMyPleya.requestsSubtitle' => 'Förfrågningar och upptäck',
+			'tvMyPleya.downloadsSubtitle' => 'Offline och synkroniseringsregler',
+			'tvMyPleya.librariesSubtitle' => 'Media, samlingar, spellistor',
+			'tvMyPleya.serversSubtitle' => 'Anslutningar och lokala källor',
+			'tvMyPleya.activitySubtitle' => 'Ses just nu, se tillsammans, fjärrkontroll',
+			'tvMyPleya.watchTogetherSubtitle' => 'Titta synkroniserat med vänner',
+			'tvMyPleya.settingsSubtitle' => 'Visning, spelare, trackers',
+			'tvMyPleya.logsSubtitle' => 'Loggfiler och kraschrapporter',
+			'tvMyPleya.aboutSubtitle' => 'Version och licenser',
+			'tvMyPleya.logoutSubtitle' => 'Logga ut på den här enheten',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'Åtgärder',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Åtgärd ${index} av ${count}: ${label}',
+			'tvContextMenu.noUsableSource' => 'Ingen källa är tillgänglig just nu, så detta kan inte ändras nu.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Klart på alla ${count} källor',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Klart på ${done} av ${total} källor. Resten försöks igen när de är online igen.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Klart på ${done} av ${total} källor.',
+			'tvContextMenu.failed' => 'Det gick inte',
 			_ => null,
 		};
 	}

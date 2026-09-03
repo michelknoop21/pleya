@@ -34,6 +34,25 @@ class MultiServerProvider extends ChangeNotifier with DisposableChangeNotifierMi
   bool _hasLiveTv = false;
   bool get hasLiveTv => _hasLiveTv;
 
+  bool _lastLiveTvCheckWasConclusive = false;
+
+  /// Whether the most recent [checkLiveTvAvailability] actually saw the whole
+  /// profile.
+  ///
+  /// [hasLiveTv] is the result of a poll, and a poll cannot tell "this profile
+  /// has no tuner" apart from "the server with the tuner did not answer just
+  /// now": an offline server never enters the loop at all, and one that throws
+  /// is caught and skipped. Both leave [hasLiveTv] false without anything
+  /// having changed about the profile.
+  ///
+  /// This flag is true only when every expected server was online *and*
+  /// answered, which is the one case where a negative result is a fact about
+  /// the profile rather than about the network. Hoofdstuk 19 of
+  /// docs/tvos-unified-experience.md needs exactly that distinction, so the TV
+  /// navigation item does not disappear — shifting every destination beside it
+  /// sideways — on a transient dip.
+  bool get lastLiveTvCheckWasConclusive => _lastLiveTvCheckWasConclusive;
+
   /// Info about servers with DVR capability
   final List<LiveTvServerInfo> _liveTvServers = [];
   List<LiveTvServerInfo> get liveTvServers => List.unmodifiable(_liveTvServers);
@@ -296,9 +315,24 @@ class MultiServerProvider extends ChangeNotifier with DisposableChangeNotifierMi
     if (isDisposed) return;
     final newLiveTvServers = <LiveTvServerInfo>[];
 
+    // An expected server that is not online was never asked, so a "no Live TV"
+    // result cannot speak for it. See [lastLiveTvCheckWasConclusive].
+    final onlineNow = onlineServerIds.toSet();
+    final expected = expectedServerIds;
+    // `Iterable.every` is true on an empty iterable, which would make a check
+    // that asked *no* server the most conclusive kind there is. That is not a
+    // hypothetical: clearing the bound servers on a profile switch sets the
+    // expected set to empty and schedules a check straight after, so a
+    // remembered Live TV capability would be retired by a poll that spoke to
+    // nobody. Nothing asked, nothing proven.
+    var everyServerAnswered = expected.isNotEmpty && expected.every(onlineNow.contains);
+
     for (final serverId in onlineServerIds) {
       final genericClient = _serverManager.getClient(ServerId(serverId));
-      if (genericClient == null) continue;
+      if (genericClient == null) {
+        everyServerAnswered = false;
+        continue;
+      }
 
       try {
         final liveTv = genericClient.liveTv;
@@ -314,6 +348,7 @@ class MultiServerProvider extends ChangeNotifier with DisposableChangeNotifierMi
           newLiveTvServers.add(LiveTvServerInfo(serverId: serverId, dvrKey: 'jellyfin', lineup: null, dvrs: const []));
         }
       } catch (e) {
+        everyServerAnswered = false;
         appLogger.d('LiveTV check failed for server $serverId', error: e);
       }
     }
@@ -324,6 +359,7 @@ class MultiServerProvider extends ChangeNotifier with DisposableChangeNotifierMi
         : newLiveTvServers.where((s) => filter.contains(s.serverId)).toList();
 
     final hadLiveTv = _hasLiveTv;
+    final wasConclusive = _lastLiveTvCheckWasConclusive;
     final oldServerIds = _liveTvServers.map((s) => '${s.serverId}\u0000${s.dvrKey}').toSet();
     final newServerIds = visibleLiveTvServers.map((s) => '${s.serverId}\u0000${s.dvrKey}').toSet();
     if (isDisposed) return;
@@ -331,9 +367,16 @@ class MultiServerProvider extends ChangeNotifier with DisposableChangeNotifierMi
       ..clear()
       ..addAll(visibleLiveTvServers);
     _hasLiveTv = visibleLiveTvServers.isNotEmpty;
+    _lastLiveTvCheckWasConclusive = everyServerAnswered;
 
-    // Notify when availability changes OR when the server set changes
-    if (hadLiveTv != _hasLiveTv || !oldServerIds.containsAll(newServerIds) || !newServerIds.containsAll(oldServerIds)) {
+    // Notify when availability changes, when the server set changes, or when a
+    // check became conclusive. That third case looks like nothing happened —
+    // no Live TV before, no Live TV now — but it is the moment a remembered
+    // capability may finally be retired, so a listener has to hear about it.
+    if (hadLiveTv != _hasLiveTv ||
+        wasConclusive != _lastLiveTvCheckWasConclusive ||
+        !oldServerIds.containsAll(newServerIds) ||
+        !newServerIds.containsAll(oldServerIds)) {
       safeNotifyListeners();
     }
   }

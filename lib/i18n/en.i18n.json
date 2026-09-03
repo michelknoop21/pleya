@@ -84,7 +84,9 @@
     "pressBackAgainToExit": "Press back again to exit",
     "decreaseValue": "Decrease $label",
     "increaseValue": "Increase $label",
-    "timedOut": "This took too long. Please try again."
+    "timedOut": "This took too long. Please try again.",
+    "online": "Online",
+    "offline": "Offline"
   },
   "screens": {
     "licenses": "Licenses",
@@ -366,7 +368,8 @@
       "movies": "Movies",
       "shows": "Shows",
       "episodes": "Episodes",
-      "people": "People"
+      "people": "People",
+      "other": "Other"
     },
     "errorTitle": "Search failed",
     "errorNetwork": "Couldn't reach your servers. Check your connection and try again.",
@@ -820,6 +823,8 @@
     "genericErrorTitle": "Something went wrong",
     "authFailedTitle": "Sign-in failed",
     "playbackStoppedTitle": "Playback stopped",
+    "playbackFileUnavailableTitle": "File not available",
+    "playbackFileUnavailableBody": "The server can't reach the video file. Check that the drive or folder it's on is still connected.",
     "playbackSegmentUnavailableBody": "This part of the video isn't available right now",
     "playbackConnectionLostBody": "Lost connection to the server",
     "playbackCodecUnsupportedBody": "This file's format isn't supported on this device",
@@ -923,7 +928,8 @@
     "sourceCodeDescription": "Corresponding source for this build (GPL-3.0)",
     "basedOnPlezy": "Based on Plezy",
     "upstreamProject": "Upstream project",
-    "privacyPolicy": "Privacy policy"
+    "privacyPolicy": "Privacy policy",
+    "licence": "Licence"
   },
   "serverSelection": {
     "allServerConnectionsFailed": "Couldn't connect to any servers. Check your network.",
@@ -947,7 +953,14 @@
   "logs": {
     "clearLogs": "Clear Logs",
     "copyLogs": "Copy Logs",
-    "uploadLogs": "Upload Logs"
+    "uploadLogs": "Upload Logs",
+    "refreshLogs": "Refresh",
+    "levelFilter": "Level",
+    "levelAll": "All",
+    "levelWarnings": "Warnings",
+    "levelErrors": "Errors",
+    "noMatchingLogs": "No lines at this level",
+    "lineCount": "${shown} of ${total} lines"
   },
   "licenses": {
     "relatedPackages": "Related Packages",
@@ -1178,7 +1191,11 @@
     "renameRoom": "Rename Room",
     "removeRoom": "Remove",
     "guestSwitchUnavailable": "Couldn't switch — server unavailable for sync",
-    "guestSwitchFailed": "Couldn't switch — content not found on this server"
+    "guestSwitchFailed": "Couldn't switch — content not found on this server",
+    "createSessionHint": "Invite others with a code",
+    "joinSessionHint": "Enter your host's code",
+    "noRecentRooms": "No sessions yet",
+    "noRecentRoomsHint": "A session you create or join appears here"
   },
   "downloads": {
     "title": "Downloads",
@@ -1842,5 +1859,145 @@
     "notificationText": "Other Pleya devices can stream your local folders",
     "hostDescriptionAndroid": "Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running in the background with a notification.",
     "scanningSubnet": "Scanning the network…"
+  },
+  "sourcePicker": {
+    "playTitle": "Choose where to play",
+    "detailsTitle": "Choose a source for the details",
+    "availableOnOneServer": "Available on 1 server",
+    "availableOnManyServers": "Available on ${count} servers",
+    "oneServerUnchecked": "1 server could not be checked",
+    "manyServersUnchecked": "${count} servers could not be checked",
+    "checkingMoreSources": "Checking more sources…",
+    "lastUsed": "Last used",
+    "currentSource": "Current source",
+    "unavailable": "Not available",
+    "signInRequired": "Sign in required",
+    "resumeAt": "Resume at ${position}",
+    "watched": "Watched",
+    "noneReachableTitle": "No source is currently reachable.",
+    "reauthRequiredTitle": "Sign in again to reach this title.",
+    "manageServers": "Manage servers",
+    "sourceLabel": "Source: ${source}",
+    "change": "Change",
+    "playbackFailedTitle": "This source could not be played.",
+    "detailLoadFailedTitle": "This title could not be loaded.",
+    "chooseAnotherSource": "Choose another source",
+    "rowSemantics": "Source ${index} of ${count}: ${description}",
+    "preferredServer": "Preferred server",
+    "setPreferredServer": "Always use ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Movies",
+    "seriesTitle": "Series",
+    "sources": "${count} sources",
+    "allSources": "All sources",
+    "oneSource": "1 source",
+    "seasons": "${count} seasons",
+    "oneSeason": "1 season",
+    "titleCount": "${count} titles",
+    "oneTitle": "1 title",
+    "titlesLoaded": "${count} titles loaded",
+    "loadMore": "Load more",
+    "loadingMore": "Loading more…",
+    "sort": {
+      "title": "Sort",
+      "titleAsc": "Title A–Z",
+      "titleDesc": "Title Z–A",
+      "recentlyAdded": "Recently added",
+      "oldestAdded": "Oldest added",
+      "newestRelease": "Newest release",
+      "oldestRelease": "Oldest release",
+      "recentlyWatched": "Recently watched"
+    },
+    "filters": {
+      "title": "Filters",
+      "status": "Status",
+      "genre": "Genre",
+      "year": "Year",
+      "servers": "Servers",
+      "libraries": "Libraries",
+      "apply": "Apply",
+      "clearAll": "Clear all",
+      "all": "All",
+      "unwatched": "Unwatched",
+      "unsupported": "Not available for the current sources",
+      "someUnavailable": "Some filters are unavailable for the selected sources",
+      "noValues": "Nothing to choose from"
+    },
+    "states": {
+      "emptyTitle": "This catalog is empty",
+      "emptyBody": "No visible library holds anything for this page.",
+      "filterEmptyTitle": "Nothing matches these filters",
+      "filterEmptyBody": "Clear a filter to see more titles.",
+      "clearFilters": "Clear filters",
+      "errorTitle": "The catalog could not be loaded",
+      "errorBody": "No server answered. Check your connection and try again.",
+      "partialOne": "1 library did not answer",
+      "partialMany": "${count} libraries did not answer"
+    },
+    "semantics": {
+      "watched": "Watched",
+      "inProgress": "In progress",
+      "loadingMore": "Loading more titles"
+    },
+    "discovery": {
+      "allMovies": "All movies",
+      "allSeries": "All series",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "Some sources did not answer",
+      "emptyTitle": "Nothing to discover yet",
+      "emptyBody": "No visible library has anything to show here.",
+      "semantics": {
+        "section": "${title}, ${count} titles",
+        "position": "${position} of ${count}",
+        "viewAllMovies": "View all movies, opens the complete catalog",
+        "viewAllSeries": "View all series, opens the complete catalog"
+      }
+    },
+    "home": {
+      "featured": "Featured"
+    }
+  },
+  "tvNavigation": {
+    "activeDestination": "current section",
+    "attentionRequired": "needs attention"
+  },
+  "tvMyPleya": {
+    "groupContent": "My content",
+    "groupSources": "Libraries and sources",
+    "groupPleya": "Pleya",
+    "serversOnline": "${online} of ${total} servers online",
+    "noServers": "No servers connected",
+    "statusOnline": "Online",
+    "statusOffline": "Offline",
+    "servers": "Servers",
+    "activity": "Activity",
+    "logs": "Logs and diagnostics",
+    "signedInAs": "Signed in as ${name} · Pleya ${version}",
+    "watchlistSubtitle": "Saved films and series",
+    "requestsSubtitle": "Requests and discovery",
+    "downloadsSubtitle": "Offline and sync rules",
+    "librariesSubtitle": "Media, collections, playlists",
+    "serversSubtitle": "Connections and local sources",
+    "activitySubtitle": "Now watching, watch together, remote",
+    "watchTogetherSubtitle": "Watch in sync with friends",
+    "settingsSubtitle": "Display, player, trackers",
+    "logsSubtitle": "Log files and crash reporting",
+    "aboutSubtitle": "Version and licences",
+    "logoutSubtitle": "Sign out on this device",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    },
+    "libraryCount": "${count} libraries"
+  },
+  "tvContextMenu": {
+    "title": "Actions",
+    "menuSemantics": "Action ${index} of ${count}: ${label}",
+    "noUsableSource": "No source is currently reachable, so this cannot be changed right now.",
+    "doneOnAll": "Done on all ${count} sources",
+    "doneOnSome": "Done on ${done} of ${total} sources. The rest will be retried when they are back online.",
+    "doneOnSomeNoRetry": "Done on ${done} of ${total} sources.",
+    "failed": "That did not work"
   }
 }

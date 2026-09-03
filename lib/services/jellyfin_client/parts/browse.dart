@@ -198,14 +198,29 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
   @override
   Future<void> setFavorite(MediaItem item, bool isFavorite) => setItemFavorite(item.id, isFavorite);
 
-  /// Jellyfin has no server-side lookup by external id. The official SDK's
-  /// `/Items` parameter list has `hasImdbId`/`hasTmdbId` as booleans and no
-  /// value matcher, so the only route is: search on the title, ask for
-  /// `ProviderIds`, and confirm on the client.
   @override
   Future<MediaItem?> findByIdentity(MediaIdentity identity) async {
+    return identity.pickMatch(await _identitySearchCandidates(identity));
+  }
+
+  /// Real multi-match override for hoofdstuk 12.8 of
+  /// docs/tvos-unified-experience.md. Same search as [findByIdentity]; only
+  /// which results survive differs: every external-id match counts here,
+  /// where [findByIdentity] declines on more than one.
+  @override
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async {
+    return identity.pickAllMatches(await _identitySearchCandidates(identity));
+  }
+
+  /// The search shared by [findByIdentity] and [findAllByIdentity], run
+  /// before either applies its own single- vs multi-match picking. Jellyfin
+  /// has no server-side lookup by external id — the official SDK's `/Items`
+  /// parameter list has `hasImdbId`/`hasTmdbId` as booleans and no value
+  /// matcher — so the only route is: search on the title, ask for
+  /// `ProviderIds`, and confirm on the client.
+  Future<List<({MediaItem item, ExternalIds ids})>> _identitySearchCandidates(MediaIdentity identity) async {
     final title = identity.title;
-    if (!identity.isSearchable || title == null || title.isEmpty) return null;
+    if (!identity.isSearchable || title == null || title.isEmpty) return const [];
 
     final response = await _http.get(
       '/Items',
@@ -233,8 +248,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
             : const ExternalIds(),
       ));
     }
-
-    return identity.pickMatch(candidates);
+    return candidates;
   }
 
   static String _includeTypesForIdentity(MediaKind kind) => switch (kind) {

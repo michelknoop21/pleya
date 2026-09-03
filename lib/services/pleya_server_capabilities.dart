@@ -81,6 +81,7 @@ class PleyaServerCapabilityResolver {
     // PS-9 brings users, and favourites and ratings are per-user by
     // definition. One bootstrap identity has nobody to be favourite for.
     serverFavorites: _offered(wire.users, implementedHere: false),
+    userRating: _offered(wire.users, implementedHere: false),
     numericUserRating: _offered(wire.users, implementedHere: false),
 
     // Subtitle *search* is a marketplace call. The server serves the sidecars

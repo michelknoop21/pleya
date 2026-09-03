@@ -303,7 +303,15 @@
     "hint": "Sök filmer, serier, musik...",
     "tryDifferentTerm": "Prova en annan sökterm",
     "searchYourMedia": "Sök i dina media",
-    "enterTitleActorOrKeyword": "Ange en titel, skådespelare eller nyckelord"
+    "enterTitleActorOrKeyword": "Ange en titel, skådespelare eller nyckelord",
+    "filters": {
+      "all": "Alla",
+      "movies": "Filmer",
+      "shows": "Serier",
+      "episodes": "Avsnitt",
+      "people": "Personer",
+      "other": "Övrigt"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Sätt genväg för ${actionName}",
@@ -696,6 +704,10 @@
     "failedToSwitchProfile": "Misslyckades att byta till ${displayName}",
     "failedToDeleteProfile": "Misslyckades att ta bort ${displayName}",
     "failedToRate": "Det gick inte att uppdatera betyget"
+  },
+  "notices": {
+    "playbackFileUnavailableTitle": "Filen är inte tillgänglig",
+    "playbackFileUnavailableBody": "Servern kan inte nå videofilen. Kontrollera att enheten eller mappen den ligger i fortfarande är ansluten."
   },
   "libraries": {
     "title": "Bibliotek",
@@ -1447,5 +1459,144 @@
     "notificationText": "Andra Pleya-enheter kan strömma dina lokala mappar",
     "hostDescriptionAndroid": "Andra Pleya-enheter i det här nätverket kan bläddra, strömma och ladda ner dina lokala mappar. Delningen fortsätter i bakgrunden med en avisering.",
     "scanningSubnet": "Skannar nätverket…"
+  },
+  "sourcePicker": {
+    "playTitle": "Välj var du vill spela upp",
+    "detailsTitle": "Välj en källa för detaljerna",
+    "availableOnOneServer": "Tillgänglig på 1 server",
+    "availableOnManyServers": "Tillgänglig på ${count} servrar",
+    "oneServerUnchecked": "1 server kunde inte kontrolleras",
+    "manyServersUnchecked": "${count} servrar kunde inte kontrolleras",
+    "checkingMoreSources": "Söker fler källor…",
+    "lastUsed": "Senast använd",
+    "currentSource": "Aktuell källa",
+    "unavailable": "Inte tillgänglig",
+    "signInRequired": "Inloggning krävs igen",
+    "resumeAt": "Återuppta vid ${position}",
+    "watched": "Sedd",
+    "noneReachableTitle": "Ingen källa går att nå just nu.",
+    "reauthRequiredTitle": "Logga in igen för att nå den här titeln.",
+    "manageServers": "Hantera servrar",
+    "sourceLabel": "Källa: ${source}",
+    "change": "Ändra",
+    "playbackFailedTitle": "Den här källan kunde inte spelas upp.",
+    "detailLoadFailedTitle": "Den här titeln kunde inte läsas in.",
+    "chooseAnotherSource": "Välj en annan källa",
+    "rowSemantics": "Källa ${index} av ${count}: ${description}",
+    "preferredServer": "Föredragen server",
+    "setPreferredServer": "Använd alltid ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Filmer",
+    "seriesTitle": "Serier",
+    "sources": "${count} källor",
+    "allSources": "Alla källor",
+    "oneSource": "1 källa",
+    "seasons": "${count} säsonger",
+    "oneSeason": "1 säsong",
+    "titleCount": "${count} titlar",
+    "oneTitle": "1 titel",
+    "titlesLoaded": "${count} titlar inlästa",
+    "loadMore": "Läs in fler",
+    "loadingMore": "Läser in fler…",
+    "sort": {
+      "title": "Sortera",
+      "titleAsc": "Titel A–Ö",
+      "titleDesc": "Titel Ö–A",
+      "recentlyAdded": "Nyligen tillagda",
+      "oldestAdded": "Först tillagda",
+      "newestRelease": "Senaste släpp",
+      "oldestRelease": "Äldsta släpp",
+      "recentlyWatched": "Nyligen sedda"
+    },
+    "filters": {
+      "title": "Filter",
+      "status": "Status",
+      "genre": "Genre",
+      "year": "År",
+      "servers": "Servrar",
+      "libraries": "Bibliotek",
+      "apply": "Använd",
+      "clearAll": "Rensa allt",
+      "all": "Alla",
+      "unwatched": "Osedda",
+      "unsupported": "Inte tillgängligt för de aktuella källorna",
+      "someUnavailable": "Vissa filter är inte tillgängliga för de valda källorna",
+      "noValues": "Inget att välja"
+    },
+    "states": {
+      "emptyTitle": "Den här katalogen är tom",
+      "emptyBody": "Inget synligt bibliotek innehåller något för den här sidan.",
+      "filterEmptyTitle": "Inget matchar de här filtren",
+      "filterEmptyBody": "Rensa ett filter för att se fler titlar.",
+      "clearFilters": "Rensa filter",
+      "errorTitle": "Katalogen kunde inte läsas in",
+      "errorBody": "Ingen server svarade. Kontrollera anslutningen och försök igen.",
+      "partialOne": "1 bibliotek svarade inte",
+      "partialMany": "${count} bibliotek svarade inte"
+    },
+    "semantics": {
+      "watched": "Sedd",
+      "inProgress": "Påbörjad",
+      "loadingMore": "Läser in fler titlar"
+    },
+    "discovery": {
+      "allMovies": "Alla filmer",
+      "allSeries": "Alla serier",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "Vissa källor svarade inte",
+      "emptyTitle": "Inget att upptäcka ännu",
+      "emptyBody": "Inget synligt bibliotek har något att visa här.",
+      "semantics": {
+        "section": "${title}, ${count} titlar",
+        "position": "${position} av ${count}",
+        "viewAllMovies": "Visa alla filmer, öppnar hela katalogen",
+        "viewAllSeries": "Visa alla serier, öppnar hela katalogen"
+      }
+    },
+    "home": {
+      "featured": "Utvalt"
+    }
+  },
+  "tvNavigation": {
+    "activeDestination": "aktuellt avsnitt",
+    "attentionRequired": "kräver uppmärksamhet"
+  },
+  "tvMyPleya": {
+    "groupContent": "Mitt innehåll",
+    "groupSources": "Bibliotek och källor",
+    "groupPleya": "Pleya",
+    "serversOnline": "${online} av ${total} servrar online",
+    "noServers": "Inga servrar anslutna",
+    "statusOnline": "Online",
+    "statusOffline": "Offline",
+    "servers": "Servrar",
+    "activity": "Aktivitet",
+    "logs": "Loggar och diagnostik",
+    "signedInAs": "Inloggad som ${name} · Pleya ${version}",
+    "watchlistSubtitle": "Sparade filmer och serier",
+    "requestsSubtitle": "Förfrågningar och upptäck",
+    "downloadsSubtitle": "Offline och synkroniseringsregler",
+    "librariesSubtitle": "Media, samlingar, spellistor",
+    "serversSubtitle": "Anslutningar och lokala källor",
+    "activitySubtitle": "Ses just nu, se tillsammans, fjärrkontroll",
+    "watchTogetherSubtitle": "Titta synkroniserat med vänner",
+    "settingsSubtitle": "Visning, spelare, trackers",
+    "logsSubtitle": "Loggfiler och kraschrapporter",
+    "aboutSubtitle": "Version och licenser",
+    "logoutSubtitle": "Logga ut på den här enheten",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
+  },
+  "tvContextMenu": {
+    "title": "Åtgärder",
+    "menuSemantics": "Åtgärd ${index} av ${count}: ${label}",
+    "noUsableSource": "Ingen källa är tillgänglig just nu, så detta kan inte ändras nu.",
+    "doneOnAll": "Klart på alla ${count} källor",
+    "doneOnSome": "Klart på ${done} av ${total} källor. Resten försöks igen när de är online igen.",
+    "doneOnSomeNoRetry": "Klart på ${done} av ${total} källor.",
+    "failed": "Det gick inte"
   }
 }

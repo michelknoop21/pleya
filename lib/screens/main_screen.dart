@@ -162,6 +162,8 @@ NavigationTabId mainScreenSelectedBarTab({
 }) {
   final preferred = switch (currentTab) {
     NavigationTabId.discover ||
+    NavigationTabId.movies ||
+    NavigationTabId.series ||
     NavigationTabId.libraries ||
     NavigationTabId.liveTv ||
     NavigationTabId.search => isOffline ? NavigationTabId.downloads : currentTab,
@@ -1035,6 +1037,7 @@ class _MainScreenState extends State<MainScreen>
     return [
       for (final tab in _getVisibleTabs(offline))
         switch (tab.id) {
+          NavigationTabId.movies || NavigationTabId.series => const SizedBox.shrink(),
           NavigationTabId.discover => DiscoverScreen(key: _discoverKey),
           NavigationTabId.libraries => LibrariesScreen(
             key: _librariesKey,
@@ -1701,6 +1704,7 @@ class _MainScreenState extends State<MainScreen>
   GlobalKey? _screenKeyFor(NavigationTabId tab) {
     return switch (tab) {
       NavigationTabId.discover => _discoverKey,
+      NavigationTabId.movies || NavigationTabId.series => null,
       NavigationTabId.libraries => _librariesKey,
       NavigationTabId.liveTv => _liveTvKey,
       NavigationTabId.search => _searchKey,

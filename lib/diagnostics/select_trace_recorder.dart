@@ -242,6 +242,21 @@ class SelectTraceRecorder {
     );
   }
 
+  /// Records that the user picked a source by hand in the unified source
+  /// picker, so the deliberate change of target is not read as a swap.
+  ///
+  /// Call this *before* linking [SelectTraceLink.activatedTarget] to the
+  /// chosen source: the flag is what tells [evaluateSelectTrace] that this one
+  /// divergence was asked for. [detail] names the choice for the timeline
+  /// (server and item), so a report still says which source won.
+  void noteSourceSelection(String? id, {required String detail}) {
+    if (!_enabled || id == null) return;
+    final trace = _open[id];
+    if (trace == null) return;
+    trace.sawSourceSelection = true;
+    trace.addEntry(SelectTraceEntry(atMs: trace.elapsedMsAt(_now()), kind: 'source', detail: detail));
+  }
+
   /// Records that a row refused a stale activation.
   void noteActivationDropped(String? id, {required String detail}) {
     if (!_enabled || id == null) return;

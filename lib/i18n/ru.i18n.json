@@ -303,7 +303,15 @@
     "hint": "Поиск фильмов, сериалов, музыки...",
     "tryDifferentTerm": "Попробуйте другой запрос",
     "searchYourMedia": "Поиск в вашей медиатеке",
-    "enterTitleActorOrKeyword": "Введите название, актёра или ключевое слово"
+    "enterTitleActorOrKeyword": "Введите название, актёра или ключевое слово",
+    "filters": {
+      "all": "Все",
+      "movies": "Фильмы",
+      "shows": "Сериалы",
+      "episodes": "Эпизоды",
+      "people": "Люди",
+      "other": "Другое"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Назначить клавишу для ${actionName}",
@@ -696,6 +704,10 @@
     "failedToSwitchProfile": "Не удалось переключиться на ${displayName}",
     "failedToDeleteProfile": "Не удалось удалить ${displayName}",
     "failedToRate": "Не удалось обновить оценку"
+  },
+  "notices": {
+    "playbackFileUnavailableTitle": "Файл недоступен",
+    "playbackFileUnavailableBody": "Серверу не удаётся получить доступ к видеофайлу. Проверьте, подключён ли диск или папка, где он находится."
   },
   "libraries": {
     "title": "Библиотеки",
@@ -1447,5 +1459,144 @@
     "notificationText": "Другие устройства Pleya могут стримить ваши локальные папки",
     "hostDescriptionAndroid": "Другие устройства Pleya в этой сети могут просматривать, воспроизводить и скачивать ваши локальные папки. Общий доступ продолжает работать в фоне с уведомлением.",
     "scanningSubnet": "Сканирование сети…"
+  },
+  "sourcePicker": {
+    "playTitle": "Выберите, где воспроизвести",
+    "detailsTitle": "Выберите источник для сведений",
+    "availableOnOneServer": "Доступно на 1 сервере",
+    "availableOnManyServers": "Доступно на ${count} серверах",
+    "oneServerUnchecked": "Не удалось проверить 1 сервер",
+    "manyServersUnchecked": "Не удалось проверить: ${count} серв.",
+    "checkingMoreSources": "Проверка других источников…",
+    "lastUsed": "Использован последним",
+    "currentSource": "Текущий источник",
+    "unavailable": "Недоступно",
+    "signInRequired": "Требуется повторный вход",
+    "resumeAt": "Продолжить с ${position}",
+    "watched": "Просмотрено",
+    "noneReachableTitle": "Сейчас ни один источник недоступен.",
+    "reauthRequiredTitle": "Войдите снова, чтобы открыть эту запись.",
+    "manageServers": "Управление серверами",
+    "sourceLabel": "Источник: ${source}",
+    "change": "Изменить",
+    "playbackFailedTitle": "Не удалось воспроизвести этот источник.",
+    "detailLoadFailedTitle": "Не удалось загрузить этот материал.",
+    "chooseAnotherSource": "Выбрать другой источник",
+    "rowSemantics": "Источник ${index} из ${count}: ${description}",
+    "preferredServer": "Предпочитаемый сервер",
+    "setPreferredServer": "Всегда использовать ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Фильмы",
+    "seriesTitle": "Сериалы",
+    "sources": "Источников: ${count}",
+    "allSources": "Все источники",
+    "oneSource": "1 источник",
+    "seasons": "Сезонов: ${count}",
+    "oneSeason": "1 сезон",
+    "titleCount": "Названий: ${count}",
+    "oneTitle": "1 название",
+    "titlesLoaded": "Загружено названий: ${count}",
+    "loadMore": "Загрузить ещё",
+    "loadingMore": "Загрузка…",
+    "sort": {
+      "title": "Сортировка",
+      "titleAsc": "Название А–Я",
+      "titleDesc": "Название Я–А",
+      "recentlyAdded": "Недавно добавленные",
+      "oldestAdded": "Давно добавленные",
+      "newestRelease": "Новые по выходу",
+      "oldestRelease": "Старые по выходу",
+      "recentlyWatched": "Недавно просмотренные"
+    },
+    "filters": {
+      "title": "Фильтры",
+      "status": "Статус",
+      "genre": "Жанр",
+      "year": "Год",
+      "servers": "Серверы",
+      "libraries": "Библиотеки",
+      "apply": "Применить",
+      "clearAll": "Очистить всё",
+      "all": "Все",
+      "unwatched": "Непросмотренные",
+      "unsupported": "Недоступно для текущих источников",
+      "someUnavailable": "Некоторые фильтры недоступны для выбранных источников",
+      "noValues": "Нечего выбрать"
+    },
+    "states": {
+      "emptyTitle": "Этот каталог пуст",
+      "emptyBody": "Ни одна видимая библиотека не содержит ничего для этой страницы.",
+      "filterEmptyTitle": "Ничего не соответствует этим фильтрам",
+      "filterEmptyBody": "Сбросьте фильтр, чтобы увидеть больше названий.",
+      "clearFilters": "Сбросить фильтры",
+      "errorTitle": "Не удалось загрузить каталог",
+      "errorBody": "Ни один сервер не ответил. Проверьте подключение и повторите попытку.",
+      "partialOne": "1 библиотека не ответила",
+      "partialMany": "Не ответило библиотек: ${count}"
+    },
+    "semantics": {
+      "watched": "Просмотрено",
+      "inProgress": "В процессе",
+      "loadingMore": "Загрузка других названий"
+    },
+    "discovery": {
+      "allMovies": "Все фильмы",
+      "allSeries": "Все сериалы",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "Некоторые источники не ответили",
+      "emptyTitle": "Пока нечего открывать",
+      "emptyBody": "Ни в одной видимой библиотеке здесь нечего показать.",
+      "semantics": {
+        "section": "${title}, названий: ${count}",
+        "position": "${position} из ${count}",
+        "viewAllMovies": "Показать все фильмы, открывает полный каталог",
+        "viewAllSeries": "Показать все сериалы, открывает полный каталог"
+      }
+    },
+    "home": {
+      "featured": "Рекомендуем"
+    }
+  },
+  "tvNavigation": {
+    "activeDestination": "текущий раздел",
+    "attentionRequired": "требует внимания"
+  },
+  "tvMyPleya": {
+    "groupContent": "Мой контент",
+    "groupSources": "Библиотеки и источники",
+    "groupPleya": "Pleya",
+    "serversOnline": "${online} из ${total} серверов в сети",
+    "noServers": "Нет подключённых серверов",
+    "statusOnline": "В сети",
+    "statusOffline": "Не в сети",
+    "servers": "Серверы",
+    "activity": "Активность",
+    "logs": "Журналы и диагностика",
+    "signedInAs": "Вы вошли как ${name} · Pleya ${version}",
+    "watchlistSubtitle": "Сохранённые фильмы и сериалы",
+    "requestsSubtitle": "Запросы и подборки",
+    "downloadsSubtitle": "Офлайн и правила синхронизации",
+    "librariesSubtitle": "Медиа, коллекции, плейлисты",
+    "serversSubtitle": "Подключения и локальные источники",
+    "activitySubtitle": "Сейчас смотрят, совместный просмотр, пульт",
+    "watchTogetherSubtitle": "Смотрите синхронно с друзьями",
+    "settingsSubtitle": "Отображение, плеер, трекеры",
+    "logsSubtitle": "Файлы журналов и отчёты о сбоях",
+    "aboutSubtitle": "Версия и лицензии",
+    "logoutSubtitle": "Выйти на этом устройстве",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
+  },
+  "tvContextMenu": {
+    "title": "Действия",
+    "menuSemantics": "Действие ${index} из ${count}: ${label}",
+    "noUsableSource": "Сейчас нет доступного источника, поэтому это нельзя изменить.",
+    "doneOnAll": "Выполнено для всех источников (${count})",
+    "doneOnSome": "Выполнено для ${done} из ${total} источников. Остальные будут повторены, когда снова окажутся в сети.",
+    "doneOnSomeNoRetry": "Выполнено для ${done} из ${total} источников.",
+    "failed": "Не получилось"
   }
 }

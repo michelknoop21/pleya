@@ -7,8 +7,12 @@ import 'automation_event_log.dart';
 
 /// Maps the `key` names `POST /v1/input/key` accepts to a
 /// `LogicalKeyboardKey` — the same vocabulary as `scripts/tvos_sim.sh key`
-/// (up/down/left/right/select/menu/delete), so a scenario author and a human
-/// running the simulator script by hand share one vocabulary.
+/// (up/down/left/right/select/menu/delete/play_pause), so a scenario author
+/// and a human running the simulator script by hand share one vocabulary.
+///
+/// `pleya_verify/runner/lib/src/scenario/remote_keys.dart` carries the same
+/// list for the runner, which cannot import this file; a test in the runner
+/// parses this map and fails when the two drift apart.
 const Map<String, LogicalKeyboardKey> automationKeyNames = {
   'up': LogicalKeyboardKey.arrowUp,
   'down': LogicalKeyboardKey.arrowDown,
@@ -17,6 +21,7 @@ const Map<String, LogicalKeyboardKey> automationKeyNames = {
   'select': LogicalKeyboardKey.select,
   'menu': LogicalKeyboardKey.escape,
   'delete': LogicalKeyboardKey.backspace,
+  'play_pause': LogicalKeyboardKey.mediaPlayPause,
 };
 
 /// Static hook `InputModeTracker` registers, on the model of

@@ -44,6 +44,14 @@ under `Notes`.
 - focus-trace vult zich altijd, sidebar-scenario op semantiek (Fase 11)
 - laatste Fase 11-scenario groen, twee echte tvOS-bugs gefixt
 - Fase 13 afgerond, MCP-laag als dunne adapter boven de bestaande CLI
+- identiteit en bronmodel over servers heen
+- resolver, dekking en de k-way merge-engine
+- activatiebeslissing en de onthouden bronkeuze
+- projectie naar rijen, en de providers eromheen
+- bekeken markeren geldt voor alle bronnen
+- het wordmark-lockup als gedeelde merkweergave
+- films en series als route-identiteit
+- het backendmerkje deelt de gegenereerde logo-bron
 
 ### Improved
 - scheidingslijnen volgen de werkelijke rijhoogte
@@ -81,6 +89,8 @@ under `Notes`.
 - bind elke subprocess- en fixture-controlcall aan een echte deadline
 - garandeer één JSON-envelope op run/validate --json, ook bij een onverwachte crash
 - verwijder set_pref/focus/back uit de scenario-vocabulaire
+- de nieuwe route-ids afhandelen in de bestaande shells
+- de opstartsplash tekent de lockup ook via PleyaWordmark
 <!-- END GENERATED -->
 
 ### Fixed

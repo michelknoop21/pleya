@@ -255,6 +255,18 @@ class VideoPlayerScreen extends StatefulWidget {
   /// state (see [LiveTvSessionArgs]).
   final LiveTvSessionArgs? live;
 
+  /// Reports, once, that playback never started (hoofdstuk 15 of
+  /// docs/tvos-unified-experience.md).
+  ///
+  /// The player says only *that* it failed; it is told nothing about groups,
+  /// sources or alternatives, and it neither offers nor takes one. Hoofdstuk
+  /// 4.4 keeps source choice strictly before this route, so the activation site
+  /// — which is the only thing holding the live group — owns the
+  /// "[ Andere bron kiezen ]" offer after this screen is gone. Null for every
+  /// launch that did not come through a unified activation, which is all of
+  /// them today except that one.
+  final VoidCallback? onPlaybackInitFailed;
+
   bool get isLive => live != null;
 
   const VideoPlayerScreen({
@@ -270,6 +282,7 @@ class VideoPlayerScreen extends StatefulWidget {
     this.selectedQualityPreset,
     this.selectedAudioStreamId,
     this.live,
+    this.onPlaybackInitFailed,
   });
 
   @override
@@ -278,6 +291,18 @@ class VideoPlayerScreen extends StatefulWidget {
 
 class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindingObserver, MountedSetStateMixin {
   static const int _liveEdgeThresholdSeconds = 5;
+
+  /// Guards [_notePlaybackInitFailed] against a retry chain reporting twice.
+  bool _reportedPlaybackInitFailure = false;
+
+  /// Tells the activation site that playback never started. Idempotent: a live
+  /// fallback that fails at every level, or an error arriving after the start
+  /// path already gave up, must not produce two offers.
+  void _notePlaybackInitFailed() {
+    if (_reportedPlaybackInitFailure) return;
+    _reportedPlaybackInitFailure = true;
+    widget.onPlaybackInitFailed?.call();
+  }
 
   // Track the currently active video to guard against duplicate navigation
   static String? _activeId;
@@ -1433,8 +1458,23 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     }
   }
 
-  String? _lastLogError;
+  /// The last few error-level lines mpv logged for the current source, oldest
+  /// first. One line is not enough to say what happened: for a file that is
+  /// gone ffmpeg logs the `404` and mpv then logs a generic "Failed to open",
+  /// and only the last line used to survive, which is how a missing disk
+  /// became a bare "Playback stopped".
+  final List<String> _recentLogErrors = [];
+  static const int _recentLogErrorLimit = 4;
   bool _sawServer500 = false;
+
+  /// The recent error lines joined for classification, or null when mpv
+  /// logged nothing at error level for this source.
+  String? get _lastLogError => _recentLogErrors.isEmpty ? null : _recentLogErrors.join('\n');
+
+  void _rememberLogError(String line) {
+    _recentLogErrors.add(line);
+    if (_recentLogErrors.length > _recentLogErrorLimit) _recentLogErrors.removeAt(0);
+  }
 
   static final RegExp _server500Pattern = RegExp(r'\b(?:HTTP error |Response code: )500\b');
 

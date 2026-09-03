@@ -70,4 +70,20 @@ void main() {
       }
     });
   });
+
+  group('J3: TvLayoutConstants.scaleForHeight floors at the lowest supported TV surface', () {
+    test('918px (0.85x of the 1080p canvas) is the floor — nothing below it shrinks the scale further', () {
+      expect(TvLayoutConstants.scaleForHeight(918), closeTo(0.85, 0.0001));
+      // A genuinely tiny surface — well under any real TV output — still gets
+      // the same floor, never a smaller or negative scale.
+      expect(TvLayoutConstants.scaleForHeight(200), closeTo(0.85, 0.0001));
+      expect(TvLayoutConstants.scaleForHeight(0), closeTo(0.85, 0.0001));
+    });
+
+    test('just above the floor still scales down proportionally, not snapping early', () {
+      final at1000 = TvLayoutConstants.scaleForHeight(1000);
+      expect(at1000, closeTo(1000 / 1080, 0.0001));
+      expect(at1000, greaterThan(0.85));
+    });
+  });
 }

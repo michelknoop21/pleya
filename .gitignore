@@ -87,3 +87,6 @@ pleya_server/.responses/
 /.context/
 # Claude Code-instellingen per machine; de gedeelde .claude/ blijft wel getrackt.
 /.claude/settings.local.json
+
+# Local golden-diff artifacts from failed test runs (never commit these)
+test/goldens/failures/

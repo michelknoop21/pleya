@@ -1,11 +1,27 @@
+/// D11 — "Next Episode alleen op andere bron" (hoofdstuk 15).
+///
+/// The binding sentence is the prohibition, not the offer: *"Een gekozen
+/// seriesource blijft sticky voor de afspeelsessie. Next Episode komt van
+/// dezelfde server en queue. Pleya springt niet stil naar een andere
+/// server."* The optional half — an explicit "de volgende aflevering staat op
+/// NAS, overschakelen?" — is granted with *kan* and is deliberately not built;
+/// there is no i18n key for it anywhere.
+///
+/// So what is provable today is that the queue is bound to the server of the
+/// item being played, and that a next episode existing only somewhere else
+/// produces *no* next rather than a silent hop. That is structural:
+/// [EpisodeNavigationService] resolves exactly one client, from
+/// `metadata.serverId`, and the queue it builds can only hold what that one
+/// fetch returned.
+library;
+
 import 'package:flutter/material.dart';
-import 'package:pleya/media/ids.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
-import 'package:pleya/media/play_queue.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/playback_state_provider.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
@@ -13,228 +29,181 @@ import 'package:pleya/services/episode_navigation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:provider/provider.dart';
 
-// NOTE on coverage scope:
-// `EpisodeNavigationService` has two methods:
-//
-//   1. `loadAdjacentEpisodes` — pure-ish: reads PlaybackStateProvider, asks for
-//      next/prev episode, wraps the result. The interesting branch is the
-//      "no queue active" short-circuit, which we exercise without any client
-//      or network because PlaybackStateProvider can be constructed bare.
-//
-//   2. `navigateToEpisode` — performs full navigation through
-//      [navigateToVideoPlayer], which depends on a Navigator, a
-//      DownloadProvider, a MultiServerProvider, and the [SettingsService]
-//      singleton. Skipped: not unit-testable without recreating the entire
-//      app shell.
-//
-// We also cover the [AdjacentEpisodes] data class invariants since that's
-// the public surface callers depend on.
+/// A client that answers only [fetchClientSideEpisodeQueue] — the Jellyfin
+/// shape. Plex returns null there and keeps its queue server-side, which is
+/// why the rule is asserted on this path and only cited for Plex.
+class _QueueClient implements MediaServerClient {
+  _QueueClient(this._id, {this.episodes = const []});
 
-MediaItem _meta(String id, {String? title}) =>
-    MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.episode, title: title ?? 'Episode $id');
-
-MediaItem _jfEpisode(String id, {required String seriesId, ServerId? serverId}) => MediaItem(
-  id: id,
-  backend: MediaBackend.jellyfin,
-  kind: MediaKind.episode,
-  title: 'Episode $id',
-  serverId: serverId ?? ServerId('srv-jf'),
-  grandparentId: seriesId,
-);
-
-/// MultiServerManager subclass that returns a pre-supplied client without
-/// going through the production add-connection flow. The base class doesn't
-/// expose a way to inject clients into its private `_clients` map, so we
-/// override the lookup directly.
-class _StubManager extends MultiServerManager {
-  _StubManager(this._client);
-  final MediaServerClient? _client;
-  @override
-  MediaServerClient? getClient(String _) => _client;
-}
-
-/// Recording client whose `fetchClientSideEpisodeQueue` is observable —
-/// callers can assert it was (or wasn't) hit.
-class _RecordingClient implements MediaServerClient {
-  _RecordingClient({required this.seriesEpisodes});
-  final List<MediaItem> seriesEpisodes;
-  final List<String> seriesQueueCalls = [];
+  final String _id;
+  final List<MediaItem> episodes;
+  final List<String> queueFetches = [];
 
   @override
-  Future<List<MediaItem>?> fetchClientSideEpisodeQueue(String seriesId) async {
-    seriesQueueCalls.add(seriesId);
-    return seriesEpisodes;
-  }
+  ServerId get serverId => ServerId(_id);
 
   @override
   MediaBackend get backend => MediaBackend.jellyfin;
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _ProbeWidget extends StatefulWidget {
-  const _ProbeWidget({required this.metadata, required this.onResult});
-
-  final MediaItem metadata;
-  final void Function(AdjacentEpisodes) onResult;
-
-  @override
-  State<_ProbeWidget> createState() => _ProbeWidgetState();
-}
-
-class _ProbeWidgetState extends State<_ProbeWidget> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      final svc = EpisodeNavigationService();
-      final result = await svc.loadAdjacentEpisodes(context: context, metadata: widget.metadata);
-      widget.onResult(result);
-    });
+  Future<List<MediaItem>?> fetchClientSideEpisodeQueue(String seriesId) async {
+    queueFetches.add(seriesId);
+    return episodes;
   }
 
   @override
-  Widget build(BuildContext context) =>
-      const Directionality(textDirection: TextDirection.ltr, child: SizedBox.shrink());
+  void close() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+MediaItem _episode(String serverId, {required String id, required int index, String seriesId = 'show-1'}) => MediaItem(
+  id: id,
+  backend: MediaBackend.jellyfin,
+  kind: MediaKind.episode,
+  title: 'E$index',
+  serverId: serverId,
+  serverName: serverId,
+  grandparentId: seriesId,
+  index: index,
+  parentIndex: 1,
+);
+
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  late MultiServerManager manager;
+  late MultiServerProvider multiServer;
+  late PlaybackStateProvider playback;
 
-  // ===========================================================
-  // AdjacentEpisodes data class
-  // ===========================================================
+  setUp(() {
+    manager = MultiServerManager();
+    multiServer = MultiServerProvider(manager, DataAggregationService(manager));
+    playback = PlaybackStateProvider();
+  });
 
-  group('AdjacentEpisodes', () {
-    test('default constructor reports no neighbours', () {
-      final ae = AdjacentEpisodes();
-      expect(ae.next, isNull);
-      expect(ae.previous, isNull);
-      expect(ae.hasNext, isFalse);
-      expect(ae.hasPrevious, isFalse);
-    });
+  tearDown(() {
+    multiServer.dispose();
+    manager.dispose();
+    playback.dispose();
+  });
 
-    test('next/previous flags reflect non-null fields', () {
-      final ae = AdjacentEpisodes(next: _meta('n'), previous: _meta('p'));
-      expect(ae.hasNext, isTrue);
-      expect(ae.hasPrevious, isTrue);
-      expect(ae.next!.id, 'n');
-      expect(ae.previous!.id, 'p');
-    });
+  /// Runs [body] with a real `BuildContext` under the two providers
+  /// [EpisodeNavigationService.loadAdjacentEpisodes] reads.
+  Future<void> withContext(WidgetTester tester, Future<void> Function(BuildContext context) body) async {
+    late BuildContext captured;
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
+          ChangeNotifierProvider<PlaybackStateProvider>.value(value: playback),
+        ],
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              captured = context;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+    await body(captured);
+  }
 
-    test('only-next variant', () {
-      final ae = AdjacentEpisodes(next: _meta('n'));
-      expect(ae.hasNext, isTrue);
-      expect(ae.hasPrevious, isFalse);
-    });
+  testWidgets('D11: a next episode that exists only on another source is no next episode at all', (tester) async {
+    // server_1 holds the episode being watched and nothing after it.
+    final onlyE1 = _QueueClient('server_1', episodes: [_episode('server_1', id: 's1e1', index: 1)]);
+    // server_2 holds the same show, one episode further along.
+    final alsoE2 = _QueueClient(
+      'server_2',
+      episodes: [
+        _episode('server_2', id: 's2e1', index: 1),
+        _episode('server_2', id: 's2e2', index: 2),
+      ],
+    );
+    manager
+      ..debugRegisterClientForTesting(onlyE1)
+      ..debugRegisterClientForTesting(alsoE2);
 
-    test('only-previous variant', () {
-      final ae = AdjacentEpisodes(previous: _meta('p'));
-      expect(ae.hasNext, isFalse);
-      expect(ae.hasPrevious, isTrue);
+    await withContext(tester, (context) async {
+      final adjacent = await EpisodeNavigationService().loadAdjacentEpisodes(
+        context: context,
+        metadata: _episode('server_1', id: 's1e1', index: 1),
+      );
+
+      expect(
+        adjacent.next,
+        isNull,
+        reason: 'the chosen source has no next episode; the copy on server_2 is not Pleya\'s to jump to',
+      );
+      expect(
+        alsoE2.queueFetches,
+        isEmpty,
+        reason: 'the other server was never even asked — the queue is built from one client',
+      );
+      expect(onlyE1.queueFetches, ['show-1']);
     });
   });
 
-  // ===========================================================
-  // loadAdjacentEpisodes: short-circuit without an active queue
-  // ===========================================================
+  testWidgets('D11: the same playback on the source that does have the next episode gets it', (tester) async {
+    // The negative control for the test above: without it, a queue that
+    // returned null for everything would look like correct stickiness.
+    final alsoE2 = _QueueClient(
+      'server_2',
+      episodes: [
+        _episode('server_2', id: 's2e1', index: 1),
+        _episode('server_2', id: 's2e2', index: 2),
+      ],
+    );
+    manager.debugRegisterClientForTesting(alsoE2);
 
-  group('loadAdjacentEpisodes', () {
-    testWidgets('returns empty AdjacentEpisodes when no play queue is active', (tester) async {
-      // Bare provider — no setPlaybackFromPlayQueue() call → isQueueActive = false.
-      final playback = PlaybackStateProvider();
-      addTearDown(playback.dispose);
-
-      AdjacentEpisodes? result;
-      await tester.pumpWidget(
-        ChangeNotifierProvider<PlaybackStateProvider>.value(
-          value: playback,
-          child: _ProbeWidget(metadata: _meta('42'), onResult: (r) => result = r),
-        ),
+    await withContext(tester, (context) async {
+      final adjacent = await EpisodeNavigationService().loadAdjacentEpisodes(
+        context: context,
+        metadata: _episode('server_2', id: 's2e1', index: 1),
       );
-      // Drain the post-frame callback and the awaited service call.
-      await tester.pump();
-      await tester.pump();
 
-      expect(result, isNotNull);
-      expect(result!.hasNext, isFalse);
-      expect(result!.hasPrevious, isFalse);
+      expect(adjacent.next, isNotNull);
+      expect(adjacent.next!.id, 's2e2');
+      expect(adjacent.next!.serverId, 'server_2', reason: 'and it came from the source being watched');
     });
+  });
 
-    testWidgets('catches downstream exceptions and returns empty AdjacentEpisodes', (tester) async {
-      // PlaybackStateProvider not provided → context.read throws. The service
-      // wraps the entire body in try/catch and returns AdjacentEpisodes() so
-      // the UI never crashes when the queue subsystem is unavailable.
-      AdjacentEpisodes? result;
-      await tester.pumpWidget(_ProbeWidget(metadata: _meta('42'), onResult: (r) => result = r));
-      await tester.pump();
-      await tester.pump();
+  testWidgets('D11: two servers using the same series id never serve each other\'s episodes', (tester) async {
+    // `grandparentId` is server-local — two servers can both call their show
+    // `show-1`. The per-session series cache is keyed on that id, so this is
+    // the one way a single player session could serve one server's episode
+    // list for another server's playback.
+    final serverOne = _QueueClient('server_1', episodes: [_episode('server_1', id: 's1e1', index: 1)]);
+    final serverTwo = _QueueClient(
+      'server_2',
+      episodes: [
+        _episode('server_2', id: 's2e1', index: 1),
+        _episode('server_2', id: 's2e2', index: 2),
+      ],
+    );
+    manager
+      ..debugRegisterClientForTesting(serverOne)
+      ..debugRegisterClientForTesting(serverTwo);
 
-      expect(result, isNotNull);
-      expect(result!.hasNext, isFalse);
-      expect(result!.hasPrevious, isFalse);
-    });
+    await withContext(tester, (context) async {
+      final navigation = EpisodeNavigationService();
 
-    testWidgets('preserves an active playlist/collection queue against series rebuild', (tester) async {
-      // Reproduces the bug where playing an episode from a Jellyfin playlist
-      // had next/prev walking the show's episodes instead of the playlist —
-      // [_ensureLocalEpisodeQueue] used to overwrite the launcher-set queue
-      // unconditionally. The guard now bails out when contextKey is set to
-      // anything other than the seriesId.
-      final ep1 = _jfEpisode('ep1', seriesId: 'series-A');
-      final ep2 = _jfEpisode('ep2', seriesId: 'series-B');
-      final ep3 = _jfEpisode('ep3', seriesId: 'series-A');
-
-      final playback = PlaybackStateProvider();
-      addTearDown(playback.dispose);
-      playback.setPlaybackFromLocalQueue(
-        LocalPlayQueue(
-          id: 'jellyfin:playlist-X',
-          items: [ep1, ep2, ep3],
-          currentIndex: 1,
-          backendId: MediaBackend.jellyfin.id,
-        ),
-        contextKey: 'playlist-X',
+      await navigation.loadAdjacentEpisodes(
+        context: context,
+        metadata: _episode('server_1', id: 's1e1', index: 1),
+      );
+      final second = await navigation.loadAdjacentEpisodes(
+        context: context,
+        metadata: _episode('server_2', id: 's2e1', index: 1),
       );
 
-      // Stub client returns fake series episodes that *include* ep2 — without
-      // the guard, the service would replace the playlist queue with this
-      // list and prev/next would point at sibling-X / sibling-Y.
-      final client = _RecordingClient(
-        seriesEpisodes: [
-          _jfEpisode('sibling-X', seriesId: 'series-B'),
-          ep2,
-          _jfEpisode('sibling-Y', seriesId: 'series-B'),
-        ],
+      expect(
+        second.next?.serverId,
+        'server_2',
+        reason: 'server_2 playback must not inherit server_1\'s episode list through a shared series id',
       );
-      final manager = _StubManager(client);
-      final aggregation = DataAggregationService(manager);
-      final serverProvider = MultiServerProvider(manager, aggregation);
-      addTearDown(serverProvider.dispose);
-
-      AdjacentEpisodes? result;
-      await tester.pumpWidget(
-        MultiProvider(
-          providers: [
-            ChangeNotifierProvider<PlaybackStateProvider>.value(value: playback),
-            ChangeNotifierProvider<MultiServerProvider>.value(value: serverProvider),
-          ],
-          child: _ProbeWidget(metadata: ep2, onResult: (r) => result = r),
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      // Guard short-circuits before the wire fetch.
-      expect(client.seriesQueueCalls, isEmpty);
-      // Queue items unchanged — still the playlist's three episodes.
-      expect(playback.loadedItems.map((e) => e.id), ['ep1', 'ep2', 'ep3']);
-      // Prev/next walk the playlist, not the series.
-      expect(result, isNotNull);
-      expect(result!.next?.id, 'ep3');
-      expect(result!.previous?.id, 'ep1');
+      expect(second.next?.id, 's2e2');
     });
   });
 }

@@ -304,11 +304,24 @@ class AppleTvRemoteTouchService {
     _lastTouchY = y;
     _lastSwipeAxis = null;
     _lastSwipeAt = null;
-    // A swipe claim still under its post-lift grace belongs to a gesture the
-    // accumulator already owned, so carry it into this one — consecutive fast
-    // swipes must not let the previous gesture's trailing native arrow in.
-    // Anything else (a directional-ring click) starts fresh.
-    if (_currentDirectionalOwner() == _DirectionalOwner.swipe) {
+    // A claim still under its post-lift grace belongs to a gesture that is
+    // very probably this one, so carry it in and hold it for as long as the
+    // finger is down. Which path made the claim does not change that.
+    //
+    // For a swipe claim this is the old rule: consecutive fast swipes must not
+    // let the previous gesture's trailing native arrow in. For a *native*
+    // claim it is the physical Apple TV finding. A click on the remote's ring
+    // is a touch and a press at once, and tvOS reports the two over separate
+    // paths; the press regularly reaches Flutter a few milliseconds before the
+    // touch stream does. Dropping the claim here — on the reasoning that a
+    // ring click starts a fresh gesture — meant the travel of that same finger
+    // crossed the swipe threshold with nobody owning the gesture, and the
+    // click moved the focus twice. One press, two steps, one destination
+    // skipped: LEFT on Series landed on Search, and DOWN on a landing walked
+    // past the first rail. What had been hiding it is the per-key duplicate
+    // window, which is 120 ms and only ever catches the second arrow when it
+    // happens to be the same key.
+    if (_currentDirectionalOwner() != _DirectionalOwner.none) {
       _directionalOwnerExpiresAt = null;
     } else {
       _directionalOwner = _DirectionalOwner.none;

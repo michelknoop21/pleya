@@ -17,11 +17,17 @@ part of '../../pleya_server_client.dart';
 /// because a grid that is briefly short is repairable and a request that never
 /// returns is not.
 mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
-  /// How many extra pages a single request may walk before giving up.
+  /// How many *fruitless* pages in a row a single request may walk before
+  /// giving up — pages that contributed nothing to the window being filled,
+  /// because they fell entirely before the requested offset or held only items
+  /// this build cannot classify.
   ///
-  /// Ten pages of at most 500 is five thousand items, which covers a jump to
-  /// the far end of a normal library. Beyond that the answer is short rather
-  /// than late.
+  /// Counting every page instead made the bound fire on a healthy library that
+  /// pages smaller than the window asked for, and the short page that came
+  /// back reads as "library exhausted" one layer up. A page that contributes
+  /// is progress and resets the count, so the bound is still what it was meant
+  /// to be: a stop on a walk that is getting nowhere, not a cap on a walk that
+  /// is working.
   static const int _maxCursorWalk = 10;
 
   /// The largest page the contract accepts. A bigger `limit` is clamped by the
@@ -386,8 +392,19 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       position += page.items.length;
 
       if (collected.length >= limit || page.nextCursor == null || page.items.isEmpty) break;
-      if (++walked >= _maxCursorWalk) {
-        appLogger.d('PleyaServerClient: stopped walking $path after $_maxCursorWalk pages');
+      // The walk bound counts *fruitless* pages, not pages. Counting every
+      // page made the cap fire on a healthy library that simply pages smaller
+      // than the window asked for — the walk then returned a short page while
+      // the cursor still pointed at more, and a short page is exactly how
+      // UnifiedCatalogService decides a library is exhausted (E8). The rest of
+      // that library silently never appeared, under an `isComplete` that said
+      // the catalogue was finished. A page that contributed something is
+      // progress, so it resets the count; the bound still stops a long stretch
+      // of pages that give this window nothing.
+      if (skipInThisPage < page.knownItems.length) {
+        walked = 0;
+      } else if (++walked >= _maxCursorWalk) {
+        appLogger.d('PleyaServerClient: stopped walking $path after $_maxCursorWalk unproductive pages');
         break;
       }
       cursor = page.nextCursor;
