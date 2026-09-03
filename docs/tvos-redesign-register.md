@@ -11,11 +11,28 @@ later iets urgenters bijkwam.
 
 ## Volgorde
 
-Eerst de systemische eigenaren die meerdere mockups blokkeren, in deze volgorde: het blijvende
-TV-shell- en topnav-routecontract, BACK1, de TV-overlay- en sheet-presentatie, de gedeelde
-staat- en lege-presentatie, en de i18n- en tokencorrectheid. Daarna 09 tot en met 12, dan 13 tot
-en met 16, dan 17 tot en met 19, dan 20 tot en met 25, tenzij een afhankelijkheid aantoonbaar
-een andere volgorde afdwingt.
+Eerst de systemische eigenaren die meerdere mockups blokkeren. Vastgesteld op 3 september 2026,
+na SYS-1a:
+
+1. SYS-1c, de detailpresentatie geschikt maken om binnen de bestaande shell te leven, onder
+   INV-1. Dit gaat vóór SYS-1b, want anders bewijs je PB-1 voor 09 en 10 met een uitzondering in
+   plaats van met het contract.
+2. SYS-1b, film- en seriedetail werkelijk over hetzelfde geneste routecontract openen.
+3. SYS-3a en SYS-3b, OVR1 systemisch sluiten met één gedeelde eigenaar voor de overlaymaat.
+4. De eerste echte Pleya Verify-journey, over shell naar Instellingen-subpagina naar Back, en
+   shell naar detail naar Back. Tot die er is geldt SYS-1 als implementation-proven maar niet als
+   end-to-end geaccepteerd.
+
+Daarna BACK1, de gedeelde staat- en lege-presentatie, en de i18n- en tokencorrectheid, gevolgd
+door 09 tot en met 12, dan 13 tot en met 16, dan 17 tot en met 19, dan 20 tot en met 25, tenzij
+een afhankelijkheid aantoonbaar een andere volgorde afdwingt.
+
+## Één schrijver per worktree
+
+`pleya-teleport` is een gedeelde clone. Twee sessies die er tegelijk in schrijven hebben elkaar op
+3 september aantoonbaar geraakt: de pre-commit gate kon niet draaien omdat de boom tussentijds
+niet compileerde door werk van de andere sessie. Vanaf nu schrijft er één sessie tegelijk. Wie
+begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 
 ## SYSTEMIC
 
@@ -23,9 +40,10 @@ een andere volgorde afdwingt.
 |----|----------|---------|--------|--------------|
 | SYS-1a | Routecontract: een TV-contentroute opent in de shell in plaats van erboven | PB-1 | DONE | `5cafc10`, DEC-091 |
 | SYS-1b | Detail, collectie en persoon over dat contract | PB-1 | OPEN | |
-| SYS-1c | Geneste routes krijgen de contentbox als `MediaQuery`, nodig voor de detailgeometrie | PB-1 | OPEN | |
+| SYS-1c | Geneste routes krijgen de contentbox als `MediaQuery`, nodig voor de detailgeometrie | PB-1, INV-1 | OPEN | |
 | SYS-2 | BACK1, geen zichtbare onbereikbare terugknop op TV | PB-2 | OPEN, geauditeerd | zie onder |
-| SYS-3 | TV-overlay- en sheetgeometrie, OVR1-diagnose vóór elke breedte | PB-5 | OPEN, oorzaak gevonden | zie onder |
+| SYS-3a | OVR1a: de schaalbasis van paneelinhoud op TV | PB-5 | OPEN, oorzaak gevonden | zie onder |
+| SYS-3b | OVR1b: sheets zonder expliciete `presentation` vallen op 400x400 | PB-5 | OPEN, oorzaak gevonden | zie onder |
 | SYS-4 | Gedeelde staat- en lege-presentatie schaalt op TV | audit | OPEN, geauditeerd | zie onder |
 | SYS-5 | i18n-gaten en hardcoded strings | audit | OPEN | |
 | SYS-6 | Tokenafwijkingen per stuk beoordeeld, met regressiebeelden | tokenaudit | OPEN | |
@@ -116,7 +134,11 @@ levert zijn hardware-BACK langs hetzelfde pad, dus daar verandert weghalen niets
 Er is geen enkele test die `AppBarBackButton` of `CustomAppBar` aanraakt. Wie hem weghaalt, moet
 de test er dus zelf bij schrijven; de suite houdt hem nu niet tegen en zou een regressie niet zien.
 
-## SYS-3, de OVR1-oorzaak
+## SYS-3, twee oorzaken onder OVR1
+
+OVR1 is opgesplitst, want het zijn technisch twee defecten met twee verschillende bewijzen. Ze
+delen wel hun oplossing: er hoort één eigenaar te komen voor de vraag hoe groot een TV-overlay is,
+geen correctie per sheet.
 
 Er zijn vier eigenaren van "hoe groot is een TV-overlay", en twee daarvan spreken elkaar tegen op
 een manier die het gemelde gedrag verklaart.
@@ -131,9 +153,10 @@ het logische canvas is ongeveer 1038 bij 584. De doos rekent daar correct mee. D
 584/1080 is 0,54, en de klem tilt dat naar 0,85. De inhoud wordt dus ongeveer anderhalf keer
 groter opgemaakt dan de doos waar hij in moet. Dat is precies "valt buiten beeld en voelt te
 groot", en het is onzichtbaar op elk oppervlak waar de hoogte 1080 haalt, dus ook in de goldens.
-De ondergrens van die klem is de systemische fout, niet de breedte van een paneel.
+De ondergrens van die klem is de systemische fout, niet de breedte van een paneel. Dat is
+**OVR1a**, en het bewijs ervoor is een meting op een canvas dat niet 1080 hoog is.
 
-Daarnaast is er een tweede TV-regel in dezelfde host. `_sheetGeometry` (`:299-300`) geeft op TV
+**OVR1b** is een tweede TV-regel in dezelfde host. `_sheetGeometry` (`:299-300`) geeft op TV
 onvoorwaardelijk 400 bij 400, onderaan verankerd. Dat is de 400x400 uit de audit, en hij wordt
 bereikt door alles wat de standaard `presentation: sheet` laat staan. `MediaContextMenu` komt daar
 terecht via `media_context_menu.dart:239`, waar `Platform.isIOS` op tvOS waar is en er geen
@@ -189,7 +212,7 @@ Hier staan ze bij de werkstroom die ze bezit.
 | ACT-2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | MOC-16, SYS-1 | OPEN |
 | OFF-1 | Geen reconnect-affordance op TV | MOC-23 | OPEN |
 | OFF-2 | Offline topnav toont dode pills | MOC-23, SYS-1 | OPEN |
-| OVR-2 | Legacy `MediaContextMenu`, rating-sheet, kijklijst-item-sheet en Live TV-sheets vallen op tvOS in een 400x400 bottom sheet | SYS-3 | OPEN |
+| OVR1b | Legacy `MediaContextMenu`, rating-sheet, kijklijst-item-sheet en Live TV-sheets vallen op tvOS in een 400x400 bottom sheet | SYS-3b | OPEN |
 | STA-1 | `StateView` en `EmptyStateWidget` schalen niet op TV | SYS-4 | OPEN |
 | SRCH-2 | `people` wordt nooit aan `searchProjection` meegegeven | MOC-13 | OPEN |
 | ACT-3 | `tvMyPleya.activitySubtitle` belooft samen kijken en remote die de tegel niet levert | MOC-16 | OPEN |

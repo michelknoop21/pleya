@@ -71,7 +71,9 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | CAT2 | Metadata van de onderste rij staat tegen de onderrand | OPEN | n.v.t. |
 | CAT3 | Bron, filters en sortering staan verkeerd gepositioneerd | OPEN | n.v.t. |
 | CAT4 | Bron, filters en sortering mogelijk onbereikbaar | OPEN | n.v.t. |
-| OVR1 | Detail- en contextmenu valt buiten beeld en voelt te groot | OPEN | n.v.t. |
+| OVR1 | Detail- en contextmenu valt buiten beeld en voelt te groot | GESPLITST in OVR1a en OVR1b | n.v.t. |
+| OVR1a | `scaleForHeight` heeft ondergrens 0,85, en die is onjuist voor inhoud binnen een TV-paneel: de inhoud wordt ongeveer 1,5 keer te groot | OPEN | n.v.t. |
+| OVR1b | TV-sheets zonder expliciete `presentation` vallen terug op de 400x400-geometrie | OPEN | n.v.t. |
 | BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | OPEN | n.v.t. |
 | FOC1 | Focusring valt buiten de viewport in overlays | OPEN | n.v.t. |
 | ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | OPEN | n.v.t. |
@@ -91,7 +93,6 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LAND6 | Een lege landing verbergt de route naar een gevulde catalogus | OPEN | n.v.t. |
 | SYS-1 | Gepushte TV-contentroutes dekken de shell af in plaats van de topnav te houden | IN PROGRESS | n.v.t. |
 | SYS-4 | `StateView` en `EmptyStateWidget` schalen niet op TV | OPEN | n.v.t. |
-| OVR2 | Legacy `MediaContextMenu`, rating-sheet, kijklijst-item-sheet en Live TV-sheets vallen op tvOS in een 400x400 bottom sheet | OPEN | n.v.t. |
 | I18N1 | `nl.i18n.json` mist `videoControls.skipIntro`, `skipCredits` en `nextEpisode` | OPEN | n.v.t. |
 | I18N2 | `nl.i18n.json` mist `search.voiceSearch` | OPEN | n.v.t. |
 | I18N3 | `nl.i18n.json` mist `settings.visualEffects*` | OPEN | n.v.t. |
@@ -640,7 +641,7 @@ globale wissel van `topCenter` naar `center` is afgewezen omdat één vaste
 uitlijning niet alle onderwerpsposities oplost. Alleen heropenen bij een nieuw
 concreet geval van hardware.
 
-### OVR1, de oorzaak is een klem en niet een breedte
+### OVR1 is twee defecten, en die worden apart bewezen
 
 Gediagnosticeerd op 3 september 2026, zonder productiecode te wijzigen.
 
@@ -658,17 +659,28 @@ dan de doos waar hij in past. Dat is "valt buiten beeld en voelt te groot", en
 het is per definitie onzichtbaar op elk oppervlak dat 1080 hoog is, dus ook in
 de goldens.
 
-De fix hoort bij de ondergrens van die klem, niet bij de breedte van een paneel.
-PB-5 verbiedt expliciet een vaste 760 om dit af te dekken.
+Dat is **OVR1a**. De fix hoort bij de ondergrens van die klem, niet bij de
+breedte van een paneel. PB-5 verbiedt expliciet een vaste 760 om dit af te
+dekken, en nu is ook duidelijk waarom die niet zou werken: hij corrigeert de
+doos terwijl de fout in de inhoud zit.
 
-Daarnaast staat er een tweede TV-regel in dezelfde host: `_sheetGeometry`
-(`:299-300`) geeft op TV onvoorwaardelijk 400 bij 400. Dat is OVR2. Elf sheets
-komen daar terecht doordat ze `presentation:` niet meegeven, en
+**OVR1b** is een tweede TV-regel in dezelfde host. `_sheetGeometry`
+(`:299-300`) geeft op TV onvoorwaardelijk 400 bij 400, onderaan verankerd. Elf
+sheets komen daar terecht doordat ze `presentation:` niet meegeven, en
 `MediaContextMenu` bovendien doordat `Platform.isIOS` op tvOS waar is
 (`lib/widgets/media_context_menu.dart:239`) zonder een `PlatformDetector.isTV()`
 ernaast. Negen andere oppervlakken kiezen wel `panel` en zijn in orde.
 `test/widgets/overlay_sheet_geometry_test.dart:209` legt het verschil vandaag
 vast als bedoeld gedrag, dus dat besluit hoort mee herzien te worden.
+
+Ze staan apart omdat ze technisch los van elkaar staan en apart bewijs vragen.
+OVR1a is een verkeerde schaalbasis en is te vangen met een meting op een canvas
+dat niet 1080 hoog is; op 1080 is hij per definitie onzichtbaar, ook in de
+goldens. OVR1b is een verkeerde standaardkeuze in de host en is te vangen door
+te tellen welke oppervlakken zonder `presentation:` binnenkomen. Eén brede
+bevinding "overlay te groot" zou allebei de bewijzen vaag maken. De oplossing
+hoort wel gedeeld te zijn: één eigenaar voor de vraag hoe groot een TV-overlay
+is, niet een correctie per sheet.
 
 ### BACK1, wat er staat en wat er niet is
 

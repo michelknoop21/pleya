@@ -37,6 +37,22 @@ blijft en de focus deterministisch is.
 Uitzonderingen: de speler in fullscreen, authenticatie, de profielselectiepoort waar de mockup
 geen shell toont, het native tvOS-toetsenbord, en echte fullscreen- of modale presentatie.
 
+### INV-1, de invariant onder PB-1
+
+Een geneste TV-route mag de beschikbare content-viewport gebruiken, maar mag nooit aannemen dat
+die viewport het volledige scherm inclusief root-chrome is.
+
+Dit staat als invariant en niet als losse fix, want anders wordt `MediaQuery` één keer lokaal
+gecorrigeerd voor detail en komt hetzelfde probleem terug bij collectie, persoon en elk volgende
+gepushte TV-oppervlak. Twee concrete gevolgen. Een scherm binnen de shell leest zijn maten uit de
+doos die het krijgt, niet uit `MediaQuery.sizeOf` als vensterhoogte. En het claimt geen tweede
+shellachtige laag: geen eigen paginaachtergrond, geen eigen bovenveilige inset, en geen tweede
+`OverlaySheetHost` naast die van de shell. `TvShellSurface` bestaat al als de markering waaraan
+een scherm ziet dat de shell dat allebei al levert.
+
+Bewijs hoort op het niveau van de invariant te liggen, dus een test die aantoont dat een geneste
+route de contentbox ziet en niet het venster, niet alleen een test op één scherm.
+
 ## PB-2 BACK1: geen zichtbare knop die de afstandsbediening niet haalt
 
 Op de nieuwe remote-first TV-oppervlakken verdwijnt de zichtbare maar onbereikbare terugknop.
