@@ -1,0 +1,19 @@
+# De canonieke generatieomgeving van scripts/gen_brand_assets.py.
+#
+# PNG-bytes zijn niet draagbaar tussen Pillow-builds. Twee dingen bepalen de
+# uitvoer naast de pixels zelf:
+#
+#   * de deflate-implementatie waartegen Pillow gelinkt is. Deze wielen zijn
+#     gebouwd tegen zlib-ng 2.3.3; stock zlib comprimeert dezelfde scanlines
+#     anders. Dat verklaart waarom een kale generatorrun zevenenveertig
+#     getrackte iconen herschreef die pixel voor pixel gelijk bleven.
+#   * FreeType, dat de taglinestrook rastert. Daar verschillen wél de pixels
+#     tussen versies, en dat is zichtbaar in de drie tvOS-icoonlagen.
+#
+# Byte-identieke uitvoer is daarom alleen binnen deze pin te garanderen. Buiten
+# de pin blijft de generator wél schoon: hij vergelijkt de pixels en schrijft
+# een bestand alleen als de tekening verandert (zie save() in het script), dus
+# een tweede run laat op elke omgeving een schone tree achter.
+#
+#   pip install -r scripts/requirements-brand.txt
+Pillow==12.3.0
