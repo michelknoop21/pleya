@@ -2699,6 +2699,27 @@ tot en met
 autorisatiematrix, hoofdstuk 8). Migratietest op de scope-kolommen met bestaande rijen, inclusief een
 fixture-DB met twee actieve refreshketens en een limitertest met twee sleutels.
 
+**Implementatievolgorde.** Zes stappen, in deze volgorde. DEC-066, DEC-071 en DEC-072 verwijzen
+ernaar als "hoofdstuk 8". Dat was de nummering van het PS-9-ontwerpdocument; de inhoud daarvan is
+geland in DEC-065 tot en met DEC-072 en in hoofdstuk 16 van de protocolspecificatie, maar de
+volgorde zelf stond nergens en is op 3 september 2026 uit commit-onderwerpen en codecommentaar
+gereconstrueerd. Zij staat hier zodat die drie verwijzingen ergens naartoe wijzen.
+
+| Stap | Inhoud | Klaar wanneer |
+| --- | --- | --- |
+| 1 | `openapi.yaml`, `pleya-protocol-v1.md` en de fixtures voor de zeven wijzigingen uit DEC-068 | `scripts/check_protocol.sh` slaagt; het contractvenster sluit weer |
+| 2 | Migratie 0007, de sessie-scoped tokenketen uit DEC-069, en een loginlimiter met een sleutel per gebruikersnaam | de drie DEC-071-tests op een fixture-DB met twee actieve refreshketens zijn groen |
+| 3 | Kijkstatus per geauthenticeerde gebruiker in plaats van per server | twee gebruikers schrijven aantoonbaar in gescheiden rijen |
+| 4 | De gebruikersbeheer-API uit DEC-067, en een inlogpad dat niet meer alleen de owner kent | een tweede gebruiker ontstaat en logt in zonder handmatige SQL; `capabilities.users` gaat aan |
+| 5 | De autorisatiematrix uit DEC-072 | alle vijftien regels hebben een eigen test met een gebruiker zonder recht |
+| 6 | Het intrekkingsregister uit DEC-066, de onderbreekbare `copyRange`, en de sessie-endpoints uit DEC-070 | de gemeten revocatielatentie tegen een lopende stream blijft onder twee seconden; `capabilities.sessions` gaat aan |
+
+De volgorde is niet vrij. Stap 1 gaat voorop omdat het contractvenster erop sluit, stap 2 omdat elke
+latere stap een `sessions`-rij nodig heeft om aan te hangen, en stap 4 vóór stap 5 en 6 omdat regel
+14 en 15 van de matrix endpoints toetsen die stap 4 en 6 pas maken. Stap 5 is daarmee de enige die
+zijn eigen voorwaarden niet meebrengt: dertien van de vijftien regels zijn na stap 3 al te schrijven,
+de laatste twee niet.
+
 **Roadmap Drift Check.** Is er een rechtenmodel gebouwd dat verder gaat dan bibliotheekniveau? Dat is
 niet gevraagd en maakt het model moeilijker uitlegbaar. Is er een revocatiemechanisme gebouwd dat
 verder gaat dan sessie- en streamtokenintrekking? Een generieke pub/sub-laag is PS-11 of later, zie
