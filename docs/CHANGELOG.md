@@ -4,6 +4,20 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-03] iOS Unified 2026: northstar bevroren
+
+De iPhone-interface krijgt zijn eigen bevroren referentieset, op dezelfde manier als tvOS die op
+30 augustus kreeg. Eenentwintig mockups staan in `docs/assets/ios-unified/northstar/`, gebouwd als
+HTML tegen de tokens uit `mono_theme.dart` en de brandingassets van de redesign-branch, geschoten op
+een iPhone 15 Pro-viewport, en na één correctieronde op tekstmaten en uitlijning door Michel
+goedgekeurd. `docs/ios-unified-2026-audit.md` legt vast welke branch de designautoriteit is (de
+redesign-branch, niet `main`), welke tokens iOS overneemt, hoe de tabbalk verandert, en waar de vijf
+aangeleverde comps met de TV-baseline botsten. DEC-090 bevriest de set en de authority-volgorde;
+het nummer slaat DEC-069 tot en met DEC-089 over omdat de redesign-branch die al gebruikt.
+
+Twee details op Home blijven open en blokkeren niets: de secundaire hero-CTA en de carousel-dots.
+Geen productiecode gewijzigd, niets gepusht.
+
 ## [2026-08-29] Pleya Verify: de reviewbevindingen na Fase 10 dicht
 
 Twee onafhankelijke adversariële reviews over de branch-diff vonden elf defecten. De zwaarste zes
