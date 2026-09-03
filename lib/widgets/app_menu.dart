@@ -11,10 +11,12 @@ import '../focus/input_mode_tracker.dart';
 import '../focus/key_event_utils.dart';
 import '../theme/mono_tokens.dart';
 import '../utils/focus_utils.dart';
+import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
 import 'app_icon.dart';
 import 'clickable_cursor.dart';
 import 'overlay_sheet.dart';
+import 'tv/tv_unified_layout.dart';
 
 typedef AppMenuEntryBuilder<T> = List<AppMenuEntry<T>> Function(BuildContext context);
 
@@ -556,19 +558,44 @@ class _AppMenuPopup<T> extends StatefulWidget {
 }
 
 class _AppMenuPopupState<T> extends State<_AppMenuPopup<T>> {
+  /// Hoe dicht het menu de schermrand mag naderen.
+  ///
+  /// Op een telefoon of desktop is dat de rand zelf, min acht pixels: daar is
+  /// elke pixel van het paneel ook echt te zien. Een televisie toont zijn
+  /// buitenste band niet, en een menu dat acht pixels van de rand staat legt
+  /// zijn bovenste of onderste regel — en dus de focusindicatie erop — in die
+  /// band. Dat is geen clipping: het paneel tekent de regel volledig, alleen op
+  /// een plek die het toestel niet laat zien.
+  ///
+  /// De TV-waarden komen uit dezelfde bron als de titel-veilige rechthoek die
+  /// `TvDiscoverySafeArea` meetbaar maakt: [TvDiscoveryLayout.pageInset] opzij,
+  /// [TvCatalogLayout.topSafeInset] boven en [TvCatalogLayout.bottomSafeInset]
+  /// onder — de bredere onderband, omdat daar de voortgangsbalk en de metadata
+  /// van een tegel al tegenaan staan.
+  static EdgeInsets _edgeInsets(BuildContext context) {
+    if (!PlatformDetector.isTV()) return const EdgeInsets.all(8);
+    final scale = TvLayoutConstants.scaleOf(context);
+    return EdgeInsets.fromLTRB(
+      TvDiscoveryLayout.pageInset * scale,
+      TvCatalogLayout.topSafeInset * scale,
+      TvDiscoveryLayout.pageInset * scale,
+      TvCatalogLayout.bottomSafeInset * scale,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.sizeOf(context);
-    const edgePadding = 8.0;
+    final edge = _edgeInsets(context);
     final desiredWidth = widget.maxWidth ?? math.max(widget.minWidth, _estimateMenuWidth(context));
     final menuWidth = desiredWidth.clamp(
       widget.minWidth,
-      math.max(widget.minWidth, screenSize.width - edgePadding * 2),
+      math.max(widget.minWidth, screenSize.width - edge.horizontal),
     );
     final estimatedHeight = _estimateMenuHeight(widget.entries);
-    final availableHeight = math.max(0.0, screenSize.height - edgePadding * 2);
+    final availableHeight = math.max(0.0, screenSize.height - edge.vertical);
     final menuHeight = estimatedHeight.clamp(0.0, availableHeight).toDouble();
-    final (:left, :top) = _resolvePosition(screenSize, menuWidth.toDouble(), menuHeight, edgePadding);
+    final (:left, :top) = _resolvePosition(screenSize, menuWidth.toDouble(), menuHeight, edge);
 
     return FocusScope(
       autofocus: false,
@@ -605,12 +632,12 @@ class _AppMenuPopupState<T> extends State<_AppMenuPopup<T>> {
     );
   }
 
-  ({double left, double top}) _resolvePosition(
-    Size screenSize,
-    double menuWidth,
-    double menuHeight,
-    double edgePadding,
-  ) {
+  ({double left, double top}) _resolvePosition(Size screenSize, double menuWidth, double menuHeight, EdgeInsets edge) {
+    // Past het menu niet tussen de twee marges, dan wint de bovenste
+    // respectievelijk linkse: klemmen op een ondergrens die boven de
+    // bovengrens ligt gooit in Dart een assertie.
+    double clampBetween(double value, double low, double high) => value.clamp(low, high < low ? low : high).toDouble();
+
     final anchorRect = widget.anchorRect;
     if (anchorRect != null) {
       final leftCandidate = switch (widget.anchorAlignment) {
@@ -618,28 +645,20 @@ class _AppMenuPopupState<T> extends State<_AppMenuPopup<T>> {
         AppMenuAnchorAlignment.end => anchorRect.right - menuWidth,
         AppMenuAnchorAlignment.center => anchorRect.center.dx - menuWidth / 2,
       };
-      final maxLeft = screenSize.width - menuWidth - edgePadding;
-      final left = leftCandidate.clamp(edgePadding, maxLeft < edgePadding ? edgePadding : maxLeft).toDouble();
+      final left = clampBetween(leftCandidate, edge.left, screenSize.width - menuWidth - edge.right);
 
       const gap = 4.0;
       final below = anchorRect.bottom + gap;
       final above = anchorRect.top - menuHeight - gap;
-      final fitsBelow = below + menuHeight <= screenSize.height - edgePadding;
+      final fitsBelow = below + menuHeight <= screenSize.height - edge.bottom;
       final topCandidate = fitsBelow ? below : above;
-      final maxTop = screenSize.height - menuHeight - edgePadding;
-      final top = topCandidate.clamp(edgePadding, maxTop < edgePadding ? edgePadding : maxTop).toDouble();
+      final top = clampBetween(topCandidate, edge.top, screenSize.height - menuHeight - edge.bottom);
       return (left: left, top: top);
     }
 
     final position = widget.position ?? Offset(screenSize.width / 2, screenSize.height / 2);
-    final maxLeft = screenSize.width - menuWidth - edgePadding;
-    final left = (position.dx - menuWidth / 2)
-        .clamp(edgePadding, maxLeft < edgePadding ? edgePadding : maxLeft)
-        .toDouble();
-    final maxTop = screenSize.height - menuHeight - edgePadding;
-    final top = (position.dy - menuHeight / 2)
-        .clamp(edgePadding, maxTop < edgePadding ? edgePadding : maxTop)
-        .toDouble();
+    final left = clampBetween(position.dx - menuWidth / 2, edge.left, screenSize.width - menuWidth - edge.right);
+    final top = clampBetween(position.dy - menuHeight / 2, edge.top, screenSize.height - menuHeight - edge.bottom);
     return (left: left, top: top);
   }
 
