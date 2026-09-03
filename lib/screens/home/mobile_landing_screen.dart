@@ -29,6 +29,7 @@ import '../../widgets/mobile/mobile_media_rail.dart';
 import '../../widgets/mobile/mobile_page_header.dart';
 import '../../widgets/mobile/mobile_page_title_row.dart';
 import '../../widgets/mobile/mobile_refresh_scope.dart';
+import 'mobile_catalog_screen.dart';
 
 /// Which half of the catalog a landing shows.
 enum MobileLandingKind {
@@ -90,7 +91,13 @@ class MobileLandingScreen extends StatelessWidget {
               ),
             ),
             SliverToBoxAdapter(
-              child: MobilePageTitleRow(title: kind.title, viewAllLabel: kind.viewAllLabel),
+              // The seam fase 2 left deliberately empty (DEC-093) now has the
+              // surface it was waiting for. One line, as promised.
+              child: MobilePageTitleRow(
+                title: kind.title,
+                viewAllLabel: kind.viewAllLabel,
+                onViewAll: () => navigateToMobileCatalog(context, kind),
+              ),
             ),
             ...mobileDiscoverySlivers(
               hubs: hubs,

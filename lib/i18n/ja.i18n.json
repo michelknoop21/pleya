@@ -1511,6 +1511,8 @@
     },
     "filters": {
       "title": "フィルター",
+      "activeCount": "${count}件が有効",
+      "activeOne": "1件が有効",
       "status": "ステータス",
       "genre": "ジャンル",
       "year": "年",

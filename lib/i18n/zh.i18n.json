@@ -1511,6 +1511,8 @@
     },
     "filters": {
       "title": "筛选",
+      "activeCount": "${count} 项已启用",
+      "activeOne": "1 项已启用",
       "status": "状态",
       "genre": "类型",
       "year": "年份",

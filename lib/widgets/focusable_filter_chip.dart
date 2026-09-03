@@ -16,6 +16,20 @@ enum FilterChipVariant {
   /// header line where the chips have to sit beside a page title without
   /// turning it into a toolbar.
   text,
+
+  /// Filled stadium pill in full ink, no outline, with an optional count
+  /// badge. The unified catalogue's three controls — sources, filters,
+  /// sort — which open a sheet rather than toggling a value
+  /// (`03-alle-films.png`, iOS Unified 2026 fase 3).
+  ///
+  /// Its own variant rather than [outlined] with different colours, because
+  /// the two answer different questions. [outlined] is a *toggle*: unselected
+  /// is muted-on-transparent and selected turns accent, so the row reads as
+  /// "which of these is on". These three are never off — a catalogue always
+  /// has a source scope and a sort — so a muted resting state would say
+  /// something untrue about them, and the accent state would compete with
+  /// [selected]'s meaning everywhere else in this family.
+  control,
 }
 
 /// A focusable filter chip that shows a color change when focused.
@@ -38,6 +52,10 @@ class FocusableFilterChip extends StatefulWidget {
   /// When true, renders an accent-tinted "active" state (used for toggle
   /// filters like type/genre). Focus styling always takes precedence.
   final bool selected;
+
+  /// Count drawn as a filled badge after [label], in the
+  /// [FilterChipVariant.control] variant only. Null or zero draws nothing.
+  final int? badgeCount;
 
   /// Optional external focus node for programmatic focus control.
   final FocusNode? focusNode;
@@ -65,6 +83,7 @@ class FocusableFilterChip extends StatefulWidget {
     this.variant = FilterChipVariant.outlined,
     this.value,
     this.selected = false,
+    this.badgeCount,
     this.focusNode,
     this.onNavigateDown,
     this.onNavigateUp,
@@ -122,6 +141,7 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
     // Only show focus effects during keyboard/d-pad navigation
     final showFocus = isFocused && InputModeTracker.isKeyboardMode(context);
     if (widget.variant == FilterChipVariant.text) return _buildText(context, showFocus);
+    if (widget.variant == FilterChipVariant.control) return _buildControl(context, showFocus);
 
     // Outlined instead of filled: these sit next to the segmented tab control,
     // and two competing filled shapes made the header look like a toolbar of
@@ -165,6 +185,43 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
 
   IconData? get icon => widget.icon;
 
+  /// Filled stadium pill: icon, label, and the count badge when there is one.
+  ///
+  /// The badge is white-on-dark rather than [kAccent]. Mockup 03 draws it that
+  /// way, and the reason holds beyond the render: hoofdstuk 34 reserves red for
+  /// progress, live and the active navigation mark, and a red pip here would
+  /// read as an alert about a number the user chose themselves.
+  Widget _buildControl(BuildContext context, bool showFocus) {
+    final tk = tokens(context);
+    final background = showFocus ? tk.surfaceElevated : tk.surface;
+    final foreground = tk.text;
+    final count = widget.badgeCount ?? 0;
+
+    return FocusBuilders.buildFocusableChip(
+      context: context,
+      focusNode: focusNode,
+      onKeyEvent: _handleKeyEvent,
+      onTap: widget.onPressed,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      // Half the resting height, so the pill is a stadium at any text scale
+      // rather than a rounded rectangle once the label grows.
+      borderRadius: 999,
+      borderColor: showFocus ? tk.text.withValues(alpha: 0.75) : Colors.transparent,
+      backgroundColor: background,
+      child: Row(
+        mainAxisSize: .min,
+        children: [
+          if (icon != null) ...[AppIcon(icon, fill: 1, size: 16, color: foreground), const SizedBox(width: 6)],
+          Text(
+            widget.label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(color: foreground, fontWeight: FontWeight.w500),
+          ),
+          if (count > 0) ...[const SizedBox(width: 7), _ControlBadge(count: count)],
+        ],
+      ),
+    );
+  }
+
   /// Label in muted ink, current value in full ink, and nothing drawn around it.
   /// Focus lifts and brightens the text rather than adding a surface or a rule:
   /// this variant shares its line with the tab labels and their accent bar, and
@@ -200,6 +257,28 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The count pill inside a [FilterChipVariant.control] chip.
+class _ControlBadge extends StatelessWidget {
+  final int count;
+
+  const _ControlBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    return Container(
+      constraints: const BoxConstraints(minWidth: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(color: tk.text, borderRadius: BorderRadius.circular(999)),
+      child: Text(
+        '$count',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: tk.surface, height: 1.2),
       ),
     );
   }

@@ -1511,6 +1511,8 @@
     },
     "filters": {
       "title": "Филтри",
+      "activeCount": "${count} активни",
+      "activeOne": "1 активен",
       "status": "Статус",
       "genre": "Жанр",
       "year": "Година",

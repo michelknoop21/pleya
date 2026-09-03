@@ -231,17 +231,28 @@ void main() {
     expect(find.text('Continue Watching'), findsNothing);
   });
 
-  testWidgets('the complete-catalog entry is not drawn while fase 3 has not built it', (tester) async {
+  testWidgets('the complete-catalog entry is drawn now that fase 3 has built it', (tester) async {
     aggregation.latestMovies = [_movie('m1', title: 'Recent One', year: 2026)];
 
     await pumpLanding(tester, MobileLandingKind.movies);
     await loadFixture(tester);
 
-    // A deliberate, documented deviation from mockup 02, and the reason it is
-    // pinned: the entry may only appear once it has somewhere to go. Whoever
-    // wires it in fase 3 changes this expectation on purpose.
+    // Fase 2 pinned the opposite on purpose (DEC-093): the entry could not
+    // appear until it had somewhere to go, and `UnifiedCatalogProvider` had no
+    // UI consumer. Fase 3 built that surface, so the expectation is turned
+    // around here deliberately rather than deleted.
     expect(find.byType(MobilePageTitleRow), findsOneWidget);
-    expect(tester.widget<MobilePageTitleRow>(find.byType(MobilePageTitleRow)).onViewAll, isNull);
+    expect(tester.widget<MobilePageTitleRow>(find.byType(MobilePageTitleRow)).onViewAll, isNotNull);
+    expect(find.text('All movies'), findsOneWidget);
+  });
+
+  testWidgets('the Series landing points at the series catalogue', (tester) async {
+    aggregation.latestShows = [_show('s1', title: 'A Show', year: 2024)];
+
+    await pumpLanding(tester, MobileLandingKind.series);
+    await loadFixture(tester);
+
+    expect(find.text('All series'), findsOneWidget);
     expect(find.text('All movies'), findsNothing);
   });
 

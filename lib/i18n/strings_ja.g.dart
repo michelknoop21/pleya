@@ -2163,6 +2163,8 @@ class _TranslationsUnifiedCatalogFiltersJa extends TranslationsUnifiedCatalogFil
 
 	// Translations
 	@override String get title => 'フィルター';
+	@override String activeCount({required Object count}) => '${count}件が有効';
+	@override String get activeOne => '1件が有効';
 	@override String get status => 'ステータス';
 	@override String get genre => 'ジャンル';
 	@override String get year => '年';
@@ -3647,6 +3649,8 @@ extension on TranslationsJa {
 			'unifiedCatalog.sort.oldestRelease' => '公開が古い順',
 			'unifiedCatalog.sort.recentlyWatched' => '最近見た順',
 			'unifiedCatalog.filters.title' => 'フィルター',
+			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count}件が有効',
+			'unifiedCatalog.filters.activeOne' => '1件が有効',
 			'unifiedCatalog.filters.status' => 'ステータス',
 			'unifiedCatalog.filters.genre' => 'ジャンル',
 			'unifiedCatalog.filters.year' => '年',

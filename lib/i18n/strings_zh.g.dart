@@ -2163,6 +2163,8 @@ class _TranslationsUnifiedCatalogFiltersZh extends TranslationsUnifiedCatalogFil
 
 	// Translations
 	@override String get title => '筛选';
+	@override String activeCount({required Object count}) => '${count} 项已启用';
+	@override String get activeOne => '1 项已启用';
 	@override String get status => '状态';
 	@override String get genre => '类型';
 	@override String get year => '年份';
@@ -3647,6 +3649,8 @@ extension on TranslationsZh {
 			'unifiedCatalog.sort.oldestRelease' => '最早上映',
 			'unifiedCatalog.sort.recentlyWatched' => '最近观看',
 			'unifiedCatalog.filters.title' => '筛选',
+			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} 项已启用',
+			'unifiedCatalog.filters.activeOne' => '1 项已启用',
 			'unifiedCatalog.filters.status' => '状态',
 			'unifiedCatalog.filters.genre' => '类型',
 			'unifiedCatalog.filters.year' => '年份',

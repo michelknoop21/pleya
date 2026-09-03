@@ -2163,6 +2163,8 @@ class _TranslationsUnifiedCatalogFiltersKo extends TranslationsUnifiedCatalogFil
 
 	// Translations
 	@override String get title => '필터';
+	@override String activeCount({required Object count}) => '${count}개 적용됨';
+	@override String get activeOne => '1개 적용됨';
 	@override String get status => '상태';
 	@override String get genre => '장르';
 	@override String get year => '연도';
@@ -3647,6 +3649,8 @@ extension on TranslationsKo {
 			'unifiedCatalog.sort.oldestRelease' => '오래된 개봉순',
 			'unifiedCatalog.sort.recentlyWatched' => '최근 시청순',
 			'unifiedCatalog.filters.title' => '필터',
+			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count}개 적용됨',
+			'unifiedCatalog.filters.activeOne' => '1개 적용됨',
 			'unifiedCatalog.filters.status' => '상태',
 			'unifiedCatalog.filters.genre' => '장르',
 			'unifiedCatalog.filters.year' => '연도',

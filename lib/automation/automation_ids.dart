@@ -194,6 +194,52 @@ class AutomationIds {
   /// `[<railIndex>.<itemIndex>]`.
   static const String landingRailItem = 'landing.rail.item';
 
+  /// The complete-catalogue surface: "Alle films" / "Alle series" — iOS
+  /// Unified 2026 fase 3, mockup `03-alle-films.png`.
+  ///
+  /// Its own family rather than a reuse of the landing ids, for a different
+  /// reason than the one that split landing from home. This screen is pushed
+  /// above the shell rather than mounted in its `IndexedStack` (DEC-094), so
+  /// it never coexists with a landing; the ids are separate because the
+  /// surfaces are separate, and a scenario asserting on `catalog.grid` should
+  /// fail rather than silently match a rail.
+  static const String screenCatalog = 'screen.catalog';
+
+  /// The catalogue's header: back, title, search.
+  static const String catalogHeader = 'catalog.header';
+
+  /// The row of three controls: sources, filters, sort.
+  static const String catalogControls = 'catalog.controls';
+
+  /// The sources control, which opens the filter sheet on its source section.
+  static const String catalogControlSources = 'catalog.controls.sources';
+
+  /// The filters control, carrying the active-filter count.
+  static const String catalogControlFilters = 'catalog.controls.filters';
+
+  /// The sort control, labelled with the current sort.
+  static const String catalogControlSort = 'catalog.controls.sort';
+
+  /// The "N titles loaded" line plus the active-filter summary.
+  static const String catalogStatus = 'catalog.status';
+
+  /// The three-column poster grid, carrying `child_count`.
+  ///
+  /// A state node, not a geometry one. It wraps a sliver, so it has no
+  /// `RenderBox` and a `insideViewport`-style assertion on it fails with "no
+  /// bounds" — the same shape [libraryGrid] has. Geometry questions go to
+  /// [catalogGridItem].
+  static const String catalogGrid = 'catalog.grid';
+
+  /// One card in [catalogGrid]. Instanceable: suffixed `[<index>]`.
+  static const String catalogGridItem = 'catalog.grid.item';
+
+  /// The two-column filter sheet — mockup `04-filters-sheet.png`.
+  static const String sheetCatalogFilters = 'sheet.catalog_filters';
+
+  /// The sort sheet the sort control opens.
+  static const String sheetCatalogSort = 'sheet.catalog_sort';
+
   /// The mobile source-picker sheet as a whole.
   static const String sheetSourcePicker = 'sheet.source_picker';
 
@@ -219,6 +265,7 @@ class AutomationIds {
     homeRailItem,
     landingRail,
     landingRailItem,
+    catalogGridItem,
     sheetSourcePickerRow,
   };
 
@@ -268,6 +315,17 @@ class AutomationIds {
     {'id': landingTitle, 'role': 'region', 'instanceable': false},
     {'id': landingRail, 'role': 'rail', 'instanceable': true},
     {'id': landingRailItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': screenCatalog, 'role': 'screen', 'instanceable': false},
+    {'id': catalogHeader, 'role': 'region', 'instanceable': false},
+    {'id': catalogControls, 'role': 'filter', 'instanceable': false},
+    {'id': catalogControlSources, 'role': 'button', 'instanceable': false},
+    {'id': catalogControlFilters, 'role': 'button', 'instanceable': false},
+    {'id': catalogControlSort, 'role': 'button', 'instanceable': false},
+    {'id': catalogStatus, 'role': 'region', 'instanceable': false},
+    {'id': catalogGrid, 'role': 'grid', 'instanceable': false},
+    {'id': catalogGridItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': sheetCatalogFilters, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetCatalogSort, 'role': 'sheet', 'instanceable': false},
     {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
   ];

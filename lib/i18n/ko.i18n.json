@@ -1511,6 +1511,8 @@
     },
     "filters": {
       "title": "필터",
+      "activeCount": "${count}개 적용됨",
+      "activeOne": "1개 적용됨",
       "status": "상태",
       "genre": "장르",
       "year": "연도",

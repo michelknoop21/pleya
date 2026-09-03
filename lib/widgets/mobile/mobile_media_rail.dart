@@ -10,11 +10,10 @@ import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
-import '../../mixins/context_menu_tap_mixin.dart';
 import '../../theme/mono_tokens.dart';
 import '../media_card_grid_layout.dart';
-import '../media_context_menu.dart';
 import 'mobile_media_card.dart';
+import 'mobile_media_card_cell.dart';
 
 /// Card width so 3.3 cards sit in a 393pt-wide phone viewport (mockup 01):
 /// inset 16 either side, gutter 12 between cards.
@@ -124,7 +123,7 @@ class MobileMediaRail extends StatelessWidget {
                     id: surface.itemId,
                     instance: '$railIndex.$index',
                     role: 'grid.item',
-                    child: _RailCardCell(
+                    child: MobileMediaCardCell(
                       group: group,
                       shape: shape,
                       width: cardWidth,
@@ -137,53 +136,6 @@ class MobileMediaRail extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// One rail cell: [MobileMediaCard] under [MediaContextMenu], wired the same
-/// way `MediaCard` wires itself, since `MediaContextMenu` no longer detects
-/// gestures on its own (see `ContextMenuTapMixin`'s doc). Tap opens detail on
-/// the group's representative source (a read); long-press opens today's
-/// context menu on that same item, unimproved until fase 5.
-class _RailCardCell extends StatefulWidget {
-  final UnifiedMediaGroup group;
-  final MobileCardShape shape;
-  final double width;
-  final bool isContinueWatching;
-  final VoidCallback? onTap;
-
-  const _RailCardCell({
-    required this.group,
-    required this.shape,
-    required this.width,
-    required this.isContinueWatching,
-    required this.onTap,
-  });
-
-  @override
-  State<_RailCardCell> createState() => _RailCardCellState();
-}
-
-class _RailCardCellState extends State<_RailCardCell> with ContextMenuTapMixin<_RailCardCell> {
-  @override
-  Widget build(BuildContext context) {
-    // `MobileMediaCard`'s own onTap/onLongPress, not a second wrapping
-    // GestureDetector: `Pressable` always registers onTapUp/onTapCancel
-    // (unconditionally, regardless of whether onTap is null), so an outer
-    // detector never sees the tap win the gesture arena over that inner one.
-    return MediaContextMenu(
-      key: contextMenuKey,
-      item: widget.group.representativeSource.item,
-      isInContinueWatching: widget.isContinueWatching,
-      onTap: widget.onTap,
-      child: MobileMediaCard(
-        group: widget.group,
-        shape: widget.shape,
-        width: widget.width,
-        onTap: widget.onTap,
-        onLongPress: showContextMenu,
       ),
     );
   }

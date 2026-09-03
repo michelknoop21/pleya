@@ -1511,6 +1511,8 @@
     },
     "filters": {
       "title": "Filtry",
+      "activeCount": "Aktywne: ${count}",
+      "activeOne": "Aktywny: 1",
       "status": "Status",
       "genre": "Gatunek",
       "year": "Rok",

@@ -153,6 +153,39 @@ ids:
   - id: landing.rail.item
     role: grid.item
     instanceable: true
+  - id: screen.catalog
+    role: screen
+    instanceable: false
+  - id: catalog.header
+    role: region
+    instanceable: false
+  - id: catalog.controls
+    role: filter
+    instanceable: false
+  - id: catalog.controls.sources
+    role: button
+    instanceable: false
+  - id: catalog.controls.filters
+    role: button
+    instanceable: false
+  - id: catalog.controls.sort
+    role: button
+    instanceable: false
+  - id: catalog.status
+    role: region
+    instanceable: false
+  - id: catalog.grid
+    role: grid
+    instanceable: false
+  - id: catalog.grid.item
+    role: grid.item
+    instanceable: true
+  - id: sheet.catalog_filters
+    role: sheet
+    instanceable: false
+  - id: sheet.catalog_sort
+    role: sheet
+    instanceable: false
   - id: sheet.source_picker
     role: sheet
     instanceable: false

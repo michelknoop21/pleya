@@ -2163,6 +2163,8 @@ class _TranslationsUnifiedCatalogFiltersRu extends TranslationsUnifiedCatalogFil
 
 	// Translations
 	@override String get title => 'Фильтры';
+	@override String activeCount({required Object count}) => 'Активно: ${count}';
+	@override String get activeOne => 'Активен: 1';
 	@override String get status => 'Статус';
 	@override String get genre => 'Жанр';
 	@override String get year => 'Год';
@@ -3647,6 +3649,8 @@ extension on TranslationsRu {
 			'unifiedCatalog.sort.oldestRelease' => 'Старые по выходу',
 			'unifiedCatalog.sort.recentlyWatched' => 'Недавно просмотренные',
 			'unifiedCatalog.filters.title' => 'Фильтры',
+			'unifiedCatalog.filters.activeCount' => ({required Object count}) => 'Активно: ${count}',
+			'unifiedCatalog.filters.activeOne' => 'Активен: 1',
 			'unifiedCatalog.filters.status' => 'Статус',
 			'unifiedCatalog.filters.genre' => 'Жанр',
 			'unifiedCatalog.filters.year' => 'Год',

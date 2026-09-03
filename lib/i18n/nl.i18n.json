@@ -1840,6 +1840,8 @@
     },
     "filters": {
       "title": "Filters",
+      "activeCount": "${count} actief",
+      "activeOne": "1 actief",
       "status": "Status",
       "genre": "Genre",
       "year": "Jaar",

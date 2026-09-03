@@ -1511,6 +1511,8 @@
     },
     "filters": {
       "title": "Filtri",
+      "activeCount": "${count} attivi",
+      "activeOne": "1 attivo",
       "status": "Stato",
       "genre": "Genere",
       "year": "Anno",

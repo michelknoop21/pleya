@@ -2163,6 +2163,8 @@ class _TranslationsUnifiedCatalogFiltersDe extends TranslationsUnifiedCatalogFil
 
 	// Translations
 	@override String get title => 'Filter';
+	@override String activeCount({required Object count}) => '${count} aktiv';
+	@override String get activeOne => '1 aktiv';
 	@override String get status => 'Status';
 	@override String get genre => 'Genre';
 	@override String get year => 'Jahr';
@@ -3647,6 +3649,8 @@ extension on TranslationsDe {
 			'unifiedCatalog.sort.oldestRelease' => 'Älteste Veröffentlichung',
 			'unifiedCatalog.sort.recentlyWatched' => 'Zuletzt gesehen',
 			'unifiedCatalog.filters.title' => 'Filter',
+			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} aktiv',
+			'unifiedCatalog.filters.activeOne' => '1 aktiv',
 			'unifiedCatalog.filters.status' => 'Status',
 			'unifiedCatalog.filters.genre' => 'Genre',
 			'unifiedCatalog.filters.year' => 'Jahr',

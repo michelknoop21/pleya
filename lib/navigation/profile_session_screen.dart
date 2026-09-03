@@ -18,6 +18,7 @@ import '../providers/companion_remote_provider.dart';
 import '../providers/discover_provider.dart';
 import '../providers/tv_discovery_landing_provider.dart';
 import '../providers/tv_home_projection_provider.dart';
+import '../providers/unified_catalogs.dart';
 import '../providers/hidden_libraries_provider.dart';
 import '../providers/home_layout_provider.dart';
 import '../providers/libraries_provider.dart';
@@ -346,6 +347,24 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   continueWatchingTitle: t.discover.continueWatching,
                   latestMoviesTitle: t.discover.recentlyReleased,
                 ),
+                lazy: true,
+              ),
+              // The two browse catalogues, Films and Series (fase 3,
+              // `MobileCatalogScreen`). Registered here and not deeper because
+              // hoofdstuk 22 scopes unified state to the profile: this
+              // subtree's `KeyedSubtree` is the disposal mechanism, and
+              // `UnifiedCatalogs.dispose` fans out to whichever of the two was
+              // built. Lazy twice over — this object builds no catalogue until
+              // one is asked for, and a catalogue does no network work until a
+              // screen calls `ensureStarted` — so a profile that never opens
+              // Alle films pays for none of it.
+              Provider<UnifiedCatalogs>(
+                create: (context) => UnifiedCatalogs(
+                  multiServer: context.read<MultiServerProvider>(),
+                  libraries: context.read<LibrariesProvider>(),
+                  hiddenLibraries: context.read<HiddenLibrariesProvider>(),
+                ),
+                dispose: (_, catalogs) => catalogs.dispose(),
                 lazy: true,
               ),
               ChangeNotifierProvider(create: (_) => WatchlistStore()..bindProfile(activeId)),
