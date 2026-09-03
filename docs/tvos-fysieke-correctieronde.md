@@ -30,7 +30,9 @@ Eén item tegelijk, in de volgorde van de tabel hieronder. Per item:
    waarom gedeeld oplossen niet kan;
 5. draai `dart format` op de geraakte bestanden, `flutter analyze` en de gerichte
    tests, en pas dan committen;
-6. werk de regel in de tabel bij met de SHA.
+6. werk de regel in de tabel bij met de SHA. Doe dat in de eerstvolgende commit
+   en niet met een amend op de fix zelf, want een amend geeft de commit een
+   nieuwe hash en dan klopt het nummer dat je er net in zette alweer niet.
 
 Statussen: `OPEN`, `IN PROGRESS`, `FIXED`, `VERIFIED`, `NOT REPRODUCED`,
 `DEFERRED`, `ACCEPTANCE GAP`, `HARDWARE ONLY`.
@@ -58,7 +60,7 @@ Branch `claude/netflix-redesign-b4x21v`, uitgaand van `011e770`.
 | LAND1 | De landing slaat de eerste contentrail over | FIXED, hardware open | `51186c6` |
 | TILE1 | Een tegel zonder actie zou de focus klemmen | NOT REPRODUCED | n.v.t. |
 | LAND4 | Verticaal navigeren verliest de horizontale positie | OPEN | n.v.t. |
-| LAND2 | De projectie van de vorige rail blijft staan | FIXED | `f1c0538` |
+| LAND2 | De projectie van de vorige rail blijft staan | FIXED | `2371c62` |
 | LAND3 | De gefocuste wide card valt rechts buiten beeld | OPEN | n.v.t. |
 | CAT1 | Bovenste rij coverart raakt de veilige bovengrens | OPEN | n.v.t. |
 | CAT2 | Metadata van de onderste rij staat tegen de onderrand | OPEN | n.v.t. |
