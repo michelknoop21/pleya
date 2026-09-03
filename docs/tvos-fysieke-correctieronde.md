@@ -288,7 +288,7 @@ tegelijk op. De code zei het zelf, bij `onFocusChange`: een rail hoort te blijve
 beschrijven waar hij verlaten is.
 
 Dat is nu gesplitst. `_focused` blijft wat het was, het herstelpunt waar een
-kijker op terugkomt uit een detailpagina. Daarnaast staat `_holdsFocus`, gevoed
+kijker op terugkomt uit een detailpagina. Ernaast staat `_holdsFocus`, gevoed
 door één `Focus` boven alle tegels van de rail. Een voorouder en niet een
 callback per tegel, want bij een horizontale stap wisselt de focus binnen die
 subtree en ziet de voorouder hem niet weggaan, dus het blok knippert niet.
