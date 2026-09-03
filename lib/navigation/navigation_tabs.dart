@@ -9,40 +9,26 @@ import '../profiles/profile_avatar.dart';
 import '../theme/mono_theme.dart';
 import '../utils/platform_detector.dart';
 
-/// Bottom-nav icon with a red→amber brand dot above the active tab,
-/// mirroring the navigation mockup. The dot slot is always reserved so
-/// selected and unselected icons stay vertically aligned.
+/// Bottom-nav icon. The active slot is drawn in [kAccent], glyph and label
+/// alike; there is no brand dot above it any more, so every glyph sits on the
+/// same baseline and the bar keeps the height Material gives it. iOS Unified
+/// 2026 fase 1, `docs/ios-unified-2026-fase1-plan.md` stap 9. The selected
+/// label colour is a `NavigationBarTheme` override at the bar itself
+/// (`main_screen.dart`), since the label is Material's, not this widget's.
 class _TabIcon extends StatelessWidget {
   final IconData icon;
   final String? svgAsset;
   final bool selected;
 
-  /// Replaces the glyph without touching the dot or the alignment above it.
-  /// My Pleya uses it to show the active profile's avatar.
+  /// Replaces the glyph without touching the slot around it. My Pleya uses it
+  /// to show the active profile's avatar.
   final Widget? glyph;
 
   const _TabIcon({required this.icon, this.svgAsset, required this.selected, this.glyph});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: .min,
-      children: [
-        Container(
-          width: 5,
-          height: 5,
-          margin: const EdgeInsets.only(bottom: 3),
-          decoration: selected
-              ? BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(colors: [kAccent, kAccentAlt]),
-                  boxShadow: [BoxShadow(color: kAccent.withValues(alpha: 0.9), blurRadius: 8)],
-                )
-              : null,
-        ),
-        glyph ?? NavGlyph(svgAsset: svgAsset, icon: icon, size: 24),
-      ],
-    );
+    return glyph ?? NavGlyph(svgAsset: svgAsset, icon: icon, size: 24, color: selected ? kAccent : null);
   }
 }
 
@@ -57,22 +43,47 @@ class _TabIcon extends StatelessWidget {
 /// The avatar carries no semantics of its own: the destination's label already
 /// announces "My Pleya", and an image announcing a second time would only get
 /// in the way. The PIN badge is dropped too: at 24 logical pixels it is three
-/// pixels of noise under a selection dot, and the lock still shows everywhere
-/// the profile is actually chosen.
+/// pixels of noise, and the lock still shows everywhere the profile is
+/// actually chosen.
+///
+/// Selection is a 2 pt [kAccent] ring around the avatar rather than a tint:
+/// an avatar is a photo, so recolouring it is not available the way it is for
+/// the other four glyphs (fase 1 stap 9). The outer size stays 24 either way,
+/// so the slot does not shift when the tab is selected.
 class MyPleyaTabIcon extends StatelessWidget {
   final bool selected;
+
+  /// Outer glyph size, matching the other four bottom-bar slots.
+  static const double _size = 24;
+
+  /// Ring thickness, taken off the avatar rather than added around it.
+  static const double _ringWidth = 2;
 
   const MyPleyaTabIcon({super.key, required this.selected});
 
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<ActiveProfileProvider?>()?.active;
+    if (profile == null) {
+      return _TabIcon(icon: Symbols.account_circle_rounded, selected: selected);
+    }
+    final avatar = ExcludeSemantics(
+      child: ProfileAvatar(profile: profile, size: selected ? _size - 2 * _ringWidth : _size, showLockBadge: false),
+    );
     return _TabIcon(
       icon: Symbols.account_circle_rounded,
       selected: selected,
-      glyph: profile == null
-          ? null
-          : ExcludeSemantics(child: ProfileAvatar(profile: profile, size: 24, showLockBadge: false)),
+      glyph: selected
+          ? Container(
+              width: _size,
+              height: _size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: kAccent, width: _ringWidth),
+              ),
+              child: Center(child: avatar),
+            )
+          : avatar,
     );
   }
 }

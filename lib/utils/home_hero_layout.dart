@@ -237,6 +237,16 @@ enum HomeHeroSharpPresentation {
   /// portrait, where a centred island reads as a small card rather than a
   /// hero.
   fullWidth,
+
+  /// A rounded, inset billboard *within* the page (iOS Unified 2026 fase 1,
+  /// `docs/ios-unified-2026-fase1-plan.md` stap 6; DEC-091). The caller —
+  /// `MobileHeroCard` — already hands in the inset box (screen width minus
+  /// the mockup's 16pt margin either side, height minus the same margin), so
+  /// this presentation fills exactly that box with `BoxFit.cover`, the same
+  /// shape the wide-box branch already draws, just scoped to a smaller
+  /// canvas. There is no ambient wash to blend into: a self-contained card
+  /// has no soft edge bleeding into the page the way a full-bleed hero does.
+  mobileFeatured,
 }
 
 /// [requestedSharpTop] starts the sharp layer at the hardware safe area —
@@ -259,6 +269,27 @@ HomeHeroArtGeometry homeHeroArtGeometry({
   HomeHeroSharpPresentation presentation = HomeHeroSharpPresentation.island,
 }) {
   if (heroHeight <= 0 || screenWidth <= 0) return HomeHeroArtGeometry.zero;
+
+  if (presentation == HomeHeroSharpPresentation.mobileFeatured) {
+    // Same cover-fill shape as the wide-box branch below, just against the
+    // caller's already-inset box rather than the full hero canvas — a
+    // mobileFeatured caller never asks for the island/full-width letterboxing
+    // math the switch further down exists for.
+    return HomeHeroArtGeometry(
+      canvasWidth: screenWidth,
+      canvasHeight: heroHeight,
+      sharpWidth: screenWidth,
+      sharpHeight: heroHeight,
+      requestWidth: screenWidth,
+      requestHeight: math.max(screenWidth * 9 / 16, heroHeight),
+      sharpFadeHeight: 0,
+      sharpTopInset: 0,
+      hasSharpForeground: true,
+      useAmbientLayer: false,
+      coversHero: true,
+      presentation: presentation,
+    );
+  }
 
   final isWideBox = screenWidth / heroHeight >= billboardNarrowAspectRatioThreshold;
   if (isWideBox || kind == BillboardArtKind.fallback) {
@@ -330,6 +361,9 @@ HomeHeroArtGeometry homeHeroArtGeometry({
     case (HomeHeroSharpPresentation.island, BillboardArtKind.widescreen):
       naturalWidth = screenWidth;
       naturalHeight = math.min(screenWidth * 9 / 16, heroHeight);
+    case (HomeHeroSharpPresentation.mobileFeatured, _):
+      naturalWidth = screenWidth; // unreachable: mobileFeatured returns above
+      naturalHeight = heroHeight; // unreachable: mobileFeatured returns above
     case (_, BillboardArtKind.fallback):
       naturalWidth = screenWidth; // unreachable: handled above
       naturalHeight = heroHeight; // unreachable: handled above

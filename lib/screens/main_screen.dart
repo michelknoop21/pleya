@@ -6,6 +6,7 @@ import 'dart:ui' show ImageFilter;
 import '../automation/automation_event_log.dart';
 import '../automation/automation_ids.dart';
 import '../automation/automation_navigation_hooks.dart';
+import '../automation/automation_node.dart';
 import '../automation/automation_screen.dart';
 import '../automation/pleya_verify.dart';
 import '../media/ids.dart';
@@ -28,6 +29,7 @@ import '../services/app_exit_service.dart';
 import '../services/tvos_system_navigation_service.dart';
 import '../services/update_service.dart';
 import '../utils/app_logger.dart';
+import '../utils/haptics.dart';
 import '../widgets/auth_error_banner.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/platform_detector.dart';
@@ -154,6 +156,23 @@ List<NavigationTab> mainScreenBottomNavigationTabs({
 /// `_normalizeTabForMode` has moved the selection. In those cases the first
 /// bar destination is the honest fallback, and it is the same thing the bar
 /// would have shown anyway, only now deliberately.
+/// The mobile bottom bar's own selected-slot colour: the active label turns
+/// [kAccent], matching the active glyph `_TabIcon` already draws. iOS Unified
+/// 2026 fase 1, `docs/ios-unified-2026-fase1-plan.md` stap 9.
+///
+/// Applied at the bar rather than in `monoTheme` on purpose: the theme's
+/// `navigationBarTheme` is inherited by every `NavigationBar` in the app, and
+/// this red is a decision about this one bar.
+NavigationBarThemeData mobileTabBarTheme(NavigationBarThemeData base) {
+  final baseLabel = base.labelTextStyle;
+  return base.copyWith(
+    labelTextStyle: WidgetStateProperty.resolveWith((states) {
+      final style = baseLabel?.resolve(states) ?? const TextStyle();
+      return states.contains(WidgetState.selected) ? style.copyWith(color: kAccent) : style;
+    }),
+  );
+}
+
 @visibleForTesting
 NavigationTabId mainScreenSelectedBarTab({
   required NavigationTabId currentTab,
@@ -1724,15 +1743,20 @@ class _MainScreenState extends State<MainScreen>
       barTabs: tabs.map((tab) => tab.id).toList(),
     );
     final selectedIndex = tabs.indexWhere((tab) => tab.id == projected);
-    final navigationBar = NavigationBar(
-      selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
-      onDestinationSelected: (i) {
-        if (i >= 0 && i < tabs.length) _selectTab(tabs[i].id);
-      },
-      labelBehavior: hideLabels
-          ? NavigationDestinationLabelBehavior.alwaysHide
-          : NavigationDestinationLabelBehavior.alwaysShow,
-      destinations: tabs.map((tab) => tab.toDestination()).toList(),
+    final navigationBar = NavigationBarTheme(
+      data: mobileTabBarTheme(NavigationBarTheme.of(context)),
+      child: NavigationBar(
+        selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
+        onDestinationSelected: (i) {
+          if (i < 0 || i >= tabs.length) return;
+          if (tabs[i].id != _currentTab) Haptics.light();
+          _selectTab(tabs[i].id);
+        },
+        labelBehavior: hideLabels
+            ? NavigationDestinationLabelBehavior.alwaysHide
+            : NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: tabs.map((tab) => _withNavTabAutomation(tab)).toList(),
+      ),
     );
 
     // Netflix mobile: frosted near-black bar. Blur the content scrolling
@@ -1741,55 +1765,65 @@ class _MainScreenState extends State<MainScreen>
       child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18), child: bar),
     );
 
+    Widget withNavBarAutomation(Widget bar) => AutomationNode(id: AutomationIds.navBar, role: 'nav', child: bar);
+
     final librariesIndex = tabs.indexWhere((tab) => tab.id == NavigationTabId.libraries);
-    if (tabs.isEmpty) return frosted(navigationBar);
+    if (tabs.isEmpty) return frosted(withNavBarAutomation(navigationBar));
 
     return frosted(
-      LayoutBuilder(
-        builder: (context, constraints) {
-          if (!constraints.hasBoundedWidth) return navigationBar;
+      withNavBarAutomation(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (!constraints.hasBoundedWidth) return navigationBar;
 
-          final itemWidth = constraints.maxWidth / tabs.length;
-          final isRtl = Directionality.of(context) == TextDirection.rtl;
+            final itemWidth = constraints.maxWidth / tabs.length;
+            final isRtl = Directionality.of(context) == TextDirection.rtl;
 
-          double itemLeft(int index) => isRtl ? constraints.maxWidth - (itemWidth * (index + 1)) : itemWidth * index;
+            double itemLeft(int index) => isRtl ? constraints.maxWidth - (itemWidth * (index + 1)) : itemWidth * index;
 
-          return Stack(
-            children: [
-              navigationBar,
-              // Solid red indicator bar above the active icon.
-              if (selectedIndex >= 0)
-                Positioned(
-                  left: itemLeft(selectedIndex) + (itemWidth - 18) / 2,
-                  top: 0,
-                  width: 18,
-                  height: 3,
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(color: kAccent, borderRadius: BorderRadius.circular(2)),
+            return Stack(
+              children: [
+                navigationBar,
+                // The red 18×3 indicator above the active slot is gone: the
+                // active slot itself is red now (fase 1 stap 9).
+                if (librariesIndex >= 0)
+                  Positioned(
+                    left: itemLeft(librariesIndex),
+                    top: 0,
+                    bottom: 0,
+                    width: itemWidth,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      excludeFromSemantics: true,
+                      onLongPress: () {
+                        Feedback.forLongPress(context);
+                        _showLibraryQuickPicker(context);
+                      },
+                      child: const SizedBox.expand(),
                     ),
                   ),
-                ),
-              if (librariesIndex >= 0)
-                Positioned(
-                  left: itemLeft(librariesIndex),
-                  top: 0,
-                  bottom: 0,
-                  width: itemWidth,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    excludeFromSemantics: true,
-                    onLongPress: () {
-                      Feedback.forLongPress(context);
-                      _showLibraryQuickPicker(context);
-                    },
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
+    );
+  }
+
+  /// Wraps one tab's icon/selectedIcon in [AutomationNode] so `nav.<id>`
+  /// resolves on both the mobile bar and the desktop/TV rail
+  /// ([SideNavigationRail] mounts the same id) — iOS Unified 2026 fase 1,
+  /// `docs/ios-unified-2026-fase1-plan.md` stap 3.
+  NavigationDestination _withNavTabAutomation(NavigationTab tab) {
+    final destination = tab.toDestination();
+    final id = AutomationIds.navTab(tab.id);
+    Widget wrap(Widget icon) => AutomationNode(id: id, role: 'nav.item', child: icon);
+    return NavigationDestination(
+      icon: wrap(destination.icon),
+      selectedIcon: destination.selectedIcon == null ? null : wrap(destination.selectedIcon!),
+      label: destination.label,
+      tooltip: destination.tooltip,
+      enabled: destination.enabled,
     );
   }
 

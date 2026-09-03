@@ -14,7 +14,6 @@ import '../media/media_playlist.dart';
 import '../mixins/context_menu_tap_mixin.dart';
 import '../providers/download_provider.dart';
 import '../providers/watch_state_store.dart';
-import '../services/device_performance.dart';
 import '../services/download_storage_service.dart';
 import '../services/settings_service.dart';
 import 'new_content_badge.dart';
@@ -35,6 +34,7 @@ import 'media_card_list_layout.dart';
 import 'backend_badge.dart';
 import 'optimized_media_image.dart';
 import 'hover_boxart_overlay.dart';
+import 'skeletons.dart';
 import '../utils/platform_detector.dart';
 
 const _failedPosterUrlCacheLimit = 512;
@@ -1183,72 +1183,6 @@ class _ClickableTextState extends State<_ClickableText> {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Skeleton placeholder with a subtle shimmer sweep on the full effects tier;
-/// static semi-transparent fill on the reduced tier.
-class SkeletonLoader extends StatefulWidget {
-  final Widget? child;
-  final BorderRadius? borderRadius;
-
-  const SkeletonLoader({super.key, this.child, this.borderRadius});
-
-  @override
-  State<SkeletonLoader> createState() => _SkeletonLoaderState();
-}
-
-class _SkeletonLoaderState extends State<SkeletonLoader> with SingleTickerProviderStateMixin {
-  AnimationController? _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    if (!DevicePerformance.isReduced) {
-      _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final base = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.075);
-    final radius = widget.borderRadius ?? BorderRadius.circular(tokens(context).radiusSm);
-    final controller = _controller;
-
-    if (controller == null) {
-      return Container(
-        decoration: BoxDecoration(color: base, borderRadius: radius),
-        child: widget.child,
-      );
-    }
-
-    final highlight = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.14);
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, child) {
-        // Sweep center travels -0.3 → 1.3 so the band fully enters and exits.
-        final t = -0.3 + controller.value * 1.6;
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            gradient: LinearGradient(
-              begin: .centerLeft,
-              end: .centerRight,
-              colors: [base, highlight, base],
-              stops: [(t - 0.25).clamp(0.0, 1.0), t.clamp(0.0, 1.0), (t + 0.25).clamp(0.0, 1.0)],
-            ),
-          ),
-          child: child,
-        );
-      },
-      child: widget.child,
     );
   }
 }

@@ -4,6 +4,28 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-03] iOS Unified 2026 fase 1: de iPhone-Home
+
+De Home van de iPhone is een eigen scherm geworden, `lib/screens/home/mobile_home_screen.dart`, dat
+`DiscoverScreen` kiest op `PlatformDetector.isPhone`. iPad, desktop en TV lopen ongewijzigd door de
+bestaande tak; de grens is één regel op één plek in plaats van breedtecondities door het oude scherm
+heen. Nieuw onder `lib/widgets/mobile/`: kaart, rij, header, chipbalk, hero met carousel,
+pull-to-refresh en de bronkiezer-sheet. De hero heeft een derde presentatie in
+`home_hero_layout.dart`, `mobileFeatured`, naast `island` en `fullWidth`, die allebei ongemoeid
+blijven inclusief hun pins. Afspelen loopt via de F0-activatielaag: één bruikbare bron start direct,
+meerdere bronnen openen de sheet, en de keuze wordt onthouden. `item.serverId` is nergens de
+schrijfautoriteit.
+
+De bottom bar is gerestyled zoals stap 9 van het plan hem beschrijft: geen merkstip meer boven de
+glyph, geen rode 18×3-indicator, het actieve slot in rood, en een rode ring om de avatar van Mijn
+Pleya. De tabset is niet aangeraakt. Die bar is gedeeld met de iPad, dus de iPad ziet de nieuwe stijl
+ook; dat punt staat als open grens in DEC-092.
+
+Zesentachtig nieuwe tests, `ios.home.northstar` als Verify-scenario, en DEC-091 en DEC-092 leggen de
+besluiten en de drie afwijkingen van het plan vast. De twee open Home-details uit DEC-090 (de
+secundaire hero-CTA en de carousel-indicator) staan als benoemde plaatshouder in de code en zijn
+één regel te wisselen zodra ze vallen.
+
 ## [2026-09-03] iOS Unified 2026: northstar bevroren
 
 De iPhone-interface krijgt zijn eigen bevroren referentieset, op dezelfde manier als tvOS die op

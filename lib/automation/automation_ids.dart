@@ -149,6 +149,37 @@ class AutomationIds {
   /// The video player's rendering surface (`lib/mpv/video.dart`).
   static const String playerSurface = 'player.surface';
 
+  /// The mobile bottom navigation bar as a whole (bounds, not per-tab). The
+  /// per-tab nodes are [navTab], mounted on both the side rail and this bar.
+  static const String navBar = 'nav.bar';
+
+  /// The mobile Home header (lockup, and on Home the conditional actions,
+  /// search and avatar) — iOS Unified 2026 fase 1,
+  /// `docs/ios-unified-2026-fase1-plan.md` stap 3.
+  static const String homeHeader = 'home.header';
+
+  /// The header's search action.
+  static const String homeHeaderSearch = 'home.header.search';
+
+  /// The header's profile avatar action.
+  static const String homeHeaderAvatar = 'home.header.avatar';
+
+  /// The Series/Films chip bar under the header.
+  static const String homeChips = 'home.chips';
+
+  /// One mobile media rail. Instanceable: suffixed `[<railIndex>]`.
+  static const String homeRail = 'home.rail';
+
+  /// One card in [homeRail]. Instanceable: suffixed
+  /// `[<railIndex>.<itemIndex>]`.
+  static const String homeRailItem = 'home.rail.item';
+
+  /// The mobile source-picker sheet as a whole.
+  static const String sheetSourcePicker = 'sheet.source_picker';
+
+  /// One row in [sheetSourcePicker]. Instanceable: suffixed `[<index>]`.
+  static const String sheetSourcePickerRow = 'sheet.source_picker.row';
+
   /// Base ids a scenario may address as `id[instance]` — see
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
@@ -164,6 +195,9 @@ class AutomationIds {
     myPleyaSectionTile,
     myPleyaChip,
     myPleyaLogRow,
+    homeRail,
+    homeRailItem,
+    sheetSourcePickerRow,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -178,6 +212,7 @@ class AutomationIds {
     {'id': screenLibraries, 'role': 'screen', 'instanceable': false},
     {'id': screenMediaDetail, 'role': 'screen', 'instanceable': false},
     for (final tab in NavigationTabId.values) {'id': navTab(tab), 'role': 'nav', 'instanceable': false},
+    {'id': navBar, 'role': 'nav', 'instanceable': false},
     {'id': sidebarRail, 'role': 'sidebar', 'instanceable': false},
     {'id': sidebarLibraryRow, 'role': 'nav.item', 'instanceable': true},
     {'id': libraryGrid, 'role': 'grid', 'instanceable': false},
@@ -201,5 +236,13 @@ class AutomationIds {
     {'id': myPleyaChip, 'role': 'button', 'instanceable': true},
     {'id': myPleyaLogRow, 'role': 'list.item', 'instanceable': true},
     {'id': playerSurface, 'role': 'surface', 'instanceable': false},
+    {'id': homeHeader, 'role': 'region', 'instanceable': false},
+    {'id': homeHeaderSearch, 'role': 'button', 'instanceable': false},
+    {'id': homeHeaderAvatar, 'role': 'button', 'instanceable': false},
+    {'id': homeChips, 'role': 'filter', 'instanceable': false},
+    {'id': homeRail, 'role': 'rail', 'instanceable': true},
+    {'id': homeRailItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
   ];
 }

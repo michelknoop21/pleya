@@ -11,6 +11,7 @@ import 'package:flutter/services.dart' show HardwareKeyboard, LogicalKeyboardKey
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:pleya/widgets/pleya_logo.dart';
 import '../widgets/server_activities_button.dart';
+import 'home/mobile_home_screen.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import '../focus/focusable_action_bar.dart';
@@ -1469,6 +1470,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
     if (PlatformDetector.isTV()) {
       return _buildTvContent(context);
+    }
+
+    // iOS Unified 2026 fase 1 (docs/ios-unified-2026-fase1-plan.md stap 8):
+    // the iPhone Home surface is its own screen, reading the platform-neutral
+    // Unified providers directly rather than this class's legacy fields.
+    // iPad stays on the tree below — see the plan's H3.
+    if (PlatformDetector.isPhone(context)) {
+      return const MobileHomeScreen();
     }
 
     final showServerNameOnHubs = svc.read(SettingsService.showServerNameOnHubs);

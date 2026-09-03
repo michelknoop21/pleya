@@ -828,4 +828,55 @@ void main() {
       expect(metrics.maxContentWidth, isNull);
     });
   });
+
+  group('homeHeroArtGeometry mobileFeatured', () {
+    // Home comp: card inset 16, 393pt phone → 361pt card. Fase 1 stap 6 —
+    // docs/ios-unified-2026-fase1-plan.md.
+    const cardWidth = 361.0;
+    const cardHeight = 220.0;
+
+    test('fills exactly the box the caller hands in, with no letterboxing', () {
+      final geometry = homeHeroArtGeometry(
+        screenWidth: cardWidth,
+        heroHeight: cardHeight,
+        kind: BillboardArtKind.widescreen,
+        presentation: HomeHeroSharpPresentation.mobileFeatured,
+      );
+
+      expect(geometry.canvasWidth, cardWidth);
+      expect(geometry.canvasHeight, cardHeight);
+      expect(geometry.sharpWidth, cardWidth);
+      expect(geometry.sharpHeight, cardHeight);
+      expect(geometry.coversHero, isTrue);
+      expect(geometry.useAmbientLayer, isFalse);
+      expect(geometry.hasSharpForeground, isTrue);
+      expect(geometry.sharpTopInset, 0);
+      expect(geometry.sharpFadeHeight, 0);
+      expect(geometry.presentation, HomeHeroSharpPresentation.mobileFeatured);
+    });
+
+    test('a square source fills the box the same way — cover, not an island', () {
+      final geometry = homeHeroArtGeometry(
+        screenWidth: cardWidth,
+        heroHeight: cardHeight,
+        kind: BillboardArtKind.square,
+        presentation: HomeHeroSharpPresentation.mobileFeatured,
+      );
+
+      expect(geometry.sharpWidth, cardWidth);
+      expect(geometry.sharpHeight, cardHeight);
+      expect(geometry.coversHero, isTrue);
+    });
+
+    test('never draws the top-blend band island/full-width use', () {
+      final geometry = homeHeroArtGeometry(
+        screenWidth: cardWidth,
+        heroHeight: cardHeight,
+        kind: BillboardArtKind.widescreen,
+        presentation: HomeHeroSharpPresentation.mobileFeatured,
+      );
+
+      expect(geometry.sharpTopBlendHeight, 0);
+    });
+  });
 }

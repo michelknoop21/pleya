@@ -51,6 +51,9 @@ ids:
   - id: nav.myPleya
     role: nav
     instanceable: false
+  - id: nav.bar
+    role: nav
+    instanceable: false
   - id: sidebar.rail
     role: sidebar
     instanceable: false
@@ -120,3 +123,27 @@ ids:
   - id: player.surface
     role: surface
     instanceable: false
+  - id: home.header
+    role: region
+    instanceable: false
+  - id: home.header.search
+    role: button
+    instanceable: false
+  - id: home.header.avatar
+    role: button
+    instanceable: false
+  - id: home.chips
+    role: filter
+    instanceable: false
+  - id: home.rail
+    role: rail
+    instanceable: true
+  - id: home.rail.item
+    role: grid.item
+    instanceable: true
+  - id: sheet.source_picker
+    role: sheet
+    instanceable: false
+  - id: sheet.source_picker.row
+    role: list.item
+    instanceable: true

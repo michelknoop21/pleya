@@ -16,6 +16,8 @@ import '../media/media_server_client.dart';
 import '../profiles/active_profile_provider.dart';
 import '../providers/companion_remote_provider.dart';
 import '../providers/discover_provider.dart';
+import '../providers/tv_discovery_landing_provider.dart';
+import '../providers/tv_home_projection_provider.dart';
 import '../providers/hidden_libraries_provider.dart';
 import '../providers/home_layout_provider.dart';
 import '../providers/libraries_provider.dart';
@@ -323,6 +325,28 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                     recommendations: activeId == null ? null : context.read<RecommendationService>(),
                   );
                 },
+              ),
+              // Platform-neutral Unified projections (fase 6 on the tvOS
+              // branch, F0 on this one): mobile Home (fase 1,
+              // docs/ios-unified-2026-fase1-plan.md) reads these through
+              // `MobileHomeScreen`. Registered unconditionally, same as
+              // upstream — no platform guard here, only the mobile surface
+              // consumes them yet.
+              ChangeNotifierProvider(
+                create: (context) => TvDiscoveryLandingProvider(
+                  discover: context.read<DiscoverProvider>(),
+                  multiServer: context.read<MultiServerProvider>(),
+                ),
+                lazy: true,
+              ),
+              ChangeNotifierProvider(
+                create: (context) => TvHomeProjectionProvider(
+                  discover: context.read<DiscoverProvider>(),
+                  multiServer: context.read<MultiServerProvider>(),
+                  continueWatchingTitle: t.discover.continueWatching,
+                  latestMoviesTitle: t.discover.recentlyReleased,
+                ),
+                lazy: true,
               ),
               ChangeNotifierProvider(create: (_) => WatchlistStore()..bindProfile(activeId)),
               // The kijklijst is rebuilt per profile: its sources, its cache

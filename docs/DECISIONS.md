@@ -719,6 +719,51 @@ De required-candidate `portable`-gate en de uitgevoerde iOS/tvOS Verify-scenario
 **Consequences:** Pleya Verify Core 1.0 is hiermee compleet: deterministic fixture-backed scenario's, drie platformdrivers (macOS/iOS-sim/tvOS-sim), UI-boom/focus/events/geometrie-assertions, autoritatieve compositor-screenshots als visuele waarheid, complete evidencebundels, false-PASS-verdediging (Fase 12), CLI, MCP-laag (Fase 13), CI-orkestratie (Fase 14), fail-closed control-plane-auth, bounded execution, en redactie-/securityhardening (dit besluit). Bekende, niet-blokkerende grenzen: macOS-hosted-buildsigning in CI, `tvos.library.filters` (DEFERRED voor G13, [DEC-063](#dec-063-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)), en tvOS-D-pad-navigatie binnen het systeemtoetsenbord (niet simuleerbaar, zie CONTRIBUTING.md). Geen nieuwe featurescope geopend; een volgende sessie die verder wil dan Core 1.0 begint bij een expliciet nieuw besluit, niet bij het stilzwijgend heropenen van Fase 1 t/m 15.
 
 
+## DEC-092: fase 1 levert de iPhone-Home als eigen scherm, met de gedeelde tabbalk als open grens
+
+**Date:** 2026-09-03
+**Status:** accepted
+
+**Context:** Fase 1 van [DEC-090](#dec-090-ios-unified-2026-northstar-bevroren-21-mockups-bindend-voor-de-iphone-interface)
+bouwt de Home-verticale plak uit het bevroren beeldenpakket, volgens
+[docs/ios-unified-2026-fase1-plan.md](ios-unified-2026-fase1-plan.md). Tijdens de bouw liepen drie
+dingen anders dan het plan aannam, en één ervan vraagt een besluit van Michel in plaats van van de
+implementatie.
+
+**Decision:** De iPhone-Home is een eigen scherm, `lib/screens/home/mobile_home_screen.dart`, dat
+`DiscoverScreen._buildContent` kiest op `PlatformDetector.isPhone`. De presentatiegrens is daarmee
+één regel op één plek in plaats van breedtecondities door het bestaande Home-scherm heen. iPad,
+desktop en TV lopen ongewijzigd door de bestaande tak. De kaarten, rijen, header, chips, hero en
+bronkiezer staan onder `lib/widgets/mobile/`, delen de bestaande primitieven
+(`MediaCardGridLayout`, `OptimizedMediaImage`, `Pressable`, `FocusableFilterChip`, `PleyaWordmark`,
+`ProfileAvatar`, `MediaContextMenu`) en bouwen op de F0-catalogus in plaats van op een tweede
+mobiel mediamodel.
+
+Drie afwijkingen van het plan, alle drie bewust:
+
+1. Het plan schreef stap 2 als een verplaatsing uit `lib/widgets/tv/`. Die map bestaat niet op deze
+   branch: F0 heeft de platformneutrale kern gemerged en de TV-presentatie bewust niet. De inhoud is
+   daarom vanuit `provenance/netflix-redesign-f8e0e59` overgezet naar de doelpaden uit het plan
+   (`lib/services/unified_catalog/hero_text.dart`, `lib/media/unified/source_row_descriptor.dart`).
+   Het resultaat is hetzelfde bestand op dezelfde plek; alleen de herkomst is een kopie, geen `git mv`.
+2. F0 landde `TvHomeProjectionProvider` en `TvDiscoveryLandingProvider` wel als klasse, maar
+   registreerde ze niet. `profile_session_screen.dart` doet dat nu, in dezelfde volgorde als de
+   tvOS-branch.
+3. De bottom bar is gedeeld met de iPad. Het plan noteert dat zelf (regel 61: een iPad krijgt
+   dezelfde vijf slots als een iPhone) en schrijft de restyle in stap 9 toch ongescoped voor, terwijl
+   het regressiepunt 8a een gelijk iPad-Home-screenshot vóór en na eist. Die twee kunnen niet allebei
+   waar zijn. De restyle is uitgevoerd zoals stap 9 hem beschrijft, dus de iPad ziet dezelfde nieuwe
+   bar. Dat is de open grens van dit besluit en geen stille keuze: wil Michel de iPad op de oude
+   bar houden, dan is dat een presentatiegrens op de bar die alsnog getrokken moet worden.
+
+**Consequences:** De twee open Home-details uit DEC-090 paragraaf 10 blijven open. `mobile_hero_actions.dart`
+en `mobile_hero_indicator.dart` bevatten daarvoor een naam en een tijdelijke standaard, expliciet
+gedocumenteerd als plaatshouder en niet als besluit: `HeroSecondaryAction.moreInfo` en
+`HeroIndicatorStyle.persistentDots`. Ze zijn één regel te wisselen zodra het besluit valt. De tabset
+is ongewijzigd; er is geen bestemming verplaatst of verwijderd. `ios.home.northstar` observeert de
+Home met productcontracten en zonder verify-only gedrag. Fase 2 begint bij een eigen plan, niet bij
+het uitbreiden van dit scherm.
+
 ## DEC-091: de mobiele hero-presentatie heet mobileFeatured, en de chip-ambiguïteit is opgelost
 
 **Date:** 2026-09-03
