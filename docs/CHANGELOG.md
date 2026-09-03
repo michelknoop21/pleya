@@ -4,6 +4,37 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-03] iOS Unified 2026 fase 2: Series, Films en de rootnavigatie
+
+De iPhone-tabbalk is `Home · Series · Films · [Live TV] · Mijn Pleya` geworden, met Series vóór
+Films zoals mockup 01 en 02 hem tekenen. Series en Films zijn één scherm,
+`lib/screens/home/mobile_landing_screen.dart`, want die twee mockups zijn dezelfde surface over een
+andere set hubs: dezelfde header, dezelfde grote titel, dezelfde rijen uit
+`TvDiscoveryLandingProvider`. Geen hero, en geen Verder kijken, want die rij hoort bij Home.
+
+De iPad gaat niet mee. Dat was de openstaande vraag uit H3 van het fase-1-plan, en Michel heeft hem
+beslist: er is geen iPad-northstar, dus de iPad houdt zijn tabset tot hij zijn eigen autoriteit
+krijgt. De grens is `RootNavigationSet` naast het bestaande `TabBarPresentation`, twee losse
+beleidswaarden die allebei op één plek uit één `PlatformDetector.isPhone` volgen. Het aantal
+`isPhone`-aanroepen in de shell ging daarmee van twee naar één.
+
+Twee bestemmingen verlieten de balk zonder de app te verlaten. Zoeken zit nu achter het zoekicoon in
+de header, dat in fase 1 nog een lege callback was; route, schermstaat en de `startup_section`-
+voorkeur blijven wat ze waren. Bibliotheken werd de rij uit mockup 18, mét de long-press-quick-picker
+die aan het tabslot hing. De volgorde van de iPhone staat in een eigen projectie en niet in
+`allNavigationTabs`, want die lijst voedt ook de zijbalk van desktop en TV, waar Films juist vóór
+Series staat.
+
+Een test die vooraf geschreven was ving de enige echte fout: de eerste volgordeprojectie noemde Mijn
+Pleya als vijfde slot en zette hem daarmee offline vóór Downloads. Mijn Pleya staat al laatst in de
+gedeelde lijst, dus de projectie noemt alleen de vier ervoor.
+
+Twee zichtbare afwijkingen van de northstar zijn bewust en staan met hun sluiting erbij in DEC-093.
+De drie headeracties blijven staan tot fase 6 hun bestemming bouwt, en de ingang "Alle series ›"
+wordt niet getekend zolang fase 3 de complete catalogus niet heeft: `UnifiedCatalogProvider` heeft
+vandaag geen UI-consument, en een chevron die nergens heen gaat is erger dan geen chevron. De naad
+is één parameter, en een test pint dat hij nu leeg is.
+
 ## [2026-09-03] iOS Unified 2026 fase 1: de iPhone-Home
 
 De Home van de iPhone is een eigen scherm geworden, `lib/screens/home/mobile_home_screen.dart`, dat

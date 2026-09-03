@@ -236,7 +236,14 @@ elders terechtkomen: Nu aan het kijken, Samen kijken en de Afstandsbediening (mo
 ze onder Mijn Pleya). Ze blijven in fase 1 staan waar ze staan, omdat een bestemming verplaatsen bij
 de rootnavigatie hoort en niet bij een visuele pass op Home. De fase-1-header is daardoor voller dan
 de comp. Dat is een goedgekeurde afwijking, geen regressie: bij de visuele beoordeling van fase 1
-telt hij niet mee als verschil met de northstar. Hij vervalt in de fase die de rootnavigatie migreert.
+telt hij niet mee als verschil met de northstar.
+
+Bij het sluiten van fase 2 is die afwijking verlengd, en preciezer geformuleerd. Fase 2 migreert de
+tabset, maar de bestemming van deze drie is de Activiteit-tegel en de Samen kijken-rij uit mockup 18
+en 21, en die bestaan pas als fase 6 Mijn Pleya bouwt. Ze eerder verplaatsen zou de tijdelijke
+informatiearchitectuur zijn die dit hoofdstuk juist afwijst. Ze vervallen dus in fase 6, en tot dan
+telt de vollere header ook in fase 2 niet mee als verschil met de northstar. Zie
+[DEC-093](DECISIONS.md#dec-093-fase-2-verhuist-de-iphone-rootnavigatie-en-de-ipad-blijft-op-zijn-eigen-tabset).
 
 ## 10. Open design details, niet blokkerend
 

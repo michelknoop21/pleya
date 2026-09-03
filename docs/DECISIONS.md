@@ -719,6 +719,108 @@ De required-candidate `portable`-gate en de uitgevoerde iOS/tvOS Verify-scenario
 **Consequences:** Pleya Verify Core 1.0 is hiermee compleet: deterministic fixture-backed scenario's, drie platformdrivers (macOS/iOS-sim/tvOS-sim), UI-boom/focus/events/geometrie-assertions, autoritatieve compositor-screenshots als visuele waarheid, complete evidencebundels, false-PASS-verdediging (Fase 12), CLI, MCP-laag (Fase 13), CI-orkestratie (Fase 14), fail-closed control-plane-auth, bounded execution, en redactie-/securityhardening (dit besluit). Bekende, niet-blokkerende grenzen: macOS-hosted-buildsigning in CI, `tvos.library.filters` (DEFERRED voor G13, [DEC-063](#dec-063-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)), en tvOS-D-pad-navigatie binnen het systeemtoetsenbord (niet simuleerbaar, zie CONTRIBUTING.md). Geen nieuwe featurescope geopend; een volgende sessie die verder wil dan Core 1.0 begint bij een expliciet nieuw besluit, niet bij het stilzwijgend heropenen van Fase 1 t/m 15.
 
 
+## DEC-093: fase 2 verhuist de iPhone-rootnavigatie, en de iPad blijft op zijn eigen tabset
+
+**Date:** 2026-09-03
+**Status:** accepted
+
+**Context:** Fase 2 van [DEC-090](#dec-090-ios-unified-2026-northstar-bevroren-21-mockups-bindend-voor-de-iphone-interface)
+is in sectie E van [het fase-1-plan](ios-unified-2026-fase1-plan.md) omschreven als de Series- en
+Films-landing plus de tabset `Home · Series · Films · [Live TV] · Mijn Pleya`, met Zoeken als route
+vanuit de header en Bibliotheken als tegel in Mijn Pleya. Punt H3 van datzelfde plan houdt daar één
+ding bij open: "Vóór fase 2 de tabset wisselt, is een eigen iPad-authority en acceptatiebesluit
+nodig, want die wissel raakt de iPad wel." [DEC-092](#dec-092-fase-1-levert-de-iphone-home-als-eigen-scherm-en-de-ipad-houdt-zijn-bestaande-presentatie)
+herhaalt het: of de iPad de nieuwe bar overneemt is een besluit voor de fase die een eigen
+iPad-authority heeft.
+
+Dat de wissel de iPad raakt is geen aanname. `TabBarPresentation` scheidt sinds fase 1 netjes de
+verf, maar welke bestemmingen er zijn hing aan `isMobile`, en dat is op een iPad `true`. Zonder een
+tweede, telefoon-gescopete grens zou de tabsetwissel er ongevraagd landen.
+
+**Decision:** **De iPad houdt in fase 2 de informatiearchitectuur die hij had.** Er is geen
+iPad-northstar; alle 26 bevroren beelden zijn iPhone 15 Pro. Een iPad die de iPhone-IA overneemt zou
+dus een productbesluit zijn dat door geen enkel goedgekeurd beeld gedekt wordt, en dat besluit valt
+niet in een implementatiefase.
+
+De grens is een tweede beleidswaarde naast `TabBarPresentation`, niet een tweede navigatielogica:
+`RootNavigationSet` met `classic` en `unified2026`. Hij beantwoordt één vraag, welke bestemmingen er
+zijn en in welke volgorde, en `TabBarPresentation` beantwoordt de andere, hoe de bar zich tekent.
+Allebei worden ze één keer bepaald, in `MainScreen.build`, uit één `PlatformDetector.isPhone`-aanroep
+die daar nu als veld staat; het aantal `isPhone`-aanroepen in de shell gaat daarmee van twee naar
+één. Ze zijn bewust niet samengevoegd, want ze kunnen legitiem uit elkaar lopen zodra de iPad zijn
+eigen besluit krijgt.
+
+Wat er op de iPhone verhuist, verhuist naar zijn definitieve bestemming, niet naar een tussenstation:
+
+- **Zoeken** verliest zijn barslot en blijft een bestemming. Het zoekicoon in de header, dat in fase 1
+  nog een lege callback had, opent hem nu. De route-identiteit, de `IndexedStack`-staat en de
+  `startup_section`-voorkeur blijven daarmee ongewijzigd; alleen het instappunt is verplaatst. Mockup
+  05 tekent Zoeken met Home opgelicht in de bar, en dat is precies wat de bestaande projectie doet
+  wanneer een bestemming geen eigen slot heeft.
+- **Bibliotheken** verliest zijn barslot en wordt de rij die mockup 18 onder "Bibliotheken en bronnen"
+  zet, mét de long-press-quick-picker die aan het tabslot hing. De projectie licht Mijn Pleya op,
+  want dat is de tegel waar je hem door bereikt.
+
+De iPhone-volgorde staat in een eigen projectie en niet in `allNavigationTabs`. Die lijst is gedeeld:
+de desktop- en TV-zijbalk renderen er rechtstreeks uit, en de TV-informatiearchitectuur zet Films
+vóór Series terwijl de iPhone-mockups Series vooraan zetten. Eén const lijst kan die twee volgordes
+niet allebei dragen.
+
+De drie headeracties (Nu aan het kijken, Samen kijken, Afstandsbediening) **blijven staan waar ze
+staan**. Hun definitieve bestemming is de Activiteit-tegel en de Samen kijken-rij uit mockup 18 en 21,
+en die bestaan pas als fase 6 Mijn Pleya bouwt. Ze nu alvast verplaatsen zou de tijdelijke
+informatiearchitectuur zijn die [DEC-091](#dec-091-de-mobiele-hero-presentatie-heet-mobilefeatured-en-de-chip-ambiguïteit-is-opgelost)
+al voor fase 1 verbood. De fase-2-header is daardoor voller dan mockup 01 en 02; dat is een bekende,
+goedgekeurde afwijking met een geplande sluiting, geen regressie, en niet iets om tijdens een
+pixelronde weg te poetsen.
+
+**Consequences:** Twee zichtbare afwijkingen van de northstar zijn bewust, allebei met hun sluiting
+erbij genoteerd. De eerste zijn die drie headeracties. De tweede is de ingang "Alle series ›" en
+"Alle films ›" naast de paginatitel: die wordt **bewust niet gerenderd totdat fase 3 een echte
+`UnifiedCatalog`-UI-consument registreert**. `UnifiedCatalogProvider` bestaat sinds F0, maar heeft
+vandaag geen enkele consument en is niet eens geregistreerd, dus er is geen productconforme
+bestemming om heen te routeren. De twee alternatieven zijn allebei slechter: een chevron die nergens
+heen gaat liegt over het product, en `LibraryBrowseTab` eronder hangen zou de bron-specifieke
+bibliotheekbrowser laten doorgaan voor een unified catalogus, wat semantisch iets anders is. Het is
+dezelfde keuze die fase 1 al maakte voor `MobileMediaRail.onViewAll`.
+`MobilePageTitleRow.onViewAll` is de expliciete naad: één regel zodra fase 3 die surface heeft, en
+`test/screens/home/mobile_landing_screen_test.dart` pint dat hij nu leeg is, zodat niemand er per
+ongeluk een dode knop van maakt.
+
+De landings zijn één scherm, `MobileLandingScreen`, want mockup 01 en 02 zijn dezelfde surface over
+een andere set hubs. Verder kijken staat er niet op: `TvDiscoveryLandingProvider` schrijft in zijn
+eigen documentatie al voor dat Home die rij bezit ([DEC-086] op de tvOS-branch), en beide mockups
+bevestigen het.
+
+Een laatste ding is gemeten in plaats van beredeneerd, en het kwam uit een test die ervoor geschreven
+was. De eerste versie van de volgordeprojectie noemde Mijn Pleya expliciet als vijfde barslot, en
+daarmee kwam hij offline vóór Downloads te staan: de offline bar werd `Mijn Pleya · Downloads` in
+plaats van `Downloads · Mijn Pleya`. Mijn Pleya staat al laatst in `allNavigationTabs`, precies omdat
+het de rechtse slot is, dus de projectie noemt alleen de vier ervoor.
+
+De iPad is gemeten en niet beredeneerd, op dezelfde manier als bij DEC-092 maar met een scherper
+instrument. `discover.hero.layout` is met de gepinde SDK, hetzelfde toestel (iPad Pro 11-inch M5),
+dezelfde fixture, dezelfde route en dezelfde captureprocedure gedraaid op `22a7674`, de kop vóór
+fase 2, en op de fase-2-tip. Allebei PASS. De **UI-boom is identiek**: zeven gedeclareerde nodes aan
+beide kanten, dezelfde rollen, dezelfde bounds tot op de subpixel, geen node erbij of eraf. De
+tabbalk is daar `nav.discover`, `nav.libraries`, `nav.search`, `nav.myPleya` op x 92,25 / 300,75 /
+509,25 / 717,75, precies zoals vóór fase 2, zonder Series of Films.
+
+De screenshots ernaast zijn niet pixelgelijk, en dat is de moeite van het uitschrijven waard omdat
+het getal anders misleidt. Van de 4.036.560 pixels verschillen er 2.731.423, maar de band van de
+tabbalk (y 2136 tot 2420, 473.712 pixels) verschilt in **nul** pixels. Het verschil zit in de
+statusbalkklok en in de laadtoestand van de artwork: in de ene koude run was de fixture-artwork
+binnen, in de andere stond er nog de plaatshouder. Dat is runtiming, geen layout, en de UI-boom
+hierboven is precies de meting die daar niet gevoelig voor is.
+
+Wat fase 2 niet end-to-end bewijst: `ios.rootnav.northstar` observeert de vijf slots, hun volgorde en
+hun tapdoel, maar de assertievocabulaire kent geen "afwezig", dus dat Bibliotheken en Zoeken de bar
+verlaten hebben zonder de app te verlaten staat in
+`test/navigation/unified_root_navigation_test.dart` en niet in een scenario. En een scenario dat naar
+de landings zelf navigeert kan er nog niet zijn: `tap` neemt coördinaten en geen automation-id, dus
+een tabwissel is in de huidige DSL niet apparaatonafhankelijk uit te drukken. Dat is werk voor de
+Verify-infrastructuur, net als de multi-source-poort uit DEC-092, en geen openstaand fase-2-defect.
+
 ## DEC-092: fase 1 levert de iPhone-Home als eigen scherm, en de iPad houdt zijn bestaande presentatie
 
 **Date:** 2026-09-03
