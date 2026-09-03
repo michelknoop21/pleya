@@ -52,6 +52,7 @@ under `Notes`.
 - het wordmark-lockup als gedeelde merkweergave
 - films en series als route-identiteit
 - het backendmerkje deelt de gegenereerde logo-bron
+- Unified 2026 fase 1, de iPhone-Home als eigen scherm
 
 ### Improved
 - scheidingslijnen volgen de werkelijke rijhoogte
@@ -91,6 +92,7 @@ under `Notes`.
 - verwijder set_pref/focus/back uit de scenario-vocabulaire
 - de nieuwe route-ids afhandelen in de bestaande shells
 - de opstartsplash tekent de lockup ook via PleyaWordmark
+- fase-1 acceptance, de iPad houdt zijn eigen tabbalk
 <!-- END GENERATED -->
 
 ### Fixed
