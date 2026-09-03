@@ -4,6 +4,471 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-02] De UX/focus-herstelronde: twaalf gemelde gebreken, en drie meldingen die niet klopten
+
+Twaalf punten van een echte Apple TV, plus één bevinding die er zelf bij kwam. Wat volgt is geen
+lijst van fixes maar van oorzaken; de fixes staan in de code en het bewijs in
+`docs/qa/tvos-unified-edge-cases.md` (B18 t/m B29). Twee besluiten: [DEC-086] (Verder kijken staat
+alleen op Home) en [DEC-087] (dichtheid, `cardHeight` 220, kortere metaregel, ruimere onderrand).
+Beide superseden BINDEND-tekst in 33.2, 33.3 en 33.4; die drie referenties hebben een
+afwijkingsnotitie gekregen.
+
+**Het billboard kwam terug in de focusboom, niet in beeld.** `_focusHeroFromFirstRow` probeerde de
+CTA te focussen vóór het herstellen van de scrollpositie, en keerde terug zodra dat lukte. Dat lukt
+terwijl de carousel nog binnen `cacheExtent` gemonteerd is, dus volledig buiten beeld: een
+gemonteerde offscreen node meldt `canRequestFocus: true`, en een kale `requestFocus()` lokt geen
+`ensureVisible` uit; alleen de traversal policy doet dat, en dit ís geen traversal. De `jumpTo(0)`
+een regel lager werd overgeslagen, de volgende druk vertrok naar de topnav, en het billboard was van
+onderaf onbereikbaar, precies de traversal die 7.3 voorschrijft. De doc die de vroege return
+verdedigde redeneerde alleen over de *gedisposede* hero, wat de andere helft van hetzelfde geval is.
+
+**Drie code-paden hadden allemaal een mening over waar de afstandsbediening hoort.** `_selectTab`
+riep `focusActiveTabIfReady` aan bij elke tabwissel, `_selectTvDestination` riep onvoorwaardelijk
+`_focusContent` aan, en `DiscoverScreen`'s initial-load-postframe riep `focusPrimary()` aan zodra er
+íets binnenkwam. Elk op zich verdedigbaar; samen onvoorspelbaar. Er is nu één
+`TvContentFocusAuthority` met een consume-once-intent, en content die binnenkomt is geen verzoek.
+Een koude start legt de focus voortaan expliciet op de balk. Vóór deze ronde deed niets dat, en
+viel de uitkomst toe aan welk pad toevallig als laatste vuurde.
+
+**Verder kijken stond op drie pagina's, en op twee ervan met de verkeerde inhoud.** Dat tweede is
+niet gemeld en is de zwaardere helft: de rij werd één keer geprojecteerd over de volledige on-deck en
+aan beide landingen voorgeplakt, terwijl de hubs ernaast wél op kind gesorteerd werden. De
+Films-landing opende dus met halfgekeken afleveringen.
+
+**De focusanimatie stotterde omdat de tegel per frame een ander plaatje vroeg.** De breedte is een
+`AnimatedContainer`-target, de afbeelding kreeg geen expliciete maat, dus `OptimizedMediaImage` viel
+in zijn `LayoutBuilder`-tak en las de meebewegende breedte. `MediaImageHelper` bucket per 40
+device-pixels en TV-DPR is minimaal 2.0: negen verschillende URL's, cachekeys en disk-lookups per
+focuswissel, gemeten. Beide takken geven nu hun eindmaat expliciet mee. De postertak was al stabiel,
+maar bij toeval: `min(w, h·2/3)` komt bij constante hoogte op de hoogteterm uit. Dat is nu een
+expliciete invariant. Dit was niet testbaar met de bestaande seam: `debugImageBuilder` keert terug op
+de eerste regel van `build`, en elke discovery-widgettest installeert die. Er is een tweede seam
+bijgekomen die ná `getOptimizedImageUrl` vuurt, en de test telt *distinct* URL's, geen calls.
+
+**De Kijklijst had vier gestapelde redenen om niet te werken.** De route maakte een `GlobalKey` en
+gaf hem aan niets door; het scherm implementeerde `FocusableTab` niet; de kaart accepteerde `key` en
+`focusNode` en de call-site gaf geen van beide mee; en zowel de `IndexedStack` in `MainScreen` als de
+`Offstage`-tak in `TvRootShell` hield een complete tweede, onzichtbare kopie van elk scherm
+focusbaar in dezelfde scope. `Offstage` en `IndexedStack` halen paint en hit-testing weg, nooit
+focusbaarheid; elf andere plekken in deze repo koppelen ze daarom aan een `ExcludeFocus`.
+
+**De gefocuste kaart liep van de rail af.** De rail heeft geen eigen `ensureVisible`, en Flutter's
+traversal policy kan er geen leveren: die meet de tegel op het moment dat focus landt, dus nog op
+posterbreedte, waarna hij naar 2,67 keer die breedte groeit. `FocusableWrapper._scrollIntoView` zoekt
+een *verticale* scrollable en een rail is horizontaal. De scroll rekent nu uit de layouttokens, niet
+uit render boxes, en houdt de page inset aan beide kanten aan.
+
+**Paginering begon pas aan het einde.** Eén regel was de hele trigger: DOWN op de laatste rij. Geen
+scroll-listener, geen drempel, geen achtergrondprefetch. De drempel ligt nu op focus, twee gridrijen voor
+het einde, zonder de focus te verplaatsen. Op TV *is* focus de cursor.
+
+**Wide artwork werd opgehaald op het moment dat je het nodig had.** De prefetcher kende alleen
+posters. Hij warmt nu een tweede variant op één wachtrij, één in-flight-teller en één plafond: twee
+losse prefetchers van drie zouden samen de zes globale permits kunnen bezetten en precies de tegel
+op het scherm uithongeren. Eigendom ligt bij de rail-state, niet bij `itemBuilder`. En de garantie
+is geen wedloop: de wide-tak draagt het posterframe als placeholder, dus er is geen lege beat, ook
+niet als de prefetch nog loopt.
+
+**`tvContextMenu.menuSemantics` stond in zestien talen en werd nergens aangeroepen.** Het paneel
+bevatte geen enkele `Semantics(`; de enige toegankelijkheidsuitvoer van een actierij was de kale
+naam. VoiceOver kon dus niet zeggen of "Markeer als bekeken" de eerste van twee was of de derde van
+zeven.
+
+### Drie meldingen die niet klopten
+
+- **Aanvragen heeft geen eigen `Scaffold`/`SliverAppBar` meer.** `505e8cc` en `f8c7d47` hebben dat
+  al opgelost; het is niet opnieuw opgelost. Wat er wél stond zijn vier kleinere resten, waaronder
+  twee inbox-knoppen waarvan er één onbereikbaar was.
+- **"De laatste tegel heeft geen trailing ruimte om in uit te klappen" is onwaar.** De expansie is
+  een `AnimatedContainer` *binnen* de scrollable, dus hij vergroot de content zelf, en
+  `maxScrollExtent` komt op de pixel uit waar de reveal hem wil hebben. De trailing padding daarvoor
+  is geschreven, getest, en weer verwijderd toen de negatieve controle ervan groen bleef.
+- **Bij P4 churnt alleen de wide-tak**, niet beide, om de reden hierboven.
+
+### Pleya Verify
+
+Vier scenario's erbij (`tvos.home.hero-return`, `tvos.nav.destination-select`,
+`tvos.discovery.density`, `tvos.discovery.overscan`), drie nieuwe ID's (`discover.rail`,
+`discover.rail.item`, `discover.safe_area`) en twee bestaande ID's die nu ook op tvOS geregistreerd
+worden (`discover.hero`, `discover.hero.play` op de TV-carousel; `nav.<tab>` op de topbalk, die er
+geen enkele had). `discover.safe_area` staat *binnen* de insets: eromheen zou zijn rect de hele
+viewport zijn en elke overscan-assertie waardeloos maken. Hier alleen gevalideerd, niet gedraaid.
+
+## [2026-09-02] De eindaudit van fase 9, en de acht dingen die eronder lagen
+
+Eén strikt lezende audit over `ee72260..HEAD`, tegen de DoD, het register en de DEC's. Acht
+bevestigde defecten, alle acht in code die fase 9 zelf schreef of aanraakte, en alle acht met een
+test die vóór de fix omvalt — bij twee daarvan is die negatieve controle ook echt gedraaid en niet
+alleen beredeneerd.
+
+**Een trage catalogus meldde zich leeg.** `_fillBuffers` begrenst zijn wachttijd op
+`progressiveLoadingGrace` (E5), en dat is goed voor resultaten die er al zijn. Waren er er nog géén —
+elke bibliotheek trager dan twee seconden, wat over WAN met twee servers niet exotisch is — dan gaf
+`loadMore` een snapshot met nul groepen die niet `isComplete` was, en dat tekent hoofdstuk 29 als
+"Deze bibliotheek is leeg", paginabreed. Niets haalde dat weg: het raster dat `onLoadMore` aanroept
+wordt pas gebouwd als er groepen zijn, en de bibliotheekset was niet veranderd dus er volgde geen
+herstart. Nu wacht `loadMore` in precies dat ene geval — niets gepopt, niets ooit gepopt, en een
+fetch nog onderweg — op de lopende fetch. E5 blijft heel: zodra er één item is om te tonen wacht er
+niets meer, en die grens staat als eigen test naast de fix. Onderweg bleek de eerste versie een
+tweede aanvraag voor dezelfde pagina uit te lokken; de cursors die tijdens dat wachten alsnog falen
+gaan nu op dezelfde manier op de "niet nog eens deze ronde"-lijst als na een gewone golf.
+
+**Het concurrencyplafond telde de verkeerde dingen.** Dezelfde genadeperiode laat een golf in de
+lucht, en de lus stapte per ronde een vaste `maxConcurrentFetches` op. Het aantal open verzoeken
+groeide dus met elke ronde. Het plafond meet nu wat er echt loopt.
+
+**`updateItem` haalde op een tweede server de verkeerde titel op.** Een backend-item-id is alleen
+binnen zijn eigen server uniek — twee Plex-servers nummeren allebei vanaf 1 — en de eigenaar werd
+gezocht door de zichtbare lijsten af te lopen op een kále id-match. De hele fase draait op
+`serverId:itemId`; dit pad was de uitzondering, en juist fase 9 heeft de multi-serverschermen eraan
+geknoopt. Film uitkijken op server A gaf zo een refetch van een ongerelateerde titel van server B, in
+de rij waar A's kaart stond: verkeerde titel, verkeerde artwork, verkeerde route bij de volgende
+Select. De eigenaar gaat nu mee en de match loopt over `globalKey`.
+
+**Twee tellingen die iets wegdeelden.** Een auth-foute membership viel uit álle drie de emmers van
+`resolveUnifiedActionTarget` — niet bruikbaar, en bewust niet uitstelbaar — dus "klaar op alle 1"
+terwijl een tweede server niets kreeg, en omdat dat als compleet leest zei de app helemaal niets. De
+emmer is nu de rest van de groep in plaats van een eigen conditie, waardoor elke membership in precies
+één emmer valt. Dezelfde soort stilte bij het cijfer: een membership op een backend zonder
+`userRating` werd overgeslagen zonder geteld te worden, en DEC-075's "bereikt wat het kan en meldt de
+rest" meldde dus niets.
+
+**En een die de verkeerde uitweg wees.** Is élke membership uitgelogd, dan zei de melding "geen bron
+bereikbaar" — hoofdstuk 14.7's tekst voor het offline geval, dat naar serverbeheer stuurt. De server
+is juist wél bereikbaar en wil dat je opnieuw inlogt. Er is een tweede blokkade bijgekomen die de
+woorden gebruikt die de bronkiezer voor dezelfde toestand al heeft, in alle vijftien talen. Een groep
+die half offline en half uitgelogd is houdt de algemene tekst: daar zijn het twee uitwegen.
+
+**De G7-poort werd op de hele groep gelezen.** Het commentaar erboven zegt "de *overlevende*
+kandidaten", de code rekende hem uit vóór tier 2. Een extended edition van een jaar geleden, die tier
+2 er allang uit had gegooid, zette daarmee nog steeds de progressietiers uit voor twee theatrical
+memberships: de winnaar viel terug op de volgorde van de map, en de kaart tekende een vinkje over een
+half uur echte kijkpositie. De poort leest nu de overlevers. Dat de groep twee versies bevat blijft
+gewoon gerapporteerd — dat is een feit over de groep, geen poort.
+
+**Een korte pagina die geen einde was.** `PleyaServerClient` wandelt door cursorpagina's tot het
+venster vol is, en stopte na tien pagina's ongeacht wat ze opleverden. Een server die vier per keer
+antwoordt gaf dus veertig items voor een venster van vijftig terwijl zijn cursor nog verder wees — en
+één laag hoger *is* een korte pagina het einde-van-de-bibliotheek-signaal (E8). De rest van die
+bibliotheek verscheen dus nooit, onder een `isComplete` die zei dat de catalogus af was. De grens telt
+nu vruchteloze pagina's: een pagina die iets bijdraagt zet hem terug.
+
+**Twee bevindingen waren geen defect.** Dat een trage bibliotheek achteraan aansluit in plaats van
+terug te sorteren is precies wat E14 vastlegt. En de attention-dot in de topnav stond op `Positioned`
+met een fysieke `right`, wat onder RTL de verkeerde hoek is; dat is dezelfde verwarring die DEC-072
+voor de hero-CTA's oploste en is nu richtinggevoelig, met een test die in beide richtingen meet.
+
+**Wat blijft staan, en waarom.** `search_screen.dart` leest de verborgen-bibliothekenset synchroon.
+`ensureInitialized()` afwachten hangt de zoekactie op zodra de opslag niet antwoordt — geprobeerd,
+zeven schermtests liepen in een `pumpAndSettle`-timeout — en dat is een ergere fout dan het smalle
+venster dat het zou dichten. Blijft staan met de redenering van de auteur. De Pleya Server-client
+filtert niet op `query.kind`, en dat is nu **B16** in het register: op te lossen door de cursorledger
+per kind te sleutelen, wat losstaand bewijs vraagt en niet in een bevroren protocolvenster hoort. De
+lokale-mapclient, waar dezelfde belofte gold en geen wire bestaat, filtert wél. En twee opruimpunten
+onderweg: een `_loadFailedFocusNode` die nergens aan hing, en een verouderd doc-blok boven
+`_fillBuffers` dat het tegenovergestelde beweerde van het blok eronder.
+
+**De visuele checkpoint over dezelfde boom leverde vier meldingen op, en geen ervan is een
+productdefect** — nagelopen in plaats van aangenomen. `intro_ident_dissolve.png` is byte-identiek aan
+`intro_ident_rest.png`, en dat ís het bewijs: DEC-077 zet onder het ident dezelfde tekening op
+dezelfde grond, dus halverwege de dissolve verandert er niets zichtbaars. Dat het écht halverwege is,
+staat als assertie op precies dat moment (`0 < overlayOpacity < 1`) en niet in het plaatje. De
+"Active"-pil in `focus_contrast_separator_light.png` is wit op bijna-wit, maar die pil is de
+controlegroep van de test zelf: het beeld gaat over de scheidingsschaduw van de *gefocuste* pil, en
+die staat er. De tofu in de detailgoldens staat als caveat in het testbestand zelf — `monoTheme`
+bouwt zijn `textTheme` uit `Typography.englishLike2021`, dat naar een familie wijst die deze app niet
+bundelt, terwijl de geometrie waar die goldens voor bestaan wél exact is. En de afgeknipte vierde
+bronrij in de picker is de rand van een scrollviewport.
+
+**Eén losse verbetering uit dezelfde audit.** `.ts` telde als HLS-fragment, dus een opgenomen
+uitzending op een niet-gemounte schijf las als "de transcoder loopt achter" in plaats van DEC-078's
+"Bestand niet beschikbaar". Een echt segmentprobleem noemt zijn playlist of het woord zelf.
+
+## [2026-09-02] De merkgenerator wordt deterministisch, en de laatste oude P is weg
+
+Twee changelogregels hierboven noemen hetzelfde defect en laten het allebei staan: een kale
+`gen_brand_assets.py`-run herschrijft zevenenveertig getrackte iconen die pixel-identiek blijven.
+Fase 9 heeft de generator zelf gewijzigd, dus het hoorde niet nóg een keer doorgeschoven te worden.
+Het besluit staat als DEC-079.
+
+**De oorzaak is de deflate-implementatie, niet een instelling.** Gemeten: IHDR gelijk, IDAT anders,
+`tobytes()` over alle zevenenveertig identiek. Sommige bestanden werden kleiner, andere groter — dat
+sluit een verschoven compressieniveau uit. Deze Pillow-wielen zijn gebouwd tegen **zlib-ng 2.3.3**,
+de omgeving die de getrackte assets schreef gebruikte stock zlib. De scheidslijn is in de historie
+exact te trekken: wat op 2 september in deze omgeving is geschreven blijft stabiel, wat van 19 en
+28 augustus op de Mac komt verschilt. Byte-identieke PNG-uitvoer is dus niet draagbaar te maken, en
+FreeType komt er nog bovenop — dat rastert de tagline, en dáár verschillen de pixels wél.
+
+**Dus is determinisme op de tekening gedefinieerd.** `save()` codeert naar geheugen, vergelijkt de
+pixels met wat er al staat, en schrijft alleen bij verschil; voor de multi-size `.ico` per subbeeld.
+De encoderinstellingen staan expliciet in plaats van op de Pillow-standaarden te leunen, en de
+canonieke omgeving staat gepind in `scripts/requirements-brand.txt`. Het script drukt bij het starten
+af waar het op draait. Bewijs: een schone tree na run #1 én run #2, ook met een afgekapte pipe. Geen
+enkel van de zevenenveertig bestanden is opnieuw gecommit en er is geen pixel veranderd.
+
+**De valkuil onderweg is de moeite waard.** De eerste versie zette de `print` van een overgeslagen
+bestand binnen de `try` om het decoderen. `BrokenPipeError` is een `OSError`, dus een `| head` viel
+stil door naar het schrijfpad en herschreef één icoon alsnog — precies het gedrag dat de wijziging
+moest wegnemen, en alleen zichtbaar omdat de tree daarna nog werd nagekeken.
+
+**En de laatste oude P is opgeruimd.** Een referentiegraaf over de hele boom vond drie fossielen. Een
+dood `wordmark_layers()` in de generator, geschaduwd door de echte, dat nog naar het handgemaakte
+lockup wees via een variabele die niet meer bestaat — weg. `assets/pleya.png`, het beeld bovenaan de
+repo — hergenereerd. En het echte gat: `pleya_web/static/brand/pleya-mark-{64,256}.png` stonden als
+handmatige `sips`-verkleining in een README en leverden aan `app.html`, `NavRail.svelte`,
+`+layout.svelte`, `login/` en `setup/` nog altijd de oude, handgemaakte P. Die twee staan nu in de
+generator, met dezelfde ondoorzichtige merkgrond en alleen de P van nu; het handmatige recept is uit
+de README gehaald. `assets/branding/pleya_mark.png` is daarmee de enige autoriteit voor de P, in de
+app en daarbuiten.
+
+**Register gereconcilieerd.** De standregels liepen achter op J19. De eindstand van fase 9 staat er nu
+als eigen alinea boven de tussenstanden: **180 van de 188 rijen `covered`**, acht open en allemaal
+geclassificeerd — vijf hardware (J2, J4, J8, J9, I17), twee geregistreerde debts (I21, I24) en één
+onopgelost productcontract (J14). Per categorie nageteld en niet overgeschreven.
+
+**Eén hardeningspunt geregistreerd, niet opgelost.** `pubspec.yaml` bundelt `assets/branding/` als
+map, dus `pleya_lettering.png`, `pleya_mark.png` en `pleya_wordmark.png` reizen mee in elke build
+zonder ooit getekend te worden — samen zo'n 2,6 MB. Dat is bundelhardening en geen productgedrag, dus
+het staat als fase-10A-punt onder hoofdstuk 27 en is hier bewust niet aangeraakt.
+
+## [2026-09-02] Bestand niet beschikbaar, en een melding die weer weggaat
+
+Twee klachten uit dezelfde avond, met dezelfde oorzaak eronder: de speler wist meer dan hij zei, en
+wat hij zei bleef staan. Het besluit staat als DEC-078.
+
+**De schijf was niet gemount, en de app zei "Afspelen gestopt".** Plex levert de metadata en de
+part-key ook uit als het bestand onbereikbaar is. De speler bouwde daar een URL van, mpv kreeg een 404
+terug en de gebruiker kreeg een kop zonder tekst eronder. De informatie was er wel: `checkFiles=1`
+zet `Part.accessible` en `Part.exists`, en `isPlayable` gebruikte dat al — maar alleen om een andere
+versie te kiezen. Waren ze állemaal onleesbaar, dan viel de keuze terug op de eerste en werd die
+alsnog geopend. `hasPlayableVersion` maakt dat nu opvraagbaar en de Plex-client weigert erop, met een
+eigen melding: "Bestand niet beschikbaar", met de regel dat de schijf of map waar het op staat er
+misschien niet meer is.
+
+**Eén logregel was te weinig om iets te concluderen.** ffmpeg logt de 404, mpv logt daaroverheen een
+algemene "Failed to open", en alleen die laatste bleef bewaard. De speler houdt nu de laatste vier
+fout-regels vast en classificeert ze samen. Daarbij is een 404 op het bestand losgetrokken van een 404
+op een segment of playlist: die eerste is een bestand dat er niet is, die tweede een transcoder die
+achterloopt, en ze stonden in dezelfde bak omdat het segmentpatroon eerder in de reeks kwam te staan.
+Jellyfin heeft geen vlag zoals Plex, dus daar is die logregel het enige bewijs dat er is.
+
+**Drie kaarten over een spelende video.** Een fout heeft in het meldingsysteem bewust geen looptijd,
+want een fout wil een handeling. Bij afspelen klopt dat niet: de speler is al weg voordat de kaart
+verschijnt, en op een tv klikt niemand hem weg. Drie mislukte pogingen lieten dus drie kaarten achter
+die over de video hingen die daarna wél startte. Afspeelmeldingen delen nu het groepsvoorvoegsel
+`playback:`, staan twaalf seconden, en verdwijnen zodra er beeld is. En een herhaalde blijvende
+melding telt op bij de kaart die er al staat — hetzelfde drie keer onder elkaar zeggen is geen
+informatie.
+
+**Wat de tests vastleggen.** Dat een 404 op een bestand iets anders is dan een 404 op een segment, dat
+een samengevoegde meerregelige log de 404 nog onder de algemene regel vindt, dat elke afspeelmelding
+een looptijd heeft en het groepsvoorvoegsel draagt, dat geen ruwe logregel de kaart haalt, dat
+`hasPlayableVersion` onwaar is als álle versies onleesbaar zijn en waar als de server geen vlaggen
+stuurde, en dat een blijvende melding buiten het dedupe-venster optelt in plaats van te stapelen.
+## [2026-09-02] Het ident is nu het lockup op de paginagrond, en verder niets
+
+Michel vroeg of de intro ook bij het nieuwe ontwerp kon passen. Dat kon, en de reden ging verder dan
+smaak: de bron van het ident noemde zichzelf "Netflix-style ident" — veertien roterende rode
+lichtstralen — en hoofdstuk 31 #10 verbiedt precies dat.
+
+**Drie merkmomenten die het niet eens waren.** tvOS-launch (zwart), daaroverheen het ident (zuiver
+zwart, 2800 ms, stralen, een 5x-inslag, een glansveeg, een rechthoekige rode gloed), en daaronder de
+bootsplash (warme radiale, ademende halo, de losse P plus "PLEYA" als gespatieerde tekst, dezelfde
+tagline op een andere spec). De cross-dissolve op 88% was de naad die je zag.
+
+**Wat er nu staat.** Eén grond — `#141414`, de paginagrond uit de north star, OLED zijn eigen zwart —
+zodat het ident oplost in een pagina van dezelfde kleur. Het lockup zet zich van 0,96 naar 1,0 op de
+focuscurve, staat even, en lost op; in en uit zijn elk de hero-crossfade van 460 ms. Achttienhonderd
+milliseconden in plaats van 2800. De tagline op de spec die de generator al voor de Top Shelf en de
+TV-banner hanteert, zodat het ident op het scherm hetzelfde beeld is als op de shelf. En de
+bootsplash tekent voortaan hetzelfde plaatje plus de voortgangslijn, dus na het oplossen ligt er niets
+anders onder. Staat als DEC-077.
+
+**Drie gebreken die meeliepen.** De lockuplagen werden nooit vooraf gedecodeerd, dus de eerste frames
+konden een lege grond tonen. Een afstandsbediening kon het ident niet overslaan — alleen een tik telde
+— dus een TV-kijker zat de volle run uit; Select, Enter, Escape en spatie doen het nu. En het ident had
+nul tests; er zijn er acht bij en twee goldens, waaronder één die het oplossen over de bootsplash
+vastlegt.
+
+Eén randgeval dat de tests boven water haalden: op exact de laatste milliseconde staat de waarde van de
+controller op 1 maar zijn status nog niet op `completed`, en de toetsafhandelaar hing aan die status.
+Hij kijkt nu naar de waarde, want het ident is weg zodra die 1 is, wat de status ook zegt.
+## [2026-09-02] De backend-badge is een bronglyph, en het merkrood blijft waar het hoort
+
+J19 stond sinds vanochtend als klasse C in het register — hij kwam uit het J18-werk van diezelfde
+dag. `BackendBadge` tekent vier glyphs uit één `switch`, en de Pleya-P was de enige die de meegegeven
+inkt liet liggen. De vraag eronder was niet
+technisch maar productmatig, en die is nu beantwoord in DEC-076.
+
+**Het antwoord, en waarom het niet met DEC-074 botst.** Een merk dat zegt *deze app is Pleya* houdt
+zijn kleur; een glyph die zegt *dit item komt van een Pleya-server* is bronnotatie en gedraagt zich
+als de tekst ernaast. De grens ligt bij de widget: `PleyaLogo` heeft geen kleurparameter en blijft
+rood, `BackendBadge` heeft er wel een en honoreert hem nu op alle vier de takken.
+`side_navigation_rail.dart` draagt allebei de regels in één scherm — een rode `PleyaLogo` in de kop,
+een gedempte badge in de serverrijen eronder.
+
+**De set was de eenheid, niet de tak.** `MediaBackend.local` is een kale Material-map en kan nooit
+iets anders dan inkt dragen, en de twee SVG's zijn als `currentColor` getekend, dus Plex-amber en
+Jellyfin-blauw waren hier allang opgegeven. Eén glyph die op tien tot achtentwintig pixels wél kleur
+voert leest niet als merk maar als toestand: rood is in dit thema progress en actief. Hoofdstuk 8.2
+noemt Pleya-rood voor "badges", maar dat gaat over de TV-oppervlakken, en juist daar komt deze widget
+niet voor — hoofdstuk 10.3 zegt over de kaart letterlijk "geen serverlogo's op de poster".
+
+**Een tweede gebrek in dezelfde drie regels, meegenomen omdat het geen besluit vraagt.** De badge
+tekende `pleya_mark.png`, de handgemaakte bron. De P staat daar op een alpha-bbox van
+(39, 128, 931, 938) binnen een kanvas van 1024x1024: 87% van de breedte, 79% van de hoogte, en een
+midden dat 27 pixels naar links en 22 pixels omlaag ligt. Naast twee SVG's die hun viewBox vullen
+tekende de Pleya-badge dus kleiner en scheef naast zijn buren, en hij trok er een tweede decode van
+1024x1024 bij voor een glyph van twaalf pixels. Hij tekent nu het gegenereerde `pleya_logo.png`,
+gecentreerd, 95% van zijn breedte vullend, en al in de image-cache omdat `PleyaLogo` het tekent.
+
+**Het bewijs staat op drie plekken omdat geen van de drie de andere twee ziet.** De widgettests lopen
+over `MediaBackend.values` in plaats van over de Pleya-tak, zodat een vijfde backend zonder tint hier
+ook omvalt. De assetinvarianten staan op de bytes, want `tester.getSize` geeft de doos terug die de
+`Image` kreeg en niet wat hij erin tekent — die assertie bleef in de negatieve controle dan ook
+groen. En de twee goldens leggen vast dat de inkt ook echt aankomt: een verkeerde blend mode is een
+gevuld vierkant, en dat is in geen van de andere twee tests zichtbaar.
+
+**Negatieve controle gedraaid.** Met de oude tak terug vallen precies de vijf Pleya-tests en allebei
+de goldens om, terwijl de dertien tests van de andere drie backends groen blijven.
+
+Daarmee gaat J19 van klasse C naar `covered`: 180 van de 188 registerrijen. Wat overblijft zijn de
+acht geclassificeerde — vijf hardwarerijen, twee geregistreerde debts en J14.
+
+## [2026-09-02] De P had een oudere tweelingbroer, en die is nu weg
+
+Michel keek naar het lichte beeld uit de vorige sessie en zag het meteen: dat is de P van het oude
+logo. Dat klopte, en het reikte verder dan de topnav.
+
+**Twee P's, en niets dat ze bij elkaar hield.** `pleya_wordmark.png` was handwerk en was achtergebleven
+bij `pleya_mark.png`: dichte donkere binnenvorm en flauwe rode snelheidslijnen, tegenover een open
+binnenvorm en amberkleurige lijnen. De generator heeft twee families — `mark_canvas()` bouwt uit de
+mark, `lockup()` bouwde uit de wordmark — en die liepen dus uiteen. Alles uit `lockup()` droeg de oude
+P: het tvOS-app-icoon, alle drie de Top Shelf-beelden, de Android TV-banner en het OG-beeld van de
+site. Alles uit `mark_canvas()` droeg de huidige: iOS, macOS, Android, Linux, Windows, favicon,
+`pleya_logo.png`. Uitgerekend het platform waar dit hele project over gaat liet de verouderde mark zien.
+
+**Het lockup wordt nu samengesteld in plaats van bewaard.** `pleya_mark.png` plus de belettering,
+volgens vastgelegde compositieparameters: dezelfde cap-height als het oude lockup, dezelfde 20px
+tussenruimte, dezelfde verticale uitlijning. De huidige mark is werkelijk breder (1,099 tegen 1,002) en
+wordt niet platgedrukt om binnen het oude kanvas te passen — dat groeit mee van 1452 naar 1516. De P
+bestaat daarmee nog op één plek en kan niet opnieuw los van zichzelf verouderen.
+
+**De vork is vervallen.** Die bestond om de drieëntwintig donkere goldens byte-identiek te houden, en
+een merkverversing verandert die sowieso. Dus geen twee codepaden meer: `PleyaWordmark` tekent altijd
+de twee lagen, de merklaag houdt altijd zijn eigen kleuren, en de belettering krijgt de inkt die de
+aanroeper meegeeft. De topbar geeft de themakleur mee; de introsplash niet, want die staat op zwart en
+daar hoort de belettering zijn eigen wit te houden — twee gebruiksmodi, geen twee implementaties.
+
+**Wat er onderweg nog uit kwam.** De huidige mark heeft een *doorzichtige* binnenvorm waar de oude er
+een dichtgeschilderde had. Dat is precies waarom hij op een themavlak werkt: de ondergrond schijnt
+erdoor. De oude zou ook na de J18-fix nog als donkere vlek op het lichte palet hebben gestaan, dus de
+verversing was niet alleen consistentie maar een voorwaarde.
+
+De splash sizede op `width: 340`. Met een breder kanvas zou dat het ident stilletjes hebben verkleind,
+dus hij gaat nu op hoogte — dezelfde hoogte die die breedte opleverde.
+
+**Bewijs.** De generator draait deterministisch: twee runs, veertien identieke outputs. De
+assetinvarianten zijn uitgebreid met een drift-guard die de P in het lockup vergelijkt met
+`pleya_mark.png` op een grof raster in plaats van op een bestandshash; met de oude P erin valt hij om
+op 19,7 tegen een drempel van 12, en de controle op de open binnenvorm valt daar apart naast om. Er is
+een bronbewaking bij zoals `PleyaLogo` die heeft: geen enkel ander bestand in `lib/` mag een
+lockup-asset noemen. Vierentwintig goldens hertekend en stuk voor stuk bekeken, plus het tvOS-icoon, de
+Top Shelf, de TV-banner en het OG-beeld. De iconen die al uit `pleya_mark.png` kwamen zijn met opzet
+teruggezet: die waren goed en hoeven niet mee te bewegen.
+
+Nog steeds omgevingsdrift, en nog steeds niet meegecommit: een kale generatorrun herschrijft
+zevenenveertig getrackte iconen die pixel-identiek blijven, omdat deze Pillow anders comprimeert dan
+die van de vorige run.
+
+## [2026-09-02] Het woordmerk op licht, en waarom de splitsing in het asset zit
+
+Fase 10A liet één ding bewust open: op het lichte thema verdween het Pleya-woordmerk in de TV-topnav.
+Dat is nu dicht, en het besluit eronder staat als DEC-074.
+
+**Het gebrek, gemeten.** De balk schildert zelf niets en staat op de paginagrond van `TvRootShell`,
+die op licht uitkomt op `#F2F2F3`. De witte "LEYA"-letters stonden daar op **1,12:1** — onzichtbaar —
+terwijl de rode P op 4,23:1 bleef staan. Hoofdstuk 8.2 wil daar twee dingen tegelijk die op één asset
+niet samengaan: donkere tekst, én Pleya-rood voor branddetails.
+
+**Waarom er toch geen `ColorFilter` in staat.** Die zin uit het register klopt nog steeds: geen filter
+hertint de letters zonder de mark mee te nemen. Hij is niet weerlegd maar omzeild. De twee kleuren
+blijken ruimtelijk uit elkaar te liggen — rood links, letters rechts, met een volledig transparante
+gang van kolom 659 tot 678 ertussen — dus `gen_brand_assets.py` schrijft nu twee lagen uit dezelfde
+handgemaakte bron. Op licht tekent de balk de mark ongetint en de letters op `MonoTokens.text`
+(16,88:1); op donker en OLED verandert er niets.
+
+**De valkuil die geen widgettest ziet.** De bron heeft een alpha-bbox van (0,1,1424,659) op een kanvas
+van 1452x659 — er zit dus transparante marge in die het beeld mee bepaalt, want de app tekent met
+`BoxFit.contain` op een vaste hoogte. Een laag die op zijn eigen bbox gecropt wordt krijgt een andere
+aspect ratio, daarmee een andere breedte, en dan schuift het lockup uit elkaar. Dat ziet er in review
+uit als een ontwerpfout, niet als een kapotte build. Beide lagen houden daarom het volle bronkanvas,
+en `test/assets/brand_wordmark_layers_test.dart` bewijst dat ze samen pixel voor pixel de bron zijn.
+
+**De vork is een keuze, geen slordigheid.** Eén pad voor alle thema's is netter, maar de letters dragen
+compressieruis: zo'n vijftienduizend ondoorzichtige pixels staan op 253-255 in plaats van zuiver wit.
+Ze op donker naar wit hertinten verschuift die onmerkbaar en maakt drieëntwintig donkere goldens
+ongeldig. Drieëntwintig referentiebeelden verversen om een verandering vast te leggen die niemand ziet
+is precies hoe een goldensuite zijn gezag verliest. Nu beweegt er één beeld, en de andere
+drieëntwintig zijn byte-identiek gebleven — dat is ook nagelopen en niet aangenomen.
+
+**De regressietest meet contrast, geen gelijkheid.** Een assertie dat de inkt gelijk is aan `tk.text`
+zou blijven staan als iemand er later een bleke constante van maakt. De test rekent daarom de
+contrastverhouding uit tegen dezelfde grond die `TvRootShell` eronder schildert. Negatieve controle
+gedraaid: met `_Wordmark` teruggezet op het onverdeelde bestand vallen precies de twee lichte tests om
+en blijven de eenentwintig andere groen.
+
+**Eén rij erbij.** Bij dit werk kwam `backend_badge.dart` boven water: de Pleya-tak van die `switch`
+tekent zijn mark kaal, terwijl de Plex- en Jellyfin-buren wél de inktkleur krijgen en `local` ook. Hij
+blijft leesbaar op licht — hij is rood, niet wit — dus dat is een consistentievraag en geen
+leesbaarheidsbug, en die is niet meegenomen. Staat als **J19**, klasse C. Register daarmee op 179 van
+188 `covered`.
+
+Onderweg nog iets waar niets aan gedaan is: een kale `gen_brand_assets.py`-run herschrijft
+zevenenvijftig getrackte bestanden, waarvan drieënvijftig pixel-identiek zijn en drie tvOS-icoonlagen
+echt verschillen — in de taglinestrook, dus font-rasterisatie tussen Pillow-versies. Dat is
+omgevingsdrift en niet van deze wijziging, dus alleen de twee nieuwe assets zijn blijven staan.
+
+## [2026-09-01] Fase 10A: de ontwikkelpoort eruit, en het lichte thema laat iets zien
+
+Laatste automatische fase van Pleya Unified TV 2026. Geen hardware, geen simulator, geen TestFlight —
+dat is Final, en die staat expres nog open.
+
+**De ontwikkelpoort is weg.** `DevFlags.tvUnifiedExperience` stond er sinds fase 0 en was al dood:
+buiten zijn eigen rij in de Debug-sectie las niets hem nog, want `MainScreen` kiest sinds fase 7 de
+TV-shell onvoorwaardelijk. `lib/config/` is daarmee ook verdwenen — dat ene bestand was de hele map.
+Belangrijker dan de verwijdering is wat eronder is komen te staan: een architectuurtest die vastlegt
+dat er geen poort terugkomt, dat Instellingen geen schakelaar tussen de shells aanbiedt, en dat de
+TV-tak vóór de zijbalktak wordt beslist. Die laatste heeft een negatieve controle nodig en heeft er
+een, want een TV *is* ook een zijbalkoppervlak — houdt dat ooit op, dan is de volgordeassertie zinloos
+en moet ze omvallen in plaats van groen blijven. Rood→groen bewezen door de poort tijdelijk terug te
+zetten: drie van de vijf assertions vielen om. Staat als DEC-073.
+
+**Hoofdstuk 29 had nog vijf scenario's zonder deterministische uitvoer.** Drie zijn een golden
+geworden — Home op het lichte palet, Home met een hero die alleen een poster heeft, en Mijn Pleya met
+élke conditionele tegel aan. Twee bewust niet: `single-server` en `reduce-motion` kwamen byte-identiek
+uit de bus met `default`, en dit bestand droeg die les al (de long-locale golden die nooit kon falen).
+Ze zijn een assertie geworden die dat wél kan — geen bron die zich als meerdere voordoet, en een
+billboard dat stilstaat onder Reduce Motion en beweegt zonder, uit dezelfde fixture.
+
+**Twee dingen die de nieuwe beelden zelf aan het licht brachten.** Het volle Mijn Pleya-hub past niet
+op het tvOS-canvas: drie groepen, en de onderste rij loopt van het scherm. Dat is geen fout — de pagina
+scrollt — maar geen enkele test liep tot dan een hub die overloopt, dus staat er nu een die de
+laatste tegel opzoekt en controleert dat hij ook echt in beeld komt. Op 1280x720 past de pagina nog
+wel, dus die test draait op het echte canvas uit DEC-028; op de default-maat had hij niets bewezen.
+
+Het tweede is een echte bevinding en blijft open: **op het lichte thema verdwijnt het woordmerk.** De
+letters in `pleya_wordmark.png` zijn wit en de topnav tekent dat bestand ongewijzigd, dus rechtsboven
+blijft alleen de rode P-mark over. Bereikbaar zonder iets bijzonders te doen, want het lichte thema is
+een gewone instelling en volgt onder `system` de appearance van het toestel. Er staat geen fix onder,
+en dat is een keuze: het is één PNG met twee kleuren erin — witte letters plus de mark die volgens
+hoofdstuk 8.2 juist rood hoort te blijven — en geen `ColorFilter` hertint het ene zonder het andere.
+Elke oplossing is dus een merkbeslissing die geen hoofdstuk, DEC of north-starbeeld dekt; alle acht
+referentiebeelden zijn donker. Registerrij **J18**, klasse C, naast J14.
+
+Register staat daarmee op 178 van 187 `covered`. Fase 10A heeft geen enkele rij van `open` naar
+`covered` bewogen, en dat hoort ook zo: fase 9 had het register al gesloten, dit was harding erop.
+Wat openblijft is vijf hardwarerijen, twee geregistreerde debts en twee onopgeloste productcontracten.
 ## [2026-08-29] Pleya Verify: de reviewbevindingen na Fase 10 dicht
 
 Twee onafhankelijke adversariële reviews over de branch-diff vonden elf defecten. De zwaarste zes

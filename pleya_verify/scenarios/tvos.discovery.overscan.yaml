@@ -1,0 +1,62 @@
+name: tvos.discovery.overscan
+target: tvos-sim
+# J4, in part: a focused tile's ring stays inside the page's own title-safe rect
+# at both ends of a rail.
+#
+# **This does not close J4, and is not offered as doing so.** The register puts
+# J4 in class A, "only determinable on real hardware", and that stays true:
+# proving the ring is inside the safe area the *app draws* is a different claim
+# from proving a physical panel does not overscan past it. What this removes is
+# the half that is software — a ring flush against the viewport edge, which is
+# what the rail did before P9 — so the hardware pass is left with the question
+# only hardware can answer.
+#
+# `discover.safe_area` is registered *inside* the landing's insets, so its rect
+# is the inner box. Hung on the outer padding instead it would measure the whole
+# viewport, and `notClipped` against it would be true for anything on screen.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  - press: right
+  - settle: 800
+  - press: select
+  - wait_until: {id: "discover.rail[0]", timeout: 20000}
+  - settle: 2500
+
+  # Down twice: the bar hands the remote to the page header (hoofdstuk 7.1),
+  # the header hands it to the first rail's current tile.
+  - press: down
+  - settle: 1000
+  - press: down
+  - settle: 1500
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
+
+  # The left end. The tile is expanded here — 16:9 rather than 2:3 — so this is
+  # the widest the leading tile ever is, and the ring gap is inside the measured
+  # rect (`FocusableWrapper`'s box is the artwork plus `cardFocusRingGap` on
+  # every side).
+  - assert: {id: "discover.rail.item[0.0]", notClipped: discover.safe_area}
+  - snapshot: discovery-overscan-left
+
+  # Walk right until the rail has to scroll. This is the case P9 fixed: the rail
+  # has no `ensureVisible` of its own and Flutter's traversal measures a tile at
+  # its *resting* width, so the expansion used to run off the right edge.
+  - press: right
+  - settle: 700
+  - press: right
+  - settle: 700
+  - press: right
+  - settle: 700
+  - press: right
+  - settle: 700
+  - press: right
+  - settle: 1200
+  - assert: {id: "discover.rail.item[0.5]", focused: true}
+  - assert: {id: "discover.rail.item[0.5]", notClipped: discover.safe_area}
+  - snapshot: discovery-overscan-right

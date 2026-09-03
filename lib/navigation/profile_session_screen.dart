@@ -23,11 +23,14 @@ import '../providers/multi_server_provider.dart';
 import '../providers/playback_state_provider.dart';
 import '../providers/seerr_provider.dart';
 import '../providers/tautulli_provider.dart';
+import '../providers/tv_discovery_landing_provider.dart';
+import '../providers/tv_home_projection_provider.dart';
 import '../profiles/plex_home_service.dart';
 import '../profiles/plex_self_account.dart';
 import '../providers/now_watching_provider.dart';
 import '../providers/trakt_account_provider.dart';
 import '../providers/trackers_provider.dart';
+import '../providers/unified_catalogs.dart';
 import '../providers/user_profile_provider.dart';
 import '../providers/watch_state_store.dart';
 import '../database/app_database.dart';
@@ -235,6 +238,29 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   multiServer: context.read<MultiServerProvider>(),
                 ),
               ),
+              // Fase 3's lifecycle owner for the unified catalogs, holding the
+              // two hoofdstuk 10.1 defines: Films and Series. Profile-scoped
+              // like LibrariesProvider/HiddenLibrariesProvider above —
+              // hoofdstuk 22 requires unified providers to be disposed on
+              // profile switch, which this KeyedSubtree does for free once
+              // `dispose:` fans out to the catalogs that were built.
+              //
+              // Lazy twice over: this object is not created until something
+              // reads it, and neither catalog is created until something asks
+              // for it by name, so a Films-only session never builds a Series
+              // merge. Neither one opens a connection before a screen calls
+              // `ensureStarted()`. A plain Provider rather than a
+              // ChangeNotifierProvider because the notifiers are the two
+              // catalogs inside, which screens listen to individually.
+              Provider<UnifiedCatalogs>(
+                create: (context) => UnifiedCatalogs(
+                  multiServer: context.read<MultiServerProvider>(),
+                  libraries: context.read<LibrariesProvider>(),
+                  hiddenLibraries: context.read<HiddenLibrariesProvider>(),
+                ),
+                dispose: (_, catalogs) => catalogs.dispose(),
+                lazy: true,
+              ),
               // On-device recommendation learning + serving, scoped to this
               // profile (torn down with the KeyedSubtree on profile switch).
               Provider<RecommendationService>(
@@ -323,6 +349,31 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                     recommendations: activeId == null ? null : context.read<RecommendationService>(),
                   );
                 },
+              ),
+              // Fase 6 (hoofdstuk 10.2a, DEC-064): the Films/Series landing
+              // projection. Reads the same `DiscoverProvider` Home already
+              // fetches through — never a second fetch of hubs/on-deck — and
+              // is torn down with this same profile subtree, like
+              // `UnifiedCatalogs` above.
+              ChangeNotifierProvider(
+                create: (context) => TvDiscoveryLandingProvider(
+                  discover: context.read<DiscoverProvider>(),
+                  multiServer: context.read<MultiServerProvider>(),
+                ),
+                lazy: true,
+              ),
+              // Fase 6 (hoofdstuk 9.5): the Home hero's candidate data —
+              // sibling of `TvDiscoveryLandingProvider` above, same reasoning.
+              // Reads the same `DiscoverProvider` Home already fetches
+              // through; presentation stays fase 8's.
+              ChangeNotifierProvider(
+                create: (context) => TvHomeProjectionProvider(
+                  discover: context.read<DiscoverProvider>(),
+                  multiServer: context.read<MultiServerProvider>(),
+                  continueWatchingTitle: t.discover.continueWatching,
+                  latestMoviesTitle: t.discover.recentlyReleased,
+                ),
+                lazy: true,
               ),
               ChangeNotifierProvider(create: (_) => WatchlistStore()..bindProfile(activeId)),
               // The kijklijst is rebuilt per profile: its sources, its cache

@@ -98,4 +98,70 @@ void main() {
       expect(compositeOver(saturated, src), saturated, reason: 'over a saturated colour at ($x,$y)');
     }
   });
+
+  /// The badge half of [DEC-076]. `BackendBadge` draws this asset in a fixed
+  /// `size x size` box beside the Plex chevron and the Jellyfin mark, both of
+  /// which fill their own viewBox edge to edge. It used to draw the hand-made
+  /// `pleya_mark.png` source instead, whose P sits at an alpha bbox of
+  /// (39, 128, 931, 938) on a 1024x1024 canvas: it fills 87% of the width and
+  /// 79% of the height, and its centre sits 27px left of and 22px below the
+  /// canvas centre. In a row of glyphs that reads as a Pleya badge drawn
+  /// smaller and off-centre next to its neighbours, and no widget test can see
+  /// it — the `Image` still reports the box it was given, whatever it paints
+  /// inside.
+  ///
+  /// So the invariants live here, on the bytes `gen_brand_assets.py` writes.
+  group('the mark is badge-shaped: centred on its own canvas and filling it', () {
+    late int left;
+    late int right;
+    late int top;
+    late int bottom;
+
+    setUpAll(() {
+      left = width;
+      right = -1;
+      top = height;
+      bottom = -1;
+      for (var y = 0; y < height; y++) {
+        for (var x = 0; x < width; x++) {
+          if (alphaAt(x, y) <= 8) continue;
+          if (x < left) left = x;
+          if (x > right) right = x;
+          if (y < top) top = y;
+          if (y > bottom) bottom = y;
+        }
+      }
+    });
+
+    test('the canvas is square, so a square badge box crops nothing', () {
+      expect(width, height, reason: 'a non-square canvas letterboxes under BoxFit.contain');
+    });
+
+    test('the mark is centred within a pixel or two on both axes', () {
+      // Not "equal": `mark_canvas` centres with integer division, so one side
+      // may carry a single pixel more than the other. Two is the honest bound;
+      // the hand-made source's margins differ by 53px horizontally and 43px
+      // vertically.
+      expect(
+        (left - (width - 1 - right)).abs(),
+        lessThanOrEqualTo(2),
+        reason: 'horizontal padding, l=$left r=${width - 1 - right}',
+      );
+      expect(
+        (top - (height - 1 - bottom)).abs(),
+        lessThanOrEqualTo(2),
+        reason: 'vertical padding, t=$top b=${height - 1 - bottom}',
+      );
+    });
+
+    test('the mark fills at least 90% of its canvas on the axis it is widest in', () {
+      final fill = ((right - left + 1) / width).clamp(0.0, 1.0);
+      final fillY = ((bottom - top + 1) / height).clamp(0.0, 1.0);
+      expect(
+        fill > fillY ? fill : fillY,
+        greaterThanOrEqualTo(0.90),
+        reason: 'a badge that fills $fill x $fillY of its box reads as smaller than its neighbours',
+      );
+    });
+  });
 }

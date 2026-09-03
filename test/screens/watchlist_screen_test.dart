@@ -1,5 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:pleya/database/app_database.dart';
@@ -13,7 +14,10 @@ import 'package:pleya/media/watchlist_source.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/offline_mode_provider.dart';
 import 'package:pleya/providers/watchlist_provider.dart';
+import 'package:pleya/mixins/refreshable.dart';
+import 'package:pleya/navigation/main_screen_scope.dart';
 import 'package:pleya/screens/watchlist_screen.dart';
+import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
@@ -27,6 +31,7 @@ import 'package:pleya/widgets/media_card_grid_layout.dart';
 import 'package:pleya/widgets/focusable_filter_chip.dart';
 import 'package:pleya/widgets/watchlist_sort_sheet.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
+import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:pleya/widgets/watchlist_card.dart';
 
 import '../test_helpers/prefs.dart';
@@ -115,6 +120,12 @@ void main() {
   late WatchlistProvider provider;
   late _StubSource source;
 
+  /// The key the fase-7 shell hangs on this screen, so `screenKey.currentState`
+  /// resolves to the `FocusableTab` it is supposed to. Kijklijst had none: the
+  /// route made a `GlobalKey` and handed it to nothing, so the shell's
+  /// `focusActiveTabIfReady` was a call into null for this section (P5).
+  final watchlistKey = GlobalKey<State<WatchlistScreen>>();
+
   // A notice keeps an auto-dismiss timer, and the test framework fails a test
   // that leaves one pending.
   tearDown(resetNotices);
@@ -136,7 +147,13 @@ void main() {
     bool offline = false,
     bool serversOnline = false,
     TextScaler? textScaler,
+    bool tv = false,
+    VoidCallback? focusSidebar,
   }) async {
+    if (tv) {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+    }
     source = _StubSource(entries);
     provider = WatchlistProvider(
       snapshots: WatchlistSnapshotStore(cache: PlexApiCache.instance),
@@ -181,7 +198,18 @@ void main() {
             // showModalBottomSheet fallback, where a plain Navigator.pop is
             // correct -- which is exactly why the sort sheet could pop the whole
             // screen in the app while these tests stayed green.
-            child: const OverlaySheetHost(child: WatchlistScreen()),
+            child: OverlaySheetHost(
+              child: MainScreenFocusScope(
+                focusSidebar: focusSidebar ?? () {},
+                focusContent: () {},
+                isSidebarFocused: false,
+                sideNavigationWidth: 0,
+                foregroundLeft: 0,
+                foregroundWidth: 1280,
+                viewportWidth: 1280,
+                child: WatchlistScreen(key: watchlistKey),
+              ),
+            ),
           ),
         ),
       ),
@@ -691,6 +719,190 @@ void main() {
       await pick(tester, t.watchlist.sortTitle);
 
       expect(cardOrder(tester), ['a', 'b', 'c']);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // P5: the kijklijst is operable with a remote
+  // ---------------------------------------------------------------------------
+
+  group('TV focus (P5)', () {
+    List<WatchlistEntry> sixFilms() => [
+      for (final id in ['a', 'b', 'c', 'd', 'e', 'f']) entry(key: id, title: 'Film ${id.toUpperCase()}'),
+    ];
+
+    FocusNode nodeFor(WidgetTester tester, String key) => tester
+        .widgetList<WatchlistCard>(find.byType(WatchlistCard))
+        .firstWhere((card) => card.entry.key == key)
+        .focusNode!;
+
+    testWidgets('every card carries a focus node, keyed on the entry', (tester) async {
+      // Four stacked causes made this screen unusable with a remote, and this is
+      // the last of them: `WatchlistCard` accepted a `focusNode` and a `key` and
+      // the call site passed neither, so there was nothing programmatically
+      // focusable on the page at all.
+      await pumpScreen(tester, sixFilms(), tv: true);
+
+      final cards = tester.widgetList<WatchlistCard>(find.byType(WatchlistCard)).toList();
+      expect(cards, isNotEmpty);
+      expect(cards.every((card) => card.focusNode != null), isTrue);
+      expect(cards.every((card) => card.key == ValueKey(card.entry.key)), isTrue);
+      expect(
+        cards.map((c) => c.focusNode).toSet(),
+        hasLength(cards.length),
+        reason: 'one node per entry, never one node reused by position',
+      );
+    });
+
+    testWidgets('the shell can put the focus on the grid, and it lands on a card', (tester) async {
+      await pumpScreen(tester, sixFilms(), tv: true);
+
+      // Exactly what `MainScreen._focusContent` does once the route has a key.
+      final state = watchlistKey.currentState;
+      expect(state, isA<FocusableTab>(), reason: 'the screen has to answer the shell at all');
+      (state! as FocusableTab).focusActiveTabIfReady();
+      await tester.pumpAndSettle();
+
+      expect(nodeFor(tester, 'a').hasFocus, isTrue);
+    });
+
+    testWidgets('LEFT and RIGHT walk the row deterministically', (tester) async {
+      await pumpScreen(tester, sixFilms(), tv: true);
+      nodeFor(tester, 'a').requestFocus();
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      expect(nodeFor(tester, 'b').hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(nodeFor(tester, 'a').hasFocus, isTrue);
+    });
+
+    testWidgets('LEFT off the first column is a guaranteed way back to the bar', (tester) async {
+      var exits = 0;
+      await pumpScreen(tester, sixFilms(), tv: true, focusSidebar: () => exits++);
+      nodeFor(tester, 'a').requestFocus();
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(exits, 1, reason: 'on the TV shell the sidebar *is* the top navigation');
+    });
+
+    testWidgets('UP from the first row reaches this page\'s header', (tester) async {
+      await pumpScreen(tester, sixFilms(), tv: true);
+      nodeFor(tester, 'a').requestFocus();
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'watchlistFilterBar',
+        reason: 'the filter bar is the header here — there is no other chrome above the grid',
+      );
+    });
+
+    testWidgets('Select on the focused card opens that card\'s sheet', (tester) async {
+      await pumpScreen(tester, sixFilms(), tv: true);
+      nodeFor(tester, 'c').requestFocus();
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Film C'), findsWidgets, reason: 'the sheet is about the card the remote was on');
+    });
+
+    testWidgets('an availability flip keeps the focus on the card it happened to', (tester) async {
+      // The card swaps widget *type* when a lookup lands — `WatchlistUnavailableCard`
+      // becomes `FocusableMediaCard` — so the `Focus` holding the node is
+      // unmounted and a new one mounted in the same pass. The node survives
+      // because the screen owns it; the focus is re-requested because a detached
+      // node does not get it back on its own.
+      final entries = sixFilms();
+      await pumpScreen(tester, entries, tv: true, serversOnline: true);
+      nodeFor(tester, 'b').requestFocus();
+      await tester.pumpAndSettle();
+      expect(nodeFor(tester, 'b').hasFocus, isTrue);
+
+      await tester.runAsync(() => provider.resolveAllUnknown());
+      await tester.pumpAndSettle();
+
+      expect(nodeFor(tester, 'b').hasFocus, isTrue, reason: 'the viewer did not move, so neither does the ring');
+    });
+
+    testWidgets('removing the card the remote is on leaves the remote on a card', (tester) async {
+      // The same shape as Samen Kijken's recent rooms, one screen over: the
+      // viewer opens the sheet on the card they are standing on and removes
+      // it. `_reconcile` disposes that node on the next build, the `Focus`
+      // holding it is unmounted, and nothing claims the focus afterwards — so
+      // the page keeps it with no item on it, which on tvOS is a grid you can
+      // neither move within nor leave, because the engine claims every press
+      // before UIKit's responder chain sees it.
+      await pumpScreen(tester, sixFilms(), tv: true);
+      nodeFor(tester, 'c').requestFocus();
+      await tester.pumpAndSettle();
+      expect(nodeFor(tester, 'c').hasFocus, isTrue);
+
+      // The real route: Select opens the sheet, Remove is picked there.
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(t.watchlist.remove));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widgetList<WatchlistCard>(find.byType(WatchlistCard)).any((c) => c.entry.key == 'c'),
+        isFalse,
+        reason: 'the card is gone, which is the precondition for the trap',
+      );
+      final onACard = tester
+          .widgetList<WatchlistCard>(find.byType(WatchlistCard))
+          .any((c) => c.focusNode?.hasPrimaryFocus ?? false);
+      expect(onACard, isTrue, reason: 'the remote must still be on a card that exists');
+      expect(
+        nodeFor(tester, 'd').hasPrimaryFocus,
+        isTrue,
+        reason: 'the slot is kept, so the card that slid up into the empty cell takes the ring',
+      );
+    });
+
+    testWidgets('removing the last card falls back to the header rather than nothing', (tester) async {
+      await pumpScreen(tester, [entry(key: 'a', title: 'Film A')], tv: true);
+      nodeFor(tester, 'a').requestFocus();
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(t.watchlist.remove));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(WatchlistCard), findsNothing);
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'watchlistFilterBar',
+        reason: 'an empty grid still has a header, and that is where the remote belongs',
+      );
+    });
+
+    testWidgets('the TV grid uses the shared TV portrait geometry, not the density setting', (tester) async {
+      // P6's other half. Kijklijst ran on `MediaGridGeometry` + `GridSizeCalculator`,
+      // driven by `SettingsService.libraryDensity` — which is why its posters
+      // were a different size from every other TV surface.
+      tester.view.physicalSize = const Size(1038, 584);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await pumpScreen(tester, sixFilms(), tv: true);
+
+      final grid = TvCatalogGrid.forWidth(1038, scale: 0.85);
+      final card = tester.widgetList<WatchlistCard>(find.byType(WatchlistCard)).first;
+      expect(card.width, closeTo(grid.cardWidth, 0.01));
     });
   });
 }

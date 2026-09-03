@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../navigation/tv/tv_nested_back_owner.dart';
 import '../utils/platform_detector.dart';
 import 'dpad_navigator.dart';
 
@@ -87,6 +88,24 @@ KeyEventResult handleBackKeyAction(KeyEvent event, VoidCallback onBack) {
     return KeyEventResult.handled;
   }
   return KeyEventResult.ignored;
+}
+
+/// A back handler whose [onBack] moves the focus *within* the current screen
+/// rather than leaving it — "step up to the chrome", "return to the tab
+/// strip".
+///
+/// Identical to [handleBackKeyAction], except that it stands down inside a TV
+/// nested route, where the shell owns the whole back chain. Without that, the
+/// first such handler in the focus path answers `handled`, Flutter stops
+/// walking ancestors, and the shell's `popNested` step never runs: the section
+/// cannot be left at all. See [TvNestedBackOwner] for the case that proved it.
+///
+/// Use this wherever `onBack` is a focus move. Keep [handleBackKeyAction] for
+/// a real dismissal — a dialog, a sheet, an overlay — which is exactly the
+/// thing that *should* consume Back before anything above it does.
+KeyEventResult handleBackKeyFocusMove(BuildContext context, KeyEvent event, VoidCallback onBack) {
+  if (TvNestedBackOwner.of(context)) return KeyEventResult.ignored;
+  return handleBackKeyAction(event, onBack);
 }
 
 KeyEventResult handleBackKeyNavigation<T>(BuildContext context, KeyEvent event, {T? result}) {

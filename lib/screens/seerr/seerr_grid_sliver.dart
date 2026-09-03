@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../focus/focus_theme.dart';
 import '../../models/seerr/seerr_media.dart';
 import '../../services/settings_service.dart';
+import '../../utils/layout_constants.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/media_grid_delegate.dart';
 import '../../widgets/seerr_poster_card.dart';
@@ -22,11 +23,19 @@ Widget buildSeerrGridSliver({
   bool loadingMore = false,
   VoidCallback? onLoadMore,
   FocusNode? firstItemFocusNode,
+  VoidCallback? onExitLeft,
+  VoidCallback? onExitTop,
 }) {
   final isTv = PlatformDetector.isTV();
   final topPad = isTv ? 8.0 + seerrGridFocusTopPad : 8.0;
+  // One left margin on the page, not three (P7). The horizontal 8 here was the
+  // worst of the three this screen used: the search field and the filter bar
+  // above both sit on `TvLayoutConstants.horizontalInset`, so on TV the results
+  // grid started 64 logical pixels to their left — inside the overscan band,
+  // and visibly out of line with everything above it. Off TV nothing changes.
+  final sideInset = isTv ? TvLayoutConstants.horizontalInset : 8.0;
   return SliverPadding(
-    padding: EdgeInsets.fromLTRB(8, topPad, 8, 24),
+    padding: EdgeInsets.fromLTRB(sideInset, topPad, sideInset, 24),
     sliver: SettingsBuilder(
       prefs: const [SettingsService.libraryDensity],
       builder: (context) {
@@ -65,6 +74,13 @@ Widget buildSeerrGridSliver({
                   width: w,
                   focusNode: index == 0 ? firstItemFocusNode : null,
                   onTap: () => onTap(media),
+                  // A guaranteed way out of the grid's top-left corner. Left
+                  // from the first column reaches the top navigation, up from
+                  // the first row reaches the search field above — neither of
+                  // which the default geometric policy could be relied on to
+                  // find (P7).
+                  onNavigateLeft: index % cols == 0 ? onExitLeft : null,
+                  onNavigateUp: index < cols ? onExitTop : null,
                 );
               }, childCount: items.length + (hasMore ? 1 : 0)),
             );

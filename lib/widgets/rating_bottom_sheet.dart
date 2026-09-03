@@ -31,9 +31,30 @@ import 'clickable_cursor.dart';
 class RatingBottomSheet extends StatefulWidget {
   final MediaItem item;
   final MediaServerClient? serverClient;
+
+  /// The rating as the *display* wants it: the `-1` clear sentinel arrives
+  /// here flattened to 0, because no chip shows "minus one star".
   final ValueChanged<double>? onServerRatingChanged;
 
-  const RatingBottomSheet({super.key, required this.item, required this.serverClient, this.onServerRatingChanged});
+  /// The raw value handed to [MediaServerClient.rate], sentinel and all.
+  ///
+  /// Separate from [onServerRatingChanged] because that one is lossy in
+  /// exactly the way a second writer cannot afford: it reports 0 both for "I
+  /// cleared my rating" and for "I disliked this", and Plex stores those as
+  /// nothing and as 0/10 respectively. A mirror fed the display value would
+  /// turn every clear into a zero on every other server (hoofdstuk 13.8).
+  ///
+  /// Fires only after the write to [serverClient] returned, so a listener may
+  /// treat it as proof the origin landed.
+  final ValueChanged<double>? onServerRatingWritten;
+
+  const RatingBottomSheet({
+    super.key,
+    required this.item,
+    required this.serverClient,
+    this.onServerRatingChanged,
+    this.onServerRatingWritten,
+  });
 
   @override
   State<RatingBottomSheet> createState() => _RatingBottomSheetState();
@@ -447,6 +468,7 @@ class _RatingBottomSheetState extends State<RatingBottomSheet> {
       _serverRating = rating;
       _serverStars = value;
       widget.onServerRatingChanged?.call(rating);
+      widget.onServerRatingWritten?.call(rating);
     });
   }
 
@@ -458,6 +480,7 @@ class _RatingBottomSheetState extends State<RatingBottomSheet> {
       _serverStars = 0;
       _serverLike = null;
       widget.onServerRatingChanged?.call(0);
+      widget.onServerRatingWritten?.call(-1);
     });
   }
 
@@ -475,6 +498,7 @@ class _RatingBottomSheetState extends State<RatingBottomSheet> {
       _serverLike = selected;
       _serverRating = rating;
       widget.onServerRatingChanged?.call(_serverRating);
+      widget.onServerRatingWritten?.call(rating);
     });
   }
 
@@ -585,6 +609,7 @@ class _RatingBottomSheetState extends State<RatingBottomSheet> {
         final rating = _serverStars <= 0 ? -1.0 : _serverStars * 2.0;
         await client.rate(widget.item, rating);
         widget.onServerRatingChanged?.call(rating < 0 ? 0 : rating);
+        widget.onServerRatingWritten?.call(rating);
         return;
       }
 
@@ -592,6 +617,7 @@ class _RatingBottomSheetState extends State<RatingBottomSheet> {
       final rating = selected == null ? -1.0 : (selected ? 10.0 : 0.0);
       await client.rate(widget.item, rating);
       widget.onServerRatingChanged?.call(rating < 0 ? 0 : rating);
+      widget.onServerRatingWritten?.call(rating);
     } catch (e) {
       appLogger.w('Failed to update rating after sheet close', error: e);
     }

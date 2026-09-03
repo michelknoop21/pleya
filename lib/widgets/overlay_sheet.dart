@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -53,15 +54,17 @@ class OverlaySheetController {
   /// Show a sheet with [builder] content. Returns a Future that completes
   /// when the sheet is closed (with an optional result).
   ///
-  /// [alignment] controls where the sheet appears. Defaults to
-  /// [Alignment.bottomCenter]. Use [Alignment.topCenter] to anchor at the top.
+  /// [alignment] controls where the sheet appears. Leave it out and the host
+  /// picks: [Alignment.bottomCenter] off TV, and the centred 10-foot panel on
+  /// a television. Naming one is a statement that this surface belongs at that
+  /// edge, and it is honoured on every platform including TV (OVR2).
   Future<T?> show<T>({
     required WidgetBuilder builder,
     BoxConstraints? constraints,
     Color? backgroundColor,
     bool barrierDismissible = true,
     FocusNode? initialFocusNode,
-    Alignment alignment = Alignment.bottomCenter,
+    Alignment? alignment,
     bool showDragHandle = false,
     OverlaySheetPresentation presentation = OverlaySheetPresentation.sheet,
   }) {
@@ -109,10 +112,27 @@ class OverlaySheetController {
     bool barrierDismissible = true,
     bool isScrollControlled = false,
     FocusNode? initialFocusNode,
-    Alignment alignment = Alignment.bottomCenter,
+    Alignment? alignment,
     bool showDragHandle = false,
     OverlaySheetPresentation presentation = OverlaySheetPresentation.sheet,
+    bool restoreLauncherFocus = false,
   }) {
+    if (restoreLauncherFocus) {
+      return _withLauncherFocusRestore(
+        () => showAdaptive<T>(
+          context,
+          builder: builder,
+          constraints: constraints,
+          backgroundColor: backgroundColor,
+          barrierDismissible: barrierDismissible,
+          isScrollControlled: isScrollControlled,
+          initialFocusNode: initialFocusNode,
+          alignment: alignment,
+          showDragHandle: showDragHandle,
+          presentation: presentation,
+        ),
+      );
+    }
     final controller = maybeOf(context);
     if (controller != null) {
       return controller.show<T>(
@@ -147,6 +167,38 @@ class OverlaySheetController {
       barrierColor: Colors.black54,
       isScrollControlled: isScrollControlled,
     );
+  }
+
+  /// Runs [show] with the launcher's focus captured up front and handed back
+  /// once the surface is gone.
+  ///
+  /// An overlay sheet is not a route, so nothing pops focus back for it. Every
+  /// remote-driven launcher — a header action opening a filter panel, a card
+  /// opening the source picker — needs the same three-line dance, and the
+  /// version that lived inside `showUnifiedSourcePicker` was about to be copied
+  /// a second and third time. It lives here instead, opt-in so no existing
+  /// pointer-driven caller changes behaviour (hoofdstuk 14.4's "annuleren
+  /// herstelt exacte kaart of CTA", generalised in fase 5A).
+  ///
+  /// Three properties it has to hold, and why each is where it is:
+  ///
+  /// * **Nested drill-down never overwrites the launcher.** The capture happens
+  ///   once, at `show` time; `push` (a panel's own sub-page) does not capture,
+  ///   so closing the whole stack still restores the node that opened it.
+  /// * **A detached launcher is safe.** A picker that ended in a route
+  ///   replacement has no card left to go back to, so the node is re-checked
+  ///   for `context != null` at restore time rather than trusted.
+  /// * **It runs after the close animation.** Restoring inside the frame that
+  ///   is still tearing the surface down would hand focus to a node the sheet's
+  ///   own scope is about to take back.
+  static Future<T?> _withLauncherFocusRestore<T>(Future<T?> Function() show) {
+    final opener = FocusManager.instance.primaryFocus;
+    return show().whenComplete(() {
+      if (opener == null) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (opener.context != null && opener.canRequestFocus) opener.requestFocus();
+      });
+    });
   }
 
   static void _scheduleFallbackFocus(FocusNode? node) {
@@ -252,7 +304,11 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
   bool _showDragHandle = false;
   BoxConstraints? _constraints;
   Color? _explicitBackgroundColor;
-  Alignment _alignment = Alignment.bottomCenter;
+
+  /// Null when the caller named no alignment. Kept as null rather than
+  /// collapsed to a default, because the geometry resolver treats "no opinion"
+  /// and "bottomCenter, deliberately" as different questions on a television.
+  Alignment? _alignment;
   OverlaySheetPresentation _presentation = OverlaySheetPresentation.sheet;
   Offset? _lastPointerPosition;
   double? _sheetHorizontalAnchor;
@@ -301,7 +357,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     Color? backgroundColor,
     bool barrierDismissible = true,
     FocusNode? initialFocusNode,
-    Alignment alignment = Alignment.bottomCenter,
+    Alignment? alignment,
     bool showDragHandle = false,
     OverlaySheetPresentation presentation = OverlaySheetPresentation.sheet,
   }) {
@@ -413,13 +469,14 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
   /// presentation, and it is what put Filters/Sort in the bottom-right corner
   /// of a wide window.
   double? _resolveSheetHorizontalAnchor(
-    Alignment alignment,
+    Alignment? alignment,
     OverlaySheetPresentation presentation,
     BoxConstraints? constraints,
   ) {
     if (!PlatformDetector.isDesktopOS() || PlatformDetector.isTV()) return null;
     if (InputModeTracker.isKeyboardMode(context)) return null;
-    if (alignment.x != 0 || alignment.y <= 0) return null;
+    final resolved = alignment ?? Alignment.bottomCenter;
+    if (resolved.x != 0 || resolved.y <= 0) return null;
     final geometry = resolveOverlaySheetGeometry(
       presentation: presentation,
       viewport: MediaQuery.sizeOf(context),
@@ -734,6 +791,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
             alignment: geometry.alignment,
             horizontalAnchor: geometry.allowPointerAnchor ? _sheetHorizontalAnchor : null,
             edgePadding: geometry.edgePadding,
+            verticalEdgePadding: geometry.verticalEdgePadding,
           ),
           child: AnimatedBuilder(
             animation: _slideCurve,
@@ -752,19 +810,28 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
                 right: true,
                 top: false,
                 bottom: false,
-                child: Material(
-                  key: _sheetKey,
-                  color: _explicitBackgroundColor ?? colorScheme.surface,
+                // The shadow is drawn *outside* the Material, because the
+                // Material clips to `borderRadius` and would eat it. Only the
+                // centred 10-foot panel asks for one (`geometry.shadows`);
+                // every other presentation gets a const-empty list and the
+                // wrapper collapses to the Material it always was.
+                child: _CastShadow(
+                  shadows: geometry.shadows,
                   borderRadius: borderRadius,
-                  clipBehavior: Clip.antiAlias,
-                  // A floating panel touches no edge, so it needs no notch or
-                  // home-indicator padding; an edge-hugging sheet does.
-                  child: SafeArea(
-                    top: !geometry.isCentered && isTop,
-                    bottom: !geometry.isCentered && !isTop,
-                    left: false,
-                    right: false,
-                    child: ConstrainedBox(constraints: effectiveConstraints, child: sheetContent),
+                  child: Material(
+                    key: _sheetKey,
+                    color: _explicitBackgroundColor ?? colorScheme.surface,
+                    borderRadius: borderRadius,
+                    clipBehavior: Clip.antiAlias,
+                    // A floating panel touches no edge, so it needs no notch or
+                    // home-indicator padding; an edge-hugging sheet does.
+                    child: SafeArea(
+                      top: !geometry.isCentered && isTop,
+                      bottom: !geometry.isCentered && !isTop,
+                      left: false,
+                      right: false,
+                      child: ConstrainedBox(constraints: effectiveConstraints, child: sheetContent),
+                    ),
                   ),
                 ),
               ),
@@ -808,35 +875,75 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
   }
 }
 
+/// Paints [shadows] behind [child], or gets out of the way entirely when there
+/// are none — which is every presentation except the centred 10-foot panel.
+class _CastShadow extends StatelessWidget {
+  const _CastShadow({required this.shadows, required this.borderRadius, required this.child});
+
+  final List<BoxShadow> shadows;
+  final BorderRadius borderRadius;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (shadows.isEmpty) return child;
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: borderRadius, boxShadow: shadows),
+      child: child,
+    );
+  }
+}
+
 class _OverlaySheetLayoutDelegate extends SingleChildLayoutDelegate {
   final Alignment alignment;
   final double? horizontalAnchor;
   final double edgePadding;
 
+  /// Top and bottom inset. Zero for every edge-hugging sheet, so the maths
+  /// below collapses to what it has always been; non-zero only for a surface
+  /// that a television placed itself, where the outer band is overscan.
+  final double verticalEdgePadding;
+
   const _OverlaySheetLayoutDelegate({
     required this.alignment,
     required this.horizontalAnchor,
     required this.edgePadding,
+    this.verticalEdgePadding = 0,
   });
 
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
     final size = constraints.biggest;
     final maxWidth = size.width > edgePadding * 2 ? size.width - edgePadding * 2 : size.width;
-    return BoxConstraints.loose(Size(maxWidth, size.height));
+    final maxHeight = size.height > verticalEdgePadding * 2 ? size.height - verticalEdgePadding * 2 : size.height;
+    return BoxConstraints.loose(Size(maxWidth, maxHeight));
+  }
+
+  /// The band the child may be placed in along one axis, as (min, max) offsets.
+  ///
+  /// The padding is what fits, never more: a child that exactly fills the
+  /// padded width keeps its inset on both sides, and a child wider than the
+  /// viewport falls back to zero rather than to a negative offset. The old form
+  /// of this used a strict `>` comparison, which meant a surface sized to
+  /// exactly the padded width lost its inset and was flushed against the left,
+  /// with all the slack piling up on the other side.
+  static (double, double) _band(double available, double child, double padding) {
+    final free = available - child;
+    final pad = padding <= 0 ? 0.0 : math.min(padding, math.max(0.0, free / 2));
+    final minOffset = pad;
+    final maxOffset = math.max(minOffset, free - pad);
+    return (minOffset, maxOffset);
   }
 
   @override
   Offset getPositionForChild(Size size, Size childSize) {
-    final hasHorizontalPadding = edgePadding > 0 && size.width > childSize.width + edgePadding * 2;
-    final minLeft = hasHorizontalPadding ? edgePadding : 0.0;
-    final maxLeft = hasHorizontalPadding ? size.width - childSize.width - edgePadding : minLeft;
+    final (minLeft, maxLeft) = _band(size.width, childSize.width, edgePadding);
     final left = horizontalAnchor == null
         ? minLeft + (maxLeft - minLeft) * (alignment.x + 1) / 2
         : (horizontalAnchor! - childSize.width / 2).clamp(minLeft, maxLeft).toDouble();
 
-    final maxTop = size.height > childSize.height ? size.height - childSize.height : 0.0;
-    final top = maxTop * (alignment.y + 1) / 2;
+    final (minTop, maxTop) = _band(size.height, childSize.height, verticalEdgePadding);
+    final top = minTop + (maxTop - minTop) * (alignment.y + 1) / 2;
 
     return Offset(left, top);
   }
@@ -845,6 +952,7 @@ class _OverlaySheetLayoutDelegate extends SingleChildLayoutDelegate {
   bool shouldRelayout(_OverlaySheetLayoutDelegate oldDelegate) {
     return alignment != oldDelegate.alignment ||
         horizontalAnchor != oldDelegate.horizontalAnchor ||
-        edgePadding != oldDelegate.edgePadding;
+        edgePadding != oldDelegate.edgePadding ||
+        verticalEdgePadding != oldDelegate.verticalEdgePadding;
   }
 }

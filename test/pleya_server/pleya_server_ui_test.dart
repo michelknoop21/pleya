@@ -5,6 +5,7 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/mixins/refreshable.dart';
 import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/screens/search_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
@@ -93,11 +94,19 @@ void main() {
     final provider = MultiServerProvider(manager, DataAggregationService(manager));
     addTearDown(provider.dispose);
 
+    // SearchScreen resolves hidden-library visibility, which the profile
+    // session supplies in production.
+    final hiddenLibraries = HiddenLibrariesProvider();
+    addTearDown(hiddenLibraries.dispose);
+
     final key = GlobalKey<State<SearchScreen>>();
     await tester.pumpWidget(
       TranslationProvider(
-        child: ChangeNotifierProvider<MultiServerProvider>.value(
-          value: provider,
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
+            ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
+          ],
           child: MaterialApp(
             theme: monoTheme(dark: true),
             home: SearchScreen(key: key),

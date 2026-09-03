@@ -17,15 +17,25 @@ class AboutScreen extends StatelessWidget {
   // Pleya is a fork of Plezy (GPL-3.0). Attribution and the corresponding-source
   // offer below are required by the licence; the public source and privacy
   // policy URLs are supplied at build time.
-  static const String _upstreamUrl = 'https://github.com/edde746/plezy';
-  static const String _sourceUrl = String.fromEnvironment(
+  /// Shared with `TvAboutScreen`: one place for the attribution URLs and the
+  /// licence notice, so the two presentations cannot drift into two
+  /// different offers of corresponding source.
+  static const String upstreamUrl = 'https://github.com/edde746/plezy';
+  static const String sourceUrl = String.fromEnvironment(
     'SOURCE_REPO_URL',
     defaultValue: 'https://github.com/michelknoop21/pleya',
   );
-  static const String _privacyUrl = String.fromEnvironment(
+  static const String privacyUrl = String.fromEnvironment(
     'PRIVACY_POLICY_URL',
     defaultValue: 'https://pleya.app/privacy',
   );
+
+  /// The attribution and corresponding-source offer the GPL requires.
+  static const String licenceNotice =
+      'Developed by BuildMind.\n\n'
+      'Pleya is based on Plezy (© edde746) and is free software, '
+      'licensed under the GNU General Public License v3.0. '
+      'You may redistribute and modify it under those terms.';
 
   Future<void> _open(String url) async {
     final uri = Uri.tryParse(url);
@@ -77,10 +87,7 @@ class AboutScreen extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Text(
-                        'Developed by BuildMind.\n\n'
-                        'Pleya is based on Plezy (© edde746) and is free software, '
-                        'licensed under the GNU General Public License v3.0. '
-                        'You may redistribute and modify it under those terms.',
+                        licenceNotice,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
                       ),
                     ),
@@ -95,20 +102,20 @@ class AboutScreen extends StatelessWidget {
                         title: t.about.sourceCode,
                         subtitle: t.about.sourceCodeDescription,
                         trailingIcon: Symbols.open_in_new_rounded,
-                        onTap: () => _open(_sourceUrl),
+                        onTap: () => _open(sourceUrl),
                       ),
                       SettingNavigationTile(
                         icon: Symbols.fork_right_rounded,
                         title: t.about.basedOnPlezy,
                         subtitle: t.about.upstreamProject,
                         trailingIcon: Symbols.open_in_new_rounded,
-                        onTap: () => _open(_upstreamUrl),
+                        onTap: () => _open(upstreamUrl),
                       ),
                       SettingNavigationTile(
                         icon: Symbols.privacy_tip_rounded,
                         title: t.about.privacyPolicy,
                         trailingIcon: Symbols.open_in_new_rounded,
-                        onTap: () => _open(_privacyUrl),
+                        onTap: () => _open(privacyUrl),
                       ),
                     ],
                   ),

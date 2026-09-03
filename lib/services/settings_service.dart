@@ -10,6 +10,8 @@ import 'package:pleya/utils/app_logger.dart';
 import '../i18n/strings.g.dart';
 import '../models/mpv_config_models.dart';
 import '../media/track_language_choice.dart';
+import '../media/unified/remembered_source_choice.dart';
+import 'unified_catalog/unified_catalog_filters.dart';
 import '../mpv/models.dart' show AudioNormalizationMode;
 import 'audio_output_decision.dart' show AudioOutputMode, AudioPriority;
 import '../models/external_player_models.dart';
@@ -578,6 +580,75 @@ class SettingsService extends BaseSharedPreferencesService {
       (key, value) => MapEntry(key, TrackLanguageChoice.fromJson(value as Map<String, dynamic>)),
     ),
   );
+
+  /// Last hand-picked unified source per canonical title, keyed by
+  /// `{profileScope}|{CanonicalMediaIdentity.bucketKey}` (hoofdstuk 14.8).
+  /// Same shape and same reasoning as [trackLanguagePreferences]: the profile
+  /// scope lives in the key rather than the pref name, so two Plex Home users
+  /// on one device keep separate choices while the whole map still travels as
+  /// one iCloud key-value entry. Read and written through
+  /// `SourcePreferenceStore` — never directly, or the LRU cap and the write
+  /// lock are bypassed.
+  static final unifiedSourcePreferences = JsonPref<Map<String, RememberedSourceChoice>>(
+    'unified_source_preferences',
+    defaultValue: const {},
+    encode: (v) => json.encode(v.map((key, choice) => MapEntry(key, choice.toJson()))),
+    decode: (raw) => (raw as Map<String, dynamic>).map(
+      (key, value) => MapEntry(key, RememberedSourceChoice.fromJson(value as Map<String, dynamic>)),
+    ),
+  );
+
+  /// The profile's default server for duplicate content, keyed by
+  /// `{profileScope}` and holding a stable `serverId`.
+  ///
+  /// A different kind of preference from [unifiedSourcePreferences], and
+  /// deliberately a separate pref rather than another entry in that map: this
+  /// one is global to the profile and *may* select a source without asking,
+  /// while a remembered per-title choice only ever sets the picker's focus.
+  /// Collapsing them would make one storage key mean two different amounts of
+  /// authority. Read and written through `PreferredServerStore`.
+  ///
+  /// The value is a server id and never a server name: names are user-editable
+  /// and duplicate across servers (case A7), so a name-keyed preference would
+  /// silently follow a rename onto the wrong machine.
+  /// How each profile last left the Films and Series pages — sort plus the
+  /// filters it applied — keyed `{profileScope}|{kind}`.
+  ///
+  /// A *view* setting, and deliberately a third pref rather than a field on
+  /// either of the two above: [unifiedSourcePreferences] and
+  /// [preferredUnifiedServer] both answer "which concrete source opens", while
+  /// this one answers "what does this page show, in what order", and may never
+  /// select a source for anyone. At most two entries per profile, so unlike
+  /// [unifiedSourcePreferences] there is no LRU cap to keep. Read and written
+  /// through `UnifiedCatalogQueryStore`.
+  static final unifiedCatalogPreferences = JsonPref<Map<String, UnifiedCatalogPreferences>>(
+    'unified_catalog_preferences',
+    defaultValue: const {},
+    encode: (v) => json.encode(v.map((key, prefs) => MapEntry(key, prefs.toJson()))),
+    decode: (raw) => (raw as Map<String, dynamic>).map(
+      (key, value) => MapEntry(key, UnifiedCatalogPreferences.fromJson(value as Map<String, dynamic>)),
+    ),
+  );
+
+  /// Whether a profile is known to have Live TV — keyed by profile scope.
+  ///
+  /// A capability, not an availability: read and written through
+  /// `TvLiveTvCapabilityStore`, which explains why a negative poll may not
+  /// clear it. One entry per profile, so no cap is needed.
+  static final tvLiveTvCapability = JsonPref<Map<String, bool>>(
+    'tv_live_tv_capability',
+    defaultValue: const {},
+    encode: json.encode,
+    decode: (raw) => (raw as Map<String, dynamic>).map((key, value) => MapEntry(key, value as bool)),
+  );
+
+  static final preferredUnifiedServer = JsonPref<Map<String, String>>(
+    'preferred_unified_server',
+    defaultValue: const {},
+    encode: json.encode,
+    decode: (raw) => (raw as Map<String, dynamic>).map((key, value) => MapEntry(key, value as String)),
+  );
+
   static final customShaderPresets = JsonPref<List<Map<String, dynamic>>>(
     'custom_shader_presets',
     defaultValue: const [],

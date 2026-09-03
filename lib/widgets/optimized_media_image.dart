@@ -46,7 +46,12 @@ class OptimizedMediaImage extends StatelessWidget {
   final Duration fadeInDuration;
   final bool enableTranscoding;
   final String? cacheKey;
-  final Alignment alignment;
+
+  /// [AlignmentGeometry], not [Alignment]: artwork that hugs the edge its
+  /// text column starts on has to follow the ambient directionality
+  /// (hoofdstuk 25, "RTL"). Every sink below is an [Image], which takes the
+  /// geometry and resolves it itself.
+  final AlignmentGeometry alignment;
   final IconData? fallbackIcon;
   final ImageType imageType;
   final String? localFilePath;
@@ -89,7 +94,7 @@ class OptimizedMediaImage extends StatelessWidget {
     Duration fadeInDuration,
     bool enableTranscoding,
     String? cacheKey,
-    Alignment alignment,
+    AlignmentGeometry alignment,
     IconData? fallbackIcon,
     ImageType imageType,
     String? localFilePath,
@@ -110,7 +115,7 @@ class OptimizedMediaImage extends StatelessWidget {
     Duration fadeInDuration = const Duration(milliseconds: 300),
     bool enableTranscoding = true,
     String? cacheKey,
-    Alignment alignment = Alignment.center,
+    AlignmentGeometry alignment = Alignment.center,
     IconData? fallbackIcon,
     String? localFilePath,
     String? blurHash,
@@ -148,7 +153,7 @@ class OptimizedMediaImage extends StatelessWidget {
     Duration fadeInDuration = const Duration(milliseconds: 300),
     bool enableTranscoding = true,
     String? cacheKey,
-    Alignment alignment = Alignment.center,
+    AlignmentGeometry alignment = Alignment.center,
     IconData? fallbackIcon,
     String? localFilePath,
     String? blurHash,
@@ -186,7 +191,7 @@ class OptimizedMediaImage extends StatelessWidget {
     Duration fadeInDuration = const Duration(milliseconds: 300),
     bool enableTranscoding = true,
     String? cacheKey,
-    Alignment alignment = Alignment.center,
+    AlignmentGeometry alignment = Alignment.center,
     String? localFilePath,
   }) : this._(
          key: key,
@@ -207,6 +212,53 @@ class OptimizedMediaImage extends StatelessWidget {
          localFilePath: localFilePath,
        );
 
+  /// Stands in for the decoded image in golden tests.
+  ///
+  /// Every path below ends in a network or file image, so a widget test can
+  /// only ever render the placeholder — which is why the first Films/Series
+  /// goldens were a grid of identical grey tiles. Those pictures could prove
+  /// the rhythm and the type, and could not prove the one thing the phase's
+  /// art direction is actually about: that Pleya's dark chrome presents bright,
+  /// warm and colourful artwork without flattening it.
+  ///
+  /// The seam is here rather than on the card because it is the *image* that
+  /// cannot be rendered offline, and because putting it on the card would leave
+  /// every other artwork surface untestable for the same reason.
+  ///
+  /// Null in production, and nothing in `lib/` ever assigns it.
+  @visibleForTesting
+  static Widget Function(BuildContext context, String? imagePath)? debugImageBuilder;
+
+  /// Reports the artwork URL this widget resolved, straight after
+  /// [MediaImageHelper.getOptimizedImageUrl] and before any provider or
+  /// network work.
+  ///
+  /// A separate seam from [debugImageBuilder], and it has to be: that one
+  /// returns from the *first line* of [build], so a test that installs it never
+  /// reaches the sizing pipeline at all. Every discovery widget test goes
+  /// through `test/test_helpers/tv_discovery_artwork.dart`, which installs
+  /// exactly that — which is why "does a focus transition churn through a
+  /// bucket of URLs" (P4) was not assertable at the widget level before.
+  ///
+  /// Assert the number of **distinct** URLs, never the number of calls: a
+  /// widget that rebuilds five times and resolves the same stable URL five
+  /// times is correct, and counting calls would make the guard fail on
+  /// unrelated rebuild changes.
+  ///
+  /// Null in production; nothing in `lib/` ever assigns it. A test that sets it
+  /// clears it in `tearDown` — this is process-global state.
+  @visibleForTesting
+  static void Function(String url)? debugResolvedUrlObserver;
+
+  /// The disk cache key for [imageUrl].
+  ///
+  /// Public because anything that *warms* the cache has to produce a key that
+  /// is byte-identical to the one the widget reads with, or the warmed entry is
+  /// a second copy nothing ever finds — see `UnifiedArtworkPrefetcher`. One
+  /// definition, used by both.
+  static String artworkCacheKey(String imageUrl) =>
+      'plex_optimized_${sha1.convert(utf8.encode(artworkStorageKey(imageUrl)))}';
+
   /// Whether both width and height are explicitly set to finite positive values,
   /// meaning we can skip the LayoutBuilder.
   bool get _hasKnownDimensions =>
@@ -214,6 +266,9 @@ class OptimizedMediaImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final debugBuilder = debugImageBuilder;
+    if (debugBuilder != null) return debugBuilder(context, imagePath);
+
     final localFile = localFilePath != null ? File(localFilePath!) : null;
     final hasLocal = localFile != null && localFile.existsSync();
 
@@ -302,6 +357,8 @@ class OptimizedMediaImage extends StatelessWidget {
     if (imageUrl.isEmpty) {
       return _buildFallback(context);
     }
+
+    debugResolvedUrlObserver?.call(imageUrl);
 
     final scaledWidth = effectiveWidth * devicePixelRatio;
     final scaledHeight = effectiveHeight * devicePixelRatio;
@@ -396,13 +453,11 @@ class OptimizedMediaImage extends StatelessWidget {
   Widget _buildFallback(BuildContext context) =>
       _surfacePlaceholder(context, icon: fallbackIcon ?? Symbols.image_not_supported_rounded);
 
-  String _generateCacheKey(String imageUrl) {
-    // URL already encodes bucketed transcode dimensions via roundDimensions,
-    // so the URL hash alone uniquely identifies the bytes on disk. Including
-    // mem-cache dimensions here would re-introduce churn on every pixel of
-    // window resize and defeat getMemCacheDimensions' bucketing.
-    // Hash the token-free URL: auth tokens rotate between sessions and would
-    // otherwise invalidate the entire disk cache on every re-auth.
-    return 'plex_optimized_${sha1.convert(utf8.encode(artworkStorageKey(imageUrl)))}';
-  }
+  // URL already encodes bucketed transcode dimensions via roundDimensions, so
+  // the URL hash alone uniquely identifies the bytes on disk. Including
+  // mem-cache dimensions would re-introduce churn on every pixel of window
+  // resize and defeat getMemCacheDimensions' bucketing. Hashing the token-free
+  // URL keeps auth-token rotation from invalidating the whole disk cache on
+  // every re-auth. See [artworkCacheKey].
+  String _generateCacheKey(String imageUrl) => artworkCacheKey(imageUrl);
 }

@@ -94,6 +94,11 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsSeerrNl seerr = _TranslationsSeerrNl._(_root);
 	@override late final _TranslationsTautulliNl tautulli = _TranslationsTautulliNl._(_root);
 	@override late final _TranslationsNowWatchingNl nowWatching = _TranslationsNowWatchingNl._(_root);
+	@override late final _TranslationsSourcePickerNl sourcePicker = _TranslationsSourcePickerNl._(_root);
+	@override late final _TranslationsUnifiedCatalogNl unifiedCatalog = _TranslationsUnifiedCatalogNl._(_root);
+	@override late final _TranslationsTvNavigationNl tvNavigation = _TranslationsTvNavigationNl._(_root);
+	@override late final _TranslationsTvMyPleyaNl tvMyPleya = _TranslationsTvMyPleyaNl._(_root);
+	@override late final _TranslationsTvContextMenuNl tvContextMenu = _TranslationsTvContextMenuNl._(_root);
 }
 
 // Path: states
@@ -208,6 +213,8 @@ class _TranslationsCommonNl extends TranslationsCommonEn {
 	@override String get pressBackAgainToExit => 'Druk nogmaals op terug om af te sluiten';
 	@override String decreaseValue({required Object label}) => '${label} verlagen';
 	@override String increaseValue({required Object label}) => '${label} verhogen';
+	@override String get online => 'Online';
+	@override String get offline => 'Offline';
 }
 
 // Path: screens
@@ -1001,6 +1008,8 @@ class _TranslationsNoticesNl extends TranslationsNoticesEn {
 	@override String get genericErrorTitle => 'Er ging iets mis';
 	@override String get authFailedTitle => 'Aanmelden mislukt';
 	@override String get playbackStoppedTitle => 'Afspelen gestopt';
+	@override String get playbackFileUnavailableTitle => 'Bestand niet beschikbaar';
+	@override String get playbackFileUnavailableBody => 'De server kan niet bij het videobestand. Kijk of de schijf of map waar het op staat nog aangesloten is.';
 	@override String get playbackSegmentUnavailableBody => 'Dit deel van de video is nu niet beschikbaar';
 	@override String get playbackConnectionLostBody => 'Verbinding met de server verloren';
 	@override String get playbackCodecUnsupportedBody => 'Dit bestandsformaat wordt niet ondersteund op dit toestel';
@@ -1076,6 +1085,7 @@ class _TranslationsAboutNl extends TranslationsAboutEn {
 	@override String get basedOnPlezy => 'Gebaseerd op Plezy';
 	@override String get upstreamProject => 'Upstream-project';
 	@override String get privacyPolicy => 'Privacybeleid';
+	@override String get licence => 'Licentie';
 }
 
 // Path: serverSelection
@@ -1121,6 +1131,13 @@ class _TranslationsLogsNl extends TranslationsLogsEn {
 	@override String get clearLogs => 'Wis logs';
 	@override String get copyLogs => 'Kopieer logs';
 	@override String get uploadLogs => 'Logs uploaden';
+	@override String get refreshLogs => 'Verversen';
+	@override String get levelFilter => 'Niveau';
+	@override String get levelAll => 'Alles';
+	@override String get levelWarnings => 'Waarschuwingen';
+	@override String get levelErrors => 'Fouten';
+	@override String get noMatchingLogs => 'Geen regels op dit niveau';
+	@override String lineCount({required Object shown, required Object total}) => '${shown} van ${total} regels';
 }
 
 // Path: licenses
@@ -1405,6 +1422,10 @@ class _TranslationsWatchTogetherNl extends TranslationsWatchTogetherEn {
 	@override String get removeRoom => 'Verwijderen';
 	@override String get guestSwitchUnavailable => 'Kon niet schakelen — server niet beschikbaar voor synchronisatie';
 	@override String get guestSwitchFailed => 'Kon niet schakelen — inhoud niet gevonden op deze server';
+	@override String get createSessionHint => 'Nodig anderen uit met een code';
+	@override String get joinSessionHint => 'Voer de code van je gastheer in';
+	@override String get noRecentRooms => 'Nog geen sessies';
+	@override String get noRecentRoomsHint => 'Een sessie die je maakt of waaraan je deelneemt verschijnt hier';
 }
 
 // Path: downloads
@@ -2054,6 +2075,126 @@ class _TranslationsNowWatchingNl extends TranslationsNowWatchingEn {
 	@override String get sidebarLabel => 'Nu aan het kijken';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerNl extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => 'Kies waar je wilt afspelen';
+	@override String get detailsTitle => 'Kies een bron voor de details';
+	@override String get availableOnOneServer => 'Beschikbaar op 1 server';
+	@override String availableOnManyServers({required Object count}) => 'Beschikbaar op ${count} servers';
+	@override String get oneServerUnchecked => '1 server kon niet worden gecontroleerd';
+	@override String manyServersUnchecked({required Object count}) => '${count} servers konden niet worden gecontroleerd';
+	@override String get checkingMoreSources => 'Meer bronnen controleren…';
+	@override String get lastUsed => 'Laatst gebruikt';
+	@override String get currentSource => 'Huidige bron';
+	@override String get unavailable => 'Niet beschikbaar';
+	@override String get signInRequired => 'Opnieuw aanmelden vereist';
+	@override String resumeAt({required Object position}) => 'Hervatten op ${position}';
+	@override String get watched => 'Bekeken';
+	@override String get noneReachableTitle => 'Geen bron is momenteel bereikbaar.';
+	@override String get reauthRequiredTitle => 'Meld je opnieuw aan om deze titel te bereiken.';
+	@override String get manageServers => 'Servers beheren';
+	@override String sourceLabel({required Object source}) => 'Bron: ${source}';
+	@override String get change => 'Wijzigen';
+	@override String get playbackFailedTitle => 'Deze bron kon niet worden afgespeeld.';
+	@override String get detailLoadFailedTitle => 'Deze titel kon niet worden geladen.';
+	@override String get chooseAnotherSource => 'Andere bron kiezen';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Bron ${index} van ${count}: ${description}';
+	@override String get preferredServer => 'Voorkeursserver';
+	@override String setPreferredServer({required Object server}) => 'Altijd ${server} gebruiken';
+}
+
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => 'Films';
+	@override String get seriesTitle => 'Series';
+	@override String sources({required Object count}) => '${count} bronnen';
+	@override String get allSources => 'Alle bronnen';
+	@override String get oneSource => '1 bron';
+	@override String seasons({required Object count}) => '${count} seizoenen';
+	@override String get oneSeason => '1 seizoen';
+	@override String titleCount({required Object count}) => '${count} titels';
+	@override String get oneTitle => '1 titel';
+	@override String titlesLoaded({required Object count}) => '${count} titels geladen';
+	@override String get loadMore => 'Meer laden';
+	@override String get loadingMore => 'Meer laden…';
+	@override late final _TranslationsUnifiedCatalogSortNl sort = _TranslationsUnifiedCatalogSortNl._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersNl filters = _TranslationsUnifiedCatalogFiltersNl._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesNl states = _TranslationsUnifiedCatalogStatesNl._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsNl semantics = _TranslationsUnifiedCatalogSemanticsNl._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryNl discovery = _TranslationsUnifiedCatalogDiscoveryNl._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeNl home = _TranslationsUnifiedCatalogHomeNl._(_root);
+}
+
+// Path: tvNavigation
+class _TranslationsTvNavigationNl extends TranslationsTvNavigationEn {
+	_TranslationsTvNavigationNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get activeDestination => 'huidige sectie';
+	@override String get attentionRequired => 'vereist aandacht';
+}
+
+// Path: tvMyPleya
+class _TranslationsTvMyPleyaNl extends TranslationsTvMyPleyaEn {
+	_TranslationsTvMyPleyaNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get groupContent => 'Mijn content';
+	@override String get groupSources => 'Bibliotheken en bronnen';
+	@override String get groupPleya => 'Pleya';
+	@override String serversOnline({required Object online, required Object total}) => '${online} van ${total} servers online';
+	@override String get noServers => 'Geen servers verbonden';
+	@override String get statusOnline => 'Online';
+	@override String get statusOffline => 'Offline';
+	@override String get servers => 'Servers';
+	@override String get activity => 'Activiteit';
+	@override String get logs => 'Logs en diagnose';
+	@override String signedInAs({required Object name, required Object version}) => 'Aangemeld als ${name} · Pleya ${version}';
+	@override String get watchlistSubtitle => 'Bewaarde films en series';
+	@override String get requestsSubtitle => 'Verzoeken en ontdekken';
+	@override String get downloadsSubtitle => 'Offline en synchronisatieregels';
+	@override String get librariesSubtitle => 'Media, collecties, afspeellijsten';
+	@override String get serversSubtitle => 'Verbindingen en lokale bronnen';
+	@override String get activitySubtitle => 'Nu kijken, samen kijken, remote';
+	@override String get watchTogetherSubtitle => 'Kijk gelijk met vrienden';
+	@override String get settingsSubtitle => 'Weergave, speler, trackers';
+	@override String get logsSubtitle => 'Logbestanden en crashrapportage';
+	@override String get aboutSubtitle => 'Versie en licenties';
+	@override String get logoutSubtitle => 'Afmelden op dit apparaat';
+	@override late final _TranslationsTvMyPleyaSemanticsNl semantics = _TranslationsTvMyPleyaSemanticsNl._(_root);
+	@override String libraryCount({required Object count}) => '${count} bibliotheken';
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuNl extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Acties';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => 'Actie ${index} van ${count}: ${label}';
+	@override String get noUsableSource => 'Er is momenteel geen bron bereikbaar, dus dit kan nu niet worden gewijzigd.';
+	@override String doneOnAll({required Object count}) => 'Gereed op alle ${count} bronnen';
+	@override String doneOnSome({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.';
+	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen.';
+	@override String get failed => 'Dat is niet gelukt';
+}
+
 // Path: search.filters
 class _TranslationsSearchFiltersNl extends TranslationsSearchFiltersEn {
 	_TranslationsSearchFiltersNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -2066,6 +2207,7 @@ class _TranslationsSearchFiltersNl extends TranslationsSearchFiltersEn {
 	@override String get shows => 'Series';
 	@override String get episodes => 'Afleveringen';
 	@override String get people => 'Personen';
+	@override String get other => 'Overig';
 }
 
 // Path: hotkeys.actions
@@ -2422,6 +2564,125 @@ class _TranslationsTrackersLibraryFilterNl extends TranslationsTrackersLibraryFi
 	@override String get noLibraries => 'Geen bibliotheken beschikbaar';
 }
 
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortNl extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Sorteren';
+	@override String get titleAsc => 'Titel A–Z';
+	@override String get titleDesc => 'Titel Z–A';
+	@override String get recentlyAdded => 'Recent toegevoegd';
+	@override String get oldestAdded => 'Oudst toegevoegd';
+	@override String get newestRelease => 'Nieuwste release';
+	@override String get oldestRelease => 'Oudste release';
+	@override String get recentlyWatched => 'Recent bekeken';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersNl extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Filters';
+	@override String get status => 'Status';
+	@override String get genre => 'Genre';
+	@override String get year => 'Jaar';
+	@override String get servers => 'Servers';
+	@override String get libraries => 'Bibliotheken';
+	@override String get apply => 'Toepassen';
+	@override String get clearAll => 'Alles wissen';
+	@override String get all => 'Alle';
+	@override String get unwatched => 'Niet bekeken';
+	@override String get unsupported => 'Niet beschikbaar voor de huidige bronnen';
+	@override String get someUnavailable => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen';
+	@override String get noValues => 'Niets om uit te kiezen';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesNl extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'Deze catalogus is leeg';
+	@override String get emptyBody => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.';
+	@override String get filterEmptyTitle => 'Niets voldoet aan deze filters';
+	@override String get filterEmptyBody => 'Wis een filter om meer titels te zien.';
+	@override String get clearFilters => 'Filters wissen';
+	@override String get errorTitle => 'De catalogus kon niet worden geladen';
+	@override String get errorBody => 'Geen enkele server antwoordde. Controleer je verbinding en probeer het opnieuw.';
+	@override String get partialOne => '1 bibliotheek antwoordde niet';
+	@override String partialMany({required Object count}) => '${count} bibliotheken antwoordden niet';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsNl extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => 'Bekeken';
+	@override String get inProgress => 'Bezig';
+	@override String get loadingMore => 'Meer titels laden';
+}
+
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryNl extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => 'Alle films';
+	@override String get allSeries => 'Alle series';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} A${episode}';
+	@override String get partial => 'Niet alle bronnen antwoordden';
+	@override String get emptyTitle => 'Nog niets te ontdekken';
+	@override String get emptyBody => 'Geen zichtbare bibliotheek heeft hier iets te tonen.';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsNl semantics = _TranslationsUnifiedCatalogDiscoverySemanticsNl._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeNl extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'Uitgelicht';
+}
+
+// Path: tvMyPleya.semantics
+class _TranslationsTvMyPleyaSemanticsNl extends TranslationsTvMyPleyaSemanticsEn {
+	_TranslationsTvMyPleyaSemanticsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsNl extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}, ${count} titels';
+	@override String position({required Object position, required Object count}) => '${position} van ${count}';
+	@override String get viewAllMovies => 'Alle films bekijken, opent de volledige catalogus';
+	@override String get viewAllSeries => 'Alle series bekijken, opent de volledige catalogus';
+}
+
 /// The flat map containing all translations for locale <nl>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -2508,6 +2769,8 @@ extension on TranslationsNl {
 			'common.pressBackAgainToExit' => 'Druk nogmaals op terug om af te sluiten',
 			'common.decreaseValue' => ({required Object label}) => '${label} verlagen',
 			'common.increaseValue' => ({required Object label}) => '${label} verhogen',
+			'common.online' => 'Online',
+			'common.offline' => 'Offline',
 			'screens.licenses' => 'Licenties',
 			'screens.switchProfile' => 'Wissel van profiel',
 			'screens.whoIsWatching' => 'Wie is er aan het kijken?',
@@ -2753,6 +3016,7 @@ extension on TranslationsNl {
 			'search.filters.shows' => 'Series',
 			'search.filters.episodes' => 'Afleveringen',
 			'search.filters.people' => 'Personen',
+			'search.filters.other' => 'Overig',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Stel sneltoets in voor ${actionName}',
 			'hotkeys.clearShortcut' => 'Wis sneltoets',
 			'hotkeys.noShortcutSet' => 'Geen sneltoets ingesteld',
@@ -2939,11 +3203,11 @@ extension on TranslationsNl {
 			'videoControls.subtitleDownloadFailed' => 'Ondertitel downloaden mislukt',
 			'videoControls.searchLanguages' => 'Talen zoeken...',
 			'videoControls.airplayButton' => 'AirPlay',
+			_ => null,
+		} ?? switch (path) {
 			'userStatus.admin' => 'Beheerder',
 			'userStatus.restricted' => 'Beperkt',
 			'userStatus.protected' => 'Beschermd',
-			_ => null,
-		} ?? switch (path) {
 			'userStatus.current' => 'HUIDIG',
 			'messages.markedAsWatched' => 'Gemarkeerd als gekeken',
 			'messages.markedAsUnwatched' => 'Gemarkeerd als ongekeken',
@@ -3152,6 +3416,8 @@ extension on TranslationsNl {
 			'notices.genericErrorTitle' => 'Er ging iets mis',
 			'notices.authFailedTitle' => 'Aanmelden mislukt',
 			'notices.playbackStoppedTitle' => 'Afspelen gestopt',
+			'notices.playbackFileUnavailableTitle' => 'Bestand niet beschikbaar',
+			'notices.playbackFileUnavailableBody' => 'De server kan niet bij het videobestand. Kijk of de schijf of map waar het op staat nog aangesloten is.',
 			'notices.playbackSegmentUnavailableBody' => 'Dit deel van de video is nu niet beschikbaar',
 			'notices.playbackConnectionLostBody' => 'Verbinding met de server verloren',
 			'notices.playbackCodecUnsupportedBody' => 'Dit bestandsformaat wordt niet ondersteund op dit toestel',
@@ -3242,6 +3508,7 @@ extension on TranslationsNl {
 			'about.basedOnPlezy' => 'Gebaseerd op Plezy',
 			'about.upstreamProject' => 'Upstream-project',
 			'about.privacyPolicy' => 'Privacybeleid',
+			'about.licence' => 'Licentie',
 			'serverSelection.allServerConnectionsFailed' => 'Kon met geen enkele server verbinden. Controleer je netwerk.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'Geen servers gevonden voor ${username} (${email})',
 			'serverSelection.noServersFoundTitle' => 'Geen mediaservers gevonden',
@@ -3260,6 +3527,13 @@ extension on TranslationsNl {
 			'logs.clearLogs' => 'Wis logs',
 			'logs.copyLogs' => 'Kopieer logs',
 			'logs.uploadLogs' => 'Logs uploaden',
+			'logs.refreshLogs' => 'Verversen',
+			'logs.levelFilter' => 'Niveau',
+			'logs.levelAll' => 'Alles',
+			'logs.levelWarnings' => 'Waarschuwingen',
+			'logs.levelErrors' => 'Fouten',
+			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
+			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
 			'licenses.relatedPackages' => 'Gerelateerde pakketten',
 			'licenses.license' => 'Licentie',
 			'licenses.licenseNumber' => ({required Object number}) => 'Licentie ${number}',
@@ -3443,6 +3717,8 @@ extension on TranslationsNl {
 			'watchTogether.leave' => 'Verlaten',
 			'watchTogether.syncing' => 'Synchroniseren...',
 			'watchTogether.joinWatchSession' => 'Kijksessie Deelnemen',
+			_ => null,
+		} ?? switch (path) {
 			'watchTogether.enterCodeHint' => 'Voer 5-teken code in',
 			'watchTogether.pasteFromClipboard' => 'Plakken van klembord',
 			'watchTogether.pleaseEnterCode' => 'Voer een sessiecode in',
@@ -3456,8 +3732,6 @@ extension on TranslationsNl {
 			'watchTogether.currentPlayback' => 'Huidige weergave',
 			'watchTogether.joinCurrentPlayback' => 'Deelnemen aan huidige weergave',
 			'watchTogether.joinCurrentPlaybackDescription' => 'Ga terug naar wat de host nu kijkt',
-			_ => null,
-		} ?? switch (path) {
 			'watchTogether.failedToOpenCurrentPlayback' => 'Huidige weergave kon niet worden geopend',
 			'watchTogether.participantJoined' => ({required Object name}) => '${name} is toegetreden',
 			'watchTogether.participantLeft' => ({required Object name}) => '${name} heeft de sessie verlaten',
@@ -3471,6 +3745,10 @@ extension on TranslationsNl {
 			'watchTogether.removeRoom' => 'Verwijderen',
 			'watchTogether.guestSwitchUnavailable' => 'Kon niet schakelen — server niet beschikbaar voor synchronisatie',
 			'watchTogether.guestSwitchFailed' => 'Kon niet schakelen — inhoud niet gevonden op deze server',
+			'watchTogether.createSessionHint' => 'Nodig anderen uit met een code',
+			'watchTogether.joinSessionHint' => 'Voer de code van je gastheer in',
+			'watchTogether.noRecentRooms' => 'Nog geen sessies',
+			'watchTogether.noRecentRoomsHint' => 'Een sessie die je maakt of waaraan je deelneemt verschijnt hier',
 			'downloads.title' => 'Downloads',
 			'downloads.manage' => 'Beheren',
 			'downloads.tvShows' => 'Series',
@@ -3953,6 +4231,8 @@ extension on TranslationsNl {
 			'seerr.pending' => 'In afwachting',
 			'seerr.approved' => 'Goedgekeurd',
 			'seerr.declined' => 'Afgewezen',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.failed' => 'Mislukt',
 			'seerr.completed' => 'Afgerond',
 			'seerr.requestConfirm' => ({required Object title}) => '"${title}" aanvragen?',
@@ -3970,8 +4250,6 @@ extension on TranslationsNl {
 			'seerr.showAll' => 'Alles tonen',
 			'seerr.fourK' => 'In 4K aanvragen',
 			'seerr.fourKBadge' => '4K',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
 			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => 'Nog ${remaining} van ${limit} aanvragen',
 			'seerr.quotaUnlimited' => 'Onbeperkt aanvragen',
@@ -4054,6 +4332,120 @@ extension on TranslationsNl {
 			'nowWatching.onWan' => 'Van buiten',
 			'nowWatching.unavailable' => 'Tautulli gaf geen antwoord',
 			'nowWatching.sidebarLabel' => 'Nu aan het kijken',
+			'sourcePicker.playTitle' => 'Kies waar je wilt afspelen',
+			'sourcePicker.detailsTitle' => 'Kies een bron voor de details',
+			'sourcePicker.availableOnOneServer' => 'Beschikbaar op 1 server',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Beschikbaar op ${count} servers',
+			'sourcePicker.oneServerUnchecked' => '1 server kon niet worden gecontroleerd',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers konden niet worden gecontroleerd',
+			'sourcePicker.checkingMoreSources' => 'Meer bronnen controleren…',
+			'sourcePicker.lastUsed' => 'Laatst gebruikt',
+			'sourcePicker.currentSource' => 'Huidige bron',
+			'sourcePicker.unavailable' => 'Niet beschikbaar',
+			'sourcePicker.signInRequired' => 'Opnieuw aanmelden vereist',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Hervatten op ${position}',
+			'sourcePicker.watched' => 'Bekeken',
+			'sourcePicker.noneReachableTitle' => 'Geen bron is momenteel bereikbaar.',
+			'sourcePicker.reauthRequiredTitle' => 'Meld je opnieuw aan om deze titel te bereiken.',
+			'sourcePicker.manageServers' => 'Servers beheren',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Bron: ${source}',
+			'sourcePicker.change' => 'Wijzigen',
+			'sourcePicker.playbackFailedTitle' => 'Deze bron kon niet worden afgespeeld.',
+			'sourcePicker.detailLoadFailedTitle' => 'Deze titel kon niet worden geladen.',
+			'sourcePicker.chooseAnotherSource' => 'Andere bron kiezen',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Bron ${index} van ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Voorkeursserver',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Altijd ${server} gebruiken',
+			'unifiedCatalog.moviesTitle' => 'Films',
+			'unifiedCatalog.seriesTitle' => 'Series',
+			'unifiedCatalog.sources' => ({required Object count}) => '${count} bronnen',
+			'unifiedCatalog.allSources' => 'Alle bronnen',
+			'unifiedCatalog.oneSource' => '1 bron',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seizoenen',
+			'unifiedCatalog.oneSeason' => '1 seizoen',
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
+			'unifiedCatalog.oneTitle' => '1 titel',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titels geladen',
+			'unifiedCatalog.loadMore' => 'Meer laden',
+			'unifiedCatalog.loadingMore' => 'Meer laden…',
+			'unifiedCatalog.sort.title' => 'Sorteren',
+			'unifiedCatalog.sort.titleAsc' => 'Titel A–Z',
+			'unifiedCatalog.sort.titleDesc' => 'Titel Z–A',
+			'unifiedCatalog.sort.recentlyAdded' => 'Recent toegevoegd',
+			'unifiedCatalog.sort.oldestAdded' => 'Oudst toegevoegd',
+			'unifiedCatalog.sort.newestRelease' => 'Nieuwste release',
+			'unifiedCatalog.sort.oldestRelease' => 'Oudste release',
+			'unifiedCatalog.sort.recentlyWatched' => 'Recent bekeken',
+			'unifiedCatalog.filters.title' => 'Filters',
+			'unifiedCatalog.filters.status' => 'Status',
+			'unifiedCatalog.filters.genre' => 'Genre',
+			'unifiedCatalog.filters.year' => 'Jaar',
+			'unifiedCatalog.filters.servers' => 'Servers',
+			'unifiedCatalog.filters.libraries' => 'Bibliotheken',
+			'unifiedCatalog.filters.apply' => 'Toepassen',
+			'unifiedCatalog.filters.clearAll' => 'Alles wissen',
+			'unifiedCatalog.filters.all' => 'Alle',
+			'unifiedCatalog.filters.unwatched' => 'Niet bekeken',
+			'unifiedCatalog.filters.unsupported' => 'Niet beschikbaar voor de huidige bronnen',
+			'unifiedCatalog.filters.someUnavailable' => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen',
+			'unifiedCatalog.filters.noValues' => 'Niets om uit te kiezen',
+			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
+			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
+			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
+			'unifiedCatalog.states.filterEmptyBody' => 'Wis een filter om meer titels te zien.',
+			'unifiedCatalog.states.clearFilters' => 'Filters wissen',
+			'unifiedCatalog.states.errorTitle' => 'De catalogus kon niet worden geladen',
+			'unifiedCatalog.states.errorBody' => 'Geen enkele server antwoordde. Controleer je verbinding en probeer het opnieuw.',
+			'unifiedCatalog.states.partialOne' => '1 bibliotheek antwoordde niet',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} bibliotheken antwoordden niet',
+			'unifiedCatalog.semantics.watched' => 'Bekeken',
+			'unifiedCatalog.semantics.inProgress' => 'Bezig',
+			'unifiedCatalog.semantics.loadingMore' => 'Meer titels laden',
+			'unifiedCatalog.discovery.allMovies' => 'Alle films',
+			'unifiedCatalog.discovery.allSeries' => 'Alle series',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} A${episode}',
+			'unifiedCatalog.discovery.partial' => 'Niet alle bronnen antwoordden',
+			'unifiedCatalog.discovery.emptyTitle' => 'Nog niets te ontdekken',
+			'unifiedCatalog.discovery.emptyBody' => 'Geen zichtbare bibliotheek heeft hier iets te tonen.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titels',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} van ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Alle films bekijken, opent de volledige catalogus',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle series bekijken, opent de volledige catalogus',
+			'unifiedCatalog.home.featured' => 'Uitgelicht',
+			'tvNavigation.activeDestination' => 'huidige sectie',
+			'tvNavigation.attentionRequired' => 'vereist aandacht',
+			'tvMyPleya.groupContent' => 'Mijn content',
+			'tvMyPleya.groupSources' => 'Bibliotheken en bronnen',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} van ${total} servers online',
+			'tvMyPleya.noServers' => 'Geen servers verbonden',
+			'tvMyPleya.statusOnline' => 'Online',
+			'tvMyPleya.statusOffline' => 'Offline',
+			'tvMyPleya.servers' => 'Servers',
+			'tvMyPleya.activity' => 'Activiteit',
+			'tvMyPleya.logs' => 'Logs en diagnose',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Aangemeld als ${name} · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => 'Bewaarde films en series',
+			'tvMyPleya.requestsSubtitle' => 'Verzoeken en ontdekken',
+			'tvMyPleya.downloadsSubtitle' => 'Offline en synchronisatieregels',
+			'tvMyPleya.librariesSubtitle' => 'Media, collecties, afspeellijsten',
+			'tvMyPleya.serversSubtitle' => 'Verbindingen en lokale bronnen',
+			'tvMyPleya.activitySubtitle' => 'Nu kijken, samen kijken, remote',
+			'tvMyPleya.watchTogetherSubtitle' => 'Kijk gelijk met vrienden',
+			'tvMyPleya.settingsSubtitle' => 'Weergave, speler, trackers',
+			'tvMyPleya.logsSubtitle' => 'Logbestanden en crashrapportage',
+			'tvMyPleya.aboutSubtitle' => 'Versie en licenties',
+			'tvMyPleya.logoutSubtitle' => 'Afmelden op dit apparaat',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvMyPleya.libraryCount' => ({required Object count}) => '${count} bibliotheken',
+			'tvContextMenu.title' => 'Acties',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Actie ${index} van ${count}: ${label}',
+			'tvContextMenu.noUsableSource' => 'Er is momenteel geen bron bereikbaar, dus dit kan nu niet worden gewijzigd.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Gereed op alle ${count} bronnen',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen.',
+			'tvContextMenu.failed' => 'Dat is niet gelukt',
 			_ => null,
 		};
 	}

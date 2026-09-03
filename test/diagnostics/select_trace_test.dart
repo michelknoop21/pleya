@@ -118,6 +118,59 @@ void main() {
     });
   });
 
+  group('deliberate source selection', () {
+    // Hoofdstuk 14 of docs/tvos-unified-experience.md: a unified card's
+    // selected target is its representative source, and the user may pick a
+    // different one in the picker. That divergence is the product working, not
+    // the swap this trace exists to catch — but only for that one pair.
+    const switched = {
+      SelectTraceLink.selectedTarget: 's1:41215',
+      SelectTraceLink.activatedTarget: 's2:88001',
+      SelectTraceLink.expectedNavigationTarget: 's2:88001',
+      SelectTraceLink.actualNavigationTarget: 's2:88001',
+      SelectTraceLink.detailTarget: 's2:88001',
+      SelectTraceLink.metadataTarget: 's2:88001',
+    };
+
+    test('without the flag a changed target is still the defect it always was', () {
+      final verdict = evaluateSelectTrace(traceWith(switched));
+      expect(verdict.anomaly, SelectTraceAnomaly.linkMismatch);
+      expect(verdict.brokenAt, 'activated!=selected');
+    });
+
+    test('a user-chosen source makes exactly that one divergence normal', () {
+      final trace = traceWith(switched)..sawSourceSelection = true;
+      expect(evaluateSelectTrace(trace).isConsistent, isTrue);
+    });
+
+    test('a swap after the choice is still caught', () {
+      // The picker decides which source opens. It does not license the route
+      // boundary and the detail screen disagreeing afterwards.
+      final trace = traceWith({...switched, SelectTraceLink.detailTarget: 's3:70000'})..sawSourceSelection = true;
+      final verdict = evaluateSelectTrace(trace);
+      expect(verdict.isConsistent, isFalse);
+      expect(verdict.brokenAt, 'detail!=actual');
+    });
+
+    test('a picker cancel that opened nothing is ordinary, not an anomaly', () {
+      final trace = traceWith({SelectTraceLink.selectedTarget: 's1:41215'}, outcome: SelectTraceOutcome.none)
+        ..sawSourceSelection = true;
+      expect(evaluateSelectTrace(trace).isConsistent, isTrue);
+    });
+
+    test('the consistent line says the user chose, so the two servers are explained', () {
+      final trace = traceWith(switched)..sawSourceSelection = true;
+      final line = formatSelectTraceLine(trace, elapsedMs: 400);
+      expect(line, contains('sourcePick=user'));
+      expect(line, contains('selected=s1:41215'));
+      expect(line, contains('activated=s2:88001'));
+    });
+
+    test('an untouched trace says nothing about source picking', () {
+      expect(formatSelectTraceLine(traceWith(fullChain), elapsedMs: 400), isNot(contains('sourcePick')));
+    });
+  });
+
   group('disposition', () {
     test('only a replacement or a removal is worth a warning', () {
       // Continue Watching reorders on every finished episode. If `moved` were

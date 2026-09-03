@@ -12,6 +12,10 @@ import '../../profiles/profile_registry.dart';
 import '../../providers/download_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../services/storage_service.dart';
+import '../../navigation/tv/tv_live_tv_capability.dart';
+import '../../services/unified_catalog/preferred_server_store.dart';
+import '../../services/unified_catalog/unified_catalog_query_store.dart';
+import '../../services/unified_catalog/source_preference_store.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/dialogs.dart';
 import '../../utils/snackbar_helper.dart';
@@ -51,6 +55,21 @@ Future<void> deleteProfile(BuildContext context, Profile profile) async {
 
   await downloadProvider.deleteDownloadsForProfile(profile.id);
   await database.deleteRecommendationDataForProfile(profile.id);
+  // Hoofdstuk 14.8: deleting a profile wipes its remembered source choices.
+  // Before the profile row goes, while its scope is still derivable.
+  await SourcePreferenceStore.clearForProfileScope(storage.userScopeForProfileId(profile.id));
+  // Same rule for the profile's default server: which machine someone watches
+  // from goes with the profile, it does not linger for the next one.
+  await PreferredServerStore.clearForProfileScope(storage.userScopeForProfileId(profile.id));
+  // And how they had Films and Series set up (hoofdstuk 22): a genre or a
+  // library selection describes what someone browses, so it leaves with them
+  // rather than greeting the next profile on this device.
+  await UnifiedCatalogQueryStore.clearForProfileScope(storage.userScopeForProfileId(profile.id));
+  // And what this profile's servers turned out to offer ([DEC-069]): a
+  // remembered Live TV capability describes someone else's tuner, and a scope
+  // that gets reused would otherwise hand the next profile a navigation item
+  // for a source it has never seen.
+  await TvLiveTvCapabilityStore.clearForProfileScope(storage.userScopeForProfileId(profile.id));
   await removeAllProfileConnectionsAndCleanup(
     profileId: profile.id,
     profileConnections: pcRegistry,

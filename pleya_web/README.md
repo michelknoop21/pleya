@@ -113,12 +113,17 @@ for n in ['Inter-Regular','Inter-Medium','Inter-Bold']:
 \""
 ```
 
-De merkmarkeringen in `static/brand/` zijn verkleiningen van `assets/branding/pleya_logo.png`:
+De merkmarkeringen in `static/brand/` komen uit `scripts/gen_brand_assets.py`, net als elk ander
+afgeleid merkbeeld:
 
 ```sh
-sips -Z 256 ../assets/branding/pleya_logo.png --out static/brand/pleya-mark-256.png
-sips -Z 64  ../assets/branding/pleya_logo.png --out static/brand/pleya-mark-64.png
+python3 scripts/gen_brand_assets.py   # vanuit de repo-root
 ```
+
+Ze stonden hier eerder als handmatige `sips`-verkleining, en dat is precies misgegaan: toen de P
+veranderde bewogen ze niet mee, dus `app.html`, `NavRail.svelte`, `+layout.svelte`, `login/` en
+`setup/` tekenden maandenlang nog de oude, handgemaakte P. Een afgeleid merkbeeld hoort geen eigen
+handmatig recept te hebben.
 
 De navigatieglyphs staan inline in `src/lib/components/NavIcon.svelte`, met de paden letterlijk uit
 `assets/icons/nav/`. Wijzigt daar een glyph, dan hoort hij hier mee te wijzigen.

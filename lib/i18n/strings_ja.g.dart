@@ -62,6 +62,7 @@ class TranslationsJa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsJa connections = _TranslationsConnectionsJa._(_root);
 	@override late final _TranslationsDiscoverJa discover = _TranslationsDiscoverJa._(_root);
 	@override late final _TranslationsErrorsJa errors = _TranslationsErrorsJa._(_root);
+	@override late final _TranslationsNoticesJa notices = _TranslationsNoticesJa._(_root);
 	@override late final _TranslationsLibrariesJa libraries = _TranslationsLibrariesJa._(_root);
 	@override late final _TranslationsAboutJa about = _TranslationsAboutJa._(_root);
 	@override late final _TranslationsServerSelectionJa serverSelection = _TranslationsServerSelectionJa._(_root);
@@ -87,6 +88,11 @@ class TranslationsJa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerJa addServer = _TranslationsAddServerJa._(_root);
 	@override late final _TranslationsAddLocalFolderJa addLocalFolder = _TranslationsAddLocalFolderJa._(_root);
 	@override late final _TranslationsPleyaShareJa pleyaShare = _TranslationsPleyaShareJa._(_root);
+	@override late final _TranslationsSourcePickerJa sourcePicker = _TranslationsSourcePickerJa._(_root);
+	@override late final _TranslationsUnifiedCatalogJa unifiedCatalog = _TranslationsUnifiedCatalogJa._(_root);
+	@override late final _TranslationsTvNavigationJa tvNavigation = _TranslationsTvNavigationJa._(_root);
+	@override late final _TranslationsTvMyPleyaJa tvMyPleya = _TranslationsTvMyPleyaJa._(_root);
+	@override late final _TranslationsTvContextMenuJa tvContextMenu = _TranslationsTvContextMenuJa._(_root);
 }
 
 // Path: app
@@ -442,6 +448,7 @@ class _TranslationsSearchJa extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => '別の検索語をお試しください';
 	@override String get searchYourMedia => 'メディアを検索';
 	@override String get enterTitleActorOrKeyword => 'タイトル、俳優、またはキーワードを入力';
+	@override late final _TranslationsSearchFiltersJa filters = _TranslationsSearchFiltersJa._(_root);
 }
 
 // Path: hotkeys
@@ -912,6 +919,17 @@ class _TranslationsErrorsJa extends TranslationsErrorsEn {
 	@override String failedToSwitchProfile({required Object displayName}) => '${displayName}への切替に失敗しました';
 	@override String failedToDeleteProfile({required Object displayName}) => '${displayName}の削除に失敗しました';
 	@override String get failedToRate => '評価を更新できませんでした';
+}
+
+// Path: notices
+class _TranslationsNoticesJa extends TranslationsNoticesEn {
+	_TranslationsNoticesJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => 'ファイルが利用できません';
+	@override String get playbackFileUnavailableBody => 'サーバーが動画ファイルにアクセスできません。ファイルが保存されているドライブやフォルダが接続されているか確認してください。';
 }
 
 // Path: libraries
@@ -1707,6 +1725,140 @@ class _TranslationsPleyaShareJa extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => 'ネットワークをスキャン中…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerJa extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => '再生する場所を選択';
+	@override String get detailsTitle => '詳細を表示するソースを選択';
+	@override String get availableOnOneServer => '1 台のサーバーで利用可能';
+	@override String availableOnManyServers({required Object count}) => '${count} 台のサーバーで利用可能';
+	@override String get oneServerUnchecked => '1 台のサーバーを確認できませんでした';
+	@override String manyServersUnchecked({required Object count}) => '${count} 台のサーバーを確認できませんでした';
+	@override String get checkingMoreSources => '他のソースを確認中…';
+	@override String get lastUsed => '前回使用';
+	@override String get currentSource => '現在のソース';
+	@override String get unavailable => '利用できません';
+	@override String get signInRequired => '再サインインが必要です';
+	@override String resumeAt({required Object position}) => '${position} から再開';
+	@override String get watched => '視聴済み';
+	@override String get noneReachableTitle => '現在、利用できるソースがありません。';
+	@override String get reauthRequiredTitle => 'このタイトルにアクセスするには再度サインインしてください。';
+	@override String get manageServers => 'サーバーを管理';
+	@override String sourceLabel({required Object source}) => 'ソース: ${source}';
+	@override String get change => '変更';
+	@override String get playbackFailedTitle => 'このソースは再生できませんでした。';
+	@override String get detailLoadFailedTitle => 'このタイトルを読み込めませんでした。';
+	@override String get chooseAnotherSource => '別のソースを選択';
+	@override String rowSemantics({required Object count, required Object index, required Object description}) => 'ソース ${count} 件中 ${index} 件目: ${description}';
+	@override String get preferredServer => '優先サーバー';
+	@override String setPreferredServer({required Object server}) => '常に ${server} を使用';
+}
+
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogJa extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => '映画';
+	@override String get seriesTitle => 'シリーズ';
+	@override String sources({required Object count}) => '${count} 件のソース';
+	@override String get allSources => 'すべてのソース';
+	@override String get oneSource => '1 件のソース';
+	@override String seasons({required Object count}) => '${count} シーズン';
+	@override String get oneSeason => '1 シーズン';
+	@override String titleCount({required Object count}) => '${count} 作品';
+	@override String get oneTitle => '1 作品';
+	@override String titlesLoaded({required Object count}) => '${count} 作品を読み込みました';
+	@override String get loadMore => 'さらに読み込む';
+	@override String get loadingMore => '読み込み中…';
+	@override late final _TranslationsUnifiedCatalogSortJa sort = _TranslationsUnifiedCatalogSortJa._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersJa filters = _TranslationsUnifiedCatalogFiltersJa._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesJa states = _TranslationsUnifiedCatalogStatesJa._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsJa semantics = _TranslationsUnifiedCatalogSemanticsJa._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryJa discovery = _TranslationsUnifiedCatalogDiscoveryJa._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeJa home = _TranslationsUnifiedCatalogHomeJa._(_root);
+}
+
+// Path: tvNavigation
+class _TranslationsTvNavigationJa extends TranslationsTvNavigationEn {
+	_TranslationsTvNavigationJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get activeDestination => '現在のセクション';
+	@override String get attentionRequired => '要確認';
+}
+
+// Path: tvMyPleya
+class _TranslationsTvMyPleyaJa extends TranslationsTvMyPleyaEn {
+	_TranslationsTvMyPleyaJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get groupContent => 'マイコンテンツ';
+	@override String get groupSources => 'ライブラリとソース';
+	@override String get groupPleya => 'Pleya';
+	@override String serversOnline({required Object total, required Object online}) => '${total} 台中 ${online} 台のサーバーがオンライン';
+	@override String get noServers => '接続中のサーバーはありません';
+	@override String get statusOnline => 'オンライン';
+	@override String get statusOffline => 'オフライン';
+	@override String get servers => 'サーバー';
+	@override String get activity => 'アクティビティ';
+	@override String get logs => 'ログと診断';
+	@override String signedInAs({required Object name, required Object version}) => '${name} でログイン中 · Pleya ${version}';
+	@override String get watchlistSubtitle => '保存した映画とシリーズ';
+	@override String get requestsSubtitle => 'リクエストと発見';
+	@override String get downloadsSubtitle => 'オフラインと同期ルール';
+	@override String get librariesSubtitle => 'メディア、コレクション、プレイリスト';
+	@override String get serversSubtitle => '接続とローカルソース';
+	@override String get activitySubtitle => '再生中、一緒に視聴、リモート';
+	@override String get watchTogetherSubtitle => '友だちと同期して見る';
+	@override String get settingsSubtitle => '表示、プレーヤー、トラッカー';
+	@override String get logsSubtitle => 'ログファイルとクラッシュレポート';
+	@override String get aboutSubtitle => 'バージョンとライセンス';
+	@override String get logoutSubtitle => 'このデバイスからログアウト';
+	@override late final _TranslationsTvMyPleyaSemanticsJa semantics = _TranslationsTvMyPleyaSemanticsJa._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuJa extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'アクション';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => 'アクション ${index}/${count}: ${label}';
+	@override String get noUsableSource => '現在利用できるソースがないため、今は変更できません。';
+	@override String doneOnAll({required Object count}) => '${count}件すべてのソースで完了しました';
+	@override String doneOnSome({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。残りはオンラインに戻り次第再試行されます。';
+	@override String doneOnSomeNoRetry({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。';
+	@override String get failed => 'うまくいきませんでした';
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersJa extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'すべて';
+	@override String get movies => '映画';
+	@override String get shows => 'テレビ番組';
+	@override String get episodes => 'エピソード';
+	@override String get people => '人物';
+	@override String get other => 'その他';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsJa extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsJa._(TranslationsJa root) : this._root = root, super.internal(root);
@@ -1984,6 +2136,125 @@ class _TranslationsTrackersLibraryFilterJa extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => '下でチェックしたライブラリのみ同期します。';
 	@override String get libraries => 'ライブラリ';
 	@override String get noLibraries => '利用できるライブラリがありません';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortJa extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '並べ替え';
+	@override String get titleAsc => 'タイトル昇順';
+	@override String get titleDesc => 'タイトル降順';
+	@override String get recentlyAdded => '追加が新しい順';
+	@override String get oldestAdded => '追加が古い順';
+	@override String get newestRelease => '公開が新しい順';
+	@override String get oldestRelease => '公開が古い順';
+	@override String get recentlyWatched => '最近見た順';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersJa extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'フィルター';
+	@override String get status => 'ステータス';
+	@override String get genre => 'ジャンル';
+	@override String get year => '年';
+	@override String get servers => 'サーバー';
+	@override String get libraries => 'ライブラリ';
+	@override String get apply => '適用';
+	@override String get clearAll => 'すべてクリア';
+	@override String get all => 'すべて';
+	@override String get unwatched => '未視聴';
+	@override String get unsupported => '現在のソースでは利用できません';
+	@override String get someUnavailable => '選択したソースでは一部のフィルターを利用できません';
+	@override String get noValues => '選択できる項目がありません';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesJa extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'このカタログは空です';
+	@override String get emptyBody => '表示中のライブラリにこのページの項目はありません。';
+	@override String get filterEmptyTitle => 'このフィルターに一致する項目はありません';
+	@override String get filterEmptyBody => 'フィルターをクリアすると作品が増えます。';
+	@override String get clearFilters => 'フィルターをクリア';
+	@override String get errorTitle => 'カタログを読み込めませんでした';
+	@override String get errorBody => '応答したサーバーがありません。接続を確認してやり直してください。';
+	@override String get partialOne => '1 つのライブラリが応答しませんでした';
+	@override String partialMany({required Object count}) => '${count} つのライブラリが応答しませんでした';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsJa extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => '視聴済み';
+	@override String get inProgress => '視聴中';
+	@override String get loadingMore => '作品をさらに読み込み中';
+}
+
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryJa extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => 'すべての映画';
+	@override String get allSeries => 'すべてのシリーズ';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => '一部のソースが応答しませんでした';
+	@override String get emptyTitle => 'まだ何も見つかりません';
+	@override String get emptyBody => '表示できるライブラリにここに表示するものがありません。';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsJa semantics = _TranslationsUnifiedCatalogDiscoverySemanticsJa._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeJa extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => '注目作品';
+}
+
+// Path: tvMyPleya.semantics
+class _TranslationsTvMyPleyaSemanticsJa extends TranslationsTvMyPleyaSemanticsEn {
+	_TranslationsTvMyPleyaSemanticsJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsJa extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}、${count}件のタイトル';
+	@override String position({required Object count, required Object position}) => '${count}件中${position}件目';
+	@override String get viewAllMovies => 'すべての映画を表示、完全なカタログを開きます';
+	@override String get viewAllSeries => 'すべてのシリーズを表示、完全なカタログを開きます';
 }
 
 /// The flat map containing all translations for locale <ja>.
@@ -2286,6 +2557,12 @@ extension on TranslationsJa {
 			'search.tryDifferentTerm' => '別の検索語をお試しください',
 			'search.searchYourMedia' => 'メディアを検索',
 			'search.enterTitleActorOrKeyword' => 'タイトル、俳優、またはキーワードを入力',
+			'search.filters.all' => 'すべて',
+			'search.filters.movies' => '映画',
+			'search.filters.shows' => 'テレビ番組',
+			'search.filters.episodes' => 'エピソード',
+			'search.filters.people' => '人物',
+			'search.filters.other' => 'その他',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => '${actionName}のショートカットを設定',
 			'hotkeys.clearShortcut' => 'ショートカットをクリア',
 			'hotkeys.noShortcutSet' => 'ショートカット未設定',
@@ -2500,14 +2777,14 @@ extension on TranslationsJa {
 			'messages.sleepTimerSet' => ({required Object label}) => 'スリープタイマーを${label}に設定しました',
 			'messages.noItemsAvailable' => 'アイテムがありません',
 			'messages.failedToCreatePlayQueueNoItems' => '再生キューの作成に失敗しました - アイテムがありません',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => '${action}に失敗しました',
 			'messages.switchingToCompatiblePlayer' => '互換プレーヤーに切替中...',
 			'messages.serverLimitTitle' => '再生に失敗しました',
 			'messages.serverLimitBody' => 'サーバーエラー（HTTP 500）。帯域幅/トランスコード制限により拒否された可能性があります。所有者に調整を依頼してください。',
 			'messages.logsUploaded' => 'ログをアップロードしました',
 			'messages.logsUploadFailed' => 'ログのアップロードに失敗しました',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => 'ログID',
 			'subtitlingStyling.text' => 'テキスト',
 			'subtitlingStyling.border' => '枠線',
@@ -2644,6 +2921,8 @@ extension on TranslationsJa {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => '${displayName}への切替に失敗しました',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => '${displayName}の削除に失敗しました',
 			'errors.failedToRate' => '評価を更新できませんでした',
+			'notices.playbackFileUnavailableTitle' => 'ファイルが利用できません',
+			'notices.playbackFileUnavailableBody' => 'サーバーが動画ファイルにアクセスできません。ファイルが保存されているドライブやフォルダが接続されているか確認してください。',
 			'libraries.title' => 'ライブラリ',
 			'libraries.fallbackTitle' => 'ライブラリ',
 			'libraries.scanLibraryFiles' => 'ライブラリファイルをスキャン',
@@ -3012,6 +3291,8 @@ extension on TranslationsJa {
 			'companionRemote.pairing.discoveryDescription' => '同じPlexアカウントのPleyaデバイスがここに表示されます',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '接続中...',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.searchingForDevices' => 'デバイスを検索中...',
 			'companionRemote.pairing.noDevicesFound' => 'ネットワーク上にデバイスが見つかりません',
 			'companionRemote.pairing.noDevicesHint' => 'デスクトップでPleyaを開き、同じWiFiを使用してください',
@@ -3020,8 +3301,6 @@ extension on TranslationsJa {
 			'companionRemote.pairing.cryptoInitFailed' => '安全な接続を開始できませんでした。先にPlexにサインインしてください。',
 			'companionRemote.pairing.validationHostRequired' => 'ホストアドレスを入力してください',
 			'companionRemote.pairing.validationHostFormat' => '形式はIP:ポートである必要があります（例: 192.168.1.100:48632）',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => '接続がタイムアウトしました。両方のデバイスで同じネットワークを使用してください。',
 			'companionRemote.pairing.sessionNotFound' => 'デバイスが見つかりません。ホストでPleyaが実行中か確認してください。',
 			'companionRemote.pairing.authFailed' => '認証に失敗しました。両方のデバイスで同じPlexアカウントが必要です。',
@@ -3323,6 +3602,119 @@ extension on TranslationsJa {
 			'pleyaShare.notificationText' => '他のPleyaデバイスがローカルフォルダーをストリーミングできます',
 			'pleyaShare.hostDescriptionAndroid' => 'このネットワーク上の他のPleyaデバイスが、ローカルフォルダーの閲覧・ストリーミング・ダウンロードを行えます。共有は通知とともにバックグラウンドで継続されます。',
 			'pleyaShare.scanningSubnet' => 'ネットワークをスキャン中…',
+			'sourcePicker.playTitle' => '再生する場所を選択',
+			'sourcePicker.detailsTitle' => '詳細を表示するソースを選択',
+			'sourcePicker.availableOnOneServer' => '1 台のサーバーで利用可能',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => '${count} 台のサーバーで利用可能',
+			'sourcePicker.oneServerUnchecked' => '1 台のサーバーを確認できませんでした',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} 台のサーバーを確認できませんでした',
+			'sourcePicker.checkingMoreSources' => '他のソースを確認中…',
+			'sourcePicker.lastUsed' => '前回使用',
+			'sourcePicker.currentSource' => '現在のソース',
+			'sourcePicker.unavailable' => '利用できません',
+			'sourcePicker.signInRequired' => '再サインインが必要です',
+			'sourcePicker.resumeAt' => ({required Object position}) => '${position} から再開',
+			'sourcePicker.watched' => '視聴済み',
+			'sourcePicker.noneReachableTitle' => '現在、利用できるソースがありません。',
+			'sourcePicker.reauthRequiredTitle' => 'このタイトルにアクセスするには再度サインインしてください。',
+			'sourcePicker.manageServers' => 'サーバーを管理',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'ソース: ${source}',
+			'sourcePicker.change' => '変更',
+			'sourcePicker.playbackFailedTitle' => 'このソースは再生できませんでした。',
+			'sourcePicker.detailLoadFailedTitle' => 'このタイトルを読み込めませんでした。',
+			'sourcePicker.chooseAnotherSource' => '別のソースを選択',
+			'sourcePicker.rowSemantics' => ({required Object count, required Object index, required Object description}) => 'ソース ${count} 件中 ${index} 件目: ${description}',
+			'sourcePicker.preferredServer' => '優先サーバー',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => '常に ${server} を使用',
+			'unifiedCatalog.moviesTitle' => '映画',
+			'unifiedCatalog.seriesTitle' => 'シリーズ',
+			'unifiedCatalog.sources' => ({required Object count}) => '${count} 件のソース',
+			'unifiedCatalog.allSources' => 'すべてのソース',
+			'unifiedCatalog.oneSource' => '1 件のソース',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} シーズン',
+			'unifiedCatalog.oneSeason' => '1 シーズン',
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} 作品',
+			'unifiedCatalog.oneTitle' => '1 作品',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} 作品を読み込みました',
+			'unifiedCatalog.loadMore' => 'さらに読み込む',
+			'unifiedCatalog.loadingMore' => '読み込み中…',
+			'unifiedCatalog.sort.title' => '並べ替え',
+			'unifiedCatalog.sort.titleAsc' => 'タイトル昇順',
+			'unifiedCatalog.sort.titleDesc' => 'タイトル降順',
+			'unifiedCatalog.sort.recentlyAdded' => '追加が新しい順',
+			'unifiedCatalog.sort.oldestAdded' => '追加が古い順',
+			'unifiedCatalog.sort.newestRelease' => '公開が新しい順',
+			'unifiedCatalog.sort.oldestRelease' => '公開が古い順',
+			'unifiedCatalog.sort.recentlyWatched' => '最近見た順',
+			'unifiedCatalog.filters.title' => 'フィルター',
+			'unifiedCatalog.filters.status' => 'ステータス',
+			'unifiedCatalog.filters.genre' => 'ジャンル',
+			'unifiedCatalog.filters.year' => '年',
+			'unifiedCatalog.filters.servers' => 'サーバー',
+			'unifiedCatalog.filters.libraries' => 'ライブラリ',
+			'unifiedCatalog.filters.apply' => '適用',
+			'unifiedCatalog.filters.clearAll' => 'すべてクリア',
+			'unifiedCatalog.filters.all' => 'すべて',
+			'unifiedCatalog.filters.unwatched' => '未視聴',
+			'unifiedCatalog.filters.unsupported' => '現在のソースでは利用できません',
+			'unifiedCatalog.filters.someUnavailable' => '選択したソースでは一部のフィルターを利用できません',
+			'unifiedCatalog.filters.noValues' => '選択できる項目がありません',
+			'unifiedCatalog.states.emptyTitle' => 'このカタログは空です',
+			'unifiedCatalog.states.emptyBody' => '表示中のライブラリにこのページの項目はありません。',
+			'unifiedCatalog.states.filterEmptyTitle' => 'このフィルターに一致する項目はありません',
+			'unifiedCatalog.states.filterEmptyBody' => 'フィルターをクリアすると作品が増えます。',
+			'unifiedCatalog.states.clearFilters' => 'フィルターをクリア',
+			'unifiedCatalog.states.errorTitle' => 'カタログを読み込めませんでした',
+			'unifiedCatalog.states.errorBody' => '応答したサーバーがありません。接続を確認してやり直してください。',
+			'unifiedCatalog.states.partialOne' => '1 つのライブラリが応答しませんでした',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} つのライブラリが応答しませんでした',
+			'unifiedCatalog.semantics.watched' => '視聴済み',
+			'unifiedCatalog.semantics.inProgress' => '視聴中',
+			'unifiedCatalog.semantics.loadingMore' => '作品をさらに読み込み中',
+			'unifiedCatalog.discovery.allMovies' => 'すべての映画',
+			'unifiedCatalog.discovery.allSeries' => 'すべてのシリーズ',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => '一部のソースが応答しませんでした',
+			'unifiedCatalog.discovery.emptyTitle' => 'まだ何も見つかりません',
+			'unifiedCatalog.discovery.emptyBody' => '表示できるライブラリにここに表示するものがありません。',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}、${count}件のタイトル',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object count, required Object position}) => '${count}件中${position}件目',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'すべての映画を表示、完全なカタログを開きます',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'すべてのシリーズを表示、完全なカタログを開きます',
+			'unifiedCatalog.home.featured' => '注目作品',
+			'tvNavigation.activeDestination' => '現在のセクション',
+			'tvNavigation.attentionRequired' => '要確認',
+			'tvMyPleya.groupContent' => 'マイコンテンツ',
+			'tvMyPleya.groupSources' => 'ライブラリとソース',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object total, required Object online}) => '${total} 台中 ${online} 台のサーバーがオンライン',
+			'tvMyPleya.noServers' => '接続中のサーバーはありません',
+			'tvMyPleya.statusOnline' => 'オンライン',
+			'tvMyPleya.statusOffline' => 'オフライン',
+			'tvMyPleya.servers' => 'サーバー',
+			'tvMyPleya.activity' => 'アクティビティ',
+			'tvMyPleya.logs' => 'ログと診断',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => '${name} でログイン中 · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => '保存した映画とシリーズ',
+			'tvMyPleya.requestsSubtitle' => 'リクエストと発見',
+			'tvMyPleya.downloadsSubtitle' => 'オフラインと同期ルール',
+			'tvMyPleya.librariesSubtitle' => 'メディア、コレクション、プレイリスト',
+			'tvMyPleya.serversSubtitle' => '接続とローカルソース',
+			'tvMyPleya.activitySubtitle' => '再生中、一緒に視聴、リモート',
+			'tvMyPleya.watchTogetherSubtitle' => '友だちと同期して見る',
+			'tvMyPleya.settingsSubtitle' => '表示、プレーヤー、トラッカー',
+			'tvMyPleya.logsSubtitle' => 'ログファイルとクラッシュレポート',
+			'tvMyPleya.aboutSubtitle' => 'バージョンとライセンス',
+			'tvMyPleya.logoutSubtitle' => 'このデバイスからログアウト',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'アクション',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'アクション ${index}/${count}: ${label}',
+			'tvContextMenu.noUsableSource' => '現在利用できるソースがないため、今は変更できません。',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => '${count}件すべてのソースで完了しました',
+			'tvContextMenu.doneOnSome' => ({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。残りはオンラインに戻り次第再試行されます。',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。',
+			'tvContextMenu.failed' => 'うまくいきませんでした',
 			_ => null,
 		};
 	}

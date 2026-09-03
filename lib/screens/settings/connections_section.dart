@@ -209,7 +209,23 @@ class _ConnectionsSectionState extends State<ConnectionsSection> {
 
   /// Disconnecting is a local action and stays available whatever the server
   /// is doing: offline, expired, or gone for good. Nothing here waits on it.
-  Future<void> _disconnectPleyaServer(PleyaServerConnection server) async {
+  Future<void> _disconnectPleyaServer(PleyaServerConnection server) =>
+      ConnectionsRemoval.disconnectPleyaServer(context, server);
+
+  Future<void> _removeLocalSource(Connection source) => ConnectionsRemoval.removeLocalSource(context, source);
+}
+
+/// The confirm-then-remove flows behind a connection row, as functions rather
+/// than private methods on one screen's State.
+///
+/// `TvServersPage` draws the same connections as tiles. Copying these two
+/// dialogs and the five-step teardown behind them would be two places to keep
+/// a destructive path in agreement; this is one, and both presentations call
+/// it with their own context.
+class ConnectionsRemoval {
+  const ConnectionsRemoval._();
+
+  static Future<void> disconnectPleyaServer(BuildContext context, PleyaServerConnection server) async {
     final confirmed = await showConfirmDialog(
       context,
       title: t.connections.disconnectServer,
@@ -217,11 +233,11 @@ class _ConnectionsSectionState extends State<ConnectionsSection> {
       confirmText: t.connections.disconnectServer,
       isDestructive: true,
     );
-    if (!confirmed || !mounted) return;
-    await _removeConnectionLocally(server);
+    if (!confirmed || !context.mounted) return;
+    await removeLocally(context, server);
   }
 
-  Future<void> _removeLocalSource(Connection source) async {
+  static Future<void> removeLocalSource(BuildContext context, Connection source) async {
     final confirmed = await showConfirmDialog(
       context,
       title: t.connections.removeSource,
@@ -229,11 +245,11 @@ class _ConnectionsSectionState extends State<ConnectionsSection> {
       confirmText: t.common.delete,
       isDestructive: true,
     );
-    if (!confirmed || !mounted) return;
-    await _removeConnectionLocally(source);
+    if (!confirmed || !context.mounted) return;
+    await removeLocally(context, source);
   }
 
-  Future<void> _removeConnectionLocally(Connection connection) async {
+  static Future<void> removeLocally(BuildContext context, Connection connection) async {
     final profileConnections = context.read<ProfileConnectionRegistry>();
     final connections = context.read<ConnectionRegistry>();
     final serverManager = context.read<MultiServerProvider>().serverManager;
@@ -245,9 +261,9 @@ class _ConnectionsSectionState extends State<ConnectionsSection> {
       storage: storage,
       serverManager: serverManager,
     );
-    if (!mounted) return;
+    if (!context.mounted) return;
     await context.read<HiddenLibrariesProvider?>()?.refresh();
-    if (!mounted) return;
+    if (!context.mounted) return;
     final activeId = context.read<ActiveProfileProvider>().active?.id;
     if (activeId != null) {
       final rebind = context.read<ActiveProfileBinder?>()?.rebindIfActive(activeId);

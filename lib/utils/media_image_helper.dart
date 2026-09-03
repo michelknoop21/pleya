@@ -8,6 +8,14 @@ import 'platform_detector.dart';
 enum ImageType {
   poster, // 2:3 ratio posters
   art, // Wide background art
+  /// The Home hero / billboard. [art] with one difference that matters: its
+  /// cap is the TV output surface rather than a retina desktop window, because
+  /// the hero is the one surface that fills a 4K panel edge to edge. Measured
+  /// on Apple TV the hero renders 3538x1365 physical pixels while [art]'s
+  /// 2560 cap made every backdrop arrive 1.38x too small, and a 1920-wide
+  /// source 1.84x too small. Separate value rather than a bigger global cap so
+  /// posters, cards and thumbs keep asking for exactly what they draw.
+  heroArt,
   thumb, // 16:9 episode thumbnails
   logo, // Variable ratio clear logos
   avatar, // Square-ish user avatars
@@ -41,6 +49,13 @@ class MediaImageHelper {
   static const int _maxTranscodedWidth = 2560;
   static const int _maxTranscodedHeight = 1440;
 
+  /// [ImageType.heroArt]'s ceiling: the Apple TV 4K output surface. The hero
+  /// card is 3538x1365 physical there, so this is the smallest cap that lets
+  /// it be requested at native resolution, and it is not shared with anything
+  /// else.
+  static const int _maxHeroArtWidth = 3840;
+  static const int _maxHeroArtHeight = 2160;
+
   static const int _minTranscodedWidth = 160;
   static const int _minTranscodedHeight = 240;
 
@@ -59,11 +74,41 @@ class MediaImageHelper {
   /// rounding (decode bucket) so both snap to the same grid.
   static int _bucketUp(num value, int factor) => (value / factor).ceil() * factor;
 
-  /// Rounds dimensions to cache-friendly values to increase cache hit rate
-  static (int width, int height) roundDimensions(double width, double height) {
+  /// Rounds dimensions to cache-friendly values to increase cache hit rate.
+  ///
+  /// The caps are applied by **scaling the box**, not by clamping each axis on
+  /// its own. Independent clamps silently change the requested aspect ratio,
+  /// and that is not a cosmetic difference: the Home hero asks for a 2.59 box,
+  /// the old code clamped 3892x1501 to 2560x1440 and shipped a request for a
+  /// 1.78 one. On Plex, whose `/photo/:/transcode` takes both dimensions with
+  /// `minSize=1`, the server then cropped the source to 16:9 and Flutter
+  /// cropped the result again to 2.59 -- the double crop
+  /// [DEC-057](../../docs/DECISIONS.md#dec-057) exists to prevent, introduced
+  /// by the rounding helper rather than by any caller.
+  ///
+  /// Bucketing still moves the ratio a little (width snaps to 40, height to
+  /// 60), which is the tolerance the caller is expected to accept; what it no
+  /// longer does is reshape the box.
+  ///
+  /// The floor stays a per-axis clamp on purpose. It only fires on boxes small
+  /// enough that [getOptimizedImageUrl] skips the transcode round-trip
+  /// entirely, and preserving the ratio there would inflate small requests to
+  /// satisfy a 2:3-shaped minimum that has nothing to do with them.
+  static (int width, int height) roundDimensions(double width, double height, {int? maxWidth, int? maxHeight}) {
+    final maxW = maxWidth ?? _maxTranscodedWidth;
+    final maxH = maxHeight ?? _maxTranscodedHeight;
+    var w = width;
+    var h = height;
+    if (w > 0 && h > 0) {
+      final fit = min(maxW / w, maxH / h);
+      if (fit < 1) {
+        w *= fit;
+        h *= fit;
+      }
+    }
     return (
-      _bucketUp(width, _widthRoundingFactor).clamp(_minTranscodedWidth, _maxTranscodedWidth),
-      _bucketUp(height, _heightRoundingFactor).clamp(_minTranscodedHeight, _maxTranscodedHeight),
+      _bucketUp(w, _widthRoundingFactor).clamp(_minTranscodedWidth, maxW),
+      _bucketUp(h, _heightRoundingFactor).clamp(_minTranscodedHeight, maxH),
     );
   }
 
@@ -98,17 +143,25 @@ class MediaImageHelper {
 
     switch (imageType) {
       case ImageType.art:
+      case ImageType.heroArt:
+        final isHero = imageType == ImageType.heroArt;
         if (DevicePerformance.isReduced) {
-          // No 1.1× cover overshoot, capped at ~720p.
+          // No 1.1x cover overshoot, capped at ~720p. Ratio-preserving like
+          // the main path: `roundDimensions` fits the box inside the cap
+          // instead of squaring off each axis.
           return roundDimensions(
-            min(targetWidth, _reducedMaxArtWidth.toDouble()),
-            min(targetHeight, _reducedMaxArtHeight.toDouble()),
+            targetWidth,
+            targetHeight,
+            maxWidth: _reducedMaxArtWidth,
+            maxHeight: _reducedMaxArtHeight,
           );
         }
-        final coverWidth = targetWidth * 1.1;
-        final coverHeight = targetHeight * 1.1;
-
-        return roundDimensions(coverWidth, coverHeight);
+        return roundDimensions(
+          targetWidth * 1.1,
+          targetHeight * 1.1,
+          maxWidth: isHero ? _maxHeroArtWidth : null,
+          maxHeight: isHero ? _maxHeroArtHeight : null,
+        );
 
       case ImageType.logo:
         final logoWidth = targetWidth;
@@ -241,8 +294,13 @@ class MediaImageHelper {
       ImageType.thumb => (960, 540),
       // Match the reduced-tier fetch cap so oversized originals (failed
       // transcodes, external images) can't decode past the art budget.
-      ImageType.art when DevicePerformance.isReduced => (_reducedMaxArtWidth, _reducedMaxArtHeight),
-      ImageType.art => (2560, 1440),
+      ImageType.art ||
+      ImageType.heroArt when DevicePerformance.isReduced => (_reducedMaxArtWidth, _reducedMaxArtHeight),
+      ImageType.art => (_maxTranscodedWidth, _maxTranscodedHeight),
+      // The hero decodes at the size it draws, or the decode budget would
+      // undo the fetch: asking the server for 3840 and then decoding into
+      // 2560 is the same softness by a different route.
+      ImageType.heroArt => (_maxHeroArtWidth, _maxHeroArtHeight),
       ImageType.logo => (600, 300),
       ImageType.avatar => (300, 300),
     };

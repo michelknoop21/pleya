@@ -172,11 +172,11 @@ omgevingsschakelaar die `/v1/*` zonder auth laat draaien.
 ## Bekende grenzen
 
 - **`tvos.library.filters`** is `DEFERRED: blocked by Pleya Server catalog/filter contract G13`
-  ([DEC-063](../DECISIONS.md#dec-063-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)).
+  ([DEC-080](../DECISIONS.md#dec-080-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)).
   De scenariogrammatica kan het dragen zodra het productcontract bestaat; tot die tijd bewijst
   `tvos.library.sort.yaml` de wél bestaande Sort-control.
 - **`macos.smoke.boot` in CI** faalt op een GitHub-hosted runner door een signing-beperking, niet
-  door een fout in Verify zelf ([DEC-066](../DECISIONS.md#dec-066-pleya-verify-ci-drie-gescheiden-gates-geen-tweede-execution-path)).
+  door een fout in Verify zelf ([DEC-083](../DECISIONS.md#dec-083-pleya-verify-ci-drie-gescheiden-gates-geen-tweede-execution-path)).
   `discover.hero.layout` op hetzelfde target heeft wél een reproduceerbaar bewezen PASS.
 - **De MCP-laag** (`pleya_verify/mcp/`) is Dart, geen tweede scenario-engine: elke tool spawnt
   `pleya_verify/runner/bin/verify.dart --json <subcommand>` als los proces en geeft de JSON-envelope

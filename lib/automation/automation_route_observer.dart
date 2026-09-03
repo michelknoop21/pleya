@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import 'automation_event_log.dart';
+import 'automation_route_state.dart';
 import 'pleya_verify.dart';
 
 /// Emits `screen.changed` on every push/pop/replace.
@@ -24,18 +25,21 @@ class AutomationRouteObserver extends RouteObserver<PageRoute<dynamic>> {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPush(route, previousRoute);
+    if (kPleyaVerify) AutomationRouteState.instance.pushNavigatorRoute(route.settings.name);
     _emit('push', route, previousRoute);
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPop(route, previousRoute);
+    if (kPleyaVerify) AutomationRouteState.instance.popNavigatorRoute();
     _emit('pop', route, previousRoute);
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
+    if (kPleyaVerify) AutomationRouteState.instance.replaceNavigatorRoute(newRoute?.settings.name);
     _emit('replace', newRoute, oldRoute);
   }
 }

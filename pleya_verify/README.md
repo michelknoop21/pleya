@@ -47,5 +47,5 @@ reimplemented scenario or driver logic:
 - **`tvos-verify`** (macOS, `workflow_dispatch`/`schedule` only, not required): `run` for
   `tvos.smoke.boot`.
 
-See [DEC-066](../docs/DECISIONS.md#dec-066-pleya-verify-ci-drie-gescheiden-gates-geen-tweede-execution-path)
+See [DEC-083](../docs/DECISIONS.md#dec-083-pleya-verify-ci-drie-gescheiden-gates-geen-tweede-execution-path)
 for why `macos-verify` is not (yet) a required check.

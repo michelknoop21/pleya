@@ -1,0 +1,55 @@
+name: tvos.home.hero-return
+target: tvos-sim
+# P1: UP from the first Home row brings the billboard back *into view*, not just
+# back into the focus tree.
+#
+# The bug this closes is precise, and it is why the assertion is a rect and not
+# only a focus flag. `_focusHeroFromFirstRow` used to try `focusLastCta()`
+# first and return the moment it succeeded — and it succeeds while the carousel
+# is still mounted inside the ListView's cacheExtent, which is to say while it
+# is entirely off the top of the screen. A bare `requestFocus()` provokes no
+# `ensureVisible` of its own, so the CTA held the remote on a billboard nobody
+# could see, and the `jumpTo(0)` a line below never ran. A scenario that only
+# checked "is a hero CTA focused" would have gone green on exactly that.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  # IntroGate's cold-start splash paints over an already-ready screen.
+  - settle: 3500
+
+  # The hero and its Afspelen pill are addressable on tvOS as of this round —
+  # `discover.hero` and `discover.hero.play` are the ids the phone/desktop hero
+  # already carried, now also registered by `TvHeroBillboardCarousel`. Before
+  # that, `/v1/ui_tree` on this platform reported the bar and the rails and
+  # nothing of the billboard, which `tvos.sidebar.collapse` records in its own
+  # comments as the reason it can say nothing about the hero.
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - assert: {id: discover.hero, insideViewport: true}
+  - snapshot: home-rest
+
+  # Down out of the bar lands on Afspelen (hoofdstuk 7.1). A cold start now
+  # leaves the remote on the top navigation rather than on the content, so this
+  # press is the one that enters the page — see `tvos.nav.destination-select`.
+  - press: down
+  - settle: 1000
+  - assert: {id: discover.hero.play, focused: true}
+
+  # Down again into the first row. One row is 57% of the canvas after DEC-087,
+  # so focusing it scrolls the hero off the top — which is the state the return
+  # path has to recover from, and the reason this scenario presses twice.
+  - press: down
+  - settle: 1200
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
+  - snapshot: home-first-row-focused
+
+  # And back up. Both halves are asserted, because the defect satisfied one of
+  # them: the pill has the focus *and* the billboard is fully on screen.
+  - press: up
+  - settle: 1200
+  - assert: {id: discover.hero, insideViewport: true}
+  - assert: {id: discover.hero.play, focused: true}
+  - snapshot: home-hero-returned

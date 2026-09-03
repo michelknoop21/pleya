@@ -21,7 +21,7 @@ import '../../../utils/watch_state_notifier.dart';
 import '../../../widgets/hub_section.dart';
 import '../../../widgets/settings_builder.dart';
 import '../../../widgets/tv_browse_rail.dart';
-import '../library_header.dart';
+import '../../../widgets/library_header_bar.dart';
 import '../../../widgets/tv_spotlight_background.dart';
 import '../../main_screen.dart';
 import 'base_library_tab.dart';

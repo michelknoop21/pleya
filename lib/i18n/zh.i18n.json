@@ -303,7 +303,15 @@
     "hint": "搜索电影、系列、音乐...",
     "tryDifferentTerm": "尝试不同的搜索词",
     "searchYourMedia": "搜索媒体",
-    "enterTitleActorOrKeyword": "输入标题、演员或关键词"
+    "enterTitleActorOrKeyword": "输入标题、演员或关键词",
+    "filters": {
+      "all": "全部",
+      "movies": "电影",
+      "shows": "剧集",
+      "episodes": "单集",
+      "people": "人物",
+      "other": "其他"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "为 ${actionName} 设置快捷键",
@@ -696,6 +704,10 @@
     "failedToSwitchProfile": "无法切换到 ${displayName}",
     "failedToDeleteProfile": "无法删除 ${displayName}",
     "failedToRate": "无法更新评分"
+  },
+  "notices": {
+    "playbackFileUnavailableTitle": "文件不可用",
+    "playbackFileUnavailableBody": "服务器无法访问该视频文件。请检查其所在的驱动器或文件夹是否仍处于连接状态。"
   },
   "libraries": {
     "title": "媒体库",
@@ -1447,5 +1459,144 @@
     "notificationText": "其他 Pleya 设备可以串流你的本地文件夹",
     "hostDescriptionAndroid": "此网络上的其他 Pleya 设备可以浏览、串流和下载你的本地文件夹。共享会在后台继续运行并显示通知。",
     "scanningSubnet": "正在扫描网络…"
+  },
+  "sourcePicker": {
+    "playTitle": "选择在哪里播放",
+    "detailsTitle": "选择查看详情的来源",
+    "availableOnOneServer": "1 台服务器可用",
+    "availableOnManyServers": "${count} 台服务器可用",
+    "oneServerUnchecked": "有 1 台服务器无法检查",
+    "manyServersUnchecked": "有 ${count} 台服务器无法检查",
+    "checkingMoreSources": "正在检查更多来源…",
+    "lastUsed": "上次使用",
+    "currentSource": "当前来源",
+    "unavailable": "不可用",
+    "signInRequired": "需要重新登录",
+    "resumeAt": "从 ${position} 继续",
+    "watched": "已观看",
+    "noneReachableTitle": "当前没有可用的来源。",
+    "reauthRequiredTitle": "请重新登录以访问该标题。",
+    "manageServers": "管理服务器",
+    "sourceLabel": "来源：${source}",
+    "change": "更改",
+    "playbackFailedTitle": "无法播放此来源。",
+    "detailLoadFailedTitle": "无法加载此标题。",
+    "chooseAnotherSource": "选择其他来源",
+    "rowSemantics": "第 ${index} 个来源，共 ${count} 个：${description}",
+    "preferredServer": "首选服务器",
+    "setPreferredServer": "始终使用 ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "电影",
+    "seriesTitle": "剧集",
+    "sources": "${count} 个来源",
+    "allSources": "全部来源",
+    "oneSource": "1 个来源",
+    "seasons": "${count} 季",
+    "oneSeason": "1 季",
+    "titleCount": "${count} 部",
+    "oneTitle": "1 部",
+    "titlesLoaded": "已加载 ${count} 部",
+    "loadMore": "加载更多",
+    "loadingMore": "正在加载…",
+    "sort": {
+      "title": "排序",
+      "titleAsc": "标题 A–Z",
+      "titleDesc": "标题 Z–A",
+      "recentlyAdded": "最近添加",
+      "oldestAdded": "最早添加",
+      "newestRelease": "最新上映",
+      "oldestRelease": "最早上映",
+      "recentlyWatched": "最近观看"
+    },
+    "filters": {
+      "title": "筛选",
+      "status": "状态",
+      "genre": "类型",
+      "year": "年份",
+      "servers": "服务器",
+      "libraries": "媒体库",
+      "apply": "应用",
+      "clearAll": "全部清除",
+      "all": "全部",
+      "unwatched": "未观看",
+      "unsupported": "当前来源不支持",
+      "someUnavailable": "所选来源不支持部分筛选条件",
+      "noValues": "没有可选项"
+    },
+    "states": {
+      "emptyTitle": "此目录为空",
+      "emptyBody": "可见的媒体库中没有适用于此页面的内容。",
+      "filterEmptyTitle": "没有符合这些筛选条件的内容",
+      "filterEmptyBody": "清除一个筛选条件以查看更多。",
+      "clearFilters": "清除筛选",
+      "errorTitle": "无法加载目录",
+      "errorBody": "没有服务器响应。请检查连接后重试。",
+      "partialOne": "1 个媒体库未响应",
+      "partialMany": "${count} 个媒体库未响应"
+    },
+    "semantics": {
+      "watched": "已观看",
+      "inProgress": "观看中",
+      "loadingMore": "正在加载更多内容"
+    },
+    "discovery": {
+      "allMovies": "所有电影",
+      "allSeries": "所有剧集",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "部分来源未响应",
+      "emptyTitle": "暂时没有可发现的内容",
+      "emptyBody": "没有可见的媒体库可在此显示内容。",
+      "semantics": {
+        "section": "${title}，共${count}个标题",
+        "position": "第${position}个，共${count}个",
+        "viewAllMovies": "查看所有电影，打开完整目录",
+        "viewAllSeries": "查看所有剧集，打开完整目录"
+      }
+    },
+    "home": {
+      "featured": "精选"
+    }
+  },
+  "tvNavigation": {
+    "activeDestination": "当前板块",
+    "attentionRequired": "需要注意"
+  },
+  "tvMyPleya": {
+    "groupContent": "我的内容",
+    "groupSources": "媒体库与来源",
+    "groupPleya": "Pleya",
+    "serversOnline": "${total} 台服务器中 ${online} 台在线",
+    "noServers": "未连接服务器",
+    "statusOnline": "在线",
+    "statusOffline": "离线",
+    "servers": "服务器",
+    "activity": "活动",
+    "logs": "日志与诊断",
+    "signedInAs": "已登录为 ${name} · Pleya ${version}",
+    "watchlistSubtitle": "已保存的电影和剧集",
+    "requestsSubtitle": "请求与发现",
+    "downloadsSubtitle": "离线与同步规则",
+    "librariesSubtitle": "媒体、合集、播放列表",
+    "serversSubtitle": "连接与本地来源",
+    "activitySubtitle": "正在观看、一起看、遥控",
+    "watchTogetherSubtitle": "与好友同步观看",
+    "settingsSubtitle": "显示、播放器、追踪器",
+    "logsSubtitle": "日志文件与崩溃报告",
+    "aboutSubtitle": "版本与许可",
+    "logoutSubtitle": "在此设备上退出登录",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
+  },
+  "tvContextMenu": {
+    "title": "操作",
+    "menuSemantics": "操作 ${index}/${count}：${label}",
+    "noUsableSource": "当前没有可用的来源，因此暂时无法更改此设置。",
+    "doneOnAll": "已在全部 ${count} 个来源完成",
+    "doneOnSome": "已在 ${total} 个来源中的 ${done} 个完成。其余来源恢复在线后将重试。",
+    "doneOnSomeNoRetry": "已在 ${total} 个来源中的 ${done} 个完成。",
+    "failed": "操作未成功"
   }
 }

@@ -1,0 +1,120 @@
+name: tvos.nav.focus-switches-destination
+target: tvos-sim
+# The tvOS remote contract revised on 2 September 2026: focus on a top-nav item
+# IS the navigation. LEFT/RIGHT changes the page, the ring stays in the bar,
+# DOWN is the only way in, and Select is never required to switch.
+#
+# `active` is the pill's own white-capsule flag, published by
+# `TvTopNavigation` as automation state, so "Films is the page you are on" is
+# asserted separately from "Films is where the ring is". Asserting only focus
+# would pass on the old behaviour too, which is exactly the regression this
+# scenario exists to catch: before the change the ring moved and the page did
+# not follow until Select.
+#
+# The 400 ms settles are measurement hygiene, not a debounce in the app: a
+# `wait_until` on focus returns the frame the ring lands, which can precede the
+# bar's rebuild, and the pill's `active` flag is captured at build time. The
+# route endpoint already reports the new destination at that instant.
+#
+# Every assertion here is on a real HID press.
+#
+# The walk is done twice on purpose. The first pass waits for the ring and
+# asserts after each step, which is what proves the page follows the focus at
+# all. The last section does it again with nothing between the presses, which
+# is the case a debounce would break: pressing faster than a destination can
+# load has to end on the item last focused and not on whichever page finished
+# loading last. `activate` returning false when nothing changes, and `_selectTab`
+# running only on a real switch, is what makes that safe without a debounce.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  - assert: {id: nav.discover, focused: true, state: {active: true}}
+  - snapshot: 00-home
+
+  # --- RIGHT walks the bar, and the page follows without a Select -----------
+  - press: right
+  - wait_until: {focused: nav.series, timeout: 5000}
+  - settle: 400
+  - assert: {id: nav.series, focused: true, state: {active: true}}
+  - assert: {id: nav.discover, state: {active: false}}
+  - snapshot: 01-series
+
+  - press: right
+  - wait_until: {focused: nav.movies, timeout: 5000}
+  - settle: 400
+  - assert: {id: nav.movies, focused: true, state: {active: true}}
+  - assert: {id: nav.series, state: {active: false}}
+  - snapshot: 02-movies
+
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - settle: 400
+  - assert: {id: nav.myPleya, focused: true, state: {active: true}}
+  - assert: {id: nav.movies, state: {active: false}}
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - snapshot: 03-my-pleya
+
+  # The content behind the bar is up and addressable, and the ring is still on
+  # the bar. This is the half a late-arriving provider used to break.
+  - assert: {id: nav.myPleya, focused: true}
+
+  # --- DOWN is the way in ---------------------------------------------------
+  - press: down
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
+  - assert: {id: "my_pleya.tile[libraries]", focused: true}
+  - assert: {id: nav.myPleya, state: {active: true}}
+  - snapshot: 04-content-focused
+
+  # --- UP comes back to the active tab, and the page does not change --------
+  - press: up
+  - press: up
+  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  - settle: 400
+  - assert: {id: nav.myPleya, focused: true, state: {active: true}}
+  - snapshot: 05-back-on-nav
+
+  # --- LEFT walks back, Search included ------------------------------------
+  # Search sits left of Home. Landing on it must switch the destination without
+  # the text field claiming the remote, or a viewer walking left would be
+  # stranded outside the navigation.
+  - press: left
+  - press: left
+  - press: left
+  - wait_until: {focused: nav.discover, timeout: 8000}
+  - settle: 400
+  - assert: {id: nav.discover, focused: true, state: {active: true}}
+  - press: left
+  - wait_until: {focused: nav.search, timeout: 8000}
+  - settle: 400
+  - assert: {id: nav.search, focused: true, state: {active: true}}
+  - snapshot: 06-search-focused-not-entered
+
+  # --- The fast walk: three presses with nothing in between ----------------
+  # Back to Home first, so the burst starts where a viewer starts.
+  - press: right
+  - wait_until: {focused: nav.discover, timeout: 8000}
+  - settle: 1200
+
+  # No `wait_until`, no `settle`. The presses land faster than Series and Films
+  # can build, which is exactly the race a debounce would have introduced and
+  # the one this contract has to survive without one.
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  - settle: 1500
+  - assert: {id: nav.myPleya, focused: true, state: {active: true}}
+  - assert: {id: nav.movies, state: {active: false}}
+  - assert: {id: nav.series, state: {active: false}}
+  - assert: {id: nav.discover, state: {active: false}}
+  # And the destination behind the bar really is the last one, not a page that
+  # won the race by finishing its load first.
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - snapshot: 07-fast-walk

@@ -62,6 +62,7 @@ class TranslationsDa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsDa connections = _TranslationsConnectionsDa._(_root);
 	@override late final _TranslationsDiscoverDa discover = _TranslationsDiscoverDa._(_root);
 	@override late final _TranslationsErrorsDa errors = _TranslationsErrorsDa._(_root);
+	@override late final _TranslationsNoticesDa notices = _TranslationsNoticesDa._(_root);
 	@override late final _TranslationsLibrariesDa libraries = _TranslationsLibrariesDa._(_root);
 	@override late final _TranslationsAboutDa about = _TranslationsAboutDa._(_root);
 	@override late final _TranslationsServerSelectionDa serverSelection = _TranslationsServerSelectionDa._(_root);
@@ -87,6 +88,11 @@ class TranslationsDa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerDa addServer = _TranslationsAddServerDa._(_root);
 	@override late final _TranslationsAddLocalFolderDa addLocalFolder = _TranslationsAddLocalFolderDa._(_root);
 	@override late final _TranslationsPleyaShareDa pleyaShare = _TranslationsPleyaShareDa._(_root);
+	@override late final _TranslationsSourcePickerDa sourcePicker = _TranslationsSourcePickerDa._(_root);
+	@override late final _TranslationsUnifiedCatalogDa unifiedCatalog = _TranslationsUnifiedCatalogDa._(_root);
+	@override late final _TranslationsTvNavigationDa tvNavigation = _TranslationsTvNavigationDa._(_root);
+	@override late final _TranslationsTvMyPleyaDa tvMyPleya = _TranslationsTvMyPleyaDa._(_root);
+	@override late final _TranslationsTvContextMenuDa tvContextMenu = _TranslationsTvContextMenuDa._(_root);
 }
 
 // Path: app
@@ -442,6 +448,7 @@ class _TranslationsSearchDa extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => 'Prøv en anden søgning';
 	@override String get searchYourMedia => 'Søg i dine medier';
 	@override String get enterTitleActorOrKeyword => 'Indtast titel, skuespiller eller nøgleord';
+	@override late final _TranslationsSearchFiltersDa filters = _TranslationsSearchFiltersDa._(_root);
 }
 
 // Path: hotkeys
@@ -912,6 +919,17 @@ class _TranslationsErrorsDa extends TranslationsErrorsEn {
 	@override String failedToSwitchProfile({required Object displayName}) => 'Kunne ikke skifte til ${displayName}';
 	@override String failedToDeleteProfile({required Object displayName}) => 'Kunne ikke slette ${displayName}';
 	@override String get failedToRate => 'Kunne ikke opdatere bedømmelsen';
+}
+
+// Path: notices
+class _TranslationsNoticesDa extends TranslationsNoticesEn {
+	_TranslationsNoticesDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => 'Filen er ikke tilgængelig';
+	@override String get playbackFileUnavailableBody => 'Serveren kan ikke få adgang til videofilen. Kontrollér, at drevet eller mappen, den ligger på, stadig er tilsluttet.';
 }
 
 // Path: libraries
@@ -1707,6 +1725,140 @@ class _TranslationsPleyaShareDa extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => 'Scanner netværket…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerDa extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => 'Vælg hvor du vil afspille';
+	@override String get detailsTitle => 'Vælg en kilde til detaljerne';
+	@override String get availableOnOneServer => 'Tilgængelig på 1 server';
+	@override String availableOnManyServers({required Object count}) => 'Tilgængelig på ${count} servere';
+	@override String get oneServerUnchecked => '1 server kunne ikke kontrolleres';
+	@override String manyServersUnchecked({required Object count}) => '${count} servere kunne ikke kontrolleres';
+	@override String get checkingMoreSources => 'Søger efter flere kilder…';
+	@override String get lastUsed => 'Senest brugt';
+	@override String get currentSource => 'Nuværende kilde';
+	@override String get unavailable => 'Ikke tilgængelig';
+	@override String get signInRequired => 'Log ind igen';
+	@override String resumeAt({required Object position}) => 'Genoptag ved ${position}';
+	@override String get watched => 'Set';
+	@override String get noneReachableTitle => 'Ingen kilde kan nås lige nu.';
+	@override String get reauthRequiredTitle => 'Log ind igen for at nå denne titel.';
+	@override String get manageServers => 'Administrer servere';
+	@override String sourceLabel({required Object source}) => 'Kilde: ${source}';
+	@override String get change => 'Skift';
+	@override String get playbackFailedTitle => 'Denne kilde kunne ikke afspilles.';
+	@override String get detailLoadFailedTitle => 'Denne titel kunne ikke indlæses.';
+	@override String get chooseAnotherSource => 'Vælg en anden kilde';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Kilde ${index} af ${count}: ${description}';
+	@override String get preferredServer => 'Foretrukken server';
+	@override String setPreferredServer({required Object server}) => 'Brug altid ${server}';
+}
+
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogDa extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => 'Film';
+	@override String get seriesTitle => 'Serier';
+	@override String sources({required Object count}) => '${count} kilder';
+	@override String get allSources => 'Alle kilder';
+	@override String get oneSource => '1 kilde';
+	@override String seasons({required Object count}) => '${count} sæsoner';
+	@override String get oneSeason => '1 sæson';
+	@override String titleCount({required Object count}) => '${count} titler';
+	@override String get oneTitle => '1 titel';
+	@override String titlesLoaded({required Object count}) => '${count} titler indlæst';
+	@override String get loadMore => 'Indlæs flere';
+	@override String get loadingMore => 'Indlæser flere…';
+	@override late final _TranslationsUnifiedCatalogSortDa sort = _TranslationsUnifiedCatalogSortDa._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersDa filters = _TranslationsUnifiedCatalogFiltersDa._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesDa states = _TranslationsUnifiedCatalogStatesDa._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsDa semantics = _TranslationsUnifiedCatalogSemanticsDa._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryDa discovery = _TranslationsUnifiedCatalogDiscoveryDa._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeDa home = _TranslationsUnifiedCatalogHomeDa._(_root);
+}
+
+// Path: tvNavigation
+class _TranslationsTvNavigationDa extends TranslationsTvNavigationEn {
+	_TranslationsTvNavigationDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get activeDestination => 'nuværende sektion';
+	@override String get attentionRequired => 'kræver opmærksomhed';
+}
+
+// Path: tvMyPleya
+class _TranslationsTvMyPleyaDa extends TranslationsTvMyPleyaEn {
+	_TranslationsTvMyPleyaDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get groupContent => 'Mit indhold';
+	@override String get groupSources => 'Biblioteker og kilder';
+	@override String get groupPleya => 'Pleya';
+	@override String serversOnline({required Object online, required Object total}) => '${online} af ${total} servere online';
+	@override String get noServers => 'Ingen servere forbundet';
+	@override String get statusOnline => 'Online';
+	@override String get statusOffline => 'Offline';
+	@override String get servers => 'Servere';
+	@override String get activity => 'Aktivitet';
+	@override String get logs => 'Logfiler og diagnostik';
+	@override String signedInAs({required Object name, required Object version}) => 'Logget ind som ${name} · Pleya ${version}';
+	@override String get watchlistSubtitle => 'Gemte film og serier';
+	@override String get requestsSubtitle => 'Anmodninger og opdagelse';
+	@override String get downloadsSubtitle => 'Offline og synkroniseringsregler';
+	@override String get librariesSubtitle => 'Medier, samlinger, playlister';
+	@override String get serversSubtitle => 'Forbindelser og lokale kilder';
+	@override String get activitySubtitle => 'Ser nu, se sammen, fjernbetjening';
+	@override String get watchTogetherSubtitle => 'Se synkront med venner';
+	@override String get settingsSubtitle => 'Visning, afspiller, trackere';
+	@override String get logsSubtitle => 'Logfiler og nedbrudsrapporter';
+	@override String get aboutSubtitle => 'Version og licenser';
+	@override String get logoutSubtitle => 'Log ud på denne enhed';
+	@override late final _TranslationsTvMyPleyaSemanticsDa semantics = _TranslationsTvMyPleyaSemanticsDa._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuDa extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Handlinger';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => 'Handling ${index} af ${count}: ${label}';
+	@override String get noUsableSource => 'Ingen kilde er tilgængelig lige nu, så dette kan ikke ændres i øjeblikket.';
+	@override String doneOnAll({required Object count}) => 'Udført på alle ${count} kilder';
+	@override String doneOnSome({required Object done, required Object total}) => 'Udført på ${done} af ${total} kilder. Resten forsøges igen, når de er online igen.';
+	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Udført på ${done} af ${total} kilder.';
+	@override String get failed => 'Det virkede ikke';
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersDa extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Alle';
+	@override String get movies => 'Film';
+	@override String get shows => 'TV-serier';
+	@override String get episodes => 'Episoder';
+	@override String get people => 'Personer';
+	@override String get other => 'Andet';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsDa extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsDa._(TranslationsDa root) : this._root = root, super.internal(root);
@@ -1984,6 +2136,125 @@ class _TranslationsTrackersLibraryFilterDa extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => 'Synkroniser kun de biblioteker du markerer nedenfor.';
 	@override String get libraries => 'Biblioteker';
 	@override String get noLibraries => 'Ingen biblioteker tilgængelige';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortDa extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Sorter';
+	@override String get titleAsc => 'Titel A–Z';
+	@override String get titleDesc => 'Titel Z–A';
+	@override String get recentlyAdded => 'Senest tilføjet';
+	@override String get oldestAdded => 'Først tilføjet';
+	@override String get newestRelease => 'Nyeste udgivelse';
+	@override String get oldestRelease => 'Ældste udgivelse';
+	@override String get recentlyWatched => 'Senest set';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersDa extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Filtre';
+	@override String get status => 'Status';
+	@override String get genre => 'Genre';
+	@override String get year => 'År';
+	@override String get servers => 'Servere';
+	@override String get libraries => 'Biblioteker';
+	@override String get apply => 'Anvend';
+	@override String get clearAll => 'Ryd alt';
+	@override String get all => 'Alle';
+	@override String get unwatched => 'Ikke set';
+	@override String get unsupported => 'Ikke tilgængelig for de aktuelle kilder';
+	@override String get someUnavailable => 'Nogle filtre er ikke tilgængelige for de valgte kilder';
+	@override String get noValues => 'Intet at vælge';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesDa extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'Dette katalog er tomt';
+	@override String get emptyBody => 'Intet synligt bibliotek indeholder noget til denne side.';
+	@override String get filterEmptyTitle => 'Intet matcher disse filtre';
+	@override String get filterEmptyBody => 'Ryd et filter for at se flere titler.';
+	@override String get clearFilters => 'Ryd filtre';
+	@override String get errorTitle => 'Kataloget kunne ikke indlæses';
+	@override String get errorBody => 'Ingen server svarede. Tjek din forbindelse, og prøv igen.';
+	@override String get partialOne => '1 bibliotek svarede ikke';
+	@override String partialMany({required Object count}) => '${count} biblioteker svarede ikke';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsDa extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => 'Set';
+	@override String get inProgress => 'I gang';
+	@override String get loadingMore => 'Indlæser flere titler';
+}
+
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryDa extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => 'Alle film';
+	@override String get allSeries => 'Alle serier';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => 'Nogle kilder svarede ikke';
+	@override String get emptyTitle => 'Intet at opdage endnu';
+	@override String get emptyBody => 'Intet synligt bibliotek har noget at vise her.';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsDa semantics = _TranslationsUnifiedCatalogDiscoverySemanticsDa._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeDa extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'Fremhævet';
+}
+
+// Path: tvMyPleya.semantics
+class _TranslationsTvMyPleyaSemanticsDa extends TranslationsTvMyPleyaSemanticsEn {
+	_TranslationsTvMyPleyaSemanticsDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsDa extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}, ${count} titler';
+	@override String position({required Object position, required Object count}) => '${position} af ${count}';
+	@override String get viewAllMovies => 'Se alle film, åbner det komplette katalog';
+	@override String get viewAllSeries => 'Se alle serier, åbner det komplette katalog';
 }
 
 /// The flat map containing all translations for locale <da>.
@@ -2286,6 +2557,12 @@ extension on TranslationsDa {
 			'search.tryDifferentTerm' => 'Prøv en anden søgning',
 			'search.searchYourMedia' => 'Søg i dine medier',
 			'search.enterTitleActorOrKeyword' => 'Indtast titel, skuespiller eller nøgleord',
+			'search.filters.all' => 'Alle',
+			'search.filters.movies' => 'Film',
+			'search.filters.shows' => 'TV-serier',
+			'search.filters.episodes' => 'Episoder',
+			'search.filters.people' => 'Personer',
+			'search.filters.other' => 'Andet',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Indstil genvej for ${actionName}',
 			'hotkeys.clearShortcut' => 'Ryd genvej',
 			'hotkeys.noShortcutSet' => 'Ingen genvej angivet',
@@ -2500,14 +2777,14 @@ extension on TranslationsDa {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sove-timer indstillet til ${label}',
 			'messages.noItemsAvailable' => 'Ingen elementer tilgængelige',
 			'messages.failedToCreatePlayQueueNoItems' => 'Kunne ikke oprette afspilningskø — ingen elementer',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Kunne ikke ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Skifter til kompatibel afspiller...',
 			'messages.serverLimitTitle' => 'Afspilning mislykkedes',
 			'messages.serverLimitBody' => 'Serverfejl (HTTP 500). En båndbredde-/transkodningsgrænse afviste nok sessionen. Bed ejeren om at justere den.',
 			'messages.logsUploaded' => 'Logs uploadet',
 			'messages.logsUploadFailed' => 'Kunne ikke uploade logs',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => 'Log-ID',
 			'subtitlingStyling.text' => 'Tekst',
 			'subtitlingStyling.border' => 'Kant',
@@ -2644,6 +2921,8 @@ extension on TranslationsDa {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Kunne ikke skifte til ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Kunne ikke slette ${displayName}',
 			'errors.failedToRate' => 'Kunne ikke opdatere bedømmelsen',
+			'notices.playbackFileUnavailableTitle' => 'Filen er ikke tilgængelig',
+			'notices.playbackFileUnavailableBody' => 'Serveren kan ikke få adgang til videofilen. Kontrollér, at drevet eller mappen, den ligger på, stadig er tilsluttet.',
 			'libraries.title' => 'Biblioteker',
 			'libraries.fallbackTitle' => 'Bibliotek',
 			'libraries.scanLibraryFiles' => 'Scan biblioteksfiler',
@@ -3012,6 +3291,8 @@ extension on TranslationsDa {
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheder med samme Plex-konto vises her',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Opretter forbindelse...',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.searchingForDevices' => 'Søger efter enheder...',
 			'companionRemote.pairing.noDevicesFound' => 'Ingen enheder fundet på dit netværk',
 			'companionRemote.pairing.noDevicesHint' => 'Åbn Pleya på desktop, og brug samme WiFi',
@@ -3020,8 +3301,6 @@ extension on TranslationsDa {
 			'companionRemote.pairing.cryptoInitFailed' => 'Kunne ikke starte sikker forbindelse. Log ind på Plex først.',
 			'companionRemote.pairing.validationHostRequired' => 'Angiv venligst værtsadresse',
 			'companionRemote.pairing.validationHostFormat' => 'Format skal være IP:port (f.eks. 192.168.1.100:48632)',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => 'Forbindelsen fik timeout. Brug samme netværk på begge enheder.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhed ikke fundet. Sørg for, at Pleya kører på værten.',
 			'companionRemote.pairing.authFailed' => 'Godkendelse mislykkedes. Begge enheder skal bruge samme Plex-konto.',
@@ -3323,6 +3602,119 @@ extension on TranslationsDa {
 			'pleyaShare.notificationText' => 'Andre Pleya-enheder kan streame dine lokale mapper',
 			'pleyaShare.hostDescriptionAndroid' => 'Andre Pleya-enheder på dette netværk kan gennemse, streame og downloade dine lokale mapper. Delingen fortsætter i baggrunden med en notifikation.',
 			'pleyaShare.scanningSubnet' => 'Scanner netværket…',
+			'sourcePicker.playTitle' => 'Vælg hvor du vil afspille',
+			'sourcePicker.detailsTitle' => 'Vælg en kilde til detaljerne',
+			'sourcePicker.availableOnOneServer' => 'Tilgængelig på 1 server',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Tilgængelig på ${count} servere',
+			'sourcePicker.oneServerUnchecked' => '1 server kunne ikke kontrolleres',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servere kunne ikke kontrolleres',
+			'sourcePicker.checkingMoreSources' => 'Søger efter flere kilder…',
+			'sourcePicker.lastUsed' => 'Senest brugt',
+			'sourcePicker.currentSource' => 'Nuværende kilde',
+			'sourcePicker.unavailable' => 'Ikke tilgængelig',
+			'sourcePicker.signInRequired' => 'Log ind igen',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Genoptag ved ${position}',
+			'sourcePicker.watched' => 'Set',
+			'sourcePicker.noneReachableTitle' => 'Ingen kilde kan nås lige nu.',
+			'sourcePicker.reauthRequiredTitle' => 'Log ind igen for at nå denne titel.',
+			'sourcePicker.manageServers' => 'Administrer servere',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Kilde: ${source}',
+			'sourcePicker.change' => 'Skift',
+			'sourcePicker.playbackFailedTitle' => 'Denne kilde kunne ikke afspilles.',
+			'sourcePicker.detailLoadFailedTitle' => 'Denne titel kunne ikke indlæses.',
+			'sourcePicker.chooseAnotherSource' => 'Vælg en anden kilde',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Kilde ${index} af ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Foretrukken server',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Brug altid ${server}',
+			'unifiedCatalog.moviesTitle' => 'Film',
+			'unifiedCatalog.seriesTitle' => 'Serier',
+			'unifiedCatalog.sources' => ({required Object count}) => '${count} kilder',
+			'unifiedCatalog.allSources' => 'Alle kilder',
+			'unifiedCatalog.oneSource' => '1 kilde',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} sæsoner',
+			'unifiedCatalog.oneSeason' => '1 sæson',
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titler',
+			'unifiedCatalog.oneTitle' => '1 titel',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titler indlæst',
+			'unifiedCatalog.loadMore' => 'Indlæs flere',
+			'unifiedCatalog.loadingMore' => 'Indlæser flere…',
+			'unifiedCatalog.sort.title' => 'Sorter',
+			'unifiedCatalog.sort.titleAsc' => 'Titel A–Z',
+			'unifiedCatalog.sort.titleDesc' => 'Titel Z–A',
+			'unifiedCatalog.sort.recentlyAdded' => 'Senest tilføjet',
+			'unifiedCatalog.sort.oldestAdded' => 'Først tilføjet',
+			'unifiedCatalog.sort.newestRelease' => 'Nyeste udgivelse',
+			'unifiedCatalog.sort.oldestRelease' => 'Ældste udgivelse',
+			'unifiedCatalog.sort.recentlyWatched' => 'Senest set',
+			'unifiedCatalog.filters.title' => 'Filtre',
+			'unifiedCatalog.filters.status' => 'Status',
+			'unifiedCatalog.filters.genre' => 'Genre',
+			'unifiedCatalog.filters.year' => 'År',
+			'unifiedCatalog.filters.servers' => 'Servere',
+			'unifiedCatalog.filters.libraries' => 'Biblioteker',
+			'unifiedCatalog.filters.apply' => 'Anvend',
+			'unifiedCatalog.filters.clearAll' => 'Ryd alt',
+			'unifiedCatalog.filters.all' => 'Alle',
+			'unifiedCatalog.filters.unwatched' => 'Ikke set',
+			'unifiedCatalog.filters.unsupported' => 'Ikke tilgængelig for de aktuelle kilder',
+			'unifiedCatalog.filters.someUnavailable' => 'Nogle filtre er ikke tilgængelige for de valgte kilder',
+			'unifiedCatalog.filters.noValues' => 'Intet at vælge',
+			'unifiedCatalog.states.emptyTitle' => 'Dette katalog er tomt',
+			'unifiedCatalog.states.emptyBody' => 'Intet synligt bibliotek indeholder noget til denne side.',
+			'unifiedCatalog.states.filterEmptyTitle' => 'Intet matcher disse filtre',
+			'unifiedCatalog.states.filterEmptyBody' => 'Ryd et filter for at se flere titler.',
+			'unifiedCatalog.states.clearFilters' => 'Ryd filtre',
+			'unifiedCatalog.states.errorTitle' => 'Kataloget kunne ikke indlæses',
+			'unifiedCatalog.states.errorBody' => 'Ingen server svarede. Tjek din forbindelse, og prøv igen.',
+			'unifiedCatalog.states.partialOne' => '1 bibliotek svarede ikke',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} biblioteker svarede ikke',
+			'unifiedCatalog.semantics.watched' => 'Set',
+			'unifiedCatalog.semantics.inProgress' => 'I gang',
+			'unifiedCatalog.semantics.loadingMore' => 'Indlæser flere titler',
+			'unifiedCatalog.discovery.allMovies' => 'Alle film',
+			'unifiedCatalog.discovery.allSeries' => 'Alle serier',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => 'Nogle kilder svarede ikke',
+			'unifiedCatalog.discovery.emptyTitle' => 'Intet at opdage endnu',
+			'unifiedCatalog.discovery.emptyBody' => 'Intet synligt bibliotek har noget at vise her.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titler',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} af ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Se alle film, åbner det komplette katalog',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Se alle serier, åbner det komplette katalog',
+			'unifiedCatalog.home.featured' => 'Fremhævet',
+			'tvNavigation.activeDestination' => 'nuværende sektion',
+			'tvNavigation.attentionRequired' => 'kræver opmærksomhed',
+			'tvMyPleya.groupContent' => 'Mit indhold',
+			'tvMyPleya.groupSources' => 'Biblioteker og kilder',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} af ${total} servere online',
+			'tvMyPleya.noServers' => 'Ingen servere forbundet',
+			'tvMyPleya.statusOnline' => 'Online',
+			'tvMyPleya.statusOffline' => 'Offline',
+			'tvMyPleya.servers' => 'Servere',
+			'tvMyPleya.activity' => 'Aktivitet',
+			'tvMyPleya.logs' => 'Logfiler og diagnostik',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Logget ind som ${name} · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => 'Gemte film og serier',
+			'tvMyPleya.requestsSubtitle' => 'Anmodninger og opdagelse',
+			'tvMyPleya.downloadsSubtitle' => 'Offline og synkroniseringsregler',
+			'tvMyPleya.librariesSubtitle' => 'Medier, samlinger, playlister',
+			'tvMyPleya.serversSubtitle' => 'Forbindelser og lokale kilder',
+			'tvMyPleya.activitySubtitle' => 'Ser nu, se sammen, fjernbetjening',
+			'tvMyPleya.watchTogetherSubtitle' => 'Se synkront med venner',
+			'tvMyPleya.settingsSubtitle' => 'Visning, afspiller, trackere',
+			'tvMyPleya.logsSubtitle' => 'Logfiler og nedbrudsrapporter',
+			'tvMyPleya.aboutSubtitle' => 'Version og licenser',
+			'tvMyPleya.logoutSubtitle' => 'Log ud på denne enhed',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'Handlinger',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Handling ${index} af ${count}: ${label}',
+			'tvContextMenu.noUsableSource' => 'Ingen kilde er tilgængelig lige nu, så dette kan ikke ændres i øjeblikket.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Udført på alle ${count} kilder',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Udført på ${done} af ${total} kilder. Resten forsøges igen, når de er online igen.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Udført på ${done} af ${total} kilder.',
+			'tvContextMenu.failed' => 'Det virkede ikke',
 			_ => null,
 		};
 	}

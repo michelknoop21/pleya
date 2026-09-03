@@ -364,6 +364,9 @@ class TvosSimulatorDriver implements VerificationDriver {
   Future<Map<String, Object?>> viewport() => _requireClient().viewport();
 
   @override
+  Future<Map<String, Object?>> route() => _requireClient().route();
+
+  @override
   Future<List<Map<String, Object?>>> screensSnapshot() async {
     final result = await _requireClient().screens();
     return (result['screens'] as List).cast<Map<String, Object?>>();
@@ -411,11 +414,23 @@ class TvosSimulatorDriver implements VerificationDriver {
 
   // --- [C2]: no VerifyClient/http below this line. idb HID only. ---
 
+  /// A [hold] becomes `tvos_sim.sh key <key> --hold-ms <n>`, which is
+  /// `idb ui key --duration` underneath: one HID press held down for that
+  /// long. That is the only shape tvOS reads as a long press — two short
+  /// presses with a sleep between them are two activations, and the tile's
+  /// ordinary action fires twice instead of a context menu opening once.
+  /// The script refuses a hold when idb is unavailable rather than falling
+  /// back to AppleScript, which can only tap.
   @override
-  Future<void> press(String key) async {
-    final result = await _runTvosSim(['key', key]);
+  Future<void> press(String key, {Duration? hold}) async {
+    final args = [
+      'key',
+      key,
+      if (hold != null) ...['--hold-ms', '${hold.inMilliseconds}'],
+    ];
+    final result = await _runTvosSim(args);
     if (result.exitCode != 0) {
-      throw StateError('scripts/tvos_sim.sh key $key failed (exit ${result.exitCode}): ${result.stderr}');
+      throw StateError('scripts/tvos_sim.sh ${args.join(' ')} failed (exit ${result.exitCode}): ${result.stderr}');
     }
   }
 

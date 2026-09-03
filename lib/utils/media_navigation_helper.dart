@@ -7,6 +7,7 @@ import '../media/media_item.dart';
 import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_playlist.dart';
+import '../media/unified/unified_route_context.dart';
 import '../screens/collection_detail_screen.dart';
 import '../screens/main_screen.dart';
 import '../screens/media_detail_screen.dart';
@@ -30,6 +31,13 @@ enum MediaNavigationResult {
   /// Item is a library section — navigated to that library
   librarySelected,
 }
+
+/// Reopens the source picker from an already-open detail route (hoofdstuk 15's
+/// "[ Wijzigen ]"). Takes the detail screen's own [BuildContext] so the picker
+/// and the replacement route land inside the profile navigator the screen is
+/// mounted in — a context from further up would push on the root navigator and
+/// throw `ProfileNavigationScope is required for profile routes`.
+typedef UnifiedSourceChangeCallback = Future<void> Function(BuildContext detailContext);
 
 class MediaDetailNavigationTarget {
   final MediaItem metadata;
@@ -175,6 +183,20 @@ void handlePlaybackReturn(
 /// activation; those surfaces use the Continue Watching action setting instead
 /// of the normal Episode Action setting.
 ///
+/// [unifiedRouteContext] is the optional group context of hoofdstuk 15
+/// (docs/tvos-unified-experience.md): which group this concrete item was
+/// reached through, and which other sources exist. It is strictly additive —
+/// hoofdstuk 4.1 keeps [MediaItem] one concrete source and hoofdstuk 4.4 keeps
+/// source choice *before* this function, so nothing here reads a second
+/// candidate out of it. Omitted (the case for every entry point that is not a
+/// unified-catalogue activation), behaviour is exactly what it was.
+///
+/// [onChangeSource] and [onPlaybackInitFailed] are the two hoofdstuk-15
+/// re-entries that only the activation site can serve, because only it holds
+/// the live group: "[ Wijzigen ]" on the detail page, and the alternative
+/// offered after a failed player start. Both are ignored without
+/// [unifiedRouteContext].
+///
 /// Returns a [MediaNavigationResult] indicating what action was taken:
 /// - [MediaNavigationResult.navigated]: Navigation completed, item refresh handled
 /// - [MediaNavigationResult.listRefreshNeeded]: Caller should refresh entire list
@@ -188,6 +210,9 @@ Future<MediaNavigationResult> navigateToMediaItem(
   Object? heroTag,
   String? traceId,
   ValueChanged<MediaItem>? onPlaybackReturned,
+  UnifiedMediaRouteContext? unifiedRouteContext,
+  UnifiedSourceChangeCallback? onChangeSource,
+  VoidCallback? onPlaybackInitFailed,
 }) async {
   final recorder = SelectTraceRecorder.instance;
   if (item is MediaPlaylist) {
@@ -255,10 +280,17 @@ Future<MediaNavigationResult> navigateToMediaItem(
           isOffline: isOffline,
           heroTag: heroTag,
           traceId: traceId,
+          unifiedRouteContext: unifiedRouteContext,
+          onChangeSource: onChangeSource,
         );
       }
       recorder.close(traceId, SelectTraceOutcome.player);
-      final result = await navigateToVideoPlayer(context, metadata: mi, isOffline: isOffline);
+      final result = await navigateToVideoPlayer(
+        context,
+        metadata: mi,
+        isOffline: isOffline,
+        onPlaybackInitFailed: unifiedRouteContext == null ? null : onPlaybackInitFailed,
+      );
       if (context.mounted) {
         handlePlaybackReturn(mi, playerPopResult: result, onRefresh: onRefresh, onPlaybackReturned: onPlaybackReturned);
       }
@@ -267,7 +299,12 @@ Future<MediaNavigationResult> navigateToMediaItem(
     case MediaKind.movie:
       if (playDirectly && !shouldOpenContinueWatchingDetails) {
         recorder.close(traceId, SelectTraceOutcome.player);
-        final result = await navigateToVideoPlayer(context, metadata: mi, isOffline: isOffline);
+        final result = await navigateToVideoPlayer(
+          context,
+          metadata: mi,
+          isOffline: isOffline,
+          onPlaybackInitFailed: unifiedRouteContext == null ? null : onPlaybackInitFailed,
+        );
         if (context.mounted) {
           handlePlaybackReturn(
             mi,
@@ -285,6 +322,8 @@ Future<MediaNavigationResult> navigateToMediaItem(
         onRefresh: onRefresh,
         heroTag: heroTag,
         traceId: traceId,
+        unifiedRouteContext: unifiedRouteContext,
+        onChangeSource: onChangeSource,
       );
 
     case MediaKind.season:
@@ -295,6 +334,8 @@ Future<MediaNavigationResult> navigateToMediaItem(
         onRefresh: onRefresh,
         heroTag: heroTag,
         traceId: traceId,
+        unifiedRouteContext: unifiedRouteContext,
+        onChangeSource: onChangeSource,
       );
 
     default:
@@ -305,6 +346,8 @@ Future<MediaNavigationResult> navigateToMediaItem(
         onRefresh: onRefresh,
         heroTag: heroTag,
         traceId: traceId,
+        unifiedRouteContext: unifiedRouteContext,
+        onChangeSource: onChangeSource,
       );
   }
 }
@@ -317,6 +360,8 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   MediaItem? metadataOverride,
   Object? heroTag,
   String? traceId,
+  UnifiedMediaRouteContext? unifiedRouteContext,
+  UnifiedSourceChangeCallback? onChangeSource,
 }) async {
   final target = mediaDetailNavigationTargetFor(mi, metadataOverride: metadataOverride);
   // The route boundary, not the activation site: comparing this against the
@@ -337,6 +382,8 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
       initialEpisodeId: target.initialEpisodeId,
       heroTag: heroTag,
       traceId: traceId,
+      unifiedRouteContext: unifiedRouteContext,
+      onChangeSource: onChangeSource,
     ),
   );
   // Backstop for a screen that never got as far as its metadata: a fast back,

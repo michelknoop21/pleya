@@ -168,6 +168,7 @@ Future<bool?> navigateToVideoPlayer(
   bool usePushReplacement = false,
   bool isOffline = false,
   bool resolveWatchState = true,
+  VoidCallback? onPlaybackInitFailed,
 }) async {
   if (resolveWatchState) {
     metadata = context.readFreshWatchState(metadata);
@@ -292,6 +293,7 @@ Future<bool?> navigateToVideoPlayer(
         selectedQualityPreset: selectedQualityPreset,
         isOffline: isOffline,
         resumeProgressIsFresh: resumeProgressIsFresh,
+        onPlaybackInitFailed: onPlaybackInitFailed,
       ),
       transitionDuration: Duration.zero,
       reverseTransitionDuration: Duration.zero,

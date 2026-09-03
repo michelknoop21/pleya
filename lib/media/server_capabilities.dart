@@ -56,8 +56,21 @@ class ServerCapabilities {
   /// returns synthesized hubs but with sparser categorisation.
   final bool richHubs;
 
+  /// This backend stores a per-user rating at all, in whatever shape.
+  ///
+  /// Deliberately separate from [numericUserRating], which answers a narrower
+  /// question: *which control to draw*. A backend can be false there and still
+  /// keep a rating (Jellyfin, like/dislike), and a backend can be false there
+  /// because it keeps nothing at all (a local folder, whose `rate` is a
+  /// no-op). Those two are the same flag today and must not stay that way:
+  /// [RatingMirror] counts what it wrote against what it set out to write, and
+  /// a membership that stores nothing belongs in neither half of that fraction.
+  final bool userRating;
+
   /// Numeric ratings (Plex 0–10 via [Item.userRating]). Jellyfin offers
   /// only a binary like/dislike, so star sliders should be hidden.
+  ///
+  /// Implies [userRating]: a backend that keeps a number keeps a rating.
   final bool numericUserRating;
 
   /// Hide an item from Continue Watching without changing watch state or
@@ -124,6 +137,7 @@ class ServerCapabilities {
     this.videoTranscoding = true,
     this.serverSideSync = false,
     this.richHubs = false,
+    this.userRating = false,
     this.numericUserRating = false,
     this.continueWatchingRemoval = false,
     this.externalSubtitleSearch = false,
@@ -148,6 +162,7 @@ class ServerCapabilities {
     videoTranscoding: true,
     serverSideSync: true,
     richHubs: true,
+    userRating: true,
     numericUserRating: true,
     continueWatchingRemoval: true,
     externalSubtitleSearch: true,
@@ -179,6 +194,9 @@ class ServerCapabilities {
     videoTranscoding: true,
     serverSideSync: false,
     richHubs: false,
+    // A like/dislike is still a rating the server keeps, which is the whole
+    // reason these two flags are not one.
+    userRating: true,
     numericUserRating: false,
     externalSubtitleSearch: false,
     trackPreferencePersistence: true,
@@ -205,6 +223,7 @@ class ServerCapabilities {
     videoTranscoding: false,
     serverSideSync: false,
     richHubs: false,
+    userRating: false,
     numericUserRating: false,
     continueWatchingRemoval: false,
     externalSubtitleSearch: false,
@@ -227,6 +246,7 @@ class ServerCapabilities {
     bool? videoTranscoding,
     bool? serverSideSync,
     bool? richHubs,
+    bool? userRating,
     bool? numericUserRating,
     bool? continueWatchingRemoval,
     bool? externalSubtitleSearch,
@@ -249,6 +269,7 @@ class ServerCapabilities {
       videoTranscoding: videoTranscoding ?? this.videoTranscoding,
       serverSideSync: serverSideSync ?? this.serverSideSync,
       richHubs: richHubs ?? this.richHubs,
+      userRating: userRating ?? this.userRating,
       numericUserRating: numericUserRating ?? this.numericUserRating,
       continueWatchingRemoval: continueWatchingRemoval ?? this.continueWatchingRemoval,
       externalSubtitleSearch: externalSubtitleSearch ?? this.externalSubtitleSearch,

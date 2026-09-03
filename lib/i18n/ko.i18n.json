@@ -303,7 +303,15 @@
     "hint": "영화, 시리즈, 음악 등을 검색하세요...",
     "tryDifferentTerm": "다른 검색어를 시도해 보세요",
     "searchYourMedia": "미디어 검색",
-    "enterTitleActorOrKeyword": "제목, 배우 또는 키워드를 입력하세요"
+    "enterTitleActorOrKeyword": "제목, 배우 또는 키워드를 입력하세요",
+    "filters": {
+      "all": "전체",
+      "movies": "영화",
+      "shows": "TV 프로그램",
+      "episodes": "에피소드",
+      "people": "인물",
+      "other": "기타"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "${actionName}에 대한 단축키 설정",
@@ -696,6 +704,10 @@
     "failedToSwitchProfile": "${displayName}으로 전환할 수 없습니다",
     "failedToDeleteProfile": "${displayName}을(를) 삭제할 수 없습니다",
     "failedToRate": "평점을 업데이트하지 못했습니다"
+  },
+  "notices": {
+    "playbackFileUnavailableTitle": "파일을 사용할 수 없음",
+    "playbackFileUnavailableBody": "서버가 동영상 파일에 접근할 수 없습니다. 파일이 있는 드라이브나 폴더가 여전히 연결되어 있는지 확인하세요."
   },
   "libraries": {
     "title": "미디어 라이브러리",
@@ -1447,5 +1459,144 @@
     "notificationText": "다른 Pleya 기기가 로컬 폴더를 스트리밍할 수 있습니다",
     "hostDescriptionAndroid": "이 네트워크의 다른 Pleya 기기가 로컬 폴더를 탐색, 스트리밍, 다운로드할 수 있습니다. 공유는 알림과 함께 백그라운드에서 계속됩니다.",
     "scanningSubnet": "네트워크 검색 중…"
+  },
+  "sourcePicker": {
+    "playTitle": "재생할 위치 선택",
+    "detailsTitle": "세부 정보를 볼 소스 선택",
+    "availableOnOneServer": "서버 1개에서 사용 가능",
+    "availableOnManyServers": "서버 ${count}개에서 사용 가능",
+    "oneServerUnchecked": "서버 1개를 확인하지 못했습니다",
+    "manyServersUnchecked": "서버 ${count}개를 확인하지 못했습니다",
+    "checkingMoreSources": "다른 소스 확인 중…",
+    "lastUsed": "최근 사용",
+    "currentSource": "현재 소스",
+    "unavailable": "사용할 수 없음",
+    "signInRequired": "다시 로그인해야 합니다",
+    "resumeAt": "${position}부터 계속",
+    "watched": "시청함",
+    "noneReachableTitle": "현재 연결할 수 있는 소스가 없습니다.",
+    "reauthRequiredTitle": "이 콘텐츠를 보려면 다시 로그인하세요.",
+    "manageServers": "서버 관리",
+    "sourceLabel": "소스: ${source}",
+    "change": "변경",
+    "playbackFailedTitle": "이 소스를 재생할 수 없습니다.",
+    "detailLoadFailedTitle": "이 제목을 불러올 수 없습니다.",
+    "chooseAnotherSource": "다른 소스 선택",
+    "rowSemantics": "소스 ${count}개 중 ${index}번째: ${description}",
+    "preferredServer": "기본 서버",
+    "setPreferredServer": "항상 ${server} 사용"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "영화",
+    "seriesTitle": "시리즈",
+    "sources": "소스 ${count}개",
+    "allSources": "모든 소스",
+    "oneSource": "소스 1개",
+    "seasons": "시즌 ${count}개",
+    "oneSeason": "시즌 1개",
+    "titleCount": "${count}개 작품",
+    "oneTitle": "1개 작품",
+    "titlesLoaded": "${count}개 작품 불러옴",
+    "loadMore": "더 불러오기",
+    "loadingMore": "불러오는 중…",
+    "sort": {
+      "title": "정렬",
+      "titleAsc": "제목 오름차순",
+      "titleDesc": "제목 내림차순",
+      "recentlyAdded": "최근 추가순",
+      "oldestAdded": "오래전 추가순",
+      "newestRelease": "최신 개봉순",
+      "oldestRelease": "오래된 개봉순",
+      "recentlyWatched": "최근 시청순"
+    },
+    "filters": {
+      "title": "필터",
+      "status": "상태",
+      "genre": "장르",
+      "year": "연도",
+      "servers": "서버",
+      "libraries": "라이브러리",
+      "apply": "적용",
+      "clearAll": "모두 지우기",
+      "all": "전체",
+      "unwatched": "미시청",
+      "unsupported": "현재 소스에서는 사용할 수 없음",
+      "someUnavailable": "선택한 소스에서는 일부 필터를 사용할 수 없습니다",
+      "noValues": "선택할 항목이 없음"
+    },
+    "states": {
+      "emptyTitle": "이 카탈로그가 비어 있습니다",
+      "emptyBody": "표시된 라이브러리에 이 페이지에 해당하는 항목이 없습니다.",
+      "filterEmptyTitle": "이 필터와 일치하는 항목이 없습니다",
+      "filterEmptyBody": "필터를 지우면 더 많은 작품을 볼 수 있습니다.",
+      "clearFilters": "필터 지우기",
+      "errorTitle": "카탈로그를 불러오지 못했습니다",
+      "errorBody": "응답한 서버가 없습니다. 연결을 확인한 뒤 다시 시도하세요.",
+      "partialOne": "라이브러리 1개가 응답하지 않았습니다",
+      "partialMany": "라이브러리 ${count}개가 응답하지 않았습니다"
+    },
+    "semantics": {
+      "watched": "시청함",
+      "inProgress": "시청 중",
+      "loadingMore": "작품을 더 불러오는 중"
+    },
+    "discovery": {
+      "allMovies": "모든 영화",
+      "allSeries": "모든 시리즈",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "일부 소스가 응답하지 않았습니다",
+      "emptyTitle": "아직 발견할 항목이 없습니다",
+      "emptyBody": "표시할 항목이 있는 라이브러리가 없습니다.",
+      "semantics": {
+        "section": "${title}, 타이틀 ${count}개",
+        "position": "${count}개 중 ${position}번째",
+        "viewAllMovies": "모든 영화 보기, 전체 카탈로그 열기",
+        "viewAllSeries": "모든 시리즈 보기, 전체 카탈로그 열기"
+      }
+    },
+    "home": {
+      "featured": "추천 작품"
+    }
+  },
+  "tvNavigation": {
+    "activeDestination": "현재 섹션",
+    "attentionRequired": "확인 필요"
+  },
+  "tvMyPleya": {
+    "groupContent": "내 콘텐츠",
+    "groupSources": "라이브러리 및 소스",
+    "groupPleya": "Pleya",
+    "serversOnline": "${total}개 중 ${online}개 서버 온라인",
+    "noServers": "연결된 서버 없음",
+    "statusOnline": "온라인",
+    "statusOffline": "오프라인",
+    "servers": "서버",
+    "activity": "활동",
+    "logs": "로그 및 진단",
+    "signedInAs": "${name}(으)로 로그인됨 · Pleya ${version}",
+    "watchlistSubtitle": "저장한 영화 및 시리즈",
+    "requestsSubtitle": "요청 및 둘러보기",
+    "downloadsSubtitle": "오프라인 및 동기화 규칙",
+    "librariesSubtitle": "미디어, 컬렉션, 재생목록",
+    "serversSubtitle": "연결 및 로컬 소스",
+    "activitySubtitle": "지금 시청 중, 함께 보기, 리모컨",
+    "watchTogetherSubtitle": "친구와 동기화하여 시청",
+    "settingsSubtitle": "화면, 플레이어, 트래커",
+    "logsSubtitle": "로그 파일 및 오류 보고서",
+    "aboutSubtitle": "버전 및 라이선스",
+    "logoutSubtitle": "이 기기에서 로그아웃",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
+  },
+  "tvContextMenu": {
+    "title": "작업",
+    "menuSemantics": "작업 ${index}/${count}: ${label}",
+    "noUsableSource": "현재 연결 가능한 소스가 없어 지금은 변경할 수 없습니다.",
+    "doneOnAll": "${count}개 소스 모두에서 완료됨",
+    "doneOnSome": "${total}개 중 ${done}개 소스에서 완료됨. 나머지는 다시 온라인 상태가 되면 재시도됩니다.",
+    "doneOnSomeNoRetry": "${total}개 중 ${done}개 소스에서 완료됨.",
+    "failed": "작동하지 않았습니다"
   }
 }

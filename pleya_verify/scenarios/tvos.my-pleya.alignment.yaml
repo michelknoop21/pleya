@@ -1,0 +1,149 @@
+name: tvos.my-pleya.alignment
+target: tvos-sim
+# The canonical content edge, as a check, across every nested page that has one.
+#
+# 75.48 is `TvTopNavLayout.pageInset` resolved for Apple TV: 48 base, times the
+# 0.85 `scaleForHeight` clamp, times DEC-028's 1.85 render scale. It is the
+# number Home's hero surface and the hub's profile card already measure, and
+# the number every nested page is expected to join. The audit of 2 September
+# 2026 counted twelve distinct content edges over nine pages; this run is what
+# turns "one frame, one edge" from a claim into a measurement.
+#
+# This can only be asserted since `AutomationRegistry._boundsOf` stopped
+# composing a transformed offset with an untransformed size: before that fix a
+# node's reported width and its reported position were 1.85x out of step, and
+# any left-edge check compared two different coordinate systems.
+#
+# The walk never presses blind. Every move is followed by the tile it should
+# have landed on, so a layout change shows up as "focus is not where the
+# scenario said" rather than as a page audited three tiles further along.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  # Home is the reference the nested pages are measured against, so it is
+  # asserted in the same run rather than quoted from a different one.
+  - assert: {id: discover.hero, leftInset: 75.48}
+
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  # No Select: since 2 September 2026 the ring landing on a bar item is what
+  # switches the destination, and DOWN is the way into its content.
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - settle: 600
+  - press: down
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+  - snapshot: 00-hub
+
+  # --- Servers ------------------------------------------------------------
+  - press: right
+  - wait_until: {focused: "my_pleya.tile[servers]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "my_pleya.section.content[servers]", timeout: 15000}
+  - settle: 800
+  - assert: {id: "my_pleya.section.content[servers]", leftInset: 75.48}
+  - snapshot: 20-servers-aligned
+  - press: down
+  - snapshot: 21-servers-focused
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[servers]", timeout: 8000}
+
+  # --- Samen Kijken -------------------------------------------------------
+  # `watch-together-a`. The page has to be measured at all, which is the point:
+  # the first attempt put a `TvPageSurface` inside the shell's
+  # `SliverFillRemaining`, and the node registered with no bounds — visible in
+  # the tree, laid out at nothing. A leftInset assertion is exactly what that
+  # failure cannot pass.
+  - press: right
+  - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "my_pleya.section.content[watch_together]", timeout: 15000}
+  - settle: 800
+  - assert: {id: "my_pleya.section.content[watch_together]", leftInset: 75.48}
+  - assert: {id: "my_pleya.section.tile[watch_together.watch_together_create]", insideViewport: true}
+  - assert: {id: "my_pleya.section.tile[watch_together.watch_together_join]", insideViewport: true}
+  - snapshot: 30-watch-together-aligned
+  - press: down
+  - snapshot: 31-watch-together-focused
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 8000}
+
+  # --- Over ---------------------------------------------------------------
+  # DOWN keeps the column: Over sits directly under Samen Kijken in the hub.
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[about]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "my_pleya.section.content[about]", timeout: 15000}
+  - settle: 800
+  - assert: {id: "my_pleya.section.content[about]", leftInset: 75.48}
+  - snapshot: 10-about-aligned
+  - press: down
+  - snapshot: 11-about-focused
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[about]", timeout: 8000}
+
+  # --- Logs en diagnose ---------------------------------------------------
+  # `logs-a`. The reader's own body is `TvPageSurface.expanded`, so this also
+  # measures the one page whose column is not the scroll.
+  - press: left
+  - wait_until: {focused: "my_pleya.tile[logs]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "my_pleya.section.content[logs]", timeout: 15000}
+  - settle: 800
+  - assert: {id: "my_pleya.section.content[logs]", leftInset: 75.48}
+  - assert: {id: "my_pleya.chip[logs.refresh]", insideViewport: true}
+  # The level filter starts on All, and says so on the node rather than in a
+  # screenshot.
+  - assert: {id: "my_pleya.chip[logs.level_all]", state: {selected: true}}
+  - snapshot: 40-logs-aligned
+  - press: down
+  - press: right
+  - press: right
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: "my_pleya.chip[logs.level_warnings]", timeout: 5000}
+  - press: select
+  - settle: 600
+  - assert: {id: "my_pleya.chip[logs.level_warnings]", state: {selected: true}}
+  - assert: {id: "my_pleya.chip[logs.level_all]", state: {selected: false}}
+  - snapshot: 41-logs-filtered
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[logs]", timeout: 8000}
+
+  # --- Instellingen -------------------------------------------------------
+  # One caveat on the ids below. `SettingsScreen` is a `MainScreen` destination
+  # as well as a Mijn Pleya section, and the shell keeps its tabs alive in an
+  # `IndexedStack`, so on TV this page is mounted twice and the registry
+  # disambiguates the second as `…#2`. Both copies are the same widget under
+  # the same constraints and read the same `SettingsService`, so the assertions
+  # below measure the same thing whichever one resolves first — but a future
+  # assertion that depends on *which* copy is on screen needs to know this.
+  # `settings-a`. The audit measured three content edges on this page at once:
+  # a heading at 1.67%, a group label at 9.64% and a card at 9.14% capped by a
+  # desktop `maxWidth`. One edge now, and the value tiles say their state.
+  - press: left
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "my_pleya.section.content[settings]", timeout: 15000}
+  - settle: 800
+  - assert: {id: "my_pleya.section.content[settings]", leftInset: 75.48}
+  - assert: {id: "my_pleya.section.tile[settings.appearance]", leftInset: 75.48}
+  # "Waarde-instellingen tonen hun huidige stand op de tegel": a switch row
+  # became a tile that says its own state, so a viewer does not have to open
+  # anything to read it.
+  - assert: {id: "my_pleya.section.tile[settings.crash_reporting]", state: {toggled: true}}
+  - assert: {id: "my_pleya.section.tile[settings.debug_logging]", state: {toggled: false}}
+  - snapshot: 50-settings-aligned
+  - press: down
+  - snapshot: 51-settings-focused
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}

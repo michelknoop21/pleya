@@ -27,5 +27,10 @@ class PlexVideoPlaybackData {
 
   bool get hasValidVideoUrl => videoUrl != null && videoUrl!.isNotEmpty;
 
+  /// False when Plex flagged every version's file as missing or unreadable
+  /// (`checkFiles=1`). A [videoUrl] is still built in that case, but opening
+  /// it only yields a 404; callers should refuse up front instead.
+  bool get hasPlayableVersion => availableVersions.isEmpty || availableVersions.any((v) => v.isPlayable);
+
   bool get hasMediaInfo => mediaInfo != null;
 }

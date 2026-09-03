@@ -74,7 +74,7 @@ under `Notes`.
 - back-suppressie causaal maken, filters-scenario eerlijk hernoemen, evidence-gat dicht
 - geen --enforce-lockfile voor pleya_verify subpackages
 - evidence-artifact upload sluit app-installcaches uit
-- idb-installatie in tvOS-gate repareren, DEC-066 rechtzetten
+- idb-installatie in tvOS-gate repareren, DEC-083 rechtzetten
 - tvOS build ontbrak pod_install.sh voor niet-gecommitte tvos/Pods/
 - sluit de automation-controlplane fail-closed af
 - maak evidence-redactie structureel in plaats van exact-match

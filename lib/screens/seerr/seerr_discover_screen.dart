@@ -15,6 +15,7 @@ import '../../utils/app_logger.dart';
 import '../../utils/debouncer.dart';
 import '../../utils/seerr_error_message.dart';
 import '../../utils/layout_constants.dart';
+import '../../widgets/tv/tv_unified_layout.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/focusable_filter_chip.dart';
@@ -41,6 +42,27 @@ import 'seerr_requests_screen.dart';
 /// Reuses the shared [SeerrPosterCard] / [SeerrLoadMoreTile] widgets plus the
 /// lower-level focus + layout primitives (`FocusedScrollScaffold`,
 /// `TvLayoutConstants`, `SkeletonHubRow`, `StateView`).
+/// The discover app bar's trailing actions — empty on TV.
+///
+/// `FocusedScrollScaffold` wraps its app bar in `ExcludeFocus` on TV, so an
+/// action put here cannot be reached with a remote. That is exactly why
+/// `_buildSearchField` grows a focusable inbox button beside the search field
+/// on TV, with a comment saying so. What never happened is removing this one,
+/// so the page drew the same icon, with the same tooltip, calling the same
+/// `_openRequests`, twice: one reachable, one decorative (P7).
+///
+/// A named function rather than an inline `if`, so the rule is assertable
+/// without mounting a screen that needs a live Seerr session.
+@visibleForTesting
+List<Widget> seerrDiscoverAppBarActions({required VoidCallback onOpenRequests}) => [
+  if (!PlatformDetector.isTV())
+    IconButton(
+      tooltip: t.seerr.myRequests,
+      icon: const AppIcon(Symbols.inbox_rounded, fill: 1),
+      onPressed: onOpenRequests,
+    ),
+];
+
 class SeerrDiscoverScreen extends StatefulWidget {
   const SeerrDiscoverScreen({super.key});
 
@@ -409,13 +431,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
 
     return FocusedScrollScaffold(
       title: Text(t.seerr.discoverTitle),
-      actions: [
-        IconButton(
-          tooltip: t.seerr.myRequests,
-          icon: const AppIcon(Symbols.inbox_rounded, fill: 1),
-          onPressed: _openRequests,
-        ),
-      ],
+      actions: seerrDiscoverAppBarActions(onOpenRequests: _openRequests),
       slivers: [
         SliverToBoxAdapter(child: _buildSearchField()),
         SliverToBoxAdapter(child: _buildFilterBar()),
@@ -483,6 +499,8 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       loadingMore: loadingMore,
       onLoadMore: onLoadMore,
       firstItemFocusNode: firstItemFocusNode,
+      onExitLeft: _navigateToSidebar,
+      onExitTop: _filterFirstTabFocusNode.requestFocus,
     );
   }
 
@@ -703,7 +721,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(t.seerr.byStreamingService, style: _rowHeaderStyle(context)),
+          Text(t.seerr.byStreamingService, style: seerrRowHeaderStyle(context)),
           const SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -812,10 +830,19 @@ double get _rowInset => PlatformDetector.isTV() ? TvLayoutConstants.shelfHorizon
 
 /// Shelf/row header styled like the app's HubSection headers: `titleLarge`,
 /// bumped to 26/w700 on TV for legibility across the room.
-TextStyle? _rowHeaderStyle(BuildContext context) {
+@visibleForTesting
+TextStyle? seerrRowHeaderStyle(BuildContext context) {
   final base = Theme.of(context).textTheme.titleLarge;
   if (PlatformDetector.isTV()) {
-    return base?.copyWith(fontSize: 26, fontWeight: FontWeight.w700);
+    // Through the scale clamp, like every other piece of TV type. A bare 26
+    // was 26 logical pixels on every panel, which on the canonical 1038-wide
+    // canvas is ~48 reference px — a size no token in
+    // `TvDiscoveryLayout`/`TvCatalogLayout` uses, and one that made a shelf
+    // heading compete with the page title above it (P7).
+    return base?.copyWith(
+      fontSize: TvDiscoveryLayout.sectionTitleFontSize * TvLayoutConstants.scaleOf(context),
+      fontWeight: FontWeight.w700,
+    );
   }
   return base?.copyWith(fontWeight: FontWeight.w700);
 }
@@ -855,7 +882,7 @@ class _SeerrRowView extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: _rowInset),
             child: Row(
               children: [
-                Expanded(child: Text(row.title, style: _rowHeaderStyle(context))),
+                Expanded(child: Text(row.title, style: seerrRowHeaderStyle(context))),
                 if (onShowAll != null)
                   FocusableFilterChip(label: t.seerr.showAll, icon: Symbols.grid_view_rounded, onPressed: onShowAll!),
               ],
@@ -914,7 +941,7 @@ class _RowHeaderSkeleton extends StatelessWidget {
         children: [
           Padding(
             padding: EdgeInsets.symmetric(horizontal: _rowInset),
-            child: Text(title, style: _rowHeaderStyle(context)),
+            child: Text(title, style: seerrRowHeaderStyle(context)),
           ),
           const SizedBox(height: 8),
           SkeletonHubRow(cardWidth: seerrPosterWidth, rowHeight: seerrPosterHeight + 16),

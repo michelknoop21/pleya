@@ -12,6 +12,7 @@ import '../automation/automation_node.dart';
 import '../automation/automation_screen.dart';
 import '../automation/pleya_verify.dart';
 import '../navigation/profile_navigation_scope.dart';
+import '../navigation/tv/tv_nested_surface.dart';
 import '../services/device_performance.dart';
 import '../services/image_cache_service.dart';
 import 'package:flutter/services.dart';
@@ -26,6 +27,7 @@ import '../focus/dpad_navigator.dart';
 import '../focus/focusable_action_bar.dart';
 import '../focus/focusable_button.dart';
 import '../focus/focusable_wrapper.dart';
+import '../focus/focus_theme.dart';
 import '../focus/key_event_utils.dart';
 import '../focus/input_mode_tracker.dart';
 import '../utils/media_server_timeouts.dart';
@@ -46,6 +48,9 @@ import '../diagnostics/select_trace.dart';
 import '../diagnostics/select_trace_recorder.dart';
 import '../media/media_item.dart';
 import '../media/episode_collection.dart';
+import '../media/unified/unified_route_context.dart';
+import '../theme/mono_tokens.dart';
+import '../utils/media_navigation_helper.dart';
 import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_role.dart';
@@ -68,6 +73,8 @@ import '../services/download_storage_service.dart';
 import '../utils/download_version_utils.dart';
 import '../utils/download_utils.dart';
 import '../services/settings_service.dart';
+import '../services/rating_actions.dart';
+import '../services/unified_action_outcome.dart';
 import '../services/watch_actions.dart';
 import '../widgets/settings_builder.dart';
 import '../utils/grid_size_calculator.dart';
@@ -99,6 +106,7 @@ import '../widgets/pressable.dart';
 import 'libraries/state_messages.dart';
 import '../widgets/state_view.dart';
 import '../widgets/overlay_sheet.dart';
+import '../widgets/overlay_sheet_geometry.dart';
 import '../widgets/placeholder_container.dart';
 import '../mixins/watch_state_aware.dart';
 import '../mixins/deletion_aware.dart';
@@ -116,6 +124,7 @@ import '../widgets/focusable_tab_chip.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/ios_status_bar_tap_scroll_to_top.dart';
 import '../widgets/loading_indicator_box.dart';
+import '../widgets/tv/tv_media_source_picker.dart';
 import '../widgets/tv_browse_rail.dart';
 import '../widgets/tv_spotlight_background.dart';
 import '../utils/error_message_utils.dart';
@@ -162,6 +171,20 @@ class MediaDetailScreen extends StatefulWidget {
   /// activation. See [SelectTraceRecorder].
   final String? traceId;
 
+  /// The group this concrete item was reached through (hoofdstuk 15 of
+  /// docs/tvos-unified-experience.md), when it was reached through one.
+  ///
+  /// The page stays source-bound: this adds the "Bron: NAS • Films 4K
+  /// [ Wijzigen ]" line and nothing else. It carries source *keys*, never a
+  /// second [MediaItem], so there is no way for this screen to render a half
+  /// merged page with seasons from one server and metadata from another.
+  final UnifiedMediaRouteContext? unifiedRouteContext;
+
+  /// Reopens the picker in details mode. Supplied by the activation site,
+  /// which is the only thing holding the live group; null when the caller
+  /// cannot replace this route.
+  final UnifiedSourceChangeCallback? onChangeSource;
+
   const MediaDetailScreen({
     super.key,
     required this.metadata,
@@ -171,6 +194,8 @@ class MediaDetailScreen extends StatefulWidget {
     this.initialEpisodeId,
     this.heroTag,
     this.traceId,
+    this.unifiedRouteContext,
+    this.onChangeSource,
   });
 
   @override
@@ -185,6 +210,8 @@ PageRoute<bool> mediaDetailRoute({
   String? initialEpisodeId,
   Object? heroTag,
   String? traceId,
+  UnifiedMediaRouteContext? unifiedRouteContext,
+  UnifiedSourceChangeCallback? onChangeSource,
 }) {
   // Built here, not in a lazy builder: the id has to be on the widget before
   // [State.initState] runs, otherwise the first link the screen records would
@@ -197,6 +224,8 @@ PageRoute<bool> mediaDetailRoute({
     initialEpisodeId: initialEpisodeId,
     heroTag: heroTag,
     traceId: traceId,
+    unifiedRouteContext: unifiedRouteContext,
+    onChangeSource: onChangeSource,
   );
   if (!PlatformDetector.isTV()) return MaterialPageRoute<bool>(builder: (_) => page);
 
@@ -233,6 +262,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   MediaWatchStats? _watchStats;
   MediaItem? _onDeckEpisode;
   bool _isLoadingMetadata = true;
+
+  /// F19/A14: the metadata fetch itself threw (network/server error), as
+  /// distinct from succeeding with a fallback. [_loadFullMetadata]'s "no
+  /// client" branch (the server is simply gone) is not this — that keeps its
+  /// own existing silent-fallback behaviour, hoofdstuk 21.8's territory, not
+  /// 21.7's "detail load faalt voor die source".
+  bool _metadataLoadFailed = false;
   List<MediaItem>? _extras;
   List<MediaHub> _relatedHubs = [];
   List<GlobalKey<HubSectionState>> _relatedHubKeys = [];
@@ -728,14 +764,40 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   KeyEventResult _handleMediaDetailBackKey(FocusNode _, KeyEvent event) {
     if (_consumeBackAfterChildPop(event)) return KeyEventResult.handled;
+    // Nested (PB-1): there is no local route to pop, so `handleBackKeyNavigation`'s
+    // own `Navigator.canPop` guard would answer false and this handler would
+    // stand down for no reason — Back on a nested detail screen is a real
+    // dismissal (DEC-088), and a real dismissal keeps priority over the shell.
+    if (TvNestedRouteScope.of(context) != null) {
+      return handleBackKeyAction(event, _dismissTvDetail);
+    }
     return handleBackKeyNavigation(context, event, result: _watchStateChanged);
+  }
+
+  /// Closes the detail screen, whichever way it was opened.
+  ///
+  /// Nested inside the TV shell (PB-1 of
+  /// `docs/tvos-redesign-implementatiecontract.md`), [TvNestedRouteScope.of]
+  /// completes and pops the route through the coordinator with the same focus
+  /// restoration Back gets. Anything else — the profile navigator's pushed
+  /// route, which every platform still uses until SYS-1b flips detail's own
+  /// call sites — pops through `Navigator` as before. A screen has to ask
+  /// which one applies *here*: `Navigator.pop` alone breaks the moment this
+  /// screen is nested, because there is no local route for it to find.
+  void _dismissTvDetail([Object? result]) {
+    final nested = TvNestedRouteScope.of(context);
+    if (nested != null) {
+      nested.dismiss(result ?? _watchStateChanged);
+      return;
+    }
+    Navigator.pop(context, result ?? _watchStateChanged);
   }
 
   /// Escape hatch out of the metadata loading state. Leaves the pending fetch
   /// to finish (or not) on its own — the state guards are all `mounted`-checked.
   void _cancelMetadataLoad() {
     if (!mounted) return;
-    Navigator.pop(context, _watchStateChanged);
+    _dismissTvDetail();
   }
 
   void _popMediaDetailIfBackNotSuppressed() {
@@ -743,7 +805,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       _suppressBackAfterPop = false;
       return;
     }
-    Navigator.pop(context, _watchStateChanged);
+    _dismissTvDetail();
   }
 
   bool _isTvDetailReadyToReveal(MediaItem metadata) {
@@ -1000,7 +1062,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     return ListenableBuilder(
       listenable: _ratingChipFocusNode,
       builder: (context, _) {
-        void activate() => _showRatingDialog(context, metadata);
+        void activate() => unawaited(_showRatingDialog(context, metadata));
         final colorScheme = Theme.of(context).colorScheme;
         final isKeyboardMode = InputModeTracker.isKeyboardMode(context);
         final showFocus = _ratingChipFocusNode.hasFocus && isKeyboardMode;
@@ -1060,8 +1122,19 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     );
   }
 
-  void _showRatingDialog(BuildContext sheetContext, MediaItem metadata) {
-    OverlaySheetController.showAdaptive(
+  /// Opens the rating sheet, and since [DEC-075](../../docs/DECISIONS.md#dec-075)
+  /// writes what the user settles on to every other membership of this title.
+  ///
+  /// The sheet stays bound to *this* page's source, unlike the TV menu which
+  /// picks one. The page is source-bound by hoofdstuk 4.1 and 15: the chip, the
+  /// "Bron: …" line and the sheet all describe the same server, and rebinding
+  /// the sheet to a sibling would make them disagree about which one. On TV
+  /// nothing is bound yet when the menu opens, so there is a choice to make;
+  /// here there is not.
+  Future<void> _showRatingDialog(BuildContext sheetContext, MediaItem metadata) async {
+    final mirror = _buildRatingMirror(metadata);
+
+    await OverlaySheetController.showAdaptive(
       sheetContext,
       builder: (context) => RatingBottomSheet(
         item: metadata,
@@ -1071,8 +1144,39 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
             _fullMetadata = (_fullMetadata ?? widget.metadata).copyWith(userRating: rating);
           });
         },
+        onServerRatingWritten: mirror?.write,
       ),
     );
+
+    if (mirror == null) return;
+    // Awaited after the sheet, not inside it: the sheet flushes a pending
+    // rating from `dispose()`, so the last write starts as the route pops and
+    // this screen is what outlives it.
+    await mirror.settled;
+    if (!mounted || mirror.doneCount >= mirror.intendedTargetCount) return;
+    final message = unifiedActionOutcomeMessage(done: mirror.doneCount, total: mirror.intendedTargetCount, queued: 0);
+    if (message != null) showAppSnackBar(this.context, message);
+  }
+
+  /// The fan-out target list for this page, or null when there is nothing to
+  /// fan out to.
+  ///
+  /// `availableSourceKeys` names *title*-level memberships, so the guard is not
+  /// decoration: rating an episode against them would put the rating on the
+  /// show on every sibling server. No route in this screen pushes an episode
+  /// carrying its parent's context today, which is exactly why the guard is
+  /// worth a line now rather than after a refactor makes it live.
+  RatingMirror? _buildRatingMirror(MediaItem metadata) {
+    final routeContext = widget.unifiedRouteContext;
+    if (routeContext == null || !routeContext.hasAlternativeSources) return null;
+    if (parseGlobalKey(routeContext.sourceKey)?.ratingKey != metadata.id) return null;
+
+    final mirror = RatingMirror.fromSourceKeys(
+      context,
+      sourceKeys: routeContext.availableSourceKeys,
+      originSourceKey: routeContext.sourceKey,
+    );
+    return mirror.intendedTargetCount > 1 ? mirror : null;
   }
 
   /// Build a combined RT chip showing critic + audience side by side.
@@ -1326,6 +1430,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   Future<void> _loadFullMetadata() async {
     setState(() {
       _isLoadingMetadata = true;
+      _metadataLoadFailed = false;
       _hasLoadedExtras = false;
       _hasLoadedRelatedHubs = false;
     });
@@ -1429,10 +1534,15 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       setState(() {
         _fullMetadata = _metadata;
         _isLoadingMetadata = false;
+        // F19/A14, hoofdstuk 21.7: the fallback above stays exactly as it
+        // was — "bestaande foutafhandeling" — this flag only adds the
+        // explicit recovery offer on top of it, when there is one to offer.
+        _metadataLoadFailed = true;
         _hasLoadedExtras = true;
         _hasLoadedRelatedHubs = true;
       });
       _closeSelectTrace(note: 'fetch-failed');
+      _offerAlternativeSourceAfterDetailLoadFailure();
 
       if (_metadata.isShow) {
         unawaited(_loadSeasons());
@@ -1442,6 +1552,40 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         unawaited(_fetchAllEpisodes());
       }
     }
+  }
+
+  /// F19/A14: "detail load faalt voor die source, en er bestaat minimaal één
+  /// andere usable source in dezelfde group" → explicit "Andere bron kiezen",
+  /// via [widget.onChangeSource] — the exact hoofdstuk 15 "[ Wijzigen ]"
+  /// callback the picker already reaches through, never a silent switch and
+  /// never a second picker of our own.
+  ///
+  /// [widget.onChangeSource] is only ever non-null when this route was opened
+  /// through the unified TV activation path with more than one source
+  /// (`UnifiedMediaRouteContext.hasAlternativeSources`) — the same gate
+  /// hoofdstuk 15's always-visible source chip already uses. No alternative
+  /// means nothing to offer here; hoofdstuk 21.7 leaves that case to the
+  /// existing offline/auth/not-found handling, unchanged by this method.
+  void _offerAlternativeSourceAfterDetailLoadFailure() {
+    final onChangeSource = widget.onChangeSource;
+    if (onChangeSource == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_metadataLoadFailed) return;
+      unawaited(
+        OverlaySheetController.showAdaptive<void>(
+          context,
+          presentation: OverlaySheetPresentation.panel,
+          builder: (sheetContext) => TvPlaybackFailureAlternative(
+            title: t.sourcePicker.detailLoadFailedTitle,
+            onChooseAnother: () {
+              OverlaySheetController.closeAdaptive(sheetContext, null);
+              unawaited(onChangeSource(context));
+            },
+            onClose: () => OverlaySheetController.closeAdaptive(sheetContext, null),
+          ),
+        ),
+      );
+    });
   }
 
   Future<void> _loadSeasons() async {
@@ -3681,98 +3825,110 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     MediaItem metadata,
     KeyEventResult Function(FocusNode, KeyEvent) handleBack,
   ) {
-    final size = MediaQuery.sizeOf(context);
-    final detailHubs = _tvDetailHubs(metadata);
-    if (widget.initialEpisodeId != null && !_initialEpisodePagingDone) {
-      _maybeLoadMoreForInitialEpisode();
-    }
-    final hideSpoilers = SettingsService.instance.read(SettingsService.hideSpoilers);
-    final detailScale = TvLayoutConstants.scaleForSize(size);
-    final spotlightTop = (size.height * 0.08).clamp(44.0 * detailScale, 110.0 * detailScale).toDouble();
-    final rawRailHeight = _estimateTvDetailRailHeight(size, detailHubs);
-    if (!_tvDetailRevealed && _isTvDetailReadyToReveal(metadata)) {
-      _scheduleTvDetailReveal(rawRailHeight, focusPrimaryAction: metadata.isMovie);
-    }
-    final stableRailHeight = _tvDetailStableRailHeight;
-    final railHeight = stableRailHeight == null || rawRailHeight > stableRailHeight ? rawRailHeight : stableRailHeight;
-    final railTopPadding = 12 * detailScale;
-    final foregroundBottom = (railHeight - railTopPadding) + (_tvDetailActionRailGap * detailScale);
-    final spotlightLeft = (24 * detailScale).clamp(18.0, 40.0).toDouble();
+    // INV-1 (docs/tvos-redesign-implementatiecontract.md): this route can be
+    // nested inside the TV shell, under the top navigation (PB-1), where the
+    // box Flutter actually lays this screen out in is shorter than the
+    // physical window. `MediaQuery.sizeOf` would not notice that — a smaller
+    // layout box does not re-scope MediaQuery — so it would keep reporting the
+    // full window and every measurement below would overshoot the box this
+    // widget was actually given. `constraints`, from the `LayoutBuilder` this
+    // whole screen now builds inside, is that box; `TvCatalogSkeletonGrid` in
+    // `tv_unified_catalog_screen.dart` reads its own height the same way.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        final detailHubs = _tvDetailHubs(metadata);
+        if (widget.initialEpisodeId != null && !_initialEpisodePagingDone) {
+          _maybeLoadMoreForInitialEpisode();
+        }
+        final hideSpoilers = SettingsService.instance.read(SettingsService.hideSpoilers);
+        final detailScale = TvLayoutConstants.scaleForSize(size);
+        final spotlightTop = (size.height * 0.08).clamp(44.0 * detailScale, 110.0 * detailScale).toDouble();
+        final rawRailHeight = _estimateTvDetailRailHeight(size, detailHubs);
+        if (!_tvDetailRevealed && _isTvDetailReadyToReveal(metadata)) {
+          _scheduleTvDetailReveal(rawRailHeight, focusPrimaryAction: metadata.isMovie);
+        }
+        final stableRailHeight = _tvDetailStableRailHeight;
+        final railHeight = stableRailHeight == null || rawRailHeight > stableRailHeight
+            ? rawRailHeight
+            : stableRailHeight;
+        final railTopPadding = 12 * detailScale;
+        final foregroundBottom = (railHeight - railTopPadding) + (_tvDetailActionRailGap * detailScale);
+        final spotlightLeft = (24 * detailScale).clamp(18.0, 40.0).toDouble();
 
-    final revealContent = Stack(
-      fit: StackFit.expand,
-      children: [
-        Positioned(
-          left: spotlightLeft,
-          right: size.width * 0.43,
-          top: spotlightTop,
-          bottom: foregroundBottom,
-          child: _buildTvDetailForeground(context, metadata, hideSpoilers: hideSpoilers, scale: detailScale),
-        ),
-        Positioned(
-          top: 0,
-          left: 0,
-          child: DesktopAppBarHelper.buildAdjustedLeading(
-            AppBarBackButton(
-              style: BackButtonStyle.circular,
-              onPressed: () => Navigator.pop(context, _watchStateChanged),
+        final revealContent = Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned(
+              left: spotlightLeft,
+              right: size.width * 0.43,
+              top: spotlightTop,
+              bottom: foregroundBottom,
+              child: _buildTvDetailForeground(context, metadata, hideSpoilers: hideSpoilers, scale: detailScale),
             ),
-            context: context,
-          )!,
-        ),
-        if (detailHubs.isNotEmpty)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: TvBrowseRail(
-              key: _tvDetailRailKey,
-              hubs: detailHubs,
-              iconForHub: _getTvDetailHubIcon,
-              onFocusedHubItemChanged: _handleTvDetailFocusedRailItemChanged,
-              onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
-              onPlaybackReturned: (item) => unawaited(refreshAfterPlayback(playedItemId: item.id)),
-              onActiveHubChanged: _handleTvDetailHubChanged,
-              onActivateItem: _handleTvDetailRailItemActivated,
-              trailingForHub: _tvDetailTrailingState,
-              onRetryHub: _retryTvDetailHub,
-              onNavigateUp: _focusTvDetailActionRow,
-              onBack: _popMediaDetailIfBackNotSuppressed,
-              tallPosterScale: _tvDetailTallPosterScale,
-              widePosterScaleForHub: _tvDetailWidePosterScaleForHub,
-              initialHubId: _tvDetailInitialHubId(metadata),
-              initialItemId: _tvDetailInitialItemId(metadata),
-              episodePosterModeForHub: _tvDetailEpisodePosterModeForHub,
-              automationIdForHub: _tvDetailAutomationIdForHub,
+            Positioned(
+              top: 0,
+              left: 0,
+              child: DesktopAppBarHelper.buildAdjustedLeading(
+                AppBarBackButton(style: BackButtonStyle.circular, onPressed: () => _dismissTvDetail()),
+                context: context,
+              )!,
             ),
-          ),
-      ],
-    );
-
-    final blockSystemBack = InputModeTracker.shouldBlockSystemBack(context);
-    final content = OverlaySheetHost(
-      // blockSystemBack keeps the route from double-popping on Android keyboard/
-      // TV (the key handler owns dpad back); the host also closes an open sheet.
-      canPop: !blockSystemBack,
-      child: Focus(
-        onKeyEvent: handleBack,
-        child: Scaffold(
-          body: Stack(
-            children: [
-              TvSpotlightBackground(
-                item: metadata,
-                client: _getArtworkMediaClient(context),
-                showInfo: false,
-                localArtworkPathResolver: widget.isOffline ? (path) => _offlineArtworkLocalPath(context, path) : null,
+            if (detailHubs.isNotEmpty)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: TvBrowseRail(
+                  key: _tvDetailRailKey,
+                  hubs: detailHubs,
+                  iconForHub: _getTvDetailHubIcon,
+                  onFocusedHubItemChanged: _handleTvDetailFocusedRailItemChanged,
+                  onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+                  onPlaybackReturned: (item) => unawaited(refreshAfterPlayback(playedItemId: item.id)),
+                  onActiveHubChanged: _handleTvDetailHubChanged,
+                  onActivateItem: _handleTvDetailRailItemActivated,
+                  trailingForHub: _tvDetailTrailingState,
+                  onRetryHub: _retryTvDetailHub,
+                  onNavigateUp: _focusTvDetailActionRow,
+                  onBack: _popMediaDetailIfBackNotSuppressed,
+                  tallPosterScale: _tvDetailTallPosterScale,
+                  widePosterScaleForHub: _tvDetailWidePosterScaleForHub,
+                  initialHubId: _tvDetailInitialHubId(metadata),
+                  initialItemId: _tvDetailInitialItemId(metadata),
+                  episodePosterModeForHub: _tvDetailEpisodePosterModeForHub,
+                  automationIdForHub: _tvDetailAutomationIdForHub,
+                ),
               ),
-              _buildTvDetailRevealGate(revealContent, handleBack),
-            ],
-          ),
-        ),
-      ),
-    );
+          ],
+        );
 
-    return content;
+        final blockSystemBack = InputModeTracker.shouldBlockSystemBack(context);
+        return OverlaySheetHost(
+          // blockSystemBack keeps the route from double-popping on Android keyboard/
+          // TV (the key handler owns dpad back); the host also closes an open sheet.
+          canPop: !blockSystemBack,
+          child: Focus(
+            onKeyEvent: handleBack,
+            child: Scaffold(
+              body: Stack(
+                children: [
+                  TvSpotlightBackground(
+                    item: metadata,
+                    client: _getArtworkMediaClient(context),
+                    showInfo: false,
+                    localArtworkPathResolver: widget.isOffline
+                        ? (path) => _offlineArtworkLocalPath(context, path)
+                        : null,
+                  ),
+                  _buildTvDetailRevealGate(revealContent, handleBack),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildTvDetailForeground(
@@ -3806,6 +3962,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         final summaryLineHeight = summaryFontSize * 1.35;
         final actionHeight = _tvDetailActionSize * scale;
         final actionGap = 12 * scale;
+        final sourceLineHeight = _unifiedSourceLineHeight(context);
         final hasDescription = description != null && description.isNotEmpty;
         // Genres come from the show/movie, not the focused episode, so the line
         // stays stable as episode rows gain focus.
@@ -3817,7 +3974,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         for (var lines = hasDescription ? 3 : 0; lines >= 0; lines--) {
           final descriptionHeight = lines > 0 ? summaryGap + (summaryLineHeight * lines) : 0.0;
           final reservedHeight =
-              logoMetadataGap + metadataLineHeight + genreBlockHeight + descriptionHeight + actionGap + actionHeight;
+              logoMetadataGap +
+              metadataLineHeight +
+              genreBlockHeight +
+              descriptionHeight +
+              actionGap +
+              actionHeight +
+              sourceLineHeight;
           final remainingForLogo = availableHeight - reservedHeight;
           if (remainingForLogo >= minLogoHeight || lines == 0) {
             summaryMaxLines = lines;
@@ -3834,7 +3997,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
             genreBlockHeight +
             descriptionHeight +
             actionGap +
-            actionHeight;
+            actionHeight +
+            sourceLineHeight;
         final logoWidth = desiredLogoWidth < constraints.maxWidth ? desiredLogoWidth : constraints.maxWidth;
 
         return ClipRect(
@@ -3908,6 +4072,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                     ],
                     SizedBox(height: actionGap),
                     SizedBox(height: actionHeight, child: _buildActionButtons(metadata)),
+                    _buildUnifiedSourceLine(),
                     // Live viewer, then the "Watched by …" row (Plex, owned
                     // servers only).
                     NowWatchingLine(ratingKey: _metadata.id),
@@ -4618,7 +4783,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         final genreChips = [for (final genre in metadata.genres ?? const <String>[]) _buildMetadataChip(genre)];
 
         final showActions = availableHeight >= actionHeight;
-        final remainingAfterActions = availableHeight - (showActions ? actionHeight : 0);
+        final sourceLineHeight = showActions ? _unifiedSourceLineHeight(context) : 0.0;
+        final remainingAfterActions = availableHeight - (showActions ? actionHeight : 0) - sourceLineHeight;
         final showChips = chips.isNotEmpty && remainingAfterActions >= 88;
         final chipHeight = showChips ? (remainingAfterActions >= 170 ? 68.0 : 32.0) : 0.0;
         final chipActionGap = showChips && showActions ? (availableHeight < 180 ? 8.0 : 16.0) : 0.0;
@@ -4645,7 +4811,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
             chipHeight +
             genreBlockHeight +
             chipActionGap +
-            (showActions ? actionHeight : 0.0);
+            (showActions ? actionHeight : 0.0) +
+            sourceLineHeight;
 
         return ClipRect(
           child: SizedBox(
@@ -4702,6 +4869,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                       ],
                       if (chipActionGap > 0) SizedBox(height: chipActionGap),
                       if (showActions) SizedBox(height: actionHeight, child: _buildActionButtons(metadata)),
+                      if (showActions) _buildUnifiedSourceLine(),
                     ],
                   ),
                 ),

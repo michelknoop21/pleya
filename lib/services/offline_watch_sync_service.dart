@@ -258,6 +258,37 @@ class OfflineWatchSyncService extends ChangeNotifier {
   Future<String?> queueMarkUnwatched({required ServerId serverId, required String itemId}) =>
       _queueWatchStatusAction(serverId: serverId, itemId: itemId, actionType: OfflineActionType.unwatched.id);
 
+  /// Holds a Continue Watching removal for a membership that could not be
+  /// reached (hoofdstuk 13.4 point 3), so the reconnect sync performs it
+  /// (point 4).
+  ///
+  /// The queue row *is* the local suppression: it survives a restart, it is
+  /// keyed by the same `serverId:itemId` the on-deck list is keyed by, and it
+  /// disappears exactly when the write finally lands. A second in-memory
+  /// suppression set beside it would be a second answer to "is this title
+  /// still in Verder kijken".
+  Future<String?> queueRemoveFromContinueWatching({required ServerId serverId, required String itemId}) =>
+      _queueWatchStatusAction(
+        serverId: serverId,
+        itemId: itemId,
+        actionType: OfflineActionType.removedFromContinueWatching.id,
+      );
+
+  /// Global keys of the Continue Watching removals still waiting for their
+  /// server. A surface rebuilding the row after a restart filters these out,
+  /// so a card the user already dismissed does not come back while its write
+  /// is still queued.
+  Future<Set<String>> pendingContinueWatchingRemovalKeys() async {
+    final profileId = _activeProfileId;
+    final actions = profileId == null || profileId.isEmpty
+        ? await _database.getPendingWatchActions()
+        : await _database.getPendingWatchActions(profileId: profileId);
+    return {
+      for (final action in actions)
+        if (action.actionType == OfflineActionType.removedFromContinueWatching.id) action.globalKey,
+    };
+  }
+
   Future<String?> _queueWatchStatusAction({
     required ServerId serverId,
     required String itemId,
@@ -449,9 +480,48 @@ class OfflineWatchSyncService extends ChangeNotifier {
           continue;
         }
       }
+      await _reannouncePendingContinueWatchingRemovals();
     } finally {
       _isSyncing = false;
       notifyListeners();
+    }
+  }
+
+  /// Re-states hoofdstuk 13.4 point 3's suppression for every removal still
+  /// waiting on its server.
+  ///
+  /// A queued removal outlives the app, but the on-deck suppression that made
+  /// the card disappear does not: `DiscoverProvider` holds it in memory, keyed
+  /// by global key, and rebuilds empty on every launch. Without this the user
+  /// would dismiss a card, close Pleya while a server was down, and find the
+  /// card back — with the write still queued, so nothing was wrong except what
+  /// they could see.
+  ///
+  /// Announcing rather than exposing a getter keeps the dependency one-way.
+  /// The surfaces already listen to [WatchStateNotifier] for exactly this
+  /// event and their suppression is self-cleaning, so a re-announcement for a
+  /// title the server has meanwhile dropped costs one set entry that the next
+  /// on-deck apply removes again.
+  Future<void> _reannouncePendingContinueWatchingRemovals() async {
+    final Set<String> keys;
+    try {
+      keys = await pendingContinueWatchingRemovalKeys();
+    } catch (e) {
+      appLogger.d('Could not read pending Continue Watching removals', error: e);
+      return;
+    }
+    for (final globalKey in keys) {
+      final parsed = parseGlobalKey(globalKey);
+      if (parsed == null) continue;
+      WatchStateNotifier().notify(
+        WatchStateEvent(
+          itemId: parsed.ratingKey,
+          serverId: ServerId(parsed.serverId),
+          changeType: WatchStateChangeType.removedFromContinueWatching,
+          parentChain: const [],
+          mediaType: MediaKind.unknown.id,
+        ),
+      );
     }
   }
 
@@ -573,6 +643,7 @@ class OfflineWatchSyncService extends ChangeNotifier {
     final needsRichItem =
         action.actionType == OfflineActionType.watched.id ||
         action.actionType == OfflineActionType.unwatched.id ||
+        action.actionType == OfflineActionType.removedFromContinueWatching.id ||
         (action.actionType == OfflineActionType.progress.id && action.shouldMarkWatched);
     MediaItem? item;
     if (needsRichItem) {
@@ -595,6 +666,17 @@ class OfflineWatchSyncService extends ChangeNotifier {
       case 'unwatched':
         await client.markUnwatched(resolvedItem);
         await _scrobbleBestEffort(() => TrackerCoordinator.instance.markUnwatched(resolvedItem, client));
+        break;
+
+      case 'removeFromContinueWatching':
+        // Idempotent by construction: Plex's PUT
+        // `/actions/removeFromContinueWatching` is a no-op for a rating key
+        // that is already off the shelf, so a replay that races the user
+        // removing it elsewhere costs one request and changes nothing. No
+        // WatchStateEvent either — the surface suppressed the card when the
+        // action was queued, and re-announcing it on replay would only
+        // re-remove something already gone.
+        await client.removeFromContinueWatching(resolvedItem);
         break;
 
       case 'progress':

@@ -19,7 +19,18 @@ part 'app_database.g.dart';
 enum OfflineActionType {
   progress,
   watched,
-  unwatched;
+  unwatched,
+
+  /// Hoofdstuk 13.4 point 3/4: a Continue Watching removal that could not
+  /// reach one of the title's memberships, held until that server is back.
+  ///
+  /// No migration: `OfflineWatchProgressQueue.actionType` is a plain text
+  /// column with no constraint, check or index tied to its values, so a new
+  /// value is new *data*, not a new schema. What it does need is a replay
+  /// branch in `OfflineWatchSyncService._syncAction` — a queued row whose
+  /// type nothing handles would sit there being retried and deleted without
+  /// ever performing the write.
+  removedFromContinueWatching;
 
   /// Stable string id used for persistence. Survives an enum-name rename
   /// (e.g. `progress` → `inProgress`) — `.name` would corrupt every row.
@@ -27,6 +38,7 @@ enum OfflineActionType {
     OfflineActionType.progress => 'progress',
     OfflineActionType.watched => 'watched',
     OfflineActionType.unwatched => 'unwatched',
+    OfflineActionType.removedFromContinueWatching => 'removeFromContinueWatching',
   };
 
   /// Inverse of [id]. Throws on unknown so a typo in production doesn't
@@ -35,6 +47,7 @@ enum OfflineActionType {
     'progress' => OfflineActionType.progress,
     'watched' => OfflineActionType.watched,
     'unwatched' => OfflineActionType.unwatched,
+    'removeFromContinueWatching' => OfflineActionType.removedFromContinueWatching,
     _ => throw ArgumentError('Unknown OfflineActionType id: $id'),
   };
 }

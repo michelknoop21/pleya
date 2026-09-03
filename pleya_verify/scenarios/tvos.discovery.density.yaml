@@ -1,0 +1,51 @@
+name: tvos.discovery.density
+target: tvos-sim
+# DEC-087, at rest: six tiles fully on screen and a seventh laid out beside them.
+#
+# What this can and cannot state, said plainly. `insideViewport` is the only
+# unary geometry predicate, and its value is a verdict, not a comparison — there
+# is no way to write "and the seventh is *not* fully inside". So this scenario
+# proves the half that matters on real hardware: six tiles complete, and a
+# seventh that exists and sits to the right of them, which is what makes the row
+# read as running off the page rather than as ending at six. The other half —
+# that the seventh shows ~84 of its 133 logical pixels and no more — is arithmetic,
+# and `test/widgets/tv/tv_discovery_density_test.dart` measures it exactly on the
+# canonical canvas. Neither test is a substitute for the other: the widget test
+# would still pass if the rail never reached a device, and this one would still
+# pass if the seventh tile were fully visible.
+#
+# Nothing is focused when the assertions run, deliberately: "six at rest" is a
+# resting measurement, and entering the rail expands one tile to 2.67 times its
+# width and slides everything after it.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  # To Films. The bar keeps the focus through a destination switch (P2), so the
+  # landing behind it is at rest with nothing in it focused — which is exactly
+  # the state this scenario needs.
+  - press: right
+  - settle: 800
+  - press: select
+  - wait_until: {id: "discover.rail[0]", timeout: 20000}
+  - settle: 2500
+
+  - assert: {id: "discover.rail[0]", insideViewport: true}
+  - assert: {id: "discover.rail.item[0.0]", insideViewport: true}
+  - assert: {id: "discover.rail.item[0.1]", insideViewport: true}
+  - assert: {id: "discover.rail.item[0.2]", insideViewport: true}
+  - assert: {id: "discover.rail.item[0.3]", insideViewport: true}
+  - assert: {id: "discover.rail.item[0.4]", insideViewport: true}
+  - assert: {id: "discover.rail.item[0.5]", insideViewport: true}
+
+  # The seventh: present, laid out, and to the right of the sixth. `rightOf` is
+  # the strongest thing available here — it says the row continues past the six,
+  # which is the composition DEC-087 is about.
+  - assert: {id: "discover.rail.item[0.6]", rightOf: "discover.rail.item[0.5]"}
+  - assert: {id: "discover.rail.item[0.5]", sameRow: "discover.rail.item[0.0]"}
+  - snapshot: discovery-density-rest

@@ -85,7 +85,7 @@ jobs:
   # existing CLI end to end (build -> install -> launch -> assert ->
   # evidence) via `verify run`, exactly as a contributor would locally.
   # Kept out of branch-protection required status (none is configured on
-  # this repository, see DEC-066) because Fase 13 already found a
+  # this repository, see DEC-083) because Fase 13 already found a
   # window-scoped `screencapture` permission failure in a real session on
   # this exact code path; whether GitHub's hosted macOS runner behaves
   # differently is exactly what this job exists to find out, honestly.
@@ -161,7 +161,7 @@ jobs:
   # push/pull_request: idb-companion/fb-idb are unmaintained and their
   # behavior on a fresh hosted runner is unproven, so this stays a visible,
   # honestly-failing, non-blocking gate (workflow_dispatch + weekly
-  # schedule) until it has a real-run track record. See DEC-066.
+  # schedule) until it has a real-run track record. See DEC-083.
   tvos-verify:
     name: Verify - tvOS (extended, not required)
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'

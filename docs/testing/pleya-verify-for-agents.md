@@ -114,7 +114,7 @@ function/argument table before guessing a shape.
   (`xcrun simctl io … screenshot` or the macOS equivalent).
 - **Never invent a fixture behavior to make a scenario pass.** If a scenario needs a capability the
   fixture or the product does not have yet (see `tvos.library.filters`, deferred by
-  [DEC-063](../DECISIONS.md#dec-063-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)),
+  [DEC-080](../DECISIONS.md#dec-080-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)),
   defer the scenario explicitly rather than building a workaround that technically goes green.
 - **Never claim UI/focus work is verified without running the relevant scenario(s) and reading the
   bundle**, unless the environment provably cannot run the target (no simulator, no macOS runner).

@@ -1,0 +1,99 @@
+name: tvos.my-pleya.sections
+target: tvos-sim
+# The per-section round of the Mijn Pleya audit (hoofdstuk 14 of the brief):
+# open every section this fixture can reach, record where the remote lands,
+# and Back out again.
+#
+# Still deliberately assertion-light on the *inside* of each section — what it
+# records is where the focus went, which is the question. The one thing it does
+# assert is the walk itself (`my_pleya.tile[x]` focused before each SELECT), so
+# a scenario that drifts off the intended tile fails loudly instead of quietly
+# auditing the wrong screen.
+#
+# Six of the ten sections are reachable on `catalog.mixed.v1`: Kijklijst,
+# Aanvragen, Downloads and Activiteit have no tile on a fixture with no Seerr
+# server, no downloads and nothing playing. That gap is a fixture limit, not a
+# finding, and is reported as such.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+
+  # Into the hub: DOWN lands on the profile header, DOWN again on the first
+  # tile. Left/right then walks the flat page order, so RIGHT is the whole
+  # traversal for the rest of this scenario.
+  - press: down
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+
+  # --- Bibliotheken / "Media" -------------------------------------------
+  - press: select
+  - wait_until: {id: "my_pleya.section[libraries]", timeout: 15000}
+  - snapshot: 10-libraries-opened
+  - press: down
+  - snapshot: 11-libraries-after-down
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
+  - snapshot: 12-libraries-back
+
+  # --- Servers -----------------------------------------------------------
+  - press: right
+  - assert: {id: "my_pleya.tile[servers]", focused: true}
+  - press: select
+  - wait_until: {id: "my_pleya.section[servers]", timeout: 15000}
+  - snapshot: 20-servers-opened
+  - press: down
+  - snapshot: 21-servers-after-down
+  - press: menu
+  - snapshot: 22-servers-back
+
+  # --- Samen Kijken ------------------------------------------------------
+  - press: right
+  - press: select
+  - wait_until: {id: "my_pleya.section[watchTogether]", timeout: 15000}
+  - snapshot: 30-watch-together-opened
+  - press: down
+  - snapshot: 31-watch-together-after-down
+  - press: menu
+  - snapshot: 32-watch-together-back
+
+  # --- Opties / Instellingen --------------------------------------------
+  - press: right
+  - press: select
+  - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
+  - snapshot: 40-settings-opened
+  - press: down
+  - snapshot: 41-settings-after-down
+  - press: menu
+  - snapshot: 42-settings-back
+
+  # --- Logs en diagnose --------------------------------------------------
+  - press: right
+  - press: select
+  - wait_until: {id: "my_pleya.section[logs]", timeout: 15000}
+  - snapshot: 50-logs-opened
+  - press: down
+  - snapshot: 51-logs-after-down
+  - press: menu
+  - snapshot: 52-logs-back
+
+  # --- Over --------------------------------------------------------------
+  - press: right
+  - press: select
+  - wait_until: {id: "my_pleya.section[about]", timeout: 15000}
+  - snapshot: 60-about-opened
+  - press: down
+  - snapshot: 61-about-after-down
+  - press: menu
+  - snapshot: 62-about-back

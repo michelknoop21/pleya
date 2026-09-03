@@ -62,6 +62,7 @@ class TranslationsBg extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsBg connections = _TranslationsConnectionsBg._(_root);
 	@override late final _TranslationsDiscoverBg discover = _TranslationsDiscoverBg._(_root);
 	@override late final _TranslationsErrorsBg errors = _TranslationsErrorsBg._(_root);
+	@override late final _TranslationsNoticesBg notices = _TranslationsNoticesBg._(_root);
 	@override late final _TranslationsLibrariesBg libraries = _TranslationsLibrariesBg._(_root);
 	@override late final _TranslationsAboutBg about = _TranslationsAboutBg._(_root);
 	@override late final _TranslationsServerSelectionBg serverSelection = _TranslationsServerSelectionBg._(_root);
@@ -87,6 +88,11 @@ class TranslationsBg extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerBg addServer = _TranslationsAddServerBg._(_root);
 	@override late final _TranslationsAddLocalFolderBg addLocalFolder = _TranslationsAddLocalFolderBg._(_root);
 	@override late final _TranslationsPleyaShareBg pleyaShare = _TranslationsPleyaShareBg._(_root);
+	@override late final _TranslationsSourcePickerBg sourcePicker = _TranslationsSourcePickerBg._(_root);
+	@override late final _TranslationsUnifiedCatalogBg unifiedCatalog = _TranslationsUnifiedCatalogBg._(_root);
+	@override late final _TranslationsTvNavigationBg tvNavigation = _TranslationsTvNavigationBg._(_root);
+	@override late final _TranslationsTvMyPleyaBg tvMyPleya = _TranslationsTvMyPleyaBg._(_root);
+	@override late final _TranslationsTvContextMenuBg tvContextMenu = _TranslationsTvContextMenuBg._(_root);
 }
 
 // Path: app
@@ -442,6 +448,7 @@ class _TranslationsSearchBg extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => 'Опитайте с различна дума за търсене';
 	@override String get searchYourMedia => 'Търсете във вашата медия';
 	@override String get enterTitleActorOrKeyword => 'Въведете заглавие, актьор или ключова дума';
+	@override late final _TranslationsSearchFiltersBg filters = _TranslationsSearchFiltersBg._(_root);
 }
 
 // Path: hotkeys
@@ -912,6 +919,17 @@ class _TranslationsErrorsBg extends TranslationsErrorsEn {
 	@override String failedToSwitchProfile({required Object displayName}) => 'Неуспешна смяна към ${displayName}';
 	@override String failedToDeleteProfile({required Object displayName}) => 'Неуспешно изтриване на ${displayName}';
 	@override String get failedToRate => 'Оценката не можа да бъде обновена';
+}
+
+// Path: notices
+class _TranslationsNoticesBg extends TranslationsNoticesEn {
+	_TranslationsNoticesBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => 'Файлът не е наличен';
+	@override String get playbackFileUnavailableBody => 'Сървърът не може да достигне видеофайла. Проверете дали дискът или папката, в която се намира, все още са свързани.';
 }
 
 // Path: libraries
@@ -1707,6 +1725,140 @@ class _TranslationsPleyaShareBg extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => 'Сканиране на мрежата…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerBg extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => 'Изберете къде да се възпроизведе';
+	@override String get detailsTitle => 'Изберете източник за подробностите';
+	@override String get availableOnOneServer => 'Достъпно на 1 сървър';
+	@override String availableOnManyServers({required Object count}) => 'Достъпно на ${count} сървъра';
+	@override String get oneServerUnchecked => '1 сървър не можа да бъде проверен';
+	@override String manyServersUnchecked({required Object count}) => '${count} сървъра не можаха да бъдат проверени';
+	@override String get checkingMoreSources => 'Проверка за още източници…';
+	@override String get lastUsed => 'Последно използван';
+	@override String get currentSource => 'Текущ източник';
+	@override String get unavailable => 'Не е налично';
+	@override String get signInRequired => 'Необходимо е повторно влизане';
+	@override String resumeAt({required Object position}) => 'Продължаване от ${position}';
+	@override String get watched => 'Гледано';
+	@override String get noneReachableTitle => 'В момента няма достъпен източник.';
+	@override String get reauthRequiredTitle => 'Влезте отново, за да достигнете това заглавие.';
+	@override String get manageServers => 'Управление на сървърите';
+	@override String sourceLabel({required Object source}) => 'Източник: ${source}';
+	@override String get change => 'Промяна';
+	@override String get playbackFailedTitle => 'Този източник не можа да бъде възпроизведен.';
+	@override String get detailLoadFailedTitle => 'Заглавието не можа да бъде заредено.';
+	@override String get chooseAnotherSource => 'Изберете друг източник';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Източник ${index} от ${count}: ${description}';
+	@override String get preferredServer => 'Предпочитан сървър';
+	@override String setPreferredServer({required Object server}) => 'Винаги използвай ${server}';
+}
+
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogBg extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => 'Филми';
+	@override String get seriesTitle => 'Сериали';
+	@override String sources({required Object count}) => 'Източници: ${count}';
+	@override String get allSources => 'Всички източници';
+	@override String get oneSource => '1 източник';
+	@override String seasons({required Object count}) => '${count} сезона';
+	@override String get oneSeason => '1 сезон';
+	@override String titleCount({required Object count}) => 'Заглавия: ${count}';
+	@override String get oneTitle => '1 заглавие';
+	@override String titlesLoaded({required Object count}) => 'Заредени заглавия: ${count}';
+	@override String get loadMore => 'Зареди още';
+	@override String get loadingMore => 'Зареждане…';
+	@override late final _TranslationsUnifiedCatalogSortBg sort = _TranslationsUnifiedCatalogSortBg._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersBg filters = _TranslationsUnifiedCatalogFiltersBg._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesBg states = _TranslationsUnifiedCatalogStatesBg._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsBg semantics = _TranslationsUnifiedCatalogSemanticsBg._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryBg discovery = _TranslationsUnifiedCatalogDiscoveryBg._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeBg home = _TranslationsUnifiedCatalogHomeBg._(_root);
+}
+
+// Path: tvNavigation
+class _TranslationsTvNavigationBg extends TranslationsTvNavigationEn {
+	_TranslationsTvNavigationBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get activeDestination => 'текущ раздел';
+	@override String get attentionRequired => 'изисква внимание';
+}
+
+// Path: tvMyPleya
+class _TranslationsTvMyPleyaBg extends TranslationsTvMyPleyaEn {
+	_TranslationsTvMyPleyaBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get groupContent => 'Моето съдържание';
+	@override String get groupSources => 'Библиотеки и източници';
+	@override String get groupPleya => 'Pleya';
+	@override String serversOnline({required Object online, required Object total}) => '${online} от ${total} сървъра онлайн';
+	@override String get noServers => 'Няма свързани сървъри';
+	@override String get statusOnline => 'Онлайн';
+	@override String get statusOffline => 'Офлайн';
+	@override String get servers => 'Сървъри';
+	@override String get activity => 'Активност';
+	@override String get logs => 'Дневници и диагностика';
+	@override String signedInAs({required Object name, required Object version}) => 'Влезли сте като ${name} · Pleya ${version}';
+	@override String get watchlistSubtitle => 'Запазени филми и сериали';
+	@override String get requestsSubtitle => 'Заявки и откриване';
+	@override String get downloadsSubtitle => 'Офлайн и правила за синхронизация';
+	@override String get librariesSubtitle => 'Медия, колекции, плейлисти';
+	@override String get serversSubtitle => 'Връзки и локални източници';
+	@override String get activitySubtitle => 'Гледа се сега, съвместно гледане, дистанционно';
+	@override String get watchTogetherSubtitle => 'Гледайте синхронно с приятели';
+	@override String get settingsSubtitle => 'Изглед, плейър, тракери';
+	@override String get logsSubtitle => 'Файлове с дневници и доклади за сривове';
+	@override String get aboutSubtitle => 'Версия и лицензи';
+	@override String get logoutSubtitle => 'Изход от това устройство';
+	@override late final _TranslationsTvMyPleyaSemanticsBg semantics = _TranslationsTvMyPleyaSemanticsBg._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuBg extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Действия';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => 'Действие ${index} от ${count}: ${label}';
+	@override String get noUsableSource => 'В момента няма достъпен източник, затова това не може да се промени сега.';
+	@override String doneOnAll({required Object count}) => 'Готово за всички ${count} източника';
+	@override String doneOnSome({required Object done, required Object total}) => 'Готово за ${done} от ${total} източника. Останалите ще бъдат опитани отново, когато са отново онлайн.';
+	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Готово за ${done} от ${total} източника.';
+	@override String get failed => 'Това не проработи';
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersBg extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Всички';
+	@override String get movies => 'Филми';
+	@override String get shows => 'ТВ сериали';
+	@override String get episodes => 'Епизоди';
+	@override String get people => 'Хора';
+	@override String get other => 'Друго';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsBg extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsBg._(TranslationsBg root) : this._root = root, super.internal(root);
@@ -1984,6 +2136,125 @@ class _TranslationsTrackersLibraryFilterBg extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => 'Синхронизирай само отметнатите по-долу библиотеки.';
 	@override String get libraries => 'Библиотеки';
 	@override String get noLibraries => 'Няма налични библиотеки';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortBg extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Сортиране';
+	@override String get titleAsc => 'Заглавие А–Я';
+	@override String get titleDesc => 'Заглавие Я–А';
+	@override String get recentlyAdded => 'Наскоро добавени';
+	@override String get oldestAdded => 'Най-отдавна добавени';
+	@override String get newestRelease => 'Най-нова премиера';
+	@override String get oldestRelease => 'Най-стара премиера';
+	@override String get recentlyWatched => 'Наскоро гледани';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersBg extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Филтри';
+	@override String get status => 'Статус';
+	@override String get genre => 'Жанр';
+	@override String get year => 'Година';
+	@override String get servers => 'Сървъри';
+	@override String get libraries => 'Библиотеки';
+	@override String get apply => 'Приложи';
+	@override String get clearAll => 'Изчисти всичко';
+	@override String get all => 'Всички';
+	@override String get unwatched => 'Негледани';
+	@override String get unsupported => 'Недостъпно за текущите източници';
+	@override String get someUnavailable => 'Някои филтри не са налични за избраните източници';
+	@override String get noValues => 'Няма какво да се избере';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesBg extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'Този каталог е празен';
+	@override String get emptyBody => 'Никоя видима библиотека не съдържа нищо за тази страница.';
+	@override String get filterEmptyTitle => 'Нищо не отговаря на тези филтри';
+	@override String get filterEmptyBody => 'Изчисти филтър, за да видиш повече заглавия.';
+	@override String get clearFilters => 'Изчисти филтрите';
+	@override String get errorTitle => 'Каталогът не може да бъде зареден';
+	@override String get errorBody => 'Никой сървър не отговори. Провери връзката и опитай отново.';
+	@override String get partialOne => '1 библиотека не отговори';
+	@override String partialMany({required Object count}) => 'Библиотеки без отговор: ${count}';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsBg extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => 'Гледано';
+	@override String get inProgress => 'Започнато';
+	@override String get loadingMore => 'Зареждане на още заглавия';
+}
+
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryBg extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => 'Всички филми';
+	@override String get allSeries => 'Всички сериали';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => 'Някои източници не отговориха';
+	@override String get emptyTitle => 'Все още няма нищо за откриване';
+	@override String get emptyBody => 'Нито една видима библиотека няма какво да покаже тук.';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsBg semantics = _TranslationsUnifiedCatalogDiscoverySemanticsBg._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeBg extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'Препоръчано';
+}
+
+// Path: tvMyPleya.semantics
+class _TranslationsTvMyPleyaSemanticsBg extends TranslationsTvMyPleyaSemanticsEn {
+	_TranslationsTvMyPleyaSemanticsBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsBg extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}, ${count} заглавия';
+	@override String position({required Object position, required Object count}) => '${position} от ${count}';
+	@override String get viewAllMovies => 'Виж всички филми, отваря пълния каталог';
+	@override String get viewAllSeries => 'Виж всички сериали, отваря пълния каталог';
 }
 
 /// The flat map containing all translations for locale <bg>.
@@ -2286,6 +2557,12 @@ extension on TranslationsBg {
 			'search.tryDifferentTerm' => 'Опитайте с различна дума за търсене',
 			'search.searchYourMedia' => 'Търсете във вашата медия',
 			'search.enterTitleActorOrKeyword' => 'Въведете заглавие, актьор или ключова дума',
+			'search.filters.all' => 'Всички',
+			'search.filters.movies' => 'Филми',
+			'search.filters.shows' => 'ТВ сериали',
+			'search.filters.episodes' => 'Епизоди',
+			'search.filters.people' => 'Хора',
+			'search.filters.other' => 'Друго',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Задай клавишна комбинация за ${actionName}',
 			'hotkeys.clearShortcut' => 'Изчисти клавишната комбинация',
 			'hotkeys.noShortcutSet' => 'Няма зададена клавишна комбинация',
@@ -2500,14 +2777,14 @@ extension on TranslationsBg {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Таймерът за заспиване е зададен за ${label}',
 			'messages.noItemsAvailable' => 'Няма налични елементи',
 			'messages.failedToCreatePlayQueueNoItems' => 'Неуспешно създаване на опашка за възпроизвеждане - няма елементи',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Неуспешно ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Превключване към съвместим плейър...',
 			'messages.serverLimitTitle' => 'Възпроизвеждането е неуспешно',
 			'messages.serverLimitBody' => 'Грешка на сървъра (HTTP 500). Вероятно лимит за пропускателна способност/транскодиране е отхвърлил тази сесия. Помолете собственика да го коригира.',
 			'messages.logsUploaded' => 'Логовете са качени',
 			'messages.logsUploadFailed' => 'Неуспешно качване на логовете',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => 'ID на лога',
 			'subtitlingStyling.text' => 'Текст',
 			'subtitlingStyling.border' => 'Рамка',
@@ -2644,6 +2921,8 @@ extension on TranslationsBg {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Неуспешна смяна към ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Неуспешно изтриване на ${displayName}',
 			'errors.failedToRate' => 'Оценката не можа да бъде обновена',
+			'notices.playbackFileUnavailableTitle' => 'Файлът не е наличен',
+			'notices.playbackFileUnavailableBody' => 'Сървърът не може да достигне видеофайла. Проверете дали дискът или папката, в която се намира, все още са свързани.',
 			'libraries.title' => 'Библиотеки',
 			'libraries.fallbackTitle' => 'Библиотека',
 			'libraries.scanLibraryFiles' => 'Сканирай файловете на библиотеката',
@@ -3012,6 +3291,8 @@ extension on TranslationsBg {
 			'companionRemote.pairing.discoveryDescription' => 'Pleya устройства със същия Plex акаунт се показват тук',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Свързване...',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.searchingForDevices' => 'Търсене на устройства...',
 			'companionRemote.pairing.noDevicesFound' => 'Не са намерени устройства във вашата мрежа',
 			'companionRemote.pairing.noDevicesHint' => 'Отворете Pleya на настолен компютър и използвайте същия WiFi',
@@ -3020,8 +3301,6 @@ extension on TranslationsBg {
 			'companionRemote.pairing.cryptoInitFailed' => 'Не може да се стартира защитена връзка. Първо влезте в Plex.',
 			'companionRemote.pairing.validationHostRequired' => 'Моля, въведете адрес на хоста',
 			'companionRemote.pairing.validationHostFormat' => 'Форматът трябва да е IP:port (напр. 192.168.1.100:48632)',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => 'Връзката изтече. Използвайте една и съща мрежа на двете устройства.',
 			'companionRemote.pairing.sessionNotFound' => 'Устройството не е намерено. Уверете се, че Pleya работи на хоста.',
 			'companionRemote.pairing.authFailed' => 'Удостоверяването е неуспешно. Двете устройства трябва да използват същия Plex акаунт.',
@@ -3323,6 +3602,119 @@ extension on TranslationsBg {
 			'pleyaShare.notificationText' => 'Други устройства Pleya могат да стриймват локалните ви папки',
 			'pleyaShare.hostDescriptionAndroid' => 'Други устройства Pleya в тази мрежа могат да разглеждат, стриймват и изтеглят локалните ви папки. Споделянето продължава във фонов режим с известие.',
 			'pleyaShare.scanningSubnet' => 'Сканиране на мрежата…',
+			'sourcePicker.playTitle' => 'Изберете къде да се възпроизведе',
+			'sourcePicker.detailsTitle' => 'Изберете източник за подробностите',
+			'sourcePicker.availableOnOneServer' => 'Достъпно на 1 сървър',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Достъпно на ${count} сървъра',
+			'sourcePicker.oneServerUnchecked' => '1 сървър не можа да бъде проверен',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} сървъра не можаха да бъдат проверени',
+			'sourcePicker.checkingMoreSources' => 'Проверка за още източници…',
+			'sourcePicker.lastUsed' => 'Последно използван',
+			'sourcePicker.currentSource' => 'Текущ източник',
+			'sourcePicker.unavailable' => 'Не е налично',
+			'sourcePicker.signInRequired' => 'Необходимо е повторно влизане',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Продължаване от ${position}',
+			'sourcePicker.watched' => 'Гледано',
+			'sourcePicker.noneReachableTitle' => 'В момента няма достъпен източник.',
+			'sourcePicker.reauthRequiredTitle' => 'Влезте отново, за да достигнете това заглавие.',
+			'sourcePicker.manageServers' => 'Управление на сървърите',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Източник: ${source}',
+			'sourcePicker.change' => 'Промяна',
+			'sourcePicker.playbackFailedTitle' => 'Този източник не можа да бъде възпроизведен.',
+			'sourcePicker.detailLoadFailedTitle' => 'Заглавието не можа да бъде заредено.',
+			'sourcePicker.chooseAnotherSource' => 'Изберете друг източник',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Източник ${index} от ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Предпочитан сървър',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Винаги използвай ${server}',
+			'unifiedCatalog.moviesTitle' => 'Филми',
+			'unifiedCatalog.seriesTitle' => 'Сериали',
+			'unifiedCatalog.sources' => ({required Object count}) => 'Източници: ${count}',
+			'unifiedCatalog.allSources' => 'Всички източници',
+			'unifiedCatalog.oneSource' => '1 източник',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} сезона',
+			'unifiedCatalog.oneSeason' => '1 сезон',
+			'unifiedCatalog.titleCount' => ({required Object count}) => 'Заглавия: ${count}',
+			'unifiedCatalog.oneTitle' => '1 заглавие',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => 'Заредени заглавия: ${count}',
+			'unifiedCatalog.loadMore' => 'Зареди още',
+			'unifiedCatalog.loadingMore' => 'Зареждане…',
+			'unifiedCatalog.sort.title' => 'Сортиране',
+			'unifiedCatalog.sort.titleAsc' => 'Заглавие А–Я',
+			'unifiedCatalog.sort.titleDesc' => 'Заглавие Я–А',
+			'unifiedCatalog.sort.recentlyAdded' => 'Наскоро добавени',
+			'unifiedCatalog.sort.oldestAdded' => 'Най-отдавна добавени',
+			'unifiedCatalog.sort.newestRelease' => 'Най-нова премиера',
+			'unifiedCatalog.sort.oldestRelease' => 'Най-стара премиера',
+			'unifiedCatalog.sort.recentlyWatched' => 'Наскоро гледани',
+			'unifiedCatalog.filters.title' => 'Филтри',
+			'unifiedCatalog.filters.status' => 'Статус',
+			'unifiedCatalog.filters.genre' => 'Жанр',
+			'unifiedCatalog.filters.year' => 'Година',
+			'unifiedCatalog.filters.servers' => 'Сървъри',
+			'unifiedCatalog.filters.libraries' => 'Библиотеки',
+			'unifiedCatalog.filters.apply' => 'Приложи',
+			'unifiedCatalog.filters.clearAll' => 'Изчисти всичко',
+			'unifiedCatalog.filters.all' => 'Всички',
+			'unifiedCatalog.filters.unwatched' => 'Негледани',
+			'unifiedCatalog.filters.unsupported' => 'Недостъпно за текущите източници',
+			'unifiedCatalog.filters.someUnavailable' => 'Някои филтри не са налични за избраните източници',
+			'unifiedCatalog.filters.noValues' => 'Няма какво да се избере',
+			'unifiedCatalog.states.emptyTitle' => 'Този каталог е празен',
+			'unifiedCatalog.states.emptyBody' => 'Никоя видима библиотека не съдържа нищо за тази страница.',
+			'unifiedCatalog.states.filterEmptyTitle' => 'Нищо не отговаря на тези филтри',
+			'unifiedCatalog.states.filterEmptyBody' => 'Изчисти филтър, за да видиш повече заглавия.',
+			'unifiedCatalog.states.clearFilters' => 'Изчисти филтрите',
+			'unifiedCatalog.states.errorTitle' => 'Каталогът не може да бъде зареден',
+			'unifiedCatalog.states.errorBody' => 'Никой сървър не отговори. Провери връзката и опитай отново.',
+			'unifiedCatalog.states.partialOne' => '1 библиотека не отговори',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => 'Библиотеки без отговор: ${count}',
+			'unifiedCatalog.semantics.watched' => 'Гледано',
+			'unifiedCatalog.semantics.inProgress' => 'Започнато',
+			'unifiedCatalog.semantics.loadingMore' => 'Зареждане на още заглавия',
+			'unifiedCatalog.discovery.allMovies' => 'Всички филми',
+			'unifiedCatalog.discovery.allSeries' => 'Всички сериали',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => 'Някои източници не отговориха',
+			'unifiedCatalog.discovery.emptyTitle' => 'Все още няма нищо за откриване',
+			'unifiedCatalog.discovery.emptyBody' => 'Нито една видима библиотека няма какво да покаже тук.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} заглавия',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} от ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Виж всички филми, отваря пълния каталог',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Виж всички сериали, отваря пълния каталог',
+			'unifiedCatalog.home.featured' => 'Препоръчано',
+			'tvNavigation.activeDestination' => 'текущ раздел',
+			'tvNavigation.attentionRequired' => 'изисква внимание',
+			'tvMyPleya.groupContent' => 'Моето съдържание',
+			'tvMyPleya.groupSources' => 'Библиотеки и източници',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} от ${total} сървъра онлайн',
+			'tvMyPleya.noServers' => 'Няма свързани сървъри',
+			'tvMyPleya.statusOnline' => 'Онлайн',
+			'tvMyPleya.statusOffline' => 'Офлайн',
+			'tvMyPleya.servers' => 'Сървъри',
+			'tvMyPleya.activity' => 'Активност',
+			'tvMyPleya.logs' => 'Дневници и диагностика',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Влезли сте като ${name} · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => 'Запазени филми и сериали',
+			'tvMyPleya.requestsSubtitle' => 'Заявки и откриване',
+			'tvMyPleya.downloadsSubtitle' => 'Офлайн и правила за синхронизация',
+			'tvMyPleya.librariesSubtitle' => 'Медия, колекции, плейлисти',
+			'tvMyPleya.serversSubtitle' => 'Връзки и локални източници',
+			'tvMyPleya.activitySubtitle' => 'Гледа се сега, съвместно гледане, дистанционно',
+			'tvMyPleya.watchTogetherSubtitle' => 'Гледайте синхронно с приятели',
+			'tvMyPleya.settingsSubtitle' => 'Изглед, плейър, тракери',
+			'tvMyPleya.logsSubtitle' => 'Файлове с дневници и доклади за сривове',
+			'tvMyPleya.aboutSubtitle' => 'Версия и лицензи',
+			'tvMyPleya.logoutSubtitle' => 'Изход от това устройство',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'Действия',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Действие ${index} от ${count}: ${label}',
+			'tvContextMenu.noUsableSource' => 'В момента няма достъпен източник, затова това не може да се промени сега.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Готово за всички ${count} източника',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Готово за ${done} от ${total} източника. Останалите ще бъдат опитани отново, когато са отново онлайн.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Готово за ${done} от ${total} източника.',
+			'tvContextMenu.failed' => 'Това не проработи',
 			_ => null,
 		};
 	}

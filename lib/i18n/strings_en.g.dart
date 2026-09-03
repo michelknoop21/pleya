@@ -95,6 +95,11 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsAddServerEn addServer = TranslationsAddServerEn.internal(_root);
 	late final TranslationsAddLocalFolderEn addLocalFolder = TranslationsAddLocalFolderEn.internal(_root);
 	late final TranslationsPleyaShareEn pleyaShare = TranslationsPleyaShareEn.internal(_root);
+	late final TranslationsSourcePickerEn sourcePicker = TranslationsSourcePickerEn.internal(_root);
+	late final TranslationsUnifiedCatalogEn unifiedCatalog = TranslationsUnifiedCatalogEn.internal(_root);
+	late final TranslationsTvNavigationEn tvNavigation = TranslationsTvNavigationEn.internal(_root);
+	late final TranslationsTvMyPleyaEn tvMyPleya = TranslationsTvMyPleyaEn.internal(_root);
+	late final TranslationsTvContextMenuEn tvContextMenu = TranslationsTvContextMenuEn.internal(_root);
 }
 
 // Path: states
@@ -368,6 +373,12 @@ class TranslationsCommonEn {
 
 	/// en: 'This took too long. Please try again.'
 	String get timedOut => 'This took too long. Please try again.';
+
+	/// en: 'Online'
+	String get online => 'Online';
+
+	/// en: 'Offline'
+	String get offline => 'Offline';
 }
 
 // Path: screens
@@ -2495,6 +2506,12 @@ class TranslationsNoticesEn {
 	/// en: 'Playback stopped'
 	String get playbackStoppedTitle => 'Playback stopped';
 
+	/// en: 'File not available'
+	String get playbackFileUnavailableTitle => 'File not available';
+
+	/// en: 'The server can't reach the video file. Check that the drive or folder it's on is still connected.'
+	String get playbackFileUnavailableBody => 'The server can\'t reach the video file. Check that the drive or folder it\'s on is still connected.';
+
 	/// en: 'This part of the video isn't available right now'
 	String get playbackSegmentUnavailableBody => 'This part of the video isn\'t available right now';
 
@@ -2682,6 +2699,9 @@ class TranslationsAboutEn {
 
 	/// en: 'Privacy policy'
 	String get privacyPolicy => 'Privacy policy';
+
+	/// en: 'Licence'
+	String get licence => 'Licence';
 }
 
 // Path: serverSelection
@@ -2763,6 +2783,27 @@ class TranslationsLogsEn {
 
 	/// en: 'Upload Logs'
 	String get uploadLogs => 'Upload Logs';
+
+	/// en: 'Refresh'
+	String get refreshLogs => 'Refresh';
+
+	/// en: 'Level'
+	String get levelFilter => 'Level';
+
+	/// en: 'All'
+	String get levelAll => 'All';
+
+	/// en: 'Warnings'
+	String get levelWarnings => 'Warnings';
+
+	/// en: 'Errors'
+	String get levelErrors => 'Errors';
+
+	/// en: 'No lines at this level'
+	String get noMatchingLogs => 'No lines at this level';
+
+	/// en: '${shown} of ${total} lines'
+	String lineCount({required Object shown, required Object total}) => '${shown} of ${total} lines';
 }
 
 // Path: licenses
@@ -3474,6 +3515,18 @@ class TranslationsWatchTogetherEn {
 
 	/// en: 'Couldn't switch — content not found on this server'
 	String get guestSwitchFailed => 'Couldn\'t switch — content not found on this server';
+
+	/// en: 'Invite others with a code'
+	String get createSessionHint => 'Invite others with a code';
+
+	/// en: 'Enter your host's code'
+	String get joinSessionHint => 'Enter your host\'s code';
+
+	/// en: 'No sessions yet'
+	String get noRecentRooms => 'No sessions yet';
+
+	/// en: 'A session you create or join appears here'
+	String get noRecentRoomsHint => 'A session you create or join appears here';
 }
 
 // Path: downloads
@@ -5155,6 +5208,264 @@ class TranslationsPleyaShareEn {
 	String get scanningSubnet => 'Scanning the network…';
 }
 
+// Path: sourcePicker
+class TranslationsSourcePickerEn {
+	TranslationsSourcePickerEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Choose where to play'
+	String get playTitle => 'Choose where to play';
+
+	/// en: 'Choose a source for the details'
+	String get detailsTitle => 'Choose a source for the details';
+
+	/// en: 'Available on 1 server'
+	String get availableOnOneServer => 'Available on 1 server';
+
+	/// en: 'Available on ${count} servers'
+	String availableOnManyServers({required Object count}) => 'Available on ${count} servers';
+
+	/// en: '1 server could not be checked'
+	String get oneServerUnchecked => '1 server could not be checked';
+
+	/// en: '${count} servers could not be checked'
+	String manyServersUnchecked({required Object count}) => '${count} servers could not be checked';
+
+	/// en: 'Checking more sources…'
+	String get checkingMoreSources => 'Checking more sources…';
+
+	/// en: 'Last used'
+	String get lastUsed => 'Last used';
+
+	/// en: 'Current source'
+	String get currentSource => 'Current source';
+
+	/// en: 'Not available'
+	String get unavailable => 'Not available';
+
+	/// en: 'Sign in required'
+	String get signInRequired => 'Sign in required';
+
+	/// en: 'Resume at ${position}'
+	String resumeAt({required Object position}) => 'Resume at ${position}';
+
+	/// en: 'Watched'
+	String get watched => 'Watched';
+
+	/// en: 'No source is currently reachable.'
+	String get noneReachableTitle => 'No source is currently reachable.';
+
+	/// en: 'Sign in again to reach this title.'
+	String get reauthRequiredTitle => 'Sign in again to reach this title.';
+
+	/// en: 'Manage servers'
+	String get manageServers => 'Manage servers';
+
+	/// en: 'Source: ${source}'
+	String sourceLabel({required Object source}) => 'Source: ${source}';
+
+	/// en: 'Change'
+	String get change => 'Change';
+
+	/// en: 'This source could not be played.'
+	String get playbackFailedTitle => 'This source could not be played.';
+
+	/// en: 'This title could not be loaded.'
+	String get detailLoadFailedTitle => 'This title could not be loaded.';
+
+	/// en: 'Choose another source'
+	String get chooseAnotherSource => 'Choose another source';
+
+	/// en: 'Source ${index} of ${count}: ${description}'
+	String rowSemantics({required Object index, required Object count, required Object description}) => 'Source ${index} of ${count}: ${description}';
+
+	/// en: 'Preferred server'
+	String get preferredServer => 'Preferred server';
+
+	/// en: 'Always use ${server}'
+	String setPreferredServer({required Object server}) => 'Always use ${server}';
+}
+
+// Path: unifiedCatalog
+class TranslationsUnifiedCatalogEn {
+	TranslationsUnifiedCatalogEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Movies'
+	String get moviesTitle => 'Movies';
+
+	/// en: 'Series'
+	String get seriesTitle => 'Series';
+
+	/// en: '${count} sources'
+	String sources({required Object count}) => '${count} sources';
+
+	/// en: 'All sources'
+	String get allSources => 'All sources';
+
+	/// en: '1 source'
+	String get oneSource => '1 source';
+
+	/// en: '${count} seasons'
+	String seasons({required Object count}) => '${count} seasons';
+
+	/// en: '1 season'
+	String get oneSeason => '1 season';
+
+	/// en: '${count} titles'
+	String titleCount({required Object count}) => '${count} titles';
+
+	/// en: '1 title'
+	String get oneTitle => '1 title';
+
+	/// en: '${count} titles loaded'
+	String titlesLoaded({required Object count}) => '${count} titles loaded';
+
+	/// en: 'Load more'
+	String get loadMore => 'Load more';
+
+	/// en: 'Loading more…'
+	String get loadingMore => 'Loading more…';
+
+	late final TranslationsUnifiedCatalogSortEn sort = TranslationsUnifiedCatalogSortEn.internal(_root);
+	late final TranslationsUnifiedCatalogFiltersEn filters = TranslationsUnifiedCatalogFiltersEn.internal(_root);
+	late final TranslationsUnifiedCatalogStatesEn states = TranslationsUnifiedCatalogStatesEn.internal(_root);
+	late final TranslationsUnifiedCatalogSemanticsEn semantics = TranslationsUnifiedCatalogSemanticsEn.internal(_root);
+	late final TranslationsUnifiedCatalogDiscoveryEn discovery = TranslationsUnifiedCatalogDiscoveryEn.internal(_root);
+	late final TranslationsUnifiedCatalogHomeEn home = TranslationsUnifiedCatalogHomeEn.internal(_root);
+}
+
+// Path: tvNavigation
+class TranslationsTvNavigationEn {
+	TranslationsTvNavigationEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'current section'
+	String get activeDestination => 'current section';
+
+	/// en: 'needs attention'
+	String get attentionRequired => 'needs attention';
+}
+
+// Path: tvMyPleya
+class TranslationsTvMyPleyaEn {
+	TranslationsTvMyPleyaEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'My content'
+	String get groupContent => 'My content';
+
+	/// en: 'Libraries and sources'
+	String get groupSources => 'Libraries and sources';
+
+	/// en: 'Pleya'
+	String get groupPleya => 'Pleya';
+
+	/// en: '${online} of ${total} servers online'
+	String serversOnline({required Object online, required Object total}) => '${online} of ${total} servers online';
+
+	/// en: 'No servers connected'
+	String get noServers => 'No servers connected';
+
+	/// en: 'Online'
+	String get statusOnline => 'Online';
+
+	/// en: 'Offline'
+	String get statusOffline => 'Offline';
+
+	/// en: 'Servers'
+	String get servers => 'Servers';
+
+	/// en: 'Activity'
+	String get activity => 'Activity';
+
+	/// en: 'Logs and diagnostics'
+	String get logs => 'Logs and diagnostics';
+
+	/// en: 'Signed in as ${name} · Pleya ${version}'
+	String signedInAs({required Object name, required Object version}) => 'Signed in as ${name} · Pleya ${version}';
+
+	/// en: 'Saved films and series'
+	String get watchlistSubtitle => 'Saved films and series';
+
+	/// en: 'Requests and discovery'
+	String get requestsSubtitle => 'Requests and discovery';
+
+	/// en: 'Offline and sync rules'
+	String get downloadsSubtitle => 'Offline and sync rules';
+
+	/// en: 'Media, collections, playlists'
+	String get librariesSubtitle => 'Media, collections, playlists';
+
+	/// en: 'Connections and local sources'
+	String get serversSubtitle => 'Connections and local sources';
+
+	/// en: 'Now watching, watch together, remote'
+	String get activitySubtitle => 'Now watching, watch together, remote';
+
+	/// en: 'Watch in sync with friends'
+	String get watchTogetherSubtitle => 'Watch in sync with friends';
+
+	/// en: 'Display, player, trackers'
+	String get settingsSubtitle => 'Display, player, trackers';
+
+	/// en: 'Log files and crash reporting'
+	String get logsSubtitle => 'Log files and crash reporting';
+
+	/// en: 'Version and licences'
+	String get aboutSubtitle => 'Version and licences';
+
+	/// en: 'Sign out on this device'
+	String get logoutSubtitle => 'Sign out on this device';
+
+	late final TranslationsTvMyPleyaSemanticsEn semantics = TranslationsTvMyPleyaSemanticsEn.internal(_root);
+
+	/// en: '${count} libraries'
+	String libraryCount({required Object count}) => '${count} libraries';
+}
+
+// Path: tvContextMenu
+class TranslationsTvContextMenuEn {
+	TranslationsTvContextMenuEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Actions'
+	String get title => 'Actions';
+
+	/// en: 'Action ${index} of ${count}: ${label}'
+	String menuSemantics({required Object index, required Object count, required Object label}) => 'Action ${index} of ${count}: ${label}';
+
+	/// en: 'No source is currently reachable, so this cannot be changed right now.'
+	String get noUsableSource => 'No source is currently reachable, so this cannot be changed right now.';
+
+	/// en: 'Done on all ${count} sources'
+	String doneOnAll({required Object count}) => 'Done on all ${count} sources';
+
+	/// en: 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.'
+	String doneOnSome({required Object done, required Object total}) => 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.';
+
+	/// en: 'Done on ${done} of ${total} sources.'
+	String doneOnSomeNoRetry({required Object done, required Object total}) => 'Done on ${done} of ${total} sources.';
+
+	/// en: 'That did not work'
+	String get failed => 'That did not work';
+}
+
 // Path: search.filters
 class TranslationsSearchFiltersEn {
 	TranslationsSearchFiltersEn.internal(this._root);
@@ -5177,6 +5488,9 @@ class TranslationsSearchFiltersEn {
 
 	/// en: 'People'
 	String get people => 'People';
+
+	/// en: 'Other'
+	String get other => 'Other';
 }
 
 // Path: hotkeys.actions
@@ -5881,6 +6195,218 @@ class TranslationsTrackersLibraryFilterEn {
 	String get noLibraries => 'No libraries available';
 }
 
+// Path: unifiedCatalog.sort
+class TranslationsUnifiedCatalogSortEn {
+	TranslationsUnifiedCatalogSortEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Sort'
+	String get title => 'Sort';
+
+	/// en: 'Title A–Z'
+	String get titleAsc => 'Title A–Z';
+
+	/// en: 'Title Z–A'
+	String get titleDesc => 'Title Z–A';
+
+	/// en: 'Recently added'
+	String get recentlyAdded => 'Recently added';
+
+	/// en: 'Oldest added'
+	String get oldestAdded => 'Oldest added';
+
+	/// en: 'Newest release'
+	String get newestRelease => 'Newest release';
+
+	/// en: 'Oldest release'
+	String get oldestRelease => 'Oldest release';
+
+	/// en: 'Recently watched'
+	String get recentlyWatched => 'Recently watched';
+}
+
+// Path: unifiedCatalog.filters
+class TranslationsUnifiedCatalogFiltersEn {
+	TranslationsUnifiedCatalogFiltersEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Filters'
+	String get title => 'Filters';
+
+	/// en: 'Status'
+	String get status => 'Status';
+
+	/// en: 'Genre'
+	String get genre => 'Genre';
+
+	/// en: 'Year'
+	String get year => 'Year';
+
+	/// en: 'Servers'
+	String get servers => 'Servers';
+
+	/// en: 'Libraries'
+	String get libraries => 'Libraries';
+
+	/// en: 'Apply'
+	String get apply => 'Apply';
+
+	/// en: 'Clear all'
+	String get clearAll => 'Clear all';
+
+	/// en: 'All'
+	String get all => 'All';
+
+	/// en: 'Unwatched'
+	String get unwatched => 'Unwatched';
+
+	/// en: 'Not available for the current sources'
+	String get unsupported => 'Not available for the current sources';
+
+	/// en: 'Some filters are unavailable for the selected sources'
+	String get someUnavailable => 'Some filters are unavailable for the selected sources';
+
+	/// en: 'Nothing to choose from'
+	String get noValues => 'Nothing to choose from';
+}
+
+// Path: unifiedCatalog.states
+class TranslationsUnifiedCatalogStatesEn {
+	TranslationsUnifiedCatalogStatesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'This catalog is empty'
+	String get emptyTitle => 'This catalog is empty';
+
+	/// en: 'No visible library holds anything for this page.'
+	String get emptyBody => 'No visible library holds anything for this page.';
+
+	/// en: 'Nothing matches these filters'
+	String get filterEmptyTitle => 'Nothing matches these filters';
+
+	/// en: 'Clear a filter to see more titles.'
+	String get filterEmptyBody => 'Clear a filter to see more titles.';
+
+	/// en: 'Clear filters'
+	String get clearFilters => 'Clear filters';
+
+	/// en: 'The catalog could not be loaded'
+	String get errorTitle => 'The catalog could not be loaded';
+
+	/// en: 'No server answered. Check your connection and try again.'
+	String get errorBody => 'No server answered. Check your connection and try again.';
+
+	/// en: '1 library did not answer'
+	String get partialOne => '1 library did not answer';
+
+	/// en: '${count} libraries did not answer'
+	String partialMany({required Object count}) => '${count} libraries did not answer';
+}
+
+// Path: unifiedCatalog.semantics
+class TranslationsUnifiedCatalogSemanticsEn {
+	TranslationsUnifiedCatalogSemanticsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Watched'
+	String get watched => 'Watched';
+
+	/// en: 'In progress'
+	String get inProgress => 'In progress';
+
+	/// en: 'Loading more titles'
+	String get loadingMore => 'Loading more titles';
+}
+
+// Path: unifiedCatalog.discovery
+class TranslationsUnifiedCatalogDiscoveryEn {
+	TranslationsUnifiedCatalogDiscoveryEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'All movies'
+	String get allMovies => 'All movies';
+
+	/// en: 'All series'
+	String get allSeries => 'All series';
+
+	/// en: 'S${season} E${episode}'
+	String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+
+	/// en: 'Some sources did not answer'
+	String get partial => 'Some sources did not answer';
+
+	/// en: 'Nothing to discover yet'
+	String get emptyTitle => 'Nothing to discover yet';
+
+	/// en: 'No visible library has anything to show here.'
+	String get emptyBody => 'No visible library has anything to show here.';
+
+	late final TranslationsUnifiedCatalogDiscoverySemanticsEn semantics = TranslationsUnifiedCatalogDiscoverySemanticsEn.internal(_root);
+}
+
+// Path: unifiedCatalog.home
+class TranslationsUnifiedCatalogHomeEn {
+	TranslationsUnifiedCatalogHomeEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Featured'
+	String get featured => 'Featured';
+}
+
+// Path: tvMyPleya.semantics
+class TranslationsTvMyPleyaSemanticsEn {
+	TranslationsTvMyPleyaSemanticsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '${title}. ${subtitle}'
+	String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+
+	/// en: '${title}. ${subtitle}. ${count}'
+	String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	TranslationsUnifiedCatalogDiscoverySemanticsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '${title}, ${count} titles'
+	String section({required Object title, required Object count}) => '${title}, ${count} titles';
+
+	/// en: '${position} of ${count}'
+	String position({required Object position, required Object count}) => '${position} of ${count}';
+
+	/// en: 'View all movies, opens the complete catalog'
+	String get viewAllMovies => 'View all movies, opens the complete catalog';
+
+	/// en: 'View all series, opens the complete catalog'
+	String get viewAllSeries => 'View all series, opens the complete catalog';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -5968,6 +6494,8 @@ extension on Translations {
 			'common.decreaseValue' => ({required Object label}) => 'Decrease ${label}',
 			'common.increaseValue' => ({required Object label}) => 'Increase ${label}',
 			'common.timedOut' => 'This took too long. Please try again.',
+			'common.online' => 'Online',
+			'common.offline' => 'Offline',
 			'screens.licenses' => 'Licenses',
 			'screens.switchProfile' => 'Switch Profile',
 			'screens.whoIsWatching' => 'Who\'s watching?',
@@ -6241,6 +6769,7 @@ extension on Translations {
 			'search.filters.shows' => 'Shows',
 			'search.filters.episodes' => 'Episodes',
 			'search.filters.people' => 'People',
+			'search.filters.other' => 'Other',
 			'search.errorTitle' => 'Search failed',
 			'search.errorNetwork' => 'Couldn\'t reach your servers. Check your connection and try again.',
 			'search.noServersTitle' => 'No servers available',
@@ -6398,11 +6927,11 @@ extension on Translations {
 			'videoControls.tvPanel.tracks' => 'Tracks',
 			'videoControls.tvPanel.options' => 'Options',
 			'videoControls.tvPanel.more' => 'More…',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.fullscreenButton' => 'Enter fullscreen',
 			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			'videoControls.alwaysOnTopButton' => 'Always on top',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.rotationLockButton' => 'Rotation lock',
 			'videoControls.lockScreen' => 'Lock screen',
 			'videoControls.screenLockButton' => 'Screen lock',
@@ -6655,6 +7184,8 @@ extension on Translations {
 			'notices.genericErrorTitle' => 'Something went wrong',
 			'notices.authFailedTitle' => 'Sign-in failed',
 			'notices.playbackStoppedTitle' => 'Playback stopped',
+			'notices.playbackFileUnavailableTitle' => 'File not available',
+			'notices.playbackFileUnavailableBody' => 'The server can\'t reach the video file. Check that the drive or folder it\'s on is still connected.',
 			'notices.playbackSegmentUnavailableBody' => 'This part of the video isn\'t available right now',
 			'notices.playbackConnectionLostBody' => 'Lost connection to the server',
 			'notices.playbackCodecUnsupportedBody' => 'This file\'s format isn\'t supported on this device',
@@ -6747,6 +7278,7 @@ extension on Translations {
 			'about.basedOnPlezy' => 'Based on Plezy',
 			'about.upstreamProject' => 'Upstream project',
 			'about.privacyPolicy' => 'Privacy policy',
+			'about.licence' => 'Licence',
 			'serverSelection.allServerConnectionsFailed' => 'Couldn\'t connect to any servers. Check your network.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'No servers found for ${username} (${email})',
 			'serverSelection.noServersFoundTitle' => 'No media servers found',
@@ -6765,6 +7297,13 @@ extension on Translations {
 			'logs.clearLogs' => 'Clear Logs',
 			'logs.copyLogs' => 'Copy Logs',
 			'logs.uploadLogs' => 'Upload Logs',
+			'logs.refreshLogs' => 'Refresh',
+			'logs.levelFilter' => 'Level',
+			'logs.levelAll' => 'All',
+			'logs.levelWarnings' => 'Warnings',
+			'logs.levelErrors' => 'Errors',
+			'logs.noMatchingLogs' => 'No lines at this level',
+			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} of ${total} lines',
 			'licenses.relatedPackages' => 'Related Packages',
 			'licenses.license' => 'License',
 			'licenses.licenseNumber' => ({required Object number}) => 'License ${number}',
@@ -6902,6 +7441,8 @@ extension on Translations {
 			'playlists.oneItem' => '1 item',
 			'playlists.emptyPlaylist' => 'This playlist is empty',
 			'playlists.deleteConfirm' => 'Delete Playlist?',
+			_ => null,
+		} ?? switch (path) {
 			'playlists.deleteMessage' => ({required Object name}) => 'Are you sure you want to delete "${name}"?',
 			'playlists.created' => 'Playlist created',
 			'playlists.deleted' => 'Playlist deleted',
@@ -6915,8 +7456,6 @@ extension on Translations {
 			'playlists.errorReordering' => 'Failed to reorder playlist item',
 			'playlists.errorRemoving' => 'Failed to remove from playlist',
 			'watchTogether.title' => 'Watch Together',
-			_ => null,
-		} ?? switch (path) {
 			'watchTogether.description' => 'Watch content in sync with friends and family',
 			'watchTogether.createSession' => 'Create Session',
 			'watchTogether.creating' => 'Creating...',
@@ -6979,6 +7518,10 @@ extension on Translations {
 			'watchTogether.removeRoom' => 'Remove',
 			'watchTogether.guestSwitchUnavailable' => 'Couldn\'t switch — server unavailable for sync',
 			'watchTogether.guestSwitchFailed' => 'Couldn\'t switch — content not found on this server',
+			'watchTogether.createSessionHint' => 'Invite others with a code',
+			'watchTogether.joinSessionHint' => 'Enter your host\'s code',
+			'watchTogether.noRecentRooms' => 'No sessions yet',
+			'watchTogether.noRecentRoomsHint' => 'A session you create or join appears here',
 			'downloads.title' => 'Downloads',
 			'downloads.manage' => 'Manage',
 			'downloads.tvShows' => 'TV Shows',
@@ -7412,6 +7955,8 @@ extension on Translations {
 			'tautulli.modeApiKey' => 'API key',
 			'tautulli.modeApiKeyHelp' => 'The permanent key from Settings, Web Interface. It grants full access to Tautulli, so use it only if the device token does not work for you.',
 			'tautulli.deviceToken' => 'Device token',
+			_ => null,
+		} ?? switch (path) {
 			'tautulli.apiKey' => 'API key',
 			'tautulli.testConnection' => 'Test connection',
 			'tautulli.save' => 'Save',
@@ -7429,8 +7974,6 @@ extension on Translations {
 			'tautulli.errorNotTautulli' => 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.',
 			'tautulli.errorServer' => ({required Object code}) => 'Tautulli reported a server error (HTTP ${code}).',
 			'tautulli.errorGeneric' => 'Connecting failed.',
-			_ => null,
-		} ?? switch (path) {
 			'nowWatching.title' => 'Now watching',
 			'nowWatching.tooltip' => 'See who is watching now',
 			'nowWatching.streams' => ({required Object count}) => '${count} streams',
@@ -7584,6 +8127,120 @@ extension on Translations {
 			'pleyaShare.notificationText' => 'Other Pleya devices can stream your local folders',
 			'pleyaShare.hostDescriptionAndroid' => 'Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running in the background with a notification.',
 			'pleyaShare.scanningSubnet' => 'Scanning the network…',
+			'sourcePicker.playTitle' => 'Choose where to play',
+			'sourcePicker.detailsTitle' => 'Choose a source for the details',
+			'sourcePicker.availableOnOneServer' => 'Available on 1 server',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Available on ${count} servers',
+			'sourcePicker.oneServerUnchecked' => '1 server could not be checked',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers could not be checked',
+			'sourcePicker.checkingMoreSources' => 'Checking more sources…',
+			'sourcePicker.lastUsed' => 'Last used',
+			'sourcePicker.currentSource' => 'Current source',
+			'sourcePicker.unavailable' => 'Not available',
+			'sourcePicker.signInRequired' => 'Sign in required',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Resume at ${position}',
+			'sourcePicker.watched' => 'Watched',
+			'sourcePicker.noneReachableTitle' => 'No source is currently reachable.',
+			'sourcePicker.reauthRequiredTitle' => 'Sign in again to reach this title.',
+			'sourcePicker.manageServers' => 'Manage servers',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Source: ${source}',
+			'sourcePicker.change' => 'Change',
+			'sourcePicker.playbackFailedTitle' => 'This source could not be played.',
+			'sourcePicker.detailLoadFailedTitle' => 'This title could not be loaded.',
+			'sourcePicker.chooseAnotherSource' => 'Choose another source',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Source ${index} of ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Preferred server',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Always use ${server}',
+			'unifiedCatalog.moviesTitle' => 'Movies',
+			'unifiedCatalog.seriesTitle' => 'Series',
+			'unifiedCatalog.sources' => ({required Object count}) => '${count} sources',
+			'unifiedCatalog.allSources' => 'All sources',
+			'unifiedCatalog.oneSource' => '1 source',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seasons',
+			'unifiedCatalog.oneSeason' => '1 season',
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titles',
+			'unifiedCatalog.oneTitle' => '1 title',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titles loaded',
+			'unifiedCatalog.loadMore' => 'Load more',
+			'unifiedCatalog.loadingMore' => 'Loading more…',
+			'unifiedCatalog.sort.title' => 'Sort',
+			'unifiedCatalog.sort.titleAsc' => 'Title A–Z',
+			'unifiedCatalog.sort.titleDesc' => 'Title Z–A',
+			'unifiedCatalog.sort.recentlyAdded' => 'Recently added',
+			'unifiedCatalog.sort.oldestAdded' => 'Oldest added',
+			'unifiedCatalog.sort.newestRelease' => 'Newest release',
+			'unifiedCatalog.sort.oldestRelease' => 'Oldest release',
+			'unifiedCatalog.sort.recentlyWatched' => 'Recently watched',
+			'unifiedCatalog.filters.title' => 'Filters',
+			'unifiedCatalog.filters.status' => 'Status',
+			'unifiedCatalog.filters.genre' => 'Genre',
+			'unifiedCatalog.filters.year' => 'Year',
+			'unifiedCatalog.filters.servers' => 'Servers',
+			'unifiedCatalog.filters.libraries' => 'Libraries',
+			'unifiedCatalog.filters.apply' => 'Apply',
+			'unifiedCatalog.filters.clearAll' => 'Clear all',
+			'unifiedCatalog.filters.all' => 'All',
+			'unifiedCatalog.filters.unwatched' => 'Unwatched',
+			'unifiedCatalog.filters.unsupported' => 'Not available for the current sources',
+			'unifiedCatalog.filters.someUnavailable' => 'Some filters are unavailable for the selected sources',
+			'unifiedCatalog.filters.noValues' => 'Nothing to choose from',
+			'unifiedCatalog.states.emptyTitle' => 'This catalog is empty',
+			'unifiedCatalog.states.emptyBody' => 'No visible library holds anything for this page.',
+			'unifiedCatalog.states.filterEmptyTitle' => 'Nothing matches these filters',
+			'unifiedCatalog.states.filterEmptyBody' => 'Clear a filter to see more titles.',
+			'unifiedCatalog.states.clearFilters' => 'Clear filters',
+			'unifiedCatalog.states.errorTitle' => 'The catalog could not be loaded',
+			'unifiedCatalog.states.errorBody' => 'No server answered. Check your connection and try again.',
+			'unifiedCatalog.states.partialOne' => '1 library did not answer',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} libraries did not answer',
+			'unifiedCatalog.semantics.watched' => 'Watched',
+			'unifiedCatalog.semantics.inProgress' => 'In progress',
+			'unifiedCatalog.semantics.loadingMore' => 'Loading more titles',
+			'unifiedCatalog.discovery.allMovies' => 'All movies',
+			'unifiedCatalog.discovery.allSeries' => 'All series',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => 'Some sources did not answer',
+			'unifiedCatalog.discovery.emptyTitle' => 'Nothing to discover yet',
+			'unifiedCatalog.discovery.emptyBody' => 'No visible library has anything to show here.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titles',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} of ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
+			'unifiedCatalog.home.featured' => 'Featured',
+			'tvNavigation.activeDestination' => 'current section',
+			'tvNavigation.attentionRequired' => 'needs attention',
+			'tvMyPleya.groupContent' => 'My content',
+			'tvMyPleya.groupSources' => 'Libraries and sources',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} of ${total} servers online',
+			'tvMyPleya.noServers' => 'No servers connected',
+			'tvMyPleya.statusOnline' => 'Online',
+			'tvMyPleya.statusOffline' => 'Offline',
+			'tvMyPleya.servers' => 'Servers',
+			'tvMyPleya.activity' => 'Activity',
+			'tvMyPleya.logs' => 'Logs and diagnostics',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Signed in as ${name} · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => 'Saved films and series',
+			'tvMyPleya.requestsSubtitle' => 'Requests and discovery',
+			'tvMyPleya.downloadsSubtitle' => 'Offline and sync rules',
+			'tvMyPleya.librariesSubtitle' => 'Media, collections, playlists',
+			'tvMyPleya.serversSubtitle' => 'Connections and local sources',
+			'tvMyPleya.activitySubtitle' => 'Now watching, watch together, remote',
+			'tvMyPleya.watchTogetherSubtitle' => 'Watch in sync with friends',
+			'tvMyPleya.settingsSubtitle' => 'Display, player, trackers',
+			'tvMyPleya.logsSubtitle' => 'Log files and crash reporting',
+			'tvMyPleya.aboutSubtitle' => 'Version and licences',
+			'tvMyPleya.logoutSubtitle' => 'Sign out on this device',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvMyPleya.libraryCount' => ({required Object count}) => '${count} libraries',
+			'tvContextMenu.title' => 'Actions',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Action ${index} of ${count}: ${label}',
+			'tvContextMenu.noUsableSource' => 'No source is currently reachable, so this cannot be changed right now.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Done on all ${count} sources',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Done on ${done} of ${total} sources.',
+			'tvContextMenu.failed' => 'That did not work',
 			_ => null,
 		};
 	}

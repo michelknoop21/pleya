@@ -17,6 +17,7 @@
 #   scripts/tvos_sim.sh goto search      # deterministisch navigeren
 #   scripts/tvos_sim.sh type "sintel"    # tekst typen (leestekens kloppen)
 #   scripts/tvos_sim.sh key menu         # één toets
+#   scripts/tvos_sim.sh key select --hold-ms 1200   # echte lange druk (idb vereist)
 #   scripts/tvos_sim.sh keys down down select
 #   scripts/tvos_sim.sh keys down:3 select   # "down" driemaal, dan "select" — één idb-call
 #   scripts/tvos_sim.sh shot out.png     # screenshot (werkt ook vergrendeld)
@@ -87,6 +88,13 @@ hid_code_for() {
     select|enter|return) echo 40 ;;
     menu|back|escape) echo 41 ;;
     delete|backspace) echo 42 ;;
+    # De HID-toetsenbordpagina kent geen play/pause: 0x07 stopt bij Mute en
+    # de volumetoetsen, en de consumer-pagina waar 0xCD wel op staat is via
+    # `idb ui key` niet bereikbaar. tvOS bindt de spatiebalk aan het
+    # transport, dus dat is de enige route die er is. Buiten een spelende
+    # speler gedraagt spatie zich als Select; zie de tvOS-invoernotitie in
+    # CONTRIBUTING.md.
+    play_pause|playpause|space) echo 44 ;;
     *) die "onbekende toets: $1" ;;
   esac
 }
@@ -117,6 +125,7 @@ key_code_for() {
     select|enter|return) echo 36 ;;
     menu|back|escape) echo 53 ;;
     delete|backspace) echo 51 ;;
+    play_pause|playpause|space) echo 49 ;;
     *) die "onbekende toets: $1" ;;
   esac
 }
@@ -128,7 +137,26 @@ send_code() {
             -e "tell application \"System Events\" to key code $1$using" >/dev/null 2>&1
 }
 
+# send_key <naam> [hold_ms]
+#
+# Zonder hold_ms een gewone korte druk. Mét hold_ms een echte lange druk:
+# `idb ui key --duration` houdt de HID-toets ingedrukt tussen keyDown en
+# keyUp, wat iets anders is dan twee losse drukken met een sleep ertussen —
+# tvOS ziet dat laatste als twee activaties en opent daar geen contextmenu
+# op. De AppleScript-route kan een toets niet vasthouden (`key code` is
+# altijd een tik), dus daar is een lange druk een harde fout in plaats van
+# een stille korte druk die er per ongeluk mee wegkomt.
 send_key() {
+  local hold_ms="${2:-}"
+  if [[ -n "$hold_ms" ]]; then
+    [[ "$hold_ms" =~ ^[0-9]+$ && "$hold_ms" -gt 0 ]] || die "ongeldige hold-ms: $hold_ms"
+    idb_available || die "een lange druk vereist idb — AppleScript kan een toets niet vasthouden. Zie: $0 doctor"
+    local seconds
+    seconds="$(awk -v ms="$hold_ms" 'BEGIN { printf "%.3f", ms / 1000 }')"
+    IDB_UDID="$DEVICE" idb ui key "$(hid_code_for "$1")" --duration "$seconds" >/dev/null 2>&1 \
+      || die "idb ui key $1 --duration $seconds mislukt"
+    return 0
+  fi
   if idb_available; then
     IDB_UDID="$DEVICE" idb ui key "$(hid_code_for "$1")" >/dev/null 2>&1 && return 0
   fi
@@ -536,8 +564,15 @@ case "${1:-}" in
   log|logs) read_logs "${2:-}" "${3:-30}" ;;
   wait)  [[ $# -ge 2 ]] || die "gebruik: $0 wait <patroon> [timeout]"
          wait_for_log "$2" "${3:-15}" && echo "gevonden: $2" || die "niet gezien binnen ${3:-15}s: $2" ;;
-  key)   [[ $# -ge 2 ]] || die "gebruik: $0 key <up|down|left|right|select|menu|delete>"
-         require_input; send_key "$2" ;;
+  key)   [[ $# -ge 2 ]] || die "gebruik: $0 key <up|down|left|right|select|menu|delete|play_pause> [--hold-ms N]"
+         KEY_NAME="$2"; shift 2
+         KEY_HOLD_MS=""
+         if [[ "${1:-}" == "--hold-ms" ]]; then
+           [[ -n "${2:-}" ]] || die "gebruik: $0 key <toets> --hold-ms <milliseconden>"
+           KEY_HOLD_MS="$2"; shift 2
+         fi
+         [[ $# -eq 0 ]] || die "onbekend argument bij 'key': $1"
+         require_input; send_key "$KEY_NAME" "$KEY_HOLD_MS" ;;
   keys)
     shift
     [[ $# -ge 1 ]] || die "gebruik: $0 keys <toets[:aantal]> [...]"

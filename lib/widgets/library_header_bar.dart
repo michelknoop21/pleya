@@ -1,9 +1,26 @@
+/// The header-action model and header line shared by every browse surface.
+///
+/// It started under `lib/screens/libraries/` and grew out of that folder: Seerr
+/// Discover already imported it across feature boundaries, and the Pleya
+/// Unified TV Films/Series pages (fase 5 of docs/tvos-unified-experience.md)
+/// are the third owner. [LibraryHeaderAction] is the part they genuinely share
+/// — a label, the value it currently holds, whether it is narrowing the list,
+/// and the focus node plus D-pad exits that make it reachable with a remote.
+///
+/// [LibraryHeaderBar] itself is *one* composition over that model — tabs on the
+/// left, actions on the right, closed with a hairline — and deliberately not
+/// the only one. A 10-foot page has a different composition (see
+/// `widgets/tv/tv_catalog_header_bar.dart`), and forcing both through one
+/// widget would mean one of them inheriting the other's density. What is shared
+/// is the action contract and its focus wiring, not the box.
+library;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../automation/automation_node.dart';
-import '../../theme/mono_tokens.dart';
-import '../../widgets/focusable_filter_chip.dart';
+import '../automation/automation_node.dart';
+import '../theme/mono_tokens.dart';
+import 'focusable_filter_chip.dart';
 
 /// One text action on the library header line: a label, the value it currently
 /// holds, and the sheet it opens.
