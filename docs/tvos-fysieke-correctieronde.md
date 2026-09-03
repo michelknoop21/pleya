@@ -58,7 +58,7 @@ Branch `claude/netflix-redesign-b4x21v`, uitgaand van `011e770`.
 | LAND1 | De landing slaat de eerste contentrail over | FIXED, hardware open | `51186c6` |
 | TILE1 | Een tegel zonder actie zou de focus klemmen | NOT REPRODUCED | n.v.t. |
 | LAND4 | Verticaal navigeren verliest de horizontale positie | OPEN | n.v.t. |
-| LAND2 | De projectie van de vorige rail blijft staan | OPEN | n.v.t. |
+| LAND2 | De projectie van de vorige rail blijft staan | FIXED | `f1c0538` |
 | LAND3 | De gefocuste wide card valt rechts buiten beeld | OPEN | n.v.t. |
 | CAT1 | Bovenste rij coverart raakt de veilige bovengrens | OPEN | n.v.t. |
 | CAT2 | Metadata van de onderste rij staat tegen de onderrand | OPEN | n.v.t. |
@@ -166,10 +166,25 @@ Het contract is exclusief: alleen het item dat nu de focus heeft mag zijn titel,
 metadata, contextregel en synopsis tonen. Gaat de focus van rail A naar rail B,
 dan verdwijnt de projectie van A op hetzelfde moment dat die van B verschijnt.
 
-Nog niet onderzocht. Waarschijnlijke richting: de projectie wordt per rail
-afgeleid van het laatst gefocuste item in plaats van van het item dat nu de focus
-heeft. Dat is dezelfde verwarring tussen geheugen en zichtbare staat die LAND4
-beschrijft, en het is goed mogelijk dat beide bij dezelfde eigenaar zitten.
+De oorzaak bleek breder dan de melding. Elke rail tekende altijd een blok, ook
+een rail die nooit focus had gehad, want `_focused` valt bij het opbouwen terug
+op het eerste item. Op een gestapelde feed leverde dat één bijschrift per rail
+tegelijk op. De code zei het zelf, bij `onFocusChange`: een rail hoort te blijven
+beschrijven waar hij verlaten is.
+
+Dat is nu gesplitst. `_focused` blijft wat het was, het herstelpunt waar een
+kijker op terugkomt uit een detailpagina. Daarnaast staat `_holdsFocus`, gevoed
+door één `Focus` boven alle tegels van de rail. Een voorouder en niet een
+callback per tegel, want bij een horizontale stap wisselt de focus binnen die
+subtree en ziet de voorouder hem niet weggaan, dus het blok knippert niet.
+
+TV Zoeken is de ene uitzondering, en die staat als benoemde eigenschap op de
+primitive: `alwaysDescribesCurrent`. De rails daar zijn geen feed maar
+resultaatcategorieën, en de titel van een resultaat staat alléén in dat blok. Met
+de poort erop zou een zoekpagina niets leesbaars tonen tot de kijker erin loopt.
+Vier bestaande Search-tests vielen daar prompt over om, wat de zorg bevestigt die
+al in de oude comment stond. Wil je dat Zoeken toch onder hetzelfde contract
+valt, dan is de vervolgvraag waar de resultaattitel dan wél komt te staan.
 
 ### LAND3, de gefocuste wide card
 

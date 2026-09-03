@@ -836,6 +836,12 @@ class _SearchScreenState extends State<SearchScreen>
               key: isFirst ? _firstTvRailKey : ValueKey('search-rail-$title'),
               title: title,
               groups: groups,
+              // A result's title lives only in the rail's caption, so here it
+              // is a label and not a projection of where the remote is. See
+              // [TvDiscoveryRail.alwaysDescribesCurrent]: on a feed the caption
+              // follows the focus, on a result list it names what you are
+              // looking at.
+              alwaysDescribesCurrent: true,
               clientFor: (serverId) => multiServer.serverManager.getClient(ServerId(serverId)),
               onActivate: (group) => activateDiscoveryGroup(group, onManageServers: widget.onManageServers),
               onContextMenu: openDiscoveryContextMenu,

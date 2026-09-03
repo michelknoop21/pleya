@@ -92,6 +92,50 @@ void main() {
 
   Rect rectOf(WidgetTester tester, UnifiedMediaGroup group) => tester.getRect(find.byKey(ValueKey(group.groupId)));
 
+  /// Two rails stacked the way a feed stacks them, which is the only shape the
+  /// projection contract can be stated in: one rail cannot show two blocks.
+  Future<List<TvDiscoveryRailState>> pumpTwoRails(
+    WidgetTester tester,
+    List<UnifiedMediaGroup> top,
+    List<UnifiedMediaGroup> bottom,
+  ) async {
+    tester.view.physicalSize = const Size(1038, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final theme = monoTheme(dark: true);
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme,
+        home: InputModeTracker(
+          child: Scaffold(
+            backgroundColor: theme.extension<MonoTokens>()!.bg,
+            body: Builder(
+              builder: (context) {
+                final height = TvDiscoveryLayout.railSectionHeight(TvLayoutConstants.scaleOf(context));
+                return Column(
+                  children: [
+                    SizedBox(
+                      height: height,
+                      child: TvDiscoveryRail(title: 'Boven', groups: top, onActivate: (_) {}),
+                    ),
+                    SizedBox(
+                      height: height,
+                      child: TvDiscoveryRail(title: 'Onder', groups: bottom, onActivate: (_) {}),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return tester.stateList<TvDiscoveryRailState>(find.byType(TvDiscoveryRail)).toList();
+  }
+
   // ---------------------------------------------------------------------------
   // P9
   // ---------------------------------------------------------------------------
@@ -313,4 +357,82 @@ void main() {
       );
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // LAND2
+  // ---------------------------------------------------------------------------
+
+  group('LAND2: only the rail that holds the focus projects its item', () {
+    testWidgets('the rail the focus left stops describing the tile it was on', (tester) async {
+      // The physical Apple TV finding: the title and synopsis of a title in one
+      // rail stayed on screen while the focus already stood on a title in the
+      // rail below, so two focus contexts were readable at once.
+      //
+      // The rail keeps a `_focused` group so a viewer returning from a detail
+      // page lands back where they were. That is restoration, and it must
+      // survive. What must not survive is the *drawing* of that group: a rail
+      // with no focus in it is not describing anything.
+      final top = [tvDiscoveryGroup('t0', [_item('t0', 'Boventitel')])];
+      final bottom = [tvDiscoveryGroup('b0', [_item('b0', 'Ondertitel')])];
+
+      final rails = await pumpTwoRails(tester, top, bottom);
+      expect(rails, hasLength(2));
+
+      expect(rails.first.focusGroup('t0'), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.text('Boventitel'), findsOneWidget);
+      expect(find.text('Ondertitel'), findsNothing, reason: 'the other rail has never held the focus');
+
+      expect(rails.last.focusGroup('b0'), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.text('Ondertitel'), findsOneWidget);
+      expect(
+        find.text('Boventitel'),
+        findsNothing,
+        reason: 'the rail the focus left may remember where it was, but not keep saying it',
+      );
+    });
+
+    testWidgets('moving within one rail never blanks that rail for a frame', (tester) async {
+      // The reason the block was never cleared in the first place. Clearing on
+      // every loss would empty it on the way out of the old tile, so the fix
+      // has to key on the rail holding the focus at all, not on one tile losing
+      // it.
+      final groups = [
+        tvDiscoveryGroup('a', [_item('a', 'Eerste')]),
+        tvDiscoveryGroup('b', [_item('b', 'Tweede')]),
+      ];
+      final rail = await pumpRail(tester, groups);
+
+      expect(rail.focusGroup('a'), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.text('Eerste'), findsOneWidget);
+
+      // One frame after the step, before anything has settled: the block has to
+      // be saying something. A gate that keyed on a tile losing the focus would
+      // read empty here, because the old tile reports its loss before the new
+      // one reports its gain.
+      expect(rail.focusGroup('b'), isTrue);
+      await tester.pump();
+      expect(
+        find.text('Eerste').evaluate().isNotEmpty || find.text('Tweede').evaluate().isNotEmpty,
+        isTrue,
+        reason: 'a horizontal step inside one rail never blanks its block',
+      );
+
+      await tester.pumpAndSettle();
+      expect(find.text('Tweede'), findsOneWidget);
+      expect(find.text('Eerste'), findsNothing);
+    });
+  });
 }
+
+MediaItem _item(String id, String title) => MediaItem(
+  id: id,
+  backend: MediaBackend.jellyfin,
+  kind: MediaKind.movie,
+  title: title,
+  year: 2024,
+  serverId: 'nas',
+  serverName: 'NAS',
+);

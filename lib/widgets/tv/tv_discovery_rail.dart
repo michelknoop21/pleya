@@ -156,6 +156,7 @@ class TvDiscoveryRail extends StatefulWidget {
     this.isPartial = false,
     this.autofocus = false,
     this.initialFocusedGroupId,
+    this.alwaysDescribesCurrent = false,
     this.onFocusedGroupChanged,
     this.onNavigateUp,
     this.onNavigateDown,
@@ -199,6 +200,26 @@ class TvDiscoveryRail extends StatefulWidget {
   /// anyway, since `AutomationNode` is a pass-through when `!kPleyaVerify`.
   final int? automationRailIndex;
 
+  /// Keep describing this rail's current tile even while the focus is
+  /// elsewhere.
+  ///
+  /// Off by default, which is the contract for every surface that stacks rails
+  /// as a feed: the projection belongs to the item that has the focus, and a
+  /// rail nobody is standing in describes nothing. Two rails captioned at once
+  /// reads as two focus contexts on screen, which is what a physical Apple TV
+  /// showed.
+  ///
+  /// TV Search turns it on, and the reason is that its rails are not a feed.
+  /// Each one is a result category, and a result's title appears *only* in this
+  /// block, so gating it on focus would hand the viewer a page of unlabelled
+  /// artwork with nothing to read until they walked into it. There the caption
+  /// is a label, not a projection of where the remote is.
+  ///
+  /// A named property rather than a test on the screen inside the rail: the
+  /// rail still does not know who mounted it, and a caller that wants the feed
+  /// contract gets it by doing nothing.
+  final bool alwaysDescribesCurrent;
+
   /// Replaces the artwork warm-up call. Null in production; a test injects its
   /// own to assert *which* artwork a focus move warms, without a network. Same
   /// seam and same reasoning as [TvUnifiedMediaGrid.precache].
@@ -213,6 +234,15 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   final _nodes = <String, FocusNode>{};
   final _scroll = ScrollController();
   late final ValueNotifier<UnifiedMediaGroup?> _focused;
+
+  /// Whether the remote is standing anywhere in this rail.
+  ///
+  /// Separate from [_focused] because the two answer different questions.
+  /// [_focused] is where this rail was left, which is what a viewer returning
+  /// from a detail page comes back to and must survive the trip. This is
+  /// whether the rail is being *looked at*, which is what decides if it may
+  /// draw its metadata block.
+  final _holdsFocus = ValueNotifier(false);
 
   /// The scale of the last build, so the post-frame warm-up has one without a
   /// `BuildContext` lookup on a widget that may already be gone.
@@ -288,6 +318,7 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     }
     _scroll.dispose();
     _focused.dispose();
+    _holdsFocus.dispose();
     super.dispose();
   }
 
@@ -392,65 +423,84 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     final scale = TvLayoutConstants.scaleOf(context);
     _scale = scale;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Pinned to exactly what [TvDiscoveryLayout.railSectionHeight] budgets
-        // for it. A heading left to its intrinsic height is a fraction of a
-        // pixel taller than one line of its own font metrics, and a rail that
-        // overflows its section by a fraction is a rail whose section height is
-        // no longer the constant the whole no-jank contract rests on.
-        SizedBox(
-          height: TvDiscoveryLayout.sectionTitleFontSize * TvDiscoveryLayout.metaLineHeight * scale,
-          child: Padding(
+    // An ancestor of every tile rather than a callback per tile: moving from
+    // one tile to its neighbour hands the focus over inside this subtree, so
+    // the ancestor never sees it leave and the block does not blink on a
+    // horizontal step. A per-tile `onFocusChange(false)` would.
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (hasFocus) => _holdsFocus.value = hasFocus,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Pinned to exactly what [TvDiscoveryLayout.railSectionHeight] budgets
+          // for it. A heading left to its intrinsic height is a fraction of a
+          // pixel taller than one line of its own font metrics, and a rail that
+          // overflows its section by a fraction is a rail whose section height is
+          // no longer the constant the whole no-jank contract rests on.
+          SizedBox(
+            height: TvDiscoveryLayout.sectionTitleFontSize * TvDiscoveryLayout.metaLineHeight * scale,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: TvDiscoveryLayout.pageInset * scale),
+              child: TvSectionHeader(
+                title: widget.title,
+                isPartial: widget.isPartial,
+                partialLabel: t.unifiedCatalog.discovery.partial,
+              ),
+            ),
+          ),
+          SizedBox(height: TvDiscoveryLayout.sectionHeaderGap * scale),
+          // The band, not the whole section: `discover.rail`'s bounds are what a
+          // scenario measures a tile against, so it has to be the box the tiles
+          // are actually laid out in — not the heading and the metadata block as
+          // well. Pass-through when `!kPleyaVerify`.
+          AutomationNode(
+            id: widget.automationRailIndex == null ? null : AutomationIds.discoverRail,
+            instance: widget.automationRailIndex?.toString(),
+            role: 'rail',
+            label: widget.title,
+            child: SizedBox(height: TvDiscoveryLayout.railBandHeight(scale), child: _band(scale)),
+          ),
+          SizedBox(height: TvDiscoveryLayout.railMetaGap * scale),
+          Padding(
             padding: EdgeInsets.symmetric(horizontal: TvDiscoveryLayout.pageInset * scale),
-            child: TvSectionHeader(
-              title: widget.title,
-              isPartial: widget.isPartial,
-              partialLabel: t.unifiedCatalog.discovery.partial,
+            child: SizedBox(
+              height: TvDiscoveryLayout.metaBlockHeight(scale),
+              // Hoofdstuk 33.3/33.4: metadata sits "alléén onder het gefocuste
+              // item, begrensd op zijn breedte". Full width let a synopsis start
+              // left of the expanded tile and end right of it, so it read as a
+              // page-level caption rather than as this title's description.
+              width: TvDiscoveryLayout.wideWidth(scale),
+              // Only the rail the remote is standing in describes its tile.
+              //
+              // Every rail used to draw this block, its own current tile
+              // included, so a stacked feed showed one caption per rail at once.
+              // On a physical Apple TV that read as two focus contexts on screen
+              // together: the title and synopsis of a film in one rail stayed up
+              // while the focus already stood on a film in the rail below, which
+              // also had its own block. The earlier note here weighed a gate
+              // against TV Search, where these captions are the only place a
+              // result's title appears, and left it ungated on the grounds that
+              // making the caption conditional was a product change rather than
+              // a layout fix. It has since been decided as a product contract
+              // for every surface that stacks rails, Search included: the
+              // projection belongs to the item that has the focus, and to no
+              // other. A rail nobody is standing in is not describing anything.
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _holdsFocus,
+                builder: (context, holdsFocus, _) => !holdsFocus && !widget.alwaysDescribesCurrent
+                    ? const SizedBox.shrink()
+                    : ValueListenableBuilder<UnifiedMediaGroup?>(
+                        valueListenable: _focused,
+                        builder: (context, group, _) =>
+                            group == null ? const SizedBox.shrink() : _MetaBlock(group: group),
+                      ),
+              ),
             ),
           ),
-        ),
-        SizedBox(height: TvDiscoveryLayout.sectionHeaderGap * scale),
-        // The band, not the whole section: `discover.rail`'s bounds are what a
-        // scenario measures a tile against, so it has to be the box the tiles
-        // are actually laid out in — not the heading and the metadata block as
-        // well. Pass-through when `!kPleyaVerify`.
-        AutomationNode(
-          id: widget.automationRailIndex == null ? null : AutomationIds.discoverRail,
-          instance: widget.automationRailIndex?.toString(),
-          role: 'rail',
-          label: widget.title,
-          child: SizedBox(height: TvDiscoveryLayout.railBandHeight(scale), child: _band(scale)),
-        ),
-        SizedBox(height: TvDiscoveryLayout.railMetaGap * scale),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: TvDiscoveryLayout.pageInset * scale),
-          child: SizedBox(
-            height: TvDiscoveryLayout.metaBlockHeight(scale),
-            // Hoofdstuk 33.3/33.4: metadata sits "alléén onder het gefocuste
-            // item, begrensd op zijn breedte". Full width let a synopsis start
-            // left of the expanded tile and end right of it, so it read as a
-            // page-level caption rather than as this title's description.
-            width: TvDiscoveryLayout.wideWidth(scale),
-            // Every rail describes its own current tile, including the ones
-            // the focus is not on. A visual review read hoofdstuk 33.3's
-            // "alléén onder het gefocuste item" as also meaning "only on the
-            // focused rail", and gating it that way does match the north-star
-            // render — but it costs more than it buys: on TV Search the rails
-            // carry the results, and titles live *only* in this block, so
-            // results would arrive as unlabelled artwork until the viewer
-            // moved focus into them. The binding half of that sentence is the
-            // position and width, which the `width` above now honours; making
-            // the seeded caption conditional as well is a product change, not
-            // a layout fix, and is not one to make from a mockup alone.
-            child: ValueListenableBuilder<UnifiedMediaGroup?>(
-              valueListenable: _focused,
-              builder: (context, group, _) => group == null ? const SizedBox.shrink() : _MetaBlock(group: group),
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
