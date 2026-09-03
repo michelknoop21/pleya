@@ -50,6 +50,11 @@ niets aan hebt gedaan.
 
 Branch `claude/netflix-redesign-b4x21v`, uitgaand van `011e770`.
 
+Op 3 september 2026 zijn de mockups 09 tot en met 25 goedgekeurd
+(`docs/tvos-redesign-09-25-approved.md`). De twintig regels vanaf `SYS-1` hieronder komen uit de
+code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak staat in
+`docs/tvos-redesign-register.md`; deze tabel blijft de masterlijst voor de bevindingen zelf.
+
 | ID | Bevinding | Status | SHA |
 |----|-----------|--------|-----|
 | LOG1 | Pijltjes op een lege logreader gooien een assertie | FIXED | `614fc08` |
@@ -83,6 +88,27 @@ Branch `claude/netflix-redesign-b4x21v`, uitgaand van `011e770`.
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
 | VER3 | De eerste tegel van een rail steekt links buiten de veilige zone | OPEN | n.v.t. |
 | VER4 | Geen fixture levert een rail die lang genoeg is om te scrollen | OPEN | n.v.t. |
+| SYS-1 | Gepushte TV-contentroutes dekken de shell af in plaats van de topnav te houden | IN PROGRESS | n.v.t. |
+| SYS-4 | `StateView` en `EmptyStateWidget` schalen niet op TV | OPEN | n.v.t. |
+| OVR2 | Legacy `MediaContextMenu`, rating-sheet, kijklijst-item-sheet en Live TV-sheets vallen op tvOS in een 400x400 bottom sheet | OPEN | n.v.t. |
+| I18N1 | `nl.i18n.json` mist `videoControls.skipIntro`, `skipCredits` en `nextEpisode` | OPEN | n.v.t. |
+| I18N2 | `nl.i18n.json` mist `search.voiceSearch` | OPEN | n.v.t. |
+| I18N3 | `nl.i18n.json` mist `settings.visualEffects*` | OPEN | n.v.t. |
+| I18N4 | `nl.i18n.json` mist `addServer.connectToPleyaServerCard*` en `addLocalFolder.*` | OPEN | n.v.t. |
+| STR1 | Hardcoded "Video" in `tv_info_panel.dart:265` | OPEN | n.v.t. |
+| STR2 | Hardcoded "(Forced)" in `track_label_builder.dart:203-205` | OPEN | n.v.t. |
+| STR3 | Hardcoded "titles" in `actor_media_screen.dart:174` | OPEN | n.v.t. |
+| STR4 | Hardcoded tagline in `auth_screen.dart:341` | OPEN | n.v.t. |
+| STR5 | Hardcoded "Incorrect PIN" in `profile_activation.dart:57` | OPEN | n.v.t. |
+| TOK1 | `TvPanelTheme.accent #F42B1F` staat naast `kAccent` | OPEN | n.v.t. |
+| TOK2 | Serverstip `#3FBF5F` hardcoded in `tv_my_pleya_screen.dart:829` | OPEN | n.v.t. |
+| PNL1 | Infopaneel gooit de secundaire spoorlabels van `TrackLabelBuilder` weg | OPEN | n.v.t. |
+| LIVE1 | Live TV tekent twee navigatiebalken via `PlatformDetector.shouldUseSideNavigation` | OPEN | n.v.t. |
+| ACT2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | OPEN | n.v.t. |
+| ACT3 | `tvMyPleya.activitySubtitle` belooft samen kijken en remote die de tegel niet levert | OPEN | n.v.t. |
+| OFF1 | Geen reconnect-affordance op TV | OPEN | n.v.t. |
+| OFF2 | De offline topnav toont focusbare dode pills | OPEN | n.v.t. |
+| SRCH2 | `people` wordt nooit aan `searchProjection` meegegeven | OPEN | n.v.t. |
 
 ## Wat er per item bekend is
 
