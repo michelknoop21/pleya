@@ -275,6 +275,40 @@ void main() {
       expect(focusedLabel(), TvDestinationId.series.focusKey);
     });
 
+    testWidgets('the whole chain walks one destination per press, in both directions', (tester) async {
+      // The physical Apple TV finding: LEFT on Series jumped straight to
+      // Search, and RIGHT on Search straight to Series — Home fell out of the
+      // route in both directions. The existing walk test only covered
+      // Home → Series → Films and back, which is precisely the stretch that
+      // works, so it never saw the boundary the report is about.
+      final destinations = withoutLiveTv();
+      expect(
+        destinations,
+        containsAllInOrder([
+          TvDestinationId.search,
+          TvDestinationId.home,
+          TvDestinationId.series,
+          TvDestinationId.movies,
+          TvDestinationId.myPleya,
+        ]),
+        reason: 'sanity: the bar is in the order the contract names',
+      );
+
+      await pump(tester, destinations: destinations, active: TvDestinationId.home);
+      focus(TvDestinationId.search.focusKey);
+      await tester.pump();
+
+      for (var i = 1; i < destinations.length; i++) {
+        await press(tester, LogicalKeyboardKey.arrowRight);
+        expect(focusedLabel(), destinations[i].focusKey, reason: 'RIGHT step $i stops on every destination in turn');
+      }
+
+      for (var i = destinations.length - 2; i >= 0; i--) {
+        await press(tester, LogicalKeyboardKey.arrowLeft);
+        expect(focusedLabel(), destinations[i].focusKey, reason: 'LEFT step $i stops on every destination in turn');
+      }
+    });
+
     testWidgets('the last destination does not wrap round to the first', (tester) async {
       final destinations = withoutLiveTv();
       await pump(tester, destinations: destinations, active: TvDestinationId.home);

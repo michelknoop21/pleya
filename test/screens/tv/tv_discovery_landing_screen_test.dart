@@ -389,11 +389,13 @@ void main() {
 
 /// Mounts the landing with two movie rails, settled — the shape the DEC-068
 /// header tests need and the existing restoration test builds inline.
-Future<void> pumpLanding(
+Future<({DiscoverProvider discover, TvDiscoveryLandingProvider landing, _FakeAggregationService aggregation})>
+pumpLanding(
   WidgetTester tester, {
   String? title,
   String? allTitle,
   List<MediaItem> onDeck = const [],
+  List<MediaHub>? hubs,
 }) async {
   resetSharedPreferencesForTest();
   SettingsService.resetForTesting();
@@ -411,28 +413,30 @@ Future<void> pumpLanding(
   addTearDown(multiServer.dispose);
 
   aggregation.onDeckResult = () => onDeck;
-  aggregation.hubsResult = () => [
-    MediaHub(
-      id: 'recently-added-movies',
-      identifier: 'recently-added-movies',
-      title: 'Recently Added',
-      type: 'movie',
-      items: [_movie('m1', 'Harbourlight'), _movie('m2', 'Quarry Road'), _movie('m3', 'Blue Signal')],
-      size: 3,
-      serverId: 'server_1',
-      serverName: 'Server',
-    ),
-    MediaHub(
-      id: 'top-picks-movies',
-      identifier: 'top-picks-movies',
-      title: 'Top Picks',
-      type: 'movie',
-      items: [_movie('m4', 'Arcade Midnight')],
-      size: 1,
-      serverId: 'server_1',
-      serverName: 'Server',
-    ),
-  ];
+  aggregation.hubsResult = () =>
+      hubs ??
+      [
+        MediaHub(
+          id: 'recently-added-movies',
+          identifier: 'recently-added-movies',
+          title: 'Recently Added',
+          type: 'movie',
+          items: [_movie('m1', 'Harbourlight'), _movie('m2', 'Quarry Road'), _movie('m3', 'Blue Signal')],
+          size: 3,
+          serverId: 'server_1',
+          serverName: 'Server',
+        ),
+        MediaHub(
+          id: 'top-picks-movies',
+          identifier: 'top-picks-movies',
+          title: 'Top Picks',
+          type: 'movie',
+          items: [_movie('m4', 'Arcade Midnight')],
+          size: 1,
+          serverId: 'server_1',
+          serverName: 'Server',
+        ),
+      ];
   await discover.load();
 
   final landing = TvDiscoveryLandingProvider(discover: discover, multiServer: multiServer);
@@ -469,4 +473,9 @@ Future<void> pumpLanding(
     ),
   );
   await tester.pumpAndSettle();
+
+  // The handle a test needs to change what the provider projects *after* the
+  // screen is mounted, which is the only way to reproduce a rail order that
+  // differs from the order the rails were first built in.
+  return (discover: discover, landing: landing, aggregation: aggregation);
 }
