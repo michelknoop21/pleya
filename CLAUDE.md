@@ -96,6 +96,17 @@ fasetabellen, niet het veld "Eerstvolgende fase". Werk buiten de vrijgegeven fas
 vroeg. PS-9 is nu toegestaan; latere fasen worden alleen gestart volgens hun vastgelegde
 afhankelijkheden en poorten, zoals transcoderen (PS-8) en de browserspeler (PS-4W).
 
+**E-books zijn sinds 3 september 2026 productscope, en nog niet vrijgegeven.**
+[DEC-093](docs/DECISIONS.md) neemt e-books op als contentdomein naast film en serie, met **PS-14**
+(catalogus en inhoud) en **PS-15** (reader en leesvoortgang) als nieuwe fasen en **PS-16** (offline
+lezen, bladwijzers) begrensd maar niet ontworpen. De onderbouwing staat in
+`docs/pleya-server-ebooks-proposal.md`. Dat besluit voegt de fasen toe en geeft ze niet vrij: PS-9
+blijft de lopende fase, het vrijgeven van PS-14 is een apart besluit, en tot dat moment is
+e-bookservercode te vroeg. Twee grenzen gelden nu al: de `media_*`-tabellen blijven audiovisueel, en
+de mobiele beperking is clientgedrag, dus er komt geen platform- of readerveld aan login of
+`sessions`. Omdat Plex geen boeken levert, staan deze regels in hoofdstuk 11 van
+`docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md` en blokkeren ze de Plex-off gate niet.
+
 **Het protocol ligt vast.** `docs/pleya-protocol/v1/openapi.yaml` is contractueel leidend en bevroren
 zolang de huidige ontwikkelfase loopt. Het venster ging tot nu toe twee keer open: bij het sluiten van
 PS-3, voor precies de drie poortbesluiten die eronder staan, en voor PS-9, voor precies de zeven

@@ -992,3 +992,126 @@ PS-7N heeft later een eigen venster nodig voor zijn drie velden, met een eigen D
 besluit opent dat venster niet. `pleya_web/src/lib/api/schema.d.ts` wordt uit de gewijzigde YAML
 opnieuw gegenereerd (`pleya_web/scripts/gen-api-types.sh`), want `check-api-types.sh` slaat anders
 aan op een achterlopend bestand.
+
+---
+
+## DEC-093: e-books worden een contentdomein van Pleya Server, als PS-14 en PS-15
+
+**Date:** 2026-09-03
+**Status:** accepted
+
+**Context:** Op `feat/ebooks` staat sinds 3 september 2026 een goedgekeurd clientbesluit over de
+mobiele primaire navigatie, met een vierde tabslot dat Boeken wint zodra het actieve profiel een
+toegankelijke e-bookbibliotheek heeft, plus een goedgekeurde golden en een bindende twaalfpanelen-comp.
+Aan de serverkant bestaat daar niets voor: `epub`, `ebook` en `boeken` komen niet voor in de
+architectuurbaseline en niet in de replacement matrix, geen fase draagt boeken, en volgens
+onderhoudsregel 2 van de matrix bestaat een functie zonder matrixregel voor de gate niet. De
+navigatiepolicy stelt dus een vraag die niemand kan beantwoorden.
+
+Plex levert geen e-books. De driedeling uit matrixhoofdstuk 3 (eigen equivalent, bewust anders
+opgelost, bewust buiten scope) is daarom niet toepasbaar: er is geen Plex-verantwoordelijkheid om
+over te nemen. Dit is een uitbreiding van de productscope zelf.
+
+Een code-audit legde twee dingen vast die het besluit sturen. `LibraryKind` draagt in
+`docs/pleya-protocol/v1/openapi.yaml` `x-unknown-safe: true` met de tekst dat er binnen v1 een soort
+bij mag komen, dus `books` is geen breuk op compatibiliteitsregel 6. De clientkant voert die belofte
+alleen niet uit: `PleyaLibraryKind.tryParse` geeft `null`, `libraryKindOf` maakt daar
+`MediaKind.unknown` van (`lib/services/pleya_server_mappers.dart:61-65`), en dat is elders een
+zichtbare bibliotheeksoort. Serverzijdig behandelt `handlers_library.go:87-90` elke soort die geen
+`shows` is als `movies`.
+
+> **Correctie van 3 september 2026, na verificatie. De tweede bevinding van die code-audit is
+> onjuist, en was dat al toen dit besluit geschreven werd.** De clientkant voert de belofte wél uit:
+> `fetchLibraries` filtert `library.kind != null` vóór de mapper
+> (`lib/services/pleya_server_client/parts/browse.dart:36-51`), staat sinds `8342a8b` (19 augustus
+> 2026) op `main`, en heeft als enige productieaanroeper van `PleyaServerMappers.library` geen
+> tweede route naast zich; `pleya_server_api_cache.dart` cachet items en geen bibliotheken.
+> `test/pleya_server/pleya_server_browse_test.dart:44` legt dat al vast met de fictieve soort
+> `music`. De tak `null => MediaKind.unknown` is onbereikbaar via die route. De audit las de mapper
+> en niet de aanroeper.
+>
+> De eerste bevinding en de serverzijdige bevinding blijven staan. De punten 1 tot en met 8 hieronder
+> zijn ongewijzigd van kracht; wat verandert is de verwachte uitkomst van de poort in punt 7 en het
+> vervallen van het werk onder de aanvulling hieronder.
+
+**Decision:**
+
+1. E-books horen tot het einddoel van Pleya Server, als contentdomein naast film en serie. De
+   productscope is daarmee breder dan de Plex-vervanging.
+2. Er komen twee fasen bij: **PS-14** (e-bookcatalogus en inhoud, afhankelijk van PS-2 en PS-9) en
+   **PS-15** (reader en leesvoortgang, afhankelijk van PS-14). **PS-16** wordt begrensd tot offline
+   EPUB-lezen en bladwijzers, en is niet vrijgegeven en niet ontworpen. Leesvoortgang zit bewust in
+   PS-15 en niet in PS-14: de vorm van een leespositie volgt uit de readerengine, en dat veld eerder
+   vastleggen is een datamodel afdwingen met kennis die PS-15 nog moet opleveren.
+3. `libraries`, `storage_locations`, gebruikers, sessies, rechten en de scanprimitieven zijn
+   generiek en worden hergebruikt. De `media_*`-tabellen blijven audiovisueel: geen `book` in
+   `media_items.kind`, geen e-books in `media_versions` of `media_streams`, en geen tweede scanner
+   naast de eerste.
+4. De replacement matrix krijgt een sectie **"Buiten de Plex-vervanging"** (hoofdstuk 11) in plaats
+   van een regel met bestemming A en een lege bronkolom. Die sectie telt niet mee in de Plex-off
+   gate en niet in de telling in 9.1, en draagt verder dezelfde onderhoudsdiscipline: Phase ID,
+   status, DEC-nummer en afhankelijkheden per regel. Dat staat als vierde onderhoudsregel in
+   matrixhoofdstuk 10.
+5. De mobiele beperking is clientgedrag en geen beveiligingsgrens. De server levert feiten
+   (welke bibliotheken bestaan, van welke soort, en of deze gebruiker erbij mag via `MayAccess` en
+   `library_permissions`); de client beslist over presentatie. Er komt **geen** zelfgerapporteerd
+   platform- of readerveld aan login of `sessions`.
+6. Een boekenserie is bibliografische metadata van het e-bookdomein en hoort bij PS-14, niet bij de
+   collecties van PS-9C. `play_history` blijft audiovisueel: een boek krijgt in PS-15 een actuele
+   leesstatus, en een volledige leesgeschiedenis valt buiten scope tot een eigen besluit.
+7. Het protocolvenster voor PS-14 gaat pas open bij de uitvoering van PS-14, met een eigen DEC. Er
+   hangt een poort vóór dat venster: er moet aantoonbaar vaststaan hoe bestaande clients een nieuwe
+   unknown-safe `LibraryKind` daadwerkelijk behandelen, niet alleen hoe het schema zegt dat ze hem
+   zouden moeten behandelen. Een pre-books client mag een `books`-bibliotheek nooit tonen als lege
+   movie-bibliotheek of als zichtbare unknown-bibliotheek.
+8. PS-14 bouwt geen infrastructuur vooruit voor PS-15 of PS-16 tenzij PS-14 die zelf aantoonbaar
+   nodig heeft. Punt 2 legt de zichtbare grens (leesvoortgang hoort in PS-15), en de Roadmap Drift
+   Check van PS-14 vraagt naar diezelfde zichtbare functie. De laag eronder valt door beide heen: een
+   kolom, een tabel, een interface of een endpoint dat pas betekenis krijgt zodra er een reader is,
+   ziet er tijdens PS-14 uit als vooruitziend ontwerp. De toets is niet of iets later van pas komt,
+   maar of een acceptatiecriterium van PS-14 er vandaag om vraagt.
+
+**Consequences:** PS-9 blijft de lopende fase; dit besluit voegt PS-14 en PS-15 aan de roadmap toe
+en geeft ze niet vrij. Het vrijgeven van PS-14 is een apart besluit, en tot dat moment is
+e-bookservercode te vroeg. PS-11A moet drie bibliotheeksoorten leren kennen in plaats van twee, en
+PS-12 moet boeken uitsluiten van de Plex-migratie omdat er geen Plex-bron is. PS-16 mag de
+PS-8-afhankelijkheid van PS-10 niet erven: een offline boek vraagt geen transcodering.
+
+Een DEC-audit over alle branches op 3 september 2026 liet 23 nummers zien die twee of drie
+verschillende besluiten dragen (DEC-030 tot en met DEC-039, DEC-049, DEC-063 tot en met DEC-073 en
+DEC-091), veroorzaakt door drie lijnen die onafhankelijk vanaf dezelfde basis doortelden. Dit
+besluit krijgt daarom DEC-093, het eerste nummer dat op geen enkele branch voorkomt. De bestaande
+Pleya Server-DEC-069 blijft staan; de mobiele-navigatie-DEC op `feat/ebooks` (gecommit als
+`f60f940`) wordt op die branch hernummerd, met een nieuwe audit op dat moment.
+
+De client op `feat/ebooks` heeft voor `BooksLibraryProvider.available` een echt servercontract
+nodig. Gaat die branch verder dan mockups en het navigatieskelet voordat PS-14 ontworpen is, dan
+ontstaat er tijdelijke providerlogica die daarna weer weg moet.
+
+**Aanvulling van 3 september 2026, na het ontwerp van PS-14.** Het ontwerp staat in
+[docs/pleya-server-ps14-proposal.md](pleya-server-ps14-proposal.md) en is goedgekeurd met zeven
+bindende beslissingen. Drie ervan raken dit besluit rechtstreeks:
+
+- **PS-14 is goedgekeurd en niet actief.** De status is "goedgekeurd, geblokkeerd op PS-9" en
+  uitdrukkelijk niet "vrijgegeven voor uitvoering". Er komt geen PS-14-productiecode voordat PS-9
+  formeel gesloten is.
+- **De clientkant die punt 7 aanwijst is een defect van het gesloten PS-3 en geen PS-14-werk.** Dat
+  `libraryKindOf` een onbekende soort tot `MediaKind.unknown` maakt in plaats van hem te verbergen,
+  is waar met of zonder e-books, en het spreekt de doc-comment in `pleya_wire.dart` tegen. De fix
+  loopt onder hetzelfde precedent als de lege hubs in [DEC-073](DECISIONS.md) en mag landen vóór
+  PS-14 en vóór het sluiten van PS-9. De regressietest gebruikt een fictieve toekomstige soort en
+  niet `books`, zodat er unknown-safety wordt gerepareerd in plaats van e-booklogica vooruitgebouwd.
+
+  > **Correctie van 3 september 2026, na verificatie. Dit punt vervalt en blijft zichtbaar staan
+  > omdat het bij de aanvulling is vastgelegd.** Er is geen PS-3-defect: de bibliotheek wordt al
+  > verborgen, één laag hoger dan waar de audit keek, en de generieke regressietest met een fictieve
+  > soort bestaat al. Zie de correctie in de Context hierboven. Er komt dus geen fix en geen commit
+  > onder het DEC-073-precedent uit voort, en er is met dit besluit geen toegestane codewijziging.
+  > De poort uit punt 7 blijft bestaan en verandert alleen van verwachting: de meting bevestigt
+  > naar verwachting dat een uitgeleverde build een `books`-bibliotheek werkelijk verbergt, in
+  > plaats van dat zij een defect blootlegt. Serverzijdig blijft `handlers_library.go:87-90` staan
+  > waar het staat, als acceptatiecriterium 4 van PS-14.
+- **De DEC onder de sterke validator van de boekroute krijgt zijn nummer pas bij het committen.**
+  Gezien de branchdrift hierboven is DEC-094 niet gereserveerd. Landt dat besluit eerder dan de
+  hernummering van de mobiele-navigatie-DEC op `feat/ebooks`, dan schuift die laatste door.
+

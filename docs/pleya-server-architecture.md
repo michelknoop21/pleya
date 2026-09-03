@@ -129,6 +129,14 @@ uiteindelijk precies één van drie besluiten: een eigen Pleya-equivalent, hetze
 anders opgelost, of aantoonbaar buiten de productscope. Die laatste categorie is nooit een restbak
 voor wat moeilijk bleek.
 
+**De productscope is sinds 3 september 2026 breder dan de Plex-vervanging.** E-books zijn met
+[DEC-093](DECISIONS.md) een contentdomein van Pleya Server geworden, naast film en serie. Plex
+levert geen boeken, dus die uitbreiding is met de driedeling hierboven niet te beschrijven: er is
+geen verantwoordelijkheid om over te nemen, anders op te lossen of buiten scope te verklaren. Zulke
+uitbreidingen staan in een eigen sectie van de replacement matrix, buiten de Plex-off gate en met
+dezelfde onderhoudsdiscipline. De zin hierboven blijft dus gelden voor alles wat Plex wél doet, en
+is niet langer een uitputtende beschrijving van wat Pleya Server is.
+
 ---
 
 ## 2. De grens tussen Pleya Share en Pleya Server
@@ -1570,6 +1578,9 @@ flowchart LR
   P9 --> P11["11. Remote + observability"]
   P9 --> P12["12. Plex-migratie"]
   P8 --> P13["13. Externe workers"]
+  P2 --> P14["14. E-bookcatalogus"]
+  P9 --> P14
+  P14 --> P15["15. Reader + leesvoortgang"]
 ```
 
 **Wat de twee volgordevelden in de fasetabellen betekenen.** Bindend is uitsluitend
@@ -1595,6 +1606,15 @@ tussen PS-3W en PS-4W; PS-7N en PS-7A zijn uitsnedes van PS-7 die alleen PS-2 no
 verliest daarbij twee scope-items aan PS-4E, en die knip staat in
 [docs/pleya-server-masterplan-proposal.md](pleya-server-masterplan-proposal.md) 16.3. Net als bij
 PS-3W behouden PS-1 tot en met PS-13 hun nummer.
+
+PS-14 en PS-15 zijn er op 3 september 2026 bij gekomen, vastgelegd in
+[docs/pleya-server-ebooks-proposal.md](pleya-server-ebooks-proposal.md) en
+[DEC-093](DECISIONS.md). Ze dragen e-books als contentdomein en zijn de eerste fasen die niet uit de
+Plex-vervanging voortkomen: Plex levert geen boeken, dus er is geen verantwoordelijkheid over te
+nemen. PS-14 hangt aan PS-2 en PS-9 en voegt aan geen enkele andere fase een afhankelijkheid toe;
+de doorloop PS-5, PS-9, PS-11A, daarna PS-6 tot en met PS-8 verandert er niet door. PS-16 staat
+begrensd maar niet vrijgegeven in de fasetabellen. Goedkeuring van dat voorstel voegt de fasen toe
+en geeft ze niet vrij; het vrijgeven van PS-14 is een apart besluit.
 
 PS-3W hangt naast PS-3 en niet erachter. Het is een tweede client op hetzelfde protocol, en de twee
 fasen raken elkaars bestanden nergens: PS-3 wijzigt `lib/`, PS-3W wijzigt dat niet en voegt
@@ -2837,6 +2857,132 @@ bovendien nog een open vraag, zie [hoofdstuk 24](#24-voorgestelde-dec-besluiten-
 
 **Roadmap Drift Check.** Is er iets in fase 6 of 8 gebouwd dat alleen zin heeft met externe workers?
 Terugdraaien.
+
+---
+
+| Phase ID | PS-14 |
+| --- | --- |
+| Status | **ontwerp goedgekeurd 3 september 2026, uitvoering geblokkeerd op PS-9.** Het ontwerp staat in [docs/pleya-server-ps14-proposal.md](pleya-server-ps14-proposal.md), met zeven bindende beslissingen. Goedgekeurd is uitdrukkelijk niet vrijgegeven voor uitvoering: er komt geen PS-14-productiecode voordat PS-9 formeel gesloten is |
+| Doel | een `books`-bibliotheek wordt gescand, gecatalogiseerd en via het protocol ontsloten, inclusief cover en het EPUB-bestand zelf |
+| Bijdrage aan einddoel | e-books horen sinds [DEC-093](DECISIONS.md) tot de productscope; zonder servercatalogus is er geen bron waar een lezer boeken vandaan haalt |
+| Afhankelijkheden | PS-2, PS-9 |
+| Eerstvolgende fase | PS-15 |
+
+**Scope.** `books` als bibliotheeksoort in database, configparser en protocol. Een eigen
+publicatie- en bestandsdomein voor boeken, naast en niet in de `media_*`-tabellen. Een
+EPUB-analyser. Een analysestap per bibliotheeksoort in de bestaande scanner, met ffprobe alleen voor
+`movies` en `shows`. Een eigen protocolresource voor lijst, detail, cover en bestand, met
+autorisatie via het bestaande `MayAccess`/`library_permissions`-model.
+
+**Out of scope.** Leesvoortgang, bladwijzers, annotaties, de reader zelf, offline boeken,
+aanbevelingen, boekmetadata uit externe providers, andere formaten dan EPUB, boeken in `/search` en
+in de hubs, en beheer van de bibliotheek via een scherm. Geen `book` in `media_items.kind` en geen
+e-books in `media_versions` of `media_streams`.
+
+**Acceptatiecriteria.**
+1. Een `books`-bibliotheek uit `PLEYA_SERVER_LIBRARIES` wordt gescand zonder dat de gedeelde
+   scannertests wijzigen.
+2. Een gebruiker zonder recht op die bibliotheek krijgt haar niet te zien en kan haar inhoud niet
+   opvragen, aantoonbaar via dezelfde autorisatiematrix als de rest.
+3. Een EPUB is via het protocol op te halen, met een herstartbare overdracht: hervatten via
+   `Range`/`If-Range` slaagt zolang de sterke validator van de boekroute dezelfde representatie
+   aanwijst, en begint opnieuw vanaf byte 0 zodra hij ontbreekt of afwijkt. De verhouding tot
+   [DEC-050](DECISIONS.md) staat in een eigen besluit, waarvan het nummer pas bij het committen
+   bepaald wordt.
+4. Het items-endpoint behandelt een `books`-bibliotheek niet langer als `movies`.
+5. Een scan van een filmbibliotheek draait geen enkele EPUB-analyse, en een scan van een
+   boekenbibliotheek draait geen enkele ffprobe, aantoonbaar met een teller of een log.
+6. `item_count` van een boekenbibliotheek telt publicaties, met die betekenis vastgelegd in
+   `openapi.yaml`.
+7. `scripts/check_protocol.sh` slaagt met het protocolvenster weer dicht, inclusief de
+   `x-unknown-safe`-markering op elke nieuwe enum.
+
+**Stopcriterium.** Een boek op de NAS is via de API te vinden, te openen en op te halen door de
+gebruiker die er recht op heeft.
+
+**Poort vóór de eerste protocolwijziging.** Het protocolvenster voor deze fase gaat pas open zodra
+aantoonbaar vaststaat hoe bestaande clients een nieuwe unknown-safe `LibraryKind` daadwerkelijk
+behandelen. `x-unknown-safe: true` bewijst compatibiliteit op de lijn en niet dat de client die
+uitvoert; zie
+[docs/pleya-server-ebooks-proposal.md](pleya-server-ebooks-proposal.md) 4.4.
+
+**Risico's.** De grootste kans op stille schade is dat de dispatch per bibliotheeksoort de gedeelde
+scanlogica alsnog splitst.
+
+**Tests.** Autorisatietests per rol op de nieuwe resource, een scantest op een boekenbibliotheek, en
+de bestaande scannertests ongewijzigd.
+
+**Geen vooruitgebouwde onderlaag.** PS-14 bouwt geen infrastructuur vooruit voor PS-15 of PS-16
+tenzij PS-14 die zelf aantoonbaar nodig heeft. De Roadmap Drift Check hieronder vangt de zichtbare
+functie: een leespositie, een bladwijzer, een readerveld. De laag eronder ontsnapt daaraan, want een
+kolom, een tabel, een interface of een endpoint dat pas betekenis krijgt zodra er een reader is, ziet
+er in PS-14 uit als vooruitziend ontwerp in plaats van als drift. De toets is niet of iets later van
+pas komt, maar of een acceptatiecriterium van PS-14 er vandaag om vraagt. Dat is dezelfde regel als
+in [23.1](#231-de-roadmap-is-een-contract): bouw voor uitbreidbaarheid, bouw de uitbreiding niet vast
+vooruit. Vastgelegd op 3 september 2026, zie [DEC-093](DECISIONS.md) punt 8.
+
+De regel is bij de goedkeuring van het ontwerp toegepast op de sterke validator uit
+acceptatiecriterium 3. Die validator hoort erbij, want het criterium vraagt erom. Wat er niet bij
+hoort, ook niet in aanleg: een generieke downloadmanager, een persistent model voor gedeeltelijk
+opgehaalde bestanden, een downloadstatus-API, en elke vorm van bladwijzer- of offline-state. Dat is
+de onderlaag van PS-16.
+
+**Roadmap Drift Check.** Is er leesvoortgang, een bladwijzer of een readerveld gebouwd? Dat is PS-15.
+Draagt iets dat wel in scope stond een vorm die alleen zin heeft met een reader erachter? Dat is
+dezelfde drift, een laag dieper.
+
+---
+
+| Phase ID | PS-15 |
+| --- | --- |
+| Doel | een boek is in de mobiele app te lezen, en de leespositie reist mee tussen toestellen van dezelfde gebruiker |
+| Bijdrage aan einddoel | een catalogus zonder lezer levert geen productwaarde |
+| Afhankelijkheden | PS-14 |
+| Eerstvolgende fase | PS-16, niet vrijgegeven |
+
+**Scope.** De reader in de mobiele app, en de serverkant die hij nodig heeft: een canonieke
+leespositie per gebruiker en publicatie, plus een leesstatus in de orde van `unread`, `in_progress`
+en `completed`. De vorm van de leespositie volgt uit de gekozen readerengine en wordt in deze fase
+vastgelegd, niet eerder.
+
+**Out of scope.** Offline lezen en bladwijzers (PS-16). Een historische reeks leesgebeurtenissen:
+`play_history` blijft audiovisueel, en een volledige leesgeschiedenis krijgt zo nodig later een eigen
+model met een eigen besluit.
+
+**Acceptatiecriteria.**
+1. Een boek is van begin tot eind te lezen in de mobiele app.
+2. Een leespositie die op het ene toestel ontstaat, wordt op een ander toestel van dezelfde
+   gebruiker hervat.
+3. Twee toestellen die kort na elkaar schrijven, komen op een voorspelbare uitkomst uit zonder dat
+   er een positie stil verdwijnt.
+
+**Stopcriterium.** Iemand leest een boek uit op een iPhone en gaat op een iPad verder waar hij
+gebleven was.
+
+**Risico's.** De leaseconstructie uit `watch_states` overnemen terwijl een lezer dat
+eigendomsconflict niet heeft.
+
+**Tests.** Een conflicttest op gelijktijdig schrijven, en een hervattest over twee sessies.
+
+**Roadmap Drift Check.** Is er offline opslag of een bladwijzer gebouwd? Dat is PS-16.
+
+---
+
+| Phase ID | PS-16 |
+| --- | --- |
+| Doel | gereserveerd, niet vrijgegeven en niet ontworpen |
+| Afhankelijkheden | PS-15 |
+
+**Reservaat.** Lokale EPUB-downloads met offline lezen, en bladwijzers die tussen toestellen van
+dezelfde gebruiker synchroniseren.
+
+**Uitdrukkelijk niet impliciet meegenomen.** PDF of een ander formaat dan EPUB, DRM, annotaties en
+markeringen, en elke vorm van winkel of aankoop. Wat buiten het reservaat valt, is daarmee niet uit
+het eindproduct geschreven; het heeft alleen geen fase.
+
+**Let op de afhankelijkheid die niet geldt.** PS-10 hangt aan PS-8 omdat een offline video een
+vooraf getranscodeerde variant kan vragen. Een offline boek vraagt geen transcodering en mag die
+afhankelijkheid niet erven.
 
 ---
 
