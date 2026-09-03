@@ -70,7 +70,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | CAT1 | Bovenste rij coverart raakt de veilige bovengrens | FIXED, hardware open | `89b1554` |
 | CAT2 | Metadata van de onderste rij staat tegen de onderrand | NOT REPRODUCED | n.v.t. |
 | CAT3 | Bron, filters en sortering staan verkeerd gepositioneerd | FIXED | `675fc2f` |
-| CAT4 | Bron, filters en sortering mogelijk onbereikbaar | OPEN | n.v.t. |
+| CAT4 | Bron, filters en sortering mogelijk onbereikbaar | FIXED | `ac040fd` |
 | OVR1 | Detail- en contextmenu valt buiten beeld en voelt te groot | GESPLITST in OVR1a en OVR1b | n.v.t. |
 | OVR1a | `scaleForHeight` heeft ondergrens 0,85, en die is onjuist voor inhoud binnen een TV-paneel: de inhoud wordt ongeveer 1,5 keer te groot | OPEN | n.v.t. |
 | OVR1b | TV-sheets zonder expliciete `presentation` vallen terug op de 400x400-geometrie | OPEN | n.v.t. |
@@ -756,15 +756,137 @@ opduikt.
 
 ### CAT4, bereikbaarheid van de headercontrols
 
-De focusgraph is op papier compleet. In
-`lib/screens/tv/tv_unified_catalog_screen.dart` dragen alle drie de controls
-LEFT en RIGHT naar elkaar, `onNavigateUp` naar de shell en `onNavigateDown` naar
-het raster, en het raster heeft `onExitTop` terug naar de header.
+#### Masterlijsthypothese
 
-Toets dit opnieuw op een build met NAV1 erin voordat je een focusroute bijbouwt.
-De dubbele stap uit NAV1 verklaart een header die overgeslagen wordt: DOWN vanaf
-de bovenbalk kwam dan in het raster terecht in plaats van op de eerste
-headeractie.
+"Bron, filters en sortering mogelijk onbereikbaar." Er stond een hypothese
+klaar die eerst getoetst moest worden voordat er een focusroute bijgebouwd
+werd: de dubbele stap uit NAV1 zou een header kunnen overslaan, met DOWN
+vanaf de bovenbalk die in het raster terechtkomt in plaats van op de eerste
+headeractie. NAV1 zit met `51186c6` al in deze HEAD.
+
+#### Reproductie
+
+Die hypothese verklaart niets: NAV1's dubbele stap zit in het native
+aanraakpad van de Siri Remote, en dat pad bestaat niet in een widget-test die
+met `LogicalKeyboardKey`-events werkt. Wat wel reproduceert, met een enkele
+druk per stap en zonder timing, is dit: DOWN vanaf de bovenbalk (header),
+DOWN de eerste kaart in, LEFT op kolom 0 (rechtstreeks terug naar de
+bovenbalk via `onExitLeft`), en dan nogmaals DOWN. Die tweede DOWN komt niet
+op de header uit maar weer op dezelfde kaart.
+
+Getoetst tegen de echte productiewidgets: `TvRootShell`, een echte
+`SidebarFocusCoordinator` en `TvContentFocusAuthority` (niet de vereenvoudigde
+testdubbels uit `tv_destination_restoration_test.dart` en
+`tv_unified_catalog_focus_test.dart`, die geen van beide dit mechanisme
+aanroepen) en de echte `TvMoviesScreen`/`TvUnifiedCatalogScreen` over een
+`UnifiedCatalogProvider` met een gevulde bibliotheek. Zie
+`test/screens/tv/tv_catalog_header_reachability_test.dart` voor de volledige
+herbouw van `MainScreen`'s TV-focusverdraging (`_focusSidebar`,
+`_focusContent`, `_focusTvNestedRoute`) tegen die echte primitives.
+
+#### Root cause
+
+`SidebarFocusCoordinator.focusContent` herstelt bij `restorePreviousFocus:
+true` via `contentScope.requestFocus()`, en dat laat Flutter zelf naar de
+door de scope onthouden `focusedChild` lopen. Alleen als die leeg is, roept de
+methode `focusDefault` aan, en dat is de weg naar
+`TvUnifiedCatalogScreen.focusActiveTabIfReady()` die op zijn beurt
+`_focusHeader()` aanroept.
+
+De catalogusgrid verlaat je op twee manieren naar de bovenbalk. UP vanaf de
+header zelf: de header had dan al de focus, dus `contentScope.focusedChild`
+wijst al naar de headeractie. LEFT op kolom 0 van het raster
+(`TvUnifiedMediaGrid.onExitLeft`, bedoeld als eendruks-ontsnapping die niet
+eerst terug via de header hoeft): die roept `_focusSidebar()` rechtstreeks
+aan vanaf een griditem, en dan wijst `contentScope.focusedChild` naar dát
+griditem. Bij de eerstvolgende DOWN uit de bovenbalk herstelt Flutter dus naar
+de kaart, `contentScope.focusedChild != null` blokkeert `focusDefault`, en
+`focusActiveTabIfReady()`/`_focusHeader()` wordt nooit aangeroepen. Precies
+het griditem waarvandaan de kijker net wegliep krijgt de focus terug, en de
+headeracties zijn voor die druk onbereikbaar.
+
+Hoofdstuk 7.4 (aangehaald in `TvRootShell.onFocusContent`'s eigen
+documentatie) is daar expliciet over: "Each destination therefore restores
+its own position in `focusActiveTabIfReady` ... the catalog to the header
+action you last used. The card itself is one step further down." De
+gemeten uitkomst is het omgekeerde van dat contract.
+
+**HYPOTHESE NAV1-DUBBELE-STAP: WEERLEGD ALS VERKLARING.** De werkelijke
+oorzaak zit in `SidebarFocusCoordinator.focusContent`'s vertrouwen op
+Flutter's eigen focus-scope-geheugen, niet in een timinggevoelig
+invoerpad.
+
+#### Waarom de bestaande tests dit misten
+
+Geen enkele test in de repo mount dit mechanisme tegen een scherm met een
+header. `tv_unified_catalog_focus_test.dart` bewijst het schermhalf van het
+contract (grid ↔ header, header vraagt de shell om de bovenbalk) tegen een
+kale `MainScreenFocusScope`-stand-in zonder `SidebarFocusCoordinator`
+erachter, met een eigen comment die dat met zoveel woorden zegt:
+"the two meet in `MainScreen._focusSidebar`, which no test mounts."
+`tv_destination_restoration_test.dart` mount wel de echte `TvRootShell`, maar
+zijn `_ShellHost`-testdubbel roept op elk bezoek rechtstreeks
+`focusActiveTabIfReady()` aan in plaats van via
+`SidebarFocusCoordinator.focusContent`'s `restorePreviousFocus`-tak te lopen,
+dus precies het mechanisme dat hier faalt zat niet in dat pad.
+`tv_content_focus_authority_test.dart` mount de echte coordinator wel, maar
+zonder header: zijn kind is een kale `SizedBox.shrink()`.
+
+#### De fix
+
+`TvUnifiedCatalogScreen._exitGridToSidebar()` (de nieuwe callback achter
+`onExitLeft`) zet de focus eerst op de header voordat hij naar de sidebar
+gaat: `_focusHeader(); _focusSidebar();`. `FocusNode.requestFocus()` werkt de
+onthouden kind van de omsluitende scope synchroon bij, dus de bovenbalk
+ontvangt de ring nog op dezelfde druk. `contentScope.focusedChild` wijst
+daarna naar de headeractie, precies zoals na een UP vanaf de header zelf, en
+de volgende DOWN uit de bovenbalk herstelt via diezelfde weg naar de header
+in plaats van naar het griditem.
+
+De grid zelf, `SidebarFocusCoordinator` en `TvContentFocusAuthority` zijn niet
+aangeraakt. Een generieke aanpassing aan de gedeelde primitive lag voor de
+hand, maar zij kent geen headercontract en bedient ook de desktop-rail; de
+kleinste juiste eigenaar is het scherm dat weet dat zijn header de canonieke
+herintredeplek is.
+
+#### Blast radius
+
+`onExitLeft` wordt uitsluitend door `TvUnifiedCatalogScreen` gebruikt.
+Doorzocht op elke andere `onExitLeft`/rechtstreekse
+`onNavigateLeft: _focusSidebar`-uitstap uit een raster of rail: geen enkele.
+`WatchlistScreen` deelt hetzelfde `TvCatalogGrid`-raster maar wikkelt geen
+`onExitLeft` naar de sidebar, dus buiten bereik. De discovery-rails
+(`TvDiscoveryRail`/`TvRailStack`) hebben geen vergelijkbare rechtstreekse
+uitstap. CAT4 is daarmee surface-specifiek gebleken, precies zoals de
+oorspronkelijke aantekening ("mogelijk onbereikbaar") liet vermoeden.
+
+#### Bewijs
+
+Twee controles in `test/screens/tv/tv_catalog_header_reachability_test.dart`:
+een koude DOWN uit de bovenbalk die op de header landt, en de hierboven
+beschreven DOWN-DOWN-LEFT-DOWN-reeks die op de header moet blijven landen.
+Met de oude `onExitLeft: _focusSidebar` teruggezet stond precies die tweede
+controle rood, met de focus op `TvUnifiedCard(group:movie:film0:)` in plaats
+van op `TvCatalogFiltersAction`; de eerste bleef groen, wat bevestigt dat
+alleen het uitstappad via het raster faalde.
+
+Regressie gedraaid op de directe buren: `tv_unified_catalog_focus_test.dart`,
+`tv_unified_catalog_screen_focus_test.dart`, `tv_destination_restoration_test.dart`,
+`tv_content_focus_authority_test.dart`, `tv_root_shell_test.dart`,
+`tv_catalog_header_bar_test.dart` (CAT3) en `tv_unified_media_grid_test.dart`
+(CAT1): allemaal groen. `flutter analyze` en `dart format
+--set-exit-if-changed` op de twee gewijzigde bestanden zijn schoon onder de
+gepinde SDK (`/Volumes/SSD/flutter-sdks/3.44.0`).
+
+Volledige suite: 6100 groen, 6 skipped, 83 rood, met exact dezelfde 83
+falende testnamen als de CAT3-nullijn (78 goldens en de vijf in het oude
+`test/widgets/tv_discovery_rail_test.dart`). Geen nieuwe falende test,
+geen verschoven testnaam.
+
+Pleya Verify levert hier geen bewijs. `tvos.nav.focus-switches-destination.yaml`
+loopt de bovenbalk af maar drukt nooit DOWN in de catalogus; geen scenario
+opent de complete catalogus, hetzelfde gat als CAT2, CAT3 en VER4 al
+beschrijven. Geen duplicaat toegevoegd. Hardware-acceptatie staat nog open.
 
 ### LIB1 en LIB2, allebei uit `a2113c0`
 
