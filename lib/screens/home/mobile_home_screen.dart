@@ -16,6 +16,8 @@ import 'package:provider/provider.dart';
 import '../../media/unified/source_coverage_state.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_route_context.dart';
+import '../../navigation/mobile_shell_scope.dart';
+import '../../navigation/navigation_tabs.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../providers/discover_provider.dart';
 import '../../providers/home_layout_provider.dart';
@@ -28,14 +30,12 @@ import '../../utils/media_navigation_helper.dart';
 import '../../utils/video_player_navigation.dart';
 import '../../widgets/media_card_grid_layout.dart';
 import '../../widgets/mobile/mobile_chip_bar.dart';
+import '../../widgets/mobile/mobile_discovery_slivers.dart';
 import '../../widgets/mobile/mobile_hero_card.dart';
-import '../../widgets/mobile/mobile_media_card.dart';
 import '../../widgets/mobile/mobile_media_rail.dart';
 import '../../widgets/mobile/mobile_page_header.dart';
 import '../../widgets/mobile/mobile_refresh_scope.dart';
 import '../../widgets/mobile/mobile_source_picker_sheet.dart';
-import '../../widgets/skeletons.dart';
-import '../libraries/content_state_builder.dart' show SliverErrorState;
 
 class MobileHomeScreen extends StatefulWidget {
   const MobileHomeScreen({super.key});
@@ -152,7 +152,7 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
             SliverToBoxAdapter(
               child: MobilePageHeader(
                 activeProfile: activeProfile,
-                onSearchTap: () {}, // Route to Zoeken lands in fase 4.
+                onSearchTap: () => MobileShellScope.maybeOf(context)?.openTab(NavigationTabId.search),
               ),
             ),
             SliverToBoxAdapter(
@@ -162,25 +162,16 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
             if (_chip == MobileHomeChip.home)
               SliverLayoutBuilder(builder: (context, constraints) => _heroSliver(context, constraints, homeProjection)),
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            if (isLoading)
-              const SliverToBoxAdapter(child: Column(children: [SkeletonHubRow(), SkeletonHubRow(), SkeletonHubRow()])),
-            if (errorMessage != null) SliverErrorState(message: errorMessage, onRetry: discover.load),
-            if (!isLoading && errorMessage == null) ...[
-              if (continueWatching != null && !continueWatching.isEmpty)
-                SliverToBoxAdapter(
-                  child: MobileMediaRail(
-                    hub: continueWatching,
-                    railIndex: 0,
-                    shape: MobileCardShape.wide,
-                    isContinueWatching: true,
-                    onCardTap: _openDetails,
-                  ),
-                ),
-              for (var i = 0; i < hubs.length; i++)
-                SliverToBoxAdapter(
-                  child: MobileMediaRail(hub: hubs[i], railIndex: i + 1, onCardTap: _openDetails),
-                ),
-            ],
+            ...mobileDiscoverySlivers(
+              hubs: hubs,
+              isLoading: isLoading,
+              errorMessage: errorMessage,
+              onRetry: discover.load,
+              onCardTap: _openDetails,
+              surface: MobileRailSurface.home,
+              firstHubRailIndex: 1,
+              continueWatching: continueWatching,
+            ),
             SliverToBoxAdapter(child: SizedBox(height: bottomPadding + 16)),
           ],
         ),

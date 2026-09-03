@@ -219,6 +219,36 @@ void main() {
     return home;
   }
 
+  test('a listener hears the projection finish, not just the rows arrive', () async {
+    // The success path notifies while `isProjecting` is still true, and the
+    // flag only flips afterwards. A surface that shows skeletons while it is
+    // true (the fase-2 Series and Films landings) therefore needs a
+    // notification of its own for the flip, or it keeps them over data that
+    // has already arrived.
+    aggregation.hubsResult = () => [
+      _hub(
+        'recently-added-movies',
+        type: 'movie',
+        items: [_movie('m1', title: 'Harbourlight')],
+      ),
+    ];
+    await discover.load();
+
+    final landing = makeLanding();
+    addTearDown(landing.dispose);
+
+    final projectingAtNotify = <bool>[];
+    landing.addListener(() => projectingAtNotify.add(landing.isProjecting));
+    await _settle(landing);
+
+    expect(landing.isProjecting, isFalse);
+    expect(
+      projectingAtNotify,
+      contains(false),
+      reason: 'at least one notification has to arrive after the flag went down',
+    );
+  });
+
   test('splits backend hubs into movie and series rows by hub type, dropping mixed rows', () async {
     aggregation.hubsResult = () => [
       _hub(

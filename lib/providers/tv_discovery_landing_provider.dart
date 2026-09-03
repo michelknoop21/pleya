@@ -132,6 +132,15 @@ class TvDiscoveryLandingProvider extends ChangeNotifier with DisposableChangeNot
       if (_projectionPending) {
         _projectionPending = false;
         unawaited(_project());
+      } else {
+        // [isProjecting] flips here, after the success path above has already
+        // notified with it still true. Without a notification of its own, a
+        // surface that gates its skeletons on it never hears that the
+        // projection finished: the fase-2 Series and Films landings did
+        // exactly that and kept showing skeletons over data that had already
+        // arrived. Skipped when another run is queued, because that run sets
+        // the flag straight back to true and notifies when it ends.
+        safeNotifyListeners();
       }
     }
   }

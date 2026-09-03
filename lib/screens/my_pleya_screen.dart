@@ -21,9 +21,11 @@ import '../widgets/watchlist_card.dart';
 /// The personal corner of the mobile app.
 ///
 /// A phone bottom bar holds five destinations before it needs an overflow
-/// menu, and Home, Libraries, Live TV and Search already claim four of them.
-/// Rather than hiding a feature behind a menu, the personal destinations move
-/// together into one place: the profile, the kijklijst, downloads and requests.
+/// menu, and the root destinations already claim four of them. Rather than
+/// hiding a feature behind a menu, the personal destinations move together
+/// into one place: the profile, the kijklijst, downloads and requests. Since
+/// fase 2 the Unified 2026 bar hands Bibliotheken over as well, for the same
+/// reason and to the same place (mockup 18).
 ///
 /// It exists on every mobile session, with or without a watchlist, because it
 /// is also the only route to Downloads, Requests and Settings there. Only its
@@ -33,11 +35,25 @@ import '../widgets/watchlist_card.dart';
 /// as first-class destinations, and duplicating the structure would be a second
 /// information architecture for no gain.
 class MyPleyaScreen extends StatelessWidget {
-  const MyPleyaScreen({super.key, required this.onOpenTab});
+  const MyPleyaScreen({super.key, required this.onOpenTab, this.onShowLibraryQuickPicker});
 
   /// Jumps to another destination. The same `_selectTab` the bottom bar uses,
   /// so the screens list and the tab state stay in one place.
   final void Function(NavigationTabId tab) onOpenTab;
+
+  /// Present exactly where Bibliotheken has left the bottom bar and lives here
+  /// instead: the Unified 2026 phone bar, mockup 18's "Bibliotheken en
+  /// bronnen". Null on the iPad's classic bar, which still has its own slot.
+  ///
+  /// Drawing the row and carrying its long-press quick picker are one
+  /// decision, so they are one field: a row without the picker would drop a
+  /// feature the bar slot had, and a picker without the row would have nothing
+  /// to hang on.
+  ///
+  /// Takes a context because the sheet goes up through `OverlaySheetController`,
+  /// and the shell's own `State.context` sits *above* the `OverlaySheetHost` it
+  /// mounts. The row hands over its own, which is below it.
+  final void Function(BuildContext context)? onShowLibraryQuickPicker;
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +92,21 @@ class MyPleyaScreen extends StatelessWidget {
               onTap: () => onOpenTab(NavigationTabId.downloads),
             ),
           ),
+          // Bibliotheken, where the bottom bar no longer carries it. The
+          // destination and its long-press quick picker are the ones the tab
+          // slot had; only the entry point moved (mockup 18). It stays online-
+          // only, exactly as the tab was.
+          if (onShowLibraryQuickPicker case final showPicker? when !isOffline)
+            SliverToBoxAdapter(
+              child: Builder(
+                builder: (rowContext) => _SectionRow(
+                  icon: Symbols.video_library_rounded,
+                  label: t.navigation.libraries,
+                  onTap: () => onOpenTab(NavigationTabId.libraries),
+                  onLongPress: () => showPicker(rowContext),
+                ),
+              ),
+            ),
           // Requests needs a live Seerr session, so it is the one section that
           // disappears offline rather than degrading.
           if (hasSeerr && !isOffline)
@@ -177,6 +208,7 @@ class _SectionRow extends StatelessWidget {
     required this.onTap,
     this.trailing,
     this.showChevron = true,
+    this.onLongPress,
   });
 
   final IconData icon;
@@ -188,10 +220,15 @@ class _SectionRow extends StatelessWidget {
   /// promise a screen that never opens. Sign out is the only such row.
   final bool showChevron;
 
+  /// The gesture Bibliotheken carried on its bottom-bar slot, kept on the row
+  /// that replaced it so the quick picker did not quietly disappear with the
+  /// tab.
+  final VoidCallback? onLongPress;
+
   @override
   Widget build(BuildContext context) {
     if (!showChevron) {
-      return ListTile(leading: Icon(icon), title: Text(label), onTap: onTap);
+      return ListTile(leading: Icon(icon), title: Text(label), onTap: onTap, onLongPress: onLongPress);
     }
     return ListTile(
       leading: Icon(icon),
@@ -206,6 +243,7 @@ class _SectionRow extends StatelessWidget {
               ],
             ),
       onTap: onTap,
+      onLongPress: onLongPress,
     );
   }
 }

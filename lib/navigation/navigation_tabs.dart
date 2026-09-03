@@ -9,15 +9,38 @@ import '../profiles/profile_avatar.dart';
 import '../theme/mono_theme.dart';
 import '../utils/platform_detector.dart';
 
+/// Which root information architecture a mobile shell offers: which
+/// destinations exist and in what order.
+///
+/// Deliberately a second, independent policy next to [TabBarPresentation].
+/// That one decides paint; this one decides destinations. Fase 1 needed only
+/// the first, fase 2 needs both, and they are kept apart because they can
+/// legitimately disagree: an iPad could one day take the Unified destinations
+/// while keeping its own paint, or the other way round. Both are resolved once,
+/// at the shell, and travel down as values.
+enum RootNavigationSet {
+  /// Home · Bibliotheken · [Live TV] · Zoeken · Mijn Pleya, as it stood before
+  /// fase 2. The iPad, and every other non-phone mobile shell, until an iPad
+  /// authority of its own decides otherwise ([DEC-093]; there is no iPad
+  /// northstar, the 26 frozen images are all iPhone).
+  classic,
+
+  /// Home · Series · Films · [Live TV] · Mijn Pleya, per mockups 01, 02 and 18.
+  /// Bibliotheken moves to a tile inside Mijn Pleya and Zoeken to the header
+  /// action; neither destination goes away. iPhone only.
+  unified2026,
+}
+
 /// How a bottom bar paints itself. The tabset, the destinations and every
-/// callback are identical in both: this decides paint, nothing else.
+/// callback are identical in both: this decides paint, nothing else. Which
+/// destinations there are to paint is [RootNavigationSet]'s answer.
 ///
 /// The boundary exists because fase 1 was an iPhone phase and the bottom bar
 /// is one widget shared with the iPad. Same shape as the Home boundary in
 /// `discover_screen.dart`: one `PlatformDetector` call at the shell, an
 /// explicit value passed down, and no platform check anywhere inside the
-/// destinations. [DEC-092] records the decision; fase 2 is where an iPad
-/// authority decides whether the iPad follows.
+/// destinations. [DEC-092] records the decision, [DEC-093] keeps the iPad on
+/// it through fase 2.
 enum TabBarPresentation {
   /// The bar as it stood before iOS Unified 2026 fase 1: a red-to-amber brand
   /// dot above the active glyph, white label, and a red 18x3 indicator drawn
@@ -214,6 +237,7 @@ class NavigationTab {
     bool hasSeerr = false,
     bool hasWatchlist = false,
     bool isMobile = false,
+    RootNavigationSet rootSet = RootNavigationSet.classic,
   }) {
     final tabs = getVisibleTabs(
       isOffline: isOffline,
@@ -221,6 +245,7 @@ class NavigationTab {
       hasSeerr: hasSeerr,
       hasWatchlist: hasWatchlist,
       isMobile: isMobile,
+      rootSet: rootSet,
     );
     return tabs.indexWhere((tab) => tab.id == id);
   }
@@ -237,14 +262,21 @@ class NavigationTab {
   /// Kijklijst, Aanvragen and Instellingen inside Mijn Pleya there. So the
   /// destination is visible on mobile **and** TV, and `PlatformDetector.isTV()`
   /// is checked separately because [isMobile] returns false on a TV.
+  ///
+  /// [rootSet] is the mobile shell's information architecture and only ever
+  /// differs from [RootNavigationSet.classic] on a phone. It is what makes
+  /// Films and Series destinations there; everything else about them, up to
+  /// and including the screens behind them, is the same on every shell that
+  /// has them.
   static List<NavigationTab> getVisibleTabs({
     required bool isOffline,
     bool hasLiveTv = false,
     bool hasSeerr = false,
     bool hasWatchlist = false,
     bool isMobile = false,
+    RootNavigationSet rootSet = RootNavigationSet.classic,
   }) {
-    return allNavigationTabs.where((tab) {
+    final visible = allNavigationTabs.where((tab) {
       if (isOffline && tab.onlineOnly) return false;
       if (tab.id == NavigationTabId.liveTv && !hasLiveTv) return false;
       if (tab.id == NavigationTabId.requests && !hasSeerr) return false;
@@ -257,16 +289,42 @@ class NavigationTab {
       // and every route inside Mijn Pleya was unreachable.
       if (tab.id == NavigationTabId.myPleya && !isMobile && !PlatformDetector.isTV()) return false;
       if (tab.id == NavigationTabId.downloads && PlatformDetector.isAppleTV()) return false;
-      // The unified Films and Series catalogs are 10-foot surfaces (hoofdstuk
-      // 10 of docs/tvos-unified-experience.md) and exist on TV only for now.
-      // Desktop and mobile keep browsing through Bibliotheken, which is the
-      // advanced, source-specific interface and stays untouched by fase 5 —
-      // that is also what keeps this addition invisible to iOS and macOS.
-      if ((tab.id == NavigationTabId.movies || tab.id == NavigationTabId.series) && !PlatformDetector.isTV()) {
+      // Films and Series are root destinations on TV (hoofdstuk 10 of
+      // docs/tvos-unified-experience.md) and, since fase 2, on the iPhone
+      // (mockups 01 and 02). Desktop and the iPad keep browsing through
+      // Bibliotheken, the advanced, source-specific interface, which is what
+      // keeps this invisible to macOS and to the iPad's classic bar.
+      if ((tab.id == NavigationTabId.movies || tab.id == NavigationTabId.series) &&
+          !PlatformDetector.isTV() &&
+          rootSet != RootNavigationSet.unified2026) {
         return false;
       }
       return true;
     }).toList();
+    if (rootSet != RootNavigationSet.unified2026) return visible;
+    visible.sort((a, b) => _unified2026Rank(a.id).compareTo(_unified2026Rank(b.id)));
+    return visible;
+  }
+
+  /// Display order of the Unified 2026 root destinations.
+  ///
+  /// It lives here and not in [allNavigationTabs] because that list is shared:
+  /// the desktop and TV side rail render straight off it, and the TV
+  /// information architecture puts Films before Series. The iPhone mockups put
+  /// Series first, so the two orders cannot both be one const list. Everything
+  /// this does not name keeps its [allNavigationTabs] position, behind the four
+  /// that it does.
+  ///
+  /// My Pleya is deliberately *not* in the leading group even though it is the
+  /// bar's fifth slot. It is already last in [allNavigationTabs] precisely
+  /// because it is the rightmost one, and naming it here would rank it ahead of
+  /// Downloads, which offline is the other bar slot, and that would have put
+  /// Mijn Pleya to the left of it.
+  static int _unified2026Rank(NavigationTabId id) {
+    const leading = [NavigationTabId.discover, NavigationTabId.series, NavigationTabId.movies, NavigationTabId.liveTv];
+    final index = leading.indexOf(id);
+    if (index >= 0) return index;
+    return leading.length + allNavigationTabs.indexWhere((tab) => tab.id == id);
   }
 
   /// Resolve which tab the app should open to on launch.
@@ -280,6 +338,7 @@ class NavigationTab {
     bool hasSeerr = false,
     bool hasWatchlist = false,
     bool isMobile = false,
+    RootNavigationSet rootSet = RootNavigationSet.classic,
     required NavigationTabId? preferredStartup,
   }) {
     final tabs = getVisibleTabs(
@@ -288,6 +347,7 @@ class NavigationTab {
       hasSeerr: hasSeerr,
       hasWatchlist: hasWatchlist,
       isMobile: isMobile,
+      rootSet: rootSet,
     );
     if (isOffline && tabs.any((t) => t.id == NavigationTabId.downloads)) {
       return NavigationTabId.downloads;
@@ -343,8 +403,10 @@ const allNavigationTabs = [
   ),
   // Films and Series sit directly under Home, matching the order the Unified
   // TV mockups put them in (Home · Films · Series · Live TV · Mijn Pleya) and
-  // the information architecture of hoofdstuk 3. Visible on TV only; see
-  // [NavigationTab.getVisibleTabs].
+  // the information architecture of hoofdstuk 3. This is the order the desktop
+  // and TV side rail renders; the iPhone puts Series first and gets that from
+  // [NavigationTab._unified2026Rank], not from here. Which shells see them at
+  // all is [NavigationTab.getVisibleTabs]'s answer.
   NavigationTab(
     id: NavigationTabId.movies,
     onlineOnly: true,

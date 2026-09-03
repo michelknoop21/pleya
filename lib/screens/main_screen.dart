@@ -40,8 +40,10 @@ import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
 import '../widgets/overlay_sheet.dart';
 import '../mixins/tab_visibility_aware.dart';
+import '../navigation/mobile_shell_scope.dart';
 import '../navigation/navigation_tabs.dart';
 import '../navigation/profile_navigation_scope.dart';
+import 'home/mobile_landing_screen.dart';
 import '../profiles/active_profile_binder.dart';
 import '../profiles/active_profile_provider.dart';
 import '../profiles/plex_home_service.dart';
@@ -128,15 +130,28 @@ const _mobileTabsInsideMyPleya = {
   NavigationTabId.settings,
 };
 
+/// The two destinations the Unified 2026 bar hands over to make room for
+/// Series and Films, and where each one goes instead.
+///
+/// Neither disappears. Bibliotheken becomes the tile mockup 18 puts under
+/// "Bibliotheken en bronnen", carrying its long-press quick picker with it;
+/// Zoeken becomes the header's search action, which mockups 01, 02 and 18 all
+/// show and which mockup 05 confirms leaves the bar showing the destination
+/// you came from. They are listed separately from [_mobileTabsInsideMyPleya]
+/// because only one of the two is reached through My Pleya.
+const _unified2026TabsOffTheBar = {NavigationTabId.libraries, NavigationTabId.search};
+
 @visibleForTesting
 List<NavigationTab> mainScreenBottomNavigationTabs({
   required List<NavigationTab> visibleTabs,
   required bool isMobile,
   required bool isOffline,
   required NavigationTabId currentTab,
+  RootNavigationSet rootSet = RootNavigationSet.classic,
 }) {
   if (!isMobile) return visibleTabs;
   return visibleTabs.where((tab) {
+    if (rootSet == RootNavigationSet.unified2026 && _unified2026TabsOffTheBar.contains(tab.id)) return false;
     if (!_mobileTabsInsideMyPleya.contains(tab.id)) return true;
     return isOffline && tab.id == NavigationTabId.downloads;
   }).toList();
@@ -180,11 +195,24 @@ NavigationTabId mainScreenSelectedBarTab({
   required List<NavigationTabId> barTabs,
 }) {
   final preferred = switch (currentTab) {
+    // Bibliotheken lights its own slot where it has one, and My Pleya where it
+    // does not, because that is the tile you reached it through (mockup 18).
+    // Read off [barTabs] rather than off the root set: the answer is about
+    // what the bar renders, and that is what this list is. Offline still wins,
+    // for the same reason it does for the other online-only destinations:
+    // this covers the frame before `_normalizeTabForMode` has moved the
+    // selection.
+    NavigationTabId.libraries => switch ((isOffline, barTabs.contains(NavigationTabId.libraries))) {
+      (true, _) => NavigationTabId.downloads,
+      (false, true) => NavigationTabId.libraries,
+      (false, false) => NavigationTabId.myPleya,
+    },
     NavigationTabId.discover ||
     NavigationTabId.movies ||
     NavigationTabId.series ||
-    NavigationTabId.libraries ||
     NavigationTabId.liveTv ||
+    // Zoeken has no owning slot once it leaves the bar. Mockup 05 draws it
+    // with Home lit, which is what the fallback below produces.
     NavigationTabId.search => isOffline ? NavigationTabId.downloads : currentTab,
     // Offline the bar is Downloads plus My Pleya, so Downloads points at
     // itself; online it lives behind My Pleya.
@@ -305,6 +333,11 @@ class _MainScreenState extends State<MainScreen>
 
   late List<Widget> _screens;
   final GlobalKey<State<DiscoverScreen>> _discoverKey = GlobalKey();
+  // The fase-2 landings are stateless; the keys exist so the shell can address
+  // them the way it addresses every other destination, and so a rebuild of the
+  // screens list keeps each landing's scroll position instead of remounting it.
+  final GlobalKey _moviesKey = GlobalKey();
+  final GlobalKey _seriesKey = GlobalKey();
   final GlobalKey<State<LibrariesScreen>> _librariesKey = GlobalKey();
   final GlobalKey<State<LiveTvScreen>> _liveTvKey = GlobalKey();
   final GlobalKey<State<SearchScreen>> _searchKey = GlobalKey();
@@ -1056,7 +1089,14 @@ class _MainScreenState extends State<MainScreen>
     return [
       for (final tab in _getVisibleTabs(offline))
         switch (tab.id) {
-          NavigationTabId.movies || NavigationTabId.series => const SizedBox.shrink(),
+          // Only the Unified 2026 phone bar makes these visible, and there they
+          // are the fase-2 landings. Elsewhere they are filtered out before
+          // this switch runs, and the empty box is what a TV shell gets,
+          // since that one renders its own content routes.
+          NavigationTabId.movies =>
+            _isPhone ? MobileLandingScreen(key: _moviesKey, kind: MobileLandingKind.movies) : const SizedBox.shrink(),
+          NavigationTabId.series =>
+            _isPhone ? MobileLandingScreen(key: _seriesKey, kind: MobileLandingKind.series) : const SizedBox.shrink(),
           NavigationTabId.discover => DiscoverScreen(key: _discoverKey),
           NavigationTabId.libraries => LibrariesScreen(
             key: _librariesKey,
@@ -1069,7 +1109,17 @@ class _MainScreenState extends State<MainScreen>
           NavigationTabId.downloads => DownloadsScreen(key: _downloadsKey),
           NavigationTabId.settings => SettingsScreen(key: _settingsKey),
           NavigationTabId.watchlist => WatchlistScreen(key: _watchlistKey),
-          NavigationTabId.myPleya => MyPleyaScreen(key: _myPleyaKey, onOpenTab: _selectTab),
+          NavigationTabId.myPleya => MyPleyaScreen(
+            key: _myPleyaKey,
+            onOpenTab: _selectTab,
+            // Only where Bibliotheken has actually left the bar. On the iPad's
+            // classic bar it still has its own slot, long-press and all, and a
+            // second entry point would be the duplicate the account menu was
+            // split up to avoid.
+            onShowLibraryQuickPicker: _rootSet == RootNavigationSet.unified2026
+                ? (rowContext) => _showLibraryQuickPicker(rowContext)
+                : null,
+          ),
         },
     ];
   }
@@ -1088,6 +1138,7 @@ class _MainScreenState extends State<MainScreen>
     hasSeerr: _hasSeerr,
     hasWatchlist: _hasWatchlist,
     isMobile: _isMobile,
+    rootSet: _rootSet,
     preferredStartup: SettingsService.instanceOrNull?.read(SettingsService.startupSection),
   );
 
@@ -1699,6 +1750,16 @@ class _MainScreenState extends State<MainScreen>
   /// from the same value instead of each re-reading the layout.
   bool _isMobile = false;
 
+  /// Whether that mobile shell is a phone. Captured beside [_isMobile], and
+  /// the single input for both shell policies: [_rootSet] decides which
+  /// destinations exist, [TabBarPresentation] decides how the bar paints them.
+  bool _isPhone = false;
+
+  /// Which root information architecture this shell offers. iPad and every
+  /// other non-phone shell stay on [RootNavigationSet.classic] until an iPad
+  /// authority of its own says otherwise.
+  RootNavigationSet get _rootSet => _isPhone ? RootNavigationSet.unified2026 : RootNavigationSet.classic;
+
   /// Get navigation tabs filtered by offline mode
   List<NavigationTab> _getVisibleTabs(bool isOffline) {
     return NavigationTab.getVisibleTabs(
@@ -1707,15 +1768,17 @@ class _MainScreenState extends State<MainScreen>
       hasSeerr: _hasSeerr,
       hasWatchlist: _hasWatchlist,
       isMobile: _isMobile,
+      rootSet: _rootSet,
     );
   }
 
-  List<NavigationTab> _getBottomNavigationTabs(BuildContext context) {
+  List<NavigationTab> _getBottomNavigationTabs() {
     return mainScreenBottomNavigationTabs(
       visibleTabs: _getVisibleTabs(_isOffline),
-      isMobile: PlatformDetector.isMobile(context),
+      isMobile: _isMobile,
       isOffline: _isOffline,
       currentTab: _currentTab,
+      rootSet: _rootSet,
     );
   }
 
@@ -1723,7 +1786,8 @@ class _MainScreenState extends State<MainScreen>
   GlobalKey? _screenKeyFor(NavigationTabId tab) {
     return switch (tab) {
       NavigationTabId.discover => _discoverKey,
-      NavigationTabId.movies || NavigationTabId.series => null,
+      NavigationTabId.movies => _moviesKey,
+      NavigationTabId.series => _seriesKey,
       NavigationTabId.libraries => _librariesKey,
       NavigationTabId.liveTv => _liveTvKey,
       NavigationTabId.search => _searchKey,
@@ -1736,7 +1800,7 @@ class _MainScreenState extends State<MainScreen>
   }
 
   Widget _buildBottomNavigationBar(BuildContext context, {required bool hideLabels}) {
-    final tabs = _getBottomNavigationTabs(context);
+    final tabs = _getBottomNavigationTabs();
     final projected = mainScreenSelectedBarTab(
       currentTab: _currentTab,
       isOffline: _isOffline,
@@ -1745,13 +1809,11 @@ class _MainScreenState extends State<MainScreen>
     final selectedIndex = tabs.indexWhere((tab) => tab.id == projected);
 
     // The one place the bar's presentation is decided, the same shape as the
-    // Home boundary in `discover_screen.dart`: one `PlatformDetector` call
-    // here, an explicit value passed down, and no platform check inside the
-    // destinations. Fase 1 was an iPhone phase and this bar is shared with the
-    // iPad, so the iPad keeps the presentation it had before fase 1 (DEC-092).
-    final presentation = PlatformDetector.isPhone(context)
-        ? TabBarPresentation.unified2026
-        : TabBarPresentation.classic;
+    // Home boundary in `discover_screen.dart`: one value resolved at the shell,
+    // passed down, and no platform check inside the destinations. This bar is
+    // shared with the iPad, so the iPad keeps the presentation it had before
+    // fase 1 (DEC-092) and the tabset it had before fase 2 ([_rootSet]).
+    final presentation = _isPhone ? TabBarPresentation.unified2026 : TabBarPresentation.classic;
     final isUnified = presentation == TabBarPresentation.unified2026;
 
     final bar = NavigationBar(
@@ -1856,12 +1918,15 @@ class _MainScreenState extends State<MainScreen>
   @override
   Widget build(BuildContext context) {
     final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
-    // My Pleya only exists on the mobile shell, and the screens list has to
-    // agree with the tab list about that. Rebuild the screens when the answer
-    // actually changes (a fold, a window resize) rather than on every build.
+    // My Pleya only exists on the mobile shell and Series/Films only on the
+    // phone one, and the screens list has to agree with the tab list about
+    // both. Rebuild the screens when either answer actually changes (a fold, a
+    // window resize, an iPad multitasking split) rather than on every build.
     final isMobile = PlatformDetector.isMobile(context);
-    if (isMobile != _isMobile) {
+    final isPhone = PlatformDetector.isPhone(context);
+    if (isMobile != _isMobile || isPhone != _isPhone) {
       _isMobile = isMobile;
+      _isPhone = isPhone;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         setState(() {
@@ -2004,69 +2069,78 @@ class _MainScreenState extends State<MainScreen>
       );
     }
 
-    return OverlaySheetHost(
-      onOpenChanged: _handleOverlaySheetOpenChanged,
-      // Host owns sheet + system back; onSystemBack mirrors the old PopScope
-      // (go to home tab, then press-back-twice to exit).
-      canPop: false,
-      onSystemBack: () {
-        if (BackKeyCoordinator.consumeIfHandled()) return;
-        _handleMainBack();
-      },
-      child: ScaffoldMessenger(
-        key: ProfileNavigationScope.of(context).mainScaffoldMessengerKey,
-        child: Scaffold(
-          body: _buildTickerAwareStack(),
-          bottomNavigationBar: Column(
-            mainAxisSize: .min,
-            children: [
-              // Reconnect bar when offline
-              if (_isOffline)
-                Material(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: InkWell(
-                    onTap: _isReconnecting ? null : _triggerReconnect,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      child: Row(
-                        mainAxisAlignment: .center,
-                        children: [
-                          if (_isReconnecting)
-                            SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
+    // The mobile branch only, and only here: this is the shell's own entry
+    // point for the surfaces inside it. Home and the fase-2 landings open
+    // Zoeken through it instead of through a callback threaded down
+    // `DiscoverScreen`, which desktop and TV build too. Mounting it around
+    // `_buildContent` as a whole would have put a mobile concern in the
+    // sidebar tree as well.
+    return MobileShellScope(
+      openTab: _selectTab,
+      child: OverlaySheetHost(
+        onOpenChanged: _handleOverlaySheetOpenChanged,
+        // Host owns sheet + system back; onSystemBack mirrors the old PopScope
+        // (go to home tab, then press-back-twice to exit).
+        canPop: false,
+        onSystemBack: () {
+          if (BackKeyCoordinator.consumeIfHandled()) return;
+          _handleMainBack();
+        },
+        child: ScaffoldMessenger(
+          key: ProfileNavigationScope.of(context).mainScaffoldMessengerKey,
+          child: Scaffold(
+            body: _buildTickerAwareStack(),
+            bottomNavigationBar: Column(
+              mainAxisSize: .min,
+              children: [
+                // Reconnect bar when offline
+                if (_isOffline)
+                  Material(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    child: InkWell(
+                      onTap: _isReconnecting ? null : _triggerReconnect,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        child: Row(
+                          mainAxisAlignment: .center,
+                          children: [
+                            if (_isReconnecting)
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              )
+                            else
+                              Icon(Symbols.wifi_rounded, size: 18, color: Theme.of(context).colorScheme.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              t.common.reconnect,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: .w500,
                                 color: Theme.of(context).colorScheme.primary,
                               ),
-                            )
-                          else
-                            Icon(Symbols.wifi_rounded, size: 18, color: Theme.of(context).colorScheme.primary),
-                          const SizedBox(width: 8),
-                          Text(
-                            t.common.reconnect,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: .w500,
-                              color: Theme.of(context).colorScheme.primary,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
+                SettingValueBuilder<bool>(
+                  pref: SettingsService.showNavBarLabels,
+                  builder: (context, showNavBarLabels, _) {
+                    final hideLabels = !showNavBarLabels;
+                    return NavigationBarTheme(
+                      data: NavigationBarTheme.of(context).copyWith(height: hideLabels ? 56 : null),
+                      child: _buildBottomNavigationBar(context, hideLabels: hideLabels),
+                    );
+                  },
                 ),
-              SettingValueBuilder<bool>(
-                pref: SettingsService.showNavBarLabels,
-                builder: (context, showNavBarLabels, _) {
-                  final hideLabels = !showNavBarLabels;
-                  return NavigationBarTheme(
-                    data: NavigationBarTheme.of(context).copyWith(height: hideLabels ? 56 : null),
-                    child: _buildBottomNavigationBar(context, hideLabels: hideLabels),
-                  );
-                },
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

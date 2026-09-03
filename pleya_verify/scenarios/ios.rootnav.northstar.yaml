@@ -1,0 +1,48 @@
+name: ios.rootnav.northstar
+target: ios-sim
+# The Unified 2026 root navigation as fase 2 delivers it: five slots, in the
+# order mockups 01, 02 and 18 draw them, each one hittable. Observation only:
+# every node asserted here is one the product renders on its own, with no
+# verify-only behaviour behind it.
+#
+# What this cannot state, and where that is covered instead: there is no
+# "absent" predicate in the assertion vocabulary, so the fact that Bibliotheken
+# and Zoeken have *left* the bar without leaving the app is pinned in
+# `test/navigation/unified_root_navigation_test.dart`. This scenario proves the
+# half a widget test cannot: that the five slots are really on screen, really
+# in that order, and really large enough to hit.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  # Same two-pass load and cold-start splash as ios.home.northstar: settle past
+  # IntroGate before measuring anything.
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - settle: 3500
+  - assert: {id: nav.bar, insideViewport: true}
+  # The five destinations, each really on screen. No `minimumTapTarget` here,
+  # and that is a statement about what the id measures rather than a lowered
+  # bar: `nav.<id>` is mounted on the destination's 24 pt glyph
+  # (`_withNavTabAutomation` wraps `NavigationDestination.icon`), while the
+  # hittable slot around it is built by Material's `NavigationBar` and has no
+  # node of its own. Asserting 44 pt on the glyph failed on a real simulator at
+  # 24.0x24.0 for exactly that reason. Moving the node outward to make the
+  # assertion pass would be production code written for the scenario, which is
+  # the one thing a scenario may not do.
+  - assert: {id: nav.discover, insideViewport: true}
+  - assert: {id: nav.series, insideViewport: true}
+  - assert: {id: nav.movies, insideViewport: true}
+  - assert: {id: nav.myPleya, insideViewport: true}
+  # One row, and Series before Films. The iPhone order is the opposite of the
+  # TV one, and it is produced by a projection rather than by the shared tab
+  # list, so it is worth pinning where it is actually painted.
+  - assert: {id: nav.series, sameRow: nav.discover}
+  - assert: {id: nav.movies, sameRow: nav.series}
+  - assert: {id: nav.myPleya, sameRow: nav.series}
+  - assert: {id: nav.series, rightOf: nav.discover}
+  - assert: {id: nav.movies, rightOf: nav.series}
+  - assert: {id: nav.myPleya, rightOf: nav.movies}
+  - snapshot: rootnav-northstar

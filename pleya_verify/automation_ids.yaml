@@ -141,6 +141,18 @@ ids:
   - id: home.rail.item
     role: grid.item
     instanceable: true
+  - id: landing.header
+    role: region
+    instanceable: false
+  - id: landing.title
+    role: region
+    instanceable: false
+  - id: landing.rail
+    role: rail
+    instanceable: true
+  - id: landing.rail.item
+    role: grid.item
+    instanceable: true
   - id: sheet.source_picker
     role: sheet
     instanceable: false

@@ -28,19 +28,32 @@ class MobilePageHeader extends StatelessWidget {
   final Profile? activeProfile;
   final VoidCallback? onAvatarTap;
 
+  /// The automation id this header mounts. Home and both fase-2 landings draw
+  /// the same header but live in the shell's `IndexedStack` at the same time,
+  /// so they cannot share one id without making every assertion on it
+  /// ambiguous. Defaults to Home's, which fase 1 pinned.
+  ///
+  /// The search and avatar nodes inside deliberately keep their ids across all
+  /// three: this one answers "which surface is on screen", and that is the
+  /// question a scenario asks. For the two buttons the registry already
+  /// resolves the visible copy first, the same way it does for the two screens
+  /// that are mounted twice today (`AutomationRegistry._reachableFirst`).
+  final String automationId;
+
   const MobilePageHeader({
     super.key,
     this.actions = const [],
     required this.onSearchTap,
     required this.activeProfile,
     this.onAvatarTap,
+    this.automationId = AutomationIds.homeHeader,
   });
 
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.viewPaddingOf(context).top;
     return AutomationNode(
-      id: AutomationIds.homeHeader,
+      id: automationId,
       role: 'region',
       child: Padding(
         padding: EdgeInsets.only(left: 16, right: 16, top: topInset + 12, bottom: 12),

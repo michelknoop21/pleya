@@ -29,6 +29,24 @@ const double mobileRailWideCardWidth = 220;
 const double mobileRailGutter = 12;
 const double mobileRailInset = 16;
 
+/// Which surface a rail belongs to, and therefore which automation ids it
+/// mounts.
+///
+/// The shell keeps every root destination alive in one `IndexedStack`, so Home
+/// and both fase-2 landings are built at the same time. Were they all to mount
+/// `home.rail`, a scenario asserting on `home.rail[0]` would be addressing
+/// three different rails at once. The pair travels together because a rail and
+/// its cards have to agree on which surface they are.
+enum MobileRailSurface {
+  home(AutomationIds.homeRail, AutomationIds.homeRailItem),
+  landing(AutomationIds.landingRail, AutomationIds.landingRailItem);
+
+  const MobileRailSurface(this.railId, this.itemId);
+
+  final String railId;
+  final String itemId;
+}
+
 class MobileMediaRail extends StatelessWidget {
   final UnifiedMediaHub hub;
   final int railIndex;
@@ -40,6 +58,10 @@ class MobileMediaRail extends StatelessWidget {
   /// long-press menu; other rails do not.
   final bool isContinueWatching;
 
+  /// Defaults to [MobileRailSurface.home] so fase 1's call sites and their
+  /// pinned ids stay exactly as they were.
+  final MobileRailSurface surface;
+
   const MobileMediaRail({
     super.key,
     required this.hub,
@@ -48,6 +70,7 @@ class MobileMediaRail extends StatelessWidget {
     this.onViewAll,
     this.onCardTap,
     this.isContinueWatching = false,
+    this.surface = MobileRailSurface.home,
   });
 
   @override
@@ -57,7 +80,7 @@ class MobileMediaRail extends StatelessWidget {
     final cardHeight = cardWidth / aspect + MediaCardGridLayout.textExtentFor(context);
 
     return AutomationNode(
-      id: AutomationIds.homeRail,
+      id: surface.railId,
       instance: '$railIndex',
       role: 'rail',
       child: Column(
@@ -98,7 +121,7 @@ class MobileMediaRail extends StatelessWidget {
                 return Padding(
                   padding: EdgeInsets.only(right: index == hub.groups.length - 1 ? 0 : mobileRailGutter),
                   child: AutomationNode(
-                    id: AutomationIds.homeRailItem,
+                    id: surface.itemId,
                     instance: '$railIndex.$index',
                     role: 'grid.item',
                     child: _RailCardCell(

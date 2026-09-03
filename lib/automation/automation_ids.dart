@@ -174,6 +174,26 @@ class AutomationIds {
   /// `[<railIndex>.<itemIndex>]`.
   static const String homeRailItem = 'home.rail.item';
 
+  /// The header of a mobile Series/Films landing — iOS Unified 2026 fase 2.
+  ///
+  /// Its own id rather than [homeHeader], because the shell keeps every root
+  /// destination alive in one `IndexedStack`: Home and both landings mount at
+  /// the same time, and two surfaces answering to `home.header` would make
+  /// every assertion on it ambiguous. Same reason for [landingRail] next to
+  /// [homeRail].
+  static const String landingHeader = 'landing.header';
+
+  /// A landing's title row: the page title and, once fase 3 gives it a
+  /// destination, the "Alle series"/"Alle films" entry.
+  static const String landingTitle = 'landing.title';
+
+  /// One rail on a landing. Instanceable: suffixed `[<railIndex>]`.
+  static const String landingRail = 'landing.rail';
+
+  /// One card in [landingRail]. Instanceable: suffixed
+  /// `[<railIndex>.<itemIndex>]`.
+  static const String landingRailItem = 'landing.rail.item';
+
   /// The mobile source-picker sheet as a whole.
   static const String sheetSourcePicker = 'sheet.source_picker';
 
@@ -197,6 +217,8 @@ class AutomationIds {
     myPleyaLogRow,
     homeRail,
     homeRailItem,
+    landingRail,
+    landingRailItem,
     sheetSourcePickerRow,
   };
 
@@ -242,6 +264,10 @@ class AutomationIds {
     {'id': homeChips, 'role': 'filter', 'instanceable': false},
     {'id': homeRail, 'role': 'rail', 'instanceable': true},
     {'id': homeRailItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': landingHeader, 'role': 'region', 'instanceable': false},
+    {'id': landingTitle, 'role': 'region', 'instanceable': false},
+    {'id': landingRail, 'role': 'rail', 'instanceable': true},
+    {'id': landingRailItem, 'role': 'grid.item', 'instanceable': true},
     {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
   ];
