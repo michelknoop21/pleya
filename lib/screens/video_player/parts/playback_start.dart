@@ -85,6 +85,7 @@ extension _VideoPlayerPlaybackStartMethods on VideoPlayerScreenState {
       } catch (e, st) {
         appLogger.e('Failed to start live TV playback', error: e, stackTrace: st);
         unawaited(_sendLiveTimeline('stopped'));
+        _notePlaybackInitFailed();
         if (mounted) {
           showErrorSnackBar(context, friendlyError(e));
           unawaited(_handleBackButton());
@@ -363,12 +364,18 @@ extension _VideoPlayerPlaybackStartMethods on VideoPlayerScreenState {
       }
     } on PlaybackException catch (e, st) {
       appLogger.w('Playback initialization failed', error: e, stackTrace: st);
+      _notePlaybackInitFailed();
       if (mounted) {
         _hasFirstFrame.value = true; // Hide spinner on error
-        showErrorSnackBar(context, e.message);
+        if (e is PlaybackFileUnavailableException) {
+          noticeController.show(noticeForPlaybackFailureKind(PlaybackFailureKind.fileUnavailable));
+        } else {
+          showErrorSnackBar(context, e.message);
+        }
       }
     } catch (e, st) {
       appLogger.e('Failed to start playback', error: e, stackTrace: st);
+      _notePlaybackInitFailed();
       if (mounted) {
         _hasFirstFrame.value = true; // Hide spinner on error
         showErrorSnackBar(context, friendlyError(e));

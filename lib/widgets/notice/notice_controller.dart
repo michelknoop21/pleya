@@ -98,13 +98,31 @@ class NoticeController extends ChangeNotifier {
     return slot.id;
   }
 
+  /// A repeat folds into an earlier notice with the same key while that one
+  /// is fresh, and also while it is still standing: a persistent error that
+  /// nobody dismissed yet should count up, not get a twin underneath. Three
+  /// "Playback stopped" cards in a column say nothing three times.
   _Slot? _findFoldTarget(String dedupeKey, DateTime now) {
     for (final slot in _visible.followedBy(_queued)) {
-      if (slot.dedupeKey == dedupeKey && now.difference(slot.lastSeen) < dedupeWindow) {
+      if (slot.dedupeKey != dedupeKey) continue;
+      if (slot.notice.duration == null || now.difference(slot.lastSeen) < dedupeWindow) {
         return slot;
       }
     }
     return null;
+  }
+
+  /// Dismisses every visible or queued notice for which [test] holds. Used by
+  /// a caller that knows a whole class of notices is stale, e.g. the player
+  /// clearing earlier playback failures once a video actually plays.
+  void dismissWhere(bool Function(Notice notice) test) {
+    final ids = [
+      for (final slot in _visible.followedBy(_queued))
+        if (test(slot.notice)) slot.id,
+    ];
+    for (final id in ids) {
+      dismiss(id);
+    }
   }
 
   void _restartTimer(_Slot slot) {
