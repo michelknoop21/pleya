@@ -719,6 +719,42 @@ De required-candidate `portable`-gate en de uitgevoerde iOS/tvOS Verify-scenario
 **Consequences:** Pleya Verify Core 1.0 is hiermee compleet: deterministic fixture-backed scenario's, drie platformdrivers (macOS/iOS-sim/tvOS-sim), UI-boom/focus/events/geometrie-assertions, autoritatieve compositor-screenshots als visuele waarheid, complete evidencebundels, false-PASS-verdediging (Fase 12), CLI, MCP-laag (Fase 13), CI-orkestratie (Fase 14), fail-closed control-plane-auth, bounded execution, en redactie-/securityhardening (dit besluit). Bekende, niet-blokkerende grenzen: macOS-hosted-buildsigning in CI, `tvos.library.filters` (DEFERRED voor G13, [DEC-063](#dec-063-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)), en tvOS-D-pad-navigatie binnen het systeemtoetsenbord (niet simuleerbaar, zie CONTRIBUTING.md). Geen nieuwe featurescope geopend; een volgende sessie die verder wil dan Core 1.0 begint bij een expliciet nieuw besluit, niet bij het stilzwijgend heropenen van Fase 1 t/m 15.
 
 
+## DEC-091: de mobiele hero-presentatie heet mobileFeatured, en de chip-ambiguïteit is opgelost
+
+**Date:** 2026-09-03
+**Status:** accepted
+
+**Context:** Twee punten uit het fase-1-plan vroegen een besluit voordat er gebouwd werd. Het eerste
+is de hero. `home_hero_layout.dart` kent vandaag `island` (iPad-portret) en `fullWidth`
+(iPhone-portret); de northstar vraagt een afgeronde billboard-kaart op inset 16. Hoofdstuk 9.4 van
+`docs/tvos-unified-experience.md` op de tvOS-redesignbranch rechtvaardigt de eigen TV-billboard met
+de belofte dat de bestaande mobiele geometrie byte-identiek blijft. Het tweede is de geselecteerde
+chip, waarover de bevroren beelden elkaar tegenspraken: de Home-comp toont een donkerrode vulling,
+mockup 15 een witte vulling, en mockup 05, 10, 11, 12 en 19 een rode omlijning.
+
+**Decision:** De derde presentatie heet **`mobileFeatured`**, niet `phone`. De naam beschrijft de
+layout en niet het apparaat, en `home_hero_layout.dart` blijft vrij van `PlatformDetector`-aanroepen:
+de aanroeper kiest de presentatie. Daarmee kan de iPad hem later kiezen zonder dat de hero verbouwd
+hoeft te worden, en zonder dat er nu een uitspraak over de iPad gedaan wordt. `island` en `fullWidth`
+veranderen niet, dus de bestaande regressiepins in `test/utils/home_hero_layout_test.dart` blijven
+zoals ze zijn. De belofte uit 9.4 versmalt van "de mobiele geometrie" naar "`island` en `fullWidth`".
+
+De geselecteerde chip is een **rode omlijning met rode tekst**, de variant die vijf van de
+eenentwintig bevroren beelden tonen. De comp heeft op dit punt geen mockup naast zich, dus de
+mockups winnen zoals paragraaf 9 van het rapport voorschrijft. Geselecteerd en ingedrukt blijven
+gescheiden semantiek: geselecteerd is een blijvende toestand met de rode omlijning, ingedrukt is de
+momentane aanraakreactie van `Pressable`. Ze worden niet op één visuele eigenschap samengevoegd.
+
+De drie headeracties op Home (Nu aan het kijken, Samen kijken, Afstandsbediening) blijven in fase 1
+staan waar ze staan. De fase-1-header is daardoor voller dan de comp; dat is een goedgekeurde
+afwijking en telt bij de visuele beoordeling van fase 1 niet als verschil met de northstar. Ze
+vervalt in de fase die de rootnavigatie migreert.
+
+**Consequences:** Paragraaf 9a van [het auditrapport](ios-unified-2026-audit.md) legt de chipkeuze en
+de goedgekeurde afwijking vast. Een implementatie die `mobileFeatured` toevoegt raakt de twee
+bestaande presentaties niet en houdt de bijbehorende tests ongewijzigd. De twee open Home-details uit
+DEC-090 paragraaf 10, de secundaire hero-CTA en de carousel-indicator, blijven open.
+
 ## DEC-090: iOS Unified 2026 northstar bevroren, 21 mockups bindend voor de iPhone-interface
 
 **Date:** 2026-09-03
@@ -730,7 +766,7 @@ De required-candidate `portable`-gate en de uitgevoerde iOS/tvOS Verify-scenario
 
 *Authority-volgorde* voor de iOS-interface, van hoog naar laag:
 
-1. de goedgekeurde iOS-northstar-mockups in `docs/assets/ios-unified/northstar/`;
+1. de goedgekeurde iOS-northstar-mockups in `docs/assets/ios-unified/northstar/`, en voor Home, Home gefilterd en het profiel-laadscherm de vijf aangeleverde comps, die sinds 3 september 2026 byte-identiek in diezelfde map staan onder een naam in plaats van een nummer (`home-comp`, `home-comp-gefilterd`, `profiel-laden-comp`, `serie-detail-comp`, `mijn-pleya-comp`; hashes in paragraaf 4.8 van het rapport). Waar een comp en een mockup elkaar raken wint de mockup. Het opnemen van die vijf verandert niets aan wat is goedgekeurd en niets aan deze rangorde: het repareert dat Home, de eerste surface die gebouwd wordt, anders een authority zou hebben die alleen op één machine bestond. De bevroren set blijft de 21 genummerde beelden;
 2. het bijbehorende rapport `docs/ios-unified-2026-audit.md`, dat de tokens, de navigatie en de zeven beslispunten vastlegt;
 3. voor Pleya-branding en de gedeelde Unified 2026-principes: de goedgekeurde tvOS-redesign-branch `claude/netflix-redesign-b4x21v` en zijn northstar-set (DEC-065 op die branch), met `mono_theme.dart`, `mono_tokens.dart`, `pleya_wordmark.dart` en hoofdstuk 8, 18, 33 en 34 van `docs/tvos-unified-experience.md` als bron;
 4. de bestaande iOS-code voor functionele en platformcontracten: navigatie via `ProfileNavigationScope`, sheets via `OverlaySheetHost`, kaarten via `MediaCardGridLayout`, de mobiele hero-geometrie in `home_hero_layout.dart`.

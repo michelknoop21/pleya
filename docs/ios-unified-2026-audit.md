@@ -67,7 +67,9 @@ merkketen op alle platforms.
 
 ## 4. De vijf aangeleverde comps tegen de code
 
-De comps in `~/Downloads/mobile-netflix` zijn compositie-authority voor Home, Home gefilterd,
+De comps staan sinds 3 september 2026 byte-identiek in de repository, naast de 21 mockups, met een
+naam in plaats van een nummer zodat de goedgekeurde set van 21 ongewijzigd blijft (zie 4.8). Ze zijn
+compositie-authority voor Home, Home gefilterd,
 Serie-detail, Mijn Pleya en het profiel-laadscherm. Ze bevatten zeven punten die met de
 redesign-branch botsen. Geen ervan hoeft de compositie te veranderen, maar ze moeten beslist worden
 voordat er gebouwd wordt.
@@ -81,6 +83,27 @@ voordat er gebouwd wordt.
 | 5 | Sectie "Nieuw voor jou" en menu-item "Meldingen" | Bestaat nergens in `lib/`, `docs/` of de i18n; het enige aandachtssignaal is één amber punt op Mijn Pleya en de amber authfoutregel (18.4) | óf schrappen, óf als nieuwe functie definiëren op data die er is: recent toegevoegd per server, nieuwe afleveringen van titels in Verder kijken, statuswijziging van een aanvraag, serverauth. Mockup 13 laat die tweede variant zien |
 | 6 | Mijn Pleya als platte lijst: Meldingen, Mijn lijst, Downloads, Instellingen, Account, Help | Hoofdstuk 18.1: drie groepen (Mijn content, Bibliotheken en bronnen, Pleya) met Bibliotheken, Aanvragen, Servers, Activiteit, Samen kijken, Logs, Over en Uitloggen. De comp laat zes bestaande bestemmingen weg | mockup 18 toont de volledige variant; de comp-versie kan alleen als de weggelaten routes ergens anders landen |
 | 7 | Serie-detail heeft geen bronregel | Hoofdstuk 15: bij meer dan één bron staat `Bron: NAS · Films 4K [Wijzigen]` onder de CTA's | bronregel toevoegen onder Download, zoals in mockup 06 |
+
+### 4.8 De comps staan in de repository
+
+Home is de eerste surface die gebouwd wordt, en Home heeft geen mockup in de 21-set: de compositie
+komt uit de comps. Zolang die alleen in `~/Downloads/mobile-netflix` stonden, was de authority voor
+juist dat scherm niet reproduceerbaar in een nieuwe checkout, in CI of op een andere machine. De vijf
+bestanden staan daarom nu in `docs/assets/ios-unified/northstar/`, byte-identiek aan wat is
+goedgekeurd (`cmp` op elk bestand, 3 september 2026):
+
+| Bestand in de repo | SHA-256 (eerste 16) | Dekt |
+|---|---|---|
+| `home-comp.png` | `72da8413c7ebd9b6` | Home |
+| `home-comp-gefilterd.png` | `ec86413290cb82c9` | Home met de Series-chip actief |
+| `profiel-laden-comp.png` | `c657452835cd2009` | het profiel-laadscherm |
+| `serie-detail-comp.png` | `95f341df1aee7d9e` | Serie-detail |
+| `mijn-pleya-comp.png` | `bb12bb4c71197c2b` | Mijn Pleya |
+
+Ze dragen een naam en geen nummer, want de goedgekeurde set is en blijft de 21 genummerde beelden
+`01-series-landing` tot en met `21-activiteit`. De rangorde uit paragraaf 9 verandert niet: waar een
+comp en een mockup elkaar raken wint de mockup. Voor Serie-detail en Mijn Pleya zijn dat mockup 07 en
+18; voor Home, Home gefilterd en het profiel-laadscherm is de comp de enige bron.
 
 Twee kleinere afwijkingen zonder besliswaarde: de comps gebruiken dunne outline-iconen waar de app
 `AppIcon` met gevulde Material Symbols Rounded (fill 1, weight 700) gebruikt, en de actieve filterchip
@@ -187,6 +210,26 @@ aanvraagdata zoals mockup 13 (4.5), en de bronregel op detail (4.7). De vijf com
 het profiel-laadscherm; waar een comp en een mockup elkaar raken wint de mockup, want die is tegen
 de tokens gebouwd.
 
+## 9a. Beslist na de audit: de geselecteerde chip, en één afwijking in fase 1
+
+**De geselecteerde chip is een rode omlijning met rode tekst.** De bronnen spraken elkaar tegen: de
+Home-comp toont een donkerrode vulling, mockup 15 een witte vulling, en mockup 05, 10, 11, 12 en 19
+een rode omlijning. Vijf van de eenentwintig bevroren beelden tonen die omlijning en de comp heeft op
+dit punt geen mockup naast zich, dus de omlijning wint. `FocusableFilterChip` heeft die staat al
+(`focusable_filter_chip.dart`, de `outlined`-variant met `accent`-tint en `accent`-rand).
+
+Geselecteerd en ingedrukt blijven daarbij twee verschillende dingen. Geselecteerd is een toestand die
+blijft staan en die de rode omlijning draagt; ingedrukt is een momentane reactie op een aanraking en
+hoort bij `Pressable`. Ze mogen niet op één visuele eigenschap worden samengevoegd, ook niet als dat
+in een enkel scherm toevallig hetzelfde oplevert.
+
+**Goedgekeurde afwijking in fase 1.** De Home-header draagt vandaag drie acties die in de northstar
+elders terechtkomen: Nu aan het kijken, Samen kijken en de Afstandsbediening (mockup 18 en 21 zetten
+ze onder Mijn Pleya). Ze blijven in fase 1 staan waar ze staan, omdat een bestemming verplaatsen bij
+de rootnavigatie hoort en niet bij een visuele pass op Home. De fase-1-header is daardoor voller dan
+de comp. Dat is een goedgekeurde afwijking, geen regressie: bij de visuele beoordeling van fase 1
+telt hij niet mee als verschil met de northstar. Hij vervalt in de fase die de rootnavigatie migreert.
+
 ## 10. Open design details, niet blokkerend
 
 Twee details op de Home-comp zijn niet beslist. Ze raken uitsluitend de hero en laten de rest van
@@ -209,3 +252,7 @@ Bronbestanden van de mockups (HTML, CSS, buildscript, artwork) leven buiten de r
 `~/Downloads/mockups/_src`, zoals ook de tvOS-northstar-bronnen buiten de repo staan (DEC-065). Een
 pagina opnieuw renderen: `node build.mjs 06-` vanuit die map, mits `art/` en `assets/` ernaast staan.
 De getoonde titels en hun artwork zijn niet bindend; de UI eromheen wel.
+
+De comps zijn geen render maar aangeleverd beeld, dus voor die vijf is er geen bron om opnieuw uit te
+bouwen. Precies daarom staan de PNG's zelf in de repository (4.8): het bestand *is* de authority. De
+kopie in `~/Downloads/mobile-netflix` is vanaf nu een historische kopie, geen bron.
