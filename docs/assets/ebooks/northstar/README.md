@@ -32,6 +32,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `01b-books-home.png` | Boeken-home, canonieke startstaat | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 | `01b-books-home-series.png` | Scrollbewijs bij `01b-books-home.png`, geen apart scherm | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 | `01b-books-home-comp.png` | Beide 01b-frames naast elkaar | approved | 2 × iPhone 15 Pro | DEC-094, DEC-090 | 2026-09-03 | n.v.t. |
+| `02a-all-books.png` | Alle boeken, canonieke startstaat | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `02b-all-books-scrolled.png` | Scrollbewijs bij `02a`, laatste rij vrij van de tabbalk | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `02c-all-books-controls.png` | Detail: de pill-rij in rust en actief | proposed | detailuitsnede, 1179×850 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -97,6 +100,51 @@ Wat 01b anders doet dan de eerste ronde, op zijn verzoek:
 nooit permanent onbereikbaar maken. De Boeken-home krijgt dus onderaan genoeg scrollruimte om de
 laatste rij inclusief metadata volledig boven de balk te brengen. Het tweede frame laat zien hoe
 dat eruitziet.
+
+## Golden 02, Alle boeken (proposed)
+
+De grid-bestemming achter `Alle boeken ›` op Boeken-home. Inhoud van paneel 2 van de comp,
+uitvoering van de iOS Unified-set, aansluitend op goedgekeurde golden 01b. Drie frames, samen één
+scherm: `02a` de startstaat, `02b` dezelfde pagina gescrold, `02c` een detailuitsnede van alleen de
+bedieningsrij zodat de actieve en niet-actieve staat naast elkaar te beoordelen zijn.
+
+De filtersheet zit hier bewust niet in. Dat is schermgolden 03 met zijn eigen goedkeuring; de
+Filters-pill in dit beeld opent hem, maar wat er dan opengaat wordt hier niet beslist.
+
+**De keuzes die de comp niet maakt, en die dus goedgekeurd of afgewezen moeten worden.**
+
+- **Drie kolommen, en dat is gemeten, niet aangenomen.** `03-alle-films.png` uit de Unified-set zet
+  op dezelfde iPhone 15 Pro drie kolommen van 114 pt met 10 pt ertussen en 16 pt paginamarge. Boeken
+  krijgen exact dezelfde maten, zodat een plank boeken en een plank films uitlijnen. Vier kolommen
+  zou 83 pt per cover geven, en op die breedte breekt een titel na ongeveer elf tekens af; twee
+  kolommen maakt van een bibliotheek een fotoalbum. Bij 114 pt past `Children of Dune` precies op
+  één regel en breekt `Project Hail Mary` netjes over twee.
+- **Coververhouding 2:3**, dus 114 × 171, gelijk aan de rails in 01b en aan de filmposters. Echte
+  boekcovers variëren tussen 1:1,5 en 1:1,6; één vaste verhouding houdt het raster recht en is een
+  keuze, geen meting.
+- **Filter en sorteren zijn pills, geen icon-buttons.** Dat is de taal van de Unified-set. De
+  sorteerpill draagt zijn huidige waarde (`Titel A–Z`) in plaats van het woord `Sorteren`: een
+  bediening die zijn stand toont scheelt een tik om hem te lezen. De comp schrijft `Sorteren`, dit
+  wijkt daar bewust van af.
+- **De actieve staat is de pill in accentkleur met een telling erin**, en de filtersamenvatting
+  rechts op de resultaatregel. Zie `02c`.
+- **`128 boeken` staat links op een resultaatregel onder de pills**, waar de Unified-set
+  `126 titels geladen` zet. Bij een actief filter komt de samenvatting daar rechts naast. In rust
+  blijft die rechterkant leeg.
+- **Reeksinformatie staat niet in het raster.** Titel en auteur zijn de twee regels; een derde regel
+  voor de reeks maakt de cel hoger en het raster losser, en de reeks is al bereikbaar via de
+  Boekenseries-rail en het boekdetail.
+- **Geen filmmetadata.** Geen jaar, speelduur, resolutie of waardering. Dat is bewust: dit is een
+  boekenplank, geen filmcatalogus.
+- **Het bijschriftblok heeft een vaste hoogte** van twee titelregels plus één auteursregel, zodat
+  elke rij op dezelfde lijn begint, wat een lange titel ook doet. De speling valt onderaan de cel,
+  niet tussen titel en auteur.
+- **De header draagt rechts alleen zoeken.** Paneel 2 van de comp zet daar nog een tweede glyph
+  waarvan de bestemming nergens is vastgelegd; die is hier weggelaten in plaats van er een betekenis
+  bij te verzinnen.
+
+Net als bij 01b geldt: de tabbalk mag de laatste rij tijdelijk overlappen, nooit permanent.
+`02b` laat zien hoe ver er onderaan doorgescrold moet kunnen worden.
 
 ## Wat er tegen golden 01b gebouwd is
 
