@@ -500,6 +500,9 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   /// Returns null if no meaningful selected item exists.
   String? _resolveSelectedFocusKey() {
     switch (widget.selectedTab) {
+      case NavigationTabId.movies:
+      case NavigationTabId.series:
+        return null;
       case NavigationTabId.discover:
         return _kHome;
       case NavigationTabId.libraries:
