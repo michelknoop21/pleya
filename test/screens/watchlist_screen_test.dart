@@ -836,6 +836,61 @@ void main() {
       expect(nodeFor(tester, 'b').hasFocus, isTrue, reason: 'the viewer did not move, so neither does the ring');
     });
 
+    testWidgets('removing the card the remote is on leaves the remote on a card', (tester) async {
+      // The same shape as Samen Kijken's recent rooms, one screen over: the
+      // viewer opens the sheet on the card they are standing on and removes
+      // it. `_reconcile` disposes that node on the next build, the `Focus`
+      // holding it is unmounted, and nothing claims the focus afterwards — so
+      // the page keeps it with no item on it, which on tvOS is a grid you can
+      // neither move within nor leave, because the engine claims every press
+      // before UIKit's responder chain sees it.
+      await pumpScreen(tester, sixFilms(), tv: true);
+      nodeFor(tester, 'c').requestFocus();
+      await tester.pumpAndSettle();
+      expect(nodeFor(tester, 'c').hasFocus, isTrue);
+
+      // The real route: Select opens the sheet, Remove is picked there.
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(t.watchlist.remove));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widgetList<WatchlistCard>(find.byType(WatchlistCard)).any((c) => c.entry.key == 'c'),
+        isFalse,
+        reason: 'the card is gone, which is the precondition for the trap',
+      );
+      final onACard = tester
+          .widgetList<WatchlistCard>(find.byType(WatchlistCard))
+          .any((c) => c.focusNode?.hasPrimaryFocus ?? false);
+      expect(onACard, isTrue, reason: 'the remote must still be on a card that exists');
+      expect(
+        nodeFor(tester, 'd').hasPrimaryFocus,
+        isTrue,
+        reason: 'the slot is kept, so the card that slid up into the empty cell takes the ring',
+      );
+    });
+
+    testWidgets('removing the last card falls back to the header rather than nothing', (tester) async {
+      await pumpScreen(tester, [entry(key: 'a', title: 'Film A')], tv: true);
+      nodeFor(tester, 'a').requestFocus();
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(t.watchlist.remove));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(WatchlistCard), findsNothing);
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'watchlistFilterBar',
+        reason: 'an empty grid still has a header, and that is where the remote belongs',
+      );
+    });
+
     testWidgets('the TV grid uses the shared TV portrait geometry, not the density setting', (tester) async {
       // P6's other half. Kijklijst ran on `MediaGridGeometry` + `GridSizeCalculator`,
       // driven by `SettingsService.libraryDensity` — which is why its posters

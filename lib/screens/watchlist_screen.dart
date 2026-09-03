@@ -158,9 +158,13 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
       case WatchlistSheetAction.request:
         await _request(entry);
       case WatchlistSheetAction.remove:
+        // Where the card stood, read before it leaves: the slot is what the
+        // remote should keep, not the entry.
+        final slot = _entries.indexWhere((e) => e.key == entry.key);
         // No snackbar on success: the card leaves the grid, and that is the
         // confirmation. A failure still speaks, because there nothing moves.
         await WatchlistUiActions.remove(context, entry);
+        _restoreFocusAfterRemoval(slot);
       case WatchlistSheetAction.cancel:
         break;
     }
@@ -219,6 +223,43 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
       // may have moved on, and a lookup finishing is never a reason to pull
       // them back.
       if (node != null && node.canRequestFocus && !node.hasFocus) node.requestFocus();
+    });
+  }
+
+  /// Puts the remote back on the grid after the viewer removed the card they
+  /// were standing on.
+  ///
+  /// Losing the widget under a focused node hands primary focus to the
+  /// enclosing scope, which leaves the page focused with no item on it — and
+  /// on tvOS that is a grid you can neither move within nor leave, because the
+  /// engine claims every press before UIKit's responder chain sees it. Samen
+  /// Kijken's recent rooms have the identical shape one screen over.
+  ///
+  /// Driven from the remove action rather than from [_reconcile], for two
+  /// reasons. The removal is the one case where the viewer is demonstrably on
+  /// this grid and just acted on this card, so no "did that node still hold
+  /// the focus" test is needed — and that test would answer wrongly anyway,
+  /// because the sheet took the focus before the card ever went away. And a
+  /// filter change drops entries too, from the filter bar, where pulling the
+  /// remote back into the grid would be the wrong move.
+  ///
+  /// The slot is kept, not the neighbour: the card that slides up into the
+  /// empty cell is the one the eye is already on. The last card removed leaves
+  /// the slot past the end, so the grid's new last card takes it, and an
+  /// emptied grid falls back to the header.
+  void _restoreFocusAfterRemoval(int slot) {
+    if (!mounted || slot < 0 || !PlatformDetector.isTV()) return;
+    // After the frame: the provider notified, but the grid that must hold the
+    // node has not been rebuilt yet.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final target = _entries.isEmpty ? null : _entries[slot.clamp(0, _entries.length - 1)];
+      final node = target == null ? null : _nodes[target.key];
+      if (node != null && node.canRequestFocus) {
+        node.requestFocus();
+        return;
+      }
+      _focusHeader();
     });
   }
 
