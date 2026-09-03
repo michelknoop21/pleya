@@ -479,6 +479,29 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// rail — see [TvRootShell] on why one method serves both.
   void _focusSidebar() => MainScreenFocusScope.of(context, listen: false)?.focusSidebar();
 
+  /// LEFT out of the grid's first column (CAT4): the one-press escape to the
+  /// bar the grid's own edge takes without walking back up through the
+  /// header.
+  ///
+  /// `_focusHeader()` first is not cosmetic. `TvRootShell.onFocusContent`'s
+  /// `restorePreviousFocus` branch restores through Flutter's own
+  /// `FocusScopeNode.focusedChild` — the content scope's raw memory of
+  /// whichever node it last held — not through [focusActiveTabIfReady]. A
+  /// grid card that reaches the bar this way, never having passed through the
+  /// header, leaves the card as that memory, so the next DOWN out of the bar
+  /// restores straight to the card and never reaches the header at all. Hoofdstuk
+  /// 7.4 documents the header as the one thing DOWN out of the bar always
+  /// restores to, with the card "one step further down" and the screen's own
+  /// responsibility ([_focusGrid]'s `initialFocusedGroupId`) — so the content
+  /// scope's memory has to agree, which means putting the header in focus
+  /// before handing off. `FocusNode.requestFocus()` updates the enclosing
+  /// scope's remembered child synchronously, so the bar still receives the
+  /// ring on this same press.
+  void _exitGridToSidebar() {
+    _focusHeader();
+    _focusSidebar();
+  }
+
   /// DOWN out of the top navigation, per hoofdstuk 7.4: "Down vanaf topnav
   /// focust de eerste headeractie."
   @override
@@ -625,7 +648,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       onActivate: _activate,
       onContextMenu: _openContextMenu,
       onExitTop: _focusHeader,
-      onExitLeft: _focusSidebar,
+      onExitLeft: _exitGridToSidebar,
       clientFor: (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
       footer: TvUnifiedGridFooter(
         loadedCount: snapshot.groups.length,
