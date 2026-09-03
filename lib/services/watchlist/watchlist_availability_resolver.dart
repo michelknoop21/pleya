@@ -8,6 +8,7 @@ import '../../media/media_server_client.dart';
 import '../../media/watchlist_entry.dart';
 import '../../utils/app_logger.dart';
 import '../api_cache.dart';
+import '../unified_catalog/source_resolver.dart' show fanOutFindAllByIdentity;
 
 /// Where a title turned out to live, and how sure we are that the answer is
 /// the whole story.
@@ -97,28 +98,27 @@ class WatchlistAvailabilityResolver {
     MediaItem? match;
     var checked = 0;
 
-    for (var i = 0; i < reachable.length; i += maxConcurrent) {
-      final batch = reachable.skip(i).take(maxConcurrent);
-      final results = await Future.wait(
-        batch.map((server) async {
-          try {
-            return (server: server, item: await server.client!.findByIdentity(identity), ok: true);
-          } catch (e) {
-            appLogger.d('Watchlist match failed on ${server.serverId}', error: e);
-            return (server: server, item: null as MediaItem?, ok: false);
-          }
-        }),
-      );
-
-      for (final result in results) {
-        if (!result.ok) continue;
-        checked++;
-        // First match in the deterministic server order wins, so the same
-        // watchlist resolves to the same server on every device.
-        match ??= result.item;
-      }
-      if (match != null) break;
-    }
+    // Delegates the actual per-server dispatch to the same primitive the
+    // all-source resolver uses (hoofdstuk 4.3: one identity pipeline, not a
+    // second ad hoc resolver) — findAllByIdentity per server, in bounded,
+    // deterministically-ordered batches. This resolver's own contract only
+    // needs the first match, so it stops the shared fan-out as soon as one
+    // turns up, in the same deterministic server order as before.
+    await fanOutFindAllByIdentity(
+      servers: [for (final s in reachable) (serverId: s.serverId, client: s.client, online: s.online)],
+      identity: identity,
+      maxConcurrent: maxConcurrent,
+      onBatch: (batch) {
+        for (final result in batch) {
+          if (!result.ok) continue;
+          checked++;
+          // First match in the deterministic server order wins, so the same
+          // watchlist resolves to the same server on every device.
+          match ??= result.matches.firstOrNull;
+        }
+        return match != null;
+      },
+    );
 
     // Everything that was not reached is a hole in the coverage, whether it
     // was offline before the fan-out or errored during it.
