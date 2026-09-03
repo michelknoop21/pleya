@@ -1,11 +1,16 @@
 # STATUS · Pleya
 
-_Laatst gewerkt: 2026-09-01. DEC-064's PS-5-hardwareronde is gestart: een macOS-releasebuild draait
-lokaal en een tvOS-build staat geïnstalleerd en gelanceerd op de echte Apple TV
-(`1528384F-B1C1-5688-BA78-15EE0C57F788`). Testtitels en de fysieke playbackbeoordeling wachten op
-Michel. Volledige integratie-gereedheidsaudit die hiertoe leidde staat op `main`'s eigen `STATUS.md`
-en `docs/CHANGELOG.md` (2026-09-01-entry), niet hier gedupliceerd. Vijf lokale commits staan nog niet
-op `origin/feat/pleyaserver` (laatste: `4368635`)._
+_Laatst gewerkt: 2026-09-03. **PS-9 is code compleet**: stap 4 (gebruikersbeheer-API en een inlogpad
+dat elke rij in `users` kent), stap 6 (intrekkingsregister, onderbreekbare `copyRange`,
+sessie-endpoints en `logout`) en de clientkant (`ProfileKind.pleyaServer` met een eigen
+credential-resolver, `device_id`/`device_name` op login) zijn af en groen. Wat er nog voor het sluiten
+van de fase moet gebeuren staat onder "Volgende stap". Daarvóór, op 2026-09-01, is DEC-064's
+PS-5-hardwareronde gestart: een macOS-releasebuild draait lokaal en een tvOS-build staat geïnstalleerd
+en gelanceerd op de echte Apple TV (`1528384F-B1C1-5688-BA78-15EE0C57F788`); testtitels en de fysieke
+playbackbeoordeling wachten nog op Michel. De volledige integratie-gereedheidsaudit die daartoe leidde
+staat op `main`'s eigen `STATUS.md` en `docs/CHANGELOG.md` (2026-09-01-entry), niet hier
+gedupliceerd. Op 2026-09-03 is ook [DEC-093](docs/DECISIONS.md) geland: e-books zijn productscope,
+met PS-14 ontworpen en PS-15/PS-16 begrensd, alle drie nog niet vrijgegeven._
 
 ## Waar was ik
 
@@ -187,6 +192,31 @@ geeft 24 treffers zonder seizoen, `kind=season` levert ze alsnog, en zonder toke
 
 ## Volgende stap
 
+**PS-9 sluiten, of de twee dingen die dat nog tegenhouden afhandelen.** Vier van de vijf
+acceptatiecriteria zijn gehaald met bewijs: twee gebruikers met eigen bibliotheken en eigen kijkstatus
+(AC1), `404` en geen `403` op alle dertien endpoints van de matrix plus de twee nieuwe (AC2), een
+ingetrokken sessie die een lopende stream binnen 446 ms afbrak tegen een grens van twee seconden
+(AC3), en geen defaultwachtwoord of ingebouwd account (AC4). AC5 vraagt dat de Plex- en
+Jellyfin-profielpaden ongewijzigd zijn, aangetoond met de bestaande tests: `flutter test` is groen
+(4782 geslaagd, 1 overgeslagen) en `ProfileKind` heeft er een derde waarde bij gekregen zonder dat een
+bestaande tak van gedrag veranderde. Wat rest is een oordeel, geen werk.
+
+Twee dingen die dat oordeel wel raken. Migratie 0007 staat **niet** op de NAS: `GET /info` op
+`web.pleya.app` levert een `capabilities`-object zonder `sessions`-sleutel, dus de draaiende binary is
+ouder dan `c324b7d`. Het deployrisico is niet "iedereen moet opnieuw inloggen" (0007 behoudt elke
+actieve keten, en `TestMigration0007MigratesLegacySessions` bewijst dat), maar dat 0007 hard faalt met
+een `RAISE EXCEPTION` zodra `watch_states.subject` of `stream_sessions.subject` iets anders dan
+`'owner'` bevat, en er is geen neerwaartse migratie. Back-up vooraf, dan deployen.
+
+En twee gaten in het contract die PS-9 heeft blootgelegd en die het gesloten protocolvenster niet mag
+repareren. Er is geen foutcode voor "restricted mag geen manage krijgen": hoofdstuk 16.1 legt het
+verbod vast, het coderegister in 7.1 heeft er niets voor, en `handleSetPermissions` gebruikt daarom
+`auth.user_not_found`, wat klopt onder de 404-regel maar het geval niet benoemt. En er is geen
+endpoint waarmee een client zijn eigen account-id opvraagt: `GET /users` filtert voor `member` en
+`restricted` tot alleen zichzelf, maar een `admin` krijgt iedereen terug en kan zichzelf er niet uit
+halen. De client omzeilt dat nu door op gebruikersnaam te identificeren. Allebei horen in het
+eerstvolgende protocolvenster, met een compatibiliteitstoets langs de zes regels uit hoofdstuk 3.
+
 **DEC-064's hardwareronde afmaken, dan pas naar `main` mergen.** Twee builds staan al klaar: de
 macOS-app draait (`pgrep -f "Pleya.app/Contents/MacOS/Pleya"` bevestigt), en de tvOS-app is
 geïnstalleerd op de echte Apple TV (`nl.michelknoop.pleya`, gelanceerd via `xcrun devicectl device
@@ -197,7 +227,7 @@ hardware-only criterium. Alles slaagt: AC4 sluiten met een Roadmap Drift Check, 
 (inclusief de vijf nog ongepushte lokale commits) mergen naar `main`. Eén regressie: niet mergen,
 eerst repareren op deze branch.
 
-**PS-5 is code complete; de eerstvolgende ontwikkelfase is PS-9** (gebruikers, profielen en
+**PS-5 is code complete; de lopende ontwikkelfase is PS-9** (gebruikers, profielen en
 rechten), volgens de doorloop in `docs/pleya-server-phase-order-deviation.md`. PS-5 blijft
 **opgeleverd, niet gesloten**: acceptatiecriterium 4, geen regressie op echte hardware voor minimaal
 tvOS plus één desktopplatform, staat expliciet open. Er is nu geen tijd voor die ronde, dus de test is
@@ -377,6 +407,25 @@ xcrun devicectl device process launch --console --terminate-existing \
 ```
 
 ## Recente sessies
+
+### 2026-09-03
+
+PS-9 afgemaakt op alle drie de open stappen. De implementatievolgorde waar DEC-066, DEC-071 en
+DEC-072 naar verwijzen als "hoofdstuk 8" stond in geen enkel bestand; hij is uit commit-onderwerpen en
+codecommentaar gereconstrueerd en staat nu bij de PS-9-fasetabel in het architectuurdocument.
+
+Stap 4 bracht de vijf endpoints onder `/users` (DEC-067) en een inlogpad dat elke rij in `users`
+verifieert in plaats van alleen `auth_owner`; zonder dat tweede stuk kon een tweede gebruiker wel
+bestaan maar niet binnenkomen. Stap 6 bracht het intrekkingsregister uit DEC-066, een `copyRange` die
+per blok van 64 KiB kijkt of zijn sessie nog leeft, `GET`/`DELETE /sessions` en `POST /auth/logout`.
+De clientkant kreeg `ProfileKind.pleyaServer` met een resolver die weigert in plaats van naar een
+ander token terug te vallen, en stuurt `device_id`/`device_name` mee zodra de server zegt dat hij ze
+kent.
+
+Bewijs: de Go-suite is groen zonder overgeslagen tests, `verify-protocol.sh` valideert 34 antwoorden
+tegen `openapi.yaml`, `verify-local.sh` doet 78 controles waaronder een tweede gebruiker die één
+bibliotheek ziet en na intrekking meteen buiten staat, `ci_checks.sh` is volledig groen en
+`flutter test` telt 4782 geslaagd. De gemeten revocatielatentie tegen een lopende stream was 446 ms.
 
 ### 2026-09-01
 - DEC-064's PS-5-hardwareronde gestart, vanuit een integratie-gereedheidsaudit die op `main`'s

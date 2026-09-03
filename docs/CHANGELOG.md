@@ -4,6 +4,62 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-03] PS-9 code compleet: gebruikersbeheer, sessie-intrekking en de clientkant
+
+De eerste vondst was er geen in de code maar in de boekhouding. DEC-066, DEC-071 en DEC-072
+verwijzen alle drie naar "stap N van hoofdstuk 8", en hoofdstuk 8 van het PS-9-ontwerp bestaat
+nergens in de repo: die inhoud is geland in DEC-065 tot en met DEC-072 en in hoofdstuk 16 van de
+protocolspecificatie, maar de volgorde zelf is nooit opgeschreven. Hij is gereconstrueerd uit
+commit-onderwerpen (`c324b7d` draagt "PS-9-stap 2" letterlijk) en codecommentaar (`auth/store.go:189`
+noemt stap 3, `watch/store_test.go:22` stap 4, `auth/store.go:281` stap 6), en staat nu als tabel bij
+de PS-9-fasetabel in het architectuurdocument. Drie besluiten die naar iets verwijzen dat niemand kan
+opslaan is een boekhoudfout, geen detail.
+
+**Stap 4 is meer dan vijf endpoints.** DEC-067 vraagt een gebruikersbeheer-API, en die staat er:
+`POST`/`GET /users`, `PATCH`/`DELETE /users/{id}` en `PUT /users/{id}/permissions`. Maar de tests die
+AC1 zouden dekken maakten hun tweede gebruiker met rauwe SQL en mintten hun token rechtstreeks, en
+daardoor viel niet op dat `handleLogin` nog steeds `auth_owner` las en alles weigerde waar
+`req.Username != owner.Username`. Een tweede gebruiker kon dus bestaan en niet binnenkomen. Login
+verifieert nu tegen `users`; een onbekende naam kost evenveel tijd als een fout wachtwoord, want het
+wachtwoord wordt dan alsnog tegen de owner-hash gecontroleerd en de uitkomst weggegooid.
+
+`UpdatePasswordHash` kreeg een `userID` mee. Zonder dat schrijft de herhash na een geslaagde login van
+een huisgenoot de hash van de owner over, wat pas zou opvallen als de owner niet meer binnenkwam.
+
+**Stap 6 is de enige plek waar een grens gemeten moest worden.** Het intrekkingsregister uit DEC-066
+is een set sessie-ids in het geheugen, bij het opstarten gevuld uit `sessions`. Alle drie de
+credentials die geen databaseronde doen raadplegen hem: het accesstoken, het streamtoken en de
+browserstreamsessie. `copyRange` was één `io.CopyN` over de hele range en is een lus geworden met
+blokken van 64 KiB.
+
+De eerste versie van de meting faalde eerlijk op 2,7 seconden, en die uitslag was leerzaam: dat was
+niet de server maar het leeglopen van de buffers die al onderweg waren. De grens uit DEC-066 gaat over
+het moment dat de server stopt met leveren, en dat moment is aan de clientkant niet te zien. De test
+hangt daarom aan de logregel die `copyRange` schrijft als hij afbreekt. Gemeten: **446 ms**, terwijl
+de client daarna nog 2,1 MB uit zijn buffers las.
+
+**De clientkant is de reparatie die hoofdstuk 4.1 al beschreef.** Een Pleya Server-aanmelding maakte
+tot nu toe een `Profile.local`, en `_resolvePlexAuth` eindigt voor een local profile bij het
+Plex-owner-token als het niets beters vindt. Op een toestel met zowel een Plex-account als een Pleya
+Server-aanmelding beantwoordde dat een vraag over de ene identiteit met het credential van de andere.
+`ProfileKind` heeft nu een derde waarde, `PleyaServerCredentialResolver` weigert in plaats van terug
+te vallen, en de binder gebruikt hem vóór hij een client registreert: `MultiServerManager` sleutelt op
+`serverId`, dus twee huisgenoten op dezelfde server zijn één slot en de verkeerde connectie daarin
+zetten faalt niet, het laat de één als de ander browsen. `ProfileConnection.userIdentifier` droeg
+`connection.serverId` en draagt nu de gebruikersnaam: het serverid maakte twee accounts op dezelfde
+machine ononderscheidbaar.
+
+**Twee gaten in het contract, gemeld en niet gerepareerd.** Er is geen foutcode voor "restricted mag
+geen manage krijgen", terwijl hoofdstuk 16.1 het verbod wel vastlegt; `handleSetPermissions` gebruikt
+`auth.user_not_found`, wat onder de 404-regel klopt maar het geval niet benoemt. En er is geen
+endpoint waarmee een client zijn eigen account-id opvraagt, dus de client identificeert zich op
+gebruikersnaam. Het protocolvenster is dicht en een achtste wijziging mag niet; allebei horen in het
+eerstvolgende venster.
+
+Bewijs: Go-suite groen zonder `SKIP`, `check_protocol.sh` groen, `verify-protocol.sh` valideert 34
+antwoorden waaronder `User`, `UserList`, `SessionList` en `LibraryPermissionList`, `verify-local.sh`
+78 controles, `ci_checks.sh` volledig groen, `flutter test` 4782 geslaagd en 1 overgeslagen.
+
 ## [2026-09-01] DEC-064's hardwareronde gestart op echte apparaten
 
 Een integratie-gereedheidsaudit vanaf `main` (zie `main`'s eigen `docs/CHANGELOG.md`) wees uit dat

@@ -35,6 +35,29 @@ under `Notes`.
 - continue_watching en next_up leverden onvoorwaardelijk niets
 <!-- END GENERATED -->
 
+### New
+
+- **A Pleya Server can now be shared by a household.** The owner adds an account per person and
+  decides which libraries each of them sees. A library somebody has no access to does not show
+  up in their list, in their search results, or when they open a link straight to it. Watch
+  position, resume and Continue Watching are per person, so two people watching the same film
+  keep their own place in it.
+- **Four roles, and one rung of access per library.** The owner and administrators see every
+  library. A member sees the libraries they were given. A restricted account is a member with
+  three differences: it cannot be given management rights, only an owner or administrator sets
+  its password, and it sees no one but itself in the account list. Adding accounts and setting
+  their libraries runs over the server API for now; `pleya_server/README.md` has the commands.
+  The screen for it comes with the management interface.
+- **Signing in registers the device, not just the account.** Each device gets its own session,
+  which means signing out on a phone that was lost leaves the television logged in. The owner
+  can see and end anyone's sessions; everyone else sees and ends their own.
+
+### Improved
+
+- **Ending a session takes effect while a film is playing.** A revoked session stops the stream
+  it was feeding rather than letting it run to the end of the file. Measured at under half a
+  second on the test rig, against a documented ceiling of two seconds.
+
 ## 2.8.0 · build 242 · 23 August 2026
 
 <!-- commit: aa74004 -->
