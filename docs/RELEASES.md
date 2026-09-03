@@ -25,6 +25,8 @@ under `Notes`.
 - migratie 0007, sessie-scoped tokenketen en begrensde loginlimiter (PS-9-stap 2)
 - scope watch state to authenticated users
 - PS-9 AC2, volledige autorisatiematrix en DEC-065-alignment
+- PS-9 stap 4 en 6, gebruikersbeheer en sessie-intrekking
+- PS-9-clientkant, een eigen profielsoort voor Pleya Server
 
 ### Fixed
 - "Opnieuw aanmelden" probeert eerst één echte refresh
