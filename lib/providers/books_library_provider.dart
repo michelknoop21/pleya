@@ -10,16 +10,6 @@ import '../utils/app_logger.dart';
 /// come from.
 typedef BooksProbe = Future<bool> Function();
 
-/// Whether this build ships the e-book surfaces at all.
-///
-/// The e-book data layer does not exist yet; this branch builds the navigation
-/// that it will land in. Until the real source is wired, the default probe
-/// answers from this compile-time flag, so a production build behaves exactly
-/// as it did before ([BooksAvailability.unavailable], fourth slot goes to Live
-/// TV / Watchlist / Downloads) while a Verify or development build can prove
-/// the Boeken slot end to end with `--dart-define=PLEYA_BOOKS=true`.
-const bool kBooksEnabled = bool.fromEnvironment('PLEYA_BOOKS');
-
 /// Tri-state availability of the profile's e-books, for
 /// [PrimaryMobileDestinationPolicy].
 ///
@@ -29,7 +19,10 @@ const bool kBooksEnabled = bool.fromEnvironment('PLEYA_BOOKS');
 class BooksLibraryProvider extends ChangeNotifier {
   BooksLibraryProvider({BooksProbe? probe}) : _probe = probe ?? _defaultProbe;
 
-  static Future<bool> _defaultProbe() async => kBooksEnabled;
+  /// No source, no books. The profile session passes a probe backed by the
+  /// build's real [BooksSource]; this default only covers a provider built
+  /// without one, which is a test or a shell with no session.
+  static Future<bool> _defaultProbe() async => false;
 
   final BooksProbe _probe;
 

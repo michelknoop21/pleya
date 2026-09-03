@@ -1847,5 +1847,15 @@
   "unifiedCatalog": {
     "moviesTitle": "Movies",
     "seriesTitle": "Series"
+  },
+  "books": {
+    "allBooks": "All books",
+    "continueReading": "Continue reading",
+    "recentlyAdded": "Recently added",
+    "bookSeries": "Book series",
+    "seeAll": "See all",
+    "percentRead": "${percent}%",
+    "bookCount": "${count} books",
+    "oneBook": "1 book"
   }
 }

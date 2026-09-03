@@ -14,6 +14,8 @@ import '../focus/key_event_utils.dart';
 import '../media/ids.dart';
 import '../media/media_server_client.dart';
 import '../profiles/active_profile_provider.dart';
+import '../books/books_source.dart';
+import '../providers/books_home_provider.dart';
 import '../providers/books_library_provider.dart';
 import '../providers/companion_remote_provider.dart';
 import '../providers/discover_provider.dart';
@@ -99,6 +101,8 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
       builder: (context, activeProfile, _) {
         final activeId = activeProfile.activeId;
         final initialPromptHandled = widget.initialPromptHandled || _hasBuiltSession;
+        // Which books source this build has is decided once, at build time.
+        final booksSource = createBooksSource();
         return KeyedSubtree(
           key: ValueKey<String?>('profile-session:$activeId'),
           child: MultiProvider(
@@ -330,9 +334,15 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               // navigation policy asks this provider whether the acting user
               // has e-books, and a provider carried across a switch would
               // answer for the previous one.
+              // One source, two readers: the navigation policy asks whether
+              // there are books at all, the home screen asks what they are.
+              Provider<BooksSource>.value(value: booksSource),
               ChangeNotifierProvider<BooksLibraryProvider>(
-                create: (_) => BooksLibraryProvider()..refresh(profileId: activeId),
+                create: (_) =>
+                    BooksLibraryProvider(probe: () async => (await booksSource.books()).isNotEmpty)
+                      ..refresh(profileId: activeId),
               ),
+              ChangeNotifierProvider<BooksHomeProvider>(create: (_) => BooksHomeProvider(source: booksSource)),
               // The kijklijst is rebuilt per profile: its sources, its cache
               // keys and its snapshot are all scoped to the acting user, and a
               // provider carried across a switch would serve the previous

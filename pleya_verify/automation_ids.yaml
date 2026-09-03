@@ -15,6 +15,18 @@ ids:
   - id: screen.libraries
     role: screen
     instanceable: false
+  - id: screen.books
+    role: screen
+    instanceable: false
+  - id: books.rail.continue
+    role: rail
+    instanceable: false
+  - id: books.rail.recent
+    role: rail
+    instanceable: false
+  - id: books.rail.series
+    role: rail
+    instanceable: false
   - id: screen.media_detail
     role: screen
     instanceable: false

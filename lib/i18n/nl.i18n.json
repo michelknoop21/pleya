@@ -1776,5 +1776,15 @@
   "unifiedCatalog": {
     "moviesTitle": "Films",
     "seriesTitle": "Series"
+  },
+  "books": {
+    "allBooks": "Alle boeken",
+    "continueReading": "Verder lezen",
+    "recentlyAdded": "Recent toegevoegd",
+    "bookSeries": "Boekenseries",
+    "seeAll": "Alles bekijken",
+    "percentRead": "${percent}%",
+    "bookCount": "${count} boeken",
+    "oneBook": "1 boek"
   }
 }

@@ -320,9 +320,12 @@ alleen in hoe de connection gebouwd wordt.
 
 Body: `{"screen": "screen.discover", "timeoutMs": 5000}`. `screen` is een id
 uit `GET /v1/automation_ids`. Op dit moment ondersteund: `screen.main` (geen
-tabwissel nodig, altijd gemount), `screen.discover` en `screen.libraries`
-(wisselen via dezelfde `_selectTab` als de zijbalk/tabbar, nooit een tweede
-navigatiepad). `screen.media_detail` heeft nog geen item-parameter en geeft
+tabwissel nodig, altijd gemount), `screen.discover`, `screen.libraries` en
+`screen.books` (wisselen via dezelfde `_selectTab` als de zijbalk/tabbar,
+nooit een tweede navigatiepad). `screen.books` bestaat alleen in een build met
+`--dart-define=PLEYA_BOOKS=true`; zonder die define is er geen Boeken-tab en
+geeft dit endpoint dezelfde duidelijke 400 als bij elk ander niet-bereikbaar
+scherm. `screen.media_detail` heeft nog geen item-parameter en geeft
 dus een duidelijke 400 in plaats van te raden.
 
 Gebruikt `profileNavigationRegistry`'s context (`lib/navigation/

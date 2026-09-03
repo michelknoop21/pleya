@@ -258,6 +258,10 @@ Future<Map<String, Object?>> _persistConnectionAndBindProfile(
 const Map<String, NavigationTabId> _screenToTab = {
   AutomationIds.screenDiscover: NavigationTabId.discover,
   AutomationIds.screenLibraries: NavigationTabId.libraries,
+  // Boeken is reachable the same way, and has to be: the mobile bar is driven
+  // by pointer taps, and `tap` only takes coordinates. Without this a scenario
+  // could assert that the Boeken slot exists but never open what is behind it.
+  AutomationIds.screenBooks: NavigationTabId.books,
 };
 
 /// `POST /v1/open` body: `{"screen": "screen.discover", "timeoutMs"?}`.
@@ -281,8 +285,9 @@ Future<Map<String, Object?>> handleAutomationOpen(Map<String, Object?> body) asy
     return {'ok': false, 'error': 'no profile session is mounted yet — sign in first'};
   }
 
+  NavigationTabId? tab;
   if (screen != AutomationIds.screenMain) {
-    final tab = _screenToTab[screen];
+    tab = _screenToTab[screen];
     if (tab == null) {
       return {'ok': false, 'error': 'unsupported screen "$screen" — no nav-tab mapping registered for it yet'};
     }
@@ -299,5 +304,12 @@ Future<Map<String, Object?>> handleAutomationOpen(Map<String, Object?> body) asy
     if (DateTime.now().isAfter(deadline))
       return {'ok': false, 'error': 'timeout waiting for "$screen" to become ready'};
     await Future<void>.delayed(const Duration(milliseconds: 100));
+    // Ask again on every turn. `_selectTab` ignores a destination that is not
+    // visible yet, and a capability-gated one (Boeken, Live TV, Kijklijst)
+    // becomes visible only once its source has answered — which can be after
+    // this call started. One attempt would make those destinations openable or
+    // not depending on timing; this makes the endpoint's promise, "returns
+    // when the screen is ready", true for them too.
+    if (tab != null) AutomationNavigationHooks.instance.selectTab(tab);
   }
 }

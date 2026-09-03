@@ -95,6 +95,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTautulliNl tautulli = _TranslationsTautulliNl._(_root);
 	@override late final _TranslationsNowWatchingNl nowWatching = _TranslationsNowWatchingNl._(_root);
 	@override late final _TranslationsUnifiedCatalogNl unifiedCatalog = _TranslationsUnifiedCatalogNl._(_root);
+	@override late final _TranslationsBooksNl books = _TranslationsBooksNl._(_root);
 }
 
 // Path: states
@@ -2065,6 +2066,23 @@ class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
 	// Translations
 	@override String get moviesTitle => 'Films';
 	@override String get seriesTitle => 'Series';
+}
+
+// Path: books
+class _TranslationsBooksNl extends TranslationsBooksEn {
+	_TranslationsBooksNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get allBooks => 'Alle boeken';
+	@override String get continueReading => 'Verder lezen';
+	@override String get recentlyAdded => 'Recent toegevoegd';
+	@override String get bookSeries => 'Boekenseries';
+	@override String get seeAll => 'Alles bekijken';
+	@override String percentRead({required Object percent}) => '${percent}%';
+	@override String bookCount({required Object count}) => '${count} boeken';
+	@override String get oneBook => '1 boek';
 }
 
 // Path: search.filters
@@ -4070,6 +4088,14 @@ extension on TranslationsNl {
 			'nowWatching.sidebarLabel' => 'Nu aan het kijken',
 			'unifiedCatalog.moviesTitle' => 'Films',
 			'unifiedCatalog.seriesTitle' => 'Series',
+			'books.allBooks' => 'Alle boeken',
+			'books.continueReading' => 'Verder lezen',
+			'books.recentlyAdded' => 'Recent toegevoegd',
+			'books.bookSeries' => 'Boekenseries',
+			'books.seeAll' => 'Alles bekijken',
+			'books.percentRead' => ({required Object percent}) => '${percent}%',
+			'books.bookCount' => ({required Object count}) => '${count} boeken',
+			'books.oneBook' => '1 boek',
 			_ => null,
 		};
 	}

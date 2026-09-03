@@ -17,6 +17,10 @@ class AutomationIds {
   static const String screenMain = 'screen.main';
   static const String screenDiscover = 'screen.discover';
   static const String screenLibraries = 'screen.libraries';
+
+  /// Boeken-home (approved golden 01b). Ready once its source has answered,
+  /// so a scenario waits for content rather than for a first frame.
+  static const String screenBooks = 'screen.books';
   static const String screenMediaDetail = 'screen.media_detail';
 
   /// The nav rail as a whole — bounds for collapse/expand geometry checks.
@@ -29,6 +33,11 @@ class AutomationIds {
   /// One pinned library row on the nav rail. Instanceable: one per visible
   /// library, suffixed `[<globalKey>]`.
   static const String sidebarLibraryRow = 'sidebar.library_row';
+
+  /// Boeken-home's three rails, in the order golden 01b puts them.
+  static const String booksRailContinue = 'books.rail.continue';
+  static const String booksRailRecent = 'books.rail.recent';
+  static const String booksRailSeries = 'books.rail.series';
 
   /// The library grid/list scrollable itself (either view mode).
   static const String libraryGrid = 'library.grid';
@@ -71,6 +80,10 @@ class AutomationIds {
     {'id': screenMain, 'role': 'screen', 'instanceable': false},
     {'id': screenDiscover, 'role': 'screen', 'instanceable': false},
     {'id': screenLibraries, 'role': 'screen', 'instanceable': false},
+    {'id': screenBooks, 'role': 'screen', 'instanceable': false},
+    {'id': booksRailContinue, 'role': 'rail', 'instanceable': false},
+    {'id': booksRailRecent, 'role': 'rail', 'instanceable': false},
+    {'id': booksRailSeries, 'role': 'rail', 'instanceable': false},
     {'id': screenMediaDetail, 'role': 'screen', 'instanceable': false},
     for (final tab in NavigationTabId.values) {'id': navTab(tab), 'role': 'nav', 'instanceable': false},
     {'id': navBar, 'role': 'nav', 'instanceable': false},

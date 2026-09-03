@@ -96,6 +96,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsAddLocalFolderEn addLocalFolder = TranslationsAddLocalFolderEn.internal(_root);
 	late final TranslationsPleyaShareEn pleyaShare = TranslationsPleyaShareEn.internal(_root);
 	late final TranslationsUnifiedCatalogEn unifiedCatalog = TranslationsUnifiedCatalogEn.internal(_root);
+	late final TranslationsBooksEn books = TranslationsBooksEn.internal(_root);
 }
 
 // Path: states
@@ -5174,6 +5175,39 @@ class TranslationsUnifiedCatalogEn {
 	String get seriesTitle => 'Series';
 }
 
+// Path: books
+class TranslationsBooksEn {
+	TranslationsBooksEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'All books'
+	String get allBooks => 'All books';
+
+	/// en: 'Continue reading'
+	String get continueReading => 'Continue reading';
+
+	/// en: 'Recently added'
+	String get recentlyAdded => 'Recently added';
+
+	/// en: 'Book series'
+	String get bookSeries => 'Book series';
+
+	/// en: 'See all'
+	String get seeAll => 'See all';
+
+	/// en: '${percent}%'
+	String percentRead({required Object percent}) => '${percent}%';
+
+	/// en: '${count} books'
+	String bookCount({required Object count}) => '${count} books';
+
+	/// en: '1 book'
+	String get oneBook => '1 book';
+}
+
 // Path: search.filters
 class TranslationsSearchFiltersEn {
 	TranslationsSearchFiltersEn.internal(this._root);
@@ -7606,6 +7640,14 @@ extension on Translations {
 			'pleyaShare.scanningSubnet' => 'Scanning the network…',
 			'unifiedCatalog.moviesTitle' => 'Movies',
 			'unifiedCatalog.seriesTitle' => 'Series',
+			'books.allBooks' => 'All books',
+			'books.continueReading' => 'Continue reading',
+			'books.recentlyAdded' => 'Recently added',
+			'books.bookSeries' => 'Book series',
+			'books.seeAll' => 'See all',
+			'books.percentRead' => ({required Object percent}) => '${percent}%',
+			'books.bookCount' => ({required Object count}) => '${count} books',
+			'books.oneBook' => '1 book',
 			_ => null,
 		};
 	}

@@ -123,9 +123,25 @@ class IosSimulatorDriver implements VerificationDriver {
     return DriverDoctorReport(ready: ready, checks: checks);
   }
 
+  /// Whether this build carries the e-book source.
+  ///
+  /// Off by default, so the bar's fourth slot keeps falling to Downloads and
+  /// `mobile.nav.primary` still measures what it says it measures. A scenario
+  /// about Boeken is run with `PLEYA_VERIFY_BOOKS=1` in the environment, the
+  /// same shape as the existing `PLEYA_VERIFY_IOS_UDID` override. It cannot be
+  /// a scenario field: this is a compile-time define, and the build happens
+  /// before any scenario is read.
+  static bool get _booksEnabled {
+    final value = Platform.environment['PLEYA_VERIFY_BOOKS']?.toLowerCase();
+    return value == '1' || value == 'true' || value == 'yes';
+  }
+
   @override
   Future<void> build() async {
-    _log('flutter build ios --simulator --debug --dart-define=PLEYA_VERIFY=true');
+    _log(
+      'flutter build ios --simulator --debug --dart-define=PLEYA_VERIFY=true'
+      '${_booksEnabled ? ' --dart-define=PLEYA_BOOKS=true' : ''}',
+    );
     final gitCommit = await _gitCommit();
     final result = await _run('flutter', [
       'build',
@@ -133,6 +149,7 @@ class IosSimulatorDriver implements VerificationDriver {
       '--simulator',
       '--debug',
       '--dart-define=PLEYA_VERIFY=true',
+      if (_booksEnabled) '--dart-define=PLEYA_BOOKS=true',
       if (gitCommit != null) '--dart-define=GIT_COMMIT=$gitCommit',
     ], workingDirectory: repoRoot.path);
     _log(result.stdout.toString());

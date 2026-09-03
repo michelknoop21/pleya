@@ -68,7 +68,7 @@ import '../utils/desktop_window_padding.dart';
 import '../widgets/side_navigation_rail.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/key_event_utils.dart';
-import 'books/books_placeholder_screen.dart';
+import 'books/books_home_screen.dart';
 import 'discover_screen.dart';
 import 'discover_scope.dart';
 import 'libraries/library_quick_picker_sheet.dart';
@@ -1086,12 +1086,11 @@ class _MainScreenState extends State<MainScreen>
         switch (tab.id) {
           NavigationTabId.discover => DiscoverScreen(key: _discoverKey),
           // Series and Films are the same Home surface with a type filter,
-          // not two copies of it (DEC-069). Boeken is a placeholder until its
-          // own schermgolden is approved; it only reaches a build at all with
-          // `--dart-define=PLEYA_BOOKS=true`.
+          // not two copies of it (DEC-069). Boeken is its own screen, built
+          // against approved golden 01b.
           NavigationTabId.series => DiscoverScreen(key: _seriesKey, scope: DiscoverScope.series),
           NavigationTabId.movies => DiscoverScreen(key: _moviesKey, scope: DiscoverScope.movies),
-          NavigationTabId.books => const BooksPlaceholderScreen(),
+          NavigationTabId.books => const BooksHomeScreen(),
           NavigationTabId.libraries => LibrariesScreen(
             key: _librariesKey,
             onLibraryOrderChanged: _onLibraryOrderChanged,
