@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
@@ -174,21 +176,28 @@ class TvNavigationCoordinator extends ChangeNotifier {
   /// Re-pushing the route already on top is a no-op: a second Select on a tile
   /// that is already open must not stack two copies of the same screen, which
   /// would then need two Backs to leave.
-  void pushNested(TvDestinationId id, TvNestedRoute route) {
+  /// Returns the route that ends up on top, which is [route] itself unless the
+  /// push was the discarded duplicate — then it is the one already there. A
+  /// caller awaiting [TvNestedRoute.result] has to await the route that will
+  /// actually be popped, and on a duplicate that is not the object it passed
+  /// in. Handing back the loser would leave that caller waiting forever.
+  TvNestedRoute pushNested(TvDestinationId id, TvNestedRoute route) {
     final stack = _nested.putIfAbsent(id, () => []);
-    if (stack.isNotEmpty && stack.last.id == route.id) return;
+    if (stack.isNotEmpty && stack.last.id == route.id) return stack.last;
     stack.add(route);
     notifyListeners();
+    return route;
   }
 
   /// Pops the active destination's top nested route and returns it, so the
   /// caller can restore the focus it came from. Null when there was nothing to
   /// pop — the signal to fall through to the next step of the back chain
   /// rather than swallow the press.
-  TvNestedRoute? popNested() {
+  TvNestedRoute? popNested([Object? result]) {
     final stack = _nested[_active];
     if (stack == null || stack.isEmpty) return null;
     final popped = stack.removeLast();
+    popped.completeResult(result);
     notifyListeners();
     return popped;
   }
@@ -198,6 +207,15 @@ class TvNavigationCoordinator extends ChangeNotifier {
   /// staying on screen for the next.
   void clearNestedRoutes() {
     if (_nested.isEmpty) return;
+    // Whoever pushed one of these is still holding its future. Dropping the
+    // stack without completing them leaves an `await` that never returns, and
+    // the caller that opened a settings subpage would sit on it for the rest of
+    // the session.
+    for (final stack in _nested.values) {
+      for (final route in stack) {
+        route.completeResult(null);
+      }
+    }
     _nested.clear();
     notifyListeners();
   }
@@ -293,9 +311,16 @@ class TvDestinationFocusMemory {
 ///
 /// So nesting is explicit and opt-in: a caller that wants to stay inside the
 /// shell pushes one of these, and everything else keeps going to the profile
-/// navigator `ProfileSessionScreen` owns, unchanged. Hoofdstuk 33's shared
-/// shell is binding on all eight references, which is why "Alle films" belongs
-/// here and a detail page does not.
+/// navigator `ProfileSessionScreen` owns, unchanged.
+///
+/// **What changed on 3 September 2026.** The second half of that reasoning is
+/// gone. It read "which is why 'Alle films' belongs here and a detail page does
+/// not", and PB-1 of `docs/tvos-redesign-implementatiecontract.md` decided the
+/// opposite: the approved detail, collection, person and settings surfaces keep
+/// the top bar. The *mechanism* is untouched — this is still not a `Navigator`,
+/// and back is still two distinct steps — but the set of screens that belong
+/// here now includes content. Callers reach it through
+/// `tv_content_route_registry.dart` rather than by finding a navigator.
 class TvNestedRoute {
   TvNestedRoute({required this.id, required this.builder, this.restoreFocusKey, this.screenKey});
 
@@ -328,4 +353,19 @@ class TvNestedRoute {
   /// key made inside `builder` would be new on every rebuild and would resolve
   /// to a state nobody else can reach.
   final GlobalKey<TvNestedSurfaceState> surfaceKey = GlobalKey<TvNestedSurfaceState>();
+
+  final Completer<Object?> _result = Completer<Object?>();
+
+  /// Completes when this route leaves the stack, with whatever it was popped
+  /// with. The nested-stack answer to what `Navigator.push` returns, so a
+  /// caller that used to await a pushed route keeps the same shape.
+  Future<Object?> get result => _result.future;
+
+  /// Idempotent: a route can be popped once, but `clearNestedRoutes` sweeps
+  /// whatever is left and must not throw on a stack that was already emptied
+  /// one route at a time.
+  void completeResult(Object? value) {
+    if (_result.isCompleted) return;
+    _result.complete(value);
+  }
 }

@@ -79,7 +79,17 @@ extension _SettingsTvPage on _SettingsScreenState {
       if (trackers.isSimklConnected) t.trackers.services.simkl,
     ];
 
-    void open(WidgetBuilder builder) => Navigator.push(context, MaterialPageRoute<void>(builder: builder));
+    // PB-1: a settings subpage keeps the top bar. `SettingsScreen` is itself a
+    // nested route already (`tvMyPleyaNestedRoute`), so pushing its own
+    // subpages on the profile navigator meant the child escaped a shell the
+    // parent had stayed inside — the bar was on screen right up until you
+    // opened Uiterlijk. Falls back to the ordinary push when no TV shell is
+    // listening, which is every other platform and every test that mounts this
+    // page on its own.
+    void open(String id, WidgetBuilder builder) {
+      if (openTvContentRoute(id: 'tvSettings_$id', builder: builder) != null) return;
+      Navigator.push(context, MaterialPageRoute<void>(builder: builder));
+    }
 
     // Rebuilds when any preference a tile shows the state of changes. Without
     // this the tile would keep drawing the value it was built with, because
@@ -126,28 +136,28 @@ extension _SettingsTvPage on _SettingsScreenState {
                     value:
                         '${themeProvider.themeModeDisplayName} · '
                         '${t.settings.libraryDensity} ${_settingsService.read(settings.SettingsService.libraryDensity)}',
-                    onSelect: () => open((_) => const AppearanceSettingsScreen()),
+                    onSelect: () => open('appearance', (_) => const AppearanceSettingsScreen()),
                   ),
                   TvMenuItem(
                     key: _SettingsScreenState._kLibraryVisibility,
                     icon: Symbols.video_library_rounded,
                     title: t.settings.libraryVisibility,
                     subtitle: t.settings.libraryVisibilityDescription,
-                    onSelect: () => open((_) => const LibraryVisibilityScreen()),
+                    onSelect: () => open('libraryVisibility', (_) => const LibraryVisibilityScreen()),
                   ),
                   TvMenuItem(
                     key: _SettingsScreenState._kHomeLayout,
                     icon: Symbols.dashboard_customize_rounded,
                     title: t.settings.homeLayout,
                     subtitle: t.settings.homeLayoutDescription,
-                    onSelect: () => open((_) => const HomeLayoutScreen()),
+                    onSelect: () => open('homeLayout', (_) => const HomeLayoutScreen()),
                   ),
                   TvMenuItem(
                     key: _SettingsScreenState._kPlayback,
                     icon: Symbols.play_circle_rounded,
                     title: t.settings.videoPlayback,
                     subtitle: t.settings.videoPlaybackDescription,
-                    onSelect: () => open((_) => const PlaybackSettingsScreen()),
+                    onSelect: () => open('playback', (_) => const PlaybackSettingsScreen()),
                   ),
                   TvMenuItem(
                     key: _SettingsScreenState._kTrackers,
@@ -155,7 +165,7 @@ extension _SettingsTvPage on _SettingsScreenState {
                     title: t.settings.trackers,
                     value: connectedTrackers.isEmpty ? null : connectedTrackers.join(' · '),
                     subtitle: connectedTrackers.isEmpty ? t.settings.trackersDescription : null,
-                    onSelect: () => open((_) => const TrackersSettingsScreen()),
+                    onSelect: () => open('trackers', (_) => const TrackersSettingsScreen()),
                   ),
                   TvMenuItem(
                     key: _SettingsScreenState._kRequests,
@@ -163,7 +173,7 @@ extension _SettingsTvPage on _SettingsScreenState {
                     title: t.settings.requests,
                     value: seerr.isConfigured ? (seerr.host ?? t.settings.requests) : null,
                     subtitle: seerr.isConfigured ? null : t.settings.requestsDescription,
-                    onSelect: () => open((_) => const SeerrSettingsScreen()),
+                    onSelect: () => open('requests', (_) => const SeerrSettingsScreen()),
                   ),
                   if (ownsAPlexServer)
                     TvMenuItem(
@@ -174,7 +184,7 @@ extension _SettingsTvPage on _SettingsScreenState {
                           ? (tautulli.serverName ?? tautulli.host ?? t.tautulli.connected)
                           : null,
                       subtitle: tautulli.isConfigured ? null : t.tautulli.subtitle,
-                      onSelect: () => open((_) => const TautulliSettingsScreen()),
+                      onSelect: () => open('tautulli', (_) => const TautulliSettingsScreen()),
                     ),
                 ],
               ),
@@ -190,15 +200,17 @@ extension _SettingsTvPage on _SettingsScreenState {
                         : t.connections.addConnectionSubtitleScoped(
                             displayName: context.read<ActiveProfileProvider>().active!.displayName,
                           ),
-                    onSelect: () =>
-                        open((_) => AddConnectionScreen(targetProfile: context.read<ActiveProfileProvider>().active)),
+                    onSelect: () => open(
+                      'addConnection',
+                      (_) => AddConnectionScreen(targetProfile: context.read<ActiveProfileProvider>().active),
+                    ),
                   ),
                   TvMenuItem(
                     key: 'settings_pleya_share',
                     icon: Symbols.share_rounded,
                     title: t.pleyaShare.hostTitle,
                     subtitle: t.pleyaShare.hostToggle,
-                    onSelect: () => open((_) => const PleyaShareHostScreen()),
+                    onSelect: () => open('pleyaShareHost', (_) => const PleyaShareHostScreen()),
                   ),
                   TvMenuItem(
                     key: 'settings_profiles',
@@ -249,7 +261,8 @@ extension _SettingsTvPage on _SettingsScreenState {
                       icon: Symbols.keyboard_rounded,
                       title: t.settings.videoPlayerControls,
                       subtitle: t.settings.keyboardShortcutsDescription,
-                      onSelect: () => open((_) => KeyboardShortcutsScreen(keyboardService: _keyboardService!)),
+                      onSelect: () =>
+                          open('keyboardShortcuts', (_) => KeyboardShortcutsScreen(keyboardService: _keyboardService!)),
                     ),
                     _tvToggle(
                       key: _SettingsScreenState._kVideoPlayerNavigation,
@@ -286,7 +299,7 @@ extension _SettingsTvPage on _SettingsScreenState {
                     icon: Symbols.article_rounded,
                     title: t.settings.viewLogs,
                     subtitle: t.settings.viewLogsDescription,
-                    onSelect: () => open((_) => const LogsScreen()),
+                    onSelect: () => open('logs', (_) => const LogsScreen()),
                   ),
                   TvMenuItem(
                     key: _SettingsScreenState._kClearCache,
@@ -351,7 +364,7 @@ extension _SettingsTvPage on _SettingsScreenState {
                     icon: Symbols.info_rounded,
                     title: t.settings.about,
                     subtitle: t.settings.aboutDescription,
-                    onSelect: () => open((_) => const TvAboutScreen()),
+                    onSelect: () => open('about', (_) => const TvAboutScreen()),
                   ),
                 ],
               ),

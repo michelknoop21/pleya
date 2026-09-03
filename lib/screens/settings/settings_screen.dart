@@ -66,6 +66,7 @@ import '../../widgets/loading_indicator_box.dart';
 import '../../widgets/tv/tv_menu_grid.dart';
 import '../../widgets/tv/tv_page_surface.dart';
 import '../tv/sections/tv_about_screen.dart';
+import '../../navigation/tv/tv_content_route_registry.dart';
 
 part 'parts/settings_tv_page.dart';
 

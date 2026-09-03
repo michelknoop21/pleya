@@ -1762,3 +1762,46 @@ klemmen op `keys.last` vanuit elke kolom deed.
 Drie regressietests in `test/screens/tv/tv_my_pleya_screen_test.dart` leggen dit vast, en ze zijn met
 een negatieve controle nagelopen: alle drie worden rood zodra de oude implementatie wordt
 teruggezet.
+
+## DEC-091: Een TV-contentroute opent binnen de shell, via een registry en niet via een tweede Navigator
+
+**Nummer.** DEC-090 is op `feat/netflix-mobile` al vergeven aan de iOS-northstar. Die branch is
+niet samengevoegd, dus het nummer wordt hier overgeslagen in plaats van een tweede keer gebruikt.
+
+**Context.** De mockups 09 tot en met 25 zijn op 3 september 2026 goedgekeurd
+(`docs/tvos-redesign-09-25-approved.md`). PB-1 van het implementatiecontract zegt dat de
+heringerichte TV-contentroutes de topnav houden: filmdetail, seriedetail, collectie, persoon en
+de Instellingen-subpagina's. Die worden vandaag op de `ProfileSessionNavigator` gepusht en dekken
+de shell volledig af.
+
+**Wat DEC-069 hier al over zei.** Dat besluit weigerde een `Navigator` binnen de shell, met twee
+argumenten. Het eerste is dat `Navigator.push` de dichtstbijzijnde navigator vindt, dus een
+navigator in de contentbox zou elke `navigateToMediaItem` impliciet opvangen. Het tweede is dat
+`Navigator.pop` dan stap 2 en stap 3 van de terugketen uit hoofdstuk 7.5 niet meer uit elkaar
+houdt. Allebei gelden nog. De conclusie die DEC-069 eraan verbond, dat een detailpagina daarom
+niet in de geneste stapel hoort, geldt niet meer: dat was een uitspraak over welke schermen erin
+horen, niet over het mechanisme.
+
+**Besluit.** Het mechanisme blijft de geneste routestapel die géén Navigator is. Wat verandert is
+hoe een aanroeper erbij komt. `lib/navigation/tv/tv_content_route_registry.dart` is één
+procesbrede registry waar `MainScreen` zijn push publiceert zolang de TV-shell staat. Een
+aanroeper vraagt er expliciet om, en krijgt `null` wanneer er geen shell luistert. Dat null is de
+kern van de vorm: elke aanroeper schrijft het shellpad en het gewone pad naast elkaar, en niemand
+hoeft te weten wat een TV-shell is behalve dat hij er kan zijn.
+
+**Waarom expliciet en niet impliciet.** Een tweede `Navigator` zou hetzelfde bereiken zonder dat
+iemand het opschrijft, en precies daar zit het verschil. Bij een registry staat in de aanroeper
+te lezen dat hij binnen de shell wil openen; bij een navigator gebeurt dat door de plaats in de
+boom, en dan is de enige manier om te weten welk pad een push neemt, uitzoeken welke navigator
+toevallig het dichtst bij staat.
+
+**Gevolgen.** `TvNestedRoute` heeft een resultaat gekregen, zodat een aanroeper die eerst een
+`Navigator.push` afwachtte dezelfde vorm houdt. `pushNested` geeft terug welke route bovenop komt
+te liggen, want bij een genegeerde dubbele push is dat niet het object dat de aanroeper meegaf.
+`clearNestedRoutes` sluit bij een profielwissel elk openstaand resultaat af.
+
+**Uitzonderingen.** De speler in fullscreen, authenticatie, de profielselectiepoort, het native
+tvOS-toetsenbord en echte modale presentatie houden de volledige-venster route.
+
+**Bewijs.** `test/screens/tv/tv_content_route_test.dart`. De eerste test is de negatieve controle
+en legt het oude gedrag vast: na een volledige-venster push is niets in de balk nog bereikbaar.

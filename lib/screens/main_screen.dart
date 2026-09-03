@@ -16,6 +16,7 @@ import '../services/account_ui_actions.dart';
 import '../navigation/tv/tv_destination.dart';
 import '../navigation/tv/tv_live_tv_capability.dart';
 import '../navigation/tv/tv_content_focus_authority.dart';
+import '../navigation/tv/tv_content_route_registry.dart';
 import '../navigation/tv/tv_navigation_coordinator.dart';
 import '../navigation/tv/tv_nested_surface.dart';
 import 'tv/tv_movies_screen.dart';
@@ -577,6 +578,11 @@ class _MainScreenState extends State<MainScreen>
     // live poll knows and gains the remembered slot a moment later — the one
     // direction that cannot hide a destination someone was aiming at.
     if (_isTvShell) {
+      // PB-1: the approved detail, collection, person and settings surfaces keep
+      // the top bar, so the pushes that used to go full-window over the shell
+      // come here instead. Registered only on TV, so every other platform keeps
+      // the profile navigator untouched.
+      tvContentRouteRegistry.attach(_pushTvContentRoute);
       _tvNav.syncToTab(_currentTab);
       _syncTvDestinations();
       unawaited(_loadTvLiveTvCapability());
@@ -1156,6 +1162,7 @@ class _MainScreenState extends State<MainScreen>
 
   @override
   void dispose() {
+    tvContentRouteRegistry.detach(_pushTvContentRoute);
     if (kPleyaVerify) {
       AutomationNavigationHooks.instance.unregisterSelectTab(_selectTab);
     }
@@ -1999,6 +2006,29 @@ class _MainScreenState extends State<MainScreen>
         _focusTvNestedRoute();
       },
     );
+  }
+
+  /// Opens a content route inside the destination that is already active.
+  ///
+  /// [_openTvNestedRoute] activates a destination first, because its callers
+  /// know which one they mean: "Alle films" belongs to Films, a Mijn
+  /// Pleya section to Mijn Pleya. A content route has no such destination of
+  /// its own — a detail page opened from a Kijklijst card belongs to Mijn
+  /// Pleya, the same page opened from a Films rail belongs to Films — so it
+  /// opens where the remote already is, and the lit pill does not move under it.
+  Future<Object?> _pushTvContentRoute(TvNestedRoute route) {
+    final destination = _tvNav.active;
+    // Await the route that ends up on top: a re-push of the id already there is
+    // discarded, and it is that one which will be popped.
+    final live = _tvNav.pushNested(destination, route);
+    _focus.focusContent(
+      restorePreviousFocus: false,
+      focusDefault: () {
+        if (!mounted) return;
+        _focusTvNestedRoute();
+      },
+    );
+    return live.result;
   }
 
   /// Puts the focus inside the nested route currently on top, once it exists.
