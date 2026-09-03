@@ -47,6 +47,24 @@ void main() {
     expect(errors.single.message, contains('requires a timeout field'));
   });
 
+  test('an assert with a mistyped predicate name is rejected', () {
+    // The false-PASS this guards: presence succeeds, no handler recognizes
+    // `focussed`, so the step evaluates nothing and reports green. An assert
+    // that checks nothing is worse than a missing assert — it leaves a
+    // passing verdict in the manifest for a claim never made.
+    final scenario = parseScenarioFile(File('test/fixtures/invalid_assert_unknown_predicate.yaml'));
+    final errors = validateScenario(scenario, catalog);
+    expect(errors, hasLength(1));
+    expect(errors.single.message, contains("'focussed'"));
+  });
+
+  test('an assert whose focused value is not a boolean is rejected', () {
+    final scenario = parseScenarioFile(File('test/fixtures/invalid_assert_focused_type.yaml'));
+    final errors = validateScenario(scenario, catalog);
+    expect(errors, hasLength(1));
+    expect(errors.single.message, contains('focused'));
+  });
+
   test('an unknown automation id is rejected', () {
     final scenario = parseScenarioString(
       'name: x\ntarget: macos\nsteps:\n  - assert: {id: nonexistent.thing}\n',
