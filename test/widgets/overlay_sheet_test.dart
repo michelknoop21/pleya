@@ -198,8 +198,9 @@ void main() {
       WidgetTester tester, {
       required OverlaySheetPresentation presentation,
       int itemCount = 1,
+      Size? canvas,
     }) async {
-      tester.view.physicalSize = viewport;
+      tester.view.physicalSize = canvas ?? viewport;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
@@ -309,9 +310,9 @@ void main() {
 
     // Until fase 4 a TV panel fell through to the compact bottom sheet, so the
     // source picker of hoofdstuk 14.1 would have opened as a mobile sheet on a
-    // television. The two presentations now mean different things on TV, and
-    // the sheet's own numbers are unchanged — which is what these two pin.
-    testWidgets('on TV a panel is a centred modal, not the compact sheet', (tester) async {
+    // television. Since OVR1b the compact box is gone the other way round too:
+    // both presentations land on the same centred modal.
+    testWidgets('on TV both presentations land on the same centred modal', (tester) async {
       TvDetectionService.debugSetAppleTVOverride(true);
       addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
 
@@ -325,10 +326,9 @@ void main() {
       await tester.pumpAndSettle();
       final panel = sheetRect(tester);
 
-      expect(panel, isNot(sheet));
+      expect(panel, sheet);
       expect(panel.center.dx, moreOrLessEquals(viewport.width / 2, epsilon: 1));
       expect(panel.center.dy, moreOrLessEquals(viewport.height / 2, epsilon: 1));
-      expect(panel.width, greaterThan(sheet.width));
       // Generous outer margins: a 10-foot modal floats, it does not fill. The
       // width band of 14.1 is a reference measurement on a 1920x1080 output,
       // so it is checked as a proportion — see `overlay_sheet_geometry_test`.
@@ -336,17 +336,28 @@ void main() {
       expect(panel.right, lessThan(viewport.width * 0.8));
     });
 
-    testWidgets('on TV the sheet keeps its own compact placement', (tester) async {
+    // OVR1b, reproduced. Eleven surfaces open without a `presentation:`: the
+    // rating sheet behind a long press, the track and chapter pickers, the
+    // library quick picker. On a television they used to land in a 400x400 box
+    // flush against the bottom edge of the viewport, which on real hardware is
+    // inside the overscan band. The canvas is the canonical Apple TV one from
+    // DEC-028 (1920x1080 at render scale 1.85).
+    testWidgets('on TV a sheet without a presentation gets the 10-foot panel', (tester) async {
+      const tvCanvas = Size(1038, 584);
       TvDetectionService.debugSetAppleTVOverride(true);
       addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
 
-      await pumpHost(tester, presentation: OverlaySheetPresentation.sheet);
+      await pumpHost(tester, presentation: OverlaySheetPresentation.sheet, canvas: tvCanvas);
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
 
       final sheet = sheetRect(tester);
-      expect(sheet.width, lessThanOrEqualTo(400));
-      expect(sheet.bottom, moreOrLessEquals(viewport.height, epsilon: 1), reason: 'still hangs off the bottom edge');
+
+      expect(sheet.center.dy, moreOrLessEquals(tvCanvas.height / 2, epsilon: 1), reason: 'a TV overlay is centred');
+      expect(sheet.bottom, lessThan(tvCanvas.height), reason: 'nothing may sit in the overscan band');
+      // Hoofdstuk 14.1's 900-1040 is a reference measurement on a 1920x1080
+      // output, so it is asserted after scaling back to that surface.
+      expect(sheet.width * (1920 / tvCanvas.width), inInclusiveRange(900, 1040));
     });
   });
 }

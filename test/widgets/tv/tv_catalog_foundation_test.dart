@@ -145,12 +145,16 @@ void main() {
       );
     });
 
-    test('TV + sheet keeps the existing compact geometry and casts nothing', () {
+    // Since OVR1b there is no second TV geometry to keep clean: a sheet on TV
+    // *is* the panel, shadow and all. What still has to hold is that the
+    // shadow belongs to the television and to nothing else, which the two
+    // off-TV cases below pin.
+    test('TV + sheet resolves to the same casting panel', () {
       final sheet = _resolve(presentation: OverlaySheetPresentation.sheet, isTV: true);
-      expect(sheet.shadows, isEmpty, reason: 'a sheet flush against the bottom edge has no gap to cast into');
-      expect(sheet.constraints.maxWidth, 400);
-      expect(sheet.constraints.maxHeight, 400);
-      expect(sheet.alignment, Alignment.bottomCenter);
+      final panel = _resolve(presentation: OverlaySheetPresentation.panel, isTV: true);
+      expect(sheet, panel);
+      expect(sheet.shadows, hasLength(2));
+      expect(sheet.alignment, Alignment.center);
     });
 
     // The iOS/macOS regression lock. `panel` off TV is the desktop/phone path

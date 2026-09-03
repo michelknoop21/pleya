@@ -12,15 +12,18 @@ import '../utils/layout_constants.dart';
 /// header action. Those want different placement, so the caller says which
 /// kind it is opening and [resolveOverlaySheetGeometry] turns that into
 /// numbers.
+///
+/// On a television the distinction does not apply: both resolve to the centred
+/// 10-foot panel of hoofdstuk 14.1, because neither the pointer anchor nor the
+/// bottom edge exists there.
 enum OverlaySheetPresentation {
   /// Bottom edge, full width on phones, anchored to the last mouse position on
   /// desktop. The long-standing behaviour, and the right one for context menus
   /// and quick pickers that belong to the spot the user clicked.
   sheet,
 
-  /// Viewport-aware panel: a bottom sheet below [ScreenBreakpoints.mobile], a
-  /// centred modal above it, and a centred 10-foot modal on TV. Never follows
-  /// the pointer.
+  /// Viewport-aware panel: a bottom sheet below [ScreenBreakpoints.mobile] and
+  /// a centred modal above it. Never follows the pointer.
   panel,
 }
 
@@ -215,16 +218,27 @@ OverlaySheetGeometry resolveOverlaySheetGeometry({
   required bool isTV,
   BoxConstraints? explicitConstraints,
 }) {
-  if (presentation == OverlaySheetPresentation.panel && isTV) {
+  // A television has one answer to "how big is an overlay", and hoofdstuk 14.1
+  // states it: the centred 10-foot modal. The presentation still decides
+  // placement everywhere else, where a context menu belongs at the cursor, but
+  // on TV there is no cursor to anchor to and no bottom edge to hang off: the
+  // bottom of the viewport is the overscan band of hoofdstuk 8.1.
+  //
+  // This is OVR1b. Eleven surfaces reach the host without a `presentation:`
+  // and used to fall into a 400x400 box flush against that edge. One owner for
+  // the TV box fixes all of them, where adding `presentation:` to eleven call
+  // sites would still leave the twelfth wrong.
+  if (isTV) {
     return _tvPanelGeometry(viewport: viewport, explicitConstraints: explicitConstraints);
   }
   final usePanel = presentation == OverlaySheetPresentation.panel && !ScreenBreakpoints.isMobile(viewport.width);
   return usePanel
       ? _panelGeometry(viewport: viewport, explicitConstraints: explicitConstraints)
-      : _sheetGeometry(viewport: viewport, alignment: alignment, isTV: isTV, explicitConstraints: explicitConstraints);
+      : _sheetGeometry(viewport: viewport, alignment: alignment, explicitConstraints: explicitConstraints);
 }
 
-/// The centred 10-foot modal of hoofdstuk 14.1.
+/// The centred 10-foot modal of hoofdstuk 14.1, and the geometry of every
+/// overlay on a television whatever presentation the caller asked for.
 ///
 /// Separate from [_panelGeometry] rather than a branch inside it: the desktop
 /// panel is capped at a fixed 560 because a wider column of filter rows stops
@@ -283,10 +297,12 @@ List<BoxShadow> _tvPanelShadows({
   ),
 ];
 
+/// The edge-hugging sheet: phones, tablets and desktop windows. Never a
+/// television, because [resolveOverlaySheetGeometry] sends every TV overlay to
+/// [_tvPanelGeometry] before this is reached.
 OverlaySheetGeometry _sheetGeometry({
   required Size viewport,
   required Alignment alignment,
-  required bool isTV,
   BoxConstraints? explicitConstraints,
 }) {
   final isDesktop = viewport.width > _sheetDesktopWidth;
@@ -296,15 +312,15 @@ OverlaySheetGeometry _sheetGeometry({
     constraints:
         explicitConstraints ??
         BoxConstraints(
-          maxWidth: isTV ? 400 : (isDesktop ? 700 : double.infinity),
-          maxHeight: isTV ? 400 : (isDesktop ? 400 : viewport.height * 0.75),
+          maxWidth: isDesktop ? 700 : double.infinity,
+          maxHeight: isDesktop ? 400 : viewport.height * 0.75,
         ),
     borderRadius: isTop
         ? const BorderRadius.vertical(bottom: Radius.circular(16))
         : const BorderRadius.vertical(top: Radius.circular(16)),
     edgePadding: isDesktop ? 16 : 0,
     allowPointerAnchor: true,
-    allowDragHandle: !isTV && !isTop,
+    allowDragHandle: !isTop,
     enterOffset: Offset(0, isTop ? -viewport.height : viewport.height),
     fadeIn: false,
   );
