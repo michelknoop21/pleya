@@ -92,6 +92,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | ACT1 | Activiteit is niet te verifiëren | ACCEPTANCE GAP | n.v.t. |
 | VER2 | Automation-ids escapen geen blokhaken | DEFERRED | n.v.t. |
 | HERO1 | Framing van het hero-beeld op Home: op hardware staan halve beelden in de hero, Plex snijdt gecentreerd vóórdat de widget iets kan kiezen | FIXED, hardware open | `d4ec1fe` |
+| HERO2 | De titelband van de hero is de clearlogo-hoogte, dus een tweeregelige titel wordt op de baseline afgesneden | FIXED | volgt |
 | SEARCH1 | Zoeken benoemt zijn resultaten buiten het railcontract om | DEFERRED | n.v.t. |
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
 | VER3 | De eerste tegel van een rail steekt links buiten de veilige zone | OPEN | n.v.t. |
@@ -2055,3 +2056,40 @@ Goedgekeurd door Michel op 4 september op D1 en D2. DEC-093 staat op accepted, 1
 10.6 van de spec zijn aangepast, en state D van mockup 27 is op dezelfde rail
 hertekend. De bouw is een eigen ronde; de negatieve controle staat in DEC-093, en de
 CAT4-test wordt daarbij herschreven op de rail in plaats van weggegooid.
+
+
+### HERO2, de titelband was de hoogte van het logo en niet van de titel
+
+Gemeld door Michel op 4 september, kijkend naar build 249 op de Apple TV, en
+daarna teruggewezen in mijn eigen simulatoropname: "bij jouw screenshot zie je het
+ook hoor kijk maar bij de onderkant t van extended". Dat klopte. Ik had de titel
+eerst als compleet afgedaan op een crop waarin de afsnijding wegviel tegen een
+donkere palmboom; op een uitvergroting eindigen E, x, t, e, n, d, e en d alle acht
+op één rechte lijn, met de ronding van de e en de punten van de x eraf.
+
+**Root cause.** `_titleBlock` in `tv_hero_billboard_card.dart` gaf de band de
+hoogte `heroLogoMaxHeight`, 76. De band bestaat omdat een slide met een wordmark
+en een slide met type de metaregel op dezelfde plek moeten zetten, en hij was
+daarom op het logo gemaat. De type-tak vraagt binnen die band `heroTitleMaxLines`
+regels, en twee regels van `heroTitleFontSize` op `heroLineHeight` is
+40 x 1,28 x 2 = 102,4. Een eenregelige titel (51,2) paste, een tweeregelige stak er
+26,4 uit. Niets in de layout klaagde: een `SizedBox` groeit niet mee met zijn kind
+en `Align` verplaatst in plaats van te verkleinen, dus het defect was alleen in
+pixels te zien. Dat verklaart ook waarom The Whisper Man (één regel) goed stond en
+Grand Theft Auto VI (twee regels) niet.
+
+**Fix.** `TvHomeLayout.heroTitleBandHeight` is de band, gemaat op het grootste dat
+erin kan staan: `heroTitleFontSize * heroLineHeight * heroTitleMaxLines`. Het
+clearlogo houdt zijn eigen `heroLogoMaxHeight` binnen die band, zodat een wordmark
+niet anderhalf keer zo groot wordt. Het blok staat `Positioned(bottom:)`, dus de
+band groeit naar boven en de CTA-rij blijft waar hij stond.
+
+**Negatieve controle.** `test/widgets/tv_hero_title_band_test.dart`, drie
+assertions: de band tegen het aantal toegestane regels, het logo dat zijn eigen
+hoogte houdt, en een gerenderde tweeregelige titel die binnen zijn band moet
+passen. Met de band terug op 76 is de eerste rood met "band is 76.0, a 2-line
+title needs 102.4"; met de fix groen.
+
+**Bewijs in de simulator.** Dezelfde slide, dezelfde titel, voor en na: de
+ink-hoogte van de tweede titelregel gaat van 85 naar 92 pixels, en de afgesneden
+letteronderkanten zijn terug.

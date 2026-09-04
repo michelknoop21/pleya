@@ -1152,6 +1152,21 @@ class TvHomeLayout {
   /// so a wide wordmark and a tall stacked mark occupy the same band and the
   /// metadata line under them never moves.
   static const double heroLogoMaxHeight = 76;
+
+  /// The band the title block occupies, type or clearlogo.
+  ///
+  /// It has to be the *larger* of the two things that live in it. The band used
+  /// to be [heroLogoMaxHeight] alone, because it exists so a wordmark slide and
+  /// a type slide put the metadata line in the same place. The type branch then
+  /// asked for [heroTitleMaxLines] lines inside it, and two lines of
+  /// [heroTitleFontSize] at [heroLineHeight] is 102.4 against a band of 76: a
+  /// one-line title fitted, a two-line title had its last line cut off along
+  /// the baseline. "An Extended…" with the feet shaved off, on a real Apple TV.
+  ///
+  /// A `SizedBox` does not resize to its child, and `Align` positions rather
+  /// than shrinks, so nothing in the layout objected — which is why this is a
+  /// named token with a test on it (HERO2) rather than a literal.
+  static const double heroTitleBandHeight = heroTitleFontSize * heroLineHeight * heroTitleMaxLines;
   static const double heroLogoMaxWidth = heroTextMaxWidth;
 
   /// The two CTAs. `Afspelen` is a white capsule, `Meer info` a dark one —

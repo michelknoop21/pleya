@@ -388,7 +388,9 @@ class _HeroText extends StatelessWidget {
   /// under them sits in one place whichever a slide turns out to have.
   Widget _titleBlock(BuildContext context) {
     final logo = item.clearLogoPath;
-    final band = TvHomeLayout.heroLogoMaxHeight * scale;
+    // The band fits the tallest thing it can hold, which is a two-line title;
+    // the logo keeps its own smaller height inside it (HERO2).
+    final band = TvHomeLayout.heroTitleBandHeight * scale;
 
     if (logo != null && logo.isNotEmpty) {
       return SizedBox(
@@ -399,7 +401,7 @@ class _HeroText extends StatelessWidget {
             client: client,
             imagePath: logo,
             width: TvHomeLayout.heroLogoMaxWidth * scale,
-            height: band,
+            height: TvHomeLayout.heroLogoMaxHeight * scale,
             // Contain, never cover: a clearlogo cropped to fill its box is a
             // mangled wordmark, and the box is deliberately larger than most.
             fit: BoxFit.contain,
