@@ -130,6 +130,21 @@ func TestFailureRetriesThenGivesUp(t *testing.T) {
 		return attempts >= 1
 	}, "de job draaide niet")
 
+	// Wachten tot de uitkomst ook echt in de database staat, en pas dan annuleren.
+	// De handler is terug zodra `attempts` opgehoogd is, maar de runner schrijft het
+	// mislukken daarna pas weg. Annuleren we ertussenin, dan sneuvelt die schrijfactie
+	// op een gecancelde context en blijft `last_error` leeg. Lokaal wint de
+	// schrijfactie die race bijna altijd; op een belaste CI-runner niet.
+	waitFor(t, func() bool {
+		var state string
+		var lastError *string
+		if err := pool.QueryRow(ctx,
+			`SELECT state, last_error FROM jobs WHERE id = $1`, jobID).Scan(&state, &lastError); err != nil {
+			return false
+		}
+		return (state == "pending" || state == "failed") && lastError != nil && *lastError != ""
+	}, "het mislukken is niet weggeschreven")
+
 	cancel()
 	<-done
 
