@@ -81,6 +81,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LIB1 | Blanco Bibliotheken-pagina als de selectie verdwijnt | FIXED, hardware open | `f9b2167` |
 | LIB2 | Race bij snel wisselen van bibliotheek | FIXED | `f2ea980` |
 | LIB3 | TV-tabs dragen nog de oude rode onderstreping | FIXED, hardware open | `3e9d31b` |
+| LIB4 | Bibliotheken draait op alles behalve de kiezer nog de oude layout: kop, achtergrond, acties en landing wijken af van `libraries-a.png` en `libraries-d.png` | OPEN, besluit nodig | n.v.t. |
 | WL2 | Kijklijst end-to-end in Pleya Verify | OPEN | n.v.t. |
 | REQ1 | Aanvragen end-to-end in Pleya Verify | OPEN | n.v.t. |
 | MYP1 | Regressiebewijs voor het Mijn Pleya-werk | OPEN | n.v.t. |
@@ -1617,6 +1618,40 @@ TV. Voor de kleur maakt dat weinig uit, een rul die er niet meer is kan op
 hardware niet terugkomen, maar of de open tab op tien voet afstand nog genoeg
 opvalt met alleen inkt en gewicht is daar te zien en nergens anders. Bundel dat
 met de andere open fysieke items van deze ronde.
+
+### LIB4, de kiezer is geland en de rest van de pagina niet
+
+Opgemerkt door Michel tijdens de LIB3-controle: de pagina als geheel past niet
+bij de nieuwe taal. Dat klopt, en het is bekend werk: de ronde van 3 september
+was expliciet beperkt tot de kiezer, dus alles eromheen staat er nog zoals het
+was.
+
+Er zijn twee mockups voor, allebei van 2 september, in
+`docs/assets/tvos-unified/mockups-2026-09-02/`. `libraries-a.png` is state A, de
+pagina als index van bronnen. `libraries-d.png` is state D, een bibliotheek
+geopend met de kiezer in beeld. Wat de simulator vandaag laat zien tegenover
+die twee:
+
+| Onderdeel | Mockup | Nu |
+| --- | --- | --- |
+| Landing | index van bronnen: een tegel per bibliotheek met soort, aantal, server en statusstip, daaronder Afspeellijsten, Verborgen bibliotheken en Metadata vernieuwen | opent meteen in één bibliotheek |
+| Kop | `Bibliotheken` | `Films`, met de servernaam als subtitel |
+| Achtergrond | vlak zwart | schermvullende backdrop van een willekeurige titel, waar de tabrij dwars doorheen loopt |
+| Acties rechtsboven | capsules `Vernieuwen` en `Bewerken` | kale desktop-icoonknoppen, potlood en ververscirkel |
+| Inhoud | posterraster onder een groepslabel | de aanbevolen-hub met spotlight |
+| Kiezer | chiprij | gebouwd, dit deel klopt (LIB1, LIB2) |
+
+**Dit is geen bugfix maar een besluit.** De styling-audit noemt dit de enige
+mockup waar het productcontract zelf in het geding is, en vraagt er expliciet
+aparte goedkeuring voor; de handoff van 3 september herhaalt dat de kiezer niet
+naar een index-eerst landing mag zonder dat opnieuw voor te leggen. State A
+verandert namelijk waar de pagina op opent, en daarmee wat "Bibliotheken" in de
+hub betekent.
+
+**Wat er zonder dat besluit al kan.** De kop, de achtergrond, de twee
+icoonknoppen en de botsing tussen tabrij en herobeeld zijn presentatie en raken
+het contract niet. Ze horen bij state D, die naast de kiezer staat die er al is.
+De landing zelf wacht op Michel.
 
 ### VER5, `media-detail.episode-refresh` haalt de detailpagina niet meer
 
