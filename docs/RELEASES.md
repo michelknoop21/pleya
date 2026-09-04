@@ -121,6 +121,12 @@ under `Notes`.
 - headercontrols blijven bereikbaar na een LEFT-uitstap uit het raster (CAT4)
 - elke overlay op TV krijgt de 10-voets paneelgeometrie (OVR1b)
 - behoud expliciete sheet presentation op TV (OVR2)
+- geen zichtbare terugknop op een oppervlak dat de afstandsbediening niet kan bedienen (BACK1)
+- houd het contextmenu uit de overscanband (FOC1)
+- vraag de detail-backdrop op de resolutie van het toestel (ART1)
+- verzoen de bibliotheekselectie met de bibliotheken die er zijn (LIB1)
+- laat de laatst gekozen bibliotheek de trage vorige overleven (LIB2)
+- geen rode rul meer onder de open tab op TV (LIB3)
 <!-- END GENERATED -->
 
 ### Fixed
