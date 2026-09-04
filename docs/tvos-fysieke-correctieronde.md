@@ -77,7 +77,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | OVR2 | Expliciete TV sheet-presentation wordt door de OVR1b-panelgeometrie overschreven | FIXED | `cf4b6c7` |
 | BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | FIXED, hardware open | `f00e2fe` |
 | FOC1 | Focusring valt buiten de viewport in overlays | FIXED, hardware open | `3b0da2e` |
-| ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | OPEN | n.v.t. |
+| ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | FIXED, hardware open | `f42e3fd` |
 | LIB1 | Blanco Bibliotheken-pagina als de selectie verdwijnt | OPEN | n.v.t. |
 | LIB2 | Race bij snel wisselen van bibliotheek | OPEN | n.v.t. |
 | LIB3 | TV-tabs dragen nog de oude rode onderstreping | OPEN | n.v.t. |
@@ -1290,6 +1290,54 @@ breed rood staat omdat de referenties op Linux gemaakt zijn.
 **Wat open blijft.** Er is geen bewijs van een echte Apple TV. De maat die
 telt is of de bovenste en onderste regel van een contextmenu op het toestel
 volledig zichtbaar zijn, inclusief hun focusindicatie, en dat kan alleen daar.
+
+### ART1, de aanvraag was te klein, de compositie klopte
+
+Ook deze bevinding had geen vooronderzoek. "Te ver ingezoomd" kan twee dingen
+betekenen die je op een foto niet uit elkaar houdt: de compositie is strakker
+gecropt dan bedoeld, of het beeld is te klein binnengekomen en over het scherm
+opgeschaald. Allebei zijn te meten, dus allebei gemeten.
+
+**De compositie klopt.** Een probe zette het spotlight op een oppervlak van
+1920 bij 1080 en las de bron, de doos en de `BoxFit` uit de `RenderImage`. Met
+een echte 16:9-backdrop is het resultaat 100% van de bron zichtbaar bij
+vergroting 1,000. Er zit geen enkele extra `Transform` in het detailpad: de
+ken-burns-zoom staat daar uit, en de reveal-gate animeert alleen dekking.
+
+**Vierkante art is geen defect.** Diezelfde probe laat zien dat een vierkante
+bron in een 16:9-doos op 1,778 vergroot en 43,7% van het beeld verliest. Dat
+ziet er inderdaad uit als "te ver ingezoomd", maar het is een keuze die al
+vastligt: `BillboardArt.canRenderSharp` zegt expliciet dat een vierkante bron
+scherp getekend mag worden, en de fase-8 herokaart doet hetzelfde. Hier iets
+aan veranderen is een ontwerpvraag, geen bugfix, en valt buiten deze bevinding.
+
+**Wat wel misging is de aanvraag.** Het spotlight vroeg zijn artwork op als
+`ImageType.art`. Dat type plafonneert op 2560 bij 1440, een bewuste maat voor
+een retina-desktoppaneel. Op een Apple TV 4K is dit oppervlak het hele scherm,
+3840 bij 2160 fysieke pixels, dus kwam elke backdrop anderhalf keer te klein
+binnen en werd hij beeldvullend opgeschaald. `ImageType.heroArt` heeft precies
+dat oppervlak als plafond. De fase-8 herokaart is in DEC-057 om exact deze
+reden al overgezet, met in `tv_hero_artwork.dart` de notitie dat elke backdrop
+daar 1,38 keer te klein aankwam; het detailscherm bleef achter.
+
+**De fix** kiest het type op TV en laat desktop en mobiel op de bestaande cap
+staan, want ditzelfde scherm is daar de aanbevolen-tab. Het decodeerbudget gaat
+mee: 3840 ophalen en in 2560 decoderen is dezelfde onscherpte langs een andere
+weg, en dat staat al zo in `getMemCacheDimensions`.
+
+**Bewijs.** `test/widgets/tv_spotlight_request_size_test.dart` legt met een
+neptclient vast met welke maten `thumbnailUrl` geroepen wordt. Op een oppervlak
+van 3840 bij 2160 vroeg de oude implementatie 2560 breed aan; die test was rood
+en is nu groen. De tweede test bewaakt de desktopkant en werd rood zodra de
+keuze niet meer aan het platform hing, wat ook gecontroleerd is. `test/widgets`
+en `test/goldens` gingen van 805 geslaagd naar 807, met 83 falers die
+onveranderd bleven.
+
+**Wat open blijft.** Er is geen bewijs van een echte Apple TV. Of dit de
+waarneming volledig verklaart is daar te zien en nergens anders: als het beeld
+na deze wijziging nog steeds te strak oogt, dan gaat het over compositie en
+overscan en niet over resolutie, en dan is de vervolgvraag of de backdrop op
+detail dezelfde band mag pakken als in mockup 09.
 
 ### VER5, `media-detail.episode-refresh` haalt de detailpagina niet meer
 
