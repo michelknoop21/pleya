@@ -2034,3 +2034,8 @@ de gekozen filters altijd zichtbaar in het raster. D1 en D2 zijn daarop
 hertekend: de rail is één paneel in de tegeltaal met per regel icoon, label en
 huidige waarde, de keuzes als tags en Wissen eronder; ingeklapt staan dezelfde tags
 naast de kop, met de sortering gestippeld zodat hij niet als filter leest.
+
+Op D1 en D2 zei Michel, letterlijk: "Graag die waarop gefilterd mag dan wel rechtsboven
+getoond worden want nu hoeven die niet meer bereikbaar te zijn en je hebt daar meer
+ruimte." De tags in de ingeklapte stand zijn daarmee naar rechtsboven verhuisd, de plek
+waar de chips stonden en die vrijkwam zodra ze niet meer bedienbaar hoefden te zijn.
