@@ -445,6 +445,7 @@ class _TranslationsSearchDa extends TranslationsSearchEn {
 
 	// Translations
 	@override String get hint => 'Søg film, serier, musik...';
+	@override String get notOnYourServers => 'Ikke på dine servere';
 	@override String get tryDifferentTerm => 'Prøv en anden søgning';
 	@override String get searchYourMedia => 'Søg i dine medier';
 	@override String get enterTitleActorOrKeyword => 'Indtast titel, skuespiller eller nøgleord';
@@ -2556,6 +2557,7 @@ extension on TranslationsDa {
 			'settings.seekAndTiming' => 'Søgning og timing',
 			'settings.behavior' => 'Adfærd',
 			'search.hint' => 'Søg film, serier, musik...',
+			'search.notOnYourServers' => 'Ikke på dine servere',
 			'search.tryDifferentTerm' => 'Prøv en anden søgning',
 			'search.searchYourMedia' => 'Søg i dine medier',
 			'search.enterTitleActorOrKeyword' => 'Indtast titel, skuespiller eller nøgleord',
@@ -2778,9 +2780,9 @@ extension on TranslationsDa {
 			'messages.noResultsFound' => 'Ingen resultater fundet',
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sove-timer indstillet til ${label}',
 			'messages.noItemsAvailable' => 'Ingen elementer tilgængelige',
-			'messages.failedToCreatePlayQueueNoItems' => 'Kunne ikke oprette afspilningskø — ingen elementer',
 			_ => null,
 		} ?? switch (path) {
+			'messages.failedToCreatePlayQueueNoItems' => 'Kunne ikke oprette afspilningskø — ingen elementer',
 			'messages.failedPlayback' => ({required Object action}) => 'Kunne ikke ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Skifter til kompatibel afspiller...',
 			'messages.serverLimitTitle' => 'Afspilning mislykkedes',
@@ -3292,9 +3294,9 @@ extension on TranslationsDa {
 			'companionRemote.session.minimize' => 'Minimér',
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheder med samme Plex-konto vises her',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Opretter forbindelse...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connecting' => 'Opretter forbindelse...',
 			'companionRemote.pairing.searchingForDevices' => 'Søger efter enheder...',
 			'companionRemote.pairing.noDevicesFound' => 'Ingen enheder fundet på dit netværk',
 			'companionRemote.pairing.noDevicesHint' => 'Åbn Pleya på desktop, og brug samme WiFi',

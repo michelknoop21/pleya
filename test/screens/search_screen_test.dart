@@ -18,6 +18,12 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_screen.dart';
+import 'package:pleya/navigation/mobile_shell_scope.dart';
+import 'package:pleya/navigation/navigation_tabs.dart';
+import 'package:pleya/screens/search/mobile_search_body.dart';
+import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -43,9 +49,16 @@ void main() {
   testWidgets('stale callbacks are no-ops after SearchScreen is disposed', (tester) async {
     final key = GlobalKey<State<SearchScreen>>();
 
+    // The mono theme, because on a phone this screen now draws the fase-4
+    // body and its chips resolve tokens off it. Deliberately still no
+    // MultiServerProvider: the shell always supplies one, and a screen that
+    // throws out of `build` without it would be a worse screen.
     await tester.pumpWidget(
       TranslationProvider(
-        child: MaterialApp(home: SearchScreen(key: key)),
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: SearchScreen(key: key),
+        ),
       ),
     );
 
@@ -248,6 +261,103 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  group('iOS Unified 2026 fase 4 — the phone body', () {
+    testWidgets('a phone gets the grouped projection, a desktop keeps the flat list', (tester) async {
+      final client = _ProgrammableClient();
+      final key = await _pumpPhoneSearchScreen(tester, client);
+
+      // submit rather than type: rate_limiter's Debounce compares
+      // DateTime.now() against the fake clock and never fires under FakeAsync,
+      // which is why the TV tests above go through refresh().
+      (key.currentState! as SearchInputFocusable).submitSearchQuery('dune');
+      await tester.pump();
+      client.complete('dune', [
+        _item('movie_1', 'Dune'),
+        MediaItem(
+          id: 'show_1',
+          backend: MediaBackend.plex,
+          kind: MediaKind.show,
+          title: 'Dune: Prophecy',
+          serverId: 'server_1',
+          serverName: 'Server',
+        ),
+      ]);
+      await tester.pumpAndSettle();
+
+      // One section per kind, in hoofdstuk 16.1's order, off
+      // `UnifiedSearchProjection` — the engine that had no UI consumer at all
+      // before this phase.
+      expect(find.byType(MobileSearchBody), findsOneWidget);
+      expect(find.text('MOVIES'), findsOneWidget);
+      expect(find.text('SHOWS'), findsOneWidget);
+      expect(find.text('Dune'), findsOneWidget);
+      expect(find.text('Dune: Prophecy'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('back goes to the destination the bar is lighting', (tester) async {
+      final opened = <NavigationTabId>[];
+      final client = _ProgrammableClient();
+      await _pumpPhoneSearchScreen(tester, client, onOpenTab: opened.add);
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pump();
+
+      // Mockup 05 draws Zoeken with Home lit, because the shell's projection
+      // gives a slotless destination the first bar slot (DEC-093).
+      expect(opened, [NavigationTabId.discover]);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('the screen registers itself for Pleya Verify', (tester) async {
+      final client = _ProgrammableClient();
+      await _pumpPhoneSearchScreen(tester, client);
+
+      // `screen.search` is what makes `POST /v1/open` able to reach this
+      // destination without a coordinate tap — the gap DEC-093 and DEC-094
+      // both had to record for their own surfaces.
+      //
+      // The node itself rather than `AutomationScreenRegistry`: registration
+      // is behind the `kPleyaVerify` compile-time flag, which a plain
+      // `flutter test` does not set.
+      final screen = tester.widget<AutomationScreen>(find.byType(AutomationScreen));
+      expect(screen.id, AutomationIds.screenSearch);
+      expect(
+        AutomationIds.catalog().map((entry) => entry['id']),
+        containsAll(<String>[
+          AutomationIds.screenSearch,
+          AutomationIds.searchHeader,
+          AutomationIds.searchField,
+          AutomationIds.searchChips,
+          AutomationIds.searchSection,
+          AutomationIds.searchResult,
+        ]),
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('mounts without an OverlaySheetHost of its own, because the shell owns one', (tester) async {
+      // Deliberately no host anywhere in this tree. Search is a root
+      // destination inside the shell's `IndexedStack`, and `main_screen.dart`
+      // mounts the host around that stack — so unlike `MobileCatalogScreen`,
+      // which is pushed above the shell, this screen must not bring a second
+      // one. The check is that it renders and stays usable without it.
+      final client = _ProgrammableClient();
+      final key = await _pumpPhoneSearchScreen(tester, client);
+      expect(find.byType(OverlaySheetHost), findsNothing);
+      expect(find.byType(MobileSearchBody), findsOneWidget);
+
+      (key.currentState! as SearchInputFocusable).setSearchQuery('du');
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  });
 }
 
 MediaItem _item(String id, String title) => MediaItem(
@@ -279,6 +389,50 @@ Future<GlobalKey<State<SearchScreen>>> _pumpSearchScreen(WidgetTester tester, Me
         child: MaterialApp(
           theme: monoTheme(dark: true),
           home: SearchScreen(key: key),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+  return key;
+}
+
+/// The same screen on an iPhone 15 Pro, where it draws the fase-4 grouped
+/// body instead of the shared flat list.
+///
+/// Both the density and the platform are real here rather than bypassed, so
+/// this exercises `PlatformDetector.isPhone` itself. That matters twice: at
+/// device pixel ratio 1 the 393×852 viewport measures 14,9 inches diagonally
+/// and `isTablet` is true, and without an iOS `Theme.platform` the screen is
+/// a desktop. Fase 1 to 3 all sidestepped this by mounting their mobile
+/// widget directly.
+Future<GlobalKey<State<SearchScreen>>> _pumpPhoneSearchScreen(
+  WidgetTester tester,
+  MediaServerClient client, {
+  void Function(NavigationTabId tab)? onOpenTab,
+}) async {
+  tester.view.devicePixelRatio = 3.0;
+  tester.view.physicalSize = const Size(1179, 2556);
+  addTearDown(() {
+    tester.view.resetDevicePixelRatio();
+    tester.view.resetPhysicalSize();
+  });
+
+  final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+  final provider = MultiServerProvider(manager, DataAggregationService(manager));
+  addTearDown(provider.dispose);
+
+  final key = GlobalKey<State<SearchScreen>>();
+  Widget screen = SearchScreen(key: key);
+  if (onOpenTab != null) screen = MobileShellScope(openTab: onOpenTab, child: screen);
+
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: ChangeNotifierProvider<MultiServerProvider>.value(
+        value: provider,
+        child: MaterialApp(
+          theme: monoTheme(dark: true).copyWith(platform: TargetPlatform.iOS),
+          home: screen,
         ),
       ),
     ),

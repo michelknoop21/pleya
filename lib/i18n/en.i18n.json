@@ -358,6 +358,7 @@
   },
   "search": {
     "hint": "Search movies, shows, music...",
+    "notOnYourServers": "Not on your servers",
     "tryDifferentTerm": "Try a different search term",
     "searchYourMedia": "Search your media",
     "enterTitleActorOrKeyword": "Enter a title, actor, or keyword",

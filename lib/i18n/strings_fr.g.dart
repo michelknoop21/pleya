@@ -445,6 +445,7 @@ class _TranslationsSearchFr extends TranslationsSearchEn {
 
 	// Translations
 	@override String get hint => 'Rechercher des films, des séries, de la musique...';
+	@override String get notOnYourServers => 'Absent de vos serveurs';
 	@override String get tryDifferentTerm => 'Essayez un autre terme de recherche';
 	@override String get searchYourMedia => 'Rechercher dans vos médias';
 	@override String get enterTitleActorOrKeyword => 'Entrez un titre, un acteur ou un mot-clé';
@@ -2556,6 +2557,7 @@ extension on TranslationsFr {
 			'settings.seekAndTiming' => 'Recherche et minutage',
 			'settings.behavior' => 'Comportement',
 			'search.hint' => 'Rechercher des films, des séries, de la musique...',
+			'search.notOnYourServers' => 'Absent de vos serveurs',
 			'search.tryDifferentTerm' => 'Essayez un autre terme de recherche',
 			'search.searchYourMedia' => 'Rechercher dans vos médias',
 			'search.enterTitleActorOrKeyword' => 'Entrez un titre, un acteur ou un mot-clé',
@@ -2778,9 +2780,9 @@ extension on TranslationsFr {
 			'messages.noResultsFound' => 'Aucun résultat trouvé',
 			'messages.sleepTimerSet' => ({required Object label}) => 'Minuterie de mise en veille réglée sur ${label}',
 			'messages.noItemsAvailable' => 'Aucun élément disponible',
-			'messages.failedToCreatePlayQueueNoItems' => 'Échec de la création de la file d\'attente de lecture - aucun élément',
 			_ => null,
 		} ?? switch (path) {
+			'messages.failedToCreatePlayQueueNoItems' => 'Échec de la création de la file d\'attente de lecture - aucun élément',
 			'messages.failedPlayback' => ({required Object action}) => 'Echec de ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Passage au lecteur compatible...',
 			'messages.serverLimitTitle' => 'Échec de la lecture',
@@ -3292,9 +3294,9 @@ extension on TranslationsFr {
 			'companionRemote.session.minimize' => 'Réduire',
 			'companionRemote.pairing.discoveryDescription' => 'Les appareils Pleya avec le même compte Plex apparaissent ici',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Connexion...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connecting' => 'Connexion...',
 			'companionRemote.pairing.searchingForDevices' => 'Recherche d\'appareils...',
 			'companionRemote.pairing.noDevicesFound' => 'Aucun appareil trouvé sur votre réseau',
 			'companionRemote.pairing.noDevicesHint' => 'Ouvrez Pleya sur ordinateur et utilisez le même WiFi',

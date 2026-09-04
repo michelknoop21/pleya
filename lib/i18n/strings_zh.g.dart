@@ -445,6 +445,7 @@ class _TranslationsSearchZh extends TranslationsSearchEn {
 
 	// Translations
 	@override String get hint => '搜索电影、系列、音乐...';
+	@override String get notOnYourServers => '不在你的服务器上';
 	@override String get tryDifferentTerm => '尝试不同的搜索词';
 	@override String get searchYourMedia => '搜索媒体';
 	@override String get enterTitleActorOrKeyword => '输入标题、演员或关键词';
@@ -2556,6 +2557,7 @@ extension on TranslationsZh {
 			'settings.seekAndTiming' => '跳转与计时',
 			'settings.behavior' => '行为',
 			'search.hint' => '搜索电影、系列、音乐...',
+			'search.notOnYourServers' => '不在你的服务器上',
 			'search.tryDifferentTerm' => '尝试不同的搜索词',
 			'search.searchYourMedia' => '搜索媒体',
 			'search.enterTitleActorOrKeyword' => '输入标题、演员或关键词',
@@ -2778,9 +2780,9 @@ extension on TranslationsZh {
 			'messages.noResultsFound' => '未找到结果',
 			'messages.sleepTimerSet' => ({required Object label}) => '睡眠定时器已设置为 ${label}',
 			'messages.noItemsAvailable' => '没有可用的项目',
-			'messages.failedToCreatePlayQueueNoItems' => '创建播放队列失败 - 没有项目',
 			_ => null,
 		} ?? switch (path) {
+			'messages.failedToCreatePlayQueueNoItems' => '创建播放队列失败 - 没有项目',
 			'messages.failedPlayback' => ({required Object action}) => '无法${action}',
 			'messages.switchingToCompatiblePlayer' => '正在切换到兼容的播放器...',
 			'messages.serverLimitTitle' => '播放失败',
@@ -3292,9 +3294,9 @@ extension on TranslationsZh {
 			'companionRemote.session.minimize' => '最小化',
 			'companionRemote.pairing.discoveryDescription' => '使用同一 Plex 账号的 Pleya 设备会显示在这里',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => '正在连接...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connecting' => '正在连接...',
 			'companionRemote.pairing.searchingForDevices' => '正在搜索设备...',
 			'companionRemote.pairing.noDevicesFound' => '未在网络上找到设备',
 			'companionRemote.pairing.noDevicesHint' => '在桌面端打开 Pleya 并使用同一 WiFi',

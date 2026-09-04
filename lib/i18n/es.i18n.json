@@ -301,6 +301,7 @@
   },
   "search": {
     "hint": "Buscar películas, series, música...",
+    "notOnYourServers": "No está en tus servidores",
     "tryDifferentTerm": "Prueba con un término de búsqueda diferente",
     "searchYourMedia": "Busca en tu contenido",
     "enterTitleActorOrKeyword": "Introduce un título, actor o palabra clave",

@@ -445,6 +445,7 @@ class _TranslationsSearchKo extends TranslationsSearchEn {
 
 	// Translations
 	@override String get hint => '영화, 시리즈, 음악 등을 검색하세요...';
+	@override String get notOnYourServers => '서버에 없음';
 	@override String get tryDifferentTerm => '다른 검색어를 시도해 보세요';
 	@override String get searchYourMedia => '미디어 검색';
 	@override String get enterTitleActorOrKeyword => '제목, 배우 또는 키워드를 입력하세요';
@@ -2556,6 +2557,7 @@ extension on TranslationsKo {
 			'settings.seekAndTiming' => '탐색 및 타이밍',
 			'settings.behavior' => '동작',
 			'search.hint' => '영화, 시리즈, 음악 등을 검색하세요...',
+			'search.notOnYourServers' => '서버에 없음',
 			'search.tryDifferentTerm' => '다른 검색어를 시도해 보세요',
 			'search.searchYourMedia' => '미디어 검색',
 			'search.enterTitleActorOrKeyword' => '제목, 배우 또는 키워드를 입력하세요',
@@ -2778,9 +2780,9 @@ extension on TranslationsKo {
 			'messages.noResultsFound' => '결과를 찾을 수 없습니다',
 			'messages.sleepTimerSet' => ({required Object label}) => '수면 타이머가 ${label}로 설정 되었습니다',
 			'messages.noItemsAvailable' => '사용 가능한 항목이 없습니다',
-			'messages.failedToCreatePlayQueueNoItems' => '재생 대기열 생성 실패 - 항목 없음',
 			_ => null,
 		} ?? switch (path) {
+			'messages.failedToCreatePlayQueueNoItems' => '재생 대기열 생성 실패 - 항목 없음',
 			'messages.failedPlayback' => ({required Object action}) => '${action}을(를) 수행할 수 없습니다',
 			'messages.switchingToCompatiblePlayer' => '호환되는 플레이어로 전환 중...',
 			'messages.serverLimitTitle' => '재생 실패',
@@ -3292,9 +3294,9 @@ extension on TranslationsKo {
 			'companionRemote.session.minimize' => '최소화',
 			'companionRemote.pairing.discoveryDescription' => '같은 Plex 계정의 Pleya 기기가 여기에 표시됩니다',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => '연결 중...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connecting' => '연결 중...',
 			'companionRemote.pairing.searchingForDevices' => '기기 검색 중...',
 			'companionRemote.pairing.noDevicesFound' => '네트워크에서 기기를 찾을 수 없습니다',
 			'companionRemote.pairing.noDevicesHint' => '데스크톱에서 Pleya를 열고 같은 WiFi를 사용하세요',

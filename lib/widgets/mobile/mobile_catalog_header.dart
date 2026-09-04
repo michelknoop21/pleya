@@ -1,11 +1,16 @@
-/// The complete-catalogue header and its three controls. iOS Unified 2026
-/// fase 3, mockup `03-alle-films.png`.
+/// The compact back-and-title header, and the catalogue's three controls. iOS
+/// Unified 2026 fase 3 (`03-alle-films.png`) and fase 4 (`05-zoeken.png`).
 ///
 /// A different header from [MobilePageHeader], not a variant of it. That one
-/// is a root destination's header: brand lockup, then actions. This one is a
-/// pushed page's header: back, the page's own title, then one action. Folding
-/// both into one widget would mean a lockup-or-title switch plus a
-/// back-or-nothing switch, and the two shapes have no line in common.
+/// is a root destination's header: brand lockup, then actions. This one is
+/// back, the page's own title, and at most one action. Folding both into one
+/// widget would mean a lockup-or-title switch plus a back-or-nothing switch,
+/// and the two shapes have no line in common.
+///
+/// Shared by the catalogue and by Search, which the northstar draws with the
+/// same shape at the same size. It stayed one widget on purpose: two copies
+/// would be two places for the title size to drift, which is the exact fault
+/// this header has already had once.
 library;
 
 import 'package:flutter/material.dart';
@@ -28,9 +33,23 @@ class MobileCatalogHeader extends StatelessWidget {
   /// Opens the global search destination — the same contract the search glyph
   /// carries on Home and on both landings (DEC-094). It deliberately does not
   /// search this catalogue: one glyph, one place, one meaning.
-  final VoidCallback onSearch;
+  ///
+  /// Null on Search itself, which is that destination and has nowhere to send
+  /// the glyph. The slot then draws nothing rather than a disabled button.
+  final VoidCallback? onSearch;
 
-  const MobileCatalogHeader({super.key, required this.title, required this.onBack, required this.onSearch});
+  /// The region id this header mounts. Search and the catalogue never coexist
+  /// — one is a tab, the other a pushed route — but they are different
+  /// surfaces, and an assertion naming one should not match the other.
+  final String automationId;
+
+  const MobileCatalogHeader({
+    super.key,
+    required this.title,
+    required this.onBack,
+    required this.onSearch,
+    this.automationId = AutomationIds.catalogHeader,
+  });
 
   /// Measured off the northstar, not chosen.
   ///
@@ -52,7 +71,7 @@ class MobileCatalogHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final topInset = MediaQuery.viewPaddingOf(context).top;
     return AutomationNode(
-      id: AutomationIds.catalogHeader,
+      id: automationId,
       role: 'region',
       child: Padding(
         padding: EdgeInsets.only(left: 4, right: 8, top: topInset + 8, bottom: 8),
@@ -67,7 +86,8 @@ class MobileCatalogHeader extends StatelessWidget {
                 style: const TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.w700),
               ),
             ),
-            IconButton(onPressed: onSearch, icon: const AppIcon(Symbols.search_rounded), tooltip: t.common.search),
+            if (onSearch != null)
+              IconButton(onPressed: onSearch, icon: const AppIcon(Symbols.search_rounded), tooltip: t.common.search),
           ],
         ),
       ),

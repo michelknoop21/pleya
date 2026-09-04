@@ -37,17 +37,23 @@ import '../widgets/skeletons.dart';
 import '../widgets/state_view.dart';
 import '../widgets/tv_virtual_keyboard.dart';
 import '../utils/focus_utils.dart';
+import '../automation/automation_ids.dart';
+import '../automation/automation_screen.dart';
+import '../services/unified_catalog/search_projection.dart';
+import '../utils/external_ids_fetcher.dart';
+import '../utils/media_navigation_helper.dart';
+import '../widgets/seerr_request_sheet.dart';
+import '../navigation/mobile_shell_scope.dart';
+import '../navigation/navigation_tabs.dart';
 import 'main_screen.dart';
+import 'search/mobile_search_body.dart';
+import 'search/search_failure.dart';
 
 /// Client-side result type filter over whatever [searchAcrossServers] returns.
 /// There is no "people" row — search results carry no person items. Note that
 /// the episodes chip is effectively Jellyfin-only: the Plex client searches
 /// with `searchTypes: 'movies,tv'` and never yields episode items.
 enum _SearchFilter { all, movies, shows, episodes }
-
-/// Why the last search produced nothing — so the UI can tell "we couldn't
-/// reach anything" apart from "your library really has no match".
-enum _SearchError { network, noServers }
 
 /// Marker for the no-connected-servers case so [_performSearch] can classify
 /// it without string-matching an exception message.
@@ -89,7 +95,7 @@ class _SearchScreenState extends State<SearchScreen>
   bool _hasSearched = false;
   late final Debounce _searchDebounce;
   String _lastSearchedQuery = '';
-  _SearchError? _searchError;
+  SearchFailure? _searchError;
   // TV only: phones and desktops already have a dictation key on the system
   // keyboard, so a second mic affordance there would just be noise.
   bool _voiceSearchSupported = false;
@@ -108,6 +114,28 @@ class _SearchScreenState extends State<SearchScreen>
   List<SeerrMedia> _seerrResults = const [];
   bool _seerrSearching = false;
   bool _seerrSearched = false;
+
+  // The phone body's grouped view of the same results (hoofdstuk 16.1). Only
+  // built there: the projection resolves external ids over the network, and
+  // the shared list on TV and desktop has no use for the grouping.
+  UnifiedSearchProjection? _projection;
+  bool _isProjecting = false;
+
+  /// The phone draws mockup 05's grouped body; television, desktop and the
+  /// iPad keep the shared flat list.
+  ///
+  /// A field rather than a call at each use, because `_performSearch` decides
+  /// whether to project and runs outside `build`, where reaching for
+  /// `MediaQuery` is not free. `PlatformDetector.isPhone` is the same seam
+  /// `discover_screen.dart` uses to choose `MobileHomeScreen`, so Search and
+  /// Home agree on what a phone is.
+  bool _usesGroupedBody = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _usesGroupedBody = PlatformDetector.isPhone(context);
+  }
 
   @override
   void initState() {
@@ -175,6 +203,17 @@ class _SearchScreenState extends State<SearchScreen>
     FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
   }
 
+  /// The single kind the active chip narrows to, or null for "Alles".
+  ///
+  /// The phone body groups by section rather than filtering one flat list, so
+  /// it takes the kind and leaves [_filteredResults] to the shared list.
+  MediaKind? get _filterKind => switch (_activeFilter) {
+    _SearchFilter.all => null,
+    _SearchFilter.movies => MediaKind.movie,
+    _SearchFilter.shows => MediaKind.show,
+    _SearchFilter.episodes => MediaKind.episode,
+  };
+
   /// Filtered view of [_searchResults] for the active type chip.
   List<MediaItem> get _filteredResults {
     return switch (_activeFilter) {
@@ -232,6 +271,8 @@ class _SearchScreenState extends State<SearchScreen>
       _searchGeneration++;
       setStateIfMounted(() {
         _searchResults = [];
+        _projection = null;
+        _isProjecting = false;
         _hasSearched = false;
         _isSearching = false;
         _searchError = null;
@@ -251,6 +292,8 @@ class _SearchScreenState extends State<SearchScreen>
       _searchGeneration++;
       setStateIfMounted(() {
         _searchResults = [];
+        _projection = null;
+        _isProjecting = false;
         _hasSearched = false;
         _isSearching = false;
         _searchError = null;
@@ -277,6 +320,8 @@ class _SearchScreenState extends State<SearchScreen>
     if (query.isEmpty) {
       setStateIfMounted(() {
         _searchResults = [];
+        _projection = null;
+        _isProjecting = false;
         _hasSearched = false;
         _searchError = null;
       });
@@ -294,6 +339,7 @@ class _SearchScreenState extends State<SearchScreen>
       _isSearching = true;
       _hasSearched = true;
       _searchError = null;
+      _projection = null;
       _seerrResults = const [];
       _seerrSearched = false;
       _seerrSearching = false;
@@ -338,11 +384,13 @@ class _SearchScreenState extends State<SearchScreen>
       setStateIfMounted(() {
         _searchResults = neutral;
         _isSearching = false;
+        _isProjecting = _usesGroupedBody && neutral.isNotEmpty;
         _lastSearchedQuery = query;
         _activeFilter = _SearchFilter.all;
       });
       if (neutral.isNotEmpty) _addToHistory(query);
       _maybeFocusResultsAfterSubmit(query, neutral);
+      if (_usesGroupedBody) unawaited(_project(neutral, generation));
     } catch (e) {
       if (!mounted || isStale()) return;
       _focusResultsForQuery = null;
@@ -352,14 +400,44 @@ class _SearchScreenState extends State<SearchScreen>
         // "no results, try another term" empty state) stayed on screen, which
         // reads as "your library doesn't have this" for what is really a
         // connection problem.
-        _searchError = e is _NoServersAvailable ? _SearchError.noServers : _SearchError.network;
+        _searchError = e is _NoServersAvailable ? SearchFailure.noServers : SearchFailure.network;
         _searchResults = const [];
+        _projection = null;
+        _isProjecting = false;
         // Reset the filter too: keeping it would leave an active chip whose
         // row is now hidden, i.e. an apparently empty list with no way back.
         _activeFilter = _SearchFilter.all;
         _lastSearchedQuery = '';
       });
       appLogger.d('Search failed for "$query"', error: e);
+    }
+  }
+
+  /// Groups the flat cross-server list into hoofdstuk 16.1's sections.
+  ///
+  /// Runs after the search rather than inside it, because it fetches external
+  /// ids per result and the flat list is already useful without them. A
+  /// failure here is a failure to reach the servers — the resolver already
+  /// degrades a single unreachable server to guid-only evidence on its own —
+  /// so it lands in the same error state as the search itself rather than
+  /// leaving the viewer looking at an empty page that claims nothing matched.
+  Future<void> _project(List<MediaItem> results, int generation) async {
+    if (!mounted) return;
+    try {
+      final multiServer = Provider.of<MultiServerProvider>(context, listen: false);
+      final projection = await searchProjection(results, fetchExternalIds: externalIdsFetcherFor(multiServer));
+      if (!mounted || generation != _searchGeneration) return;
+      setStateIfMounted(() {
+        _projection = projection;
+        _isProjecting = false;
+      });
+    } catch (e, st) {
+      if (!mounted || generation != _searchGeneration) return;
+      appLogger.e('Search projection failed', error: e, stackTrace: st);
+      setStateIfMounted(() {
+        _isProjecting = false;
+        _searchError = SearchFailure.network;
+      });
     }
   }
 
@@ -518,6 +596,8 @@ class _SearchScreenState extends State<SearchScreen>
     _focusResultsForQuery = null;
     setStateIfMounted(() {
       _searchResults.clear();
+      _projection = null;
+      _isProjecting = false;
       _isSearching = false;
       _hasSearched = false;
       _searchError = null;
@@ -742,8 +822,87 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
+  /// Mockup 05, on the phone.
+  ///
+  /// The state above stays where it is: one screen, one search, two
+  /// presentations. What changes here is only what the northstar changed — a
+  /// compact header instead of an app bar, four fixed chips, and the grouped
+  /// projection instead of a flat list.
+  ///
+  /// The sheets this opens (a request) go through `OverlaySheetController`,
+  /// and the host they need is the one the mobile shell mounts around its
+  /// `IndexedStack` in `main_screen.dart`. Search is a root destination inside
+  /// that stack, so this context is already below it and the screen does not
+  /// bring a second host — unlike `MobileCatalogScreen`, which is pushed above
+  /// the shell and therefore must.
+  Widget _buildMobile(BuildContext context) {
+    // Both read nullably. This screen is mounted by the shell, which always
+    // provides them, but it is also pumped on its own in a test and a missing
+    // provider is not a reason to throw out of `build`.
+    final multiServer = context.watch<MultiServerProvider?>();
+    final seerr = context.watch<SeerrProvider?>();
+    return MobileSearchBody(
+      controller: _searchController,
+      focusNode: _searchFocusNode,
+      status: MobileSearchStatus(
+        isBusy: _isSearching || _isProjecting,
+        hasSearched: _hasSearched,
+        failure: _searchError,
+        projection: _projection,
+      ),
+      requests: MobileSearchRequests(
+        isConfigured: seerr?.isConfigured ?? false,
+        isSearching: _seerrSearching,
+        hasSearched: _seerrSearched,
+        results: _seerrResults,
+      ),
+      kindFilter: _filterKind,
+      onFilterChanged: (kind) => setStateIfMounted(() {
+        _activeFilter = switch (kind) {
+          null => _SearchFilter.all,
+          MediaKind.movie => _SearchFilter.movies,
+          MediaKind.show => _SearchFilter.shows,
+          _ => _SearchFilter.episodes,
+        };
+      }),
+      // Mockup 05 draws Zoeken with Home lit in the bar, which is what the
+      // shell's projection already does for a destination without a slot
+      // (DEC-093). Back therefore goes where the bar says you are.
+      onBack: () => MobileShellScope.maybeOf(context)?.openTab(NavigationTabId.discover),
+      onClear: _searchController.clear,
+      onRetry: _retrySearch,
+      onSubmit: submitSearchQuery,
+      history: _history,
+      onRunHistoryQuery: _runHistoryQuery,
+      onClearHistory: _clearHistory,
+      onGroupTap: (group) => unawaited(navigateToMediaItemDetails(context, group.representativeSource.item)),
+      onItemTap: (item) => unawaited(navigateToMediaItemDetails(context, item)),
+      serverNameFor: (multiServer?.totalServerCount ?? 0) > 1 ? (item) => item.serverName ?? '' : null,
+      onSearchRequests: () => unawaited(_searchSeerr()),
+      onOpenRequest: _openSeerrDetail,
+      onRequest: (media) => unawaited(SeerrRequestSheet.show(context, media: media)),
+    );
+  }
+
+  /// Three states rather than a bool, so a scenario waiting on Search can tell
+  /// a slow query from a failed one instead of timing out on both.
+  AutomationReadiness _readiness() {
+    if (_searchError != null) return const AutomationReadiness.error('search');
+    if (_isSearching) return const AutomationReadiness.loading('query');
+    if (_isProjecting) return const AutomationReadiness.loading('projection');
+    return const AutomationReadiness.ready();
+  }
+
   @override
   Widget build(BuildContext context) {
+    return AutomationScreen(
+      id: AutomationIds.screenSearch,
+      readiness: _readiness,
+      child: _usesGroupedBody ? _buildMobile(context) : _buildShared(context),
+    );
+  }
+
+  Widget _buildShared(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
@@ -801,7 +960,7 @@ class _SearchScreenState extends State<SearchScreen>
               )
             else if (_searchError != null)
               SliverFillRemaining(
-                child: _searchError == _SearchError.noServers
+                child: _searchError == SearchFailure.noServers
                     ? StateView.error(
                         title: t.search.noServersTitle,
                         message: t.search.noServersBody,

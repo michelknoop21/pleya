@@ -180,6 +180,24 @@ ids:
   - id: catalog.grid.item
     role: grid.item
     instanceable: true
+  - id: screen.search
+    role: screen
+    instanceable: false
+  - id: search.header
+    role: region
+    instanceable: false
+  - id: search.field
+    role: region
+    instanceable: false
+  - id: search.chips
+    role: filter
+    instanceable: false
+  - id: search.section
+    role: region
+    instanceable: true
+  - id: search.result
+    role: list.item
+    instanceable: true
   - id: sheet.catalog_filters
     role: sheet
     instanceable: false

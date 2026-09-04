@@ -301,6 +301,7 @@
   },
   "search": {
     "hint": "Поиск фильмов, сериалов, музыки...",
+    "notOnYourServers": "Нет на ваших серверах",
     "tryDifferentTerm": "Попробуйте другой запрос",
     "searchYourMedia": "Поиск в вашей медиатеке",
     "enterTitleActorOrKeyword": "Введите название, актёра или ключевое слово",

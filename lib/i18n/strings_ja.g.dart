@@ -445,6 +445,7 @@ class _TranslationsSearchJa extends TranslationsSearchEn {
 
 	// Translations
 	@override String get hint => '映画、番組、音楽を検索...';
+	@override String get notOnYourServers => 'サーバーにありません';
 	@override String get tryDifferentTerm => '別の検索語をお試しください';
 	@override String get searchYourMedia => 'メディアを検索';
 	@override String get enterTitleActorOrKeyword => 'タイトル、俳優、またはキーワードを入力';
@@ -2556,6 +2557,7 @@ extension on TranslationsJa {
 			'settings.seekAndTiming' => 'シークとタイミング',
 			'settings.behavior' => '動作',
 			'search.hint' => '映画、番組、音楽を検索...',
+			'search.notOnYourServers' => 'サーバーにありません',
 			'search.tryDifferentTerm' => '別の検索語をお試しください',
 			'search.searchYourMedia' => 'メディアを検索',
 			'search.enterTitleActorOrKeyword' => 'タイトル、俳優、またはキーワードを入力',
@@ -2778,9 +2780,9 @@ extension on TranslationsJa {
 			'messages.noResultsFound' => '結果が見つかりません',
 			'messages.sleepTimerSet' => ({required Object label}) => 'スリープタイマーを${label}に設定しました',
 			'messages.noItemsAvailable' => 'アイテムがありません',
-			'messages.failedToCreatePlayQueueNoItems' => '再生キューの作成に失敗しました - アイテムがありません',
 			_ => null,
 		} ?? switch (path) {
+			'messages.failedToCreatePlayQueueNoItems' => '再生キューの作成に失敗しました - アイテムがありません',
 			'messages.failedPlayback' => ({required Object action}) => '${action}に失敗しました',
 			'messages.switchingToCompatiblePlayer' => '互換プレーヤーに切替中...',
 			'messages.serverLimitTitle' => '再生に失敗しました',
@@ -3292,9 +3294,9 @@ extension on TranslationsJa {
 			'companionRemote.session.minimize' => '最小化',
 			'companionRemote.pairing.discoveryDescription' => '同じPlexアカウントのPleyaデバイスがここに表示されます',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => '接続中...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connecting' => '接続中...',
 			'companionRemote.pairing.searchingForDevices' => 'デバイスを検索中...',
 			'companionRemote.pairing.noDevicesFound' => 'ネットワーク上にデバイスが見つかりません',
 			'companionRemote.pairing.noDevicesHint' => 'デスクトップでPleyaを開き、同じWiFiを使用してください',

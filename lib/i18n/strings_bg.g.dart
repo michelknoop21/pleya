@@ -445,6 +445,7 @@ class _TranslationsSearchBg extends TranslationsSearchEn {
 
 	// Translations
 	@override String get hint => 'Търсене на филми, сериали, музика...';
+	@override String get notOnYourServers => 'Липсва на вашите сървъри';
 	@override String get tryDifferentTerm => 'Опитайте с различна дума за търсене';
 	@override String get searchYourMedia => 'Търсете във вашата медия';
 	@override String get enterTitleActorOrKeyword => 'Въведете заглавие, актьор или ключова дума';
@@ -2556,6 +2557,7 @@ extension on TranslationsBg {
 			'settings.seekAndTiming' => 'Търсене и време',
 			'settings.behavior' => 'Поведение',
 			'search.hint' => 'Търсене на филми, сериали, музика...',
+			'search.notOnYourServers' => 'Липсва на вашите сървъри',
 			'search.tryDifferentTerm' => 'Опитайте с различна дума за търсене',
 			'search.searchYourMedia' => 'Търсете във вашата медия',
 			'search.enterTitleActorOrKeyword' => 'Въведете заглавие, актьор или ключова дума',
@@ -2778,9 +2780,9 @@ extension on TranslationsBg {
 			'messages.noResultsFound' => 'Няма намерени резултати',
 			'messages.sleepTimerSet' => ({required Object label}) => 'Таймерът за заспиване е зададен за ${label}',
 			'messages.noItemsAvailable' => 'Няма налични елементи',
-			'messages.failedToCreatePlayQueueNoItems' => 'Неуспешно създаване на опашка за възпроизвеждане - няма елементи',
 			_ => null,
 		} ?? switch (path) {
+			'messages.failedToCreatePlayQueueNoItems' => 'Неуспешно създаване на опашка за възпроизвеждане - няма елементи',
 			'messages.failedPlayback' => ({required Object action}) => 'Неуспешно ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Превключване към съвместим плейър...',
 			'messages.serverLimitTitle' => 'Възпроизвеждането е неуспешно',
@@ -3292,9 +3294,9 @@ extension on TranslationsBg {
 			'companionRemote.session.minimize' => 'Минимизирай',
 			'companionRemote.pairing.discoveryDescription' => 'Pleya устройства със същия Plex акаунт се показват тук',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Свързване...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connecting' => 'Свързване...',
 			'companionRemote.pairing.searchingForDevices' => 'Търсене на устройства...',
 			'companionRemote.pairing.noDevicesFound' => 'Не са намерени устройства във вашата мрежа',
 			'companionRemote.pairing.noDevicesHint' => 'Отворете Pleya на настолен компютър и използвайте същия WiFi',

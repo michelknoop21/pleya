@@ -301,6 +301,7 @@
   },
   "search": {
     "hint": "Cerca film. spettacoli, musica...",
+    "notOnYourServers": "Non è sui tuoi server",
     "tryDifferentTerm": "Prova altri termini di ricerca",
     "searchYourMedia": "Cerca nei tuoi media",
     "enterTitleActorOrKeyword": "Inserisci un titolo, attore o parola chiave",

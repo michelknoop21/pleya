@@ -1,0 +1,50 @@
+name: ios.search.northstar
+target: ios-sim
+# Zoeken as fase 4 delivers it — mockup 05. Observation only: every node
+# asserted here is one the product renders on its own.
+#
+# This is the first iOS Unified 2026 scenario that reaches its surface without
+# a coordinate tap. DEC-093 and DEC-094 both had to record that the scenario
+# DSL's `tap` takes coordinates, so no scenario could navigate to the fase-2
+# landings or the fase-3 catalogue device-independently. Search is a root
+# destination in the shell's `IndexedStack`, which is exactly what `POST
+# /v1/open` drives, so registering `screen.search` and mapping it to the tab
+# gives this phase the entry the two before it could not have. Fase 3's
+# catalogue still cannot: it is a pushed route, not a tab.
+#
+# Typing needs no tap either. `MainScreen._selectTab` focuses the query field
+# in a post-frame callback whenever the search destination is selected, which
+# is the same path the sidebar and the header glyph already use.
+#
+# What this scenario cannot show, and why it is a fixture limit rather than a
+# gap in the product: `catalog.mixed.v1` holds Aurora, Basalt and Cascade as
+# films and Driftwood as the one series, and those four titles share no
+# two-character substring. The search field ignores a single character, so no
+# single query can put a FILMS and a SHOWS section on screen at once here.
+# Both sections are covered at widget level in
+# `test/screens/search/mobile_search_body_test.dart`.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - open: screen.search
+steps:
+  - wait_until: {id: screen.search, timeout: 15000}
+  # The compact header, the field and the four chips: mockup 05's whole top.
+  - assert: {id: search.header, insideViewport: true}
+  - assert: {id: search.field, insideViewport: true}
+  - assert: {id: search.chips, insideViewport: true}
+  - assert: {id: search.field, below: search.header}
+  - assert: {id: search.chips, below: search.field}
+  - type: "aurora"
+  # The query is debounced by 500 ms and then fans out to every online server.
+  - settle: 3000
+  - wait_until: {id: "search.section[movies]", timeout: 15000}
+  - assert: {id: "search.section[movies]", insideViewport: true}
+  - assert: {id: "search.result[movies/0]", insideViewport: true}
+  - assert: {id: "search.result[movies/0]", minimumTapTarget: 44}
+  - assert: {id: "search.result[movies/0]", notClipped: "search.section[movies]"}
+  # A result row sits under the chips, never over them.
+  - assert: {id: "search.section[movies]", below: search.chips}
+  - snapshot: search-northstar

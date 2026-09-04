@@ -445,6 +445,7 @@ class _TranslationsSearchDe extends TranslationsSearchEn {
 
 	// Translations
 	@override String get hint => 'Filme, Serien, Musik suchen...';
+	@override String get notOnYourServers => 'Nicht auf deinen Servern';
 	@override String get tryDifferentTerm => 'Anderen Suchbegriff versuchen';
 	@override String get searchYourMedia => 'In den eigenen Medien suchen';
 	@override String get enterTitleActorOrKeyword => 'Titel, Schauspieler oder Stichwort eingeben';
@@ -2556,6 +2557,7 @@ extension on TranslationsDe {
 			'settings.seekAndTiming' => 'Spulen & Timing',
 			'settings.behavior' => 'Verhalten',
 			'search.hint' => 'Filme, Serien, Musik suchen...',
+			'search.notOnYourServers' => 'Nicht auf deinen Servern',
 			'search.tryDifferentTerm' => 'Anderen Suchbegriff versuchen',
 			'search.searchYourMedia' => 'In den eigenen Medien suchen',
 			'search.enterTitleActorOrKeyword' => 'Titel, Schauspieler oder Stichwort eingeben',
@@ -2778,9 +2780,9 @@ extension on TranslationsDe {
 			'messages.noResultsFound' => 'Keine Ergebnisse gefunden',
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sleep-Timer gesetzt auf ${label}',
 			'messages.noItemsAvailable' => 'Keine Elemente verfügbar',
-			'messages.failedToCreatePlayQueueNoItems' => 'Wiedergabewarteschlange konnte nicht erstellt werden – keine Elemente',
 			_ => null,
 		} ?? switch (path) {
+			'messages.failedToCreatePlayQueueNoItems' => 'Wiedergabewarteschlange konnte nicht erstellt werden – keine Elemente',
 			'messages.failedPlayback' => ({required Object action}) => 'Wiedergabe für ${action} fehlgeschlagen',
 			'messages.switchingToCompatiblePlayer' => 'Wechsle zu kompatiblem Player...',
 			'messages.serverLimitTitle' => 'Wiedergabe fehlgeschlagen',
@@ -3292,9 +3294,9 @@ extension on TranslationsDe {
 			'companionRemote.session.minimize' => 'Minimieren',
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-Geräte mit demselben Plex-Konto erscheinen hier',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Verbinden...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connecting' => 'Verbinden...',
 			'companionRemote.pairing.searchingForDevices' => 'Suche nach Geräten...',
 			'companionRemote.pairing.noDevicesFound' => 'Keine Geräte in deinem Netzwerk gefunden',
 			'companionRemote.pairing.noDevicesHint' => 'Öffne Pleya auf dem Desktop und nutze dasselbe WiFi',

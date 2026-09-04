@@ -1205,6 +1205,9 @@ class TranslationsSearchEn {
 	/// en: 'Search movies, shows, music...'
 	String get hint => 'Search movies, shows, music...';
 
+	/// en: 'Not on your servers'
+	String get notOnYourServers => 'Not on your servers';
+
 	/// en: 'Try a different search term'
 	String get tryDifferentTerm => 'Try a different search term';
 
@@ -6765,6 +6768,7 @@ extension on Translations {
 			'settings.personalizedRecommendationsDescription' => 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.',
 			'settings.sectionLibrary' => 'App & playback',
 			'search.hint' => 'Search movies, shows, music...',
+			'search.notOnYourServers' => 'Not on your servers',
 			'search.tryDifferentTerm' => 'Try a different search term',
 			'search.searchYourMedia' => 'Search your media',
 			'search.enterTitleActorOrKeyword' => 'Enter a title, actor, or keyword',
@@ -6932,9 +6936,9 @@ extension on Translations {
 			'videoControls.tvPanel.audio' => 'Audio',
 			'videoControls.tvPanel.tracks' => 'Tracks',
 			'videoControls.tvPanel.options' => 'Options',
-			'videoControls.tvPanel.more' => 'More…',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.tvPanel.more' => 'More…',
 			'videoControls.fullscreenButton' => 'Enter fullscreen',
 			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			'videoControls.alwaysOnTopButton' => 'Always on top',
@@ -7446,9 +7450,9 @@ extension on Translations {
 			'playlists.itemCount' => ({required Object count}) => '${count} items',
 			'playlists.oneItem' => '1 item',
 			'playlists.emptyPlaylist' => 'This playlist is empty',
-			'playlists.deleteConfirm' => 'Delete Playlist?',
 			_ => null,
 		} ?? switch (path) {
+			'playlists.deleteConfirm' => 'Delete Playlist?',
 			'playlists.deleteMessage' => ({required Object name}) => 'Are you sure you want to delete "${name}"?',
 			'playlists.created' => 'Playlist created',
 			'playlists.deleted' => 'Playlist deleted',
@@ -7960,9 +7964,9 @@ extension on Translations {
 			'tautulli.modeDeviceHelp' => 'In Tautulli, open Settings, Tautulli Remote App, and register a device. Paste the generated token here within five minutes. Your permanent API key stays out of the app, and you can revoke this one device later.',
 			'tautulli.modeApiKey' => 'API key',
 			'tautulli.modeApiKeyHelp' => 'The permanent key from Settings, Web Interface. It grants full access to Tautulli, so use it only if the device token does not work for you.',
-			'tautulli.deviceToken' => 'Device token',
 			_ => null,
 		} ?? switch (path) {
+			'tautulli.deviceToken' => 'Device token',
 			'tautulli.apiKey' => 'API key',
 			'tautulli.testConnection' => 'Test connection',
 			'tautulli.save' => 'Save',

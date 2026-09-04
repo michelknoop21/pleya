@@ -301,6 +301,7 @@
   },
   "search": {
     "hint": "搜索电影、系列、音乐...",
+    "notOnYourServers": "不在你的服务器上",
     "tryDifferentTerm": "尝试不同的搜索词",
     "searchYourMedia": "搜索媒体",
     "enterTitleActorOrKeyword": "输入标题、演员或关键词",

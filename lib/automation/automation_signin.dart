@@ -258,6 +258,7 @@ Future<Map<String, Object?>> _persistConnectionAndBindProfile(
 const Map<String, NavigationTabId> _screenToTab = {
   AutomationIds.screenDiscover: NavigationTabId.discover,
   AutomationIds.screenLibraries: NavigationTabId.libraries,
+  AutomationIds.screenSearch: NavigationTabId.search,
 };
 
 /// `POST /v1/open` body: `{"screen": "screen.discover", "timeoutMs"?}`.

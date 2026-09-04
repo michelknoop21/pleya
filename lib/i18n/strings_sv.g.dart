@@ -445,6 +445,7 @@ class _TranslationsSearchSv extends TranslationsSearchEn {
 
 	// Translations
 	@override String get hint => 'Sök filmer, serier, musik...';
+	@override String get notOnYourServers => 'Inte på dina servrar';
 	@override String get tryDifferentTerm => 'Prova en annan sökterm';
 	@override String get searchYourMedia => 'Sök i dina media';
 	@override String get enterTitleActorOrKeyword => 'Ange en titel, skådespelare eller nyckelord';
@@ -2556,6 +2557,7 @@ extension on TranslationsSv {
 			'settings.seekAndTiming' => 'Sök och timing',
 			'settings.behavior' => 'Beteende',
 			'search.hint' => 'Sök filmer, serier, musik...',
+			'search.notOnYourServers' => 'Inte på dina servrar',
 			'search.tryDifferentTerm' => 'Prova en annan sökterm',
 			'search.searchYourMedia' => 'Sök i dina media',
 			'search.enterTitleActorOrKeyword' => 'Ange en titel, skådespelare eller nyckelord',
@@ -2778,9 +2780,9 @@ extension on TranslationsSv {
 			'messages.noResultsFound' => 'Inga resultat hittades',
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sovtimer inställd för ${label}',
 			'messages.noItemsAvailable' => 'Inga objekt tillgängliga',
-			'messages.failedToCreatePlayQueueNoItems' => 'Det gick inte att skapa uppspelningskö – inga objekt',
 			_ => null,
 		} ?? switch (path) {
+			'messages.failedToCreatePlayQueueNoItems' => 'Det gick inte att skapa uppspelningskö – inga objekt',
 			'messages.failedPlayback' => ({required Object action}) => 'Kunde inte ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Byter till kompatibel spelare...',
 			'messages.serverLimitTitle' => 'Uppspelningen misslyckades',
@@ -3292,9 +3294,9 @@ extension on TranslationsSv {
 			'companionRemote.session.minimize' => 'Minimera',
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheter med samma Plex-konto visas här',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Ansluter...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connecting' => 'Ansluter...',
 			'companionRemote.pairing.searchingForDevices' => 'Söker efter enheter...',
 			'companionRemote.pairing.noDevicesFound' => 'Inga enheter hittades i ditt nätverk',
 			'companionRemote.pairing.noDevicesHint' => 'Öppna Pleya på desktop och använd samma WiFi',

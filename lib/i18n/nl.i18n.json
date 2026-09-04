@@ -329,6 +329,7 @@
   },
   "search": {
     "hint": "Zoek films, series, muziek...",
+    "notOnYourServers": "Niet op je servers",
     "tryDifferentTerm": "Probeer een andere zoekterm",
     "searchYourMedia": "Zoek in je media",
     "enterTitleActorOrKeyword": "Voer een titel, acteur of trefwoord in",

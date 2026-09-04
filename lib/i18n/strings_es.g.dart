@@ -445,6 +445,7 @@ class _TranslationsSearchEs extends TranslationsSearchEn {
 
 	// Translations
 	@override String get hint => 'Buscar películas, series, música...';
+	@override String get notOnYourServers => 'No está en tus servidores';
 	@override String get tryDifferentTerm => 'Prueba con un término de búsqueda diferente';
 	@override String get searchYourMedia => 'Busca en tu contenido';
 	@override String get enterTitleActorOrKeyword => 'Introduce un título, actor o palabra clave';
@@ -2556,6 +2557,7 @@ extension on TranslationsEs {
 			'settings.seekAndTiming' => 'Búsqueda y tiempo',
 			'settings.behavior' => 'Comportamiento',
 			'search.hint' => 'Buscar películas, series, música...',
+			'search.notOnYourServers' => 'No está en tus servidores',
 			'search.tryDifferentTerm' => 'Prueba con un término de búsqueda diferente',
 			'search.searchYourMedia' => 'Busca en tu contenido',
 			'search.enterTitleActorOrKeyword' => 'Introduce un título, actor o palabra clave',
@@ -2778,9 +2780,9 @@ extension on TranslationsEs {
 			'messages.noResultsFound' => 'No se encontraron resultados',
 			'messages.sleepTimerSet' => ({required Object label}) => 'Temporizador establecido en ${label}',
 			'messages.noItemsAvailable' => 'No hay elementos disponibles',
-			'messages.failedToCreatePlayQueueNoItems' => 'Error al crear la cola de reproducción - no hay elementos',
 			_ => null,
 		} ?? switch (path) {
+			'messages.failedToCreatePlayQueueNoItems' => 'Error al crear la cola de reproducción - no hay elementos',
 			'messages.failedPlayback' => ({required Object action}) => 'Error al ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Cambiando a reproductor compatible...',
 			'messages.serverLimitTitle' => 'Error de reproducción',
@@ -3292,9 +3294,9 @@ extension on TranslationsEs {
 			'companionRemote.session.minimize' => 'Minimizar',
 			'companionRemote.pairing.discoveryDescription' => 'Los dispositivos Pleya con la misma cuenta Plex aparecen aquí',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Conectando...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connecting' => 'Conectando...',
 			'companionRemote.pairing.searchingForDevices' => 'Buscando dispositivos...',
 			'companionRemote.pairing.noDevicesFound' => 'No se encontraron dispositivos en tu red',
 			'companionRemote.pairing.noDevicesHint' => 'Abre Pleya en escritorio y usa el mismo WiFi',

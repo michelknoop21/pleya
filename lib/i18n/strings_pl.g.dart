@@ -445,6 +445,7 @@ class _TranslationsSearchPl extends TranslationsSearchEn {
 
 	// Translations
 	@override String get hint => 'Szukaj filmów, seriali, muzyki...';
+	@override String get notOnYourServers => 'Nie ma na twoich serwerach';
 	@override String get tryDifferentTerm => 'Spróbuj innego wyszukiwania';
 	@override String get searchYourMedia => 'Przeszukaj swoje media';
 	@override String get enterTitleActorOrKeyword => 'Wprowadź tytuł, aktora lub słowo kluczowe';
@@ -2556,6 +2557,7 @@ extension on TranslationsPl {
 			'settings.seekAndTiming' => 'Przewijanie i czas',
 			'settings.behavior' => 'Zachowanie',
 			'search.hint' => 'Szukaj filmów, seriali, muzyki...',
+			'search.notOnYourServers' => 'Nie ma na twoich serwerach',
 			'search.tryDifferentTerm' => 'Spróbuj innego wyszukiwania',
 			'search.searchYourMedia' => 'Przeszukaj swoje media',
 			'search.enterTitleActorOrKeyword' => 'Wprowadź tytuł, aktora lub słowo kluczowe',
@@ -2778,9 +2780,9 @@ extension on TranslationsPl {
 			'messages.noResultsFound' => 'Nie znaleziono wyników',
 			'messages.sleepTimerSet' => ({required Object label}) => 'Wyłącznik czasowy ustawiony na ${label}',
 			'messages.noItemsAvailable' => 'Brak dostępnych elementów',
-			'messages.failedToCreatePlayQueueNoItems' => 'Nie udało się utworzyć kolejki odtwarzania — brak elementów',
 			_ => null,
 		} ?? switch (path) {
+			'messages.failedToCreatePlayQueueNoItems' => 'Nie udało się utworzyć kolejki odtwarzania — brak elementów',
 			'messages.failedPlayback' => ({required Object action}) => 'Nie udało się ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Przełączanie na kompatybilny odtwarzacz...',
 			'messages.serverLimitTitle' => 'Odtwarzanie nie powiodło się',
@@ -3292,9 +3294,9 @@ extension on TranslationsPl {
 			'companionRemote.session.minimize' => 'Minimalizuj',
 			'companionRemote.pairing.discoveryDescription' => 'Urządzenia Pleya z tym samym kontem Plex pojawią się tutaj',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Łączenie...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connecting' => 'Łączenie...',
 			'companionRemote.pairing.searchingForDevices' => 'Szukanie urządzeń...',
 			'companionRemote.pairing.noDevicesFound' => 'Nie znaleziono urządzeń w sieci',
 			'companionRemote.pairing.noDevicesHint' => 'Otwórz Pleya na komputerze i użyj tego samego WiFi',

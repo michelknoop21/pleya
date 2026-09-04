@@ -301,6 +301,7 @@
   },
   "search": {
     "hint": "映画、番組、音楽を検索...",
+    "notOnYourServers": "サーバーにありません",
     "tryDifferentTerm": "別の検索語をお試しください",
     "searchYourMedia": "メディアを検索",
     "enterTitleActorOrKeyword": "タイトル、俳優、またはキーワードを入力",

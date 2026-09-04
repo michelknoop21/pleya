@@ -486,6 +486,7 @@ class _TranslationsSearchNl extends TranslationsSearchEn {
 
 	// Translations
 	@override String get hint => 'Zoek films, series, muziek...';
+	@override String get notOnYourServers => 'Niet op je servers';
 	@override String get tryDifferentTerm => 'Probeer een andere zoekterm';
 	@override String get searchYourMedia => 'Zoek in je media';
 	@override String get enterTitleActorOrKeyword => 'Voer een titel, acteur of trefwoord in';
@@ -3008,6 +3009,7 @@ extension on TranslationsNl {
 			'settings.personalizedRecommendations' => 'Persoonlijke aanbevelingen',
 			'settings.personalizedRecommendationsDescription' => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.',
 			'search.hint' => 'Zoek films, series, muziek...',
+			'search.notOnYourServers' => 'Niet op je servers',
 			'search.tryDifferentTerm' => 'Probeer een andere zoekterm',
 			'search.searchYourMedia' => 'Zoek in je media',
 			'search.enterTitleActorOrKeyword' => 'Voer een titel, acteur of trefwoord in',
@@ -3204,9 +3206,9 @@ extension on TranslationsNl {
 			'videoControls.subtitleDownloaded' => 'Ondertitel gedownload',
 			'videoControls.subtitleDownloadFailed' => 'Ondertitel downloaden mislukt',
 			'videoControls.searchLanguages' => 'Talen zoeken...',
-			'videoControls.airplayButton' => 'AirPlay',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.airplayButton' => 'AirPlay',
 			'userStatus.admin' => 'Beheerder',
 			'userStatus.restricted' => 'Beperkt',
 			'userStatus.protected' => 'Beschermd',
@@ -3718,9 +3720,9 @@ extension on TranslationsNl {
 			'watchTogether.end' => 'Beëindigen',
 			'watchTogether.leave' => 'Verlaten',
 			'watchTogether.syncing' => 'Synchroniseren...',
-			'watchTogether.joinWatchSession' => 'Kijksessie Deelnemen',
 			_ => null,
 		} ?? switch (path) {
+			'watchTogether.joinWatchSession' => 'Kijksessie Deelnemen',
 			'watchTogether.enterCodeHint' => 'Voer 5-teken code in',
 			'watchTogether.pasteFromClipboard' => 'Plakken van klembord',
 			'watchTogether.pleaseEnterCode' => 'Voer een sessiecode in',
@@ -4232,9 +4234,9 @@ extension on TranslationsNl {
 			'seerr.alreadyRequested' => 'Al aangevraagd',
 			'seerr.pending' => 'In afwachting',
 			'seerr.approved' => 'Goedgekeurd',
-			'seerr.declined' => 'Afgewezen',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.declined' => 'Afgewezen',
 			'seerr.failed' => 'Mislukt',
 			'seerr.completed' => 'Afgerond',
 			'seerr.requestConfirm' => ({required Object title}) => '"${title}" aanvragen?',

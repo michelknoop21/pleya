@@ -445,6 +445,7 @@ class _TranslationsSearchRu extends TranslationsSearchEn {
 
 	// Translations
 	@override String get hint => 'Поиск фильмов, сериалов, музыки...';
+	@override String get notOnYourServers => 'Нет на ваших серверах';
 	@override String get tryDifferentTerm => 'Попробуйте другой запрос';
 	@override String get searchYourMedia => 'Поиск в вашей медиатеке';
 	@override String get enterTitleActorOrKeyword => 'Введите название, актёра или ключевое слово';
@@ -2556,6 +2557,7 @@ extension on TranslationsRu {
 			'settings.seekAndTiming' => 'Перемотка и время',
 			'settings.behavior' => 'Поведение',
 			'search.hint' => 'Поиск фильмов, сериалов, музыки...',
+			'search.notOnYourServers' => 'Нет на ваших серверах',
 			'search.tryDifferentTerm' => 'Попробуйте другой запрос',
 			'search.searchYourMedia' => 'Поиск в вашей медиатеке',
 			'search.enterTitleActorOrKeyword' => 'Введите название, актёра или ключевое слово',
@@ -2778,9 +2780,9 @@ extension on TranslationsRu {
 			'messages.noResultsFound' => 'Результаты не найдены',
 			'messages.sleepTimerSet' => ({required Object label}) => 'Таймер сна установлен на ${label}',
 			'messages.noItemsAvailable' => 'Нет доступных элементов',
-			'messages.failedToCreatePlayQueueNoItems' => 'Не удалось создать очередь воспроизведения — нет элементов',
 			_ => null,
 		} ?? switch (path) {
+			'messages.failedToCreatePlayQueueNoItems' => 'Не удалось создать очередь воспроизведения — нет элементов',
 			'messages.failedPlayback' => ({required Object action}) => 'Не удалось ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Переключение на совместимый плеер...',
 			'messages.serverLimitTitle' => 'Ошибка воспроизведения',
@@ -3292,9 +3294,9 @@ extension on TranslationsRu {
 			'companionRemote.session.minimize' => 'Свернуть',
 			'companionRemote.pairing.discoveryDescription' => 'Устройства Pleya с тем же аккаунтом Plex появятся здесь',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Подключение...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connecting' => 'Подключение...',
 			'companionRemote.pairing.searchingForDevices' => 'Поиск устройств...',
 			'companionRemote.pairing.noDevicesFound' => 'Устройства в вашей сети не найдены',
 			'companionRemote.pairing.noDevicesHint' => 'Откройте Pleya на компьютере и используйте тот же WiFi',

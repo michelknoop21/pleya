@@ -234,6 +234,36 @@ class AutomationIds {
   /// One card in [catalogGrid]. Instanceable: suffixed `[<index>]`.
   static const String catalogGridItem = 'catalog.grid.item';
 
+  /// The Search destination — iOS Unified 2026 fase 4, mockup
+  /// `05-zoeken.png`.
+  ///
+  /// A screen id like [screenDiscover] and [screenLibraries], and for the same
+  /// reason: Search is a root destination in the shell's `IndexedStack`, so
+  /// `POST /v1/open` can reach it through the shell's own tab selection. That
+  /// is what gives fase 4 a device-independent scenario entry where fase 2 and
+  /// fase 3 had none — those surfaces are a tab switch and a push that the
+  /// scenario DSL cannot express without coordinates.
+  static const String screenSearch = 'screen.search';
+
+  /// The search header: back and the page title.
+  static const String searchHeader = 'search.header';
+
+  /// The query field.
+  static const String searchField = 'search.field';
+
+  /// The type chips: all, movies, shows, episodes.
+  static const String searchChips = 'search.chips';
+
+  /// One result section — Films, Series, Afleveringen, Collecties, Playlists,
+  /// Overig, "Niet op je servers". Instanceable: suffixed `[<section key>]`
+  /// rather than an index, because which sections exist depends on the query
+  /// and an index would move under the caller.
+  static const String searchSection = 'search.section';
+
+  /// One row inside [searchSection]. Instanceable: suffixed
+  /// `[<section key>/<index>]`.
+  static const String searchResult = 'search.result';
+
   /// The two-column filter sheet — mockup `04-filters-sheet.png`.
   static const String sheetCatalogFilters = 'sheet.catalog_filters';
 
@@ -266,6 +296,8 @@ class AutomationIds {
     landingRail,
     landingRailItem,
     catalogGridItem,
+    searchSection,
+    searchResult,
     sheetSourcePickerRow,
   };
 
@@ -324,6 +356,12 @@ class AutomationIds {
     {'id': catalogStatus, 'role': 'region', 'instanceable': false},
     {'id': catalogGrid, 'role': 'grid', 'instanceable': false},
     {'id': catalogGridItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': screenSearch, 'role': 'screen', 'instanceable': false},
+    {'id': searchHeader, 'role': 'region', 'instanceable': false},
+    {'id': searchField, 'role': 'region', 'instanceable': false},
+    {'id': searchChips, 'role': 'filter', 'instanceable': false},
+    {'id': searchSection, 'role': 'region', 'instanceable': true},
+    {'id': searchResult, 'role': 'list.item', 'instanceable': true},
     {'id': sheetCatalogFilters, 'role': 'sheet', 'instanceable': false},
     {'id': sheetCatalogSort, 'role': 'sheet', 'instanceable': false},
     {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
