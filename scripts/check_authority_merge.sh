@@ -64,7 +64,13 @@ BASE="$(git merge-base "$P1" "$P2")"
 
 echo "==> laatste merge $(git rev-parse --short "$MERGE") ($(git rev-parse --short "$P1") + $(git rev-parse --short "$P2"))"
 
-blob() { git rev-parse "$1:$2" 2>/dev/null || echo "-"; }
+# `git rev-parse <rev>:<pad>` echoot bij een onbekend pad zijn eigen argument naar
+# stdout en faalt daarna met 128. In een commandosubstitutie levert `|| echo "-"`
+# dan "<rev>:<pad>" plus "-" in plaats van alleen "-", en dat is voor deze controle
+# geen herkenbare "bestaat niet": een bestand dat maar aan één kant bestaat viel
+# daardoor niet in de skip maar in de vergelijking, en werd als FAIL gemeld.
+# `--verify --quiet` zwijgt en faalt wel meteen.
+blob() { git rev-parse --verify --quiet "$1:$2" || echo "-"; }
 
 for f in "${FILES[@]}"; do
   for allowed in ${ALLOW[@]+"${ALLOW[@]}"}; do

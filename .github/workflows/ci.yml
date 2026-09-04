@@ -255,6 +255,9 @@ jobs:
           # een ondiepe checkout ziet niets en zou stilzwijgend groen zijn.
           fetch-depth: 0
 
+      - name: Self-test the authority merge gate
+        run: scripts/check_authority_merge_test.sh
+
       - name: Verify no authority file was reverted to one merge parent
         run: scripts/check_authority_merge.sh
 
