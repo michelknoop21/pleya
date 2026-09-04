@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+      # De integratiebranch leeft langer dan één PR en draagt de merges van elke
+      # slice. Zonder deze regel draait de CI daar nooit, en dan is de gate een
+      # belofte in plaats van bewijs (RB-15).
+      - "integration/**"
   pull_request:
     branches:
       - main
