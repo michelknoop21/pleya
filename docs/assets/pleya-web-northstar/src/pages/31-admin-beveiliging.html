@@ -1,0 +1,54 @@
+<!-- widths: 1600, 393 -->
+{{shell:admin|nav=Beveiliging|navAction=}}
+<div class="admin">
+  {{admin:security|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Beveiliging</div>
+    <h1 class="page-title" style="margin-top:0"><span>Beveiliging</span></h1>
+
+    <div class="cols-2" style="align-items:start">
+      <div>
+        <section class="panel">
+          <h3>Tokens</h3>
+          <div class="form">
+            <label class="label" style="margin-top:0">Toegangstoken geldig</label>
+            <div class="field select">15 minuten {{icon:chevd}}</div>
+            <label class="label">Ingelogd blijven (vernieuwingstoken)</label>
+            <div class="field select">30 dagen {{icon:chevd}}</div>
+            <p class="help">Elk gebruik geeft een nieuw token; hergebruik van een oud token trekt de hele keten van dat toestel in. Een verloren antwoord krijgt 2 minuten respijt.</p>
+          </div>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Inloggen</h3>
+          <dl class="kv" style="grid-template-columns:170px 1fr">
+            <dt>Wachtwoorden</dt><dd>Argon2id, parameters worden bij inloggen bijgewerkt</dd>
+            <dt>Afremmen</dt><dd>5 pogingen, daarna 1 per 12 s per gebruikersnaam; een onbekende naam kost evenveel tijd als een bekende</dd>
+            <dt>Setupcode</dt><dd><span class="status"><span class="dot idle"></span>ingewisseld op 19 augustus 2026</span></dd>
+          </dl>
+        </section>
+      </div>
+      <div>
+        <section class="panel" style="padding:6px 8px">
+          <h3 style="padding:10px 12px 4px">Ingelogde toestellen <span class="all">alle gebruikers · 5</span></h3>
+          <table class="table">
+            <tr><th>Toestel</th><th>Gebruiker</th><th>Laatst gezien</th><th class="r"></th></tr>
+            <tr><td><div class="t">Apple TV woonkamer</div><div class="s">tvOS · Pleya 2.8</div></td><td>Michel</td><td>nu · streamt</td><td class="r"><div class="act"><a class="btn ghost sm" href="#">Intrekken</a></div></td></tr>
+            <tr><td><div class="t">Deze browser</div><div class="s">Safari op macOS</div></td><td>Michel</td><td>nu</td><td class="r"><span class="pill ok">dit toestel</span></td></tr>
+            <tr><td><div class="t">iPhone van Michel</div><div class="s">iOS · Pleya 2.8</div></td><td>Michel</td><td>vandaag 08:02</td><td class="r"><div class="act"><a class="btn ghost sm" href="#">Intrekken</a></div></td></tr>
+            <tr><td><div class="t">iPhone van Sanne</div><div class="s">iOS · Pleya 2.8</div></td><td>Sanne</td><td>vandaag 08:02</td><td class="r"><div class="act"><a class="btn ghost sm" href="#">Intrekken</a></div></td></tr>
+            <tr><td><div class="t">Apple TV kinderkamer</div><div class="s">tvOS · Pleya 2.8</div></td><td>Kids</td><td>gisteren 17:40</td><td class="r"><div class="act"><a class="btn ghost sm" href="#">Intrekken</a></div></td></tr>
+            <tr><td><div class="t">Onbekend toestel</div><div class="s">legacy-sessie van vóór de migratie, geen toestelnaam</div></td><td>Michel</td><td>3 weken geleden</td><td class="r"><div class="act"><a class="btn ghost sm" href="#">Intrekken</a></div></td></tr>
+          </table>
+          <p class="help" style="padding:8px 12px 10px">Intrekken werkt binnen twee seconden, ook midden in een stream. De vernieuwingstokens en streamsessies van dat toestel gaan mee.</p>
+        </section>
+        <section class="panel" style="margin-top:14px;border:1px solid rgba(229,20,15,.35)">
+          <h3 style="color:#FF6A63">Ondertekensleutel</h3>
+          <p class="help" style="margin:0 0 12px">Staat als bestand in <span class="mono">/config</span>, niet in de database. Roteren logt iedereen op elk toestel uit, ook jou. Alleen doen bij een vermoeden van een lek.</p>
+          <a class="btn danger sm" href="#">{{icon:key}} Sleutel roteren</a>
+        </section>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:20px;justify-content:flex-end"><a class="btn ghost" href="#">Annuleren</a><a class="btn primary" href="#">Opslaan</a></div>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 31 Beveiliging · token-TTL's als serverinstelling, sessies over alle gebruikers (DEC-070), sleutelrotatie als bewuste noodgreep</div>

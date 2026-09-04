@@ -124,6 +124,16 @@ poortwachter. De vriezing hangt bewust aan "de lopende fase" en niet aan een vas
 anker op een specifiek nummer veroudert stilzwijgend zodra die fase een opengelaten voorganger heeft,
 precies wat er met de PS-5-verwijzing gebeurde toen PS-9 vrijgegeven werd (`faef53a`).
 
+**Re-baseline van 4 september 2026.** `docs/pleya-server-rebaseline/` (A tot O, plus `HANDOFF.md`
+met de besluiten van die avond) en de webnorthstar in `docs/assets/pleya-web-northstar/` (met
+`DESIGN.md` als bouwhandleiding) zijn het uitvoeringsplan voor het afmaken van Pleya Server als
+totaalplan; de slices in deel I zijn de uitvoeringseenheden en verwijzen naar de PS-fasen hier.
+De branch moet eerst weer schoon met `main` mergen (slice S0). Lees HANDOFF.md vóór de rest.
+
+**`docs/PLEYA-SERVER-MASTERLIST.md` is de afvinklijst en wordt bij elke afgeronde taak in
+dezelfde commit bijgewerkt**, met status en bewijs. Een taak op `gereed` zonder bewijs telt als
+open; werk dat er niet in staat is scope creep en vraagt eerst een regel.
+
 Bij ieder Pleya Server-werk:
 
 1. lees eerst hoofdstuk 23 en de fase waar je in zit, plus de DEC-voorstellen in hoofdstuk 24;

@@ -13,6 +13,15 @@ met PS-14 ontworpen en PS-15/PS-16 begrensd, alle drie nog niet vrijgegeven._
 
 ## Waar was ik
 
+**Re-baseline van Pleya Server geschreven, ongecommit (4 september, avond).** Het pakket
+`docs/pleya-server-rebaseline/` (A tot O, C-review, HANDOFF.md) en de webnorthstar
+`docs/assets/pleya-web-northstar/` (40 schermen, 80 beelden, bron en `DESIGN.md`) staan in de
+werkboom. Michel besloot: set akkoord, boeken op web akkoord, scope is het totaalplan (transcode,
+downloads, verzamelingen, persoonlijke laag, realtime, remote hardening, back-up, metadata-
+providers met automatisch matchen en artwork), Plex-migratie als losse keuzefase, alles via MCP
+beheerbaar, en de branch moet weer schoon met `main` mergen. De delen B, D tot O staan nog op de
+scope van vóór die besluiten; HANDOFF.md zegt wat achterhaald is en waar de volgende sessie begint.
+
 **PS-5 is opgeleverd: het toestel vertelt de backend eindelijk wat het aankan.**
 `DeviceCapabilities` staat er met vier lagen (decoder, weergave, audio, verbinding), detectie per
 platform met de host als injecteerbaar argument, en de vier overrides die er al waren plus één
@@ -190,6 +199,12 @@ geeft 24 treffers zonder seizoen, `kind=season` levert ze alsnog, en zonder toke
 `200` met token.
 
 ## Volgende stap
+
+**Eerst HANDOFF.md in `docs/pleya-server-rebaseline/`; de stand per taak staat in
+`docs/PLEYA-SERVER-MASTERLIST.md`.** Volgorde: mergebaarheid met `main` meten
+en als S0 uitvoeren op een integratiebranch, mockups 17, 18, 19, 28 en 35 reviewen, extra mockups
+voor metadata-match, transcode-sessies, downloads en realtime, dan de delen B tot O bijwerken op
+het totaalplan. Niets committen zonder Michels go.
 
 **PS-9 is gesloten op 2026-09-04, met de huishoudronde op de draaiende NAS als laatste bewijs.**
 Migratie 0007 staat er sinds 2026-09-03 (schemaversie 7, back-up ervóór op de NAS zelf onder

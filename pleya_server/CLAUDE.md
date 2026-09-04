@@ -10,6 +10,10 @@ fase vooruit, en schrijf geen latere productvereiste weg. **PS-9 is gesloten op 
 De volgende fase in de vastgelegde doorloop is PS-11A en die is niet gestart, dus er is op dit moment
 geen lopende serverfase: nieuw werk hier vraagt eerst een vrijgave.
 
+De stand van de ontwikkeling staat in [../docs/PLEYA-SERVER-MASTERLIST.md](../docs/PLEYA-SERVER-MASTERLIST.md)
+en het plan in [../docs/pleya-server-rebaseline/](../docs/pleya-server-rebaseline/). Werk je hier,
+vink dan af in dezelfde commit.
+
 Eén stuk werk loopt daar bewust naast: de lege hubs `continue_watching` en `next_up` in `handleHub`
 zijn met [DEC-073](../docs/DECISIONS.md) aangemerkt als defect in het gesloten PS-4, en worden als
 zodanig gecorrigeerd. Datzelfde besluit voegt PS-4E, PS-7N en PS-7A toe aan de roadmap; geen van

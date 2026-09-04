@@ -1,0 +1,50 @@
+<!-- widths: 1600 -->
+{{shell:admin|nav=Metadata en artwork|navAction=}}
+<div class="admin">
+  {{admin:metadata|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Metadata en artwork</div>
+    <h1 class="page-title" style="margin-top:0"><span>Metadata en artwork</span></h1>
+
+    <div class="cols-2" style="align-items:start">
+      <div>
+        <section class="panel" style="padding:6px 8px">
+          <h3 style="padding:10px 12px 4px">Sidecars (.nfo) <span class="all">laag 2 van de metadatabronnen</span></h3>
+          <table class="table">
+            <tr><th>Bibliotheek</th><th style="width:200px">Dekking</th><th>Samenvatting</th><th>Genres</th><th class="r"></th></tr>
+            <tr><td class="t">Films</td><td><div class="bar"><i style="width:91%"></i></div><div class="s">91% · 420 van 461</div></td><td>418</td><td>411</td><td class="r"><span class="pill ok">boven de 80%</span></td></tr>
+            <tr><td class="t">Series</td><td><div class="bar"><i style="width:84%"></i></div><div class="s">84% · 82 van 97</div></td><td>80</td><td>79</td><td class="r"><span class="pill ok">boven de 80%</span></td></tr>
+            <tr><td class="t">Kids</td><td><div class="bar warn"><i style="width:40%"></i></div><div class="s">40% · 2 van 5</div></td><td>2</td><td>2</td><td class="r"><span class="pill warn">onder de 80%</span></td></tr>
+            <tr><td class="t">Boeken</td><td><div class="bar"><i style="width:100%"></i></div><div class="s">uit het EPUB zelf</div></td><td>38</td><td>38</td><td class="r"><span class="pill ok">OPF</span></td></tr>
+          </table>
+          <p class="help" style="padding:8px 12px 10px">Onder de 80% per bibliotheek is een sidecar geen oplossing; die bibliotheek wacht op een provider. Dat is de poort uit DEC-073 en hij staat hier zichtbaar in plaats van in een script.</p>
+        </section>
+
+        <section class="panel" style="margin-top:14px">
+          <h3>Provider <span class="pill">niet geconfigureerd</span></h3>
+          <p class="help" style="margin:0 0 12px">Titels zonder sidecar krijgen samenvatting, cast en beoordelingen van een externe bron zodra die fase er is. De server praat dan met de provider, nooit de browser; een handmatige correctie overleeft elke providerronde.</p>
+          <div class="choice dis"><span class="radio"></span><div class="body"><div class="t">TMDB</div><div class="s">wacht op PS-7 · attributie verplicht op elk scherm</div></div></div>
+        </section>
+      </div>
+
+      <div>
+        <section class="panel">
+          <h3>Artwork</h3>
+          <dl class="kv" style="grid-template-columns:170px 1fr">
+            <dt>Bron</dt><dd>posters en backdrops naast de bestanden, boekcovers uit het EPUB</dd>
+            <dt>Afgeleide formaten</dt><dd><span class="status"><span class="dot"></span>aan · 240, 480, 960 en 1920 breed</span></dd>
+            <dt>Cache</dt><dd>2,4 GB in <span class="mono">/cache/artwork</span> · 18.204 bestanden</dd>
+            <dt>Bij een cache miss</dt><dd>één keer schalen per formaat, gelijktijdige aanvragen wachten op elkaar</dd>
+            <dt>Niet decodeerbaar</dt><dd>het origineel wordt geleverd, 3 gevallen</dd>
+          </dl>
+          <div class="btn-row" style="margin-top:14px"><a class="btn ghost sm" href="#">{{icon:trash}} Cache leegmaken</a><a class="btn ghost sm" href="#">{{icon:refresh}} Vooraf schalen voor alle posters</a></div>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Wat de server niet doet</h3>
+          <p class="help" style="margin:0">Geen artwork uploaden of kiezen: de mounts zijn alleen-lezen. Geen metadata bewerken buiten het bevestigen of afwijzen van een providerkandidaat. Beide zijn productbesluiten (B1 en B3 in de replacement matrix) en geen vergeten knop.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 29 Metadata en artwork · sidecar-dekking met de 80%-poort, afgeleide artworkformaten (PS-7A) en de providerplek (PS-7)</div>

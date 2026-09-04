@@ -1,0 +1,35 @@
+<!-- widths: 1600, 393 -->
+{{shell:admin|nav=Gebruikers|navAction=plus}}
+<div class="admin">
+  {{admin:users|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Gebruikers</div>
+    <h1 class="page-title" style="margin-top:0"><span>Gebruikers</span><a class="btn primary sm" href="#">{{icon:plus}} Gebruiker toevoegen</a></h1>
+
+    <section class="panel" style="padding:6px 8px">
+      <table class="table">
+        <tr><th>Gebruiker</th><th>Rol</th><th>Bibliotheken</th><th>Laatst actief</th><th>Toestellen</th><th class="r"></th></tr>
+        <tr><td><div class="t">Michel</div><div class="s">eigenaar sinds 19 augustus 2026</div></td><td><span class="pill">eigenaar</span></td><td>alle</td><td>nu · Apple TV woonkamer</td><td>3</td><td class="r"><div class="act"><a class="btn ghost icon" href="#">{{icon:edit}}</a></div></td></tr>
+        <tr class="hover"><td><div class="t">Sanne</div><div class="s">aangemaakt 4 september 2026</div></td><td><span class="pill">lid</span></td><td>Films · Series · Boeken</td><td>vandaag 08:02 · iPhone</td><td>1</td><td class="r"><div class="act"><a class="btn ghost icon" href="#">{{icon:edit}}</a></div></td></tr>
+        <tr><td><div class="t">Kids</div><div class="s">aangemaakt 4 september 2026</div></td><td><span class="pill warn">beperkt</span></td><td>Kids</td><td>gisteren 17:40 · Apple TV kinderkamer</td><td>1</td><td class="r"><div class="act"><a class="btn ghost icon" href="#">{{icon:edit}}</a></div></td></tr>
+      </table>
+    </section>
+
+    <div class="cols-2" style="margin-top:16px">
+      <section class="panel">
+        <h3>Rollen</h3>
+        <dl class="kv" style="grid-template-columns:100px 1fr">
+          <dt>Eigenaar</dt><dd>precies één; beheert alles, kan niet verwijderd of gedegradeerd worden</dd>
+          <dt>Beheerder</dt><dd>gebruikers, bibliotheken, opslag, scans en instellingen</dd>
+          <dt>Lid</dt><dd>eigen wachtwoord, eigen sessies, de bibliotheken die zijn toegekend</dd>
+          <dt>Beperkt</dt><dd>zoals lid, maar kan het eigen wachtwoord niet wijzigen en krijgt nooit beheerrecht op een bibliotheek</dd>
+        </dl>
+      </section>
+      <section class="panel">
+        <h3>Wat je hier niet ziet</h3>
+        <p class="help" style="margin:0">Geen wachtwoorden, geen tokens. Een beheerder kan een wachtwoord opnieuw instellen maar het bestaande nooit lezen. Iemand verwijderen trekt binnen twee seconden alle sessies in, ook een lopende stream.</p>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 26 Gebruikers · het PS-9-scherm dat DEC-067 aan PS-11A gaf; vier rollen uit DEC-065</div>

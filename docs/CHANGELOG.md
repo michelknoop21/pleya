@@ -4,6 +4,20 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## 2026-09-04 (avond): re-baseline van Pleya Server als pakket
+
+Ongecommit op `feat/pleyaserver`. `docs/pleya-server-rebaseline/` bevat preflight, dependency
+map, northstar-spec en -review, twintig architectuurbesluiten (RB-1 tot RB-20), gap-analyses
+voor backend, web en e-books, een masterplan met zeventien slices als DAG, het API- en
+schemaplan (vier protocolvensters, migraties 0008 tot 0013), security, testmatrix met acht golden
+journeys, documentatieplan, integratie- en releaseplan en een Definition of Done.
+`docs/assets/pleya-web-northstar/` bevat 40 schermen op vier breedtes met HTML-bron, tokens,
+renderer en `DESIGN.md`. `docs/PLEYA-SERVER-MASTERLIST.md` is de afvinklijst voor de uitvoering: 26 slices met taken,
+status, bewijs en datum, plus acht poorten. Besluiten van Michel diezelfde avond (set akkoord, boeken op web,
+totaalplan met metadata-providers, Plex-migratie als keuzefase, alles via MCP, branch moet weer
+met `main` mergen) staan in `HANDOFF.md`; de delen B en D tot O zijn daar nog niet op bijgewerkt.
+
+
 ## [2026-09-04] PS-9 gesloten, met de huishoudronde op de draaiende NAS
 
 De opdracht was om de vorige sessie niet op haar woord te geloven, en dat leverde eerst een les over

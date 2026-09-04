@@ -1,0 +1,67 @@
+<!-- widths: 1600 -->
+{{shell:admin|nav=Diagnostiek|navAction=}}
+<div class="admin">
+  {{admin:diagnostics|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Diagnostiek</div>
+    <h1 class="page-title" style="margin-top:0"><span>Diagnostiek</span><span class="btn-row"><a class="btn ghost sm" href="#">{{icon:download}} Rapport voor support</a></span></h1>
+
+    <div class="cols-2" style="align-items:start">
+      <div>
+        <section class="panel">
+          <h3>Versies</h3>
+          <dl class="kv" style="grid-template-columns:170px 1fr">
+            <dt>Pleya-server</dt><dd>0.9.0 <span class="dim">· gebouwd 3 september 2026</span></dd>
+            <dt>Protocol</dt><dd>v1 · feature level 1 · profiel <span class="mono">full</span></dd>
+            <dt>Database</dt><dd>Postgres 18.6 · schema 8 · 8 migraties toegepast, checksums kloppen</dd>
+            <dt>ffmpeg</dt><dd>5.1.9 (Debian)</dd>
+            <dt>Gestart</dt><dd>29 augustus 2026, 07:41 · 6 dagen</dd>
+          </dl>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Capabilities <span class="all">wat /info adverteert</span></h3>
+          <div class="chips" style="flex-wrap:wrap">
+            <span class="chip quiet on">browse</span><span class="chip quiet on">search</span><span class="chip quiet on">artwork</span><span class="chip quiet on">watch_state</span><span class="chip quiet on">watch_state_ownership</span><span class="chip quiet on">stream_sessions</span><span class="chip quiet on">users</span><span class="chip quiet on">sessions</span><span class="chip quiet on">administration</span><span class="chip quiet on">ebooks</span><span class="chip quiet on">filters</span><span class="chip quiet">playback_plan</span><span class="chip quiet">transcode</span><span class="chip quiet">downloads</span><span class="chip quiet">live_tv</span><span class="chip quiet">realtime</span>
+          </div>
+          <p class="help">Een vlag staat pas aan als de server het gedrag werkelijk levert. Er is geen instelling om er een te forceren.</p>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Gezondheid</h3>
+          <dl class="kv" style="grid-template-columns:170px 1fr">
+            <dt><span class="mono">/healthz</span></dt><dd><span class="status"><span class="dot"></span>ok</span></dd>
+            <dt><span class="mono">/readyz</span></dt><dd><span class="status"><span class="dot"></span>ok · database bereikbaar, migraties compleet</span></dd>
+            <dt>Taken</dt><dd>1 bezig · 0 wachtend · 2 mislukt (zie Scans en taken)</dd>
+            <dt>Geheugen</dt><dd>212 MB · piek 480 MB tijdens de laatste scan</dd>
+          </dl>
+        </section>
+      </div>
+      <div>
+        <section class="panel">
+          <h3>Omgeving <span class="all">alleen-lezen</span></h3>
+          <dl class="kv" style="grid-template-columns:230px 1fr;font-size:13px">
+            <dt class="mono">PLEYA_SERVER_HTTP_ADDR</dt><dd class="mono">:8080</dd>
+            <dt class="mono">PLEYA_SERVER_CONFIG_DIR</dt><dd class="mono">/config</dd>
+            <dt class="mono">PLEYA_SERVER_CACHE_DIR</dt><dd class="mono">/cache</dd>
+            <dt class="mono">PLEYA_SERVER_MEDIA_DIRS</dt><dd class="mono">/volume1/media,/volume2/media,/mnt/usb-archief</dd>
+            <dt class="mono">PLEYA_SERVER_LIBRARIES</dt><dd class="mono">kids=shows:/volume1/media/Kids <span class="pill warn" style="height:18px">overnemen</span></dd>
+            <dt class="mono">PLEYA_SERVER_LOG_LEVEL</dt><dd class="mono">info</dd>
+            <dt class="mono">PLEYA_SERVER_JOB_WORKERS</dt><dd class="mono">2</dd>
+            <dt class="mono">DATABASE_URL</dt><dd class="mono">postgres://pleya:•••@db:5432/pleya</dd>
+          </dl>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Laatste meldingen <span class="all">waarschuwingen en fouten · 24 uur</span></h3>
+          <div class="log">
+<span class="k">14:02:11</span> <span class="w">warn</span> scan  root not mounted, skipping  library=boeken root=/volume1/media/Boeken<br>
+<span class="k">08:11:47</span> <span class="e">error</span> probe ffprobe timeout after 60s  file=…/Nosferatu (2024)/Nosferatu.mkv attempts=3<br>
+<span class="k">08:00:02</span> <span class="w">warn</span> config library from env still present after takeover, ignored  slug=kids<br>
+<span class="k">gisteren 22:14</span> <span class="w">warn</span> auth  login rate limited  user=sanne<br>
+<span class="k">gisteren 16:22</span> <span class="k">info</span> scan  cancelled by user  library=films by=michel
+          </div>
+          <p class="help">Tokens, wachtwoorden en volledige paden staan hier nooit; paden worden afgekort. De volledige log leest een beheerder op de host.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 32 Diagnostiek · versies, capabilities, gezondheid, omgeving alleen-lezen, een begrensde geredigeerde log</div>
