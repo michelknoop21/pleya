@@ -2021,3 +2021,16 @@ filterpaneel; §10.6 staat die knop al toe, hij is alleen nergens zichtbaar gema
 C zet een verticale actierail links van het raster, altijd één LEFT vanaf kolom 0,
 met de actieve filters als regel eronder; dat kost één posterkolom. De keuze
 verandert §10.2 en raakt northstar 05, 06 en 14 en state D van mockup 27.
+
+Michels antwoord op de drie, letterlijk: "Ik vind a het beste maar dan moet dit niet
+altijd in beeld blijven deze zijbalk." Alleen C heeft een zijbalk, dus de lezing is:
+de rail van C, ingeklapt tot hij nodig is. Dat staat getekend als D1 (ingeklapt, zes
+kolommen, de actieve filters als stille regel naast de kop, LEFT vanaf kolom 0 klapt
+uit) en D2 (uitgeklapt, vijf kolommen, RIGHT of Menu klapt in en de focus keert terug
+op dezelfde kaart). Bevestigd door Michel, letterlijk: "C bedoelde ik inderdaad maar maak hem moooer dan
+nu getoond en moet wel subtiel zichtbaar zijn in de bibliotheel wat je als filter
+gekozen hebt." Twee eisen dus: de rail als paneel in plaats van drie losse pillen, en
+de gekozen filters altijd zichtbaar in het raster. D1 en D2 zijn daarop
+hertekend: de rail is één paneel in de tegeltaal met per regel icoon, label en
+huidige waarde, de keuzes als tags en Wissen eronder; ingeklapt staan dezelfde tags
+naast de kop, met de sortering gestippeld zodat hij niet als filter leest.

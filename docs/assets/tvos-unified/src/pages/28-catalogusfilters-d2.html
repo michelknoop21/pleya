@@ -1,0 +1,51 @@
+<style>
+.page { padding: 0 var(--grid-inset); }
+.head { display: flex; align-items: flex-end; gap: 22px; }
+.head .cnt { margin-left: auto; margin-bottom: 12px; font-size: 20px; color: var(--ink-3); }
+.body { display: flex; gap: 34px; margin-top: 34px; align-items: flex-start; }
+.panel { width: 330px; flex: none; background: var(--surface); border-radius: var(--r-tile); padding: 10px; }
+.panel .prow { display: flex; align-items: center; gap: 16px; height: 76px; padding: 0 18px; border-radius: 12px; }
+.panel .prow .ic { width: 26px; height: 26px; color: var(--ink-2); flex: none; }
+.panel .prow .b { flex: 1; min-width: 0; }
+.panel .prow .t { font-size: 22px; font-weight: 500; }
+.panel .prow .v { font-size: 18px; color: var(--ink-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.panel .prow .chev { width: 20px; height: 20px; color: var(--ink-4); }
+.panel .prow.focus { background: var(--elevated); box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--ink); }
+.panel .hr { height: 1px; background: var(--hair); margin: 8px 18px; }
+.panel .sel { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 18px 12px; }
+.panel .sel .tag { border-color: var(--ink-4); color: var(--ink-2); }
+.panel .sel .tag.muted { border-style: dashed; color: var(--ink-3); }
+.panel .clear { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 18px; font-size: 19px; color: var(--ink-3); border-radius: 12px; }
+.panel .clear .ic { width: 20px; height: 20px; }
+.grid5 { display: grid; grid-template-columns: repeat(5, 281px); gap: 22px; }
+.grid5 .card .art { width: 281px; height: 422px; }
+</style>
+{{nav:Films|live}}
+<div class="page">
+  <div class="head"><div class="page-title">Alle films</div><div class="cnt">312 titels</div></div>
+  <div class="body">
+    <div class="panel">
+      <div class="prow focus">{{icon:server}}<div class="b"><div class="t">Bronnen</div><div class="v">Alle · 3 servers</div></div>{{icon:chev}}</div>
+      <div class="prow">{{icon:filter}}<div class="b"><div class="t">Filters</div><div class="v">2 actief</div></div>{{icon:chev}}</div>
+      <div class="prow">{{icon:sort}}<div class="b"><div class="t">Sortering</div><div class="v">Titel A–Z</div></div>{{icon:chev}}</div>
+      <div class="hr"></div>
+      <div class="sel"><span class="tag">Niet bekeken</span><span class="tag">Sciencefiction</span><span class="tag muted">Titel A–Z</span></div>
+      <div class="clear">{{icon:close}} Filters wissen</div>
+    </div>
+    <div class="grid5">
+      <div class="card"><div class="art"><img src="{{art:oppenheimer-poster}}"><span class="src">2 bronnen</span></div><div class="t">Oppenheimer</div><div class="s">2023 · Thriller</div></div>
+      <div class="card"><div class="art"><img src="{{art:barbie-poster}}"><div class="prog"><i style="width:30%"></i></div></div><div class="t">Barbie</div><div class="s">2023 · Comedy</div></div>
+      <div class="card"><div class="art"><img src="{{art:grandbudapest-poster}}"></div><div class="t">The Grand Budapest Hotel</div><div class="s">2014 · Comedy</div></div>
+      <div class="card"><div class="art"><img src="{{art:interstellar-poster}}"><span class="seen">{{icon:check}}</span></div><div class="t">Interstellar</div><div class="s">2014 · Sciencefiction</div></div>
+      <div class="card"><div class="art"><img src="{{art:spiderverse-poster}}"></div><div class="t">Across the Spider-Verse</div><div class="s">2023 · Animatie</div></div>
+      <div class="card"><div class="art"><img src="{{art:lalaland-poster}}"></div><div class="t">La La Land</div><div class="s">2016 · Musical</div></div>
+      <div class="card"><div class="art"><img src="{{art:wonka-poster}}"></div><div class="t">Wonka</div><div class="s">2023</div></div>
+      <div class="card"><div class="art"><img src="{{art:pastlives-poster}}"></div><div class="t">Past Lives</div><div class="s">2023</div></div>
+      <div class="card"><div class="art"><img src="{{art:dune2-poster}}"></div><div class="t">Dune: Part Two</div><div class="s">2024</div></div>
+      <div class="card"><div class="art"><img src="{{art:eeaao-poster}}"></div><div class="t">Everything Everywhere</div><div class="s">2022</div></div>
+      <div class="card"><div class="art"><img src="{{art:holdovers-poster}}"></div><div class="t">The Holdovers</div><div class="s">2023</div></div>
+      <div class="card"><div class="art"><img src="{{art:anora-poster}}"></div><div class="t">Anora</div><div class="s">2024</div></div>
+    </div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 28 · optie D2 (rail uitgeklapt): één paneel in de tegeltaal, per regel icoon, label en huidige waarde, de keuzes als tags en Wissen eronder; RIGHT of Menu klapt in, focus keert terug op dezelfde kaart</div>
