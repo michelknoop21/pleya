@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pleya golden 08 · Leesinstellingen</title>
+<style>
+
+/* Fonts: the app's own cuts from assets/fonts. Inter is the interface, Literata
+   the reading face approved with golden 07 revisie B. Both axes of Literata are
+   pinned, because Chromium fills `opsz` from the type size and Flutter does not;
+   here that pin is per size, which is the proposal this golden puts up. */
+@font-face{font-family:'Inter';font-weight:400;src:url('../../../../../../assets/fonts/Inter-Regular.otf')}
+@font-face{font-family:'Inter';font-weight:500;src:url('../../../../../../assets/fonts/Inter-Medium.otf')}
+@font-face{font-family:'Inter';font-weight:700;src:url('../../../../../../assets/fonts/Inter-Bold.otf')}
+@font-face{font-family:'Literata';font-style:normal;font-weight:200 900;
+           src:url('../../../../../../assets/fonts/Literata-Variable.ttf')}
+
+:root{
+  --accent:#E5140F;
+  /* monoTheme (dark, non-OLED). The sheet is interface and keeps the app's own
+     surfaces; the page underneath is paper and keeps the reading theme. */
+  --surface:#1F1F1F; --surface-el:#2F2F2F; --outline:rgba(255,255,255,.12);
+  --ink:#fff; --ink-70:rgba(255,255,255,.70); --ink-62:rgba(255,255,255,.62); --ink-50:rgba(255,255,255,.5);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:393px;font-family:Inter,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;background:#000}
+.screen{position:relative;width:393px;height:852px;overflow:hidden}
+.screen[hidden],.spec[hidden]{display:none}
+
+/* ---- The page underneath: golden 07, unchanged. ---- */
+.t-sepia{--page:#F0E5D7; --pink:#2A2117; --pink-2:rgba(42,33,23,.55); --mark:#FDDF9E; --track:#D0C7BB}
+.page{position:absolute;inset:0;background:var(--page);color:var(--pink)}
+
+.status{position:absolute;left:0;right:0;top:0;height:54px;z-index:20;pointer-events:none}
+.status .time{position:absolute;left:38px;top:18px;font-size:17px;font-weight:700;letter-spacing:-.2px;color:var(--pink)}
+.status .island{position:absolute;left:50%;top:11px;width:125px;height:37px;margin-left:-62px;background:#000;border-radius:20px}
+.status .right{position:absolute;right:30px;top:21px;display:flex;gap:7px;align-items:center}
+.sig{display:flex;gap:2px;align-items:flex-end}.sig i{display:block;width:3.5px;background:var(--pink);border-radius:1px}
+.bat{width:27px;height:13px;border:1.6px solid var(--pink-2);border-radius:4px;position:relative}
+.bat::after{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:20px;background:var(--pink);border-radius:2px}
+.bat::before{content:"";position:absolute;right:-4px;top:3.5px;width:1.8px;height:4px;background:var(--pink-2);border-radius:0 2px 2px 0}
+
+/* The chrome of golden 07 with one slot added: `Aa`, the door this golden needs.
+   Five slots, which is the count panel 7 draws; the fifth was a second magnifier
+   with no meaning and golden 07 left it out rather than invent one. This is the
+   meaning it turns out to have. */
+.chrome{position:absolute;left:0;right:0;top:62px;height:32px;display:flex;align-items:center;padding:0 24px;z-index:5;color:var(--pink)}
+.chrome .gap{flex:1}
+.chrome svg{display:block}
+.chrome .slot{width:26px;height:26px;display:flex;align-items:center;justify-content:center}
+.chrome .slot + .slot{margin-left:24px}
+.chrome .aa{font-family:Literata,serif;font-variation-settings:'opsz' 18,'wght' 500;font-size:19px;line-height:26px}
+
+.runhead{position:absolute;left:24px;right:24px;top:124px;height:18px;text-align:center;
+         font-size:12px;font-weight:700;letter-spacing:1.4px;line-height:18px;color:var(--pink-2);z-index:4}
+
+.body{position:absolute;left:32px;right:32px;top:188px;z-index:3;color:var(--pink);
+      font-family:Literata,serif;font-size:18px;line-height:28px;font-variation-settings:'opsz' 18,'wght' 400}
+.body p + p{margin-top:24px}
+.body mark{background:var(--mark);color:inherit;box-shadow:-7px 0 0 var(--mark),7px 0 0 var(--mark)}
+
+/* 08b: the same page at the largest step. Size, line band, paragraph space and
+   the optical-size axis all travel together, which is the proposal. */
+.body.lg{font-size:24px;line-height:37.33px;font-variation-settings:'opsz' 24,'wght' 400}
+.body.lg p + p{margin-top:32px}
+
+.foot{position:absolute;left:0;right:0;top:752px;z-index:5}
+.track{position:absolute;left:24px;right:24px;top:8px;height:3px;border-radius:2px;background:var(--track)}
+.track .done{position:absolute;left:0;top:0;bottom:0;width:48%;background:var(--accent);border-radius:2px}
+.knob{position:absolute;left:calc(24px + (393px - 48px) * .48 - 8px);top:1.5px;width:16px;height:16px;border-radius:50%;
+      background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.foot .label{position:absolute;left:24px;right:24px;top:34px;text-align:center;font-size:13px;line-height:18px;color:var(--pink-2)}
+
+.home-ind{position:absolute;left:50%;bottom:8px;width:134px;height:5px;margin-left:-67px;border-radius:3px;
+          background:var(--pink);opacity:.85;z-index:60}
+.home-ind.on-sheet{background:#fff;opacity:.9}
+
+/* ---- The sheet ----
+   Golden 03's grammar: the same 13 pt corner, the same 36x5 handle, the same
+   18 pt bold title. Two deliberate departures, and both come from what this
+   sheet is for. There is no scrim, because a scrim would black out the very
+   text you are setting; and the sheet stops at 340 rather than covering the
+   page, for the same reason. You change the type and you watch it change. */
+.sheet{position:absolute;left:0;right:0;bottom:0;top:340px;background:var(--surface);color:var(--ink);
+       border-radius:13px 13px 0 0;z-index:50;box-shadow:0 -12px 32px rgba(0,0,0,.28)}
+.sheet .handle{position:absolute;left:50%;margin-left:-18px;top:8px;width:36px;height:5px;border-radius:3px;background:#575757}
+.sheet .shdr{position:absolute;left:20px;right:20px;top:24px;height:24px;display:flex;align-items:center;justify-content:space-between}
+.sheet .shdr h2{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.sheet .shdr .x{width:24px;height:24px;color:var(--ink-62)}
+
+.grp{position:absolute;left:20px;right:20px}
+.grp .lbl{height:16px;font-size:13px;line-height:16px;color:var(--ink-62);letter-spacing:.2px}
+
+/* Type size. Two specimens of the reading face at the ends, and the same
+   scrubber shape the reader's own foot uses, so one control idea serves the
+   whole surface. Six stops and not a free slider: a reading size is a choice
+   from a set a typographer can vouch for, not a number you can land between. */
+.size{position:absolute;left:0;right:0;top:24px;height:32px;display:flex;align-items:center;gap:14px}
+.size .a{font-family:Literata,serif;color:var(--ink-70);flex:0 0 auto;text-align:center}
+.size .a.sm{font-size:15px;font-variation-settings:'opsz' 15;width:14px}
+.size .a.lg{font-size:24px;font-variation-settings:'opsz' 24;width:20px}
+.size .rail{position:relative;flex:1;height:32px}
+.size .bar{position:absolute;left:0;right:0;top:14.5px;height:3px;border-radius:2px;background:#3A3A3A}
+.size .bar .on{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--accent)}
+.size .tick{position:absolute;top:13px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#5A5A5A}
+.size .grip{position:absolute;top:8px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:#fff;
+            box-shadow:0 1px 3px rgba(0,0,0,.45)}
+
+/* Segmented rows. `monoTheme` maps every container role onto the sheet's own
+   colour and kills the splash (DEC-053), so a bare Material segmented control
+   shows no difference at all between chosen and unchosen. The selected cell is
+   therefore a raised fill with a white hairline around it, the same treatment
+   golden 03 gave its active rail row. */
+.seg{position:absolute;left:0;right:0;top:24px;height:36px;display:flex;gap:8px}
+.seg .cell{flex:1;height:36px;border-radius:9px;background:#282828;border:1px solid transparent;
+           display:flex;align-items:center;justify-content:center;color:var(--ink-62)}
+.seg .cell.on{background:#3A3A3A;border-color:rgba(255,255,255,.85);color:#fff}
+.seg .cell i{display:block;background:currentColor;border-radius:1px}
+.lead i{width:20px}
+.marg{position:relative;width:26px;height:20px;border:1.4px solid currentColor;border-radius:2px}
+.marg span{position:absolute;top:3px;bottom:3px;background:currentColor;opacity:.9}
+
+/* Theme. Three grounds as three discs, named underneath, and the chosen one
+   ringed in the accent. A ring and not a tint: two of the three discs are
+   nearly the colour of a tint, so the mark has to sit outside the disc. */
+.themes{position:absolute;left:0;right:0;top:24px;height:64px;display:flex;gap:26px}
+.themes .th{width:44px;text-align:center}
+.themes .disc{width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.22)}
+.themes .th.on .disc{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
+.themes .cap{margin-top:8px;font-size:12px;line-height:14px;color:var(--ink-62)}
+.themes .th.on .cap{color:#fff;font-weight:500}
+.d-light{background:#FFFFFF}.d-sepia{background:#F0E5D7}.d-dark{background:#141414}
+
+/* Scroll mode. One row with a switch, and its own sentence under it, because
+   "Scrollmodus" alone does not say what turning it on does. */
+.rule{position:absolute;left:20px;right:20px;height:1px;background:#2E2E2E}
+.row{position:absolute;left:20px;right:20px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.row .txt h3{font-size:15.5px;font-weight:500;line-height:20px}
+.row .txt p{margin-top:2px;font-size:12.5px;line-height:16px;color:var(--ink-62)}
+.sw{flex:0 0 auto;width:51px;height:31px;border-radius:16px;background:#3A3A3A;position:relative}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff}
+.sw.on{background:#34C759}
+.sw.on::after{left:22px}
+
+/* ---- Specimen frame (08c) ---- */
+.spec{position:relative;width:393px;background:#000;padding-bottom:26px}
+.spec .lbl{padding:24px 20px 12px 20px;font-size:13px;color:rgba(255,255,255,.5);letter-spacing:.3px;text-transform:uppercase}
+.spec .card{position:relative;margin:0 0 0 0;background:var(--surface);color:var(--ink);padding:16px 20px 20px 20px}
+.spec .card .grp{position:relative;left:0;right:0}
+.spec .pairlbl{font-size:12px;color:var(--ink-50);margin:18px 0 10px 0}
+/* In the specimen the controls stack rather than hang off a group's label, so
+   the offset every one of them carries inside the sheet is taken back here. */
+.spec .card .grp > .size,.spec .card .grp > .seg,.spec .card .grp > .themes,.spec .card .grp > .row{top:0}
+</style>
+</head>
+<body>
+
+<template id="statusbar">
+  <div class="status">
+    <div class="time">9:41</div><div class="island"></div>
+    <div class="right"><div class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:9px"></i><i style="height:12px"></i></div>
+      <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 9.5a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2Zm0-3.6c1.5 0 2.9.6 3.9 1.6l-1.3 1.3A3.7 3.7 0 0 0 8 7.7c-1 0-1.9.4-2.6 1.1L4.1 7.5C5.1 6.5 6.5 5.9 8 5.9Zm0-3.7c2.5 0 4.9 1 6.6 2.7l-1.3 1.3A7.4 7.4 0 0 0 8 4.1c-2 0-3.9.8-5.3 2.2L1.4 4.9A9.3 9.3 0 0 1 8 2.2Z" fill="currentColor"/></svg>
+      <div class="bat"></div></div>
+  </div>
+</template>
+
+<template id="chrome">
+  <div class="chrome">
+    <div class="slot"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m0 0 6-6m-6 6 6 6"/></svg></div>
+    <div class="slot"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h14"/></svg></div>
+    <div class="gap"></div>
+    <div class="slot aa">Aa</div>
+    <div class="slot"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
+    <div class="slot"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.4L5 21V4a1 1 0 0 1 1-1Z"/></svg></div>
+  </div>
+</template>
+
+<template id="runhead"><div class="runhead">DUNE · HOOFDSTUK 12</div></template>
+
+<template id="foot">
+  <div class="foot">
+    <div class="track"><div class="done"></div></div>
+    <div class="knob"></div>
+    <div class="label">48% · Pagina 248 van 616</div>
+  </div>
+</template>
+
+<section class="screen" id="settings"></section>
+<section class="screen" id="large"></section>
+<section class="spec" id="controls"></section>
+
+<script>
+  const tpl = (id) => document.getElementById(id).content.cloneNode(true);
+  const el = (html) => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; };
+
+  /// The page of golden 07, whole at 18 pt and cut at a paragraph edge at 24.
+  const PARAS = [
+    'The sun hung low over the horizon, a pale disc in an endless sea of sand. Paul felt the tremor of the desert under his feet, a rhythm he had come to know as well as his own heartbeat.',
+    'He thought of his father, of House Atreides, of everything that had been lost.',
+    'But he thought too of what was still to come.',
+  ];
+  const MARKED = 'In the silence he heard the voice of the desert, old and patient.';
+
+  function body(large) {
+    const paras = large ? PARAS.slice(0, 2) : PARAS;
+    const marked = large ? '' : `<p><mark>${MARKED}</mark></p>`;
+    return el(`<div class="body${large ? ' lg' : ''}">${paras.map((p) => `<p>${p}</p>`).join('')}${marked}</div>`);
+  }
+
+  /// The six stops of the size control, in points. The third is 18, the size
+  /// approved golden 07 was drawn at, and it is where 08a stands.
+  const SIZES = [15, 16.5, 18, 20, 22, 24];
+
+  function sizeControl(index) {
+    const pct = index / (SIZES.length - 1) * 100;
+    const ticks = SIZES.map((_, i) => {
+      const p = i / (SIZES.length - 1) * 100;
+      return `<div class="tick" style="left:${p}%"></div>`;
+    }).join('');
+    return `
+      <div class="size">
+        <div class="a sm">A</div>
+        <div class="rail">
+          <div class="bar"><div class="on" style="width:${pct}%"></div></div>
+          ${ticks}
+          <div class="grip" style="left:${pct}%"></div>
+        </div>
+        <div class="a lg">A</div>
+      </div>`;
+  }
+
+  /// Three line bands, as a multiple of the type size: 1,33, 1,56 and 1,78. The
+  /// middle one is golden 07's 28 on 18.
+  function leadingControl(on) {
+    const gaps = [[4, 12, 20], [3, 11.5, 20], [2, 11, 20]];
+    const cells = gaps.map((rows, i) => `
+      <div class="cell${i === on ? ' on' : ''}">
+        <div class="lead" style="display:flex;flex-direction:column;justify-content:center;height:24px">
+          ${rows.map((y, r) => `<i style="height:1.6px;margin-top:${r === 0 ? 0 : (i === 0 ? 4 : i === 1 ? 6 : 8)}px"></i>`).join('')}
+        </div>
+      </div>`).join('');
+    return `<div class="seg">${cells}</div>`;
+  }
+
+  /// Four measures: 20, 26, 32 and 40. The third is golden 07's 32.
+  function marginControl(on) {
+    const insets = [2, 4, 6, 8];
+    const cells = insets.map((inset, i) => `
+      <div class="cell${i === on ? ' on' : ''}">
+        <div class="marg"><span style="left:${inset}px;right:${inset}px"></span></div>
+      </div>`).join('');
+    return `<div class="seg">${cells}</div>`;
+  }
+
+  function themeControl(on) {
+    const themes = [['d-light', 'Licht'], ['d-sepia', 'Sepia'], ['d-dark', 'Donker']];
+    return `<div class="themes">${themes.map(([cls, cap], i) => `
+      <div class="th${i === on ? ' on' : ''}">
+        <div class="disc ${cls}"></div><div class="cap">${cap}</div>
+      </div>`).join('')}</div>`;
+  }
+
+  function scrollRow(on) {
+    return `
+      <div class="row" style="top:0">
+        <div class="txt">
+          <h3>Scrollmodus</h3>
+          <p>Scrollen in plaats van bladeren</p>
+        </div>
+        <div class="sw${on ? ' on' : ''}"></div>
+      </div>`;
+  }
+
+  /// The sheet's vertical rhythm, measured rather than guessed: a 16 pt label
+  /// band, 24 pt from that label to its control, and 38 pt from a control to the
+  /// next label.
+  const GROUPS = [
+    ['Lettergrootte', 62, sizeControl(2)],
+    ['Regelafstand', 142, leadingControl(1)],
+    ['Marges', 226, marginControl(2)],
+    ['Thema', 310, themeControl(1)],
+  ];
+
+  function sheet() {
+    const groups = GROUPS.map(([label, top, control]) => `
+      <div class="grp" style="top:${top}px">
+        <div class="lbl">${label}</div>
+        ${control}
+      </div>`).join('');
+    return el(`
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shdr">
+          <h2>Leesinstellingen</h2>
+          <svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </div>
+        ${groups}
+        <div class="rule" style="top:414px"></div>
+        <div class="grp" style="top:432px">${scrollRow(false)}</div>
+      </div>`);
+  }
+
+  function build(host, {sheetOpen, large}) {
+    host.className = 'screen t-sepia';
+    host.appendChild(Object.assign(document.createElement('div'), {className: 'page'}));
+    host.appendChild(tpl('statusbar'));
+    host.appendChild(tpl('chrome'));
+    host.appendChild(tpl('runhead'));
+    host.appendChild(body(large));
+    if (sheetOpen) host.appendChild(sheet());
+    else host.appendChild(tpl('foot'));
+    const ind = Object.assign(document.createElement('div'), {className: 'home-ind'});
+    if (sheetOpen) ind.classList.add('on-sheet');
+    host.appendChild(ind);
+  }
+
+  build(document.getElementById('settings'), {sheetOpen: true, large: false});
+  build(document.getElementById('large'), {sheetOpen: false, large: true});
+
+  /// 08c lifts the five control kinds out of the sheet and puts each of them
+  /// next to its own other state. It is a shape specification and not a runtime
+  /// state: no screen shows a control twice.
+  (function controls() {
+    const host = document.getElementById('controls');
+    const pairs = [
+      ['Lettergrootte, kleinste en grootste stop', [sizeControl(0), sizeControl(5)]],
+      ['Regelafstand, gekozen is de middelste', [leadingControl(1)]],
+      ['Marges, gekozen is de derde', [marginControl(2)]],
+      ['Thema, gekozen is Sepia', [themeControl(1)]],
+      ['Scrollmodus, uit en aan', [scrollRow(false), scrollRow(true)]],
+    ];
+    const card = el('<div class="card"></div>');
+    for (const [label, controls] of pairs) {
+      card.appendChild(el(`<div class="pairlbl">${label}</div>`));
+      for (const c of controls) {
+        const box = el(`<div class="grp" style="height:${c.includes('themes') ? 64 : c.includes('class="row"') ? 44 : c.includes('class="seg"') ? 36 : 32}px"></div>`);
+        box.innerHTML = c;
+        card.appendChild(box);
+      }
+    }
+    host.appendChild(el('<div class="lbl">De vijf bedieningen van 08a</div>'));
+    host.appendChild(card);
+  })();
+
+  const which = new URLSearchParams(location.search).get('screen') || 'settings';
+  document.querySelectorAll('.screen,.spec').forEach((s) => { s.hidden = s.id !== which; });
+
+  window.specHeight = () => Math.ceil(document.getElementById('controls').getBoundingClientRect().height);
+</script>
+</body>
+</html>

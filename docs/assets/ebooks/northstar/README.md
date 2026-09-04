@@ -50,6 +50,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `07a-books-reader.png` | Reader, canonieke staat op Dune hoofdstuk 12 met de chrome zichtbaar | approved (revisie B) | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `07b-books-reader-immersive.png` | Dezelfde pagina met de chrome verborgen | approved (revisie B) | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `07c-books-reader-themes.png` | Detail: dezelfde pagina in licht, sepia en donker | approved (revisie B) | detailuitsnede, 1179×2478 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `08a-reader-settings.png` | Leesinstellingen, canonieke staat over de leespagina | **proposed** | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `08b-reader-large-type.png` | Dezelfde pagina op de grootste lettergrootte, blad dicht | **proposed** | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `08c-reader-settings-controls.png` | Detail: de vijf bedieningen met hun staten | **proposed** | detailuitsnede, 1179×1851 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -733,6 +736,98 @@ pagina tekst is geen van beide. De statusbalk staat in `07b` gewoon aan, want iO
 een leeg gat rond de inkeping is geen leeswinst. En de kopregel verdwijnt niet met de chrome mee:
 dat is de kopregel van de pagina, zoals een gedrukt boek er bovenaan een draagt, en geen bediening.
 
+## Golden 08, Leesinstellingen (proposed)
+
+Waar je de pagina zet: tekengrootte, regelafstand, marges, thema en scrollmodus. Inhoud van paneel 8
+van de comp, uitvoering op de bladgrammatica van golden 03. Drie frames, samen één scherm: `08a` het
+blad open over de leespagina, `08b` diezelfde pagina op de grootste stop met het blad dicht, `08c`
+een detailuitsnede van de vijf bedieningen met hun staten.
+
+**Dit is een voordracht en geen contract.** Er mag niets tegen gebouwd worden voordat Michel de
+keuzes hieronder heeft goedgekeurd of afgewezen. Eén ervan raakt bovendien een goedgekeurde golden:
+dit blad heeft geen deur, en de enige plek waar er een past is de chrome van golden 07.
+
+`08a` is de **hoofdstaat**: het blad zoals het opengaat, met de instellingen die op de pagina
+eronder staan. `08b` is **gedragsbewijs**, en het enige frame in de set dat laat zien wat een
+instelling met de pagina doet. `08c` is een **ondersteunende vormspecificatie** van de bedieningen
+en geen runtime-staat; geen scherm toont een bediening twee keer.
+
+De maatvoering is gemeten op de gerenderde frames. Het blad begint op 340, met de hoek van 13 en de
+greep van 36 × 5 die golden 03 vastlegde, en de kop `Leesinstellingen` in 18 pt bold op 368,7 tot
+387,0. Elke groep is een label van 16 met zijn bediening 24 daaronder: `Lettergrootte` op 405,3 met
+de schuif op 434 tot 453, `Regelafstand` op 485,0 met de rij op 506 tot 542, `Marges` op 569,3 met
+de rij op 590 tot 626, `Thema` op 653,3 met de schijven op 670 tot 722 en hun onderschriften op
+727,7 tot 739,7. De haarlijn ligt op 754 en de scrollrij van 772 tot 808,7. De bedieningsrijen zijn
+36 hoog met 8 ertussen, de themaschijven 44 met 26 ertussen, en de schakelaar is de iOS-maat van
+51 × 31.
+
+**De keuzes die deze golden moet nemen.**
+
+- **Het blad heeft geen deur, en de enige plek waar er een past zit in een goedgekeurde golden.** De
+  chrome van golden 07 heeft vier glyfs en geen daarvan opent instellingen. Paneel 7 tekent er vijf,
+  waarvan twee identieke vergrootglazen; golden 07 heeft de tweede weggelaten omdat hij geen
+  betekenis had, met de aantekening dat hij terugkomt als die betekenis er blijkt te zijn. Dit is de
+  betekenis: **`Aa` in het vijfde slot**, links van het vergrootglas. Beide frames tekenen die
+  chrome. Dat is een aanvulling op een goedgekeurde golden en vraagt dus apart goedkeuring; de
+  bandhoogte, de marge en de vier bestaande glyfs veranderen niet.
+- **Er staat geen `Lettertype`-rij in, en paneel 8 tekent er wel een.** De comp zet `Georgia` in een
+  keuzerij. Pleya bundelt sinds golden 07 één leesletter, Literata, en een keuzelijst met één
+  ingang is een bediening die je niet kunt bedienen. Dezelfde behandeling die golden 07 de tweede
+  vergrootglas gaf en golden 02 de tweede glyf in paneel 2: niet tekenen tot hij iets doet. De rij
+  komt terug op de dag dat er een tweede snit in `assets/fonts` staat. Het alternatief is de rij wel
+  tekenen met `Literata` erin als vaste waarde, en dat is verdedigbaar als je hem als informatie
+  leest in plaats van als keuze.
+- **De stopwaarden.** Zes tekengroottes (15, 16,5, 18, 20, 22 en 24 pt), drie regelbanden (1,33,
+  1,56 en 1,78 keer de tekengrootte) en vier marges (20, 26, 32 en 40). In alle drie is de
+  goedgekeurde staat van golden 07 een stop: 18 pt is de derde, 28 op 18 is de middelste band, en 32
+  is de derde marge. Zes stops en geen vrije schuif, omdat een leesmaat een keuze uit een reeks is
+  waar een typograaf voor kan instaan en niet een getal waar je tussen kunt landen.
+- **De optische as reist mee met de maat.** Kies je 24 pt, dan gaat `opsz` mee naar 24; `08b` is in
+  die snit gezet. Dat is wat optische maatvoering betekent, en het alternatief, `opsz` vastzetten op
+  18, laat een pagina op 24 pt in een snit staan die voor kleiner werk getekend is. Sturen blijft
+  mogelijk (`ReaderTypography.styleFor` heeft er een aparte parameter voor), maar dit voorstel
+  gebruikt hem niet.
+- **Sepia staat aan in `08a`, en dat is de gekozen waarde en niet de standaard.** Paneel 12 zet
+  `Leesthema` op `Donker` als profielinstelling, en dat is golden 12. Het blad hoort te tonen wat er
+  op de pagina eronder staat, en die staat in sepia omdat golden 07 daar in gezet is. Wat een vers
+  profiel krijgt is dus een andere vraag dan wat dit blad tekent.
+- **Het blad heeft geen scrim en dekt de pagina niet af.** Golden 03 legt een zwarte laag van 60 %
+  over het hele frame; dat werkt voor een filtersheet, waar de lijst eronder niet meebeweegt. Hier
+  zet je de tekst die je aan het lezen bent, dus die tekst moet zichtbaar blijven: het blad begint
+  op 340 en er ligt niets overheen. Boven het blad staan de kopregel en de eerste alinea, precies
+  het stuk waar je naar kijkt terwijl je schuift.
+
+**Wat deze golden openlaat**, zodat het later een besluit is en geen omissie:
+
+- **Wat de scrollmodus aanzet.** De rij is getekend en de schakelaar staat uit. Verticaal scrollen
+  in plaats van bladeren is een tweede leesmodus met een eigen bladspiegel, een eigen voet en een
+  eigen antwoord op wat een pagina dan nog is. Dat is geen schakelaar maar een scherm, en het heeft
+  er geen.
+- **Of het blad meteen toepast of pas bij sluiten.** `08a` en `08b` zijn twee frames en geen
+  animatie. Het voorstel dat eronder ligt is direct toepassen, want dat is de hele reden dat de
+  pagina zichtbaar blijft, maar bewezen wordt het hier niet.
+- **Wat er gebeurt met de leespositie als de tekst herpagineert.** Op 24 pt passen er twee alinea's
+  op de pagina in plaats van vier. De voet blijft `48% · Pagina 248 van 616` staan, en dat klopt:
+  allebei die getallen gaan over waar de lezer in de publicatie staat en niet over hoeveel er op
+  het scherm past. Hoe de reader die positie vasthoudt terwijl hij opnieuw zet, is de
+  reader-engine, en die is PS-15.
+- **Terugzetten op de standaard.** Er is geen `Herstel`-knop getekend en of die er hoort is niet
+  beslist.
+- **De liggende stand en de iPad**, om dezelfde reden als bij golden 07.
+
+**Bewuste verschillen met het beeld die geen goedkeuring nodig hebben.** De comp noemt het blad
+`Instellingen`, hetzelfde woord dat paneel 12 voor de profielinstellingen van Boeken gebruikt; hier
+staat `Leesinstellingen`, zodat de twee schermen in de app niet dezelfde kop dragen. De comp tekent
+het blad als een losse kaart over het hele scherm en niet als een blad over de pagina; de reden voor
+dat verschil staat hierboven. De schakelaar is groen, de iOS-kleur, en niet het accent: het accent
+is in dit blad al de gekozen-markering van de schuif en van het thema, en dezelfde kleur voor
+"gekozen" en voor "aan" zou de twee laten samenvallen.
+
+Eén ding dat het beeld zelf laat zien en dat beoordeling vraagt: **de vier marge-iconen liggen dicht
+bij elkaar.** Op 26 punt breed is het verschil tussen de eerste en de tweede stop twee punt
+tekening. De reeks leest van smal naar breed en de gekozen stop is duidelijk, maar of vier stops
+hier vier verschillende iconen waard zijn is een oordeel over het beeld en geen meting.
+
 ## Wat er tegen golden 07 gebouwd is
 
 `lib/screens/books/book_reader_screen.dart`, met `widgets/book_reader_chrome.dart` eronder voor de
@@ -1262,7 +1357,20 @@ node render.js reader.html ../../07c-books-reader-themes.png themes 826
 ```
 
 Op 4 september 2026 leverden twee opeenvolgende runs van revisie B identieke bestanden op (md5
-`ae365ae9…`, `3784195f…` en `8a9e7a24…`). Dit is de eerste golden van de set waarvan de tekstkolom
+`ae365ae9…`, `3784195f…` en `8a9e7a24…`).
+
+Golden 08 gaat net zo, met `617` als hoogte voor het bedieningsframe.
+
+```
+cd docs/assets/ebooks/northstar/src/08-reader-settings
+export NODE_PATH=/opt/homebrew/lib/node_modules:/opt/homebrew/lib/node_modules/@playwright/test/node_modules
+node render.js settings.html ../../08a-reader-settings.png settings
+node render.js settings.html ../../08b-reader-large-type.png large
+node render.js settings.html ../../08c-reader-settings-controls.png controls 617
+```
+
+Twee opeenvolgende runs leverden identieke bestanden op (md5 `9d2cd994…`, `3201b7be…` en
+`4d740908…`). Dit is de eerste golden van de set waarvan de tekstkolom
 een letter uit de repository laadt in plaats van er een van het besturingssysteem te lenen, dus de
 render is nu ook buiten macOS reproduceerbaar. De md5's van voordracht A staan hier niet meer; die
 frames leunden op de systeem-Georgia en zijn daarmee toch niet na te maken.
