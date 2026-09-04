@@ -44,6 +44,11 @@ under `Notes`.
 - focus-trace vult zich altijd, sidebar-scenario op semantiek (Fase 11)
 - laatste Fase 11-scenario groen, twee echte tvOS-bugs gefixt
 - Fase 13 afgerond, MCP-laag als dunne adapter boven de bestaande CLI
+- de mobiele vijfslots-balk uit DEC-069, met Boeken als vierde bestemming
+- Boeken-home tegen goedgekeurde golden 01b
+- Alle boeken tegen goedgekeurde golden 02
+- de filtersheet tegen goedgekeurde golden 03
+- Boeken zoeken tegen goedgekeurde golden 04
 
 ### Improved
 - scheidingslijnen volgen de werkelijke rijhoogte
@@ -81,6 +86,7 @@ under `Notes`.
 - bind elke subprocess- en fixture-controlcall aan een echte deadline
 - garandeer één JSON-envelope op run/validate --json, ook bij een onverwachte crash
 - verwijder set_pref/focus/back uit de scenario-vocabulaire
+- de automation-ID-generator raakt Flutter niet meer aan
 <!-- END GENERATED -->
 
 ### Fixed
