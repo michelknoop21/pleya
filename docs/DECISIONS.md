@@ -2384,6 +2384,49 @@ bindende beslissingen. Drie ervan raken dit besluit rechtstreeks:
   Gezien de branchdrift hierboven is DEC-094 niet gereserveerd. Landt dat besluit eerder dan de
   hernummering van de mobiele-navigatie-DEC op `feat/ebooks`, dan schuift die laatste door.
 
+## DEC-108: PS-11A is de eerstvolgende fase, PS-14 blijft gesloten en loopt er niet naast
+
+**Date:** 2026-09-04
+**Status:** accepted
+
+**Context:** PS-9 is gesloten op 4 september 2026. De vastgelegde doorloop noemt PS-11A als
+volgende fase, maar het sluiten van een fase geeft de volgende niet vrij; dat is een apart besluit,
+en taak S0.8 van de masterlijst vraagt er expliciet om. Tegelijk staat PS-14 (boekencatalogus) sinds
+[DEC-107](#dec-107-e-books-worden-een-contentdomein-van-pleya-server-als-ps-14-en-ps-15) als fase in
+de roadmap, ook niet vrijgegeven. Er is dus een reële verleiding om beide tegelijk te openen: de
+serverkant van boeken raakt scanner en catalogus, de beheerlaag raakt de API, en ze lijken elkaar
+niet in de weg te zitten.
+
+Ze zitten elkaar wel in de weg, en niet in de code. De branch is vanavond na 196 commits
+achterstand weer met `main` samengevoegd, en die merge liet zien hoe duur het is als de
+projectwaarheid en de werkelijkheid uit elkaar lopen: een verkeerd opgelost conflict zette
+`CLAUDE.md` terug naar een stand waarin PS-5 de volgende fase was, en niets meldde dat. Twee fasen
+tegelijk openzetten zou diezelfde waarheid meteen weer vertroebelen, deze keer met opzet.
+
+**Decision:** PS-11A is de eerstvolgende vrijgegeven ontwikkelfase, en wordt gestart nadat alle
+blokkerende S0-poorten groen zijn. PS-14 blijft gesloten en mag niet parallel aan PS-11A worden
+gestart. Na afronding en integratievalidatie van PS-11A volgt een afzonderlijk vrijgavebesluit voor
+PS-14.
+
+De volgorde die daaruit volgt, en die bindend is:
+
+1. S0.6, de NAS-migratiefixture.
+2. S0.7, de contractdekking, als poort P9 in de masterlijst.
+3. S0 volledig groen.
+4. PS-11A.
+5. Integratiebewijs op PS-11A.
+6. Pas daarna een nieuw besluit over PS-14.
+
+**Consequences:** Serverwerk aan de boekencatalogus is tot dat besluit te vroeg, ook wanneer het
+klein lijkt of wanneer een PS-11A-taak er langs schuurt. De twee open S0-items zijn daarmee de
+enige weg vooruit: zolang S0.6 en P9 rood staan, start PS-11A niet. Dit besluit verandert niets aan
+de grenzen uit DEC-107 zelf: de `media_*`-tabellen blijven audiovisueel en de mobiele beperking
+blijft clientgedrag.
+
+Afgewezen: PS-14 vast openzetten met de afspraak dat er nog niets gecommit wordt. Een fase die open
+staat maar niet gebruikt mag worden is geen fase maar een uitnodiging, en precies het soort
+afspraak dat een volgende sessie leest als toestemming.
+
 ---
 
 ## Hernummering van 4 september 2026

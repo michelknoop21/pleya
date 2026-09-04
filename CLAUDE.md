@@ -105,9 +105,13 @@ mobiel en TV zijn alle drie op echte hardware bewezen, inclusief een kijkpositie
 een iPhone naar een Apple TV meereisde.
 **PS-9 is gesloten** op 4 september 2026: vier van de vijf acceptatiecriteria met tests, en het
 stopcriterium op de draaiende NAS in plaats van alleen in een container. De volgende fase in de
-vastgelegde doorloop is **PS-11A**, en die is niet gestart; het sluiten van PS-9 start hem niet, dat
-is een apart besluit. Daarna volgen PS-6, PS-7 en PS-8; die volgorde is een geldige doorloop van
-dezelfde afhankelijkheidsgraaf en staat in `docs/pleya-server-phase-order-deviation.md`.
+vastgelegde doorloop is **PS-11A**. Dat aparte vrijgavebesluit is inmiddels genomen
+([DEC-108](docs/DECISIONS.md)): PS-11A is vrijgegeven, maar start pas wanneer alle blokkerende
+S0-poorten uit `docs/PLEYA-SERVER-MASTERLIST.md` groen zijn, en dat zijn er op dit moment nog twee
+(S0.6, de NAS-migratiefixture, en S0.7 als poort P9, de contractdekking). **PS-14 blijft gesloten en
+mag niet naast PS-11A lopen**; daarover volgt een eigen besluit pas na afronding en
+integratiebewijs van PS-11A. Daarna volgen PS-6, PS-7 en PS-8; die volgorde is een geldige doorloop
+van dezelfde afhankelijkheidsgraaf en staat in `docs/pleya-server-phase-order-deviation.md`.
 
 PS-5 (`DeviceCapabilities` in de client) is code complete maar niet gesloten: acceptatiecriterium 4,
 de regressieronde op echte hardware voor tvOS en minimaal één desktopplatform, blijft expliciet open

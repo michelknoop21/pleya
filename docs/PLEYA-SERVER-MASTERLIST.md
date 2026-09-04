@@ -38,6 +38,11 @@ deel I (slices) en deel O (Definition of Done).
 Gesloten vóór dit traject en niet in deze lijst: PS-0, PS-1, PS-2, PS-3, PS-3W, PS-4, PS-9.
 Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-reader (PS-15).
 
+**Waar het nu op wacht.** S0 heeft nog twee inhoudelijke items open: S0.6 (NAS-migratiefixture) en
+S0.7, dat als poort P9 loopt (contractdekking). Zolang die twee rood staan start PS-11A niet, en
+PS-14 blijft gesloten tot PS-11A af en geïntegreerd bewezen is. Dat is [DEC-108](DECISIONS.md), en
+het is een volgorde, geen voorkeur.
+
 ---
 
 ## 2. Slices
@@ -53,7 +58,7 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 | S0.5 | CI-jobs `pleya-server`, `pleya-web`, `protocol` groen | `[x]` | run `33909897646` op `integration/pleya-server-rebaseline`: Pleya Server (Go), Pleya Web en Protocol Contract alle drie groen. Vier ronden nodig; drie fouten die alleen op een Linux-runner bovenkwamen, elk apart gecommit. `Code Analysis` en `Unit Tests` blijven rood, maar zijn dat op `main` zelf ook: 53 falers daar, 53 hier, met 117 tests meer die slagen | 2026-09-04 |
 | S0.6 | NAS-migratiefixture (schema 7, geanonimiseerd) | `[ ]` | | |
 | S0.7 | Contracttest fake-server tegen `openapi.yaml` (**poort P9**, blokkerend voor "contractueel compleet") | `[ ]` | erbij: de dekkingslijst in `scripts/check_server_responses.py` (`expected`) eist alleen nog de acht schema's van de PS-2-leeskant. De PS-9-antwoorden (`UserList`, `LibraryPermissionList`, `SessionList`) worden wél vastgelegd maar niet vereist, dus de poort kan groen zijn zonder dekking op gebruikers, sessies en rechten. Gevonden in de codex-challenge van 4 sep | |
-| S0.8 | Vrijgavebesluit PS-14 en PS-11A vastgelegd | `[ ]` | | |
+| S0.8 | Vrijgavebesluit PS-14 en PS-11A vastgelegd | `[x]` | [DEC-108](DECISIONS.md#dec-108-ps-11a-is-de-eerstvolgende-fase-ps-14-blijft-gesloten-en-loopt-er-niet-naast): PS-11A vrijgegeven zodra de blokkerende S0-poorten groen zijn, PS-14 blijft gesloten en mag er niet naast lopen | 2026-09-04 |
 
 ### S1 Beheer-basis
 

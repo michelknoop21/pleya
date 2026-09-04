@@ -14,6 +14,15 @@
 # Dit is geen stijlregel maar een feitencontrole, en hij geneest vanzelf: zodra de
 # merge alsnog goed is opgelost, is het bestand van beide ouders verschillend.
 #
+# WAT DEZE CONTROLE BEWUST NIET DOET, en niet moet gaan doen: hij bewijst de
+# vingerafdruk, niet de intentie. Wie `--ours` draait en daarna één regel met de
+# hand wijzigt, komt er ongezien langs, want dan is het bestand niet meer
+# byte-identiek aan die ouder. Dat is geen gat om met heuristiek te dichten.
+# Een drempel op "hoeveel lijkt het op die ouder" levert vals alarm bij een merge
+# die legitiem grotendeels één kant volgt, en vals vertrouwen zodra iemand de
+# drempel leert kennen. De fout die werkelijk is opgetreden is exact deze, en
+# daar is dit een scherpe en onderhoudbare poort voor. Laat hem zo.
+#
 # Wil je een kant écht in zijn geheel overnemen, zet het bestand dan in ALLOW
 # hieronder met de reden erbij. Dat is een bewuste, zichtbare uitzondering.
 set -euo pipefail
