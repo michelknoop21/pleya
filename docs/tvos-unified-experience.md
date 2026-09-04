@@ -741,10 +741,19 @@ waar focus moeilijk komt.
 ### 10.2b Complete catalogus — "Alles bekijken" (fase 5)
 
 ```
-Films                    [Alle bronnen] [Filters 2] [Titel A–Z]
-[poster] [poster] [poster] [poster] [poster] [poster]
+Films                       Niet bekeken · Sciencefiction · Titel A–Z
+▏[poster] [poster] [poster] [poster] [poster] [poster]
 [poster] [poster] [poster] [poster] [poster] [poster]
 ```
+
+> Gewijzigd door [DEC-093](DECISIONS.md#dec-093). Tot 4 september 2026 stonden Bronnen, Filters en
+> Sortering als drie capsules rechtsboven naast de kop. Ze zitten nu in een rail links van het
+> raster die dicht is zolang de focus in het raster zit en opent op LEFT vanaf kolom 0; dicht blijven
+> zes kolommen staan met een stille streep aan de linkerrand, open schuift het raster naar vijf
+> kolommen en toont de rail per regel icoon, label en huidige waarde, met de keuzes als tags en
+> Wissen eronder. RIGHT of Menu sluit de rail en de focus keert terug op dezelfde kaart. De actieve
+> keuzes staan dicht als niet-bedienbare tags rechtsboven, de sortering gestippeld. Mockup 28 D1 en
+> D2 zijn bindend voor de positie; northstar 05, 06 en mockup 14 lopen daarop achter.
 
 Geen grote hero op deze pagina. Vaste topnav. Een compacte sticky page header. Grid met 6–7 kolommen
 afhankelijk van dichtheid. Bestaande TV-cardscale en focusring. Posters 2:3. Titels maximaal twee
@@ -796,8 +805,8 @@ Servers; Bibliotheken. Actieve keuzes zijn visueel geselecteerd én focusbaar. S
 Toepassen. Wijzigingen worden pas toegepast bij Toepassen, zodat de grid niet na elke remote-klik
 herlaadt en focus steelt. Menu sluit zonder toepassen. Actieve filtercount verschijnt op de
 Filter-knop. Een bron/library die niet meer bestaat wordt bij openen automatisch uit de opgeslagen
-selectie verwijderd. De zichtbare knop blijft de primaire route; Play/Pause is hooguit een
-snelkoppeling.
+selectie verwijderd. De rij Filters in de rail van 10.2b is de primaire route; Play/Pause is hooguit
+een snelkoppeling (DEC-093).
 
 ### 10.7 Counts
 

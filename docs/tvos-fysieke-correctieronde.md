@@ -83,7 +83,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LIB3 | TV-tabs dragen nog de oude rode onderstreping | FIXED, hardware open | `3e9d31b` |
 | LIB4 | Bibliotheken draait op alles behalve de kiezer nog de oude layout: kop, achtergrond, acties en landing wijken af van `libraries-a.png` en `libraries-d.png` | VERVANGEN door LIB7 | n.v.t. |
 | LIB7 | Bibliotheken wordt bronbeheer: bladeren loopt via de catalogus met bronfilter, Collecties en Afspeellijsten worden eigen unified ingangen; DEC-092 accepted, mockup 27 goedgekeurd, bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
-| CAT5 | De filters op de catalogus (Bronnen, Filters, Sortering) moeten op tvOS een betere positie krijgen, zodat ze makkelijker te bereiken zijn | OPEN, besluit nodig | n.v.t. |
+| CAT5 | De catalogusacties gaan naar een inklapbare rail links van het raster, met de gekozen filters als tags rechtsboven; DEC-093 accepted, mockup 28 D1/D2 goedgekeurd, bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
 | LIB5 | De spotlight-titel op Bibliotheken valt over de tabrij, en maakt de actieve tab minder leesbaar dan de inactieve | OPEN | n.v.t. |
 | LIB6 | Complete mockupset voor Bibliotheken: mockup 26, negen states in `docs/assets/tvos-unified/mockups-2026-09-04/`, gebouwd op `tv.css` en `build.mjs` van de 09-25-familie, die nu in `docs/assets/tvos-unified/src/` staan | KLAAR, contract afgewezen | n.v.t. |
 | WL2 | Kijklijst end-to-end in Pleya Verify | OPEN | n.v.t. |
@@ -2039,3 +2039,8 @@ Op D1 en D2 zei Michel, letterlijk: "Graag die waarop gefilterd mag dan wel rech
 getoond worden want nu hoeven die niet meer bereikbaar te zijn en je hebt daar meer
 ruimte." De tags in de ingeklapte stand zijn daarmee naar rechtsboven verhuisd, de plek
 waar de chips stonden en die vrijkwam zodra ze niet meer bedienbaar hoefden te zijn.
+
+Goedgekeurd door Michel op 4 september op D1 en D2. DEC-093 staat op accepted, 10.2 en
+10.6 van de spec zijn aangepast, en state D van mockup 27 is op dezelfde rail
+hertekend. De bouw is een eigen ronde; de negatieve controle staat in DEC-093, en de
+CAT4-test wordt daarbij herschreven op de rail in plaats van weggegooid.
