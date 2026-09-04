@@ -81,7 +81,9 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LIB1 | Blanco Bibliotheken-pagina als de selectie verdwijnt | FIXED, hardware open | `f9b2167` |
 | LIB2 | Race bij snel wisselen van bibliotheek | FIXED | `f2ea980` |
 | LIB3 | TV-tabs dragen nog de oude rode onderstreping | FIXED, hardware open | `3e9d31b` |
-| LIB4 | Bibliotheken draait op alles behalve de kiezer nog de oude layout: kop, achtergrond, acties en landing wijken af van `libraries-a.png` en `libraries-d.png` | OPEN, besluit nodig | n.v.t. |
+| LIB4 | Bibliotheken draait op alles behalve de kiezer nog de oude layout: kop, achtergrond, acties en landing wijken af van `libraries-a.png` en `libraries-d.png` | GEBLOKKEERD door LIB6 | n.v.t. |
+| LIB5 | De spotlight-titel op Bibliotheken valt over de tabrij, en maakt de actieve tab minder leesbaar dan de inactieve | OPEN | n.v.t. |
+| LIB6 | Er is geen complete mockupset voor Bibliotheken, dus het LIB4-besluit staat op een half beeld | IN PROGRESS | n.v.t. |
 | WL2 | Kijklijst end-to-end in Pleya Verify | OPEN | n.v.t. |
 | REQ1 | Aanvragen end-to-end in Pleya Verify | OPEN | n.v.t. |
 | MYP1 | Regressiebewijs voor het Mijn Pleya-werk | OPEN | n.v.t. |
@@ -1772,3 +1774,84 @@ Negatieve controle bij latere uitvoering: op de oude implementatie laat een
 verticale railwissel de actieve heading aantoonbaar onder de canonieke anchor
 staan (rood); na de fix staat de heading binnen tolerantie op de anchor
 (groen).
+
+### De simulatorronde van 4 september, en wat die wel en niet oplevert
+
+Op 4 september is build 248 uit `424c43e` op de Apple TV gezet, en is dezelfde
+code in de tvOS-simulator nagelopen. Michel heeft de televisie op dat moment niet
+beoordeeld, dus **geen enkel item gaat naar VERIFIED**. Wat hieronder staat is
+simulatorwaarneming, en die telt als aanvulling op de bestaande FIXED-status, niet
+als vervanging van de hardware-acceptatie.
+
+NAV1 en LAND1 staan er bewust niet bij. De oorzaak zit in
+`apple_tv_remote_touch_service.dart`, in het samenspel van de aanraakstroom en de
+ringdruk, en de simulator heeft geen aanraakvlak. Een groene run daar bewijst niets
+over het defect.
+
+**CAT1.** Op Alle films, focus op de eerste kaart van de bovenste rij: de witte
+focusring is rondom compleet, inclusief de bovenrand en de twee bovenhoeken, met
+zichtbare ruimte tussen de ring en de kop "Alle films". Dat is wat `89b1554`
+belooft.
+
+**BACK1.** De detailpagina van een film heeft geen terugknop linksboven. De vier
+actieknoppen staan onder de samenvatting en verder niets.
+
+**FOC1.** Twee overlays gedragen zich verschillend, en dat verschil is nieuw
+gemeten. Het sorteerpaneel op Alle films staat verticaal gecentreerd, met marge
+boven en onder, en de focusring om de bovenste regel is rondom compleet. Het
+contextmenu op de detailpagina staat dat niet: het paneel loopt tot de onderrand
+van het canvas door, en de gefocuste onderste regel eindigt op ongeveer dertig
+pixels van 2160. Op een simulator zonder overscan valt die regel dus binnen, maar
+een televisie die drie procent wegneemt snijdt hem af. Dat is precies de maat die
+alleen op hardware te toetsen is, en het is het scherpste argument om FOC1 niet op
+simulatorbewijs te sluiten.
+
+**ART1.** De backdrop op detail is scherp, zonder de zachtheid van een te kleine
+aanvraag, dus de resolutiekant van `f42e3fd` doet wat hij moet doen. Of de uitsnede
+nog te strak oogt is een compositievraag en blijft open, conform wat de
+ART1-sectie daar al over zegt.
+
+**LIB3.** De tabband draagt geen rode onderstreping meer. De affordance zelf is
+niet los te beoordelen, om een reden die de LIB3-sectie niet kon voorzien: zie
+LIB5.
+
+### LIB5, de spotlight-titel ligt over de tabrij
+
+Op Bibliotheken tekent de aanbevolen-hub een schermvullende backdrop met daarin een
+spotlight, en het titellogo van die spotlight valt over de tabrij heen. Met "The
+Notebook" als spotlight loopt het woordmerk dwars door "Aanbevolen".
+
+Het gevolg keert de bedoelde staataffordance om. De actieve tab is wit en vet en
+zou daarmee moeten opvallen, maar hij is de enige die onder het logo ligt;
+"Bladeren", "Collecties" en "Afspeellijsten" staan op vrije achtergrond en zijn
+daardoor beter leesbaar dan de tab die gekozen is.
+
+Dit is de reden dat de LIB3-vervolgvraag op deze pagina niet te beantwoorden is.
+Of inkt en gewicht op tien voet genoeg zijn valt pas te zien wanneer er niets
+doorheen loopt, en op de mockup is de achtergrond vlak zwart.
+
+Eigenaar is de laag die de hub-backdrop en de tabrij op hetzelfde vlak zet, niet de
+tabrij zelf. De tabrij doet precies wat `3e9d31b` hem opdroeg.
+
+Dit is presentatie en raakt het productcontract niet, dus het valt onder wat de
+LIB4-sectie "zonder besluit al kan" noemt.
+
+### LIB6, het LIB4-besluit stond op een half beeld
+
+Gevraagd door Michel op 4 september: is er een complete mockup voor deze pagina.
+Die is er niet, en dat verklaart waarom LIB4 bleef liggen.
+
+Wat er ligt zijn `libraries-a.png` en `libraries-d.png` van 2 september, twee
+states van dezelfde pagina. Ze zijn nooit goedgekeurd. De goedkeuringsronde van 3
+september ging over de beelden 09 tot en met 25, en het overzicht van die set zegt
+dat de Mijn Pleya-mockups van 2 september er bewust buiten zijn gelaten. De
+styling-audit zet Bibliotheken bovendien op klasse E en vraagt er als enig scherm
+apart akkoord voor, omdat het productcontract zelf verandert.
+
+Wat de twee beelden niet tekenen: de tabs Bladeren, Collecties en Afspeellijsten,
+de lege staat, Verborgen bibliotheken, en de botsing uit LIB5. De HTML waarmee ze
+geschoten zijn zit niet in git, alleen de PNG's.
+
+Besluit van Michel op 4 september: eerst een complete set, daarna één keer besluiten
+over de hele pagina. LIB4 blijft tot die tijd dicht en wordt niet opnieuw
+voorgelegd op de bestaande twee beelden.
