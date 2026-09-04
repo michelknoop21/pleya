@@ -18,7 +18,7 @@ zet in dezelfde commit de status om en vult het bewijs in. Een taak die zonder b
 
 Bewijs is een commit-sha, een testnaam, een meting of een bestandspad. "Werkt" is geen bewijs.
 
-Laatst bijgewerkt: 2026-09-04 (aangemaakt). Bron voor de scope: `docs/pleya-server-rebaseline/`
+Laatst bijgewerkt: 2026-09-04 (P0b gesloten). Bron voor de scope: `docs/pleya-server-rebaseline/`
 deel I (slices) en deel O (Definition of Done).
 
 ---
@@ -49,7 +49,7 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 | S0.1 | Proefmerge met `main` in een wegwerp-worktree, conflictlijst in `merge-log.md` | `[ ]` | | |
 | S0.2 | Integratiebranch vanaf `main`, `feat/pleyaserver` erin gemerged | `[ ]` | | |
 | S0.3 | Vijf bekende conflicten opgelost, codegen met lege diff | `[ ]` | | |
-| S0.4 | DEC-hernummering vanaf 096, mappingtabel, grep schoon | `[ ]` | | |
+| S0.4 | DEC-hernummering naar de eerstvolgende vrije reeks in de samengestelde boom (niet blind 096, VRAGENLIJST 59), mappingtabel, grep schoon | `[ ]` | | |
 | S0.5 | CI-jobs `pleya-server`, `pleya-web`, `protocol` groen | `[ ]` | | |
 | S0.6 | NAS-migratiefixture (schema 7, geanonimiseerd) | `[ ]` | | |
 | S0.7 | Contracttest fake-server tegen `openapi.yaml` | `[ ]` | | |
@@ -177,7 +177,7 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S12.1 | Mockup readerschil goedgekeurd | `[ ]` | | |
+| S12.1 | Mockup 51 (readerschil op `@readium/navigator`) goedgekeurd | `[ ]` | | |
 | S12.2 | Spike Readium TypeScript Toolkit tegen het manifest; epub.js alleen als gedocumenteerde contingency | `[ ]` | | |
 | S12.3 | Reader met leespositie en client-local instellingen | `[ ]` | | |
 
@@ -185,7 +185,7 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S13.1 | Mockup spelerschil goedgekeurd | `[ ]` | | |
+| S13.1 | Mockup 50 (spelerschil) goedgekeurd | `[ ]` | | |
 | S13.2 | Schil met `<video>` op de streamsessie | `[ ]` | | |
 | S13.3 | Kijkstatus met `session_id` en `base_revision` | `[ ]` | | |
 | S13.4 | Ondertitelconversie naar WebVTT | `[ ]` | | |
@@ -242,7 +242,7 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 | S18.2 | ffmpeg-supervisie met vaste argumenten en time-out | `[ ]` | | |
 | S18.3 | fMP4 en HLS, browserspeler met hls.js | `[ ]` | | |
 | S18.4 | Hardwareversnelling gedetecteerd en zichtbaar | `[ ]` | | |
-| S18.5 | Beheer: sessies zien en stoppen, instellingen | `[ ]` | | |
+| S18.5 | Beheer: sessies zien en stoppen, instellingen; scherm 37 gebouwd | `[ ]` | | |
 | S18.6 | Capability `transcode`, venster 5 deel 2, journey 9 | `[ ]` | | |
 
 ### S19 Verzamelingen en afspeellijsten (PS-9C)
@@ -272,7 +272,7 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 | --- | --- | --- | --- | --- |
 | S21.1 | Hub met volgnummers, `GET /events` met bearer in het eerste bericht | `[ ]` | | |
 | S21.2 | Events gefilterd per zicht, `since=` dicht een gat | `[ ]` | | |
-| S21.3 | Web en app abonneren met terugval op polling | `[ ]` | | |
+| S21.3 | Web en app abonneren met terugval op polling; scherm 38 gebouwd | `[ ]` | | |
 | S21.4 | Capability `realtime`, venster 7 deel 1, journey 12 | `[ ]` | | |
 
 ### S22 Metadata-providers (PS-7)
@@ -284,7 +284,7 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 | S22.3 | Automatisch matchen met driestapsregel en ambiguïteitslijst | `[ ]` | | |
 | S22.4 | Automatisch artwork ophalen naar de cache op de ladder | `[ ]` | | |
 | S22.5 | Correcties: bevestigen, afwijzen, fix-match, artwork kiezen met pin, per-field overrides met provenance | `[ ]` | | |
-| S22.6 | Mockup metadata-match goedgekeurd, beheerscherm gebouwd | `[ ]` | | |
+| S22.6 | Mockup 36 goedgekeurd, scherm 29 en 36 gebouwd met provenance per veld | `[ ]` | | |
 | S22.7 | Attributie zichtbaar in web en app | `[ ]` | | |
 | S22.8 | Correctie overleeft drie rondes, SSRF-grens getest, venster 8 | `[ ]` | | |
 | S22.9 | PS-7 criteria 1 tot 4 op de NAS, journey 14 | `[ ]` | | |
@@ -296,7 +296,7 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 | S23.1 | Migratie `0018`, `POST /downloads` met recht `download` | `[ ]` | | |
 | S23.2 | Levering met digest, hervatten alleen bij gelijke digest | `[ ]` | | |
 | S23.3 | App: bestaande wachtrij op de nieuwe bron, sync-back | `[ ]` | | |
-| S23.4 | Web toont downloads op Mijn Pleya | `[ ]` | | |
+| S23.4 | Web toont downloads op Mijn Pleya (scherm 11b) | `[ ]` | | |
 | S23.5 | Capability `downloads`, venster 5 deel 3, journey 10 | `[ ]` | | |
 
 ### S24 Remote hardening (PS-11)
@@ -336,10 +336,10 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 | --- | --- | --- | --- |
 | P0 | Vragenlijst (`docs/pleya-server-rebaseline/VRAGENLIJST.md`) volledig beantwoord | `[x]` 4 sep 2026 | hoofdstuk 8; verwerking van 20 afwijkingen in de delen staat als P0a |
 | P0a | De 20 afwijkingen uit VRAGENLIJST.md hoofdstuk 9 verwerkt in E, I, J, K, L, M, N | `[x]` 4 sep 2026 | E bijgestelde RB's en RB-29; I S1, S5, S6, S12, S18, S22, S24, S25; J venster 1, 0011, 0013, 0017; K.20; L; M.1; N.5 |
-| P0b | Dezelfde afwijkingen doorgetrokken in D (mockup metadata-overrides), F, H, O en de masterlijsttaken (S1: cookie; S6: manifest; S22: overrides) | `[ ]` | |
+| P0b | Dezelfde afwijkingen doorgetrokken in D (mockup metadata-overrides), F, H, O en de masterlijsttaken (S1: cookie; S6: manifest; S22: overrides) | `[x]` 4 sep 2026 | D kop plus rijen 28, 29, 30, 31, 36, 37, 38 en de nummertabel in D.5; F auth (cookie, origin, audit), zoeken, artwork, reading, capabilities, uitgebreide scope, F.2; H kop, H.1 manifestrij, H.2 Readium Locator, H.4 locatorbinding, H.5, H.6; O kop, O.1 readerrij, O.2 functioneel, visueel, technisch, release, O.3; `DESIGN.md` h6 nummerregel; S1.8, S6.1 en S22.5 stonden al |
 | P1 | Northstar-set goedgekeurd (consumer, beheer, setup) | `[x]` akkoord 4 sep 2026 | chatakkoord; APPROVED-markering volgt met de laatste mockups |
-| P2 | Mockups 17, 18, 19, 28, 35 gereviewd en in het manifest | `[ ]` | |
-| P3 | Mockups metadata-match, transcode-sessies, downloads, realtime, speler, reader | `[ ]` | |
+| P2 | Mockups 17, 18, 19, 28, 35 gereviewd en in het manifest, deel C en deel D | `[ ]` | |
+| P3 | Zes mockups in één ronde: 11b downloads, 36 metadata-match en overrides, 37 transcode-sessies, 38 realtime-status, 50 speler, 51 reader; daarna APPROVED met SHA256SUMS | `[ ]` | |
 | P4 | Branch merget schoon met `main` | `[ ]` | |
 | P5 | Locatorbesluit voor leesvoortgang | `[ ]` | |
 | P6 | Protocolvensters 1 tot 8 geopend en gesloten | `[ ]` | |

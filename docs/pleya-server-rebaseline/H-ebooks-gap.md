@@ -5,6 +5,12 @@ wat er is, wat er komt, welke slice, en wat de Flutter-clients nodig hebben. De 
 `docs/pleya-server-ps14-proposal.md` met de zeven bindende beslissingen; waar dit deel daarvan
 afwijkt staat dat erbij.
 
+**Bijgesteld op 4 september 2026** met VRAGENLIJST 15 en 26: de locator is geen CFI plus
+spine-index meer maar een Readium-compatible Locator, en de Go-kant levert de publicatie
+daarnaast als Readium Web Publication Manifest met zijn resources. De webreader is de Readium
+TypeScript Toolkit met de chromeless `@readium/navigator`-laag; epub.js is hooguit een
+gedocumenteerde contingency na een spike met een aantoonbare blocker, geen runtimefallback.
+
 ## H.1 De keten
 
 | Stap | Vandaag | Wordt | Slice |
@@ -16,10 +22,11 @@ afwijkt staat dat erbij.
 | Cover | n.v.t. | `GET /ebooks/{id}/cover?width=` uit het zip, op de artworkladder, gecachet | S3, S4 |
 | Bibliotheek | `kind IN ('movies','shows')` | `books`; zichtbaar via het bestaande rechtenmodel | S2, S3 |
 | API | niets | `GET /ebooks`, `GET /ebooks/{id}`, `GET /ebooks/{id}/cover`, `GET /ebooks/{id}/file`, `GET /ebooks/series`, `GET /ebooks/authors`; capability `ebooks` | S3 |
+| Manifest en resources | niets | `GET /ebooks/{id}/manifest` (Readium Web Publication Manifest uit de OPF: metadata, `readingOrder`, `resources`, `toc`) en `GET /ebooks/{id}/resources/{path}` dat één bestand uit het zip levert met padnormalisatie tegen traversal en het juiste content-type; dit is wat `@readium/navigator` leest | S6 |
 | Zoeken | `/search` audiovisueel | `GET /ebooks?q=` op titel, auteur, reeks met `pg_trgm`; `GET /ebooks/authors?q=` | S3, S5 |
 | Web Home en Boeken | niets | slot, landing, rijen, alle boeken, filters | S9 |
 | Detail | niets | boekdetail met reeks en auteur | S9 |
-| Openen, downloaden, lezen | niets | downloaden in S9 (bestand met `Content-Disposition`); lezen in de browser in S12 | S9, S12 |
+| Openen, downloaden, lezen | niets | downloaden in S9 (bestand met `Content-Disposition`); lezen in de browser in S12 op `@readium/navigator` tegen het manifest, met de Pleya-schil eromheen (mockup 51) | S9, S12 |
 | Leesvoortgang | niets | `reading_states`, `POST` en `GET /reading-state`, `reading_state` op `Publication` | S6 |
 | Verder lezen | niets | `GET /reading-state?in_progress=true` gejoind door de client | S6, S9 |
 | Autorisatie | `MayAccess` en `VisibleLibraries` | dezelfde functies op `library_id` van de publicatie; 404 voor alles buiten zicht | S3 |
@@ -39,9 +46,32 @@ validator, verplicht), `cover_href`, `cover_media_type`, `first_seen_at`, `last_
 `missing_since`, `generation`. Eén bestand per publicatie in dit traject; de tabel laat er meer
 toe zonder dat een scherm het toont.
 
-`reading_states`: (`user_id`, `publication_id`) PK, `locator jsonb` (`{cfi, spine_index,
-fraction}`), `progress numeric(6,5)`, `finished bool`, `revision bigint`, `updated_at`,
-`last_session_id` (FK op `sessions`, set null). Geen lease (RB-4).
+`reading_states`: (`user_id`, `publication_id`) PK, `locator jsonb`, `progress numeric(6,5)`,
+`finished bool`, `revision bigint`, `updated_at`, `last_session_id` (FK op `sessions`, set
+null), plus `publication_revision` of `content_sha256` van het bestand waarop de locator werd
+gemaakt. Geen lease (RB-4).
+
+De locator is Readium-compatible en niet CFI-plus-spine (RB-12 bijgesteld):
+
+```json
+{
+  "href": "OEBPS/chap12.xhtml",
+  "type": "application/xhtml+xml",
+  "locations": {
+    "progression": 0.42,
+    "totalProgression": 0.48,
+    "position": 214,
+    "partialCfi": "/4/2[c12]/10/1:0"
+  },
+  "text": { "highlight": "Hij liep de trap af" }
+}
+```
+
+`locations.partialCfi` en `text` zijn optioneel; `text` bestaat voor bladwijzers en markeringen,
+niet voor voortgang. De spine-index is afgeleide informatie en nooit de primaire identiteit. De
+server valideert de vorm en bewaart de rest ongewijzigd, zodat een engine-upgrade geen migratie
+vraagt. Wijkt `publication_revision` af van de huidige publicatie, dan past de client de locator
+niet blind toe: hij valt terug op `totalProgression` en meldt dat het bestand is vervangen.
 
 Bijdragers en onderwerpen blijven arrays tot een scherm ze als eigen entiteit toont (ps14
 hoofdstuk 6). De auteurssectie in zoeken werkt op `unnest(authors)` met een index; dat is
@@ -70,7 +100,8 @@ Cover: uit het zip gelezen via `cover_href`; ontbreekt die, dan de eerste afbeel
 | `providers/books_home_provider.dart`, `books_library_provider.dart` | **aanpassen**: `available` volgt `capabilities.ebooks` en minstens één zichtbare `books`-bibliotheek; rijen uit de server | DEC-093 punt over `BooksLibraryProvider.available` |
 | Schermen 01b tot 05 (Home, Alle boeken, Filters, Zoeken, Detail) | **behouden**; ze zijn tegen goedgekeurde goldens gebouwd | de webset volgt hun inhoud |
 | `PrimaryMobileDestinationPolicy` en `navigation_tab_id.dart` | **behouden**; het mergeconflict met `feat/netflix-mobile` is hun zaak, niet die van dit traject | DEC-094 |
-| Reader, inhoudsopgave, readerinstellingen, zoeken in boek, downloads (panelen 6 tot 12 van de comp) | **niet in dit traject** aan de app-kant; de server levert wat ze nodig hebben (bestand, `reading_state` met CFI) | PS-15 app-kant blijft op `feat/ebooks` |
+| Reader, inhoudsopgave, readerinstellingen, zoeken in boek, downloads (panelen 6 tot 12 van de comp) | **niet in dit traject** aan de app-kant; de server levert wat ze nodig hebben (bestand, manifest, `reading_state` met de Readium Locator) | PS-15 app-kant blijft op `feat/ebooks` |
+| Het locatormodel van de app-reader | **bindend vastgelegd** door RB-12 bijgesteld: dezelfde Readium Locator als web, met de publicatie-revisie ernaast; een app-reader die alleen een spine-index of een paginanummer kan produceren voldoet niet | besluit vóór S6, geldt voor beide readers |
 | Verify-scenario's (5) | **behouden**; erbij komt één scenario dat `PleyaServerBooksSource` tegen de fake-server drijft | RB-14 |
 
 Er ontstaat geen tweede boekenarchitectuur: de app heeft één `BooksSource`, de server één
@@ -81,12 +112,14 @@ serverbron landt, en niet eerder, zodat de goldens intussen groen blijven.
 ## H.5 Wat de Flutter-clients nodig hebben
 
 1. `PleyaCapabilities.ebooks` en `.readingState` in `pleya_wire.dart` (S14).
-2. `PleyaLibraryKind.books` en de mapping naar een `MediaKind` die `libraries_provider` niet
+2. Een `ReadingLocator`-type dat de Readium-vorm draagt (`href`, `type`, `locations`, optioneel
+   `text`) plus de publicatie-revisie, gedeeld met de app-reader op `feat/ebooks`.
+3. `PleyaLibraryKind.books` en de mapping naar een `MediaKind` die `libraries_provider` niet
    wegfiltert op tvOS, macOS en desktop maar wél verbergt als bestemming (client-gedrag uit
    DEC-093 4.5; de bibliotheek mag in Mijn Pleya ▸ Bibliotheken zichtbaar zijn met een telling).
-3. `PleyaServerBooksSource` in `lib/services/pleya_server_client/parts/ebooks.dart` met
+4. `PleyaServerBooksSource` in `lib/services/pleya_server_client/parts/ebooks.dart` met
    mappers naar `Book`.
-4. De `_postJson`-fout uit backlog 24.3 (fouten stil op `null`) moet dicht vóór `POST
+5. De `_postJson`-fout uit backlog 24.3 (fouten stil op `null`) moet dicht vóór `POST
    /reading-state`, anders verdwijnt een leespositie even stil als een kijkpositie.
 
 ## H.5a Boeken in de uitgebreide scope
@@ -102,6 +135,9 @@ Een EPUB in `/volume1/media/Boeken` staat na één scan in `publications` met ti
 cover; `GET /libraries` telt hem mee; `GET /ebooks?q=` vindt hem op titel en auteur; de webclient
 toont hem op Home (Nieuw in Boeken), op de Boeken-landing en in Alle boeken; het detail toont
 cover, reeks en feiten; Downloaden levert het bestand met een sterke `ETag` en een hervatbare
-`Range`; `POST /reading-state` vanaf een tweede client zet hem in Verder lezen met de juiste
-fractie; een gebruiker zonder recht op de bibliotheek krijgt op elk van deze endpoints 404; en
+`Range`; `GET /ebooks/{id}/manifest` levert een Readium Web Publication Manifest dat
+`@readium/navigator` zonder aanpassing opent en `resources/{path}` weigert elk pad buiten het
+zip; `POST /reading-state` vanaf een tweede client zet hem in Verder lezen met de juiste fractie
+en de locator opent op dezelfde plek; een gebruiker zonder recht op de bibliotheek krijgt op elk
+van deze endpoints 404; en
 `scripts/check_protocol.sh` is groen met het venster dicht.

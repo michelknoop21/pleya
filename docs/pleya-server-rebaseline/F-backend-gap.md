@@ -5,6 +5,14 @@ Gemeten in `pleya_server/` op `5eebb83`: 100 Go-bestanden (~22k regels, de helft
 dependencies. Router is `http.ServeMux` met methodepatronen (`internal/api/server.go:92-165`),
 twee middlewarelagen: logging plus per route `authenticated` of `streamAuthorized`.
 
+**Bijgesteld op 4 september 2026** met de afwijkingen uit `VRAGENLIJST.md` hoofdstuk 8. Wat er
+ten opzichte van de eerste versie van dit deel bij komt: de HttpOnly-refreshcookie met
+web-origin, external URL en CORS-beleid in S1 (19, 57), de uitgebreide auditscope (23), twee
+artworkladders met 3840 voor backdrops (27), genormaliseerde facetkeys (29), zoeken als FTS plus
+prefix plus trigram met één ranking (34), de Readium-manifestlaag naast `reading_states` (15,
+26), drie hwaccel-backends met runtime-detectie (37) en back-up- en metricsinstellingen in
+plaats van constanten (54, 56).
+
 ## F.1 Per domein: bestaat, ontbreekt, verandert
 
 ### Auth en autorisatie
@@ -21,6 +29,9 @@ twee middlewarelagen: logging plus per route `authenticated` of `streamAuthorize
 | --- | --- |
 | `administration`-capability en een tabelgedreven test die elke beheerroute met `member` en `restricted` op 404 zet (uitbreiding van `authorize_test.go`) | S1 |
 | rate limit op `/auth/refresh` | S15 |
+| refreshcredential als HttpOnly-, Secure-cookie met passende `SameSite`; accesstoken kortlevend en alleen in het antwoord (nooit in een cookie die JavaScript leest); rotatie ongewijzigd; Origin- en CSRF-controle op de cookie-gedreven refresh (RB-29) | S1 |
+| `server_settings` sleutels `web_origin`, `external_url`, `trusted_proxies` (CIDR-lijst) en het CORS-beleid dat eruit volgt; `Forwarded` en `X-Forwarded-*` alleen geloofd van een vertrouwde proxy; same-origin is de voorkeur, een afwijkende web-origin vraagt een expliciete BFF-flow | S1, S24 |
+| `admin_audit` met de scope uit VRAGENLIJST 23: beheer- en datamutaties, login success en failure, tokens aanmaken, intrekken en roteren, rol- en permissiewijzigingen, onderhoudsmodus, securityconfig, MCP-mutaties; 90 dagen; catalogusreads, playbackticks en readerreads blijven eruit | S1 |
 | panic-recovery met protocolvormige 500, lichaamslimiet op elke schrijvende route (nu alleen `decodeBody` 8 KiB in auth) | S1 |
 | eigen account-id opvraagbaar (`GET /users/me` of `self: true` op `User`) | S1, deel J |
 | foutcode voor "restricted mag geen manage" (`auth.permission_not_allowed`) | S1, deel J |
@@ -81,7 +92,8 @@ helpt, standaard zonder seizoenen (DEC-045), geen scores, geen soortveld.
 
 | Ontbreekt of verandert | Slice |
 | --- | --- |
-| `pg_trgm` GIN-index op `title` en `sort_title`; meting vooraf op de NAS-bibliotheek | S5 |
+| PostgreSQL-zoekweg met exacte match, prefix, Full Text Search en `pg_trgm` voor fuzzy, samengevoegd in één deterministische ranking over titel, serie, acteur en auteur; GIN-indexen op `title` en `sort_title` plus een `tsvector`-kolom; meting vooraf op de NAS-bibliotheek; geen embeddings en geen fonetische zoekfunctie | S5 |
+| `genres_key` naast de displaynaam: Unicode casefold, trim, whitespace-normalisatie, zodat facetten niet hoofdlettergevoelig zijn en "Science Fiction" en "science fiction" één facet worden | S4, S5 |
 | filters op `/libraries/{id}/items` (`genre`, `year`, `year_from`, `year_to`, `watched`, `resolution`), `GET /libraries/{id}/facets`, extra sorteringen `last_played_at`, `duration` | S5 |
 | `GET /ebooks?q=&library_id=&subject=&author=&state=&sort=` als eigen zoekweg voor boeken; `GET /ebooks/authors?q=` | S3, S5 |
 | capability `filters` | S5 |
@@ -93,7 +105,8 @@ Bestaat: `GET /artwork/{id}` van de mount, `ETag` op `id:generation`, 304, `max-
 
 | Ontbreekt of verandert | Slice |
 | --- | --- |
-| ladder 240/480/960/1920, schalen (Go-stdlib `image` plus `golang.org/x/image/draw`, geen cgo), cache in `CacheDir/artwork/<id>/<w>.<ext>`, single-flight, sterke `ETag` op de cache, terugval op origineel bij decodeerfout, `Vary` niet nodig (query in de URL) | S4 |
+| twee ladders: poster en boekcover 240/480/960/1920, backdrop en hero 480/960/1920/3840 (3840 is nodig voor 4K en tvOS); schalen (Go-stdlib `image` plus `golang.org/x/image/draw`, geen cgo), cache in `CacheDir/artwork/<id>/<w>.<ext>`, single-flight, sterke `ETag` op de cache, terugval op origineel bij decodeerfout, `Vary` niet nodig (query in de URL) | S4 |
+| `width` normaliseert naar een ladderwaarde van de juiste ladder en schaalt nooit boven de bronresolutie; een aanvraag boven de bron levert de bron | S4 |
 | `GET /ebooks/{id}/cover?width=` op dezelfde ladder, uit het zip | S3, S4 |
 | YAML-tekst over Cache-Control rechtzetten (deel A.4) | S4 |
 | `GET /artwork/cache` en `DELETE /artwork/cache` voor beheer | S4 |
@@ -118,7 +131,8 @@ Bestaat: `watch_states` met revisie, eigenaar en lease, `POST` en `GET /watch-st
 
 | Ontbreekt of verandert | Slice |
 | --- | --- |
-| `reading_states` met locator, fractie, revisie, zonder lease; `POST /reading-state`, `GET /reading-state`, `reading_state` op `Publication` | S6 |
+| `reading_states` met een Readium-compatible locator (`href`, `type`, `locations.progression`, `locations.totalProgression`, `locations.position` waar beschikbaar, optioneel `locations.partialCfi`, optionele `text`-context), fractie, revisie, zonder lease; een publicatie-revisie of digest naast de locator zodat hij nooit blind op een vervangen EPUB landt; `POST /reading-state`, `GET /reading-state`, `reading_state` op `Publication` | S6 |
+| Readium-manifestlaag in Go: `GET /ebooks/{id}/manifest` (Readium Web Publication Manifest) en `GET /ebooks/{id}/resources/{path}` met padnormalisatie tegen zip-traversal; dit is wat `@readium/navigator` in de webreader leest (RB-12 bijgesteld) | S6 |
 | toestelnaam bij "laatst gekeken" (join `watch_states.owner_session_id` op `sessions.device_name`, alleen voor de eigen gebruiker) | S6 |
 | capability `reading_state` | S6 |
 
@@ -126,7 +140,11 @@ Bestaat: `watch_states` met revisie, eigenaar en lease, `POST` en `GET /watch-st
 
 Alle dertien vlaggen kloppen met het gedrag (`handlers_auth.go:50-85`). Erbij komen
 `administration`, `ebooks`, `filters`, `reading_state`, `artwork_sizes`, elk aan een concrete
-voorwaarde gehangen. `feature_level` blijft 1.
+voorwaarde gehangen, en in de uitgebreide scope `playback_plan`, `transcode`, `collections`,
+`personal`, `realtime`, `downloads` en `metadata_providers`. `feature_level` 1 is de verwachte
+uitkomst van een volledig additieve diff; blijkt aan het eind van een venster één wijziging
+werkelijk te breken, dan gaat het level passend omhoog in plaats van dat de breuk wordt verstopt
+(RB-9 bijgesteld).
 
 ### Webbundel en serverinfo
 
@@ -172,14 +190,14 @@ op een gevulde database (S0-fixture: een `pg_dump` van de NAS-stand, schema 7, g
 | Domein | Bestaat | Komt | Slice |
 | --- | --- | --- | --- |
 | PlaybackPlan | `DeviceCapabilities` alleen in de client | `internal/playback/` planner (pure functie, tabelgedreven), `POST /playback/plan` | S17 |
-| Transcode | niets; `TranscodeDir` ongebruikt | `internal/transcode/` sessies, ffmpeg-supervisie, fMP4 en HLS, hwaccel-detectie, `GET/DELETE /transcode-sessions`, opruimen | S18 |
+| Transcode | niets; `TranscodeDir` ongebruikt | `internal/transcode/` sessies, ffmpeg-supervisie, fMP4 en HLS, `GET/DELETE /transcode-sessions`, opruimen dat actieve sessies beschermt; VAAPI, QSV en NVENC zijn alle drie first-class, runtime gedetecteerd (geen aanname dat er Intel in de machine zit), AMD op Linux via VAAPI, software als terugval; ondertitels: bitmap en niet-converteerbare ASS branden in, gewone tekst wordt WebVTT | S18 |
 | Verzamelingen, afspeellijsten | niets | `collections`, `playlists` met items; CRUD; zichtbaarheid | S19 |
 | Persoonlijke laag | niets (`play_history` bewust uitgesloten in 0004) | `play_history`, `favorites`, `ratings`, `track_preferences`; endpoints; "Bekeken door" | S20 |
 | Realtime | niets | `internal/events/` hub met volgnummers, `GET /events` websocket, filter per zicht | S21 |
 | Metadata-providers | niets | `internal/metadata/` providerabstractie, TMDB, kandidatenlaag, match, artwork ophalen naar `CacheDir`, correcties; jobs | S22 |
 | Downloads | niets | `downloads` tabel, `POST /downloads`, bestand met digest, opruimen | S23 |
-| Remote hardening | proxy-headers deels, geen metrics | vertrouwde proxy's, metrics op loopback, publieke-endpointtest | S24 |
-| Back-up en levenscyclus | niets | `internal/backup/`, `BackupDir`, hersteltest, restore, onderhoudsmodus, upgrade-guard | S25 |
+| Remote hardening | proxy-headers deels, geen metrics | vertrouwde proxy's als CIDR-lijst, `web_origin` en `external_url` apart, CORS-beleid, publieke-endpointtest; Prometheus op een configureerbare private bind (default loopback, nooit publiek), zodat een containernetwerk hem kan lezen | S24 |
+| Back-up en levenscyclus | niets | `internal/backup/`, doel als instelling (default `/backups`), schema 03:30 en retentie 14 als instelling; back-up bevat database plus instance-, config- en cryptografische state met veilig verpakte secrets; waarschuwing als het doel op hetzelfde failure-domain staat; wekelijkse hersteltest in een geïsoleerde tijdelijke database die migraties, schema en kernqueries draait; restore, onderhoudsmodus, upgrade-guard | S25 |
 
 ## F.2 Bestanden die dit traject aanraakt
 
@@ -187,11 +205,12 @@ op een gevulde database (S0-fixture: een `pg_dump` van de NAS-stand, schema 7, g
 | --- | --- |
 | `internal/api/handlers_settings.go`, `handlers_admin_libraries.go`, `handlers_storage.go`, `handlers_jobs.go`, `handlers_ebooks.go`, `handlers_reading.go`, `handlers_server_admin.go` | beheer-, boeken- en voortgangsroutes |
 | `internal/settings/` | `server_settings`, validatie, hot reload |
-| `internal/ebooks/` | EPUB-analyser (zip, `container.xml`, OPF, cover), publicatiestore |
+| `internal/ebooks/` | EPUB-analyser (zip, `container.xml`, OPF, cover), publicatiestore, Readium Web Publication Manifest en de resourceroute |
 | `internal/artwork/` | ladder, schalen, cache, single-flight |
 | `internal/sidecar/` | `.nfo`-parser en dekkingsmeting |
 | `internal/logging/ring.go` | ringbuffer voor `/server/log` |
-| `internal/migrate/sql/0008_*.sql` tot `0013_*.sql` | deel J |
+| `internal/metadata/overrides.go` | per-field overrides met provenance en reset naar sidecar of provider |
+| `internal/migrate/sql/0008_*.sql` tot `0019_*.sql` | deel J; 0008 tot 0013 in de basis, 0014 tot 0019 in de uitgebreide scope |
 
 | Gewijzigd | Doel |
 | --- | --- |
@@ -202,6 +221,6 @@ op een gevulde database (S0-fixture: een `pg_dump` van de NAS-stand, schema 7, g
 | `internal/scanner/scanner.go`, `walk.go`, `nameparse/` | soorten per bibliotheek, derde emmer, dispatch, annuleren, backoff |
 | `internal/jobs/jobs.go` | annuleren en retry |
 | `internal/config/libraries.go`, `cmd/pleya-server/bootstrap.go`, `scanwork.go` | `managed`, overname, instellingen uit DB |
-| `internal/auth/store.go` | TTL's uit settings |
+| `internal/auth/store.go` | TTL's uit settings; refreshcookie zetten, lezen en roteren |
 | `pleya_server/scripts/verify-local.sh` | secties voor beheer, boeken, artwork |
 | `docs/pleya-protocol/v1/openapi.yaml`, `examples/` | vier vensters (deel J) |

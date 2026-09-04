@@ -5,6 +5,12 @@ en wat het scherm van de backend vraagt. De beelden staan in `docs/assets/pleya-
 Endpoints zonder ster bestaan op `5eebb83`; een ster (*) betekent nieuw of gewijzigd, met de
 slice uit deel I waar het landt.
 
+**Bijgesteld op 4 september 2026** met de afwijkingen uit `VRAGENLIJST.md` hoofdstuk 8: de
+Readium-manifestlaag voor de webreader (15, 26), de HttpOnly-refreshcookie en het originmodel
+(19, 57), per-field metadata-overrides met provenance (53), de twee artworkladders (27), de drie
+hwaccel-backends (37) en de uitgebreide auditscope (23). De zes ontbrekende schermen staan
+onderaan in D.5 met hun nummer.
+
 ## D.1 Gedeelde shell en componenten
 
 **Shell.** Boven 900 px een sticky topnav van 64 px: wordmark links, cluster Home · Series ·
@@ -112,7 +118,9 @@ reeks `mark_watched`-events (bestaand contract; de client doet het per afleverin
 ### 10 Boekdetail (`/books/{id}`)
 
 `GET /ebooks/{id}`* met cover uit `GET /ebooks/{id}/cover?width=`* en ambience client-side.
-Lees verder opent de webreader (S12) met de locator uit `GET /reading-state/{id}`* (S6);
+Lees verder opent de webreader (S12), die de publicatie laadt als Readium Web Publication
+Manifest (`GET /ebooks/{id}/manifest`* en `GET /ebooks/{id}/resources/{path}`*, S6) en op de
+locator uit `GET /reading-state/{id}`* springt (S6);
 Downloaden haalt `GET /ebooks/{id}/file`* met de sterke validator (S3). Feiten: jaar, genre,
 pagina's (uit de OPF als die het draagt, anders weggelaten), taal. Reeks uit `series_name` en
 `series_index`.
@@ -137,11 +145,17 @@ Account (`GET /users` gefilterd op zelf; "eigen account-id" ontbreekt in het con
 toestellen (`GET /sessions`, bestaand), uitloggen (`POST /auth/logout`, bestaand), wachtwoord
 (`PATCH /users/{id}`, bestaand). Voorkeuren (uiterlijk, taal, afspelen, lezen) zijn client-local
 in `localStorage` tot PS-9T; het scherm toont ze als lokale instelling. Serverpaneel uit
-`GET /server` en `GET /libraries`, met de ingang naar beheer voor `owner` en `admin`.
+`GET /server` en `GET /libraries`, met de ingang naar beheer voor `owner` en `admin`. Het
+paneel Downloads (scherm 11b, S23) leest `GET /downloads`* en toont per regel titel, trede uit
+de ladder, digest-status en het toestel dat hem haalde; web downloadt zelf alleen boeken
+(VRAGENLIJST 43), dus de videoregels zijn een overzicht van wat de apps hebben.
 
 ### 12 Inloggen (`/login`), 13 lege bibliotheek, 14 onbereikbaar, 15 laden, 16 kaartstaten
 
-Bestaande flows uit PS-3W met de nieuwe compositie. 13 toont de beheerknoppen alleen aan
+Bestaande flows uit PS-3W met de nieuwe compositie. 12 zet het refreshcredential als
+HttpOnly-, Secure-cookie en houdt het accesstoken alleen in geheugen (RB-29, S1); het scherm
+verandert daar niet van, maar "onthoud mij" betekent daarmee de cookie en niet een token in
+`localStorage`. 13 toont de beheerknoppen alleen aan
 `owner` en `admin` (rol uit `GET /users` op zelf). 14 houdt de sessie en probeert opnieuw met
 backoff (bestaand gedrag in `session.svelte.ts`). 15 vervangt de paginabrede spinner door een
 skelet in kaartmaten. 16 is een referentieblad zonder route.
@@ -150,7 +164,9 @@ skelet in kaartmaten. 16 is een referentieblad zonder route.
 
 Alle beheerschermen lezen en schrijven uitsluitend via `/pleya/v1` (DEC-046). Een gebruiker
 zonder beheerrecht krijgt op elke `/admin`-route de 404-pagina van de client, en de server
-antwoordt 404 op elke beheeraanvraag.
+antwoordt 404 op elke beheeraanvraag. Elke mutatie in deze tabel landt in `admin_audit` met de
+uitgebreide scope uit VRAGENLIJST 23 (beheer- en datamutaties, logins, tokens, rol- en
+permissiewijzigingen, onderhoudsmodus, securityconfig, MCP-mutaties), 90 dagen bewaard.
 
 | Scherm | Data | Bestaat | Slice |
 | --- | --- | --- | --- |
@@ -162,14 +178,18 @@ antwoordt 404 op elke beheeraanvraag.
 | 25 Scans en taken | `GET /scans`*, `GET /jobs`*, `POST /jobs/{id}/cancel`*, `POST /jobs/{id}/retry`* | nee | S2 |
 | 26, 27 Gebruikers | `GET/POST /users`, `PATCH/DELETE /users/{id}`, `PUT /users/{id}/permissions`, `GET /sessions?user_id=`, `DELETE /sessions/{id}` | ja | S10 |
 | 28 Media | `GET/PATCH /settings`* (`stream_sessions_max`, `stream_session_ttl`, `stream_token_ttl`), capabilities uit `GET /info`, ffprobe-status uit `GET /server`* | nee | S1 |
+| 28 Media (transcode) | `PATCH /settings` met `transcode_hwaccel` (VAAPI, QSV en NVENC als first-class backends, runtime gedetecteerd, software als terugval), `transcode_max_sessions` en `transcode_cache_bytes` als instelbare defaults binnen veilige grenzen (2 en 20 GB), `transcode_ladder`, ondertitelbeleid (bitmap en niet-converteerbare ASS branden in, tekst als WebVTT) | nee | S18 |
 | 29 Metadata en artwork | `GET /libraries/{id}/metadata-coverage`* (S4), `GET /artwork/cache`* en `DELETE`* (S4), providerplek alleen tekst | nee | S4 |
-| 30 Netwerk | `PATCH /settings` (`server_name`, `public_url`), `GET /server` met `listen`, `behind_proxy`, `trusted_proxies` alleen-lezen*, `POST /server/connectivity-check`* | nee | S1 |
-| 31 Beveiliging | `PATCH /settings` (`access_token_ttl`, `refresh_token_ttl`), `GET /sessions?all=true`*, `DELETE /sessions/{id}`, `POST /server/rotate-signing-key`* | deels | S1, S10 |
+| 30 Netwerk | `PATCH /settings` (`server_name`, `web_origin`*, `external_url`*, `trusted_proxies`* als CIDR-lijst, CORS-beleid*), `GET /server` met `listen` en `behind_proxy` alleen-lezen*, `POST /server/connectivity-check`* | nee | S1, S24 |
+| 31 Beveiliging | `PATCH /settings` (`access_token_ttl`, `refresh_token_ttl`, `stream_token_ttl` binnen de grenzen uit VRAGENLIJST 18), `GET /sessions?all=true`*, `DELETE /sessions/{id}`, `POST /server/rotate-signing-key`* met impact-confirmatie, `GET /audit?limit=`* met de uitgebreide scope; het paneel meldt dat de webclient zijn refreshcredential als HttpOnly-cookie houdt (RB-29) en toont dus geen refreshtoken | deels | S1, S10 |
 | 32 Diagnostiek | `GET /server` uitgebreid met `build`, `database`, `migrations`, `health`*, `GET /info`, `GET /server/environment`* (geredigeerd), `GET /server/log?level=warn&limit=50`* (geredigeerd) | nee | S1 |
 | 33 Mobiel | dezelfde data als 20 | | S10 |
 | 35 Onderhoud | `GET/POST /backups`*, `POST /backups/{id}/restore`* (met `confirm`), `POST /backups/{id}/verify`*, `GET /server` met `upgrade{image, schema, path}`*, `POST /server/maintenance-mode`* | nee | S25 |
 | 28 Media (uitgebreid) | `PATCH /settings` met `transcode_hwaccel`, `transcode_max_sessions`, `transcode_ladder`, `download_quality`; `GET /transcode-sessions`*, `DELETE /transcode-sessions/{id}`* | nee | S18, S23 |
-| 29 Metadata (uitgebreid) | `GET /libraries/{id}/matches?state=ambiguous`*, `POST /items/{id}/match`* (kandidaat bevestigen of afwijzen), `GET /items/{id}/artwork-candidates`*, `PUT /items/{id}/artwork`*, providerinstellingen in `/settings` | nee | S22 |
+| 29 Metadata (uitgebreid) | providerstatus en providerinstellingen in `/settings` (TMDB-sleutel schrijf-alleen en gemaskeerd, taal `nl-NL` met terugval `en-US`), matchpercentage per bibliotheek uit `GET /libraries/{id}/match-coverage`*, knop volledig verversen, ingang naar 36 | nee | S22 |
+| 36 Metadata: match en overrides | `GET /libraries/{id}/matches?state=ambiguous`*, `POST /items/{id}/match`* (kandidaat bevestigen of afwijzen, fix-match), `GET /items/{id}/artwork-candidates`*, `PUT /items/{id}/artwork`* (gepind), `PUT /items/{id}/overrides`* en `DELETE /items/{id}/overrides/{field}`* voor per-field overrides met provenance | nee | S22 |
+| 37 Transcode-sessies | `GET /transcode-sessions`* (bron, doel, backend, voortgang, gebruiker, toestel), `DELETE /transcode-sessions/{id}`*, cachedruk uit `GET /server`* | nee | S18 |
+| 38 Realtime-status | `GET /server` met `realtime{clients, last_sequence, dropped}`*, de websocket-hub uit `GET /events`* alleen als status, niet als bedieningspaneel | nee | S21 |
 | 34 Agents en API-tokens | `GET/POST /auth/api-tokens`*, `DELETE /sessions/{id}`, `GET /server` met `mcp{enabled, url, tools}`*, `GET /audit?source=api&limit=`*, `PATCH /settings` (`mcp_enabled`) | nee | S1, S16 |
 
 Wat bewust geen scherm heeft: een bestandsbrowser, een shell, logbestanden downloaden, poorten
@@ -206,12 +226,26 @@ toont stap 3 als "overnemen of nieuwe maken".
 | Verzamelingen, afspeellijsten (17, 18) | `/collections`, `/playlists` | niets | S19 | S19 |
 | Geschiedenis, favorieten (19) | `/history`, `/favorites`, `/ratings` | niets | S20 | S20 |
 | Setup | zie D.4 | setup | S1, S2 | S11 |
-| Speler (geen mockup) | stream, stream-session, watch-state | ja | geen | S13, na één mockup |
-| Webreader (geen mockup) | file, reading-state | S3, S6 | S6 | S12, na één mockup |
+| Downloads op Mijn Pleya (11b) | `/downloads` | niets | S23 | S23 |
+| Speler (50) | stream, stream-session, watch-state, `playback/plan`, HLS bij transcode | stream | S17, S18 | S13, na mockup 50 |
+| Webreader (51) | manifest, resources, file, reading-state | niets | S3, S6 | S12, na mockup 51 |
+| Metadata-match en overrides (36) | matches, match, artwork-candidates, overrides | niets | S22 | S10, S22 |
+| Transcode-sessies (37) | `/transcode-sessions` | niets | S18 | S10, S18 |
+| Realtime-status (38) | `/events`, `realtime` op `/server` | niets | S21 | S10, S21 |
 
-Zes schermen ontbreken nog en krijgen elk één mockupronde vóór hun slice: metadata-match en
-artworkkeuze (S22), transcode-sessies in het overzicht (S18), downloads op Mijn Pleya (S23),
-realtime-status in Diagnostiek (S21), en de twee hieronder. Twee daarvan:
-de browserspeler (afgeleid van TV-mockup 18 en iOS-mockup 20) en de webreader (afgeleid van de
-readerpanelen in de e-bookscomp). Ze zijn niet getekend omdat hun vorm afhangt van besluiten
-die pas in S12 en S13 vallen (locatormodel, bedieningslaag).
+Zes schermen ontbreken nog. Ze gaan in één ronde naar Michel (poort P3 in de masterlijst) en
+krijgen deze nummers, binnen de reeksen uit `DESIGN.md` hoofdstuk 6:
+
+| Nr | Scherm | Waarvan afgeleid | Slice |
+| --- | --- | --- | --- |
+| 11b | Downloads op Mijn Pleya | paneelvorm van 11, statusrij van 25 | S23 |
+| 36 | Beheer: metadata-match en per-field overrides | tabelprimitief van 25, kandidatenraster nieuw | S22 |
+| 37 | Beheer: transcode-sessies | "nu aan het kijken" van 20, tabel van 25 | S18 |
+| 38 | Beheer: realtime-status | diagnostiekpanelen van 32 | S21 |
+| 50 | Browserspeler | TV-mockup 18 en iOS-mockup 20 | S13 |
+| 51 | Webreader | de readerpanelen uit de e-bookscomp, chromeless `@readium/navigator` | S12 |
+
+De speler en de reader waren niet getekend omdat hun vorm afhing van besluiten die in S12 en S13
+zouden vallen. Die besluiten zijn inmiddels genomen (RB-12 bijgesteld: Readium Locator en de
+Readium TypeScript Toolkit; VRAGENLIJST 16: `<video>` plus hls.js), dus de vorm ligt nu vast
+genoeg om te tekenen.

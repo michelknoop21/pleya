@@ -129,6 +129,10 @@ wijziging in S7, niet een afwijking van de mockup.
 
 1. Kopieer het dichtstbijzijnde fragment uit `src/pages/` en geef het een vrij nummer:
    01 tot 19 consumer, 20 tot 39 beheer, 40 tot 49 setup, 50 en verder voor speler en reader.
+   De consumerreeks 01 tot 19 is vol; een consumerscherm dat bij een bestaand scherm hoort
+   krijgt daarom een letterachtervoegsel op dat nummer (`11b-downloads`), dezelfde vorm als de
+   e-booksgoldens `01b` op `feat/ebooks`. Een nieuw consumeronderwerp dat nergens bij hoort
+   vraagt eerst een besluit over de reeks, niet een nummer uit de beheerreeks.
 2. Zet de kopregel met breedtes. Neem 393 altijd mee bij een consumerscherm; bij een
    beheerscherm alleen als de mobiele variant iets nieuws laat zien.
 3. Gebruik de macro's; schrijf geen losse `<img>` naar artwork en geen inline kleuren buiten
