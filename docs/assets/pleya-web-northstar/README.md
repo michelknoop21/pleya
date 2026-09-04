@@ -4,10 +4,11 @@ Status: **CANDIDATE**. Niet goedgekeurd, geen implementation authority tot Miche
 chat goedkeurt. Wat hier staat is de eerste complete web-familie van de Unified 2026-designtaal:
 40 schermen, 80 beelden, elk uit één HTML-bron in `src/pages/`.
 
-Bijgewerkt op 4 september 2026 na reviewronde 3 (`C-northstar-review.md` C.5): de vijf schermen
-van de uitgebreide scope (17, 18, 19, 28, 35) zijn gereviewd en gecorrigeerd, en de hele set is
-opnieuw gerenderd omdat drie van die bevindingen in `web.css` zaten. Zes schermen ontbreken nog
-en staan onderaan dit bestand.
+Bijgewerkt op 4 september 2026 na reviewronde 3 en 4 (`C-northstar-review.md` C.5 en C.7). Ronde
+3 reviewde en corrigeerde de vijf schermen van de uitgebreide scope (17, 18, 19, 28, 35), waarna
+de hele set opnieuw gerenderd is omdat drie van die bevindingen in `web.css` zaten. Ronde 4 tekende
+de zes ontbrekende schermen (11b, 36, 37, 38, 50, 51). De set is daarmee **46 schermen** en niets
+ontbreekt meer.
 
 ## Wat de set is
 
@@ -49,6 +50,7 @@ breed beeld is de hele pagina.
 | 09 | Seriedetail | 1600, 393 | `09-serie-detail.html` | seizoenchips, afleveringsrijen met voortgang |
 | 10 | Boekdetail | 1600, 1024, 393 | `10-boek-detail.html` | Lees verder, Downloaden, reeks |
 | 11 | Mijn Pleya | 1600, 393 | `11-mijn-pleya.html` | persoonlijke laag, toestellen, ingang naar beheer |
+| 11b | Downloads (PS-10) | 1600, 393 | `11b-downloads.html` | web downloadt boeken, de apps de rest; digest per bestand (S23) |
 | 12 | Inloggen | 1600, 393 | `12-inloggen.html` | foutstaat na afgewezen poging |
 | 13 | Lege bibliotheek | 1600, 393 | `13-lege-bibliotheek.html` | beheerder ziet de knop, lid alleen de uitleg |
 | 14 | Server onbereikbaar | 1600, 393 | `14-server-offline.html` | sessie blijft, geen uitlogscherm |
@@ -73,25 +75,16 @@ breed beeld is de hele pagina.
 | 33 | Beheer op een telefoon | 393 | `33-admin-mobiel-index.html` | de zijbalk als lijst |
 | 34 | Beheer: agents en API-tokens | 1600, 393 | `34-admin-agents.html` | MCP-status, tokens als sessies, bereik, auditlog van agentacties |
 | 35 | Beheer: onderhoud (PS-11B) | 1600, 393 | `35-admin-onderhoud.html` | back-up als instelling met failure-domain-waarschuwing, hersteltest, upgradepad, faalpaden (S25) |
+| 36 | Beheer: metadata-match en overrides (PS-7) | 1600, 1280 | `36-admin-metadata-match.html` | kandidaten met score, gepind artwork, elk veld met zijn bron en een weg terug (S22) |
+| 37 | Beheer: transcode-sessies (PS-8) | 1600, 393 | `37-admin-transcode.html` | wie kijkt wat, waarnaar, hoe snel, en wat je ermee kunt (S18) |
+| 38 | Beheer: realtime (PS-11R) | 1600 | `38-admin-realtime.html` | volgnummers, gaten dichten met `since=`, polling als terugval (S21) |
 | 40 | Setup 1: eigenaar | 1600, 393 | `40-setup-eigenaar.html` | setupcode, account, servernaam |
 | 41 | Setup 2: opslag | 1600 | `41-setup-opslag.html` | roots uit de mounts |
 | 42 | Setup 3: bibliotheek | 1600, 393 | `42-setup-bibliotheek.html` | drie soorten |
 | 43 | Setup 4: scannen | 1600 | `43-setup-scan.html` | voortgang, eerste titels |
 | 44 | Na de setup | 1600, 393 | `44-setup-klaar.html` | Home met één bibliotheek, geen lege rijen |
-
-## Nog te tekenen
-
-Zes schermen ontbreken en gaan in één ronde naar Michel (poort P3 in
-`docs/PLEYA-SERVER-MASTERLIST.md`). Ze staan met hun route, data en slice in deel D.5.
-
-| Nr | Scherm | Slice |
-| --- | --- | --- |
-| 11b | Downloads op Mijn Pleya | S23 |
-| 36 | Beheer: metadata-match en per-field overrides | S22 |
-| 37 | Beheer: transcode-sessies | S18 |
-| 38 | Beheer: realtime-status | S21 |
-| 50 | Browserspeler | S13 |
-| 51 | Webreader op `@readium/navigator` | S12 |
+| 50 | Browserspeler (PS-4W) | 1600, 393 | `50-speler.html` | direct play met range, hoofdstukmarkeringen, scrubvoorbeeld (S13) |
+| 51 | Webreader (PS-15) | 1600, 393 | `51-reader.html` | chromeless `@readium/navigator` in het midden, Pleya-schil eromheen (S12) |
 
 ## Nabouwen en uitbreiden
 

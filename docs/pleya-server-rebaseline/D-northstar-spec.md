@@ -248,19 +248,62 @@ toont stap 3 als "overnemen of nieuwe maken".
 | Transcode-sessies (37) | `/transcode-sessions` | niets | S18 | S10, S18 |
 | Realtime-status (38) | `/events`, `realtime` op `/server` | niets | S21 | S10, S21 |
 
-Zes schermen ontbreken nog. Ze gaan in één ronde naar Michel (poort P3 in de masterlijst) en
-krijgen deze nummers, binnen de reeksen uit `DESIGN.md` hoofdstuk 6:
+De zes laatst ontbrekende schermen zijn getekend (reviewronde 4, C.7) en staan hieronder met hun
+route en data. De speler en de reader waren eerder niet getekend omdat hun vorm afhing van
+besluiten die in S12 en S13 zouden vallen; die zijn genomen (RB-12 bijgesteld: Readium Locator en
+de Readium TypeScript Toolkit; VRAGENLIJST 16: `<video>` plus hls.js).
 
-| Nr | Scherm | Waarvan afgeleid | Slice |
-| --- | --- | --- | --- |
-| 11b | Downloads op Mijn Pleya | paneelvorm van 11, statusrij van 25 | S23 |
-| 36 | Beheer: metadata-match en per-field overrides | tabelprimitief van 25, kandidatenraster nieuw | S22 |
-| 37 | Beheer: transcode-sessies | "nu aan het kijken" van 20, tabel van 25 | S18 |
-| 38 | Beheer: realtime-status | diagnostiekpanelen van 32 | S21 |
-| 50 | Browserspeler | TV-mockup 18 en iOS-mockup 20 | S13 |
-| 51 | Webreader | de readerpanelen uit de e-bookscomp, chromeless `@readium/navigator` | S12 |
+### 11b Downloads (`/my/downloads`)
 
-De speler en de reader waren niet getekend omdat hun vorm afhing van besluiten die in S12 en S13
-zouden vallen. Die besluiten zijn inmiddels genomen (RB-12 bijgesteld: Readium Locator en de
-Readium TypeScript Toolkit; VRAGENLIJST 16: `<video>` plus hls.js), dus de vorm ligt nu vast
-genoeg om te tekenen.
+`GET /downloads`* en `DELETE /downloads/{id}`* (S23). Twee groepen: wat deze browser heeft, en wat
+je toestellen hebben. De browser haalt alleen boeken op (vraag 43); de videoregels zijn een
+overzicht met de mogelijkheid om een download op afstand in te trekken, zodat je daar het toestel
+niet voor hoeft te pakken. Per regel de trede uit de ladder of "origineel", de omvang en de
+digest-status. Het recht `download` per bibliotheek bepaalt of de knop er überhaupt is; er komt
+geen grijze knop (vraag 42).
+
+### 36 Metadata: match en per-field overrides (`/admin/metadata/match`)
+
+`GET /libraries/{id}/matches?state=ambiguous`*, `POST /items/{id}/match`*,
+`GET /items/{id}/artwork-candidates`*, `PUT /items/{id}/artwork`*, `PUT /items/{id}/overrides`* en
+`DELETE /items/{id}/overrides/{field}`* (S22). Drie blokken links: wat op een keuze wacht,
+de kandidaten van één titel met hun matchscore en hun externe id, en de artworkkandidaten met de
+taal per kandidaat. Rechts elk veld met zijn bron als label (handmatig, sidecar, provider,
+bestand), de herkomst eronder in woorden, en per veld één actie: bewerken, of terug naar de bron
+eronder. Een scan raakt een handmatig veld nooit aan; dat is de precedence uit RB-27 als beeld.
+
+### 37 Transcode-sessies (`/admin/media/transcode`)
+
+`GET /transcode-sessions`* en `DELETE /transcode-sessions/{id}`* (S18). Vier tellers, de
+lopende sessies met bron, doel, backend, voortgang en snelheid, en wat er vandaag afliep met de
+reden. "Trager dan realtime" is een eigen signaal: dat is het moment waarop de kijker gaat
+bufferen. Het scherm zegt met zoveel woorden dat een sessie zonder heartbeat na 60 seconden
+verloopt en dat de opruimer een spelende sessie niet aanraakt (vraag 39, 41).
+
+### 38 Realtime (`/admin/diagnostics/realtime`)
+
+`GET /server` met `realtime{clients, last_sequence, dropped}`* en de hub uit `GET /events`*
+(S21). Per client het laatst ontvangen volgnummer, zodat zichtbaar is wie achterloopt en wie op
+polling is teruggevallen. De eventlog is geredigeerd tot soort en zicht: er staan geen titels in,
+want de lezer van dit scherm mag niet automatisch alles zien. Er is bewust geen knop om een
+client te ontkoppelen; dat is een sessie intrekken in Beveiliging, en dan sluit de websocket
+vanzelf.
+
+### 50 Browserspeler (`/watch/{id}`)
+
+`POST /stream-sessions`* plus `GET /stream` met range (bestaand), `POST /watch-state` met
+`session_id` en `base_revision` (bestaand), en op het transcodepad `POST /playback/plan`* met
+hls.js (S17, S18). Native `<video>` voor direct play, native HLS waar de browser dat beter zelf
+doet (vraag 16). De tag rechtsboven zegt wat de server op dit moment doet, dus ook wanneer hij
+transcodeert. Hoofdstukmarkeringen komen uit het bestand waar ze bestaan (vraag 7); een
+scrubvoorbeeld komt van de server pas als B6 een keer landt, tot dan tekent de client hem uit het
+eigen bufferframe.
+
+### 51 Webreader (`/read/{id}`)
+
+`GET /ebooks/{id}/manifest`* en `GET /ebooks/{id}/resources/{path}`* (S6) gelezen door de
+chromeless `@readium/navigator`-laag, met `GET`/`POST /reading-state`* voor de positie (S6). De
+Pleya-schil eromheen is van ons: kop, inhoudsopgave, zoeken, bladwijzer en het instellingenvel.
+Lettergrootte, thema, bladerwijze en marge blijven client-local; de leespositie gaat naar de
+server, met de revisie van de publicatie ernaast zodat hij niet blind op een vervangen EPUB
+landt (RB-12 bijgesteld).

@@ -7,7 +7,9 @@ gecorrigeerd in de set die nu in `docs/assets/pleya-web-northstar/` staat.
 Ronde 1 en 2 dekten de veertig schermen van de eerste kandidaatset (C.2, bevindingen 1 tot 12).
 **Ronde 3** dekt de vijf schermen die na de scopebesluiten van 4 september bij kwamen (17, 18,
 19, 28 en 35) en staat in C.5. Drie bevindingen daaruit zaten in `web.css` en raakten elk beeld;
-de hele set is daarom opnieuw gerenderd.
+de hele set is daarom opnieuw gerenderd. **Ronde 4** dekt de zes schermen die er als laatste bij
+kwamen (11b, 36, 37, 38, 50 en 51) en staat in C.7. Daarmee is de set 46 schermen en ontbreekt er
+niets meer.
 
 ## C.1 Toetsing per criterium
 
@@ -95,3 +97,33 @@ op een rasterkaart (14) en de stapelende tabel (33). Alle 40 schermen zijn daarn
 gerenderd, dus elk beeld komt uit dezelfde bron en dezelfde CSS. Bevinding 14 corrigeert een
 uitspraak uit C.1 criterium 5: 05@393 liep wel degelijk buiten de viewport en dat is in ronde 2
 gemist.
+
+## C.7 Ronde 4: de zes laatste schermen
+
+Dezelfde acht punten, plus de vragen die deze schermen dragen (15, 16, 26, 32, 37, 39, 40, 42,
+43, 53). De speler en de reader zijn de eerste twee schermen in de set zonder paginashell: ze
+hebben geen topnav, geen tabbalk en geen inset, want ze zijn zelf de laag waarin je zit.
+
+| # | Beeld | Bevinding | Correctie |
+| --- | --- | --- | --- |
+| 35 | 36@1600 | de veldenlijst stond in de smalle kolom met een vaste labelbreedte van 140 px, waardoor elke waarde afkapte ("Paul At…") en de herkomst over vier regels brak | `.fld` herzien: label, bron en actie op regel 1, waarde en herkomst op regel 2, zonder afkappen |
+| 36 | 50@1600 | de kleine transportknop stond op afspelen terwijl de grote knop op pauze stond | beide op pauze |
+| 37 | 50@393 | de titel brak over de terugknop heen en de codectags duwden de balk uit beeld; rechtsonder vielen twee bedieningen buiten de viewport | `.wide-only`: wat op een telefoon niet past staat er niet, in plaats van half |
+| 38 | 50@393 | de titel stond wit op een lichte kap, want de scrim liep bovenaan tot 62 procent zwart | scrim naar 78 procent, punt 5 van de reviewlijst |
+| 39 | 51@393 | de kop was 56 px hoog en de ondertitel brak over drie regels; de boektitel viel er helemaal uit, en de voortgangsbalk en het instellingenvel stonden onder de vouw | vier iconknoppen terug naar twee, en op smal toont het blad precies één pagina in plaats van door te lopen |
+| 40 | 51@1600 | het instellingenvel zei "Sepia" terwijl het blad donker rendert | label klopt nu met wat je ziet; sepia en licht staan er als keuze naast |
+
+Wat bij het tekenen zelf opviel en meteen goed is gezet, zonder eerst fout te renderen: de
+speler noemt "Direct play · HEVC 4K" als tag, zodat het scherm eerlijk is over wat de server op
+dat moment doet (en dus ook kan zeggen dat hij transcodeert); 37 toont "trager dan realtime" als
+eigen signaal, want dat is het moment waarop een kijker gaat bufferen; en 38 heeft bewust geen
+knop om een client te ontkoppelen, omdat een sessie intrekken in Beveiliging hoort en de
+websocket dan vanzelf sluit.
+
+## C.8 Wat de vier ronden samen opleveren
+
+46 schermen uit 46 HTML-bronnen, één CSS, één renderer. Elk beeld in
+`docs/assets/pleya-web-northstar/` is met dezelfde `web.css` gemaakt als elk ander beeld. De
+reviewlijst uit `DESIGN.md` hoofdstuk 6 is op alle 46 gelopen; wat er niet mee te toetsen was
+(echte renderprestaties, toetsenbordnavigatie in een browser, axe, `prefers-reduced-motion`)
+staat in C.3 en hoort bij S7.
