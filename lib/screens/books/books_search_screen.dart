@@ -72,6 +72,25 @@ class _BooksSearchScreenState extends State<BooksSearchScreen> {
     super.dispose();
   }
 
+  /// A new query, and with it a fresh look at whether the chosen chip still
+  /// means anything.
+  ///
+  /// The choice is **dropped**, not parked. Falling back only for the frame
+  /// being drawn used to leave `_category` on a chip the reader could no longer
+  /// see: search `dune`, choose Boekenseries, type `sapiens` (no series, so the
+  /// screen showed Alles), then type `hobbit` — De Hobbit is in `midden-aarde`,
+  /// the Boekenseries chip came back, the old choice took hold again, and the
+  /// book the reader was looking for sat behind a filter they never applied to
+  /// this query.
+  void _onQueryChanged(String query) {
+    setState(() {
+      if (_category == BookSearchCategory.all) return;
+      final rows = context.read<BooksHomeProvider?>()?.rows ?? const BooksHomeRows();
+      final categories = widget.ranking.search(query: query, books: rows.all, series: rows.series).availableCategories;
+      if (!categories.contains(_category)) _category = BookSearchCategory.all;
+    });
+  }
+
   /// A book result opens its own page (approved golden 05). Author and series
   /// rows do not: where those lead is not part of golden 04 or 05, so they stay
   /// drawn without a destination.
@@ -89,9 +108,11 @@ class _BooksSearchScreenState extends State<BooksSearchScreen> {
     final rows = provider?.rows ?? const BooksHomeRows();
     final all = widget.ranking.search(query: _controller.text, books: rows.all, series: rows.series);
     final categories = all.availableCategories;
-    // A chip can disappear while it is the chosen one: type one more letter
-    // and the authors run out. Falling back rather than showing an empty
-    // screen behind a chip that no longer exists.
+    // A rendering guard, and only that. [_onQueryChanged] is what actually
+    // drops a choice the query no longer offers; this covers the other way the
+    // chips can change under a standing choice — the provider finishing its
+    // load after this screen mounted — so a frame is never drawn empty behind
+    // a chip that is not there.
     final category = categories.contains(_category) ? _category : BookSearchCategory.all;
     final shown = all.within(category);
 
@@ -105,7 +126,7 @@ class _BooksSearchScreenState extends State<BooksSearchScreen> {
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           slivers: [
             SliverToBoxAdapter(
-              child: _Header(controller: _controller, focus: _focus, onChanged: (_) => setState(() {})),
+              child: _Header(controller: _controller, focus: _focus, onChanged: _onQueryChanged),
             ),
             if (categories.isNotEmpty)
               SliverToBoxAdapter(

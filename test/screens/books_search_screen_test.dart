@@ -30,6 +30,20 @@ Future<void> _pump(WidgetTester tester, {String query = 'dune'}) async {
   }
 }
 
+/// Taps a category chip, scrolling the row to it first.
+///
+/// The chip row is horizontally scrollable and four chips do not fit in golden
+/// 04's 393 pt frame: Boekenseries sits at x=427 and a plain `tap()` lands
+/// outside the render tree, warns, and does nothing. Two tests here were
+/// passing on a tap that never selected anything.
+Future<void> _chooseChip(WidgetTester tester, String label) async {
+  final chip = find.text(label);
+  await tester.dragUntilVisible(chip, find.byType(SingleChildScrollView).first, const Offset(-60, 0));
+  await tester.pumpAndSettle();
+  await tester.tap(chip);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   group('the canonical state', () {
     testWidgets('three sections, in the order golden 04 puts them', (tester) async {
@@ -132,9 +146,9 @@ void main() {
 
     testWidgets('a chip that stops existing does not leave an empty screen behind', (tester) async {
       await _pump(tester);
-      await tester.tap(find.text(t.books.bookSeries));
-      await tester.pumpAndSettle();
+      await _chooseChip(tester, t.books.bookSeries);
       expect(find.byType(SeriesResultRow), findsOneWidget);
+      expect(find.text(t.navigation.books.toUpperCase()), findsNothing, reason: 'Boekenseries really is chosen');
 
       // `sapiens` has no series. The chosen chip is gone; the screen falls
       // back to Alles rather than showing nothing behind a chip that is not
@@ -144,6 +158,32 @@ void main() {
 
       expect(find.text(t.books.bookSeries), findsNothing);
       expect(find.text('Sapiens'), findsWidgets);
+    });
+
+    testWidgets('a chip that came back does not silently re-apply an old choice', (tester) async {
+      await _pump(tester);
+      await _chooseChip(tester, t.books.bookSeries);
+      expect(find.text(t.navigation.books.toUpperCase()), findsNothing, reason: 'Boekenseries really is chosen');
+
+      // `sapiens` has no series, so Boekenseries goes and the screen shows
+      // Alles.
+      await tester.enterText(find.byType(TextField), 'sapiens');
+      await tester.pumpAndSettle();
+      expect(find.text(t.books.bookSeries), findsNothing);
+
+      // `hobbit` does: De Hobbit is in `midden-aarde`, so the chip is back.
+      // The reader never chose it for this query, so it must not take hold
+      // again and hide the book they were looking for.
+      await tester.enterText(find.byType(TextField), 'hobbit');
+      await tester.pumpAndSettle();
+
+      expect(find.text(t.books.bookSeries), findsOneWidget, reason: 'the chip exists again');
+      expect(
+        find.text('De Hobbit'),
+        findsWidgets,
+        reason: 'the book is on screen, not behind a filter the reader dropped two queries ago',
+      );
+      expect(find.text(t.navigation.books.toUpperCase()), findsOneWidget, reason: 'the Boeken section is drawn');
     });
 
     testWidgets('an empty query draws no chips and no sections', (tester) async {
