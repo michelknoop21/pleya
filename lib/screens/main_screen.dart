@@ -163,6 +163,26 @@ NavigationBarThemeData mobileTabBarTheme(NavigationBarThemeData base) {
   );
 }
 
+/// Which entry of the `IndexedStack` shows [currentTab].
+///
+/// [screenOrder] is the tab list the stack's children were **actually built
+/// from**, not the one the shell would build now. Those two can disagree for a
+/// frame: `_isMobile` flips inside `build`, and the screens are rebuilt in a
+/// post-frame callback afterwards. Indexing the fresh list into a stale stack
+/// is how a saved startup section of Bibliotheken rendered `_screens[4]` — the
+/// fifth entry of the *desktop* list — for one frame after the shell decided
+/// it was mobile.
+///
+/// Out-of-range answers 0 rather than throwing: a tab that is not in the list
+/// the stack was built from is exactly the transitional state above, and Home
+/// is what the stack can show. An empty [screenOrder] answers 0 too, which
+/// `IndexedStack` renders as nothing.
+@visibleForTesting
+int mainScreenSelectedIndex({required List<NavigationTabId> screenOrder, required NavigationTabId currentTab}) {
+  final index = screenOrder.indexOf(currentTab);
+  return index >= 0 ? index : 0;
+}
+
 /// Which bottom-bar destination should light up for [currentTab].
 ///
 /// Tapping Downloads inside My Pleya makes Downloads the current tab, but on
@@ -304,13 +324,11 @@ class _MainScreenState extends State<MainScreen>
   /// Whether the app is in offline mode (no server connection)
   bool _isOffline = false;
 
-  /// Computed index — searches the same _getVisibleTabs() that _buildScreens iterates,
-  /// so _screens[_currentIndex] is always the widget for _currentTab.
-  int get _currentIndex {
-    final tabs = _getVisibleTabs(_isOffline);
-    final idx = tabs.indexWhere((t) => t.id == _currentTab);
-    return (idx >= 0 ? idx : 0).clamp(0, _screens.length - 1);
-  }
+  /// The index into [_screens], resolved against [_screenOrder] — the tab list
+  /// those screens were built from — rather than against `_getVisibleTabs()`
+  /// as it answers right now. See [mainScreenSelectedIndex] for what the
+  /// difference cost.
+  int get _currentIndex => mainScreenSelectedIndex(screenOrder: _screenOrder, currentTab: _currentTab);
 
   /// Last selected online tab (restored when coming back online after an offline fallback)
   NavigationTabId? _lastOnlineTabId;
@@ -346,6 +364,11 @@ class _MainScreenState extends State<MainScreen>
   bool _isShowingProfileSelection = false;
 
   late List<Widget> _screens;
+
+  /// The tab ids [_screens] was built from, in the same order. Written only by
+  /// [_rebuildScreens], so the stack and the index into it cannot come from
+  /// two different answers to "is this the mobile shell".
+  List<NavigationTabId> _screenOrder = const [];
   final GlobalKey<State<DiscoverScreen>> _discoverKey = GlobalKey();
 
   /// Series and Films are their own instances of the Home surface, so each
@@ -457,7 +480,7 @@ class _MainScreenState extends State<MainScreen>
     _pendingStartupTab = (!_isOffline && preferredStartup != null && preferredStartup != _currentTab)
         ? preferredStartup
         : null;
-    _screens = _buildScreens(_isOffline);
+    _rebuildScreens(_isOffline);
 
     if (kPleyaVerify) {
       AutomationNavigationHooks.instance.registerSelectTab(_selectTab);
@@ -1115,9 +1138,17 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
-  List<Widget> _buildScreens(bool offline) {
+  /// Builds [_screens] and records [_screenOrder] in one step. The two are one
+  /// decision and are never assigned apart.
+  void _rebuildScreens(bool offline) {
+    final tabs = _getVisibleTabs(offline);
+    _screenOrder = [for (final tab in tabs) tab.id];
+    _screens = _buildScreens(tabs);
+  }
+
+  List<Widget> _buildScreens(List<NavigationTab> tabs) {
     return [
-      for (final tab in _getVisibleTabs(offline))
+      for (final tab in tabs)
         switch (tab.id) {
           NavigationTabId.discover => DiscoverScreen(key: _discoverKey),
           // Series and Films are the same Home surface with a type filter,
@@ -1201,7 +1232,7 @@ class _MainScreenState extends State<MainScreen>
     _lastHasLiveTv = hasLiveTv;
 
     setState(() {
-      _screens = _buildScreens(_isOffline);
+      _rebuildScreens(_isOffline);
       _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
     });
     _updateTvosMenuPassthrough();
@@ -1222,7 +1253,7 @@ class _MainScreenState extends State<MainScreen>
     if (!mounted) return;
 
     setState(() {
-      _screens = _buildScreens(_isOffline);
+      _rebuildScreens(_isOffline);
       _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
     });
     _updateTvosMenuPassthrough();
@@ -1235,7 +1266,7 @@ class _MainScreenState extends State<MainScreen>
     if (!mounted) return;
 
     setState(() {
-      _screens = _buildScreens(_isOffline);
+      _rebuildScreens(_isOffline);
       _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
     });
     _updateTvosMenuPassthrough();
@@ -1248,7 +1279,7 @@ class _MainScreenState extends State<MainScreen>
     if (!mounted) return;
 
     setState(() {
-      _screens = _buildScreens(_isOffline);
+      _rebuildScreens(_isOffline);
       _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
     });
     _updateTvosMenuPassthrough();
@@ -1271,7 +1302,7 @@ class _MainScreenState extends State<MainScreen>
     setState(() {
       _isReconnecting = false;
       _isOffline = newOffline;
-      _screens = _buildScreens(_isOffline);
+      _rebuildScreens(_isOffline);
       _selectedLibraryGlobalKey = _isOffline ? null : _selectedLibraryGlobalKey;
 
       if (_isOffline) {
@@ -1955,7 +1986,7 @@ class _MainScreenState extends State<MainScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         setState(() {
-          _screens = _buildScreens(_isOffline);
+          _rebuildScreens(_isOffline);
           _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
         });
       });
