@@ -44,9 +44,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `05a-book-detail.png` | Boekdetail, canonieke staat op Dune met leesvoortgang | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `05b-book-detail-unread.png` | Hetzelfde scherm voor een boek zonder voortgang en zonder reeks | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `05c-book-detail-actions.png` | Detail: het actieblok in beide staten | approved | detailuitsnede, 1179×1680 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `06a-books-toc.png` | Inhoudsopgave, canonieke staat op Atomic Habits met de boom open op de locator | proposed, revisie B | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `06b-books-toc-collapsed.png` | Dezelfde boom met alle delen dichtgeklapt | proposed, revisie B | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `06c-books-toc-rowtypes.png` | Detail: de rijsoorten van de boom in hun drie posities | proposed, revisie B | detailuitsnede, 1179×1935 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `06a-books-toc.png` | Inhoudsopgave, canonieke staat op Atomic Habits met de boom open op de locator | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `06b-books-toc-collapsed.png` | Dezelfde boom met alle delen dichtgeklapt | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `06c-books-toc-rowtypes.png` | Detail: de rijsoorten van de boom in hun drie posities | approved | detailuitsnede, 1179×1935 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -385,7 +385,7 @@ eerdere goldens. De tabbalk staat in beeld omdat de comp hem tekent; net als bij
 dekt het echte scherm `MainScreen` af zodra het op de profielnavigator gepusht wordt, en die
 kanttekening verandert hier niet.
 
-## Golden 06, Inhoudsopgave (proposed, revisie B)
+## Golden 06, Inhoudsopgave (approved)
 
 De kaart van een boek: waar je bent, wat er achter je ligt, en waar je heen kunt zonder te bladeren.
 Inhoud van paneel 6 van de comp, uitvoering van `14-instellingen.png` en `07-serie-afleveringen.png`
@@ -394,23 +394,31 @@ de boom open op de plek waar gelezen wordt, `06b` dezelfde boom met alle delen d
 detailuitsnede van de rijsoorten in hun drie posities, zodat het verschil tussen vóór, op en na de
 locator te beoordelen is zonder de rest van het scherm.
 
-Dit is revisie B, en er zitten twee ronden voor. Voordracht A stond op Dune met genummerde
-hoofdstukken, een opschrift van 11 pt als enige verwijzing naar het boek, het percentage op de rij van
-het hoofdstuk, en een kaart die 37 pt boven de actiebalk ophield. Daaruit kwamen vier punten die
-hieronder als keuze staan: het boek als rij bovenin, hoofdstukken met een naam, een eigen staat per
-hoofdstuk in plaats van een tweede percentage, en een lijst die onder de balk doorloopt.
+Golden 06 is op 4 september 2026 goedgekeurd, inclusief de keuzes hieronder, na twee
+correctierondes op de eerste voordracht. Het beeld dat is goedgekeurd is revisie B.
 
-Revisie B corrigeert alleen de betekenis van die staat. Voordracht A dimde wat vóór de leespositie
-lag, zette er een vinkje achter en schreef `· gelezen` in de tweede regel van een deel. Dat is een
-bewering die de bron niet kan dragen, en Michel heeft hem op 4 september om die reden afgewezen. Een
-locator zegt waar de lezer nu staat, en dus alleen dat een ingang eerder in de publicatievolgorde
-komt; hij zegt niet dat die ingang geopend is. Wie vanaf dit scherm naar hoofdstuk 12 springt zou elf
-hoofdstukken gedimd en afgevinkt zien zonder er een bladzijde van gezien te hebben. De vinkjes en de
-suffixen zijn daarom weg, de drie posities zijn gebleven, en de compositie is verder onaangeroerd:
-fixture, geometrie, boomstructuur, open- en dichtgedrag, afbreking, actiebalk en `Ga naar pagina`
-staan er precies zoals ze in A stonden. Het enige zichtbare gevolg is dat
+Voordracht A stond op Dune met genummerde hoofdstukken, een opschrift van 11 pt als enige verwijzing
+naar het boek, het percentage op de rij van het hoofdstuk, en een kaart die 37 pt boven de actiebalk
+ophield. Daaruit kwamen vier punten die hieronder als keuze staan: het boek als rij bovenin,
+hoofdstukken met een naam, een eigen staat per hoofdstuk in plaats van een tweede percentage, en een
+lijst die onder de balk doorloopt.
+
+Revisie B corrigeerde daarna alleen de betekenis van die staat, en dat was de laatste blocker.
+Voordracht A dimde wat vóór de leespositie lag, zette er een vinkje achter en schreef `· gelezen` in
+de tweede regel van een deel. Dat is een bewering die de bron niet kan dragen, en Michel heeft hem om
+die reden afgewezen. Een locator zegt waar de lezer nu staat, en dus alleen dat een ingang eerder in
+de publicatievolgorde komt; hij zegt niet dat die ingang geopend is. Wie vanaf dit scherm naar
+hoofdstuk 12 springt zou elf hoofdstukken gedimd en afgevinkt zien zonder er een bladzijde van gezien
+te hebben. De vinkjes en de suffixen zijn daarom weg, de drie posities zijn gebleven, en de compositie
+is verder onaangeroerd: fixture, geometrie, boomstructuur, open- en dichtgedrag, afbreking, actiebalk
+en `Ga naar pagina` staan er precies zoals ze in A stonden. Het enige zichtbare gevolg is dat
 `11. Walk Slowly, but Never Backward` nu volledig past, want het vinkje nam de 27 pt die de titel
 tekortkwam.
+
+**Wat de goedkeuring van de staatgrammatica betekent voor de code**, omdat het de blocker was die
+twee rondes kostte: de gedimde rij is een uitspraak over positie ten opzichte van de huidige locator
+en nooit over voltooiing. Een veld of klasse die dit `isRead` of `completed` noemt geeft de golden
+verkeerd weer, ook als het beeld klopt.
 
 De rollen van de drie frames horen bij de goedkeuring, net als bij golden 04 en 05. `06a` is de
 **hoofdstaat**: de inhoudsopgave van een boek dat halverwege is, het geval waar dit scherm voor
@@ -878,8 +886,9 @@ node render.js toc.html ../../06b-books-toc-collapsed.png collapsed
 node render.js toc.html ../../06c-books-toc-rowtypes.png rowtypes 645
 ```
 
-Op 4 september 2026 leverden twee opeenvolgende runs van revisie B identieke bestanden op (md5
-`3c9152e8…`, `6dbfe719…` en `68c46397…`).
+Op 4 september 2026 leverden twee opeenvolgende runs identieke bestanden op (md5 `3c9152e8…`,
+`6dbfe719…` en `68c46397…`). Dat zijn de goedgekeurde frames; de md5's van voordracht A en van de
+eerste render van revisie B staan hier bewust niet, want alleen de goedgekeurde staat is contract.
 
 `render.js` opent Chromium op 393×852 met `deviceScaleFactor: 3` en wacht op `document.fonts.ready`.
 Op 3 september 2026 leverde deze route vanuit de repo-bron byte-identieke PNG's op (md5
