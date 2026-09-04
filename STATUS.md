@@ -224,6 +224,15 @@ Nieuw erbij op deze build: op een echt toestel met trackpad of muis de zijbalk n
 
 ## Blockers
 
+- [ ] **De releasenotesgenerator weet niet wat nog niet uit is**: `scripts/gen_release_notes.sh`
+  schrijft elke commit sinds het anker in het gegenereerde blok van `docs/RELEASES.md`, en dat
+  bestand is publiek. Op `feat/ebooks` zette hij daardoor vier regels neer die Boeken aankondigen,
+  een feature die achter `--dart-define=PLEYA_BOOKS` zit en in geen enkele gebruikersbuild staat. Nu
+  met de hand teruggedraaid, maar de pre-push hook draait hetzelfde script en commit zelf, dus de
+  volgende push zet ze er ongemerkt weer in. Vóór de eerste push of release van deze branch hoort er
+  een harde poort te staan die commits achter een niet-vrijgegeven dart-define uit het publieke blok
+  houdt, in plaats van erop te vertrouwen dat iemand het op tijd ziet.
+
 - [ ] **Er is geen iOS-build 240 bij App Store Connect**: `fastlane notes build:240` wachtte de volle
   1800 seconden en `notes_show` bevestigt het los met `ios: build 240 niet gevonden`. tvOS en macOS
   dragen de tekst wel, allebei teruggelezen op 2041 tekens. De upload is nooit aangekomen of nooit
