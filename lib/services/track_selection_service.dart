@@ -6,6 +6,8 @@ import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_server_user_profile.dart';
 import '../media/media_source_info.dart';
+import '../media/playback_language_intent.dart';
+import '../media/pleya_profile_language_preferences.dart';
 import '../media/track_language_choice.dart';
 import '../utils/future_extensions.dart';
 import '../utils/app_logger.dart';
@@ -333,15 +335,46 @@ bool _titlesMatch(String? mpvTitle, String? plexTitle, String? plexDisplayTitle)
 
 int _mediaTrackStreamIndex(int id, int? index) => index ?? id;
 
-/// Priority levels for track selection
+/// Which layer of DEC-096 produced a selection.
+///
+/// The first three are *intent* — what the viewer wants — and the rest are
+/// *source*: what this file and this server happen to offer. A source-layer
+/// result is by definition temporary, which is why nothing below
+/// [globalProfile] may ever be written back as a preference.
 enum TrackSelectionPriority {
-  navigation, // Priority 1: User's manual selection from previous episode
-  sticky, // Priority 2: Remembered language for this series/movie
-  serverSelected, // Priority 3: server's pre-selected track
-  perMedia, // Priority 4: Per-media language preference
-  profile, // Priority 5: User profile preferences
-  defaultTrack, // Priority 6: Default or first track
-  off, // Priority 7: Subtitles off (subtitle only)
+  /// Layer 1: a real action by the viewer during this playback.
+  sessionIntent,
+
+  /// Layer 2: the series preference.
+  sticky,
+
+  /// Layer 3: the Pleya profile's global preference.
+  globalProfile,
+
+  /// A concrete track carried in by a same-item reload. Below every intent
+  /// layer on purpose: it is a resolved track, not a wish, and letting it
+  /// outrank the layers above is what made a one-episode fallback permanent
+  /// (DEC-096 lid 1).
+  navigation,
+
+  /// Layer 4a: the source's own pre-selected stream.
+  serverSelected,
+
+  /// Layer 4b: a per-media language field on the item.
+  perMedia,
+
+  /// Layer 4c: the *server* profile — a mirror, never the authority.
+  profile,
+
+  /// Layer 4d: the profile's subtitle fallback language, used only after every
+  /// wanted language missed (DEC-096 lid 3).
+  fallbackLanguage,
+
+  /// Layer 4e: the file's own default track.
+  defaultTrack,
+
+  /// Subtitles off (subtitle only).
+  off,
 }
 
 /// Result of track selection including the selected track and which priority was used
@@ -361,10 +394,20 @@ class TrackSelectionService {
   final MediaSourceInfo? plexMediaInfo;
 
   /// The language this user last picked by hand for this series or movie, or
-  /// null when they never did. Outranks the server's pre-selection because for
-  /// an episode they have not opened before that pre-selection is only a
-  /// default, while this is their own most recent decision.
+  /// null when they never did. Layer 2 of DEC-096.
   final TrackLanguageChoice? stickyChoice;
+
+  /// The Pleya profile's global preference — layer 3, and the owner of the
+  /// global layer (DEC-096 lid 5). Applies to every backend alike: Plex,
+  /// Jellyfin, Pleya Server and offline playback. Null means the profile has
+  /// no opinion and resolution falls through to the source.
+  final PleyaProfileLanguagePreferences? globalPreferences;
+
+  /// A track the viewer switched to by hand earlier in this playback session —
+  /// layer 1, and the only layer a real action creates. Never the currently
+  /// playing track, never a fallback, never something carried over from the
+  /// previous episode's resolution.
+  final PlaybackLanguageIntent? sessionIntent;
 
   TrackSelectionService({
     required this.player,
@@ -372,7 +415,39 @@ class TrackSelectionService {
     required this.metadata,
     this.plexMediaInfo,
     this.stickyChoice,
+    this.globalPreferences,
+    this.sessionIntent,
   });
+
+  /// The intent layers of DEC-096 in order, most specific first.
+  late final List<PlaybackLanguageIntent> _intentLayers = PlaybackLanguageIntent.layers(
+    session: sessionIntent,
+    series: stickyChoice,
+    global: globalPreferences,
+  );
+
+  /// The priority to report for a hit on [intent]'s layer.
+  static TrackSelectionPriority _priorityFor(PlaybackLanguageIntent intent) => switch (intent.origin) {
+    PlaybackIntentOrigin.session => TrackSelectionPriority.sessionIntent,
+    PlaybackIntentOrigin.series => TrackSelectionPriority.sticky,
+    PlaybackIntentOrigin.global => TrackSelectionPriority.globalProfile,
+  };
+
+  /// The original audio language of this title, when the metadata knows it.
+  ///
+  /// Today: never. None of the four backends carries an original-language
+  /// field — Plex and Jellyfin do not expose one on the item, and the `/v1`
+  /// contract has no property for it either — so this is the seam that answers
+  /// once one of them does, and nothing more.
+  ///
+  /// Deliberately *not* "the first audio track", and deliberately not the
+  /// track the container marks default either. Track order says nothing about
+  /// what a thing was made in, and guessing is how a Japanese show starts in
+  /// its English dub. Null means unknown, which sends "Originele taal" through
+  /// to the source's own default — exactly the fallback DEC-096 lid 3
+  /// prescribes, and exactly what the row's own subtitle in mockup 31 A
+  /// promises the viewer.
+  String? get _originalAudioLanguage => null;
 
   /// Build list of preferred languages from a user profile
   List<String> _buildPreferredLanguages(MediaServerUserProfile profile, {required bool isAudio}) {
@@ -654,13 +729,18 @@ class TrackSelectionService {
     return matches.where((t) => getTitle(t) == title).firstOrNull ?? matches.first;
   }
 
-  /// Select the best audio track based on priority:
-  /// Priority 1: Preferred track from navigation
-  /// Priority 2: Remembered language for this series/movie
-  /// Priority 3: Server-selected track from media info
-  /// Priority 4: Per-media language preference
-  /// Priority 5: User profile preferences
-  /// Priority 6: Default or first track
+  /// Select the best audio track along the four layers of DEC-096:
+  ///
+  /// 1. the viewer's own action in this playback, then the series preference,
+  ///    then the Pleya profile — all three as *intent*, resolved fresh against
+  ///    this file's tracks;
+  /// 2. a concrete track carried in by a same-item reload;
+  /// 3. the source: its pre-selected stream, the item's own language field,
+  ///    the server profile, and finally the file's default track.
+  ///
+  /// Layer order is backend-neutral. Plex, Jellyfin, Pleya Server and offline
+  /// playback all run this same cascade; only the source layer differs between
+  /// them, because only the source layer is about a particular server.
   TrackSelectionResult<AudioTrack>? selectAudioTrack(
     List<AudioTrack> availableTracks,
     AudioTrack? preferredAudioTrack,
@@ -669,7 +749,30 @@ class TrackSelectionService {
 
     AudioTrack? trackToSelect;
 
-    // Priority 1: Try to match preferred track from navigation
+    // Layers 1-3: the first intent that names a language this file actually
+    // has. A layer that names one the file lacks does not stop the search —
+    // "English, and otherwise whatever my profile says" is the whole point of
+    // having layers.
+    for (final intent in _intentLayers.where((layer) => layer.hasAudio)) {
+      final language = intent.useOriginalAudio ? _originalAudioLanguage : intent.audioLanguage;
+      // "Original language" with no metadata to say what that is: no match,
+      // and the search moves on rather than inventing one.
+      if (language == null || language.isEmpty) continue;
+
+      final match = _matchByLanguage<AudioTrack>(
+        availableTracks,
+        language,
+        intent.audioTitle,
+        (t) => t.language,
+        (t) => t.title,
+      );
+      if (match != null) {
+        appLogger.d('Audio: honouring $language from the ${intent.origin.name} layer');
+        return TrackSelectionResult(match, _priorityFor(intent));
+      }
+    }
+
+    // Below every intent layer: a concrete track a same-item reload carried in.
     if (preferredAudioTrack != null) {
       trackToSelect = findBestAudioMatch(availableTracks, preferredAudioTrack);
       if (trackToSelect != null) {
@@ -677,23 +780,7 @@ class TrackSelectionService {
       }
     }
 
-    // Priority 2: The language this user last chose by hand for this title.
-    final sticky = stickyChoice;
-    if (sticky != null && sticky.hasAudio) {
-      final stickyTrack = _matchByLanguage<AudioTrack>(
-        availableTracks,
-        sticky.audioLanguage,
-        sticky.audioTitle,
-        (t) => t.language,
-        (t) => t.title,
-      );
-      if (stickyTrack != null) {
-        appLogger.d('Audio: honouring remembered language ${sticky.audioLanguage}');
-        return TrackSelectionResult(stickyTrack, TrackSelectionPriority.sticky);
-      }
-    }
-
-    // Priority 3: Check server-selected track from media info
+    // Layer 4a: the source's pre-selected stream.
     final info = plexMediaInfo;
     if (info != null && availableTracks.isNotEmpty) {
       final serverSelectedTrack = info.audioTracks.where((t) => t.selected).firstOrNull;
@@ -730,7 +817,7 @@ class TrackSelectionService {
       }
     }
 
-    // Priority 4: Try per-media language preference
+    // Layer 4b: the item's own language field.
     if (metadata.audioLanguage != null) {
       final matchedTrack = availableTracks.firstWhere(
         (track) => languageMatches(track.language, metadata.audioLanguage),
@@ -741,7 +828,7 @@ class TrackSelectionService {
       }
     }
 
-    // Priority 5: Try user profile preferences
+    // Layer 4c: the *server* profile — a mirror of a preference, not its owner.
     if (profileSettings != null) {
       trackToSelect = findAudioTrackByProfile(availableTracks, profileSettings!);
       if (trackToSelect != null) {
@@ -749,24 +836,80 @@ class TrackSelectionService {
       }
     }
 
-    // Priority 6: Use default or first track
+    // Layer 4d: the file's own default track.
     trackToSelect = availableTracks.firstWhere((t) => t.isDefault, orElse: () => availableTracks.first);
     return TrackSelectionResult(trackToSelect, TrackSelectionPriority.defaultTrack);
   }
 
-  /// Select the best subtitle track based on priority:
-  /// Priority 1: Preferred track from navigation
-  /// Priority 2: Remembered language (or explicit off) for this series/movie
-  /// Priority 3: Server-selected track or explicit server off decision
-  /// Priority 4: User profile subtitle mode
-  /// Priority 5: Default track
-  /// Priority 6: Off
+  /// The best subtitle track in [language], preferring one whose forced flag
+  /// matches [forced] and breaking a remaining tie on [title].
+  SubtitleTrack? _matchSubtitleLanguage(
+    List<SubtitleTrack> availableTracks,
+    String? language,
+    String? title,
+    bool forced,
+  ) {
+    if (language == null || language.isEmpty) return null;
+    final forcedMatch = availableTracks.where((t) => t.isForced == forced).toList();
+    return _matchByLanguage<SubtitleTrack>(forcedMatch, language, title, (t) => t.language, (t) => t.title) ??
+        _matchByLanguage<SubtitleTrack>(availableTracks, language, title, (t) => t.language, (t) => t.title);
+  }
+
+  /// Select the best subtitle track along the four layers of DEC-096.
+  ///
+  /// Same cascade as [selectAudioTrack], with one rule of its own: when every
+  /// intent layer named a language this episode does not have, the profile's
+  /// **subtitle fallback language** gets a turn, and only when that misses too
+  /// do subtitles go off. Never "the first available track" — a viewer who
+  /// asked for English does not want Hungarian (DEC-096 lid 3).
+  ///
+  /// A fallback is temporary by construction: it returns a source-layer
+  /// priority, and only the intent layers are ever written back as a
+  /// preference.
   TrackSelectionResult<SubtitleTrack> selectSubtitleTrack(
     List<SubtitleTrack> availableTracks,
     SubtitleTrack? preferredSubtitleTrack,
     AudioTrack? selectedAudioTrack,
   ) {
-    // Priority 1: Try preferred track from navigation
+    // Layers 1-3. An explicit "off" counts as a choice at its layer and is
+    // honoured even when subtitle tracks exist.
+    for (final intent in _intentLayers.where((layer) => layer.hasSubtitle)) {
+      if (intent.subtitlesOff) {
+        appLogger.d('Subtitles: honouring off from the ${intent.origin.name} layer');
+        return TrackSelectionResult(SubtitleTrack.off, _priorityFor(intent));
+      }
+      final match = _matchSubtitleLanguage(
+        availableTracks,
+        intent.subtitleLanguage,
+        intent.subtitleTitle,
+        intent.subtitleForced,
+      );
+      if (match != null) {
+        appLogger.d('Subtitles: honouring ${intent.subtitleLanguage} from the ${intent.origin.name} layer');
+        return TrackSelectionResult(match, _priorityFor(intent));
+      }
+    }
+
+    // The wanted language is not in this episode. Before falling through to
+    // the source, give the profile's fallback language its turn — but only
+    // when an intent layer actually wanted something, so a profile with no
+    // opinion at all still gets the source's own behaviour.
+    if (_intentLayers.any((layer) => layer.hasSubtitle && !layer.subtitlesOff)) {
+      final fallbackLanguage = globalPreferences?.subtitleFallbackLanguage;
+      if (fallbackLanguage != null && fallbackLanguage.isNotEmpty) {
+        final match = _matchSubtitleLanguage(availableTracks, fallbackLanguage, null, false);
+        if (match != null) {
+          appLogger.d('Subtitles: falling back to $fallbackLanguage for this episode only');
+          return TrackSelectionResult(match, TrackSelectionPriority.fallbackLanguage);
+        }
+      }
+      // Wanted a language, could not have it, and could not have the fallback
+      // either. Off — never a track in a language nobody asked for.
+      appLogger.d('Subtitles: no wanted or fallback language in this episode, going off');
+      return TrackSelectionResult(SubtitleTrack.off, TrackSelectionPriority.off);
+    }
+
+    // Below every intent layer: a concrete track a same-item reload carried in.
     if (preferredSubtitleTrack != null) {
       if (preferredSubtitleTrack.id == 'no') {
         return TrackSelectionResult(SubtitleTrack.off, TrackSelectionPriority.navigation);
@@ -778,38 +921,7 @@ class TrackSelectionService {
       }
     }
 
-    // Priority 2: The subtitle language this user last chose by hand for this
-    // title. An explicit "off" counts as a choice and is honoured even when
-    // subtitle tracks exist.
-    final sticky = stickyChoice;
-    if (sticky != null && sticky.hasSubtitle) {
-      if (sticky.subtitlesOff) {
-        appLogger.d('Subtitles: honouring remembered off');
-        return TrackSelectionResult(SubtitleTrack.off, TrackSelectionPriority.sticky);
-      }
-      final forcedMatch = availableTracks.where((t) => t.isForced == sticky.subtitleForced).toList();
-      final stickyTrack =
-          _matchByLanguage<SubtitleTrack>(
-            forcedMatch,
-            sticky.subtitleLanguage,
-            sticky.subtitleTitle,
-            (t) => t.language,
-            (t) => t.title,
-          ) ??
-          _matchByLanguage<SubtitleTrack>(
-            availableTracks,
-            sticky.subtitleLanguage,
-            sticky.subtitleTitle,
-            (t) => t.language,
-            (t) => t.title,
-          );
-      if (stickyTrack != null) {
-        appLogger.d('Subtitles: honouring remembered language ${sticky.subtitleLanguage}');
-        return TrackSelectionResult(stickyTrack, TrackSelectionPriority.sticky);
-      }
-    }
-
-    // Priority 3: Trust the server's selected track. Plex computes this from
+    // Layer 4a: trust the source's selected track. Plex computes this from
     // account/show/per-item prefs; Jellyfin exposes DefaultSubtitleStreamIndex.
     final info = plexMediaInfo;
     if (info != null) {
@@ -856,18 +968,18 @@ class TrackSelectionService {
       }
     }
 
-    // Priority 4: Apply server profile subtitle mode when the backend exposes
+    // Layer 4b: the server profile's subtitle mode, where the backend exposes
     // one (Jellyfin). Plex keeps using the selected-stream path above.
     final profileSelectedTrack = _selectSubtitleTrackByProfile(availableTracks, selectedAudioTrack);
     if (profileSelectedTrack != null) return profileSelectedTrack;
 
-    // Priority 5: Check for default subtitle
+    // Layer 4c: the file's own default subtitle.
     final defaultTrack = _findDefaultSubtitleTrack(availableTracks);
     if (defaultTrack != null) {
       return TrackSelectionResult(defaultTrack, TrackSelectionPriority.defaultTrack);
     }
 
-    // Priority 6: Turn off subtitles
+    // Nothing wanted it on.
     return TrackSelectionResult(SubtitleTrack.off, TrackSelectionPriority.off);
   }
 
@@ -879,8 +991,14 @@ class TrackSelectionService {
     double? defaultPlaybackSpeed,
     // Typed as returning a future rather than `Function(...)`: both are fired
     // without awaiting below, and `unawaited` needs a real future to accept.
-    Future<void> Function(AudioTrack)? onAudioTrackChanged,
-    Future<void> Function(SubtitleTrack)? onSubtitleTrackChanged,
+    //
+    // `userInitiated: false` here, always. Everything this method does is
+    // automatic resolution, so the callback may tell the server which stream is
+    // now playing but must never write a preference: that is the difference
+    // between a resolution and an intent, and blurring it is what let a
+    // one-episode fallback overwrite a series preference (DEC-096 lid 1).
+    Future<void> Function(AudioTrack, {required bool userInitiated})? onAudioTrackChanged,
+    Future<void> Function(SubtitleTrack, {required bool userInitiated})? onSubtitleTrackChanged,
   }) async {
     // Wait for tracks to be loaded
     if (player.state.tracks.audio.isEmpty && player.state.tracks.subtitle.isEmpty) {
@@ -910,11 +1028,11 @@ class TrackSelectionService {
       );
       unawaited(player.selectAudioTrack(selectedAudioTrack));
 
-      // Save to Plex if this was user's navigation preference (Priority 1)
-      if (audioResult.priority == TrackSelectionPriority.navigation && onAudioTrackChanged != null) {
-        // Deliberately not awaited: remembering the choice must not hold up
-        // applying the tracks. TrackPreferenceStore serialises its own writes.
-        unawaited(onAudioTrackChanged(selectedAudioTrack));
+      // Tell the source which stream is playing, so a transcode session and
+      // the server's own bookkeeping follow along. Deliberately not awaited:
+      // that must not hold up applying the tracks.
+      if (onAudioTrackChanged != null) {
+        unawaited(onAudioTrackChanged(selectedAudioTrack, userInitiated: false));
       }
     }
 
@@ -927,10 +1045,9 @@ class TrackSelectionService {
     appLogger.d('Subtitle: $subtitleName [${subtitleResult.priority.name}]');
     unawaited(player.selectSubtitleTrack(selectedSubtitleTrack));
 
-    // Save to Plex if this was user's navigation preference (Priority 1)
-    if (subtitleResult.priority == TrackSelectionPriority.navigation && onSubtitleTrackChanged != null) {
-      // Same as the audio side above: fire and forget, on purpose.
-      unawaited(onSubtitleTrackChanged(selectedSubtitleTrack));
+    // Same as the audio side above: fire and forget, on purpose.
+    if (onSubtitleTrackChanged != null) {
+      unawaited(onSubtitleTrackChanged(selectedSubtitleTrack, userInitiated: false));
     }
 
     // Apply preferred secondary subtitle track if provided (mpv-only)

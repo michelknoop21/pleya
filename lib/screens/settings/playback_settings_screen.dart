@@ -13,9 +13,11 @@ import '../../utils/quality_preset_labels.dart';
 import '../../services/companion_remote/companion_remote_host_controller.dart';
 import '../../services/discord_rpc_service.dart';
 import '../../services/keyboard_shortcuts_service.dart';
+import '../../media/pleya_profile_language_preferences.dart';
 import '../../services/settings_service.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/snackbar_helper.dart';
+import '../../widgets/profile_language_switch_tile.dart';
 import '../../widgets/setting_tile.dart';
 import '../../widgets/settings_builder.dart';
 import '../../widgets/settings_page.dart';
@@ -155,20 +157,31 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
             subtitle: t.settings.companionRemoteServerDescription,
             onAfterWrite: (v) => applyCompanionRemoteServerSetting(context, v),
           ),
-        SettingSwitchTile(
-          pref: SettingsService.rememberTrackSelections,
-          icon: Symbols.bookmark_rounded,
-          title: t.settings.rememberTrackSelections,
-          subtitle: t.settings.rememberTrackSelectionsDescription,
-        ),
-        ValueListenableBuilder<bool>(
-          valueListenable: SettingsService.instance.listenable(SettingsService.rememberTrackSelections),
-          builder: (_, remembers, _) => SettingSwitchTile(
-            pref: SettingsService.writeSeriesLanguageToServer,
-            icon: Symbols.cloud_upload_rounded,
-            title: t.settings.writeSeriesLanguageToServer,
-            subtitle: t.settings.writeSeriesLanguageToServerDescription,
-            enabled: remembers,
+        // Backed by the Pleya profile, not by a device-wide pref: the owner
+        // moved with DEC-096 lid 5. These two rows are due to move to
+        // Instellingen ▸ Taal en ondertitels, which lid 9 makes the single
+        // place this is managed; the storage change lands first so the move is
+        // a pure relocation and never a second owner.
+        ValueListenableBuilder<Map<String, PleyaProfileLanguagePreferences>>(
+          valueListenable: SettingsService.instance.listenable(SettingsService.pleyaProfileLanguagePreferences),
+          builder: (_, _, _) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ProfileLanguageSwitchTile(
+                icon: Symbols.bookmark_rounded,
+                title: t.settings.rememberTrackSelections,
+                subtitle: t.settings.rememberTrackSelectionsDescription,
+                selector: (preferences) => preferences.rememberPerSeries,
+                apply: (current, value) => current.copyWith(rememberPerSeries: value),
+              ),
+              ProfileLanguageSwitchTile(
+                icon: Symbols.cloud_upload_rounded,
+                title: t.settings.writeSeriesLanguageToServer,
+                subtitle: t.settings.writeSeriesLanguageToServerDescription,
+                selector: (preferences) => preferences.mirrorToPlex,
+                apply: (current, value) => current.copyWith(mirrorToPlex: value),
+              ),
+            ],
           ),
         ),
         SettingSwitchTile(

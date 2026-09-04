@@ -5,8 +5,11 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_source_info.dart';
+import 'package:pleya/media/playback_language_intent.dart';
+import 'package:pleya/media/pleya_profile_language_preferences.dart';
 import 'package:pleya/mpv/mpv.dart';
 import 'package:pleya/mpv/player/player_stream_controllers.dart';
+import 'package:pleya/services/pleya_profile_language_preference_store.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/track_manager.dart';
 
@@ -371,6 +374,108 @@ void main() {
 
       expect(player.selectedSubtitle, hasLength(1));
       expect(player.selectedSubtitle.single.id, 'no');
+    });
+  });
+
+  // ============================================================
+  // LANG1 / DEC-096 — the manager actually supplies the layers
+  // ============================================================
+
+  group('the global Pleya profile preference reaches the resolver', () {
+    // `TrackSelectionService` honouring a global preference is covered in
+    // `lang1_controls_management_test.dart`, which builds the service by hand.
+    // That leaves the wiring untested, and wiring is exactly what broke here
+    // before: the resolver was right and the caller handed it the wrong thing.
+    // These tests go through `TrackManager`, so they fail if the manager stops
+    // reading the profile.
+    test('with no series preference the profile decides the audio', () async {
+      await SettingsService.getInstance();
+      await PleyaProfileLanguagePreferenceStore.write(
+        const PleyaProfileLanguagePreferences(audioLanguage: 'nld', seeded: true),
+      );
+
+      final player = _FakePlayer(
+        tracks: const Tracks(
+          audio: [
+            AudioTrack(id: '1', language: 'eng'),
+            AudioTrack(id: '2', language: 'nld'),
+          ],
+        ),
+      );
+      final mgr = _make(player: player);
+      addTearDown(mgr.dispose);
+
+      mgr.applyTrackSelectionWhenReady();
+      await _drainAsync();
+
+      expect(player.selectedAudio.single.language, 'nld');
+    });
+
+    test('it applies on a Pleya Server item exactly as on a Plex one', () async {
+      await SettingsService.getInstance();
+      await PleyaProfileLanguagePreferenceStore.write(
+        const PleyaProfileLanguagePreferences(audioLanguage: 'nld', seeded: true),
+      );
+
+      final player = _FakePlayer(
+        tracks: const Tracks(
+          audio: [
+            AudioTrack(id: '1', language: 'eng'),
+            AudioTrack(id: '2', language: 'nld'),
+          ],
+        ),
+      );
+      final mgr = _make(
+        player: player,
+        metadata: MediaItem(id: 'ps1', backend: MediaBackend.pleyaServer, kind: MediaKind.movie),
+      );
+      addTearDown(mgr.dispose);
+
+      mgr.applyTrackSelectionWhenReady();
+      await _drainAsync();
+
+      expect(
+        player.selectedAudio.single.language,
+        'nld',
+        reason: 'the global layer is the Pleya profile, so it cannot depend on which backend is playing',
+      );
+    });
+
+    test('a deliberate change becomes the session intent, not just a track', () async {
+      await SettingsService.getInstance();
+      final player = _FakePlayer(
+        tracks: const Tracks(
+          audio: [
+            AudioTrack(id: '1', language: 'eng'),
+            AudioTrack(id: '2', language: 'nld'),
+          ],
+        ),
+      );
+      final mgr = _make(player: player);
+      addTearDown(mgr.dispose);
+
+      await mgr.onAudioTrackChanged(const AudioTrack(id: '2', language: 'nld'));
+
+      expect(mgr.sessionIntent?.audioLanguage, 'nld');
+      expect(mgr.sessionIntent?.origin, PlaybackIntentOrigin.session);
+    });
+
+    test('an automatic resolution does not become the session intent', () async {
+      await SettingsService.getInstance();
+      final player = _FakePlayer(
+        tracks: const Tracks(
+          audio: [
+            AudioTrack(id: '1', language: 'eng'),
+            AudioTrack(id: '2', language: 'nld'),
+          ],
+        ),
+      );
+      final mgr = _make(player: player);
+      addTearDown(mgr.dispose);
+
+      await mgr.onAudioTrackChanged(const AudioTrack(id: '2', language: 'nld'), userInitiated: false);
+
+      expect(mgr.sessionIntent, isNull, reason: 'DEC-096 lid 1: only a real action by the viewer creates layer 1');
     });
   });
 

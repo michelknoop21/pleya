@@ -42,6 +42,17 @@ sealed class MediaItem with _$MediaItem {
     int? parentIndex,
     int? index,
     String? grandparentId,
+
+    /// The stable catalogue GUID of the *show* this episode belongs to
+    /// (`plex://show/...`), when the backend reports one.
+    ///
+    /// The only cross-source identity an episode can carry about its series:
+    /// [guid] is the episode's own and, per `identity_evidence.dart`, is never
+    /// evidence about the show. Used by `TrackPreferenceStore` to key a
+    /// language preference on the logical series instead of one server's
+    /// ratingKey (DEC-096 lid 7). Null is normal and simply means the
+    /// preference falls back to the per-server key.
+    String? grandparentGuid,
     String? grandparentTitle,
     String? grandparentThumbPath,
     String? grandparentArtPath,
@@ -101,6 +112,7 @@ sealed class MediaItem with _$MediaItem {
         parentIndex: parentIndex,
         index: index,
         grandparentId: grandparentId,
+        grandparentGuid: grandparentGuid,
         grandparentTitle: grandparentTitle,
         grandparentThumbPath: grandparentThumbPath,
         grandparentArtPath: grandparentArtPath,
@@ -159,6 +171,7 @@ sealed class MediaItem with _$MediaItem {
         parentIndex: parentIndex,
         index: index,
         grandparentId: grandparentId,
+        grandparentGuid: grandparentGuid,
         grandparentTitle: grandparentTitle,
         grandparentThumbPath: grandparentThumbPath,
         grandparentArtPath: grandparentArtPath,
@@ -215,6 +228,7 @@ sealed class MediaItem with _$MediaItem {
         parentIndex: parentIndex,
         index: index,
         grandparentId: grandparentId,
+        grandparentGuid: grandparentGuid,
         grandparentTitle: grandparentTitle,
         grandparentThumbPath: grandparentThumbPath,
         grandparentArtPath: grandparentArtPath,
@@ -271,6 +285,7 @@ sealed class MediaItem with _$MediaItem {
         parentIndex: parentIndex,
         index: index,
         grandparentId: grandparentId,
+        grandparentGuid: grandparentGuid,
         grandparentTitle: grandparentTitle,
         grandparentThumbPath: grandparentThumbPath,
         grandparentArtPath: grandparentArtPath,
@@ -336,6 +351,7 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: flexibleInt) int? parentIndex,
     @JsonKey(fromJson: flexibleInt) int? index,
     String? grandparentId,
+    String? grandparentGuid,
     String? grandparentTitle,
     String? grandparentThumbPath,
     String? grandparentArtPath,
@@ -410,6 +426,7 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: flexibleInt) int? parentIndex,
     @JsonKey(fromJson: flexibleInt) int? index,
     String? grandparentId,
+    String? grandparentGuid,
     String? grandparentTitle,
     String? grandparentThumbPath,
     String? grandparentArtPath,
@@ -476,6 +493,7 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: flexibleInt) int? parentIndex,
     @JsonKey(fromJson: flexibleInt) int? index,
     String? grandparentId,
+    String? grandparentGuid,
     String? grandparentTitle,
     String? grandparentThumbPath,
     String? grandparentArtPath,
@@ -540,6 +558,7 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: flexibleInt) int? parentIndex,
     @JsonKey(fromJson: flexibleInt) int? index,
     String? grandparentId,
+    String? grandparentGuid,
     String? grandparentTitle,
     String? grandparentThumbPath,
     String? grandparentArtPath,

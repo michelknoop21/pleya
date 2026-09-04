@@ -587,6 +587,11 @@ class PlexMetadataDto {
   final String? grandparentArt;
   @JsonKey(readValue: readStringField)
   final String? grandparentRatingKey;
+
+  /// The show's stable catalogue GUID on an episode row. Plex reports it
+  /// alongside `grandparentRatingKey`; it is the one cross-server identity an
+  /// episode carries about its series (DEC-096 lid 7).
+  final String? grandparentGuid;
   final String? parentTitle;
   final String? parentThumb;
   @JsonKey(readValue: readStringField)
@@ -684,6 +689,7 @@ class PlexMetadataDto {
     this.grandparentThumb,
     this.grandparentArt,
     this.grandparentRatingKey,
+    this.grandparentGuid,
     this.parentTitle,
     this.parentThumb,
     this.parentRatingKey,
@@ -813,6 +819,7 @@ class PlexMetadataDto {
     String? grandparentThumb,
     String? grandparentArt,
     String? grandparentRatingKey,
+    String? grandparentGuid,
     String? parentTitle,
     String? parentThumb,
     String? parentRatingKey,
@@ -882,6 +889,7 @@ class PlexMetadataDto {
       grandparentThumb: grandparentThumb ?? this.grandparentThumb,
       grandparentArt: grandparentArt ?? this.grandparentArt,
       grandparentRatingKey: grandparentRatingKey ?? this.grandparentRatingKey,
+      grandparentGuid: grandparentGuid ?? this.grandparentGuid,
       parentTitle: parentTitle ?? this.parentTitle,
       parentThumb: parentThumb ?? this.parentThumb,
       parentRatingKey: parentRatingKey ?? this.parentRatingKey,
@@ -990,6 +998,7 @@ class PlexMappers {
       parentIndex: dto.parentIndex,
       index: dto.index,
       grandparentId: dto.grandparentRatingKey,
+      grandparentGuid: dto.grandparentGuid,
       grandparentTitle: dto.grandparentTitle,
       grandparentThumbPath: dto.grandparentThumb,
       grandparentArtPath: dto.grandparentArt,
