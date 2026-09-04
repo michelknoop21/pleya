@@ -38,6 +38,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `03a-filters-status.png` | Filtersheet, canonieke openstaat op Status | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 | `03b-filters-genre.png` | Filtersheet, Genre open met twee klaargezette keuzes | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 | `03c-filters-controls.png` | Detail: kop, groepsrij en actiebalk in beide staten | approved | detailuitsnede, 1179×1860 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
+| `04a-books-search.png` | Boeken zoeken, canonieke staat op `dune` met Alles actief | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `04b-books-search-books.png` | Dezelfde zoekopdracht met alleen Boeken actief | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `04c-books-search-rowtypes.png` | Detail: de drie resultaatsoorten onder elkaar | proposed | detailuitsnede, 1179×1590 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -207,6 +210,59 @@ de actiebalk blijft.
 groepenkolom blijft staan. Een groep met meer keuzes dan er passen mag dus niet de hele sheet laten
 scrollen, want dan verdwijnt de groep waar je in zit uit beeld.
 
+## Golden 04, Boeken zoeken (proposed)
+
+Boeken, auteurs en boekenseries in Pleya's eigen zoekscherm. Inhoud van paneel 4 van de comp,
+uitvoering van `05-zoeken.png` uit de iOS Unified-set. Drie frames, samen één scherm: `04a` de
+canonieke staat op de zoekterm `dune` met Alles actief en alle drie de resultaatsoorten in beeld,
+`04b` dezelfde zoekopdracht met alleen Boeken actief, `04c` een detailuitsnede van de drie
+rijsoorten onder elkaar zodat het verschil ertussen te beoordelen is zonder de rest van het scherm.
+
+Er mag nog niet gebouwd worden. Deze golden staat op `proposed` tot Michel de keuzes hieronder
+expliciet goedkeurt.
+
+**Dit brengt geen eigen zoek-UI mee.** De kop, het zoekveld en de chiprij zijn die van
+`05-zoeken.png`, nagemeten en overgenomen: paginamarge 16, veld op 109 met een hoogte van 36 en zijn
+glyph op 32, chips op 161 met een hoogte van 33, eerste sectiekop op 213 en de eerste kaart op 236.
+`lib/screens/search_screen.dart` heeft die chiprij al, met `_SearchFilter` en een chip per soort die
+alleen verschijnt als er resultaten van die soort zijn. Boeken voegt daar een vierde categorie aan
+toe en drie resultaatsoorten eronder, niets meer.
+
+Dit is bibliotheekzoeken. Zoeken **binnen** een boek is paneel 9 van de comp, hoort bij de reader en
+heeft niets met dit scherm te maken.
+
+**De keuzes die goedgekeurd of afgewezen moeten worden.**
+
+- **De vierde categorie heet `Boekenseries`, niet `Series`.** De comp schrijft `Series`. Onderin
+  staat `Series` al voor televisie, en anders dan bij de filtersheet is die tabbalk hier gewoon in
+  beeld. Dezelfde redenering als bij golden 01b, waar de rail om die reden `Boekenseries` werd.
+- **Een boekrij is cover, titel, auteur, en verder niets.** De comp zet er een derde regel
+  `Sci-Fi · 1965` onder. Golden 02 heeft jaar en genre al uit het raster gehouden omdat dit een
+  boekenplank is en geen filmcatalogus; een zoekresultaat is dezelfde plank in een andere vorm.
+- **Drie silhouetten, zodat de soort te zien is voordat het label gelezen is.** Een boek is een
+  cover van 44 × 66 op 2:3, een auteur is een ronde avatar van 44, en een serie is een cover met de
+  bladzijden van twee boeken erachter. Die stapelranden zijn crème en niet grijs: bij acht pixels
+  breed is het snedevlak het enige deel van een boek dat nog leest tegen een donkere kaart.
+- **Een auteursrij draagt alleen de naam.** Een tweede regel zou hem weer op een boekrij laten
+  lijken, en dat is precies wat hier niet mag. Of er een telling bij hoort (`3 boeken`) is een open
+  vraag, geen besluit dat deze golden neemt.
+- **Frank Herbert staat onder Auteurs terwijl zijn naam de zoekterm niet bevat.** De comp doet dat
+  ook. Het betekent dat de auteurssectie matcht op wie de gevonden boeken schreef, niet alleen op
+  namen die op de zoekterm lijken. Dat is de nuttige uitkomst en het is een echte keuze, want de
+  strikte lezing zou hier een lege auteurssectie geven.
+- **De actieve chip is een accentrand met accentinkt, geen gevulde rode capsule.** De comp vult hem
+  massief rood. `05-zoeken.png` doet dat niet, en op dit scherm zou zo'n blok het enige massieve
+  accentvlak zijn op een plek waar accent verder "speelt nu" of "geselecteerd" betekent.
+- **Eén afgeronde kaart per sectie met haarlijnen ertussen**, in plaats van de losse kaart per rij
+  die de comp tekent. Minder randen op een scherm dat toch al drie verschillende dingen naast elkaar
+  moet laten zien.
+- **De avatar is een monogram, geen portret.** De comp zet er een foto neer. Een auteursportret is
+  niet iets wat als golden-asset in de repository hoort, en de vaste fixture heeft er geen.
+
+De lege staat zit hier bewust niet in. Een zoekscherm zonder resultaten is een eigen compositie, en
+hem in dit frame proppen zou de enige vraag die 04 stelt, namelijk of de drie soorten uit elkaar te
+houden zijn, alleen maar vertroebelen.
+
 ## Wat er tegen golden 03 gebouwd is
 
 `lib/screens/books/widgets/book_filter_sheet.dart` met `lib/books/book_filter.dart` eronder, geopend
@@ -344,6 +400,19 @@ node render.js filters.html ../../03c-filters-controls.png controls 620
 
 Op 3 september 2026 leverden twee opeenvolgende runs identieke bestanden op (md5 `c8b57185…`,
 `3c6bacaa…` en `39e74866…`).
+
+Golden 04 gaat net zo, met `530` als hoogte voor het detailframe.
+
+```
+cd docs/assets/ebooks/northstar/src/04-books-search
+export NODE_PATH=/opt/homebrew/lib/node_modules:/opt/homebrew/lib/node_modules/@playwright/test/node_modules
+node render.js search.html ../../04a-books-search.png all
+node render.js search.html ../../04b-books-search-books.png books
+node render.js search.html ../../04c-books-search-rowtypes.png rowtypes 530
+```
+
+Op 4 september 2026 leverden twee opeenvolgende runs identieke bestanden op (md5 `3ade063c…`,
+`db01b97b…` en `ea2e2487…`).
 
 `render.js` opent Chromium op 393×852 met `deviceScaleFactor: 3` en wacht op `document.fonts.ready`.
 Op 3 september 2026 leverde deze route vanuit de repo-bron byte-identieke PNG's op (md5

@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pleya golden 04 · Boeken zoeken</title>
+<style>
+
+/* Fonts: the app's own Inter cuts (assets/fonts) so metrics match. */
+@font-face{font-family:'Inter';font-weight:400;src:url('../../../../../../assets/fonts/Inter-Regular.otf')}
+@font-face{font-family:'Inter';font-weight:500;src:url('../../../../../../assets/fonts/Inter-Medium.otf')}
+@font-face{font-family:'Inter';font-weight:700;src:url('../../../../../../assets/fonts/Inter-Bold.otf')}
+
+/* Tokens from lib/theme/mono_theme.dart (dark, non-OLED) and the DEC-090 audit §2. */
+:root{
+  --accent:#E5140F; --accent-ink:#FF6A63;
+  --bg:#141414; --surface:#1F1F1F; --surface-el:#2F2F2F; --outline:rgba(255,255,255,.12);
+  --ink:#fff; --ink-78:rgba(255,255,255,.78); --ink-70:rgba(255,255,255,.70); --ink-62:rgba(255,255,255,.62); --ink-50:rgba(255,255,255,.5);
+  --bar:#101010; --hair:#2E2E2E;
+  --r-sm:8px; --r-md:12px; --r-card:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:393px;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+.screen{position:relative;width:393px;height:852px;overflow:hidden;background:var(--bg)}
+.screen[hidden],.spec[hidden]{display:none}
+
+/* iOS status bar + Dynamic Island, as in the northstar frames. */
+.status{position:absolute;left:0;right:0;top:0;height:54px;z-index:20;pointer-events:none}
+.status .time{position:absolute;left:38px;top:18px;font-size:17px;font-weight:700;letter-spacing:-.2px}
+.status .island{position:absolute;left:50%;top:11px;width:125px;height:37px;margin-left:-62px;background:#000;border-radius:20px}
+.status .right{position:absolute;right:30px;top:21px;display:flex;gap:7px;align-items:center}
+.sig{display:flex;gap:2px;align-items:flex-end}.sig i{display:block;width:3.5px;background:#fff;border-radius:1px}
+.bat{width:27px;height:13px;border:1.6px solid rgba(255,255,255,.55);border-radius:4px;position:relative}
+.bat::after{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:20px;background:#fff;border-radius:2px}
+.bat::before{content:"";position:absolute;right:-4px;top:3.5px;width:1.8px;height:4px;background:rgba(255,255,255,.55);border-radius:0 2px 2px 0}
+
+/* ---- Search header. Not a books header: this is Pleya's own search screen
+   (05-zoeken.png from the iOS Unified set), measured and reused. The books
+   work adds a fourth category to the chip row and three result kinds under
+   it; it does not bring its own search UI. ---- */
+.nav{position:absolute;left:0;right:0;top:62px;height:32px;display:flex;align-items:center;gap:14px;padding:0 16px}
+.nav .back{width:26px;height:26px;flex:0 0 auto}
+.nav h1{font-size:22px;font-weight:700;letter-spacing:-.3px}
+
+/* Field: 16 pt margins, 36 tall, glyph at 32, text at 61. */
+.field{position:absolute;left:16px;right:16px;top:109px;height:36px;border-radius:10px;background:var(--surface);
+       display:flex;align-items:center;padding:0 16px;gap:12px}
+.field svg{width:17px;height:17px;flex:0 0 auto}
+.field .q{font-size:16px;color:var(--ink)}
+.field .clear{margin-left:auto}
+
+/* Category chips. Outlined, and the active one is accent outline plus accent
+   ink rather than a filled accent capsule: that is what 05-zoeken does, and
+   the comp's filled red chip would be the only solid accent block on a screen
+   whose accent otherwise means "playing" or "selected". */
+.chips{position:absolute;left:16px;right:0;top:161px;height:33px;display:flex;gap:8px}
+.chips{gap:7px}
+.chip{height:33px;padding:0 13px;border-radius:17px;border:1px solid rgba(255,255,255,.30);
+      display:flex;align-items:center;font-size:14px;font-weight:500;color:var(--ink);white-space:nowrap}
+.chip.on{border-color:var(--accent);color:var(--accent-ink);background:rgba(229,20,15,.18)}
+
+/* Section heading: small uppercase, the set's own. */
+.shdr{position:absolute;left:16px;font-size:11px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-50)}
+
+/* One rounded card per section, rows inside it split by a hairline, rather
+   than a separate card per row as the comp draws. Fewer edges on a screen
+   that already has to show three different kinds of thing. */
+.card{position:absolute;left:16px;right:16px;background:var(--surface);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:15px;padding:0 16px;height:82px;position:relative}
+.row + .row::before{content:"";position:absolute;left:75px;right:0;top:0;height:1px;background:var(--hair)}
+.row .body{flex:1;min-width:0}
+.row .t{font-size:16px;font-weight:600;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .s{font-size:13.5px;color:var(--ink-62);line-height:18px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .chev{width:18px;height:18px;flex:0 0 auto;opacity:.55}
+
+/* Three silhouettes, so the kind of a result is legible before its label is
+   read: a book is a 2:3 cover, an author is a circle, a series is a cover
+   with two more behind it. */
+.thumb{width:44px;height:66px;border-radius:5px;overflow:hidden;position:relative;flex:0 0 auto;background:#222}
+.av{width:44px;height:44px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+    font-size:16px;font-weight:700;color:#fff;background:linear-gradient(150deg,#4a3a2a,#2a1d12 60%,#1a1109);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+ /* The two behind it show their page block, not their cover: cream against a
+   dark card is the one part of a book that reads at eight pixels wide. The
+   box stays 44 like a cover so titles line up across all three sections; the
+   edges overflow into the gap before the text. */
+.stack{width:44px;height:66px;position:relative;flex:0 0 auto}
+.stack i{position:absolute;border-radius:3px}
+.stack i.a{left:8px;top:8px;width:44px;height:50px;background:#B4ADA0}
+.stack i.b{left:4px;top:4px;width:44px;height:58px;background:#DCD5C7}
+.stack .thumb{position:absolute;left:0;top:0;box-shadow:1px 0 0 rgba(0,0,0,.55)}
+.row.author{height:64px}
+
+/* Bottom bar: geometry measured on 01-series-landing.png (bar top 768pt). */
+.bar{position:absolute;left:0;right:0;bottom:0;height:84px;background:var(--bar);border-top:1px solid #1E1E1E;z-index:30}
+.bar .items{display:flex;height:60px}
+.bar .it{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:7px;color:var(--ink-62);gap:5px}
+.bar .it svg{width:26px;height:26px;display:block;fill:currentColor}
+.bar .it span{font-size:11px;font-weight:500;line-height:13px;letter-spacing:.1px}
+.bar .it.on{color:var(--accent)}
+.bar .it .av2{width:26px;height:26px;border-radius:50%;background:linear-gradient(150deg,#3d4a8a,#1b2247 60%,#121633);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.home-ind{position:absolute;left:50%;bottom:8px;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#fff}
+
+/* ---- Fixture artwork: repository-safe, drawn in CSS (no commercial covers). ---- */
+.art{position:absolute;inset:0;overflow:hidden}
+.grain{position:absolute;inset:0;opacity:.18;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='.9'/></svg>")}
+.t2{position:absolute;left:0;right:0;text-align:center;font-family:Georgia,'Times New Roman',serif}
+.cv-dune{background:linear-gradient(180deg,#2a1208 0%,#5a2410 38%,#b5561c 70%,#e2893a 100%)}
+.cv-dune .moon{position:absolute;width:56%;padding-top:56%;border-radius:50%;left:22%;top:12%;background:radial-gradient(circle at 35% 35%,#ffd9a0,#e08a3c 55%,#8a3a12 100%);box-shadow:0 0 12px rgba(255,170,90,.55)}
+.cv-dune .dune{position:absolute;left:-10%;right:-10%;bottom:-8%;height:38%;background:radial-gradient(60% 100% at 30% 100%,#3b1a0b,rgba(59,26,11,0) 70%),radial-gradient(70% 100% at 80% 100%,#2a1208,rgba(42,18,8,0) 70%)}
+.cv-messiah{background:linear-gradient(180deg,#07131a,#0d3742 55%,#155a5c)}
+.cv-messiah .moon{position:absolute;width:44%;padding-top:44%;border-radius:50%;left:28%;top:20%;background:radial-gradient(circle at 40% 35%,#ffe1a8,#ef9a3a 60%,#7a3a12);box-shadow:0 0 10px rgba(255,180,100,.5)}
+.cv-children{background:linear-gradient(180deg,#1b0b0b,#5c1a12 50%,#a33a1f)}
+.cv-children .sun{position:absolute;width:40%;padding-top:40%;border-radius:50%;left:30%;top:16%;background:radial-gradient(circle,#ffd2a8,#c8551f 65%,rgba(200,85,31,0) 78%)}
+
+/* ---- Specimen frame (04c) ---- */
+.spec{position:relative;width:393px;background:var(--bg);padding-bottom:28px}
+.spec .lbl{padding:26px 16px 10px 16px;font-size:13px;color:var(--ink-50);letter-spacing:.3px;text-transform:uppercase}
+.spec .card{position:relative;left:auto;right:auto;margin:0 16px}
+</style>
+</head>
+<body>
+
+<!-- ============ shared pieces, cloned into each screen by the script ======== -->
+<template id="statusbar">
+  <div class="status">
+    <div class="time">9:41</div><div class="island"></div>
+    <div class="right"><div class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:9px"></i><i style="height:12px"></i></div>
+      <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 9.5a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2Zm0-3.6c1.5 0 2.9.6 3.9 1.6l-1.3 1.3A3.7 3.7 0 0 0 8 7.7c-1 0-1.9.4-2.6 1.1L4.1 7.5C5.1 6.5 6.5 5.9 8 5.9Zm0-3.7c2.5 0 4.9 1 6.6 2.7l-1.3 1.3A7.4 7.4 0 0 0 8 4.1c-2 0-3.9.8-5.3 2.2L1.4 4.9A9.3 9.3 0 0 1 8 2.2Z" fill="#fff"/></svg>
+      <div class="bat"></div></div>
+  </div>
+</template>
+
+<template id="header">
+  <div class="nav">
+    <svg class="back" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 7 12l8 8"/></svg>
+    <h1>Zoeken</h1>
+  </div>
+  <div class="field">
+    <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+    <span class="q">dune</span>
+    <svg class="clear" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </div>
+</template>
+
+<template id="tabbar">
+  <nav class="bar">
+    <div class="items">
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M11.3 3.3a1 1 0 0 1 1.4 0l8 7.6c.2.2.3.5.3.7V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8.4c0-.3.1-.5.3-.7l8-7.6Z"/></svg><span>Home</span></div>
+      <div class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" style="fill:none"><rect x="3" y="7.5" width="18" height="13" rx="2"/><path d="m8 3 4 4.5L16 3"/></svg><span>Series</span></div>
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M3.5 9.5h17V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19V9.5Zm.6-5.6 15.8 3.3-.5 2.3L3.6 6.2l.5-2.3Zm2.9 0 2.4 2.2-2 .4L5 4.3l2-.4Zm4.2.9 2.4 2.2-2 .4-2.4-2.2 2-.4Zm4.2.9 2.4 2.2-2 .4-2.4-2.2 2-.4Z"/></svg><span>Films</span></div>
+      <div class="it on"><svg viewBox="0 0 24 24"><path d="M11 4.9C9.6 4 7.7 3.5 5.9 3.5c-1.3 0-2.6.2-3.9.7v14.6c0 .3.3.5.6.4 1.1-.4 2.3-.6 3.3-.6 1.8 0 3.7.5 5.1 1.4V4.9Zm2 0v15.1c1.4-.9 3.3-1.4 5.1-1.4 1 0 2.2.2 3.3.6.3.1.6-.1.6-.4V4.2c-1.3-.5-2.6-.7-3.9-.7-1.8 0-3.7.5-5.1 1.4Z"/></svg><span>Boeken</span></div>
+      <div class="it"><div class="av2">M</div><span>Mijn Pleya</span></div>
+    </div>
+    <div class="home-ind"></div>
+  </nav>
+</template>
+
+<template id="chev">
+  <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 4 8 8-8 8"/></svg>
+</template>
+
+<template id="books-rows">
+  <div class="row">
+    <div class="thumb"><div class="art cv-dune"><div class="moon"></div><div class="dune"></div><div class="t2" style="bottom:9%;font-size:7px;letter-spacing:2px;color:#f7e2c6">DUNE</div><div class="grain"></div></div></div>
+    <div class="body"><div class="t">Dune</div><div class="s">Frank Herbert</div></div>
+  </div>
+  <div class="row">
+    <div class="thumb"><div class="art cv-messiah"><div class="moon"></div><div class="t2" style="bottom:10%;font-size:5.5px;letter-spacing:1px;line-height:7px;color:#f1e6d0">DUNE<br>MESSIAH</div><div class="grain"></div></div></div>
+    <div class="body"><div class="t">Dune Messiah</div><div class="s">Frank Herbert</div></div>
+  </div>
+  <div class="row">
+    <div class="thumb"><div class="art cv-children"><div class="sun"></div><div class="t2" style="bottom:10%;font-size:5px;letter-spacing:.5px;line-height:6.5px;color:#f6d9c4">CHILDREN<br>OF DUNE</div><div class="grain"></div></div></div>
+    <div class="body"><div class="t">Children of Dune</div><div class="s">Frank Herbert</div></div>
+  </div>
+</template>
+
+<template id="author-rows">
+  <div class="row author">
+    <div class="av">FH</div>
+    <div class="body"><div class="t">Frank Herbert</div></div>
+  </div>
+</template>
+
+<template id="series-rows">
+  <div class="row">
+    <div class="stack">
+      <i class="a"></i><i class="b"></i>
+      <div class="thumb"><div class="art cv-dune"><div class="moon"></div><div class="dune"></div><div class="grain"></div></div></div>
+    </div>
+    <div class="body"><div class="t">Dune</div><div class="s">6 boeken</div></div>
+  </div>
+</template>
+
+<!-- ================= 04a: Alles, the canonical state ================= -->
+<section class="screen" id="all"></section>
+
+<!-- ================= 04b: Boeken, one category active ================= -->
+<section class="screen" id="books"></section>
+
+<!-- ================= 04c: the three row kinds, side by side ============ -->
+<section class="spec" id="rowtypes">
+  <div class="lbl">Boek: cover 2:3, titel, auteur</div>
+  <div class="card" id="spec-books"></div>
+  <div class="lbl">Auteur: ronde avatar, alleen de naam</div>
+  <div class="card" id="spec-author"></div>
+  <div class="lbl">Boekenserie: cover met stapelranden</div>
+  <div class="card" id="spec-series"></div>
+</section>
+
+<script>
+  const tpl = (id) => document.getElementById(id).content.cloneNode(true);
+
+  function chips(active) {
+    const wrap = document.createElement('div');
+    wrap.className = 'chips';
+    for (const label of ['Alles', 'Boeken', 'Auteurs', 'Boekenseries']) {
+      const c = document.createElement('div');
+      c.className = 'chip' + (label === active ? ' on' : '');
+      c.textContent = label;
+      wrap.appendChild(c);
+    }
+    return wrap;
+  }
+
+  /// Section heading plus its card, stacked from `top` downwards. Returns the
+  /// y the next section starts from: heading text sits 35 under the previous
+  /// card, the card 23 under the heading text, both measured on 05-zoeken.png.
+  function section(host, top, title, rowsTemplate) {
+    const h = document.createElement('div');
+    h.className = 'shdr';
+    h.style.top = top + 'px';
+    h.textContent = title;
+    host.appendChild(h);
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.top = (top + 23) + 'px';
+    card.appendChild(tpl(rowsTemplate));
+    for (const chev of card.querySelectorAll('.row')) chev.appendChild(tpl('chev'));
+    host.appendChild(card);
+
+    const rows = card.querySelectorAll('.row').length;
+    const height = [...card.querySelectorAll('.row')]
+      .reduce((sum, r) => sum + (r.classList.contains('author') ? 64 : 82), 0) + (rows - 1);
+    return top + 23 + height + 35;
+  }
+
+  function build(host, {active, sections}) {
+    host.appendChild(tpl('statusbar'));
+    host.appendChild(tpl('header'));
+    host.appendChild(chips(active));
+    let y = 213;
+    for (const [title, rows] of sections) y = section(host, y, title, rows);
+    host.appendChild(tpl('tabbar'));
+  }
+
+  build(document.getElementById('all'), {
+    active: 'Alles',
+    sections: [['Boeken', 'books-rows'], ['Auteurs', 'author-rows'], ['Boekenseries', 'series-rows']],
+  });
+  build(document.getElementById('books'), {
+    active: 'Boeken',
+    sections: [['Boeken', 'books-rows']],
+  });
+  for (const [host, t] of [['spec-books', 'books-rows'], ['spec-author', 'author-rows'], ['spec-series', 'series-rows']]) {
+    const el = document.getElementById(host);
+    el.appendChild(tpl(t));
+    for (const row of el.querySelectorAll('.row')) row.appendChild(tpl('chev'));
+  }
+
+  const which = new URLSearchParams(location.search).get('screen') || 'all';
+  document.querySelectorAll('.screen,.spec').forEach((s) => { s.hidden = s.id !== which; });
+</script>
+</body>
+</html>
