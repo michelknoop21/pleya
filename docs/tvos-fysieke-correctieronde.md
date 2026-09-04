@@ -78,7 +78,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | FIXED, hardware open | `f00e2fe` |
 | FOC1 | Focusring valt buiten de viewport in overlays | FIXED, hardware open | `3b0da2e` |
 | ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | FIXED, hardware open | `f42e3fd` |
-| LIB1 | Blanco Bibliotheken-pagina als de selectie verdwijnt | OPEN | n.v.t. |
+| LIB1 | Blanco Bibliotheken-pagina als de selectie verdwijnt | FIXED, hardware open | `f9b2167` |
 | LIB2 | Race bij snel wisselen van bibliotheek | OPEN | n.v.t. |
 | LIB3 | TV-tabs dragen nog de oude rode onderstreping | OPEN | n.v.t. |
 | WL2 | Kijklijst end-to-end in Pleya Verify | OPEN | n.v.t. |
@@ -896,9 +896,11 @@ Geen van beide is door de redesign geïntroduceerd, maar de nieuwe
 bibliotheekkiezer maakt snel wisselen met één druk veel makkelijker, dus LIB2 is
 nu eerder te raken dan eerst.
 
-LIB1 zit in de laatste `else` van de body in
+LIB1 zat in de laatste `else` van de body in
 `lib/screens/libraries/libraries_screen.dart`, die een lege `SizedBox` rendert
-wanneer er wél zichtbare bibliotheken zijn maar de geselecteerde weg is.
+wanneer er wél zichtbare bibliotheken zijn maar de geselecteerde weg is. Dat
+bleek het symptoom en niet de oorzaak; de meting staat hieronder onder "LIB1,
+niemand verzoende de selectie met de lijst".
 
 LIB2 zit in de staart van `_loadLibraryContent`, na
 `await StorageService.getInstance()`. Die staart is ongeguard, dus een verlaten
@@ -1338,6 +1340,98 @@ waarneming volledig verklaart is daar te zien en nergens anders: als het beeld
 na deze wijziging nog steeds te strak oogt, dan gaat het over compositie en
 overscan en niet over resolutie, en dan is de vervolgvraag of de backdrop op
 detail dezelfde band mag pakken als in mockup 09.
+
+### LIB1, niemand verzoende de selectie met de lijst
+
+De lege `SizedBox` in de laatste `else` was het symptoom. De oorzaak zit een
+laag hoger: er was geen enkele plek die de geselecteerde bibliotheek opnieuw
+tegen de bestaande bibliotheken hield.
+
+**Twee routes, dezelfde tak.** `LibrariesProvider` vervangt bij een herlaad zijn
+hele lijst en houdt `isLoading` daarbij bewust op false, wat in
+`_loadLibrariesInternal` als `reloadInPlace` gedocumenteerd staat en er is om te
+voorkomen dat een reload het scherm terug naar een spinner gooit. Een server die
+wegvalt neemt dus zijn bibliotheken mee zonder dat het scherm ooit door een
+laadtoestand gaat. De selectiestap draaide daarna niet opnieuw: die hangt aan
+een post-frame callback in `initState` die één keer loopt. Diezelfde callback
+geeft het bovendien meteen op als de provider bij mount nog leeg is, dus een
+lijst die later binnenkomt (koude start, profielwissel, een server die in een
+tweede golf bindt) landt op precies dezelfde tak. In het eerste geval wijst de
+sleutel naar niets meer, in het tweede is er nooit een sleutel gezet.
+
+**Wat je op TV zag.** De kopregel viel terug op de generieke titel, en
+`showHeaderBar` is `useSideNavigation && selectedLibrary != null`, dus met de
+kopregel verdween ook de bibliotheekkiezer. Blanco pagina, geen tabs, geen
+kiezer, en daarmee geen route naar een bibliotheek die er wel was. Op mobiel is
+het net anders en niet minder verwarrend: `_buildLibraryDropdownTitle` valt
+terug op `visibleLibraries.firstOrNull`, dus de dropdown noemt een bibliotheek
+terwijl het scherm eronder leeg blijft.
+
+**Gemeten, niet aangenomen.** De reproductie draait het echte scherm tegen de
+echte providers. Films, Series en Kids geladen, Series geselecteerd, daarna een
+stabiele lijst met alleen Films en Kids: `isLoading=false`, kopregel
+`Libraries`, nul kopregelbalken. Voor de tweede route: gemount met een lege
+provider, daarna twee bibliotheken erin, kopregel `null`, nul kopregelbalken, en
+dat bleef zo staan.
+
+**Objectidentiteit was niet de verdachte.** De selectie is een `String` en de
+lookup vergelijkt `globalKey`, dus een reload die nieuwe instanties oplevert
+raakt de selectie niet. Een tijdelijk lege lijst evenmin: die valt in de
+loading- of de lege-staattak en gooit de sleutel niet weg, waarna de repopulatie
+hem gewoon weer oplost. Alleen een stabiele lijst waarin de selectie ontbreekt
+raakt LIB1.
+
+**De fix** is één verzoener op de provider. Geldige selectie blijft met rust,
+een dode sleutel gaat weg voordat er iets tekent, en de opvolger wordt via
+`_loadLibraryContent` geladen zoals een druk op de afstandsbediening dat doet,
+zodat de bewaarde sleutel, het per-bibliotheek tabherstel en de focusoverdracht
+op hun bestaande contract blijven. De terugvalregel staat nu op één plek:
+bewaarde sleutel als die nog zichtbaar is, anders de eerste zichtbare
+bibliotheek, wat exact is wat de initialisatie en het verbergen van een
+bibliotheek altijd al deden. Is er niets om naar terug te vallen, dan blijft de
+echte lege staat staan. De blanco tak zelf is nu de laadindicator, want met de
+verzoener erbij is dat een toestand van hooguit een frame.
+
+**Focus hoorde erbij.** Een probe liet zien dat de afstandsbediening strandde:
+focus stond op de chip van Series, die chip verdween, en primaire focus viel
+terug op `_ModalScopeState<dynamic> Focus Scope`, precies de toestand die
+`FocusMemoryTracker.pruneExcept` beschrijft als een oppervlak waarin je niet
+kunt bewegen en dat je niet kunt verlaten. De kiezer ruimt zijn nodes nu op en
+zet de focus op de chip van de bibliotheek waar de pagina naartoe geschakeld
+is. De chipsleutel staat daarvoor op één plek in `tv_library_chooser.dart`; met
+twee kopieën van die string zou het prunen elke overlevende node per rebuild
+weggooien, wat in de eerste ronde ook precies gebeurde.
+
+**Negatieve controle.** Drie van de vijf tests zijn rood op de oude
+implementatie: kopregel `Libraries` in plaats van `Films`, `null` in plaats van
+`Films` na late aankomst, en `_ModalScopeState<dynamic> Focus Scope` in plaats
+van de overlevende chip. De andere twee zijn aan beide kanten groen en staan er
+juist om te bewaken wat niet mocht veranderen: een selectie die de update
+overleeft blijft exact staan, en alle bibliotheken kwijtraken geeft de lege
+staat en geen blanco pagina.
+
+**Testen.** `scripts/ci_checks.sh` groen, inclusief `flutter analyze` zonder
+errors of warnings en de unused-code-controles. Volledige suite 6137 geslaagd,
+6 overgeslagen, 83 rood, met dezelfde falers als de ART1-nullijn: buiten
+`test/goldens` blijven er exact vijf over, alle vijf in het oude
+`test/widgets/tv_discovery_rail_test.dart`. Nieuwe falers: geen.
+
+**Verify kan dit niet bewijzen.** De fixtureserver kent `seed`, `add_episode`,
+`mark_watched`, `expire_session`, `fail_next`, `latency` en `echo`. Geen daarvan
+verandert de verzameling bibliotheken tijdens een run, en dat is precies wat
+LIB1 nodig heeft. Dit is een ander gat dan CAT2, CAT3 en VER4 beschrijven: die
+gaan over de diepte van rails en de catalogus, niet over het muteren van de
+bibliotheekset. Een `fixture_mutate`-op die een bibliotheek intrekt is de
+ontbrekende schakel; die bouwen valt buiten LIB1.
+
+**Wat open blijft.** Er is geen bewijs van een echte Apple TV. Wat daar nog te
+zien is, is of de overgang ook prettig oogt: de laadindicator hoort in de
+praktijk niet waarneembaar te zijn, en de focus hoort zichtbaar op de nieuwe
+chip te landen in plaats van er te verschijnen. Bundel dat met de andere open
+fysieke items van deze ronde. `libraries_screen.dart` staat inmiddels op
+ongeveer 2050 regels en is daarmee ruim over de eigen richtlijn; opsplitsen is
+echter geen onderdeel van deze bevinding en verdient een eigen ronde met eigen
+bewijs.
 
 ### VER5, `media-detail.episode-refresh` haalt de detailpagina niet meer
 
