@@ -109,6 +109,15 @@ class _LibrariesScreenState extends State<LibrariesScreen>
   String? _errorMessage;
   String? _selectedLibraryGlobalKey;
 
+  /// Which [_loadLibraryContent] invocation owns the screen. Bumped by every
+  /// invocation, so the newest intent wins and an older one that is still
+  /// suspended on an await knows it has been abandoned.
+  ///
+  /// The selected key cannot carry this: switching away and back makes an
+  /// abandoned invocation's key current again, and it would resume as if it
+  /// had never lost ownership. A counter only ever moves forward.
+  int _loadGeneration = 0;
+
   /// The provider [_reconcileSelection] is subscribed to. Held so the listener
   /// can be moved when the ancestor provider is swapped (profile switch) and
   /// removed on dispose.
@@ -557,6 +566,10 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     final selectedLibrary = allLibraries.where((lib) => lib.globalKey == libraryGlobalKey).firstOrNull;
     if (selectedLibrary == null) return;
 
+    // Claim the screen. Everything below belongs to this invocation until a
+    // newer one takes over.
+    final generation = ++_loadGeneration;
+
     final isLibraryChange = _selectedLibraryGlobalKey != libraryGlobalKey;
 
     // Update visible tabs and state in the same synchronous block so no
@@ -588,9 +601,16 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     }
 
     // Save selected library key and restore saved tab (async — safe after state is consistent)
+    //
+    // Two awaits, so two ownership checks. Both of them are the same rule: a
+    // library the user has already switched away from may not write anything.
+    // `_visibleTabs` and `tabController` below belong to whoever holds the
+    // screen now, so a stale invocation restoring "its" tab would set the tab
+    // of the previous library on the library that is actually open.
     final storage = await StorageService.getInstance();
-    if (!mounted) return;
+    if (!mounted || generation != _loadGeneration) return;
     await storage.saveSelectedLibraryKey(libraryGlobalKey);
+    if (!mounted || generation != _loadGeneration) return;
 
     // Restore saved tab by name
     final savedTabName = storage.getLibraryTab(libraryGlobalKey);
@@ -609,7 +629,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     // However, on first load the tab might finish loading before the tab index
     // is restored. Check if the current tab has already loaded and focus if so.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _selectedLibraryGlobalKey == libraryGlobalKey && _loadedTabs.contains(tabController.index)) {
+      if (mounted && generation == _loadGeneration && _loadedTabs.contains(tabController.index)) {
         _focusCurrentTab();
       }
     });
