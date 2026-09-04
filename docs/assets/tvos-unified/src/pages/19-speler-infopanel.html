@@ -1,0 +1,61 @@
+<style>
+.video { position: absolute; inset: 0; }
+.video img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; filter: brightness(.45); }
+.panel { position: absolute; left: 0; right: 0; top: 0; height: 640px; background: linear-gradient(180deg, rgba(20,20,20,.97) 0%, rgba(20,20,20,.95) 80%, rgba(20,20,20,0) 100%); padding: 44px var(--inset) 0; }
+.ptabs { display: flex; gap: 12px; align-items: center; }
+.ptabs .muted { margin-left: auto; font-size: 20px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 40px; margin-top: 36px; }
+.col h3 { font-size: 24px; font-weight: 700; margin-bottom: 16px; }
+.col .row { min-height: 72px; padding: 0 22px; }
+.col .row .t { font-size: 22px; }
+.col .row .s { font-size: 17px; }
+.col .rows { gap: 8px; }
+.playing { position: absolute; left: var(--inset); bottom: 60px; display: flex; align-items: center; gap: 22px; font-size: 22px; color: var(--ink-2); }
+.playing .btn { height: 52px; font-size: 20px; }
+.mini { position: absolute; right: var(--inset); bottom: 60px; font-size: 20px; color: var(--ink-2); display: flex; align-items: center; gap: 14px; }
+</style>
+<div class="video"><img src="{{art:dune2-backdrop}}"></div>
+<div class="panel">
+  <div class="ptabs">
+    <div class="chip-btn on">{{icon:cc}} Audio en ondertitels</div>
+    <div class="chip-btn">{{icon:info}} Info</div>
+    <div class="chip-btn">{{icon:list}} Hoofdstukken</div>
+    <div class="chip-btn">{{icon:playlist}} Wachtrij <span class="badge">3</span></div>
+    <div class="chip-btn">{{icon:gear}} Weergave</div>
+    <div class="muted">Dune: Part Two · 1:16:42 · NAS</div>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Audio</h3>
+      <div class="rows">
+        <div class="row sel"><div class="body"><div class="t">Engels · Dolby Atmos</div><div class="s">TrueHD 7.1 · origineel</div></div><div class="check">{{icon:check}}</div></div>
+        <div class="row focus"><div class="body"><div class="t">Engels · Dolby Digital Plus</div><div class="s">5.1 · compatibel</div></div><div class="radio"></div></div>
+        <div class="row"><div class="body"><div class="t">Nederlands · AC3</div><div class="s">5.1 · beschrijvend</div></div><div class="radio"></div></div>
+        <div class="row"><div class="body"><div class="t">Audio-synchronisatie</div><div class="s">Verschuiving in milliseconden</div></div><div class="val">0 ms</div>{{icon:chev}}</div>
+      </div>
+    </div>
+    <div class="col">
+      <h3>Ondertitels</h3>
+      <div class="rows">
+        <div class="row"><div class="body"><div class="t">Uit</div></div><div class="radio"></div></div>
+        <div class="row sel"><div class="body"><div class="t">Nederlands</div><div class="s">SRT · extern</div></div><div class="check">{{icon:check}}</div></div>
+        <div class="row"><div class="body"><div class="t">Engels (SDH)</div><div class="s">PGS · ingebed</div></div><div class="radio"></div></div>
+        <div class="row"><div class="body"><div class="t">Nederlands · geforceerd</div><div class="s">alleen vreemde taal</div></div><div class="radio"></div></div>
+        <div class="row"><div class="body"><div class="t">Online zoeken</div><div class="s">OpenSubtitles via Plex</div></div>{{icon:chev}}</div>
+      </div>
+    </div>
+    <div class="col">
+      <h3>Stijl en timing</h3>
+      <div class="rows">
+        <div class="row"><div class="body"><div class="t">Tekstgrootte</div></div><div class="val">Normaal</div>{{icon:chev}}</div>
+        <div class="row"><div class="body"><div class="t">Positie</div></div><div class="val">Onder</div>{{icon:chev}}</div>
+        <div class="row"><div class="body"><div class="t">Achtergrond</div></div><div class="switch"></div></div>
+        <div class="row"><div class="body"><div class="t">Ondertitelvertraging</div></div><div class="val">+0,0 s</div>{{icon:chev}}</div>
+        <div class="row"><div class="body"><div class="t">Onthouden voor deze titel</div><div class="s">Audio en ondertitels per titel bewaren</div></div><div class="switch on"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="playing"><div class="btn">{{icon:pause}} Gepauzeerd</div> Kiezen past direct toe · <kbd style="font:inherit;font-size:18px;background:var(--surface);padding:6px 12px;border-radius:8px">Menu</kbd> sluit het paneel</div>
+<div class="mini">Hoofdstuk 7 · The Water of Life <span class="muted">·</span> 46%</div>
+<div class="note" style="top:auto;bottom:22px;right:auto;left:50%;transform:translateX(-50%);white-space:nowrap">CANDIDATE · MOCKUP 19 · Speler-infopaneel na veeg omlaag: audio, ondertitels, stijl in drie kolommen </div>

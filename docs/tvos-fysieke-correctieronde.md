@@ -83,13 +83,13 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LIB3 | TV-tabs dragen nog de oude rode onderstreping | FIXED, hardware open | `3e9d31b` |
 | LIB4 | Bibliotheken draait op alles behalve de kiezer nog de oude layout: kop, achtergrond, acties en landing wijken af van `libraries-a.png` en `libraries-d.png` | GEBLOKKEERD door LIB6 | n.v.t. |
 | LIB5 | De spotlight-titel op Bibliotheken valt over de tabrij, en maakt de actieve tab minder leesbaar dan de inactieve | OPEN | n.v.t. |
-| LIB6 | Er is geen complete mockupset voor Bibliotheken, dus het LIB4-besluit staat op een half beeld | IN PROGRESS | n.v.t. |
+| LIB6 | Complete mockupset voor Bibliotheken: mockup 26, negen states in `docs/assets/tvos-unified/mockups-2026-09-04/`, gebouwd op `tv.css` en `build.mjs` van de 09-25-familie, die nu in `docs/assets/tvos-unified/src/` staan | SET KLAAR, besluit nodig | n.v.t. |
 | WL2 | Kijklijst end-to-end in Pleya Verify | OPEN | n.v.t. |
 | REQ1 | Aanvragen end-to-end in Pleya Verify | OPEN | n.v.t. |
 | MYP1 | Regressiebewijs voor het Mijn Pleya-werk | OPEN | n.v.t. |
 | ACT1 | Activiteit is niet te verifiëren | ACCEPTANCE GAP | n.v.t. |
 | VER2 | Automation-ids escapen geen blokhaken | DEFERRED | n.v.t. |
-| HERO1 | Framing van het hero-beeld op Home | HARDWARE ONLY | n.v.t. |
+| HERO1 | Framing van het hero-beeld op Home: op hardware staan halve beelden in de hero, Plex snijdt gecentreerd vóórdat de widget iets kan kiezen | OPEN | n.v.t. |
 | SEARCH1 | Zoeken benoemt zijn resultaten buiten het railcontract om | DEFERRED | n.v.t. |
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
 | VER3 | De eerste tegel van een rail steekt links buiten de veilige zone | OPEN | n.v.t. |
@@ -1855,3 +1855,90 @@ geschoten zijn zit niet in git, alleen de PNG's.
 Besluit van Michel op 4 september: eerst een complete set, daarna één keer besluiten
 over de hele pagina. LIB4 blijft tot die tijd dicht en wordt niet opnieuw
 voorgelegd op de bestaande twee beelden.
+
+De set staat er sinds diezelfde middag als mockup 26, negen states in
+`docs/assets/tvos-unified/mockups-2026-09-04/26-bibliotheken-*.png`. Een eerste
+versie op eigen CSS en een systeemfont is weggegooid nadat Michel de lat op northstar
+legde: de beelden moeten tot op het lettertype gelijk zijn aan de rest van de familie.
+Ze zijn daarom gebouwd als paginafragmenten in hetzelfde systeem als 09 tot en met 25:
+`tv.css` voor de tokens, `build.mjs` voor de gedeelde topnav, de iconenset en het
+schieten, Inter en het wordmark uit `assets/`. Die bron stond tot nu toe alleen in
+`~/Downloads/mockups-tvos/_src` en staat nu in `docs/assets/tvos-unified/src/`, met
+alle zeventien eerdere fragmenten erbij, zodat de hele familie herschietbaar is.
+Alleen `art/` (TMDb-beeld) en `out/` zijn niet meegenomen; `build.mjs` verwacht ze
+naast zich, zoals het overzicht van de 09-25-set beschrijft.
+
+A is de index, per server een groep en de tegels in de taal van de Mijn Pleya-hub; B
+de pagina zonder bereikbare bibliotheek; C Verborgen bibliotheken; D1 en D2 de
+geopende bibliotheek, zonder en met spotlight-backdrop; E Bladeren als
+catalogusgrid; F Collecties en G Afspeellijsten als rail van 16:9-kaarten; H een
+geopende maar lege bibliotheek. D1 tegen D2 is de vraag die de oude LIB4-sectie open
+liet: de code kiest de backdrop, de mockup van 2 september tekende zwart, en nu
+staan ze naast elkaar. In D2 staat de spotlight-titel onder de tabrij in een eigen
+band, wat de LIB5-botsing wegneemt zonder de backdrop op te geven.
+
+Twee acceptatie-eisen van Michel, 4 september, die bij de bouw horen en niet bij het
+besluit: elke knop op de pagina is met de afstandsbediening te bereiken, dus de
+capsules rechtsboven, de chips, de tabs en de tegels zitten alle in één
+focusketen zonder dode einden; en het ontwerp wijkt nergens af van de andere
+schermen, dus dezelfde marge, dezelfde chip, dezelfde tegel en dezelfde ring als
+Home, Films en de Mijn Pleya-hub. Een bouwronde die op een van beide zakt is niet
+klaar, hoe goed de mockup ook gevolgd is.
+
+
+### HERO1, de widget kiest een uitsnede die de server al gemaakt heeft
+
+Gemeld door Michel op 4 september, kijkend naar build 248 op de Apple TV 4K, in
+zijn woorden: "halve afbeeldingen staan er maar in de hero, dus of ze zijn te groot
+of de positie van het onderwerp klopt niet." Dat is het concrete hardwaregeval
+waar de vorige HERO1-sectie op wachtte, en het antwoord is: allebei een beetje,
+en de oorzaak zit niet waar de widget hem denkt te hebben.
+
+**Wat de keten doet.** `lib/widgets/tv/tv_hero_artwork.dart` tekent een 16:9-
+backdrop met `BoxFit.cover` en `Alignment.topCenter`, met als toelichting dat een
+te hoge backdrop dan de lucht verliest en niet de gezichten. Diezelfde widget
+vraagt het beeld bij de server aan in de pixels én de ratio van de kaart, 2,465:1,
+met een beroep op DEC-057. `roundDimensions` in
+`lib/utils/media_image_helper.dart` bewaakt sindsdien dat die ratio onderweg niet
+verandert. Op Plex zet `thumbnailUrl` (`lib/services/plex_client.dart:4300`) daar
+`minSize=1&upscale=1` op, en dat betekent: vul de gevraagde box en snij het
+overschot gecentreerd weg. Plex levert dus een beeld dat al precies 2,465:1 is. De
+`BoxFit.cover` in Flutter heeft dan niets meer te croppen en `topCenter` doet niets.
+
+**De maat.** 16:9 in 2,465:1 verliest 27,9 procent van de hoogte. Op Plex is dat
+veertien procent boven en veertien procent onder, gekozen door de server. Op
+Jellyfin (`lib/services/jellyfin_client/parts/images_downloads.dart:32`) gaat de
+aanvraag met `maxWidth`/`maxHeight`, dat past in en snijdt niet, dus daar komt het
+hele 16:9-beeld aan en snijdt Flutter wél, met `topCenter`: achtentwintig procent
+onderaan. Twee backends, twee verschillende uitsneden, en geen van beide is de
+uitsnede die de widget zegt te maken. Michels toestel heeft twee Plex-logins, dus
+wat hij ziet is de gecentreerde Plex-uitsnede.
+
+**Waarom dit een tegenspraak is en geen detail.** DEC-057 zegt dat de aanvraag de
+ratio van de *bron* moet volgen, zodat de servercrop een no-op wordt; het besluit
+liet de brede box uitdrukkelijk zoals hij was. `tv_hero_artwork.dart` beroept zich
+op DEC-057 om precies het tegenovergestelde te doen: de ratio van de *kaart*
+aanvragen. De toelichting daar noemt de servercrop "een no-op in plaats van een
+tweede, onzichtbare"; hij is de eerste, en de enige, en hij is niet leeg.
+
+De eerdere HERO1-sectie wees een globale wissel van `topCenter` naar `center` af
+omdat één vaste uitlijning niet elke onderwerpspositie oplost. Dat blijft waar,
+maar op Plex had die wissel sowieso niets veranderd, en dat is de reden dat een
+A/B op de uitlijning nooit iets liet zien.
+
+**Waarom het als "te groot" voelt.** De kaart is 3538 bij 1365 fysieke pixels op
+een 3840 bij 2160 paneel. Ook een perfect gekozen uitsnede toont maar 72 procent
+van de backdrop, en die 72 procent wordt vervolgens over 92 procent van de
+schermbreedte getekend. Een onderwerp dat in de bron niet in de middelste band
+staat is dan half weg, en wat er wel staat is groter dan het beeld ooit bedoeld
+was. Dat deel is een eigenschap van de kaartratio en geen bug, maar het is wel de
+reden dat de uitsnede er zo toe doet.
+
+**Richting, niet uitgevoerd.** Dit is een correctieronde, dus er is niets
+gerepareerd. De fix hoort bij de aanvraag: vraag de bron in zijn eigen 16:9 op de
+breedte van de kaart (binnen de heroArt-cap), zodat geen enkele server snijdt, en
+laat daarna één eigenaar de uitsnede maken, met een uitlijning die per titel kan
+verschillen of met een kaartratio die dichter bij 16:9 ligt. Negatieve controle:
+een test die de aangevraagde URL ontleedt en eist dat breedte gedeeld door hoogte
+gelijk is aan de bronratio, en die is op de huidige code rood met 2,465 tegen
+1,778. Pas als die groen is heeft een uitlijningskeuze in de widget effect op Plex.

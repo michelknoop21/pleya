@@ -1,0 +1,50 @@
+<style>
+.head { display: flex; align-items: flex-end; gap: 28px; }
+.head .acts { margin-left: auto; margin-bottom: 4px; }
+.kiezer { margin-top: 26px; }
+/* Tabrij volgens LIB3: inkt en gewicht dragen de staat, geen rul. */
+.tabs { display: flex; gap: 40px; margin-top: 26px; }
+.tabs .tab { font-size: 26px; font-weight: 500; color: var(--ink-3); line-height: 52px; padding: 0 4px; border-radius: 999px; }
+.tabs .tab.on { color: var(--ink); font-weight: 700; }
+.tabs .tab.focus { box-shadow: 0 0 0 var(--ring-gap) var(--bg), 0 0 0 calc(var(--ring-gap) + var(--ring)) var(--ink); }
+.rail-label { margin-top: 34px; }
+</style>
+<style>
+.bd { position: absolute; left: 0; right: 0; top: 0; height: 720px; overflow: hidden; }
+.bd img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; opacity: .55; }
+.bd::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20,20,20,.98) 0%, rgba(20,20,20,.92) 40%, rgba(20,20,20,.35) 72%, rgba(20,20,20,.15) 100%); }
+.bd::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,20,20,.92) 0%, rgba(20,20,20,.55) 22%, rgba(20,20,20,.1) 50%, var(--bg) 100%); }
+.spot { margin-top: 30px; max-width: 860px; }
+.spot h2 { font-size: 44px; font-weight: 700; letter-spacing: -.01em; }
+.spot .meta { margin-top: 8px; }
+.spot .syn { margin-top: 10px; font-size: 22px; line-height: 1.4; color: var(--ink-2); }
+.rail-label { margin-top: 30px; }
+.rail .card.p { width: 200px; } .rail .card.p .art { width: 200px; height: 300px; }
+</style>
+<div class="bd"><img src="{{art:dune2-backdrop}}"></div>
+{{nav:Mijn Pleya|live}}
+<div class="page">
+  <div class="head">
+    <div><div class="page-title">Bibliotheken</div><div class="page-sub">Mijn Pleya ▸ Bibliotheken</div></div>
+    <div class="btn-row acts"><div class="btn">{{icon:refresh}} Vernieuwen</div><div class="btn">{{icon:edit}} Bewerken</div></div>
+  </div>
+  <div class="chips kiezer"><div class="chip-btn on">{{icon:film}} Films · Pleya</div><div class="chip-btn">{{icon:show}} Series · Pleya</div><div class="chip-btn">{{icon:film}} Films · G-Plexflix</div><div class="chip-btn">{{icon:show}} TV Series · G-Plexflix</div><div class="chip-btn">{{icon:music}} Concert · G-Plexflix</div></div>
+  <div class="tabs"><div class="tab on">Aanbevolen</div><div class="tab">Bladeren</div><div class="tab">Collecties</div><div class="tab">Afspeellijsten</div></div>
+  <div class="spot">
+    <h2>Dune: Part Two</h2>
+    <div class="meta">2024<span class="sep">·</span>2u 46m<span class="sep">·</span>Sciencefiction<span class="sep">·</span>4K · HDR10</div>
+    <div class="syn">Paul Atreides verenigt zich met de Fremen en zet de wraak in gang tegen wie zijn familie vernietigde.</div>
+  </div>
+  <div class="rail-label">Onlangs toegevoegd</div>
+  <div class="rail">
+    <div class="card p focus"><div class="art"><img src="{{art:dune2-poster}}"></div><div class="t">Dune: Part Two</div><div class="s">2024</div></div>
+    <div class="card p"><div class="art"><img src="{{art:conclave-poster}}"></div><div class="t">Conclave</div><div class="s">2024</div></div>
+    <div class="card p"><div class="art"><img src="{{art:anora-poster}}"></div><div class="t">Anora</div><div class="s">2024</div></div>
+    <div class="card p"><div class="art"><img src="{{art:substance-poster}}"></div><div class="t">The Substance</div><div class="s">2024</div></div>
+    <div class="card p"><div class="art"><img src="{{art:nosferatu-poster}}"></div><div class="t">Nosferatu</div><div class="s">2024</div></div>
+    <div class="card p"><div class="art"><img src="{{art:gladiator2-poster}}"></div><div class="t">Gladiator II</div><div class="s">2024</div></div>
+    <div class="card p"><div class="art"><img src="{{art:wicked-poster}}"></div><div class="t">Wicked</div><div class="s">2024</div></div>
+    <div class="card p"><div class="art"><img src="{{art:joker2-poster}}"></div><div class="t">Joker: Folie à Deux</div><div class="s">2024</div></div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 26 · state D2: zelfde pagina met spotlight en backdrop; de titel staat onder de tabrij in zijn eigen band en de scrim houdt kop, kiezer en tabs vrij (LIB5)</div>

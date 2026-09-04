@@ -1,0 +1,53 @@
+<style>
+.video { position: absolute; inset: 0; }
+.video img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; }
+.osd-top { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,20,20,.75) 0%, rgba(20,20,20,0) 28%, rgba(20,20,20,0) 58%, rgba(20,20,20,.9) 100%); }
+.tinfo { position: absolute; left: var(--inset); top: 56px; }
+.tinfo .t { font-size: 34px; font-weight: 700; }
+.tinfo .s { font-size: 21px; color: var(--ink-2); margin-top: 6px; }
+.tinfo .s .tag { margin-left: 8px; }
+.tright { position: absolute; right: var(--inset); top: 56px; display: flex; gap: 14px; }
+.skip { position: absolute; right: var(--inset); top: 760px; }
+.bar { position: absolute; left: var(--inset); right: var(--inset); top: 900px; }
+.bar .times { display: flex; justify-content: space-between; font-size: 22px; color: var(--ink-2); font-variant-numeric: tabular-nums; margin-bottom: 14px; }
+.bar .times b { color: var(--ink); font-weight: 500; }
+.track { height: 8px; border-radius: 999px; background: rgba(255,255,255,.28); position: relative; }
+.track .buf { position: absolute; left: 0; top: 0; bottom: 0; width: 58%; background: rgba(255,255,255,.35); border-radius: 999px; }
+.track .pos { position: absolute; left: 0; top: 0; bottom: 0; width: 46%; background: var(--accent); border-radius: 999px; }
+.track .ch { position: absolute; top: -2px; width: 3px; height: 12px; background: rgba(255,255,255,.7); }
+.track .knob { position: absolute; left: 46%; top: 50%; width: 30px; height: 30px; border-radius: 999px; background: var(--ink); transform: translate(-50%,-50%); box-shadow: 0 0 0 6px rgba(20,20,20,.55); }
+.chapter { position: absolute; left: 46%; transform: translateX(-50%); top: -172px; background: rgba(20,20,20,.85); border-radius: 12px; padding: 10px 16px; font-size: 19px; color: var(--ink-2); white-space: nowrap; display: flex; gap: 14px; align-items: center; }
+.chapter img { width: 120px; height: 68px; border-radius: 6px; object-fit: cover; }
+.acts { position: absolute; left: var(--inset); right: var(--inset); top: 972px; display: flex; gap: 14px; align-items: center; }
+.acts .btn { height: 56px; font-size: 21px; background: rgba(255,255,255,.12); }
+.acts .btn.icon { width: 56px; }
+.acts .sp { flex: 1; }
+.acts .btn .ic { width: 24px; height: 24px; }
+</style>
+<div class="video"><img src="{{art:dune2-backdrop}}"></div>
+<div class="osd-top"></div>
+<div class="tinfo"><div class="t">Dune: Part Two</div><div class="s">NAS · 2160p · HDR10 · Dolby Atmos · Nederlands (ondertiteling) <span class="tag">Direct play</span></div></div>
+<div class="tright"><div class="btn icon" style="background:rgba(255,255,255,.12)">{{icon:list}}</div><div class="btn icon" style="background:rgba(255,255,255,.12)">{{icon:info}}</div></div>
+
+<div class="skip"><div class="btn primary focus">Intro overslaan</div></div>
+
+<div class="bar">
+  <div class="times"><b>1:16:42</b><span>Hoofdstuk 7 · The Water of Life</span><span>–1:29:18 · eindigt om 23:14</span></div>
+  <div class="track">
+    <div class="chapter"><img src="{{art:dune2-backdrop}}" style="object-position:20% 50%">1:16:42 · Sietch Tabr</div>
+    <div class="buf"></div><div class="pos"></div>
+    <div class="ch" style="left:12%"></div><div class="ch" style="left:27%"></div><div class="ch" style="left:39%"></div><div class="ch" style="left:53%"></div><div class="ch" style="left:70%"></div><div class="ch" style="left:88%"></div>
+    <div class="knob"></div>
+  </div>
+</div>
+<div class="acts">
+  <div class="btn">{{icon:pause}} Pauzeren</div>
+  <div class="btn icon">{{icon:rew}}</div>
+  <div class="btn icon">{{icon:fwd}}</div>
+  <div class="btn">{{icon:cc}} Audio en ondertitels</div>
+  <div class="btn">{{icon:speed}} 1,0×</div>
+  <div class="btn">{{icon:sleep}} Slaaptimer</div>
+  <div class="sp"></div>
+  <div class="hint"><kbd>Veeg omlaag</kbd> infopaneel <span class="muted" style="margin:0 8px">·</span> <kbd>Druk omlaag</kbd> wachtrij <span class="muted" style="margin:0 8px">·</span> <kbd>Menu</kbd> bediening verbergen</div>
+</div>
+<div class="note" style="top:130px">CANDIDATE · MOCKUP 18 · Speler-OSD; rij mist in code bestaande aflevering-/hoofdstukknoppen, Afspeelinstellingen en Beeldverhouding (REVISE)</div>

@@ -1,0 +1,49 @@
+<style>
+.state { position: absolute; left: var(--inset); top: 250px; width: 860px; }
+.state .big { width: 84px; height: 84px; color: var(--ink-3); }
+.state h1 { font-size: 48px; font-weight: 700; margin-top: 26px; letter-spacing: -.01em; }
+.state p { font-size: 24px; color: var(--ink-2); margin-top: 16px; line-height: 1.45; }
+.state .btn-row { margin-top: 36px; }
+.servers { position: absolute; right: var(--inset); top: 250px; width: 700px; }
+.servers .group-label { margin-top: 0; }
+.srv { display: flex; align-items: center; gap: 18px; background: var(--surface); border-radius: var(--r-tile); padding: 22px 28px; }
+.srv + .srv { margin-top: 12px; }
+.srv .be { width: 40px; height: 40px; border-radius: 10px; background: var(--elevated); display: grid; place-items: center; }
+.srv .be .ic { width: 22px; height: 22px; }
+.srv .t { font-size: 24px; font-weight: 500; }
+.srv .s { font-size: 19px; color: var(--ink-3); margin-top: 2px; }
+.srv .st { margin-left: auto; font-size: 20px; color: var(--ink-2); display: flex; align-items: center; gap: 10px; }
+.snap { position: absolute; left: var(--inset); right: 0; top: 760px; opacity: .55; }
+.snap .card.p .art { width: 200px; height: 300px; }
+</style>
+{{nav:Home|live}}
+<div class="state">
+  {{icon:cloudoff}}
+  <h1>Geen server bereikbaar</h1>
+  <p>Plex thuis, Jellyfin thuis en NAS reageren niet. Je laatste Home blijft zichtbaar als momentopname; afspelen kan pas weer als een server terug is. Mijn Pleya en Instellingen blijven bereikbaar.</p>
+  <div class="btn-row">
+    <div class="btn primary focus">{{icon:refresh}} Opnieuw verbinden</div>
+    <div class="btn">{{icon:server}} Servers beheren</div>
+  </div>
+</div>
+<div class="servers">
+  <div class="group-label">Servers</div>
+  <div class="srv"><div class="be">{{icon:plex}}</div><div><div class="t">Plex thuis</div><div class="s">Plex · 3 bibliotheken</div></div><div class="st"><span class="dot off"></span> Offline</div></div>
+  <div class="srv"><div class="be">{{icon:jellyfin}}</div><div><div class="t">Jellyfin thuis</div><div class="s">Jellyfin · 2 bibliotheken</div></div><div class="st"><span class="dot off"></span> Offline</div></div>
+  <div class="srv"><div class="be">{{icon:plex}}</div><div><div class="t">NAS</div><div class="s">Plex · 4 bibliotheken</div></div><div class="st"><span class="dot warn"></span> <span class="amber">Opnieuw aanmelden vereist</span></div></div>
+  <div class="srv" style="opacity:.6"><div class="be">{{icon:pleya}}</div><div><div class="t">Pleya Server</div><div class="s">web.pleya.app</div></div><div class="st"><span class="dot off"></span> Offline</div></div>
+</div>
+<div class="snap">
+  <div class="rail-label">Verder kijken <span class="muted" style="font-size:20px;margin-left:12px">momentopname (hoofdstuk 21.2, nog niet gebouwd)</span></div>
+  <div class="rail">
+    <div class="card p"><div class="art"><img src="{{art:severance-poster}}"><div class="prog"><i style="width:55%"></i></div></div></div>
+    <div class="card p"><div class="art"><img src="{{art:thebear-poster}}"><div class="prog"><i style="width:20%"></i></div></div></div>
+    <div class="card p"><div class="art"><img src="{{art:dune2-poster}}"><div class="prog"><i style="width:40%"></i></div></div></div>
+    <div class="card p"><div class="art"><img src="{{art:shogun-poster}}"><div class="prog"><i style="width:70%"></i></div></div></div>
+    <div class="card p"><div class="art"><img src="{{art:slowhorses-poster}}"><div class="prog"><i style="width:10%"></i></div></div></div>
+    <div class="card p"><div class="art"><img src="{{art:andor-poster}}"><div class="prog"><i style="width:85%"></i></div></div></div>
+    <div class="card p"><div class="art"><img src="{{art:fallout-poster}}"><div class="prog"><i style="width:33%"></i></div></div></div>
+    <div class="card p"><div class="art"><img src="{{art:silo-poster}}"><div class="prog"><i style="width:60%"></i></div></div></div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 23 · Hoofdstuk 21.2 als beeld; in code bestaat geen offline Home, geen reconnect op TV en geen snapshot-tijdstempel = PRODUCT DECISION</div>

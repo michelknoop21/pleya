@@ -1,0 +1,52 @@
+<style>
+.catalog { position: absolute; left: var(--grid-inset); top: 195px; opacity: .35; }
+.catalog .title { position: absolute; left: 0; top: -75px; font-size: 42px; font-weight: 700; }
+.sheet { width: 760px; padding: 0; overflow: hidden; }
+.sheet .head { display: flex; gap: 22px; align-items: center; padding: 28px 32px 22px; border-bottom: 1px solid var(--hair); }
+.sheet .head img { width: 68px; height: 102px; border-radius: 8px; object-fit: cover; }
+.sheet .head .t { font-size: 28px; font-weight: 700; }
+.sheet .head .s { font-size: 20px; color: var(--ink-3); margin-top: 4px; }
+.opts { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
+.opt { display: flex; align-items: center; gap: 20px; height: 68px; padding: 0 18px; border-radius: 12px; font-size: 23px; }
+.opt .ic { width: 26px; height: 26px; color: var(--ink-2); }
+.opt .r { margin-left: auto; font-size: 19px; color: var(--ink-3); }
+.opt.focus { background: var(--elevated); box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--ink); }
+.opt.sep { height: 1px; background: var(--hair); margin: 8px 18px; padding: 0; }
+</style>
+{{nav:Films|live,dim}}
+<div class="catalog">
+  <div class="title">Alle films</div>
+  <div class="grid6">
+    <div class="card"><div class="art"><img src="{{art:oppenheimer-poster}}"><span class="src">2 bronnen</span></div><div class="t">Oppenheimer</div><div class="s">2023 · Thriller</div></div>
+    <div class="card"><div class="art"><img src="{{art:barbie-poster}}"><div class="prog"><i style="width:30%"></i></div></div><div class="t">Barbie</div><div class="s">2023 · Comedy</div></div>
+    <div class="card"><div class="art"><img src="{{art:grandbudapest-poster}}"></div><div class="t">The Grand Budapest Hotel</div><div class="s">2014 · Comedy</div></div>
+    <div class="card"><div class="art"><img src="{{art:interstellar-poster}}"><span class="seen">{{icon:check}}</span></div><div class="t">Interstellar</div><div class="s">2014 · Sciencefiction</div></div>
+    <div class="card"><div class="art"><img src="{{art:spiderverse-poster}}"></div><div class="t">Across the Spider-Verse</div><div class="s">2023 · Animatie</div></div>
+    <div class="card"><div class="art"><img src="{{art:lalaland-poster}}"></div><div class="t">La La Land</div><div class="s">2016 · Musical</div></div>
+    <div class="card"><div class="art"><img src="{{art:wonka-poster}}"></div></div>
+    <div class="card"><div class="art"><img src="{{art:pastlives-poster}}"></div></div>
+    <div class="card"><div class="art"><img src="{{art:dune2-poster}}"></div></div>
+    <div class="card"><div class="art"><img src="{{art:eeaao-poster}}"></div></div>
+    <div class="card"><div class="art"><img src="{{art:holdovers-poster}}"></div></div>
+    <div class="card"><div class="art"><img src="{{art:anora-poster}}"></div></div>
+  </div>
+</div>
+<div class="scrim" style="background:rgba(20,20,20,.5)"></div>
+
+<div class="modal sheet">
+  <div class="head"><img src="{{art:barbie-poster}}"><div><div class="t">Barbie</div><div class="s">2023 · Comedy · 1u 54m · 2 bronnen · 34 min bekeken</div></div></div>
+  <div class="opts">
+    <div class="opt focus">{{icon:play}} Hervatten <span class="r">nog 1u 20m</span></div>
+    <div class="opt">{{icon:refresh}} Vanaf het begin</div>
+    <div class="opt">{{icon:info}} Meer info</div>
+    <div class="opt sep"></div>
+    <div class="opt">{{icon:bookmark}} Aan kijklijst toevoegen</div>
+    <div class="opt">{{icon:check}} Markeer als gekeken</div>
+    <div class="opt">{{icon:eyeoff}} Verwijder uit Doorgaan met kijken</div>
+    <div class="opt">{{icon:star}} Beoordelen</div>
+    <div class="opt sep"></div>
+    <div class="opt">{{icon:swap}} Bron wijzigen <span class="r">NAS · Films 4K</span></div>
+  </div>
+  <div style="padding:0 32px 26px;display:flex;justify-content:flex-end"><div class="btn">Sluiten</div></div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 12 · Contextmenu; Hervatten / Vanaf het begin / Meer info / Bron wijzigen en de posterkop bestaan niet in code = PRODUCT DECISION</div>

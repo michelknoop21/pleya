@@ -1,0 +1,45 @@
+<style>
+.bd { position: absolute; left: 0; right: 0; top: 0; height: 560px; overflow: hidden; }
+.bd img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 35%; display: block; opacity: .6; }
+.bd::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20,20,20,.98) 0%, rgba(20,20,20,.9) 35%, rgba(20,20,20,.3) 70%, rgba(20,20,20,.1) 100%); }
+.bd::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,20,20,.5) 0%, rgba(20,20,20,0) 25%, rgba(20,20,20,0) 55%, var(--bg) 100%); }
+.hero { position: absolute; left: var(--inset); top: 170px; width: 900px; }
+.hero .kind { font-size: 20px; color: var(--ink-3); letter-spacing: .08em; text-transform: uppercase; font-weight: 500; }
+.hero h1 { font-size: 56px; font-weight: 700; letter-spacing: -.01em; margin-top: 8px; }
+.hero .meta { margin-top: 12px; font-size: 22px; color: var(--ink-2); }
+.hero .syn { margin-top: 14px; font-size: 22px; line-height: 1.4; color: var(--ink-2); }
+.hero .cta { margin-top: 26px; }
+.items { position: absolute; left: var(--inset); right: 0; top: 560px; }
+.items .head { display: flex; align-items: center; gap: 24px; margin-bottom: 30px; }
+.items .head .rail-label { margin: 0; }
+.items .head .chips { margin-left: auto; margin-right: 75px; }
+.items .card.p { width: 240px; }
+.items .card.p .art { width: 240px; height: 360px; }
+.items .card .ord { position: absolute; left: 12px; top: 12px; background: rgba(20,20,20,.78); font-size: 16px; font-weight: 500; padding: 4px 10px; border-radius: 6px; }
+</style>
+<div class="bd"><img src="{{art:dune1-backdrop}}"></div>
+{{nav:Mijn Pleya|live}}
+<div class="hero">
+  <div class="kind">Collectie · NAS · Plex · Films 4K</div>
+  <h1>Dune-collectie</h1>
+  <div class="meta">2 films · 5u 21m · 2021 tot 2024 · Sciencefiction</div>
+  <div class="syn">Denis Villeneuves verfilming van Frank Herberts roman, in twee delen. Van Paul Atreides' aankomst op Arrakis tot de heilige oorlog die hij niet kan tegenhouden.</div>
+  <div class="btn-row cta">
+    <div class="btn primary focus">{{icon:play}} Alles afspelen</div>
+    <div class="btn">{{icon:refresh}} Vanaf het begin</div>
+    <div class="btn icon">{{icon:check}}</div>
+    <div class="btn icon">{{icon:more}}</div>
+  </div>
+</div>
+<div class="items">
+  <div class="head">
+    <div class="rail-label">In deze collectie</div>
+    <div class="chips"><div class="chip-btn on">Collectievolgorde</div><div class="chip-btn">Jaar</div><div class="chip-btn">Titel</div></div>
+  </div>
+  <div class="rail">
+    <div class="card p"><div class="art"><img src="{{art:dune1-poster}}"><span class="ord">1</span><span class="seen">{{icon:check}}</span></div><div class="t">Dune</div><div class="s">2021 · 2u 35m</div></div>
+    <div class="card p"><div class="art"><img src="{{art:dune2-poster}}"><span class="ord">2</span><div class="prog"><i style="width:40%"></i></div></div><div class="t">Dune: Part Two</div><div class="s">2024 · 2u 46m</div></div>
+    <div class="card p" style="opacity:.5"><div class="art" style="display:grid;place-items:center;color:var(--ink-3);font-size:18px;text-align:center;padding:20px">Dune: Part Three<br><span style="font-size:15px">nog niet op je servers</span></div><div class="t muted">Dune: Part Three</div><div class="s">2026 · Aanvragen</div></div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 24 · Collectie- en afspeellijstdetail: concreet serveritem met bron in de kop, geen cross-server merge (hoofdstuk 31.8)</div>

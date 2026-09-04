@@ -1,0 +1,45 @@
+<style>
+.wm { position: absolute; left: var(--inset); top: 60px; height: 56px; }
+.wm img { height: 56px; display: block; }
+.left { position: absolute; left: var(--inset); top: 220px; width: 720px; }
+.left h1 { font-size: 46px; font-weight: 700; letter-spacing: -.01em; }
+.left p { font-size: 22px; color: var(--ink-3); margin-top: 10px; }
+.left .rows { margin-top: 36px; }
+.left .row { min-height: 104px; }
+.left .row .be { width: 48px; height: 48px; border-radius: 12px; background: var(--elevated); display: grid; place-items: center; flex: none; }
+.left .row .be .ic { width: 26px; height: 26px; color: var(--ink); }
+.right { position: absolute; left: 920px; right: var(--inset); top: 220px; bottom: 120px; background: var(--surface); border-radius: 24px; padding: 48px 56px; }
+.right h2 { font-size: 34px; font-weight: 700; }
+.right p { font-size: 22px; color: var(--ink-2); margin-top: 12px; line-height: 1.45; }
+.right p b { color: var(--ink); font-weight: 500; }
+.code { margin-top: 40px; display: flex; gap: 40px; align-items: center; }
+.code .c { font-family: ArchivoBlack, Inter; font-size: 96px; letter-spacing: .12em; }
+.code .c span { color: var(--ink-4); margin: 0 10px; }
+.qr { width: 200px; height: 200px; border-radius: 14px; background: var(--ink); display: grid; place-items: center; color: var(--bg); }
+.qr .ic { width: 120px; height: 120px; }
+.wait { margin-top: 40px; display: flex; align-items: center; gap: 14px; font-size: 21px; color: var(--ink-3); }
+.spin { width: 22px; height: 22px; border-radius: 999px; border: 3px solid var(--ink-4); border-top-color: var(--ink); }
+.alt { position: absolute; left: 56px; right: 56px; bottom: 44px; display: flex; align-items: center; justify-content: space-between; }
+.alt .hint { font-size: 20px; }
+</style>
+<div class="wm"><img src="../assets/pleya_wordmark.png" alt="Pleya"></div>
+<div class="left">
+  <h1>Kies hoe je inlogt</h1>
+  <p>Pleya verbindt met je Plex- of Jellyfin-mediaserver. Kies er een om te beginnen.</p>
+  <div class="rows">
+    <div class="row focus"><div class="be">{{icon:plex}}</div><div class="body"><div class="t">Inloggen met Plex</div><div class="s">Scan de QR-code op je telefoon</div></div>{{icon:chev}}</div>
+    <div class="row"><div class="be">{{icon:jellyfin}}</div><div class="body"><div class="t">Verbinden met Jellyfin</div><div class="s">Voer je server-URL, gebruikersnaam en wachtwoord in; Quick Connect als de server het aanbiedt</div></div>{{icon:chev}}</div>
+    <div class="hint" style="margin-top:24px">Pleya Server, Pleya Share en Lokale map: pas na inloggen, onder Mijn Pleya ▸ Servers (PRODUCT DECISION of ze hier komen)</div>
+  </div>
+</div>
+<div class="right">
+  <h2>Scan deze QR-code om in te loggen</h2>
+  <p>De QR-code opent <b>app.plex.tv/auth</b> op je telefoon. De code als tekst tonen bestaat niet in de app (PRODUCT DECISION).</p>
+  <div class="code" style="justify-content:center"><div class="qr" style="width:280px;height:280px">{{icon:qr}}</div></div>
+  <div class="wait"><div class="spin"></div> Wachten op authenticatie...</div>
+  <div class="alt">
+    <div class="hint">Gebruik je een Jellyfin-server? <b style="color:var(--ink)">Verbind met Jellyfin</b></div>
+    <div class="btn quiet">Opnieuw proberen</div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 22 · Eerste start met de twee bestaande backends en de QR-flow; Browser gebruiken verdwijnt op Apple TV</div>

@@ -1,0 +1,38 @@
+<style>
+.head { display: flex; gap: 40px; align-items: center; }
+.head .av { width: 220px; height: 220px; border-radius: 999px; background: var(--elevated); display: grid; place-items: center; font-size: 72px; font-weight: 700; color: var(--ink-2); flex: none; overflow: hidden; }
+.head .av img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; }
+.head h1 { font-size: 52px; font-weight: 700; letter-spacing: -.01em; }
+.head .meta { font-size: 22px; color: var(--ink-2); margin-top: 8px; }
+.head .bio { font-size: 21px; color: var(--ink-3); margin-top: 12px; max-width: 1100px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.head .btn-row { margin-top: 22px; }
+.rails { margin-top: 44px; }
+.rails .rail-label { display: flex; align-items: baseline; gap: 14px; }
+.rails .rail-label .cnt { font-size: 20px; color: var(--ink-3); }
+.card .role { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 12px 12px; font-size: 16px; color: var(--ink-2); background: linear-gradient(180deg, transparent, rgba(20,20,20,.9)); }
+</style>
+{{nav:Films|live}}
+<div class="page">
+  <div class="head">
+    <div class="av"><img src="{{art:dune2-backdrop}}" style="object-position:52% 25%"></div>
+    <div>
+      <h1>Timothée Chalamet</h1>
+      <div class="meta">Acteur · geboren 27 december 1995, New York · 9 titels op je servers</div>
+      <div class="bio">Amerikaans-Franse acteur, bekend van Call Me by Your Name, Dune en A Complete Unknown. Werkt geregeld samen met Denis Villeneuve en Greta Gerwig.</div>
+      <div class="btn-row"><div class="btn primary focus">{{icon:play}} Willekeurig afspelen</div><div class="btn">{{icon:bookmark}} Volgen</div></div>
+    </div>
+  </div>
+  <div class="rails">
+    <div class="rail-label">Films <span class="cnt">6 titels · over alle servers</span></div>
+    <div class="rail">
+      <div class="card p"><div class="art"><img src="{{art:dune2-poster}}"><span class="src">2 bronnen</span><div class="role">als Paul Atreides</div></div><div class="t">Dune: Part Two</div><div class="s">2024</div></div>
+      <div class="card p"><div class="art"><img src="{{art:dune1-poster}}"><span class="seen">{{icon:check}}</span><div class="role">als Paul Atreides</div></div><div class="t">Dune</div><div class="s">2021</div></div>
+      <div class="card p"><div class="art"><img src="{{art:wonka-poster}}"><div class="role">als Willy Wonka</div></div><div class="t">Wonka</div><div class="s">2023</div></div>
+      <div class="card p"><div class="art"><img src="{{art:barbie-poster}}" style="filter:grayscale(1)"><div class="role">cameo</div></div><div class="t">Barbie</div><div class="s">2023</div></div>
+      <div class="card p"><div class="art"><img src="{{art:interstellar-poster}}"><div class="role">als Tom (jong)</div></div><div class="t">Interstellar</div><div class="s">2014</div></div>
+      <div class="card p"><div class="art"><img src="{{art:grandbudapest-poster}}" style="filter:grayscale(.6)"><div class="role">als Zero</div></div><div class="t">The French Dispatch</div><div class="s">2021</div></div>
+      <div class="card p"><div class="art"><img src="{{art:lalaland-poster}}" style="filter:grayscale(.8)"></div><div class="t">Beautiful Boy</div><div class="s">2018</div></div>
+    </div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 25 · Persoonspagina: filmografie in de railtaal, één kaart per titel over alle servers</div>

@@ -1,0 +1,65 @@
+<style>
+.crumb { font-size: 22px; color: var(--ink-3); margin-top: 8px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 34px; }
+.sw { display: flex; gap: 12px; }
+.sw .opt { flex: 1; background: var(--surface); border-radius: var(--r-tile); padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+.sw .opt .pv { height: 90px; border-radius: 10px; border: 1px solid var(--hair); position: relative; overflow: hidden; }
+.sw .opt .pv i { position: absolute; left: 12px; top: 12px; width: 44px; height: 30px; border-radius: 6px; background: rgba(255,255,255,.14); }
+.sw .opt .pv b { position: absolute; left: 12px; bottom: 12px; width: 120px; height: 8px; border-radius: 4px; background: rgba(255,255,255,.3); }
+.sw .opt .t { font-size: 22px; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+.sw .opt.on { background: var(--elevated); }
+.sw .opt.focus { box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--ink); }
+.dens { display: flex; align-items: center; gap: 18px; background: var(--surface); border-radius: var(--r-tile); padding: 22px 28px; margin-top: 12px; }
+.dens .t { font-size: 24px; font-weight: 500; }
+.dens .s { font-size: 19px; color: var(--ink-3); margin-top: 2px; }
+.dens .steps { margin-left: auto; display: flex; gap: 8px; }
+.dens .steps span { width: 46px; height: 46px; border-radius: 10px; background: var(--elevated); display: grid; place-items: center; font-size: 20px; color: var(--ink-3); }
+.dens .steps span.on { background: var(--ink); color: var(--bg); font-weight: 700; }
+.pv-grid { position: absolute; right: var(--inset); bottom: 44px; left: 1010px; }
+.pv-grid .rail-label { font-size: 22px; color: var(--ink-3); margin-bottom: 16px; }
+.pv-grid .rail { gap: 14px; }
+.pv-grid .card.p { width: 148px; }
+.pv-grid .card.p .art { width: 148px; height: 222px; }
+</style>
+{{nav:Mijn Pleya|live}}
+<div class="page">
+  <div class="page-title">Uiterlijk</div>
+  <div class="crumb">Mijn Pleya ▸ Instellingen ▸ Uiterlijk</div>
+  <div class="two">
+    <div>
+      <div class="group-label">Weergave</div>
+      <div class="sw">
+        <div class="opt"><div class="pv" style="background:linear-gradient(90deg,#000 50%,#f2f2f2 50%)"><i></i><b></b></div><div class="t">Systeem</div><div class="s muted" style="font-size:18px">Volgt tvOS</div></div>
+        <div class="opt on focus"><div class="pv" style="background:#000"><i></i><b></b></div><div class="t">OLED <span class="check">{{icon:check}}</span></div><div class="s muted" style="font-size:18px">Zuiver zwart, minder gloed</div></div>
+        <div class="opt"><div class="pv" style="background:#141414"><i></i><b></b></div><div class="t">Donker</div><div class="s muted" style="font-size:18px">Standaard</div></div>
+        <div class="opt"><div class="pv" style="background:#f2f2f2"><i style="background:rgba(0,0,0,.12)"></i><b style="background:rgba(0,0,0,.3)"></b></div><div class="t">Licht</div><div class="s muted" style="font-size:18px">Sterkere artwork-wash</div></div>
+      </div>
+      <div class="group-label">Bibliotheek dichtheid</div>
+      <div class="dens"><div><div class="t">Bibliotheek dichtheid</div><div class="s">Compact tot Comfortabel</div></div><div class="steps"><span>1</span><span>2</span><span class="on">3</span><span>4</span><span>5</span></div></div>
+      <div class="rows" style="margin-top:12px">
+        <div class="row"><div class="body"><div class="t">Titels onder posters</div><div class="s">Uit betekent alleen artwork, titel bij focus</div></div><div class="switch on"></div></div>
+        <div class="row"><div class="body"><div class="t">Clearlogo op de hero</div><div class="s">Titellogo boven de tekstfallback</div></div><div class="switch on"></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="group-label">Beweging en beeld <span class="muted" style="font-size:18px">(rijen hieronder bestaan niet als instelling: PRODUCT DECISION)</span></div>
+      <div class="rows">
+        <div class="row"><div class="body"><div class="t">Hero automatisch wisselen</div><div class="s">Elke 12 seconden, stopt bij focus</div></div><div class="switch on"></div></div>
+        <div class="row"><div class="body"><div class="t">Sfeerverlichting achter de speler</div><div class="s">Ambient glow uit het beeld</div></div><div class="switch"></div></div>
+        <div class="row"><div class="body"><div class="t">Verminder beweging</div><div class="s">Volgt de systeeminstelling van tvOS</div></div><div class="val">Systeem</div>{{icon:chev}}</div>
+        <div class="row"><div class="body"><div class="t">Taal</div></div><div class="val">Nederlands</div>{{icon:chev}}</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="pv-grid">
+  <div class="rail-label">Voorbeeld bij dichtheid 3</div>
+  <div class="rail">
+    <div class="card p"><div class="art"><img src="{{art:oppenheimer-poster}}"></div></div>
+    <div class="card p"><div class="art"><img src="{{art:barbie-poster}}"></div></div>
+    <div class="card p"><div class="art"><img src="{{art:interstellar-poster}}"></div></div>
+    <div class="card p"><div class="art"><img src="{{art:lalaland-poster}}"></div></div>
+    <div class="card p"><div class="art"><img src="{{art:wonka-poster}}"></div></div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 20 · Uiterlijk: 7 van 24 bestaande rijen getekend; Titels onder posters, Clearlogo, Hero-rotatie en Verminder beweging bestaan niet als instelling</div>

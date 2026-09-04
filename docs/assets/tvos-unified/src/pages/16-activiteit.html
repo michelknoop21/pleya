@@ -1,0 +1,53 @@
+<style>
+.now { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+.sess { background: var(--surface); border-radius: var(--r-tile); overflow: hidden; }
+.sess .thumb { height: 200px; position: relative; overflow: hidden; }
+.sess .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sess .thumb .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgba(255,255,255,.25); }
+.sess .thumb .prog i { display: block; height: 100%; background: var(--accent); }
+.sess .thumb .live { position: absolute; left: 12px; top: 12px; background: rgba(20,20,20,.78); font-size: 15px; padding: 3px 9px; border-radius: 6px; display: flex; gap: 6px; align-items: center; }
+.sess .body { padding: 18px 22px 22px; }
+.sess .t { font-size: 24px; font-weight: 700; }
+.sess .s { font-size: 19px; color: var(--ink-2); margin-top: 6px; }
+.sess .m { font-size: 18px; color: var(--ink-3); margin-top: 4px; }
+.sess .who { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 19px; color: var(--ink-2); }
+.sess .who .av { width: 32px; height: 32px; border-radius: 999px; background: var(--elevated); display: grid; place-items: center; font-size: 15px; font-weight: 600; }
+.sess.focus { background: var(--elevated); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--ink); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 36px; }
+.now { grid-template-columns: repeat(2, 1fr); max-width: 1240px; }
+.two .tiles { grid-template-columns: 1fr; }
+.task { display: flex; align-items: center; gap: 18px; background: var(--surface); border-radius: var(--r-tile); padding: 18px 24px; }
+.task + .task { margin-top: 12px; }
+.task .t { font-size: 22px; font-weight: 500; }
+.task .s { font-size: 18px; color: var(--ink-3); margin-top: 3px; }
+.task .bar { margin-left: auto; width: 220px; height: 8px; border-radius: 999px; background: var(--elevated); overflow: hidden; }
+.task .bar i { display: block; height: 100%; background: var(--ink-2); }
+.task .pct { font-size: 19px; color: var(--ink-2); width: 60px; text-align: right; }
+</style>
+{{nav:Mijn Pleya|live}}
+<div class="page">
+  <div class="page-title">Nu aan het kijken</div>
+  <div class="page-sub">Mijn Pleya ▸ Activiteit · 2 sessies actief · Plex thuis en NAS</div>
+
+  <div class="group-label" style="margin-top:34px">Sessies</div>
+  <div class="now">
+    <div class="sess focus">
+      <div class="thumb"><img src="{{art:thebear-backdrop}}"><span class="live"><span class="dot"></span> Direct play</span><div class="prog"><i style="width:38%"></i></div></div>
+      <div class="body"><div class="t">The Bear</div><div class="s">S3 E2 · Next · 14:02 van 31:40</div><div class="m">NAS · 1080p · Woonkamer Apple TV</div><div class="who"><span class="av">E</span> Eray</div></div>
+    </div>
+    <div class="sess">
+      <div class="thumb"><img src="{{art:oppenheimer-backdrop}}"><span class="live"><span class="dot warn"></span> Transcoderen</span><div class="prog"><i style="width:71%"></i></div></div>
+      <div class="body"><div class="t">Oppenheimer</div><div class="s">2u 07m van 3u 00m</div><div class="m">Plex thuis · 4K naar 1080p · iPhone van Michel</div><div class="who"><span class="av">M</span> Michel</div></div>
+    </div>
+  </div>
+
+  <div class="two">
+    <div>
+      <div class="group-label">Servertaken <span class="muted" style="font-size:20px;margin-left:12px">Plex thuis · op TV bewust uitgeschakeld, hier als vraag getekend</span></div>
+      <div class="task"><div><div class="t">Bibliotheek scannen</div><div class="s">Films 4K · 2 nieuwe items</div></div><div class="bar"><i style="width:64%"></i></div><div class="pct">64%</div></div>
+      <div class="task"><div><div class="t">Intro-markers analyseren</div><div class="s">Series · seizoen 2 van Severance</div></div><div class="bar"><i style="width:12%"></i></div><div class="pct">12%</div></div>
+      <div class="task"><div><div class="t">Metadata vernieuwen</div><div class="s">Gepland om 03:00</div></div><div class="pct muted">wacht</div></div>
+    </div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 16 · Nu aan het kijken; Samen Kijken en Pleya Remote staan er niet in (aparte surface, DEC-070); servertaken = PRODUCT DECISION</div>
