@@ -1091,6 +1091,19 @@ class TvHomeLayout {
   /// inset, and its height follows from this, clamped by [heroMaxHeightFraction].
   static const double heroAspectRatio = 1770 / 718;
 
+  /// Where a backdrop that is taller than the card is anchored when it is
+  /// cover-cropped into it. A 16:9 source in the 2.465:1 card loses 28% of its
+  /// height, and *which* 28% is a composition decision, not a fit rule: faces
+  /// and titles sit in the upper half of nearly every backdrop, the sky above
+  /// them is the cheapest thing to lose, and the ground below is the second.
+  /// `-0.3` keeps the upper 35% intact and takes the rest from both ends, the
+  /// same anchor the mockup family draws as `object-position: 50% 35%`.
+  ///
+  /// This only has an effect because the request is made in the source's
+  /// ratio ([tvHeroRequestBox]); before that the server had already cropped
+  /// from the centre and any value here was dead on Plex. HERO1.
+  static const Alignment heroArtAlignment = Alignment(0, -0.3);
+
   /// 18 reference px ÷ 1.57 (DEC-028's logical≈ref conversion), rounded to the
   /// nearest whole logical pixel so the ring the artwork is clipped to and the
   /// card's own shadow agree on where the corner is.

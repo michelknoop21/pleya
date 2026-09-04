@@ -91,7 +91,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | MYP1 | Regressiebewijs voor het Mijn Pleya-werk | OPEN | n.v.t. |
 | ACT1 | Activiteit is niet te verifiëren | ACCEPTANCE GAP | n.v.t. |
 | VER2 | Automation-ids escapen geen blokhaken | DEFERRED | n.v.t. |
-| HERO1 | Framing van het hero-beeld op Home: op hardware staan halve beelden in de hero, Plex snijdt gecentreerd vóórdat de widget iets kan kiezen | OPEN | n.v.t. |
+| HERO1 | Framing van het hero-beeld op Home: op hardware staan halve beelden in de hero, Plex snijdt gecentreerd vóórdat de widget iets kan kiezen | FIXED, hardware open | volgt |
 | SEARCH1 | Zoeken benoemt zijn resultaten buiten het railcontract om | DEFERRED | n.v.t. |
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
 | VER3 | De eerste tegel van een rail steekt links buiten de veilige zone | OPEN | n.v.t. |
@@ -1953,6 +1953,17 @@ verschillen of met een kaartratio die dichter bij 16:9 ligt. Negatieve controle:
 een test die de aangevraagde URL ontleedt en eist dat breedte gedeeld door hoogte
 gelijk is aan de bronratio, en die is op de huidige code rood met 2,465 tegen
 1,778. Pas als die groen is heeft een uitlijningskeuze in de widget effect op Plex.
+
+**Uitgevoerd op 4 september**, op Michels vraag of dit op te lossen was, met zijn
+kanttekening dat het niet alleen om Plex gaat. De negatieve controle staat in
+`test/widgets/tv_hero_artwork_request_test.dart` en vroeg op de oude code 3840 bij
+1500 aan, ratio 2,56; rood. De fix zit bij de gedeelde eigenaar:
+`OptimizedMediaImage` kreeg een `requestSize` los van de tekenbox, `tvHeroRequestBox`
+geeft de box in de bronratio, en de uitlijning is het token
+`TvHomeLayout.heroArtAlignment` op `Alignment(0, -0,3)`, hetzelfde anker als
+`object-position: 50% 35%` in de mockupfamilie. Groen na, 78 gerichte tests, analyze
+schoon. DEC-094. Wat open blijft is precies wat alleen op hardware te zien is: of
+`-0,3` de juiste keuze is voor de backdrops die Michel zag. Build 249 draagt de fix.
 
 
 ### LIB7, Bibliotheken wordt bronbeheer

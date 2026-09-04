@@ -17,9 +17,13 @@
 ///   the *card's* ratio, so a wide card resolves to a 16:9 backdrop and the
 ///   [BillboardArtKind] it returns is the truth about whether that artwork can
 ///   be drawn sharp.
-/// * **What size to ask the server for.** The card's own pixels, at the card's
-///   own ratio (DEC-057): the request box and the sharp layer have one shape,
-///   so the server-side crop is a no-op instead of a second, invisible one.
+/// * **What size to ask the server for.** The *source's* ratio, at least as
+///   large as the card ([tvHeroRequestBox]). That is DEC-057's rule applied to
+///   the wide box it left alone: a request in the card's ratio made Plex crop
+///   the source from the centre before this layer drew anything, so the
+///   alignment below was dead there and live on Jellyfin, which fits instead
+///   of cropping. In the source's ratio no server crops, and the crop has one
+///   owner: `BoxFit.cover` plus [TvHomeLayout.heroArtAlignment]. HERO1.
 /// * **How to draw it.** Sharp `BoxFit.cover` for a real backdrop or square
 ///   art; a blurred wash plus the poster drawn sharp at its own 2:3 in the
 ///   card's right half for a poster-only title; a themed gradient when the
@@ -70,15 +74,41 @@ enum TvHeroArtKind {
 ///
 /// Pure, so `test/widgets/tv_hero_artwork_test.dart` can assert the fallback
 /// order — backdrop, then square, then poster-as-fill, then nothing — directly.
-({TvHeroArtKind kind, String? path}) tvHeroArtFor(MediaItem item, {required double containerAspectRatio}) {
+({TvHeroArtKind kind, String? path, double? sourceAspectRatio}) tvHeroArtFor(
+  MediaItem item, {
+  required double containerAspectRatio,
+}) {
   final art = item.billboardArt(containerAspectRatio: containerAspectRatio);
-  if (art != null && art.canRenderSharp) return (kind: TvHeroArtKind.sharp, path: art.path);
+  if (art != null && art.canRenderSharp) {
+    return (
+      kind: TvHeroArtKind.sharp,
+      path: art.path,
+      sourceAspectRatio: art.kind == BillboardArtKind.square ? 1.0 : 16 / 9,
+    );
+  }
 
   // `billboardArt` already fell through to whatever poster-ish art exists, and
   // told us it must not be drawn sharp under the app's own title.
   final fallback = art?.path ?? item.thumbPath ?? item.grandparentThumbPath;
-  if (fallback != null && fallback.isNotEmpty) return (kind: TvHeroArtKind.posterFill, path: fallback);
-  return (kind: TvHeroArtKind.none, path: null);
+  if (fallback != null && fallback.isNotEmpty) {
+    return (kind: TvHeroArtKind.posterFill, path: fallback, sourceAspectRatio: null);
+  }
+  return (kind: TvHeroArtKind.none, path: null, sourceAspectRatio: null);
+}
+
+/// The box to ask the server for when a source of [sourceAspectRatio] is
+/// cover-fitted into [card]: the source's own ratio, scaled so it covers the
+/// card. Pure, so the HERO1 test can state the invariant without a widget.
+///
+/// Cover picks the larger of the two scales. A source taller than the card
+/// (16:9 or square in a 2.465:1 card) is width-bound, so the request is the
+/// card's width and whatever height the ratio gives; a source wider than the
+/// card is height-bound. Either way the request never has the card's ratio
+/// unless the source does.
+Size tvHeroRequestBox(Size card, double sourceAspectRatio) {
+  final cardRatio = card.width / card.height;
+  if (sourceAspectRatio < cardRatio) return Size(card.width, card.width / sourceAspectRatio);
+  return Size(card.height * sourceAspectRatio, card.height);
 }
 
 class TvHeroArtwork extends StatelessWidget {
@@ -105,9 +135,8 @@ class TvHeroArtwork extends StatelessWidget {
         width: size.width,
         height: size.height,
         fit: BoxFit.cover,
-        // Top-anchored for the same reason the fullscreen billboard is: a
-        // backdrop taller than its slot loses the sky, not the faces.
-        alignment: Alignment.topCenter,
+        requestSize: tvHeroRequestBox(size, art.sourceAspectRatio!),
+        alignment: TvHomeLayout.heroArtAlignment,
         // heroArt, not art: same wide-backdrop handling, but sized against
         // the TV output surface. On `art`'s 2560 cap this card -- 3538 physical
         // pixels wide on Apple TV -- received every backdrop 1.38x too small,
