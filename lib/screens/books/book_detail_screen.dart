@@ -82,25 +82,6 @@ class BookDetailScreen extends StatelessWidget {
     );
   }
 
-  /// Opens the reader on the page the source has for this publication.
-  ///
-  /// Nothing happens when there is none. A page comes from a reader engine that
-  /// lays a publication out, that engine is PS-15, and until it exists the fixed
-  /// set carries one page for the one book approved golden 07 is drawn with.
-  Future<void> _openReader(BuildContext context) async {
-    final provider = context.read<BooksHomeProvider?>();
-    if (provider == null) return;
-    final page = await provider.readerPage(book.id);
-    if (page == null || !context.mounted) return;
-    final toc = await provider.tableOfContents(book.id);
-    if (!context.mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => BookReaderScreen(book: book, page: page, toc: toc),
-      ),
-    );
-  }
-
   /// One entry of the column, in golden 05's own order. Every one of them is
   /// horizontally inset by the page margin except the cover, which is centred.
   Widget _block(BuildContext context, BookDetailBlock block, BookDetailView view) {
@@ -113,7 +94,7 @@ class BookDetailScreen extends StatelessWidget {
         id: AutomationIds.booksDetailAction,
         instance: 'primary',
         role: 'button',
-        child: BookDetailAction(label: view.primaryActionLabel, isPrimary: true, onTap: () => _openReader(context)),
+        child: _ReadAction(book: view.book, label: view.primaryActionLabel),
       ),
       BookDetailBlock.secondary => AutomationNode(
         id: AutomationIds.booksDetailAction,
@@ -260,4 +241,63 @@ class _Series extends StatelessWidget {
     overflow: TextOverflow.ellipsis,
     style: TextStyle(fontSize: 13.5, height: 18 / 13.5, color: Colors.white.withValues(alpha: 0.5)),
   );
+}
+
+/// The reading button, and the only stateful thing on this page.
+///
+/// Stateful for one reason: a guard that keeps one reader from being opened
+/// twice. Opening awaits the source for a page and then for a table of
+/// contents, so between the tap and the `Navigator.push` there is a window in
+/// which the button is still live and a second tap starts a second open. With
+/// [DemoBooksSource] both futures complete in a microtask and the window is
+/// invisible; `BooksSource` is the documented seam for a real source, and
+/// there the same two taps push two [BookReaderScreen]s onto one navigator.
+///
+/// The guard is held until the pushed route returns, not until the push
+/// happens: while the reader is on screen this button is not reachable anyway,
+/// and releasing on return is one rule instead of two.
+class _ReadAction extends StatefulWidget {
+  const _ReadAction({required this.book, required this.label});
+
+  final Book book;
+  final String label;
+
+  @override
+  State<_ReadAction> createState() => _ReadActionState();
+}
+
+class _ReadActionState extends State<_ReadAction> {
+  bool _opening = false;
+
+  /// Opens the reader on the page the source has for this publication.
+  ///
+  /// Nothing happens when there is none. A page comes from a reader engine that
+  /// lays a publication out, that engine is PS-15, and until it exists the fixed
+  /// set carries one page for the one book approved golden 07 is drawn with.
+  Future<void> _openReader() async {
+    if (_opening) return;
+    final provider = context.read<BooksHomeProvider?>();
+    if (provider == null) return;
+    setState(() => _opening = true);
+    try {
+      final page = await provider.readerPage(widget.book.id);
+      if (page == null || !mounted) return;
+      final toc = await provider.tableOfContents(widget.book.id);
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BookReaderScreen(book: widget.book, page: page, toc: toc),
+        ),
+      );
+    } finally {
+      // Every path, including a bail on a publication with no page: leaving the
+      // guard engaged would make the button dead rather than safe.
+      if (mounted) setState(() => _opening = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BookDetailAction(label: widget.label, isPrimary: true, onTap: _openReader);
+  }
 }

@@ -1,13 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/books/book.dart';
 import 'package:pleya/books/book_detail_layout.dart';
+import 'package:pleya/books/book_reader_page.dart';
+import 'package:pleya/books/demo_book_reader.dart';
+import 'package:pleya/books/book_toc.dart';
 import 'package:pleya/books/books_source.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/providers/books_home_provider.dart';
 import 'package:pleya/screens/books/all_books_screen.dart';
 import 'package:pleya/screens/books/book_detail_screen.dart';
 import 'package:pleya/screens/books/books_home_screen.dart';
+import 'package:pleya/screens/books/book_reader_screen.dart';
 import 'package:pleya/screens/books/books_search_screen.dart';
 import 'package:pleya/screens/books/widgets/book_cover.dart';
 import 'package:pleya/screens/books/widgets/book_description.dart';
@@ -87,6 +93,43 @@ Future<void> _pumpDetail(WidgetTester tester, Book book, {List<BookSeries> serie
 
 /// The top edge of a block, in frame points.
 double _top(WidgetTester tester, Finder finder) => tester.getTopLeft(finder).dy;
+
+/// A source that answers when the test says so.
+///
+/// `DemoBooksSource` resolves in a microtask, so the window between the tap and
+/// the `Navigator.push` closes before a second tap can land — which is exactly
+/// why the missing guard was invisible. `BooksSource` is the documented seam
+/// for a real source, and a real source takes time. A `Completer` rather than a
+/// `Future.delayed`: `testWidgets` runs on a fake clock, so a delayed future
+/// never fires unless the test pumps it, and holding the completer makes the
+/// window explicit instead of timed.
+class _GatedBooksSource implements BooksSource {
+  _GatedBooksSource();
+
+  static const _demo = DemoBooksSource();
+
+  /// One per call to [readerPage], so a test can count how many opens actually
+  /// started — the sharpest form of "the second tap did nothing".
+  final pageRequests = <Completer<BookReaderPage?>>[];
+
+  void answerLastPage(String bookId) => pageRequests.last.complete(demoBookReaderPage(bookId));
+
+  @override
+  Future<List<Book>> books() => _demo.books();
+
+  @override
+  Future<List<BookSeries>> series() => _demo.series();
+
+  @override
+  Future<BookToc?> tableOfContents(String bookId) => _demo.tableOfContents(bookId);
+
+  @override
+  Future<BookReaderPage?> readerPage(String bookId) {
+    final completer = Completer<BookReaderPage?>();
+    pageRequests.add(completer);
+    return completer.future;
+  }
+}
 
 Finder get _primary => find.byType(BookDetailAction).at(0);
 Finder get _secondary => find.byType(BookDetailAction).at(1);
@@ -382,4 +425,93 @@ void main() {
       expect(find.byType(BookDetailScreen), findsOneWidget);
     });
   });
+
+  /// One tap on `Lees verder` opens one reader.
+  ///
+  /// `_openReader` awaits the source for a page and then for a table of
+  /// contents before it pushes, so without a guard the button stays live across
+  /// that window and two taps push two `BookReaderScreen`s onto one navigator.
+  group('the reading button opens one reader', () {
+    Future<_GatedBooksSource> pumpGated(WidgetTester tester, {List<Route<dynamic>>? pushed}) async {
+      tester.view.physicalSize = _viewport;
+      tester.view.devicePixelRatio = 1;
+      tester.view.viewPadding = const FakeViewPadding(top: _safeTop);
+      addTearDown(tester.view.reset);
+
+      final source = _GatedBooksSource();
+      final provider = BooksHomeProvider(source: source);
+      addTearDown(provider.dispose);
+      await provider.load();
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<BooksHomeProvider>.value(
+          value: provider,
+          child: MaterialApp(
+            theme: ThemeData.dark(),
+            navigatorObservers: [if (pushed != null) _PushRecorder(pushed)],
+            home: BookDetailScreen(book: _reading, series: _series),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return source;
+    }
+
+    testWidgets('a second tap inside the source window starts nothing', (tester) async {
+      final pushed = <Route<dynamic>>[];
+      final source = await pumpGated(tester, pushed: pushed);
+      pushed.clear();
+
+      await tester.tap(_primary);
+      await tester.pump();
+      expect(source.pageRequests, hasLength(1), reason: 'the first tap asked the source');
+
+      // The source has not answered yet. This is the window.
+      await tester.tap(_primary);
+      await tester.pump();
+      expect(
+        source.pageRequests,
+        hasLength(1),
+        reason: 'the second tap must not start a second open while the first is still in flight',
+      );
+
+      source.answerLastPage(_reading.id);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BookReaderScreen), findsOneWidget);
+      expect(pushed.whereType<MaterialPageRoute<dynamic>>(), hasLength(1));
+    });
+
+    testWidgets('the button works again after the reader is closed', (tester) async {
+      final source = await pumpGated(tester);
+
+      await tester.tap(_primary);
+      await tester.pump();
+      source.answerLastPage(_reading.id);
+      await tester.pumpAndSettle();
+      expect(find.byType(BookReaderScreen), findsOneWidget);
+
+      tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(BookReaderScreen), findsNothing);
+
+      // A guard that never releases is a dead button, not a safe one.
+      await tester.tap(_primary);
+      await tester.pump();
+      expect(source.pageRequests, hasLength(2));
+      source.answerLastPage(_reading.id);
+      await tester.pumpAndSettle();
+      expect(find.byType(BookReaderScreen), findsOneWidget);
+    });
+  });
+}
+
+/// Counts pushed routes so a test can tell one reader from two.
+class _PushRecorder extends NavigatorObserver {
+  _PushRecorder(this.pushed);
+
+  final List<Route<dynamic>> pushed;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => pushed.add(route);
 }
