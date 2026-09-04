@@ -13,6 +13,35 @@ met PS-14 ontworpen en PS-15/PS-16 begrensd, alle drie nog niet vrijgegeven._
 
 ## Waar was ik
 
+**P0b en de designreview gesloten, S0 gemeten (4 september, avond, tweede sessie).** Het
+re-baseline-pakket staat gecommit op `feat/pleyaserver`. Drie dingen erbij:
+
+1. **P0b** (`ab83a27`): de twintig afwijkingen uit `VRAGENLIJST.md` hoofdstuk 8 zaten al in E, I,
+   J, K, L, M en N en zijn nu ook doorgetrokken in D, F, H en O. De zwaarste vier: de
+   Readium-manifestlaag met een Readium-compatible Locator in plaats van CFI plus spine-index, de
+   HttpOnly-refreshcookie met `web_origin` en `external_url` als aparte instellingen, per-field
+   metadata-overrides met provenance, en drie hwaccel-backends met runtime-detectie. De zes nog
+   ontbrekende schermen hebben een nummer gekregen (11b, 36, 37, 38, 50, 51).
+2. **Reviewronde 3 op de webnorthstar** (`f3d99e8`): de vijf schermen van de uitgebreide scope
+   (17, 18, 19, 28, 35) waren gebouwd maar nooit gereviewd. 22 bevindingen, alle gecorrigeerd,
+   uitgeschreven in `C-northstar-review.md` C.5. Drie ervan zaten in `web.css` en raakten elk
+   beeld, dus de hele set van 40 schermen is opnieuw gerenderd. Eén daarvan corrigeert ronde 2:
+   `05@393` liep wel degelijk buiten de viewport. Drie schermen botsten met een bindend antwoord
+   uit de vragenlijst (waarderingen als duim in plaats van 1 tot 10, alleen VAAPI in plaats van
+   drie backends, back-updoel als constante in plaats van instelling).
+3. **S0.1, de proefmerge** (`429fc7f`): gemeten in een wegwerp-worktree, uitgeschreven in
+   `docs/pleya-server-rebaseline/merge-log.md`. 196 commits aan de kant van `main` tegen 49 aan
+   deze kant, 14 conflictbestanden, 26 die schoon auto-mergen. De vijf voorspelde conflicten in
+   productiecode zijn er geen: die mergen tekstueel schoon, wat lastiger is dan een conflict,
+   want alleen codegen met een lege diff plus `drift_relations_test` bewijst dat de gegenereerde
+   bestanden de merge overleefd hebben. `docs/DECISIONS.md` mergt zonder markering en houdt
+   twaalf dubbele nummers over (063 tot 073 plus 093).
+
+Open en wachtend op Michel: P2 (akkoord op de vijf gecorrigeerde schermen), P3 (de zes nog te
+tekenen mockups) en het aftakmoment voor `integration/pleya-server-rebaseline`. `main` bewoog
+tijdens de meting zelf van `0ad49ec` naar `64b0105`, dus de branch wordt pas afgetakt als hij
+stilligt; vraag 58 vraagt dat expliciet.
+
 **Re-baseline van Pleya Server geschreven, ongecommit (4 september, avond).** Het pakket
 `docs/pleya-server-rebaseline/` (A tot O, C-review, HANDOFF.md) en de webnorthstar
 `docs/assets/pleya-web-northstar/` (40 schermen, 80 beelden, bron en `DESIGN.md`) staan in de
