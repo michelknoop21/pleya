@@ -1,0 +1,31 @@
+<style>
+.hero { position: absolute; left: var(--inset); right: var(--inset); border-radius: var(--r-billboard); overflow: hidden; background: var(--surface); }
+.hero img.bd { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 35%; }
+.hero .scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20,20,20,.88) 0%, rgba(20,20,20,.62) 34%, rgba(20,20,20,.06) 62%, rgba(20,20,20,0) 100%), linear-gradient(0deg, rgba(20,20,20,.55) 0%, rgba(20,20,20,0) 45%); }
+.htext { position: absolute; left: 56px; bottom: 48px; width: 880px; }
+.htext h1 { font-size: 56px; font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
+.htext .meta { margin-top: 12px; }
+.htext .syn { margin-top: 12px; font-size: 22px; line-height: 1.35; color: var(--ink-2); }
+.htext .btn-row { margin-top: 26px; }
+.rails { position: absolute; left: var(--inset); right: 0; }
+.rails .rail-label { margin-bottom: 18px; }
+.rail { gap: 22px; }
+</style>
+<style>.hero { top: 132px; height: 718px; } .rails { top: 880px; }</style>
+{{nav:Home}}
+<div class="hero"><img class="bd" src="{{art:dune2-backdrop}}"><div class="scrim"></div><div class="htext">
+      <h1>Dune: Part Two</h1>
+      <div class="meta">Film<span class="sep">·</span>Sciencefiction<span class="sep">·</span>2024<span class="sep">·</span>2u 46m</div>
+      <div class="syn">Paul Atreides verenigt zich met Chani en de Fremen en zint op wraak op de samenzweerders die zijn familie vernietigden.</div>
+      <div class="btn-row"><div class="btn primary focus">{{icon:play}} Afspelen</div><div class="btn">{{icon:info}} Meer info</div></div>
+    </div></div>
+<div class="rails"><div class="rail-label">Verder kijken</div><div class="rail">
+    <div class="card p"><div class="art"><img src="{{art:eeaao-poster}}"><div class="prog"><i style="width:70%"></i></div></div></div>
+    <div class="card p"><div class="art"><img src="{{art:barbie-poster}}"><div class="prog"><i style="width:30%"></i></div></div></div>
+    <div class="card p"><div class="art"><img src="{{art:penguin-poster}}"><span class="src">2 bronnen</span></div></div>
+    <div class="card p"><div class="art"><img src="{{art:poorthings-poster}}"></div></div>
+    <div class="card p"><div class="art"><img src="{{art:conclave-poster}}"></div></div>
+    <div class="card p"><div class="art"><img src="{{art:wonka-poster}}"></div></div>
+    <div class="card p"><div class="art"><img src="{{art:anora-poster}}"></div></div>
+  </div></div>
+<div class="note">CANDIDATE · MOCKUP 29 · optie A (northstar 01 als referentie): kaart 1770x718 op 36px onder de nav, rail op 30px onder de kaart; de app zet de kaart lager en kleiner</div>

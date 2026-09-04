@@ -92,7 +92,8 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | ACT1 | Activiteit is niet te verifiëren | ACCEPTANCE GAP | n.v.t. |
 | VER2 | Automation-ids escapen geen blokhaken | DEFERRED | n.v.t. |
 | HERO1 | Framing van het hero-beeld op Home: op hardware staan halve beelden in de hero, Plex snijdt gecentreerd vóórdat de widget iets kan kiezen | FIXED, hardware open | `d4ec1fe` |
-| HERO2 | De titelband van de hero is de clearlogo-hoogte, dus een tweeregelige titel wordt op de baseline afgesneden | FIXED | volgt |
+| HERO2 | De titelband van de hero is de clearlogo-hoogte, dus een tweeregelige titel wordt op de baseline afgesneden | FIXED | `0ad49ec` |
+| HOME1 | Home naast de northstar: het hero-item staat niet heel in beeld, witruimte, overgangen, indeling en styling wijken af, en de navigatiebalk mee; mockup 29 | IN PROGRESS | n.v.t. |
 | SEARCH1 | Zoeken benoemt zijn resultaten buiten het railcontract om | DEFERRED | n.v.t. |
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
 | VER3 | De eerste tegel van een rail steekt links buiten de veilige zone | OPEN | n.v.t. |
@@ -2093,3 +2094,30 @@ title needs 102.4"; met de fix groen.
 **Bewijs in de simulator.** Dezelfde slide, dezelfde titel, voor en na: de
 ink-hoogte van de tweede titelregel gaat van 85 naar 92 pixels, en de afgesneden
 letteronderkanten zijn terug.
+
+
+### HOME1, Home naast de northstar
+
+Gevraagd door Michel op 4 september, na de hero-fixes: "kijk home screen qua design
+[...] volgens mij is in de hero namelijk nog niet hele item goed in beeld [...] ook
+even goed na zodat het beter wordt qua witruimte en overgangen en indeling en
+styling maak een mockup. Kijk ook gelijk de navigatie balk na." En: "laat die build
+nog even zitten." Build 250 is daarom gecommit (`0ad49ec`) maar niet gebouwd.
+
+**Gemeten in de simulator tegen northstar 01, op de 1080-referentie.** De herokaart
+staat in de app op 179 tot 862 (683 hoog) waar de northstar 132 tot 850 (718) tekent:
+47 lager en 35 korter, dus de witruimte onder de nav is ruim twee keer zo groot als
+bedoeld. De nav-pil is 44 tot 110 tegen 44 tot 96, dus 14 hoger dan de northstar. Het
+raillabel staat op 48 onder de kaart tegen ongeveer 40. Links in de nav tekent de app
+het Pleya-merk waar de northstar een profielchip met initiaal zet; dat is de
+`ProfileAvatar`-fallback voor een profiel zonder beeld, geen andere navigatie.
+
+**Het onderwerp valt weg door de kaartratio zelf.** 2,465:1 toont 72 procent van een
+16:9-backdrop, ook in de northstar. HERO1 bepaalt nu wélke 72 procent en dat het op
+elke backend hetzelfde is; het maakt de kaart niet hoger. Wil het hele item in beeld,
+dan is dat een besluit over de kaart, niet over de uitsnede. Mockup 29 tekent vier
+richtingen: A de northstar als referentie op de juiste maten, B een kaart van 2,0:1
+(1770x885) die 89 procent toont met de rail eronder uitpiepend, C de backdrop heel op
+16:9 in de rechter 1276 pixels van de kaart met dezelfde backdrop geblurd als vulling
+erachter (de "alleen poster"-taal van 9.4 toegepast op de backdrop, niets gesneden,
+kaart ongewijzigd), D full-bleed achter nav en tekst met de rail over de onderrand.
