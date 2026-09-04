@@ -314,6 +314,67 @@ void main() {
       );
     });
 
+    /// The two destinations DEC-094 took out of the bar without putting them
+    /// in the dynamic slot. Both used to name themselves, fail the
+    /// `barTabs.contains` check, and fall through to `barTabs.first`: opening
+    /// Zoeken from the Home header showed Zoeken with Home marked, and the
+    /// same happened for Bibliotheken, which since the My Pleya rows is
+    /// reached from there.
+    test('online, Bibliotheken lights up My Pleya, where it is reached from', () {
+      expect(
+        mainScreenSelectedBarTab(
+          currentTab: NavigationTabId.libraries,
+          isOffline: false,
+          barTabs: bar(isOffline: false),
+        ),
+        NavigationTabId.myPleya,
+      );
+    });
+
+    test('online, Zoeken lights up Home, where its glyph lives', () {
+      expect(
+        mainScreenSelectedBarTab(currentTab: NavigationTabId.search, isOffline: false, barTabs: bar(isOffline: false)),
+        NavigationTabId.discover,
+      );
+    });
+
+    /// Boeken, Live TV, Kijklijst and Downloads compete for one slot, so
+    /// whether a destination has a slot depends on the profile. Each has to
+    /// mark itself when it won and My Pleya when it did not; a single answer
+    /// could only be right for one of the two.
+    test('a dynamic-slot candidate marks itself when it won and My Pleya when it did not', () {
+      final withLiveTv = bar(isOffline: false, hasLiveTv: true);
+      final withBooks = bar(isOffline: false, hasLiveTv: true, books: BooksAvailability.available);
+
+      expect(withLiveTv, contains(NavigationTabId.liveTv));
+      expect(
+        mainScreenSelectedBarTab(currentTab: NavigationTabId.liveTv, isOffline: false, barTabs: withLiveTv),
+        NavigationTabId.liveTv,
+      );
+
+      expect(withBooks, isNot(contains(NavigationTabId.liveTv)));
+      expect(
+        mainScreenSelectedBarTab(currentTab: NavigationTabId.liveTv, isOffline: false, barTabs: withBooks),
+        NavigationTabId.myPleya,
+        reason: 'Boeken took the slot, so Live TV is reached through My Pleya and marks that',
+      );
+
+      final withWatchlist = bar(isOffline: false, hasLiveTv: false, hasWatchlist: true);
+      expect(withWatchlist, contains(NavigationTabId.watchlist));
+      expect(
+        mainScreenSelectedBarTab(currentTab: NavigationTabId.watchlist, isOffline: false, barTabs: withWatchlist),
+        NavigationTabId.watchlist,
+        reason: 'the Kijklijst slot marks itself rather than the hub it is also listed in',
+      );
+
+      final withDownloads = bar(isOffline: false, hasLiveTv: false, hasWatchlist: false);
+      expect(withDownloads, contains(NavigationTabId.downloads));
+      expect(
+        mainScreenSelectedBarTab(currentTab: NavigationTabId.downloads, isOffline: false, barTabs: withDownloads),
+        NavigationTabId.downloads,
+      );
+    });
+
     test('every tab projects onto a destination that is actually in the bar', () {
       for (final offline in [false, true]) {
         final tabs = bar(isOffline: offline, books: BooksAvailability.available);

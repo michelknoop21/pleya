@@ -172,35 +172,70 @@ NavigationBarThemeData mobileTabBarTheme(NavigationBarThemeData base) {
 ///
 /// [barTabs] is what the bar actually renders, so the answer is checked
 /// against reality rather than against an assumption about which destinations
-/// exist. A tab can be current while its natural target is absent: Live TV
-/// without a tuner, or an online-only tab in the frame before
-/// `_normalizeTabForMode` has moved the selection. In those cases the first
-/// bar destination is the honest fallback, and it is the same thing the bar
-/// would have shown anyway, only now deliberately.
+/// exist. A tab can be current while its natural target is absent: Live TV on
+/// a profile where Boeken won the dynamic slot, or an online-only tab in the
+/// frame before `_normalizeTabForMode` has moved the selection.
+///
+/// So the answer is an ordered preference, not one destination. Naming a
+/// single one meant guessing which case the session was in, and the
+/// `barTabs.first` fallback then swallowed every wrong guess: Bibliotheken and
+/// Zoeken both named themselves, neither is ever in the bar, and both lit up
+/// Home. Where a destination is *reached from* is the second preference —
+/// My Pleya for the ones behind it, Home for Zoeken, which is a header glyph.
 @visibleForTesting
 NavigationTabId mainScreenSelectedBarTab({
   required NavigationTabId currentTab,
   required bool isOffline,
   required List<NavigationTabId> barTabs,
 }) {
+  if (isOffline) {
+    // Offline the bar is Downloads plus My Pleya
+    // ([PrimaryMobileDestinationPolicy.primaryDestinations]), so there are two
+    // answers. What survives offline is reached through the personal hub;
+    // everything else is still the current tab only in the frame before
+    // `_normalizeTabForMode` has moved the selection, and Downloads is the
+    // honest mark for it.
+    final offlinePreferred = switch (currentTab) {
+      NavigationTabId.watchlist ||
+      NavigationTabId.requests ||
+      NavigationTabId.settings ||
+      NavigationTabId.myPleya => NavigationTabId.myPleya,
+      _ => NavigationTabId.downloads,
+    };
+    if (barTabs.contains(offlinePreferred)) return offlinePreferred;
+    return barTabs.isEmpty ? currentTab : barTabs.first;
+  }
+
+  // An ordered preference rather than a single answer, because which slot is
+  // right depends on what the bar is carrying this session. Boeken, Live TV,
+  // Kijklijst and Downloads all compete for the dynamic fourth slot: the one
+  // that won marks itself, the ones that did not are reached through My Pleya
+  // and mark that. One answer had to guess which case it was in, and the
+  // `barTabs.first` fallback below then quietly caught the misses — Home lit
+  // up while the user was looking at Bibliotheken.
   final preferred = switch (currentTab) {
-    NavigationTabId.discover ||
-    NavigationTabId.movies ||
-    NavigationTabId.series ||
-    NavigationTabId.books ||
+    // Zoeken is the one off-bar destination that does not live behind My
+    // Pleya: since [DEC-094] it opens from the glyph in the
+    // Home/Series/Films/Boeken header. Home is the destination it hangs off,
+    // and saying so here is a decision rather than the fallback happening to
+    // agree.
+    NavigationTabId.search => const [NavigationTabId.discover],
+    // Bibliotheken lost its slot to Series and Films and is reached through My
+    // Pleya, the same way Aanvragen and Instellingen are. It used to name
+    // itself, fail `contains`, and land on Home.
     NavigationTabId.libraries ||
-    NavigationTabId.liveTv ||
-    NavigationTabId.search => isOffline ? NavigationTabId.downloads : currentTab,
-    // Offline the bar is Downloads plus My Pleya, so Downloads points at
-    // itself; online it lives behind My Pleya.
-    NavigationTabId.downloads => isOffline ? NavigationTabId.downloads : NavigationTabId.myPleya,
-    NavigationTabId.watchlist ||
     NavigationTabId.requests ||
     NavigationTabId.settings ||
-    NavigationTabId.myPleya => NavigationTabId.myPleya,
+    NavigationTabId.myPleya => const [NavigationTabId.myPleya],
+    // Everything else marks its own slot when the bar carries it. Home, Series
+    // and Films always do; the four dynamic-slot candidates only sometimes,
+    // and sit behind My Pleya when they do not.
+    _ => [currentTab, NavigationTabId.myPleya],
   };
 
-  if (barTabs.contains(preferred)) return preferred;
+  for (final id in preferred) {
+    if (barTabs.contains(id)) return id;
+  }
   return barTabs.isEmpty ? currentTab : barTabs.first;
 }
 
