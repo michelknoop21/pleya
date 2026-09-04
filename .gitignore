@@ -88,3 +88,6 @@ pleya_server/.responses/
 # Claude Code-instellingen per machine; de gedeelde .claude/ blijft wel getrackt.
 /.claude/settings.local.json
 test/goldens/failures/
+
+# De vangst van de fake server, zoals pleya_server/.responses.
+pleya_verify/fixture_server/.responses/

@@ -273,6 +273,28 @@ jobs:
       - name: Validate contract and fixtures
         run: scripts/check_protocol.sh
 
+      # De fake server uit pleya_verify bedient de app-tests. Loopt hij weg van
+      # het contract, dan slagen die tegen een verzinsel. Zelfde vangstvorm en
+      # zelfde validator als de echte server, met --subset omdat deze fixture
+      # bewust maar een deel van het contract bedient.
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Capture the fake server's responses
+        working-directory: pleya_verify/fixture_server
+        env:
+          PLEYA_RESPONSE_DIR: ${{ github.workspace }}/pleya_verify/fixture_server/.responses
+        run: |
+          dart pub get
+          dart test test/pleya_fake_server_contract_test.dart
+
+      - name: Validate the fake server against openapi.yaml
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check --upgrade \
+            "jsonschema>=4.18" pyyaml referencing
+          python3 scripts/check_server_responses.py --subset \
+            pleya_verify/fixture_server/.responses
+
   native-format:
     name: Native Formatting
     runs-on: ubuntu-latest

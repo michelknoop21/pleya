@@ -27,6 +27,89 @@ PASS, FAIL = "PASS", "FAIL"
 failures = 0
 
 
+METHODS = ("get", "post", "put", "patch", "delete", "head", "options")
+SCHEMA_REF = "#/components/schemas/"
+RESPONSE_REF = "#/components/responses/"
+
+
+def contract_response_schemas(document: dict) -> dict[str, list[str]]:
+    """Elk schema dat openapi.yaml als JSON-antwoordlichaam noemt.
+
+    Geeft per schemanaam de plekken waar het contract hem belooft, zodat een
+    ongedekt schema meteen vertelt welk endpoint er niet geraakt is.
+
+    Twee dingen die geen antwoordschema zijn en er dus niet in horen. Een
+    verwijzing naar components/responses wordt eerst opgelost; die indirectie
+    wordt door elke 401 gebruikt en levert ErrorEnvelope op. En een lichaam dat
+    geen JSON is blijft buiten beschouwing: artwork, ondertitels en de stream
+    zelf staan in het contract als binary of platte tekst, en daar valt met een
+    JSON-schema niets aan te toetsen.
+    """
+    found: dict[str, list[str]] = {}
+    shared = document.get("components", {}).get("responses", {})
+
+    for path, item in (document.get("paths") or {}).items():
+        for method, operation in (item or {}).items():
+            if method not in METHODS or not isinstance(operation, dict):
+                continue
+            for status, response in (operation.get("responses") or {}).items():
+                ref = response.get("$ref")
+                if ref and ref.startswith(RESPONSE_REF):
+                    response = shared.get(ref[len(RESPONSE_REF):], {})
+                for content_type, media in (response.get("content") or {}).items():
+                    if content_type != "application/json" and not content_type.endswith("+json"):
+                        continue
+                    schema_ref = (media.get("schema") or {}).get("$ref", "")
+                    if schema_ref.startswith(SCHEMA_REF):
+                        name = schema_ref[len(SCHEMA_REF):]
+                        found.setdefault(name, []).append(f"{method.upper()} {path} {status}")
+    return found
+
+
+def check_derivation() -> None:
+    """Bijt de afleiding.
+
+    De dekkingslijst komt niet meer uit een handmatige opsomming maar uit
+    openapi.yaml, en daarmee verschuift het risico: niet een lijst die achterloopt
+    maar een afleiding die te weinig vindt. Een afleiding die niets oplevert maakt
+    de poort stil groen, precies de fout die hij moest afschaffen. Deze controles
+    draaien op een verzonnen contract, zodat ze een uitkomst hebben die los staat
+    van wat er vandaag in het echte contract staat.
+    """
+    print("\n==> bijt de afleiding")
+
+    doc = {
+        "components": {
+            "responses": {"Error": {"content": {"application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}}}
+        },
+        "paths": {
+            "/dingen": {
+                "get": {"responses": {
+                    "200": {"content": {"application/json": {
+                        "schema": {"$ref": "#/components/schemas/DingList"}}}},
+                    "401": {"$ref": "#/components/responses/Error"},
+                }},
+                "parameters": [{"name": "x"}],
+            },
+            "/plaatje": {"get": {"responses": {"200": {"content": {"image/jpeg": {
+                "schema": {"type": "string", "format": "binary"}}}}}}},
+        },
+    }
+    found = contract_response_schemas(doc)
+
+    cases = [
+        ("een gewoon JSON-antwoord telt mee", "DingList" in found),
+        ("een verwijzing naar components/responses wordt opgelost", "ErrorEnvelope" in found),
+        ("een binair lichaam telt niet mee", len(found) == 2),
+        ("de vindplaats staat erbij", found.get("DingList") == ["GET /dingen 200"]),
+        ("parameters naast de methoden verwarren de afleiding niet", "x" not in found),
+        ("een leeg contract levert niets", contract_response_schemas({"paths": {}}) == {}),
+    ]
+    for naam, ok in cases:
+        report(PASS if ok else FAIL, naam)
+
+
 def report(status: str, message: str) -> None:
     global failures
     if status == FAIL:
@@ -35,14 +118,23 @@ def report(status: str, message: str) -> None:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
-        print(f"gebruik: {argv[0]} <map-met-antwoorden>", file=sys.stderr)
+    # --subset is voor een vangst die het contract bewust niet helemaal dekt: de
+    # fake server uit pleya_verify is een fixture voor de app en bedient geen
+    # gebruikers of sessies. Wat hij teruggeeft moet kloppen, maar de dekkingseis
+    # van de echte server hoort niet op hem. Zonder deze vlag zou de enige manier
+    # om de fake server te toetsen zijn om de eis voor iedereen te verlagen.
+    args = [a for a in argv[1:] if not a.startswith("--")]
+    flags = {a for a in argv[1:] if a.startswith("--")}
+    subset = "--subset" in flags
+    unknown = flags - {"--subset"}
+    if len(args) != 1 or unknown:
+        print(f"gebruik: {argv[0]} [--subset] <map-met-antwoorden>", file=sys.stderr)
         return 64
 
-    directory = Path(argv[1])
+    directory = Path(args[0])
     manifest_path = directory / "manifest.json"
     if not manifest_path.exists():
-        print(f"{manifest_path} bestaat niet; draai de Go-test met PLEYA_RESPONSE_DIR", file=sys.stderr)
+        print(f"{manifest_path} bestaat niet; draai de vangst met PLEYA_RESPONSE_DIR", file=sys.stderr)
         return 1
 
     import yaml
@@ -92,19 +184,45 @@ def main(argv: list[str]) -> int:
         else:
             report(PASS, label)
 
-    # Elk schema dat de leeskant van PS-2 oplevert hoort minstens één keer
+    # Elk schema dat de server als antwoord kan geven hoort minstens één keer
     # getoetst te zijn. Anders is een endpoint stilzwijgend ongedekt.
+    #
+    # Deze lijst stond met de hand op de acht schema's van de leeskant van PS-2.
+    # PS-9 legde daar UserList, LibraryPermissionList en SessionList naast: de
+    # vangst nam ze wél op, maar de poort eiste ze niet, dus gebruikers, sessies
+    # en rechten konden ongedekt zijn terwijl alles groen stond. Een handmatige
+    # lijst loopt per definitie achter op de fase die hem zou moeten uitbreiden.
+    #
+    # Hij is daarom afgeleid van openapi.yaml: elk schema dat het contract als
+    # JSON-antwoordlichaam noemt. Dat is de goede kant op afleiden. Uit de vangst
+    # afleiden zou de poort tautologisch maken, want dan eist hij precies wat er
+    # toevallig langskwam en kan hij nooit meer rood worden. Nu verhoogt een
+    # endpoint dat aan het contract wordt toegevoegd de lat vanzelf, en blijft de
+    # poort rood tot de vangst dat endpoint werkelijk raakt.
+    expected = contract_response_schemas(document)
     covered = {entry["schema"] for entry in responses}
-    expected = {
-        "Info", "ServerDetail", "TokenPair", "StreamToken",
-        "LibraryList", "Item", "ItemPage", "ErrorEnvelope",
-    }
-    print("\n==> dekking")
-    missing = sorted(expected - covered)
-    for schema_name in missing:
-        report(FAIL, f"geen enkel antwoord getoetst tegen {schema_name}")
-    if not missing:
-        report(PASS, f"alle {len(expected)} schema's van de leeskant zijn gedekt")
+
+    print("\n==> dekking van wat het contract als antwoord noemt")
+    if not expected:
+        report(FAIL, "uit openapi.yaml komt geen enkel antwoordschema; de afleiding is kapot")
+    missing = sorted(set(expected) - covered)
+    if subset:
+        report(PASS, f"{len(covered)} van de {len(expected)} schema's gedekt; "
+                     f"deze vangst dekt bewust een deel ({', '.join(sorted(missing))} niet)")
+    else:
+        for schema_name in missing:
+            report(FAIL, f"geen enkel antwoord getoetst tegen {schema_name} ({expected[schema_name][0]})")
+        if expected and not missing:
+            report(PASS, f"alle {len(expected)} schema's die het contract als antwoord noemt zijn gedekt")
+
+    # Andersom: een antwoord getoetst tegen een schema dat nergens als
+    # antwoordlichaam in het contract staat. Dan levert de server iets waar het
+    # contract niet over gaat, en dat is precies wat deze poort moet zien.
+    stray = sorted(covered - set(expected))
+    for schema_name in stray:
+        report(FAIL, f"getoetst tegen {schema_name}, dat het contract nergens als antwoord noemt")
+
+    check_derivation()
 
     print()
     if failures:
