@@ -242,6 +242,22 @@ jobs:
       - name: Build
         run: bun run build
 
+  authority-merge:
+    name: Authority Files Merge
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          # De controle leest de ouders en de merge-base van de laatste merge, dus
+          # een ondiepe checkout ziet niets en zou stilzwijgend groen zijn.
+          fetch-depth: 0
+
+      - name: Verify no authority file was reverted to one merge parent
+        run: scripts/check_authority_merge.sh
+
   protocol:
     name: Protocol Contract
     runs-on: ubuntu-latest

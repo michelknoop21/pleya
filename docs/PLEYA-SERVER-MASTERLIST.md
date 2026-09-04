@@ -52,7 +52,7 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 | S0.4 | DEC-hernummering naar de eerstvolgende vrije reeks in de samengestelde boom (niet blind 096, VRAGENLIJST 59), mappingtabel, grep schoon | `[x]` | twaalf botsingen (063 tot 073 plus 093) naar 096 tot 107; mappingtabel onderaan `docs/DECISIONS.md`; 242 verwijzingen per regel geclassificeerd, geen anker gebroken (de ankers die niet kloppen deden dat op beide takken al) | 2026-09-04 |
 | S0.5 | CI-jobs `pleya-server`, `pleya-web`, `protocol` groen | `[x]` | run `33909897646` op `integration/pleya-server-rebaseline`: Pleya Server (Go), Pleya Web en Protocol Contract alle drie groen. Vier ronden nodig; drie fouten die alleen op een Linux-runner bovenkwamen, elk apart gecommit. `Code Analysis` en `Unit Tests` blijven rood, maar zijn dat op `main` zelf ook: 53 falers daar, 53 hier, met 117 tests meer die slagen | 2026-09-04 |
 | S0.6 | NAS-migratiefixture (schema 7, geanonimiseerd) | `[ ]` | | |
-| S0.7 | Contracttest fake-server tegen `openapi.yaml` | `[ ]` | erbij: de dekkingslijst in `scripts/check_server_responses.py` (`expected`) eist alleen nog de acht schema's van de PS-2-leeskant. De PS-9-antwoorden (`UserList`, `LibraryPermissionList`, `SessionList`) worden wél vastgelegd maar niet vereist, dus de poort kan groen zijn zonder dekking op gebruikers, sessies en rechten. Gevonden in de codex-challenge van 4 sep | |
+| S0.7 | Contracttest fake-server tegen `openapi.yaml` (**poort P9**, blokkerend voor "contractueel compleet") | `[ ]` | erbij: de dekkingslijst in `scripts/check_server_responses.py` (`expected`) eist alleen nog de acht schema's van de PS-2-leeskant. De PS-9-antwoorden (`UserList`, `LibraryPermissionList`, `SessionList`) worden wél vastgelegd maar niet vereist, dus de poort kan groen zijn zonder dekking op gebruikers, sessies en rechten. Gevonden in de codex-challenge van 4 sep | |
 | S0.8 | Vrijgavebesluit PS-14 en PS-11A vastgelegd | `[ ]` | | |
 
 ### S1 Beheer-basis
@@ -345,6 +345,7 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 | P6 | Protocolvensters 1 tot 8 geopend en gesloten | `[ ]` | |
 | P7 | PS-5-hardwareronde | `[!]` uitgesteld | `docs/qa/ps5-hardware-round.md`, drie startvoorwaarden |
 | P8 | Plex-off gate groen, migratie als keuze | `[ ]` | |
+| P9 | Contractdekking compleet: `expected` in `scripts/check_server_responses.py` dekt elk schema dat de server werkelijk teruggeeft, inclusief `UserList`, `LibraryPermissionList` en `SessionList` | `[ ]` | **blokkerend.** PS-9 en de integratie heten niet contractueel compleet zolang deze open staat; de poort is groen als de dekkingslijst is afgeleid van wat de vangst oplevert in plaats van met de hand bijgehouden |
 
 ---
 

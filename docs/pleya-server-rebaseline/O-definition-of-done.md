@@ -88,6 +88,11 @@ die samen "af" betekenen. Beide moeten groen zijn.
 - [ ] Beide artworkladders leveren de juiste treden en schalen nooit boven de bron; een backdrop
       op 3840 bestaat, een poster op 3840 niet.
 - [ ] Fake-server-contracttest groen; `schema.d.ts` gelijk aan de YAML.
+- [ ] De dekkingslijst van de contractpoort is afgeleid, niet handmatig: `check_server_responses.py`
+      eist elk schema dat de server werkelijk teruggeeft. Een groene poort met alleen de acht
+      schema's van de PS-2-leeskant telt niet als contractdekking (poort P9).
+- [ ] `scripts/check_authority_merge.sh` groen: geen authority-bestand is bij een merge
+      teruggezet naar één ouder.
 - [ ] Migratietest op de NAS-fixture groen; de NAS draait schema 19 met een dump van vóór 0008.
 - [ ] Elke capability-vlag hangt aan gedrag (test per vlag).
 - [ ] Securitymatrix K.2 volledig groen, vastgelegd in `docs/qa/`.
