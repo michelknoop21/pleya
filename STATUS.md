@@ -13,6 +13,33 @@ met PS-14 ontworpen en PS-15/PS-16 begrensd, alle drie nog niet vrijgegeven._
 
 ## Waar was ik
 
+**Correctieronde na een adversariële review (4 september, laat).** Codex kreeg de merge voorgelegd
+met de opdracht hem te breken. Drie bevindingen, alle drie geverifieerd voordat er iets aan
+veranderde.
+
+De ernstigste was van mij. `git checkout --ours <bestand>` neemt het **hele** bestand, niet de
+conflicterende hunk. Ik gebruikte het op `CLAUDE.md` en `docs/RELEASES.md` en beschreef het in de
+merge-commit als een keuze over één regel. Er verdween 128 regels projectwaarheid: de
+geïntegreerde boom zei daarna weer dat PS-5 de volgende fase is en dat de protocolvriezing aan
+PS-5 hangt, precies wat de branch had rechtgezet. Niets meldde dat. Opnieuw gedaan als echte
+driewegmerge tegen de merge-base, waar precies één werkelijk conflict blijkt te zitten;
+`docs/RELEASES.md` is geregenereerd.
+
+Daarnaast testte `TestFailureRetriesThenGivesUp` geen retries en geen opgeven: `max_attempts` is 3,
+dus de eerste mislukking schrijft altijd `pending`, en de test accepteerde dat. Nu twee tests, met
+een negatieve controle die aantoont dat de nieuwe rood wordt als het gedrag ontbreekt.
+
+De derde is geen defect maar een gat: de dekkingslijst van de contractpoort eist alleen de acht
+schema's van de PS-2-leeskant, terwijl de PS-9-antwoorden wel worden vastgelegd. Dat staat nu als
+**poort P9** en is blokkerend: PS-9 en de integratie heten niet contractueel compleet zolang hij
+open is.
+
+Om de eerste fout mechanisch onmogelijk te maken draait `scripts/check_authority_merge.sh` in CI.
+Hij faalt zodra een authority-bestand byte-identiek is aan één merge-ouder terwijl beide kanten het
+wijzigden. De check die je zou verwachten, `gen_release_notes.sh` gevolgd door een schone diff, kan
+niet: gemeten voegt elke run het onderwerp toe van een commit die na de laatste schrijfbeurt
+landde, dus dat bestand kan zichzelf nooit beschrijven.
+
 **S0 uitgevoerd: de branch staat weer op `main` (4 september, avond).** Er is een integratiebranch
 `integration/pleya-server-rebaseline`, afgetakt van `main` `a21b43c`, met `feat/pleyaserver` erin
 gemerged. De worktree staat op `/Volumes/SSD/Projects/PlexFlixNetwork/pleya-integration`; dat is
