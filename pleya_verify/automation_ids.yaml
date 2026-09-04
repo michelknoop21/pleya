@@ -57,6 +57,21 @@ ids:
   - id: books.detail.stats
     role: list
     instanceable: false
+  - id: screen.books_toc
+    role: screen
+    instanceable: false
+  - id: books.toc.book
+    role: list.item
+    instanceable: false
+  - id: books.toc.part
+    role: list.item
+    instanceable: true
+  - id: books.toc.chapter
+    role: list.item
+    instanceable: true
+  - id: books.toc.goto
+    role: button
+    instanceable: false
   - id: books.rail.continue
     role: rail
     instanceable: false

@@ -2108,6 +2108,9 @@ class _TranslationsBooksNl extends TranslationsBooksEn {
 	@override String get statGenre => 'Genre';
 	@override String get statPages => 'Pagina\'s';
 	@override String get descriptionMore => 'meer';
+	@override String get tableOfContents => 'Inhoudsopgave';
+	@override String tocChapterRange({required Object from, required Object to}) => 'Hoofdstuk ${from} tot ${to}';
+	@override String get tocGoToPage => 'Ga naar pagina';
 }
 
 // Path: search.filters
@@ -4146,6 +4149,9 @@ extension on TranslationsNl {
 			'books.statGenre' => 'Genre',
 			'books.statPages' => 'Pagina\'s',
 			'books.descriptionMore' => 'meer',
+			'books.tableOfContents' => 'Inhoudsopgave',
+			'books.tocChapterRange' => ({required Object from, required Object to}) => 'Hoofdstuk ${from} tot ${to}',
+			'books.tocGoToPage' => 'Ga naar pagina',
 			_ => null,
 		};
 	}

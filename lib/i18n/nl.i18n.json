@@ -1810,6 +1810,9 @@
     "statYear": "Jaar",
     "statGenre": "Genre",
     "statPages": "Pagina's",
-    "descriptionMore": "meer"
+    "descriptionMore": "meer",
+    "tableOfContents": "Inhoudsopgave",
+    "tocChapterRange": "Hoofdstuk ${from} tot ${to}",
+    "tocGoToPage": "Ga naar pagina"
   }
 }

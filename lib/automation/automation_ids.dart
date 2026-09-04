@@ -87,6 +87,27 @@ class AutomationIds {
   /// The year/genre/pages row under the actions.
   static const String booksDetailStats = 'books.detail.stats';
 
+  /// Inhoudsopgave (approved golden 06), the tree of one publication. It has
+  /// no door yet — where it opens from is the reader's chrome — so a scenario
+  /// reaches it through a route opener and nothing else.
+  static const String screenBooksToc = 'screen.books_toc';
+
+  /// The book's own row at the top of the card: cover, title, author.
+  static const String booksTocBook = 'books.toc.book';
+
+  /// One part row. Instanceable, suffixed with the part's id rather than an
+  /// index, because a collapsed tree draws fewer rows and an index would then
+  /// point at a different part.
+  static const String booksTocPart = 'books.toc.part';
+
+  /// One chapter row. Instanceable, suffixed with the chapter's id. On the row
+  /// and not around the list: a node around a sliver has no bounds to measure.
+  static const String booksTocChapter = 'books.toc.chapter';
+
+  /// `Ga naar pagina` in the fixed action bar — drawn only when the
+  /// publication ships page navigation.
+  static const String booksTocGoto = 'books.toc.goto';
+
   /// Boeken-home's three rails, in the order golden 01b puts them.
   static const String booksRailContinue = 'books.rail.continue';
   static const String booksRailRecent = 'books.rail.recent';
@@ -131,6 +152,8 @@ class AutomationIds {
     booksSearchResult,
     booksSearchCategory,
     booksDetailAction,
+    booksTocPart,
+    booksTocChapter,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -157,6 +180,11 @@ class AutomationIds {
     {'id': booksDetailCover, 'role': 'image', 'instanceable': false},
     {'id': booksDetailAction, 'role': 'button', 'instanceable': true},
     {'id': booksDetailStats, 'role': 'list', 'instanceable': false},
+    {'id': screenBooksToc, 'role': 'screen', 'instanceable': false},
+    {'id': booksTocBook, 'role': 'list.item', 'instanceable': false},
+    {'id': booksTocPart, 'role': 'list.item', 'instanceable': true},
+    {'id': booksTocChapter, 'role': 'list.item', 'instanceable': true},
+    {'id': booksTocGoto, 'role': 'button', 'instanceable': false},
     {'id': booksRailContinue, 'role': 'rail', 'instanceable': false},
     {'id': booksRailRecent, 'role': 'rail', 'instanceable': false},
     {'id': booksRailSeries, 'role': 'rail', 'instanceable': false},

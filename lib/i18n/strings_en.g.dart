@@ -5281,6 +5281,15 @@ class TranslationsBooksEn {
 
 	/// en: 'more'
 	String get descriptionMore => 'more';
+
+	/// en: 'Table of contents'
+	String get tableOfContents => 'Table of contents';
+
+	/// en: 'Chapter ${from} to ${to}'
+	String tocChapterRange({required Object from, required Object to}) => 'Chapter ${from} to ${to}';
+
+	/// en: 'Go to page'
+	String get tocGoToPage => 'Go to page';
 }
 
 // Path: search.filters
@@ -7748,6 +7757,9 @@ extension on Translations {
 			'books.statGenre' => 'Genre',
 			'books.statPages' => 'Pages',
 			'books.descriptionMore' => 'more',
+			'books.tableOfContents' => 'Table of contents',
+			'books.tocChapterRange' => ({required Object from, required Object to}) => 'Chapter ${from} to ${to}',
+			'books.tocGoToPage' => 'Go to page',
 			_ => null,
 		};
 	}

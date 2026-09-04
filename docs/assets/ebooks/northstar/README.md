@@ -563,6 +563,106 @@ de hele set, waar paneel 6 een renderrestje `91:43` laat zien. En anders dan bij
 staat er geen tabbalk in het beeld die in de app zou ontbreken: paneel 6 tekent er zelf geen, want de
 reader dekt hem af.
 
+## Wat er tegen golden 06 gebouwd is
+
+`lib/screens/books/books_toc_screen.dart`, met `widgets/book_toc_rows.dart` eronder voor de vier
+rijsoorten. Het scherm heeft geen deur, en dat is de golden zelf: waar een inhoudsopgave opengaat
+zit in de chrome van de reader, en golden 05 heeft er om precies die reden geen rij voor gekregen.
+Er is dus niets dat een lezer kan aanraken dat deze route opent. Boeken-home registreert er onder
+`kPleyaVerify` een route-opener voor, zodat het scherm op een toestel te fotograferen is; in een
+gewone build verdwijnt die met de rest van het automation-oppervlak.
+
+**De semantische regel staat in de code en niet alleen in het beeld.** `BookTocPosition` heeft drie
+waarden, `behind`, `atLocator` en `ahead`, en de klassendocumentatie zegt waarom: een locator zegt
+waar de lezer nu staat en dus alleen dat een ingang eerder in de publicatievolgorde komt. Het woord
+`read` en het woord `completed` komen in `lib/books/book_toc.dart`, `book_toc_view.dart` en het
+scherm niet voor. De enige leesuitspraak is `totalProgression` in de voet, en een widgettest
+controleert dat er nergens een vinkje staat en dat `55% gelezen` precies één keer op het scherm
+voorkomt.
+
+**De layoutregel is een eigen module, met een andere vorm dan bij golden 05.** Het boekdetail is
+een vaste reeks blokken; deze lijst is variabel. `lib/books/book_toc_layout.dart` is daarom een
+tabel per rijsoort (boekrij 82, losse ingang 47,5, deel 61, hoofdstuk 44, inspringing 28), en
+`positions()` loopt over de rijen die de boom op dat moment tekent. Het scherm bouwt de kaart uit
+diezelfde tabel, dus voorspelling en implementatie kunnen niet uit elkaar lopen. Wat een rij *is*
+staat een laag lager: `book_toc.dart` heeft de boom en de positiebepaling, `book_toc_view.dart`
+leidt daar de getekende rijen uit af. Dezelfde scheiding als bij golden 04 en 05, en om dezelfde
+reden: die metadata beweegt zodra PS-14 echte navigatie levert, en dan verschuift die laag en geen
+widget.
+
+Bewijs: `pleya_verify/scenarios/books.toc.layout.yaml` groen op de vastgezette iPhone 15
+Pro-simulator, met beide staten in één bundel, plus vijftien widgettests in
+`test/screens/books_toc_screen_test.dart` en twintig eenheidstests in `test/books/book_toc_test.dart`.
+De hele suite staat op 4994 groen.
+
+De vergelijking is de scherpste tot nu toe. De vier gemeten automation-nodes liggen exact op de
+golden: de boekrij op 104 met 361 × 82, het open deel op 416,5 met 61 hoog, hoofdstuk 12 op 521,5
+met 44 hoog, en de pil van 771 tot 811. Een rijprofiel over `06a` en het simulatorbeeld legt elk
+tekstblok in de kaart op nul punt verschil: boekrij 112,0, inleiding 203,0 tegen 203,3, de vier
+delen op 248,3 / 309,3 / 370,3 / 431,3 met het bereik van het vierde op 452,7, de vier hoofdstukken
+op 493,3 / 536,7 / 581,0 / 625,0, het vijfde en zesde deel op 668,0 en 729,0, en de voet op 785,0
+tegen 785,3. Alleen de kop ligt 0,7 hoger. Horizontaal net zo: een deeltitel begint in allebei op
+32,67, de stip bij hoofdstuk 12 staat in allebei op x 44,0 tot 49,7, en de inspringing van een
+hoofdstuk meet 28,3 tegen 28,0. Voor `06b` geldt hetzelfde: na het dichtklappen staat het vierde
+deel op 477,5, precies waar de tabel het voorspelt, en elk tekstblok ligt binnen 0,3 punt.
+
+Wat die vergelijking opleverde, en wat geen enkele test zag:
+
+- **Met de boom dichtgeklapt hing de actiebalk midden op het scherm.** De balk staat als
+  `Positioned(bottom: 0)` in een `Stack`, en een `Stack` schaalt naar zijn grootste kind. Een
+  `SingleChildScrollView` onder losse constraints meet zich op zijn inhoud, dus bij acht
+  dichtgeklapte rijen was de stack 768 hoog in plaats van 852 en landde de balk op 671. In `06a`
+  viel het niet op, want daar is de inhoud hoger dan het scherm: de fout bestond alleen in de staat
+  waar de kaart de pagina niet vult. Dat is precies de lege ruimte onder de kaart die bij de
+  goedkeuring van `06b` hoort. Opgelost met `StackFit.expand`; de test die het nu bewaakt zakt zonder
+  die regel met de pil 84 punt omhoog.
+
+Bewuste verschillen met het beeld:
+
+- **De pagina is zwart en niet `#141414`.** De verify-simulator draait de OLED-variant van
+  `monoTheme`. De kaart zelf meet in allebei exact `#1F1F1F`, dus het verschil zit in de grond
+  eromheen en niet in de kaart.
+- **De cover is getekend door `BookCover` en niet door de CSS van de bron.** Zichtbaar gevolg: de
+  app zet er ook `JAMES CLEAR` op, de golden niet.
+- **`Ga naar pagina` is 3,3 punt breder**, 223,7 tot 377,0 tegen 227 tot 377. De rechterrand, de
+  hoogte en de verticale plaatsing zijn gelijk; het verschil is de breedte van dezelfde tekst in
+  Inter zoals de app hem laadt tegenover de browserrender.
+- **Een titel breekt soms één glyph eerder af.** `Advanced Tactics: How to Go fro…` tegen
+  `… from…`, uit dezelfde metriek.
+- **De actiebalk gebruikt 7 punt onder de pil en niet de 8 van de filtersheet.** Alles erboven is
+  golden 03's balk ongewijzigd; met 8 ligt de hele band één punt hoog, op 754 en 770 in plaats van
+  golden 06's eigen 755 en 771. Dat punt komt van de ruimte onder de pil, waar niets getekend wordt.
+
+Wat bewust niet gebouwd is, en waar dus geen code voor bestaat:
+
+- **De reader.** Elke rij wordt getekend en opent niets, precies waar de Filters-pill tussen golden
+  02 en 03 stond. Een widgettest tikt een hoofdstuk, de boekrij en `Ga naar pagina` aan en
+  controleert dat er niets opengaat en dat geen rij verschuift.
+- **Wat `Ga naar pagina` opent.** Er is geen invoerveld, geen schuif en geen sheet: wat die knop
+  opent is een open punt van de golden. Wel de voorwaarde eronder, `BookToc.hasPageList`, met de
+  regel dat schermpagina's en de bibliografische paginatelling er geen vervanging voor zijn. Een
+  eenheidstest en een widgettest laten zien dat een publicatie zonder die navigatie het label houdt
+  en de knop verliest.
+- **Een ingang vanaf het boekdetail.** Golden 05 heeft daar geen rij en de widgettest die dat bewaakt
+  staat er nog. Golden 06 heeft de presentatie als gepushte pagina gekozen zonder de deur te kennen,
+  en die deur blijft dus open tot golden 07.
+- **Een derde niveau.** Wat dieper nest dan deel en hoofdstuk klapt op zijn hoofdstuk, zoals de
+  golden zegt. Het model verbiedt een diepere boom niet, maar er is geen fixture die er een heeft.
+- **Een boek zonder delen.** De golden laat expliciet open hoe dat eruitziet en geen frame bewijst
+  het, dus er is ook geen fixture voor. Atomic Habits is de enige publicatie in de vaste set die
+  navigatie declareert; de rest antwoordt `null`, en dat is iets anders dan een lege boom.
+
+Eén ding dat niet uit de golden volgt maar wel uit het scherm, en dat goedkeuring vraagt:
+
+- **De leespositie van Atomic Habits staat bij de reader en niet op de plank.** Golden 06 noemt als
+  open punt dat Atomic Habits in de app-fixture een leespositie krijgt en daarmee "een vierde kaart"
+  in Verder lezen. Dat klopt niet: die rij sorteert op voortgang, en 55 % gaat vóór Dune op 48 %.
+  Het zou dus geen vierde kaart worden maar een nieuwe eerste, op precies de rij waarvan golden 01b
+  de eerste drie kaarten vastlegt. `Book.progress` van Atomic Habits blijft daarom leeg en de
+  locator zit in `BookToc`, waar hij inhoudelijk ook hoort: een publicatiebrede `totalProgression`
+  met een positie erin is reader-state. Boeken-home blijft daarmee exact zoals hij is goedgekeurd.
+  Een eenheidstest legt dat vast, met de reden erbij.
+
 ## Wat er tegen golden 05 gebouwd is
 
 `lib/screens/books/book_detail_screen.dart`, met `widgets/book_detail_ambience.dart`,

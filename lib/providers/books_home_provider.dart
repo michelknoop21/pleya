@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../books/book.dart';
+import '../books/book_toc.dart';
 import '../books/books_source.dart';
 import '../utils/app_logger.dart';
 
@@ -86,6 +87,12 @@ class BooksHomeProvider extends ChangeNotifier {
       }
     }
   }
+
+  /// The navigation of one publication, fetched on demand rather than loaded
+  /// with the shelf: a table of contents belongs to the book you opened, and
+  /// pulling every publication's tree in to draw three rails would be work
+  /// nothing on this screen uses.
+  Future<BookToc?> tableOfContents(String bookId) => _source.tableOfContents(bookId);
 
   /// Pure, so the row rules are testable without a provider or a source.
   @visibleForTesting

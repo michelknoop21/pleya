@@ -16,6 +16,7 @@ import '../../widgets/pleya_logo.dart';
 import 'all_books_screen.dart';
 import 'book_detail_screen.dart';
 import 'books_search_screen.dart';
+import 'books_toc_screen.dart';
 import 'widgets/book_rail.dart';
 import 'widgets/continue_reading_card.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -45,6 +46,7 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
       AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenAllBooks, _openAllBooks);
       AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBooksSearch, _openSearch);
       AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBookDetail, _openCanonicalDetail);
+      AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBooksToc, _openCanonicalToc);
     }
   }
 
@@ -54,6 +56,7 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
       AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenAllBooks, _openAllBooks);
       AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBooksSearch, _openSearch);
       AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBookDetail, _openCanonicalDetail);
+      AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBooksToc, _openCanonicalToc);
     }
     super.dispose();
   }
@@ -114,6 +117,32 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => BookDetailScreen(book: book, series: series),
+      ),
+    );
+  }
+
+  /// The book golden 06 is drawn with, and the only publication in the fixture
+  /// that declares navigation.
+  static const String _verifyTocBookId = 'atomic-habits';
+
+  /// The Inhoudsopgave's only way in, and deliberately not a way in.
+  ///
+  /// Golden 06 draws the screen and not its door: where a table of contents
+  /// opens from sits in the reader's chrome, which has no golden, and golden 05
+  /// has no row for it for exactly that reason. So nothing a reader can touch
+  /// pushes this route — it exists under `kPleyaVerify` so a scenario can
+  /// photograph the screen on a device, and it disappears from a normal build
+  /// along with the rest of the automation surface.
+  Future<void> _openCanonicalToc() async {
+    if (!mounted) return;
+    final provider = context.read<BooksHomeProvider?>();
+    final book = provider?.rows.all.where((b) => b.id == _verifyTocBookId).firstOrNull;
+    if (provider == null || book == null) return;
+    final toc = await provider.tableOfContents(_verifyTocBookId);
+    if (!mounted || toc == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BooksTocScreen(book: book, toc: toc),
       ),
     );
   }

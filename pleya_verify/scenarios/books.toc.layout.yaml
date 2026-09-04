@@ -1,0 +1,62 @@
+name: books.toc.layout
+target: ios-sim
+# Inhoudsopgave against approved golden 06
+# (docs/assets/ebooks/northstar/06a-books-toc.png).
+#
+# REQUIRES `PLEYA_VERIFY_BOOKS=1`, like the other books scenarios, and for a
+# comparison against the golden also `PLEYA_VERIFY_IOS_UDID=<iPhone 15 Pro>` —
+# every number in golden 06 is measured on that viewport.
+#
+# The screen is opened rather than tapped, and here that is not a shortcut but
+# the only way in there is. Golden 06 draws the screen and not its door: where a
+# table of contents opens from belongs to the reader's chrome, panel 7, which has
+# no golden, and golden 05 has no row for it for exactly that reason. So no
+# surface a reader can touch pushes this route; the opener lives on Boeken-home
+# under `kPleyaVerify` so the screen can be photographed on a device at all.
+#
+# It lands on Atomic Habits, the book `06a` is drawn with and the only
+# publication in the fixture that declares navigation — the one on the shelf
+# whose edition names its chapters and groups them in parts.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - open: screen.books
+  - open: screen.books_toc
+steps:
+  - wait_until: {id: screen.books_toc, timeout: 15000}
+  - settle: 2000
+  # The book's own row is the anchor: golden 06 starts the card on 104 with it,
+  # and every row under it is stacked off that edge.
+  - assert: {id: books.toc.book, insideViewport: true}
+  # The tree arrives open on the place the reader is: the part holding the
+  # locator, with its four chapters under it. Both have to be reachable, not
+  # merely mounted — a table of contents that opens on the reader's own chapter
+  # and then puts it below the fold has not done its one job.
+  - assert: {id: "books.toc.part[law-3]", insideViewport: true}
+  - assert: {id: "books.toc.chapter[ch-12]", insideViewport: true}
+  # The chapters really hang under their part rather than next to it.
+  - assert: {id: "books.toc.chapter[ch-12]", below: "books.toc.part[law-3]"}
+  # 44 pt is the golden's own reason for that row height: the smallest row iOS
+  # lets you tap.
+  - assert: {id: "books.toc.chapter[ch-12]", minimumTapTarget: 44}
+  # A part that comes after the locator is drawn where the fixed action bar
+  # crosses the list. The list runs on under the bar and nothing is shortened to
+  # fit above it, so this one is deliberately *not* asserted to be inside the
+  # viewport — only the jump control that has to stay reachable is.
+  - assert: {id: books.toc.goto, insideViewport: true}
+  - assert: {id: books.toc.goto, minimumTapTarget: 40}
+  - snapshot: books-toc-reading
+  # 06b: the same tree with the open part closed. The tap lands in the middle of
+  # `books.toc.part[law-3]`, whose rect the assertion three steps up already put
+  # in this bundle at (16, 416.5, 361 x 61) — a coordinate read off the measured
+  # node rather than one counted out by hand, because `tap` takes points and
+  # there is no tap-by-id.
+  - tap: {x: 196, y: 447}
+  - settle: 1000
+  # The fourth law moves from 653.5 up to 477.5 with the four chapters gone, and
+  # the manifest carries both numbers. That the marker moves up to the part with
+  # it is in the snapshot, and in the widget tests.
+  - assert: {id: "books.toc.part[law-4]", insideViewport: true}
+  - snapshot: books-toc-collapsed
