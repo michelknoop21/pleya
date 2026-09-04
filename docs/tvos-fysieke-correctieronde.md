@@ -2142,11 +2142,11 @@ gefocuste kaart plus het volgende label nemen samen zoveel hoogte dat er per sch
 precies één rail past. D2 en D4 tekenen de railstapel onder full-bleed met de
 ambient tint, de amberpunt en Nederlandse labels.
 
-**Herzien door Michel op 4 september, na D1 tot en met D4**, letterlijk: "Ik wil het
-geen wat ik nu heb met de nieuwe hero alleen het geen wat ik nu heb moet
-geoptimaliseerd worden maak daar in nieuwe sessie een mockup voor." Full-bleed
-vervalt dus. De richting is de huidige opzet (de kaart-hero uit 9.2, met HERO1 en
-HERO2 erin) en de rails eronder, geoptimaliseerd op witruimte, overgangen, indeling,
-styling en de navigatiebalk. Mockup 29 D blijft staan als verkend en afgewezen;
-mockup 30 in de volgende sessie tekent de geoptimaliseerde huidige opzet, met de
-gemeten afwijkingen hierboven als startpunt.
+**Verduidelijkt door Michel op 4 september, na D1 tot en met D4**, letterlijk: "Ik wil
+het geen wat ik nu heb met de nieuwe hero alleen het geen wat ik nu heb moet
+geoptimaliseerd worden maak daar in nieuwe sessie een mockup voor", en daarna: "De
+nieuwe hero ontwerp dus wel. Die full bleed." De hero wordt dus full-bleed zoals D1
+tot en met D3 hem tekenen; de rest van de pagina blijft wat er nu staat, de
+railstapel met de DEC-087-band, maar geoptimaliseerd op witruimte, overgangen,
+indeling, styling en de navigatiebalk. Mockup 30 in de volgende sessie tekent die
+combinatie, met D1 tot en met D4 en de gemeten afwijkingen hierboven als startpunt.
