@@ -277,6 +277,62 @@ De lege staat zit hier bewust niet in. Een zoekscherm zonder resultaten is een e
 hem in dit frame proppen zou de enige vraag die 04 stelt, namelijk of de drie soorten uit elkaar te
 houden zijn, alleen maar vertroebelen.
 
+## Wat er tegen golden 04 gebouwd is
+
+`lib/screens/books/books_search_screen.dart` met `lib/screens/books/widgets/book_search_row.dart`
+voor de drie rijsoorten, bereikbaar via het zoekglyph op Boeken-home en op Alle boeken. Dat glyph
+opent nu Boeken zoeken in plaats van de bibliotheekbrede zoekpagina, want golden 04 begrenst hem tot
+boeken: er staat geen Films-chip in de rij en de tabbalk eronder heeft Boeken actief.
+
+**Presentatie en matching staan los.** `lib/books/book_search.dart` bevat het matchingcontract als
+een eigen `BookSearchRanking`, geïnjecteerd in het scherm. Wat een resultaat matcht is daarmee te
+vervangen zonder een widget aan te raken, en dat is nodig: ranking beweegt mee met echte metadata
+(PS-14) en nog een keer als matching ooit naar de server gaat. `LocalBookSearchRanking` is eerlijk
+over wat hij is, een substringzoeker over een plank die in het geheugen past.
+
+Bewijs: `pleya_verify/scenarios/books.search.layout.yaml` groen op de vastgezette iPhone 15
+Pro-simulator, plus tien widgettests in `test/screens/books_search_screen_test.dart` en dertien
+eenheidstests in `test/books/book_search_test.dart`.
+
+De vergelijking met `04a` legt het scherm binnen ongeveer twee punt op de golden: veld op 127,0
+tegen 127,7, chiprij op 177,2 tegen 177,7, eerste sectiekop op 220,8 tegen 219,8, en de kop op 80,2
+tegen 77,8.
+
+Wat die vergelijking opleverde, en wat geen enkele test zag:
+
+- **Het toetsenbord dekte twee van de drie secties af.** Het scherm nam de focus meteen, wat klopt
+  voor iemand die komt typen, maar niet voor een veld dat al gevuld is. Nu neemt het de focus alleen
+  bij een leeg veld. Dat is ook waarom het simulatorbeeld eerst alleen de Boeken-sectie liet zien.
+- **`Dune` stond derde bij het zoeken op `dune`.** De ranking sorteerde alleen alfabetisch, dus
+  `Children of Dune` won. Er is nu een band vóór het alfabet: eerst de titel die de zoekterm ís, dan
+  de titels die ermee beginnen, dan de rest. De volgorde in de app is daarmee die van de golden.
+- **Het zoekveld had een tweede, lichter oppervlak in zich.** Een donker `InputDecorationTheme` vult
+  een veld standaard; `filled: false` haalt die laag weg.
+- **De serie-cover tekende zijn titel over de stapelranden heen.** Op 44 punt vechten die om
+  dezelfde pixels. De voorkant van een seriebeeld draagt geen letters meer.
+
+Twee dingen die de gate ving en de golden niet:
+
+- Een kaal `TextField` is hier niet toegestaan: `test/no_bare_text_field_test.dart` eist
+  `FocusableTextField`, want dat is wat een veld met een tv-afstandsbediening laat werken.
+- De runner weigerde eerst te compileren op symbolen die gewoon bestonden. Dat was een verouderde
+  `pleya_verify/runner/.dart_tool`; opnieuw `dart pub get` loste het op.
+
+Bewuste verschillen met het beeld:
+
+- **Er is geen tabbalk, en dat geldt ook voor Alle boeken.** Golden 02 en golden 04 tekenen er
+  allebei een, maar beide schermen worden op de profielnavigator gepusht en dekken `MainScreen`
+  daarmee volledig af, tabbalk inbegrepen. Nagemeten op de bewijsbundels van allebei de scenario's.
+  Het is geen fout in dit scherm maar een eigenschap van de navigatieschil, en het raakt een al
+  goedgekeurd en gebouwd venster. Het hoort in een eigen ronde, niet in deze.
+- **Het scenario typt de zoekterm niet, maar krijgt hem mee.** De iOS-driver heeft geen
+  tekstinvoer (`typeText: no /v1/input/text endpoint exists yet`), dus zonder zaaien is er geen
+  canonieke staat om op hardware te fotograferen. Bewezen is daarmee dat de drie secties op een
+  echt toestel uitkomen waar de golden ze zet; niet bewezen is dat typen ze oplevert, en dat doen de
+  widgettests wel. Zodra de driver tekstinvoer krijgt hoort dit scenario zelf te typen.
+- **De covers zijn getekend en de auteursavatar is een monogram**, om dezelfde reden als bij de
+  eerdere goldens.
+
 ## Wat er tegen golden 03 gebouwd is
 
 `lib/screens/books/widgets/book_filter_sheet.dart` met `lib/books/book_filter.dart` eronder, geopend

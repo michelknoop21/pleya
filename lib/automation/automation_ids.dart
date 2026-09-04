@@ -60,6 +60,18 @@ class AutomationIds {
   /// The sheet's Toepassen button: the only place a choice becomes a filter.
   static const String booksFilterApply = 'books.filter.apply';
 
+  /// Boeken zoeken (approved golden 04), the books-scoped search behind the
+  /// search glyph on the books screens.
+  static const String screenBooksSearch = 'screen.books_search';
+
+  /// One result row on that screen, whatever its kind. Instanceable, suffixed
+  /// with the book id, the author name or the series id.
+  static const String booksSearchResult = 'books.search.result';
+
+  /// One category chip. Instanceable, suffixed with the
+  /// [BookSearchCategory] name.
+  static const String booksSearchCategory = 'books.search.category';
+
   /// Boeken-home's three rails, in the order golden 01b puts them.
   static const String booksRailContinue = 'books.rail.continue';
   static const String booksRailRecent = 'books.rail.recent';
@@ -101,6 +113,8 @@ class AutomationIds {
     booksGridItem,
     booksFilterGroup,
     booksFilterOption,
+    booksSearchResult,
+    booksSearchCategory,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -120,6 +134,9 @@ class AutomationIds {
     {'id': booksFilterGroup, 'role': 'filter.group', 'instanceable': true},
     {'id': booksFilterOption, 'role': 'filter.option', 'instanceable': true},
     {'id': booksFilterApply, 'role': 'button', 'instanceable': false},
+    {'id': screenBooksSearch, 'role': 'screen', 'instanceable': false},
+    {'id': booksSearchResult, 'role': 'list.item', 'instanceable': true},
+    {'id': booksSearchCategory, 'role': 'filter', 'instanceable': true},
     {'id': booksRailContinue, 'role': 'rail', 'instanceable': false},
     {'id': booksRailRecent, 'role': 'rail', 'instanceable': false},
     {'id': booksRailSeries, 'role': 'rail', 'instanceable': false},

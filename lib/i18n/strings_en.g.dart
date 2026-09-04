@@ -5254,6 +5254,9 @@ class TranslationsBooksEn {
 
 	/// en: '${count} selected'
 	String filtersChosen({required Object count}) => '${count} selected';
+
+	/// en: 'Authors'
+	String get searchAuthors => 'Authors';
 }
 
 // Path: search.filters
@@ -7712,6 +7715,7 @@ extension on Translations {
 			'books.filtersClear' => 'Clear',
 			'books.filtersApply' => 'Apply',
 			'books.filtersChosen' => ({required Object count}) => '${count} selected',
+			'books.searchAuthors' => 'Authors',
 			_ => null,
 		};
 	}

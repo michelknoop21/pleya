@@ -7,13 +7,13 @@ import '../../automation/automation_node.dart';
 import '../../automation/automation_screen.dart';
 import '../../automation/pleya_verify.dart';
 import '../../i18n/strings.g.dart';
-import '../../navigation/main_screen_scope.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../profiles/profile_avatar.dart';
 import '../../providers/books_home_provider.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/pleya_logo.dart';
 import 'all_books_screen.dart';
+import 'books_search_screen.dart';
 import 'widgets/book_rail.dart';
 import 'widgets/continue_reading_card.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -41,6 +41,7 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
     });
     if (kPleyaVerify) {
       AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenAllBooks, _openAllBooks);
+      AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBooksSearch, _openSearch);
     }
   }
 
@@ -48,6 +49,7 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
   void dispose() {
     if (kPleyaVerify) {
       AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenAllBooks, _openAllBooks);
+      AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBooksSearch, _openSearch);
     }
     super.dispose();
   }
@@ -58,6 +60,29 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
     if (!mounted) return;
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AllBooksScreen()));
   }
+
+  /// The same push the search glyph performs, so a scenario and a reader take
+  /// one route rather than two, with one difference: the automation route
+  /// lands on the canonical query of approved golden 04.
+  ///
+  /// That difference is not decoration. The iOS driver has no text-input
+  /// endpoint (`typeText: no /v1/input/text endpoint exists yet`), so a
+  /// scenario cannot type, and without a query there is no canonical state to
+  /// photograph on hardware at all. The reader's own route, the search glyph,
+  /// still opens an empty field; only the opener a scenario calls pre-fills
+  /// it, and only in a `kPleyaVerify` build. What this buys is evidence that
+  /// the three sections lay out on a device; what it does not cover is the
+  /// typing itself, and the widget tests do that instead.
+  void _openSearch() {
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const BooksSearchScreen(initialQuery: _verifyCanonicalQuery)));
+  }
+
+  /// The query golden 04 is drawn with, and the one the fixed fixture answers
+  /// with all three result kinds.
+  static const String _verifyCanonicalQuery = 'dune';
 
   void unawaitedLoad() {
     final provider = context.read<BooksHomeProvider?>();
@@ -155,7 +180,10 @@ class _BooksHeader extends StatelessWidget {
             const Text('PLEYA', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 3.6)),
             const Spacer(),
             IconButton(
-              onPressed: () => MainScreenFocusScope.of(context, listen: false)?.openSearch?.call(),
+              // Boeken zoeken, not the whole-library search: approved golden
+              // 04 scopes this glyph to books. `MainScreenFocusScope`'s
+              // `openSearch` still belongs to the other surfaces.
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BooksSearchScreen())),
               icon: const AppIcon(Symbols.search_rounded),
               tooltip: t.common.search,
             ),

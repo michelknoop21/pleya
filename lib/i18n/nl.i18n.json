@@ -1801,6 +1801,7 @@
     "statusDownloaded": "Gedownload",
     "filtersClear": "Wissen",
     "filtersApply": "Toepassen",
-    "filtersChosen": "${count} gekozen"
+    "filtersChosen": "${count} gekozen",
+    "searchAuthors": "Auteurs"
   }
 }

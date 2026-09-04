@@ -10,9 +10,9 @@ import '../../automation/pleya_verify.dart';
 import '../../books/book.dart';
 import '../../books/book_filter.dart';
 import '../../i18n/strings.g.dart';
-import '../../navigation/main_screen_scope.dart';
 import '../../providers/books_home_provider.dart';
 import '../../widgets/app_icon.dart';
+import 'books_search_screen.dart';
 import 'widgets/book_cover.dart';
 import 'widgets/book_filter_sheet.dart';
 import 'widgets/book_rail.dart';
@@ -165,7 +165,10 @@ class _AllBooksHeader extends StatelessWidget {
               ),
             ),
             IconButton(
-              onPressed: () => MainScreenFocusScope.of(context, listen: false)?.openSearch?.call(),
+              // Boeken zoeken, not the whole-library search: approved golden
+              // 04 scopes this glyph to books. `MainScreenFocusScope`'s
+              // `openSearch` still belongs to the other surfaces.
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BooksSearchScreen())),
               icon: const AppIcon(Symbols.search_rounded),
               tooltip: t.common.search,
             ),

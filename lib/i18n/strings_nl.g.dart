@@ -2099,6 +2099,7 @@ class _TranslationsBooksNl extends TranslationsBooksEn {
 	@override String get filtersClear => 'Wissen';
 	@override String get filtersApply => 'Toepassen';
 	@override String filtersChosen({required Object count}) => '${count} gekozen';
+	@override String get searchAuthors => 'Auteurs';
 }
 
 // Path: search.filters
@@ -4128,6 +4129,7 @@ extension on TranslationsNl {
 			'books.filtersClear' => 'Wissen',
 			'books.filtersApply' => 'Toepassen',
 			'books.filtersChosen' => ({required Object count}) => '${count} gekozen',
+			'books.searchAuthors' => 'Auteurs',
 			_ => null,
 		};
 	}

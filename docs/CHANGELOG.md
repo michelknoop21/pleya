@@ -4,6 +4,45 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-04] Golden 04: Boeken zoeken, met ranking als eigen contract
+
+Op `feat/ebooks`.
+
+### Added
+- **Boeken zoeken** (`lib/screens/books/books_search_screen.dart`), met de drie rijsoorten in
+  `widgets/book_search_row.dart`. Het zoekglyph op Boeken-home en Alle boeken opent nu dit scherm
+  in plaats van de bibliotheekbrede zoekpagina: golden 04 begrenst hem tot boeken.
+- **Het matchingcontract staat los van de presentatie.** `lib/books/book_search.dart` heeft
+  `BookSearchRanking` als eigen seam, geïnjecteerd in het scherm, zodat ranking kan bewegen met
+  echte metadata of servermatching zonder dat een widget meebeweegt.
+- `pleya_verify/scenarios/books.search.layout.yaml`, plus tien widgettests en dertien
+  eenheidstests.
+
+### Fixed
+- **`Dune` stond derde bij zoeken op `dune`.** De ranking sorteerde alleen alfabetisch. Er is nu
+  een band vóór het alfabet: de titel die de zoekterm is, dan de titels die ermee beginnen, dan de
+  rest.
+- **Het toetsenbord dekte twee van de drie resultaatsecties af.** Het scherm nam de focus altijd;
+  dat klopt voor een leeg veld en niet voor een gevuld veld.
+- **Het zoekveld droeg een tweede, lichter oppervlak.** Een donker `InputDecorationTheme` vult een
+  veld standaard.
+- **De serie-cover tekende zijn titel over de stapelranden.** Op 44 punt vechten die om dezelfde
+  pixels.
+
+### Notes
+- **De tabbalk uit golden 02 en 04 staat niet in de app, op geen van beide schermen.** Alle boeken
+  en Boeken zoeken worden op de profielnavigator gepusht en dekken `MainScreen` volledig af.
+  Nagemeten op de bewijsbundels van allebei de scenario's. Golden 02 is al goedgekeurd en gebouwd,
+  dus dit is een eigen ronde over de navigatieschil en geen fix in dit scherm.
+- **Het scenario typt niet.** De iOS-driver heeft geen `/v1/input/text`, dus de canonieke zoekterm
+  wordt via de automation-route meegegeven. Wat daarmee bewezen is: de drie secties komen op een
+  echt toestel uit waar de golden ze zet. Wat niet: dat typen ze oplevert. De widgettests typen wel.
+- De runner weigerde onderweg te compileren op symbolen die gewoon bestonden; een verouderde
+  `pleya_verify/runner/.dart_tool`, opgelost met `dart pub get`.
+- `scripts/ci_checks.sh` groen op de gepinde SDK 3.44.0, volledige suite 4927 groen en 6
+  overgeslagen. De suite ving één regel die de golden niet ziet: een kaal `TextField` is verboden,
+  want `FocusableTextField` is wat een veld met een tv-afstandsbediening laat werken.
+
 ## [2026-09-04] De automation-ID-generator draait weer, doordat hij Flutter niet meer aanraakt
 
 Op `feat/ebooks`. Tooling-slice, geen productgedrag gewijzigd.

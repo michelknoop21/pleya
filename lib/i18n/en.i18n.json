@@ -1872,6 +1872,7 @@
     "statusDownloaded": "Downloaded",
     "filtersClear": "Clear",
     "filtersApply": "Apply",
-    "filtersChosen": "${count} selected"
+    "filtersChosen": "${count} selected",
+    "searchAuthors": "Authors"
   }
 }
