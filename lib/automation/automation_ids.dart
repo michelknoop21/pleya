@@ -1,4 +1,4 @@
-import '../navigation/navigation_tabs.dart';
+import '../navigation/navigation_tab_id.dart';
 
 /// Stable, agent-addressable automation IDs on a closed set of domains:
 /// `screen`, `nav`, `sidebar`, `library`, `discover`, `detail`, `player`,

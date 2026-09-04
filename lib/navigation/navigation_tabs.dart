@@ -9,6 +9,13 @@ import '../profiles/profile_avatar.dart';
 import '../theme/mono_theme.dart';
 import '../utils/platform_detector.dart';
 
+// [NavigationTabId] lives in its own file so the automation-id catalogue can
+// name a tab without importing Flutter. Imported because this file uses it,
+// and re-exported so every existing importer of this file still finds it.
+import 'navigation_tab_id.dart';
+
+export 'navigation_tab_id.dart';
+
 /// How a bottom bar paints itself. The tabset, the destinations and every
 /// callback are identical in both: this decides paint, nothing else.
 ///
@@ -145,26 +152,6 @@ class MyPleyaTabIcon extends StatelessWidget {
 /// disagreeing would mean either a duplicate account menu or no way to sign out
 /// at all.
 bool showsHeaderAccountMenu({required bool isMobile}) => !isMobile;
-
-/// Navigation tab identifiers.
-///
-/// Order here is not the display order (that is [allNavigationTabs]) and the
-/// enum position is not persisted either: `EnumPref` serialises on `.name`, so
-/// inserting a value cannot shift a stored `startup_section`.
-enum NavigationTabId {
-  discover,
-  movies,
-  series,
-  books,
-  libraries,
-  liveTv,
-  search,
-  watchlist,
-  requests,
-  downloads,
-  settings,
-  myPleya,
-}
 
 /// Represents a navigation tab with its configuration
 class NavigationTab {

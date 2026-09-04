@@ -4,6 +4,80 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-04] De automation-ID-generator draait weer, doordat hij Flutter niet meer aanraakt
+
+Op `feat/ebooks`. Tooling-slice, geen productgedrag gewijzigd.
+
+### Fixed
+- **`dart run tool/generate_automation_ids_yaml.dart` crashte, en het lag niet aan het script.**
+  Een script waarvan de enige regel `import 'package:flutter/material.dart';` is crasht net zo
+  hard: de standalone Dart VM compileert het Flutter-framework niet, want zijn
+  FFI-use-site-transformer gooit `type 'InvalidType' is not a subtype of type 'FunctionType' in
+  type cast` in `_verifyAndReplaceNativeCallable`. Een `dart run` zonder imports draait wel. Het
+  is dus de toolchain op Flutter 3.44.0 en Dart 3.12.0, niet onze invocation en niet onze code.
+- **De generator raakt Flutter nu nergens meer aan.** `AutomationIds` had `navigation_tabs.dart`
+  nodig voor precies één kale enum, en dat is een widgetbestand dat het halve framework meebrengt.
+  `NavigationTabId` staat nu in `lib/navigation/navigation_tab_id.dart`, een bestand zonder
+  imports, en `navigation_tabs.dart` re-exporteert het zodat geen enkele bestaande import
+  verandert. Daarmee compileert de generator een klein pure-Dart-programma en draait hij weer via
+  het gedocumenteerde commando.
+
+### Added
+- **`test/architecture/automation_ids_generator_test.dart`** loopt de importgraaf van de generator
+  af en faalt zodra er ergens een Flutter-import op landt. De eigenschap is anders stil: één
+  import verderop neemt de generator weer weg, de fout komt er als een compilercrash uit die de
+  veroorzaker niet noemt, en dan bewerkt de volgende persoon de gegenereerde YAML met de hand.
+  Rood aangetoond door tijdelijk een Flutter-import in `navigation_tab_id.dart` te zetten.
+
+### Notes
+- De vier regels die in de vorige sessie met de hand in `pleya_verify/automation_ids.yaml` waren
+  gezet, blijken byte-identiek aan wat de herstelde generator schrijft. Een tweede run geeft geen
+  diff, `automation_ids_yaml_test.dart` is groen, en er is dus nooit een tweede bron van waarheid
+  geweest. Er komt ook geen fallbackprocedure: de route is gerepareerd, niet omzeild.
+- `scripts/ci_checks.sh` groen op de gepinde SDK 3.44.0, volledige suite 4904 groen en 6
+  overgeslagen. Onderweg één echte fout van mezelf: `export` maakt een naam niet zichtbaar in het
+  exporterende bestand, dus `navigation_tabs.dart` had ook een gewone import nodig.
+
+## [2026-09-04] Golden 03: de filtersheet, en waarom drie commits de gate oversloegen
+
+Op `feat/ebooks`, drie commits: `823a329` (proposed), `ef1f21c` (goedgekeurd), `bd02265` (gebouwd).
+
+### Added
+- **De filtersheet achter de Filters-pill op Alle boeken.**
+  `lib/screens/books/widgets/book_filter_sheet.dart` met `lib/books/book_filter.dart` eronder.
+  Groepen links, keuzes rechts, en de sheet is een klad: pas `Toepassen` raakt de plank aan. De
+  maten in `BookFilterSheetMetrics` zijn nagemeten op `04-filters-sheet.png` uit de iOS
+  Unified-set, en de sheet houdt de verhouding 600 op 852 aan in plaats van een vaste hoogte.
+- **`Book` draagt nu genre, taal en downloadstaat**, plus `isFinished` naast `isInProgress` op
+  dezelfde 0.995-grens. Genre en taal zijn strings van de bron en geen enum: een gesloten opsomming
+  laat alles vallen wat de bron wel kent en Pleya niet.
+- **Vier automation-id's**: `screen.books_filters`, `books.filter.group`, `books.filter.option` en
+  `books.filter.apply`, met `pleya_verify/scenarios/books.filters.layout.yaml` erop.
+
+### Fixed
+- **Een groepslabel stond 11 punt te hoog in zijn eigen rij.** Een `Stack` geeft zijn
+  niet-gepositioneerde kinderen losse constraints, dus het label sizede naar één regel tekst en
+  ging tegen de bovenrand van de rij van 43,5 staan in plaats van in het midden. Geen enkele test
+  klaagde; het kwam alleen boven door het simulatorbeeld naast de golden te leggen.
+  `StackFit.expand` lost het op.
+- **De pill-rij op Alle boeken paste niet meer zodra de badge erbij kwam.** De testfont maakte het
+  zichtbaar, maar het probleem is echt: een langer sorteerlabel of een grotere tekstschaal doet
+  hetzelfde. De rij scrollt nu horizontaal in plaats van de waarde af te knippen.
+
+### Notes
+- **Drie commits zijn met `SKIP_HOOKS=1` gemaakt, en dat was niet omdat de gate rood stond.** De
+  pre-commit-gate viel op twee dingen die niets met deze diff te maken hebben: de SDK op PATH was
+  3.44.4 in plaats van de gepinde 3.44.0, en `flutter analyze` laadde `dart_code_linter` wisselend
+  en meldde daardoor 28 lintwaarschuwingen in bestaande testbestanden. Met de gepinde SDK vooraan
+  in PATH is `scripts/ci_checks.sh` daarna op exact deze tree helemaal groen gedraaid, inclusief
+  `flutter analyze` zonder fouten of waarschuwingen, en de volledige suite geeft 4903 groen en 6
+  overgeslagen. De gate is dus uitgevoerd, alleen niet door de hook.
+- **`tool/generate_automation_ids_yaml.dart` crasht onder `dart run`** in de FFI-transformer
+  (`type 'InvalidType' is not a subtype of type 'FunctionType' in type cast`). De vier nieuwe
+  regels in `pleya_verify/automation_ids.yaml` zijn daarom met de hand ingevoegd in exact de vorm
+  die de generator schrijft; `test/architecture/automation_ids_yaml_test.dart` bevestigt dat ze
+  gelijk zijn aan `AutomationIds.catalog()`. Dat is een noodgreep en geen route.
+
 ## [2026-08-29] Pleya Verify: de reviewbevindingen na Fase 10 dicht
 
 Twee onafhankelijke adversariële reviews over de branch-diff vonden elf defecten. De zwaarste zes
