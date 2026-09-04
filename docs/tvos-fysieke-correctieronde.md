@@ -93,7 +93,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | VER2 | Automation-ids escapen geen blokhaken | DEFERRED | n.v.t. |
 | HERO1 | Framing van het hero-beeld op Home: op hardware staan halve beelden in de hero, Plex snijdt gecentreerd vóórdat de widget iets kan kiezen | FIXED, hardware open | `d4ec1fe` |
 | HERO2 | De titelband van de hero is de clearlogo-hoogte, dus een tweeregelige titel wordt op de baseline afgesneden | FIXED | `0ad49ec` |
-| HOME1 | Home naast de northstar: het hero-item staat niet heel in beeld, witruimte, overgangen, indeling en styling wijken af, en de navigatiebalk mee; mockup 29 | IN PROGRESS | n.v.t. |
+| HOME1 | Home naast de northstar: het hero-item staat niet heel in beeld, witruimte, overgangen, indeling en styling wijken af, en de navigatiebalk mee; mockup 29 gekozen (D full-bleed), mockup 30 tekent de landing in vier opties plus railfocus, dieper, posterfallback en overlay; keuze open | IN PROGRESS | n.v.t. |
 | I18N5 | Home toont het raillabel "Recently Added Shows" in het Engels tussen Nederlandse labels | OPEN | n.v.t. |
 | SEARCH1 | Zoeken benoemt zijn resultaten buiten het railcontract om | DEFERRED | n.v.t. |
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
@@ -2150,3 +2150,46 @@ tot en met D3 hem tekenen; de rest van de pagina blijft wat er nu staat, de
 railstapel met de DEC-087-band, maar geoptimaliseerd op witruimte, overgangen,
 indeling, styling en de navigatiebalk. Mockup 30 in de volgende sessie tekent die
 combinatie, met D1 tot en met D4 en de gemeten afwijkingen hierboven als startpunt.
+
+**Mockup 30, 4 september** (`docs/assets/tvos-unified/mockups-2026-09-04/30-home-*.png`,
+bron in `src/pages/30-home-*.html`). De eerste opzet zette de railband op 654 met de
+backdrop schermvullend erachter, en dat sneed het gezicht van het hero-onderwerp af bij de
+mond. Michel, letterlijk: "Ik vind de full bleed hero mooi maar dan moet wel het item goed in
+beeld zijn en niet half worden afgesneden door de volgende carroussel die erover heen staat.
+Dat neemt het effect van de hero weg." Een 16:9-backdrop op een 16:9-scherm heeft geen
+uitsnede meer, dus het anker van HERO1 doet hier niets; wat het onderwerp bedekt is de rail,
+en dat is een keuze over de landing. Vier landing-opties, alle met het onderwerp heel:
+
+- **A1, de rail piept.** Tekst 579 tot 840, label op 880, de posters piepen 147 van 346
+  boven de onderrand. DOWN scrolt 508 naar stand B. Dit is de gangbare streaming-landing en
+  mijn aanbeveling; hij laat 9.2 los op één punt, de eerste rail staat niet meer heel in beeld.
+- **A2, het beeld past.** De backdrop heel op 16:9 als 996 bij 560 rechtsboven, dezelfde
+  backdrop geblurd als schermvulling (de 9.4-taal op een backdrop), tekst in een kolom van
+  760, label 601 en de band 654 tot 1000 heel in beeld op de achtergrond. Niets gesneden, niets
+  bedekt, maar de hero is kleiner en minder full-bleed.
+- **A3, alleen het label.** De hero ongestoord schermvullend, tekst 400 tot 661, op 985 alleen
+  "Verder kijken" met een chevron als stille hint. De rail komt op DOWN. De zuiverste hero,
+  ten koste van zichtbare railinhoud op de landing.
+- **A4, mini-rail.** De eerste rail heel in beeld als strook van 133 bij 200 (799 tot 999)
+  onder tekst 439 tot 700; op DOWN groeit hij naar de DEC-087-band. Alles staat er, maar
+  posters van 133 breed zijn op een TV klein, en de groei is een layoutwissel bij focus.
+
+De overige standen zijn onafhankelijk van die keuze. **B, railfocus:** de pagina scrolt tot
+het label op 372 staat (het anker van northstar 02), de herotekst dooft, de backdrop treedt
+terug tot een gedimde band en gaat over in de ambient tint van 9.3; band 346 met 615-kaart en
+231-buren, bijschrift 18 boven, titel 27, meta 20 mét puntspatiëring (in 29 D2/D4 miste
+`.cap .m` de `.sep`-marge), synopsis op één regel, 26 naar het volgende label op 908, en de
+volgende rail piept 119. **C, dieper op Home:** het gefocuste label ankert onder de nav op
+132 in plaats van op 372, waardoor de volgende rail er heel onder staat (721 tot 1067) in
+plaats van alleen zijn label; de app zet vandaag elk gefocust label op 372 met zwart erboven,
+en dat is waar de "één rail per scherm" vandaan komt. Verder de ambient tint, nieuw als
+amberpunt (audit 5), het vinkje als witte schijf, en "Recent toegevoegde series" in het
+Nederlands (I18N5). **D, alleen poster (9.4):** dezelfde poster sterk geblurd en donker als
+vulling, scherp als eiland van 400 bij 600 rechts; getekend op de geometrie van A1 en volgt de
+gekozen landing-optie. **E, overlay:** het contextmenu uit mockup 12 vanuit B, met de topnav
+op 0,35 mee gedimd (audit 13). De nav zelf staat in alle standen op 44 tot 96 met de
+profielchip met initiaal links en het wordmark rechts.
+
+Open voor Michel: de landing-optie (A1 tot en met A4) en akkoord op B tot en met E. Daarna
+DEC-095, de spec (9.1-schets, 9.2, 9.3, 7.1 rustfocus, 9.6 pauzeregels) en HOME1 op
+GOEDGEKEURD.
