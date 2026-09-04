@@ -1,0 +1,38 @@
+<style>
+.page { padding: 0 var(--grid-inset); }
+.page-title { }
+.body { display: flex; gap: 34px; margin-top: 34px; align-items: flex-start; }
+.frail { width: 250px; flex: none; display: flex; flex-direction: column; gap: 12px; }
+.frail .fb { display: flex; align-items: center; gap: 14px; height: 60px; padding: 0 20px; border-radius: 999px; background: var(--surface); font-size: 21px; color: var(--ink-2); white-space: nowrap; }
+.frail .fb .ic { width: 24px; height: 24px; }
+.frail .fb .badge { margin-left: auto; background: var(--ink); color: var(--bg); border-radius: 999px; min-width: 28px; height: 28px; padding: 0 8px; font-size: 17px; font-weight: 700; display: grid; place-items: center; }
+.frail .fb.focus { box-shadow: 0 0 0 var(--ring-gap) var(--bg), 0 0 0 calc(var(--ring-gap) + var(--ring)) var(--ink); }
+.frail .lbl { font-size: 18px; color: var(--ink-3); padding: 8px 20px 0; }
+.grid5 { display: grid; grid-template-columns: repeat(5, 281px); gap: 22px; }
+.grid5 .card .art { width: 281px; height: 422px; }
+</style>
+{{nav:Films|live}}
+<div class="page">
+  <div class="page-title">Alle films</div>
+  <div class="body">
+    <div class="frail">
+      <div class="fb focus">{{icon:server}} Bronnen</div>
+      <div class="fb">{{icon:filter}} Filters <span class="badge">2</span></div>
+      <div class="fb">{{icon:sort}} Titel A–Z</div>
+      <div class="lbl">Niet bekeken · Sciencefiction</div>
+    </div>
+    <div class="grid5">
+      <div class="card"><div class="art"><img src="{{art:oppenheimer-poster}}"><span class="src">2 bronnen</span></div><div class="t">Oppenheimer</div><div class="s">2023 · Thriller</div></div>
+      <div class="card"><div class="art"><img src="{{art:barbie-poster}}"><div class="prog"><i style="width:30%"></i></div></div><div class="t">Barbie</div><div class="s">2023 · Comedy</div></div>
+      <div class="card"><div class="art"><img src="{{art:grandbudapest-poster}}"></div><div class="t">The Grand Budapest Hotel</div><div class="s">2014 · Comedy</div></div>
+      <div class="card"><div class="art"><img src="{{art:interstellar-poster}}"><span class="seen">{{icon:check}}</span></div><div class="t">Interstellar</div><div class="s">2014 · Sciencefiction</div></div>
+      <div class="card"><div class="art"><img src="{{art:spiderverse-poster}}"></div><div class="t">Across the Spider-Verse</div><div class="s">2023 · Animatie</div></div>
+      <div class="card"><div class="art"><img src="{{art:lalaland-poster}}"></div><div class="t">La La Land</div><div class="s">2016</div></div>
+      <div class="card"><div class="art"><img src="{{art:wonka-poster}}"></div><div class="t">Wonka</div><div class="s">2023</div></div>
+      <div class="card"><div class="art"><img src="{{art:pastlives-poster}}"></div><div class="t">Past Lives</div><div class="s">2023</div></div>
+      <div class="card"><div class="art"><img src="{{art:dune2-poster}}"></div><div class="t">Dune: Part Two</div><div class="s">2024</div></div>
+      <div class="card"><div class="art"><img src="{{art:eeaao-poster}}"></div><div class="t">Everything Everywhere</div><div class="s">2022</div></div>
+    </div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 28 · optie C: verticale actierail links van het raster, altijd één LEFT vanaf kolom 0, met de actieve filters als regel eronder; kost één posterkolom (vijf in plaats van zes)</div>

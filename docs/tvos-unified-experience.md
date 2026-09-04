@@ -168,7 +168,7 @@ Expliciete grenzen, geen vergeten onderdelen:
 - geen samenvoeging van Live TV-kanalen;
 - geen automatische bulkmutatie van meerdere servers zonder expliciete scope;
 - geen redesign van iOS, iPadOS of macOS;
-- geen verwijdering van de bestaande geavanceerde Bibliotheken-interface;
+- geen verwijdering van Bibliotheken als bestemming; de bladerinterface erin is per DEC-092 vervangen door bronbeheer (4.5);
 - geen permanente gebruikersinstelling om tussen oude en nieuwe TV-shell te wisselen.
 
 De datafundering wordt wel platformneutraal gebouwd, zodat Films en Series later ook op andere
@@ -277,12 +277,21 @@ UnifiedMediaGroup
 
 De speler blijft dus vrij van unified-cataloguslogica.
 
-### 4.5 Bibliotheken blijft bestaan
+### 4.5 Bibliotheken is bronbeheer
 
-Films en Series zijn de dagelijkse globale catalogus. Mijn Pleya ▸ Bibliotheken blijft de
-geavanceerde bronweergave voor: één library selecteren; Recommended; Browse; Collections; Playlists;
-backend-specifieke filters; folder browsing; metadata vernieuwen; scan/analyse/prullenbak waar
-ondersteund; libraries tonen/verbergen en ordenen.
+Films en Series zijn de dagelijkse globale catalogus, en bladeren per bibliotheek gebeurt dáár:
+Alle films en Alle series met de bibliotheek als bronfilter (10.4). Mijn Pleya ▸ Bibliotheken is
+de beheerweergave van de bronnen: per server de bibliotheken, met soort, aantal, zichtbaar of
+verborgen en volgorde, en per bibliotheek de acties Openen in catalogus, metadata vernieuwen,
+scannen, verbergen, en waar de backend het draagt mappen bladeren, analyseren en prullenbak
+legen. De pagina heeft geen eigen Aanbevolen of Bladeren. Collecties en Afspeellijsten zijn eigen
+ingangen in Mijn Pleya, over alle bronnen heen, met het collectie- en afspeellijstdetail van
+hoofdstuk 31.8 als bestemming.
+
+> Gewijzigd door [DEC-092](DECISIONS.md#dec-092). Tot 4 september 2026 stond hier "Bibliotheken
+> blijft bestaan" als geavanceerde bronweergave met één library kiezen, Recommended, Browse,
+> Collections en Playlists. Dat contract bouwde een tweede bladerinterface naast de catalogus die
+> 10.4 al met server en library als globale filters bedient.
 
 ### 4.6 Writes zijn standaard brongebonden
 
@@ -1357,7 +1366,10 @@ Pleya
 | Huidige TV-functie | Nieuwe plek |
 | --- | --- |
 | Home | Topnav Home |
-| Bibliotheken | Mijn Pleya ▸ Bibliotheken |
+| Bibliotheken (beheer per server, DEC-092) | Mijn Pleya ▸ Bibliotheken |
+| Bladeren per bibliotheek | Alle films of Alle series met de bibliotheek als bronfilter |
+| Collecties | Mijn Pleya ▸ Collecties |
+| Afspeellijsten | Mijn Pleya ▸ Afspeellijsten |
 | Live TV | Topnav, conditioneel |
 | Zoeken | Topnav Zoeken |
 | Kijklijst | Mijn Pleya ▸ Kijklijst |
@@ -1522,7 +1534,8 @@ Rate (geldt voor alle bronnen; wat onbereikbaar is wordt gemeld, hoofdstuk 13.8)
 verwijderen van servercontent; metadata bewerken.
 
 **Acties die alleen in Bibliotheken thuishoren:** scan library; analyseer; prullenbak leegmaken;
-metadata-refresh op hele library; folder browsing; collectionbeheer; playlistbeheer.
+metadata-refresh op hele library; folder browsing. Collectionbeheer en playlistbeheer horen bij hun
+eigen ingangen in Mijn Pleya (4.5, DEC-092).
 
 Een destructive action mag nooit rechtstreeks op `representativeSource` worden uitgevoerd.
 

@@ -82,7 +82,8 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LIB2 | Race bij snel wisselen van bibliotheek | FIXED | `f2ea980` |
 | LIB3 | TV-tabs dragen nog de oude rode onderstreping | FIXED, hardware open | `3e9d31b` |
 | LIB4 | Bibliotheken draait op alles behalve de kiezer nog de oude layout: kop, achtergrond, acties en landing wijken af van `libraries-a.png` en `libraries-d.png` | VERVANGEN door LIB7 | n.v.t. |
-| LIB7 | Bibliotheken wordt bronbeheer: bladeren loopt via de catalogus met bronfilter, Collecties en Afspeellijsten worden eigen unified ingangen; DEC-voorstel plus mockup 27 | IN PROGRESS | n.v.t. |
+| LIB7 | Bibliotheken wordt bronbeheer: bladeren loopt via de catalogus met bronfilter, Collecties en Afspeellijsten worden eigen unified ingangen; DEC-092 accepted, mockup 27 goedgekeurd, bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
+| CAT5 | De filters op de catalogus (Bronnen, Filters, Sortering) moeten op tvOS een betere positie krijgen, zodat ze makkelijker te bereiken zijn | OPEN, besluit nodig | n.v.t. |
 | LIB5 | De spotlight-titel op Bibliotheken valt over de tabrij, en maakt de actieve tab minder leesbaar dan de inactieve | OPEN | n.v.t. |
 | LIB6 | Complete mockupset voor Bibliotheken: mockup 26, negen states in `docs/assets/tvos-unified/mockups-2026-09-04/`, gebouwd op `tv.css` en `build.mjs` van de 09-25-familie, die nu in `docs/assets/tvos-unified/src/` staan | KLAAR, contract afgewezen | n.v.t. |
 | WL2 | Kijklijst end-to-end in Pleya Verify | OPEN | n.v.t. |
@@ -1988,3 +1989,35 @@ de nieuwe taal.
 
 De twee acceptatie-eisen uit LIB6 gaan mee: elke knop bereikbaar met de
 afstandsbediening, en geen afwijking van de andere schermen.
+
+Goedgekeurd door Michel op 4 september op mockup 27, letterlijk: "Verder akkoord op de
+mockup alleen de filters nog bij alle films en series posities." DEC-092 staat op
+accepted en de drie spec-wijzigingen zijn doorgevoerd in `tvos-unified-experience.md`
+(4.5, de tabel van 18.2, de actielijst van hoofdstuk 31). Het voorbehoud over de
+filters is CAT5 en blokkeert de bouw van LIB7 niet: state D van mockup 27 volgt
+wat CAT5 beslist. De bouw is een eigen ronde, met de negatieve controle uit
+DEC-092 als eerste stap.
+
+
+### CAT5, de filters op de catalogus zijn op tvOS te ver weg
+
+Gemeld door Michel op 4 september bij het beoordelen van mockup 27, in zijn woorden:
+"Op zich idee is goed maar de filters moeten ook nog een betere positie krijgen
+zodat je deze makkelijker kan bereiken op tvos." Het gaat om de drie
+headeracties van Alle films en Alle series, Bronnen, Filters en Sortering, die in
+northstar 05 en 06, in mockup 14 en in state D van mockup 27 rechtsboven naast de
+paginakop staan.
+
+Dit is niet CAT3 of CAT4 opnieuw. CAT3 zette de cluster op de canonieke rechterrand,
+CAT4 maakte hem bereikbaar. Beide zijn dicht en gaan over waar de cluster nu staat;
+deze bevinding zegt dat die plek zelf verkeerd is voor een afstandsbediening. Het is
+een ontwerpkeuze over de catalogus als geheel en raakt daarmee de northstar-set,
+dus hij gaat als besluit en niet als fix.
+
+Drie posities staan getekend als mockup 28 (`28-catalogusfilters-a` tot en met `-c`).
+A is de huidige, ter referentie. B zet de drie acties links naast de kop, boven de
+eerste kolommen en in leesrichting, en maakt Play/Pause de snelkoppeling naar het
+filterpaneel; §10.6 staat die knop al toe, hij is alleen nergens zichtbaar gemaakt.
+C zet een verticale actierail links van het raster, altijd één LEFT vanaf kolom 0,
+met de actieve filters als regel eronder; dat kost één posterkolom. De keuze
+verandert §10.2 en raakt northstar 05, 06 en 14 en state D van mockup 27.
