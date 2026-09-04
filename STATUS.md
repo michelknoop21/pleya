@@ -1,6 +1,6 @@
 # STATUS · Pleya
 
-_Laatst gewerkt: 2026-09-04. **PS-9 is gesloten.** Alle zes implementatiestappen zijn af, de vijf
+_Laatst gewerkt: 2026-09-04. **PS-9 is gesloten en S0 van de re-baseline ook.** Alle zes implementatiestappen zijn af, de vijf
 acceptatiecriteria hebben elk hun bewijs, en het stopcriterium is op de draaiende NAS gehaald in
 plaats van alleen in een container. De volgende fase in de vastgelegde doorloop is PS-11A en die is
 niet gestart; er loopt op dit moment dus geen serverfase. Daarvóór, op 2026-09-01, is DEC-097's
@@ -12,6 +12,51 @@ gedupliceerd. Op 2026-09-03 is ook [DEC-107](docs/DECISIONS.md) geland: e-books 
 met PS-14 ontworpen en PS-15/PS-16 begrensd, alle drie nog niet vrijgegeven._
 
 ## Waar was ik
+
+**S0 is gesloten (4 september, avond).** De acht taken van de eerste slice staan alle op gereed en
+poort P9 is groen. Daarmee is de voorwaarde uit [DEC-108](docs/DECISIONS.md) gehaald en mag PS-11A
+starten; PS-14 blijft gesloten.
+
+Drie dingen die de dag opleverde en die de volgende sessie moet weten.
+
+De dagelijkse merge van `main` (`a1734ead`, `main` op `9b181ff5`) bracht meteen een dertiende
+DEC-botsing: `main` gaf 096 uit aan LANG1, hetzelfde nummer waar de hernummering van die middag de
+refreshtokenrotatie naartoe had geschoven. Deze keer week het jongste besluit, niet de gevestigde
+reeks: LANG1 staat als DEC-109. Zeven verwijzingen tegen ruim driehonderd, en die driehonderd elke
+dag opnieuw verzetten maakt elke bestaande verwijzing telkens ongeldig. De nieuwe regel staat
+onderaan `docs/DECISIONS.md`.
+
+De authority-poort van gisteren viel over die merge, en het was de poort zelf: een bestand dat maar
+aan één kant bestaat hoorde in de skip te vallen, maar de blob-helper gaf bij een onbekend pad niet
+`-` terug maar het argument. Gerepareerd in `6915e4d5`, met een negatieve controle in dezelfde
+CI-job.
+
+S0.7 was groter dan hij leek. De dekkingslijst van de contractpoort werd met de hand bijgehouden en
+stond nog op de acht schema's van PS-2, dus gebruikers, sessies en rechten konden ongedekt zijn
+terwijl de poort groen meldde. Nagemeten: de oude poort geeft exit 0 op een vangst zonder die drie.
+De lijst komt nu uit `openapi.yaml` en de eis ging van 8 naar 15. Het tweede deel van de taak, de
+fake server uit `pleya_verify` tegen het contract houden, bestond nog niet en vond bij zijn eerste
+run meteen drift.
+
+### Roadmap Drift Check op S0
+
+Is er iets gebouwd dat niet in scope stond? Eén ding, en bewust: `scripts/check_authority_merge.sh`
+is gerepareerd en heeft een zelftest gekregen. Dat is geen S0-taak maar de poort die S0.3 bewaakt en
+die op deze merge vals alarm gaf; hem laten staan zou betekenen dat de CI-job van onze eigen slice
+rood blijft op een fout in de meting. `--subset` in `check_server_responses.py` is er ook bij
+gekomen, en dat hoort wel bij S0.7: zonder die vlag was de enige manier om de fake server te toetsen
+het verlagen van de eis voor iedereen.
+
+Is er scope blijven liggen? Ja, en het staat er expliciet bij. De migratiestap van
+`TestNASFixtureSurvivesMigrationToHead` is vandaag leeg, want de NAS en de code staan allebei op
+schema 7; de test bewijst nu dat de fixture laadt, compleet is en de bemonsterde vormen draagt, en
+vanaf `0008` pas dat een migratie ze overleeft. Dat staat in de code en in
+`docs/pleya-server-nas-fixture.md`, niet alleen hier. Buiten de fixture zijn er geen migraties
+geschreven, geen tabellen ontworpen, geen endpoints toegevoegd en is `openapi.yaml` niet aangeraakt.
+
+Klopt de volgende fase nog? Ja. PS-11A is de eerstvolgende, precies zoals DEC-108 hem vastlegt, en
+S0 heeft er geen afhankelijkheid bij gemaakt. PS-14 blijft gesloten en loopt er niet naast.
+
 
 **Correctieronde na een adversariële review (4 september, laat).** Codex kreeg de merge voorgelegd
 met de opdracht hem te breken. Drie bevindingen, alle drie geverifieerd voordat er iets aan
