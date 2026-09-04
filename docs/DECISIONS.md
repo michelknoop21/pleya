@@ -20,6 +20,30 @@ Append-only. Nummers zijn opeenvolgend; oude beslissingen worden niet verwijderd
 > Historische sessielogboeken zijn bewust niet herschreven: die zijn
 > tijdgebonden bewijs van wat er toen stond.
 
+> **Openstaand DEC-nummer: readertypografie en paginasemantiek.** Goedgekeurd op
+> 4 september 2026 bij golden 07 revisie B, en bewust nog zonder nummer. De
+> DEC-reeks draagt op dit moment botsende nummers tussen `feat/ebooks`,
+> `feat/pleyaserver` en de Verify- en designsporen, en een nummer claimen op basis
+> van de laatste DEC op de eigen branch maakt dat erger. Volgorde: eerst een
+> branchbrede audit van de DEC-ID's, dan de nog niet gelande botsers hernummeren,
+> een historisch nummer waar al code of documentatie naar wijst nooit
+> herschrijven, en pas daarna één vrij nummer aan dit besluit geven. Het besluit
+> zelf staat volledig in `docs/assets/ebooks/northstar/README.md` bij golden 07 en
+> in `assets/fonts/README.md`; het bevat zeven dingen:
+>
+> 1. Literata is de gebundelde standaard-serif van de Pleya-reader.
+> 2. De leesletter is een reproduceerbaar asset in de repository, geen OS-font.
+> 3. De canonieke snit heeft vaste variation axes: `wght` 400 en `opsz` 18 bij
+>    18 pt tekst op een regelband van 28.
+> 4. Leesvoortgang (`totalProgression`) en de EPUB-`page-list` zijn twee bronnen
+>    en worden nooit uit elkaar afgeleid.
+> 5. De bibliografische paginatelling van golden 05 wordt nooit readerpaginering.
+> 6. Markeringsgeometrie volgt de werkelijke tekst- en regelvakken van de
+>    readerlaag, nooit een hoogte overgeschreven uit de golden.
+> 7. De chrome van de reader mag de documentlayout niet beïnvloeden.
+>
+> Administratie, en geen blokkade voor de bouw tegen golden 07.
+
 ## DEC-001: Rebrand PlexFlixNetwork → Pleya
 
 **Date:** 2026-07-03

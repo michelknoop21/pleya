@@ -47,9 +47,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `06a-books-toc.png` | Inhoudsopgave, canonieke staat op Atomic Habits met de boom open op de locator | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `06b-books-toc-collapsed.png` | Dezelfde boom met alle delen dichtgeklapt | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `06c-books-toc-rowtypes.png` | Detail: de rijsoorten van de boom in hun drie posities | approved | detailuitsnede, 1179×1935 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `07a-books-reader.png` | Reader, canonieke staat op Dune hoofdstuk 12 met de chrome zichtbaar | **proposed, revisie B** | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `07b-books-reader-immersive.png` | Dezelfde pagina met de chrome verborgen | **proposed, revisie B** | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `07c-books-reader-themes.png` | Detail: dezelfde pagina in licht, sepia en donker | **proposed, revisie B** | detailuitsnede, 1179×2478 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `07a-books-reader.png` | Reader, canonieke staat op Dune hoofdstuk 12 met de chrome zichtbaar | approved (revisie B) | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `07b-books-reader-immersive.png` | Dezelfde pagina met de chrome verborgen | approved (revisie B) | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `07c-books-reader-themes.png` | Detail: dezelfde pagina in licht, sepia en donker | approved (revisie B) | detailuitsnede, 1179×2478 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -566,7 +566,7 @@ de hele set, waar paneel 6 een renderrestje `91:43` laat zien. En anders dan bij
 staat er geen tabbalk in het beeld die in de app zou ontbreken: paneel 6 tekent er zelf geen, want de
 reader dekt hem af.
 
-## Golden 07, Reader (proposed, revisie B)
+## Golden 07, Reader (approved, revisie B)
 
 Het leesoppervlak zelf: de pagina waar een boek gelezen wordt, en de chrome die eroverheen komt en
 weer weggaat. Inhoud van paneel 7 van de comp, uitvoering op de chrome-grammatica van
@@ -574,9 +574,31 @@ weer weggaat. Inhoud van paneel 7 van de comp, uitvoering op de chrome-grammatic
 chrome zichtbaar, `07b` dezelfde pagina met de chrome verborgen, `07c` een detailuitsnede van
 dezelfde regels in licht, sepia en donker.
 
-**Dit is nog steeds een voordracht.** Michel heeft revisie A op 4 september 2026 inhoudelijk
-goedgekeurd, drie van de vier keuzes aangenomen en één verplichte revisie gevraagd. Die zit hierin.
-Er mag nog niets tegen gebouwd worden.
+**Michel heeft revisie B op 4 september 2026 in de chat goedgekeurd**, na visuele beoordeling van de
+drie frames op volle resolutie. Voordracht A was inhoudelijk goedgekeurd met drie van de vier keuzes
+aangenomen en één verplichte revisie, de leesletter; die zit hierin. Dit is vanaf nu het contract
+waar de reader tegen gebouwd wordt.
+
+**Vier implementatieregels die bij de goedkeuring horen** en die het beeld zelf niet laat zien:
+
+- **De reader moet exact ditzelfde fontbestand én dezelfde assen gebruiken.** Alleen
+  `fontFamily: Literata` zetten is niet genoeg; zonder `wght` 400 en `opsz` 18 tekent de app een
+  andere snit dan de golden.
+- **De canonieke staat is een regressiecheck.** Bij de standaard leesstijl moet werkelijk gelden:
+  familie Literata, `wght` 400, `opsz` 18, tekengrootte 18 pt, regelband 28 pt. Niet omdat elke
+  toekomstige instelling zo moet blijven, maar omdat de standaard anders niet meer op de goedgekeurde
+  golden ligt. Kiest een lezer later 22 pt, dan hoort `opsz` mee te bewegen en niet op 18 te blijven
+  hangen; of dat automatisch aan de tekstgrootte gekoppeld wordt of expliciet gestuurd, beslist
+  golden 08.
+- **Markeringsgeometrie volgt de werkelijke tekst- en regelvakken van de readerlaag.** De 27 punt uit
+  de maatvoering hierboven is een meting, geen constante om over te schrijven. Wordt hij nagetekend,
+  dan loopt de markering scheef zodra tekengrootte, regelafstand of letter verandert.
+- **De chrome mag de documentlayout niet beïnvloeden.** Tonen en verbergen levert nul verschuiving
+  op; `07b` is daar het bewijs van en de bouw moet datzelfde bewijs leveren.
+
+**Over de markering met Literata.** De twee merkvlakken raken elkaar nu bijna. Beoordeeld en
+goedgekeurd: als markering leest dat als één doorlopende passage over twee regels, en niet als twee
+losse blokken. De 7 punt opening van Georgia wordt niet kunstmatig teruggebouwd.
 
 **Wat revisie B verandert, en verder niets.**
 
@@ -619,9 +641,9 @@ regels raken elkaar nu op 567 en 568 in plaats van 7 punt uit elkaar te staan. D
 de metriek van de letter en geen aparte ontwerpkeuze, maar het is wel te zien en het staat hier
 daarom.
 
-**De vier keuzes van revisie A, met de stand erbij.**
+**De vier keuzes van voordracht A, alle vier genomen.**
 
-- **De leesletter, aangepast op verzoek: Literata is de product-serif van de Pleya-reader.**
+- **De leesletter: Literata is de product-serif van de Pleya-reader.**
   Systeem-Georgia is afgewezen. De reden is niet alleen reproduceerbaarheid: de reader wordt een
   eigen productoppervlak, en dan moeten golden en app dezelfde glyphmetriek hebben, moeten iPhone en
   iPad dezelfde snit gebruiken, moet een nieuwe machine dezelfde golden kunnen reconstrueren, en mag
@@ -646,15 +668,22 @@ daarom.
     **en** de locator daarop te mappen is; getoond wordt dan het label van die ingang, niet een
     getelde positie;
   - `van N` verschijnt alleen wanneer diezelfde `page-list` een betrouwbaar numeriek eind- of
-    totaallabel oplevert. Een page-list mag labels dragen die niet netjes van 1 tot 616 lopen, en
-    dan staat er alleen het label;
+    totaallabel oplevert. Een page-list mag labels dragen die niet netjes van 1 tot 616 lopen; dan
+    staat het huidige label er wel en `van N` niet;
   - `N` wordt nooit berekend uit het aantal ingangen in de `page-list`;
   - de bibliografische `Pagina's` uit golden 05 wordt hier nooit voor hergebruikt. Dat `616` in dit
     frame gelijk is aan de statsrij van golden 05 is een eigenschap van deze editie en geen
     afleiding.
 
-  Levert een publicatie niets van dit alles, dan staat er alleen `48%`. Het frame toont bewust de
-  rijke staat; de terugval staat beschreven en is niet getekend.
+  Er zijn dus drie vormen en `van N` is geen alles-of-nietsvoorwaarde voor het paginalabel:
+
+  | staat | voet |
+  | --- | --- |
+  | page-list met een betrouwbaar eindlabel | `48% · Pagina 248 van 616` |
+  | page-list waarvan alleen het huidige label betrouwbaar is | `48% · Pagina 248` |
+  | geen bruikbare page-list | `48%` |
+
+  Het frame toont de rijke staat; de twee andere staan beschreven en zijn niet getekend.
 - **Eén zoekglyf, goedgekeurd.** Paneel 7 zet er twee naast elkaar die er hetzelfde uitzien. Eén
   ervan is een vergissing of een tweede functie zonder naam, en deze golden verzint er geen betekenis
   bij: er staat er één, en die opent `Zoeken in boek` uit paneel 9. Dezelfde behandeling die golden
