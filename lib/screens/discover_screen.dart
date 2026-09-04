@@ -1498,7 +1498,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   @override
   Widget build(BuildContext context) {
     return AutomationScreen(
-      id: AutomationIds.screenDiscover,
+      id: AutomationIds.screenForScope(widget.scope),
       readiness: _discoverReadiness,
       child: SettingsBuilder(
         prefs: const [
@@ -2016,7 +2016,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
     return SliverToBoxAdapter(
       child: AutomationNode(
-        id: AutomationIds.discoverHero,
+        // Per scope, not one id for all three: Home, Series and Films are the
+        // same screen with a type filter and the shell mounts all three at
+        // once, so a single id lands in /v1/ui_tree's `duplicates` list and a
+        // geometry assertion resolves an ambiguous node.
+        id: AutomationIds.heroForScope(widget.scope),
         role: 'hero',
         child: Focus(
           focusNode: _heroFocusNode,
@@ -2511,7 +2515,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         const foregroundColor = Colors.black;
         const textStyle = TextStyle(color: foregroundColor, fontSize: 14, fontWeight: FontWeight.w600);
         return AutomationNode(
-          id: AutomationIds.discoverHeroPlay,
+          id: AutomationIds.heroPlayForScope(widget.scope),
           role: 'button',
           child: InkWell(
             onTap: () {

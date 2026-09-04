@@ -1,4 +1,5 @@
 import '../navigation/navigation_tab_id.dart';
+import '../screens/discover_scope.dart';
 
 /// Stable, agent-addressable automation IDs on a closed set of domains:
 /// `screen`, `nav`, `sidebar`, `library`, `discover`, `detail`, `player`,
@@ -16,6 +17,19 @@ class AutomationIds {
 
   static const String screenMain = 'screen.main';
   static const String screenDiscover = 'screen.discover';
+
+  /// Series and Films: the same surface as [screenDiscover] with a type filter
+  /// ([DEC-094](../../docs/DECISIONS.md)), and therefore ids of their own.
+  ///
+  /// All three are mounted at once — the shell's `IndexedStack` builds every
+  /// child so a tab switch does not rebuild — and before this they all claimed
+  /// `screen.discover`. `/v1/ui_tree` listed it under `duplicates` with `#2`
+  /// and `#3` suffixes, and `handleAutomationOpen` answered readiness from
+  /// whichever instance registered first rather than the one on screen. See
+  /// [screenForScope].
+  static const String screenSeries = 'screen.series';
+  static const String screenMovies = 'screen.movies';
+
   static const String screenLibraries = 'screen.libraries';
 
   /// Boeken-home (approved golden 01b). Ready once its source has answered,
@@ -154,11 +168,41 @@ class AutomationIds {
   static const String libraryFilterFilters = 'library.filter.filters';
   static const String libraryFilterSort = 'library.filter.sort';
 
-  /// The Discover hero billboard as a whole.
+  /// The Discover hero billboard as a whole, on Home.
   static const String discoverHero = 'discover.hero';
 
-  /// The hero's smart-play button.
+  /// The hero's smart-play button, on Home.
   static const String discoverHeroPlay = 'discover.hero.play';
+
+  /// The same two nodes on the Series and Films landings. Separate ids for the
+  /// reason [screenSeries] gives: three mountings of one screen cannot share
+  /// one id and still be addressable.
+  static const String seriesHero = 'discover.series.hero';
+  static const String seriesHeroPlay = 'discover.series.hero.play';
+  static const String moviesHero = 'discover.movies.hero';
+  static const String moviesHeroPlay = 'discover.movies.hero.play';
+
+  /// Which screen id a `DiscoverScreen` in [scope] registers.
+  ///
+  /// Derived from the scope rather than chosen at the call site, so a fourth
+  /// scope cannot quietly reuse a third one's id — the failure this replaces.
+  static String screenForScope(DiscoverScope scope) => switch (scope) {
+    DiscoverScope.all => screenDiscover,
+    DiscoverScope.series => screenSeries,
+    DiscoverScope.movies => screenMovies,
+  };
+
+  static String heroForScope(DiscoverScope scope) => switch (scope) {
+    DiscoverScope.all => discoverHero,
+    DiscoverScope.series => seriesHero,
+    DiscoverScope.movies => moviesHero,
+  };
+
+  static String heroPlayForScope(DiscoverScope scope) => switch (scope) {
+    DiscoverScope.all => discoverHeroPlay,
+    DiscoverScope.series => seriesHeroPlay,
+    DiscoverScope.movies => moviesHeroPlay,
+  };
 
   /// The episode list on the media-detail screen (single-season-direct and
   /// per-season-pager paths both render through the same widget).
@@ -197,6 +241,8 @@ class AutomationIds {
   static List<Map<String, Object?>> catalog() => [
     {'id': screenMain, 'role': 'screen', 'instanceable': false},
     {'id': screenDiscover, 'role': 'screen', 'instanceable': false},
+    {'id': screenSeries, 'role': 'screen', 'instanceable': false},
+    {'id': screenMovies, 'role': 'screen', 'instanceable': false},
     {'id': screenLibraries, 'role': 'screen', 'instanceable': false},
     {'id': screenBooks, 'role': 'screen', 'instanceable': false},
     {'id': screenAllBooks, 'role': 'screen', 'instanceable': false},
@@ -240,6 +286,10 @@ class AutomationIds {
     {'id': libraryFilterSort, 'role': 'filter', 'instanceable': false},
     {'id': discoverHero, 'role': 'hero', 'instanceable': false},
     {'id': discoverHeroPlay, 'role': 'button', 'instanceable': false},
+    {'id': seriesHero, 'role': 'hero', 'instanceable': false},
+    {'id': seriesHeroPlay, 'role': 'button', 'instanceable': false},
+    {'id': moviesHero, 'role': 'hero', 'instanceable': false},
+    {'id': moviesHeroPlay, 'role': 'button', 'instanceable': false},
     {'id': mediaDetailEpisodeList, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailEpisodeListItem, 'role': 'list.item', 'instanceable': true},
     {'id': playerSurface, 'role': 'surface', 'instanceable': false},

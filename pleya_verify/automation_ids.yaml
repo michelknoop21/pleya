@@ -12,6 +12,12 @@ ids:
   - id: screen.discover
     role: screen
     instanceable: false
+  - id: screen.series
+    role: screen
+    instanceable: false
+  - id: screen.movies
+    role: screen
+    instanceable: false
   - id: screen.libraries
     role: screen
     instanceable: false
@@ -172,6 +178,18 @@ ids:
     role: hero
     instanceable: false
   - id: discover.hero.play
+    role: button
+    instanceable: false
+  - id: discover.series.hero
+    role: hero
+    instanceable: false
+  - id: discover.series.hero.play
+    role: button
+    instanceable: false
+  - id: discover.movies.hero
+    role: hero
+    instanceable: false
+  - id: discover.movies.hero.play
     role: button
     instanceable: false
   - id: media-detail.episode-list

@@ -260,6 +260,11 @@ Future<Map<String, Object?>> _persistConnectionAndBindProfile(
 /// [AutomationNavigationHooks.registerRouteOpener] instead.
 const Map<String, NavigationTabId> _screenToTab = {
   AutomationIds.screenDiscover: NavigationTabId.discover,
+  // Series and Films are their own nav tabs and, since they got ids of their
+  // own, their own openable screens. Without these two the shell would declare
+  // three landings and let a scenario reach one.
+  AutomationIds.screenSeries: NavigationTabId.series,
+  AutomationIds.screenMovies: NavigationTabId.movies,
   AutomationIds.screenLibraries: NavigationTabId.libraries,
   // Boeken is reachable the same way, and has to be: the mobile bar is driven
   // by pointer taps, and `tap` only takes coordinates. Without this a scenario
