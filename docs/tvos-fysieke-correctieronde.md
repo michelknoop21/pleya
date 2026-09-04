@@ -124,7 +124,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | SRCH2 | `people` wordt nooit aan `searchProjection` meegegeven | OPEN | n.v.t. |
 | REV1 | Apple Review Jellyfin: Home toont content, Films/Series leeg en concrete library niet zichtbaar (Apple Review, release-kritiek) | OPEN | n.v.t. |
 | LAND7 | Actieve discovery-rail krijgt geen vaste verticale focuspositie | OPEN | n.v.t. |
-| LANG1 | Taalcontinuïteit binnen series: hiërarchie, fallbackcontract en beheer van serievoorkeuren (sectie G), mockup 31 | OPEN | n.v.t. |
+| LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted, bouwronde vrijgegeven | OPEN | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -2315,7 +2315,9 @@ Een vierde punt is kleiner: valt de sticky ondertitel weg en staat het profiel o
 dan kiest `_findFirstSubtitleTrack` de eerste track in welke taal dan ook. Dat is geen
 voorspelbare fallback.
 
-**Voorkeurshiërarchie, als productbesluit (DEC-096, voorgesteld).**
+**Voorkeurshiërarchie, zoals voorgesteld op 4 september.** Michel heeft dit in de
+beslissingsronde hieronder op vier punten gecorrigeerd; DEC-096 draagt de gecorrigeerde
+versie en gaat vóór op de tekst in deze alinea.
 
 1. *Uitdrukkelijke keuze in deze afspeelsessie.* Wat de kijker net koos, als bedoeling: "de
    Engelse ondertitel", niet "track 3". Een fallback is geen keuze en komt hier niet in.
@@ -2414,3 +2416,76 @@ de nieuwe pagina die de rij, de sheet en het wissen eist. Daarna de fallback-toa
 verhuizing van de twee schakelaars, en een Pleya Verify-scenario voor de journey op de
 tvOS-simulator. Raakt de bouw het Plex-schrijfpad voor het account, dan gaat daar eerst een
 contractmeting aan vooraf.
+
+**Beslissingsronde van Michel, 4 september.** Doorgaan naar implementatie, met tien bindende
+correcties. DEC-096 is daarmee accepted; waar deze sectie en het besluit verschillen, wint het
+besluit.
+
+1. *De hiërarchie krijgt vier lagen:* uitdrukkelijke keuze tijdens de lopende playback,
+   serievoorkeur, globale Pleya-profielvoorkeur, terugval op bron en bestand. "Uitdrukkelijke
+   keuze" is alleen een echte handeling. Niet de spelende track, niet een terugval, niet een
+   track-id uit de vorige aflevering, niet een bron-default die toevallig aanstond. Elke
+   aflevering resolveert de intentie opnieuw.
+2. *Het terugvalcontract.* Audio: gewenste of originele taal, anders tijdelijk de bron- of
+   standaardtrack. Ondertitels: gewenste taal, anders de ingestelde terugvaltaal, anders uit.
+   Nooit de eerste beschikbare track. Engels wordt niet als universele regel vastgelegd: de
+   terugvaltaal wordt een echte profielvoorkeur, zichtbaar als eigen rij op de pagina.
+3. *Geen driekeuzevraag.* Staat "Onthoud keuzes per serie" aan, dan werkt een bewuste wissel
+   de serievoorkeur bij met een toast. Staat hij uit, dan geldt de wissel alleen voor die
+   sessie en ontstaat er geen override. De globale voorkeur verandert nooit vanuit de speler.
+4. *De globale eigenaar is het Pleya-profiel, niet het serverprofiel.* De eis is dat de
+   voorkeur voor alle content geldt, ook over servers en backends heen.
+   `PleyaProfilePlaybackLanguagePreferences` draagt audio, ondertitels, beleid, terugvaltaal en
+   `rememberPerSeries`. Bronprofielen zijn spiegel, geen autoriteit.
+5. *Spiegelen naar Plex blijft, capability-gated.* Een mislukte schrijfactie maakt de
+   Pleya-voorkeur niet ongeldig. De copy in 31 A noemt daarom het Pleya-profiel als eigenaar.
+6. *Serie-identiteit.* Logische serie waar de identiteit betrouwbaar is, anders de concrete
+   server-en-serie-sleutel. Een onterechte samenvoeging is erger dan een gemiste, en er komt
+   geen samenvoeging op alleen titel en jaar bij om taalvoorkeuren te kunnen delen. De
+   serversleutel blijft migratie- en terugvalpad.
+7. *Nooit track-id's bewaren.* Opgeslagen wordt taal, de intentie "originele taal" en het
+   ondertitelbeleid. Nooit een trackindex, track-id of stream-id.
+8. *31 A en 31 B zijn goedgekeurd*, met de eigenaarscorrectie in de copy. De tweekolomsindeling
+   en de serievoorkeurenlijst met herkomst blijven.
+9. *31 C en 31 D zijn goedgekeurd met een presentatiecontract voor de toast:* geen focus, geen
+   blokkerende invoer, verdwijnt vanzelf, en ondertitel-veilig geplaatst in een bestaande
+   spelerzone. Geen zelfgekozen Y-positie.
+10. *De pagina is de enige beheerplek.* De taalschakelaars onder Afspelen verhuizen hierheen.
+    Heeft het infopaneel later een ingang nodig, dan linkt het hierheen.
+
+**Wat de correcties aan de mockups veranderd hebben.** De vier beelden zijn opnieuw geschoten
+op dezelfde nummers. In 31 A staat nu "Pleya-profiel Michel · geldt voor alle content zonder
+eigen serievoorkeur" waar eerst het Plex-profiel als bron stond, is "Terugvaltaal ondertitels"
+een eigen rij geworden in plaats van een hardgecodeerd Engels in de ondertekst, en heet de
+tweede schakelaar "Spiegel naar Plex" met de regel dat een mislukte schrijfactie de
+Pleya-voorkeur laat staan. In 31 B leest de sheet de globale waarden als "Pleya-profiel: ..."
+en zegt de kop dat de voorkeur geldt waar Pleya de serie als dezelfde herkent, in plaats van
+onvoorwaardelijk op elke bron. In 31 C en 31 D is de toast verplaatst van onderin naar de
+bestaande bovenzone, en beide beelden tekenen nu een echte ondertitelregel onderaan mee, zodat
+te zien is dat de toast er niet overheen valt.
+
+**De toastzone heeft een bestaande eigenaar, dus het contract wijst er alleen naar.**
+`video_controls.dart:986-1004` zet de toast al in een `Positioned.fill` met een `IgnorePointer`
+eromheen, en `PlayerToastIndicator` lijnt boven uit met een `AnimatedSwitcher` en de auto-hide
+van `PlayerToastController`. Dat is precies wat het contract vraagt: geen focus, geen invoer,
+zelf verdwijnend. Ondertitels staan onderaan onder `sub-pos` (`SettingsService.subtitlePosition`,
+standaard 100), dus de bovenzone en de ondertitels kunnen elkaar niet raken. De bouwronde voegt
+alleen een tweede regel en een langere duur toe en verplaatst niets.
+
+**De negatieve controles van de bouwronde, alle rood voordat er code verandert.**
+
+| Controle | Wat hij eist |
+|----------|--------------|
+| A | Een terugval in aflevering N besmet aflevering N+1 niet |
+| B | De serievoorkeur werkt over de volgende aflevering en het volgende seizoen |
+| C | De globale voorkeur komt uit het Pleya-profiel |
+| D | Gewenst, terugval, gewenst weer beschikbaar: de gewenste taal wordt opnieuw gekozen |
+| E | Handmatige wissel met `rememberPerSeries` aan schrijft de serie-override |
+| F | Handmatige wissel met `rememberPerSeries` uit schrijft geen serie-override |
+| G | "Gebruik globale voorkeur" verwijdert de serie-override |
+| H | Dezelfde logische serie op een betrouwbare tweede bron gebruikt dezelfde voorkeur |
+| I | Een onbetrouwbare identiteit wordt niet over servers heen samengevoegd |
+
+Volgorde: eerst oud rood aantonen, dan implementeren, dan groen. Daarbovenop de drie stappen
+die al onder deze bevinding stonden: de widgettest op de nieuwe pagina, de verhuizing van de
+schakelaars, en een Pleya Verify-scenario voor de journey op de tvOS-simulator.

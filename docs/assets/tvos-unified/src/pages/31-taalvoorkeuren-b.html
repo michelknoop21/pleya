@@ -29,16 +29,16 @@
   <div class="two">
     <div>
       <div class="group-label">Globale voorkeur</div>
-      <div class="src">Uit je Plex-profiel Michel · geldt voor alles zonder eigen voorkeur</div>
+      <div class="src">Pleya-profiel Michel · geldt voor alle content zonder eigen serievoorkeur</div>
       <div class="rows">
-        <div class="row"><div class="body"><div class="t">Audio</div><div class="s">Als de taal ontbreekt: de standaardtrack van het bestand</div></div><div class="val">Originele taal</div>{{icon:chev}}</div>
-        <div class="row"><div class="body"><div class="t">Ondertitels</div><div class="s">Als de taal ontbreekt: Engels, anders uit</div></div><div class="val">Nederlands</div>{{icon:chev}}</div>
+        <div class="row"><div class="body"><div class="t">Audio</div><div class="s">Ontbreekt de taal, dan de standaardtrack van het bestand</div></div><div class="val">Originele taal</div>{{icon:chev}}</div>
+        <div class="row"><div class="body"><div class="t">Ondertitels</div><div class="s">Voorkeurstaal voor alle content</div></div><div class="val">Nederlands</div>{{icon:chev}}</div>
         <div class="row"><div class="body"><div class="t">Ondertitels tonen</div><div class="s">Alleen als de audio niet je taal is</div></div><div class="val">Bij vreemde taal</div>{{icon:chev}}</div>
       </div>
       <div class="group-label">Onthouden</div>
       <div class="rows">
         <div class="row"><div class="body"><div class="t">Onthoud keuzes per serie</div><div class="s">Een taal die je tijdens een serie kiest, geldt voor de volgende afleveringen</div></div><div class="switch on"></div></div>
-        <div class="row"><div class="body"><div class="t">Ook opslaan in Plex</div><div class="s">Schrijft de keuze op de serie, zodat andere Plex-apps hem volgen</div></div><div class="switch on"></div></div>
+        <div class="row"><div class="body"><div class="t">Spiegel naar Plex</div><div class="s">Optioneel. Lukt de schrijfactie niet, dan blijft je Pleya-voorkeur gelden</div></div><div class="switch on"></div></div>
       </div>
     </div>
     <div>
@@ -54,13 +54,13 @@
 </div>
 <div class="scrim" style="background:rgba(20,20,20,.5)"></div>
 <div class="modal sheet">
-  <div class="head"><img src="{{art:severance-poster}}"><div><div class="t">Severance</div><div class="s">Serievoorkeur, gekozen op 2 september bij S2E4 op de Apple TV.<br>Geldt op elke bron van deze serie, NAS en Zolder.</div></div></div>
+  <div class="head"><img src="{{art:severance-poster}}"><div><div class="t">Severance</div><div class="s">Serievoorkeur, gekozen op 2 september bij S2E4 op de Apple TV.<br>Geldt op NAS en op Zolder, waar Pleya deze serie als dezelfde herkent.</div></div></div>
   <div class="opts">
-    <div class="opt">{{icon:audio}} Audio <span class="r">Engels <span class="muted">globaal: Originele taal</span></span></div>
-    <div class="opt">{{icon:cc}} Ondertitels <span class="r">Engels <span class="muted">globaal: Nederlands</span></span></div>
+    <div class="opt">{{icon:audio}} Audio <span class="r">Engels <span class="muted">Pleya-profiel: Originele taal</span></span></div>
+    <div class="opt">{{icon:cc}} Ondertitels <span class="r">Engels <span class="muted">Pleya-profiel: Nederlands</span></span></div>
     <div class="opt sep"></div>
     <div class="opt focus">{{icon:refresh}} Gebruik globale voorkeur <span class="r muted">wist deze serievoorkeur</span></div>
   </div>
   <div style="padding:0 32px 26px;display:flex;justify-content:space-between;align-items:center"><span class="muted" style="font-size:19px">Een andere taal kies je tijdens het kijken, in het infopaneel.</span><div class="btn">Sluiten</div></div>
 </div>
-<div class="note">CANDIDATE · MOCKUP 31 B · Serievoorkeur bekijken en terugzetten; de sheet, de bronregel en "Gebruik globale voorkeur" bestaan niet in code = PRODUCT DECISION</div>
+<div class="note">CANDIDATE · MOCKUP 31 B · Serievoorkeur bekijken en terugzetten naar het Pleya-profiel; sheet, herkenningsregel en de actie bestaan niet in code = PRODUCT DECISION</div>
