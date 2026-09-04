@@ -6,6 +6,7 @@ import 'package:pleya/navigation/navigation_tabs.dart';
 import 'package:pleya/profiles/active_profile_provider.dart';
 import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/profiles/profile_avatar.dart';
+import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/offline_mode_provider.dart';
 import 'package:pleya/screens/my_pleya_screen.dart';
 import 'package:pleya/screens/profile/profile_switch_screen.dart';
@@ -43,6 +44,21 @@ class _OfflineProvider extends ChangeNotifier implements OfflineModeProvider {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Only the one capability this screen asks about. Building a real
+/// [MultiServerProvider] would drag in the manager and the aggregation service
+/// to answer a bool.
+class _FakeMultiServer extends ChangeNotifier implements MultiServerProvider {
+  _FakeMultiServer(this._hasLiveTv);
+
+  final bool _hasLiveTv;
+
+  @override
+  bool get hasLiveTv => _hasLiveTv;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 /// Records pushes so a test can inspect where a row leads without mounting the
 /// destination. [ProfileSwitchScreen] wants the whole profile/connection
 /// provider stack; building it here would test that stack, not this screen.
@@ -67,7 +83,7 @@ void main() {
     routes = _RouteRecorder();
   });
 
-  Future<void> pumpScreen(WidgetTester tester, {Profile? profile, bool offline = false}) async {
+  Future<void> pumpScreen(WidgetTester tester, {Profile? profile, bool offline = false, bool hasLiveTv = false}) async {
     activeProfile = _FakeActiveProfile(profile ?? _profile('Gideuh'));
     addTearDown(activeProfile.dispose);
 
@@ -80,6 +96,7 @@ void main() {
             providers: [
               ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfile),
               if (offline) ChangeNotifierProvider<OfflineModeProvider>(create: (_) => _OfflineProvider()),
+              ChangeNotifierProvider<MultiServerProvider>(create: (_) => _FakeMultiServer(hasLiveTv)),
             ],
             child: MyPleyaScreen(onOpenTab: opened.add),
           ),
@@ -175,6 +192,46 @@ void main() {
     expect(find.text(t.common.logout), findsOneWidget);
     // Requests is the one section that needs a live server, so it goes.
     expect(find.text(t.seerr.title), findsNothing);
+  });
+
+  /// DEC-094 §2 and §3 promise that Bibliotheken and Live TV stay reachable
+  /// "via Mijn Pleya" once the bar's five slots go to Home, Series, Films, one
+  /// content destination and this screen. `_selectLibrary` is wired from
+  /// [SideNavigationRail] only, so without these rows a phone loses both after
+  /// one tap on another tab.
+  group('the destinations DEC-094 took out of the bar', () {
+    testWidgets('Bibliotheken is here and opens the tab, not a second screen', (tester) async {
+      await pumpScreen(tester);
+
+      expect(find.text(t.navigation.libraries), findsOneWidget);
+      await tester.tap(find.text(t.navigation.libraries));
+      await tester.pump();
+
+      expect(opened, [NavigationTabId.libraries]);
+    });
+
+    testWidgets('Live TV is here whenever a tuner exists', (tester) async {
+      await pumpScreen(tester, hasLiveTv: true);
+
+      expect(find.text(t.navigation.liveTv), findsOneWidget);
+      await tester.tap(find.text(t.navigation.liveTv));
+      await tester.pump();
+
+      expect(opened, [NavigationTabId.liveTv]);
+    });
+
+    testWidgets('Live TV stays away without a tuner rather than opening an empty tab', (tester) async {
+      await pumpScreen(tester, hasLiveTv: false);
+
+      expect(find.text(t.navigation.liveTv), findsNothing);
+    });
+
+    testWidgets('offline both go, because both need a server', (tester) async {
+      await pumpScreen(tester, offline: true, hasLiveTv: true);
+
+      expect(find.text(t.navigation.libraries), findsNothing);
+      expect(find.text(t.navigation.liveTv), findsNothing);
+    });
   });
 
   testWidgets('a profile without a picture still renders, so navigation never breaks', (tester) async {

@@ -772,3 +772,17 @@ Boeken past dus niet naast een bestaande, al geïmplementeerde balk: de balk die
 
 **Consequences:** `lib/navigation/navigation_tabs.dart` en `lib/screens/main_screen.dart` worden gewijzigd op `feat/ebooks`. Bij de preflight van 3 september 2026 (avond) bleek `feat/netflix-mobile` inmiddels voorbij `011ffdb` te staan (`e07b95e`, "Unified 2026 fase 1, de iPhone-Home als eigen scherm") en daar `NavigationTabId.movies` en `.series` al te hebben toegevoegd, alleen voor TV in gebruik; de eerdere aanname in dit besluit dat die branch de navigatiebestanden niet aanraakt geldt dus niet meer. `feat/ebooks` hergebruikt exact die identifiers en voegt `books` toe, zodat het mergeconflict inhoudelijk blijft en niet structureel wordt. Bij het samenvoegen van beide branches naar `main` zijn deze bestanden het punt waar een merge-conflict verwacht wordt en waar `PrimaryMobileDestinationPolicy` als de leidende implementatie geldt, niet een latere herimplementatie op `feat/netflix-mobile`. Boeken is op tvOS/macOS/desktop geen primaire bestemming; die platforms behouden hun bestaande sidebar-navigatie ongewijzigd. De e-book-specifieke schermen (Boeken-home, alle boeken, filters, zoeken, detail, inhoudsopgave, reader, readerinstellingen, zoeken-in-boek, downloads, aanbevelingen, instellingen) volgen als aparte implementatiestappen na deze navigatiebeslissing, schermen voor schermen tegen de meegeleverde e-books-mockup.
 
+
+**Uitvoering (4 september 2026):** de belofte uit §2 en §3 stond bij de eerste implementatie alleen
+in dit besluit en niet in de code. `MyPleyaScreen` bood Kijklijst, Downloads, Aanvragen en
+Instellingen; `_selectLibrary` was uitsluitend vanuit `SideNavigationRail` bedraad. Op een telefoon
+was Bibliotheken daardoor na één tik op een andere tab niet meer te bereiken, en op een profiel waar
+Boeken de vierde slot wint gold hetzelfde voor Live TV, terwijl Instellingen ▸ Startsectie ze allebei
+nog als startbestemming aanbood. Bibliotheken en Live TV staan nu als rij in Mijn Pleya, online en
+met dezelfde `hasLiveTv`-gate die de tab zelf gebruikt. Het besluit verandert niet; dit is wat het al
+zei. Bewaakt door `test/screens/my_pleya_screen_test.dart`.
+
+Zoeken is bewust geen rij daar: §1 zet Zoeken in de header van Home, Series, Films en Boeken. Die
+glyph hing aan `PlatformDetector.isPhone`, terwijl de balksamenstelling aan `isMobile` hangt, dus op
+een tablet was Zoeken uit de balk gehaald zonder dat er iets voor terugkwam. De glyph volgt nu
+dezelfde `isMobile` als de balk.

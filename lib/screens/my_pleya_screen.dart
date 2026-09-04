@@ -11,6 +11,7 @@ import '../profiles/profile.dart';
 import '../profiles/profile_avatar.dart';
 import '../services/account_ui_actions.dart';
 import '../providers/download_provider.dart';
+import '../providers/multi_server_provider.dart';
 import '../providers/offline_mode_provider.dart';
 import '../providers/seerr_provider.dart';
 import '../providers/watchlist_provider.dart';
@@ -18,12 +19,21 @@ import '../widgets/desktop_app_bar.dart';
 import '../widgets/media_card_grid_layout.dart';
 import '../widgets/watchlist_card.dart';
 
-/// The personal corner of the mobile app.
+/// The personal corner of the mobile app, and the only route to every
+/// destination the bottom bar has no slot for.
 ///
 /// A phone bottom bar holds five destinations before it needs an overflow
-/// menu, and Home, Libraries, Live TV and Search already claim four of them.
-/// Rather than hiding a feature behind a menu, the personal destinations move
-/// together into one place: the profile, the kijklijst, downloads and requests.
+/// menu, and since [DEC-094](../../docs/DECISIONS.md) those five are Home,
+/// Series, Films, one content-driven slot and this screen. Everything the
+/// policy does not name arrives here rather than behind a menu: Bibliotheken,
+/// Live TV, the kijklijst, downloads, requests, and the account actions.
+///
+/// Bibliotheken and Live TV are not optional extras in that list, they are
+/// what DEC-094 §2 and §3 promise in exchange for their slot. Live TV loses
+/// the fourth slot to Boeken on a profile that has e-books, and Bibliotheken
+/// lost its own to Series and Films outright; without a row here a phone
+/// cannot reach either one again after a single tap on another tab, and
+/// Instellingen ▸ Startsectie still offers both as a place to start.
 ///
 /// It exists on every mobile session, with or without a watchlist, because it
 /// is also the only route to Downloads, Requests and Settings there. Only its
@@ -46,6 +56,7 @@ class MyPleyaScreen extends StatelessWidget {
     final watchlist = context.watch<WatchlistProvider?>();
     final downloads = context.watch<DownloadProvider?>();
     final hasSeerr = context.watch<SeerrProvider?>()?.isConfigured ?? false;
+    final hasLiveTv = context.watch<MultiServerProvider?>()?.hasLiveTv ?? false;
 
     return Scaffold(
       body: CustomScrollView(
@@ -67,6 +78,29 @@ class MyPleyaScreen extends StatelessWidget {
             SliverToBoxAdapter(
               child: _WatchlistRail(provider: watchlist!, onOpenAll: () => onOpenTab(NavigationTabId.watchlist)),
             ),
+          ],
+          // The two destinations DEC-094 took out of the bar and promised
+          // here. Both need a server, so both are online-only, exactly as
+          // their tabs are in `allNavigationTabs`; Live TV additionally needs
+          // a tuner, the same `hasLiveTv` gate the tab itself uses. Listed
+          // even when Live TV happens to have won the dynamic slot, because
+          // that is already how Kijklijst and Downloads behave here.
+          if (!isOffline) ...[
+            SliverToBoxAdapter(
+              child: _SectionRow(
+                icon: Symbols.video_library_rounded,
+                label: t.navigation.libraries,
+                onTap: () => onOpenTab(NavigationTabId.libraries),
+              ),
+            ),
+            if (hasLiveTv)
+              SliverToBoxAdapter(
+                child: _SectionRow(
+                  icon: Symbols.live_tv_rounded,
+                  label: t.navigation.liveTv,
+                  onTap: () => onOpenTab(NavigationTabId.liveTv),
+                ),
+              ),
           ],
           SliverToBoxAdapter(
             child: _SectionRow(
