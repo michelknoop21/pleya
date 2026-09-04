@@ -35,7 +35,21 @@ class BookReaderParagraph {
 @immutable
 class BookReaderPosition {
   /// 0.0 to 1.0 through the whole publication.
-  final double totalProgression;
+  ///
+  /// Held to that range here rather than trusted, because the range is not
+  /// only a statement about a number: `book_reader_chrome.dart` turns it into
+  /// `Positioned(width: width * progress)`, and there a negative trips
+  /// `BoxConstraints.tightFor`'s `width >= 0` assert while a NaN throws during
+  /// layout. A source that hands over a number outside the range is a bug in
+  /// that source; a reader that cannot draw the page it is on is a black
+  /// screen, so the reader is not made to depend on the source getting it
+  /// right. Same rule `ContinueReadingCard` already applies to `Book.progress`
+  /// at its own call site, moved to where every consumer inherits it.
+  double get totalProgression => _rawTotalProgression.isNaN ? 0 : _rawTotalProgression.clamp(0.0, 1.0);
+
+  /// What the source actually said. Stored unchanged so the constructors can
+  /// stay `const`; nothing outside this class reads it.
+  final double _rawTotalProgression;
 
   /// The label of the `page-list` entry the locator maps onto, or `null` when
   /// the publication ships no such navigation or the locator does not map onto
@@ -48,7 +62,8 @@ class BookReaderPosition {
   /// claiming how many there are.
   final String? totalPageLabel;
 
-  const BookReaderPosition._({required this.totalProgression, this.pageLabel, this.totalPageLabel});
+  const BookReaderPosition._({required double totalProgression, this.pageLabel, this.totalPageLabel})
+    : _rawTotalProgression = totalProgression;
 
   /// A publication with no usable `page-list`. The footer is the percentage and
   /// nothing else.

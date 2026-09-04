@@ -11,6 +11,31 @@ import 'package:pleya/books/reader_typography.dart';
 
 void main() {
   group('BookReaderPosition, the footer contract of approved golden 07', () {
+    /// The footer rounds this down and the scrubber turns it into a width.
+    /// `Positioned(width: width * progress)` trips
+    /// `BoxConstraints.tightFor`'s `width >= 0` assert on a negative and throws
+    /// during layout on a NaN, so a source that gets the range wrong takes the
+    /// reader's page down with it. The range is held here instead.
+    test('a value outside 0..1 is held to the range rather than passed on', () {
+      expect(BookReaderPosition.withoutPageList(totalProgression: -0.4).totalProgression, 0);
+      expect(BookReaderPosition.withoutPageList(totalProgression: 1.8).totalProgression, 1);
+      expect(BookReaderPosition.withoutPageList(totalProgression: double.nan).totalProgression, 0);
+      expect(BookReaderPosition.withoutPageList(totalProgression: double.infinity).totalProgression, 1);
+      expect(BookReaderPosition.withoutPageList(totalProgression: double.negativeInfinity).totalProgression, 0);
+    });
+
+    test('a value inside the range is untouched', () {
+      expect(BookReaderPosition.withoutPageList(totalProgression: 0.489).totalProgression, 0.489);
+      expect(BookReaderPosition.withoutPageList(totalProgression: 0).totalProgression, 0);
+      expect(BookReaderPosition.withoutPageList(totalProgression: 1).totalProgression, 1);
+    });
+
+    test('the percentage follows the held value, so it can never read -40% or 180%', () {
+      expect(BookReaderPosition.withoutPageList(totalProgression: -0.4).percent, 0);
+      expect(BookReaderPosition.withoutPageList(totalProgression: 1.8).percent, 100);
+      expect(BookReaderPosition.withoutPageList(totalProgression: double.nan).percent, 0);
+    });
+
     test('the percentage is always there and is rounded down', () {
       const position = BookReaderPosition.withoutPageList(totalProgression: 0.489);
       expect(position.percent, 48);
