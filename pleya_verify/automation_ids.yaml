@@ -45,6 +45,18 @@ ids:
   - id: books.search.category
     role: filter
     instanceable: true
+  - id: screen.book_detail
+    role: screen
+    instanceable: false
+  - id: books.detail.cover
+    role: image
+    instanceable: false
+  - id: books.detail.action
+    role: button
+    instanceable: true
+  - id: books.detail.stats
+    role: list
+    instanceable: false
   - id: books.rail.continue
     role: rail
     instanceable: false

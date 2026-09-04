@@ -9,10 +9,12 @@ import '../../automation/pleya_verify.dart';
 import '../../i18n/strings.g.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../profiles/profile_avatar.dart';
+import '../../books/book.dart';
 import '../../providers/books_home_provider.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/pleya_logo.dart';
 import 'all_books_screen.dart';
+import 'book_detail_screen.dart';
 import 'books_search_screen.dart';
 import 'widgets/book_rail.dart';
 import 'widgets/continue_reading_card.dart';
@@ -42,6 +44,7 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
     if (kPleyaVerify) {
       AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenAllBooks, _openAllBooks);
       AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBooksSearch, _openSearch);
+      AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBookDetail, _openCanonicalDetail);
     }
   }
 
@@ -50,6 +53,7 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
     if (kPleyaVerify) {
       AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenAllBooks, _openAllBooks);
       AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBooksSearch, _openSearch);
+      AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBookDetail, _openCanonicalDetail);
     }
     super.dispose();
   }
@@ -84,6 +88,36 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
   /// with all three result kinds.
   static const String _verifyCanonicalQuery = 'dune';
 
+  /// The book golden 05a is drawn with: the one state that carries a series
+  /// line and reading progress, so a scenario photographs the canonical page
+  /// rather than whichever book happens to be first on a rail.
+  ///
+  /// Same shape as [_openSearch]'s seeded query, and the same limit: a route
+  /// opener is a `VoidCallback` keyed by screen id, so there is exactly one
+  /// per screen and only one state of this page is reachable from a scenario.
+  /// The unstarted state of `05b` is covered by widget tests instead.
+  static const String _verifyCanonicalBookId = 'dune';
+
+  void _openCanonicalDetail() {
+    if (!mounted) return;
+    final rows = context.read<BooksHomeProvider?>()?.rows ?? const BooksHomeRows();
+    final book = rows.all.where((b) => b.id == _verifyCanonicalBookId).firstOrNull;
+    if (book == null) return;
+    _openDetail(book);
+  }
+
+  /// The push every cover on this page performs. On the nearest navigator, not
+  /// the root: the browse UI hangs under `ProfileNavigationScope` and a route
+  /// above it loses that scope.
+  void _openDetail(Book book) {
+    final series = context.read<BooksHomeProvider?>()?.rows.series ?? const <BookSeries>[];
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BookDetailScreen(book: book, series: series),
+      ),
+    );
+  }
+
   void unawaitedLoad() {
     final provider = context.read<BooksHomeProvider?>();
     if (provider != null && !provider.hasLoaded && !provider.isLoading) provider.load();
@@ -112,7 +146,7 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
                 child: AutomationNode(
                   id: AutomationIds.booksRailContinue,
                   role: 'rail',
-                  child: _ContinueReadingRail(rows: rows),
+                  child: _ContinueReadingRail(rows: rows, onOpen: _openDetail),
                 ),
               ),
             ],
@@ -125,7 +159,12 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
                 child: AutomationNode(
                   id: AutomationIds.booksRailRecent,
                   role: 'rail',
-                  child: BookRail(items: [for (final book in rows.recentlyAdded) BookRailItem.fromBook(book)]),
+                  child: BookRail(
+                    items: [
+                      for (final book in rows.recentlyAdded)
+                        BookRailItem.fromBook(book, onTap: () => _openDetail(book)),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -231,9 +270,10 @@ class _PageTitle extends StatelessWidget {
 }
 
 class _ContinueReadingRail extends StatelessWidget {
-  const _ContinueReadingRail({required this.rows});
+  const _ContinueReadingRail({required this.rows, required this.onOpen});
 
   final BooksHomeRows rows;
+  final void Function(Book book) onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -244,7 +284,10 @@ class _ContinueReadingRail extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: BookRailMetrics.pageMargin),
         itemCount: rows.continueReading.length,
         separatorBuilder: (_, _) => const SizedBox(width: BookRailMetrics.gap),
-        itemBuilder: (context, index) => ContinueReadingCard(book: rows.continueReading[index]),
+        itemBuilder: (context, index) {
+          final book = rows.continueReading[index];
+          return ContinueReadingCard(book: book, onTap: () => onOpen(book));
+        },
       ),
     );
   }

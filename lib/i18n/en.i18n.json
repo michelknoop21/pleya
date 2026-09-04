@@ -1851,10 +1851,14 @@
   "books": {
     "allBooks": "All books",
     "continueReading": "Continue reading",
+    "readContinue": "Continue reading",
+    "read": "Read",
+    "download": "Download",
     "recentlyAdded": "Recently added",
     "bookSeries": "Book series",
     "seeAll": "See all",
     "percentRead": "${percent}%",
+    "percentReadLong": "${percent}% read",
     "bookCount": "${count} books",
     "oneBook": "1 book",
     "filters": "Filters",
@@ -1873,6 +1877,10 @@
     "filtersClear": "Clear",
     "filtersApply": "Apply",
     "filtersChosen": "${count} selected",
-    "searchAuthors": "Authors"
+    "searchAuthors": "Authors",
+    "statYear": "Year",
+    "statGenre": "Genre",
+    "statPages": "Pages",
+    "descriptionMore": "more"
   }
 }

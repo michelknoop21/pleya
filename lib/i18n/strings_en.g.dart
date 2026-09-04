@@ -5189,6 +5189,15 @@ class TranslationsBooksEn {
 	/// en: 'Continue reading'
 	String get continueReading => 'Continue reading';
 
+	/// en: 'Continue reading'
+	String get readContinue => 'Continue reading';
+
+	/// en: 'Read'
+	String get read => 'Read';
+
+	/// en: 'Download'
+	String get download => 'Download';
+
 	/// en: 'Recently added'
 	String get recentlyAdded => 'Recently added';
 
@@ -5200,6 +5209,9 @@ class TranslationsBooksEn {
 
 	/// en: '${percent}%'
 	String percentRead({required Object percent}) => '${percent}%';
+
+	/// en: '${percent}% read'
+	String percentReadLong({required Object percent}) => '${percent}% read';
 
 	/// en: '${count} books'
 	String bookCount({required Object count}) => '${count} books';
@@ -5257,6 +5269,18 @@ class TranslationsBooksEn {
 
 	/// en: 'Authors'
 	String get searchAuthors => 'Authors';
+
+	/// en: 'Year'
+	String get statYear => 'Year';
+
+	/// en: 'Genre'
+	String get statGenre => 'Genre';
+
+	/// en: 'Pages'
+	String get statPages => 'Pages';
+
+	/// en: 'more'
+	String get descriptionMore => 'more';
 }
 
 // Path: search.filters
@@ -7693,10 +7717,14 @@ extension on Translations {
 			'unifiedCatalog.seriesTitle' => 'Series',
 			'books.allBooks' => 'All books',
 			'books.continueReading' => 'Continue reading',
+			'books.readContinue' => 'Continue reading',
+			'books.read' => 'Read',
+			'books.download' => 'Download',
 			'books.recentlyAdded' => 'Recently added',
 			'books.bookSeries' => 'Book series',
 			'books.seeAll' => 'See all',
 			'books.percentRead' => ({required Object percent}) => '${percent}%',
+			'books.percentReadLong' => ({required Object percent}) => '${percent}% read',
 			'books.bookCount' => ({required Object count}) => '${count} books',
 			'books.oneBook' => '1 book',
 			'books.filters' => 'Filters',
@@ -7716,6 +7744,10 @@ extension on Translations {
 			'books.filtersApply' => 'Apply',
 			'books.filtersChosen' => ({required Object count}) => '${count} selected',
 			'books.searchAuthors' => 'Authors',
+			'books.statYear' => 'Year',
+			'books.statGenre' => 'Genre',
+			'books.statPages' => 'Pages',
+			'books.descriptionMore' => 'more',
 			_ => null,
 		};
 	}

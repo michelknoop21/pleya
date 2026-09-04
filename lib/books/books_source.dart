@@ -141,6 +141,13 @@ class DemoBooksSource implements BooksSource {
       genres: const ['Sciencefiction'],
       language: 'Engels',
       isDownloaded: true,
+      seriesIndex: 1,
+      year: 1965,
+      pages: 616,
+      description:
+          'Ver weg in de toekomst krijgt Paul Atreides, een briljante en begaafde jongeman, een lot dat groter is dan hij ooit '
+          'had kunnen bevroeden. Hij moet afreizen naar de gevaarlijkste planeet van het universum om de toekomst van zijn '
+          'familie en zijn volk veilig te stellen.',
     ),
     Book(
       id: 'hail-mary',
@@ -153,6 +160,12 @@ class DemoBooksSource implements BooksSource {
       genres: const ['Sciencefiction'],
       language: 'Engels',
       isDownloaded: true,
+      year: 2021,
+      pages: 496,
+      description:
+          'Ryland Grace wordt wakker aan boord van een schip dat hij zich niet herinnert, met twee dode bemanningsleden naast '
+          'zich en geen idee wie hij is. Langzaam dringt tot hem door dat de aarde afhangt van wat hij hier alleen voor '
+          'elkaar krijgt.',
     ),
     Book(
       id: 'sapiens',
@@ -165,6 +178,11 @@ class DemoBooksSource implements BooksSource {
       genres: const ['Non-fictie', 'Geschiedenis'],
       language: 'Engels',
       isDownloaded: true,
+      year: 2011,
+      pages: 464,
+      description:
+          'Honderdduizend jaar geleden deelden minstens zes menssoorten de aarde. Vandaag is er nog één over. Harari volgt hoe '
+          'die ene soort van een onopvallend dier in de savanne de heerser van de planeet werd.',
     ),
     Book(
       id: '1984',
@@ -177,6 +195,11 @@ class DemoBooksSource implements BooksSource {
       progress: 1,
       genres: const ['Sciencefiction', 'Literatuur'],
       language: 'Engels',
+      year: 1949,
+      pages: 328,
+      description:
+          'Winston Smith herschrijft voor zijn werk het verleden, dag na dag, tot het klopt met wat de Partij vandaag beweert. '
+          'Dan begint hij aan een dagboek, en dat is het eerste wat hij ooit voor zichzelf houdt.',
     ),
     Book(
       id: 'alchemist',
@@ -186,6 +209,11 @@ class DemoBooksSource implements BooksSource {
       addedAt: _epoch.subtract(const Duration(days: 4)),
       genres: const ['Literatuur', 'Filosofie'],
       language: 'Nederlands',
+      year: 1988,
+      pages: 208,
+      description:
+          'De herdersjongen Santiago droomt twee keer dezelfde droom over een schat bij de piramides, en vertrekt. Wat hij '
+          'onderweg leert gaat over alles behalve goud.',
     ),
     Book(
       id: 'atomic-habits',
@@ -195,6 +223,11 @@ class DemoBooksSource implements BooksSource {
       addedAt: _epoch.subtract(const Duration(days: 5)),
       genres: const ['Non-fictie', 'Psychologie'],
       language: 'Engels',
+      year: 2018,
+      pages: 320,
+      description:
+          'Grote veranderingen komen zelden van grote besluiten. Clear laat zien hoe gewoontes van één procent per dag zich '
+          'opstapelen, en waarom het systeem eromheen belangrijker is dan het doel.',
     ),
     // The rest of golden 02's shelf. They are all older than the six above, so
     // Recent toegevoegd on Boeken-home still opens on the three golden 01b
@@ -208,6 +241,12 @@ class DemoBooksSource implements BooksSource {
       addedAt: _epoch.subtract(const Duration(days: 40)),
       genres: const ['Sciencefiction'],
       language: 'Engels',
+      seriesIndex: 2,
+      year: 1969,
+      pages: 336,
+      description:
+          'Twaalf jaar na zijn overwinning is Paul Atreides keizer, en gevangene van de heilige oorlog die in zijn naam wordt '
+          'gevoerd. Wie hem het naast staat smeedt het complot.',
     ),
     Book(
       id: 'children-of-dune',
@@ -218,6 +257,12 @@ class DemoBooksSource implements BooksSource {
       addedAt: _epoch.subtract(const Duration(days: 41)),
       genres: const ['Sciencefiction'],
       language: 'Engels',
+      seriesIndex: 3,
+      year: 1976,
+      pages: 444,
+      description:
+          'De tweeling Leto en Ghanima erft meer dan een troon: ze dragen de herinneringen van al hun voorouders met zich mee. '
+          'Op Arrakis begint het zand te wijken voor gras.',
     ),
     Book(
       id: 'zeven-zussen-1',
@@ -229,6 +274,12 @@ class DemoBooksSource implements BooksSource {
       genres: const ['Literatuur'],
       language: 'Nederlands',
       isDownloaded: true,
+      seriesIndex: 1,
+      year: 2014,
+      pages: 640,
+      description:
+          'Na de dood van hun vader krijgen zes geadopteerde zussen elk een aanwijzing naar hun afkomst. Maia is de eerste die '
+          'haar spoor volgt, tot in Rio de Janeiro.',
     ),
     Book(
       id: 'hobbit',
@@ -242,6 +293,12 @@ class DemoBooksSource implements BooksSource {
       progress: 1,
       genres: const ['Fantasy'],
       language: 'Nederlands',
+      seriesIndex: 1,
+      year: 1937,
+      pages: 310,
+      description:
+          'Bilbo Balings wil vooral met rust gelaten worden, en gaat de volgende ochtend toch op pad met dertien dwergen en '
+          'een tovenaar. Onderweg vindt hij een ring die niemand mist.',
     ),
     Book(
       id: 'brave-new-world',
@@ -251,6 +308,13 @@ class DemoBooksSource implements BooksSource {
       addedAt: _epoch.subtract(const Duration(days: 44)),
       genres: const ['Sciencefiction', 'Literatuur'],
       language: 'Engels',
+      year: 1932,
+      // No page count, deliberately. Golden 05 makes Pagina's the one optional
+      // stat, and an edition that ships none is what makes the two-column
+      // fallback real rather than theoretical.
+      description:
+          'Iedereen is gelukkig, want iedereen is gemaakt voor het leven dat hij krijgt. Tot er iemand binnenkomt die buiten '
+          'het systeem geboren is.',
     ),
     // The long one, so the grid's two-line title and its truncation are real
     // rather than theoretical.
@@ -262,6 +326,11 @@ class DemoBooksSource implements BooksSource {
       addedAt: _epoch.subtract(const Duration(days: 45)),
       genres: const ['Literatuur', 'Filosofie'],
       language: 'Nederlands',
+      year: 1992,
+      pages: 936,
+      description:
+          'Twee vrienden en een vrouw, en een opdracht die van veel hogerhand komt dan zij kunnen zien. Mulisch schrijft de '
+          'twintigste eeuw als één samenzwering.',
     ),
   ];
 

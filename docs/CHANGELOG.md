@@ -4,6 +4,49 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-04] Golden 05: Boekdetail, met de layoutregel als eigen module
+
+Op `feat/ebooks`.
+
+### Added
+- **Boekdetail** (`lib/screens/books/book_detail_screen.dart`), tegen goedgekeurde golden 05, met
+  `widgets/book_detail_ambience.dart` voor het cover-afgeleide kleurveld,
+  `widgets/book_detail_actions.dart` voor de voortgangsregels, de twee pillen en de statsrij, en
+  `widgets/book_description.dart` voor de op drie regels geklemde beschrijving met inline `meer`.
+- **De layoutregel staat los van het scherm.** `lib/books/book_detail_layout.dart` is de tabel uit
+  de bron van de golden, per blok de ruimte erboven en zijn eigen hoogte, en `positions()` rekent
+  daar de voorspelling uit. Het scherm bouwt zijn kolom uit dezelfde tabel, dus een blok dat een
+  boek niet heeft verdwijnt met zijn eigen witruimte en niets ertussen rekt op.
+- **De afleiding van de inhoud staat er weer los van.** `lib/books/book_detail_view.dart` maakt de
+  reeksregel, de voortgangsregels en de statskolommen, zoals `BookSearchRanking` dat in golden 04
+  voor matching deed: die laag beweegt met PS-14, de widgets niet.
+- `Book` draagt nu `year`, `pages`, `description` en `seriesIndex`, en de vaste set vult ze voor
+  alle twaalf boeken.
+- Vier automation-ids (`screen.book_detail`, `books.detail.cover`, `books.detail.action[…]`,
+  `books.detail.stats`) en `pleya_verify/scenarios/books.detail.layout.yaml`.
+- Achttien widgettests en vijftien eenheidstests; de suite staat op 4960 groen.
+
+### Changed
+- Een cover op Boeken-home, een cel in Alle boeken en een boekrij in Boeken zoeken openen nu het
+  boek. Auteurs- en seriesrijen niet: waar die naartoe leiden staat in geen goedgekeurde golden.
+- **De leesknop heeft een eigen string.** `books.continueReading` is `Verder lezen`, de rijkop van
+  golden 01b; de knop van golden 05 zegt `Lees verder` en heet nu `books.readContinue`. De tweede
+  pil krijgt om dezelfde reden `books.download` (`Downloaden`) in plaats van de app-brede
+  `downloads.downloadNow` (`Download`), die elk ander scherm zou herformuleren.
+
+### Fixed
+- **Het scherm sprak half Nederlands en half Engels.** Nieuwe sleutels vielen op het Engelse
+  basisniveau terug naast bestaande vertaalde sleutels. Alle acht staan nu ook in `nl.i18n.json`.
+
+### Notes
+- De vergelijking met `05a` op de vastgezette iPhone 15 Pro-simulator komt op nul punt verschil uit,
+  op elk gemeten blok. De volledige tabel staat in het northstar-README.
+- Wat getekend is en niets opent: beide pillen (de reader is paneel 7 en heeft een eigen golden, de
+  downloadstaten zijn PS-16), het overflowmenu, en `meer`. Er komt ook geen inhoudsopgave-rij bij;
+  die blijft open tot golden 06.
+- Het scenario bewijst `05a`, niet `05b`. Een route-opener is een `VoidCallback` per scherm-id, dus
+  er is er precies één; de onbegonnen staat staat in de widgettests, tegen dezelfde layoutregel.
+
 ## [2026-09-04] Golden 04: Boeken zoeken, met ranking als eigen contract
 
 Op `feat/ebooks`.

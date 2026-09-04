@@ -1,0 +1,36 @@
+name: books.detail.layout
+target: ios-sim
+# Boekdetail against approved golden 05
+# (docs/assets/ebooks/northstar/05a-book-detail.png).
+#
+# REQUIRES `PLEYA_VERIFY_BOOKS=1`, like the other books scenarios, and for a
+# comparison against the golden also `PLEYA_VERIFY_IOS_UDID=<iPhone 15 Pro>` —
+# every number in golden 05 is measured on that viewport.
+#
+# The book is seeded, not tapped, for the same reason golden 04's query is: a
+# route opener is a `VoidCallback` keyed by screen id, so there is exactly one
+# per screen. `open: screen.book_detail` lands on Dune, the book `05a` is drawn
+# with and the only one in the fixture that carries both a series line and
+# reading progress. What this proves is that the canonical page lays out on a
+# real device at the golden's viewport; what it does not prove is the unstarted
+# state of `05b`, and `test/screens/book_detail_screen_test.dart` covers that
+# with the same layout rule the screen itself is built on.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - open: screen.books
+  - open: screen.book_detail
+steps:
+  - wait_until: {id: screen.book_detail, timeout: 15000}
+  - settle: 2000
+  # The cover is the anchor: golden 05's whole column hangs off its bottom
+  # edge, so a cover in the wrong place moves everything under it.
+  - assert: {id: books.detail.cover, insideViewport: true}
+  # Both actions have to be reachable, not merely mounted. They are the reason
+  # this page exists, and the golden puts them well above the fold.
+  - assert: {id: "books.detail.action[primary]", insideViewport: true}
+  - assert: {id: "books.detail.action[secondary]", insideViewport: true}
+  - assert: {id: books.detail.stats, insideViewport: true}
+  - snapshot: book-detail-reading

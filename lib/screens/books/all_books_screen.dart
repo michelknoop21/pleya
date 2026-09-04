@@ -12,6 +12,7 @@ import '../../books/book_filter.dart';
 import '../../i18n/strings.g.dart';
 import '../../providers/books_home_provider.dart';
 import '../../widgets/app_icon.dart';
+import 'book_detail_screen.dart';
 import 'books_search_screen.dart';
 import 'widgets/book_cover.dart';
 import 'widgets/book_filter_sheet.dart';
@@ -78,6 +79,16 @@ class _AllBooksScreenState extends State<AllBooksScreen> {
     if (applied != null && mounted) setState(() => _filter = applied);
   }
 
+  /// A cell opens the book's own page (approved golden 05), on the nearest
+  /// navigator so `ProfileNavigationScope` is not lost.
+  void _openDetail(Book book, List<BookSeries> series) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BookDetailScreen(book: book, series: series),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<BooksHomeProvider?>();
@@ -122,7 +133,7 @@ class _AllBooksScreenState extends State<AllBooksScreen> {
                     id: AutomationIds.booksGridItem,
                     instance: '$index',
                     role: 'grid.item',
-                    child: _GridItem(book: books[index]),
+                    child: _GridItem(book: books[index], onTap: () => _openDetail(books[index], rows.series)),
                   ),
                   childCount: books.length,
                 ),
@@ -327,44 +338,49 @@ class _ResultLine extends StatelessWidget {
 }
 
 class _GridItem extends StatelessWidget {
-  const _GridItem({required this.book});
+  const _GridItem({required this.book, this.onTap});
 
   final Book book;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          height: BookRailMetrics.coverHeight,
-          child: BookCover(artwork: book.artwork, title: book.title, author: book.author),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: AllBooksScreen.captionHeight - 8,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Flexible(
-                child: Text(
-                  key: Key(AllBooksScreen.captionKey(book.id)),
-                  book.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, height: 1.28),
-                ),
-              ),
-              Text(
-                book.author,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12.5, height: 1.28, color: Colors.white.withValues(alpha: 0.62)),
-              ),
-            ],
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: BookRailMetrics.coverHeight,
+            child: BookCover(artwork: book.artwork, title: book.title, author: book.author),
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          SizedBox(
+            height: AllBooksScreen.captionHeight - 8,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Flexible(
+                  child: Text(
+                    key: Key(AllBooksScreen.captionKey(book.id)),
+                    book.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, height: 1.28),
+                  ),
+                ),
+                Text(
+                  book.author,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12.5, height: 1.28, color: Colors.white.withValues(alpha: 0.62)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

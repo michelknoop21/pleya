@@ -1780,10 +1780,14 @@
   "books": {
     "allBooks": "Alle boeken",
     "continueReading": "Verder lezen",
+    "readContinue": "Lees verder",
+    "read": "Lezen",
+    "download": "Downloaden",
     "recentlyAdded": "Recent toegevoegd",
     "bookSeries": "Boekenseries",
     "seeAll": "Alles bekijken",
     "percentRead": "${percent}%",
+    "percentReadLong": "${percent}% gelezen",
     "bookCount": "${count} boeken",
     "oneBook": "1 boek",
     "filters": "Filters",
@@ -1802,6 +1806,10 @@
     "filtersClear": "Wissen",
     "filtersApply": "Toepassen",
     "filtersChosen": "${count} gekozen",
-    "searchAuthors": "Auteurs"
+    "searchAuthors": "Auteurs",
+    "statYear": "Jaar",
+    "statGenre": "Genre",
+    "statPages": "Pagina's",
+    "descriptionMore": "meer"
   }
 }

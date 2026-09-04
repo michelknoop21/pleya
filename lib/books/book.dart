@@ -60,6 +60,12 @@ class Book {
   /// Series this book belongs to, if any.
   final String? seriesId;
 
+  /// Where in that series this book stands, if the source says. `Dune #1` on
+  /// the detail page is this number next to the series title; without it the
+  /// line falls back to the series title alone rather than inventing a
+  /// position (golden 05).
+  final int? seriesIndex;
+
   /// How far in, 0.0 to 1.0. `null` means never opened, which is a different
   /// thing from 0: an unopened book does not belong in Verder lezen.
   final double? progress;
@@ -88,6 +94,25 @@ class Book {
   /// golden 03.
   final bool isDownloaded;
 
+  /// Year of publication for this edition. One of the three stats golden 05
+  /// puts under the actions.
+  final int? year;
+
+  /// Pages in this **edition**, as bibliographical metadata — never a reading
+  /// position.
+  ///
+  /// A reflowable EPUB has no fixed number of screen pages: it moves with type
+  /// size, typeface and margins, and it differs per device. So this is what
+  /// the edition or the provider reliably ships and nothing else, and it is
+  /// never derived from the reader's own pagination. Golden 05 makes it the
+  /// one optional stat: with no value the row falls back to two columns rather
+  /// than showing an empty one, and it never reads `0 Pagina's`.
+  final int? pages;
+
+  /// The blurb, in full. The detail page clamps it; clamping is presentation,
+  /// so what is stored here is not pre-truncated.
+  final String? description;
+
   const Book({
     required this.id,
     required this.title,
@@ -95,11 +120,15 @@ class Book {
     required this.artwork,
     required this.addedAt,
     this.seriesId,
+    this.seriesIndex,
     this.progress,
     this.chapterLabel,
     this.genres = const [],
     this.language,
     this.isDownloaded = false,
+    this.year,
+    this.pages,
+    this.description,
   });
 
   /// Whether this book belongs in Verder lezen.

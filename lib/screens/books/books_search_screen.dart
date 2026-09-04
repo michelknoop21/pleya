@@ -5,11 +5,13 @@ import 'package:provider/provider.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../automation/automation_screen.dart';
+import '../../books/book.dart';
 import '../../books/book_search.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../providers/books_home_provider.dart';
 import '../../widgets/app_icon.dart';
+import 'book_detail_screen.dart';
 import 'widgets/book_search_row.dart';
 
 /// Boeken zoeken, built against approved golden 04
@@ -70,6 +72,17 @@ class _BooksSearchScreenState extends State<BooksSearchScreen> {
     super.dispose();
   }
 
+  /// A book result opens its own page (approved golden 05). Author and series
+  /// rows do not: where those lead is not part of golden 04 or 05, so they stay
+  /// drawn without a destination.
+  void _openDetail(Book book, List<BookSeries> series) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BookDetailScreen(book: book, series: series),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<BooksHomeProvider?>();
@@ -115,7 +128,7 @@ class _BooksSearchScreenState extends State<BooksSearchScreen> {
                             id: AutomationIds.booksSearchResult,
                             instance: book.id,
                             role: 'list.item',
-                            child: BookResultRow(book: book),
+                            child: BookResultRow(book: book, onTap: () => _openDetail(book, rows.series)),
                           ),
                       ],
                     ),

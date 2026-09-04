@@ -72,6 +72,21 @@ class AutomationIds {
   /// [BookSearchCategory] name.
   static const String booksSearchCategory = 'books.search.category';
 
+  /// Boekdetail (approved golden 05), the page behind a cover. Reached from a
+  /// rail on Boeken-home, a cell in Alle boeken or a book row in Boeken zoeken.
+  static const String screenBookDetail = 'screen.book_detail';
+
+  /// The sharp cover on that page — the anchor every other block on it is
+  /// measured from, because golden 05's column hangs off the cover's bottom.
+  static const String booksDetailCover = 'books.detail.cover';
+
+  /// One of the two full-width actions. Instanceable, `[primary]` for the
+  /// reading button and `[secondary]` for Downloaden.
+  static const String booksDetailAction = 'books.detail.action';
+
+  /// The year/genre/pages row under the actions.
+  static const String booksDetailStats = 'books.detail.stats';
+
   /// Boeken-home's three rails, in the order golden 01b puts them.
   static const String booksRailContinue = 'books.rail.continue';
   static const String booksRailRecent = 'books.rail.recent';
@@ -115,6 +130,7 @@ class AutomationIds {
     booksFilterOption,
     booksSearchResult,
     booksSearchCategory,
+    booksDetailAction,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -137,6 +153,10 @@ class AutomationIds {
     {'id': screenBooksSearch, 'role': 'screen', 'instanceable': false},
     {'id': booksSearchResult, 'role': 'list.item', 'instanceable': true},
     {'id': booksSearchCategory, 'role': 'filter', 'instanceable': true},
+    {'id': screenBookDetail, 'role': 'screen', 'instanceable': false},
+    {'id': booksDetailCover, 'role': 'image', 'instanceable': false},
+    {'id': booksDetailAction, 'role': 'button', 'instanceable': true},
+    {'id': booksDetailStats, 'role': 'list', 'instanceable': false},
     {'id': booksRailContinue, 'role': 'rail', 'instanceable': false},
     {'id': booksRailRecent, 'role': 'rail', 'instanceable': false},
     {'id': booksRailSeries, 'role': 'rail', 'instanceable': false},

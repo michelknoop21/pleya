@@ -2077,10 +2077,14 @@ class _TranslationsBooksNl extends TranslationsBooksEn {
 	// Translations
 	@override String get allBooks => 'Alle boeken';
 	@override String get continueReading => 'Verder lezen';
+	@override String get readContinue => 'Lees verder';
+	@override String get read => 'Lezen';
+	@override String get download => 'Downloaden';
 	@override String get recentlyAdded => 'Recent toegevoegd';
 	@override String get bookSeries => 'Boekenseries';
 	@override String get seeAll => 'Alles bekijken';
 	@override String percentRead({required Object percent}) => '${percent}%';
+	@override String percentReadLong({required Object percent}) => '${percent}% gelezen';
 	@override String bookCount({required Object count}) => '${count} boeken';
 	@override String get oneBook => '1 boek';
 	@override String get filters => 'Filters';
@@ -2100,6 +2104,10 @@ class _TranslationsBooksNl extends TranslationsBooksEn {
 	@override String get filtersApply => 'Toepassen';
 	@override String filtersChosen({required Object count}) => '${count} gekozen';
 	@override String get searchAuthors => 'Auteurs';
+	@override String get statYear => 'Jaar';
+	@override String get statGenre => 'Genre';
+	@override String get statPages => 'Pagina\'s';
+	@override String get descriptionMore => 'meer';
 }
 
 // Path: search.filters
@@ -4107,10 +4115,14 @@ extension on TranslationsNl {
 			'unifiedCatalog.seriesTitle' => 'Series',
 			'books.allBooks' => 'Alle boeken',
 			'books.continueReading' => 'Verder lezen',
+			'books.readContinue' => 'Lees verder',
+			'books.read' => 'Lezen',
+			'books.download' => 'Downloaden',
 			'books.recentlyAdded' => 'Recent toegevoegd',
 			'books.bookSeries' => 'Boekenseries',
 			'books.seeAll' => 'Alles bekijken',
 			'books.percentRead' => ({required Object percent}) => '${percent}%',
+			'books.percentReadLong' => ({required Object percent}) => '${percent}% gelezen',
 			'books.bookCount' => ({required Object count}) => '${count} boeken',
 			'books.oneBook' => '1 boek',
 			'books.filters' => 'Filters',
@@ -4130,6 +4142,10 @@ extension on TranslationsNl {
 			'books.filtersApply' => 'Toepassen',
 			'books.filtersChosen' => ({required Object count}) => '${count} gekozen',
 			'books.searchAuthors' => 'Auteurs',
+			'books.statYear' => 'Jaar',
+			'books.statGenre' => 'Genre',
+			'books.statPages' => 'Pagina\'s',
+			'books.descriptionMore' => 'meer',
 			_ => null,
 		};
 	}
