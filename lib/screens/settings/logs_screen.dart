@@ -243,7 +243,11 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
     // window the relay named has passed, the press costs nothing.
     final blockedFor = _remainingUploadCooldown();
     if (blockedFor != null) {
-      showErrorSnackBar(context, t.messages.logsUploadRateLimited(seconds: blockedFor));
+      showErrorSnackBar(
+        context,
+        t.messages.logsUploadRateLimited(seconds: blockedFor),
+        groupKey: _kUploadRateLimitedKey,
+      );
       return;
     }
 
@@ -324,7 +328,7 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
         retryAfter = _startUploadCooldown(serverRetryAfter);
       }
       if (!mounted) return;
-      showErrorSnackBar(context, _uploadErrorMessage(e, retryAfter));
+      showErrorSnackBar(context, _uploadErrorMessage(e, retryAfter), groupKey: _uploadErrorGroupKey(e));
     } finally {
       setStateIfMounted(() => _isUploading = false);
     }
@@ -332,13 +336,17 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
 
   /// Hold off until the limit has actually passed, and answer with the wait
   /// the user is looking at.
+  ///
+  /// Only a 429 that names its own window starts a pre-emptive block. The
+  /// relay sends `Retry-After` on every refusal now, so a 429 without one is
+  /// an intermediary guessing; treating that as gospel is how the old
+  /// doubling ladder walked a user up to a five-minute wait the server never
+  /// asked for. The guess is still shown, just not enforced ahead of time.
   int _startUploadCooldown(int? serverRetryAfter) {
     final wait = serverRetryAfter ?? _uploadBackoffSeconds;
-    _uploadBlockedUntil = _now().add(Duration(seconds: wait));
-    if (serverRetryAfter == null) {
-      // Nothing to go on, and the window we guessed was evidently too short,
-      // so the next guess is longer. With a `Retry-After` the server's number
-      // is the answer and there is nothing to escalate.
+    if (serverRetryAfter != null) {
+      _uploadBlockedUntil = _now().add(Duration(seconds: wait));
+    } else {
       _uploadBackoffSeconds = (_uploadBackoffSeconds * 2).clamp(1, _uploadRetryAfterCeiling);
     }
     return wait;
@@ -393,6 +401,23 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
 
   /// One message per outcome. A refused upload and an unreachable server are
   /// different problems and only one of them is worth retrying right away.
+  static const _kUploadRateLimitedKey = 'logs.upload.rateLimited';
+
+  /// Stable per error kind, so a message whose countdown changes every second
+  /// folds into one notice instead of stacking three cards deep.
+  String _uploadErrorGroupKey(Object error) {
+    if (error is! MediaServerHttpException) return 'logs.upload.failed';
+    final status = error.statusCode;
+    if (status == null) return 'logs.upload.network';
+    return switch (status) {
+      HttpStatus.requestEntityTooLarge => 'logs.upload.tooLarge',
+      HttpStatus.tooManyRequests => _kUploadRateLimitedKey,
+      >= 500 => 'logs.upload.serverError',
+      >= 400 => 'logs.upload.refused',
+      _ => 'logs.upload.failed',
+    };
+  }
+
   String _uploadErrorMessage(Object error, int retryAfter) {
     if (error is! MediaServerHttpException) return t.messages.logsUploadFailed;
 

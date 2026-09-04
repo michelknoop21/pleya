@@ -27,10 +27,27 @@ void main() {
   /// skipping them silently means the phase that adds one has to remove a line,
   /// not discover a hole.
   ///
-  /// Empty since PS-4: the write side of watch state is now a real type, and
-  /// `StreamSession` is read even though this client never opens one, because a
-  /// fixture nobody parses is a fixture nobody notices breaking.
-  const deferredSchemas = <String>{};
+  /// It was empty after PS-4 and is not empty after PS-9. The eight schemas
+  /// below all belong to the management surface: creating a household member,
+  /// setting their library permissions, and looking at or ending the sessions
+  /// of a device. PS-9 deliberately ships that as an API plus a documented
+  /// `curl` recipe and no screen at all (DEC-100); the screen is PS-11A, and
+  /// building a Dart type for a response nothing renders would be exactly the
+  /// kind of pulled-forward work the phase rules forbid.
+  ///
+  /// The app's own side of PS-9 is not deferred and is tested elsewhere:
+  /// `capabilities.sessions` in `pleya_wire_contract_test` below, and the
+  /// device fields on login in `pleya_server_sessions_test.dart`.
+  const deferredSchemas = <String>{
+    'User',
+    'UserList',
+    'CreateUserRequest',
+    'UpdateUserRequest',
+    'PermissionsRequest',
+    'LibraryPermissionList',
+    'Session',
+    'SessionList',
+  };
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
     'Info': (json) {
@@ -75,8 +92,8 @@ void main() {
       );
     });
 
-    test('covers the 32 fixtures the contract ships', () {
-      expect(fixtures, hasLength(32));
+    test('covers the 46 fixtures the contract ships', () {
+      expect(fixtures, hasLength(46));
     });
 
     for (final fixture in fixtures) {
@@ -99,6 +116,22 @@ void main() {
       expect(info.capabilities.playbackPlan, isFalse);
       expect(info.capabilities.transcode, isFalse);
       expect(info.capabilities.users, isFalse);
+    });
+
+    test('a PS-9 server advertises users and sessions', () {
+      final info = PleyaInfo.fromJson(load('info_ps9.json'));
+      expect(info.capabilities.users, isTrue);
+      expect(info.capabilities.sessions, isTrue);
+      // And the phases that come later are still off, so the flag genuinely
+      // negotiates rather than being read as "new server, everything on".
+      expect(info.capabilities.playbackPlan, isFalse);
+      expect(info.capabilities.transcode, isFalse);
+      expect(info.capabilities.downloads, isFalse);
+    });
+
+    test('a PS-4 server says no to sessions, so the device fields stay off the wire', () {
+      final info = PleyaInfo.fromJson(load('info_ps4.json'));
+      expect(info.capabilities.sessions, isFalse);
     });
 
     test('the pre-connection default claims nothing at all', () {

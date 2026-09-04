@@ -738,6 +738,30 @@ class MultiServerManager {
     }
   }
 
+  /// One real auth attempt for a Pleya Server whose session was rejected.
+  ///
+  /// The health sweep cannot do this: once a session is revoked,
+  /// `accessToken()` rejects in memory and no packet reaches `/auth/refresh`,
+  /// which is why four probes in log jv19q produced zero refresh attempts. A
+  /// cold start recovers because it builds a fresh session; this is the same
+  /// second chance without the restart. Driven only by the user's own
+  /// "sign in again" / "reconnect" action, never by a timer.
+  ///
+  /// Returns the resulting health, or null when no Pleya client carries this
+  /// id. Rethrows nothing: the caller reads the health to decide whether to
+  /// escalate to a full sign-in.
+  Future<HealthStatus?> retryPleyaServerAuth(ServerId serverId) async {
+    final client = _clients[serverId.value];
+    if (client is! PleyaServerClient) return null;
+    client.retrySessionAfterRejection();
+    final generation = generationFor(serverId);
+    final health = await client.checkHealth();
+    // A disconnect or re-add that raced the probe owns the state now.
+    if (!ownsGeneration(serverId, generation)) return health;
+    _applyHealth(serverId, health);
+    return health;
+  }
+
   /// Tear down a Pleya Server source's runtime client.
   void removePleyaServerSource(PleyaServerConnection connection) {
     final client = _clients.remove(connection.serverId);
@@ -1364,7 +1388,13 @@ class MultiServerManager {
                 appLogger.d('Reconnection timed out for $serverId');
               },
             )
-            .whenComplete(() => _activeOptimizations.remove(serverId));
+            .whenComplete(() {
+              // Block body on purpose: Map.remove returns the stored future,
+              // which is this same chain, and whenComplete awaits a returned
+              // future. The expression form therefore waited on itself and no
+              // reconnect sweep ever resolved.
+              _activeOptimizations.remove(serverId);
+            });
 
         _activeOptimizations[serverId] = future;
         return future;
@@ -1383,7 +1413,39 @@ class MultiServerManager {
                 appLogger.d('Jellyfin reconnection timed out for $serverId');
               },
             )
-            .whenComplete(() => _activeOptimizations.remove(serverId));
+            .whenComplete(() {
+              // Block body on purpose: Map.remove returns the stored future,
+              // which is this same chain, and whenComplete awaits a returned
+              // future. The expression form therefore waited on itself and no
+              // reconnect sweep ever resolved.
+              _activeOptimizations.remove(serverId);
+            });
+
+        _activeOptimizations[serverId] = future;
+        return future;
+      }
+
+      // Pleya Server: the probe alone cannot recover a revoked session, so a
+      // user-driven reconnect spends one real refresh attempt. Automatic
+      // sweeps never reach this line for an auth-errored server, because
+      // reconnectCandidateServerIds filters those out unless the user asked.
+      final pleyaClient = _clients[serverId];
+      if (pleyaClient is PleyaServerClient) {
+        final future = retryPleyaServerAuth(ServerId(serverId))
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                appLogger.d('Pleya Server reconnection timed out for $serverId');
+                return null;
+              },
+            )
+            .whenComplete(() {
+              // Block body on purpose: Map.remove returns the stored future,
+              // which is this same chain, and whenComplete awaits a returned
+              // future. The expression form therefore waited on itself and no
+              // reconnect sweep ever resolved.
+              _activeOptimizations.remove(serverId);
+            });
 
         _activeOptimizations[serverId] = future;
         return future;

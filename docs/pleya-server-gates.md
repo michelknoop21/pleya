@@ -22,8 +22,10 @@ sessieparameter zit op `GET /stream`.
 | 5 | De browser playback session | PS-4 | **dicht**, goedgekeurd 21 augustus 2026, [DEC-051](DECISIONS.md#dec-051-de-browser-krijgt-een-streamsessie-met-een-cookie-per-sessie-en-het-geheim-komt-nooit-in-een-url) |
 
 **Alle vijf staan dicht.** Poort 3, 4 en 5 zijn gesloten in het contractvenster dat bij het sluiten
-van PS-3 openging. Daarna is `docs/pleya-protocol/v1/openapi.yaml` opnieuw bevroren, nu voor de duur
-van PS-4.
+van PS-3 openging. Daarna is `docs/pleya-protocol/v1/openapi.yaml` opnieuw bevroren. De vriezing hangt
+aan de lopende fase, niet aan een vast fasenummer, gelijk aan `CLAUDE.md`; bij het ontwerp van PS-9
+ging het venster een tweede keer open, zie sectie 6 hieronder en
+[DEC-101](DECISIONS.md#dec-101-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5).
 
 ---
 
@@ -250,3 +252,44 @@ het streamtoken in de querystring dat vandaag hetzelfde doet, en het is beter op
 op de pagina kan er niet bij, en het staat niet in browsergeschiedenis, logs of referrers. `HttpOnly`
 is geen versleuteling. Transportvertrouwelijkheid op het LAN hoort bij de fase die de server buiten
 het LAN bereikbaar maakt.
+
+---
+
+## 6. Het PS-9-contractvenster
+
+**Status: gesloten.** `openapi.yaml`, `pleya-protocol-v1.md` en de fixtures zijn bijgewerkt en
+`scripts/check_protocol.sh` slaagt op alle onderdelen. Het besluit staat in
+[DEC-101](DECISIONS.md#dec-101-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5).
+
+**De vraag.** Het protocol was bevroren zolang PS-5 liep, en PS-5 is met
+[DEC-097](DECISIONS.md#dec-097-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet) bewust
+opengelaten op alleen zijn hardwarecriterium, dus voor onbepaalde tijd. PS-9 heeft zeven
+protocoltoevoegingen nodig (rollen en rechten in `/info`, sessie- en gebruikersendpoints, optionele
+device-velden op login/setup). Zonder een expliciet venster staat "bevroren" en "PS-9 heeft
+wijzigingen nodig" tegenover elkaar.
+
+**Wat er opengaat, en niets anders.** Precies zeven wijzigingen, elk getoetst aan de zes
+compatibiliteitsregels uit hoofdstuk 3 van de specificatie:
+
+1. `capabilities.users`: `false` → `true` (waardewijziging, het veld bestaat al).
+2. `capabilities.sessions` toegevoegd aan `/info` (nieuw antwoordveld).
+3. `device_id`, `device_name` optioneel op `LoginRequest` en `SetupRequest` (nieuw optioneel
+   aanvraagveld, achter capability 2, precedent `watch_state_ownership` in `openapi.yaml:774-782`).
+4. `GET/POST /users`, `PATCH/DELETE /users/{id}`, `PUT /users/{id}/permissions` (nieuwe endpoints,
+   klasse `admin`).
+5. `GET /sessions`, `DELETE /sessions/{id}` (nieuwe endpoints, klasse `owner` op eigen sessies,
+   `admin` op die van anderen).
+6. `POST /auth/logout` (nieuw endpoint).
+7. Nieuwe foutcodes voor rolconflicten, additief aan het register.
+
+Geen van de zeven hernoemt, verwijdert of verandert de betekenis van een bestaand veld of endpoint.
+
+**Waarom dit geen precedent voor "protocol bijwerken wanneer het uitkomt" is.** Het venster is net zo
+scherp begrensd als het venster dat bij het sluiten van PS-3 openging: één opgeschreven lijst, één
+toetsing per item, en een sluitmoment dat aan een script hangt in plaats van aan een gevoel. Een
+volgende fase die het protocol wil uitbreiden doorloopt dezelfde procedure opnieuw en krijgt geen
+beroep op dit venster.
+
+**Sluiting.** `openapi.yaml`, `pleya-protocol-v1.md` en de fixtures zijn bijgewerkt en
+`scripts/check_protocol.sh` is groen; het contract is weer bevroren voor de rest van PS-9 en voor elke
+fase daarna, tot de volgende expliciete venstervraag.

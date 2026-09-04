@@ -4,6 +4,127 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## 2026-09-04 (avond): re-baseline van Pleya Server als pakket
+
+Ongecommit op `feat/pleyaserver`. `docs/pleya-server-rebaseline/` bevat preflight, dependency
+map, northstar-spec en -review, twintig architectuurbesluiten (RB-1 tot RB-20), gap-analyses
+voor backend, web en e-books, een masterplan met zeventien slices als DAG, het API- en
+schemaplan (vier protocolvensters, migraties 0008 tot 0013), security, testmatrix met acht golden
+journeys, documentatieplan, integratie- en releaseplan en een Definition of Done.
+`docs/assets/pleya-web-northstar/` bevat 40 schermen op vier breedtes met HTML-bron, tokens,
+renderer en `DESIGN.md`. `docs/PLEYA-SERVER-MASTERLIST.md` is de afvinklijst voor de uitvoering: 26 slices met taken,
+status, bewijs en datum, plus acht poorten. Besluiten van Michel diezelfde avond (set akkoord, boeken op web,
+totaalplan met metadata-providers, Plex-migratie als keuzefase, alles via MCP, branch moet weer
+met `main` mergen) staan in `HANDOFF.md`; de delen B en D tot O zijn daar nog niet op bijgewerkt.
+
+## [2026-09-04] PS-9 gesloten, met de huishoudronde op de draaiende NAS
+
+De opdracht was om de vorige sessie niet op haar woord te geloven, en dat leverde eerst een les over
+de meetopstelling op. Een `go test -v ./internal/api/...` gaf 126 keer `SKIP` en zag er in de
+samenvatting uit als een normale run: `test-db.sh up` zet zijn variabelen in de shell waar hij
+draait, en elke Bash-aanroep is een nieuwe shell. Draai `eval "$(scripts/test-db.sh up)"` en het
+testcommando in dezelfde regel, en kijk naar de `SKIP`-regels voordat je "groen" opschrijft. Met de
+database eraan: 126 tests groen in `api`, `auth` en `migrate`, nul overgeslagen, plus 4782 Dart-tests
+voor criterium 5.
+
+De audit per acceptatiecriterium hield stand. Het gat van de vorige sessie, tests die AC1 bewezen met
+gebruikers uit rauwe SQL en rechtstreeks gemunte tokens, is dicht: `TestSecondUserCanBeCreatedAndLogIn`
+gaat door `POST /users` en `/auth/login` en controleert dat het token haar eigen `subject` draagt en
+niet stilletjes dat van de owner. De matrixtests gebruiken nog wel fixtures, en dat mag: ze toetsen de
+bibliotheekcontrole en niet de inlogstroom, zolang iets anders het echte pad bewijst. Dat staat nu ook
+zo in het commentaar, want daar stond nog dat er geen aanmaakendpoint bestond.
+
+**De ronde op `web.pleya.app`.** Als owner ingelogd, een tweede gebruiker aangemaakt via de API,
+precies één van de drie bibliotheken toegekend, en als haar ingelogd. Ze zag één bibliotheek; de
+andere twee gaven `404` op een direct id, en een echt item uit elk daarvan gaf `404 library.not_found`
+met dezelfde body als een niet-bestaand id, terwijl de owner op datzelfde id `200` kreeg. Haar sessie
+intrekken maakte haar accesstoken binnen 0,4 seconde `401 auth.token_invalid` met bericht
+`session revoked`, haar refreshketen eveneens, en de owner bleef `200` houden. Daarna opgeruimd, en
+de server stond weer op één owner en drie bibliotheken.
+
+Eén ding leek een bevinding en was er geen. `GET /sessions` geeft de eigen sessies en draagt geen
+`user_id`; wie andermans sessies wil zien vraagt `?user_id=` en moet owner of admin zijn. Dat is
+precies DEC-103 en matrixregel 15. Mijn script ging uit van een platte lijst met een `user_id`-veld,
+en dat is de fout van het script.
+
+**Vier gaten in de tests, alle vier klein en alle vier gerepareerd.** `CodeSetupCodeInvalid` stond in
+het foutregister en werd door `handleSetup` gebruikt, maar geen enkele test raakte dat pad: AC4 leunde
+volledig op eenmaligheid, dus een server die élke setupcode accepteerde was hier groen.
+`TestSetupRejectsWrongAndExpiredCode` dekt nu een verkeerde en een verlopen code, en controleert dat
+er daarna nog geen owner is. `capabilities.sessions` werd nergens geassert terwijl de vlag bij stap 6
+aanging. En één testcommentaar noemde matrixregel 2 en 4 waar het regel 10 en 11 dekt.
+
+**Twee formuleringen die door het sluiten zelf gingen lekken.** De protocolvriezing hing aan "zolang
+de lopende fase loopt", en tussen twee fasen in loopt er geen fase; dat las als een open venster. Hij
+hangt nu aan een expliciet besluit. En de PS-14-status zei dat er geen code komt "voordat PS-9
+formeel gesloten is", wat vanzelf waar werd zonder dat iemand PS-14 had vrijgegeven. Vrijgeven blijft
+een apart besluit dat niet genomen is.
+
+De Roadmap Drift Check is tegen de code beantwoord en niet tegen de bedoeling: `library_permissions`
+heeft alleen `(user_id, library_id, permission)`, `auth.Revocations` is één map op sessie-id zonder
+pub/sub, en de enige rechtendrempel op een aanvraagpad is `catalog.PermissionView`. `manage` wordt
+opgeslagen en teruggegeven, nergens gehandhaafd.
+
+Wat open blijft: PS-5-criterium 4 (de hardwareronde) staat er los van en is niet gedraaid, en de twee
+contractgaten (geen foutcode voor "restricted mag geen `manage`", geen endpoint voor het eigen
+account-id) wachten op het eerstvolgende protocolvenster.
+
+## [2026-09-03] PS-9 code compleet: gebruikersbeheer, sessie-intrekking en de clientkant
+
+De eerste vondst was er geen in de code maar in de boekhouding. DEC-099, DEC-104 en DEC-105
+verwijzen alle drie naar "stap N van hoofdstuk 8", en hoofdstuk 8 van het PS-9-ontwerp bestaat
+nergens in de repo: die inhoud is geland in DEC-098 tot en met DEC-105 en in hoofdstuk 16 van de
+protocolspecificatie, maar de volgorde zelf is nooit opgeschreven. Hij is gereconstrueerd uit
+commit-onderwerpen (`c324b7d` draagt "PS-9-stap 2" letterlijk) en codecommentaar (`auth/store.go:189`
+noemt stap 3, `watch/store_test.go:22` stap 4, `auth/store.go:281` stap 6), en staat nu als tabel bij
+de PS-9-fasetabel in het architectuurdocument. Drie besluiten die naar iets verwijzen dat niemand kan
+opslaan is een boekhoudfout, geen detail.
+
+**Stap 4 is meer dan vijf endpoints.** DEC-100 vraagt een gebruikersbeheer-API, en die staat er:
+`POST`/`GET /users`, `PATCH`/`DELETE /users/{id}` en `PUT /users/{id}/permissions`. Maar de tests die
+AC1 zouden dekken maakten hun tweede gebruiker met rauwe SQL en mintten hun token rechtstreeks, en
+daardoor viel niet op dat `handleLogin` nog steeds `auth_owner` las en alles weigerde waar
+`req.Username != owner.Username`. Een tweede gebruiker kon dus bestaan en niet binnenkomen. Login
+verifieert nu tegen `users`; een onbekende naam kost evenveel tijd als een fout wachtwoord, want het
+wachtwoord wordt dan alsnog tegen de owner-hash gecontroleerd en de uitkomst weggegooid.
+
+`UpdatePasswordHash` kreeg een `userID` mee. Zonder dat schrijft de herhash na een geslaagde login van
+een huisgenoot de hash van de owner over, wat pas zou opvallen als de owner niet meer binnenkwam.
+
+**Stap 6 is de enige plek waar een grens gemeten moest worden.** Het intrekkingsregister uit DEC-099
+is een set sessie-ids in het geheugen, bij het opstarten gevuld uit `sessions`. Alle drie de
+credentials die geen databaseronde doen raadplegen hem: het accesstoken, het streamtoken en de
+browserstreamsessie. `copyRange` was één `io.CopyN` over de hele range en is een lus geworden met
+blokken van 64 KiB.
+
+De eerste versie van de meting faalde eerlijk op 2,7 seconden, en die uitslag was leerzaam: dat was
+niet de server maar het leeglopen van de buffers die al onderweg waren. De grens uit DEC-099 gaat over
+het moment dat de server stopt met leveren, en dat moment is aan de clientkant niet te zien. De test
+hangt daarom aan de logregel die `copyRange` schrijft als hij afbreekt. Gemeten: **446 ms**, terwijl
+de client daarna nog 2,1 MB uit zijn buffers las.
+
+**De clientkant is de reparatie die hoofdstuk 4.1 al beschreef.** Een Pleya Server-aanmelding maakte
+tot nu toe een `Profile.local`, en `_resolvePlexAuth` eindigt voor een local profile bij het
+Plex-owner-token als het niets beters vindt. Op een toestel met zowel een Plex-account als een Pleya
+Server-aanmelding beantwoordde dat een vraag over de ene identiteit met het credential van de andere.
+`ProfileKind` heeft nu een derde waarde, `PleyaServerCredentialResolver` weigert in plaats van terug
+te vallen, en de binder gebruikt hem vóór hij een client registreert: `MultiServerManager` sleutelt op
+`serverId`, dus twee huisgenoten op dezelfde server zijn één slot en de verkeerde connectie daarin
+zetten faalt niet, het laat de één als de ander browsen. `ProfileConnection.userIdentifier` droeg
+`connection.serverId` en draagt nu de gebruikersnaam: het serverid maakte twee accounts op dezelfde
+machine ononderscheidbaar.
+
+**Twee gaten in het contract, gemeld en niet gerepareerd.** Er is geen foutcode voor "restricted mag
+geen manage krijgen", terwijl hoofdstuk 16.1 het verbod wel vastlegt; `handleSetPermissions` gebruikt
+`auth.user_not_found`, wat onder de 404-regel klopt maar het geval niet benoemt. En er is geen
+endpoint waarmee een client zijn eigen account-id opvraagt, dus de client identificeert zich op
+gebruikersnaam. Het protocolvenster is dicht en een achtste wijziging mag niet; allebei horen in het
+eerstvolgende venster.
+
+Bewijs: Go-suite groen zonder `SKIP`, `check_protocol.sh` groen, `verify-protocol.sh` valideert 34
+antwoorden waaronder `User`, `UserList`, `SessionList` en `LibraryPermissionList`, `verify-local.sh`
+78 controles, `ci_checks.sh` volledig groen, `flutter test` 4782 geslaagd en 1 overgeslagen.
+
 ## [2026-09-02] De UX/focus-herstelronde: twaalf gemelde gebreken, en drie meldingen die niet klopten
 
 Twaalf punten van een echte Apple TV, plus één bevinding die er zelf bij kwam. Wat volgt is geen
@@ -265,6 +386,7 @@ een samengevoegde meerregelige log de 404 nog onder de algemene regel vindt, dat
 een looptijd heeft en het groepsvoorvoegsel draagt, dat geen ruwe logregel de kaart haalt, dat
 `hasPlayableVersion` onwaar is als álle versies onleesbaar zijn en waar als de server geen vlaggen
 stuurde, en dat een blijvende melding buiten het dedupe-venster optelt in plaats van te stapelen.
+
 ## [2026-09-02] Het ident is nu het lockup op de paginagrond, en verder niets
 
 Michel vroeg of de intro ook bij het nieuwe ontwerp kon passen. Dat kon, en de reden ging verder dan
@@ -293,6 +415,7 @@ vastlegt.
 Eén randgeval dat de tests boven water haalden: op exact de laatste milliseconde staat de waarde van de
 controller op 1 maar zijn status nog niet op `completed`, en de toetsafhandelaar hing aan die status.
 Hij kijkt nu naar de waarde, want het ident is weg zodra die 1 is, wat de status ook zegt.
+
 ## [2026-09-02] De backend-badge is een bronglyph, en het merkrood blijft waar het hoort
 
 J19 stond sinds vanochtend als klasse C in het register — hij kwam uit het J18-werk van diezelfde
@@ -469,18 +592,19 @@ referentiebeelden zijn donker. Registerrij **J18**, klasse C, naast J14.
 Register staat daarmee op 178 van 187 `covered`. Fase 10A heeft geen enkele rij van `open` naar
 `covered` bewogen, en dat hoort ook zo: fase 9 had het register al gesloten, dit was harding erop.
 Wat openblijft is vijf hardwarerijen, twee geregistreerde debts en twee onopgeloste productcontracten.
-## [2026-09-01] feat/pleyaserver: integratie-gereedheidsaudit, DEC-064-hardwareronde gestart
+
+## [2026-09-01] feat/pleyaserver: integratie-gereedheidsaudit, DEC-097-hardwareronde gestart
 
 Voordat een PS-5-branch vanaf de vernieuwde `main` kon starten, bleek `feat/pleyaserver` een aparte,
-ongemergede werkboom te zijn die `main` niet kende: lokaal op DEC-073 tegen `main`'s DEC-068, met vijf
+ongemergede werkboom te zijn die `main` niet kende: lokaal op DEC-106 tegen `main`'s DEC-068, met vijf
 ongepushte commits. Een read-only audit zette de zes openstaande vragen op scherp. De vijf lokale
-commits zijn stuk voor stuk compleet en getest (een `schema.d.ts`-sync, de goedgekeurde DEC-073 zelf,
+commits zijn stuk voor stuk compleet en getest (een `schema.d.ts`-sync, de goedgekeurde DEC-106 zelf,
 de PS-4-hubfix, een gofmt-ronde en een releasenotes-bump); geen ervan raakt de bewezen
 PS-5-checkpoint. PS-9 starten terwijl PS-5's acceptatiecriterium 4 nog open stond bleek geen
-roadmapschending: [DEC-064](DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
+roadmapschending: [DEC-097](DECISIONS.md#dec-097-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
 staat dat expliciet toe onder vier voorwaarden, en alle vier zijn onafhankelijk geverifieerd.
 
-DEC-064's eigen tekst noemt drie triggers die de hardwareronde alsnog verplichten, wat het eerst
+DEC-097's eigen tekst noemt drie triggers die de hardwareronde alsnog verplichten, wat het eerst
 komt: een publieke release met PS-5- of PS-9-gedrag, een TestFlight-indiening naar App Review, of een
 merge van `feat/pleyaserver` naar `main`. Dat laatste is precies de stap die nu overwogen wordt en nog
 niet gebeurd was, dus de conclusie: eerst de hardwareronde, dan pas mergen (verdict B).
@@ -491,8 +615,26 @@ gelanceerd op de echte, gepairde Apple TV 4K (3e generatie) via `xcodebuild` + `
 rechtstreeks (geen simulator, geen TestFlight-wachttijd nodig: het toestel bleek al bereikbaar). De
 vier testtitels (een Plex- en een Jellyfin-titel die vandaag direct playen, een titel die
 transcodeert, en een TrueHD/Dolby-titel via een fysieke AVR) en de fysieke playbackbeoordeling wachten
-op Michel; simulator- of Verify-bewijs telt hier expliciet niet, dat is precies wat DEC-064 als
+op Michel; simulator- of Verify-bewijs telt hier expliciet niet, dat is precies wat DEC-097 als
 hardwaregrens heeft laten staan.
+
+## [2026-09-01] DEC-097's hardwareronde gestart op echte apparaten
+
+Een integratie-gereedheidsaudit vanaf `main` (zie `main`'s eigen `docs/CHANGELOG.md`) wees uit dat
+deze branch al verder is dan `main` weet: PS-5 compleet en getest, PS-9 onderweg, met
+[DEC-097](DECISIONS.md#dec-097-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet) als
+geldige toestemming daarvoor. Diezelfde DEC-097 vraagt de PS-5-hardwareronde vóór een merge naar
+`main`, dus die is nu gestart. `flutter run -d macos --release` bouwde en startte een lokale release
+van deze branch (`Pleya.app`, 254,6MB). Voor tvOS bleek de gepairde Apple TV 4K (3e generatie) al
+bereikbaar (`tunnelState: connected`), dus `xcodebuild -workspace tvos/Runner.xcworkspace -scheme
+Runner -configuration Release -destination 'platform=tvOS,id=1528384F-B1C1-5688-BA78-15EE0C57F788'`
+bouwde rechtstreeks voor het echte toestel; `xcrun devicectl device install app` en `device process
+launch` zetten `nl.michelknoop.pleya` erop en starten hem, zonder simulator of TestFlight-omweg.
+
+De vier testtitels per toestel (een Plex- en een Jellyfin-titel die vandaag direct playen, een titel
+die transcodeert met een niet-originele preset, en een TrueHD- of Dolby-titel via een echte AVR) en de
+fysieke playbackbeoordeling staan nog open. Simulator- of Pleya Verify-bewijs telt hier bewust niet
+mee: AC4 is in DEC-097 expliciet een criterium dat uitsluitend met fysieke hardware te bewijzen is.
 
 ## [2026-08-31] Pleya Verify Core 1.0: hardening-pass afgerond en gemerged naar main
 
@@ -565,6 +707,86 @@ sloopte en elke volgende stap faalde met een melding die nergens naar de seed we
 omliggende shell gelezen zonder dat iets hem voor een release terugzette: een device-releasebuild met
 de vlag aan wordt nu geweigerd, en `testflight_release.sh` zet zijn eigen omgeving dicht in plaats van
 op de aanroeper te vertrouwen.
+
+## [2026-08-23] PS-5: het toestel vertelt de backend eindelijk wat het aankan
+
+Twee profielen gingen naar Plex en Jellyfin zonder ook maar iets van het toestel te weten. Jellyfin
+kreeg `CodecProfiles: []`, dus nul condities, en één `DirectPlayProfiles`-rij voor elk toestel dat
+Pleya draait. Plex kreeg `location: 'lan'` ongeacht waar de server staat en een clause-lijst zonder
+resolutie, HDR, bitdiepte of kanaalaantal. Het enige signaal dat varieerde was een bandbreedtekeuze
+uit een menu. Ondertussen weet de app via `AppleAudioRoute` precies hoeveel kanalen de route aankan
+en of hij een Dolby-bitstream neemt, en dat hoorde geen enkele backend.
+
+`DeviceCapabilities` staat er nu, met vier lagen en een `device_`-prefix zodat hij niet te verwarren
+is met `ServerCapabilities`, dat over een backend gaat en niet over dit toestel. Handgeschreven
+const-klassen, geen freezed: er is geen JSON en geen diepe waardegelijkheid nodig, serialisatie is
+PS-6.
+
+**De correctie die het type de moeite waard maakt.** Een override draagt de confidence van de
+waarneming die hij vervangt, niet zijn eigen. Zonder die regel stempelt elke override `detected` op
+wat eronder zit, en dan wordt een gegokte decoderlijst een meting zodra iemand hem aanzet. Precies
+dat veld leest de planner in PS-6 om per eigenschap de veilige kant te kiezen. Het veld heet daarom
+`observed` en niet `detected`: er kan net zo goed een `inferred` of `unknown` waarneming onder zitten.
+
+**Wat elke laag eerlijk zegt.** De decoder is `inferred` en nooit `detected`, want niets in deze app
+vraagt mpv om `decoder-list`, `audio-device-list` of `hwdec-interop`; `hwdec-current` wordt alleen
+voor de prestatie-overlay uitgelezen. De weergave is alleen op Windows `detected`, want daar wordt de
+echte modelijst gelezen en vraagt `isHDRSupported` de OS naar het paneel; dat de app mpv
+`hdr-enabled` meegeeft zegt wat de speler moest doen en niet wat het scherm kan tonen. De audio komt
+op Apple uit de route, waarbij het kanaalaantal op een digitale poort `unknown` blijft in plaats van
+twee, want daar rapporteerde `maximumOutputNumberOfChannels` 2 terwijl dezelfde sessie mpv 8 gaf. En
+locality blijft `unknown`: een privé-adrescheck op de server-URL is geen bewijs, want VPN, split DNS,
+relay en gewone lokale routering krijgen hem in beide richtingen fout.
+
+Onderweg is één stilzwijgende fout gerepareerd. Boven de Jellyfin-codeclijst stond dat mpv HEVC
+natief decodeert op elk platform dat wij shippen. Dat is nooit waar geweest voor een standaard
+Android-installatie: `use_exoplayer` staat default op `true`. De decoderlaag leest daarom de
+spelersoort en niet het platform.
+
+**De regel die de fase veilig maakt.** Een unknown capability levert exact de string op die de app
+vóór PS-5 stuurde; alleen een detected of inferred waarde mag ervan afwijken. De twee builders dragen
+dat bevroren record als eigen constanten, los van de inferred baseline, en de tabeltests leggen per
+veld vast dat het zo blijft. Vijf van de acht commits veranderen daardoor geen byte op de lijn.
+
+**Twee gedragswijzigingen, elk in een eigen commit en los terug te draaien.** `truehd` staat nu in de
+Jellyfin direct-play-audiolijst op mpv-platforms: de oude lijst noemde `dts` maar niet `truehd`, dus
+elke TrueHD-track kostte een transcode die de speler niet nodig had. Het bewijs staat in
+`audio_output_decision.dart` en werkt beide kanten op, want desktop bitstreamt hem en Apple laat hem
+juist weg omdat de systeemdecoder hem niet kan nemen, waarna mpv hem decodeert. ExoPlayer krijgt hem
+niet, want zijn echte set komt per toestel uit `MediaCodecList` en die vraagt niemand op. De tweede is
+`display_max_resolution`, de nieuwe override, die als `Width`- en `Height`-conditie op de lijn komt.
+De gemeten kant blijft er bewust naast staan: een paneel dat 1080p meet is een feit, maar een server
+vragen 4K daarnaartoe te transcoderen is beleid, en beleid is PS-6.
+
+**De duplicaten zijn semantisch bekeken en niet blind samengevoegd.** Elf bestanden in `lib/` noemen
+drie of meer codec- of containertokens, en die trekken zes verschillende grenzen. Wat de scanner als
+video herkent, wat een download mag houden en wat een backend mag direct-playen zijn drie
+verschillende dingen die toevallig tokens delen; die samenvoegen zou ze koppelen.
+`test/architecture/device_capability_sources_test.dart` eist per bestand een soort, een reden en een
+exacte telling. Eén samenvoeging was wel terecht: de mpv `audio-spdif`-lijst stond in
+`player_native.dart` en `player_android.dart` als eigen constante, in een spelling die al uit elkaar
+gelopen was (`dts-hd` daar, `dtshd` in de normalisatie). Eén gat is gevonden en bewust niet gedicht:
+`pleya_share_protocol.dart` trekt dezelfde discovery-grens als `local_folder_client.dart` maar mist
+`.iso`.
+
+Twee bestanden zijn onderweg kleiner geworden omdat ze toch werden aangeraakt. `plex_client.dart`
+gaat van 4397 naar 4241 regels, en daarmee vervalt `buildTranscodeParamsForTesting`: die seam bestond
+alleen omdat de builder op een klasse van vierduizend regels zat.
+`playback_settings_screen.dart` stond op 508 en staat nu op 454, mét de nieuwe tegel erin; de
+audiosectie is ongewijzigd naar `playback/audio_section.dart` getild.
+
+**Vooraf: de volgorde-afwijking.** De fasetabellen dragen zowel "Afhankelijkheden" als "Eerstvolgende
+fase", en nergens stond wat het tweede veld betekent zodra de graaf vertakt. Bij PS-4 vertakt hij, dus
+de twee velden spraken elkaar tegen. `docs/pleya-server-phase-order-deviation.md` definieert
+"Eerstvolgende fase" als leeswijzer, laat "Afhankelijkheden" plus de mermaid bindend zijn, en legt de
+doorloop vast: PS-5, PS-9, PS-11A, daarna PS-6 tot en met PS-8. Vier documentcorrecties liften mee,
+waaronder twee telfouten in `pleya_server/README.md` die de tabel eronder tegenspraken.
+
+**PS-5 heet "opgeleverd" en niet "gesloten".** Acceptatiecriterium 4 vraagt geen regressie op echte
+hardware, minimaal tvOS plus één desktopplatform, en die ronde is er niet geweest. Bewijs dat er wel
+is: `ci_checks.sh` volledig groen en 4697 tests geslaagd, 1 overgeslagen, met de gepinde SDK uit
+`.fvmrc` vooraan in PATH. Die ronde vraagt een TestFlight-build, en drie andere blokkades wachten al
+op een build nieuwer dan 240, dus ze kan gecombineerd worden.
 
 ## [2026-08-22] De twee PS-4-bevindingen dicht, en de releasenotes blijven staan
 

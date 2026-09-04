@@ -501,46 +501,10 @@ mixin _JellyfinPlaybackMethods on MediaServerCacheMixin {
           'EnableTranscoding': ?enableTranscoding,
           'AllowVideoStreamCopy': ?allowVideoStreamCopy,
           'AllowAudioStreamCopy': ?allowAudioStreamCopy,
-          'DeviceProfile': <String, Object?>{
-            'Name': 'Pleya',
-            'MaxStreamingBitrate': ?maxStreamingBitrate,
-            'CodecProfiles': const <Map<String, Object?>>[],
-            // Comma-separated codec lists are order-sensitive — first entry
-            // wins when the server picks an output codec. HEVC is listed
-            // ahead of H.264 so a server that has "Allow encoding in HEVC
-            // format" enabled will actually emit HEVC instead of falling
-            // back to H.264.
-            'TranscodingProfiles': const <Map<String, Object?>>[
-              {
-                'Type': 'Video',
-                'Container': 'ts',
-                'Protocol': 'hls',
-                'VideoCodec': 'hevc,h264',
-                'AudioCodec': 'aac,mp3,ac3,eac3,flac,opus',
-              },
-            ],
-            // Declaring HEVC in DirectPlayProfile.VideoCodec stops the server
-            // from forcing a transcode for HEVC sources whose container we
-            // already accept — mpv decodes HEVC natively on every platform
-            // we ship.
-            'DirectPlayProfiles': const <Map<String, Object?>>[
-              {
-                'Type': 'Video',
-                'Container': 'mp4,mkv,m4v,webm,mov,ts',
-                'VideoCodec': 'hevc,h264,h265,vp8,vp9,av1,mpeg4,mpeg2video',
-                'AudioCodec': 'aac,mp3,mp2,ac3,eac3,flac,opus,vorbis,dts',
-              },
-            ],
-            'SubtitleProfiles': const <Map<String, Object?>>[
-              {'Format': 'srt', 'Method': 'External'},
-              {'Format': 'ass', 'Method': 'External'},
-              {'Format': 'ssa', 'Method': 'External'},
-              {'Format': 'vtt', 'Method': 'External'},
-              {'Format': 'pgssub', 'Method': 'External'},
-              {'Format': 'dvdsub', 'Method': 'External'},
-              {'Format': 'dvbsub', 'Method': 'External'},
-            ],
-          },
+          'DeviceProfile': buildJellyfinDeviceProfile(
+            DeviceCapabilitiesService.currentSnapshot,
+            maxStreamingBitrate: maxStreamingBitrate,
+          ),
         },
       );
       throwIfHttpError(response);

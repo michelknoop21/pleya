@@ -54,7 +54,12 @@ type Capabilities struct {
 	Downloads    bool `json:"downloads"`
 	LiveTV       bool `json:"live_tv"`
 	Realtime     bool `json:"realtime"`
-	Users        bool `json:"users"`
+
+	// Users (DEC-100). Aan sinds stap 4 van PS-9: de vijf endpoints onder
+	// /users bestaan, en /auth/login verifieert tegen users en niet meer tegen
+	// alleen de owner-rij. Een client die deze vlag ziet mag ervan uitgaan dat
+	// een tweede gebruiker kan bestaan en kan inloggen.
+	Users bool `json:"users"`
 
 	// PS-4. Twee vlaggen die de client vertellen dat hij de velden uit DEC-049
 	// en het endpoint uit DEC-051 mag gebruiken. WatchStateEvent is gesloten,
@@ -62,6 +67,13 @@ type Capabilities struct {
 	// een 400 krijgen van een oudere server.
 	WatchStateOwnership bool `json:"watch_state_ownership"`
 	StreamSessions      bool `json:"stream_sessions"`
+
+	// Sessions (DEC-102, DEC-103). Aan sinds stap 6 van PS-9. De vlag zegt drie
+	// dingen tegelijk: de client mag device_id en device_name meesturen bij
+	// login en setup, GET/DELETE /sessions en POST /auth/logout bestaan, en een
+	// ingetrokken sessie is binnen twee seconden ongeldig, ook voor een lopende
+	// stream (DEC-099).
+	Sessions bool `json:"sessions"`
 }
 
 // ServerDetail is het antwoord van GET /server.
@@ -184,16 +196,16 @@ type UserState struct {
 // toestand bestaat nog niet) en weglaten betekent "geen claim", en die twee
 // mogen niet samenvallen.
 type WatchStateEvent struct {
-	ItemID       string  `json:"item_id"`
-	SessionID    string  `json:"session_id"`
-	PositionMs   int64   `json:"position_ms"`
-	DurationMs   *int64  `json:"duration_ms"`
-	OccurredAt   string  `json:"occurred_at"`
-	Completed    bool    `json:"completed"`
-	Action       string  `json:"explicit_action"`
-	Cause        string  `json:"cause"`
-	BaseRevision *int64  `json:"base_revision"`
-	Backlog      bool    `json:"backlog"`
+	ItemID       string `json:"item_id"`
+	SessionID    string `json:"session_id"`
+	PositionMs   int64  `json:"position_ms"`
+	DurationMs   *int64 `json:"duration_ms"`
+	OccurredAt   string `json:"occurred_at"`
+	Completed    bool   `json:"completed"`
+	Action       string `json:"explicit_action"`
+	Cause        string `json:"cause"`
+	BaseRevision *int64 `json:"base_revision"`
+	Backlog      bool   `json:"backlog"`
 }
 
 // WatchStateEntry is één regel in de lijst van GET /watch-state.

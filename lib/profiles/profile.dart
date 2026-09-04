@@ -9,12 +9,18 @@ part 'profile.freezed.dart';
 
 /// Top-level profile — the user-facing identity in the app.
 ///
-/// Two kinds:
+/// Three kinds:
 /// - [LocalProfile]: a Plezy-only profile created by the user. May have
 ///   an optional 4-digit PIN.
 /// - [PlexHomeProfile]: auto-surfaced from a connected Plex account's
 ///   Home users. PIN protection is handled server-side by Plex via the
 ///   `/home/users/{uuid}/switch` flow — `pinHash` is unused.
+/// - [PleyaServerProfile]: one account on one Pleya Server. Added in PS-9,
+///   because a Pleya Server sign-in used to produce a [LocalProfile] and that
+///   made two different things look the same: a local profile is a label the
+///   app puts on a device, while this one *is* a server-side identity with a
+///   role and its own library permissions. Resolving credentials for it must
+///   never end at somebody else's token; see [PleyaServerCredentialResolver].
 ///
 /// A profile owns 1+ connections via the `profile_connections` join table.
 /// The join row carries the per-profile user-level token used to talk to
@@ -56,6 +62,27 @@ sealed class Profile with _$Profile {
     required DateTime createdAt,
     DateTime? lastUsedAt,
   }) = PlexHomeProfile;
+
+  const factory Profile.pleyaServer({
+    required String id,
+    required String displayName,
+    String? avatarThumbUrl,
+
+    /// The Pleya Server connection this profile is the identity of. One
+    /// connection carries exactly one account's refresh token, which is what
+    /// makes the credential resolution unambiguous.
+    String? pleyaConnectionId,
+
+    /// The username this profile signs in with on that server. The account's
+    /// server-side id is deliberately not stored: it lives inside the access
+    /// token, and the protocol says a client never has to read that (chapter
+    /// 6.3). The username is what the person typed and what the connection
+    /// row already carries.
+    String? pleyaUsername,
+    @Default(0) int sortOrder,
+    required DateTime createdAt,
+    DateTime? lastUsedAt,
+  }) = PleyaServerProfile;
 
   /// Construct an in-memory virtual `Profile` for a Plex Home user. These
   /// are never persisted — Plex owns the Home user list, so the picker
@@ -112,57 +139,96 @@ sealed class Profile with _$Profile {
         createdAt: createdAt,
         lastUsedAt: lastUsedAt,
       ),
+      ProfileKind.pleyaServer => Profile.pleyaServer(
+        id: id,
+        displayName: displayName,
+        avatarThumbUrl: avatarThumbUrl,
+        pleyaConnectionId: json['pleyaConnectionId'] as String?,
+        pleyaUsername: json['pleyaUsername'] as String?,
+        sortOrder: sortOrder,
+        createdAt: createdAt,
+        lastUsedAt: lastUsedAt,
+      ),
     };
   }
 
   bool get isLocal => this is LocalProfile;
   bool get isPlexHome => this is PlexHomeProfile;
+  bool get isPleyaServer => this is PleyaServerProfile;
 
   ProfileKind get kind => switch (this) {
     LocalProfile() => ProfileKind.local,
     PlexHomeProfile() => ProfileKind.plexHome,
+    PleyaServerProfile() => ProfileKind.pleyaServer,
   };
 
   /// True when entering this profile requires user-supplied PIN.
   ///
   /// Locals: gated by their own [pinHash].
   /// Plex Home: gated by Plex's own protected flag (`plexProtected`).
+  /// Pleya Server profiles are not PIN-gated in this phase: the server has a
+  /// real password per account, so a four-digit social barrier in front of it
+  /// would suggest a protection that the account itself already provides
+  /// better. Whether a household wants a quick switch guard on top is a
+  /// product question for a later phase, not a gap here.
   bool get isPinProtected => switch (this) {
     LocalProfile(:final pinHash) => pinHash != null && pinHash.isNotEmpty,
     PlexHomeProfile(:final plexProtected) => plexProtected,
+    PleyaServerProfile() => false,
   };
 
   /// Hashed PIN, only set for [LocalProfile]. Returns null for plexHome.
   String? get pinHash => switch (this) {
     LocalProfile(:final pinHash) => pinHash,
     PlexHomeProfile() => null,
+    PleyaServerProfile() => null,
   };
 
   /// Parent Plex account connection id, only set for [PlexHomeProfile].
   String? get parentConnectionId => switch (this) {
     LocalProfile() => null,
     PlexHomeProfile(:final parentConnectionId) => parentConnectionId,
+    PleyaServerProfile() => null,
+  };
+
+  /// The Pleya Server connection this profile is the identity of, only set for
+  /// [PleyaServerProfile].
+  String? get pleyaConnectionId => switch (this) {
+    LocalProfile() => null,
+    PlexHomeProfile() => null,
+    PleyaServerProfile(:final pleyaConnectionId) => pleyaConnectionId,
+  };
+
+  /// The username on that server, only set for [PleyaServerProfile].
+  String? get pleyaUsername => switch (this) {
+    LocalProfile() => null,
+    PlexHomeProfile() => null,
+    PleyaServerProfile(:final pleyaUsername) => pleyaUsername,
   };
 
   /// Plex Home user UUID, only set for [PlexHomeProfile].
   String? get plexHomeUserUuid => switch (this) {
     LocalProfile() => null,
     PlexHomeProfile(:final plexHomeUserUuid) => plexHomeUserUuid,
+    PleyaServerProfile() => null,
   };
 
   bool get plexRestricted => switch (this) {
     LocalProfile() => false,
     PlexHomeProfile(:final plexRestricted) => plexRestricted,
+    PleyaServerProfile() => false,
   };
 
   bool get plexAdmin => switch (this) {
     LocalProfile() => false,
     PlexHomeProfile(:final plexAdmin) => plexAdmin,
+    PleyaServerProfile() => false,
   };
 
   bool get plexProtected => switch (this) {
     LocalProfile() => false,
     PlexHomeProfile(:final plexProtected) => plexProtected,
+    PleyaServerProfile() => false,
   };
 
   Map<String, Object?> toConfigJson() => switch (this) {
@@ -173,21 +239,28 @@ sealed class Profile with _$Profile {
       'admin': plexAdmin,
       'protected': plexProtected,
     },
+    PleyaServerProfile(:final pleyaConnectionId, :final pleyaUsername) => {
+      'pleyaConnectionId': pleyaConnectionId,
+      'pleyaUsername': pleyaUsername,
+    },
   };
 }
 
 enum ProfileKind {
   local,
-  plexHome;
+  plexHome,
+  pleyaServer;
 
   String get id => switch (this) {
     ProfileKind.local => 'local',
     ProfileKind.plexHome => 'plex_home',
+    ProfileKind.pleyaServer => 'pleya_server',
   };
 
   static ProfileKind fromId(String id) => switch (id) {
     'local' => ProfileKind.local,
     'plex_home' => ProfileKind.plexHome,
+    'pleya_server' => ProfileKind.pleyaServer,
     _ => throw ArgumentError('Unknown ProfileKind id: $id'),
   };
 }

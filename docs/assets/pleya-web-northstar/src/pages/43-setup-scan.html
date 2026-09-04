@@ -1,0 +1,33 @@
+<!-- widths: 1600 -->
+<style>
+.setup { min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 60px 24px; }
+.setup .box { width: 100%; max-width: 620px; }
+.setup .box > img { height: 36px; margin-bottom: 26px; }
+.setup h1 { font-size: 28px; font-weight: 700; letter-spacing: -.01em; }
+.setup .sub { color: var(--ink-2); margin-top: 6px; font-size: 15px; line-height: 1.45; }
+.setup .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; }
+</style>
+<div class="setup"><div class="box">
+  <img src="../assets/pleya_wordmark.png" alt="Pleya">
+  <div class="steps"><div class="st done"><span class="n">{{icon:check}}</span><span>Eigenaar</span></div><div class="ln"></div><div class="st done"><span class="n">{{icon:check}}</span><span>Opslag</span></div><div class="ln"></div><div class="st done"><span class="n">{{icon:check}}</span><span>Bibliotheek</span></div><div class="ln"></div><div class="st on"><span class="n">4</span><span>Scannen</span></div></div>
+  <h1>Films wordt gescand</h1>
+  <p class="sub">De server loopt de mappen door, herkent titels uit mapnamen en analyseert elk videobestand één keer. Je kunt dit venster sluiten; de scan loopt door en Home vult zich vanzelf.</p>
+  <section class="panel" style="margin-top:22px">
+    <div style="display:flex;justify-content:space-between;font-size:14px"><b>Scan Films</b><span class="dim">2 min bezig</span></div>
+    <div class="bar acc" style="margin:10px 0 8px;height:8px"><i style="width:23%"></i></div>
+    <div class="s dim" style="font-size:13px">6.512 van 28.412 bestanden gezien · 118 titels · 131 versies · 12 geanalyseerd per seconde</div>
+    <div class="s dim mono" style="font-size:12px;margin-top:6px">/volume1/media/Films/Dune Part Two (2024)/Dune.Part.Two.2024.2160p.mkv</div>
+  </section>
+  <section class="section">
+    <div class="section-h"><h2 style="font-size:16px">Al gevonden</h2></div>
+    <div class="rail">
+      {{card:dune2|Dune: Part Two|2024}}
+      {{card:oppenheimer|Oppenheimer|2023}}
+      {{card:barbie|Barbie|2023}}
+      {{card:anora|Anora|2024}}
+      <div class="fade-r"></div>
+    </div>
+  </section>
+  <div class="foot"><span class="hint">Stap 4 van 4</span><a class="btn primary" href="#">Naar Home {{icon:chev}}</a></div>
+</div></div>
+<div class="note">NORTHSTAR · 43 Setup stap 4 · voortgang uit scan_runs via polling, realtime is een verbetering en geen voorwaarde</div>

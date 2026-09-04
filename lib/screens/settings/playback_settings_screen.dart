@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../media/device_display_capabilities.dart' show DisplayResolutionCap;
 import '../../models/transcode_quality_preset.dart';
-import '../../mpv/models.dart' show AudioLoudness;
 import '../../mpv/player/platform/player_android.dart';
-import '../../services/audio_output_coordinator.dart';
-import '../../services/audio_output_decision.dart';
 import '../../utils/quality_preset_labels.dart';
 import '../../services/companion_remote/companion_remote_host_controller.dart';
+import '../../services/device_capabilities_service.dart';
+import '../../services/device_capability_overrides.dart';
 import '../../services/discord_rpc_service.dart';
 import '../../services/keyboard_shortcuts_service.dart';
 import '../../services/settings_service.dart';
@@ -21,6 +21,7 @@ import '../../widgets/settings_builder.dart';
 import '../../widgets/settings_page.dart';
 import '../../widgets/settings_section.dart';
 import 'external_player_screen.dart';
+import 'playback/audio_section.dart';
 import 'mpv_config_screen.dart';
 import 'settings_utils.dart';
 import 'subtitle_styling_screen.dart';
@@ -65,6 +66,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         _dvConversionModeTile(),
         _bufferSizeTile(),
         _defaultQualityTile(),
+        _displayMaxResolutionTile(),
 
         SettingsSectionHeader(t.settings.subtitlesAndConfig),
         SettingNavigationTile(
@@ -75,14 +77,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         ),
         _mpvConfigTile(),
 
-        // These three used to live only inside the player's settings sheet,
-        // which meant they could not be set before playback started.
-        SettingsSectionHeader(t.settings.audio),
-        if (PlatformDetector.supportsAudioPassthrough()) _audioOutputModeTile(),
-        if (PlatformDetector.supportsAudioPassthrough()) _audioPriorityTile(),
-        _audioLevelVolumeTile(),
-        _audioReduceLoudSoundsTile(),
-        _audioSyncOffsetTile(),
+        ...playbackAudioSection(),
 
         SettingsSectionHeader(t.settings.seekAndTiming),
         SettingNumberTile(
@@ -336,102 +331,6 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     },
   );
 
-  Widget _audioOutputModeTile() => SettingSelectionTile<AudioOutputMode, AudioOutputMode>(
-    pref: SettingsService.audioOutputMode,
-    icon: Symbols.surround_sound_rounded,
-    title: t.videoSettings.audioOutputTitle,
-    subtitleBuilder: (mode) => '${_audioOutputModeLabel(mode)} · ${_audioOutputModeDescription(mode)}',
-    options: AudioOutputMode.values
-        .map((m) => DialogOption(value: m, title: _audioOutputModeLabel(m), subtitle: _audioOutputModeDescription(m)))
-        .toList(),
-    decode: (m) => m,
-    encode: (m) => m,
-    // Takes effect on the running player too, not just the next title.
-    onAfterWrite: (_) => AudioOutputCoordinator.current?.onModeChanged(),
-  );
-
-  String _audioOutputModeLabel(AudioOutputMode mode) => switch (mode) {
-    AudioOutputMode.auto => t.videoSettings.audioOutputModes.auto,
-    AudioOutputMode.passthrough => t.videoSettings.audioOutputModes.passthrough,
-    AudioOutputMode.pcm => t.videoSettings.audioOutputModes.pcm,
-  };
-
-  String _audioOutputModeDescription(AudioOutputMode mode) => switch (mode) {
-    AudioOutputMode.auto => t.videoSettings.audioOutputModeDescriptions.auto,
-    AudioOutputMode.passthrough => t.videoSettings.audioOutputModeDescriptions.passthrough,
-    AudioOutputMode.pcm => t.videoSettings.audioOutputModeDescriptions.pcm,
-  };
-
-  /// Only shown for Automatic: the explicit Passthrough and PCM modes already
-  /// say which property they protect, so a priority under them would be a
-  /// second answer to a question the user already answered.
-  Widget _audioPriorityTile() => SettingValueBuilder<AudioOutputMode>(
-    pref: SettingsService.audioOutputMode,
-    builder: (context, mode, _) => mode != AudioOutputMode.auto
-        ? const SizedBox.shrink()
-        : SettingSegmentedTile<AudioPriority, AudioPriority>(
-            pref: SettingsService.audioPriority,
-            icon: Symbols.tune_rounded,
-            title: t.videoSettings.audioPriorityTitle,
-            segments: [
-              ButtonSegment(value: AudioPriority.evenVolume, label: Text(t.videoSettings.audioPriorities.evenVolume)),
-              ButtonSegment(
-                value: AudioPriority.originalDolby,
-                label: Text(t.videoSettings.audioPriorities.originalDolby),
-              ),
-            ],
-            decode: (v) => v,
-            encode: (v) => v,
-            onAfterWrite: (_) => AudioOutputCoordinator.current?.onModeChanged(),
-          ),
-  );
-
-  Widget _audioLevelVolumeTile() => SettingSwitchTile(
-    pref: SettingsService.audioLevelVolume,
-    icon: Symbols.graphic_eq_rounded,
-    title: t.videoSettings.audioLevelVolume,
-    subtitle: t.videoSettings.audioLevelVolumeDescription,
-    onAfterWrite: (_) => _pushLoudness(),
-  );
-
-  /// Gated on levelling, and that is a measurement rather than a shortcut: a
-  /// compressor with makeup gain and no loudness target ran a test excerpt up
-  /// to +5,4 dBFS while leaving the loudness range where it was.
-  Widget _audioReduceLoudSoundsTile() => SettingValueBuilder<bool>(
-    pref: SettingsService.audioLevelVolume,
-    builder: (context, levelling, _) => SettingSwitchTile(
-      pref: SettingsService.audioReduceLoudSounds,
-      icon: Symbols.compress_rounded,
-      title: t.videoSettings.audioReduceLoudSounds,
-      subtitle: t.videoSettings.audioReduceLoudSoundsDescription,
-      enabled: levelling,
-      onAfterWrite: (_) => _pushLoudness(),
-    ),
-  );
-
-  /// Takes effect on the running player too, not just the next title. The
-  /// coordinator is the handle on the playback session currently on screen.
-  Future<void> _pushLoudness() async {
-    final settings = SettingsService.instance;
-    await AudioOutputCoordinator.current?.player.setAudioNormalization(
-      AudioLoudness(
-        levelVolume: settings.read(SettingsService.audioLevelVolume),
-        reduceLoudSounds: settings.read(SettingsService.audioReduceLoudSounds),
-      ),
-    );
-  }
-
-  Widget _audioSyncOffsetTile() => SettingNumberTile(
-    pref: SettingsService.audioSyncOffset,
-    icon: Symbols.sync_rounded,
-    title: t.videoSettings.audioSync,
-    subtitleBuilder: (v) => '${(v / 1000).toStringAsFixed(1)}s · ${t.settings.audioSyncOffsetDescription}',
-    labelText: t.videoSettings.audioSync,
-    suffixText: 'ms',
-    min: -5000,
-    max: 5000,
-  );
-
   Widget _dvConversionModeTile() => SettingValueBuilder<bool>(
     pref: SettingsService.useExoPlayer,
     builder: (_, useExo, _) {
@@ -490,7 +389,54 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         .toList(),
     decode: (p) => p,
     encode: (p) => p,
+    // The bandwidth meaning of the preset is the connection layer of
+    // DeviceCapabilities. Its second role, deciding whether a downloaded copy
+    // beats the server stream, stays where it is in playback_source_resolver.
+    onAfterWrite: (_) => DeviceCapabilitiesService.instance.applyOverrides(DeviceCapabilityOverrides.fromSettings()),
   );
+
+  /// The override the model needs on the display layer, in the shape the audio
+  /// output tile already uses: the chosen value next to what was actually
+  /// detected, so an override reads as an override.
+  Widget _displayMaxResolutionTile() => SettingSelectionTile<DisplayResolutionCap, DisplayResolutionCap>(
+    pref: SettingsService.displayMaxResolution,
+    icon: Symbols.aspect_ratio_rounded,
+    title: t.settings.displayMaxResolutionTitle,
+    subtitleBuilder: _displayMaxResolutionSubtitle,
+    options: DisplayResolutionCap.values
+        .map(
+          (c) => DialogOption(
+            value: c,
+            title: _displayCapLabel(c),
+            subtitle: switch (c) {
+              DisplayResolutionCap.auto => t.settings.displayMaxResolutionOptionDescriptions.auto,
+              DisplayResolutionCap.hd1080 => t.settings.displayMaxResolutionOptionDescriptions.hd1080,
+              DisplayResolutionCap.uhd2160 => t.settings.displayMaxResolutionOptionDescriptions.uhd2160,
+            },
+          ),
+        )
+        .toList(),
+    decode: (c) => c,
+    encode: (c) => c,
+    onAfterWrite: (_) => DeviceCapabilitiesService.instance.applyOverrides(DeviceCapabilityOverrides.fromSettings()),
+  );
+
+  /// "1080p (detected: 3840x2160)" where the display could be read, plain
+  /// "1080p" where it could not. Same form as `"Auto (now: Dolby Atmos)"` in
+  /// the player's settings sheet.
+  String _displayMaxResolutionSubtitle(DisplayResolutionCap cap) {
+    final detected = DeviceCapabilitiesService.instance.detected.display;
+    final width = detected.maxWidth.value;
+    final height = detected.maxHeight.value;
+    if (width == null || height == null) return _displayCapLabel(cap);
+    return '${_displayCapLabel(cap)} · ${t.settings.displayMaxResolutionNow(resolution: '${width}x$height')}';
+  }
+
+  String _displayCapLabel(DisplayResolutionCap cap) => switch (cap) {
+    DisplayResolutionCap.auto => t.settings.displayMaxResolutionOptions.auto,
+    DisplayResolutionCap.hd1080 => t.settings.displayMaxResolutionOptions.hd1080,
+    DisplayResolutionCap.uhd2160 => t.settings.displayMaxResolutionOptions.uhd2160,
+  };
 
   Widget _mpvConfigTile() => SettingValueBuilder<bool>(
     pref: SettingsService.useExoPlayer,

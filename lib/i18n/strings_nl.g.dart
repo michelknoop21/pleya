@@ -215,6 +215,7 @@ class _TranslationsCommonNl extends TranslationsCommonEn {
 	@override String increaseValue({required Object label}) => '${label} verhogen';
 	@override String get online => 'Online';
 	@override String get offline => 'Offline';
+	@override String get timedOut => 'Dit duurde te lang. Probeer het opnieuw.';
 }
 
 // Path: screens
@@ -314,6 +315,12 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get tvFullCardLayoutDescription => 'Gebruik tv-kaarten met alleen afbeeldingen en namen van acteurs als overlay';
 	@override String get focusGlow => 'Focusgloed';
 	@override String get focusGlowDescription => 'Toon een zachte gloed rond de kaart met focus';
+	@override String get visualEffects => 'Visuele effecten';
+	@override String get visualEffectsAuto => 'Automatisch';
+	@override String get visualEffectsAutoDescription => 'Verminder effecten automatisch op zuinige apparaten';
+	@override String get visualEffectsFull => 'Volledig';
+	@override String get visualEffectsReduced => 'Verminderd';
+	@override String get visualEffectsReducedDescription => 'Minder animaties en artwork in lagere resolutie';
 	@override String get hideSpoilers => 'Spoilers voor ongekeken afleveringen verbergen';
 	@override String get hideSpoilersDescription => 'Vervaag miniaturen en beschrijvingen voor niet-bekeken afleveringen';
 	@override String get playerBackend => 'Speler backend';
@@ -327,6 +334,11 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String bufferSizeWarning({required Object heap, required Object size}) => '${heap}MB geheugen beschikbaar. Een buffer van ${size}MB kan afspelen beïnvloeden.';
 	@override String get defaultQualityTitle => 'Standaardkwaliteit';
 	@override String get defaultQualityDescription => 'Wordt gebruikt bij het starten van de weergave. Lagere waarden verminderen de bandbreedte.';
+	@override String get displayMaxResolutionTitle => 'Maximale resolutie';
+	@override String get displayMaxResolutionDescription => 'Begrenst wat dit apparaat aan een server vraagt, ook als het bestand groter is.';
+	@override String displayMaxResolutionNow({required Object resolution}) => 'gedetecteerd: ${resolution}';
+	@override late final _TranslationsSettingsDisplayMaxResolutionOptionsNl displayMaxResolutionOptions = _TranslationsSettingsDisplayMaxResolutionOptionsNl._(_root);
+	@override late final _TranslationsSettingsDisplayMaxResolutionOptionDescriptionsNl displayMaxResolutionOptionDescriptions = _TranslationsSettingsDisplayMaxResolutionOptionDescriptionsNl._(_root);
 	@override String get subtitleStyling => 'Ondertitel opmaak';
 	@override String get subtitleStylingDescription => 'Pas ondertitel uiterlijk aan';
 	@override String get smallSkipDuration => 'Korte skip duur';
@@ -337,6 +349,8 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String minutesUnit({required Object minutes}) => 'bij ${minutes} minuten';
 	@override String get rememberTrackSelections => 'Onthoud track selecties per serie/film';
 	@override String get rememberTrackSelectionsDescription => 'Onthoud audio- en ondertitelkeuzes per titel';
+	@override String get writeSeriesLanguageToServer => 'Taal ook in Plex opslaan';
+	@override String get writeSeriesLanguageToServerDescription => 'Schrijft de taal op de serie in Plex, zodat Android, Windows en de officiële Plex-apps hem ook volgen. Overschrijft wat je daar met de hand instelde.';
 	@override String get showChapterMarkersOnTimeline => 'Hoofdstukmarkeringen op tijdlijn tonen';
 	@override String get showChapterMarkersOnTimelineDescription => 'Verdeel de tijdlijn bij hoofdstukgrenzen';
 	@override String get clickVideoTogglesPlayback => 'Klik op de video om afspelen/pauzeren te wisselen.';
@@ -373,6 +387,16 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get importSettingsFailed => 'Kon instellingen niet importeren';
 	@override String get importSettingsInvalidFile => 'Dit bestand is geen geldige Pleya-export';
 	@override String get importSettingsNoUser => 'Meld je aan voordat je instellingen importeert';
+	@override String get icloudSync => 'iCloud-synchronisatie';
+	@override String get icloudSyncDescription => 'Houd je voorkeuren gelijk op je Apple-apparaten';
+	@override String get icloudSyncUnavailable => 'Log op dit apparaat in bij iCloud om instellingen te synchroniseren';
+	@override String get icloudSyncEnableFailed => 'Kan iCloud-instellingensync niet inschakelen';
+	@override String get icloudSyncLegacyPeer => 'Een ander Apple-apparaat draait nog een oudere Pleya-versie, dus instellingen worden er niet mee gedeeld. Werk Pleya overal bij om weer te synchroniseren.';
+	@override String get icloudSyncStatusSyncing => 'Synchroniseren…';
+	@override String icloudSyncStatusLastSent({required Object time}) => 'Laatst naar iCloud verzonden om ${time}';
+	@override String get icloudSyncStatusError => 'Kan iCloud niet bereiken. Je instellingen staan veilig op dit apparaat.';
+	@override String get icloudSyncStatusQuota => 'iCloud heeft geen ruimte meer voor instellingen, dus niet alles wordt verzonden.';
+	@override String get icloudSyncStatusOversize => 'Sommige instellingen zijn te groot om te verzenden en blijven op dit apparaat.';
 	@override String get shortcutsReset => 'Sneltoetsen gereset naar standaard';
 	@override String get about => 'Over';
 	@override String get aboutDescription => 'App informatie en licenties';
@@ -424,6 +448,15 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get traktDescription => 'Kijkgeschiedenis synchroniseren met Trakt';
 	@override String get trackers => 'Trackers';
 	@override String get trackersDescription => 'Voortgang synchroniseren met Trakt, MyAnimeList, AniList en Simkl';
+	@override String get requests => 'Aanvragen';
+	@override String get requestsDescription => 'Vraag films en series aan via Jellyseerr of Overseerr';
+	@override String get libraryVisibility => 'Zichtbaarheid van bibliotheken';
+	@override String get libraryVisibilityDescription => 'Kies welke bibliotheken in het menu staan';
+	@override String get homeLayout => 'Indeling beginscherm';
+	@override String get homeLayoutDescription => 'Verplaats of verberg de rijen op het beginscherm';
+	@override String get homeLayoutEmpty => 'Open het beginscherm één keer zodat de rijen geladen kunnen worden';
+	@override String get homeLayoutMoveUp => 'Omhoog';
+	@override String get homeLayoutMoveDown => 'Omlaag';
 	@override String get companionRemoteServer => 'Companion Remote-server';
 	@override String get companionRemoteServerDescription => 'Sta mobiele apparaten op je netwerk toe om deze app te bedienen';
 	@override String get autoPip => 'Automatische beeld-in-beeld';
@@ -476,6 +509,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get behavior => 'Gedrag';
 	@override String get personalizedRecommendations => 'Persoonlijke aanbevelingen';
 	@override String get personalizedRecommendationsDescription => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.';
+	@override String get sectionLibrary => 'App & afspelen';
 }
 
 // Path: search
@@ -492,6 +526,11 @@ class _TranslationsSearchNl extends TranslationsSearchEn {
 	@override String get recentSearches => 'Recent gezocht';
 	@override String get clearHistory => 'Wissen';
 	@override late final _TranslationsSearchFiltersNl filters = _TranslationsSearchFiltersNl._(_root);
+	@override String get errorTitle => 'Zoeken mislukt';
+	@override String get errorNetwork => 'Kan je servers niet bereiken. Controleer je verbinding en probeer het opnieuw.';
+	@override String get noServersTitle => 'Geen servers beschikbaar';
+	@override String get noServersBody => 'Voeg een server toe of verbind er een om je media te doorzoeken.';
+	@override String get voiceSearch => 'Zoeken met spraak';
 }
 
 // Path: hotkeys
@@ -648,6 +687,9 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	@override String get continueWatching => 'Doorgaan';
 	@override String get autoPlayNext => 'Automatisch volgende afspelen';
 	@override String get playNext => 'Volgende afspelen';
+	@override String get nextEpisode => 'Volgende aflevering';
+	@override String get skipIntro => 'Intro overslaan';
+	@override String get skipCredits => 'Aftiteling overslaan';
 	@override String get playButton => 'Afspelen';
 	@override String get pauseButton => 'Pauzeren';
 	@override String seekBackwardButton({required Object seconds}) => 'Terugspoelen ${seconds} seconden';
@@ -769,6 +811,11 @@ class _TranslationsMessagesNl extends TranslationsMessagesEn {
 	@override String get serverLimitBody => 'Serverfout (HTTP 500). Waarschijnlijk weigerde een bandbreedte-/transcodeerlimiet deze sessie. Vraag de eigenaar dit aan te passen.';
 	@override String get logsUploaded => 'Logs geüpload';
 	@override String get logsUploadFailed => 'Uploaden van logs mislukt';
+	@override String get logsUploadTooLarge => 'De log is te groot om te uploaden. Wis hem, reproduceer het probleem en upload opnieuw.';
+	@override String logsUploadRateLimited({required Object seconds}) => 'Te snel na de vorige upload. Probeer het over ${seconds} seconden opnieuw.';
+	@override String logsUploadRefused({required Object status}) => 'De logserver weigerde de upload (HTTP ${status}).';
+	@override String logsUploadServerError({required Object status}) => 'De logserver liep tegen een probleem aan (HTTP ${status}). Probeer het later opnieuw.';
+	@override String get logsUploadNetworkError => 'Kan de logserver niet bereiken. Controleer je verbinding en probeer het opnieuw.';
 	@override String get logId => 'Log-ID';
 	@override String get dvdNotSupported => 'Dvd-schijven worden op dit apparaat niet ondersteund.';
 	@override String get discNotSupported => 'Dit schijfformaat wordt op dit apparaat niet ondersteund.';
@@ -949,10 +996,12 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get studio => 'Studio';
 	@override String get rating => 'Leeftijd';
 	@override String get movie => 'Film';
+	@override String get watched => 'Bekeken';
 	@override String get tvShow => 'TV Serie';
 	@override String minutesLeft({required Object minutes}) => '${minutes} min over';
 	@override String get moreLikeThis => 'Meer zoals dit';
 	@override String becauseYouWatched({required Object title}) => 'Omdat je ${title} gekeken hebt';
+	@override String get latestShows => 'Recent toegevoegde series';
 	@override String get topRated => 'Hoogst gewaardeerd';
 	@override String get somethingDifferent => 'Eens iets anders';
 	@override String get topPicksForYou => 'Aanbevolen voor jou';
@@ -1025,6 +1074,8 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	// Translations
 	@override String get title => 'Bibliotheken';
 	@override String get fallbackTitle => 'Bibliotheek';
+	@override String itemCount({required Object count}) => '${count} items';
+	@override String get oneItem => '1 item';
 	@override String get scanLibraryFiles => 'Scan bibliotheek bestanden';
 	@override String get scanLibrary => 'Scan bibliotheek';
 	@override String get analyze => 'Analyseren';
@@ -1416,7 +1467,10 @@ class _TranslationsWatchTogetherNl extends TranslationsWatchTogetherEn {
 	@override String participantResumed({required Object name}) => '${name} heeft hervat';
 	@override String participantSeeked({required Object name}) => '${name} heeft gespoeld';
 	@override String participantBuffering({required Object name}) => '${name} is aan het bufferen';
+	@override String participantNeedsUpdate({required Object name}) => '${name} draait een oudere app-versie, synchroniseren kan niet';
+	@override String resumingWithout({required Object name}) => 'Hervatten zonder ${name}';
 	@override String get waitingForParticipants => 'Wachten tot anderen geladen zijn...';
+	@override String waitingForName({required Object name}) => 'Wachten op ${name}...';
 	@override String get recentRooms => 'Recente kamers';
 	@override String get renameRoom => 'Kamer hernoemen';
 	@override String get removeRoom => 'Verwijderen';
@@ -1445,8 +1499,10 @@ class _TranslationsDownloadsNl extends TranslationsDownloadsEn {
 	@override String get deleteDownload => 'Download verwijderen';
 	@override String get retryDownload => 'Download opnieuw proberen';
 	@override String get downloadQueued => 'Download in wachtrij';
+	@override String get waitingForNetwork => 'Wachten op netwerk';
 	@override String get downloadResumed => 'Download hervat';
 	@override String get serverErrorBitrate => 'Serverfout: bestand overschrijdt mogelijk de externe bitrate-limiet';
+	@override String get storageFull => 'Onvoldoende opslagruimte op dit apparaat';
 	@override String episodesQueued({required Object count}) => '${count} afleveringen in wachtrij voor download';
 	@override String get downloadDeleted => 'Download verwijderd';
 	@override String deleteConfirm({required Object title}) => '"${title}" van dit apparaat verwijderen?';
@@ -1845,6 +1901,22 @@ class _TranslationsAddServerNl extends TranslationsAddServerEn {
 	@override String get connectToJellyfinCard => 'Verbinden met Jellyfin';
 	@override String get connectToJellyfinCardSubtitle => 'Voer je server-URL, gebruikersnaam en wachtwoord in.';
 	@override String connectToJellyfinCardSubtitleScoped({required Object name}) => 'Log in op een Jellyfin-server. Wordt gekoppeld aan ${name}.';
+	@override String get connectToPleyaServerCard => 'Verbinden met Pleya Server';
+	@override String get connectToPleyaServerCardSubtitle => 'Je eigen server. Voer het adres in om verder te gaan.';
+	@override String connectToPleyaServerCardSubtitleScoped({required Object name}) => 'Log in op een Pleya Server. Koppelt aan ${name}.';
+	@override String get addPleyaServerTitle => 'Pleya Server toevoegen';
+	@override String get enterPleyaServerUrlError => 'Voer het adres van je Pleya Server in';
+	@override String get pleyaServerAddressLabel => 'Serveradres';
+	@override String get pleyaServerAddressHint => 'http://192.168.1.10:8832';
+	@override String get pleyaServerFindServer => 'Doorgaan';
+	@override String get pleyaServerChangeServer => 'Andere server';
+	@override String get pleyaServerSetupTitle => 'Eerste start';
+	@override String get pleyaServerSetupExplainer => 'Deze server heeft nog geen eigenaar. De setupcode staat bij de eerste start op zijn console.';
+	@override String get pleyaServerSetupCodeLabel => 'Setupcode';
+	@override String get pleyaServerCreateOwner => 'Eigenaar aanmaken';
+	@override String get pleyaServerPasswordTooShort => 'Kies een wachtwoord van minimaal 8 tekens';
+	@override String get pleyaServerNoPasswordMethod => 'Deze server accepteert geen wachtwoord-login. Werk Pleya bij naar een versie die zijn methode spreekt.';
+	@override String pleyaServerConnected({required Object name}) => 'Verbonden met ${name}';
 	@override String get borrowFromAnotherProfile => 'Lenen van een ander profiel';
 	@override String get borrowFromAnotherProfileSubtitle => 'Hergebruik de verbinding van een ander profiel. PIN-beveiligde profielen vereisen een PIN.';
 }
@@ -1870,6 +1942,7 @@ class _TranslationsAddLocalFolderNl extends TranslationsAddLocalFolderEn {
 	@override String get nameHint => 'bijv. Mijn Films';
 	@override String get save => 'Map toevoegen';
 	@override String get saveError => 'Lokale map toevoegen mislukt';
+	@override String entriesFound({required Object count}) => '${count} items gevonden in map';
 }
 
 // Path: pleyaShare
@@ -1883,6 +1956,9 @@ class _TranslationsPleyaShareNl extends TranslationsPleyaShareEn {
 	@override String get cardSubtitle => 'Verbind met een ander Pleya-apparaat dat media deelt';
 	@override String get hostTitle => 'Mijn media delen';
 	@override String get hostDescription => 'Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Houd dit scherm open tijdens het delen.';
+	@override String get hostDescriptionIos => 'Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Delen blijft doorlopen terwijl je apparaat vergrendeld is.';
+	@override String get howItWorksTitle => 'Zo werkt Pleya Share';
+	@override String get howItWorksBody => 'Eén apparaat is de server: dat deelt zijn lokale mappen. Andere Pleya-apparaten koppelen één keer met de QR-code of de 6-cijferige code en kunnen daarna bladeren, streamen en downloaden.\n\n• Op nieuwere apparaten (iOS 26+, de meeste Android-telefoons) vinden apparaten elkaar ook rechtstreeks via Wi-Fi Aware, helemaal zonder hotspot of router.\n• Werkt via wifi, een persoonlijke hotspot of een kabel: ethernetadapters, of USB-C met USB-tethering aan op de host (Android, of iPhone naar een computer). Rechtstreeks iPhone-naar-iPad via USB ondersteunt iOS niet. Geen internet nodig.\n• Met internet op beide apparaten werkt streamen ook op afstand, via de versleutelde Pleya-relay.\n• Gekoppelde apparaten verbinden automatisch opnieuw, koppelen hoeft maar één keer.\n• Kijkvoortgang en artwork synchroniseren met je Plex- of Jellyfin-account waar dat kan.';
 	@override String get hostToggle => 'Lokale mappen delen';
 	@override String get noLocalFolders => 'Voeg eerst een lokale map toe — er is nog niets om te delen.';
 	@override String get pairCodeLabel => 'Koppelcode';
@@ -2193,6 +2269,30 @@ class _TranslationsTvContextMenuNl extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.';
 	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen.';
 	@override String get failed => 'Dat is niet gelukt';
+}
+
+// Path: settings.displayMaxResolutionOptions
+class _TranslationsSettingsDisplayMaxResolutionOptionsNl extends TranslationsSettingsDisplayMaxResolutionOptionsEn {
+	_TranslationsSettingsDisplayMaxResolutionOptionsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get auto => 'Automatisch';
+	@override String get hd1080 => '1080p';
+	@override String get uhd2160 => '4K';
+}
+
+// Path: settings.displayMaxResolutionOptionDescriptions
+class _TranslationsSettingsDisplayMaxResolutionOptionDescriptionsNl extends TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn {
+	_TranslationsSettingsDisplayMaxResolutionOptionDescriptionsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get auto => 'Volg het scherm waar de app het kan uitlezen';
+	@override String get hd1080 => 'Vraag nooit meer dan 1920x1080';
+	@override String get uhd2160 => 'Vraag nooit meer dan 3840x2160';
 }
 
 // Path: search.filters
@@ -2771,6 +2871,7 @@ extension on TranslationsNl {
 			'common.increaseValue' => ({required Object label}) => '${label} verhogen',
 			'common.online' => 'Online',
 			'common.offline' => 'Offline',
+			'common.timedOut' => 'Dit duurde te lang. Probeer het opnieuw.',
 			'screens.licenses' => 'Licenties',
 			'screens.switchProfile' => 'Wissel van profiel',
 			'screens.whoIsWatching' => 'Wie is er aan het kijken?',
@@ -2843,6 +2944,12 @@ extension on TranslationsNl {
 			'settings.tvFullCardLayoutDescription' => 'Gebruik tv-kaarten met alleen afbeeldingen en namen van acteurs als overlay',
 			'settings.focusGlow' => 'Focusgloed',
 			'settings.focusGlowDescription' => 'Toon een zachte gloed rond de kaart met focus',
+			'settings.visualEffects' => 'Visuele effecten',
+			'settings.visualEffectsAuto' => 'Automatisch',
+			'settings.visualEffectsAutoDescription' => 'Verminder effecten automatisch op zuinige apparaten',
+			'settings.visualEffectsFull' => 'Volledig',
+			'settings.visualEffectsReduced' => 'Verminderd',
+			'settings.visualEffectsReducedDescription' => 'Minder animaties en artwork in lagere resolutie',
 			'settings.hideSpoilers' => 'Spoilers voor ongekeken afleveringen verbergen',
 			'settings.hideSpoilersDescription' => 'Vervaag miniaturen en beschrijvingen voor niet-bekeken afleveringen',
 			'settings.playerBackend' => 'Speler backend',
@@ -2856,6 +2963,15 @@ extension on TranslationsNl {
 			'settings.bufferSizeWarning' => ({required Object heap, required Object size}) => '${heap}MB geheugen beschikbaar. Een buffer van ${size}MB kan afspelen beïnvloeden.',
 			'settings.defaultQualityTitle' => 'Standaardkwaliteit',
 			'settings.defaultQualityDescription' => 'Wordt gebruikt bij het starten van de weergave. Lagere waarden verminderen de bandbreedte.',
+			'settings.displayMaxResolutionTitle' => 'Maximale resolutie',
+			'settings.displayMaxResolutionDescription' => 'Begrenst wat dit apparaat aan een server vraagt, ook als het bestand groter is.',
+			'settings.displayMaxResolutionNow' => ({required Object resolution}) => 'gedetecteerd: ${resolution}',
+			'settings.displayMaxResolutionOptions.auto' => 'Automatisch',
+			'settings.displayMaxResolutionOptions.hd1080' => '1080p',
+			'settings.displayMaxResolutionOptions.uhd2160' => '4K',
+			'settings.displayMaxResolutionOptionDescriptions.auto' => 'Volg het scherm waar de app het kan uitlezen',
+			'settings.displayMaxResolutionOptionDescriptions.hd1080' => 'Vraag nooit meer dan 1920x1080',
+			'settings.displayMaxResolutionOptionDescriptions.uhd2160' => 'Vraag nooit meer dan 3840x2160',
 			'settings.subtitleStyling' => 'Ondertitel opmaak',
 			'settings.subtitleStylingDescription' => 'Pas ondertitel uiterlijk aan',
 			'settings.smallSkipDuration' => 'Korte skip duur',
@@ -2866,6 +2982,8 @@ extension on TranslationsNl {
 			'settings.minutesUnit' => ({required Object minutes}) => 'bij ${minutes} minuten',
 			'settings.rememberTrackSelections' => 'Onthoud track selecties per serie/film',
 			'settings.rememberTrackSelectionsDescription' => 'Onthoud audio- en ondertitelkeuzes per titel',
+			'settings.writeSeriesLanguageToServer' => 'Taal ook in Plex opslaan',
+			'settings.writeSeriesLanguageToServerDescription' => 'Schrijft de taal op de serie in Plex, zodat Android, Windows en de officiële Plex-apps hem ook volgen. Overschrijft wat je daar met de hand instelde.',
 			'settings.showChapterMarkersOnTimeline' => 'Hoofdstukmarkeringen op tijdlijn tonen',
 			'settings.showChapterMarkersOnTimelineDescription' => 'Verdeel de tijdlijn bij hoofdstukgrenzen',
 			'settings.clickVideoTogglesPlayback' => 'Klik op de video om afspelen/pauzeren te wisselen.',
@@ -2902,6 +3020,16 @@ extension on TranslationsNl {
 			'settings.importSettingsFailed' => 'Kon instellingen niet importeren',
 			'settings.importSettingsInvalidFile' => 'Dit bestand is geen geldige Pleya-export',
 			'settings.importSettingsNoUser' => 'Meld je aan voordat je instellingen importeert',
+			'settings.icloudSync' => 'iCloud-synchronisatie',
+			'settings.icloudSyncDescription' => 'Houd je voorkeuren gelijk op je Apple-apparaten',
+			'settings.icloudSyncUnavailable' => 'Log op dit apparaat in bij iCloud om instellingen te synchroniseren',
+			'settings.icloudSyncEnableFailed' => 'Kan iCloud-instellingensync niet inschakelen',
+			'settings.icloudSyncLegacyPeer' => 'Een ander Apple-apparaat draait nog een oudere Pleya-versie, dus instellingen worden er niet mee gedeeld. Werk Pleya overal bij om weer te synchroniseren.',
+			'settings.icloudSyncStatusSyncing' => 'Synchroniseren…',
+			'settings.icloudSyncStatusLastSent' => ({required Object time}) => 'Laatst naar iCloud verzonden om ${time}',
+			'settings.icloudSyncStatusError' => 'Kan iCloud niet bereiken. Je instellingen staan veilig op dit apparaat.',
+			'settings.icloudSyncStatusQuota' => 'iCloud heeft geen ruimte meer voor instellingen, dus niet alles wordt verzonden.',
+			'settings.icloudSyncStatusOversize' => 'Sommige instellingen zijn te groot om te verzenden en blijven op dit apparaat.',
 			'settings.shortcutsReset' => 'Sneltoetsen gereset naar standaard',
 			'settings.about' => 'Over',
 			'settings.aboutDescription' => 'App informatie en licenties',
@@ -2953,6 +3081,15 @@ extension on TranslationsNl {
 			'settings.traktDescription' => 'Kijkgeschiedenis synchroniseren met Trakt',
 			'settings.trackers' => 'Trackers',
 			'settings.trackersDescription' => 'Voortgang synchroniseren met Trakt, MyAnimeList, AniList en Simkl',
+			'settings.requests' => 'Aanvragen',
+			'settings.requestsDescription' => 'Vraag films en series aan via Jellyseerr of Overseerr',
+			'settings.libraryVisibility' => 'Zichtbaarheid van bibliotheken',
+			'settings.libraryVisibilityDescription' => 'Kies welke bibliotheken in het menu staan',
+			'settings.homeLayout' => 'Indeling beginscherm',
+			'settings.homeLayoutDescription' => 'Verplaats of verberg de rijen op het beginscherm',
+			'settings.homeLayoutEmpty' => 'Open het beginscherm één keer zodat de rijen geladen kunnen worden',
+			'settings.homeLayoutMoveUp' => 'Omhoog',
+			'settings.homeLayoutMoveDown' => 'Omlaag',
 			'settings.companionRemoteServer' => 'Companion Remote-server',
 			'settings.companionRemoteServerDescription' => 'Sta mobiele apparaten op je netwerk toe om deze app te bedienen',
 			'settings.autoPip' => 'Automatische beeld-in-beeld',
@@ -3005,6 +3142,7 @@ extension on TranslationsNl {
 			'settings.behavior' => 'Gedrag',
 			'settings.personalizedRecommendations' => 'Persoonlijke aanbevelingen',
 			'settings.personalizedRecommendationsDescription' => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.',
+			'settings.sectionLibrary' => 'App & afspelen',
 			'search.hint' => 'Zoek films, series, muziek...',
 			'search.tryDifferentTerm' => 'Probeer een andere zoekterm',
 			'search.searchYourMedia' => 'Zoek in je media',
@@ -3017,6 +3155,11 @@ extension on TranslationsNl {
 			'search.filters.episodes' => 'Afleveringen',
 			'search.filters.people' => 'Personen',
 			'search.filters.other' => 'Overig',
+			'search.errorTitle' => 'Zoeken mislukt',
+			'search.errorNetwork' => 'Kan je servers niet bereiken. Controleer je verbinding en probeer het opnieuw.',
+			'search.noServersTitle' => 'Geen servers beschikbaar',
+			'search.noServersBody' => 'Voeg een server toe of verbind er een om je media te doorzoeken.',
+			'search.voiceSearch' => 'Zoeken met spraak',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Stel sneltoets in voor ${actionName}',
 			'hotkeys.clearShortcut' => 'Wis sneltoets',
 			'hotkeys.noShortcutSet' => 'Geen sneltoets ingesteld',
@@ -3134,6 +3277,9 @@ extension on TranslationsNl {
 			'videoControls.continueWatching' => 'Doorgaan',
 			'videoControls.autoPlayNext' => 'Automatisch volgende afspelen',
 			'videoControls.playNext' => 'Volgende afspelen',
+			'videoControls.nextEpisode' => 'Volgende aflevering',
+			'videoControls.skipIntro' => 'Intro overslaan',
+			'videoControls.skipCredits' => 'Aftiteling overslaan',
 			'videoControls.playButton' => 'Afspelen',
 			'videoControls.pauseButton' => 'Pauzeren',
 			'videoControls.seekBackwardButton' => ({required Object seconds}) => 'Terugspoelen ${seconds} seconden',
@@ -3157,6 +3303,8 @@ extension on TranslationsNl {
 			'videoControls.transcodeUnavailableFallback' => 'Transcoderen niet beschikbaar — originele kwaliteit wordt afgespeeld',
 			'videoControls.pipButton' => 'Beeld-in-beeld modus',
 			'videoControls.aspectRatioButton' => 'Beeldverhouding',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.ambientLighting' => 'Omgevingsverlichting',
 			'videoControls.ambientIntensitySubtle' => 'Subtiel',
 			'videoControls.ambientIntensityBalanced' => 'Evenwichtig',
@@ -3203,8 +3351,6 @@ extension on TranslationsNl {
 			'videoControls.subtitleDownloadFailed' => 'Ondertitel downloaden mislukt',
 			'videoControls.searchLanguages' => 'Talen zoeken...',
 			'videoControls.airplayButton' => 'AirPlay',
-			_ => null,
-		} ?? switch (path) {
 			'userStatus.admin' => 'Beheerder',
 			'userStatus.restricted' => 'Beperkt',
 			'userStatus.protected' => 'Beschermd',
@@ -3249,6 +3395,11 @@ extension on TranslationsNl {
 			'messages.serverLimitBody' => 'Serverfout (HTTP 500). Waarschijnlijk weigerde een bandbreedte-/transcodeerlimiet deze sessie. Vraag de eigenaar dit aan te passen.',
 			'messages.logsUploaded' => 'Logs geüpload',
 			'messages.logsUploadFailed' => 'Uploaden van logs mislukt',
+			'messages.logsUploadTooLarge' => 'De log is te groot om te uploaden. Wis hem, reproduceer het probleem en upload opnieuw.',
+			'messages.logsUploadRateLimited' => ({required Object seconds}) => 'Te snel na de vorige upload. Probeer het over ${seconds} seconden opnieuw.',
+			'messages.logsUploadRefused' => ({required Object status}) => 'De logserver weigerde de upload (HTTP ${status}).',
+			'messages.logsUploadServerError' => ({required Object status}) => 'De logserver liep tegen een probleem aan (HTTP ${status}). Probeer het later opnieuw.',
+			'messages.logsUploadNetworkError' => 'Kan de logserver niet bereiken. Controleer je verbinding en probeer het opnieuw.',
 			'messages.logId' => 'Log-ID',
 			'messages.dvdNotSupported' => 'Dvd-schijven worden op dit apparaat niet ondersteund.',
 			'messages.discNotSupported' => 'Dit schijfformaat wordt op dit apparaat niet ondersteund.',
@@ -3375,10 +3526,12 @@ extension on TranslationsNl {
 			'discover.studio' => 'Studio',
 			'discover.rating' => 'Leeftijd',
 			'discover.movie' => 'Film',
+			'discover.watched' => 'Bekeken',
 			'discover.tvShow' => 'TV Serie',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min over',
 			'discover.moreLikeThis' => 'Meer zoals dit',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Omdat je ${title} gekeken hebt',
+			'discover.latestShows' => 'Recent toegevoegde series',
 			'discover.topRated' => 'Hoogst gewaardeerd',
 			'discover.somethingDifferent' => 'Eens iets anders',
 			'discover.topPicksForYou' => 'Aanbevolen voor jou',
@@ -3424,6 +3577,8 @@ extension on TranslationsNl {
 			'notices.playbackServerErrorBody' => 'De server liep vast tijdens het transcoderen',
 			'libraries.title' => 'Bibliotheken',
 			'libraries.fallbackTitle' => 'Bibliotheek',
+			'libraries.itemCount' => ({required Object count}) => '${count} items',
+			'libraries.oneItem' => '1 item',
 			'libraries.scanLibraryFiles' => 'Scan bibliotheek bestanden',
 			'libraries.scanLibrary' => 'Scan bibliotheek',
 			'libraries.analyze' => 'Analyseren',
@@ -3662,6 +3817,8 @@ extension on TranslationsNl {
 			'playlists.playlist' => 'Afspeellijst',
 			'playlists.noPlaylists' => 'Geen afspeellijsten gevonden',
 			'playlists.create' => 'Afspeellijst maken',
+			_ => null,
+		} ?? switch (path) {
 			'playlists.playlistName' => 'Naam afspeellijst',
 			'playlists.enterPlaylistName' => 'Voer naam afspeellijst in',
 			'playlists.delete' => 'Afspeellijst verwijderen',
@@ -3717,8 +3874,6 @@ extension on TranslationsNl {
 			'watchTogether.leave' => 'Verlaten',
 			'watchTogether.syncing' => 'Synchroniseren...',
 			'watchTogether.joinWatchSession' => 'Kijksessie Deelnemen',
-			_ => null,
-		} ?? switch (path) {
 			'watchTogether.enterCodeHint' => 'Voer 5-teken code in',
 			'watchTogether.pasteFromClipboard' => 'Plakken van klembord',
 			'watchTogether.pleaseEnterCode' => 'Voer een sessiecode in',
@@ -3739,7 +3894,10 @@ extension on TranslationsNl {
 			'watchTogether.participantResumed' => ({required Object name}) => '${name} heeft hervat',
 			'watchTogether.participantSeeked' => ({required Object name}) => '${name} heeft gespoeld',
 			'watchTogether.participantBuffering' => ({required Object name}) => '${name} is aan het bufferen',
+			'watchTogether.participantNeedsUpdate' => ({required Object name}) => '${name} draait een oudere app-versie, synchroniseren kan niet',
+			'watchTogether.resumingWithout' => ({required Object name}) => 'Hervatten zonder ${name}',
 			'watchTogether.waitingForParticipants' => 'Wachten tot anderen geladen zijn...',
+			'watchTogether.waitingForName' => ({required Object name}) => 'Wachten op ${name}...',
 			'watchTogether.recentRooms' => 'Recente kamers',
 			'watchTogether.renameRoom' => 'Kamer hernoemen',
 			'watchTogether.removeRoom' => 'Verwijderen',
@@ -3759,8 +3917,10 @@ extension on TranslationsNl {
 			'downloads.deleteDownload' => 'Download verwijderen',
 			'downloads.retryDownload' => 'Download opnieuw proberen',
 			'downloads.downloadQueued' => 'Download in wachtrij',
+			'downloads.waitingForNetwork' => 'Wachten op netwerk',
 			'downloads.downloadResumed' => 'Download hervat',
 			'downloads.serverErrorBitrate' => 'Serverfout: bestand overschrijdt mogelijk de externe bitrate-limiet',
+			'downloads.storageFull' => 'Onvoldoende opslagruimte op dit apparaat',
 			'downloads.episodesQueued' => ({required Object count}) => '${count} afleveringen in wachtrij voor download',
 			'downloads.downloadDeleted' => 'Download verwijderd',
 			'downloads.deleteConfirm' => ({required Object title}) => '"${title}" van dit apparaat verwijderen?',
@@ -4147,6 +4307,22 @@ extension on TranslationsNl {
 			'addServer.connectToJellyfinCard' => 'Verbinden met Jellyfin',
 			'addServer.connectToJellyfinCardSubtitle' => 'Voer je server-URL, gebruikersnaam en wachtwoord in.',
 			'addServer.connectToJellyfinCardSubtitleScoped' => ({required Object name}) => 'Log in op een Jellyfin-server. Wordt gekoppeld aan ${name}.',
+			'addServer.connectToPleyaServerCard' => 'Verbinden met Pleya Server',
+			'addServer.connectToPleyaServerCardSubtitle' => 'Je eigen server. Voer het adres in om verder te gaan.',
+			'addServer.connectToPleyaServerCardSubtitleScoped' => ({required Object name}) => 'Log in op een Pleya Server. Koppelt aan ${name}.',
+			'addServer.addPleyaServerTitle' => 'Pleya Server toevoegen',
+			'addServer.enterPleyaServerUrlError' => 'Voer het adres van je Pleya Server in',
+			'addServer.pleyaServerAddressLabel' => 'Serveradres',
+			'addServer.pleyaServerAddressHint' => 'http://192.168.1.10:8832',
+			'addServer.pleyaServerFindServer' => 'Doorgaan',
+			'addServer.pleyaServerChangeServer' => 'Andere server',
+			'addServer.pleyaServerSetupTitle' => 'Eerste start',
+			'addServer.pleyaServerSetupExplainer' => 'Deze server heeft nog geen eigenaar. De setupcode staat bij de eerste start op zijn console.',
+			'addServer.pleyaServerSetupCodeLabel' => 'Setupcode',
+			'addServer.pleyaServerCreateOwner' => 'Eigenaar aanmaken',
+			'addServer.pleyaServerPasswordTooShort' => 'Kies een wachtwoord van minimaal 8 tekens',
+			'addServer.pleyaServerNoPasswordMethod' => 'Deze server accepteert geen wachtwoord-login. Werk Pleya bij naar een versie die zijn methode spreekt.',
+			'addServer.pleyaServerConnected' => ({required Object name}) => 'Verbonden met ${name}',
 			'addServer.borrowFromAnotherProfile' => 'Lenen van een ander profiel',
 			'addServer.borrowFromAnotherProfileSubtitle' => 'Hergebruik de verbinding van een ander profiel. PIN-beveiligde profielen vereisen een PIN.',
 			'addLocalFolder.cardTitle' => 'Lokale Map',
@@ -4155,6 +4331,8 @@ extension on TranslationsNl {
 			'addLocalFolder.description' => 'Selecteer een map op je apparaat met films of series. Pleya scant de mapstructuur en toont je media.',
 			'addLocalFolder.libraryType' => 'Bibliotheektype',
 			'addLocalFolder.typeMovies' => 'Films',
+			_ => null,
+		} ?? switch (path) {
 			'addLocalFolder.typeTvShows' => 'Series',
 			'addLocalFolder.typeMixed' => 'Gemengd',
 			'addLocalFolder.directory' => 'Map',
@@ -4163,10 +4341,14 @@ extension on TranslationsNl {
 			'addLocalFolder.nameHint' => 'bijv. Mijn Films',
 			'addLocalFolder.save' => 'Map toevoegen',
 			'addLocalFolder.saveError' => 'Lokale map toevoegen mislukt',
+			'addLocalFolder.entriesFound' => ({required Object count}) => '${count} items gevonden in map',
 			'pleyaShare.cardTitle' => 'Pleya Share',
 			'pleyaShare.cardSubtitle' => 'Verbind met een ander Pleya-apparaat dat media deelt',
 			'pleyaShare.hostTitle' => 'Mijn media delen',
 			'pleyaShare.hostDescription' => 'Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Houd dit scherm open tijdens het delen.',
+			'pleyaShare.hostDescriptionIos' => 'Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Delen blijft doorlopen terwijl je apparaat vergrendeld is.',
+			'pleyaShare.howItWorksTitle' => 'Zo werkt Pleya Share',
+			'pleyaShare.howItWorksBody' => 'Eén apparaat is de server: dat deelt zijn lokale mappen. Andere Pleya-apparaten koppelen één keer met de QR-code of de 6-cijferige code en kunnen daarna bladeren, streamen en downloaden.\n\n• Op nieuwere apparaten (iOS 26+, de meeste Android-telefoons) vinden apparaten elkaar ook rechtstreeks via Wi-Fi Aware, helemaal zonder hotspot of router.\n• Werkt via wifi, een persoonlijke hotspot of een kabel: ethernetadapters, of USB-C met USB-tethering aan op de host (Android, of iPhone naar een computer). Rechtstreeks iPhone-naar-iPad via USB ondersteunt iOS niet. Geen internet nodig.\n• Met internet op beide apparaten werkt streamen ook op afstand, via de versleutelde Pleya-relay.\n• Gekoppelde apparaten verbinden automatisch opnieuw, koppelen hoeft maar één keer.\n• Kijkvoortgang en artwork synchroniseren met je Plex- of Jellyfin-account waar dat kan.',
 			'pleyaShare.hostToggle' => 'Lokale mappen delen',
 			'pleyaShare.noLocalFolders' => 'Voeg eerst een lokale map toe — er is nog niets om te delen.',
 			'pleyaShare.pairCodeLabel' => 'Koppelcode',
@@ -4231,8 +4413,6 @@ extension on TranslationsNl {
 			'seerr.pending' => 'In afwachting',
 			'seerr.approved' => 'Goedgekeurd',
 			'seerr.declined' => 'Afgewezen',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.failed' => 'Mislukt',
 			'seerr.completed' => 'Afgerond',
 			'seerr.requestConfirm' => ({required Object title}) => '"${title}" aanvragen?',

@@ -11,6 +11,7 @@ import '../services/multi_server_manager.dart';
 import '../services/plex_auth_service.dart';
 import '../utils/app_logger.dart';
 import 'active_profile_provider.dart';
+import 'pleya_server_credentials.dart';
 import 'plex_home_switch.dart';
 import 'profile.dart';
 import 'profile_connection.dart';
@@ -497,7 +498,7 @@ class ActiveProfileBinder {
           futures.add(_bindPleyaShare(conn));
         case PleyaServerConnection():
           expected.add(conn.serverId);
-          futures.add(_bindPleyaServer(conn));
+          futures.add(_bindPleyaServer(profile, conn));
       }
     }
     final results = await Future.wait(futures);
@@ -889,7 +890,21 @@ class ActiveProfileBinder {
   /// A Pleya Server binds like Jellyfin: one endpoint, one identity, and it
   /// stays in the visibility filter on an auth error so the re-auth banner can
   /// surface it instead of hiding the profile's only server.
-  Future<_ProfileBindResult> _bindPleyaServer(PleyaServerConnection conn) async {
+  ///
+  /// Since PS-9 the identity is checked before the client is registered.
+  /// `MultiServerManager` keys its clients on `serverId`, so two household
+  /// accounts on the same server are one slot: registering the wrong
+  /// connection there does not fail, it silently makes one person browse as the
+  /// other. That is the owner-token fallback from architecture 4.1 in a
+  /// different shape, and [PleyaServerCredentialResolver] is the one place that
+  /// says no to it.
+  Future<_ProfileBindResult> _bindPleyaServer(Profile profile, PleyaServerConnection conn) async {
+    final resolved = const PleyaServerCredentialResolver().resolve(profile, conn);
+    if (!resolved.isHit) {
+      appLogger.w('ActiveProfileBinder: ${profile.displayName} may not act with ${conn.serverName} (${resolved.miss})');
+      return _ProfileBindResult(visibleServerIds: const {}, expectedServerIds: {conn.serverId});
+    }
+
     final ok = await serverManager.addPleyaServerConnection(conn);
     if (ok || serverManager.authErrorServerIds.contains(conn.serverId)) {
       return _ProfileBindResult.visible({conn.serverId});

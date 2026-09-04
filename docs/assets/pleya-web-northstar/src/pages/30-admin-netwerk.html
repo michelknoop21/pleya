@@ -1,0 +1,51 @@
+<!-- widths: 1600 -->
+{{shell:admin|nav=Netwerk|navAction=}}
+<div class="admin">
+  {{admin:network|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Netwerk</div>
+    <h1 class="page-title" style="margin-top:0"><span>Netwerk en identiteit</span></h1>
+
+    <div class="cols-2" style="align-items:start">
+      <div>
+        <section class="panel">
+          <h3>Identiteit</h3>
+          <div class="form">
+            <label class="label" style="margin-top:0">Servernaam</label>
+            <div class="field">Pleya-server</div>
+            <p class="help">Zo heet deze server in de apps en op Home. De id verandert nooit.</p>
+            <label class="label">Server-id</label>
+            <div class="field mono" style="color:var(--ink-2)">0191f2a4-7c3e-7d10-9b2a-6f1e0c2d5a77 <span style="margin-left:auto">{{icon:copy}}</span></div>
+            <label class="label">Publiek adres</label>
+            <div class="field">https://web.pleya.app</div>
+            <p class="help">Wordt gebruikt in gegenereerde links en in wat de apps tonen. De server luistert zelf op <span class="mono">:8080</span> in de container; de proxy ervoor bepaalt het publieke adres.</p>
+          </div>
+        </section>
+      </div>
+      <div>
+        <section class="panel">
+          <h3>Verbinding <span class="status" style="margin-left:auto"><span class="dot"></span>achter een proxy</span></h3>
+          <dl class="kv" style="grid-template-columns:170px 1fr">
+            <dt>Luistert op</dt><dd class="mono">127.0.0.1:8832 → :8080 <span class="dim" style="font-family:Inter">· omgeving</span></dd>
+            <dt>Gezien via</dt><dd>Cloudflare-tunnel · <span class="mono">X-Forwarded-For</span> aanwezig</dd>
+            <dt>TLS</dt><dd>bij de proxy; de server ziet HTTP en zet de sessiecookie daarom niet op <span class="mono">Secure</span> tenzij de proxy dat meldt</dd>
+            <dt>Vertrouwde proxy's</dt><dd class="mono">172.18.0.0/16 <span class="dim" style="font-family:Inter">· omgeving</span></dd>
+            <dt>Range-aanvragen</dt><dd><span class="status"><span class="dot"></span>komen intact door · gemeten 14:20</span></dd>
+          </dl>
+          <a class="btn ghost sm" href="#" style="margin-top:12px">{{icon:refresh}} Verbinding testen</a>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Wat hier bewust niet staat</h3>
+          <p class="help" style="margin:0">Poorten openen, certificaten, tunnels en DNS. Pleya-server bouwt geen eigen NAT-traversal of relay (DEC-037) en biedt geen shell. Die stappen staan in de installatiehandleiding voor Docker, een omgekeerde proxy en een uitbellende tunnel.</p>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Zonder inloggen bereikbaar</h3>
+          <p class="help" style="margin:0 0 8px">Precies deze vier, bewaakt door een test:</p>
+          <div class="mono" style="font-size:13px;color:var(--ink-2);line-height:1.7">GET /pleya/v1/info<br>POST /pleya/v1/auth/setup<br>POST /pleya/v1/auth/login<br>POST /pleya/v1/auth/refresh</div>
+        </section>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:20px;justify-content:flex-end"><a class="btn ghost" href="#">Annuleren</a><a class="btn primary" href="#">Opslaan</a></div>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 30 Netwerk · servernaam en publiek adres in de database; bindadres, proxy's en TLS blijven host-config (PS-11)</div>

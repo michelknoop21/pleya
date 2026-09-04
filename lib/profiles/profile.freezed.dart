@@ -91,12 +91,13 @@ extension ProfilePatterns on Profile {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( LocalProfile value)?  local,TResult Function( PlexHomeProfile value)?  plexHome,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( LocalProfile value)?  local,TResult Function( PlexHomeProfile value)?  plexHome,TResult Function( PleyaServerProfile value)?  pleyaServer,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case LocalProfile() when local != null:
 return local(_that);case PlexHomeProfile() when plexHome != null:
-return plexHome(_that);case _:
+return plexHome(_that);case PleyaServerProfile() when pleyaServer != null:
+return pleyaServer(_that);case _:
   return orElse();
 
 }
@@ -114,12 +115,13 @@ return plexHome(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( LocalProfile value)  local,required TResult Function( PlexHomeProfile value)  plexHome,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( LocalProfile value)  local,required TResult Function( PlexHomeProfile value)  plexHome,required TResult Function( PleyaServerProfile value)  pleyaServer,}){
 final _that = this;
 switch (_that) {
 case LocalProfile():
 return local(_that);case PlexHomeProfile():
-return plexHome(_that);}
+return plexHome(_that);case PleyaServerProfile():
+return pleyaServer(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
 ///
@@ -133,12 +135,13 @@ return plexHome(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( LocalProfile value)?  local,TResult? Function( PlexHomeProfile value)?  plexHome,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( LocalProfile value)?  local,TResult? Function( PlexHomeProfile value)?  plexHome,TResult? Function( PleyaServerProfile value)?  pleyaServer,}){
 final _that = this;
 switch (_that) {
 case LocalProfile() when local != null:
 return local(_that);case PlexHomeProfile() when plexHome != null:
-return plexHome(_that);case _:
+return plexHome(_that);case PleyaServerProfile() when pleyaServer != null:
+return pleyaServer(_that);case _:
   return null;
 
 }
@@ -155,11 +158,12 @@ return plexHome(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String id,  String displayName,  String? avatarThumbUrl,  String? pinHash,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)?  local,TResult Function( String id,  String displayName,  String? avatarThumbUrl,  String? parentConnectionId,  String? plexHomeUserUuid,  bool plexRestricted,  bool plexAdmin,  bool plexProtected,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)?  plexHome,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String id,  String displayName,  String? avatarThumbUrl,  String? pinHash,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)?  local,TResult Function( String id,  String displayName,  String? avatarThumbUrl,  String? parentConnectionId,  String? plexHomeUserUuid,  bool plexRestricted,  bool plexAdmin,  bool plexProtected,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)?  plexHome,TResult Function( String id,  String displayName,  String? avatarThumbUrl,  String? pleyaConnectionId,  String? pleyaUsername,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)?  pleyaServer,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case LocalProfile() when local != null:
 return local(_that.id,_that.displayName,_that.avatarThumbUrl,_that.pinHash,_that.sortOrder,_that.createdAt,_that.lastUsedAt);case PlexHomeProfile() when plexHome != null:
-return plexHome(_that.id,_that.displayName,_that.avatarThumbUrl,_that.parentConnectionId,_that.plexHomeUserUuid,_that.plexRestricted,_that.plexAdmin,_that.plexProtected,_that.sortOrder,_that.createdAt,_that.lastUsedAt);case _:
+return plexHome(_that.id,_that.displayName,_that.avatarThumbUrl,_that.parentConnectionId,_that.plexHomeUserUuid,_that.plexRestricted,_that.plexAdmin,_that.plexProtected,_that.sortOrder,_that.createdAt,_that.lastUsedAt);case PleyaServerProfile() when pleyaServer != null:
+return pleyaServer(_that.id,_that.displayName,_that.avatarThumbUrl,_that.pleyaConnectionId,_that.pleyaUsername,_that.sortOrder,_that.createdAt,_that.lastUsedAt);case _:
   return orElse();
 
 }
@@ -177,11 +181,12 @@ return plexHome(_that.id,_that.displayName,_that.avatarThumbUrl,_that.parentConn
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String id,  String displayName,  String? avatarThumbUrl,  String? pinHash,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)  local,required TResult Function( String id,  String displayName,  String? avatarThumbUrl,  String? parentConnectionId,  String? plexHomeUserUuid,  bool plexRestricted,  bool plexAdmin,  bool plexProtected,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)  plexHome,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String id,  String displayName,  String? avatarThumbUrl,  String? pinHash,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)  local,required TResult Function( String id,  String displayName,  String? avatarThumbUrl,  String? parentConnectionId,  String? plexHomeUserUuid,  bool plexRestricted,  bool plexAdmin,  bool plexProtected,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)  plexHome,required TResult Function( String id,  String displayName,  String? avatarThumbUrl,  String? pleyaConnectionId,  String? pleyaUsername,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)  pleyaServer,}) {final _that = this;
 switch (_that) {
 case LocalProfile():
 return local(_that.id,_that.displayName,_that.avatarThumbUrl,_that.pinHash,_that.sortOrder,_that.createdAt,_that.lastUsedAt);case PlexHomeProfile():
-return plexHome(_that.id,_that.displayName,_that.avatarThumbUrl,_that.parentConnectionId,_that.plexHomeUserUuid,_that.plexRestricted,_that.plexAdmin,_that.plexProtected,_that.sortOrder,_that.createdAt,_that.lastUsedAt);}
+return plexHome(_that.id,_that.displayName,_that.avatarThumbUrl,_that.parentConnectionId,_that.plexHomeUserUuid,_that.plexRestricted,_that.plexAdmin,_that.plexProtected,_that.sortOrder,_that.createdAt,_that.lastUsedAt);case PleyaServerProfile():
+return pleyaServer(_that.id,_that.displayName,_that.avatarThumbUrl,_that.pleyaConnectionId,_that.pleyaUsername,_that.sortOrder,_that.createdAt,_that.lastUsedAt);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -195,11 +200,12 @@ return plexHome(_that.id,_that.displayName,_that.avatarThumbUrl,_that.parentConn
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String id,  String displayName,  String? avatarThumbUrl,  String? pinHash,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)?  local,TResult? Function( String id,  String displayName,  String? avatarThumbUrl,  String? parentConnectionId,  String? plexHomeUserUuid,  bool plexRestricted,  bool plexAdmin,  bool plexProtected,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)?  plexHome,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String id,  String displayName,  String? avatarThumbUrl,  String? pinHash,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)?  local,TResult? Function( String id,  String displayName,  String? avatarThumbUrl,  String? parentConnectionId,  String? plexHomeUserUuid,  bool plexRestricted,  bool plexAdmin,  bool plexProtected,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)?  plexHome,TResult? Function( String id,  String displayName,  String? avatarThumbUrl,  String? pleyaConnectionId,  String? pleyaUsername,  int sortOrder,  DateTime createdAt,  DateTime? lastUsedAt)?  pleyaServer,}) {final _that = this;
 switch (_that) {
 case LocalProfile() when local != null:
 return local(_that.id,_that.displayName,_that.avatarThumbUrl,_that.pinHash,_that.sortOrder,_that.createdAt,_that.lastUsedAt);case PlexHomeProfile() when plexHome != null:
-return plexHome(_that.id,_that.displayName,_that.avatarThumbUrl,_that.parentConnectionId,_that.plexHomeUserUuid,_that.plexRestricted,_that.plexAdmin,_that.plexProtected,_that.sortOrder,_that.createdAt,_that.lastUsedAt);case _:
+return plexHome(_that.id,_that.displayName,_that.avatarThumbUrl,_that.parentConnectionId,_that.plexHomeUserUuid,_that.plexRestricted,_that.plexAdmin,_that.plexProtected,_that.sortOrder,_that.createdAt,_that.lastUsedAt);case PleyaServerProfile() when pleyaServer != null:
+return pleyaServer(_that.id,_that.displayName,_that.avatarThumbUrl,_that.pleyaConnectionId,_that.pleyaUsername,_that.sortOrder,_that.createdAt,_that.lastUsedAt);case _:
   return null;
 
 }
@@ -368,6 +374,94 @@ as String?,plexRestricted: null == plexRestricted ? _self.plexRestricted : plexR
 as bool,plexAdmin: null == plexAdmin ? _self.plexAdmin : plexAdmin // ignore: cast_nullable_to_non_nullable
 as bool,plexProtected: null == plexProtected ? _self.plexProtected : plexProtected // ignore: cast_nullable_to_non_nullable
 as bool,sortOrder: null == sortOrder ? _self.sortOrder : sortOrder // ignore: cast_nullable_to_non_nullable
+as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as DateTime,lastUsedAt: freezed == lastUsedAt ? _self.lastUsedAt : lastUsedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class PleyaServerProfile extends Profile {
+  const PleyaServerProfile({required this.id, required this.displayName, this.avatarThumbUrl, this.pleyaConnectionId, this.pleyaUsername, this.sortOrder = 0, required this.createdAt, this.lastUsedAt}): super._();
+  
+
+@override final  String id;
+@override final  String displayName;
+@override final  String? avatarThumbUrl;
+/// The Pleya Server connection this profile is the identity of. One
+/// connection carries exactly one account's refresh token, which is what
+/// makes the credential resolution unambiguous.
+ final  String? pleyaConnectionId;
+/// The username this profile signs in with on that server. The account's
+/// server-side id is deliberately not stored: it lives inside the access
+/// token, and the protocol says a client never has to read that (chapter
+/// 6.3). The username is what the person typed and what the connection
+/// row already carries.
+ final  String? pleyaUsername;
+@override@JsonKey() final  int sortOrder;
+@override final  DateTime createdAt;
+@override final  DateTime? lastUsedAt;
+
+/// Create a copy of Profile
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PleyaServerProfileCopyWith<PleyaServerProfile> get copyWith => _$PleyaServerProfileCopyWithImpl<PleyaServerProfile>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PleyaServerProfile&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.avatarThumbUrl, avatarThumbUrl) || other.avatarThumbUrl == avatarThumbUrl)&&(identical(other.pleyaConnectionId, pleyaConnectionId) || other.pleyaConnectionId == pleyaConnectionId)&&(identical(other.pleyaUsername, pleyaUsername) || other.pleyaUsername == pleyaUsername)&&(identical(other.sortOrder, sortOrder) || other.sortOrder == sortOrder)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.lastUsedAt, lastUsedAt) || other.lastUsedAt == lastUsedAt));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,id,displayName,avatarThumbUrl,pleyaConnectionId,pleyaUsername,sortOrder,createdAt,lastUsedAt);
+
+@override
+String toString() {
+  return 'Profile.pleyaServer(id: $id, displayName: $displayName, avatarThumbUrl: $avatarThumbUrl, pleyaConnectionId: $pleyaConnectionId, pleyaUsername: $pleyaUsername, sortOrder: $sortOrder, createdAt: $createdAt, lastUsedAt: $lastUsedAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PleyaServerProfileCopyWith<$Res> implements $ProfileCopyWith<$Res> {
+  factory $PleyaServerProfileCopyWith(PleyaServerProfile value, $Res Function(PleyaServerProfile) _then) = _$PleyaServerProfileCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String displayName, String? avatarThumbUrl, String? pleyaConnectionId, String? pleyaUsername, int sortOrder, DateTime createdAt, DateTime? lastUsedAt
+});
+
+
+
+
+}
+/// @nodoc
+class _$PleyaServerProfileCopyWithImpl<$Res>
+    implements $PleyaServerProfileCopyWith<$Res> {
+  _$PleyaServerProfileCopyWithImpl(this._self, this._then);
+
+  final PleyaServerProfile _self;
+  final $Res Function(PleyaServerProfile) _then;
+
+/// Create a copy of Profile
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = null,Object? avatarThumbUrl = freezed,Object? pleyaConnectionId = freezed,Object? pleyaUsername = freezed,Object? sortOrder = null,Object? createdAt = null,Object? lastUsedAt = freezed,}) {
+  return _then(PleyaServerProfile(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String,avatarThumbUrl: freezed == avatarThumbUrl ? _self.avatarThumbUrl : avatarThumbUrl // ignore: cast_nullable_to_non_nullable
+as String?,pleyaConnectionId: freezed == pleyaConnectionId ? _self.pleyaConnectionId : pleyaConnectionId // ignore: cast_nullable_to_non_nullable
+as String?,pleyaUsername: freezed == pleyaUsername ? _self.pleyaUsername : pleyaUsername // ignore: cast_nullable_to_non_nullable
+as String?,sortOrder: null == sortOrder ? _self.sortOrder : sortOrder // ignore: cast_nullable_to_non_nullable
 as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,lastUsedAt: freezed == lastUsedAt ? _self.lastUsedAt : lastUsedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,

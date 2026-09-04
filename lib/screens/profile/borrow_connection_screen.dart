@@ -220,8 +220,12 @@ class _BorrowConnectionScreenState extends State<BorrowConnectionScreen> {
         case PleyaShareConnection():
         case PleyaServerConnection():
           // Borrowing shares a parent connection's credentials with a child
-          // profile. These three have no per-profile identity to share:
-          // Pleya Server has exactly one bootstrap owner until PS-9.
+          // profile. A local folder and a Pleya Share have no per-profile
+          // identity to share. A Pleya Server does, and that is exactly why it
+          // stays here: since PS-9 a connection carries one household account,
+          // so handing it to a second profile would hand over that account's
+          // role and library permissions with it. The supported way to add a
+          // household member is a second sign-in with their own credentials.
           break;
       }
     } finally {

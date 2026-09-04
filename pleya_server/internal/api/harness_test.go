@@ -18,6 +18,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
+	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
@@ -48,6 +49,66 @@ type captureEntry struct {
 	Status int    `json:"status"`
 }
 
+// logCapture legt de logregels van de server vast, met hun tijdstip.
+//
+// Nodig voor precies één meting: acceptatiecriterium 3 van PS-9 legt een
+// bovengrens op de tijd tussen een intrekking en het moment dat de server
+// stopt met leveren, en dat moment is aan de clientkant niet te zien. Wat een
+// trage lezer daar meet is de intrekkingslatentie plús het leeglopen van de
+// buffers die al onderweg waren, en dat tweede stuk zegt niets over de server.
+//
+// Foutregels gaan daarnaast gewoon naar stderr, zodat een falende test nog
+// steeds vertelt wat er misging.
+type logCapture struct {
+	mu      sync.Mutex
+	records []logRecord
+	stderr  slog.Handler
+}
+
+type logRecord struct {
+	at      time.Time
+	message string
+}
+
+func newLogCapture() *logCapture {
+	return &logCapture{stderr: slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})}
+}
+
+func (c *logCapture) Enabled(_ context.Context, level slog.Level) bool {
+	return level >= slog.LevelInfo
+}
+
+func (c *logCapture) Handle(ctx context.Context, r slog.Record) error {
+	c.mu.Lock()
+	c.records = append(c.records, logRecord{at: time.Now(), message: r.Message})
+	c.mu.Unlock()
+	if r.Level >= slog.LevelError {
+		return c.stderr.Handle(ctx, r)
+	}
+	return nil
+}
+
+func (c *logCapture) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &logCapture{stderr: c.stderr.WithAttrs(attrs)}
+}
+
+func (c *logCapture) WithGroup(name string) slog.Handler {
+	return &logCapture{stderr: c.stderr.WithGroup(name)}
+}
+
+// firstAfter geeft het tijdstip van de eerste regel met dit bericht na since,
+// of de nulwaarde zolang hij er niet is.
+func (c *logCapture) firstAfter(message string, since time.Time) (time.Time, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, r := range c.records {
+		if r.message == message && r.at.After(since) {
+			return r.at, true
+		}
+	}
+	return time.Time{}, false
+}
+
 type env struct {
 	t       *testing.T
 	server  *api.Server
@@ -60,6 +121,9 @@ type env struct {
 	refresh string
 	cap     *capture
 	libs    []catalog.Library
+	argon2  auth.Argon2Params
+	signer  *auth.Signer
+	logs    *logCapture
 }
 
 func newEnv(t *testing.T) *env {
@@ -110,29 +174,31 @@ func newEnv(t *testing.T) *env {
 	light := auth.Argon2Params{Memory: 8 * 1024, Iterations: 1, Parallelism: 1, SaltLength: 16, KeyLength: 32}
 
 	watchStore := watch.NewStore(pool)
+	logs := newLogCapture()
 
 	srv := api.New(api.Options{
-		Catalog:          store,
-		Auth:             authStore,
-		Watch:            watchStore,
-		Signer:           signer,
-		Logger:           slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})),
-		Ready:            func() bool { return true },
-		ServerID:         serverID,
-		Name:             "Zolder",
-		Version:          "0.2.0-test",
-		StartedAt:        time.Date(2026, 8, 18, 19, 25, 33, 0, time.UTC),
-		AccessTokenTTL:   15 * time.Minute,
-		RefreshTokenTTL:  24 * time.Hour,
-		StreamTokenTTL:   5 * time.Minute,
-		SetupCodeTTL:     30 * time.Minute,
-		StreamSessionTTL: 30 * time.Minute,
-		WatchLease:       watch.MinLease,
-		Argon2:           light,
+		Catalog:            store,
+		Auth:               authStore,
+		Watch:              watchStore,
+		Signer:             signer,
+		Logger:             slog.New(logs),
+		Ready:              func() bool { return true },
+		ServerID:           serverID,
+		Name:               "Zolder",
+		Version:            "0.2.0-test",
+		StartedAt:          time.Date(2026, 8, 18, 19, 25, 33, 0, time.UTC),
+		AccessTokenTTL:     15 * time.Minute,
+		RefreshTokenTTL:    24 * time.Hour,
+		RefreshGraceWindow: 2 * time.Minute,
+		StreamTokenTTL:     5 * time.Minute,
+		SetupCodeTTL:       30 * time.Minute,
+		StreamSessionTTL:   30 * time.Minute,
+		WatchLease:         watch.MinLease,
+		Argon2:             light,
 	})
 
 	return &env{t: t, server: srv, store: store, auth: authStore, watch: watchStore, pool: pool,
-		root: root, libs: libs, cap: shared}
+		root: root, libs: libs, cap: shared, argon2: light, signer: signer, logs: logs}
 }
 
 // scanAll draait één volledige scanronde over elke bibliotheek.
@@ -200,6 +266,84 @@ func (e *env) expireStreamSession(sessionID string) {
 		sessionID); err != nil {
 		e.t.Fatalf("sessie laten verlopen: %v", err)
 	}
+}
+
+// createUser legt rechtstreeks een gebruiker vast, buiten het protocol om.
+//
+// Sinds stap 4 bestaat POST /users wel, dus dit is een keuze en geen gebrek:
+// de autorisatiematrix toetst de bibliotheekcontrole en niet de inlogstroom, en
+// een fixture die per test een gebruiker aanmaakt, rechten zet en inlogt zou
+// bij elke matrixregel drie dingen tegelijk kunnen laten falen.
+//
+// Die keuze is alleen houdbaar zolang iets ánders het echte pad bewijst. Dat is
+// users_test.go: TestSecondUserCanBeCreatedAndLogIn gaat wél door POST /users
+// en /auth/login. Zonder die test bewijzen de matrixtests hier hooguit dat de
+// autorisatie klopt voor gebruikers die nooit hadden kunnen bestaan.
+func (e *env) createUser(role, username string) id.ID {
+	e.t.Helper()
+	uid := id.New()
+	hash, err := auth.HashPassword("een-lang-genoeg-wachtwoord", e.argon2)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	if _, err := e.pool.Exec(context.Background(), `
+		INSERT INTO users (id, username, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, now(), now())`, uid, username, hash, role); err != nil {
+		e.t.Fatalf("gebruiker %s aanmaken: %v", username, err)
+	}
+	return uid
+}
+
+// grantLibrary legt een library_permissions-rij vast.
+func (e *env) grantLibrary(userID, libraryID id.ID, permission string) {
+	e.t.Helper()
+	if _, err := e.pool.Exec(context.Background(), `
+		INSERT INTO library_permissions (user_id, library_id, permission) VALUES ($1, $2, $3)`,
+		userID, libraryID, permission); err != nil {
+		e.t.Fatalf("bibliotheekrecht toekennen: %v", err)
+	}
+}
+
+// revokeLibrary trekt een eerder toegekend recht in, rechtstreeks op de tabel:
+// er bestaat nog geen endpoint om een library_permissions-rij te verwijderen
+// (dat is DEC-100, niet deze fase). Voor het bewijs dat een streamtoken of
+// -sessie het recht op het aanvraagpad toetst en niet alleen bij het minten
+// (DEC-105, hoofdstuk 16.4 regel 9), moet een test het recht na het minten
+// weg kunnen halen.
+func (e *env) revokeLibrary(userID, libraryID id.ID) {
+	e.t.Helper()
+	if _, err := e.pool.Exec(context.Background(),
+		`DELETE FROM library_permissions WHERE user_id = $1 AND library_id = $2`,
+		userID, libraryID); err != nil {
+		e.t.Fatalf("bibliotheekrecht intrekken: %v", err)
+	}
+}
+
+// tokenFor mint rechtstreeks een accesstoken voor userID, buiten login om: de
+// autorisatiematrix test de bibliotheekcontrole en niet de inlogstroom.
+//
+// De sid draagt een echte sessions-rij en geen losse uuid: stream-session
+// (stream_sessions.session_id) heeft een FK naar sessions(id), dus een
+// verzonnen sid laat elke POST /auth/stream-session voor deze gebruiker op een
+// foreign-key-violation stuklopen in plaats van op de rechtencontrole die de
+// test wil bewijzen.
+func (e *env) tokenFor(userID id.ID) string {
+	e.t.Helper()
+	sessionID, err := e.auth.CreateSession(context.Background(), userID, nil, "test device", time.Now().UTC())
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	access, _, err := e.signer.Mint(userID.String(), sessionID.String(), auth.TokenAccess, 15*time.Minute, "")
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	return access
+}
+
+// asUser overschrijft de Authorization-header van deze ene aanvraag, voor een
+// verzoek namens een andere gebruiker dan e.access.
+func asUser(token string) func(*http.Request) {
+	return func(r *http.Request) { r.Header.Set("Authorization", "Bearer "+token) }
 }
 
 // shared is één opvangpunt voor alle tests in dit pakket.

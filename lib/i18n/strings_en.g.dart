@@ -680,6 +680,18 @@ class TranslationsSettingsEn {
 	/// en: 'Used when starting playback. Lower values reduce bandwidth.'
 	String get defaultQualityDescription => 'Used when starting playback. Lower values reduce bandwidth.';
 
+	/// en: 'Maximum Resolution'
+	String get displayMaxResolutionTitle => 'Maximum Resolution';
+
+	/// en: 'Caps what this device asks a server for, even when the file is larger.'
+	String get displayMaxResolutionDescription => 'Caps what this device asks a server for, even when the file is larger.';
+
+	/// en: 'detected: ${resolution}'
+	String displayMaxResolutionNow({required Object resolution}) => 'detected: ${resolution}';
+
+	late final TranslationsSettingsDisplayMaxResolutionOptionsEn displayMaxResolutionOptions = TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(_root);
+	late final TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn displayMaxResolutionOptionDescriptions = TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn.internal(_root);
+
 	/// en: 'Subtitle Styling'
 	String get subtitleStyling => 'Subtitle Styling';
 
@@ -5466,6 +5478,42 @@ class TranslationsTvContextMenuEn {
 	String get failed => 'That did not work';
 }
 
+// Path: settings.displayMaxResolutionOptions
+class TranslationsSettingsDisplayMaxResolutionOptionsEn {
+	TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Auto'
+	String get auto => 'Auto';
+
+	/// en: '1080p'
+	String get hd1080 => '1080p';
+
+	/// en: '4K'
+	String get uhd2160 => '4K';
+}
+
+// Path: settings.displayMaxResolutionOptionDescriptions
+class TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn {
+	TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Follow the display where the app can read it'
+	String get auto => 'Follow the display where the app can read it';
+
+	/// en: 'Never ask for more than 1920x1080'
+	String get hd1080 => 'Never ask for more than 1920x1080';
+
+	/// en: 'Never ask for more than 3840x2160'
+	String get uhd2160 => 'Never ask for more than 3840x2160';
+}
+
 // Path: search.filters
 class TranslationsSearchFiltersEn {
 	TranslationsSearchFiltersEn.internal(this._root);
@@ -6587,6 +6635,15 @@ extension on Translations {
 			'settings.bufferSizeWarning' => ({required Object heap, required Object size}) => '${heap}MB memory available. A ${size}MB buffer may affect playback.',
 			'settings.defaultQualityTitle' => 'Default Quality',
 			'settings.defaultQualityDescription' => 'Used when starting playback. Lower values reduce bandwidth.',
+			'settings.displayMaxResolutionTitle' => 'Maximum Resolution',
+			'settings.displayMaxResolutionDescription' => 'Caps what this device asks a server for, even when the file is larger.',
+			'settings.displayMaxResolutionNow' => ({required Object resolution}) => 'detected: ${resolution}',
+			'settings.displayMaxResolutionOptions.auto' => 'Auto',
+			'settings.displayMaxResolutionOptions.hd1080' => '1080p',
+			'settings.displayMaxResolutionOptions.uhd2160' => '4K',
+			'settings.displayMaxResolutionOptionDescriptions.auto' => 'Follow the display where the app can read it',
+			'settings.displayMaxResolutionOptionDescriptions.hd1080' => 'Never ask for more than 1920x1080',
+			'settings.displayMaxResolutionOptionDescriptions.uhd2160' => 'Never ask for more than 3840x2160',
 			'settings.subtitleStyling' => 'Subtitle Styling',
 			'settings.subtitleStylingDescription' => 'Customize subtitle appearance',
 			'settings.smallSkipDuration' => 'Small Skip Duration',
@@ -6918,6 +6975,8 @@ extension on Translations {
 			'videoControls.transcodeUnavailableFallback' => 'Transcoding unavailable — playing original quality',
 			'videoControls.pipButton' => 'Picture-in-Picture mode',
 			'videoControls.aspectRatioButton' => 'Aspect ratio',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.ambientLighting' => 'Ambient lighting',
 			'videoControls.ambientIntensitySubtle' => 'Subtle',
 			'videoControls.ambientIntensityBalanced' => 'Balanced',
@@ -6927,8 +6986,6 @@ extension on Translations {
 			'videoControls.tvPanel.tracks' => 'Tracks',
 			'videoControls.tvPanel.options' => 'Options',
 			'videoControls.tvPanel.more' => 'More…',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.fullscreenButton' => 'Enter fullscreen',
 			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			'videoControls.alwaysOnTopButton' => 'Always on top',
@@ -7432,6 +7489,8 @@ extension on Translations {
 			'playlists.playlist' => 'Playlist',
 			'playlists.noPlaylists' => 'No playlists found',
 			'playlists.create' => 'Create Playlist',
+			_ => null,
+		} ?? switch (path) {
 			'playlists.playlistName' => 'Playlist Name',
 			'playlists.enterPlaylistName' => 'Enter playlist name',
 			'playlists.delete' => 'Delete Playlist',
@@ -7441,8 +7500,6 @@ extension on Translations {
 			'playlists.oneItem' => '1 item',
 			'playlists.emptyPlaylist' => 'This playlist is empty',
 			'playlists.deleteConfirm' => 'Delete Playlist?',
-			_ => null,
-		} ?? switch (path) {
 			'playlists.deleteMessage' => ({required Object name}) => 'Are you sure you want to delete "${name}"?',
 			'playlists.created' => 'Playlist created',
 			'playlists.deleted' => 'Playlist deleted',
@@ -7946,6 +8003,8 @@ extension on Translations {
 			'tautulli.adminOnlyNote' => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.',
 			'tautulli.useHistoryForRecommendations' => 'Use history for recommendations',
 			'tautulli.useHistoryForRecommendationsDescription' => 'Uses viewing history from this Tautulli server to improve personal recommendations for every profile on this device. Each profile only ever gets its own history, and processing stays local in Pleya.',
+			_ => null,
+		} ?? switch (path) {
 			'tautulli.integrationConflictNote' => 'Two different Tautulli pairings were found for this server, so history is not being used until you reconnect the one you want to keep.',
 			'tautulli.serverUrl' => 'Tautulli address',
 			'tautulli.serverUrlHint' => 'http://192.168.1.10:8181 or https://tautulli.example.com',
@@ -7955,8 +8014,6 @@ extension on Translations {
 			'tautulli.modeApiKey' => 'API key',
 			'tautulli.modeApiKeyHelp' => 'The permanent key from Settings, Web Interface. It grants full access to Tautulli, so use it only if the device token does not work for you.',
 			'tautulli.deviceToken' => 'Device token',
-			_ => null,
-		} ?? switch (path) {
 			'tautulli.apiKey' => 'API key',
 			'tautulli.testConnection' => 'Test connection',
 			'tautulli.save' => 'Save',

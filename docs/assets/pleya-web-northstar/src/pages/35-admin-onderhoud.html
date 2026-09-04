@@ -1,0 +1,56 @@
+<!-- widths: 1600, 393 -->
+{{shell:admin|nav=Onderhoud|navAction=}}
+<div class="admin">
+  {{admin:diagnostics|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Diagnostiek ▸ Onderhoud</div>
+    <h1 class="page-title" style="margin-top:0"><span>Onderhoud</span><span class="btn-row"><a class="btn primary sm" href="#">{{icon:download}} Nu een back-up maken</a></span></h1>
+
+    <div class="cols-3" style="align-items:start">
+      <div>
+        <section class="panel" style="padding:6px 8px">
+          <h3 style="padding:10px 12px 4px">Back-ups <a class="all" href="#">{{icon:gear}} /backups · elke nacht 03:30 · 14 bewaard</a></h3>
+          <table class="table stack">
+            <tr><th>Gemaakt</th><th>Inhoud</th><th>Grootte</th><th>Controle</th><th class="r"></th></tr>
+            <tr><td>vannacht 03:30</td><td>database (schema 19) en <span class="mono">/config</span></td><td>412 MB</td><td><span class="pill ok">{{icon:check}} hersteltest geslaagd</span></td><td class="r"><div class="act"><a class="btn ghost sm" href="#">Terugzetten</a><a class="btn ghost icon" href="#">{{icon:download}}</a></div></td></tr>
+            <tr><td>gisteren 03:30</td><td>database en <span class="mono">/config</span></td><td>411 MB</td><td><span class="pill ok">{{icon:check}}</span></td><td class="r"><div class="act"><a class="btn ghost sm" href="#">Terugzetten</a><a class="btn ghost icon" href="#">{{icon:download}}</a></div></td></tr>
+            <tr><td>1 sep 03:30</td><td>database en <span class="mono">/config</span></td><td>409 MB</td><td><span class="pill warn">niet getest</span></td><td class="r"><div class="act"><a class="btn ghost sm" href="#">Terugzetten</a><a class="btn ghost icon" href="#">{{icon:download}}</a></div></td></tr>
+            <tr><td>vóór migratie 0008 · 6 sep</td><td>database (schema 7)</td><td>380 MB</td><td><span class="pill">handmatig</span></td><td class="r"><div class="act"><a class="btn ghost sm" href="#">Terugzetten</a></div></td></tr>
+          </table>
+          <p class="help" style="padding:8px 12px 10px">Een back-up bevat de database plus de instance-, config- en cryptografische staat, met de sleutels veilig verpakt; mediabestanden zitten er nooit in. Doel, tijdstip en aantal zijn instellingen. De wekelijkse hersteltest zet de back-up terug in een geïsoleerde tijdelijke database en draait daar de migraties, het schema en de kernqueries.</p>
+          <div class="alert" style="margin:0 12px 12px">{{icon:alert}}<div><b>Het doel staat op dezelfde schijf als de database.</b> Een schijf die uitvalt neemt dan de back-up mee. Kies een pad op een andere mount of een NAS-share.</div></div>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Terugzetten</h3>
+          <p class="help" style="margin:0 0 10px">Zet de server in onderhoudsmodus (alle sessies krijgen een melding, streams stoppen), laadt de database en <span class="mono">/config</span> uit de gekozen back-up en start opnieuw. Kijk- en leesstatus van ná de back-up gaat verloren; dat staat in de bevestiging met het aantal rijen.</p>
+          <div class="alert info">{{icon:info}}<div>Terugzetten naar een back-up van een <b>ouder schema</b> kan alleen met de bijbehorende oudere image; de server weigert een database die nieuwer is dan zijn migraties en zegt welke versie hij verwacht.</div></div>
+        </section>
+      </div>
+      <div>
+        <section class="panel">
+          <h3>Versie en upgrade</h3>
+          <dl class="kv" style="grid-template-columns:130px 1fr">
+            <dt>Draait</dt><dd>0.9.0 · schema 19</dd>
+            <dt>Image</dt><dd class="mono">ghcr.io/…/pleya-server:0.9.0</dd>
+            <dt>Upgradepad</dt><dd>elke versie migreert voorwaarts vanaf schema 7; twee versies overslaan is getest</dd>
+            <dt>Laatste upgrade</dt><dd>6 sep · 0.8.2 naar 0.9.0 · 5 migraties · 41 s</dd>
+          </dl>
+          <p class="help">Upgraden is de image wisselen in Docker en herstarten; de server maakt vóór de eerste migratie zelf een back-up en weigert te starten als die mislukt.</p>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Faalpaden <span class="all">laatste controle vannacht</span></h3>
+          <div class="row" style="padding:8px 0">{{icon:drive}}<div class="body"><div class="t">Schijf vol</div><div class="s">transcodemap 92% · oude artefacten weg</div></div><span class="pill warn">let op</span></div>
+          <div class="row" style="padding:8px 0">{{icon:server}}<div class="body"><div class="t">Database onbereikbaar</div><div class="s">503 met <span class="mono">Retry-After</span>, herstelt vanzelf</div></div><span class="pill ok">ok</span></div>
+          <div class="row" style="padding:8px 0">{{icon:cpu}}<div class="body"><div class="t">Transcoder gecrasht</div><div class="s">sessie beëindigd met een foutcode</div></div><span class="pill ok">ok</span></div>
+          <div class="row" style="padding:8px 0">{{icon:film}}<div class="body"><div class="t">Kapot bestand</div><div class="s">1 gemarkeerd, scan liep door</div></div><span class="pill ok">ok</span></div>
+        </section>
+        <section class="panel" style="margin-top:14px;border:1px solid rgba(255,176,32,.35)">
+          <h3 style="color:var(--amber)">Onderhoudsmodus</h3>
+          <p class="help" style="margin:0 0 12px">Weigert nieuwe streams en scans en toont gebruikers een melding; lopende workers stoppen gecontroleerd en authsessies blijven geldig.</p>
+          <a class="btn ghost sm" href="#">Onderhoudsmodus aan</a>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 35 Onderhoud (PS-11B) · S25 · back-up als instelling met hersteltest, terugzetten met bevestiging, upgradepad, faalpaden als set</div>

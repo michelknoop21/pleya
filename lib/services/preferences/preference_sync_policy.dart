@@ -386,6 +386,7 @@ class PreferenceSyncPolicyRegistry {
     'match_refresh_rate': _deviceLocalPref,
     'match_content_frame_rate': _deviceLocalPref,
     'match_dynamic_range': _deviceLocalPref,
+    'display_max_resolution': _deviceLocalPref,
     'display_switch_delay': _deviceLocalPref,
     'start_in_fullscreen': _deviceLocalPref,
     'exit_fullscreen_on_player_close': _deviceLocalPref,

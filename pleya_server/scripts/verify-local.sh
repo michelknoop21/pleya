@@ -138,6 +138,7 @@ section "5. healthz en readyz"
 section "6. catalogus (PS-2)"
 
 api() { curl -s -m 10 "$BASE/pleya/v1$1" "${@:2}"; }
+status_with_auth() { curl -s -m 10 -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $2" "$1"; }
 
 # De uitdrukking gaat via de omgeving en niet via de opdrachtregel: hij bevat
 # dubbele aanhalingstekens, en die overleven de weg door twee shells niet.
@@ -151,14 +152,15 @@ print(eval(os.environ["PLEYA_EXPR"]))' 2>/dev/null
 tables="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'" 2>/dev/null | tr -d '\r')"
 if [ "${tables:-0}" -ge 14 ]; then ok "schema gemigreerd ($tables tabellen)"; else fail "schema telt $tables tabellen"; fi
 
-# Er is geen users- of sessions-tabel. Dat is de drift check uit hoofdstuk 23.1
-# in scriptvorm: tokens uitgeven tegen één identiteit vraagt daar niet om.
+# Dat is de drift check uit hoofdstuk 23.1 in scriptvorm: geen enkele fase mag
+# van een tabel uit een latere fase afhangen.
 #
-# watch_states en stream_sessions staan sinds PS-4 wél in het schema (DEC-049 en
-# DEC-051) en zijn daarom uit deze lijst gehaald. play_history en play_sessions
-# staan er nadrukkelijk nog wel in: die horen bij PS-9P, en PS-4 mag niet van een
-# tabel uit een latere fase afhangen.
-forbidden="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT coalesce(string_agg(table_name, ','), '') FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('users','sessions','library_permissions','play_history','play_sessions','user_item_data','transcode_sessions','external_ids','metadata_candidates')" 2>/dev/null | tr -d '\r')"
+# watch_states en stream_sessions staan sinds PS-4 in het schema (DEC-049 en
+# DEC-051); users, sessions en library_permissions sinds PS-9, migratie 0007
+# (DEC-098, DEC-102). Alle vijf zijn daarom uit deze lijst gehaald. play_history
+# en play_sessions staan er nadrukkelijk nog wel in: die horen bij PS-9P, en
+# PS-9 mag daar niet van afhangen.
+forbidden="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT coalesce(string_agg(table_name, ','), '') FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('play_history','play_sessions','user_item_data','transcode_sessions','external_ids','metadata_candidates')" 2>/dev/null | tr -d '\r')"
 if [ -z "$forbidden" ]; then ok "geen tabel uit een latere fase"; else fail "tabellen uit een latere fase: $forbidden"; fi
 
 setup_required="$(api /info | jq_field 'd["auth"]["setup_required"]')"
@@ -303,8 +305,69 @@ else
   fail "de kijkstatuslijst is leeg"
 fi
 
+section "gebruikers en sessies (PS-9)"
+
+# Een tweede gebruiker aanmaken, haar één bibliotheek geven, en aantonen dat ze
+# de andere niet ziet. Dat is acceptatiecriterium 1 en 2 in scriptvorm: de
+# Go-tests bewijzen hetzelfde tegen de router, dit bewijst het tegen een
+# draaiende container met een echte database eronder.
+SANNE="$(api /users "${AUTH[@]}" -X POST -H 'Content-Type: application/json' \
+  -d '{"username":"sanne","password":"nog-een-lang-wachtwoord","role":"member"}' | jq_field 'd["id"]')"
+if [ -n "${SANNE:-}" ] && [ "$SANNE" != "None" ]; then
+  ok "een tweede gebruiker aangemaakt via POST /users"
+else
+  fail "POST /users leverde geen gebruiker"
+fi
+
+api "/users/$SANNE/permissions" "${AUTH[@]}" -X PUT -H 'Content-Type: application/json' \
+  -d "{\"permissions\":[{\"library_id\":\"$FILMS\",\"permission\":\"view\"}]}" >/dev/null
+
+SANNE_ACCESS="$(api /auth/login -X POST -H 'Content-Type: application/json' \
+  -d '{"username":"sanne","password":"nog-een-lang-wachtwoord"}' | jq_field 'd["access_token"]')"
+if [ -n "${SANNE_ACCESS:-}" ] && [ "$SANNE_ACCESS" != "None" ]; then
+  ok "de tweede gebruiker logt in met haar eigen wachtwoord"
+else
+  fail "de tweede gebruiker kon niet inloggen"
+fi
+SANNE_AUTH=(-H "Authorization: Bearer $SANNE_ACCESS")
+
+if [ "$(api /libraries "${SANNE_AUTH[@]}" | jq_field 'len(d["items"])')" = "1" ]; then
+  ok "zij ziet één bibliotheek en de owner ziet er twee"
+else
+  fail "de bibliotheekfilter per gebruiker klopt niet"
+fi
+
+if [ "$(api /users "${SANNE_AUTH[@]}" | jq_field 'len(d["items"])')" = "1" ]; then
+  ok "een member ziet in GET /users alleen zichzelf"
+else
+  fail "een member ziet meer gebruikers dan zichzelf"
+fi
+
+# Haar sessie intrekken maakt haar token onmiddellijk ongeldig, en raakt de
+# sessie van de owner niet. Dat is acceptatiecriterium 3 op aanvraagniveau; de
+# gemeten grens tegen een lopende stream staat in de Go-test.
+SANNE_SESSION="$(api "/sessions?user_id=$SANNE" "${AUTH[@]}" | jq_field 'd["items"][0]["id"]')"
+api "/sessions/$SANNE_SESSION" "${AUTH[@]}" -X DELETE >/dev/null
+if [ "$(status_with_auth "$BASE/pleya/v1/libraries" "$SANNE_ACCESS")" = "401" ]; then
+  ok "een ingetrokken sessie maakt het accesstoken meteen ongeldig"
+else
+  fail "het token van een ingetrokken sessie werkt nog"
+fi
+if [ "$(api /libraries "${AUTH[@]}" | jq_field 'len(d["items"])')" = "2" ]; then
+  ok "de sessie van de owner is ongemoeid gebleven"
+else
+  fail "de intrekking raakte een andere sessie"
+fi
+
+# En de owner blijft de owner.
+if [ "$(curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" -X DELETE "$BASE/pleya/v1/users/$SANNE")" = "204" ]; then
+  ok "een gebruiker verwijderen ruimt haar sessies en rechten op"
+else
+  fail "de gebruiker kon niet verwijderd worden"
+fi
+
 # En de latere fasen bestaan nog steeds niet.
-for path in "/pleya/v1/playback/plan" "/pleya/v1/users" "/pleya/v1/collections"; do
+for path in "/pleya/v1/playback/plan" "/pleya/v1/collections"; do
   if [ "$(curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE$path")" = "404" ]; then
     ok "$path bestaat niet"
   else

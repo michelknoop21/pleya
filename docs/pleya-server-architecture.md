@@ -129,6 +129,14 @@ uiteindelijk precies één van drie besluiten: een eigen Pleya-equivalent, hetze
 anders opgelost, of aantoonbaar buiten de productscope. Die laatste categorie is nooit een restbak
 voor wat moeilijk bleek.
 
+**De productscope is sinds 3 september 2026 breder dan de Plex-vervanging.** E-books zijn met
+[DEC-107](DECISIONS.md) een contentdomein van Pleya Server geworden, naast film en serie. Plex
+levert geen boeken, dus die uitbreiding is met de driedeling hierboven niet te beschrijven: er is
+geen verantwoordelijkheid om over te nemen, anders op te lossen of buiten scope te verklaren. Zulke
+uitbreidingen staan in een eigen sectie van de replacement matrix, buiten de Plex-off gate en met
+dezelfde onderhoudsdiscipline. De zin hierboven blijft dus gelden voor alles wat Plex wél doet, en
+is niet langer een uitputtende beschrijving van wat Pleya Server is.
+
 ---
 
 ## 2. De grens tussen Pleya Share en Pleya Server
@@ -670,9 +678,17 @@ nergens bestaat.
 app, toestel, uitgang en verbinding op dit moment aan? Vier lagen, elk met een eigen bron van
 waarheid:
 
-**Decoder.** Welke videocodecs, profielen, levels en bitdieptes de speler daadwerkelijk decodeert.
-Bron is de mpv/MPVKit-laag plus platformkennis, niet een aanname. Een Apple TV 4K en een Apple TV HD
-verschillen hier.
+**Decoder.** Welke videocodecs, profielen, levels en bitdieptes de speler daadwerkelijk decodeert,
+en welke **containers** hij als bron accepteert. Bron is de mpv/MPVKit-laag plus platformkennis, niet
+een aanname. Een Apple TV 4K en een Apple TV HD verschillen hier.
+
+De containerlijst hangt aan de demuxer en hoort daarom bij deze laag. Hij staat er omdat een browser
+MP4 en WebM neemt en geen MKV, terwijl de Flutter-speler vrijwel alles neemt: dat verschil is een
+capability en geen clienttype, en
+[hoofdstuk 10.4](#104-waar-de-planner-nooit-op-vertakt) verbiedt de planner expliciet om op het
+clienttype te vertakken. Zonder de lijst in het model zou een browser alleen te bedienen zijn door
+die regel te breken. Vastgelegd in hoofdstuk 11.1 van
+[het masterplan](pleya-server-masterplan-proposal.md).
 
 **Weergave.** Resolutie, refresh-rates, HDR-transferfuncties die het aangesloten scherm accepteert.
 Op tvOS en Android TV is dit uit het systeem te lezen; op desktop is het deels bekend en deels een
@@ -1548,16 +1564,31 @@ flowchart LR
   P2 --> P3["3. PleyaServerClient"]
   P2 --> P3W["3W. Pleya Web"]
   P3 --> P4["4. Direct play +<br/>watch state"]
+  P3W --> P4E["4E. Pleya Web:<br/>app-paritaire beleving"]
+  P4 --> P4E
+  P4E --> P4W["4W. Pleya Web:<br/>afspelen"]
   P4 --> P5["5. DeviceCapabilities"]
   P5 --> P6["6. PlaybackPlan"]
   P6 --> P7["7. Metadata"]
+  P2 --> P7N["7N. Sidecar-metadata"]
+  P2 --> P7A["7A. Artworkformaten"]
   P6 --> P8["8. Transcoding"]
   P4 --> P9["9. Users + rechten"]
   P8 --> P10["10. Downloads"]
   P9 --> P11["11. Remote + observability"]
   P9 --> P12["12. Plex-migratie"]
   P8 --> P13["13. Externe workers"]
+  P2 --> P14["14. E-bookcatalogus"]
+  P9 --> P14
+  P14 --> P15["15. Reader + leesvoortgang"]
 ```
+
+**Wat de twee volgordevelden in de fasetabellen betekenen.** Bindend is uitsluitend
+**Afhankelijkheden**, samen met deze graaf. Het veld **Eerstvolgende fase** is een leeswijzer die de
+hoofdlijn aanwijst; het is geen uitvoeringsopdracht en geen tweede afhankelijkheidsregel. Waar de
+graaf vertakt mag elke fase waarvan de afhankelijkheden gesloten zijn als volgende worden opgepakt.
+De gekozen doorloop na PS-4 is PS-5, PS-9, PS-11A, en daarna PS-6, PS-7, PS-8, vastgelegd in
+[docs/pleya-server-phase-order-deviation.md](pleya-server-phase-order-deviation.md).
 
 Fase 0 staat vooraan omdat hij niets over het product zegt en alles over de grond eronder. Hij is
 toegevoegd nadat de doelhardware gemeten bleek af te wijken van wat hoofdstuk 22 stilzwijgend
@@ -1566,6 +1597,24 @@ aanneemt; zie [docs/pleya-server-ps0-proposal.md](pleya-server-ps0-proposal.md).
 Capabilities en het playbackplan staan vóór metadata omdat daar de architecturale vernieuwing zit;
 metadata blokkeert de playbackkern niet en kan later. Fase 3 is de eerste die de app raakt, en dan
 achter een nieuwe `ConnectionKind` naast de bestaande vier.
+
+PS-4E, PS-7N en PS-7A zijn er op 24 augustus 2026 bij gekomen, vastgelegd in
+[docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) en
+[DEC-106](DECISIONS.md). Alle drie hangen ze aan fasen die al gesloten zijn, en geen ervan voegt een
+afhankelijkheid toe aan PS-9 of PS-11A. PS-4E tilt de webbeleving naar app-pariteit en zet zich
+tussen PS-3W en PS-4W; PS-7N en PS-7A zijn uitsnedes van PS-7 die alleen PS-2 nodig hebben. PS-4W
+verliest daarbij twee scope-items aan PS-4E, en die knip staat in
+[docs/pleya-server-masterplan-proposal.md](pleya-server-masterplan-proposal.md) 16.3. Net als bij
+PS-3W behouden PS-1 tot en met PS-13 hun nummer.
+
+PS-14 en PS-15 zijn er op 3 september 2026 bij gekomen, vastgelegd in
+[docs/pleya-server-ebooks-proposal.md](pleya-server-ebooks-proposal.md) en
+[DEC-107](DECISIONS.md). Ze dragen e-books als contentdomein en zijn de eerste fasen die niet uit de
+Plex-vervanging voortkomen: Plex levert geen boeken, dus er is geen verantwoordelijkheid over te
+nemen. PS-14 hangt aan PS-2 en PS-9 en voegt aan geen enkele andere fase een afhankelijkheid toe;
+de doorloop PS-5, PS-9, PS-11A, daarna PS-6 tot en met PS-8 verandert er niet door. PS-16 staat
+begrensd maar niet vrijgegeven in de fasetabellen. Goedkeuring van dat voorstel voegt de fasen toe
+en geeft ze niet vrij; het vrijgeven van PS-14 is een apart besluit.
 
 PS-3W hangt naast PS-3 en niet erachter. Het is een tweede client op hetzelfde protocol, en de twee
 fasen raken elkaars bestanden nergens: PS-3 wijzigt `lib/`, PS-3W wijzigt dat niet en voegt
@@ -2263,15 +2312,78 @@ PS-4 mag daar niet van afhangen, dus zo'n event wordt beantwoord en gelogd en ni
 
 ---
 
+### Fase 4E. Pleya Web: app-paritaire beleving
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-4E |
+| Doel | Pleya Web krijgt herkenbaar dezelfde Pleya-interface als de app, en toont de kijkstatus die er al is |
+| Bijdrage aan einddoel | de belofte uit PS-3W-voorstel 5.4 dat Pleya Web de primaire interface wordt, krijgt een fase die hem draagt in plaats van bijvangst van latere fasen te zijn |
+| Afhankelijkheden | PS-3W, PS-4 (inclusief de hub-correctie uit onderdeel 4.2 van het voorstel) |
+| Eerstvolgende fase | PS-4W |
+
+Toegevoegd als goedgekeurde afwijking, vastgelegd in
+[docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) en
+[DEC-106](DECISIONS.md). PS-1 tot en met PS-13 behouden hun nummer, doel, scope en stopcriterium.
+
+Het doel staat expliciet in twee helften, omdat elke helft zonder de andere een geslaagde oplevering
+zou lijken zonder er een te zijn:
+
+> Pleya Web moet zowel herkenbaar dezelfde Pleya-interface krijgen als de bestaande app, als
+> daadwerkelijk bruikbaar worden om media te bladeren, openen en afspelen. Visuele pariteit zonder
+> bruikbaarheid is onvoldoende, maar bruikbaarheid met een afwijkende generieke webinterface is
+> eveneens geen geslaagde oplevering.
+
+**Scope.** De schil en de navigatie op app-niveau, een hero-carrousel, kaarten met NEW-badge,
+watched-vinkje en voortgangsbalk, en een detailpagina met samenvatting en genres waar PS-7N die
+levert. Home draagt de drie hubs: Verder kijken, Nieuwe afleveringen en Recent toegevoegd. De
+voortgang die de kaarten tonen komt uit `user_state` op de bestaande item- en hubantwoorden, die
+`hydrateItems` er vandaag al aan hangt.
+
+De stijlvolgorde bij elke twijfel: de app-screenshots bepalen de compositie, de Flutter-code bepaalt
+de exacte maten, tokens en gedrag, en een bestaand webcomponent is nooit een reden om van allebei af
+te wijken.
+
+**Out of scope.** De speler zelf, en elke vorm van kijkstatus **schrijven** vanuit de browser. Geen
+seek- of playbackrapportage, geen `session_id`, geen `base_revision`. PS-4E introduceert geen enkele
+nieuwe watch-state-write: wat een gebruiker op de webclient ziet, is uitsluitend een weergave van
+state die de app of een eerdere sessie al heeft geschreven. Geen backend-, schema- of
+protocolwijziging.
+
+**Acceptatiecriteria.**
+1. Home toont de drie hubs, en een rij die leeg is tekent zichzelf niet.
+2. Een aflevering die in de Flutter-app half gekeken is, verschijnt zonder tussenkomst met de juiste
+   voortgangsbalk op de webclient.
+3. De netwerklaag laat zien dat de webclient geen `POST /watch-state` doet, in geen enkele flow.
+4. De schil, de kaarten en de detailpagina zijn naast de app-screenshots te leggen zonder dat de
+   afwijkingen op maat, ruimte of typografie opvallen.
+5. Elke route blijft met het toetsenbord bedienbaar en levert geen axe-overtreding op, op dezelfde
+   vijf breedtes als PS-3W.
+
+**Stopcriterium.** Iemand opent Pleya Web, herkent de Pleya-interface zonder uitleg, en ziet op Home
+waar hij in de app gebleven was.
+
+**Risico's.** De verleiding is de speler: de rijen vullen zich, de kaart toont voortgang, en dan is
+op de kaart klikken om te kijken één stap. Dat is PS-4W. Het tweede risico is de omgekeerde: een
+webcomponent dat er "goed genoeg" uitziet en de Flutter-maten niet volgt, waarna pariteit per PR
+wordt heronderhandeld.
+
+**Tests.** Componenttests op de kaart met en zonder voortgang, op de drie hubs inclusief de lege
+staat, en op de hero. End-to-end tegen de echte binary met een kijkstatus die vooraf via
+`POST /watch-state` is gezet, zodat criterium 2 op echte data rust en niet op een fixture.
+
+---
+
 ### Fase 5. `DeviceCapabilities` in de client
 
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-5 |
+| Status | **opgeleverd 23 augustus 2026, nog niet gesloten**: acht commits, `lib/media/device_*.dart`, `lib/services/device_capabilities_service.dart` en de twee builders. Acceptatiecriterium 4 vraagt hardware en is open, bewust uitgesteld wegens gebrek aan tijd. Blokkeert het starten van PS-9 niet, zie [DEC-097](DECISIONS.md#dec-097-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet) |
 | Doel | de client stelt vast wat dit toestel aankan, en stuurt dat naar elke backend |
 | Bijdrage aan einddoel | dit is de ontbrekende abstractie uit de samenvatting; hij is zelfstandig waardevol, ook zonder Pleya Server |
 | Afhankelijkheden | PS-4 (voor de Pleya Server-kant), verder geen |
-| Eerstvolgende fase | PS-6 |
+| Eerstvolgende fase | PS-9, en daarna PS-11A; PS-6 volgt op de terugweg. Zie [de volgorde-afwijking](pleya-server-phase-order-deviation.md) |
 
 **Scope.** Het model uit [hoofdstuk 9](#9-device-capabilities-in-de-client) met vier lagen: decoder,
 weergave, audio-uitgang, verbinding. Detectie per platform, met gebruikersoverrides die naast de
@@ -2305,6 +2417,42 @@ plus hardwareverificatie op minimaal Apple TV met een multichannel-uitgang.
 
 **Roadmap Drift Check.** Is er iets in het model geslopen dat geen antwoord geeft op "kan dit toestel
 deze bytes weergeven"? Dat is een gebruikersinstelling en hoort elders.
+
+**Uitkomst van de drift check, 23 augustus 2026.** Nee. De vier lagen dragen codecs, containers,
+resolutie, refresh-rates, HDR-transfers, kanalen, passthrough, locality en bandbreedte, en verder
+niets. Taal, ondertitelstijl en afspeelsnelheid zijn er niet in gekomen.
+`TranscodeQualityPreset` houdt zijn tweede rol buiten het model: `playback_source_resolver.dart`
+leest hem rechtstreeks om te bepalen of de gedownloade kopie voorgaat op de serverstream, en dat is
+een bronkeuze en geen capability.
+
+Wat er in de andere richting is blijven liggen, en met opzet: de spelerconfiguratie vertakt nog
+steeds per platform (`_getHwdecValue`, de `Player()`-factory, shaders, ambient lighting, PiP,
+display-matching, buffer- en heaptiers). Dat is geen profiel richting een backend en het hoort niet
+in dit model.
+
+Twee dingen zijn gemeld in plaats van weggeschreven. De decoderlaag is `inferred` en niet `detected`,
+omdat niets in deze app `decoder-list`, `audio-device-list` of `hwdec-interop` aan mpv vraagt; dat
+markeert waar de volgende winst zit in plaats van hem te verbergen. En de audiolaag meldt `unknown`
+op kanalen buiten Apple, want er is geen Android-equivalent van `AppleAudioRoute`; Android TV en Fire
+TV krijgen in PS-5 dus geen betere audio. Het model hoeft daar niet voor te veranderen, er komt een
+bron bij.
+
+**De vijf acceptatiecriteria, per stuk.**
+
+| # | Criterium | Stand |
+| --- | --- | --- |
+| 1 | twee toestellen, aantoonbaar verschillende capabilities, in een test met een gemocked platform | gehaald. `test/media/device_capabilities_fixtures.dart` draagt vijf toestellen, en `device_capabilities_service_test.dart` draait de detectie met de host als argument in plaats van uit `Platform.is…` |
+| 2 | de Jellyfin- en Plex-profielen komen uit het model, de oude constanten bestaan niet meer | gehaald. `buildJellyfinDeviceProfile` en `buildPlexTranscodeParams` zijn pure functies; de constante in `jellyfin_client/parts/playback.dart` en de clause-lijst in `plex_client.dart` zijn weg |
+| 3 | een override is zichtbaar als override, en de gedetecteerde waarde blijft bekend | gehaald. `Capability.observed` houdt de waarneming vast, `isOverride` maakt hem zichtbaar, en de confidence blijft die van de waarneming: een override van een `inferred` waarde wordt geen meting |
+| 4 | geen regressie op bestaand afspeelgedrag, aangetoond op echte hardware voor tvOS plus één desktopplatform | **open, bewust uitgesteld.** Build 242 staat al op TestFlight voor alle drie de platforms; alleen de ronde op toestellen ontbreekt, en daar is nu geen tijd voor. Blokkeert PS-9 niet, zie [DEC-097](DECISIONS.md#dec-097-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet). Moet alsnog gedraaid worden vóór de eerstvolgende publieke release die PS-5- of PS-9-gedrag meeneemt |
+| 5 | (stopcriterium) het model is de enige bron voor alle drie de profielen | gehaald voor de twee die bestaan. Het derde profiel is het Pleya Server-oppervlak, en dat is PS-6-scope: het protocol kent geen `DeviceCapabilities`-schema en is niet aangeraakt |
+
+**Twee bewuste gedragswijzigingen, elk in een eigen commit.** `truehd` in de Jellyfin
+direct-play-audiolijst op mpv-platforms, en de resolutiecap van de gebruiker als `Width`- en
+`Height`-conditie. Beide zijn los terug te draaien als de deviceronde krap wordt. Wat er
+uitdrukkelijk **niet** in zit: Plex `location` blijft `lan`, omdat een privé-adrescheck op de
+server-URL geen bewijs is en Plex het als harde invoer behandelt; en HDR blijft volledig van de lijn,
+omdat alleen Windows het paneel kan bevragen.
 
 ---
 
@@ -2397,6 +2545,60 @@ bewijst dat een correctie een providerronde overleeft.
 staat de server straks te wachten op een externe API tijdens een gebruikersaanvraag.
 
 ---
+### Fase 7N. Lokale sidecar-metadata
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-7N |
+| Doel | `summary`, `genres` en `content_rating` uit de `.nfo`-bestanden die naast de media staan |
+| Bijdrage aan einddoel | een detailpagina zonder samenvatting is in geen enkele client af; laag 2 van de vijf metadatabronnen levert dat zonder providerladder |
+| Afhankelijkheden | PS-2 |
+| Eerstvolgende fase | geen; PS-7 neemt de rest |
+
+Toegevoegd als goedgekeurde afwijking, vastgelegd in
+[docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) en
+[DEC-106](DECISIONS.md).
+
+**Voorwaardelijk.** PS-7N wordt pas uitgevoerd nadat de coverage-gate uit onderdeel 4.4 van het
+voorstel gemeten is: het percentage films en series per bibliotheek met een geldige, parsebare `.nfo`
+én een niet-lege `<plot>`. Bij 80 procent of meer per meetellende bibliotheek gaat de fase door.
+Blijft een bibliotheek daaronder, dan is PS-7N voor die bibliotheek geen oplossing en volgt er een
+apart voorstel voor een minimale provider-slice. "Geen metadata" is daarbij geen terugvaloptie.
+
+**Scope.** Drie velden, uit lokale sidecars, met een protocolvenster dat er alleen voor opengaat.
+
+**Out of scope.** Cast, beoordelingen, studio, tagline, releasedatum, externe ids, logo-artwork,
+matching en de providerladder zelf blijven bij PS-7. `detection`, de herkomstlaag met bron en status
+per veld die `media_versions` en `media_streams` al kennen, komt hier bewust niet mee: met precies
+één bron per veld valt er niets te onderscheiden. Dat is een bekende toekomstige migratie voor PS-7,
+hier vastgelegd en niet vooruitgebouwd.
+
+---
+
+### Fase 7A. Afgeleide artworkformaten
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-7A |
+| Doel | `?width=` op `GET /artwork/{artwork_id}` werkend maken |
+| Bijdrage aan einddoel | een raster van dertig posters op ware grootte laden is op een NAS en op mobiel het verschil tussen bruikbaar en niet |
+| Afhankelijkheden | PS-2 |
+| Eerstvolgende fase | geen; PS-7 neemt de rest van artwork |
+
+Toegevoegd als goedgekeurde afwijking, vastgelegd in
+[docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) en
+[DEC-106](DECISIONS.md).
+
+**Scope.** De parameter staat al in het contract en wordt vandaag bewust genegeerd; de doc-comment op
+`handleArtwork` legt uit waarom. PS-7A maakt hem waar: schalen, een cache op schijf, single-flight
+bij een gelijktijdige cache miss op hetzelfde formaat, en terugval op het origineel wanneer het
+bronformaat niet te decoderen is. Geen protocolwijziging: het contract belooft dit al.
+
+**Out of scope.** Andere artworksoorten dan wat de scanner vandaag vindt, en elke vorm van
+artwork ophalen bij een externe bron. Dat is PS-7.
+
+---
+
 ### Fase 8. Remux, transcoding en sessielevenscyclus
 
 | Veld | Inhoud |
@@ -2449,6 +2651,7 @@ lokale executor volstaat? Dat is fase 13, en het valt onder de regel in 23.1.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-9 |
+| Status | **gesloten 4 september 2026**: migratie 0007, `internal/auth/users.go`, `internal/auth/revocation.go`, de vijf routes onder `/users`, `GET`/`DELETE /sessions`, `POST /auth/logout`, en aan de clientkant `ProfileKind.pleyaServer` met `PleyaServerCredentialResolver`. Het stopcriterium is op de draaiende NAS gehaald en niet alleen in een container, zie hieronder |
 | Doel | een huishouden met meerdere mensen, elk met eigen rechten en eigen kijkstatus |
 | Bijdrage aan einddoel | een server zonder gebruikers vervangt Plex niet voor een gezin |
 | Afhankelijkheden | PS-4 |
@@ -2477,13 +2680,89 @@ leeftijdsgrenzen. Geen herstructurering van `UserProfileProvider` voor Plex of J
 
 **Risico's.** Autorisatie die alleen op lijstniveau zit is de meest voorkomende fout; criterium 2 is
 daar de gate op. De `clientScopeId`-ambiguïteit uit [hoofdstuk 4.4](#44-cachescope-neemt-de-server-als-eenheid)
-wordt hier scherper, en de migratie die scope expliciet maakt hoort in deze fase.
+wordt hier scherper, en de migratie die scope expliciet maakt hoort in deze fase. Drie risico's kwamen
+pas bij het PS-9-ontwerp scherp in beeld, vastgelegd in
+[DEC-098](DECISIONS.md#dec-098-rollen--en-rechtenmodel-voor-ps-9-vier-rollen-een-ladder-precies-één-owner)
+tot en met
+[DEC-105](DECISIONS.md#dec-105-de-endpoint--en-autorisatiematrix-is-de-bindende-testmatrix-niet-een-beschrijving):
 
-**Tests.** Autorisatietests per endpoint met een gebruiker zonder recht. Migratietest op de
-scope-kolommen met bestaande rijen.
+- **Server-globale state die per gebruiker of per sessie had gemoeten.** De reuse-intrekking op
+  refreshtokens (`internal/auth/store.go:226`) en de rate limiter draaiden tot nu toe met precies één
+  identiteit in gedachten. Dat wordt pas zichtbaar met een tweede echte gebruiker, niet door een test
+  die met één identiteit blijft testen.
+- **De haalbaarheid van AC3 tegen een lopende `io.CopyN`.** DEC-099 legt de bovengrens vast op twee
+  seconden, gemeten, niet booleaans afgevinkt; `copyRange` moet daarvoor een onderbreekbare lus worden.
+- **De migratie van actieve refreshketens op de live NAS.** Het risico is "iedereen moet opnieuw
+  inloggen", niet "de migratie faalt": elke actieve keten krijgt een eigen `legacy`-sessie, zodat
+  hergebruik door het ene toestel niet het revoke-domein van een ander toestel raakt.
+
+**Tests.** Autorisatietests per endpoint met een gebruiker zonder recht (de vijftien regels uit de
+autorisatiematrix, hoofdstuk 8). Migratietest op de scope-kolommen met bestaande rijen, inclusief een
+fixture-DB met twee actieve refreshketens en een limitertest met twee sleutels.
+
+**Implementatievolgorde.** Zes stappen, in deze volgorde. DEC-099, DEC-104 en DEC-105 verwijzen
+ernaar als "hoofdstuk 8". Dat was de nummering van het PS-9-ontwerpdocument; de inhoud daarvan is
+geland in DEC-098 tot en met DEC-105 en in hoofdstuk 16 van de protocolspecificatie, maar de
+volgorde zelf stond nergens en is op 3 september 2026 uit commit-onderwerpen en codecommentaar
+gereconstrueerd. Zij staat hier zodat die drie verwijzingen ergens naartoe wijzen.
+
+| Stap | Inhoud | Klaar wanneer |
+| --- | --- | --- |
+| 1 | `openapi.yaml`, `pleya-protocol-v1.md` en de fixtures voor de zeven wijzigingen uit DEC-101 | `scripts/check_protocol.sh` slaagt; het contractvenster sluit weer |
+| 2 | Migratie 0007, de sessie-scoped tokenketen uit DEC-102, en een loginlimiter met een sleutel per gebruikersnaam | de drie DEC-104-tests op een fixture-DB met twee actieve refreshketens zijn groen |
+| 3 | Kijkstatus per geauthenticeerde gebruiker in plaats van per server | twee gebruikers schrijven aantoonbaar in gescheiden rijen |
+| 4 | De gebruikersbeheer-API uit DEC-100, en een inlogpad dat niet meer alleen de owner kent | een tweede gebruiker ontstaat en logt in zonder handmatige SQL; `capabilities.users` gaat aan |
+| 5 | De autorisatiematrix uit DEC-105 | alle vijftien regels hebben een eigen test met een gebruiker zonder recht |
+| 6 | Het intrekkingsregister uit DEC-099, de onderbreekbare `copyRange`, en de sessie-endpoints uit DEC-103 | de gemeten revocatielatentie tegen een lopende stream blijft onder twee seconden; `capabilities.sessions` gaat aan |
+
+De volgorde is niet vrij. Stap 1 gaat voorop omdat het contractvenster erop sluit, stap 2 omdat elke
+latere stap een `sessions`-rij nodig heeft om aan te hangen, en stap 4 vóór stap 5 en 6 omdat regel
+14 en 15 van de matrix endpoints toetsen die stap 4 en 6 pas maken. Stap 5 is daarmee de enige die
+zijn eigen voorwaarden niet meebrengt: dertien van de vijftien regels zijn na stap 3 al te schrijven,
+de laatste twee niet.
 
 **Roadmap Drift Check.** Is er een rechtenmodel gebouwd dat verder gaat dan bibliotheekniveau? Dat is
-niet gevraagd en maakt het model moeilijker uitlegbaar.
+niet gevraagd en maakt het model moeilijker uitlegbaar. Is er een revocatiemechanisme gebouwd dat
+verder gaat dan sessie- en streamtokenintrekking? Een generieke pub/sub-laag is PS-11 of later, zie
+DEC-099. Handhaaft `manage` iets binnen PS-9? Dat hoort bij PS-7 en PS-11A; in PS-9 wordt hij alleen
+opgeslagen en teruggegeven.
+
+Op 4 september 2026 zijn die drie vragen tegen de code beantwoord en niet tegen de bedoeling.
+`library_permissions` heeft alleen `(user_id, library_id, permission)` met drie ladderwaarden, dus er
+is geen granulariteit onder de bibliotheek. `auth.Revocations` is één `map[id.ID]time.Time` op
+sessie-id, gevuld uit `sessions.revoked_at`, zonder `LISTEN`/`NOTIFY` of abonnees. En de enige
+rechtendrempel op een aanvraagpad is `catalog.PermissionView` in `internal/api/authorize.go`:
+`manage` wordt opgeslagen, gevalideerd, teruggegeven en bij degradatie teruggezet, maar nergens als
+toegangsvoorwaarde gelezen.
+
+**Bewijs bij het sluiten.** De testronde draaide met de wegwerp-Postgres eraan (`test-db.sh up` in
+dezelfde aanroep, anders slaat de hele suite zichzelf over en ziet een `-v`-run er groen uit terwijl
+er niets liep): 126 tests in `api`, `auth` en `migrate`, nul `SKIP`, nul `FAIL`, plus 4782 Dart-tests
+voor criterium 5.
+
+| Criterium | Bewijs |
+| --- | --- |
+| 1 | `TestSecondUserCanBeCreatedAndLogIn` gaat door `POST /users` en `/auth/login` en toetst dat het token haar eigen `subject` en een `sid` draagt; `TestSubjectsAreIsolated` scheidt de kijkstatus |
+| 2 | vijftien matrixregels met elk een eigen test; live gaven twee verboden bibliotheken en een echt item daaruit `404 library.not_found`, met dezelfde body als een id dat niet bestaat |
+| 3 | `TestRevocationStopsRunningStreamWithinTwoSeconds` mat 446 ms tegen een lopende stream; live was het ingetrokken accesstoken binnen 0,4 s `401`, met de refreshketen erbij, terwijl de owner bleef werken |
+| 4 | `TestSetupIsSingleUse`, `TestSetupRejectsWrongAndExpiredCode` en `TestOwnerIsImmutable` |
+| 5 | 4782 Dart-tests groen; `ProfileKind.pleyaServer` is additief en de enige wijziging aan gedeelde semantiek zit in `add_pleya_server_screen.dart` |
+
+Het stopcriterium is op de draaiende NAS gehaald: een tweede gebruiker aangemaakt via de API, één van
+de drie bibliotheken toegekend, zelf ingelogd, en de andere twee bleven onzichtbaar en onbereikbaar
+op een direct id. Daarna is haar sessie ingetrokken en haar account verwijderd, en stond de server
+weer op één owner en drie bibliotheken.
+
+Twee dingen zijn bewust niet gerepareerd, omdat het protocolvenster na stap 1 dicht is. Er is geen
+foutcode voor "restricted mag geen `manage` krijgen" (hoofdstuk 16.1 legt het verbod vast, het
+coderegister in 7.1 heeft er niets voor, dus `handleSetPermissions` gebruikt `auth.user_not_found`),
+en er is geen endpoint waarmee een client zijn eigen account-id opvraagt; de client identificeert
+zich op gebruikersnaam. Allebei horen in het eerstvolgende protocolvenster, met een toets langs de
+zes compatibiliteitsregels uit hoofdstuk 3 van de specificatie.
+
+Criterium 2 noemt naast stream- ook plan-endpoints. Die bestaan nog niet: `capabilities.playback_plan`
+staat op `false` en er is geen planroute in `openapi.yaml`. Dat deel van het criterium is leeg en
+wordt meegenomen wanneer PS-6 het planoppervlak maakt, niet nu afgevinkt.
 
 ---
 
@@ -2640,6 +2919,132 @@ Terugdraaien.
 
 ---
 
+| Phase ID | PS-14 |
+| --- | --- |
+| Status | **ontwerp goedgekeurd 3 september 2026, uitvoering niet vrijgegeven.** Het ontwerp staat in [docs/pleya-server-ps14-proposal.md](pleya-server-ps14-proposal.md), met zeven bindende beslissingen. De formulering hing eerst aan het sluiten van PS-9, en dat is op 4 september 2026 gebeurd; dat sluiten haalt de afhankelijkheid weg en is uitdrukkelijk geen vrijgave. Vrijgeven is een apart besluit dat niet genomen is, dus er komt tot dat besluit geen PS-14-productiecode |
+| Doel | een `books`-bibliotheek wordt gescand, gecatalogiseerd en via het protocol ontsloten, inclusief cover en het EPUB-bestand zelf |
+| Bijdrage aan einddoel | e-books horen sinds [DEC-107](DECISIONS.md) tot de productscope; zonder servercatalogus is er geen bron waar een lezer boeken vandaan haalt |
+| Afhankelijkheden | PS-2, PS-9 |
+| Eerstvolgende fase | PS-15 |
+
+**Scope.** `books` als bibliotheeksoort in database, configparser en protocol. Een eigen
+publicatie- en bestandsdomein voor boeken, naast en niet in de `media_*`-tabellen. Een
+EPUB-analyser. Een analysestap per bibliotheeksoort in de bestaande scanner, met ffprobe alleen voor
+`movies` en `shows`. Een eigen protocolresource voor lijst, detail, cover en bestand, met
+autorisatie via het bestaande `MayAccess`/`library_permissions`-model.
+
+**Out of scope.** Leesvoortgang, bladwijzers, annotaties, de reader zelf, offline boeken,
+aanbevelingen, boekmetadata uit externe providers, andere formaten dan EPUB, boeken in `/search` en
+in de hubs, en beheer van de bibliotheek via een scherm. Geen `book` in `media_items.kind` en geen
+e-books in `media_versions` of `media_streams`.
+
+**Acceptatiecriteria.**
+1. Een `books`-bibliotheek uit `PLEYA_SERVER_LIBRARIES` wordt gescand zonder dat de gedeelde
+   scannertests wijzigen.
+2. Een gebruiker zonder recht op die bibliotheek krijgt haar niet te zien en kan haar inhoud niet
+   opvragen, aantoonbaar via dezelfde autorisatiematrix als de rest.
+3. Een EPUB is via het protocol op te halen, met een herstartbare overdracht: hervatten via
+   `Range`/`If-Range` slaagt zolang de sterke validator van de boekroute dezelfde representatie
+   aanwijst, en begint opnieuw vanaf byte 0 zodra hij ontbreekt of afwijkt. De verhouding tot
+   [DEC-050](DECISIONS.md) staat in een eigen besluit, waarvan het nummer pas bij het committen
+   bepaald wordt.
+4. Het items-endpoint behandelt een `books`-bibliotheek niet langer als `movies`.
+5. Een scan van een filmbibliotheek draait geen enkele EPUB-analyse, en een scan van een
+   boekenbibliotheek draait geen enkele ffprobe, aantoonbaar met een teller of een log.
+6. `item_count` van een boekenbibliotheek telt publicaties, met die betekenis vastgelegd in
+   `openapi.yaml`.
+7. `scripts/check_protocol.sh` slaagt met het protocolvenster weer dicht, inclusief de
+   `x-unknown-safe`-markering op elke nieuwe enum.
+
+**Stopcriterium.** Een boek op de NAS is via de API te vinden, te openen en op te halen door de
+gebruiker die er recht op heeft.
+
+**Poort vóór de eerste protocolwijziging.** Het protocolvenster voor deze fase gaat pas open zodra
+aantoonbaar vaststaat hoe bestaande clients een nieuwe unknown-safe `LibraryKind` daadwerkelijk
+behandelen. `x-unknown-safe: true` bewijst compatibiliteit op de lijn en niet dat de client die
+uitvoert; zie
+[docs/pleya-server-ebooks-proposal.md](pleya-server-ebooks-proposal.md) 4.4.
+
+**Risico's.** De grootste kans op stille schade is dat de dispatch per bibliotheeksoort de gedeelde
+scanlogica alsnog splitst.
+
+**Tests.** Autorisatietests per rol op de nieuwe resource, een scantest op een boekenbibliotheek, en
+de bestaande scannertests ongewijzigd.
+
+**Geen vooruitgebouwde onderlaag.** PS-14 bouwt geen infrastructuur vooruit voor PS-15 of PS-16
+tenzij PS-14 die zelf aantoonbaar nodig heeft. De Roadmap Drift Check hieronder vangt de zichtbare
+functie: een leespositie, een bladwijzer, een readerveld. De laag eronder ontsnapt daaraan, want een
+kolom, een tabel, een interface of een endpoint dat pas betekenis krijgt zodra er een reader is, ziet
+er in PS-14 uit als vooruitziend ontwerp in plaats van als drift. De toets is niet of iets later van
+pas komt, maar of een acceptatiecriterium van PS-14 er vandaag om vraagt. Dat is dezelfde regel als
+in [23.1](#231-de-roadmap-is-een-contract): bouw voor uitbreidbaarheid, bouw de uitbreiding niet vast
+vooruit. Vastgelegd op 3 september 2026, zie [DEC-107](DECISIONS.md) punt 8.
+
+De regel is bij de goedkeuring van het ontwerp toegepast op de sterke validator uit
+acceptatiecriterium 3. Die validator hoort erbij, want het criterium vraagt erom. Wat er niet bij
+hoort, ook niet in aanleg: een generieke downloadmanager, een persistent model voor gedeeltelijk
+opgehaalde bestanden, een downloadstatus-API, en elke vorm van bladwijzer- of offline-state. Dat is
+de onderlaag van PS-16.
+
+**Roadmap Drift Check.** Is er leesvoortgang, een bladwijzer of een readerveld gebouwd? Dat is PS-15.
+Draagt iets dat wel in scope stond een vorm die alleen zin heeft met een reader erachter? Dat is
+dezelfde drift, een laag dieper.
+
+---
+
+| Phase ID | PS-15 |
+| --- | --- |
+| Doel | een boek is in de mobiele app te lezen, en de leespositie reist mee tussen toestellen van dezelfde gebruiker |
+| Bijdrage aan einddoel | een catalogus zonder lezer levert geen productwaarde |
+| Afhankelijkheden | PS-14 |
+| Eerstvolgende fase | PS-16, niet vrijgegeven |
+
+**Scope.** De reader in de mobiele app, en de serverkant die hij nodig heeft: een canonieke
+leespositie per gebruiker en publicatie, plus een leesstatus in de orde van `unread`, `in_progress`
+en `completed`. De vorm van de leespositie volgt uit de gekozen readerengine en wordt in deze fase
+vastgelegd, niet eerder.
+
+**Out of scope.** Offline lezen en bladwijzers (PS-16). Een historische reeks leesgebeurtenissen:
+`play_history` blijft audiovisueel, en een volledige leesgeschiedenis krijgt zo nodig later een eigen
+model met een eigen besluit.
+
+**Acceptatiecriteria.**
+1. Een boek is van begin tot eind te lezen in de mobiele app.
+2. Een leespositie die op het ene toestel ontstaat, wordt op een ander toestel van dezelfde
+   gebruiker hervat.
+3. Twee toestellen die kort na elkaar schrijven, komen op een voorspelbare uitkomst uit zonder dat
+   er een positie stil verdwijnt.
+
+**Stopcriterium.** Iemand leest een boek uit op een iPhone en gaat op een iPad verder waar hij
+gebleven was.
+
+**Risico's.** De leaseconstructie uit `watch_states` overnemen terwijl een lezer dat
+eigendomsconflict niet heeft.
+
+**Tests.** Een conflicttest op gelijktijdig schrijven, en een hervattest over twee sessies.
+
+**Roadmap Drift Check.** Is er offline opslag of een bladwijzer gebouwd? Dat is PS-16.
+
+---
+
+| Phase ID | PS-16 |
+| --- | --- |
+| Doel | gereserveerd, niet vrijgegeven en niet ontworpen |
+| Afhankelijkheden | PS-15 |
+
+**Reservaat.** Lokale EPUB-downloads met offline lezen, en bladwijzers die tussen toestellen van
+dezelfde gebruiker synchroniseren.
+
+**Uitdrukkelijk niet impliciet meegenomen.** PDF of een ander formaat dan EPUB, DRM, annotaties en
+markeringen, en elke vorm van winkel of aankoop. Wat buiten het reservaat valt, is daarmee niet uit
+het eindproduct geschreven; het heeft alleen geen fase.
+
+**Let op de afhankelijkheid die niet geldt.** PS-10 hangt aan PS-8 omdat een offline video een
+vooraf getranscodeerde variant kan vragen. Een offline boek vraagt geen transcodering en mag die
+afhankelijkheid niet erven.
+
+---
+
 ## 24. Voorgestelde DEC-besluiten en open vragen
 
 ### 24.1 Voorgestelde besluiten
@@ -2686,6 +3091,14 @@ een sessie en een levenscyclus. fMP4 en HLS op het transcode-pad, geen DASH.
 **DEC-037: Pleya Server bouwt geen eigen NAT-traversal of relay.** Het architectuurbesluit is dat de
 server correct werkt achter HTTPS en achter een omgekeerde proxy; hoe die proxy tot stand komt is een
 deploymentrecept en staat in de documentatie, niet in de binary.
+
+`DEC-098` tot en met `DEC-105` **zijn geschreven** op 24 augustus 2026, bij het ontwerpen van fase 9,
+en sluiten alle blokkerende gaten van het PS-9-ontwerp: het rollen- en rechtenmodel (DEC-098), de
+revocatie-architectuur voor AC3 (DEC-099), de gebruikersbeheer-API (DEC-100), het protocolvenster voor
+PS-9 met de ontkoppeling van de vriezing van PS-5 (DEC-101), de sessie-, device- en tokenketen
+(DEC-102), de sessie-inzage- en -intrekkings-API (DEC-103), de migratie van bestaande refreshketens
+naar `legacy`-sessies (DEC-104), en de endpoint- en autorisatiematrix als bindende testmatrix
+(DEC-105). Zie [docs/DECISIONS.md](DECISIONS.md) voor de volledige tekst.
 
 ### 24.2 Open vragen
 
@@ -2774,7 +3187,7 @@ is een andere vraag. Dertien geslaagde fasen zijn geen bewijs dat Plex uit kan.
 > blocker staan de status Productgereed hebben, en de `PLEX_OFFLINE_REPLACEMENT_GATE` slaagt zonder
 > ook maar één runtimeaanroep naar Plex.**
 
-Daarnaast draagt elke overige capability op dat moment precies één expliciete status: Productgereed,
+Elke overige capability draagt op dat moment ook precies één expliciete status: Productgereed,
 Bewust anders opgelost, of Bewust buiten scope. **Geen enkele capability mag bij de vrijgave van de
 replacement-release op onbekend staan.** De lijst zelf staat in
 [docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md](PLEYA-SERVER-REPLACEMENT-MATRIX.md) en wordt daar

@@ -1,0 +1,79 @@
+<!-- widths: 1600 -->
+{{shell:admin|nav=Media en streaming|navAction=}}
+<div class="admin">
+  {{admin:media|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Media en streaming</div>
+    <h1 class="page-title" style="margin-top:0"><span>Media en streaming</span></h1>
+
+    <div class="cols-2" style="align-items:start">
+      <div>
+        <section class="panel">
+          <h3>Afspelen in de browser</h3>
+          <div class="form">
+            <label class="label" style="margin-top:0">Streamsessies per gebruiker</label>
+            <div class="field select">8 tegelijk {{icon:chevd}}</div>
+            <p class="help">Een browsertab is een sessie. Meer dan dit aantal geeft <span class="mono">session.stream_session_limit</span>; de oudste sessie wordt niet stilzwijgend afgebroken.</p>
+            <label class="label">Streamsessie verloopt na</label>
+            <div class="field select">30 minuten zonder aanvraag {{icon:chevd}}</div>
+            <label class="label">Streamtoken (apps en externe spelers) geldig</label>
+            <div class="field select">5 minuten {{icon:chevd}}</div>
+          </div>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Analyse</h3>
+          <dl class="kv" style="grid-template-columns:150px 1fr">
+            <dt>ffprobe</dt><dd><span class="status"><span class="dot"></span>gevonden · ffmpeg 5.1.9 (Debian)</span></dd>
+            <dt>Timeout per bestand</dt><dd>60 s <span class="dim">· omgeving</span></dd>
+            <dt>Werkers</dt><dd>2 <span class="dim">· omgeving</span></dd>
+          </dl>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Beheerd door de omgeving</h3>
+          <p class="help" style="margin:0">Paden (<span class="mono">/config</span>, <span class="mono">/cache</span>, <span class="mono">/transcode</span>), ffprobe-locatie en werkeraantal komen uit de containerconfiguratie en zijn hier alleen zichtbaar. Zie Diagnostiek voor de volledige lijst.</p>
+        </section>
+      </div>
+      <div>
+        <section class="panel">
+          <h3>Transcoderen <span class="status"><span class="dot"></span>aan · 1 sessie</span></h3>
+          <div class="form">
+            <label class="label" style="margin-top:0">Hardwareversnelling</label>
+            <div class="field select">Automatisch · beste gevonden backend {{icon:chevd}}</div>
+            <div class="kv" style="grid-template-columns:78px 1fr;margin:8px 0 0;font-size:13px">
+              <dt>VAAPI</dt><dd><span class="pill ok">gevonden</span> <span class="dim">Intel UHD 600 · H.264, HEVC</span></dd>
+              <dt>QSV</dt><dd><span class="pill ok">gevonden</span> <span class="dim">zelfde chip · H.264, HEVC</span></dd>
+              <dt>NVENC</dt><dd><span class="pill">geen kaart</span> <span class="dim">geen NVIDIA-toestel in de container</span></dd>
+              <dt>Software</dt><dd><span class="pill run">terugval</span> <span class="dim">libx264 · altijd beschikbaar</span></dd>
+            </div>
+            <p class="help">De server detecteert per start welke backends er werkelijk zijn en kiest per aanvraag de encoder die bij bron en doelcodec past; zonder hardware valt hij terug op software. AMD op Linux loopt via VAAPI.</p>
+            <label class="label">Gelijktijdige transcodes</label>
+            <div class="field select">2 {{icon:chevd}}<span class="dim" style="margin-left:8px">standaard, 1 tot 8</span></div>
+            <p class="help">Een derde aanvraag krijgt <span class="mono">playback.transcode_busy</span> en de app valt terug op direct play of wacht; de server kiest nooit stil een lagere kwaliteit.</p>
+            <label class="label">Kwaliteitsladder</label>
+            <div class="field select">1080p 8 Mbit · 720p 4 Mbit · 480p 1,5 Mbit {{icon:chevd}}</div>
+            <p class="help">Nooit opschalen. Wat een toestel niet aankan in 4K gaat naar 1080p in plaats van naar een verplichte 4K-transcode.</p>
+            <label class="label">Ondertitels bij transcoderen</label>
+            <div class="field select">Bitmap en niet-converteerbare ASS inbranden · tekst als WebVTT {{icon:chevd}}</div>
+            <label class="label">Transcodemap</label>
+            <div class="field mono" style="color:var(--ink-2)">/transcode · 6,1 GB van 20 GB {{icon:chevd}}</div>
+            <p class="help">Onder druk ruimt de server oude en inactieve artefacten op; een sessie die speelt raakt hij nooit aan. Het quotum is een instelling, geen constante.</p>
+          </div>
+          <div class="row" style="padding:12px 0 0">{{icon:tv}}<div class="body"><div class="t">Sanne · iPhone · Bluey S3 · A11</div><div class="s">HEVC 4K naar H.264 720p · 1,3× realtime · VAAPI</div></div><a class="btn ghost sm" href="#">{{icon:stop}} Stoppen</a></div>
+          <p class="help" style="margin-top:8px"><a class="all" href="#">Alle transcode-sessies bekijken</a> op scherm 37.</p>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Downloads naar apps <span class="status"><span class="dot"></span>aan</span></h3>
+          <div class="form">
+            <label class="label" style="margin-top:0">Wie mag downloaden</label>
+            <div class="field select">Volgens het bibliotheekrecht "downloaden" {{icon:chevd}}</div>
+            <label class="label">Kwaliteit voor een omgezette download</label>
+            <div class="field select">720p 4 Mbit {{icon:chevd}}</div>
+          </div>
+          <p class="help">Een download is het originele bestand met een SHA-256-digest, of een omgezette versie via de transcoder. Boeken worden altijd als bestand geleverd; de browser downloadt zelf alleen boeken.</p>
+        </section>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:20px;justify-content:flex-end"><a class="btn ghost" href="#">Annuleren</a><a class="btn primary" href="#">Opslaan</a></div>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 28 Media en streaming · S1, S18, S23 · alleen wat server-side instelbaar is; drie hwaccel-backends runtime gedetecteerd</div>

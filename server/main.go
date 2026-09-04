@@ -38,7 +38,14 @@ const (
 	maxLogSize         = 1 * 1024 * 1024 // 1MB
 	logMaxAge          = 3 * 24 * time.Hour
 	logIDLength        = 5
-	logRateInterval    = 1 * time.Minute
+	// Token bucket per IP: vijf uploads direct achter elkaar, bijvullen met
+	// één per minuut. Een diagnoseronde is "log vóór de actie, actie, log
+	// erna, opnieuw aanmelden, log erna" en die drie tot vijf uploads binnen
+	// enkele seconden zijn het normale gebruik, geen misbruik. Wie de burst
+	// leeg trekt wacht per volgende upload een minuut, en de 429 zegt met
+	// Retry-After precies hoe lang.
+	logRateBurst       = 5
+	logRateRefill      = 1 * time.Minute
 	maxLogEntries      = 500
 	maxPosterSize      = 5 * 1024 * 1024 // 5MB
 	maxPosterStoreSize = int64(1 * 1024 * 1024 * 1024)
@@ -349,11 +356,66 @@ type logEntry struct {
 	ExpiresAt time.Time
 }
 
+// logBucket is de per-IP token bucket voor uploads. Tokens groeien met
+// logRateRefill per stuk aan tot logRateBurst; een upload kost er één.
+type logBucket struct {
+	tokens   float64
+	lastSeen time.Time
+}
+
 type logStore struct {
 	entries   map[string]logEntry
-	rateLimit map[string]time.Time // IP -> last upload time
+	rateLimit map[string]*logBucket // IP -> bucket
 	dir       string
 	mu        sync.RWMutex
+}
+
+// refill werkt de tokenstand van de bucket bij naar [now] en geeft hem terug.
+// Aan te roepen met ls.mu vast.
+func (b *logBucket) refill(now time.Time) float64 {
+	elapsed := now.Sub(b.lastSeen)
+	if elapsed > 0 {
+		b.tokens += float64(elapsed) / float64(logRateRefill)
+		if b.tokens > logRateBurst {
+			b.tokens = logRateBurst
+		}
+		b.lastSeen = now
+	}
+	return b.tokens
+}
+
+// allowUpload zegt of dit IP nu mag uploaden. Zo niet, dan draagt het eerste
+// resultaat het aantal hele seconden tot het volgende token. Kijkt alleen; het
+// token wordt pas afgeschreven met [spendUploadToken], ná de validatie van de
+// body. Aan te roepen met ls.mu vast.
+func (ls *logStore) allowUpload(ip string, now time.Time) (waitSeconds int, ok bool) {
+	bucket := ls.rateLimit[ip]
+	if bucket == nil {
+		return 0, true
+	}
+	if bucket.refill(now) >= 1 {
+		return 0, true
+	}
+	wait := time.Duration((1 - bucket.tokens) * float64(logRateRefill))
+	seconds := int(wait / time.Second)
+	if wait%time.Second != 0 || seconds == 0 {
+		seconds++
+	}
+	return seconds, false
+}
+
+// spendUploadToken schrijft één token af voor dit IP. Aan te roepen met ls.mu
+// vast, en alleen nadat [allowUpload] ja zei.
+func (ls *logStore) spendUploadToken(ip string, now time.Time) {
+	bucket := ls.rateLimit[ip]
+	if bucket == nil {
+		bucket = &logBucket{tokens: logRateBurst, lastSeen: now}
+		ls.rateLimit[ip] = bucket
+	}
+	bucket.refill(now)
+	if bucket.tokens >= 1 {
+		bucket.tokens--
+	}
 }
 
 func newLogStore(dir string) *logStore {
@@ -362,7 +424,7 @@ func newLogStore(dir string) *logStore {
 	}
 	ls := &logStore{
 		entries:   make(map[string]logEntry),
-		rateLimit: make(map[string]time.Time),
+		rateLimit: make(map[string]*logBucket),
 		dir:       dir,
 	}
 	// Clean orphaned files from prior runs
@@ -402,8 +464,9 @@ func (ls *logStore) cleanup() {
 			delete(ls.entries, id)
 		}
 	}
-	for ip, lastTime := range ls.rateLimit {
-		if now.Sub(lastTime) > logRateInterval {
+	for ip, bucket := range ls.rateLimit {
+		// Een bucket die weer vol staat draagt geen informatie meer.
+		if bucket.refill(now) >= logRateBurst {
 			delete(ls.rateLimit, ip)
 		}
 	}
@@ -999,12 +1062,15 @@ func (s *Server) handlePostLogs(w http.ResponseWriter, r *http.Request) {
 
 	ip := clientIP(r)
 	s.logs.mu.Lock()
-	if last, ok := s.logs.rateLimit[ip]; ok && time.Since(last) < logRateInterval {
+	if wait, ok := s.logs.allowUpload(ip, time.Now()); !ok {
 		s.logs.mu.Unlock()
-		http.Error(w, "Rate limited: 1 upload per minute", http.StatusTooManyRequests)
+		// De client parseert beide RFC 9110-vormen van Retry-After; tot deze
+		// header bestond viel hij noodgedwongen terug op een eigen gok van
+		// zestig seconden die bleef verdubbelen.
+		w.Header().Set("Retry-After", strconv.Itoa(wait))
+		http.Error(w, "Rate limited", http.StatusTooManyRequests)
 		return
 	}
-	s.logs.rateLimit[ip] = time.Now()
 	s.logs.mu.Unlock()
 
 	body, err := io.ReadAll(io.LimitReader(r.Body, maxLogSize+1))
@@ -1027,6 +1093,11 @@ func (s *Server) handlePostLogs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Log store full", http.StatusServiceUnavailable)
 		return
 	}
+	// Pas hier kost de upload een token. Een afgekeurde poging (te groot,
+	// leeg, store vol) hoort de volgende diagnose-upload niet te belasten:
+	// het oude ontwerp stempelde vóór de validatie en liet een 413 de hele
+	// minuut opeten.
+	s.logs.spendUploadToken(ip, time.Now())
 	s.logs.mu.Unlock()
 
 	id := generateLogID()

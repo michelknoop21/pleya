@@ -1,0 +1,66 @@
+<!-- widths: 1600 -->
+{{shell:admin|nav=Realtime|navAction=}}
+<div class="admin">
+  {{admin:diagnostics|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Diagnostiek ▸ Realtime</div>
+    <h1 class="page-title" style="margin-top:0"><span>Realtime</span></h1>
+
+    <div class="cols-3" style="align-items:start">
+      <div>
+        <section class="panel" style="padding:6px 8px">
+          <h3 style="padding:10px 12px 4px">Verbonden clients <span class="all">5 van maximaal 32</span></h3>
+          <table class="table stack">
+            <tr><th>Client</th><th>Gebruiker</th><th>Verbonden sinds</th><th>Laatste volgnummer</th><th class="r">Staat</th></tr>
+            <tr><td><div class="t">Apple TV woonkamer</div><div class="s">tvOS · Pleya 2.8.0</div></td><td>Michel</td><td>19:02 · 1u 24m</td><td class="mono">184 122</td><td class="r"><span class="pill ok">bij</span></td></tr>
+            <tr><td><div class="t">iPhone 15</div><div class="s">iOS · Pleya 2.8.0</div></td><td>Sanne</td><td>20:11 · 15 min</td><td class="mono">184 122</td><td class="r"><span class="pill ok">bij</span></td></tr>
+            <tr><td><div class="t">deze browser</div><div class="s">Safari 19 · macOS</div></td><td>Michel</td><td>20:24 · 2 min</td><td class="mono">184 122</td><td class="r"><span class="pill ok">bij</span></td></tr>
+            <tr><td><div class="t">MacBook Pro</div><div class="s">macOS · Pleya 2.8.0</div></td><td>Michel</td><td>18:40 · 1u 46m</td><td class="mono">184 097</td><td class="r"><span class="pill warn">haalt in</span></td></tr>
+            <tr><td><div class="t">iPad</div><div class="s">iPadOS · Pleya 2.7.4</div></td><td>Kids</td><td>17:55 · 2u 31m</td><td class="mono">183 640</td><td class="r"><span class="pill">valt terug op polling</span></td></tr>
+          </table>
+          <p class="help" style="padding:8px 12px 10px">Een client die achterloopt vraagt de gemiste events op met <span class="mono">since=</span>. Lukt dat niet omdat het gat te groot is, dan haalt hij zijn staat opnieuw op; hij toont nooit stil verouderde gegevens. Een client die geen websocket krijgt valt terug op polling en werkt gewoon, alleen trager.</p>
+        </section>
+
+        <section class="panel" style="margin-top:14px">
+          <h3>Laatste events <span class="all">geredigeerd, alleen soort en zicht</span></h3>
+          <div class="log">
+            <div><span class="dim">184 122</span>  20:26:04  watch_state.changed   item=movie:2f1a  user=michel  naar 3 clients</div>
+            <div><span class="dim">184 121</span>  20:25:58  scan.progress         library=films  62%  naar 2 clients (beheer)</div>
+            <div><span class="dim">184 120</span>  20:25:31  reading_state.changed pub=8c02  user=michel  naar 2 clients</div>
+            <div><span class="dim">184 119</span>  20:25:02  transcode.started     session=b41e  user=sanne  naar 1 client (beheer)</div>
+            <div class="w"><span class="dim">184 118</span>  20:24:47  client.resync         device=ipad  gat van 482 events, staat opnieuw opgehaald</div>
+            <div><span class="dim">184 117</span>  20:24:12  library.item_added    library=boeken  count=3  naar 4 clients</div>
+          </div>
+          <p class="help" style="margin-top:10px">Een event gaat alleen naar clients die het item mogen zien; het filter is dezelfde autorisatie als de API. Kids ziet geen enkel event uit Films, ook niet dat er iets is toegevoegd.</p>
+        </section>
+      </div>
+
+      <div>
+        <section class="panel">
+          <h3>Hub <span class="status"><span class="dot"></span>aan</span></h3>
+          <dl class="kv" style="grid-template-columns:150px 1fr">
+            <dt>Endpoint</dt><dd class="mono">GET /pleya/v1/events</dd>
+            <dt>Authenticatie</dt><dd>bearer in het eerste bericht; vóór dat bericht gaat er geen enkel event over de lijn</dd>
+            <dt>Volgnummer</dt><dd class="mono">184 122</dd>
+            <dt>Buffer</dt><dd>2 000 events · 41 minuten geschiedenis</dd>
+            <dt>Verbroken vandaag</dt><dd>7 · <span class="dim">alle zeven hersteld met <span class="mono">since=</span></span></dd>
+            <dt>Gat niet te dichten</dt><dd>1 · <span class="dim">iPad, buffer was voorbij</span></dd>
+          </dl>
+        </section>
+
+        <section class="panel" style="margin-top:14px">
+          <h3>Terugval</h3>
+          <div class="row" style="padding:8px 0">{{icon:wifi}}<div class="body"><div class="t">Websocket</div><div class="s">4 van 5 clients</div></div><span class="pill ok">actief</span></div>
+          <div class="row" style="padding:8px 0">{{icon:refresh}}<div class="body"><div class="t">Polling</div><div class="s">1 client · elke 30 s</div></div><span class="pill">terugval</span></div>
+          <p class="help" style="margin-top:8px">Realtime is een versnelling, geen voorwaarde. Valt de hub weg, dan blijft alles werken op polling en merkt een kijker er hoogstens vertraging van.</p>
+        </section>
+
+        <section class="panel" style="margin-top:14px">
+          <h3>Wat hier bewust niet staat</h3>
+          <p class="help" style="margin:0">Geen knop om een client te ontkoppelen: een sessie intrekken doe je in Beveiliging, en dat sluit de websocket vanzelf. Geen eventinhoud in de log, want daar zitten titels in die de lezer van dit scherm niet per se mag zien.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 38 Realtime (PS-11R) · S21 · volgnummers, gaten dichten met since=, polling als terugval</div>

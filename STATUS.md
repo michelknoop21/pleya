@@ -1,30 +1,83 @@
 # STATUS · Pleya
 
-_Laatst bijgewerkt: 2026-09-01. `main` staat op `183d694` op zowel `origin` (gitea) als `github`,
-SHA-parity bevestigd: Pleya Verify Core 1.0 is volledig gemerged. `feat/pleyaserver` is nog los,
-gedivergeerd, en zit midden in de DEC-064-hardwareronde (zie hieronder) voordat hij naar `main` mag._
+_Laatst gewerkt: 2026-09-04. **PS-9 is gesloten.** Alle zes implementatiestappen zijn af, de vijf
+acceptatiecriteria hebben elk hun bewijs, en het stopcriterium is op de draaiende NAS gehaald in
+plaats van alleen in een container. De volgende fase in de vastgelegde doorloop is PS-11A en die is
+niet gestart; er loopt op dit moment dus geen serverfase. Daarvóór, op 2026-09-01, is DEC-097's
+PS-5-hardwareronde gestart: een macOS-releasebuild draait lokaal en een tvOS-build staat geïnstalleerd
+en gelanceerd op de echte Apple TV (`1528384F-B1C1-5688-BA78-15EE0C57F788`); testtitels en de fysieke
+playbackbeoordeling wachten nog op Michel. De volledige integratie-gereedheidsaudit die daartoe leidde
+staat op `main`'s eigen `STATUS.md` en `docs/CHANGELOG.md` (2026-09-01-entry), niet hier
+gedupliceerd. Op 2026-09-03 is ook [DEC-107](docs/DECISIONS.md) geland: e-books zijn productscope,
+met PS-14 ontworpen en PS-15/PS-16 begrensd, alle drie nog niet vrijgegeven._
 
 ## Waar was ik
 
-**Pleya Verify Core 1.0 is klaar en zit nu in `main`.** Vijftien fasen, afgesloten met een tweede
-hardening-pass ([DEC-068](docs/DECISIONS.md#dec-068)) en de documentatielaag
-([DEC-067](docs/DECISIONS.md#dec-067)). `feat/testplane` was 53 commits vóór en 13 áchter `main`
-(gedivergeerd); een gewone merge (geen rebase, om bestaande DEC- en CI-runverwijzingen navolgbaar te
-houden) trok ze samen, volledige gate groen (`flutter analyze`, 4826 Flutter-tests,
-317 `pleya_verify`-subpackage-tests, alle zeven scenario's, lege codegen-diff), en het resultaat staat
-nu op `183d694` op `origin` én `github`. Zie `docs/architecture/pleya-verify.md` en
-`docs/CHANGELOG.md` voor de details.
+**P0b en de designreview gesloten, S0 gemeten (4 september, avond, tweede sessie).** Het
+re-baseline-pakket staat gecommit op `feat/pleyaserver`. Drie dingen erbij:
 
-**`feat/pleyaserver` is een aparte, verder gevorderde werkboom die `main` nog niet kent.** Een
-integratie-gereedheidsaudit wees uit dat die branch al PS-5 (`DeviceCapabilities`) compleet en getest
-heeft en inmiddels op PS-9 (gebruikers, sessies, rollen) werkt, met
-[DEC-064](docs/DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
-als geldige, geaccepteerde toestemming daarvoor. Diezelfde DEC-064 vraagt wél de openstaande
-PS-5-hardwareronde vóór een merge naar `main` (dat is een van de drie triggers in de decision-tekst
-zelf), dus die ronde is nu bezig: een release-build draait lokaal op macOS, en dezelfde bron staat
-gebouwd en gelanceerd op de echte Apple TV. De vier testtitels en de fysieke playbackbeoordeling
-(inclusief de TrueHD/Dolby-check via een echte AVR) wachten op Michel; zie de "Volgende stap" hieronder
-en het `feat/pleyaserver`-eigen `STATUS.md` voor de volledige stand.
+1. **P0b** (`ab83a27`): de twintig afwijkingen uit `VRAGENLIJST.md` hoofdstuk 8 zaten al in E, I,
+   J, K, L, M en N en zijn nu ook doorgetrokken in D, F, H en O. De zwaarste vier: de
+   Readium-manifestlaag met een Readium-compatible Locator in plaats van CFI plus spine-index, de
+   HttpOnly-refreshcookie met `web_origin` en `external_url` als aparte instellingen, per-field
+   metadata-overrides met provenance, en drie hwaccel-backends met runtime-detectie. De zes nog
+   ontbrekende schermen hebben een nummer gekregen (11b, 36, 37, 38, 50, 51).
+2. **Reviewronde 3 op de webnorthstar** (`f3d99e8`): de vijf schermen van de uitgebreide scope
+   (17, 18, 19, 28, 35) waren gebouwd maar nooit gereviewd. 22 bevindingen, alle gecorrigeerd,
+   uitgeschreven in `C-northstar-review.md` C.5. Drie ervan zaten in `web.css` en raakten elk
+   beeld, dus de hele set van 40 schermen is opnieuw gerenderd. Eén daarvan corrigeert ronde 2:
+   `05@393` liep wel degelijk buiten de viewport. Drie schermen botsten met een bindend antwoord
+   uit de vragenlijst (waarderingen als duim in plaats van 1 tot 10, alleen VAAPI in plaats van
+   drie backends, back-updoel als constante in plaats van instelling).
+3. **S0.1, de proefmerge** (`429fc7f`): gemeten in een wegwerp-worktree, uitgeschreven in
+   `docs/pleya-server-rebaseline/merge-log.md`. 196 commits aan de kant van `main` tegen 49 aan
+   deze kant, 14 conflictbestanden, 26 die schoon auto-mergen. De vijf voorspelde conflicten in
+   productiecode zijn er geen: die mergen tekstueel schoon, wat lastiger is dan een conflict,
+   want alleen codegen met een lege diff plus `drift_relations_test` bewijst dat de gegenereerde
+   bestanden de merge overleefd hebben. `docs/DECISIONS.md` mergt zonder markering en houdt
+   twaalf dubbele nummers over (063 tot 073 plus 093).
+
+Open en wachtend op Michel: P2 (akkoord op de vijf gecorrigeerde schermen), P3 (de zes nog te
+tekenen mockups) en het aftakmoment voor `integration/pleya-server-rebaseline`. `main` bewoog
+tijdens de meting zelf van `0ad49ec` naar `64b0105`, dus de branch wordt pas afgetakt als hij
+stilligt; vraag 58 vraagt dat expliciet.
+
+**Re-baseline van Pleya Server geschreven, ongecommit (4 september, avond).** Het pakket
+`docs/pleya-server-rebaseline/` (A tot O, C-review, HANDOFF.md) en de webnorthstar
+`docs/assets/pleya-web-northstar/` (40 schermen, 80 beelden, bron en `DESIGN.md`) staan in de
+werkboom. Michel besloot: set akkoord, boeken op web akkoord, scope is het totaalplan (transcode,
+downloads, verzamelingen, persoonlijke laag, realtime, remote hardening, back-up, metadata-
+providers met automatisch matchen en artwork), Plex-migratie als losse keuzefase, alles via MCP
+beheerbaar, en de branch moet weer schoon met `main` mergen. De delen B, D tot O staan nog op de
+scope van vóór die besluiten; HANDOFF.md zegt wat achterhaald is en waar de volgende sessie begint.
+
+**PS-5 is opgeleverd: het toestel vertelt de backend eindelijk wat het aankan.**
+`DeviceCapabilities` staat er met vier lagen (decoder, weergave, audio, verbinding), detectie per
+platform met de host als injecteerbaar argument, en de vier overrides die er al waren plus één
+nieuwe. De hardgecodeerde Jellyfin-`DeviceProfile` en de vaste Plex-clause-lijst zijn weg; beide
+komen nu uit twee pure builders. `ci_checks.sh` volledig groen, 4697 tests geslaagd en 1 overgeslagen,
+met de gepinde SDK uit `.fvmrc` vooraan in PATH.
+
+De regel die de fase veilig maakt: een unknown capability levert exact de string op die de app vóór
+PS-5 stuurde. Vijf van de acht codecommits veranderen daardoor geen byte op de lijn. Er zijn twee
+bewuste gedragswijzigingen, elk in een eigen commit en los terug te draaien: `truehd` in de Jellyfin
+direct-play-audiolijst op mpv-platforms, en de nieuwe `display_max_resolution` als `Width`- en
+`Height`-conditie. Plex `location` blijft `lan` en HDR blijft volledig van de lijn.
+
+**PS-5 heet "opgeleverd" en niet "gesloten".** Acceptatiecriterium 4 vraagt geen regressie op echte
+hardware, minimaal tvOS plus één desktopplatform. **Build 242 staat klaar** en draagt PS-5 plus het
+werk van `main`, dus die ronde kan nu, samen met de drie andere blokkades hieronder die op een build
+nieuwer dan 240 wachtten. Per toestel dezelfde vier: een Plex-titel die vandaag direct playt, een
+Jellyfin-titel die vandaag direct playt, een titel die vandaag transcodeert met een niet-originele
+preset, en een TrueHD- of Dolby-titel op een AVR. Die laatste is de enige plek waar de gewijzigde
+Jellyfin-audiolijst zichtbaar wordt.
+
+**Vooraf ging de volgorde-afwijking erdoor.** De fasetabellen droegen zowel "Afhankelijkheden" als
+"Eerstvolgende fase" zonder dat ergens stond wat het tweede veld betekent zodra de graaf vertakt.
+`docs/pleya-server-phase-order-deviation.md` maakt "Afhankelijkheden" bindend en legt de doorloop
+vast: PS-5, PS-9, PS-11A, daarna PS-6 tot en met PS-8. De eerstvolgende fase na PS-5 is dus **PS-9**
+(gebruikers, profielen en rechten), en daarna PS-11A (serverbeheer via het protocol), het grootste
+enkele productgat richting Plex.
 
 **De twee bevindingen uit de PS-4-deviceronde zijn dicht, en de releasenotes staan weer live.**
 Het verlaten van de speler wachtte op de afsluitrapportage van de kijkstatus, dus een connect-timeout
@@ -176,9 +229,81 @@ geeft 24 treffers zonder seizoen, `kind=season` levert ze alsnog, en zonder toke
 
 ## Volgende stap
 
+**Eerst HANDOFF.md in `docs/pleya-server-rebaseline/`; de stand per taak staat in
+`docs/PLEYA-SERVER-MASTERLIST.md`.** Volgorde: mergebaarheid met `main` meten
+en als S0 uitvoeren op een integratiebranch, mockups 17, 18, 19, 28 en 35 reviewen, extra mockups
+voor metadata-match, transcode-sessies, downloads en realtime, dan de delen B tot O bijwerken op
+het totaalplan. Niets committen zonder Michels go.
+
+**PS-9 is gesloten op 2026-09-04, met de huishoudronde op de draaiende NAS als laatste bewijs.**
+Migratie 0007 staat er sinds 2026-09-03 (schemaversie 7, back-up ervóór op de NAS zelf onder
+`/volume1/docker/pleya-server/backups/`), en `GET /info` op `web.pleya.app` meldt nu `users: true` en
+`sessions: true`.
+
+De ronde zelf: als owner ingelogd, een tweede gebruiker aangemaakt met `POST /users` zonder één regel
+handmatige SQL, haar met `PUT /users/{id}/permissions` precies één van de drie bibliotheken gegeven
+(Films, niet Series en niet Kids), en als haar ingelogd. Ze zag één bibliotheek. De andere twee gaven
+`404` op een direct id, en een echt item uit elk van die twee gaf `404 library.not_found` met dezelfde
+body als een id dat niet bestaat, terwijl de owner op datzelfde id `200` kreeg. Daarna is haar sessie
+ingetrokken met `DELETE /sessions/{id}`: haar accesstoken gaf binnen 0,4 seconde `401 auth.token_invalid`
+met bericht `session revoked`, haar refreshtoken eveneens `401`, en het token van de owner bleef
+gewoon `200` geven. Opgeruimd met `DELETE /users/{id}`, waarna de server weer op één owner en drie
+bibliotheken stond. Ook meegenomen: sanne die met `?user_id=` de sessies van de owner opvraagt krijgt
+`404`, matrixregel 15.
+
+Eén ding uit de ronde was een fout in de meetopstelling en niet in de server. `GET /sessions` geeft de
+eigen sessies en draagt geen `user_id`; een owner of admin die andermans sessies wil zien vraagt
+`?user_id=`. Dat is precies wat DEC-103 en matrixregel 15 voorschrijven.
+
+Vier kleine bevindingen uit de audit zijn in dezelfde commit gerepareerd: er was geen test op een
+foute of verlopen setupcode (AC4 leunde alleen op eenmaligheid, dus een server die elke code
+accepteerde was hier groen), `capabilities.sessions` werd nergens geassert, het commentaar bij
+`harness_test.go`'s `createUser` beweerde nog dat er geen aanmaakendpoint bestond, en één matrixregel
+stond met het verkeerde nummer in het commentaar.
+
+En twee gaten in het contract die PS-9 heeft blootgelegd en die het gesloten protocolvenster niet mag
+repareren. Er is geen foutcode voor "restricted mag geen manage krijgen": hoofdstuk 16.1 legt het
+verbod vast, het coderegister in 7.1 heeft er niets voor, en `handleSetPermissions` gebruikt daarom
+`auth.user_not_found`, wat klopt onder de 404-regel maar het geval niet benoemt. En er is geen
+endpoint waarmee een client zijn eigen account-id opvraagt: `GET /users` filtert voor `member` en
+`restricted` tot alleen zichzelf, maar een `admin` krijgt iedereen terug en kan zichzelf er niet uit
+halen. De client omzeilt dat nu door op gebruikersnaam te identificeren. Allebei horen in het
+eerstvolgende protocolvenster, met een compatibiliteitstoets langs de zes regels uit hoofdstuk 3.
+
+**DEC-097's hardwareronde afmaken, dan pas naar `main` mergen.** Twee builds staan al klaar: de
+macOS-app draait (`pgrep -f "Pleya.app/Contents/MacOS/Pleya"` bevestigt), en de tvOS-app is
+geïnstalleerd op de echte Apple TV (`nl.michelknoop.pleya`, gelanceerd via `xcrun devicectl device
+process launch`). Per toestel dezelfde vier titels beoordelen (een Plex- en een Jellyfin-titel die
+vandaag direct playen, een titel die transcodeert, en een TrueHD/Dolby-titel via een echte AVR) en het
+resultaat vastleggen. Simulator- of Pleya Verify-bewijs telt hier niet: AC4 is expliciet een
+hardware-only criterium. Alles slaagt: AC4 sluiten met een Roadmap Drift Check, dan de branch
+(inclusief de vijf nog ongepushte lokale commits) mergen naar `main`. Eén regressie: niet mergen,
+eerst repareren op deze branch.
+
+**PS-5 is code complete; PS-9 is gesloten en PS-11A is niet gestart**, volgens de doorloop in
+`docs/pleya-server-phase-order-deviation.md`. PS-5 blijft
+**opgeleverd, niet gesloten**: acceptatiecriterium 4, geen regressie op echte hardware voor minimaal
+tvOS plus één desktopplatform, staat expliciet open. Er is nu geen tijd voor die ronde, dus de test is
+bewust uitgesteld en niet gehaald of geschrapt. Build 242 draagt PS-5 en staat al op TestFlight; alleen
+de deviceronde zelf ontbreekt, met de bestaande testmatrix van vier titels per toestel (zie de
+PS-5-fasetabel in het architectuurdocument).
+
+Het sluiten van PS-9 verandert daar niets aan: die twee criteria staan los van elkaar, en de
+hardwareronde is niet gedraaid. Dat een openstaand hardwarecriterium het starten van PS-9 niet
+blokkeerde, is vastgelegd als een
+beperkte governance-afwijking, [DEC-097](docs/DECISIONS.md#dec-097-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet).
+Ze geldt uitsluitend voor het starten van een volgende ontwikkelfase en is geen bewijs dat Plex- of
+Jellyfin-afspelen op echte hardware geverifieerd is; die verificatie ontbreekt gewoon nog. De
+hardwareronde blijft als openstaande schuld op de PS-5-fasetabel staan en moet uiterlijk vóór de
+eerstvolgende publieke release die PS-5- of PS-9-gedrag meeneemt alsnog gedraaid worden.
+
+De `_postJson`-bevinding hierboven hoort niet in PS-9: die raakt elke aanroep van
+`PleyaServerClient` en vraagt een eigen ronde, met een regressietest voor een snelle 5xx door de
+client heen.
+
 **Niet PS-5 vanaf `main` beginnen: die fase bestaat al, compleet en getest, op `feat/pleyaserver`.**
 Dat was de aanname tot 2026-09-01; de integratie-gereedheidsaudit die dag wees uit dat die branch al
-verder is dan `main` zelf weet. De echte volgende stap is de DEC-064-hardwareronde afmaken (zie "Waar
+verder is dan `main` zelf weet. De echte volgende stap is de DEC-097-hardwareronde afmaken (zie "Waar
 was ik" hierboven): op de macOS-release-build en de tvOS-build op de echte Apple TV, per toestel vier
 titels beoordelen (Plex direct-play, Jellyfin direct-play, een transcoderende titel, en een
 TrueHD/Dolby-titel via een echte AVR). Alle acht controles slagen: AC4 sluiten, een Roadmap Drift
@@ -204,10 +329,11 @@ boekhouding die hier stond is afgehandeld: G5, G9 en G11 hebben hun Phase ID, de
 matrix kloppen weer, en de zin dat er nog geen regel servercode bestaat is eruit. De stand per poort
 staat in `docs/pleya-server-gates.md`, de stand per fase in hoofdstuk 23 van het architectuurdocument.
 
-Wat er niet mag gebeuren binnen PS-5: geen transcoderen (PS-8), geen gebruikers (PS-9), geen
-browserspeler (PS-4W). Legt implementatiewerk een echt probleem in het protocol bloot, dan is dat een
-protocolwijziging met een compatibiliteitstoets langs de zes regels uit hoofdstuk 3, niet een
-aanpassing in `openapi.yaml` omdat het zo uitkomt.
+Wat er niet mag gebeuren binnen PS-9: geen gedeelde bibliotheken tussen huishoudens, geen
+e-mailuitnodigingen, geen leeftijdsgrenzen, geen herstructurering van de bestaande Plex- en
+Jellyfin-profielpaden, geen playbackplanner (PS-6). Legt implementatiewerk een echt probleem in het
+protocol bloot, dan is dat een protocolwijziging met een compatibiliteitstoets langs de zes regels uit
+hoofdstuk 3, niet een aanpassing in `openapi.yaml` omdat het zo uitkomt.
 
 **Besluiten wat er met de 26 blockers zonder fase gebeurt.** Twaalf
 gegroepeerde gaten staan in
@@ -254,10 +380,12 @@ Nieuw erbij op deze build: op een echt toestel met trackpad of muis de zijbalk n
 
 ## Blockers
 
-- [ ] **Er is geen iOS-build 240 bij App Store Connect**: `fastlane notes build:240` wachtte de volle
-  1800 seconden en `notes_show` bevestigt het los met `ios: build 240 niet gevonden`. tvOS en macOS
-  dragen de tekst wel, allebei teruggelezen op 2041 tekens. De upload is nooit aangekomen of nooit
-  VALID geworden; zodra de build er staat is de lane opnieuw draaien genoeg, hij is idempotent.
+- [x] **Er was geen iOS-build 240 bij App Store Connect.** Opgelost op 23 augustus: de run van 11:06
+  zette iOS alsnog op 240, en `86c05e9` haalde daarna de oorzaak weg. `ensure_build_number` bepaalde
+  het nummer per platform en herschreef `pubspec.yaml` halverwege de run, dus een platform dat een
+  build miste bleef structureel achter. Het nummer komt nu één keer per run uit het maximum over de
+  drie platforms plus één, en build 242 is het eerste bewijs dat dat tegen App Store Connect werkt:
+  241 → 242 voor alle drie tegelijk.
 - [ ] **De client verzwijgt een mislukte schrijving**: `_postJson` in
   `lib/services/pleya_server_client.dart` vangt elke fout af en geeft `null` terug, dus een `POST
   /watch-state` die op een 404, een 5xx of een verbindingsweigering strandt, komt als geslaagd terug
@@ -265,8 +393,8 @@ Nieuw erbij op deze build: op een echt toestel met trackpad of muis de zijbalk n
   daar sloeg de deadline van de speler alsnog aan. Raakt elke aanroep van de client, dus een eigen
   ronde met een regressietest voor een snelle 5xx, niet iets voor binnen PS-5.
 - [ ] **Het zwarte scherm en de 429-storm zijn niet op een toestel teruggezien**: beide fixes hebben
-  testdekking, maar ze kwamen uit een deviceronde en horen daar ook bevestigd te worden. Vraagt een
-  build nieuwer dan 240, die er nog niet is.
+  testdekking, maar ze kwamen uit een deviceronde en horen daar ook bevestigd te worden. Build 242
+  draagt ze; de ronde zelf moet nog.
 - [ ] **De terugzetter is niet op hardware gecontroleerd**: de Mutiny-regressie is met `fakeAsync`
   vastgelegd en aantoonbaar rood op de oude code, maar twee Apple-toestellen die hetzelfde item
   openen is de enige manier om te zien dat het gedrag in het echt weg is. Vraagt een build met
@@ -348,12 +476,31 @@ xcrun devicectl device process launch --console --terminate-existing \
 
 ## Recente sessies
 
+### 2026-09-03
+
+PS-9 afgemaakt op alle drie de open stappen. De implementatievolgorde waar DEC-099, DEC-104 en
+DEC-105 naar verwijzen als "hoofdstuk 8" stond in geen enkel bestand; hij is uit commit-onderwerpen en
+codecommentaar gereconstrueerd en staat nu bij de PS-9-fasetabel in het architectuurdocument.
+
+Stap 4 bracht de vijf endpoints onder `/users` (DEC-100) en een inlogpad dat elke rij in `users`
+verifieert in plaats van alleen `auth_owner`; zonder dat tweede stuk kon een tweede gebruiker wel
+bestaan maar niet binnenkomen. Stap 6 bracht het intrekkingsregister uit DEC-099, een `copyRange` die
+per blok van 64 KiB kijkt of zijn sessie nog leeft, `GET`/`DELETE /sessions` en `POST /auth/logout`.
+De clientkant kreeg `ProfileKind.pleyaServer` met een resolver die weigert in plaats van naar een
+ander token terug te vallen, en stuurt `device_id`/`device_name` mee zodra de server zegt dat hij ze
+kent.
+
+Bewijs: de Go-suite is groen zonder overgeslagen tests, `verify-protocol.sh` valideert 34 antwoorden
+tegen `openapi.yaml`, `verify-local.sh` doet 78 controles waaronder een tweede gebruiker die één
+bibliotheek ziet en na intrekking meteen buiten staat, `ci_checks.sh` is volledig groen en
+`flutter test` telt 4782 geslaagd. De gemeten revocatielatentie tegen een lopende stream was 446 ms.
+
 ### 2026-09-01
 - Integratie-gereedheidsaudit van `feat/pleyaserver` (read-only, geen schrijfacties): de vijf lokale
-  ongepushte commits stuk voor stuk gekarakteriseerd, [DEC-064](docs/DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
+  ongepushte commits stuk voor stuk gekarakteriseerd, [DEC-097](docs/DECISIONS.md#dec-097-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
   volledig gelezen, en PS-9 starten terwijl PS-5's AC4 openstond bevestigd als geen roadmapschending
-  (alle vier voorwaarden van DEC-064 onafhankelijk geverifieerd). Verdict B: eerst DEC-064's
-  hardwareronde, dan pas mergen, want DEC-064's eigen triggerclausule noemt "een merge van
+  (alle vier voorwaarden van DEC-097 onafhankelijk geverifieerd). Verdict B: eerst DEC-097's
+  hardwareronde, dan pas mergen, want DEC-097's eigen triggerclausule noemt "een merge van
   `feat/pleyaserver` naar `main`" letterlijk als een van de drie momenten waarop die ronde uiterlijk
   moet zijn gedraaid.
 - Hardwareronde gestart: `feat/pleyaserver`'s huidige bron gebouwd als macOS-releasebuild en lokaal
@@ -361,6 +508,14 @@ xcrun devicectl device process launch --console --terminate-existing \
   (3e generatie) via `xcodebuild` + `xcrun devicectl` (het toestel bleek al bereikbaar, geen
   simulator of TestFlight-omweg nodig). Testtitels en de fysieke playbackbeoordeling, inclusief de
   TrueHD/Dolby-check via een echte AVR, wachten op Michel.
+
+### 2026-09-01
+- DEC-097's PS-5-hardwareronde gestart, vanuit een integratie-gereedheidsaudit die op `main`'s
+  `STATUS.md`/`docs/CHANGELOG.md` staat (deze branch was zelf niet het onderwerp van schrijfacties
+  tijdens de audit). macOS-releasebuild lokaal gestart; tvOS-build gebouwd, geïnstalleerd en
+  gelanceerd op de echte, al bereikbare Apple TV via `xcodebuild -destination
+  'platform=tvOS,id=1528384F-B1C1-5688-BA78-15EE0C57F788'` + `xcrun devicectl device install/launch`.
+  Testtitels en de fysieke playbackbeoordeling (inclusief de TrueHD/Dolby/AVR-check) staan nog open.
 
 ### 2026-08-31
 - Pleya Verify Core 1.0 formeel gesloten: [DEC-068](docs/DECISIONS.md#dec-068) (vijf hardening-fixes

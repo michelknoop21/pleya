@@ -40,6 +40,14 @@ const (
 	CodeSetupCodeInvalid      = "auth.setup_code_invalid"
 	CodeRateLimited           = "auth.rate_limited"
 
+	// De vier codes van PS-9 (DEC-101, protocolwijziging 7). user_not_found en
+	// session_not_found volgen de 404-regel van hoofdstuk 7.1: een gebruiker of
+	// sessie die de aanvrager niet mag zien bestaat voor hem niet.
+	CodeUserNotFound    = "auth.user_not_found"
+	CodeUsernameTaken   = "auth.username_taken"
+	CodeOwnerImmutable  = "auth.owner_immutable"
+	CodeSessionNotFound = "auth.session_not_found"
+
 	CodeNotFound         = "library.not_found"
 	CodeScanInProgress   = "library.scan_in_progress"
 	CodeCursorInvalid    = "library.cursor_invalid"
@@ -77,6 +85,11 @@ var errorTable = map[string]struct {
 	CodeSetupCodeInvalid:      {http.StatusUnauthorized, false},
 	CodeRateLimited:           {http.StatusTooManyRequests, true},
 
+	CodeUserNotFound:    {http.StatusNotFound, false},
+	CodeUsernameTaken:   {http.StatusConflict, false},
+	CodeOwnerImmutable:  {http.StatusConflict, false},
+	CodeSessionNotFound: {http.StatusNotFound, false},
+
 	CodeNotFound:         {http.StatusNotFound, false},
 	CodeScanInProgress:   {http.StatusConflict, true},
 	CodeCursorInvalid:    {http.StatusBadRequest, false},
@@ -90,8 +103,8 @@ var errorTable = map[string]struct {
 	CodeStorageUnavailable: {http.StatusServiceUnavailable, true},
 	CodeStorageFull:        {http.StatusInsufficientStorage, false},
 
-	CodeSessionInvalid:      {http.StatusBadRequest, false},
-	CodeStreamSessionLimit:  {http.StatusTooManyRequests, false},
+	CodeSessionInvalid:     {http.StatusBadRequest, false},
+	CodeStreamSessionLimit: {http.StatusTooManyRequests, false},
 }
 
 // writeError stuurt de foutvorm met de status en retryable die bij de code horen.

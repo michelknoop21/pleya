@@ -29,6 +29,7 @@ bestemming, een fase, een status en een oordeel of hij de Plex-off gate blokkeer
 8. [Open productbesluiten](#8-open-productbesluiten)
 9. [De Plex-off acceptance gate](#9-de-plex-off-acceptance-gate)
 10. [Hoe dit document wordt bijgehouden](#10-hoe-dit-document-wordt-bijgehouden)
+11. [Buiten de Plex-vervanging](#11-buiten-de-plex-vervanging)
 
 ---
 
@@ -86,6 +87,10 @@ Een capability belandt nooit in **C** omdat hij moeilijk is of omdat hij niet in
 stond. **C** vraagt een expliciet besluit met een reden. Zolang dat besluit er niet is, staat er
 `Productbesluit nodig` en telt de capability mee in
 [hoofdstuk 8](#8-open-productbesluiten).
+
+Deze driedeling geldt voor Plex-verantwoordelijkheden en voor niets anders. Pleya-functionaliteit
+waarvoor Plex geen tegenhanger heeft, past er per definitie niet in en staat in
+[hoofdstuk 11](#11-buiten-de-plex-vervanging).
 
 ---
 
@@ -160,6 +165,7 @@ waaraan je ziet dat hij klaar is.
 | Verder kijken | provider-key of `GET /hubs?identifier=home.continue` | (A) afgeleid uit kijkstatus | PS-4 | Technisch gereed | ja | PS-4 criterium 3; de hub leest de kijkstatus die PS-4 schrijft |
 | Recent bekeken | `GET /library/all?sort=lastViewedAt:desc` | (A) afgeleid uit kijkstatus | PS-4 | Technisch gereed | nee | `fetchRecentlyWatched` leest `GET /watch-state` en houdt de uitgekeken titels over |
 | Volgende aflevering bij een serie | `includeOnDeck=1` op de metadata | (A) uit kijkstatus plus afleveringsvolgorde | PS-4 | In roadmap | ja | detailscherm toont de juiste volgende aflevering |
+| Nieuwe afleveringen (hub) | `GET /hubs?identifier=home.nextup` | (A) uit kijkstatus plus afleveringsvolgorde, normatief in specificatie 15 | PS-4 | Technisch gereed | ja | de `next_up`-hub levert per begonnen serie precies de volgende aflevering |
 | Verwante titels | `GET /hubs/metadata/{id}/related` | (A) uit genres, mensen en verzamelingen | PS-7 | **Roadmap gap** | nee | de "meer zoals dit"-rij is gevuld |
 | Sorteeropties per bibliotheek | `GET /library/sections/{id}/sorts` | (A) vaste lijst per bibliotheektype in het protocol | PS-1, PS-3 | In roadmap | ja | de sorteersheet is niet leeg |
 | Filtercategorieën en filterwaarden | `GET /library/sections/{id}/filters` | (A) categorieën uit de catalogus | geen | **Roadmap gap** | ja | filteren op genre en jaar werkt |
@@ -582,7 +588,7 @@ werkelijkheid.
 
 ## 10. Hoe dit document wordt bijgehouden
 
-Dit bestand is de bron voor de vraag of iets nog bij het eindproduct hoort. Drie regels:
+Dit bestand is de bron voor de vraag of iets nog bij het eindproduct hoort. Vier regels:
 
 1. **Bij het afsluiten van een fase** gaan de opgeleverde capabilities van `In roadmap` naar
    `Technisch gereed` of `Productgereed`, en verhuizen de blockers die daarmee dicht zijn uit de
@@ -591,7 +597,41 @@ Dit bestand is de bron voor de vraag of iets nog bij het eindproduct hoort. Drie
    landt. Een functie zonder regel in deze matrix bestaat voor de gate niet.
 3. **Een gat wordt nooit stil gesloten.** Een roadmap gap verdwijnt uit hoofdstuk 7 zodra een
    Roadmap deviation proposal is goedgekeurd en de capability een Phase ID heeft, en niet eerder.
+4. **Hoofdstuk 11 draagt dezelfde discipline als de rest.** Een regel daar krijgt een Phase ID, een
+   status uit hoofdstuk 4, het DEC-nummer waaronder hij is opgenomen en zijn afhankelijkheden. Hij
+   telt niet mee in de gate en niet in de telling in 9.1, en dat is het enige verschil.
 
 Zie ook de sectie Pleya Server in [CLAUDE.md](../CLAUDE.md) voor de werkregels per sessie, en
 [hoofdstuk 25](pleya-server-architecture.md#25-definition-of-done-pleya-server-als-zelfstandig-mediaserverproduct)
 van de architectuur voor de definitie van "volwaardig".
+
+---
+
+## 11. Buiten de Plex-vervanging
+
+Hoofdstuk 5 telt op wat Pleya vandaag bij Plex afneemt. Dit hoofdstuk telt op wat Pleya Server
+levert waarvoor Plex geen tegenhanger heeft. Die regels zijn met de driedeling uit hoofdstuk 3 niet
+te beschrijven, want er is geen verantwoordelijkheid om over te nemen, bewust anders op te lossen of
+buiten scope te verklaren.
+
+**Wat dit hoofdstuk niet is.** Geen restbak voor wat elders niet paste, en geen tweede roadmap
+zonder toezicht. Per regel gelden dezelfde eisen als in hoofdstuk 5: een Phase ID, een status uit
+hoofdstuk 4, het besluit waaronder de regel is opgenomen, en de afhankelijkheden. Wat hier
+uitdrukkelijk **niet** geldt: deze regels blokkeren de Plex-off gate niet en tellen niet mee in de
+metingen van 9.1. Een gebruiker kan Plex uitschakelen zonder dat één regel uit dit hoofdstuk klaar
+is, want Plex leverde ze nooit.
+
+| # | Capability | Bestemming | Fase | Status | Besluit | Afhankelijkheden |
+| --- | --- | --- | --- | --- | --- | --- |
+| X1 | E-bookbibliotheek: scannen, catalogiseren, cover en EPUB ontsluiten | eigen Pleya-functionaliteit | PS-14 | `In roadmap` | [DEC-107](DECISIONS.md) | PS-2, PS-9 |
+| X2 | E-books lezen in de mobiele app, met leespositie tussen toestellen | eigen Pleya-functionaliteit | PS-15 | `In roadmap` | [DEC-107](DECISIONS.md) | PS-14 |
+| X3 | Offline e-books en gesynchroniseerde bladwijzers | eigen Pleya-functionaliteit | PS-16 | `Niet ontworpen` | [DEC-107](DECISIONS.md) | PS-15 |
+
+X3 is begrensd en niet ontworpen: het reservaat is offline EPUB-lezen en bladwijzers, en PDF, DRM,
+annotaties, markeringen en aankopen horen daar uitdrukkelijk niet stilzwijgend bij. De volledige
+onderbouwing staat in [docs/pleya-server-ebooks-proposal.md](pleya-server-ebooks-proposal.md).
+
+Twee grenzen die bij deze regels horen en die elders al vastliggen. De `media_*`-tabellen blijven
+audiovisueel, dus boeken krijgen een eigen domeinmodel op dezelfde bibliotheek-, gebruikers- en
+rechtenfundering. En de mobiele beperking is clientgedrag: de server levert zichtbare bibliotheken
+via het gewone autorisatiemodel, en de client bepaalt of daar een Boeken-bestemming uit volgt.

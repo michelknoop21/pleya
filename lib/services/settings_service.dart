@@ -9,6 +9,7 @@ import 'image_cache_service.dart';
 import 'package:pleya/utils/app_logger.dart';
 import '../i18n/strings.g.dart';
 import '../models/mpv_config_models.dart';
+import '../media/device_display_capabilities.dart' show DisplayResolutionCap;
 import '../media/track_language_choice.dart';
 import '../media/unified/remembered_source_choice.dart';
 import 'unified_catalog/unified_catalog_filters.dart';
@@ -444,6 +445,17 @@ class SettingsService extends BaseSharedPreferencesService {
     values: VisualEffectsSetting.values,
     defaultValue: VisualEffectsSetting.auto,
   );
+
+  /// Ceiling on what this device asks a backend for. A hardware capability
+  /// override on the display layer of `DeviceCapabilities`, which is why it is
+  /// device-local: it describes this screen and has no business travelling to
+  /// another one over iCloud.
+  static const displayMaxResolution = EnumPref<DisplayResolutionCap>(
+    'display_max_resolution',
+    values: DisplayResolutionCap.values,
+    defaultValue: DisplayResolutionCap.auto,
+  );
+
   static const ambientLighting = BoolPref('ambient_lighting');
 
   /// Ambient lighting glow intensity: 'subtle' | 'balanced' | 'bright'.
@@ -974,6 +986,7 @@ class SettingsService extends BaseSharedPreferencesService {
     useExternalPlayer,
     forceTvMode,
     visualEffects,
+    displayMaxResolution,
     ambientLighting,
     ambientLightingIntensity,
     audioPassthrough,

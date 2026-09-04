@@ -42,6 +42,8 @@ tags:
   - name: library
   - name: playback
   - name: watch-state
+  - name: users
+  - name: sessions
 
 security:
   - bearerAuth: []
@@ -222,6 +224,199 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
 
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Beëindig de huidige sessie.
+      description: |
+        Klasse `authenticated`. Trekt uitsluitend de sessie in waarvan het
+        accesstoken op deze aanvraag `sid` draagt. Geen vervanging van
+        DELETE /sessions/{id}: een ander toestel intrekken kan hiermee niet.
+      responses:
+        "204": { description: Sessie ingetrokken. }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /users:
+    post:
+      tags: [users]
+      operationId: createUser
+      summary: Maak een nieuwe gebruiker aan.
+      description: |
+        Klasse `admin`. `role` mag niet `owner` zijn; er is precies één owner
+        en die ontstaat uitsluitend via /auth/setup.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateUserRequest" }
+      responses:
+        "200":
+          description: De aangemaakte gebruiker.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager is geen admin of owner.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "409":
+          description: auth.username_taken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    get:
+      tags: [users]
+      operationId: listUsers
+      summary: Gebruikers van dit huishouden.
+      description: |
+        Klasse `authenticated`. `owner` en `admin` zien iedereen; `member` en
+        `restricted` zien in dit antwoord uitsluitend zichzelf.
+      responses:
+        "200":
+          description: Gebruikers.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserList" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /users/{id}:
+    patch:
+      tags: [users]
+      operationId: updateUser
+      summary: Wijzig rol of wachtwoord van een gebruiker.
+      description: |
+        Klasse `admin`, of `owner` op de eigen gebruiker. Een gebruiker die
+        niet van de aanvrager is en waar de aanvrager geen recht op heeft
+        geeft `404`.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateUserRequest" }
+      responses:
+        "200":
+          description: De bijgewerkte gebruiker.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "409":
+          description: auth.owner_immutable. De owner kan niet gedegradeerd worden.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    delete:
+      tags: [users]
+      operationId: deleteUser
+      summary: Verwijder een gebruiker.
+      description: Klasse `admin`. De owner verwijderen wordt geweigerd.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204": { description: Gebruiker verwijderd. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "409":
+          description: auth.owner_immutable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /users/{id}/permissions:
+    put:
+      tags: [users]
+      operationId: setUserPermissions
+      summary: Zet de bibliotheekrechten van een gebruiker.
+      description: |
+        Klasse `admin`. Vervangt de volledige rechtenlijst van deze gebruiker.
+        `owner` en `admin` hebben hier geen rijen voor: hun toegang volgt uit
+        de rol.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PermissionsRequest" }
+      responses:
+        "200":
+          description: De nu geldende rechten.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryPermissionList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: |
+            auth.user_not_found (aanvrager is geen admin, of de gebruiker
+            bestaat niet) of library.not_found (een library_id in de aanvraag
+            bestaat niet).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /sessions:
+    get:
+      tags: [sessions]
+      operationId: listSessions
+      summary: Sessies van een gebruiker.
+      description: |
+        Klasse `owner` op de eigen sessies. Met `?user_id=` kunnen `owner` en
+        `admin` de sessies van een ander opvragen.
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          description: Alleen bruikbaar door `owner` en `admin`. Zonder deze parameter de eigen sessies.
+          schema: { $ref: "#/components/schemas/Id" }
+      responses:
+        "200":
+          description: Sessies.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. user_id is niet van de aanvrager en de aanvrager is geen admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /sessions/{id}:
+    delete:
+      tags: [sessions]
+      operationId: revokeSession
+      summary: Trek precies één sessie in.
+      description: |
+        Klasse `owner` op de eigen sessies, `admin` op elke sessie. Zet
+        `revoked_at`, cascadeert naar de refreshtokens en browserstreamsessies
+        van deze sessie, en werkt het intrekkingsregister bij. Een sessie-id
+        dat niet van de aanvrager is en waar de aanvrager geen recht op heeft
+        geeft `404`.
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "204": { description: Sessie ingetrokken. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.session_not_found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
   /server:
     get:
       tags: [discovery]
@@ -359,6 +554,21 @@ paths:
         De server levert bouwstenen en geen schermindeling; de client bouwt zijn
         eigen rijen. Een server zonder kijkstatus levert lege lijsten voor
         continue_watching en next_up, en geen fout.
+
+        Staat capabilities.watch_state op true, dan geldt hoofdstuk 15 van de
+        specificatie, dat de inhoud van beide hubs normatief vastlegt.
+        continue_watching bevat films en afleveringen met watched false en
+        position_ms boven nul, aflopend op het moment van de laatste wijziging.
+        next_up bevat per serie precies een aflevering: de laagst genummerde
+        aflevering vanaf de hoogst genummerde aflevering waar deze identiteit
+        kijkstatus op heeft, die ongekeken is en waaraan nog niet begonnen is.
+        Specials (seizoen met item_index 0) en ongenummerde afleveringen tellen
+        niet mee, niet als kandidaat en niet als ankerpunt. Een serie zonder
+        kijkstatus staat niet in next_up, en een serie die uit is verdwijnt
+        eruit. De twee hubs leveren nooit hetzelfde item.
+
+        Een cursor hoort bij de hub die hem uitgaf; hem op een andere hub
+        aanbieden levert library.cursor_invalid.
       parameters:
         - name: hub_id
           in: path
@@ -649,6 +859,16 @@ components:
       in: path
       required: true
       schema: { $ref: "#/components/schemas/Id" }
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    SessionId:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
     Limit:
       name: limit
       in: query
@@ -787,6 +1007,15 @@ components:
             De server kent POST /auth/stream-session en de ss-parameter op
             /stream. Voor browsers; externe spelers blijven het streamtoken in
             de querystring gebruiken.
+        sessions:
+          type: boolean
+          default: false
+          description: |
+            De server kent device-scoped sessies (DEC-102): device_id en
+            device_name op LoginRequest en SetupRequest, GET/DELETE /sessions
+            en POST /auth/logout. Een client stuurt device_id/device_name pas
+            wanneer deze vlag waar is; zonder de vlag krijgt de sessie
+            device_id NULL en een vaste plaatshouder als naam.
 
     ServerDetail:
       type: object
@@ -805,6 +1034,8 @@ components:
         setup_code: { type: string, minLength: 1 }
         username: { type: string, minLength: 1 }
         password: { type: string, minLength: 8 }
+        device_id: { $ref: "#/components/schemas/DeviceId" }
+        device_name: { $ref: "#/components/schemas/DeviceName" }
 
     LoginRequest:
       type: object
@@ -813,6 +1044,8 @@ components:
       properties:
         username: { type: string, minLength: 1 }
         password: { type: string, minLength: 1 }
+        device_id: { $ref: "#/components/schemas/DeviceId" }
+        device_name: { $ref: "#/components/schemas/DeviceName" }
 
     RefreshRequest:
       type: object
@@ -820,6 +1053,20 @@ components:
       additionalProperties: false
       properties:
         refresh_token: { type: string, minLength: 1 }
+
+    DeviceId:
+      type: string
+      minLength: 1
+      description: |
+        PreferenceDeviceId van de client: stabiel, niet gesynchroniseerd, en
+        geen Plex-clientidentifier. Optioneel; alleen sturen wanneer
+        capabilities.sessions waar is. Weglaten geeft een sessie met
+        device_id NULL, hetzelfde als een client die de capability niet kent.
+
+    DeviceName:
+      type: string
+      minLength: 1
+      description: Mensleesbare naam, bijvoorbeeld "iPhone van Michel".
 
     TokenPair:
       type: object
@@ -1192,3 +1439,102 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/WatchStateEntry" }
+
+    Role:
+      type: string
+      enum: [owner, admin, member, restricted]
+      x-unknown-safe: false
+      description: |
+        Vier rollen (DEC-098), gesloten. Een client moet weten wat een rol
+        betekent voordat hij ernaar handelt: `owner` (precies één, niet te
+        verwijderen of te degraderen), `admin`, `member`, `restricted`
+        (als member, kan nooit manage krijgen en beheert zijn eigen
+        wachtwoord niet).
+
+    Permission:
+      type: string
+      enum: [view, download, manage]
+      x-unknown-safe: false
+      description: |
+        Een geordende ladder (DEC-098): download impliceert view, manage
+        impliceert beide. Gesloten, om dezelfde reden als Role.
+
+    User:
+      type: object
+      required: [id, username, role]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        username: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+
+    UserList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/User" }
+
+    CreateUserRequest:
+      type: object
+      required: [username, password, role]
+      additionalProperties: false
+      properties:
+        username: { type: string, minLength: 1 }
+        password: { type: string, minLength: 8 }
+        role: { $ref: "#/components/schemas/Role" }
+
+    UpdateUserRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: Minimaal één van beide velden; een leeg object is geen geldige aanvraag.
+      properties:
+        role: { $ref: "#/components/schemas/Role" }
+        password: { type: string, minLength: 8 }
+
+    LibraryPermission:
+      type: object
+      required: [library_id, permission]
+      properties:
+        library_id: { $ref: "#/components/schemas/Id" }
+        permission: { $ref: "#/components/schemas/Permission" }
+
+    LibraryPermissionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LibraryPermission" }
+
+    PermissionsRequest:
+      type: object
+      required: [permissions]
+      additionalProperties: false
+      properties:
+        permissions:
+          type: array
+          items: { $ref: "#/components/schemas/LibraryPermission" }
+
+    Session:
+      type: object
+      required: [id, device_name, created_at, last_seen_at, current]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        device_name:
+          type: string
+          description: Een vaste plaatshouder voor een sessie zonder bekend toestel.
+        created_at: { $ref: "#/components/schemas/Timestamp" }
+        last_seen_at: { $ref: "#/components/schemas/Timestamp" }
+        current:
+          type: boolean
+          description: True voor de sessie die deze aanvraag zelf doet.
+
+    SessionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Session" }

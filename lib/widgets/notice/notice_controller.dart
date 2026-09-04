@@ -76,6 +76,11 @@ class NoticeController extends ChangeNotifier {
     if (foldTarget != null) {
       foldTarget.count++;
       foldTarget.lastSeen = now;
+      // The newest text wins. Folding exists for callers whose rendered
+      // message varies per occurrence — a countdown, a changing quantity —
+      // and keeping the first text would leave a stale number on screen for
+      // as long as the notice keeps folding.
+      foldTarget.notice = notice;
       if (_visible.contains(foldTarget)) _restartTimer(foldTarget);
       notifyListeners();
       return foldTarget.id;

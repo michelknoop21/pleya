@@ -165,6 +165,17 @@ func run() int {
 		startup.Info("lopende jobs teruggezet in de wachtrij", slog.Int64("count", n))
 	}
 
+	// Het intrekkingsregister uit DEC-099 wordt bij het opstarten uit de
+	// database gevuld. Zonder die stap zou een herstart elke intrekking
+	// vergeten, en dan overleeft een streamtoken van een ingetrokken sessie het
+	// herstartmoment.
+	revocations := auth.NewRevocations(0)
+	if err := authStore.LoadRevocations(ctx, revocations, time.Now().UTC()); err != nil {
+		startup.Warn("intrekkingsregister vullen mislukt", slog.String("error", err.Error()))
+	} else if n := revocations.Len(); n > 0 {
+		startup.Info("intrekkingsregister gevuld", slog.Int("sessies", n))
+	}
+
 	workCtx, stopWork := context.WithCancel(ctx)
 	defer stopWork()
 
@@ -177,7 +188,7 @@ func run() int {
 	}()
 	go func() {
 		defer workers.Done()
-		housekeeping(workCtx, runner, authStore, logging.Component(log, "housekeeping"))
+		housekeeping(workCtx, runner, authStore, revocations, logging.Component(log, "housekeeping"))
 	}()
 
 	if cfg.ScanOnStart {
@@ -185,22 +196,24 @@ func run() int {
 	}
 
 	apiServer := api.New(api.Options{
-		Catalog:          catalogStore,
-		Auth:             authStore,
-		Watch:            watch.NewStore(pool),
-		Signer:           signer,
-		Logger:           logging.Component(log, "http"),
-		Ready:            ready.ok,
-		ServerID:         serverID,
-		Name:             cfg.ServerName,
-		Version:          version,
-		StartedAt:        startedAt,
-		AccessTokenTTL:   cfg.AccessTokenTTL,
-		RefreshTokenTTL:  cfg.RefreshTokenTTL,
-		StreamTokenTTL:   cfg.StreamTokenTTL,
-		SetupCodeTTL:     cfg.SetupCodeTTL,
-		StreamSessionTTL: cfg.StreamSessionTTL,
-		WatchLease:       cfg.WatchLease,
+		Catalog:            catalogStore,
+		Auth:               authStore,
+		Watch:              watch.NewStore(pool),
+		Signer:             signer,
+		Logger:             logging.Component(log, "http"),
+		Ready:              ready.ok,
+		ServerID:           serverID,
+		Name:               cfg.ServerName,
+		Version:            version,
+		StartedAt:          startedAt,
+		AccessTokenTTL:     cfg.AccessTokenTTL,
+		RefreshTokenTTL:    cfg.RefreshTokenTTL,
+		RefreshGraceWindow: cfg.RefreshGraceWindow,
+		StreamTokenTTL:     cfg.StreamTokenTTL,
+		SetupCodeTTL:       cfg.SetupCodeTTL,
+		StreamSessionTTL:   cfg.StreamSessionTTL,
+		WatchLease:         cfg.WatchLease,
+		Revocations:        revocations,
 	})
 
 	srv := httpserver.New(httpserver.Options{

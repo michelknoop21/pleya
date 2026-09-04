@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -15,14 +16,6 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/watch"
 	"github.com/edde746/plezy/pleya_server/internal/web"
 )
-
-// SubjectOwner is de enige identiteit die vóór PS-9 bestaat.
-//
-// Op de lijn heet hij subject: een ondoorzichtige string die in het accesstoken
-// zit en die de client nooit hoeft te lezen. Zodra PS-9 echte gebruikers
-// introduceert wijst hij naar een rij in plaats van naar de enige identiteit, en
-// aan de specificatie verandert er niets.
-const SubjectOwner = "owner"
 
 // Options bundelt wat de HTTP-laag nodig heeft.
 type Options struct {
@@ -37,17 +30,24 @@ type Options struct {
 	Version   string
 	StartedAt time.Time
 
-	AccessTokenTTL   time.Duration
-	RefreshTokenTTL  time.Duration
-	StreamTokenTTL   time.Duration
-	SetupCodeTTL     time.Duration
-	StreamSessionTTL time.Duration
+	AccessTokenTTL     time.Duration
+	RefreshTokenTTL    time.Duration
+	RefreshGraceWindow time.Duration
+	StreamTokenTTL     time.Duration
+	SetupCodeTTL       time.Duration
+	StreamSessionTTL   time.Duration
 
 	// WatchLease is het schrijfrecht uit DEC-049 regel 4: tweemaal het
 	// rapportage-interval, met een ondergrens van 90 s die het watch-pakket zelf
 	// afdwingt. Op de serverklok, zodat een scheve clientklok er niets aan
 	// verandert.
 	WatchLease time.Duration
+
+	// Revocations is het intrekkingsregister uit DEC-099: de invulling van
+	// "onmiddellijk ongeldig" uit acceptatiecriterium 3. Nil is toegestaan en
+	// betekent geen latentiegarantie, niet minder controle; zie
+	// auth.Revocations.IsRevoked.
+	Revocations *auth.Revocations
 
 	Argon2 auth.Argon2Params
 }
@@ -65,6 +65,12 @@ type Server struct {
 func New(opts Options) *Server {
 	if opts.Argon2 == (auth.Argon2Params{}) {
 		opts.Argon2 = auth.DefaultArgon2Params
+	}
+	if opts.Revocations == nil {
+		// Een leeg register in plaats van nil: de aanvraagpaden hoeven dan geen
+		// nil-geval te kennen, en een server zonder expliciet register gedraagt
+		// zich hetzelfde als een die er net een geladen heeft.
+		opts.Revocations = auth.NewRevocations(0)
 	}
 	s := &Server{
 		opts:    opts,
@@ -111,6 +117,21 @@ func (s *Server) routes() {
 	s.mux.Handle("GET "+p+"/artwork/{artwork_id}", s.authenticated(s.handleArtwork))
 	s.mux.Handle("POST "+p+"/watch-state", s.authenticated(s.handleWatchStateReport))
 	s.mux.Handle("GET "+p+"/watch-state", s.authenticated(s.handleWatchStateList))
+
+	// Gebruikersbeheer (DEC-100, stap 4). De autorisatieklasse staat in de
+	// handler en niet in de route: "admin, of owner op zichzelf" is per
+	// endpoint anders, en een middleware per klasse zou dat verschil verbergen.
+	s.mux.Handle("POST "+p+"/users", s.authenticated(s.handleCreateUser))
+	s.mux.Handle("GET "+p+"/users", s.authenticated(s.handleListUsers))
+	s.mux.Handle("PATCH "+p+"/users/{id}", s.authenticated(s.handleUpdateUser))
+	s.mux.Handle("DELETE "+p+"/users/{id}", s.authenticated(s.handleDeleteUser))
+	s.mux.Handle("PUT "+p+"/users/{id}/permissions", s.authenticated(s.handleSetPermissions))
+
+	// Sessies (DEC-103, stap 6). logout staat bij auth omdat hij over de eigen
+	// sessie gaat; de twee endpoints eronder gaan over sessies als resource.
+	s.mux.Handle("POST "+p+"/auth/logout", s.authenticated(s.handleLogout))
+	s.mux.Handle("GET "+p+"/sessions", s.authenticated(s.handleListSessions))
+	s.mux.Handle("DELETE "+p+"/sessions/{id}", s.authenticated(s.handleRevokeSession))
 
 	// Klasse authenticated of met een streamtoken in de querystring: een externe
 	// speler kan geen header zetten.
@@ -159,6 +180,42 @@ func (s *Server) handleReadyz(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 }
 
+// claimsContextKey draagt de geverifieerde Claims van de huidige aanvraag.
+type claimsContextKey struct{}
+
+// withClaims zet de claims van een geverifieerd accesstoken in de context.
+func withClaims(ctx context.Context, claims auth.Claims) context.Context {
+	return context.WithValue(ctx, claimsContextKey{}, claims)
+}
+
+// claimsFromContext leest ze terug. Elke handler achter authenticated() kan
+// hiervan uitgaan: de middleware zet ze altijd voordat next wordt aangeroepen.
+func claimsFromContext(ctx context.Context) (auth.Claims, bool) {
+	claims, ok := ctx.Value(claimsContextKey{}).(auth.Claims)
+	return claims, ok
+}
+
+// sessionContextKey draagt de auth-sessie (sid) van de huidige aanvraag.
+//
+// Los van claimsContextKey, want het streampad kent drie credentials en maar
+// twee daarvan dragen Claims: de browserstreamsessie heeft geen token en leest
+// zijn sid uit stream_sessions.session_id.
+type sessionContextKey struct{}
+
+func withSessionID(ctx context.Context, sessionID id.ID) context.Context {
+	return context.WithValue(ctx, sessionContextKey{}, sessionID)
+}
+
+// sessionIDFromContext geeft de sid van deze aanvraag, of id.Nil. Gebruikt door
+// copyRange om per blok het intrekkingsregister te raadplegen (DEC-099).
+func sessionIDFromContext(ctx context.Context) id.ID {
+	sessionID, ok := ctx.Value(sessionContextKey{}).(id.ID)
+	if !ok {
+		return id.Nil
+	}
+	return sessionID
+}
+
 // authenticated eist een geldig accesstoken in de Authorization-header.
 func (s *Server) authenticated(next http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -167,12 +224,39 @@ func (s *Server) authenticated(next http.HandlerFunc) http.Handler {
 			writeError(w, s.log, CodeTokenInvalid, "no bearer token", nil)
 			return
 		}
-		if _, err := s.opts.Signer.Verify(token, auth.TokenAccess); err != nil {
+		claims, err := s.opts.Signer.Verify(token, auth.TokenAccess)
+		if err != nil {
 			s.writeTokenError(w, err)
 			return
 		}
-		next(w, r)
+		if !s.sessionLives(w, claims) {
+			return
+		}
+		next(w, r.WithContext(withClaims(r.Context(), claims)))
 	})
+}
+
+// sessionLives is de O(1)-controle uit DEC-099: draagt dit credential een sid
+// die is ingetrokken, dan is het credential dood, ongeacht zijn eigen
+// vervalmoment.
+//
+// Zonder databaseronde, en dat is het hele punt: een controle die per aanvraag
+// een query doet zou op het streampad per blok een query worden. Symmetrisch
+// voor het accesstoken, het streamtoken en de browserstreamsessie; alle drie
+// dragen sid.
+func (s *Server) sessionLives(w http.ResponseWriter, claims auth.Claims) bool {
+	sessionID, err := id.Parse(claims.Sid)
+	if err != nil {
+		// Een token zonder leesbare sid is van vóór PS-9 of vervalst. Beide
+		// horen te falen, en met dezelfde code als een ingetrokken sessie.
+		writeError(w, s.log, CodeTokenInvalid, "token carries no session", nil)
+		return false
+	}
+	if s.opts.Revocations.IsRevoked(sessionID) {
+		writeError(w, s.log, CodeTokenInvalid, "session revoked", nil)
+		return false
+	}
+	return true
 }
 
 // streamAuthorized accepteert daarnaast een streamtoken in de querystring.
@@ -183,20 +267,32 @@ func (s *Server) authenticated(next http.HandlerFunc) http.Handler {
 func (s *Server) streamAuthorized(next func(w http.ResponseWriter, r *http.Request, versionScope *id.ID)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if token, ok := bearerToken(r); ok {
-			if _, err := s.opts.Signer.Verify(token, auth.TokenAccess); err != nil {
+			claims, err := s.opts.Signer.Verify(token, auth.TokenAccess)
+			if err != nil {
 				s.writeTokenError(w, err)
 				return
 			}
-			next(w, r, nil)
+			if !s.sessionLives(w, claims) {
+				return
+			}
+			// De claims moeten de context in: bij een gewoon accesstoken (geen
+			// versionScope) leest handleStream/handleSubtitle ze voor de
+			// bibliotheekcontrole van AC2 (PS-9). De sid gaat er los naast voor
+			// copyRange, die per blok het intrekkingsregister raadpleegt.
+			ctx := withClaims(r.Context(), claims)
+			if sessionID, err := id.Parse(claims.Sid); err == nil {
+				ctx = withSessionID(ctx, sessionID)
+			}
+			next(w, r.WithContext(ctx), nil)
 			return
 		}
 
 		if sessionID := strings.TrimSpace(r.URL.Query().Get("ss")); sessionID != "" {
-			scope, ok := s.streamSessionScope(w, r, sessionID)
+			scope, authSid, ok := s.streamSessionScope(w, r, sessionID)
 			if !ok {
 				return
 			}
-			next(w, r, scope)
+			next(w, r.WithContext(withSessionID(r.Context(), authSid)), scope)
 			return
 		}
 
@@ -210,12 +306,31 @@ func (s *Server) streamAuthorized(next func(w http.ResponseWriter, r *http.Reque
 			s.writeTokenError(w, err)
 			return
 		}
+		if !s.sessionLives(w, claims) {
+			return
+		}
 		scope, err := id.Parse(claims.Resource)
 		if err != nil {
 			writeError(w, s.log, CodeTokenInvalid, "stream token carries no resource", nil)
 			return
 		}
-		next(w, r, &scope)
+		subject, err := id.Parse(claims.Subject)
+		if err != nil {
+			writeInternal(w, s.log, fmt.Errorf("subject in streamtoken is geen geldig id: %w", err))
+			return
+		}
+		// Aanvraagpad, niet alleen mint-moment (DEC-105, hoofdstuk 16.4 regel 8
+		// en 9): een streamtoken leeft tot vijf minuten zelfstandig na het
+		// minten, dus een ingetrokken bibliotheekrecht moet hier meteen gelden
+		// en niet pas wanneer het token vanzelf verloopt.
+		if !s.authorizeVersionFor(w, r, subject, scope) {
+			return
+		}
+		ctx := r.Context()
+		if sessionID, err := id.Parse(claims.Sid); err == nil {
+			ctx = withSessionID(ctx, sessionID)
+		}
+		next(w, r.WithContext(ctx), &scope)
 	})
 }
 
@@ -227,33 +342,50 @@ func (s *Server) streamAuthorized(next func(w http.ResponseWriter, r *http.Reque
 // iets. Een aanvraag zonder die cookie is daarmee net zo kansloos als een
 // aanvraag zonder token, en dat is precies de bedoeling: de id mag in
 // browsergeschiedenis en in logs staan.
-func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawSessionID string) (*id.ID, bool) {
+func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawSessionID string) (*id.ID, id.ID, bool) {
 	sessionID, err := id.Parse(rawSessionID)
 	if err != nil {
 		writeError(w, s.log, CodeTokenInvalid, "stream session is invalid", nil)
-		return nil, false
+		return nil, id.Nil, false
 	}
 
 	cookie, err := r.Cookie(auth.StreamCookiePrefix + sessionID.String())
 	if err != nil || cookie.Value == "" {
 		writeError(w, s.log, CodeTokenInvalid, "stream session is invalid", nil)
-		return nil, false
+		return nil, id.Nil, false
 	}
 
 	versionID, err := id.Parse(r.PathValue("version_id"))
 	if err != nil {
 		writeError(w, s.log, CodeNotFound, "not found", nil)
-		return nil, false
+		return nil, id.Nil, false
 	}
 
 	now := s.now().UTC()
-	if err := s.opts.Auth.VerifyStreamSession(r.Context(), sessionID, cookie.Value, SubjectOwner, versionID, now); err != nil {
+	subject, authSid, err := s.opts.Auth.VerifyStreamSession(r.Context(), sessionID, cookie.Value, versionID, now)
+	if err != nil {
 		if errors.Is(err, auth.ErrStreamSessionInvalid) {
 			writeError(w, s.log, CodeTokenInvalid, "stream session is invalid", nil)
-			return nil, false
+			return nil, id.Nil, false
 		}
 		writeInternal(w, s.log, err)
-		return nil, false
+		return nil, id.Nil, false
+	}
+
+	// De databasecontrole hierboven leest sessions.revoked_at, maar het register
+	// is de snellere en de enige die tijdens een lopende stream nog meekijkt.
+	if s.opts.Revocations.IsRevoked(authSid) {
+		writeError(w, s.log, CodeTokenInvalid, "session revoked", nil)
+		return nil, id.Nil, false
+	}
+
+	// Aanvraagpad, niet alleen mint-moment (DEC-105, hoofdstuk 16.4 regel 9):
+	// het geheim en de versie kloppen, maar dat bewijst niet dat subject nog
+	// recht heeft op de bibliotheek erachter. Een streamsessie leeft tot 30
+	// minuten zelfstandig na het minten, dus een ingetrokken recht moet hier
+	// meteen gelden.
+	if !s.authorizeVersionFor(w, r, subject, versionID) {
+		return nil, id.Nil, false
 	}
 
 	// Verlengen raakt uitsluitend deze sessie. Dat is de reden dat het model
@@ -261,7 +393,7 @@ func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawS
 	if _, err := s.opts.Auth.TouchStreamSession(r.Context(), sessionID, s.opts.StreamSessionTTL, now); err != nil {
 		s.log.Warn("streamsessie verlengen mislukt", "error", err.Error())
 	}
-	return &versionID, true
+	return &versionID, authSid, true
 }
 
 func (s *Server) writeTokenError(w http.ResponseWriter, err error) {

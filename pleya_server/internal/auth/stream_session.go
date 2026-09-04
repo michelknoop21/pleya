@@ -53,11 +53,15 @@ func (s StreamSession) CookieName() string { return StreamCookiePrefix + s.ID.St
 
 // CreateStreamSession opent een sessie voor één subject en één versie.
 //
+// sid is de auth-sessie (DEC-102) waarvan dit verzoek werd gedaan; hij komt in
+// stream_sessions.session_id te staan zodat intrekking van die sessie ook deze
+// browserstreamsessie meeneemt.
+//
 // De volgorde is niet vrij. Eerst verlopen en ingetrokken sessies opruimen, dan
 // pas tellen: anders weigert de server de negende terwijl er drie dood in de
 // tabel staan. Beide stappen zitten in dezelfde transactie, zodat twee
 // tabbladen die tegelijk beginnen niet allebei op zeven uitkomen.
-func (s *Store) CreateStreamSession(ctx context.Context, subject string, versionID id.ID, ttl time.Duration, now time.Time) (StreamSession, error) {
+func (s *Store) CreateStreamSession(ctx context.Context, subject id.ID, sid id.ID, versionID id.ID, ttl time.Duration, now time.Time) (StreamSession, error) {
 	var out StreamSession
 
 	raw := make([]byte, 32)
@@ -91,9 +95,9 @@ func (s *Store) CreateStreamSession(ctx context.Context, subject string, version
 	sessionID := id.New()
 	expires := now.Add(ttl)
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO stream_sessions (id, subject, version_id, secret_hash, created_at, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`,
-		sessionID, subject, versionID, HashOpaque(secret), now, expires); err != nil {
+		INSERT INTO stream_sessions (id, subject, version_id, secret_hash, created_at, expires_at, session_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		sessionID, subject, versionID, HashOpaque(secret), now, expires, sid); err != nil {
 		return out, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -103,28 +107,64 @@ func (s *Store) CreateStreamSession(ctx context.Context, subject string, version
 	return StreamSession{ID: sessionID, Secret: secret, ExpiresAt: expires}, nil
 }
 
-// VerifyStreamSession controleert de vijf dingen uit DEC-051: de sessie bestaat,
-// het geheim klopt in een constant-time vergelijking, het subject klopt, de
-// binding aan de versie klopt, en hij is niet verlopen of ingetrokken.
+// VerifyStreamSession controleert de vijf dingen uit DEC-051 en DEC-102 die
+// zonder een onafhankelijk bekend subject te toetsen zijn: de sessie bestaat,
+// het geheim klopt in een constant-time vergelijking, de binding aan de versie
+// klopt, hij is niet verlopen of ingetrokken, en de auth-sessie (DEC-102)
+// waarvan hij is uitgegeven is dat evenmin. Geeft bij succes het subject
+// terug waaraan de sessie gebonden is.
+//
+// De laatste toets was tot deze fix afwezig: CreateStreamSession draagt
+// stream_sessions.session_id juist opdat intrekking van de auth-sessie deze
+// browserstreamsessie meeneemt, maar die FK werd hier nooit gelezen. Zonder
+// de LEFT JOIN bleef een browserstream geldig nadat de sessie waaruit hij
+// ontstond was ingetrokken. Vandaag zet nog niets sessions.revoked_at (DEC-103
+// levert dat pas), dus dit gat is nu latent; het moet dicht staan voordat er
+// een intrekkingspad bijkomt. session_id is nullable (bestaande rijen droegen
+// nooit een sessie, migratie 0007-stap 5), dus de LEFT JOIN en niet een INNER
+// JOIN: een rij zonder sessie faalt niet op de afwezigheid van wat hij nooit
+// had.
+//
+// Er is bewust geen subject-parameter om tegen te vergelijken: deze aanvraag
+// draagt geen bearer-token (het is de cookie-only browserstreamsessie uit
+// DEC-051), dus er bestaat geen onafhankelijk geverifieerde identiteit om de
+// gevalideerde rij tegen te leggen — in tegenstelling tot een accesstoken of
+// streamtoken, die claims.Subject dragen en zichzelf ondertekenen. De
+// gevalideerde rij is hier het enige gezaghebbende antwoord op "wie is dit",
+// en het teruggegeven subject is wat de aanroeper gebruikt om de
+// bibliotheekrechten opnieuw te toetsen op het aanvraagpad, niet alleen bij
+// het minten (DEC-105, hoofdstuk 16.4 regel 9). Een subject dat de aanroeper
+// zelf aandraagt zou hier niets bewijzen: iedereen kan een uuid verzinnen.
 //
 // Het geheim staat niet in de database; er staat een SHA-256 van, net als bij een
 // refreshtoken. Een databasedump levert dus geen speelbare sessies op.
-func (s *Store) VerifyStreamSession(ctx context.Context, sessionID id.ID, secret, subject string, versionID id.ID, now time.Time) error {
+//
+// Naast het subject komt de auth-sessie mee waaraan deze browserstreamsessie
+// hangt. Die is nodig op het streampad: copyRange raadpleegt per blok het
+// intrekkingsregister (DEC-099), en zonder die sid zou een lopende
+// browserstream de enige van de drie credentials zijn die een intrekking pas
+// bij de volgende aanvraag ziet. Nil-sid (een rij van vóór migratie 0007) geeft
+// id.Nil, en het register kent die nooit.
+func (s *Store) VerifyStreamSession(ctx context.Context, sessionID id.ID, secret string, versionID id.ID, now time.Time) (id.ID, id.ID, error) {
 	var storedHash []byte
-	var storedSubject string
+	var storedSubject id.ID
 	var storedVersion id.ID
 	var expiresAt time.Time
 	var revokedAt *time.Time
+	var authSessionRevokedAt *time.Time
+	var authSessionID *id.ID
 
 	err := s.pool.QueryRow(ctx, `
-		SELECT secret_hash, subject, version_id, expires_at, revoked_at
-		FROM stream_sessions WHERE id = $1`, sessionID).
-		Scan(&storedHash, &storedSubject, &storedVersion, &expiresAt, &revokedAt)
+		SELECT ss.secret_hash, ss.subject, ss.version_id, ss.expires_at, ss.revoked_at, s.revoked_at, ss.session_id
+		FROM stream_sessions ss
+		LEFT JOIN sessions s ON s.id = ss.session_id
+		WHERE ss.id = $1`, sessionID).
+		Scan(&storedHash, &storedSubject, &storedVersion, &expiresAt, &revokedAt, &authSessionRevokedAt, &authSessionID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ErrStreamSessionInvalid
+		return id.Nil, id.Nil, ErrStreamSessionInvalid
 	}
 	if err != nil {
-		return err
+		return id.Nil, id.Nil, err
 	}
 
 	// De geheimvergelijking gaat als eerste en altijd, ook wanneer een van de
@@ -132,11 +172,14 @@ func (s *Store) VerifyStreamSession(ctx context.Context, sessionID id.ID, secret
 	// sessie bestaat, het geheim niet" en "de sessie bestaat niet" meetbaar maken
 	// in de tijd.
 	ok := subtle.ConstantTimeCompare(storedHash, HashOpaque(secret)) == 1
-	if !ok || storedSubject != subject || storedVersion != versionID ||
-		revokedAt != nil || !now.Before(expiresAt) {
-		return ErrStreamSessionInvalid
+	if !ok || storedVersion != versionID || revokedAt != nil || authSessionRevokedAt != nil || !now.Before(expiresAt) {
+		return id.Nil, id.Nil, ErrStreamSessionInvalid
 	}
-	return nil
+	authSid := id.Nil
+	if authSessionID != nil {
+		authSid = *authSessionID
+	}
+	return storedSubject, authSid, nil
 }
 
 // TouchStreamSession verlengt één sessie en zet alleen die ene opnieuw.
@@ -162,7 +205,7 @@ func (s *Store) RevokeStreamSession(ctx context.Context, sessionID id.ID, now ti
 
 // ActiveStreamSessions telt wat er nu open staat. Voor tests en voor de
 // foutdetails bij een geweigerde negende.
-func (s *Store) ActiveStreamSessions(ctx context.Context, subject string, now time.Time) (int, error) {
+func (s *Store) ActiveStreamSessions(ctx context.Context, subject id.ID, now time.Time) (int, error) {
 	var n int
 	err := s.pool.QueryRow(ctx,
 		`SELECT count(*) FROM stream_sessions WHERE subject = $1 AND revoked_at IS NULL AND expires_at > $2`,

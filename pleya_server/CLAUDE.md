@@ -6,7 +6,18 @@ regel in deze map wijzigt.
 
 De werkregels per fase staan in de sectie Pleya Server van [../CLAUDE.md](../CLAUDE.md) en gelden
 onverkort: lees hoofdstuk 23 plus je eigen fase, blijf binnen de Phase ID, bouw niets uit een latere
-fase vooruit, en schrijf geen latere productvereiste weg. **De huidige fase is PS-4.**
+fase vooruit, en schrijf geen latere productvereiste weg. **PS-9 is gesloten op 4 september 2026.**
+De volgende fase in de vastgelegde doorloop is PS-11A en die is niet gestart, dus er is op dit moment
+geen lopende serverfase: nieuw werk hier vraagt eerst een vrijgave.
+
+De stand van de ontwikkeling staat in [../docs/PLEYA-SERVER-MASTERLIST.md](../docs/PLEYA-SERVER-MASTERLIST.md)
+en het plan in [../docs/pleya-server-rebaseline/](../docs/pleya-server-rebaseline/). Werk je hier,
+vink dan af in dezelfde commit.
+
+Eén stuk werk loopt daar bewust naast: de lege hubs `continue_watching` en `next_up` in `handleHub`
+zijn met [DEC-106](../docs/DECISIONS.md) aangemerkt als defect in het gesloten PS-4, en worden als
+zodanig gecorrigeerd. Datzelfde besluit voegt PS-4E, PS-7N en PS-7A toe aan de roadmap; geen van
+drieën is begonnen.
 
 `internal/web/` hoort niet bij deze fase maar bij PS-3W, een aparte afwijking met een eigen voorstel in
 [../docs/pleya-server-ps3w-proposal.md](../docs/pleya-server-ps3w-proposal.md).
@@ -46,7 +57,7 @@ Gecontroleerd: geen workflow in `.github/workflows/` noemt `pleya_server`, en `s
 er wel is, draai je zelf:
 
 ```sh
-scripts/verify-local.sh        # vijftien secties, 72 controles, van go vet tot een kijkstatusronde
+scripts/verify-local.sh        # vijftien secties, 78 controles, van go vet tot een gebruikersronde
 scripts/verify-protocol.sh     # antwoorden van een draaiende server tegen openapi.yaml
 ../scripts/check_protocol.sh   # het contract zelf, in een gepinde Python-container
 ```
@@ -74,21 +85,39 @@ internal/testsupport/  wegwerpschema en mediabestanden voor tests
 
 ## Regels die je stil kunt breken
 
-**Het wire-contract ligt vast.** `../docs/pleya-protocol/v1/openapi.yaml` is bevroren zolang PS-4
-loopt. Het venster stond één keer open, bij het sluiten van PS-3, voor de drie poortbesluiten
-(DEC-049, DEC-050, DEC-051). Een probleem daarin is een protocolwijziging langs de zes
-compatibiliteitsregels uit hoofdstuk 3 van de specificatie, en niet een aanpassing in de YAML omdat
-het zo uitkomt.
+**Het wire-contract ligt vast.** `../docs/pleya-protocol/v1/openapi.yaml` is bevroren tot een besluit
+het venster expliciet opent, en is niet aan een vast fasenummer gehangen (DEC-101): een anker op een
+specifiek nummer veroudert stilzwijgend zodra die fase een opengelaten voorganger heeft. Het anker op
+"de lopende fase" had een eigen gat, zichtbaar geworden bij het sluiten van PS-9: tussen twee fasen
+in loopt er geen fase, en dat is geen open venster. Het venster ging twee
+keer eerder open: bij het sluiten van PS-3, voor de drie poortbesluiten (DEC-049, DEC-050, DEC-051),
+en voor PS-9, voor precies de zeven wijzigingen uit DEC-101 (gebruikers-, sessie- en
+logout-endpoints, `device_id`/`device_name`, `capabilities.sessions`, nieuwe foutcodes). Dat venster
+is na stap 1 van de PS-9-implementatievolgorde alweer gesloten. Een probleem daarin is een
+protocolwijziging langs de zes compatibiliteitsregels uit hoofdstuk 3 van de specificatie, en niet een
+aanpassing in de YAML omdat het zo uitkomt.
 
 **Wire-types leven alleen in `internal/api`.** Domeintype en wire-type zijn twee dingen met een
 expliciete mapper ertussen (hoofdstuk 12.1). De foutcode is het contract; het bericht is voor logs en
 een client mag er nooit op matchen.
 
 **Endpoints die er niet horen te zijn, blijven weg.** Sinds PS-4 antwoorden `stream/{version_id}`,
-beide kijkstatus-endpoints en `POST /auth/stream-session`; `capabilities.watch_state`,
-`watch_state_ownership` en `stream_sessions` staan op `true`. Wat er níét is blijft 404:
-`playback/plan` (PS-6), sessies (PS-8), gebruikers (PS-9), verzamelingen (PS-9C), geschiedenis
-(PS-9P) en beheer (PS-11A). `verify-local.sh` en `TestScopeBoundaryAfterPS4` controleren dat.
+beide kijkstatus-endpoints en `POST /auth/stream-session`; sinds PS-9 de vijf routes onder `/users`
+(DEC-100), `GET`/`DELETE /sessions` en `POST /auth/logout` (DEC-103). `capabilities.watch_state`,
+`watch_state_ownership`, `stream_sessions`, `users` en `sessions` staan daarmee alle vijf op `true`.
+Wat er níét is blijft 404: `playback/plan` (PS-6), afspeelsessies (PS-8), verzamelingen (PS-9C),
+geschiedenis (PS-9P) en beheer (PS-11A). `verify-local.sh` en `TestScopeBoundaryAfterPS4`
+controleren dat.
+
+**Intrekken is in het geheugen, en dat is een keuze met een grens.** `auth.Revocations`
+(`internal/auth/revocation.go`) is een set ingetrokken sessie-ids, gevuld bij het opstarten uit
+`sessions` en geraadpleegd door elk accesstoken, elk streamtoken, elke browserstreamsessie en elk
+blok van `copyRange`. Geen `LISTEN`/`NOTIFY`, geen pub/sub: er is nergens in deze deployment een
+aanname van meerdere instanties (DEC-099). Een tweede instantie zonder opvolger maakt intrekking
+onbetrouwbaar; dat is een geaccepteerde grens en geen gat. `copyRange` is daarom een lus met blokken
+van 64 KiB en geen `io.CopyN` over de hele range: de gemeten bovengrens van twee seconden hangt aan
+die blokgrootte, en `TestRevocationStopsRunningStreamWithinTwoSeconds` meet hem tegen een echte
+`httptest`-server in plaats van hem booleaans af te vinken.
 
 **Kijkstatus heeft een eigenaar.** De zes regels staan in
 [DEC-049](../docs/DECISIONS.md); de beslissing zelf staat als pure functie in
@@ -103,11 +132,22 @@ bestanden niet, en RFC 9110 §8.8.1 vraagt strict revision control of een hash o
 `If-Range` levert daarom altijd `200`. Schrijf nergens code die op een gelijke validator vertrouwt om
 bytes aan elkaar te plakken.
 
-**Tabellen uit latere fasen bestaan niet.** Geen `users`, `sessions`, `play_history`,
-`play_sessions`, `user_item_data`, `external_ids`, `metadata_candidates` of `transcode_sessions`.
-`watch_states` en `stream_sessions` staan er sinds PS-4 wél. De lijst in hoofdstuk 17.2 beschrijft
-het hele v1-product en niet deze fase; `verify-local.sh` en `internal/migrate/migrate_test.go`
-controleren allebei welke tabellen er staan.
+**Tabellen uit latere fasen bestaan niet.** Geen `play_history`, `play_sessions`, `user_item_data`,
+`external_ids`, `metadata_candidates` of `transcode_sessions`. `watch_states` en `stream_sessions`
+staan er sinds PS-4; `users`, `sessions` en `library_permissions` sinds migratie 0007 (PS-9, DEC-098
+en DEC-102). De lijst in hoofdstuk 17.2 (die van het protocol; het schema staat in hoofdstuk 16 en
+17 van [de specificatie](../docs/pleya-protocol-v1.md)) beschrijft het hele v1-product en niet deze
+fase; `verify-local.sh` en `internal/migrate/migrate_test.go` controleren allebei welke tabellen er
+staan.
+
+**`watch_states.subject` en `stream_sessions.subject` zijn sinds migratie 0007 `uuid` met een FK naar
+`users(id)`.** De vaste string `"owner"` (het vroegere `api.SubjectOwner`, sinds AC2 verwijderd) is
+daar niet meer geldig voor. `handlers_watch.go` en `authorize.go` lezen het subject nu overal via
+`s.subjectID(r)` (`claims.Subject`, gevalideerd met `id.Parse`) rechtstreeks uit de context van de
+aanvraag; `auth.Store.OwnerUserID(ctx)` blijft alleen bestaan voor setup, login en refresh, die geen
+aanvraag met claims hebben om uit te lezen. De owner krijgt sinds PS-9 een echte, per installatie
+verschillende `users.id` (vóór een migratie via `gen_random_uuid()`, bij een verse setup via
+`id.New()`).
 
 **Migraties gaan alleen vooruit.** Genummerd in `internal/migrate/sql/`, uitgevoerd bij het opstarten
 onder een advisory lock, met een checksum per toegepaste migratie. De binary weigert te starten op een

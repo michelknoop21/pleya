@@ -3,19 +3,42 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/auth"
-	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
 // maxBodyBytes begrenst een aanvraagbody. De grootste die dit protocol kent is
-// een setupverzoek met drie korte velden.
+// een setupverzoek met drie korte velden, plus sinds PS-9 optioneel device_id
+// en device_name.
 const maxBodyBytes = 8 << 10
+
+// unknownDeviceName is de vaste plaatshouder voor een sessie zonder bekend
+// toestel (DEC-102): geen capability, of een client die niets stuurt.
+const unknownDeviceName = "Unknown device"
+
+// deviceID geeft nil wanneer de client geen toestel-id meestuurde.
+func deviceID(v string) *string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return nil
+	}
+	return &v
+}
+
+// deviceName vult de vaste plaatshouder in wanneer de client niets stuurde.
+func deviceName(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return unknownDeviceName
+	}
+	return v
+}
 
 func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 	setupRequired, err := s.opts.Auth.SetupRequired(r.Context())
@@ -47,7 +70,13 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			Downloads:           false,
 			LiveTV:              false,
 			Realtime:            false,
-			Users:               false,
+			// Users: de vijf endpoints uit DEC-100 staan er sinds stap 4, en
+			// login kent sindsdien elke rij in users en niet alleen de owner.
+			Users: true,
+			// Sessions: aan sinds stap 6. Het schema en de tokenketen kwamen in
+			// stap 2; GET/DELETE /sessions, POST /auth/logout en het
+			// intrekkingsregister maken de belofte pas waar.
+			Sessions: true,
 		},
 		Auth: InfoAuth{
 			Methods:       []string{"password"},
@@ -66,9 +95,11 @@ func (s *Server) handleServer(w http.ResponseWriter, _ *http.Request) {
 }
 
 type setupRequest struct {
-	SetupCode string `json:"setup_code"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
+	SetupCode  string `json:"setup_code"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	DeviceID   string `json:"device_id"`
+	DeviceName string `json:"device_name"`
 }
 
 func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
@@ -110,25 +141,41 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.limiter.reset("setup")
-	s.issueTokens(w, r)
-}
-
-type loginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
-	if !s.rateLimit(w, "login") {
+	ownerID, err := s.opts.Auth.OwnerUserID(r.Context())
+	if err != nil {
+		writeInternal(w, s.log, err)
 		return
 	}
 
+	s.limiter.reset("setup")
+	s.issueTokens(w, r, ownerID, deviceID(req.DeviceID), deviceName(req.DeviceName))
+}
+
+type loginRequest struct {
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	DeviceID   string `json:"device_id"`
+	DeviceName string `json:"device_name"`
+}
+
+func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
 	if !s.decodeBody(w, r, &req, CodeInvalidCredentials) {
 		return
 	}
 
+	// Sleutel per gebruikersnaam (DEC-102-aangrenzend): met meerdere
+	// gebruikers zou een gedeelde "login"-sleutel betekenen dat iemand die
+	// zijn eigen wachtwoord vijf keer verkeerd typt de login van een
+	// huisgenoot blokkeert. De gebruikersnaam hoeft hier niet te bestaan; de
+	// sleutel is een emmer, geen claim.
+	limiterKey := "login:" + req.Username
+	if !s.rateLimit(w, limiterKey) {
+		return
+	}
+
+	// Zonder voltooide setup bestaat er geen enkele gebruiker om tegen te
+	// verifiëren, en dan is "verkeerde inloggegevens" een misleidend antwoord.
 	owner, err := s.opts.Auth.LoadOwner(r.Context())
 	if err != nil {
 		writeInternal(w, s.log, err)
@@ -139,30 +186,42 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Een onbekende gebruiker en een verkeerd wachtwoord geven hetzelfde
-	// antwoord, zodat het bestaan van een account niet lekt. Het wachtwoord wordt
-	// ook bij een verkeerde gebruikersnaam gecontroleerd, want een antwoord dat
-	// meteen terugkomt verraadt net zo goed dat de naam niet klopt.
-	ok, needsRehash, verifyErr := auth.VerifyPassword(req.Password, owner.PasswordHash, s.opts.Argon2)
+	// Sinds stap 4 van PS-9 logt elke rij in users in, niet alleen de owner
+	// (DEC-100). Een onbekende gebruikersnaam en een verkeerd wachtwoord geven
+	// hetzelfde antwoord, en kosten hetzelfde: bij een onbekende naam wordt het
+	// wachtwoord alsnog tegen de owner-hash geverifieerd en de uitkomst
+	// weggegooid. Een antwoord dat meteen terugkomt verraadt net zo goed dat de
+	// naam niet bestaat als een antwoord dat het met zoveel woorden zegt.
+	user, storedHash, lookupErr := s.opts.Auth.UserForLogin(r.Context(), req.Username)
+	known := true
+	if errors.Is(lookupErr, auth.ErrUserNotFound) {
+		known = false
+		storedHash = owner.PasswordHash
+	} else if lookupErr != nil {
+		writeInternal(w, s.log, lookupErr)
+		return
+	}
+
+	ok, needsRehash, verifyErr := auth.VerifyPassword(req.Password, storedHash, s.opts.Argon2)
 	if verifyErr != nil {
 		writeInternal(w, s.log, verifyErr)
 		return
 	}
-	if !ok || req.Username != owner.Username {
+	if !ok || !known {
 		writeError(w, s.log, CodeInvalidCredentials, "invalid credentials", nil)
 		return
 	}
 
 	if needsRehash {
 		if hash, err := auth.HashPassword(req.Password, s.opts.Argon2); err == nil {
-			if err := s.opts.Auth.UpdatePasswordHash(r.Context(), hash); err != nil {
+			if err := s.opts.Auth.UpdatePasswordHash(r.Context(), user.ID, hash); err != nil {
 				s.log.Warn("opnieuw hashen mislukt", "error", err.Error())
 			}
 		}
 	}
 
-	s.limiter.reset("login")
-	s.issueTokens(w, r)
+	s.limiter.reset(limiterKey)
+	s.issueTokens(w, r, user.ID, deviceID(req.DeviceID), deviceName(req.DeviceName))
 }
 
 type refreshRequest struct {
@@ -186,26 +245,44 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := s.now().UTC()
-	outcome, err := s.opts.Auth.RotateRefreshToken(r.Context(),
-		auth.HashOpaque(req.RefreshToken), newHash, now.Add(s.opts.RefreshTokenTTL), now)
+	outcome, sid, subjectID, err := s.opts.Auth.RotateRefreshToken(r.Context(),
+		auth.HashOpaque(req.RefreshToken), newHash, now.Add(s.opts.RefreshTokenTTL), now,
+		s.opts.RefreshGraceWindow)
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
 	}
 
 	switch outcome {
+	case auth.RefreshReplayed:
+		// Meetbaar apart van een gewone rotatie: elke regel hier is een
+		// antwoord dat de lijn eerder kwijtraakte, en dat hoort zeldzaam te
+		// zijn.
+		s.log.Info("rotatie-antwoord verloren; herhaling binnen het respijt bediend")
 	case auth.RefreshReused:
-		// De hele keten is nu ongeldig. Een van de twee partijen die dit token
-		// draagt is de aanvaller, en welke dat is valt niet vast te stellen.
-		s.log.Warn("refreshtoken hergebruikt; alle tokens ingetrokken")
+		// De hele keten van DEZE sessie is nu ongeldig (DEC-102, sessie-scoped
+		// sinds PS-9). Een van de twee partijen die dit token droeg is de
+		// aanvaller, en welke dat is valt niet vast te stellen.
+		s.log.Warn("refreshtoken hergebruikt; de tokens van deze sessie zijn ingetrokken")
 		writeError(w, s.log, CodeRefreshTokenReused, "refresh token reused", nil)
+		return
+	case auth.RefreshSessionRevoked:
+		writeError(w, s.log, CodeTokenInvalid, "session revoked", nil)
 		return
 	case auth.RefreshExpired, auth.RefreshUnknown:
 		writeError(w, s.log, CodeTokenInvalid, "refresh token invalid", nil)
 		return
 	}
 
-	access, claims, err := s.opts.Signer.Mint(SubjectOwner, auth.TokenAccess, s.opts.AccessTokenTTL, "")
+	// last_seen_at bijwerken hoort hier en niet bij elke aanvraag: een refresh
+	// is per toestel de natuurlijke hartslag, en een schrijfronde per GET zou
+	// een leesserver in een schrijfserver veranderen voor een veld dat alleen in
+	// GET /sessions staat.
+	if err := s.opts.Auth.TouchSession(r.Context(), sid, now); err != nil {
+		s.log.Warn("last_seen_at bijwerken mislukt", "error", err.Error())
+	}
+
+	access, claims, err := s.opts.Signer.Mint(subjectID.String(), sid.String(), auth.TokenAccess, s.opts.AccessTokenTTL, "")
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
@@ -234,16 +311,17 @@ func (s *Server) handleStreamToken(w http.ResponseWriter, r *http.Request) {
 		writeError(w, s.log, CodeNotFound, "version not found", nil)
 		return
 	}
-	if err := s.opts.Catalog.VersionExists(r.Context(), versionID); err != nil {
-		if errors.Is(err, catalog.ErrNotFound) {
-			writeError(w, s.log, CodeNotFound, "version not found", nil)
-			return
-		}
+	if !s.authorizeVersion(w, r, versionID) {
+		return
+	}
+
+	sid, subject, err := s.currentSessionSubject(r)
+	if err != nil {
 		writeInternal(w, s.log, err)
 		return
 	}
 
-	token, claims, err := s.opts.Signer.Mint(SubjectOwner, auth.TokenStream, s.opts.StreamTokenTTL, versionID.String())
+	token, claims, err := s.opts.Signer.Mint(subject.String(), sid.String(), auth.TokenStream, s.opts.StreamTokenTTL, versionID.String())
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
@@ -276,20 +354,21 @@ func (s *Server) handleStreamSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, s.log, CodeNotFound, "version not found", nil)
 		return
 	}
-	if err := s.opts.Catalog.VersionExists(r.Context(), versionID); err != nil {
-		if errors.Is(err, catalog.ErrNotFound) {
-			writeError(w, s.log, CodeNotFound, "version not found", nil)
-			return
-		}
+	if !s.authorizeVersion(w, r, versionID) {
+		return
+	}
+
+	sid, subject, err := s.currentSessionSubject(r)
+	if err != nil {
 		writeInternal(w, s.log, err)
 		return
 	}
 
 	now := s.now().UTC()
-	session, err := s.opts.Auth.CreateStreamSession(r.Context(), SubjectOwner, versionID, s.opts.StreamSessionTTL, now)
+	session, err := s.opts.Auth.CreateStreamSession(r.Context(), subject, sid, versionID, s.opts.StreamSessionTTL, now)
 	if err != nil {
 		if errors.Is(err, auth.ErrStreamSessionLimit) {
-			active, _ := s.opts.Auth.ActiveStreamSessions(r.Context(), SubjectOwner, now)
+			active, _ := s.opts.Auth.ActiveStreamSessions(r.Context(), subject, now)
 			writeError(w, s.log, CodeStreamSessionLimit, "too many active stream sessions",
 				map[string]any{"active": active, "limit": auth.MaxActiveStreamSessions})
 			return
@@ -321,9 +400,18 @@ func (s *Server) handleStreamSession(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// issueTokens geeft een vers paar uit na setup of login.
-func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request) {
-	access, claims, err := s.opts.Signer.Mint(SubjectOwner, auth.TokenAccess, s.opts.AccessTokenTTL, "")
+// issueTokens opent een sessie en geeft een vers paar uit na setup of login
+// (DEC-102). deviceID is nil zonder capability of zonder een toestel-id van de
+// client; deviceName draagt in dat geval al de vaste plaatshouder.
+func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.ID, deviceID *string, deviceName string) {
+	now := s.now().UTC()
+	sessionID, err := s.opts.Auth.CreateSession(r.Context(), userID, deviceID, deviceName, now)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	access, claims, err := s.opts.Signer.Mint(userID.String(), sessionID.String(), auth.TokenAccess, s.opts.AccessTokenTTL, "")
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
@@ -334,7 +422,7 @@ func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request) {
 		writeInternal(w, s.log, err)
 		return
 	}
-	if err := s.opts.Auth.StoreRefreshToken(r.Context(), hash, s.now().UTC().Add(s.opts.RefreshTokenTTL)); err != nil {
+	if err := s.opts.Auth.StoreRefreshToken(r.Context(), hash, sessionID, now.Add(s.opts.RefreshTokenTTL)); err != nil {
 		writeInternal(w, s.log, err)
 		return
 	}
@@ -345,6 +433,31 @@ func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request) {
 		TokenType:    "bearer",
 		ExpiresInMs:  (claims.ExpiresAt - claims.IssuedAt) * 1000,
 	})
+}
+
+// currentSessionSubject lost sid en subject op voor een aanvraag die al
+// authenticated() doorliep.
+//
+// Allebei komen uit de Claims van het eigen accesstoken van deze aanvraag: die
+// zet authenticated() in de context. Vóór AC2 (PS-9) loste dit subject nog via
+// auth.Store.OwnerUserID op, wat correct was zolang er geen tweede gebruiker
+// bestond om mee te verwarren; met een echte member/restricted-gebruiker zou
+// dat het streamtoken of de streamsessie altijd op de owner binden, ongeacht
+// wie de aanvraag werkelijk deed (DEC-105, hoofdstuk 16.4 regel 10 en 11).
+func (s *Server) currentSessionSubject(r *http.Request) (sid id.ID, subject id.ID, err error) {
+	claims, ok := claimsFromContext(r.Context())
+	if !ok {
+		return id.Nil, id.Nil, errors.New("geen claims in context; authenticated() ontbreekt")
+	}
+	sid, err = id.Parse(claims.Sid)
+	if err != nil {
+		return id.Nil, id.Nil, fmt.Errorf("sid in claims is geen geldig id: %w", err)
+	}
+	subject, err = s.subjectID(r)
+	if err != nil {
+		return id.Nil, id.Nil, err
+	}
+	return sid, subject, nil
 }
 
 func (s *Server) rateLimit(w http.ResponseWriter, key string) bool {

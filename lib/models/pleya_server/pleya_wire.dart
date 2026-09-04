@@ -152,6 +152,7 @@ class PleyaCapabilities {
     this.users = false,
     this.watchStateOwnership = false,
     this.streamSessions = false,
+    this.sessions = false,
   });
 
   /// What a client may assume before the first successful `GET /info`.
@@ -188,6 +189,16 @@ class PleyaCapabilities {
   /// `/stream`. For browsers; this app authorises its player with a header.
   final bool streamSessions;
 
+  /// The server binds a session to a device (DEC-102): `device_id` and
+  /// `device_name` are accepted on login and setup, `GET`/`DELETE /sessions`
+  /// and `POST /auth/logout` exist, and revoking a session takes effect within
+  /// two seconds even for a stream already in flight.
+  ///
+  /// Sending the device fields to a server without this flag is refused whole:
+  /// `LoginRequest` and `SetupRequest` are closed schemas. That is the reason
+  /// this is negotiated rather than assumed.
+  final bool sessions;
+
   factory PleyaCapabilities.fromJson(Map<String, dynamic> json) => PleyaCapabilities(
     browse: boolean(json, 'browse'),
     search: boolean(json, 'search'),
@@ -201,6 +212,7 @@ class PleyaCapabilities {
     watchStateOwnership: booleanOr(json, 'watch_state_ownership', orElse: false),
     streamSessions: booleanOr(json, 'stream_sessions', orElse: false),
     users: booleanOr(json, 'users', orElse: false),
+    sessions: booleanOr(json, 'sessions', orElse: false),
   );
 }
 
