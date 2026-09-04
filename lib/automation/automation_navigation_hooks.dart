@@ -5,8 +5,18 @@ import '../navigation/navigation_tabs.dart';
 /// `POST /v1/open`'s only way to move the app to a nav tab: a hook
 /// `MainScreen` registers under `kPleyaVerify`, calling the exact same
 /// `_selectTab` its own tab bar calls — not a second, parallel navigation
-/// path. Same register/unregister-by-identity shape as
+/// path. Same register/unregister-by-owner shape as
 /// `ProfileNavigationRegistry.attachNavigator`/`detachNavigator`.
+///
+/// **Unregistering compares with `==`, never with `identical`.** Every caller
+/// registers and unregisters a bound instance-method tear-off (`_openFilters`
+/// in `initState`, `_openFilters` again in `dispose`), and Dart builds a fresh
+/// closure object for each of those: the two are `==`, because a tear-off's
+/// equality is defined as same receiver and same method, but they are not
+/// `identical`. An `identical` guard therefore never matches its own
+/// registration, so nothing is ever removed. That is the exact semantics these
+/// three methods want — "the owner that registered this is taking it back" —
+/// and `==` is the operator that expresses it.
 class AutomationNavigationHooks {
   AutomationNavigationHooks._();
 
@@ -19,7 +29,7 @@ class AutomationNavigationHooks {
   }
 
   void unregisterSelectTab(void Function(NavigationTabId tab) selectTab) {
-    if (identical(_selectTab, selectTab)) _selectTab = null;
+    if (_selectTab == selectTab) _selectTab = null;
   }
 
   /// `false` when no `MainScreen` is mounted to drive — the caller (`/v1/open`)
@@ -41,7 +51,7 @@ class AutomationNavigationHooks {
   void registerRouteOpener(String screenId, VoidCallback open) => _routeOpeners[screenId] = open;
 
   void unregisterRouteOpener(String screenId, VoidCallback open) {
-    if (identical(_routeOpeners[screenId], open)) _routeOpeners.remove(screenId);
+    if (_routeOpeners[screenId] == open) _routeOpeners.remove(screenId);
   }
 
   /// `false` when nothing has registered an opener for [screenId] — usually
@@ -68,7 +78,7 @@ class AutomationNavigationHooks {
   }
 
   void unregisterFirstProfileHandoff(void Function() handoff) {
-    if (identical(_firstProfileHandoff, handoff)) _firstProfileHandoff = null;
+    if (_firstProfileHandoff == handoff) _firstProfileHandoff = null;
   }
 
   /// `false` when no screen registered a handoff — `/v1/signin` still
