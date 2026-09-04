@@ -13,7 +13,6 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/widgets/tv/tv_hero_artwork.dart';
-import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 MediaItem _film({String? art, String? square, String? poster}) => MediaItem(
   id: 'f1',
@@ -27,7 +26,8 @@ MediaItem _film({String? art, String? square, String? poster}) => MediaItem(
 );
 
 void main() {
-  const heroRatio = TvHomeLayout.heroAspectRatio;
+  // The full-bleed hero is the screen's own ratio (DEC-095).
+  const heroRatio = 16 / 9;
 
   test('a real backdrop is drawn sharp', () {
     final art = tvHeroArtFor(

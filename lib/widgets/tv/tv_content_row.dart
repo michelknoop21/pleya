@@ -59,6 +59,7 @@ class TvContentRow extends StatelessWidget {
     this.onNavigateUp,
     this.onNavigateDown,
     this.automationRailIndex,
+    this.tileScrollAlignment = 0.5,
   });
 
   /// A projected Home row: Continue Watching, or one of
@@ -90,6 +91,10 @@ class TvContentRow extends StatelessWidget {
   /// This row's position in the feed, for Pleya Verify addressing only.
   final int? automationRailIndex;
 
+  /// The row's vertical anchor when one of its tiles takes the focus — see
+  /// [TvHomeLayout.rowTileScrollAlignment]; the feed computes it per row.
+  final double tileScrollAlignment;
+
   /// The row's full vertical extent — heading, tile band, metadata block —
   /// constant by construction, so which tile holds the focus can never move
   /// the rows underneath it.
@@ -110,6 +115,7 @@ class TvContentRow extends StatelessWidget {
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
       automationRailIndex: automationRailIndex,
+      tileScrollAlignment: tileScrollAlignment,
     );
   }
 }

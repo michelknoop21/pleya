@@ -80,6 +80,7 @@ class TvHeroBillboardCarousel extends StatefulWidget {
     this.clientFor,
     this.autoplayEnabled = true,
     this.textOpacity = 1.0,
+    this.textBottom = 0,
     this.hideSpoilers = false,
     this.initialGroupId,
     this.onActiveGroupChanged,
@@ -94,7 +95,8 @@ class TvHeroBillboardCarousel extends StatefulWidget {
   /// produced three slides, three is the answer.
   final List<UnifiedMediaGroup> groups;
 
-  /// The card's box, from [TvHomeLayout.heroWidth] / [TvHomeLayout.heroHeight].
+  /// The full-bleed box the feed lays this out in: the content width by the
+  /// content box plus the top-navigation band above it (DEC-095).
   final Size size;
 
   /// The fase-4 coordinator, passed in rather than reached for, so this widget
@@ -110,6 +112,9 @@ class TvHeroBillboardCarousel extends StatefulWidget {
 
   /// 33.2's faded hero text once a content row holds the focus.
   final double textOpacity;
+
+  /// See [TvHeroBillboardCard.textBottom].
+  final double textBottom;
 
   final bool hideSpoilers;
 
@@ -350,6 +355,7 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
               client: client,
               hideSpoilers: widget.hideSpoilers,
               textOpacity: widget.textOpacity,
+              textBottom: widget.textBottom,
               artwork: AnimatedSwitcher(
                 duration: reduceMotion(context, TvHomeLayout.heroCrossfade),
                 // Both layers on screen at once during the fade, the outgoing one
@@ -362,8 +368,8 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
             ),
             if (_showIndicator && widget.groups.length > 1)
               Positioned(
-                right: (TvHomeLayout.heroContentInset * scale),
-                bottom: (TvHomeLayout.heroContentBottom * scale),
+                right: TvDiscoveryLayout.pageInset * scale,
+                bottom: widget.textBottom,
                 child: _SegmentIndicator(count: widget.groups.length, active: _index, scale: scale),
               ),
           ],

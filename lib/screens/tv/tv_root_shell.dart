@@ -39,7 +39,10 @@
 /// wired explicitly by the screens that have a header.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/multi_server_provider.dart';
@@ -211,107 +214,108 @@ class TvRootShell extends StatelessWidget {
                 selectLibrary: selectLibrary,
                 openSettings: openSettings,
                 tvContentFocus: contentFocus,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    FocusScope(
-                      node: navFocusScope,
+                child: _TvShellFrame(
+                  nav: FocusScope(
+                    node: navFocusScope,
+                    child: ListenableBuilder(
+                      listenable: coordinator,
+                      builder: (context, _) => TvTopNavigation(
+                        destinations: coordinator.destinations,
+                        active: coordinator.active,
+                        nodes: navNodes,
+                        profile: profile,
+                        // Audit divergentie 13, mockup 30 E: the bar dims
+                        // under an overlay. `isCurrent` flips when a sheet or
+                        // dialog is pushed above this route, and reading it
+                        // here makes that push rebuild the bar.
+                        dimmed: !(ModalRoute.of(context)?.isCurrent ?? true),
+                        onSelect: onSelectDestination,
+                        onFocusDestination: onFocusDestination,
+                        // DOWN out of the bar is the one press that means
+                        // "put me in the content"; `_focusContent` arms the
+                        // intent, and whatever can satisfy it consumes it —
+                        // now if the destination is ready, later if it is
+                        // still waiting on a server (P2).
+                        onNavigateDown: () => onFocusContent(restorePreviousFocus: true),
+                        onOpenProfiles: onOpenProfiles,
+                        // Hoofdstuk 18.4. Read here rather than passed down
+                        // from `MainScreen` so the bar is the only thing that
+                        // rebuilds when a token expires, and read through a
+                        // selector on the *auth* flag specifically: a server
+                        // merely going offline is not something the viewer
+                        // can act on, and marking it would train them to
+                        // ignore the dot that means they can.
+                        // Nullable: this shell is also mounted in tests and
+                        // in early startup frames that have no registry yet,
+                        // and "no provider" is not "attention required".
+                        needsAttention: context.select<MultiServerProvider?, bool>(
+                          (p) => p?.hasAuthErrorServers ?? false,
+                        ),
+                      ),
+                    ),
+                  ),
+                  content: (topBandHeight) => FocusScope(
+                    node: contentFocusScope,
+                    // No autofocus: focus is moved deliberately, so a
+                    // rebuild cannot pull the remote back out of the bar.
+                    child: TvShellSurface(
+                      topBandHeight: topBandHeight,
                       child: ListenableBuilder(
                         listenable: coordinator,
-                        builder: (context, _) => TvTopNavigation(
-                          destinations: coordinator.destinations,
-                          active: coordinator.active,
-                          nodes: navNodes,
-                          profile: profile,
-                          onSelect: onSelectDestination,
-                          onFocusDestination: onFocusDestination,
-                          // DOWN out of the bar is the one press that means
-                          // "put me in the content"; `_focusContent` arms the
-                          // intent, and whatever can satisfy it consumes it —
-                          // now if the destination is ready, later if it is
-                          // still waiting on a server (P2).
-                          onNavigateDown: () => onFocusContent(restorePreviousFocus: true),
-                          onOpenProfiles: onOpenProfiles,
-                          // Hoofdstuk 18.4. Read here rather than passed down
-                          // from `MainScreen` so the bar is the only thing that
-                          // rebuilds when a token expires, and read through a
-                          // selector on the *auth* flag specifically: a server
-                          // merely going offline is not something the viewer
-                          // can act on, and marking it would train them to
-                          // ignore the dot that means they can.
-                          // Nullable: this shell is also mounted in tests and
-                          // in early startup frames that have no registry yet,
-                          // and "no provider" is not "attention required".
-                          needsAttention: context.select<MultiServerProvider?, bool>(
-                            (p) => p?.hasAuthErrorServers ?? false,
-                          ),
-                        ),
+                        builder: (context, screens) {
+                          final nested = coordinator.activeNestedRoute;
+                          // The destination's own screens stay mounted
+                          // underneath: the `IndexedStack` keeps its scroll
+                          // position, its providers and its focus nodes, so
+                          // popping "Alle films" returns to a landing that
+                          // never went away (hoofdstuk 24 — a nested route is
+                          // not allowed to cost a reload). The route on top
+                          // is built for the active destination only, so a
+                          // destination switch does tear it down — see
+                          // [child] on where its place is kept instead.
+                          return Stack(
+                            children: [
+                              // Offstage rather than removed, for the reason
+                              // above; `TickerMode` stops its animations from
+                              // running behind the route on top of it, and
+                              // `ExcludeFocus` keeps it out of the focus
+                              // tree.
+                              //
+                              // `Offstage` alone removes hit-testing and
+                              // painting, not focusability — so with a
+                              // nested route open, the destination root
+                              // underneath stayed a full set of focusable
+                              // widgets in the same scope as the route on
+                              // top of it. That is the second half of P5:
+                              // the first is `IndexedStack` in
+                              // `MainScreen._buildTickerAwareStack`, and a
+                              // fix in only one of the two still leaves a
+                              // reachable invisible screen.
+                              ExcludeFocus(
+                                excluding: nested != null,
+                                child: Offstage(
+                                  offstage: nested != null,
+                                  child: TickerMode(enabled: nested == null, child: screens!),
+                                ),
+                              ),
+                              // Every nested route, not only Mijn Pleya's:
+                              // the catalog routes open the same way and
+                              // have the same focus-entry problem the
+                              // moment their content lands late.
+                              if (nested != null)
+                                TvNestedSurface(
+                                  key: nested.surfaceKey,
+                                  route: nested,
+                                  dismiss: dismissNestedRoute,
+                                  child: Builder(builder: nested.builder),
+                                ),
+                            ],
+                          );
+                        },
+                        child: child,
                       ),
                     ),
-                    Expanded(
-                      child: FocusScope(
-                        node: contentFocusScope,
-                        // No autofocus: focus is moved deliberately, so a
-                        // rebuild cannot pull the remote back out of the bar.
-                        child: TvShellSurface(
-                          child: ListenableBuilder(
-                            listenable: coordinator,
-                            builder: (context, screens) {
-                              final nested = coordinator.activeNestedRoute;
-                              // The destination's own screens stay mounted
-                              // underneath: the `IndexedStack` keeps its scroll
-                              // position, its providers and its focus nodes, so
-                              // popping "Alle films" returns to a landing that
-                              // never went away (hoofdstuk 24 — a nested route is
-                              // not allowed to cost a reload). The route on top
-                              // is built for the active destination only, so a
-                              // destination switch does tear it down — see
-                              // [child] on where its place is kept instead.
-                              return Stack(
-                                children: [
-                                  // Offstage rather than removed, for the reason
-                                  // above; `TickerMode` stops its animations from
-                                  // running behind the route on top of it, and
-                                  // `ExcludeFocus` keeps it out of the focus
-                                  // tree.
-                                  //
-                                  // `Offstage` alone removes hit-testing and
-                                  // painting, not focusability — so with a
-                                  // nested route open, the destination root
-                                  // underneath stayed a full set of focusable
-                                  // widgets in the same scope as the route on
-                                  // top of it. That is the second half of P5:
-                                  // the first is `IndexedStack` in
-                                  // `MainScreen._buildTickerAwareStack`, and a
-                                  // fix in only one of the two still leaves a
-                                  // reachable invisible screen.
-                                  ExcludeFocus(
-                                    excluding: nested != null,
-                                    child: Offstage(
-                                      offstage: nested != null,
-                                      child: TickerMode(enabled: nested == null, child: screens!),
-                                    ),
-                                  ),
-                                  // Every nested route, not only Mijn Pleya's:
-                                  // the catalog routes open the same way and
-                                  // have the same focus-entry problem the
-                                  // moment their content lands late.
-                                  if (nested != null)
-                                    TvNestedSurface(
-                                      key: nested.surfaceKey,
-                                      route: nested,
-                                      dismiss: dismissNestedRoute,
-                                      child: Builder(builder: nested.builder),
-                                    ),
-                                ],
-                              );
-                            },
-                            child: child,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               );
             },
@@ -337,11 +341,98 @@ class TvRootShell extends StatelessWidget {
 /// threading a boolean down both paths would be one more thing to forget. Its
 /// absence is the standalone case — a golden, a focus test — where the screen
 /// still owns its own frame and nothing about it changes.
-class TvShellSurface extends InheritedWidget {
-  const TvShellSurface({super.key, required super.child});
+class TvShellSurface extends InheritedNotifier<ValueNotifier<double>> {
+  /// [topBandHeight] is the shell's measured bar height; a standalone host (a
+  /// golden, a focus test) leaves it out and reads as a band of 0.
+  const TvShellSurface({super.key, ValueNotifier<double>? topBandHeight, required super.child})
+    : super(notifier: topBandHeight);
 
   static bool isPresent(BuildContext context) => context.dependOnInheritedWidgetOfExactType<TvShellSurface>() != null;
 
+  /// The measured height of the top-navigation band above the content box,
+  /// and 0 in the standalone case.
+  ///
+  /// The Home feed extends its full-bleed hero up by exactly this much, so the
+  /// backdrop runs behind the bar (DEC-095). Measured by [_TvShellFrame]'s
+  /// layout rather than computed from tokens: the bar's height is its pills'
+  /// intrinsic height under a floor, which follows font metrics, text scaling
+  /// and locale, and a token that restated it would drift on the first of
+  /// those to change.
+  static double topBandHeightOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<TvShellSurface>()?.notifier?.value ?? 0;
+}
+
+/// The bar above the content, laid out in that order and painted in the other.
+///
+/// The fase-7 shell stacked the two in a `Column`, which is the right layout
+/// — the content box is whatever the bar leaves — and the wrong paint order
+/// once Home's hero has to run *behind* the bar (DEC-095): a child painted
+/// after the bar covers it. A `CustomMultiChildLayout` separates the two: the
+/// delegate lays the bar out first and gives the content the rest, exactly as
+/// the `Column` did, while the children list paints the content first and the
+/// bar over it. The bar itself paints no background, so the shell's own
+/// ground and, on Home, the backdrop show through it.
+///
+/// The measured band height is published to the content through
+/// [TvShellSurface] one frame after layout, which is the only frame it can be:
+/// a layout pass cannot rebuild the widgets it is laying out.
+class _TvShellFrame extends StatefulWidget {
+  const _TvShellFrame({required this.nav, required this.content});
+
+  final Widget nav;
+  final Widget Function(ValueNotifier<double> topBandHeight) content;
+
   @override
-  bool updateShouldNotify(TvShellSurface oldWidget) => false;
+  State<_TvShellFrame> createState() => _TvShellFrameState();
+}
+
+class _TvShellFrameState extends State<_TvShellFrame> {
+  final _topBand = ValueNotifier<double>(0);
+
+  @override
+  void dispose() {
+    _topBand.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomMultiChildLayout(
+      delegate: _TvShellLayoutDelegate(_topBand),
+      children: [
+        LayoutId(id: _TvShellSlot.content, child: widget.content(_topBand)),
+        LayoutId(id: _TvShellSlot.nav, child: widget.nav),
+      ],
+    );
+  }
+}
+
+enum _TvShellSlot { nav, content }
+
+class _TvShellLayoutDelegate extends MultiChildLayoutDelegate {
+  _TvShellLayoutDelegate(this.topBand);
+
+  final ValueNotifier<double> topBand;
+
+  @override
+  void performLayout(Size size) {
+    // Width-tight, height-unbounded: exactly what the `Column` handed the bar.
+    // A bounded height is not the same thing — the bar's `Align`ed profile chip
+    // expands to whatever height it is offered, and under `size.height` the
+    // bar took the whole screen and left the content a zero-height box.
+    final nav = layoutChild(_TvShellSlot.nav, BoxConstraints(minWidth: size.width, maxWidth: size.width));
+    positionChild(_TvShellSlot.nav, Offset.zero);
+    final contentHeight = math.max(0.0, size.height - nav.height);
+    layoutChild(_TvShellSlot.content, BoxConstraints.tightFor(width: size.width, height: contentHeight));
+    positionChild(_TvShellSlot.content, Offset(0, nav.height));
+    if (topBand.value != nav.height) {
+      final measured = nav.height;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (topBand.value != measured) topBand.value = measured;
+      });
+    }
+  }
+
+  @override
+  bool shouldRelayout(covariant _TvShellLayoutDelegate oldDelegate) => oldDelegate.topBand != topBand;
 }
