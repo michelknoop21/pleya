@@ -139,6 +139,113 @@ jobs:
             echo "No tests found, skipping test execution"
           fi
 
+  pleya-server:
+    name: Pleya Server (Go)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: pleya
+          POSTGRES_PASSWORD: pleya
+          POSTGRES_DB: pleya_test
+        options: >-
+          --health-cmd "pg_isready -U pleya"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+        ports:
+          - 5432:5432
+    env:
+      # Zonder deze DSN slaan de pakketten die een echte database nodig hebben
+      # zichzelf over, en dan zegt een groene run niets over de migraties.
+      PLEYA_TEST_DATABASE_URL: postgres://pleya:pleya@localhost:5432/pleya_test?sslmode=disable
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: pleya_server/go.mod
+          cache-dependency-path: pleya_server/go.sum
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+
+      - name: Build
+        working-directory: pleya_server
+        run: go build ./...
+
+      - name: Vet
+        working-directory: pleya_server
+        run: go vet ./...
+
+      - name: Test
+        working-directory: pleya_server
+        run: go test ./...
+
+      - name: Capture responses for the contract check
+        working-directory: pleya_server
+        env:
+          PLEYA_RESPONSE_DIR: ${{ github.workspace }}/pleya_server/.responses
+        run: |
+          rm -rf .responses && mkdir -p .responses
+          go test -count=1 ./internal/api/
+
+      - name: Validate responses against openapi.yaml
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check jsonschema pyyaml referencing
+          python3 scripts/check_server_responses.py pleya_server/.responses
+
+  pleya-web:
+    name: Pleya Web
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: pleya_web
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.10"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check types
+        run: bun run check
+
+      - name: Verify the generated client matches the contract
+        run: bun run api:check
+
+      - name: Unit tests
+        run: bun run test
+
+      - name: Build
+        run: bun run build
+
+  protocol:
+    name: Protocol Contract
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Validate contract and fixtures
+        run: scripts/check_protocol.sh
+
   native-format:
     name: Native Formatting
     runs-on: ubuntu-latest

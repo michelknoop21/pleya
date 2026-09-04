@@ -123,3 +123,26 @@ mappingtabel nog raakt.
 Stap 4 en 5 gaan niet in één commit. Een hernummering die tussen de conflictoplossingen zit is
 niet meer te reviewen, en dat is precies het soort commit waar een verkeerd ankertje maanden
 onopgemerkt blijft.
+
+## 6. Wat er bij de uitvoering anders liep dan hierboven staat
+
+**De hernummering zit tóch in de merge-commit.** Stap 5 hierboven wilde hem apart, en dat is bij
+de uitvoering niet gelukt: de hernummering *is* de conflictoplossing van `docs/DECISIONS.md`. Wie
+het conflict oplost zonder te hernummeren commit een bestand met twaalf dubbele koppen, en dat
+wilde ik niet als tussenstand vastleggen. Het alternatief, beide blokken ongewijzigd samenvoegen
+en in de volgende commit hernummeren, was mogelijk geweest en is niet gekozen. De mappingtabel
+onderaan `docs/DECISIONS.md` maakt de wijziging alsnog los leesbaar.
+
+**De branch is afgetakt van `a21b43c`, niet van `64b0105`.** Michel koos "nu aftakken" met dat
+tweede nummer erbij, maar `main` was in de tussentijd twee commits verder. Aftakken van de oudere
+sha zou drift toevoegen die niemand wil; `a21b43c` was op dat moment de tip.
+
+**De vijf voorspelde conflicten waren er niet, en dat was het echte risico.** Zie hoofdstuk 3. De
+merge leverde een `app_database.g.dart` van main onder de samengevoegde bron; codegen bracht dat
+aan het licht. Hetzelfde patroon dook een tweede keer op aan de webkant: `openapi.yaml` mergede
+schoon en kreeg een nieuwe bron-hash, terwijl `schema.d.ts` van één kant kwam. Dat staat als
+`d7ba84a`.
+
+**Eén echte merge-regressie.** De branch voegde de capability `sessions` toe; twee testfixtures op
+main bouwen een `Capabilities` met de hand op en misten dat veld. `bun run check` viel erover. Ook
+in `d7ba84a`.
