@@ -18,7 +18,7 @@ zet in dezelfde commit de status om en vult het bewijs in. Een taak die zonder b
 
 Bewijs is een commit-sha, een testnaam, een meting of een bestandspad. "Werkt" is geen bewijs.
 
-Laatst bijgewerkt: 2026-09-04 (S0 gesloten, P9 groen). Bron voor de scope: `docs/pleya-server-rebaseline/`
+Laatst bijgewerkt: 2026-09-05 (S0 gesloten, PS-11A gestart, protocolvenster 1 open). Bron voor de scope: `docs/pleya-server-rebaseline/`
 deel I (slices) en deel O (Definition of Done).
 
 ---
@@ -38,10 +38,10 @@ deel I (slices) en deel O (Definition of Done).
 Gesloten vóór dit traject en niet in deze lijst: PS-0, PS-1, PS-2, PS-3, PS-3W, PS-4, PS-9.
 Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-reader (PS-15).
 
-**Waar het nu op wacht.** S0 is dicht: alle acht taken staan op gereed en poort P9 is groen. Daarmee
-is de voorwaarde uit [DEC-108](DECISIONS.md) gehaald en mag PS-11A starten. PS-14 blijft gesloten tot
-PS-11A af en geïntegreerd bewezen is; dat is een volgorde, geen voorkeur. Wat nog vóór PS-11A hoort:
-de Roadmap Drift Check in `STATUS.md`, punt 4 van hoofdstuk 4 hieronder.
+**Waar het nu op wacht.** S0 is dicht en de Roadmap Drift Check erop staat in `STATUS.md`. **PS-11A
+loopt**, en S1 is de lopende slice. Het protocolvenster voor S1 is geopend met
+[DEC-110](DECISIONS.md) en staat nog open: het sluit bij S1.6. PS-14 blijft gesloten tot PS-11A af en
+geïntegreerd bewezen is; dat is een volgorde, geen voorkeur.
 
 ---
 
@@ -70,7 +70,7 @@ de Roadmap Drift Check in `STATUS.md`, punt 4 van hoofdstuk 4 hieronder.
 | S1.4 | `GET /stream-sessions`, `GET /users/me`, foutcode `auth.permission_not_allowed` | `[ ]` | | |
 | S1.5 | API-tokens als sessies, `admin_audit` met het uitgebreide bereik | `[ ]` | | |
 | S1.8 | HttpOnly-refreshcookie, web-origin, externe URL, CORS-beleid (RB-29) | `[ ]` | | |
-| S1.6 | Capability `administration`, protocolvenster 1 dicht | `[ ]` | | |
+| S1.6 | Capability `administration`, protocolvenster 1 dicht | `[~]` | venster geopend met [DEC-110](DECISIONS.md) op 5 sep 2026, voor precies de zeventien wijzigingen uit J.2; sluit zodra `openapi.yaml`, de fixtures en de gegenereerde webclient bij zijn en `check_protocol.sh` groen is | |
 | S1.7 | Drie-rollen-test over elke nieuwe route | `[ ]` | | |
 
 ### S2 Bibliotheken, opslag, scans

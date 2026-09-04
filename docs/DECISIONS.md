@@ -2442,7 +2442,7 @@ afspraak dat een volgende sessie leest als toestemming.
 ## DEC-110: het protocolvenster gaat open voor S1, en `server` wordt het zesde foutdomein
 
 **Date:** 2026-09-05
-**Status:** voorgesteld
+**Status:** accepted
 
 **Context:** S0 is gesloten en PS-11A is vrijgegeven ([DEC-108](#dec-108-ps-11a-is-de-eerstvolgende-fase-ps-14-blijft-gesloten-en-loopt-er-niet-naast)).
 De eerste slice ervan, S1 in `docs/pleya-server-rebaseline/I-master-implementation-plan.md`, is
@@ -2507,6 +2507,8 @@ onderhandelt per capability, precies zoals hoofdstuk 12.3 dat bedoelt.
 
 Afgewezen: het venster in één keer openzetten voor J.2 tot en met J.7. Dat zou het venster tot het
 einde van het traject openhouden, waarmee het geen venster meer is maar een afgeschafte regel.
+
+Geaccepteerd door Michel op 5 september 2026.
 
 ---
 

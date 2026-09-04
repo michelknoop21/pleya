@@ -26,6 +26,8 @@ van PS-3 openging. Daarna is `docs/pleya-protocol/v1/openapi.yaml` opnieuw bevro
 aan de lopende fase, niet aan een vast fasenummer, gelijk aan `CLAUDE.md`; bij het ontwerp van PS-9
 ging het venster een tweede keer open, zie sectie 6 hieronder en
 [DEC-101](DECISIONS.md#dec-101-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5).
+Een derde keer voor S1 van PS-11A, zie sectie 7 en
+[DEC-110](DECISIONS.md#dec-110-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein).
 
 ---
 
@@ -293,3 +295,37 @@ beroep op dit venster.
 **Sluiting.** `openapi.yaml`, `pleya-protocol-v1.md` en de fixtures zijn bijgewerkt en
 `scripts/check_protocol.sh` is groen; het contract is weer bevroren voor de rest van PS-9 en voor elke
 fase daarna, tot de volgende expliciete venstervraag.
+
+
+## 7. Het S1-contractvenster van PS-11A
+
+Op 5 september 2026 ging het venster een derde keer open, met
+[DEC-110](DECISIONS.md#dec-110-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein).
+
+**Waarom.** S0 is gesloten en PS-11A vrijgegeven. Zijn eerste slice is beheer-basis, en die kan geen
+regel opleveren zonder het contract aan te raken: beheerendpoints bestaan niet, de capability
+`administration` bestaat niet, en zelfs de eerste commitgrens loopt erop vast omdat een panic als
+`server.internal` hoort terug te komen en `server` vandaag geen geldig foutdomein is.
+
+**Wat erin zit.** Precies de zeventien wijzigingen uit `docs/pleya-server-rebaseline/J-api-schema-migratie.md`
+J.2. Zestien daarvan zijn nieuwe optionele antwoordvelden, nieuwe endpoints of nieuwe optionele
+aanvraagvelden achter een capability, en vallen onder regel 1, 4 en 5. Twee kregen een eigen
+redenering: `SetupRequest.server_name` botst met de gesloten aanvraagbody en wordt afgevangen met
+`setup_accepts_name` op `Info`, en `server` als zesde foutdomein verruimt een bestaand patroon.
+
+**Waarom dat zesde domein veilig is, en waarom dat bewezen moest worden.** Een verruiming van iets dat
+er al staat is niet hetzelfde als een toevoeging ernaast. Beide clients handelen een onbekende code
+generiek af: `PleyaError` draagt de code als `String` en takt er niet op, de enige domeintest in de app
+vraagt `startsWith('auth.')` en valt anders door, en `describeError` in `pleya_web` geeft een onbekende
+code terug als generieke melding. Datzelfde bestand draagt al `client.transport` en
+`client.malformed_response`, twee codes in een domein dat het contract niet kent; ze komen nooit over
+de lijn, maar ze tonen wel dat het foutpad een onbekend domein aankan.
+
+**Waarom dit geen precedent is.** Zelfde begrenzing als de twee eerdere vensters: één opgeschreven
+lijst, één toetsing per item, en een sluitmoment dat aan `scripts/check_protocol.sh` hangt. Venster 2
+(S2, bibliotheken en scans) staat al beschreven in J.3 en vraagt tóch een eigen besluit. In één keer
+openzetten voor J.2 tot en met J.7 is expliciet afgewezen: dat houdt het venster open tot het einde van
+het traject, en dan is het geen venster meer.
+
+**Sluiting.** Nog niet gesloten. Het sluit bij taak S1.6 van de masterlijst, zodra `openapi.yaml`, de
+fixtures en de gegenereerde webclient bij zijn en `check_protocol.sh` groen is.

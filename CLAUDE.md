@@ -150,10 +150,13 @@ de mobiele beperking is clientgedrag, dus er komt geen platform- of readerveld a
 tot een besluit het venster expliciet opent. Die formulering hing eerder aan "zolang de huidige
 ontwikkelfase loopt", en dat liet een gat vallen op het moment dat een fase sloot en de volgende nog
 niet gestart was: geen lopende fase las dan als geen vriezing. Er is geen moment waarop het contract
-vanzelf open staat. Het venster ging tot nu toe twee keer open: bij het sluiten van
-PS-3, voor precies de drie poortbesluiten die eronder staan, en voor PS-9, voor precies de zeven
-wijzigingen uit [DEC-068](docs/DECISIONS.md#dec-068-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5);
-daarna is het weer dicht. Legt een latere fase een echt probleem bloot, dan is dat een
+vanzelf open staat. Het venster ging tot nu toe drie keer open: bij het sluiten van
+PS-3, voor precies de drie poortbesluiten die eronder staan; voor PS-9, voor precies de zeven
+wijzigingen uit [DEC-101](docs/DECISIONS.md#dec-101-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5);
+en op 5 september 2026 voor S1 van PS-11A, voor precies de zeventien wijzigingen uit J.2 van het
+re-baselinepakket, met [DEC-110](docs/DECISIONS.md#dec-110-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein).
+Dat derde venster staat nog open en sluit bij taak S1.6. Buiten die zeventien is het contract ook nu
+bevroren. Legt een latere fase een echt probleem bloot, dan is dat een
 protocolwijziging die eerst langs de zes compatibiliteitsregels uit hoofdstuk 3 van de specificatie
 getoetst wordt, niet een aanpassing in de YAML omdat het zo uitkomt. `scripts/check_protocol.sh` is de
 poortwachter. De vriezing hangt bewust aan "de lopende fase" en niet aan een vast fasenummer: een
