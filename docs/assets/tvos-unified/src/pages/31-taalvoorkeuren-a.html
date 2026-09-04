@@ -1,0 +1,44 @@
+<style>
+.crumb { font-size: 22px; color: var(--ink-3); margin-top: 8px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 34px; }
+.group-label .muted { font-size: 18px; font-weight: 400; margin-left: 10px; }
+.src { font-size: 19px; color: var(--ink-3); margin: -6px 0 18px; }
+.srow { min-height: 104px; }
+.srow img { width: 56px; height: 84px; border-radius: 8px; object-fit: cover; flex: none; }
+.srow .t { font-size: 24px; font-weight: 700; }
+.srow .v { font-size: 20px; color: var(--ink-2); margin-top: 3px; }
+.srow .s { font-size: 18px; margin-top: 2px; }
+.foot { font-size: 19px; color: var(--ink-3); margin-top: 22px; line-height: 1.4; }
+</style>
+{{nav:Mijn Pleya|live}}
+<div class="page">
+  <div class="page-title">Taal en ondertitels</div>
+  <div class="crumb">Mijn Pleya ▸ Instellingen ▸ Taal en ondertitels</div>
+  <div class="two">
+    <div>
+      <div class="group-label">Globale voorkeur</div>
+      <div class="src">Uit je Plex-profiel Michel · geldt voor alles zonder eigen voorkeur</div>
+      <div class="rows">
+        <div class="row"><div class="body"><div class="t">Audio</div><div class="s">Als de taal ontbreekt: de standaardtrack van het bestand</div></div><div class="val">Originele taal</div>{{icon:chev}}</div>
+        <div class="row"><div class="body"><div class="t">Ondertitels</div><div class="s">Als de taal ontbreekt: Engels, anders uit</div></div><div class="val">Nederlands</div>{{icon:chev}}</div>
+        <div class="row"><div class="body"><div class="t">Ondertitels tonen</div><div class="s">Alleen als de audio niet je taal is</div></div><div class="val">Bij vreemde taal</div>{{icon:chev}}</div>
+      </div>
+      <div class="group-label">Onthouden</div>
+      <div class="rows">
+        <div class="row"><div class="body"><div class="t">Onthoud keuzes per serie</div><div class="s">Een taal die je tijdens een serie kiest, geldt voor de volgende afleveringen</div></div><div class="switch on"></div></div>
+        <div class="row"><div class="body"><div class="t">Ook opslaan in Plex</div><div class="s">Schrijft de keuze op de serie, zodat andere Plex-apps hem volgen</div></div><div class="switch on"></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="group-label">Serievoorkeuren <span class="muted">4 series · ontstaan vanzelf als je tijdens een serie een andere taal kiest</span></div>
+      <div class="rows">
+        <div class="row srow focus"><img src="{{art:severance-poster}}"><div class="body"><div class="t">Severance</div><div class="v">Audio: Engels · Ondertitels: Engels</div><div class="s">Gekozen op 2 september bij S2E4 · Apple TV</div></div>{{icon:chev}}</div>
+        <div class="row srow"><img src="{{art:shogun-poster}}"><div class="body"><div class="t">Shōgun</div><div class="v">Audio: Japans (origineel) · Ondertitels: Nederlands</div><div class="s">Gekozen op 28 augustus bij S1E2 · iPhone</div></div>{{icon:chev}}</div>
+        <div class="row srow"><img src="{{art:slowhorses-poster}}"><div class="body"><div class="t">Slow Horses</div><div class="v">Audio: Engels · Ondertitels: uit</div><div class="s">Gekozen op 19 augustus bij S3E1 · Apple TV</div></div>{{icon:chev}}</div>
+        <div class="row srow"><img src="{{art:andor-poster}}"><div class="body"><div class="t">Andor</div><div class="v">Audio: globaal · Ondertitels: Nederlands (geforceerd)</div><div class="s">Gekozen op 11 augustus bij S2E7 · Mac</div></div>{{icon:chev}}</div>
+      </div>
+      <div class="foot">Selecteer een serie om de voorkeur te bekijken of terug te zetten naar de globale voorkeur. Een aflevering die de taal mist, verandert hier niets aan.</div>
+    </div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 31 A · Taal en ondertitels: de twee schakelaars bestaan (Afspelen); de pagina, de globale rijen en de serievoorkeurenlijst bestaan niet in code = PRODUCT DECISION</div>

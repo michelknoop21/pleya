@@ -124,6 +124,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | SRCH2 | `people` wordt nooit aan `searchProjection` meegegeven | OPEN | n.v.t. |
 | REV1 | Apple Review Jellyfin: Home toont content, Films/Series leeg en concrete library niet zichtbaar (Apple Review, release-kritiek) | OPEN | n.v.t. |
 | LAND7 | Actieve discovery-rail krijgt geen vaste verticale focuspositie | OPEN | n.v.t. |
+| LANG1 | Taalcontinuïteit binnen series: hiërarchie, fallbackcontract en beheer van serievoorkeuren (sectie G), mockup 31 | OPEN | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -2259,3 +2260,157 @@ Wat open blijft. Hardwarebewijs op de Apple TV, zoals bij HERO1: het anker van d
 leesbaarheid van de tekst over echt artwork zijn daar te toetsen. De ambient tint van 9.3 is
 bewust niet gebouwd (fase 9). Het laatste rijlabel kan niet altijd tot onder de nav scrollen
 omdat de lijst daar geen lege ruimte voor reserveert; dat is een keuze, geen bug.
+
+### LANG1, taalcontinuïteit binnen series
+
+Gevraagd door Michel op 4 september als sectie G van de personalisatie-opdracht: een
+taalkeuze tijdens een serie moet voor de volgende afleveringen blijven gelden, met een
+hiërarchie serievoorkeur, globale profielvoorkeur, fallback; een wijziging tijdens een serie
+werkt standaard alleen die serie bij; de voorkeur hoort bij de logische serie en het profiel,
+niet bij één bron; en de mockupronde tekent minstens één beheertoestand. De secties A tot en
+met F van die opdracht staan niet in deze sessie, dus wat hieronder "globaal" heet is
+uitgewerkt op wat de code nu kent. Waar A tot en met F een eigen globale laag in Pleya
+definiëren, moet DEC-096 daarop worden bijgesteld voordat er gebouwd wordt.
+**Eerst productontwerp en mockups, geen implementatie zonder akkoord.**
+
+**Wat er al staat, nagelezen in de code.** Het per-serie taalgeheugen bestaat sinds 17
+augustus. `TrackPreferenceStore` (`lib/services/track_preference_store.dart`) bewaart per
+`{profielscope}|{grandparentId ?? id}` een `TrackLanguageChoice`: audiotaal, ondertiteltaal,
+geforceerd, en een uitdrukkelijk "uit". Er wordt alleen geschreven bij een handmatige keuze
+(`TrackManager._rememberAudioLanguage` en `_rememberSubtitleLanguage`, en bij een bronwissel
+in `episode_navigation.dart`), nooit door de automatische selectie. Gelezen wordt bij elke
+`applyTrackSelection`, en dat is het pad van alle zes de startsituaties uit de opdracht:
+volgende aflevering, autoplay, start vanuit de detailpagina, vanuit Verder kijken, later
+hervatten en de overgang naar een volgend seizoen. `TrackSelectionService` kiest in de
+volgorde navigatie, sticky, serverkeuze, per-item, profiel, standaard. Ontbreekt de sticky
+taal in een aflevering, dan valt de keuze door naar de lagen eronder en blijft de opslag
+staan. Op Plex spiegelt Pleya de keuze naar de serie zelf (`writeSeriesLanguageToServer`,
+standaard aan), zodat de serverkeuze bij transcoderen meegaat; de kaart reist via iCloud
+naar de andere Apple-toestellen. Twee schakelaars staan in Instellingen ▸ Afspelen. Er wordt
+op taal, titel en geforceerd gematcht, nooit op stream-id: `TrackLanguageChoice` zegt dat
+letterlijk in zijn kop. De acceptatiejourney is dus voor het grootste deel al gebouwd.
+
+**Waar de journey nu breekt.** Drie plekken, elk met een eigenaar.
+
+1. *Een fallback reist mee naar de volgende aflevering.* Bij de overgang in de speler geeft
+   `episode_navigation.dart:548-549` `currentAudioTrack` en `currentSubtitleTrack` door als
+   `preferredAudioTrack` en `preferredSubtitleTrack`, en in `track_selection_service.dart:672`
+   en `:770` staat die navigatiekeuze als prioriteit 1, boven de sticky keuze. Miste
+   aflevering 3 de Engelse ondertitels en viel Pleya terug op Nederlands (of op uit), dan
+   is dat in aflevering 4 de "gewenste" track, en `id == 'no'` betekent daar zelfs
+   onvoorwaardelijk uit. De stap "aflevering 4 heeft Engels weer, Engels wordt gekozen" is
+   rood. De oorzaak is dat de navigatie de *uitkomst* doorgeeft waar hij de *bedoeling* had
+   moeten doorgeven. Eigenaar: `TrackSelectionService`, niet de aanroeper.
+2. *De sleutel is een serverkey.* `grandparentId` is de ratingKey op één server. Dezelfde
+   serie op NAS en Zolder heeft twee regels, en een Jellyfin-kopie een derde. Hoofdstuk 14.8
+   sleutelt de bronvoorkeur al op `CanonicalMediaIdentity.bucketKey`; het taalgeheugen doet
+   dat nog niet. Complicatie: een aflevering draagt geen jaar van de serie (`MediaItem` kent
+   geen `grandparentYear`), dus de show-bucketKey uit hoofdstuk 11 is vanuit een aflevering
+   niet te bouwen.
+3. *Er is geen beheer.* Geen lijst, geen "gebruik globale voorkeur", en een regel verdwijnt
+   alleen via de LRU-cap van 500. `copyWithAudio` en `copyWithSubtitle` kunnen een veld
+   nooit leegmaken, dus `isEmpty` wordt na een eerste keuze nooit meer waar.
+
+Een vierde punt is kleiner: valt de sticky ondertitel weg en staat het profiel op "altijd",
+dan kiest `_findFirstSubtitleTrack` de eerste track in welke taal dan ook. Dat is geen
+voorspelbare fallback.
+
+**Voorkeurshiërarchie, als productbesluit (DEC-096, voorgesteld).**
+
+1. *Uitdrukkelijke keuze in deze afspeelsessie.* Wat de kijker net koos, als bedoeling: "de
+   Engelse ondertitel", niet "track 3". Een fallback is geen keuze en komt hier niet in.
+2. *Serievoorkeur*, per profiel en per logische serie. Een film sleutelt op zichzelf, zoals nu.
+3. *Globale profielvoorkeur.* Dat is het gebruikersprofiel op de server: het Plex-account
+   (`defaultAudioLanguage`, `defaultSubtitleLanguage`, de lijsten) of de Jellyfin-gebruiker
+   (`AudioLanguagePreference`, `SubtitleLanguagePreference`, `SubtitleMode`). Pleya voegt in
+   deze ronde geen derde laag toe. Reden: de Plex-spiegeling schrijft de serievoorkeur al op
+   de serie, en een eigen globale laag ernaast zou twee waarheden geven die ook de officiële
+   Plex-apps niet kennen. Wie twee backends heeft, heeft twee globale voorkeuren, en de
+   pagina toont ze dan als twee blokken met de bron erbij.
+4. *Fallback per aflevering, tijdelijk.* Audio: de serievoorkeur, anders de globale
+   audiotaal, anders de serverkeuze, anders de standaardtrack van het bestand. Ondertitels:
+   de serievoorkeur, anders de globale ondertiteltaal in de modus van het profiel, anders
+   uit. Nooit "de eerste track in een willekeurige taal". Een onthouden "uit" is een keuze en
+   wint altijd. De fallback wordt niet opgeslagen, reist niet mee naar de volgende aflevering
+   (dat is punt 1 hierboven), en meldt zich één keer met de toast uit mockup 31 D.
+
+**Handmatige wijziging tijdens een serie.** Geen driekeuzevraag bij elke trackwissel. Een
+keuze in het infopaneel werkt de serievoorkeur bij, direct, en de toast uit 31 C bevestigt dat
+en zegt erbij dat de globale voorkeur ongewijzigd blijft. "Alleen deze aflevering" bestaat als
+schakelaar in het infopaneel: de rij "Onthouden voor deze titel" uit mockup 19 wordt
+"Onthouden voor deze serie", en uit betekent dat de sessie de keuze houdt en de opslag niet
+raakt. De globale voorkeur wijzig je op de instellingenpagina, nooit vanuit de speler. Of die
+rijen op TV ook schrijven hangt van de backend af: Jellyfin heeft `POST
+/Users/{id}/Configuration`; voor het Plex-account moet de bouwronde eerst meten of plex.tv
+die instellingen laat schrijven. Tot die meting tonen de rijen de waarde en de bron, en
+zeggen ze waar je hem beheert.
+
+**Identiteit en bronnen.** De sleutel wordt een logische seriesleutel per profiel:
+`show:{genormaliseerde serietitel}` plus, waar bekend, de sterke tokens uit
+`identity_evidence.dart` (tmdb, tvdb, guid) op show-niveau. Zonder jaar is dat bewust een
+zwakkere sleutel dan de bucketKey van hoofdstuk 11; twee series met dezelfde titel op
+hetzelfde profiel delen dan een voorkeur, en dat is het aanvaarde risico tegenover een
+voorkeur die op de tweede server niet bestaat. De oude serversleutel blijft als terugval
+gelezen zolang hij bestaat, en een schrijfactie zet de regel om naar de nieuwe sleutel. Per
+aflevering blijft de volgorde: gewenste taal ophalen, kijken wat de gekozen bron aanbiedt,
+matchen op taal, type, geforceerd en titel, anders tijdelijk terugvallen, opslag ongemoeid.
+
+**De journey tegen de code gelegd.**
+
+| Stap | Mechanisme | Nu |
+|------|-----------|----|
+| Globaal Origineel + Nederlands, aflevering 1 | profiellaag, serverkeuze | groen |
+| Kijker kiest Engels + Engels | `_rememberAudioLanguage`, `_rememberSubtitleLanguage` | groen |
+| Aflevering 2 start Engels + Engels | sticky in `applyTrackSelection` | groen |
+| Aflevering 3 mist Engelse ondertitels | fallback, opslag blijft | groen, maar zonder melding |
+| Aflevering 4 heeft Engels weer | sticky | **rood**, punt 1 |
+| Andere serie: globale voorkeur | sleutel per serie | groen |
+| Dezelfde serie op een andere server | sleutel per server | **rood**, punt 2 |
+| Voorkeur bekijken of terugzetten | bestaat niet | **rood**, punt 3 |
+
+**Mockup 31, 4 september** (`docs/assets/tvos-unified/mockups-2026-09-04/31-taalvoorkeuren-*.png`,
+bron in `src/pages/31-taalvoorkeuren-*.html`). De pagina heet Taal en ondertitels en staat
+onder Mijn Pleya ▸ Instellingen, in de compositie van mockup 20: titel op 132, kruimelpad,
+twee kolommen op 40 tussenruimte. De twee schakelaars verhuizen uit Afspelen hierheen, want
+een kijker die zoekt waarom een serie Engels start, zoekt bij taal en niet bij afspelen.
+
+- **A, de pagina.** Links de globale voorkeur met de bron erboven ("Uit je Plex-profiel
+  Michel") en drie rijen: Audio, Ondertitels, Ondertitels tonen, elk met de fallback als
+  ondertekst zodat het contract leesbaar is waar het geldt. Daaronder de twee schakelaars.
+  Rechts de serievoorkeuren als rijen van 104 met poster van 56 bij 84, de titel, de keuze
+  op één regel en eronder wanneer, bij welke aflevering en op welk toestel hij ontstond. De
+  voetnoot zegt wat de kijker hier kan en dat een ontbrekende track niets verandert. Lege
+  staat, niet getekend: de kolom toont alleen de zin dat serievoorkeuren vanzelf ontstaan.
+- **B, de sheet.** Select op een rij opent de sheet van mockup 12 op 820 breed: poster en
+  titel, de herkomst, en de zin dat de voorkeur op elke bron geldt. Twee leesrijen met de
+  serie- en de globale waarde naast elkaar, en één actie: Gebruik globale voorkeur, met
+  "wist deze serievoorkeur" als bijschrift. Een andere taal kies je hier niet; dat doe je
+  tijdens het kijken, en de voet zegt dat.
+- **C, de bevestiging.** Na een keuze in het infopaneel sluit het paneel en staat drie
+  seconden een toast op 120 boven de onderrand: de keuze, "onthouden voor Severance", en de
+  regel dat de globale voorkeur Nederlands blijft. Dit is `PlayerToastController` met een
+  tweede regel; die bestaat nu met één regel en 1,2 seconde.
+- **D, de terugval.** Bij de start van een aflevering die de serievoorkeur mist staat
+  dezelfde toast met een amberpunt: wat ontbreekt, wat er nu speelt, en dat de voorkeur
+  blijft. De OSD-titel toont Zolder als bron, om te laten zien dat de voorkeur de bron
+  overleeft.
+
+**Open voor Michel.**
+
+1. De hiërarchie en het fallbackcontract van DEC-096, in het bijzonder "anders uit" voor
+   ondertitels in plaats van de eerste track.
+2. Geen driekeuzevraag: een wijziging tijdens een serie is de serievoorkeur, met toast.
+3. De globale laag is het serverprofiel, geen eigen laag in Pleya. Zeggen de secties A tot
+   en met F iets anders, dan hoor ik dat graag hier.
+4. De plek: Mijn Pleya ▸ Instellingen ▸ Taal en ondertitels, en de twee schakelaars weg uit
+   Afspelen.
+5. Mockup 31 A tot en met D als compositie.
+
+**Bouwronde, pas na akkoord.** Drie negatieve controles, elk rood op de huidige code: een
+test op `TrackSelectionService` met sticky Engels, een doorgegeven Nederlandse fallback en
+een beschikbare Engelse track die Engels eist; een test op `TrackPreferenceStore` die een
+keuze op de ene bron terugleest op een tweede bron van dezelfde serie; en een widgettest op
+de nieuwe pagina die de rij, de sheet en het wissen eist. Daarna de fallback-toast, de
+verhuizing van de twee schakelaars, en een Pleya Verify-scenario voor de journey op de
+tvOS-simulator. Raakt de bouw het Plex-schrijfpad voor het account, dan gaat daar eerst een
+contractmeting aan vooraf.
