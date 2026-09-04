@@ -44,6 +44,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `05a-book-detail.png` | Boekdetail, canonieke staat op Dune met leesvoortgang | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `05b-book-detail-unread.png` | Hetzelfde scherm voor een boek zonder voortgang en zonder reeks | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `05c-book-detail-actions.png` | Detail: het actieblok in beide staten | approved | detailuitsnede, 1179×1680 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `06a-books-toc.png` | Inhoudsopgave, canonieke staat op Atomic Habits met de boom open op de locator | proposed, revisie B | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `06b-books-toc-collapsed.png` | Dezelfde boom met alle delen dichtgeklapt | proposed, revisie B | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `06c-books-toc-rowtypes.png` | Detail: de rijsoorten van de boom in hun drie posities | proposed, revisie B | detailuitsnede, 1179×1935 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -382,6 +385,267 @@ eerdere goldens. De tabbalk staat in beeld omdat de comp hem tekent; net als bij
 dekt het echte scherm `MainScreen` af zodra het op de profielnavigator gepusht wordt, en die
 kanttekening verandert hier niet.
 
+## Golden 06, Inhoudsopgave (proposed, revisie B)
+
+De kaart van een boek: waar je bent, wat er achter je ligt, en waar je heen kunt zonder te bladeren.
+Inhoud van paneel 6 van de comp, uitvoering van `14-instellingen.png` en `07-serie-afleveringen.png`
+uit de iOS Unified-set. Drie frames, samen één scherm: `06a` de canonieke staat op Atomic Habits met
+de boom open op de plek waar gelezen wordt, `06b` dezelfde boom met alle delen dichtgeklapt, `06c` een
+detailuitsnede van de rijsoorten in hun drie posities, zodat het verschil tussen vóór, op en na de
+locator te beoordelen is zonder de rest van het scherm.
+
+Dit is revisie B, en er zitten twee ronden voor. Voordracht A stond op Dune met genummerde
+hoofdstukken, een opschrift van 11 pt als enige verwijzing naar het boek, het percentage op de rij van
+het hoofdstuk, en een kaart die 37 pt boven de actiebalk ophield. Daaruit kwamen vier punten die
+hieronder als keuze staan: het boek als rij bovenin, hoofdstukken met een naam, een eigen staat per
+hoofdstuk in plaats van een tweede percentage, en een lijst die onder de balk doorloopt.
+
+Revisie B corrigeert alleen de betekenis van die staat. Voordracht A dimde wat vóór de leespositie
+lag, zette er een vinkje achter en schreef `· gelezen` in de tweede regel van een deel. Dat is een
+bewering die de bron niet kan dragen, en Michel heeft hem op 4 september om die reden afgewezen. Een
+locator zegt waar de lezer nu staat, en dus alleen dat een ingang eerder in de publicatievolgorde
+komt; hij zegt niet dat die ingang geopend is. Wie vanaf dit scherm naar hoofdstuk 12 springt zou elf
+hoofdstukken gedimd en afgevinkt zien zonder er een bladzijde van gezien te hebben. De vinkjes en de
+suffixen zijn daarom weg, de drie posities zijn gebleven, en de compositie is verder onaangeroerd:
+fixture, geometrie, boomstructuur, open- en dichtgedrag, afbreking, actiebalk en `Ga naar pagina`
+staan er precies zoals ze in A stonden. Het enige zichtbare gevolg is dat
+`11. Walk Slowly, but Never Backward` nu volledig past, want het vinkje nam de 27 pt die de titel
+tekortkwam.
+
+De rollen van de drie frames horen bij de goedkeuring, net als bij golden 04 en 05. `06a` is de
+**hoofdstaat**: de inhoudsopgave van een boek dat halverwege is, het geval waar dit scherm voor
+bestaat. `06b` is **gedragsbewijs** dat de boom dichtgeklapt kan worden zonder dat de leespositie uit
+beeld verdwijnt, geen tweede scherm en geen variant. `06c` is een **ondersteunende vormspecificatie**
+van de rijsoorten en geen runtime-staat; een implementatie die hem als scherm behandelt volgt deze
+golden niet. Bij de goedkeuring hoort dat de lege ruimte onder de kaart in `06b` zo hoort: acht
+dichtgeklapte rijen zijn acht rijen, en de kaart uitrekken tot de actiebalk zou liegen over hoeveel
+er in staat.
+
+**Deze golden tekent het scherm en niet zijn deur.** Waar de inhoudsopgave opengaat zit in de chrome
+van de reader, paneel 7, en die heeft geen goedkeuring. Golden 05 heeft om precies die reden geen
+inhoudsopgave-rij gekregen. Zolang de reader er niet is worden de rijen getekend en openen ze niets,
+dezelfde plek waar de Filters-pill tussen golden 02 en golden 03 stond.
+
+De maatvoering komt uit de set en is nagemeten, niet opnieuw bedacht. De kop staat op de band 71 tot
+84 die elk scherm van de set aanhoudt, met de terugpijl op 16 en de titel op 56. De kaart begint op
+104, de band waar golden 05 zijn cover zet, en loopt van 16 tot 377 met een hoekradius van 12,
+`#1F1F1F` als grond en `#2E2E2E` als haarlijn. De boekrij is de boekrij van golden 04: 82 hoog, cover
+44 × 66. Een deel is de tweeregelige rij van `14-instellingen.png`, gemeten op 60,7 en gezet op 61.
+Een losse ingang staat op 47,5, de optierij van `04-filters-sheet.png`. Een hoofdstuk staat op 44,
+de kleinste rij die iOS laat aantikken. De actiebalk is de balk die golden 03 heeft goedgekeurd:
+scheidingslijn op 755, 97 pt hoog, de pil 40 hoog vanaf 771.
+
+In het gerenderde frame `06a` staat de boekrij van 104 tot 186 en de inleiding van 186 tot 233,5. De
+delen beginnen op 233,5, 294,5, 355,5 en 416,5; de vier hoofdstukken van het open deel lopen vanaf
+477,5 met een steek van 44, zodat hoofdstuk 12 van 521,5 tot 565,5 staat. Het vierde deel begint op
+653,5 en het vijfde op 714,5, en dat wordt door de balk op 755 gesneden; de conclusie staat eronder
+van 775,5 tot 823. De pil staat van 227 tot 377 en van 771 tot 811, `55% gelezen` links op 782.
+Revisie B raakt geen van die getallen aan: de kaart loopt in beide revisies van 104 tot 823 en elke
+rij begint op dezelfde punt.
+
+**De keuzes die de bronnen niet zelfstandig maken, en die dus goedgekeurd of afgewezen moeten
+worden.**
+
+- **De kop draagt één sluitglyph, en dat is de terugpijl.** De comp zet er een terugpijl én een kruis
+  in dezelfde balk. Twee deuren voor één handeling, tenzij het kruis iets anders betekent dan
+  teruggaan, bijvoorbeeld het boek verlaten. Dat zou een besluit over de chrome van de reader zijn en
+  daar gaat deze golden niet over. Met één glyph leest het scherm als een gepushte pagina, en dan
+  staat de titel links naast de pijl zoals bij elke kop in de set, niet gecentreerd zoals in de comp.
+- **Het boek staat als eerste rij in de kaart: cover, titel, auteur.** Paneel 6 noemt nergens van
+  welk boek dit de inhoudsopgave is. In de comp valt dat niet op omdat het paneel naast de reader
+  hangt; op een toestel is het het enige scherm van de reeks dat je niet kunt plaatsen. De rij is
+  het silhouet dat golden 04 voor een boekresultaat goedkeurde, dus er komt geen nieuwe vorm bij.
+- **De fixture is Atomic Habits en niet Dune.** Dune, het boek van golden 05, heeft geen benoemde
+  hoofdstukken, en een inhoudsopgave met alleen `Hoofdstuk 9` tot `17` bewijst niets over wat een
+  echte titel op 393 pt doet. Atomic Habits is het enige boek op de plank waarvan de editie zijn
+  hoofdstukken benoemt en in delen groepeert, en het heeft in geen enkele goedgekeurde golden een
+  leespositie, dus er een geven spreekt niets tegen. Sapiens benoemt ook, maar staat in golden 01b op
+  3 % en hoofdstuk 1, en daarmee valt er niets achter de lezer te tekenen. De delen en de namen zijn
+  die van het boek zelf; de lezer staat in hoofdstuk 12 van 20, op 55 %.
+- **De boom opent op de plek waar je bent.** Het deel met het huidige hoofdstuk staat open, de andere
+  dicht. De comp klapt het eerste deel open en markeert niets, terwijl paneel 5 en 7 allebei op
+  hoofdstuk 12 staan.
+- **Drie posities ten opzichte van de locator, en geen leesstaat.** Wat vóór de locator in de
+  publicatievolgorde ligt staat op 38 % inkt, waar de locator staat is wit met een stip in de
+  inspringmarge, en wat erna komt houdt de gewone niet-actieve presentatie op 70 %. Dat is precies de
+  compositie die voordracht A had, met een andere betekenis eronder: het dimmen zegt "dit komt eerder
+  in het boek" en niet "dit heb je gelezen". Er staat daarom geen vinkje achter een ingang en geen
+  `· gelezen` onder een deel. Een completionmodel vraagt een eigen bron van waarheid, per ingang
+  bijgehouden, en dat is geen besluit dat in een schermgolden thuishoort. In voordracht A stond het
+  percentage bovendien twee keer op één scherm, op de rij en in de voet; het staat nu alleen in de
+  voet.
+- **`55% gelezen` in de voet is een globaal voortgangslabel en blijft staan.** Dat is de
+  `totalProgression` van de reader, één getal over de hele publicatie, en geen bewering dat elk
+  eerder hoofdstuk afzonderlijk voltooid is. Daarom mag het naast drie posities staan die zich
+  nergens over voltooiing uitspreken. Intern heet het `totalProgression`; de gebruikerscopy blijft
+  `55% gelezen`.
+- **De markering verhuist naar het deel zodra dat dichtklapt.** Rechts naast de chevron, de plek waar
+  `14-instellingen.png` zijn eigen stip zet op een rij die aandacht vraagt. `06b` bestaat om dat te
+  kunnen beoordelen.
+- **Een deel is twee regels, een losse ingang één, een hoofdstuk één met zijn nummer ervoor.** Een
+  deel draagt zijn naam en het bereik `Hoofdstuk 11 tot 14` eronder, zodat je ook bij een dicht deel
+  weet wat erin zit. Een hoofdstuk schrijft `12. The Law of Least Effort`, precies zoals de
+  afleveringenlijst `3. Who Is Alive?` schrijft. De comp geeft alles één regel op een steek van 72 en
+  51, losser dan elke lijst in de set; hier zijn het 61, 47,5 en 44, alle drie uit de set of het
+  platform.
+- **Een titel die niet past breekt af met een ellips, op elk niveau.** `06a` laat dat vier keer zien:
+  het eerste deel, het laatste deel, hoofdstuk 13 en hoofdstuk 14. Een tweede regel voor de titel
+  zou de steek per rij laten verspringen en de boom onrustig maken; wie de hele naam wil ziet hem in
+  de reader.
+- **Twee niveaus, en een derde wordt niet getekend.** De navigatie van een EPUB kan dieper nesten dan
+  deel en hoofdstuk. Drie niveaus inspringing op 393 pt maakt van een kantlijn een doolhof, dus wat
+  dieper zit klapt op zijn hoofdstuk. Dat is een keuze en geen beperking van het formaat.
+- **De bovenlaag mengt losse ingangen en delen.** De inleiding en de conclusie hebben geen kinderen,
+  zijn geen groep en dragen geen chevron. Dat is wat de comp met `Voorwoord` tekent en wat een echte
+  inhoudsopgave doet.
+- **Haarlijnen markeren alleen de grenzen van de bovenlaag.** Tussen de hoofdstukken van een deel
+  staat er geen lijn; die worden bij elkaar gehouden door hun steek en hun inspringing. Vier lijnen
+  in een open deel zouden de kaart in kaartjes hakken, precies wat golden 04 al afwees.
+- **`Ga naar pagina` staat in een vaste actiebalk en niet als laatste rij van de kaart.** De comp zet
+  hem binnen de kaart. Een inhoudsopgave is lang, en een sprongknop die met de lijst wegscrollt is
+  onbereikbaar op het moment dat je hem nodig hebt. De balk is die van golden 03, tot op de punt, en
+  om dezelfde reden. Hij is ook een gevulde pil in plaats van de omlijnde uit de comp, dezelfde
+  afweging die golden 05 voor zijn tweede actie maakte.
+- **`Ga naar pagina` bestaat alleen als de publicatie een bruikbare paginanavigatie meelevert.** De
+  voorwaarde is de aanwezigheid van de `page-list`-navigatie van de EPUB, de lijst die de pagina's van
+  de gedrukte editie op posities in de tekst afbeeldt. Twee dingen zijn expliciet géén vervanging.
+  Schermpagina's niet, want een reflowable EPUB heeft er geen vast aantal van: dat verschuift met
+  lettergrootte, lettertype en marges. En de bibliografische paginatelling ook niet, de `320` of
+  `496` uit de statsrij van golden 05: dat is een getal over de editie en geen kaart naar plekken in
+  de tekst. Draagt de publicatie geen paginanavigatie, dan blijft de knop weg en houdt de balk alleen
+  het voortgangslabel. De frames tekenen de knop omdat de fixture die navigatie declareert.
+- **De lijst loopt onder de balk door en niets wordt ingekort om hem passend te maken.** De kaart
+  eindigt waar de inhoud eindigt. In `06a` is dat op 823, achter een balk die op 755 begint, en dat is
+  te zien aan het deel dat halverwege zijn tweede regel gesneden wordt. Wat onder de balk zit is
+  bereikbaar door te scrollen; de balk zelf beweegt niet mee.
+
+**Wat deze golden expliciet openlaat**, zodat het later een besluit is en geen omissie:
+
+- **Waar de inhoudsopgave opengaat.** Dat zit in de chrome van de reader en die is niet ontworpen.
+  Het gevolg van paneel 6 vóór paneel 7 nemen is dat de presentatiegrammatica hier gekozen wordt
+  zonder de ingang te kennen: dit is een gepushte pagina. Maakt de golden van de reader er een sheet
+  van, dan komt deze kop terug voor één correctie. Dat is de prijs van deze volgorde en die is nu
+  bekend, niet straks.
+- **Wat er gebeurt als je een rij aantikt.** Een hoofdstuk kiezen springt de reader in, en die
+  bestaat niet. De rijen worden getekend en openen niets.
+- **Of er ooit een echte leesstaat per ingang komt.** Deze golden spreekt zich er niet over uit, en
+  zolang de enige bron een locator is kan dat ook niet. Wil de app tonen wat werkelijk gelezen is,
+  dan is dat een eigen model met een eigen bron, en dan is ook de vraag open wat zo'n staat naast de
+  drie posities hier zou moeten tekenen. Wat hier vastligt is dat het dimmen die vraag niet
+  stilzwijgend beantwoordt.
+- **Wat `Ga naar pagina` opent.** Een veld, een schuif of een eigen sheet: de comp tekent het niet en
+  deze golden beslist het niet. Wel dat de knop in de balk staat en wanneer hij er is.
+- **Bladwijzers en aantekeningen.** Paneel 7 zet een bladwijzerglyph in de chrome van de reader.
+  Of de inhoudsopgave daarnaast een tweede lijst krijgt met bladwijzers en markeringen staat hier
+  niet: de comp toont één boom en geen tabs.
+- **Hoe een boek zonder delen eruitziet.** Een boek met een platte hoofdstuklijst heeft geen groepen,
+  en dan is de bovenlaag de hoofdstuklaag. Uit de regels volgt dat de boom het niveau dat hij niet
+  heeft laat vallen, maar geen van de drie frames bewijst het.
+- **De vierde kaart in Verder lezen.** Atomic Habits krijgt in de app-fixture een leespositie, en
+  daarmee een kaart op Boeken-home. Golden 01b legt de eerste drie kaarten van die rij vast en zegt
+  niets over een vierde; waar hij in de rij landt volgt uit de sortering van de rij, niet uit deze
+  golden.
+
+**Bewuste verschillen met het beeld die geen goedkeuring nodig hebben.** De comp schrijft in de kop
+`Inhoudsoggave`; dat is stil gecorrigeerd. De inhoud van het boek is Engels en de bediening
+Nederlands, dus onder `The 3rd Law: Make It Easy` staat `Hoofdstuk 11 tot 14`, en dat is wat de app
+bij een Engelse editie ook laat zien. De kleuren van de kaart, de haarlijn en het accent komen uit
+`mono_theme.dart` en niet uit de grijstinten van de comp. De tijd in de statusbalk is 9:41 zoals in
+de hele set, waar paneel 6 een renderrestje `91:43` laat zien. En anders dan bij golden 02, 04 en 05
+staat er geen tabbalk in het beeld die in de app zou ontbreken: paneel 6 tekent er zelf geen, want de
+reader dekt hem af.
+
+## Wat er tegen golden 05 gebouwd is
+
+`lib/screens/books/book_detail_screen.dart`, met `widgets/book_detail_ambience.dart`,
+`widgets/book_detail_actions.dart` en `widgets/book_description.dart` eronder. Het scherm is
+bereikbaar vanaf de Verder-lezen-kaart en de Recent-toegevoegd-rij op Boeken-home, vanaf een cel in
+Alle boeken, en vanaf een boekrij in Boeken zoeken. Auteurs- en seriesrijen gaan er niet heen, want
+waar die naartoe leiden staat in geen enkele goedgekeurde golden.
+
+**De layoutregel is een eigen module en geen reeks getallen in een widget.**
+`lib/books/book_detail_layout.dart` is de tabel uit de bron van de golden: per blok de ruimte erboven
+en zijn eigen hoogte. `positions()` rekent daar de voorspelling uit, en het scherm bouwt zijn kolom
+uit diezelfde tabel, dus voorspelling en implementatie kunnen niet uit elkaar lopen. Een blok dat een
+boek niet heeft, verdwijnt met zijn eigen witruimte; niets ertussen rekt op om het gat te vullen.
+`lib/books/book_detail_view.dart` staat daarnaast en leidt af wát een blok zegt: de reeksregel, de
+twee voortgangsregels en de statskolommen. Dat is dezelfde scheiding die golden 04 met
+`BookSearchRanking` maakte, en om dezelfde reden: de metadata onder dit scherm gaat bewegen zodra
+PS-14 echte data levert, en dan verschuift die laag en geen widget.
+
+Bewijs: `pleya_verify/scenarios/books.detail.layout.yaml` groen op de vastgezette iPhone 15
+Pro-simulator, plus achttien widgettests in `test/screens/book_detail_screen_test.dart` en vijftien
+eenheidstests in `test/books/book_detail_layout_test.dart`. De hele suite staat op 4960 groen.
+
+De vergelijking met `05a` is de scherpste van de vijf tot nu toe. De vier gemeten automation-nodes
+liggen exact op de golden: cover op 104 met 150 × 225, de primaire pil op 503, de secundaire op 561
+en de statsrij op 629, allemaal 361 breed vanaf 16. Een rijprofiel over beide frames legt ook elk
+tekstblok op nul punt verschil: titel 356,0, auteur 393,7, reeks 417,0, percentage 445,0, hoofdstuk
+465,0, het label in de primaire pil 520,7, dat in de secundaire 579,0, de statswaarden 633,7, de
+statslabels 656,0, en de drie beschrijvingsregels op 693,0 / 714,0 / 735,0. De kolomgrenzen van de
+statsrij vallen in allebei op 121 en 272, dus de genrekolom is werkelijk 1,45 keer zo breed.
+
+Wat de vergelijking opleverde, en wat geen enkele test zag:
+
+- **Het scherm sprak half Nederlands en half Engels.** `Verder lezen` en `Download` kwamen uit
+  bestaande vertaalde sleutels, terwijl `48% read`, `Year` en `Pages` op het Engelse basisniveau
+  terugvielen. Dat is het gevolg van alleen `en.i18n.json` bijwerken op een scherm dat naast
+  hergebruikte sleutels ook nieuwe heeft. Alle acht de nieuwe sleutels staan nu ook in
+  `nl.i18n.json`.
+- **De knop leende de kop van een rij.** `books.continueReading` is `Verder lezen`, de rijkop die
+  golden 01b goedkeurde; golden 05 zet op de knop `Lees verder`. Een kop noemt een rij en een knop
+  noemt een handeling, dus de knop heeft nu zijn eigen `books.readContinue`. Hetzelfde voor de
+  tweede pil: de app-brede `downloads.downloadNow` is in het Nederlands `Download`, de golden zegt
+  `Downloaden`, en die string aanpassen zou elk ander scherm dat hem gebruikt herformuleren. Boeken
+  heeft er daarom een eigen `books.download` naast.
+
+Bewuste verschillen met het beeld:
+
+- **Er is geen tabbalk.** Hetzelfde als bij golden 02 en 04: het scherm wordt op de profielnavigator
+  gepusht en dekt `MainScreen` volledig af. Nagemeten op de bewijsbundel, waar de balk van de golden
+  op 776 het enige blok is dat in de app ontbreekt.
+- **De ambience is afgeleid, niet overgenomen.** De golden zet voor Dune en Project Hail Mary met de
+  hand gekozen kleuren neer; de app leidt ze af uit `BookArtwork`, zoals golden 01b voor de
+  Verder-lezen-kaart voorschrijft. Voor Dune komt dat dicht bij het beeld uit. Voor een boek met een
+  bijna zwarte grond en een felle accentkleur, zoals Project Hail Mary, wordt het veld donkerder dan
+  de golden het tekent, want die haalt daar zijn ground uit het accent.
+- **De scrim landt op de themakleur, niet op `#141414`.** De verify-simulator draait de
+  OLED-variant van `monoTheme` met een zwarte pagina. Een scrim die op `#141414` eindigt zou daar een
+  zichtbare band achterlaten precies waar hij op de pagina hoort te landen, dus hij leest
+  `scaffoldBackgroundColor`. In het niet-OLED-thema is dat exact de kleur van de golden. Zichtbaar
+  effect: de tweede pil tekent in de app een rand die in de golden wegvalt tegen de achtergrond,
+  dezelfde geometrie bij meer contrast.
+- **De cover is getekend en de beschrijving komt uit de vaste set**, om dezelfde redenen als bij de
+  eerdere goldens.
+- **De koptaphoogte is 32 punt.** Dat is de band die de golden tekent. Breder maken zonder het glyph
+  te verplaatsen kan alleen door het blok hoger te maken, en dat verschuift de cover en daarmee de
+  hele kolom eronder.
+
+Wat bewust niet gebouwd is, en waar dus geen code voor bestaat:
+
+- **De reader.** Beide pillen worden getekend en openen niets, precies waar de Filters-pill tussen
+  golden 02 en 03 stond. Een widgettest tikt ze allebei aan en controleert dat er niets opengaat.
+- **De downloadstaten.** `Downloaden` is alleen het zichtbare CTA-slot. Wat `Downloaden…`,
+  `Gedownload`, `Verwijderen` of een foutstaat betekenen blijft PS-16.
+- **Het overflowmenu.** Getekend omdat de comp het tekent, zonder handler.
+- **`meer` is tekst, geen knop.** Wat er onder de vouw staat is een van de dingen die golden 05
+  openlaat, en in de pagina uitklappen zou dat beantwoorden.
+- **Geen inhoudsopgave-rij.** Die blijft open tot golden 06. Een widgettest bewaakt dat er tussen de
+  blokken die golden 05 noemt niets is bijgekomen.
+
+Twee dingen die niet uit de golden volgen maar wel uit het scherm:
+
+- **`Pagina's` is optioneel en `Brave New World` heeft er geen.** De vaste set draagt bewust één
+  editie zonder paginatelling, zodat de terugval op twee kolommen echt is en niet theoretisch. Er
+  verschijnt nooit `0 Pagina's`: een nul is een bron die niets te zeggen heeft.
+- **De reeksregel heeft de reekstitel nodig, niet alleen het `seriesId`.** Kan het profiel de reeks
+  niet benoemen, dan blijft de regel weg in plaats van dat er een label verzonnen wordt.
+
+Wat het scenario niet bewijst: de onbegonnen staat van `05b`. Een route-opener is een `VoidCallback`
+per scherm-id, dus er is er precies één, en die landt op Dune omdat dat het boek is waar `05a` mee
+getekend is. `05b` staat in de widgettests, tegen dezelfde layoutregel waar het scherm zelf op
+gebouwd is.
+
 ## Wat er tegen golden 04 gebouwd is
 
 `lib/screens/books/books_search_screen.dart` met `lib/screens/books/widgets/book_search_row.dart`
@@ -601,6 +865,21 @@ node render.js detail.html ../../05c-book-detail-actions.png actions 560
 
 Op 4 september 2026 leverden twee opeenvolgende runs identieke bestanden op (md5 `e113ae65…`,
 `48cd7f26…` en `53199612…`).
+
+Golden 06 gaat net zo, met `645` als hoogte voor het detailframe. Die hoogte is niet geraden: de
+pagina rekent hem zelf uit met `window.specHeight()`, zodat het frame precies om zijn eigen inhoud
+sluit.
+
+```
+cd docs/assets/ebooks/northstar/src/06-books-toc
+export NODE_PATH=/opt/homebrew/lib/node_modules:/opt/homebrew/lib/node_modules/@playwright/test/node_modules
+node render.js toc.html ../../06a-books-toc.png reading
+node render.js toc.html ../../06b-books-toc-collapsed.png collapsed
+node render.js toc.html ../../06c-books-toc-rowtypes.png rowtypes 645
+```
+
+Op 4 september 2026 leverden twee opeenvolgende runs van revisie B identieke bestanden op (md5
+`3c9152e8…`, `6dbfe719…` en `68c46397…`).
 
 `render.js` opent Chromium op 393×852 met `deviceScaleFactor: 3` en wacht op `document.fonts.ready`.
 Op 3 september 2026 leverde deze route vanuit de repo-bron byte-identieke PNG's op (md5

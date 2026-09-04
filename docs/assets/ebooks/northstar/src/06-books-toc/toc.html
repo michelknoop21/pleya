@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pleya golden 06 · Inhoudsopgave</title>
+<style>
+
+/* Fonts: the app's own Inter cuts (assets/fonts) so metrics match. */
+@font-face{font-family:'Inter';font-weight:400;src:url('../../../../../../assets/fonts/Inter-Regular.otf')}
+@font-face{font-family:'Inter';font-weight:500;src:url('../../../../../../assets/fonts/Inter-Medium.otf')}
+@font-face{font-family:'Inter';font-weight:700;src:url('../../../../../../assets/fonts/Inter-Bold.otf')}
+
+/* Tokens from lib/theme/mono_theme.dart (dark, non-OLED) and the DEC-090 audit §2. */
+:root{
+  --accent:#E5140F; --accent-ink:#FF6A63;
+  --bg:#141414; --surface:#1F1F1F; --surface-el:#2F2F2F;
+  --ink:#fff; --ink-78:rgba(255,255,255,.78); --ink-70:rgba(255,255,255,.70); --ink-62:rgba(255,255,255,.62); --ink-50:rgba(255,255,255,.5); --ink-38:rgba(255,255,255,.38);
+  --hair:#2E2E2E;
+  --r-md:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:393px;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+.screen{position:relative;width:393px;height:852px;overflow:hidden;background:var(--bg)}
+.screen[hidden],.spec[hidden]{display:none}
+
+/* iOS status bar + Dynamic Island, as in the northstar frames. */
+.status{position:absolute;left:0;right:0;top:0;height:54px;z-index:20;pointer-events:none}
+.status .time{position:absolute;left:38px;top:18px;font-size:17px;font-weight:700;letter-spacing:-.2px}
+.status .island{position:absolute;left:50%;top:11px;width:125px;height:37px;margin-left:-62px;background:#000;border-radius:20px}
+.status .right{position:absolute;right:30px;top:21px;display:flex;gap:7px;align-items:center}
+.sig{display:flex;gap:2px;align-items:flex-end}.sig i{display:block;width:3.5px;background:#fff;border-radius:1px}
+.bat{width:27px;height:13px;border:1.6px solid rgba(255,255,255,.55);border-radius:4px;position:relative}
+.bat::after{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:20px;background:#fff;border-radius:2px}
+.bat::before{content:"";position:absolute;right:-4px;top:3.5px;width:1.8px;height:4px;background:rgba(255,255,255,.55);border-radius:0 2px 2px 0}
+
+/* ---- Header. One dismiss glyph and a left-aligned title, the grammar of a
+   pushed page (07-serie-afleveringen.png, 14-instellingen.png), on the same
+   71-84 pt band every header in the set uses. The comp draws a back arrow and
+   a cross in one bar; two doors for one action, and the reading in which the
+   cross means "close the book" would be a decision about the reader's chrome,
+   which this golden does not own. ---- */
+.nav{position:absolute;left:0;right:0;top:62px;height:32px;display:flex;align-items:center;gap:14px;padding:0 16px;z-index:3}
+.nav .back{width:26px;height:26px;flex:0 0 auto}
+.nav h1{font-size:22px;font-weight:700;letter-spacing:-.3px}
+
+/* ---- One rounded card, rows split by hairlines, as golden 04 settled for a
+   result section. It starts on 104, the band golden 05 gives its cover. The
+   card is content-sized: a tree that ends before the action bar ends there,
+   and one that does not runs under it and scrolls. ---- */
+.card{position:absolute;left:16px;right:16px;top:104px;background:var(--surface);border-radius:var(--r-md);overflow:hidden;z-index:2}
+
+/* Hairlines mark the boundaries of the top level and nothing else: the
+   chapters inside a part are held together by their rhythm and their indent,
+   not by a rule between each of them. Inset to the text on the left, flush
+   right, the way the set insets a separator. */
+.hair::before{content:"";position:absolute;left:16px;right:0;top:0;height:1px;background:var(--hair)}
+
+/* ---- The book itself, as the first row: the silhouette golden 04 approved
+   for a book result (44 x 66 cover, title, author). The comp names the book
+   nowhere on this panel; on a device this would be the one screen of the
+   series you cannot place. ---- */
+.book{position:relative;display:flex;align-items:center;gap:15px;padding:0 16px;height:82px}
+.book .thumb{width:44px;height:66px;border-radius:5px;overflow:hidden;position:relative;flex:0 0 auto;background:#222}
+.book .body{flex:1;min-width:0}
+.book .t{font-size:16px;font-weight:700;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.book .s{font-size:13.5px;color:var(--ink-62);line-height:18px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* A loose entry of the top level (an introduction, a conclusion): one line,
+   on the 47.5 pt pitch 04-filters-sheet.png gives an option row. */
+.row{position:relative;display:flex;align-items:center;gap:12px;height:47.5px;padding:0 16px}
+.row .t{flex:1;min-width:0;font-size:17px;font-weight:500;line-height:22px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* A part: two lines, its name and the chapters it spans, on the 61 pt row
+   14-instellingen.png uses for a title with a subtitle (measured 60.7). */
+.part{position:relative;display:flex;align-items:center;gap:12px;padding:0 16px;height:61px}
+.part .body{flex:1;min-width:0}
+.part .t{font-size:17px;font-weight:500;line-height:22px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.part .s{font-size:13.5px;line-height:18px;color:var(--ink-62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chev{width:18px;height:18px;flex:0 0 auto;opacity:.55}
+
+/* A chapter: number and name in one string, the way 07-serie-afleveringen.png
+   writes "3. Who Is Alive?". 44 pt is the smallest row iOS lets you tap. */
+.ch{position:relative;display:flex;align-items:center;gap:12px;height:44px;padding:0 16px 0 44px}
+.ch .t{flex:1;min-width:0;font-size:16px;font-weight:400;line-height:21px;color:var(--ink-70);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---- Three positions against the current locator, and not three degrees of
+   completion. What lies before the locator in reading order dims, and that is
+   a statement about where an entry sits in the publication, nothing more. The
+   locator cannot carry a claim about reading: jumping to chapter 12 from this
+   very screen would dim everything before it without a page of it having been
+   opened. So no entry carries a check and no part says "gelezen". Where you
+   are is white, with a dot in the indent gutter so it reads as a marker in the
+   margin rather than a bullet in the list. The dot moves up to the part when
+   that part is closed, to the right of the label where 14-instellingen.png
+   puts a dot on a row that wants attention. What lies after the locator keeps
+   the ordinary inactive presentation. ---- */
+.behind .t{color:var(--ink-38)}
+.behind .s{color:var(--ink-38)}
+.here .t{color:var(--ink);font-weight:500}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:0 0 auto}
+.ch .dot{position:absolute;left:28px;top:50%;margin:-3px 0 0 0}
+
+/* ---- Action bar. Exactly the band golden 03 approved for the filter sheet:
+   hairline at 755, 97 pt of bar, the pill 40 tall from 771. It is fixed
+   because a table of contents is long: a jump control that scrolls away with
+   the list is a jump control you cannot reach from where you need it. ---- */
+.actions{position:absolute;left:0;right:0;top:755px;height:97px;background:var(--bg);border-top:1px solid var(--hair);z-index:10}
+.actions .progress{position:absolute;left:16px;top:26px;font-size:14px;line-height:18px;color:var(--ink-62)}
+.actions .goto{position:absolute;right:16px;top:15px;height:40px;padding:0 20px;border-radius:20px;background:var(--surface-el);
+               display:flex;align-items:center;font-size:15px;font-weight:700;color:var(--ink)}
+.home-ind{position:absolute;left:50%;bottom:8px;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#fff;z-index:20}
+
+/* ---- Fixture artwork: repository-safe, drawn in CSS (no commercial covers).
+   The same Atomic Habits cover golden 01b and 02 draw, at thumb size. ---- */
+.art{position:absolute;inset:0;overflow:hidden}
+.cv-atomic{background:#f4f2ec}
+.cv-atomic .ct{position:absolute;left:0;right:0;top:18%;text-align:center;font-size:8px;line-height:9px;font-weight:700;color:#111;letter-spacing:-.2px}
+.cv-atomic .cd{position:absolute;width:5px;height:5px;border-radius:50%;background:#e5140f;left:44%;top:60%}
+
+/* ---- Specimen frame (06c) ---- */
+.spec{position:relative;width:393px;background:var(--bg);padding-bottom:28px}
+.spec .lbl{padding:26px 16px 10px 16px;font-size:13px;color:var(--ink-50);letter-spacing:.3px;text-transform:uppercase}
+.spec .card{position:relative;left:auto;right:auto;top:auto;margin:0 16px}
+</style>
+</head>
+<body>
+
+<!-- ============ shared pieces, cloned into each screen by the script ======== -->
+<template id="statusbar">
+  <div class="status">
+    <div class="time">9:41</div><div class="island"></div>
+    <div class="right"><div class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:9px"></i><i style="height:12px"></i></div>
+      <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 9.5a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2Zm0-3.6c1.5 0 2.9.6 3.9 1.6l-1.3 1.3A3.7 3.7 0 0 0 8 7.7c-1 0-1.9.4-2.6 1.1L4.1 7.5C5.1 6.5 6.5 5.9 8 5.9Zm0-3.7c2.5 0 4.9 1 6.6 2.7l-1.3 1.3A7.4 7.4 0 0 0 8 4.1c-2 0-3.9.8-5.3 2.2L1.4 4.9A9.3 9.3 0 0 1 8 2.2Z" fill="#fff"/></svg>
+      <div class="bat"></div></div>
+  </div>
+</template>
+
+<template id="header">
+  <div class="nav">
+    <svg class="back" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 7 12l8 8"/></svg>
+    <h1>Inhoudsopgave</h1>
+  </div>
+</template>
+
+<!-- Collapsed points at what opens, expanded points back at the row that
+     closes it. The comp draws exactly these two, and not a chevron that
+     rotates from down to up. -->
+<template id="chev-closed">
+  <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>
+</template>
+<template id="chev-open">
+  <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 15 7-7 7 7"/></svg>
+</template>
+<template id="cv-atomic">
+  <div class="art cv-atomic"><div class="ct">Atomic<br>Habits</div><div class="cd"></div></div>
+</template>
+
+<!-- ================= 06a: Atomic Habits, de boom open op hoofdstuk 12 ===== -->
+<section class="screen" id="reading"></section>
+
+<!-- ================= 06b: dezelfde boom, alle delen dichtgeklapt ============ -->
+<section class="screen" id="collapsed"></section>
+
+<!-- ================= 06c: de rijsoorten ================= -->
+<section class="spec" id="rowtypes"></section>
+
+<script>
+  const tpl = (id) => document.getElementById(id).content.cloneNode(true);
+
+  /// The fixed fixture. Atomic Habits is the one book on the shelf whose
+  /// edition names its chapters and groups them in parts, so it is the one
+  /// that can show what a named chapter does on 393 pt, and it has no reading
+  /// position in any approved golden, so giving it one contradicts nothing.
+  /// The parts and chapter names are the book's own. The locator stands in
+  /// chapter 12 of 20, which puts eleven chapters and the introduction before
+  /// it in reading order. `totalProgression` is 0.55; the footer says that in
+  /// user copy and no row repeats it.
+  const BOOK = {
+    title: 'Atomic Habits', author: 'James Clear', cover: 'cv-atomic',
+    percent: '55% gelezen',
+    here: 12,
+    nodes: [
+      {kind: 'leaf', label: 'Introduction: My Story', behind: true},
+      {kind: 'part', label: 'The Fundamentals: Why Tiny Changes Make a Big Difference', from: 1, to: 3},
+      {kind: 'part', label: 'The 1st Law: Make It Obvious', from: 4, to: 7},
+      {kind: 'part', label: 'The 2nd Law: Make It Attractive', from: 8, to: 10},
+      {kind: 'part', label: 'The 3rd Law: Make It Easy', from: 11, to: 14},
+      {kind: 'part', label: 'The 4th Law: Make It Satisfying', from: 15, to: 17},
+      {kind: 'part', label: 'Advanced Tactics: How to Go from Being Merely Good to Being Truly Great', from: 18, to: 20},
+      {kind: 'leaf', label: 'Conclusion: The Secret to Results That Last', behind: false},
+    ],
+    chapters: {
+      1: 'The Surprising Power of Atomic Habits',
+      2: 'How Your Habits Shape Your Identity (and Vice Versa)',
+      3: 'How to Build Better Habits in 4 Simple Steps',
+      4: "The Man Who Didn't Look Right",
+      5: 'The Best Way to Start a New Habit',
+      6: 'Motivation Is Overrated; Environment Often Matters More',
+      7: 'The Secret to Self-Control',
+      8: 'How to Make a Habit Irresistible',
+      9: 'The Role of Family and Friends in Shaping Your Habits',
+      10: 'How to Find and Fix the Causes of Your Bad Habits',
+      11: 'Walk Slowly, but Never Backward',
+      12: 'The Law of Least Effort',
+      13: 'How to Stop Procrastinating by Using the Two-Minute Rule',
+      14: 'How to Make Good Habits Inevitable and Bad Habits Impossible',
+      15: 'The Cardinal Rule of Behavior Change',
+      16: 'How to Stick with Good Habits Every Day',
+      17: 'How an Accountability Partner Can Change Everything',
+      18: "The Truth About Talent (When Genes Matter and When They Don't)",
+      19: 'The Goldilocks Rule: How to Stay Motivated in Life and Work',
+      20: 'The Downside of Creating Good Habits',
+    },
+  };
+
+  const holds = (node, n) => node.kind === 'part' && n >= node.from && n <= node.to;
+  /// Position, not completion: every chapter of this part ends before the
+  /// locator in reading order.
+  const partBehind = (node) => node.to < BOOK.here;
+
+  function bookRow() {
+    const row = document.createElement('div');
+    row.className = 'book';
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb'; thumb.appendChild(tpl(BOOK.cover));
+    const body = document.createElement('div');
+    body.className = 'body';
+    body.innerHTML = '<div class="t"></div><div class="s"></div>';
+    body.querySelector('.t').textContent = BOOK.title;
+    body.querySelector('.s').textContent = BOOK.author;
+    row.append(thumb, body);
+    return row;
+  }
+
+  function leafRow(node) {
+    const row = document.createElement('div');
+    row.className = 'row hair' + (node.behind ? ' behind' : '');
+    const t = document.createElement('div');
+    t.className = 't'; t.textContent = node.label;
+    row.appendChild(t);
+    return row;
+  }
+
+  function partRow(node, {expanded, marked}) {
+    const behind = partBehind(node);
+    const row = document.createElement('div');
+    row.className = 'part hair' + (behind ? ' behind' : '');
+    const body = document.createElement('div');
+    body.className = 'body';
+    body.innerHTML = '<div class="t"></div><div class="s"></div>';
+    body.querySelector('.t').textContent = node.label;
+    body.querySelector('.s').textContent = 'Hoofdstuk ' + node.from + ' tot ' + node.to;
+    row.appendChild(body);
+    if (marked) row.appendChild(Object.assign(document.createElement('div'), {className: 'dot'}));
+    row.appendChild(tpl(expanded ? 'chev-open' : 'chev-closed'));
+    return row;
+  }
+
+  function chapterRow(n) {
+    const behind = n < BOOK.here, here = n === BOOK.here;
+    const row = document.createElement('div');
+    row.className = 'ch' + (behind ? ' behind' : '') + (here ? ' here' : '');
+    if (here) row.appendChild(Object.assign(document.createElement('div'), {className: 'dot'}));
+    const t = document.createElement('div');
+    t.className = 't'; t.textContent = n + '. ' + BOOK.chapters[n];
+    row.appendChild(t);
+    return row;
+  }
+
+  /// The tree opens on the place you are: the part that holds the current
+  /// chapter stands open, the others stand closed. Collapsing everything is a
+  /// state you can reach, not the state you arrive in, and that is 06b.
+  function tree(host, {collapseAll}) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.appendChild(bookRow());
+    for (const node of BOOK.nodes) {
+      if (node.kind === 'leaf') { card.appendChild(leafRow(node)); continue; }
+      const open = !collapseAll && holds(node, BOOK.here);
+      const marked = collapseAll && holds(node, BOOK.here);
+      card.appendChild(partRow(node, {expanded: open, marked}));
+      if (!open) continue;
+      for (let n = node.from; n <= node.to; n++) card.appendChild(chapterRow(n));
+    }
+    host.appendChild(card);
+  }
+
+  function build(host, opts) {
+    host.appendChild(tpl('statusbar'));
+    host.appendChild(tpl('header'));
+    tree(host, opts);
+
+    const bar = document.createElement('div');
+    bar.className = 'actions';
+    const progress = document.createElement('div');
+    progress.className = 'progress'; progress.textContent = BOOK.percent;
+    const go = document.createElement('div');
+    go.className = 'goto'; go.textContent = 'Ga naar pagina';
+    bar.append(progress, go);
+    host.appendChild(bar);
+
+    host.appendChild(Object.assign(document.createElement('div'), {className: 'home-ind'}));
+  }
+
+  build(document.getElementById('reading'), {collapseAll: false});
+  build(document.getElementById('collapsed'), {collapseAll: true});
+
+  /// 06c lifts the rows out of the page so the kinds can be read next to each
+  /// other. It is a shape specification, not a runtime state.
+  (function specimen() {
+    const host = document.getElementById('rowtypes');
+    const [intro, fundamentals, , , thirdLaw] = BOOK.nodes;
+    const blocks = [
+      ['Het boek, en een losse ingang vóór de locator', [
+        bookRow(),
+        leafRow(intro),
+      ]],
+      ['Een deel: vóór de locator, open op de locator, dicht met de marker', [
+        partRow(fundamentals, {expanded: false}),
+        partRow(thirdLaw, {expanded: true}),
+        partRow(thirdLaw, {expanded: false, marked: true}),
+      ]],
+      ['Een hoofdstuk: vóór, op en na de locator', [
+        chapterRow(11),
+        chapterRow(12),
+        chapterRow(13),
+      ]],
+    ];
+    for (const [label, rows] of blocks) {
+      const lbl = document.createElement('div');
+      lbl.className = 'lbl'; lbl.textContent = label;
+      const card = document.createElement('div');
+      card.className = 'card';
+      rows.forEach((r, i) => { if (i === 0) r.classList.remove('hair'); card.appendChild(r); });
+      host.append(lbl, card);
+    }
+  })();
+
+  const which = new URLSearchParams(location.search).get('screen') || 'reading';
+  document.querySelectorAll('.screen,.spec').forEach((s) => { s.hidden = s.id !== which; });
+
+  /// Reported so the specimen frame can be rendered at exactly its own height
+  /// instead of a number guessed and then corrected.
+  window.specHeight = () => Math.ceil(document.getElementById('rowtypes').getBoundingClientRect().height);
+</script>
+</body>
+</html>
