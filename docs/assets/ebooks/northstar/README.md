@@ -357,10 +357,10 @@ worden.**
 - **`Downloaden` legt alleen het zichtbare CTA-slot vast.** Golden 05 zegt dat er een tweede,
   secundaire actie onder de leesknop staat, hoe die eruitziet en waar hij hangt. Wat `Downloaden`,
   `Downloaden…`, `Gedownload`, `Verwijderen` of een foutstaat betekenen, en wanneer ze elkaar
-  vervangen, wordt hier niet beslist en mag er ook niet stilzwijgend uit worden afgelezen. Dat hoort
-  bij de downloadfase, dezelfde die paneel 10 van de comp bedient. Let op bij het opschrijven van een
-  fase-ID: de goedgekeurde serverroadmap loopt tot PS-13, en de e-booksfasen die daarboven genoemd
-  worden (`PS-14` in golden 04, en de downloadfase hier) staan nog nergens als vastgelegde Phase ID.
+  vervangen, wordt hier niet beslist en mag er ook niet stilzwijgend uit worden afgelezen. Dat blijft
+  PS-16, de downloadfase die ook paneel 10 van de comp bedient. Dat nummer staat nog nergens als
+  vastgelegde Phase ID: de goedgekeurde serverroadmap loopt tot PS-13, en `PS-14` wordt in golden 04
+  net zo gebruikt. Beide horen bij de e-booksnummering en moeten nog in de roadmap landen.
 - **Wat er onder de vouw staat.** De pagina scrollt, want de beschrijving is afgekapt. Of daar de
   volledige beschrijving, de reeks of aanbevelingen op volgen is niet vastgelegd.
 
