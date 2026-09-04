@@ -52,7 +52,7 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 | S0.4 | DEC-hernummering naar de eerstvolgende vrije reeks in de samengestelde boom (niet blind 096, VRAGENLIJST 59), mappingtabel, grep schoon | `[x]` | twaalf botsingen (063 tot 073 plus 093) naar 096 tot 107; mappingtabel onderaan `docs/DECISIONS.md`; 242 verwijzingen per regel geclassificeerd, geen anker gebroken (de ankers die niet kloppen deden dat op beide takken al) | 2026-09-04 |
 | S0.5 | CI-jobs `pleya-server`, `pleya-web`, `protocol` groen | `[x]` | run `33909897646` op `integration/pleya-server-rebaseline`: Pleya Server (Go), Pleya Web en Protocol Contract alle drie groen. Vier ronden nodig; drie fouten die alleen op een Linux-runner bovenkwamen, elk apart gecommit. `Code Analysis` en `Unit Tests` blijven rood, maar zijn dat op `main` zelf ook: 53 falers daar, 53 hier, met 117 tests meer die slagen | 2026-09-04 |
 | S0.6 | NAS-migratiefixture (schema 7, geanonimiseerd) | `[ ]` | | |
-| S0.7 | Contracttest fake-server tegen `openapi.yaml` | `[ ]` | | |
+| S0.7 | Contracttest fake-server tegen `openapi.yaml` | `[ ]` | erbij: de dekkingslijst in `scripts/check_server_responses.py` (`expected`) eist alleen nog de acht schema's van de PS-2-leeskant. De PS-9-antwoorden (`UserList`, `LibraryPermissionList`, `SessionList`) worden wél vastgelegd maar niet vereist, dus de poort kan groen zijn zonder dekking op gebruikers, sessies en rechten. Gevonden in de codex-challenge van 4 sep | |
 | S0.8 | Vrijgavebesluit PS-14 en PS-11A vastgelegd | `[ ]` | | |
 
 ### S1 Beheer-basis
