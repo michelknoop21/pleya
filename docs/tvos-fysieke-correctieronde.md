@@ -93,7 +93,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | VER2 | Automation-ids escapen geen blokhaken | DEFERRED | n.v.t. |
 | HERO1 | Framing van het hero-beeld op Home: op hardware staan halve beelden in de hero, Plex snijdt gecentreerd vóórdat de widget iets kan kiezen | FIXED, hardware open | `d4ec1fe` |
 | HERO2 | De titelband van de hero is de clearlogo-hoogte, dus een tweeregelige titel wordt op de baseline afgesneden | FIXED | `0ad49ec` |
-| HOME1 | Home naast de northstar: het hero-item staat niet heel in beeld, witruimte, overgangen, indeling en styling wijken af, en de navigatiebalk mee; mockup 29 gekozen (D full-bleed), mockup 30 tekent de landing in vier opties plus railfocus, dieper, posterfallback en overlay; keuze open | IN PROGRESS | n.v.t. |
+| HOME1 | Home naast de northstar: het hero-item staat niet heel in beeld, witruimte, overgangen, indeling en styling wijken af, en de navigatiebalk mee; mockup 29 D full-bleed gekozen, mockup 30 A1 (de rail piept) plus B tot en met E goedgekeurd; DEC-095 accepted, bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
 | I18N5 | Home toont het raillabel "Recently Added Shows" in het Engels tussen Nederlandse labels | OPEN | n.v.t. |
 | SEARCH1 | Zoeken benoemt zijn resultaten buiten het railcontract om | DEFERRED | n.v.t. |
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
@@ -2193,3 +2193,12 @@ profielchip met initiaal links en het wordmark rechts.
 Open voor Michel: de landing-optie (A1 tot en met A4) en akkoord op B tot en met E. Daarna
 DEC-095, de spec (9.1-schets, 9.2, 9.3, 7.1 rustfocus, 9.6 pauzeregels) en HOME1 op
 GOEDGEKEURD.
+
+**Besluit van Michel op 4 september, op mockup 30:** "Ik denk a 1 de rail piept en btme
+akkoord." Vastgelegd als DEC-095: de hero full-bleed met de rail die eronder piept, het anker
+op 372 op DOWN en op 132 dieper op de pagina, het bijschrift met één regel synopsis, de
+amberpunt, de Nederlandse labels en de gedimde topnav. Hoofdstuk 9.1, 9.2 en 7.1 zijn herzien,
+9.3 en 9.6 nagelopen, 33.1 en 33.2 dragen een afwijkingsnotitie. De ambient tint van 9.3 blijft
+fase 9 en gaat niet mee in de bouw. De bouw is een eigen ronde met de negatieve controle uit
+DEC-095: een widgettest op `TvContentFeed` die de full-bleed hero, het zichtbare label met de
+gedeeltelijk zichtbare band, en het anker na DOWN eist, rood op de huidige code.
