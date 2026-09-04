@@ -93,7 +93,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | VER2 | Automation-ids escapen geen blokhaken | DEFERRED | n.v.t. |
 | HERO1 | Framing van het hero-beeld op Home: op hardware staan halve beelden in de hero, Plex snijdt gecentreerd vóórdat de widget iets kan kiezen | FIXED, hardware open | `d4ec1fe` |
 | HERO2 | De titelband van de hero is de clearlogo-hoogte, dus een tweeregelige titel wordt op de baseline afgesneden | FIXED | `0ad49ec` |
-| HOME1 | Home naast de northstar: het hero-item staat niet heel in beeld, witruimte, overgangen, indeling en styling wijken af, en de navigatiebalk mee; mockup 29 D full-bleed gekozen, mockup 30 A1 (de rail piept) plus B tot en met E goedgekeurd; DEC-095 accepted en gebouwd | FIXED, hardware open | `eed2a79` |
+| HOME1 | Home naast de northstar: het hero-item staat niet heel in beeld, witruimte, overgangen, indeling en styling wijken af, en de navigatiebalk mee; mockup 29 D full-bleed gekozen, mockup 30 A1 (de rail piept) plus B tot en met E goedgekeurd; DEC-095 accepted en gebouwd | FIXED, hardware open | `eed2a79`, `7b3057a6` |
 | I18N5 | Home toont het raillabel "Recently Added Shows" in het Engels tussen Nederlandse labels; `nl.i18n.json` miste `discover.latestShows`, nu "Recent toegevoegde series" | FIXED | `eed2a79` |
 | SEARCH1 | Zoeken benoemt zijn resultaten buiten het railcontract om | DEFERRED | n.v.t. |
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
@@ -2250,7 +2250,7 @@ die ruimte was daar de zichtbare onderrand van de billboardkaart die full-bleed 
 weggenomen. Op een donkere still bleef er een zwarte strook over van een vijfde van de pagina.
 Drie richtingen zijn voorgelegd: het anker weg, het anker halveren, of de dim verzwakken zodat
 de strook als beeld leest. Michel koos eerst halveren en daarna alsnog het anker helemaal weg,
-zoals geadviseerd. `rowFocusAnchor` bestaat niet meer; `rowTileScrollAlignment` kent geen
+zoals geadviseerd, gebouwd als `7b3057a6`. `rowFocusAnchor` bestaat niet meer; `rowTileScrollAlignment` kent geen
 rij-index meer en zet elk gefocust raillabel onder de balk. De twee ankerregels zijn er één
 geworden, de volgende rail wint vier vijfde van zijn band, en mockup 30 B en E zijn opnieuw
 geschoten op die compositie. De test die het anker op 372 vastlegde eist nu de nul.
