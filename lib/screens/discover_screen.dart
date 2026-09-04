@@ -1433,11 +1433,18 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         ),
                         // Zoeken. Since [DEC-094] search is not a slot in the
                         // mobile bar but an icon here, so the five primary
-                        // slots can be content destinations. Phone only: the
-                        // desktop sidebar and the TV rail still carry Zoeken
-                        // as a destination of its own, and a second entry
-                        // point there would be one too many.
-                        if (PlatformDetector.isPhone(context))
+                        // slots can be content destinations. Desktop and the
+                        // TV rail still carry Zoeken as a destination of
+                        // their own and are excluded by the same predicate.
+                        //
+                        // The gate goes through [showsHeaderSearchAction] on
+                        // `isMobile` rather than asking `isPhone` here: the
+                        // bar is composed on `isMobile`, and the two answers
+                        // have to be complements. They were not — an iPad is
+                        // `isMobile` and not `isPhone`, so it lost the slot
+                        // without gaining the icon, and Zoeken does not live
+                        // behind My Pleya to fall back on.
+                        if (showsHeaderSearchAction(isMobile: PlatformDetector.isMobile(context)))
                           FocusableAction(
                             onPressed: _openSearch,
                             child: IconButton(

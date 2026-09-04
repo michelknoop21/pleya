@@ -153,6 +153,22 @@ class MyPleyaTabIcon extends StatelessWidget {
 /// at all.
 bool showsHeaderAccountMenu({required bool isMobile}) => !isMobile;
 
+/// Whether the Home/Series/Films/Boeken header carries the Zoeken glyph.
+///
+/// The same shape and the same reason as [showsHeaderAccountMenu], for the
+/// other destination [DEC-094](../../docs/DECISIONS.md) took out of the bar:
+/// §1 moves Zoeken from a bar slot to an icon in those headers, and unlike
+/// Bibliotheken and Live TV it does not land in My Pleya, so the header is its
+/// only entry point on a shell whose bar the policy composes.
+///
+/// It is therefore the exact complement of "the bar has a Zoeken slot", and it
+/// has to take the same input as the composition does. Before this predicate
+/// existed the glyph was gated on `PlatformDetector.isPhone` while the bar was
+/// composed on `isMobile`: on an iPad the first is false and the second true,
+/// so Zoeken lost its slot without gaining its icon and had no entry point at
+/// all. `test/navigation/account_entry_point_test.dart` locks the complement.
+bool showsHeaderSearchAction({required bool isMobile}) => isMobile;
+
 /// Represents a navigation tab with its configuration
 class NavigationTab {
   final NavigationTabId id;
