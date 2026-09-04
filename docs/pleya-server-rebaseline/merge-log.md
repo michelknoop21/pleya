@@ -146,3 +146,37 @@ schoon en kreeg een nieuwe bron-hash, terwijl `schema.d.ts` van één kant kwam.
 **Eén echte merge-regressie.** De branch voegde de capability `sessions` toe; twee testfixtures op
 main bouwen een `Capabilities` met de hand op en misten dat veld. `bun run check` viel erover. Ook
 in `d7ba84a`.
+
+## 7. De eerste dagelijkse merge, 4 september 's avonds
+
+`main` stond zes commits verder, op `9b181ff5`. Vier conflicten, merge-commit `a1734ead`. Wat de
+volgende merge hiervan kan gebruiken:
+
+**Een nummerbotsing is geen eenmalig verschijnsel.** `main` gaf DEC-096 uit aan LANG1, precies het
+nummer waar de hernummering van een paar uur eerder de refreshtokenrotatie naartoe had geschoven.
+De regel uit hoofdstuk 4, "`main` houdt zijn nummers", is toen niet gevolgd: LANG1 is DEC-109
+geworden. Zeven verwijzingen in drie bestanden tegen ruim driehonderd in ongeveer tachtig, en dat
+laatste elke dag opnieuw. De nieuwe regel staat onderaan `docs/DECISIONS.md`: het jongste besluit
+wijkt, niet de gevestigde reeks.
+
+**De gegenereerde bestanden conflicteerden deze keer wél, en dat is de makkelijke variant.**
+`strings.g.dart` en `strings_nl.g.dart` botsten op de stringtelling en op `discover.latestShows`.
+Ze zijn niet met de hand opgelost maar opnieuw gegenereerd met `dart run slang`. Het gevaarlijke
+geval blijft dat van hoofdstuk 6: schoon mergen en daarna niet meer bij de bron passen. Alleen
+`scripts/codegen.sh` met een lege diff toont het verschil tussen die twee.
+
+**Het sessielogboek van één dag draagt twee sessiestromen.** Beide takken schreven in
+`docs/sessions/2026-09-04.md`. De oplossing is niet kiezen en ook niet achter elkaar plakken, maar
+alle blokken op starttijd sorteren; anders leest een dag als twee losse dagen.
+
+**De poort van gisteren viel over deze merge, en dat was de poort zelf.**
+`scripts/check_authority_merge.sh` meldde `docs/PLEYA-SERVER-MASTERLIST.md` af, een bestand dat
+alleen op de integratiebranch bestaat. `git rev-parse <rev>:<pad>` echoot bij een onbekend pad zijn
+argument naar stdout voordat het faalt, dus de "bestaat niet"-tak sloeg nooit aan. Gerepareerd in
+`6915e4d5`, met `scripts/check_authority_merge_test.sh` als negatieve controle in dezelfde CI-job.
+
+**Bewijs.** `scripts/codegen.sh` lege gegenereerde diff; `scripts/ci_checks.sh` groen;
+`flutter test` 6272 groen met 83 falers, dezelfde 83 als de S0.3-baseline (78 goldens, 5 in
+`tv_discovery_rail_test.dart`, en geen van beide takken raakte dat bestand sinds `a21b43c` aan);
+`scripts/check_protocol.sh` groen; `go test ./...` alle pakketten ok tegen de testdatabase;
+`bun run check`, `api:check`, `test` (112) en `build` groen.
