@@ -80,7 +80,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | FIXED, hardware open | `f42e3fd` |
 | LIB1 | Blanco Bibliotheken-pagina als de selectie verdwijnt | FIXED, hardware open | `f9b2167` |
 | LIB2 | Race bij snel wisselen van bibliotheek | FIXED | `f2ea980` |
-| LIB3 | TV-tabs dragen nog de oude rode onderstreping | OPEN | n.v.t. |
+| LIB3 | TV-tabs dragen nog de oude rode onderstreping | FIXED, hardware open | `3e9d31b` |
 | WL2 | Kijklijst end-to-end in Pleya Verify | OPEN | n.v.t. |
 | REQ1 | Aanvragen end-to-end in Pleya Verify | OPEN | n.v.t. |
 | MYP1 | Regressiebewijs voor het Mijn Pleya-werk | OPEN | n.v.t. |
@@ -106,6 +106,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | STR5 | Hardcoded "Incorrect PIN" in `profile_activation.dart:57` | OPEN | n.v.t. |
 | TOK1 | `TvPanelTheme.accent #F42B1F` staat naast `kAccent` | OPEN | n.v.t. |
 | TOK2 | Serverstip `#3FBF5F` hardcoded in `tv_my_pleya_screen.dart:829` | OPEN | n.v.t. |
+| TOK3 | De segmented tabstijl houdt op TV zijn eigen accentrul (seizoentabs, Seerr-aanvraagfilters) | OPEN | n.v.t. |
 | PNL1 | Infopaneel gooit de secundaire spoorlabels van `TrackLabelBuilder` weg | OPEN | n.v.t. |
 | LIVE1 | Live TV tekent twee navigatiebalken via `PlatformDetector.shouldUseSideNavigation` | OPEN | n.v.t. |
 | ACT2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | OPEN | n.v.t. |
@@ -1525,6 +1526,97 @@ bevinding ook niet nodig: de race is door bestuurde futures volledig
 dichtgetimmerd. Bundel de fysieke smoke met de andere open items van deze ronde.
 `libraries_screen.dart` staat op ongeveer 2060 regels; opsplitsen blijft een
 eigen ronde met eigen bewijs, zoals LIB1 al vaststelde.
+
+### LIB3, de rul was de derde staataffordance op één scherm
+
+Anders dan LIB1 en LIB2 is dit geen state-race maar een visuele bevinding, en
+hij had in dit document nog geen regel behalve de tabelregel zelf. Dus eerst
+vastgesteld welke tabs het zijn en wat er in plaats van rood hoort te staan, en
+pas daarna code.
+
+**Het oppervlak.** De tabrij onder de bibliotheekkiezer op Bibliotheken:
+Aanbevolen, Bladeren, Collecties, Afspeellijsten. Die komt uit
+`TabNavigationMixin.buildTabChip`, die `FocusableTabChip` bouwt in zijn
+standaardstijl `TabChipStyle.underline`. De open tab kreeg daar een balk van
+twee pixels breed als het label, in `tk.accent`, het merkrood `#E5140F`.
+
+**Gereproduceerd op het echte doel.** Een Debug-build in de tvOS-simulator,
+ingelogd op de demoserver, via Mijn Pleya naar Bibliotheken. De rode rul staat
+er, onder Aanbevolen, en loopt dwars door het herobeeld eronder. Screenshot
+`before-02-bibliotheken.png`; de vergelijking voor en na staat in
+`docs/assets/tvos-unified/mockups-2026-09-02/compare/libraries-tabrul-voor-na.png`.
+Niet alleen bekeken maar geteld: in de band van honderd pixels onder de tabrij
+zaten 1806 pixels op accentrood, en nul erna.
+
+**De bedoeling lag al vast, op twee plekken.** De styling-audit van 2 september
+schrijft bij Bibliotheken letterlijk "de tabs blijven, zonder rode
+onderstreping", en de mockup die daarbij hoort, `libraries-d.png`, tekent de
+open tab als vet witte tekst naast gedempte buren en zet er niets onder. De set
+die op 3 september is goedgekeurd zegt hetzelfde van de andere kant: het
+merkrood is er voor de progreslijn en de opnamemarkering, en verder niet. De
+handoff van 3 september noteerde dit al als bewust overgeslagen, want die ronde
+was beperkt tot de kiezer. `tv_page_chip_bar.dart` benoemt in zijn eigen
+kopcommentaar precies deze tabrij als de tweede helft van hetzelfde defect.
+
+**Waarom het opvalt en de audit het telde.** Op datzelfde scherm waren er drie
+manieren om te zien waar je staat: de witte ring, de verticale balk van drie
+pixels op Instellingen, en deze rode rul. Eén oppervlak hoort er één te hebben.
+
+**De fix zit bij de gedeelde eigenaar.** `FocusableTabChip` bepaalt de kleur van
+zijn rul nu op één plek, en die is op TV doorzichtig. De balk zelf blijft staan
+in plaats van te verdwijnen: de strook is wat de rij zijn hoogte geeft, en
+`libraries_screen` geeft die hoogte door in een `PreferredSize` die zijn kind
+niet kan meten. Zo verschuift er boven of onder de rij niets. Buiten TV
+verandert er niets, want geen enkele mockup vraagt desktop of mobiel de rul op
+te geven, en op mobiel is dit scherm de aanbevolen-tab.
+
+**Blast radius.** Elk oppervlak dat de underline-stijl op TV gebruikt, en dat
+zijn er vier: Bibliotheken, Live TV, Downloads en de Seerr-ontdekbalk. Alle vier
+markeren hun open tab al met volle inkt en `w600` tegen gedempt en `w500`, dus
+de staat blijft zichtbaar zonder de rul. Dat is ook de reden dat de fix daar
+hoort en niet bij Bibliotheken alleen: vier rijen die hetzelfde zijn moeten er
+niet drie verschillende dingen van maken.
+
+**Wat er bewust buiten valt.** De segmented stijl (seizoentabs op detail, de
+Seerr-aanvraagfilters) tekent een eigen korte accentrul van achttien pixels.
+Dat is letterlijk ook een rode rul onder een tab op TV, maar het is een latere,
+bewuste behandeling met een eigen argument in de code, en het register maakt een
+kleurwijziging op het detailoppervlak afhankelijk van een regressiebeeld van
+Home, Films en Series dat deze bevinding niet heeft. Staat nu als `TOK3` in de
+tabel, met een test die de huidige behandeling vastlegt zodat de grens zichtbaar
+blijft.
+
+**DEC-053.** Niet geraakt. De selectie leunt hier op inkt en gewicht en niet op
+een container- of oppervlakkleur, dus de val waarin `secondaryContainer` en
+`surfaceContainerHighest` op `c.surface` vallen komt niet in beeld. In het
+lichte thema blijft `tk.text` tegen `tk.textMuted` staan; daar staat een test op.
+
+**Negatieve controle.** Vijf tests in
+`test/widgets/focusable_tab_chip_test.dart`. Alleen `focusable_tab_chip.dart`
+teruggezet naar de oude implementatie: twee rood, allebei met de gemeten waarde
+erbij, namelijk `Color(red: 0.8980, green: 0.0784, blue: 0.0588)` in de lijst
+rulkleuren waar hij niet in mag staan, in het donkere en in het lichte thema.
+De andere drie zijn aan beide kanten groen en staan er om te bewaken wat niet
+mocht veranderen: een gesloten tab was al gedempt en zonder rul, de rul buiten
+TV blijft, en de segmented stijl blijft ongemoeid.
+
+**Goldens.** Geen enkele golden tekent een `FocusableTabChip`. De enige
+golden-test die er in de buurt komt is `tv_detail_source_line_golden_test.dart`,
+en die rendert een film zonder seizoentabs; hij was voor de wijziging rood en
+erna rood, met dezelfde twee namen. Niets geregenereerd.
+
+**Testen.** `scripts/ci_checks.sh` groen: SDK-pin, `dart format` over 1476
+bestanden, codegen-versheid, native format, `flutter analyze` zonder errors of
+warnings, en de unused-code- en unused-files-controles. Volledige suite 6146
+geslaagd, 6 overgeslagen, 83 rood, met exact de nullijn van LIB2: 78 goldens en
+dezelfde vijf in het oude `test/widgets/tv_discovery_rail_test.dart`. Nieuwe
+falers: geen. De vijf erbij gekomen geslaagde tests zijn deze bevinding.
+
+**Wat open blijft.** Er is bewijs uit de simulator en niet van een echte Apple
+TV. Voor de kleur maakt dat weinig uit, een rul die er niet meer is kan op
+hardware niet terugkomen, maar of de open tab op tien voet afstand nog genoeg
+opvalt met alleen inkt en gewicht is daar te zien en nergens anders. Bundel dat
+met de andere open fysieke items van deze ronde.
 
 ### VER5, `media-detail.episode-refresh` haalt de detailpagina niet meer
 
