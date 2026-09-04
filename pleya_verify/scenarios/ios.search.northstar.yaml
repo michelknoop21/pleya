@@ -16,13 +16,24 @@ target: ios-sim
 # in a post-frame callback whenever the search destination is selected, which
 # is the same path the sidebar and the header glyph already use.
 #
-# What this scenario cannot show, and why it is a fixture limit rather than a
-# gap in the product: `catalog.mixed.v1` holds Aurora, Basalt and Cascade as
-# films and Driftwood as the one series, and those four titles share no
-# two-character substring. The search field ignores a single character, so no
-# single query can put a FILMS and a SHOWS section on screen at once here.
-# Both sections are covered at widget level in
-# `test/screens/search/mobile_search_body_test.dart`.
+# What this scenario stops short of, and why. It asserts the surface, not a
+# result set, because no driver can type: `typeText` throws
+# "no /v1/input/text endpoint exists yet" on both the iOS-simulator and the
+# macOS driver. Adding that endpoint is Pleya Verify infrastructure and a
+# transport-contract change, not fase-4 work, and inventing a text-injection
+# path purely to make this file longer would be exactly the verify-only
+# production code a scenario may not ask for.
+#
+# A second limit sits behind that one, so it is worth writing down now:
+# `catalog.mixed.v1` holds Aurora, Basalt and Cascade as films and Driftwood as
+# the one series, and those four titles share no two-character substring, while
+# the field ignores a single character. Even with typing, no single query could
+# put a FILMS and a SHOWS section on screen here at once.
+#
+# The sections, the source count, the chips' narrowing and the requests section
+# are covered at widget level in
+# `test/screens/search/mobile_search_body_test.dart`, and the projection itself
+# end to end in `test/screens/search_screen_test.dart`.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -37,14 +48,10 @@ steps:
   - assert: {id: search.chips, insideViewport: true}
   - assert: {id: search.field, below: search.header}
   - assert: {id: search.chips, below: search.field}
-  - type: "aurora"
-  # The query is debounced by 500 ms and then fans out to every online server.
-  - settle: 3000
-  - wait_until: {id: "search.section[movies]", timeout: 15000}
-  - assert: {id: "search.section[movies]", insideViewport: true}
-  - assert: {id: "search.result[movies/0]", insideViewport: true}
-  - assert: {id: "search.result[movies/0]", minimumTapTarget: 44}
-  - assert: {id: "search.result[movies/0]", notClipped: "search.section[movies]"}
-  # A result row sits under the chips, never over them.
-  - assert: {id: "search.section[movies]", below: search.chips}
+  # The bar keeps showing where you came from: mockup 05 draws Zoeken with
+  # Home lit, which is what the shell's projection does for a destination
+  # without a slot of its own (DEC-093).
+  - assert: {id: nav.bar, insideViewport: true}
+  - assert: {id: nav.discover, insideViewport: true}
+  - settle: 1500
   - snapshot: search-northstar

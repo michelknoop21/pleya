@@ -34,7 +34,7 @@ import '../../widgets/focusable_filter_chip.dart';
 import '../../widgets/loading_indicator_box.dart';
 import '../../widgets/mobile/mobile_catalog_header.dart';
 import '../../widgets/mobile/mobile_search_results.dart';
-import '../../widgets/pill_input_decoration.dart';
+import '../../theme/mono_tokens.dart';
 import '../../widgets/skeletons.dart';
 import '../../widgets/state_view.dart';
 import 'search_failure.dart';
@@ -326,6 +326,34 @@ class MobileSearchBody extends StatelessWidget {
   }
 }
 
+/// Mockup 05's field: a solid `surface` fill on `radiusMd`, 42 tall.
+///
+/// Not `pillInputDecoration`. That one is a capsule with an alpha fill that
+/// brightens on focus, built so input focus survives television overscan, and
+/// it is shared with the TV search page, the desktop bar and the Seerr field.
+/// The northstar's phone field is a different shape on different tokens
+/// (rapport §2 maps `surface` to the search field and `radiusMd` to fields),
+/// and touch has one active state per element rather than a focus tier
+/// (rapport §8), so this surface carries its own decoration instead of
+/// reshaping a primitive three other screens depend on.
+InputDecoration _decoration(BuildContext context, {required VoidCallback? onClear}) {
+  final tk = tokens(context);
+  final border = OutlineInputBorder(borderRadius: BorderRadius.circular(tk.radiusMd), borderSide: BorderSide.none);
+  return InputDecoration(
+    hintText: t.search.hint,
+    prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
+    suffixIcon: onClear == null
+        ? null
+        : IconButton(icon: const AppIcon(Symbols.close_rounded, fill: 1), onPressed: onClear),
+    filled: true,
+    fillColor: tk.surface,
+    border: border,
+    enabledBorder: border,
+    focusedBorder: border,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  );
+}
+
 class _Field extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -353,14 +381,7 @@ class _Field extends StatelessWidget {
               focusNode: focusNode,
               textInputAction: TextInputAction.search,
               onSubmitted: onSubmit,
-              decoration: pillInputDecoration(
-                context,
-                hintText: t.search.hint,
-                prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
-                suffixIcon: controller.text.isEmpty
-                    ? null
-                    : IconButton(icon: const AppIcon(Symbols.close_rounded, fill: 1), onPressed: onClear),
-              ),
+              decoration: _decoration(context, onClear: controller.text.isEmpty ? null : onClear),
             ),
           ),
         ),
