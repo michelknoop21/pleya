@@ -124,7 +124,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | SRCH2 | `people` wordt nooit aan `searchProjection` meegegeven | OPEN | n.v.t. |
 | REV1 | Apple Review Jellyfin: Home toont content, Films/Series leeg en concrete library niet zichtbaar (Apple Review, release-kritiek) | OPEN | n.v.t. |
 | LAND7 | Actieve discovery-rail krijgt geen vaste verticale focuspositie | OPEN | n.v.t. |
-| LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted. Data- en resolutielaag gebouwd op eae19cb4; de pagina 31 A, de sheet 31 B en de toasts 31 C/D staan nog open | OPEN | eae19cb4 (deel) |
+| LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted. Data- en resolutielaag op eae19cb4, de pagina 31 A, de sheet 31 B en de toasts 31 C/D op a9a50ad9; het Pleya Verify-scenario is nog niet gedraaid en de hardwareronde staat open | OPEN | eae19cb4, a9a50ad9 |
 
 ## Wat er per item bekend is
 
@@ -2516,3 +2516,57 @@ wijzigen; het gevraagde veld is één stabiel identiteitstoken op `Item`.
 Volgorde: eerst oud rood aantonen, dan implementeren, dan groen. Daarbovenop de drie stappen
 die al onder deze bevinding stonden: de widgettest op de nieuwe pagina, de verhuizing van de
 schakelaars, en een Pleya Verify-scenario voor de journey op de tvOS-simulator.
+
+**Stand van de bouwronde, 5 september, `a9a50ad9`.** De pagina, de sheet en de twee
+toasts staan. Mijn Pleya ▸ Instellingen ▸ Taal en ondertitels is de enige beheerplek: de
+globale voorkeur met audio, ondertitels, terugvaltaal en beleid, de twee schakelaars die
+uit Afspelen verhuisd zijn, en de serievoorkeuren met poster, keuze en herkomst. Select op
+een rij opent de sheet van 31 B, die de serie- en de profielwaarde naast elkaar leest en één
+actie aanbiedt. De verhuizing van de schakelaars is een pure verplaatsing, want hun opslag
+werd in `eae19cb4` al het profiel; onder Afspelen staat nu een verwijzing.
+
+Controles J tot en met S zijn eerst rood aangetoond op `6e6fcb78`, in een aparte worktree
+zodat de checkout van de andere sessies ongemoeid bleef. Elk van de vier bestanden faalt daar
+op compilatie: de herkomst, `clearKey`, de melding, de pagina en de tweede toastregel bestaan
+er niet. J bewaart serie, poster, bron, aflevering en toestel bij de keuze; K leest de lijst
+nieuwste eerst; L wist precies één regel, ook met "Onthoud keuzes per serie" uit; M is de
+terugvalmelding met de juiste eigenaar en zonder de opslag te raken; N is de bevestiging na
+een handmatige keuze, inclusief het geval waarin er niets bewaard wordt; O tot en met R zijn
+de pagina, de rij, de sheet en het wissen; S is de toast met twee regels en de amberstip.
+Daarna groen: 132 tests over acht bestanden, `ci_checks.sh` schoon op de gepinde SDK, en de
+testsuite met dezelfde 83 falers als de schone baseline (78 goldens plus vijf in
+`tv_discovery_rail_test.dart`), dus nul nieuwe.
+
+Vier dingen die de bouw zelf opleverde en die niet in de analyse stonden:
+
+1. *Herkomst hoort bij de keuze.* De pagina toont voorkeuren van elke bron waar het profiel
+   ooit van speelde, ook van een server die verwijderd is of uit staat, en precies die regels
+   zou een opzoeking leeg laten. `TrackLanguageChoice` draagt de herkomst daarom mee. Dat kost
+   ongeveer 120 byte per regel, dus de LRU-cap gaat van 500 naar 250 om dezelfde marge onder
+   het iCloud-plafond van 100 KB te houden. Niets ervan raakt de resolutie.
+2. *De statische schrijfvergrendeling strandt tussen widgettests.* Een future die in een
+   afgebroken testzone is gemaakt komt nooit terug, en de volgende test wacht er eeuwig op
+   achter een spinner die nooit uitdraait. Beide stores hebben nu een `resetForTesting`.
+3. *`showSelectionDialog` antwoordt null voor twee verschillende dingen*, "geen voorkeur" en
+   "weggeklikt". De beleidsrij sleutelt daarom op een string en kan niet meer stilzwijgend
+   wissen wat de kijker alleen maar bekeek.
+4. *De linkerkolom gebruikt de tegeltaal van Mijn Pleya*, met de waarde onder de titel in
+   plaats van rechts uitgelijnd zoals 31 A hem tekent. De tweekolomsindeling, de volgorde en
+   de serievoorkeurenlijst met herkomst zijn ongewijzigd; alleen de rijvorm volgt het idioom
+   dat de rest van de TV-instellingen al draagt.
+
+**Nog open, en dus niet als bewezen gemeld.** `pleya_verify/scenarios/tvos.settings.language-preferences.yaml`
+staat er en valideert, maar is nog niet op de tvOS-simulator gedraaid: dat vraagt een volledige
+simulatorbuild en een ingelogde sessie. Visueel bewijs is er wel, uit gerenderde
+schermafbeeldingen van de lijstvorm, de TV-vorm, de sheet en de twee toasts; hardware is de
+laatste stap en staat nog open.
+
+**Bevinding naast LANG1, niet stil opgelost.** `track_language_preferences` staat in geen
+enkele regel van `preference_sync_policy.dart`, dus `policyFor` valt terug op `_unknown`
+(`PreferencePolicy.localOnly`, `runtimeCache`) en de serievoorkeuren gaan vandaag *niet* mee
+naar iCloud. De kop van `TrackPreferenceStore` en de tekst van DEC-096 gaan er allebei van uit
+dat de keuze naar de andere Apple-toestellen reist, en de herkomstregel ("op welk toestel")
+is er zelfs op gebouwd. Het registreren van die pref zet echter synchronisatie aan voor een
+waarde die vandaag lokaal blijft, en dat is een gedragswijziging die buiten deze fase valt.
+Hij hoort bij dezelfde opruiming als het regex-gat in `preference_sync_policy_test.dart` dat
+`track_language_preferences` en `unified_source_preferences` al langer ongezien doorlaat.
