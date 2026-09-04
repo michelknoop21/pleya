@@ -1,4 +1,4 @@
-# Bron van de tvOS-mockups 09 tot en met 30
+# Bron van de tvOS-mockups 09 tot en met 31
 
 Dit is de werkmap waaruit de beelden in `../approved-2026-09-03/` en
 `../mockups-2026-09-04/` geschoten zijn. Tot 4 september 2026 stond hij alleen in

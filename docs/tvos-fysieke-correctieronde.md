@@ -93,8 +93,8 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | VER2 | Automation-ids escapen geen blokhaken | DEFERRED | n.v.t. |
 | HERO1 | Framing van het hero-beeld op Home: op hardware staan halve beelden in de hero, Plex snijdt gecentreerd vóórdat de widget iets kan kiezen | FIXED, hardware open | `d4ec1fe` |
 | HERO2 | De titelband van de hero is de clearlogo-hoogte, dus een tweeregelige titel wordt op de baseline afgesneden | FIXED | `0ad49ec` |
-| HOME1 | Home naast de northstar: het hero-item staat niet heel in beeld, witruimte, overgangen, indeling en styling wijken af, en de navigatiebalk mee; mockup 29 D full-bleed gekozen, mockup 30 A1 (de rail piept) plus B tot en met E goedgekeurd; DEC-095 accepted, bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
-| I18N5 | Home toont het raillabel "Recently Added Shows" in het Engels tussen Nederlandse labels | OPEN | n.v.t. |
+| HOME1 | Home naast de northstar: het hero-item staat niet heel in beeld, witruimte, overgangen, indeling en styling wijken af, en de navigatiebalk mee; mockup 29 D full-bleed gekozen, mockup 30 A1 (de rail piept) plus B tot en met E goedgekeurd; DEC-095 accepted en gebouwd | FIXED, hardware open | `eed2a79`, `7b3057a6` |
+| I18N5 | Home toont het raillabel "Recently Added Shows" in het Engels tussen Nederlandse labels; `nl.i18n.json` miste `discover.latestShows`, nu "Recent toegevoegde series" | FIXED | `eed2a79` |
 | SEARCH1 | Zoeken benoemt zijn resultaten buiten het railcontract om | DEFERRED | n.v.t. |
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
 | VER3 | De eerste tegel van een rail steekt links buiten de veilige zone | OPEN | n.v.t. |
@@ -124,6 +124,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | SRCH2 | `people` wordt nooit aan `searchProjection` meegegeven | OPEN | n.v.t. |
 | REV1 | Apple Review Jellyfin: Home toont content, Films/Series leeg en concrete library niet zichtbaar (Apple Review, release-kritiek) | OPEN | n.v.t. |
 | LAND7 | Actieve discovery-rail krijgt geen vaste verticale focuspositie | OPEN | n.v.t. |
+| LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-109 accepted, bouwronde vrijgegeven | OPEN | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -2175,13 +2176,13 @@ en dat is een keuze over de landing. Vier landing-opties, alle met het onderwerp
   posters van 133 breed zijn op een TV klein, en de groei is een layoutwissel bij focus.
 
 De overige standen zijn onafhankelijk van die keuze. **B, railfocus:** de pagina scrolt tot
-het label op 372 staat (het anker van northstar 02), de herotekst dooft, de backdrop treedt
+het label onder de navbalk staat, de herotekst dooft, de backdrop treedt
 terug tot een gedimde band en gaat over in de ambient tint van 9.3; band 346 met 615-kaart en
 231-buren, bijschrift 18 boven, titel 27, meta 20 mét puntspatiëring (in 29 D2/D4 miste
 `.cap .m` de `.sep`-marge), synopsis op één regel, 26 naar het volgende label op 908, en de
 volgende rail piept 119. **C, dieper op Home:** het gefocuste label ankert onder de nav op
-132 in plaats van op 372, waardoor de volgende rail er heel onder staat (721 tot 1067) in
-plaats van alleen zijn label; de app zet vandaag elk gefocust label op 372 met zwart erboven,
+132, waardoor de volgende rail er heel onder staat (721 tot 1067) in plaats van alleen zijn
+label; de app zette elk gefocust label op 372 met zwart erboven,
 en dat is waar de "één rail per scherm" vandaan komt. Verder de ambient tint, nieuw als
 amberpunt (audit 5), het vinkje als witte schijf, en "Recent toegevoegde series" in het
 Nederlands (I18N5). **D, alleen poster (9.4):** dezelfde poster sterk geblurd en donker als
@@ -2196,9 +2197,295 @@ GOEDGEKEURD.
 
 **Besluit van Michel op 4 september, op mockup 30:** "Ik denk a 1 de rail piept en btme
 akkoord." Vastgelegd als DEC-095: de hero full-bleed met de rail die eronder piept, het anker
-op 372 op DOWN en op 132 dieper op de pagina, het bijschrift met één regel synopsis, de
+onder de navbalk op DOWN en dieper op de pagina, het bijschrift met één regel synopsis, de
 amberpunt, de Nederlandse labels en de gedimde topnav. Hoofdstuk 9.1, 9.2 en 7.1 zijn herzien,
 9.3 en 9.6 nagelopen, 33.1 en 33.2 dragen een afwijkingsnotitie. De ambient tint van 9.3 blijft
 fase 9 en gaat niet mee in de bouw. De bouw is een eigen ronde met de negatieve controle uit
 DEC-095: een widgettest op `TvContentFeed` die de full-bleed hero, het zichtbare label met de
 gedeeltelijk zichtbare band, en het anker na DOWN eist, rood op de huidige code.
+
+### HOME1, de bouwronde
+
+Gebouwd op 4 september als `eed2a79`, met de negatieve controle uit DEC-095 vooraf rood
+gedraaid: de groep "HOME1 / DEC-095" in `test/screens/tv/tv_content_feed_test.dart` eiste op
+de oude code dat de hero de volle feedbreedte inneemt (rood: de kaart stond op de pagina-inset),
+dat het label van de eerste rail na DOWN op het anker van 154 tokens staat (rood: 4 logische
+pixels ernaast) en dat een diepere rail onder de nav ankert (rood: 159 logische pixels lager).
+De vierde test, de piepende band op de landing, was al groen en blijft staan als regressiewacht.
+
+Wat er gebouwd is. De carousel is niet langer een lijstkind op de pagina-inset maar een laag
+achter de lijst, ter grootte van de contentbox plus de gemeten navband erboven, die met de
+scrolloffset meeschuift; het hero-blok in de lijst is een spacer van
+`TvHomeLayout.heroBlockHeight`, zodat het label van de eerste rail op 880 staat en de posters 147
+referentiepixels piepen. De kaart verloor ring, radius en schaduw en kreeg de leesscrim over de
+volle hoogte en de verticale scrim voor nav en grond. Op rijfocus dooft de tekst en legt
+`TvHeroDimVeil` zich schermvast over de laag; in de eerste build reisde die sluier met het beeld
+mee en was boven het anker alles grond, de simulator liet dat zien en de test op de sluierpositie
+is daarna toegevoegd. De rails krijgen per rij een scroll-anker via
+`TvHomeLayout.rowTileScrollAlignment`: elke rij zet zijn label onder de nav. Het
+bijschrift kromp naar één regel synopsis en de mockupmaten, het raillabel naar 27
+referentiepixels (audit divergentie 6). De shell wisselde zijn `Column` voor een
+`CustomMultiChildLayout` dat de balk eerst uitmeet en als laatste tekent, en publiceert de
+bandhoogte via `TvShellSurface`; de eerste versie gaf de balk een begrensde hoogte en het
+`Align` van de profielchip vulde daarmee het hele scherm, wat de drie I14-tests van de shell
+direct aanwezen. De balk dimt naar 0,35 zodra `ModalRoute.isCurrent` omvalt (audit 13). Nieuw
+is op de TV-kaarten een amberpunt (`NewContentDot`, audit 5), en `nl.i18n.json` heeft
+`latestShows` (I18N5).
+
+Bewijs. Gerichte suites groen: feed (inclusief de vijf HOME1-tests), carousel, hero-artwork,
+titelband, RTL-contract, topnav (met twee nieuwe dim-tests), badge (met twee dot-tests),
+dichtheid, shell, catalogus-kop. De bredere run over `test/widgets/tv` en `test/screens/tv`
+gaf 428 groen en 14 rood, alle veertien Home-goldens die de oude kaart tekenen en al in de
+nullijn van 78 rode goldens zitten; ze worden op Linux geregenereerd, niet hier.
+`scripts/ci_checks.sh` gaf exit 0 op de definitieve boom. Pleya Verify:
+`pleya_verify/scenarios/tvos.home.full-bleed.yaml` PASS op de tvOS-simulator (bundel
+`tvos-home-full-bleed-1788545268365`), met de band onder de CTA op de landing, de hele eerste
+band na DOWN, de tweede rail heel in beeld na de tweede DOWN, en de hero terug in beeld na UP UP.
+Simulator-screenshots van landing, CTA-focus, railfocus met gedimde backdrop, dieper en het
+contextmenu met gedimde nav zijn bekeken en kloppen met mockup 30 A1, B, C en E; de
+posterfallback (D) is alleen als widgetgeometrie gebouwd en niet in de simulator gezien.
+
+**Correctie op de eerste bouw, dezelfde dag.** Op de simulator las de band boven de gefocuste
+rail als leegte: het anker van northstar 02 hield 242 referentiepixels onder de balk vrij, en
+die ruimte was daar de zichtbare onderrand van de billboardkaart die full-bleed net had
+weggenomen. Op een donkere still bleef er een zwarte strook over van een vijfde van de pagina.
+Drie richtingen zijn voorgelegd: het anker weg, het anker halveren, of de dim verzwakken zodat
+de strook als beeld leest. Michel koos eerst halveren en daarna alsnog het anker helemaal weg,
+zoals geadviseerd, gebouwd als `7b3057a6`. `rowFocusAnchor` bestaat niet meer; `rowTileScrollAlignment` kent geen
+rij-index meer en zet elk gefocust raillabel onder de balk. De twee ankerregels zijn er één
+geworden, de volgende rail wint vier vijfde van zijn band, en mockup 30 B en E zijn opnieuw
+geschoten op die compositie. De test die het anker op 372 vastlegde eist nu de nul.
+
+Wat open blijft. Hardwarebewijs op de Apple TV, zoals bij HERO1: het anker van de scrim en de
+leesbaarheid van de tekst over echt artwork zijn daar te toetsen. De ambient tint van 9.3 is
+bewust niet gebouwd (fase 9). Het laatste rijlabel kan niet altijd tot onder de nav scrollen
+omdat de lijst daar geen lege ruimte voor reserveert; dat is een keuze, geen bug.
+
+### LANG1, taalcontinuïteit binnen series
+
+Gevraagd door Michel op 4 september als sectie G van de personalisatie-opdracht: een
+taalkeuze tijdens een serie moet voor de volgende afleveringen blijven gelden, met een
+hiërarchie serievoorkeur, globale profielvoorkeur, fallback; een wijziging tijdens een serie
+werkt standaard alleen die serie bij; de voorkeur hoort bij de logische serie en het profiel,
+niet bij één bron; en de mockupronde tekent minstens één beheertoestand. De secties A tot en
+met F van die opdracht staan niet in deze sessie, dus wat hieronder "globaal" heet is
+uitgewerkt op wat de code nu kent. Waar A tot en met F een eigen globale laag in Pleya
+definiëren, moet DEC-109 daarop worden bijgesteld voordat er gebouwd wordt.
+**Eerst productontwerp en mockups, geen implementatie zonder akkoord.**
+
+**Wat er al staat, nagelezen in de code.** Het per-serie taalgeheugen bestaat sinds 17
+augustus. `TrackPreferenceStore` (`lib/services/track_preference_store.dart`) bewaart per
+`{profielscope}|{grandparentId ?? id}` een `TrackLanguageChoice`: audiotaal, ondertiteltaal,
+geforceerd, en een uitdrukkelijk "uit". Er wordt alleen geschreven bij een handmatige keuze
+(`TrackManager._rememberAudioLanguage` en `_rememberSubtitleLanguage`, en bij een bronwissel
+in `episode_navigation.dart`), nooit door de automatische selectie. Gelezen wordt bij elke
+`applyTrackSelection`, en dat is het pad van alle zes de startsituaties uit de opdracht:
+volgende aflevering, autoplay, start vanuit de detailpagina, vanuit Verder kijken, later
+hervatten en de overgang naar een volgend seizoen. `TrackSelectionService` kiest in de
+volgorde navigatie, sticky, serverkeuze, per-item, profiel, standaard. Ontbreekt de sticky
+taal in een aflevering, dan valt de keuze door naar de lagen eronder en blijft de opslag
+staan. Op Plex spiegelt Pleya de keuze naar de serie zelf (`writeSeriesLanguageToServer`,
+standaard aan), zodat de serverkeuze bij transcoderen meegaat; de kaart reist via iCloud
+naar de andere Apple-toestellen. Twee schakelaars staan in Instellingen ▸ Afspelen. Er wordt
+op taal, titel en geforceerd gematcht, nooit op stream-id: `TrackLanguageChoice` zegt dat
+letterlijk in zijn kop. De acceptatiejourney is dus voor het grootste deel al gebouwd.
+
+**Waar de journey nu breekt.** Drie plekken, elk met een eigenaar.
+
+1. *Een fallback reist mee naar de volgende aflevering.* Bij de overgang in de speler geeft
+   `episode_navigation.dart:548-549` `currentAudioTrack` en `currentSubtitleTrack` door als
+   `preferredAudioTrack` en `preferredSubtitleTrack`, en in `track_selection_service.dart:672`
+   en `:770` staat die navigatiekeuze als prioriteit 1, boven de sticky keuze. Miste
+   aflevering 3 de Engelse ondertitels en viel Pleya terug op Nederlands (of op uit), dan
+   is dat in aflevering 4 de "gewenste" track, en `id == 'no'` betekent daar zelfs
+   onvoorwaardelijk uit. De stap "aflevering 4 heeft Engels weer, Engels wordt gekozen" is
+   rood. De oorzaak is dat de navigatie de *uitkomst* doorgeeft waar hij de *bedoeling* had
+   moeten doorgeven. Eigenaar: `TrackSelectionService`, niet de aanroeper.
+2. *De sleutel is een serverkey.* `grandparentId` is de ratingKey op één server. Dezelfde
+   serie op NAS en Zolder heeft twee regels, en een Jellyfin-kopie een derde. Hoofdstuk 14.8
+   sleutelt de bronvoorkeur al op `CanonicalMediaIdentity.bucketKey`; het taalgeheugen doet
+   dat nog niet. Complicatie: een aflevering draagt geen jaar van de serie (`MediaItem` kent
+   geen `grandparentYear`), dus de show-bucketKey uit hoofdstuk 11 is vanuit een aflevering
+   niet te bouwen.
+3. *Er is geen beheer.* Geen lijst, geen "gebruik globale voorkeur", en een regel verdwijnt
+   alleen via de LRU-cap van 500. `copyWithAudio` en `copyWithSubtitle` kunnen een veld
+   nooit leegmaken, dus `isEmpty` wordt na een eerste keuze nooit meer waar.
+
+Een vierde punt is kleiner: valt de sticky ondertitel weg en staat het profiel op "altijd",
+dan kiest `_findFirstSubtitleTrack` de eerste track in welke taal dan ook. Dat is geen
+voorspelbare fallback.
+
+**Voorkeurshiërarchie, zoals voorgesteld op 4 september.** Michel heeft dit in de
+beslissingsronde hieronder op vier punten gecorrigeerd; DEC-109 draagt de gecorrigeerde
+versie en gaat vóór op de tekst in deze alinea.
+
+1. *Uitdrukkelijke keuze in deze afspeelsessie.* Wat de kijker net koos, als bedoeling: "de
+   Engelse ondertitel", niet "track 3". Een fallback is geen keuze en komt hier niet in.
+2. *Serievoorkeur*, per profiel en per logische serie. Een film sleutelt op zichzelf, zoals nu.
+3. *Globale profielvoorkeur.* Dat is het gebruikersprofiel op de server: het Plex-account
+   (`defaultAudioLanguage`, `defaultSubtitleLanguage`, de lijsten) of de Jellyfin-gebruiker
+   (`AudioLanguagePreference`, `SubtitleLanguagePreference`, `SubtitleMode`). Pleya voegt in
+   deze ronde geen derde laag toe. Reden: de Plex-spiegeling schrijft de serievoorkeur al op
+   de serie, en een eigen globale laag ernaast zou twee waarheden geven die ook de officiële
+   Plex-apps niet kennen. Wie twee backends heeft, heeft twee globale voorkeuren, en de
+   pagina toont ze dan als twee blokken met de bron erbij.
+4. *Fallback per aflevering, tijdelijk.* Audio: de serievoorkeur, anders de globale
+   audiotaal, anders de serverkeuze, anders de standaardtrack van het bestand. Ondertitels:
+   de serievoorkeur, anders de globale ondertiteltaal in de modus van het profiel, anders
+   uit. Nooit "de eerste track in een willekeurige taal". Een onthouden "uit" is een keuze en
+   wint altijd. De fallback wordt niet opgeslagen, reist niet mee naar de volgende aflevering
+   (dat is punt 1 hierboven), en meldt zich één keer met de toast uit mockup 31 D.
+
+**Handmatige wijziging tijdens een serie.** Geen driekeuzevraag bij elke trackwissel. Een
+keuze in het infopaneel werkt de serievoorkeur bij, direct, en de toast uit 31 C bevestigt dat
+en zegt erbij dat de globale voorkeur ongewijzigd blijft. "Alleen deze aflevering" bestaat als
+schakelaar in het infopaneel: de rij "Onthouden voor deze titel" uit mockup 19 wordt
+"Onthouden voor deze serie", en uit betekent dat de sessie de keuze houdt en de opslag niet
+raakt. De globale voorkeur wijzig je op de instellingenpagina, nooit vanuit de speler. Of die
+rijen op TV ook schrijven hangt van de backend af: Jellyfin heeft `POST
+/Users/{id}/Configuration`; voor het Plex-account moet de bouwronde eerst meten of plex.tv
+die instellingen laat schrijven. Tot die meting tonen de rijen de waarde en de bron, en
+zeggen ze waar je hem beheert.
+
+**Identiteit en bronnen.** De sleutel wordt een logische seriesleutel per profiel:
+`show:{genormaliseerde serietitel}` plus, waar bekend, de sterke tokens uit
+`identity_evidence.dart` (tmdb, tvdb, guid) op show-niveau. Zonder jaar is dat bewust een
+zwakkere sleutel dan de bucketKey van hoofdstuk 11; twee series met dezelfde titel op
+hetzelfde profiel delen dan een voorkeur, en dat is het aanvaarde risico tegenover een
+voorkeur die op de tweede server niet bestaat. De oude serversleutel blijft als terugval
+gelezen zolang hij bestaat, en een schrijfactie zet de regel om naar de nieuwe sleutel. Per
+aflevering blijft de volgorde: gewenste taal ophalen, kijken wat de gekozen bron aanbiedt,
+matchen op taal, type, geforceerd en titel, anders tijdelijk terugvallen, opslag ongemoeid.
+
+**De journey tegen de code gelegd.**
+
+| Stap | Mechanisme | Nu |
+|------|-----------|----|
+| Globaal Origineel + Nederlands, aflevering 1 | profiellaag, serverkeuze | groen |
+| Kijker kiest Engels + Engels | `_rememberAudioLanguage`, `_rememberSubtitleLanguage` | groen |
+| Aflevering 2 start Engels + Engels | sticky in `applyTrackSelection` | groen |
+| Aflevering 3 mist Engelse ondertitels | fallback, opslag blijft | groen, maar zonder melding |
+| Aflevering 4 heeft Engels weer | sticky | **rood**, punt 1 |
+| Andere serie: globale voorkeur | sleutel per serie | groen |
+| Dezelfde serie op een andere server | sleutel per server | **rood**, punt 2 |
+| Voorkeur bekijken of terugzetten | bestaat niet | **rood**, punt 3 |
+
+**Mockup 31, 4 september** (`docs/assets/tvos-unified/mockups-2026-09-04/31-taalvoorkeuren-*.png`,
+bron in `src/pages/31-taalvoorkeuren-*.html`). De pagina heet Taal en ondertitels en staat
+onder Mijn Pleya ▸ Instellingen, in de compositie van mockup 20: titel op 132, kruimelpad,
+twee kolommen op 40 tussenruimte. De twee schakelaars verhuizen uit Afspelen hierheen, want
+een kijker die zoekt waarom een serie Engels start, zoekt bij taal en niet bij afspelen.
+
+- **A, de pagina.** Links de globale voorkeur met de bron erboven ("Uit je Plex-profiel
+  Michel") en drie rijen: Audio, Ondertitels, Ondertitels tonen, elk met de fallback als
+  ondertekst zodat het contract leesbaar is waar het geldt. Daaronder de twee schakelaars.
+  Rechts de serievoorkeuren als rijen van 104 met poster van 56 bij 84, de titel, de keuze
+  op één regel en eronder wanneer, bij welke aflevering en op welk toestel hij ontstond. De
+  voetnoot zegt wat de kijker hier kan en dat een ontbrekende track niets verandert. Lege
+  staat, niet getekend: de kolom toont alleen de zin dat serievoorkeuren vanzelf ontstaan.
+- **B, de sheet.** Select op een rij opent de sheet van mockup 12 op 820 breed: poster en
+  titel, de herkomst, en de zin dat de voorkeur op elke bron geldt. Twee leesrijen met de
+  serie- en de globale waarde naast elkaar, en één actie: Gebruik globale voorkeur, met
+  "wist deze serievoorkeur" als bijschrift. Een andere taal kies je hier niet; dat doe je
+  tijdens het kijken, en de voet zegt dat.
+- **C, de bevestiging.** Na een keuze in het infopaneel sluit het paneel en staat drie
+  seconden een toast op 120 boven de onderrand: de keuze, "onthouden voor Severance", en de
+  regel dat de globale voorkeur Nederlands blijft. Dit is `PlayerToastController` met een
+  tweede regel; die bestaat nu met één regel en 1,2 seconde.
+- **D, de terugval.** Bij de start van een aflevering die de serievoorkeur mist staat
+  dezelfde toast met een amberpunt: wat ontbreekt, wat er nu speelt, en dat de voorkeur
+  blijft. De OSD-titel toont Zolder als bron, om te laten zien dat de voorkeur de bron
+  overleeft.
+
+**Open voor Michel.**
+
+1. De hiërarchie en het fallbackcontract van DEC-109, in het bijzonder "anders uit" voor
+   ondertitels in plaats van de eerste track.
+2. Geen driekeuzevraag: een wijziging tijdens een serie is de serievoorkeur, met toast.
+3. De globale laag is het serverprofiel, geen eigen laag in Pleya. Zeggen de secties A tot
+   en met F iets anders, dan hoor ik dat graag hier.
+4. De plek: Mijn Pleya ▸ Instellingen ▸ Taal en ondertitels, en de twee schakelaars weg uit
+   Afspelen.
+5. Mockup 31 A tot en met D als compositie.
+
+**Bouwronde, pas na akkoord.** Drie negatieve controles, elk rood op de huidige code: een
+test op `TrackSelectionService` met sticky Engels, een doorgegeven Nederlandse fallback en
+een beschikbare Engelse track die Engels eist; een test op `TrackPreferenceStore` die een
+keuze op de ene bron terugleest op een tweede bron van dezelfde serie; en een widgettest op
+de nieuwe pagina die de rij, de sheet en het wissen eist. Daarna de fallback-toast, de
+verhuizing van de twee schakelaars, en een Pleya Verify-scenario voor de journey op de
+tvOS-simulator. Raakt de bouw het Plex-schrijfpad voor het account, dan gaat daar eerst een
+contractmeting aan vooraf.
+
+**Beslissingsronde van Michel, 4 september.** Doorgaan naar implementatie, met tien bindende
+correcties. DEC-109 is daarmee accepted; waar deze sectie en het besluit verschillen, wint het
+besluit.
+
+1. *De hiërarchie krijgt vier lagen:* uitdrukkelijke keuze tijdens de lopende playback,
+   serievoorkeur, globale Pleya-profielvoorkeur, terugval op bron en bestand. "Uitdrukkelijke
+   keuze" is alleen een echte handeling. Niet de spelende track, niet een terugval, niet een
+   track-id uit de vorige aflevering, niet een bron-default die toevallig aanstond. Elke
+   aflevering resolveert de intentie opnieuw.
+2. *Het terugvalcontract.* Audio: gewenste of originele taal, anders tijdelijk de bron- of
+   standaardtrack. Ondertitels: gewenste taal, anders de ingestelde terugvaltaal, anders uit.
+   Nooit de eerste beschikbare track. Engels wordt niet als universele regel vastgelegd: de
+   terugvaltaal wordt een echte profielvoorkeur, zichtbaar als eigen rij op de pagina.
+3. *Geen driekeuzevraag.* Staat "Onthoud keuzes per serie" aan, dan werkt een bewuste wissel
+   de serievoorkeur bij met een toast. Staat hij uit, dan geldt de wissel alleen voor die
+   sessie en ontstaat er geen override. De globale voorkeur verandert nooit vanuit de speler.
+4. *De globale eigenaar is het Pleya-profiel, niet het serverprofiel.* De eis is dat de
+   voorkeur voor alle content geldt, ook over servers en backends heen.
+   `PleyaProfilePlaybackLanguagePreferences` draagt audio, ondertitels, beleid, terugvaltaal en
+   `rememberPerSeries`. Bronprofielen zijn spiegel, geen autoriteit.
+5. *Spiegelen naar Plex blijft, capability-gated.* Een mislukte schrijfactie maakt de
+   Pleya-voorkeur niet ongeldig. De copy in 31 A noemt daarom het Pleya-profiel als eigenaar.
+6. *Serie-identiteit.* Logische serie waar de identiteit betrouwbaar is, anders de concrete
+   server-en-serie-sleutel. Een onterechte samenvoeging is erger dan een gemiste, en er komt
+   geen samenvoeging op alleen titel en jaar bij om taalvoorkeuren te kunnen delen. De
+   serversleutel blijft migratie- en terugvalpad.
+7. *Nooit track-id's bewaren.* Opgeslagen wordt taal, de intentie "originele taal" en het
+   ondertitelbeleid. Nooit een trackindex, track-id of stream-id.
+8. *31 A en 31 B zijn goedgekeurd*, met de eigenaarscorrectie in de copy. De tweekolomsindeling
+   en de serievoorkeurenlijst met herkomst blijven.
+9. *31 C en 31 D zijn goedgekeurd met een presentatiecontract voor de toast:* geen focus, geen
+   blokkerende invoer, verdwijnt vanzelf, en ondertitel-veilig geplaatst in een bestaande
+   spelerzone. Geen zelfgekozen Y-positie.
+10. *De pagina is de enige beheerplek.* De taalschakelaars onder Afspelen verhuizen hierheen.
+    Heeft het infopaneel later een ingang nodig, dan linkt het hierheen.
+
+**Wat de correcties aan de mockups veranderd hebben.** De vier beelden zijn opnieuw geschoten
+op dezelfde nummers. In 31 A staat nu "Pleya-profiel Michel · geldt voor alle content zonder
+eigen serievoorkeur" waar eerst het Plex-profiel als bron stond, is "Terugvaltaal ondertitels"
+een eigen rij geworden in plaats van een hardgecodeerd Engels in de ondertekst, en heet de
+tweede schakelaar "Spiegel naar Plex" met de regel dat een mislukte schrijfactie de
+Pleya-voorkeur laat staan. In 31 B leest de sheet de globale waarden als "Pleya-profiel: ..."
+en zegt de kop dat de voorkeur geldt waar Pleya de serie als dezelfde herkent, in plaats van
+onvoorwaardelijk op elke bron. In 31 C en 31 D is de toast verplaatst van onderin naar de
+bestaande bovenzone, en beide beelden tekenen nu een echte ondertitelregel onderaan mee, zodat
+te zien is dat de toast er niet overheen valt.
+
+**De toastzone heeft een bestaande eigenaar, dus het contract wijst er alleen naar.**
+`video_controls.dart:986-1004` zet de toast al in een `Positioned.fill` met een `IgnorePointer`
+eromheen, en `PlayerToastIndicator` lijnt boven uit met een `AnimatedSwitcher` en de auto-hide
+van `PlayerToastController`. Dat is precies wat het contract vraagt: geen focus, geen invoer,
+zelf verdwijnend. Ondertitels staan onderaan onder `sub-pos` (`SettingsService.subtitlePosition`,
+standaard 100), dus de bovenzone en de ondertitels kunnen elkaar niet raken. De bouwronde voegt
+alleen een tweede regel en een langere duur toe en verplaatst niets.
+
+**De negatieve controles van de bouwronde, alle rood voordat er code verandert.**
+
+| Controle | Wat hij eist |
+|----------|--------------|
+| A | Een terugval in aflevering N besmet aflevering N+1 niet |
+| B | De serievoorkeur werkt over de volgende aflevering en het volgende seizoen |
+| C | De globale voorkeur komt uit het Pleya-profiel |
+| D | Gewenst, terugval, gewenst weer beschikbaar: de gewenste taal wordt opnieuw gekozen |
+| E | Handmatige wissel met `rememberPerSeries` aan schrijft de serie-override |
+| F | Handmatige wissel met `rememberPerSeries` uit schrijft geen serie-override |
+| G | "Gebruik globale voorkeur" verwijdert de serie-override |
+| H | Dezelfde logische serie op een betrouwbare tweede bron gebruikt dezelfde voorkeur |
+| I | Een onbetrouwbare identiteit wordt niet over servers heen samengevoegd |
+
+Volgorde: eerst oud rood aantonen, dan implementeren, dan groen. Daarbovenop de drie stappen
+die al onder deze bevinding stonden: de widgettest op de nieuwe pagina, de verhuizing van de
+schakelaars, en een Pleya Verify-scenario voor de journey op de tvOS-simulator.

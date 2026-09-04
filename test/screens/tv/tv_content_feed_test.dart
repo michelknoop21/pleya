@@ -46,6 +46,7 @@ import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv/tv_content_feed.dart';
 import 'package:pleya/widgets/tv/tv_content_row.dart';
 import 'package:pleya/widgets/tv/tv_discovery_rail.dart';
+import 'package:pleya/widgets/tv/tv_expandable_media_tile.dart';
 import 'package:pleya/widgets/tv/tv_hero_billboard_card.dart';
 import 'package:pleya/widgets/tv/tv_section_header.dart';
 import 'package:pleya/widgets/tv/tv_hero_billboard_carousel.dart';
@@ -928,6 +929,85 @@ void main() {
         rows(tester).single.hub.groups.single.watchState.isWatched,
         isTrue,
         reason: 'the card the user pressed menu on must show the mark it just made, not a stale badge',
+      );
+    });
+  });
+  group('HOME1 / DEC-095: the hero is full-bleed and the first rail peeks under it', () {
+    Future<void> bootHome(WidgetTester tester) => boot(
+      tester,
+      latestMovies: twoRecentFilms(),
+      hubs: [
+        _hub('top-picks', 'Top Picks', [_film('tp1', title: 'Quarry Road'), _film('tp2', title: 'Arcade Midnight')]),
+        _hub('hidden-gems', 'Hidden Gems', [_film('hg1', title: 'Wintering'), _film('hg2', title: 'Salt Flats')]),
+        _hub('for-you', 'For You', [_film('fy1', title: 'Longline'), _film('fy2', title: 'Nightjar')]),
+      ],
+    );
+
+    Rect feedRect(WidgetTester tester) => tester.getRect(find.byType(TvContentFeed));
+    Rect headerRect(WidgetTester tester, String title) => tester.getRect(find.widgetWithText(TvSectionHeader, title));
+
+    testWidgets('the billboard spans the feed edge to edge and at least its full height', (tester) async {
+      await bootHome(tester);
+      final feed = feedRect(tester);
+      final card = tester.getRect(find.byType(TvHeroBillboardCard));
+      expect(card.left, feed.left, reason: '9.2: the backdrop is full-bleed, no page inset on the left');
+      expect(card.width, feed.width, reason: '9.2: the backdrop is full-bleed, no page inset on the right');
+      expect(card.height, greaterThanOrEqualTo(feed.height), reason: '9.2: the backdrop covers the whole content box');
+    });
+
+    testWidgets('the landing shows the first rail label with its band only partly in view', (tester) async {
+      await bootHome(tester);
+      final feed = feedRect(tester);
+      final header = tester.getRect(find.byType(TvSectionHeader).first);
+      expect(header.bottom, lessThan(feed.bottom), reason: 'the label of the first rail is on screen');
+      final tile = tester.getRect(find.byType(TvExpandableMediaTile).first);
+      expect(tile.top, lessThan(feed.bottom), reason: 'the posters peek above the bottom edge');
+      expect(tile.bottom, greaterThan(feed.bottom), reason: 'A1: the first rail is not fully in view on the landing');
+    });
+
+    testWidgets('DOWN out of the hero puts the first rail label under the top navigation', (tester) async {
+      await bootHome(tester);
+      heroNode(tester, 'tvHeroPlay').requestFocus();
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      final feed = feedRect(tester);
+      // bootHome seeds no on-deck items, so the first row is Recently Released.
+      final header = headerRect(tester, t.discover.recentlyReleased);
+      expect(
+        header.top - feed.top,
+        closeTo(0, 1.0),
+        reason: 'DEC-095 (3): no band is held open for the hero — the focused rail sits at the top',
+      );
+    });
+
+    testWidgets('a focused row steps the backdrop back with a veil that stays fixed to the screen', (tester) async {
+      await bootHome(tester);
+      expect(tester.widget<TvHeroDimVeil>(find.byType(TvHeroDimVeil)).dim, 0, reason: 'nothing dims the landing');
+      heroNode(tester, 'tvHeroPlay').requestFocus();
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(tester.widget<TvHeroDimVeil>(find.byType(TvHeroDimVeil)).dim, 1, reason: 'mockup 30 B: row focus dims');
+      final feed = feedRect(tester);
+      final veil = tester.getRect(find.byType(TvHeroDimVeil));
+      expect(veil.top, feed.top, reason: 'the veil is screen-fixed while the picture scrolls under it');
+      expect(veil.bottom, feed.bottom);
+      final card = tester.getRect(find.byType(TvHeroBillboardCard));
+      expect(card.top, lessThan(feed.top), reason: 'the picture itself did scroll with the list');
+    });
+
+    testWidgets('a rail deeper on the page anchors the same way, by the same rule', (tester) async {
+      await bootHome(tester);
+      final second = rows(tester)[2];
+      tileNode(tester, second.hub.groups.first.groupId).requestFocus();
+      await tester.pumpAndSettle();
+      final feed = feedRect(tester);
+      final header = headerRect(tester, second.hub.title);
+      expect(
+        header.top - feed.top,
+        closeTo(0, 1.0),
+        reason: 'DEC-095 (4): one anchor for every row, so the rail below the focused one is wholly on screen',
       );
     });
   });

@@ -345,7 +345,7 @@ class _Artwork extends StatelessWidget {
             Positioned(
               top: inset,
               right: inset,
-              child: NewContentBadge(item: group.representativeSource.item),
+              child: NewContentDot(item: group.representativeSource.item, scale: scale),
             ),
           if (_resumeFraction != null)
             Positioned(

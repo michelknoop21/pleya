@@ -60,6 +60,7 @@ void main() {
     bool dark = true,
     bool oled = false,
     bool needsAttention = false,
+    bool dimmed = false,
     TextDirection? directionality,
   }) async {
     tester.view.physicalSize = const Size(1280, 720);
@@ -100,6 +101,7 @@ void main() {
                       active: active,
                       nodes: nodes,
                       needsAttention: needsAttention,
+                      dimmed: dimmed,
                       onSelect: selected.add,
                       onFocusDestination: ringMoves.add,
                       onNavigateDown: () => downCalls++,
@@ -132,6 +134,28 @@ void main() {
   // ---------------------------------------------------------------------------
   // Composition (hoofdstuk 33's shared shell)
   // ---------------------------------------------------------------------------
+
+  group('dimmed under an overlay (audit divergentie 13, DEC-095)', () {
+    double barOpacity(WidgetTester tester) => tester
+        .widget<AnimatedOpacity>(
+          find.descendant(of: find.byType(TvTopNavigation), matching: find.byType(AnimatedOpacity)).first,
+        )
+        .opacity;
+
+    testWidgets('the bar is opaque on its own and fades to the token when dimmed', (tester) async {
+      await pump(tester, destinations: withoutLiveTv(), active: TvDestinationId.home);
+      expect(barOpacity(tester), 1);
+      await pump(tester, destinations: withoutLiveTv(), active: TvDestinationId.home, dimmed: true);
+      expect(barOpacity(tester), TvTopNavLayout.dimmedOpacity);
+    });
+
+    testWidgets('dimming keeps every destination in the tree, so the bar comes back where it was', (tester) async {
+      await pump(tester, destinations: withoutLiveTv(), active: TvDestinationId.home, dimmed: true);
+      for (final d in withoutLiveTv().where((d) => !d.isCompact)) {
+        expect(find.text(d.label), findsOneWidget, reason: '${d.focusKey} must not be unmounted by the dim');
+      }
+    });
+  });
 
   group('the attention dot', () {
     Rect dotRect(WidgetTester tester) =>

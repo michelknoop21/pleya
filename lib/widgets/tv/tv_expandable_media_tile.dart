@@ -93,6 +93,7 @@ class TvExpandableMediaTile extends StatefulWidget {
     this.onNavigateRight,
     this.automationId,
     this.automationInstance,
+    this.scrollAlignment = 0.5,
   });
 
   final UnifiedMediaGroup group;
@@ -128,6 +129,12 @@ class TvExpandableMediaTile extends StatefulWidget {
   final String? automationId;
   final String? automationInstance;
 
+  /// Where the feed scrolls this tile to when it takes the focus, as the
+  /// fraction of the vertical viewport its centre lands on
+  /// (`FocusableWrapper.scrollAlignment`). Home's rows set it per row
+  /// ([TvHomeLayout.rowTileScrollAlignment]); every other rail keeps the centre.
+  final double scrollAlignment;
+
   @override
   State<TvExpandableMediaTile> createState() => _TvExpandableMediaTileState();
 }
@@ -147,6 +154,7 @@ class _TvExpandableMediaTileState extends State<TvExpandableMediaTile> {
       automationId: widget.automationId,
       automationInstance: widget.automationInstance,
       automationRole: 'grid.item',
+      scrollAlignment: widget.scrollAlignment,
       onSelect: widget.onSelect,
       onLongPress: widget.onContextMenu,
       enableLongPress: widget.onContextMenu != null,
@@ -270,7 +278,7 @@ class _TileArtwork extends StatelessWidget {
           Positioned(
             top: inset,
             right: inset,
-            child: NewContentBadge(item: item),
+            child: NewContentDot(item: item, scale: scale),
           ),
         if (fraction != null)
           Positioned(

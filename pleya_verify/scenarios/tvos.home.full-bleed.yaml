@@ -1,0 +1,64 @@
+name: tvos.home.full-bleed
+target: tvos-sim
+# HOME1 / DEC-095: the Home hero is full-bleed and the first rail peeks under it
+# (mockup 30 A1), DOWN scrolls the first rail to the anchor of northstar 02 with
+# the dimmed backdrop above it (B), and one row deeper the focused rail sits
+# under the top navigation with the next rail wholly under it (C).
+#
+# What the transport can say and what it cannot. `insideViewport` has no
+# negation, so "the first rail is only partly on screen at rest" is not an
+# assertion this scenario can make; the widget test in
+# `test/screens/tv/tv_content_feed_test.dart` (group "HOME1 / DEC-095") owns
+# that half, on the canonical canvas. What a real build *can* prove here is the
+# order of things and the return path: the rail band starts under the play
+# pill on the landing, DOWN brings the whole first band into view, a second
+# DOWN brings the second rail wholly into view, and UP twice puts the hero
+# back on screen with the pill focused. The snapshots are the visual evidence
+# for the composition itself.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  # IntroGate's cold-start splash paints over an already-ready screen.
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - assert: {id: discover.hero, insideViewport: true}
+  # A1: the first rail's band starts under the CTA row, never over the subject.
+  - assert: {id: "discover.rail[0]", below: discover.hero.play}
+  - snapshot: 00-landing
+
+  # Down out of the bar lands on Afspelen (hoofdstuk 7.1); the interaction also
+  # holds the carousel for eight seconds, so this frame is stable.
+  - press: down
+  - settle: 1000
+  - assert: {id: discover.hero.play, focused: true}
+  - snapshot: 01-hero-focused
+
+  # B: DOWN into the first row scrolls it to the anchor; the whole band is on
+  # screen now, where the landing only showed its top.
+  - press: down
+  - settle: 1200
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
+  - assert: {id: "discover.rail[0]", insideViewport: true}
+  - snapshot: 02-rail-focused
+
+  # C: one row deeper the focused rail anchors under the bar, and the rail
+  # below it is wholly on screen instead of only its label.
+  - press: down
+  - settle: 1200
+  - assert: {id: "discover.rail[1]", insideViewport: true}
+  - assert: {id: "discover.rail[1]", below: "discover.rail[0]"}
+  - snapshot: 03-deeper
+
+  # And back: the hero returns into view with the pill focused (P1 still holds
+  # under full-bleed).
+  - press: up
+  - settle: 1200
+  - press: up
+  - settle: 1200
+  - assert: {id: discover.hero, insideViewport: true}
+  - assert: {id: discover.hero.play, focused: true}
+  - snapshot: 04-hero-returned

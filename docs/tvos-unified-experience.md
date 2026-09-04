@@ -585,8 +585,8 @@ instant of zeer kort; focus blijft zichtbaar maar zonder bewegende scale waar no
 │  Verder kijken                                               │  label 880
 │ [ poster ][ poster ][ poster ][ poster ][ poster ][ poster ] │  piept 147 van 346
 └──────────────────────────────────────────────────────────────┘
-DOWN: de feed scrolt tot "Verder kijken" op 372 staat (33.2), de herotekst
-dooft, het beeld blijft gedimd achter de band; daaronder de railstapel van 17.
+DOWN: de feed scrolt tot "Verder kijken" onder de balk staat, de herotekst
+dooft en het beeld treedt terug; daaronder de railstapel van 17.
 ```
 
 ### 9.2 Hero-maat
@@ -603,7 +603,8 @@ zodat de eerste rail op de grond staat. Tekstkolom op inset 75, maximaal circa 9
 579 tot 840 op de 1080-referentie: titel of clearlogo, metaregel, synopsis van maximaal twee
 regels, CTA's. Het label van de eerste rail staat op 880 en de posters van die rail piepen 147
 van hun 346 boven de onderrand. **De eerste rail staat in de landing niet heel in beeld**; hij
-komt heel in beeld op DOWN, wanneer de feed scrolt tot het label op 372 staat. Het onderwerp van
+komt heel in beeld op DOWN, wanneer de feed scrolt tot het label van die rail onder de navbalk
+staat. Het onderwerp van
 de backdrop staat daardoor wel heel in beeld, en dat is de keuze die hier gemaakt is.
 
 ### 9.3 Ambient background
@@ -2344,7 +2345,9 @@ sectiekop peekt onderaan. Focusverlies op de hero dooft zijn tekst; de topnav bl
 
 > **Afwijking, [DEC-095](DECISIONS.md#dec-095) (2026-09-04).** De "onderste strook met
 > afgeronde onderhoeken" is de gedimde full-bleed backdrop geworden, zonder hoeken; het anker van
-> het raillabel (372) en het doven van de herotekst blijven. Het metablok onder de gefocuste kaart
+> het doven van de herotekst blijft; het anker van het raillabel op 372 vervalt, omdat de 242
+> pixels onder de balk de onderrand van de kaart waren en die kaart er niet meer is. Een gefocuste
+> rail staat nu onder de balk, de eerste en de diepere gelijk. Het metablok onder de gefocuste kaart
 > krijgt één regel synopsis in plaats van twee, en dieper op de pagina ankert het gefocuste label
 > onder de topnav. Mockup 30 B en C tekenen beide standen.
 

@@ -169,7 +169,9 @@ class _PosterFillHeroArt extends StatelessWidget {
     // it reads as a poster standing in the frame rather than as a failed
     // backdrop. Height-driven: 2:3 of the card height is always narrower than
     // the card, on every clamp the layout can produce.
-    final posterHeight = size.height * 0.82;
+    // Mockup 30 D: 600 of 1080 reference px high, its top at 150 and its
+    // right edge 220 in from the screen's, over the blurred fill.
+    final posterHeight = size.height * TvHomeLayout.heroPosterIslandHeightFraction;
     final posterWidth = posterHeight * TvDiscoveryLayout.posterAspectRatio;
 
     return Stack(
@@ -194,7 +196,7 @@ class _PosterFillHeroArt extends StatelessWidget {
         ),
         ColoredBox(color: tokens.bg.withValues(alpha: 0.44)),
         Align(
-          alignment: const Alignment(0.62, 0),
+          alignment: TvHomeLayout.heroPosterIslandAlignment,
           child: SizedBox(
             width: posterWidth,
             height: posterHeight,

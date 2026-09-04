@@ -59,6 +59,7 @@ import '../../providers/home_layout_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/tv_home_projection_provider.dart';
 import '../../screens/tv/tv_discovery_activation_mixin.dart';
+import '../../screens/tv/tv_root_shell.dart' show TvShellSurface;
 import '../../media/unified/unified_route_context.dart';
 import '../../services/settings_service.dart';
 import '../../services/unified_catalog/home_row_layout.dart';
@@ -66,6 +67,7 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../state_view.dart';
 import 'tv_content_row.dart';
+import 'tv_hero_billboard_card.dart' show TvHeroDimVeil;
 import 'tv_hero_billboard_carousel.dart';
 import 'tv_rail_stack.dart';
 import 'tv_unified_layout.dart';
@@ -384,99 +386,134 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
     return LayoutBuilder(
       builder: (context, constraints) {
         final scale = TvLayoutConstants.scaleOf(context);
-        final heroSize = Size(
-          TvHomeLayout.heroWidth(constraints.maxWidth, scale),
-          TvHomeLayout.heroHeight(constraints.maxWidth, constraints.maxHeight, scale),
-        );
+        final viewportHeight = constraints.maxHeight;
+        // DEC-095, mockup 30 A1. The *hero block* is what the landing shows
+        // above the first rail's label, and it is a list child like the rows,
+        // so the label, the peeking posters and the text scroll as one page.
+        // The *backdrop* is taller than that block — it runs up behind the top
+        // navigation and down behind the peeking rail — so it cannot live
+        // inside the list's viewport; it is a layer under the list, translated
+        // by the list's own offset, which reads as the same page scrolling.
+        final heroBlock = TvHomeLayout.heroBlockHeight(viewportHeight, scale);
+        final navBand = TvShellSurface.topBandHeightOf(context);
+        final bleed = Size(constraints.maxWidth, navBand + viewportHeight);
+        final textBottom = (viewportHeight - heroBlock) + TvHomeLayout.heroTextRailGap * scale;
 
-        return ShaderMask(
-          // Same treatment as the landings (33.3): the peeking row at the
-          // bottom edge fades into the page instead of being cut off flat.
-          shaderCallback: (bounds) => LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: const [Color(0x00000000), Color(0xFF000000)],
-            stops: [0, TvDiscoveryLayout.pageBottomFade * scale / bounds.height],
-          ).createShader(bounds),
-          blendMode: BlendMode.dstIn,
-          child: ListView(
-            controller: _scroll,
-            padding: EdgeInsets.only(top: TvHomeLayout.heroTopGap * scale, bottom: TvHomeLayout.heroRowGap * scale),
-            children: [
-              if (reserveHeroSpace)
-                // 9.7: "de billboardruimte wordt gereserveerd totdat de
-                // featured-query gereed is". Space, not a spinner — the rows
-                // below are already real, and a second loading indicator over
-                // live content reads as a fault.
-                SizedBox(height: heroSize.height + TvHomeLayout.heroRowGap * scale),
-              if (heroGroups.isNotEmpty) ...[
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: TvDiscoveryLayout.pageInset * scale),
-                  child: SizedBox(
-                    height: heroSize.height,
-                    child: TvHeroBillboardCarousel(
-                      key: _heroKey,
-                      groups: heroGroups,
-                      size: heroSize,
-                      clientFor: _clientFor,
-                      autoplayEnabled: _autoplayEnabled,
-                      // 33.2: the hero's text fades once a row has the focus.
-                      textOpacity: _rowHasFocus ? 0 : 1,
-                      hideSpoilers: SettingsService.instance.read(SettingsService.hideSpoilers),
-                      initialGroupId: _heroGroupId,
-                      onActiveGroupChanged: (id) => _heroGroupId = id,
-                      onActivate: _activateHero,
-                      onNavigateDown: _focusFirstRow,
-                      onNavigateUp: widget.onNavigateUp,
-                      onBack: widget.onBack,
-                    ),
-                  ),
-                ),
-                SizedBox(height: TvHomeLayout.heroRowGap * scale),
-              ],
-              // One `Focus` around the rows and nothing else: this is the
-              // single bit the carousel is told about, and it carries no
-              // content — see the library doc.
-              Focus(
-                canRequestFocus: false,
-                skipTraversal: true,
-                onFocusChange: (has) {
-                  if (has != _rowHasFocus) setState(() => _rowHasFocus = has);
-                },
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (var i = 0; i < rows.length; i++) ...[
-                      if (i > 0) SizedBox(height: TvDiscoveryLayout.sectionGap * scale),
-                      SizedBox(
-                        height: TvContentRow.height(scale),
-                        child: TvContentRow(
-                          hub: rows[i],
-                          railKey: _rowStack.keyFor(rows[i].hubId),
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            if (heroGroups.isNotEmpty)
+              Positioned(
+                top: -navBand,
+                left: 0,
+                right: 0,
+                height: bleed.height,
+                child: ClipRect(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      AnimatedBuilder(
+                        animation: _scroll,
+                        builder: (context, child) => Transform.translate(
+                          offset: Offset(0, -(_scroll.hasClients ? _scroll.offset : 0.0)),
+                          child: child,
+                        ),
+                        child: TvHeroBillboardCarousel(
+                          key: _heroKey,
+                          groups: heroGroups,
+                          size: bleed,
+                          textBottom: textBottom,
                           clientFor: _clientFor,
-                          initialFocusedGroupId: _focusedGroupIdByRowId[rows[i].hubId],
-                          onFocusedGroupChanged: (id) => _focusedGroupIdByRowId[rows[i].hubId] = id,
-                          onActivate: _activate,
-                          onContextMenu: (group) =>
-                              _openContextMenu(group, isInContinueWatching: rows[i].hubId == continueWatchingHubId),
-                          // Row to row, at the column the step leaves from
-                          // (LAND4). UP that runs out of rows above goes back
-                          // to the hero; DOWN off the last row has nothing
-                          // below it.
-                          onNavigateUp: _rowStack.up(
-                            i,
-                            whenExhausted: heroGroups.isEmpty ? null : _focusHeroFromFirstRow,
-                          ),
-                          onNavigateDown: _rowStack.down(i),
-                          automationRailIndex: i,
+                          autoplayEnabled: _autoplayEnabled,
+                          // 33.2: the hero's text fades once a row has the focus.
+                          textOpacity: _rowHasFocus ? 0 : 1,
+                          hideSpoilers: SettingsService.instance.read(SettingsService.hideSpoilers),
+                          initialGroupId: _heroGroupId,
+                          onActiveGroupChanged: (id) => _heroGroupId = id,
+                          onActivate: _activateHero,
+                          onNavigateDown: _focusFirstRow,
+                          onNavigateUp: widget.onNavigateUp,
+                          onBack: widget.onBack,
                         ),
                       ),
+                      // Under full-bleed the picture steps back with the text
+                      // (mockup 30 B). Screen-fixed over the scrolled card,
+                      // see [TvHeroDimVeil].
+                      TvHeroDimVeil(dim: _rowHasFocus ? 1 : 0),
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ShaderMask(
+              // Same treatment as the landings (33.3): the peeking row at the
+              // bottom edge fades into the page instead of being cut off flat.
+              shaderCallback: (bounds) => LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: const [Color(0x00000000), Color(0xFF000000)],
+                stops: [0, TvDiscoveryLayout.pageBottomFade * scale / bounds.height],
+              ).createShader(bounds),
+              blendMode: BlendMode.dstIn,
+              child: ListView(
+                controller: _scroll,
+                padding: EdgeInsets.only(bottom: TvHomeLayout.heroRowGap * scale),
+                children: [
+                  // The hero block, or 9.7's reserved space while the featured
+                  // query is still out: "de billboardruimte wordt gereserveerd
+                  // totdat de featured-query gereed is". Space, not a spinner —
+                  // the rows below are already real, and a second loading
+                  // indicator over live content reads as a fault.
+                  if (reserveHeroSpace || heroGroups.isNotEmpty) SizedBox(height: heroBlock),
+                  // One `Focus` around the rows and nothing else: this is the
+                  // single bit the carousel is told about, and it carries no
+                  // content — see the library doc.
+                  Focus(
+                    canRequestFocus: false,
+                    skipTraversal: true,
+                    onFocusChange: (has) {
+                      if (has != _rowHasFocus) setState(() => _rowHasFocus = has);
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var i = 0; i < rows.length; i++) ...[
+                          if (i > 0) SizedBox(height: TvDiscoveryLayout.sectionGap * scale),
+                          SizedBox(
+                            height: TvContentRow.height(scale),
+                            child: TvContentRow(
+                              hub: rows[i],
+                              railKey: _rowStack.keyFor(rows[i].hubId),
+                              clientFor: _clientFor,
+                              initialFocusedGroupId: _focusedGroupIdByRowId[rows[i].hubId],
+                              onFocusedGroupChanged: (id) => _focusedGroupIdByRowId[rows[i].hubId] = id,
+                              onActivate: _activate,
+                              onContextMenu: (group) =>
+                                  _openContextMenu(group, isInContinueWatching: rows[i].hubId == continueWatchingHubId),
+                              // Row to row, at the column the step leaves from
+                              // (LAND4). UP that runs out of rows above goes back
+                              // to the hero; DOWN off the last row has nothing
+                              // below it.
+                              onNavigateUp: _rowStack.up(
+                                i,
+                                whenExhausted: heroGroups.isEmpty ? null : _focusHeroFromFirstRow,
+                              ),
+                              onNavigateDown: _rowStack.down(i),
+                              // DEC-095 (3)/(4): a focused rail puts its label
+                              // under the top navigation, first row and deeper
+                              // rows alike, so the rail below it is wholly on
+                              // screen and no band is held open for the hero.
+                              tileScrollAlignment: TvHomeLayout.rowTileScrollAlignment(viewportHeight, scale),
+                              automationRailIndex: i,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         );
       },
     );
