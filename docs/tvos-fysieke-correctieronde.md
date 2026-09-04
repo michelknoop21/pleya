@@ -93,8 +93,8 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | VER2 | Automation-ids escapen geen blokhaken | DEFERRED | n.v.t. |
 | HERO1 | Framing van het hero-beeld op Home: op hardware staan halve beelden in de hero, Plex snijdt gecentreerd vóórdat de widget iets kan kiezen | FIXED, hardware open | `d4ec1fe` |
 | HERO2 | De titelband van de hero is de clearlogo-hoogte, dus een tweeregelige titel wordt op de baseline afgesneden | FIXED | `0ad49ec` |
-| HOME1 | Home naast de northstar: het hero-item staat niet heel in beeld, witruimte, overgangen, indeling en styling wijken af, en de navigatiebalk mee; mockup 29 D full-bleed gekozen, mockup 30 A1 (de rail piept) plus B tot en met E goedgekeurd; DEC-095 accepted, bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
-| I18N5 | Home toont het raillabel "Recently Added Shows" in het Engels tussen Nederlandse labels | OPEN | n.v.t. |
+| HOME1 | Home naast de northstar: het hero-item staat niet heel in beeld, witruimte, overgangen, indeling en styling wijken af, en de navigatiebalk mee; mockup 29 D full-bleed gekozen, mockup 30 A1 (de rail piept) plus B tot en met E goedgekeurd; DEC-095 accepted en gebouwd | FIXED, hardware open | `eed2a79` |
+| I18N5 | Home toont het raillabel "Recently Added Shows" in het Engels tussen Nederlandse labels; `nl.i18n.json` miste `discover.latestShows`, nu "Recent toegevoegde series" | FIXED | `eed2a79` |
 | SEARCH1 | Zoeken benoemt zijn resultaten buiten het railcontract om | DEFERRED | n.v.t. |
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
 | VER3 | De eerste tegel van een rail steekt links buiten de veilige zone | OPEN | n.v.t. |
@@ -2202,3 +2202,49 @@ amberpunt, de Nederlandse labels en de gedimde topnav. Hoofdstuk 9.1, 9.2 en 7.1
 fase 9 en gaat niet mee in de bouw. De bouw is een eigen ronde met de negatieve controle uit
 DEC-095: een widgettest op `TvContentFeed` die de full-bleed hero, het zichtbare label met de
 gedeeltelijk zichtbare band, en het anker na DOWN eist, rood op de huidige code.
+
+### HOME1, de bouwronde
+
+Gebouwd op 4 september als `eed2a79`, met de negatieve controle uit DEC-095 vooraf rood
+gedraaid: de groep "HOME1 / DEC-095" in `test/screens/tv/tv_content_feed_test.dart` eiste op
+de oude code dat de hero de volle feedbreedte inneemt (rood: de kaart stond op de pagina-inset),
+dat het label van de eerste rail na DOWN op het anker van 154 tokens staat (rood: 4 logische
+pixels ernaast) en dat een diepere rail onder de nav ankert (rood: 159 logische pixels lager).
+De vierde test, de piepende band op de landing, was al groen en blijft staan als regressiewacht.
+
+Wat er gebouwd is. De carousel is niet langer een lijstkind op de pagina-inset maar een laag
+achter de lijst, ter grootte van de contentbox plus de gemeten navband erboven, die met de
+scrolloffset meeschuift; het hero-blok in de lijst is een spacer van
+`TvHomeLayout.heroBlockHeight`, zodat het label van de eerste rail op 880 staat en de posters 147
+referentiepixels piepen. De kaart verloor ring, radius en schaduw en kreeg de leesscrim over de
+volle hoogte en de verticale scrim voor nav en grond. Op rijfocus dooft de tekst en legt
+`TvHeroDimVeil` zich schermvast over de laag; in de eerste build reisde die sluier met het beeld
+mee en was boven het anker alles grond, de simulator liet dat zien en de test op de sluierpositie
+is daarna toegevoegd. De rails krijgen per rij een scroll-anker via
+`TvHomeLayout.rowTileScrollAlignment`: rij nul op 372, elke diepere rij onder de nav. Het
+bijschrift kromp naar één regel synopsis en de mockupmaten, het raillabel naar 27
+referentiepixels (audit divergentie 6). De shell wisselde zijn `Column` voor een
+`CustomMultiChildLayout` dat de balk eerst uitmeet en als laatste tekent, en publiceert de
+bandhoogte via `TvShellSurface`; de eerste versie gaf de balk een begrensde hoogte en het
+`Align` van de profielchip vulde daarmee het hele scherm, wat de drie I14-tests van de shell
+direct aanwezen. De balk dimt naar 0,35 zodra `ModalRoute.isCurrent` omvalt (audit 13). Nieuw
+is op de TV-kaarten een amberpunt (`NewContentDot`, audit 5), en `nl.i18n.json` heeft
+`latestShows` (I18N5).
+
+Bewijs. Gerichte suites groen: feed (inclusief de vijf HOME1-tests), carousel, hero-artwork,
+titelband, RTL-contract, topnav (met twee nieuwe dim-tests), badge (met twee dot-tests),
+dichtheid, shell, catalogus-kop. De bredere run over `test/widgets/tv` en `test/screens/tv`
+gaf 428 groen en 14 rood, alle veertien Home-goldens die de oude kaart tekenen en al in de
+nullijn van 78 rode goldens zitten; ze worden op Linux geregenereerd, niet hier.
+`scripts/ci_checks.sh` gaf exit 0 op de definitieve boom. Pleya Verify:
+`pleya_verify/scenarios/tvos.home.full-bleed.yaml` PASS op de tvOS-simulator (bundel
+`tvos-home-full-bleed-1788545268365`), met de band onder de CTA op de landing, de hele eerste
+band na DOWN, de tweede rail heel in beeld na de tweede DOWN, en de hero terug in beeld na UP UP.
+Simulator-screenshots van landing, CTA-focus, railfocus met gedimde backdrop, dieper en het
+contextmenu met gedimde nav zijn bekeken en kloppen met mockup 30 A1, B, C en E; de
+posterfallback (D) is alleen als widgetgeometrie gebouwd en niet in de simulator gezien.
+
+Wat open blijft. Hardwarebewijs op de Apple TV, zoals bij HERO1: het anker van de scrim en de
+leesbaarheid van de tekst over echt artwork zijn daar te toetsen. De ambient tint van 9.3 is
+bewust niet gebouwd (fase 9). Het laatste rijlabel kan niet altijd tot onder de nav scrollen
+omdat de lijst daar geen lege ruimte voor reserveert; dat is een keuze, geen bug.
