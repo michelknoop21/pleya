@@ -81,9 +81,10 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LIB1 | Blanco Bibliotheken-pagina als de selectie verdwijnt | FIXED, hardware open | `f9b2167` |
 | LIB2 | Race bij snel wisselen van bibliotheek | FIXED | `f2ea980` |
 | LIB3 | TV-tabs dragen nog de oude rode onderstreping | FIXED, hardware open | `3e9d31b` |
-| LIB4 | Bibliotheken draait op alles behalve de kiezer nog de oude layout: kop, achtergrond, acties en landing wijken af van `libraries-a.png` en `libraries-d.png` | GEBLOKKEERD door LIB6 | n.v.t. |
+| LIB4 | Bibliotheken draait op alles behalve de kiezer nog de oude layout: kop, achtergrond, acties en landing wijken af van `libraries-a.png` en `libraries-d.png` | VERVANGEN door LIB7 | n.v.t. |
+| LIB7 | Bibliotheken wordt bronbeheer: bladeren loopt via de catalogus met bronfilter, Collecties en Afspeellijsten worden eigen unified ingangen; DEC-voorstel plus mockup 27 | IN PROGRESS | n.v.t. |
 | LIB5 | De spotlight-titel op Bibliotheken valt over de tabrij, en maakt de actieve tab minder leesbaar dan de inactieve | OPEN | n.v.t. |
-| LIB6 | Complete mockupset voor Bibliotheken: mockup 26, negen states in `docs/assets/tvos-unified/mockups-2026-09-04/`, gebouwd op `tv.css` en `build.mjs` van de 09-25-familie, die nu in `docs/assets/tvos-unified/src/` staan | SET KLAAR, besluit nodig | n.v.t. |
+| LIB6 | Complete mockupset voor Bibliotheken: mockup 26, negen states in `docs/assets/tvos-unified/mockups-2026-09-04/`, gebouwd op `tv.css` en `build.mjs` van de 09-25-familie, die nu in `docs/assets/tvos-unified/src/` staan | KLAAR, contract afgewezen | n.v.t. |
 | WL2 | Kijklijst end-to-end in Pleya Verify | OPEN | n.v.t. |
 | REQ1 | Aanvragen end-to-end in Pleya Verify | OPEN | n.v.t. |
 | MYP1 | Regressiebewijs voor het Mijn Pleya-werk | OPEN | n.v.t. |
@@ -1877,6 +1878,15 @@ liet: de code kiest de backdrop, de mockup van 2 september tekende zwart, en nu
 staan ze naast elkaar. In D2 staat de spotlight-titel onder de tabrij in een eigen
 band, wat de LIB5-botsing wegneemt zonder de backdrop op te geven.
 
+Voorgelegd op 4 september, met mockup 26 erbij. Michels antwoord, letterlijk: "Ik vind
+de werking van deze pagina gewoon niet in lijn met wat we aan het bouwen zijn." Dat
+is geen keuze tussen A en D en geen revisie op de beelden: het is een afwijzing van
+het contract dat beide states delen, een bronkiezer met per bibliotheek vier tabs.
+De styling-audit had dit als klasse E gemarkeerd, het enige scherm waar het
+productcontract zelf in het geding is, en dat is nu bevestigd. LIB4 blijft dicht tot
+er een nieuw voorstel voor de werking ligt; mockup 26 blijft staan als bewijs van de
+huidige werking in de nieuwe taal, niet als richting.
+
 Twee acceptatie-eisen van Michel, 4 september, die bij de bouw horen en niet bij het
 besluit: elke knop op de pagina is met de afstandsbediening te bereiken, dus de
 capsules rechtsboven, de chips, de tabs en de tegels zitten alle in één
@@ -1942,3 +1952,39 @@ verschillen of met een kaartratio die dichter bij 16:9 ligt. Negatieve controle:
 een test die de aangevraagde URL ontleedt en eist dat breedte gedeeld door hoogte
 gelijk is aan de bronratio, en die is op de huidige code rood met 2,465 tegen
 1,778. Pas als die groen is heeft een uitlijningskeuze in de widget effect op Plex.
+
+
+### LIB7, Bibliotheken wordt bronbeheer
+
+Besluit van Michel op 4 september, na mockup 26 en in zijn woorden "in kader van
+unified": de pagina houdt op een tweede bladerinterface te zijn. Gekozen uit vier
+richtingen: bronbeheer, en bladeren eruit.
+
+Wat de spec zelf al zegt en wat ermee botst. §4.5 van `tvos-unified-experience.md`
+houdt Bibliotheken als "de geavanceerde bronweergave" met één library kiezen,
+Aanbevolen, Bladeren, Collecties en Afspeellijsten. §10.4 van dezelfde spec zet
+server en library bij de globale filters van de unified catalogus, en de app heeft
+die knop al als "Alle bronnen" op Alle films (`tv_catalog_header_bar.dart`). Bladeren
+per bibliotheek heeft dus al een unified thuis, en §4.5 bouwt er een tweede naast.
+Wat volgens §1524 alleen in Bibliotheken thuishoort is beheer: scannen, analyseren,
+prullenbak, metadata verversen op de hele library, mappen bladeren, verbergen en
+ordenen.
+
+De nieuwe werking:
+
+1. De pagina toont per server de bibliotheken als beheerregels, met soort, aantal,
+   zichtbaar of verborgen en volgorde. Per regel de acties Openen in catalogus (Alle
+   films of Alle series met deze bibliotheek als bronfilter), Vernieuwen, Scannen,
+   Verbergen, en waar de backend het draagt Mappen, Analyseren en Prullenbak.
+2. De tabs Aanbevolen en Bladeren vervallen. Aanbevelingen doen Home, Films en
+   Series al over alle bronnen heen.
+3. Collecties en Afspeellijsten gaan de pagina uit en worden eigen ingangen in Mijn
+   Pleya, over alle bronnen, met mockup 24 als detail.
+
+Dit raakt §4.5, de tabel "waar woont wat" en §1524, dus het gaat als DEC-voorstel en
+niet als stille spec-aanpassing. Mockup 27 tekent de nieuwe werking in het systeem
+van mockup 26. Mockup 26 blijft staan als vastlegging van het afgewezen contract in
+de nieuwe taal.
+
+De twee acceptatie-eisen uit LIB6 gaan mee: elke knop bereikbaar met de
+afstandsbediening, en geen afwijking van de andere schermen.

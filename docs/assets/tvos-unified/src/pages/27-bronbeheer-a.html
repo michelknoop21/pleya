@@ -1,0 +1,31 @@
+<style>
+.head { display: flex; align-items: flex-end; gap: 28px; }
+.head .acts { margin-left: auto; margin-bottom: 4px; }
+.group-label { display: flex; align-items: center; gap: 14px; }
+.group-label .st { font-size: 20px; color: var(--ink-3); font-weight: 400; margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.row .kind { width: 150px; font-size: 19px; color: var(--ink-3); white-space: nowrap; }
+.row .val.hid { color: var(--ink-3); display: flex; align-items: center; gap: 10px; }
+.row.hid { opacity: .55; }
+.foot { position: absolute; left: var(--inset); right: var(--inset); bottom: 34px; }
+</style>
+{{nav:Mijn Pleya|live}}
+<div class="page">
+  <div class="head">
+    <div><div class="page-title">Bibliotheken</div><div class="page-sub">Mijn Pleya ▸ Bibliotheken</div></div>
+    <div class="btn-row acts"><div class="btn">{{icon:refresh}} Alles vernieuwen</div><div class="btn">{{icon:list}} Ordenen</div></div>
+  </div>
+  <div class="group-label" style="margin-top:36px">Pleya · Pleya-server <span class="st"><span class="dot"></span>Online · laatste scan 2 uur geleden</span></div>
+  <div class="rows">
+    <div class="row focus">{{icon:film}}<div class="body"><div class="t">Films</div><div class="s">312 titels · 1,8 TB</div></div><div class="val">Zichtbaar</div>{{icon:chev}}</div>
+    <div class="row">{{icon:show}}<div class="body"><div class="t">Series</div><div class="s">48 titels · 1.204 afleveringen</div></div><div class="val">Zichtbaar</div>{{icon:chev}}</div>
+  </div>
+  <div class="group-label">G-Plexflix · Plex <span class="st"><span class="dot"></span>Online · laatste scan gisteren</span></div>
+  <div class="rows">
+    <div class="row">{{icon:film}}<div class="body"><div class="t">Films</div><div class="s">1.204 titels</div></div><div class="val">Zichtbaar</div>{{icon:chev}}</div>
+    <div class="row">{{icon:show}}<div class="body"><div class="t">TV Series</div><div class="s">210 titels · 6.512 afleveringen</div></div><div class="val">Zichtbaar</div>{{icon:chev}}</div>
+    <div class="row">{{icon:music}}<div class="body"><div class="t">Concert</div><div class="s">6 titels</div></div><div class="val">Zichtbaar</div>{{icon:chev}}</div>
+    <div class="row hid">{{icon:show}}<div class="body"><div class="t">Tutorial</div><div class="s">12 titels</div></div><div class="val hid">{{icon:eyeoff}} Verborgen</div>{{icon:chev}}</div>
+  </div>
+  <div class="foot"><div class="hint"><kbd>Select</kbd> acties voor deze bibliotheek <span class="sep" style="margin:0 10px;color:var(--ink-4)">·</span> <kbd>Menu</kbd> terug naar Mijn Pleya</div></div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 27 · state A: Bibliotheken als bronbeheer; per server een groep met status, per bibliotheek één regel met zichtbaarheid; geen tabs, geen bladeren (LIB7)</div>

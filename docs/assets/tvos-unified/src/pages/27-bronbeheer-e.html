@@ -1,0 +1,40 @@
+<style>
+.prof { margin-top: 34px; background: var(--surface); border-radius: var(--r-tile); padding: 26px 32px; display: flex; align-items: center; gap: 28px; }
+.prof .av { width: 104px; height: 104px; border-radius: 999px; overflow: hidden; background: var(--elevated); }
+.prof .av img { width: 100%; height: 100%; object-fit: cover; }
+.prof .n { font-size: 36px; font-weight: 700; }
+.prof .s { font-size: 22px; color: var(--ink-3); margin-top: 4px; }
+.prof .btn { margin-left: 16px; }
+.prof .srv { margin-left: auto; text-align: right; font-size: 22px; color: var(--ink-2); line-height: 1.5; }
+.prof .srv b { font-weight: 500; color: var(--ink); margin-right: 10px; }
+.tiles { margin-top: 18px; }
+.tile { min-height: 170px; }
+.group-label { margin-top: 30px; }
+.foot { position: absolute; left: var(--inset); bottom: 30px; font-size: 20px; color: var(--ink-3); }
+</style>
+{{nav:Mijn Pleya|live,avatar}}
+<div class="page">
+  <div class="page-title">Mijn Pleya</div>
+  <div class="prof">
+    <div class="av"><img src="../assets/avatar.jpg" alt=""></div>
+    <div><div class="n">Michel</div><div class="s">2 van 3 servers online</div></div>
+    <div class="btn">{{icon:person}} Profiel wisselen</div>
+    <div class="srv"><div><span class="dot"></span> <b>Pleya</b>Online</div><div><span class="dot"></span> <b>G-Plexflix</b>Online</div><div><span class="dot off"></span> <b>NAS Plex</b>Offline</div></div>
+  </div>
+  <div class="group-label">Mijn content</div>
+  <div class="tiles c4">
+    <div class="tile focus">{{icon:bookmark}}<span class="count">24</span><div class="t">Kijklijst</div><div class="s">Bewaarde films en series</div></div>
+    <div class="tile">{{icon:requests}}<span class="count">3</span><div class="t">Aanvragen</div><div class="s">Verzoeken en ontdekken</div></div>
+    <div class="tile">{{icon:download}}<span class="count">7</span><div class="t">Downloads</div><div class="s">Offline en synchronisatieregels</div></div>
+    <div class="tile">{{icon:playlist}}<span class="count">2</span><div class="t">Afspeellijsten</div><div class="s">Over alle bronnen</div></div>
+  </div>
+  <div class="group-label">Bibliotheken en bronnen</div>
+  <div class="tiles c4">
+    <div class="tile">{{icon:folder}}<div class="t">Bibliotheken</div><div class="s">Beheer per server</div></div>
+    <div class="tile">{{icon:collection}}<span class="count">4</span><div class="t">Collecties</div><div class="s">Over alle bronnen</div></div>
+    <div class="tile">{{icon:server}}<div class="t">Servers</div><div class="s">Verbindingen en lokale bronnen</div></div>
+    <div class="tile">{{icon:activity}}<div class="t">Activiteit</div><div class="s">Nu kijken, samen kijken, remote</div></div>
+  </div>
+  <div class="foot">Aangemeld als Michel · Pleya 2.8.0</div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 27 · state E: de hub met Afspeellijsten en Collecties als eigen unified ingangen; Bibliotheken beschrijft zichzelf als beheer</div>

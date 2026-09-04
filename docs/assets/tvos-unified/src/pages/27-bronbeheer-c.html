@@ -1,0 +1,30 @@
+<style>
+.head { display: flex; align-items: flex-end; gap: 28px; }
+.head .acts { margin-left: auto; margin-bottom: 4px; }
+.group-label { display: flex; align-items: center; gap: 14px; }
+.group-label .st { font-size: 20px; color: var(--ink-3); font-weight: 400; margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.row .kind { width: 150px; font-size: 19px; color: var(--ink-3); white-space: nowrap; }
+.row .val.hid { color: var(--ink-3); display: flex; align-items: center; gap: 10px; }
+.row.hid { opacity: .55; }
+.foot { position: absolute; left: var(--inset); right: var(--inset); bottom: 34px; }
+</style>
+<style>
+.row.move { background: var(--elevated); box-shadow: 0 0 0 var(--ring-gap) var(--bg), 0 0 0 calc(var(--ring-gap) + var(--ring)) var(--ink); }
+.row .grip { width: 22px; height: 22px; color: var(--ink-3); }
+</style>
+{{nav:Mijn Pleya|live}}
+<div class="page">
+  <div class="head">
+    <div><div class="page-title">Bibliotheken</div><div class="page-sub">Mijn Pleya ▸ Bibliotheken ▸ Ordenen</div></div>
+    <div class="btn-row acts"><div class="btn primary">{{icon:check}} Klaar</div></div>
+  </div>
+  <div class="group-label" style="margin-top:36px">G-Plexflix · Plex <span class="st">Volgorde geldt voor de kiezer in de catalogus en voor Home</span></div>
+  <div class="rows">
+    <div class="row">{{icon:list}}<div class="body"><div class="t">Films</div><div class="s">1.204 titels</div></div><div class="val">1</div></div>
+    <div class="row move">{{icon:list}}<div class="body"><div class="t">Concert</div><div class="s">6 titels</div></div><div class="val">2 · omhoog of omlaag met de ring</div></div>
+    <div class="row">{{icon:list}}<div class="body"><div class="t">TV Series</div><div class="s">210 titels</div></div><div class="val">3</div></div>
+    <div class="row hid">{{icon:list}}<div class="body"><div class="t">Tutorial</div><div class="s">12 titels</div></div><div class="val hid">{{icon:eyeoff}} Verborgen · telt niet mee</div></div>
+  </div>
+  <div class="foot"><div class="hint"><kbd>▲</kbd><kbd>▼</kbd> verplaatsen <span style="margin:0 10px;color:var(--ink-4)">·</span> <kbd>Select</kbd> loslaten <span style="margin:0 10px;color:var(--ink-4)">·</span> <kbd>Menu</kbd> annuleren</div></div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 27 · state C: ordenen als eigen modus met één primaire knop; een verborgen bibliotheek blijft zichtbaar in de lijst en telt niet mee</div>
