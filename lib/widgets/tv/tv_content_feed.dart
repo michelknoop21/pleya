@@ -498,11 +498,11 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
                                 whenExhausted: heroGroups.isEmpty ? null : _focusHeroFromFirstRow,
                               ),
                               onNavigateDown: _rowStack.down(i),
-                              // DEC-095 (3)/(4): the first rail anchors its label
-                              // at 372 reference px with the dimmed backdrop above
-                              // it; every deeper rail anchors under the bar, so
-                              // the rail below it is wholly on screen.
-                              tileScrollAlignment: TvHomeLayout.rowTileScrollAlignment(i, viewportHeight, scale),
+                              // DEC-095 (3)/(4): a focused rail puts its label
+                              // under the top navigation, first row and deeper
+                              // rows alike, so the rail below it is wholly on
+                              // screen and no band is held open for the hero.
+                              tileScrollAlignment: TvHomeLayout.rowTileScrollAlignment(viewportHeight, scale),
                               automationRailIndex: i,
                             ),
                           ),

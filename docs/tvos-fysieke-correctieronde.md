@@ -2175,13 +2175,13 @@ en dat is een keuze over de landing. Vier landing-opties, alle met het onderwerp
   posters van 133 breed zijn op een TV klein, en de groei is een layoutwissel bij focus.
 
 De overige standen zijn onafhankelijk van die keuze. **B, railfocus:** de pagina scrolt tot
-het label op 372 staat (het anker van northstar 02), de herotekst dooft, de backdrop treedt
+het label onder de navbalk staat, de herotekst dooft, de backdrop treedt
 terug tot een gedimde band en gaat over in de ambient tint van 9.3; band 346 met 615-kaart en
 231-buren, bijschrift 18 boven, titel 27, meta 20 mét puntspatiëring (in 29 D2/D4 miste
 `.cap .m` de `.sep`-marge), synopsis op één regel, 26 naar het volgende label op 908, en de
 volgende rail piept 119. **C, dieper op Home:** het gefocuste label ankert onder de nav op
-132 in plaats van op 372, waardoor de volgende rail er heel onder staat (721 tot 1067) in
-plaats van alleen zijn label; de app zet vandaag elk gefocust label op 372 met zwart erboven,
+132, waardoor de volgende rail er heel onder staat (721 tot 1067) in plaats van alleen zijn
+label; de app zette elk gefocust label op 372 met zwart erboven,
 en dat is waar de "één rail per scherm" vandaan komt. Verder de ambient tint, nieuw als
 amberpunt (audit 5), het vinkje als witte schijf, en "Recent toegevoegde series" in het
 Nederlands (I18N5). **D, alleen poster (9.4):** dezelfde poster sterk geblurd en donker als
@@ -2196,7 +2196,7 @@ GOEDGEKEURD.
 
 **Besluit van Michel op 4 september, op mockup 30:** "Ik denk a 1 de rail piept en btme
 akkoord." Vastgelegd als DEC-095: de hero full-bleed met de rail die eronder piept, het anker
-op 372 op DOWN en op 132 dieper op de pagina, het bijschrift met één regel synopsis, de
+onder de navbalk op DOWN en dieper op de pagina, het bijschrift met één regel synopsis, de
 amberpunt, de Nederlandse labels en de gedimde topnav. Hoofdstuk 9.1, 9.2 en 7.1 zijn herzien,
 9.3 en 9.6 nagelopen, 33.1 en 33.2 dragen een afwijkingsnotitie. De ambient tint van 9.3 blijft
 fase 9 en gaat niet mee in de bouw. De bouw is een eigen ronde met de negatieve controle uit
@@ -2221,7 +2221,7 @@ volle hoogte en de verticale scrim voor nav en grond. Op rijfocus dooft de tekst
 `TvHeroDimVeil` zich schermvast over de laag; in de eerste build reisde die sluier met het beeld
 mee en was boven het anker alles grond, de simulator liet dat zien en de test op de sluierpositie
 is daarna toegevoegd. De rails krijgen per rij een scroll-anker via
-`TvHomeLayout.rowTileScrollAlignment`: rij nul op 372, elke diepere rij onder de nav. Het
+`TvHomeLayout.rowTileScrollAlignment`: elke rij zet zijn label onder de nav. Het
 bijschrift kromp naar één regel synopsis en de mockupmaten, het raillabel naar 27
 referentiepixels (audit divergentie 6). De shell wisselde zijn `Column` voor een
 `CustomMultiChildLayout` dat de balk eerst uitmeet en als laatste tekent, en publiceert de
@@ -2243,6 +2243,17 @@ band na DOWN, de tweede rail heel in beeld na de tweede DOWN, en de hero terug i
 Simulator-screenshots van landing, CTA-focus, railfocus met gedimde backdrop, dieper en het
 contextmenu met gedimde nav zijn bekeken en kloppen met mockup 30 A1, B, C en E; de
 posterfallback (D) is alleen als widgetgeometrie gebouwd en niet in de simulator gezien.
+
+**Correctie op de eerste bouw, dezelfde dag.** Op de simulator las de band boven de gefocuste
+rail als leegte: het anker van northstar 02 hield 242 referentiepixels onder de balk vrij, en
+die ruimte was daar de zichtbare onderrand van de billboardkaart die full-bleed net had
+weggenomen. Op een donkere still bleef er een zwarte strook over van een vijfde van de pagina.
+Drie richtingen zijn voorgelegd: het anker weg, het anker halveren, of de dim verzwakken zodat
+de strook als beeld leest. Michel koos eerst halveren en daarna alsnog het anker helemaal weg,
+zoals geadviseerd. `rowFocusAnchor` bestaat niet meer; `rowTileScrollAlignment` kent geen
+rij-index meer en zet elk gefocust raillabel onder de balk. De twee ankerregels zijn er één
+geworden, de volgende rail wint vier vijfde van zijn band, en mockup 30 B en E zijn opnieuw
+geschoten op die compositie. De test die het anker op 372 vastlegde eist nu de nul.
 
 Wat open blijft. Hardwarebewijs op de Apple TV, zoals bij HERO1: het anker van de scrim en de
 leesbaarheid van de tekst over echt artwork zijn daar te toetsen. De ambient tint van 9.3 is

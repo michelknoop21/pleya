@@ -42,7 +42,6 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
-import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv/tv_content_feed.dart';
 import 'package:pleya/widgets/tv/tv_content_row.dart';
@@ -945,7 +944,6 @@ void main() {
     );
 
     Rect feedRect(WidgetTester tester) => tester.getRect(find.byType(TvContentFeed));
-    double scaleOf(WidgetTester tester) => TvLayoutConstants.scaleOf(tester.element(find.byType(TvContentFeed)));
     Rect headerRect(WidgetTester tester, String title) => tester.getRect(find.widgetWithText(TvSectionHeader, title));
 
     testWidgets('the billboard spans the feed edge to edge and at least its full height', (tester) async {
@@ -967,18 +965,19 @@ void main() {
       expect(tile.bottom, greaterThan(feed.bottom), reason: 'A1: the first rail is not fully in view on the landing');
     });
 
-    testWidgets('DOWN puts the first rail label on the anchor of northstar 02', (tester) async {
+    testWidgets('DOWN out of the hero puts the first rail label under the top navigation', (tester) async {
       await bootHome(tester);
       heroNode(tester, 'tvHeroPlay').requestFocus();
       await tester.pump();
       await press(tester, LogicalKeyboardKey.arrowDown);
       await tester.pumpAndSettle();
       final feed = feedRect(tester);
+      // bootHome seeds no on-deck items, so the first row is Recently Released.
       final header = headerRect(tester, t.discover.recentlyReleased);
       expect(
         header.top - feed.top,
-        closeTo(TvHomeLayout.rowFocusAnchor * scaleOf(tester), 1.0),
-        reason: 'DEC-095 (3): the first rail anchors at 372 reference px with the dimmed backdrop above it',
+        closeTo(0, 1.0),
+        reason: 'DEC-095 (3): no band is held open for the hero — the focused rail sits at the top',
       );
     });
 
@@ -998,7 +997,7 @@ void main() {
       expect(card.top, lessThan(feed.top), reason: 'the picture itself did scroll with the list');
     });
 
-    testWidgets('deeper on the page the focused rail label anchors under the top navigation', (tester) async {
+    testWidgets('a rail deeper on the page anchors the same way, by the same rule', (tester) async {
       await bootHome(tester);
       final second = rows(tester)[2];
       tileNode(tester, second.hub.groups.first.groupId).requestFocus();
@@ -1008,7 +1007,7 @@ void main() {
       expect(
         header.top - feed.top,
         closeTo(0, 1.0),
-        reason: 'DEC-095 (4): once the hero is out of view a focused rail sits at the top of the content box',
+        reason: 'DEC-095 (4): one anchor for every row, so the rail below the focused one is wholly on screen',
       );
     });
   });

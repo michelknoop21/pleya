@@ -1117,19 +1117,38 @@ class TvHomeLayout {
   /// How much of the first rail's artwork is on screen on the landing: 147
   /// reference px of the 346 band (mockup 30 A1, "de rail piept"). The subject
   /// of the backdrop stays whole above it; the rail becomes fully visible on
-  /// DOWN, when the feed scrolls to [rowFocusAnchor].
+  /// DOWN, when the feed scrolls the rail's label under the top navigation
+  /// ([rowTileScrollAlignment]).
   static const double firstRailPeek = 94;
 
   /// From the bottom of the CTA row to the label of the first rail: 40
   /// reference px.
   static const double heroTextRailGap = 26;
 
-  /// Where the label of the focused *first* rail lands, measured from the top
-  /// of the content box, once DOWN has scrolled the feed: 372 reference px on
-  /// screen (northstar 02), 242 inside the content box. The dimmed backdrop
-  /// stays visible above it. Deeper rails anchor at 0, under the top
-  /// navigation, so the rail below them is wholly on screen (mockup 30 C).
-  static const double rowFocusAnchor = 154;
+  /// The vertical scroll target for a tile in the Home feed, as the fraction
+  /// of the viewport its centre is scrolled to
+  /// (`FocusableWrapper.scrollAlignment`).
+  ///
+  /// **One anchor for every row: the focused rail's label sits under the top
+  /// navigation.** Northstar 02 anchors the *first* rail 372 reference px down
+  /// the screen, and that is what this used to do — but those 242 px under the
+  /// bar were the visible lower edge of the billboard *card*, and full-bleed
+  /// removed the card. Under the new composition they held room for nothing: a
+  /// rail section is 524 px, so a fifth of the page went to a backdrop the dim
+  /// had already taken the contrast out of, and on a dark still it read as an
+  /// empty band. Anchoring every row the same way returns that space — the next
+  /// rail gains four fifths of its band — and leaves one rule where there were
+  /// two. The hero is not lost by it: UP brings it back into view (P1), and it
+  /// is on screen throughout the scroll that gets here.
+  static double rowTileScrollAlignment(double viewportHeight, double scale) {
+    if (viewportHeight <= 0) return 0.5;
+    final labelToTileCentre =
+        (TvDiscoveryLayout.sectionTitleFontSize * TvDiscoveryLayout.metaLineHeight +
+                TvDiscoveryLayout.sectionHeaderGap) *
+            scale +
+        TvDiscoveryLayout.railBandHeight(scale) / 2;
+    return (labelToTileCentre / viewportHeight).clamp(0.0, 1.0);
+  }
 
   /// The hero block: everything the landing shows above the first rail's
   /// label. Derived rather than fixed so the peek is exactly [firstRailPeek]
@@ -1143,24 +1162,6 @@ class TvHomeLayout {
         TvDiscoveryLayout.railBandInset(scale) -
         firstRailPeek * scale,
   );
-
-  /// The vertical scroll target for a tile in row [index] of the Home feed,
-  /// as the fraction of the viewport its centre is scrolled to
-  /// (`FocusableWrapper.scrollAlignment`). Row 0 anchors its label at
-  /// [rowFocusAnchor]; every deeper row anchors its label at the top of the
-  /// content box. Expressed as a fraction because that is the wrapper's
-  /// contract; computed from the same tokens the rail is laid out with, so
-  /// the anchor is exact on any canvas rather than tuned to one.
-  static double rowTileScrollAlignment(int index, double viewportHeight, double scale) {
-    if (viewportHeight <= 0) return 0.5;
-    final labelToTileCentre =
-        (TvDiscoveryLayout.sectionTitleFontSize * TvDiscoveryLayout.metaLineHeight +
-                TvDiscoveryLayout.sectionHeaderGap) *
-            scale +
-        TvDiscoveryLayout.railBandHeight(scale) / 2;
-    final anchor = index == 0 ? rowFocusAnchor * scale : 0.0;
-    return ((anchor + labelToTileCentre) / viewportHeight).clamp(0.0, 1.0);
-  }
 
   /// Cap on the text column: 900 reference px (hoofdstuk 9.2 as revised).
   /// Wide enough for two lines of synopsis at hero size, narrow enough that
