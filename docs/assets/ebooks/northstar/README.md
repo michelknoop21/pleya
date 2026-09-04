@@ -47,6 +47,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `06a-books-toc.png` | Inhoudsopgave, canonieke staat op Atomic Habits met de boom open op de locator | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `06b-books-toc-collapsed.png` | Dezelfde boom met alle delen dichtgeklapt | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `06c-books-toc-rowtypes.png` | Detail: de rijsoorten van de boom in hun drie posities | approved | detailuitsnede, 1179×1935 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `07a-books-reader.png` | Reader, canonieke staat op Dune hoofdstuk 12 met de chrome zichtbaar | **proposed** | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `07b-books-reader-immersive.png` | Dezelfde pagina met de chrome verborgen | **proposed** | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `07c-books-reader-themes.png` | Detail: dezelfde pagina in licht, sepia en donker | **proposed** | detailuitsnede, 1179×2478 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -563,6 +566,104 @@ de hele set, waar paneel 6 een renderrestje `91:43` laat zien. En anders dan bij
 staat er geen tabbalk in het beeld die in de app zou ontbreken: paneel 6 tekent er zelf geen, want de
 reader dekt hem af.
 
+## Golden 07, Reader (proposed)
+
+Het leesoppervlak zelf: de pagina waar een boek gelezen wordt, en de chrome die eroverheen komt en
+weer weggaat. Inhoud van paneel 7 van de comp, uitvoering op de chrome-grammatica van
+`20-speler.png` uit de iOS Unified-set. Drie frames, samen één scherm: `07a` de hoofdstaat met de
+chrome zichtbaar, `07b` dezelfde pagina met de chrome verborgen, `07c` een detailuitsnede van
+dezelfde regels in licht, sepia en donker.
+
+**Dit is een voordracht en geen contract.** Er mag niets tegen gebouwd worden voordat Michel de vier
+keuzes hieronder heeft goedgekeurd of afgewezen. Een ervan, de leesletter, is bovendien de reden dat
+deze frames op dit moment alleen op macOS reproduceerbaar zijn.
+
+De rollen van de drie frames horen bij de voordracht, net als bij 04, 05 en 06. `07a` is de
+**hoofdstaat**: de pagina zoals je hem ziet op het moment dat je de chrome oproept. `07b` is
+**gedragsbewijs** dat de chrome verdwijnt zonder dat er één regel verspringt, geen tweede scherm en
+geen variant. `07c` is een **ondersteunende vormspecificatie** van de drie leesthema's en geen
+runtime-staat; de reader toont er één tegelijk.
+
+De maatvoering is gemeten op de gerenderde frames, niet bedacht. De chrome staat op de band 62 tot
+94 die elk scherm van de set aanhoudt, met de glyfrij op 70,3 tot 86,3 en een paginamarge van 24. De
+kopregel `DUNE · HOOFDSTUK 12` staat op 128,3 tot 137,0. De tekstkolom begint op 188 en heeft een
+marge van 32, breder dan die van de chrome, met 18 pt Georgia op een regelafstand van 28 en 24 pt
+tussen de alinea's. In `07a` staan de vijf regels van de eerste alinea op 194,3 / 222,3 / 250,3 /
+278,3 / 306,3, de tweede alinea op 358,3, de derde op 466,3 en de gemarkeerde vierde op 546,3 en
+574,3. De schuif ligt op 760 met een greep van 16, het label eronder op 790,7 tot 802,7, en de
+home-indicator op 839. De sepia-grond meet `#F0E5D7` en de markering `#FDDF9E`, allebei overgenomen
+uit paneel 7.
+
+**De vier keuzes die deze golden moet nemen en die niet stilzwijgend genomen mogen worden.**
+
+- **De leesletter is een productbesluit en er is nog geen serif in de repository.** `assets/fonts`
+  bevat Inter en ArchivoBlack, en paneel 12 noemt `Georgia` als standaardlettertype. Deze render
+  leunt daarom op de systeem-Georgia van macOS, en daarmee is hij niet meer vanuit elke clone op te
+  bouwen: dat breekt de belofte die in "Opnieuw renderen" staat en die voor golden 00 tot 06 wel
+  geldt. Er zijn twee uitwegen en ze zijn allebei legitiem. Een serif aan `assets/fonts` toevoegen
+  maakt de leesletter van de reader onderdeel van het product, met een licentie die dat toelaat, en
+  herstelt de reproduceerbaarheid; de golden wordt dan opnieuw gerenderd en de maatvoering hierboven
+  verschuift een fractie. De golden op Georgia laten staan houdt het beeld dichter bij paneel 12,
+  maar dan is de bron alleen op macOS bruikbaar en moet dat in het Manifest staan. **Deze golden
+  maakt die keuze niet.**
+- **`Pagina 248 van 616` raakt een contract dat al ligt.** Golden 05 heeft goedgekeurd dat een
+  paginatelling bibliografische editiemetadata is en nooit uit de paginering van de reader komt.
+  Golden 06 heeft `Ga naar pagina` aan de `page-list`-navigatie van de EPUB gehangen en daarbij
+  zowel schermpagina's als de bibliografische telling expliciet uitgesloten. De voet van paneel 7
+  toont `616`, hetzelfde getal dat in de statsrij van golden 05 staat, en dat is precies de
+  vermenging die die twee goldens verbieden. Het voorstel is daarom: het percentage staat er altijd,
+  het paginanummer alleen wanneer de publicatie `page-list`-navigatie meelevert, en dan komen zowel
+  248 als 616 uit die navigatie. Dat `616` in het frame gelijk is aan de statsrij van golden 05 is
+  een toevalligheid van deze editie en geen afleiding. Levert de publicatie die navigatie niet, dan
+  staat er alleen `48%`. Dit is de scherpste keuze van 07, en het frame toont bewust de rijke staat;
+  de terugval staat beschreven en is niet getekend.
+- **De twee identieke zoekglyfs in de comp.** Paneel 7 zet er twee naast elkaar die er hetzelfde
+  uitzien. Eén ervan is een vergissing of een tweede functie zonder naam, en deze golden verzint er
+  geen betekenis bij: er staat er één, en die opent `Zoeken in boek` uit paneel 9. Dezelfde
+  behandeling die golden 02 aan de tweede glyf in paneel 2 gaf. Weet Michel wat de tweede moest
+  doen, dan komt hij terug.
+- **De inhoudsopgaveglyf is de deur van golden 06, en die duwt een pagina.** De tweede glyf
+  linksboven is de inhoudsopgave. Golden 06 heeft zijn presentatie als gepushte pagina gekozen
+  zonder de deur te kennen en heeft opgeschreven dat de kop terugkomt voor een correctie als 07 er
+  een sheet van maakt. Dat gebeurt hier niet: de glyf pusht dezelfde pagina die golden 06 tekent, met
+  de terugpijl die er al op staat. **Golden 06 heeft daarmee geen correctieronde nodig.** Dat is ook
+  de goedkoopste uitkomst: een sheet zou de kop van 06 en zijn actiebalk allebei opnieuw ter
+  discussie stellen.
+
+**Wat deze golden expliciet openlaat**, zodat het later een besluit is en geen omissie:
+
+- **Hoe de chrome opgeroepen en weggehaald wordt.** `07b` laat zien wat verborgen betekent, niet wat
+  het oproept. Een tik in het midden van de pagina is de conventie, maar dan is de vraag wat een tik
+  aan de rand doet, en bladeren is paneel 8 (`Scrollmodus`, `Verticale scroll`) en niet deze golden.
+- **Wat de markering is en hoe je er een maakt.** Paneel 7 tekent een gemarkeerde zin en deze golden
+  tekent hem mee. Hoe een lezer er een maakt, waar ze terug te vinden zijn en of ze naast de
+  inhoudsopgave een eigen lijst krijgen staat hier niet; golden 06 liet bladwijzers en aantekeningen
+  om dezelfde reden open.
+- **De bladwijzer in de chrome staat gevuld.** Dat leest als "deze pagina is bewaard", maar wat een
+  bladwijzer is, hoeveel er kunnen zijn en waar je ze terugziet wordt hier niet beslist. De glyf
+  wordt getekend omdat de comp hem tekent.
+- **Welk thema de reader standaard opent.** Paneel 7 tekent sepia en paneel 12 zet `Leesthema` op
+  `Donker`. Die twee spreken elkaar tegen. `07a` en `07b` staan in sepia omdat paneel 7 het onderwerp
+  van deze golden is; welke van de drie de standaard wordt hoort bij de instellingengolden.
+- **Wat de schuif doet terwijl je hem sleept.** Er is geen voorbeeldweergave, geen hoofdstuknaam die
+  meeloopt en geen terugsprongknop getekend. Of de reader die nodig heeft is een eigen vraag.
+- **De liggende stand en de iPad.** Beide frames zijn staand op 393 pt. Een tekstkolom van 329 pt
+  breed is op een iPad een verkeerde maat, en de vijf iPad-goldens die nog komen zijn de plek waar
+  dat beslist wordt.
+
+**Bewuste verschillen met het beeld die geen goedkeuring nodig hebben.** De comp schrijft de
+kopregel als `DUNE - HOOFDSTUK 12` en de voet als `48% - Pagina 248 van 616` met een koppelteken;
+hier staat de punt die golden 01b voor `48% · Hoofdstuk 12` heeft goedgekeurd. De passage is voor
+deze repository geschreven en niet uit het boek geciteerd, en hij staat in het Engels omdat de vaste
+set Dune als Engelse editie voert; de Nederlandse vulling van de comp zou een vertaling op het scherm
+zetten die de plank niet heeft. De kopregel blijft wél Nederlands, want die wordt door de app
+gemaakt uit `chapterLabel`, precies zoals golden 06 `Hoofdstuk 11 tot 14` onder een Engelse titel
+zet. De chrome staat direct op de pagina zonder de scrim die `20-speler.png` onder zijn bediening
+legt: die scrim tilt witte glyfs van een bewegende foto, en een pagina tekst is geen van beide. De
+statusbalk staat in `07b` gewoon aan, want iOS houdt hem daar en een leeg gat rond de inkeping is
+geen leeswinst. En de kopregel verdwijnt niet met de chrome mee: dat is de kopregel van de pagina,
+zoals een gedrukt boek er bovenaan een draagt, en geen bediening.
+
 ## Wat er tegen golden 06 gebouwd is
 
 `lib/screens/books/books_toc_screen.dart`, met `widgets/book_toc_rows.dart` eronder voor de vier
@@ -989,6 +1090,26 @@ node render.js toc.html ../../06c-books-toc-rowtypes.png rowtypes 645
 Op 4 september 2026 leverden twee opeenvolgende runs identieke bestanden op (md5 `3c9152e8…`,
 `6dbfe719…` en `68c46397…`). Dat zijn de goedgekeurde frames; de md5's van voordracht A en van de
 eerste render van revisie B staan hier bewust niet, want alleen de goedgekeurde staat is contract.
+
+Golden 07 gaat net zo, met `826` als hoogte voor het themaframe; ook die hoogte komt uit
+`window.specHeight()` en is niet geraden.
+
+```
+cd docs/assets/ebooks/northstar/src/07-books-reader
+export NODE_PATH=/opt/homebrew/lib/node_modules:/opt/homebrew/lib/node_modules/@playwright/test/node_modules
+node render.js reader.html ../../07a-books-reader.png reading
+node render.js reader.html ../../07b-books-reader-immersive.png immersive
+node render.js reader.html ../../07c-books-reader-themes.png themes 826
+```
+
+Op 4 september 2026 leverden twee opeenvolgende runs identieke bestanden op (md5 `ed757d01…`,
+`afa48407…` en `6c9f2314…`).
+
+**Golden 07 is de enige die niet vanuit elke clone reproduceert.** De chrome laadt Inter uit
+`assets/fonts`, maar de tekstkolom vraagt `Georgia` aan het besturingssysteem, want er is geen serif
+in de repository. Op een machine zonder Georgia valt hij terug op Times New Roman en verspringt de
+regelval. Dat is geen slordigheid maar de open keuze uit het hoofdstuk hierboven, en hij verdwijnt
+zodra de leesletter gekozen is.
 
 `render.js` opent Chromium op 393×852 met `deviceScaleFactor: 3` en wacht op `document.fonts.ready`.
 Op 3 september 2026 leverde deze route vanuit de repo-bron byte-identieke PNG's op (md5
