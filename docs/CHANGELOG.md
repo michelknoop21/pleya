@@ -4,6 +4,52 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-04] iOS Unified 2026 fase 4: Zoeken op de projectie
+
+Zoeken groepeert. Waar de telefoon eerst één platte lijst toonde waarin dezelfde film op drie
+servers als drie rijen langskwam, staan er nu secties: Films, Series en Afleveringen als unified
+resultaten met hun bronnen erachter, en Collecties, Playlists en Overig bron-concreet met hun
+servernaam. Hoofdstuk 16.2 verbood die drie rijen letterlijk; het duurde tot nu voordat er een
+scherm was dat het opvolgde.
+
+Daarmee heeft `searchProjection` eindelijk een gebruiker. De engine stond sinds F0 in de repository
+met 301 regels tests en geen enkele aanroeper, en telde als twee van de tien openstaande
+`ci_checks`-meldingen. Die twee zijn weg; er blijven er acht over, allemaal bij de schrijfpaden van
+fase 5.
+
+Het bronaantal verschijnt alleen bij meer dan één bron. Mockup 05 zet "2 bronnen" op de ene rij,
+"1 bron" op de volgende en niets op de derde, en die drie kunnen niet alle drie de regel zijn. De
+aanvraagsectie blijft een expliciete tik: Pleya stuurt geen zoekopdracht naar een externe server
+omdat iemand toevallig iets intypt. De vier chips staan er wel altijd, ook Afleveringen zonder
+afleveringen, want de mockup tekent hem naast een set die er geen heeft.
+
+Twee naden uit fase 3 zijn onderweg gerepareerd. Het zoekicoon in de catalogusheader deed in
+productie niets: `MainScreen` bouwt `MobileShellScope` binnen zijn eigen route, en een gepushte
+route is een broer van die route en geen afstammeling, dus de scope was er niet. En zelfs met scope
+bleef het onzichtbaar, want alleen de tab wisselen verandert het oppervlak onder een route die het
+scherm nog bedekt. De catalogus popt nu eerst. De fase-3-test kon dit niet zien: die zette de scope
+rechtstreeks om het scherm, zonder navigator ertussen.
+
+De compacte kop is terug op de gemeten waarde. Fase 3 zette de titel op 26; mockup 03, 05 en 19
+tekenen hem op 18. Dat is nagemeten met de echte Inter-faces: "Alle films" op 26 is 348 pixels breed
+waar het beeld er 237 tekent. De methode is eerst geijkt op de labels in de tabbalk, die op 12
+uitkomen, precies wat Material daar zet. Alle films en Zoeken delen die kop en veranderen dus samen
+mee.
+
+Zoeken is bovendien de eerste iOS-surface die een scenario zonder coördinaat-tap kan bereiken.
+`POST /v1/open` drijft de tabselectie van de shell, en Zoeken is een rootbestemming, dus
+`screen.search` plus de tabkoppeling geven `ios.search.northstar` een instap die fase 2 en 3 niet
+konden hebben. Typen kan het scenario nog niet: `typeText` heeft op geen enkele driver een endpoint,
+en dat erbij bouwen is Verify-infrastructuur.
+
+De iPad is gemeten en niet beredeneerd. `discover.hero.layout` op de iPad Pro 11-inch (M5), gedraaid
+op `d41c291` en op de fase-4-tip: zeven gedeclareerde nodes aan beide kanten, dezelfde bounds tot op
+de subpixel, tabbalk onveranderd op `nav.discover` / `nav.libraries` / `nav.search` / `nav.myPleya`.
+
+Eén waarneming die buiten deze fase valt: de app start standaard in de OLED-stand, waarin de grond
+zwart is en `surface` `#141414`. De northstar is gebouwd op de donkere stand. Wie een screenshot
+naast de mockups legt, moet het thema eerst op donker zetten. Zie [DEC-095](DECISIONS.md#dec-095-fase-4-zet-zoeken-op-de-projectie-en-corrigeert-de-gedeelde-compacte-kop).
+
 ## [2026-09-03] iOS Unified 2026 fase 3: de complete catalogus
 
 "Alle films" en "Alle series" bestaan. Het zijn één scherm,

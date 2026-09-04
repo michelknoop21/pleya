@@ -245,6 +245,25 @@ informatiearchitectuur zijn die dit hoofdstuk juist afwijst. Ze vervallen dus in
 telt de vollere header ook in fase 2 niet mee als verschil met de northstar. Zie
 [DEC-093](DECISIONS.md#dec-093-fase-2-verhuist-de-iphone-rootnavigatie-en-de-ipad-blijft-op-zijn-eigen-tabset).
 
+## 9b. Beslist na fase 3: de compacte kop is 18 punt, en de OLED-standaard staat naast de northstar
+
+**De compacte terug-en-titel-kop meet 18 punt.** Mockup 03, 05 en 19 tekenen dezelfde kop, en fase 3
+gaf hem 26. Dat verschil is nagemeten in plaats van geschat. "Alle films" in Inter Bold op 26 levert
+een inktvlak van 348 pixels, terwijl `03-alle-films.png` er 237 tekent op dezelfde drievoudige
+schaal: bijna de helft te breed. Een gezamenlijke fit van de drie koppen tegen de faces in
+`assets/fonts` komt uit op 18, met een afwijking onder 2,5 procent op alle zes de inktmaten. De
+methode is eerst geijkt op de labels in de tabbalk, die op 12 uitkomen, precies de maat die Material
+daar tekent. `MobileCatalogHeader.titleFontSize` is de gedeelde eigenaar van dat getal en Alle films
+en Zoeken renderen er allebei uit. De grote paginatitel op een landing is een andere kop en houdt
+zijn eigen maat.
+
+**De app start in de OLED-stand, de northstar is gebouwd op de donkere stand.**
+`SettingsService.themeMode` heeft `ThemeMode.oled` als standaardwaarde, waarin de grond `#000000` is
+en `surface` `#141414`. Paragraaf 2 van dit rapport beschrijft de donkere stand, `#141414` en
+`#1F1F1F`, en dat is ook wat de mockups tekenen. Een screenshot van een vers profiel staat dus één
+tier lager dan het beeld ernaast, op alle surfaces sinds fase 1. Het is een productstandaard en geen
+implementatiefout; wie visueel vergelijkt zet het thema eerst op donker.
+
 ## 10. Open design details, niet blokkerend
 
 Twee details op de Home-comp zijn niet beslist. Ze raken uitsluitend de hero en laten de rest van

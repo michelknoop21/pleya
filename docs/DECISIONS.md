@@ -719,6 +719,97 @@ De required-candidate `portable`-gate en de uitgevoerde iOS/tvOS Verify-scenario
 **Consequences:** Pleya Verify Core 1.0 is hiermee compleet: deterministic fixture-backed scenario's, drie platformdrivers (macOS/iOS-sim/tvOS-sim), UI-boom/focus/events/geometrie-assertions, autoritatieve compositor-screenshots als visuele waarheid, complete evidencebundels, false-PASS-verdediging (Fase 12), CLI, MCP-laag (Fase 13), CI-orkestratie (Fase 14), fail-closed control-plane-auth, bounded execution, en redactie-/securityhardening (dit besluit). Bekende, niet-blokkerende grenzen: macOS-hosted-buildsigning in CI, `tvos.library.filters` (DEFERRED voor G13, [DEC-063](#dec-063-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)), en tvOS-D-pad-navigatie binnen het systeemtoetsenbord (niet simuleerbaar, zie CONTRIBUTING.md). Geen nieuwe featurescope geopend; een volgende sessie die verder wil dan Core 1.0 begint bij een expliciet nieuw besluit, niet bij het stilzwijgend heropenen van Fase 1 t/m 15.
 
 
+## DEC-095: fase 4 zet Zoeken op de projectie, en corrigeert de gedeelde compacte kop
+
+**Date:** 2026-09-04
+**Status:** accepted
+
+**Context:** Fase 4 staat in sectie E van [het fase-1-plan](ios-unified-2026-fase1-plan.md) als
+"Zoeken (05) op `SearchProjection`". Dat is een aanwijzing, geen afbakening. De scope is afgeleid uit
+mockup 05, uit hoofdstuk 16.1 en 16.2 van de tvOS-specificatie, en uit wat de productiecode werkelijk
+doet. Drie dingen bevestigen hem. `searchProjection` bestond sinds F0 met 301 regels tests en nul
+aanroepers, en was daarmee twee van de tien openstaande `ci_checks`-bevindingen. De i18n had
+`search.filters.people` en `search.filters.other` al staan zonder Dart-gebruiker, precies het
+vocabulaire dat hoofdstuk 16.1 nodig heeft. En `search_screen.dart` toonde een platte lijst waarin
+dezelfde film op drie servers als drie rijen verscheen, wat hoofdstuk 16.2 letterlijk verbiedt.
+
+Vier punten volgden er niet ondubbelzinnig uit en zijn aan Michel voorgelegd.
+
+**Decision:**
+
+**1. Het bronaantal verschijnt alleen bij meer dan één bron.** Mockup 05 zet "2 bronnen" op de ene
+filmrij, "1 bron" op de rij eronder, en niets op de serierij daar weer onder. Die drie kunnen niet
+alle drie de regel zijn. "Alleen als het er meer zijn" is de regel die de kaarten op Home, de
+landings en de catalogus al aanhouden (rapport paragraaf 8), en de rest van mockup 05 is als
+renderset-inconsistentie aangemerkt, zoals [DEC-094](#dec-094-de-complete-catalogus-is-een-geneste-surface-en-de-bar-in-mockup-03-en-06-is-renderset-inconsistentie)
+dat voor de tabbalk deed.
+
+**2. De aanvraagsectie blijft een expliciete handeling.** Mockup 05 tekent "Niet op je servers"
+gevuld, naast de lokale resultaten, maar een beeld kan niet tonen dat er een tik aan voorafging.
+Pleya stuurt geen zoekopdracht naar een Jellyseerr- of Overseerr-server omdat iemand toevallig iets
+intypt. De sectie krijgt wel de vorm die de mockup tekent, met de Aanvragen-chip die de bestaande
+aanvraagsheet opent. Zonder aanvraagserver is er geen sectie, want dan is er niets te vragen.
+
+**3. De vier chips staan er altijd.** Mockup 05 tekent Afleveringen naast een resultatenset die er
+geen heeft, dus de rij is een vaste set versmallingen en geen samenvatting van wat er terugkwam. De
+gedeelde lijst op televisie en desktop houdt zijn eigen regel, waar een chip zonder inhoud verborgen
+blijft: daar is de rij één lijst diep en verbergt hij niets.
+
+**4. De compacte kop gaat naar de gemeten northstarwaarde, en fase 3 verandert mee.** Mockup 03, 05
+en 19 tekenen dezelfde terug-en-titel-kop. Fase 3 gaf hem 18 punt niet maar 26. Dat is gemeten en
+niet geschat: "Alle films" in Inter Bold op 26 levert een inktvlak van 348 pixels waar
+`03-alle-films.png` er 237 tekent op dezelfde drievoudige schaal, bijna de helft te breed. Een
+gezamenlijke fit van de drie koppen tegen de echte Inter-faces uit `assets/fonts` komt uit op 18,
+met een afwijking onder 2,5 procent op alle zes de inktmaten; de methode is eerst geijkt op de labels
+in de tabbalk, die op 12 uitkomen, precies wat Material daar tekent. Fase 4 neemt die 26 dus niet
+over als contract. De gedeelde waarde is gecorrigeerd, wat betekent dat Alle films meeverandert. Dat
+is geen herontwerp van fase 3, het is fase 3 terugbrengen naar een beeld dat al goedgekeurd was. De
+grote paginatitel op een landing is een andere kop en houdt zijn eigen maat; een test pint allebei,
+zodat een latere wijziging ze niet stilzwijgend op één getal samentrekt.
+
+**Consequences:** Twee naden uit fase 3 zijn onderweg gerepareerd, en de tweede was ernstiger dan
+gemeld. Het zoekicoon in de catalogusheader deed in productie niets. `MainScreen` bouwt
+`MobileShellScope` binnen zijn eigen route, dus de scope leeft in de route van de shell;
+`MobileCatalogScreen` wordt op diezelfde navigator geduwd en is daarmee een broer van die route, geen
+afstammeling. `MobileShellScope.maybeOf` gaf null en `openTab` werd nooit aangeroepen. Zelfs met een
+werkende scope bleef het onzichtbaar, want alleen de tab wisselen verandert het oppervlak onder een
+route die het scherm nog bedekt. De catalogus popt nu eerst en draagt daarna over. De fase-3-test kon
+dit niet zien: die zette de scope rechtstreeks om het scherm, zonder navigator ertussen. Dezelfde
+vorm als de `OverlaySheetHost` die een simulatorprobe moest vinden.
+
+Het zoekveld draagt zijn eigen decoratie in plaats van `pillInputDecoration`. Die primitief is een
+capsule met een alpha-vulling die op focus oplicht, gebouwd zodat invoerfocus door overscan op een
+televisie heen komt, en hij wordt gedeeld met de TV-zoekpagina, de desktopbalk en het Seerr-veld.
+Rapport paragraaf 2 wijst voor een zoekveld `surface` aan en `radiusMd` voor velden, en op touch is
+er één actieve staat per element in plaats van een focustier. Op de simulator tekende het veld een
+capsule van radius 21; het is nu radius 12, 42 punt hoog, inset 16, met 12 punt tot de chips, gemeten
+en gelijk aan de mockup.
+
+Zoeken is de eerste iOS-surface met een apparaatonafhankelijke Verify-ingang. `POST /v1/open` drijft
+`AutomationNavigationHooks.selectTab` en wacht op de readiness van een `AutomationScreen`, en Zoeken
+is een rootbestemming, dus `screen.search` plus de tabkoppeling geven het scenario een instap die
+fase 2 en fase 3 niet konden hebben. Typen vraagt evenmin een tap: `_selectTab` zet de focus al in
+het veld. De catalogus uit fase 3 kan dit nog steeds niet, want die is een gepushte route en geen
+tab.
+
+Wat fase 4 niet end-to-end bewijst, met de reden erbij. Het scenario typt geen query, want `typeText`
+werpt op zowel de iOS-simulator- als de macOS-driver "no `/v1/input/text` endpoint exists yet". Dat
+endpoint erbij bouwen is Pleya Verify-infrastructuur en een wijziging van het transportcontract, geen
+fase-4-werk. Achter die grens zit een tweede: `catalog.mixed.v1` heeft Aurora, Basalt en Cascade als
+films en Driftwood als enige serie, en die vier delen geen enkele tweeletterige deelreeks, terwijl
+het veld één letter negeert. Ook mét typen zou geen enkele query hier een FILMS- en een SERIES-sectie
+tegelijk op het scherm zetten. De secties, het bronaantal, de versmalling per chip en de
+aanvraagsectie zijn op widgetniveau gedekt, en de projectie zelf end-to-end in
+`test/screens/search_screen_test.dart`.
+
+Eén waarneming die buiten fase 4 valt en toch genoteerd hoort. De app start standaard in de
+OLED-stand (`SettingsService.themeMode` heeft `ThemeMode.oled` als standaardwaarde), waarin de grond
+`#000000` is en `surface` `#141414`. De northstar is gebouwd op de donkere stand, `#141414` en
+`#1F1F1F`. Elke visuele vergelijking met een vers profiel staat dus één tier lager dan het beeld, en
+dat geldt sinds fase 1 voor alle vijf de surfaces. Het is een productstandaard en geen
+implementatiefout, maar wie een screenshot naast de northstar legt moet eerst het thema op donker
+zetten.
+
 ## DEC-094: de complete catalogus is een geneste surface, en de bar in mockup 03 en 06 is renderset-inconsistentie
 
 **Date:** 2026-09-03
