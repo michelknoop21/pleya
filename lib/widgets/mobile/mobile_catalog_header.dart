@@ -32,6 +32,22 @@ class MobileCatalogHeader extends StatelessWidget {
 
   const MobileCatalogHeader({super.key, required this.title, required this.onBack, required this.onSearch});
 
+  /// Measured off the northstar, not chosen.
+  ///
+  /// Fase 3 shipped 26, and that turned out to be a drift rather than a
+  /// contract: rendering "Alle films" in Inter Bold at 26 gives a 348 px ink
+  /// box where `03-alle-films.png` has 237 px at the same 3× scale, so the
+  /// title was some 47 % too wide. Fitting the three compact headers the
+  /// northstar draws — `Alle films` (03), `Zoeken` (05) and `Aanvragen` (19) —
+  /// jointly against the real Inter faces lands on 18, within 2,5 % on every
+  /// one of the six ink dimensions. The method was calibrated first on the
+  /// bottom bar's labels, which come out at the 12 Material paints.
+  ///
+  /// The large page title on a landing is a different heading and keeps its
+  /// own size ([MobilePageTitleRow.titleFontSize]); only the compact
+  /// back-and-title header is corrected here.
+  static const double titleFontSize = 18;
+
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.viewPaddingOf(context).top;
@@ -48,7 +64,7 @@ class MobileCatalogHeader extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
+                style: const TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.w700),
               ),
             ),
             IconButton(onPressed: onSearch, icon: const AppIcon(Symbols.search_rounded), tooltip: t.common.search),
