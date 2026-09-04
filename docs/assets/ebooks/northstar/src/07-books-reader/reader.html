@@ -6,14 +6,16 @@
 <title>Pleya golden 07 · Reader</title>
 <style>
 
-/* Fonts. Inter is the app's own cut from assets/fonts, so the chrome's metrics
-   match every other golden in this set. The reading face is NOT: `Georgia` is
-   resolved from the operating system, because assets/fonts carries no serif.
-   That is the open decision this golden puts to Michel, and until it is made
-   these frames reproduce on macOS and not from every clone. */
+/* Fonts. Both faces are the app's own cuts from assets/fonts, so this golden
+   reproduces from every clone and the chrome and the page carry the same
+   metrics the app will. Inter is the chrome, as in every other golden of this
+   set; Literata is the reading face, decided at revision B and recorded with
+   its licence in assets/fonts/README.md. No system serif and no webfont. */
 @font-face{font-family:'Inter';font-weight:400;src:url('../../../../../../assets/fonts/Inter-Regular.otf')}
 @font-face{font-family:'Inter';font-weight:500;src:url('../../../../../../assets/fonts/Inter-Medium.otf')}
 @font-face{font-family:'Inter';font-weight:700;src:url('../../../../../../assets/fonts/Inter-Bold.otf')}
+@font-face{font-family:'Literata';font-style:normal;font-weight:200 900;
+           src:url('../../../../../../assets/fonts/Literata-Variable.ttf')}
 
 :root{
   --accent:#E5140F;
@@ -70,8 +72,14 @@ html,body{width:393px;font-family:Inter,-apple-system,system-ui,sans-serif;-webk
    you tap it loses your place, so the bands the chrome and the footer occupy
    stay reserved whether they are drawn or not. Margin 32, wider than the
    chrome's 24, because a measure is set for reading and not for the frame. ---- */
+/* Both axes are pinned rather than left to the browser. Chromium applies
+   optical sizing by itself and feeds the type size into `opsz`; Flutter does
+   not and would sit on the font's own default of 12. Writing 18 here makes the
+   two agree, and 18 is the size the column is set at, which is what optical
+   sizing means. Whether `opsz` follows a reader-chosen size is golden 08. */
 .body{position:absolute;left:32px;right:32px;top:188px;z-index:3;
-      font-family:Georgia,'Times New Roman',serif;font-size:18px;line-height:28px;color:var(--ink)}
+      font-family:Literata,serif;font-size:18px;line-height:28px;
+      font-variation-settings:'opsz' 18,'wght' 400;color:var(--ink)}
 .body p + p{margin-top:24px}
 /* A highlight bleeds 7 pt into the margin on both sides, the way a marker
    overshoots the words it covers. */
@@ -112,14 +120,19 @@ html,body{width:393px;font-family:Inter,-apple-system,system-ui,sans-serif;-webk
 
 <!-- Four glyphs and not the comp's five. The comp draws two magnifiers side by
      side; one of them is either a slip or a second function with no name, and
-     this golden does not invent a meaning for it. -->
+     this golden does not invent a meaning for it.
+
+     The bookmark is drawn hollow. A filled glyph is itself a state, and it
+     would claim that the locator under the reader is bookmarked, which nothing
+     in this golden decides. Hollow is "not bookmarked here"; filled is the
+     state that comes with the bookmark model, later. -->
 <template id="chrome">
   <div class="chrome">
     <div class="slot"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m0 0 6-6m-6 6 6 6"/></svg></div>
     <div class="slot"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h14"/></svg></div>
     <div class="gap"></div>
     <div class="slot"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
-    <div class="slot"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.4L5 21V4a1 1 0 0 1 1-1Z"/></svg></div>
+    <div class="slot"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.4L5 21V4a1 1 0 0 1 1-1Z"/></svg></div>
   </div>
 </template>
 

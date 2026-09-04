@@ -47,9 +47,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `06a-books-toc.png` | Inhoudsopgave, canonieke staat op Atomic Habits met de boom open op de locator | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `06b-books-toc-collapsed.png` | Dezelfde boom met alle delen dichtgeklapt | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `06c-books-toc-rowtypes.png` | Detail: de rijsoorten van de boom in hun drie posities | approved | detailuitsnede, 1179×1935 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `07a-books-reader.png` | Reader, canonieke staat op Dune hoofdstuk 12 met de chrome zichtbaar | **proposed** | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `07b-books-reader-immersive.png` | Dezelfde pagina met de chrome verborgen | **proposed** | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `07c-books-reader-themes.png` | Detail: dezelfde pagina in licht, sepia en donker | **proposed** | detailuitsnede, 1179×2478 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `07a-books-reader.png` | Reader, canonieke staat op Dune hoofdstuk 12 met de chrome zichtbaar | **proposed, revisie B** | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `07b-books-reader-immersive.png` | Dezelfde pagina met de chrome verborgen | **proposed, revisie B** | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `07c-books-reader-themes.png` | Detail: dezelfde pagina in licht, sepia en donker | **proposed, revisie B** | detailuitsnede, 1179×2478 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -566,7 +566,7 @@ de hele set, waar paneel 6 een renderrestje `91:43` laat zien. En anders dan bij
 staat er geen tabbalk in het beeld die in de app zou ontbreken: paneel 6 tekent er zelf geen, want de
 reader dekt hem af.
 
-## Golden 07, Reader (proposed)
+## Golden 07, Reader (proposed, revisie B)
 
 Het leesoppervlak zelf: de pagina waar een boek gelezen wordt, en de chrome die eroverheen komt en
 weer weggaat. Inhoud van paneel 7 van de comp, uitvoering op de chrome-grammatica van
@@ -574,9 +574,20 @@ weer weggaat. Inhoud van paneel 7 van de comp, uitvoering op de chrome-grammatic
 chrome zichtbaar, `07b` dezelfde pagina met de chrome verborgen, `07c` een detailuitsnede van
 dezelfde regels in licht, sepia en donker.
 
-**Dit is een voordracht en geen contract.** Er mag niets tegen gebouwd worden voordat Michel de vier
-keuzes hieronder heeft goedgekeurd of afgewezen. Een ervan, de leesletter, is bovendien de reden dat
-deze frames op dit moment alleen op macOS reproduceerbaar zijn.
+**Dit is nog steeds een voordracht.** Michel heeft revisie A op 4 september 2026 inhoudelijk
+goedgekeurd, drie van de vier keuzes aangenomen en één verplichte revisie gevraagd. Die zit hierin.
+Er mag nog niets tegen gebouwd worden.
+
+**Wat revisie B verandert, en verder niets.**
+
+- **De leesletter is Literata en niet langer de systeem-Georgia van macOS.** Een productbesluit van
+  Michel, geen renderdetail: zie de keuze hieronder. De drie frames zijn daarom opnieuw gerenderd en
+  opnieuw gemeten, zonder de oude regelovergangen te forceren.
+- **De bladwijzer in de chrome is hol getekend in plaats van gevuld.** Een gevuld symbool is zelf een
+  staat en zou beweren dat de locator onder deze pagina bewaard is. Dat beslist deze golden niet.
+- **Het voetcontract is strenger opgeschreven.** Het percentage en het paginalabel volgen niet meer
+  uit dezelfde bron, en `van N` mag nu alleen nog uit een betrouwbaar eindlabel van de `page-list`
+  komen.
 
 De rollen van de drie frames horen bij de voordracht, net als bij 04, 05 en 06. `07a` is de
 **hoofdstaat**: de pagina zoals je hem ziet op het moment dat je de chrome oproept. `07b` is
@@ -584,51 +595,80 @@ De rollen van de drie frames horen bij de voordracht, net als bij 04, 05 en 06. 
 geen variant. `07c` is een **ondersteunende vormspecificatie** van de drie leesthema's en geen
 runtime-staat; de reader toont er één tegelijk.
 
-De maatvoering is gemeten op de gerenderde frames, niet bedacht. De chrome staat op de band 62 tot
-94 die elk scherm van de set aanhoudt, met de glyfrij op 70,3 tot 86,3 en een paginamarge van 24. De
-kopregel `DUNE · HOOFDSTUK 12` staat op 128,3 tot 137,0. De tekstkolom begint op 188 en heeft een
-marge van 32, breder dan die van de chrome, met 18 pt Georgia op een regelafstand van 28 en 24 pt
-tussen de alinea's. In `07a` staan de vijf regels van de eerste alinea op 194,3 / 222,3 / 250,3 /
-278,3 / 306,3, de tweede alinea op 358,3, de derde op 466,3 en de gemarkeerde vierde op 546,3 en
-574,3. De schuif ligt op 760 met een greep van 16, het label eronder op 790,7 tot 802,7, en de
-home-indicator op 839. De sepia-grond meet `#F0E5D7` en de markering `#FDDF9E`, allebei overgenomen
-uit paneel 7.
+De maatvoering is gemeten op de frames van revisie B, niet bedacht. De chrome staat op de band 62
+tot 94 die elk scherm van de set aanhoudt, met de glyfrij op 69,7 tot 86,7 en een paginamarge van
+24. De kopregel `DUNE · HOOFDSTUK 12` staat op 128,0 tot 137,3. De tekstkolom begint op 188 en heeft
+een marge van 32, breder dan die van de chrome, met 18 pt Literata op een regelband van 28 en 24 pt
+tussen de alinea's. De regelbanden liggen daarmee op 188, 216, 244 en zo verder. In `07a` staat de
+inkt van de vijf regels van de eerste alinea op 195,0 / 222,7 / 250,7 / 278,7 / 307,0, van de drie
+regels van de tweede op 358,7 / 386,7 / 415,0, van de twee van de derde op 466,7 / 499,3. De vierde
+alinea is gemarkeerd, en dan meet je het merkvlak en niet de inkt: dat loopt van 540 tot 567 en van
+568 tot 595. De breedste regel eindigt op 356,7 in een kolom die tot 361 loopt; de markering bloedt
+aan de linkerkant tot 25 door, 7 punt buiten de kolom, zoals een marker over zijn woorden heen
+schiet. De schuif ligt op 753,7 tot 772,3 met een greep van 16, het label eronder op 790,0 tot
+803,0, en de home-indicator op 839,0 tot 844,0. De sepia-grond meet `#F0E5D7` en de markering
+`#FDDF9E`, allebei overgenomen uit paneel 7.
 
-**De vier keuzes die deze golden moet nemen en die niet stilzwijgend genomen mogen worden.**
+**Wat de wissel van Georgia naar Literata met de bladspiegel deed**, gemeten op `07a` van beide
+revisies. Het aantal regels per alinea is gelijk gebleven: vijf, drie, twee, twee. De alinea's twee
+tot en met vier breken zelfs op dezelfde woorden. De eerste alinea niet: Literata is breder, dus
+`sand.` en `desert` schuiven naar het regeleinde waar Georgia `Paul` en `his` had staan. De inkt
+zakt overal 0,3 tot 0,7 punt, want Literata hangt anders in zijn regelband. Het zichtbaarste
+verschil zit in de markering: het merkvlak is 27 punt hoog in plaats van 21, dus de twee gemarkeerde
+regels raken elkaar nu op 567 en 568 in plaats van 7 punt uit elkaar te staan. Dat is een gevolg van
+de metriek van de letter en geen aparte ontwerpkeuze, maar het is wel te zien en het staat hier
+daarom.
 
-- **De leesletter is een productbesluit en er is nog geen serif in de repository.** `assets/fonts`
-  bevat Inter en ArchivoBlack, en paneel 12 noemt `Georgia` als standaardlettertype. Deze render
-  leunt daarom op de systeem-Georgia van macOS, en daarmee is hij niet meer vanuit elke clone op te
-  bouwen: dat breekt de belofte die in "Opnieuw renderen" staat en die voor golden 00 tot 06 wel
-  geldt. Er zijn twee uitwegen en ze zijn allebei legitiem. Een serif aan `assets/fonts` toevoegen
-  maakt de leesletter van de reader onderdeel van het product, met een licentie die dat toelaat, en
-  herstelt de reproduceerbaarheid; de golden wordt dan opnieuw gerenderd en de maatvoering hierboven
-  verschuift een fractie. De golden op Georgia laten staan houdt het beeld dichter bij paneel 12,
-  maar dan is de bron alleen op macOS bruikbaar en moet dat in het Manifest staan. **Deze golden
-  maakt die keuze niet.**
-- **`Pagina 248 van 616` raakt een contract dat al ligt.** Golden 05 heeft goedgekeurd dat een
+**De vier keuzes van revisie A, met de stand erbij.**
+
+- **De leesletter, aangepast op verzoek: Literata is de product-serif van de Pleya-reader.**
+  Systeem-Georgia is afgewezen. De reden is niet alleen reproduceerbaarheid: de reader wordt een
+  eigen productoppervlak, en dan moeten golden en app dezelfde glyphmetriek hebben, moeten iPhone en
+  iPad dezelfde snit gebruiken, moet een nieuwe machine dezelfde golden kunnen reconstrueren, en mag
+  een OS-update de bladspiegel van een pagina niet stil veranderen. `assets/fonts/Literata-Variable.ttf`
+  is daarom onderdeel van het product geworden, byte-identiek aan `google/fonts`, met versie,
+  bovenstroomse commit, sha256 en de licentiecontrole in `assets/fonts/README.md`. Het is SIL Open
+  Font License 1.1 zonder Reserved Font Name, wat bundelen in een App Store-app toestaat zolang de
+  licentietekst meegaat; die staat als `assets/fonts/OFL-Literata.txt` naast het bestand. De
+  goldenbron laadt precies dat bestand met een relatief pad, net als Inter, dus er komt geen webfont
+  en geen systeemfallback meer aan te pas. **Eén detail moet meeverhuizen naar de app en is nu al
+  bekend:** het is een variabele letter met een `opsz`-as, Chromium vult die as zelf met de
+  tekengrootte en Flutter doet dat niet. De bron pint hem daarom expliciet op `'opsz' 18, 'wght' 400`
+  en de reader moet dezelfde waarden zetten, anders tekent de app een andere snit dan de golden.
+  Of `opsz` een door de lezer gekozen tekengrootte volgt hoort bij golden 08.
+- **`Pagina 248 van 616`, goedgekeurd met een strenger contract.** Golden 05 heeft vastgelegd dat een
   paginatelling bibliografische editiemetadata is en nooit uit de paginering van de reader komt.
-  Golden 06 heeft `Ga naar pagina` aan de `page-list`-navigatie van de EPUB gehangen en daarbij
-  zowel schermpagina's als de bibliografische telling expliciet uitgesloten. De voet van paneel 7
-  toont `616`, hetzelfde getal dat in de statsrij van golden 05 staat, en dat is precies de
-  vermenging die die twee goldens verbieden. Het voorstel is daarom: het percentage staat er altijd,
-  het paginanummer alleen wanneer de publicatie `page-list`-navigatie meelevert, en dan komen zowel
-  248 als 616 uit die navigatie. Dat `616` in het frame gelijk is aan de statsrij van golden 05 is
-  een toevalligheid van deze editie en geen afleiding. Levert de publicatie die navigatie niet, dan
-  staat er alleen `48%`. Dit is de scherpste keuze van 07, en het frame toont bewust de rijke staat;
-  de terugval staat beschreven en is niet getekend.
-- **De twee identieke zoekglyfs in de comp.** Paneel 7 zet er twee naast elkaar die er hetzelfde
-  uitzien. Eén ervan is een vergissing of een tweede functie zonder naam, en deze golden verzint er
-  geen betekenis bij: er staat er één, en die opent `Zoeken in boek` uit paneel 9. Dezelfde
-  behandeling die golden 02 aan de tweede glyf in paneel 2 gaf. Weet Michel wat de tweede moest
-  doen, dan komt hij terug.
-- **De inhoudsopgaveglyf is de deur van golden 06, en die duwt een pagina.** De tweede glyf
-  linksboven is de inhoudsopgave. Golden 06 heeft zijn presentatie als gepushte pagina gekozen
-  zonder de deur te kennen en heeft opgeschreven dat de kop terugkomt voor een correctie als 07 er
-  een sheet van maakt. Dat gebeurt hier niet: de glyf pusht dezelfde pagina die golden 06 tekent, met
-  de terugpijl die er al op staat. **Golden 06 heeft daarmee geen correctieronde nodig.** Dat is ook
-  de goedkoopste uitkomst: een sheet zou de kop van 06 en zijn actiebalk allebei opnieuw ter
-  discussie stellen.
+  Golden 06 hing `Ga naar pagina` aan de `page-list`-navigatie van de EPUB en sloot schermpagina's en
+  de bibliografische telling daarbij expliciet uit. De voet van de reader houdt zich aan allebei, en
+  wel zo:
+  - het percentage komt altijd uit `totalProgression` en staat er dus altijd;
+  - een paginalabel verschijnt alleen wanneer de publicatie echte `page-list`-navigatie meelevert
+    **en** de locator daarop te mappen is; getoond wordt dan het label van die ingang, niet een
+    getelde positie;
+  - `van N` verschijnt alleen wanneer diezelfde `page-list` een betrouwbaar numeriek eind- of
+    totaallabel oplevert. Een page-list mag labels dragen die niet netjes van 1 tot 616 lopen, en
+    dan staat er alleen het label;
+  - `N` wordt nooit berekend uit het aantal ingangen in de `page-list`;
+  - de bibliografische `Pagina's` uit golden 05 wordt hier nooit voor hergebruikt. Dat `616` in dit
+    frame gelijk is aan de statsrij van golden 05 is een eigenschap van deze editie en geen
+    afleiding.
+
+  Levert een publicatie niets van dit alles, dan staat er alleen `48%`. Het frame toont bewust de
+  rijke staat; de terugval staat beschreven en is niet getekend.
+- **Eén zoekglyf, goedgekeurd.** Paneel 7 zet er twee naast elkaar die er hetzelfde uitzien. Eén
+  ervan is een vergissing of een tweede functie zonder naam, en deze golden verzint er geen betekenis
+  bij: er staat er één, en die opent `Zoeken in boek` uit paneel 9. Dezelfde behandeling die golden
+  02 aan de tweede glyf in paneel 2 gaf. Weet Michel wat de tweede moest doen, dan komt hij terug.
+- **De inhoudsopgaveglyf duwt golden 06 als pagina, goedgekeurd.** De tweede glyf linksboven is de
+  inhoudsopgave. Golden 06 koos zijn presentatie als gepushte pagina zonder de deur te kennen en
+  schreef op dat de kop terug zou komen voor een correctie als 07 er een sheet van maakte. Dat
+  gebeurt niet: de glyf pusht dezelfde pagina die golden 06 tekent, met de terugpijl die er al op
+  staat. **Golden 06 heeft daarmee geen correctieronde nodig.**
+
+**De bladwijzer, gesloten in revisie B.** De glyf is hol. Hol betekent dat de huidige locator geen
+bladwijzer heeft; gevuld wordt later de staat waarin hij er wel een heeft. Meer legt deze golden niet
+vast. Hoe een bladwijzer bewaard wordt, hoeveel er kunnen zijn, waar je ze terugziet en of ze naast
+de inhoudsopgave een eigen lijst krijgen is werk voor later, precies zoals golden 06 het openliet.
 
 **Wat deze golden expliciet openlaat**, zodat het later een besluit is en geen omissie:
 
@@ -636,20 +676,19 @@ uit paneel 7.
   het oproept. Een tik in het midden van de pagina is de conventie, maar dan is de vraag wat een tik
   aan de rand doet, en bladeren is paneel 8 (`Scrollmodus`, `Verticale scroll`) en niet deze golden.
 - **Wat de markering is en hoe je er een maakt.** Paneel 7 tekent een gemarkeerde zin en deze golden
-  tekent hem mee. Hoe een lezer er een maakt, waar ze terug te vinden zijn en of ze naast de
-  inhoudsopgave een eigen lijst krijgen staat hier niet; golden 06 liet bladwijzers en aantekeningen
-  om dezelfde reden open.
-- **De bladwijzer in de chrome staat gevuld.** Dat leest als "deze pagina is bewaard", maar wat een
-  bladwijzer is, hoeveel er kunnen zijn en waar je ze terugziet wordt hier niet beslist. De glyf
-  wordt getekend omdat de comp hem tekent.
+  tekent hem mee. Hoe een lezer er een maakt en waar ze terug te vinden zijn staat hier niet.
 - **Welk thema de reader standaard opent.** Paneel 7 tekent sepia en paneel 12 zet `Leesthema` op
   `Donker`. Die twee spreken elkaar tegen. `07a` en `07b` staan in sepia omdat paneel 7 het onderwerp
-  van deze golden is; welke van de drie de standaard wordt hoort bij de instellingengolden.
+  van deze golden is. **Sepia in 07 bewijst geen standaardinstelling**, alleen de sepia-leesstaat;
+  welke van de drie standaard geselecteerd staat hoort bij golden 08.
 - **Wat de schuif doet terwijl je hem sleept.** Er is geen voorbeeldweergave, geen hoofdstuknaam die
   meeloopt en geen terugsprongknop getekend. Of de reader die nodig heeft is een eigen vraag.
 - **De liggende stand en de iPad.** Beide frames zijn staand op 393 pt. Een tekstkolom van 329 pt
   breed is op een iPad een verkeerde maat, en de vijf iPad-goldens die nog komen zijn de plek waar
   dat beslist wordt.
+- **De cursieve snit van Literata.** Deze golden tekent geen cursief, dus staat het bestand nog niet
+  in de repository. Een EPUB met `<em>` heeft hem nodig; herkomst, licentie en hash liggen al klaar
+  in `assets/fonts/README.md`, dus toevoegen is dan mechanisch en geen tweede licentieronde.
 
 **Bewuste verschillen met het beeld die geen goedkeuring nodig hebben.** De comp schrijft de
 kopregel als `DUNE - HOOFDSTUK 12` en de voet als `48% - Pagina 248 van 616` met een koppelteken;
@@ -658,11 +697,12 @@ deze repository geschreven en niet uit het boek geciteerd, en hij staat in het E
 set Dune als Engelse editie voert; de Nederlandse vulling van de comp zou een vertaling op het scherm
 zetten die de plank niet heeft. De kopregel blijft wél Nederlands, want die wordt door de app
 gemaakt uit `chapterLabel`, precies zoals golden 06 `Hoofdstuk 11 tot 14` onder een Engelse titel
-zet. De chrome staat direct op de pagina zonder de scrim die `20-speler.png` onder zijn bediening
-legt: die scrim tilt witte glyfs van een bewegende foto, en een pagina tekst is geen van beide. De
-statusbalk staat in `07b` gewoon aan, want iOS houdt hem daar en een leeg gat rond de inkeping is
-geen leeswinst. En de kopregel verdwijnt niet met de chrome mee: dat is de kopregel van de pagina,
-zoals een gedrukt boek er bovenaan een draagt, en geen bediening.
+zet. Paneel 12 noemt `Georgia` als lettertype en de reader draagt nu Literata; dat is de keuze
+hierboven en golden 08 erft hem. De chrome staat direct op de pagina zonder de scrim die
+`20-speler.png` onder zijn bediening legt: die scrim tilt witte glyfs van een bewegende foto, en een
+pagina tekst is geen van beide. De statusbalk staat in `07b` gewoon aan, want iOS houdt hem daar en
+een leeg gat rond de inkeping is geen leeswinst. En de kopregel verdwijnt niet met de chrome mee:
+dat is de kopregel van de pagina, zoals een gedrukt boek er bovenaan een draagt, en geen bediening.
 
 ## Wat er tegen golden 06 gebouwd is
 
@@ -1102,14 +1142,16 @@ node render.js reader.html ../../07b-books-reader-immersive.png immersive
 node render.js reader.html ../../07c-books-reader-themes.png themes 826
 ```
 
-Op 4 september 2026 leverden twee opeenvolgende runs identieke bestanden op (md5 `ed757d01…`,
-`afa48407…` en `6c9f2314…`).
+Op 4 september 2026 leverden twee opeenvolgende runs van revisie B identieke bestanden op (md5
+`ae365ae9…`, `3784195f…` en `8a9e7a24…`). Dit is de eerste golden van de set waarvan de tekstkolom
+een letter uit de repository laadt in plaats van er een van het besturingssysteem te lenen, dus de
+render is nu ook buiten macOS reproduceerbaar. De md5's van voordracht A staan hier niet meer; die
+frames leunden op de systeem-Georgia en zijn daarmee toch niet na te maken.
 
-**Golden 07 is de enige die niet vanuit elke clone reproduceert.** De chrome laadt Inter uit
-`assets/fonts`, maar de tekstkolom vraagt `Georgia` aan het besturingssysteem, want er is geen serif
-in de repository. Op een machine zonder Georgia valt hij terug op Times New Roman en verspringt de
-regelval. Dat is geen slordigheid maar de open keuze uit het hoofdstuk hierboven, en hij verdwijnt
-zodra de leesletter gekozen is.
+**Elke golden van deze set reproduceert nu vanuit elke clone.** Golden 07 was de uitzondering zolang
+zijn tekstkolom `Georgia` aan het besturingssysteem vroeg; revisie B laadt Literata uit
+`assets/fonts` met een relatief pad, net als Inter, en pint daarbij `'opsz' 18, 'wght' 400`, want een
+variabele letter waarvan de assen niet vastliggen is zelf een bron van drift.
 
 `render.js` opent Chromium op 393×852 met `deviceScaleFactor: 3` en wacht op `document.fonts.ready`.
 Op 3 september 2026 leverde deze route vanuit de repo-bron byte-identieke PNG's op (md5
