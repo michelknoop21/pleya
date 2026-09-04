@@ -312,12 +312,23 @@ worden.**
   boven twee pillen die de volle breedte pakken. De comp toont ook geen balk. Dit wijkt bewust af van
   de Verder-lezen-kaart op Boeken-home, die er wel een heeft: daar is de kaart klein en de tekst
   onbetaalbaar, hier is het omgekeerd.
+- **De primaire actie draagt een open boek, geen play-driehoek.** De comp tekent een driehoek. Dat is
+  het glyph voor het starten van een stream, en op het enige scherm in deze reeks waar helemaal geen
+  video zit zou het het laatste overblijfsel ervan zijn. De knop opent de reader, dus hij draagt het
+  boek, in beide staten en met hetzelfde silhouet als de Boeken-tab, omdat het hetzelfde ding is. De
+  pil, de maten, de teksten en de plaatsing veranderen er niet door.
 - **De secundaire actie is een gevulde pil, niet de omlijnde uit de comp.** De set vult hem met
   `#2F2F2F`. Een omlijnde knop over de volle breedte zou het enige omlijnde bedieningselement in de
   hele set zijn.
 - **De statsrij houdt jaar, genre en pagina's.** Golden 02 hield die uit het raster omdat een plank
   geen filmcatalogus is. Dat was een besluit over het raster, niet over het product: het detail is
   precies de plek waar de metadata van een boek hoort, en de comp zet ze daar ook neer.
+- **`616 Pagina's` is bibliografische editiemetadata en géén leespositie.** Een reflowable EPUB heeft
+  geen vast aantal schermpagina's: dat verschuift met lettergrootte, lettertype en marges, en het is
+  per toestel anders. De kolom toont dus wat de editie of de provider betrouwbaar meelevert, en wordt
+  nooit uit de paginering van de reader afgeleid. Levert de bron niets, dan valt de rij terug op twee
+  waarden; er verschijnt geen lege kolom en zeker geen `0 Pagina's`. Het is daarmee de enige stat die
+  optioneel is: jaar en genre staan er altijd.
 - **De genrekolom is 1,45 keer zo breed als de twee andere.** Een gelijke derde is te smal voor het
   enige woord van de drie: `Sciencefiction` liep dan tegen de haarlijnen aan.
 - **De reeksregel is een label en verder niets.** `Dune #1` staat onder de auteur, in dezelfde inkt
@@ -337,12 +348,19 @@ worden.**
 
 **Wat deze golden expliciet openlaat**, zodat het later een besluit is en geen omissie:
 
-- **De inhoudsopgave heeft geen zichtbare ingang.** Paneel 6 van de comp is de inhoudsopgave, maar
-  paneel 5 toont nergens hoe je er komt. Dat is een echt gat in de bron en geen detail dat hier stil
-  ingevuld hoort te worden. Golden 06 moet het beantwoorden, en dat kan betekenen dat dit scherm er
-  alsnog een rij of een menu-item bij krijgt.
-- **De gedownloade staat van de tweede knop.** `Downloaden` is de staat vóór de download. Wat er
-  staat tijdens en erna raakt de downloadwachtrij van paneel 10 en hoort bij die golden.
+- **De inhoudsopgave heeft geen zichtbare ingang, en die verzinnen we nu niet.** Paneel 6 van de comp
+  is de inhoudsopgave, maar paneel 5 toont nergens hoe je er komt. Er komt hier dus geen extra rij
+  bij: eerst moet vaststaan hoe de reader opengaat en hoe zijn chrome werkt, want daar hoort een
+  inhoudsopgave in de eerste plaats thuis. Blijkt bij golden 06 dat hij ook vóór het openen van het
+  boek bereikbaar moet zijn, dan komen we gecontroleerd op golden 05 terug. Alleen die uitkomst is
+  grond om dit scherm te heropenen.
+- **`Downloaden` legt alleen het zichtbare CTA-slot vast.** Golden 05 zegt dat er een tweede,
+  secundaire actie onder de leesknop staat, hoe die eruitziet en waar hij hangt. Wat `Downloaden`,
+  `Downloaden…`, `Gedownload`, `Verwijderen` of een foutstaat betekenen, en wanneer ze elkaar
+  vervangen, wordt hier niet beslist en mag er ook niet stilzwijgend uit worden afgelezen. Dat hoort
+  bij de downloadfase, dezelfde die paneel 10 van de comp bedient. Let op bij het opschrijven van een
+  fase-ID: de goedgekeurde serverroadmap loopt tot PS-13, en de e-booksfasen die daarboven genoemd
+  worden (`PS-14` in golden 04, en de downloadfase hier) staan nog nergens als vastgelegde Phase ID.
 - **Wat er onder de vouw staat.** De pagina scrollt, want de beschrijving is afgekapt. Of daar de
   volledige beschrijving, de reeks of aanbevelingen op volgen is niet vastgelegd.
 
@@ -569,8 +587,8 @@ node render.js detail.html ../../05b-book-detail-unread.png unread
 node render.js detail.html ../../05c-book-detail-actions.png actions 560
 ```
 
-Op 4 september 2026 leverden twee opeenvolgende runs identieke bestanden op (md5 `eb3883fb…`,
-`04d51147…` en `200e70fa…`).
+Op 4 september 2026 leverden twee opeenvolgende runs identieke bestanden op (md5 `e113ae65…`,
+`48cd7f26…` en `53199612…`).
 
 `render.js` opent Chromium op 393×852 met `deviceScaleFactor: 3` en wacht op `document.fonts.ready`.
 Op 3 september 2026 leverde deze route vanuit de repo-bron byte-identieke PNG's op (md5
