@@ -25,10 +25,25 @@ class BookDescription extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = TextStyle(
-      fontSize: fontSize,
-      height: BookDetailLayout.descriptionLineHeight / fontSize,
-      color: Colors.white.withValues(alpha: 0.78),
+    // Resolved against the ambient default rather than left to inherit, and
+    // then handed to both the measurement and the paint.
+    //
+    // The two used to disagree on the one property that decides where a line
+    // breaks. This style names no `fontFamily`, so the `TextPainter` in
+    // [clamp] laid the paragraph out in the platform default, while
+    // `Text.rich` without a `style` gets `DefaultTextStyle` — Inter, from
+    // `monoTheme`'s `ThemeData(fontFamily: 'Inter')`. The binary search
+    // deliberately returns the longest prefix that still fits, so it lands
+    // exactly on the boundary; in a wider face that asks for one line more,
+    // and `Text.rich` inherits `TextOverflow.clip`, so `… meer` fell off the
+    // bottom and the last line stopped mid-sentence. Widget tests cannot see
+    // it because the test font makes every family measure the same.
+    final style = DefaultTextStyle.of(context).style.merge(
+      TextStyle(
+        fontSize: fontSize,
+        height: BookDetailLayout.descriptionLineHeight / fontSize,
+        color: Colors.white.withValues(alpha: 0.78),
+      ),
     );
     final moreStyle = style.copyWith(color: Colors.white.withValues(alpha: 0.5));
     final scaler = MediaQuery.textScalerOf(context);
@@ -44,7 +59,7 @@ class BookDescription extends StatelessWidget {
           maxWidth: constraints.maxWidth,
           scaler: scaler,
         );
-        return Text.rich(span, maxLines: maxLines, textScaler: scaler);
+        return Text.rich(span, style: style, maxLines: maxLines, textScaler: scaler);
       },
     );
   }
@@ -56,6 +71,12 @@ class BookDescription extends StatelessWidget {
   /// `meer` span off along with the rest, so the cut has to be found before the
   /// paragraph is handed to a `Text`. A binary search over grapheme clusters,
   /// so it is a handful of layouts and never splits a character.
+  ///
+  /// [style] has to be the fully resolved style the paragraph will be painted
+  /// in, `fontFamily` and all. A style that leaves a property to inherit
+  /// measures in one face and paints in another, and this search returns the
+  /// longest prefix that fits, so it lands on the boundary where that
+  /// difference is a whole line.
   @visibleForTesting
   static TextSpan clamp({
     required String text,

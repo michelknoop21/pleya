@@ -174,6 +174,51 @@ void main() {
       final text = tester.widget<Text>(find.descendant(of: find.byType(BookDescription), matching: find.byType(Text)));
       expect(text.textSpan!.toPlainText(), endsWith('… ${t.books.descriptionMore}'));
     });
+
+    /// The clamp measures a paragraph with a `TextPainter` and then hands the
+    /// same paragraph to a `Text`. If the two do not resolve to the same face,
+    /// the search lands one line short of the truth and `… meer` is clipped off
+    /// the bottom, because `Text.rich` inherits `TextOverflow.clip`.
+    ///
+    /// Not observable through geometry in a widget test: the test font draws
+    /// every family identically, which is exactly why this shipped. So the
+    /// assertion is on the style that reaches both sides.
+    testWidgets('the paragraph that is measured carries the face it is painted in', (tester) async {
+      tester.view.physicalSize = _viewport;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          // The shape `monoTheme` has: a family on the theme, inherited by
+          // everything under it through `DefaultTextStyle`.
+          theme: ThemeData(fontFamily: 'Inter'),
+          home: Scaffold(
+            body: SizedBox(width: 300, child: BookDescription(text: _reading.description!)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final text = tester.widget<Text>(find.descendant(of: find.byType(BookDescription), matching: find.byType(Text)));
+
+      expect(
+        text.style?.fontFamily,
+        'Inter',
+        reason: 'the paint has to be told the face rather than inherit one the measurement never saw',
+      );
+      expect(
+        (text.textSpan! as TextSpan).style?.fontFamily,
+        'Inter',
+        reason: 'the measured span itself carries the face, so TextPainter lays out what the screen shows',
+      );
+      for (final child in (text.textSpan! as TextSpan).children ?? const <InlineSpan>[]) {
+        final style = (child as TextSpan).style;
+        if (style != null) {
+          expect(style.fontFamily, 'Inter', reason: 'the `meer` span is measured in the same face too');
+        }
+      }
+    });
   });
 
   group('05b, a book that has not been started', () {
