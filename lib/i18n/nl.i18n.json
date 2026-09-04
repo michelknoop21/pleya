@@ -1813,6 +1813,9 @@
     "descriptionMore": "meer",
     "tableOfContents": "Inhoudsopgave",
     "tocChapterRange": "Hoofdstuk ${from} tot ${to}",
-    "tocGoToPage": "Ga naar pagina"
+    "tocGoToPage": "Ga naar pagina",
+    "readerChapter": "Hoofdstuk ${number}",
+    "readerPage": "Pagina ${page}",
+    "readerPageOf": "Pagina ${page} van ${total}"
   }
 }

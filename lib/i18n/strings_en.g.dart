@@ -5290,6 +5290,15 @@ class TranslationsBooksEn {
 
 	/// en: 'Go to page'
 	String get tocGoToPage => 'Go to page';
+
+	/// en: 'Chapter ${number}'
+	String readerChapter({required Object number}) => 'Chapter ${number}';
+
+	/// en: 'Page ${page}'
+	String readerPage({required Object page}) => 'Page ${page}';
+
+	/// en: 'Page ${page} of ${total}'
+	String readerPageOf({required Object page, required Object total}) => 'Page ${page} of ${total}';
 }
 
 // Path: search.filters
@@ -7760,6 +7769,9 @@ extension on Translations {
 			'books.tableOfContents' => 'Table of contents',
 			'books.tocChapterRange' => ({required Object from, required Object to}) => 'Chapter ${from} to ${to}',
 			'books.tocGoToPage' => 'Go to page',
+			'books.readerChapter' => ({required Object number}) => 'Chapter ${number}',
+			'books.readerPage' => ({required Object page}) => 'Page ${page}',
+			'books.readerPageOf' => ({required Object page, required Object total}) => 'Page ${page} of ${total}',
 			_ => null,
 		};
 	}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:provider/provider.dart';
 
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
@@ -8,7 +9,9 @@ import '../../books/book.dart';
 import '../../books/book_detail_layout.dart';
 import '../../books/book_detail_view.dart';
 import '../../i18n/strings.g.dart';
+import '../../providers/books_home_provider.dart';
 import '../../widgets/app_icon.dart';
+import 'book_reader_screen.dart';
 import 'widgets/book_cover.dart';
 import 'widgets/book_description.dart';
 import 'widgets/book_detail_actions.dart';
@@ -23,11 +26,13 @@ import 'widgets/book_detail_ambience.dart';
 /// been started and is in no series; `05c` lifts the action block out of both
 /// so the difference can be judged on its own.
 ///
-/// **This screen stops at the button.** What `Lees verder` opens is the reader,
-/// panel 7 of the comp, with its own golden and its own approval, so the
-/// buttons are drawn and open nothing — exactly where the Filters pill stood
-/// between golden 02 and golden 03. The overflow glyph top right is there
-/// because the comp draws it; what is in it was not decided either.
+/// **The reading button is the door to the reader.** Panel 7 has its own golden
+/// and, since 4 September 2026, its own approval, so `Lees verder` opens
+/// [BookReaderScreen] on the page the source hands it. It opens nothing for a
+/// publication this build cannot open a page of, which keeps the button honest
+/// rather than dead. `Downloaden` is still drawn and inert: what it means in
+/// each of its states is PS-16. The overflow glyph top right is there because
+/// the comp draws it; what is in it was not decided either.
 ///
 /// The layout rule lives in [BookDetailLayout] and the content derivation in
 /// [BookDetailView], so what this file does is hang the one on the other.
@@ -65,7 +70,7 @@ class BookDetailScreen extends StatelessWidget {
                   for (final block in BookDetailLayout.flow.keys)
                     if (blocks.contains(block)) ...[
                       SizedBox(height: BookDetailLayout.flow[block]!.gapAbove),
-                      _block(block, view),
+                      _block(context, block, view),
                     ],
                   SizedBox(height: 24 + MediaQuery.viewPaddingOf(context).bottom),
                 ],
@@ -77,9 +82,28 @@ class BookDetailScreen extends StatelessWidget {
     );
   }
 
+  /// Opens the reader on the page the source has for this publication.
+  ///
+  /// Nothing happens when there is none. A page comes from a reader engine that
+  /// lays a publication out, that engine is PS-15, and until it exists the fixed
+  /// set carries one page for the one book approved golden 07 is drawn with.
+  Future<void> _openReader(BuildContext context) async {
+    final provider = context.read<BooksHomeProvider?>();
+    if (provider == null) return;
+    final page = await provider.readerPage(book.id);
+    if (page == null || !context.mounted) return;
+    final toc = await provider.tableOfContents(book.id);
+    if (!context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BookReaderScreen(book: book, page: page, toc: toc),
+      ),
+    );
+  }
+
   /// One entry of the column, in golden 05's own order. Every one of them is
   /// horizontally inset by the page margin except the cover, which is centred.
-  static Widget _block(BookDetailBlock block, BookDetailView view) {
+  Widget _block(BuildContext context, BookDetailBlock block, BookDetailView view) {
     final child = switch (block) {
       BookDetailBlock.title => _Title(text: view.book.title),
       BookDetailBlock.author => _Author(text: view.book.author),
@@ -89,7 +113,7 @@ class BookDetailScreen extends StatelessWidget {
         id: AutomationIds.booksDetailAction,
         instance: 'primary',
         role: 'button',
-        child: BookDetailAction(label: view.primaryActionLabel, isPrimary: true),
+        child: BookDetailAction(label: view.primaryActionLabel, isPrimary: true, onTap: () => _openReader(context)),
       ),
       BookDetailBlock.secondary => AutomationNode(
         id: AutomationIds.booksDetailAction,

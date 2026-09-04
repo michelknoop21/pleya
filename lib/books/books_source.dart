@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'book.dart';
+import 'book_reader_page.dart';
 import 'book_toc.dart';
+import 'demo_book_reader.dart';
 import 'demo_book_tocs.dart';
 
 /// Whether this build carries an e-book source at all.
@@ -37,6 +39,14 @@ abstract class BooksSource {
   /// not an empty tree: there is simply nothing to draw a table of contents
   /// from. A real source reads this off the EPUB's own `toc` and `page-list`.
   Future<BookToc?> tableOfContents(String bookId);
+
+  /// The page the reader is on, or `null` for a publication this source cannot
+  /// open.
+  ///
+  /// A page and not a book: what a page *is* comes from the reader engine that
+  /// lays a publication out at a given type size, and that engine is PS-15. Until
+  /// then a source hands the reader a page it already has.
+  Future<BookReaderPage?> readerPage(String bookId);
 }
 
 /// A source with nothing in it: the honest answer for a profile that has no
@@ -52,6 +62,9 @@ class EmptyBooksSource implements BooksSource {
 
   @override
   Future<BookToc?> tableOfContents(String bookId) async => null;
+
+  @override
+  Future<BookReaderPage?> readerPage(String bookId) async => null;
 }
 
 /// The fixed set behind `--dart-define=PLEYA_BOOKS=true`.
@@ -348,6 +361,9 @@ class DemoBooksSource implements BooksSource {
 
   @override
   Future<BookToc?> tableOfContents(String bookId) async => demoBookToc(bookId);
+
+  @override
+  Future<BookReaderPage?> readerPage(String bookId) async => demoBookReaderPage(bookId);
 
   @override
   Future<List<BookSeries>> series() async => const [

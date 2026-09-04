@@ -2111,6 +2111,9 @@ class _TranslationsBooksNl extends TranslationsBooksEn {
 	@override String get tableOfContents => 'Inhoudsopgave';
 	@override String tocChapterRange({required Object from, required Object to}) => 'Hoofdstuk ${from} tot ${to}';
 	@override String get tocGoToPage => 'Ga naar pagina';
+	@override String readerChapter({required Object number}) => 'Hoofdstuk ${number}';
+	@override String readerPage({required Object page}) => 'Pagina ${page}';
+	@override String readerPageOf({required Object page, required Object total}) => 'Pagina ${page} van ${total}';
 }
 
 // Path: search.filters
@@ -4152,6 +4155,9 @@ extension on TranslationsNl {
 			'books.tableOfContents' => 'Inhoudsopgave',
 			'books.tocChapterRange' => ({required Object from, required Object to}) => 'Hoofdstuk ${from} tot ${to}',
 			'books.tocGoToPage' => 'Ga naar pagina',
+			'books.readerChapter' => ({required Object number}) => 'Hoofdstuk ${number}',
+			'books.readerPage' => ({required Object page}) => 'Pagina ${page}',
+			'books.readerPageOf' => ({required Object page, required Object total}) => 'Pagina ${page} van ${total}',
 			_ => null,
 		};
 	}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/books/book.dart';
+import 'package:pleya/books/book_reader_page.dart';
 import 'package:pleya/books/book_toc.dart';
 import 'package:pleya/books/books_source.dart';
 import 'package:pleya/providers/books_home_provider.dart';
@@ -145,4 +146,7 @@ class _FailingSource implements BooksSource {
 
   @override
   Future<BookToc?> tableOfContents(String bookId) async => null;
+
+  @override
+  Future<BookReaderPage?> readerPage(String bookId) async => null;
 }

@@ -733,6 +733,96 @@ pagina tekst is geen van beide. De statusbalk staat in `07b` gewoon aan, want iO
 een leeg gat rond de inkeping is geen leeswinst. En de kopregel verdwijnt niet met de chrome mee:
 dat is de kopregel van de pagina, zoals een gedrukt boek er bovenaan een draagt, en geen bediening.
 
+## Wat er tegen golden 07 gebouwd is
+
+`lib/screens/books/book_reader_screen.dart`, met `widgets/book_reader_chrome.dart` eronder voor de
+glyfs, de kopregel, de alinea met zijn markering en de voet. Daaronder liggen drie modules die geen
+widget zijn: `lib/books/reader_typography.dart` (de snit), `book_reader_theme.dart` (de drie
+leesthema's uit `07c`) en `book_reader_layout.dart` (de banden). Het scherm heeft nu wél een deur:
+`Lees verder` op
+het boekdetail opent hem, en de inhoudsopgaveglyf in de chrome pusht golden 06.
+
+**De leesletter is een module en geen `TextStyle` in een widget.** `ReaderTypography` is de enige
+plek waar de reader zijn snit vandaan haalt, en dat is nodig omdat drie dingen samen moeten kloppen
+en elk ervan stil misgaat. Literata is variabel: Chromium vult de `opsz`-as zelf met de
+tekengrootte, Flutter blijft op de fontstandaard 12, dus de as wordt expliciet gezet. En een `Text`
+mengt de omringende `DefaultTextStyle` in de zijne, waardoor de reader Materials
+`letterSpacing: 0.3` erfde. **Dat kostte de eerste regel 11,7 punt breedte** bij precies dezelfde
+woorden en dezelfde regelovergangen, en geen enkele widgettest zag het: het valt alleen op naast de
+golden. De leesstijl erft daarom niets meer (`inherit: false`) en zet zijn eigen `letterSpacing`,
+`wordSpacing` en `leadingDistribution`. Die laatste staat op `even`, de halve leading die CSS
+gebruikt; Flutters standaard verdeelt evenredig en zet de basislijn een fractie lager.
+
+**De markering leest zijn geometrie uit de tekst.** `computeLineMetrics()` van dezelfde
+`TextPainter` die de alinea zet, met de bovenkant als basislijn min stijgvlak en de hoogte als de
+regelband. De 27 punt uit de maatvoering staat nergens in de code. Eén subtiliteit die vier punt
+kostte: `getBoxesForSelection` loopt tot het einde van de regel inclusief de spatie die de
+regelovergang opat, dus die is vervangen door `LineMetrics.width`, de gezette breedte van de regel
+zelf. En de overschieting van 7 punt hoort bij de passage en niet bij elke regel: een marker wordt
+vóór het eerste woord neergezet en ná het laatste opgetild, precies zoals de browser een inline
+`box-shadow` over regelfragmenten snijdt. Op elke regel getekend zou hij bij iedere regelovergang
+een keep in de linkermarge zetten.
+
+Bewijs: `pleya_verify/scenarios/books.reader.layout.yaml` groen op de vastgezette iPhone 15
+Pro-simulator, met beide staten in één bundel, plus tien widgettests in
+`test/screens/book_reader_screen_test.dart` en vijftien eenheidstests in
+`test/books/book_reader_test.dart`. De hele suite staat op 5019 groen.
+
+De vier gemeten automation-nodes liggen exact op de golden: de chrome op (0, 62) met 393 × 32, de
+tekstkolom op (32, 188) met 329 × 564, de voet op (0, 752) met 393 × 52 en de inhoudsopgaveglyf op
+(74, 65) met 26 × 26. **En het bewijs waar `07b` voor bestaat staat er twee keer in dezelfde
+bundel:** na het verbergen van de chrome meet de kolom `GeoRect(32.0, 188.0, 329.0x564.0)`, tot op de
+punt hetzelfde rechthoekje als ervoor. In de widgettests wordt dat op de rect gecontroleerd en niet
+op de widgetboom, want een boom die er hetzelfde uitziet kan nog steeds anders meten.
+
+Een rijprofiel over `07a` en het simulatorbeeld: de statusbalk, de glyfrij, de kopregel, de schuif,
+het label en de home-indicator liggen binnen 0,33 punt. De twaalf tekstregels liggen horizontaal op
+**nul punt** verschil, links en rechts, regel voor regel. De markering begint in allebei op 25,0 en
+eindigt op 357,0 tegen 356,67 en op 235,0 tegen 234,67.
+
+Bewuste verschillen met het beeld:
+
+- **De inkt staat 1,00 punt lager in de app**, op elke regel even veel. Het regelvak niet: de
+  markering begint in allebei precies op 540, de regelmaat van 28 klopt, en de regelbreedtes liggen
+  op nul. Het verschil zit in waar de basislijn binnen een identiek regelvak landt, tussen de
+  tekstzetter van Flutter en die van de browser. Een punt op een pagina van 852, uniform, en niets
+  in de layout verschuift mee.
+- **Het merkvlak is 28 punt hoog en niet 27, dus de twee gemarkeerde regels raken elkaar.** Dat is
+  de goedgekeurde uitkomst van de regel dat de markering de echte regelvakken volgt: 27 is de
+  som van stijg- en daalvlak van de letter, 28 is de regelband die de reader zet.
+- **De schuifschaduw is 1,33 punt hoger zichtbaar** dan in de browser, bij een gelijke onderkant.
+- **De grond is `#F0E5D7` en niet de OLED-variant.** De reader zet zijn eigen papier neer en leest
+  `monoTheme` niet, anders dan de andere boekenschermen; dat is de hele reden dat `BookReaderTheme`
+  bestaat.
+
+Wat bewust niet gebouwd is, en waar dus geen code voor bestaat:
+
+- **Paginering.** De fixture levert een pagina en geen boek. Tekst in pagina's snijden is de
+  reader-engine, die bij PS-15 hoort. De kolom is daarom een vak waar de pagina in moet passen, met
+  een widgettest die dat controleert, en geen venster op een langere tekst.
+- **Bladeren, en wat een tik aan de rand doet.** Een tik op de pagina haalt de chrome weg en zet hem
+  terug, de conventie die de golden noemt. Verder doet een tik niets, en de randen doen niets.
+- **De schuif slepen, `Zoeken in boek`, en de bladwijzer.** Alle drie getekend en inert, elk om zijn
+  eigen reden uit de golden.
+- **Van thema wisselen.** `BookReaderTheme` heeft de drie van `07c` en een test die hun kleuren
+  vastlegt, maar er is geen bediening: welk thema standaard staat en hoe je wisselt is golden 08.
+- **De cursieve snit van Literata**, want deze pagina tekent er geen.
+
+Drie dingen die uit de bouw komen en niet uit de golden, en die goedkeuring vragen:
+
+- **De glyfs in de chrome zijn 26 punt en dat is minder dan de 44 die iOS als minimum aanhoudt.** Dat
+  is geen implementatiekeuze die stilletjes te repareren valt: de chromeband van de golden is 32 punt
+  hoog, dus een raakvlak van 44 past er niet in zonder de band te veranderen. De rijen van golden 06
+  worden wel op 44 getoetst; deze glyfs bewust niet, en de scenario-regel zegt dat er ook bij.
+- **De inhoudsopgaveglyf is inert op Dune.** Hij pusht golden 06 voor een publicatie die navigatie
+  declareert, en in de vaste set is dat alleen Atomic Habits; Dune levert een `page-list` maar geen
+  boom. De glyf wordt wel getekend, want de golden tekent hem. Of Dune een boom in de fixture krijgt
+  is een keuze over de fixture, en een boek zonder delen is een staat die golden 06 expliciet
+  openlaat, dus die is hier niet genomen.
+- **De tik op de pagina.** De golden noemt hem de conventie en beslist hem niet. Zonder hem is `07b`
+  onbereikbaar en heeft de reader geen manier om zijn chrome kwijt te raken, dus hij zit erin, alleen
+  hij, en de randen blijven onaangeroerd.
+
 ## Wat er tegen golden 06 gebouwd is
 
 `lib/screens/books/books_toc_screen.dart`, met `widgets/book_toc_rows.dart` eronder voor de vier

@@ -1884,6 +1884,9 @@
     "descriptionMore": "more",
     "tableOfContents": "Table of contents",
     "tocChapterRange": "Chapter ${from} to ${to}",
-    "tocGoToPage": "Go to page"
+    "tocGoToPage": "Go to page",
+    "readerChapter": "Chapter ${number}",
+    "readerPage": "Page ${page}",
+    "readerPageOf": "Page ${page} of ${total}"
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../books/book.dart';
+import '../books/book_reader_page.dart';
 import '../books/book_toc.dart';
 import '../books/books_source.dart';
 import '../utils/app_logger.dart';
@@ -93,6 +94,9 @@ class BooksHomeProvider extends ChangeNotifier {
   /// pulling every publication's tree in to draw three rails would be work
   /// nothing on this screen uses.
   Future<BookToc?> tableOfContents(String bookId) => _source.tableOfContents(bookId);
+
+  /// The page the reader opens on, fetched on demand for the same reason.
+  Future<BookReaderPage?> readerPage(String bookId) => _source.readerPage(bookId);
 
   /// Pure, so the row rules are testable without a provider or a source.
   @visibleForTesting

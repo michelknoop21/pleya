@@ -281,6 +281,7 @@ Future<void> _bootstrapApp() async {
   await TraktScrobbleService.instance.initialize();
 
   _registerShaderLicenses();
+  _registerFontLicenses();
 
   // In release mode, show a colored placeholder instead of a blank/white screen
   // when a widget build() throws an unhandled exception.
@@ -391,6 +392,19 @@ FutureOr<SentryEvent?> _beforeSend(SentryEvent event, Hint _) {
   }
 
   return event;
+}
+
+/// The licence of the bundled reading face, straight out of the file that ships
+/// next to it.
+///
+/// The SIL Open Font License allows Literata to be bundled in a closed
+/// application on one condition: the licence text travels with the font. Reading
+/// `assets/fonts/OFL-Literata.txt` rather than pasting a copy into Dart keeps
+/// that one source of truth, so a font bump cannot leave a stale licence behind.
+void _registerFontLicenses() {
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(const ['Literata'], await rootBundle.loadString('assets/fonts/OFL-Literata.txt'));
+  });
 }
 
 void _registerShaderLicenses() {

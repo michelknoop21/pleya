@@ -15,6 +15,7 @@ import '../../widgets/app_icon.dart';
 import '../../widgets/pleya_logo.dart';
 import 'all_books_screen.dart';
 import 'book_detail_screen.dart';
+import 'book_reader_screen.dart';
 import 'books_search_screen.dart';
 import 'books_toc_screen.dart';
 import 'widgets/book_rail.dart';
@@ -47,6 +48,7 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
       AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBooksSearch, _openSearch);
       AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBookDetail, _openCanonicalDetail);
       AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBooksToc, _openCanonicalToc);
+      AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBookReader, _openCanonicalReader);
     }
   }
 
@@ -57,6 +59,7 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
       AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBooksSearch, _openSearch);
       AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBookDetail, _openCanonicalDetail);
       AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBooksToc, _openCanonicalToc);
+      AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBookReader, _openCanonicalReader);
     }
     super.dispose();
   }
@@ -143,6 +146,33 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => BooksTocScreen(book: book, toc: toc),
+      ),
+    );
+  }
+
+  /// The book approved golden 07 is drawn with, and the only publication in the
+  /// fixed set the reader can open a page of.
+  static const String _verifyReaderBookId = 'dune';
+
+  /// The same route `Lees verder` on the book's own page takes, so a scenario
+  /// and a reader end up in one place.
+  ///
+  /// It exists as an opener for the reason golden 04's seeded query does: a
+  /// scenario would otherwise have to walk a rail, a cover and a button to reach
+  /// the state the golden fixes, and every one of those steps is a way for the
+  /// evidence to land on the wrong page.
+  Future<void> _openCanonicalReader() async {
+    if (!mounted) return;
+    final provider = context.read<BooksHomeProvider?>();
+    final book = provider?.rows.all.where((b) => b.id == _verifyReaderBookId).firstOrNull;
+    if (provider == null || book == null) return;
+    final page = await provider.readerPage(_verifyReaderBookId);
+    if (!mounted || page == null) return;
+    final toc = await provider.tableOfContents(_verifyReaderBookId);
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BookReaderScreen(book: book, page: page, toc: toc),
       ),
     );
   }

@@ -1,0 +1,59 @@
+name: books.reader.layout
+target: ios-sim
+# De reader against approved golden 07 revisie B
+# (docs/assets/ebooks/northstar/07a-books-reader.png).
+#
+# REQUIRES `PLEYA_VERIFY_BOOKS=1`, like the other books scenarios, and for a
+# comparison against the golden also `PLEYA_VERIFY_IOS_UDID=<iPhone 15 Pro>` —
+# every number in golden 07 is measured on that viewport.
+#
+# It lands on Dune, the publication `07a` is drawn with: chapter 12, 48 % of the
+# way through, on page 248 of 616. That position is not chosen here. Golden 01b
+# fixes Dune at 48 % as the first card of Verder lezen and golden 05 draws the
+# same book at the same place, so the reader arrives where the rest of the set
+# already says the reader is.
+#
+# The screen has a door of its own — `Lees verder` on the book's page — and the
+# opener takes exactly that route rather than a second one. It exists for the
+# reason golden 04's seeded query does: walking a rail, a cover and a button is
+# three chances for the evidence to land on the wrong page.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - open: screen.books
+  - open: screen.book_reader
+steps:
+  - wait_until: {id: screen.book_reader, timeout: 15000}
+  - settle: 2000
+  # The three bands of `07a`. The column is the one that matters twice: its rect
+  # is what the second half of this scenario holds the immersive state against.
+  - assert: {id: books.reader.column, insideViewport: true}
+  - assert: {id: books.reader.chrome, insideViewport: true}
+  - assert: {id: books.reader.foot, insideViewport: true}
+  # The chrome sits above the page and the footer below it. Not decoration: the
+  # column's band is reserved between them and both of the others have to be
+  # outside it, or hiding one would give the text room it did not have before.
+  - assert: {id: books.reader.column, below: books.reader.chrome}
+  - assert: {id: books.reader.foot, below: books.reader.column}
+  # The door approved golden 07 gives golden 06. Drawn on a 26 pt slot, which is
+  # the golden's own geometry on a 32 pt chrome band and therefore deliberately
+  # not asserted against the 44 pt minimum the list rows of golden 06 are.
+  - assert: {id: books.reader.toc, insideViewport: true}
+  - snapshot: books-reader-chrome
+  # 07b: the same page with the chrome gone. The tap lands in the middle of the
+  # column, well clear of every glyph, on a coordinate inside the rect the
+  # assertion four steps up already put in this bundle.
+  - tap: {x: 196, y: 650}
+  - settle: 1000
+  # That the chrome is *gone* is in the second snapshot and in the widget tests.
+  # The DSL has no absence predicate and this scenario does not invent one: an
+  # assertion that cannot be evaluated is a broken assertion, not a passing one.
+  #
+  # The whole point of `07b`. This rect and the one from the first half of the
+  # bundle have to be the same rect: showing or hiding the chrome may not move a
+  # line of the page. A reader that repaginates when you touch it loses your
+  # place.
+  - assert: {id: books.reader.column, insideViewport: true}
+  - snapshot: books-reader-immersive

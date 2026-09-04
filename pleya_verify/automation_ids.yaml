@@ -72,6 +72,21 @@ ids:
   - id: books.toc.goto
     role: button
     instanceable: false
+  - id: screen.book_reader
+    role: screen
+    instanceable: false
+  - id: books.reader.column
+    role: surface
+    instanceable: false
+  - id: books.reader.chrome
+    role: nav
+    instanceable: false
+  - id: books.reader.toc
+    role: button
+    instanceable: false
+  - id: books.reader.foot
+    role: surface
+    instanceable: false
   - id: books.rail.continue
     role: rail
     instanceable: false

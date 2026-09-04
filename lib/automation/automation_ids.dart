@@ -108,6 +108,24 @@ class AutomationIds {
   /// publication ships page navigation.
   static const String booksTocGoto = 'books.toc.goto';
 
+  /// De reader (approved golden 07), the reading surface itself.
+  static const String screenBookReader = 'screen.book_reader';
+
+  /// The text column. The one node whose rect proves the behaviour `07b` is
+  /// about: it may not move when the chrome comes and goes.
+  static const String bookReaderColumn = 'books.reader.column';
+
+  /// The chrome band. Absent from the tree when the chrome is hidden, which is
+  /// what makes its absence assertable rather than a matter of opacity.
+  static const String bookReaderChrome = 'books.reader.chrome';
+
+  /// The inhoudsopgave glyph, the door approved golden 07 gives golden 06.
+  static const String bookReaderToc = 'books.reader.toc';
+
+  /// The scrubber and its label. Drawn, and inert: what dragging it shows is
+  /// one of the things golden 07 leaves open.
+  static const String bookReaderFoot = 'books.reader.foot';
+
   /// Boeken-home's three rails, in the order golden 01b puts them.
   static const String booksRailContinue = 'books.rail.continue';
   static const String booksRailRecent = 'books.rail.recent';
@@ -185,6 +203,11 @@ class AutomationIds {
     {'id': booksTocPart, 'role': 'list.item', 'instanceable': true},
     {'id': booksTocChapter, 'role': 'list.item', 'instanceable': true},
     {'id': booksTocGoto, 'role': 'button', 'instanceable': false},
+    {'id': screenBookReader, 'role': 'screen', 'instanceable': false},
+    {'id': bookReaderColumn, 'role': 'surface', 'instanceable': false},
+    {'id': bookReaderChrome, 'role': 'nav', 'instanceable': false},
+    {'id': bookReaderToc, 'role': 'button', 'instanceable': false},
+    {'id': bookReaderFoot, 'role': 'surface', 'instanceable': false},
     {'id': booksRailContinue, 'role': 'rail', 'instanceable': false},
     {'id': booksRailRecent, 'role': 'rail', 'instanceable': false},
     {'id': booksRailSeries, 'role': 'rail', 'instanceable': false},

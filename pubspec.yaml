@@ -162,6 +162,10 @@ flutter:
     - assets/shaders/anime4k/
     - assets/player_icons/
     - assets/rating_icons/
+    # Bundled so the in-app Open source-licenses screen can serve the OFL text
+    # that has to travel with the font itself, rather than a copy of it pasted
+    # into Dart. See assets/fonts/README.md.
+    - assets/fonts/OFL-Literata.txt
   fonts:
     - family: Inter
       fonts:
@@ -175,3 +179,12 @@ flutter:
       fonts:
         - asset: assets/fonts/ArchivoBlack-Regular.ttf
           weight: 900
+    # The reading face of the e-book reader, approved with golden 07 revisie B.
+    # A variable font: `weight` here only names the default instance, and the
+    # reader sets `wght` and `opsz` itself through `ReaderTypography` — Flutter
+    # does not apply optical sizing on its own. Provenance and licence in
+    # assets/fonts/README.md.
+    - family: Literata
+      fonts:
+        - asset: assets/fonts/Literata-Variable.ttf
+          weight: 400
