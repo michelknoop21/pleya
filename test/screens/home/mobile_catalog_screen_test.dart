@@ -209,6 +209,59 @@ void main() {
     expect(opened, [NavigationTabId.search]);
   });
 
+  testWidgets('the search glyph leaves the catalogue, so the handover is visible', (tester) async {
+    // The regression this pins: switching the tab alone changes the surface
+    // *underneath* a route that still covers the screen, so the glyph looked
+    // dead on a device. Every other test in this file mounts the catalogue as
+    // `home:`, where there is nothing to pop, and could not see it.
+    await setup(items: [_movie('m1', title: 'Alien')]);
+    tester.view.physicalSize = const Size(393, 852);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final opened = <NavigationTabId>[];
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
+            Provider<UnifiedCatalogs>.value(value: catalogs),
+          ],
+          child: MaterialApp(
+            theme: monoTheme(dark: true),
+            home: MobileShellScope(
+              openTab: opened.add,
+              child: OverlaySheetHost(
+                child: Builder(
+                  builder: (context) => Scaffold(
+                    body: Center(
+                      child: TextButton(
+                        onPressed: () => navigateToMobileCatalog(context, MobileLandingKind.movies),
+                        child: const Text('open catalogue'),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('open catalogue'));
+      await tester.pumpAndSettle();
+      expect(find.byType(MobileCatalogScreen), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Search'));
+      await tester.pumpAndSettle();
+    });
+    await tester.pump();
+
+    expect(opened, [NavigationTabId.search]);
+    expect(find.byType(MobileCatalogScreen), findsNothing);
+    expect(find.text('open catalogue'), findsOneWidget);
+  });
+
   testWidgets('the sources control opens the filter panel on its Servers section', (tester) async {
     await setup(items: [_movie('m1', title: 'Alien')]);
     await pumpCatalog(tester);

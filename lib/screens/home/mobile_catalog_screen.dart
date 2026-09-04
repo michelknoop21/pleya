@@ -22,6 +22,8 @@
 /// and the reason rapport §5 keeps both.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -54,8 +56,24 @@ import 'mobile_landing_screen.dart';
 /// `navigateToMediaItemDetails` pushes detail. That navigator is
 /// `ProfileSessionScreen`'s, so the route lands inside `ProfileNavigationScope`
 /// and everything it opens in turn — detail, the player — keeps working.
+///
+/// The route re-provides [MobileShellScope], and that is not belt and braces.
+/// `MainScreen` mounts the scope inside its own build, so it lives *in the
+/// shell's route*; a route pushed on the same navigator is that route's
+/// sibling, not its descendant, and inherits nothing from it. Without this the
+/// catalogue's search glyph found no scope at all and was inert. [context] is
+/// the caller's — a landing, mounted inside the shell — so the lookup happens
+/// where the scope really is.
 Future<void> navigateToMobileCatalog(BuildContext context, MobileLandingKind kind) {
-  return Navigator.of(context).push(MaterialPageRoute(builder: (_) => MobileCatalogScreen(kind: kind)));
+  final shell = MobileShellScope.maybeOf(context);
+  return Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) {
+        final screen = MobileCatalogScreen(kind: kind);
+        return shell == null ? screen : MobileShellScope(openTab: shell.openTab, child: screen);
+      },
+    ),
+  );
 }
 
 class MobileCatalogScreen extends StatefulWidget {
@@ -132,6 +150,22 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   Future<void> _openDetails(UnifiedMediaGroup group) =>
       navigateToMediaItemDetails(context, group.representativeSource.item);
 
+  /// Leaves the catalogue, then hands over to the global Search destination.
+  ///
+  /// DEC-094 punt 2 gives the glyph one meaning, and switching the tab alone
+  /// does not deliver it here: Search is a root destination inside the shell's
+  /// `IndexedStack`, and this route is pushed *above* the shell. The tab
+  /// changed underneath a route that still covered it, so the glyph looked
+  /// dead. The pop is what makes the handover visible.
+  ///
+  /// The scope is read before the pop, because this element's context is gone
+  /// once the route unwinds.
+  void _openGlobalSearch(BuildContext context) {
+    final shell = MobileShellScope.maybeOf(context);
+    unawaited(Navigator.of(context).maybePop());
+    shell?.openTab(NavigationTabId.search);
+  }
+
   /// Three states rather than a bool, so a scenario waiting on this screen can
   /// tell a slow merge from a failed one instead of timing out on both.
   AutomationReadiness _readiness() {
@@ -177,7 +211,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                       child: MobileCatalogHeader(
                         title: widget.kind.viewAllLabel,
                         onBack: () => Navigator.of(context).maybePop(),
-                        onSearch: () => MobileShellScope.maybeOf(context)?.openTab(NavigationTabId.search),
+                        onSearch: () => _openGlobalSearch(context),
                       ),
                     ),
                     SliverToBoxAdapter(
