@@ -41,9 +41,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `04a-books-search.png` | Boeken zoeken, canonieke staat op `dune` met Alles actief | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `04b-books-search-books.png` | Dezelfde zoekopdracht met alleen Boeken actief | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `04c-books-search-rowtypes.png` | Detail: de drie resultaatsoorten onder elkaar | approved | detailuitsnede, 1179×1590 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `05a-book-detail.png` | Boekdetail, canonieke staat op Dune met leesvoortgang | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `05b-book-detail-unread.png` | Hetzelfde scherm voor een boek zonder voortgang en zonder reeks | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `05c-book-detail-actions.png` | Detail: het actieblok in beide staten | proposed | detailuitsnede, 1179×1680 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `05a-book-detail.png` | Boekdetail, canonieke staat op Dune met leesvoortgang | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `05b-book-detail-unread.png` | Hetzelfde scherm voor een boek zonder voortgang en zonder reeks | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `05c-book-detail-actions.png` | Detail: het actieblok in beide staten | approved | detailuitsnede, 1179×1680 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -280,13 +280,25 @@ De lege staat zit hier bewust niet in. Een zoekscherm zonder resultaten is een e
 hem in dit frame proppen zou de enige vraag die 04 stelt, namelijk of de drie soorten uit elkaar te
 houden zijn, alleen maar vertroebelen.
 
-## Golden 05, Boekdetail (proposed)
+## Golden 05, Boekdetail (approved)
 
 De pagina achter een cover, waar een boek zichzelf voorstelt en het lezen begint. Inhoud van paneel 5
 van de comp, uitvoering van `06-film-detail.png` uit de iOS Unified-set. Drie frames, samen één
 scherm: `05a` de canonieke staat op Dune, halverwege gelezen, `05b` dezelfde pagina voor een boek dat
 nog niet begonnen is en niet in een reeks staat, `05c` een detailuitsnede van het actieblok in beide
 staten zodat het verschil zonder de rest van het scherm te beoordelen is.
+
+Golden 05 is op 4 september 2026 goedgekeurd, inclusief de keuzes hieronder, na één correctieronde
+op de eerste voordracht. Die ronde had precies één blocker: de primaire knop droeg de play-driehoek
+uit de comp, en dat glyph komt uit video terwijl de actie de reader opent. De geometrie, de teksten
+en de rest van de compositie zijn daarbij niet aangeraakt.
+
+De rollen van de drie frames horen bij de goedkeuring, net als bij golden 04. `05a` is de
+**hoofdstaat**: een boek met leesvoortgang, het geval waar dit scherm voor bestaat. `05b` is
+**gedragsbewijs** dat het schermmodel niet verandert als een boek geen reeks en geen voortgang heeft,
+geen tweede scherm en geen variant. `05c` is een **ondersteunende vormspecificatie** van het
+actieblok en geen runtime-staat; een implementatie die hem als scherm behandelt volgt deze golden
+niet.
 
 **Deze golden houdt op bij de knop.** Wat `Lees verder` opent is de reader, paneel 7 van de comp, met
 een eigen golden en een eigen goedkeuring. Zolang die er niet is tekent de implementatie de knoppen
