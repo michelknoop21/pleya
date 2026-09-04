@@ -126,6 +126,19 @@ class AutomationIds {
   /// one of the things golden 07 leaves open.
   static const String bookReaderFoot = 'books.reader.foot';
 
+  /// The `Aa` slot, the fifth chrome glyph approved with golden 08 and the door
+  /// to the reading settings.
+  static const String bookReaderTypeSettings = 'books.reader.type_settings';
+
+  /// Leesinstellingen (approved golden 08). A sheet rather than a page, but a
+  /// scenario waits on it, so it carries a screen id like golden 03's does.
+  static const String screenReaderSettings = 'screen.reader_settings';
+
+  /// One group in that sheet. Instanceable, suffixed with what it sets
+  /// (`[size]`, `[leading]`, `[margins]`, `[theme]`, `[scroll]`) rather than an
+  /// index, because the set of groups is not a list a scenario should count.
+  static const String readerSettingsGroup = 'books.reader.settings.group';
+
   /// Boeken-home's three rails, in the order golden 01b puts them.
   static const String booksRailContinue = 'books.rail.continue';
   static const String booksRailRecent = 'books.rail.recent';
@@ -172,6 +185,7 @@ class AutomationIds {
     booksDetailAction,
     booksTocPart,
     booksTocChapter,
+    readerSettingsGroup,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -208,6 +222,9 @@ class AutomationIds {
     {'id': bookReaderChrome, 'role': 'nav', 'instanceable': false},
     {'id': bookReaderToc, 'role': 'button', 'instanceable': false},
     {'id': bookReaderFoot, 'role': 'surface', 'instanceable': false},
+    {'id': bookReaderTypeSettings, 'role': 'button', 'instanceable': false},
+    {'id': screenReaderSettings, 'role': 'screen', 'instanceable': false},
+    {'id': readerSettingsGroup, 'role': 'filter.group', 'instanceable': true},
     {'id': booksRailContinue, 'role': 'rail', 'instanceable': false},
     {'id': booksRailRecent, 'role': 'rail', 'instanceable': false},
     {'id': booksRailSeries, 'role': 'rail', 'instanceable': false},

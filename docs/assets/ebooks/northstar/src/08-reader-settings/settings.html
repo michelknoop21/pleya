@@ -202,8 +202,13 @@ html,body{width:393px;font-family:Inter,-apple-system,system-ui,sans-serif;-webk
   ];
   const MARKED = 'In the silence he heard the voice of the desert, old and patient.';
 
+  /// At 24 pt three of the four paragraphs fit and the fourth does not: 259,
+  /// 148 and 74 points of text with 32 between them is 545 in a column of 564,
+  /// and the marked paragraph would need 111 more. Those numbers are measured on
+  /// the reading face, not estimated; the first cut of this frame stopped a
+  /// paragraph too early.
   function body(large) {
-    const paras = large ? PARAS.slice(0, 2) : PARAS;
+    const paras = large ? PARAS.slice(0, 3) : PARAS;
     const marked = large ? '' : `<p><mark>${MARKED}</mark></p>`;
     return el(`<div class="body${large ? ' lg' : ''}">${paras.map((p) => `<p>${p}</p>`).join('')}${marked}</div>`);
   }

@@ -6,6 +6,7 @@ import 'package:pleya/books/book_reader_layout.dart';
 import 'package:pleya/books/book_reader_page.dart';
 import 'package:pleya/books/book_reader_theme.dart';
 import 'package:pleya/books/demo_book_reader.dart';
+import 'package:pleya/books/reader_settings.dart';
 import 'package:pleya/books/reader_typography.dart';
 
 void main() {
@@ -136,6 +137,39 @@ void main() {
       final footTop = BookReaderLayout.footTopFor(frame, viewPadding);
       expect(footTop, 752);
       expect(footTop + BookReaderLayout.footHeight, 804);
+    });
+  });
+
+  group('ReaderSettings, the stops of approved golden 08', () {
+    /// Each scale carries the state golden 07 was approved in, so the reader's
+    /// own default is a stop and not a special case.
+    test('the canonical state is golden 07', () {
+      const settings = ReaderSettings.canonical;
+      expect(settings.size, 18);
+      expect(settings.lineHeight, 28);
+      expect(settings.margin, 32);
+      expect(settings.themeId, BookReaderThemeId.sepia);
+    });
+
+    test('the six sizes, three bands and four measures are the golden\'s own', () {
+      expect(ReaderSettings.sizes, [15, 16.5, 18, 20, 22, 24]);
+      expect(ReaderSettings.margins, [20, 26, 32, 40]);
+      expect(ReaderSettings.leadings[1], 28 / 18);
+      expect(ReaderSettings.leadings.first, lessThan(ReaderSettings.leadings[1]));
+      expect(ReaderSettings.leadings.last, greaterThan(ReaderSettings.leadings[1]));
+    });
+
+    /// A third of a line more than the type size: golden 07's 24 on 18 and
+    /// golden 08b's 32 on 24, from one rule rather than two numbers.
+    test('the paragraph space travels with the type size', () {
+      expect(const ReaderSettings().paragraphGap, 24);
+      expect(const ReaderSettings(sizeIndex: 5).paragraphGap, 32);
+    });
+
+    /// Drawn and inert, and golden 08 leaves what it turns on open. A constant
+    /// rather than a field, so nothing can set it by accident.
+    test('the scroll mode cannot be turned on', () {
+      expect(ReaderSettings.scrollMode, isFalse);
     });
   });
 

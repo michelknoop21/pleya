@@ -38,6 +38,9 @@ class BookReaderLayout {
   static const double searchGlyph = 21;
   static const double bookmarkGlyph = 20;
 
+  /// The `Aa` specimen in the fifth slot, set in the reading face.
+  static const double settingsGlyphSize = 19;
+
   /// The running head, 62 below the chrome's own top.
   ///
   /// Not chrome. It is the page's own header, the line a printed book carries at

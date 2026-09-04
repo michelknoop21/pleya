@@ -1816,6 +1816,16 @@
     "tocGoToPage": "Ga naar pagina",
     "readerChapter": "Hoofdstuk ${number}",
     "readerPage": "Pagina ${page}",
-    "readerPageOf": "Pagina ${page} van ${total}"
+    "readerPageOf": "Pagina ${page} van ${total}",
+    "readerSettings": "Leesinstellingen",
+    "readerTextSize": "Lettergrootte",
+    "readerLineSpacing": "Regelafstand",
+    "readerMargins": "Marges",
+    "readerTheme": "Thema",
+    "readerThemeLight": "Licht",
+    "readerThemeSepia": "Sepia",
+    "readerThemeDark": "Donker",
+    "readerScrollMode": "Scrollmodus",
+    "readerScrollModeHint": "Scrollen in plaats van bladeren"
   }
 }

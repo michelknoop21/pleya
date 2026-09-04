@@ -9,9 +9,11 @@ import '../../books/book_reader_layout.dart';
 import '../../books/book_reader_page.dart';
 import '../../books/book_reader_theme.dart';
 import '../../books/book_toc.dart';
+import '../../books/reader_settings.dart';
 import '../../theme/mono_theme.dart' show kAccent;
 import 'books_toc_screen.dart';
 import 'widgets/book_reader_chrome.dart';
+import 'widgets/reader_settings_sheet.dart';
 
 /// De reader, built against approved golden 07 revisie B
 /// (`docs/assets/ebooks/northstar/07a-books-reader.png`).
@@ -32,8 +34,9 @@ import 'widgets/book_reader_chrome.dart';
 /// **What the reader can and cannot do here**, and the line runs where the
 /// golden's approval runs:
 ///
-/// - the back arrow leaves the book, and the inhoudsopgave glyph pushes golden
-///   06 as a page, which is the door approved golden 07 gives it;
+/// - the back arrow leaves the book, the inhoudsopgave glyph pushes golden 06 as
+///   a page, and `Aa` opens the reading settings of golden 08, the fifth slot
+///   approved with that golden;
 /// - the search glyph is drawn and inert. It opens `Zoeken in boek`, panel 9,
 ///   which has no golden;
 /// - the bookmark is drawn hollow and inert. Hollow means the current locator
@@ -43,10 +46,11 @@ import 'widgets/book_reader_chrome.dart';
 ///   07 names, and the reader does nothing else with a tap: what a tap near the
 ///   edge does, and paging in general, is panel 8 and is deliberately absent.
 ///
-/// **There is no pagination.** The page comes from the fixture as a page. Fitting
-/// a publication's text into pages is the reader engine, which belongs to PS-15,
-/// and the column here is sized to hold the page it is given rather than to cut
-/// one out of a book.
+/// **There is no pagination.** The page comes from the fixture as a page, and
+/// the column draws the paragraphs of it that fit the type the reader has set:
+/// at 24 points two of golden 07's four, which is what approved golden 08b
+/// shows. Producing the page after this one, and holding the reader's place
+/// across a resetting, is the reader engine and belongs to PS-15.
 class BookReaderScreen extends StatefulWidget {
   const BookReaderScreen({super.key, required this.book, required this.page, this.toc});
 
@@ -72,7 +76,34 @@ class _BookReaderScreenState extends State<BookReaderScreen> {
   /// the one that tells you where you are and how to get out.
   bool _chromeVisible = true;
 
+  /// How the page is set, in one place the page and the sheet both read.
+  ///
+  /// A notifier rather than two copies of the same state: the sheet lives on its
+  /// own route and the page keeps drawing underneath it, so a setting has to
+  /// reach both the moment it changes. That is the whole reason the sheet leaves
+  /// the page visible.
+  final ValueNotifier<ReaderSettings> _settings = ValueNotifier(ReaderSettings.canonical);
+
+  @override
+  void dispose() {
+    _settings.dispose();
+    super.dispose();
+  }
+
   void _toggleChrome() => setState(() => _chromeVisible = !_chromeVisible);
+
+  /// Golden 08's sheet: no scrim, and the page it is about stays visible above
+  /// it. `barrierColor` is transparent rather than absent, so a tap on the page
+  /// still closes the sheet instead of falling through to the chrome toggle.
+  void _openSettings() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => ReaderSettingsSheet(settings: _settings, onChanged: (value) => _settings.value = value),
+    );
+  }
 
   void _openToc() {
     final toc = widget.toc;
@@ -86,9 +117,6 @@ class _BookReaderScreenState extends State<BookReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Sepia, because that is the ground `07a` and `07b` were approved on. Which
-    // of the three the reader opens on is a setting, and settings are golden 08.
-    const theme = BookReaderTheme.sepia;
     final viewPadding = MediaQuery.viewPaddingOf(context);
     final frame = MediaQuery.sizeOf(context);
     final chromeTop = BookReaderLayout.chromeTopFor(viewPadding);
@@ -97,77 +125,83 @@ class _BookReaderScreenState extends State<BookReaderScreen> {
     return AutomationScreen(
       id: AutomationIds.screenBookReader,
       readiness: () => const AutomationReadiness.ready(),
-      child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: theme.wantsLightStatusBar ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
-        child: Scaffold(
-          backgroundColor: theme.page,
-          body: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _toggleChrome,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Positioned(
-                  top: chromeTop + BookReaderLayout.runningHeadTop,
-                  left: BookReaderLayout.chromeMargin,
-                  right: BookReaderLayout.chromeMargin,
-                  height: BookReaderLayout.runningHeadHeight,
-                  child: BookReaderRunningHead(text: widget.page.runningHead, theme: theme),
+      child: ValueListenableBuilder<ReaderSettings>(
+        valueListenable: _settings,
+        builder: (context, settings, _) => _page(context, settings, frame, chromeTop, footTop),
+      ),
+    );
+  }
+
+  Widget _page(BuildContext context, ReaderSettings settings, Size frame, double chromeTop, double footTop) {
+    final theme = settings.theme;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: theme.wantsLightStatusBar ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: theme.page,
+        body: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _toggleChrome,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned(
+                top: chromeTop + BookReaderLayout.runningHeadTop,
+                left: BookReaderLayout.chromeMargin,
+                right: BookReaderLayout.chromeMargin,
+                height: BookReaderLayout.runningHeadHeight,
+                child: BookReaderRunningHead(text: widget.page.runningHead, theme: theme),
+              ),
+              Positioned(
+                top: chromeTop + BookReaderLayout.columnTop,
+                left: settings.margin,
+                right: settings.margin,
+                // The column ends where the footer's band begins. It is a box
+                // the page has to fit in, not a window onto a longer text:
+                // scrolling a page is panel 8 and pagination is PS-15.
+                bottom: frame.height - footTop,
+                child: AutomationNode(
+                  id: AutomationIds.bookReaderColumn,
+                  role: 'surface',
+                  child: ClipRect(
+                    // Vertically at the band's own edge, horizontally seven
+                    // points wider on both sides. A highlight overshoots the
+                    // measure the way a marker overshoots the words it covers,
+                    // and a clip on the measure would shave that off.
+                    clipper: const _MarginBleedClipper(BookReaderLayout.markBleed),
+                    child: BookReaderColumn(paragraphs: widget.page.paragraphs, theme: theme, settings: settings),
+                  ),
                 ),
+              ),
+              if (_chromeVisible)
                 Positioned(
-                  top: chromeTop + BookReaderLayout.columnTop,
-                  left: BookReaderLayout.columnMargin,
-                  right: BookReaderLayout.columnMargin,
-                  // The column ends where the footer's band begins. It is a box
-                  // the page has to fit in, not a window onto a longer text:
-                  // scrolling a page is panel 8 and pagination is PS-15.
-                  bottom: frame.height - footTop,
+                  top: chromeTop,
+                  left: 0,
+                  right: 0,
+                  height: BookReaderLayout.chromeHeight,
                   child: AutomationNode(
-                    id: AutomationIds.bookReaderColumn,
-                    role: 'surface',
-                    child: ClipRect(
-                      // Vertically at the band's own edge, horizontally seven
-                      // points wider on both sides. A highlight overshoots the
-                      // measure the way a marker overshoots the words it covers,
-                      // and a clip on the measure would shave that off.
-                      clipper: const _MarginBleedClipper(BookReaderLayout.markBleed),
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        child: BookReaderColumn(paragraphs: widget.page.paragraphs, theme: theme),
-                      ),
+                    id: AutomationIds.bookReaderChrome,
+                    role: 'nav',
+                    child: _Chrome(
+                      theme: theme,
+                      onBack: () => Navigator.of(context).maybePop(),
+                      onToc: widget.toc == null ? null : _openToc,
+                      onSettings: _openSettings,
                     ),
                   ),
                 ),
-                if (_chromeVisible)
-                  Positioned(
-                    top: chromeTop,
-                    left: 0,
-                    right: 0,
-                    height: BookReaderLayout.chromeHeight,
-                    child: AutomationNode(
-                      id: AutomationIds.bookReaderChrome,
-                      role: 'nav',
-                      child: _Chrome(
-                        theme: theme,
-                        onBack: () => Navigator.of(context).maybePop(),
-                        onToc: widget.toc == null ? null : _openToc,
-                      ),
-                    ),
+              if (_chromeVisible)
+                Positioned(
+                  top: footTop,
+                  left: 0,
+                  right: 0,
+                  height: BookReaderLayout.footHeight,
+                  child: AutomationNode(
+                    id: AutomationIds.bookReaderFoot,
+                    role: 'surface',
+                    child: BookReaderFoot(position: widget.page.position, theme: theme, accent: kAccent),
                   ),
-                if (_chromeVisible)
-                  Positioned(
-                    top: footTop,
-                    left: 0,
-                    right: 0,
-                    height: BookReaderLayout.footHeight,
-                    child: AutomationNode(
-                      id: AutomationIds.bookReaderFoot,
-                      role: 'surface',
-                      child: BookReaderFoot(position: widget.page.position, theme: theme, accent: kAccent),
-                    ),
-                  ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
@@ -197,11 +231,12 @@ class _MarginBleedClipper extends CustomClipper<Rect> {
 /// its controls: that scrim lifts white glyphs off a moving photograph, and a
 /// page of text is neither moving nor a photograph.
 class _Chrome extends StatelessWidget {
-  const _Chrome({required this.theme, required this.onBack, required this.onToc});
+  const _Chrome({required this.theme, required this.onBack, required this.onToc, required this.onSettings});
 
   final BookReaderTheme theme;
   final VoidCallback onBack;
   final VoidCallback? onToc;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -222,9 +257,15 @@ class _Chrome extends StatelessWidget {
             child: _Slot(glyph: BookReaderGlyph.toc, theme: theme, onTap: onToc),
           ),
           const Spacer(),
-          const _Slot(glyph: BookReaderGlyph.search, theme: BookReaderTheme.sepia),
+          AutomationNode(
+            id: AutomationIds.bookReaderTypeSettings,
+            role: 'button',
+            child: _Slot(glyph: BookReaderGlyph.settings, theme: theme, onTap: onSettings),
+          ),
           const SizedBox(width: BookReaderLayout.glyphGap),
-          const _Slot(glyph: BookReaderGlyph.bookmark, theme: BookReaderTheme.sepia),
+          _Slot(glyph: BookReaderGlyph.search, theme: theme),
+          const SizedBox(width: BookReaderLayout.glyphGap),
+          _Slot(glyph: BookReaderGlyph.bookmark, theme: theme),
         ],
       ),
     );

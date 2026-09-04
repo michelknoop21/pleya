@@ -61,6 +61,10 @@ html,body{width:393px;font-family:Inter,-apple-system,system-ui,sans-serif;-webk
 .chrome svg{display:block}
 .chrome .slot{width:26px;height:26px;display:flex;align-items:center;justify-content:center}
 .chrome .slot + .slot{margin-left:24px}
+/* The `Aa` slot is set in the reading face rather than drawn as a glyph: it is a
+   specimen of what the sheet behind it changes. Medium and not regular, so it
+   carries the same visual weight as the four stroked glyphs next to it. */
+.chrome .aa{font-family:Literata,serif;font-variation-settings:'opsz' 18,'wght' 500;font-size:19px;line-height:26px}
 
 /* The running head. Not chrome: it is the page's own header, the line a printed
    book carries at the top of every page, so it stays when the chrome goes. */
@@ -118,9 +122,12 @@ html,body{width:393px;font-family:Inter,-apple-system,system-ui,sans-serif;-webk
   </div>
 </template>
 
-<!-- Four glyphs and not the comp's five. The comp draws two magnifiers side by
-     side; one of them is either a slip or a second function with no name, and
-     this golden does not invent a meaning for it.
+<!-- Five glyphs, which is the count panel 7 draws, but not the five it draws.
+     The comp puts two identical magnifiers side by side; one of them was either
+     a slip or a second function with no name, and revisie B left it out rather
+     than invent one. Golden 08 found what it has to be: `Aa`, the door to the
+     reading settings, because a sheet that sets the type has to open from the
+     type. Approved as an addendum on 4 September 2026.
 
      The bookmark is drawn hollow. A filled glyph is itself a state, and it
      would claim that the locator under the reader is bookmarked, which nothing
@@ -131,6 +138,7 @@ html,body{width:393px;font-family:Inter,-apple-system,system-ui,sans-serif;-webk
     <div class="slot"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m0 0 6-6m-6 6 6 6"/></svg></div>
     <div class="slot"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h14"/></svg></div>
     <div class="gap"></div>
+    <div class="slot aa">Aa</div>
     <div class="slot"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
     <div class="slot"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.4L5 21V4a1 1 0 0 1 1-1Z"/></svg></div>
   </div>

@@ -1,0 +1,54 @@
+name: books.reader.settings
+target: ios-sim
+# Leesinstellingen against approved golden 08
+# (docs/assets/ebooks/northstar/08a-reader-settings.png).
+#
+# REQUIRES `PLEYA_VERIFY_BOOKS=1`, like the other books scenarios, and for a
+# comparison against the golden also `PLEYA_VERIFY_IOS_UDID=<iPhone 15 Pro>`.
+#
+# It opens the reader the way books.reader.layout does and then takes the door
+# golden 08 gave itself: the `Aa` slot, the fifth chrome glyph approved with that
+# golden. Tapped rather than opened, because unlike the reader this sheet has a
+# surface a reader can touch and the scenario should use it.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - open: screen.books
+  - open: screen.book_reader
+steps:
+  - wait_until: {id: screen.book_reader, timeout: 15000}
+  - settle: 2000
+  # The rect the second half of this scenario holds the sheet against: the page
+  # may not move when the sheet comes up, because the sheet is about that page.
+  - assert: {id: books.reader.column, insideViewport: true}
+  - assert: {id: books.reader.type_settings, insideViewport: true}
+  # The `Aa` slot, whose rect the assertion above already put in this bundle at
+  # (243, 65, 26 x 26). Tapped on its centre, on a coordinate read off that
+  # measured node rather than counted out by hand; `tap` takes points and there
+  # is no tap-by-id.
+  - tap: {x: 256, y: 78}
+  - wait_until: {id: screen.reader_settings, timeout: 5000}
+  - settle: 1000
+  # The five groups, in the order golden 08 stacks them.
+  - assert: {id: "books.reader.settings.group[size]", insideViewport: true}
+  - assert: {id: "books.reader.settings.group[leading]", insideViewport: true}
+  - assert: {id: "books.reader.settings.group[margins]", insideViewport: true}
+  - assert: {id: "books.reader.settings.group[theme]", insideViewport: true}
+  - assert: {id: "books.reader.settings.group[scroll]", insideViewport: true}
+  - assert: {id: "books.reader.settings.group[leading]", below: "books.reader.settings.group[size]"}
+  - assert: {id: "books.reader.settings.group[scroll]", below: "books.reader.settings.group[theme]"}
+  # The sheet has no scrim and does not cover the page. Two assertions carry
+  # that. The column keeps the rect the first half of this bundle recorded, so
+  # nothing under the sheet moved; and the sheet's first group sits below the
+  # chrome, which is still drawn on the page above it.
+  #
+  # Deliberately not "the size group is below the column": the column is the
+  # band the page may use, 188 to 752, and the sheet's top edge at 340 is inside
+  # it. That is not the sheet covering the page, it is the page being shorter
+  # than its band, and an assertion that confuses the two would be a lie that
+  # happens to pass on this fixture.
+  - assert: {id: books.reader.column, insideViewport: true}
+  - assert: {id: "books.reader.settings.group[size]", below: books.reader.chrome}
+  - snapshot: books-reader-settings

@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import '../../../books/book_reader_layout.dart';
 import '../../../books/book_reader_page.dart';
 import '../../../books/book_reader_theme.dart';
+import '../../../books/reader_page_fit.dart';
+import '../../../books/reader_settings.dart';
 import '../../../books/reader_typography.dart';
 
-/// The four glyphs of approved golden 07's chrome, drawn from the paths of the
-/// golden's own source rather than picked from Material Symbols.
+/// The glyphs of the reader's chrome, drawn from the paths of the golden's own
+/// source rather than picked from Material Symbols.
 ///
-/// A reader has four controls on a page of prose and they are the page's only
+/// A reader has five controls on a page of prose and they are the page's only
 /// furniture, so "close enough" would be visible. Nothing else in this app draws
 /// its own glyphs; nothing else in this app has a surface this bare either.
 enum BookReaderGlyph {
@@ -21,6 +23,12 @@ enum BookReaderGlyph {
 
   /// Zoeken in boek. One magnifier, not the comp's two.
   search,
+
+  /// `Aa`, the door to the reading settings, approved with golden 08.
+  ///
+  /// Set in the reading face rather than drawn as a path: it is a specimen of
+  /// the thing the sheet behind it changes.
+  settings,
 
   /// The bookmark, hollow.
   ///
@@ -40,12 +48,33 @@ class BookReaderGlyphIcon extends StatelessWidget {
   double get _size => switch (glyph) {
     BookReaderGlyph.back => BookReaderLayout.backGlyph,
     BookReaderGlyph.toc => BookReaderLayout.tocGlyph,
+    BookReaderGlyph.settings => BookReaderLayout.glyphSlot,
     BookReaderGlyph.search => BookReaderLayout.searchGlyph,
     BookReaderGlyph.bookmark => BookReaderLayout.bookmarkGlyph,
   };
 
   @override
   Widget build(BuildContext context) {
+    if (glyph == BookReaderGlyph.settings) {
+      return SizedBox.square(
+        dimension: _size,
+        child: Center(
+          child: Text(
+            'Aa',
+            style: ReaderTypography.styleFor(
+              colour: colour,
+              size: BookReaderLayout.settingsGlyphSize,
+              lineHeight: BookReaderLayout.glyphSlot,
+              weight: 500,
+              // The specimen keeps the reading cut of the canonical page rather
+              // than of its own 19 points: it stands for the page, not for
+              // itself.
+              opticalSize: ReaderTypography.canonicalOpticalSize,
+            ),
+          ),
+        ),
+      );
+    }
     return SizedBox.square(
       dimension: _size,
       child: CustomPaint(
@@ -77,6 +106,8 @@ class _GlyphPainter extends CustomPainter {
   }
 
   Path _path() => switch (glyph) {
+    // Drawn as a text specimen and never through this painter.
+    BookReaderGlyph.settings => Path(),
     BookReaderGlyph.back =>
       Path()
         ..moveTo(19, 12)
@@ -319,25 +350,45 @@ class _Track extends StatelessWidget {
   }
 }
 
-/// The text column: the paragraphs, the space between them, and nothing else.
+/// The text column: the paragraphs that fit, the space between them, and nothing
+/// else.
+///
+/// **It draws the page and not the book.** Which paragraphs fit follows from the
+/// type the reader has set, so at 24 points two of golden 07's four land here and
+/// the rest belong to a page that does not exist yet. See [ReaderPageFit] for why
+/// that is a first page and not pagination.
 class BookReaderColumn extends StatelessWidget {
-  const BookReaderColumn({super.key, required this.paragraphs, required this.theme});
+  const BookReaderColumn({super.key, required this.paragraphs, required this.theme, required this.settings});
 
   final List<BookReaderParagraph> paragraphs;
   final BookReaderTheme theme;
+  final ReaderSettings settings;
 
   @override
   Widget build(BuildContext context) {
-    final style = ReaderTypography.canonical(theme.ink);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < paragraphs.length; i++) ...[
-          if (i > 0) const SizedBox(height: BookReaderLayout.paragraphGap),
-          BookReaderMarkedText(paragraph: paragraphs[i], style: style, mark: theme.mark),
-        ],
-      ],
+    final style = ReaderTypography.styleFor(colour: theme.ink, size: settings.size, lineHeight: settings.lineHeight);
+    final scaler = MediaQuery.textScalerOf(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final count = ReaderPageFit.paragraphCount(
+          paragraphs: paragraphs,
+          style: style,
+          scaler: scaler,
+          width: constraints.maxWidth,
+          height: constraints.maxHeight,
+          gap: settings.paragraphGap,
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < count; i++) ...[
+              if (i > 0) SizedBox(height: settings.paragraphGap),
+              BookReaderMarkedText(paragraph: paragraphs[i], style: style, mark: theme.mark),
+            ],
+          ],
+        );
+      },
     );
   }
 }

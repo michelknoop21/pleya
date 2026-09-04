@@ -47,12 +47,12 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `06a-books-toc.png` | Inhoudsopgave, canonieke staat op Atomic Habits met de boom open op de locator | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `06b-books-toc-collapsed.png` | Dezelfde boom met alle delen dichtgeklapt | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `06c-books-toc-rowtypes.png` | Detail: de rijsoorten van de boom in hun drie posities | approved | detailuitsnede, 1179×1935 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `07a-books-reader.png` | Reader, canonieke staat op Dune hoofdstuk 12 met de chrome zichtbaar | approved (revisie B) | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `07a-books-reader.png` | Reader, canonieke staat op Dune hoofdstuk 12 met de chrome zichtbaar | approved (revisie B, `Aa`-aanvulling) | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `07b-books-reader-immersive.png` | Dezelfde pagina met de chrome verborgen | approved (revisie B) | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `07c-books-reader-themes.png` | Detail: dezelfde pagina in licht, sepia en donker | approved (revisie B) | detailuitsnede, 1179×2478 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `08a-reader-settings.png` | Leesinstellingen, canonieke staat over de leespagina | **proposed** | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `08b-reader-large-type.png` | Dezelfde pagina op de grootste lettergrootte, blad dicht | **proposed** | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `08c-reader-settings-controls.png` | Detail: de vijf bedieningen met hun staten | **proposed** | detailuitsnede, 1179×1851 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `08a-reader-settings.png` | Leesinstellingen, canonieke staat over de leespagina | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `08b-reader-large-type.png` | Dezelfde pagina op de grootste lettergrootte, blad dicht | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `08c-reader-settings-controls.png` | Detail: de vijf bedieningen met hun staten | approved | detailuitsnede, 1179×1851 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -736,16 +736,16 @@ pagina tekst is geen van beide. De statusbalk staat in `07b` gewoon aan, want iO
 een leeg gat rond de inkeping is geen leeswinst. En de kopregel verdwijnt niet met de chrome mee:
 dat is de kopregel van de pagina, zoals een gedrukt boek er bovenaan een draagt, en geen bediening.
 
-## Golden 08, Leesinstellingen (proposed)
+## Golden 08, Leesinstellingen (approved)
 
 Waar je de pagina zet: tekengrootte, regelafstand, marges, thema en scrollmodus. Inhoud van paneel 8
 van de comp, uitvoering op de bladgrammatica van golden 03. Drie frames, samen één scherm: `08a` het
 blad open over de leespagina, `08b` diezelfde pagina op de grootste stop met het blad dicht, `08c`
 een detailuitsnede van de vijf bedieningen met hun staten.
 
-**Dit is een voordracht en geen contract.** Er mag niets tegen gebouwd worden voordat Michel de
-keuzes hieronder heeft goedgekeurd of afgewezen. Eén ervan raakt bovendien een goedgekeurde golden:
-dit blad heeft geen deur, en de enige plek waar er een past is de chrome van golden 07.
+**Michel heeft golden 08 op 4 september 2026 in de chat goedgekeurd**, met alle keuzes hieronder en
+met de aanvulling op golden 07 die eronder hangt: het vijfde chromeslot `Aa`. `07a` is daarvoor
+opnieuw gerenderd, `07b` niet, want daar staat geen chrome op.
 
 `08a` is de **hoofdstaat**: het blad zoals het opengaat, met de instellingen die op de pagina
 eronder staan. `08b` is **gedragsbewijs**, en het enige frame in de set dat laat zien wat een
@@ -761,14 +761,14 @@ de rij op 590 tot 626, `Thema` op 653,3 met de schijven op 670 tot 722 en hun on
 36 hoog met 8 ertussen, de themaschijven 44 met 26 ertussen, en de schakelaar is de iOS-maat van
 51 × 31.
 
-**De keuzes die deze golden moet nemen.**
+**De keuzes van deze golden, alle genomen.**
 
 - **Het blad heeft geen deur, en de enige plek waar er een past zit in een goedgekeurde golden.** De
   chrome van golden 07 heeft vier glyfs en geen daarvan opent instellingen. Paneel 7 tekent er vijf,
   waarvan twee identieke vergrootglazen; golden 07 heeft de tweede weggelaten omdat hij geen
   betekenis had, met de aantekening dat hij terugkomt als die betekenis er blijkt te zijn. Dit is de
   betekenis: **`Aa` in het vijfde slot**, links van het vergrootglas. Beide frames tekenen die
-  chrome. Dat is een aanvulling op een goedgekeurde golden en vraagt dus apart goedkeuring; de
+  chrome. Goedgekeurd als aanvulling op golden 07, waarvan `07a` daarom opnieuw is gerenderd; de
   bandhoogte, de marge en de vier bestaande glyfs veranderen niet.
 - **Er staat geen `Lettertype`-rij in, en paneel 8 tekent er wel een.** De comp zet `Georgia` in een
   keuzerij. Pleya bundelt sinds golden 07 één leesletter, Literata, en een keuzelijst met één
@@ -806,7 +806,7 @@ de rij op 590 tot 626, `Thema` op 653,3 met de schijven op 670 tot 722 en hun on
 - **Of het blad meteen toepast of pas bij sluiten.** `08a` en `08b` zijn twee frames en geen
   animatie. Het voorstel dat eronder ligt is direct toepassen, want dat is de hele reden dat de
   pagina zichtbaar blijft, maar bewezen wordt het hier niet.
-- **Wat er gebeurt met de leespositie als de tekst herpagineert.** Op 24 pt passen er twee alinea's
+- **Wat er gebeurt met de leespositie als de tekst herpagineert.** Op 24 pt passen er drie alinea's
   op de pagina in plaats van vier. De voet blijft `48% · Pagina 248 van 616` staan, en dat klopt:
   allebei die getallen gaan over waar de lezer in de publicatie staat en niet over hoeveel er op
   het scherm past. Hoe de reader die positie vasthoudt terwijl hij opnieuw zet, is de
@@ -823,15 +823,92 @@ dat verschil staat hierboven. De schakelaar is groen, de iOS-kleur, en niet het 
 is in dit blad al de gekozen-markering van de schuif en van het thema, en dezelfde kleur voor
 "gekozen" en voor "aan" zou de twee laten samenvallen.
 
+**Correctie op `08b`, doorgevoerd na de goedkeuring.** De eerste versie van dat frame tekende twee
+alinea's op 24 pt. Dat was met de hand geschat en het klopte niet: gemeten op de leesletter is de
+eerste alinea 259 punt, de tweede 148 en de derde 74, met 32 ertussen, wat samen 545 is in een kolom
+van 564. De gemarkeerde vierde zou er 111 bij vragen en past dus niet. Er staan nu **drie** alinea's
+in het frame. De regel die goedgekeurd is verandert niet, alleen het beeld gaat nu wél over die
+regel; de bouw meet dezelfde 545 en tekent dezelfde drie.
+
 Eén ding dat het beeld zelf laat zien en dat beoordeling vraagt: **de vier marge-iconen liggen dicht
 bij elkaar.** Op 26 punt breed is het verschil tussen de eerste en de tweede stop twee punt
 tekening. De reeks leest van smal naar breed en de gekozen stop is duidelijk, maar of vier stops
 hier vier verschillende iconen waard zijn is een oordeel over het beeld en geen meting.
 
+## Wat er tegen golden 08 gebouwd is
+
+`lib/screens/books/widgets/reader_settings_sheet.dart`, met `lib/books/reader_settings.dart` voor de
+stopwaarden en `lib/books/reader_page_fit.dart` voor de vraag hoeveel er van een pagina past. De deur
+is de `Aa`-glyf die met deze golden aan de chrome van golden 07 is toegevoegd.
+
+**De stopwaarden staan in het model en niet in het blad.** `ReaderSettings` heeft drie reeksen en in
+alle drie is de goedgekeurde staat van golden 07 een stop: 18 pt is de derde grootte, de middelste
+regelband staat als `28 / 18` opgeschreven zodat hij niet los kan lopen van de reader, en 32 is de
+derde marge. De alinearuimte is één regel en geen tweede getal: een derde meer dan de tekengrootte,
+wat golden 07's 24 op 18 en golden 08b's 32 op 24 uit dezelfde bron haalt. `scrollMode` is een
+constante en geen veld, want de golden laat open wat hij aanzet en dan hoort niets hem te kunnen
+zetten.
+
+**Het blad en de pagina lezen één bron.** De reader houdt een `ValueNotifier<ReaderSettings>` vast en
+zowel de pagina als het blad luisteren erop. Twee kopieën zouden hier direct opvallen: het blad ligt
+op een eigen route en de pagina blijft eronder tekenen, dus een instelling moet allebei op hetzelfde
+moment bereiken. Dat is precies waarom het blad de pagina zichtbaar laat.
+
+Bewijs: `pleya_verify/scenarios/books.reader.settings.yaml` groen op de vastgezette iPhone 15
+Pro-simulator, plus acht widgettests in `test/screens/reader_settings_sheet_test.dart` en vier
+eenheidstests in `test/books/book_reader_test.dart`. De hele suite staat op 5031 groen.
+
+De vergelijking is de scherpste van de reeks. De `Aa`-glyf ligt op (243, 65) met 26 × 26. De vijf
+groepen liggen op (20, 402) met 353 × 56, (20, 482) met 353 × 60, (20, 566) met 353 × 60, (20, 650)
+met 353 × 90 en (20, 772) met 353 × 38, allemaal exact 340 plus de afstand die de golden voorschrijft.
+Een rijprofiel over `08a` en het simulatorbeeld legt elf van de dertien banden op **nul punt**
+verschil: de bladrand op 340, de kop op 369 tegen 368,7, de vier labels op 405,3 / 485,0 / 569,3 /
+653,3, de bedieningen op 434 / 506 / 590 / 670, de onderschriften op 727,7, de haarlijn op 754 en de
+scrollrij op 772. Alleen de kop ligt 0,33 hoger en de scrollrij is 1 punt hoger door de tweede regel
+eronder.
+
+**En het bewijs dat het blad de pagina niet afdekt:** met het blad open meet de tekstkolom nog steeds
+`GeoRect(32.0, 188.0, 329.0x564.0)`, hetzelfde rechthoekje als ervoor. Eén assertie is daarbij
+bewust niet gemaakt. "De eerste groep ligt onder de kolom" zou hier slagen noch iets bewijzen: de
+kolom is de bánd die de pagina mag gebruiken, 188 tot 752, en de bovenrand van het blad op 340 ligt
+daarbinnen. Dat is niet het blad dat de pagina afdekt, dat is een pagina die korter is dan zijn band.
+
+Wat de bouw opleverde, en wat geen enkele test zag:
+
+- **`08b` stond een alinea te vroeg afgesneden.** Het frame tekende er twee; gemeten op de leesletter
+  passen er drie. De eerste alinea is op 24 pt 259 punt hoog, de tweede 148, de derde 74, met 32
+  ertussen: samen 545 in een kolom van 564. De vierde zou er 111 bij vragen. De golden is
+  gecorrigeerd, de regel eronder niet, en de bouw meet nu dezelfde 545.
+- **`Color.withValues(alpha:)` vervangt de alfa en schaalt hem niet.** De marge-iconen tekenen hun
+  vulling op negen tiende van de inkt waar ze zelf in staan; met een vaste `0.9` kreeg een
+  niet-gekozen cel een vulling die feller was dan zijn eigen omtrek.
+- **`boxShadow` tekent in lijstvolgorde.** De accentring om de gekozen themaschijf staat in de golden
+  met 2 punt ruimte om de schijf; met de ring als tweede schaduw dekt hij die ruimte af. Het accent
+  moet er dus eerst liggen en het bladoppervlak erover.
+- **Een `screen.`-id vraagt om een `AutomationScreen` en niet om een knooppunt met een schermrol.**
+  Een scenario dat op zo'n id wacht bevraagt de gereedheidsmomentopname en een gewoon knooppunt komt
+  daar nooit in voor. Het blad stond in de UI-boom, de nodes waren er, en `wait_until` liep gewoon af.
+  De filtersheet van golden 03 is om dezelfde reden een `AutomationScreen`.
+
+Bewuste verschillen met het beeld:
+
+- **De schuif is te bedienen en de golden is een stilstaand beeld.** Slepen landt op de dichtstbijzijnde
+  stop in plaats van ertussen, want dat is wat zes stops betekenen.
+- **De statusbalk toont de echte tijd**, zoals bij elke simulatorvergelijking in deze reeks.
+
+Wat bewust niet gebouwd is:
+
+- **De scrollmodus.** De schakelaar is getekend en er is niets dat hem beweegt, zoals `Ga naar pagina`
+  in golden 06.
+- **Terugzetten op de standaard.** Geen knop, want de golden tekent er geen.
+- **Onthouden.** Een instelling geldt zolang de reader open is. Waar een leesvoorkeur bewaard wordt is
+  een profielinstelling en dat is golden 12, met PS-15 eronder.
+
 ## Wat er tegen golden 07 gebouwd is
 
 `lib/screens/books/book_reader_screen.dart`, met `widgets/book_reader_chrome.dart` eronder voor de
-glyfs, de kopregel, de alinea met zijn markering en de voet. Daaronder liggen drie modules die geen
+glyfs, de kopregel, de alinea met zijn markering en de voet. De chrome heeft er sinds de
+goedgekeurde aanvulling bij golden 08 een vijfde slot bij, `Aa`. Daaronder liggen drie modules die geen
 widget zijn: `lib/books/reader_typography.dart` (de snit), `book_reader_theme.dart` (de drie
 leesthema's uit `07c`) en `book_reader_layout.dart` (de banden). Het scherm heeft nu wél een deur:
 `Lees verder` op
@@ -893,30 +970,32 @@ Bewuste verschillen met het beeld:
 Wat bewust niet gebouwd is, en waar dus geen code voor bestaat:
 
 - **Paginering.** De fixture levert een pagina en geen boek. Tekst in pagina's snijden is de
-  reader-engine, die bij PS-15 hoort. De kolom is daarom een vak waar de pagina in moet passen, met
-  een widgettest die dat controleert, en geen venster op een langere tekst.
+  reader-engine, die bij PS-15 hoort. De kolom tekent de alinea's die passen bij de gezette letter,
+  en de pagina daarná bestaat niet.
 - **Bladeren, en wat een tik aan de rand doet.** Een tik op de pagina haalt de chrome weg en zet hem
   terug, de conventie die de golden noemt. Verder doet een tik niets, en de randen doen niets.
 - **De schuif slepen, `Zoeken in boek`, en de bladwijzer.** Alle drie getekend en inert, elk om zijn
   eigen reden uit de golden.
-- **Van thema wisselen.** `BookReaderTheme` heeft de drie van `07c` en een test die hun kleuren
-  vastlegt, maar er is geen bediening: welk thema standaard staat en hoe je wisselt is golden 08.
+- **Van thema wisselen.** Dat is er sinds golden 08 wel, in het instellingenblad; welk thema een vers
+  profiel krijgt blijft golden 12.
 - **De cursieve snit van Literata**, want deze pagina tekent er geen.
 
-Drie dingen die uit de bouw komen en niet uit de golden, en die goedkeuring vragen:
+Drie dingen die uit de bouw komen en niet uit de golden. **Alle drie goedgekeurd op 4 september
+2026**, dus ze staan hier als vastgelegd gedrag en niet als open punt:
 
 - **De glyfs in de chrome zijn 26 punt en dat is minder dan de 44 die iOS als minimum aanhoudt.** Dat
   is geen implementatiekeuze die stilletjes te repareren valt: de chromeband van de golden is 32 punt
   hoog, dus een raakvlak van 44 past er niet in zonder de band te veranderen. De rijen van golden 06
   worden wel op 44 getoetst; deze glyfs bewust niet, en de scenario-regel zegt dat er ook bij.
+  Goedgekeurd zoals hij is.
 - **De inhoudsopgaveglyf is inert op Dune.** Hij pusht golden 06 voor een publicatie die navigatie
   declareert, en in de vaste set is dat alleen Atomic Habits; Dune levert een `page-list` maar geen
   boom. De glyf wordt wel getekend, want de golden tekent hem. Of Dune een boom in de fixture krijgt
   is een keuze over de fixture, en een boek zonder delen is een staat die golden 06 expliciet
-  openlaat, dus die is hier niet genomen.
+  openlaat, dus die is hier niet genomen. Goedgekeurd zoals hij is.
 - **De tik op de pagina.** De golden noemt hem de conventie en beslist hem niet. Zonder hem is `07b`
   onbereikbaar en heeft de reader geen manier om zijn chrome kwijt te raken, dus hij zit erin, alleen
-  hij, en de randen blijven onaangeroerd.
+  hij, en de randen blijven onaangeroerd. Goedgekeurd zoals hij is.
 
 ## Wat er tegen golden 06 gebouwd is
 
@@ -1357,7 +1436,8 @@ node render.js reader.html ../../07c-books-reader-themes.png themes 826
 ```
 
 Op 4 september 2026 leverden twee opeenvolgende runs van revisie B identieke bestanden op (md5
-`ae365ae9…`, `3784195f…` en `8a9e7a24…`).
+`ae365ae9…`, `3784195f…` en `8a9e7a24…`). Na de goedgekeurde `Aa`-aanvulling staat `07a` op
+`7b72641c…`; `07b` en `07c` zijn onveranderd, want daar staat geen chrome op.
 
 Golden 08 gaat net zo, met `617` als hoogte voor het bedieningsframe.
 
@@ -1370,7 +1450,7 @@ node render.js settings.html ../../08c-reader-settings-controls.png controls 617
 ```
 
 Twee opeenvolgende runs leverden identieke bestanden op (md5 `9d2cd994…`, `3201b7be…` en
-`4d740908…`). Dit is de eerste golden van de set waarvan de tekstkolom
+`4d740908…`). `08b` staat inmiddels op `da00471a…`, zie de correctie hieronder. Dit is de eerste golden van de set waarvan de tekstkolom
 een letter uit de repository laadt in plaats van er een van het besturingssysteem te lenen, dus de
 render is nu ook buiten macOS reproduceerbaar. De md5's van voordracht A staan hier niet meer; die
 frames leunden op de systeem-Georgia en zijn daarmee toch niet na te maken.

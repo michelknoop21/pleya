@@ -87,6 +87,15 @@ ids:
   - id: books.reader.foot
     role: surface
     instanceable: false
+  - id: books.reader.type_settings
+    role: button
+    instanceable: false
+  - id: screen.reader_settings
+    role: screen
+    instanceable: false
+  - id: books.reader.settings.group
+    role: filter.group
+    instanceable: true
   - id: books.rail.continue
     role: rail
     instanceable: false

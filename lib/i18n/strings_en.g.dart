@@ -5299,6 +5299,36 @@ class TranslationsBooksEn {
 
 	/// en: 'Page ${page} of ${total}'
 	String readerPageOf({required Object page, required Object total}) => 'Page ${page} of ${total}';
+
+	/// en: 'Reading settings'
+	String get readerSettings => 'Reading settings';
+
+	/// en: 'Text size'
+	String get readerTextSize => 'Text size';
+
+	/// en: 'Line spacing'
+	String get readerLineSpacing => 'Line spacing';
+
+	/// en: 'Margins'
+	String get readerMargins => 'Margins';
+
+	/// en: 'Theme'
+	String get readerTheme => 'Theme';
+
+	/// en: 'Light'
+	String get readerThemeLight => 'Light';
+
+	/// en: 'Sepia'
+	String get readerThemeSepia => 'Sepia';
+
+	/// en: 'Dark'
+	String get readerThemeDark => 'Dark';
+
+	/// en: 'Scroll mode'
+	String get readerScrollMode => 'Scroll mode';
+
+	/// en: 'Scroll instead of turning pages'
+	String get readerScrollModeHint => 'Scroll instead of turning pages';
 }
 
 // Path: search.filters
@@ -7772,6 +7802,16 @@ extension on Translations {
 			'books.readerChapter' => ({required Object number}) => 'Chapter ${number}',
 			'books.readerPage' => ({required Object page}) => 'Page ${page}',
 			'books.readerPageOf' => ({required Object page, required Object total}) => 'Page ${page} of ${total}',
+			'books.readerSettings' => 'Reading settings',
+			'books.readerTextSize' => 'Text size',
+			'books.readerLineSpacing' => 'Line spacing',
+			'books.readerMargins' => 'Margins',
+			'books.readerTheme' => 'Theme',
+			'books.readerThemeLight' => 'Light',
+			'books.readerThemeSepia' => 'Sepia',
+			'books.readerThemeDark' => 'Dark',
+			'books.readerScrollMode' => 'Scroll mode',
+			'books.readerScrollModeHint' => 'Scroll instead of turning pages',
 			_ => null,
 		};
 	}

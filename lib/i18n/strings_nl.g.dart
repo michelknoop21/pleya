@@ -2114,6 +2114,16 @@ class _TranslationsBooksNl extends TranslationsBooksEn {
 	@override String readerChapter({required Object number}) => 'Hoofdstuk ${number}';
 	@override String readerPage({required Object page}) => 'Pagina ${page}';
 	@override String readerPageOf({required Object page, required Object total}) => 'Pagina ${page} van ${total}';
+	@override String get readerSettings => 'Leesinstellingen';
+	@override String get readerTextSize => 'Lettergrootte';
+	@override String get readerLineSpacing => 'Regelafstand';
+	@override String get readerMargins => 'Marges';
+	@override String get readerTheme => 'Thema';
+	@override String get readerThemeLight => 'Licht';
+	@override String get readerThemeSepia => 'Sepia';
+	@override String get readerThemeDark => 'Donker';
+	@override String get readerScrollMode => 'Scrollmodus';
+	@override String get readerScrollModeHint => 'Scrollen in plaats van bladeren';
 }
 
 // Path: search.filters
@@ -4158,6 +4168,16 @@ extension on TranslationsNl {
 			'books.readerChapter' => ({required Object number}) => 'Hoofdstuk ${number}',
 			'books.readerPage' => ({required Object page}) => 'Pagina ${page}',
 			'books.readerPageOf' => ({required Object page, required Object total}) => 'Pagina ${page} van ${total}',
+			'books.readerSettings' => 'Leesinstellingen',
+			'books.readerTextSize' => 'Lettergrootte',
+			'books.readerLineSpacing' => 'Regelafstand',
+			'books.readerMargins' => 'Marges',
+			'books.readerTheme' => 'Thema',
+			'books.readerThemeLight' => 'Licht',
+			'books.readerThemeSepia' => 'Sepia',
+			'books.readerThemeDark' => 'Donker',
+			'books.readerScrollMode' => 'Scrollmodus',
+			'books.readerScrollModeHint' => 'Scrollen in plaats van bladeren',
 			_ => null,
 		};
 	}

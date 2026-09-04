@@ -1887,6 +1887,16 @@
     "tocGoToPage": "Go to page",
     "readerChapter": "Chapter ${number}",
     "readerPage": "Page ${page}",
-    "readerPageOf": "Page ${page} of ${total}"
+    "readerPageOf": "Page ${page} of ${total}",
+    "readerSettings": "Reading settings",
+    "readerTextSize": "Text size",
+    "readerLineSpacing": "Line spacing",
+    "readerMargins": "Margins",
+    "readerTheme": "Theme",
+    "readerThemeLight": "Light",
+    "readerThemeSepia": "Sepia",
+    "readerThemeDark": "Dark",
+    "readerScrollMode": "Scroll mode",
+    "readerScrollModeHint": "Scroll instead of turning pages"
   }
 }

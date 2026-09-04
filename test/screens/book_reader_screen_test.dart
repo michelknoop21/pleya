@@ -99,11 +99,15 @@ void main() {
       expect(back.size, const Size(24, 24));
     });
 
-    testWidgets('draws four glyphs and only one magnifier', (tester) async {
+    testWidgets('draws five glyphs and only one magnifier', (tester) async {
       await _pumpReader(tester);
-      expect(find.byType(BookReaderGlyphIcon), findsNWidgets(4));
+      expect(find.byType(BookReaderGlyphIcon), findsNWidgets(5));
       expect(_glyph(BookReaderGlyph.search), findsOneWidget);
       expect(_glyph(BookReaderGlyph.bookmark), findsOneWidget);
+      // The fifth slot, approved with golden 08: `Aa`, and it is the reading
+      // face itself rather than a drawn glyph.
+      expect(_glyph(BookReaderGlyph.settings), findsOneWidget);
+      expect(find.text('Aa'), findsOneWidget);
     });
 
     /// The page comes from the fixture as a page and there is no pagination
@@ -136,7 +140,7 @@ void main() {
 
     testWidgets('the running head stays and the chrome goes', (tester) async {
       await _pumpReader(tester);
-      expect(find.byType(BookReaderGlyphIcon), findsNWidgets(4));
+      expect(find.byType(BookReaderGlyphIcon), findsNWidgets(5));
 
       await tester.tapAt(const Offset(196, 650));
       await tester.pumpAndSettle();
@@ -149,7 +153,7 @@ void main() {
 
       await tester.tapAt(const Offset(196, 650));
       await tester.pumpAndSettle();
-      expect(find.byType(BookReaderGlyphIcon), findsNWidgets(4));
+      expect(find.byType(BookReaderGlyphIcon), findsNWidgets(5));
     });
   });
 
