@@ -105,12 +105,15 @@ import '../focus/key_event_utils.dart';
 import '../i18n/strings.g.dart';
 import '../watch_together/providers/watch_together_provider.dart';
 import '../widgets/notice/notice_controller.dart';
+import '../media/playback_language_notice.dart';
+import 'settings/parts/language_picker_dialog.dart';
 
 part 'video_player/parts/companion_remote.dart';
 part 'video_player/parts/display_matching.dart';
 part 'video_player/parts/episode_navigation.dart';
 part 'video_player/parts/episode_queue.dart';
 part 'video_player/parts/errors.dart';
+part 'video_player/parts/language_toasts.dart';
 part 'video_player/parts/lifecycle.dart';
 part 'video_player/parts/live_tv.dart';
 part 'video_player/parts/media_controls.dart';

@@ -6,6 +6,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/media/playback_language_intent.dart';
+import 'package:pleya/media/playback_language_notice.dart';
 import 'package:pleya/media/pleya_profile_language_preferences.dart';
 import 'package:pleya/mpv/mpv.dart';
 import 'package:pleya/mpv/player/player_stream_controllers.dart';
@@ -114,6 +115,7 @@ TrackManager _make({
   MediaSourceInfo? mediaInfo,
   bool active = true,
   void Function(String, {Duration? duration})? showMessage,
+  void Function(PlaybackLanguageNotice)? onLanguageNotice,
 }) {
   return TrackManager(
     player: player,
@@ -124,6 +126,7 @@ TrackManager _make({
     metadata: metadata ?? _meta(),
     mediaInfo: mediaInfo,
     showMessage: showMessage,
+    onLanguageNotice: onLanguageNotice,
   );
 }
 
@@ -627,6 +630,66 @@ void main() {
       final mgr = _make(player: _FakePlayer());
       mgr.dispose();
       expect(mgr.dispose, returnsNormally);
+    });
+  });
+
+  // ============================================================
+  // LANG1 / DEC-096 — CONTROL N: de bevestiging van mockup 31 C
+  // ============================================================
+
+  group('CONTROL N — een handmatige keuze meldt zich', () {
+    setUp(() async {
+      resetSharedPreferencesForTest();
+      PleyaProfileLanguagePreferenceStore.resetForTesting();
+      SettingsService.resetForTesting();
+      await SettingsService.getInstance();
+    });
+
+    test('de melding noemt de serie, de bewaarde keuze en de ongewijzigde globale voorkeur', () async {
+      await PleyaProfileLanguagePreferenceStore.write(const PleyaProfileLanguagePreferences(subtitleLanguage: 'nl'));
+      final notices = <PlaybackLanguageNotice>[];
+      final mgr = _make(
+        player: _FakePlayer(),
+        metadata: MediaItem(
+          id: 'ep1',
+          backend: MediaBackend.plex,
+          kind: MediaKind.episode,
+          grandparentId: 'show7',
+          grandparentTitle: 'Severance',
+        ),
+        onLanguageNotice: notices.add,
+      );
+      addTearDown(mgr.dispose);
+
+      await mgr.onSubtitleTrackChanged(const SubtitleTrack(id: 's-1', language: 'eng', title: 'English'));
+
+      final notice = notices.single as LanguageChoiceRemembered;
+      expect(notice.kind, LanguageTrackKind.subtitles);
+      expect(notice.language, 'eng');
+      expect(notice.seriesTitle, 'Severance');
+      expect(notice.storedForSeries, isTrue);
+      expect(notice.globalLanguage, 'nl');
+    });
+
+    test('met "Onthoud keuzes per serie" uit meldt hij een keuze voor deze sessie', () async {
+      await PleyaProfileLanguagePreferenceStore.write(const PleyaProfileLanguagePreferences(rememberPerSeries: false));
+      final notices = <PlaybackLanguageNotice>[];
+      final mgr = _make(player: _FakePlayer(), onLanguageNotice: notices.add);
+      addTearDown(mgr.dispose);
+
+      await mgr.onAudioTrackChanged(const AudioTrack(id: 'a-1', language: 'eng'));
+
+      expect((notices.single as LanguageChoiceRemembered).storedForSeries, isFalse);
+    });
+
+    test('automatische resolutie meldt niets', () async {
+      final notices = <PlaybackLanguageNotice>[];
+      final mgr = _make(player: _FakePlayer(), onLanguageNotice: notices.add);
+      addTearDown(mgr.dispose);
+
+      await mgr.onAudioTrackChanged(const AudioTrack(id: 'a-1', language: 'eng'), userInitiated: false);
+
+      expect(notices, isEmpty);
     });
   });
 }

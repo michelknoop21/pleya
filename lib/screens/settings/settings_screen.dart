@@ -57,6 +57,7 @@ import 'keyboard_shortcuts_screen.dart';
 import 'home_layout_screen.dart';
 import 'library_visibility_screen.dart';
 import 'logs_screen.dart';
+import 'language_settings_screen.dart';
 import 'playback_settings_screen.dart';
 import '../profile/profile_switch_screen.dart';
 import 'seerr_settings_screen.dart';
@@ -84,6 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   static const _kDonate = 'donate';
   static const _kAppearance = 'appearance';
   static const _kPlayback = 'playback';
+  static const _kLanguage = 'language';
   static const _kTrackers = 'trackers';
   static const _kLibraryVisibility = 'library_visibility';
   static const _kHomeLayout = 'home_layout';
@@ -206,6 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
                         _buildLibraryVisibilityTile(),
                         _buildHomeLayoutTile(),
                         _buildPlaybackTile(),
+                        _buildLanguageTile(),
                         _buildTrackersTile(),
                         _buildRequestsTile(),
                         _buildTautulliTile(),
@@ -321,6 +324,24 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           'doorvoer',
         ],
         destinationBuilder: (_) => const PlaybackSettingsScreen(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.translate_rounded,
+        title: t.languageSettings.title,
+        subtitle: t.languageSettings.description,
+        keywords: const [
+          'language',
+          'subtitle',
+          'audio',
+          'taal',
+          'ondertitel',
+          'ondertiteling',
+          'sprache',
+          'untertitel',
+          'series preference',
+          'serievoorkeur',
+        ],
+        destinationBuilder: (_) => const LanguageSettingsScreen(),
       ),
       _SettingsSearchEntry(
         icon: Symbols.sync_rounded,
@@ -537,6 +558,19 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       title: t.settings.videoPlayback,
       subtitle: t.settings.videoPlaybackDescription,
       destinationBuilder: (context) => const PlaybackSettingsScreen(),
+    );
+  }
+
+  /// Taal en ondertitels — the single place a language preference is managed
+  /// (DEC-096 lid 9), next to Afspelen because a viewer who wonders why a
+  /// series starts in English looks under language rather than under playback.
+  Widget _buildLanguageTile() {
+    return SettingNavigationTile(
+      focusNode: _focusTracker.get(_kLanguage),
+      icon: Symbols.translate_rounded,
+      title: t.languageSettings.title,
+      subtitle: t.languageSettings.description,
+      destinationBuilder: (context) => const LanguageSettingsScreen(),
     );
   }
 

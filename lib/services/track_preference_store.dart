@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/track_language_choice.dart';
 import '../media/unified/identity_evidence.dart';
 import '../utils/app_logger.dart';
+import 'pleya_share/pleya_share_device_name.dart';
 import 'pleya_profile_language_preference_store.dart';
 import 'settings_service.dart';
 import 'storage_service.dart';
@@ -42,10 +45,28 @@ class TrackPreferenceStore {
     return previous.then((_) => action()).whenComplete(completer.complete);
   }
 
+  /// Drop the queue and the cached device name.
+  ///
+  /// The lock is a static chain, and a future created inside a widget test's
+  /// zone never completes once that test is torn down — every later write then
+  /// waits on a link that will never arrive. One test's leftovers are not the
+  /// next test's problem, so the chain is resettable.
+  @visibleForTesting
+  static void resetForTesting() {
+    _writeLock = Future<void>.value();
+    _deviceName = null;
+  }
+
   /// Beyond this many titles the oldest entries are dropped. The whole map is
-  /// one iCloud KVS value with a 100 KB ceiling; an entry costs well under
-  /// 100 bytes, so this leaves ample headroom.
-  static const int maxEntries = 500;
+  /// one iCloud KVS value with a 100 KB ceiling.
+  ///
+  /// Was 500 while an entry held languages alone at well under 100 bytes. The
+  /// provenance the management page shows — series title, poster path, server,
+  /// episode, device — roughly triples that, so the cap comes down to keep the
+  /// same headroom under the same ceiling. Nobody accumulates 250 series
+  /// preferences; the cap exists so that a decade of watching cannot silently
+  /// grow past a limit the sync layer enforces by refusing the whole value.
+  static const int maxEntries = 250;
 
   /// The *logical* series key, when this item carries evidence strong enough to
   /// name its show across sources — today the show's stable catalogue GUID
@@ -89,6 +110,46 @@ class TrackPreferenceStore {
     return logical == null ? [server] : [logical, server];
   }
 
+  /// How a write learns the name of the device it is running on.
+  ///
+  /// A seam, not a setting: the real implementation asks the platform once and
+  /// a test replaces it, so a stored provenance line is deterministic instead
+  /// of being whatever the build machine is called.
+  @visibleForTesting
+  static Future<String> Function() deviceNameProvider = pleyaShareDeviceName;
+
+  /// Resolved once per process. The name does not change while the app runs,
+  /// and a platform channel round trip per track change would sit in the path
+  /// of every episode start.
+  static Future<String>? _deviceName;
+
+  /// What the management page of mockup 31 A needs to describe this entry.
+  ///
+  /// Reads the *show's* fields where there are any: the entry is the series'
+  /// preference, so its poster and title are the show's, while the season and
+  /// episode number describe the moment. A movie has no grandparent and falls
+  /// back to its own title and poster, which is exactly what its row shows.
+  static Future<TrackChoiceProvenance> _provenanceFor(MediaItem metadata) async {
+    String? deviceName;
+    try {
+      deviceName = await (_deviceName ??= deviceNameProvider());
+    } catch (e) {
+      // A device without a name is a missing line on one row, never a reason
+      // to lose the choice the viewer just made.
+      _deviceName = null;
+      appLogger.d('Failed to resolve the device name for a track preference', error: e);
+    }
+    final isEpisode = metadata.kind == MediaKind.episode;
+    return TrackChoiceProvenance(
+      title: metadata.grandparentTitle ?? metadata.title,
+      posterPath: metadata.grandparentThumbPath ?? metadata.thumbPath,
+      serverId: metadata.serverId,
+      seasonNumber: isEpisode ? metadata.parentIndex : null,
+      episodeNumber: isEpisode ? metadata.index : null,
+      deviceName: deviceName,
+    );
+  }
+
   /// The profile half of every storage key: `{profileScope}|{seriesKey}`. An
   /// empty scope (no active profile) is a valid namespace of its own, so
   /// signed-out playback never reads or writes a signed-in profile's entry.
@@ -113,8 +174,11 @@ class TrackPreferenceStore {
     }
   }
 
-  static Future<void> saveAudio(MediaItem metadata, {String? language, String? title}) =>
-      _update(metadata, (current, now) => current.copyWithAudio(language: language, title: title, updatedAt: now));
+  static Future<void> saveAudio(MediaItem metadata, {String? language, String? title}) => _update(
+    metadata,
+    (current, now, provenance) =>
+        current.copyWithAudio(language: language, title: title, provenance: provenance, updatedAt: now),
+  );
 
   static Future<void> saveSubtitle(
     MediaItem metadata, {
@@ -124,8 +188,14 @@ class TrackPreferenceStore {
     bool off = false,
   }) => _update(
     metadata,
-    (current, now) =>
-        current.copyWithSubtitle(language: language, title: title, forced: forced, off: off, updatedAt: now),
+    (current, now, provenance) => current.copyWithSubtitle(
+      language: language,
+      title: title,
+      forced: forced,
+      off: off,
+      provenance: provenance,
+      updatedAt: now,
+    ),
   );
 
   /// Drop this title's series preference entirely — the "Gebruik globale
@@ -158,6 +228,29 @@ class TrackPreferenceStore {
     });
   }
 
+  /// Drop the entry stored under one exact key — what the management page of
+  /// mockup 31 A acts on.
+  ///
+  /// The page lists keys, not items: an entry may belong to a series on a
+  /// server this device no longer has, and rebuilding a [MediaItem] just to
+  /// reach [clear] would make exactly those rows unremovable. Same rule as
+  /// [clear] otherwise: not gated on the remember switch, because turning it
+  /// off must never stop a viewer from removing an override that exists.
+  static Future<void> clearKey(String seriesKey) {
+    return _locked(() async {
+      try {
+        final settings = await SettingsService.getInstance();
+        final scope = await _scope();
+        final stored = settings.read(SettingsService.trackLanguagePreferences);
+        if (!stored.containsKey('$scope|$seriesKey')) return;
+        final next = Map<String, TrackLanguageChoice>.from(stored)..remove('$scope|$seriesKey');
+        await settings.write(SettingsService.trackLanguagePreferences, next);
+      } catch (e) {
+        appLogger.w('Failed to clear a remembered track language', error: e);
+      }
+    });
+  }
+
   /// Every series preference belonging to the active profile, newest first —
   /// what the Serievoorkeuren column of mockup 31 A lists.
   static Future<List<({String key, TrackLanguageChoice choice})>> readAllForActiveScope() async {
@@ -184,7 +277,7 @@ class TrackPreferenceStore {
   /// it ever queued.
   static Future<void> _update(
     MediaItem metadata,
-    TrackLanguageChoice Function(TrackLanguageChoice current, int now) apply,
+    TrackLanguageChoice Function(TrackLanguageChoice current, int now, TrackChoiceProvenance provenance) apply,
   ) {
     return _locked(() async {
       try {
@@ -215,7 +308,7 @@ class TrackPreferenceStore {
           current = null;
         }
 
-        final updated = apply(current ?? TrackLanguageChoice(updatedAt: now), now);
+        final updated = apply(current ?? TrackLanguageChoice(updatedAt: now), now, await _provenanceFor(metadata));
 
         final next = Map<String, TrackLanguageChoice>.from(stored);
         for (final candidate in candidates) {

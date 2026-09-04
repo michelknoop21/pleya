@@ -16,6 +16,8 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../media/media_server_user_profile.dart';
 import '../media/pleya_profile_language_preferences.dart';
 import '../utils/app_logger.dart';
@@ -36,6 +38,11 @@ class PleyaProfileLanguagePreferenceStore {
     return previous.then((_) => action()).whenComplete(completer.complete);
   }
 
+  /// Drop the write queue — see `TrackPreferenceStore.resetForTesting`, which
+  /// documents why a static lock chain has to be resettable between tests.
+  @visibleForTesting
+  static void resetForTesting() => _writeLock = Future<void>.value();
+
   /// `{profileScope}`. An empty scope (no active profile) is a valid namespace
   /// of its own, so signed-out playback never reads or writes a signed-in
   /// profile's preference.
@@ -43,6 +50,13 @@ class PleyaProfileLanguagePreferenceStore {
     final storage = await StorageService.getInstance();
     return storage.activeUserScope() ?? '';
   }
+
+  /// The profile namespace the page and the switch rows read their entry from.
+  ///
+  /// Public because the settings surfaces need the same key this store writes
+  /// under, and a second expression of "which profile am I" is how two of them
+  /// end up disagreeing.
+  static Future<String> activeScope() => _storageKey();
 
   /// The active profile's preference, or an all-default one when it has none.
   ///

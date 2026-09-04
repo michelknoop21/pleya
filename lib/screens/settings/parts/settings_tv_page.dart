@@ -160,6 +160,13 @@ extension _SettingsTvPage on _SettingsScreenState {
                     onSelect: () => open('playback', (_) => const PlaybackSettingsScreen()),
                   ),
                   TvMenuItem(
+                    key: _SettingsScreenState._kLanguage,
+                    icon: Symbols.translate_rounded,
+                    title: t.languageSettings.title,
+                    subtitle: t.languageSettings.description,
+                    onSelect: () => open('language', (_) => const LanguageSettingsScreen()),
+                  ),
+                  TvMenuItem(
                     key: _SettingsScreenState._kTrackers,
                     icon: Symbols.sync_alt_rounded,
                     title: t.settings.trackers,

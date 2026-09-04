@@ -7,6 +7,7 @@ import '../media/media_item.dart';
 import '../media/media_server_user_profile.dart';
 import '../media/media_source_info.dart';
 import '../media/playback_language_intent.dart';
+import '../media/playback_language_notice.dart';
 import '../media/pleya_profile_language_preferences.dart';
 import '../media/track_language_choice.dart';
 import '../utils/future_extensions.dart';
@@ -983,6 +984,63 @@ class TrackSelectionService {
     return TrackSelectionResult(SubtitleTrack.off, TrackSelectionPriority.off);
   }
 
+  /// The intent layer that decided what this episode *should* sound or read
+  /// like, or null when no layer had an opinion.
+  ///
+  /// "Original audio" with no metadata to say what that is counts as no
+  /// opinion: there is nothing to name in a sentence, and the source's own
+  /// default is then the right answer rather than a disappointment.
+  ({PlaybackLanguageIntent intent, String language})? _wantedLayer({required bool isSubtitle}) {
+    for (final intent in _intentLayers.where((layer) => isSubtitle ? layer.hasSubtitle : layer.hasAudio)) {
+      if (isSubtitle) {
+        if (intent.subtitlesOff) return null;
+        final language = intent.subtitleLanguage;
+        if (language != null && language.isNotEmpty) return (intent: intent, language: language);
+        continue;
+      }
+      final language = intent.useOriginalAudio ? _originalAudioLanguage : intent.audioLanguage;
+      if (language != null && language.isNotEmpty) return (intent: intent, language: language);
+    }
+    return null;
+  }
+
+  /// What this resolution owes the viewer, per mockup 31 D, or null when it
+  /// gave them what they asked for.
+  ///
+  /// Reads the outcome, not the intent: a [priority] on one of the three intent
+  /// layers means the wish was met, and everything below it means this episode
+  /// could not honour it. That is the same line DEC-096 lid 1 draws between an
+  /// intent and a resolution, so there is one definition of "fell back" in the
+  /// product rather than a second one written for the toast.
+  PlaybackLanguageNotice? fallbackNotice({
+    required bool isSubtitle,
+    required TrackSelectionPriority priority,
+    required String? actualLanguage,
+    required bool isOff,
+  }) {
+    const met = {
+      TrackSelectionPriority.sessionIntent,
+      TrackSelectionPriority.sticky,
+      TrackSelectionPriority.globalProfile,
+    };
+    if (met.contains(priority)) return null;
+
+    final wanted = _wantedLayer(isSubtitle: isSubtitle);
+    if (wanted == null) return null;
+    // The wanted language is playing after all — a source layer happened to
+    // land on it, and there is nothing to report.
+    if (!isOff && languageMatches(actualLanguage, wanted.language)) return null;
+
+    return LanguageFallbackApplied(
+      kind: isSubtitle ? LanguageTrackKind.subtitles : LanguageTrackKind.audio,
+      wantedLanguage: wanted.language,
+      actualLanguage: isOff ? null : actualLanguage,
+      subtitlesOff: isOff,
+      fromSeriesPreference: wanted.intent.origin == PlaybackIntentOrigin.series,
+      seriesTitle: metadata.grandparentTitle ?? metadata.title,
+    );
+  }
+
   /// Select and apply audio and subtitle tracks based on preferences
   Future<void> selectAndApplyTracks({
     AudioTrack? preferredAudioTrack,
@@ -999,6 +1057,9 @@ class TrackSelectionService {
     // one-episode fallback overwrite a series preference (DEC-096 lid 1).
     Future<void> Function(AudioTrack, {required bool userInitiated})? onAudioTrackChanged,
     Future<void> Function(SubtitleTrack, {required bool userInitiated})? onSubtitleTrackChanged,
+    // Fires at most twice per item — once for audio, once for subtitles — and
+    // only when this episode could not honour a wanted language.
+    void Function(PlaybackLanguageNotice)? onLanguageNotice,
   }) async {
     // Wait for tracks to be loaded
     if (player.state.tracks.audio.isEmpty && player.state.tracks.subtitle.isEmpty) {
@@ -1034,6 +1095,16 @@ class TrackSelectionService {
       if (onAudioTrackChanged != null) {
         unawaited(onAudioTrackChanged(selectedAudioTrack, userInitiated: false));
       }
+
+      if (onLanguageNotice != null) {
+        final notice = fallbackNotice(
+          isSubtitle: false,
+          priority: audioResult.priority,
+          actualLanguage: selectedAudioTrack.language,
+          isOff: false,
+        );
+        if (notice != null) onLanguageNotice(notice);
+      }
     }
 
     // Select and apply subtitle track
@@ -1048,6 +1119,16 @@ class TrackSelectionService {
     // Same as the audio side above: fire and forget, on purpose.
     if (onSubtitleTrackChanged != null) {
       unawaited(onSubtitleTrackChanged(selectedSubtitleTrack, userInitiated: false));
+    }
+
+    if (onLanguageNotice != null) {
+      final notice = fallbackNotice(
+        isSubtitle: true,
+        priority: subtitleResult.priority,
+        actualLanguage: selectedSubtitleTrack.language,
+        isOff: selectedSubtitleTrack.id == 'no',
+      );
+      if (notice != null) onLanguageNotice(notice);
     }
 
     // Apply preferred secondary subtitle track if provided (mpv-only)
