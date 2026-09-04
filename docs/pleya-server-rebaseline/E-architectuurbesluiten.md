@@ -9,7 +9,7 @@ goedgekeurde DEC's of de design-authority en vraagt geen keuze.
 
 Boven 900 px de TV-topnav op webmaat; eronder de iOS-kop en de vijfslots-tabbalk. De `NavRail`
 van PS-3W vervalt. Reden: geen enkele goedgekeurde set van de Unified 2026-familie heeft een
-zijrail (DEC-096 op main haalde hem van TV, DEC-090 heeft hem niet op iOS), en de web-eis uit
+zijrail (DEC-063 op main haalde hem van TV, DEC-090 heeft hem niet op iOS), en de web-eis uit
 PS-4E is herkenbaarheid zonder uitleg. Afgewezen: de rail houden en alleen restylen, omdat de
 rail de enige plek zou zijn waar Pleya anders navigeert dan op elk ander scherm.
 
@@ -56,7 +56,7 @@ hergebruiken met `position_ms` als paginanummer (semantiekwijziging, regel 3).
 webclient doet twee aanvragen en toont secties; geen samengevoegde ranking, geen projectielaag,
 omdat er op Pleya Server precies één bron is. Server-side gaat de ILIKE achter een
 `pg_trgm`-index, zonder semantiekwijziging. Unified search over meerdere servers blijft een
-clientprojectie (DEC-099 op main) en raakt de server niet. Afgewezen: `ItemKind: book` (ps14-
+clientprojectie (DEC-066 op main) en raakt de server niet. Afgewezen: `ItemKind: book` (ps14-
 voorstel wijziging A) en een `/search` die twee resourcevormen mengt.
 
 ## RB-6 Beheer-API: dezelfde resources, schrijfbaar, klasse `admin`, capability `administration`

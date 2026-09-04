@@ -68,7 +68,7 @@ scherm 44-variant zonder rijen toont de uitleg uit scherm 13.
 
 ### 02 Films, 03 Series (`/films`, `/series`)
 
-Landing per soort met een link naar de complete catalogus (DEC-097 op main: twee niveaus).
+Landing per soort met een link naar de complete catalogus (DEC-064 op main: twee niveaus).
 Rijen: Recent toegevoegd (bestaand), Nog niet gezien (`/libraries/{id}/items?watched=false`*,
 S5), per genre (`?genre=`*, S4 en S5), Onlangs bekeken (`GET /watch-state?limit=` bestaand,
 gefilterd op `watched`), en op Series vooraan Volgende afleveringen en Nieuwe afleveringen

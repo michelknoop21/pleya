@@ -997,6 +997,8 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                               key: ValueKey('${toast.icon.codePoint}:${toast.text}'),
                               icon: toast.icon,
                               text: toast.text,
+                              detail: toast.detail,
+                              accent: toast.accent,
                             ),
                           );
                         },

@@ -105,6 +105,7 @@ PlexMetadataDto _$PlexMetadataDtoFromJson(Map<String, dynamic> json) =>
       grandparentArt: json['grandparentArt'] as String?,
       grandparentRatingKey:
           readStringField(json, 'grandparentRatingKey') as String?,
+      grandparentGuid: json['grandparentGuid'] as String?,
       parentTitle: json['parentTitle'] as String?,
       parentThumb: json['parentThumb'] as String?,
       parentRatingKey: readStringField(json, 'parentRatingKey') as String?,
@@ -178,6 +179,7 @@ Map<String, dynamic> _$PlexMetadataDtoToJson(PlexMetadataDto instance) =>
       'grandparentThumb': ?instance.grandparentThumb,
       'grandparentArt': ?instance.grandparentArt,
       'grandparentRatingKey': ?instance.grandparentRatingKey,
+      'grandparentGuid': ?instance.grandparentGuid,
       'parentTitle': ?instance.parentTitle,
       'parentThumb': ?instance.parentThumb,
       'parentRatingKey': ?instance.parentRatingKey,

@@ -10,7 +10,7 @@ import '../media/media_source_info.dart';
 import 'offline_watch_sync_service.dart';
 import 'playback_report_session.dart';
 import 'playback_write_authority.dart';
-import 'settings_service.dart';
+import 'pleya_profile_language_preference_store.dart';
 import 'track_selection_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/watch_state_notifier.dart';
@@ -547,8 +547,7 @@ class PlaybackProgressTracker {
 
   Future<bool> _shouldReportTrackSelections() async {
     try {
-      final settings = await SettingsService.getInstance();
-      return settings.read(SettingsService.rememberTrackSelections);
+      return (await PleyaProfileLanguagePreferenceStore.read()).rememberPerSeries;
     } catch (e) {
       appLogger.d('Could not read track-selection persistence setting; reporting selected streams', error: e);
       return true;
