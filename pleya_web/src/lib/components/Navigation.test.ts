@@ -19,7 +19,8 @@ const caps: Capabilities = {
   realtime: false,
   users: false,
   watch_state_ownership: false,
-  stream_sessions: false
+  stream_sessions: false,
+  sessions: false
 };
 const items = navItems(caps, 2);
 
