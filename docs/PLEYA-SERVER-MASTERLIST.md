@@ -338,7 +338,7 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 | P0a | De 20 afwijkingen uit VRAGENLIJST.md hoofdstuk 9 verwerkt in E, I, J, K, L, M, N | `[x]` 4 sep 2026 | E bijgestelde RB's en RB-29; I S1, S5, S6, S12, S18, S22, S24, S25; J venster 1, 0011, 0013, 0017; K.20; L; M.1; N.5 |
 | P0b | Dezelfde afwijkingen doorgetrokken in D (mockup metadata-overrides), F, H, O en de masterlijsttaken (S1: cookie; S6: manifest; S22: overrides) | `[x]` 4 sep 2026 | D kop plus rijen 28, 29, 30, 31, 36, 37, 38 en de nummertabel in D.5; F auth (cookie, origin, audit), zoeken, artwork, reading, capabilities, uitgebreide scope, F.2; H kop, H.1 manifestrij, H.2 Readium Locator, H.4 locatorbinding, H.5, H.6; O kop, O.1 readerrij, O.2 functioneel, visueel, technisch, release, O.3; `DESIGN.md` h6 nummerregel; S1.8, S6.1 en S22.5 stonden al |
 | P1 | Northstar-set goedgekeurd (consumer, beheer, setup) | `[x]` akkoord 4 sep 2026 | chatakkoord; APPROVED-markering volgt met de laatste mockups |
-| P2 | Mockups 17, 18, 19, 28, 35 gereviewd en in het manifest, deel C en deel D | `[ ]` | |
+| P2 | Mockups 17, 18, 19, 28, 35 gereviewd en in het manifest, deel C en deel D | `[~]` 4 sep 2026 | reviewronde 3 in C.5 en C.6 (22 bevindingen, alle gecorrigeerd), manifest bijgewerkt, D.2 aangevuld; hele set opnieuw gerenderd; wacht op Michels akkoord |
 | P3 | Zes mockups in één ronde: 11b downloads, 36 metadata-match en overrides, 37 transcode-sessies, 38 realtime-status, 50 speler, 51 reader; daarna APPROVED met SHA256SUMS | `[ ]` | |
 | P4 | Branch merget schoon met `main` | `[ ]` | |
 | P5 | Locatorbesluit voor leesvoortgang | `[ ]` | |

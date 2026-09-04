@@ -4,6 +4,11 @@ Status: **CANDIDATE**. Niet goedgekeurd, geen implementation authority tot Miche
 chat goedkeurt. Wat hier staat is de eerste complete web-familie van de Unified 2026-designtaal:
 40 schermen, 80 beelden, elk uit één HTML-bron in `src/pages/`.
 
+Bijgewerkt op 4 september 2026 na reviewronde 3 (`C-northstar-review.md` C.5): de vijf schermen
+van de uitgebreide scope (17, 18, 19, 28, 35) zijn gereviewd en gecorrigeerd, en de hele set is
+opnieuw gerenderd omdat drie van die bevindingen in `web.css` zaten. Zes schermen ontbreken nog
+en staan onderaan dit bestand.
+
 ## Wat de set is
 
 Een browserinterface die familie is van de TV-set (`docs/assets/tvos-unified/` op `main`,
@@ -49,9 +54,9 @@ breed beeld is de hele pagina.
 | 14 | Server onbereikbaar | 1600, 393 | `14-server-offline.html` | sessie blijft, geen uitlogscherm |
 | 15 | Laden | 1600, 393 | `15-skeleton.html` | skelet in de maten van de echte kaarten |
 | 16 | Kaartstaten | 1600 | `16-kaartstaten.html` | referentieblad: rust, hover, focus, voortgang, gezien, nieuw, versies, geen artwork |
-| 17 | Verzamelingen en afspeellijsten (PS-9C) | 1600, 393 | `17-collecties.html` | nog niet gereviewd |
-| 18 | Afspeellijst (PS-9C) | 1600, 393 | `18-afspeellijst.html` | nog niet gereviewd |
-| 19 | Kijkgeschiedenis, favorieten, waarderingen (PS-9P) | 1600, 393 | `19-geschiedenis-favorieten.html` | nog niet gereviewd |
+| 17 | Verzamelingen en afspeellijsten (PS-9C) | 1600, 393 | `17-collecties.html` | vierluik, segment links en sortering rechts (S19) |
+| 18 | Afspeellijst (PS-9C) | 1600, 393 | `18-afspeellijst.html` | geordend, kijkstatus per rij, herordenen als eigen modus (S19) |
+| 19 | Kijkgeschiedenis, favorieten, waarderingen (PS-9P) | 1600, 393 | `19-geschiedenis-favorieten.html` | cijfer 1 tot 10 los van de providerscore, geschiedenis zelf te wissen (S20) |
 | 20 | Beheer: overzicht | 1600, 1280, 393 | `20-admin-overzicht.html` | waarschuwing, vier tellers, activiteit, nu aan het kijken |
 | 21 | Beheer: bibliotheken | 1600, 393 | `21-admin-bibliotheken.html` | CRUD, scan per rij, `.env`-overname |
 | 22 | Beheer: bibliotheek bewerken | 1600, 393 | `22-admin-bibliotheek-bewerken.html` | roots uit opsomming, soort vast bij inhoud, toegang, verwijderen |
@@ -60,19 +65,33 @@ breed beeld is de hele pagina.
 | 25 | Beheer: scans en taken | 1600, 393 | `25-admin-scans.html` | lopende scan, fouten met retry, geschiedenis |
 | 26 | Beheer: gebruikers | 1600, 393 | `26-admin-gebruikers.html` | vier rollen |
 | 27 | Beheer: gebruiker | 1600, 393 | `27-admin-gebruiker.html` | rechtenladder per bibliotheek, toestellen, verwijderen |
-| 28 | Beheer: media en streaming | 1600 | `28-admin-media.html` | transcode- en downloadinstellingen (PS-8, PS-10), bijgewerkt 4 sep avond, nog niet gereviewd |
+| 28 | Beheer: media en streaming | 1600 | `28-admin-media.html` | drie hwaccel-backends runtime gedetecteerd, ondertitelbeleid, downloads (S1, S18, S23) |
 | 29 | Beheer: metadata en artwork | 1600 | `29-admin-metadata.html` | sidecar-dekking met 80%-poort, artworkcache, providerplek |
 | 30 | Beheer: netwerk | 1600 | `30-admin-netwerk.html` | servernaam, publiek adres; host-config alleen-lezen |
 | 31 | Beheer: beveiliging | 1600, 393 | `31-admin-beveiliging.html` | token-TTL's, alle sessies, sleutelrotatie |
 | 32 | Beheer: diagnostiek | 1600 | `32-admin-diagnostiek.html` | versies, capabilities, gezondheid, omgeving, geredigeerde log |
 | 33 | Beheer op een telefoon | 393 | `33-admin-mobiel-index.html` | de zijbalk als lijst |
 | 34 | Beheer: agents en API-tokens | 1600, 393 | `34-admin-agents.html` | MCP-status, tokens als sessies, bereik, auditlog van agentacties |
-| 35 | Beheer: onderhoud (PS-11B) | 1600, 393 | `35-admin-onderhoud.html` | back-up met hersteltest, terugzetten, upgradepad, faalpaden; nog niet gereviewd |
+| 35 | Beheer: onderhoud (PS-11B) | 1600, 393 | `35-admin-onderhoud.html` | back-up als instelling met failure-domain-waarschuwing, hersteltest, upgradepad, faalpaden (S25) |
 | 40 | Setup 1: eigenaar | 1600, 393 | `40-setup-eigenaar.html` | setupcode, account, servernaam |
 | 41 | Setup 2: opslag | 1600 | `41-setup-opslag.html` | roots uit de mounts |
 | 42 | Setup 3: bibliotheek | 1600, 393 | `42-setup-bibliotheek.html` | drie soorten |
 | 43 | Setup 4: scannen | 1600 | `43-setup-scan.html` | voortgang, eerste titels |
 | 44 | Na de setup | 1600, 393 | `44-setup-klaar.html` | Home met één bibliotheek, geen lege rijen |
+
+## Nog te tekenen
+
+Zes schermen ontbreken en gaan in één ronde naar Michel (poort P3 in
+`docs/PLEYA-SERVER-MASTERLIST.md`). Ze staan met hun route, data en slice in deel D.5.
+
+| Nr | Scherm | Slice |
+| --- | --- | --- |
+| 11b | Downloads op Mijn Pleya | S23 |
+| 36 | Beheer: metadata-match en per-field overrides | S22 |
+| 37 | Beheer: transcode-sessies | S18 |
+| 38 | Beheer: realtime-status | S21 |
+| 50 | Browserspeler | S13 |
+| 51 | Webreader op `@readium/navigator` | S12 |
 
 ## Nabouwen en uitbreiden
 

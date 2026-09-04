@@ -133,11 +133,26 @@ zichtbaarheid (privé, gedeeld met iedereen, per gebruiker); een afspeellijst is
 gebruiker en speelt op volgorde. Vierluik uit de eerste vier posters; herordenen als eigen
 modus; kaartmenu "Toevoegen aan" op elk item (08, 09, 10).
 
+Beide hangen onder Mijn Pleya: op breed blijft dat de actieve nav, op smal is het de actieve
+tab. Op 17 staat het segment (verzamelingen tegenover afspeellijsten) links en de sortering
+rechts, zodat een filter niet op een sortering lijkt. Op 18 draagt elke rij zijn eigen
+kijkstatus: een wit vinkje voor uitgekeken, een percentagepil voor onderweg, niets voor
+ongezien. De speelduur in de kop is de som van de rijen, dus een implementatie die hem uit een
+apart veld haalt moet dat veld ook bijwerken bij herordenen en verwijderen.
+
 ### 19 Kijkgeschiedenis, favorieten, waarderingen (`/my/history`, `/my/favorites`)
 
-`GET /history?kind=&cursor=`* uit `play_history`, `PUT/DELETE /favorites/{item}`*,
-`PUT /ratings/{item}`* (S20). Boeken doen mee via `reading_states`. Per rij toestelnaam en
-tijdstip; "Bekeken door" op detail vraagt dezelfde tabel.
+`GET /history?kind=&cursor=`* uit `play_history`, `DELETE /history`* en
+`DELETE /history/{id}`* (vraag 31: de gebruiker wist zijn geschiedenis volledig of selectief),
+`PUT/DELETE /favorites/{item}`*, `PUT /ratings/{item}`* (S20). Boeken doen mee via
+`reading_states`. Per rij toestelnaam en tijdstip; "Bekeken door" op detail vraagt dezelfde
+tabel.
+
+Een waardering is een geheel getal van 1 tot 10 op `user_rating` en staat los van de
+providerscore uit TMDB, die ernaast in dezelfde rij zichtbaar is (vraag 32). De client mag hem
+als sterren tekenen zolang de waarde die over de lijn gaat de schaal 1 tot 10 houdt; een
+duim omhoog of omlaag verliest informatie die Plex en Trakt wel dragen en is daarom geen
+toegestane representatie.
 
 ### 11 Mijn Pleya (`/my`)
 

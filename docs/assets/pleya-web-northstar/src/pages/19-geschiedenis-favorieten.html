@@ -1,7 +1,8 @@
 <!-- widths: 1600, 393 -->
 {{shell:my|nav=Kijkgeschiedenis}}
 <main class="page">
-  <h1 class="page-title"><span>Kijkgeschiedenis</span><span class="chips"><span class="chip on">Alles</span><span class="chip">Films</span><span class="chip">Series</span><span class="chip">Boeken</span></span></h1>
+  <h1 class="page-title"><span>Kijkgeschiedenis</span><a class="btn ghost sm" href="#">{{icon:trash}} Geschiedenis wissen</a></h1>
+  <div class="bar-row"><div class="chips"><span class="chip on">Alles</span><span class="chip">Films</span><span class="chip">Series</span><span class="chip">Boeken</span></div><span class="chip quiet">{{icon:sort}} Nieuwste eerst</span></div>
   <div class="cols-3" style="align-items:start">
     <div>
       <div class="group-label" style="margin-top:0">Vandaag</div>
@@ -19,18 +20,20 @@
     <div>
       <section class="panel">
         <h3>Favorieten <a class="all" href="#">Alle 14</a></h3>
-        <div class="rail" style="gap:10px">
-          {{card:grandbudapest|The Grand Budapest Hotel|★|}}
-          {{card:severance|Severance|★|}}
-          {{card:interstellar|Interstellar|★|}}
+        <div class="rail" style="gap:10px;position:relative">
+          {{card:grandbudapest|The Grand Budapest Hotel|★ favoriet|}}
+          {{card:severance|Severance|★ favoriet|}}
+          {{card:interstellar|Interstellar|★ favoriet|}}
+          <span class="fade-r"></span>
         </div>
       </section>
       <section class="panel" style="margin-top:14px">
-        <h3>Jouw waarderingen</h3>
-        <div class="row" style="padding:8px 0"><img class="poster" src="{{art:oppenheimer-poster}}" alt=""><div class="body"><div class="t">Oppenheimer</div><div class="s">gisteren</div></div><span class="pill">{{icon:thumb}} goed</span></div>
-        <div class="row" style="padding:8px 0"><img class="poster" src="{{art:joker2-poster}}" alt=""><div class="body"><div class="t">Joker: Folie à Deux</div><div class="s">vorige week</div></div><span class="pill" style="opacity:.6">{{icon:thumb}} niet mijn ding</span></div>
+        <h3>Jouw waarderingen <a class="all" href="#">Alle 31</a></h3>
+        <div class="row" style="padding:8px 0"><img class="poster" src="{{art:oppenheimer-poster}}" alt=""><div class="body"><div class="t">Oppenheimer</div><div class="s">gisteren · TMDB 8,1</div></div><span class="pill run">9 / 10</span></div>
+        <div class="row" style="padding:8px 0"><img class="poster" src="{{art:joker2-poster}}" alt=""><div class="body"><div class="t">Joker: Folie à Deux</div><div class="s">vorige week · TMDB 5,1</div></div><span class="pill">3 / 10</span></div>
+        <p class="help" style="margin-top:8px">Jouw cijfer staat los van de beoordeling van de provider en gaat van 1 tot 10, zodat hij zonder verlies naar Plex en Trakt kan.</p>
       </section>
     </div>
   </div>
 </main>
-<div class="note">NORTHSTAR · 19 Kijkgeschiedenis, favorieten en waarderingen (PS-9P) · per gebruiker, per toestel, boeken doen mee</div>
+<div class="note">NORTHSTAR · 19 Kijkgeschiedenis, favorieten en waarderingen (PS-9P) · S20 · per gebruiker, per toestel, zelf te wissen, boeken doen mee</div>
