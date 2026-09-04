@@ -94,6 +94,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | HERO1 | Framing van het hero-beeld op Home: op hardware staan halve beelden in de hero, Plex snijdt gecentreerd vóórdat de widget iets kan kiezen | FIXED, hardware open | `d4ec1fe` |
 | HERO2 | De titelband van de hero is de clearlogo-hoogte, dus een tweeregelige titel wordt op de baseline afgesneden | FIXED | `0ad49ec` |
 | HOME1 | Home naast de northstar: het hero-item staat niet heel in beeld, witruimte, overgangen, indeling en styling wijken af, en de navigatiebalk mee; mockup 29 | IN PROGRESS | n.v.t. |
+| I18N5 | Home toont het raillabel "Recently Added Shows" in het Engels tussen Nederlandse labels | OPEN | n.v.t. |
 | SEARCH1 | Zoeken benoemt zijn resultaten buiten het railcontract om | DEFERRED | n.v.t. |
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
 | VER3 | De eerste tegel van een rail steekt links buiten de veilige zone | OPEN | n.v.t. |
@@ -2121,3 +2122,22 @@ richtingen: A de northstar als referentie op de juiste maten, B een kaart van 2,
 16:9 in de rechter 1276 pixels van de kaart met dezelfde backdrop geblurd als vulling
 erachter (de "alleen poster"-taal van 9.4 toegepast op de backdrop, niets gesneden,
 kaart ongewijzigd), D full-bleed achter nav en tekst met de rail over de onderrand.
+
+Besluit van Michel op 4 september op mockup 29: **D, full-bleed.** Dat is geen
+uitsnedekeuze meer maar een wijziging van 9.2: de billboardkaart met ring vervalt,
+de backdrop staat op 16:9 achter nav en tekst, en de eerste rail overlapt de
+onderrand. Voor de bouw worden drie standen uitgetekend: de landing met CTA-focus,
+de railfocus (hoe het beeld terugtreedt als de rail de focus neemt), en de
+poster-only fallback van 9.4 onder full-bleed.
+
+**De rest van de pagina, gemeten in de simulator.** De rails staan in deze volgorde:
+Verder kijken, Recent uitgebracht, "Recently Added Shows" (Engels, I18N5), drie keer
+"Omdat je X gekeken hebt", Aanbevolen voor jou. Elke rail is de DEC-087-band: de
+gefocuste kaart 16:9 met titel, meta en synopsis eronder, de buren als posters. Wat
+afwijkt van de northstar en de audit: zodra de hero uit beeld is, is de achtergrond
+vlak zwart waar 9.3 een ambient tint uit het actieve artwork vraagt; de nav staat op
+een harde zwarte band; nieuw-markeringen zijn tekstpillen "NEW" en "NEW EPISODE" waar
+de northstar een amberpunt tekent (audit, divergentie 5); en het bijschrift onder de
+gefocuste kaart plus het volgende label nemen samen zoveel hoogte dat er per scherm
+precies één rail past. D2 en D4 tekenen de railstapel onder full-bleed met de
+ambient tint, de amberpunt en Nederlandse labels.
