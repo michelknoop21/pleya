@@ -41,6 +41,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `04a-books-search.png` | Boeken zoeken, canonieke staat op `dune` met Alles actief | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `04b-books-search-books.png` | Dezelfde zoekopdracht met alleen Boeken actief | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `04c-books-search-rowtypes.png` | Detail: de drie resultaatsoorten onder elkaar | approved | detailuitsnede, 1179×1590 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `05a-book-detail.png` | Boekdetail, canonieke staat op Dune met leesvoortgang | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `05b-book-detail-unread.png` | Hetzelfde scherm voor een boek zonder voortgang en zonder reeks | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `05c-book-detail-actions.png` | Detail: het actieblok in beide staten | proposed | detailuitsnede, 1179×1680 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -277,6 +280,78 @@ De lege staat zit hier bewust niet in. Een zoekscherm zonder resultaten is een e
 hem in dit frame proppen zou de enige vraag die 04 stelt, namelijk of de drie soorten uit elkaar te
 houden zijn, alleen maar vertroebelen.
 
+## Golden 05, Boekdetail (proposed)
+
+De pagina achter een cover, waar een boek zichzelf voorstelt en het lezen begint. Inhoud van paneel 5
+van de comp, uitvoering van `06-film-detail.png` uit de iOS Unified-set. Drie frames, samen één
+scherm: `05a` de canonieke staat op Dune, halverwege gelezen, `05b` dezelfde pagina voor een boek dat
+nog niet begonnen is en niet in een reeks staat, `05c` een detailuitsnede van het actieblok in beide
+staten zodat het verschil zonder de rest van het scherm te beoordelen is.
+
+**Deze golden houdt op bij de knop.** Wat `Lees verder` opent is de reader, paneel 7 van de comp, met
+een eigen golden en een eigen goedkeuring. Zolang die er niet is tekent de implementatie de knoppen
+en openen ze niets, precies zoals de Filters-pill tussen golden 02 en golden 03 stond. Zo ook voor
+het overflowmenu rechtsboven: het staat er omdat de comp het tekent, wat erin zit wordt hier niet
+beslist.
+
+De maatvoering komt van `06-film-detail.png` en is nagemeten, niet opnieuw bedacht. De kop staat op
+de band 71 tot 84, de pillen zijn 48 hoog met 10 pt ertussen en 16 pt paginamarge, de secundaire is
+`#2F2F2F`, en de beschrijving loopt op 16/21. De cover is 150 breed, dezelfde maat die golden 01b een
+Boekenseries-kaart gaf, in de 2:3 die golden 02 voor het raster vastlegde. In het gerenderde frame
+staat de cover van 104 tot 329, de titel op 349, de pillen op 503 en 561, de statsrij op 629 en de
+beschrijving op 689, met de laatste regel 17,7 pt vrij van de tabbalk.
+
+**De keuzes die de bronnen niet zelfstandig maken, en die dus goedgekeurd of afgewezen moeten
+worden.**
+
+- **De kop draagt geen titel.** `06-film-detail.png` zet `Dune: Part Two` naast de terugpijl. Paneel 5
+  doet dat niet, en de titel staat 270 pt lager in 30 pt vet; hem twee keer zetten levert geen extra
+  informatie op en kost de bovenrand zijn rust. De comp wint hier voor de compositie.
+- **Voortgang is twee regels tekst en geen balk.** `48% gelezen` is exacter dan een streep en
+  `Hoofdstuk 12` zegt waar je bent; een balk zou daar een derde horizontale lijn bij zetten, vlak
+  boven twee pillen die de volle breedte pakken. De comp toont ook geen balk. Dit wijkt bewust af van
+  de Verder-lezen-kaart op Boeken-home, die er wel een heeft: daar is de kaart klein en de tekst
+  onbetaalbaar, hier is het omgekeerd.
+- **De secundaire actie is een gevulde pil, niet de omlijnde uit de comp.** De set vult hem met
+  `#2F2F2F`. Een omlijnde knop over de volle breedte zou het enige omlijnde bedieningselement in de
+  hele set zijn.
+- **De statsrij houdt jaar, genre en pagina's.** Golden 02 hield die uit het raster omdat een plank
+  geen filmcatalogus is. Dat was een besluit over het raster, niet over het product: het detail is
+  precies de plek waar de metadata van een boek hoort, en de comp zet ze daar ook neer.
+- **De genrekolom is 1,45 keer zo breed als de twee andere.** Een gelijke derde is te smal voor het
+  enige woord van de drie: `Sciencefiction` liep dan tegen de haarlijnen aan.
+- **De reeksregel is een label en verder niets.** `Dune #1` staat onder de auteur, in dezelfde inkt
+  als de rest van de secundaire tekst. Of hij naar de reeks navigeert is een open vraag; deze golden
+  tekent hem, hij belooft geen bestemming.
+- **Drie regels beschrijving met een inline `meer`, ook als er ruimte over is.** In `05a` is drie
+  precies wat er boven de tabbalk past. In `05b`, waar het voortgangsblok wegvalt, blijven het er
+  drie en valt de winst als witruimte onderaan. Dat is dezelfde regel als bij `04b`: ruimte opvullen
+  omdat ze er is liegt over hoeveel er te zeggen valt.
+- **Een ontbrekend blok neemt zijn eigen witruimte mee.** De kolom onder de cover is een reeks
+  elementen met elk de ruimte erboven; mist een boek zijn reeks of zijn voortgang, dan schuift wat
+  eronder staat exact op met wat er weg is. De 24 pt tussen het identiteitsblok en de eerste knop
+  blijft in beide staten gelijk, en dat is te zien in `05c`.
+- **De ambience is van de cover afgeleid, niet de cover nog een keer.** Dezelfde regel die golden 01b
+  voor de Verder-lezen-kaart stelde. De scrim landt het veld op de paginakleur vóór de statsrij, dus
+  de onderste helft van het scherm is gewoon `--bg`.
+
+**Wat deze golden expliciet openlaat**, zodat het later een besluit is en geen omissie:
+
+- **De inhoudsopgave heeft geen zichtbare ingang.** Paneel 6 van de comp is de inhoudsopgave, maar
+  paneel 5 toont nergens hoe je er komt. Dat is een echt gat in de bron en geen detail dat hier stil
+  ingevuld hoort te worden. Golden 06 moet het beantwoorden, en dat kan betekenen dat dit scherm er
+  alsnog een rij of een menu-item bij krijgt.
+- **De gedownloade staat van de tweede knop.** `Downloaden` is de staat vóór de download. Wat er
+  staat tijdens en erna raakt de downloadwachtrij van paneel 10 en hoort bij die golden.
+- **Wat er onder de vouw staat.** De pagina scrollt, want de beschrijving is afgekapt. Of daar de
+  volledige beschrijving, de reeks of aanbevelingen op volgen is niet vastgelegd.
+
+**Bewuste verschillen met het beeld die geen goedkeuring nodig hebben.** De covers zijn getekend in
+CSS en de reekstelling in de comp (`Dune 6 boeken`) staat hier niet, om dezelfde redenen als bij de
+eerdere goldens. De tabbalk staat in beeld omdat de comp hem tekent; net als bij golden 02 en 04
+dekt het echte scherm `MainScreen` af zodra het op de profielnavigator gepusht wordt, en die
+kanttekening verandert hier niet.
+
 ## Wat er tegen golden 04 gebouwd is
 
 `lib/screens/books/books_search_screen.dart` met `lib/screens/books/widgets/book_search_row.dart`
@@ -483,6 +558,19 @@ node render.js search.html ../../04c-books-search-rowtypes.png rowtypes 530
 
 Op 4 september 2026 leverden twee opeenvolgende runs identieke bestanden op (md5 `3ade063c…`,
 `db01b97b…` en `ea2e2487…`).
+
+Golden 05 gaat net zo, met `560` als hoogte voor het detailframe.
+
+```
+cd docs/assets/ebooks/northstar/src/05-books-detail
+export NODE_PATH=/opt/homebrew/lib/node_modules:/opt/homebrew/lib/node_modules/@playwright/test/node_modules
+node render.js detail.html ../../05a-book-detail.png reading
+node render.js detail.html ../../05b-book-detail-unread.png unread
+node render.js detail.html ../../05c-book-detail-actions.png actions 560
+```
+
+Op 4 september 2026 leverden twee opeenvolgende runs identieke bestanden op (md5 `eb3883fb…`,
+`04d51147…` en `200e70fa…`).
 
 `render.js` opent Chromium op 393×852 met `deviceScaleFactor: 3` en wacht op `document.fonts.ready`.
 Op 3 september 2026 leverde deze route vanuit de repo-bron byte-identieke PNG's op (md5
