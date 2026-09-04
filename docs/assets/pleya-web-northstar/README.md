@@ -1,8 +1,15 @@
-# Pleya Web northstar, kandidaatset van 4 september 2026
+# Pleya Web northstar, goedgekeurd op 4 september 2026
 
-Status: **CANDIDATE**. Niet goedgekeurd, geen implementation authority tot Michel de set in de
-chat goedkeurt. Wat hier staat is de eerste complete web-familie van de Unified 2026-designtaal:
-40 schermen, 80 beelden, elk uit één HTML-bron in `src/pages/`.
+Status: **APPROVED**. Michel keurde de set die dag in de chat goed, in twee stappen: de veertig
+schermen van de eerste ronde plus de vijf van de uitgebreide scope (poort P1 en P2), en daarna de
+zes die als laatste bij kwamen (poort P3). Vanaf nu is dit de implementation authority voor
+`pleya_web`: 46 schermen, 91 beelden, elk uit één HTML-bron in `src/pages/` en dezelfde
+`src/web.css`.
+
+`SHA256SUMS` in deze map legt vast wát er goedgekeurd is, over de beelden, de bronnen, `web.css`
+en `build.mjs`. Controleren met `shasum -a 256 -c SHA256SUMS` vanuit deze map. Een beeld dat
+verandert zonder dat die lijst meegaat, wijzigt een goedgekeurde referentie in stilte; daarom
+hoort een hergeneratie in dezelfde commit als de nieuwe checksums.
 
 Bijgewerkt op 4 september 2026 na reviewronde 3 en 4 (`C-northstar-review.md` C.5 en C.7). Ronde
 3 reviewde en corrigeerde de vijf schermen van de uitgebreide scope (17, 18, 19, 28, 35), waarna
@@ -104,13 +111,13 @@ Playwright komt uit de globale installatie onder `/opt/homebrew` (1.61), net als
 `out/` is wat `build.mjs` schrijft en staat niet in git. Artwork komt uit `~/Downloads/mockups/
 _src/art` met `~/Downloads/mockups-tvos/_src/art` als terugval; `PLEYA_ART=` overrulet dat.
 
-## Wat een goedkeuring vastlegt
+## Wat de goedkeuring vastlegt
 
 De compositie, hiërarchie en maatvoering per scherm, de shellkeuze per breedte, de kaartstaten
 uit 16, en de grens tussen consumer en beheer. Niet de titels, het artwork, de aantallen in de
 beheerschermen of de exacte teksten in waarschuwingen. Een implementatie wordt tegen deze
 beelden en tegen deel D van `docs/pleya-server-rebaseline/` beoordeeld.
 
-Twee open designdetails uit DEC-090 zijn hier voor web als volgt ingevuld en vragen bij
-goedkeuring een expliciet ja: de secundaire hero-knop is **Meer info** (het TV-contract) en de
-carousel draagt een tijdelijke segmentindicator, geen permanente dots.
+Twee open designdetails uit DEC-090 zijn hier voor web ingevuld en mee goedgekeurd: de secundaire
+hero-knop is **Meer info** (het TV-contract) en de carousel draagt een tijdelijke
+segmentindicator, geen permanente dots.
