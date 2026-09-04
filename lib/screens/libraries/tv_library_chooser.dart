@@ -22,6 +22,13 @@ import '../../widgets/tv/tv_page_chip_bar.dart';
 /// what is already open is noise, and the page heading names it already.
 bool tvLibraryChooserVisible(List<MediaLibrary> visibleLibraries) => visibleLibraries.length > 1;
 
+/// The chip key, and therefore the focus-node key, for one library's capsule.
+///
+/// One place, so the screen prunes and restores focus nodes on exactly the
+/// identity the chips are built with. A second copy of this string would
+/// silently dispose every surviving chip's node on each rebuild.
+String tvLibraryChooserChipKey(String libraryGlobalKey) => 'library_$libraryGlobalKey';
+
 /// One capsule per visible library, the open one carrying the outline.
 ///
 /// Hidden libraries are absent because the caller passes the visible list —
@@ -39,7 +46,7 @@ List<TvPageChip> tvLibraryChooserChips({
   return [
     for (final library in visibleLibraries)
       TvPageChip(
-        key: 'library_${library.globalKey}',
+        key: tvLibraryChooserChipKey(library.globalKey),
         icon: ContentTypeHelper.getLibraryIcon(library.kind.id),
         label: showServer && (library.serverName?.isNotEmpty ?? false)
             ? '${library.title} · ${library.serverName}'
