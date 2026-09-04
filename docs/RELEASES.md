@@ -19,7 +19,20 @@ under `Notes`.
 
 <!-- BEGIN GENERATED -->
 ### New
+- DeviceCapabilities-model met vier lagen en een expliciete confidence
+- detectie per laag, met de host als injecteerbaar argument
+- overrides op het model, plus display_max_resolution
+- Jellyfin-DeviceProfile uit het model, gedragsneutraal
+- Plex-transcoderequest uit het model, gedragsneutraal
+- TrueHD in de Jellyfin direct-play-lijst op mpv-platforms
+- de resolutiecap van de gebruiker bereikt de Jellyfin-profielcondities
 - een Pleya Server is te ontkoppelen waar Verbindingen zegt dat het kan
+- respijtvenster op refreshtokenrotatie (DEC-063)
+- token bucket op de relay, en meldingen die vouwen in plaats van stapelen
+- compacte sessieregel, en de commit-sha in elke TestFlight-build
+- migratie 0007, sessie-scoped tokenketen en begrensde loginlimiter (PS-9-stap 2)
+- scope watch state to authenticated users
+- PS-9 AC2, volledige autorisatiematrix en DEC-065-alignment
 - lege huls voor het automation-contract (Fase 0)
 - declared+discovered registry en GET /v1/ui_tree (Fase 1)
 - automation-ids, AutomationNode en FocusableWrapper-ids (Fase 2)
@@ -61,8 +74,11 @@ under `Notes`.
 - Mijn Pleya-secties op één paginaframe, en de bibliotheekkiezer op tvOS
 - een contentroute opent binnen de shell, en houdt de topnav
 - media detail sluit zichzelf via TvNestedRouteScope wanneer genest (PB-1)
+- PS-9 stap 4 en 6, gebruikersbeheer en sessie-intrekking
+- PS-9-clientkant, een eigen profielsoort voor Pleya Server
 
 ### Improved
+- semantische bronaudit op codec- en containerlijsten
 - scheidingslijnen volgen de werkelijke rijhoogte
 - één shape-contract voor CTA-knop en focusring
 
@@ -76,7 +92,11 @@ under `Notes`.
 - een verbroken Pleya Server-verbinding liet zijn rij en zijn refreshtoken achter
 - een mislukte refresh maakte de verbinding kapot in plaats van hem te markeren
 - de buildnummers van iOS, tvOS en macOS lopen weer gelijk
+- "Opnieuw aanmelden" probeert eerst één echte refresh
+- Nederlands compleet tegen Engels, met een test die dat afdwingt
+- cloudflared blijvend op het netwerk van de Pleya Server
 - een mislukte persist van een rotatie blijft niet onopgemerkt
+- verify-local.sh's drift check kende PS-9's eigen tabellen niet
 - een geopende serie-detailpagina laat nieuwe afleveringen na afspelen zien
 - de gefocuste rij krijgt een markering in plaats van een omlijning
 - verbindingsrijen krijgen dezelfde focusweergave als de rest van instellingen
@@ -121,12 +141,17 @@ under `Notes`.
 - headercontrols blijven bereikbaar na een LEFT-uitstap uit het raster (CAT4)
 - elke overlay op TV krijgt de 10-voets paneelgeometrie (OVR1b)
 - behoud expliciete sheet presentation op TV (OVR2)
+- schema.d.ts liep achter op de PS-9-protocoltoevoegingen
+- continue_watching en next_up leverden onvoorwaardelijk niets
 - geen zichtbare terugknop op een oppervlak dat de afstandsbediening niet kan bedienen (BACK1)
 - houd het contextmenu uit de overscanband (FOC1)
 - vraag de detail-backdrop op de resolutie van het toestel (ART1)
 - verzoen de bibliotheekselectie met de bibliotheken die er zijn (LIB1)
 - laat de laatst gekozen bibliotheek de trage vorige overleven (LIB2)
 - geen rode rul meer onder de open tab op TV (LIB3)
+- de hero vraagt artwork in de bronratio aan, zodat de widget de uitsnede bezit (HERO1)
+- de titelband van de hero past twee regels, niet alleen het logo (HERO2)
+- de merge liet twee capability-fixtures en de gegenereerde client achter
 <!-- END GENERATED -->
 
 ### Fixed

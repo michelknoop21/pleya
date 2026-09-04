@@ -101,8 +101,10 @@ func TestDedupeKeepsOneInFlight(t *testing.T) {
 	}
 }
 
-// TestFailureRetriesThenGivesUp dekt retries met een dak erop.
-func TestFailureRetriesThenGivesUp(t *testing.T) {
+// TestFailureRecordsTheReason dekt de eerste mislukking: de job gaat terug naar
+// `pending` en de reden staat vast. Dit is bewust NIET het retry-gedrag; dat staat
+// hieronder in TestFailureRetriesThenGivesUp.
+func TestFailureRecordsTheReason(t *testing.T) {
 	runner, pool := newRunner(t)
 	ctx := context.Background()
 
@@ -124,12 +126,6 @@ func TestFailureRetriesThenGivesUp(t *testing.T) {
 	done := make(chan struct{})
 	go func() { runner.Run(runCtx); close(done) }()
 
-	waitFor(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return attempts >= 1
-	}, "de job draaide niet")
-
 	// Wachten tot de uitkomst ook echt in de database staat, en pas dan annuleren.
 	// De handler is terug zodra `attempts` opgehoogd is, maar de runner schrijft het
 	// mislukken daarna pas weg. Annuleren we ertussenin, dan sneuvelt die schrijfactie
@@ -142,11 +138,92 @@ func TestFailureRetriesThenGivesUp(t *testing.T) {
 			`SELECT state, last_error FROM jobs WHERE id = $1`, jobID).Scan(&state, &lastError); err != nil {
 			return false
 		}
-		return (state == "pending" || state == "failed") && lastError != nil && *lastError != ""
+		return state == "pending" && lastError != nil && *lastError != ""
 	}, "het mislukken is niet weggeschreven")
 
 	cancel()
 	<-done
+
+	// Eén mislukking van drie toegestane pogingen zet de job terug op `pending`,
+	// niet op `failed`. Dat onderscheid is de hele reden dat deze test bestaat:
+	// accepteert hij hier ook `failed`, dan slaagt hij net zo goed voor een runner
+	// die nooit opnieuw probeert.
+	var state string
+	var attemptsInDB int
+	var lastError *string
+	if err := pool.QueryRow(ctx,
+		`SELECT state, attempts, last_error FROM jobs WHERE id = $1`, jobID).Scan(&state, &attemptsInDB, &lastError); err != nil {
+		t.Fatal(err)
+	}
+	if state != "pending" {
+		t.Fatalf("na één mislukking van drie staat de job op %q, verwacht pending", state)
+	}
+	if attemptsInDB != 1 {
+		t.Fatalf("attempts is %d na één ronde, verwacht 1", attemptsInDB)
+	}
+	if lastError == nil || *lastError == "" {
+		t.Fatal("de reden van mislukken is niet vastgelegd")
+	}
+}
+
+// TestFailureRetriesThenGivesUp dekt wat de naam zegt: de runner probeert het
+// opnieuw, en houdt op zodra max_attempts bereikt is.
+//
+// Twee dingen maken deze test anders dan de vorige. Hij zet `max_attempts` op 2,
+// zodat "opgeven" binnen een testronde valt in plaats van na drie. En hij duwt
+// `run_at` telkens naar nu, want de runner zet er exponentiële backoff op (2 s na
+// de eerste mislukking, `jobs.go`); zonder die duw wacht de test op een klok in
+// plaats van op gedrag.
+func TestFailureRetriesThenGivesUp(t *testing.T) {
+	runner, pool := newRunner(t)
+	ctx := context.Background()
+
+	var attempts int
+	var mu sync.Mutex
+	runner.Register("valt-om", func(ctx context.Context, job jobs.Job) error {
+		mu.Lock()
+		attempts++
+		mu.Unlock()
+		return errors.New("gaat mis")
+	})
+
+	jobID, _, err := runner.Enqueue(ctx, "valt-om", nil, "", time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx,
+		`UPDATE jobs SET max_attempts = 2 WHERE id = $1`, jobID); err != nil {
+		t.Fatal(err)
+	}
+
+	runCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { runner.Run(runCtx); close(done) }()
+
+	waitFor(t, func() bool {
+		// De backoff wegduwen zodat de tweede poging niet op de klok wacht.
+		_, _ = pool.Exec(ctx,
+			`UPDATE jobs SET run_at = now() WHERE id = $1 AND state = 'pending'`, jobID)
+
+		var state string
+		var attemptsInDB int
+		var finishedAt *time.Time
+		if err := pool.QueryRow(ctx,
+			`SELECT state, attempts, finished_at FROM jobs WHERE id = $1`, jobID).Scan(&state, &attemptsInDB, &finishedAt); err != nil {
+			return false
+		}
+		return state == "failed" && attemptsInDB >= 2 && finishedAt != nil
+	}, "de job gaf niet op na max_attempts")
+
+	cancel()
+	<-done
+
+	mu.Lock()
+	handlerCalls := attempts
+	mu.Unlock()
+	if handlerCalls < 2 {
+		t.Fatalf("de handler draaide %d keer, dus er is niet opnieuw geprobeerd", handlerCalls)
+	}
 
 	var state string
 	var lastError *string
@@ -154,8 +231,8 @@ func TestFailureRetriesThenGivesUp(t *testing.T) {
 		`SELECT state, last_error FROM jobs WHERE id = $1`, jobID).Scan(&state, &lastError); err != nil {
 		t.Fatal(err)
 	}
-	if state != "pending" && state != "failed" {
-		t.Fatalf("een mislukte job staat op %q", state)
+	if state != "failed" {
+		t.Fatalf("na max_attempts staat de job op %q, verwacht failed", state)
 	}
 	if lastError == nil || *lastError == "" {
 		t.Fatal("de reden van mislukken is niet vastgelegd")

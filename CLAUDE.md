@@ -2,11 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Pleya is a Flutter client for **Plex and Jellyfin** across desktop, mobile, and TV. See @README.md and @CONTRIBUTING.md for full setup/i18n docs — this file only covers what isn't obvious from them or the code.
+Pleya is a Flutter client for **Plex and Jellyfin** across desktop, mobile, and TV. See @README.md and @CONTRIBUTING.md for full setup/i18n docs; this file only covers what isn't obvious from them or the code.
 
 ## Commands
 ```bash
-scripts/codegen.sh                 # slang + build_runner — run after editing models or i18n
+scripts/codegen.sh                 # slang + build_runner (run after editing models or i18n)
 dart run slang                     # regenerate translations only (after en.i18n.json)
 flutter analyze                    # static analysis (warnings = CI failure)
 flutter test                       # all tests
@@ -43,7 +43,7 @@ apart, anders is een veranderde `.g.dart` niet meer toe te wijzen.
 `test/database/drift_relations_test.dart` bewaakt dat; zie [DEC-026](docs/DECISIONS.md#dec-026) voor
 de voorwaarden waaronder de pin weer los mag.
 
-## Codegen (gotcha — fails CI if skipped)
+## Codegen (gotcha: fails CI if skipped)
 Models use `freezed` + `json_serializable`; i18n uses `slang`. After editing any `@freezed` model or a `lib/i18n/*.i18n.json` file (the base locale is `lib/i18n/en.i18n.json`; `strings.g.dart` is the generated output), run `scripts/codegen.sh`. CI fails if a `.dart` source is newer than its generated `.g.dart`/`.freezed.dart`, and `flutter analyze` **warnings are treated as failures**.
 
 ## Architecture (big picture)
@@ -96,22 +96,75 @@ opnieuw geopend.
 **Vrijgave is per fase.** PS-0 (Docker Foundation), PS-1 (wire-contract), PS-2 (catalogus in Go),
 PS-3 (de vijfde `MediaServerClient`) en PS-3W (Pleya Web) zijn gesloten en bevroren; de
 PS-0-afwijking staat in `docs/pleya-server-ps0-proposal.md`, de PS-1-afwijking in
-`docs/pleya-server-ps1-scope-deviation.md` en de PS-3W-afwijking in
-`docs/pleya-server-ps3w-proposal.md`. Het masterplan dat er acht fasen bij zet is goedgekeurd op
+`docs/pleya-server-ps1-scope-deviation.md`, de PS-3W-afwijking in
+`docs/pleya-server-ps3w-proposal.md` en de volgorde-afwijking in
+`docs/pleya-server-phase-order-deviation.md`. Het masterplan dat er acht fasen bij zet is goedgekeurd op
 21 augustus 2026 en staat in `docs/pleya-server-masterplan-proposal.md`. **PS-4 is gesloten** op
 21 augustus 2026: direct play met HTTP-range, en kijkstatus met de server als eigenaar. Desktop,
 mobiel en TV zijn alle drie op echte hardware bewezen, inclusief een kijkpositie die van een Mac via
 een iPhone naar een Apple TV meereisde.
-**De eerstvolgende fase is PS-5** (`DeviceCapabilities` in de client). Werk dat verder gaat dan de
-PS-5-scope is per definitie te vroeg; transcoderen is PS-8, gebruikers zijn PS-9, en de browserspeler
-is PS-4W.
+**PS-9 is gesloten** op 4 september 2026: vier van de vijf acceptatiecriteria met tests, en het
+stopcriterium op de draaiende NAS in plaats van alleen in een container. De volgende fase in de
+vastgelegde doorloop is **PS-11A**, en die is niet gestart; het sluiten van PS-9 start hem niet, dat
+is een apart besluit. Daarna volgen PS-6, PS-7 en PS-8; die volgorde is een geldige doorloop van
+dezelfde afhankelijkheidsgraaf en staat in `docs/pleya-server-phase-order-deviation.md`.
+
+PS-5 (`DeviceCapabilities` in de client) is code complete maar niet gesloten: acceptatiecriterium 4,
+de regressieronde op echte hardware voor tvOS en minimaal één desktopplatform, blijft expliciet open
+en niet gehaald. Die hardwarevalidatie is bewust uitgesteld en blokkeerde PS-9 niet, conform
+[DEC-064](docs/DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet).
+Dat PS-9 nu gesloten is, is nadrukkelijk geen bewijs dat PS-5-criterium 4 gehaald is; de bestaande
+hardwaretest moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of PS-9-gedrag bevat
+alsnog worden uitgevoerd.
+
+**Op 24 augustus 2026 zijn er drie fasen bij gekomen**, goedgekeurd in
+`docs/pleya-server-ps4e-proposal.md` en vastgelegd in
+[DEC-073](docs/DECISIONS.md): **PS-4E** (Pleya Web naar app-pariteit, inclusief het *tonen* van
+bestaande kijkstatus), **PS-7N** (`summary`, `genres` en `content_rating` uit lokale `.nfo`-sidecars,
+voorwaardelijk op een coverage-gate van 80 procent per bibliotheek) en **PS-7A** (`?width=` op
+artwork werkend maken). PS-4W behoudt zijn Phase ID maar raakt twee scope-items kwijt aan PS-4E: de
+grens is dat PS-4E kijkstatus **leest en toont** en nooit schrijft, en dat PS-4W verantwoordelijk
+blijft voor seek- en playbackrapportage. Datzelfde besluit merkt de lege hubs `continue_watching` en
+`next_up` aan als **defect in het gesloten PS-4**, niet als nieuwe fase: die correctie mag dus lopen
+terwijl PS-9 de huidige fase is, met haar tests en haar matrixcorrectie in dezelfde commit. Bindend is het veld **Afhankelijkheden** in de
+fasetabellen, niet het veld "Eerstvolgende fase". Werk buiten de vrijgegeven fasevolgorde blijft te
+vroeg. PS-9 is nu toegestaan; latere fasen worden alleen gestart volgens hun vastgelegde
+afhankelijkheden en poorten, zoals transcoderen (PS-8) en de browserspeler (PS-4W).
+
+**E-books zijn sinds 3 september 2026 productscope, en nog niet vrijgegeven.**
+[DEC-093](docs/DECISIONS.md) neemt e-books op als contentdomein naast film en serie, met **PS-14**
+(catalogus en inhoud) en **PS-15** (reader en leesvoortgang) als nieuwe fasen en **PS-16** (offline
+lezen, bladwijzers) begrensd maar niet ontworpen. De onderbouwing staat in
+`docs/pleya-server-ebooks-proposal.md`. Dat besluit voegt de fasen toe en geeft ze niet vrij: PS-9
+blijft de lopende fase, het vrijgeven van PS-14 is een apart besluit, en tot dat moment is
+e-bookservercode te vroeg. Twee grenzen gelden nu al: de `media_*`-tabellen blijven audiovisueel, en
+de mobiele beperking is clientgedrag, dus er komt geen platform- of readerveld aan login of
+`sessions`. Omdat Plex geen boeken levert, staan deze regels in hoofdstuk 11 van
+`docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md` en blokkeren ze de Plex-off gate niet.
 
 **Het protocol ligt vast.** `docs/pleya-protocol/v1/openapi.yaml` is contractueel leidend en bevroren
-zolang PS-5 loopt. Het venster stond één keer open, bij het sluiten van PS-3, voor precies de drie
-poortbesluiten die eronder staan; daarna is het weer dicht. Legt PS-5 een echt probleem bloot, dan is
-dat een protocolwijziging die eerst langs de zes compatibiliteitsregels uit hoofdstuk 3 van de
-specificatie getoetst wordt, niet een aanpassing in de YAML omdat het zo uitkomt.
-`scripts/check_protocol.sh` is de poortwachter.
+tot een besluit het venster expliciet opent. Die formulering hing eerder aan "zolang de huidige
+ontwikkelfase loopt", en dat liet een gat vallen op het moment dat een fase sloot en de volgende nog
+niet gestart was: geen lopende fase las dan als geen vriezing. Er is geen moment waarop het contract
+vanzelf open staat. Het venster ging tot nu toe twee keer open: bij het sluiten van
+PS-3, voor precies de drie poortbesluiten die eronder staan, en voor PS-9, voor precies de zeven
+wijzigingen uit [DEC-068](docs/DECISIONS.md#dec-068-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5);
+daarna is het weer dicht. Legt een latere fase een echt probleem bloot, dan is dat een
+protocolwijziging die eerst langs de zes compatibiliteitsregels uit hoofdstuk 3 van de specificatie
+getoetst wordt, niet een aanpassing in de YAML omdat het zo uitkomt. `scripts/check_protocol.sh` is de
+poortwachter. De vriezing hangt bewust aan "de lopende fase" en niet aan een vast fasenummer: een
+anker op een specifiek nummer veroudert stilzwijgend zodra die fase een opengelaten voorganger heeft,
+precies wat er met de PS-5-verwijzing gebeurde toen PS-9 vrijgegeven werd (`faef53a`).
+
+**Re-baseline van 4 september 2026.** `docs/pleya-server-rebaseline/` (A tot O, plus `HANDOFF.md`
+met de besluiten van die avond) en de webnorthstar in `docs/assets/pleya-web-northstar/` (met
+`DESIGN.md` als bouwhandleiding) zijn het uitvoeringsplan voor het afmaken van Pleya Server als
+totaalplan; de slices in deel I zijn de uitvoeringseenheden en verwijzen naar de PS-fasen hier.
+De branch moet eerst weer schoon met `main` mergen (slice S0). Lees HANDOFF.md vóór de rest.
+
+**`docs/PLEYA-SERVER-MASTERLIST.md` is de afvinklijst en wordt bij elke afgeronde taak in
+dezelfde commit bijgewerkt**, met status en bewijs. Een taak op `gereed` zonder bewijs telt als
+open; werk dat er niet in staat is scope creep en vraagt eerst een regel.
 
 Bij ieder Pleya Server-werk:
 
@@ -144,14 +197,14 @@ fingerprint hoort bij de scannerlogica die relocatie gebruikt, niet bij poort 4.
   - Vegen over het aanraakvlak is `UIEventTypeTouches` en wordt door de swizzle genegeerd, dus die werkt altijd. Werkt navigeren wel maar klikken niet, dan is dit vrijwel zeker de oorzaak.
   - De enige plek die werkt is `PleyaFlutterViewController.tvosHandlePress(fromUIEvent:)` (`tvos/Runner/AppDelegate.swift`), die tijdens een native tekstinvoersessie `false` geeft **zonder `super` aan te roepen**. Super synthetiseert de press; meelopen brengt het achtergrondlek terug. De selector staat in geen publieke header en wordt gedeclareerd in `Runner-Bridging-Header.h`. Zie [DEC-019](docs/DECISIONS.md#dec-019) en DEC-017 voor de volledige redenering, inclusief disassembly-adressen.
   - Na een bump van `tvos/engine.version` opnieuw valideren: `AppDelegate` logt bij het opstarten `engine press hook available=…`. Staat daar `false`, dan is het toetsenbord stil kapot.
-- **Tijdelijke overrides (rate-boost, background-pause, e.d.):** nooit los een "waarde-vóór"-veld bijhouden — een re-entrante start-handler (dubbele gesture/lifecycle-event) overschrijft de captured waarde met de al-geboden waarde en dan blijft de override permanent hangen. Gebruik `lib/utils/temporary_override.dart` (`TemporaryOverride<T>`: engage capture't éénmalig, release herstelt éénmalig), of minimaal een `if (alActief) return;`-guard op de start-handler én een reset op elk cancel/lifecycle-pad.
+- **Tijdelijke overrides (rate-boost, background-pause, e.d.):** nooit los een "waarde-vóór"-veld bijhouden. Een re-entrante start-handler (dubbele gesture/lifecycle-event) overschrijft de captured waarde met de al-geboden waarde en dan blijft de override permanent hangen. Gebruik `lib/utils/temporary_override.dart` (`TemporaryOverride<T>`: engage capture't éénmalig, release herstelt éénmalig), of minimaal een `if (alActief) return;`-guard op de start-handler én een reset op elk cancel/lifecycle-pad.
 - **Een kaal Material-widget met een selectiestaat is in dit thema onzichtbaar.** `monoTheme` mapt `secondaryContainer`, `primaryContainer`, `surfaceContainerHighest` en `surfaceBright` allemaal op `c.surface`, dezelfde kleur als de kaart eronder, en zet daarbij `NoSplash` met een doorzichtige highlight. Een `SegmentedButton` met `showSelectedIcon: false` had daardoor nul zichtbaar verschil tussen gekozen en niet-gekozen; de instelling werkte, je zag het alleen niet. Gebruik de eigen widgets (`FocusableFilterChip`, `FocusableTabChip`, `SegmentedTabGroup`) of controleer de staat expliciet tegen het oppervlak erachter. Zie [DEC-053](docs/DECISIONS.md#dec-053).
 - **De browse-UI hangt onder een geneste Navigator, een `OverlayEntry` in de root-overlay niet.** `ProfileSessionScreen` zet `ProfileNavigationScope` om een eigen `Navigator`, en alles wat de app daarna pusht (detailpagina, speler, menu's) hoort dáárin. Een met de hand ingevoegde `OverlayEntry` (`Overlay.of(context, rootOverlay: true)`) zit juist boven die scope. Navigeer je met de `BuildContext` van zo'n entry, dan pusht `Navigator.of` op de root-navigator en gooit het geopende scherm meteen `StateError: ProfileNavigationScope is required for profile routes.`; in release is dat een foutwidget over het hele venster, oftewel een zwart scherm. Gebruik in overlay-inhoud dus altijd de context van de widget die de overlay opzette, niet die van de builder. Tweede adder onder hetzelfde gras: `Navigator` draait bij elke push `Overlay.rearrange`, en die zet entries die hij niet zelf beheert expliciet terug bovenop álle route-entries. Een preview die blijft staan, zweeft daardoor boven een net geopend menu en slikt de kliks erop, dus sluit hem vóór je iets opent. `test/widgets/hover_boxart_overlay_test.dart` bewaakt allebei.
 - **Een animerende zijbalk moet zijn eigen band bezitten, en dat volgt uit de breedte, niet uit een boolean.** `isCollapsed` klapt synchroon om, de breedte animeert er 200 ms achteraan, en in dat gat kan een klik die voor het menu bedoeld was op de content eronder landen. De hover-zone was daarbij een proxy over de animerende container, dus nooit breder dan de balk op dat moment: wie naar een label toe beweegt haalt de easeOutCubic in en start de collapse-timer. Andersom legde `IgnorePointer(ignoring: isCollapsed)` alle rijen dood terwijl de balk nog op volle breedte stond te tekenen. `side_navigation_rail.dart` lost dat op met drie lagen op één mirror-tween: een `AbsorbPointer` over `max(getekend, doel)`, de balk zelf, en bovenop een translucent `MouseRegion` die de hele band ziet maar niets pakt (die komt wél in het hit-pad en geeft toch `false`, dus de `Stack` loopt door naar de content). Alles wat met interactiviteit te maken heeft leest de getekende breedte. **Repareer dit nooit met een debounce of een `AppLifecycleState`-venster.** Het is layout en hit-test-eigendom, en de vijf pointer-tests in `test/widgets/side_navigation_rail_test.dart` waren vóór de fix rood.
 - **De tvOS-variant hiervan is onderzocht en niet aangetoond.** `NavigationRailItem` activeert Select op `KeyDownEvent`, waarna `onDestinationSelected` de focus meteen naar de content verplaatst, en op tvOS levert de engine KeyDown en KeyUp in één callback. Het is de enige plek in de codebase die op Select activeert, focus verplaatst en `SelectKeyUpSuppressor.suppressSelectUntilKeyUp()` niet wapent (elf andere plekken wel). Toch lekt het niet: `handleOneShotSelect` negeert een KeyUp en `FocusableWrapper` weigert een release waarvan hij de druk niet zag. In de simulator was het ook niet te reproduceren. Drie contracttests in `side_navigation_rail_test.dart` leggen dat vast. Komt er een nieuwe tvOS-melding, begin dan bij het focus- en key-eventpad, niet bij timing.
-- **Naming:** outward name is **Pleya**; package name is `pleya`; the repo dir is `plezy-main`. GPL-3.0 fork of [edde746/plezy](https://github.com/edde746/plezy). Use **Pleya** in any user-facing string/asset/doc — never "Plezy".
-- Many deps are pinned `edde746/*` git forks (see `pubspec.yaml`) — don't swap them for pub.dev versions.
-- **MPVKit is exact-gepind** (`XCRemoteSwiftPackageReference` in alle drie de `Runner.xcodeproj`'s + zes `Package.resolved`'s). Het is een fork met prebuilt XCFrameworks, dus een tag = een specifieke mpv/ffmpeg-binary; een floating range zou de speler tussen builds onder de app vandaan wisselen. Nieuwe tags komen er dus alleen in als je ze haalt: `scripts/check_mpvkit_update.sh` (rapporteert + toont de changelog), `--bump` schrijft de pin bij op alle negen plekken. Draait adviserend mee in `scripts/testflight_release.sh`. **Houd hem bij** — de audio-/videopaden (Dolby, spatial, inline-OSD) leven in die fork. Na een bump: packages resolven in Xcode en afspelen echt verifiëren; het risico is een A/V-regressie, geen compilefout.
+- **Naming:** outward name is **Pleya**; package name is `pleya`; the repo dir is `plezy-main`. GPL-3.0 fork of [edde746/plezy](https://github.com/edde746/plezy). Use **Pleya** in any user-facing string/asset/doc, never "Plezy".
+- Many deps are pinned `edde746/*` git forks (see `pubspec.yaml`); don't swap them for pub.dev versions.
+- **MPVKit is exact-gepind** (`XCRemoteSwiftPackageReference` in alle drie de `Runner.xcodeproj`'s + zes `Package.resolved`'s). Het is een fork met prebuilt XCFrameworks, dus een tag = een specifieke mpv/ffmpeg-binary; een floating range zou de speler tussen builds onder de app vandaan wisselen. Nieuwe tags komen er dus alleen in als je ze haalt: `scripts/check_mpvkit_update.sh` (rapporteert + toont de changelog), `--bump` schrijft de pin bij op alle negen plekken. Draait adviserend mee in `scripts/testflight_release.sh`. **Houd hem bij**, de audio-/videopaden (Dolby, spatial, inline-OSD) leven in die fork. Na een bump: packages resolven in Xcode en afspelen echt verifiëren; het risico is een A/V-regressie, geen compilefout.
 - Release/signing/TestFlight lanes live in `fastlane/` and `scripts/testflight_release.sh`; bundle ID is `nl.michelknoop.pleya`.
 - **`flutter build ios` hangt een uur voordat er iets compileert.** Het is niet vastgelopen: `buildXcodeProject` doet op `flutter_tools/lib/src/ios/mac.dart:199` twee volledige `xattr -r -d`-recursies over de **hele projectroot**, één per attribuut, en `--config-only` ontsnapt daar niet aan (die return staat pas op regel 353). Op de externe USB-schijf haalt dat 21 bestanden per seconde over 51090 bestanden. Alleen iOS heeft dit; tvOS draait geen `flutter build` en macOS gaat via een ander codepad. `scripts/xattr-fast/xattr` lost het op en de release-lane zet hem zelf aan, dus je merkt het alleen bij een handmatige `flutter build ios`. Zet hem dan zelf vooraan in `PATH`. `flutter clean` was de oude noodgreep en is niet meer nodig. Zie [DEC-029](docs/DECISIONS.md#dec-029), inclusief de controle die na elke SDK-bump hoort.
 - **iOS SPM 13.0-vs-14.0 error.** `background_downloader` needs iOS 14, but Flutter regenerates `ios/Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage/Package.swift` with `.iOS("13.0")` on every `flutter clean`/`pub get` (its auto-bump does **not** survive `--config-only`). A direct Xcode/CLI build then fails with *"requires minimum platform version 14.0 … but this target supports 13.0"*. Run `scripts/fix_ios_spm.sh` (idempotent, patches it to 15.5) after any clean before an Xcode build. Fastlane lanes already patch this themselves.
