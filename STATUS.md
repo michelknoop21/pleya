@@ -13,6 +13,38 @@ met PS-14 ontworpen en PS-15/PS-16 begrensd, alle drie nog niet vrijgegeven._
 
 ## Waar was ik
 
+**S0 uitgevoerd: de branch staat weer op `main` (4 september, avond).** Er is een integratiebranch
+`integration/pleya-server-rebaseline`, afgetakt van `main` `a21b43c`, met `feat/pleyaserver` erin
+gemerged. De worktree staat op `/Volumes/SSD/Projects/PlexFlixNetwork/pleya-integration`; dat is
+vanaf nu de werkplek, niet `feat/pleyaserver`.
+
+Wat de merge leerde en wat het pakket niet voorzag: de vijf conflicten die in productiecode
+verwacht werden, kwamen er niet. Ze mergeden tekstueel schoon, en juist dat was het risico. De
+samengevoegde boom droeg `main`'s `app_database.g.dart` van 9379 regels onder een bron die er
+11706 vraagt, zonder dat git iets meldde. Codegen bracht het aan het licht en herstelde het. Aan
+de webkant hetzelfde patroon: `openapi.yaml` mergede schoon en kreeg een nieuwe bron-hash terwijl
+`schema.d.ts` van één kant kwam. Eén echte regressie: de capability `sessions` van de branch
+ontbrak in twee testfixtures van `main`.
+
+`docs/DECISIONS.md` mergede zonder conflictmarkering en hield twaalf dubbele nummers over, met
+per nummer twee verschillende besluiten. `main` houdt zijn nummers; de twaalf van de branch staan
+nu op 096 tot en met 107, met een mappingtabel onderaan dat bestand. De 242 verwijzingen elders
+zijn per regel geclassificeerd in plaats van met een blinde vervanging, en twee soorten blijven
+bewust staan: letterlijke citaten van commit-onderwerpen, en verwijzingen die vóór deze merge al
+naar iets anders wezen dan het nummer nu betekent.
+
+Bewijs op de samengevoegde boom, met de gepinde SDK: `flutter analyze` 0 errors en 0 warnings,
+`flutter test` 6263 geslaagd met 83 bekende falers (78 goldens die op macOS horen te falen, en 5
+in `tv_discovery_rail_test.dart` die op `a21b43c` zelf net zo hard falen, nagemeten in een
+wegwerp-worktree), `drift_relations_test` groen, alle Go-pakketten groen tegen een echte
+Postgres, `check_protocol.sh` groen, en aan de webkant check, api:check, 112 tests en build.
+
+**De northstar-set is goedgekeurd**, 46 schermen en 91 beelden, met `SHA256SUMS` over de beelden,
+de bronnen, `web.css` en `build.mjs`. Poorten P0 tot en met P4 staan daarmee dicht.
+
+Open in S0: de gehoste CI-run (S0.5), de NAS-migratiefixture (S0.6), de contracttest voor de
+fake-server (S0.7) en het vrijgavebesluit voor PS-14 en PS-11A (S0.8, een besluit van Michel).
+
 **P0b en de designreview gesloten, S0 gemeten (4 september, avond, tweede sessie).** Het
 re-baseline-pakket staat gecommit op `feat/pleyaserver`. Drie dingen erbij:
 
