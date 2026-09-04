@@ -85,7 +85,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | MOC-23 | Offline | PB-12 | OPEN | |
 | MOC-24 | Collectie | PB-13 | OPEN | |
 | MOC-25 | Persoon, `CanonicalPersonIdentity` | PB-14 | OPEN | |
-| MOC-31 | Taal en ondertitels, vier lagen met het Pleya-profiel als eigenaar | DEC-096 | OPEN | ontwerp goedgekeurd 4 sep |
+| MOC-31 | Taal en ondertitels, vier lagen met het Pleya-profiel als eigenaar | DEC-096 | OPEN | ontwerp goedgekeurd 4 sep; data- en resolutielaag op eae19cb4, 31 A-D nog te bouwen |
 
 ## SYS-1a, wat er staat
 

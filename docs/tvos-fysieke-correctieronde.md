@@ -124,7 +124,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | SRCH2 | `people` wordt nooit aan `searchProjection` meegegeven | OPEN | n.v.t. |
 | REV1 | Apple Review Jellyfin: Home toont content, Films/Series leeg en concrete library niet zichtbaar (Apple Review, release-kritiek) | OPEN | n.v.t. |
 | LAND7 | Actieve discovery-rail krijgt geen vaste verticale focuspositie | OPEN | n.v.t. |
-| LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted, bouwronde vrijgegeven | OPEN | n.v.t. |
+| LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted. Data- en resolutielaag gebouwd op eae19cb4; de pagina 31 A, de sheet 31 B en de toasts 31 C/D staan nog open | OPEN | eae19cb4 (deel) |
 
 ## Wat er per item bekend is
 
@@ -2485,6 +2485,33 @@ alleen een tweede regel en een langere duur toe en verplaatst niets.
 | G | "Gebruik globale voorkeur" verwijdert de serie-override |
 | H | Dezelfde logische serie op een betrouwbare tweede bron gebruikt dezelfde voorkeur |
 | I | Een onbetrouwbare identiteit wordt niet over servers heen samengevoegd |
+
+**Stand van de bouwronde, 4 september, `eae19cb4`.** De vier lagen, het
+terugvalcontract, de logische seriesleutel en de eigenaarswissel naar het
+Pleya-profiel staan. De negen controles zijn eerst rood aangetoond: A rood op vier
+assertions, C, D, F, G en H rood, en B, E en I bleken al voldaan door de code van
+17 augustus. Voor A, C, D, F, G en H is per fix teruggedraaid dat de controle dan
+weer rood wordt, dus de controles hebben tanden. Twee dingen kwamen er bovenop die
+niet in de analyse stonden: een terugval werd niet alleen doorgegeven maar ook
+*weggeschreven* (prioriteit `navigation` triggerde `onAudioTrackChanged`, dus hij
+overschreef de serievoorkeur zelf), en de schakelaar "onthouden" werd door de
+aanroepers gecontroleerd in plaats van door de opslag, waardoor het
+transcodeerpad er jarenlang omheen schreef.
+
+Nog open: de pagina Taal en ondertitels (31 A), de sheet (31 B) en de twee toasts
+(31 C en D). De twee schakelaars staan nog onder Afspelen, maar lezen en schrijven
+al het profiel, zodat de verhuizing een pure verplaatsing is en er nooit twee
+eigenaren naast elkaar hebben bestaan.
+
+**Protocolgat, gemeld en niet stil opgelost.** De serievoorkeur sleutelt op de
+logische serie waar de identiteit betrouwbaar is. Plex draagt `grandparentGuid` op
+een afleveringsrij en krijgt die sleutel. Jellyfin antwoordt met `SeriesId`, dat
+serverlokaal is. Het `/v1`-contract van Pleya Server draagt in `Item` helemaal geen
+identiteitstoken: geen guid, geen externe ids. Die twee vallen dus terug op de
+serversleutel, wat precies is wat DEC-096 lid 7 voorschrijft, maar voor Pleya Server
+betekent het dat dezelfde serie op twee Pleya Servers twee voorkeuren houdt. Het
+protocol is bevroren tijdens PS-5, dus dit hoort in een fase die het contract mág
+wijzigen; het gevraagde veld is één stabiel identiteitstoken op `Item`.
 
 Volgorde: eerst oud rood aantonen, dan implementeren, dan groen. Daarbovenop de drie stappen
 die al onder deze bevinding stonden: de widgettest op de nieuwe pagina, de verhuizing van de
