@@ -2439,6 +2439,77 @@ afspraak dat een volgende sessie leest als toestemming.
 
 ---
 
+## DEC-110: het protocolvenster gaat open voor S1, en `server` wordt het zesde foutdomein
+
+**Date:** 2026-09-05
+**Status:** voorgesteld
+
+**Context:** S0 is gesloten en PS-11A is vrijgegeven ([DEC-108](#dec-108-ps-11a-is-de-eerstvolgende-fase-ps-14-blijft-gesloten-en-loopt-er-niet-naast)).
+De eerste slice ervan, S1 in `docs/pleya-server-rebaseline/I-master-implementation-plan.md`, is
+beheer-basis, en die kan geen regel opleveren zonder het contract aan te raken: beheerendpoints
+bestaan niet, de capability `administration` bestaat niet, en zelfs de eerste commitgrens
+("recovery, limiet, headers") loopt er tegenaan, want een panic hoort volgens
+`docs/pleya-server-rebaseline/J-api-schema-migratie.md` J.2 als `server.internal` terug te komen en
+`server` is vandaag geen geldig foutdomein. Het venster staat dicht, en er is geen moment waarop het
+vanzelf opengaat.
+
+De zeventien wijzigingen van venster 1 staan al beschreven in J.2, met per wijziging het gedrag van
+een oude client tegen een nieuwe server en omgekeerd. Dit besluit voegt daar niets aan toe; het opent
+het venster voor precies die zeventien en legt de toetsing aan de zes compatibiliteitsregels uit
+[hoofdstuk 12.3](pleya-server-architecture.md#123-versionering-en-compatibiliteitsregels) vast.
+
+**De toetsing.** Zestien van de zeventien zijn nieuwe optionele antwoordvelden, nieuwe endpoints of
+nieuwe optionele aanvraagvelden achter een capability. Regel 1 staat het eerste toe, regel 4 en 5 de
+rest zolang het aanvraagveld optioneel is en de client het pas stuurt als een capability zegt dat de
+server het kent; J.2 zet die vlag per regel in de kolom "Onderhandeling". Geen enkele van de
+zeventien hernoemt een veld (regel 2), verandert de betekenis van een bestaand veld (regel 3) of
+voegt een enum-waarde toe aan een veld dat niet unknown-safe is (regel 6). Twee gevallen verdienen
+hun eigen redenering.
+
+`SetupRequest.server_name` raakt regel 5 recht in het gezicht: de aanvraagbody is gesloten, dus een
+oude server wijst een nieuwe client af die het veld stuurt. J.2 lost dat op met een nieuw optioneel
+`setup_accepts_name` op `Info`, waar de client naar kijkt voordat hij het veld stuurt. Dat is exact
+het patroon dat `watch_state_ownership` al gebruikt, en het is de reden dat regel 5 en regel 1 samen
+werken in plaats van elkaar tegen te spreken.
+
+`server.internal` is de enige wijziging die aan een bestaande regel zelf komt. Het patroon op
+`ErrorEnvelope.error.code` is vandaag `^(auth|library|playback|session|storage)\\.[a-z0-9_]+$` en
+krijgt `server` erbij. Dat is geen enum en dus geen regel 6, maar het is wel een verruiming van iets
+dat bestond, en dat vraagt bewijs in plaats van een aanname. Het bewijs is dat beide clients een
+onbekende code generiek afhandelen en er niet op takken. In Dart draagt `PleyaError` de code als
+`String` en is `domain` niets meer dan de helft voor de punt (`pleya_wire.dart`); de enige plek die
+op een domein test is `pleya_server_auth_service.dart`, die `startsWith('auth.')` vraagt en anders
+doorvalt naar de generieke fout. Aan de webkant geeft `describeError` in `pleya_web/src/lib/api/errors.ts`
+voor een onbekende code "Something went wrong (code)" terug. Datzelfde bestand draagt bovendien al
+`client.transport` en `client.malformed_response`, twee codes in een domein dat het contract niet
+kent: de client synthetiseert ze zelf, ze komen nooit over de lijn, en ze bewijzen dat het foutpad
+een onbekend domein aankan zonder te breken.
+
+**Decision:** Het contractvenster gaat open voor **precies de zeventien wijzigingen uit J.2**, op
+dezelfde manier als bij het sluiten van PS-3 (DEC-049/050/051) en bij PS-9
+([DEC-101](#dec-101-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5)).
+`ErrorEnvelope.error.code` krijgt `server` als zesde domein. Zodra `openapi.yaml`, de fixtures en de
+gegenereerde webclient zijn bijgewerkt en `scripts/check_protocol.sh` slaagt, sluit het venster weer;
+dat is taak S1.6 in de masterlijst. Wijzigingen die niet in J.2 staan vallen buiten dit venster, ook
+wanneer ze tijdens S1 handig blijken.
+
+Twee dingen die bij het openen meteen mee moeten, omdat ze anders stil verouderen. De docstring van
+`PleyaError.domain` noemt vandaag vijf domeinen bij naam en moet er zes worden. En
+`scripts/check_protocol.py` heeft een negatieve controle "een foutcode buiten de vijf domeinen"; die
+hoort mee te schuiven naar zes en een echt ongeldig domein te blijven weigeren, want een controle die
+met het contract meebeweegt zonder te blijven bijten is geen controle.
+
+**Consequences:** S1 kan starten. `docs/pleya-server-gates.md` krijgt een zevende regel voor dit
+venster, analoog aan PS-3 en PS-9. De vriezing zelf verandert niet: buiten dit venster blijft
+`openapi.yaml` bevroren, en venster 2 (S2, bibliotheken en scans) vraagt een eigen besluit ook al
+staat het al beschreven in J.3. `feature_level` gaat niet omhoog; venster 1 is additief en
+onderhandelt per capability, precies zoals hoofdstuk 12.3 dat bedoelt.
+
+Afgewezen: het venster in één keer openzetten voor J.2 tot en met J.7. Dat zou het venster tot het
+einde van het traject openhouden, waarmee het geen venster meer is maar een afgeschafte regel.
+
+---
+
 ## Hernummering van 4 september 2026
 
 `feat/pleyaserver` liep 196 commits achter op `main` en beide takken hadden in die tijd
