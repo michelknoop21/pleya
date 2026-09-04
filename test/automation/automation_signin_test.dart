@@ -232,6 +232,35 @@ void main() {
     expect(openAfter['ok'], isFalse);
     expect(openAfter['error'], contains('timeout'), reason: openAfter.toString());
     expect(profileNavigationRegistry.navigator, isNotNull);
+
+    // 4. A screen id this endpoint cannot reach. `isRoute` used to be "not a
+    // nav tab and not screen.main", so every unknown id was treated as a route
+    // that some screen would eventually push: the loop waited out `timeoutMs`
+    // and reported a readiness timeout for a screen nothing was ever going to
+    // open. `screen.media_detail` is the id the docstring names as the example
+    // of failing clearly, and it was the first one to fall through.
+    for (final unreachable in [AutomationIds.screenMediaDetail, 'screen.discovr', 'screen.reader_settings']) {
+      late Map<String, Object?> rejected;
+      final started = DateTime.now();
+      await tester.runAsync(() async {
+        rejected = await handleAutomationOpen({'screen': unreachable, 'timeoutMs': 4000});
+      });
+
+      expect(rejected['ok'], isFalse);
+      expect(
+        rejected['error'],
+        allOf(contains('unsupported screen "$unreachable"'), isNot(contains('timeout'))),
+        reason: 'a screen nothing can open is a clear error, not a slow one: ${rejected['error']}',
+      );
+      expect(
+        DateTime.now().difference(started).inMilliseconds,
+        lessThan(4000),
+        reason: 'the answer arrives immediately rather than after the full timeoutMs',
+      );
+      // The message has to say what *is* openable, or a scenario author has
+      // nothing to go on.
+      expect(rejected['error'], contains(AutomationIds.screenBooks));
+    }
   });
 
   group('rejectNonLoopbackBaseUrl', () {

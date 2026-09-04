@@ -1,6 +1,24 @@
-import 'dart:ui' show VoidCallback;
-
 import '../navigation/navigation_tabs.dart';
+
+/// What a screen registers so `/v1/open` can push one of its routes.
+///
+/// It answers **whether it pushed**, and that answer is why it is a
+/// `Future<bool>` rather than a `VoidCallback`. Several openers have to look
+/// something up before they can push — a page from the source, a book by id —
+/// and a `Future<void> Function()` assigned to a `VoidCallback` returns at its
+/// first `await`, long before the `Navigator.push` and before it even knows
+/// whether there is anything to push. `/v1/open` took that immediate return as
+/// success, spent the rest of its `timeoutMs` waiting for a screen that was
+/// never coming, and reported a readiness timeout.
+///
+/// `false` means nothing was pushed, so the caller may try again without
+/// stacking a duplicate route.
+///
+/// It answers when the route is **pushed**, never when it closes. An opener
+/// that awaits a `showModalBottomSheet` future is awaiting a dismissal, and
+/// `/v1/open` awaits this: `books.filters.layout` came back with
+/// `POST /v1/open did not answer within 0:00:10` until that one let go.
+typedef AutomationRouteOpener = Future<bool> Function();
 
 /// `POST /v1/open`'s only way to move the app to a nav tab: a hook
 /// `MainScreen` registers under `kPleyaVerify`, calling the exact same
@@ -46,21 +64,22 @@ class AutomationNavigationHooks {
   /// `/v1/open` cannot reach it by selecting a tab, and `tap` takes
   /// coordinates only. The screen that owns the route registers the opener, so
   /// the scenario drives the same push a reader's tap does.
-  final Map<String, VoidCallback> _routeOpeners = {};
+  final Map<String, AutomationRouteOpener> _routeOpeners = {};
 
-  void registerRouteOpener(String screenId, VoidCallback open) => _routeOpeners[screenId] = open;
+  void registerRouteOpener(String screenId, AutomationRouteOpener open) => _routeOpeners[screenId] = open;
 
-  void unregisterRouteOpener(String screenId, VoidCallback open) {
+  void unregisterRouteOpener(String screenId, AutomationRouteOpener open) {
     if (_routeOpeners[screenId] == open) _routeOpeners.remove(screenId);
   }
 
   /// `false` when nothing has registered an opener for [screenId] — usually
-  /// because the screen that owns the route is not on screen yet.
-  bool openRoute(String screenId) {
+  /// because the screen that owns the route is not on screen yet — and also
+  /// when the opener ran and decided there was nothing to push. Both mean the
+  /// route is not open, and both are safe to retry.
+  Future<bool> openRoute(String screenId) async {
     final open = _routeOpeners[screenId];
     if (open == null) return false;
-    open();
-    return true;
+    return open();
   }
 
   /// A hook `AuthScreen` registers under `kPleyaVerify`: the same

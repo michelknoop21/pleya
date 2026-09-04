@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -66,9 +68,10 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
 
   /// The same push the `Alle boeken ›` link performs, so a scenario and a
   /// reader take one route rather than two.
-  void _openAllBooks() {
-    if (!mounted) return;
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AllBooksScreen()));
+  Future<bool> _openAllBooks() async {
+    if (!mounted) return false;
+    unawaited(Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AllBooksScreen())));
+    return true;
   }
 
   /// The same push the search glyph performs, so a scenario and a reader take
@@ -83,11 +86,14 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
   /// it, and only in a `kPleyaVerify` build. What this buys is evidence that
   /// the three sections lay out on a device; what it does not cover is the
   /// typing itself, and the widget tests do that instead.
-  void _openSearch() {
-    if (!mounted) return;
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const BooksSearchScreen(initialQuery: _verifyCanonicalQuery)));
+  Future<bool> _openSearch() async {
+    if (!mounted) return false;
+    unawaited(
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const BooksSearchScreen(initialQuery: _verifyCanonicalQuery))),
+    );
+    return true;
   }
 
   /// The query golden 04 is drawn with, and the one the fixed fixture answers
@@ -104,12 +110,15 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
   /// The unstarted state of `05b` is covered by widget tests instead.
   static const String _verifyCanonicalBookId = 'dune';
 
-  void _openCanonicalDetail() {
-    if (!mounted) return;
+  Future<bool> _openCanonicalDetail() async {
+    if (!mounted) return false;
     final rows = context.read<BooksHomeProvider?>()?.rows ?? const BooksHomeRows();
     final book = rows.all.where((b) => b.id == _verifyCanonicalBookId).firstOrNull;
-    if (book == null) return;
+    // The shelf may not have answered yet. `false` says so, and `/v1/open`
+    // asks again on its next turn rather than waiting out its timeout.
+    if (book == null) return false;
     _openDetail(book);
+    return true;
   }
 
   /// The push every cover on this page performs. On the nearest navigator, not
@@ -136,18 +145,21 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
   /// pushes this route — it exists under `kPleyaVerify` so a scenario can
   /// photograph the screen on a device, and it disappears from a normal build
   /// along with the rest of the automation surface.
-  Future<void> _openCanonicalToc() async {
-    if (!mounted) return;
+  Future<bool> _openCanonicalToc() async {
+    if (!mounted) return false;
     final provider = context.read<BooksHomeProvider?>();
     final book = provider?.rows.all.where((b) => b.id == _verifyTocBookId).firstOrNull;
-    if (provider == null || book == null) return;
+    if (provider == null || book == null) return false;
     final toc = await provider.tableOfContents(_verifyTocBookId);
-    if (!mounted || toc == null) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => BooksTocScreen(book: book, toc: toc),
+    if (!mounted || toc == null) return false;
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BooksTocScreen(book: book, toc: toc),
+        ),
       ),
     );
+    return true;
   }
 
   /// The book approved golden 07 is drawn with, and the only publication in the
@@ -161,20 +173,23 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
   /// scenario would otherwise have to walk a rail, a cover and a button to reach
   /// the state the golden fixes, and every one of those steps is a way for the
   /// evidence to land on the wrong page.
-  Future<void> _openCanonicalReader() async {
-    if (!mounted) return;
+  Future<bool> _openCanonicalReader() async {
+    if (!mounted) return false;
     final provider = context.read<BooksHomeProvider?>();
     final book = provider?.rows.all.where((b) => b.id == _verifyReaderBookId).firstOrNull;
-    if (provider == null || book == null) return;
+    if (provider == null || book == null) return false;
     final page = await provider.readerPage(_verifyReaderBookId);
-    if (!mounted || page == null) return;
+    if (!mounted || page == null) return false;
     final toc = await provider.tableOfContents(_verifyReaderBookId);
-    if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => BookReaderScreen(book: book, page: page, toc: toc),
+    if (!mounted) return false;
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BookReaderScreen(book: book, page: page, toc: toc),
+        ),
       ),
     );
+    return true;
   }
 
   void unawaitedLoad() {

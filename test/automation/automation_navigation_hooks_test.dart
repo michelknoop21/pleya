@@ -18,11 +18,33 @@ class _Owner {
 
   final List<String> calls;
 
-  void open() => calls.add('open');
+  Future<bool> open() async {
+    calls.add('open');
+    return true;
+  }
 
   void selectTab(NavigationTabId tab) => calls.add('tab:${tab.name}');
 
   void handoff() => calls.add('handoff');
+}
+
+/// An opener shaped the way the Boeken-home ones are: it looks something up
+/// before it can push, so it has an `await` before its `Navigator.push`.
+class _AsyncOwner {
+  _AsyncOwner(this.calls, {required this.findsBook});
+
+  final List<String> calls;
+  final bool findsBook;
+
+  Future<bool> open() async {
+    await Future<void>.delayed(Duration.zero);
+    if (!findsBook) {
+      calls.add('bail');
+      return false;
+    }
+    calls.add('push');
+    return true;
+  }
 }
 
 void main() {
@@ -47,27 +69,27 @@ void main() {
   group('route openers', () {
     tearDown(() {
       for (final id in ['screen.a', 'screen.b']) {
-        hooks.unregisterRouteOpener(id, () {});
+        hooks.unregisterRouteOpener(id, () async => true);
       }
     });
 
-    test('a screen that registers in initState can give it back in dispose', () {
+    test('a screen that registers in initState can give it back in dispose', () async {
       final owner = _Owner(calls);
       hooks.registerRouteOpener('screen.a', owner.open);
 
-      expect(hooks.openRoute('screen.a'), isTrue);
+      expect(await hooks.openRoute('screen.a'), isTrue);
 
       hooks.unregisterRouteOpener('screen.a', owner.open);
 
       expect(
-        hooks.openRoute('screen.a'),
+        await hooks.openRoute('screen.a'),
         isFalse,
         reason: 'a popped screen leaves no opener behind, so /v1/open can say so instead of timing out',
       );
       expect(calls, ['open'], reason: 'the stale opener must not be callable after dispose');
     });
 
-    test('one screen cannot unregister another screen\'s opener for the same id', () {
+    test('one screen cannot unregister another screen\'s opener for the same id', () async {
       final mounted = _Owner(calls);
       final gone = _Owner(calls);
       hooks.registerRouteOpener('screen.a', mounted.open);
@@ -75,13 +97,13 @@ void main() {
       hooks.unregisterRouteOpener('screen.a', gone.open);
 
       expect(
-        hooks.openRoute('screen.a'),
+        await hooks.openRoute('screen.a'),
         isTrue,
         reason: 'a late dispose from a replaced instance must not take the live registration with it',
       );
     });
 
-    test('a second screen taking over the id owns it, and the first one leaves it alone', () {
+    test('a second screen taking over the id owns it, and the first one leaves it alone', () async {
       // The push/pop order Boeken-home and Alle boeken produce: the new
       // instance registers before the old one disposes.
       final first = _Owner(calls);
@@ -91,18 +113,50 @@ void main() {
 
       hooks.unregisterRouteOpener('screen.a', first.open);
 
-      expect(hooks.openRoute('screen.a'), isTrue);
+      expect(await hooks.openRoute('screen.a'), isTrue);
     });
 
-    test('openers are kept per screen id', () {
+    test('openers are kept per screen id', () async {
       final owner = _Owner(calls);
       hooks.registerRouteOpener('screen.a', owner.open);
       hooks.registerRouteOpener('screen.b', owner.open);
 
       hooks.unregisterRouteOpener('screen.a', owner.open);
 
-      expect(hooks.openRoute('screen.a'), isFalse);
-      expect(hooks.openRoute('screen.b'), isTrue);
+      expect(await hooks.openRoute('screen.a'), isFalse);
+      expect(await hooks.openRoute('screen.b'), isTrue);
+    });
+
+    /// An opener that has to look something up cannot answer before it has.
+    /// As a `VoidCallback` a `Future<void>` opener returned at its first
+    /// `await`, so `openRoute` reported success before the lookup and before
+    /// the push; with `/v1/open`'s one-shot guard that burned the only attempt
+    /// on a bail, and the endpoint then waited out its whole `timeoutMs`.
+    test('an opener that bails says so, so the caller can ask again', () async {
+      final bails = _AsyncOwner(calls, findsBook: false);
+      hooks.registerRouteOpener('screen.a', bails.open);
+
+      expect(await hooks.openRoute('screen.a'), isFalse, reason: 'nothing was pushed');
+      expect(calls, ['bail']);
+
+      // The shelf answers on the next turn. Retrying is safe precisely because
+      // the first attempt reported that it pushed nothing.
+      final finds = _AsyncOwner(calls, findsBook: true);
+      hooks.registerRouteOpener('screen.a', finds.open);
+
+      expect(await hooks.openRoute('screen.a'), isTrue);
+      expect(calls, ['bail', 'push']);
+    });
+
+    test('an opener answers only after its await, not at it', () async {
+      final owner = _AsyncOwner(calls, findsBook: true);
+      hooks.registerRouteOpener('screen.a', owner.open);
+
+      final pending = hooks.openRoute('screen.a');
+      expect(calls, isEmpty, reason: 'the lookup has not run yet');
+
+      expect(await pending, isTrue);
+      expect(calls, ['push'], reason: 'the answer arrives with the push, not before it');
     });
   });
 

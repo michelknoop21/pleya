@@ -251,12 +251,13 @@ Future<Map<String, Object?>> _persistConnectionAndBindProfile(
   return {'ok': true, 'profileId': bindProfile.id, 'connectionId': connection.id};
 }
 
-/// The only screens `/v1/open` currently knows how to reach a
-/// [NavigationTabId] for — `screen.main` needs no tab switch (it's the
-/// always-mounted container), and `screen.media_detail` needs an item id
-/// `/v1/open` doesn't accept yet, so it fails clearly rather than guessing.
-/// The screens `/v1/open` reaches by selecting a nav tab. Screens that are
-/// pushed routes are not in here; they register an opener with
+/// The screens `/v1/open` reaches by selecting a nav tab.
+///
+/// `screen.main` is not in here because it needs no tab switch — it is the
+/// always-mounted container. `screen.media_detail` is not in here either: it
+/// needs an item id `/v1/open` does not accept yet, so it is rejected by name
+/// rather than attempted. Screens that are pushed routes are in
+/// [_routeScreens] and register an opener with
 /// [AutomationNavigationHooks.registerRouteOpener] instead.
 const Map<String, NavigationTabId> _screenToTab = {
   AutomationIds.screenDiscover: NavigationTabId.discover,
@@ -270,6 +271,26 @@ const Map<String, NavigationTabId> _screenToTab = {
   // by pointer taps, and `tap` only takes coordinates. Without this a scenario
   // could assert that the Boeken slot exists but never open what is behind it.
   AutomationIds.screenBooks: NavigationTabId.books,
+};
+
+/// The screens `/v1/open` reaches by asking the screen that owns the route to
+/// push it, rather than by selecting a nav tab.
+///
+/// A closed list, and that is the whole point. `isRoute` used to be "anything
+/// that is not a nav tab and not `screen.main`", so a misspelled or not-yet-
+/// mapped id was silently treated as a route: `/v1/open` waited the full
+/// `timeoutMs` for a screen nothing could ever push and answered
+/// `timeout waiting for "X" to become ready`. That is the failure mode the
+/// docstring above promises this endpoint does not have — `screen.media_detail`
+/// is named there as the example of failing clearly rather than guessing, and
+/// it was the first id to fall through the gap.
+const Set<String> _routeScreens = {
+  AutomationIds.screenAllBooks,
+  AutomationIds.screenBooksFilters,
+  AutomationIds.screenBooksSearch,
+  AutomationIds.screenBookDetail,
+  AutomationIds.screenBooksToc,
+  AutomationIds.screenBookReader,
 };
 
 /// `POST /v1/open` body: `{"screen": "screen.discover", "timeoutMs"?}`.
@@ -294,10 +315,24 @@ Future<Map<String, Object?>> handleAutomationOpen(Map<String, Object?> body) asy
   }
 
   NavigationTabId? tab;
-  // A screen is either a nav tab or a route pushed by the screen that owns it.
-  // Alle boeken is the second kind: it hangs off Boeken-home, so no tab
-  // selection reaches it.
-  final isRoute = !_screenToTab.containsKey(screen) && screen != AutomationIds.screenMain;
+  // A screen is a nav tab, a route pushed by the screen that owns it, or
+  // nothing this endpoint can reach. Alle boeken is the second kind: it hangs
+  // off Boeken-home, so no tab selection reaches it.
+  //
+  // The third case is checked rather than assumed. Treating every unknown id
+  // as a route meant a typo, or a screen with no opener like
+  // `screen.media_detail`, waited out `timeoutMs` and came back with a
+  // readiness timeout — a report that says the app was slow when the truth is
+  // that nothing was ever going to push that screen.
+  final isRoute = _routeScreens.contains(screen);
+  if (screen != AutomationIds.screenMain && !isRoute && !_screenToTab.containsKey(screen)) {
+    return {
+      'ok': false,
+      'error':
+          'unsupported screen "$screen" — no nav-tab mapping and no route opener registered for it. '
+          'Openable: ${[AutomationIds.screenMain, ..._screenToTab.keys, ..._routeScreens]..sort()}',
+    };
+  }
   if (screen != AutomationIds.screenMain && !isRoute) {
     tab = _screenToTab[screen];
     if (!AutomationNavigationHooks.instance.selectTab(tab!)) {
@@ -318,8 +353,16 @@ Future<Map<String, Object?>> handleAutomationOpen(Map<String, Object?> body) asy
     // TV, Kijklijst) only becomes visible once its source has answered, which
     // can be after this call started.
     if (tab != null) AutomationNavigationHooks.instance.selectTab(tab);
-    // A route is pushed exactly once. Retrying the *lookup* covers the owning
-    // screen still mounting; retrying the push would stack duplicates.
-    if (isRoute && !routeOpened) routeOpened = AutomationNavigationHooks.instance.openRoute(screen);
+    // A route is pushed exactly once, and the opener is what says whether that
+    // happened. Retrying while it keeps answering `false` covers the owning
+    // screen still mounting and the shelf not having answered yet; it cannot
+    // stack duplicates, because `false` means nothing was pushed.
+    //
+    // Awaited, and that is the fix. The opener is a `Future<bool> Function()`
+    // now: as a `VoidCallback` an async opener returned at its first `await`,
+    // this flag went `true` before the lookup and before the push, and a bail
+    // on `book == null` burned the only attempt while the loop sat out its
+    // whole timeout.
+    if (isRoute && !routeOpened) routeOpened = await AutomationNavigationHooks.instance.openRoute(screen);
   }
 }

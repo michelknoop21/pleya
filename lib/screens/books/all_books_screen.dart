@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -67,16 +69,30 @@ class _AllBooksScreenState extends State<AllBooksScreen> {
 
   /// The same route the Filters pill opens, so a scenario and a reader arrive
   /// the same way.
-  Future<void> _openFilters() async {
-    if (!mounted) return;
+  ///
+  /// Answers whether the sheet went up, because it is also the route opener
+  /// `/v1/open` drives: a `false` from an unmounted screen means nothing was
+  /// pushed and the caller may ask again. The pill ignores the answer.
+  Future<bool> _openFilters() async {
+    if (!mounted) return false;
     final rows = context.read<BooksHomeProvider?>()?.rows ?? const BooksHomeRows();
-    final applied = await showBookFilterSheet(
-      context,
-      filter: _filter,
-      options: BookFilterOptions.from(books: rows.all, series: rows.series),
+    // Not awaited, and that matters twice over. `showModalBottomSheet` pushes
+    // its route synchronously and then hands back a future that only completes
+    // when the sheet closes; awaiting that here would make this opener answer
+    // on dismissal rather than on push, and `/v1/open` — which awaits the
+    // opener — would hang until a reader closed the sheet by hand. It did:
+    // `POST /v1/open did not answer within 0:00:10` on books.filters.layout.
+    unawaited(
+      showBookFilterSheet(
+        context,
+        filter: _filter,
+        options: BookFilterOptions.from(books: rows.all, series: rows.series),
+      ).then((applied) {
+        // `null` is a dismissal, and dismissing is not clearing.
+        if (applied != null && mounted) setState(() => _filter = applied);
+      }),
     );
-    // `null` is a dismissal, and dismissing is not clearing.
-    if (applied != null && mounted) setState(() => _filter = applied);
+    return true;
   }
 
   /// A cell opens the book's own page (approved golden 05), on the nearest
@@ -105,7 +121,7 @@ class _AllBooksScreenState extends State<AllBooksScreen> {
           slivers: [
             const SliverToBoxAdapter(child: _AllBooksHeader()),
             SliverToBoxAdapter(
-              child: _Controls(filter: _filter, onOpenFilters: _openFilters),
+              child: _Controls(filter: _filter, onOpenFilters: () => unawaited(_openFilters())),
             ),
             SliverToBoxAdapter(
               child: _ResultLine(

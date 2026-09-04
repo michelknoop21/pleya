@@ -1311,13 +1311,23 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           children: [
                             const PleyaLogo(size: 28),
                             const SizedBox(width: 10),
-                            Text(
-                              'PLEYA',
-                              style: TextStyle(
-                                color: foregroundColor,
-                                fontSize: 14,
-                                fontWeight: .w800,
-                                letterSpacing: 3.6,
+                            // Flexible, so the wordmark gives way instead of
+                            // overflowing when the action cluster grows or the
+                            // text setting does. The mark stays; only the
+                            // lettering next to it yields, and only once there
+                            // is genuinely no room — which the header's own
+                            // frame never reaches at scale 1.0.
+                            Flexible(
+                              child: Text(
+                                'PLEYA',
+                                maxLines: 1,
+                                overflow: TextOverflow.clip,
+                                style: TextStyle(
+                                  color: foregroundColor,
+                                  fontSize: 14,
+                                  fontWeight: .w800,
+                                  letterSpacing: 3.6,
+                                ),
                               ),
                             ),
                           ],
