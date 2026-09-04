@@ -202,6 +202,25 @@ class PreferenceSyncPolicyRegistry {
     refresh: PreferenceRefreshFamily.homeLayout,
   );
 
+  /// How a profile last left Films and Series set up: sort plus filters, keyed
+  /// `{profileScope}|{kind}` inside the map rather than by the pref name.
+  ///
+  /// Device-local by decision, like the Home layout above and for the same
+  /// reason: it is view state, not a setting anyone would miss on another
+  /// device. It also names concrete servers and libraries in its
+  /// server/library filters, and those sets differ per device — a Mac's export
+  /// restored on an Apple TV would carry a source restriction naming libraries
+  /// that Apple TV cannot see, which reads as an empty catalog with no visible
+  /// cause. `withKnownSources` prunes exactly that on open, and not relying on
+  /// it is cheaper than relying on it.
+  ///
+  /// Reloadable, because clearing a profile rewrites the map locally.
+  static const PreferencePolicy _unifiedCatalogViewPref = PreferencePolicy(
+    scope: PreferenceScopeKind.deviceLocal,
+    exportable: false,
+    icloudSyncable: false,
+  );
+
   /// A real user preference that is only meaningful where it was set: a path
   /// that exists on one machine, a window size, a hardware capability override,
   /// a LAN address. Exportable is off too: restoring someone's Mac export on an
@@ -424,6 +443,11 @@ class PreferenceSyncPolicyRegistry {
     'user_profile': _runtimeCache,
     // The toggle itself must not sync: two devices would fight over it.
     'icloud_sync_enabled': _runtimeCache,
+
+    // -- Unified TV catalog view state (fase 5 of
+    // docs/tvos-unified-experience.md). Not the preferred server, which is an
+    // activation preference and lives elsewhere.
+    'unified_catalog_preferences': _unifiedCatalogViewPref,
 
     // -- Secrets.
     'token': _secret,

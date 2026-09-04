@@ -568,7 +568,882 @@ Wat bewust open blijft staan:
 - Een legacy Tautulli-sessie zonder `pms_identifier` blijft profielgebonden werken voor de aanwezigheidsoppervlakken en importeert niet, tot iemand opnieuw koppelt.
 - `settings.personalizedRecommendationsDescription` is niet herschreven: de bestaande tekst zegt al "Nothing leaves your device", wat sterker is dan de geplande formulering, en herschrijven zou veertien andere locales invalideren zonder winst.
 
-## DEC-063: `tvos.library.filters` is DEFERRED, geblokkeerd door het Pleya Server catalogus/filtercontract (G13)
+## DEC-063: Pleya Unified TV 2026 — architectuurbaseline, supersedes en afbakening
+
+**Date:** 2026-08-29
+**Status:** accepted
+**Context:** [docs/tvos-unified-experience.md](tvos-unified-experience.md) is de goedgekeurde baseline voor een unified multi-server catalogus (Films/Series over alle geconfigureerde bronnen heen) met een nieuwe TV-shell erbovenop, uitgevoerd in tien fases (hoofdstuk 27). Fase 0 legt het contract vast vóórdat er productiecode wordt geraakt. Hoofdstuk 4 van dat document maakt zes architectuurbesluiten die niet per fase heropend mogen worden, en het document raakt daarnaast drie bestaande beslissingen: DEC-023 (mobiele navigatie) beschrijft alleen het huidige, niet-unified gedrag; DEC-002 noemt merkkleurwaarden die de code sinds hoofdstuk 34.1 al is voorbijgelopen; en DEC-020 (watchlist-verwijdering) moet expliciet worden afgebakend tegen de nieuwe source picker, want beide raken "welke bron" voor hetzelfde media-item.
+**Decision:**
+
+*De zes harde architectuurbesluiten uit hoofdstuk 4* (letterlijk overgenomen, niet heropend):
+
+1. **MediaItem blijft één concrete bron** (4.1). Geen `List<Server>` of "active server" op `MediaItem`: playback, metadata-refresh, verwijderen, tracks/media-versies, play queues en watch-state-events blijven allemaal aan één concrete server gebonden.
+2. **Een nieuwe projectielaag komt boven MediaItem, niet erin** (4.2). `UnifiedMediaSource` (één concrete bron plus server-/library-identiteit en availability) en `UnifiedMediaGroup` (identiteit, lijst van sources, representatieve bron, watch-state, coverage) zijn zuivere presentatie-/aggregatiemodellen.
+3. **Eén centrale identiteitspijplijn** (4.3). Home, Films, Series, Search, Verder kijken en Watchlist krijgen geen eigen dedupalgoritme; candidate bucketing, externe-ID-verrijking, identiteitsbewijzen, conflictcontrole, grouping, bronresolutie en coverage lopen door één gedeelde service.
+4. **Bronkeuze gebeurt vóór de bestaande route** (4.4). Een `UnifiedMediaGroup` met meerdere bronnen gaat via een picker naar één concreet `MediaItem`, en pas dán de bestaande Pleya-flow in. De speler blijft vrij van unified-cataloguslogica.
+5. **Bibliotheken blijft bestaan** (4.5). Films en Series zijn de dagelijkse globale catalogus; Mijn Pleya ▸ Bibliotheken blijft de geavanceerde, brongebonden weergave (per-library selectie, Recommended, Browse, Collections, Playlists, backend-specifieke filters, folder browsing, metadata vernieuwen, scan/analyse/prullenbak, tonen/verbergen/ordenen).
+6. **Writes zijn standaard brongebonden, en rangorde kent geen willekeur** (4.6 + 4.7 samengevoegd tot één besluit, want beide gaan over hetzelfde: een mutatie mag nooit per ongeluk op de verkeerde bron landen). Lezen mag gegroepeerd; afspelen, details, metadata-refresh en verwijderen werken altijd op de gekozen bron, behalve het expliciete groepscontract van hoofdstuk 13 (Verwijder uit Verder kijken) en de expliciete "Alle bronnen"-optie bij Markeer bekeken. De eerste server die antwoordt wordt nooit automatisch artwork-, playback- of destructive-actionbron; elke rangorde krijgt de vaste tie-break `preferred source → online state → metadata completeness → artwork completeness → quality information → server name → server id → item id`.
+
+*PARTIAL supersede van [DEC-023](#dec-023), uitsluitend het TV/tvOS-deel.* DEC-023 legt vast dat op mobiel Mijn Pleya de enige persoonlijke ingang is, via `showsHeaderAccountMenu(isMobile:)`/`getVisibleTabs`, en dat desktop en tvOS het bestaande headermenu houden omdat hun sidebar Mijn Pleya nooit rendert. Pleya Unified TV 2026 vervangt op tvOS de bestaande sidebar-gebaseerde shell door de nieuwe TV-shell van hoofdstuk 6, met Mijn Pleya als geneste navigator (hoofdstuk 6.3) en een eigen focuscontract (hoofdstuk 7). Die TV-specifieke navigatiewijziging valt dus buiten wat DEC-023 beschreef toen `side_navigation_rail.dart` op tvOS `null` teruggaf voor Mijn Pleya. Deze supersede raakt **uitsluitend het TV/tvOS-gedeelte** van DEC-023: de mobiele bar-samenstelling, `showsHeaderAccountMenu`, `AccountUiActions` en de gehele redenering over `discover_screen.dart` op mobiel blijven ongewijzigd van kracht. Dit is geen correctie van een fout in DEC-023 — die beslissing was correct voor de situatie die hij beschreef — maar een scopewijziging op het tvOS-pad die met de nieuwe shell ontstaat.
+
+*Supersede van uitsluitend het kleurwaardedeel van [DEC-002](#dec-002).* DEC-002 legt `kAccent = #F42B1F` en `kAccentAlt = #F68F16` vast als gesampled uit het Pleya-logo. `lib/theme/mono_theme.dart` draagt inmiddels `kAccent = #E5140F` en `kAccentAlt = #FFB020` (hoofdstuk 34, 34.1) zonder dat DEC-002 was bijgewerkt. Deze paragraaf haalt die drift in: de twee hexwaarden in DEC-002 zijn vervangen door `#E5140F`/`#FFB020` als de canonieke merkkleuren. Het **Pleya-brandprincipe** uit DEC-002 — kleuren gesampled uit het echte logo, rood plus amber als paar, spaarzaam toegepast op logo/progress/badges/selection/actieve navigatie en nooit als algemene knop- of paginafill, BuildMind-paars/-blauw bewust buiten de app-UI — blijft **onverkort geldig** en wordt hier bevestigd, niet heropend.
+
+*Afbakening tegen [DEC-020](#dec-020).* DEC-020 legt vast dat watchlist-verwijdering een titel uit **alle** `WatchlistMembership`-records tegelijk haalt, zonder bronkeuze — dat blijft ongewijzigd. De source picker uit hoofdstuk 14 introduceert géén bronkeuze voor verwijderen uit de watchlist. De picker geldt uitsluitend voor: availability tonen (hoofdstuk 14.7/14.8), een item openen, de detailpagina met source switching (hoofdstuk 15), en afspelen. Watchlist-add/-remove, de partially-failed-afhandeling en de ordinale bronvolgorde uit DEC-020 lopen buiten de unified-picker om.
+
+*Cross-server mergen van Pleya Server, local en Pleya Share.* Zoals hoofdstuk 11 en 33.6 (conflictpunt 3) al specificeren: een `UnifiedMediaGroup` mag een Pleya Server-, local- of Pleya Share-bron als **single-source** groep bevatten, maar die bronnen worden **niet** cross-server gemerged met Plex- of Jellyfin-bronnen, noch onderling met elkaar. Waar de goedgekeurde mockups "Emby" tonen is dat te lezen als Pleya Server of Pleya Share; Pleya heeft geen Emby-backend (`MediaBackend` kent alleen plex, jellyfin, pleyaServer, local, pleyaShare).
+**Consequences:** DEC-023, DEC-002 en DEC-020 blijven allemaal `accepted` en worden niet op `superseded` gezet: dit is per paragraaf een partiële supersede/afbakening, geen vervanging van de hele beslissing. Toekomstige lezers van DEC-002 moeten de kleurwaarden hier lezen, niet de oorspronkelijke hexcodes; toekomstige lezers van DEC-023 moeten voor tvOS naar hoofdstuk 6/7 van het unified-plan, voor mobiel blijft DEC-023 zelf de bron. De zes architectuurbesluiten hierboven zijn vanaf nu bindend voor elke fase van Pleya Unified TV 2026 en worden, net als de rest van dit besluit, niet per fase herwogen — een latere fase die een van deze punten wil heropenen heeft een nieuw ADR nodig, geen stille afwijking in code of plan.
+
+
+## DEC-064: Films en Series zijn twee niveaus — discovery landing en complete catalogus
+
+**Date:** 2026-08-30
+**Status:** accepted
+**Context:** Hoofdstuk 10.2 van [docs/tvos-unified-experience.md](tvos-unified-experience.md) beschreef Films en Series als één gridpagina: "Geen grote hero op deze pagina's. Vaste topnav. Een compacte sticky page header. Grid met 6–7 kolommen." Fase 5 heeft dat gebouwd en is daar vrijwel mee klaar. Michel heeft daarna de actuele Netflix TV-interface 2025/2026 als primaire compositiereferentie aangeleverd, en die laat een fundamenteel ander model zien voor het rootniveau van een contentbestemming: row-based discovery waarin focus de compositie verandert, buren zichtbaar blijven en metadata voornamelijk bij het gefocuste item verschijnt. Dat botst frontaal met de gridformulering van 10.2. Het conflict is niet in de presentatielaag op te vangen: het verandert het aantal routes, de betekenis van de fase-5 Definition of Done en de status van negentien bestaande goldens. Het is bovendien vier keer eerder als "fase 5 ziet er niet Netflix-achtig genoeg uit" teruggekomen, terwijl de werkelijke oorzaak was dat twee dragende onderdelen van dat eindbeeld — discovery-projecties en horizontale rootnavigatie — bewust nog niet gebouwd waren.
+**Decision:** Films en Series worden **twee niveaus**, geen twee alternatieven.
+
+1. **`Films` / `Series` (root) = discovery landing.** Row-based, focus verandert de compositie, buren blijven zichtbaar, metadata verschijnt voornamelijk bij focus, landscape/wide presentatie waar de artwork dat toelaat. Minimale chrome: **geen** permanente `[Alle bronnen] [Filters] [Sorteren]` boven de eerste rail. Hoofdstuk 10.2a.
+2. **`Films ▸ Alles bekijken` / `Series ▸ Alles bekijken` = complete catalogus.** Stabiel 2:3-postergrid, witte focusring met kleine scale en lift, géén expanded landscape-transformatie, volledige filters en sortering. Hoofdstuk 10.2b. Dit is exact wat fase 5 al gebouwd heeft.
+3. **"Alles bekijken" is een eerste-klas route**, remote-first bereikbaar — geen minuscuul tekstlinkje.
+
+*Fasegrens.* Fase 5 heet vanaf nu **Unified Complete Catalog** en levert niveau 2. Fase 6 heet **Unified Discovery** en levert niveau 1, plus Home-, Search- en Continue Watching-projecties, `TvDiscoveryRail` en de expanded-focuspresentatie. Discovery-rows komen **uitsluitend** uit de fase-6 projectielaag; een TV-widget mag nooit zelf een pseudo-discoveryhub uit de complete catalogus construeren.
+
+*Fase-5 acceptatie geamendeerd.* De eis is niet langer "fase 5 moet eruitzien als de definitieve Netflix Films-pagina" — met de tweeniveaustructuur is dat de verkeerde eis. De eis is dat All Movies en All Series een uitstekende premium TV-catalogusgrid zijn: mooie posters, goede schaal, witte focus, sterke filtermodal, geen databasegevoel, goede typografie, snelle remote-navigatie. Er volgt **geen** nieuwe fase-5-ontwerpronde.
+
+*Topnavvolgorde.* De Netflix-referentie is leidend voor de compositie: `[profiel] [Zoeken] Home Series Films [Live TV] Mijn Pleya [Pleya]`. **Series staat vóór Films.** De bestaande volgorde in `navigation_tabs.dart` wint hier niet louter omdat hij al gecommit is. Actieve bestemming is een lichte/witte capsule. Live TV verschijnt op capability, maar zijn positie blijft stabiel tijdens een tijdelijke serveroutage.
+
+*Conflictregister 33.6 punt 7 en 8, beide beslist.* Punt 7: geen generieke "Gepland"/"Beschikbaar"-badge in Films/Series; aanvraagstatus blijft op de surfaces met betrouwbare requestdata. Punt 8: geen "Onthoud mijn keuze"-optie; er zijn precies twee contracten — `preferredServerId` (profielbreed, automatische selectie) en last-used title source (alleen picker-initiële focus) — en er komt geen derde bij.
+**Consequences:** Hoofdstuk 10 is herschreven naar 10.1 / 10.2a / 10.2b; hoofdstuk 27 fase 5 en 6 zijn hernoemd en uitgebreid; 33.6 punt 7 en 8 staan niet langer op `Open`. Het reeds gebouwde fase-5-werk — `TvUnifiedCatalogScreen`, `TvUnifiedMediaGrid`, `TvUnifiedMediaCard`, filter- en sorteerpanelen, paging, query-preferences, source counts, image-prefetch, focusstabiliteit — behoudt volledig zijn waarde en wordt herbestemd, niet weggegooid: het is precies het gereedschap voor "laat me gewoon mijn 500 films zien". De negentien fase-5-goldens blijven geldig als goldens van de *Alles bekijken*-ervaring. Wat wél verschuift is de betekenis van `tv_movies_screen.dart` en `tv_series_screen.dart`: die zijn vanaf nu de tweedeniveaubestemming, en blijven tot fase 6 rechtstreeks aan de topnav hangen als bewuste tussenstate. Het risico dat deze beslissing draagt is dat fase 6 aanzienlijk groter wordt dan oorspronkelijk begroot — hij draagt nu ook twee volledige landingsschermen en een herbruikbare discovery-rail — en dat de Netflix-achtige eindindruk pas na fase 7 zichtbaar wordt, omdat tot dan de oude zijbalk technisch blijft bestaan. Dat is een tussenstate, geen eindbeeld, en dit besluit legt vast dat dat verwacht gedrag is en geen regressie.
+
+
+## DEC-065: Visuele north star TV 2026 bevroren — acht referentiebeelden bindend voor fase 6–8
+
+**Date:** 2026-08-30
+**Status:** accepted
+**Context:** Na DEC-064 is het volledige schermenstelsel als high-fidelity mockups uitgewerkt tegen de echte designtokens (HTML op 1920×1080, headless-Chromium-renders, echt TMDb-artwork) en in meerdere correctierondes door Michel beoordeeld: verticale compositie Home, topnav-positie tegen de Netflix-referentie, raildichtheid, focus-subtiliteit in de grids, de filtercategorie, het merk-lockup. Michel heeft de definitieve set expliciet bevroren ("Bevriezen").
+**Decision:** De acht beelden in `docs/assets/tvos-unified/northstar/` (01-home t/m 08-mijn-pleya) zijn de bindende compositie- en hiërarchiereferentie voor fase 6, 7 en 8. Hoofdstuk 33 is ernaar herschreven (33.1–33.8; het conflictregister is hernummerd naar 33.10 en blijft van kracht; de 2025-referentieset is historisch). De beelden dragen daarnaast zes expliciete, goedgekeurde afwijkingen van de eerdere baseline of de huidige implementatie, die anders stilzwijgend zouden blijven:
+
+1. **Topnav:** de cluster (zoekicoon + items) staat horizontaal gecentreerd; profielchip los uiterst links; rechts het **wordmark-lockup** `assets/branding/pleya_wordmark.png` (het P-merk op de positie van de letter P, gevolgd door LEYA) op navhoogte — niet het losse P-icoon met tekst ernaast.
+2. **Home:** featured card ~66% van de hoogte (in-page, ~2.4:1) met daaronder alléén de peek van de eerste rij; een aparte focus-state (33.2) waarin de hero wegschuift en de CW-rail zijn volle expanded band met metadata toont.
+3. **Landings:** rails uitsluitend in de canonieke providervolgorde met de bestaande i18n-labels (CW eerst wanneer gevuld, dan de aanbevelingsrijen); het gefocuste CW-item draagt de episode-still van de concrete aflevering waar beschikbaar; onderaan de view-all-regel als typografische regel.
+4. **Catalogusgrid-focus:** witte ring rond het **artwork alléén**, kleine scale, lift en shadow; de footer krijgt géén fill en géén elevated behandeling. Dit wijkt af van de huidige fase-5-implementatie (ring om kaart+footer met `cardFocusFooterFill`) en wordt als fase-6-polish geïmplementeerd; de betrokken fase-5-goldens verschuiven dan mee.
+5. **Filters:** de actieve categorie is een subtiele band met smalle indicatorstreep; wit blijft gereserveerd voor het daadwerkelijk gefocuste control.
+6. **Mijn Pleya:** de hoofdstuk-18.1-groepen als tegelrijen met de serverstatus in de header (18.4, authfout in amber); menutegels schalen niet bij focus.
+
+**Consequences:** Fase 6–8-werk wordt visueel geaccepteerd tegen deze beelden; afwijken van de set is een nieuw besluit, geen implementatiedetail. Punt 4 raakt bestaande fase-5-code en -goldens en is daarmee een bewuste, geregistreerde visuele wijziging. De getoonde titels en hun artwork zijn niet bindend; de beelden bevatten echt TMDb-artwork en dienen uitsluitend als interne designreferentie. De HTML-bronnen van de mockups leven buiten de repo; hoofdstuk 33 bevat de maten om ze te reproduceren.
+
+
+## DEC-066: Search unified projectie TV-only; Home-hero-activatie via de fase-4-coördinator
+
+**Date:** 2026-08-31
+**Status:** accepted
+**Context:** `lib/services/unified_catalog/search_projection.dart` en `lib/services/unified_catalog/featured_selector.dart` waren gebouwd en grondig unit-getest (hoofdstuk 27 fase 6) maar hadden geen enkele production consumer, waardoor ze de `check-unused-code`/`check-unused-files`-CI-gates rood hielden. Twee wiringvragen vroegen om een expliciet besluit voordat ze production-wired konden worden: (1) `search_projection.dart` raakt `lib/screens/search_screen.dart`, het ene gedeelde zoekscherm voor desktop, mobiel én TV — een wijziging daar heeft potentieel bereik buiten de TV-fase; (2) `featured_selector.dart` voedt de Home-hero, en de huidige hero speelt zijn representative source rechtstreeks af (`navigateToMediaItem(billboard, playDirectly: true)`), wat botst met hoofdstuk 4.4's verbod op een representative-source-shortcut zodra de hero een `UnifiedMediaGroup` representeert.
+**Decision:**
+
+1. **Search: unified projectie uitsluitend op de TV-tak.** Binnen de bestaande gedeelde `SearchScreen` vertakt de resultaatpresentatie op `PlatformDetector.isTV()`, net als `discover_screen.dart` dat al doet voor zijn hero. TV rendert `TvDiscoveryRail`-secties (Films/Series/Afleveringen) uit `searchProjection(...)`, geactiveerd via `TvDiscoveryActivationMixin.activateDiscoveryGroup` — dezelfde mixin als de discovery-landings, geen tweede activation-implementatie. Collecties, afspeellijsten en personen blijven source-concreet, zoals hoofdstuk 16.1 al voorschrijft. Desktop en mobiel blijven het bestaande source-concrete resultatenpad gebruiken, ongewijzigd. Unified search op alle platforms is een apart, later productbesluit — niet in deze wiring meegenomen.
+2. **Home-hero-activatie loopt voor een featured titel via de fase-4-coördinator.** `TvHomeProjectionProvider` (nieuw, profiel-scoped, sibling van `TvDiscoveryLandingProvider`) re-projecteert `DiscoverProvider.latestMovies` via `HomeProjectionService.projectHubs` en rankt met `FeaturedSelector`; `DiscoverProvider.hubs` vult alleen aan wanneer de primaire pool `FeaturedSelector.maxCount` niet vult. Presentatie blijft ongewijzigd op `DiscoverProvider.latestMovies` leunen (zelfde volgorde, aantal, autorotatie, focusgedrag) — dit is een datalaagwissel, geen redesign. Wanneer het item op het scherm een geprojecteerde featured group is, routeren de Play- en Meer info-pillen voortaan via `TvDiscoveryActivationMixin.activateDiscoveryGroup` (uitgebreid met `intent`/`playDirectly`-parameters) in plaats van de representative source direct af te spelen. Gevolg: een single-source titel gedraagt zich identiek aan vandaag; een multi-source titel toont voortaan de source picker in plaats van stilzwijgend één server te kiezen — een bewuste, gewenste gedragswijziging, geen regressie.
+3. **Rowfocus-op-hero-gedrag blijft in fase 6 ongewijzigd** (zie hoofdstuk 27 fase 6/8 DoD, geamendeerd). `_setSpotlightDebounced`/`_tvRailRevealed` in `discover_screen.dart` zitten onder de spotlight-presentatie die fase 8 volledig vervangt; loskoppelen in fase 6 zou tijdelijke code bouwen die één fase later weer verdwijnt. Fase 8's Definition of Done krijgt dit expliciet als eigen sluitpunt.
+
+**Consequences:** `search_projection.dart` en `featured_selector.dart` hebben nu echte production consumers; `check-unused-code`/`check-unused-files` zijn groen zonder suppressie. `lib/providers/tv_home_projection_provider.dart` is nieuw en profiel-scoped naast `TvDiscoveryLandingProvider` in `ProfileSessionScreen`. `lib/screens/tv/tv_discovery_activation_mixin.dart`'s `activateDiscoveryGroup` kreeg twee optionele parameters (`intent`, `playDirectly`), default gelijk aan het bestaande fase-6-gedrag — bestaande callers zijn ongewijzigd. De vier fase-0 Home-focus-baselinetests (`test/screens/discover_screen_test.dart`) blijven ongewijzigd groen. Punt 2's multi-source-picker-gedrag is een zichtbare wijziging op de Home-hero die vóór een eventuele TestFlight-release nog handmatig op een toestel bevestigd moet worden (hoofdstuk 36 sluit geautomatiseerde tests hier niet voor uit, maar hardware-acceptatie blijft apart).
+
+
+## DEC-067: De TV-hero dedupliceert in fase 6 en toont uitsluitend recente films
+
+**Date:** 2026-08-31
+**Status:** accepted
+**Context:** [DEC-066](#dec-066) punt 2 liet de hero-*presentatie* bewust op `DiscoverProvider.latestMovies` staan en leverde alleen activatieveiligheid; hoofdstuk 27's fase-6 DoD schoof "geen duplicate hero-slide" daarmee door naar fase 8. Twee dingen bleken daaraan niet houdbaar. Ten eerste is het zichtbaar fout: de lichte cross-serverdedup in `data_aggregation_service.dart` klapt alleen *identieke* guids samen, dus één film die op twee servers onder twee guids staat nam twee rotatieslots — een gebruiker ziet dezelfde titel twee keer langskomen. Ten tweede was het architectonisch fout: de weergavelijst (`_latestMovies`) en de activatie-opzoeklijst (`featuredGroupFor` over de geprojecteerde pool) waren twee verschillende objecten, zodat "welke slide staat er nu" door twee bronnen beantwoord kon worden. Daarnaast beschreef hoofdstuk 9.5 nog een kandidaatketen waarin Top Picks, recent toegevoegde series en hubs de hero aanvulden zodra er te weinig recente films waren. Michel heeft beide punten expliciet beslist.
+**Decision:**
+
+1. **Hero-deduplicatie is fase-6-werk, niet fase-8-werk.** `TvHomeProjectionProvider.heroGroups` is de ene geordende hero-lijst en bepaalt drie dingen tegelijk: welke slides bestaan, hun volgorde, en bij welke `UnifiedMediaGroup` iedere zichtbare slide hoort. `discover_screen.dart`'s TV-pad roteert daarover en leest de groep van de slide zelf; `featuredGroupFor` blijft bestaan voor de billboards die géén hero-slide zijn (railfocus, en het on-deck/hub-fallbackitem bij een lege hero). De concrete `MediaItem` die de bestaande hero-widgets krijgen is presentatie — backdrop, clearlogo, titel, metadata — en activeert nooit rechtstreeks.
+2. **De hero toont uitsluitend recent uitgebrachte films zolang de gededupliceerde pool niet leeg is.** Deduplicatie mag het aantal slides verkleinen; dat gat wordt niet gevuld met Top Picks, gepersonaliseerde hubs of recent toegevoegde series, en er is geen ondergrens waar naartoe wordt aangevuld. `FeaturedSelector.maxCount` blijft hoofdstuk 9.5's bovengrens van acht — dat is een plafond, geen vulling. Alleen bij een echt lege pool geldt het bestaande fallbackgedrag van `DiscoverScreen` (Continue Watching, dan hubs); er komt geen nieuwe fallbacksemantiek bij. Gemengde hero-kandidaten in fase 8 zouden een nieuw expliciet productbesluit vragen.
+3. **`Rowfocus verandert de hero` blijft wél fase-8-werk.** Dat gedrag zit onder de spotlight-presentatie die fase 8 volledig vervangt; de deferral daarvan uit DEC-066 punt 3 blijft ongewijzigd van kracht. Fase 6 verandert de hero-dataset en de activatiegrens, niet de presentatie: geometrie, `_setSpotlightDebounced`, autoplaytiming, paginatie, focus en animatie zijn onaangeraakt, en het phone/desktop-heropad (de `latestMovies`-`PageView`) verandert niet.
+
+**Consequences:** Hoofdstuk 9.5 is herschreven (kandidaatketen vervangen door de exclusiviteitsregel), hoofdstuk 27's fase-6 DoD claimt "geen duplicate hero-slide" nu zelf, en de fase-8 DoD verwijst er alleen nog naar. `featuredCandidates` is vervangen door `heroGroups`; `hasProjectedHero` en `projectedLatestMovies` zijn erbij gekomen om een *authoritatief* lege hero ("elke recente film is ongeschikt") te onderscheiden van een nog niet afgeronde projectie — voor de tweede houdt `DiscoverScreen` de rauwe `latestMovies`-hero aan, zodat het billboard tijdens een koude load niet leegvalt. Een titel waarvan de identity-pijplijn de gelijkheid niet kán bewijzen (twee conflicterende guids, hoofdstuk 11.4) levert één slide met één bron; het verbreden daarvan blijft `resolveMoreSources`' werk op activatiemoment (hoofdstuk 12.8/14.5), niet dat van de hero. Zeven productiepad-tests in `test/screens/discover_screen_tv_hero_test.dart` en de provider-tests dekken dit; drie ervan zijn rood tegen de oude hero.
+
+
+## DEC-068: De complete-catalogusactie staat naast de paginatitel en is de enige launcher
+
+**Date:** 2026-08-31
+**Status:** accepted
+**Context:** [DEC-064](#dec-064) punt 3 eiste dat "Alles bekijken" een eerste-klas route is en geen "minuscuul tekstlinkje waar focus moeilijk komt". Drie tvOS-patronen voldoen daaraan: een compacte header-actie, een tegel aan het eind van een rail, of een sectierij onderaan de pagina. Fase 6 koos de derde, met het argument dat een paginabrede rij het enige doel is dat een afstandsbediening zonder mikken raakt: één keer omlaag vanaf de laatste rail, geen horizontale beweging. Dat argument klopte over *mikken* en niet over *afstand*. Het optimaliseerde het pad vanaf de onderkant van de pagina — waar een bladerende gebruiker eindigt — en negeerde het pad vanaf de bovenkant, waar iedere gebruiker begint. Wie Films opent omdat hij al zijn films wil zien moest eerst door elke discovery-rail heen. Een variant met de actie rechtsboven uitgelijnd is ook afgewogen en afgewezen: die ligt ruimtelijk te ver van de natuurlijke focus-entry en kost onnodige horizontale remote-navigatie.
+**Decision:**
+
+1. **De actie staat direct naast de paginatitel**, niet rechts uitgelijnd en niet onderaan: `Films   Alle films ›` en `Series   Alle series ›`. Vaste tussenruimte (`TvDiscoveryLayout.pageTitleActionGap`), geen `Spacer` — een lange vertaling schuift de actie iets verder naar buiten in plaats van hem tegen de rechtermarge te parkeren.
+2. **Hij is zeer rustig.** Tekstactie met een kleine chevron, secundaire typografie op ongeveer de helft van de titelgrootte, gedempte inkt in rust, volle witte focusbehandeling wanneer gefocust. Geen pill, geen boxed button, geen toolbar-chip, geen Settings-rij. De paginatitel blijft dominant.
+3. **De onderste "Alles bekijken"-rij verdwijnt.** Er is nog één primaire route naar de complete catalogus op de landing: minder duplicate chrome, een korter focuspad, duidelijkere spatial navigation, en één canonieke launcher als restauratiedoel.
+4. **Focuspad.** De paginatitel zelf is niet focusbaar; de actie wel. Omlaag vanaf de actie landt op de huidige tegel van de eerste rail (`focusCurrent`, niet "de eerste tegel" — wie de rail al gelopen heeft houdt zijn plek). Omhoog vanaf de eerste rail keert terug naar de actie. Boven de header ligt de topnav, en die is fase 7.
+5. **Routing en state veranderen niet.** De actie pusht exact de bestaande fase-5-catalogus (`TvMoviesScreen` / `TvSeriesScreen`); geen tweede scherm, provider, catalog engine, query-state, paging of filterset. Er komt ook geen aparte `Ontdekken`-tab bij: de discovery-landing *is* de defaultpagina.
+
+**Consequences:** `TvViewAllAction` is herschreven van een paginabrede rij naar een compacte tekstactie; `title`+`actionLabel` zijn één `label` geworden en de i18n-sleutel `unifiedCatalog.discovery.viewAll` ("Alles bekijken") is uit alle zestien locales verwijderd omdat hij nergens meer gerenderd wordt. `TvDiscoveryLayout` verliest `viewAllRowHeight`, `viewAllTitleFontSize` en `viewAllOutline` en wint `viewAllPaddingVertical` en `pageTitleActionGap`. De landing houdt zijn rails nu ook in een `GlobalKey<TvDiscoveryRailState>` bij, zodat omlaag vanuit de header de eerste rail kan bereiken. Eén bestaande testeigenschap is bewust vervallen: de landing bewaarde een niet-nul scrollpositie over een push+pop heen, en dat kán niet meer wanneer de teruggezette focus in de header ligt — de header in beeld brengen ís scrollen. De test bewijst nu wat er wél geldt: de focus keert terug op de actie, de rail onthoudt zijn eigen tegel, en de pagina staat weer bovenaan. De semantics-labels (`Alle films bekijken` / `Alle series bekijken`, al 16/16) zijn ongewijzigd gebleven; ze zeggen meer dan de zichtbare tekst en dat is precies wat een screenreader nodig heeft.
+
+## DEC-069: De TV-root heeft één geneste-routestapel die géén Navigator is, en Live TV is een onthouden capability
+
+**Date:** 31 augustus 2026
+**Status:** Accepted
+**Phase:** Fase 7 (TV-root-shell en Mijn Pleya)
+
+**Context.** Fase 7 vervangt op TV de verticale `SideNavigationRail` door een horizontale topnav
+(hoofdstuk 6.2). Twee dingen die daar niet in de roadmap stonden bleken tijdens de bouw beslissingen
+in plaats van implementatiedetails, en allebei zijn ze het soort keuze dat later opnieuw gemaakt
+wordt als er geen reden bij staat.
+
+### 1. Een geneste route binnen een bestemming is een expliciete stapel, geen `Navigator`
+
+Hoofdstuk 6.3 vraagt om "een eigen geneste navigator" voor Mijn Pleya. De voor de hand liggende
+lezing — een Flutter `Navigator` in de contentzone — is onjuist, en het kost een halve fase om erachter
+te komen waarom.
+
+`Navigator.push` zoekt de *dichtstbijzijnde* navigator. De helft van wat een TV-oppervlak pusht is
+media-detail: een kaart in Bibliotheken, in de Kijklijst of in een discovery-rail roept
+`navigateToMediaItem` aan. Met een navigator in de shell zou dát detailscherm er ook in gevangen
+worden en *onder de topnav* renderen in plaats van full-bleed over de hele shell, zoals het vandaag op
+elk ander oppervlak doet. Erger nog: hoofdstuk 7.5 wordt er dubbelzinnig van, want stap 2 (een
+geneste Mijn Pleya-route poppen) en stap 3 (een detailroute poppen) zouden dan dezelfde pop op
+dezelfde stapel zijn.
+
+Dus nesten is expliciet en opt-in: `TvNestedRoute` op `TvNavigationCoordinator`. Wie binnen de shell
+wil blijven pusht er één; al het andere gaat ongewijzigd naar de profielnavigator die
+`ProfileSessionScreen` bezit. `media_navigation_helper.dart` hoefde daardoor niet aangeraakt te
+worden.
+
+**Gevolg dat wél de roadmap raakt.** De complete catalogus (`Alle films` / `Alle series`) verhuist
+van een push op de profielnavigator naar zo'n geneste route. Dat is geen smaakkwestie: de gedeelde
+shell van hoofdstuk 33 is **bindend op alle acht** referentiebeelden, en 33.5 en 33.6 tekenen die
+pagina's mét de topnav erboven en de bestemming nog steeds opgelicht. Een fullscreen push had dat
+onmogelijk gemaakt. De landing eronder blijft gemonteerd (offstage, met `TickerMode` uit), dus terug
+kost geen herlaadbeurt (hoofdstuk 24).
+
+Eén stapel voor alle bestemmingen, niet één voor Mijn Pleya en één voor de landings: twee
+mechanismen zouden twee backketens en twee antwoorden op "wat staat er open" betekenen.
+`tv_my_pleya_navigator.dart` is daarom de routetabel van Mijn Pleya geworden en niet een tweede
+stapel.
+
+### 2. Live TV-zichtbaarheid is een onthouden profielcapability, geen pollresultaat
+
+`MultiServerProvider.hasLiveTv` is de uitkomst van `checkLiveTvAvailability()`, en die kan "dit
+profiel heeft geen tuner" niet onderscheiden van "de server met de tuner antwoordde net niet": een
+offline server komt de lus niet eens in, en een die gooit wordt gevangen en overgeslagen. Op een
+verticale balk verdwijnt daardoor een rij; in een horizontale balk schuift Mijn Pleya en alles
+ertussen zijwaarts weg onder de duim van de kijker, en de pil waar hij op mikte staat ergens anders.
+Hoofdstuk 19 verbiedt dat met zoveel woorden.
+
+De regel is bewust asymmetrisch, omdat het bewijs dat is:
+
+- **Onthouden bij elke waarneming.** Eén bereikbare DVR bewijst de capability.
+- **Vergeten alleen bij een sluitende meting.** Een poll die niets vond bewijst niets tenzij élke
+  verwachte server online was én antwoordde — de nieuwe
+  `MultiServerProvider.lastLiveTvCheckWasConclusive`. Alles daaronder is een uitspraak over het
+  netwerk, niet over het profiel.
+
+Opslag volgt `PreferredServerStore`: één `JsonPref`-entry per profielscope, en hij gaat mee met het
+profiel als dat verwijderd wordt (hoofdstuk 22). `resolveLiveTvCapability` is een pure functie, omdat
+het de productregel is en niet de opslag.
+
+### Sluitingsamendement, 31 augustus 2026 — waar de plek van een geneste route woont
+
+De zin hierboven, "de landing eronder blijft gemonteerd … dus terug kost geen herlaadbeurt", was
+waar voor *poppen* en niet voor *van bestemming wisselen*. Alleen de actieve bestemming bouwt zijn
+bovenste route, dus naar Series gaan en terugkomen bouwde `Alle films` opnieuw op. Dat kostte twee
+dingen die hoofdstuk 7.4, 7.6 en 24 al vastleggen: de geladen pagina's, en de plek van de kijker.
+Beide zijn bij het sluiten van fase 7 gerepareerd, en het amendement staat hier omdat het de
+consequentie is van precies deze beslissing.
+
+De keuze die eronder ligt is *waar* die plek woont. Elke geneste route mounten van elke bestemming
+zou het probleem ook oplossen, en is verworpen: het houdt schermen in leven om state te bewaren die
+in één record past, en het is precies de brute-force die deze architectuur elders vermijdt. De plek
+gaat dus naar `TvNavigationCoordinator`, die de wissel al overleeft, als hoofdstuk 7.6's
+`TvDestinationFocusMemory` — waarmee die memory ook zijn eerste productieconsument krijgt. De
+pagina's blijven waar ze al stonden: `UnifiedCatalogProvider` leeft in de profielsubtree boven de
+shell, en de enige reden dat een remount hem leegde was dat het scherm bij het opstarten
+onvoorwaardelijk `setQuery` riep.
+
+Eén regel volgt hieruit en staat in de code: **alleen een surface die de wissel niet overleeft
+schrijft in die memory.** Een bestemmingsroot staat in de `IndexedStack` en bewaart zijn eigen
+positie al; twee schrijvers per bestemming zouden twee antwoorden op dezelfde vraag zijn.
+
+**Consequences.** `TvNestedRoute`, `TvNavigationCoordinator` en `TvLiveTvCapabilityStore` zijn nieuw;
+`MultiServerProvider` krijgt er één afgeleide vlag bij en notificeert nu ook wanneer een meting
+sluitend wórdt — dat ziet eruit alsof er niets gebeurde (geen Live TV ervoor, geen erna) maar het is
+het enige moment waarop een onthouden capability met recht ingetrokken mag worden. De
+`SideNavigationRail` blijft ongewijzigd de root van desktop; niets aan het niet-TV-pad is verlegd.
+
+## DEC-070: De Home-carousel roteert na inactiviteit, en Home-rijen zijn geen hero-invoer meer
+
+**Date:** 31 augustus 2026
+**Status:** Accepted
+**Phase:** Fase 8 (Final TV Home Experience)
+
+**Context.** Fase 8 vervangt de fullscreen `TvSpotlightBackground`-home door de afgeronde in-page
+carousel van hoofdstuk 33.1. Drie dingen bleken daarbij beslissingen in plaats van
+implementatiedetails, en alle drie zijn ze het soort keuze dat later opnieuw gemaakt wordt als er
+geen reden bij staat.
+
+### 1. Hoofdstuk 9.6's pauzelijst kan niet letterlijk gelden, en lost dat zelf op
+
+9.6 vraagt om een automatische wissel per acht seconden en somt daarna de toestanden op waarin de
+timer gepauzeerd blijft — waaronder "een hero-CTA focus heeft". Letterlijk gelezen is dat een
+carousel die nooit draait: hoofdstuk 7.1 legt de rustfocus van Home juist op een hero-CTA
+(topnav → hero actions), dus de pauzevoorwaarde is altijd waar. De eerste en de laatste zin van
+diezelfde alinea kunnen dan niet allebei waar zijn.
+
+De alinea draagt zijn eigen oplossing: "Na echte inactiviteit mag de carousel hervatten." Dat is
+geïmplementeerd, en het is het enige punt waarop van de letterlijke tekst wordt afgeweken:
+
+- iedere interactie — een slidewissel, een druk, aankomen op een CTA — stopt de rotatie en start een
+  inactiviteitsvenster van dezelfde acht seconden;
+- de rotatie hervat pas als dat venster verstrijkt zonder invoer;
+- de toestanden uit 9.6 die *niet* over de handen van de kijker gaan — Home niet actief, app niet op
+  de voorgrond, een overlay of source picker open, de feed niet op scrollpositie nul, een contentrij
+  met focus — blijven onvoorwaardelijke pauzes, en die rapporteert `TvContentFeed` via één vlag.
+
+**Wat expliciet géén pauzevoorwaarde is: focus op de topnavigatie.** Die zit buiten de feed, en een
+kijker die op de balk staat terwijl het billboard doorloopt is precies het geval dat 9.6 beschrijft,
+niet een dat het uitsluit. Een eerdere versie gebruikte "heeft de feed focus" als proxy voor "staat
+er een overlay overheen"; dat leest als hetzelfde en is het niet. `ModalRoute.isCurrent` beantwoordt
+die vraag wél, en is het predicaat dat de oude Home er al voor gebruikte.
+
+Onder Reduce Motion draait de rotatie helemaal niet. Een automatische wissel van het grootste element
+op het scherm is precies de beweging waar die instelling om vraagt hem niet te doen; links/rechts
+blijft gewoon werken.
+
+### 2. Rijfocus is geen hero-state, en dat is nu architectonisch waar
+
+`TvBrowseRail.onFocusedItemChanged` voedde `DiscoverScreen._setSpotlightDebounced`, en 180 ms na een
+D-pad-stap werd het billboard het gefocuste rij-item. Hoofdstuk 7.3 en 31.9 verbieden dat;
+[DEC-066](#dec-066) punt 3 en [DEC-067](#dec-067) punt 3 stelden het verwijderen uit tot deze fase.
+
+Het is niet uitgezet maar onmogelijk gemaakt op de plek die telt: de actieve slide is privéstate van
+`TvHeroBillboardCarousel`, en die klasse heeft geen setter, geen callback en geen constructorveld
+waarmee iets van buiten hem kan verzetten. `initialGroupId` wordt één keer bij mount gelezen; alles
+daarna is `_index`, privé.
+
+De precieze formulering is hier belangrijk, want de eerste versie van deze alinea beweerde te veel.
+`TvContentRow` heeft wél een parameter die de identiteit van de gefocuste kaart draagt —
+`onFocusedGroupChanged`, waarmee `TvDiscoveryRail` bij iedere focuswinst zijn `groupId` doorgeeft.
+Die is nodig voor restauratie (hoofdstuk 7.6) en gaat in `TvContentFeed` naar
+`_focusedGroupIdByRowId` en nergens anders heen; `_heroGroupId` wordt alleen door de carousel zelf
+gevoed. De garantie is dus niet "er is geen parameter met die informatie" maar "de feed geeft hem
+niet door, en de carousel zou hem niet kunnen ontvangen" — en die tweede helft is de harde: er is
+geen ingang. Beide helften staan onder test.
+
+### 3. De overlaid Home-actiebalk verdwijnt, en twee acties verhuizen mee
+
+De oude TV-home tekende bovenop het billboard een `FocusableActionBar` (verversen, Watch Together,
+Pleya Remote, gebruikersmenu). 33.1 tekent tussen de balk en de kaart niets, en hoofdstuk 7.3 zegt
+"Up vanaf hero gaat naar de actieve topnavbestemming" — waarmee die balk na fase 8 op geen enkel
+focuspad meer ligt. Hij was dus niet zozeer overbodig geworden als wel onbereikbaar.
+
+Weghalen zonder meer zou werkende functies van TV af halen, dus **Watch Together** is een tegel in
+Mijn Pleya geworden — de bestemming die hoofdstuk 18 al definieert als alles persoonlijks dat geen
+browsen is. Het hergebruikt zijn bestaande scherm; de tegel kreeg één nieuwe ondertitelstring, in
+alle zestien locales. Het gebruikersmenu was al gedekt door de profielchip in de topnav en door Mijn
+Pleya zelf.
+
+**Pleya Remote is bewust níet meeverhuisd**, en dat is de correctie die een onafhankelijke audit
+afdwong. De actie op de balk vertakte op `PlatformDetector.shouldActAsRemoteHost`, en dat predicaat
+is op TV waar — de balk opende daar dus de **host**-kant (`RemoteSessionDialog`: koppelstatus,
+starten en stoppen), niet de client. Een tegel die `MobileRemoteScreen` opent geeft precies de
+omgekeerde rol: een televisie die op zoek gaat naar een ander apparaat om te bedienen. De hostkant
+bestaat alleen als dialoog en heeft geen schermvorm om als geneste route te pushen, en die maken is
+functionele integratie — fase 9. Liever een geregistreerd gat dan het verkeerde scherm.
+
+**Wat hierdoor vervalt, en waar het geregistreerd staat.** Twee dingen, allebei fase 9:
+
+1. de expliciete verversknop op TV-Home — Home laadt bij mount en bij profielwissel, en hoofdstuk
+   7.2 verbiedt uitdrukkelijk een netwerkrefresh bij het opnieuw kiezen van de actieve bestemming,
+   dus er is geen plek waar hij vanzelf terugkomt;
+2. de Pleya Remote **host**-sessie op TV. De capability zelf blijft aan/uit te zetten
+   (`enableCompanionRemoteServer` in de afspeelinstellingen); alleen het statuspaneel is onbereikbaar.
+
+### 4. Twee dingen die de visuele audit terecht rood maakte
+
+Een onafhankelijke read-only visuele audit tegen `01-home.jpg` gaf elf van twaalf punten groen en
+twee echte bevindingen, beide gecorrigeerd:
+
+- **De scrim was een L, geen lokale linksonder.** Twee onafhankelijke full-card gradiënten — één
+  ondoorzichtig langs de linkerrand, één langs de onderrand — tellen niet op tot "alleen lokaal
+  linksonder": hun vereniging donkert de hele linkerkolom tot bovenaan en de hele onderrand tot
+  rechts, waardoor de kaart zijn rechteronderhoek in de paginagrond verloor. De leesgradiënt is nu
+  een *product* (horizontaal, gemaskeerd op hoogte) met daarnaast een duidelijk zwakkere onderrand
+  die alleen de kaartrand in de pagina laat overlopen.
+- **De witte `Afspelen`-capsule was grijs tot hij focus had.** `FocusableButton` dimt een
+  ongefocuste knop in D-pad-modus naar 60%, wat juist is voor een muur van kaarten en verkeerd voor
+  een control waarvan de rustkleur bindend is (33.1: "witte `▶ Afspelen`-capsule"). De knop heeft er
+  een `dimWhenUnfocused`-opt-out bij die alleen de twee hero-pillen zetten; de acht andere
+  `delegated`-aanroepers zijn byte-identiek gebleven.
+
+Een derde, kleine bevinding: de "long locale"-golden was dood bewijs — slang's vertalingen zijn
+deferred en een testbinary laadt alleen de basislocale, dus een Material-`Locale` veranderde niets en
+de render was identiek aan `play_focused`. Vervangen door een render met werkelijk lange
+fixture-titels en -prosa, die de gereserveerde hoogtes wél op de proef stelt.
+
+**Consequences.** `lib/widgets/tv/tv_content_feed.dart`, `tv_content_row.dart`,
+`tv_hero_billboard_carousel.dart`, `tv_hero_billboard_card.dart` en `tv_hero_artwork.dart` zijn
+nieuw; `TvHomeLayout` staat naast `TvDiscoveryLayout` in `tv_unified_layout.dart`.
+`TvHomeProjectionProvider` kreeg er één getter bij (`latestMovies`, de ongelimiteerde geprojecteerde
+"Recent uitgebracht"-rij naast de op acht afgetopte `heroGroups`); `FocusableButton` kreeg er één
+parameter bij (`dimWhenUnfocused`, default `true`, zie punt 4). `tv_browse_rail.dart` en
+`tv_spotlight_background.dart` blijven bestaan en ongewijzigd: `library_recommended_tab.dart`,
+`media_detail_screen.dart` en `seerr_poster_card.dart` gebruiken ze terecht nog. De vier fase-0
+Home-focusbaselines uit `test/screens/discover_screen_test.dart` beweren hetzelfde als altijd en
+wijzen nu naar de nieuwe knopen. Eén bevinding buiten de fase-8-scope is onderweg meegenomen omdat
+Home hem blootlegde: `TvDiscoveryRail` liet RECHTS voorbij de laatste tegel door de geometrische
+traversal vallen, die op een gestapelde feed de eerste tegel van de *volgende* rij is — de rij-uiteinden
+zijn nu harde stops, ook op de fase-6-landings.
+
+## DEC-071: Bekeken is bekeken, dus markeren geldt voor alle bronnen
+
+**Date:** 1 september 2026
+**Status:** Accepted
+**Supersedes:** de bronkeuze-zin van hoofdstuk 13.5
+
+**Context.** Hoofdstuk 13.5 schreef voor dat "Markeer als bekeken" eerst om een bron vraagt: één
+concrete bron of expliciet "Alle bronnen", met de zin "Geen impliciete mutatie van alle bronnen"
+eronder. De code deed dat exact: `markWatched`/`markUnwatched` waren
+`UnifiedActionScope.sourceSpecificWithAllSources`, en met twee bereikbare bronnen opende het
+scope-paneel.
+
+Die regel botst met de rest van het product. Kijkstatus is juist de ene eigenschap die Pleya al over
+bronnen heen samenvoegt: een groep draagt één `UnifiedWatchState`, de kaart tekent één vinkje, en
+G4/G5 leiden die staat af uit alle memberships samen. Een vraag "op welke server wil je dit bekeken
+zetten?" vraagt dus naar een onderscheid dat nergens anders bestaat, en het antwoord "alleen deze"
+levert een titel op die op de muur bekeken heet terwijl een zustermembership het tegendeel zegt. Dat
+is geen keuze die de gebruiker maakt, het is een inconsistentie die hij erft.
+
+**Decision.** Markeer bekeken en markeer onbekeken zijn `logical`: ze gelden altijd voor alle
+bronnen van de titel en vragen niets. Bekeken is bekeken.
+
+Een bron die op het moment van schrijven niet bereikbaar is wordt vastgehouden in plaats van
+overgeslagen: `queuesUnreachableMemberships` geldt nu ook voor deze twee acties, en de onbereikbare
+memberships gaan door dezelfde `OfflineWatchProvider`-ingang die offline-modus al gebruikt. De
+wachtrij is niet voor deze beslissing verzonnen — de kijkstatuswachtrij draagt `watched`- en
+`unwatched`-rijen al en speelt ze al terug bij reconnect, wat G11 aantoont. Zonder dat deel zou
+"altijd alle bronnen" een belofte zijn die bij de eerste offline server stilletjes breekt.
+
+**Wat bewust niet mee veranderde.** `rate` blijft `sourceSpecific`. Een cijfer dat naar elke kopie
+wordt geschreven is niet vanzelfsprekend wat iemand bedoelt die een film waardeert, en dat is een
+productbesluit dat niemand genomen heeft. De watchlist-acties blijven offline geweigerd in plaats van
+gewachtrijd (DEC-020): een uitgestelde watchlist-schrijfactie heeft geen merge-regel tegen wat
+hetzelfde account ondertussen op plex.tv deed, en kijkstatus heeft die wel.
+
+**Consequences.** `UnifiedActionScope.sourceSpecificWithAllSources` verloor hiermee zijn enige
+gebruiker en is **verwijderd**, samen met de hele keten eronder: `allowAllSources` op
+`AskForActionScope` en op `TvActionScopePicker`, de `kAllSourcesRowKey`-pseudorij, het sealed
+`UnifiedActionScopeChoice`-keuzetype (de picker geeft nu rechtstreeks een `UnifiedMediaSource` terug)
+en de strings `tvContextMenu.allSources`, `allSourcesDetail`, `scopeTitleMarkWatched` en
+`scopeTitleMarkUnwatched`. De laatste twee waren dezelfde soort dode copy: markeer bekeken/onbekeken
+bereikt de scope-picker sinds deze DEC nooit meer, dus een paneeltitel voor die twee kon niemand meer
+zien.
+
+Het alternatief was de variant als vocabulaire laten staan zodat een toekomstige actie hem met één
+regel kon krijgen. Dat is niet gedaan: een onbereikbare tak met een comment dat uitlegt waarom hij
+onbereikbaar is kost een lezer meer dan hij een latere bouwer bespaart, en het herstellen ervan is
+geen regel code maar een productbesluit over een specifieke actie — met een eigen DEC, precies zoals
+deze er een is. `rate` is nu de enige actie die nog om een bron vraagt, en die vraagt uitsluitend
+naar concrete servers.
+
+`_queueDeferred` dispatcht nu per actie in plaats van altijd een Continue Watching-verwijdering weg
+te schrijven. De register-rijen G12 en G13 beschrijven na deze DEC een schrijfactie die niet meer
+vraagt; hun tests zijn meeverhuisd naar `rate`, dat de vraag wel nog stelt en daarmee de negatieve
+controle op de reikwijdte van deze DEC is.
+
+## DEC-072: Spatial D-pad navigation volgt de gerenderde geometrie, niet de logische actievolgorde
+
+**Date:** 1 september 2026
+**Status:** Accepted
+**Vult aan:** de RTL-paragraaf van hoofdstuk 25 (docs/tvos-unified-experience.md)
+
+**Context.** Hoofdstuk 25 bindt twee dingen die onder een rechts-naar-links-directionality uit elkaar
+lopen. De CTA-*volgorde* spiegelt logisch — Afspelen en Meer info wisselen van plek, wat `Row` gratis
+doet zodra de `Directionality` omgaat — maar links/rechts voor de *carousel* blijft aan de visuele
+richting gekoppeld. Wat het hoofdstuk niet noemde is de focusverplaatsing *tussen* die twee knoppen,
+en die liep op lijstpositie: `onNavigateRight` op Afspelen sprong naar Meer info omdat Meer info het
+volgende item in de lijst is. Zodra de volgorde spiegelt staat Meer info fysiek links, en landt
+Rechts dus op een knop die de kijker links ziet liggen. Dat is bij het sluiten van J7 gevonden en
+toen bewust niet zelf beantwoord: het was een ontbrekend productbesluit, geen scenario met vastgelegd
+gedrag.
+
+**Decision.** Voor TV en tvOS volgt D-pad Links/Rechts **de visuele geometrie na layout**, niet de
+abstracte logische of semantische actievolgorde. Links verplaatst de focus naar de focusbare control
+die visueel links ligt, Rechts naar die visueel rechts ligt — ook onder RTL.
+
+Semantics en focus zijn daarmee expliciet twee verschillende contracten. RTL mag tekstalignment
+spiegelen, de lees- en semantische volgorde aanpassen, en de CTA-compositie visueel spiegelen waar
+hoofdstuk 25 dat voorschrijft. Wat het níet mag is de logische volgorde op de richtingstoetsen
+leggen, want een afstandsbediening is een fysiek apparaat: de kijker drukt naar de knop die hij
+daar ziet liggen, en een pijl die de andere kant op springt voelt kapot, hoe correct de leesvolgorde
+er ook onder ligt.
+
+**Wat hier niet onder valt.** Dit gaat uitsluitend over focus traversal tussen focusbare
+CTA-controls. De carouselrichting, de slidevolgorde, de artworkrichting, de autoplay en de
+CTA-semantiek blijven precies zoals ze contractueel vastliggen; dit is geen bredere RTL-herziening.
+De carouselclausule verandert er ook niet door: Links vanaf de linkerrand van de rij blijft de vorige
+slide en Rechts vanaf de rechterrand de volgende, in beide richtingen. Alleen wélke knop op die rand
+ligt verschilt, en dat volgde altijd al uit de layout.
+
+**Consequences.** Eén autoriteit, niet twee. `_actions` in `tv_hero_billboard_carousel.dart` leest de
+`Directionality` in de subtree van de rij zelf — dezelfde die de pillen positioneert — en leidt daar
+de linker- en rechterbuur uit af (`_stepFrom`). Twee onafhankelijke hardgecodeerde RTL-tabellen naast
+elkaar zouden opnieuw uit elkaar kunnen lopen; de gerenderde volgorde is al beschikbaar en is dus de
+bron. Vastgelegd in test/widgets/tv/tv_rtl_contract_test.dart met een echte `Directionality`-override
+(geen locale nodig, en Pleya heeft er ook geen), en registerrij J17 draagt het bewijs. Twee van die
+tests dekken de verkeerde soort fix af: wie de focusnodes verwisselt in plaats van de bedrading breekt
+de binding tussen label en control, en die binding wordt apart geassert.
+
+
+## DEC-073: De TV-shellkeuze is niet schakelbaar, en dat wordt bewaakt in plaats van aangenomen
+
+**Date:** 2026-09-01
+**Status:** accepted
+**Context:** Fase 0 van Pleya Unified TV 2026 zette `DevFlags.tvUnifiedExperience` neer als
+debug-only ontwikkelpoort ([DEC-063](#dec-063)), zodat de nieuwe shell lokaal aan kon terwijl hij
+gebouwd werd. Hoofdstuk 32 van [docs/tvos-unified-experience.md](tvos-unified-experience.md) eist dat
+die poort vóór productie weg is, en hoofdstuk 30 noemt als stopcriterium voor het risico *permanent
+dubbele architectuur*: "releasebuild bevat nog een eindgebruikersschakelaar tussen beide shells".
+
+Bij het openen van fase 10A was de poort al feitelijk dood — niets buiten zijn eigen rij in de
+Debug-sectie van Instellingen las hem nog, want `MainScreen` kiest sinds fase 7 de TV-shell
+onvoorwaardelijk op een TV. Dood is echter niet hetzelfde als weg, en "weg" is niet hetzelfde als
+"blijft weg".
+
+**Decision:**
+
+1. **De poort is verwijderd**, inclusief `lib/config/` als geheel: `dev_flags.dart` was het enige
+   bestand erin.
+2. **Er is precies één rootnavigatie-autoriteit op TV**, en de volgorde in `MainScreen._buildContent`
+   is het mechanisme: de TV-tak wordt vóór de zijbalktak beslist. Dat is geen stijlkeuze maar een
+   noodzaak, want een TV is óók een `shouldUseSideNavigation`-oppervlak — dat was hij tot fase 7 — dus
+   de twee takken overlappen echt.
+3. **Beide punten worden bewaakt**, niet aangenomen, in
+   `test/architecture/tv_shell_single_authority_test.dart`: brononderzoek voor de poort en de
+   schakelaar, en een gedragstest voor de tak-volgorde. Die tweede helft draagt een expliciete
+   negatieve controle — als een TV ooit ophoudt een zijbalkoppervlak te zijn, wordt de
+   volgorde-assertie zinloos, en dan hoort die controle om te vallen in plaats van stilzwijgend groen
+   te blijven.
+
+**Consequences.** Een heringevoerde poort, een nieuwe schakelaar in Instellingen, of een omgedraaide
+takvolgorde faalt vanaf nu in de testsuite in plaats van pas op een releasebuild op een echte Apple
+TV. De Debug-sectie zelf blijft bestaan (Test Sentry, Test ANR); wat verdwijnt is uitsluitend de
+shellschakelaar. DEC-063 blijft `accepted` en wordt niet gesuperseded: dit is de afsluiting van een
+tijdelijk middel dat DEC-063 zelf al als tijdelijk aankondigde, geen herziening van een besluit.
+
+
+## DEC-074: Op het lichte thema krijgt het woordmerk donkere letters, en de P-mark blijft rood
+
+**Date:** 2026-09-02
+**Status:** accepted
+**Context:** Registerrij J18 stond sinds fase 10A op klasse C. De TV-topnav tekent
+`assets/branding/pleya_wordmark.png` ongewijzigd op de themakleur, en dat bestand draagt twee kleuren
+tegelijk: de rode P-mark en witte "LEYA"-letters. De balk schildert zelf niets en staat op de
+paginagrond van `TvRootShell`, die op het lichte palet uitkomt op ongeveer `#F2F2F3`. Gemeten staan de
+witte letters daar op **1,12:1** — ze zijn er niet — terwijl de rode P op 4,23:1 blijft staan.
+
+Hoofdstuk 8.2 vraagt op dat oppervlak twee dingen die op één asset uit elkaar lopen: "licht thema
+krijgt ... donkere tekst", én Pleya-rood voor "subtiele branddetails". Geen enkel hoofdstuk, DEC of
+north-starbeeld besliste hoe een tweekleurig lockup daar getekend hoort te worden; alle acht
+referentiebeelden van hoofdstuk 33 zijn donker. Fase 10A heeft de rij daarom geclassificeerd in plaats
+van hem zelf in te vullen.
+
+Het is bovendien gewoon bereikbaar: `_buildAppearanceTile()` hangt zonder `!PlatformDetector.isTV()`
+in het instellingenscherm — anders dan de tegels eromheen — en het thema volgt onder `system` ook nog
+de appearance van het toestel.
+
+**Decision:**
+
+1. **De letters volgen de inkt van het thema** (`MonoTokens.text`), **de P-mark blijft Pleya-rood** op
+   elk oppervlak. De letters zijn belettering en gedragen zich als de rest van de tekst in de balk; de
+   mark is het merk en beweegt niet mee. Op licht komen de letters daarmee op 16,88:1.
+2. **De splitsing zit in het asset, niet in een filter en niet in een marge.**
+   `scripts/gen_brand_assets.py` schrijft twee lagen uit dezelfde handgemaakte bron, allebei op het
+   **volledige bronkanvas** met de andere helft leeg. In één rect getekend zijn ze samen pixel voor
+   pixel het origineel. De handgemaakte `pleya_wordmark.png` blijft de enige bron van waarheid; er komt
+   geen tweede met de hand gemaakte variant bij.
+3. **Alleen het lichte thema vorkt.** Donker en OLED blijven het onverdeelde bestand tekenen. De
+   letters dragen compressieruis — zo'n vijftienduizend ondoorzichtige pixels staan op 253-255 in
+   plaats van zuiver wit — dus ze op donker naar zuiver wit hertinten zou duizenden pixels onmerkbaar
+   verschuiven en drieëntwintig donkere goldens ongeldig maken. Dat is veel ruis om een verandering
+   vast te leggen die niemand ziet.
+4. **De introsplash blijft buiten scope.** `intro_splash.dart` tekent hetzelfde bestand op een
+   permanent zwarte ondergrond, waar witte letters juist goed zijn.
+
+**Geamendeerd op 2 september 2026 — het lockup wordt samengesteld, en de vork vervalt.**
+
+Bij het nakijken van het eerste lichte beeld bleek de P in `pleya_wordmark.png` een *oudere tekening*
+dan `pleya_mark.png`: een dichte donkere binnenvorm en flauwe rode snelheidslijnen, tegenover een open
+binnenvorm en amberkleurige lijnen. Omdat `lockup()` uit dat handgemaakte bestand werd opgebouwd, droeg
+alles wat daaruit volgt die oude P mee — het tvOS-app-icoon, alle drie de Top Shelf-beelden, de Android
+TV-banner en het OG-beeld van de site — terwijl de iOS-, macOS-, Android- en Linux-iconen via
+`mark_canvas` de huidige droegen. Eén merk, twee P's, en niets dat ze bij elkaar hield.
+
+Dat verandert twee dingen aan het besluit hierboven:
+
+5. **Het lockup is een product van de generator, geen bewaard bestand.** `pleya_wordmark.png` wordt
+   samengesteld uit `pleya_mark.png` plus `pleya_lettering.png` (de belettering, wat er van het
+   handwerk overblijft). De mark bestaat daarmee nog op één plek en kan niet opnieuw los van zichzelf
+   verouderen. De verhoudingen van het oude lockup blijven — dezelfde cap-height, dezelfde
+   tussenruimte van 20px, dezelfde verticale uitlijning — en de huidige mark wordt *niet* platgedrukt
+   om binnen de oude kanvasbreedte te passen: die groeit mee van 1452 naar 1516.
+6. **De vork uit punt 3 vervalt.** Die bestond alleen om de donkere goldens byte-identiek te houden,
+   en de merkverversing verandert die goldens sowieso. Er is dus nog één pad: [PleyaWordmark] tekent
+   altijd de twee lagen, de merklaag houdt altijd zijn eigen kleuren, en de belettering krijgt de inkt
+   die de aanroeper meegeeft. Licht en donker verschillen nog uitsluitend in wélke inkt dat is.
+
+Wat daarbij *niet* verandert: "één codepad" betekent niet dat het hele lockup naar de themakleur gaat.
+De merklaag wordt nooit hertint. De topbar en de introsplash zijn twee gebruiksmodi van dezelfde
+compositie — de eerste geeft de themakleur mee, de tweede geen, omdat die op een permanent zwarte
+ondergrond staat en de belettering daar zijn eigen wit hoort te houden.
+
+Dat de huidige mark een *doorzichtige* binnenvorm heeft in plaats van een dichtgeschilderde is
+overigens precies waarom hij op een themavlak werkt: de ondergrond schijnt erdoor. De oude zou ook na
+deze fix nog als donkere vlek op het lichte palet hebben gestaan.
+
+**Consequences.** Twee gegenereerde assets erbij onder `assets/branding/`, zonder pubspec-wijziging —
+die map staat als geheel aangegeven. J18 gaat van klasse C naar `covered`. De splitskolom wordt in het
+script *afgeleid* en niet vastgezet: raken de twee kleuren in een toekomstige bron verstrengeld, dan
+klapt de generator eruit in plaats van er stil middendoor te snijden. De assetinvarianten staan in
+`test/assets/brand_wordmark_layers_test.dart`, omdat de gevaarlijkste faalwijze — een laag die op zijn
+eigen alpha-bbox gecropt wordt, een andere aspect ratio krijgt en het lockup uit elkaar laat schuiven —
+door geen enkele widgettest of golden wordt gezien. `_Wordmark` blijft privé in
+`lib/widgets/pleya_wordmark.dart` als gedeelde widget, met een bronbewaking zoals `PleyaLogo` die heeft:
+geen enkel ander bestand in `lib/` mag een lockup-asset noemen, zodat er één plek blijft die weet hoe
+het merk getekend wordt. Consumenten geven een bedoelde *hoogte* mee en nooit een breedte — het kanvas
+is met deze verandering breder geworden, en een aanroeper die een breedte had vastgezet zou het lockup
+stilzwijgend hebben ingedrukt of afgesneden.
+
+## DEC-075: Een cijfer geldt voor de titel, niet voor de kopie
+
+**Date:** 2 september 2026
+**Status:** Accepted
+**Supersedes:** de alinea "Wat bewust niet mee veranderde" van [DEC-071](#dec-071), voor zover die
+over `rate` gaat
+**PARTIAL supersede van [DEC-063](#dec-063), uitsluitend punt 6**, en dan alleen de opsomming van
+welke acties brongebonden zijn
+
+**Context.** Na DEC-071 was `rate` de laatste actie met een bronvraag. Met twee bereikbare servers
+opende het scope-paneel "Rate on", de gebruiker koos er één, en de andere kopie hield het cijfer dat
+er stond. Op de detailpagina en in het telefoonmenu werd niet eens gevraagd: daar landde het cijfer
+stil op de bron waar die pagina toevallig aan gebonden was.
+
+Dat is dezelfde incoherentie die DEC-071 uit de kijkstatus haalde, één laag dieper. Dezelfde film op
+twee servers had twee verschillende cijfers, en welk cijfer je zag hing af van welke kaart je opende.
+DEC-071's eigen redenering hiervoor was dat "een cijfer op elke kopie schrijven niet vanzelfsprekend
+is wat iemand bedoelt, en dat is een productbesluit dat niemand genomen heeft". Dat besluit is nu wel
+genomen, en het luidt: waarderen doe je een film, niet een bestand.
+
+**Decision.** `rate` is `logical`. Eén handeling in de waarderingssheet schrijft het cijfer naar elke
+bereikbare membership van de titel, vanaf elk oppervlak waar je kunt waarderen: het TV-contextmenu en
+de detailpagina. Het telefoonmenu ligt op dezelfde naad maar krijgt zijn zusterbronnen alleen als het
+oppervlak eromheen ze kent, wat vandaag nergens zo is.
+
+**De grenzen, expliciet.**
+
+1. **Geen wachtrij.** De offline-wachtrij kent de actietypes progress, watched, unwatched en
+   removed-from-Continue-Watching, en geen van die rijen draagt een waarde. Een cijfer heeft daar dus
+   geen plek, en er een schema voor bouwen is afgewezen. Een bron die op het moment van schrijven
+   onbereikbaar is wordt daarom **gemeld, niet vastgehouden**: hij telt mee in de noemer ("Gelukt op
+   1 van 2 bronnen") en daar houdt het op.
+2. **De afbeelding naar Jellyfin is lossy, en niet alleen in precisie.** Jellyfin kent alleen
+   like/dislike, dus 7/10 wordt daar een like. Opent iemand later de sheet gebonden aan die
+   Jellyfin-bron en tikt hij hem aan, dan schrijft de sheet 10.0, en die 10 reist via deze
+   beslissing terug naar Plex over de 7 heen. Een gemengde groep schuift dus richting 10 of 0 bij
+   elke bewerking vanaf een binaire bron. Dat is bewust geaccepteerd en niet weggeregeld: een
+   merge-regel die een binaire bron een numerieke zusterwaarde laat behouden is een eigen
+   productbesluit met een eigen DEC. Wat er wél tegen gedaan is: het TV-menu bindt de sheet bij
+   voorkeur aan een bron die een getal bewaart, zodat het pad zeldzaam wordt.
+3. **De belofte geldt in de servers, niet in de interface.** `UnifiedMediaGroup` draagt een
+   `watchState` en geen ratingtegenhanger; geen kaart tekent een samengevoegd cijfer. Wie een titel
+   op 7 zet en daarna de Jellyfin-kopie opent ziet een duimpje, niet een 7. Het cijfer is overal
+   geschreven en nergens samengevoegd getoond. Een `UnifiedRatingState` is de vervolgstap en staat
+   hier als bekende beperking, niet als iets wat deze DEC oplost.
+
+**Wat de partiële supersede van DEC-063 punt 6 precies raakt.** Punt 6 citeert hoofdstuk 4.6
+woordelijk, inclusief "en de expliciete 'Alle bronnen'-optie bij Markeer bekeken", en sluit af met de
+regel dat een latere fase die een van deze punten wil heropenen een nieuw ADR nodig heeft en geen
+stille afwijking in code of plan. 4.6 aanpassen zonder deze paragraaf zou precies die stille
+afwijking zijn. Wat verandert is de opsomming: markeer bekeken/onbekeken (sinds DEC-071) en rate
+(sinds deze DEC) staan niet meer in de brongebonden lijst. Het **principe** van punt 6 wordt
+bevestigd, niet heropend: een mutatie mag nog steeds nooit per ongeluk op de verkeerde bron landen.
+Overal waarderen is geen ongeluk maar een breder expliciet groepscontract, dezelfde vorm die
+hoofdstuk 13.4 en 13.5 al hebben. Afspelen, details, metadata-refresh en verwijderen blijven
+onveranderd brongebonden, en de tie-break van 4.7 blijft woord voor woord staan.
+
+Deze DEC ruimt daarbij het restant van DEC-071 op. Die veranderde de inhoud van 4.6 wel maar de tekst
+niet, waardoor hoofdstuk 23 markeer bekeken/onbekeken tot vandaag onder "Acties die bronkeuze
+vereisen" bleef zetten. Beide verouderde formuleringen zijn nu weg.
+
+**Consequences.** `UnifiedActionScope` had nog één waarde over en is **verwijderd**, samen met de
+`scope`-getter, `ApplyActionToSource` (inclusief de `chosen`-vlag), `AskForActionScope`,
+`TvActionScopePicker`, `_askForActionScope`, `_scopeTitleFor`, `_ScopeSession` en de string
+`tvContextMenu.scopeTitleRate`. Dat is dezelfde afweging die DEC-071 maakte en met dezelfde uitkomst:
+een enum met één waarde is een switch die altijd dezelfde kant op gaat, en een onbereikbare tak met
+een comment erboven kost een lezer meer dan hij een latere bouwer bespaart. `resolveUnifiedActionTarget`
+geeft nu altijd een `ApplyActionToAllSources`.
+
+Nieuw is `ApplyActionToAllSources.unreachableSources`: de spiegelvorm van `deferredSources` voor een
+actie zonder wachtrij. Precies één van de twee lijsten is ooit gevuld, en ze delen de noemer, want
+dat is het deel dat de gebruiker leest.
+
+De fan-out zelf staat in `RatingMirror` (`lib/services/rating_actions.dart`) en niet op
+`WatchActions`, waarvan de eigen doc vier taken opsomt die rating geen van alle heeft. Twee dingen
+daarin zijn niet cosmetisch. `RatingBottomSheet` kreeg een tweede callback,
+`onServerRatingWritten`, omdat de bestaande `onServerRatingChanged` de wis-sentinel `-1` naar `0`
+plat voor weergave: die waarde spiegelen zou elk "wis mijn cijfer" veranderd hebben in een 0/10 op
+elke andere server. En de mirror lost zijn clients op bij constructie, niet bij het schrijven, omdat
+de sheet een openstaand cijfer flusht vanuit `dispose()` — de laatste schrijfactie van een handeling
+gebeurt nadat de context weg is.
+
+Meegenomen, en onafhankelijk van deze beslissing een echte bug: het telefoonmenu waardeerde via
+`getMediaClientWithFallback`, die terugvalt op de eerste online server. Plex-ratingsleutels zijn per
+server unieke integers, dus een item waarvan de server was weggevallen schreef een cijfer op een
+willekeurige andere titel elders. Stil, permanent en onzichtbaar, oftewel precies het faalgeval
+waartegen `tv_unified_context_actions.dart` geschreven is. Dat pad gebruikt nu de strikte lookup en
+weigert als die niets oplevert.
+
+Ten slotte is `unifiedActionOutcomeMessage` verhuisd naar `lib/services/unified_action_outcome.dart`.
+De regel is geen TV-regel meer zodra de detailpagina hem gebruikt, en een detailpagina die een
+TV-contextmenu importeert om aan een string te komen is hoe zo'n helper een tweede keer gekopieerd
+wordt.
+
+## DEC-076: Een backend-badge is een bronglyph, en neemt de inkt van zijn regel
+
+**Date:** 2026-09-02
+**Status:** accepted
+**Verhoudt zich tot [DEC-074](#dec-074):** die gaat over het lockup dat de app zichzelf noemt, deze
+over de glyph die een bron noemt. Geen supersede; de grens tussen de twee staat hieronder.
+
+**Context.** Registerrij J19 kwam uit het J18-werk en is toen bewust blijven liggen: `BackendBadge`
+tekent vier glyphs uit één `switch`, en drie ervan nemen de inkt van de regel waar ze in staan. De
+Plex-chevron en de Jellyfin-mark zijn `currentColor`-SVG's die hun tint via `SvgTheme` krijgen, de
+lokale map is een `Icon` met `color:`. De Pleya-P was de enige tak die de `tint` liet liggen, terwijl
+het doccommentaar van de widget zelf belooft dat `color` gehonoreerd wordt en vijf van de achttien
+callsites er een meegeven — `MediaCard`'s metadataregel geeft gedempte inkt op 60% alpha mee,
+`side_navigation_rail.dart` geeft `textMuted`.
+
+Er stond geen productbesluit onder. Hoofdstuk 8.2 noemt Pleya-rood voor "badges", maar dat gaat over
+de TV-oppervlakken, en juist daar komt deze widget niet voor: hoofdstuk 10.3 zegt over de kaart
+letterlijk "geen serverlogo's op de poster", en de multi-sourcebadge die er wél staat is een donkere
+capsule met witte tekst. `BackendBadge` leeft buiten de TV-shell — in de bibliotheeklijsten, de
+profiel- en verbindingsschermen, de waarderingssheet, `MediaCard`'s metadataregel en de zijbalk.
+
+**Decision.**
+
+1. **Alle vier de takken nemen de inkt van hun regel**, de Pleya-P dus ook, getint via
+   `BlendMode.srcIn` zodat de alpha van die inkt overeind blijft. Het onderscheid is niet "PNG versus
+   SVG" maar wat de glyph zegt: een merk dat zegt *deze app is Pleya* houdt zijn kleur, een glyph die
+   zegt *dit item komt van een Pleya-server* is bronnotatie en gedraagt zich als de tekst ernaast.
+2. **De grens ligt bij de widget, niet bij het asset.** `PleyaLogo` heeft geen kleurparameter en
+   houdt merkrood; `BackendBadge` heeft er wel een en honoreert hem. `side_navigation_rail.dart`
+   toont allebei de regels in één scherm: een rode `PleyaLogo` in de kop, een gedempte badge in de
+   serverrijen eronder. `PleyaWordmark` trekt dezelfde grens sinds de merkverversing van diezelfde
+   dag, alleen binnen één widget: de merklaag houdt zijn eigen kleuren, de belettering krijgt de inkt
+   die de aanroeper meegeeft.
+3. **De set is de eenheid, niet de tak.** `MediaBackend.local` is een kale Material-map en kan nooit
+   iets anders dan inkt dragen; de twee SVG's zijn als `currentColor` getekend, dus Plex-amber en
+   Jellyfin-blauw waren hier allang opgegeven. Eén glyph die daar wél kleur voert leest op 10 tot
+   28 pixels niet als merk maar als toestand — rood is in dit thema progress en actief.
+
+**Wat er in dezelfde drie regels nog mis bleek, en waarom het meeging.** De badge tekende
+`assets/branding/pleya_mark.png`, de handgemaakte bron, en niet het gegenereerde
+`assets/branding/pleya_logo.png`. De alpha-bbox van die bron is (39, 128, 931, 938) op een kanvas van
+1024x1024: de P vult er 87% van de breedte en 79% van de hoogte van, en zijn midden ligt 27 pixels
+naar links en 22 pixels omlaag ten opzichte van het kanvasmidden. In een `size x size`-doos naast
+twee SVG's die hun viewBox vullen tekende de Pleya-badge dus kleiner en scheef naast zijn buren. Dat
+vraagt geen productbesluit — niemand pleit voor een badge die kleiner is dan de rest — dus het is een
+gebrek en geen klasse-C-rij, en het zat in precies de regels die deze DEC toch aanraakt. Het
+gegenereerde bestand is gecentreerd en vult 95% van zijn breedte, en staat al in de image-cache omdat
+`PleyaLogo` het tekent: de badge trok er tot nu toe een tweede decode van 1024x1024 bij voor een
+glyph van twaalf pixels.
+
+**Consequences.** J19 gaat van klasse C naar `covered`. Geen asset gewijzigd, geen generator
+aangeraakt, `pubspec.yaml` ongemoeid. Het bewijs staat op drie plekken, omdat geen van de drie de
+andere twee kan zien: `test/widgets/backend_badge_test.dart` toetst over álle vier de `MediaBackend`-
+waarden tegelijk, zodat een vijfde backend die zonder tint wordt toegevoegd hier ook omvalt;
+`test/assets/brand_logo_asset_test.dart` bewaakt op de bytes dat de mark vierkant, gecentreerd en
+gevuld blijft, want een `Image` rapporteert de doos die hij kreeg en niet wat hij erin tekent; en
+`test/goldens/backend_badge_golden_test.dart` legt op beide paletten vast dat de inkt ook echt
+aankomt, want een verkeerde blend mode is een gevuld vierkant en dat is in geen van de andere twee
+tests zichtbaar. Negatieve controle gedraaid: met de oude tak terug vallen precies de vijf
+Pleya-tests en allebei de goldens om, terwijl de dertien tests van de andere drie backends groen
+blijven — inclusief "vult dezelfde doos als de andere drie", wat precies aantoont waarom de
+assetinvarianten er los naast moeten staan. Daar zijn na de gate drie tests bij gekomen die de
+grens van punt 2 van deze beslissing vastpinnen in plaats van hem alleen op te schrijven: dat de
+badge dezelfde cachesleutel gebruikt als `PleyaLogo` (wat "geen tweede decode" werkelijk betekent),
+dat `PleyaLogo` zelf ongetint tekent, en dat de badge zijn doos ook boven de assetresolutie vult.
+
+**Wat de post-merge gate er nog uit haalde.** Twee dingen, allebei onzichtbaar in de eerste ronde.
+
+`pleya_logo_test.dart` draagt een bronbewaker: het assetpad mag alleen in `pleya_logo.dart` staan,
+zodat elke callsite door de widget gaat en het no-clip/no-fill-contract dekt. Deze beslissing maakt
+`BackendBadge` een tweede tekenaar, en de bewaker wist dat niet — canonical stond daardoor rood op
+precies één test. Opgelost in `61952a6`: de bewaker kent de badge bij naam, met het besluit erbij,
+zodat een derde rauwe callsite nog steeds omvalt. Een tweede tekenaar is hier dus expliciet toegestaan
+en een derde is een merkbeslissing, geen refactor.
+
+En de badge stond op `Image`'s standaard `BoxFit.scaleDown`, die verkleint maar nooit vergroot. Boven
+de 512 pixels van het asset zou de P stoppen met groeien terwijl de twee SVG's hun doos wel bleven
+vullen, en dan valt de set juist uiteen op de maten waar hij het meest opvalt. Nu expliciet
+`BoxFit.contain`, zoals `PleyaLogo` zelf al deed. De doos-test ziet dat niet: een `Image` rapporteert
+de doos die hij kreeg en niet wat hij erin tekent, en dat is dezelfde reden waarom de assetinvarianten
+er los naast staan.
+
+Wat hier bewust buiten blijft: de introsplash, `about_screen`, `auth_screen`, `discover_screen` en de
+zijbalkkop tekenen de P via `PleyaLogo` en veranderen niet. En de merkkleur is niet uit de app
+verdwenen: hij staat nog waar hij hoort, in het lockup en in progress.
+
+**Eén bekend gevolg dat hier níet wordt opgelost.** `pleya_mark.png` was de laatste callsite van dat
+bestand; het is nu alleen nog invoer voor `gen_brand_assets.py`, terwijl `pubspec.yaml`
+`assets/branding/` als hele map aangeeft en de app die 1,3 MB dus blijft meenemen. Er losse
+bestandsregels van maken zou dat terugwinnen, maar ruilt een megabyte in voor een klasse fouten die
+pas bij het uitvoeren opvalt: een asset die niet in de lijst staat, ontbreekt in de bundel. Dat is een
+eigen afweging over de hele map — `pleya_wordmark.png` is met dezelfde redenering een bronbestand dat
+de topnav op donker wél tekent — en hoort niet in een badge-besluit thuis.
+
+
+## DEC-077: Het ident is het lockup op de paginagrond, en niets anders
+
+**Date:** 2026-09-02
+**Status:** accepted
+**Context:** Bij het nakijken van de merkverversing ([DEC-074], amendement) vroeg Michel of de intro
+ook beter bij het nieuwe ontwerp kon passen. De trace liet drie merkmomenten achter elkaar zien die
+het niet met elkaar eens waren: de tvOS-launch (zwart), daaroverheen het `IntroGate`-ident (zuiver
+zwart, 2800 ms, een roterende waaier van veertien rode lichtstralen, een 5x-inslag met overshoot, een
+glansveeg, een rechthoekige rode gloed, het lockup, een tagline), en daaronder de bootsplash van
+`SetupScreen` (warme radiale `#26100D`, een ademende rode halo, de losse P-mark plus "PLEYA" als
+gespatieerde tekst, dezelfde tagline op een andere spec, een voortgangsbalk). Drie gronden, twee
+logo-vormen, twee taglines. De cross-dissolve op 88% van het ident was de zichtbare naad.
+
+De bron van het ident noemde zichzelf "Netflix-style ident". Hoofdstuk 31 #10 verbiedt precies dat.
+Hoofdstuk 8.4 en 24.1 sluiten doorlopend schalen uit, hoofdstuk 34 houdt rood van vlakvullingen, en
+in de bevroren north star ([DEC-065]) komt dit register nergens voor: `#141414`, geen blur, geen
+grading, terughoudende beweging, dissolves in plaats van transities.
+
+**Decision:**
+
+1. **Eén grond.** Het ident speelt op de paginagrond — `bg` van het donkere of OLED-palet, en op
+   het lichte thema alsnog `#141414`, want het ident is geen themavlak. Daarmee blijft de grond
+   permanent donker en blijft [DEC-074]'s "geen inktoverride" kloppen, én lost het ident op in een
+   pagina van dezelfde kleur in plaats van een stap uit zwart te maken.
+2. **De filmische laag verdwijnt**: de lichtstralen, de glansveeg, de rechthoekige gloed, de inslag
+   en de doorlopende push. Wat overblijft is het lockup dat zich zet (0,96 naar 1,0 op de focuscurve,
+   onder de 1,05 die de app als grootste schaal kent), even staat, en oplost. In en uit duren elk 460
+   ms — de hero-crossfade, die "als een dissolve leest en niet als een transitie". De hele run duurt
+   1800 ms in plaats van 2800.
+3. **De tagline volgt de spec van de generator.** `lockup(tagline=True)` legt hem al vast voor de Top
+   Shelf, de TV-banner en het OG-beeld: Inter Medium, 12% van de lockuphoogte, tracking 0,30 maal de
+   grootte, tussenruimte 12%, wit op 0,40. `PleyaBrandLockup` tekent exact dat, dus het ident op het
+   scherm is hetzelfde beeld als op de shelf.
+4. **De bootsplash wordt hetzelfde beeld.** `SetupScreen` tekent dezelfde grond en hetzelfde
+   `PleyaBrandLockup`, met alleen de voortgangslijn en de serverstatus erbij. Zodra het ident oplost
+   ligt eronder hetzelfde plaatje; de naad is weg. De ademende halo, de warme radiale en de losse P
+   met gespatieerde tekst vervallen.
+5. **Wat meeliep omdat het gebreken waren, geen ontwerp**: de twee lockuplagen worden vooraf
+   gedecodeerd (de eerste frames toonden anders een lege grond); Select, Enter, Escape en spatie
+   slaan het ident over, want een afstandsbediening heeft geen tik en een TV-kijker moest de volle
+   2800 ms uitzitten; en het ident heeft nu tests en twee goldens, waar het er nul had.
+
+**Wat niet verandert.** Het ident speelt één keer per proces, is over te slaan, en wordt overgeslagen
+onder Reduce Motion en op de gereduceerde prestatietier — met de bestaande uitzondering voor Apple
+TV, waar de engine de vlag verkeerd rapporteert. De merklaag wordt nergens hertint; het ident en de
+topbar zijn twee gebruiksmodi van dezelfde compositie ([DEC-074]).
+
+**Consequences.** `_LightRaysPainter` en `GradientTranslation` zijn weg. `SetupScreen` verliest zijn
+`AnimationController` en de ticker-mixin. `PleyaBrandLockup` en `identGround` staan in
+`lib/widgets/pleya_wordmark.dart` naast `PleyaWordmark`, zodat er één plek is die weet hoe het merk
+op een groot vlak staat. Een latere wens voor méér beweging in het ident is een nieuw besluit tegen
+hoofdstuk 8.4, geen aanpassing van een constante.
+
+## DEC-078: Een mislukt afspelen zegt wat er mis is, en de melding gaat vanzelf weg
+
+**Date:** 2026-09-02
+**Status:** accepted
+**Context:** Staat de externe schijf van de server na een herstart niet gemount, dan levert Plex de
+metadata en de part-key gewoon uit, maar is het bestand er niet. De speler bouwde daar een URL van,
+mpv kreeg een 404 en de gebruiker las "Afspelen gestopt", zonder tekst eronder. Dat is de enige
+uitkomst waar de gebruiker niets aan heeft: de server is bereikbaar, de titel bestaat, het bestand
+niet, en dat laatste is precies wat de melding verzweeg.
+
+Twee dingen werkten daarbij tegen elkaar. Plex vertelt met `checkFiles=1` per part of hij het bestand
+kan lezen, en `MediaPart.isPlayable` legde dat al vast — maar het werd alleen gebruikt om een betere
+versie te kiezen. Stond élke versie op onleesbaar, dan viel de keuze terug op de eerste en werd die
+alsnog geopend. En de classificatie aan de andere kant las maar één logregel: ffmpeg logt de 404,
+mpv logt daarna een algemene "Failed to open", en alleen die laatste overleefde. Een 404 werd
+bovendien als HLS-segmentprobleem gelezen, want dat patroon stond eerder in de reeks.
+
+Los daarvan bleef de melding staan. Een fout heeft in dit systeem bewust geen looptijd, want een fout
+wil een handeling. Bij afspelen klopt die aanname niet: de speler is al gesloten voordat de kaart in
+beeld komt, er valt niets te doen, en op een tv klikt niemand hem weg. Drie mislukte pogingen lieten
+dus drie kaarten achter die over de video bleven hangen die daarna wél startte.
+
+**Decision:** `PlaybackFailureKind` krijgt `fileUnavailable` als eigen uitkomst, met een eigen kop
+("Bestand niet beschikbaar") en een regel die zegt wat er te controleren valt. De classifier leest de
+laatste vier fout-logregels samen in plaats van de laatste, en scheidt een 404 op het bestand van een
+404 op een segment of playlist. `PlexVideoPlaybackData.hasPlayableVersion` maakt de vlaggen van
+`checkFiles=1` opvraagbaar, en `PlexClient.getPlaybackInitialization` weigert daarop met
+`PlaybackFileUnavailableException` vóór er een URL geopend wordt. Alle afspeelmeldingen delen het
+groepsvoorvoegsel `playback:`, krijgen twaalf seconden looptijd, en worden weggehaald zodra er een
+beeld staat. Een herhaalde blijvende melding telt op bij de kaart die er al staat in plaats van er
+een tweede naast te zetten.
+
+**Consequences:** De weigering gebeurt op de vlaggen van de server, niet op een eigen inschatting;
+stuurt Plex ze niet mee (`checkFiles` niet gevraagd, of een oudere server), dan zijn ze null en blijft
+alles zoals het was. Jellyfin kent zo'n vlag niet, dus daar blijft de 404 van de stream de bron van de
+diagnose — vandaar dat de classifier het ook zonder voorkennis moet kunnen zien. Twaalf seconden is
+een keuze en geen meting: lang genoeg om twee zinnen op een tv te lezen, kort genoeg om de volgende
+video niet te overleven. Meldingen buiten het afspelen blijven wél staan tot ze weggeklikt worden;
+daar is de aanname dat een fout een handeling wil nog steeds waar.
+
+## DEC-079: De merkgenerator schrijft op pixels, en zijn omgeving staat vast
+
+**Date:** 2026-09-02
+**Status:** accepted
+**Context:** Een kale `python3 scripts/gen_brand_assets.py` herschreef zevenenveertig getrackte
+iconen die pixel voor pixel gelijk bleven. Twee changelogregels noemen het al als "omgevingsdrift" en
+hebben het allebei laten staan, met het gevolg dat elke generatorrun een vuile tree opleverde en
+niemand meer kon zien wat er in zo'n diff wél echt veranderde. Fase 9 heeft de generator zelf
+gewijzigd, dus het hoort hier opgelost te worden en niet doorgeschoven.
+
+Gemeten in plaats van aangenomen. De bytes verschillen, de pixels niet: de IHDR is gelijk, de IDAT
+niet, en `Image.tobytes()` is over alle zevenenveertig identiek. De richting klopt ook niet met een
+verschoven compressieniveau — sommige bestanden werden kleiner, andere groter. Dat wijst op een
+andere deflate-implementatie, en dat is precies wat er aan de hand is: deze Pillow-wielen zijn
+gebouwd tegen **zlib-ng 2.3.3**, de omgeving die de getrackte assets schreef gebruikte stock zlib.
+De scheidslijn is exact te trekken in de git-historie: alles wat op 2 september in deze omgeving
+opnieuw geschreven is, blijft stabiel; alles van 19 en 28 augustus, geschreven op de Mac, verschilt.
+
+Byte-identieke PNG-uitvoer is dus niet draagbaar te maken. FreeType komt er nog bovenop: dat rastert
+de taglinestrook, en daar verschillen de pixels wél tussen versies — dat zijn de drie tvOS-icoonlagen
+uit de vorige changelogregel.
+
+**Decision:** Determinisme wordt gedefinieerd op de tekening, niet op de bytes.
+
+1. `save()` codeert eerst naar geheugen, vergelijkt de **pixels** met het bestand dat er al staat, en
+   schrijft alleen als ze verschillen. Run #1 levert de bedoelde uitvoer, run #2 een schone tree — op
+   elke omgeving, niet alleen op de gepinde. Voor de multi-size `.ico` gaat de vergelijking per
+   subbeeld.
+2. De encoderinstellingen staan expliciet in `PNG_SAVE` in plaats van op de Pillow-standaarden te
+   leunen, zodat een nieuwe standaard de uitvoer niet stil verschuift. Ze staan op de waarden van de
+   pin: een andere waarde zou zevenenveertig bestanden opnieuw comprimeren zonder dat er één pixel
+   verandert, en dat is precies wat dit besluit wegneemt.
+3. De canonieke generatieomgeving staat in `scripts/requirements-brand.txt` (`Pillow==12.3.0`). Het
+   script drukt bij het starten af waar het op draait — Pillow, de deflate-implementatie én FreeType —
+   en zegt het als dat niet de pin is. Het weigert niet: de pixels blijven gelijk, alleen nieuw
+   geschreven bytes kunnen anders uitvallen.
+
+Wat er *niet* gebeurt: de zevenenveertig bestanden worden niet blind opnieuw gecommit, er verandert
+geen pixeldata, en er wordt geen gegenereerd asset uitgezonderd van een controle.
+
+**Consequences:** Een generatorrun is voortaan leesbaar — wat erin verandert, is wat er echt
+verandert. De valkuil die dit onderweg opleverde staat in het script zelf beschreven: de `print` van
+een overgeslagen bestand mag niet binnen de `try` om het decoderen staan, want `BrokenPipeError` is
+een `OSError`, en een afgekapte pipe (`| head`) viel daardoor stil in het schrijfpad — één bestand
+werd zo alsnog herschreven. Dat is gerepareerd en met een afgekapte pipe nagelopen.
+
+Bij dit werk kwamen twee afgeleiden boven water die nooit meebewogen met de P: de merkmarkeringen van
+Pleya Web (`pleya_web/static/brand/pleya-mark-{64,256}.png`), die als handmatige `sips`-verkleining in
+een README stonden en aan `app.html`, `NavRail.svelte`, `+layout.svelte`, `login/` en `setup/` de oude
+handgemaakte P bleven leveren, en `assets/pleya.png`, het beeld bovenaan de repo. Allebei staan ze nu
+in de generator, met dezelfde ondoorzichtige merkgrond als voorheen en alleen de P van nu. De
+handmatige route is uit de README gehaald: een afgeleid merkbeeld hoort geen eigen recept te hebben.
+## DEC-080: `tvos.library.filters` is DEFERRED, geblokkeerd door het Pleya Server catalogus/filtercontract (G13)
 
 **Date:** 2026-08-30
 **Status:** accepted
@@ -579,7 +1454,7 @@ Wat bewust open blijft staan:
 
 **Consequences:** `tvos.library.sort` blijft als aparte, geldige regressie-/acceptatiescenario staan en vervangt `tvos.library.filters` niet inhoudelijk. `pleya_verify/scenarios/README.md` benoemt de DEFERRED-status expliciet naast de bestaande uitleg over G13. Reactivering hoort bij het moment waarop het cataloguscontract een filterparameter of filterendpoint krijgt, niet bij een latere Verify-fase op eigen initiatief.
 
-## DEC-064: Fase 12 gesloten, false-PASS-aanval op `tvos.sidebar.collapse` bewijst dat Verify een echte regressie rood maakt
+## DEC-081: Fase 12 gesloten, false-PASS-aanval op `tvos.sidebar.collapse` bewijst dat Verify een echte regressie rood maakt
 
 **Date:** 2026-08-30
 **Status:** accepted
@@ -614,7 +1489,27 @@ Testbewijs, alle drie deze sessie zelf gedraaid: `flutter test` 4787 passed / 9 
 
 **Consequences:** Fase 11 en Fase 12 zijn beide gesloten voor Verify Core 1.0. `tvos.sidebar.collapse` blijft de referentiegate voor een toekomstige false-PASS-regressietoets op een ander scenario. Er is geen productcode of testinfrastructuur bijgekomen: de negen aanvalscategorieën waren al gedekt, en de sabotage van vandaag bestaat nergens meer buiten deze DEC en de niet-ingecheckte `.build/pleya-verify/`-evidencebundels op deze machine. `working tree` was bij het schrijven van deze DEC schoon op `d021ffd` plus deze documentatiewijziging.
 
-## DEC-066: Pleya Verify CI, drie gescheiden gates, geen tweede execution-path
+## DEC-082: Pleya Verify MCP is een dunne adapter boven de bestaande CLI, geen tweede implementatie
+
+**Date:** 2026-08-30
+**Status:** accepted
+
+**Context:** Fase 13 vroeg om een MCP (Model Context Protocol) laag waarmee een agent een bestaand Verify-scenario kan starten, zonder dat er een tweede scenario-engine, driver-laag of PASS/FAIL-beslissing naast de bestaande CLI ontstaat. De bindende architectuur was vooraf vastgelegd: MCP praat uitsluitend met `pleya_verify/runner/bin/verify.dart` als subprocess, en gebruikt de bestaande `--json`-modus.
+
+Het bestaande `run --json`-contract had daarvoor één klein gat: het gaf alleen `ok`, `result`, `bundle` en `failureMessage` terug, nooit `scenario`, `target`, het echte proces-exitcode of het pasteable CLI-commando, en foutpaden (ontbrekend bestand, parse-fout, validatiefout, geen driver voor het target) schreven alléén platte tekst naar stderr, ook met `--json` aan. Zonder die velden had de MCP-laag zelf opnieuw moeten bepalen of een run een echte scenario-uitkomst was of een configuratiefout, precies de duplicatie die de opdracht verbood.
+
+**Decision:** Twee wijzigingen, beide chirurgisch:
+
+1. `pleya_verify/runner/bin/verify.dart`'s `run --json` geeft nu op elk exit-pad hetzelfde envelope terug: `ok`, `result` (`PASS`/`FAILED`/`ERROR`), `scenario`, `target`, `bundle_dir`, `failure_message`, eventueel `errors`, `exit_code` en `command` (de exacte argv om de run buiten MCP te herhalen). `ERROR` is een nieuwe, aparte waarde voor alles dat vóór of tijdens dispatch afbreekt (ontbrekend bestand, parse-/validatiefout, geen driver); die staat nooit gelijk aan `FAILED`. Er is geen scenario-, fixture-, driver- of assertion-logica bijgekomen: dit is uitsluitend het al bestaande resultaat consistent naar buiten brengen. `dart test` in `pleya_verify/runner`: 201/201 (198 bestaand + 3 nieuw, gericht op precies dit contract).
+2. `pleya_verify/mcp/` is een nieuw, op zichzelf staand Dart-pakket met twee tools: `list_scenarios` (dunne wrap om `list scenarios --json`) en `run_scenario` (matcht de opgegeven naam tegen die lijst, start `run <pad> --json` als subprocess met een argv-lijst, nooit een shell-string, en geeft het CLI-envelope ongewijzigd door). `lib/src/mcp_server.dart` implementeert alleen het stdio-transport (newline-delimited JSON-RPC 2.0: `initialize`, `tools/list`, `tools/call`); een exception uit een tool-handler wordt `isError: true`, nooit een crash van de server. `dart test` in `pleya_verify/mcp`: 23/23, waarvan één test (`test/real_cli_integration_test.dart`) tegen de echte CLI-subprocess draait (`list scenarios --json`, bewust de goedkoopste subcommando, geen simulator of `flutter build` nodig) in plaats van tegen een fake.
+
+**End-to-end bewijs, twee keer zelf gedraaid via de echte stdio MCP-server tegen `macos.smoke.boot`:**
+
+Run 1: bundle `.build/pleya-verify/macos-smoke-boot-1788116256855` (pid 21265). Run 2: bundle `.build/pleya-verify/macos-smoke-boot-1788116458383` (pid 29543, dus een echt tweede, onafhankelijk app-instance, geen hergebruikte evidence). Beide runs: `reset_app`, `launch`, `sign_in`, `wait_until`, `assert` allemaal `ok: true`; beide falen deterministisch op exact dezelfde stap, `snapshot` (regel 10), met `Bad state: screencapture failed (exit 1): could not create image from window`. Een losse `screencapture -x` op dezelfde machine slaagt (volledig scherm, 2560×1440), dus het is geen ontbrekende Screen Recording-permissie in algemene zin; dit is een window-scoped capture (`-l<windowid>`) die in deze koppen-loze/remote sessie op een drie-schermen-opstelling niet lukt, exact de klasse fout die `macos_driver.dart`'s eigen foutmelding al benoemt. Dat is een omgevingsbeperking van deze sessie, geen defect in de MCP-laag of de CLI: de fixture server, de isolatie-build, de app-launch, sign-in, wachtcondities en de state-assertion werkten allebei de keren volledig, en de MCP-tool gaf het echte `FAILED`-resultaat (inclusief `bundle_dir` en `failure_message`) ongewijzigd door, met `isError: false`, precies zoals bedoeld: een echte CLI-uitkomst, geen MCP-infrastructuurfout, en geen false PASS.
+
+**Consequences:** De architectuur `MCP -> CLI -> runner -> evidence` staat bewezen, inclusief de FAIL-tak: een echte, reproduceerbare FAILED-uitkomst komt via MCP net zo eerlijk binnen als via de CLI zelf. Een schone PASS-demonstratie van `macos.smoke.boot` op deze specifieke machine vereist eerst het window-capture-probleem op te lossen (buiten de scope van Fase 13, en geen MCP- of CLI-wijziging); wie dat wil narekenen kan het teruggegeven `command`-veld één-op-één in `pleya_verify/runner` draaien. `pleya_verify/mcp/README.md` documenteert de architectuur, de tools, agent-gebruik en de security-eigenschappen (geen path traversal, geen shell-interpolatie, stdout uitsluitend protocol). Fase 13 is hiermee gesloten.
+
+## DEC-083: Pleya Verify CI, drie gescheiden gates, geen tweede execution-path
 
 **Date:** 2026-08-30
 **Status:** accepted
@@ -653,51 +1548,31 @@ Elke jobs' evidence (`.build/pleya-verify/*`, met de per-driver app-installcache
 - Gitea (`origin`) draait geen eigen CI voor dit project; er is niets om mee te synchroniseren of te dupliceren.
 - `pleya_verify/scenarios/README.md` noemt nu welke scenario's welke CI-job draait.
 
-## DEC-065: Pleya Verify MCP is een dunne adapter boven de bestaande CLI, geen tweede implementatie
-
-**Date:** 2026-08-30
-**Status:** accepted
-
-**Context:** Fase 13 vroeg om een MCP (Model Context Protocol) laag waarmee een agent een bestaand Verify-scenario kan starten, zonder dat er een tweede scenario-engine, driver-laag of PASS/FAIL-beslissing naast de bestaande CLI ontstaat. De bindende architectuur was vooraf vastgelegd: MCP praat uitsluitend met `pleya_verify/runner/bin/verify.dart` als subprocess, en gebruikt de bestaande `--json`-modus.
-
-Het bestaande `run --json`-contract had daarvoor één klein gat: het gaf alleen `ok`, `result`, `bundle` en `failureMessage` terug, nooit `scenario`, `target`, het echte proces-exitcode of het pasteable CLI-commando, en foutpaden (ontbrekend bestand, parse-fout, validatiefout, geen driver voor het target) schreven alléén platte tekst naar stderr, ook met `--json` aan. Zonder die velden had de MCP-laag zelf opnieuw moeten bepalen of een run een echte scenario-uitkomst was of een configuratiefout, precies de duplicatie die de opdracht verbood.
-
-**Decision:** Twee wijzigingen, beide chirurgisch:
-
-1. `pleya_verify/runner/bin/verify.dart`'s `run --json` geeft nu op elk exit-pad hetzelfde envelope terug: `ok`, `result` (`PASS`/`FAILED`/`ERROR`), `scenario`, `target`, `bundle_dir`, `failure_message`, eventueel `errors`, `exit_code` en `command` (de exacte argv om de run buiten MCP te herhalen). `ERROR` is een nieuwe, aparte waarde voor alles dat vóór of tijdens dispatch afbreekt (ontbrekend bestand, parse-/validatiefout, geen driver); die staat nooit gelijk aan `FAILED`. Er is geen scenario-, fixture-, driver- of assertion-logica bijgekomen: dit is uitsluitend het al bestaande resultaat consistent naar buiten brengen. `dart test` in `pleya_verify/runner`: 201/201 (198 bestaand + 3 nieuw, gericht op precies dit contract).
-2. `pleya_verify/mcp/` is een nieuw, op zichzelf staand Dart-pakket met twee tools: `list_scenarios` (dunne wrap om `list scenarios --json`) en `run_scenario` (matcht de opgegeven naam tegen die lijst, start `run <pad> --json` als subprocess met een argv-lijst, nooit een shell-string, en geeft het CLI-envelope ongewijzigd door). `lib/src/mcp_server.dart` implementeert alleen het stdio-transport (newline-delimited JSON-RPC 2.0: `initialize`, `tools/list`, `tools/call`); een exception uit een tool-handler wordt `isError: true`, nooit een crash van de server. `dart test` in `pleya_verify/mcp`: 23/23, waarvan één test (`test/real_cli_integration_test.dart`) tegen de echte CLI-subprocess draait (`list scenarios --json`, bewust de goedkoopste subcommando, geen simulator of `flutter build` nodig) in plaats van tegen een fake.
-
-**End-to-end bewijs, twee keer zelf gedraaid via de echte stdio MCP-server tegen `macos.smoke.boot`:**
-
-Run 1: bundle `.build/pleya-verify/macos-smoke-boot-1788116256855` (pid 21265). Run 2: bundle `.build/pleya-verify/macos-smoke-boot-1788116458383` (pid 29543, dus een echt tweede, onafhankelijk app-instance, geen hergebruikte evidence). Beide runs: `reset_app`, `launch`, `sign_in`, `wait_until`, `assert` allemaal `ok: true`; beide falen deterministisch op exact dezelfde stap, `snapshot` (regel 10), met `Bad state: screencapture failed (exit 1): could not create image from window`. Een losse `screencapture -x` op dezelfde machine slaagt (volledig scherm, 2560×1440), dus het is geen ontbrekende Screen Recording-permissie in algemene zin; dit is een window-scoped capture (`-l<windowid>`) die in deze koppen-loze/remote sessie op een drie-schermen-opstelling niet lukt, exact de klasse fout die `macos_driver.dart`'s eigen foutmelding al benoemt. Dat is een omgevingsbeperking van deze sessie, geen defect in de MCP-laag of de CLI: de fixture server, de isolatie-build, de app-launch, sign-in, wachtcondities en de state-assertion werkten allebei de keren volledig, en de MCP-tool gaf het echte `FAILED`-resultaat (inclusief `bundle_dir` en `failure_message`) ongewijzigd door, met `isError: false`, precies zoals bedoeld: een echte CLI-uitkomst, geen MCP-infrastructuurfout, en geen false PASS.
-
-**Consequences:** De architectuur `MCP -> CLI -> runner -> evidence` staat bewezen, inclusief de FAIL-tak: een echte, reproduceerbare FAILED-uitkomst komt via MCP net zo eerlijk binnen als via de CLI zelf. Een schone PASS-demonstratie van `macos.smoke.boot` op deze specifieke machine vereist eerst het window-capture-probleem op te lossen (buiten de scope van Fase 13, en geen MCP- of CLI-wijziging); wie dat wil narekenen kan het teruggegeven `command`-veld één-op-één in `pleya_verify/runner` draaien. `pleya_verify/mcp/README.md` documenteert de architectuur, de tools, agent-gebruik en de security-eigenschappen (geen path traversal, geen shell-interpolatie, stdout uitsluitend protocol). Fase 13 is hiermee gesloten.
-
-## DEC-067: Fase 15 gesloten, Pleya Verify heeft nu een documentatielaag naast de code
+## DEC-084: Fase 15 gesloten, Pleya Verify heeft nu een documentatielaag naast de code
 
 **Date:** 2026-08-31
 **Status:** accepted
 
-**Context:** Pleya Verify (`pleya_verify/`) draait sinds Fase 14 met een bewezen CLI, MCP-laag en CI, maar had geen enkel document dat het geheel uitlegt: `lib/automation/pleya_verify.dart:2` verwees al naar `docs/architecture/pleya-verify.md`, een pad dat nog niet bestond, en `CLAUDE.md`/`AGENTS.md`/`CONTRIBUTING.md` noemden Pleya Verify nergens. Het oorspronkelijke plan (`pleya-verify-refactored-seal.md`, Fase 15) noemde vijf deliverables: de architectuurdoc, een agent-imperatieve testdoc, referenties plus een agentregel in de drie instructiebestanden, deze DEC-entry, en `pleya_verify/README.md`. Twee aannames uit dat plan bleken achterhaald: het wilde `DEC-063` nemen (inmiddels al gebruikt door de G13-defer uit Fase 11; het eerstvolgende vrije nummer is dit, DEC-067), en het beschreef de Fase-13-MCP-laag als "TypeScript op bun", terwijl hij in Dart gebouwd is (`pleya_verify/mcp/lib/src/mcp_server.dart`), zoals `pleya_verify/mcp/README.md` ook al correct documenteerde.
+**Context:** Pleya Verify (`pleya_verify/`) draait sinds Fase 14 met een bewezen CLI, MCP-laag en CI, maar had geen enkel document dat het geheel uitlegt: `lib/automation/pleya_verify.dart:2` verwees al naar `docs/architecture/pleya-verify.md`, een pad dat nog niet bestond, en `CLAUDE.md`/`AGENTS.md`/`CONTRIBUTING.md` noemden Pleya Verify nergens. Het oorspronkelijke plan (`pleya-verify-refactored-seal.md`, Fase 15) noemde vijf deliverables: de architectuurdoc, een agent-imperatieve testdoc, referenties plus een agentregel in de drie instructiebestanden, deze DEC-entry, en `pleya_verify/README.md`. Twee aannames uit dat plan bleken achterhaald: het wilde `DEC-080` nemen (inmiddels al gebruikt door de G13-defer uit Fase 11; het eerstvolgende vrije nummer is dit, DEC-084), en het beschreef de Fase-13-MCP-laag als "TypeScript op bun", terwijl hij in Dart gebouwd is (`pleya_verify/mcp/lib/src/mcp_server.dart`), zoals `pleya_verify/mcp/README.md` ook al correct documenteerde.
 
 **Decision:** Alle vijf deliverables geschreven, geverifieerd tegen de daadwerkelijke code in plaats van tegen het plan uit augustus:
 
 - `docs/architecture/pleya-verify.md`: waarom Pleya Verify bestaat, de grens met `flutter test`/`tvos_sim.sh`/`pleya_web`-e2e, het `/v1/*`-transportcontract, de fixture-server, de scenariogrammatica (`setupVerbs`/`stepVerbs`), de tvOS-invoerinvariant ([C2]), de bewijsstructuur inclusief screenshot-source-of-truth ([C5]), en de bekende grenzen (G13-defer, macOS-signing in CI, MCP is Dart).
 - `docs/testing/pleya-verify-for-agents.md`: imperatief, in het Engels zoals `AGENTS.md` en `pleya_verify`'s eigen README's/SPEC's: het eerste commando (`scripts/tvos_sim.sh doctor` voor tvOS; er bestaat geen los `verify.dart doctor`-subcommando), hoe je een scenario schrijft, wat je doet bij een `FAILED`/`ERROR`, en een expliciete "never do this"-lijst (geen tvOS-invoer via `/v1/input/*`, geen `/v1/screenshot` als visuele waarheid, geen verzonnen fixture-gedrag om een scenario groen te krijgen).
 - `CLAUDE.md` (nieuwe sectie "Pleya Verify"), `AGENTS.md` (nieuwe bullets onder "Architecture That Matters" en "Working Rules For Future Agents"), `CONTRIBUTING.md` (nieuwe sectie vóór "tvOS testen in de simulator"): elk met de agentregel: een relevante UI-/focuswijziging is niet volledig geverifieerd zonder passende Pleya Verify-assertions en visuele evidence, tenzij de omgeving aantoonbaar geen ondersteund target kan draaien (dan expliciet rapporteren welk bewijs ontbreekt), en geen zware gate voor pure backendcode.
-- Deze entry, `DEC-067`, in plaats van het door het plan veronderstelde `DEC-063`.
-- `pleya_verify/README.md`: top-levelniveau, layout-tabel, quick start, en de drie CI-jobs uit DEC-066.
+- Deze entry, `DEC-084`, in plaats van het door het plan veronderstelde `DEC-080`.
+- `pleya_verify/README.md`: top-levelniveau, layout-tabel, quick start, en de drie CI-jobs uit DEC-083.
 
 Taalkeuze, niet expliciet in het plan vastgelegd: `docs/architecture/pleya-verify.md` en deze entry in het Nederlands, zoals alle overige bestanden direct in `docs/` (`DECISIONS.md`, `pleya-server-architecture.md`); `docs/testing/pleya-verify-for-agents.md` en `pleya_verify/README.md` in het Engels, zoals `AGENTS.md` en de bestaande `pleya_verify/{scenarios,mcp,geometry,redact}`-README's/SPEC's. De toevoegingen in `CLAUDE.md`/`AGENTS.md`/`CONTRIBUTING.md` volgen de bestaande taal van elk bestand.
 
-**Consequences:** Alle vijf Fase-15-deliverables staan op schijf, elk stuk feitelijk beweerde inhoud (endpointlijst, verbwoordenlijsten, MCP-toolnamen, CLI-subcommando's, testpaden) is teruggelezen tegen de daadwerkelijke bronbestanden en niet overgenomen uit het plan zonder controle. Op het moment van schrijven van deze entry was dat nog uitsluitend documentatie. Een audit ná deze entry, en vóór het committen ervan, vond alsnog tien reële hardening-gaten in de code eronder; die ronde en de definitieve Core 1.0-sluiting staan in [DEC-068](#dec-068-vijf-hardening-fixes-en-het-definitieve-hosted-ci-bewijs-sluiten-pleya-verify-core-10), niet hier.
+**Consequences:** Alle vijf Fase-15-deliverables staan op schijf, elk stuk feitelijk beweerde inhoud (endpointlijst, verbwoordenlijsten, MCP-toolnamen, CLI-subcommando's, testpaden) is teruggelezen tegen de daadwerkelijke bronbestanden en niet overgenomen uit het plan zonder controle. Op het moment van schrijven van deze entry was dat nog uitsluitend documentatie. Een audit ná deze entry, en vóór het committen ervan, vond alsnog tien reële hardening-gaten in de code eronder; die ronde en de definitieve Core 1.0-sluiting staan in [DEC-085](#dec-085-vijf-hardening-fixes-en-het-definitieve-hosted-ci-bewijs-sluiten-pleya-verify-core-10), niet hier.
 
-## DEC-068: Vijf hardening-fixes en het definitieve hosted CI-bewijs sluiten Pleya Verify Core 1.0
+## DEC-085: Vijf hardening-fixes en het definitieve hosted CI-bewijs sluiten Pleya Verify Core 1.0
 
 **Date:** 2026-08-31
 **Status:** accepted
 
-**Context:** Ná DEC-067 (de vijf Fase-15-documentatiedeliverables), en vóór die entry gecommit werd, vond een aparte controleronde tien punten die vóór een echte Core 1.0-sluiting opgelost moesten zijn, allemaal in de code onder `pleya_verify/` en `lib/automation/`, niet in documentatie. Vijf commits losten ze op:
+**Context:** Ná DEC-084 (de vijf Fase-15-documentatiedeliverables), en vóór die entry gecommit werd, vond een aparte controleronde tien punten die vóór een echte Core 1.0-sluiting opgelost moesten zijn, allemaal in de code onder `pleya_verify/` en `lib/automation/`, niet in documentatie. Vijf commits losten ze op:
 
 - `4595ebf`: `/v1/*` accepteerde elk verzoek zonder `Authorization` zodra `PLEYA_VERIFY_TOKEN` niet op build-tijd was gezet, wat in elke CI-build het geval was. `AutomationServer.start()` genereert nu per launch een eigen `Random.secure()`-bearer-token, vereist die zonder uitzondering op elk `/v1/*`-verzoek, en schrijft hem alleen in `instance.json` naast port/pid. Een tweede gat zat in dezelfde commit: een ongevalideerde `base_url` op `/v1/signin` en `/v1/connections/seed` maakte van een loopback-only endpoint een open SSRF-proxy; `rejectNonLoopbackBaseUrl` laat nu alleen een letterlijk `http://127.0.0.1`- of `http://[::1]`-adres door.
 - `bb6d2fd`: evidence-redactie herkende een credentialveld alleen bij een exacte naam, zodat een samengestelde sleutel als `oldPassword` of `userAccessToken` ongeredacteerd doorheen liep. `_isSecretKey` matcht nu op woordgrenzen van de canonieke sleutelvorm; `fixture_mutate`-resultaten en teardown-exceptionstrings gaan voortaan door dezelfde redactie als elk ander stepresultaat.
@@ -712,9 +1587,221 @@ Elk van de vijf is inhoudelijk uitgeschreven in `docs/architecture/pleya-verify.
 - `portable` (Linux): **PASS**, alle drie testsuites (76+216+25 tests) en het schema-check op alle zeven scenario's.
 - `discover.hero.layout` (target `ios-sim`): **PASS**, `exit_code: 0`.
 - `tvos.smoke.boot` (target `tvos-sim`, `workflow_dispatch`, niet required): **PASS**, `exit_code: 0`, met echte `idb`-invoer en per-instance auth/discovery (dezelfde `instance.json`-mint als hierboven).
-- `macos.smoke.boot` (target `macos`): **FAILED**, `Bad state: flutter build macos failed (exit 1)`, dezelfde reeds gedocumenteerde hosted-runner-signingbeperking als in [DEC-066](#dec-066-pleya-verify-ci-drie-gescheiden-gates-geen-tweede-execution-path) (geen Development Team/profiel op de hosted runner), geen nieuwe regressie.
+- `macos.smoke.boot` (target `macos`): **FAILED**, `Bad state: flutter build macos failed (exit 1)`, dezelfde reeds gedocumenteerde hosted-runner-signingbeperking als in [DEC-083](#dec-083-pleya-verify-ci-drie-gescheiden-gates-geen-tweede-execution-path) (geen Development Team/profiel op de hosted runner), geen nieuwe regressie.
 
 De required-candidate `portable`-gate en de uitgevoerde iOS/tvOS Verify-scenario's zijn groen; de gecombineerde workflowconclusie van run `33391955462` blijft rood, uitsluitend door de expliciet non-required `macos.smoke.boot`-signingbeperking. Branch protection dwingt dit op dit moment niet af; er is geen required-status-check ingesteld op `feat/testplane` of `main` die dit garandeert.
 
-**Consequences:** Pleya Verify Core 1.0 is hiermee compleet: deterministic fixture-backed scenario's, drie platformdrivers (macOS/iOS-sim/tvOS-sim), UI-boom/focus/events/geometrie-assertions, autoritatieve compositor-screenshots als visuele waarheid, complete evidencebundels, false-PASS-verdediging (Fase 12), CLI, MCP-laag (Fase 13), CI-orkestratie (Fase 14), fail-closed control-plane-auth, bounded execution, en redactie-/securityhardening (dit besluit). Bekende, niet-blokkerende grenzen: macOS-hosted-buildsigning in CI, `tvos.library.filters` (DEFERRED voor G13, [DEC-063](#dec-063-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)), en tvOS-D-pad-navigatie binnen het systeemtoetsenbord (niet simuleerbaar, zie CONTRIBUTING.md). Geen nieuwe featurescope geopend; een volgende sessie die verder wil dan Core 1.0 begint bij een expliciet nieuw besluit, niet bij het stilzwijgend heropenen van Fase 1 t/m 15.
+**Consequences:** Pleya Verify Core 1.0 is hiermee compleet: deterministic fixture-backed scenario's, drie platformdrivers (macOS/iOS-sim/tvOS-sim), UI-boom/focus/events/geometrie-assertions, autoritatieve compositor-screenshots als visuele waarheid, complete evidencebundels, false-PASS-verdediging (Fase 12), CLI, MCP-laag (Fase 13), CI-orkestratie (Fase 14), fail-closed control-plane-auth, bounded execution, en redactie-/securityhardening (dit besluit). Bekende, niet-blokkerende grenzen: macOS-hosted-buildsigning in CI, `tvos.library.filters` (DEFERRED voor G13, [DEC-080](#dec-080-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)), en tvOS-D-pad-navigatie binnen het systeemtoetsenbord (niet simuleerbaar, zie CONTRIBUTING.md). Geen nieuwe featurescope geopend; een volgende sessie die verder wil dan Core 1.0 begint bij een expliciet nieuw besluit, niet bij het stilzwijgend heropenen van Fase 1 t/m 15.
 
+
+## DEC-086: Verder kijken staat alleen op Home; de Films- en Series-landing tonen het niet
+
+**Date:** 2026-09-02
+**Status:** accepted
+
+**Context:** `TvDiscoveryLandingProvider` zette een Continue Watching-rij vooraan op zowel de Films-
+als de Series-landing, en 33.3 en 33.4 leggen dat allebei BINDEND vast ("CW eerst wanneer gevuld",
+"zelfde systeem als 33.3 met CW bovenaan"). Op een echte Apple TV levert dat dezelfde rij op drie
+pagina's op, en hij duwt op elke landing de rij weg waar die pagina voor bestaat.
+
+Bij het weghalen bleek er een tweede, zwaardere reden onder te zitten die in de melding niet stond.
+De rij was **niet kind-gesplitst**. Hij werd één keer geprojecteerd over de volledige
+`DiscoverProvider.onDeck` en aan beide landingen voorgeplakt, terwijl de hubs ernaast wél in
+`movieBackendHubs`/`seriesBackendHubs` werden gesorteerd. De Films-landing opende dus met
+halfgekeken afleveringen en de Series-landing met films, precies wat de klassedoc van diezelfde
+provider uitsluit ("split by [MediaKind] so a Films landing never shows a show and vice versa").
+Dat is een zelfstandig defect, en het maakt "de rij hoort hier niet" een sterker argument dan
+alleen herhaling.
+
+**Decision:** Alle CW-plumbing is uit `TvDiscoveryLandingProvider` verwijderd: het
+`continueWatchingTitle`-constructorargument, het veld, de `projectContinueWatching`-aanroep, de
+`Future.wait`-positie, de `_withContinueWatching`-wrapper en de CW-tak van `hubById`. `movieRails`
+is `_movieHubs` en `seriesRails` is `_seriesHubs`. `TvHomeProjectionProvider.continueWatching` is
+de enige eigenaar van die rij, en dat was hij op Home al.
+
+Dit overrulet 33.3 en 33.4; beide referenties hebben een afwijkingsnotitie gekregen.
+
+De projectiecontracten die aan die rij hangen (hoofdstuk 11.8's exacte-aflevering-identiteit,
+hoofdstuk 13.1's per-bron watch state, hoofdstuk 21.4's partial-gedrag) zijn niet vervallen maar
+verhuisd: `test/providers/tv_discovery_landing_provider_test.dart` draait diezelfde groep nu tegen
+`TvHomeProjectionProvider`. Ze staan nog in dat bestand omdat ze op de on-deck-fixtures daarvan
+gebouwd zijn; wat ze beweren is ongewijzigd.
+
+**Consequences:** De eerste rij van een landing is een aanbevelingsrij. Traversal is nagelopen en
+niet aangenomen: rails zijn op `hubId` gesleuteld, niet op index, en
+`test/screens/tv/tv_discovery_landing_screen_test.dart` bewijst dat ↑ vanaf de eerste rail nog
+steeds op de paginakop uitkomt. Home is ongewijzigd. Registerrij B21 in
+`docs/qa/tvos-unified-edge-cases.md`.
+
+## DEC-087: TV-discovery-dichtheid, `cardHeight` 220 en een kortere metaregel
+
+**Date:** 2026-09-02
+**Status:** accepted
+
+**Context:** Op een echte Apple TV vulde één discovery-rij 64% van het scherm, stonden er in
+ruststand vijf volle kaarten, en nam de gefocuste 16:9-kaart 42,3% van de bruikbare railbreedte met
+drie volle buren ernaast. `TvDiscoveryLayout.cardHeight` (270) is de enige knop; al het andere is
+daarvan afgeleid, want de gefocuste kaart is per constructie exact 2,67 posterbreedtes.
+
+Doorgerekend op het canonieke canvas (1038×584, `scaleOf` klemt op 0,85, bruikbare railbreedte
+964,9):
+
+| cardHeight | poster | wide | ruststand | naast de gefocuste kaart |
+|---|---|---|---|---|
+| 270 | 153,0 | 408,0 | 5 vol + 89 px | 3 vol, gefocust 42,3% |
+| 240 | 136,0 | 362,7 | 6 vol + 16 px | 3 vol, gefocust 37,6% |
+| **220** | **124,7** | **332,4** | **6 vol + 84 px** | **4 vol, gefocust 34,5%** |
+| 200 | 113,3 | 302,2 | 7 vol + 17 px | 4 vol, gefocust 31,3% |
+
+**Decision:** `cardHeight` staat op **220**. Beide helften van de dichtheidseis moeten tegelijk
+kloppen: zes volle kaarten in ruststand *met* een zichtbaar gedeeltelijke zevende, zodat de rij
+leest als doorlopend in plaats van eindigend, en vier volle buren naast de gefocuste kaart, zodat de
+expansie een klemtoonverschuiving is en geen overname van de rij. 240 haalt de eerste helft met 16
+px peek (niet te onderscheiden van een clipping-fout) en houdt drie buren. 200 haalt de tweede
+helft en zet er in ruststand zeven neer, wat de catalogusgrid-indruk is waar dit oppervlak tegen
+bestaat.
+
+Twee dingen horen bij dezelfde beslissing, omdat ze dezelfde verticale ruimte betreffen:
+
+- **De metaregel wordt korter.** Het bronnenaantal gaat eruit (de kaart erboven draagt daar een
+  `TvSourceCountBadge` voor, in dezelfde oogopslag) en een film krijgt zijn speelduur, het enige
+  feit dat de regel niet had en dat een kijker vóór een avond wél weegt. Een aflevering krijgt die
+  niet: zijn resterende tijd beantwoordt dezelfde vraag beter.
+- **De onderrand krijgt de teruggewonnen ruimte.** `TvCatalogLayout.bottomSafeInset` is nieuw en
+  staat op 81 referentiepixels, 7,5% van de referentiehoogte, tegen `topSafeInset`'s 56. Hoofdstuk
+  8.1 noemt een *minimum* ("geen tekst of focusring binnen de buitenste 56 pixels"), en 56 is 5,2%
+  van de hoogte, ongeveer precies de overscanband die een consumentenset opeet. Een pagina die op
+  56 uitkomt zet zijn laatste leesbare regel en de focusring van de onderste rij dus *op* die band
+  in plaats van erbuiten. Dit is een strengere marge, geen afwijking van 8.1, en hij is alleen
+  betaalbaar omdat de rijen korter zijn.
+
+Dit supersedet 33.2 (band 400 / gefocust 711 / buren 267), 33.3 (gefocust ≈40%, drie buren) en
+33.4 (het metadataformaat inclusief bronnenaantal). Alle drie de referenties hebben een
+afwijkingsnotitie gekregen.
+
+**Consequences:** Eén rij zakt van 374,8 naar ≈332 logische pixels. `test/widgets/tv/tv_discovery_density_test.dart`
+telt de kaarten op het canonieke canvas in beide toestanden in plaats van de constante te asserten.
+Een test op `cardHeight == 220` zou groen blijven nadat iemand `itemGap` of `pageInset` veranderde
+en de zevende kaart stilletjes kwijtraakte. `tvos.discovery.density` bewijst dezelfde compositie op
+een echte build, voor zover het transportcontract dat kan: `insideViewport` heeft geen negatie, dus
+"zes vol en een zevende ernaast" is wat een scenario kan zeggen en "de zevende is niet helemaal
+zichtbaar" niet. Kijklijst en Aanvragen draaiden op een ander maatsysteem (`MediaGridGeometry` +
+`GridSizeCalculator`, gestuurd door `SettingsService.libraryDensity`) en zijn op TV op de gedeelde
+`TvCatalogGrid`-geometrie gezet; de zeven andere `MediaGridGeometry`-call-sites en alle niet-TV-paden
+zijn ongemoeid. Registerrij B22.
+
+## DEC-088: focus-entry en Back-eigendom van een geneste TV-route horen bij de shell, niet bij het scherm
+
+**Date:** 2026-09-02
+**Status:** accepted
+
+**Context:** Op de echte Apple TV was Mijn Pleya onbedienbaar, en dat is met Pleya Verify in de
+tvOS-simulator met echte HID-invoer gereproduceerd (`docs/tvos-my-pleya-audit-2026-09-02.md`, bewijs
+in `.build/pleya-verify/tvos-my-pleya-sections-1788370856568`). SELECT op een tegel opende de route,
+maar de focus landde op de content-`FocusScope` zelf, DOWN deed niets, en Menu verplaatste de ring
+naar de tabstrip zonder de sectie te sluiten. Er was geen weg terug naar de hub.
+
+Drie oorzaken stapelden. `tv_my_pleya_navigator.dart` maakte voor acht van de tien secties een
+`GlobalKey` die aan geen widget werd gegeven, zodat de enige focus-entry van de shell
+(`route.screenKey?.currentState is FocusableTab`) nooit matchte. Zes secties hebben sowieso geen
+`FocusableTab`, en drie daarvan zijn `StatelessWidget`s, dus voor die drie kan een sleutel per
+definitie geen `State` opleveren. En `focusActiveTabIfReady()` geeft `void` terug, dus de aanroeper
+kon niet zien dat er niets gebeurde en consumeerde de gewapende focus-intentie met een aanroep die
+niets deed.
+
+De vastgelopen Menu is een vierde, aparte oorzaak. Flutter stuurt een toets eerst naar de gefocuste
+node en loopt alleen omhoog zolang het antwoord `ignored` is. `TvBrowseRail` draait
+`handleBackKeyAction` op zijn eigen `onBack`, en `LibrariesScreen` geeft daar `focusTabBar` aan mee:
+een focusverplaatsing binnen het scherm. De rail antwoordt `handled`, de wandeling stopt, en de
+`popNested`-stap komt nooit aan de beurt. Dat is precies wat `TvRootShell` in zijn eigen documentatie
+verbiedt.
+
+**Decision:** Focus-entry en Back-eigendom van een geneste TV-route liggen bij de shell.
+
+`TvNestedSurface` omhult elke geneste route, ook die van de catalogus. Hij vraagt eerst het scherm
+zelf, want een scherm dat zijn onthouden positie kent weet het beter dan een algemene regel, en valt
+anders terug op de eerste focusbare afstammeling van de route. Daarmee werkt entry voor een
+`StatelessWidget` net zo goed als voor een scherm met een volledig contract, en hangt hij niet langer
+aan een sleutel die iemand vergat door te geven. `focusEntry()` geeft terug of er een echt doel om
+focus gevraagd is, zodat een nog ladend scherm de gewapende intentie laat staan in plaats van hem op
+te souperen. De herhaling is begrensd op vijf seconden, stopt zodra de focus binnen is, en wordt bij
+`dispose` afgebroken: een herhaling die zijn widget overleeft is dezelfde soort fout als de
+tijdelijke overrides waar `TemporaryOverride` voor bestaat.
+
+`TvNestedBackOwner` markeert de subboom van een geneste route, en `handleBackKeyFocusMove` is de
+variant van de backafhandeling voor een `onBack` die een focusverplaatsing is. Die trekt zich binnen
+zo'n route terug. Een echte afwijzing (dialoog, sheet, overlay) blijft `handleBackKeyAction` gebruiken
+en houdt dus voorrang, want dat is precies het geval waarin een afstammeling Back hóórt op te eten.
+`TvBrowseRail` is de enige omgezette aanroepplek, omdat dat de enige is die aantoonbaar vastliep.
+
+**Bewijs:** dezelfde route, dezelfde echte HID-invoer, na de wijziging. Logs en diagnose (geen
+`FocusableTab`, sleutel hing nergens aan) opent op `ActionBar[0]`, RIGHT loopt naar `ActionBar[1]`,
+en Menu zet `tvNestedRoute` terug op null met de tegel weer gefocust. Servers (een
+`StatelessWidget`) doet hetzelfde. Bundels:
+`.build/pleya-verify/tvos-my-pleya-section-logs-1788373241707` en
+`tvos-my-pleya-section-servers-1788373614514`.
+
+## DEC-089: verticale navigatie in het Mijn Pleya-raster volgt de rijen, niet een vaste stap
+
+**Date:** 2026-09-02
+**Status:** accepted
+
+**Context:** In de simulator sprong DOWN vanaf Servers, de tweede tegel van een rij van drie, naar
+Over, de derde tegel van de rij eronder. `_verticalNeighbour` stapte `TvMyPleyaLayout.tilesPerRow`
+plaatsen door de platte sleutellijst. Dat is alleen "één rij omlaag" wanneer elke rij vol is, en de
+platte lijst begint bovendien met de profielactie, die geen deel van het raster uitmaakt. Twee
+fouten die optellen, en beide zichtbaar zodra een groep minder tegels heeft dan het raster breed is,
+wat op elke fixture zonder Seerr en zonder downloads het geval is.
+
+**Decision:** Een groep is een rij. De kolom is de index van de tegel binnen zijn eigen groep, en de
+buur is dezelfde kolom in de aangrenzende groep, afgekapt op de breedte van die groep. Vanaf de
+bovenste rij landt UP op de profielactie, die zelf verder omhoog naar de topnavigatie gaat; vanaf de
+onderste rij blijft DOWN staan in plaats van naar de laatste tegel van de pagina te springen, wat
+klemmen op `keys.last` vanuit elke kolom deed.
+
+Drie regressietests in `test/screens/tv/tv_my_pleya_screen_test.dart` leggen dit vast, en ze zijn met
+een negatieve controle nagelopen: alle drie worden rood zodra de oude implementatie wordt
+teruggezet.
+
+## DEC-091: Een TV-contentroute opent binnen de shell, via een registry en niet via een tweede Navigator
+
+**Nummer.** DEC-090 is op `feat/netflix-mobile` al vergeven aan de iOS-northstar. Die branch is
+niet samengevoegd, dus het nummer wordt hier overgeslagen in plaats van een tweede keer gebruikt.
+
+**Context.** De mockups 09 tot en met 25 zijn op 3 september 2026 goedgekeurd
+(`docs/tvos-redesign-09-25-approved.md`). PB-1 van het implementatiecontract zegt dat de
+heringerichte TV-contentroutes de topnav houden: filmdetail, seriedetail, collectie, persoon en
+de Instellingen-subpagina's. Die worden vandaag op de `ProfileSessionNavigator` gepusht en dekken
+de shell volledig af.
+
+**Wat DEC-069 hier al over zei.** Dat besluit weigerde een `Navigator` binnen de shell, met twee
+argumenten. Het eerste is dat `Navigator.push` de dichtstbijzijnde navigator vindt, dus een
+navigator in de contentbox zou elke `navigateToMediaItem` impliciet opvangen. Het tweede is dat
+`Navigator.pop` dan stap 2 en stap 3 van de terugketen uit hoofdstuk 7.5 niet meer uit elkaar
+houdt. Allebei gelden nog. De conclusie die DEC-069 eraan verbond, dat een detailpagina daarom
+niet in de geneste stapel hoort, geldt niet meer: dat was een uitspraak over welke schermen erin
+horen, niet over het mechanisme.
+
+**Besluit.** Het mechanisme blijft de geneste routestapel die géén Navigator is. Wat verandert is
+hoe een aanroeper erbij komt. `lib/navigation/tv/tv_content_route_registry.dart` is één
+procesbrede registry waar `MainScreen` zijn push publiceert zolang de TV-shell staat. Een
+aanroeper vraagt er expliciet om, en krijgt `null` wanneer er geen shell luistert. Dat null is de
+kern van de vorm: elke aanroeper schrijft het shellpad en het gewone pad naast elkaar, en niemand
+hoeft te weten wat een TV-shell is behalve dat hij er kan zijn.
+
+**Waarom expliciet en niet impliciet.** Een tweede `Navigator` zou hetzelfde bereiken zonder dat
+iemand het opschrijft, en precies daar zit het verschil. Bij een registry staat in de aanroeper
+te lezen dat hij binnen de shell wil openen; bij een navigator gebeurt dat door de plaats in de
+boom, en dan is de enige manier om te weten welk pad een push neemt, uitzoeken welke navigator
+toevallig het dichtst bij staat.
+
+**Gevolgen.** `TvNestedRoute` heeft een resultaat gekregen, zodat een aanroeper die eerst een
+`Navigator.push` afwachtte dezelfde vorm houdt. `pushNested` geeft terug welke route bovenop komt
+te liggen, want bij een genegeerde dubbele push is dat niet het object dat de aanroeper meegaf.
+`clearNestedRoutes` sluit bij een profielwissel elk openstaand resultaat af.
+
+**Uitzonderingen.** De speler in fullscreen, authenticatie, de profielselectiepoort, het native
+tvOS-toetsenbord en echte modale presentatie houden de volledige-venster route.
+
+**Bewijs.** `test/screens/tv/tv_content_route_test.dart`. De eerste test is de negatieve controle
+en legt het oude gedrag vast: na een volledige-venster push is niets in de balk nog bereikbaar.

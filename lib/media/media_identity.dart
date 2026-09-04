@@ -69,6 +69,49 @@ class MediaIdentity {
     return byTitle.length == 1 ? byTitle.single.item : null;
   }
 
+  /// Every candidate that is confidently this title, not just one.
+  ///
+  /// Used by [MediaServerClient.findAllByIdentity] (hoofdstuk 12.8 of
+  /// docs/tvos-unified-experience.md), which needs every concrete server item
+  /// matching this identity — a server can genuinely hold more than one
+  /// physical copy of the same title (two library sections, a duplicate
+  /// scan). A guid or external-id match is proof regardless of how many
+  /// candidates carry it, so every one of them counts here, unlike
+  /// [pickMatch], whose single-answer contract declines on more than one as
+  /// an unresolvable ambiguity. This does not weaken [pickMatch] — that
+  /// method is unchanged and still backs every existing single-match caller.
+  ///
+  /// The title-only fallback stays exactly as strict as [pickMatch]: with no
+  /// external proof, more than one same-named candidate is a genuine
+  /// ambiguity, not multiple copies, so it still counts as nothing found.
+  List<MediaItem> pickAllMatches(List<({MediaItem item, ExternalIds ids})> candidates) {
+    final wanted = guid;
+    if (wanted != null && wanted.isNotEmpty) {
+      final byGuid = candidates.where((c) => c.item.guid == wanted).toList();
+      if (byGuid.isNotEmpty) return [for (final c in byGuid) c.item];
+    }
+
+    if (externalIds.hasAny) {
+      final byExternal = candidates.where((c) => _sharesExternalId(c.ids)).toList();
+      if (byExternal.isNotEmpty) return [for (final c in byExternal) c.item];
+    }
+
+    final wantedTitle = title;
+    if (wantedTitle == null || wantedTitle.isEmpty) return const [];
+    final normalized = normalizeTitleForMatching(wantedTitle);
+    if (normalized.isEmpty) return const [];
+
+    final byTitle = candidates.where((c) {
+      final item = c.item;
+      if (kind != MediaKind.unknown && item.kind != kind) return false;
+      if (normalizeTitleForMatching(item.title) != normalized) return false;
+      if (year != null && item.year != null && year != item.year) return false;
+      return true;
+    }).toList();
+
+    return byTitle.length == 1 ? [byTitle.single.item] : const [];
+  }
+
   bool _sharesExternalId(ExternalIds other) {
     final imdb = externalIds.imdb;
     if (imdb != null && imdb.isNotEmpty && other.imdb == imdb) return true;

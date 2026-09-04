@@ -77,7 +77,26 @@ List<NodeAssertionResult> evaluateNodeAssertions(Map<String, Object?> args, {req
   final subjectId = args['id'] as String;
   final results = <NodeAssertionResult>[];
 
-  if (args['state'] case final Map<String, Object?> expectedState) {
+  if (args.containsKey('state')) {
+    final rawExpected = args['state'];
+    if (rawExpected is! Map) {
+      throw NodeAssertionException(
+        "'$subjectId' has a 'state' predicate that is not a map of key/value pairs, "
+        'got ${_describe(rawExpected)} — write it as `state: {collapsed: true}`',
+      );
+    }
+    if (rawExpected.isEmpty) {
+      throw NodeAssertionException(
+        "'$subjectId' has an empty 'state' predicate, which claims a check and performs none",
+      );
+    }
+    final expectedState = <String, Object?>{};
+    for (final MapEntry(:key, :value) in rawExpected.entries) {
+      if (key is! String) {
+        throw NodeAssertionException("'$subjectId' has a 'state' key that is not a name: ${_describe(key)}");
+      }
+      expectedState[key] = value;
+    }
     final node = _nodeFor(subjectId, uiTree);
     final actualState = node['state'];
     if (actualState is! Map) {
@@ -104,7 +123,15 @@ List<NodeAssertionResult> evaluateNodeAssertions(Map<String, Object?> args, {req
     }
   }
 
-  if (args['focused'] case final bool expectedFocused) {
+  if (args.containsKey('focused')) {
+    final rawExpected = args['focused'];
+    if (rawExpected is! bool) {
+      throw NodeAssertionException(
+        "'$subjectId' has a 'focused' predicate that is not a boolean, got ${_describe(rawExpected)} — "
+        'YAML reads `yes`, `on` and `"true"` as strings, so write it unquoted as `focused: true`',
+      );
+    }
+    final expectedFocused = rawExpected;
     final node = _nodeFor(subjectId, uiTree);
     final actual = node['focused'] == true;
     final ok = actual == expectedFocused;
@@ -138,3 +165,7 @@ Map<String, Object?> _nodeFor(String id, Map<String, Object?> uiTree) {
   }
   throw NodeAssertionException("'$id' is not in the UI tree, so its state cannot be asserted");
 }
+
+/// Names a wrongly typed predicate value in the message, value first so a
+/// reader sees what they wrote before being told what it parsed as.
+String _describe(Object? value) => value == null ? 'null' : '$value (${value.runtimeType})';

@@ -7,7 +7,9 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../automation/automation_screen.dart';
+import '../../focus/focus_memory_tracker.dart';
 import '../../focus/focus_theme.dart';
 import '../../focus/focusable_action_bar.dart';
 import '../../focus/dpad_navigator.dart';
@@ -42,8 +44,10 @@ import '../../mixins/refreshable.dart';
 import '../../mixins/item_updatable.dart';
 import '../../i18n/strings.g.dart';
 import '../../theme/mono_tokens.dart';
-import 'library_header.dart';
+import '../../widgets/library_header_bar.dart';
+import '../../widgets/tv/tv_page_chip_bar.dart';
 import 'state_messages.dart';
+import 'tv_library_chooser.dart';
 import 'tabs/library_browse_tab.dart';
 import 'tabs/library_recommended_tab.dart';
 import 'tabs/library_collections_tab.dart';
@@ -104,6 +108,20 @@ class _LibrariesScreenState extends State<LibrariesScreen>
 
   String? _errorMessage;
   String? _selectedLibraryGlobalKey;
+
+  /// Which [_loadLibraryContent] invocation owns the screen. Bumped by every
+  /// invocation, so the newest intent wins and an older one that is still
+  /// suspended on an await knows it has been abandoned.
+  ///
+  /// The selected key cannot carry this: switching away and back makes an
+  /// abandoned invocation's key current again, and it would resume as if it
+  /// had never lost ownership. A counter only ever moves forward.
+  int _loadGeneration = 0;
+
+  /// The provider [_reconcileSelection] is subscribed to. Held so the listener
+  /// can be moved when the ancestor provider is swapped (profile switch) and
+  /// removed on dispose.
+  LibrariesProvider? _librariesProvider;
   bool _isInitialLoad = true;
 
   /// Flag to prevent onTabChanged from focusing when we're programmatically changing tabs
@@ -114,6 +132,11 @@ class _LibrariesScreenState extends State<LibrariesScreen>
 
   /// Key for the library dropdown menu button.
   final _libraryDropdownKey = GlobalKey<AppMenuButtonState<String>>();
+
+  /// Focus nodes for the TV library chooser. Owned by the State because the
+  /// header rebuilds on every count update, and a node rebuilt underneath the
+  /// remote is a remote that lands nowhere.
+  final FocusMemoryTracker _libraryChooserNodes = FocusMemoryTracker(debugLabelPrefix: 'tvLibraryChooser');
 
   // Dynamic visible tabs and their focus nodes
   List<LibraryTabType> _visibleTabs = LibraryTabType.values;
@@ -176,6 +199,76 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Subscribing here rather than relying on the `context.watch` in
+    // [_buildContent]: that watch sits inside a `SettingValueBuilder`, whose
+    // builder runs against a descendant element, so the dependency never
+    // reaches this State and `didChangeDependencies` never fires on a library
+    // change. The explicit listener is what makes [_reconcileSelection] run.
+    final librariesProvider = context.read<LibrariesProvider>();
+    if (identical(librariesProvider, _librariesProvider)) return;
+    _librariesProvider?.removeListener(_reconcileSelection);
+    _librariesProvider = librariesProvider..addListener(_reconcileSelection);
+  }
+
+  /// Which library this screen should be showing, given the libraries that
+  /// exist right now. [savedKey] wins whenever it is still visible, so a
+  /// reload that leaves the selection intact does not move the user; a
+  /// selection that is gone falls back to the first visible library in the
+  /// list's own order, which is the same fallback [_initializeWithLibraries]
+  /// and [_toggleLibraryVisibility] have always used. Returns null when there
+  /// is nothing to select.
+  static String? _resolveLibraryKey(List<MediaLibrary> visibleLibraries, String? savedKey) {
+    if (visibleLibraries.isEmpty) return null;
+    if (savedKey != null && visibleLibraries.any((lib) => lib.globalKey == savedKey)) return savedKey;
+    return visibleLibraries.first.globalKey;
+  }
+
+  /// Bring the selection back in line with the libraries that actually exist.
+  ///
+  /// [LibrariesProvider] replaces its whole list on a reload and deliberately
+  /// keeps `isLoading` false while doing so (its `reloadInPlace` path), so a
+  /// server that dropped out takes its libraries with it without the screen
+  /// ever passing through a loading state. Nothing re-ran the selection step
+  /// afterwards — [_initializeWithLibraries] is a one-shot post-frame callback
+  /// that also gives up early when the provider is still empty at mount. Both
+  /// routes ended in a selected key that resolved to nothing while other
+  /// libraries sat right there: no tabs, no header line, and on TV no chooser
+  /// either, so no way back to a library that does exist.
+  ///
+  /// This repairs the state, not the frame. The survivor is loaded through
+  /// [_loadLibraryContent], exactly as a user press would, so the saved key,
+  /// the per-library tab restore and the focus handoff all stay on the
+  /// contracts they already had.
+  Future<void> _reconcileSelection() async {
+    if (!mounted) return;
+    final allLibraries = context.read<LibrariesProvider>().libraries;
+    final selectedKey = _selectedLibraryGlobalKey;
+    if (selectedKey != null && allLibraries.any((lib) => lib.globalKey == selectedKey)) return;
+
+    // Drop the dead key before anything renders, so no frame can draw a header
+    // line for a library that is no longer there.
+    if (selectedKey != null) _updateState(() => _selectedLibraryGlobalKey = null);
+
+    final hiddenKeys = context.read<HiddenLibrariesProvider>().hiddenLibraryKeys;
+    final visibleLibraries = allLibraries.where((lib) => !hiddenKeys.contains(lib.globalKey)).toList();
+    // Nothing to fall back to: the build's own empty state is the honest
+    // answer here, and it is not the blank page this method exists to prevent.
+    if (visibleLibraries.isEmpty) return;
+
+    final storage = await StorageService.getInstance();
+    if (!mounted) return;
+    // A selection made while storage was being read owns the screen; a repair
+    // must never overwrite it. Same check the post-frame callback at the end of
+    // [_loadLibraryContent] makes before it touches focus.
+    if (_selectedLibraryGlobalKey != null) return;
+    final resolved = _resolveLibraryKey(visibleLibraries, storage.getSelectedLibraryKey());
+    if (resolved == null) return;
+    unawaited(_loadLibraryContent(resolved));
+  }
+
   /// Initialize the screen with libraries from the provider.
   /// This handles initial library selection and content loading.
   Future<void> _initializeWithLibraries() async {
@@ -197,20 +290,9 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     final storage = await StorageService.getInstance();
     final savedLibraryKey = storage.getSelectedLibraryKey();
 
-    // Find the library by key in visible libraries
-    String? libraryGlobalKeyToLoad;
-    if (savedLibraryKey != null) {
-      // Check if saved library exists and is visible
-      final libraryExists = visibleLibraries.any((lib) => lib.globalKey == savedLibraryKey);
-      if (libraryExists) {
-        libraryGlobalKeyToLoad = savedLibraryKey;
-      }
-    }
-
-    // Fallback to first visible library if saved key not found
-    if (libraryGlobalKeyToLoad == null && visibleLibraries.isNotEmpty) {
-      libraryGlobalKeyToLoad = visibleLibraries.first.globalKey;
-    }
+    // Saved key if it is still visible, else the first visible library —
+    // the one place that rule lives, shared with [_reconcileSelection].
+    final libraryGlobalKeyToLoad = _resolveLibraryKey(visibleLibraries, savedLibraryKey);
 
     if (libraryGlobalKeyToLoad != null && mounted) {
       unawaited(_loadLibraryContent(libraryGlobalKeyToLoad));
@@ -365,8 +447,10 @@ class _LibrariesScreenState extends State<LibrariesScreen>
 
   @override
   void dispose() {
+    _librariesProvider?.removeListener(_reconcileSelection);
     _outerScrollController.dispose();
     _headerInfo.dispose();
+    _libraryChooserNodes.dispose();
     for (final node in _tabFocusNodes) {
       node.dispose();
     }
@@ -482,6 +566,10 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     final selectedLibrary = allLibraries.where((lib) => lib.globalKey == libraryGlobalKey).firstOrNull;
     if (selectedLibrary == null) return;
 
+    // Claim the screen. Everything below belongs to this invocation until a
+    // newer one takes over.
+    final generation = ++_loadGeneration;
+
     final isLibraryChange = _selectedLibraryGlobalKey != libraryGlobalKey;
 
     // Update visible tabs and state in the same synchronous block so no
@@ -513,9 +601,16 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     }
 
     // Save selected library key and restore saved tab (async — safe after state is consistent)
+    //
+    // Two awaits, so two ownership checks. Both of them are the same rule: a
+    // library the user has already switched away from may not write anything.
+    // `_visibleTabs` and `tabController` below belong to whoever holds the
+    // screen now, so a stale invocation restoring "its" tab would set the tab
+    // of the previous library on the library that is actually open.
     final storage = await StorageService.getInstance();
-    if (!mounted) return;
+    if (!mounted || generation != _loadGeneration) return;
     await storage.saveSelectedLibraryKey(libraryGlobalKey);
+    if (!mounted || generation != _loadGeneration) return;
 
     // Restore saved tab by name
     final savedTabName = storage.getLibraryTab(libraryGlobalKey);
@@ -534,7 +629,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     // However, on first load the tab might finish loading before the tab index
     // is restored. Check if the current tab has already loaded and focus if so.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _selectedLibraryGlobalKey == libraryGlobalKey && _loadedTabs.contains(tabController.index)) {
+      if (mounted && generation == _loadGeneration && _loadedTabs.contains(tabController.index)) {
         _focusCurrentTab();
       }
     });
@@ -911,14 +1006,26 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       final serverLabel = _hasMultipleServers(visibleLibraries) ? selectedLibrary?.serverName : null;
       return Padding(
         padding: const EdgeInsets.only(left: 4),
-        child: ValueListenableBuilder<LibraryHeaderInfo>(
-          valueListenable: _headerInfo,
-          builder: (context, info, _) => LibraryHeaderTitle(
-            title: selectedLibrary?.title ?? t.libraries.title,
-            subtitle: [
-              if (info.countLabel != null) info.countLabel!,
-              if (serverLabel != null && serverLabel.isNotEmpty) serverLabel,
-            ].join(' · '),
+        // Which library is open, as state rather than as a screenshot. A chip
+        // that draws itself as chosen is not evidence that the page behind it
+        // changed; this is the node `Movies → Shows → Movies` is asserted on.
+        child: AutomationNode(
+          id: AutomationIds.libraryHeader,
+          role: 'region',
+          state: () => <String, Object?>{
+            'library': selectedLibrary?.title,
+            'libraryKey': selectedLibrary?.globalKey,
+            'server': selectedLibrary?.serverName,
+          },
+          child: ValueListenableBuilder<LibraryHeaderInfo>(
+            valueListenable: _headerInfo,
+            builder: (context, info, _) => LibraryHeaderTitle(
+              title: selectedLibrary?.title ?? t.libraries.title,
+              subtitle: [
+                if (info.countLabel != null) info.countLabel!,
+                if (serverLabel != null && serverLabel.isNotEmpty) serverLabel,
+              ].join(' · '),
+            ),
           ),
         ),
       );
@@ -928,12 +1035,116 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     return _buildLibraryDropdownTitle(visibleLibraries, groupByServer: groupByServer);
   }
 
+  /// Every visible library, on one line, above the tabs.
+  ///
+  /// This is the fix for what the audit of 2 September 2026 classed E, and the
+  /// only defect in that set that was not about styling. The chain was closed:
+  /// `PlatformDetector.shouldUseSideNavigation` is `isDesktop || isTV`, so on
+  /// tvOS [_buildAppBarTitle] takes the static branch and never reaches
+  /// [_buildLibraryDropdownTitle] — the screen's only picker. Which library you
+  /// got followed from the saved key, or from `visibleLibraries.first`. The
+  /// sidebar that gives desktop its second route does not exist in the TV
+  /// shell, and the opened page's `ui_tree` held no chooser, dropdown or menu
+  /// node at all. Two libraries loaded, one reachable, and a shows library
+  /// sorted first would silently be what the tile marked "Media" showed.
+  ///
+  /// So the chooser is a row of capsules in the TV product's own chip
+  /// language, the active one carrying the outline, and switching is one
+  /// press. Nothing about selection changes: [onSelect] is the same
+  /// [_loadLibraryContent] the mobile dropdown has always called, so the saved
+  /// key, the per-library tab restore and iOS and macOS all keep behaving
+  /// exactly as they did. The rule itself lives in `tv_library_chooser.dart`,
+  /// where it can be checked without mounting this screen.
+  Widget _buildTvLibraryChooser(List<MediaLibrary> visibleLibraries) {
+    // A chip whose library is gone takes its focus node with it, and disposing
+    // a focused node hands primary focus back to the enclosing scope: a page
+    // the remote can neither move within nor leave. Prune here, where the set
+    // that survived is known, and hand the key that held focus to the recovery
+    // below — the tracker itself must not request focus, because pruning
+    // happens during build.
+    final prunedFocusedKey = _libraryChooserNodes.pruneExcept({
+      for (final library in visibleLibraries) tvLibraryChooserChipKey(library.globalKey),
+    });
+    if (prunedFocusedKey != null) _recoverChooserFocusAfterPrune();
+    return _tvLibraryChooserRow(visibleLibraries);
+  }
+
+  /// Put the remote back on the chooser after the chip it was on disappeared.
+  ///
+  /// The survivor is the chip of the library the page has switched to, so the
+  /// remote lands on what the page is now showing rather than on a neighbour
+  /// chosen by position. Post-frame because the node to focus is one the build
+  /// that pruned is only about to mount.
+  void _recoverChooserFocusAfterPrune() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Only when the remote is actually stranded: primary focus is null, or
+      // it is a scope with no item on it. Both are what disposing the focused
+      // node leaves behind, and both are the failure this repairs. Anything
+      // concrete means focus has already moved somewhere real, and pulling it
+      // back to the chooser would be the late callback overwriting the newer
+      // state.
+      final primaryFocus = FocusManager.instance.primaryFocus;
+      if (primaryFocus != null && primaryFocus is! FocusScopeNode) return;
+      final selectedKey = _selectedLibraryGlobalKey;
+      final node = selectedKey == null ? null : _libraryChooserNodes.nodeFor(tvLibraryChooserChipKey(selectedKey));
+      if (node == null || node.hasFocus) return;
+      node.requestFocus();
+    });
+  }
+
+  Widget _tvLibraryChooserRow(List<MediaLibrary> visibleLibraries) => Align(
+    // Left, on the tab row's own edge. A `Column` centres what it does not
+    // stretch, and the first run put the chooser floating in the middle of the
+    // page above tabs that start at the left margin — two rows of the same
+    // header disagreeing about where the page begins, which is the defect this
+    // whole round is about.
+    alignment: AlignmentDirectional.centerStart,
+    child: Padding(
+      padding: const EdgeInsetsDirectional.only(start: 4),
+      child: SizedBox(
+        height: TvPageChipBar.heightFor(context),
+        child: TvPageChipBar(
+          singleLine: true,
+          nodes: _libraryChooserNodes,
+          automationInstance: 'libraries',
+          chips: tvLibraryChooserChips(
+            visibleLibraries: visibleLibraries,
+            selectedGlobalKey: _selectedLibraryGlobalKey,
+            onSelect: _loadLibraryContent,
+          ),
+          // DOWN off the chooser lands on the tabs, the next thing down the page.
+          //
+          // UP does nothing on purpose. The chooser is the page's top row, and the
+          // app-bar icons above it are reached the way the header line has always
+          // reached them: RIGHT along the tabs, past the tab's own actions, as
+          // [_buildHeaderBar] documents. Handing UP a second route there would
+          // give the same two icons two paths and make "press UP until you are at
+          // the top" stop being true.
+          onExitDown: () => getTabChipFocusNode(0).requestFocus(),
+        ),
+      ),
+    ),
+  );
+
+  /// Put the remote on the library that is currently open.
+  ///
+  /// The chooser is not where focus lands when the section opens —
+  /// `LibrariesScreen` has its own contract and puts the remote in the
+  /// content, which is right — so this is how the tab row hands it upward.
+  void _focusLibraryChooser() {
+    final key = _selectedLibraryGlobalKey;
+    if (key == null) return;
+    final node = _libraryChooserNodes.get('library_$key');
+    if (node.canRequestFocus) node.requestFocus();
+  }
+
   /// The header line under the library name: text tabs on the left, the active
   /// tab's own actions on the right.
   ///
   /// [showDivider] is off on the TV backdrop, where the rule would cut across
   /// the artwork.
-  Widget _buildHeaderBar({bool showDivider = true}) {
+  Widget _buildHeaderBar({bool showDivider = true, bool hasChooser = false}) {
     void focusAppBarActions() => _actionBarKey.currentState?.requestFocusOnFirst();
 
     return ValueListenableBuilder<LibraryHeaderInfo>(
@@ -960,7 +1171,11 @@ class _LibrariesScreenState extends State<LibrariesScreen>
                 }
                 actions.first.focusNode.requestFocus();
               },
-              onNavigateUpToActions: focusAppBarActions,
+              // UP off the tabs reaches the chooser where there is one, so the
+              // row of libraries is on the vertical path rather than only
+              // reachable by whatever put the focus there first. Without a
+              // chooser the behaviour is unchanged.
+              onNavigateUpToActions: hasChooser ? _focusLibraryChooser : focusAppBarActions,
             ),
         ],
       ),
@@ -1067,15 +1282,26 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     // The header line only exists next to a page heading, so it rides along
     // with the side-nav layout and stays away from the loading/empty states.
     final showHeaderBar = useSideNavigation && selectedLibrary != null;
+    final showTvChooser = showHeaderBar && PlatformDetector.isTV() && tvLibraryChooserVisible(visibleLibraries);
+
+    // Chooser above tabs, in that order, in both places the header line is
+    // mounted — the sliver app bar's `bottom` and the transparent TV bar. A
+    // `PreferredSize` cannot measure its child, so the extra row has to be
+    // declared here as well as drawn.
+    Widget headerColumn({required bool showDivider}) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showTvChooser) _buildTvLibraryChooser(visibleLibraries),
+        _buildHeaderBar(showDivider: showDivider, hasChooser: showTvChooser),
+      ],
+    );
+    final headerHeight = LibraryHeaderMetrics.barHeight + (showTvChooser ? TvPageChipBar.heightFor(context) : 0);
 
     Widget appBar({required bool floating}) => DesktopSliverAppBar(
       title: _buildAppBarTitle(visibleLibraries, selectedLibrary, groupByServer: groupByServerSetting),
       toolbarHeight: showHeaderBar ? LibraryHeaderMetrics.titleHeight : null,
       bottom: showHeaderBar
-          ? PreferredSize(
-              preferredSize: const Size.fromHeight(LibraryHeaderMetrics.barHeight),
-              child: _buildHeaderBar(),
-            )
+          ? PreferredSize(preferredSize: Size.fromHeight(headerHeight), child: headerColumn(showDivider: true))
           : null,
       // When showing the tab content, let the app bar float away with the
       // content. Otherwise (loading / empty / error states) keep it pinned so
@@ -1135,7 +1361,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
                 ),
               ],
             ),
-            if (showHeaderBar) _buildHeaderBar(showDivider: false),
+            if (showHeaderBar) headerColumn(showDivider: false),
           ],
         ),
       );
@@ -1252,7 +1478,14 @@ class _LibrariesScreenState extends State<LibrariesScreen>
         );
       }
     } else {
-      body = buildSimpleScroll(body: const SizedBox.shrink());
+      // Libraries exist, but the selection is not resolved yet: either the
+      // one-shot selection step has not run, or [_reconcileSelection] is
+      // picking a survivor for a library that disappeared. Both are transient
+      // and both end in a loaded library, so this shows what the initial load
+      // shows. It used to render an empty `SizedBox`: a page that was blank
+      // with libraries sitting right behind it, and on TV without even the
+      // chooser to get back out of it.
+      body = buildSimpleScroll(body: const Center(child: CircularProgressIndicator()));
     }
 
     final scrollBody = ScrollConfiguration(

@@ -583,6 +583,9 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   Future<MediaItem?> findByIdentity(MediaIdentity identity) async => null;
 
   @override
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async => const [];
+
+  @override
   Future<LibraryPage<MediaItem>> fetchFavorites({MediaKind? kind, int offset = 0, int limit = 100}) async {
     return LibraryPage<MediaItem>(items: const [], totalCount: 0, offset: offset);
   }
@@ -1270,6 +1273,19 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
 
   List<MediaItem> _applyFilters(List<MediaItem> items, LibraryQuery query) {
     var filtered = items.where((item) => item.kind == MediaKind.movie || item.kind == MediaKind.show).toList();
+
+    // [LibraryQuery.kind] is "restrict to a single kind", and it was being
+    // ignored here. That only shows on a library this build cannot classify —
+    // any `libraryType` other than `movies`/`tvshows` maps to
+    // [MediaKind.unknown], and B6 lets an unknown-kind library take part in
+    // *every* catalog on the promise that the item-level filtering happens on
+    // the wire. There is no wire here: the filtering is this line. Without it
+    // Series listed that folder's films and Films listed its series, and
+    // nothing downstream filters by kind again.
+    final kind = query.kind;
+    if (kind != null && kind != MediaKind.unknown) {
+      filtered = filtered.where((item) => item.kind == kind).toList();
+    }
 
     if (!query.includeWatched) {
       filtered = filtered.where((item) => !item.isWatched).toList();

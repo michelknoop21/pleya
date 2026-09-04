@@ -1,0 +1,69 @@
+name: tvos.home.hero-artwork
+target: tvos-sim
+# The Home hero's artwork fit, on five backdrops that differ in the only two
+# things the hero has to cope with: the source aspect ratio, and where the
+# subject sits inside it.
+#
+# Seeds `catalog.hero-artwork.v1`, whose artwork is calibration imagery rather
+# than flat colour: a tenth-grid, a differently coloured band on each of the
+# four edges, and a white subject disc at a known position. A missing band
+# names the edge the crop came off, and the grid counts how much went with it.
+# On `catalog.mixed.v1` none of that is possible, because every artwork there
+# is a 32x32 flat square that renders identically however hard it is cropped.
+#
+# The carousel has no "go to slide N" input by design (fase-8 brief 24), so
+# the walk is the product's own: LEFT off the leftmost pill is the previous
+# slide, RIGHT off the rightmost one the next. Two pills, so RIGHT RIGHT is
+# one slide forward from `Afspelen`.
+#
+# Assertion-light on purpose, like the styling audit: a hero that crops badly
+# must still produce a measured row rather than a failed run. What it does
+# assert is that the hero is reachable and that the play pill takes the focus,
+# because a scenario that quietly measured an unfocused hero would be
+# measuring the wrong thing.
+setup:
+  - reset_app
+  - seed: catalog.hero-artwork.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - snapshot: 00-home-initial
+
+  - press: down
+  - wait_until: {focused: discover.hero.play, timeout: 8000}
+  - assert: {id: discover.hero, insideViewport: true}
+  - snapshot: 01-slide-a
+
+  - press: right
+  - press: right
+  - settle: 1200
+  - snapshot: 02-slide-b
+
+  - press: right
+  - press: right
+  - settle: 1200
+  - snapshot: 03-slide-c
+
+  - press: right
+  - press: right
+  - settle: 1200
+  - snapshot: 04-slide-d
+
+  - press: right
+  - press: right
+  - settle: 1200
+  - snapshot: 05-slide-e
+
+  # Back one, to catch a slide that only misbehaves on the reverse step and to
+  # show whether the previous slide's artwork is still on screen.
+  - press: left
+  - press: left
+  - settle: 1200
+  - snapshot: 06-slide-back
+
+  # Carousel stability: the same slide twice, 300 ms apart. Two identical
+  # geometries mean the layout settled; a difference is a load-shift.
+  - settle: 300
+  - snapshot: 07-stability-recheck

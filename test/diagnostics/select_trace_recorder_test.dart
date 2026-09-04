@@ -100,6 +100,32 @@ void main() {
     expect(info.single, contains('selected=s1:41215'));
   });
 
+  test('a source picked in the picker closes as an info line, not a warning', () {
+    // The unified source picker (hoofdstuk 14) legitimately opens a different
+    // server's copy than the card named. Without noteSourceSelection every
+    // such press would be reported as the exact swap this recorder hunts.
+    final other = MediaItem.plex(id: '88001', kind: MediaKind.movie, serverId: 's2', title: 'Title 88001');
+    final recorder = build();
+    recorder.noteFocus(surface: 'tv-rail', hubId: 'recentlyAdded', index: 3, item: item('41215'));
+    final id = recorder.beginSelect(source: 'native');
+    recorder.noteSourceSelection(id, detail: 'chose s2:88001');
+    completeChain(recorder, id, other);
+    recorder.close(id, SelectTraceOutcome.detail);
+
+    expect(warnings, isEmpty);
+    expect(info.single, contains('sourcePick=user'));
+    expect(info.single, contains('activated=s2:88001'));
+  });
+
+  test('noteSourceSelection on an unknown or null id is a no-op', () {
+    final recorder = build();
+    recorder.noteSourceSelection(null, detail: 'chose s2:88001');
+    recorder.noteSourceSelection('not-a-trace', detail: 'chose s2:88001');
+
+    expect(info, isEmpty);
+    expect(warnings, isEmpty);
+  });
+
   test('a chain that opens somebody else closes as a warning naming the break', () {
     final recorder = build();
     recorder.noteFocus(surface: 'tv-rail', hubId: 'recentlyAdded', index: 3, item: item('41215'));

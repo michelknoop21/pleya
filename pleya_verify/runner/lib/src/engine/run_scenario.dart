@@ -9,6 +9,7 @@ import '../fixture/fixture_server_handle.dart';
 import '../redact.dart';
 import '../transport/verify_client.dart';
 import '../scenario/model.dart';
+import '../scenario/remote_keys.dart';
 import 'evidence_bundle.dart';
 import 'geometry_assertions.dart';
 import 'node_assertions.dart';
@@ -175,7 +176,12 @@ Future<ScenarioRunResult> runScenario({
           // (a `{{fixture_id:...}}` in an assert step with no running fixture
           // throws the same clear error `fixture_mutate` already does).
           final resolvedArgs =
-              resolvePlaceholders(step.args, fixture, null, seededIds: fixture == null ? const {} : await fixture.seededIds())
+              resolvePlaceholders(
+                    step.args,
+                    fixture,
+                    null,
+                    seededIds: fixture == null ? const {} : await fixture.seededIds(),
+                  )
                   as Map<String, Object?>;
           final (:geometry, :node) = await _dispatchAssert(resolvedArgs, driver);
           if (geometry.isNotEmpty) record['geometry'] = [for (final g in geometry) g.toJson()];
@@ -204,6 +210,15 @@ Future<ScenarioRunResult> runScenario({
           // diagnostic-only and would happily agree with a broken layout
           // because it renders from the same tree the layout came from.
           record['screenshot_source'] = 'platform-compositor';
+          // A screenshot answers "what does it look like"; the audit question
+          // "where exactly does the content edge sit" needs numbers, and the
+          // only ui_tree a bundle used to keep was the one at teardown. So a
+          // snapshot now captures the measurable half of the same moment
+          // under the same name: the tree the screenshot was taken of, plus
+          // the viewport it was measured against. Additive — every existing
+          // scenario gains the dump without changing what it asserts.
+          bundle.saveUiTree(name, {'viewport': await driver.viewport(), 'tree': await driver.uiTree()});
+          record['ui_tree'] = '$name.json';
         case 'settle':
           // Bare `- settle` keeps the old fixed 500ms; `- settle: 3000` lets
           // a scenario wait out something with no automation-observable
@@ -212,15 +227,18 @@ Future<ScenarioRunResult> runScenario({
           // than gating it, so no `wait_until` can see it finish.
           await Future<void>.delayed(Duration(milliseconds: (step.args as int?) ?? 500));
         case 'press':
+          final press = parsePressArgs(step.args);
           record['input_route'] = driver.inputRoute;
-          await driver.press(step.args as String);
+          record['key'] = press.key;
+          if (press.hold != null) record['hold_ms'] = press.hold!.inMilliseconds;
+          await _recordInput(driver, record, () => driver.press(press.key, hold: press.hold));
         case 'tap':
           record['input_route'] = driver.inputRoute;
           final args = step.args as Map<String, Object?>;
           await driver.tap((args['x'] as num).toDouble(), (args['y'] as num).toDouble());
         case 'type':
           record['input_route'] = driver.inputRoute;
-          await driver.typeText(step.args as String);
+          await _recordInput(driver, record, () => driver.typeText(step.args as String));
         default:
           throw UnsupportedError('the run-scenario engine does not implement verb "${step.verb}" yet');
       }
@@ -348,12 +366,13 @@ Future<void> _dispatchWaitUntil(ScenarioStep step, VerificationDriver driver) as
   final deadline = DateTime.now().add(Duration(milliseconds: timeoutMs));
 
   Future<bool> predicate() async {
+    if (args['focused'] case final String id) return (await _focusedIds(driver)).contains(id);
     if (args['id'] case final String id) return _idReady(driver, id);
     if (args['event'] case final String eventName) {
       final events = await driver.eventsSince(0);
       return events.any((e) => e['name'] == eventName);
     }
-    throw ArgumentError('wait_until needs an "id" or "event" field: $args');
+    throw ArgumentError('wait_until needs a "focused", "id" or "event" field: $args');
   }
 
   while (DateTime.now().isBefore(deadline)) {
@@ -382,7 +401,8 @@ Future<({List<GeometryAssertionResult> geometry, List<NodeAssertionResult> node}
 
   final hasGeometry = args.keys.any(geometryPredicates.contains);
   final hasNode = args.keys.any(nodeFieldPredicates.contains);
-  if (!hasGeometry && !hasNode) return (geometry: const <GeometryAssertionResult>[], node: const <NodeAssertionResult>[]);
+  if (!hasGeometry && !hasNode)
+    return (geometry: const <GeometryAssertionResult>[], node: const <NodeAssertionResult>[]);
 
   // One fetch of each, shared by every predicate on this step: predicates
   // measured against different frames would not be comparable.
@@ -395,12 +415,124 @@ Future<({List<GeometryAssertionResult> geometry, List<NodeAssertionResult> node}
   final failures = <String>[
     for (final r in geometry.where((r) => !r.verdict.ok))
       '${r.predicate}(${r.subjectId}${r.otherId == null ? '' : ', ${r.otherId}'}): ${r.verdict.message}',
-    for (final r in node.where((r) => !r.ok)) '${r.predicate}(${r.subjectId}${r.key == null ? '' : '.${r.key}'}): ${r.message}',
+    for (final r in node.where((r) => !r.ok))
+      '${r.predicate}(${r.subjectId}${r.key == null ? '' : '.${r.key}'}): ${r.message}',
   ];
   if (failures.isNotEmpty) {
     throw StateError('assert failed: ${failures.join('; ')}');
   }
   return (geometry: geometry, node: node);
+}
+
+/// Which declared automation ids currently report `focused: true`.
+///
+/// `/v1/focus` answers with a `FocusNode.debugLabel`, not an id, so it can
+/// say "something is focused" but not *what* in the vocabulary a scenario is
+/// written in. `/v1/ui_tree`'s declared list carries both, so focus identity
+/// comes from there. Plural because a duplicate id or a nested focus scope
+/// can legitimately produce more than one, and collapsing that to a single
+/// value would hide exactly the "two focus authorities" defect this round is
+/// looking for.
+Future<List<String>> _focusedIds(VerificationDriver driver) async {
+  final tree = await driver.uiTree();
+  final declared = (tree['declared'] as List?)?.cast<Map<String, Object?>>() ?? const [];
+  return [
+    for (final n in declared)
+      if (n['focused'] == true) n['id'] as String,
+  ];
+}
+
+/// One observation of everything an input could plausibly have changed.
+Future<Map<String, Object?>> _observe(VerificationDriver driver) async {
+  Future<T?> attempt<T>(Future<T> Function() f) async {
+    try {
+      return await f();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  final screens = await attempt(driver.screensSnapshot);
+  return {
+    'focused_ids': await attempt(() => _focusedIds(driver)) ?? const <String>[],
+    'focus': await attempt(driver.focus),
+    'screens': [
+      for (final s in screens ?? const <Map<String, Object?>>[])
+        if (s['ready'] == true) s['id'],
+    ],
+    'route': await attempt(driver.route),
+  };
+}
+
+/// Dispatches an input and records **what changed in the app because of
+/// it** — the only evidence that distinguishes a working remote from a
+/// driver call that returned zero while the app ignored it. A step that
+/// merely says `press: down` and `ok: true` proves the process exited
+/// cleanly, nothing more.
+///
+/// The wait after the input is bounded and *early-returning*, not a sleep:
+/// it polls the same observation the record is built from and returns the
+/// moment focus, the ready-screen set or the route differs from before, so
+/// a responsive app costs one poll interval rather than the whole window.
+/// When nothing changes it costs the full window and records
+/// `changed: false` — which is a finding, not a timeout.
+Future<void> _recordInput(
+  VerificationDriver driver,
+  Map<String, Object?> record,
+  Future<void> Function() input, {
+  Duration window = const Duration(milliseconds: 1500),
+  Duration pollInterval = const Duration(milliseconds: 100),
+}) async {
+  final before = await _observe(driver);
+  final eventSeqBefore = await _currentEventSeq(driver);
+  record['before'] = before;
+
+  await input();
+
+  final deadline = DateTime.now().add(window);
+  var after = await _observe(driver);
+  while (DateTime.now().isBefore(deadline) && _sameObservation(before, after)) {
+    await Future<void>.delayed(pollInterval);
+    after = await _observe(driver);
+  }
+
+  record['after'] = after;
+  record['changed'] = !_sameObservation(before, after);
+  record['events'] = [
+    for (final e in await driver.eventsSince(eventSeqBefore)) {'name': e['name'], 'data': e['data']},
+  ];
+}
+
+Future<int> _currentEventSeq(VerificationDriver driver) async {
+  try {
+    final events = await driver.eventsSince(0);
+    if (events.isEmpty) return 0;
+    return (events.last['seq'] as num).toInt();
+  } catch (_) {
+    return 0;
+  }
+}
+
+/// Two observations are "the same" only when nothing a viewer could see has
+/// moved.
+///
+/// `focused_ids` alone is not enough, and the gap showed up in real evidence:
+/// walking the action bar inside Logs en diagnose moved the ring from one
+/// button to the next while every declared id stayed unfocused, because those
+/// buttons carry no automation id. The record said `changed: false` about a
+/// press that plainly did something. `/v1/focus`'s label and rect answer for
+/// everything that has no id of its own, which is most of the app.
+bool _sameObservation(Map<String, Object?> a, Map<String, Object?> b) =>
+    jsonEncode(a['focused_ids']) == jsonEncode(b['focused_ids']) &&
+    jsonEncode(a['screens']) == jsonEncode(b['screens']) &&
+    jsonEncode(a['route']) == jsonEncode(b['route']) &&
+    jsonEncode(_focusIdentity(a['focus'])) == jsonEncode(_focusIdentity(b['focus']));
+
+/// The parts of `/v1/focus` that say *which* thing is focused. `_statusCode`
+/// and anything else the transport adds are deliberately not part of it.
+Map<String, Object?>? _focusIdentity(Object? focus) {
+  if (focus is! Map<String, Object?>) return null;
+  return {'label': focus['label'], 'focused': focus['focused'], 'bounds': focus['bounds']};
 }
 
 /// `screen.*` ids are checked against `/v1/screens` (readiness); anything

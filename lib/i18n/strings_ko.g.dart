@@ -62,6 +62,7 @@ class TranslationsKo extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsKo connections = _TranslationsConnectionsKo._(_root);
 	@override late final _TranslationsDiscoverKo discover = _TranslationsDiscoverKo._(_root);
 	@override late final _TranslationsErrorsKo errors = _TranslationsErrorsKo._(_root);
+	@override late final _TranslationsNoticesKo notices = _TranslationsNoticesKo._(_root);
 	@override late final _TranslationsLibrariesKo libraries = _TranslationsLibrariesKo._(_root);
 	@override late final _TranslationsAboutKo about = _TranslationsAboutKo._(_root);
 	@override late final _TranslationsServerSelectionKo serverSelection = _TranslationsServerSelectionKo._(_root);
@@ -87,6 +88,11 @@ class TranslationsKo extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerKo addServer = _TranslationsAddServerKo._(_root);
 	@override late final _TranslationsAddLocalFolderKo addLocalFolder = _TranslationsAddLocalFolderKo._(_root);
 	@override late final _TranslationsPleyaShareKo pleyaShare = _TranslationsPleyaShareKo._(_root);
+	@override late final _TranslationsSourcePickerKo sourcePicker = _TranslationsSourcePickerKo._(_root);
+	@override late final _TranslationsUnifiedCatalogKo unifiedCatalog = _TranslationsUnifiedCatalogKo._(_root);
+	@override late final _TranslationsTvNavigationKo tvNavigation = _TranslationsTvNavigationKo._(_root);
+	@override late final _TranslationsTvMyPleyaKo tvMyPleya = _TranslationsTvMyPleyaKo._(_root);
+	@override late final _TranslationsTvContextMenuKo tvContextMenu = _TranslationsTvContextMenuKo._(_root);
 }
 
 // Path: app
@@ -442,6 +448,7 @@ class _TranslationsSearchKo extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => '다른 검색어를 시도해 보세요';
 	@override String get searchYourMedia => '미디어 검색';
 	@override String get enterTitleActorOrKeyword => '제목, 배우 또는 키워드를 입력하세요';
+	@override late final _TranslationsSearchFiltersKo filters = _TranslationsSearchFiltersKo._(_root);
 }
 
 // Path: hotkeys
@@ -912,6 +919,17 @@ class _TranslationsErrorsKo extends TranslationsErrorsEn {
 	@override String failedToSwitchProfile({required Object displayName}) => '${displayName}으로 전환할 수 없습니다';
 	@override String failedToDeleteProfile({required Object displayName}) => '${displayName}을(를) 삭제할 수 없습니다';
 	@override String get failedToRate => '평점을 업데이트하지 못했습니다';
+}
+
+// Path: notices
+class _TranslationsNoticesKo extends TranslationsNoticesEn {
+	_TranslationsNoticesKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => '파일을 사용할 수 없음';
+	@override String get playbackFileUnavailableBody => '서버가 동영상 파일에 접근할 수 없습니다. 파일이 있는 드라이브나 폴더가 여전히 연결되어 있는지 확인하세요.';
 }
 
 // Path: libraries
@@ -1707,6 +1725,140 @@ class _TranslationsPleyaShareKo extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => '네트워크 검색 중…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerKo extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => '재생할 위치 선택';
+	@override String get detailsTitle => '세부 정보를 볼 소스 선택';
+	@override String get availableOnOneServer => '서버 1개에서 사용 가능';
+	@override String availableOnManyServers({required Object count}) => '서버 ${count}개에서 사용 가능';
+	@override String get oneServerUnchecked => '서버 1개를 확인하지 못했습니다';
+	@override String manyServersUnchecked({required Object count}) => '서버 ${count}개를 확인하지 못했습니다';
+	@override String get checkingMoreSources => '다른 소스 확인 중…';
+	@override String get lastUsed => '최근 사용';
+	@override String get currentSource => '현재 소스';
+	@override String get unavailable => '사용할 수 없음';
+	@override String get signInRequired => '다시 로그인해야 합니다';
+	@override String resumeAt({required Object position}) => '${position}부터 계속';
+	@override String get watched => '시청함';
+	@override String get noneReachableTitle => '현재 연결할 수 있는 소스가 없습니다.';
+	@override String get reauthRequiredTitle => '이 콘텐츠를 보려면 다시 로그인하세요.';
+	@override String get manageServers => '서버 관리';
+	@override String sourceLabel({required Object source}) => '소스: ${source}';
+	@override String get change => '변경';
+	@override String get playbackFailedTitle => '이 소스를 재생할 수 없습니다.';
+	@override String get detailLoadFailedTitle => '이 제목을 불러올 수 없습니다.';
+	@override String get chooseAnotherSource => '다른 소스 선택';
+	@override String rowSemantics({required Object count, required Object index, required Object description}) => '소스 ${count}개 중 ${index}번째: ${description}';
+	@override String get preferredServer => '기본 서버';
+	@override String setPreferredServer({required Object server}) => '항상 ${server} 사용';
+}
+
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogKo extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => '영화';
+	@override String get seriesTitle => '시리즈';
+	@override String sources({required Object count}) => '소스 ${count}개';
+	@override String get allSources => '모든 소스';
+	@override String get oneSource => '소스 1개';
+	@override String seasons({required Object count}) => '시즌 ${count}개';
+	@override String get oneSeason => '시즌 1개';
+	@override String titleCount({required Object count}) => '${count}개 작품';
+	@override String get oneTitle => '1개 작품';
+	@override String titlesLoaded({required Object count}) => '${count}개 작품 불러옴';
+	@override String get loadMore => '더 불러오기';
+	@override String get loadingMore => '불러오는 중…';
+	@override late final _TranslationsUnifiedCatalogSortKo sort = _TranslationsUnifiedCatalogSortKo._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersKo filters = _TranslationsUnifiedCatalogFiltersKo._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesKo states = _TranslationsUnifiedCatalogStatesKo._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsKo semantics = _TranslationsUnifiedCatalogSemanticsKo._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryKo discovery = _TranslationsUnifiedCatalogDiscoveryKo._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeKo home = _TranslationsUnifiedCatalogHomeKo._(_root);
+}
+
+// Path: tvNavigation
+class _TranslationsTvNavigationKo extends TranslationsTvNavigationEn {
+	_TranslationsTvNavigationKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get activeDestination => '현재 섹션';
+	@override String get attentionRequired => '확인 필요';
+}
+
+// Path: tvMyPleya
+class _TranslationsTvMyPleyaKo extends TranslationsTvMyPleyaEn {
+	_TranslationsTvMyPleyaKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get groupContent => '내 콘텐츠';
+	@override String get groupSources => '라이브러리 및 소스';
+	@override String get groupPleya => 'Pleya';
+	@override String serversOnline({required Object total, required Object online}) => '${total}개 중 ${online}개 서버 온라인';
+	@override String get noServers => '연결된 서버 없음';
+	@override String get statusOnline => '온라인';
+	@override String get statusOffline => '오프라인';
+	@override String get servers => '서버';
+	@override String get activity => '활동';
+	@override String get logs => '로그 및 진단';
+	@override String signedInAs({required Object name, required Object version}) => '${name}(으)로 로그인됨 · Pleya ${version}';
+	@override String get watchlistSubtitle => '저장한 영화 및 시리즈';
+	@override String get requestsSubtitle => '요청 및 둘러보기';
+	@override String get downloadsSubtitle => '오프라인 및 동기화 규칙';
+	@override String get librariesSubtitle => '미디어, 컬렉션, 재생목록';
+	@override String get serversSubtitle => '연결 및 로컬 소스';
+	@override String get activitySubtitle => '지금 시청 중, 함께 보기, 리모컨';
+	@override String get watchTogetherSubtitle => '친구와 동기화하여 시청';
+	@override String get settingsSubtitle => '화면, 플레이어, 트래커';
+	@override String get logsSubtitle => '로그 파일 및 오류 보고서';
+	@override String get aboutSubtitle => '버전 및 라이선스';
+	@override String get logoutSubtitle => '이 기기에서 로그아웃';
+	@override late final _TranslationsTvMyPleyaSemanticsKo semantics = _TranslationsTvMyPleyaSemanticsKo._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuKo extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '작업';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => '작업 ${index}/${count}: ${label}';
+	@override String get noUsableSource => '현재 연결 가능한 소스가 없어 지금은 변경할 수 없습니다.';
+	@override String doneOnAll({required Object count}) => '${count}개 소스 모두에서 완료됨';
+	@override String doneOnSome({required Object total, required Object done}) => '${total}개 중 ${done}개 소스에서 완료됨. 나머지는 다시 온라인 상태가 되면 재시도됩니다.';
+	@override String doneOnSomeNoRetry({required Object total, required Object done}) => '${total}개 중 ${done}개 소스에서 완료됨.';
+	@override String get failed => '작동하지 않았습니다';
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersKo extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => '전체';
+	@override String get movies => '영화';
+	@override String get shows => 'TV 프로그램';
+	@override String get episodes => '에피소드';
+	@override String get people => '인물';
+	@override String get other => '기타';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsKo extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsKo._(TranslationsKo root) : this._root = root, super.internal(root);
@@ -1984,6 +2136,125 @@ class _TranslationsTrackersLibraryFilterKo extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => '아래에 선택한 라이브러리만 동기화합니다.';
 	@override String get libraries => '라이브러리';
 	@override String get noLibraries => '사용 가능한 라이브러리가 없습니다';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortKo extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '정렬';
+	@override String get titleAsc => '제목 오름차순';
+	@override String get titleDesc => '제목 내림차순';
+	@override String get recentlyAdded => '최근 추가순';
+	@override String get oldestAdded => '오래전 추가순';
+	@override String get newestRelease => '최신 개봉순';
+	@override String get oldestRelease => '오래된 개봉순';
+	@override String get recentlyWatched => '최근 시청순';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersKo extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '필터';
+	@override String get status => '상태';
+	@override String get genre => '장르';
+	@override String get year => '연도';
+	@override String get servers => '서버';
+	@override String get libraries => '라이브러리';
+	@override String get apply => '적용';
+	@override String get clearAll => '모두 지우기';
+	@override String get all => '전체';
+	@override String get unwatched => '미시청';
+	@override String get unsupported => '현재 소스에서는 사용할 수 없음';
+	@override String get someUnavailable => '선택한 소스에서는 일부 필터를 사용할 수 없습니다';
+	@override String get noValues => '선택할 항목이 없음';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesKo extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => '이 카탈로그가 비어 있습니다';
+	@override String get emptyBody => '표시된 라이브러리에 이 페이지에 해당하는 항목이 없습니다.';
+	@override String get filterEmptyTitle => '이 필터와 일치하는 항목이 없습니다';
+	@override String get filterEmptyBody => '필터를 지우면 더 많은 작품을 볼 수 있습니다.';
+	@override String get clearFilters => '필터 지우기';
+	@override String get errorTitle => '카탈로그를 불러오지 못했습니다';
+	@override String get errorBody => '응답한 서버가 없습니다. 연결을 확인한 뒤 다시 시도하세요.';
+	@override String get partialOne => '라이브러리 1개가 응답하지 않았습니다';
+	@override String partialMany({required Object count}) => '라이브러리 ${count}개가 응답하지 않았습니다';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsKo extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => '시청함';
+	@override String get inProgress => '시청 중';
+	@override String get loadingMore => '작품을 더 불러오는 중';
+}
+
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryKo extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => '모든 영화';
+	@override String get allSeries => '모든 시리즈';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => '일부 소스가 응답하지 않았습니다';
+	@override String get emptyTitle => '아직 발견할 항목이 없습니다';
+	@override String get emptyBody => '표시할 항목이 있는 라이브러리가 없습니다.';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsKo semantics = _TranslationsUnifiedCatalogDiscoverySemanticsKo._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeKo extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => '추천 작품';
+}
+
+// Path: tvMyPleya.semantics
+class _TranslationsTvMyPleyaSemanticsKo extends TranslationsTvMyPleyaSemanticsEn {
+	_TranslationsTvMyPleyaSemanticsKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsKo extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}, 타이틀 ${count}개';
+	@override String position({required Object count, required Object position}) => '${count}개 중 ${position}번째';
+	@override String get viewAllMovies => '모든 영화 보기, 전체 카탈로그 열기';
+	@override String get viewAllSeries => '모든 시리즈 보기, 전체 카탈로그 열기';
 }
 
 /// The flat map containing all translations for locale <ko>.
@@ -2286,6 +2557,12 @@ extension on TranslationsKo {
 			'search.tryDifferentTerm' => '다른 검색어를 시도해 보세요',
 			'search.searchYourMedia' => '미디어 검색',
 			'search.enterTitleActorOrKeyword' => '제목, 배우 또는 키워드를 입력하세요',
+			'search.filters.all' => '전체',
+			'search.filters.movies' => '영화',
+			'search.filters.shows' => 'TV 프로그램',
+			'search.filters.episodes' => '에피소드',
+			'search.filters.people' => '인물',
+			'search.filters.other' => '기타',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => '${actionName}에 대한 단축키 설정',
 			'hotkeys.clearShortcut' => '단축키 삭제',
 			'hotkeys.noShortcutSet' => '설정된 단축키 없음',
@@ -2500,14 +2777,14 @@ extension on TranslationsKo {
 			'messages.sleepTimerSet' => ({required Object label}) => '수면 타이머가 ${label}로 설정 되었습니다',
 			'messages.noItemsAvailable' => '사용 가능한 항목이 없습니다',
 			'messages.failedToCreatePlayQueueNoItems' => '재생 대기열 생성 실패 - 항목 없음',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => '${action}을(를) 수행할 수 없습니다',
 			'messages.switchingToCompatiblePlayer' => '호환되는 플레이어로 전환 중...',
 			'messages.serverLimitTitle' => '재생 실패',
 			'messages.serverLimitBody' => '서버 오류(HTTP 500). 대역폭/트랜스코딩 제한으로 세션이 거부된 것 같습니다. 소유자에게 조정을 요청하세요.',
 			'messages.logsUploaded' => '로그 업로드 완료',
 			'messages.logsUploadFailed' => '로그 업로드 실패',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => '로그 ID',
 			'subtitlingStyling.text' => '텍스트',
 			'subtitlingStyling.border' => '테두리',
@@ -2644,6 +2921,8 @@ extension on TranslationsKo {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => '${displayName}으로 전환할 수 없습니다',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => '${displayName}을(를) 삭제할 수 없습니다',
 			'errors.failedToRate' => '평점을 업데이트하지 못했습니다',
+			'notices.playbackFileUnavailableTitle' => '파일을 사용할 수 없음',
+			'notices.playbackFileUnavailableBody' => '서버가 동영상 파일에 접근할 수 없습니다. 파일이 있는 드라이브나 폴더가 여전히 연결되어 있는지 확인하세요.',
 			'libraries.title' => '미디어 라이브러리',
 			'libraries.fallbackTitle' => '라이브러리',
 			'libraries.scanLibraryFiles' => '미디어 라이브러리 파일 스캔',
@@ -3012,6 +3291,8 @@ extension on TranslationsKo {
 			'companionRemote.pairing.discoveryDescription' => '같은 Plex 계정의 Pleya 기기가 여기에 표시됩니다',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '연결 중...',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.searchingForDevices' => '기기 검색 중...',
 			'companionRemote.pairing.noDevicesFound' => '네트워크에서 기기를 찾을 수 없습니다',
 			'companionRemote.pairing.noDevicesHint' => '데스크톱에서 Pleya를 열고 같은 WiFi를 사용하세요',
@@ -3020,8 +3301,6 @@ extension on TranslationsKo {
 			'companionRemote.pairing.cryptoInitFailed' => '보안 연결을 시작할 수 없습니다. 먼저 Plex에 로그인하세요.',
 			'companionRemote.pairing.validationHostRequired' => '호스트 주소를 입력하세요',
 			'companionRemote.pairing.validationHostFormat' => '형식은 IP:포트여야 합니다 (예: 192.168.1.100:48632)',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => '연결 시간이 초과되었습니다. 두 기기에서 같은 네트워크를 사용하세요.',
 			'companionRemote.pairing.sessionNotFound' => '기기를 찾을 수 없습니다. 호스트에서 Pleya가 실행 중인지 확인하세요.',
 			'companionRemote.pairing.authFailed' => '인증에 실패했습니다. 두 기기 모두 같은 Plex 계정이 필요합니다.',
@@ -3323,6 +3602,119 @@ extension on TranslationsKo {
 			'pleyaShare.notificationText' => '다른 Pleya 기기가 로컬 폴더를 스트리밍할 수 있습니다',
 			'pleyaShare.hostDescriptionAndroid' => '이 네트워크의 다른 Pleya 기기가 로컬 폴더를 탐색, 스트리밍, 다운로드할 수 있습니다. 공유는 알림과 함께 백그라운드에서 계속됩니다.',
 			'pleyaShare.scanningSubnet' => '네트워크 검색 중…',
+			'sourcePicker.playTitle' => '재생할 위치 선택',
+			'sourcePicker.detailsTitle' => '세부 정보를 볼 소스 선택',
+			'sourcePicker.availableOnOneServer' => '서버 1개에서 사용 가능',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => '서버 ${count}개에서 사용 가능',
+			'sourcePicker.oneServerUnchecked' => '서버 1개를 확인하지 못했습니다',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '서버 ${count}개를 확인하지 못했습니다',
+			'sourcePicker.checkingMoreSources' => '다른 소스 확인 중…',
+			'sourcePicker.lastUsed' => '최근 사용',
+			'sourcePicker.currentSource' => '현재 소스',
+			'sourcePicker.unavailable' => '사용할 수 없음',
+			'sourcePicker.signInRequired' => '다시 로그인해야 합니다',
+			'sourcePicker.resumeAt' => ({required Object position}) => '${position}부터 계속',
+			'sourcePicker.watched' => '시청함',
+			'sourcePicker.noneReachableTitle' => '현재 연결할 수 있는 소스가 없습니다.',
+			'sourcePicker.reauthRequiredTitle' => '이 콘텐츠를 보려면 다시 로그인하세요.',
+			'sourcePicker.manageServers' => '서버 관리',
+			'sourcePicker.sourceLabel' => ({required Object source}) => '소스: ${source}',
+			'sourcePicker.change' => '변경',
+			'sourcePicker.playbackFailedTitle' => '이 소스를 재생할 수 없습니다.',
+			'sourcePicker.detailLoadFailedTitle' => '이 제목을 불러올 수 없습니다.',
+			'sourcePicker.chooseAnotherSource' => '다른 소스 선택',
+			'sourcePicker.rowSemantics' => ({required Object count, required Object index, required Object description}) => '소스 ${count}개 중 ${index}번째: ${description}',
+			'sourcePicker.preferredServer' => '기본 서버',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => '항상 ${server} 사용',
+			'unifiedCatalog.moviesTitle' => '영화',
+			'unifiedCatalog.seriesTitle' => '시리즈',
+			'unifiedCatalog.sources' => ({required Object count}) => '소스 ${count}개',
+			'unifiedCatalog.allSources' => '모든 소스',
+			'unifiedCatalog.oneSource' => '소스 1개',
+			'unifiedCatalog.seasons' => ({required Object count}) => '시즌 ${count}개',
+			'unifiedCatalog.oneSeason' => '시즌 1개',
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count}개 작품',
+			'unifiedCatalog.oneTitle' => '1개 작품',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count}개 작품 불러옴',
+			'unifiedCatalog.loadMore' => '더 불러오기',
+			'unifiedCatalog.loadingMore' => '불러오는 중…',
+			'unifiedCatalog.sort.title' => '정렬',
+			'unifiedCatalog.sort.titleAsc' => '제목 오름차순',
+			'unifiedCatalog.sort.titleDesc' => '제목 내림차순',
+			'unifiedCatalog.sort.recentlyAdded' => '최근 추가순',
+			'unifiedCatalog.sort.oldestAdded' => '오래전 추가순',
+			'unifiedCatalog.sort.newestRelease' => '최신 개봉순',
+			'unifiedCatalog.sort.oldestRelease' => '오래된 개봉순',
+			'unifiedCatalog.sort.recentlyWatched' => '최근 시청순',
+			'unifiedCatalog.filters.title' => '필터',
+			'unifiedCatalog.filters.status' => '상태',
+			'unifiedCatalog.filters.genre' => '장르',
+			'unifiedCatalog.filters.year' => '연도',
+			'unifiedCatalog.filters.servers' => '서버',
+			'unifiedCatalog.filters.libraries' => '라이브러리',
+			'unifiedCatalog.filters.apply' => '적용',
+			'unifiedCatalog.filters.clearAll' => '모두 지우기',
+			'unifiedCatalog.filters.all' => '전체',
+			'unifiedCatalog.filters.unwatched' => '미시청',
+			'unifiedCatalog.filters.unsupported' => '현재 소스에서는 사용할 수 없음',
+			'unifiedCatalog.filters.someUnavailable' => '선택한 소스에서는 일부 필터를 사용할 수 없습니다',
+			'unifiedCatalog.filters.noValues' => '선택할 항목이 없음',
+			'unifiedCatalog.states.emptyTitle' => '이 카탈로그가 비어 있습니다',
+			'unifiedCatalog.states.emptyBody' => '표시된 라이브러리에 이 페이지에 해당하는 항목이 없습니다.',
+			'unifiedCatalog.states.filterEmptyTitle' => '이 필터와 일치하는 항목이 없습니다',
+			'unifiedCatalog.states.filterEmptyBody' => '필터를 지우면 더 많은 작품을 볼 수 있습니다.',
+			'unifiedCatalog.states.clearFilters' => '필터 지우기',
+			'unifiedCatalog.states.errorTitle' => '카탈로그를 불러오지 못했습니다',
+			'unifiedCatalog.states.errorBody' => '응답한 서버가 없습니다. 연결을 확인한 뒤 다시 시도하세요.',
+			'unifiedCatalog.states.partialOne' => '라이브러리 1개가 응답하지 않았습니다',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => '라이브러리 ${count}개가 응답하지 않았습니다',
+			'unifiedCatalog.semantics.watched' => '시청함',
+			'unifiedCatalog.semantics.inProgress' => '시청 중',
+			'unifiedCatalog.semantics.loadingMore' => '작품을 더 불러오는 중',
+			'unifiedCatalog.discovery.allMovies' => '모든 영화',
+			'unifiedCatalog.discovery.allSeries' => '모든 시리즈',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => '일부 소스가 응답하지 않았습니다',
+			'unifiedCatalog.discovery.emptyTitle' => '아직 발견할 항목이 없습니다',
+			'unifiedCatalog.discovery.emptyBody' => '표시할 항목이 있는 라이브러리가 없습니다.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, 타이틀 ${count}개',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object count, required Object position}) => '${count}개 중 ${position}번째',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => '모든 영화 보기, 전체 카탈로그 열기',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => '모든 시리즈 보기, 전체 카탈로그 열기',
+			'unifiedCatalog.home.featured' => '추천 작품',
+			'tvNavigation.activeDestination' => '현재 섹션',
+			'tvNavigation.attentionRequired' => '확인 필요',
+			'tvMyPleya.groupContent' => '내 콘텐츠',
+			'tvMyPleya.groupSources' => '라이브러리 및 소스',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object total, required Object online}) => '${total}개 중 ${online}개 서버 온라인',
+			'tvMyPleya.noServers' => '연결된 서버 없음',
+			'tvMyPleya.statusOnline' => '온라인',
+			'tvMyPleya.statusOffline' => '오프라인',
+			'tvMyPleya.servers' => '서버',
+			'tvMyPleya.activity' => '활동',
+			'tvMyPleya.logs' => '로그 및 진단',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => '${name}(으)로 로그인됨 · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => '저장한 영화 및 시리즈',
+			'tvMyPleya.requestsSubtitle' => '요청 및 둘러보기',
+			'tvMyPleya.downloadsSubtitle' => '오프라인 및 동기화 규칙',
+			'tvMyPleya.librariesSubtitle' => '미디어, 컬렉션, 재생목록',
+			'tvMyPleya.serversSubtitle' => '연결 및 로컬 소스',
+			'tvMyPleya.activitySubtitle' => '지금 시청 중, 함께 보기, 리모컨',
+			'tvMyPleya.watchTogetherSubtitle' => '친구와 동기화하여 시청',
+			'tvMyPleya.settingsSubtitle' => '화면, 플레이어, 트래커',
+			'tvMyPleya.logsSubtitle' => '로그 파일 및 오류 보고서',
+			'tvMyPleya.aboutSubtitle' => '버전 및 라이선스',
+			'tvMyPleya.logoutSubtitle' => '이 기기에서 로그아웃',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => '작업',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => '작업 ${index}/${count}: ${label}',
+			'tvContextMenu.noUsableSource' => '현재 연결 가능한 소스가 없어 지금은 변경할 수 없습니다.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => '${count}개 소스 모두에서 완료됨',
+			'tvContextMenu.doneOnSome' => ({required Object total, required Object done}) => '${total}개 중 ${done}개 소스에서 완료됨. 나머지는 다시 온라인 상태가 되면 재시도됩니다.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object total, required Object done}) => '${total}개 중 ${done}개 소스에서 완료됨.',
+			'tvContextMenu.failed' => '작동하지 않았습니다',
 			_ => null,
 		};
 	}

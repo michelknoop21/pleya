@@ -222,6 +222,22 @@ class OfflineWatchProvider extends ChangeNotifier with DisposableChangeNotifierM
     safeNotifyListeners();
   }
 
+  /// Holds hoofdstuk 13.4 point 3's removal for a membership Pleya could not
+  /// reach, and announces it so the card leaves Verder kijken now.
+  ///
+  /// Unlike [markAsWatched] this is not an offline-mode action: it is reached
+  /// from an online session too, for the one server of a multi-source title
+  /// that happened to be down. The queue entry is what makes the message
+  /// "de laatste bron wordt opnieuw geprobeerd" true rather than a promise
+  /// nothing keeps.
+  Future<void> queueRemoveFromContinueWatching(MediaItem item) async {
+    final serverId = item.serverId;
+    if (serverId == null || serverId.isEmpty) return;
+    await _syncService.queueRemoveFromContinueWatching(serverId: ServerId(serverId), itemId: item.id);
+    WatchStateNotifier().notifyRemovedFromContinueWatching(item: item);
+    safeNotifyListeners();
+  }
+
   /// Get downloaded episodes for a show with their watch status.
   ///
   /// Returns a list of (episode, isWatched) pairs.

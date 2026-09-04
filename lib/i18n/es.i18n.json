@@ -303,7 +303,15 @@
     "hint": "Buscar películas, series, música...",
     "tryDifferentTerm": "Prueba con un término de búsqueda diferente",
     "searchYourMedia": "Busca en tu contenido",
-    "enterTitleActorOrKeyword": "Introduce un título, actor o palabra clave"
+    "enterTitleActorOrKeyword": "Introduce un título, actor o palabra clave",
+    "filters": {
+      "all": "Todo",
+      "movies": "Películas",
+      "shows": "Series",
+      "episodes": "Episodios",
+      "people": "Personas",
+      "other": "Otros"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Establecer atajo para ${actionName}",
@@ -696,6 +704,10 @@
     "failedToSwitchProfile": "Error al cambiar al perfil ${displayName}",
     "failedToDeleteProfile": "Error al eliminar ${displayName}",
     "failedToRate": "No se pudo actualizar la calificación"
+  },
+  "notices": {
+    "playbackFileUnavailableTitle": "Archivo no disponible",
+    "playbackFileUnavailableBody": "El servidor no puede acceder al archivo de vídeo. Comprueba que la unidad o carpeta en la que se encuentra siga conectada."
   },
   "libraries": {
     "title": "Bibliotecas",
@@ -1447,5 +1459,144 @@
     "notificationText": "Otros dispositivos Pleya pueden transmitir tus carpetas locales",
     "hostDescriptionAndroid": "Otros dispositivos Pleya en esta red pueden explorar, transmitir y descargar tus carpetas locales. Compartir sigue funcionando en segundo plano con una notificación.",
     "scanningSubnet": "Escaneando la red…"
+  },
+  "sourcePicker": {
+    "playTitle": "Elige dónde reproducir",
+    "detailsTitle": "Elige una fuente para los detalles",
+    "availableOnOneServer": "Disponible en 1 servidor",
+    "availableOnManyServers": "Disponible en ${count} servidores",
+    "oneServerUnchecked": "No se pudo comprobar 1 servidor",
+    "manyServersUnchecked": "No se pudieron comprobar ${count} servidores",
+    "checkingMoreSources": "Buscando más fuentes…",
+    "lastUsed": "Última usada",
+    "currentSource": "Fuente actual",
+    "unavailable": "No disponible",
+    "signInRequired": "Es necesario iniciar sesión de nuevo",
+    "resumeAt": "Reanudar en ${position}",
+    "watched": "Visto",
+    "noneReachableTitle": "Ninguna fuente está disponible en este momento.",
+    "reauthRequiredTitle": "Vuelve a iniciar sesión para acceder a este título.",
+    "manageServers": "Gestionar servidores",
+    "sourceLabel": "Fuente: ${source}",
+    "change": "Cambiar",
+    "playbackFailedTitle": "No se pudo reproducir esta fuente.",
+    "detailLoadFailedTitle": "No se pudo cargar este título.",
+    "chooseAnotherSource": "Elegir otra fuente",
+    "rowSemantics": "Fuente ${index} de ${count}: ${description}",
+    "preferredServer": "Servidor preferido",
+    "setPreferredServer": "Usar siempre ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Películas",
+    "seriesTitle": "Series",
+    "sources": "${count} fuentes",
+    "allSources": "Todas las fuentes",
+    "oneSource": "1 fuente",
+    "seasons": "${count} temporadas",
+    "oneSeason": "1 temporada",
+    "titleCount": "${count} títulos",
+    "oneTitle": "1 título",
+    "titlesLoaded": "${count} títulos cargados",
+    "loadMore": "Cargar más",
+    "loadingMore": "Cargando más…",
+    "sort": {
+      "title": "Ordenar",
+      "titleAsc": "Título A–Z",
+      "titleDesc": "Título Z–A",
+      "recentlyAdded": "Añadido recientemente",
+      "oldestAdded": "Añadido primero",
+      "newestRelease": "Estreno más reciente",
+      "oldestRelease": "Estreno más antiguo",
+      "recentlyWatched": "Visto recientemente"
+    },
+    "filters": {
+      "title": "Filtros",
+      "status": "Estado",
+      "genre": "Género",
+      "year": "Año",
+      "servers": "Servidores",
+      "libraries": "Bibliotecas",
+      "apply": "Aplicar",
+      "clearAll": "Borrar todo",
+      "all": "Todos",
+      "unwatched": "Sin ver",
+      "unsupported": "No disponible para las fuentes actuales",
+      "someUnavailable": "Algunos filtros no están disponibles para las fuentes seleccionadas",
+      "noValues": "Nada que elegir"
+    },
+    "states": {
+      "emptyTitle": "Este catálogo está vacío",
+      "emptyBody": "Ninguna biblioteca visible contiene nada para esta página.",
+      "filterEmptyTitle": "Nada coincide con estos filtros",
+      "filterEmptyBody": "Borra un filtro para ver más títulos.",
+      "clearFilters": "Borrar filtros",
+      "errorTitle": "No se pudo cargar el catálogo",
+      "errorBody": "Ningún servidor respondió. Comprueba tu conexión e inténtalo de nuevo.",
+      "partialOne": "1 biblioteca no respondió",
+      "partialMany": "${count} bibliotecas no respondieron"
+    },
+    "semantics": {
+      "watched": "Visto",
+      "inProgress": "En curso",
+      "loadingMore": "Cargando más títulos"
+    },
+    "discovery": {
+      "allMovies": "Todas las películas",
+      "allSeries": "Todas las series",
+      "episodeLabel": "T${season} E${episode}",
+      "partial": "Algunas fuentes no respondieron",
+      "emptyTitle": "Aún no hay nada que descubrir",
+      "emptyBody": "Ninguna biblioteca visible tiene nada que mostrar aquí.",
+      "semantics": {
+        "section": "${title}, ${count} títulos",
+        "position": "${position} de ${count}",
+        "viewAllMovies": "Ver todas las películas, abre el catálogo completo",
+        "viewAllSeries": "Ver todas las series, abre el catálogo completo"
+      }
+    },
+    "home": {
+      "featured": "Destacado"
+    }
+  },
+  "tvNavigation": {
+    "activeDestination": "sección actual",
+    "attentionRequired": "requiere atención"
+  },
+  "tvMyPleya": {
+    "groupContent": "Mi contenido",
+    "groupSources": "Bibliotecas y fuentes",
+    "groupPleya": "Pleya",
+    "serversOnline": "${online} de ${total} servidores en línea",
+    "noServers": "Ningún servidor conectado",
+    "statusOnline": "En línea",
+    "statusOffline": "Sin conexión",
+    "servers": "Servidores",
+    "activity": "Actividad",
+    "logs": "Registros y diagnóstico",
+    "signedInAs": "Sesión iniciada como ${name} · Pleya ${version}",
+    "watchlistSubtitle": "Películas y series guardadas",
+    "requestsSubtitle": "Solicitudes y descubrimiento",
+    "downloadsSubtitle": "Sin conexión y reglas de sincronización",
+    "librariesSubtitle": "Medios, colecciones, listas",
+    "serversSubtitle": "Conexiones y fuentes locales",
+    "activitySubtitle": "Viendo ahora, ver juntos, mando",
+    "watchTogetherSubtitle": "Míralo sincronizado con amigos",
+    "settingsSubtitle": "Pantalla, reproductor, trackers",
+    "logsSubtitle": "Archivos de registro e informes de fallos",
+    "aboutSubtitle": "Versión y licencias",
+    "logoutSubtitle": "Cerrar sesión en este dispositivo",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
+  },
+  "tvContextMenu": {
+    "title": "Acciones",
+    "menuSemantics": "Acción ${index} de ${count}: ${label}",
+    "noUsableSource": "Actualmente no hay ninguna fuente disponible, así que esto no se puede cambiar ahora mismo.",
+    "doneOnAll": "Hecho en las ${count} fuentes",
+    "doneOnSome": "Hecho en ${done} de ${total} fuentes. El resto se reintentará cuando vuelvan a estar en línea.",
+    "doneOnSomeNoRetry": "Hecho en ${done} de ${total} fuentes.",
+    "failed": "Eso no ha funcionado"
   }
 }

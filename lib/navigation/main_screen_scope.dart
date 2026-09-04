@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'tv/tv_content_focus_authority.dart';
+
 /// Dependency aspects for [MainScreenFocusScope].
 ///
 /// The scope is an [InheritedModel] so the per-sidebar-flip values (`offset`)
@@ -32,6 +34,15 @@ class MainScreenFocusScope extends InheritedModel<MainScreenScopeAspect> {
   final void Function(String libraryGlobalKey)? selectLibrary;
   final VoidCallback? openSettings;
 
+  /// The fase-7 TV shell's single content-focus authority (P2), or null on the
+  /// rail and bottom-bar shells, which have no such contract.
+  ///
+  /// Exposed on the scope rather than passed down per screen because the
+  /// consumer is whichever content screen has a late-arriving autofocus path,
+  /// and a screen should not have to know which shell it is mounted under —
+  /// the same reasoning [focusSidebar] is documented under.
+  final TvContentFocusAuthority? tvContentFocus;
+
   const MainScreenFocusScope({
     super.key,
     required this.focusSidebar,
@@ -44,6 +55,7 @@ class MainScreenFocusScope extends InheritedModel<MainScreenScopeAspect> {
     this.viewportWidth,
     this.selectLibrary,
     this.openSettings,
+    this.tvContentFocus,
     required super.child,
   });
 

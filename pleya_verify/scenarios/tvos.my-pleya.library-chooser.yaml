@@ -1,0 +1,80 @@
+name: tvos.my-pleya.library-chooser
+target: tvos-sim
+# Hoofdstuk 16's product contract: concrete libraries visible and choosable,
+# proven by `Movies → Shows → Movies`.
+#
+# This is the only defect the audit of 2 September 2026 classed E, and the only
+# one in that set that was not about styling. The chain was closed and every
+# link of it was measured: `LibrariesProvider: Loaded 2 libraries` in the
+# bundle's own `app.log`, one library on screen, and no way to the other.
+# `PlatformDetector.shouldUseSideNavigation` is `isDesktop || isTV`, so on tvOS
+# the app-bar title takes the static branch and never builds the dropdown that
+# is the screen's only picker; which library you got followed from the saved
+# key or from `visibleLibraries.first`; and the sidebar that gives desktop its
+# second route does not exist in the TV shell. The opened page's `ui_tree` held
+# no chooser, dropdown or menu node at all.
+#
+# So the assertion is not "a chip is drawn". It is that the page *behind* the
+# chip changed, read off `library.header` — a chip that marks itself as chosen
+# is not evidence of anything. And it goes there and back, because a chooser
+# that can only move one way is a chooser that has replaced one trap with
+# another.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - settle: 600
+  - press: down
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+
+  - press: select
+  - wait_until: {id: "my_pleya.section[libraries]", timeout: 20000}
+  - settle: 2500
+
+  # The chooser exists at all, which is the whole of the defect.
+  - assert: {id: library.header, state: {library: Movies}}
+  - snapshot: 00-movies
+
+  # Both libraries the fixture loads have a way in, and exactly one is marked.
+  - assert: {id: "my_pleya.chip[libraries.library_srv-1:2d95c7c96f4e9f4d]", state: {label: Movies, selected: true}}
+  - assert: {id: "my_pleya.chip[libraries.library_srv-1:c6fe01777910c423]", state: {label: Shows, selected: false}}
+
+  # Up to the chooser. Focus lands in the content when the section opens,
+  # which is right for a viewer, so the walk goes back up the page: content,
+  # tabs, chooser. Pressing UP past the top row is a no-op by design, so an
+  # extra press here cannot overshoot into the app-bar icons.
+  - press: up
+  - press: up
+  - press: up
+  - press: up
+  - wait_until: {focused: "my_pleya.chip[libraries.library_srv-1:2d95c7c96f4e9f4d]", timeout: 8000}
+
+  # Movies → Shows.
+  - press: right
+  - wait_until: {focused: "my_pleya.chip[libraries.library_srv-1:c6fe01777910c423]", timeout: 5000}
+  - press: select
+  - settle: 2500
+  - assert: {id: library.header, state: {library: Shows}}
+  - assert: {id: "my_pleya.chip[libraries.library_srv-1:c6fe01777910c423]", state: {selected: true}}
+  - snapshot: 01-shows
+
+  # Shows → Movies, on one press, without leaving the page.
+  - press: left
+  - wait_until: {focused: "my_pleya.chip[libraries.library_srv-1:2d95c7c96f4e9f4d]", timeout: 5000}
+  - press: select
+  - settle: 2500
+  - assert: {id: library.header, state: {library: Movies}}
+  - snapshot: 02-movies-again
+
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}

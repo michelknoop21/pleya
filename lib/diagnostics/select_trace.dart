@@ -203,6 +203,17 @@ class SelectTrace {
 
   bool sawActivationDropped = false;
 
+  /// Set when the user deliberately chose a different source in the unified
+  /// source picker (hoofdstuk 14 of docs/tvos-unified-experience.md).
+  ///
+  /// Without this, a source switch would read as the exact defect this trace
+  /// exists to catch: `selectedTarget` is the card's representative source,
+  /// `activatedTarget` becomes the source the user picked, and the two
+  /// `serverId:itemId` values legitimately differ. [evaluateSelectTrace] skips
+  /// that one comparison when this is set — every later pair still has to
+  /// hold, so a swap *after* the choice is still caught.
+  bool sawSourceSelection = false;
+
   /// Set when a trace was ended because it died rather than because it reached
   /// an outcome. Kept apart from [outcome] being [SelectTraceOutcome.none]:
   /// plenty of presses legitimately open nothing (music, a still-loading
@@ -272,6 +283,13 @@ const List<(SelectTraceLink, SelectTraceLink)> selectTraceComparisons = [
 /// a widget tree, a navigator or a device.
 SelectTraceVerdict evaluateSelectTrace(SelectTrace trace) {
   for (final (from, to) in selectTraceComparisons) {
+    // The one pair a user is allowed to break, and only by choosing a source
+    // by hand. Narrowed to exactly this pair rather than short-circuiting the
+    // whole loop: the picker changes which source opens, it does not license
+    // a mismatch between the route boundary and what the detail screen shows.
+    if (trace.sawSourceSelection && from == SelectTraceLink.selectedTarget && to == SelectTraceLink.activatedTarget) {
+      continue;
+    }
     final before = trace.links[from];
     final after = trace.links[to];
     if (before == null || after == null) continue;
@@ -303,6 +321,9 @@ String formatSelectTraceLine(SelectTrace trace, {required int elapsedMs}) {
     final target = trace.links[link];
     if (target != null) buffer.write(' ${link.label}=${target.identity}');
   }
+  // Without this a reader of a *consistent* line would see `selected` and
+  // `activated` naming different servers and have nothing to explain it.
+  if (trace.sawSourceSelection) buffer.write(' sourcePick=user');
   final headline = trace.links[SelectTraceLink.activatedTarget] ?? trace.links[SelectTraceLink.selectedTarget];
   if (headline != null) buffer.write(' title="${headline.title}"');
   buffer.write(' ms=$elapsedMs');

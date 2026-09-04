@@ -63,6 +63,12 @@ import 'seerr_settings_screen.dart';
 import 'tautulli_settings_screen.dart';
 import 'trackers_settings_screen.dart';
 import '../../widgets/loading_indicator_box.dart';
+import '../../widgets/tv/tv_menu_grid.dart';
+import '../../widgets/tv/tv_page_surface.dart';
+import '../tv/sections/tv_about_screen.dart';
+import '../../navigation/tv/tv_content_route_registry.dart';
+
+part 'parts/settings_tv_page.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -172,6 +178,11 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
   @override
   Widget build(BuildContext context) {
+    // `settings-a`. The whole page, not a wrapper around the desktop cards:
+    // see `parts/settings_tv_page.dart` for what the audit measured and why
+    // the rows become tiles.
+    if (PlatformDetector.isTV()) return _buildTvSettings(context);
+
     return Scaffold(
       body: Focus(
         onKeyEvent: _handleKeyEvent,
@@ -470,13 +481,15 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       title: t.settings.supportDeveloper,
       subtitle: t.settings.supportDeveloperDescription,
       trailingIcon: Symbols.open_in_new_rounded,
-      onTap: () async {
-        final url = Uri.parse(DonationService.donationUrl);
-        if (await canLaunchUrl(url)) {
-          await launchUrl(url, mode: LaunchMode.externalApplication);
-        }
-      },
+      onTap: _handleDonateTap,
     );
+  }
+
+  Future<void> _handleDonateTap() async {
+    final url = Uri.parse(DonationService.donationUrl);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
   }
 
   Widget _buildAppearanceTile() {

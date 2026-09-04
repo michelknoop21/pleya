@@ -532,6 +532,14 @@ end
 # Aanroep vanuit de upload-lanes. Nooit fataal: de build staat dan al op
 # TestFlight en `fastlane attach_builds` haalt het koppelen later in.
 def attach_after_upload(platform, build_number)
+  # Een previewbuild raakt het versierecord niet. Zie de `preview`-lane: dat
+  # koppelen is het enige in deze hele Fastfile dat een eerdere build ergens
+  # vervangt, dus het overslaan is precies wat een losse testbuild losstaand
+  # houdt.
+  if $skip_attach
+    UI.message("#{platform}: build #{build_number} niet aan het versierecord gekoppeld (previewbuild)")
+    return false
+  end
   return ($pending_attach ||= {})[platform] = build_number if $defer_attach
   attach_build_to_version(platform, build_number)
 rescue => e
@@ -858,6 +866,50 @@ lane :whats_new do |options|
     failures << platform
   end
   UI.user_error!("What's New zetten mislukt voor: #{failures.join(', ')}") unless failures.empty?
+end
+
+# Een build om zelf te proberen, zonder iets te vervangen.
+#
+# Twee dingen die vaak door elkaar lopen, want ze klinken hetzelfde:
+#
+# 1. **TestFlight vervangt nooit een build.** Elke upload krijgt een eigen
+#    buildnummer (`ensure_build_number` neemt het hoogste over alle platforms
+#    plus één) en blijft daar negentig dagen naast de vorige staan. Een tester
+#    kan de oude gewoon blijven draaien; hij verdwijnt niet uit de lijst.
+# 2. **Het App Store-versierecord vervangt wél.** `attach_build_to_version`
+#    selecteert de nieuwe build als kandidaat voor de volgende App
+#    Store-release, en dat is de handeling die "de vorige build" van die plek
+#    duwt. Alleen dat wordt hier overgeslagen.
+#
+# Wie de build kan installeren is geen eigenschap van deze lane maar van App
+# Store Connect: `upload_beta` zet `distribute_external: false`, dus de build
+# gaat naar interne testers en naar niemand daarbuiten. Wil je hem écht tot één
+# persoon beperken, dan is de plek daarvoor TestFlight ▸ Internal Testing, waar
+# de groepen en hun leden staan. Dat is een eenmalige instelling in ASC en geen
+# lane-argument, en het is maar goed ook: een release-lane die tijdens een run
+# testers toevoegt of weghaalt is een release-lane die stilletjes rechten
+# verandert.
+desc "Losse previewbuild → TestFlight, zonder aan het App Store-versierecord te koppelen"
+lane :preview do |options|
+  $skip_attach = true
+  platforms = options[:platform] ? [options[:platform]] : %w[ios tvos macos]
+  failures = []
+  platforms.each do |platform|
+    case platform
+    when "ios" then ios_beta
+    when "tvos" then tvos_beta
+    when "macos" then macos_beta
+    else UI.user_error!("Onbekend platform '#{platform}' — kies ios, tvos of macos")
+    end
+  rescue => e
+    UI.error("#{platform} faalde: #{e.message}")
+    failures << platform
+  end
+  UI.success("Previewbuild #{local_build_number} staat op TestFlight en is nergens aan gekoppeld.")
+  UI.message("Alsnog koppelen kan later met: fastlane attach_builds build:#{local_build_number}")
+  UI.user_error!("Previewbuild mislukt voor: #{failures.join(', ')}") unless failures.empty?
+ensure
+  $skip_attach = false
 end
 
 desc "Alle platforms → TestFlight; gaat door als één platform faalt"

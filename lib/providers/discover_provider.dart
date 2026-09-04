@@ -147,6 +147,16 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       : [?_latestShowsHub, ..._seedHubs, ..._personalizedHubs, ..._hubs];
   bool get hasMoreContinueWatching => _hasMoreContinueWatching;
 
+  /// Online servers whose hub or Continue Watching fetch has not succeeded in
+  /// the current load — the `failedServerIds` the fase-6 discovery projection
+  /// needs (hoofdstuk 21.4 and 41 of docs/tvos-unified-experience.md).
+  ///
+  /// It has to be published rather than derived by the projection, because a
+  /// server that failed contributed no hub at all: it left no trace in [hubs]
+  /// for anything downstream to notice it was ever expected. This provider is
+  /// the only place that knows both halves — who was asked, and who answered.
+  Set<String> get unansweredServerIds => _multiServer.onlineServerIds.toSet().difference(_fullyLoadedServerIds);
+
   /// Localized, display-ready load failure — already run through
   /// [friendlyError], never the raw exception. The screen shows it as-is.
   String? get errorMessage => _errorMessage;
@@ -638,16 +648,29 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     return fetched.items;
   }
 
-  /// Refetch a single item (post-edit refresh from a hub row) and swap it
-  /// into whichever lists contain it. Items can come from any registered
-  /// server, so the owning server is resolved by scanning the visible lists.
-  Future<void> updateItem(String itemId) async {
+  /// Refetch a single item (post-edit refresh, or a return from the player)
+  /// and swap it into whichever lists hold it.
+  ///
+  /// [serverId] is what makes this safe on more than one server. A backend
+  /// item id is only unique *within* its server — two Plex servers both
+  /// number their rating keys from 1 — so resolving the owner by scanning
+  /// for a bare id match picks whichever list happens to hold that id first.
+  /// On a single server that is always the right one; on two it silently
+  /// refetches an unrelated title from the wrong server and swaps it into
+  /// the row. Every surface that fans over servers therefore passes the
+  /// owner, and the match is on [MediaItem.globalKey] — the same
+  /// server-qualified key the unified catalog uses throughout.
+  ///
+  /// Without [serverId] the old bare-id behaviour remains, for the
+  /// single-source callers that have no server to give.
+  Future<void> updateItem(String itemId, {String? serverId}) async {
     try {
-      final serverId = _serverIdForItem(itemId);
-      if (serverId == null) return;
-      final updated = await _multiServer.getClientForServer(ServerId(serverId))?.fetchItem(itemId);
+      final ownerId = serverId ?? _serverIdForItem(itemId);
+      if (ownerId == null) return;
+      final key = buildGlobalKey(ServerId(ownerId), itemId);
+      final updated = await _multiServer.getClientForServer(ServerId(ownerId))?.fetchItem(itemId);
       if (updated == null || isDisposed) return;
-      _updateItemInLists(itemId, updated);
+      _updateItemInLists(itemId, updated, globalKey: serverId == null ? null : key);
       safeNotifyListeners();
     } catch (_) {
       // Silently fail — the item will refresh on the next full reload.
@@ -666,15 +689,17 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     return null;
   }
 
-  void _updateItemInLists(String itemId, MediaItem updatedItem) {
-    final onDeckIndex = _onDeck.indexWhere((item) => item.id == itemId);
+  void _updateItemInLists(String itemId, MediaItem updatedItem, {String? globalKey}) {
+    bool matches(MediaItem item) => globalKey == null ? item.id == itemId : item.globalKey == globalKey;
+
+    final onDeckIndex = _onDeck.indexWhere(matches);
     if (onDeckIndex != -1) {
       _onDeck = List.of(_onDeck)..[onDeckIndex] = updatedItem;
     }
 
     for (var i = 0; i < _hubs.length; i++) {
       final hub = _hubs[i];
-      final itemIndex = hub.items.indexWhere((item) => item.id == itemId);
+      final itemIndex = hub.items.indexWhere(matches);
       if (itemIndex != -1) {
         final newItems = List<MediaItem>.from(hub.items);
         newItems[itemIndex] = updatedItem;
@@ -729,6 +754,12 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   void _onWatchStateChanged(WatchStateEvent event) {
     switch (event.changeType) {
       case WatchStateChangeType.removedFromContinueWatching:
+        // Suppress, not merely remove. Hoofdstuk 13.4 point 6: the card must
+        // not come back because the server is slow to stop listing it, and
+        // for a membership whose removal is still queued (point 3) it will
+        // keep listing it until the replay lands. The suppression is
+        // self-cleaning in [_applyOnDeck].
+        _suppressedOnDeckKeys.add(event.globalKey);
         _removeFromOnDeck(event.globalKey);
       case WatchStateChangeType.watched when event.mediaType == MediaKind.movie.id && event.isNowWatched != false:
         // A finished movie leaves the row for good; suppress its key so the

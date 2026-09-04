@@ -151,6 +151,11 @@ class VerifyClient {
 
   Future<Map<String, Object?>> viewport() => _getJson('/v1/viewport');
 
+  /// `/v1/route` — where the app stands now, rather than the transition that
+  /// took it there. See the contract's own section for why the four things
+  /// that already existed do not answer this.
+  Future<Map<String, Object?>> route() => _getJson('/v1/route');
+
   Future<Map<String, Object?>> logs({int since = 0}) => _getJson('/v1/logs', {'since': '$since'});
 
   Future<Map<String, Object?>> wait({
@@ -240,6 +245,7 @@ class VerifyClient {
     (method: 'GET', path: '/v1/screens'),
     (method: 'GET', path: '/v1/automation_ids'),
     (method: 'GET', path: '/v1/viewport'),
+    (method: 'GET', path: '/v1/route'),
     (method: 'GET', path: '/v1/logs'),
     (method: 'POST', path: '/v1/wait'),
     (method: 'POST', path: '/v1/input/key'),

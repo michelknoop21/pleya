@@ -68,6 +68,12 @@ abstract class VerificationDriver {
   /// app has no `WidgetsBinding` yet.
   Future<Map<String, Object?>> viewport();
 
+  /// `/v1/route` — the app's current position: active tab, TV destination,
+  /// and the nested route open above that destination's root. The one
+  /// observation that can tell "a tile opened a section" apart from "the
+  /// press did nothing".
+  Future<Map<String, Object?>> route();
+
   /// `/v1/screens`'s `screens` list — one entry per mounted
   /// `AutomationScreen`, `{id, state, ready}`.
   Future<List<Map<String, Object?>>> screensSnapshot();
@@ -87,7 +93,13 @@ abstract class VerificationDriver {
   /// tvOS (Fase 10), which never does.
   String get inputRoute;
 
-  Future<void> press(String key);
+  /// One remote press. [hold] makes it a real long press — the key stays
+  /// down for that duration between keyDown and keyUp — and is supported
+  /// only where the driver can express that; every other driver must throw
+  /// rather than degrade it into an ordinary press, because a scenario
+  /// asserting "long select opens the context menu" would otherwise pass or
+  /// fail for reasons unrelated to what it claims to test.
+  Future<void> press(String key, {Duration? hold});
 
   Future<void> typeText(String text);
 

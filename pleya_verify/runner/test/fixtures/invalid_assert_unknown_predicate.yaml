@@ -1,0 +1,8 @@
+name: fixture.invalid_assert_unknown_predicate
+target: macos
+setup:
+  - reset_app
+steps:
+  # `focussed` with two s's. The step still names a real node, so presence
+  # succeeds and every predicate handler skips it: green, and nothing checked.
+  - assert: {id: nav.discover, focussed: true}

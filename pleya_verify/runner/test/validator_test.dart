@@ -47,6 +47,24 @@ void main() {
     expect(errors.single.message, contains('requires a timeout field'));
   });
 
+  test('an assert with a mistyped predicate name is rejected', () {
+    // The false-PASS this guards: presence succeeds, no handler recognizes
+    // `focussed`, so the step evaluates nothing and reports green. An assert
+    // that checks nothing is worse than a missing assert — it leaves a
+    // passing verdict in the manifest for a claim never made.
+    final scenario = parseScenarioFile(File('test/fixtures/invalid_assert_unknown_predicate.yaml'));
+    final errors = validateScenario(scenario, catalog);
+    expect(errors, hasLength(1));
+    expect(errors.single.message, contains("'focussed'"));
+  });
+
+  test('an assert whose focused value is not a boolean is rejected', () {
+    final scenario = parseScenarioFile(File('test/fixtures/invalid_assert_focused_type.yaml'));
+    final errors = validateScenario(scenario, catalog);
+    expect(errors, hasLength(1));
+    expect(errors.single.message, contains('focused'));
+  });
+
   test('an unknown automation id is rejected', () {
     final scenario = parseScenarioString(
       'name: x\ntarget: macos\nsteps:\n  - assert: {id: nonexistent.thing}\n',
@@ -77,6 +95,37 @@ void main() {
     expect(errors.single.message, contains("unknown verb 'swipe'"));
   });
 
+  group('press', () {
+    Scenario press(String target, String body) =>
+        parseScenarioString('name: t\ntarget: $target\nsteps:\n  - press: $body\n', sourcePath: 'test.yaml');
+
+    test('the scalar and map forms both validate on tvOS', () {
+      expect(validateScenario(press('tvos-sim', 'down'), catalog), isEmpty);
+      expect(validateScenario(press('tvos-sim', '{key: select, holdMs: 1200}'), catalog), isEmpty);
+    });
+
+    test('menu validates — the Mijn Pleya audit is impossible without Back', () {
+      expect(validateScenario(press('tvos-sim', 'menu'), catalog), isEmpty);
+    });
+
+    test('a malformed key is rejected on file+line, not three minutes into a booted simulator', () {
+      final errors = validateScenario(press('tvos-sim', 'sideways'), catalog);
+      expect(errors, hasLength(1));
+      expect(errors.single.line, 4);
+      expect(errors.single.message, contains("unknown remote key 'sideways'"));
+    });
+
+    test('a hold outside a tvOS target is rejected rather than silently becoming a short press', () {
+      final errors = validateScenario(press('macos', '{key: select, holdMs: 900}'), catalog);
+      expect(errors, hasLength(1));
+      expect(errors.single.message, contains('only supported on a tvOS target'));
+    });
+
+    test('a short press on macOS is still fine', () {
+      expect(validateScenario(press('macos', 'select'), catalog), isEmpty);
+    });
+  });
+
   test('every verb setupVerbs/stepVerbs advertise has a real case in the engine switch', () {
     // A verb that validates but has no engine case only fails after a full
     // build, install and launch (see `run_scenario_test.dart`'s "verbs that
@@ -86,9 +135,7 @@ void main() {
     // catches the drift the moment a verb is added to one side and not the
     // other, without needing a driver/build for every verb.
     final engineSource = File('lib/src/engine/run_scenario.dart').readAsStringSync();
-    final caseVerbs = RegExp(
-      r"case '([a-z_]+)':",
-    ).allMatches(engineSource).map((m) => m.group(1)!).toSet();
+    final caseVerbs = RegExp(r"case '([a-z_]+)':").allMatches(engineSource).map((m) => m.group(1)!).toSet();
 
     final advertisedVerbs = {...setupVerbs, ...stepVerbs};
 
@@ -105,7 +152,8 @@ void main() {
     expect(
       implementedButNotAdvertised,
       isEmpty,
-      reason: 'run_scenario.dart implements a verb no scenario can ever reach — it is missing from '
+      reason:
+          'run_scenario.dart implements a verb no scenario can ever reach — it is missing from '
           'setupVerbs/stepVerbs in model.dart',
     );
   });

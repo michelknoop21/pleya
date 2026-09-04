@@ -16,6 +16,7 @@ import '../utils/content_utils.dart';
 import '../utils/formatters.dart';
 import '../utils/layout_constants.dart';
 import '../utils/media_image_helper.dart';
+import '../utils/platform_detector.dart';
 import 'app_icon.dart';
 import 'fitting_title_text.dart';
 import 'media_rating_badge.dart';
@@ -94,6 +95,21 @@ class TvSpotlightBackground extends StatelessWidget {
   /// `cover` crop of a poster on a 16:9 surface is a giant face, never a
   /// backdrop.
   static const double _posterFillBlurSigma = 40;
+
+  /// Op welke maat de backdrop wordt opgevraagd.
+  ///
+  /// `art` plafonneert op 2560x1440. Dat is een bewuste keuze voor een retina
+  /// desktoppaneel en te klein voor een Apple TV 4K, waar dit oppervlak het
+  /// hele scherm is: 3840x2160 fysieke pixels. Elke backdrop kwam daar
+  /// anderhalf keer te klein binnen en werd beeldvullend opgeschaald.
+  /// `heroArt` heeft precies dat oppervlak als plafond, en de fase-8 herokaart
+  /// is er om dezelfde reden al op overgezet (`tv_hero_artwork.dart`).
+  ///
+  /// Alleen op TV, want dit scherm draait ook als aanbevolen-tab op desktop en
+  /// mobiel, en daar is de 1440p-cap het antwoord dat er al lag. De
+  /// gereduceerde tier houdt zijn eigen 1280x720-cap; die geldt voor allebei de
+  /// types.
+  ImageType get _backdropImageType => PlatformDetector.isTV() ? ImageType.heroArt : ImageType.art;
 
   double _scale(BuildContext context) => TvLayoutConstants.scaleOf(context);
 
@@ -275,7 +291,7 @@ class TvSpotlightBackground extends StatelessWidget {
       maxWidth: size.width,
       maxHeight: size.height,
       devicePixelRatio: dpr,
-      imageType: ImageType.art,
+      imageType: _backdropImageType,
     );
 
     if (imageUrl.isEmpty) {
@@ -285,7 +301,9 @@ class TvSpotlightBackground extends StatelessWidget {
     final (_, memHeight) = MediaImageHelper.getMemCacheDimensions(
       displayWidth: (size.width * dpr).round(),
       displayHeight: (size.height * dpr).round(),
-      imageType: ImageType.art,
+      // Hetzelfde type als de aanvraag hierboven: 3840 ophalen en in 2560
+      // decoderen levert dezelfde onscherpte langs een andere weg op.
+      imageType: _backdropImageType,
     );
 
     return _posterFill(

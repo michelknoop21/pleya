@@ -3,13 +3,17 @@ import 'package:flutter/material.dart';
 import '../focus/focusable_chip_mixin.dart';
 import '../focus/input_mode_tracker.dart';
 import '../theme/mono_tokens.dart';
+import '../utils/platform_detector.dart';
 import 'focus_builders.dart';
 
 /// How a [FocusableTabChip] draws itself.
 enum TabChipStyle {
-  /// Plain text with a rule under the active label. For section navigation
-  /// (library tabs, Live TV tabs) where the row should read as a heading
-  /// rather than a strip of buttons.
+  /// Plain text, the active label carrying the ink and the weight. For section
+  /// navigation (library tabs, Live TV tabs) where the row should read as a
+  /// heading rather than a strip of buttons.
+  ///
+  /// Off TV a brand-red rule marks the active label as well. On TV it does
+  /// not: see [_ruleColour].
   underline,
 
   /// Filled pill, meant to sit inside a [SegmentedTabGroup]. For sets that
@@ -91,6 +95,23 @@ class _FocusableTabChipState extends State<FocusableTabChip> with FocusableChipS
   /// bar belongs to the word, the gap below it belongs to the header.
   static const double _labelGap = 3;
 
+  /// The rule under the open tab, which on TV is not drawn at all.
+  ///
+  /// A ten-foot tab row marks its choice with ink and weight, and nothing
+  /// else. `libraries-d.png` in the mockups of 2 September 2026 draws the open
+  /// tab as bold white text beside muted neighbours, and the set approved on
+  /// 3 September keeps the brand red for the progress line and the recording
+  /// marker. A red rule under a tab was the third focus affordance on one
+  /// screen, next to the white ring and the settings focus bar, which is what
+  /// the audit objected to.
+  ///
+  /// Returning transparent rather than dropping the bar keeps the row's
+  /// geometry exactly as it was: the reserved strip still sizes the header the
+  /// library screen declares in its `PreferredSize`, so nothing above or below
+  /// it moves. Off TV the rule is unchanged: no mockup asks desktop or mobile
+  /// to give it up.
+  Color _ruleColour(MonoTokens tk) => widget.isSelected && !PlatformDetector.isTV() ? tk.accent : Colors.transparent;
+
   @override
   FocusNode? get widgetFocusNode => widget.focusNode;
 
@@ -141,10 +162,12 @@ class _FocusableTabChipState extends State<FocusableTabChip> with FocusableChipS
 
   /// Text tab: no fill, no border, no box. Two states, two separate signals.
   ///
-  /// The accent bar marks the open tab. It is as wide as the label, and it
-  /// stops [_indicatorGap] short of the bottom edge, because in a header the
+  /// Off TV the accent bar marks the open tab. It is as wide as the label, and
+  /// it stops [_indicatorGap] short of the bottom edge, because in a header the
   /// bottom edge is exactly where the hairline runs and a bar touching that
-  /// line makes the two read as one thick rule under the label.
+  /// line makes the two read as one thick rule under the label. On TV the bar
+  /// is transparent and the ink and the weight carry the state alone; see
+  /// [_ruleColour].
   ///
   /// Focus never draws a line of its own. It brightens the label and lifts it
   /// a few percent, which paints rather than lays out, so the neighbouring
@@ -189,7 +212,7 @@ class _FocusableTabChipState extends State<FocusableTabChip> with FocusableChipS
             child: AnimatedContainer(
               duration: reduceMotion(context, tk.fast),
               height: _indicatorHeight,
-              color: widget.isSelected ? tk.accent : Colors.transparent,
+              color: _ruleColour(tk),
             ),
           ),
         ],

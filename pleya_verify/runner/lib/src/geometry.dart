@@ -156,3 +156,36 @@ GeometryVerdict sameColumn(GeoRect a, GeoRect b, {double tolerance = 1.0}) {
   if (delta <= tolerance) return GeometryVerdict.pass('$a and $b share a column (Δx=$delta)');
   return GeometryVerdict.fail('$a and $b do not share a column (Δx=$delta > $tolerance)', {'delta': delta});
 }
+
+/// The canonical content edge, as a number rather than an opinion.
+///
+/// [rect]'s left edge against [viewport]'s, in the viewport's own units. The
+/// styling audit of 2 September 2026 measured twelve distinct content edges
+/// across nine pages, all of them plausible-looking on a screenshot; this is
+/// what makes a page that quietly reintroduces its own margin break a run.
+///
+/// [expected] is the canonical inset in the same units — `TvTopNavLayout.pageInset`
+/// resolved for the device, not a percentage typed into a scenario, because a
+/// percentage would have to be retyped for every canvas the app runs on.
+/// [tolerance] absorbs rounding and the focus-ring gap a tile spends inside its
+/// own box; it is not a licence to be approximately aligned.
+///
+/// Only meaningful once `/v1/ui_tree` and `/v1/viewport` agree on a coordinate
+/// system. They did not until `AutomationRegistry._boundsOf` stopped composing
+/// a transformed offset with an untransformed size, so this predicate is
+/// deliberately younger than the fix it depends on.
+GeometryVerdict leftInset(GeoRect rect, GeoRect viewport, {required double expected, double tolerance = 2.0}) {
+  final actual = rect.left - viewport.left;
+  final delta = (actual - expected).abs();
+  final detail = <String, Object?>{
+    'actual': actual,
+    'expected': expected,
+    'delta': delta,
+    'tolerance': tolerance,
+    'viewportWidth': viewport.width,
+    'actualFraction': viewport.width == 0 ? null : actual / viewport.width,
+  };
+  return delta <= tolerance
+      ? GeometryVerdict.pass('left edge at $actual, within $tolerance of $expected', detail)
+      : GeometryVerdict.fail('left edge at $actual, expected $expected (off by $delta)', detail);
+}

@@ -1,0 +1,8 @@
+name: fixture.invalid_assert_focused_type
+target: macos
+setup:
+  - reset_app
+steps:
+  # `yes` is a boolean in YAML 1.1 and a plain string in the 1.2 core schema
+  # this parser implements.
+  - assert: {id: nav.discover, focused: yes}

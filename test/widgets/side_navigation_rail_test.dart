@@ -576,11 +576,14 @@ void main() {
     sideNavKey.currentState!.focusActiveItem();
     await tester.pumpAndSettle();
 
-    // Downloads is hidden on Apple TV, so the rail is Home -> Search ->
-    // Settings and Settings is exactly two steps down. Pressing a third time
-    // would prove nothing: on macOS it saturates on the last item, but on
-    // Windows and Linux the fullscreen toggle sits after Settings and swallows
-    // it, and Enter there never reaches onDestinationSelected.
+    // Downloads is hidden on Apple TV and fase 5 added the two unified
+    // catalogs, so the rail is Home -> Films -> Series -> Search -> Settings
+    // and Settings is exactly four steps down. Pressing a fifth time would
+    // prove nothing: on macOS it saturates on the last item, but on Windows and
+    // Linux the fullscreen toggle sits after Settings and swallows it, and
+    // Enter there never reaches onDestinationSelected.
+    await _press(tester, LogicalKeyboardKey.arrowDown);
+    await _press(tester, LogicalKeyboardKey.arrowDown);
     await _press(tester, LogicalKeyboardKey.arrowDown);
     await _press(tester, LogicalKeyboardKey.arrowDown);
     await _press(tester, LogicalKeyboardKey.enter);
@@ -1024,9 +1027,14 @@ void main() {
 
       expect(find.widgetWithText(NavigationRailItem, t.nowWatching.sidebarLabel), findsNothing);
 
-      // Downloads is hidden on Apple TV, so the rail is Home, Search, Settings.
+      // Downloads is hidden on Apple TV and fase 5 added Films and Series, so
+      // the rail is Home, Films, Series, Search, Settings.
       focusRow(tester, t.common.home);
       await tester.pumpAndSettle();
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      expect(rowHasFocus(tester, t.unifiedCatalog.moviesTitle), isTrue);
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      expect(rowHasFocus(tester, t.unifiedCatalog.seriesTitle), isTrue);
       await _press(tester, LogicalKeyboardKey.arrowDown);
       expect(rowHasFocus(tester, t.common.search), isTrue);
       await _press(tester, LogicalKeyboardKey.arrowDown);

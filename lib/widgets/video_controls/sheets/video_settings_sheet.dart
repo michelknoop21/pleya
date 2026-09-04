@@ -41,6 +41,17 @@ import '../../../i18n/strings.g.dart';
 import 'base_video_control_sheet.dart';
 import 'version_quality_sheet.dart';
 
+/// Where the compact audio/subtitle sync bar sits, and how big it is.
+///
+/// Public and named because it is the app's only surface that places itself:
+/// every other overlay lets the host decide, and on a television that means the
+/// centred 10-foot panel (OVR1b). This one is a thin bar that belongs against
+/// the top edge while you watch the picture behind it, and the resolver honours
+/// that on every platform (OVR2). Tests read these two rather than repeating
+/// the numbers, so the contract has one home.
+const Alignment kCompactSyncBarAlignment = Alignment.topCenter;
+const BoxConstraints kCompactSyncBarConstraints = BoxConstraints(maxHeight: 80, maxWidth: 900);
+
 enum _SettingsView {
   menu,
   speed,
@@ -334,8 +345,8 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
     // whenComplete in track_chapter_controls). Cancel it again here.
     controller
         .show(
-          alignment: .topCenter,
-          constraints: const BoxConstraints(maxHeight: 80, maxWidth: 900),
+          alignment: kCompactSyncBarAlignment,
+          constraints: kCompactSyncBarConstraints,
           initialFocusNode: sliderFocusNode,
           builder: (_) => _CompactSyncBar(
             title: title,

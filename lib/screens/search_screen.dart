@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:pleya/widgets/app_icon.dart';
@@ -13,6 +14,7 @@ import '../i18n/strings.g.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../models/seerr/seerr_media.dart';
+import '../providers/hidden_libraries_provider.dart';
 import '../providers/seerr_provider.dart';
 import '../widgets/focusable_filter_chip.dart';
 import '../widgets/focusable_list_tile.dart';
@@ -22,11 +24,18 @@ import 'seerr/seerr_media_detail_screen.dart';
 import '../mixins/controller_disposer_mixin.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
+import '../media/unified/unified_media_group.dart';
+import '../media/ids.dart';
 import '../providers/multi_server_provider.dart';
+import '../services/unified_catalog/search_projection.dart';
+import '../utils/external_ids_fetcher.dart';
+import '../utils/provider_extensions.dart';
+
 import '../services/apple_tv_native_text_entry.dart';
 import '../services/settings_service.dart';
 import '../services/speech_search_service.dart';
 import '../utils/app_logger.dart';
+import '../utils/layout_constants.dart';
 import '../utils/native_input_session.dart';
 import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
@@ -35,7 +44,12 @@ import '../widgets/pill_input_decoration.dart';
 import '../widgets/focusable_media_card.dart';
 import '../widgets/skeletons.dart';
 import '../widgets/state_view.dart';
+import '../widgets/tv/tv_discovery_rail.dart';
+import '../widgets/tv/tv_rail_stack.dart';
+import '../widgets/tv/tv_unified_layout.dart';
 import '../widgets/tv_virtual_keyboard.dart';
+import 'tv/tv_discovery_activation_mixin.dart';
+
 import '../utils/focus_utils.dart';
 import 'main_screen.dart';
 
@@ -67,7 +81,13 @@ class _AllServersFailed implements Exception {
 const int _searchHistoryLimit = 15;
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.onManageServers});
+
+  /// Hoofdstuk 14.7's escape hatch from the unified source picker's
+  /// `NoUsableSource` state — the same affordance the discovery landings
+  /// and the Home hero offer for the same situation. Used by TV search's
+  /// `activateDiscoveryGroup` calls.
+  final VoidCallback? onManageServers;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -80,11 +100,28 @@ class _SearchScreenState extends State<SearchScreen>
         SearchInputFocusable,
         FocusableTab,
         ControllerDisposerMixin,
-        MountedSetStateMixin {
+        MountedSetStateMixin,
+        TvDiscoveryActivationMixin {
   late final _searchController = createTextEditingController();
   final _searchFocusNode = FocusNode(debugLabel: 'SearchInput');
   final _firstResultFocusNode = FocusNode(debugLabel: 'SearchFirstResult');
   List<MediaItem> _searchResults = [];
+  // TV only (hoofdstuk 16.1/16.2): the unified projection of the same
+  // `_searchResults` this screen already fetched. Built alongside
+  // `_searchResults` rather than derived from it in `build()`, because the
+  // projection is async (identity resolution needs a network round trip per
+  // ambiguous title) and `build()` cannot await. Non-TV never reads this —
+  // desktop/mobile search stays exactly the source-concrete list it always
+  // was (DEC pending: fase 6 is a TV phase, `search_screen.dart` is shared).
+  UnifiedSearchProjection? _tvProjection;
+  // TV only: the group rails of the result page, in the order hoofdstuk 16.1
+  // draws them. It owns two things — reaching the first rail, so the existing
+  // "focus the first result" call sites (OSK Done, keyboard navigate-down,
+  // submit-while-results-loaded) land on it the same way they landed on
+  // `_firstResultFocusNode`'s card in the non-TV list, and UP/DOWN between the
+  // rails at one column (LAND4). Keyed on the section name rather than on a
+  // position: which sections are non-empty changes with every query.
+  final _tvRails = TvRailStack();
   bool _isSearching = false;
   bool _hasSearched = false;
   late final Debounce _searchDebounce;
@@ -102,6 +139,14 @@ class _SearchScreenState extends State<SearchScreen>
   String? _focusResultsForQuery;
   _SearchFilter _activeFilter = _SearchFilter.all;
   List<String> _history = const [];
+  // TV only (B17): set in initState so dispose can remove the same listener
+  // without touching context after the tree may have started tearing down.
+  HiddenLibrariesProvider? _hiddenLibrariesForTvRefresh;
+  // The hidden set the last dispatched fan-out actually used — compared
+  // against on every provider change so a notification that left the
+  // effective set unchanged (the provider's own init, or a hide/unhide of a
+  // library no result here belongs to) does not cost a second fan-out.
+  Set<String> _lastSearchedHiddenLibraryKeys = const {};
 
   // Jellyseerr/Overseerr fallback: an explicit, one-shot search the user
   // triggers when a title isn't in their library (never per-keystroke).
@@ -117,7 +162,21 @@ class _SearchScreenState extends State<SearchScreen>
     _history = SettingsService.instance.read(SettingsService.searchHistory);
     FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
     _nativeEntryUnavailable = PlatformDetector.isAppleTV() && AppleTvNativeTextEntry.instance.isUnavailable;
+    // Warm the visibility set so the first query already filters against the
+    // persisted value rather than an empty placeholder.
+    unawaited(context.hiddenLibraries.ensureInitialized());
     if (PlatformDetector.isTV()) {
+      // B17: a library hidden or unhidden after this screen already has
+      // results must not leave a stale membership on screen — re-run the same
+      // query through the same fan-out, so the filter is applied exactly
+      // where every other search result is, before grouping. This also
+      // catches the provider's own first-load notification (`_initialize()`
+      // ends with one `notifyListeners()` regardless of whether the set
+      // changed): if a query was submitted before the persisted visibility
+      // loaded — the cold-start race this row is about — it dispatched
+      // against whatever was in memory at that instant, and this rerun
+      // corrects it against the real set the moment it lands.
+      _hiddenLibrariesForTvRefresh = context.hiddenLibraries..addListener(_onHiddenLibrariesChanged);
       unawaited(
         SpeechSearchService.instance.isSupported().then((supported) {
           setStateIfMounted(() => _voiceSearchSupported = supported);
@@ -216,9 +275,26 @@ class _SearchScreenState extends State<SearchScreen>
   void dispose() {
     _searchDebounce.cancel();
     _searchController.removeListener(_onSearchChanged);
+    _hiddenLibrariesForTvRefresh?.removeListener(_onHiddenLibrariesChanged);
     _searchFocusNode.dispose();
     _firstResultFocusNode.dispose();
     super.dispose();
+  }
+
+  /// B17: re-runs the last search when the hidden-library set changes under
+  /// it, so a title from a library that was just hidden does not linger as an
+  /// activation candidate, and one that was just unhidden can come back. Also
+  /// the correction path for the cold-start race (see `_performSearch`):
+  /// `_initialize()` fires this same notification once, on the same
+  /// condition, and a set that turns out unchanged is a no-op below rather
+  /// than a second fan-out for nothing.
+  void _onHiddenLibrariesChanged() {
+    if (!mounted) return;
+    final query = _lastSearchedQuery;
+    if (query.isEmpty) return;
+    final current = context.hiddenLibraries.hiddenLibraryKeys;
+    if (setEquals(current, _lastSearchedHiddenLibraryKeys)) return;
+    unawaited(_performSearch(query));
   }
 
   void _onSearchChanged() {
@@ -277,6 +353,7 @@ class _SearchScreenState extends State<SearchScreen>
     if (query.isEmpty) {
       setStateIfMounted(() {
         _searchResults = [];
+        _tvProjection = null;
         _hasSearched = false;
         _searchError = null;
       });
@@ -326,7 +403,38 @@ class _SearchScreenState extends State<SearchScreen>
         throw const _NoServersAvailable();
       }
 
-      final aggregated = await multiServerProvider.aggregationService.searchAcrossServers(query);
+      // Hidden libraries are a hard visibility boundary (hoofdstuk 22), and
+      // search is a fan-out like any other — a title in a hidden library must
+      // not surface here, nor become a source under a unified TV group.
+      //
+      // Read synchronously rather than awaiting `ensureInitialized()`. The
+      // provider starts loading when the profile session mounts and initState
+      // warms it again here, both long before a query can be typed and
+      // submitted. Awaiting on this path instead would put an async gap
+      // between the keystroke and the fan-out, and it broke the screen's own
+      // tests by moving the client call a microtask later than the harness
+      // expects — confirmed again while closing B17: the widget-test harness
+      // does not guarantee the provider is done loading by the time a search
+      // dispatches even after a settled pump, so gating the dispatch on
+      // readiness is not a fix, it is the same bug wearing a condition.
+      //
+      // B17's actual fix is the read-and-correct pair below plus the
+      // `_onHiddenLibrariesChanged` listener registered in `initState` (TV
+      // only): a query submitted before storage finishes loading still
+      // dispatches immediately against whatever is in memory (unchanged
+      // behaviour, so no new async gap), but `_initialize()` ends with its own
+      // `notifyListeners()` regardless of whether the set changed — the same
+      // signal a later hide/unhide fires — so the already-armed listener
+      // reruns this same query the instant the real set lands, before a user
+      // can plausibly have acted on the uncorrected screen. The filter is
+      // still applied before grouping; it is just applied twice when the
+      // first pass ran on a stale set, not applied late.
+      final hiddenLibraries = context.hiddenLibraries;
+      _lastSearchedHiddenLibraryKeys = hiddenLibraries.hiddenLibraryKeys;
+      final aggregated = await multiServerProvider.aggregationService.searchAcrossServers(
+        query,
+        hiddenLibraryKeys: _lastSearchedHiddenLibraryKeys,
+      );
       if (!mounted || isStale()) return;
       // Not one server answered → this is a connection failure, not an empty
       // library. Reporting it as "no results" is what made a dead network look
@@ -335,8 +443,22 @@ class _SearchScreenState extends State<SearchScreen>
         throw const _AllServersFailed();
       }
       final neutral = aggregated.items;
+      // TV only (hoofdstuk 16.1/16.2, fase 6): project onto the unified
+      // model — "Dune (2021) — 3 bronnen", not one row per server. Runs
+      // after the staleness check above and rechecks it again below, since
+      // this await (identity resolution) is exactly the kind of network
+      // round trip `isStale()` exists to guard against — a slower "bat"
+      // landing after a faster "batman" must not overwrite the newer query's
+      // projection either. Desktop/mobile never take this branch, so their
+      // search stays the source-concrete list it always was.
+      UnifiedSearchProjection? tvProjection;
+      if (PlatformDetector.isTV()) {
+        tvProjection = await searchProjection(neutral, fetchExternalIds: externalIdsFetcherFor(multiServerProvider));
+        if (!mounted || isStale()) return;
+      }
       setStateIfMounted(() {
         _searchResults = neutral;
+        _tvProjection = tvProjection;
         _isSearching = false;
         _lastSearchedQuery = query;
         _activeFilter = _SearchFilter.all;
@@ -354,6 +476,7 @@ class _SearchScreenState extends State<SearchScreen>
         // connection problem.
         _searchError = e is _NoServersAvailable ? _SearchError.noServers : _SearchError.network;
         _searchResults = const [];
+        _tvProjection = null;
         // Reset the filter too: keeping it would leave an active chip whose
         // row is now hidden, i.e. an apparently empty list with no way back.
         _activeFilter = _SearchFilter.all;
@@ -448,7 +571,7 @@ class _SearchScreenState extends State<SearchScreen>
     if (query.isEmpty) return;
 
     if (_searchResults.isNotEmpty && !_isSearching && query == _lastSearchedQuery.trim()) {
-      _firstResultFocusNode.requestFocus();
+      _focusFirstResult();
       return;
     }
 
@@ -466,7 +589,9 @@ class _SearchScreenState extends State<SearchScreen>
     _focusResultsForQuery = null;
     if (results.isEmpty) return;
     if (_searchController.text.trim() != query.trim()) return; // user kept editing
-    FocusUtils.requestFocusAfterBuild(this, _firstResultFocusNode);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusFirstResult();
+    });
   }
 
   @override
@@ -557,7 +682,7 @@ class _SearchScreenState extends State<SearchScreen>
     if (_isSearching) return;
     if (FocusScope.of(context).focusInDirection(TraversalDirection.down)) return;
     if (_searchResults.isNotEmpty) {
-      _firstResultFocusNode.requestFocus();
+      _focusFirstResult();
     }
   }
 
@@ -671,6 +796,138 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
+  /// TV only (hoofdstuk 16.1/16.2, fase 6): renders the unified sections
+  /// instead of [_buildFilterChips] + [_buildResultsList]. Films/Series/
+  /// Afleveringen are unified rows — one tile per logical title — activated
+  /// through the same fase-4 coordinator the discovery landings use
+  /// ([TvDiscoveryActivationMixin.activateDiscoveryGroup]), never a
+  /// representative-source shortcut. Collections, playlists, people and
+  /// anything hoofdstuk 16.1 does not name stay source-concrete, rendered
+  /// exactly like the non-TV result list — there is no identity rule to merge
+  /// them on, and hoofdstuk 16.1 says so outright.
+  List<Widget> _buildTvResultSections(BuildContext context) {
+    final projection = _tvProjection;
+    if (projection == null) return const [];
+    final multiServer = context.watch<MultiServerProvider>();
+    final scale = TvLayoutConstants.scaleOf(context);
+
+    // Which section is first is derived from the data — hoofdstuk 16.1's own
+    // section order, evaluated once — rather than from the order these
+    // section-builders happen to be *called* in below. A closure-order flag
+    // would silently break "focus the first result" the moment a future edit
+    // reordered one of the seven `if` lines without also reordering the flag
+    // logic; a value computed from `projection` itself can't drift from what
+    // is actually rendered first.
+    final firstNonEmptySection = [
+      if (projection.movies.isNotEmpty) 'movies',
+      if (projection.shows.isNotEmpty) 'shows',
+      if (projection.episodes.isNotEmpty) 'episodes',
+      if (projection.collections.isNotEmpty) 'collections',
+      if (projection.playlists.isNotEmpty) 'playlists',
+      if (projection.people.isNotEmpty) 'people',
+      if (projection.other.isNotEmpty) 'other',
+    ].firstOrNull;
+
+    // The rails, and only the rails: the four source-concrete sections are
+    // vertical lists of cards, not stacked bands, so they are not part of the
+    // column contract and Flutter's traversal reaches them the way it always
+    // did.
+    final railSections = [
+      if (projection.movies.isNotEmpty) 'movies',
+      if (projection.shows.isNotEmpty) 'shows',
+      if (projection.episodes.isNotEmpty) 'episodes',
+    ];
+    _tvRails.layOut(railSections);
+
+    List<Widget> groupSection(String key, String title, List<UnifiedMediaGroup> groups) {
+      final railIndex = railSections.indexOf(key);
+      return [
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: TvDiscoveryLayout.railSectionHeight(scale),
+            child: TvDiscoveryRail(
+              key: _tvRails.keyFor(key),
+              title: title,
+              groups: groups,
+              // A result's title lives only in the rail's caption, so here it
+              // is a label and not a projection of where the remote is. See
+              // [TvDiscoveryRail.alwaysDescribesCurrent]: on a feed the caption
+              // follows the focus, on a result list it names what you are
+              // looking at.
+              alwaysDescribesCurrent: true,
+              clientFor: (serverId) => multiServer.serverManager.getClient(ServerId(serverId)),
+              onActivate: (group) => activateDiscoveryGroup(group, onManageServers: widget.onManageServers),
+              onContextMenu: openDiscoveryContextMenu,
+              // Rail to rail at the same column (LAND4). Only between the three
+              // group rails: above the first one is the search field and below
+              // the last one are the source-concrete result lists, and both are
+              // reached correctly by Flutter's own traversal — which is what a
+              // null handler leaves it to.
+              onNavigateUp: _tvRails.up(railIndex),
+              onNavigateDown: _tvRails.down(railIndex),
+            ),
+          ),
+        ),
+      ];
+    }
+
+    List<Widget> itemSection(String key, String title, List<MediaItem> items) {
+      final isFirst = key == firstNonEmptySection;
+      return [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final item = items[index];
+              return FocusableMediaCard(
+                key: Key(item.globalKey),
+                item: item,
+                forceListMode: true,
+                disableScale: true,
+                focusNode: isFirst && index == 0 ? _firstResultFocusNode : null,
+                onRefresh: updateItem,
+                onListRefresh: () => updateItem(item.id),
+                onNavigateLeft: _navigateToSidebar,
+                showServerName: multiServer.totalServerCount > 1,
+              );
+            }, childCount: items.length),
+          ),
+        ),
+      ];
+    }
+
+    return [
+      if (projection.movies.isNotEmpty) ...groupSection('movies', t.unifiedCatalog.moviesTitle, projection.movies),
+      if (projection.shows.isNotEmpty) ...groupSection('shows', t.unifiedCatalog.seriesTitle, projection.shows),
+      if (projection.episodes.isNotEmpty) ...groupSection('episodes', t.search.filters.episodes, projection.episodes),
+      if (projection.collections.isNotEmpty) ...itemSection('collections', t.collections.title, projection.collections),
+      if (projection.playlists.isNotEmpty) ...itemSection('playlists', t.playlists.title, projection.playlists),
+      if (projection.people.isNotEmpty) ...itemSection('people', t.search.filters.people, projection.people),
+      if (projection.other.isNotEmpty) ...itemSection('other', t.search.filters.other, projection.other),
+    ];
+  }
+
+  /// The one "focus the first result" target every submit/keyboard-navigate
+  /// call site already used before TV got unified sections. On TV, "first
+  /// result" is the first tile of the first discovery rail when one was
+  /// rendered — `TvRailStack.focusFirstCurrent()` reaches it through
+  /// `TvDiscoveryRailState.focusCurrent()`, the same API the discovery
+  /// landing uses for restoration — and falls back to `_firstResultFocusNode`
+  /// when the projection has no group sections (search matched only
+  /// collections/playlists/people). Non-TV never rendered a rail, so it
+  /// always falls straight to `_firstResultFocusNode`, unchanged from before
+  /// this projection existed.
+  void _focusFirstResult() {
+    if (_tvRails.focusFirstCurrent()) return;
+    _firstResultFocusNode.requestFocus();
+  }
+
   /// Type filter chips shown above the results. A filter with no matches in the
   /// current result set is hidden so the row only offers useful narrowing.
   Widget _buildFilterChips(BuildContext context) {
@@ -767,9 +1024,7 @@ class _SearchScreenState extends State<SearchScreen>
                     // same fix already applied to the Seerr search field.
                     tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
                     onNavigateLeft: _navigateToSidebar,
-                    onNavigateDown: _searchResults.isNotEmpty && !_isSearching
-                        ? _firstResultFocusNode.requestFocus
-                        : null,
+                    onNavigateDown: _searchResults.isNotEmpty && !_isSearching ? _focusFirstResult : null,
                     onEditingComplete: PlatformDetector.isTV() ? _handleSearchSubmit : null,
                     onBack: () {
                       if (_searchController.text.isNotEmpty) {
@@ -846,7 +1101,10 @@ class _SearchScreenState extends State<SearchScreen>
                     icon: Symbols.search_off_rounded,
                   ),
                 )
-            else ...[
+            else if (PlatformDetector.isTV()) ...[
+              ..._buildTvResultSections(context),
+              if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
+            ] else ...[
               SliverToBoxAdapter(child: _buildFilterChips(context)),
               _buildResultsList(context),
               if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),

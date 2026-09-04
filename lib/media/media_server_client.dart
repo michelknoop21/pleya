@@ -252,6 +252,26 @@ abstract class MediaServerClient {
   /// rather than pretending to have looked.
   Future<MediaItem?> findByIdentity(MediaIdentity identity);
 
+  /// Every item on this server that is [identity] — not just one.
+  ///
+  /// Hoofdstuk 12.8 of docs/tvos-unified-experience.md: `resolveAllSourcesForGroup`
+  /// needs every concrete source a title has on a server, because a server can
+  /// genuinely hold more than one physical copy of the same title (two
+  /// library sections, a duplicate scan). Same "not found" vs "could not
+  /// look" contract as [findByIdentity]: an empty list means not here, a
+  /// thrown error means the lookup itself failed.
+  ///
+  /// The default wraps [findByIdentity] (0 or 1 result) — correct for
+  /// backends without a real multi-match query, including every backend
+  /// without catalogue identity at all ([findByIdentity] already answers null
+  /// unconditionally there). Plex and Jellyfin override with a real
+  /// multi-match query; local, Pleya Share and Pleya Server need no protocol
+  /// change and simply inherit this.
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async {
+    final match = await findByIdentity(identity);
+    return match == null ? const [] : [match];
+  }
+
   /// Recently-added items across all libraries.
   Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50});
 

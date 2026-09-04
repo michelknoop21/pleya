@@ -62,6 +62,7 @@ class TranslationsZh extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsZh connections = _TranslationsConnectionsZh._(_root);
 	@override late final _TranslationsDiscoverZh discover = _TranslationsDiscoverZh._(_root);
 	@override late final _TranslationsErrorsZh errors = _TranslationsErrorsZh._(_root);
+	@override late final _TranslationsNoticesZh notices = _TranslationsNoticesZh._(_root);
 	@override late final _TranslationsLibrariesZh libraries = _TranslationsLibrariesZh._(_root);
 	@override late final _TranslationsAboutZh about = _TranslationsAboutZh._(_root);
 	@override late final _TranslationsServerSelectionZh serverSelection = _TranslationsServerSelectionZh._(_root);
@@ -87,6 +88,11 @@ class TranslationsZh extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerZh addServer = _TranslationsAddServerZh._(_root);
 	@override late final _TranslationsAddLocalFolderZh addLocalFolder = _TranslationsAddLocalFolderZh._(_root);
 	@override late final _TranslationsPleyaShareZh pleyaShare = _TranslationsPleyaShareZh._(_root);
+	@override late final _TranslationsSourcePickerZh sourcePicker = _TranslationsSourcePickerZh._(_root);
+	@override late final _TranslationsUnifiedCatalogZh unifiedCatalog = _TranslationsUnifiedCatalogZh._(_root);
+	@override late final _TranslationsTvNavigationZh tvNavigation = _TranslationsTvNavigationZh._(_root);
+	@override late final _TranslationsTvMyPleyaZh tvMyPleya = _TranslationsTvMyPleyaZh._(_root);
+	@override late final _TranslationsTvContextMenuZh tvContextMenu = _TranslationsTvContextMenuZh._(_root);
 }
 
 // Path: app
@@ -442,6 +448,7 @@ class _TranslationsSearchZh extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => '尝试不同的搜索词';
 	@override String get searchYourMedia => '搜索媒体';
 	@override String get enterTitleActorOrKeyword => '输入标题、演员或关键词';
+	@override late final _TranslationsSearchFiltersZh filters = _TranslationsSearchFiltersZh._(_root);
 }
 
 // Path: hotkeys
@@ -912,6 +919,17 @@ class _TranslationsErrorsZh extends TranslationsErrorsEn {
 	@override String failedToSwitchProfile({required Object displayName}) => '无法切换到 ${displayName}';
 	@override String failedToDeleteProfile({required Object displayName}) => '无法删除 ${displayName}';
 	@override String get failedToRate => '无法更新评分';
+}
+
+// Path: notices
+class _TranslationsNoticesZh extends TranslationsNoticesEn {
+	_TranslationsNoticesZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackFileUnavailableTitle => '文件不可用';
+	@override String get playbackFileUnavailableBody => '服务器无法访问该视频文件。请检查其所在的驱动器或文件夹是否仍处于连接状态。';
 }
 
 // Path: libraries
@@ -1707,6 +1725,140 @@ class _TranslationsPleyaShareZh extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => '正在扫描网络…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerZh extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => '选择在哪里播放';
+	@override String get detailsTitle => '选择查看详情的来源';
+	@override String get availableOnOneServer => '1 台服务器可用';
+	@override String availableOnManyServers({required Object count}) => '${count} 台服务器可用';
+	@override String get oneServerUnchecked => '有 1 台服务器无法检查';
+	@override String manyServersUnchecked({required Object count}) => '有 ${count} 台服务器无法检查';
+	@override String get checkingMoreSources => '正在检查更多来源…';
+	@override String get lastUsed => '上次使用';
+	@override String get currentSource => '当前来源';
+	@override String get unavailable => '不可用';
+	@override String get signInRequired => '需要重新登录';
+	@override String resumeAt({required Object position}) => '从 ${position} 继续';
+	@override String get watched => '已观看';
+	@override String get noneReachableTitle => '当前没有可用的来源。';
+	@override String get reauthRequiredTitle => '请重新登录以访问该标题。';
+	@override String get manageServers => '管理服务器';
+	@override String sourceLabel({required Object source}) => '来源：${source}';
+	@override String get change => '更改';
+	@override String get playbackFailedTitle => '无法播放此来源。';
+	@override String get detailLoadFailedTitle => '无法加载此标题。';
+	@override String get chooseAnotherSource => '选择其他来源';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => '第 ${index} 个来源，共 ${count} 个：${description}';
+	@override String get preferredServer => '首选服务器';
+	@override String setPreferredServer({required Object server}) => '始终使用 ${server}';
+}
+
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogZh extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => '电影';
+	@override String get seriesTitle => '剧集';
+	@override String sources({required Object count}) => '${count} 个来源';
+	@override String get allSources => '全部来源';
+	@override String get oneSource => '1 个来源';
+	@override String seasons({required Object count}) => '${count} 季';
+	@override String get oneSeason => '1 季';
+	@override String titleCount({required Object count}) => '${count} 部';
+	@override String get oneTitle => '1 部';
+	@override String titlesLoaded({required Object count}) => '已加载 ${count} 部';
+	@override String get loadMore => '加载更多';
+	@override String get loadingMore => '正在加载…';
+	@override late final _TranslationsUnifiedCatalogSortZh sort = _TranslationsUnifiedCatalogSortZh._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersZh filters = _TranslationsUnifiedCatalogFiltersZh._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesZh states = _TranslationsUnifiedCatalogStatesZh._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsZh semantics = _TranslationsUnifiedCatalogSemanticsZh._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryZh discovery = _TranslationsUnifiedCatalogDiscoveryZh._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeZh home = _TranslationsUnifiedCatalogHomeZh._(_root);
+}
+
+// Path: tvNavigation
+class _TranslationsTvNavigationZh extends TranslationsTvNavigationEn {
+	_TranslationsTvNavigationZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get activeDestination => '当前板块';
+	@override String get attentionRequired => '需要注意';
+}
+
+// Path: tvMyPleya
+class _TranslationsTvMyPleyaZh extends TranslationsTvMyPleyaEn {
+	_TranslationsTvMyPleyaZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get groupContent => '我的内容';
+	@override String get groupSources => '媒体库与来源';
+	@override String get groupPleya => 'Pleya';
+	@override String serversOnline({required Object total, required Object online}) => '${total} 台服务器中 ${online} 台在线';
+	@override String get noServers => '未连接服务器';
+	@override String get statusOnline => '在线';
+	@override String get statusOffline => '离线';
+	@override String get servers => '服务器';
+	@override String get activity => '活动';
+	@override String get logs => '日志与诊断';
+	@override String signedInAs({required Object name, required Object version}) => '已登录为 ${name} · Pleya ${version}';
+	@override String get watchlistSubtitle => '已保存的电影和剧集';
+	@override String get requestsSubtitle => '请求与发现';
+	@override String get downloadsSubtitle => '离线与同步规则';
+	@override String get librariesSubtitle => '媒体、合集、播放列表';
+	@override String get serversSubtitle => '连接与本地来源';
+	@override String get activitySubtitle => '正在观看、一起看、遥控';
+	@override String get watchTogetherSubtitle => '与好友同步观看';
+	@override String get settingsSubtitle => '显示、播放器、追踪器';
+	@override String get logsSubtitle => '日志文件与崩溃报告';
+	@override String get aboutSubtitle => '版本与许可';
+	@override String get logoutSubtitle => '在此设备上退出登录';
+	@override late final _TranslationsTvMyPleyaSemanticsZh semantics = _TranslationsTvMyPleyaSemanticsZh._(_root);
+}
+
+// Path: tvContextMenu
+class _TranslationsTvContextMenuZh extends TranslationsTvContextMenuEn {
+	_TranslationsTvContextMenuZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '操作';
+	@override String menuSemantics({required Object index, required Object count, required Object label}) => '操作 ${index}/${count}：${label}';
+	@override String get noUsableSource => '当前没有可用的来源，因此暂时无法更改此设置。';
+	@override String doneOnAll({required Object count}) => '已在全部 ${count} 个来源完成';
+	@override String doneOnSome({required Object total, required Object done}) => '已在 ${total} 个来源中的 ${done} 个完成。其余来源恢复在线后将重试。';
+	@override String doneOnSomeNoRetry({required Object total, required Object done}) => '已在 ${total} 个来源中的 ${done} 个完成。';
+	@override String get failed => '操作未成功';
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersZh extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => '全部';
+	@override String get movies => '电影';
+	@override String get shows => '剧集';
+	@override String get episodes => '单集';
+	@override String get people => '人物';
+	@override String get other => '其他';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsZh extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsZh._(TranslationsZh root) : this._root = root, super.internal(root);
@@ -1984,6 +2136,125 @@ class _TranslationsTrackersLibraryFilterZh extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => '仅同步下方勾选的媒体库。';
 	@override String get libraries => '媒体库';
 	@override String get noLibraries => '没有可用的媒体库';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortZh extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '排序';
+	@override String get titleAsc => '标题 A–Z';
+	@override String get titleDesc => '标题 Z–A';
+	@override String get recentlyAdded => '最近添加';
+	@override String get oldestAdded => '最早添加';
+	@override String get newestRelease => '最新上映';
+	@override String get oldestRelease => '最早上映';
+	@override String get recentlyWatched => '最近观看';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersZh extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '筛选';
+	@override String get status => '状态';
+	@override String get genre => '类型';
+	@override String get year => '年份';
+	@override String get servers => '服务器';
+	@override String get libraries => '媒体库';
+	@override String get apply => '应用';
+	@override String get clearAll => '全部清除';
+	@override String get all => '全部';
+	@override String get unwatched => '未观看';
+	@override String get unsupported => '当前来源不支持';
+	@override String get someUnavailable => '所选来源不支持部分筛选条件';
+	@override String get noValues => '没有可选项';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesZh extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => '此目录为空';
+	@override String get emptyBody => '可见的媒体库中没有适用于此页面的内容。';
+	@override String get filterEmptyTitle => '没有符合这些筛选条件的内容';
+	@override String get filterEmptyBody => '清除一个筛选条件以查看更多。';
+	@override String get clearFilters => '清除筛选';
+	@override String get errorTitle => '无法加载目录';
+	@override String get errorBody => '没有服务器响应。请检查连接后重试。';
+	@override String get partialOne => '1 个媒体库未响应';
+	@override String partialMany({required Object count}) => '${count} 个媒体库未响应';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsZh extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => '已观看';
+	@override String get inProgress => '观看中';
+	@override String get loadingMore => '正在加载更多内容';
+}
+
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryZh extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => '所有电影';
+	@override String get allSeries => '所有剧集';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => '部分来源未响应';
+	@override String get emptyTitle => '暂时没有可发现的内容';
+	@override String get emptyBody => '没有可见的媒体库可在此显示内容。';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsZh semantics = _TranslationsUnifiedCatalogDiscoverySemanticsZh._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeZh extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => '精选';
+}
+
+// Path: tvMyPleya.semantics
+class _TranslationsTvMyPleyaSemanticsZh extends TranslationsTvMyPleyaSemanticsEn {
+	_TranslationsTvMyPleyaSemanticsZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsZh extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}，共${count}个标题';
+	@override String position({required Object position, required Object count}) => '第${position}个，共${count}个';
+	@override String get viewAllMovies => '查看所有电影，打开完整目录';
+	@override String get viewAllSeries => '查看所有剧集，打开完整目录';
 }
 
 /// The flat map containing all translations for locale <zh>.
@@ -2286,6 +2557,12 @@ extension on TranslationsZh {
 			'search.tryDifferentTerm' => '尝试不同的搜索词',
 			'search.searchYourMedia' => '搜索媒体',
 			'search.enterTitleActorOrKeyword' => '输入标题、演员或关键词',
+			'search.filters.all' => '全部',
+			'search.filters.movies' => '电影',
+			'search.filters.shows' => '剧集',
+			'search.filters.episodes' => '单集',
+			'search.filters.people' => '人物',
+			'search.filters.other' => '其他',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => '为 ${actionName} 设置快捷键',
 			'hotkeys.clearShortcut' => '清除快捷键',
 			'hotkeys.noShortcutSet' => '未设置快捷键',
@@ -2500,14 +2777,14 @@ extension on TranslationsZh {
 			'messages.sleepTimerSet' => ({required Object label}) => '睡眠定时器已设置为 ${label}',
 			'messages.noItemsAvailable' => '没有可用的项目',
 			'messages.failedToCreatePlayQueueNoItems' => '创建播放队列失败 - 没有项目',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => '无法${action}',
 			'messages.switchingToCompatiblePlayer' => '正在切换到兼容的播放器...',
 			'messages.serverLimitTitle' => '播放失败',
 			'messages.serverLimitBody' => '服务器错误 (HTTP 500)。带宽/转码限制可能拒绝了此会话。请让所有者调整。',
 			'messages.logsUploaded' => '日志已上传',
 			'messages.logsUploadFailed' => '上传日志失败',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => '日志 ID',
 			'subtitlingStyling.text' => '文本',
 			'subtitlingStyling.border' => '边框',
@@ -2644,6 +2921,8 @@ extension on TranslationsZh {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => '无法切换到 ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => '无法删除 ${displayName}',
 			'errors.failedToRate' => '无法更新评分',
+			'notices.playbackFileUnavailableTitle' => '文件不可用',
+			'notices.playbackFileUnavailableBody' => '服务器无法访问该视频文件。请检查其所在的驱动器或文件夹是否仍处于连接状态。',
 			'libraries.title' => '媒体库',
 			'libraries.fallbackTitle' => '媒体库',
 			'libraries.scanLibraryFiles' => '扫描媒体库文件',
@@ -3012,6 +3291,8 @@ extension on TranslationsZh {
 			'companionRemote.pairing.discoveryDescription' => '使用同一 Plex 账号的 Pleya 设备会显示在这里',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '正在连接...',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.searchingForDevices' => '正在搜索设备...',
 			'companionRemote.pairing.noDevicesFound' => '未在网络上找到设备',
 			'companionRemote.pairing.noDevicesHint' => '在桌面端打开 Pleya 并使用同一 WiFi',
@@ -3020,8 +3301,6 @@ extension on TranslationsZh {
 			'companionRemote.pairing.cryptoInitFailed' => '无法启动安全连接。请先登录 Plex。',
 			'companionRemote.pairing.validationHostRequired' => '请输入主机地址',
 			'companionRemote.pairing.validationHostFormat' => '格式必须为IP:端口（例如 192.168.1.100:48632）',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => '连接超时。请在两台设备上使用同一网络。',
 			'companionRemote.pairing.sessionNotFound' => '未找到设备。请确认 Pleya 正在主机上运行。',
 			'companionRemote.pairing.authFailed' => '认证失败。两台设备需要使用同一 Plex 账号。',
@@ -3323,6 +3602,119 @@ extension on TranslationsZh {
 			'pleyaShare.notificationText' => '其他 Pleya 设备可以串流你的本地文件夹',
 			'pleyaShare.hostDescriptionAndroid' => '此网络上的其他 Pleya 设备可以浏览、串流和下载你的本地文件夹。共享会在后台继续运行并显示通知。',
 			'pleyaShare.scanningSubnet' => '正在扫描网络…',
+			'sourcePicker.playTitle' => '选择在哪里播放',
+			'sourcePicker.detailsTitle' => '选择查看详情的来源',
+			'sourcePicker.availableOnOneServer' => '1 台服务器可用',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => '${count} 台服务器可用',
+			'sourcePicker.oneServerUnchecked' => '有 1 台服务器无法检查',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '有 ${count} 台服务器无法检查',
+			'sourcePicker.checkingMoreSources' => '正在检查更多来源…',
+			'sourcePicker.lastUsed' => '上次使用',
+			'sourcePicker.currentSource' => '当前来源',
+			'sourcePicker.unavailable' => '不可用',
+			'sourcePicker.signInRequired' => '需要重新登录',
+			'sourcePicker.resumeAt' => ({required Object position}) => '从 ${position} 继续',
+			'sourcePicker.watched' => '已观看',
+			'sourcePicker.noneReachableTitle' => '当前没有可用的来源。',
+			'sourcePicker.reauthRequiredTitle' => '请重新登录以访问该标题。',
+			'sourcePicker.manageServers' => '管理服务器',
+			'sourcePicker.sourceLabel' => ({required Object source}) => '来源：${source}',
+			'sourcePicker.change' => '更改',
+			'sourcePicker.playbackFailedTitle' => '无法播放此来源。',
+			'sourcePicker.detailLoadFailedTitle' => '无法加载此标题。',
+			'sourcePicker.chooseAnotherSource' => '选择其他来源',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => '第 ${index} 个来源，共 ${count} 个：${description}',
+			'sourcePicker.preferredServer' => '首选服务器',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => '始终使用 ${server}',
+			'unifiedCatalog.moviesTitle' => '电影',
+			'unifiedCatalog.seriesTitle' => '剧集',
+			'unifiedCatalog.sources' => ({required Object count}) => '${count} 个来源',
+			'unifiedCatalog.allSources' => '全部来源',
+			'unifiedCatalog.oneSource' => '1 个来源',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} 季',
+			'unifiedCatalog.oneSeason' => '1 季',
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} 部',
+			'unifiedCatalog.oneTitle' => '1 部',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '已加载 ${count} 部',
+			'unifiedCatalog.loadMore' => '加载更多',
+			'unifiedCatalog.loadingMore' => '正在加载…',
+			'unifiedCatalog.sort.title' => '排序',
+			'unifiedCatalog.sort.titleAsc' => '标题 A–Z',
+			'unifiedCatalog.sort.titleDesc' => '标题 Z–A',
+			'unifiedCatalog.sort.recentlyAdded' => '最近添加',
+			'unifiedCatalog.sort.oldestAdded' => '最早添加',
+			'unifiedCatalog.sort.newestRelease' => '最新上映',
+			'unifiedCatalog.sort.oldestRelease' => '最早上映',
+			'unifiedCatalog.sort.recentlyWatched' => '最近观看',
+			'unifiedCatalog.filters.title' => '筛选',
+			'unifiedCatalog.filters.status' => '状态',
+			'unifiedCatalog.filters.genre' => '类型',
+			'unifiedCatalog.filters.year' => '年份',
+			'unifiedCatalog.filters.servers' => '服务器',
+			'unifiedCatalog.filters.libraries' => '媒体库',
+			'unifiedCatalog.filters.apply' => '应用',
+			'unifiedCatalog.filters.clearAll' => '全部清除',
+			'unifiedCatalog.filters.all' => '全部',
+			'unifiedCatalog.filters.unwatched' => '未观看',
+			'unifiedCatalog.filters.unsupported' => '当前来源不支持',
+			'unifiedCatalog.filters.someUnavailable' => '所选来源不支持部分筛选条件',
+			'unifiedCatalog.filters.noValues' => '没有可选项',
+			'unifiedCatalog.states.emptyTitle' => '此目录为空',
+			'unifiedCatalog.states.emptyBody' => '可见的媒体库中没有适用于此页面的内容。',
+			'unifiedCatalog.states.filterEmptyTitle' => '没有符合这些筛选条件的内容',
+			'unifiedCatalog.states.filterEmptyBody' => '清除一个筛选条件以查看更多。',
+			'unifiedCatalog.states.clearFilters' => '清除筛选',
+			'unifiedCatalog.states.errorTitle' => '无法加载目录',
+			'unifiedCatalog.states.errorBody' => '没有服务器响应。请检查连接后重试。',
+			'unifiedCatalog.states.partialOne' => '1 个媒体库未响应',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} 个媒体库未响应',
+			'unifiedCatalog.semantics.watched' => '已观看',
+			'unifiedCatalog.semantics.inProgress' => '观看中',
+			'unifiedCatalog.semantics.loadingMore' => '正在加载更多内容',
+			'unifiedCatalog.discovery.allMovies' => '所有电影',
+			'unifiedCatalog.discovery.allSeries' => '所有剧集',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => '部分来源未响应',
+			'unifiedCatalog.discovery.emptyTitle' => '暂时没有可发现的内容',
+			'unifiedCatalog.discovery.emptyBody' => '没有可见的媒体库可在此显示内容。',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}，共${count}个标题',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '第${position}个，共${count}个',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => '查看所有电影，打开完整目录',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => '查看所有剧集，打开完整目录',
+			'unifiedCatalog.home.featured' => '精选',
+			'tvNavigation.activeDestination' => '当前板块',
+			'tvNavigation.attentionRequired' => '需要注意',
+			'tvMyPleya.groupContent' => '我的内容',
+			'tvMyPleya.groupSources' => '媒体库与来源',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object total, required Object online}) => '${total} 台服务器中 ${online} 台在线',
+			'tvMyPleya.noServers' => '未连接服务器',
+			'tvMyPleya.statusOnline' => '在线',
+			'tvMyPleya.statusOffline' => '离线',
+			'tvMyPleya.servers' => '服务器',
+			'tvMyPleya.activity' => '活动',
+			'tvMyPleya.logs' => '日志与诊断',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => '已登录为 ${name} · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => '已保存的电影和剧集',
+			'tvMyPleya.requestsSubtitle' => '请求与发现',
+			'tvMyPleya.downloadsSubtitle' => '离线与同步规则',
+			'tvMyPleya.librariesSubtitle' => '媒体、合集、播放列表',
+			'tvMyPleya.serversSubtitle' => '连接与本地来源',
+			'tvMyPleya.activitySubtitle' => '正在观看、一起看、遥控',
+			'tvMyPleya.watchTogetherSubtitle' => '与好友同步观看',
+			'tvMyPleya.settingsSubtitle' => '显示、播放器、追踪器',
+			'tvMyPleya.logsSubtitle' => '日志文件与崩溃报告',
+			'tvMyPleya.aboutSubtitle' => '版本与许可',
+			'tvMyPleya.logoutSubtitle' => '在此设备上退出登录',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => '操作',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => '操作 ${index}/${count}：${label}',
+			'tvContextMenu.noUsableSource' => '当前没有可用的来源，因此暂时无法更改此设置。',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => '已在全部 ${count} 个来源完成',
+			'tvContextMenu.doneOnSome' => ({required Object total, required Object done}) => '已在 ${total} 个来源中的 ${done} 个完成。其余来源恢复在线后将重试。',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object total, required Object done}) => '已在 ${total} 个来源中的 ${done} 个完成。',
+			'tvContextMenu.failed' => '操作未成功',
 			_ => null,
 		};
 	}

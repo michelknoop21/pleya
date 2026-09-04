@@ -1,0 +1,55 @@
+name: tvos.my-pleya.section-logs
+target: tvos-sim
+# One Mijn Pleya section, opened and left the way a viewer does it.
+#
+# One scenario per section rather than one walk over all of them, because the
+# first combined run proved the walk is not survivable while a section can trap
+# the remote: a section that takes the focus and does not give it back also
+# swallows the Menu that was meant to leave it, so everything after the first
+# trapped section would have audited the wrong screen.
+#
+# The three assertions are the whole contract of hoofdstuk 7.5/7.6, and each of
+# them failed on the pre-fix build for at least one section:
+#   1. SELECT opens this section and nothing else;
+#   2. the remote lands on a control inside it, not on the scope and not on
+#      nothing;
+#   3. Menu returns to the hub and restores the tile it came from.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - press: down
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+  - press: right
+  - press: right
+  - press: right
+  - press: right
+  - assert: {id: "my_pleya.tile[logs]", focused: true}
+  - snapshot: 00-tile-focused
+
+  - press: select
+  - wait_until: {id: "my_pleya.section[logs]", timeout: 15000}
+  - snapshot: 01-opened
+
+  # Movement inside the section, so the record shows whether the remote can do
+  # anything once it is there.
+  - press: down
+  - snapshot: 02-after-down
+  - press: right
+  - snapshot: 03-after-right
+
+  # And out again, back onto the tile it came from.
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[logs]", timeout: 8000}
+  - snapshot: 04-back-on-tile

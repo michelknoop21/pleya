@@ -38,8 +38,11 @@ class AccountUiActions {
   /// carries switching, the PIN flow, per-profile manage/delete and adding a
   /// Pleya profile. A second, thinner switcher would be a second place to keep
   /// the PIN prompt correct.
-  static void openProfiles(BuildContext context) {
-    Navigator.of(
+  /// Returns when the picker is closed, so a caller that has to bracket the
+  /// visit — the TV shell hands tvOS's Menu button back and forth around it —
+  /// can await it instead of guessing.
+  static Future<void> openProfiles(BuildContext context) {
+    return Navigator.of(
       context,
       rootNavigator: true,
     ).push(MaterialPageRoute(builder: (context) => const ProfileSwitchScreen()));

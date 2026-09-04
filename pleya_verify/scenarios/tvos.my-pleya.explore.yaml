@@ -1,0 +1,54 @@
+name: tvos.my-pleya.explore
+target: tvos-sim
+# The exploration round of the Mijn Pleya audit: reach the hub with the remote
+# the way a viewer does, walk into it, and record what the app did after every
+# press.
+#
+# This scenario deliberately asserts almost nothing. Its output is the evidence
+# — `manifest.json`'s `before`/`after`/`changed` per press, plus the
+# screenshots — and the point is to find out what the surface actually does
+# before deciding what is wrong with it. Assertions come after, in the
+# per-section scenarios, so that a finding is written against observed
+# behaviour rather than against a guess about it.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  # IntroGate's cold-start splash paints over an already-ready screen and has
+  # no automation-observable end of its own.
+  - settle: 3500
+  - snapshot: 00-home
+
+  # Walk the bar to Mijn Pleya. Five presses is one more than the distance on
+  # a fixture with no Live TV, and the bar does not wrap (hoofdstuk 7.2), so
+  # the overshoot is a no-op rather than a wrap-around into Search.
+  - press: right
+  - press: right
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - snapshot: 01-nav-my-pleya-focused
+
+  # Select the destination. Per P2 the bar keeps the ring; the page behind it
+  # changes.
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - snapshot: 02-my-pleya-hub
+
+  # Down out of the bar and into the hub. Where the remote lands here is the
+  # first thing the audit needs to know.
+  - press: down
+  - snapshot: 03-hub-entered
+
+  # Walk the tile grid. Each press records its own before/after focus, so the
+  # manifest is a map of the grid rather than a guess at one.
+  - press: down
+  - snapshot: 04-hub-down
+  - press: right
+  - snapshot: 05-hub-right
+  - press: down
+  - snapshot: 06-hub-down-2

@@ -1,0 +1,145 @@
+name: tvos.my-pleya.styling-audit
+target: tvos-sim
+# The visual half of the Mijn Pleya audit. `tvos.my-pleya.section-*` already
+# prove the sections are *operable*; this one asks what they look like and
+# where their content edge sits, which is a different question and needs
+# different evidence.
+#
+# It asserts almost nothing on purpose. An audit that fails on the first
+# misaligned page stops being an audit — the point is to come back with a
+# measured row for every page, including the ones that are wrong. The one
+# thing it does assert is the walk itself (the expected tile focused before
+# each SELECT), so a run that drifts off course fails loudly instead of
+# quietly measuring the wrong screen.
+#
+# Every `snapshot` writes three things under one name: the compositor's own
+# screenshot, the ui_tree it was taken of, and the viewport it was measured
+# against. The left-inset table in the audit is read out of those trees, not
+# off the images.
+#
+# Six of the ten sections are reachable on `catalog.mixed.v1`. Kijklijst,
+# Aanvragen and Activiteit need a Plex, Jellyfin or Seerr backend that this
+# harness has no fake for at all, and Downloads is absent on tvOS by product
+# contract (`!PlatformDetector.isAppleTV()`), not by fixture limit. The hub
+# tree captured at 02 is the evidence for exactly which tiles exist.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  # --- Cross-surface reference (hoofdstuk 29) ---------------------------
+  # Home is the visual family every nested page is judged against, so it is
+  # measured in the same run and against the same viewport rather than from
+  # a different session's screenshot.
+  - snapshot: 00-home
+
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - snapshot: 01-topnav-my-pleya-focused
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - settle: 800
+  - snapshot: 02-hub-entry
+
+  - press: down
+  - snapshot: 03-hub-profile-focused
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+  - snapshot: 04-hub-tile-focused
+
+  # --- Bibliotheken -----------------------------------------------------
+  - assert: {id: "my_pleya.tile[libraries]", focused: true}
+  - press: select
+  - wait_until: {id: "my_pleya.section[libraries]", timeout: 15000}
+  - settle: 800
+  - snapshot: 10-libraries-opened
+  - press: down
+  - snapshot: 11-libraries-focused
+  - press: down
+  - press: down
+  - snapshot: 12-libraries-scrolled
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
+
+  # --- Servers ----------------------------------------------------------
+  - press: right
+  - assert: {id: "my_pleya.tile[servers]", focused: true}
+  - press: select
+  - wait_until: {id: "my_pleya.section[servers]", timeout: 15000}
+  - settle: 800
+  - snapshot: 20-servers-opened
+  - press: down
+  - snapshot: 21-servers-focused
+  - press: down
+  - press: down
+  - snapshot: 22-servers-scrolled
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[servers]", timeout: 8000}
+
+  # --- Samen Kijken -----------------------------------------------------
+  - press: right
+  - assert: {id: "my_pleya.tile[watchTogether]", focused: true}
+  - press: select
+  - wait_until: {id: "my_pleya.section[watchTogether]", timeout: 15000}
+  - settle: 800
+  - snapshot: 30-watch-together-opened
+  - press: down
+  - snapshot: 31-watch-together-focused
+  - press: down
+  - press: down
+  - snapshot: 32-watch-together-scrolled
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 8000}
+
+  # --- Instellingen -----------------------------------------------------
+  - press: right
+  - assert: {id: "my_pleya.tile[settings]", focused: true}
+  - press: select
+  - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
+  - settle: 800
+  - snapshot: 40-settings-opened
+  - press: down
+  - snapshot: 41-settings-focused
+  - press: down
+  - press: down
+  - press: down
+  - snapshot: 42-settings-scrolled
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
+
+  # --- Logs en diagnose -------------------------------------------------
+  - press: right
+  - assert: {id: "my_pleya.tile[logs]", focused: true}
+  - press: select
+  - wait_until: {id: "my_pleya.section[logs]", timeout: 15000}
+  - settle: 800
+  - snapshot: 50-logs-opened
+  - press: down
+  - snapshot: 51-logs-focused
+  - press: down
+  - press: down
+  - snapshot: 52-logs-scrolled
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[logs]", timeout: 8000}
+
+  # --- Over -------------------------------------------------------------
+  - press: right
+  - assert: {id: "my_pleya.tile[about]", focused: true}
+  - press: select
+  - wait_until: {id: "my_pleya.section[about]", timeout: 15000}
+  - settle: 800
+  - snapshot: 60-about-opened
+  - press: down
+  - snapshot: 61-about-focused
+  - press: down
+  - press: down
+  - snapshot: 62-about-scrolled
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[about]", timeout: 8000}
+  - snapshot: 63-back-on-hub

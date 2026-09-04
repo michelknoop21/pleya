@@ -303,7 +303,15 @@
     "hint": "映画、番組、音楽を検索...",
     "tryDifferentTerm": "別の検索語をお試しください",
     "searchYourMedia": "メディアを検索",
-    "enterTitleActorOrKeyword": "タイトル、俳優、またはキーワードを入力"
+    "enterTitleActorOrKeyword": "タイトル、俳優、またはキーワードを入力",
+    "filters": {
+      "all": "すべて",
+      "movies": "映画",
+      "shows": "テレビ番組",
+      "episodes": "エピソード",
+      "people": "人物",
+      "other": "その他"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "${actionName}のショートカットを設定",
@@ -696,6 +704,10 @@
     "failedToSwitchProfile": "${displayName}への切替に失敗しました",
     "failedToDeleteProfile": "${displayName}の削除に失敗しました",
     "failedToRate": "評価を更新できませんでした"
+  },
+  "notices": {
+    "playbackFileUnavailableTitle": "ファイルが利用できません",
+    "playbackFileUnavailableBody": "サーバーが動画ファイルにアクセスできません。ファイルが保存されているドライブやフォルダが接続されているか確認してください。"
   },
   "libraries": {
     "title": "ライブラリ",
@@ -1447,5 +1459,144 @@
     "notificationText": "他のPleyaデバイスがローカルフォルダーをストリーミングできます",
     "hostDescriptionAndroid": "このネットワーク上の他のPleyaデバイスが、ローカルフォルダーの閲覧・ストリーミング・ダウンロードを行えます。共有は通知とともにバックグラウンドで継続されます。",
     "scanningSubnet": "ネットワークをスキャン中…"
+  },
+  "sourcePicker": {
+    "playTitle": "再生する場所を選択",
+    "detailsTitle": "詳細を表示するソースを選択",
+    "availableOnOneServer": "1 台のサーバーで利用可能",
+    "availableOnManyServers": "${count} 台のサーバーで利用可能",
+    "oneServerUnchecked": "1 台のサーバーを確認できませんでした",
+    "manyServersUnchecked": "${count} 台のサーバーを確認できませんでした",
+    "checkingMoreSources": "他のソースを確認中…",
+    "lastUsed": "前回使用",
+    "currentSource": "現在のソース",
+    "unavailable": "利用できません",
+    "signInRequired": "再サインインが必要です",
+    "resumeAt": "${position} から再開",
+    "watched": "視聴済み",
+    "noneReachableTitle": "現在、利用できるソースがありません。",
+    "reauthRequiredTitle": "このタイトルにアクセスするには再度サインインしてください。",
+    "manageServers": "サーバーを管理",
+    "sourceLabel": "ソース: ${source}",
+    "change": "変更",
+    "playbackFailedTitle": "このソースは再生できませんでした。",
+    "detailLoadFailedTitle": "このタイトルを読み込めませんでした。",
+    "chooseAnotherSource": "別のソースを選択",
+    "rowSemantics": "ソース ${count} 件中 ${index} 件目: ${description}",
+    "preferredServer": "優先サーバー",
+    "setPreferredServer": "常に ${server} を使用"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "映画",
+    "seriesTitle": "シリーズ",
+    "sources": "${count} 件のソース",
+    "allSources": "すべてのソース",
+    "oneSource": "1 件のソース",
+    "seasons": "${count} シーズン",
+    "oneSeason": "1 シーズン",
+    "titleCount": "${count} 作品",
+    "oneTitle": "1 作品",
+    "titlesLoaded": "${count} 作品を読み込みました",
+    "loadMore": "さらに読み込む",
+    "loadingMore": "読み込み中…",
+    "sort": {
+      "title": "並べ替え",
+      "titleAsc": "タイトル昇順",
+      "titleDesc": "タイトル降順",
+      "recentlyAdded": "追加が新しい順",
+      "oldestAdded": "追加が古い順",
+      "newestRelease": "公開が新しい順",
+      "oldestRelease": "公開が古い順",
+      "recentlyWatched": "最近見た順"
+    },
+    "filters": {
+      "title": "フィルター",
+      "status": "ステータス",
+      "genre": "ジャンル",
+      "year": "年",
+      "servers": "サーバー",
+      "libraries": "ライブラリ",
+      "apply": "適用",
+      "clearAll": "すべてクリア",
+      "all": "すべて",
+      "unwatched": "未視聴",
+      "unsupported": "現在のソースでは利用できません",
+      "someUnavailable": "選択したソースでは一部のフィルターを利用できません",
+      "noValues": "選択できる項目がありません"
+    },
+    "states": {
+      "emptyTitle": "このカタログは空です",
+      "emptyBody": "表示中のライブラリにこのページの項目はありません。",
+      "filterEmptyTitle": "このフィルターに一致する項目はありません",
+      "filterEmptyBody": "フィルターをクリアすると作品が増えます。",
+      "clearFilters": "フィルターをクリア",
+      "errorTitle": "カタログを読み込めませんでした",
+      "errorBody": "応答したサーバーがありません。接続を確認してやり直してください。",
+      "partialOne": "1 つのライブラリが応答しませんでした",
+      "partialMany": "${count} つのライブラリが応答しませんでした"
+    },
+    "semantics": {
+      "watched": "視聴済み",
+      "inProgress": "視聴中",
+      "loadingMore": "作品をさらに読み込み中"
+    },
+    "discovery": {
+      "allMovies": "すべての映画",
+      "allSeries": "すべてのシリーズ",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "一部のソースが応答しませんでした",
+      "emptyTitle": "まだ何も見つかりません",
+      "emptyBody": "表示できるライブラリにここに表示するものがありません。",
+      "semantics": {
+        "section": "${title}、${count}件のタイトル",
+        "position": "${count}件中${position}件目",
+        "viewAllMovies": "すべての映画を表示、完全なカタログを開きます",
+        "viewAllSeries": "すべてのシリーズを表示、完全なカタログを開きます"
+      }
+    },
+    "home": {
+      "featured": "注目作品"
+    }
+  },
+  "tvNavigation": {
+    "activeDestination": "現在のセクション",
+    "attentionRequired": "要確認"
+  },
+  "tvMyPleya": {
+    "groupContent": "マイコンテンツ",
+    "groupSources": "ライブラリとソース",
+    "groupPleya": "Pleya",
+    "serversOnline": "${total} 台中 ${online} 台のサーバーがオンライン",
+    "noServers": "接続中のサーバーはありません",
+    "statusOnline": "オンライン",
+    "statusOffline": "オフライン",
+    "servers": "サーバー",
+    "activity": "アクティビティ",
+    "logs": "ログと診断",
+    "signedInAs": "${name} でログイン中 · Pleya ${version}",
+    "watchlistSubtitle": "保存した映画とシリーズ",
+    "requestsSubtitle": "リクエストと発見",
+    "downloadsSubtitle": "オフラインと同期ルール",
+    "librariesSubtitle": "メディア、コレクション、プレイリスト",
+    "serversSubtitle": "接続とローカルソース",
+    "activitySubtitle": "再生中、一緒に視聴、リモート",
+    "watchTogetherSubtitle": "友だちと同期して見る",
+    "settingsSubtitle": "表示、プレーヤー、トラッカー",
+    "logsSubtitle": "ログファイルとクラッシュレポート",
+    "aboutSubtitle": "バージョンとライセンス",
+    "logoutSubtitle": "このデバイスからログアウト",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
+  },
+  "tvContextMenu": {
+    "title": "アクション",
+    "menuSemantics": "アクション ${index}/${count}: ${label}",
+    "noUsableSource": "現在利用できるソースがないため、今は変更できません。",
+    "doneOnAll": "${count}件すべてのソースで完了しました",
+    "doneOnSome": "${total}件中${done}件のソースで完了しました。残りはオンラインに戻り次第再試行されます。",
+    "doneOnSomeNoRetry": "${total}件中${done}件のソースで完了しました。",
+    "failed": "うまくいきませんでした"
   }
 }

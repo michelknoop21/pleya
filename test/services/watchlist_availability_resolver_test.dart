@@ -14,7 +14,9 @@ import 'package:pleya/utils/external_ids.dart';
 
 import 'fake_favorites_client.dart';
 
-/// A client that only knows how to answer [findByIdentity].
+/// A client that only knows how to answer [findAllByIdentity] — the resolver
+/// now dispatches per server through the shared fan-out (hoofdstuk 4.3),
+/// which calls that rather than [findByIdentity].
 class _MatchingClient extends FakeFavoritesClient {
   _MatchingClient({this.match, this.throws = false}) : super(favorites: const []);
 
@@ -24,10 +26,10 @@ class _MatchingClient extends FakeFavoritesClient {
   int lookups = 0;
 
   @override
-  Future<MediaItem?> findByIdentity(MediaIdentity identity) async {
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async {
     lookups++;
     if (throws) throw StateError('server down mid-flight');
-    return match;
+    return match == null ? const [] : [match!];
   }
 }
 

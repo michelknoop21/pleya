@@ -163,6 +163,11 @@ void main() {
     });
   });
 
+  // Fase-0 baseline for Pleya Unified TV 2026 (docs/tvos-unified-experience.md
+  // hoofdstuk 27): this group is the existing "per-library/per-source" and
+  // "late serverconnect" behavior that fase 0 locks in before any
+  // unified-catalog code lands. A regression here is a regression against
+  // the pre-unified baseline, not a new requirement.
   group('LibrariesProvider.syncToOnlineServers', () {
     test('loads when a server first comes online', () async {
       final manager = MultiServerManager();

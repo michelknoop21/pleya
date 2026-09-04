@@ -4,12 +4,27 @@ import 'my_pleya_screen.dart';
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 import '../automation/automation_event_log.dart';
+import '../automation/automation_route_state.dart';
 import '../automation/automation_ids.dart';
 import '../automation/automation_navigation_hooks.dart';
 import '../automation/automation_screen.dart';
 import '../automation/pleya_verify.dart';
 import '../media/ids.dart';
+import '../focus/focus_memory_tracker.dart';
 import '../navigation/main_screen_scope.dart';
+import '../services/account_ui_actions.dart';
+import '../navigation/tv/tv_destination.dart';
+import '../navigation/tv/tv_live_tv_capability.dart';
+import '../navigation/tv/tv_content_focus_authority.dart';
+import '../navigation/tv/tv_content_route_registry.dart';
+import '../navigation/tv/tv_navigation_coordinator.dart';
+import '../navigation/tv/tv_nested_surface.dart';
+import 'tv/tv_movies_screen.dart';
+import 'tv/tv_series_screen.dart';
+import 'tv/tv_my_pleya_navigator.dart';
+import 'tv/tv_my_pleya_screen.dart';
+import 'tv/tv_my_pleya_sections.dart';
+import 'tv/tv_root_shell.dart';
 import '../navigation/sidebar_focus_coordinator.dart';
 import '../theme/mono_theme.dart' show kAccent;
 import 'dart:io' show Platform, exit;
@@ -74,6 +89,8 @@ import 'seerr/seerr_discover_screen.dart';
 import 'downloads/downloads_screen.dart';
 import 'settings/settings_screen.dart';
 import 'profile/profile_switch_screen.dart';
+import 'tv/tv_movies_landing_screen.dart';
+import 'tv/tv_series_landing_screen.dart';
 import '../services/system_shelf_service.dart';
 import '../watch_together/watch_together.dart';
 
@@ -161,7 +178,13 @@ NavigationTabId mainScreenSelectedBarTab({
   required List<NavigationTabId> barTabs,
 }) {
   final preferred = switch (currentTab) {
+    // Films and Series are TV-only and never appear in a bottom bar, so they
+    // can only be `currentTab` here on a device that has no bar at all. They
+    // still need a case: the mapping is exhaustive by design, and the answer
+    // for a browse destination offline is Downloads, same as its neighbours.
     NavigationTabId.discover ||
+    NavigationTabId.movies ||
+    NavigationTabId.series ||
     NavigationTabId.libraries ||
     NavigationTabId.liveTv ||
     NavigationTabId.search => isOffline ? NavigationTabId.downloads : currentTab,
@@ -197,6 +220,23 @@ bool shouldPassTvosMenuToSystem({
       isCurrentTabRoot;
 }
 
+/// Which visible tab `onTabNext`/`onTabPrevious` (companion remote) should
+/// move to from [currentTab], wrapping around the ends of [visibleTabs].
+/// Returns `null` when [currentTab] isn't among [visibleTabs] — the caller
+/// then leaves the selection untouched, matching the original inline
+/// `idx >= 0` guard.
+@visibleForTesting
+NavigationTabId? mainScreenAdjacentTabId({
+  required List<NavigationTab> visibleTabs,
+  required NavigationTabId currentTab,
+  required bool forward,
+}) {
+  final idx = visibleTabs.indexWhere((t) => t.id == currentTab);
+  if (idx < 0) return null;
+  final nextIdx = forward ? (idx + 1) % visibleTabs.length : (idx - 1 + visibleTabs.length) % visibleTabs.length;
+  return visibleTabs[nextIdx].id;
+}
+
 @visibleForTesting
 enum ProfileInvalidationAction { none, waitForProfileSwitch, invalidateNow }
 
@@ -219,6 +259,110 @@ ProfileInvalidationAction profileInvalidationAction({
     return ProfileInvalidationAction.invalidateNow;
   }
   return ProfileInvalidationAction.none;
+}
+
+/// The distinct outcomes of a Menu/back press on the main shell, decided
+/// purely from the caller's already-computed inputs — see `_handleMainBack`,
+/// which reads `_lastBackPressAt`/context to build those inputs and then
+/// performs the side effect (navigate home, exit, arm the snackbar, or the
+/// tvOS no-op) that matches the outcome below.
+@visibleForTesting
+enum MainBackDecision {
+  /// No tabs are visible at all (e.g. mid-teardown) — swallow the press.
+  noVisibleTabs,
+
+  /// Not on the home tab yet — Back/Menu navigates there first.
+  goHome,
+
+  /// On tvOS, already on the home tab: the engine normally passes root Menu
+  /// presses through to UIKit, so a stale event reaching here should not
+  /// show an exit prompt that cannot be honored app-side.
+  tvMenuPassthroughStale,
+
+  /// On the home tab, a second press landed within the exit window — exit.
+  exitNow,
+
+  /// On the home tab, first press (or the window lapsed) — arm the
+  /// "press back again to exit" prompt.
+  armExitPrompt,
+}
+
+/// What a Back/Menu press does on the fase-7 TV root, before the shared
+/// [mainBackKeyDecision] gets a say.
+///
+/// Hoofdstuk 7.5 is an ordered list, and the order is the whole contract: a
+/// nested Mijn Pleya route or a complete catalog closes first, *then* content
+/// hands the focus to the top navigation, and only a press that finds neither
+/// reaches the root. Written as a pure function because the order is what
+/// breaks, and it breaks silently — a shell that checked the focus first would
+/// send someone standing in Bibliotheken to the bar instead of back to the hub,
+/// and nothing would throw.
+@visibleForTesting
+enum TvBackStep {
+  /// Step 2: something is open inside the active destination. Close it.
+  popNested,
+
+  /// Step 4: root content holds the focus. Move it to the top navigation.
+  focusTopNavigation,
+
+  /// Step 5: the top navigation holds the focus at the root. Hand over to the
+  /// shared decision, which is where the tvOS system contract lives.
+  rootContract,
+}
+
+@visibleForTesting
+TvBackStep tvBackStep({required bool hasNestedRoute, required bool isNavigationFocused}) {
+  // Deliberately ahead of the focus test: Back inside a nested route means
+  // "leave this route" whether the remote is still on a card or has already
+  // walked up to the bar.
+  if (hasNestedRoute) return TvBackStep.popNested;
+  return isNavigationFocused ? TvBackStep.rootContract : TvBackStep.focusTopNavigation;
+}
+
+@visibleForTesting
+MainBackDecision mainBackKeyDecision({
+  required bool hasVisibleTabs,
+  required bool isAtHomeTab,
+  required bool isAppleTV,
+  required bool hasRecentBackPress,
+}) {
+  if (!hasVisibleTabs) return MainBackDecision.noVisibleTabs;
+  if (!isAtHomeTab) return MainBackDecision.goHome;
+  if (isAppleTV) return MainBackDecision.tvMenuPassthroughStale;
+  if (hasRecentBackPress) return MainBackDecision.exitNow;
+  return MainBackDecision.armExitPrompt;
+}
+
+/// The destination stack every shell hosts: one child painted, the rest laid
+/// out behind it, and — the part that is not free — none of the rest reachable.
+///
+/// `IndexedStack` keeps its offscreen children mounted, which is the whole
+/// reason it is used: a destination switch must not cost a rebuild of a
+/// provider graph, a scroll position or a set of focus nodes (hoofdstuk 24).
+/// What it does *not* do is take them out of the focus tree. `TickerMode`
+/// silences their animations and nothing silenced their focusables, so the app
+/// held a complete second copy of every destination — its cards, its chips, its
+/// retry buttons — all focusable, all invisible, in the same scope as the one on
+/// screen. A programmatic focus or one traversal step could land on any of them,
+/// and the remote then moved something nobody could see (P5). Eleven other
+/// places in this repo already pair the two; this was the one that did not.
+///
+/// Top-level and `@visibleForTesting` so the guard can be driven as the
+/// production composition rather than as a copy of it — the same reason
+/// [mainScreenSideNavigationContentLayout] is.
+@visibleForTesting
+Widget mainScreenDestinationStack({required List<Widget> screens, required int currentIndex}) {
+  return IndexedStack(
+    index: currentIndex,
+    clipBehavior: Clip.none,
+    children: [
+      for (var i = 0; i < screens.length; i++)
+        ExcludeFocus(
+          excluding: i != currentIndex,
+          child: TickerMode(enabled: i == currentIndex, child: screens[i]),
+        ),
+    ],
+  );
 }
 
 class MainScreen extends StatefulWidget {
@@ -284,6 +428,11 @@ class _MainScreenState extends State<MainScreen>
 
   late List<Widget> _screens;
   final GlobalKey<State<DiscoverScreen>> _discoverKey = GlobalKey();
+  // Plain keys: both are stateless wrappers over the shared catalog screen, so
+  // there is no state to reach into — the key only keeps each page's element
+  // identity stable across a tab switch.
+  final GlobalKey _moviesKey = GlobalKey();
+  final GlobalKey _seriesKey = GlobalKey();
   final GlobalKey<State<LibrariesScreen>> _librariesKey = GlobalKey();
   final GlobalKey<State<LiveTvScreen>> _liveTvKey = GlobalKey();
   final GlobalKey<State<SearchScreen>> _searchKey = GlobalKey();
@@ -292,6 +441,50 @@ class _MainScreenState extends State<MainScreen>
   final GlobalKey<State<WatchlistScreen>> _watchlistKey = GlobalKey();
   final GlobalKey _myPleyaKey = GlobalKey();
   final GlobalKey<SideNavigationRailState> _sideNavKey = GlobalKey();
+
+  /// Fase 7's TV root. Created once and never rebuilt away, for the same reason
+  /// [_focus] is: it holds the active destination and the per-destination focus
+  /// memory, and a shell that recreated it would forget where the viewer was
+  /// every time a server came online.
+  final TvNavigationCoordinator _tvNav = TvNavigationCoordinator();
+
+  /// The one thing on this shell allowed to say "the remote belongs in the
+  /// content now" (P2). See [TvContentFocusAuthority] for the three paths this
+  /// replaces and the contract it keeps.
+  final TvContentFocusAuthority _tvContentFocus = TvContentFocusAuthority();
+
+  /// The bar's focus nodes. Owned here rather than by [TvTopNavigation] so a
+  /// rebuild of the bar cannot dispose the node the remote is standing on —
+  /// the same ownership rule the rail follows.
+  final FocusMemoryTracker _tvNavNodes = FocusMemoryTracker(debugLabelPrefix: 'tvNav');
+
+  final GlobalKey<TvMyPleyaScreenState> _tvMyPleyaKey = GlobalKey();
+
+  /// Reaches the `WatchlistScreen` inside Mijn Pleya ▸ Kijklijst.
+  ///
+  /// A *second* key beside [_watchlistKey], not a reuse of it, for the same
+  /// reason [_tvLibrariesKey] is: the screens list still builds its own
+  /// `WatchlistScreen` behind the `IndexedStack`, and one `GlobalKey` cannot be
+  /// on two mounted widgets. The offstage one is the copy `ExcludeFocus` in
+  /// [_buildTickerAwareStack] now keeps out of the focus tree (P5).
+  final GlobalKey<State<WatchlistScreen>> _tvWatchlistKey = GlobalKey();
+
+  /// Reaches the `LibrariesScreen` inside Mijn Pleya ▸ Bibliotheken, so the
+  /// hoofdstuk 6.4 adapter can call the same `loadLibraryByKey` the rail's
+  /// library rows have always called.
+  final GlobalKey<State<LibrariesScreen>> _tvLibrariesKey = GlobalKey();
+
+  /// The remembered Live TV capability for this profile. See
+  /// [TvLiveTvCapabilityStore] for why a poll may not clear it.
+  bool _tvLiveTvRemembered = false;
+
+  /// Whether this session draws the fase-7 TV shell. A single predicate rather
+  /// than scattered `isTV()` calls, so the shell, the focus chain, the back
+  /// chain and the screens list cannot end up disagreeing about which root is
+  /// on screen.
+  bool get _isTvShell => PlatformDetector.isTV();
+
+  TvMyPleyaScreenState? get _tvMyPleya => _tvMyPleyaKey.currentState;
 
   // Focus management for sidebar/content switching
   final SidebarFocusCoordinator _focus = SidebarFocusCoordinator();
@@ -380,6 +573,34 @@ class _MainScreenState extends State<MainScreen>
       _lastHasWatchlist = false;
     }
     _currentTab = _defaultTabForMode(_isOffline);
+    // Fase 7: seed the bar before the first frame, then load the remembered
+    // Live TV capability. Reading it is async, so the bar opens on what the
+    // live poll knows and gains the remembered slot a moment later — the one
+    // direction that cannot hide a destination someone was aiming at.
+    if (_isTvShell) {
+      // PB-1: the approved detail, collection, person and settings surfaces keep
+      // the top bar, so the pushes that used to go full-window over the shell
+      // come here instead. Registered only on TV, so every other platform keeps
+      // the profile navigator untouched.
+      tvContentRouteRegistry.attach(_pushTvContentRoute);
+      _tvNav.syncToTab(_currentTab);
+      _syncTvDestinations();
+      unawaited(_loadTvLiveTvCapability());
+      // A cold start lands on the bar, with the startup destination lit — the
+      // same place a destination switch leaves the remote (P2).
+      //
+      // There was no initial focus request on TV at all before this. The remote
+      // ended up wherever `DiscoverScreen`'s initial-load post-frame put it,
+      // and that path is now allowed to move focus only against an armed
+      // intent — so without this the first frame would have no primary focus,
+      // which on tvOS is not "nothing highlighted" but "the D-pad does
+      // nothing": the engine claims every press before UIKit sees it (see
+      // CLAUDE.md's engine-swizzle gotcha), and a tree with no focused node
+      // swallows them.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focusSidebar();
+      });
+    }
     _lastOnlineTabId = _isOffline ? null : NavigationTabId.discover;
     _autoSwitchedToDownloads = _isOffline && _currentTab == NavigationTabId.downloads;
     // If the preferred startup section isn't visible yet (e.g. Live TV before
@@ -884,14 +1105,20 @@ class _MainScreenState extends State<MainScreen>
     final receiver = CompanionRemoteReceiver.instance;
 
     receiver.onTabNext = () {
-      final tabs = _getVisibleTabs(_isOffline);
-      final idx = tabs.indexWhere((t) => t.id == _currentTab);
-      if (idx >= 0) _selectTab(tabs[(idx + 1) % tabs.length].id);
+      final next = mainScreenAdjacentTabId(
+        visibleTabs: _getVisibleTabs(_isOffline),
+        currentTab: _currentTab,
+        forward: true,
+      );
+      if (next != null) _selectTab(next);
     };
     receiver.onTabPrevious = () {
-      final tabs = _getVisibleTabs(_isOffline);
-      final idx = tabs.indexWhere((t) => t.id == _currentTab);
-      if (idx >= 0) _selectTab(tabs[(idx - 1 + tabs.length) % tabs.length].id);
+      final previous = mainScreenAdjacentTabId(
+        visibleTabs: _getVisibleTabs(_isOffline),
+        currentTab: _currentTab,
+        forward: false,
+      );
+      if (previous != null) _selectTab(previous);
     };
     receiver.onTabDiscover = () => _selectTab(NavigationTabId.discover);
     receiver.onTabLibraries = () => _selectTab(NavigationTabId.libraries);
@@ -935,6 +1162,7 @@ class _MainScreenState extends State<MainScreen>
 
   @override
   void dispose() {
+    tvContentRouteRegistry.detach(_pushTvContentRoute);
     if (kPleyaVerify) {
       AutomationNavigationHooks.instance.unregisterSelectTab(_selectTab);
     }
@@ -956,6 +1184,8 @@ class _MainScreenState extends State<MainScreen>
     _startupSettleTimeout = null;
     _focus.removeListener(_handleSidebarFocusChanged);
     _focus.dispose();
+    _tvNav.dispose();
+    _tvNavNodes.dispose();
     _setTvosMenuPassthrough(false);
 
     // Clean up companion remote callbacks
@@ -1017,15 +1247,18 @@ class _MainScreenState extends State<MainScreen>
   Widget _buildTickerAwareStack() {
     return Column(
       children: [
-        const AuthErrorBanner(),
+        // Hoofdstuk 18.4: on TV a rejected token may not put a permanent
+        // full-width red strip over Home, Films, Series and Search. The 10-foot
+        // surface says it once, small, on the destination that can actually fix
+        // it — the attention dot on Mijn Pleya (`TvTopNavigation`), leading to
+        // the Servers screen that names the concrete server.
+        //
+        // Every other form factor keeps the banner exactly as it was: on a
+        // phone or a desktop window the top strip is a reasonable place for it,
+        // and it is the only affordance those layouts have.
+        if (!_isTvShell) const AuthErrorBanner(),
         Expanded(
-          child: IndexedStack(
-            index: _currentIndex,
-            clipBehavior: Clip.none,
-            children: [
-              for (var i = 0; i < _screens.length; i++) TickerMode(enabled: i == _currentIndex, child: _screens[i]),
-            ],
-          ),
+          child: mainScreenDestinationStack(screens: _screens, currentIndex: _currentIndex),
         ),
       ],
     );
@@ -1035,19 +1268,55 @@ class _MainScreenState extends State<MainScreen>
     return [
       for (final tab in _getVisibleTabs(offline))
         switch (tab.id) {
-          NavigationTabId.discover => DiscoverScreen(key: _discoverKey),
+          // `onManageServers` is hoofdstuk 14.7's escape from a source
+          // picker with nothing reachable, and only this shell can change
+          // tab — same reasoning as the discovery landings below, extended
+          // to the Home hero's fase-6 activation wiring.
+          NavigationTabId.discover => DiscoverScreen(
+            key: _discoverKey,
+            onManageServers: () => _selectTab(NavigationTabId.settings),
+          ),
+          // Fase 6 of docs/tvos-unified-experience.md (hoofdstuk 10.2a,
+          // DEC-064): the discovery landing, one level above the fase-5
+          // complete catalog those screens still are behind "Alles
+          // bekijken".
+          NavigationTabId.movies => TvMoviesLandingScreen(
+            landingKey: _moviesKey,
+            onManageServers: () => _selectTab(NavigationTabId.settings),
+            onOpenAll: () => _openTvCompleteCatalog(TvDestinationId.movies),
+          ),
+          NavigationTabId.series => TvSeriesLandingScreen(
+            landingKey: _seriesKey,
+            onManageServers: () => _selectTab(NavigationTabId.settings),
+            onOpenAll: () => _openTvCompleteCatalog(TvDestinationId.series),
+          ),
           NavigationTabId.libraries => LibrariesScreen(
             key: _librariesKey,
             onLibraryOrderChanged: _onLibraryOrderChanged,
             onLibrarySelected: _handleLibrariesScreenSelected,
           ),
           NavigationTabId.liveTv => LiveTvScreen(key: _liveTvKey),
-          NavigationTabId.search => SearchScreen(key: _searchKey),
+          NavigationTabId.search => SearchScreen(
+            key: _searchKey,
+            onManageServers: () => _selectTab(NavigationTabId.settings),
+          ),
           NavigationTabId.requests => const SeerrDiscoverScreen(),
           NavigationTabId.downloads => DownloadsScreen(key: _downloadsKey),
           NavigationTabId.settings => SettingsScreen(key: _settingsKey),
           NavigationTabId.watchlist => WatchlistScreen(key: _watchlistKey),
-          NavigationTabId.myPleya => MyPleyaScreen(key: _myPleyaKey, onOpenTab: _selectTab),
+          // Fase 7: TV gets its own personal hub ([DEC-063] replaces the TV
+          // half of [DEC-023]). Mobile keeps `MyPleyaScreen`, which says in its
+          // own doc comment that a phone list is not a 10-foot surface.
+          NavigationTabId.myPleya =>
+            _isTvShell
+                ? TvMyPleyaScreen(
+                    key: _tvMyPleyaKey,
+                    onExitUp: _focusSidebar,
+                    onOpenSection: _openTvMyPleyaSection,
+                    onSwitchProfile: () => unawaited(_openProfilesFromShell()),
+                    onSignOut: () => unawaited(AccountUiActions.logout(context)),
+                  )
+                : MyPleyaScreen(key: _myPleyaKey, onOpenTab: _selectTab),
         },
     ];
   }
@@ -1104,15 +1373,30 @@ class _MainScreenState extends State<MainScreen>
     }());
   }
 
+  Future<void> _loadTvLiveTvCapability() async {
+    final remembered = await TvLiveTvCapabilityStore.read();
+    if (!mounted || remembered == _tvLiveTvRemembered) return;
+    _tvLiveTvRemembered = remembered;
+    _syncTvDestinations();
+  }
+
   void _handleLiveTvChanged() {
     final hasLiveTv = _multiServerProvider?.hasLiveTv ?? false;
-    if (hasLiveTv == _lastHasLiveTv) return;
+    if (hasLiveTv == _lastHasLiveTv) {
+      // The availability did not move, but a check may just have become
+      // conclusive — which is the only event that may retire a remembered
+      // capability. Returning here would leave a Live TV item in the bar for a
+      // profile that provably no longer has one.
+      _syncTvDestinations();
+      return;
+    }
     _lastHasLiveTv = hasLiveTv;
 
     setState(() {
       _screens = _buildScreens(_isOffline);
       _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
     });
+    _syncTvDestinations();
     _updateTvosMenuPassthrough();
 
     // A preferred startup section (only Live TV can be deferred) just became
@@ -1218,6 +1502,29 @@ class _MainScreenState extends State<MainScreen>
   }
 
   void _focusSidebar() {
+    // On TV "the sidebar" is the top navigation. One method rather than two,
+    // because every content screen already calls this to leave content and
+    // none of them should have to know which shell they are in — see
+    // [TvRootShell]'s note on the reused vocabulary.
+    if (_isTvShell) {
+      // The remote is going back to the bar, so a content-focus intent that has
+      // not been satisfied yet is void. Without this, a DOWN pressed while the
+      // first server was still answering would still be honoured a second later
+      // — pulling the viewer out of the bar they had deliberately walked back
+      // to (P2).
+      _tvContentFocus.cancel();
+      _focus.focusSidebar(
+        focusActiveItem: () {
+          if (!mounted) return;
+          // The item the ring was last on, not the active destination: walking
+          // to Search, going down into content and coming back should return
+          // to Search rather than snapping to the open page.
+          final node = _tvNavNodes.get(_tvNav.focusedDestination.focusKey);
+          if (node.canRequestFocus) node.requestFocus();
+        },
+      );
+      return;
+    }
     // Capture target before requestFocus() auto-focuses a sidebar descendant
     // and overwrites lastFocusedKey (e.g. to the Libraries toggle button).
     final targetKey = _sideNavKey.currentState?.lastFocusedKey;
@@ -1230,10 +1537,25 @@ class _MainScreenState extends State<MainScreen>
   }
 
   void _focusContent({bool restorePreviousFocus = true}) {
+    // Arming happens here rather than at each call site, because *every* way
+    // the focus is deliberately moved into content goes through this method —
+    // DOWN out of the bar, a re-select of the active destination, a nested
+    // route opening. A screen that cannot satisfy it yet leaves it armed, and
+    // consumes it when its content finally lands (P2).
+    if (_isTvShell) {
+      _tvContentFocus.arm(restorePreviousFocus ? TvContentFocusIntent.restore : TvContentFocusIntent.primary);
+    }
     _focus.focusContent(
       restorePreviousFocus: restorePreviousFocus,
       focusDefault: () {
         if (!mounted) return;
+        // A nested route is what the viewer is looking at; the destination's
+        // own screen is offstage behind it, and focusing that would put the
+        // remote on something invisible (hoofdstuk 7.5 step 2's stack).
+        if (_isTvShell && _tvNav.activeCanPop) {
+          _focusTvNestedRoute();
+          return;
+        }
         if (_screenKeyFor(_currentTab)?.currentState case final FocusableTab focusable) {
           focusable.focusActiveTabIfReady();
         }
@@ -1277,7 +1599,9 @@ class _MainScreenState extends State<MainScreen>
       isRouteCurrent: ModalRoute.of(context)?.isCurrent == true,
       isSidebarFocused: _isSidebarFocused,
       hasVisibleTabs: tabs.isNotEmpty,
-      isCurrentTabRoot: tabs.isNotEmpty && _currentTab == tabs.first.id,
+      // Fase 7: a nested Mijn Pleya section is a route the app can still pop,
+      // so Menu belongs to the app, not to the system, until it is closed.
+      isCurrentTabRoot: tabs.isNotEmpty && _currentTab == tabs.first.id && !(_isTvShell && _tvNav.activeCanPop),
     );
   }
 
@@ -1291,6 +1615,25 @@ class _MainScreenState extends State<MainScreen>
     _setTvosMenuPassthrough(_shouldPassTvosMenuToSystem);
   }
 
+  /// Opens the management profile picker with the same Menu bracket the
+  /// launch gate already uses (`_promptForInitialProfileSelection`).
+  ///
+  /// [AccountUiActions.openProfiles] pushes on the **root** navigator, and
+  /// this screen's route observer watches the *profile* navigator, so
+  /// `didPushNext` never fires for it — nothing else would lower the
+  /// passthrough. The chip is pressed from exactly the state that raised it
+  /// (bar focused, tab root), so without this the picker opens with Menu
+  /// still handed to UIKit and the first Menu press leaves the app instead of
+  /// closing the picker.
+  Future<void> _openProfilesFromShell() async {
+    _isShowingProfileSelection = true;
+    _setTvosMenuPassthrough(false);
+    await AccountUiActions.openProfiles(context);
+    if (!mounted) return;
+    _isShowingProfileSelection = false;
+    _updateTvosMenuPassthrough();
+  }
+
   /// Suppress stray back events after a child route pops.
   /// On Android TV the platform popRoute can arrive before the key events,
   /// so BackKeySuppressorObserver misses them and they leak into _handleBackKey.
@@ -1298,34 +1641,40 @@ class _MainScreenState extends State<MainScreen>
 
   KeyEventResult _handleMainBack() {
     final tabs = _getVisibleTabs(_isOffline);
-    if (tabs.isEmpty) return KeyEventResult.handled;
-
-    final homeTab = tabs.first.id;
-    if (_currentTab != homeTab) {
-      _selectTab(homeTab);
-      _lastBackPressAt = null;
-      return KeyEventResult.handled;
-    }
-
-    // The tvOS engine normally passes root Menu presses through to UIKit. If a
-    // stale event still reaches Flutter, avoid showing an exit prompt that
-    // cannot be honored app-side.
-    if (PlatformDetector.isAppleTV()) {
-      _lastBackPressAt = null;
-      return KeyEventResult.handled;
-    }
-
+    final homeTab = tabs.isNotEmpty ? tabs.first.id : null;
     final now = DateTime.now();
     final lastBackPressAt = _lastBackPressAt;
-    if (lastBackPressAt != null && now.difference(lastBackPressAt) < _backExitWindow) {
-      _lastBackPressAt = null;
-      unawaited(AppExitService.requestExit());
-      return KeyEventResult.handled;
-    }
+    final hasRecentBackPress = lastBackPressAt != null && now.difference(lastBackPressAt) < _backExitWindow;
 
-    _lastBackPressAt = now;
-    showMainSnackBar(t.common.pressBackAgainToExit, duration: _backExitWindow);
-    return KeyEventResult.handled;
+    final decision = mainBackKeyDecision(
+      hasVisibleTabs: tabs.isNotEmpty,
+      isAtHomeTab: homeTab != null && _currentTab == homeTab,
+      isAppleTV: PlatformDetector.isAppleTV(),
+      hasRecentBackPress: hasRecentBackPress,
+    );
+
+    switch (decision) {
+      case MainBackDecision.noVisibleTabs:
+        return KeyEventResult.handled;
+      case MainBackDecision.goHome:
+        _selectTab(homeTab!);
+        _lastBackPressAt = null;
+        return KeyEventResult.handled;
+      case MainBackDecision.tvMenuPassthroughStale:
+        // The tvOS engine normally passes root Menu presses through to UIKit.
+        // If a stale event still reaches Flutter, avoid showing an exit
+        // prompt that cannot be honored app-side.
+        _lastBackPressAt = null;
+        return KeyEventResult.handled;
+      case MainBackDecision.exitNow:
+        _lastBackPressAt = null;
+        unawaited(AppExitService.requestExit());
+        return KeyEventResult.handled;
+      case MainBackDecision.armExitPrompt:
+        _lastBackPressAt = now;
+        showMainSnackBar(t.common.pressBackAgainToExit, duration: _backExitWindow);
+        return KeyEventResult.handled;
+    }
   }
 
   KeyEventResult _handleMainBackKeyAction(KeyEvent event) {
@@ -1370,6 +1719,14 @@ class _MainScreenState extends State<MainScreen>
     if (_suppressBackAfterPop && event.logicalKey.isBackKey) {
       if (event is KeyUpEvent) _suppressBackAfterPop = false;
       return KeyEventResult.handled;
+    }
+
+    if (_isTvShell) {
+      return switch (tvBackStep(hasNestedRoute: _tvNav.activeCanPop, isNavigationFocused: _isSidebarFocused)) {
+        TvBackStep.popNested => handleBackKeyAction(event, _popTvNestedRoute),
+        TvBackStep.focusTopNavigation => handleBackKeyAction(event, _focusSidebar),
+        TvBackStep.rootContract => _handleMainBackKeyAction(event),
+      };
     }
 
     if (!_isSidebarFocused) {
@@ -1477,6 +1834,18 @@ class _MainScreenState extends State<MainScreen>
   Future<void> _invalidateAllScreens() async {
     appLogger.d('Invalidating screen data after profile switch');
 
+    // Hoofdstuk 7.6: "profielwissel → geheugen volledig wissen". A remembered
+    // group id belongs to the profile it was stored under, and re-focusing it
+    // for the next profile would be a privacy leak (hoofdstuk 22), not just an
+    // odd jump. The Live TV capability is per profile in storage, so it is
+    // re-read rather than carried over.
+    if (_isTvShell) {
+      _tvNav.clearFocusMemory();
+      _tvNav.clearNestedRoutes();
+      _tvLiveTvRemembered = false;
+      unawaited(_loadTvLiveTvCapability());
+    }
+
     final multiServerProvider = context.read<MultiServerProvider>();
     final hiddenLibrariesProvider = context.read<HiddenLibrariesProvider>();
     final librariesProvider = context.read<LibrariesProvider>();
@@ -1527,6 +1896,18 @@ class _MainScreenState extends State<MainScreen>
     // Guard: ignore if tab isn't available in current mode
     if (!_getVisibleTabs(_isOffline).any((t) => t.id == tab)) return;
 
+    // Fase 7, hoofdstuk 18.2: on TV these four live inside Mijn Pleya rather
+    // than beside Home. Every existing caller — the companion remote, a
+    // "manage servers" action, `_selectLibrary` — keeps working and simply
+    // arrives at the new place.
+    if (_isTvShell) {
+      if (_tvSectionForTab(tab) case final TvMyPleyaSection section) {
+        _openTvMyPleyaSection(section);
+        return;
+      }
+      _tvNav.syncToTab(tab);
+    }
+
     final previousTab = _currentTab;
     setState(() {
       _currentTab = tab;
@@ -1547,6 +1928,7 @@ class _MainScreenState extends State<MainScreen>
       // normal build never accumulates event history for nothing.
       if (kPleyaVerify) {
         AutomationEventLog.instance.emit('navigation.tab_changed', {'from': previousTab.name, 'to': tab.name});
+        AutomationRouteState.instance.updateTab(tab.name);
       }
 
       // Notify previous screen it's being hidden
@@ -1558,8 +1940,18 @@ class _MainScreenState extends State<MainScreen>
       if (newState case final TabVisibilityAware aware) {
         aware.onTabShown();
       }
-      if (newState case final FocusableTab focusable) {
-        focusable.focusActiveTabIfReady();
+      // Not on the TV shell. There, moving the focus is the shell's decision
+      // and nobody else's (P2): activating a destination in the bar leaves the
+      // remote in the bar, and this line was the third of the three paths that
+      // disagreed about that. Every TV route that *should* move the focus —
+      // DOWN out of the bar, a re-select, opening a Mijn Pleya section or a
+      // nested route — calls `_focusContent` explicitly, which arms the one
+      // authority. On the rail and bottom-bar shells the old behaviour is
+      // exactly right and is untouched.
+      if (!_isTvShell) {
+        if (newState case final FocusableTab focusable) {
+          focusable.focusActiveTabIfReady();
+        }
       }
     }
 
@@ -1568,8 +1960,15 @@ class _MainScreenState extends State<MainScreen>
       _onDiscoverBecameVisible();
     }
 
-    // Focus search input after rebuild so IndexedStack has made it visible
-    if (tab == NavigationTabId.search) {
+    // Focus search input after rebuild so IndexedStack has made it visible.
+    //
+    // Not on the TV shell unless the viewer actually asked to go in. Search
+    // sits left of Home in the bar, so once focus alone switches destinations,
+    // walking LEFT past it would drop the caret into the field and strand the
+    // remote outside the navigation. Same rule as the `!_isTvShell` guard
+    // above, expressed against the one authority instead of a second flag:
+    // DOWN and Select arm an intent, a destination switch does not.
+    if (tab == NavigationTabId.search && (!_isTvShell || _tvContentFocus.hasPendingIntent)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_searchKey.currentState case final SearchInputFocusable searchable) {
           searchable.focusSearchInput();
@@ -1578,9 +1977,155 @@ class _MainScreenState extends State<MainScreen>
     }
   }
 
+  /// Selects Mijn Pleya and opens [section] inside it.
+  ///
+  /// The navigator may not be mounted yet on the frame that selects the
+  /// destination — it is built by the `IndexedStack` this call is about to
+  /// switch to — so the open is deferred by a frame rather than dropped.
+  void _openTvMyPleyaSection(TvMyPleyaSection section) {
+    _selectTab(NavigationTabId.myPleya);
+    _tvNav.pushNested(
+      TvDestinationId.myPleya,
+      tvMyPleyaNestedRoute(section, librariesKey: _tvLibrariesKey, watchlistKey: _tvWatchlistKey),
+    );
+    _focusContent(restorePreviousFocus: false);
+  }
+
+  /// Opens a screen above the active destination's root, with the top
+  /// navigation still on screen (hoofdstuk 33's shared shell is binding on all
+  /// eight references, "Alle films" included).
+  void _openTvNestedRoute(TvDestinationId destination, TvNestedRoute route) {
+    _tvNav.activate(destination);
+    _tvNav.pushNested(destination, route);
+    // The screen is not mounted until the frame this push schedules, so its
+    // focus is claimed after it rather than in the same breath.
+    _focus.focusContent(
+      restorePreviousFocus: false,
+      focusDefault: () {
+        if (!mounted) return;
+        _focusTvNestedRoute();
+      },
+    );
+  }
+
+  /// Opens a content route inside the destination that is already active.
+  ///
+  /// [_openTvNestedRoute] activates a destination first, because its callers
+  /// know which one they mean: "Alle films" belongs to Films, a Mijn
+  /// Pleya section to Mijn Pleya. A content route has no such destination of
+  /// its own — a detail page opened from a Kijklijst card belongs to Mijn
+  /// Pleya, the same page opened from a Films rail belongs to Films — so it
+  /// opens where the remote already is, and the lit pill does not move under it.
+  Future<Object?> _pushTvContentRoute(TvNestedRoute route) {
+    final destination = _tvNav.active;
+    // Await the route that ends up on top: a re-push of the id already there is
+    // discarded, and it is that one which will be popped.
+    final live = _tvNav.pushNested(destination, route);
+    _focus.focusContent(
+      restorePreviousFocus: false,
+      focusDefault: () {
+        if (!mounted) return;
+        _focusTvNestedRoute();
+      },
+    );
+    return live.result;
+  }
+
+  /// Puts the focus inside the nested route currently on top, once it exists.
+  ///
+  /// Delegates to [TvNestedSurface], which asks the screen's own
+  /// `FocusableTab` first and falls back to the first focusable control in the
+  /// route's subtree. The old body did only the first half, against a
+  /// `screenKey` that eight of the ten Mijn Pleya sections never attached to
+  /// anything — so for those it matched nothing, requested nothing, and the
+  /// section opened with the remote on empty space and no way back.
+  void _focusTvNestedRoute() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _tvNav.activeNestedRoute?.surfaceKey.currentState?.focusEntry();
+    });
+  }
+
+  /// "Alles bekijken" from a Films or Series landing (DEC-064, DEC-068).
+  ///
+  /// A nested route rather than a push on the profile navigator, because
+  /// hoofdstuk 33.5 and 33.6 draw the complete catalog with the top navigation
+  /// above it and the destination still lit — the shared shell is binding on
+  /// all eight references. The landing underneath stays mounted, so Back
+  /// returns to the row and the tile it was left on rather than reloading a
+  /// projection.
+  void _openTvCompleteCatalog(TvDestinationId destination) {
+    _openTvNestedRoute(
+      destination,
+      TvNestedRoute(
+        id: 'tvCatalog_${destination.name}',
+        screenKey: GlobalKey(debugLabel: 'tvCatalog_${destination.name}'),
+        // Hoofdstuk 7.6, register I22/I23. The catalog is the one TV surface
+        // that is torn down and rebuilt on a destination switch — every
+        // destination *root* stays mounted in the `IndexedStack` and keeps its
+        // own place — so its place is read from and written back to the
+        // coordinator, which outlives the switch. Read here rather than
+        // captured once: the builder runs again on the way back, and by then
+        // the map holds what the previous visit reported.
+        builder: (context) => destination == TvDestinationId.series
+            ? TvSeriesScreen(
+                catalogKey: _tvNav.nestedRoutesFor(destination).last.screenKey,
+                onManageServers: () => _selectTab(NavigationTabId.settings),
+                restoreFrom: _tvNav.contentFocusFor(destination),
+                onRemember: (place) => _tvNav.rememberContentFocus(destination, place),
+              )
+            : TvMoviesScreen(
+                catalogKey: _tvNav.nestedRoutesFor(destination).last.screenKey,
+                onManageServers: () => _selectTab(NavigationTabId.settings),
+                restoreFrom: _tvNav.contentFocusFor(destination),
+                onRemember: (place) => _tvNav.rememberContentFocus(destination, place),
+              ),
+      ),
+    );
+  }
+
+  /// Back inside a destination (hoofdstuk 7.5 step 2): pop, and put the remote
+  /// back on the control that opened the route.
+  ///
+  /// Doubles as [TvNestedRouteScope.dismiss] (via [TvRootShell.dismissNestedRoute]):
+  /// a screen that closes itself — a save button, a media detail's own Back
+  /// handler — completes its route with [result] the same way `Navigator.pop`
+  /// would have, and gets the same focus restoration a remote-driven Back does.
+  bool _popTvNestedRoute([Object? result]) {
+    final popped = _tvNav.popNested(result);
+    if (popped == null) return false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final key = popped.restoreFocusKey;
+      if (key != null && _tvNav.active == TvDestinationId.myPleya) {
+        _tvMyPleya?.focusKey(key);
+        return;
+      }
+      _focusContent(restorePreviousFocus: true);
+    });
+    return true;
+  }
+
   /// Handle library selection from side navigation rail
   void _selectLibrary(String libraryGlobalKey) {
     _selectedLibraryGlobalKey = libraryGlobalKey;
+    // Hoofdstuk 6.4's compatibility adapter: on TV the shell selects Mijn
+    // Pleya, the Mijn Pleya navigator opens Bibliotheken, and the very same
+    // `loadLibraryByKey` receives the very same global key. The central media
+    // and library navigation did not have to be rewritten for the new shell.
+    if (_isTvShell) {
+      _openTvMyPleyaSection(TvMyPleyaSection.libraries);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_tvLibrariesKey.currentState case final LibraryLoadable loadable) {
+          loadable.loadLibraryByKey(libraryGlobalKey);
+        }
+        if (_tvLibrariesKey.currentState case final FocusableTab focusable) {
+          focusable.focusActiveTabIfReady();
+        }
+      });
+      return;
+    }
     _selectTab(NavigationTabId.libraries);
     // Tell LibrariesScreen to load this library after tab switch
     if (_librariesKey.currentState case final LibraryLoadable loadable) {
@@ -1701,6 +2246,8 @@ class _MainScreenState extends State<MainScreen>
   GlobalKey? _screenKeyFor(NavigationTabId tab) {
     return switch (tab) {
       NavigationTabId.discover => _discoverKey,
+      NavigationTabId.movies => _moviesKey,
+      NavigationTabId.series => _seriesKey,
       NavigationTabId.libraries => _librariesKey,
       NavigationTabId.liveTv => _liveTvKey,
       NavigationTabId.search => _searchKey,
@@ -1708,7 +2255,7 @@ class _MainScreenState extends State<MainScreen>
       NavigationTabId.downloads => _downloadsKey,
       NavigationTabId.settings => _settingsKey,
       NavigationTabId.watchlist => _watchlistKey,
-      NavigationTabId.myPleya => _myPleyaKey,
+      NavigationTabId.myPleya => _isTvShell ? _tvMyPleyaKey : _myPleyaKey,
     };
   }
 
@@ -1813,7 +2360,140 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
+  /// The fase-7 TV root (hoofdstuk 6.2). See [TvRootShell] for why the focus
+  /// coordinator's "sidebar" vocabulary is reused rather than renamed.
+  Widget _buildTvShell(BuildContext context) {
+    return TvRootShell(
+      coordinator: _tvNav,
+      contentFocus: _tvContentFocus,
+      navNodes: _tvNavNodes,
+      navFocusScope: _sidebarFocusScope,
+      contentFocusScope: _contentFocusScope,
+      isNavFocused: _isSidebarFocused,
+      profile: context.watch<ActiveProfileProvider?>()?.active,
+      onSelectDestination: _selectTvDestination,
+      onFocusDestination: _focusTvDestination,
+      onFocusContent: _focusContent,
+      onFocusNav: _focusSidebar,
+      onOpenProfiles: () => unawaited(_openProfilesFromShell()),
+      onOverlaySheetOpenChanged: _handleOverlaySheetOpenChanged,
+      onKeyEvent: _handleTvShellKey,
+      selectLibrary: _selectLibrary,
+      openSettings: _openSettings,
+      dismissNestedRoute: _popTvNestedRoute,
+      child: _buildTickerAwareStack(),
+    );
+  }
+
+  KeyEventResult _handleTvShellKey(KeyEvent event) {
+    // While a sheet is open, closing it is the host's job (hoofdstuk 7.5 step
+    // 1). Acting here too made the same press close the sheet *and* move the
+    // focus underneath it — the bug the rail shell already carries a comment
+    // about.
+    if (_isOverlaySheetOpen) return KeyEventResult.ignored;
+    final searchResult = _handleSearchShortcut(event);
+    if (searchResult == KeyEventResult.handled) return searchResult;
+    return _handleBackKey(event);
+  }
+
+  /// A destination was activated in the bar.
+  ///
+  /// Re-selecting the destination you are already on restores the position you
+  /// had inside it instead of resetting to the top, and starts no refresh
+  /// (hoofdstuk 7.2) — [_selectTab] already returns early for an unchanged tab.
+  /// Two different presses, and they were being treated as one.
+  ///
+  /// Select on the destination you are **already on** is hoofdstuk 7.2's
+  /// "restore where I was", and it keeps calling `_focusContent`. Select on
+  /// **another** destination is a change of what is on screen, not a request to
+  /// go stand in it: the viewer is walking the bar, the page behind it changes,
+  /// and the remote stays where the ring is. Focusing the content there was the
+  /// first of the three paths P2 is about, and it is the one the report opened
+  /// with — choosing Home dropped the remote onto the billboard's Afspelen pill
+  /// before the viewer had asked for anything.
+  /// The ring moved to another item in the top bar, which on TV *is* the
+  /// navigation (hoofdstuk 7.2's remote contract, revised 2 September 2026).
+  ///
+  /// Select is no longer required to change destination, and this is not a
+  /// second way of doing what `_selectTvDestination` does: it deliberately
+  /// never arms a content-focus intent, so the remote stays in the bar while
+  /// the page behind it changes. Walking Home → Series → Films → Mijn Pleya is
+  /// three page changes and zero focus moves.
+  ///
+  /// No debounce. The viewer's remote and the screen have to agree at every
+  /// step, and a delay between the ring landing and the page following is
+  /// exactly the disagreement that would introduce. Each call is idempotent
+  /// per destination — `activate` returns false when nothing changed and
+  /// `_selectTab` only runs on a real change — so pressing RIGHT faster than
+  /// pages load costs extra work, not a wrong final state: the last focused
+  /// item is the last one activated.
+  void _focusTvDestination(TvDestinationId destination) {
+    final changed = _tvNav.activate(destination);
+    // Cancels anything armed against the destination the viewer just left.
+    // Content landing late for a page they have already walked past must not
+    // pull the remote out of the bar.
+    _tvContentFocus.onDestinationFocused();
+    if (changed) _selectTab(destination.tab);
+  }
+
+  void _selectTvDestination(TvDestinationId destination) {
+    final wasActive = _tvNav.active == destination && _currentTab == destination.tab;
+    _tvNav.activate(destination);
+    // `_selectTab` is *not* a no-op for the tab it is already on: it setStates
+    // unconditionally and, for Home, calls `_onDiscoverBecameVisible()` — a
+    // network refresh. Hoofdstuk 7.2 is explicit that Select on the destination
+    // you are already on "start geen automatische netwerkrefresh", so the guard
+    // is here rather than being wished for downstream.
+    // The rule itself lives on the authority, not here — see
+    // [TvContentFocusAuthority.onDestinationSelected]. This method's job is to
+    // change the page; where the remote belongs afterwards is one decision with
+    // one owner.
+    final intent = _tvContentFocus.onDestinationSelected(wasActive: wasActive);
+    if (!wasActive) _selectTab(destination.tab);
+    if (intent != null) _focusContent(restorePreviousFocus: true);
+  }
+
+  /// Recomputes the bar and, when the active destination just disappeared,
+  /// moves to Home (hoofdstuk 19).
+  void _syncTvDestinations() {
+    if (!_isTvShell) return;
+    final resolved = resolveLiveTvCapability(
+      remembered: _tvLiveTvRemembered,
+      available: _hasLiveTv,
+      conclusive: _multiServerProvider?.lastLiveTvCheckWasConclusive ?? false,
+    );
+    if (resolved.store case final bool store) {
+      _tvLiveTvRemembered = store;
+      unawaited(store ? TvLiveTvCapabilityStore.remember() : TvLiveTvCapabilityStore.forget());
+    }
+    final displaced = _tvNav.updateConditions(TvNavConditions(hasLiveTv: resolved.visible));
+    if (displaced != null) _selectTab(displaced.tab);
+  }
+
+  /// The Mijn Pleya section a tab maps to on TV, or null when the tab is a
+  /// destination in its own right.
+  ///
+  /// Hoofdstuk 18.2 moved four of the rail's rows inside Mijn Pleya. Redirecting
+  /// here rather than leaving them as parallel root tabs is what keeps one
+  /// answer to "where am I": without it, `_selectTab(settings)` would show
+  /// Settings as root content while the bar lit up Mijn Pleya, and Back would
+  /// go to the bar instead of to the hub.
+  static TvMyPleyaSection? _tvSectionForTab(NavigationTabId tab) => switch (tab) {
+    NavigationTabId.libraries => TvMyPleyaSection.libraries,
+    NavigationTabId.watchlist => TvMyPleyaSection.watchlist,
+    NavigationTabId.requests => TvMyPleyaSection.requests,
+    NavigationTabId.downloads => TvMyPleyaSection.downloads,
+    NavigationTabId.settings => TvMyPleyaSection.settings,
+    _ => null,
+  };
+
   Widget _buildContent(BuildContext context, bool useSideNav) {
+    // Fase 7: TV gets its own root. Checked before [useSideNav] because a TV is
+    // also a "should use side navigation" surface — it was one until this fase
+    // — and the two branches must never both be able to run (hoofdstuk 6.2:
+    // one root navigation authority, never a rail and a bar at once).
+    if (_isTvShell) return _buildTvShell(context);
+
     if (useSideNav) {
       return SettingValueBuilder<bool>(
         pref: SettingsService.alwaysKeepSidebarOpen,

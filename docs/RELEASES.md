@@ -41,9 +41,26 @@ under `Notes`.
 - tvOS-driver via idb HID + isolatiefix (Deel B Fase 10)
 - geometrie-assertions, fixture_mutate en open in de engine (Fase 11)
 - hero-layout op macOS + iOS, en een screenshot die bewijs is
+- architectuurbaseline Pleya Unified TV 2026
+- unified identity foundation
+- all-source resolver, visibility boundary, and coverage
+- unified catalog k-way merge engine
+- unified catalog k-way merge engine, with its Fase-3 provider
 - focus-trace vult zich altijd, sidebar-scenario op semantiek (Fase 11)
+- activation coordinator en TV source picker
+- prefetch unified-catalog poster artwork around the viewport
 - laatste Fase 11-scenario groen, twee echte tvOS-bugs gefixt
+- give Films and Series the depth a premium TV wall has
+- a series says how much of it there is, a film says what it is
+- close the complete catalogus, and give focus back its stable ground
 - Fase 13 afgerond, MCP-laag als dunne adapter boven de bestaande CLI
+- unified discovery — Home hero, Films/Series landings, Search en Verder kijken
+- de TV-root is een horizontale topnav, en Mijn Pleya is een echte bestemming
+- Home is a rounded billboard with a feed of its own, and rows stop moving it
+- unified TV surfaces, het register gesloten, en de merkketen op één autoriteit
+- Mijn Pleya-secties op één paginaframe, en de bibliotheekkiezer op tvOS
+- een contentroute opent binnen de shell, en houdt de topnav
+- media detail sluit zichzelf via TvNestedRouteScope wanneer genest (PB-1)
 
 ### Improved
 - scheidingslijnen volgen de werkelijke rijhoogte
@@ -71,7 +88,13 @@ under `Notes`.
 - fade the full-width strip out later instead of zooming it in
 - geen PASS meer op bewijs uit de verkeerde app-instantie
 - poortdiscovery leest Library/Caches, en de scenario wacht op de hero zelf
+- independently confirmed corrections after unauthorized-commit review
+- register the unified catalog view preference with the sync policy
+- raise the source badge fill to an AA contrast floor over bright artwork
+- restore the libraries golden's name after a bulk rename mangled it
+- one reading per card, in hoofdstuk 25's order
 - back-suppressie causaal maken, filters-scenario eerlijk hernoemen, evidence-gat dicht
+- the four defects the independent visual audit confirmed
 - geen --enforce-lockfile voor pleya_verify subpackages
 - evidence-artifact upload sluit app-installcaches uit
 - idb-installatie in tvOS-gate repareren, DEC-066 rechtzetten
@@ -81,6 +104,29 @@ under `Notes`.
 - bind elke subprocess- en fixture-controlcall aan een echte deadline
 - garandeer één JSON-envelope op run/validate --json, ook bij een onverwachte crash
 - verwijder set_pref/focus/back uit de scenario-vocabulaire
+- J14 covered — regression tests for the filter panel's already-implemented empty-section behaviour
+- B17 — TV search corrects itself against hidden-library visibility instead of ignoring it
+- fill in the 11 new Phase-9 keys across all 14 locales that were still falling back to English
+- de UX/focus-herstelronde, twaalf gemelde gebreken plus menuSemantics
+- Mijn Pleya-secties bedienbaar maken, en Pleya Verify de tvOS-app laten bedienen
+- de lege logreader en de focus na het vergeten van een kamer
+- een assert die niets controleert eindigt niet meer groen
+- de kijklijst laat de afstandsbediening niet stranden na verwijderen
+- één druk op de ring is één focusstap, niet twee
+- alleen de rail waar de afstandsbediening staat beschrijft zijn tegel
+- een verticale stap komt aan in de kolom waar hij vandaan komt
+- de laatste tegel van een rail heeft ruimte om in uit te klappen
+- de bovenste rij van de catalogus krijgt de ruimte die haar ring vraagt
+- headeracties op de catalogus eindigen op de canonieke rechterrand (CAT3)
+- headercontrols blijven bereikbaar na een LEFT-uitstap uit het raster (CAT4)
+- elke overlay op TV krijgt de 10-voets paneelgeometrie (OVR1b)
+- behoud expliciete sheet presentation op TV (OVR2)
+- geen zichtbare terugknop op een oppervlak dat de afstandsbediening niet kan bedienen (BACK1)
+- houd het contextmenu uit de overscanband (FOC1)
+- vraag de detail-backdrop op de resolutie van het toestel (ART1)
+- verzoen de bibliotheekselectie met de bibliotheken die er zijn (LIB1)
+- laat de laatst gekozen bibliotheek de trage vorige overleven (LIB2)
+- geen rode rul meer onder de open tab op TV (LIB3)
 <!-- END GENERATED -->
 
 ### Fixed
