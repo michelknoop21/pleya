@@ -64,12 +64,17 @@ func TestInfoBeforeAndAfterSetup(t *testing.T) {
 		t.Fatalf("capabilities zijn %+v", before.Capabilities)
 	}
 	// Capabilities is leidend. Kijkstatus staat sinds PS-4 aan, met het
-	// eigendomsmodel en de streamsessies eronder, en gebruikers sinds stap 4 van
-	// PS-9; een afspeelplan, transcodering, downloads, Live TV en realtime zijn
-	// latere fasen en horen dus nog steeds uit te staan. Sessions gaat pas aan
-	// bij stap 6, wanneer GET/DELETE /sessions en /auth/logout er zijn.
+	// eigendomsmodel en de streamsessies eronder; gebruikers sinds stap 4 van
+	// PS-9 en sessies sinds stap 6, nu GET/DELETE /sessions en /auth/logout er
+	// zijn. Een afspeelplan, transcodering, downloads, Live TV en realtime zijn
+	// latere fasen en horen dus nog steeds uit te staan.
+	//
+	// Sessions stond hier eerder niet bij, en dat is precies de soort assertie
+	// die je niet mist: de vlag ging bij stap 6 aan in handlers_auth.go en geen
+	// test zou het gemerkt hebben als hij er weer uit was gevallen.
 	if !before.Capabilities.WatchState || !before.Capabilities.WatchStateOwnership ||
-		!before.Capabilities.StreamSessions || !before.Capabilities.Users {
+		!before.Capabilities.StreamSessions || !before.Capabilities.Users ||
+		!before.Capabilities.Sessions {
 		t.Fatalf("een capability van deze fase staat uit: %+v", before.Capabilities)
 	}
 	if before.Capabilities.PlaybackPlan || before.Capabilities.Transcode ||
@@ -273,4 +278,55 @@ func (e *env) expectCode(rec *httptest.ResponseRecorder, want string) {
 	if envelope.Error.Message == "" {
 		e.t.Fatal("een foutantwoord zonder message")
 	}
+}
+
+// TestSetupRejectsWrongAndExpiredCode is de kant van acceptatiecriterium 4 die
+// TestSetupIsSingleUse niet raakt.
+//
+// Dat criterium zegt "zonder setup-code komt niemand binnen", en dat is een
+// uitspraak over het afwijzen. Eenmaligheid bewijst alleen dat een geslaagde
+// setup niet nog eens kan; een code die nooit klopte en een code die verlopen
+// is lopen langs een ander pad (auth.ErrSetupCodeInvalid), en dat pad had geen
+// enkele test. Een server die elke code accepteerde was hier tot nu toe groen.
+func TestSetupRejectsWrongAndExpiredCode(t *testing.T) {
+	e := newEnv(t)
+	e.putSetupCode()
+
+	attempt := func(code string) *httptest.ResponseRecorder {
+		return e.do(http.MethodPost, "/pleya/v1/auth/setup", map[string]string{
+			"setup_code": code,
+			"username":   "michel",
+			"password":   "een-lang-genoeg-wachtwoord",
+		}, withoutAuth)
+	}
+
+	rec := attempt("FOUT-CODE")
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("een verkeerde setupcode gaf %d, verwacht 401: %s", rec.Code, rec.Body.String())
+	}
+	e.expectCode(rec, api.CodeSetupCodeInvalid)
+
+	// En er is niets ontstaan: geen owner, en de server vraagt nog om setup.
+	var info api.Info
+	e.getJSON("/pleya/v1/info", "", http.StatusOK, &info)
+	if !info.Auth.SetupRequired {
+		t.Fatal("setup_required staat op false na een afgewezen setupcode")
+	}
+
+	// Een verlopen code wordt niet anders behandeld dan een verkeerde. Zou de
+	// vervaldatum alleen bij het uitgeven gelden, dan bleef een code die ooit
+	// op een terminal stond onbeperkt geldig.
+	const expired = "OUDE-CODE"
+	if err := e.auth.PutSetupCode(context.Background(), auth.HashOpaque(expired),
+		time.Now().Add(-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	rec = attempt(expired)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("een verlopen setupcode gaf %d, verwacht 401: %s", rec.Code, rec.Body.String())
+	}
+	e.expectCode(rec, api.CodeSetupCodeInvalid)
+
+	// De geldige code werkt daarna gewoon: het pad is afwijzend, niet stuk.
+	e.setup(e.putSetupCode())
 }

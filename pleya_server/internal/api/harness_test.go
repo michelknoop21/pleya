@@ -268,10 +268,17 @@ func (e *env) expireStreamSession(sessionID string) {
 	}
 }
 
-// createUser legt rechtstreeks een gebruiker vast, buiten het protocol om: er
-// bestaat nog geen aanmaakendpoint (capabilities.users is false), en AC2 vraagt
-// om echte users- en library_permissions-rijen in de fixture, geen
-// hardgecodeerd owner-subject.
+// createUser legt rechtstreeks een gebruiker vast, buiten het protocol om.
+//
+// Sinds stap 4 bestaat POST /users wel, dus dit is een keuze en geen gebrek:
+// de autorisatiematrix toetst de bibliotheekcontrole en niet de inlogstroom, en
+// een fixture die per test een gebruiker aanmaakt, rechten zet en inlogt zou
+// bij elke matrixregel drie dingen tegelijk kunnen laten falen.
+//
+// Die keuze is alleen houdbaar zolang iets ánders het echte pad bewijst. Dat is
+// users_test.go: TestSecondUserCanBeCreatedAndLogIn gaat wél door POST /users
+// en /auth/login. Zonder die test bewijzen de matrixtests hier hooguit dat de
+// autorisatie klopt voor gebruikers die nooit hadden kunnen bestaan.
 func (e *env) createUser(role, username string) id.ID {
 	e.t.Helper()
 	uid := id.New()

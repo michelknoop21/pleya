@@ -1,10 +1,9 @@
 # STATUS · Pleya
 
-_Laatst gewerkt: 2026-09-03. **PS-9 is code compleet**: stap 4 (gebruikersbeheer-API en een inlogpad
-dat elke rij in `users` kent), stap 6 (intrekkingsregister, onderbreekbare `copyRange`,
-sessie-endpoints en `logout`) en de clientkant (`ProfileKind.pleyaServer` met een eigen
-credential-resolver, `device_id`/`device_name` op login) zijn af en groen. Wat er nog voor het sluiten
-van de fase moet gebeuren staat onder "Volgende stap". Daarvóór, op 2026-09-01, is DEC-064's
+_Laatst gewerkt: 2026-09-04. **PS-9 is gesloten.** Alle zes implementatiestappen zijn af, de vijf
+acceptatiecriteria hebben elk hun bewijs, en het stopcriterium is op de draaiende NAS gehaald in
+plaats van alleen in een container. De volgende fase in de vastgelegde doorloop is PS-11A en die is
+niet gestart; er loopt op dit moment dus geen serverfase. Daarvóór, op 2026-09-01, is DEC-064's
 PS-5-hardwareronde gestart: een macOS-releasebuild draait lokaal en een tvOS-build staat geïnstalleerd
 en gelanceerd op de echte Apple TV (`1528384F-B1C1-5688-BA78-15EE0C57F788`); testtitels en de fysieke
 playbackbeoordeling wachten nog op Michel. De volledige integratie-gereedheidsaudit die daartoe leidde
@@ -192,21 +191,31 @@ geeft 24 treffers zonder seizoen, `kind=season` levert ze alsnog, en zonder toke
 
 ## Volgende stap
 
-**PS-9 sluiten, of de twee dingen die dat nog tegenhouden afhandelen.** Vier van de vijf
-acceptatiecriteria zijn gehaald met bewijs: twee gebruikers met eigen bibliotheken en eigen kijkstatus
-(AC1), `404` en geen `403` op alle dertien endpoints van de matrix plus de twee nieuwe (AC2), een
-ingetrokken sessie die een lopende stream binnen 446 ms afbrak tegen een grens van twee seconden
-(AC3), en geen defaultwachtwoord of ingebouwd account (AC4). AC5 vraagt dat de Plex- en
-Jellyfin-profielpaden ongewijzigd zijn, aangetoond met de bestaande tests: `flutter test` is groen
-(4782 geslaagd, 1 overgeslagen) en `ProfileKind` heeft er een derde waarde bij gekregen zonder dat een
-bestaande tak van gedrag veranderde. Wat rest is een oordeel, geen werk.
+**PS-9 is gesloten op 2026-09-04, met de huishoudronde op de draaiende NAS als laatste bewijs.**
+Migratie 0007 staat er sinds 2026-09-03 (schemaversie 7, back-up ervóór op de NAS zelf onder
+`/volume1/docker/pleya-server/backups/`), en `GET /info` op `web.pleya.app` meldt nu `users: true` en
+`sessions: true`.
 
-Twee dingen die dat oordeel wel raken. Migratie 0007 staat **niet** op de NAS: `GET /info` op
-`web.pleya.app` levert een `capabilities`-object zonder `sessions`-sleutel, dus de draaiende binary is
-ouder dan `c324b7d`. Het deployrisico is niet "iedereen moet opnieuw inloggen" (0007 behoudt elke
-actieve keten, en `TestMigration0007MigratesLegacySessions` bewijst dat), maar dat 0007 hard faalt met
-een `RAISE EXCEPTION` zodra `watch_states.subject` of `stream_sessions.subject` iets anders dan
-`'owner'` bevat, en er is geen neerwaartse migratie. Back-up vooraf, dan deployen.
+De ronde zelf: als owner ingelogd, een tweede gebruiker aangemaakt met `POST /users` zonder één regel
+handmatige SQL, haar met `PUT /users/{id}/permissions` precies één van de drie bibliotheken gegeven
+(Films, niet Series en niet Kids), en als haar ingelogd. Ze zag één bibliotheek. De andere twee gaven
+`404` op een direct id, en een echt item uit elk van die twee gaf `404 library.not_found` met dezelfde
+body als een id dat niet bestaat, terwijl de owner op datzelfde id `200` kreeg. Daarna is haar sessie
+ingetrokken met `DELETE /sessions/{id}`: haar accesstoken gaf binnen 0,4 seconde `401 auth.token_invalid`
+met bericht `session revoked`, haar refreshtoken eveneens `401`, en het token van de owner bleef
+gewoon `200` geven. Opgeruimd met `DELETE /users/{id}`, waarna de server weer op één owner en drie
+bibliotheken stond. Ook meegenomen: sanne die met `?user_id=` de sessies van de owner opvraagt krijgt
+`404`, matrixregel 15.
+
+Eén ding uit de ronde was een fout in de meetopstelling en niet in de server. `GET /sessions` geeft de
+eigen sessies en draagt geen `user_id`; een owner of admin die andermans sessies wil zien vraagt
+`?user_id=`. Dat is precies wat DEC-070 en matrixregel 15 voorschrijven.
+
+Vier kleine bevindingen uit de audit zijn in dezelfde commit gerepareerd: er was geen test op een
+foute of verlopen setupcode (AC4 leunde alleen op eenmaligheid, dus een server die elke code
+accepteerde was hier groen), `capabilities.sessions` werd nergens geassert, het commentaar bij
+`harness_test.go`'s `createUser` beweerde nog dat er geen aanmaakendpoint bestond, en één matrixregel
+stond met het verkeerde nummer in het commentaar.
 
 En twee gaten in het contract die PS-9 heeft blootgelegd en die het gesloten protocolvenster niet mag
 repareren. Er is geen foutcode voor "restricted mag geen manage krijgen": hoofdstuk 16.1 legt het
@@ -227,15 +236,17 @@ hardware-only criterium. Alles slaagt: AC4 sluiten met een Roadmap Drift Check, 
 (inclusief de vijf nog ongepushte lokale commits) mergen naar `main`. Eén regressie: niet mergen,
 eerst repareren op deze branch.
 
-**PS-5 is code complete; de lopende ontwikkelfase is PS-9** (gebruikers, profielen en
-rechten), volgens de doorloop in `docs/pleya-server-phase-order-deviation.md`. PS-5 blijft
+**PS-5 is code complete; PS-9 is gesloten en PS-11A is niet gestart**, volgens de doorloop in
+`docs/pleya-server-phase-order-deviation.md`. PS-5 blijft
 **opgeleverd, niet gesloten**: acceptatiecriterium 4, geen regressie op echte hardware voor minimaal
 tvOS plus één desktopplatform, staat expliciet open. Er is nu geen tijd voor die ronde, dus de test is
 bewust uitgesteld en niet gehaald of geschrapt. Build 242 draagt PS-5 en staat al op TestFlight; alleen
 de deviceronde zelf ontbreekt, met de bestaande testmatrix van vier titels per toestel (zie de
 PS-5-fasetabel in het architectuurdocument).
 
-Dat een openstaand hardwarecriterium het starten van PS-9 niet blokkeert, is vastgelegd als een
+Het sluiten van PS-9 verandert daar niets aan: die twee criteria staan los van elkaar, en de
+hardwareronde is niet gedraaid. Dat een openstaand hardwarecriterium het starten van PS-9 niet
+blokkeerde, is vastgelegd als een
 beperkte governance-afwijking, [DEC-064](docs/DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet).
 Ze geldt uitsluitend voor het starten van een volgende ontwikkelfase en is geen bewijs dat Plex- of
 Jellyfin-afspelen op echte hardware geverifieerd is; die verificatie ontbreekt gewoon nog. De

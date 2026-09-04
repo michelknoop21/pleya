@@ -227,8 +227,12 @@ func TestLibraryAuthorizationTwoUsersDifferentPermissions(t *testing.T) {
 }
 
 // TestLibraryAuthorizationStreamTokenAndSessionRespectPermission dekt
-// matrixpunt 2 en 4 voor de twee endpoints die een streamtoken of
-// -sessie uitgeven: zonder bibliotheekrecht komt er geen credential.
+// matrixregel 10 en 11, de twee endpoints die een streamtoken of -sessie
+// uitgeven: zonder bibliotheekrecht komt er geen credential, en de 404 zegt
+// niet of de versie bestaat.
+//
+// Dit commentaar noemde eerder regel 2 en 4; die gaan over
+// /libraries/{id}/items en /items/{id}/children en worden hier niet geraakt.
 func TestLibraryAuthorizationStreamTokenAndSessionRespectPermission(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())

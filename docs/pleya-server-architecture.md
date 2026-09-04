@@ -2651,6 +2651,7 @@ lokale executor volstaat? Dat is fase 13, en het valt onder de regel in 23.1.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-9 |
+| Status | **gesloten 4 september 2026**: migratie 0007, `internal/auth/users.go`, `internal/auth/revocation.go`, de vijf routes onder `/users`, `GET`/`DELETE /sessions`, `POST /auth/logout`, en aan de clientkant `ProfileKind.pleyaServer` met `PleyaServerCredentialResolver`. Het stopcriterium is op de draaiende NAS gehaald en niet alleen in een container, zie hieronder |
 | Doel | een huishouden met meerdere mensen, elk met eigen rechten en eigen kijkstatus |
 | Bijdrage aan einddoel | een server zonder gebruikers vervangt Plex niet voor een gezin |
 | Afhankelijkheden | PS-4 |
@@ -2725,6 +2726,43 @@ niet gevraagd en maakt het model moeilijker uitlegbaar. Is er een revocatiemecha
 verder gaat dan sessie- en streamtokenintrekking? Een generieke pub/sub-laag is PS-11 of later, zie
 DEC-066. Handhaaft `manage` iets binnen PS-9? Dat hoort bij PS-7 en PS-11A; in PS-9 wordt hij alleen
 opgeslagen en teruggegeven.
+
+Op 4 september 2026 zijn die drie vragen tegen de code beantwoord en niet tegen de bedoeling.
+`library_permissions` heeft alleen `(user_id, library_id, permission)` met drie ladderwaarden, dus er
+is geen granulariteit onder de bibliotheek. `auth.Revocations` is één `map[id.ID]time.Time` op
+sessie-id, gevuld uit `sessions.revoked_at`, zonder `LISTEN`/`NOTIFY` of abonnees. En de enige
+rechtendrempel op een aanvraagpad is `catalog.PermissionView` in `internal/api/authorize.go`:
+`manage` wordt opgeslagen, gevalideerd, teruggegeven en bij degradatie teruggezet, maar nergens als
+toegangsvoorwaarde gelezen.
+
+**Bewijs bij het sluiten.** De testronde draaide met de wegwerp-Postgres eraan (`test-db.sh up` in
+dezelfde aanroep, anders slaat de hele suite zichzelf over en ziet een `-v`-run er groen uit terwijl
+er niets liep): 126 tests in `api`, `auth` en `migrate`, nul `SKIP`, nul `FAIL`, plus 4782 Dart-tests
+voor criterium 5.
+
+| Criterium | Bewijs |
+| --- | --- |
+| 1 | `TestSecondUserCanBeCreatedAndLogIn` gaat door `POST /users` en `/auth/login` en toetst dat het token haar eigen `subject` en een `sid` draagt; `TestSubjectsAreIsolated` scheidt de kijkstatus |
+| 2 | vijftien matrixregels met elk een eigen test; live gaven twee verboden bibliotheken en een echt item daaruit `404 library.not_found`, met dezelfde body als een id dat niet bestaat |
+| 3 | `TestRevocationStopsRunningStreamWithinTwoSeconds` mat 446 ms tegen een lopende stream; live was het ingetrokken accesstoken binnen 0,4 s `401`, met de refreshketen erbij, terwijl de owner bleef werken |
+| 4 | `TestSetupIsSingleUse`, `TestSetupRejectsWrongAndExpiredCode` en `TestOwnerIsImmutable` |
+| 5 | 4782 Dart-tests groen; `ProfileKind.pleyaServer` is additief en de enige wijziging aan gedeelde semantiek zit in `add_pleya_server_screen.dart` |
+
+Het stopcriterium is op de draaiende NAS gehaald: een tweede gebruiker aangemaakt via de API, één van
+de drie bibliotheken toegekend, zelf ingelogd, en de andere twee bleven onzichtbaar en onbereikbaar
+op een direct id. Daarna is haar sessie ingetrokken en haar account verwijderd, en stond de server
+weer op één owner en drie bibliotheken.
+
+Twee dingen zijn bewust niet gerepareerd, omdat het protocolvenster na stap 1 dicht is. Er is geen
+foutcode voor "restricted mag geen `manage` krijgen" (hoofdstuk 16.1 legt het verbod vast, het
+coderegister in 7.1 heeft er niets voor, dus `handleSetPermissions` gebruikt `auth.user_not_found`),
+en er is geen endpoint waarmee een client zijn eigen account-id opvraagt; de client identificeert
+zich op gebruikersnaam. Allebei horen in het eerstvolgende protocolvenster, met een toets langs de
+zes compatibiliteitsregels uit hoofdstuk 3 van de specificatie.
+
+Criterium 2 noemt naast stream- ook plan-endpoints. Die bestaan nog niet: `capabilities.playback_plan`
+staat op `false` en er is geen planroute in `openapi.yaml`. Dat deel van het criterium is leeg en
+wordt meegenomen wanneer PS-6 het planoppervlak maakt, niet nu afgevinkt.
 
 ---
 
@@ -2883,7 +2921,7 @@ Terugdraaien.
 
 | Phase ID | PS-14 |
 | --- | --- |
-| Status | **ontwerp goedgekeurd 3 september 2026, uitvoering geblokkeerd op PS-9.** Het ontwerp staat in [docs/pleya-server-ps14-proposal.md](pleya-server-ps14-proposal.md), met zeven bindende beslissingen. Goedgekeurd is uitdrukkelijk niet vrijgegeven voor uitvoering: er komt geen PS-14-productiecode voordat PS-9 formeel gesloten is |
+| Status | **ontwerp goedgekeurd 3 september 2026, uitvoering niet vrijgegeven.** Het ontwerp staat in [docs/pleya-server-ps14-proposal.md](pleya-server-ps14-proposal.md), met zeven bindende beslissingen. De formulering hing eerst aan het sluiten van PS-9, en dat is op 4 september 2026 gebeurd; dat sluiten haalt de afhankelijkheid weg en is uitdrukkelijk geen vrijgave. Vrijgeven is een apart besluit dat niet genomen is, dus er komt tot dat besluit geen PS-14-productiecode |
 | Doel | een `books`-bibliotheek wordt gescand, gecatalogiseerd en via het protocol ontsloten, inclusief cover en het EPUB-bestand zelf |
 | Bijdrage aan einddoel | e-books horen sinds [DEC-093](DECISIONS.md) tot de productscope; zonder servercatalogus is er geen bron waar een lezer boeken vandaan haalt |
 | Afhankelijkheden | PS-2, PS-9 |

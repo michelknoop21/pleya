@@ -4,6 +4,58 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-04] PS-9 gesloten, met de huishoudronde op de draaiende NAS
+
+De opdracht was om de vorige sessie niet op haar woord te geloven, en dat leverde eerst een les over
+de meetopstelling op. Een `go test -v ./internal/api/...` gaf 126 keer `SKIP` en zag er in de
+samenvatting uit als een normale run: `test-db.sh up` zet zijn variabelen in de shell waar hij
+draait, en elke Bash-aanroep is een nieuwe shell. Draai `eval "$(scripts/test-db.sh up)"` en het
+testcommando in dezelfde regel, en kijk naar de `SKIP`-regels voordat je "groen" opschrijft. Met de
+database eraan: 126 tests groen in `api`, `auth` en `migrate`, nul overgeslagen, plus 4782 Dart-tests
+voor criterium 5.
+
+De audit per acceptatiecriterium hield stand. Het gat van de vorige sessie, tests die AC1 bewezen met
+gebruikers uit rauwe SQL en rechtstreeks gemunte tokens, is dicht: `TestSecondUserCanBeCreatedAndLogIn`
+gaat door `POST /users` en `/auth/login` en controleert dat het token haar eigen `subject` draagt en
+niet stilletjes dat van de owner. De matrixtests gebruiken nog wel fixtures, en dat mag: ze toetsen de
+bibliotheekcontrole en niet de inlogstroom, zolang iets anders het echte pad bewijst. Dat staat nu ook
+zo in het commentaar, want daar stond nog dat er geen aanmaakendpoint bestond.
+
+**De ronde op `web.pleya.app`.** Als owner ingelogd, een tweede gebruiker aangemaakt via de API,
+precies één van de drie bibliotheken toegekend, en als haar ingelogd. Ze zag één bibliotheek; de
+andere twee gaven `404` op een direct id, en een echt item uit elk daarvan gaf `404 library.not_found`
+met dezelfde body als een niet-bestaand id, terwijl de owner op datzelfde id `200` kreeg. Haar sessie
+intrekken maakte haar accesstoken binnen 0,4 seconde `401 auth.token_invalid` met bericht
+`session revoked`, haar refreshketen eveneens, en de owner bleef `200` houden. Daarna opgeruimd, en
+de server stond weer op één owner en drie bibliotheken.
+
+Eén ding leek een bevinding en was er geen. `GET /sessions` geeft de eigen sessies en draagt geen
+`user_id`; wie andermans sessies wil zien vraagt `?user_id=` en moet owner of admin zijn. Dat is
+precies DEC-070 en matrixregel 15. Mijn script ging uit van een platte lijst met een `user_id`-veld,
+en dat is de fout van het script.
+
+**Vier gaten in de tests, alle vier klein en alle vier gerepareerd.** `CodeSetupCodeInvalid` stond in
+het foutregister en werd door `handleSetup` gebruikt, maar geen enkele test raakte dat pad: AC4 leunde
+volledig op eenmaligheid, dus een server die élke setupcode accepteerde was hier groen.
+`TestSetupRejectsWrongAndExpiredCode` dekt nu een verkeerde en een verlopen code, en controleert dat
+er daarna nog geen owner is. `capabilities.sessions` werd nergens geassert terwijl de vlag bij stap 6
+aanging. En één testcommentaar noemde matrixregel 2 en 4 waar het regel 10 en 11 dekt.
+
+**Twee formuleringen die door het sluiten zelf gingen lekken.** De protocolvriezing hing aan "zolang
+de lopende fase loopt", en tussen twee fasen in loopt er geen fase; dat las als een open venster. Hij
+hangt nu aan een expliciet besluit. En de PS-14-status zei dat er geen code komt "voordat PS-9
+formeel gesloten is", wat vanzelf waar werd zonder dat iemand PS-14 had vrijgegeven. Vrijgeven blijft
+een apart besluit dat niet genomen is.
+
+De Roadmap Drift Check is tegen de code beantwoord en niet tegen de bedoeling: `library_permissions`
+heeft alleen `(user_id, library_id, permission)`, `auth.Revocations` is één map op sessie-id zonder
+pub/sub, en de enige rechtendrempel op een aanvraagpad is `catalog.PermissionView`. `manage` wordt
+opgeslagen en teruggegeven, nergens gehandhaafd.
+
+Wat open blijft: PS-5-criterium 4 (de hardwareronde) staat er los van en is niet gedraaid, en de twee
+contractgaten (geen foutcode voor "restricted mag geen `manage`", geen endpoint voor het eigen
+account-id) wachten op het eerstvolgende protocolvenster.
+
 ## [2026-09-03] PS-9 code compleet: gebruikersbeheer, sessie-intrekking en de clientkant
 
 De eerste vondst was er geen in de code maar in de boekhouding. DEC-066, DEC-071 en DEC-072

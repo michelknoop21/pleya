@@ -6,7 +6,9 @@ regel in deze map wijzigt.
 
 De werkregels per fase staan in de sectie Pleya Server van [../CLAUDE.md](../CLAUDE.md) en gelden
 onverkort: lees hoofdstuk 23 plus je eigen fase, blijf binnen de Phase ID, bouw niets uit een latere
-fase vooruit, en schrijf geen latere productvereiste weg. **De huidige fase is PS-9.**
+fase vooruit, en schrijf geen latere productvereiste weg. **PS-9 is gesloten op 4 september 2026.**
+De volgende fase in de vastgelegde doorloop is PS-11A en die is niet gestart, dus er is op dit moment
+geen lopende serverfase: nieuw werk hier vraagt eerst een vrijgave.
 
 Eén stuk werk loopt daar bewust naast: de lege hubs `continue_watching` en `next_up` in `handleHub`
 zijn met [DEC-073](../docs/DECISIONS.md) aangemerkt als defect in het gesloten PS-4, en worden als
@@ -79,9 +81,11 @@ internal/testsupport/  wegwerpschema en mediabestanden voor tests
 
 ## Regels die je stil kunt breken
 
-**Het wire-contract ligt vast.** `../docs/pleya-protocol/v1/openapi.yaml` is bevroren zolang de
-lopende fase loopt, niet aan een vast fasenummer gehangen (DEC-068): een anker op een specifiek
-nummer veroudert stilzwijgend zodra die fase een opengelaten voorganger heeft. Het venster ging twee
+**Het wire-contract ligt vast.** `../docs/pleya-protocol/v1/openapi.yaml` is bevroren tot een besluit
+het venster expliciet opent, en is niet aan een vast fasenummer gehangen (DEC-068): een anker op een
+specifiek nummer veroudert stilzwijgend zodra die fase een opengelaten voorganger heeft. Het anker op
+"de lopende fase" had een eigen gat, zichtbaar geworden bij het sluiten van PS-9: tussen twee fasen
+in loopt er geen fase, en dat is geen open venster. Het venster ging twee
 keer eerder open: bij het sluiten van PS-3, voor de drie poortbesluiten (DEC-049, DEC-050, DEC-051),
 en voor PS-9, voor precies de zeven wijzigingen uit DEC-068 (gebruikers-, sessie- en
 logout-endpoints, `device_id`/`device_name`, `capabilities.sessions`, nieuwe foutcodes). Dat venster

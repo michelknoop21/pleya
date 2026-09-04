@@ -71,16 +71,19 @@ PS-0-afwijking staat in `docs/pleya-server-ps0-proposal.md`, de PS-1-afwijking i
 21 augustus 2026: direct play met HTTP-range, en kijkstatus met de server als eigenaar. Desktop,
 mobiel en TV zijn alle drie op echte hardware bewezen, inclusief een kijkpositie die van een Mac via
 een iPhone naar een Apple TV meereisde.
-**De huidige ontwikkelfase is PS-9** (gebruikers, profielen en rechten). PS-5
-(`DeviceCapabilities` in de client) is code complete maar niet gesloten: acceptatiecriterium 4, de
-regressieronde op echte hardware voor tvOS en minimaal één desktopplatform, blijft expliciet open en
-niet gehaald. Die hardwarevalidatie is bewust uitgesteld en blokkeert PS-9 niet, conform
+**PS-9 is gesloten** op 4 september 2026: vier van de vijf acceptatiecriteria met tests, en het
+stopcriterium op de draaiende NAS in plaats van alleen in een container. De volgende fase in de
+vastgelegde doorloop is **PS-11A**, en die is niet gestart; het sluiten van PS-9 start hem niet, dat
+is een apart besluit. Daarna volgen PS-6, PS-7 en PS-8; die volgorde is een geldige doorloop van
+dezelfde afhankelijkheidsgraaf en staat in `docs/pleya-server-phase-order-deviation.md`.
+
+PS-5 (`DeviceCapabilities` in de client) is code complete maar niet gesloten: acceptatiecriterium 4,
+de regressieronde op echte hardware voor tvOS en minimaal één desktopplatform, blijft expliciet open
+en niet gehaald. Die hardwarevalidatie is bewust uitgesteld en blokkeerde PS-9 niet, conform
 [DEC-064](docs/DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet).
-Het starten of afronden van PS-9 mag nooit worden geïnterpreteerd als bewijs dat PS-5-criterium 4 is
-gehaald; de bestaande hardwaretest moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of
-PS-9-gedrag bevat alsnog worden uitgevoerd. Na PS-9 is de gekozen doorloop PS-11A, en pas dan terug
-naar PS-6, PS-7, PS-8; die volgorde is een geldige doorloop van dezelfde afhankelijkheidsgraaf en
-staat in `docs/pleya-server-phase-order-deviation.md`.
+Dat PS-9 nu gesloten is, is nadrukkelijk geen bewijs dat PS-5-criterium 4 gehaald is; de bestaande
+hardwaretest moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of PS-9-gedrag bevat
+alsnog worden uitgevoerd.
 
 **Op 24 augustus 2026 zijn er drie fasen bij gekomen**, goedgekeurd in
 `docs/pleya-server-ps4e-proposal.md` en vastgelegd in
@@ -108,7 +111,10 @@ de mobiele beperking is clientgedrag, dus er komt geen platform- of readerveld a
 `docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md` en blokkeren ze de Plex-off gate niet.
 
 **Het protocol ligt vast.** `docs/pleya-protocol/v1/openapi.yaml` is contractueel leidend en bevroren
-zolang de huidige ontwikkelfase loopt. Het venster ging tot nu toe twee keer open: bij het sluiten van
+tot een besluit het venster expliciet opent. Die formulering hing eerder aan "zolang de huidige
+ontwikkelfase loopt", en dat liet een gat vallen op het moment dat een fase sloot en de volgende nog
+niet gestart was: geen lopende fase las dan als geen vriezing. Er is geen moment waarop het contract
+vanzelf open staat. Het venster ging tot nu toe twee keer open: bij het sluiten van
 PS-3, voor precies de drie poortbesluiten die eronder staan, en voor PS-9, voor precies de zeven
 wijzigingen uit [DEC-068](docs/DECISIONS.md#dec-068-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5);
 daarna is het weer dicht. Legt een latere fase een echt probleem bloot, dan is dat een
