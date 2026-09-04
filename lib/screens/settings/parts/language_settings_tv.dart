@@ -34,56 +34,61 @@ extension _LanguageSettingsTvPage on _LanguageSettingsScreenState {
     if (node.canRequestFocus) node.requestFocus();
   }
 
-  /// The left column as tiles: title, the current value on the value line, and
-  /// SELECT opens the picker. A switch says its state in the glyph, the way
-  /// every other TV settings row does.
-  List<TvMenuItem> _tvGlobalItems(PleyaProfileLanguagePreferences global) => [
-    TvMenuItem(
+  /// The left column, in the row shape mockup 31 A draws: title and note on
+  /// the left, the current value on the right, SELECT opens the picker.
+  ///
+  /// A record per row rather than a widget list, so the column can wire up its
+  /// own vertical traversal without the caller repeating six neighbours.
+  List<({String key, String title, String value, String? note, bool? toggled, VoidCallback onSelect})> _tvLeftRows(
+    PleyaProfileLanguagePreferences global,
+  ) => [
+    (
       key: _kTvAudio,
-      icon: Symbols.volume_up_rounded,
       title: t.languageSettings.audio,
       value: _audioValue(global),
+      note: t.languageSettings.audioFallbackNote,
+      toggled: null,
       onSelect: () => _editAudioLanguage(global),
     ),
-    TvMenuItem(
+    (
       key: _kTvSubtitles,
-      icon: Symbols.subtitles_rounded,
       title: t.languageSettings.subtitles,
       value: _subtitleValue(global),
+      note: t.languageSettings.subtitlesNote,
+      toggled: null,
       onSelect: () => _editSubtitleLanguage(global),
     ),
-    TvMenuItem(
+    (
       key: _kTvFallback,
-      icon: Symbols.subtitles_off_rounded,
       title: t.languageSettings.subtitleFallback,
       value: _fallbackValue(global),
+      note: t.languageSettings.subtitleFallbackNote,
+      toggled: null,
       onSelect: () => _editSubtitleFallback(global),
     ),
-    TvMenuItem(
+    (
       key: _kTvPolicy,
-      icon: Symbols.closed_caption_rounded,
       title: t.languageSettings.subtitleDisplay,
       value: _policyValue(global),
+      note: t.languageSettings.subtitleDisplayNote,
+      toggled: null,
       onSelect: () => _editSubtitlePolicy(global),
     ),
-  ];
-
-  List<TvMenuItem> _tvRememberItems(PleyaProfileLanguagePreferences global) => [
-    TvMenuItem(
+    (
       key: _kTvRemember,
-      icon: Symbols.bookmark_rounded,
       title: t.settings.rememberTrackSelections,
       value: global.rememberPerSeries ? t.common.on : t.common.off,
+      note: null,
       toggled: global.rememberPerSeries,
       onSelect: () => PleyaProfileLanguagePreferenceStore.update(
         (preferences) => preferences.copyWith(rememberPerSeries: !preferences.rememberPerSeries),
       ),
     ),
-    TvMenuItem(
+    (
       key: _kTvMirror,
-      icon: Symbols.cloud_upload_rounded,
       title: t.settings.writeSeriesLanguageToServer,
       value: global.mirrorToPlex ? t.common.on : t.common.off,
+      note: null,
       toggled: global.mirrorToPlex,
       onSelect: () => PleyaProfileLanguagePreferenceStore.update(
         (preferences) => preferences.copyWith(mirrorToPlex: !preferences.mirrorToPlex),
@@ -111,6 +116,7 @@ extension _LanguageSettingsTvPage on _LanguageSettingsScreenState {
   }
 
   Widget _buildTvGlobalColumn(BuildContext context, PleyaProfileLanguagePreferences global, double scale) {
+    final rows = _tvLeftRows(global);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -125,19 +131,34 @@ extension _LanguageSettingsTvPage on _LanguageSettingsScreenState {
             ),
           ),
         ),
-        TvMenuGrid(
-          nodes: _focusTracker,
-          columns: 1,
-          automationInstance: 'language',
-          // RIGHT off any tile lands on the series column, at its top row: the
-          // column beside this one is a different list, and "the next item" in
-          // a one-column grid is the tile below, not the thing to the right.
-          onExitRight: _series.isEmpty ? null : () => _focusKey(_seriesKeyFor(0)),
-          sections: [
-            TvMenuSection(items: _tvGlobalItems(global)),
-            TvMenuSection(label: t.languageSettings.rememberHeader, items: _tvRememberItems(global)),
-          ],
-        ),
+        for (var index = 0; index < rows.length; index++) ...[
+          // Tighter than the hub's tile gap: this column carries six rows and
+          // two labels, and every point between them is one the last row does
+          // not have above the fold.
+          if (index > 0) SizedBox(height: TvMyPleyaLayout.tileTitleSubtitleGap * 2 * scale),
+          // The label of the second group sits between the four preference rows
+          // and the two switches, where 31 A puts "Onthouden".
+          if (rows[index].key == _kTvRemember)
+            Padding(
+              padding: EdgeInsets.only(top: TvMyPleyaLayout.tileGap * scale),
+              child: TvPageGroupLabel(t.languageSettings.rememberHeader),
+            ),
+          TvLanguageValueRow(
+            rowKey: rows[index].key,
+            title: rows[index].title,
+            value: rows[index].value,
+            note: rows[index].note,
+            toggled: rows[index].toggled,
+            node: _focusTracker.get(rows[index].key, debugLabel: rows[index].key),
+            onSelect: rows[index].onSelect,
+            onNavigateUp: index == 0 ? null : () => _focusKey(rows[index - 1].key),
+            onNavigateDown: index == rows.length - 1 ? null : () => _focusKey(rows[index + 1].key),
+            // RIGHT crosses to the series column, at its top row: the column
+            // beside this one is a different list, so "the next item" is not
+            // "the thing to my right".
+            onNavigateRight: _series.isEmpty ? null : () => _focusKey(_seriesKeyFor(0)),
+          ),
+        ],
       ],
     );
   }

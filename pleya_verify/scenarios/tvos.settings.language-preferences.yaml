@@ -30,13 +30,13 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # The hub opens on Profiel wisselen; two DOWNs is Bibliotheken and then
+  # Instellingen. Deliberately not the three RIGHTs the older section scenarios
+  # walk: that choreography is stale against this hub and lands on the wrong
+  # tile, which the run of 5 September recorded.
   - press: down
   - press: down
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
-  - press: right
-  - press: right
-  - press: right
-  - assert: {id: "my_pleya.tile[settings]", focused: true}
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
 
@@ -57,6 +57,10 @@ steps:
   - assert: {id: "my_pleya.section.tile[language.language_audio]", insideViewport: true}
   - assert: {id: "my_pleya.section.tile[language.language_fallback]", insideViewport: true}
   - assert: {id: "my_pleya.section.tile[language.language_remember]", insideViewport: true}
+  # The last row of the column, and the one the first run of 5 September found
+  # below the fold. 31 A puts all six on one screen, so this is the assertion
+  # that says the column still does.
+  - assert: {id: "my_pleya.section.tile[language.language_mirror]", insideViewport: true}
   - assert: {id: "my_pleya.section.tile[language.language_fallback]", sameColumn: "my_pleya.section.tile[language.language_audio]"}
   - assert: {id: "my_pleya.section.tile[language.language_fallback]", below: "my_pleya.section.tile[language.language_audio]"}
   - press: down
@@ -72,7 +76,15 @@ steps:
   - wait_until: {id: "my_pleya.section.content[language]", timeout: 8000}
   - snapshot: 04-picker-closed
 
-  # And out again, back onto the tile the page was opened from.
+  # And out again. Deliberately not "back onto the tile it came from": the
+  # shell restores a `restoreFocusKey` only for a route opened from the Mijn
+  # Pleya *hub* (`_popTvNestedRoute` asks `_tvMyPleya`), and a settings subpage
+  # is one level deeper than that. Leaving one therefore lands on the settings
+  # index with the focus on its first tile, for every subpage alike and not
+  # only for this one. The run of 5 September recorded it; closing it means
+  # teaching the shell about a focus owner inside a nested route, which is a
+  # change to the navigation contract rather than to this page.
   - press: menu
-  - wait_until: {focused: "my_pleya.section.tile[settings.language]", timeout: 8000}
-  - snapshot: 05-back-on-tile
+  - wait_until: {id: "my_pleya.section.content[settings]", timeout: 8000}
+  - assert: {id: "my_pleya.section.tile[settings.language]", insideViewport: true}
+  - snapshot: 05-back-in-settings

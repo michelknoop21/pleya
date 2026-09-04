@@ -24,7 +24,7 @@ import '../../../widgets/app_icon.dart';
 import '../../../widgets/optimized_media_image.dart';
 import '../../../widgets/settings_section.dart';
 import '../../../widgets/tv/tv_unified_layout.dart';
-import 'language_picker_dialog.dart';
+import '../../../utils/language_codes.dart';
 
 /// "Audio: English · Subtitles: English".
 ///
@@ -279,6 +279,172 @@ class TvSeriesLanguageRow extends StatelessWidget {
                       size: TvMyPleyaLayout.tileIconSize * scale,
                       color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
                     ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A left-column row of mockup 31 A: title and note on the left, the current
+/// value and a chevron on the right, or a toggle glyph where the row is a
+/// switch.
+///
+/// Not `TvMenuTile`, and the simulator is what settled that. A hub tile is
+/// ~180 points tall on an Apple TV once `TvLayoutConstants` has scaled it, and
+/// six of them stacked put the last two below the 1080-point viewport: the
+/// Pleya Verify run of 5 September failed on exactly that
+/// (`insideViewport(language.language_remember)` overflowing on the bottom).
+/// The tile idiom belongs to an index of destinations two columns wide; this
+/// column is six settings on one screen, which is what 31 A draws and what this
+/// row is measured for.
+///
+/// Same automation id as a menu tile on purpose (`my_pleya.section.tile`): a
+/// scenario addresses the row by what it *is* for the viewer, and the shape it
+/// is drawn in is not part of that contract.
+class TvLanguageValueRow extends StatelessWidget {
+  const TvLanguageValueRow({
+    super.key,
+    required this.rowKey,
+    required this.title,
+    required this.value,
+    required this.node,
+    required this.onSelect,
+    this.note,
+    this.toggled,
+    this.onNavigateUp,
+    this.onNavigateDown,
+    this.onNavigateRight,
+  });
+
+  /// Stable within the page, and the focus key the page restores to.
+  final String rowKey;
+  final String title;
+
+  /// The current answer, on the right where 31 A puts it.
+  final String value;
+
+  /// The line under the title that says what the value means. Optional: the
+  /// two switches carry their state on the value line instead.
+  final String? note;
+
+  /// A switch's state, when this row is one. Null on a row that opens a picker,
+  /// which then draws a chevron.
+  final bool? toggled;
+
+  final FocusNode node;
+  final VoidCallback onSelect;
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateDown;
+  final VoidCallback? onNavigateRight;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = TvLayoutConstants.scaleOf(context);
+    final tk = tokens(context);
+    final radius = TvMyPleyaLayout.tileRadius * scale;
+    final noteLine = note;
+
+    return FocusableWrapper(
+      focusNode: node,
+      onSelect: onSelect,
+      onNavigateUp: onNavigateUp,
+      onNavigateDown: onNavigateDown,
+      onNavigateRight: onNavigateRight,
+      borderRadius: radius,
+      automationId: AutomationIds.myPleyaSectionTile,
+      automationInstance: 'language.$rowKey',
+      automationRole: 'grid.item',
+      automationState: () => <String, Object?>{'title': title, 'value': value, if (toggled != null) 'toggled': toggled},
+      // Hoofdstuk 33.8: a settings row does not scale on focus. The ring and
+      // the lighter fill say where the remote is.
+      disableScale: true,
+      semanticLabel: '$title. $value',
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: EdgeInsets.all(TvMyPleyaLayout.tileFocusRingGap * scale),
+          child: Builder(
+            builder: (context) {
+              final focused = Focus.of(context).hasFocus;
+              return AnimatedContainer(
+                duration: TvTopNavLayout.focusDuration,
+                curve: Curves.easeOut,
+                // Vertically tighter than a hub tile, and measured rather than
+                // chosen: six of these plus two group labels have to fit above
+                // the 1080-point fold on an Apple TV, which is what mockup 31 A
+                // draws and what the Pleya Verify assertions check.
+                padding: EdgeInsets.symmetric(
+                  horizontal: TvMyPleyaLayout.tilePadding * scale,
+                  vertical: TvMyPleyaLayout.tileTitleSubtitleGap * 2 * scale,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(radius),
+                  color: tk.text.withValues(
+                    alpha: focused ? TvMyPleyaLayout.tileFocusedFillAlpha : TvMyPleyaLayout.tileFillAlpha,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: TvMyPleyaLayout.tileTitleFontSize * scale,
+                              fontWeight: FontWeight.w600,
+                              color: tk.text,
+                            ),
+                          ),
+                          if (noteLine != null) ...[
+                            SizedBox(height: TvMyPleyaLayout.tileTitleSubtitleGap * scale),
+                            Text(
+                              noteLine,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: TvMyPleyaLayout.tileSubtitleFontSize * scale,
+                                color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: TvMyPleyaLayout.tilePadding * scale),
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: TvMyPleyaLayout.tileTitleFontSize * scale,
+                        color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+                      ),
+                    ),
+                    SizedBox(width: TvMyPleyaLayout.tileTitleSubtitleGap * 2 * scale),
+                    if (toggled != null)
+                      Icon(
+                        toggled! ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
+                        size: TvMyPleyaLayout.tileIconSize * scale,
+                        color: tk.text.withValues(
+                          alpha: toggled! ? TvMyPleyaLayout.inkPrimary : TvMyPleyaLayout.inkTertiary,
+                        ),
+                      )
+                    else
+                      AppIcon(
+                        Symbols.chevron_right_rounded,
+                        fill: 1,
+                        size: TvMyPleyaLayout.tileIconSize * scale,
+                        color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
+                      ),
                   ],
                 ),
               );

@@ -336,8 +336,10 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String secondsUnit({required Object seconds}) => '${seconds} seconden';
 	@override String get defaultSleepTimer => 'Standaard slaap timer';
 	@override String minutesUnit({required Object minutes}) => 'bij ${minutes} minuten';
-	@override String get rememberTrackSelections => 'Onthoud track selecties per serie/film';
-	@override String get rememberTrackSelectionsDescription => 'Onthoud audio- en ondertitelkeuzes per titel';
+	@override String get rememberTrackSelections => 'Onthoud keuzes per serie';
+	@override String get rememberTrackSelectionsDescription => 'Een taal die je tijdens een serie kiest, geldt voor de volgende afleveringen. Reist via iCloud mee naar je andere Apple-toestellen.';
+	@override String get writeSeriesLanguageToServer => 'Spiegel naar Plex';
+	@override String get writeSeriesLanguageToServerDescription => 'Schrijft de keuze ook op de serie in Plex, zodat Android, Windows en de officiële Plex-apps hem volgen. Lukt dat niet, dan blijft je Pleya-voorkeur gewoon gelden.';
 	@override String get showChapterMarkersOnTimeline => 'Hoofdstukmarkeringen op tijdlijn tonen';
 	@override String get showChapterMarkersOnTimelineDescription => 'Verdeel de tijdlijn bij hoofdstukgrenzen';
 	@override String get clickVideoTogglesPlayback => 'Klik op de video om afspelen/pauzeren te wisselen.';
@@ -2924,8 +2926,10 @@ extension on TranslationsNl {
 			'settings.secondsUnit' => ({required Object seconds}) => '${seconds} seconden',
 			'settings.defaultSleepTimer' => 'Standaard slaap timer',
 			'settings.minutesUnit' => ({required Object minutes}) => 'bij ${minutes} minuten',
-			'settings.rememberTrackSelections' => 'Onthoud track selecties per serie/film',
-			'settings.rememberTrackSelectionsDescription' => 'Onthoud audio- en ondertitelkeuzes per titel',
+			'settings.rememberTrackSelections' => 'Onthoud keuzes per serie',
+			'settings.rememberTrackSelectionsDescription' => 'Een taal die je tijdens een serie kiest, geldt voor de volgende afleveringen. Reist via iCloud mee naar je andere Apple-toestellen.',
+			'settings.writeSeriesLanguageToServer' => 'Spiegel naar Plex',
+			'settings.writeSeriesLanguageToServerDescription' => 'Schrijft de keuze ook op de serie in Plex, zodat Android, Windows en de officiële Plex-apps hem volgen. Lukt dat niet, dan blijft je Pleya-voorkeur gewoon gelden.',
 			'settings.showChapterMarkersOnTimeline' => 'Hoofdstukmarkeringen op tijdlijn tonen',
 			'settings.showChapterMarkersOnTimelineDescription' => 'Verdeel de tijdlijn bij hoofdstukgrenzen',
 			'settings.clickVideoTogglesPlayback' => 'Klik op de video om afspelen/pauzeren te wisselen.',
@@ -3261,10 +3265,10 @@ extension on TranslationsNl {
 			'videoControls.noTracksAvailable' => 'Geen tracks beschikbaar',
 			'videoControls.subtitleDownloaded' => 'Ondertitel gedownload',
 			'videoControls.subtitleDownloadFailed' => 'Ondertitel downloaden mislukt',
-			'videoControls.searchLanguages' => 'Talen zoeken...',
-			'videoControls.airplayButton' => 'AirPlay',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.searchLanguages' => 'Talen zoeken...',
+			'videoControls.airplayButton' => 'AirPlay',
 			'userStatus.admin' => 'Beheerder',
 			'userStatus.restricted' => 'Beperkt',
 			'userStatus.protected' => 'Beschermd',
@@ -3775,10 +3779,10 @@ extension on TranslationsNl {
 			'watchTogether.endSessionConfirmOverlay' => 'Dit beëindigt de kijksessie voor alle deelnemers.',
 			'watchTogether.leaveSessionConfirmOverlay' => 'Je wordt losgekoppeld van de kijksessie.',
 			'watchTogether.end' => 'Beëindigen',
-			'watchTogether.leave' => 'Verlaten',
-			'watchTogether.syncing' => 'Synchroniseren...',
 			_ => null,
 		} ?? switch (path) {
+			'watchTogether.leave' => 'Verlaten',
+			'watchTogether.syncing' => 'Synchroniseren...',
 			'watchTogether.joinWatchSession' => 'Kijksessie Deelnemen',
 			'watchTogether.enterCodeHint' => 'Voer 5-teken code in',
 			'watchTogether.pasteFromClipboard' => 'Plakken van klembord',
@@ -4289,10 +4293,10 @@ extension on TranslationsNl {
 			'seerr.partiallyAvailable' => 'Deels beschikbaar',
 			'seerr.available' => 'Beschikbaar',
 			'seerr.alreadyRequested' => 'Al aangevraagd',
-			'seerr.pending' => 'In afwachting',
-			'seerr.approved' => 'Goedgekeurd',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.pending' => 'In afwachting',
+			'seerr.approved' => 'Goedgekeurd',
 			'seerr.declined' => 'Afgewezen',
 			'seerr.failed' => 'Mislukt',
 			'seerr.completed' => 'Afgerond',

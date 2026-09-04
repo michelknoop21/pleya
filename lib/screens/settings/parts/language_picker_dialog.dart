@@ -44,16 +44,6 @@ class LanguageChoiceValue {
   int get hashCode => Object.hash(code, isOriginal);
 }
 
-/// The display name for a stored language code, or null when there is none.
-///
-/// Null in, null out: the row then reads "Geen voorkeur", which is what an
-/// empty preference means. An unknown code comes back as itself rather than as
-/// a blank, so a value written by a newer build stays legible.
-String? languageDisplayName(String? code) {
-  if (code == null || code.isEmpty) return null;
-  return LanguageCodes.getLanguageName(code) ?? code;
-}
-
 /// Ask for one language. Returns null when the viewer backed out.
 Future<LanguageChoiceValue?> showLanguagePickerDialog(
   BuildContext context, {

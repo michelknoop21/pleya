@@ -37,13 +37,13 @@ import '../../widgets/app_icon.dart';
 import '../../widgets/profile_language_switch_tile.dart';
 import '../../widgets/settings_page.dart';
 import '../../widgets/settings_section.dart';
-import '../../widgets/tv/tv_menu_grid.dart';
 import '../../widgets/tv/tv_page_surface.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import 'settings_utils.dart';
 import 'parts/language_picker_dialog.dart';
 import 'parts/series_language_row.dart';
 import 'parts/series_language_sheet.dart';
+import '../../utils/language_codes.dart';
 
 part 'parts/language_settings_tv.dart';
 
@@ -364,7 +364,18 @@ class _ValueRow extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(value, style: TextStyle(color: tokens(context).textMuted)),
+            // Bounded, because a language name is user data: "Traditional
+            // Chinese" in a `ListTile`'s trailing slot takes whatever width it
+            // asks for and pushes the title off a phone.
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 160),
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: tokens(context).textMuted),
+              ),
+            ),
             const SizedBox(width: 8),
             AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
           ],

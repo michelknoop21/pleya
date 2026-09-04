@@ -196,6 +196,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
           // Turning subtitles off here is as much a decision as picking one.
           _recordSessionLanguageIntent(subtitlesOff: true);
           await TrackPreferenceStore.saveSubtitle(item, off: true);
+          await _trackManager?.announceRememberedChoice(kind: LanguageTrackKind.subtitles, subtitlesOff: true);
         } else {
           final choice = subtitleStreamLanguage(subtitleTracks, subtitleStreamId);
           if (choice != null) {
@@ -210,6 +211,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
               title: choice.title,
               forced: choice.forced,
             );
+            await _trackManager?.announceRememberedChoice(kind: LanguageTrackKind.subtitles, language: choice.language);
           }
         }
       }
@@ -219,6 +221,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         if (choice != null) {
           _recordSessionLanguageIntent(audioLanguage: choice.language, audioTitle: choice.title);
           await TrackPreferenceStore.saveAudio(item, language: choice.language, title: choice.title);
+          await _trackManager?.announceRememberedChoice(kind: LanguageTrackKind.audio, language: choice.language);
         }
       }
 

@@ -72,3 +72,18 @@ class LanguageCodes {
     return _resolve(languageCode)?.name;
   }
 }
+
+/// The display name for a stored language code, or null when there is none.
+///
+/// Null in, null out: a row then reads "no preference", which is what an empty
+/// preference means. An unknown code comes back as itself rather than as a
+/// blank, so a value written by a newer build, or by a server that speaks a
+/// code this table does not carry, stays legible instead of disappearing.
+///
+/// A function rather than a method on [LanguageCodes] because it is about
+/// *presentation* of a preference, not about the ISO tables: the settings page,
+/// the sheet and the player's toasts all name a language the same way.
+String? languageDisplayName(String? code) {
+  if (code == null || code.isEmpty) return null;
+  return LanguageCodes.getLanguageName(code) ?? code;
+}

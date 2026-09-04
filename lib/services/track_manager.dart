@@ -485,7 +485,7 @@ class TrackManager {
     sessionIntent = _mergeSessionIntent(audioLanguage: language, audioTitle: track.title);
 
     await TrackPreferenceStore.saveAudio(metadata, language: language, title: track.title);
-    await _announceChoice(kind: LanguageTrackKind.audio, language: language);
+    await announceRememberedChoice(kind: LanguageTrackKind.audio, language: language);
     await _mirrorSeriesLanguageToServer();
   }
 
@@ -493,7 +493,7 @@ class TrackManager {
     if (track.id == 'no') {
       sessionIntent = _mergeSessionIntent(subtitlesOff: true);
       await TrackPreferenceStore.saveSubtitle(metadata, off: true);
-      await _announceChoice(kind: LanguageTrackKind.subtitles, subtitlesOff: true);
+      await announceRememberedChoice(kind: LanguageTrackKind.subtitles, subtitlesOff: true);
     } else {
       final language = track.language;
       if (language == null || language.isEmpty) return;
@@ -503,12 +503,19 @@ class TrackManager {
         subtitleForced: track.isForced,
       );
       await TrackPreferenceStore.saveSubtitle(metadata, language: language, title: track.title, forced: track.isForced);
-      await _announceChoice(kind: LanguageTrackKind.subtitles, language: language);
+      await announceRememberedChoice(kind: LanguageTrackKind.subtitles, language: language);
     }
     await _mirrorSeriesLanguageToServer();
   }
 
   /// Tell the viewer what just happened to their choice — mockup 31 C.
+  ///
+  /// Public because there are two paths into a deliberate choice, not one.
+  /// While Plex transcodes, the pickers do not change an mpv track: they select
+  /// a different source stream and reload, which never reaches
+  /// [onSubtitleTrackChanged]. `episode_navigation.dart` writes the preference
+  /// itself on that path, and calls this so the transport does not decide
+  /// whether the viewer gets told.
   ///
   /// Says which of the two promises was actually made: with "Onthoud keuzes per
   /// serie" on the choice became the series preference, and with it off it
@@ -518,7 +525,11 @@ class TrackManager {
   /// The unchanged global preference is part of the sentence because that is
   /// the question this toast exists to answer: a viewer who switches one series
   /// to English wants to know they have not just changed everything.
-  Future<void> _announceChoice({required LanguageTrackKind kind, String? language, bool subtitlesOff = false}) async {
+  Future<void> announceRememberedChoice({
+    required LanguageTrackKind kind,
+    String? language,
+    bool subtitlesOff = false,
+  }) async {
     final notify = onLanguageNotice;
     if (notify == null) return;
     final global = await PleyaProfileLanguagePreferenceStore.read();

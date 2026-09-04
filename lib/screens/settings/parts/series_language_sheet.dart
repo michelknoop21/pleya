@@ -22,8 +22,8 @@ import '../../../widgets/overlay_sheet_geometry.dart';
 import '../../../widgets/tv/tv_catalog_sort_panel.dart';
 import '../../../widgets/tv/tv_panel_primitives.dart';
 import '../../../widgets/tv/tv_unified_layout.dart';
-import 'language_picker_dialog.dart';
 import 'series_language_row.dart';
+import '../../../utils/language_codes.dart';
 
 /// Opens the sheet. Answers true when the viewer asked to drop this series
 /// preference, and null or false in every other case.

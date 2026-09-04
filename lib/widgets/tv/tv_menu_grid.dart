@@ -97,8 +97,6 @@ class TvMenuGrid extends StatelessWidget {
     required this.automationInstance,
     this.onExitUp,
     this.onExitDown,
-    this.onExitLeft,
-    this.onExitRight,
   });
 
   final List<TvMenuSection> sections;
@@ -120,16 +118,6 @@ class TvMenuGrid extends StatelessWidget {
   /// reach the top navigation again.
   final VoidCallback? onExitUp;
   final VoidCallback? onExitDown;
-
-  /// LEFT off the first column, and RIGHT off the last one.
-  ///
-  /// Null everywhere the grid is the only thing on the page, which is what
-  /// keeps the flat walk across group boundaries this grid was written for. A
-  /// page that puts a second column beside the grid — Taal en ondertitels —
-  /// hands the step across here instead, because from inside the grid "the
-  /// next item" and "the thing to my right" are not the same place.
-  final VoidCallback? onExitLeft;
-  final VoidCallback? onExitRight;
 
   /// Every focusable key on the page, in reading order.
   List<String> get keys => [for (final s in sections) ...s.items.map((i) => i.key)];
@@ -209,14 +197,8 @@ class TvMenuGrid extends StatelessWidget {
                             scale: scale,
                             automationInstance: '$automationInstance.${slice[c].key}',
                             node: nodes.get(slice[c].key, debugLabel: slice[c].key),
-                            onNavigateLeft: () {
-                              if (c == 0 && onExitLeft != null) return onExitLeft!.call();
-                              _focus(_flatNeighbour(slice[c].key, -1));
-                            },
-                            onNavigateRight: () {
-                              if (c == slice.length - 1 && onExitRight != null) return onExitRight!.call();
-                              _focus(_flatNeighbour(slice[c].key, 1));
-                            },
+                            onNavigateLeft: () => _focus(_flatNeighbour(slice[c].key, -1)),
+                            onNavigateRight: () => _focus(_flatNeighbour(slice[c].key, 1)),
                             onNavigateUp: () {
                               final up = _verticalNeighbour(slice[c].key, -1);
                               if (up != null) return _focus(up);

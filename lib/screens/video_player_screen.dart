@@ -106,7 +106,7 @@ import '../i18n/strings.g.dart';
 import '../watch_together/providers/watch_together_provider.dart';
 import '../widgets/notice/notice_controller.dart';
 import '../media/playback_language_notice.dart';
-import 'settings/parts/language_picker_dialog.dart';
+import '../utils/language_codes.dart';
 
 part 'video_player/parts/companion_remote.dart';
 part 'video_player/parts/display_matching.dart';
