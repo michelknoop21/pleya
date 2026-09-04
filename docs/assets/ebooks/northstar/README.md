@@ -38,9 +38,9 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `03a-filters-status.png` | Filtersheet, canonieke openstaat op Status | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 | `03b-filters-genre.png` | Filtersheet, Genre open met twee klaargezette keuzes | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
 | `03c-filters-controls.png` | Detail: kop, groepsrij en actiebalk in beide staten | approved | detailuitsnede, 1179×1860 | DEC-094, DEC-090 | 2026-09-03 | zie onder |
-| `04a-books-search.png` | Boeken zoeken, canonieke staat op `dune` met Alles actief | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `04b-books-search-books.png` | Dezelfde zoekopdracht met alleen Boeken actief | proposed | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
-| `04c-books-search-rowtypes.png` | Detail: de drie resultaatsoorten onder elkaar | proposed | detailuitsnede, 1179×1590 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `04a-books-search.png` | Boeken zoeken, canonieke staat op `dune` met Alles actief | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `04b-books-search-books.png` | Dezelfde zoekopdracht met alleen Boeken actief | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `04c-books-search-rowtypes.png` | Detail: de drie resultaatsoorten onder elkaar | approved | detailuitsnede, 1179×1590 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -210,7 +210,7 @@ de actiebalk blijft.
 groepenkolom blijft staan. Een groep met meer keuzes dan er passen mag dus niet de hele sheet laten
 scrollen, want dan verdwijnt de groep waar je in zit uit beeld.
 
-## Golden 04, Boeken zoeken (proposed)
+## Golden 04, Boeken zoeken (approved)
 
 Boeken, auteurs en boekenseries in Pleya's eigen zoekscherm. Inhoud van paneel 4 van de comp,
 uitvoering van `05-zoeken.png` uit de iOS Unified-set. Drie frames, samen één scherm: `04a` de
@@ -218,8 +218,22 @@ canonieke staat op de zoekterm `dune` met Alles actief en alle drie de resultaat
 `04b` dezelfde zoekopdracht met alleen Boeken actief, `04c` een detailuitsnede van de drie
 rijsoorten onder elkaar zodat het verschil ertussen te beoordelen is zonder de rest van het scherm.
 
-Er mag nog niet gebouwd worden. Deze golden staat op `proposed` tot Michel de keuzes hieronder
-expliciet goedkeurt.
+Golden 04 is op 4 september 2026 goedgekeurd, inclusief de keuzes hieronder.
+
+De drie frames hebben elk een andere rol, en die rollen horen bij de goedkeuring.
+`04a-books-search.png` is de **hoofdstaat**: het scherm zoals het zich in de breedte gedraagt, met
+alle drie de secties in beeld. `04b-books-search-books.png` is **gedragsbewijs** voor het filteren
+door een categorie te kiezen, geen tweede scherm. `04c-books-search-rowtypes.png` is een
+**vormspecificatie** van de drie rijsoorten en geen runtime-staat; een implementatie die hem als
+scherm behandelt volgt deze golden niet. Bij de goedkeuring hoort dat de lege ruimte onder één
+zichtbare resultaatgroep in `04b` zo hoort: er is maar één groep, en die uitrekken zou liegen over
+hoeveel er gevonden is.
+
+**Presentatie en matching zijn twee contracten.** Deze golden legt alleen het eerste vast: hoe een
+resultaat eruitziet en hoe de soorten uit elkaar te houden zijn. Welke boeken, auteurs en series bij
+een zoekterm horen is een rankingbesluit dat los kan bewegen, en dat moet het ook: zodra PS-14 echte
+data levert, of zodra er servermatching bij komt, verandert de vulling zonder dat dit beeld
+meebeweegt.
 
 **Dit brengt geen eigen zoek-UI mee.** De kop, het zoekveld en de chiprij zijn die van
 `05-zoeken.png`, nagemeten en overgenomen: paginamarge 16, veld op 109 met een hoogte van 36 en zijn
