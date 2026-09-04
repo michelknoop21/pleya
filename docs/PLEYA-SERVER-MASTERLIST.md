@@ -46,7 +46,7 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S0.1 | Proefmerge met `main` in een wegwerp-worktree, conflictlijst in `merge-log.md` | `[ ]` | | |
+| S0.1 | Proefmerge met `main` in een wegwerp-worktree, conflictlijst in `merge-log.md` | `[x]` | `docs/pleya-server-rebaseline/merge-log.md`: 196 tegen 49 commits, 14 conflictbestanden, 26 schoon; wegwerp-worktree opgeruimd | 2026-09-04 |
 | S0.2 | Integratiebranch vanaf `main`, `feat/pleyaserver` erin gemerged | `[ ]` | | |
 | S0.3 | Vijf bekende conflicten opgelost, codegen met lege diff | `[ ]` | | |
 | S0.4 | DEC-hernummering naar de eerstvolgende vrije reeks in de samengestelde boom (niet blind 096, VRAGENLIJST 59), mappingtabel, grep schoon | `[ ]` | | |
@@ -340,7 +340,7 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 | P1 | Northstar-set goedgekeurd (consumer, beheer, setup) | `[x]` akkoord 4 sep 2026 | chatakkoord; APPROVED-markering volgt met de laatste mockups |
 | P2 | Mockups 17, 18, 19, 28, 35 gereviewd en in het manifest, deel C en deel D | `[~]` 4 sep 2026 | reviewronde 3 in C.5 en C.6 (22 bevindingen, alle gecorrigeerd), manifest bijgewerkt, D.2 aangevuld; hele set opnieuw gerenderd; wacht op Michels akkoord |
 | P3 | Zes mockups in één ronde: 11b downloads, 36 metadata-match en overrides, 37 transcode-sessies, 38 realtime-status, 50 speler, 51 reader; daarna APPROVED met SHA256SUMS | `[ ]` | |
-| P4 | Branch merget schoon met `main` | `[ ]` | |
+| P4 | Branch merget schoon met `main` | `[~]` | gemeten en uitgeschreven in `merge-log.md`; de merge zelf wacht op een stilliggende `main` (vraag 58) |
 | P5 | Locatorbesluit voor leesvoortgang | `[ ]` | |
 | P6 | Protocolvensters 1 tot 8 geopend en gesloten | `[ ]` | |
 | P7 | PS-5-hardwareronde | `[!]` uitgesteld | `docs/qa/ps5-hardware-round.md`, drie startvoorwaarden |
