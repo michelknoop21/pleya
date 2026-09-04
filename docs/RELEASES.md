@@ -76,6 +76,9 @@ under `Notes`.
 - media detail sluit zichzelf via TvNestedRouteScope wanneer genest (PB-1)
 - PS-9 stap 4 en 6, gebruikersbeheer en sessie-intrekking
 - PS-9-clientkant, een eigen profielsoort voor Pleya Server
+- de Home-hero full-bleed met de rail die eronder piept, en een dichtere railstapel (HOME1, I18N5)
+- S0.6, de NAS-migratiefixture op schema 7
+- S0.7 en poort P9, de contractdekking wordt afgeleid in plaats van bijgehouden
 
 ### Improved
 - semantische bronaudit op codec- en containerlijsten
@@ -152,6 +155,8 @@ under `Notes`.
 - de hero vraagt artwork in de bronratio aan, zodat de widget de uitsnede bezit (HERO1)
 - de titelband van de hero past twee regels, niet alleen het logo (HERO2)
 - de merge liet twee capability-fixtures en de gegenereerde client achter
+- een gefocuste rail ankert onder de navbalk, zonder band voor de hero (HOME1)
+- drie bevindingen uit de codex-challenge op de merge
 <!-- END GENERATED -->
 
 ### Fixed
