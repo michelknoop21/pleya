@@ -79,7 +79,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | FOC1 | Focusring valt buiten de viewport in overlays | FIXED, hardware open | `3b0da2e` |
 | ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | FIXED, hardware open | `f42e3fd` |
 | LIB1 | Blanco Bibliotheken-pagina als de selectie verdwijnt | FIXED, hardware open | `f9b2167` |
-| LIB2 | Race bij snel wisselen van bibliotheek | OPEN | n.v.t. |
+| LIB2 | Race bij snel wisselen van bibliotheek | FIXED | `f2ea980` |
 | LIB3 | TV-tabs dragen nog de oude rode onderstreping | OPEN | n.v.t. |
 | WL2 | Kijklijst end-to-end in Pleya Verify | OPEN | n.v.t. |
 | REQ1 | Aanvragen end-to-end in Pleya Verify | OPEN | n.v.t. |
@@ -1432,6 +1432,99 @@ fysieke items van deze ronde. `libraries_screen.dart` staat inmiddels op
 ongeveer 2050 regels en is daarmee ruim over de eigen richtlijn; opsplitsen is
 echter geen onderdeel van deze bevinding en verdient een eigen ronde met eigen
 bewijs.
+
+### LIB2, de verlaten aanroep kwam terug en herstelde zijn eigen tab
+
+De melding was een race bij snel wisselen. De meting bevestigt hem, en wijst
+één side effect aan dat werkelijk blijft staan.
+
+**De grens.** `_loadLibraryContent` legt zijn bibliotheek synchroon vast:
+`_updateVisibleTabs`, de selectiesleutel, `_loadedTabs` leeg, en de melding aan
+de zijbalk. Daarna hangt hij op `await StorageService.getInstance()`, en meteen
+erna een tweede keer op `await storage.saveSelectedLibraryKey(...)`, want die
+write awaits binnenin `notifyMutation` de app-brede preference-pijplijn. Alles
+achter die twee awaits liep ongeguard door.
+
+**Wat er stale bleef, en wat niet.** Gemeten met een gecontroleerde gate op
+`BaseSharedPreferencesService.onMutation`, met Films opgehouden en Series er
+helemaal doorheen:
+
+| Side effect | Uitkomst op de oude implementatie |
+| --- | --- |
+| `saveSelectedLibraryKey` | ongeguard uitgevoerd voor een verlaten intentie, maar de `setString` van Films landde vóór die van Series, dus de eindwaarde bleef Series |
+| tabherstel (`getLibraryTab` + `_visibleTabs.indexOf` + `animateTo`) | **stale**: het scherm toonde Series onder Playlists, de tab waar Films op stond |
+| `saveLibraryTab` vanuit `onTabChanged` | niet stale; `_isRestoringTab` houdt stand, want `animateTo` met `Duration.zero` meldt synchroon |
+| post-frame focus | niet stale bij A → B; de sleutelvergelijking ving hem af |
+
+Die persistentievolgorde is geen contract van dit scherm. Twee `getInstance`-
+aanroepen hervatten in registratievolgorde en het prefs-kanaal is FIFO, dus in
+deze interleaving wint de laatste write. Een stale eindwaarde is dus niet
+gereproduceerd, en dat staat hier als meting en niet als garantie: de guard
+maakt de coherentie een eigenschap van de code in plaats van van de volgorde.
+
+**De eigenaar is de aanroep, niet de sleutel.** `_loadLibraryContent` neemt bij
+binnenkomst een generatie en controleert die na allebei de awaits; de post-frame
+focus hangt aan dezelfde generatie. Sleutelgelijkheid sluit elk gemeten stale
+effect bij A → B ook af, maar hij laat A1 weer toe zodra de sleutel opnieuw A
+is. Een teller loopt maar één kant op en kost één `int`.
+
+**ABA, eerlijk gemeten.** A → B → A met A1 als laatste hervatting is op de oude
+implementatie groen. De staart is een pure functie van `libraryGlobalKey` en de
+opslagstand op het moment van hervatten, dus A1 en A2 doen exact hetzelfde en er
+kan geen waarde uiteenlopen. Wat A1 wél deed is de staart een tweede keer
+draaien: nog een write en nog een focusverzoek. De test staat er als controle op
+wat niet mag veranderen, en vangt het moment waarop iemand een side effect
+toevoegt dat niet sleutelpuur is.
+
+**LIB1 was een tweede schrijver op dezelfde staat.** `_reconcileSelection` laadt
+zijn terugval via `_loadLibraryContent`, precies zoals een druk op de
+afstandsbediening, dus hij erfde het gat één-op-één. Een gebruiker die Series
+koos terwijl de terugval naar Films nog laadde, kreeg Films' tab. Die case is
+rood op de oude implementatie en staat nu in de suite.
+
+**Negatieve controle.** Vier tests in
+`test/screens/libraries/libraries_rapid_switch_test.dart`. Alleen `libraries_screen.dart`
+teruggezet naar de oude implementatie: twee rood met dezelfde concrete stale
+staat (`Expected: 'Collections'`, `Actual: 'Playlists'`), namelijk de snelle
+wissel en de reconciliatie-case. De andere twee zijn aan beide kanten groen: het
+ABA-geval en de gewone sequentiële wissel.
+
+**Geen timing in de tests.** `onMutation` wordt binnen elke preference-write
+geawait, dus daar één bibliotheek ophouden hangt exact die aanroep op exact de
+grens waar de bug leeft, terwijl de andere afloopt. Geen `Future.delayed` als
+racebewijs, geen pumpduur, geen herhaling.
+
+**LIB1-regressie.** De vijf LIB1-tests groen, plus `libraries_provider`,
+`hidden_libraries_provider`, `tab_navigation_mixin`, `library_tab_state`,
+`tv_library_chooser`, `base_library_tab_focus` en `tv_nested_surface`: 74
+geslaagd. De verzoener wordt door de generatie niet geblokkeerd; hij bumpt hem
+zelf, zoals elke andere aanroeper.
+
+**Testen.** `scripts/ci_checks.sh` groen, inclusief `flutter analyze` zonder
+errors of warnings, `dart format` over 1475 bestanden en de unused-code- en
+unused-files-controles. Volledige suite 6141 geslaagd, 6 overgeslagen, 83 rood,
+met exact de LIB1-nullijn: 78 goldens en dezelfde vijf in het oude
+`test/widgets/tv_discovery_rail_test.dart`. Nieuwe falers: geen. De vier
+erbij gekomen geslaagde tests zijn deze bevinding.
+
+Over G15: er bestaat in deze repo geen gate met die naam voor deze ronde. De
+enige treffer is `docs/pleya-server-masterplan-proposal.md:2780`, een
+hoofdstuk-checkbox van het Pleya Server-masterplan, die dit werk niet raakt. Wat
+LIB1 als "G15 baseline groen" noteerde is de volledige-suite-nullijn hierboven,
+en die staat ongewijzigd.
+
+**Verify kan dit niet bewijzen.** De fixtureserver kent `seed`, `add_episode`,
+`mark_watched`, `expire_session`, `fail_next`, `latency` en `echo`. `latency`
+vertraagt de HTTP-fixture; de race zit in de lokale `StorageService` en wordt
+door geen enkele op geraakt. Een product-only vertragingsknop erbij bouwen om
+Verify het venster te laten zien is precies wat hier niet moet gebeuren. Dit is
+geen productblocker: de widget-tests bezitten de scheduler volledig.
+
+**Wat open blijft.** Geen bewijs van een echte Apple TV, en dat is voor deze
+bevinding ook niet nodig: de race is door bestuurde futures volledig
+dichtgetimmerd. Bundel de fysieke smoke met de andere open items van deze ronde.
+`libraries_screen.dart` staat op ongeveer 2060 regels; opsplitsen blijft een
+eigen ronde met eigen bewijs, zoals LIB1 al vaststelde.
 
 ### VER5, `media-detail.episode-refresh` haalt de detailpagina niet meer
 
