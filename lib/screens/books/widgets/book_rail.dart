@@ -16,6 +16,33 @@ class BookRailMetrics {
   static const double coverHeight = 165;
   static const double seriesCoverHeight = 150;
   static const double gap = 12;
+
+  /// The caption under a cover: a title line over a subtitle line, and the air
+  /// between them and the artwork. One place, because the tile draws them and
+  /// the rail has to reserve room for exactly what the tile draws.
+  static const double coverCaptionGap = 8;
+  static const double titleFontSize = 14;
+  static const double subtitleFontSize = 12.5;
+  static const double captionLineHeight = 1.28;
+
+  /// What a tile needs on top of its cover, at the reader's own text size.
+  ///
+  /// Resolved against [MediaQuery.textScalerOf] rather than frozen as a
+  /// constant. It used to be a literal 42 against a column measuring
+  /// 8 + 14 x 1.28 + 12.5 x 1.28 = 41.92: exact at scale 1.0, and five points
+  /// short at iOS Larger Text or Android "Groot" (about 1.15), where every
+  /// tile on every rail of Boeken-home overflowed its `Column` — striped in
+  /// debug, silently clipped in release. Nothing in `lib/` clamps
+  /// `textScaler`, so that setting arrives here at full strength. Same rule
+  /// and the same reason as `MediaCardGridLayout.captionExtentFor`.
+  ///
+  /// Rounded up, so scale 1.0 still gives the 42 golden 01b was measured with.
+  static double captionExtentFor(BuildContext context) {
+    final scaler = MediaQuery.textScalerOf(context);
+    final title = scaler.scale(titleFontSize) * captionLineHeight;
+    final subtitle = scaler.scale(subtitleFontSize) * captionLineHeight;
+    return (coverCaptionGap + title + subtitle).ceilToDouble();
+  }
 }
 
 /// A row heading with its "Alles bekijken" link.
@@ -66,7 +93,7 @@ class BookRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: coverHeight + 42,
+      height: coverHeight + BookRailMetrics.captionExtentFor(context),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: BookRailMetrics.pageMargin),
@@ -139,18 +166,26 @@ class _BookRailTile extends StatelessWidget {
               height: coverHeight,
               child: BookCover(artwork: item.artwork, title: item.title, author: item.coverAuthor),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: BookRailMetrics.coverCaptionGap),
             Text(
               item.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, height: 1.28),
+              style: const TextStyle(
+                fontSize: BookRailMetrics.titleFontSize,
+                fontWeight: FontWeight.w500,
+                height: BookRailMetrics.captionLineHeight,
+              ),
             ),
             Text(
               item.subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 12.5, height: 1.28, color: Colors.white.withValues(alpha: 0.62)),
+              style: TextStyle(
+                fontSize: BookRailMetrics.subtitleFontSize,
+                height: BookRailMetrics.captionLineHeight,
+                color: Colors.white.withValues(alpha: 0.62),
+              ),
             ),
           ],
         ),

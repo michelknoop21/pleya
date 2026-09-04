@@ -40,6 +40,29 @@ class ReaderSettingsSheet extends StatelessWidget {
   static const double ruleTop = 414;
   static const double scrollRowTop = 432;
 
+  /// The theme row's disc, and the caption under it.
+  static const double themeDiscSize = 44;
+  static const double themeCaptionGap = 8;
+  static const double themeCaptionFontSize = 12;
+  static const double themeCaptionLineHeight = 14 / 12;
+
+  /// How tall the theme group's control is, at the reader's own text size.
+  ///
+  /// It used to be a literal 66, which is exactly 44 + 8 + 12 x (14/12): right
+  /// at scale 1.0 and short at iOS Larger Text or Android "Groot" (about
+  /// 1.15), where the caption asks for 16.1 and each of the three tiles
+  /// overflowed its `Column` the moment Leesinstellingen opened. Nothing in
+  /// `lib/` clamps `textScaler`. Same class as
+  /// `BookRailMetrics.captionExtentFor` and fixed the same way.
+  ///
+  /// The extra points come out of the 14 pt of slack golden 08 leaves between
+  /// this group and the rule at [ruleTop]; at scale 1.0 the value is still the
+  /// 66 the golden was measured with.
+  static double themeControlHeightFor(BuildContext context) {
+    final caption = MediaQuery.textScalerOf(context).scale(themeCaptionFontSize) * themeCaptionLineHeight;
+    return (themeDiscSize + themeCaptionGap + caption).ceilToDouble();
+  }
+
   static const Color surface = Color(0xFF1F1F1F);
   static const Color cell = Color(0xFF282828);
   static const Color cellOn = Color(0xFF3A3A3A);
@@ -83,7 +106,13 @@ class ReaderSettingsSheet extends StatelessWidget {
                   36,
                 ),
                 _group(2, t.books.readerMargins, 'margins', _MarginControl(value: value, onChanged: onChanged), 36),
-                _group(3, t.books.readerTheme, 'theme', _ThemeControl(value: value, onChanged: onChanged), 66),
+                _group(
+                  3,
+                  t.books.readerTheme,
+                  'theme',
+                  _ThemeControl(value: value, onChanged: onChanged),
+                  themeControlHeightFor(context),
+                ),
                 const Positioned(
                   top: ruleTop,
                   left: 20,
@@ -166,9 +195,18 @@ class _Header extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          t.books.readerSettings,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: Colors.white),
+        // Expanded, so the title yields to the close glyph instead of pushing
+        // it off the row. A title and a fixed 24 pt button in a fixed-width
+        // sheet is a horizontal budget with nothing to give: at a large text
+        // setting, or in a language that spells this longer than
+        // "Leesinstellingen", the row overflowed on the right.
+        Expanded(
+          child: Text(
+            t.books.readerSettings,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: Colors.white),
+          ),
         ),
         GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -413,13 +451,13 @@ class _ThemeControl extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             onTap: () => onChanged(value.copyWith(themeId: theme.id)),
             child: SizedBox(
-              width: 44,
+              width: ReaderSettingsSheet.themeDiscSize,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: ReaderSettingsSheet.themeDiscSize,
+                    height: ReaderSettingsSheet.themeDiscSize,
                     decoration: BoxDecoration(
                       color: theme.page,
                       shape: BoxShape.circle,
@@ -436,15 +474,15 @@ class _ThemeControl extends StatelessWidget {
                           : null,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: ReaderSettingsSheet.themeCaptionGap),
                   Text(
                     labels[theme.id]!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 12,
-                      height: 14 / 12,
+                      fontSize: ReaderSettingsSheet.themeCaptionFontSize,
+                      height: ReaderSettingsSheet.themeCaptionLineHeight,
                       color: theme.id == value.themeId ? Colors.white : const Color(0x9EFFFFFF),
                       fontWeight: theme.id == value.themeId ? FontWeight.w500 : FontWeight.w400,
                     ),
