@@ -168,7 +168,7 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
   /// Falls through to the first row for a Home with no hero at all, so the
   /// remote is never stranded.
   bool focusPrimary() {
-    if (_heroKey.currentState?.focusPlay() ?? false) return true;
+    if (_focusHeroCta((hero) => hero.focusPlay())) return true;
     return _focusFirstRow();
   }
 
@@ -219,13 +219,33 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
       widget.onNavigateUp?.call();
       return;
     }
-    if (_scroll.hasClients && _scroll.offset > 0) _scroll.jumpTo(0);
-    if (_heroKey.currentState?.focusLastCta() ?? false) return;
+    if (_focusHeroCta((hero) => hero.focusLastCta())) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_heroKey.currentState?.focusLastCta() ?? false) return;
+      if (_focusHeroCta((hero) => hero.focusLastCta())) return;
       widget.onNavigateUp?.call();
     });
+  }
+
+  /// The one place that hands the ring to the billboard, whichever press asked.
+  ///
+  /// Restoring the offset is not this method's flourish, it is its reason to
+  /// exist, and the paragraphs above [_focusHeroFromFirstRow] are the long form
+  /// of why. What made it a shared concern is HERO4: the same reasoning applies
+  /// to `focusPrimary`, and `focusPrimary` did not do it. DOWN out of the top
+  /// navigation focuses the hero without any traversal in between, so it never
+  /// scrolled — and the feed is very often *not* at the top when it arrives,
+  /// because leaving Home for another destination keeps the scroll position
+  /// (hoofdstuk 9.6) and coming back from a pushed content route keeps it too.
+  /// The CTA row then took the ring 721 px above the fold, drawn at y=19 under
+  /// the opaque top band with no artwork behind it, which is the state that was
+  /// photographed on hardware. Measured in the bundle
+  /// `tvos-home-hero-return-probe-1788613144700`.
+  bool _focusHeroCta(bool Function(TvHeroBillboardCarouselState hero) request) {
+    if (!_hasHero) return false;
+    if (_scroll.hasClients && _scroll.offset > 0) _scroll.jumpTo(0);
+    final hero = _heroKey.currentState;
+    return hero != null && request(hero);
   }
 
   /// The feed's scroll offset, so a test can prove the hero is back *in view*

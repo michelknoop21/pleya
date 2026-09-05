@@ -726,6 +726,44 @@ void main() {
       expect(offset(tester), 0);
       expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroMoreInfo');
     });
+
+    testWidgets('HERO4: DOWN out of the top navigation restores the scroll too', (tester) async {
+      // `focusPrimary()` is what the shell calls for DOWN out of the bar
+      // (`focusActiveTabIfReady`), and it reaches the hero without any
+      // traversal in between — so nothing scrolls on its behalf. The feed it
+      // arrives at is very often not at the top: leaving Home for another
+      // destination keeps the scroll position (hoofdstuk 9.6), and so does
+      // coming back from a pushed content route. Before this, the CTA took the
+      // ring on a billboard 721 px above the fold, its button row drawn under
+      // the opaque top band with no artwork behind it (HERO4, photographed on
+      // hardware and measured in `/v1/ui_tree`).
+      await bootTallFeed(tester);
+
+      heroNode(tester, 'tvHeroPlay').requestFocus();
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(
+        offset(tester),
+        greaterThan(0),
+        reason: 'if the feed never scrolled, this test is not exercising the case it exists for',
+      );
+
+      // The destination switch the shell performs, which is what leaves the
+      // feed scrolled with the ring outside it.
+      final feed = tester.state<TvContentFeedState>(find.byType(TvContentFeed));
+      feed.setDestinationActive(false);
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+      feed.setDestinationActive(true);
+      await tester.pump();
+
+      expect(feed.focusPrimary(), isTrue);
+      await tester.pumpAndSettle();
+
+      expect(offset(tester), 0, reason: 'the billboard is on screen under the CTA that just took the ring');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
+    });
   });
 
   group('restoration (hoofdstuk 7.6 / fase-8 brief §19)', () {
