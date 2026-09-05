@@ -23,7 +23,7 @@ heeft. Bij tegenspraak wint het document waar hier naar verwezen wordt, niet dez
 | **Ebooks** | `docs/assets/ebooks/northstar/` | 9 schermen plus bron | getekend, niet geland | alleen op de branch | `feat/ebooks` |
 
 Alleen tvOS staat op `main`. De andere drie leven uitsluitend op hun eigen branch, en
-dat is de spreiding die dit document zichtbaar maakt. Zie §6 voor wat daaraan te doen is.
+dat is de spreiding die dit document zichtbaar maakt. Zie §9 voor wat daaraan te doen is.
 
 `feat/pleyaserver` draagt een oudere kopie van de webset en mist 91 tvOS-bestanden die
 `main` wel heeft. `integration/pleya-server-rebaseline` is de nieuwere van de twee: die
@@ -71,9 +71,113 @@ tekst "candidate" die nog in de PNG's staat.
 
 ---
 
-## 3. Waar de volgende stap staat
+## 3. iOS en mobiel
 
-Er zijn drie levende lijsten, en ze bezitten verschillende dingen. Dat is geen
+**Branch:** `feat/netflix-mobile`, 23 commits vóór en 128 achter `main`.
+**Autoriteit:** DEC-090 op die branch (nog niet op `main`, dus hier geen link), "iOS Unified 2026 northstar bevroren, 21 mockups
+bindend voor de iPhone-interface". Main heeft geen DEC-090; dat nummer is precies het
+enige gat in main's reeks, dus dit besluit kan ongewijzigd landen.
+
+| Wat | Waar |
+|---|---|
+| 21 genummerde beelden, bevroren op `011ffdb` | `docs/assets/ios-unified/northstar/01-…` tot en met `21-activiteit.png` |
+| 5 Home-comps, met een naam en geen nummer zodat de bevroren set de 21 blijft | `home-comp`, `home-comp-gefilterd`, `profiel-laden-comp`, `serie-detail-comp`, `mijn-pleya-comp` |
+| hashes | `SHA256SUMS` in dezelfde map |
+| de audit die de set vaststelde | `docs/ios-unified-2026-audit.md`, 211 regels, status bevroren |
+| het bouwplan | `docs/ios-unified-2026-fase1-plan.md`, secties A tot en met I |
+
+**De Home-compositie zit niet in de 21-set.** De autoriteit daarvoor zijn de vijf comps
+plus paragraaf 10 van het auditrapport. Waar comp en mockup elkaar raken wint de mockup.
+
+### Stand
+
+- **F0 is binnen.** `shared/unified-media-core` is gemerged: de platformneutrale catalogus-
+  en bronlaag, met het bewijs in `docs/F0-EVIDENCE.md`.
+- **Fase 1 is gebouwd**: de iPhone-Home als eigen scherm, en de iPad houdt zijn bestaande
+  tabbalk. Vastgelegd als DEC-092 op die branch.
+- **DEC-091 op die branch** doopt de mobiele heropstelling `mobileFeatured` en lost de
+  chip-ambiguïteit op.
+- Twee Home-details staan bewust open en blokkeren niet: de secundaire hero-CTA en de
+  indicator. Ze staan als A en B in paragraaf 10 van de audit.
+
+### Volgende stap
+
+Fase 2, waarin de tabset wisselt. Het plan zegt daar expliciet bij dat dit **een eigen
+iPad-autoriteit en een eigen acceptatiebesluit vraagt** voordat het mag beginnen; die zijn
+er nog niet. Dat is dus de eerstvolgende beslissing en niet de eerstvolgende commit.
+
+---
+
+## 4. Ebooks
+
+**Branch:** `feat/ebooks`, 33 commits vóór en 128 achter `main`.
+**Autoriteit:** DEC-094 op die branch plus het manifest in
+`docs/assets/ebooks/northstar/README.md`, dat per beeld de status draagt.
+
+Deze set hangt bewust onder de iOS-set: waar de e-bookscomp en de iOS Unified 2026-set
+elkaar raken, **wint de iOS-set voor de uitvoering** (shell, tabbalk, header, kaarten,
+chips, typografie, tokens) **en de comp voor de e-bookinhoud**. Ebooks kan dus niet vóór
+iOS landen zonder die volgorde om te draaien.
+
+### Drie soorten beeld, en ze zijn niet hetzelfde
+
+Het manifest onderscheidt ze zelf, en dat onderscheid is de kern van deze set:
+
+1. **Design north star**, `ebooks-northstar-comp.png`: twaalf iPhone-panelen, door Michel
+   op 3 september aangeleverd als bindende inhoudelijke bron. Bron, niet ter goedkeuring.
+2. **Schermgolden**: één mockup per venster op de echte iPhone 15 Pro-viewport
+   (1179 bij 2556). Dit is het ontwerpcontract voor dat ene venster, en het gaat pas op
+   `approved` na een expliciet akkoord van Michel. `proposed` betekent: nog niet bouwen.
+3. **Executable golden**: een screenshot uit de draaiende app onder een Pleya
+   Verify-fixture. Die staat niet in deze map maar in de evidencebundel van het scenario,
+   en bewaakt de regressie ná het bouwen.
+
+### Stand
+
+Van de 26 manifestrijen staan er **24 op approved**, één is vervangen (`01-books-home`
+door `01b`) en één is de bron. Acht schermen zijn tegen hun goedgekeurde golden gebouwd:
+
+| Golden | Scherm | Gebouwd |
+|---|---|---|
+| 01b | Boeken-home | ja |
+| 02 | Alle boeken | ja |
+| 03 | Filtersheet | ja |
+| 04 | Boeken zoeken | ja |
+| 05 | Boekdetail | ja |
+| 06 | Inhoudsopgave | ja |
+| 07 | Reader | ja |
+| 08 | Leesinstellingen | ja |
+
+De comp tekent twaalf panelen, dus vier onderwerpen uit de north star hebben nog geen
+schermgolden: zoeken in boek, downloads, aanbevelingen en boekeninstellingen.
+
+### Volgende stap
+
+Die vier resterende vensters als schermgolden voorstellen, akkoord vragen, en dan bouwen.
+De werkwijze staat vast en werkt: `proposed`, akkoord, `approved`, bouwen tegen de golden.
+
+---
+
+## 5. Pleya Web
+
+**Branch:** `integration/pleya-server-rebaseline`, dat is main plus de webset zonder
+achterstand. `feat/pleyaserver` draagt een oudere kopie en mist 91 tvOS-bestanden.
+
+46 schermen in `docs/assets/pleya-web-northstar/`, met de HTML-bron ernaast, plus
+`DESIGN.md` en `README.md` in dezelfde map. De set is op 4 september compleet verklaard:
+de zes ontbrekende schermen (downloads, metadata-match, transcodesessies, realtime,
+browserspeler en webreader) zijn toen getekend.
+
+**Deze set is hier niet in dezelfde diepte in kaart gebracht als tvOS, iOS en ebooks.**
+Hij hoort bij de Pleya Server-roadmap en niet bij de Netflix-redesign, en heeft zijn eigen
+review- en specdocumenten in `docs/pleya-server-rebaseline/`.
+
+---
+
+## 6. Waar de volgende stap staat, tvOS
+
+De volgende stap voor iOS staat in §3, die voor ebooks in §4. Voor tvOS zijn er drie
+levende lijsten, en ze bezitten verschillende dingen. Dat is geen
 duplicatie, maar het is wel makkelijk te verwarren.
 
 | Lijst | Wat het bezit | Stand op 5 september |
@@ -108,7 +212,7 @@ buiten App Store Connect om. Dat is de route naar dat bewijs.
 
 ---
 
-## 4. Documenten die af zijn
+## 7. Documenten die af zijn
 
 Deze zijn geschiedenis. Ze blijven staan omdat ze het bewijs en de redenering dragen,
 maar er staat geen werk meer in dat nog gedaan moet worden. Zoek de actuele stand in de
@@ -127,7 +231,7 @@ afgerond: `tvos-unified-fase6-home-rows-deviation.md` en
 
 ---
 
-## 5. De volledige tvOS-documentenkaart
+## 8. De volledige tvOS-documentenkaart
 
 | Document | Rol | Levend |
 |---|---|---|
@@ -143,21 +247,60 @@ afgerond: `tvos-unified-fase6-home-rows-deviation.md` en
 
 ---
 
-## 6. Wat nog niet op één lijn staat
+## 9. Wat nog niet op één lijn staat, en het recept ervoor
 
-Drie dingen, met de reden waarom ze nog niet opgelost zijn.
+### De DEC-nummers botsen op tien plekken
 
-**De drie andere northstar-sets staan niet op `main`.** iOS, Web en Ebooks leven elk op
-hun eigen branch. Zolang dat zo is kan niemand ze naast elkaar leggen, en kan een besluit
-op het ene oppervlak ongemerkt in strijd zijn met het andere. De goedkoopste stap is de
-assetmappen naar `main` te brengen zonder de bijbehorende code, want beelden zijn
-inert en conflicteren met niets. Dat is niet gedaan omdat het een keuze van Michel is
-welke sets als richtinggevend de stam op mogen.
+Gemeten over de vier lijnen: 109 nummers in omloop, waarvan **tien met tegenstrijdige
+inhoud**. Dit is de grootste blokkade voor het samenbrengen, want `DECISIONS.md` is de
+identiteitsregistratie waar de architectuurdocumenten, de registers en codecommentaar
+naar wijzen.
 
-**Twee registers delen twee ID's.** SYS-1 en SYS-4 staan in het register én in de
-correctieronde. De werkverdeling is afgesproken, maar staat nergens als regel; hier in
-§3 staat hij nu.
+| Nummer | main en web | iOS en ebooks |
+|---|---|---|
+| DEC-063 tot en met DEC-068 | de Unified TV-besluiten | de Pleya Verify-besluiten |
 
-**De vijf losse `*-reference.png` in de root van `assets/tvos-unified/`** zijn de
-voorloper van de northstar-set. Drie ervan worden nergens meer genoemd. Ze zijn hier als
-historisch gemarkeerd en niet verwijderd, want de repo verwijdert geen bewijs.
+**Dat is geen echte botsing maar achterstand.** Main heeft dit zelf al opgelost: de zes
+Verify-besluiten staan daar sinds de reconciliatie op **DEC-080 tot en met DEC-085**, en
+de Unified TV-besluiten hebben 063 tot en met 068 gehouden. `feat/netflix-mobile` en
+`feat/ebooks` dragen simpelweg de kopie van vóór die reconciliatie. Bij het landen nemen
+ze main's versie over; er valt niets te hernummeren, alleen bij te trekken.
+
+Wat wél een echte botsing is, want het zijn nieuwe besluiten op hetzelfde nummer:
+
+| Nummer | Op main | Elders |
+|---|---|---|
+| DEC-091 | een TV-contentroute opent binnen de shell | iOS: de mobiele heropstelling heet `mobileFeatured` |
+| DEC-092 | Bibliotheken wordt bronbeheer | iOS: fase 1 levert de iPhone-Home als eigen scherm |
+| DEC-094 | de hero vraagt artwork in de bronratio aan | ebooks: mobiele vijfslots-navigatie |
+| DEC-096 | taalvoorkeuren in vier lagen | web: refreshtokenrotatie met respijtvenster |
+
+Vier hernoemingen dus, en main is de stam, dus die vier verschuiven aan de kant van de
+branch. Main loopt tot 096 en heeft precies één gat, op **090**, dat door iOS' bevroren
+northstarbesluit bezet is. Vanaf **097** is alles vrij.
+
+### De drie andere sets staan niet op `main`
+
+iOS, Web en Ebooks leven elk op hun eigen branch. Zolang dat zo is kan niemand ze naast
+elkaar leggen, en kan een besluit op het ene oppervlak ongemerkt in strijd zijn met het
+andere. De goedkoopste stap is de assetmappen naar `main` te brengen zonder de
+bijbehorende code: beelden zijn inert en conflicteren met niets. Niet gedaan, omdat het
+een keuze van Michel is welke sets als richtinggevend de stam op mogen.
+
+### De landingsvolgorde ligt vast door de sets zelf
+
+Ebooks verklaart in zijn eigen manifest dat de iOS-set wint voor de uitvoering. **Ebooks
+kan dus niet vóór iOS landen** zonder die afhankelijkheid om te draaien. De volgorde is:
+tvOS staat er al, dan iOS, dan ebooks. Web staat daar los van en hangt aan de Pleya
+Server-roadmap.
+
+### Twee registers delen twee ID's
+
+SYS-1 en SYS-4 staan in het redesign-register én in de correctieronde. De werkverdeling is
+afgesproken, maar stond nergens als regel; §6 legt hem nu vast.
+
+### De vijf losse `*-reference.png`
+
+In de root van `assets/tvos-unified/` staat de voorloper van de northstar-set. Drie ervan
+worden nergens meer genoemd. Ze zijn hier als historisch gemarkeerd en niet verwijderd,
+want de repo verwijdert geen bewijs.
