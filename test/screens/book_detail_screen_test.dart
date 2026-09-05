@@ -6,6 +6,7 @@ import 'package:pleya/books/book.dart';
 import 'package:pleya/books/book_detail_layout.dart';
 import 'package:pleya/books/book_reader_page.dart';
 import 'package:pleya/books/demo_book_reader.dart';
+import 'package:pleya/books/book_text_search.dart';
 import 'package:pleya/books/book_toc.dart';
 import 'package:pleya/books/books_source.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -129,6 +130,9 @@ class _GatedBooksSource implements BooksSource {
     pageRequests.add(completer);
     return completer.future;
   }
+
+  @override
+  BookTextSearch? get textSearch => _demo.textSearch;
 }
 
 Finder get _primary => find.byType(BookDetailAction).at(0);

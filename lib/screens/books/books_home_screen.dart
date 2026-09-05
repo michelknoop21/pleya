@@ -18,6 +18,7 @@ import '../../widgets/pleya_logo.dart';
 import 'all_books_screen.dart';
 import 'book_detail_screen.dart';
 import 'book_reader_screen.dart';
+import 'book_text_search_screen.dart';
 import 'books_search_screen.dart';
 import 'books_toc_screen.dart';
 import 'widgets/book_rail.dart';
@@ -51,6 +52,10 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
       AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBookDetail, _openCanonicalDetail);
       AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBooksToc, _openCanonicalToc);
       AutomationNavigationHooks.instance.registerRouteOpener(AutomationIds.screenBookReader, _openCanonicalReader);
+      AutomationNavigationHooks.instance.registerRouteOpener(
+        AutomationIds.screenBookTextSearch,
+        _openCanonicalTextSearch,
+      );
     }
   }
 
@@ -62,6 +67,10 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
       AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBookDetail, _openCanonicalDetail);
       AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBooksToc, _openCanonicalToc);
       AutomationNavigationHooks.instance.unregisterRouteOpener(AutomationIds.screenBookReader, _openCanonicalReader);
+      AutomationNavigationHooks.instance.unregisterRouteOpener(
+        AutomationIds.screenBookTextSearch,
+        _openCanonicalTextSearch,
+      );
     }
     super.dispose();
   }
@@ -185,7 +194,34 @@ class _BooksHomeScreenState extends State<BooksHomeScreen> {
     unawaited(
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => BookReaderScreen(book: book, page: page, toc: toc),
+          builder: (_) => BookReaderScreen(book: book, page: page, toc: toc, textSearch: provider.textSearch),
+        ),
+      ),
+    );
+    return true;
+  }
+
+  /// The query golden 09 is drawn with. `desert` and not `woestijn`, because the
+  /// fixed set carries Dune as an English edition and a Dutch term would find
+  /// nothing in it.
+  static const String _verifyTextSearchQuery = 'desert';
+
+  /// The same push the reader's magnifier performs, landing on the canonical
+  /// query for the reason golden 04's opener seeds its own: the iOS driver has
+  /// no text-input endpoint, so a scenario cannot type, and without a query
+  /// there is no canonical state to photograph on hardware. The reader's own
+  /// route still opens an empty field; only this opener, and only in a
+  /// `kPleyaVerify` build, pre-fills it.
+  Future<bool> _openCanonicalTextSearch() async {
+    if (!mounted) return false;
+    final provider = context.read<BooksHomeProvider?>();
+    final book = provider?.rows.all.where((b) => b.id == _verifyReaderBookId).firstOrNull;
+    final search = provider?.textSearch;
+    if (book == null || search == null) return false;
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BookTextSearchScreen(book: book, search: search, initialQuery: _verifyTextSearchQuery),
         ),
       ),
     );

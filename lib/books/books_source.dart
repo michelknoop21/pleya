@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'book.dart';
 import 'book_reader_page.dart';
+import 'book_text_search.dart';
 import 'book_toc.dart';
 import 'demo_book_reader.dart';
+import 'demo_book_text_search.dart';
 import 'demo_book_tocs.dart';
 
 /// Whether this build carries an e-book source at all.
@@ -47,6 +49,17 @@ abstract class BooksSource {
   /// lays a publication out at a given type size, and that engine is PS-15. Until
   /// then a source hands the reader a page it already has.
   Future<BookReaderPage?> readerPage(String bookId);
+
+  /// How to search inside the publications this source serves, or `null` for a
+  /// source that cannot.
+  ///
+  /// One object for the source rather than one per book: which publication is
+  /// searched is an argument to [BookTextSearch.search], because an index that
+  /// covers a shelf is as likely as one per file and this seam should not
+  /// prejudge that. `null` is not an error — it is a source with no searchable
+  /// text, and then the reader's magnifier stays drawn and inert the way it was
+  /// before golden 09.
+  BookTextSearch? get textSearch;
 }
 
 /// A source with nothing in it: the honest answer for a profile that has no
@@ -65,6 +78,9 @@ class EmptyBooksSource implements BooksSource {
 
   @override
   Future<BookReaderPage?> readerPage(String bookId) async => null;
+
+  @override
+  BookTextSearch? get textSearch => null;
 }
 
 /// The fixed set behind `--dart-define=PLEYA_BOOKS=true`.
@@ -364,6 +380,9 @@ class DemoBooksSource implements BooksSource {
 
   @override
   Future<BookReaderPage?> readerPage(String bookId) async => demoBookReaderPage(bookId);
+
+  @override
+  BookTextSearch? get textSearch => const DemoBookTextSearch();
 
   @override
   Future<List<BookSeries>> series() async => const [

@@ -21,7 +21,7 @@ enum BookReaderGlyph {
   /// The inhoudsopgave, three rules of unequal length.
   toc,
 
-  /// Zoeken in boek. One magnifier, not the comp's two.
+  /// Zoeken in boek, approved golden 09. One magnifier, not the comp's two.
   search,
 
   /// `Aa`, the door to the reading settings, approved with golden 08.

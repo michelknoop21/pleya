@@ -153,6 +153,10 @@ class AutomationIds {
   /// The inhoudsopgave glyph, the door approved golden 07 gives golden 06.
   static const String bookReaderToc = 'books.reader.toc';
 
+  /// The magnifier glyph, the door approved golden 09 gives Zoeken in boek. It
+  /// was drawn and inert until that golden existed.
+  static const String bookReaderSearch = 'books.reader.search';
+
   /// The scrubber and its label. Drawn, and inert: what dragging it shows is
   /// one of the things golden 07 leaves open.
   static const String bookReaderFoot = 'books.reader.foot';
@@ -169,6 +173,20 @@ class AutomationIds {
   /// (`[size]`, `[leading]`, `[margins]`, `[theme]`, `[scroll]`) rather than an
   /// index, because the set of groups is not a list a scenario should count.
   static const String readerSettingsGroup = 'books.reader.settings.group';
+
+  /// Zoeken in boek (approved golden 09), one query through the publication
+  /// that is open. A page of the reader, the way the inhoudsopgave is.
+  static const String screenBookTextSearch = 'screen.book_text_search';
+
+  /// `12 resultaten gevonden`. Absent from the tree until a search has actually
+  /// run, which is what makes "no search yet" and "nothing found" tellable
+  /// apart from the outside.
+  static const String bookTextSearchCount = 'books.text_search.count';
+
+  /// One result row. Instanceable, suffixed with the locator, because two
+  /// results can share a chapter and a page label — golden 09a draws that pair
+  /// — and an index points somewhere else as soon as the query changes.
+  static const String bookTextSearchResult = 'books.text_search.result';
 
   /// Boeken-home's three rails, in the order golden 01b puts them.
   static const String booksRailContinue = 'books.rail.continue';
@@ -249,6 +267,7 @@ class AutomationIds {
     booksTocPart,
     booksTocChapter,
     readerSettingsGroup,
+    bookTextSearchResult,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -288,10 +307,14 @@ class AutomationIds {
     {'id': bookReaderColumn, 'role': 'surface', 'instanceable': false},
     {'id': bookReaderChrome, 'role': 'nav', 'instanceable': false},
     {'id': bookReaderToc, 'role': 'button', 'instanceable': false},
+    {'id': bookReaderSearch, 'role': 'button', 'instanceable': false},
     {'id': bookReaderFoot, 'role': 'surface', 'instanceable': false},
     {'id': bookReaderTypeSettings, 'role': 'button', 'instanceable': false},
     {'id': screenReaderSettings, 'role': 'screen', 'instanceable': false},
     {'id': readerSettingsGroup, 'role': 'filter.group', 'instanceable': true},
+    {'id': screenBookTextSearch, 'role': 'screen', 'instanceable': false},
+    {'id': bookTextSearchCount, 'role': 'label', 'instanceable': false},
+    {'id': bookTextSearchResult, 'role': 'list.item', 'instanceable': true},
     {'id': booksRailContinue, 'role': 'rail', 'instanceable': false},
     {'id': booksRailRecent, 'role': 'rail', 'instanceable': false},
     {'id': booksRailSeries, 'role': 'rail', 'instanceable': false},

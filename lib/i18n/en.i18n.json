@@ -1897,6 +1897,10 @@
     "readerThemeSepia": "Sepia",
     "readerThemeDark": "Dark",
     "readerScrollMode": "Scroll mode",
-    "readerScrollModeHint": "Scroll instead of turning pages"
+    "readerScrollModeHint": "Scroll instead of turning pages",
+    "searchInBook": "Search in book",
+    "searchInBookResults": "${count} results found",
+    "searchInBookOneResult": "1 result found",
+    "searchInBookNoResults": "No results found"
   }
 }

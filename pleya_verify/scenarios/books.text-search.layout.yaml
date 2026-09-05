@@ -1,0 +1,50 @@
+name: books.text-search.layout
+target: ios-sim
+# Zoeken in boek against approved golden 09
+# (docs/assets/ebooks/northstar/09a-books-search-in-book.png).
+#
+# REQUIRES `PLEYA_VERIFY_BOOKS=1`, like the other books scenarios, and for a
+# comparison against the golden also `PLEYA_VERIFY_IOS_UDID=<iPhone 15 Pro>` —
+# every number in golden 09 is measured on that viewport.
+#
+# The query is seeded, not typed, for the same reason golden 04's scenario seeds
+# its own: the iOS driver has no text-input endpoint, so there is no way to type
+# `desert` here and therefore no canonical state to photograph without seeding
+# it. `test/screens/book_text_search_screen_test.dart` types for real and covers
+# what this cannot.
+#
+# Unlike golden 06's screen, this one *does* have a door a reader can touch — the
+# magnifier in the reader's chrome. The opener is still used, because the door
+# lands on an empty field and golden 09's canonical state is a field with an
+# answer in it. That the door works is proved in the reader's own widget test.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - open: screen.books
+  - open: screen.book_text_search
+steps:
+  - wait_until: {id: screen.book_text_search, timeout: 15000}
+  - settle: 1500
+  # The count has run, which is the difference between "nothing found" and "no
+  # search yet". It sits on the band golden 04 gives its chip row.
+  - assert: {id: books.text_search.count, insideViewport: true}
+  # Rows are addressed by locator and never by chapter or page label. These two
+  # are the pair golden 09a draws on one place: both say `Hoofdstuk 12 · Pagina
+  # 248`, and they are two results because they are two locators. A screen that
+  # addressed them by that label could not tell them apart, and this is the
+  # assertion that would go ambiguous if it ever tried.
+  - assert: {id: "books.text_search.result[dune/ch12#p01]", insideViewport: true}
+  - assert: {id: "books.text_search.result[dune/ch12#p04]", insideViewport: true}
+  # Publication order, not relevance: chapter 3 stands above chapter 12.
+  - assert: {id: "books.text_search.result[dune/ch03#p12]", below: books.text_search.count}
+  - assert: {id: "books.text_search.result[dune/ch12#p01]", below: "books.text_search.result[dune/ch03#p12]"}
+  # The first row is the one the golden measures, on the card's own top edge.
+  - assert: {id: "books.text_search.result[dune/ch03#p12]", insideViewport: true}
+  - assert: {id: "books.text_search.result[dune/ch03#p12]", minimumTapTarget: 44}
+  # The eighth result is where the bottom edge cuts the list in the golden, so it
+  # is deliberately *not* asserted to be inside the viewport. The list runs on
+  # under the home indicator; what has to hold is that it can be scrolled clear,
+  # which the widget test measures and the second snapshot shows.
+  - snapshot: text-search-results

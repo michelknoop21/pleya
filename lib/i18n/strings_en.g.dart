@@ -5329,6 +5329,18 @@ class TranslationsBooksEn {
 
 	/// en: 'Scroll instead of turning pages'
 	String get readerScrollModeHint => 'Scroll instead of turning pages';
+
+	/// en: 'Search in book'
+	String get searchInBook => 'Search in book';
+
+	/// en: '${count} results found'
+	String searchInBookResults({required Object count}) => '${count} results found';
+
+	/// en: '1 result found'
+	String get searchInBookOneResult => '1 result found';
+
+	/// en: 'No results found'
+	String get searchInBookNoResults => 'No results found';
 }
 
 // Path: search.filters
@@ -7812,6 +7824,10 @@ extension on Translations {
 			'books.readerThemeDark' => 'Dark',
 			'books.readerScrollMode' => 'Scroll mode',
 			'books.readerScrollModeHint' => 'Scroll instead of turning pages',
+			'books.searchInBook' => 'Search in book',
+			'books.searchInBookResults' => ({required Object count}) => '${count} results found',
+			'books.searchInBookOneResult' => '1 result found',
+			'books.searchInBookNoResults' => 'No results found',
 			_ => null,
 		};
 	}

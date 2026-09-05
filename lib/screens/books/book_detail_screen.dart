@@ -286,7 +286,7 @@ class _ReadActionState extends State<_ReadAction> {
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => BookReaderScreen(book: widget.book, page: page, toc: toc),
+          builder: (_) => BookReaderScreen(book: widget.book, page: page, toc: toc, textSearch: provider.textSearch),
         ),
       );
     } finally {

@@ -2124,6 +2124,10 @@ class _TranslationsBooksNl extends TranslationsBooksEn {
 	@override String get readerThemeDark => 'Donker';
 	@override String get readerScrollMode => 'Scrollmodus';
 	@override String get readerScrollModeHint => 'Scrollen in plaats van bladeren';
+	@override String get searchInBook => 'Zoeken in boek';
+	@override String searchInBookResults({required Object count}) => '${count} resultaten gevonden';
+	@override String get searchInBookOneResult => '1 resultaat gevonden';
+	@override String get searchInBookNoResults => 'Geen resultaten gevonden';
 }
 
 // Path: search.filters
@@ -4178,6 +4182,10 @@ extension on TranslationsNl {
 			'books.readerThemeDark' => 'Donker',
 			'books.readerScrollMode' => 'Scrollmodus',
 			'books.readerScrollModeHint' => 'Scrollen in plaats van bladeren',
+			'books.searchInBook' => 'Zoeken in boek',
+			'books.searchInBookResults' => ({required Object count}) => '${count} resultaten gevonden',
+			'books.searchInBookOneResult' => '1 resultaat gevonden',
+			'books.searchInBookNoResults' => 'Geen resultaten gevonden',
 			_ => null,
 		};
 	}

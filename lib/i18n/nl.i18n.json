@@ -1826,6 +1826,10 @@
     "readerThemeSepia": "Sepia",
     "readerThemeDark": "Donker",
     "readerScrollMode": "Scrollmodus",
-    "readerScrollModeHint": "Scrollen in plaats van bladeren"
+    "readerScrollModeHint": "Scrollen in plaats van bladeren",
+    "searchInBook": "Zoeken in boek",
+    "searchInBookResults": "${count} resultaten gevonden",
+    "searchInBookOneResult": "1 resultaat gevonden",
+    "searchInBookNoResults": "Geen resultaten gevonden"
   }
 }

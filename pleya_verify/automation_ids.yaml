@@ -96,6 +96,9 @@ ids:
   - id: books.reader.toc
     role: button
     instanceable: false
+  - id: books.reader.search
+    role: button
+    instanceable: false
   - id: books.reader.foot
     role: surface
     instanceable: false
@@ -107,6 +110,15 @@ ids:
     instanceable: false
   - id: books.reader.settings.group
     role: filter.group
+    instanceable: true
+  - id: screen.book_text_search
+    role: screen
+    instanceable: false
+  - id: books.text_search.count
+    role: label
+    instanceable: false
+  - id: books.text_search.result
+    role: list.item
     instanceable: true
   - id: books.rail.continue
     role: rail

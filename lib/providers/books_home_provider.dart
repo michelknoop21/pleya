@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../books/book.dart';
 import '../books/book_reader_page.dart';
+import '../books/book_text_search.dart';
 import '../books/book_toc.dart';
 import '../books/books_source.dart';
 import '../utils/app_logger.dart';
@@ -97,6 +98,11 @@ class BooksHomeProvider extends ChangeNotifier {
 
   /// The page the reader opens on, fetched on demand for the same reason.
   Future<BookReaderPage?> readerPage(String bookId) => _source.readerPage(bookId);
+
+  /// How to search inside a publication, or `null` when this source cannot.
+  /// Handed to the reader, which hands it to Zoeken in boek: the screens take
+  /// their seams as arguments rather than reaching for a provider.
+  BookTextSearch? get textSearch => _source.textSearch;
 
   /// Pure, so the row rules are testable without a provider or a source.
   @visibleForTesting

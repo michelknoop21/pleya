@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,10 +6,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/books/book.dart';
 import 'package:pleya/books/book_reader_layout.dart';
 import 'package:pleya/books/book_reader_page.dart';
+import 'package:pleya/books/book_text_search.dart';
 import 'package:pleya/books/book_toc.dart';
 import 'package:pleya/books/demo_book_reader.dart';
+import 'package:pleya/books/demo_book_text_search.dart';
 import 'package:pleya/books/demo_book_tocs.dart';
 import 'package:pleya/screens/books/book_reader_screen.dart';
+import 'package:pleya/screens/books/book_text_search_screen.dart';
 import 'package:pleya/screens/books/books_toc_screen.dart';
 import 'package:pleya/screens/books/widgets/book_reader_chrome.dart';
 
@@ -39,7 +41,7 @@ final _book = Book(
 
 BookReaderPage get _page => demoBookReaderPage('dune')!;
 
-Future<void> _pumpReader(WidgetTester tester, {BookToc? toc}) async {
+Future<void> _pumpReader(WidgetTester tester, {BookToc? toc, BookTextSearch? textSearch}) async {
   tester.view.physicalSize = _viewport;
   tester.view.devicePixelRatio = 1;
   const padding = FakeViewPadding(top: _safeTop, bottom: _safeBottom);
@@ -50,7 +52,7 @@ Future<void> _pumpReader(WidgetTester tester, {BookToc? toc}) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: ThemeData.dark(),
-      home: BookReaderScreen(book: _book, page: _page, toc: toc),
+      home: BookReaderScreen(book: _book, page: _page, toc: toc, textSearch: textSearch),
     ),
   );
   await tester.pumpAndSettle();
@@ -176,14 +178,26 @@ void main() {
       expect(find.byType(BookReaderScreen), findsOneWidget);
     });
 
-    /// `Zoeken in boek` is panel 9 and the bookmark model is not designed, so
-    /// neither glyph goes anywhere. A tap on one of them falls through to the
-    /// page and moves the chrome, which is what a control with no function yet
-    /// should do rather than swallow the touch.
-    testWidgets('the search and bookmark glyphs open nothing', (tester) async {
+    /// The second door of this chrome, and the same kind of screen as the first
+    /// one: a pushed page, not a modal presentation. Two glyphs on one bar
+    /// opening two different kinds of screen is what golden 09 rejected.
+    testWidgets('the search glyph pushes golden 09 as a page', (tester) async {
+      await _pumpReader(tester, textSearch: const DemoBookTextSearch());
+      await tester.tap(_glyph(BookReaderGlyph.search));
+      await tester.pumpAndSettle();
+      expect(find.byType(BookTextSearchScreen), findsOneWidget);
+    });
+
+    /// A publication whose source cannot search puts the glyph back where it was
+    /// before golden 09: drawn, and opening nothing. The bookmark is there for
+    /// its own reason — the bookmark model is not designed — and a tap on either
+    /// falls through to the page and moves the chrome rather than swallowing the
+    /// touch.
+    testWidgets('the search glyph opens nothing without a source that can search', (tester) async {
       await _pumpReader(tester);
       await tester.tap(_glyph(BookReaderGlyph.search));
       await tester.pumpAndSettle();
+      expect(find.byType(BookTextSearchScreen), findsNothing);
       expect(find.byType(BookReaderScreen), findsOneWidget);
       expect(find.byType(BooksTocScreen), findsNothing);
     });

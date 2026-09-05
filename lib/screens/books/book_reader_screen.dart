@@ -8,9 +8,11 @@ import '../../books/book.dart';
 import '../../books/book_reader_layout.dart';
 import '../../books/book_reader_page.dart';
 import '../../books/book_reader_theme.dart';
+import '../../books/book_text_search.dart';
 import '../../books/book_toc.dart';
 import '../../books/reader_settings.dart';
 import '../../theme/mono_theme.dart' show kAccent;
+import 'book_text_search_screen.dart';
 import 'books_toc_screen.dart';
 import 'widgets/book_reader_chrome.dart';
 import 'widgets/reader_settings_sheet.dart';
@@ -37,8 +39,9 @@ import 'widgets/reader_settings_sheet.dart';
 /// - the back arrow leaves the book, the inhoudsopgave glyph pushes golden 06 as
 ///   a page, and `Aa` opens the reading settings of golden 08, the fifth slot
 ///   approved with that golden;
-/// - the search glyph is drawn and inert. It opens `Zoeken in boek`, panel 9,
-///   which has no golden;
+/// - the search glyph pushes `Zoeken in boek`, golden 09, as a page — one kind
+///   of screen for both glyphs of this chrome. It goes back to being drawn and
+///   inert for a publication whose source cannot search;
 /// - the bookmark is drawn hollow and inert. Hollow means the current locator
 ///   carries no bookmark, and that is all it means;
 /// - the scrubber is drawn and inert;
@@ -52,7 +55,7 @@ import 'widgets/reader_settings_sheet.dart';
 /// shows. Producing the page after this one, and holding the reader's place
 /// across a resetting, is the reader engine and belongs to PS-15.
 class BookReaderScreen extends StatefulWidget {
-  const BookReaderScreen({super.key, required this.book, required this.page, this.toc});
+  const BookReaderScreen({super.key, required this.book, required this.page, this.toc, this.textSearch});
 
   final Book book;
 
@@ -66,6 +69,13 @@ class BookReaderScreen extends StatefulWidget {
   /// and opens nothing — the same treatment `Ga naar pagina` got in golden 06.
   /// It is drawn either way because the golden draws it.
   final BookToc? toc;
+
+  /// How to search inside this publication, for the magnifier glyph.
+  ///
+  /// `null` for a source that cannot search, and then the glyph goes back to
+  /// what it was before golden 09: drawn, and opening nothing. Same treatment
+  /// [toc] gets, and for the same reason.
+  final BookTextSearch? textSearch;
 
   @override
   State<BookReaderScreen> createState() => _BookReaderScreenState();
@@ -111,6 +121,22 @@ class _BookReaderScreenState extends State<BookReaderScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => BooksTocScreen(book: widget.book, toc: toc),
+      ),
+    );
+  }
+
+  /// Golden 09 as a pushed page, and not a modal presentation.
+  ///
+  /// The two glyphs of this chrome would otherwise open two different kinds of
+  /// screen, and coming back has to land on the same locator with the same
+  /// reading settings — which a pop over this route does by construction and a
+  /// modal presentation has to arrange for itself.
+  void _openSearch() {
+    final search = widget.textSearch;
+    if (search == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BookTextSearchScreen(book: widget.book, search: search),
       ),
     );
   }
@@ -186,6 +212,7 @@ class _BookReaderScreenState extends State<BookReaderScreen> {
                       onBack: () => Navigator.of(context).maybePop(),
                       onToc: widget.toc == null ? null : _openToc,
                       onSettings: _openSettings,
+                      onSearch: widget.textSearch == null ? null : _openSearch,
                     ),
                   ),
                 ),
@@ -231,12 +258,19 @@ class _MarginBleedClipper extends CustomClipper<Rect> {
 /// its controls: that scrim lifts white glyphs off a moving photograph, and a
 /// page of text is neither moving nor a photograph.
 class _Chrome extends StatelessWidget {
-  const _Chrome({required this.theme, required this.onBack, required this.onToc, required this.onSettings});
+  const _Chrome({
+    required this.theme,
+    required this.onBack,
+    required this.onToc,
+    required this.onSettings,
+    required this.onSearch,
+  });
 
   final BookReaderTheme theme;
   final VoidCallback onBack;
   final VoidCallback? onToc;
   final VoidCallback onSettings;
+  final VoidCallback? onSearch;
 
   @override
   Widget build(BuildContext context) {
@@ -263,7 +297,11 @@ class _Chrome extends StatelessWidget {
             child: _Slot(glyph: BookReaderGlyph.settings, theme: theme, onTap: onSettings),
           ),
           const SizedBox(width: BookReaderLayout.glyphGap),
-          _Slot(glyph: BookReaderGlyph.search, theme: theme),
+          AutomationNode(
+            id: AutomationIds.bookReaderSearch,
+            role: 'button',
+            child: _Slot(glyph: BookReaderGlyph.search, theme: theme, onTap: onSearch),
+          ),
           const SizedBox(width: BookReaderLayout.glyphGap),
           _Slot(glyph: BookReaderGlyph.bookmark, theme: theme),
         ],
@@ -278,10 +316,10 @@ class _Slot extends StatelessWidget {
   final BookReaderGlyph glyph;
   final BookReaderTheme theme;
 
-  /// `null` for a glyph that is drawn and opens nothing, which is three of the
-  /// four. A tap on one of those falls through to the page and toggles the
-  /// chrome rather than doing nothing at all, which is the honest behaviour for
-  /// a control with no function yet.
+  /// `null` for a glyph that is drawn and opens nothing — the bookmark always,
+  /// and the two that depend on what the source can give. A tap on one of those
+  /// falls through to the page and toggles the chrome rather than doing nothing
+  /// at all, which is the honest behaviour for a control with no function yet.
   final VoidCallback? onTap;
 
   final String? semanticLabel;
