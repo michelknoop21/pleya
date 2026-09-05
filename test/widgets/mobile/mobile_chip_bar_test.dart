@@ -31,11 +31,25 @@ void main() {
     expect(picked, MobileHomeChip.series);
   });
 
-  testWidgets('tapping the already-selected chip is a no-op', (tester) async {
-    var callCount = 0;
-    await pump(tester, MobileHomeChip.movies, (_) => callCount++);
+  testWidgets('tapping the already-selected chip toggles back to Home', (tester) async {
+    MobileHomeChip? picked;
+    await pump(tester, MobileHomeChip.movies, (chip) => picked = chip);
 
     await tester.tap(find.text('Movies'));
+    expect(picked, MobileHomeChip.home);
+  });
+
+  testWidgets('there is no chip for Home, so a fresh Home state has nothing selected to toggle off', (
+    tester,
+  ) async {
+    // Both chips render as their unselected variant when Home is active —
+    // this only guards against a future Home chip reintroducing the toggle
+    // guard incorrectly.
+    var callCount = 0;
+    await pump(tester, MobileHomeChip.home, (_) => callCount++);
+
+    expect(find.text('Series'), findsOneWidget);
+    expect(find.text('Movies'), findsOneWidget);
     expect(callCount, 0);
   });
 }

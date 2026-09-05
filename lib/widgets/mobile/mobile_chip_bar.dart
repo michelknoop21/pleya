@@ -4,6 +4,11 @@
 ///
 /// Only Series and Films render in fase 1 (H5): Nieuw and Genres have no
 /// product contract yet and are not decorative filler.
+///
+/// A chip is a filter, not a tab: tapping the already-selected one turns the
+/// filter back off rather than doing nothing. Without that there is no way
+/// back to unfiltered Home once either chip is picked, since neither chip
+/// itself represents "Home".
 library;
 
 import 'package:flutter/material.dart';
@@ -25,7 +30,12 @@ class MobileChipBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     void select(MobileHomeChip chip) {
-      if (chip == selected) return;
+      if (chip == selected) {
+        if (chip == MobileHomeChip.home) return;
+        Haptics.light();
+        onSelected(MobileHomeChip.home);
+        return;
+      }
       Haptics.light();
       onSelected(chip);
     }
