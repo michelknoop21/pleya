@@ -21,6 +21,26 @@ under `Notes`.
 Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
+## 2.8.0 · build 262 · 5 September 2026
+
+<!-- commit: 06b2cc0 -->
+
+### Notes
+
+- The same Apple TV build as 260, with the release notes below it. Build 261 sits between the two
+  and is not this app: it is the code of build 245, rebuilt so a tester who had ended up on an
+  Apple TV build they were not meant to see could be moved back to what they already knew. It
+  went to one tester group and to nobody else.
+
+## 2.8.0 · build 261 · 5 September 2026
+
+<!-- commit: 55035a2 -->
+
+### Notes
+
+- Build 245 rebuilt under a new number, for one tester group. No code changed between the two, so
+  there is nothing here that build 245 did not already have.
+
 ## 2.8.0 · build 260 · 5 September 2026
 
 <!-- commit: 72227db -->
