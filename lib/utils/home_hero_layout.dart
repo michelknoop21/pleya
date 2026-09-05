@@ -270,33 +270,17 @@ HomeHeroArtGeometry homeHeroArtGeometry({
 }) {
   if (heroHeight <= 0 || screenWidth <= 0) return HomeHeroArtGeometry.zero;
 
-  if (presentation == HomeHeroSharpPresentation.mobileFeatured) {
-    // Same cover-fill shape as the wide-box branch below, just against the
-    // caller's already-inset box rather than the full hero canvas — a
-    // mobileFeatured caller never asks for the island/full-width letterboxing
-    // math the switch further down exists for.
-    return HomeHeroArtGeometry(
-      canvasWidth: screenWidth,
-      canvasHeight: heroHeight,
-      sharpWidth: screenWidth,
-      sharpHeight: heroHeight,
-      requestWidth: screenWidth,
-      requestHeight: math.max(screenWidth * 9 / 16, heroHeight),
-      sharpFadeHeight: 0,
-      sharpTopInset: 0,
-      hasSharpForeground: true,
-      useAmbientLayer: false,
-      coversHero: true,
-      presentation: presentation,
-    );
-  }
-
   final isWideBox = screenWidth / heroHeight >= billboardNarrowAspectRatioThreshold;
-  if (isWideBox || kind == BillboardArtKind.fallback) {
+  // mobileFeatured is always this same cover-fill shape, just against the
+  // caller's already-inset box rather than the full hero canvas: it never
+  // asks for the island/full-width letterboxing math the switch further
+  // down exists for.
+  if (isWideBox || kind == BillboardArtKind.fallback || presentation == HomeHeroSharpPresentation.mobileFeatured) {
     // Full-bleed cover fill: either the box is wide enough that a 16:9
-    // backdrop needs no island treatment, or there is no 16:9/square source
-    // at all (fallback) and the caller draws it blurred as atmosphere. Either
-    // way there is no gap around the frame for an ambient layer to fill.
+    // backdrop needs no island treatment, there is no 16:9/square source at
+    // all (fallback) and the caller draws it blurred as atmosphere, or the
+    // presentation is mobileFeatured. Either way there is no gap around the
+    // frame for an ambient layer to fill.
     return HomeHeroArtGeometry(
       canvasWidth: screenWidth,
       canvasHeight: heroHeight,
