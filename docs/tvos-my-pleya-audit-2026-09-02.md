@@ -1,5 +1,12 @@
 # Mijn Pleya op tvOS: audit met Pleya Verify, 2 september 2026
 
+
+> **Afgerond sessiedocument.** Het werk hierin is klaar en de bevindingen zijn
+> overgenomen in [tvos-redesign-register.md](tvos-redesign-register.md) en
+> [tvos-fysieke-correctieronde.md](tvos-fysieke-correctieronde.md). Dit bestand blijft
+> staan voor het bewijs en de redenering; zoek de actuele stand niet hier maar in
+> [DESIGN-INDEX.md](DESIGN-INDEX.md).
+
 Op de echte Apple TV bleek Mijn Pleya onbedienbaar: submenu's reageerden niet op
 de afstandsbediening, en de knop die als "Media" gelezen wordt toonde alleen een
 serielijst in wat op het oude menu van vóór het Unified TV-ontwerp lijkt. Deze

@@ -197,7 +197,9 @@ class TvNavigationCoordinator extends ChangeNotifier {
     final stack = _nested[_active];
     if (stack == null || stack.isEmpty) return null;
     final popped = stack.removeLast();
-    popped.completeResult(result);
+    // An explicit result wins; without one the route speaks for itself. See
+    // [TvNestedRoute.pendingResult] for why the second half is not optional.
+    popped.completeResult(result ?? popped.pendingResult);
     notifyListeners();
     return popped;
   }
@@ -353,6 +355,21 @@ class TvNestedRoute {
   /// key made inside `builder` would be new on every rebuild and would resolve
   /// to a state nobody else can reach.
   final GlobalKey<TvNestedSurfaceState> surfaceKey = GlobalKey<TvNestedSurfaceState>();
+
+  /// What this route completes with when it is popped without an explicit
+  /// result.
+  ///
+  /// A nested screen does not always get to close itself. `tvBackStep` puts
+  /// `popNested` ahead of the focus test on purpose, so Back from the top bar
+  /// pops the route through the shell's own handler and the screen's dismissal
+  /// path never runs. Before this field the route then completed with `null`
+  /// instead of what the screen had to say, and a watch-state change made on a
+  /// nested detail was silently dropped: the row it was opened from never
+  /// refreshed.
+  ///
+  /// The screen writes here as its state changes; an explicit result at pop
+  /// time still wins.
+  Object? pendingResult;
 
   final Completer<Object?> _result = Completer<Object?>();
 

@@ -743,38 +743,39 @@ class _SwitchProfileAction extends StatelessWidget {
       focusShapeBorder: shape,
       disableScale: true,
       semanticLabel: t.screens.switchProfile,
-      child: Padding(
-        padding: EdgeInsets.all(TvTopNavLayout.focusRingGap * scale),
-        child: Container(
-          decoration: ShapeDecoration(
-            shape: shape,
-            color: tk.text.withValues(alpha: TvMyPleyaLayout.tileFocusedFillAlpha),
-          ),
-          padding: EdgeInsets.symmetric(
-            horizontal: TvTopNavLayout.pillPaddingHorizontal * scale,
-            vertical: TvTopNavLayout.pillPaddingVertical * scale,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Symbols.switch_account_rounded,
-                size: TvMyPleyaLayout.tileIconSize * scale,
-                color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+      child: Container(
+        // The ring gap as a margin rather than a Padding around this Container:
+        // a Container lays out margin, then decoration, then padding, so the two
+        // are the same picture with one widget less.
+        margin: EdgeInsets.all(TvTopNavLayout.focusRingGap * scale),
+        decoration: ShapeDecoration(
+          shape: shape,
+          color: tk.text.withValues(alpha: TvMyPleyaLayout.tileFocusedFillAlpha),
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: TvTopNavLayout.pillPaddingHorizontal * scale,
+          vertical: TvTopNavLayout.pillPaddingVertical * scale,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Symbols.switch_account_rounded,
+              size: TvMyPleyaLayout.tileIconSize * scale,
+              color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+            ),
+            SizedBox(width: TvCatalogLayout.actionIconGap * scale),
+            Text(
+              t.screens.switchProfile,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: tk.text,
+                fontSize: TvTopNavLayout.itemFontSize * scale,
+                fontWeight: FontWeight.w600,
               ),
-              SizedBox(width: TvCatalogLayout.actionIconGap * scale),
-              Text(
-                t.screens.switchProfile,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: tk.text,
-                  fontSize: TvTopNavLayout.itemFontSize * scale,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

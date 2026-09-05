@@ -47,13 +47,13 @@ class PlayerToastIndicator extends StatelessWidget {
             crossAxisAlignment: detailLine == null ? .center : .start,
             children: [
               if (accent)
-                Padding(
-                  padding: const EdgeInsets.only(top: 5, right: 2),
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(color: Color(0xFFF5A623), shape: BoxShape.circle),
-                  ),
+                Container(
+                  // Margin rather than a Padding wrapper; a Container lays the
+                  // margin outside its own box, which is what the wrapper did.
+                  margin: const EdgeInsets.only(top: 5, right: 2),
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(color: Color(0xFFF5A623), shape: BoxShape.circle),
                 )
               else
                 AppIcon(icon, fill: 1, color: Colors.white, size: 16),

@@ -322,13 +322,19 @@ Vastgesteld op 2026-08-30. Elke fase heeft nu een **rol**, niet alleen een filel
 
 | Fase | Definitieve rol | Status |
 |---|---|---|
-| 5 | **Unified Complete Catalog** — All Movies / All Series grid, filters, sort, source activation, paging, restoration, catalogfocus | **sluiten op wat er ligt** |
-| 6 | **Unified Discovery** — Movies landing, Series landing, Home-projecties, Continue Watching, Search, herbruikbare `TvDiscoveryRail`, expanded-focus contract, *Alles bekijken*-links naar fase 5 | volgende |
-| 7 | **Unified TV Shell** — sidebar eruit, horizontale topnav, root focus/back, Mijn Pleya | |
-| 8 | **Home Experience** — rounded featured carousel (5–8), autoplay/pause-lifecycle, CW- en Voor jou-carousels, cinematic ambient, finale Home-compositie | |
-| 9 | Integratie van discovery/catalog/shell + accessibility/edge cases | |
+| 5 | **Unified Complete Catalog** — All Movies / All Series grid, filters, sort, source activation, paging, restoration, catalogfocus | **gesloten 2026-08-30** |
+| 6 | **Unified Discovery** — Movies landing, Series landing, Home-projecties, Continue Watching, Search, herbruikbare `TvDiscoveryRail`, expanded-focus contract, *Alles bekijken*-links naar fase 5 | **gesloten 2026-08-31** |
+| 7 | **Unified TV Shell** — sidebar eruit, horizontale topnav, root focus/back, Mijn Pleya | **gesloten 2026-08-31** |
+| 8 | **Home Experience** — rounded featured carousel (5–8), autoplay/pause-lifecycle, CW- en Voor jou-carousels, cinematic ambient, finale Home-compositie | **gesloten 2026-08-31**, hero superseded door DEC-095 |
+| 9 | Integratie van discovery/catalog/shell + accessibility/edge cases | **gesloten 2026-09-02** |
 | 10A | Finale automatische harding | **afgerond 2026-09-01** |
-| Final | Fysieke Apple TV-acceptatie | |
+| Final | Fysieke Apple TV-acceptatie | open, zie DESIGN-INDEX.md |
+
+> **Deze tabel dekt alleen de fasen 0 tot en met Final van de oorspronkelijke redesign.**
+> Het werk dat er ná 3 september bij is gekomen, de mockups 09 tot en met 31, heeft zijn
+> eigen administratie in [tvos-redesign-register.md](tvos-redesign-register.md). Welke
+> beeldenset waar bindt en wat de eerstvolgende stap is, staat in
+> [DESIGN-INDEX.md](DESIGN-INDEX.md).
 
 **De architectonische scheiding die dit oplevert:**
 

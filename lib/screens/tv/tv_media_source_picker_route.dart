@@ -55,6 +55,7 @@ import '../../media/unified/source_coverage_state.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_source.dart';
 import '../../media/unified/unified_route_context.dart';
+import '../../navigation/tv/tv_nested_surface.dart';
 import '../../services/unified_catalog/preferred_server_store.dart';
 import '../../services/unified_catalog/source_preference_store.dart';
 import '../../services/unified_catalog/unified_activation_coordinator.dart';
@@ -360,8 +361,20 @@ Future<void> _changeSourceFromDetail(
   );
   if (chosen == null || chosen.sourceKey == routeContext.sourceKey || !context.mounted) return;
 
-  final navigator = Navigator.of(context);
-  if (navigator.canPop()) navigator.pop();
+  // The detail page this was invoked from closes before the replacement opens,
+  // so Back does not walk the viewer backwards through every source they
+  // looked at. Which mechanism closes it depends on how it was opened: since
+  // PB-1/SYS-1b a TV detail page is a nested route inside the shell, and
+  // `Navigator.of` there resolves to the profile navigator that owns the shell
+  // itself — `canPop()` is false on it, so this used to silently leave the old
+  // page open and stack the new one on top of it.
+  final nested = TvNestedRouteScope.of(context);
+  if (nested != null) {
+    nested.dismiss(null);
+  } else {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) navigator.pop();
+  }
   if (!context.mounted) return;
 
   unawaited(SourcePreferenceStore.remember(group.identity, chosen.sourceKey));
@@ -590,7 +603,10 @@ class _PickerSessionState extends State<_PickerSession> {
   void _startBackgroundResolution() {
     final resolve = widget.environment.resolveMoreSources;
     if (resolve == null) return;
-    setState(() => _isResolving = true);
+    // A plain assignment: this runs from initState, before the first build.
+    // The two setState calls below are a different case, they land after an
+    // await and do need to schedule a frame.
+    _isResolving = true;
     unawaited(
       resolve(() => _chosen || !mounted).then(
         (incoming) {

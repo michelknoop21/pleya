@@ -42,9 +42,25 @@ import 'tv_navigation_coordinator.dart';
 import 'tv_nested_back_owner.dart';
 
 class TvNestedSurface extends StatefulWidget {
-  const TvNestedSurface({super.key, required this.route, required this.dismiss, required this.child});
+  const TvNestedSurface({
+    super.key,
+    required this.route,
+    required this.dismiss,
+    required this.child,
+    this.covered = false,
+  });
 
   final TvNestedRoute route;
+
+  /// Whether another nested route is stacked on top of this one.
+  ///
+  /// A surface used to be torn down the moment it stopped being the top of the
+  /// stack, so `mounted` was all the retry below needed to know. It now stays
+  /// mounted underneath, which is the point: the screen keeps its state and its
+  /// caller keeps its `BuildContext`. That makes the old assumption wrong, and
+  /// a pending focus entry has to be told, or it keeps ticking against a
+  /// subtree the remote is not allowed to reach.
+  final bool covered;
 
   /// Closes this route from anywhere inside its subtree. Exposed to
   /// descendants as [TvNestedRouteScope] — see that class for why a screen
@@ -83,6 +99,16 @@ class TvNestedSurfaceState extends State<TvNestedSurface> {
   DateTime? _entryDeadline;
 
   @override
+  void didUpdateWidget(TvNestedSurface oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Covered means something else deliberately took over, which is exactly
+    // what [cancelPendingEntry] is for. `ExcludeFocus` already makes the retry
+    // find nothing, so this is not what keeps the focus safe; it stops a timer
+    // running for its full budget against a subtree nobody can enter.
+    if (widget.covered && !oldWidget.covered) cancelPendingEntry();
+  }
+
+  @override
   void dispose() {
     cancelPendingEntry();
     _anchor.dispose();
@@ -118,6 +144,10 @@ class TvNestedSurfaceState extends State<TvNestedSurface> {
     return asked;
   }
 
+  // Vals alarm: currentState is State<StatefulWidget>?, en FocusableTab is een
+  // mixin daarop. De linter kan die toepasbaarheid niet zien en noemt de
+  // check daarom altijd false; dat is hij niet.
+  // ignore: avoid-unrelated-type-assertions
   bool get _hasScreenContract => widget.route.screenKey?.currentState is FocusableTab;
 
   /// [allowFallback] is false on the very first attempt against a screen that
@@ -167,12 +197,73 @@ class TvNestedSurfaceState extends State<TvNestedSurface> {
     _retry = null;
   }
 
+  /// Stable across rebuilds, so [TvNestedRouteScope.updateShouldNotify] does not
+  /// see a new callback every frame and rebuild every dependent screen.
+  void _markResult(Object? value) => widget.route.pendingResult = value;
+
   @override
   Widget build(BuildContext context) => TvNestedBackOwner(
     child: TvNestedRouteScope(
       dismiss: widget.dismiss,
-      child: Focus(focusNode: _anchor, canRequestFocus: false, skipTraversal: true, child: widget.child),
+      markResult: _markResult,
+      child: Focus(
+        focusNode: _anchor,
+        canRequestFocus: false,
+        skipTraversal: true,
+        child: _ContentBoxMediaQuery(child: widget.child),
+      ),
     ),
+  );
+}
+
+/// INV-1: a nested TV route sees the content box, never the window.
+///
+/// The shell hands this surface an `Expanded` under the top bar, so the box it
+/// gets is already the right one — but `MediaQuery` above it still describes
+/// the whole window, and that is what a screen reads. Every screen written for
+/// a full-window push therefore lays out against a height it does not have:
+/// roughly a top bar too much, every time, on detail, collection, person and
+/// each settings subpage as PB-1 moves them in here.
+///
+/// Corrected here rather than in the screens, because the invariant is what has
+/// to hold. A per-screen fix is one `MediaQuery` patch for detail, and then the
+/// same bug again at collection, and again at person, and again at whatever the
+/// next approved surface is. This is the one place every nested route passes
+/// through.
+///
+/// The top inset goes with it. `TvShellSurface` already documents the shell as
+/// the owner of the top safe inset; leaving a non-zero `padding.top` here would
+/// invite a nested screen to inset a second time under a bar that already did,
+/// which is exactly the band of dead space that note describes.
+///
+/// The ten-foot type scale is deliberately *not* affected: see
+/// `TvDisplayMetrics`, which the shell publishes so `scaleOf` keeps reading the
+/// panel while layout reads the box.
+class _ContentBoxMediaQuery extends StatelessWidget {
+  const _ContentBoxMediaQuery({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final media = MediaQuery.of(context);
+      // An unbounded axis means this surface is being measured, not laid out
+      // (a scrollable parent in a test, say). Substituting infinity for a size
+      // is worse than leaving the ambient value alone.
+      final size = Size(
+        constraints.hasBoundedWidth ? constraints.maxWidth : media.size.width,
+        constraints.hasBoundedHeight ? constraints.maxHeight : media.size.height,
+      );
+      return MediaQuery(
+        data: media.copyWith(
+          size: size,
+          padding: media.padding.copyWith(top: 0),
+          viewPadding: media.viewPadding.copyWith(top: 0),
+        ),
+        child: child,
+      );
+    },
   );
 }
 
@@ -197,13 +288,23 @@ class TvNestedSurfaceState extends State<TvNestedSurface> {
 /// does. Its absence (`of(context) == null`) is a screen's signal that it was
 /// not nested this time and should fall back to `Navigator.pop`.
 class TvNestedRouteScope extends InheritedWidget {
-  const TvNestedRouteScope({super.key, required this.dismiss, required super.child});
+  const TvNestedRouteScope({super.key, required this.dismiss, required this.markResult, required super.child});
 
   final void Function([Object? result]) dismiss;
+
+  /// Records what this route should complete with if it is popped by someone
+  /// other than the screen itself, which Back from the top bar does.
+  final void Function(Object? value) markResult;
 
   static TvNestedRouteScope? of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<TvNestedRouteScope>();
 
+  /// Reads the scope without depending on it, for a write from a callback where
+  /// a dependency would schedule a rebuild the caller does not need.
+  static TvNestedRouteScope? readOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<TvNestedRouteScope>();
+
   @override
-  bool updateShouldNotify(TvNestedRouteScope oldWidget) => !identical(dismiss, oldWidget.dismiss);
+  bool updateShouldNotify(TvNestedRouteScope oldWidget) =>
+      !identical(dismiss, oldWidget.dismiss) || !identical(markResult, oldWidget.markResult);
 }

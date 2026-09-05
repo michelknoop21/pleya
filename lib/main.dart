@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io' show Directory, Platform, ProcessInfo;
 import 'dart:ui' show AppExitResponse;
 import 'package:flutter/foundation.dart';
+// Transitief via shared_preferences, en hier rechtstreeks nodig om de
+// Foundation-implementatie op Apple-platformen expliciet te registreren.
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_foundation/shared_preferences_foundation.dart';
 import 'package:flutter/material.dart';
