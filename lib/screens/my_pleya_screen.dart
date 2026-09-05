@@ -33,11 +33,23 @@ import '../widgets/watchlist_card.dart';
 /// as first-class destinations, and duplicating the structure would be a second
 /// information architecture for no gain.
 class MyPleyaScreen extends StatelessWidget {
-  const MyPleyaScreen({super.key, required this.onOpenTab});
+  const MyPleyaScreen({super.key, required this.onOpenTab, this.onOpenLibraryPicker});
 
   /// Jumps to another destination. The same `_selectTab` the bottom bar uses,
   /// so the screens list and the tab state stay in one place.
   final void Function(NavigationTabId tab) onOpenTab;
+
+  /// Opens the library quick picker. On the phone this row is the only thing
+  /// left that can: fase 2 took Bibliotheken out of the bottom bar, and the
+  /// picker's single entry point was a long-press over that slot, so it left
+  /// with it (DEC-094). Null where the bar still holds the slot, and the
+  /// long-press is then simply not offered twice.
+  ///
+  /// Takes a [BuildContext] rather than closing over one, and it has to: the
+  /// picker resolves `OverlaySheetController.of(context)`, and `MainScreen`'s
+  /// own context sits *above* the `OverlaySheetHost` that provides it. This
+  /// screen's context is below it.
+  final void Function(BuildContext context)? onOpenLibraryPicker;
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +80,20 @@ class MyPleyaScreen extends StatelessWidget {
               child: _WatchlistRail(provider: watchlist!, onOpenAll: () => onOpenTab(NavigationTabId.watchlist)),
             ),
           ],
+          // Bibliotheken, since fase 2 took its bar slot. It is a browse
+          // destination rather than a personal one, so it leads the content
+          // group rather than sitting with the account actions further down.
+          // The long-press carries the library quick picker over from the bar
+          // slot it used to hang off.
+          if (!isOffline)
+            SliverToBoxAdapter(
+              child: _SectionRow(
+                icon: Symbols.video_library_rounded,
+                label: t.navigation.libraries,
+                onTap: () => onOpenTab(NavigationTabId.libraries),
+                onLongPress: onOpenLibraryPicker == null ? null : () => onOpenLibraryPicker!(context),
+              ),
+            ),
           SliverToBoxAdapter(
             child: _SectionRow(
               icon: Symbols.download_rounded,
@@ -177,12 +203,17 @@ class _SectionRow extends StatelessWidget {
     required this.onTap,
     this.trailing,
     this.showChevron = true,
+    this.onLongPress,
   });
 
   final IconData icon;
   final String label;
   final String? trailing;
   final VoidCallback onTap;
+
+  /// Optional shortcut on the same row. Bibliotheken uses it for the library
+  /// quick picker; every other row leaves it null.
+  final VoidCallback? onLongPress;
 
   /// Off for a row that acts instead of navigating, so a chevron cannot
   /// promise a screen that never opens. Sign out is the only such row.
@@ -191,11 +222,12 @@ class _SectionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!showChevron) {
-      return ListTile(leading: Icon(icon), title: Text(label), onTap: onTap);
+      return ListTile(leading: Icon(icon), title: Text(label), onTap: onTap, onLongPress: onLongPress);
     }
     return ListTile(
       leading: Icon(icon),
       title: Text(label),
+      onLongPress: onLongPress,
       trailing: trailing == null
           ? const Icon(Symbols.chevron_right_rounded)
           : Row(

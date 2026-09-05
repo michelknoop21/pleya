@@ -1168,7 +1168,11 @@ class _MainScreenState extends State<MainScreen>
           NavigationTabId.downloads => DownloadsScreen(key: _downloadsKey),
           NavigationTabId.settings => SettingsScreen(key: _settingsKey),
           NavigationTabId.watchlist => WatchlistScreen(key: _watchlistKey),
-          NavigationTabId.myPleya => MyPleyaScreen(key: _myPleyaKey, onOpenTab: _selectTab),
+          NavigationTabId.myPleya => MyPleyaScreen(
+            key: _myPleyaKey,
+            onOpenTab: _selectTab,
+            onOpenLibraryPicker: _isPhone ? _showLibraryQuickPicker : null,
+          ),
         },
     ];
   }
