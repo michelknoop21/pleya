@@ -1,5 +1,12 @@
 # Mijn Pleya op tvOS: de visuele audit, 2 september 2026
 
+
+> **Afgerond sessiedocument.** Het werk hierin is klaar en de bevindingen zijn
+> overgenomen in [tvos-redesign-register.md](tvos-redesign-register.md) en
+> [tvos-fysieke-correctieronde.md](tvos-fysieke-correctieronde.md). Dit bestand blijft
+> staan voor het bewijs en de redenering; zoek de actuele stand niet hier maar in
+> [DESIGN-INDEX.md](DESIGN-INDEX.md).
+
 De vorige ronde maakte de secties bedienbaar. Deze meet hoe ze eruitzien, want dat
 is een andere vraag met ander bewijs. Alles hieronder komt uit één Pleya
 Verify-run op de tvOS-simulator met echte HID-invoer, `tvos.my-pleya.styling-audit`,

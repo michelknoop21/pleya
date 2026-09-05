@@ -40,7 +40,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 |----|----------|---------|--------|--------------|
 | SYS-1a | Routecontract: een TV-contentroute opent in de shell in plaats van erboven | PB-1 | DONE | `5cafc10`, DEC-091 |
 | SYS-1b | Detail, collectie en persoon over dat contract | PB-1 | OPEN | |
-| SYS-1c | Geneste routes krijgen de contentbox als `MediaQuery`, nodig voor de detailgeometrie | PB-1, INV-1 | IN PROGRESS | `ad8c456`, zie onder |
+| SYS-1c | Geneste routes krijgen de contentbox als `MediaQuery`, nodig voor de detailgeometrie | PB-1, INV-1 | DONE | `ad8c456`, testdelta onder |
 | SYS-2 | BACK1, geen zichtbare onbereikbare terugknop op TV | PB-2 | OPEN, geauditeerd | zie onder |
 | SYS-3a | OVR1a: de schaalbasis van paneelinhoud op TV | PB-5 | OPEN, oorzaak gevonden | zie onder |
 | SYS-3b | OVR1b: sheets zonder expliciete `presentation` vallen op 400x400 | PB-5 | DONE | `96f2d45` |
@@ -118,7 +118,7 @@ controle en legt het oude gedrag vast: een volledig-venster push dekt de balk af
 is niets in de balk nog bereikbaar. De tweede en derde tonen dezelfde subpagina via het nieuwe
 contract, met de balk bereikbaar en de bestemmingsroot eronder blijvend gemonteerd.
 
-## SYS-1c, wat er staat en wat er nog niet bewezen is
+## SYS-1c, wat er staat
 
 `TvNestedSurface` wikkelt zijn kind nu in een `MediaQuery` waarvan de `size` de doos is die de
 shell hem geeft, en waarvan `padding.top` nul is. Daarmee geldt INV-1 structureel in plaats van
@@ -141,12 +141,25 @@ Twee lezers nagelopen in plaats van aangenomen:
   de ruimte die dat scherm heeft ís de contentbox, en de oude bovengrens liet een bodeminset toe die
   groter was dan de doos.
 
-**Bewijs: geschreven, niet gedraaid.** `test/navigation/tv/tv_nested_route_viewport_test.dart`,
-vier tests over twee onafhankelijke routes, met de bestemmingsroot in dezelfde pump als negatieve
-controle en een vierde test die de schaalregressie vastpint. De sessie die dit schreef had geen
-Flutter tot zijn beschikking, dus er is geen testdelta zoals onder SYS-1a. Daarom `IN PROGRESS` en
-niet `DONE`: de status gaat pas om als `flutter analyze` en deze vier tests groen gedraaid zijn, en
-dan hoort de delta hier te staan.
+**Bewijs.** `test/navigation/tv/tv_nested_route_viewport_test.dart`, vier tests over twee
+onafhankelijke routes, met de bestemmingsroot in dezelfde pump als negatieve controle en een vierde
+test die de schaalregressie vastpint.
+
+Testdelta, gemeten op CI omdat de sessie die dit schreef geen Flutter had. Beide runs op dezelfde
+runner, dezelfde dag:
+
+| | geslaagd | gefaald | overgeslagen |
+|---|---|---|---|
+| basis `61e6c1f3` ([run](https://github.com/michelknoop21/pleya/actions/runs/33949296915)) | 6241 | 56 | 6 |
+| met SYS-1c `e73dcd34` ([run](https://github.com/michelknoop21/pleya/actions/runs/33958253528)) | 6245 | 56 | 6 |
+
+Vier geslaagd erbij, wat exact de vier nieuwe tests zijn, en het aantal falers is onveranderd. Er is
+dus niets omgevallen. De 56 falers zijn de bestaande nullijn en staan ook op de basis.
+
+**Eén signaal ontbreekt, en niet door dit werk.** `flutter analyze` heeft deze diff niet gezien: de
+stap `Verify generated files committed` faalt op de basis wegens verouderde `.g.dart`-formattering,
+en die stap staat vóór analyze in dezelfde job, dus analyze, format en de twee unused-checks worden
+overgeslagen. Zodra de basis daar groen is hoort die run hier alsnog bij.
 
 ## SYS-2, wat de audit vond
 

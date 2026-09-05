@@ -1,5 +1,12 @@
 # Handoff: de resterende Mijn Pleya-secties op tvOS, 3 september 2026
 
+
+> **Afgerond sessiedocument.** Het werk hierin is klaar en de bevindingen zijn
+> overgenomen in [tvos-redesign-register.md](tvos-redesign-register.md) en
+> [tvos-fysieke-correctieronde.md](tvos-fysieke-correctieronde.md). Dit bestand blijft
+> staan voor het bewijs en de redenering; zoek de actuele stand niet hier maar in
+> [DESIGN-INDEX.md](DESIGN-INDEX.md).
+
 Vervolg op `docs/tvos-my-pleya-handoff-2026-09-03.md`. Die ronde leverde het
 topnav-contract, het gedeelde paginaframe, Over en Servers. Deze bouwt de vier
 punten die daar open stonden: Samen Kijken, Logs en diagnose, Instellingen, en

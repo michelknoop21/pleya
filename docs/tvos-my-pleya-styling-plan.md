@@ -1,5 +1,12 @@
 # Plan: Mijn Pleya-secties op TV-schaal en op één uitlijning
 
+
+> **Afgerond sessiedocument.** Het werk hierin is klaar en de bevindingen zijn
+> overgenomen in [tvos-redesign-register.md](tvos-redesign-register.md) en
+> [tvos-fysieke-correctieronde.md](tvos-fysieke-correctieronde.md). Dit bestand blijft
+> staan voor het bewijs en de redenering; zoek de actuele stand niet hier maar in
+> [DESIGN-INDEX.md](DESIGN-INDEX.md).
+
 Vervolg op `docs/tvos-my-pleya-audit-2026-09-02.md`. Die ronde repareerde focus,
 Back en rastertraversal, waardoor de secties bedienbaar werden. Wat er niet in
 zat is hoe ze eruitzien. Dit is dat werk, apart, met eigen voor- en nabewijs.
