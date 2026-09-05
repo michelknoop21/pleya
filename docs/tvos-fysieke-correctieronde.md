@@ -132,6 +132,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | NAVSEL1 | `tvos.nav.destination-select` sprak de app op twee punten tegen: het verwachtte Films na één RIGHT vanaf Home terwijl Series daar staat, en het eiste een Select om van bestemming te wisselen terwijl focus dat sinds 2 september zelf doet. Gedraaid, rood op de eerste, en verwijderd; `tvos.nav.focus-switches-destination` dekt het en is groen | FIXED | `17d47592` |
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
 | RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
+| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. Gevraagd door Michel op 5 september 2026. Er is nog geen ontwerp: mockupronde eerst | OPEN, mockups te maken | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -2894,6 +2895,34 @@ dat de weg die hem opleverde hem niet meer oplevert.
 bewaart de gepushte route de scroll, Menu zet de ring terug op de tegel waar hij vandaan kwam, en
 UP brengt de billboard van een teruggekeerde feed weer in beeld. Het verschil tussen die twee
 scenario's is precies waar de melding zat.
+
+### ROW1, eigen rails op Home
+
+Gevraagd door Michel op 5 september 2026, in zijn woorden: "het idee is dat je zelf rails aan kan
+maken door middel van een filter toe te passen en dan de inhoud van de filtering in de rails weer
+te geven", en dat moet "op de homescreen zelf kunnen doen maar wel op een mooie manier".
+
+Twee eisen zitten daarin, en ze zijn allebei nieuw.
+
+De eerste is de **bron van een rij**. Vandaag komt elke rij op Home uit een hub die de backend
+levert; `homeRowId` is `serverId:identifier` van die hub en `HomeLayoutProvider` bewaart alleen
+welke ervan verborgen zijn en in welke volgorde ze staan. Een rij die de gebruiker zelf definieert
+heeft geen hub achter zich. Zijn bron is een opgeslagen filter, en de inhoud is wat de catalogus
+op dat filter teruggeeft. Dat raakt het cataloguscontract, niet alleen de layout.
+
+De tweede is **waar je het doet**. `HomeLayoutScreen` bestaat en kan verbergen en verslepen, maar
+zit onder Instellingen. Michel wil het op Home zelf, en de volgorde daar ook.
+
+Wat er al ligt en wat niet. `HomeLayoutProvider` (`lib/providers/home_layout_provider.dart`) heeft
+de persistentie per profiel, `home_row_layout.dart` past hem toe en `TvContentFeed._rows` doet dat
+op TV. Het filtermodel van de catalogus is er ook, en CAT5 geeft het een bedienbare vorm op TV. Wat
+ontbreekt is de brug: een filter als bewaarbaar object met een naam, een rij die eruit gebouwd
+wordt, en een manier om dat op Home te doen zonder de pagina in een beheerscherm te veranderen.
+
+Er is **geen mockup**. Gecontroleerd op alle branches, op bestandsnaam en op de inhoud van de
+HTML-bronnen, plus de niet-gecommitte mockupmap in `pleya-teleport/.unlazy/mockups`. De tvOS-set
+loopt van 09 tot en met 31 zonder gat; 29 en 30 gaan over de hero, niet over rijbeheer. Dit begint
+dus met een ontwerpronde, en die gaat vóór de bouw.
 
 ### RAIL1, het fase-6 railcontract is bij een verhuizing achtergebleven
 
