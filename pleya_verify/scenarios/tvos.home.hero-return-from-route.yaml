@@ -1,0 +1,70 @@
+name: tvos.home.hero-return-from-route
+target: tvos-sim
+# What Home owes you after a pushed content route: the feed where you left it,
+# the ring on the card you left from, and the billboard still one press away.
+#
+# `tvos.home.hero-return` owns the same recovery without ever leaving Home, so
+# it cannot see what a push does to the feed. Measured here on 5 September: the
+# push preserves the offset exactly (`discover.hero` at y=-721.3 before and
+# after, two frames three seconds apart), and Menu puts the ring back on the
+# tile it was launched from rather than anywhere else.
+#
+# It is deliberately *not* the HERO4 scenario. HERO4 is the state where the
+# hero CTA takes the ring while the billboard is above the fold, and this route
+# never produces it: DOWN out of the top bar is
+# `onFocusContent(restorePreviousFocus: true)` (`tv_root_shell.dart`), so with a
+# remembered tile it restores rather than asking for the hero. Reaching
+# `focusPrimary()` on a scrolled Home needs the return path that has no tile to
+# restore, which is the playback route, and that hangs on VER5.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  # IntroGate's cold-start splash paints over an already-ready screen.
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+
+  # The rest state, and the reference for every number below: the billboard
+  # fills the page and its CTA row sits well clear of the bar.
+  - assert: {id: discover.hero, insideViewport: true}
+  - assert: {id: discover.hero.play, below: nav.discover}
+  - snapshot: 00-home-rest
+
+  # Down onto Afspelen, down again into the first rail. The second press is
+  # what scrolls the billboard off the top (DEC-095: one row is 57% of canvas).
+  - press: down
+  - settle: 1000
+  - assert: {id: discover.hero.play, focused: true}
+  - press: down
+  - settle: 1200
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
+  - snapshot: 01-rail-focused
+
+  # Into the detail page and straight back out over the real remote press path.
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 20000}
+  - settle: 2000
+  - press: menu
+  - wait_until: {id: screen.discover, timeout: 20000}
+  - settle: 3000
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
+  - snapshot: 02-returned-scrolled
+
+  # A second frame three seconds on, so the state below is judged as a resting
+  # one and not as a frame caught mid-transition. Both trees land in the bundle.
+  - settle: 3000
+  - snapshot: 03-returned-still
+
+  # And the way back up still works from a *returned* feed, which is the half a
+  # scenario that never leaves Home cannot assert. Both clauses, because the
+  # defect P1 closed satisfied one of them: the CTA holds the ring **and** the
+  # billboard is on screen under it.
+  - press: up
+  - settle: 1500
+  - assert: {id: discover.hero, insideViewport: true}
+  - assert: {id: discover.hero.play, focused: true}
+  - assert: {id: discover.hero.play, below: nav.discover}
+  - snapshot: 04-hero-recovered
