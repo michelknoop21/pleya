@@ -115,18 +115,40 @@ bool shouldRenderMainScreenOffline({
   return providerOffline || (startupOfflineUntilConnected && !hasVisibleConnectedServers);
 }
 
-/// Destinations that are hidden from the mobile bottom bar because My Pleya
-/// holds them instead.
+/// Destinations that get no slot in the mobile bottom bar. Every one of them is
+/// still built by [_MainScreenState._buildScreens] and still reachable. The
+/// name says where the slot went, not that the destination did.
 ///
-/// Downloads is the exception offline: with Home, Libraries, Live TV, Search
-/// and Requests all gone there is room for it, and it is what the user came
-/// for.
-const _mobileTabsInsideMyPleya = {
+/// - Kijklijst, Downloads, Aanvragen and Instellingen: rows in Mijn Pleya.
+/// - Bibliotheken: a row in Mijn Pleya since fase 2, together with the library
+///   quick picker that used to hang off this slot's long-press (DEC-094).
+/// - Zoeken: the search icon in [MobilePageHeader] on Home. It stays a tab, so
+///   there is exactly one `SearchScreen` in the tree; `mainScreenSelectedBarTab`
+///   keeps Home lit while it is on screen, which is what `05-zoeken.png` shows.
+///
+/// Downloads is the exception offline: with Home, Series, Films, Bibliotheken,
+/// Live TV, Zoeken and Aanvragen all gone there is room for it, and it is what
+/// the user came for.
+const _mobileTabsOutsideBar = {
   NavigationTabId.watchlist,
   NavigationTabId.downloads,
   NavigationTabId.requests,
   NavigationTabId.settings,
+  NavigationTabId.libraries,
+  NavigationTabId.search,
 };
+
+/// The bottom bar's own order on a phone: Home · Series · Films · Live TV ·
+/// Mijn Pleya, as `01-series-landing.png` and `05-zoeken.png` show it.
+///
+/// [allNavigationTabs] puts Films before Series because that is the order the
+/// Unified TV mockups use, and that list is under a TV authority. Reordering it
+/// there would move the TV rail; reordering here moves only the phone's bar.
+///
+/// Safe because the bar never works on index: `onDestinationSelected` calls
+/// `_selectTab(tabs[i].id)` and `selectedIndex` comes from an `indexWhere` on
+/// the tab id, so the bar's order is free to differ from the screens list.
+const _phoneBarOrder = [NavigationTabId.discover, NavigationTabId.series, NavigationTabId.movies];
 
 @visibleForTesting
 List<NavigationTab> mainScreenBottomNavigationTabs({
@@ -136,10 +158,19 @@ List<NavigationTab> mainScreenBottomNavigationTabs({
   required NavigationTabId currentTab,
 }) {
   if (!isMobile) return visibleTabs;
-  return visibleTabs.where((tab) {
-    if (!_mobileTabsInsideMyPleya.contains(tab.id)) return true;
+  final slots = visibleTabs.where((tab) {
+    if (!_mobileTabsOutsideBar.contains(tab.id)) return true;
     return isOffline && tab.id == NavigationTabId.downloads;
   }).toList();
+  // Leading slots first in the order above, then everything else in the order
+  // [allNavigationTabs] gave it. Written as two passes rather than a sort so
+  // the tail's relative order is preserved by construction: a comparator that
+  // calls every unranked tab equal only keeps them in place if the sort is
+  // stable, and `List.sort` is not.
+  return [
+    for (final id in _phoneBarOrder) ...slots.where((tab) => tab.id == id),
+    ...slots.where((tab) => !_phoneBarOrder.contains(tab.id)),
+  ];
 }
 
 /// Which bottom-bar destination should light up for [currentTab].
@@ -183,12 +214,21 @@ NavigationTabId mainScreenSelectedBarTab({
     NavigationTabId.discover ||
     NavigationTabId.movies ||
     NavigationTabId.series ||
-    NavigationTabId.libraries ||
-    NavigationTabId.liveTv ||
-    NavigationTabId.search => isOffline ? NavigationTabId.downloads : currentTab,
+    NavigationTabId.liveTv => isOffline ? NavigationTabId.downloads : currentTab,
     // Offline the bar is Downloads plus My Pleya, so Downloads points at
     // itself; online it lives behind My Pleya.
     NavigationTabId.downloads => isOffline ? NavigationTabId.downloads : NavigationTabId.myPleya,
+    // Bibliotheken lost its slot in fase 2 and is now a row in Mijn Pleya, so
+    // that is the slot that lights up. Named rather than left to the
+    // `barTabs.first` fallback at the bottom of this function: the fallback
+    // would light Home, which is the exact bug this projection exists to
+    // prevent, one destination further along.
+    NavigationTabId.libraries => isOffline ? NavigationTabId.downloads : NavigationTabId.myPleya,
+    // Zoeken also lost its slot, but it is entered from the search icon on
+    // Home rather than from Mijn Pleya, so Home stays lit. That is what
+    // `05-zoeken.png` shows: the full search surface with Home active in the
+    // bar (DEC-094).
+    NavigationTabId.search => isOffline ? NavigationTabId.downloads : NavigationTabId.discover,
     NavigationTabId.watchlist ||
     NavigationTabId.requests ||
     NavigationTabId.settings ||
@@ -1088,6 +1128,7 @@ class _MainScreenState extends State<MainScreen>
     hasSeerr: _hasSeerr,
     hasWatchlist: _hasWatchlist,
     isMobile: _isMobile,
+    isPhone: _isPhone,
     preferredStartup: SettingsService.instanceOrNull?.read(SettingsService.startupSection),
   );
 
@@ -1699,6 +1740,12 @@ class _MainScreenState extends State<MainScreen>
   /// from the same value instead of each re-reading the layout.
   bool _isMobile = false;
 
+  /// Whether this shell is an iPhone-sized handheld, which is what gives Films
+  /// and Series a tab (fase 2, DEC-094). Kept beside [_isMobile] and resolved
+  /// in the same place for the same reason: `PlatformDetector.isPhone` needs a
+  /// `BuildContext`, and the tab list is built in places that have none.
+  bool _isPhone = false;
+
   /// Get navigation tabs filtered by offline mode
   List<NavigationTab> _getVisibleTabs(bool isOffline) {
     return NavigationTab.getVisibleTabs(
@@ -1707,6 +1754,7 @@ class _MainScreenState extends State<MainScreen>
       hasSeerr: _hasSeerr,
       hasWatchlist: _hasWatchlist,
       isMobile: _isMobile,
+      isPhone: _isPhone,
     );
   }
 
@@ -1859,9 +1907,16 @@ class _MainScreenState extends State<MainScreen>
     // My Pleya only exists on the mobile shell, and the screens list has to
     // agree with the tab list about that. Rebuild the screens when the answer
     // actually changes (a fold, a window resize) rather than on every build.
+    //
+    // The same holds for Films and Series, which only the iPhone gets: a fold
+    // or a resize that turns a phone into a tablet has to drop two tabs and two
+    // screens together, so both answers are read here and both feed the same
+    // rebuild.
     final isMobile = PlatformDetector.isMobile(context);
-    if (isMobile != _isMobile) {
+    final isPhone = PlatformDetector.isPhone(context);
+    if (isMobile != _isMobile || isPhone != _isPhone) {
       _isMobile = isMobile;
+      _isPhone = isPhone;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         setState(() {

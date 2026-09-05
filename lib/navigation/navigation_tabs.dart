@@ -214,6 +214,7 @@ class NavigationTab {
     bool hasSeerr = false,
     bool hasWatchlist = false,
     bool isMobile = false,
+    bool isPhone = false,
   }) {
     final tabs = getVisibleTabs(
       isOffline: isOffline,
@@ -221,6 +222,7 @@ class NavigationTab {
       hasSeerr: hasSeerr,
       hasWatchlist: hasWatchlist,
       isMobile: isMobile,
+      isPhone: isPhone,
     );
     return tabs.indexWhere((tab) => tab.id == id);
   }
@@ -237,12 +239,21 @@ class NavigationTab {
   /// Kijklijst, Aanvragen and Instellingen inside Mijn Pleya there. So the
   /// destination is visible on mobile **and** TV, and `PlatformDetector.isTV()`
   /// is checked separately because [isMobile] returns false on a TV.
+  ///
+  /// [isPhone] gates the Films and Series destinations, which iOS Unified 2026
+  /// fase 2 gives the iPhone (DEC-094). It is passed in rather than derived
+  /// here because `PlatformDetector.isPhone` needs a `BuildContext` and this
+  /// function has none. Same shape as [TabBarPresentation]: one
+  /// `PlatformDetector` call at the shell, an explicit value travelling down,
+  /// and no platform check inside. The iPad is [isMobile] but not [isPhone],
+  /// so it keeps the tabset it had before fase 2 (DEC-092).
   static List<NavigationTab> getVisibleTabs({
     required bool isOffline,
     bool hasLiveTv = false,
     bool hasSeerr = false,
     bool hasWatchlist = false,
     bool isMobile = false,
+    bool isPhone = false,
   }) {
     return allNavigationTabs.where((tab) {
       if (isOffline && tab.onlineOnly) return false;
@@ -257,12 +268,20 @@ class NavigationTab {
       // and every route inside Mijn Pleya was unreachable.
       if (tab.id == NavigationTabId.myPleya && !isMobile && !PlatformDetector.isTV()) return false;
       if (tab.id == NavigationTabId.downloads && PlatformDetector.isAppleTV()) return false;
-      // The unified Films and Series catalogs are 10-foot surfaces (hoofdstuk
-      // 10 of docs/tvos-unified-experience.md) and exist on TV only for now.
-      // Desktop and mobile keep browsing through Bibliotheken, which is the
-      // advanced, source-specific interface and stays untouched by fase 5 —
-      // that is also what keeps this addition invisible to iOS and macOS.
-      if ((tab.id == NavigationTabId.movies || tab.id == NavigationTabId.series) && !PlatformDetector.isTV()) {
+      // The unified Films and Series catalogs are TV **and** iPhone
+      // destinations. On TV they are the 10-foot surfaces of hoofdstuk 10 of
+      // docs/tvos-unified-experience.md; on the iPhone they are the two
+      // landings of iOS Unified 2026 fase 2 (`01-series-landing.png`,
+      // `02-films-landing.png`, DEC-094), which replace the Home chips as the
+      // way to reach a single-kind catalogue.
+      //
+      // Desktop and iPad keep browsing through Bibliotheken. The iPad is
+      // excluded on purpose and not by oversight: fase 2 is an iPhone phase and
+      // the iPad has its own authority (DEC-092), so [isPhone] is the gate, not
+      // [isMobile].
+      if ((tab.id == NavigationTabId.movies || tab.id == NavigationTabId.series) &&
+          !isPhone &&
+          !PlatformDetector.isTV()) {
         return false;
       }
       return true;
@@ -280,6 +299,7 @@ class NavigationTab {
     bool hasSeerr = false,
     bool hasWatchlist = false,
     bool isMobile = false,
+    bool isPhone = false,
     required NavigationTabId? preferredStartup,
   }) {
     final tabs = getVisibleTabs(
@@ -288,6 +308,7 @@ class NavigationTab {
       hasSeerr: hasSeerr,
       hasWatchlist: hasWatchlist,
       isMobile: isMobile,
+      isPhone: isPhone,
     );
     if (isOffline && tabs.any((t) => t.id == NavigationTabId.downloads)) {
       return NavigationTabId.downloads;
@@ -343,8 +364,13 @@ const allNavigationTabs = [
   ),
   // Films and Series sit directly under Home, matching the order the Unified
   // TV mockups put them in (Home · Films · Series · Live TV · Mijn Pleya) and
-  // the information architecture of hoofdstuk 3. Visible on TV only; see
-  // [NavigationTab.getVisibleTabs].
+  // the information architecture of hoofdstuk 3. Visible on TV and on the
+  // iPhone; see [NavigationTab.getVisibleTabs].
+  //
+  // The iPhone northstar orders them the other way round (Home · Series · Films
+  // · Live TV · Mijn Pleya). That is a bottom-bar ordering and it lives with the
+  // bottom bar, in `mainScreenBottomNavigationTabs`, so this list keeps the TV
+  // order it was given under a TV authority.
   NavigationTab(
     id: NavigationTabId.movies,
     onlineOnly: true,
