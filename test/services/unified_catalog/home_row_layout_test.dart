@@ -72,31 +72,38 @@ void main() {
     ]);
   });
 
-  test('a synthesized row hides under its own hub id', () {
-    // ROW1/DEC-100: Recent uitgebracht and a row the viewer defined are both
-    // synthesized, and both have to be hideable. Only Uitgelicht and Verder
-    // kijken are fixed, and they are fixed by never reaching this function.
-    final rows = [_row('hub:pleya:latest-movies'), _row('hub:pleya:custom:r1')];
-    expect(_ids(applyHomeLayoutToUnifiedRows(rows, hiddenRowIds: {'hub:pleya:latest-movies'}, order: const [])), [
-      'hub:pleya:custom:r1',
+  test('a contributorless row answers to its own hub id', () {
+    // The fallback half of [homeLayoutIdsOf]. Every row Home actually draws
+    // states its layout ids — a projected hub carries its contributors, and a
+    // row the viewer defined carries `#custom:<id>` — so this is the guard for
+    // a synthesized row that states none, not the mechanism ROW1 relies on.
+    final rows = [_row('hub:pleya:one'), _row('hub:pleya:two')];
+    expect(_ids(applyHomeLayoutToUnifiedRows(rows, hiddenRowIds: {'hub:pleya:one'}, order: const [])), [
+      'hub:pleya:two',
+    ]);
+    expect(_ids(applyHomeLayoutToUnifiedRows(rows, hiddenRowIds: const {}, order: const ['hub:pleya:two'])), [
+      'hub:pleya:two',
+      'hub:pleya:one',
     ]);
   });
 
-  test('a synthesized row ranks under its own hub id', () {
+  test('Recent uitgebracht and an own row take part like any other row', () {
+    // ROW1/DEC-100 (4): only Uitgelicht and Verder kijken are fixed, and they
+    // are fixed by never reaching this function.
     final rows = [
-      _row('hub:pleya:latest-movies'),
+      _row('latest', contributors: [':pleya:home:latest-movies']),
       _row('a', contributors: ['s1:a']),
-      _row('hub:pleya:custom:r1'),
+      _row('own', contributors: ['#custom:r1']),
     ];
     expect(
       _ids(
         applyHomeLayoutToUnifiedRows(
           rows,
-          hiddenRowIds: const {},
-          order: const ['hub:pleya:custom:r1', 's1:a', 'hub:pleya:latest-movies'],
+          hiddenRowIds: const {'s1:a'},
+          order: const ['#custom:r1', ':pleya:home:latest-movies'],
         ),
       ),
-      ['hub:pleya:custom:r1', 'a', 'hub:pleya:latest-movies'],
+      ['own', 'latest'],
     );
   });
 

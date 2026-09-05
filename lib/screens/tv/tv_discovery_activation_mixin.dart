@@ -104,6 +104,7 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
     UnifiedMediaGroup group, {
     bool isInContinueWatching = false,
     VoidCallback? onChanged,
+    TvContextMenuExtraAction? extraAction,
   }) async {
     final manager = context.read<MultiServerProvider>().serverManager;
     final health = unifiedServerHealth(
@@ -117,6 +118,7 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
       isInContinueWatching: isInContinueWatching,
       isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
       onChanged: onChanged,
+      extraAction: extraAction,
     );
   }
 

@@ -47,7 +47,7 @@ List<UnifiedMediaHub> applyHomeLayoutToUnifiedRows(
       ? List.of(rows)
       : [
           for (final row in rows)
-            if (!_layoutIdsOf(row).every(hiddenRowIds.contains)) row,
+            if (!homeLayoutIdsOf(row).every(hiddenRowIds.contains)) row,
         ];
 
   if (order.isEmpty) return visible;
@@ -55,7 +55,7 @@ List<UnifiedMediaHub> applyHomeLayoutToUnifiedRows(
   final rank = {for (var i = 0; i < order.length; i++) order[i]: i};
   int rankOf(UnifiedMediaHub row) {
     var best = order.length;
-    for (final id in _layoutIdsOf(row)) {
+    for (final id in homeLayoutIdsOf(row)) {
       final r = rank[id];
       if (r != null && r < best) best = r;
     }
@@ -76,4 +76,9 @@ List<UnifiedMediaHub> applyHomeLayoutToUnifiedRows(
 /// synthesized one. Never empty, so "hidden when every name is hidden" cannot
 /// be vacuously true — an empty list would make `every` return true and hide
 /// every synthesized row the moment anything at all was hidden.
-List<String> _layoutIdsOf(UnifiedMediaHub row) => row.contributingRowIds.isEmpty ? [row.hubId] : row.contributingRowIds;
+///
+/// Public because the customise panel writes the order back through it: a row's
+/// position in the list has to become *every* id it answers to, or a merged
+/// row's rank stops matching where the viewer put it.
+List<String> homeLayoutIdsOf(UnifiedMediaHub row) =>
+    row.contributingRowIds.isEmpty ? [row.hubId] : row.contributingRowIds;

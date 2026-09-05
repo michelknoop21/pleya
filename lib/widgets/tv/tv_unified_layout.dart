@@ -1353,3 +1353,70 @@ class TvHomeLayout {
   static const double inkSecondary = 0.78;
   static const double inkTertiary = 0.62;
 }
+
+/// The customise-Home panel and the new-row wizard (ROW1/DEC-100, mockup 32
+/// B and C1 to C4).
+///
+/// Its own set rather than [TvCatalogLayout]'s rail metrics. A rail row carries
+/// a label and a value on two tiers in a 330-wide column; a row here carries
+/// four mini posters, two tiers of text and up to four buttons across the full
+/// panel width, and inheriting the rail's numbers made the posters taller than
+/// the row they sit in.
+class TvHomeRowsLayout {
+  const TvHomeRowsLayout._();
+
+  /// One entry in the panel. Tall enough for four 2:3 posters at
+  /// [posterHeight], which is what makes a row recognisable at three metres
+  /// before its label has been read.
+  static const double rowHeight = 62;
+  static const double rowRadius = 10;
+  static const double rowGap = 6;
+  static const double rowPaddingHorizontal = 12;
+  static const double rowFocusRingGap = 3;
+
+  static const double posterHeight = 44;
+  static const double posterWidth = posterHeight * 2 / 3;
+  static const double posterGap = 2;
+  static const double posterRadius = 3;
+
+  /// How many mini posters a row shows. Four is what mockup 32 B draws, and it
+  /// is also the point where a fifth stops adding recognition and starts eating
+  /// the label.
+  static const int posterCount = 4;
+
+  static const double leadingIconSize = 20;
+  static const double leadingGap = 12;
+  static const double titleFontSize = 16;
+  static const double subtitleFontSize = 12.5;
+  static const double titleGap = 2;
+
+  /// A round icon button: move up, move down.
+  static const double arrowButtonSize = 34;
+  static const double actionGap = 7;
+
+  /// Alpha on `MonoTokens.text` for a row's resting fill, and for the tag that
+  /// says a fixed row is fixed.
+  static const double rowFill = 0.06;
+  static const double lockedFill = 0.04;
+
+  /// A hidden row, and a disabled arrow: still drawn, still focusable, plainly
+  /// not doing anything.
+  static const double dimmed = 0.45;
+
+  /// The wizard's step rail on the left, as a fraction of the panel width, and
+  /// its bounds.
+  static const double stepRailFraction = 0.28;
+  static const double stepRailMinWidth = 140;
+  static const double stepRailMaxWidth = 240;
+  static const double stepZoneGap = 22;
+  static const double stepRowHeight = 44;
+  static const double stepRowGap = 6;
+  static const double stepBadgeSize = 24;
+
+  /// The preview's posters in C3, which are larger than the panel's minis
+  /// because the preview is a picture of the row and not a summary of it.
+  static const double previewPosterHeight = 96;
+  static const double previewPosterWidth = previewPosterHeight * 2 / 3;
+  static const double previewPosterGap = 8;
+  static const int previewPosterCount = 5;
+}

@@ -27,7 +27,9 @@ library;
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/focus/dpad_navigator.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
@@ -55,6 +57,9 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv/tv_content_feed.dart';
 import 'package:pleya/widgets/tv/tv_content_row.dart';
+import 'package:pleya/widgets/tv/tv_home_customize_footer.dart';
+import 'package:pleya/widgets/tv/tv_home_customize_panel.dart';
+import 'package:pleya/widgets/tv/tv_home_row_wizard.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/golden.dart';
@@ -190,6 +195,8 @@ void main() {
 
   late HomeLayoutProvider layout;
   late _FakeClient client;
+  late HiddenLibrariesProvider hiddenLibraries;
+  late LibrariesProvider libraries;
 
   /// The saved row an earlier session left behind, in the shape
   /// `HomeCustomRow.toJson` writes.
@@ -232,8 +239,8 @@ void main() {
         _hub('movie.recentlyadded', 'Recently Added', [_film('m5', title: 'Casablanca', genre: 'Drama')]),
       ];
     final multiServer = MultiServerProvider(manager, aggregation);
-    final hiddenLibraries = HiddenLibrariesProvider();
-    final libraries = LibrariesProvider()
+    hiddenLibraries = HiddenLibrariesProvider();
+    libraries = LibrariesProvider()
       ..debugSetLibraries(const [
         MediaLibrary(
           id: 'films',
@@ -287,6 +294,8 @@ void main() {
           ChangeNotifierProvider<OfflineModeProvider>.value(value: offlineMode),
           ChangeNotifierProvider<HomeLayoutProvider>.value(value: layout),
           ChangeNotifierProvider<HomeCustomRowsProvider>.value(value: customRows),
+          ChangeNotifierProvider<LibrariesProvider>.value(value: libraries),
+          ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
         ],
         child: TranslationProvider(
           child: MaterialApp(
@@ -310,6 +319,38 @@ void main() {
       .groups
       .map((g) => g.representativeSource.item.title ?? '')
       .toList();
+
+  FocusNode nodeLabelled(WidgetTester tester, String label) => tester
+      .widgetList<Focus>(find.byType(Focus))
+      .map((f) => f.focusNode)
+      .whereType<FocusNode>()
+      .firstWhere((n) => n.debugLabel == label);
+
+  Future<void> press(WidgetTester tester, LogicalKeyboardKey key) async {
+    await tester.sendKeyDownEvent(key);
+    await tester.sendKeyUpEvent(key);
+    await tester.pump();
+    await tester.pump();
+  }
+
+  /// Focuses [label]'s control and presses Select on it. `tester.tap` does
+  /// nothing on a `FocusableWrapper`, which carries no tap handler.
+  Future<void> activateByLabel(WidgetTester tester, String label) async {
+    final focus = Focus.maybeOf(tester.element(find.text(label).first), scopeOk: true)!;
+    focus.requestFocus();
+    await tester.pump();
+    SelectKeyUpSuppressor.clearSuppression();
+    await press(tester, LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> openPanel(WidgetTester tester) async {
+    nodeLabelled(tester, 'tvHomeCustomizeFooter').requestFocus();
+    await tester.pump();
+    SelectKeyUpSuppressor.clearSuppression();
+    await press(tester, LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+  }
 
   testWidgets('a saved row is drawn between the fixed rows and the backend hubs', (tester) async {
     await boot(tester, savedRows: [savedRowJson()]);
@@ -336,5 +377,172 @@ void main() {
     await boot(tester);
 
     expect(rowTitles(tester), [t.discover.continueWatching, t.discover.recentlyReleased, 'Recently Added']);
+  });
+
+  testWidgets('the footer is the last stop on Home and DOWN off the last row reaches it', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+
+    expect(find.byKey(tvHomeCustomizeFooterKey), findsOneWidget);
+
+    // Down out of the bottom row rather than focusing the footer directly:
+    // A1a's whole claim is that it is one DOWN away with no sideways aiming.
+    final rows = tester.widgetList<TvContentRow>(find.byType(TvContentRow)).toList();
+    final lastRail = rows.last.railKey.currentState!;
+    expect(lastRail.focusCurrent(), isTrue, reason: 'the bottom row has to be able to hold the ring first');
+    await tester.pump();
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+
+    expect(nodeLabelled(tester, 'tvHomeCustomizeFooter').hasPrimaryFocus, isTrue);
+  });
+
+  testWidgets('the panel draws the fixed rows locked and every other row movable', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+
+    expect(find.byKey(tvHomeCustomizePanelKey), findsOneWidget);
+    // Uitgelicht and Verder kijken, with the word that says why they have no
+    // buttons. Recent uitgebracht is deliberately not among them (DEC-100 (4)).
+    expect(find.text(t.unifiedCatalog.homeRows.featured), findsOneWidget);
+    expect(find.text(t.unifiedCatalog.homeRows.alwaysFirst), findsOneWidget);
+    expect(find.text(t.unifiedCatalog.homeRows.alwaysSecond), findsOneWidget);
+    expect(find.text(t.unifiedCatalog.homeRows.fixed), findsNWidgets(2));
+
+    // An own row offers Edit and Remove; a backend row offers Hide.
+    expect(find.text(t.unifiedCatalog.homeRows.edit), findsOneWidget);
+    expect(find.text(t.unifiedCatalog.homeRows.remove), findsOneWidget);
+    expect(find.text(t.unifiedCatalog.homeRows.hide), findsNWidgets(2));
+    expect(find.text(t.unifiedCatalog.homeRows.newRow), findsOneWidget);
+  });
+
+  testWidgets('moving a row down writes the order and Home follows it', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+
+    // The own row is first in the panel, so its "move down" is the first one.
+    final down = tester
+        .widgetList<Focus>(find.byType(Focus))
+        .map((f) => f.focusNode)
+        .whereType<FocusNode>()
+        .firstWhere((n) => n.debugLabel == 'TvHomeCustomize.#custom:r1#down');
+    down.requestFocus();
+    await tester.pump();
+    SelectKeyUpSuppressor.clearSuppression();
+    await press(tester, LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+
+    expect(layout.order.first, ':pleya:home:latest-movies');
+    expect(layout.order[1], '#custom:r1');
+
+    // Closing the panel puts the rows on Home in the order the panel wrote.
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.done);
+    expect(rowTitles(tester), [
+      t.discover.continueWatching,
+      t.discover.recentlyReleased,
+      'Nieuwe sci-fi',
+      'Recently Added',
+    ]);
+  });
+
+  testWidgets('hiding a backend row takes it off Home and leaves it in the panel', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.hide);
+    await tester.pumpAndSettle();
+
+    // Still listed, now with the button that brings it back.
+    expect(find.text(t.unifiedCatalog.homeRows.show), findsOneWidget);
+
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.done);
+    expect(rowTitles(tester), [t.discover.continueWatching, 'Nieuwe sci-fi', 'Recently Added']);
+  });
+
+  testWidgets('removing an own row takes its stored layout entries with it', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await layout.setOrder(['#custom:r1', ':pleya:home:latest-movies']);
+    await layout.setRowHidden('#custom:r1', true);
+    await tester.pumpAndSettle();
+
+    await layout.removeCustomRow('r1');
+
+    expect(layout.customRows, isEmpty);
+    expect(layout.order, isNot(contains('#custom:r1')), reason: 'an order entry nothing can reach is invisible state');
+    expect(layout.hiddenRowIds, isNot(contains('#custom:r1')));
+  });
+
+  testWidgets('the new-row flow saves a row and Home draws it', (tester) async {
+    await boot(tester);
+    await openPanel(tester);
+
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.newRow);
+    expect(find.byKey(tvHomeRowWizardKey), findsOneWidget);
+    expect(find.text(t.unifiedCatalog.homeRows.stepName), findsWidgets);
+
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    expect(find.text(t.unifiedCatalog.homeRows.sorting), findsOneWidget);
+
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    await tester.pumpAndSettle();
+    // The preview is the row's own question, so the count is the merge's and
+    // not a promise: five films in the fixture, every library exhausted.
+    // One Text carries count, kind, filters and sort on one line (mockup C3),
+    // so this reads the line rather than a widget of its own.
+    expect(find.textContaining(t.unifiedCatalog.titleCount(count: 5)), findsOneWidget);
+
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.addRow);
+    await tester.pumpAndSettle();
+
+    // Adding closes both the wizard and the panel (DEC-100 (5)), and the row is
+    // on Home under the label its filter gives it.
+    expect(find.byKey(tvHomeRowWizardKey), findsNothing);
+    expect(find.byKey(tvHomeCustomizePanelKey), findsNothing);
+    expect(layout.customRows, hasLength(1));
+    expect(rowTitles(tester), [
+      t.discover.continueWatching,
+      t.unifiedCatalog.discovery.allMovies,
+      t.discover.recentlyReleased,
+      'Recently Added',
+    ]);
+  });
+
+  testWidgets('the context menu on a Home card carries the same entry', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+
+    final tile = tester
+        .widgetList<Focus>(find.byType(Focus))
+        .map((f) => f.focusNode)
+        .whereType<FocusNode>()
+        .firstWhere((n) => n.debugLabel?.startsWith('tvDiscoveryTile_') ?? false);
+    tile.requestFocus();
+    await tester.pump();
+    SelectKeyUpSuppressor.clearSuppression();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+
+    // By key, not by label: the footer behind the menu carries the same words,
+    // which is the point of A1a and A1b being one entry in two places.
+    final extra = find.byKey(const ValueKey('tvContextMenuExtraAction'));
+    expect(extra, findsOneWidget);
+    expect(find.descendant(of: extra, matching: find.text(t.unifiedCatalog.homeRows.customize)), findsOneWidget);
+
+    // From the label inside the row, not from the row: `Focus.maybeOf` walks
+    // up, and the row's own focus node lives below it.
+    final focus = Focus.maybeOf(
+      tester.element(find.descendant(of: extra, matching: find.text(t.unifiedCatalog.homeRows.customize))),
+      scopeOk: true,
+    )!;
+    focus.requestFocus();
+    await tester.pump();
+    SelectKeyUpSuppressor.clearSuppression();
+    await press(tester, LogicalKeyboardKey.select);
+    // Twice: the menu's own close animation has to finish before the entry's
+    // callback runs, which is deliberate — see `showTvUnifiedContextMenu`.
+    await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(tvHomeCustomizePanelKey), findsOneWidget);
   });
 }

@@ -59,6 +59,16 @@ import 'tv_unified_context_actions.dart';
 ///
 /// [onChanged] fires after a write that actually landed, so the surface can
 /// refresh the group. It does not fire on cancel.
+/// A screen-level entry the menu offers under a separator, below every action
+/// that is about the card itself.
+///
+/// One caller has one: Home, whose menu carries "Home aanpassen" as ROW1's
+/// short way in (DEC-100 (3), mockup 32 A1b). It is deliberately not a
+/// [UnifiedGroupAction] — that enum is the set of things you can do *to a
+/// title*, it is shared with the catalogue and the watchlist, and a Home-only
+/// entry in it would have to be filtered out again at every other call site.
+typedef TvContextMenuExtraAction = ({String label, VoidCallback onSelected});
+
 Future<void> showTvUnifiedContextMenu(
   BuildContext context, {
   required UnifiedMediaGroup group,
@@ -66,6 +76,7 @@ Future<void> showTvUnifiedContextMenu(
   bool isInContinueWatching = false,
   bool isOffline = false,
   VoidCallback? onChanged,
+  TvContextMenuExtraAction? extraAction,
 }) async {
   final representative = group.representativeSource.item;
   final actions = availableUnifiedGroupActions(
@@ -78,8 +89,13 @@ Future<void> showTvUnifiedContextMenu(
       item: representative,
     ),
   );
-  if (actions.isEmpty) return;
+  if (actions.isEmpty && extraAction == null) return;
 
+  // Run *after* the sheet is gone rather than from inside it: the extra entry
+  // opens another panel, and pushing one overlay from the builder context of
+  // the one still closing puts two panels on screen for a frame and leaves the
+  // focus restore pointing at a dead node.
+  var extraChosen = false;
   final chosen = await OverlaySheetController.showAdaptive<UnifiedGroupAction>(
     context,
     presentation: OverlaySheetPresentation.panel,
@@ -87,11 +103,20 @@ Future<void> showTvUnifiedContextMenu(
     builder: (sheetContext) => _ActionMenuPanel(
       title: representative.displayTitle,
       actions: actions,
+      extraActionLabel: extraAction?.label,
+      onChooseExtra: () {
+        extraChosen = true;
+        OverlaySheetController.closeAdaptive(sheetContext, null);
+      },
       onChoose: (action) => OverlaySheetController.closeAdaptive(sheetContext, action),
       onClose: () => OverlaySheetController.closeAdaptive(sheetContext, null),
     ),
   );
 
+  if (extraChosen) {
+    extraAction!.onSelected();
+    return;
+  }
   if (chosen == null || !context.mounted) return;
   await runUnifiedGroupAction(
     context,
@@ -436,12 +461,24 @@ Future<void> _applyToOneSource(
 /// they need is the shortest path from "I pressed the menu button" to the verb
 /// they wanted.
 class _ActionMenuPanel extends StatelessWidget {
-  const _ActionMenuPanel({required this.title, required this.actions, required this.onChoose, required this.onClose});
+  const _ActionMenuPanel({
+    required this.title,
+    required this.actions,
+    required this.onChoose,
+    required this.onClose,
+    this.extraActionLabel,
+    this.onChooseExtra,
+  });
 
   final String title;
   final List<UnifiedGroupAction> actions;
   final ValueChanged<UnifiedGroupAction> onChoose;
   final VoidCallback onClose;
+
+  /// See [TvContextMenuExtraAction]. Drawn under a rule, so it reads as being
+  /// about the screen rather than about the title in the heading.
+  final String? extraActionLabel;
+  final VoidCallback? onChooseExtra;
 
   @override
   Widget build(BuildContext context) {
@@ -498,6 +535,19 @@ class _ActionMenuPanel extends StatelessWidget {
                 ),
               ),
             ),
+            if (extraActionLabel != null) ...[
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: TvSourcePickerLayout.rowGap * scale),
+                child: Container(height: 1, color: mono.outline),
+              ),
+              TvCatalogOptionRow(
+                key: const ValueKey('tvContextMenuExtraAction'),
+                label: extraActionLabel!,
+                isSelected: false,
+                scale: scale,
+                onPressed: onChooseExtra!,
+              ),
+            ],
             SizedBox(height: TvSourcePickerLayout.footerGap * scale),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,

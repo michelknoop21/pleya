@@ -11,6 +11,7 @@ library;
 import '../i18n/strings.g.dart';
 import '../media/media_kind.dart';
 import '../services/unified_catalog/home_custom_row.dart';
+import '../services/unified_catalog/home_custom_row_loader.dart';
 import '../services/unified_catalog/unified_catalog_filters.dart';
 
 /// What the row is called on Home.
@@ -39,4 +40,17 @@ List<String> homeCustomRowFilterParts(HomeCustomRow row) {
     if (filters.years.isNotEmpty) (filters.years.toList()..sort()).join(', '),
     if (filters.watchState == UnifiedWatchFilter.unwatched) t.unifiedCatalog.filters.unwatched,
   ];
+}
+
+/// How many titles the row holds, in hoofdstuk 10.7's two registers: an exact
+/// count once every participating library is exhausted, and "N titles loaded"
+/// while any of them might still contribute.
+///
+/// Null while the row has never been asked, so a caller can leave the line out
+/// rather than claim zero.
+String? homeCustomRowCountLabel(HomeCustomRowContent? content) {
+  if (content == null) return null;
+  final count = content.loadedCount;
+  if (!content.isExact) return t.unifiedCatalog.titlesLoaded(count: count);
+  return count == 1 ? t.unifiedCatalog.oneTitle : t.unifiedCatalog.titleCount(count: count);
 }

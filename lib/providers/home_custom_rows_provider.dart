@@ -100,23 +100,39 @@ class HomeCustomRowsProvider extends ChangeNotifier with DisposableChangeNotifie
 
   bool isLoading(String rowId) => _inFlight.contains(rowId);
 
-  /// The saved rows that currently have something to show, as feed rows.
+  /// Every saved row that has been asked at least once, as a feed row, empty
+  /// ones included.
   ///
   /// [titleFor] supplies the label because this layer has no locale and an
   /// unnamed row is labelled after its filter; see `home_custom_row_labels.dart`.
-  /// An empty row is left out entirely — DEC-100 (6): "een bewaarde rij die
-  /// later leeg raakt verdwijnt in rust van Home en blijft in het paneel staan".
-  List<UnifiedMediaHub> visibleRows({required String Function(HomeCustomRow row) titleFor}) => [
+  ///
+  /// The customise panel needs the empty ones — DEC-100 (6): "een bewaarde rij
+  /// die later leeg raakt verdwijnt in rust van Home en blijft in het paneel
+  /// staan" — so the two audiences are two methods rather than one list and a
+  /// flag at every call site.
+  List<UnifiedMediaHub> allRows({required String Function(HomeCustomRow row) titleFor}) => [
     for (final row in _layout.customRows)
       if (_content[row.id] case final content?)
-        if (content.groups.isNotEmpty)
-          UnifiedMediaHub.synthesized(
-            slug: row.hubSlug,
-            title: titleFor(row),
-            kind: unifiedHubKindForCustomRow(row),
-            groups: content.groups,
-            isPartial: content.isPartial,
-          ),
+        UnifiedMediaHub.synthesized(
+          slug: row.hubSlug,
+          title: titleFor(row),
+          kind: unifiedHubKindForCustomRow(row),
+          groups: content.groups,
+          isPartial: content.isPartial,
+          // The row's name in `HomeLayoutProvider`'s space, stated rather than
+          // left to `homeLayoutIdsOf`'s hubId fallback. Those are two different
+          // strings for one row, and letting the fallback answer meant the
+          // panel wrote `hub:pleya:custom:<id>` into the order while
+          // `removeCustomRow` cleaned up `#custom:<id>` — a hide nothing could
+          // undo, and an order entry that outlived its row.
+          contributingRowIds: [row.layoutRowId],
+        ),
+  ];
+
+  /// The saved rows Home actually draws: [allRows] minus the empty ones.
+  List<UnifiedMediaHub> visibleRows({required String Function(HomeCustomRow row) titleFor}) => [
+    for (final row in allRows(titleFor: titleFor))
+      if (row.groups.isNotEmpty) row,
   ];
 
   /// Re-asks one row's filter. Called after an edit, where the row's id is the

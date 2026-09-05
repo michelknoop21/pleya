@@ -5341,6 +5341,7 @@ class TranslationsUnifiedCatalogEn {
 	late final TranslationsUnifiedCatalogSemanticsEn semantics = TranslationsUnifiedCatalogSemanticsEn.internal(_root);
 	late final TranslationsUnifiedCatalogDiscoveryEn discovery = TranslationsUnifiedCatalogDiscoveryEn.internal(_root);
 	late final TranslationsUnifiedCatalogHomeEn home = TranslationsUnifiedCatalogHomeEn.internal(_root);
+	late final TranslationsUnifiedCatalogHomeRowsEn homeRows = TranslationsUnifiedCatalogHomeRowsEn.internal(_root);
 }
 
 // Path: tvNavigation
@@ -6545,6 +6546,159 @@ class TranslationsUnifiedCatalogHomeEn {
 
 	/// en: 'Featured'
 	String get featured => 'Featured';
+}
+
+// Path: unifiedCatalog.homeRows
+class TranslationsUnifiedCatalogHomeRowsEn {
+	TranslationsUnifiedCatalogHomeRowsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Customise Home'
+	String get customize => 'Customise Home';
+
+	/// en: 'Move or hide rows, or build one from a filter'
+	String get customizeSubtitle => 'Move or hide rows, or build one from a filter';
+
+	/// en: 'Move, hide or edit your rows. Featured and Continue Watching stay where they are.'
+	String get customizeIntro => 'Move, hide or edit your rows. Featured and Continue Watching stay where they are.';
+
+	/// en: 'Featured'
+	String get featured => 'Featured';
+
+	/// en: 'Always at the top'
+	String get alwaysFirst => 'Always at the top';
+
+	/// en: 'Always second'
+	String get alwaysSecond => 'Always second';
+
+	/// en: 'fixed'
+	String get fixed => 'fixed';
+
+	/// en: 'Done'
+	String get done => 'Done';
+
+	/// en: 'Move up'
+	String get moveUp => 'Move up';
+
+	/// en: 'Move down'
+	String get moveDown => 'Move down';
+
+	/// en: 'Hide'
+	String get hide => 'Hide';
+
+	/// en: 'Show'
+	String get show => 'Show';
+
+	/// en: 'Edit'
+	String get edit => 'Edit';
+
+	/// en: 'Remove'
+	String get remove => 'Remove';
+
+	/// en: 'hidden'
+	String get hiddenNote => 'hidden';
+
+	/// en: 'empty'
+	String get emptyNote => 'empty';
+
+	/// en: 'short row'
+	String get shortRow => 'short row';
+
+	/// en: 'Own row'
+	String get ownRow => 'Own row';
+
+	/// en: 'Pleya row'
+	String get pleyaRow => 'Pleya row';
+
+	/// en: 'New row'
+	String get newRow => 'New row';
+
+	/// en: 'From a filter on films or series'
+	String get newRowSubtitle => 'From a filter on films or series';
+
+	/// en: 'All ${count}, in ${catalog}'
+	String allInCatalog({required Object count, required Object catalog}) => 'All ${count}, in ${catalog}';
+
+	/// en: 'New row'
+	String get wizardTitle => 'New row';
+
+	/// en: 'Edit row'
+	String get wizardEditTitle => 'Edit row';
+
+	/// en: 'Name and type'
+	String get stepName => 'Name and type';
+
+	/// en: 'Filters'
+	String get stepFilters => 'Filters';
+
+	/// en: 'Preview'
+	String get stepPreview => 'Preview';
+
+	/// en: 'A row shows the films or series that match a filter.'
+	String get stepNameBody => 'A row shows the films or series that match a filter.';
+
+	/// en: 'The same choices as in the full catalogue. Every line opens its own list.'
+	String get stepFiltersBody => 'The same choices as in the full catalogue. Every line opens its own list.';
+
+	/// en: 'This is how the row will look on Home.'
+	String get stepPreviewBody => 'This is how the row will look on Home.';
+
+	/// en: 'Type'
+	String get kind => 'Type';
+
+	/// en: 'Name'
+	String get name => 'Name';
+
+	/// en: 'Leave empty and the name follows the filter, and keeps following it.'
+	String get nameHint => 'Leave empty and the name follows the filter, and keeps following it.';
+
+	/// en: 'Status'
+	String get status => 'Status';
+
+	/// en: 'Genre'
+	String get genre => 'Genre';
+
+	/// en: 'Year'
+	String get year => 'Year';
+
+	/// en: 'Sources'
+	String get sources => 'Sources';
+
+	/// en: 'Sorting'
+	String get sorting => 'Sorting';
+
+	/// en: 'All years'
+	String get allYears => 'All years';
+
+	/// en: 'Next'
+	String get next => 'Next';
+
+	/// en: 'Back'
+	String get back => 'Back';
+
+	/// en: 'Add row'
+	String get addRow => 'Add row';
+
+	/// en: 'Save row'
+	String get saveRow => 'Save row';
+
+	/// en: 'Adjust filters'
+	String get adjustFilters => 'Adjust filters';
+
+	/// en: 'Lands directly under Continue Watching. You can move it afterwards in Customise Home.'
+	String get landsBelowContinue => 'Lands directly under Continue Watching. You can move it afterwards in Customise Home.';
+
+	/// en: 'Nothing matches this filter'
+	String get emptyPreviewTitle => 'Nothing matches this filter';
+
+	/// en: 'Widen the filter, or pick a different sort.'
+	String get emptyPreviewBody => 'Widen the filter, or pick a different sort.';
+
+	/// en: '+${count}'
+	String morePosters({required Object count}) => '+${count}';
 }
 
 // Path: tvMyPleya.semantics
@@ -8386,6 +8540,54 @@ extension on Translations {
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
 			'unifiedCatalog.home.featured' => 'Featured',
+			'unifiedCatalog.homeRows.customize' => 'Customise Home',
+			'unifiedCatalog.homeRows.customizeSubtitle' => 'Move or hide rows, or build one from a filter',
+			'unifiedCatalog.homeRows.customizeIntro' => 'Move, hide or edit your rows. Featured and Continue Watching stay where they are.',
+			'unifiedCatalog.homeRows.featured' => 'Featured',
+			'unifiedCatalog.homeRows.alwaysFirst' => 'Always at the top',
+			'unifiedCatalog.homeRows.alwaysSecond' => 'Always second',
+			'unifiedCatalog.homeRows.fixed' => 'fixed',
+			'unifiedCatalog.homeRows.done' => 'Done',
+			'unifiedCatalog.homeRows.moveUp' => 'Move up',
+			'unifiedCatalog.homeRows.moveDown' => 'Move down',
+			'unifiedCatalog.homeRows.hide' => 'Hide',
+			'unifiedCatalog.homeRows.show' => 'Show',
+			'unifiedCatalog.homeRows.edit' => 'Edit',
+			'unifiedCatalog.homeRows.remove' => 'Remove',
+			'unifiedCatalog.homeRows.hiddenNote' => 'hidden',
+			'unifiedCatalog.homeRows.emptyNote' => 'empty',
+			'unifiedCatalog.homeRows.shortRow' => 'short row',
+			'unifiedCatalog.homeRows.ownRow' => 'Own row',
+			'unifiedCatalog.homeRows.pleyaRow' => 'Pleya row',
+			'unifiedCatalog.homeRows.newRow' => 'New row',
+			'unifiedCatalog.homeRows.newRowSubtitle' => 'From a filter on films or series',
+			'unifiedCatalog.homeRows.allInCatalog' => ({required Object count, required Object catalog}) => 'All ${count}, in ${catalog}',
+			'unifiedCatalog.homeRows.wizardTitle' => 'New row',
+			'unifiedCatalog.homeRows.wizardEditTitle' => 'Edit row',
+			'unifiedCatalog.homeRows.stepName' => 'Name and type',
+			'unifiedCatalog.homeRows.stepFilters' => 'Filters',
+			'unifiedCatalog.homeRows.stepPreview' => 'Preview',
+			'unifiedCatalog.homeRows.stepNameBody' => 'A row shows the films or series that match a filter.',
+			'unifiedCatalog.homeRows.stepFiltersBody' => 'The same choices as in the full catalogue. Every line opens its own list.',
+			'unifiedCatalog.homeRows.stepPreviewBody' => 'This is how the row will look on Home.',
+			'unifiedCatalog.homeRows.kind' => 'Type',
+			'unifiedCatalog.homeRows.name' => 'Name',
+			'unifiedCatalog.homeRows.nameHint' => 'Leave empty and the name follows the filter, and keeps following it.',
+			'unifiedCatalog.homeRows.status' => 'Status',
+			'unifiedCatalog.homeRows.genre' => 'Genre',
+			'unifiedCatalog.homeRows.year' => 'Year',
+			'unifiedCatalog.homeRows.sources' => 'Sources',
+			'unifiedCatalog.homeRows.sorting' => 'Sorting',
+			'unifiedCatalog.homeRows.allYears' => 'All years',
+			'unifiedCatalog.homeRows.next' => 'Next',
+			'unifiedCatalog.homeRows.back' => 'Back',
+			'unifiedCatalog.homeRows.addRow' => 'Add row',
+			'unifiedCatalog.homeRows.saveRow' => 'Save row',
+			'unifiedCatalog.homeRows.adjustFilters' => 'Adjust filters',
+			'unifiedCatalog.homeRows.landsBelowContinue' => 'Lands directly under Continue Watching. You can move it afterwards in Customise Home.',
+			'unifiedCatalog.homeRows.emptyPreviewTitle' => 'Nothing matches this filter',
+			'unifiedCatalog.homeRows.emptyPreviewBody' => 'Widen the filter, or pick a different sort.',
+			'unifiedCatalog.homeRows.morePosters' => ({required Object count}) => '+${count}',
 			'tvNavigation.activeDestination' => 'current section',
 			'tvNavigation.attentionRequired' => 'needs attention',
 			'tvMyPleya.groupContent' => 'My content',

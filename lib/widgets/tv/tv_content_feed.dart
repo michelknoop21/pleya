@@ -63,12 +63,13 @@ import '../../screens/tv/tv_discovery_activation_mixin.dart';
 import '../../screens/tv/tv_root_shell.dart' show TvShellSurface;
 import '../../media/unified/unified_route_context.dart';
 import '../../services/settings_service.dart';
-import '../../services/unified_catalog/home_row_layout.dart';
 import '../../theme/mono_tokens.dart';
-import '../../utils/home_custom_row_labels.dart';
 import '../../utils/layout_constants.dart';
 import '../state_view.dart';
 import 'tv_content_row.dart';
+import 'tv_home_customize_controller.dart';
+import 'tv_home_customize_footer.dart';
+import 'tv_home_row_assembly.dart';
 import 'tv_hero_billboard_card.dart' show TvHeroDimVeil;
 import 'tv_hero_billboard_carousel.dart';
 import 'tv_rail_stack.dart';
@@ -108,6 +109,9 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
   final _focusedGroupIdByRowId = <String, String>{};
   String? _heroGroupId;
 
+  /// A1a's footer row, one DOWN below the last content row.
+  final _customizeFocus = FocusNode(debugLabel: 'tvHomeCustomizeFooter');
+
   bool _rowHasFocus = false;
   bool _atTop = true;
 
@@ -142,6 +146,7 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
     WidgetsBinding.instance.removeObserver(this);
     _scroll.removeListener(_onScroll);
     _scroll.dispose();
+    _customizeFocus.dispose();
     super.dispose();
   }
 
@@ -315,6 +320,10 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
         group,
         isInContinueWatching: isInContinueWatching,
         onChanged: () => _refreshGroupSources(group),
+        // A1b, the short way in: the same entry the footer offers, reachable
+        // from any card on Home without walking past every row to the bottom
+        // (DEC-100 (3)).
+        extraAction: (label: t.unifiedCatalog.homeRows.customize, onSelected: _openCustomize),
       );
 
   /// Refreshes every source [group] carries after a hoofdstuk-23 write landed.
@@ -368,34 +377,6 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
   /// of a shipped Home on the strength of a sketch would be a product change
   /// made silently.
   ///
-  /// Hoofdstuk 17.5's hide/reorder applies to the *unified* rows: see
-  /// `home_row_layout.dart` for why a merged row needs every contributor hidden
-  /// before it disappears.
-  ///
-  /// **Continue Watching is the only row outside the layout.** It used to be
-  /// two: DEC-100 (4) locks Uitgelicht and Verder kijken and nothing else, and
-  /// mockup 32 B draws Recent uitgebracht with the same move and hide controls
-  /// as a backend row. It already carried a contributing row id from
-  /// `projectHubs`, so nothing had to be invented for it — it simply reaches
-  /// the layout now, where it always could have.
-  ///
-  /// The rows the viewer defined go in at the front, which is where a Home with
-  /// no stored order draws them: directly under Verder kijken, as DEC-100 (5)
-  /// asks. Once anything has been moved the stored order decides instead, and
-  /// their position here stops mattering.
-  List<UnifiedMediaHub> _rows(
-    TvHomeProjectionProvider projection,
-    HomeLayoutProvider? layout,
-    HomeCustomRowsProvider? customRows,
-  ) {
-    final cw = projection.continueWatching;
-    final latest = projection.latestMovies;
-    final orderable = [...?customRows?.visibleRows(titleFor: homeCustomRowLabel), ?latest, ...projection.hubs];
-    final laidOut = layout == null
-        ? orderable
-        : applyHomeLayoutToUnifiedRows(orderable, hiddenRowIds: layout.hiddenRowIds, order: layout.order);
-    return [if (cw != null && cw.groups.isNotEmpty) cw, ...laidOut];
-  }
 
   /// Hoofdstuk 9.5's last sentence, and fase-8 brief §22's "0 hero groups":
   /// when the deduplicated recent-film pool is genuinely empty — a show-only
@@ -421,7 +402,7 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
     final discover = context.watch<DiscoverProvider>();
     final layout = context.watch<HomeLayoutProvider?>();
     final customRows = context.watch<HomeCustomRowsProvider?>();
-    final rows = _rows(projection, layout, customRows);
+    final rows = tvHomeFeedRows(projection: projection, layout: layout, customRows: customRows);
     // Read off the projection's own row rather than matched against a slug
     // literal: the slug is a parameter of `projectContinueWatching`, so a
     // literal here would be a second definition that can drift from it.
@@ -572,7 +553,7 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
                                 i,
                                 whenExhausted: heroGroups.isEmpty ? null : _focusHeroFromFirstRow,
                               ),
-                              onNavigateDown: _rowStack.down(i),
+                              onNavigateDown: _rowStack.down(i, whenExhausted: _customizeFocus.requestFocus),
                               // DEC-095 (3)/(4): a focused rail puts its label
                               // under the top navigation, first row and deeper
                               // rows alike, so the rail below it is wholly on
@@ -582,6 +563,22 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
                             ),
                           ),
                         ],
+                        // A1a: one line over the full width under the last row,
+                        // one DOWN away and never sideways. It is the only
+                        // chrome ROW1 puts on the page, and it costs a row of
+                        // its own precisely so the hero keeps every direction
+                        // hoofdstuk 7.3 gave it.
+                        SizedBox(height: TvDiscoveryLayout.sectionGap * scale),
+                        TvHomeCustomizeFooter(
+                          focusNode: _customizeFocus,
+                          scale: scale,
+                          onPressed: _openCustomize,
+                          // One index past the last row, so the stack walks
+                          // back up over any row that declines — an empty one,
+                          // or one scrolled out of its band — instead of
+                          // stopping dead on it.
+                          onNavigateUp: () => _rowStack.up(rows.length, whenExhausted: _focusHeroFromFirstRow)?.call(0),
+                        ),
                       ],
                     ),
                   ),
@@ -593,6 +590,8 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
       },
     );
   }
+
+  Future<void> _openCustomize() => openTvHomeCustomizePanel(context, clientFor: _clientFor);
 
   MediaServerClient? Function(String serverId) get _clientFor =>
       (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId));
