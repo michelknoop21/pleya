@@ -46,6 +46,8 @@
     { "file": "error_user_not_found.json", "schema": "ErrorEnvelope" },
     { "file": "error_session_not_found.json", "schema": "ErrorEnvelope" },
     { "file": "error_owner_immutable.json", "schema": "ErrorEnvelope" },
-    { "file": "error_username_taken.json", "schema": "ErrorEnvelope" }
+    { "file": "error_username_taken.json", "schema": "ErrorEnvelope" },
+    { "file": "error_server_internal.json", "schema": "ErrorEnvelope", "note": "venster 1: het domein server, met de request-id uit de recovery-laag" },
+    { "file": "error_settings_invalid_value.json", "schema": "ErrorEnvelope", "note": "venster 1: het domein settings, met veld en grens in details" }
   ]
 }

@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "server.internal",
+    "message": "unhandled panic in handler",
+    "retryable": true,
+    "details": {
+      "request_id": "req_01K5Q0Z8W3M2N7B4C6D8E0F2G4"
+    }
+  }
+}

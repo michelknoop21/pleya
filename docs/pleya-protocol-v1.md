@@ -462,6 +462,13 @@ de precieze reden.
 
 Codes zijn gegroepeerd per domein. Uitbreiden mag; de betekenis van een bestaande code wijzigen niet.
 
+De domeinlijst zelf is ook niet gesloten, maar groeit alleen wanneer een protocolvenster dat met
+zoveel woorden zegt. `settings` en `server` kwamen erbij met venster 1 (DEC-110 en DEC-111). Een
+client die een domein niet kent behandelt de code als onbekend en toont een generieke melding; hij
+takt nooit op het domein. Codes die een client zelf verzint horen niet in dit register: de webclient
+draagt `client.transport` en `client.malformed_response`, die komen nooit over de lijn, en het
+contract keurt ze af.
+
 ### 7.1 Coderegister
 
 | Code | HTTP | `retryable` | Betekenis |
@@ -490,6 +497,8 @@ Codes zijn gegroepeerd per domein. Uitbreiden mag; de betekenis van een bestaand
 | `auth.username_taken` | 409 | nee | die gebruikersnaam is al in gebruik |
 | `auth.owner_immutable` | 409 | nee | de owner kan niet verwijderd of gedegradeerd worden |
 | `auth.session_not_found` | 404 | nee | de sessie bestaat niet, of niet voor u; zie hoofdstuk 17 |
+| `settings.invalid_value` | 400 | nee | een waarde in `PATCH /settings` valt buiten zijn grens; `details` draagt veld en grens |
+| `server.internal` | 500 | ja | de handler liep op een fout die hij niet had voorzien; `details.request_id` verwijst naar de logregel |
 
 **`404` en niet `403`, overal.** Een resource die u niet mag zien bestaat voor u niet, ook niet in
 zoekresultaten en ook niet als u het id raadt. Dat gold vóór PS-9 al als regel, hoewel er toen nog

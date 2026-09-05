@@ -2510,6 +2510,79 @@ einde van het traject openhouden, waarmee het geen venster meer is maar een afge
 
 Geaccepteerd door Michel op 5 september 2026.
 
+*Gecorrigeerd op één punt door [DEC-111](#dec-111-venster-1-voegt-twee-foutdomeinen-toe-niet-een-settings-komt-er-naast-server-bij):
+venster 1 voegt twee foutdomeinen toe en niet één. `settings.invalid_value` uit rij 2 van J.2 vraagt
+`settings` naast `server`. De rest van dit besluit blijft ongewijzigd van kracht.*
+
+---
+
+## DEC-111: venster 1 voegt twee foutdomeinen toe, niet één; `settings` komt er naast `server` bij
+
+**Date:** 2026-09-05
+**Status:** accepted
+
+**Context:** [DEC-110](#dec-110-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein)
+opent het venster voor precies de zeventien wijzigingen uit J.2 en zegt daarbij dat
+`ErrorEnvelope.error.code` er één domein bij krijgt: `server`. Diezelfde beslissing noemt
+`server.internal` "de enige wijziging die aan een bestaande regel zelf komt". Bij het uitvoeren van
+S1 bleek dat niet te kloppen. Rij 2 van J.2 schrijft voor `PATCH /settings` de foutcode
+`settings.invalid_value` voor, met veld en grens erbij, en `settings` staat net zomin in het patroon
+als `server`. `docs/pleya-server-rebaseline/K-security.md` regel 33 noemt dezelfde code als toets op
+regel 13, de SSRF-grens op `public_url`.
+
+Dat is geen wijziging buiten het venster: de code stond al in de zeventien. Het is een ondertelling
+in de tekst van DEC-110. De toetsing daar redeneerde over `server.internal`, zag terecht dat dat de
+enige rij is die aan een bestaande regel raakt, en trok de conclusie voor het patroon te smal.
+
+**De toetsing, opnieuw en nu voor beide.** Het patroon is geen enum, dus regel 6 is niet aan de orde
+en de vraag is regel 3: verandert de betekenis van een bestaand veld. Nee. Het bewijs dat DEC-110
+voor `server` gaf geldt woordelijk voor `settings`, want het gaat niet over de code maar over het
+foutpad eromheen. `PleyaError` draagt de code als `String` en takt er niet op; de enige domeintest in
+de app vraagt `startsWith('auth.')` in `pleya_server_auth_service.dart` en valt anders door naar de
+generieke fout; `describeError` in `pleya_web/src/lib/api/errors.ts` geeft voor een onbekende code
+"Something went wrong (code)". Een client die `settings.invalid_value` niet kent gedraagt zich dus
+precies als een client die `server.internal` niet kent.
+
+**Waarom dit een besluit vraagt en geen correctie is.** De domeinlijst is de enige plek in het
+contract waar een venster iets verruimt in plaats van iets toevoegt. Stilzwijgend een zevende domein
+bijschrijven omdat het zo uitkwam is precies wat hoofdstuk 3 verbiedt, ook wanneer de code zelf al
+was goedgekeurd.
+
+**Decision:** Venster 1 voegt **twee** foutdomeinen toe. Het patroon wordt
+`^(auth|library|playback|session|settings|storage|server)\.[a-z0-9_]+$`. De zin in DEC-110 dat
+`server` het zesde en enige nieuwe domein is, is hiermee gecorrigeerd; de rest van DEC-110 blijft
+ongewijzigd van kracht, inclusief de begrenzing tot de zeventien rijen en het sluitmoment op S1.6.
+
+De domeinlijst is daarmee expliciet niet gesloten. J.3 brengt `job.not_cancellable` mee en J.5
+`reading.locator_invalid`, dus venster 2 en venster 4 staan voor dezelfde vraag. De regel die hier
+wordt vastgelegd: **een venster dat een foutdomein toevoegt zegt dat met zoveel woorden in zijn eigen
+besluit, met de compatibiliteitstoets erbij.** Een venster dat er niets over zegt voegt er geen toe.
+
+**De controle moet twee kanten op meten.** DEC-110 vroeg de negatieve controle in
+`scripts/check_protocol.py` mee te schuiven en te blijven bijten. Dat is nodig maar niet genoeg:
+`plex.not_found` blijft afgekeurd of het patroon nu vijf, zes of zeven domeinen kent, dus een venster
+dat een domein toevoegt zonder het patroon te verruimen zou daar niet in opvallen. Er komt daarom een
+tweede controle bij, `check_error_domains`, die van elk erkend domein eist dat het er ook echt
+doorheen komt, met de lijst met de hand geschreven zodat hij niet met het patroon meebeweegt.
+Bewezen: met het patroon teruggezet op vijf domeinen faalt hij met twee regels, `settings` en
+`server`. De afkeuringsronde krijgt er ook een geval bij, `client.transport`: een code die de
+webclient zelf verzint en die het contract nooit mag accepteren.
+
+**Consequences:** `openapi.yaml` draagt zeven domeinen en twee fixtures die ze vastleggen
+(`error_server_internal.json`, `error_settings_invalid_value.json`). De docstring van
+`PleyaError.domain` noemt er zeven in plaats van de zes die DEC-110 vroeg, en zegt er nu bij dat de
+lijst niet gesloten is. `docs/pleya-protocol-v1.md` hoofdstuk 7.1 krijgt beide codes in het
+coderegister. `docs/pleya-server-gates.md` sectie 7 vermeldt beide domeinen in plaats van één.
+`feature_level` gaat niet omhoog, om dezelfde reden als in DEC-110.
+
+Afgewezen: `server.settings_invalid_value`, waarmee het venster op zes domeinen zou blijven en
+DEC-110 letterlijk waar. Dat verplaatst het probleem twee vensters verderop naar `job` en `reading`,
+en het maakt de code een samenstelling die niets meer over de resource zegt. Ook afgewezen: de code
+weglaten tot een later venster, want dan is S1.2 niet af en kan het venster niet sluiten op S1.6.
+
+Geaccepteerd door Michel op 5 september 2026, in de keuzeronde over het foutdomein van
+`PATCH /settings`.
+
 ---
 
 ## Hernummering van 4 september 2026

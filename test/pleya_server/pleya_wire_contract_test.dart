@@ -92,8 +92,8 @@ void main() {
       );
     });
 
-    test('covers the 46 fixtures the contract ships', () {
-      expect(fixtures, hasLength(46));
+    test('covers the 48 fixtures the contract ships', () {
+      expect(fixtures, hasLength(48));
     });
 
     for (final fixture in fixtures) {
@@ -292,6 +292,29 @@ void main() {
       expect(error.code, 'library.not_found');
       expect(error.domain, 'library');
       expect(error.retryable, isFalse);
+    });
+
+    // Window 1 widens the error domain to seven (DEC-110 and DEC-111). The
+    // compatibility argument under that decision is a claim about this class:
+    // the code is carried as a String and nothing branches on the domain. A
+    // claim about code belongs in a test, not only in the decision.
+    test('a domain the client has never seen parses like any other code', () {
+      final internal = PleyaError.fromJson(load('error_server_internal.json'));
+      expect(internal.code, 'server.internal');
+      expect(internal.domain, 'server');
+      expect(internal.retryable, isTrue);
+      expect(internal.details?['request_id'], isA<String>());
+
+      final invalid = PleyaError.fromJson(load('error_settings_invalid_value.json'));
+      expect(invalid.code, 'settings.invalid_value');
+      expect(invalid.domain, 'settings');
+      expect(invalid.details?['field'], 'access_token_ttl');
+
+      // The only domain test in the app is startsWith('auth.') in
+      // pleya_server_auth_service.dart. Neither new domain may trip it.
+      for (final error in [internal, invalid]) {
+        expect(error.code.startsWith('auth.'), isFalse);
+      }
     });
 
     test('a rate limit is retryable and says how long to wait', () {
