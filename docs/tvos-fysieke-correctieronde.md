@@ -132,7 +132,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | NAVSEL1 | `tvos.nav.destination-select` sprak de app op twee punten tegen: het verwachtte Films na één RIGHT vanaf Home terwijl Series daar staat, en het eiste een Select om van bestemming te wisselen terwijl focus dat sinds 2 september zelf doet. Gedraaid, rood op de eerste, en verwijderd; `tvos.nav.focus-switches-destination` dekt het en is groen | FIXED | `17d47592` |
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
 | RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
-| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Er is nog geen ontwerp: mockupronde eerst | OPEN, mockups te maken | n.v.t. |
+| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1, A2, B, C1 tot en met C4) staat klaar op zijn functieschets van dezelfde dag | OPEN, mockup 32 ter beoordeling | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -2927,10 +2927,75 @@ op TV. Het filtermodel van de catalogus is er ook, en CAT5 geeft het een bedienb
 ontbreekt is de brug: een filter als bewaarbaar object met een naam, een rij die eruit gebouwd
 wordt, en een manier om dat op Home te doen zonder de pagina in een beheerscherm te veranderen.
 
-Er is **geen mockup**. Gecontroleerd op alle branches, op bestandsnaam en op de inhoud van de
-HTML-bronnen, plus de niet-gecommitte mockupmap in `pleya-teleport/.unlazy/mockups`. De tvOS-set
-loopt van 09 tot en met 31 zonder gat; 29 en 30 gaan over de hero, niet over rijbeheer. Dit begint
-dus met een ontwerpronde, en die gaat vóór de bouw.
+Tot 5 september was er **geen mockup**. Gecontroleerd op alle branches, op bestandsnaam en op de
+inhoud van de HTML-bronnen, plus de niet-gecommitte mockupmap in `pleya-teleport/.unlazy/mockups`.
+De tvOS-set liep van 09 tot en met 31 zonder gat; 29 en 30 gaan over de hero, niet over rijbeheer.
+
+**Michels functieschets, 5 september.** Tijdens de ontwerpronde stuurde Michel een beeld met zes
+schermen als richting, met twee aanwijzingen erbij, letterlijk: "Inspiratie bron let wel op dat
+alle knoppen in tvos goed bereikbaar moeten zijn" en "Let op dat je niet vanuit mijn screenshot
+oude styling meeneemt is puur de functie die ik bedoel". De functie uit dat beeld: een knop "Home
+aanpassen" op Home zelf; een bewerkpaneel waarin de hero en Verder kijken bovenaan als vaste regels
+staan en elke andere rij omhoog, omlaag, bewerken en verbergen krijgt, met "Nieuwe rail" onderaan;
+en een stappenflow voor een nieuwe rij met naam en soort, filters, sortering en een voorbeeld met
+teller. De eerdere opzet met drie concurrerende ingangen (contextmenu, de rij als handvat, een
+ingeklapt overzicht) is daarmee vervallen: de richting ligt vast, de mockup tekent hem in de eigen
+tokens van de set.
+
+**Mockup 32, 5 september** (`docs/assets/tvos-unified/mockups-2026-09-04/32-eigen-rails-*.png`,
+bron in `src/pages/32-eigen-rails-*.html`). Zeven standen, in de taal van 30 (DEC-095) en 28 D2
+(DEC-093):
+
+- **A1, de ingang.** De landing van 30 A1, met rechts op de hoogte van de CTA-rij de knop "Home
+  aanpassen". Hij staat in dezelfde focusrij als Afspelen en Meer info: RIGHT vanaf Meer info landt
+  erop, RIGHT daarvandaan wisselt de slide. Dat is een wijziging van 7.3, waar RIGHT vanaf Meer
+  info nu de slide wisselt; de knop schuift daar één positie tussen. Wat A1 beslist: de ingang zit
+  op Home en niet onder Instellingen, en hij is met twee drukken vanaf de rustfocus bereikbaar.
+- **A2, rust.** Dieper op Home, de geometrie van 30 C, met een eigen rij "Nieuwe sci-fi" tussen de
+  hubrijen. Bij focus staan de filterkeuzes als stille tags naast het label, in de tagtaal van 28
+  D1 met de sortering gestippeld; zonder focus staan ze er niet. De laatste kaart is een tegel "Alle
+  42, in Alle films" die de catalogus met ditzelfde filter opent, de tegelvorm die DEC-064 al
+  toestaat. Wat A2 beslist: een eigen rij is in rust van een hubrij niet te onderscheiden, en het
+  filter is zichtbaar zonder chrome toe te voegen.
+- **B, bewerkmodus.** Eén paneel over de gedimde Home, 1560 breed, met elke rij als regel: icoon,
+  vier miniposters, naam met een subregel (bij een eigen rij het filter en de teller, bij een hub
+  de servers), en rechts de acties. Uitgelicht en Verder kijken staan bovenaan met een slot en het
+  woord "vast" en zijn niet focusbaar. Een hubrij krijgt omhoog, omlaag en Verbergen; een eigen rij
+  omhoog, omlaag, Bewerken en Verwijderen; een verborgen rij staat gedimd met Tonen. Onderaan een
+  gestippelde regel "Nieuwe rij". Bereikbaarheid: elke regel is een horizontale groep, UP en DOWN
+  houden de kolom vast, vaste regels worden overgeslagen, een uitgeschakelde pijl (omhoog op de
+  eerste beweegbare rij, omlaag op de laatste) blijft focusbaar zodat de kolom niet springt. Klaar
+  staat rechtsboven en is UP vanaf de eerste regel; Menu doet hetzelfde. Verplaatsen gaat per stap
+  met de pijlen, niet met optillen, want een gefocuste knop is op een afstandsbediening altijd te
+  vinden en een "opgetilde" toestand niet. De sleepgreep uit de schets vervalt op TV.
+- **C1, stap 1 van 3, naam en soort.** Chips Films en Series, daaronder het naamveld. De naam is
+  optioneel: leeg volgt hij het filter ("Sciencefiction, niet bekeken") en verandert mee, zodat een
+  rij zonder toetsenbord te maken is. Typen opent het systeemtoetsenbord van DEC-011.
+- **C2, stap 2 van 3, filters.** De regels van 28 D2, Status, Genre, Jaar en Bronnen, met Sortering
+  als vijfde regel in plaats van een eigen stap; de schets had er vier stappen van, dit zijn er
+  drie omdat sortering in de catalogus ook al in hetzelfde paneel zit. Select opent de lijst van
+  die regel, Menu sluit hem zonder wijziging, de tags eronder tonen de stand.
+- **C3, stap 3 van 3, voorbeeld.** Naam, teller en filter op één regel, de eerste vijf posters en
+  een "+37"-tegel. De rij landt direct onder Verder kijken; verplaatsen kan daarna in B. Rij
+  toevoegen sluit het paneel op Home met de focus op de eerste kaart van de nieuwe rij.
+- **C4, lege uitkomst.** De teller kleurt amber, het voorbeeld wordt een gestippelde plaatshouder
+  met de reden en een suggestie ("Er zijn 6 musicals, maar geen uit 2024 die je nog niet gezien
+  hebt"), Rij toevoegen is uitgeschakeld en de focus staat op Filters aanpassen, dat naar stap 2
+  terugspringt. Onder de zes titels blijft toevoegen mogelijk; zo'n rij krijgt op Home "korte rij"
+  naast het label. Een bewaarde rij die later leeg raakt verdwijnt in rust van Home en blijft in B
+  staan met "leeg" als subregel.
+
+Wat de bouw daarna raakt, buiten de layout: een bewaard filter als object met naam, soort, de
+`UnifiedCatalogFilterSelection` en de `UnifiedCatalogSort`, per profiel naast de bestaande hide- en
+orderlijst van `HomeLayoutProvider`; een rij-id voor zo'n object dat niet botst met
+`serverId:identifier`; en een catalogusvraag die de eerste kaarten en een teller levert zonder de
+volledige paging van hoofdstuk 12 te draaien. De teller volgt 10.7: pas exact als alle bronnen
+uitgeput zijn, anders "42 geladen".
+
+Open voor Michel: akkoord op A1 tot en met C4, en twee keuzes erin. De plek van de ingang (A1,
+met de 7.3-wijziging) en drie stappen in plaats van vier (C2). Daarna een DEC, de aanpassing van
+7.3, 9.1 en 17.5, en de bouwronde met een negatieve controle op `TvContentFeed`: een widgettest die
+een eigen rij uit een bewaard filter tussen de hubrijen eist, rood op de huidige code.
 
 ### RAIL1, het fase-6 railcontract is bij een verhuizing achtergebleven
 
