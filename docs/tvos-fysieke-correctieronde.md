@@ -61,7 +61,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | WT1 | Focus strandt na het vergeten van een kamer in Samen Kijken | FIXED | `614fc08` |
 | VER1 | Een assert met een verkeerd YAML-type eindigt groen | FIXED | `9d36bb5` |
 | WL1 | Focus strandt na het verwijderen van een kijklijstkaart | FIXED | `b3a3e5d` |
-| NAV1 | De bovenbalk slaat Home over. Heropend 5 september: log `y0w9x` (build 251) toont een tweede *native* keydown/keyup-paar 80-230 ms na de eerste druk, telkens na de Home-refresh; niet het swipe-pad waar `51186c6` op fixte. Zie "NAV1, tweede oorzaak" | FIXED, hardware open | `51186c6`, `531ae19c` |
+| NAV1 | De bovenbalk slaat Home over. Heropend 5 september: log `y0w9x` (build 251) toont een tweede *native* keydown/keyup-paar na de druk die op Home landt. Oorzaak gevonden in de engine-fork, niet in de fasen: het aanzetten van de Menu-passthrough laat de ingedrukte pijl los, en `.ended` tikt hem opnieuw. Zie "NAV1, de echte oorzaak" | FIXED, hardware open (build 259) | `51186c6`, `531ae19c`, `7786a952` |
 | LAND1 | De landing slaat de eerste contentrail over | FIXED, hardware open | `51186c6` |
 | TILE1 | Een tegel zonder actie zou de focus klemmen | NOT REPRODUCED | n.v.t. |
 | LAND4 | Verticaal navigeren verliest de horizontale positie | FIXED | `8686f5c` |
@@ -127,7 +127,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted. Data- en resolutielaag op eae19cb4, de pagina 31 A, de sheet 31 B en de toasts 31 C/D op a9a50ad9, de layout- en meldingscorrecties uit de simulatorronde op a5730f35. Het Verify-scenario is groen; de hardwareronde staat open | OPEN | eae19cb4, a9a50ad9, a5730f35 |
 | HERO3 | De Home-hero toont niet alleen recent uitgebrachte films: "Recent uitgebracht" had geen tijdvenster, en items zonder releasedatum reden mee op `addedAt`. Besluit 5 september: 90 dagen op releasedatum, zonder datum buiten de hero (DEC-097) | FIXED, hardware open | `531ae19c` |
 | PLR1 | Tekst van de spelerlaag valt links buiten het title-safe gebied (titelbalk op x = 0, tijdlijn op 24 pt) terwijl elke andere TV-surface `tvPageInset` betaalt | FIXED, hardware open | `36118056` |
-| WALK | Een `walk`-stap in Pleya Verify die een richting herhaalt en per hop meldt welke focusbare kandidaat is overgeslagen, zodat sprongen niet meer per geval op het toestel gevonden hoeven te worden | OPEN | n.v.t. |
+| WALK | Een `walk`-stap in Pleya Verify die een richting herhaalt en per hop meldt welke focusbare kandidaat is overgeslagen, zodat sprongen niet meer per geval op het toestel gevonden hoeven te worden. Kern in `c4ffcd16` (DEC-098); open: `nav.profile-id`, vier scenario's op de simulator, twee sabotagecontroles, docs | IN PROGRESS | `c4ffcd16` |
 
 ## Wat er per item bekend is
 
@@ -2627,6 +2627,56 @@ zwaar frame twee keer. A/B: een build met `GamepadService` uit op Apple TV; verd
 paar uit de log, dan gaat de gamepad-bridge daar structureel uit, anders gaat de log naar de
 engine-fork. De dedupe blijft in beide gevallen staan. De simulator kan dit niet: geen
 aanraakvlak, en de kliktest van WALK ziet het dus ook niet.
+
+### NAV1, de echte oorzaak: de Menu-passthrough laat de ingedrukte pijl los
+
+Gesloten op 5 september na acht toestelbuilds (DEC-099). De tabel is de volledige meetreeks; wie hier
+later naar kijkt hoeft niets ervan te herhalen.
+
+| Build | Wat erin zat | Log | Uitkomst |
+|-------|--------------|-----|----------|
+| 252 | dedupe in `AppleTvRemoteTouchService` (`531ae19c`) | `3zsde` | tweede paar blijft |
+| 253 | idem, gamepad-bridge uit | `6zuye` | tweede paar blijft; `universal_gamepad` is niet de bron |
+| 254 | early key handler (`34f9356f`) plus 500 ms-heuristiek | `ld1t1` | 65 echte drukken opgegeten |
+| 255 | `press-diag` vanuit Swift: fase en `UIPress`-adres per druk | `wa6v9` | de meting die de oorzaak bevat |
+| 256 | `.ended` van een pijl aan UIKit gegeven (`67992a57`) | crashlog | `_verifyTrackingPresses:` asserteert op elke pijl |
+| 257 | `.ended` ingeslikt (`79adcc8a`) | geen crash | remote blijft in één richting hangen |
+| 258 | filter uit (`5c0db0a1`) | | bedienbaar, dubbele stap terug |
+| 259 | passthrough wacht op key-up (`7786a952`) | | te bevestigen op het toestel |
+
+**Wat log `wa6v9` werkelijk zegt.** De eerste twee drukken zijn goed: omhoog (10:59:18.862,
+keydown op fase 0, keyup op fase 3, 80 ms later) en rechts, weg van Home (19.475 en 19.581).
+De derde druk, links terug naar Home, krijgt op fase 0 een keydown én 3 ms later een keyup, en
+op fase 3 een tweede compleet paar. Elke druk daarna wisselt Home in en uit en verdubbelt. Het
+is dus niet "de engine post een paar per fase", zoals de vorige analyse zei. Het is één
+specifieke druk: die welke op de Home-tab landt.
+
+**De engine, gelezen in plaats van geraden.** `scripts/tvos_engine_source.sh` reconstrueert
+`FlutterViewController.mm` uit de patchreeks van de fork; `docs/tvos-remote-press-pipeline.md`
+beschrijft het pad per station. Drie regels doen het:
+
+1. `setMenuPressPassthroughEnabled:YES` roept `releaseAllSynthesizedPresses`, een synthetische
+   keyup voor elke toets die de engine vasthoudt. De app zet die vlag zodra de focus op de
+   Home-tab in de balk staat (`shouldPassTvosMenuToSystem`, `isCurrentTabRoot`).
+2. `.ended` synthetiseert met `tapIfMissingKeyDown:YES`: een toets die niet meer in de set
+   staat krijgt een vers down/up-paar. Dat is stap twee.
+3. De herhaaltimer (0,4 s, daarna 80 ms) loopt zolang de toets in de set staat. Dat is 257:
+   de ingeslikte `.ended` haalde de pijl nooit uit de set.
+
+Geen enkel signaal in Dart onderscheidt het tweede paar van een echte snelle druk, en de fase
+op zichzelf is onschuldig. De enige plek waar het te zien was, is het kanaalbericht dat de app
+tussen de keydown en de keyup verstuurde, en dat stond niet in de log.
+
+**Fix bij de afzender.** `TvosSystemNavigationService` parkeert een enable tot
+`HardwareKeyboard.physicalKeysPressed` leeg is en stuurt hem op de eerstvolgende key-up; een
+disable laat in de engine niets los en gaat direct. Drie tests in
+`tvos_system_navigation_service_test.dart`, twee rood vóór de fix. De filter in `AppDelegate`
+is weg (`5c0db0a1`); de early key handler uit `34f9356f` blijft, want die is het enige
+Dart-pad dat een druk kan stoppen en de dedupe leunt erop.
+
+**Open op hardware.** Build 259 staat op het toestel. Te bevestigen: links en rechts over de
+balk landen één tab per druk, ook op Home; Menu op Home verlaat de app nog; Menu op een andere
+tab of in een sectie blijft in de app.
 
 ### HERO3, "Recent uitgebracht" had geen venster
 
