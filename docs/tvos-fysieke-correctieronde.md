@@ -124,7 +124,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | SRCH2 | `people` wordt nooit aan `searchProjection` meegegeven | OPEN | n.v.t. |
 | REV1 | Apple Review Jellyfin: Home toont content, Films/Series leeg en concrete library niet zichtbaar (Apple Review, release-kritiek) | OPEN | n.v.t. |
 | LAND7 | Actieve discovery-rail krijgt geen vaste verticale focuspositie | OPEN | n.v.t. |
-| LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted. Data- en resolutielaag op eae19cb4, de pagina 31 A, de sheet 31 B en de toasts 31 C/D op a9a50ad9; het Pleya Verify-scenario is nog niet gedraaid en de hardwareronde staat open | OPEN | eae19cb4, a9a50ad9 |
+| LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted. Data- en resolutielaag op eae19cb4, de pagina 31 A, de sheet 31 B en de toasts 31 C/D op a9a50ad9, de layout- en meldingscorrecties uit de simulatorronde op a5730f35. Het Verify-scenario is groen; de hardwareronde staat open | OPEN | eae19cb4, a9a50ad9, a5730f35 |
 
 ## Wat er per item bekend is
 
@@ -2517,7 +2517,7 @@ Volgorde: eerst oud rood aantonen, dan implementeren, dan groen. Daarbovenop de 
 die al onder deze bevinding stonden: de widgettest op de nieuwe pagina, de verhuizing van de
 schakelaars, en een Pleya Verify-scenario voor de journey op de tvOS-simulator.
 
-**Stand van de bouwronde, 5 september, `a9a50ad9`.** De pagina, de sheet en de twee
+**Stand van de bouwronde, 5 september, `a9a50ad9` en `a5730f35`.** De pagina, de sheet en de twee
 toasts staan. Mijn Pleya ▸ Instellingen ▸ Taal en ondertitels is de enige beheerplek: de
 globale voorkeur met audio, ondertitels, terugvaltaal en beleid, de twee schakelaars die
 uit Afspelen verhuisd zijn, en de serievoorkeuren met poster, keuze en herkomst. Select op
@@ -2550,16 +2550,40 @@ Vier dingen die de bouw zelf opleverde en die niet in de analyse stonden:
 3. *`showSelectionDialog` antwoordt null voor twee verschillende dingen*, "geen voorkeur" en
    "weggeklikt". De beleidsrij sleutelt daarom op een string en kan niet meer stilzwijgend
    wissen wat de kijker alleen maar bekeek.
-4. *De linkerkolom gebruikt de tegeltaal van Mijn Pleya*, met de waarde onder de titel in
-   plaats van rechts uitgelijnd zoals 31 A hem tekent. De tweekolomsindeling, de volgorde en
-   de serievoorkeurenlijst met herkomst zijn ongewijzigd; alleen de rijvorm volgt het idioom
-   dat de rest van de TV-instellingen al draagt.
+4. *De linkerkolom begon in de tegeltaal van Mijn Pleya* en is teruggezet naar de rijvorm van
+   31 A toen de simulator liet zien dat zes tegels niet op één scherm passen. Zie de
+   simulatorronde hieronder.
 
-**Nog open, en dus niet als bewezen gemeld.** `pleya_verify/scenarios/tvos.settings.language-preferences.yaml`
-staat er en valideert, maar is nog niet op de tvOS-simulator gedraaid: dat vraagt een volledige
-simulatorbuild en een ingelogde sessie. Visueel bewijs is er wel, uit gerenderde
-schermafbeeldingen van de lijstvorm, de TV-vorm, de sheet en de twee toasts; hardware is de
-laatste stap en staat nog open.
+**De simulatorronde, en wat hij vond.** `pleya_verify/scenarios/tvos.settings.language-preferences.yaml`
+is vijf keer gedraaid op de tvOS-simulator en staat op `a5730f35` groen: de pagina opent vanuit de
+instellingenindex met de topbalk erboven, de zes rijen van de linkerkolom staan binnen het beeld en
+onder elkaar, de taalkiezer opent en sluit zonder de pagina te verlaten, en Menu komt terug op de
+index. De bewijsbundel draagt zes schermafbeeldingen van het echte toestel.
+
+Twee van die runs waren rood, en allebei op iets echts:
+
+1. *De linkerkolom paste niet op één scherm.* Hij stond in de tegeltaal van Mijn Pleya, en die
+   tegel is op een Apple TV ongeveer 180 punten hoog: zes ervan duwen de laatste twee onder de
+   1080-rand (`insideViewport(language_remember)`, overflow onderaan). De rij is nu de vorm die
+   31 A tekent, titel met een regel eronder en de waarde rechts, en het scenario bewaakt de eerste
+   én de laatste rij. Daarmee vervalt punt 4 hierboven: de kolom volgt de mockup, niet het
+   tegelidioom.
+2. *Menu zet de focus niet terug op de tegel waar de subpagina vandaan kwam.* De shell lost
+   `restoreFocusKey` alleen op voor een route die vanuit de Mijn Pleya-*hub* is geopend
+   (`_popTvNestedRoute` vraagt het aan `_tvMyPleya`), en een instellingen-subpagina zit daar een
+   niveau onder. Dat geldt voor Uiterlijk en Logs net zo goed als voor deze pagina. Het scenario
+   asserteert daarom wat het product vandaag belooft, met de bevinding erbij; sluiten vraagt een
+   wijziging aan het navigatiecontract, niet aan deze pagina.
+
+**Bevinding: de bestaande my-pleya-scenario's lopen vast op een verouderde hubchoreografie.**
+`tvos.my-pleya.section-settings.yaml` liep in dezelfde ronde rood op precies de stap die mijn eerste
+versie ervan overnam: twee keer omlaag en dan drie keer rechts is niet meer de weg naar Instellingen.
+De hub opent op Profiel wisselen, en twee keer omlaag ís Instellingen. Het geldt vermoedelijk voor de
+hele familie `tvos.my-pleya.section-*`; het nieuwe scenario draagt de juiste choreografie en de
+oude blijven zoals ze zijn tot iemand die serie langsloopt.
+
+**Hardware blijft de laatste stap.** De simulator bewijst de pagina, de traversal en de kiezer;
+de toasts van 31 C en 31 D zijn met widgettests bewezen en nog niet op een toestel gezien.
 
 **Bevinding naast LANG1, niet stil opgelost.** `track_language_preferences` staat in geen
 enkele regel van `preference_sync_policy.dart`, dus `policyFor` valt terug op `_unknown`
