@@ -49,10 +49,19 @@ under `Notes`.
 - Alle boeken tegen goedgekeurde golden 02
 - de filtersheet tegen goedgekeurde golden 03
 - Boeken zoeken tegen goedgekeurde golden 04
+- Boekdetail tegen goedgekeurde golden 05
+- Inhoudsopgave tegen goedgekeurde golden 06
+- Reader tegen goedgekeurde golden 07
+- Leesinstellingen tegen goedgekeurde golden 08
+- zoeken in boek, gebouwd tegen golden 09
+- de iOS-simulatordriver kan typen, en dat legde autocorrectie in het zoekveld bloot
+- de ui-boom zegt nu welk scherm getekend wordt
 
 ### Improved
 - scheidingslijnen volgen de werkelijke rijhoogte
 - één shape-contract voor CTA-knop en focusring
+- de vijf leesinstellingen-controls naar een eigen bestand
+- de filtersheet uit één bestand van 519 regels gehaald
 
 ### Fixed
 - de zijbalk kent één lijst bestemmingen, dus "nu aan het kijken" is ook bereikbaar
@@ -87,6 +96,23 @@ under `Notes`.
 - garandeer één JSON-envelope op run/validate --json, ook bij een onverwachte crash
 - verwijder set_pref/focus/back uit de scenario-vocabulaire
 - de automation-ID-generator raakt Flutter niet meer aan
+- Bibliotheken en Live TV terug in Mijn Pleya
+- Zoeken houdt ook op een tablet een ingang
+- unregister vergelijkt met ==, niet met identical
+- een verdwenen categorie komt niet ongevraagd terug
+- de blurb wordt gemeten in de letter waarin hij getekend wordt
+- tegelbudgetten volgen de tekstschaal in plaats van scale 1.0
+- Home, Series en Films krijgen elk hun eigen ids
+- /v1/open weigert wat het niet kan openen, en wacht op de push
+- de balk markeert waar een bestemming vandaan komt
+- de IndexedStack wordt geïndexeerd op zijn eigen lijst
+- twee tikken op Lees verder openen één reader
+- leesvoortgang wordt op 0..1 gehouden waar hij ontstaat
+- elk soort zoekresultaat krijgt een eigen automation-id
+- een assertie op een dubbel geregistreerde id wordt geweigerd
+- een geregistreerde route-opener die niet in _routeScreens staat wordt gevangen
+- een covertitel breekt niet meer middenin een woord, en twee koppen krijgen de chevron
+- het zoekveld corrigeert de zoekterm niet meer
 <!-- END GENERATED -->
 
 ### Fixed
