@@ -3909,21 +3909,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
           _maybeLoadMoreForInitialEpisode();
         }
         final hideSpoilers = SettingsService.instance.read(SettingsService.hideSpoilers);
-        // Deliberately the panel and not `size`. `size` is the box this screen
-        // was given, which INV-1 makes shorter than the window inside a nested
-        // route; that is right for *how much room there is* and wrong for the
-        // ten-foot scale, which is a property of the panel someone sits in
-        // front of (see `TvDisplayMetrics`).
-        //
-        // Deriving it from the box also broke a contract that used to hold by
-        // accident: `_buildTvDetailForeground` reserves the action row at
-        // `_tvDetailActionSize * scale` while `_buildActionButtons` renders it
-        // at `_tvDetailActionSize * TvLayoutConstants.scaleOf(context)`, and
-        // `_unifiedSourceLineHeight` is panel-scaled too. Box and panel agreed
-        // until SYS-1c split them, after which the reserve under-allotted by
-        // about four logical pixels and the action row and source line
-        // overflowed the foreground box into the rail below it.
-        final detailScale = TvLayoutConstants.scaleOf(context);
+        final detailScale = TvLayoutConstants.scaleForSize(size);
         final spotlightTop = (size.height * 0.08).clamp(44.0 * detailScale, 110.0 * detailScale).toDouble();
         final rawRailHeight = _estimateTvDetailRailHeight(size, detailHubs);
         if (!_tvDetailRevealed && _isTvDetailReadyToReveal(metadata)) {
@@ -4056,7 +4042,16 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         final summaryGap = 6 * scale;
         final summaryFontSize = availableHeight < 260 * scale ? 16.2 * scale : 18 * scale;
         final summaryLineHeight = summaryFontSize * 1.35;
-        final actionHeight = _tvDetailActionSize * scale;
+        // The panel scale, not `scale`, and that difference is the whole point.
+        // Everything else in this function is reserved and drawn with the same
+        // `scale`, so it agrees with itself. The action row is not: it is drawn
+        // by `_buildActionButtons` at `_tvDetailActionSize *
+        // TvLayoutConstants.scaleOf(context)`, which `TvDisplayMetrics` pins to
+        // the panel. Box and panel were the same number until SYS-1c split them,
+        // after which this reserve came up about four logical pixels short and
+        // the action row and the source line below it overflowed the foreground
+        // box into the rail.
+        final actionHeight = _tvDetailActionSize * TvLayoutConstants.scaleOf(context);
         final actionGap = 12 * scale;
         final sourceLineHeight = _unifiedSourceLineHeight(context);
         final hasDescription = description != null && description.isNotEmpty;
