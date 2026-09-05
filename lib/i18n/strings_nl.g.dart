@@ -2106,6 +2106,7 @@ class _TranslationsSourcePickerNl extends TranslationsSourcePickerEn {
 	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Bron ${index} van ${count}: ${description}';
 	@override String get preferredServer => 'Voorkeursserver';
 	@override String setPreferredServer({required Object server}) => 'Altijd ${server} gebruiken';
+	@override String playOnServer({required Object server}) => 'Afspelen op ${server}';
 }
 
 // Path: unifiedCatalog
@@ -4356,6 +4357,7 @@ extension on TranslationsNl {
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Bron ${index} van ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Voorkeursserver',
 			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Altijd ${server} gebruiken',
+			'sourcePicker.playOnServer' => ({required Object server}) => 'Afspelen op ${server}',
 			'unifiedCatalog.moviesTitle' => 'Films',
 			'unifiedCatalog.seriesTitle' => 'Series',
 			'unifiedCatalog.sources' => ({required Object count}) => '${count} bronnen',

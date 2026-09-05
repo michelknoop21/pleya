@@ -5290,6 +5290,9 @@ class TranslationsSourcePickerEn {
 
 	/// en: 'Always use ${server}'
 	String setPreferredServer({required Object server}) => 'Always use ${server}';
+
+	/// en: 'Play on ${server}'
+	String playOnServer({required Object server}) => 'Play on ${server}';
 }
 
 // Path: unifiedCatalog
@@ -8155,6 +8158,7 @@ extension on Translations {
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Source ${index} of ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Preferred server',
 			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Always use ${server}',
+			'sourcePicker.playOnServer' => ({required Object server}) => 'Play on ${server}',
 			'unifiedCatalog.moviesTitle' => 'Movies',
 			'unifiedCatalog.seriesTitle' => 'Series',
 			'unifiedCatalog.sources' => ({required Object count}) => '${count} sources',

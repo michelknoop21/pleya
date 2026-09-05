@@ -227,7 +227,10 @@ class _SourceRow extends StatelessWidget {
                 ),
                 if (onTap != null) ...[
                   const SizedBox(width: 8),
-                  FilledButton(onPressed: onTap, child: Text('${t.common.play} on ${descriptor.serverName}')),
+                  FilledButton(
+                    onPressed: onTap,
+                    child: Text(t.sourcePicker.playOnServer(server: descriptor.serverName)),
+                  ),
                 ],
               ],
             ),

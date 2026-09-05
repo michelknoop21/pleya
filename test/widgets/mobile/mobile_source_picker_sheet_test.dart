@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
@@ -23,6 +24,7 @@ void main() {
     resetSharedPreferencesForTest();
     SettingsService.resetForTesting();
     await SettingsService.getInstance();
+    LocaleSettings.setLocaleSync(AppLocale.en);
   });
 
   MediaItem item(String id, {String serverId = 'nas', MediaBackend backend = MediaBackend.plex}) => MediaItem(
@@ -89,6 +91,27 @@ void main() {
 
     await tester.tap(find.text('Play on attic'));
     expect(chosen?.sourceKey, 'attic:i2');
+  });
+
+  testWidgets('the play-on-server label runs through i18n, not a hardcoded English string', (tester) async {
+    // nl is a deferred library (slang lazy loading): loading it for real
+    // needs the real event loop, not testWidgets' fake-async zone.
+    await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.nl));
+    addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+
+    final sources = [UnifiedMediaSource.fromItem(item('i1', serverId: 'nas'), availability: SourceAvailability.online)];
+    await pump(
+      tester,
+      MobileSourcePickerSheet(
+        representative: sources.first.item,
+        sources: sources,
+        coverage: SourceCoverageState.complete({'nas'}),
+        onChosen: (_) {},
+      ),
+    );
+
+    expect(find.text('Afspelen op nas'), findsOneWidget);
+    expect(find.text('Play on nas'), findsNothing);
   });
 
   testWidgets('an offline row cannot be chosen at all', (tester) async {
