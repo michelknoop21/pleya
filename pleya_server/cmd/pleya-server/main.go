@@ -29,6 +29,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/mounts"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
+	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/watch"
 )
 
@@ -195,6 +196,23 @@ func run() int {
 		enqueueScans(ctx, runner, libs, "startup", logging.Component(log, "scanner"))
 	}
 
+	// De beheerbare instellingen (S1.2). De omgeving is de onderste laag en de
+	// tabel legt er de opgeslagen sleutels overheen; lukt dat lezen niet, dan
+	// start de server op de omgeving en zegt hij dat. Weigeren te starten zou
+	// een beheerder buitensluiten uit precies het scherm waarmee hij het had
+	// kunnen rechtzetten.
+	settingsCache := settings.NewCache(settings.Base{
+		ServerName:        cfg.ServerName,
+		AccessTokenTTL:    cfg.AccessTokenTTL,
+		RefreshTokenTTL:   cfg.RefreshTokenTTL,
+		StreamTokenTTL:    cfg.StreamTokenTTL,
+		StreamSessionTTL:  cfg.StreamSessionTTL,
+		MaxStreamSessions: auth.MaxActiveStreamSessions,
+	}, settings.NewStore(pool), logging.Component(log, "settings"))
+	if err := settingsCache.Reload(ctx); err != nil {
+		startup.Warn("instellingen lezen mislukt, de omgeving blijft gelden", slog.String("error", err.Error()))
+	}
+
 	apiServer := api.New(api.Options{
 		Catalog:            catalogStore,
 		Auth:               authStore,
@@ -214,6 +232,7 @@ func run() int {
 		StreamSessionTTL:   cfg.StreamSessionTTL,
 		WatchLease:         cfg.WatchLease,
 		Revocations:        revocations,
+		Settings:           settingsCache,
 	})
 
 	srv := httpserver.New(httpserver.Options{

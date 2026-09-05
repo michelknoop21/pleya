@@ -47,6 +47,10 @@ void main() {
     'LibraryPermissionList',
     'Session',
     'SessionList',
+    // S1.2 adds the server settings surface. Same reasoning as the eight
+    // above: the screen that reads it is the web admin (S10), and the Flutter
+    // app has no settings-of-the-server page in this slice.
+    'Settings',
   };
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
@@ -92,8 +96,8 @@ void main() {
       );
     });
 
-    test('covers the 48 fixtures the contract ships', () {
-      expect(fixtures, hasLength(48));
+    test('covers the 49 fixtures the contract ships', () {
+      expect(fixtures, hasLength(49));
     });
 
     for (final fixture in fixtures) {

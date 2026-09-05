@@ -63,7 +63,7 @@ verandert.
 
 ## Wat het schema draagt
 
-Dertien tabellen, in vijf migraties.
+Achttien tabellen, in acht migraties.
 
 | Groep | Tabellen | Waarvoor |
 | --- | --- | --- |
@@ -72,6 +72,8 @@ Dertien tabellen, in vijf migraties.
 | Werk | `jobs`, `scan_runs` | duurzame jobs en meetbare scanvoortgang |
 | Kijkstatus | `watch_states` | het conflictmodel uit DEC-049, met de eigenaar in de rij |
 | Streamsessies | `stream_sessions` | de browserkant van autorisatie uit DEC-051 |
+| Gebruikers en rechten | `users`, `sessions`, `library_permissions` | vier rollen en de sessieketen uit PS-9 (DEC-098, DEC-102) |
+| Beheer | `server_settings`, `admin_audit` | instellingen met een grens (S1.2); `admin_audit` staat er en wordt gevuld door S1.5 |
 
 Drie keuzes die uitleg verdienen, en die als [DEC-040](../docs/DECISIONS.md#dec-040-grouping-key-en-identiteit-zijn-twee-dingen-in-het-catalogusschema)
 tot en met [DEC-043](../docs/DECISIONS.md#dec-043-de-inodebetrouwbaarheid-staat-per-root-in-de-database-en-wordt-gemeten-en-niet-aangenomen)
@@ -100,16 +102,16 @@ anders uitpakt.
 subject en één versie, en de server bewaart het geheim niet: er staat een SHA-256 van, net als bij
 een refreshtoken, zodat een databasedump geen speelbare sessies oplevert.
 
-Wat er níét in staat: geen `users`, geen `sessions`, geen `library_permissions`, geen `play_history`,
-geen `play_sessions`, geen `user_item_data`, geen `external_ids`, geen `metadata_candidates`, geen
-`transcode_sessions`. De tabellenlijst in hoofdstuk 17.2 beschrijft het hele v1-product en niet deze
+Wat er níét in staat: geen `play_history`, geen `play_sessions`, geen `user_item_data`, geen
+`external_ids`, geen `metadata_candidates`, geen `transcode_sessions`. De tabellenlijst in hoofdstuk 17.2 beschrijft het hele v1-product en niet deze
 fase. `play_history` is de opvallendste van de lijst: het masterplan wilde er geweigerde
 kijkstatusevents in schrijven, en die tabel hoort bij PS-9P. PS-4 mag daar niet van afhangen, dus
 een geweigerd event wordt beantwoord met de actuele toestand en gelogd, en verder niet bewaard.
 
 ## Wat er op de lijn zit
 
-Achttien operaties op zeventien paden, en dat is het hele protocoloppervlak van v1.
+Achtentwintig operaties op vierentwintig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
+daarna PS-9, en de laatste twee de serverinstellingen van S1.2.
 
 | Endpoint | Klasse |
 | --- | --- |
@@ -125,16 +127,21 @@ Achttien operaties op zeventien paden, en dat is het hele protocoloppervlak van 
 | `POST /pleya/v1/auth/stream-session` | geauthenticeerd |
 | `GET /pleya/v1/stream/{version_id}` | geauthenticeerd, met een streamtoken, of met een streamsessie |
 | `POST /pleya/v1/watch-state`, `GET /pleya/v1/watch-state` | geauthenticeerd |
+| `POST /pleya/v1/users`, `PATCH`/`DELETE /users/{id}`, `PUT /users/{id}/permissions` | admin |
+| `GET /pleya/v1/users` | geauthenticeerd, gefilterd op rol |
+| `POST /pleya/v1/auth/logout`, `GET /pleya/v1/sessions`, `DELETE /pleya/v1/sessions/{id}` | geauthenticeerd op de eigen sessies, admin op elke |
+| `GET /pleya/v1/settings`, `PATCH /pleya/v1/settings` | admin |
 
 Buiten het protocol staat er nog één route: `GET /` en elk pad dat geen bestand en geen protocolroute is levert
 `index.html` van de webbundel. `/pleya/v1/*`, `/healthz` en `/readyz` houden altijd voorrang, en een
 onbekend pad onder `/pleya/v1` krijgt de foutvorm van het protocol en geen pagina HTML.
 `internal/web` en `internal/api/web_routes_test.go` toetsen dat.
 
-Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), gebruikers (PS-9),
-verzamelingen en afspeellijsten (PS-9C) en beheer (PS-11A). Die geven een 404, en `capabilities` in
-`/info` zegt hetzelfde: alleen `browse`, `search`, `artwork`, `watch_state`,
-`watch_state_ownership` en `stream_sessions` staan op `true`, en capabilities is leidend.
+Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), verzamelingen en
+afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer (PS-11A). Die geven een 404, en
+`capabilities` in `/info` zegt hetzelfde: `browse`, `search`, `artwork`, `watch_state`,
+`watch_state_ownership`, `stream_sessions`, `users` en `sessions` staan op `true`, en capabilities is
+leidend. `administration` staat er nog niet bij: die vlag hoort bij S1.6, wanneer venster 1 sluit.
 
 Drie dingen aan `/stream` verrassen als je ze niet verwacht. Eén bereik per aanvraag levert een
 `206`; **meerdere bereiken leveren het hele bestand als `200`**, want `multipart/byteranges` wordt
@@ -321,6 +328,42 @@ krijgt ze haar eigen tokenpaar, haar eigen sessie en haar eigen kijkstatus.
 Een `restricted`-gebruiker is een `member` met drie verschillen: hij kan nooit `manage` krijgen, hij
 zet zijn eigen wachtwoord niet (alleen owner en admin doen dat), en hij ziet in `GET /users` alleen
 zichzelf. Dat is het Plex Home-kinderprofiel.
+
+### Serverinstellingen wijzigen
+
+Een deel van de `.env` is sinds S1.2 ook over de API te wijzigen, door `owner` en `admin`. De
+omgeving blijft de onderste laag: een instelling die niemand heeft gewijzigd komt uit `.env` (of uit
+de default) en draagt `source: env`. Wie iets opslaat krijgt `source: db`, en dat wint tot hij
+teruggezet wordt.
+
+```sh
+A=<access_token van owner of admin>
+B=http://127.0.0.1:8832/pleya/v1
+
+# Wat er nu geldt, met per sleutel de laag die hem levert.
+curl -s -H "Authorization: Bearer $A" $B/settings
+
+# Wijzigen. De body is gesloten: een onbekende sleutel geeft 400.
+curl -s -X PATCH -H "Authorization: Bearer $A" -H 'Content-Type: application/json' \
+  -d '{"server_name":"Zolder","access_token_ttl":"30m"}' $B/settings
+```
+
+| Sleutel | Vorm | Grens |
+| --- | --- | --- |
+| `server_name` | tekst | 1 tot 64 tekens |
+| `access_token_ttl` | duur | `1m` tot `60m` |
+| `refresh_token_ttl` | duur | `24h` tot `2160h` |
+| `stream_token_ttl` | duur | `1m` tot `15m` |
+| `stream_session_ttl` | duur | `5m` tot `120m` |
+| `max_stream_sessions` | geheel getal | 1 tot 32 |
+
+Een wijziging geldt vanaf het eerstvolgende verzoek, zonder herstart: het eerstvolgende token draagt
+de nieuwe TTL. Een waarde buiten de grens geeft `400` met `settings.invalid_value`, het veld en de
+grens erbij, en wijzigt niets, ook niet aan de sleutels die in dezelfde aanvraag wel klopten.
+
+Wat hier niet tussen staat is bewust: het bindadres, de vertrouwde proxy's, de schrijfbare paden en
+de ondertekensleutel blijven `.env` en containerconfiguratie. Wie het bindadres over de API kan
+zetten kan de server van het netwerk halen of hem juist openzetten.
 
 De voortgang van een lopende scan staat in `scan_runs` en in de logregels `scan gestart` en
 `scan klaar`. Er is bewust geen endpoint voor: realtime is PS-11, en een trage NAS die lijkt te hangen

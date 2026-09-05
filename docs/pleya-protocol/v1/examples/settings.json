@@ -1,0 +1,26 @@
+{
+  "server_name": {
+    "value": "Zolder",
+    "source": "db"
+  },
+  "access_token_ttl": {
+    "value": "15m",
+    "source": "env"
+  },
+  "refresh_token_ttl": {
+    "value": "720h",
+    "source": "env"
+  },
+  "stream_token_ttl": {
+    "value": "5m",
+    "source": "env"
+  },
+  "stream_session_ttl": {
+    "value": "30m",
+    "source": "db"
+  },
+  "max_stream_sessions": {
+    "value": 8,
+    "source": "env"
+  }
+}

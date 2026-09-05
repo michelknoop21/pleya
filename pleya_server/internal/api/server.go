@@ -13,6 +13,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/watch"
 	"github.com/edde746/plezy/pleya_server/internal/web"
 )
@@ -30,12 +31,25 @@ type Options struct {
 	Version   string
 	StartedAt time.Time
 
+	// De TTL's uit de omgeving. Ze zijn de onderste laag: Settings hieronder
+	// legt er de opgeslagen waarden overheen, en de handlers lezen die set en
+	// niet deze velden. Wat hier staat blijft dus gelden zolang een beheerder
+	// niets heeft gewijzigd.
 	AccessTokenTTL     time.Duration
 	RefreshTokenTTL    time.Duration
 	RefreshGraceWindow time.Duration
 	StreamTokenTTL     time.Duration
 	SetupCodeTTL       time.Duration
 	StreamSessionTTL   time.Duration
+
+	// MaxStreamSessions is de bovengrens per gebruiker (DEC-051). Nul betekent
+	// de vaste waarde uit het auth-pakket.
+	MaxStreamSessions int
+
+	// Settings is de beheerbare set (S1.2). Nil is toegestaan en betekent
+	// "alleen de omgeving": New bouwt er dan zelf een uit de velden hierboven,
+	// zodat elke handler één weg heeft naar een waarde in plaats van twee.
+	Settings *settings.Cache
 
 	// WatchLease is het schrijfrecht uit DEC-049 regel 4: tweemaal het
 	// rapportage-interval, met een ondergrens van 90 s die het watch-pakket zelf
@@ -66,6 +80,19 @@ func New(opts Options) *Server {
 	if opts.Argon2 == (auth.Argon2Params{}) {
 		opts.Argon2 = auth.DefaultArgon2Params
 	}
+	if opts.MaxStreamSessions == 0 {
+		opts.MaxStreamSessions = auth.MaxActiveStreamSessions
+	}
+	if opts.Settings == nil {
+		opts.Settings = settings.NewCache(settings.Base{
+			ServerName:        opts.Name,
+			AccessTokenTTL:    opts.AccessTokenTTL,
+			RefreshTokenTTL:   opts.RefreshTokenTTL,
+			StreamTokenTTL:    opts.StreamTokenTTL,
+			StreamSessionTTL:  opts.StreamSessionTTL,
+			MaxStreamSessions: opts.MaxStreamSessions,
+		}, nil, opts.Logger)
+	}
 	if opts.Revocations == nil {
 		// Een leeg register in plaats van nil: de aanvraagpaden hoeven dan geen
 		// nil-geval te kennen, en een server zonder expliciet register gedraagt
@@ -85,6 +112,14 @@ func New(opts Options) *Server {
 
 // SetClock laat een test de tijd bepalen.
 func (s *Server) SetClock(now func() time.Time) { s.now = now }
+
+// settings geeft de set die op dit moment geldt.
+//
+// Elke lezer haalt hem per aanvraag op en houdt hem niet vast: dat is wat hot
+// reload betekent. Een handler die de waarde bij het opstarten in een veld zou
+// zetten laat een geslaagde PATCH pas na een herstart gelden, en dan toont het
+// beheerscherm een instelling die niet draait.
+func (s *Server) settings() settings.Values { return s.opts.Settings.Current() }
 
 func (s *Server) routes() {
 	const p = "/pleya/v1"
@@ -123,6 +158,12 @@ func (s *Server) routes() {
 	s.mux.Handle("PATCH "+p+"/users/{id}", s.authenticated(s.handleUpdateUser))
 	s.mux.Handle("DELETE "+p+"/users/{id}", s.authenticated(s.handleDeleteUser))
 	s.mux.Handle("PUT "+p+"/users/{id}/permissions", s.authenticated(s.handleSetPermissions))
+
+	// Serverinstellingen (S1.2, J.2 rij 2). Klasse admin, en net als bij
+	// gebruikersbeheer staat die klasse in de handler: requireAdmin schrijft de
+	// 404 die een niet-beheerder hoort te zien.
+	s.mux.Handle("GET "+p+"/settings", s.authenticated(s.handleGetSettings))
+	s.mux.Handle("PATCH "+p+"/settings", s.authenticated(s.handlePatchSettings))
 
 	// Sessies (DEC-103, stap 6). logout staat bij auth omdat hij over de eigen
 	// sessie gaat; de twee endpoints eronder gaan over sessies als resource.
@@ -387,7 +428,7 @@ func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawS
 
 	// Verlengen raakt uitsluitend deze sessie. Dat is de reden dat het model
 	// werkt: twee gelijktijdige streams roteren onafhankelijk.
-	if _, err := s.opts.Auth.TouchStreamSession(r.Context(), sessionID, s.opts.StreamSessionTTL, now); err != nil {
+	if _, err := s.opts.Auth.TouchStreamSession(r.Context(), sessionID, s.settings().StreamSessionTTL(), now); err != nil {
 		s.log.Warn("streamsessie verlengen mislukt", "error", err.Error())
 	}
 	return &versionID, authSid, true

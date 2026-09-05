@@ -1,53 +1,229 @@
 {
   "comment": "Koppelt elke fixture aan het schema waar hij tegen valideert. Gelezen door scripts/check_protocol.sh, en later door de contracttests aan Go- en Dart-zijde, zodat beide kanten tegen exact dezelfde verzameling toetsen.",
   "fixtures": [
-    { "file": "info.json", "schema": "Info", "note": "server met een eigenaar" },
-    { "file": "info_setup_required.json", "schema": "Info", "note": "eerste start, nog geen eigenaar" },
-    { "file": "info_ps4.json", "schema": "Info", "note": "PS-4: kijkstatus met eigendom, en streamsessies" },
-    { "file": "info_ps9.json", "schema": "Info", "note": "PS-9: users en sessions aan" },
-    { "file": "server_detail.json", "schema": "ServerDetail" },
-    { "file": "token_pair.json", "schema": "TokenPair" },
-    { "file": "stream_token.json", "schema": "StreamToken" },
-    { "file": "stream_session.json", "schema": "StreamSession", "note": "de id is niet geheim; het geheim zit in de cookie" },
-    { "file": "libraries.json", "schema": "LibraryList" },
-    { "file": "item_movie.json", "schema": "Item", "note": "film met een externe en een ingebedde ondertitel" },
-    { "file": "item_movie_with_edition.json", "schema": "Item", "note": "drie snedes, waarvan een uit twee bestanden" },
-    { "file": "item_show.json", "schema": "Item", "note": "serie met episode_count en watched_episode_count" },
-    { "file": "item_episode.json", "schema": "Item", "note": "aflevering met parent_id en index" },
-    { "file": "library_items_page.json", "schema": "ItemPage", "note": "met vervolgcursor" },
-    { "file": "library_items_last_page.json", "schema": "ItemPage", "note": "next_cursor is null" },
-    { "file": "children_episodes.json", "schema": "ItemPage" },
-    { "file": "search_results.json", "schema": "ItemPage", "note": "soorten door elkaar, geen groepering" },
-    { "file": "search_empty.json", "schema": "ItemPage", "note": "geen treffers is een lege lijst" },
-    { "file": "hub_recently_added.json", "schema": "ItemPage" },
-    { "file": "hub_continue_watching_empty.json", "schema": "ItemPage", "note": "server zonder kijkstatus" },
-    { "file": "user_state.json", "schema": "UserState" },
-    { "file": "user_state_owned.json", "schema": "UserState", "note": "met revision en het eigendom van deze sessie" },
-    { "file": "watch_state_event_progress.json", "schema": "WatchStateEvent", "note": "passieve voortgang" },
-    { "file": "watch_state_event_restart.json", "schema": "WatchStateEvent", "note": "expliciete handeling" },
-    { "file": "watch_state_event_playback_started.json", "schema": "WatchStateEvent", "note": "eigendom verwerven, cause user_started" },
-    { "file": "watch_state_event_reclaim.json", "schema": "WatchStateEvent", "note": "heroveren na een verlopen lease" },
-    { "file": "watch_state_event_backlog.json", "schema": "WatchStateEvent", "note": "offline wachtrij, verwerft nooit" },
-    { "file": "watch_state_page.json", "schema": "WatchStatePage" },
-    { "file": "error_not_found.json", "schema": "ErrorEnvelope" },
-    { "file": "error_version_multifile.json", "schema": "ErrorEnvelope" },
-    { "file": "error_rate_limited.json", "schema": "ErrorEnvelope", "note": "retryable is true bij een 429" },
-    { "file": "error_range_not_satisfiable.json", "schema": "ErrorEnvelope" },
-    { "file": "error_stream_session_limit.json", "schema": "ErrorEnvelope", "note": "de negende actieve streamsessie wordt geweigerd" },
-    { "file": "user_owner.json", "schema": "User", "note": "de owner" },
-    { "file": "user_member.json", "schema": "User" },
-    { "file": "user_list.json", "schema": "UserList" },
-    { "file": "create_user_request.json", "schema": "CreateUserRequest" },
-    { "file": "update_user_request.json", "schema": "UpdateUserRequest", "note": "alleen role, password weggelaten" },
-    { "file": "permissions_request.json", "schema": "PermissionsRequest" },
-    { "file": "library_permission_list.json", "schema": "LibraryPermissionList" },
-    { "file": "session.json", "schema": "Session" },
-    { "file": "session_list.json", "schema": "SessionList", "note": "een device-gebonden sessie naast een legacy-sessie" },
-    { "file": "error_user_not_found.json", "schema": "ErrorEnvelope" },
-    { "file": "error_session_not_found.json", "schema": "ErrorEnvelope" },
-    { "file": "error_owner_immutable.json", "schema": "ErrorEnvelope" },
-    { "file": "error_username_taken.json", "schema": "ErrorEnvelope" },
-    { "file": "error_server_internal.json", "schema": "ErrorEnvelope", "note": "venster 1: het domein server, met de request-id uit de recovery-laag" },
-    { "file": "error_settings_invalid_value.json", "schema": "ErrorEnvelope", "note": "venster 1: het domein settings, met veld en grens in details" }
+    {
+      "file": "info.json",
+      "schema": "Info",
+      "note": "server met een eigenaar"
+    },
+    {
+      "file": "info_setup_required.json",
+      "schema": "Info",
+      "note": "eerste start, nog geen eigenaar"
+    },
+    {
+      "file": "info_ps4.json",
+      "schema": "Info",
+      "note": "PS-4: kijkstatus met eigendom, en streamsessies"
+    },
+    {
+      "file": "info_ps9.json",
+      "schema": "Info",
+      "note": "PS-9: users en sessions aan"
+    },
+    {
+      "file": "server_detail.json",
+      "schema": "ServerDetail"
+    },
+    {
+      "file": "token_pair.json",
+      "schema": "TokenPair"
+    },
+    {
+      "file": "stream_token.json",
+      "schema": "StreamToken"
+    },
+    {
+      "file": "stream_session.json",
+      "schema": "StreamSession",
+      "note": "de id is niet geheim; het geheim zit in de cookie"
+    },
+    {
+      "file": "libraries.json",
+      "schema": "LibraryList"
+    },
+    {
+      "file": "item_movie.json",
+      "schema": "Item",
+      "note": "film met een externe en een ingebedde ondertitel"
+    },
+    {
+      "file": "item_movie_with_edition.json",
+      "schema": "Item",
+      "note": "drie snedes, waarvan een uit twee bestanden"
+    },
+    {
+      "file": "item_show.json",
+      "schema": "Item",
+      "note": "serie met episode_count en watched_episode_count"
+    },
+    {
+      "file": "item_episode.json",
+      "schema": "Item",
+      "note": "aflevering met parent_id en index"
+    },
+    {
+      "file": "library_items_page.json",
+      "schema": "ItemPage",
+      "note": "met vervolgcursor"
+    },
+    {
+      "file": "library_items_last_page.json",
+      "schema": "ItemPage",
+      "note": "next_cursor is null"
+    },
+    {
+      "file": "children_episodes.json",
+      "schema": "ItemPage"
+    },
+    {
+      "file": "search_results.json",
+      "schema": "ItemPage",
+      "note": "soorten door elkaar, geen groepering"
+    },
+    {
+      "file": "search_empty.json",
+      "schema": "ItemPage",
+      "note": "geen treffers is een lege lijst"
+    },
+    {
+      "file": "hub_recently_added.json",
+      "schema": "ItemPage"
+    },
+    {
+      "file": "hub_continue_watching_empty.json",
+      "schema": "ItemPage",
+      "note": "server zonder kijkstatus"
+    },
+    {
+      "file": "user_state.json",
+      "schema": "UserState"
+    },
+    {
+      "file": "user_state_owned.json",
+      "schema": "UserState",
+      "note": "met revision en het eigendom van deze sessie"
+    },
+    {
+      "file": "watch_state_event_progress.json",
+      "schema": "WatchStateEvent",
+      "note": "passieve voortgang"
+    },
+    {
+      "file": "watch_state_event_restart.json",
+      "schema": "WatchStateEvent",
+      "note": "expliciete handeling"
+    },
+    {
+      "file": "watch_state_event_playback_started.json",
+      "schema": "WatchStateEvent",
+      "note": "eigendom verwerven, cause user_started"
+    },
+    {
+      "file": "watch_state_event_reclaim.json",
+      "schema": "WatchStateEvent",
+      "note": "heroveren na een verlopen lease"
+    },
+    {
+      "file": "watch_state_event_backlog.json",
+      "schema": "WatchStateEvent",
+      "note": "offline wachtrij, verwerft nooit"
+    },
+    {
+      "file": "watch_state_page.json",
+      "schema": "WatchStatePage"
+    },
+    {
+      "file": "error_not_found.json",
+      "schema": "ErrorEnvelope"
+    },
+    {
+      "file": "error_version_multifile.json",
+      "schema": "ErrorEnvelope"
+    },
+    {
+      "file": "error_rate_limited.json",
+      "schema": "ErrorEnvelope",
+      "note": "retryable is true bij een 429"
+    },
+    {
+      "file": "error_range_not_satisfiable.json",
+      "schema": "ErrorEnvelope"
+    },
+    {
+      "file": "error_stream_session_limit.json",
+      "schema": "ErrorEnvelope",
+      "note": "de negende actieve streamsessie wordt geweigerd"
+    },
+    {
+      "file": "user_owner.json",
+      "schema": "User",
+      "note": "de owner"
+    },
+    {
+      "file": "user_member.json",
+      "schema": "User"
+    },
+    {
+      "file": "user_list.json",
+      "schema": "UserList"
+    },
+    {
+      "file": "create_user_request.json",
+      "schema": "CreateUserRequest"
+    },
+    {
+      "file": "update_user_request.json",
+      "schema": "UpdateUserRequest",
+      "note": "alleen role, password weggelaten"
+    },
+    {
+      "file": "permissions_request.json",
+      "schema": "PermissionsRequest"
+    },
+    {
+      "file": "library_permission_list.json",
+      "schema": "LibraryPermissionList"
+    },
+    {
+      "file": "session.json",
+      "schema": "Session"
+    },
+    {
+      "file": "session_list.json",
+      "schema": "SessionList",
+      "note": "een device-gebonden sessie naast een legacy-sessie"
+    },
+    {
+      "file": "error_user_not_found.json",
+      "schema": "ErrorEnvelope"
+    },
+    {
+      "file": "error_session_not_found.json",
+      "schema": "ErrorEnvelope"
+    },
+    {
+      "file": "error_owner_immutable.json",
+      "schema": "ErrorEnvelope"
+    },
+    {
+      "file": "error_username_taken.json",
+      "schema": "ErrorEnvelope"
+    },
+    {
+      "file": "error_server_internal.json",
+      "schema": "ErrorEnvelope",
+      "note": "venster 1: het domein server, met de request-id uit de recovery-laag"
+    },
+    {
+      "file": "error_settings_invalid_value.json",
+      "schema": "ErrorEnvelope",
+      "note": "venster 1: het domein settings, met veld en grens in details"
+    },
+    {
+      "file": "settings.json",
+      "schema": "Settings",
+      "note": "twee sleutels uit de database, de rest uit de omgeving"
+    }
   ]
 }

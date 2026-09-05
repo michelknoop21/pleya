@@ -21,6 +21,11 @@ import (
 // browsers begrenzen het aantal cookies per domein, en een lek van sessies zou
 // die grens opsouperen. Hem afdwingen door te evicten zou iemand midden in een
 // film afbreken, en dat is erger dan een geweigerde negende stream.
+//
+// Sinds S1.2 is dit de default en niet meer de enige waarde: een beheerder mag
+// hem binnen 1 tot 32 zetten (K rij 14). De grens komt daarom als parameter
+// mee met CreateStreamSession, want een pakketconstante is niet te wijzigen
+// zonder herstart en dat is precies wat hot reload niet mag vragen.
 const MaxActiveStreamSessions = 8
 
 // StreamCookiePrefix staat vóór de sessie-id in de cookienaam.
@@ -61,7 +66,7 @@ func (s StreamSession) CookieName() string { return StreamCookiePrefix + s.ID.St
 // pas tellen: anders weigert de server de negende terwijl er drie dood in de
 // tabel staan. Beide stappen zitten in dezelfde transactie, zodat twee
 // tabbladen die tegelijk beginnen niet allebei op zeven uitkomen.
-func (s *Store) CreateStreamSession(ctx context.Context, subject id.ID, sid id.ID, versionID id.ID, ttl time.Duration, now time.Time) (StreamSession, error) {
+func (s *Store) CreateStreamSession(ctx context.Context, subject id.ID, sid id.ID, versionID id.ID, ttl time.Duration, maxActive int, now time.Time) (StreamSession, error) {
 	var out StreamSession
 
 	raw := make([]byte, 32)
@@ -88,7 +93,10 @@ func (s *Store) CreateStreamSession(ctx context.Context, subject id.ID, sid id.I
 		subject, now).Scan(&active); err != nil {
 		return out, err
 	}
-	if active >= MaxActiveStreamSessions {
+	if maxActive <= 0 {
+		maxActive = MaxActiveStreamSessions
+	}
+	if active >= maxActive {
 		return out, fmt.Errorf("%w: %d actief", ErrStreamSessionLimit, active)
 	}
 

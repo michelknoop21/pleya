@@ -82,7 +82,7 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleServer(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, ServerDetail{
 		ID:        s.opts.ServerID.String(),
-		Name:      s.opts.Name,
+		Name:      s.settings().ServerName(),
 		Version:   s.opts.Version,
 		StartedAt: formatTime(s.opts.StartedAt),
 	})
@@ -240,7 +240,7 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 
 	now := s.now().UTC()
 	outcome, sid, subjectID, err := s.opts.Auth.RotateRefreshToken(r.Context(),
-		auth.HashOpaque(req.RefreshToken), newHash, now.Add(s.opts.RefreshTokenTTL), now,
+		auth.HashOpaque(req.RefreshToken), newHash, now.Add(s.settings().RefreshTokenTTL()), now,
 		s.opts.RefreshGraceWindow)
 	if err != nil {
 		writeInternal(w, s.log, err)
@@ -276,7 +276,7 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		s.log.Warn("last_seen_at bijwerken mislukt", "error", err.Error())
 	}
 
-	access, claims, err := s.opts.Signer.Mint(subjectID.String(), sid.String(), auth.TokenAccess, s.opts.AccessTokenTTL, "")
+	access, claims, err := s.opts.Signer.Mint(subjectID.String(), sid.String(), auth.TokenAccess, s.settings().AccessTokenTTL(), "")
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
@@ -315,7 +315,7 @@ func (s *Server) handleStreamToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, claims, err := s.opts.Signer.Mint(subject.String(), sid.String(), auth.TokenStream, s.opts.StreamTokenTTL, versionID.String())
+	token, claims, err := s.opts.Signer.Mint(subject.String(), sid.String(), auth.TokenStream, s.settings().StreamTokenTTL(), versionID.String())
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
@@ -359,12 +359,12 @@ func (s *Server) handleStreamSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := s.now().UTC()
-	session, err := s.opts.Auth.CreateStreamSession(r.Context(), subject, sid, versionID, s.opts.StreamSessionTTL, now)
+	session, err := s.opts.Auth.CreateStreamSession(r.Context(), subject, sid, versionID, s.settings().StreamSessionTTL(), s.settings().MaxStreamSessions(), now)
 	if err != nil {
 		if errors.Is(err, auth.ErrStreamSessionLimit) {
 			active, _ := s.opts.Auth.ActiveStreamSessions(r.Context(), subject, now)
 			writeError(w, s.log, CodeStreamSessionLimit, "too many active stream sessions",
-				map[string]any{"active": active, "limit": auth.MaxActiveStreamSessions})
+				map[string]any{"active": active, "limit": s.settings().MaxStreamSessions()})
 			return
 		}
 		writeInternal(w, s.log, err)
@@ -385,7 +385,7 @@ func (s *Server) handleStreamSession(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		Expires:  session.ExpiresAt,
-		MaxAge:   int(s.opts.StreamSessionTTL.Seconds()),
+		MaxAge:   int(s.settings().StreamSessionTTL().Seconds()),
 	})
 
 	writeJSON(w, http.StatusOK, StreamSession{
@@ -405,7 +405,7 @@ func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.I
 		return
 	}
 
-	access, claims, err := s.opts.Signer.Mint(userID.String(), sessionID.String(), auth.TokenAccess, s.opts.AccessTokenTTL, "")
+	access, claims, err := s.opts.Signer.Mint(userID.String(), sessionID.String(), auth.TokenAccess, s.settings().AccessTokenTTL(), "")
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
@@ -416,7 +416,7 @@ func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.I
 		writeInternal(w, s.log, err)
 		return
 	}
-	if err := s.opts.Auth.StoreRefreshToken(r.Context(), hash, sessionID, now.Add(s.opts.RefreshTokenTTL)); err != nil {
+	if err := s.opts.Auth.StoreRefreshToken(r.Context(), hash, sessionID, now.Add(s.settings().RefreshTokenTTL())); err != nil {
 		writeInternal(w, s.log, err)
 		return
 	}

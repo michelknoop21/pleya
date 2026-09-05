@@ -1046,7 +1046,9 @@ Een poging om de owner te degraderen geeft `auth.owner_immutable`.
 
 ### 16.4 De autorisatiematrix
 
-Vijftien regels, elk met minstens één test tegen een gebruiker zonder recht:
+Zestien regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien zijn
+de bindende matrix van DEC-105; elke slice die daarna een endpoint toevoegt zet zijn eigen regel
+erbij en sluit niet zonder (K.3 van het securityplan).
 
 | # | Endpoint | Lekvector | Vereiste controle |
 | --- | --- | --- | --- |
@@ -1065,6 +1067,7 @@ Vijftien regels, elk met minstens één test tegen een gebruiker zonder recht:
 | 13 | `GET /watch-state` | lijst met item-ids | filter op nu zichtbare items, niet alleen op de gebruiker |
 | 14 | `GET /users` | lijst | `member`/`restricted` zien alleen zichzelf |
 | 15 | `GET /sessions`, `DELETE /sessions/{id}` | sessie-id | eigen sessies, of `admin`; anders `404` |
+| 16 | `GET /settings`, `PATCH /settings` | het bestaan van het beheeroppervlak | klasse `admin`; `member` en `restricted` krijgen `404` met dezelfde body als een beheerhandeling op een ander (S1.2) |
 
 Regel 8 tot en met 11 zijn de subtiele: een streamtoken of streamsessie leeft twee tot vijf minuten
 zelfstandig nadat hij is uitgegeven. De rechtencontrole staat daarom op het **aanvraagpad**, niet
@@ -1116,6 +1119,57 @@ hun sessie ingetrokken is.
 
 ---
 
+## 17a. Serverinstellingen
+
+`GET /pleya/v1/settings` en `PATCH /pleya/v1/settings` zijn klasse `admin`. Ze kwamen met S1.2,
+binnen protocolvenster 1 (DEC-110 en DEC-111).
+
+### 17a.1 Twee lagen, en de bron staat erbij
+
+Een instelling komt uit de omgeving waarmee de server startte, of uit de tabel `server_settings`.
+Een ontbrekende rij betekent "neem de omgeving", dus de tabel bevat alleen wat een beheerder
+werkelijk gewijzigd heeft. Elke sleutel in het antwoord draagt daarom `source`: `env` of `db`.
+Zonder dat veld zou een beheerder niet kunnen zien of hij naar een default kijkt of naar zijn eigen
+keuze, en dat verschil bepaalt of terugzetten iets doet.
+
+De set is altijd volledig. Een sleutel die niemand ooit heeft gewijzigd staat er met zijn
+omgevingswaarde en `source: env`, en niet als ontbrekend veld.
+
+### 17a.2 Elke sleutel heeft een grens
+
+| Sleutel | Vorm | Grens |
+| --- | --- | --- |
+| `server_name` | tekst | 1 tot 64 tekens |
+| `access_token_ttl` | duur | `1m` tot `60m` |
+| `refresh_token_ttl` | duur | `24h` tot `2160h` |
+| `stream_token_ttl` | duur | `1m` tot `15m` |
+| `stream_session_ttl` | duur | `5m` tot `120m` |
+| `max_stream_sessions` | geheel getal | 1 tot 32 |
+
+Een duur heeft dezelfde vorm als de omgevingsvariabele ernaast (`15m`, `720h`), zodat een beheerder
+niet twee notaties hoeft te kennen voor dezelfde instelling. Wat eruit komt kun je zo weer
+insturen.
+
+Een waarde buiten de grens geeft `400` met `settings.invalid_value`, en `details` draagt `field`,
+`minimum` en `maximum`. De body is gesloten: een onbekende sleutel is een fout en geen veld dat stil
+wegvalt (regel 5 van hoofdstuk 3). Een patch met een geldige en een ongeldige sleutel wijzigt er
+nul; half doorgevoerd beheer laat een antwoord achter dat niet klopt met wat er staat.
+
+### 17a.3 Wat geen instelling is
+
+Bindadres, vertrouwde proxy's, de schrijfbare paden en de ondertekensleutel staan hier bewust niet
+tussen. Wie het bindadres over de API kan zetten kan de server van het netwerk halen of hem juist
+openzetten, en dat hoort bij het draaien van de container en niet bij beheer in de app.
+
+### 17a.4 Een wijziging geldt meteen
+
+Een geslaagde `PATCH` geldt vanaf het eerstvolgende verzoek: het eerstvolgende accesstoken draagt de
+nieuwe TTL, `GET /server` toont de nieuwe naam, en de negende streamsessie volgt de nieuwe grens.
+Zonder die eigenschap zou een beheerscherm een instelling tonen die niet draait tot iemand de
+container herstart.
+
+---
+
 ## 18. Endpointoverzicht
 
 | Methode en pad | Klasse | Gepagineerd |
@@ -1146,9 +1200,13 @@ hun sessie ingetrokken is.
 | `PUT /pleya/v1/users/{id}/permissions` | `admin` | nee |
 | `GET /pleya/v1/sessions` | `owner`, of `admin` via `?user_id=` | nee |
 | `DELETE /pleya/v1/sessions/{id}` | `owner`, of `admin` op elke sessie | nee |
+| `GET /pleya/v1/settings` | `admin` | nee |
+| `PATCH /pleya/v1/settings` | `admin` | nee |
 
-Vijfentwintig endpoints. De eerste achttien komen van PS-2 tot en met PS-4; de laatste zeven zijn het
-PS-9-oppervlak uit hoofdstuk 16 en 17.
+Achtentwintig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), en de
+laatste twee zijn de serverinstellingen uit hoofdstuk 17a (S1.2). De rest van venster 1 landt bij de
+commitgrens die hem bedient.
 
 ---
 

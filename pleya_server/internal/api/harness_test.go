@@ -21,6 +21,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
+	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
 	"github.com/edde746/plezy/pleya_server/internal/watch"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -124,6 +125,11 @@ type env struct {
 	argon2  auth.Argon2Params
 	signer  *auth.Signer
 	logs    *logCapture
+
+	// settings is dezelfde cache als die de server leest. Een test die de
+	// tabel rechtstreeks vult moet hem kunnen herladen, want de server doet dat
+	// alleen na een geslaagde PATCH.
+	settings *settings.Cache
 }
 
 func newEnv(t *testing.T) *env {
@@ -176,6 +182,21 @@ func newEnv(t *testing.T) *env {
 	watchStore := watch.NewStore(pool)
 	logs := newLogCapture()
 
+	// De instellingen met hun tabel erachter, zoals in productie. Een cache
+	// zonder opslag zou PATCH /settings ongetest laten en de hot reload
+	// hieronder tot een geheugentruc maken.
+	settingsCache := settings.NewCache(settings.Base{
+		ServerName:        "Zolder",
+		AccessTokenTTL:    15 * time.Minute,
+		RefreshTokenTTL:   24 * time.Hour,
+		StreamTokenTTL:    5 * time.Minute,
+		StreamSessionTTL:  30 * time.Minute,
+		MaxStreamSessions: auth.MaxActiveStreamSessions,
+	}, settings.NewStore(pool), slog.New(logs))
+	if err := settingsCache.Reload(ctx); err != nil {
+		t.Fatalf("instellingen laden: %v", err)
+	}
+
 	srv := api.New(api.Options{
 		Catalog:            store,
 		Auth:               authStore,
@@ -193,12 +214,14 @@ func newEnv(t *testing.T) *env {
 		StreamTokenTTL:     5 * time.Minute,
 		SetupCodeTTL:       30 * time.Minute,
 		StreamSessionTTL:   30 * time.Minute,
+		Settings:           settingsCache,
 		WatchLease:         watch.MinLease,
 		Argon2:             light,
 	})
 
 	return &env{t: t, server: srv, store: store, auth: authStore, watch: watchStore, pool: pool,
-		root: root, libs: libs, cap: shared, argon2: light, signer: signer, logs: logs}
+		root: root, libs: libs, cap: shared, argon2: light, signer: signer, logs: logs,
+		settings: settingsCache}
 }
 
 // scanAll draait één volledige scanronde over elke bibliotheek.

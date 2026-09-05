@@ -97,6 +97,14 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		"users":               true,
 		"sessions":            true,
 		"library_permissions": true,
+		// S1, uit migratie 0008 (J.6). server_settings bedient GET/PATCH
+		// /settings uit deze commit; admin_audit staat er een commit eerder dan
+		// zijn schrijfhaak, omdat J.6 beide in hetzelfde migratiebestand zet en
+		// 0009 aan een latere slice toebehoort. Wat er nog steeds NIET staat
+		// blijft de helft van deze test: geen play_history, geen play_sessions,
+		// geen transcode_sessions.
+		"server_settings": true,
+		"admin_audit":     true,
 	}
 
 	rows, err := pool.Query(ctx, `
@@ -127,7 +135,7 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 	}
 	for name := range got {
 		if !want[name] {
-			t.Errorf("tabel %s staat niet in de scope tot en met PS-4; hoort die hier wel?", name)
+			t.Errorf("tabel %s staat niet in de scope tot en met S1.2; hoort die hier wel?", name)
 		}
 	}
 }

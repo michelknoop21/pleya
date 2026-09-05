@@ -63,6 +63,12 @@ const (
 
 	CodeSessionInvalid = "session.invalid"
 
+	// CodeSettingsInvalidValue is het antwoord van PATCH /settings op een waarde
+	// buiten zijn grens en op een sleutel die niet bestaat (J.2 rij 2, K rij
+	// 14). details draagt het veld en de grens, zodat een beheerscherm kan
+	// zeggen wat er mis is zonder de tekst te lezen.
+	CodeSettingsInvalidValue = "settings.invalid_value"
+
 	// CodeStreamSessionLimit is de negende actieve streamsessie (DEC-051). Een
 	// stabiele code en geen generieke 429: de client moet het verschil zien met
 	// een rate limiter, want hier helpt wachten niet maar een stream sluiten wel.
@@ -116,8 +122,9 @@ var errorTable = map[string]struct {
 	CodeStorageUnavailable: {http.StatusServiceUnavailable, true},
 	CodeStorageFull:        {http.StatusInsufficientStorage, false},
 
-	CodeSessionInvalid:     {http.StatusBadRequest, false},
-	CodeStreamSessionLimit: {http.StatusTooManyRequests, false},
+	CodeSessionInvalid:       {http.StatusBadRequest, false},
+	CodeSettingsInvalidValue: {http.StatusBadRequest, false},
+	CodeStreamSessionLimit:   {http.StatusTooManyRequests, false},
 
 	CodeInternal: {http.StatusInternalServerError, false},
 }

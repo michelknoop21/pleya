@@ -44,6 +44,7 @@ tags:
   - name: watch-state
   - name: users
   - name: sessions
+  - name: administration
 
 security:
   - bearerAuth: []
@@ -443,6 +444,70 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ServerDetail" }
         "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /settings:
+    get:
+      tags: [administration]
+      operationId: getSettings
+      summary: De beheerbare serverinstellingen.
+      description: |
+        Klasse `admin`. Per sleutel de waarde die nu geldt plus de laag die hem
+        levert: `env` is de omgeving waarmee de server startte, `db` een waarde
+        die een beheerder heeft opgeslagen. Een lid of een beperkte gebruiker
+        krijgt `404`, dezelfde weigering als overal (hoofdstuk 7.1).
+
+        Wat hier niet in staat is een keuze en geen omissie: bindadres,
+        vertrouwde proxy's, paden en de ondertekensleutel horen bij het draaien
+        van de container en niet bij beheer in de app.
+      responses:
+        "200":
+          description: De set zoals hij nu geldt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Settings" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    patch:
+      tags: [administration]
+      operationId: patchSettings
+      summary: Wijzig een of meer instellingen.
+      description: |
+        Klasse `admin`. De body is gesloten: een onbekende sleutel is een fout
+        en geen veld dat stil wegvalt. Elke waarde heeft een grens; een waarde
+        erbuiten geeft `settings.invalid_value` met het veld en de grens in
+        `details`, en dan wijzigt er niets, ook niet aan de sleutels die wel
+        klopten.
+
+        Een geslaagde wijziging geldt vanaf het eerstvolgende verzoek: een
+        nieuwe TTL zit dus in het eerstvolgende token, zonder herstart.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SettingsPatch" }
+      responses:
+        "200":
+          description: De set na de wijziging.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Settings" }
+        "400":
+          description: settings.invalid_value. Onbekende sleutel, verkeerd type, of buiten de grens.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /libraries:
@@ -1567,6 +1632,85 @@ components:
         permissions:
           type: array
           items: { $ref: "#/components/schemas/LibraryPermission" }
+
+    SettingSource:
+      type: string
+      description: |
+        De laag die deze waarde levert. `env` is de omgeving waarmee de server
+        startte (inclusief zijn ingebouwde default), `db` een waarde die een
+        beheerder heeft opgeslagen.
+      enum: [env, db]
+      x-unknown-safe: true
+
+    SettingDuration:
+      type: object
+      required: [value, source]
+      description: Een duur in de vorm die de omgevingsvariabele ernaast ook gebruikt, bijvoorbeeld `15m` of `720h`.
+      properties:
+        value: { type: string }
+        source: { $ref: "#/components/schemas/SettingSource" }
+
+    SettingString:
+      type: object
+      required: [value, source]
+      properties:
+        value: { type: string }
+        source: { $ref: "#/components/schemas/SettingSource" }
+
+    SettingInteger:
+      type: object
+      required: [value, source]
+      properties:
+        value: { type: integer }
+        source: { $ref: "#/components/schemas/SettingSource" }
+
+    Settings:
+      type: object
+      required:
+        [server_name, access_token_ttl, refresh_token_ttl, stream_token_ttl, stream_session_ttl, max_stream_sessions]
+      description: |
+        De volledige set. Elke sleutel is er altijd, ook wanneer niemand hem ooit
+        heeft gewijzigd; dan staat er de waarde uit de omgeving met `source:
+        env`.
+      properties:
+        server_name: { $ref: "#/components/schemas/SettingString" }
+        access_token_ttl: { $ref: "#/components/schemas/SettingDuration" }
+        refresh_token_ttl: { $ref: "#/components/schemas/SettingDuration" }
+        stream_token_ttl: { $ref: "#/components/schemas/SettingDuration" }
+        stream_session_ttl: { $ref: "#/components/schemas/SettingDuration" }
+        max_stream_sessions: { $ref: "#/components/schemas/SettingInteger" }
+
+    SettingsPatch:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: |
+        Alleen bekende sleutels, minimaal één. De grenzen staan in de
+        beschrijving per veld; een waarde erbuiten geeft
+        `settings.invalid_value` en wijzigt niets.
+      properties:
+        server_name:
+          type: string
+          description: 1 tot 64 tekens.
+          minLength: 1
+          maxLength: 64
+        access_token_ttl:
+          type: string
+          description: 1m tot 60m.
+        refresh_token_ttl:
+          type: string
+          description: 24h tot 2160h (1 tot 90 dagen).
+        stream_token_ttl:
+          type: string
+          description: 1m tot 15m.
+        stream_session_ttl:
+          type: string
+          description: 5m tot 120m.
+        max_stream_sessions:
+          type: integer
+          description: 1 tot 32.
+          minimum: 1
+          maximum: 32
 
     Session:
       type: object
