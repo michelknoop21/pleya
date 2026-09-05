@@ -12,6 +12,7 @@ import '../automation/automation_node.dart';
 import '../automation/automation_screen.dart';
 import '../automation/pleya_verify.dart';
 import '../navigation/profile_navigation_scope.dart';
+import '../navigation/tv/tv_content_route_registry.dart';
 import '../navigation/tv/tv_nested_surface.dart';
 import '../services/device_performance.dart';
 import '../services/image_cache_service.dart';
@@ -202,6 +203,35 @@ class MediaDetailScreen extends StatefulWidget {
   State<MediaDetailScreen> createState() => _MediaDetailScreenState();
 }
 
+/// The detail screen itself, without a route around it.
+///
+/// Split out of [mediaDetailRoute] for PB-1: nested inside the TV shell there
+/// is no `PageRoute` at all — `TvNestedRoute` takes a `WidgetBuilder` — and the
+/// two shapes have to build the *same* screen from the same arguments. A second
+/// argument list at the nested call site is a second thing to forget when this
+/// one grows a parameter.
+MediaDetailScreen mediaDetailPage({
+  required MediaItem metadata,
+  bool isOffline = false,
+  int? initialSeasonIndex,
+  String? initialSeasonId,
+  String? initialEpisodeId,
+  Object? heroTag,
+  String? traceId,
+  UnifiedMediaRouteContext? unifiedRouteContext,
+  UnifiedSourceChangeCallback? onChangeSource,
+}) => MediaDetailScreen(
+  metadata: metadata,
+  isOffline: isOffline,
+  initialSeasonIndex: initialSeasonIndex,
+  initialSeasonId: initialSeasonId,
+  initialEpisodeId: initialEpisodeId,
+  heroTag: heroTag,
+  traceId: traceId,
+  unifiedRouteContext: unifiedRouteContext,
+  onChangeSource: onChangeSource,
+);
+
 PageRoute<bool> mediaDetailRoute({
   required MediaItem metadata,
   bool isOffline = false,
@@ -216,7 +246,7 @@ PageRoute<bool> mediaDetailRoute({
   // Built here, not in a lazy builder: the id has to be on the widget before
   // [State.initState] runs, otherwise the first link the screen records would
   // already be a frame late.
-  final page = MediaDetailScreen(
+  final page = mediaDetailPage(
     metadata: metadata,
     isOffline: isOffline,
     initialSeasonIndex: initialSeasonIndex,
@@ -571,7 +601,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
     if (epIndex != -1 && _showEpisodesDirectly) {
       if (_episodes.isEmpty && (_metadata.isSeason || _metadata.isShow) && mounted) {
-        Navigator.of(context).pop();
+        _closeAfterContentGone();
       }
       return;
     }
@@ -585,7 +615,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
       // If the show has no more seasons, navigate back up to the library
       if (_seasons.isEmpty && mounted) {
-        Navigator.of(context).pop();
+        _closeAfterContentGone();
         return;
       }
       _refreshWatchState();
@@ -608,7 +638,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
           // Otherwise we have no more seasons, so navigate up
           if (_seasons.isEmpty && mounted) {
-            Navigator.of(context).pop();
+            _closeAfterContentGone();
             return;
           }
         } else {
@@ -791,6 +821,24 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       return;
     }
     Navigator.pop(context, result ?? _watchStateChanged);
+  }
+
+  /// Closes the screen because what it was showing no longer exists — the last
+  /// episode or the last season was deleted under it.
+  ///
+  /// Separate from [_dismissTvDetail] for its *result*, not its mechanism. That
+  /// one substitutes `_watchStateChanged` for an omitted result, which is right
+  /// for an ordinary close; here the old `Navigator.pop()` carried no result at
+  /// all, so the caller ran no refresh on an item that is gone. Nested, the
+  /// same has to be true, and `dismiss()` without an argument would quietly
+  /// start passing one.
+  void _closeAfterContentGone() {
+    final nested = TvNestedRouteScope.of(context);
+    if (nested != null) {
+      nested.dismiss(null);
+      return;
+    }
+    Navigator.of(context).pop();
   }
 
   /// Escape hatch out of the metadata loading state. Leaves the pending fetch
@@ -1329,20 +1377,24 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     final personId = actor.id;
     if (personId == null || _metadata.serverId == null) return;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ActorMediaScreen(
-          actorName: actor.tag,
-          personId: personId,
-          actorThumb: actor.thumbPath,
-          characterName: actor.role,
-          serverId: _metadata.serverId!,
-          serverName: _metadata.serverName,
-          backend: _metadata.backend,
-        ),
-      ),
+    final serverId = _metadata.serverId!;
+    ActorMediaScreen buildPerson(BuildContext _) => ActorMediaScreen(
+      actorName: actor.tag,
+      personId: personId,
+      actorThumb: actor.thumbPath,
+      characterName: actor.role,
+      serverId: serverId,
+      serverName: _metadata.serverName,
+      backend: _metadata.backend,
     );
+
+    // PB-1/SYS-1b: person (mockup 25) keeps the top navigation, so on TV it
+    // opens inside the shell. The id is the person on their server and not the
+    // title they were reached through — the same actor opened twice from the
+    // same page is one screen, and a re-push of it needs one Back.
+    if (openTvContentRoute(id: 'tvPerson_${serverId}_$personId', builder: buildPerson) != null) return;
+
+    Navigator.push(context, MaterialPageRoute(builder: buildPerson));
   }
 
   /// Resolve version selection for download using shared utility.
@@ -3901,29 +3953,46 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
           ],
         );
 
+        final body = Focus(
+          onKeyEvent: handleBack,
+          child: Scaffold(
+            body: Stack(
+              children: [
+                TvSpotlightBackground(
+                  item: metadata,
+                  client: _getArtworkMediaClient(context),
+                  showInfo: false,
+                  localArtworkPathResolver: widget.isOffline
+                      ? (path) => _offlineArtworkLocalPath(context, path)
+                      : null,
+                ),
+                _buildTvDetailRevealGate(revealContent, handleBack),
+              ],
+            ),
+          ),
+        );
+
+        // INV-1: nested inside the shell this screen claims no second
+        // shell-like layer, and `OverlaySheetHost` is named in that list. The
+        // shell has one at its root, above the top bar; a second one here
+        // would host this screen's sheets inside the content box, under the
+        // bar and at the wrong size, and the shell's own
+        // `onOverlaySheetOpenChanged` would never fire — so step 1 of the back
+        // chain in hoofdstuk 7.5 would not know a sheet was open. Sheets are
+        // found with `OverlaySheetHost.maybeOf`, which walks up, so dropping
+        // this one hands them to the shell's rather than to nothing.
+        //
+        // Its `PopScope` goes with it for the reason
+        // `FocusableDetailScreenMixin.buildDetailScaffold` documents: the route
+        // it would guard is the shell's own.
+        if (TvNestedRouteScope.of(context) != null) return body;
+
         final blockSystemBack = InputModeTracker.shouldBlockSystemBack(context);
         return OverlaySheetHost(
           // blockSystemBack keeps the route from double-popping on Android keyboard/
           // TV (the key handler owns dpad back); the host also closes an open sheet.
           canPop: !blockSystemBack,
-          child: Focus(
-            onKeyEvent: handleBack,
-            child: Scaffold(
-              body: Stack(
-                children: [
-                  TvSpotlightBackground(
-                    item: metadata,
-                    client: _getArtworkMediaClient(context),
-                    showInfo: false,
-                    localArtworkPathResolver: widget.isOffline
-                        ? (path) => _offlineArtworkLocalPath(context, path)
-                        : null,
-                  ),
-                  _buildTvDetailRevealGate(revealContent, handleBack),
-                ],
-              ),
-            ),
-          ),
+          child: body,
         );
       },
     );

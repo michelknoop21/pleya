@@ -4,6 +4,7 @@ import '../focus/input_mode_tracker.dart';
 import '../focus/key_event_utils.dart';
 import '../media/media_item.dart';
 import '../media/media_playlist.dart';
+import '../navigation/tv/tv_nested_surface.dart';
 import '../mixins/grid_focus_node_mixin.dart';
 import '../services/settings_service.dart';
 import '../utils/platform_detector.dart';
@@ -69,11 +70,36 @@ mixin FocusableDetailScreenMixin<T extends StatefulWidget> on State<T>, GridFocu
   /// Handle BACK key from content - navigate to app bar and set flag to prevent PopScope exit
   void handleBackFromContent() {
     if (getAppBarActions().isEmpty) {
-      if (mounted) Navigator.pop(context);
+      if (mounted) dismissDetailScreen();
       return;
     }
     backHandledByKeyEvent = true;
     navigateToAppBar();
+  }
+
+  /// Whether this screen is running as a nested TV route inside the shell
+  /// (PB-1 of `docs/tvos-redesign-implementatiecontract.md`) rather than as a
+  /// route pushed on the profile navigator.
+  ///
+  /// The two screens on this mixin — collection (24) and person (25) — are
+  /// both in PB-1's list, and both are still pushed the old way off TV, so the
+  /// answer has to be asked per build rather than baked in at construction.
+  bool get isNestedTvRoute => TvNestedRouteScope.of(context) != null;
+
+  /// Closes this screen, whichever way it was opened.
+  ///
+  /// Nested, [TvNestedRouteScope.dismiss] completes and pops the route through
+  /// the coordinator with the focus restoration Back gets. Pushed, it is the
+  /// `Navigator.pop` it always was. A screen cannot pick one at compile time:
+  /// `Navigator.pop` nested finds the profile navigator, which owns the shell
+  /// itself, and would take the whole shell down instead of this screen.
+  void dismissDetailScreen([Object? result]) {
+    final nested = TvNestedRouteScope.of(context);
+    if (nested != null) {
+      nested.dismiss(result);
+      return;
+    }
+    Navigator.pop(context, result);
   }
 
   /// Navigate focus from app bar down to the grid
@@ -95,15 +121,22 @@ mixin FocusableDetailScreenMixin<T extends StatefulWidget> on State<T>, GridFocu
   /// defers to [handleBackNavigation], plus a Scaffold with a CustomScrollView
   /// bound as the primary scroll view. Callers build the slivers themselves
   /// (typically `[appBar, ...header, ...buildStateSlivers(), grid]`).
+  ///
+  /// Nested inside the TV shell there is no local route for this `PopScope` to
+  /// guard: it registers on the route the *shell* is mounted in, so letting it
+  /// pop would close the entire shell rather than this screen. `canPop` is
+  /// therefore false whenever [isNestedTvRoute], regardless of platform, and
+  /// the close goes through [dismissDetailScreen] either way.
   Widget buildDetailScaffold({required List<Widget> slivers}) {
+    final nested = isNestedTvRoute;
     return PopScope(
-      canPop: PlatformDetector.isHandheldIOS(context),
+      canPop: !nested && PlatformDetector.isHandheldIOS(context),
       onPopInvokedWithResult: (didPop, result) {
         if (BackKeyCoordinator.consumeIfHandled()) return;
         if (didPop) return;
         final shouldPop = handleBackNavigation();
         if (shouldPop && mounted) {
-          Navigator.pop(context);
+          dismissDetailScreen();
         }
       },
       child: PrimaryScrollController(
@@ -139,7 +172,7 @@ mixin FocusableDetailScreenMixin<T extends StatefulWidget> on State<T>, GridFocu
       FocusableActionBar(
         key: actionBarKey,
         onNavigateDown: navigateToGrid,
-        onBack: () => Navigator.pop(context),
+        onBack: dismissDetailScreen,
         actions: getAppBarActions(),
       ),
     ];

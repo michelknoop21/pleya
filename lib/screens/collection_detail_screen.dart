@@ -219,7 +219,11 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
 
       if (success) {
         showSuccessSnackBar(context, t.collections.deleted);
-        Navigator.pop(context, true);
+        // `true` is the caller's "the list you came from is stale now" signal
+        // (`MediaNavigationResult.listRefreshNeeded`). It has to reach that
+        // caller through whichever mechanism opened this screen, so PB-1's
+        // nested route completes with the same value a pop would have carried.
+        dismissDetailScreen(true);
       } else {
         showErrorSnackBar(context, t.collections.deleteFailed);
       }

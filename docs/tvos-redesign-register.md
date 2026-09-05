@@ -39,7 +39,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | ID | Werkitem | Besluit | Status | SHA / bewijs |
 |----|----------|---------|--------|--------------|
 | SYS-1a | Routecontract: een TV-contentroute opent in de shell in plaats van erboven | PB-1 | DONE | `5cafc10`, DEC-091 |
-| SYS-1b | Detail, collectie en persoon over dat contract | PB-1 | OPEN | |
+| SYS-1b | Detail, collectie en persoon over dat contract | PB-1 | IN PROGRESS | gebouwd, bewijs onder, testdelta nog niet gemeten |
 | SYS-1c | Geneste routes krijgen de contentbox als `MediaQuery`, nodig voor de detailgeometrie | PB-1, INV-1 | DONE | `ad8c456`, testdelta onder |
 | SYS-2 | BACK1, geen zichtbare onbereikbare terugknop op TV | PB-2 | OPEN, geauditeerd | zie onder |
 | SYS-3a | OVR1a: de schaalbasis van paneelinhoud op TV | PB-5 | OPEN, oorzaak gevonden | zie onder |
@@ -160,6 +160,91 @@ dus niets omgevallen. De 56 falers zijn de bestaande nullijn en staan ook op de 
 stap `Verify generated files committed` faalt op de basis wegens verouderde `.g.dart`-formattering,
 en die stap staat vóór analyze in dezelfde job, dus analyze, format en de twee unused-checks worden
 overgeslagen. Zodra de basis daar groen is hoort die run hier alsnog bij.
+
+## SYS-1b, wat er staat
+
+De drie oppervlakken die PB-1 naast de Instellingen-subpagina's noemt openen nu over hetzelfde
+contract: filmdetail en seriedetail (09 en 10), collectie (24) en persoon (25).
+
+**Vier aanroepplekken, en ze staan op één plek per oppervlak.**
+
+| Oppervlak | Waar de keuze valt | Route-id |
+|---|---|---|
+| film- en seriedetail | `navigateToMediaItemDetails` (`media_navigation_helper.dart`) | `tvDetailRouteId(target)` |
+| collectie | de `MediaKind.collection`-tak van `navigateToMediaItem` | `tvCollection_<globalKey>` |
+| persoon | `_navigateToActorMedia` (`media_detail_screen.dart`) | `tvPerson_<serverId>_<personId>` |
+| "Ga naar serie" uit het contextmenu | `_navigateToRelated` geeft de keuze door aan `navigateToMediaItemDetails` | idem detail |
+
+Die vierde stond er als aparte `mediaDetailRoute`-bouwer in `media_context_menu.dart` en zou dus
+zijn achtergebleven op de volledig-venster-push terwijl elke andere ingang naar dezelfde pagina
+meeging. Hij geeft nu een `open`-callback door in plaats van een `Route`, want een scherm dat op TV
+geen `Route` heeft kan niet vanaf de aanroepplek in een `Route` gestopt worden.
+
+De route-identiteit is `globalKey` en niet de kale id: twee servers kunnen dezelfde rating key
+uitgeven, en `pushNested` gooit een herhaalde push van de id die al bovenop ligt weg. Zonder de
+server erin zou de tweede titel stilzwijgend verdwijnen als duplicaat van de eerste. Seizoen en
+aflevering horen er om de omgekeerde reden bij: dezelfde serie geopend op seizoen 1 en op seizoen 3
+is twee pagina's.
+
+**Zelfsluiting.** `MediaDetailScreen._dismissTvDetail` bestond al sinds SYS-1a en werkt nu ook
+echt. Daarnaast:
+
+- `FocusableDetailScreenMixin` krijgt `dismissDetailScreen`, de gedeelde eigenaar voor collectie én
+  persoon. De drie `Navigator.pop`-plekken erin (de `PopScope`, `handleBackFromContent`, de
+  `onBack` van de actiebalk) gaan er nu langs.
+- `_deleteCollection` gaf zijn `true` — het "de lijst waar je vandaan kwam is verouderd"-signaal —
+  via `Navigator.pop`. Genest is dat hetzelfde `true` op de route.
+- De drie plekken in `media_detail_screen.dart` waar het scherm zichzelf sluit omdat de laatste
+  aflevering of het laatste seizoen eronder verdween. Die krijgen `_closeAfterContentGone` en niet
+  `_dismissTvDetail`, om het resultaat: de tweede vult een weggelaten resultaat aan met
+  `_watchStateChanged`, en de oude `Navigator.pop()` droeg daar niets. Een verversing draaien op een
+  item dat er niet meer is, is geen gedrag dat hier stilzwijgend bij hoort te komen.
+
+**Twee dingen die genest niet mogen, en die INV-1 met zoveel woorden verbiedt.**
+
+De TV-tak van de detailpagina bouwde zijn eigen `OverlaySheetHost`. De shell heeft er al één, boven
+de balk. Een tweede zou de sheets van dit scherm binnen de contentbox hangen, onder de balk en op de
+verkeerde maat, en `onOverlaySheetOpenChanged` van de shell zou nooit afgaan — stap 1 van de
+terugketen uit hoofdstuk 7.5 zou dus niet weten dat er een sheet open stond. `OverlaySheetHost.maybeOf`
+loopt omhoog, dus weglaten geeft ze aan die van de shell in plaats van aan niets.
+
+De `PopScope` in `buildDetailScaffold` is hetzelfde probleem in de andere twee schermen. Genest is
+er geen eigen route om te bewaken: hij registreert op de route waar de *shell* in zit, en op iOS
+stond `canPop` op `PlatformDetector.isHandheldIOS`. Een systeem-back had daar de hele shell
+weggeklapt in plaats van dit scherm. `canPop` is nu onvoorwaardelijk false zodra de route genest is.
+
+**Eén regressie die dit werk zelf introduceerde en meteen weer dichtzit.** Hoofdstuk 15's
+"[ Wijzigen ]" (`_changeSourceFromDetail`) sluit de openstaande detailpagina voordat hij de volgende
+bron opent, zodat Back de kijker niet achterwaarts door elke bekeken bron laat lopen. Dat deed hij
+met `Navigator.of(context).canPop()`, en genest wijst die naar de profielnavigator die de shell zelf
+draagt: `canPop()` is daar false, dus de oude pagina was blijven staan en de nieuwe was erbovenop
+gekomen. Hij vraagt nu eerst `TvNestedRouteScope`.
+
+**Bewijs.** `test/navigation/tv/tv_detail_route_contract_test.dart`, dertien tests in vier groepen:
+de route-identiteit, detail, collectie, en de gedeelde zelfsluiting. Drie ervan zijn negatieve
+controle en leggen het oude gedrag vast — zonder shell gaat dezelfde aanroep gewoon naar de
+navigator, en niet-genest popt het scherm zijn eigen route. De schermen zelf worden nooit
+gemonteerd: de builder van een geneste route draait pas als een shell hem tekent, dus de keuze van
+de aanroepplek is één stap eerder waarneembaar dan het scherm.
+
+De vierde groep pint de `PopScope` af op iOS, want dat is de enige plek waar hij vóór deze
+wijziging `canPop: true` gaf: draai de correctie terug en die test wordt rood doordat de route
+onder het scherm vandaan popt.
+
+**Testdelta: nog niet gemeten.** De sessie die dit schreef had geen Flutter in de container, dus er
+is geen lokale run. De nullijn is 6245 geslaagd, 56 gefaald en 6 overgeslagen (met SYS-1c erbij);
+de CI-run op deze commit hoort daar dertien geslaagd bij te zetten en het aantal falers onveranderd
+te laten. Zolang dat niet in dit document staat blijft SYS-1b op IN PROGRESS. `flutter analyze`
+heeft deze diff om dezelfde reden als bij SYS-1c niet gezien: `Verify generated files committed`
+faalt op de basis en staat vóór analyze in dezelfde job.
+
+**Wat bewust niet meeging.** Afspeellijstdetail (`PlaylistDetailScreen`) heeft geen mockup en staat
+niet in PB-1's opsomming, dus die blijft een volledig-venster-push. Dat is geen omissie maar de
+grens van dit werkitem; komt er een goedgekeurd afspeellijstoppervlak, dan is dat de aanroepplek die
+er dan bij hoort.
+
+De visuele herinrichting van 09, 10, 24 en 25 zit hier niet in. Dit item bezit het routecontract;
+MOC-09, MOC-10, MOC-24 en MOC-25 bezitten de compositie.
 
 ## SYS-2, wat de audit vond
 
