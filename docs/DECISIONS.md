@@ -719,6 +719,115 @@ De required-candidate `portable`-gate en de uitgevoerde iOS/tvOS Verify-scenario
 **Consequences:** Pleya Verify Core 1.0 is hiermee compleet: deterministic fixture-backed scenario's, drie platformdrivers (macOS/iOS-sim/tvOS-sim), UI-boom/focus/events/geometrie-assertions, autoritatieve compositor-screenshots als visuele waarheid, complete evidencebundels, false-PASS-verdediging (Fase 12), CLI, MCP-laag (Fase 13), CI-orkestratie (Fase 14), fail-closed control-plane-auth, bounded execution, en redactie-/securityhardening (dit besluit). Bekende, niet-blokkerende grenzen: macOS-hosted-buildsigning in CI, `tvos.library.filters` (DEFERRED voor G13, [DEC-063](#dec-063-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)), en tvOS-D-pad-navigatie binnen het systeemtoetsenbord (niet simuleerbaar, zie CONTRIBUTING.md). Geen nieuwe featurescope geopend; een volgende sessie die verder wil dan Core 1.0 begint bij een expliciet nieuw besluit, niet bij het stilzwijgend heropenen van Fase 1 t/m 15.
 
 
+## DEC-094: fase 2 maakt Series en Films bestemmingen, en scheidt de chip van de tab
+
+**Date:** 2026-09-05
+**Status:** accepted
+
+**Context:** Fase 2 van [DEC-090](#dec-090-ios-unified-2026-northstar-bevroren-21-mockups-bindend-voor-de-iphone-interface)
+is een navigatiefase, volgens [docs/ios-unified-2026-fase2-plan.md](ios-unified-2026-fase2-plan.md).
+De bindende beelden zijn `01-series-landing.png`, `02-films-landing.png`, `05-zoeken.png` en
+`home-comp-gefilterd.png`. DEC-093 is gereserveerd voor de F0-sessie en blijft hier ongebruikt.
+
+**Decision:**
+
+*De tabset.* `getVisibleTabs` krijgt een `isPhone`-parameter en die is de poort voor Films en Series.
+De waarde reist mee in plaats van ter plekke afgeleid te worden, want `PlatformDetector.isPhone` heeft
+een `BuildContext` nodig en de tablijst wordt op plekken gebouwd die er geen hebben. Dat is dezelfde
+vorm als `TabBarPresentation` uit [DEC-092](#dec-092-fase-1-levert-de-iphone-home-als-eigen-scherm-en-de-ipad-houdt-zijn-bestaande-presentatie):
+een enkele `PlatformDetector`-aanroep bij de schil, een expliciete waarde die meereist, en geen
+platformcheck in het filter. De iPad is wel `isMobile` en niet `isPhone` en houdt daarmee alles wat hij
+had, want fase 2 is een iPhone-fase.
+
+Bibliotheken en Zoeken raken hun balkslot kwijt en blijven bestemming, via de set die dat mechanisme al
+had. Aan `getVisibleTabs` trekken zou de fout herhalen die in `navigation_tabs.dart` zelf staat
+opgeschreven: de pil verdween, `_buildScreens` bouwde het scherm nooit, en elke route erachter was
+onbereikbaar. Beide zijn ook alleen op de telefoon uit de balk; de iPad zou anders twee slots verliezen
+en er niets voor terugkrijgen.
+
+De balkvolgorde op de telefoon is Home, Series, Films, Live TV, Mijn Pleya. `allNavigationTabs` houdt
+de TV-volgorde met Films voor Series, want die lijst valt onder een TV-authority. Alleen de balk draait
+om, en dat kan omdat de balk nergens op index werkt.
+
+*De chip en de tab zijn twee oppervlakken.* De chip op Home filtert `homeProjection.hubs` en zet de
+titel `Voor jou`; de tab opent de landing. Ze verschillen in titel, hero, chipbalk, databron en welke
+tab oplicht, precies zoals `home-comp-gefilterd.png` en `01-series-landing.png` het naast elkaar tonen.
+Bleef de chip de landingrijen lezen, dan was de een een tweede deur naar de ander.
+
+Filteren gebeurt **per rij** op `UnifiedMediaHub.kind`, niet op `MediaKind`, dat in deze codebase geen
+soort van een rij is. Het is dezelfde regel die `TvDiscoveryLandingProvider` al toepast als hij dezelfde
+projectie splitst: `mixed`, `episode` en `other` horen bij geen van beide landings en worden er niet
+naartoe geraden. Er komt dus geen tweede filtersemantiek bij. Het gevolg hoort erbij: op een server
+waarvan de hubs grotendeels `mixed` zijn blijft er onder een chip weinig over, tot aan niets, en daarom
+heeft de landing een lege toestand die Home niet had.
+
+*De Alle-actie is getekend en inactief* tot fase 3. Hem zolang naar `LibraryBrowseTab` sturen is
+afgewezen: dat opent een bibliotheekgebonden, serverspecifiek scherm terwijl de knop een
+bronoverstijgende catalogus belooft.
+
+*Zoeken is een tab gebleven, niet een schermlaag.* Het plan stelde een laag binnen `MainScreen` voor,
+boven de `IndexedStack` en onder de `NavigationBar`. Dat is niet gebouwd. `SearchScreen` staat in
+`getVisibleTabs` en wordt dus sowieso door `_buildScreens` gebouwd, dus een tweede exemplaar in een laag
+erboven zou elke `search.*`-automation-id op hetzelfde moment twee knopen laten aanwijzen, wat de
+botsing is die bij `AutomationIds.myPleyaSectionTile` staat beschreven. Het zou bovendien eigen
+terugafhandeling vragen terwijl `_handleMainBack` al naar de eerste zichtbare tab teruggaat. Het icoon
+roept nu `_selectTab(search)` aan, de balk blijft staan en Home blijft oplichten, zoals `05-zoeken.png`
+het toont. De terugpijl en de titel `Zoeken` uit dat beeld horen bij de opmaak van het zoekscherm zelf
+en zijn fase 4.
+
+*De landing-automation-ids dragen de soort.* Alle zeven zijn instanceable en gesuffixeerd met `series`
+of `movies`. Home, Series en Films zijn kinderen van dezelfde `IndexedStack` en dus alle drie tegelijk
+gemount, en de registry houdt offstage schermen ook vast: zonder de soort zou `landing.rail[0]` op
+hetzelfde moment twee rijen aanwijzen. Om dezelfde reden krijgen `MobilePageHeader` en `MobileMediaRail`
+optionele id-parameters in plaats van dat de landing een eigen kopie van die widgets krijgt.
+
+*Series en Films worden geen opstartsectie.* `_startupSectionOptions` is een platformonafhankelijke
+lijst en op desktop bestaan die tabs niet, dus de keuze zou daar stilzwijgend op Home terugvallen. Een
+opgeslagen sectie die niet zichtbaar is valt al terug via `resolveDefaultTab`, dus er is geen migratie
+nodig.
+
+**Consequences:** De F0-poort is **niet** groen. `claude/f0-unused-gate` bestaat niet op `origin`, dus er
+viel niets te mergen. In plaats daarvan is er een nulmeting op de basiscommit `befc523c` gedraaid met de
+gepinde SDK, en na afloop opnieuw. Beide keren exact dezelfde zeventien meldingen, dus fase 2 heeft er
+geen enkele aan toegevoegd:
+
+*10 unused code:* `isRetryableServerWriteFailure` (`media_server_exceptions.dart:106`), `UnifiedCatalogs`
+(`unified_catalogs.dart:46`), `unifiedActionOutcomeMessage` (`unified_action_outcome.dart:3`),
+`searchProjection` (`search_projection.dart:69`), `eligibleSourceServers` (`source_resolver.dart:130`),
+`nextFocusAfterAvailabilityChange` en `mergeLateSources` (`unified_activation_coordinator.dart:444` en
+`:480`), `buildUnifiedCatalogQuery` (`unified_catalog_filters.dart:358`), `UnifiedCatalogQueryStore`
+(`unified_catalog_query_store.dart:41`), `loadUnifiedFilterOptions` (`unified_filter_options.dart:52`).
+
+*7 unused files:* `providers/unified_catalogs.dart`, `services/rating_actions.dart`,
+`services/unified_action_outcome.dart`, `services/unified_catalog/search_projection.dart`,
+`services/unified_catalog/unified_artwork_prefetcher.dart`,
+`services/unified_catalog/unified_catalog_query_store.dart`,
+`services/unified_catalog/unified_filter_options.dart`.
+
+Alle zeventien komen uit de F0-merge en blijven werk voor die sessie. Ze staan hier opgeschreven omdat ze
+nergens anders stonden: `docs/F0-EVIDENCE.md` dekt analyze en de testsuite en heeft geen unused-sectie.
+
+Wat wel gemeten is: `flutter analyze` nul errors en nul warnings op de bekende 40 info-lints,
+`flutter test` 5596 geslaagd en 6 overgeslagen zonder enkele fout, de negen Verify-scenario's allemaal
+`validate` OK, en de 216 runnertests groen. De twee `backend_badge`-goldens die het fase-2-plan als bekend
+falend noemt slagen hier wel; die goldens draaien op Linux, net als CI, en het bekende falen was op macOS.
+
+Wat **niet** gemeten is, en dus ontbrekend bewijs blijft: `ios.home.northstar`, `ios.landing.northstar` en
+`discover.hero.layout` hebben target `ios-sim` en zijn in een Linux-container zonder Xcode niet uit te
+voeren. Punt 4, 5 en 6 van de Definition of Done staan daarmee open, en het contactvel naast de twee
+bevroren beelden ook. `scripts/format_native.sh --check` faalt om dezelfde soort reden, een ontbrekende
+`swift-format`; fase 2 raakt geen enkel native bestand.
+
+Twee dingen zijn onderweg opgelost die het plan niet voorzag. `screen.series` en `screen.movies` zijn aan
+`_screenToTab` toegevoegd zodat `/v1/open` de landings bereikt en het scenario niet op coordinaten hoeft
+te tikken. En `tool/generate_automation_ids_yaml.dart` loopt in deze omgeving vast in de FFI-transform van
+de Dart VM, dus `pleya_verify/automation_ids.yaml` is met de hand in het formaat van de generator
+geschreven; `test/architecture/automation_ids_yaml_test.dart` bewijst dat het exact met
+`AutomationIds.catalog()` overeenkomt.
+
+De twee open Home-details uit DEC-090 paragraaf 10 blijven open. Fase 3 begint bij een eigen plan en zet
+een handler onder de Alle-actie.
+
 ## DEC-092: fase 1 levert de iPhone-Home als eigen scherm, en de iPad houdt zijn bestaande presentatie
 
 **Date:** 2026-09-03

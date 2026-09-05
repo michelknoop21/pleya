@@ -4,6 +4,50 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-05] iOS Unified 2026 fase 2: Series en Films als bestemming
+
+Een navigatiefase, geen tweede visuele ronde. Series en Films zijn tabs geworden op de iPhone,
+Bibliotheken en Zoeken raakten hun balkslot kwijt zonder als bestemming te verdwijnen, en er is een
+landingscherm voor beide soorten: `lib/screens/home/mobile_landing_screen.dart`, met de soort als
+parameter, want de twee bevroren beelden verschillen alleen in de titel, het label van de actie en
+welke projectie ze lezen. De mobiele familie uit fase 1 is niet aangeraakt, op de chipsemantiek na.
+
+De poort voor Films en Series is een nieuwe `isPhone` op `getVisibleTabs`, die meereist in plaats van
+ter plekke afgeleid te worden. Dat is dezelfde vorm als `TabBarPresentation` uit fase 1, en het houdt
+de iPad buiten schot: die is wel `isMobile` en niet `isPhone`. De balkvolgorde op de telefoon zet
+Series voor Films; `allNavigationTabs` houdt de TV-volgorde die het onder een TV-authority kreeg, en
+alleen de balk draait om, wat kan omdat de balk nergens op index werkt.
+
+De chip op Home filtert nu `homeProjection.hubs` en zet de titel `Voor jou`, in plaats van naar de
+landingrijen te schakelen. Een chip en een tab zijn twee oppervlakken en de beelden tonen ze ook zo.
+Filteren gebeurt per rij op `UnifiedMediaHub.kind`, dezelfde regel die `TvDiscoveryLandingProvider` al
+toepast, dus `mixed`-rijen vallen weg en een chip kan een pagina leeg achterlaten. Vandaar dat de
+landing een lege toestand heeft die Home niet had.
+
+Zoeken is een tab gebleven. Het plan stelde een schermlaag binnen `MainScreen` voor, maar `SearchScreen`
+staat in `getVisibleTabs` en wordt sowieso gebouwd, dus een tweede exemplaar in een laag erboven zou
+elke `search.*`-id op hetzelfde moment twee knopen laten aanwijzen. Het zoekicoon roept nu gewoon
+`_selectTab` aan, de balk blijft staan en Home blijft oplichten, zoals `05-zoeken.png` het toont.
+Bibliotheken kreeg een rij in Mijn Pleya, met de long-press die de bibliotheekkiezer opende en anders
+met het balkslot stil verdwenen was.
+
+De stand van de poorten, zonder afronding naar boven: analyzer 0 errors en 0 warnings op de bekende
+40 info-lints, `flutter test` 5596 geslaagd en 6 overgeslagen zonder enkele fout, alle negen
+Verify-scenario's `validate` OK en de 216 runnertests groen. `scripts/ci_checks.sh` blijft **rood** op
+dezelfde 10 unused-code- en 7 unused-files-meldingen als bij de nulmeting vooraf, dus fase 2 heeft er
+geen aan toegevoegd; alle zeventien komen uit F0 en staan nu uitgeschreven in DEC-094, want ze stonden
+nergens anders. De branch `claude/f0-unused-gate` waar het plan naar verwees bestaat niet op `origin`,
+dus er viel niets te mergen en de nulmeting is in plaats daarvan het attributiemiddel.
+
+Wat ontbreekt en niet als geverifieerd gemeld wordt: `ios.home.northstar`, `ios.landing.northstar` en
+`discover.hero.layout` hebben target `ios-sim` en zijn in een Linux-container zonder Xcode niet uit te
+voeren, dus punt 4, 5 en 6 van de Definition of Done staan open. `format_native.sh --check` faalt op een
+ontbrekende `swift-format`; fase 2 raakt geen enkel native bestand.
+
+Drieentwintig nieuwe tests, waaronder punt 7 van de Definition of Done als test: alles wat zijn balkslot
+kwijtraakte staat nog in `getVisibleTabs`, en dat is de lijst die `_buildScreens` en `_selectTab` allebei
+aflopen. DEC-094 legt de besluiten en de twee afwijkingen van het plan vast.
+
 ## [2026-09-03] iOS Unified 2026 fase 1: de iPhone-Home
 
 De Home van de iPhone is een eigen scherm geworden, `lib/screens/home/mobile_home_screen.dart`, dat
