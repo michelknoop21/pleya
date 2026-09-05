@@ -183,7 +183,51 @@ class AppleTvRemoteTouchService {
     _listening = false;
   }
 
+  /// Every key this handler decided to swallow, so [blockConsumedKeyEvent] can
+  /// swallow the same one where it counts. Identity, not a copy of the key:
+  /// both hooks are handed the very same [KeyEvent] instance out of one
+  /// `KeyMessage`, and a key-based match would also block the honest second
+  /// press of the same direction.
+  KeyEvent? _consumedEvent;
+
+  /// The early key handler, and the only place a consumed press actually
+  /// stops.
+  ///
+  /// Returning `true` from [handleNativeKeyEvent] does not stop anything.
+  /// `KeyEventManager.handleKeyData` (SDK 3.44,
+  /// `services/hardware_keyboard.dart:1118`) reads
+  ///
+  /// ```dart
+  /// _hardwareKeyboard.handleKeyEvent(event);
+  /// _dispatchKeyMessage(<KeyEvent>[event], null);
+  /// ```
+  ///
+  /// — the result of the first line is discarded, and the message goes to
+  /// `FocusManager` regardless. Log `3zsde` of 5 September 2026 (build 252)
+  /// shows both halves one millisecond apart: `consume native keydown
+  /// reason=repeated-pair-without-touch age=99ms`, and directly under it
+  /// `FocusableWrapper: result=KeyEventResult.handled reason=onNavigateLeft`.
+  /// The duplicate was recognised and moved the focus anyway, so NAV1 stayed
+  /// open with a fix that logged success.
+  ///
+  /// `FocusManager._handleKeyMessage` runs its early handlers before it walks
+  /// the focus tree and returns straight away on `handled`
+  /// (`widgets/focus_manager.dart:2233-2256`), which is what
+  /// `AppleTvNativeTextEntry` already relies on for the keyboard session.
+  KeyEventResult blockConsumedKeyEvent(KeyEvent event) {
+    if (!identical(event, _consumedEvent)) return KeyEventResult.ignored;
+    _consumedEvent = null;
+    _log('block consumed ${_eventTypeName(event)} logical=${_keyName(event.logicalKey)}');
+    return KeyEventResult.handled;
+  }
+
   bool handleNativeKeyEvent(KeyEvent event) {
+    final consumed = _decideNativeKeyEvent(event);
+    if (consumed) _consumedEvent = event;
+    return consumed;
+  }
+
+  bool _decideNativeKeyEvent(KeyEvent event) {
     _log('native ${_eventTypeName(event)} logical=${_keyName(event.logicalKey)}');
     if (_isMediaPlaybackKey(event.logicalKey)) {
       _log('consume native media key reason=direct-playback-action');
@@ -763,15 +807,21 @@ class AppleTvRemoteTouchService {
     }
   }
 
+  /// Both hooks, always together: the first decides, the second enforces.
+  /// Registering only the [HardwareKeyboard] half is what NAV1 shipped as, and
+  /// it silently does nothing — see [blockConsumedKeyEvent].
   void _registerNativeKeyHandler() {
     if (_nativeKeyHandlerRegistered) return;
     HardwareKeyboard.instance.addHandler(handleNativeKeyEvent);
+    FocusManager.instance.addEarlyKeyEventHandler(blockConsumedKeyEvent);
     _nativeKeyHandlerRegistered = true;
   }
 
   void _unregisterNativeKeyHandler() {
     if (!_nativeKeyHandlerRegistered) return;
     HardwareKeyboard.instance.removeHandler(handleNativeKeyEvent);
+    FocusManager.instance.removeEarlyKeyEventHandler(blockConsumedKeyEvent);
+    _consumedEvent = null;
     _nativeKeyHandlerRegistered = false;
   }
 
