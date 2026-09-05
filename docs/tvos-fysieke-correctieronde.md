@@ -128,6 +128,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | HERO3 | De Home-hero toont niet alleen recent uitgebrachte films: "Recent uitgebracht" had geen tijdvenster, en items zonder releasedatum reden mee op `addedAt`. Besluit 5 september: 90 dagen op releasedatum, zonder datum buiten de hero (DEC-097) | FIXED, hardware open | `531ae19c` |
 | PLR1 | Tekst van de spelerlaag valt links buiten het title-safe gebied (titelbalk op x = 0, tijdlijn op 24 pt) terwijl elke andere TV-surface `tvPageInset` betaalt | FIXED, hardware open | `36118056` |
 | WALK | Een `walk`-stap in Pleya Verify die een richting herhaalt en per hop meldt welke focusbare kandidaat is overgeslagen, zodat sprongen niet meer per geval op het toestel gevonden hoeven te worden. Kern in `c4ffcd16` (DEC-098), `nav.profile` en de vier scenario's in `a9f69f18`, alle vier groen op de simulator, beide sabotagecontroles aantoonbaar rood | FIXED | `c4ffcd16`, `a9f69f18` |
+| HERO4 | Terug op Home na een gepushte contentroute staat de pagina nog gescrold, en de herolaag schuift mee: het artwork loopt boven beeld uit terwijl de CTA-rij op y=19 achter de navigatieband blijft staan, focusbaar en onzichtbaar. Gereproduceerd en gemeten op de detailpagina-terugweg | OPEN | n.v.t. |
 | NAVSEL1 | `tvos.nav.destination-select` spreekt de app op twee punten tegen: het verwacht Films na één RIGHT vanaf Home terwijl Series daar staat, en het eist een Select om van bestemming te wisselen terwijl focus dat sinds 2 september zelf doet. Volledig gedekt door `tvos.nav.focus-switches-destination` | OPEN | n.v.t. |
 
 ## Wat er per item bekend is
@@ -2802,3 +2803,39 @@ start op de balk, de pagina die de focus volgt zonder Select, DOWN als de enige 
 UP terug, en een snelle reeks drukken zonder wachttijd ertussen. Dat maakt dit vermoedelijk een
 scenario dat verwijderd hoort te worden in plaats van bijgewerkt, maar het draait eerst, want welke
 helft rood staat is nog niet gemeten.
+
+### HERO4, de hero schuift weg maar zijn knoppen blijven staan
+
+Gemeld met een foto: terug op Home na afspelen stonden alleen de hero-knoppen in beeld, artwork
+weg, rails eronder. De hypothese uit de vorige sessie was dat de pagina gescrold bleef en de
+herolaag meeschuift, met als bezwaar dat artwork, tekst en knoppen in dezelfde getransleerde
+`TvHeroBillboardCarousel` zitten en dus samen zouden verdwijnen.
+
+Dat bezwaar klopt niet. Ze schuiven samen, maar ze verlaten het scherm niet samen.
+
+De afspeelroute op de TV-shell hangt op VER5, dus de reproductie loopt over de detailpagina, de
+andere route die een tegel in Verder kijken pusht. Home, omlaag naar de hero, omlaag naar de eerste
+rail, Select, en met Menu terug. Gemeten uit `/v1/ui_tree`, twee frames met 3 s ertussen en beide
+identiek, dus dit is een rusttoestand en geen overgang:
+
+| frame | `discover.hero` y | `discover.hero.play` y |
+| --- | --- | --- |
+| Home in rust | 0,0 | 740,5 |
+| na terugkeer | -721,3 | 19,1 |
+
+De pagina staat 721 px gescrold en de herolaag is daar netjes mee opgeschoven. Het artwork vult de
+hele doos van 1080 hoog, dus dat begint op -721 en is op de gescrimde staart na van het scherm af.
+De knoppenrij zit onderin diezelfde doos en komt daardoor op y=19 uit: in beeld, nog steeds
+focusbaar, en precies achter de navigatieband. Dat is wat de foto laat zien.
+
+Twee dingen zijn hier apart te beoordelen, en ze horen niet door elkaar te lopen.
+
+Dat de pagina gescrold blijft is op zichzelf het contract: je komt terug op de kaart waar je vandaan
+kwam, en die staat daar. Wat niet klopt is dat `discover.hero.play` op een gescrolde pagina een
+focusbare knoop op y=19 achterlaat, onder een ondoorzichtige band. Een knop die je niet ziet maar
+wel kunt raken is precies de vorm van BACK1, en dat maakt dit een bevinding en geen smaakkwestie.
+
+Wat nog niet vaststaat is welke scrollpositie de afspeelroute achterlaat. De detailpagina-terugweg
+geeft een volledige scroll naar de eerste rail; de foto suggereert een kleinere offset, waarbij de
+knoppen onder de band vandaan komen. Het bewijs hierboven maakt het mechanisme hard, niet de exacte
+offset van de gemelde route. Die komt uit een hardwareronde of uit VER5.
