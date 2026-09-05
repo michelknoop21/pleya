@@ -128,9 +128,10 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | HERO3 | De Home-hero toont niet alleen recent uitgebrachte films: "Recent uitgebracht" had geen tijdvenster, en items zonder releasedatum reden mee op `addedAt`. Besluit 5 september: 90 dagen op releasedatum, zonder datum buiten de hero (DEC-097) | FIXED, hardware open | `531ae19c` |
 | PLR1 | Tekst van de spelerlaag valt links buiten het title-safe gebied (titelbalk op x = 0, tijdlijn op 24 pt) terwijl elke andere TV-surface `tvPageInset` betaalt | FIXED, hardware open | `36118056` |
 | WALK | Een `walk`-stap in Pleya Verify die een richting herhaalt en per hop meldt welke focusbare kandidaat is overgeslagen, zodat sprongen niet meer per geval op het toestel gevonden hoeven te worden. Kern in `c4ffcd16` (DEC-098), `nav.profile` en de vier scenario's in `a9f69f18`, alle vier groen op de simulator, beide sabotagecontroles aantoonbaar rood | FIXED | `c4ffcd16`, `a9f69f18` |
-| HERO4 | Terug op Home na een gepushte contentroute staat de pagina nog gescrold, en de herolaag schuift mee: het artwork loopt boven beeld uit terwijl de CTA-rij op y=19 achter de navigatieband blijft staan. De gedeelde eigenaar is gehard (`focusPrimary` herstelde de scroll niet, `_focusHeroFromFirstRow` wel), maar de route die de gemelde toestand oplevert is nog niet aangewezen: de detailpagina-terugweg produceert hem niet | OPEN, eigenaar gehard | `20e2bb37`, `17d47592` |
+| HERO4 | Terug op Home na afspelen staat de pagina nog gescrold en de herolaag schuift mee: het artwork loopt boven beeld uit terwijl de CTA-rij op y=19 achter de navigatieband blijft staan. Nagespeeld over het echte drukpad: afspelen haalt de tegel weg, de content-scope daalt af naar de eerste focusbare afstammeling en dat is de Afspelen-pil, dus geen van de drie gehardde ingangen komt eraan te pas. Het contract hangt nu aan de carrousel die focus krijgt | FIXED, hardware open | `20e2bb37`, `17d47592`, `04152ca4` |
 | NAVSEL1 | `tvos.nav.destination-select` sprak de app op twee punten tegen: het verwachtte Films na één RIGHT vanaf Home terwijl Series daar staat, en het eiste een Select om van bestemming te wisselen terwijl focus dat sinds 2 september zelf doet. Gedraaid, rood op de eerste, en verwijderd; `tvos.nav.focus-switches-destination` dekt het en is groen | FIXED | `17d47592` |
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
+| RAIL1 | `test/widgets/tv_discovery_rail_test.dart` staat rood op `main`, vijf tests: focusgedreven metadata (2), focusidentiteit en herstel (2) en de kop van een gedeeltelijke rail (1). Gemeten met en zonder de HERO4-wijziging van 5 september: identiek rood, dus niet van die ronde | OPEN | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -2845,35 +2846,75 @@ focus vraagt. De negatieve controle is `HERO4: DOWN out of the top navigation re
 scroll too` in `tv_content_feed_test.dart`: rood op de oude implementatie, op
 `expect(offset(tester), 0)`, groen erna, met de dertig tests van dat bestand groen.
 
-#### Wat nog open staat
+#### De druk, en waarom hij langs de drie ingangen heen gaat
 
-Welke druk in de draaiende app `focusPrimary()` bereikt op een gescrolde Home is niet
-aangewezen. De detailpagina-terugweg doet het niet: DOWN uit de balk is
-`onFocusContent(restorePreviousFocus: true)` (`tv_root_shell.dart`), dus met een onthouden tegel
-herstelt hij die tegel in plaats van om de hero te vragen. De focustrace van
-`tvos-home-hero-return-from-route-1788614402682` laat dat zien, hop 15: `tvNav_home` naar
-`tvDiscoveryTile_…` op één Arrow Down.
+De vraag die openstond, welke druk `focusPrimary()` bereikt op een gescrolde Home, had een
+verkeerde vorm. Er is er geen. De melding zegt "terug op Home na afspelen", en die weg raakt
+`TvContentFeed` op geen enkel punt aan.
 
-`focusPrimary` komt aan de beurt wanneer er niets te herstellen valt, en dat is de terugweg uit
-de speler. Die hangt op VER5. De bevinding blijft daarom open met een gehardde eigenaar: de val
-is dicht, de melding is niet nagespeeld.
+Gemeten in `tvos-home-hero-return-after-playback-1788618751845`. Twee keer omlaag zet de ring op
+de eerste rij en de feed op 721 px. Select opent de detailpagina, Select speelt af, de clip is
+een paar seconden lang en mpv keert vanzelf terug naar de detailpagina (focustrace hop 11 tot 13).
+Dan één Menu, hop 14: `play_button` naar `tvHeroPlay` op `key:Escape`. In het frame erna staat
+`discover.hero` op y=-721,3 en `discover.hero.play` op y=19,1 met de ring erop. De schermafdruk
+`04-returned.png` is de foto van Michel, tot en met de twee pillen boven de navigatiebalk.
 
-`tvos.home.hero-return-from-route` is permanent gemaakt voor wat er wél te bewijzen valt, en
-zegt in zijn eigen kop dat hij de HERO4-toestand niet bereikt: de gepushte route bewaart de
-scroll, Menu zet de ring terug op de tegel waar hij vandaan kwam, en UP brengt de billboard van
-een teruggekeerde feed weer in beeld.
+De keten. `onPlaybackReturned` ververst het item, Home herprojecteert, en de tegel waar de push
+vandaan kwam bestaat niet meer. `_focusContent(restorePreviousFocus: true)` vraagt dan
+`contentScope.requestFocus()` en die heeft niets onthouden, dus hij daalt af naar de eerste
+focusbare afstammeling van de content. Sinds DEC-095 ligt de carrousel náást de lijst in plaats
+van erin, dus hij is gemonteerd bij elke scrollstand en die eerste afstammeling is de
+Afspelen-pil. De postframe-controle ziet daarna een gevulde `focusedChild` en slaat
+`focusDefault` over, dus `focusActiveTabIfReady` en `focusPrimary` komen er nooit aan te pas.
+
+Dat is ook waarom de knoppen op de foto zichtbaar zijn en in de eerdere meting niet: `textOpacity`
+is 0 zolang een *rij* de focus heeft, en hier heeft de hero hem.
+
+#### De fix
+
+Het contract is niet "deze drie aanroepers scrollen eerst" maar **de billboard die de ring heeft
+staat in beeld**. Dat hangt nu aan de carrousel die focus krijgt: één `Focus` zonder inhoud,
+zonder eigen focus en zonder traversal om de herolaag, precies zoals de rijen er al een hebben.
+`_focusHeroCta` deelt dezelfde `_revealHero`.
+
+De negatieve controle is `HERO4: the billboard comes back into view whoever hands the CTA the ring`
+in `tv_content_feed_test.dart`: de CTA-knoop rechtstreeks om focus vragen, zoals de scope het doet.
+Rood met `offset(tester)` op 468,365, groen erna, met de 31 tests van dat bestand groen.
+
+`tvos.home.hero-return-after-playback` is het bewijs uit de draaiende app en blijft staan. Zonder
+de fix faalt hij op `insideViewport(discover.hero)`; met de fix staat de hero op y=0 en de pil op
+y=740,5, bij dezelfde hop 14. `tvos.home.hero-return`, `tvos.home.hero-return-from-route`,
+`tvos.home.full-bleed` en `tvos.home.walk-rails` blijven groen.
+
+Wat openblijft is de hardwareronde: de simulator bewijst de toestand en het herstel, het toestel
+moet bevestigen dat de melding weg is.
+
+`tvos.home.hero-return-from-route` blijft de tegenhanger en houdt zijn eigen kop: zonder afspelen
+bewaart de gepushte route de scroll, Menu zet de ring terug op de tegel waar hij vandaan kwam, en
+UP brengt de billboard van een teruggekeerde feed weer in beeld. Het verschil tussen die twee
+scenario's is precies waar de melding zat.
 
 ### HERO5, HERO3 maakte een testbestand afhankelijk van de wandklok
 
-`test/screens/discover_screen_tv_hero_test.dart` staat rood op `main`, acht tests, en dat stond
-er al voordat er vandaag iets aan de feed veranderde. Gemeten door de suite te draaien met en
-zonder de HERO4-wijziging: identiek rood.
+Gesloten op `7ade2bc9`. `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`,
+acht tests, en dat stond er al voordat er vandaag iets aan de feed veranderde. Gemeten door de
+suite te draaien met en zonder de HERO4-wijziging: identiek rood.
 
 DEC-097 gaf het venster van 90 dagen één eigenaar met een clock-seam voor tests
-(`DataAggregationService.heroReleaseWindow`). Dit bestand gebruikt die seam niet, dus het leest
-de echte klok. De fixtures lopen van 2026-04-01 tot 2026-08-01, de aggregatie meldt
-`Fetched 0 latest movies from all servers`, en de hero-assertions vallen om op een lege lijst.
-Het venster schuift elke dag verder op, dus dit wordt niet vanzelf beter.
+(`DataAggregationService.heroReleaseWindow`). Dit bestand gebruikte die seam niet, dus het las de
+echte klok. De fixtures lopen van 2026-04-01 tot 2026-08-01, de aggregatie meldde
+`Fetched 0 latest movies from all servers`, en de hero-assertions vielen om op een lege lijst.
+Het venster schoof elke dag verder op, dus dit werd niet vanzelf beter.
 
-`scripts/ci_checks.sh` draait geen `flutter test`, dus de pre-commit-gate merkt het niet. De
+`scripts/ci_checks.sh` draait geen `flutter test`, dus de pre-commit-gate merkte het niet. De
 CI-workflow wel.
+
+De harness pint de klok op 2026-06-01. De oudste fixture heeft daarmee een maand ruimte onder de
+cutoff en de datums blijven zoals ze waren; het venster heeft alleen een ondergrens, dus een
+fixture die verderop in het jaar uitkomt valt er niet buiten. Fixtures zónder datum vielen om
+dezelfde reden uit de hero, en dat is geen bijwerking: DEC-097 zet een film zonder releasedatum er
+per contract uit, dus "geen datum" is hier geen standpunt meer dat een fixture kan innemen.
+`_movie` geeft ze er een.
+
+Negatieve controle: dezelfde seam een jaar vooruit gezet reproduceert precies de acht rode tests,
+teruggezet zijn alle negen groen.
