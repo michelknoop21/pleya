@@ -20,6 +20,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
+import 'package:pleya/widgets/mobile/mobile_chip_bar.dart';
 import 'package:pleya/widgets/mobile/mobile_hero_card.dart';
 import 'package:pleya/widgets/mobile/mobile_media_rail.dart';
 import 'package:provider/provider.dart';
@@ -50,11 +51,24 @@ MediaItem _movie(String id, {String? title, int? year}) => MediaItem(
   serverName: 'server_1',
 );
 
-MediaHub _hub(String id, {required List<MediaItem> items}) => MediaHub(
+MediaItem _show(String id, {String? title, int? year}) => MediaItem(
+  id: id,
+  backend: MediaBackend.plex,
+  kind: MediaKind.show,
+  title: title ?? id,
+  year: year,
+  serverId: 'server_1',
+  serverName: 'server_1',
+);
+
+/// [type] is the backend token `UnifiedHubKind.fromHubType` reads, so it is
+/// what decides whether a chip keeps this row: `movie`, `show`, or `mixed` for
+/// a row that belongs to neither landing.
+MediaHub _hub(String id, {required List<MediaItem> items, String type = 'movie'}) => MediaHub(
   id: id,
   identifier: id,
   title: id,
-  type: 'movie',
+  type: type,
   items: items,
   size: items.length,
   serverId: 'server_1',
@@ -232,7 +246,7 @@ void main() {
     expect(seen[2], projected[1]);
   });
 
-  testWidgets('the Series chip drops the hero and swaps in the series rails', (tester) async {
+  testWidgets('the Series chip drops the hero and titles the page Voor jou', (tester) async {
     aggregation.latestMovies = [_movie('m1', title: 'Recent One', year: 2026)];
     aggregation.onDeck = [_movie('d1', title: 'Half Watched')];
     aggregation.hubs = [
@@ -244,16 +258,72 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.byType(MobileHeroCard), findsOneWidget);
+    expect(find.text('For you'), findsNothing, reason: 'unfiltered Home carries the wordmark and the hero instead');
 
     await tester.tap(find.text('Series'));
     await tester.pump();
 
-    // Hero and Continue Watching belong to the Home chip only; the Series
-    // chip shows `TvDiscoveryLandingProvider.seriesRails`, which is empty for
-    // this movie-only fixture.
+    // Hero and Continue Watching belong to the Home chip only. `Trending` is a
+    // movie row, so the Series chip filters it out.
     expect(find.byType(MobileHeroCard), findsNothing);
     expect(find.text('Continue Watching'), findsNothing);
     expect(find.text('Trending'), findsNothing);
+    expect(find.text('For you'), findsOneWidget);
+    // The chip bar survives a selection: a chip is not a tab (DEC-094).
+    expect(find.byType(MobileChipBar), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a chip filters Home per row on the hub kind, and mixed rows drop out', (tester) async {
+    aggregation.latestMovies = [_movie('m1', title: 'Recent One', year: 2026)];
+    aggregation.hubs = [
+      _hub('Trending films', items: [_movie('t1')]),
+      _hub('Trending series', items: [_show('t2')], type: 'show'),
+      _hub('Trending overal', items: [_movie('t3')], type: 'mixed'),
+    ];
+
+    await pumpHome(tester);
+    await tester.runAsync(discover.load);
+    await tester.pump();
+    await tester.pump();
+
+    // The projection resolves identities over an await, so let it land before
+    // reading rows off the tree.
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+
+    await tester.tap(find.text('Series'));
+    await tester.pump();
+    expect(find.text('Trending series'), findsOneWidget);
+    expect(find.text('Trending films'), findsNothing);
+    // `mixed` has no single Films-or-Series home, which is the same rule
+    // `TvDiscoveryLandingProvider` applies to the landings. It is why a chip
+    // can leave a Plex Home nearly empty.
+    expect(find.text('Trending overal'), findsNothing);
+
+    await tester.tap(find.text('Movies'));
+    await tester.pump();
+    expect(find.text('Trending films'), findsOneWidget);
+    expect(find.text('Trending series'), findsNothing);
+    expect(find.text('Trending overal'), findsNothing);
+  });
+
+  testWidgets('a chip that filters everything away leaves a page, not an exception', (tester) async {
+    aggregation.hubs = [
+      _hub('Trending overal', items: [_movie('t3')], type: 'mixed'),
+    ];
+
+    await pumpHome(tester);
+    await tester.runAsync(discover.load);
+    await tester.pump();
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+
+    await tester.tap(find.text('Series'));
+    await tester.pump();
+
+    expect(find.text('Trending overal'), findsNothing);
+    expect(find.text('For you'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

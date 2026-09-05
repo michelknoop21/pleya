@@ -2308,6 +2308,9 @@ class TranslationsDiscoverEn {
 	/// en: 'Discover'
 	String get title => 'Discover';
 
+	/// en: 'For you'
+	String get forYou => 'For you';
+
 	/// en: 'Switch Profile'
 	String get switchProfile => 'Switch Profile';
 
@@ -7124,6 +7127,7 @@ extension on Translations {
 			'connections.disconnectServerConfirm' => ({required Object name}) => 'Disconnect from "${name}"? The sign-in for this server is removed from this device. Downloaded items are kept.',
 			'connections.reauthRequired' => 'Sign-in required',
 			'discover.title' => 'Discover',
+			'discover.forYou' => 'For you',
 			'discover.switchProfile' => 'Switch Profile',
 			'discover.noContentAvailable' => 'No content available',
 			'discover.addMediaToLibraries' => 'Add some media to your libraries',
@@ -7440,9 +7444,9 @@ extension on Translations {
 			'playlists.itemCount' => ({required Object count}) => '${count} items',
 			'playlists.oneItem' => '1 item',
 			'playlists.emptyPlaylist' => 'This playlist is empty',
-			'playlists.deleteConfirm' => 'Delete Playlist?',
 			_ => null,
 		} ?? switch (path) {
+			'playlists.deleteConfirm' => 'Delete Playlist?',
 			'playlists.deleteMessage' => ({required Object name}) => 'Are you sure you want to delete "${name}"?',
 			'playlists.created' => 'Playlist created',
 			'playlists.deleted' => 'Playlist deleted',
@@ -7954,9 +7958,9 @@ extension on Translations {
 			'tautulli.modeDeviceHelp' => 'In Tautulli, open Settings, Tautulli Remote App, and register a device. Paste the generated token here within five minutes. Your permanent API key stays out of the app, and you can revoke this one device later.',
 			'tautulli.modeApiKey' => 'API key',
 			'tautulli.modeApiKeyHelp' => 'The permanent key from Settings, Web Interface. It grants full access to Tautulli, so use it only if the device token does not work for you.',
-			'tautulli.deviceToken' => 'Device token',
 			_ => null,
 		} ?? switch (path) {
+			'tautulli.deviceToken' => 'Device token',
 			'tautulli.apiKey' => 'API key',
 			'tautulli.testConnection' => 'Test connection',
 			'tautulli.save' => 'Save',

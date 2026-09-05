@@ -759,6 +759,7 @@
   },
   "discover": {
     "title": "Discover",
+    "forYou": "For you",
     "switchProfile": "Switch Profile",
     "noContentAvailable": "No content available",
     "addMediaToLibraries": "Add some media to your libraries",

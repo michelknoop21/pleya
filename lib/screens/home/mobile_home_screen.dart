@@ -13,13 +13,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show SliverConstraints;
 import 'package:provider/provider.dart';
 
+import '../../i18n/strings.g.dart';
 import '../../media/unified/source_coverage_state.dart';
 import '../../media/unified/unified_media_group.dart';
+import '../../media/unified/unified_media_hub.dart';
 import '../../media/unified/unified_route_context.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../providers/discover_provider.dart';
 import '../../providers/home_layout_provider.dart';
-import '../../providers/tv_discovery_landing_provider.dart';
 import '../../providers/tv_home_projection_provider.dart';
 import '../../services/unified_catalog/home_row_layout.dart';
 import '../../services/unified_catalog/mobile_activation.dart';
@@ -51,6 +52,9 @@ class MobileHomeScreen extends StatefulWidget {
 
 class _MobileHomeScreenState extends State<MobileHomeScreen> {
   MobileHomeChip _chip = MobileHomeChip.home;
+
+  static List<UnifiedMediaHub> _ofKind(List<UnifiedMediaHub> hubs, UnifiedHubKind kind) =>
+      hubs.where((hub) => hub.kind == kind).toList();
 
   Future<void> _openDetails(UnifiedMediaGroup group) async {
     await navigateToMediaItemDetails(context, group.representativeSource.item);
@@ -132,14 +136,27 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
   Widget build(BuildContext context) {
     final discover = context.watch<DiscoverProvider>();
     final homeProjection = context.watch<TvHomeProjectionProvider>();
-    final landing = context.watch<TvDiscoveryLandingProvider>();
     final layout = context.watch<HomeLayoutProvider>();
     final activeProfile = context.watch<ActiveProfileProvider?>()?.active;
 
+    // A chip filters Home's own rows; it does not open the landing. Those are
+    // two surfaces and the frozen images show them as two: the chip keeps the
+    // chip bar, drops the hero, titles the page `Voor jou` and leaves Home lit
+    // in the bar (`home-comp-gefilterd.png`), while the tab has a title line
+    // with `Alle series`, no chip bar, and lights its own slot
+    // (`01-series-landing.png`). Reading the landing rails here would make one
+    // of the two a second door to the other ([DEC-094]).
+    //
+    // Filtering is per row, on `UnifiedMediaHub.kind`, which is the rule
+    // `TvDiscoveryLandingProvider` already applies when it splits the same
+    // projection: `mixed`, `episode` and `other` rows have no single Films-or-
+    // Series home and are not guessed onto one. That is why a chip can leave
+    // few rows, or none, on a server whose hubs are mostly mixed, and why this
+    // screen has an empty state at all.
     final rawHubs = switch (_chip) {
       MobileHomeChip.home => homeProjection.hubs,
-      MobileHomeChip.series => landing.seriesRails,
-      MobileHomeChip.movies => landing.movieRails,
+      MobileHomeChip.series => _ofKind(homeProjection.hubs, UnifiedHubKind.show),
+      MobileHomeChip.movies => _ofKind(homeProjection.hubs, UnifiedHubKind.movie),
     };
     final hubs = applyHomeLayoutToUnifiedRows(rawHubs, hiddenRowIds: layout.hiddenRowIds, order: layout.order);
     final continueWatching = _chip == MobileHomeChip.home ? homeProjection.continueWatching : null;
@@ -161,6 +178,22 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
               child: MobileChipBar(selected: _chip, onSelected: (chip) => setState(() => _chip = chip)),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
+            // `Voor jou` names what a filtered Home is: the same recommendation
+            // feed, narrowed to one kind. Only with a chip active, because
+            // unfiltered Home carries the hero and the wordmark instead and
+            // needs no second title (`home-comp-gefilterd.png`, [DEC-094]).
+            if (_chip != MobileHomeChip.home)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Text(
+                    t.discover.forYou,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
             if (_chip == MobileHomeChip.home)
               SliverLayoutBuilder(builder: (context, constraints) => _heroSliver(context, constraints, homeProjection)),
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
