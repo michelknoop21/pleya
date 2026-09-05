@@ -383,6 +383,12 @@ class _ProfileChip extends StatelessWidget {
     return FocusableWrapper(
       focusNode: node,
       onSelect: onSelect,
+      // The bar's leftmost focus stop, and therefore part of every walk over
+      // it. Without an id the first hop of a leftward walk lands on a
+      // `discovered` node the scenario cannot name, and the walk can only
+      // count presses instead of stating where they go.
+      automationId: AutomationIds.navProfile,
+      automationRole: 'nav',
       onNavigateDown: onNavigateDown,
       onNavigateRight: onNavigateRight,
       focusShape: BoxShape.circle,

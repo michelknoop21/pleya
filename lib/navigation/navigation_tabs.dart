@@ -8,6 +8,9 @@ import '../profiles/active_profile_provider.dart';
 import '../profiles/profile_avatar.dart';
 import '../theme/mono_theme.dart';
 import '../utils/platform_detector.dart';
+import 'navigation_tab_id.dart';
+
+export 'navigation_tab_id.dart';
 
 /// Bottom-nav icon with a red→amber brand dot above the active tab,
 /// mirroring the navigation mockup. The dot slot is always reserved so
@@ -89,25 +92,6 @@ class MyPleyaTabIcon extends StatelessWidget {
 /// disagreeing would mean either a duplicate account menu or no way to sign out
 /// at all.
 bool showsHeaderAccountMenu({required bool isMobile}) => !isMobile;
-
-/// Navigation tab identifiers.
-///
-/// Order here is not the display order (that is [allNavigationTabs]) and the
-/// enum position is not persisted either: `EnumPref` serialises on `.name`, so
-/// inserting a value cannot shift a stored `startup_section`.
-enum NavigationTabId {
-  discover,
-  movies,
-  series,
-  libraries,
-  liveTv,
-  search,
-  watchlist,
-  requests,
-  downloads,
-  settings,
-  myPleya,
-}
 
 /// Represents a navigation tab with its configuration
 class NavigationTab {
