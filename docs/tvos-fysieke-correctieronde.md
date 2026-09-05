@@ -132,6 +132,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | NAVSEL1 | `tvos.nav.destination-select` sprak de app op twee punten tegen: het verwachtte Films na één RIGHT vanaf Home terwijl Series daar staat, en het eiste een Select om van bestemming te wisselen terwijl focus dat sinds 2 september zelf doet. Gedraaid, rood op de eerste, en verwijderd; `tvos.nav.focus-switches-destination` dekt het en is groen | FIXED | `17d47592` |
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
 | RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
+| GOLD1 | Negentien catalogusgoldens tekenen sinds CAT5 iets anders en zijn bewust niet bijgewerkt; CI is daarop rood en op niets anders. Ze zijn alleen op dezelfde Linux als CI te regenereren: macOS rasteriseert tekst anders, en een geëmuleerde amd64-container dithert de verlopen anders, gemeten op ongewijzigde code als 45 procent pixeldiff over alle negentien. Michel koos op 5 september de runner-route. `.github/workflows/goldens.yml` draait `flutter test --update-goldens` op de CI-runner en geeft de gewijzigde PNG's als artifact terug; de workflow schrijft niets naar de repo, want een golden die zichzelf goedkeurt bewijst niets. `tv_catalog_films_header_focused.png` vervalt voor `tv_catalog_films_rail_open.png` en moet met de hand weg | IN PROGRESS | n.v.t. |
 | ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) goedgekeurd op 5 september, DEC-100 accepted, 9.1, 17.5 en 23 aangepast; bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
 
 ## Wat er per item bekend is
@@ -3058,6 +3059,33 @@ dat de weg die hem opleverde hem niet meer oplevert.
 bewaart de gepushte route de scroll, Menu zet de ring terug op de tegel waar hij vandaan kwam, en
 UP brengt de billboard van een teruggekeerde feed weer in beeld. Het verschil tussen die twee
 scenario's is precies waar de melding zat.
+
+### GOLD1, de catalogusgoldens horen op de runner geregenereerd te worden
+
+CAT5 verplaatste de catalogusacties naar een rail links van het raster, en negentien goldens
+tekenen sindsdien een ander scherm. Ze zijn bewust niet bijgewerkt, want een golden die je op je
+eigen machine schrijft is geen referentie voor CI.
+
+Dat is gemeten en niet aangenomen. Op **ongewijzigde** code faalt in
+`ghcr.io/cirruslabs/flutter:3.44.0` onder amd64-emulatie alle negentien, met ongeveer 45 procent
+pixeldiff op een pagina vol coverart. De Flutter-versie is niet de verdachte: framework-revisie en
+engine-hash in de container zijn identiek aan die lokaal. Het is de dithering van de verlopen onder
+emulatie. Een native arm64-variant van dat image bestaat niet, het is single-arch.
+
+Michel koos op 5 september de runner-route. `.github/workflows/goldens.yml` is een
+`workflow_dispatch`-job met de twee catalogusbestanden als standaardinvoer; hij draait
+`flutter test --update-goldens` op dezelfde `ubuntu-latest` als `ci.yml`, verzamelt wat er gewijzigd
+of nieuw is onder `test/goldens/` en zet dat als artifact klaar. Hij commit niets. Een workflow die
+zijn eigen goldens pusht maakt "de referentie past bij de code" waar door constructie, en een golden
+bestaat er juist om door iemand bekeken te zijn.
+
+`tv_catalog_films_header_focused.png` hoort bij een header die CAT5 heeft opgeheven en vervalt voor
+`tv_catalog_films_rail_open.png`. Een verwijdering is geen wijziging die de job kan zien, dus die
+gaat met de hand.
+
+Terzijde, want het kostte een half uur: hangt `docker pull` eindeloos zonder foutmelding, dan is dat
+de `osxkeychain` credential-helper. `DOCKER_CONFIG` naar een map met een lege `config.json` en hij
+loopt door.
 
 ### ROW1, eigen rails op Home
 
