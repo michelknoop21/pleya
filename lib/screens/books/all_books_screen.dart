@@ -180,7 +180,11 @@ class _AllBooksHeader extends StatelessWidget {
           children: [
             IconButton(
               onPressed: () => Navigator.of(context).maybePop(),
-              icon: const AppIcon(Symbols.arrow_back_rounded),
+              // The chevron, not the full arrow. Goldens 02a and 04a draw the
+              // same iOS chevron every other header in the books set uses;
+              // detail, inhoudsopgave and zoeken in boek were already built with
+              // it, and these two were the odd pair out.
+              icon: const AppIcon(Symbols.arrow_back_ios_new_rounded, size: 22, fill: 0, weight: 500),
               tooltip: MaterialLocalizations.of(context).backButtonTooltip,
             ),
             Expanded(

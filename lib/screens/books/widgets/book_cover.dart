@@ -68,12 +68,41 @@ class _CoverType extends StatelessWidget {
         : glyphs <= 22
         ? 11.0
         : 10.0;
-    final titleStyle = TextStyle(
+    final weight = artwork.shape == BookArtworkShape.rings ? FontWeight.w500 : FontWeight.w700;
+    final spacing = artwork.shape == BookArtworkShape.orb && glyphs <= 12 ? 2.4 : 0.6;
+    final drawn = artwork.shape == BookArtworkShape.orb ? title.toUpperCase() : title;
+    // And then stepped down until the longest word fits one line.
+    //
+    // The table above answers how many **lines** a title needs; it cannot
+    // answer whether a word fits one of them, and those are different
+    // questions. `De Alchemist` is twelve glyphs, so it draws at 16 pt with the
+    // wide letter-spacing an orb title gets, and `ALCHEMIST` is then wider than
+    // the measure: it broke as `DE ALCH / EMIST` on the shelf. That is the same
+    // mid-word break golden 02 rejected once for `CHILDRE / N OF / DUNE`, on a
+    // title short enough that the length rule never reached it.
+    //
+    // Measured rather than tabled, and measured with the reader's own text
+    // scaler, because that is the one thing a second table could not follow:
+    // at iOS Larger Text the title grows and the measure does not.
+    //
+    // The measured style and the drawn style are one object, and it names its
+    // own face. A `TextStyle` handed straight to a `TextPainter` carries no
+    // family and falls back to the platform default, while the `Text` below
+    // resolves whatever the surrounding `DefaultTextStyle` has: two faces, two
+    // widths, and a fit computed for neither. Measured that way `DUNE` came out
+    // 105 wide instead of Inter's 77, and a title with room to spare was shrunk.
+    final metrics = TextStyle(
+      fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+      fontSize: base,
+      fontWeight: weight,
+      letterSpacing: spacing,
+    );
+    final fit = _fitFactor(drawn, style: metrics, scaler: MediaQuery.textScalerOf(context));
+    final titleStyle = metrics.copyWith(
       color: artwork.ink,
-      fontSize: base * scale,
+      fontSize: base * fit * scale,
       height: 1.15,
-      fontWeight: artwork.shape == BookArtworkShape.rings ? FontWeight.w500 : FontWeight.w700,
-      letterSpacing: (artwork.shape == BookArtworkShape.orb && glyphs <= 12 ? 2.4 : 0.6) * scale,
+      letterSpacing: spacing * fit * scale,
     );
     final authorStyle = TextStyle(
       color: artwork.ink.withValues(alpha: 0.72),
@@ -83,7 +112,7 @@ class _CoverType extends StatelessWidget {
     );
 
     final titleText = Text(
-      artwork.shape == BookArtworkShape.orb ? title.toUpperCase() : title,
+      drawn,
       textAlign: TextAlign.center,
       maxLines: 3,
       overflow: TextOverflow.ellipsis,
@@ -109,6 +138,32 @@ class _CoverType extends StatelessWidget {
       ),
     );
   }
+}
+
+/// What the reference cover leaves for its lettering: 110 points less the 8 of
+/// padding on each side. Everything on a cover is expressed against that 110
+/// and multiplied by `scale`, so a factor found here holds at every cover size.
+const double _titleMeasure = 110 - 16;
+
+/// How far [text]'s longest word has to shrink to fit one line, as a factor of
+/// 1.0 or less.
+///
+/// The **longest word** and not the whole string: a line break between words is
+/// what `maxLines: 3` is for, and only a word that outruns the measure on its
+/// own has nowhere to break. Letter-spacing is scaled with the size because it
+/// is part of a word's set width; scaling both by one factor scales the width by
+/// exactly that factor.
+double _fitFactor(String text, {required TextStyle style, required TextScaler scaler}) {
+  final longest = text.split(RegExp(r'\s+')).fold<String>('', (a, b) => b.length > a.length ? b : a);
+  if (longest.isEmpty) return 1;
+  final painter = TextPainter(
+    text: TextSpan(text: longest, style: style),
+    textDirection: TextDirection.ltr,
+    textScaler: scaler,
+  )..layout();
+  final width = painter.width;
+  painter.dispose();
+  return width <= _titleMeasure ? 1 : _titleMeasure / width;
 }
 
 class _BookCoverPainter extends CustomPainter {
