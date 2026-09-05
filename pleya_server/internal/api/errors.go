@@ -67,6 +67,19 @@ const (
 	// stabiele code en geen generieke 429: de client moet het verschil zien met
 	// een rate limiter, want hier helpt wachten niet maar een stream sluiten wel.
 	CodeStreamSessionLimit = "session.stream_session_limit"
+
+	// CodeInternal is het antwoord op een fout die de handler zelf niet had
+	// voorzien: de recovery-laag vangt een panic af en maakt er een envelop van
+	// in plaats van een verbroken verbinding (J.2 rij 17, DEC-110 en DEC-111).
+	// `details.request_id` verwijst naar de logregel met de stack; de stack
+	// zelf verlaat de server niet.
+	//
+	// retryable is false en niet true. Het contract dwingt een boolean af waar
+	// "onbekend" het eerlijke antwoord zou zijn, en van de twee is false de
+	// veilige: een deterministische panic die als retryable binnenkomt levert
+	// een client op die de server blijft raken op precies het verzoek dat hem
+	// omver duwde.
+	CodeInternal = "server.internal"
 )
 
 // httpStatus koppelt elke code aan zijn status en aan retryable. Het staat in
@@ -105,6 +118,8 @@ var errorTable = map[string]struct {
 
 	CodeSessionInvalid:     {http.StatusBadRequest, false},
 	CodeStreamSessionLimit: {http.StatusTooManyRequests, false},
+
+	CodeInternal: {http.StatusInternalServerError, false},
 }
 
 // writeError stuurt de foutvorm met de status en retryable die bij de code horen.

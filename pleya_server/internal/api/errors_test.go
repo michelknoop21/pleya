@@ -42,7 +42,13 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"storage.full":                   {507, false},
 		"session.invalid":                {400, false},
 		"session.stream_session_limit":   {429, false},
+		"server.internal":                {500, false},
 	}
+
+	// Deze tabel spiegelt hoofdstuk 7.1 voor zover deze server hem draait.
+	// settings.invalid_value staat er wel in de specificatie en hier nog niet:
+	// die code hoort bij PATCH /settings en komt met S1.2. Hem hier alvast
+	// neerzetten zou de lus hierboven laten falen op een register dat klopt.
 
 	for code, expect := range want {
 		entry, ok := errorTable[code]
