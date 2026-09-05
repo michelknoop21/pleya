@@ -52,17 +52,28 @@ Future<void> _loadInterfaceFace() async {
   await loader.load();
 }
 
+/// The iOS software keyboard on this frame, in points: 291 of keys plus the
+/// 45pt suggestion bar above them. The simulator will not show it — idb types
+/// as a hardware keyboard and iOS suppresses the on-screen one — but the app
+/// never sees the keyboard itself, only the bottom inset it takes, so that is
+/// what a test has to reproduce.
+const double _keyboardInset = 336;
+
 Future<void> _pumpSearch(
   WidgetTester tester, {
   String query = 'desert',
   BookTextSearch? search,
   double scale = 1.0,
+  double keyboardInset = 0,
 }) async {
   tester.view.physicalSize = _viewport;
   tester.view.devicePixelRatio = 1;
-  const padding = FakeViewPadding(top: _safeTop, bottom: _safeBottom);
-  tester.view.viewPadding = padding;
-  tester.view.padding = padding;
+  const viewPadding = FakeViewPadding(top: _safeTop, bottom: _safeBottom);
+  tester.view.viewPadding = viewPadding;
+  // With the keyboard up the home indicator sits behind it, so iOS reports no
+  // bottom padding and the whole gap arrives as an inset instead.
+  tester.view.padding = keyboardInset > 0 ? const FakeViewPadding(top: _safeTop) : viewPadding;
+  tester.view.viewInsets = FakeViewPadding(bottom: keyboardInset);
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(
@@ -346,6 +357,45 @@ void main() {
     testWidgets('autocorrect is off', (tester) async {
       await _pumpSearch(tester, query: '');
       expect(tester.widget<TextField>(find.byType(TextField)).autocorrect, isFalse);
+    });
+  });
+
+  group('with the software keyboard up', () {
+    /// What the keyboard covers, and whether the results behind it can be
+    /// reached. The simulator refuses to show the on-screen keyboard while idb
+    /// is attached (it types as hardware), so the run's screenshots cannot
+    /// answer this; the inset can, because that is the only form the keyboard
+    /// reaches the app in.
+    testWidgets('it takes the lower half of the page', (tester) async {
+      await _pumpSearch(tester, keyboardInset: _keyboardInset);
+
+      final fold = _viewport.height - _keyboardInset;
+      final visible = [
+        for (var i = 0; i < 12; i++)
+          if (tester.getRect(_row(i)).bottom <= fold) i,
+      ];
+      // Three of the twelve rows survive; the other nine sit behind the keys.
+      expect(visible, [0, 1, 2]);
+    });
+
+    testWidgets('the last result can still be scrolled clear of it', (tester) async {
+      await _pumpSearch(tester, keyboardInset: _keyboardInset);
+
+      // Far enough to hit the end of the list, whatever the row heights are.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -3000));
+      await tester.pumpAndSettle();
+
+      final last = tester.getRect(_row(11));
+      expect(last.bottom, lessThanOrEqualTo(_viewport.height - _keyboardInset));
+      expect(last.top, greaterThanOrEqualTo(0));
+    });
+
+    /// The header is not part of the scrolling content by accident: it scrolls
+    /// away with everything else, which is what frees the room above the keys.
+    testWidgets('the field itself is above the keyboard while typing', (tester) async {
+      await _pumpSearch(tester, keyboardInset: _keyboardInset);
+
+      expect(tester.getRect(find.byType(TextField)).bottom, lessThan(_viewport.height - _keyboardInset));
     });
   });
 

@@ -95,6 +95,24 @@ For geometry assertions (`insideViewport`, `notOverlapping`, `minimumTapTarget`,
 `leftOf`/`rightOf`, `sameRow`/`sameColumn`), see `pleya_verify/geometry/SPEC.md` for the full
 function/argument table before guessing a shape.
 
+## The iOS software keyboard is not in the evidence, and cannot be put there
+
+A `type:` step reaches iOS as idb HID, which iOS reads as a hardware keyboard, and a device with a
+hardware keyboard shows no on-screen one. Every books screenshot with a focused, filled search
+field therefore has no keyboard in it. Four ways around it were tried and none worked: writing
+`ConnectHardwareKeyboard = 0` into the device's `com.apple.iphonesimulator` preferences (Simulator
+reads it at launch, and it was already running), rebooting the device with that setting in place,
+driving `I/O ▸ Keyboard ▸ Toggle Software Keyboard` over AppleScript mid-run, and tapping a text
+field in Safari as a control. Do not spend another round on it without a new idea.
+
+What the app actually sees of a keyboard is `MediaQuery.viewInsets.bottom`, and that is
+reproducible in a widget test: set `tester.view.viewInsets`, and drop `padding.bottom` to zero
+while it is up, because the home indicator sits behind the keys. The two books search screens have
+that coverage (`test/screens/book_text_search_screen_test.dart`,
+`test/screens/books_search_screen_test.dart`): on golden 09 the keyboard covers nine of the twelve
+results and all of them scroll clear; on golden 04 the demo catalogue never draws more than four
+rows and the last ends three points above the keyboard's edge.
+
 ## On failure
 
 1. Open `report.md` and the relevant `screenshots/*.png` in the bundle before touching code. A

@@ -10,9 +10,21 @@ import 'package:provider/provider.dart';
 /// The frame golden 04 was drawn on.
 const Size _viewport = Size(393, 852);
 
-Future<void> _pump(WidgetTester tester, {String query = 'dune'}) async {
+/// The iOS software keyboard on this frame, in points: 291 of keys plus the
+/// 45pt suggestion bar. The simulator will not show it while idb is attached
+/// — idb types as a hardware keyboard — but the app only ever sees the bottom
+/// inset it takes, and that is reproducible here.
+const double _keyboardInset = 336;
+
+Future<void> _pump(
+  WidgetTester tester, {
+  String query = 'dune',
+  double keyboardInset = 0,
+  double textScale = 1.0,
+}) async {
   tester.view.physicalSize = _viewport;
   tester.view.devicePixelRatio = 1;
+  tester.view.viewInsets = FakeViewPadding(bottom: keyboardInset);
   addTearDown(tester.view.reset);
 
   final provider = BooksHomeProvider(source: const DemoBooksSource());
@@ -20,7 +32,15 @@ Future<void> _pump(WidgetTester tester, {String query = 'dune'}) async {
   await tester.pumpWidget(
     ChangeNotifierProvider<BooksHomeProvider>.value(
       value: provider,
-      child: MaterialApp(theme: ThemeData.dark(), home: const BooksSearchScreen()),
+      child: MaterialApp(
+        theme: ThemeData.dark(),
+        home: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: const BooksSearchScreen(),
+          ),
+        ),
+      ),
     ),
   );
   await tester.pumpAndSettle();
@@ -191,6 +211,60 @@ void main() {
 
       expect(find.text(t.books.statusAll), findsNothing);
       expect(find.byType(BookResultRow), findsNothing);
+    });
+  });
+
+  group('with the software keyboard up', () {
+    /// Whoever is typing has the keyboard over the lower two thirds of this
+    /// page. What matters is that the results behind it are reachable, not
+    /// that nothing is covered — covering is what a keyboard does.
+    /// Measured, not assumed: the widest query in the demo catalogue draws
+    /// four rows and the last of them ends on 513, three points above the
+    /// keyboard's edge at 516. Nothing is covered here — but the margin is
+    /// three points, so a fifth result, a taller row or a shorter frame puts
+    /// one behind the keys, and then the test below is what has to hold.
+    testWidgets('no result of the demo catalogue ends up behind the keys', (tester) async {
+      for (final query in ['dune', 'de', 'ha']) {
+        await _pump(tester, query: query, keyboardInset: _keyboardInset);
+        expect(
+          tester.getRect(find.byType(BookResultRow).last).bottom,
+          lessThanOrEqualTo(_viewport.height - _keyboardInset),
+          reason: '"$query" fits above the keyboard',
+        );
+      }
+    });
+
+    testWidgets('what the keyboard does cover stays reachable by scrolling', (tester) async {
+      // A reader on a larger text size: the same four rows, taller, so the
+      // last one starts out behind the keyboard.
+      await _pump(tester, query: 'de', keyboardInset: _keyboardInset, textScale: 1.6);
+
+      expect(
+        tester.getRect(find.byType(BookResultRow).last).bottom,
+        greaterThan(_viewport.height - _keyboardInset),
+        reason: 'it starts out behind the keyboard, otherwise this proves nothing',
+      );
+
+      // The Scaffold gives the keyboard its room by shrinking the scroll
+      // viewport to 516, so "inside the viewport" and "above the keys" are
+      // the same statement here.
+      // Named explicitly: the chip row is a second Scrollable on this page.
+      await tester.scrollUntilVisible(
+        find.byType(BookResultRow).last,
+        -80,
+        scrollable: find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first,
+      );
+      await tester.pumpAndSettle();
+
+      final rect = tester.getRect(find.byType(BookResultRow).last);
+      expect(rect.bottom, lessThanOrEqualTo(_viewport.height - _keyboardInset));
+      expect(rect.top, greaterThanOrEqualTo(0));
+    });
+
+    testWidgets('the field stays above the keys', (tester) async {
+      await _pump(tester, keyboardInset: _keyboardInset);
+
+      expect(tester.getRect(find.byType(TextField)).bottom, lessThan(_viewport.height - _keyboardInset));
     });
   });
 }
