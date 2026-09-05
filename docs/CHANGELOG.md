@@ -4,6 +4,51 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-05] Adversariële review op fase 1 en 2: 20 bevindingen verwerkt
+
+Een reviewronde over de volledige fase 1- en fase 2-diff leverde twintig bevindingen op, van een chip
+zonder terugweg tot een dode getter met drie stille duplicaten. Alle twintig zijn verwerkt: de elf
+correctheidsbevindingen kregen elk een test die zonder de fix rood staat, de negen kwaliteitsbevindingen
+kregen geen nieuwe verplichte test, alleen de bestaande regressie die hun opruiming bewaakt.
+
+De zwaarste was de hero-carrousel die op elke andere tab bleef doortikken: `MobileHeroCard` luistert nu
+naar `TickerMode` in plaats van een losse `Timer.periodic` die niemand ooit stopzette, en herstart
+zichzelf ook als de catalogus na de eerste build met meer dan een groep binnenkomt. Een tik op de
+al-geselecteerde chip op Home gaf tot nu toe niets terug; die schakelt nu terug naar Home, zonder een
+derde chip te tekenen. Zoeken openen vanuit Films of Series licht voortaan die tab, niet altijd Home.
+`_selectTab` en `AutomationNavigationHooks.selectTab` geven nu onderscheid tussen "geen `MainScreen`
+gemount" en "bestemming niet zichtbaar op dit platform", zodat `/v1/open` niet meer de volle timeout
+uitloopt op een tab die nooit ging bestaan.
+
+Twee bevindingen raakten dezelfde wortel als DEC-094 zelf. De series/films-classificatie stond drie keer
+onafhankelijk in code (een dode `MobileLandingKind.hubKind`-getter, de chip-switch, en
+`TvDiscoveryLandingProvider`'s eigen switch); alle drie lezen nu `UnifiedHubKind.singleKindSurface`, met
+een test die de chip-uitkomst en de landing-uitkomst tegen elkaar controleert. En `_screens` kon voor
+exact één frame bij de verkeerde `_isMobile`/`_isPhone` horen na een resize, omdat de rebuild in
+`build()` op een `addPostFrameCallback` wachtte; die verhuisde naar `didChangeDependencies`, dat altijd
+vóór de build draait die hij voorafgaat.
+
+Een van de kwaliteitsfixes vond tijdens het testen zelf een echte crash: de telefoon-guard op
+`discover_screen.dart`'s hero-timers riep aanvankelijk `PlatformDetector.isPhone(context)` rechtstreeks
+aan in `_startAutoScroll()`, die ook vanuit `initState` draait — `Theme.of(context)` (waar `isPhone` van
+afhangt) mag daar nog niet aangeroepen worden. Opgelost met een `_isPhone`-veld dat in
+`didChangeDependencies` wordt gezet, wat op de iPad-testfixtures een harde
+`dependOnInheritedWidgetOfExactType`-crash voorkwam die anders in de app zelf was beland.
+
+Verder: `Play on ${server}` liep via i18n in plaats van een hardcoded Engels voorzetsel, een dode
+`onAvatarTap` is weggehaald (automation-rol van `button` naar `image`), `mobileFeatured`'s dubbele
+geometrie-tak in `home_hero_layout.dart` is samengevoegd met de `isWideBox`-tak, twee losse kopieën van
+dezelfde vier-arms `MediaBackend`-switch zijn samengevoegd tot `backendDisplayLabel`, en Home en de
+landings delen nu één shell (`mobile_discovery_shell.dart`) voor hun skeleton-, fout- en staartslivers
+in plaats van elk hun eigen kopie te bouwen.
+
+De stand van de poorten: analyzer 0 errors en 0 warnings op de bekende 40 info-lints, `flutter test`
+volledig groen op de nulmeting (5596 geslaagd, 6 overgeslagen, nul fouten) plus de nieuwe testgevallen
+uit deze ronde, elk apart en in de volledige suite geverifieerd.
+`ios.home.northstar`, `ios.landing.northstar` en `discover.hero.layout` zijn in deze omgeving niet
+opnieuw gedraaid: die vragen een macOS/iOS-sim-target, niet beschikbaar in deze Linux-container, hetzelfde
+ontbrekende bewijs dat DEC-094 al vastlegt.
+
 ## [2026-09-05] iOS Unified 2026 fase 2: Series en Films als bestemming
 
 Een navigatiefase, geen tweede visuele ronde. Series en Films zijn tabs geworden op de iPhone,
