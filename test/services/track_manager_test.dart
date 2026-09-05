@@ -5,8 +5,12 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_source_info.dart';
+import 'package:pleya/media/playback_language_intent.dart';
+import 'package:pleya/media/playback_language_notice.dart';
+import 'package:pleya/media/pleya_profile_language_preferences.dart';
 import 'package:pleya/mpv/mpv.dart';
 import 'package:pleya/mpv/player/player_stream_controllers.dart';
+import 'package:pleya/services/pleya_profile_language_preference_store.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/track_manager.dart';
 
@@ -111,6 +115,7 @@ TrackManager _make({
   MediaSourceInfo? mediaInfo,
   bool active = true,
   void Function(String, {Duration? duration})? showMessage,
+  void Function(PlaybackLanguageNotice)? onLanguageNotice,
 }) {
   return TrackManager(
     player: player,
@@ -121,6 +126,7 @@ TrackManager _make({
     metadata: metadata ?? _meta(),
     mediaInfo: mediaInfo,
     showMessage: showMessage,
+    onLanguageNotice: onLanguageNotice,
   );
 }
 
@@ -375,6 +381,108 @@ void main() {
   });
 
   // ============================================================
+  // LANG1 / DEC-096 — the manager actually supplies the layers
+  // ============================================================
+
+  group('the global Pleya profile preference reaches the resolver', () {
+    // `TrackSelectionService` honouring a global preference is covered in
+    // `lang1_controls_management_test.dart`, which builds the service by hand.
+    // That leaves the wiring untested, and wiring is exactly what broke here
+    // before: the resolver was right and the caller handed it the wrong thing.
+    // These tests go through `TrackManager`, so they fail if the manager stops
+    // reading the profile.
+    test('with no series preference the profile decides the audio', () async {
+      await SettingsService.getInstance();
+      await PleyaProfileLanguagePreferenceStore.write(
+        const PleyaProfileLanguagePreferences(audioLanguage: 'nld', seeded: true),
+      );
+
+      final player = _FakePlayer(
+        tracks: const Tracks(
+          audio: [
+            AudioTrack(id: '1', language: 'eng'),
+            AudioTrack(id: '2', language: 'nld'),
+          ],
+        ),
+      );
+      final mgr = _make(player: player);
+      addTearDown(mgr.dispose);
+
+      mgr.applyTrackSelectionWhenReady();
+      await _drainAsync();
+
+      expect(player.selectedAudio.single.language, 'nld');
+    });
+
+    test('it applies on a Pleya Server item exactly as on a Plex one', () async {
+      await SettingsService.getInstance();
+      await PleyaProfileLanguagePreferenceStore.write(
+        const PleyaProfileLanguagePreferences(audioLanguage: 'nld', seeded: true),
+      );
+
+      final player = _FakePlayer(
+        tracks: const Tracks(
+          audio: [
+            AudioTrack(id: '1', language: 'eng'),
+            AudioTrack(id: '2', language: 'nld'),
+          ],
+        ),
+      );
+      final mgr = _make(
+        player: player,
+        metadata: MediaItem(id: 'ps1', backend: MediaBackend.pleyaServer, kind: MediaKind.movie),
+      );
+      addTearDown(mgr.dispose);
+
+      mgr.applyTrackSelectionWhenReady();
+      await _drainAsync();
+
+      expect(
+        player.selectedAudio.single.language,
+        'nld',
+        reason: 'the global layer is the Pleya profile, so it cannot depend on which backend is playing',
+      );
+    });
+
+    test('a deliberate change becomes the session intent, not just a track', () async {
+      await SettingsService.getInstance();
+      final player = _FakePlayer(
+        tracks: const Tracks(
+          audio: [
+            AudioTrack(id: '1', language: 'eng'),
+            AudioTrack(id: '2', language: 'nld'),
+          ],
+        ),
+      );
+      final mgr = _make(player: player);
+      addTearDown(mgr.dispose);
+
+      await mgr.onAudioTrackChanged(const AudioTrack(id: '2', language: 'nld'));
+
+      expect(mgr.sessionIntent?.audioLanguage, 'nld');
+      expect(mgr.sessionIntent?.origin, PlaybackIntentOrigin.session);
+    });
+
+    test('an automatic resolution does not become the session intent', () async {
+      await SettingsService.getInstance();
+      final player = _FakePlayer(
+        tracks: const Tracks(
+          audio: [
+            AudioTrack(id: '1', language: 'eng'),
+            AudioTrack(id: '2', language: 'nld'),
+          ],
+        ),
+      );
+      final mgr = _make(player: player);
+      addTearDown(mgr.dispose);
+
+      await mgr.onAudioTrackChanged(const AudioTrack(id: '2', language: 'nld'), userInitiated: false);
+
+      expect(mgr.sessionIntent, isNull, reason: 'DEC-096 lid 1: only a real action by the viewer creates layer 1');
+    });
+  });
+
+  // ============================================================
   // Track cycling early-return paths
   // ============================================================
 
@@ -522,6 +630,66 @@ void main() {
       final mgr = _make(player: _FakePlayer());
       mgr.dispose();
       expect(mgr.dispose, returnsNormally);
+    });
+  });
+
+  // ============================================================
+  // LANG1 / DEC-096 — CONTROL N: de bevestiging van mockup 31 C
+  // ============================================================
+
+  group('CONTROL N — een handmatige keuze meldt zich', () {
+    setUp(() async {
+      resetSharedPreferencesForTest();
+      PleyaProfileLanguagePreferenceStore.resetForTesting();
+      SettingsService.resetForTesting();
+      await SettingsService.getInstance();
+    });
+
+    test('de melding noemt de serie, de bewaarde keuze en de ongewijzigde globale voorkeur', () async {
+      await PleyaProfileLanguagePreferenceStore.write(const PleyaProfileLanguagePreferences(subtitleLanguage: 'nl'));
+      final notices = <PlaybackLanguageNotice>[];
+      final mgr = _make(
+        player: _FakePlayer(),
+        metadata: MediaItem(
+          id: 'ep1',
+          backend: MediaBackend.plex,
+          kind: MediaKind.episode,
+          grandparentId: 'show7',
+          grandparentTitle: 'Severance',
+        ),
+        onLanguageNotice: notices.add,
+      );
+      addTearDown(mgr.dispose);
+
+      await mgr.onSubtitleTrackChanged(const SubtitleTrack(id: 's-1', language: 'eng', title: 'English'));
+
+      final notice = notices.single as LanguageChoiceRemembered;
+      expect(notice.kind, LanguageTrackKind.subtitles);
+      expect(notice.language, 'eng');
+      expect(notice.seriesTitle, 'Severance');
+      expect(notice.storedForSeries, isTrue);
+      expect(notice.globalLanguage, 'nl');
+    });
+
+    test('met "Onthoud keuzes per serie" uit meldt hij een keuze voor deze sessie', () async {
+      await PleyaProfileLanguagePreferenceStore.write(const PleyaProfileLanguagePreferences(rememberPerSeries: false));
+      final notices = <PlaybackLanguageNotice>[];
+      final mgr = _make(player: _FakePlayer(), onLanguageNotice: notices.add);
+      addTearDown(mgr.dispose);
+
+      await mgr.onAudioTrackChanged(const AudioTrack(id: 'a-1', language: 'eng'));
+
+      expect((notices.single as LanguageChoiceRemembered).storedForSeries, isFalse);
+    });
+
+    test('automatische resolutie meldt niets', () async {
+      final notices = <PlaybackLanguageNotice>[];
+      final mgr = _make(player: _FakePlayer(), onLanguageNotice: notices.add);
+      addTearDown(mgr.dispose);
+
+      await mgr.onAudioTrackChanged(const AudioTrack(id: 'a-1', language: 'eng'), userInitiated: false);
+
+      expect(notices, isEmpty);
     });
   });
 }

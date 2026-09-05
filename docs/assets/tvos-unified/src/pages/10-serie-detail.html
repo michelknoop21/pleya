@@ -1,0 +1,56 @@
+<style>
+.bd { position: absolute; left: 0; right: 0; top: 0; height: 610px; overflow: hidden; }
+.bd img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; }
+.bd::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20,20,20,.96) 0%, rgba(20,20,20,.84) 30%, rgba(20,20,20,.15) 62%, rgba(20,20,20,0) 100%); }
+.bd::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,20,20,.55) 0%, rgba(20,20,20,0) 22%, rgba(20,20,20,0) 50%, var(--bg) 100%); }
+.hero { position: absolute; left: var(--inset); top: 170px; width: 980px; }
+.hero h1 { font-family: ArchivoBlack, Inter; font-size: 60px; letter-spacing: .06em; line-height: 1.05; text-transform: uppercase; }
+.hero .meta { margin-top: 16px; display: flex; align-items: center; gap: 14px; font-size: 22px; color: var(--ink-2); }
+.hero .syn { margin-top: 14px; font-size: 22px; line-height: 1.4; color: var(--ink-2); max-width: 900px; }
+.hero .cta { margin-top: 26px; }
+.hero .cta .btn small { font-weight: 400; color: rgba(20,20,20,.62); margin-left: 4px; }
+.src-line { margin-top: 20px; display: flex; align-items: center; gap: 18px; font-size: 21px; color: var(--ink-2); }
+.src-line .k { color: var(--ink-3); }
+.src-line .chg { color: var(--ink); font-weight: 500; padding: 8px 18px; border-radius: 999px; background: rgba(255,255,255,.12); }
+.eps { position: absolute; left: var(--inset); right: 0; top: 650px; }
+.eps .head { display: flex; align-items: center; gap: 28px; margin-bottom: 26px; }
+.eps .head .rail-label { margin: 0; }
+.ep .art { width: 400px; height: 225px; }
+.ep .num { position: absolute; left: 12px; top: 12px; background: rgba(20,20,20,.78); font-size: 16px; font-weight: 500; padding: 4px 10px; border-radius: 6px; }
+.ep .len { position: absolute; right: 12px; bottom: 14px; background: rgba(20,20,20,.78); font-size: 16px; padding: 4px 10px; border-radius: 6px; }
+.ep .t { white-space: normal; }
+.ep .syn { font-size: 18px; color: var(--ink-3); margin-top: 6px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ep.focus .art { transform: scale(1.04); }
+</style>
+<div class="bd"><img src="{{art:severance-backdrop}}"></div>
+{{nav:Series|live}}
+
+<div class="hero">
+  <h1>Severance</h1>
+  <div class="meta">
+    <span>2022</span><span class="tag">16</span><span>2 seizoenen</span><span>·</span><span>Drama · Mysterie</span><span class="tag">4K</span><span class="tag">Dolby Vision</span>
+  </div>
+  <div class="syn">Mark leidt een team dat hun werkherinneringen chirurgisch heeft laten scheiden van hun privéleven. Als een mysterieuze collega buiten het werk opduikt, begint hij de waarheid achter zijn baan te ontrafelen.</div>
+  <div class="btn-row cta">
+    <div class="btn primary focus">{{icon:play}} Hervatten <small>· S2 E4 · nog 18 min</small></div>
+    <div class="btn icon">{{icon:plus}}</div>
+    <div class="btn icon">{{icon:check}}</div>
+    <div class="btn icon">{{icon:more}}</div>
+  </div>
+  <div class="src-line"><span class="k">Bron:</span><span>NAS • Series 4K</span><span class="chg">Wijzigen</span><span class="muted">2 bronnen</span></div>
+</div>
+
+<div class="eps">
+  <div class="head">
+    <div class="rail-label">Afleveringen</div>
+    <div class="chips"><div class="chip-btn">Seizoen 1</div><div class="chip-btn on">Seizoen 2</div><div class="chip-btn">Specials</div></div>
+    <div class="muted" style="font-size:20px;margin-left:auto;margin-right:75px">10 afleveringen · 6 bekeken</div>
+  </div>
+  <div class="rail">
+    <div class="card w ep"><div class="art"><img src="{{art:severance-backdrop}}" style="object-position:0% 50%"><span class="num">E3</span><span class="len">54 min</span><span class="seen">{{icon:check}}</span></div><div class="t">Who Is Alive?</div><div class="s">Bekeken</div></div>
+    <div class="card w ep focus"><div class="art"><img src="{{art:severance-backdrop}}" style="object-position:70% 40%"><span class="num">E4</span><span class="len">52 min</span><div class="prog"><i style="width:65%"></i></div></div><div class="t">Woe's Hollow</div><div class="s">nog 18 min · 21 februari 2025</div><div class="syn">Het team gaat op een teambuildingreis buiten het gebouw. Irving vindt iets in de sneeuw.</div></div>
+    <div class="card w ep"><div class="art"><img src="{{art:severance-backdrop}}" style="object-position:100% 60%"><span class="num">E5</span><span class="len">48 min</span></div><div class="t">Trojan's Horse</div><div class="s">28 februari 2025</div></div>
+    <div class="card w ep"><div class="art"><img src="{{art:severance-backdrop}}" style="object-position:30% 90%"><span class="num">E6</span><span class="len">50 min</span><span class="new"></span></div><div class="t">Attila</div><div class="s">7 maart 2025 · nieuw</div></div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 10 · Seriedetail met seizoenchips en afleveringenrail; gefocuste aflevering draagt zijn synopsis</div>

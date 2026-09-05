@@ -1,0 +1,30 @@
+<style>
+.head { display: flex; align-items: flex-end; gap: 28px; }
+.head .acts { margin-left: auto; margin-bottom: 4px; }
+.kiezer { margin-top: 26px; }
+/* Tabrij volgens LIB3: inkt en gewicht dragen de staat, geen rul. */
+.tabs { display: flex; gap: 40px; margin-top: 26px; }
+.tabs .tab { font-size: 26px; font-weight: 500; color: var(--ink-3); line-height: 52px; padding: 0 4px; border-radius: 999px; }
+.tabs .tab.on { color: var(--ink); font-weight: 700; }
+.tabs .tab.focus { box-shadow: 0 0 0 var(--ring-gap) var(--bg), 0 0 0 calc(var(--ring-gap) + var(--ring)) var(--ink); }
+.rail-label { margin-top: 34px; }
+</style>
+{{nav:Mijn Pleya|live}}
+<div class="page">
+  <div class="head">
+    <div><div class="page-title">Bibliotheken</div><div class="page-sub">Mijn Pleya ▸ Bibliotheken</div></div>
+    <div class="btn-row acts"><div class="btn">{{icon:refresh}} Vernieuwen</div><div class="btn">{{icon:edit}} Bewerken</div></div>
+  </div>
+  <div class="chips kiezer"><div class="chip-btn on">{{icon:film}} Films · Pleya</div><div class="chip-btn">{{icon:show}} Series · Pleya</div><div class="chip-btn">{{icon:film}} Films · G-Plexflix</div><div class="chip-btn">{{icon:show}} TV Series · G-Plexflix</div><div class="chip-btn">{{icon:music}} Concert · G-Plexflix</div></div>
+  <div class="tabs"><div class="tab on">Aanbevolen</div><div class="tab">Bladeren</div><div class="tab">Collecties</div><div class="tab">Afspeellijsten</div></div>
+  <div class="rail-label">Onlangs toegevoegd</div>
+  <div class="rail">
+    <div class="card p focus"><div class="art"><img src="{{art:conclave-poster}}"></div><div class="t">Conclave</div><div class="s">2024 · Drama</div></div>
+    <div class="card p"><div class="art"><img src="{{art:anora-poster}}"></div><div class="t">Anora</div><div class="s">2024 · Comedy</div></div>
+    <div class="card p"><div class="art"><img src="{{art:substance-poster}}"><span class="new"></span></div><div class="t">The Substance</div><div class="s">2024 · Horror</div></div>
+    <div class="card p"><div class="art"><img src="{{art:nosferatu-poster}}"></div><div class="t">Nosferatu</div><div class="s">2024 · Horror</div></div>
+    <div class="card p"><div class="art"><img src="{{art:gladiator2-poster}}"></div><div class="t">Gladiator II</div><div class="s">2024 · Actie</div></div>
+    <div class="card p"><div class="art"><img src="{{art:wicked-poster}}"></div><div class="t">Wicked</div><div class="s">2024 · Musical</div></div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 26 · state D1: bibliotheek geopend, kiezer en tabrij op vlakke achtergrond; de aanbevolen-hub begint met een rail, niet met een spotlight</div>

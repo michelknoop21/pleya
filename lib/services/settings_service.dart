@@ -9,6 +9,7 @@ import 'image_cache_service.dart';
 import 'package:pleya/utils/app_logger.dart';
 import '../i18n/strings.g.dart';
 import '../models/mpv_config_models.dart';
+import '../media/pleya_profile_language_preferences.dart';
 import '../media/track_language_choice.dart';
 import '../media/unified/remembered_source_choice.dart';
 import 'unified_catalog/unified_catalog_filters.dart';
@@ -578,6 +579,27 @@ class SettingsService extends BaseSharedPreferencesService {
     encode: (v) => json.encode(v.map((key, choice) => MapEntry(key, choice.toJson()))),
     decode: (raw) => (raw as Map<String, dynamic>).map(
       (key, value) => MapEntry(key, TrackLanguageChoice.fromJson(value as Map<String, dynamic>)),
+    ),
+  );
+
+  /// The Pleya profile's own global audio/subtitle preference, keyed by
+  /// `{profileScope}` (DEC-096 lid 5).
+  ///
+  /// The *owner* of the global layer. A Plex account or a Jellyfin user only
+  /// speaks for its own server, while the requirement is that the preference
+  /// holds for all content across servers and backends, so those remain a
+  /// mirror and a one-time seed. Same shape and same reasoning as
+  /// [trackLanguagePreferences]: the profile scope lives in the key rather
+  /// than the pref name, so two Plex Home users on one device keep separate
+  /// preferences while the whole map still travels as one iCloud key-value
+  /// entry. Read and written through `PleyaProfileLanguagePreferenceStore` —
+  /// never directly, or the write lock is bypassed.
+  static final pleyaProfileLanguagePreferences = JsonPref<Map<String, PleyaProfileLanguagePreferences>>(
+    'pleya_profile_language_preferences',
+    defaultValue: const {},
+    encode: (v) => json.encode(v.map((key, prefs) => MapEntry(key, prefs.toJson()))),
+    decode: (raw) => (raw as Map<String, dynamic>).map(
+      (key, value) => MapEntry(key, PleyaProfileLanguagePreferences.fromJson(value as Map<String, dynamic>)),
     ),
   );
 

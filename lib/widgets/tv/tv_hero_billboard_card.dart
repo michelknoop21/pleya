@@ -1,6 +1,7 @@
-/// One slide of the fase-8 Home featured carousel: the rounded, in-page
-/// billboard of `docs/assets/tvos-unified/northstar/01-home.jpg` (33.1), which
-/// is binding on this composition.
+/// The full-bleed Home hero (hoofdstuk 9.1/9.2 as revised by [DEC-095],
+/// mockup 30 A1/B/D): the backdrop across the whole content box and behind the
+/// top navigation, its scrims, and the text column with the CTAs above the
+/// first rail's label.
 ///
 /// ## Presentation only
 ///
@@ -11,15 +12,16 @@
 /// cannot be crossed from inside a presentation widget that has no coordinator
 /// to reach for in the first place.
 ///
-/// ## Why the card, and not the page
+/// ## Why the page, and not a card
 ///
-/// The fase-0..7 Home drew its hero as a fullscreen `TvSpotlightBackground`
-/// with the rail sliding up over it. 33.1's first binding sentence is "de
-/// featured card als afgeronde kaart ín de pagina … nooit full bleed", so this
-/// is a sized box with a radius, a shadow and its own clip, laid out by the
-/// feed above the first row rather than behind it. Everything that followed
-/// from full-bleed — the ken-burns push, the deep bottom scrim that had to
-/// carry a rail, the `AnimatedSlide` reveal — is gone with it, not ported.
+/// The fase-8 Home drew this as a 1770×718 rounded card on the page inset
+/// (33.1, "nooit full bleed"). A 16:9 backdrop in that 2.465:1 card showed 72%
+/// of itself, and HERO1 could only decide which 72%; Michel wanted the whole
+/// item in view, chose full-bleed on mockup 29 D and A1 on mockup 30, and
+/// DEC-095 supersedes 33.1 on that one point. So this is the picture at
+/// screen size with no ring, radius or shadow, and the rail's own label and
+/// posters peek under it — the *feed* lays this out behind its list and
+/// scrolls it along; nothing here knows about a scroll.
 ///
 /// ## Geometry does not depend on content
 ///
@@ -85,6 +87,7 @@ class TvHeroBillboardCard extends StatelessWidget {
     required this.size,
     required this.actions,
     required this.artwork,
+    this.textBottom = 0,
     this.client,
     this.hideSpoilers = false,
     this.textOpacity = 1.0,
@@ -92,10 +95,16 @@ class TvHeroBillboardCard extends StatelessWidget {
 
   final UnifiedMediaGroup group;
 
-  /// The card's box. Computed by the feed from [TvHomeLayout.heroWidth] /
-  /// [TvHomeLayout.heroHeight] and passed down, so the artwork layer can size
-  /// its own server request against the exact box it will fill (DEC-057).
+  /// The full-bleed box: the content width by the content box plus the top
+  /// navigation band above it. The feed computes it and passes it down, so the
+  /// artwork layer can size its server request against the exact box it will
+  /// fill (DEC-057, DEC-094).
   final Size size;
+
+  /// From the bottom of [size] to the bottom of the CTA row. The feed sets it
+  /// to the peeking-rail region plus [TvHomeLayout.heroTextRailGap], which puts
+  /// the text 40 reference px above the first rail's label (mockup 30 A1).
+  final double textBottom;
 
   /// The already-wired `Afspelen` / `Meer info` pills. Slots, not callbacks —
   /// see the library doc.
@@ -126,9 +135,8 @@ class TvHeroBillboardCard extends StatelessWidget {
   /// Not this card's own decision, nor the carousel's either — [_rowHasFocus]
   /// is state `TvContentFeed` owns (the library doc's "two independent state
   /// machines"), which the carousel only forwards unchanged as this
-  /// parameter. Naming the carousel here would be exactly the kind of
-  /// misattributed "who decides this" this file otherwise guards against for
-  /// activation (see the class doc's "Presentation only").
+  /// parameter. The picture stepping back with the text is [TvHeroDimVeil],
+  /// which the feed lays over this card rather than inside it.
   final double textOpacity;
 
   @override
@@ -136,80 +144,103 @@ class TvHeroBillboardCard extends StatelessWidget {
     final tk = tokens(context);
     final scale = TvLayoutConstants.scaleOf(context);
     final item = group.representativeSource.item;
+    final motion = reduceMotion(context, tk.normal);
 
     return SizedBox(
       width: size.width,
       height: size.height,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(TvHomeLayout.heroRadius * scale),
-          color: tk.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: TvDiscoveryLayout.cardShadowAlpha),
-              blurRadius: TvDiscoveryLayout.cardShadowBlur * scale,
-              offset: Offset(0, TvDiscoveryLayout.cardShadowOffsetY * scale),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          artwork,
+          // H20: the wash itself is [MonoTokens.artworkScrim] (`tk.bg`), but
+          // its *strength* forks on theme — `artworkScrimAlpha`'s own doc: a
+          // light-theme veil is white, so it brightens the artwork under the
+          // text instead of dimming it, and needs to wash harder before
+          // releasing the image.
+          _ReadingScrim(color: tk.artworkScrim, alphaFor: (a) => _themed(tk, a)),
+          _VerticalScrim(
+            color: tk.artworkScrim,
+            stops: TvHomeLayout.heroScrimVerticalStops,
+            alphas: [for (final a in TvHomeLayout.heroScrimVerticalAlphas) _themed(tk, a)],
+          ),
+          Positioned(
+            left: TvDiscoveryLayout.pageInset * scale,
+            // `right`, not `width`. The *text* column is capped at
+            // [TvHomeLayout.heroTextMaxWidth] (see `_HeroText`), but the CTA
+            // row underneath it is not: a resume pill carrying a progress
+            // bar beside a long "Meer info" label is wider than the prose
+            // column on a long locale, and capping the whole block at the
+            // prose width overflowed the row rather than wrapping it.
+            right: TvDiscoveryLayout.pageInset * scale,
+            bottom: textBottom,
+            // Opacity, never a conditional subtree: the CTAs live in here,
+            // and unmounting them would drop the remote's focus on the
+            // floor the instant a row took it. `IgnorePointer` is not
+            // needed either — a faded hero is still the thing UP returns
+            // to, and its nodes must stay focusable.
+            child: AnimatedOpacity(
+              opacity: textOpacity,
+              duration: motion,
+              curve: Curves.easeOut,
+              child: _HeroText(
+                group: group,
+                item: item,
+                client: client,
+                scale: scale,
+                tokens: tk,
+                hideSpoilers: hideSpoilers,
+                actions: actions,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A dark-theme scrim strength, resolved for the active theme: light keeps
+/// the same shape and washes a little harder (H20), never past opaque.
+double _themed(MonoTokens tk, double dark) =>
+    tk.artworkScrimAlpha(dark: dark, light: (dark == 0 ? 0.0 : dark + 0.08).clamp(0.0, 1.0));
+
+/// The backdrop stepping back once a row holds the focus (mockup 30 B): a veil
+/// of [TvHomeLayout.heroDimAlpha] over the whole picture, and a vertical scrim
+/// that reaches the page ground at 40% so the focused band under it sits on
+/// ground.
+///
+/// **Screen-fixed, not scrolled.** The feed translates the card with the list,
+/// so the picture moves; this veil is laid over the card's *box* and does not,
+/// exactly as the mockup draws it (`translateY` on the image, the scrim on the
+/// container). Drawn inside the card it travelled with the picture, and
+/// everything below its last stop — which after the scroll was the whole
+/// visible strip — was solid ground: the dimmed backdrop 33.2 asks to keep
+/// above the rail was never on screen.
+class TvHeroDimVeil extends StatelessWidget {
+  const TvHeroDimVeil({super.key, required this.dim});
+
+  /// 0 to 1, 1 once a content row holds the focus.
+  final double dim;
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    return IgnorePointer(
+      child: AnimatedOpacity(
+        opacity: dim.clamp(0.0, 1.0),
+        duration: reduceMotion(context, tk.normal),
+        curve: Curves.easeOut,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(color: tk.artworkScrim.withValues(alpha: _themed(tk, TvHomeLayout.heroDimAlpha))),
+            _VerticalScrim(
+              color: tk.artworkScrim,
+              stops: TvHomeLayout.heroDimScrimStops,
+              alphas: [for (final a in TvHomeLayout.heroDimScrimAlphas) _themed(tk, a)],
             ),
           ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(TvHomeLayout.heroRadius * scale),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              artwork,
-              // 33.1: "scrim alleen lokaal linksonder". Two gradients rather
-              // than one diagonal, so the right half of the artwork — where the
-              // subject is — keeps its own colour untouched (fase-8 brief §5:
-              // "natuurlijke kleur; geen globale grading").
-              //
-              // H20: the wash itself is [MonoTokens.artworkScrim] (`tk.bg`), but
-              // its *strength* has to fork on theme too — `artworkScrimAlpha`'s
-              // own doc: a light-theme veil is white, so it brightens the
-              // artwork under the text instead of dimming it, and needs to wash
-              // harder before releasing the image. `light:` is `dark:` plus the
-              // same kind of boost `discover_screen.dart`'s hero scrim already
-              // applies for the identical reason.
-              _ReadingScrim(
-                color: tk.artworkScrim,
-                alpha: tk.artworkScrimAlpha(dark: TvHomeLayout.heroScrimAlpha, light: 0.94),
-              ),
-              _BottomScrim(
-                color: tk.artworkScrim,
-                alpha: tk.artworkScrimAlpha(dark: TvHomeLayout.heroScrimBottomAlpha, light: 0.62),
-              ),
-              Positioned(
-                left: TvHomeLayout.heroContentInset * scale,
-                bottom: TvHomeLayout.heroContentBottom * scale,
-                // `right`, not `width`. The *text* column is capped at
-                // [TvHomeLayout.heroTextMaxWidth] (see `_HeroText`), but the CTA
-                // row underneath it is not: a resume pill carrying a progress
-                // bar beside a long "Meer info" label is wider than the prose
-                // column on a long locale, and capping the whole block at the
-                // prose width overflowed the row rather than wrapping it.
-                right: TvHomeLayout.heroContentInset * scale,
-                // Opacity, never a conditional subtree: the CTAs live in here,
-                // and unmounting them would drop the remote's focus on the
-                // floor the instant a row took it. `IgnorePointer` is not
-                // needed either — a faded hero is still the thing UP returns
-                // to, and its nodes must stay focusable.
-                child: AnimatedOpacity(
-                  opacity: textOpacity,
-                  duration: reduceMotion(context, tk.normal),
-                  curve: Curves.easeOut,
-                  child: _HeroText(
-                    group: group,
-                    item: item,
-                    client: client,
-                    scale: scale,
-                    tokens: tk,
-                    hideSpoilers: hideSpoilers,
-                    actions: actions,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -217,68 +248,24 @@ class TvHeroBillboardCard extends StatelessWidget {
 }
 
 /// The wash the title, metadata and synopsis are read against: a left-to-right
-/// ramp, *masked* by a bottom-to-top one so it exists only where the text is.
+/// ramp over the full height (mockup 30 A1), so the text column and the
+/// profile chip in the top navigation above it both stand on it.
 ///
-/// The mask is the point. A plain horizontal gradient is opaque all the way up
-/// the card's left edge, darkening artwork that carries nothing — and stacked
-/// with a bottom gradient it turns 33.1's lower-left scrim into an L over half
-/// the card, taking the bottom-right corner with it. A product of the two
-/// ramps is the shape 33.1 actually specifies.
+/// Directional, not physical: the wash exists to make the text column readable,
+/// so it has to start on the same edge that column starts on. Under an RTL
+/// directionality a left-pinned ramp would sit opposite the type it is there
+/// for (hoofdstuk 25, "RTL": "tekstkolom en scrim spiegelen"). `DecoratedBox`
+/// resolves the geometry against the ambient direction, so nothing else
+/// changes.
 class _ReadingScrim extends StatelessWidget {
-  const _ReadingScrim({required this.color, required this.alpha});
+  const _ReadingScrim({required this.color, required this.alphaFor});
 
   final Color color;
 
-  /// Already theme-resolved by the caller (`MonoTokens.artworkScrimAlpha`) —
-  /// this widget never reads [MonoTokens] itself, so it cannot silently drift
-  /// back to a single hardcoded strength for both themes (H20).
-  final double alpha;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: ShaderMask(
-        shaderCallback: (bounds) => const LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          colors: [Color(0xFF000000), Color(0xFF000000), Color(0x00000000)],
-          stops: [0, TvHomeLayout.heroScrimReadingPlateau, TvHomeLayout.heroScrimReadingFade],
-        ).createShader(bounds),
-        blendMode: BlendMode.dstIn,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            // Directional, not physical: the wash exists to make the text
-            // column readable, so it has to start on the same edge that column
-            // starts on. Under an RTL directionality a left-pinned ramp would
-            // sit opposite the type it is there for (hoofdstuk 25, "RTL":
-            // "tekstkolom en scrim spiegelen"). `DecoratedBox` resolves the
-            // geometry against the ambient direction, so nothing else changes.
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.centerStart,
-              end: AlignmentDirectional.centerEnd,
-              colors: [
-                color.withValues(alpha: alpha),
-                Colors.transparent,
-              ],
-              stops: const [0, TvHomeLayout.heroScrimHorizontalStop],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The card's lower edge, melted into the page. Weak on purpose — it carries no
-/// type, and at reading strength it took the bottom-right corner with it.
-class _BottomScrim extends StatelessWidget {
-  const _BottomScrim({required this.color, required this.alpha});
-
-  final Color color;
-
-  /// See [_ReadingScrim.alpha] — same reason, same theme-resolved-by-caller
-  /// contract.
-  final double alpha;
+  /// Theme-resolves one of [TvHomeLayout.heroScrimReadingAlphas] — this widget
+  /// never reads [MonoTokens] itself, so it cannot silently drift back to a
+  /// single hardcoded strength for both themes (H20).
+  final double Function(double dark) alphaFor;
 
   @override
   Widget build(BuildContext context) {
@@ -286,13 +273,39 @@ class _BottomScrim extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [
-              color.withValues(alpha: alpha),
-              Colors.transparent,
-            ],
-            stops: const [0, TvHomeLayout.heroScrimBottomStop],
+            begin: AlignmentDirectional.centerStart,
+            end: AlignmentDirectional.centerEnd,
+            colors: [for (final a in TvHomeLayout.heroScrimReadingAlphas) color.withValues(alpha: alphaFor(a))],
+            stops: TvHomeLayout.heroScrimReadingStops,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A top-to-bottom wash with explicit stops: under the top navigation, clear
+/// across the subject, and down to the page ground before the first rail's
+/// posters, so they stand on the ground and not on the picture.
+class _VerticalScrim extends StatelessWidget {
+  const _VerticalScrim({required this.color, required this.stops, required this.alphas});
+
+  final Color color;
+  final List<double> stops;
+
+  /// Already theme-resolved by the caller — see [_ReadingScrim.alphaFor].
+  final List<double> alphas;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [for (final a in alphas) color.withValues(alpha: a)],
+            stops: stops,
           ),
         ),
       ),
@@ -388,7 +401,9 @@ class _HeroText extends StatelessWidget {
   /// under them sits in one place whichever a slide turns out to have.
   Widget _titleBlock(BuildContext context) {
     final logo = item.clearLogoPath;
-    final band = TvHomeLayout.heroLogoMaxHeight * scale;
+    // The band fits the tallest thing it can hold, which is a two-line title;
+    // the logo keeps its own smaller height inside it (HERO2).
+    final band = TvHomeLayout.heroTitleBandHeight * scale;
 
     if (logo != null && logo.isNotEmpty) {
       return SizedBox(
@@ -399,7 +414,7 @@ class _HeroText extends StatelessWidget {
             client: client,
             imagePath: logo,
             width: TvHomeLayout.heroLogoMaxWidth * scale,
-            height: band,
+            height: TvHomeLayout.heroLogoMaxHeight * scale,
             // Contain, never cover: a clearlogo cropped to fill its box is a
             // mangled wordmark, and the box is deliberately larger than most.
             fit: BoxFit.contain,

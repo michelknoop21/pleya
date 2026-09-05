@@ -5,6 +5,9 @@ import '../mpv/mpv.dart';
 import '../media/media_item.dart';
 import '../media/media_server_user_profile.dart';
 import '../media/media_source_info.dart';
+import '../media/playback_language_intent.dart';
+import '../media/playback_language_notice.dart';
+import '../services/pleya_profile_language_preference_store.dart';
 import '../services/settings_service.dart';
 import '../services/track_preference_store.dart';
 import '../services/track_selection_service.dart';
@@ -64,10 +67,28 @@ class TrackManager {
   /// Shows a transient message to the user (e.g., snackbar).
   final void Function(String message, {Duration? duration})? showMessage;
 
+  /// Reports a language decision worth telling the viewer about — mockups
+  /// 31 C and 31 D.
+  ///
+  /// Semantic, not a sentence: the player screen owns the wording and the
+  /// toast, so this manager never has to know what a toast is. Null on every
+  /// path that has no surface to show one on, which is every test and every
+  /// background reload.
+  final void Function(PlaybackLanguageNotice notice)? onLanguageNotice;
+
   // ── Mutable configuration (updated on episode navigation) ──────────
 
   MediaItem metadata;
   MediaSourceInfo? mediaInfo;
+
+  /// What the viewer changed by hand earlier in this playback session — layer 1
+  /// of DEC-096.
+  ///
+  /// Owned by the player screen rather than by this manager: a manager is
+  /// rebuilt per item, and the whole point of the session layer is that it
+  /// survives the jump to the next episode while the resolved tracks do not.
+  PlaybackLanguageIntent? sessionIntent;
+
   AudioTrack? preferredAudioTrack;
   SubtitleTrack? preferredSubtitleTrack;
   SubtitleTrack? preferredSecondarySubtitleTrack;
@@ -94,10 +115,12 @@ class TrackManager {
     required this.waitForProfileSettings,
     required this.metadata,
     this.mediaInfo,
+    this.sessionIntent,
     this.preferredAudioTrack,
     this.preferredSubtitleTrack,
     this.preferredSecondarySubtitleTrack,
     this.showMessage,
+    this.onLanguageNotice,
   });
 
   // ── External subtitles ─────────────────────────────────────────────
@@ -238,9 +261,20 @@ class TrackManager {
       // Re-read per item: episode navigation swaps [metadata] underneath us,
       // and the choice may have arrived from another device via iCloud since
       // the last item started.
-      final stickyChoice = settingsService.read(SettingsService.rememberTrackSelections)
-          ? await TrackPreferenceStore.read(metadata)
-          : null;
+      final stickyChoice = await TrackPreferenceStore.read(metadata);
+      if (!isActive()) return;
+
+      // The global layer is the Pleya profile and applies to every backend
+      // alike — Plex, Jellyfin, Pleya Server, offline (DEC-096 lid 5). Read
+      // per item for the same reason the series preference is: it may have
+      // arrived from another device via iCloud since the last one started.
+      //
+      // The one-time initialisation runs here as well as on the settings page,
+      // because those are the two doors into this preference and a viewer may
+      // reach either first. It is guarded and idempotent.
+      await PleyaProfileLanguagePreferenceStore.ensureInitialised(profileSettings);
+      if (!isActive()) return;
+      final globalPreferences = await PleyaProfileLanguagePreferenceStore.read();
       if (!isActive()) return;
 
       final trackService = TrackSelectionService(
@@ -249,6 +283,8 @@ class TrackManager {
         metadata: metadata,
         plexMediaInfo: mediaInfo,
         stickyChoice: stickyChoice,
+        globalPreferences: globalPreferences,
+        sessionIntent: sessionIntent,
       );
 
       await trackService.selectAndApplyTracks(
@@ -258,6 +294,7 @@ class TrackManager {
         defaultPlaybackSpeed: settingsService.read(SettingsService.defaultPlaybackSpeed),
         onAudioTrackChanged: onAudioTrackChanged,
         onSubtitleTrackChanged: onSubtitleTrackChanged,
+        onLanguageNotice: onLanguageNotice,
       );
     } catch (e) {
       appLogger.w('Failed to apply track selection', error: e);
@@ -337,9 +374,15 @@ class TrackManager {
 
   // ── Server preference sync ─────────────────────────────────────────
 
-  /// Handle audio track changes — save stream selection and language preference.
-  Future<void> onAudioTrackChanged(AudioTrack track) async {
-    await _rememberAudioLanguage(track);
+  /// Handle an audio track becoming active.
+  ///
+  /// [userInitiated] is the whole distinction of DEC-096 lid 1. True means a
+  /// person picked this track, so it becomes the session intent and — with
+  /// "Onthoud keuzes per serie" on — the series preference. False means
+  /// automatic resolution landed here, and then only the source is told which
+  /// stream is playing: a resolution is never written back as a wish.
+  Future<void> onAudioTrackChanged(AudioTrack track, {bool userInitiated = true}) async {
+    if (userInitiated) await _rememberAudioLanguage(track);
 
     final info = mediaInfo;
     final partId = await _guardTrackChange(info);
@@ -370,9 +413,10 @@ class TrackManager {
     await _saveTrackPreferences(partId: partId, trackType: 'audio', streamID: streamID);
   }
 
-  /// Handle subtitle track changes — save stream selection and language preference.
-  Future<void> onSubtitleTrackChanged(SubtitleTrack track) async {
-    await _rememberSubtitleLanguage(track);
+  /// Handle a subtitle track becoming active. See [onAudioTrackChanged] for
+  /// what [userInitiated] decides.
+  Future<void> onSubtitleTrackChanged(SubtitleTrack track, {bool userInitiated = true}) async {
+    if (userInitiated) await _rememberSubtitleLanguage(track);
 
     final info = mediaInfo;
     final partId = await _guardTrackChange(info);
@@ -422,35 +466,107 @@ class TrackManager {
 
   // ── Remembered language per series/movie ───────────────────────────
 
-  Future<bool> _remembersTrackSelections() async {
-    final settings = await SettingsService.getInstance();
-    return settings.read(SettingsService.rememberTrackSelections);
-  }
+  Future<bool> _remembersTrackSelections() async =>
+      (await PleyaProfileLanguagePreferenceStore.read()).rememberPerSeries;
 
   /// Store the language behind [track] for this title. Runs before
   /// [_guardTrackChange] on purpose: that guard bails out for backends without
   /// a server-side stream write (Jellyfin), which would otherwise never
   /// remember anything at all.
   Future<void> _rememberAudioLanguage(AudioTrack track) async {
-    if (!await _remembersTrackSelections()) return;
     final language = track.language;
     // A track without a language code says nothing about what to pick on the
     // next episode, so leave the previous choice alone rather than clear it.
     if (language == null || language.isEmpty) return;
+
+    // The session layer holds regardless of the remember switch: turning
+    // "Onthoud keuzes per serie" off means the choice stops at this playback,
+    // not that it stops at this episode (DEC-096 lid 3).
+    sessionIntent = _mergeSessionIntent(audioLanguage: language, audioTitle: track.title);
+
     await TrackPreferenceStore.saveAudio(metadata, language: language, title: track.title);
+    await announceRememberedChoice(kind: LanguageTrackKind.audio, language: language);
     await _mirrorSeriesLanguageToServer();
   }
 
   Future<void> _rememberSubtitleLanguage(SubtitleTrack track) async {
-    if (!await _remembersTrackSelections()) return;
     if (track.id == 'no') {
+      sessionIntent = _mergeSessionIntent(subtitlesOff: true);
       await TrackPreferenceStore.saveSubtitle(metadata, off: true);
+      await announceRememberedChoice(kind: LanguageTrackKind.subtitles, subtitlesOff: true);
     } else {
       final language = track.language;
       if (language == null || language.isEmpty) return;
+      sessionIntent = _mergeSessionIntent(
+        subtitleLanguage: language,
+        subtitleTitle: track.title,
+        subtitleForced: track.isForced,
+      );
       await TrackPreferenceStore.saveSubtitle(metadata, language: language, title: track.title, forced: track.isForced);
+      await announceRememberedChoice(kind: LanguageTrackKind.subtitles, language: language);
     }
     await _mirrorSeriesLanguageToServer();
+  }
+
+  /// Tell the viewer what just happened to their choice — mockup 31 C.
+  ///
+  /// Public because there are two paths into a deliberate choice, not one.
+  /// While Plex transcodes, the pickers do not change an mpv track: they select
+  /// a different source stream and reload, which never reaches
+  /// [onSubtitleTrackChanged]. `episode_navigation.dart` writes the preference
+  /// itself on that path, and calls this so the transport does not decide
+  /// whether the viewer gets told.
+  ///
+  /// Says which of the two promises was actually made: with "Onthoud keuzes per
+  /// serie" on the choice became the series preference, and with it off it
+  /// holds for this playback and nothing was stored (DEC-096 lid 3). Naming the
+  /// wrong one would be the toast lying about what is on disk.
+  ///
+  /// The unchanged global preference is part of the sentence because that is
+  /// the question this toast exists to answer: a viewer who switches one series
+  /// to English wants to know they have not just changed everything.
+  Future<void> announceRememberedChoice({
+    required LanguageTrackKind kind,
+    String? language,
+    bool subtitlesOff = false,
+  }) async {
+    final notify = onLanguageNotice;
+    if (notify == null) return;
+    final global = await PleyaProfileLanguagePreferenceStore.read();
+    if (!isActive()) return;
+    notify(
+      LanguageChoiceRemembered(
+        kind: kind,
+        language: language,
+        subtitlesOff: subtitlesOff,
+        storedForSeries: global.rememberPerSeries,
+        globalLanguage: kind == LanguageTrackKind.audio ? global.audioLanguage : global.subtitleLanguage,
+        seriesTitle: metadata.grandparentTitle ?? metadata.title,
+      ),
+    );
+  }
+
+  /// Fold one deliberate choice into the session intent, keeping whatever the
+  /// viewer decided about the other track type earlier in this playback.
+  PlaybackLanguageIntent _mergeSessionIntent({
+    String? audioLanguage,
+    String? audioTitle,
+    String? subtitleLanguage,
+    String? subtitleTitle,
+    bool subtitleForced = false,
+    bool subtitlesOff = false,
+  }) {
+    final current = sessionIntent;
+    final touchesSubtitles = subtitlesOff || subtitleLanguage != null;
+    return PlaybackLanguageIntent(
+      origin: PlaybackIntentOrigin.session,
+      audioLanguage: audioLanguage ?? current?.audioLanguage,
+      audioTitle: audioLanguage != null ? audioTitle : current?.audioTitle,
+      subtitleLanguage: touchesSubtitles ? subtitleLanguage : current?.subtitleLanguage,
+      subtitleTitle: touchesSubtitles ? subtitleTitle : current?.subtitleTitle,
+      subtitleForced: touchesSubtitles ? subtitleForced : (current?.subtitleForced ?? false),
+      subtitlesOff: touchesSubtitles ? subtitlesOff : (current?.subtitlesOff ?? false),
+    );
   }
 
   /// Push the remembered choice onto the show's own Plex preferences. Episodes

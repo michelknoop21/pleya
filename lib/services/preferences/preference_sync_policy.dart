@@ -231,6 +231,25 @@ class PreferenceSyncPolicyRegistry {
     icloudSyncable: false,
   );
 
+  /// The Pleya profile's language preference: which audio and subtitles the
+  /// viewer wants everywhere, plus the two switches that used to sit under
+  /// Afspelen (DEC-096 lid 5 and lid 9).
+  ///
+  /// Profile-scoped, and the scope lives inside the map's keys rather than in
+  /// the pref name — the same shape as the series preferences it sits next to.
+  ///
+  /// Syncable, and that is the point of the whole preference: "geldt voor alle
+  /// content" is not much of a promise if it stops at one device. Nothing in it
+  /// names a server, a library or a path, so unlike the catalog view state
+  /// above there is nothing here that could mean something different on the
+  /// receiving device: a language code is a language code on an Apple TV, a
+  /// Mac and an iPhone alike. Exportable for the same reason.
+  ///
+  /// Last-writer-wins is the right merge: the fields are independent scalars a
+  /// person sets deliberately, so the most recent deliberate answer is the one
+  /// to keep. There is no list here to union.
+  static const PreferencePolicy _profileLanguagePref = PreferencePolicy(scope: PreferenceScopeKind.profile);
+
   static const PreferencePolicy _secret = PreferencePolicy(
     scope: PreferenceScopeKind.deviceLocal,
     sensitivity: PreferenceSensitivity.secret,
@@ -448,6 +467,9 @@ class PreferenceSyncPolicyRegistry {
     // docs/tvos-unified-experience.md). Not the preferred server, which is an
     // activation preference and lives elsewhere.
     'unified_catalog_preferences': _unifiedCatalogViewPref,
+
+    // -- The Pleya profile's global audio/subtitle preference (DEC-096).
+    'pleya_profile_language_preferences': _profileLanguagePref,
 
     // -- Secrets.
     'token': _secret,

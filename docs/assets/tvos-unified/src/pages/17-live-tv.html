@@ -1,0 +1,51 @@
+<style>
+.head { display: flex; align-items: flex-end; gap: 28px; }
+.head .chips { margin-left: auto; margin-bottom: 6px; }
+.guide { margin-top: 32px; position: relative; }
+.timeline { display: grid; grid-template-columns: 300px repeat(4, 1fr); font-size: 19px; color: var(--ink-3); margin-bottom: 12px; }
+.timeline .now { color: var(--ink); font-weight: 500; }
+.gr { display: grid; grid-template-columns: 300px 1fr; gap: 12px; align-items: stretch; margin-bottom: 12px; }
+.ch { background: var(--surface); border-radius: 12px; display: flex; align-items: center; gap: 16px; padding: 0 20px; height: 96px; }
+.ch .no { font-size: 19px; color: var(--ink-3); width: 44px; }
+.ch .logo { width: 56px; height: 56px; border-radius: 10px; background: var(--elevated); display: grid; place-items: center; font-size: 15px; font-weight: 700; color: var(--ink-2); }
+.ch .n { font-size: 21px; font-weight: 500; }
+.ch .fav { margin-left: auto; width: 20px; height: 20px; color: var(--amber); }
+.progs { display: flex; gap: 12px; position: relative; }
+.pg { background: var(--surface); border-radius: 12px; padding: 16px 20px; height: 96px; overflow: hidden; position: relative; flex: none; }
+.pg .t { font-size: 21px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pg .s { font-size: 17px; color: var(--ink-3); margin-top: 4px; white-space: nowrap; }
+.pg .p { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(255,255,255,.12); }
+.pg .p i { display: block; height: 100%; background: var(--accent); }
+.pg .rec { position: absolute; right: 14px; top: 14px; width: 14px; height: 14px; color: var(--accent); } .pg .rec .ic { width: 14px; height: 14px; display: block; }
+.pg.focus { background: var(--elevated); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--ink); z-index: 2; }
+.nowline { position: absolute; left: 312px; top: -14px; bottom: 0; width: 3px; background: var(--ink); opacity: .9; }
+.nowline::before { content: ""; position: absolute; left: -6px; top: 0; width: 15px; height: 15px; border-radius: 999px; background: var(--ink); }
+.detail { position: absolute; left: var(--inset); right: var(--inset); bottom: 44px; display: flex; gap: 28px; align-items: center; background: var(--surface); border-radius: var(--r-tile); padding: 22px 28px; }
+.detail img { width: 200px; height: 112px; border-radius: 8px; object-fit: cover; }
+.detail .t { font-size: 26px; font-weight: 700; }
+.detail .s { font-size: 20px; color: var(--ink-2); margin-top: 4px; }
+.detail .d { font-size: 19px; color: var(--ink-3); margin-top: 6px; }
+.detail .btn-row { margin-left: auto; }
+</style>
+{{nav:Live TV|live}}
+<div class="page">
+  <div class="head">
+    <div><div class="page-title">Live TV</div><div class="page-sub">Plex thuis · HDHomeRun · 42 kanalen</div></div>
+    <div class="chips"><div class="chip-btn on">Gids</div><div class="chip-btn">Favorieten</div><div class="chip-btn">Opnames <span class="badge">4</span></div><div class="chip-btn">Regels</div></div>
+  </div>
+  <div class="guide">
+    <div class="timeline"><span></span><span class="now" style="padding-left:22px">20:30</span><span>21:00</span><span>21:30</span><span>22:00</span></div>
+    <div class="nowline"></div>
+    <div class="gr"><div class="ch"><span class="no">1</span><span class="logo">NPO1</span><span class="n">NPO 1</span>{{icon:star}}</div><div class="progs"><div class="pg" style="width:600px"><div class="t">Nieuwsuur</div><div class="s">20:00 tot 20:55 · Actualiteiten</div><div class="p"><i style="width:60%"></i></div></div><div class="pg" style="width:820px"><div class="t">Zomergasten</div><div class="s">20:55 tot 23:55</div></div></div></div>
+    <div class="gr"><div class="ch"><span class="no">2</span><span class="logo">NPO2</span><span class="n">NPO 2</span></div><div class="progs"><div class="pg" style="width:400px"><div class="t">Podium Klassiek</div><div class="s">19:50 tot 20:45</div><div class="p"><i style="width:80%"></i></div></div><div class="pg focus" style="width:600px"><div class="t">Andere Tijden</div><div class="s">20:45 tot 21:35 · Documentaire</div><span class="rec">{{icon:rec}}</span></div><div class="pg" style="width:420px"><div class="t">Nieuws en weer</div><div class="s">21:35 tot 22:00</div></div></div></div>
+    <div class="gr"><div class="ch"><span class="no">4</span><span class="logo">RTL4</span><span class="n">RTL 4</span>{{icon:star}}</div><div class="progs"><div class="pg" style="width:720px"><div class="t">Expeditie Robinson</div><div class="s">20:30 tot 21:45 · Realityserie</div><div class="p"><i style="width:2%"></i></div></div><div class="pg" style="width:700px"><div class="t">RTL Nieuws</div><div class="s">21:45 tot 22:00</div></div></div></div>
+    <div class="gr"><div class="ch"><span class="no">7</span><span class="logo">BBC1</span><span class="n">BBC One HD</span></div><div class="progs"><div class="pg" style="width:380px"><div class="t">EastEnders</div><div class="s">20:00 tot 20:30</div></div><div class="pg" style="width:600px"><div class="t">Silent Witness</div><div class="s">20:30 tot 21:30 · Drama</div><span class="rec">{{icon:rec}}</span></div><div class="pg" style="width:440px"><div class="t">BBC News at Ten</div><div class="s">21:30 tot 22:00</div></div></div></div>
+    <div class="gr"><div class="ch"><span class="no">12</span><span class="logo">ESPN</span><span class="n">ESPN 1</span></div><div class="progs"><div class="pg" style="width:1440px"><div class="t">Eredivisie: Ajax tegen Feyenoord</div><div class="s">20:00 tot 22:15 · Live · Voetbal</div><div class="p"><i style="width:22%"></i></div></div></div></div>
+  </div>
+</div>
+<div class="detail">
+  <img src="{{art:andor-backdrop}}" style="filter:grayscale(1) brightness(.7)">
+  <div><div class="t">Andere Tijden</div><div class="s">NPO 2 · 20:45 tot 21:35 · start over 15 min</div><div class="d">Geschiedenisprogramma over de Elfstedentocht van 1963. Opname ingepland via regel "Andere Tijden, alle afleveringen".</div></div>
+  <div class="btn-row"><div class="btn primary">{{icon:play}} Kijken</div><div class="btn">{{icon:rec}} Opname bewerken</div></div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 17 · Live TV-gids met nu-lijn, favorieten en opnamemarkering (hoofdstuk 19: eigen route, geen unification)</div>

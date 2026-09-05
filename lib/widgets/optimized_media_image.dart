@@ -60,6 +60,22 @@ class OptimizedMediaImage extends StatelessWidget {
   /// placeholder instead of a flat surface tile. Ignored when null.
   final String? blurHash;
 
+  /// The box the *server* is asked for, when it must differ from the box the
+  /// image is drawn in. Null means the two are the same, which is right for
+  /// every tile and poster.
+  ///
+  /// It exists for cover-fitted artwork whose source ratio is not the box
+  /// ratio. Plex's `/photo/:/transcode` fills the requested box with
+  /// `minSize=1` and crops the overshoot from the centre before this widget
+  /// sees a pixel, so a request in the box's ratio hands the crop to the server
+  /// and makes [alignment] dead; Jellyfin fits inside the same numbers and
+  /// crops nothing, so the same request lands as two different pictures on two
+  /// backends. Asking for the source's own ratio, at least as large as the box,
+  /// makes the server-side crop a no-op everywhere and leaves exactly one
+  /// owner of the crop: [fit] and [alignment] here. HERO1 in
+  /// `docs/tvos-fysieke-correctieronde.md` is the defect this closes.
+  final Size? requestSize;
+
   const OptimizedMediaImage._({
     super.key,
     this.client,
@@ -78,6 +94,7 @@ class OptimizedMediaImage extends StatelessWidget {
     this.imageType = ImageType.poster,
     this.localFilePath,
     this.blurHash,
+    this.requestSize,
   });
 
   /// Generic constructor for optimized images.
@@ -99,6 +116,7 @@ class OptimizedMediaImage extends StatelessWidget {
     ImageType imageType,
     String? localFilePath,
     String? blurHash,
+    Size? requestSize,
   }) = OptimizedMediaImage._;
 
   /// Named constructor for poster images with default fallback icon.
@@ -343,12 +361,16 @@ class OptimizedMediaImage extends StatelessWidget {
 
   Widget _buildCachedImage(BuildContext context, double effectiveWidth, double effectiveHeight) {
     final devicePixelRatio = MediaImageHelper.effectiveDevicePixelRatio(context);
+    // The request box and the decode box follow [requestSize] when it is set;
+    // the drawn box below stays `width`/`height`. See the field for why.
+    final requestWidth = requestSize?.width ?? effectiveWidth;
+    final requestHeight = requestSize?.height ?? effectiveHeight;
 
     final imageUrl = MediaImageHelper.getOptimizedImageUrl(
       client: client,
       thumbPath: imagePath,
-      maxWidth: effectiveWidth,
-      maxHeight: effectiveHeight,
+      maxWidth: requestWidth,
+      maxHeight: requestHeight,
       devicePixelRatio: devicePixelRatio,
       enableTranscoding: enableTranscoding,
       imageType: imageType,
@@ -360,8 +382,8 @@ class OptimizedMediaImage extends StatelessWidget {
 
     debugResolvedUrlObserver?.call(imageUrl);
 
-    final scaledWidth = effectiveWidth * devicePixelRatio;
-    final scaledHeight = effectiveHeight * devicePixelRatio;
+    final scaledWidth = requestWidth * devicePixelRatio;
+    final scaledHeight = requestHeight * devicePixelRatio;
     final (_, memHeight) = MediaImageHelper.getMemCacheDimensions(
       displayWidth: scaledWidth.isFinite && scaledWidth > 0 ? scaledWidth.round() : 0,
       displayHeight: scaledHeight.isFinite && scaledHeight > 0 ? scaledHeight.round() : 0,

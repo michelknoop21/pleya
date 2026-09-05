@@ -1,0 +1,60 @@
+<style>
+.bd { position: absolute; left: 0; right: 0; top: 0; height: 780px; overflow: hidden; }
+.bd img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; display: block; }
+.bd::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20,20,20,.96) 0%, rgba(20,20,20,.82) 30%, rgba(20,20,20,.15) 62%, rgba(20,20,20,0) 100%); }
+.bd::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,20,20,.55) 0%, rgba(20,20,20,0) 22%, rgba(20,20,20,0) 55%, var(--bg) 100%); }
+.hero { position: absolute; left: var(--inset); top: 250px; width: 980px; }
+.hero h1 { font-family: ArchivoBlack, Inter; font-size: 64px; letter-spacing: .06em; line-height: 1.05; text-transform: uppercase; }
+.hero .meta { margin-top: 18px; display: flex; align-items: center; gap: 14px; font-size: 22px; color: var(--ink-2); }
+.hero .syn { margin-top: 18px; font-size: 23px; line-height: 1.4; color: var(--ink-2); max-width: 900px; }
+.hero .cta { margin-top: 30px; }
+.hero .cta .btn small { font-weight: 400; color: rgba(20,20,20,.62); margin-left: 4px; }
+.src-line { margin-top: 26px; display: flex; align-items: center; gap: 18px; font-size: 21px; color: var(--ink-2); }
+.src-line .k { color: var(--ink-3); }
+.src-line .chg { color: var(--ink); font-weight: 500; padding: 8px 18px; border-radius: 999px; background: rgba(255,255,255,.12); }
+.src-line .cov { color: var(--ink-3); }
+.below { position: absolute; left: var(--inset); right: 0; top: 790px; }
+.extras .card .art { width: 320px; height: 180px; }
+.extras .card .len { position: absolute; right: 12px; bottom: 12px; background: rgba(20,20,20,.78); font-size: 16px; padding: 4px 10px; border-radius: 6px; }
+.extras .card .kind { position: absolute; left: 12px; top: 12px; font-size: 16px; font-weight: 500; background: rgba(20,20,20,.78); padding: 4px 10px; border-radius: 6px; }
+.extras .card .art img { filter: saturate(.9); }
+.people { display: flex; gap: 22px; }
+.person { width: 200px; flex: none; }
+.person .av { width: 120px; height: 120px; border-radius: 999px; background: var(--elevated); display: grid; place-items: center; font-size: 34px; font-weight: 700; color: var(--ink-2); }
+.person .n { font-size: 20px; font-weight: 500; margin-top: 12px; }
+.person .r { font-size: 17px; color: var(--ink-3); }
+.menu-hint { position: absolute; right: var(--inset); top: 790px; }
+</style>
+<div class="bd"><img src="{{art:dune2-backdrop}}"></div>
+{{nav:Films|live}}
+
+<div class="hero">
+  <h1>Dune: Part Two</h1>
+  <div class="meta">
+    <span>2024</span><span class="tag">12</span><span>2u 46m</span><span>·</span><span>Sciencefiction</span>
+    <span class="tag">4K</span><span class="tag">HDR10</span><span class="tag">Atmos</span>
+  </div>
+  <div class="syn">Paul Atreides verenigt zich met Chani en de Fremen en zint op wraak op de samenzweerders die zijn familie vernietigden. Voor de keuze tussen de liefde van zijn leven en het lot van het universum, moet hij een toekomst voorkomen die alleen hij kan zien.</div>
+  <div class="btn-row cta">
+    <div class="btn primary focus">{{icon:play}} Hervatten <small>· nog 1u 12m</small></div>
+    <div class="btn">{{icon:refresh}} Vanaf het begin</div>
+    <div class="btn icon" title="Kijklijst">{{icon:plus}}</div>
+    <div class="btn icon" title="Bekeken">{{icon:check}}</div>
+    <div class="btn icon" title="Meer">{{icon:more}}</div>
+  </div>
+  <div class="src-line">
+    <span class="k">Bron:</span><span>NAS • Films 4K</span><span class="chg">Wijzigen</span><span class="cov">Beschikbaar op 3 servers</span>
+  </div>
+</div>
+
+<div class="below">
+  <div class="rail-label">Trailers &amp; Extra's</div>
+  <div class="rail extras">
+    <div class="card w"><div class="art"><img src="{{art:dune2-backdrop}}" style="object-position:50% 60%"><span class="kind">Trailer</span><span class="len">2:31</span></div><div class="t">Officiële trailer</div></div>
+    <div class="card w"><div class="art"><img src="{{art:dune2-backdrop}}" style="object-position:0% 30%"><span class="kind">Achter de schermen</span><span class="len">14:08</span></div><div class="t">The Sands of Arrakis</div></div>
+    <div class="card w"><div class="art"><img src="{{art:dune1-backdrop}}"><span class="kind">Verwijderde scène</span><span class="len">3:12</span></div><div class="t">The Water of Life</div></div>
+    <div class="card w"><div class="art"><img src="{{art:dune1-backdrop}}" style="object-position:100% 0%"><span class="kind">Featurette</span><span class="len">6:44</span></div><div class="t">Chani's Journey</div></div>
+  </div>
+</div>
+<div class="hint menu-hint"><kbd>Menu</kbd> terug naar Films</div>
+<div class="note">CANDIDATE · MOCKUP 09 · Filmdetail · Hervatten gefocust</div>

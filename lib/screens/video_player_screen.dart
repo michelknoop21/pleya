@@ -31,6 +31,8 @@ import '../services/plex_client.dart';
 import '../utils/session_identifier.dart';
 import '../database/app_database.dart';
 import '../media/media_stream.dart';
+import '../media/playback_language_intent.dart';
+import '../services/pleya_profile_language_preference_store.dart';
 import '../media/media_version.dart';
 import '../models/transcode_quality_preset.dart';
 import '../media/media_source_info.dart';
@@ -103,12 +105,15 @@ import '../focus/key_event_utils.dart';
 import '../i18n/strings.g.dart';
 import '../watch_together/providers/watch_together_provider.dart';
 import '../widgets/notice/notice_controller.dart';
+import '../media/playback_language_notice.dart';
+import '../utils/language_codes.dart';
 
 part 'video_player/parts/companion_remote.dart';
 part 'video_player/parts/display_matching.dart';
 part 'video_player/parts/episode_navigation.dart';
 part 'video_player/parts/episode_queue.dart';
 part 'video_player/parts/errors.dart';
+part 'video_player/parts/language_toasts.dart';
 part 'video_player/parts/lifecycle.dart';
 part 'video_player/parts/live_tv.dart';
 part 'video_player/parts/media_controls.dart';
@@ -203,18 +208,20 @@ TrackPreferencePersister _plexTrackPersister(PlexClient? Function() resolve) {
 /// fields the metadata-edit UI exposes under Advanced.
 ///
 /// Issue #1393 argued that an in-player track change must not silently rewrite
-/// the series prefs. It no longer does so silently: this runs only while both
-/// [SettingsService.rememberTrackSelections] and
-/// [SettingsService.writeSeriesLanguageToServer] are on, and only for episodes.
-/// Without it the choice would never reach Android, Windows or the official
-/// Plex clients, because iCloud key-value sync is Apple-only.
+/// the series prefs. It no longer does so silently: this runs only while the
+/// profile's "Spiegel naar Plex" is on, and only for episodes. Without it the
+/// choice would never reach Android, Windows or the official Plex clients,
+/// because iCloud key-value sync is Apple-only.
+///
+/// A mirror, never the authority (DEC-096 lid 6). A failed write is logged by
+/// the caller and leaves the Pleya preference exactly as it was; nothing here
+/// rolls anything back, and nothing reads Plex's answer back as truth.
 SeriesLanguagePersister _plexSeriesLanguagePersister(PlexClient? Function() resolve) {
   return ({required String seriesRatingKey, String? audioLanguage, String? subtitleLanguage, int? subtitleMode}) async {
     final client = resolve();
     if (client == null) return;
 
-    final settings = await SettingsService.getInstance();
-    if (!settings.read(SettingsService.writeSeriesLanguageToServer)) return;
+    if (!(await PleyaProfileLanguagePreferenceStore.read()).mirrorToPlex) return;
 
     final prefs = <String, String>{
       'audioLanguage': ?audioLanguage,

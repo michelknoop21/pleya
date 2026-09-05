@@ -1,0 +1,40 @@
+<style>
+.bleed { position: absolute; inset: 0; overflow: hidden; }
+.bleed img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
+.bleed .scrim { position: absolute; inset: 0; }
+.htext { position: absolute; left: var(--inset); width: 900px; }
+.htext h1 { font-size: 56px; font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
+.htext .meta { margin-top: 12px; }
+.htext .syn { margin-top: 12px; font-size: 22px; line-height: 1.35; color: var(--ink-2); }
+.htext .btn-row { margin-top: 26px; }
+.rails { position: absolute; left: var(--inset); right: 0; }
+.rails .rail-label { margin-bottom: 18px; }
+.rail { gap: 22px; }
+.card .t, .card .s { display: none; }
+.card.focus .t, .card.focus .s { display: block; }
+</style>
+<style>
+.bleed .scrim { background:
+  linear-gradient(90deg, rgba(20,20,20,.90) 0%, rgba(20,20,20,.66) 30%, rgba(20,20,20,.10) 58%, rgba(20,20,20,0) 100%),
+  linear-gradient(180deg, rgba(20,20,20,.62) 0%, rgba(20,20,20,0) 20%, rgba(20,20,20,0) 48%, rgba(20,20,20,.86) 68%, var(--bg) 100%); }
+.htext { top: 296px; }
+.rails { top: 640px; }
+</style>
+<div class="bleed"><img src="{{art:dune2-backdrop}}"><div class="scrim"></div></div>
+{{nav:Home}}
+<div class="htext">
+  <h1>Dune: Part Two</h1>
+  <div class="meta">Film<span class="sep">·</span>Sciencefiction<span class="sep">·</span>2024<span class="sep">·</span>2u 46m</div>
+  <div class="syn">Paul Atreides verenigt zich met Chani en de Fremen en zint op wraak op de samenzweerders die zijn familie vernietigden.</div>
+  <div class="btn-row"><div class="btn primary focus">{{icon:play}} Afspelen</div><div class="btn">{{icon:info}} Meer info</div></div>
+</div>
+<div class="rails"><div class="rail-label">Verder kijken</div><div class="rail">
+    <div class="card p "><div class="art"><img src="{{art:eeaao-poster}}"><div class="prog"><i style="width:70%"></i></div></div><div class="t">Everything Everywhere All at Once</div><div class="s">42 min resterend</div></div>
+    <div class="card p"><div class="art"><img src="{{art:barbie-poster}}"><div class="prog"><i style="width:30%"></i></div></div><div class="t">Barbie</div><div class="s">1u 20m resterend</div></div>
+    <div class="card p"><div class="art"><img src="{{art:penguin-poster}}"><span class="src">2 bronnen</span></div><div class="t">The Penguin</div><div class="s">S1 · A3</div></div>
+    <div class="card p"><div class="art"><img src="{{art:poorthings-poster}}"></div><div class="t">Poor Things</div><div class="s">2023</div></div>
+    <div class="card p"><div class="art"><img src="{{art:conclave-poster}}"></div><div class="t">Conclave</div><div class="s">2024</div></div>
+    <div class="card p"><div class="art"><img src="{{art:wonka-poster}}"></div><div class="t">Wonka</div><div class="s">2023</div></div>
+    <div class="card p"><div class="art"><img src="{{art:anora-poster}}"></div><div class="t">Anora</div><div class="s">2024</div></div>
+  </div></div>
+<div class="note">CANDIDATE · MOCKUP 29 · D1 landing: backdrop 16:9 schermvullend achter nav en tekst, scrim boven voor de nav en links voor de tekst; de eerste rail staat heel in beeld (9.2), CTA-focus als rustfocus (7.1)</div>

@@ -1,0 +1,28 @@
+<style>
+.wm { position: absolute; left: 50%; top: 96px; transform: translateX(-50%); height: 72px; }
+.wm img { height: 72px; display: block; }
+h1.q { position: absolute; left: 0; right: 0; top: 260px; text-align: center; font-size: 54px; font-weight: 700; letter-spacing: -.01em; }
+.profiles { position: absolute; left: 0; right: 0; top: 400px; display: flex; justify-content: center; gap: 56px; }
+.pf .av { border-radius: 999px; }
+.pf { width: 260px; text-align: center; }
+.pf .av { width: 260px; height: 260px; border-radius: 22px; background: var(--surface); overflow: hidden; display: grid; place-items: center; font-family: ArchivoBlack, Inter; font-size: 110px; color: var(--ink); position: relative; }
+.pf .av img { width: 100%; height: 100%; object-fit: cover; }
+.pf .av.g1 { background: linear-gradient(140deg, var(--accent), var(--amber)); }
+.pf .av.g2 { background: var(--elevated); }
+.pf .av.add { background: transparent; border: 3px dashed var(--ink-4); color: var(--ink-3); font-size: 80px; font-family: Inter; font-weight: 400; }
+.pf .av .lock { position: absolute; right: 16px; bottom: 16px; width: 44px; height: 44px; border-radius: 999px; background: rgba(20,20,20,.75); display: grid; place-items: center; }
+.pf .av .lock .ic { width: 22px; height: 22px; }
+.pf .n { font-size: 26px; font-weight: 500; margin-top: 22px; color: var(--ink-2); }
+.pf.focus .av { transform: scale(1.06); box-shadow: 0 0 0 8px var(--bg), 0 0 0 12px var(--ink), 0 30px 60px rgba(0,0,0,.6); }
+.pf.focus .n { color: var(--ink); font-weight: 700; }
+.manage { position: absolute; left: 0; right: 0; top: 860px; display: flex; justify-content: center; }
+</style>
+<div class="wm"><img src="../assets/pleya_wordmark.png" alt="Pleya"></div>
+<h1 class="q">Wie is er aan het kijken?</h1>
+<div class="profiles">
+  <div class="pf focus"><div class="av"><img src="{{art:severance-backdrop}}" style="object-position:60% 30%"></div><div class="n">Michel</div></div>
+  <div class="pf"><div class="av g1">E<span class="lock">{{icon:lock}}</span></div><div class="n">Eray</div></div>
+  <div class="pf"><div class="av g2">K</div><div class="n">Kids</div></div>
+</div>
+<div class="manage"><div class="btn quiet">{{icon:people}} Profielen beheren</div></div>
+<div class="note">CANDIDATE · MOCKUP 21 · Selectiepoort: alleen kiezen en Profielen beheren; toevoegen zit in de beheerlijst; Menu sluit hier de app</div>

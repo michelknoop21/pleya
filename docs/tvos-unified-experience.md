@@ -168,7 +168,7 @@ Expliciete grenzen, geen vergeten onderdelen:
 - geen samenvoeging van Live TV-kanalen;
 - geen automatische bulkmutatie van meerdere servers zonder expliciete scope;
 - geen redesign van iOS, iPadOS of macOS;
-- geen verwijdering van de bestaande geavanceerde Bibliotheken-interface;
+- geen verwijdering van Bibliotheken als bestemming; de bladerinterface erin is per DEC-092 vervangen door bronbeheer (4.5);
 - geen permanente gebruikersinstelling om tussen oude en nieuwe TV-shell te wisselen.
 
 De datafundering wordt wel platformneutraal gebouwd, zodat Films en Series later ook op andere
@@ -277,12 +277,21 @@ UnifiedMediaGroup
 
 De speler blijft dus vrij van unified-cataloguslogica.
 
-### 4.5 Bibliotheken blijft bestaan
+### 4.5 Bibliotheken is bronbeheer
 
-Films en Series zijn de dagelijkse globale catalogus. Mijn Pleya ▸ Bibliotheken blijft de
-geavanceerde bronweergave voor: één library selecteren; Recommended; Browse; Collections; Playlists;
-backend-specifieke filters; folder browsing; metadata vernieuwen; scan/analyse/prullenbak waar
-ondersteund; libraries tonen/verbergen en ordenen.
+Films en Series zijn de dagelijkse globale catalogus, en bladeren per bibliotheek gebeurt dáár:
+Alle films en Alle series met de bibliotheek als bronfilter (10.4). Mijn Pleya ▸ Bibliotheken is
+de beheerweergave van de bronnen: per server de bibliotheken, met soort, aantal, zichtbaar of
+verborgen en volgorde, en per bibliotheek de acties Openen in catalogus, metadata vernieuwen,
+scannen, verbergen, en waar de backend het draagt mappen bladeren, analyseren en prullenbak
+legen. De pagina heeft geen eigen Aanbevolen of Bladeren. Collecties en Afspeellijsten zijn eigen
+ingangen in Mijn Pleya, over alle bronnen heen, met het collectie- en afspeellijstdetail van
+hoofdstuk 31.8 als bestemming.
+
+> Gewijzigd door [DEC-092](DECISIONS.md#dec-092). Tot 4 september 2026 stond hier "Bibliotheken
+> blijft bestaan" als geavanceerde bronweergave met één library kiezen, Recommended, Browse,
+> Collections en Playlists. Dat contract bouwde een tweede bladerinterface naast de catalogus die
+> 10.4 al met server en library als globale filters bedient.
 
 ### 4.6 Writes zijn standaard brongebonden
 
@@ -435,6 +444,11 @@ Focus wordt expliciet gestuurd, nooit overgelaten aan alleen geometrische Flutte
 Top navigation → Hero actions of page header → First content row or grid → Next rows
 ```
 
+Op Home is de rustfocus de primaire CTA van de full-bleed hero ([DEC-095](DECISIONS.md#dec-095)).
+DOWN scrolt de feed tot het label van de eerste rail op het anker van 33.2 staat; de herotekst
+dooft en het beeld blijft gedimd achter de band. Zodra de hero uit beeld is ankert het label van
+de gefocuste rail onder de topnav, zodat de volgende rail er heel onder staat.
+
 ### 7.2 Topnavigatie
 
 - Links/rechts beweegt tussen zichtbare bestemmingen.
@@ -554,30 +568,51 @@ instant of zeer kort; focus blijft zichtbaar maar zonder bewegende scale waar no
 
 ### 9.1 Schermopbouw
 
+> **Herzien op 4 september 2026, [DEC-095](DECISIONS.md#dec-095).** De billboardkaart is
+> vervangen door een full-bleed hero met de eerste rail die eronder piept. Mockup 30 A1
+> (`docs/assets/tvos-unified/mockups-2026-09-04/30-home-a1.png`) is bindend voor de compositie.
+
 ```
-[vaste topnavigatie]
-╭──────────────────────────────────────────────────────────────╮
-│  CLEARLOGO / TITEL                       CINEMATIC ARTWORK    │
-│  2026 • 16 • 1u 43m • 2 bronnen                              │
-│  Korte synopsis, maximaal drie regels.                       │
+┌──────────────────────────────────────────────────────────────┐
+│ (M)              ⌕  Home  Series  Films  Mijn Pleya    PLEYA │  topnav 44..96 over het beeld
+│                                                              │
+│                 CINEMATIC ARTWORK, 16:9, SCHERMVULLEND       │
+│                                                              │
+│  CLEARLOGO / TITEL                                           │  tekstkolom 579..840
+│  Film • Genre • 2024 • 2u 46m                                │
+│  Korte synopsis, maximaal twee regels.                       │
 │  [ ▶ Afspelen ]   [ ⓘ Meer info ]                            │
-╰──────────────────────────────────────────────────────────────╯
-Verder kijken
-[ wide card ][ wide card ][ wide card ][ wide card ]
-Topkeuzes voor jou
-[ poster ][ poster ][ poster ][ poster ][ poster ]
-Recent uitgebracht
-...
+│  Verder kijken                                               │  label 880
+│ [ poster ][ poster ][ poster ][ poster ][ poster ][ poster ] │  piept 147 van 346
+└──────────────────────────────────────────────────────────────┘
+DOWN: de feed scrolt tot "Verder kijken" onder de balk staat, de herotekst
+dooft en het beeld treedt terug; daaronder de railstapel van 17.
 ```
 
-### 9.2 Billboardmaat
+### 9.2 Hero-maat
 
-Links en rechts 72; gap onder topnav 16–20; hoogte doel 500–540 op 1080; clamp ongeveer 46–56% van de
-bruikbare schermhoogte; hoekradius 24–28; contentinset links 56–64; tekstkolom max circa 600;
-artworkonderwerp bij voorkeur rechts. De eerste volledige contentrij blijft direct zichtbaar; van de
-tweede rij mag een kleine preview zichtbaar zijn.
+> **Herzien op 4 september 2026, [DEC-095](DECISIONS.md#dec-095).** De alinea hieronder
+> vervangt de billboardmaat (kaart op inset 72, hoogte 500 tot 540, radius 24 tot 28). De
+> kaart bestaat niet meer.
+
+De backdrop staat op 16:9 schermvullend achter de topnav en de tekst; op een 16:9-bron is er
+geen uitsnede, voor een andere bronratio geldt het anker uit [DEC-094](DECISIONS.md#dec-094).
+Twee scrims in de themakleur: horizontaal van links tot ongeveer 56 procent voor de tekstkolom,
+verticaal van boven voor de nav en van ongeveer 52 procent naar de paginagrond op 96 procent,
+zodat de eerste rail op de grond staat. Tekstkolom op inset 75, maximaal circa 900 breed, van
+579 tot 840 op de 1080-referentie: titel of clearlogo, metaregel, synopsis van maximaal twee
+regels, CTA's. Het label van de eerste rail staat op 880 en de posters van die rail piepen 147
+van hun 346 boven de onderrand. **De eerste rail staat in de landing niet heel in beeld**; hij
+komt heel in beeld op DOWN, wanneer de feed scrolt tot het label van die rail onder de navbalk
+staat. Het onderwerp van
+de backdrop staat daardoor wel heel in beeld, en dat is de keuze die hier gemaakt is.
 
 ### 9.3 Ambient background
+
+> Nagelopen op 4 september 2026 bij [DEC-095](DECISIONS.md#dec-095): ongewijzigd. Onder de
+> full-bleed hero is er in de landing geen paginagrond meer; de tint geldt voor de railstapel
+> zodra de hero uit beeld is, zoals mockup 30 B en C hem tekenen. Levering blijft fase 9
+> (`docs/tvos-unified-fase8-ambient-background-deviation.md`).
 
 Buiten de hero komt een subtiele donkere kleurtint uit het actieve artwork: decodeer een miniatuur
 van ongeveer 32×18; bepaal een gedempte dominante kleur; cache op artwork-key; meng op lage alpha met
@@ -662,6 +697,10 @@ navigatie met links/rechts reset de timer.
 > terwijl het billboard doorloopt is het geval dat deze alinea beschrijft. Onder Reduce Motion
 > roteert de carousel helemaal niet.
 
+> Nagelopen op 4 september 2026 bij [DEC-095](DECISIONS.md#dec-095): ongewijzigd. Onder
+> full-bleed blijft de backdrop gedimd zichtbaar achter een gefocuste rail; de pauze op rijfocus
+> zorgt dat dat beeld daar niet wisselt.
+
 **Geen permanente reeks kleine webachtige dots.** Tijdens handmatig wisselen verschijnt optioneel een
 korte segmentindicator, die na twee seconden verdwijnt.
 
@@ -732,10 +771,19 @@ waar focus moeilijk komt.
 ### 10.2b Complete catalogus — "Alles bekijken" (fase 5)
 
 ```
-Films                    [Alle bronnen] [Filters 2] [Titel A–Z]
-[poster] [poster] [poster] [poster] [poster] [poster]
+Films                       Niet bekeken · Sciencefiction · Titel A–Z
+▏[poster] [poster] [poster] [poster] [poster] [poster]
 [poster] [poster] [poster] [poster] [poster] [poster]
 ```
+
+> Gewijzigd door [DEC-093](DECISIONS.md#dec-093). Tot 4 september 2026 stonden Bronnen, Filters en
+> Sortering als drie capsules rechtsboven naast de kop. Ze zitten nu in een rail links van het
+> raster die dicht is zolang de focus in het raster zit en opent op LEFT vanaf kolom 0; dicht blijven
+> zes kolommen staan met een stille streep aan de linkerrand, open schuift het raster naar vijf
+> kolommen en toont de rail per regel icoon, label en huidige waarde, met de keuzes als tags en
+> Wissen eronder. RIGHT of Menu sluit de rail en de focus keert terug op dezelfde kaart. De actieve
+> keuzes staan dicht als niet-bedienbare tags rechtsboven, de sortering gestippeld. Mockup 28 D1 en
+> D2 zijn bindend voor de positie; northstar 05, 06 en mockup 14 lopen daarop achter.
 
 Geen grote hero op deze pagina. Vaste topnav. Een compacte sticky page header. Grid met 6–7 kolommen
 afhankelijk van dichtheid. Bestaande TV-cardscale en focusring. Posters 2:3. Titels maximaal twee
@@ -787,8 +835,8 @@ Servers; Bibliotheken. Actieve keuzes zijn visueel geselecteerd én focusbaar. S
 Toepassen. Wijzigingen worden pas toegepast bij Toepassen, zodat de grid niet na elke remote-klik
 herlaadt en focus steelt. Menu sluit zonder toepassen. Actieve filtercount verschijnt op de
 Filter-knop. Een bron/library die niet meer bestaat wordt bij openen automatisch uit de opgeslagen
-selectie verwijderd. De zichtbare knop blijft de primaire route; Play/Pause is hooguit een
-snelkoppeling.
+selectie verwijderd. De rij Filters in de rail van 10.2b is de primaire route; Play/Pause is hooguit
+een snelkoppeling (DEC-093).
 
 ### 10.7 Counts
 
@@ -1357,7 +1405,10 @@ Pleya
 | Huidige TV-functie | Nieuwe plek |
 | --- | --- |
 | Home | Topnav Home |
-| Bibliotheken | Mijn Pleya ▸ Bibliotheken |
+| Bibliotheken (beheer per server, DEC-092) | Mijn Pleya ▸ Bibliotheken |
+| Bladeren per bibliotheek | Alle films of Alle series met de bibliotheek als bronfilter |
+| Collecties | Mijn Pleya ▸ Collecties |
+| Afspeellijsten | Mijn Pleya ▸ Afspeellijsten |
 | Live TV | Topnav, conditioneel |
 | Zoeken | Topnav Zoeken |
 | Kijklijst | Mijn Pleya ▸ Kijklijst |
@@ -1522,7 +1573,8 @@ Rate (geldt voor alle bronnen; wat onbereikbaar is wordt gemeld, hoofdstuk 13.8)
 verwijderen van servercontent; metadata bewerken.
 
 **Acties die alleen in Bibliotheken thuishoren:** scan library; analyseer; prullenbak leegmaken;
-metadata-refresh op hele library; folder browsing; collectionbeheer; playlistbeheer.
+metadata-refresh op hele library; folder browsing. Collectionbeheer en playlistbeheer horen bij hun
+eigen ingangen in Mijn Pleya (4.5, DEC-092).
 
 Een destructive action mag nooit rechtstreeks op `representativeSource` worden uitgevoerd.
 
@@ -2259,6 +2311,13 @@ aflopend over de rechterrand. De hero is functioneel een carrousel van recent ui
 
 **CODE IS LEIDEND VOOR:** `MonoTokens`; `FocusTheme`; de carrousel-timing (hoofdstuk 9.6).
 
+> **Afwijking, [DEC-095](DECISIONS.md#dec-095) (2026-09-04).** "De featured card als afgeronde
+> kaart ín de pagina, nooit full bleed" is superseded: de hero is full-bleed en de eerste rail
+> piept eronder, zoals mockup 30 A1 tekent. Wat blijft: de scrim alleen waar tekst en nav hem
+> nodig hebben, titel, metaregel en synopsis linksonder in de tekstkolom, de witte Afspelen-
+> capsule, geen broncount, geen dots of pijlen, en daaronder alleen het label "Verder kijken" met
+> de bovenkanten van de 2:3-rij.
+
 ### 33.2 02-home-rail-focus.jpg
 
 ![Home met railfocus](assets/tvos-unified/northstar/02-home-rail-focus.jpg)
@@ -2283,6 +2342,14 @@ sectiekop peekt onderaan. Focusverlies op de hero dooft zijn tekst; de topnav bl
 > dat beweegt. Wat verandert is hoeveel van de pagina één rij opeet (57% in plaats van 64%) en dat
 > is precies waar deze referentie ("de volgende sectiekop peekt onderaan") om vraagt.
 > `test/widgets/tv/tv_discovery_density_test.dart` meet het.
+
+> **Afwijking, [DEC-095](DECISIONS.md#dec-095) (2026-09-04).** De "onderste strook met
+> afgeronde onderhoeken" is de gedimde full-bleed backdrop geworden, zonder hoeken; het anker van
+> het doven van de herotekst blijft; het anker van het raillabel op 372 vervalt, omdat de 242
+> pixels onder de balk de onderrand van de kaart waren en die kaart er niet meer is. Een gefocuste
+> rail staat nu onder de balk, de eerste en de diepere gelijk. Het metablok onder de gefocuste kaart
+> krijgt één regel synopsis in plaats van twee, en dieper op de pagina ankert het gefocuste label
+> onder de topnav. Mockup 30 B en C tekenen beide standen.
 
 ### 33.3 03-films-landing.jpg
 

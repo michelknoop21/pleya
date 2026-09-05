@@ -1,0 +1,66 @@
+<style>
+.crumb { font-size: 22px; color: var(--ink-3); margin-top: 8px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 34px; }
+.group-label .muted { font-size: 18px; font-weight: 400; margin-left: 10px; }
+.src { font-size: 19px; color: var(--ink-3); margin: -6px 0 18px; }
+.srow { min-height: 104px; }
+.srow img { width: 56px; height: 84px; border-radius: 8px; object-fit: cover; flex: none; }
+.srow .t { font-size: 24px; font-weight: 700; }
+.srow .v { font-size: 20px; color: var(--ink-2); margin-top: 3px; }
+.srow .s { font-size: 18px; margin-top: 2px; }
+.page { opacity: .35; }
+.sheet { width: 820px; padding: 0; overflow: hidden; }
+.sheet .head { display: flex; gap: 22px; align-items: center; padding: 28px 32px 22px; border-bottom: 1px solid var(--hair); }
+.sheet .head img { width: 68px; height: 102px; border-radius: 8px; object-fit: cover; }
+.sheet .head .t { font-size: 28px; font-weight: 700; }
+.sheet .head .s { font-size: 20px; color: var(--ink-3); margin-top: 4px; line-height: 1.35; }
+.opts { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
+.opt { display: flex; align-items: center; gap: 20px; height: 68px; padding: 0 18px; border-radius: 12px; font-size: 23px; }
+.opt .ic { width: 26px; height: 26px; color: var(--ink-2); }
+.opt .r { margin-left: auto; font-size: 20px; color: var(--ink-2); }
+.opt .r .muted { margin-left: 8px; }
+.opt.focus { background: var(--elevated); box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--ink); }
+.opt.sep { height: 1px; background: var(--hair); margin: 8px 18px; padding: 0; }
+</style>
+{{nav:Mijn Pleya|live,dim}}
+<div class="page">
+  <div class="page-title">Taal en ondertitels</div>
+  <div class="crumb">Mijn Pleya ▸ Instellingen ▸ Taal en ondertitels</div>
+  <div class="two">
+    <div>
+      <div class="group-label">Globale voorkeur</div>
+      <div class="src">Pleya-profiel Michel · geldt voor alle content zonder eigen serievoorkeur</div>
+      <div class="rows">
+        <div class="row"><div class="body"><div class="t">Audio</div><div class="s">Ontbreekt de taal, dan de standaardtrack van het bestand</div></div><div class="val">Originele taal</div>{{icon:chev}}</div>
+        <div class="row"><div class="body"><div class="t">Ondertitels</div><div class="s">Voorkeurstaal voor alle content</div></div><div class="val">Nederlands</div>{{icon:chev}}</div>
+        <div class="row"><div class="body"><div class="t">Ondertitels tonen</div><div class="s">Alleen als de audio niet je taal is</div></div><div class="val">Bij vreemde taal</div>{{icon:chev}}</div>
+      </div>
+      <div class="group-label">Onthouden</div>
+      <div class="rows">
+        <div class="row"><div class="body"><div class="t">Onthoud keuzes per serie</div><div class="s">Een taal die je tijdens een serie kiest, geldt voor de volgende afleveringen</div></div><div class="switch on"></div></div>
+        <div class="row"><div class="body"><div class="t">Spiegel naar Plex</div><div class="s">Optioneel. Lukt de schrijfactie niet, dan blijft je Pleya-voorkeur gelden</div></div><div class="switch on"></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="group-label">Serievoorkeuren <span class="muted">4 series</span></div>
+      <div class="rows">
+        <div class="row srow sel"><img src="{{art:severance-poster}}"><div class="body"><div class="t">Severance</div><div class="v">Audio: Engels · Ondertitels: Engels</div><div class="s">Gekozen op 2 september bij S2E4 · Apple TV</div></div>{{icon:chev}}</div>
+        <div class="row srow"><img src="{{art:shogun-poster}}"><div class="body"><div class="t">Shōgun</div><div class="v">Audio: Japans (origineel) · Ondertitels: Nederlands</div><div class="s">Gekozen op 28 augustus bij S1E2 · iPhone</div></div>{{icon:chev}}</div>
+        <div class="row srow"><img src="{{art:slowhorses-poster}}"><div class="body"><div class="t">Slow Horses</div><div class="v">Audio: Engels · Ondertitels: uit</div><div class="s">Gekozen op 19 augustus bij S3E1 · Apple TV</div></div>{{icon:chev}}</div>
+        <div class="row srow"><img src="{{art:andor-poster}}"><div class="body"><div class="t">Andor</div><div class="v">Audio: globaal · Ondertitels: Nederlands (geforceerd)</div><div class="s">Gekozen op 11 augustus bij S2E7 · Mac</div></div>{{icon:chev}}</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="scrim" style="background:rgba(20,20,20,.5)"></div>
+<div class="modal sheet">
+  <div class="head"><img src="{{art:severance-poster}}"><div><div class="t">Severance</div><div class="s">Serievoorkeur, gekozen op 2 september bij S2E4 op de Apple TV.<br>Geldt op NAS en op Zolder, waar Pleya deze serie als dezelfde herkent.</div></div></div>
+  <div class="opts">
+    <div class="opt">{{icon:audio}} Audio <span class="r">Engels <span class="muted">Pleya-profiel: Originele taal</span></span></div>
+    <div class="opt">{{icon:cc}} Ondertitels <span class="r">Engels <span class="muted">Pleya-profiel: Nederlands</span></span></div>
+    <div class="opt sep"></div>
+    <div class="opt focus">{{icon:refresh}} Gebruik globale voorkeur <span class="r muted">wist deze serievoorkeur</span></div>
+  </div>
+  <div style="padding:0 32px 26px;display:flex;justify-content:space-between;align-items:center"><span class="muted" style="font-size:19px">Een andere taal kies je tijdens het kijken, in het infopaneel.</span><div class="btn">Sluiten</div></div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 31 B · Serievoorkeur bekijken en terugzetten naar het Pleya-profiel; sheet, herkenningsregel en de actie bestaan niet in code = PRODUCT DECISION</div>

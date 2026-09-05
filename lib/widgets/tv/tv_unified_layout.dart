@@ -684,7 +684,10 @@ class TvDiscoveryLayout {
   /// A rail's own heading — hoofdstuk 8.3's section title band. Under the page
   /// title and above the content it names, so it has to be clearly subordinate
   /// to the first and clearly dominant over the second.
-  static const double sectionTitleFontSize = 20;
+  ///
+  /// 17 renders at 27 reference px, inside hoofdstuk 8.3's 25–28 band for a
+  /// rail heading; 20 rendered at 31.5 (styling audit, divergentie 6).
+  static const double sectionTitleFontSize = 17;
   static const double sectionHeaderGap = 12;
 
   /// Tile height, constant across focused and unfocused (see the class comment).
@@ -742,6 +745,10 @@ class TvDiscoveryLayout {
   /// artwork still lived. The neighbours are colourful content, not backdrop.
   static const double neighbourDim = 0.10;
 
+  /// The new-content marker on a TV card: an amber dot of 12 reference px
+  /// (hoofdstuk 34, 33.6; DEC-095 (6)), never the text pill.
+  static const double newDotSize = 8;
+
   static const double cardShadowBlur = 14;
   static const double cardShadowOffsetY = 5;
   static const double cardShadowAlpha = 0.38;
@@ -757,13 +764,18 @@ class TvDiscoveryLayout {
   /// compact band: a 16px title under a frame that large read as a caption.
   /// Rendered on the canonical canvas these come to ~20 / 13.6 / 12.3 logical
   /// — readable from a sofa, still clearly three tiers.
-  static const double metaTitleFontSize = 23.5;
-  static const double metaContextFontSize = 16;
-  static const double metaSynopsisFontSize = 14.5;
+  ///
+  /// DEC-095 (5), mockup 30 B/C: title 27, meta 20 and one line of synopsis
+  /// at 19 reference px, 18 above the title and 26 to the next rail's label.
+  /// One line of synopsis rather than DEC-087's two is what lets the next rail
+  /// stand wholly under the focused one instead of only its label.
+  static const double metaTitleFontSize = 17;
+  static const double metaContextFontSize = 13;
+  static const double metaSynopsisFontSize = 12;
   static const double metaLineHeight = 1.3;
-  static const int metaSynopsisMaxLines = 2;
-  static const double railMetaGap = 16;
-  static const double metaLineGap = 6;
+  static const int metaSynopsisMaxLines = 1;
+  static const double railMetaGap = 4;
+  static const double metaLineGap = 3;
 
   /// Reserved height of that block, computed rather than guessed so a font-size
   /// change cannot silently start moving the rail below it.
@@ -778,8 +790,11 @@ class TvDiscoveryLayout {
   /// Height of the tile band alone — the tallest a tile can draw, focus ring
   /// and its gap included, so an expanded tile never overflows the band it was
   /// given and never asks the column to re-measure.
-  static double railBandHeight(double scale) =>
-      cardHeight * scale + (cardFocusRingGap * scale + FocusTheme.focusBorderWidth) * 2;
+  /// Page ground between the band's edge and a tile's artwork: the ring gap
+  /// plus the ring itself, on each side.
+  static double railBandInset(double scale) => cardFocusRingGap * scale + FocusTheme.focusBorderWidth;
+
+  static double railBandHeight(double scale) => cardHeight * scale + railBandInset(scale) * 2;
 
   /// Full vertical extent of one rail: heading, tiles, and the context block.
   /// Constant by construction — nothing in it depends on where focus is.
@@ -889,7 +904,7 @@ class TvDiscoveryLayout {
 
   /// Vertical gap between two rails, and between the last rail and the
   /// view-all row.
-  static const double sectionGap = 26;
+  static const double sectionGap = 17;
 
   /// Progress bar on a tile that has an active resume position.
   static const double progressBarHeight = 5;
@@ -997,6 +1012,9 @@ class TvTopNavLayout {
   static const double inactiveInk = 0.72;
 
   /// Focus transition duration (hoofdstuk 8.4: "Topnav-focus 150–180 ms").
+  /// The bar under an open overlay (audit divergentie 13, mockup 30 E).
+  static const double dimmedOpacity = 0.35;
+
   static const Duration focusDuration = Duration(milliseconds: 160);
 }
 
@@ -1067,17 +1085,18 @@ class TvMyPleyaLayout {
   static const double inkTertiary = 0.5;
 }
 
-/// Fase-8 Home tokens (hoofdstuk 9 of docs/tvos-unified-experience.md, and the
-/// binding north-star render `docs/assets/tvos-unified/northstar/01-home.jpg`).
+/// Home tokens: the full-bleed hero and where the rails sit under it
+/// (hoofdstuk 9.1/9.2 as revised by [DEC-095], mockup 30 A1/B/C in
+/// `docs/assets/tvos-unified/mockups-2026-09-04/`).
 ///
-/// **The hero is a card on the page, not the page.** Every number below is read
-/// off 33.1's binding measurements — a 1770×718 rounded card on a 75px inset at
-/// 1920×1080 — rather than restated from hoofdstuk 9.2's earlier band, because
-/// where the two disagree the frozen render wins ([DEC-065]). The two agree on
-/// everything that matters: 1770 wide on a 75 inset is the ~72 of 9.2 after the
-/// northstar's own margin, 718 tall is 66% of 1080 and inside 9.2's "clamp
-/// ongeveer 46–56%" once the topnav band above it is taken off the usable
-/// height.
+/// **The hero is the page, not a card on it.** The fase-8 billboard was a
+/// 1770×718 rounded card on a 75px inset (33.1, "nooit full bleed"); on a 16:9
+/// backdrop that card showed 72% of the picture, and HERO1 could only decide
+/// *which* 72%. DEC-095 replaces the card: the backdrop is 16:9 across the
+/// whole screen, behind the top navigation and the text, and the first rail
+/// peeks under it. Every number below is read off mockup 30 A1 on the
+/// 1920×1080 reference and divided by 1.57 (DEC-028's reference-to-token
+/// conversion on the canonical 1038×584 canvas at scale 0.85).
 ///
 /// Rows below the hero are [TvDiscoveryLayout]'s, unchanged and deliberately:
 /// 33.2 draws Home's focused row with exactly the composition 33.3 draws on the
@@ -1087,42 +1106,70 @@ class TvMyPleyaLayout {
 class TvHomeLayout {
   const TvHomeLayout._();
 
-  /// 1770 ÷ 718 off the north-star card. Width-driven: the card spans the page
-  /// inset, and its height follows from this, clamped by [heroMaxHeightFraction].
-  static const double heroAspectRatio = 1770 / 718;
+  /// Where a backdrop that does not share the screen's ratio is anchored when
+  /// it is cover-cropped into it. On a 16:9 source at full-bleed there is no
+  /// crop at all and this value is idle; for any other ratio it is the one
+  /// owner of the cut (DEC-094): `-0.3` keeps the upper 35% intact and takes
+  /// the rest from both ends, the anchor the mockup family draws as
+  /// `object-position: 50% 35%`. HERO1.
+  static const Alignment heroArtAlignment = Alignment(0, -0.3);
 
-  /// 18 reference px ÷ 1.57 (DEC-028's logical≈ref conversion), rounded to the
-  /// nearest whole logical pixel so the ring the artwork is clipped to and the
-  /// card's own shadow agree on where the corner is.
-  static const double heroRadius = 12;
+  /// How much of the first rail's artwork is on screen on the landing: 147
+  /// reference px of the 346 band (mockup 30 A1, "de rail piept"). The subject
+  /// of the backdrop stays whole above it; the rail becomes fully visible on
+  /// DOWN, when the feed scrolls the rail's label under the top navigation
+  /// ([rowTileScrollAlignment]).
+  static const double firstRailPeek = 94;
 
-  /// Ceiling on the card's height, as a fraction of the *content box* — the
-  /// space under the top navigation, which is all the hero and the rows
-  /// actually share.
+  /// From the bottom of the CTA row to the label of the first rail: 40
+  /// reference px.
+  static const double heroTextRailGap = 26;
+
+  /// The vertical scroll target for a tile in the Home feed, as the fraction
+  /// of the viewport its centre is scrolled to
+  /// (`FocusableWrapper.scrollAlignment`).
   ///
-  /// 718 ÷ (1080 − 96) off the north-star render, not 718 ÷ 1080. Measuring
-  /// against the whole display would be the wrong denominator on this shell:
-  /// fase 7's bar is proportionally taller than the mockup's, so a
-  /// screen-relative clamp hands the hero the same height while the rows below
-  /// it have less room, and the first row's peek — which 33.1 binds as visible
-  /// and hoofdstuk 17 insists on — halves. Against the content box the
-  /// proportion the render actually shows is preserved whatever the bar costs.
-  static const double heroMaxHeightFraction = 718 / 984;
+  /// **One anchor for every row: the focused rail's label sits under the top
+  /// navigation.** Northstar 02 anchors the *first* rail 372 reference px down
+  /// the screen, and that is what this used to do — but those 242 px under the
+  /// bar were the visible lower edge of the billboard *card*, and full-bleed
+  /// removed the card. Under the new composition they held room for nothing: a
+  /// rail section is 524 px, so a fifth of the page went to a backdrop the dim
+  /// had already taken the contrast out of, and on a dark still it read as an
+  /// empty band. Anchoring every row the same way returns that space — the next
+  /// rail gains four fifths of its band — and leaves one rule where there were
+  /// two. The hero is not lost by it: UP brings it back into view (P1), and it
+  /// is on screen throughout the scroll that gets here.
+  static double rowTileScrollAlignment(double viewportHeight, double scale) {
+    if (viewportHeight <= 0) return 0.5;
+    final labelToTileCentre =
+        (TvDiscoveryLayout.sectionTitleFontSize * TvDiscoveryLayout.metaLineHeight +
+                TvDiscoveryLayout.sectionHeaderGap) *
+            scale +
+        TvDiscoveryLayout.railBandHeight(scale) / 2;
+    return (labelToTileCentre / viewportHeight).clamp(0.0, 1.0);
+  }
 
-  /// Left inset of the hero's own text column, measured from inside the card.
-  /// Hoofdstuk 9.2's "contentinset links 56–64" reference px.
-  static const double heroContentInset = 38;
+  /// The hero block: everything the landing shows above the first rail's
+  /// label. Derived rather than fixed so the peek is exactly [firstRailPeek]
+  /// on any viewport — the tokens for the label line, the header gap and the
+  /// band's ring inset are the rail's own.
+  static double heroBlockHeight(double viewportHeight, double scale) => math.max(
+    0.0,
+    viewportHeight -
+        TvDiscoveryLayout.sectionTitleFontSize * TvDiscoveryLayout.metaLineHeight * scale -
+        TvDiscoveryLayout.sectionHeaderGap * scale -
+        TvDiscoveryLayout.railBandInset(scale) -
+        firstRailPeek * scale,
+  );
 
-  /// Bottom inset of that column, from the card's lower edge.
-  static const double heroContentBottom = 34;
+  /// Cap on the text column: 900 reference px (hoofdstuk 9.2 as revised).
+  /// Wide enough for two lines of synopsis at hero size, narrow enough that
+  /// the artwork's subject keeps the right half of the screen.
+  static const double heroTextMaxWidth = 573;
 
-  /// Cap on the text column. Hoofdstuk 9.2's "tekstkolom max circa 600"
-  /// reference px — wide enough for two lines of synopsis, narrow enough that
-  /// the artwork's subject keeps the right half of the card.
-  static const double heroTextMaxWidth = 382;
-
-  /// Title, meta line, synopsis. Sized against the card rather than against a
-  /// rail: this is the one element on Home that is read first and from
+  /// Title, meta line, synopsis. Sized against the screen rather than against
+  /// a rail: this is the one element on Home that is read first and from
   /// furthest away.
   static const double heroTitleFontSize = 40;
   static const double heroTitleLetterSpacing = 1.2;
@@ -1139,10 +1186,12 @@ class TvHomeLayout {
   /// so a wide wordmark and a tall stacked mark occupy the same band and the
   /// metadata line under them never moves.
   static const double heroLogoMaxHeight = 76;
+
+  /// The band the title block occupies, type or clearlogo: the *larger* of
+  /// the two things that live in it, which is a two-line title (HERO2).
+  static const double heroTitleBandHeight = heroTitleFontSize * heroLineHeight * heroTitleMaxLines;
   static const double heroLogoMaxWidth = heroTextMaxWidth;
 
-  /// The two CTAs. `Afspelen` is a white capsule, `Meer info` a dark one —
-  /// 33.1, and the only two controls the hero has.
   static const double heroActionHeight = 40;
   static const double heroActionRadius = 20;
   static const double heroActionPaddingHorizontal = 20;
@@ -1151,90 +1200,50 @@ class TvHomeLayout {
   static const double heroActionIconSize = 19;
   static const double heroActionIconLabelGap = 8;
 
-  /// Band of card between a CTA's fill and its focus ring, for the reason
-  /// [TvDiscoveryLayout.cardFocusRingGap] spells out: a white ring laid
-  /// straight onto a white capsule has nothing to contrast with. Reserved
-  /// whether or not the pill holds the focus, so the row never moves.
   static const double heroActionFocusRingGap = 4;
 
-  /// Idle fill of the secondary CTA, and of the primary's label ink.
   static const double heroSecondaryFillAlpha = 0.26;
 
-  /// The local scrim under the text column. 33.1: "scrim alleen lokaal
-  /// **linksonder**", and the emphasis is the whole specification.
-  ///
-  /// Two independent full-card gradients — one opaque down the left edge, one
-  /// opaque along the bottom — do not add up to that. Their union is an L: the
-  /// left column is darkened to the top where there is no text to carry, and
-  /// the bottom-right corner is darkened until the card dissolves into the page
-  /// ground. Measured against `01-home.jpg` that cost the card its lower-right
-  /// corner and flattened the artwork above the title.
-  ///
-  /// So the reading gradient is a *product*, not a sum: the horizontal wash is
-  /// masked by [heroScrimReadingPlateau]/[heroScrimReadingFade] so it exists
-  /// only where the text is, and the bottom edge keeps a separate, much weaker
-  /// wash ([heroScrimBottomAlpha]) whose whole job is to stop the card ending
-  /// on a hard bright line.
-  static const double heroScrimHorizontalStop = 0.62;
-  static const double heroScrimAlpha = 0.86;
+  /// The reading scrim: a left-to-right ramp over the full height, so the text
+  /// column and the profile chip above it both read against it (mockup 30 A1,
+  /// `linear-gradient(90deg, .92 0%, .70 28%, .12 56%, 0 100%)`).
+  static const List<double> heroScrimReadingStops = [0, 0.28, 0.56, 1];
+  static const List<double> heroScrimReadingAlphas = [0.92, 0.70, 0.12, 0];
 
-  /// Fraction of the card height, measured from the bottom, over which the
-  /// reading wash is at full strength, and where it has faded to nothing.
-  static const double heroScrimReadingPlateau = 0.46;
-  static const double heroScrimReadingFade = 0.82;
+  /// The vertical scrim: a wash under the top navigation, clear across the
+  /// subject, then down to the page ground before the first rail's posters,
+  /// so they stand on the ground and not on the picture.
+  static const List<double> heroScrimVerticalStops = [0, 0.18, 0.52, 0.78, 0.96];
+  static const List<double> heroScrimVerticalAlphas = [0.66, 0, 0, 0.70, 1];
 
-  /// The bottom-edge wash. Deliberately about half the reading wash: it melts
-  /// the card's lower edge into the page, it does not carry type.
-  static const double heroScrimBottomAlpha = 0.4;
-  static const double heroScrimBottomStop = 0.3;
+  /// Once a row holds the focus the backdrop steps back (mockup 30 B): a veil
+  /// at [heroDimAlpha] over the whole picture, and a steeper vertical scrim
+  /// that reaches the page ground at 40% so the focused band sits on ground.
+  static const double heroDimAlpha = 0.66;
+  static const List<double> heroDimScrimStops = [0, 0.12, 0.26, 0.40];
+  static const List<double> heroDimScrimAlphas = [0.72, 0.20, 0.45, 1];
 
-  /// Gap between the top navigation and the hero card. Read off 33.1's own
-  /// render — the bar ends at y=96 and the card starts at y=131 — rather than
-  /// from hoofdstuk 9.2's "gap onder topnav 16–20", which predates the frozen
-  /// composition and would sit the card almost against the bar.
-  static const double heroTopGap = 22;
+  /// Hoofdstuk 9.4's poster-only fallback under full-bleed (mockup 30 D): the
+  /// sharp poster as an island of 600 reference px high, its top at 150 and
+  /// its right edge 220 in from the screen's, over the same poster blurred
+  /// and darkened as the fill.
+  static const double heroPosterIslandHeightFraction = 600 / 1080;
+  static const Alignment heroPosterIslandAlignment = Alignment(0.71, -0.375);
 
-  /// Gap between the hero card and the first row's section label.
+  /// Under the last row, so the feed can still scroll it to its anchor.
   static const double heroRowGap = 26;
 
-  /// Crossfade between two slides' artwork, and how long the tokens' own
-  /// `slow` is not: a hero crossfade reads as a dissolve rather than a
-  /// transition, and 33.1 asks for "smooth crossfade".
   static const Duration heroCrossfade = Duration(milliseconds: 460);
 
-  /// Hoofdstuk 9.6: the carousel advances every eight seconds, and the same
-  /// span is how long "echte inactiviteit" lasts before a paused carousel is
-  /// allowed to resume.
   static const Duration heroAutoAdvance = Duration(seconds: 8);
 
-  /// The short segment indicator 9.6 allows during manual navigation ("geen
-  /// permanente reeks kleine webachtige dots"), and how long it stays.
   static const Duration heroSegmentIndicatorHold = Duration(seconds: 2);
   static const double heroSegmentIndicatorWidth = 18;
   static const double heroSegmentIndicatorHeight = 3;
   static const double heroSegmentIndicatorGap = 6;
   static const double heroSegmentIndicatorIdleAlpha = 0.34;
 
-  /// Ink tiers on `MonoTokens.text`, matching [TvDiscoveryLayout]'s so the
-  /// hero's synopsis and a rail's read as the same tier of the same page.
   static const double inkPrimary = 1;
   static const double inkSecondary = 0.78;
   static const double inkTertiary = 0.62;
-
-  /// Width of the hero card: the page, inset by [TvDiscoveryLayout.pageInset]
-  /// on both sides, so the card's left edge and every rail's first tile sit on
-  /// one line. [contentWidth] is the width the feed was actually laid out in —
-  /// the shell's content box, not the screen.
-  static double heroWidth(double contentWidth, double scale) =>
-      math.max(0.0, contentWidth - TvDiscoveryLayout.pageInset * scale * 2);
-
-  /// Height of the hero card: width ÷ [heroAspectRatio], clamped by
-  /// [heroMaxHeightFraction] of [contentHeight] (the box under the top
-  /// navigation — see that constant for why the bar is excluded).
-  ///
-  /// Both halves are needed. The ratio is what 33.1 binds and it decides on a
-  /// canvas as wide as the render's; the clamp keeps a narrow or short one from
-  /// letting a width-derived height push the first content row off the screen.
-  static double heroHeight(double contentWidth, double contentHeight, double scale) =>
-      math.min(heroWidth(contentWidth, scale) / heroAspectRatio, contentHeight * heroMaxHeightFraction);
 }

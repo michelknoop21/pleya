@@ -1,0 +1,39 @@
+<style>
+.hero { position: absolute; left: var(--inset); right: var(--inset); border-radius: var(--r-billboard); overflow: hidden; background: var(--surface); }
+.hero img.bd { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 35%; }
+.hero .scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20,20,20,.88) 0%, rgba(20,20,20,.62) 34%, rgba(20,20,20,.06) 62%, rgba(20,20,20,0) 100%), linear-gradient(0deg, rgba(20,20,20,.55) 0%, rgba(20,20,20,0) 45%); }
+.htext { position: absolute; left: 56px; bottom: 48px; width: 880px; }
+.htext h1 { font-size: 56px; font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
+.htext .meta { margin-top: 12px; }
+.htext .syn { margin-top: 12px; font-size: 22px; line-height: 1.35; color: var(--ink-2); }
+.htext .btn-row { margin-top: 26px; }
+.rails { position: absolute; left: var(--inset); right: 0; }
+.rails .rail-label { margin-bottom: 18px; }
+.rail { gap: 22px; }
+</style>
+<style>
+.hero { top: 132px; height: 718px; }
+.hero img.amb { position: absolute; inset: -40px; width: calc(100% + 80px); height: calc(100% + 80px); object-fit: cover; filter: blur(46px) brightness(.55) saturate(1.1); }
+.hero img.sharp { position: absolute; right: 0; top: 0; height: 718px; width: 1276px; object-fit: cover;
+  -webkit-mask-image: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 260px); mask-image: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 260px); }
+.hero .fade { position: absolute; top: 0; bottom: 0; left: 494px; width: 260px; background: linear-gradient(90deg, rgba(20,20,20,0) 0%, rgba(20,20,20,0) 100%); }
+.hero .scrim { background: linear-gradient(90deg, rgba(20,20,20,.70) 0%, rgba(20,20,20,.40) 30%, rgba(20,20,20,0) 46%); }
+.rails { top: 880px; }
+</style>
+{{nav:Home}}
+<div class="hero"><img class="amb" src="{{art:dune2-backdrop}}"><img class="sharp" src="{{art:dune2-backdrop}}"><div class="scrim"></div><div class="htext">
+      <h1>Dune: Part Two</h1>
+      <div class="meta">Film<span class="sep">·</span>Sciencefiction<span class="sep">·</span>2024<span class="sep">·</span>2u 46m</div>
+      <div class="syn">Paul Atreides verenigt zich met Chani en de Fremen en zint op wraak op de samenzweerders die zijn familie vernietigden.</div>
+      <div class="btn-row"><div class="btn primary focus">{{icon:play}} Afspelen</div><div class="btn">{{icon:info}} Meer info</div></div>
+    </div></div>
+<div class="rails"><div class="rail-label">Verder kijken</div><div class="rail">
+    <div class="card p"><div class="art"><img src="{{art:eeaao-poster}}"><div class="prog"><i style="width:70%"></i></div></div></div>
+    <div class="card p"><div class="art"><img src="{{art:barbie-poster}}"><div class="prog"><i style="width:30%"></i></div></div></div>
+    <div class="card p"><div class="art"><img src="{{art:penguin-poster}}"><span class="src">2 bronnen</span></div></div>
+    <div class="card p"><div class="art"><img src="{{art:poorthings-poster}}"></div></div>
+    <div class="card p"><div class="art"><img src="{{art:conclave-poster}}"></div></div>
+    <div class="card p"><div class="art"><img src="{{art:wonka-poster}}"></div></div>
+    <div class="card p"><div class="art"><img src="{{art:anora-poster}}"></div></div>
+  </div></div>
+<div class="note">CANDIDATE · MOCKUP 29 · optie C: de backdrop heel, op 16:9 in de rechter 1276px van de kaart, dezelfde backdrop geblurd als vulling erachter; de linkerrand van het scherpe beeld vervaagt in de blur, niets wordt gesneden, de kaart blijft 1770x718 (9.4 "alleen poster"-taal op de backdrop)</div>

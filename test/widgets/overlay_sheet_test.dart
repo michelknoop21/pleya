@@ -199,6 +199,8 @@ void main() {
       required OverlaySheetPresentation presentation,
       int itemCount = 1,
       Size? canvas,
+      Alignment? alignment,
+      BoxConstraints? constraints,
     }) async {
       tester.view.physicalSize = canvas ?? viewport;
       tester.view.devicePixelRatio = 1.0;
@@ -215,17 +217,32 @@ void main() {
               body: Builder(
                 builder: (context) => Center(
                   child: ElevatedButton(
-                    onPressed: () => OverlaySheetController.of(context).show<void>(
-                      presentation: presentation,
-                      builder: (_) => ListView.builder(
+                    onPressed: () {
+                      Widget body(BuildContext _) => ListView.builder(
                         itemCount: itemCount,
                         itemBuilder: (_, i) => SizedBox(
                           width: double.infinity,
                           height: 56,
                           child: Center(child: Text('Item $i')),
                         ),
-                      ),
-                    ),
+                      );
+                      final controller = OverlaySheetController.of(context);
+                      // Two separate calls on purpose: a caller that names an
+                      // alignment is telling the host where the surface goes,
+                      // and a caller that stays silent is not. Passing the
+                      // default value explicitly would erase that difference,
+                      // which is the whole subject of OVR2.
+                      if (alignment != null) {
+                        controller.show<void>(
+                          presentation: presentation,
+                          alignment: alignment,
+                          constraints: constraints,
+                          builder: body,
+                        );
+                      } else {
+                        controller.show<void>(presentation: presentation, constraints: constraints, builder: body);
+                      }
+                    },
                     child: const Text('Open'),
                   ),
                 ),
@@ -312,6 +329,72 @@ void main() {
     // source picker of hoofdstuk 14.1 would have opened as a mobile sheet on a
     // television. Since OVR1b the compact box is gone the other way round too:
     // both presentations land on the same centred modal.
+    // OVR2. OVR1b was right that a TV overlay without a stated presentation
+    // belongs in the centred 10-foot box, and wrong to apply that to a caller
+    // that did state one. The compact sync bar of the player asks for
+    // topCenter with its own 900x80 box and ended up in the middle of the
+    // picture. TV-safe is not the same thing as TV-panelized.
+    group('OVR2: an explicit placement survives on TV', () {
+      const tvCanvas = Size(1038, 584);
+      // Hoofdstuk 8.1's horizontal safe inset, as the fraction of the 1920
+      // reference surface that `resolveOverlaySheetGeometry` already owns.
+      const tvInset = 1038 * (72 / 1920);
+
+      testWidgets('explicit topCenter keeps its edge and its box', (tester) async {
+        TvDetectionService.debugSetAppleTVOverride(true);
+        addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+        await pumpHost(
+          tester,
+          presentation: OverlaySheetPresentation.sheet,
+          canvas: tvCanvas,
+          alignment: Alignment.topCenter,
+          constraints: const BoxConstraints(maxHeight: 80, maxWidth: 900),
+        );
+        await tester.tap(find.text('Open'));
+        await tester.pumpAndSettle();
+
+        final rect = sheetRect(tester);
+
+        expect(rect.width, moreOrLessEquals(900, epsilon: 1), reason: 'the caller asked for 900 and it fits');
+        expect(rect.height, moreOrLessEquals(80, epsilon: 1), reason: 'the caller asked for 80 and it fits');
+        expect(rect.center.dx, moreOrLessEquals(tvCanvas.width / 2, epsilon: 1));
+        expect(
+          rect.top,
+          moreOrLessEquals(tvInset, epsilon: 1),
+          reason: 'topCenter puts it against the top, one safe inset down',
+        );
+        expect(
+          rect.center.dy,
+          lessThan(tvCanvas.height / 4),
+          reason: 'this is the regression: OVR1b centred it at 292 instead',
+        );
+      });
+
+      testWidgets('a box wider than the safe viewport is clamped, not re-placed', (tester) async {
+        TvDetectionService.debugSetAppleTVOverride(true);
+        addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+        await pumpHost(
+          tester,
+          presentation: OverlaySheetPresentation.sheet,
+          canvas: tvCanvas,
+          alignment: Alignment.topCenter,
+          constraints: const BoxConstraints(maxHeight: 80, maxWidth: 1100),
+        );
+        await tester.tap(find.text('Open'));
+        await tester.pumpAndSettle();
+
+        final rect = sheetRect(tester);
+
+        // 1038 minus two safe insets is 960.15, so 1100 comes back as 960.
+        expect(rect.width, moreOrLessEquals(tvCanvas.width - tvInset * 2, epsilon: 1));
+        expect(rect.left, greaterThanOrEqualTo(tvInset - 1));
+        expect(rect.right, lessThanOrEqualTo(tvCanvas.width - tvInset + 1));
+        expect(rect.top, moreOrLessEquals(tvInset, epsilon: 1), reason: 'clamping a size never moves the edge');
+      });
+    });
+
     testWidgets('on TV both presentations land on the same centred modal', (tester) async {
       TvDetectionService.debugSetAppleTVOverride(true);
       addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));

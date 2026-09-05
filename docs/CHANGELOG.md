@@ -469,6 +469,55 @@ referentiebeelden zijn donker. Registerrij **J18**, klasse C, naast J14.
 Register staat daarmee op 178 van 187 `covered`. Fase 10A heeft geen enkele rij van `open` naar
 `covered` bewogen, en dat hoort ook zo: fase 9 had het register al gesloten, dit was harding erop.
 Wat openblijft is vijf hardwarerijen, twee geregistreerde debts en twee onopgeloste productcontracten.
+## [2026-09-01] feat/pleyaserver: integratie-gereedheidsaudit, DEC-064-hardwareronde gestart
+
+Voordat een PS-5-branch vanaf de vernieuwde `main` kon starten, bleek `feat/pleyaserver` een aparte,
+ongemergede werkboom te zijn die `main` niet kende: lokaal op DEC-073 tegen `main`'s DEC-068, met vijf
+ongepushte commits. Een read-only audit zette de zes openstaande vragen op scherp. De vijf lokale
+commits zijn stuk voor stuk compleet en getest (een `schema.d.ts`-sync, de goedgekeurde DEC-073 zelf,
+de PS-4-hubfix, een gofmt-ronde en een releasenotes-bump); geen ervan raakt de bewezen
+PS-5-checkpoint. PS-9 starten terwijl PS-5's acceptatiecriterium 4 nog open stond bleek geen
+roadmapschending: [DEC-064](DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
+staat dat expliciet toe onder vier voorwaarden, en alle vier zijn onafhankelijk geverifieerd.
+
+DEC-064's eigen tekst noemt drie triggers die de hardwareronde alsnog verplichten, wat het eerst
+komt: een publieke release met PS-5- of PS-9-gedrag, een TestFlight-indiening naar App Review, of een
+merge van `feat/pleyaserver` naar `main`. Dat laatste is precies de stap die nu overwogen wordt en nog
+niet gebeurd was, dus de conclusie: eerst de hardwareronde, dan pas mergen (verdict B).
+
+De ronde is gestart: een release-build van `feat/pleyaserver`'s huidige bron draait op de Mac zelf
+(254,6MB, `flutter run -d macos --release`), en dezelfde bron staat gebouwd, geïnstalleerd en
+gelanceerd op de echte, gepairde Apple TV 4K (3e generatie) via `xcodebuild` + `xcrun devicectl`
+rechtstreeks (geen simulator, geen TestFlight-wachttijd nodig: het toestel bleek al bereikbaar). De
+vier testtitels (een Plex- en een Jellyfin-titel die vandaag direct playen, een titel die
+transcodeert, en een TrueHD/Dolby-titel via een fysieke AVR) en de fysieke playbackbeoordeling wachten
+op Michel; simulator- of Verify-bewijs telt hier expliciet niet, dat is precies wat DEC-064 als
+hardwaregrens heeft laten staan.
+
+## [2026-08-31] Pleya Verify Core 1.0: hardening-pass afgerond en gemerged naar main
+
+Vijf bevindingen uit een tweede reviewronde gefixt vóór de formele sluiting: de automation-controlplane
+sluit nu fail-closed af, evidence-redactie is structureel gemaakt in plaats van exact-match, elke
+subprocess- en fixture-controlcall hangt aan een echte deadline, `run`/`validate --json` garandeert
+één JSON-envelope ook bij een onverwachte crash, en `set_pref`/`focus`/`back` zijn uit de
+scenario-vocabulaire verwijderd omdat ze nooit een werkende implementatie hadden.
+[DEC-068](DECISIONS.md#dec-068) legt de vijf vast, samen met hosted CI-bewijs (run `33391955462`) dat
+de hardening ook buiten deze machine standhoudt. Daarna sloot Fase 15 het documentatiewerk af:
+`docs/architecture/pleya-verify.md` kreeg een sectie "Security-grens (Core 1.0)",
+`docs/testing/pleya-verify-for-agents.md` en `pleya_verify/README.md` volgden, met de agentregel in
+`CLAUDE.md`/`AGENTS.md`/`CONTRIBUTING.md`. [DEC-067](DECISIONS.md#dec-067) sluit de documentatielaag.
+
+`feat/testplane` stond op dat moment 53 commits vóór en 13 commits áchter `main` (gedivergeerd, niet
+gewoon voorlopend). De 13 `main`-commits (hero fase-2, één `PleyaLogo`-widget, fastlane-hardening,
+build 245) zijn met een gewone merge (niet rebase, om de bestaande DEC- en CI-run-verwijzingen naar
+specifieke SHA's navolgbaar te houden) in `feat/testplane` geïntegreerd; alleen `docs/RELEASES.md` en
+één sessielog botsten, en beide zijn inhoudelijk samengevoegd. Volledige gate erna: `flutter analyze`
+schoon, `flutter test` op 4826 en groen, de drie `pleya_verify`-subpackages (`fixture_server` 76,
+`runner` 216, `mcp` 25 tests) allemaal groen, alle zeven scenario's valideren, en `codegen.sh` gaf een
+lege diff. Daarna gemerged naar `main` en gepusht naar zowel `origin` (gitea) als `github`, SHA-parity
+bevestigd op `183d694` na een kleine correctie (een lokale sessielog-entry die het eerste
+`git push`-attempt door de pre-push-hook's automatische `RELEASES.md`-commit dreigde te verliezen).
+
 ## [2026-08-29] Pleya Verify: de reviewbevindingen na Fase 10 dicht
 
 Twee onafhankelijke adversariële reviews over de branch-diff vonden elf defecten. De zwaarste zes

@@ -21,6 +21,7 @@ import '../../widgets/settings_builder.dart';
 import '../../widgets/settings_page.dart';
 import '../../widgets/settings_section.dart';
 import 'external_player_screen.dart';
+import 'language_settings_screen.dart';
 import 'mpv_config_screen.dart';
 import 'settings_utils.dart';
 import 'subtitle_styling_screen.dart';
@@ -155,21 +156,15 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
             subtitle: t.settings.companionRemoteServerDescription,
             onAfterWrite: (v) => applyCompanionRemoteServerSetting(context, v),
           ),
-        SettingSwitchTile(
-          pref: SettingsService.rememberTrackSelections,
-          icon: Symbols.bookmark_rounded,
-          title: t.settings.rememberTrackSelections,
-          subtitle: t.settings.rememberTrackSelectionsDescription,
-        ),
-        ValueListenableBuilder<bool>(
-          valueListenable: SettingsService.instance.listenable(SettingsService.rememberTrackSelections),
-          builder: (_, remembers, _) => SettingSwitchTile(
-            pref: SettingsService.writeSeriesLanguageToServer,
-            icon: Symbols.cloud_upload_rounded,
-            title: t.settings.writeSeriesLanguageToServer,
-            subtitle: t.settings.writeSeriesLanguageToServerDescription,
-            enabled: remembers,
-          ),
+        // The two language switches moved to Instellingen ▸ Taal en ondertitels
+        // with LANG1: DEC-096 lid 9 makes that page their only owner, and their
+        // storage had already moved to the Pleya profile in `eae19cb4`, so this
+        // is a pure relocation. This row is what is left of them here.
+        SettingNavigationTile(
+          icon: Symbols.translate_rounded,
+          title: t.languageSettings.title,
+          subtitle: t.languageSettings.description,
+          destinationBuilder: (_) => const LanguageSettingsScreen(),
         ),
         SettingSwitchTile(
           pref: SettingsService.showChapterMarkersOnTimeline,

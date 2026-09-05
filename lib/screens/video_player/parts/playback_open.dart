@@ -424,6 +424,7 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     required MediaItem metadata,
     required PlexClient? plexClient,
     required MediaServerUserProfile? Function() getProfileSettings,
+    PlaybackLanguageIntent? sessionIntent,
     AudioTrack? preferredAudioTrack,
     SubtitleTrack? preferredSubtitleTrack,
     SubtitleTrack? preferredSecondarySubtitleTrack,
@@ -441,12 +442,14 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
       waitForProfileSettings: _waitForProfileSettingsIfNeeded,
       metadata: metadata,
       mediaInfo: _currentMediaInfo,
+      sessionIntent: sessionIntent,
       preferredAudioTrack: preferredAudioTrack,
       preferredSubtitleTrack: preferredSubtitleTrack,
       preferredSecondarySubtitleTrack: preferredSecondarySubtitleTrack,
       showMessage: (message, {duration}) {
         if (mounted) showAppSnackBar(context, message, duration: duration);
       },
+      onLanguageNotice: _showLanguageToast,
     );
   }
 

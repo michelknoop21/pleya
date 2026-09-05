@@ -1,8 +1,30 @@
 # STATUS · Pleya
 
-_Laatst bijgewerkt: 2026-08-22 (`origin/main` = `cf39291`, en `feat/pleyaserver` staat daar precies op: het Pleya Server-werk is de hoofdlijn op de remote. De lokale `main`-ref hangt nog op `25d192b`, met ongecommit werk van een tweede sessie in de hoofdmap; die kan er met een `git pull --ff-only` overheen zodra die sessie klaar is. Bij App Store Connect dragen tvOS en macOS de releasenotes van build 240; een iOS-build 240 bestaat daar niet)_
+_Laatst bijgewerkt: 2026-09-01. `main` staat op `183d694` op zowel `origin` (gitea) als `github`,
+SHA-parity bevestigd: Pleya Verify Core 1.0 is volledig gemerged. `feat/pleyaserver` is nog los,
+gedivergeerd, en zit midden in de DEC-064-hardwareronde (zie hieronder) voordat hij naar `main` mag._
 
 ## Waar was ik
+
+**Pleya Verify Core 1.0 is klaar en zit nu in `main`.** Vijftien fasen, afgesloten met een tweede
+hardening-pass ([DEC-068](docs/DECISIONS.md#dec-068)) en de documentatielaag
+([DEC-067](docs/DECISIONS.md#dec-067)). `feat/testplane` was 53 commits vóór en 13 áchter `main`
+(gedivergeerd); een gewone merge (geen rebase, om bestaande DEC- en CI-runverwijzingen navolgbaar te
+houden) trok ze samen, volledige gate groen (`flutter analyze`, 4826 Flutter-tests,
+317 `pleya_verify`-subpackage-tests, alle zeven scenario's, lege codegen-diff), en het resultaat staat
+nu op `183d694` op `origin` én `github`. Zie `docs/architecture/pleya-verify.md` en
+`docs/CHANGELOG.md` voor de details.
+
+**`feat/pleyaserver` is een aparte, verder gevorderde werkboom die `main` nog niet kent.** Een
+integratie-gereedheidsaudit wees uit dat die branch al PS-5 (`DeviceCapabilities`) compleet en getest
+heeft en inmiddels op PS-9 (gebruikers, sessies, rollen) werkt, met
+[DEC-064](docs/DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
+als geldige, geaccepteerde toestemming daarvoor. Diezelfde DEC-064 vraagt wél de openstaande
+PS-5-hardwareronde vóór een merge naar `main` (dat is een van de drie triggers in de decision-tekst
+zelf), dus die ronde is nu bezig: een release-build draait lokaal op macOS, en dezelfde bron staat
+gebouwd en gelanceerd op de echte Apple TV. De vier testtitels en de fysieke playbackbeoordeling
+(inclusief de TrueHD/Dolby-check via een echte AVR) wachten op Michel; zie de "Volgende stap" hieronder
+en het `feat/pleyaserver`-eigen `STATUS.md` voor de volledige stand.
 
 **De twee bevindingen uit de PS-4-deviceronde zijn dicht, en de releasenotes staan weer live.**
 Het verlaten van de speler wachtte op de afsluitrapportage van de kijkstatus, dus een connect-timeout
@@ -154,10 +176,18 @@ geeft 24 treffers zonder seizoen, `kind=season` levert ze alsnog, en zonder toke
 
 ## Volgende stap
 
-**Begin met PS-5, `DeviceCapabilities` in de client.** Dat is de vrijgegeven fase; alles wat verder
-gaat is per definitie te vroeg. De `_postJson`-bevinding hierboven hoort daar niet in: die raakt elke
-aanroep van `PleyaServerClient` en vraagt een eigen ronde, met een regressietest voor een snelle 5xx
-door de client heen.
+**Niet PS-5 vanaf `main` beginnen: die fase bestaat al, compleet en getest, op `feat/pleyaserver`.**
+Dat was de aanname tot 2026-09-01; de integratie-gereedheidsaudit die dag wees uit dat die branch al
+verder is dan `main` zelf weet. De echte volgende stap is de DEC-064-hardwareronde afmaken (zie "Waar
+was ik" hierboven): op de macOS-release-build en de tvOS-build op de echte Apple TV, per toestel vier
+titels beoordelen (Plex direct-play, Jellyfin direct-play, een transcoderende titel, en een
+TrueHD/Dolby-titel via een echte AVR). Alle acht controles slagen: AC4 sluiten, een Roadmap Drift
+Check vastleggen, en `feat/pleyaserver` (inclusief de vijf nog ongepushte lokale commits) met dezelfde
+gate-discipline als vandaag naar `main` mergen. Eén regressie: niet mergen, eerst repareren op
+`feat/pleyaserver`. Pas ná die merge bepalen wat echt "next" is voor Pleya Server, want dat is
+vermoedelijk PS-9 verder afmaken, niet PS-5 opnieuw beginnen. De `_postJson`-bevinding hierboven hoort
+daar niet in: die raakt elke aanroep van `PleyaServerClient` en vraagt een eigen ronde, met een
+regressietest voor een snelle 5xx door de client heen.
 
 **Twee dingen die niet op de code wachten.** Er staat geen iOS-build 240 bij App Store Connect, dus
 `fastlane notes build:240` faalt daar terwijl tvOS en macOS de tekst wél dragen; upload die build of
@@ -317,6 +347,34 @@ xcrun devicectl device process launch --console --terminate-existing \
 ```
 
 ## Recente sessies
+
+### 2026-09-01
+- Integratie-gereedheidsaudit van `feat/pleyaserver` (read-only, geen schrijfacties): de vijf lokale
+  ongepushte commits stuk voor stuk gekarakteriseerd, [DEC-064](docs/DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
+  volledig gelezen, en PS-9 starten terwijl PS-5's AC4 openstond bevestigd als geen roadmapschending
+  (alle vier voorwaarden van DEC-064 onafhankelijk geverifieerd). Verdict B: eerst DEC-064's
+  hardwareronde, dan pas mergen, want DEC-064's eigen triggerclausule noemt "een merge van
+  `feat/pleyaserver` naar `main`" letterlijk als een van de drie momenten waarop die ronde uiterlijk
+  moet zijn gedraaid.
+- Hardwareronde gestart: `feat/pleyaserver`'s huidige bron gebouwd als macOS-releasebuild en lokaal
+  gestart (254,6MB), en apart gebouwd, geïnstalleerd en gelanceerd op de echte, gepairde Apple TV 4K
+  (3e generatie) via `xcodebuild` + `xcrun devicectl` (het toestel bleek al bereikbaar, geen
+  simulator of TestFlight-omweg nodig). Testtitels en de fysieke playbackbeoordeling, inclusief de
+  TrueHD/Dolby-check via een echte AVR, wachten op Michel.
+
+### 2026-08-31
+- Pleya Verify Core 1.0 formeel gesloten: [DEC-068](docs/DECISIONS.md#dec-068) (vijf hardening-fixes
+  plus hosted CI-bewijs op run `33391955462`) en [DEC-067](docs/DECISIONS.md#dec-067)
+  (documentatielaag: `docs/architecture/pleya-verify.md`, `docs/testing/pleya-verify-for-agents.md`,
+  `pleya_verify/README.md`, agentregel in `CLAUDE.md`/`AGENTS.md`/`CONTRIBUTING.md`).
+- `feat/testplane` (53 vóór, 13 áchter `main`, gedivergeerd) samengevoegd met een gewone merge, geen
+  rebase, om bestaande DEC- en CI-runverwijzingen navolgbaar te houden. Alleen `docs/RELEASES.md` en
+  één sessielog botsten; beide inhoudelijk samengevoegd. Volledige gate erna groen: `flutter analyze`,
+  4826 Flutter-tests, 317 `pleya_verify`-subpackage-tests, alle zeven scenario's, lege codegen-diff.
+- Gemerged naar `main` en gepusht naar `origin` (gitea) én `github`, SHA-parity bevestigd op `183d694`
+  na een kleine correctie: een lokale sessielog-entry dreigde verloren te gaan doordat de eerste
+  `git push` de pre-push-hook's automatische `RELEASES.md`-commit niet meer meenam (opzettelijk
+  hook-gedrag, tweede push loste het op).
 
 ### 2026-08-22
 - Twee fixes uit de PS-4-deviceronde gecommit (`d5d1fcd`, `19a7701`) plus de bijgewerkte bevindingenlijst (`d5addfb`). Het afsluitpad van de speler wacht niet meer op de kijkstatusschrijving, de tracker begrenst die op vijf seconden en zet weg wat niet landt; de log-upload houdt een 429-venster vast en leest ook de datumvorm van `Retry-After`.

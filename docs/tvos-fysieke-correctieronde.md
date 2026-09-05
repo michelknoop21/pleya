@@ -74,22 +74,32 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | OVR1 | Detail- en contextmenu valt buiten beeld en voelt te groot | GESPLITST in OVR1a en OVR1b | n.v.t. |
 | OVR1a | `scaleForHeight` heeft ondergrens 0,85, en die is onjuist voor inhoud binnen een TV-paneel: de inhoud wordt ongeveer 1,5 keer te groot | NOT REPRODUCED | n.v.t. |
 | OVR1b | TV-sheets zonder expliciete `presentation` vallen terug op de 400x400-geometrie | FIXED | `96f2d45` |
-| BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | OPEN | n.v.t. |
-| FOC1 | Focusring valt buiten de viewport in overlays | OPEN | n.v.t. |
-| ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | OPEN | n.v.t. |
-| LIB1 | Blanco Bibliotheken-pagina als de selectie verdwijnt | OPEN | n.v.t. |
-| LIB2 | Race bij snel wisselen van bibliotheek | OPEN | n.v.t. |
-| LIB3 | TV-tabs dragen nog de oude rode onderstreping | OPEN | n.v.t. |
+| OVR2 | Expliciete TV sheet-presentation wordt door de OVR1b-panelgeometrie overschreven | FIXED | `cf4b6c7` |
+| BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | FIXED, hardware open | `f00e2fe` |
+| FOC1 | Focusring valt buiten de viewport in overlays | FIXED, hardware open | `3b0da2e` |
+| ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | FIXED, hardware open | `f42e3fd` |
+| LIB1 | Blanco Bibliotheken-pagina als de selectie verdwijnt | FIXED, hardware open | `f9b2167` |
+| LIB2 | Race bij snel wisselen van bibliotheek | FIXED | `f2ea980` |
+| LIB3 | TV-tabs dragen nog de oude rode onderstreping | FIXED, hardware open | `3e9d31b` |
+| LIB4 | Bibliotheken draait op alles behalve de kiezer nog de oude layout: kop, achtergrond, acties en landing wijken af van `libraries-a.png` en `libraries-d.png` | VERVANGEN door LIB7 | n.v.t. |
+| LIB7 | Bibliotheken wordt bronbeheer: bladeren loopt via de catalogus met bronfilter, Collecties en Afspeellijsten worden eigen unified ingangen; DEC-092 accepted, mockup 27 goedgekeurd, bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
+| CAT5 | De catalogusacties gaan naar een inklapbare rail links van het raster, met de gekozen filters als tags rechtsboven; DEC-093 accepted, mockup 28 D1/D2 goedgekeurd, bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
+| LIB5 | De spotlight-titel op Bibliotheken valt over de tabrij, en maakt de actieve tab minder leesbaar dan de inactieve | OPEN | n.v.t. |
+| LIB6 | Complete mockupset voor Bibliotheken: mockup 26, negen states in `docs/assets/tvos-unified/mockups-2026-09-04/`, gebouwd op `tv.css` en `build.mjs` van de 09-25-familie, die nu in `docs/assets/tvos-unified/src/` staan | KLAAR, contract afgewezen | n.v.t. |
 | WL2 | Kijklijst end-to-end in Pleya Verify | OPEN | n.v.t. |
 | REQ1 | Aanvragen end-to-end in Pleya Verify | OPEN | n.v.t. |
 | MYP1 | Regressiebewijs voor het Mijn Pleya-werk | OPEN | n.v.t. |
 | ACT1 | Activiteit is niet te verifiëren | ACCEPTANCE GAP | n.v.t. |
 | VER2 | Automation-ids escapen geen blokhaken | DEFERRED | n.v.t. |
-| HERO1 | Framing van het hero-beeld op Home | HARDWARE ONLY | n.v.t. |
+| HERO1 | Framing van het hero-beeld op Home: op hardware staan halve beelden in de hero, Plex snijdt gecentreerd vóórdat de widget iets kan kiezen | FIXED, hardware open | `d4ec1fe` |
+| HERO2 | De titelband van de hero is de clearlogo-hoogte, dus een tweeregelige titel wordt op de baseline afgesneden | FIXED | `0ad49ec` |
+| HOME1 | Home naast de northstar: het hero-item staat niet heel in beeld, witruimte, overgangen, indeling en styling wijken af, en de navigatiebalk mee; mockup 29 D full-bleed gekozen, mockup 30 A1 (de rail piept) plus B tot en met E goedgekeurd; DEC-095 accepted en gebouwd | FIXED, hardware open | `eed2a79`, `7b3057a6` |
+| I18N5 | Home toont het raillabel "Recently Added Shows" in het Engels tussen Nederlandse labels; `nl.i18n.json` miste `discover.latestShows`, nu "Recent toegevoegde series" | FIXED | `eed2a79` |
 | SEARCH1 | Zoeken benoemt zijn resultaten buiten het railcontract om | DEFERRED | n.v.t. |
 | LAND5 | Herstel op een niet-gebouwde tegel valt terug op de eerste | OPEN | n.v.t. |
 | VER3 | De eerste tegel van een rail steekt links buiten de veilige zone | OPEN | n.v.t. |
 | VER4 | Geen fixture levert een rail die lang genoeg is om te scrollen | OPEN | n.v.t. |
+| VER5 | `media-detail.episode-refresh` loopt op de oude zijbalkaanname en haalt de detailpagina niet meer | OPEN | n.v.t. |
 | LAND6 | Een lege landing verbergt de route naar een gevulde catalogus | OPEN | n.v.t. |
 | SYS-1 | Gepushte TV-contentroutes dekken de shell af in plaats van de topnav te houden | IN PROGRESS | n.v.t. |
 | SYS-4 | `StateView` en `EmptyStateWidget` schalen niet op TV | OPEN | n.v.t. |
@@ -104,6 +114,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | STR5 | Hardcoded "Incorrect PIN" in `profile_activation.dart:57` | OPEN | n.v.t. |
 | TOK1 | `TvPanelTheme.accent #F42B1F` staat naast `kAccent` | OPEN | n.v.t. |
 | TOK2 | Serverstip `#3FBF5F` hardcoded in `tv_my_pleya_screen.dart:829` | OPEN | n.v.t. |
+| TOK3 | De segmented tabstijl houdt op TV zijn eigen accentrul (seizoentabs, Seerr-aanvraagfilters) | OPEN | n.v.t. |
 | PNL1 | Infopaneel gooit de secundaire spoorlabels van `TrackLabelBuilder` weg | OPEN | n.v.t. |
 | LIVE1 | Live TV tekent twee navigatiebalken via `PlatformDetector.shouldUseSideNavigation` | OPEN | n.v.t. |
 | ACT2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | OPEN | n.v.t. |
@@ -113,6 +124,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | SRCH2 | `people` wordt nooit aan `searchProjection` meegegeven | OPEN | n.v.t. |
 | REV1 | Apple Review Jellyfin: Home toont content, Films/Series leeg en concrete library niet zichtbaar (Apple Review, release-kritiek) | OPEN | n.v.t. |
 | LAND7 | Actieve discovery-rail krijgt geen vaste verticale focuspositie | OPEN | n.v.t. |
+| LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted. Data- en resolutielaag op eae19cb4, de pagina 31 A, de sheet 31 B en de toasts 31 C/D op a9a50ad9, de layout- en meldingscorrecties uit de simulatorronde op a5730f35. Het Verify-scenario is groen; de hardwareronde staat open | OPEN | eae19cb4, a9a50ad9, a5730f35 |
 
 ## Wat er per item bekend is
 
@@ -894,9 +906,11 @@ Geen van beide is door de redesign geïntroduceerd, maar de nieuwe
 bibliotheekkiezer maakt snel wisselen met één druk veel makkelijker, dus LIB2 is
 nu eerder te raken dan eerst.
 
-LIB1 zit in de laatste `else` van de body in
+LIB1 zat in de laatste `else` van de body in
 `lib/screens/libraries/libraries_screen.dart`, die een lege `SizedBox` rendert
-wanneer er wél zichtbare bibliotheken zijn maar de geselecteerde weg is.
+wanneer er wél zichtbare bibliotheken zijn maar de geselecteerde weg is. Dat
+bleek het symptoom en niet de oorzaak; de meting staat hieronder onder "LIB1,
+niemand verzoende de selectie met de lijst".
 
 LIB2 zit in de staart van `_loadLibraryContent`, na
 `await StorageService.getInstance()`. Die staart is ongeguard, dus een verlaten
@@ -1064,28 +1078,603 @@ plaats van tegen de bovenrand, want `_tvPanelGeometry` centreert altijd. En een
 aanroeper die zelf constraints meegeeft wordt op TV voortaan door de viewport
 geklemd, waar het oude sheet-pad zo'n wens ongemoeid doorliet.
 
-### BACK1, wat er staat en wat er niet is
+#### OVR2, expliciete presentatie verdwijnt onder de gedeelde TV-doos
 
-`AppBarBackButton` is een `GestureDetector` zonder focusnode
-(`lib/widgets/app_bar_back_button.dart:126-146`). Er is nergens in de app een
-focusbare terugknop op TV; terug is volledig toetsgedreven via
-`lib/focus/key_event_utils.dart:58-90`, met een eigen tak voor Apple TV, en de
-TV-oppervlakken geven `onBack`-callbacks door in plaats van een widget.
+Regressie, ontstaan in `96f2d45`. Geregistreerd op 3 september 2026, nog zonder
+wijziging in productiecode.
 
-Drie van de vier aanroepplekken tekenen op TV. De TV-tak van de detailpagina
-(`lib/screens/media_detail_screen.dart:3833`), de spelerkop
-(`lib/widgets/video_controls/widgets/video_controls_header.dart:46`, want TV
-neemt bewust het desktop-pad in `video_controls.dart:800`), en de impliciete
-leading van `CustomAppBar` (`lib/widgets/desktop_app_bar.dart:55` en `:190`),
-die op geen enkele platformcontrole let en de knop dus op elke gepushte route
-met `automaticallyImplyLeading` zet.
+OVR1b heeft terecht de losse 400x400-fallback voor TV weggehaald. De gekozen
+resolver stuurt sindsdien echter ook sheets die hun presentatie wél expliciet
+opschrijven door dezelfde generieke TV-paneelgeometrie, en die centreert altijd.
+De compacte sync-balk van de speler vraagt `alignment: topCenter` met een eigen
+doos van 900 bij 80 (`video_settings_sheet.dart:336`) en verschijnt op TV nu in
+het midden van het beeld.
 
-Android TV levert zijn hardware-BACK langs hetzelfde toetspad, dus daar
-verandert weghalen niets aan.
+Dit item is niet "OVR1b terugdraaien". Het contract van OVR1b blijft gelden voor
+elke TV-sheet die geen presentatie opschrijft: die krijgt de gedeelde TV-veilige
+paneelgeometrie en nooit meer de oude 400x400-doos. Wat erbij hoort is het
+onderscheid dat OVR1b niet maakte. TV-veilig is iets anders dan
+TV-gepaneleerd.
 
-Geen enkele test raakt `AppBarBackButton` of `CustomAppBar` aan. De suite houdt
-een regressie hier vandaag dus niet tegen, en wie dit oplost schrijft die test
-er zelf bij.
+Het contract dat hieronder bewezen moet worden heeft twee helften. Een sheet
+zonder eigen geometrie is een default sheet en volgt OVR1b. Een sheet die
+alignment of constraints meegeeft is een expliciete sheet: die houdt zijn
+uitlijning, houdt zijn gevraagde maat zolang de veilige viewport dat toelaat, en
+wordt alleen geklemd wanneer de viewport dat afdwingt. Klemmen is een maat
+bijstellen, geen presentatie vervangen.
+
+De stand van origin/main hoort er expliciet bij. Op het moment van registreren
+staat main op `183d694` en bevat main OVR1b niet: `96f2d45` en `ec66f1a` staan
+alleen op `claude/netflix-redesign-b4x21v`. Deze regressie is dus nog niet naar
+main gelekt, en de hotfix gaat bovenop `ec66f1a`.
+
+**Afgerond op 3 september 2026 in `cf4b6c7`.**
+
+**Oorzaak.** `resolveOverlaySheetGeometry` kende maar één vraag op TV, namelijk
+of het toestel een televisie is, en stuurde daarna alles naar
+`_tvPanelGeometry`. De aanroeper kon niet zeggen dat hij zijn plek zelf al
+gekozen had, want `alignment` had een niet-nullable standaardwaarde
+`Alignment.bottomCenter` tot in `OverlaySheetController.show`. "Geen mening" en
+"bewust onderaan" waren daardoor dezelfde waarde, en dus was er geen signaal om
+op te beslissen.
+
+**Fix.** `alignment` is van de publieke `show` tot in de resolver `Alignment?`
+geworden, met null als betekenis "de host beslist". Op TV splitst de resolver
+daarop: null gaat naar `_tvPanelGeometry` en houdt OVR1b precies zoals hij was,
+en een genoemde alignment gaat naar `_tvPlacedSheetGeometry`. Die haalt al zijn
+getallen bij `_tvPanelGeometry` op, dus er is nog steeds één eigenaar van de
+vraag hoe groot een TV-overlay mag zijn en hoe ver hij van de rand blijft, en
+verandert alleen de plaatsing. `_sheetGeometry` weet nog altijd niets van
+televisies af.
+
+Er kwam één veld bij, `verticalEdgePadding`, standaard 0. Alleen een oppervlak
+dat zichzelf op een TV plaatst zet hem, want de buitenste band van een televisie
+is overscan: een balk die tegen de bovenste scanlijn plakt verliest zijn eerste
+regel. De layoutdelegate rekent de band per as uit met dezelfde formule, en bij
+0 komt daar exact de oude berekening uit.
+
+Daar zat nog een randgeval in dat hierdoor zichtbaar werd. De delegate gaf zijn
+kind de breedte min twee keer de marge, maar besloot pas tot marge bij `size >
+child + 2 * padding`. Een kind dat die breedte precies vulde viel dus door de
+strikte vergelijking heen en werd tegen de linkerrand gezet, met alle ruimte aan
+de andere kant. Dat raakt ook een desktoppaneel in een venster van 600 breed.
+De band wordt nu geklemd in plaats van vertakt.
+
+De maten van de sync-balk staan voortaan als `kCompactSyncBarAlignment` en
+`kCompactSyncBarConstraints` in `video_settings_sheet.dart`, zodat de test het
+contract leest in plaats van de getallen te herhalen.
+
+**Meting op 1038x584.** Voor: rechthoek 900 bij 80, bovenrand op 252, midden op
+292, oftewel gecentreerd. Na: 900 bij 80, bovenrand op 38,9, midden op 78,9. De
+veilige inset van 38,9 logische px is hoofdstuk 8.1's 72 referentie-px. Een
+gevraagde breedte van 1100 komt terug als 960,15, en de bovenrand blijft op
+38,9: klemmen past een maat aan, het verplaatst geen oppervlak.
+
+**Negatieve controle.** Met alleen de discriminator terug op OVR1b-gedrag vallen
+zes tests om, waaronder de echte caller met `Expected: 38.925 Actual: 252.0` en
+`Expected: topCenter Actual: center`. De default-sheet guards blijven daarbij
+groen, dus wat rood wordt is de regressie en niet de OVR1b-winst. Met de
+discriminator terug zijn alle 58 groen.
+
+**OVR1b-guard.** De 400x400-doos is niet teruggekomen. De guard staat op twee
+plekken: een grep-controle op de resolver en de assertie dat een geplaatste
+TV-sheet nooit op 400 uitkomt maar binnen de band 900 tot 1040 blijft.
+
+**OVR1a.** Niet aangeraakt. `layout_constants.dart` en `tv_unified_layout.dart`
+staan ongewijzigd ten opzichte van `ec66f1a`.
+
+**Audit.** Van de 34 aanroepen in `lib/` gebruiken er 11 expliciet `panel`, 22
+noemen niets, 1 geeft alleen constraints mee (de bibliotheek-quickpicker, die
+paneel blijft en zijn hoogte houdt) en precies 1 noemt een alignment. Er is dus
+geen tweede geval en geen aanroeper die een uitzondering per scherm nodig heeft.
+
+### BACK1, gemeten en opgelost
+
+De oorspronkelijke waarneming klopte en was niet compleet. `AppBarBackButton`
+is een `MouseRegion` om een `GestureDetector` en draagt nergens een
+`FocusNode`, dus hij staat niet in de traversal-set van de afstandsbediening,
+en tvOS heeft geen cursor om hem mee aan te wijzen. Wat de codelezing er niet
+uit haalde is dat de twee aanroepplekken zich verschillend gedragen, en dat
+dezelfde fout een derde keer in een andere widget zit.
+
+**Wat er gemeten is.** Op een TV-detailpagina van 1920 bij 1080: één zichtbare,
+hit-testbare `AppBarBackButton` met nul `Focus`-widgets erin. Op een
+full-window route die op TV gepusht wordt met een `CustomAppBar`: hetzelfde
+beeld. Op diezelfde route, maar geopend als geneste route in de shell: nul.
+Dat laatste is geen toeval en ook geen tweede bug. `buildLeadingSection`
+raadpleegt `ModalRoute.canPop` en verder niets over de invoermodaliteit, en de
+omliggende `ModalRoute` van een geneste route is die van de shell zelf, waarvan
+`canPop` false is. De impliciete leading kwam er dus alleen op het pad dat
+SYS-1 nog moet vervangen. Wie dit met grep leest ziet die asymmetrie niet.
+
+**De derde plek.** Zoeken op de vorm in plaats van op de klassenaam leverde
+`BottomSheetHeader` op. De terugpijl van een sheet-subpagina ligt daar op een
+`InkResponse` binnen `ExcludeFocusTraversal`. Een gemeten sheet-subpagina op TV
+had nul traversal-bereikbare knopen in zijn kop, met een terugpijl erin. Zelfde
+contract, zelfde defect.
+
+**Root cause.** Niets in de constructie van de knop en niets in de twee
+impliciete-leading-plekken vraagt welke invoermodaliteit het oppervlak bedient.
+Op TV is de app remote-first: `InputModeTracker` zet `InputMode.keyboard` vast
+en verlaat die stand daar nooit.
+
+**Eigenaar van de presentatie** is `AppBarBackButton` zelf, want alle vijf de
+bouwplekken maken die widget. **Eigenaar van de terugroute** is de toets:
+`handleBackKeyAction` en `handleBackKeyNavigation` in
+`lib/focus/key_event_utils.dart`, `tvBackStep` in de shell, en
+`TvNestedRouteScope.dismiss` voor een geneste route.
+
+**De fix** zet de regel op één plek, `showsVisibleBackAffordance()` naast de
+knop. De knop bouwt niets meer wanneer die false is, waarmee een nieuwe
+aanroeper tegen dezelfde fout beschermd is, en beide impliciete-leading-plekken
+raadplegen hem ook, zodat `leading` null blijft en de app bar geen breedte
+reserveert voor een knop die er niet is. Geen enkele aanroeper heeft een eigen
+uitzondering nodig.
+
+**Aanroeperaudit, elf plekken.** Weggehaald op TV: de TV-tak van
+`MediaDetailScreen`, beide impliciete-leading-plekken in `desktop_app_bar.dart`,
+`VideoControlsHeader` (TV neemt bewust het desktop-pad) en `BottomSheetHeader`.
+Ongewijzigd omdat ze al focusbaar zijn: de terugknop in
+`video_player/parts/build.dart` is een `FocusableButton`, en die in
+`tv_info_panel.dart` een `IconButton` met een eigen node. Ongewijzigd omdat ze
+op TV niet tekenen: `settings_screen.dart` en `logs_screen.dart` hebben een
+eigen `_buildTv`-tak, `my_pleya_screen.dart` bestaat daar niet, en
+`watchlist_screen.dart` en `libraries_screen.dart:1626` zetten
+`automaticallyImplyLeading: false`. `FocusedScrollScaffold`, `SettingsPage`,
+`ProfileSwitchScreen` en `WatchTogetherScreen` lopen alle vier via
+`CustomAppBar` en zijn daarmee door de gedeelde poort gedekt.
+
+**Negatieve controle.** Met de productiecode terug op `88d9868` vallen precies
+de zes TV-assertions om en blijven de zes pointer-tweelingen groen, plus de
+geneste zaak die nooit geraakt was. Dat wat rood wordt is de regressie en niet
+iets anders.
+
+**Goldens.** Twee beelden verschuiven, `tv_detail_source_line.png` en
+`tv_detail_no_source_line.png`, allebei met exact 1316 gewijzigde pixels binnen
+de doos van 40 bij 40 op (8,8). Dat is de weggehaalde knop en verder niets, tot
+op de pixel. Ze zijn geregenereerd in een Linux-container die de bestaande
+referenties eerst byte-identiek reproduceerde; daarna is de golden-delta van de
+hele map daar nul. Op macOS blijven ze rood zoals ze dat vóór deze wijziging
+ook waren, want de goldensuite is op deze machine breed rood door
+fontrasterisatie.
+
+**Wat open blijft.** Er is geen bewijs van een echte Apple TV. Pleya Verify kon
+het niet leveren: het enige scenario dat de detailpagina bereikt is
+`media-detail.episode-refresh`, en dat faalt op een stap ervóór. Een
+controlerun op `88d9868` faalt identiek, met dezelfde focus-trace, dus dat is
+geen gevolg van deze wijziging. Het staat als VER5 in de tabel.
+
+### FOC1, geometrie en niet clipping
+
+Een focusring die buiten beeld valt heeft twee mogelijke oorzaken die op een
+foto niet uit elkaar te houden zijn. Of de ring wordt op een plek getekend die
+het toestel niet toont, of hij wordt wel op een zichtbare plek getekend maar
+door een voorouder weggeknipt. De fixes zijn tegengesteld, en clippen maakt het
+symptoom onzichtbaar zonder het probleem te raken. Deze bevinding had geen
+vooronderzoek in dit document, dus is eerst gemeten welke van de twee het is.
+
+**Wat er gemeten is.** Een wegwerpprobe zette elk TV-overlay op het
+tvOS-canvas van 1038 bij 584 neer, gaf elke focusbare knoop om de beurt focus,
+en vergeleek drie rechthoeken: de layoutbox, de werkelijk getekende box (de
+`Transform.scale` van `FocusableWrapper` geldt voor het kind van de transform
+en niet voor de transform zelf, dus meten op de transform geeft altijd
+schaal 1) en de rect van elke knippende voorouder in de keten naar de root.
+
+Het sorteerpaneel en alle vijf de secties van het filterpaneel kwamen er schoon
+uit. De rijen daar zetten `disableScale` en tekenen hun rand naar binnen, dus
+getekend en layout vallen samen, en de scrollviewport knipt exact op de
+rijgrens. Het contextmenu niet. Op een tegel rechtsonder liep de onderste regel
+tot 555 van de 584, op een tegel linksboven begon de bovenste op 8, en in geen
+van beide gevallen knipte er iets: geen enkele voorouder rapporteerde overlap.
+De regel wordt dus volledig getekend, alleen in de band die een televisie niet
+laat zien. Geometrie.
+
+**Root cause.** `_AppMenuPopupState` in `lib/widgets/app_menu.dart` klemt zijn
+positie met `const edgePadding = 8.0` tegen de kale schermrechthoek, op elk
+platform. Acht pixels is op een telefoon de bedoeling. Op een televisie ligt
+dat ruim binnen de titel-veilige marge die de rest van de TV-UI wel aanhoudt:
+48 opzij, 56 boven en 81 onder, maal de TV-schaal. Alle vier de klemmingen in
+`_resolvePosition` deelden dezelfde fout en dezelfde vorm.
+
+**Eigenaar** is `showAppMenu`, niet de aanroeper. Het contextmenu op een
+tegel, de knop in de folder-boom en de twee menu's in de tv-gids gaan alle vier
+door deze ene positielogica heen, en drie ervan zijn op TV te openen.
+
+**De fix** vervangt de scalaire marge door een `EdgeInsets` die op TV uit
+dezelfde constanten komt als de titel-veilige rechthoek die
+`TvDiscoverySafeArea` meetbaar maakt, en buiten TV acht pixels blijft. De vier
+klemmingen staan nu in één helper die de ondergrens laat winnen wanneer het
+menu niet tussen beide marges past, want klemmen op een ondergrens boven de
+bovengrens is in Dart een assertie.
+
+**Bewijs.** `test/widgets/app_menu_tv_safe_area_test.dart` opent het menu op
+drie schermhoeken op 1920 bij 1080 en eist dat elke regel binnen de
+titel-veilige rechthoek valt, met een vierde test die vastlegt dat een telefoon
+op acht pixels blijft klemmen. De drie TV-tests stonden op de oude
+implementatie rood, met rijen op x=14, x=1906 en y=936 tegen een veilige zone
+van 48 tot 1872 en 56 tot 999; de mobiele test was toen al groen en is dat
+gebleven. `test/widgets` en `test/goldens` gingen van 802 geslaagd en 86
+gefaald naar 805 en 83: precies deze drie, verder niets. De 83 die overblijven
+zijn niet van deze wijziging. Vijf zitten in `tv_discovery_rail_test.dart` en
+falen identiek met en zonder de fix, de rest is de goldensuite, die op macOS
+breed rood staat omdat de referenties op Linux gemaakt zijn.
+
+**Wat open blijft.** Er is geen bewijs van een echte Apple TV. De maat die
+telt is of de bovenste en onderste regel van een contextmenu op het toestel
+volledig zichtbaar zijn, inclusief hun focusindicatie, en dat kan alleen daar.
+
+### ART1, de aanvraag was te klein, de compositie klopte
+
+Ook deze bevinding had geen vooronderzoek. "Te ver ingezoomd" kan twee dingen
+betekenen die je op een foto niet uit elkaar houdt: de compositie is strakker
+gecropt dan bedoeld, of het beeld is te klein binnengekomen en over het scherm
+opgeschaald. Allebei zijn te meten, dus allebei gemeten.
+
+**De compositie klopt.** Een probe zette het spotlight op een oppervlak van
+1920 bij 1080 en las de bron, de doos en de `BoxFit` uit de `RenderImage`. Met
+een echte 16:9-backdrop is het resultaat 100% van de bron zichtbaar bij
+vergroting 1,000. Er zit geen enkele extra `Transform` in het detailpad: de
+ken-burns-zoom staat daar uit, en de reveal-gate animeert alleen dekking.
+
+**Vierkante art is geen defect.** Diezelfde probe laat zien dat een vierkante
+bron in een 16:9-doos op 1,778 vergroot en 43,7% van het beeld verliest. Dat
+ziet er inderdaad uit als "te ver ingezoomd", maar het is een keuze die al
+vastligt: `BillboardArt.canRenderSharp` zegt expliciet dat een vierkante bron
+scherp getekend mag worden, en de fase-8 herokaart doet hetzelfde. Hier iets
+aan veranderen is een ontwerpvraag, geen bugfix, en valt buiten deze bevinding.
+
+**Wat wel misging is de aanvraag.** Het spotlight vroeg zijn artwork op als
+`ImageType.art`. Dat type plafonneert op 2560 bij 1440, een bewuste maat voor
+een retina-desktoppaneel. Op een Apple TV 4K is dit oppervlak het hele scherm,
+3840 bij 2160 fysieke pixels, dus kwam elke backdrop anderhalf keer te klein
+binnen en werd hij beeldvullend opgeschaald. `ImageType.heroArt` heeft precies
+dat oppervlak als plafond. De fase-8 herokaart is in DEC-057 om exact deze
+reden al overgezet, met in `tv_hero_artwork.dart` de notitie dat elke backdrop
+daar 1,38 keer te klein aankwam; het detailscherm bleef achter.
+
+**De fix** kiest het type op TV en laat desktop en mobiel op de bestaande cap
+staan, want ditzelfde scherm is daar de aanbevolen-tab. Het decodeerbudget gaat
+mee: 3840 ophalen en in 2560 decoderen is dezelfde onscherpte langs een andere
+weg, en dat staat al zo in `getMemCacheDimensions`.
+
+**Bewijs.** `test/widgets/tv_spotlight_request_size_test.dart` legt met een
+neptclient vast met welke maten `thumbnailUrl` geroepen wordt. Op een oppervlak
+van 3840 bij 2160 vroeg de oude implementatie 2560 breed aan; die test was rood
+en is nu groen. De tweede test bewaakt de desktopkant en werd rood zodra de
+keuze niet meer aan het platform hing, wat ook gecontroleerd is. `test/widgets`
+en `test/goldens` gingen van 805 geslaagd naar 807, met 83 falers die
+onveranderd bleven.
+
+**Wat open blijft.** Er is geen bewijs van een echte Apple TV. Of dit de
+waarneming volledig verklaart is daar te zien en nergens anders: als het beeld
+na deze wijziging nog steeds te strak oogt, dan gaat het over compositie en
+overscan en niet over resolutie, en dan is de vervolgvraag of de backdrop op
+detail dezelfde band mag pakken als in mockup 09.
+
+### LIB1, niemand verzoende de selectie met de lijst
+
+De lege `SizedBox` in de laatste `else` was het symptoom. De oorzaak zit een
+laag hoger: er was geen enkele plek die de geselecteerde bibliotheek opnieuw
+tegen de bestaande bibliotheken hield.
+
+**Twee routes, dezelfde tak.** `LibrariesProvider` vervangt bij een herlaad zijn
+hele lijst en houdt `isLoading` daarbij bewust op false, wat in
+`_loadLibrariesInternal` als `reloadInPlace` gedocumenteerd staat en er is om te
+voorkomen dat een reload het scherm terug naar een spinner gooit. Een server die
+wegvalt neemt dus zijn bibliotheken mee zonder dat het scherm ooit door een
+laadtoestand gaat. De selectiestap draaide daarna niet opnieuw: die hangt aan
+een post-frame callback in `initState` die één keer loopt. Diezelfde callback
+geeft het bovendien meteen op als de provider bij mount nog leeg is, dus een
+lijst die later binnenkomt (koude start, profielwissel, een server die in een
+tweede golf bindt) landt op precies dezelfde tak. In het eerste geval wijst de
+sleutel naar niets meer, in het tweede is er nooit een sleutel gezet.
+
+**Wat je op TV zag.** De kopregel viel terug op de generieke titel, en
+`showHeaderBar` is `useSideNavigation && selectedLibrary != null`, dus met de
+kopregel verdween ook de bibliotheekkiezer. Blanco pagina, geen tabs, geen
+kiezer, en daarmee geen route naar een bibliotheek die er wel was. Op mobiel is
+het net anders en niet minder verwarrend: `_buildLibraryDropdownTitle` valt
+terug op `visibleLibraries.firstOrNull`, dus de dropdown noemt een bibliotheek
+terwijl het scherm eronder leeg blijft.
+
+**Gemeten, niet aangenomen.** De reproductie draait het echte scherm tegen de
+echte providers. Films, Series en Kids geladen, Series geselecteerd, daarna een
+stabiele lijst met alleen Films en Kids: `isLoading=false`, kopregel
+`Libraries`, nul kopregelbalken. Voor de tweede route: gemount met een lege
+provider, daarna twee bibliotheken erin, kopregel `null`, nul kopregelbalken, en
+dat bleef zo staan.
+
+**Objectidentiteit was niet de verdachte.** De selectie is een `String` en de
+lookup vergelijkt `globalKey`, dus een reload die nieuwe instanties oplevert
+raakt de selectie niet. Een tijdelijk lege lijst evenmin: die valt in de
+loading- of de lege-staattak en gooit de sleutel niet weg, waarna de repopulatie
+hem gewoon weer oplost. Alleen een stabiele lijst waarin de selectie ontbreekt
+raakt LIB1.
+
+**De fix** is één verzoener op de provider. Geldige selectie blijft met rust,
+een dode sleutel gaat weg voordat er iets tekent, en de opvolger wordt via
+`_loadLibraryContent` geladen zoals een druk op de afstandsbediening dat doet,
+zodat de bewaarde sleutel, het per-bibliotheek tabherstel en de focusoverdracht
+op hun bestaande contract blijven. De terugvalregel staat nu op één plek:
+bewaarde sleutel als die nog zichtbaar is, anders de eerste zichtbare
+bibliotheek, wat exact is wat de initialisatie en het verbergen van een
+bibliotheek altijd al deden. Is er niets om naar terug te vallen, dan blijft de
+echte lege staat staan. De blanco tak zelf is nu de laadindicator, want met de
+verzoener erbij is dat een toestand van hooguit een frame.
+
+**Focus hoorde erbij.** Een probe liet zien dat de afstandsbediening strandde:
+focus stond op de chip van Series, die chip verdween, en primaire focus viel
+terug op `_ModalScopeState<dynamic> Focus Scope`, precies de toestand die
+`FocusMemoryTracker.pruneExcept` beschrijft als een oppervlak waarin je niet
+kunt bewegen en dat je niet kunt verlaten. De kiezer ruimt zijn nodes nu op en
+zet de focus op de chip van de bibliotheek waar de pagina naartoe geschakeld
+is. De chipsleutel staat daarvoor op één plek in `tv_library_chooser.dart`; met
+twee kopieën van die string zou het prunen elke overlevende node per rebuild
+weggooien, wat in de eerste ronde ook precies gebeurde.
+
+**Negatieve controle.** Drie van de vijf tests zijn rood op de oude
+implementatie: kopregel `Libraries` in plaats van `Films`, `null` in plaats van
+`Films` na late aankomst, en `_ModalScopeState<dynamic> Focus Scope` in plaats
+van de overlevende chip. De andere twee zijn aan beide kanten groen en staan er
+juist om te bewaken wat niet mocht veranderen: een selectie die de update
+overleeft blijft exact staan, en alle bibliotheken kwijtraken geeft de lege
+staat en geen blanco pagina.
+
+**Testen.** `scripts/ci_checks.sh` groen, inclusief `flutter analyze` zonder
+errors of warnings en de unused-code-controles. Volledige suite 6137 geslaagd,
+6 overgeslagen, 83 rood, met dezelfde falers als de ART1-nullijn: buiten
+`test/goldens` blijven er exact vijf over, alle vijf in het oude
+`test/widgets/tv_discovery_rail_test.dart`. Nieuwe falers: geen.
+
+**Verify kan dit niet bewijzen.** De fixtureserver kent `seed`, `add_episode`,
+`mark_watched`, `expire_session`, `fail_next`, `latency` en `echo`. Geen daarvan
+verandert de verzameling bibliotheken tijdens een run, en dat is precies wat
+LIB1 nodig heeft. Dit is een ander gat dan CAT2, CAT3 en VER4 beschrijven: die
+gaan over de diepte van rails en de catalogus, niet over het muteren van de
+bibliotheekset. Een `fixture_mutate`-op die een bibliotheek intrekt is de
+ontbrekende schakel; die bouwen valt buiten LIB1.
+
+**Wat open blijft.** Er is geen bewijs van een echte Apple TV. Wat daar nog te
+zien is, is of de overgang ook prettig oogt: de laadindicator hoort in de
+praktijk niet waarneembaar te zijn, en de focus hoort zichtbaar op de nieuwe
+chip te landen in plaats van er te verschijnen. Bundel dat met de andere open
+fysieke items van deze ronde. `libraries_screen.dart` staat inmiddels op
+ongeveer 2050 regels en is daarmee ruim over de eigen richtlijn; opsplitsen is
+echter geen onderdeel van deze bevinding en verdient een eigen ronde met eigen
+bewijs.
+
+### LIB2, de verlaten aanroep kwam terug en herstelde zijn eigen tab
+
+De melding was een race bij snel wisselen. De meting bevestigt hem, en wijst
+één side effect aan dat werkelijk blijft staan.
+
+**De grens.** `_loadLibraryContent` legt zijn bibliotheek synchroon vast:
+`_updateVisibleTabs`, de selectiesleutel, `_loadedTabs` leeg, en de melding aan
+de zijbalk. Daarna hangt hij op `await StorageService.getInstance()`, en meteen
+erna een tweede keer op `await storage.saveSelectedLibraryKey(...)`, want die
+write awaits binnenin `notifyMutation` de app-brede preference-pijplijn. Alles
+achter die twee awaits liep ongeguard door.
+
+**Wat er stale bleef, en wat niet.** Gemeten met een gecontroleerde gate op
+`BaseSharedPreferencesService.onMutation`, met Films opgehouden en Series er
+helemaal doorheen:
+
+| Side effect | Uitkomst op de oude implementatie |
+| --- | --- |
+| `saveSelectedLibraryKey` | ongeguard uitgevoerd voor een verlaten intentie, maar de `setString` van Films landde vóór die van Series, dus de eindwaarde bleef Series |
+| tabherstel (`getLibraryTab` + `_visibleTabs.indexOf` + `animateTo`) | **stale**: het scherm toonde Series onder Playlists, de tab waar Films op stond |
+| `saveLibraryTab` vanuit `onTabChanged` | niet stale; `_isRestoringTab` houdt stand, want `animateTo` met `Duration.zero` meldt synchroon |
+| post-frame focus | niet stale bij A → B; de sleutelvergelijking ving hem af |
+
+Die persistentievolgorde is geen contract van dit scherm. Twee `getInstance`-
+aanroepen hervatten in registratievolgorde en het prefs-kanaal is FIFO, dus in
+deze interleaving wint de laatste write. Een stale eindwaarde is dus niet
+gereproduceerd, en dat staat hier als meting en niet als garantie: de guard
+maakt de coherentie een eigenschap van de code in plaats van van de volgorde.
+
+**De eigenaar is de aanroep, niet de sleutel.** `_loadLibraryContent` neemt bij
+binnenkomst een generatie en controleert die na allebei de awaits; de post-frame
+focus hangt aan dezelfde generatie. Sleutelgelijkheid sluit elk gemeten stale
+effect bij A → B ook af, maar hij laat A1 weer toe zodra de sleutel opnieuw A
+is. Een teller loopt maar één kant op en kost één `int`.
+
+**ABA, eerlijk gemeten.** A → B → A met A1 als laatste hervatting is op de oude
+implementatie groen. De staart is een pure functie van `libraryGlobalKey` en de
+opslagstand op het moment van hervatten, dus A1 en A2 doen exact hetzelfde en er
+kan geen waarde uiteenlopen. Wat A1 wél deed is de staart een tweede keer
+draaien: nog een write en nog een focusverzoek. De test staat er als controle op
+wat niet mag veranderen, en vangt het moment waarop iemand een side effect
+toevoegt dat niet sleutelpuur is.
+
+**LIB1 was een tweede schrijver op dezelfde staat.** `_reconcileSelection` laadt
+zijn terugval via `_loadLibraryContent`, precies zoals een druk op de
+afstandsbediening, dus hij erfde het gat één-op-één. Een gebruiker die Series
+koos terwijl de terugval naar Films nog laadde, kreeg Films' tab. Die case is
+rood op de oude implementatie en staat nu in de suite.
+
+**Negatieve controle.** Vier tests in
+`test/screens/libraries/libraries_rapid_switch_test.dart`. Alleen `libraries_screen.dart`
+teruggezet naar de oude implementatie: twee rood met dezelfde concrete stale
+staat (`Expected: 'Collections'`, `Actual: 'Playlists'`), namelijk de snelle
+wissel en de reconciliatie-case. De andere twee zijn aan beide kanten groen: het
+ABA-geval en de gewone sequentiële wissel.
+
+**Geen timing in de tests.** `onMutation` wordt binnen elke preference-write
+geawait, dus daar één bibliotheek ophouden hangt exact die aanroep op exact de
+grens waar de bug leeft, terwijl de andere afloopt. Geen `Future.delayed` als
+racebewijs, geen pumpduur, geen herhaling.
+
+**LIB1-regressie.** De vijf LIB1-tests groen, plus `libraries_provider`,
+`hidden_libraries_provider`, `tab_navigation_mixin`, `library_tab_state`,
+`tv_library_chooser`, `base_library_tab_focus` en `tv_nested_surface`: 74
+geslaagd. De verzoener wordt door de generatie niet geblokkeerd; hij bumpt hem
+zelf, zoals elke andere aanroeper.
+
+**Testen.** `scripts/ci_checks.sh` groen, inclusief `flutter analyze` zonder
+errors of warnings, `dart format` over 1475 bestanden en de unused-code- en
+unused-files-controles. Volledige suite 6141 geslaagd, 6 overgeslagen, 83 rood,
+met exact de LIB1-nullijn: 78 goldens en dezelfde vijf in het oude
+`test/widgets/tv_discovery_rail_test.dart`. Nieuwe falers: geen. De vier
+erbij gekomen geslaagde tests zijn deze bevinding.
+
+Over G15: er bestaat in deze repo geen gate met die naam voor deze ronde. De
+enige treffer is `docs/pleya-server-masterplan-proposal.md:2780`, een
+hoofdstuk-checkbox van het Pleya Server-masterplan, die dit werk niet raakt. Wat
+LIB1 als "G15 baseline groen" noteerde is de volledige-suite-nullijn hierboven,
+en die staat ongewijzigd.
+
+**Verify kan dit niet bewijzen.** De fixtureserver kent `seed`, `add_episode`,
+`mark_watched`, `expire_session`, `fail_next`, `latency` en `echo`. `latency`
+vertraagt de HTTP-fixture; de race zit in de lokale `StorageService` en wordt
+door geen enkele op geraakt. Een product-only vertragingsknop erbij bouwen om
+Verify het venster te laten zien is precies wat hier niet moet gebeuren. Dit is
+geen productblocker: de widget-tests bezitten de scheduler volledig.
+
+**Wat open blijft.** Geen bewijs van een echte Apple TV, en dat is voor deze
+bevinding ook niet nodig: de race is door bestuurde futures volledig
+dichtgetimmerd. Bundel de fysieke smoke met de andere open items van deze ronde.
+`libraries_screen.dart` staat op ongeveer 2060 regels; opsplitsen blijft een
+eigen ronde met eigen bewijs, zoals LIB1 al vaststelde.
+
+### LIB3, de rul was de derde staataffordance op één scherm
+
+Anders dan LIB1 en LIB2 is dit geen state-race maar een visuele bevinding, en
+hij had in dit document nog geen regel behalve de tabelregel zelf. Dus eerst
+vastgesteld welke tabs het zijn en wat er in plaats van rood hoort te staan, en
+pas daarna code.
+
+**Het oppervlak.** De tabrij onder de bibliotheekkiezer op Bibliotheken:
+Aanbevolen, Bladeren, Collecties, Afspeellijsten. Die komt uit
+`TabNavigationMixin.buildTabChip`, die `FocusableTabChip` bouwt in zijn
+standaardstijl `TabChipStyle.underline`. De open tab kreeg daar een balk van
+twee pixels breed als het label, in `tk.accent`, het merkrood `#E5140F`.
+
+**Gereproduceerd op het echte doel.** Een Debug-build in de tvOS-simulator,
+ingelogd op de demoserver, via Mijn Pleya naar Bibliotheken. De rode rul staat
+er, onder Aanbevolen, en loopt dwars door het herobeeld eronder. Screenshot
+`before-02-bibliotheken.png`; de vergelijking voor en na staat in
+`docs/assets/tvos-unified/mockups-2026-09-02/compare/libraries-tabrul-voor-na.png`.
+Niet alleen bekeken maar geteld: in de band van honderd pixels onder de tabrij
+zaten 1806 pixels op accentrood, en nul erna.
+
+**De bedoeling lag al vast, op twee plekken.** De styling-audit van 2 september
+schrijft bij Bibliotheken letterlijk "de tabs blijven, zonder rode
+onderstreping", en de mockup die daarbij hoort, `libraries-d.png`, tekent de
+open tab als vet witte tekst naast gedempte buren en zet er niets onder. De set
+die op 3 september is goedgekeurd zegt hetzelfde van de andere kant: het
+merkrood is er voor de progreslijn en de opnamemarkering, en verder niet. De
+handoff van 3 september noteerde dit al als bewust overgeslagen, want die ronde
+was beperkt tot de kiezer. `tv_page_chip_bar.dart` benoemt in zijn eigen
+kopcommentaar precies deze tabrij als de tweede helft van hetzelfde defect.
+
+**Waarom het opvalt en de audit het telde.** Op datzelfde scherm waren er drie
+manieren om te zien waar je staat: de witte ring, de verticale balk van drie
+pixels op Instellingen, en deze rode rul. Eén oppervlak hoort er één te hebben.
+
+**De fix zit bij de gedeelde eigenaar.** `FocusableTabChip` bepaalt de kleur van
+zijn rul nu op één plek, en die is op TV doorzichtig. De balk zelf blijft staan
+in plaats van te verdwijnen: de strook is wat de rij zijn hoogte geeft, en
+`libraries_screen` geeft die hoogte door in een `PreferredSize` die zijn kind
+niet kan meten. Zo verschuift er boven of onder de rij niets. Buiten TV
+verandert er niets, want geen enkele mockup vraagt desktop of mobiel de rul op
+te geven, en op mobiel is dit scherm de aanbevolen-tab.
+
+**Blast radius.** Elk oppervlak dat de underline-stijl op TV gebruikt, en dat
+zijn er vier: Bibliotheken, Live TV, Downloads en de Seerr-ontdekbalk. Alle vier
+markeren hun open tab al met volle inkt en `w600` tegen gedempt en `w500`, dus
+de staat blijft zichtbaar zonder de rul. Dat is ook de reden dat de fix daar
+hoort en niet bij Bibliotheken alleen: vier rijen die hetzelfde zijn moeten er
+niet drie verschillende dingen van maken.
+
+**Wat er bewust buiten valt.** De segmented stijl (seizoentabs op detail, de
+Seerr-aanvraagfilters) tekent een eigen korte accentrul van achttien pixels.
+Dat is letterlijk ook een rode rul onder een tab op TV, maar het is een latere,
+bewuste behandeling met een eigen argument in de code, en het register maakt een
+kleurwijziging op het detailoppervlak afhankelijk van een regressiebeeld van
+Home, Films en Series dat deze bevinding niet heeft. Staat nu als `TOK3` in de
+tabel, met een test die de huidige behandeling vastlegt zodat de grens zichtbaar
+blijft.
+
+**DEC-053.** Niet geraakt. De selectie leunt hier op inkt en gewicht en niet op
+een container- of oppervlakkleur, dus de val waarin `secondaryContainer` en
+`surfaceContainerHighest` op `c.surface` vallen komt niet in beeld. In het
+lichte thema blijft `tk.text` tegen `tk.textMuted` staan; daar staat een test op.
+
+**Negatieve controle.** Vijf tests in
+`test/widgets/focusable_tab_chip_test.dart`. Alleen `focusable_tab_chip.dart`
+teruggezet naar de oude implementatie: twee rood, allebei met de gemeten waarde
+erbij, namelijk `Color(red: 0.8980, green: 0.0784, blue: 0.0588)` in de lijst
+rulkleuren waar hij niet in mag staan, in het donkere en in het lichte thema.
+De andere drie zijn aan beide kanten groen en staan er om te bewaken wat niet
+mocht veranderen: een gesloten tab was al gedempt en zonder rul, de rul buiten
+TV blijft, en de segmented stijl blijft ongemoeid.
+
+**Goldens.** Geen enkele golden tekent een `FocusableTabChip`. De enige
+golden-test die er in de buurt komt is `tv_detail_source_line_golden_test.dart`,
+en die rendert een film zonder seizoentabs; hij was voor de wijziging rood en
+erna rood, met dezelfde twee namen. Niets geregenereerd.
+
+**Testen.** `scripts/ci_checks.sh` groen: SDK-pin, `dart format` over 1476
+bestanden, codegen-versheid, native format, `flutter analyze` zonder errors of
+warnings, en de unused-code- en unused-files-controles. Volledige suite 6146
+geslaagd, 6 overgeslagen, 83 rood, met exact de nullijn van LIB2: 78 goldens en
+dezelfde vijf in het oude `test/widgets/tv_discovery_rail_test.dart`. Nieuwe
+falers: geen. De vijf erbij gekomen geslaagde tests zijn deze bevinding.
+
+**Wat open blijft.** Er is bewijs uit de simulator en niet van een echte Apple
+TV. Voor de kleur maakt dat weinig uit, een rul die er niet meer is kan op
+hardware niet terugkomen, maar of de open tab op tien voet afstand nog genoeg
+opvalt met alleen inkt en gewicht is daar te zien en nergens anders. Bundel dat
+met de andere open fysieke items van deze ronde.
+
+### LIB4, de kiezer is geland en de rest van de pagina niet
+
+Opgemerkt door Michel tijdens de LIB3-controle: de pagina als geheel past niet
+bij de nieuwe taal. Dat klopt, en het is bekend werk: de ronde van 3 september
+was expliciet beperkt tot de kiezer, dus alles eromheen staat er nog zoals het
+was.
+
+Er zijn twee mockups voor, allebei van 2 september, in
+`docs/assets/tvos-unified/mockups-2026-09-02/`. `libraries-a.png` is state A, de
+pagina als index van bronnen. `libraries-d.png` is state D, een bibliotheek
+geopend met de kiezer in beeld. Wat de simulator vandaag laat zien tegenover
+die twee:
+
+| Onderdeel | Mockup | Nu |
+| --- | --- | --- |
+| Landing | index van bronnen: een tegel per bibliotheek met soort, aantal, server en statusstip, daaronder Afspeellijsten, Verborgen bibliotheken en Metadata vernieuwen | opent meteen in één bibliotheek |
+| Kop | `Bibliotheken` | `Films`, met de servernaam als subtitel |
+| Achtergrond | vlak zwart | schermvullende backdrop van een willekeurige titel, waar de tabrij dwars doorheen loopt |
+| Acties rechtsboven | capsules `Vernieuwen` en `Bewerken` | kale desktop-icoonknoppen, potlood en ververscirkel |
+| Inhoud | posterraster onder een groepslabel | de aanbevolen-hub met spotlight |
+| Kiezer | chiprij | gebouwd, dit deel klopt (LIB1, LIB2) |
+
+**Dit is geen bugfix maar een besluit.** De styling-audit noemt dit de enige
+mockup waar het productcontract zelf in het geding is, en vraagt er expliciet
+aparte goedkeuring voor; de handoff van 3 september herhaalt dat de kiezer niet
+naar een index-eerst landing mag zonder dat opnieuw voor te leggen. State A
+verandert namelijk waar de pagina op opent, en daarmee wat "Bibliotheken" in de
+hub betekent.
+
+**Wat er zonder dat besluit al kan.** De kop, de achtergrond, de twee
+icoonknoppen en de botsing tussen tabrij en herobeeld zijn presentatie en raken
+het contract niet. Ze horen bij state D, die naast de kiezer staat die er al is.
+De landing zelf wacht op Michel.
+
+### VER5, `media-detail.episode-refresh` haalt de detailpagina niet meer
+
+Het scenario navigeert met `press: left` vanaf Home naar wat het als een
+zijbalk met bibliotheken beschrijft. De focus-trace laat zien wat er werkelijk
+gebeurt: `tvNav_home -> tvNav_search` op die Left, daarna `Content ->
+SearchInput` op de Down erna. Het staat dus in Zoeken en niet in Bibliotheken,
+`library.items_loaded` komt nooit, en het scenario valt om op een `wait_until`
+van 15 seconden. Dat gebeurt op `88d9868` net zo goed als met BACK1 erin.
+
+De aanname in het scenario komt uit de tijd vóór de Unified TV-topnav. Zolang
+die er in staat is er geen enkel Verify-scenario dat de TV-detailpagina opent,
+en is elke bevinding op dat oppervlak alleen met tests en op hardware te
+bewijzen. Het herstel is een navigatiepad dat bij de huidige shell hoort, niet
+een aanpassing aan het product.
 
 ### REV1, Apple Review Jellyfin: Home toont content, Films/Series leeg
 
@@ -1191,3 +1780,817 @@ Negatieve controle bij latere uitvoering: op de oude implementatie laat een
 verticale railwissel de actieve heading aantoonbaar onder de canonieke anchor
 staan (rood); na de fix staat de heading binnen tolerantie op de anchor
 (groen).
+
+### De simulatorronde van 4 september, en wat die wel en niet oplevert
+
+Op 4 september is build 248 uit `424c43e` op de Apple TV gezet, en is dezelfde
+code in de tvOS-simulator nagelopen. Michel heeft de televisie op dat moment niet
+beoordeeld, dus **geen enkel item gaat naar VERIFIED**. Wat hieronder staat is
+simulatorwaarneming, en die telt als aanvulling op de bestaande FIXED-status, niet
+als vervanging van de hardware-acceptatie.
+
+NAV1 en LAND1 staan er bewust niet bij. De oorzaak zit in
+`apple_tv_remote_touch_service.dart`, in het samenspel van de aanraakstroom en de
+ringdruk, en de simulator heeft geen aanraakvlak. Een groene run daar bewijst niets
+over het defect.
+
+**CAT1.** Op Alle films, focus op de eerste kaart van de bovenste rij: de witte
+focusring is rondom compleet, inclusief de bovenrand en de twee bovenhoeken, met
+zichtbare ruimte tussen de ring en de kop "Alle films". Dat is wat `89b1554`
+belooft.
+
+**BACK1.** De detailpagina van een film heeft geen terugknop linksboven. De vier
+actieknoppen staan onder de samenvatting en verder niets.
+
+**FOC1.** Twee overlays gedragen zich verschillend, en dat verschil is nieuw
+gemeten. Het sorteerpaneel op Alle films staat verticaal gecentreerd, met marge
+boven en onder, en de focusring om de bovenste regel is rondom compleet. Het
+contextmenu op de detailpagina staat dat niet: het paneel loopt tot de onderrand
+van het canvas door, en de gefocuste onderste regel eindigt op ongeveer dertig
+pixels van 2160. Op een simulator zonder overscan valt die regel dus binnen, maar
+een televisie die drie procent wegneemt snijdt hem af. Dat is precies de maat die
+alleen op hardware te toetsen is, en het is het scherpste argument om FOC1 niet op
+simulatorbewijs te sluiten.
+
+**ART1.** De backdrop op detail is scherp, zonder de zachtheid van een te kleine
+aanvraag, dus de resolutiekant van `f42e3fd` doet wat hij moet doen. Of de uitsnede
+nog te strak oogt is een compositievraag en blijft open, conform wat de
+ART1-sectie daar al over zegt.
+
+**LIB3.** De tabband draagt geen rode onderstreping meer. De affordance zelf is
+niet los te beoordelen, om een reden die de LIB3-sectie niet kon voorzien: zie
+LIB5.
+
+### LIB5, de spotlight-titel ligt over de tabrij
+
+Op Bibliotheken tekent de aanbevolen-hub een schermvullende backdrop met daarin een
+spotlight, en het titellogo van die spotlight valt over de tabrij heen. Met "The
+Notebook" als spotlight loopt het woordmerk dwars door "Aanbevolen".
+
+Het gevolg keert de bedoelde staataffordance om. De actieve tab is wit en vet en
+zou daarmee moeten opvallen, maar hij is de enige die onder het logo ligt;
+"Bladeren", "Collecties" en "Afspeellijsten" staan op vrije achtergrond en zijn
+daardoor beter leesbaar dan de tab die gekozen is.
+
+Dit is de reden dat de LIB3-vervolgvraag op deze pagina niet te beantwoorden is.
+Of inkt en gewicht op tien voet genoeg zijn valt pas te zien wanneer er niets
+doorheen loopt, en op de mockup is de achtergrond vlak zwart.
+
+Eigenaar is de laag die de hub-backdrop en de tabrij op hetzelfde vlak zet, niet de
+tabrij zelf. De tabrij doet precies wat `3e9d31b` hem opdroeg.
+
+Dit is presentatie en raakt het productcontract niet, dus het valt onder wat de
+LIB4-sectie "zonder besluit al kan" noemt.
+
+### LIB6, het LIB4-besluit stond op een half beeld
+
+Gevraagd door Michel op 4 september: is er een complete mockup voor deze pagina.
+Die is er niet, en dat verklaart waarom LIB4 bleef liggen.
+
+Wat er ligt zijn `libraries-a.png` en `libraries-d.png` van 2 september, twee
+states van dezelfde pagina. Ze zijn nooit goedgekeurd. De goedkeuringsronde van 3
+september ging over de beelden 09 tot en met 25, en het overzicht van die set zegt
+dat de Mijn Pleya-mockups van 2 september er bewust buiten zijn gelaten. De
+styling-audit zet Bibliotheken bovendien op klasse E en vraagt er als enig scherm
+apart akkoord voor, omdat het productcontract zelf verandert.
+
+Wat de twee beelden niet tekenen: de tabs Bladeren, Collecties en Afspeellijsten,
+de lege staat, Verborgen bibliotheken, en de botsing uit LIB5. De HTML waarmee ze
+geschoten zijn zit niet in git, alleen de PNG's.
+
+Besluit van Michel op 4 september: eerst een complete set, daarna één keer besluiten
+over de hele pagina. LIB4 blijft tot die tijd dicht en wordt niet opnieuw
+voorgelegd op de bestaande twee beelden.
+
+De set staat er sinds diezelfde middag als mockup 26, negen states in
+`docs/assets/tvos-unified/mockups-2026-09-04/26-bibliotheken-*.png`. Een eerste
+versie op eigen CSS en een systeemfont is weggegooid nadat Michel de lat op northstar
+legde: de beelden moeten tot op het lettertype gelijk zijn aan de rest van de familie.
+Ze zijn daarom gebouwd als paginafragmenten in hetzelfde systeem als 09 tot en met 25:
+`tv.css` voor de tokens, `build.mjs` voor de gedeelde topnav, de iconenset en het
+schieten, Inter en het wordmark uit `assets/`. Die bron stond tot nu toe alleen in
+`~/Downloads/mockups-tvos/_src` en staat nu in `docs/assets/tvos-unified/src/`, met
+alle zeventien eerdere fragmenten erbij, zodat de hele familie herschietbaar is.
+Alleen `art/` (TMDb-beeld) en `out/` zijn niet meegenomen; `build.mjs` verwacht ze
+naast zich, zoals het overzicht van de 09-25-set beschrijft.
+
+A is de index, per server een groep en de tegels in de taal van de Mijn Pleya-hub; B
+de pagina zonder bereikbare bibliotheek; C Verborgen bibliotheken; D1 en D2 de
+geopende bibliotheek, zonder en met spotlight-backdrop; E Bladeren als
+catalogusgrid; F Collecties en G Afspeellijsten als rail van 16:9-kaarten; H een
+geopende maar lege bibliotheek. D1 tegen D2 is de vraag die de oude LIB4-sectie open
+liet: de code kiest de backdrop, de mockup van 2 september tekende zwart, en nu
+staan ze naast elkaar. In D2 staat de spotlight-titel onder de tabrij in een eigen
+band, wat de LIB5-botsing wegneemt zonder de backdrop op te geven.
+
+Voorgelegd op 4 september, met mockup 26 erbij. Michels antwoord, letterlijk: "Ik vind
+de werking van deze pagina gewoon niet in lijn met wat we aan het bouwen zijn." Dat
+is geen keuze tussen A en D en geen revisie op de beelden: het is een afwijzing van
+het contract dat beide states delen, een bronkiezer met per bibliotheek vier tabs.
+De styling-audit had dit als klasse E gemarkeerd, het enige scherm waar het
+productcontract zelf in het geding is, en dat is nu bevestigd. LIB4 blijft dicht tot
+er een nieuw voorstel voor de werking ligt; mockup 26 blijft staan als bewijs van de
+huidige werking in de nieuwe taal, niet als richting.
+
+Twee acceptatie-eisen van Michel, 4 september, die bij de bouw horen en niet bij het
+besluit: elke knop op de pagina is met de afstandsbediening te bereiken, dus de
+capsules rechtsboven, de chips, de tabs en de tegels zitten alle in één
+focusketen zonder dode einden; en het ontwerp wijkt nergens af van de andere
+schermen, dus dezelfde marge, dezelfde chip, dezelfde tegel en dezelfde ring als
+Home, Films en de Mijn Pleya-hub. Een bouwronde die op een van beide zakt is niet
+klaar, hoe goed de mockup ook gevolgd is.
+
+
+### HERO1, de widget kiest een uitsnede die de server al gemaakt heeft
+
+Gemeld door Michel op 4 september, kijkend naar build 248 op de Apple TV 4K, in
+zijn woorden: "halve afbeeldingen staan er maar in de hero, dus of ze zijn te groot
+of de positie van het onderwerp klopt niet." Dat is het concrete hardwaregeval
+waar de vorige HERO1-sectie op wachtte, en het antwoord is: allebei een beetje,
+en de oorzaak zit niet waar de widget hem denkt te hebben.
+
+**Wat de keten doet.** `lib/widgets/tv/tv_hero_artwork.dart` tekent een 16:9-
+backdrop met `BoxFit.cover` en `Alignment.topCenter`, met als toelichting dat een
+te hoge backdrop dan de lucht verliest en niet de gezichten. Diezelfde widget
+vraagt het beeld bij de server aan in de pixels én de ratio van de kaart, 2,465:1,
+met een beroep op DEC-057. `roundDimensions` in
+`lib/utils/media_image_helper.dart` bewaakt sindsdien dat die ratio onderweg niet
+verandert. Op Plex zet `thumbnailUrl` (`lib/services/plex_client.dart:4300`) daar
+`minSize=1&upscale=1` op, en dat betekent: vul de gevraagde box en snij het
+overschot gecentreerd weg. Plex levert dus een beeld dat al precies 2,465:1 is. De
+`BoxFit.cover` in Flutter heeft dan niets meer te croppen en `topCenter` doet niets.
+
+**De maat.** 16:9 in 2,465:1 verliest 27,9 procent van de hoogte. Op Plex is dat
+veertien procent boven en veertien procent onder, gekozen door de server. Op
+Jellyfin (`lib/services/jellyfin_client/parts/images_downloads.dart:32`) gaat de
+aanvraag met `maxWidth`/`maxHeight`, dat past in en snijdt niet, dus daar komt het
+hele 16:9-beeld aan en snijdt Flutter wél, met `topCenter`: achtentwintig procent
+onderaan. Twee backends, twee verschillende uitsneden, en geen van beide is de
+uitsnede die de widget zegt te maken. Michels toestel heeft twee Plex-logins, dus
+wat hij ziet is de gecentreerde Plex-uitsnede.
+
+**Waarom dit een tegenspraak is en geen detail.** DEC-057 zegt dat de aanvraag de
+ratio van de *bron* moet volgen, zodat de servercrop een no-op wordt; het besluit
+liet de brede box uitdrukkelijk zoals hij was. `tv_hero_artwork.dart` beroept zich
+op DEC-057 om precies het tegenovergestelde te doen: de ratio van de *kaart*
+aanvragen. De toelichting daar noemt de servercrop "een no-op in plaats van een
+tweede, onzichtbare"; hij is de eerste, en de enige, en hij is niet leeg.
+
+De eerdere HERO1-sectie wees een globale wissel van `topCenter` naar `center` af
+omdat één vaste uitlijning niet elke onderwerpspositie oplost. Dat blijft waar,
+maar op Plex had die wissel sowieso niets veranderd, en dat is de reden dat een
+A/B op de uitlijning nooit iets liet zien.
+
+**Waarom het als "te groot" voelt.** De kaart is 3538 bij 1365 fysieke pixels op
+een 3840 bij 2160 paneel. Ook een perfect gekozen uitsnede toont maar 72 procent
+van de backdrop, en die 72 procent wordt vervolgens over 92 procent van de
+schermbreedte getekend. Een onderwerp dat in de bron niet in de middelste band
+staat is dan half weg, en wat er wel staat is groter dan het beeld ooit bedoeld
+was. Dat deel is een eigenschap van de kaartratio en geen bug, maar het is wel de
+reden dat de uitsnede er zo toe doet.
+
+**Richting, niet uitgevoerd.** Dit is een correctieronde, dus er is niets
+gerepareerd. De fix hoort bij de aanvraag: vraag de bron in zijn eigen 16:9 op de
+breedte van de kaart (binnen de heroArt-cap), zodat geen enkele server snijdt, en
+laat daarna één eigenaar de uitsnede maken, met een uitlijning die per titel kan
+verschillen of met een kaartratio die dichter bij 16:9 ligt. Negatieve controle:
+een test die de aangevraagde URL ontleedt en eist dat breedte gedeeld door hoogte
+gelijk is aan de bronratio, en die is op de huidige code rood met 2,465 tegen
+1,778. Pas als die groen is heeft een uitlijningskeuze in de widget effect op Plex.
+
+**Uitgevoerd op 4 september**, op Michels vraag of dit op te lossen was, met zijn
+kanttekening dat het niet alleen om Plex gaat. De negatieve controle staat in
+`test/widgets/tv_hero_artwork_request_test.dart` en vroeg op de oude code 3840 bij
+1500 aan, ratio 2,56; rood. De fix zit bij de gedeelde eigenaar:
+`OptimizedMediaImage` kreeg een `requestSize` los van de tekenbox, `tvHeroRequestBox`
+geeft de box in de bronratio, en de uitlijning is het token
+`TvHomeLayout.heroArtAlignment` op `Alignment(0, -0,3)`, hetzelfde anker als
+`object-position: 50% 35%` in de mockupfamilie. Groen na, 78 gerichte tests, analyze
+schoon. DEC-094. Wat open blijft is precies wat alleen op hardware te zien is: of
+`-0,3` de juiste keuze is voor de backdrops die Michel zag. Build 249 draagt de fix.
+
+
+### LIB7, Bibliotheken wordt bronbeheer
+
+Besluit van Michel op 4 september, na mockup 26 en in zijn woorden "in kader van
+unified": de pagina houdt op een tweede bladerinterface te zijn. Gekozen uit vier
+richtingen: bronbeheer, en bladeren eruit.
+
+Wat de spec zelf al zegt en wat ermee botst. §4.5 van `tvos-unified-experience.md`
+houdt Bibliotheken als "de geavanceerde bronweergave" met één library kiezen,
+Aanbevolen, Bladeren, Collecties en Afspeellijsten. §10.4 van dezelfde spec zet
+server en library bij de globale filters van de unified catalogus, en de app heeft
+die knop al als "Alle bronnen" op Alle films (`tv_catalog_header_bar.dart`). Bladeren
+per bibliotheek heeft dus al een unified thuis, en §4.5 bouwt er een tweede naast.
+Wat volgens §1524 alleen in Bibliotheken thuishoort is beheer: scannen, analyseren,
+prullenbak, metadata verversen op de hele library, mappen bladeren, verbergen en
+ordenen.
+
+De nieuwe werking:
+
+1. De pagina toont per server de bibliotheken als beheerregels, met soort, aantal,
+   zichtbaar of verborgen en volgorde. Per regel de acties Openen in catalogus (Alle
+   films of Alle series met deze bibliotheek als bronfilter), Vernieuwen, Scannen,
+   Verbergen, en waar de backend het draagt Mappen, Analyseren en Prullenbak.
+2. De tabs Aanbevolen en Bladeren vervallen. Aanbevelingen doen Home, Films en
+   Series al over alle bronnen heen.
+3. Collecties en Afspeellijsten gaan de pagina uit en worden eigen ingangen in Mijn
+   Pleya, over alle bronnen, met mockup 24 als detail.
+
+Dit raakt §4.5, de tabel "waar woont wat" en §1524, dus het gaat als DEC-voorstel en
+niet als stille spec-aanpassing. Mockup 27 tekent de nieuwe werking in het systeem
+van mockup 26. Mockup 26 blijft staan als vastlegging van het afgewezen contract in
+de nieuwe taal.
+
+De twee acceptatie-eisen uit LIB6 gaan mee: elke knop bereikbaar met de
+afstandsbediening, en geen afwijking van de andere schermen.
+
+Goedgekeurd door Michel op 4 september op mockup 27, letterlijk: "Verder akkoord op de
+mockup alleen de filters nog bij alle films en series posities." DEC-092 staat op
+accepted en de drie spec-wijzigingen zijn doorgevoerd in `tvos-unified-experience.md`
+(4.5, de tabel van 18.2, de actielijst van hoofdstuk 31). Het voorbehoud over de
+filters is CAT5 en blokkeert de bouw van LIB7 niet: state D van mockup 27 volgt
+wat CAT5 beslist. De bouw is een eigen ronde, met de negatieve controle uit
+DEC-092 als eerste stap.
+
+
+### CAT5, de filters op de catalogus zijn op tvOS te ver weg
+
+Gemeld door Michel op 4 september bij het beoordelen van mockup 27, in zijn woorden:
+"Op zich idee is goed maar de filters moeten ook nog een betere positie krijgen
+zodat je deze makkelijker kan bereiken op tvos." Het gaat om de drie
+headeracties van Alle films en Alle series, Bronnen, Filters en Sortering, die in
+northstar 05 en 06, in mockup 14 en in state D van mockup 27 rechtsboven naast de
+paginakop staan.
+
+Dit is niet CAT3 of CAT4 opnieuw. CAT3 zette de cluster op de canonieke rechterrand,
+CAT4 maakte hem bereikbaar. Beide zijn dicht en gaan over waar de cluster nu staat;
+deze bevinding zegt dat die plek zelf verkeerd is voor een afstandsbediening. Het is
+een ontwerpkeuze over de catalogus als geheel en raakt daarmee de northstar-set,
+dus hij gaat als besluit en niet als fix.
+
+Drie posities staan getekend als mockup 28 (`28-catalogusfilters-a` tot en met `-c`).
+A is de huidige, ter referentie. B zet de drie acties links naast de kop, boven de
+eerste kolommen en in leesrichting, en maakt Play/Pause de snelkoppeling naar het
+filterpaneel; §10.6 staat die knop al toe, hij is alleen nergens zichtbaar gemaakt.
+C zet een verticale actierail links van het raster, altijd één LEFT vanaf kolom 0,
+met de actieve filters als regel eronder; dat kost één posterkolom. De keuze
+verandert §10.2 en raakt northstar 05, 06 en 14 en state D van mockup 27.
+
+Michels antwoord op de drie, letterlijk: "Ik vind a het beste maar dan moet dit niet
+altijd in beeld blijven deze zijbalk." Alleen C heeft een zijbalk, dus de lezing is:
+de rail van C, ingeklapt tot hij nodig is. Dat staat getekend als D1 (ingeklapt, zes
+kolommen, de actieve filters als stille regel naast de kop, LEFT vanaf kolom 0 klapt
+uit) en D2 (uitgeklapt, vijf kolommen, RIGHT of Menu klapt in en de focus keert terug
+op dezelfde kaart). Bevestigd door Michel, letterlijk: "C bedoelde ik inderdaad maar maak hem moooer dan
+nu getoond en moet wel subtiel zichtbaar zijn in de bibliotheel wat je als filter
+gekozen hebt." Twee eisen dus: de rail als paneel in plaats van drie losse pillen, en
+de gekozen filters altijd zichtbaar in het raster. D1 en D2 zijn daarop
+hertekend: de rail is één paneel in de tegeltaal met per regel icoon, label en
+huidige waarde, de keuzes als tags en Wissen eronder; ingeklapt staan dezelfde tags
+naast de kop, met de sortering gestippeld zodat hij niet als filter leest.
+
+Op D1 en D2 zei Michel, letterlijk: "Graag die waarop gefilterd mag dan wel rechtsboven
+getoond worden want nu hoeven die niet meer bereikbaar te zijn en je hebt daar meer
+ruimte." De tags in de ingeklapte stand zijn daarmee naar rechtsboven verhuisd, de plek
+waar de chips stonden en die vrijkwam zodra ze niet meer bedienbaar hoefden te zijn.
+
+Goedgekeurd door Michel op 4 september op D1 en D2. DEC-093 staat op accepted, 10.2 en
+10.6 van de spec zijn aangepast, en state D van mockup 27 is op dezelfde rail
+hertekend. De bouw is een eigen ronde; de negatieve controle staat in DEC-093, en de
+CAT4-test wordt daarbij herschreven op de rail in plaats van weggegooid.
+
+
+### HERO2, de titelband was de hoogte van het logo en niet van de titel
+
+Gemeld door Michel op 4 september, kijkend naar build 249 op de Apple TV, en
+daarna teruggewezen in mijn eigen simulatoropname: "bij jouw screenshot zie je het
+ook hoor kijk maar bij de onderkant t van extended". Dat klopte. Ik had de titel
+eerst als compleet afgedaan op een crop waarin de afsnijding wegviel tegen een
+donkere palmboom; op een uitvergroting eindigen E, x, t, e, n, d, e en d alle acht
+op één rechte lijn, met de ronding van de e en de punten van de x eraf.
+
+**Root cause.** `_titleBlock` in `tv_hero_billboard_card.dart` gaf de band de
+hoogte `heroLogoMaxHeight`, 76. De band bestaat omdat een slide met een wordmark
+en een slide met type de metaregel op dezelfde plek moeten zetten, en hij was
+daarom op het logo gemaat. De type-tak vraagt binnen die band `heroTitleMaxLines`
+regels, en twee regels van `heroTitleFontSize` op `heroLineHeight` is
+40 x 1,28 x 2 = 102,4. Een eenregelige titel (51,2) paste, een tweeregelige stak er
+26,4 uit. Niets in de layout klaagde: een `SizedBox` groeit niet mee met zijn kind
+en `Align` verplaatst in plaats van te verkleinen, dus het defect was alleen in
+pixels te zien. Dat verklaart ook waarom The Whisper Man (één regel) goed stond en
+Grand Theft Auto VI (twee regels) niet.
+
+**Fix.** `TvHomeLayout.heroTitleBandHeight` is de band, gemaat op het grootste dat
+erin kan staan: `heroTitleFontSize * heroLineHeight * heroTitleMaxLines`. Het
+clearlogo houdt zijn eigen `heroLogoMaxHeight` binnen die band, zodat een wordmark
+niet anderhalf keer zo groot wordt. Het blok staat `Positioned(bottom:)`, dus de
+band groeit naar boven en de CTA-rij blijft waar hij stond.
+
+**Negatieve controle.** `test/widgets/tv_hero_title_band_test.dart`, drie
+assertions: de band tegen het aantal toegestane regels, het logo dat zijn eigen
+hoogte houdt, en een gerenderde tweeregelige titel die binnen zijn band moet
+passen. Met de band terug op 76 is de eerste rood met "band is 76.0, a 2-line
+title needs 102.4"; met de fix groen.
+
+**Bewijs in de simulator.** Dezelfde slide, dezelfde titel, voor en na: de
+ink-hoogte van de tweede titelregel gaat van 85 naar 92 pixels, en de afgesneden
+letteronderkanten zijn terug.
+
+
+### HOME1, Home naast de northstar
+
+Gevraagd door Michel op 4 september, na de hero-fixes: "kijk home screen qua design
+[...] volgens mij is in de hero namelijk nog niet hele item goed in beeld [...] ook
+even goed na zodat het beter wordt qua witruimte en overgangen en indeling en
+styling maak een mockup. Kijk ook gelijk de navigatie balk na." En: "laat die build
+nog even zitten." Build 250 is daarom gecommit (`0ad49ec`) maar niet gebouwd.
+
+**Gemeten in de simulator tegen northstar 01, op de 1080-referentie.** De herokaart
+staat in de app op 179 tot 862 (683 hoog) waar de northstar 132 tot 850 (718) tekent:
+47 lager en 35 korter, dus de witruimte onder de nav is ruim twee keer zo groot als
+bedoeld. De nav-pil is 44 tot 110 tegen 44 tot 96, dus 14 hoger dan de northstar. Het
+raillabel staat op 48 onder de kaart tegen ongeveer 40. Links in de nav tekent de app
+het Pleya-merk waar de northstar een profielchip met initiaal zet; dat is de
+`ProfileAvatar`-fallback voor een profiel zonder beeld, geen andere navigatie.
+
+**Het onderwerp valt weg door de kaartratio zelf.** 2,465:1 toont 72 procent van een
+16:9-backdrop, ook in de northstar. HERO1 bepaalt nu wélke 72 procent en dat het op
+elke backend hetzelfde is; het maakt de kaart niet hoger. Wil het hele item in beeld,
+dan is dat een besluit over de kaart, niet over de uitsnede. Mockup 29 tekent vier
+richtingen: A de northstar als referentie op de juiste maten, B een kaart van 2,0:1
+(1770x885) die 89 procent toont met de rail eronder uitpiepend, C de backdrop heel op
+16:9 in de rechter 1276 pixels van de kaart met dezelfde backdrop geblurd als vulling
+erachter (de "alleen poster"-taal van 9.4 toegepast op de backdrop, niets gesneden,
+kaart ongewijzigd), D full-bleed achter nav en tekst met de rail over de onderrand.
+
+Besluit van Michel op 4 september op mockup 29: **D, full-bleed.** Dat is geen
+uitsnedekeuze meer maar een wijziging van 9.2: de billboardkaart met ring vervalt,
+de backdrop staat op 16:9 achter nav en tekst, en de eerste rail overlapt de
+onderrand. Voor de bouw worden drie standen uitgetekend: de landing met CTA-focus,
+de railfocus (hoe het beeld terugtreedt als de rail de focus neemt), en de
+poster-only fallback van 9.4 onder full-bleed.
+
+**De rest van de pagina, gemeten in de simulator.** De rails staan in deze volgorde:
+Verder kijken, Recent uitgebracht, "Recently Added Shows" (Engels, I18N5), drie keer
+"Omdat je X gekeken hebt", Aanbevolen voor jou. Elke rail is de DEC-087-band: de
+gefocuste kaart 16:9 met titel, meta en synopsis eronder, de buren als posters. Wat
+afwijkt van de northstar en de audit: zodra de hero uit beeld is, is de achtergrond
+vlak zwart waar 9.3 een ambient tint uit het actieve artwork vraagt; de nav staat op
+een harde zwarte band; nieuw-markeringen zijn tekstpillen "NEW" en "NEW EPISODE" waar
+de northstar een amberpunt tekent (audit, divergentie 5); en het bijschrift onder de
+gefocuste kaart plus het volgende label nemen samen zoveel hoogte dat er per scherm
+precies één rail past. D2 en D4 tekenen de railstapel onder full-bleed met de
+ambient tint, de amberpunt en Nederlandse labels.
+
+**Verduidelijkt door Michel op 4 september, na D1 tot en met D4**, letterlijk: "Ik wil
+het geen wat ik nu heb met de nieuwe hero alleen het geen wat ik nu heb moet
+geoptimaliseerd worden maak daar in nieuwe sessie een mockup voor", en daarna: "De
+nieuwe hero ontwerp dus wel. Die full bleed." De hero wordt dus full-bleed zoals D1
+tot en met D3 hem tekenen; de rest van de pagina blijft wat er nu staat, de
+railstapel met de DEC-087-band, maar geoptimaliseerd op witruimte, overgangen,
+indeling, styling en de navigatiebalk. Mockup 30 in de volgende sessie tekent die
+combinatie, met D1 tot en met D4 en de gemeten afwijkingen hierboven als startpunt.
+
+**Mockup 30, 4 september** (`docs/assets/tvos-unified/mockups-2026-09-04/30-home-*.png`,
+bron in `src/pages/30-home-*.html`). De eerste opzet zette de railband op 654 met de
+backdrop schermvullend erachter, en dat sneed het gezicht van het hero-onderwerp af bij de
+mond. Michel, letterlijk: "Ik vind de full bleed hero mooi maar dan moet wel het item goed in
+beeld zijn en niet half worden afgesneden door de volgende carroussel die erover heen staat.
+Dat neemt het effect van de hero weg." Een 16:9-backdrop op een 16:9-scherm heeft geen
+uitsnede meer, dus het anker van HERO1 doet hier niets; wat het onderwerp bedekt is de rail,
+en dat is een keuze over de landing. Vier landing-opties, alle met het onderwerp heel:
+
+- **A1, de rail piept.** Tekst 579 tot 840, label op 880, de posters piepen 147 van 346
+  boven de onderrand. DOWN scrolt 508 naar stand B. Dit is de gangbare streaming-landing en
+  mijn aanbeveling; hij laat 9.2 los op één punt, de eerste rail staat niet meer heel in beeld.
+- **A2, het beeld past.** De backdrop heel op 16:9 als 996 bij 560 rechtsboven, dezelfde
+  backdrop geblurd als schermvulling (de 9.4-taal op een backdrop), tekst in een kolom van
+  760, label 601 en de band 654 tot 1000 heel in beeld op de achtergrond. Niets gesneden, niets
+  bedekt, maar de hero is kleiner en minder full-bleed.
+- **A3, alleen het label.** De hero ongestoord schermvullend, tekst 400 tot 661, op 985 alleen
+  "Verder kijken" met een chevron als stille hint. De rail komt op DOWN. De zuiverste hero,
+  ten koste van zichtbare railinhoud op de landing.
+- **A4, mini-rail.** De eerste rail heel in beeld als strook van 133 bij 200 (799 tot 999)
+  onder tekst 439 tot 700; op DOWN groeit hij naar de DEC-087-band. Alles staat er, maar
+  posters van 133 breed zijn op een TV klein, en de groei is een layoutwissel bij focus.
+
+De overige standen zijn onafhankelijk van die keuze. **B, railfocus:** de pagina scrolt tot
+het label onder de navbalk staat, de herotekst dooft, de backdrop treedt
+terug tot een gedimde band en gaat over in de ambient tint van 9.3; band 346 met 615-kaart en
+231-buren, bijschrift 18 boven, titel 27, meta 20 mét puntspatiëring (in 29 D2/D4 miste
+`.cap .m` de `.sep`-marge), synopsis op één regel, 26 naar het volgende label op 908, en de
+volgende rail piept 119. **C, dieper op Home:** het gefocuste label ankert onder de nav op
+132, waardoor de volgende rail er heel onder staat (721 tot 1067) in plaats van alleen zijn
+label; de app zette elk gefocust label op 372 met zwart erboven,
+en dat is waar de "één rail per scherm" vandaan komt. Verder de ambient tint, nieuw als
+amberpunt (audit 5), het vinkje als witte schijf, en "Recent toegevoegde series" in het
+Nederlands (I18N5). **D, alleen poster (9.4):** dezelfde poster sterk geblurd en donker als
+vulling, scherp als eiland van 400 bij 600 rechts; getekend op de geometrie van A1 en volgt de
+gekozen landing-optie. **E, overlay:** het contextmenu uit mockup 12 vanuit B, met de topnav
+op 0,35 mee gedimd (audit 13). De nav zelf staat in alle standen op 44 tot 96 met de
+profielchip met initiaal links en het wordmark rechts.
+
+Open voor Michel: de landing-optie (A1 tot en met A4) en akkoord op B tot en met E. Daarna
+DEC-095, de spec (9.1-schets, 9.2, 9.3, 7.1 rustfocus, 9.6 pauzeregels) en HOME1 op
+GOEDGEKEURD.
+
+**Besluit van Michel op 4 september, op mockup 30:** "Ik denk a 1 de rail piept en btme
+akkoord." Vastgelegd als DEC-095: de hero full-bleed met de rail die eronder piept, het anker
+onder de navbalk op DOWN en dieper op de pagina, het bijschrift met één regel synopsis, de
+amberpunt, de Nederlandse labels en de gedimde topnav. Hoofdstuk 9.1, 9.2 en 7.1 zijn herzien,
+9.3 en 9.6 nagelopen, 33.1 en 33.2 dragen een afwijkingsnotitie. De ambient tint van 9.3 blijft
+fase 9 en gaat niet mee in de bouw. De bouw is een eigen ronde met de negatieve controle uit
+DEC-095: een widgettest op `TvContentFeed` die de full-bleed hero, het zichtbare label met de
+gedeeltelijk zichtbare band, en het anker na DOWN eist, rood op de huidige code.
+
+### HOME1, de bouwronde
+
+Gebouwd op 4 september als `eed2a79`, met de negatieve controle uit DEC-095 vooraf rood
+gedraaid: de groep "HOME1 / DEC-095" in `test/screens/tv/tv_content_feed_test.dart` eiste op
+de oude code dat de hero de volle feedbreedte inneemt (rood: de kaart stond op de pagina-inset),
+dat het label van de eerste rail na DOWN op het anker van 154 tokens staat (rood: 4 logische
+pixels ernaast) en dat een diepere rail onder de nav ankert (rood: 159 logische pixels lager).
+De vierde test, de piepende band op de landing, was al groen en blijft staan als regressiewacht.
+
+Wat er gebouwd is. De carousel is niet langer een lijstkind op de pagina-inset maar een laag
+achter de lijst, ter grootte van de contentbox plus de gemeten navband erboven, die met de
+scrolloffset meeschuift; het hero-blok in de lijst is een spacer van
+`TvHomeLayout.heroBlockHeight`, zodat het label van de eerste rail op 880 staat en de posters 147
+referentiepixels piepen. De kaart verloor ring, radius en schaduw en kreeg de leesscrim over de
+volle hoogte en de verticale scrim voor nav en grond. Op rijfocus dooft de tekst en legt
+`TvHeroDimVeil` zich schermvast over de laag; in de eerste build reisde die sluier met het beeld
+mee en was boven het anker alles grond, de simulator liet dat zien en de test op de sluierpositie
+is daarna toegevoegd. De rails krijgen per rij een scroll-anker via
+`TvHomeLayout.rowTileScrollAlignment`: elke rij zet zijn label onder de nav. Het
+bijschrift kromp naar één regel synopsis en de mockupmaten, het raillabel naar 27
+referentiepixels (audit divergentie 6). De shell wisselde zijn `Column` voor een
+`CustomMultiChildLayout` dat de balk eerst uitmeet en als laatste tekent, en publiceert de
+bandhoogte via `TvShellSurface`; de eerste versie gaf de balk een begrensde hoogte en het
+`Align` van de profielchip vulde daarmee het hele scherm, wat de drie I14-tests van de shell
+direct aanwezen. De balk dimt naar 0,35 zodra `ModalRoute.isCurrent` omvalt (audit 13). Nieuw
+is op de TV-kaarten een amberpunt (`NewContentDot`, audit 5), en `nl.i18n.json` heeft
+`latestShows` (I18N5).
+
+Bewijs. Gerichte suites groen: feed (inclusief de vijf HOME1-tests), carousel, hero-artwork,
+titelband, RTL-contract, topnav (met twee nieuwe dim-tests), badge (met twee dot-tests),
+dichtheid, shell, catalogus-kop. De bredere run over `test/widgets/tv` en `test/screens/tv`
+gaf 428 groen en 14 rood, alle veertien Home-goldens die de oude kaart tekenen en al in de
+nullijn van 78 rode goldens zitten; ze worden op Linux geregenereerd, niet hier.
+`scripts/ci_checks.sh` gaf exit 0 op de definitieve boom. Pleya Verify:
+`pleya_verify/scenarios/tvos.home.full-bleed.yaml` PASS op de tvOS-simulator (bundel
+`tvos-home-full-bleed-1788545268365`), met de band onder de CTA op de landing, de hele eerste
+band na DOWN, de tweede rail heel in beeld na de tweede DOWN, en de hero terug in beeld na UP UP.
+Simulator-screenshots van landing, CTA-focus, railfocus met gedimde backdrop, dieper en het
+contextmenu met gedimde nav zijn bekeken en kloppen met mockup 30 A1, B, C en E; de
+posterfallback (D) is alleen als widgetgeometrie gebouwd en niet in de simulator gezien.
+
+**Correctie op de eerste bouw, dezelfde dag.** Op de simulator las de band boven de gefocuste
+rail als leegte: het anker van northstar 02 hield 242 referentiepixels onder de balk vrij, en
+die ruimte was daar de zichtbare onderrand van de billboardkaart die full-bleed net had
+weggenomen. Op een donkere still bleef er een zwarte strook over van een vijfde van de pagina.
+Drie richtingen zijn voorgelegd: het anker weg, het anker halveren, of de dim verzwakken zodat
+de strook als beeld leest. Michel koos eerst halveren en daarna alsnog het anker helemaal weg,
+zoals geadviseerd, gebouwd als `7b3057a6`. `rowFocusAnchor` bestaat niet meer; `rowTileScrollAlignment` kent geen
+rij-index meer en zet elk gefocust raillabel onder de balk. De twee ankerregels zijn er één
+geworden, de volgende rail wint vier vijfde van zijn band, en mockup 30 B en E zijn opnieuw
+geschoten op die compositie. De test die het anker op 372 vastlegde eist nu de nul.
+
+Wat open blijft. Hardwarebewijs op de Apple TV, zoals bij HERO1: het anker van de scrim en de
+leesbaarheid van de tekst over echt artwork zijn daar te toetsen. De ambient tint van 9.3 is
+bewust niet gebouwd (fase 9). Het laatste rijlabel kan niet altijd tot onder de nav scrollen
+omdat de lijst daar geen lege ruimte voor reserveert; dat is een keuze, geen bug.
+
+### LANG1, taalcontinuïteit binnen series
+
+Gevraagd door Michel op 4 september als sectie G van de personalisatie-opdracht: een
+taalkeuze tijdens een serie moet voor de volgende afleveringen blijven gelden, met een
+hiërarchie serievoorkeur, globale profielvoorkeur, fallback; een wijziging tijdens een serie
+werkt standaard alleen die serie bij; de voorkeur hoort bij de logische serie en het profiel,
+niet bij één bron; en de mockupronde tekent minstens één beheertoestand. De secties A tot en
+met F van die opdracht staan niet in deze sessie, dus wat hieronder "globaal" heet is
+uitgewerkt op wat de code nu kent. Waar A tot en met F een eigen globale laag in Pleya
+definiëren, moet DEC-096 daarop worden bijgesteld voordat er gebouwd wordt.
+**Eerst productontwerp en mockups, geen implementatie zonder akkoord.**
+
+**Wat er al staat, nagelezen in de code.** Het per-serie taalgeheugen bestaat sinds 17
+augustus. `TrackPreferenceStore` (`lib/services/track_preference_store.dart`) bewaart per
+`{profielscope}|{grandparentId ?? id}` een `TrackLanguageChoice`: audiotaal, ondertiteltaal,
+geforceerd, en een uitdrukkelijk "uit". Er wordt alleen geschreven bij een handmatige keuze
+(`TrackManager._rememberAudioLanguage` en `_rememberSubtitleLanguage`, en bij een bronwissel
+in `episode_navigation.dart`), nooit door de automatische selectie. Gelezen wordt bij elke
+`applyTrackSelection`, en dat is het pad van alle zes de startsituaties uit de opdracht:
+volgende aflevering, autoplay, start vanuit de detailpagina, vanuit Verder kijken, later
+hervatten en de overgang naar een volgend seizoen. `TrackSelectionService` kiest in de
+volgorde navigatie, sticky, serverkeuze, per-item, profiel, standaard. Ontbreekt de sticky
+taal in een aflevering, dan valt de keuze door naar de lagen eronder en blijft de opslag
+staan. Op Plex spiegelt Pleya de keuze naar de serie zelf (`writeSeriesLanguageToServer`,
+standaard aan), zodat de serverkeuze bij transcoderen meegaat; de kaart reist via iCloud
+naar de andere Apple-toestellen. Twee schakelaars staan in Instellingen ▸ Afspelen. Er wordt
+op taal, titel en geforceerd gematcht, nooit op stream-id: `TrackLanguageChoice` zegt dat
+letterlijk in zijn kop. De acceptatiejourney is dus voor het grootste deel al gebouwd.
+
+**Waar de journey nu breekt.** Drie plekken, elk met een eigenaar.
+
+1. *Een fallback reist mee naar de volgende aflevering.* Bij de overgang in de speler geeft
+   `episode_navigation.dart:548-549` `currentAudioTrack` en `currentSubtitleTrack` door als
+   `preferredAudioTrack` en `preferredSubtitleTrack`, en in `track_selection_service.dart:672`
+   en `:770` staat die navigatiekeuze als prioriteit 1, boven de sticky keuze. Miste
+   aflevering 3 de Engelse ondertitels en viel Pleya terug op Nederlands (of op uit), dan
+   is dat in aflevering 4 de "gewenste" track, en `id == 'no'` betekent daar zelfs
+   onvoorwaardelijk uit. De stap "aflevering 4 heeft Engels weer, Engels wordt gekozen" is
+   rood. De oorzaak is dat de navigatie de *uitkomst* doorgeeft waar hij de *bedoeling* had
+   moeten doorgeven. Eigenaar: `TrackSelectionService`, niet de aanroeper.
+2. *De sleutel is een serverkey.* `grandparentId` is de ratingKey op één server. Dezelfde
+   serie op NAS en Zolder heeft twee regels, en een Jellyfin-kopie een derde. Hoofdstuk 14.8
+   sleutelt de bronvoorkeur al op `CanonicalMediaIdentity.bucketKey`; het taalgeheugen doet
+   dat nog niet. Complicatie: een aflevering draagt geen jaar van de serie (`MediaItem` kent
+   geen `grandparentYear`), dus de show-bucketKey uit hoofdstuk 11 is vanuit een aflevering
+   niet te bouwen.
+3. *Er is geen beheer.* Geen lijst, geen "gebruik globale voorkeur", en een regel verdwijnt
+   alleen via de LRU-cap van 500. `copyWithAudio` en `copyWithSubtitle` kunnen een veld
+   nooit leegmaken, dus `isEmpty` wordt na een eerste keuze nooit meer waar.
+
+Een vierde punt is kleiner: valt de sticky ondertitel weg en staat het profiel op "altijd",
+dan kiest `_findFirstSubtitleTrack` de eerste track in welke taal dan ook. Dat is geen
+voorspelbare fallback.
+
+**Voorkeurshiërarchie, zoals voorgesteld op 4 september.** Michel heeft dit in de
+beslissingsronde hieronder op vier punten gecorrigeerd; DEC-096 draagt de gecorrigeerde
+versie en gaat vóór op de tekst in deze alinea.
+
+1. *Uitdrukkelijke keuze in deze afspeelsessie.* Wat de kijker net koos, als bedoeling: "de
+   Engelse ondertitel", niet "track 3". Een fallback is geen keuze en komt hier niet in.
+2. *Serievoorkeur*, per profiel en per logische serie. Een film sleutelt op zichzelf, zoals nu.
+3. *Globale profielvoorkeur.* Dat is het gebruikersprofiel op de server: het Plex-account
+   (`defaultAudioLanguage`, `defaultSubtitleLanguage`, de lijsten) of de Jellyfin-gebruiker
+   (`AudioLanguagePreference`, `SubtitleLanguagePreference`, `SubtitleMode`). Pleya voegt in
+   deze ronde geen derde laag toe. Reden: de Plex-spiegeling schrijft de serievoorkeur al op
+   de serie, en een eigen globale laag ernaast zou twee waarheden geven die ook de officiële
+   Plex-apps niet kennen. Wie twee backends heeft, heeft twee globale voorkeuren, en de
+   pagina toont ze dan als twee blokken met de bron erbij.
+4. *Fallback per aflevering, tijdelijk.* Audio: de serievoorkeur, anders de globale
+   audiotaal, anders de serverkeuze, anders de standaardtrack van het bestand. Ondertitels:
+   de serievoorkeur, anders de globale ondertiteltaal in de modus van het profiel, anders
+   uit. Nooit "de eerste track in een willekeurige taal". Een onthouden "uit" is een keuze en
+   wint altijd. De fallback wordt niet opgeslagen, reist niet mee naar de volgende aflevering
+   (dat is punt 1 hierboven), en meldt zich één keer met de toast uit mockup 31 D.
+
+**Handmatige wijziging tijdens een serie.** Geen driekeuzevraag bij elke trackwissel. Een
+keuze in het infopaneel werkt de serievoorkeur bij, direct, en de toast uit 31 C bevestigt dat
+en zegt erbij dat de globale voorkeur ongewijzigd blijft. "Alleen deze aflevering" bestaat als
+schakelaar in het infopaneel: de rij "Onthouden voor deze titel" uit mockup 19 wordt
+"Onthouden voor deze serie", en uit betekent dat de sessie de keuze houdt en de opslag niet
+raakt. De globale voorkeur wijzig je op de instellingenpagina, nooit vanuit de speler. Of die
+rijen op TV ook schrijven hangt van de backend af: Jellyfin heeft `POST
+/Users/{id}/Configuration`; voor het Plex-account moet de bouwronde eerst meten of plex.tv
+die instellingen laat schrijven. Tot die meting tonen de rijen de waarde en de bron, en
+zeggen ze waar je hem beheert.
+
+**Identiteit en bronnen.** De sleutel wordt een logische seriesleutel per profiel:
+`show:{genormaliseerde serietitel}` plus, waar bekend, de sterke tokens uit
+`identity_evidence.dart` (tmdb, tvdb, guid) op show-niveau. Zonder jaar is dat bewust een
+zwakkere sleutel dan de bucketKey van hoofdstuk 11; twee series met dezelfde titel op
+hetzelfde profiel delen dan een voorkeur, en dat is het aanvaarde risico tegenover een
+voorkeur die op de tweede server niet bestaat. De oude serversleutel blijft als terugval
+gelezen zolang hij bestaat, en een schrijfactie zet de regel om naar de nieuwe sleutel. Per
+aflevering blijft de volgorde: gewenste taal ophalen, kijken wat de gekozen bron aanbiedt,
+matchen op taal, type, geforceerd en titel, anders tijdelijk terugvallen, opslag ongemoeid.
+
+**De journey tegen de code gelegd.**
+
+| Stap | Mechanisme | Nu |
+|------|-----------|----|
+| Globaal Origineel + Nederlands, aflevering 1 | profiellaag, serverkeuze | groen |
+| Kijker kiest Engels + Engels | `_rememberAudioLanguage`, `_rememberSubtitleLanguage` | groen |
+| Aflevering 2 start Engels + Engels | sticky in `applyTrackSelection` | groen |
+| Aflevering 3 mist Engelse ondertitels | fallback, opslag blijft | groen, maar zonder melding |
+| Aflevering 4 heeft Engels weer | sticky | **rood**, punt 1 |
+| Andere serie: globale voorkeur | sleutel per serie | groen |
+| Dezelfde serie op een andere server | sleutel per server | **rood**, punt 2 |
+| Voorkeur bekijken of terugzetten | bestaat niet | **rood**, punt 3 |
+
+**Mockup 31, 4 september** (`docs/assets/tvos-unified/mockups-2026-09-04/31-taalvoorkeuren-*.png`,
+bron in `src/pages/31-taalvoorkeuren-*.html`). De pagina heet Taal en ondertitels en staat
+onder Mijn Pleya ▸ Instellingen, in de compositie van mockup 20: titel op 132, kruimelpad,
+twee kolommen op 40 tussenruimte. De twee schakelaars verhuizen uit Afspelen hierheen, want
+een kijker die zoekt waarom een serie Engels start, zoekt bij taal en niet bij afspelen.
+
+- **A, de pagina.** Links de globale voorkeur met de bron erboven ("Uit je Plex-profiel
+  Michel") en drie rijen: Audio, Ondertitels, Ondertitels tonen, elk met de fallback als
+  ondertekst zodat het contract leesbaar is waar het geldt. Daaronder de twee schakelaars.
+  Rechts de serievoorkeuren als rijen van 104 met poster van 56 bij 84, de titel, de keuze
+  op één regel en eronder wanneer, bij welke aflevering en op welk toestel hij ontstond. De
+  voetnoot zegt wat de kijker hier kan en dat een ontbrekende track niets verandert. Lege
+  staat, niet getekend: de kolom toont alleen de zin dat serievoorkeuren vanzelf ontstaan.
+- **B, de sheet.** Select op een rij opent de sheet van mockup 12 op 820 breed: poster en
+  titel, de herkomst, en de zin dat de voorkeur op elke bron geldt. Twee leesrijen met de
+  serie- en de globale waarde naast elkaar, en één actie: Gebruik globale voorkeur, met
+  "wist deze serievoorkeur" als bijschrift. Een andere taal kies je hier niet; dat doe je
+  tijdens het kijken, en de voet zegt dat.
+- **C, de bevestiging.** Na een keuze in het infopaneel sluit het paneel en staat drie
+  seconden een toast op 120 boven de onderrand: de keuze, "onthouden voor Severance", en de
+  regel dat de globale voorkeur Nederlands blijft. Dit is `PlayerToastController` met een
+  tweede regel; die bestaat nu met één regel en 1,2 seconde.
+- **D, de terugval.** Bij de start van een aflevering die de serievoorkeur mist staat
+  dezelfde toast met een amberpunt: wat ontbreekt, wat er nu speelt, en dat de voorkeur
+  blijft. De OSD-titel toont Zolder als bron, om te laten zien dat de voorkeur de bron
+  overleeft.
+
+**Open voor Michel.**
+
+1. De hiërarchie en het fallbackcontract van DEC-096, in het bijzonder "anders uit" voor
+   ondertitels in plaats van de eerste track.
+2. Geen driekeuzevraag: een wijziging tijdens een serie is de serievoorkeur, met toast.
+3. De globale laag is het serverprofiel, geen eigen laag in Pleya. Zeggen de secties A tot
+   en met F iets anders, dan hoor ik dat graag hier.
+4. De plek: Mijn Pleya ▸ Instellingen ▸ Taal en ondertitels, en de twee schakelaars weg uit
+   Afspelen.
+5. Mockup 31 A tot en met D als compositie.
+
+**Bouwronde, pas na akkoord.** Drie negatieve controles, elk rood op de huidige code: een
+test op `TrackSelectionService` met sticky Engels, een doorgegeven Nederlandse fallback en
+een beschikbare Engelse track die Engels eist; een test op `TrackPreferenceStore` die een
+keuze op de ene bron terugleest op een tweede bron van dezelfde serie; en een widgettest op
+de nieuwe pagina die de rij, de sheet en het wissen eist. Daarna de fallback-toast, de
+verhuizing van de twee schakelaars, en een Pleya Verify-scenario voor de journey op de
+tvOS-simulator. Raakt de bouw het Plex-schrijfpad voor het account, dan gaat daar eerst een
+contractmeting aan vooraf.
+
+**Beslissingsronde van Michel, 4 september.** Doorgaan naar implementatie, met tien bindende
+correcties. DEC-096 is daarmee accepted; waar deze sectie en het besluit verschillen, wint het
+besluit.
+
+1. *De hiërarchie krijgt vier lagen:* uitdrukkelijke keuze tijdens de lopende playback,
+   serievoorkeur, globale Pleya-profielvoorkeur, terugval op bron en bestand. "Uitdrukkelijke
+   keuze" is alleen een echte handeling. Niet de spelende track, niet een terugval, niet een
+   track-id uit de vorige aflevering, niet een bron-default die toevallig aanstond. Elke
+   aflevering resolveert de intentie opnieuw.
+2. *Het terugvalcontract.* Audio: gewenste of originele taal, anders tijdelijk de bron- of
+   standaardtrack. Ondertitels: gewenste taal, anders de ingestelde terugvaltaal, anders uit.
+   Nooit de eerste beschikbare track. Engels wordt niet als universele regel vastgelegd: de
+   terugvaltaal wordt een echte profielvoorkeur, zichtbaar als eigen rij op de pagina.
+3. *Geen driekeuzevraag.* Staat "Onthoud keuzes per serie" aan, dan werkt een bewuste wissel
+   de serievoorkeur bij met een toast. Staat hij uit, dan geldt de wissel alleen voor die
+   sessie en ontstaat er geen override. De globale voorkeur verandert nooit vanuit de speler.
+4. *De globale eigenaar is het Pleya-profiel, niet het serverprofiel.* De eis is dat de
+   voorkeur voor alle content geldt, ook over servers en backends heen.
+   `PleyaProfilePlaybackLanguagePreferences` draagt audio, ondertitels, beleid, terugvaltaal en
+   `rememberPerSeries`. Bronprofielen zijn spiegel, geen autoriteit.
+5. *Spiegelen naar Plex blijft, capability-gated.* Een mislukte schrijfactie maakt de
+   Pleya-voorkeur niet ongeldig. De copy in 31 A noemt daarom het Pleya-profiel als eigenaar.
+6. *Serie-identiteit.* Logische serie waar de identiteit betrouwbaar is, anders de concrete
+   server-en-serie-sleutel. Een onterechte samenvoeging is erger dan een gemiste, en er komt
+   geen samenvoeging op alleen titel en jaar bij om taalvoorkeuren te kunnen delen. De
+   serversleutel blijft migratie- en terugvalpad.
+7. *Nooit track-id's bewaren.* Opgeslagen wordt taal, de intentie "originele taal" en het
+   ondertitelbeleid. Nooit een trackindex, track-id of stream-id.
+8. *31 A en 31 B zijn goedgekeurd*, met de eigenaarscorrectie in de copy. De tweekolomsindeling
+   en de serievoorkeurenlijst met herkomst blijven.
+9. *31 C en 31 D zijn goedgekeurd met een presentatiecontract voor de toast:* geen focus, geen
+   blokkerende invoer, verdwijnt vanzelf, en ondertitel-veilig geplaatst in een bestaande
+   spelerzone. Geen zelfgekozen Y-positie.
+10. *De pagina is de enige beheerplek.* De taalschakelaars onder Afspelen verhuizen hierheen.
+    Heeft het infopaneel later een ingang nodig, dan linkt het hierheen.
+
+**Wat de correcties aan de mockups veranderd hebben.** De vier beelden zijn opnieuw geschoten
+op dezelfde nummers. In 31 A staat nu "Pleya-profiel Michel · geldt voor alle content zonder
+eigen serievoorkeur" waar eerst het Plex-profiel als bron stond, is "Terugvaltaal ondertitels"
+een eigen rij geworden in plaats van een hardgecodeerd Engels in de ondertekst, en heet de
+tweede schakelaar "Spiegel naar Plex" met de regel dat een mislukte schrijfactie de
+Pleya-voorkeur laat staan. In 31 B leest de sheet de globale waarden als "Pleya-profiel: ..."
+en zegt de kop dat de voorkeur geldt waar Pleya de serie als dezelfde herkent, in plaats van
+onvoorwaardelijk op elke bron. In 31 C en 31 D is de toast verplaatst van onderin naar de
+bestaande bovenzone, en beide beelden tekenen nu een echte ondertitelregel onderaan mee, zodat
+te zien is dat de toast er niet overheen valt.
+
+**De toastzone heeft een bestaande eigenaar, dus het contract wijst er alleen naar.**
+`video_controls.dart:986-1004` zet de toast al in een `Positioned.fill` met een `IgnorePointer`
+eromheen, en `PlayerToastIndicator` lijnt boven uit met een `AnimatedSwitcher` en de auto-hide
+van `PlayerToastController`. Dat is precies wat het contract vraagt: geen focus, geen invoer,
+zelf verdwijnend. Ondertitels staan onderaan onder `sub-pos` (`SettingsService.subtitlePosition`,
+standaard 100), dus de bovenzone en de ondertitels kunnen elkaar niet raken. De bouwronde voegt
+alleen een tweede regel en een langere duur toe en verplaatst niets.
+
+**De negatieve controles van de bouwronde, alle rood voordat er code verandert.**
+
+| Controle | Wat hij eist |
+|----------|--------------|
+| A | Een terugval in aflevering N besmet aflevering N+1 niet |
+| B | De serievoorkeur werkt over de volgende aflevering en het volgende seizoen |
+| C | De globale voorkeur komt uit het Pleya-profiel |
+| D | Gewenst, terugval, gewenst weer beschikbaar: de gewenste taal wordt opnieuw gekozen |
+| E | Handmatige wissel met `rememberPerSeries` aan schrijft de serie-override |
+| F | Handmatige wissel met `rememberPerSeries` uit schrijft geen serie-override |
+| G | "Gebruik globale voorkeur" verwijdert de serie-override |
+| H | Dezelfde logische serie op een betrouwbare tweede bron gebruikt dezelfde voorkeur |
+| I | Een onbetrouwbare identiteit wordt niet over servers heen samengevoegd |
+
+**Stand van de bouwronde, 4 september, `eae19cb4`.** De vier lagen, het
+terugvalcontract, de logische seriesleutel en de eigenaarswissel naar het
+Pleya-profiel staan. De negen controles zijn eerst rood aangetoond: A rood op vier
+assertions, C, D, F, G en H rood, en B, E en I bleken al voldaan door de code van
+17 augustus. Voor A, C, D, F, G en H is per fix teruggedraaid dat de controle dan
+weer rood wordt, dus de controles hebben tanden. Twee dingen kwamen er bovenop die
+niet in de analyse stonden: een terugval werd niet alleen doorgegeven maar ook
+*weggeschreven* (prioriteit `navigation` triggerde `onAudioTrackChanged`, dus hij
+overschreef de serievoorkeur zelf), en de schakelaar "onthouden" werd door de
+aanroepers gecontroleerd in plaats van door de opslag, waardoor het
+transcodeerpad er jarenlang omheen schreef.
+
+Nog open: de pagina Taal en ondertitels (31 A), de sheet (31 B) en de twee toasts
+(31 C en D). De twee schakelaars staan nog onder Afspelen, maar lezen en schrijven
+al het profiel, zodat de verhuizing een pure verplaatsing is en er nooit twee
+eigenaren naast elkaar hebben bestaan.
+
+**Protocolgat, gemeld en niet stil opgelost.** De serievoorkeur sleutelt op de
+logische serie waar de identiteit betrouwbaar is. Plex draagt `grandparentGuid` op
+een afleveringsrij en krijgt die sleutel. Jellyfin antwoordt met `SeriesId`, dat
+serverlokaal is. Het `/v1`-contract van Pleya Server draagt in `Item` helemaal geen
+identiteitstoken: geen guid, geen externe ids. Die twee vallen dus terug op de
+serversleutel, wat precies is wat DEC-096 lid 7 voorschrijft, maar voor Pleya Server
+betekent het dat dezelfde serie op twee Pleya Servers twee voorkeuren houdt. Het
+protocol is bevroren tijdens PS-5, dus dit hoort in een fase die het contract mág
+wijzigen; het gevraagde veld is één stabiel identiteitstoken op `Item`.
+
+Volgorde: eerst oud rood aantonen, dan implementeren, dan groen. Daarbovenop de drie stappen
+die al onder deze bevinding stonden: de widgettest op de nieuwe pagina, de verhuizing van de
+schakelaars, en een Pleya Verify-scenario voor de journey op de tvOS-simulator.
+
+**Stand van de bouwronde, 5 september, `a9a50ad9` en `a5730f35`.** De pagina, de sheet en de twee
+toasts staan. Mijn Pleya ▸ Instellingen ▸ Taal en ondertitels is de enige beheerplek: de
+globale voorkeur met audio, ondertitels, terugvaltaal en beleid, de twee schakelaars die
+uit Afspelen verhuisd zijn, en de serievoorkeuren met poster, keuze en herkomst. Select op
+een rij opent de sheet van 31 B, die de serie- en de profielwaarde naast elkaar leest en één
+actie aanbiedt. De verhuizing van de schakelaars is een pure verplaatsing, want hun opslag
+werd in `eae19cb4` al het profiel; onder Afspelen staat nu een verwijzing.
+
+Controles J tot en met S zijn eerst rood aangetoond op `6e6fcb78`, in een aparte worktree
+zodat de checkout van de andere sessies ongemoeid bleef. Elk van de vier bestanden faalt daar
+op compilatie: de herkomst, `clearKey`, de melding, de pagina en de tweede toastregel bestaan
+er niet. J bewaart serie, poster, bron, aflevering en toestel bij de keuze; K leest de lijst
+nieuwste eerst; L wist precies één regel, ook met "Onthoud keuzes per serie" uit; M is de
+terugvalmelding met de juiste eigenaar en zonder de opslag te raken; N is de bevestiging na
+een handmatige keuze, inclusief het geval waarin er niets bewaard wordt; O tot en met R zijn
+de pagina, de rij, de sheet en het wissen; S is de toast met twee regels en de amberstip.
+Daarna groen: 132 tests over acht bestanden, `ci_checks.sh` schoon op de gepinde SDK, en de
+testsuite met dezelfde 83 falers als de schone baseline (78 goldens plus vijf in
+`tv_discovery_rail_test.dart`), dus nul nieuwe.
+
+Vier dingen die de bouw zelf opleverde en die niet in de analyse stonden:
+
+1. *Herkomst hoort bij de keuze.* De pagina toont voorkeuren van elke bron waar het profiel
+   ooit van speelde, ook van een server die verwijderd is of uit staat, en precies die regels
+   zou een opzoeking leeg laten. `TrackLanguageChoice` draagt de herkomst daarom mee. Dat kost
+   ongeveer 120 byte per regel, dus de LRU-cap gaat van 500 naar 250 om dezelfde marge onder
+   het iCloud-plafond van 100 KB te houden. Niets ervan raakt de resolutie.
+2. *De statische schrijfvergrendeling strandt tussen widgettests.* Een future die in een
+   afgebroken testzone is gemaakt komt nooit terug, en de volgende test wacht er eeuwig op
+   achter een spinner die nooit uitdraait. Beide stores hebben nu een `resetForTesting`.
+3. *`showSelectionDialog` antwoordt null voor twee verschillende dingen*, "geen voorkeur" en
+   "weggeklikt". De beleidsrij sleutelt daarom op een string en kan niet meer stilzwijgend
+   wissen wat de kijker alleen maar bekeek.
+4. *De linkerkolom begon in de tegeltaal van Mijn Pleya* en is teruggezet naar de rijvorm van
+   31 A toen de simulator liet zien dat zes tegels niet op één scherm passen. Zie de
+   simulatorronde hieronder.
+
+**De simulatorronde, en wat hij vond.** `pleya_verify/scenarios/tvos.settings.language-preferences.yaml`
+is vijf keer gedraaid op de tvOS-simulator en staat op `a5730f35` groen: de pagina opent vanuit de
+instellingenindex met de topbalk erboven, de zes rijen van de linkerkolom staan binnen het beeld en
+onder elkaar, de taalkiezer opent en sluit zonder de pagina te verlaten, en Menu komt terug op de
+index. De bewijsbundel draagt zes schermafbeeldingen van het echte toestel.
+
+Twee van die runs waren rood, en allebei op iets echts:
+
+1. *De linkerkolom paste niet op één scherm.* Hij stond in de tegeltaal van Mijn Pleya, en die
+   tegel is op een Apple TV ongeveer 180 punten hoog: zes ervan duwen de laatste twee onder de
+   1080-rand (`insideViewport(language_remember)`, overflow onderaan). De rij is nu de vorm die
+   31 A tekent, titel met een regel eronder en de waarde rechts, en het scenario bewaakt de eerste
+   én de laatste rij. Daarmee vervalt punt 4 hierboven: de kolom volgt de mockup, niet het
+   tegelidioom.
+2. *Menu zet de focus niet terug op de tegel waar de subpagina vandaan kwam.* De shell lost
+   `restoreFocusKey` alleen op voor een route die vanuit de Mijn Pleya-*hub* is geopend
+   (`_popTvNestedRoute` vraagt het aan `_tvMyPleya`), en een instellingen-subpagina zit daar een
+   niveau onder. Dat geldt voor Uiterlijk en Logs net zo goed als voor deze pagina. Het scenario
+   asserteert daarom wat het product vandaag belooft, met de bevinding erbij; sluiten vraagt een
+   wijziging aan het navigatiecontract, niet aan deze pagina.
+
+**Bevinding: de bestaande my-pleya-scenario's lopen vast op een verouderde hubchoreografie.**
+`tvos.my-pleya.section-settings.yaml` liep in dezelfde ronde rood op precies de stap die mijn eerste
+versie ervan overnam: twee keer omlaag en dan drie keer rechts is niet meer de weg naar Instellingen.
+De hub opent op Profiel wisselen, en twee keer omlaag ís Instellingen. Het geldt vermoedelijk voor de
+hele familie `tvos.my-pleya.section-*`; het nieuwe scenario draagt de juiste choreografie en de
+oude blijven zoals ze zijn tot iemand die serie langsloopt.
+
+**Hardware blijft de laatste stap.** De simulator bewijst de pagina, de traversal en de kiezer;
+de toasts van 31 C en 31 D zijn met widgettests bewezen en nog niet op een toestel gezien.
+
+**Bevinding naast LANG1, niet stil opgelost.** `track_language_preferences` staat in geen
+enkele regel van `preference_sync_policy.dart`, dus `policyFor` valt terug op `_unknown`
+(`PreferencePolicy.localOnly`, `runtimeCache`) en de serievoorkeuren gaan vandaag *niet* mee
+naar iCloud. De kop van `TrackPreferenceStore` en de tekst van DEC-096 gaan er allebei van uit
+dat de keuze naar de andere Apple-toestellen reist, en de herkomstregel ("op welk toestel")
+is er zelfs op gebouwd. Het registreren van die pref zet echter synchronisatie aan voor een
+waarde die vandaag lokaal blijft, en dat is een gedragswijziging die buiten deze fase valt.
+Hij hoort bij dezelfde opruiming als het regex-gat in `preference_sync_policy_test.dart` dat
+`track_language_preferences` en `unified_source_preferences` al langer ongezien doorlaat.

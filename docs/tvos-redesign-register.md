@@ -85,6 +85,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | MOC-23 | Offline | PB-12 | OPEN | |
 | MOC-24 | Collectie | PB-13 | OPEN | |
 | MOC-25 | Persoon, `CanonicalPersonIdentity` | PB-14 | OPEN | |
+| MOC-31 | Taal en ondertitels, vier lagen met het Pleya-profiel als eigenaar | DEC-096 | OPEN | eae19cb4 + a9a50ad9 + a5730f35, Verify-scenario groen op de tvOS-simulator; hardwareronde open |
 
 ## SYS-1a, wat er staat
 
@@ -164,8 +165,10 @@ oppervlakken kozen wel expliciet `panel` en hadden de goede geometrie al. `Media
 er via een tweede weg terecht, `media_context_menu.dart:239`, waar `Platform.isIOS` op tvOS waar
 is zonder een `PlatformDetector.isTV()`-controle ernaast.
 
-Op TV gaat sindsdien elke presentatie naar `_tvPanelGeometry`, dus beide wegen komen op dezelfde
-doos uit en `media_context_menu.dart:239` hoefde niet te wijzigen. De vier tests die 400 bij 400
+Op TV gaat sindsdien elke presentatie zonder eigen alignment naar `_tvPanelGeometry`, dus beide
+wegen komen op dezelfde doos uit en `media_context_menu.dart:239` hoefde niet te wijzigen. Dat
+"zonder eigen alignment" is later toegevoegd: OVR1b trok aanvankelijk ook de ene aanroeper mee die
+zijn plek zelf kiest, en dat is als OVR2 gerepareerd in `cf4b6c7`. De vier tests die 400 bij 400
 als bedoeld gedrag vastlegden zijn mee herzien. De volledige redenering, met de gemeten waarden
 voor en na, staat in `docs/tvos-fysieke-correctieronde.md`.
 
@@ -232,15 +235,15 @@ Films en Series.
 | TA-2 | Kaartradius 12 tegenover 15,7 | te beoordelen | OPEN |
 | TA-3 | Groepslabel 26/w500/0,72 tegenover 22/w600/0,50 in hoofdletters | code, afgeleid van september-mockup | OPEN |
 | TA-4 | Vinkje wit met donkere tick tegenover donkere capsule | mockup, 33.5 zegt wit | OPEN |
-| TA-5 | Nieuw-markering amber punt tegenover "NEW"-pil met gradient | mockup, hoofdstuk 34 en 33.6 | OPEN |
-| TA-6 | Raillabel 31,5 tegenover 27 en de 8.3-band 25 tot 28 | te beoordelen | OPEN |
+| TA-5 | Nieuw-markering amber punt tegenover "NEW"-pil met gradient | mockup, hoofdstuk 34 en 33.6 | GESLOTEN op TV, DEC-095, `eed2a79` |
+| TA-6 | Raillabel 31,5 tegenover 27 en de 8.3-band 25 tot 28 | mockup | GESLOTEN, DEC-095, `eed2a79` |
 | TA-7 | Scrim `#141414` op 0,72 tegenover zwart op 0,50 of 0,34 | te beoordelen | OPEN |
 | TA-8 | Progress-track wit 0,25 tegenover zwart 0,45 | te beoordelen | OPEN |
 | TA-9 | Ring-gap op chips en knoppen 8 tegenover 4,7 | te beoordelen | OPEN |
 | TA-10 | Standaardthema OLED, alle alpha-fills landen donkerder dan gemeten | code | OPEN |
 | TA-11 | Eén inktladder in de mockup, vijf in de code | te beoordelen | OPEN |
 | TA-12 | Drie groenen voor één statuskleur | mockup, één token | OPEN |
-| TA-13 | Topnav-dim bij een overlay heeft geen implementatie | mockup | OPEN |
+| TA-13 | Topnav-dim bij een overlay heeft geen implementatie | mockup | GESLOTEN, DEC-095, `eed2a79` |
 
 De HTML-bron loopt zelf achter op DEC-087: `_src/tv.css` presenteert 267x400 en 400x225 nog als
 bindend terwijl DEC-087 de railband 346, de 16:9-kaart 615 en de buren 231 autoriseert. Daar

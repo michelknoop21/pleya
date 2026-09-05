@@ -1,0 +1,47 @@
+<style>
+.search-top { display: flex; align-items: center; gap: 22px; }
+.search-top .field { flex: 1; }
+.kb { margin-top: 18px; display: flex; align-items: center; gap: 6px; }
+.kb .k { width: 56px; height: 56px; border-radius: 10px; background: var(--surface); display: grid; place-items: center; font-size: 24px; color: var(--ink-2); }
+.kb .k.wide { width: 120px; font-size: 18px; }
+.kb .k.focus { background: var(--ink); color: var(--bg); font-weight: 700; }
+.kb .k .ic { width: 22px; height: 22px; }
+.res { margin-top: 42px; }
+.res .rail-label { display: flex; align-items: baseline; gap: 14px; }
+.res .rail-label .cnt { font-size: 20px; color: var(--ink-3); }
+.res .card.p { width: 220px; }
+.res .card.p .art { width: 220px; height: 330px; }
+.res .card .cnt { position: absolute; left: 12px; top: 12px; background: rgba(20,20,20,.78); font-size: 16px; font-weight: 500; padding: 4px 10px; border-radius: 6px; }
+.coll { display: flex; gap: 22px; }
+.coll .c { width: 460px; background: var(--surface); border-radius: var(--r-tile); padding: 18px 22px; display: flex; gap: 18px; align-items: center; }
+.coll .c img { width: 60px; height: 90px; border-radius: 6px; object-fit: cover; }
+.coll .t { font-size: 22px; font-weight: 500; }
+.coll .s { font-size: 18px; color: var(--ink-3); margin-top: 3px; }
+</style>
+{{nav:Home|live}}
+<div class="page" style="top:150px">
+  <div class="search-top">
+    <div class="field focus">{{icon:search}} <b>dune</b><span class="caret"></span></div>
+    
+  </div>
+  <div class="kb" style="position:relative">
+    <div class="k">A</div><div class="k">B</div><div class="k">C</div><div class="k">D</div><div class="k">E</div><div class="k">F</div><div class="k">G</div><div class="k">H</div><div class="k">I</div><div class="k">J</div><div class="k">K</div><div class="k">L</div><div class="k">M</div><div class="k">N</div><div class="k">O</div><div class="k">P</div><div class="k">Q</div><div class="k">R</div><div class="k">S</div><div class="k">T</div><div class="k">U</div><div class="k">V</div><div class="k">W</div><div class="k">X</div><div class="k">Y</div><div class="k">Z</div>
+    <div class="k wide">spatie</div><div class="k">{{icon:back}}</div><div class="k wide">123</div>
+  </div>
+  <div style="margin-top:10px;font-size:15px;color:var(--ink-4);letter-spacing:.06em">NATIVE TVOS KEYBOARD REPRESENTED SCHEMATICALLY · geen eigen Pleya-toetsenbord · dicteren via de Siri Remote in dat toetsenbord</div>
+
+  <div class="res">
+    <div class="rail-label">Films</div>
+    <div class="rail">
+      <div class="card p focus"><div class="art"><img src="{{art:dune2-poster}}"><span class="cnt">2 bronnen</span><div class="prog"><i style="width:40%"></i></div></div><div class="t">Dune: Part Two</div><div class="s">2024 · 2u 46m</div></div>
+      <div class="card p"><div class="art"><img src="{{art:dune1-poster}}"><span class="cnt">3 bronnen</span><span class="seen">{{icon:check}}</span></div><div class="t">Dune</div><div class="s">2021 · 2u 35m</div></div>
+      <div class="card p"><div class="art"><img src="{{art:dune1-poster}}" style="filter:sepia(.5) contrast(.9)"></div><div class="t">Dune</div><div class="s">1984 · 2u 17m</div></div>
+    </div>
+    <div class="rail-label" style="margin-top:34px">Collecties <span class="cnt">serveritems, in productie een verticale lijst</span></div>
+    <div class="coll">
+      <div class="c"><img src="{{art:dune2-poster}}"><div><div class="t">Dune-collectie</div><div class="s">NAS · Plex · 2 films</div></div></div>
+      <div class="c"><img src="{{art:dune1-poster}}"><div><div class="t">Dune-collectie</div><div class="s">Jellyfin thuis · 2 films</div></div></div>
+    </div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 13 · Zoeken; titel onder de kaart = SEARCH1-besluit (metablok ontbreekt hier bewust als vraag); Series/Afleveringen/Afspeellijsten/Overig niet getekend</div>

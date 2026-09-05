@@ -50,6 +50,7 @@ class TvTopNavigation extends StatelessWidget {
     this.needsAttention = false,
     required this.onNavigateDown,
     required this.onOpenProfiles,
+    this.dimmed = false,
     this.profile,
   });
 
@@ -85,6 +86,12 @@ class TvTopNavigation extends StatelessWidget {
 
   final VoidCallback onOpenProfiles;
 
+  /// Fades the bar to [TvTopNavLayout.dimmedOpacity] while an overlay is open
+  /// above the page (styling audit, divergentie 13; mockup 30 E). The nodes
+  /// stay in the tree: the overlay owns the focus, and the bar comes back
+  /// exactly where it was when it closes.
+  final bool dimmed;
+
   final Profile? profile;
 
   @override
@@ -98,87 +105,92 @@ class TvTopNavigation extends StatelessWidget {
         TvTopNavLayout.pageInset * scale,
         TvTopNavLayout.contentGap * scale,
       ),
-      child: ConstrainedBox(
-        // A floor, not a ceiling. Pinning the height exactly cost the first
-        // render its own pills: the capsule plus its focus-ring gap is slightly
-        // taller than the band, and a hard height clipped the labels against
-        // the top edge instead of letting the bar grow the few pixels it
-        // needed. A long locale with taller metrics would have done the same.
-        constraints: BoxConstraints(minHeight: TvTopNavLayout.barHeight * scale),
-        // A Stack, not a three-cell Row: hoofdstuk 33 centres the destination
-        // cluster on the *screen*, not in the space left over between the
-        // profile chip and the wordmark. Those two have different widths, so a
-        // Row with a Spacer either side would push the cluster off-centre by
-        // half their difference — and the offset would change with the
-        // wordmark's locale-independent width against a chip that grows a lock
-        // badge. Centring against the full width keeps Home where the eye
-        // expects it whatever flanks it.
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: _ProfileChip(
-                profile: profile,
-                node: nodes.get(_profileFocusKey, debugLabel: 'tvNav_profile'),
-                scale: scale,
-                onSelect: onOpenProfiles,
-                onNavigateDown: onNavigateDown,
-                onNavigateRight: destinations.isEmpty ? null : () => _focus(destinations.first),
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (var i = 0; i < destinations.length; i++) ...[
-                  if (i > 0)
-                    SizedBox(key: ValueKey('${destinations[i].focusKey}_gap'), width: TvTopNavLayout.itemGap * scale),
-                  _NavItem(
-                    // Keyed on the destination, not on its position. Without
-                    // this, a Live TV slot appearing shifts every later child
-                    // by one and Flutter matches children by position: Mijn
-                    // Pleya's element is reused for Live TV, the element
-                    // holding the remote's focus is torn down, and the focus
-                    // falls out of the bar entirely. Hoofdstuk 7.2's last
-                    // bullet is precisely this — a new item "vervangt geen
-                    // focusnode van een bestaand item".
-                    key: ValueKey(destinations[i].focusKey),
-                    destination: destinations[i],
-                    isActive: destinations[i] == active,
-                    node: nodes.get(destinations[i].focusKey, debugLabel: destinations[i].focusKey),
-                    scale: scale,
-                    // Hoofdstuk 18.4: the dot rides the destination that owns
-                    // the resolution route, and only that one.
-                    needsAttention: destinations[i] == TvDestinationId.myPleya && needsAttention,
-                    onSelect: () => onSelect(destinations[i]),
-                    onFocused: () => onFocusDestination(destinations[i]),
-                    onNavigateDown: onNavigateDown,
-                    // No wrap at either end (hoofdstuk 7.2). The first item
-                    // hands Left to the profile chip, which is the only thing
-                    // to its left; the last simply stops.
-                    onNavigateLeft: i == 0 ? () => _focusKey(_profileFocusKey) : () => _focus(destinations[i - 1]),
-                    onNavigateRight: i == destinations.length - 1 ? null : () => _focus(destinations[i + 1]),
-                  ),
-                ],
-              ],
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              // Not focusable. The wordmark is branding, not a destination:
-              // giving it a focus stop would put a dead end at the end of every
-              // rightward walk. It is hidden from semantics for the same
-              // reason — "Pleya" read out after the last destination tells a
-              // VoiceOver user nothing about where they are.
-              // The lettering follows the theme ink; the mark keeps its own
-              // colours. See [PleyaWordmark] and [DEC-074].
-              child: ExcludeSemantics(
-                child: PleyaWordmark(
-                  height: TvTopNavLayout.wordmarkHeight * scale,
-                  letteringColor: tokens(context).text,
+      child: AnimatedOpacity(
+        opacity: dimmed ? TvTopNavLayout.dimmedOpacity : 1,
+        duration: TvTopNavLayout.focusDuration,
+        curve: Curves.easeOut,
+        child: ConstrainedBox(
+          // A floor, not a ceiling. Pinning the height exactly cost the first
+          // render its own pills: the capsule plus its focus-ring gap is slightly
+          // taller than the band, and a hard height clipped the labels against
+          // the top edge instead of letting the bar grow the few pixels it
+          // needed. A long locale with taller metrics would have done the same.
+          constraints: BoxConstraints(minHeight: TvTopNavLayout.barHeight * scale),
+          // A Stack, not a three-cell Row: hoofdstuk 33 centres the destination
+          // cluster on the *screen*, not in the space left over between the
+          // profile chip and the wordmark. Those two have different widths, so a
+          // Row with a Spacer either side would push the cluster off-centre by
+          // half their difference — and the offset would change with the
+          // wordmark's locale-independent width against a chip that grows a lock
+          // badge. Centring against the full width keeps Home where the eye
+          // expects it whatever flanks it.
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _ProfileChip(
+                  profile: profile,
+                  node: nodes.get(_profileFocusKey, debugLabel: 'tvNav_profile'),
+                  scale: scale,
+                  onSelect: onOpenProfiles,
+                  onNavigateDown: onNavigateDown,
+                  onNavigateRight: destinations.isEmpty ? null : () => _focus(destinations.first),
                 ),
               ),
-            ),
-          ],
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < destinations.length; i++) ...[
+                    if (i > 0)
+                      SizedBox(key: ValueKey('${destinations[i].focusKey}_gap'), width: TvTopNavLayout.itemGap * scale),
+                    _NavItem(
+                      // Keyed on the destination, not on its position. Without
+                      // this, a Live TV slot appearing shifts every later child
+                      // by one and Flutter matches children by position: Mijn
+                      // Pleya's element is reused for Live TV, the element
+                      // holding the remote's focus is torn down, and the focus
+                      // falls out of the bar entirely. Hoofdstuk 7.2's last
+                      // bullet is precisely this — a new item "vervangt geen
+                      // focusnode van een bestaand item".
+                      key: ValueKey(destinations[i].focusKey),
+                      destination: destinations[i],
+                      isActive: destinations[i] == active,
+                      node: nodes.get(destinations[i].focusKey, debugLabel: destinations[i].focusKey),
+                      scale: scale,
+                      // Hoofdstuk 18.4: the dot rides the destination that owns
+                      // the resolution route, and only that one.
+                      needsAttention: destinations[i] == TvDestinationId.myPleya && needsAttention,
+                      onSelect: () => onSelect(destinations[i]),
+                      onFocused: () => onFocusDestination(destinations[i]),
+                      onNavigateDown: onNavigateDown,
+                      // No wrap at either end (hoofdstuk 7.2). The first item
+                      // hands Left to the profile chip, which is the only thing
+                      // to its left; the last simply stops.
+                      onNavigateLeft: i == 0 ? () => _focusKey(_profileFocusKey) : () => _focus(destinations[i - 1]),
+                      onNavigateRight: i == destinations.length - 1 ? null : () => _focus(destinations[i + 1]),
+                    ),
+                  ],
+                ],
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                // Not focusable. The wordmark is branding, not a destination:
+                // giving it a focus stop would put a dead end at the end of every
+                // rightward walk. It is hidden from semantics for the same
+                // reason — "Pleya" read out after the last destination tells a
+                // VoiceOver user nothing about where they are.
+                // The lettering follows the theme ink; the mark keeps its own
+                // colours. See [PleyaWordmark] and [DEC-074].
+                child: ExcludeSemantics(
+                  child: PleyaWordmark(
+                    height: TvTopNavLayout.wordmarkHeight * scale,
+                    letteringColor: tokens(context).text,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

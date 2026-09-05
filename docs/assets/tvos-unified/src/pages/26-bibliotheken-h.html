@@ -1,0 +1,34 @@
+<style>
+.head { display: flex; align-items: flex-end; gap: 28px; }
+.head .acts { margin-left: auto; margin-bottom: 4px; }
+.kiezer { margin-top: 26px; }
+/* Tabrij volgens LIB3: inkt en gewicht dragen de staat, geen rul. */
+.tabs { display: flex; gap: 40px; margin-top: 26px; }
+.tabs .tab { font-size: 26px; font-weight: 500; color: var(--ink-3); line-height: 52px; padding: 0 4px; border-radius: 999px; }
+.tabs .tab.on { color: var(--ink); font-weight: 700; }
+.tabs .tab.focus { box-shadow: 0 0 0 var(--ring-gap) var(--bg), 0 0 0 calc(var(--ring-gap) + var(--ring)) var(--ink); }
+.rail-label { margin-top: 34px; }
+</style>
+<style>
+.empty { margin-top: 80px; max-width: 980px; }
+.empty .ic { width: 64px; height: 64px; color: var(--ink-4); }
+.empty h2 { font-size: 40px; font-weight: 700; margin-top: 26px; }
+.empty p { font-size: 24px; color: var(--ink-2); line-height: 1.4; margin-top: 12px; }
+.empty .btn-row { margin-top: 34px; }
+</style>
+{{nav:Mijn Pleya|live}}
+<div class="page">
+  <div class="head">
+    <div><div class="page-title">Bibliotheken</div><div class="page-sub">Mijn Pleya ▸ Bibliotheken</div></div>
+    <div class="btn-row acts"><div class="btn">{{icon:refresh}} Vernieuwen</div><div class="btn">{{icon:edit}} Bewerken</div></div>
+  </div>
+  <div class="chips kiezer"><div class="chip-btn">{{icon:film}} Films · Pleya</div><div class="chip-btn">{{icon:show}} Series · Pleya</div><div class="chip-btn">{{icon:film}} Films · G-Plexflix</div><div class="chip-btn">{{icon:show}} TV Series · G-Plexflix</div><div class="chip-btn on">{{icon:music}} Concert · G-Plexflix</div></div>
+  <div class="tabs"><div class="tab on">Aanbevolen</div><div class="tab">Bladeren</div><div class="tab">Collecties</div><div class="tab">Afspeellijsten</div></div>
+  <div class="empty">
+    {{icon:music}}
+    <h2>Concert is leeg</h2>
+    <p>De server kent deze bibliotheek, maar er staat nog niets in. Zodra een scan iets vindt verschijnt het hier.</p>
+    <div class="btn-row"><div class="btn primary focus">{{icon:refresh}} Metadata vernieuwen</div><div class="btn">{{icon:folder}} Andere bibliotheek</div></div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 26 · state H: geopende maar lege bibliotheek; kiezer en tabs blijven bereikbaar, de lege staat vult alleen de inhoudsband</div>

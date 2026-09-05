@@ -694,11 +694,23 @@ void main() {
       expect(result.track.language, 'nld');
     });
 
-    test('audio: navigation still outranks the remembered language', () {
+    // Reversed by DEC-096 lid 1 (LANG1). This used to assert that a track
+    // carried in by navigation outranked the remembered language, which is the
+    // very rule that made a one-episode fallback permanent: the previous
+    // episode's *resolution* arrived as if it were the viewer's wish. A carried
+    // track is now below every intent layer.
+    test('audio: a carried track no longer outranks the remembered language', () {
       final tracks = [_audio('A', lang: 'eng'), _audio('B', lang: 'nld')];
       final result = _svc(sticky: _sticky(audio: 'nld')).selectAudioTrack(tracks, _audio('A', lang: 'eng'));
+      expect(result!.priority, TrackSelectionPriority.sticky);
+      expect(result.track.language, 'nld');
+    });
+
+    test('audio: a carried track still wins when no layer has an opinion', () {
+      final tracks = [_audio('A', lang: 'eng'), _audio('B', lang: 'nld')];
+      final result = _svc().selectAudioTrack(tracks, _audio('B', lang: 'nld'));
       expect(result!.priority, TrackSelectionPriority.navigation);
-      expect(result.track.language, 'eng');
+      expect(result.track.language, 'nld');
     });
 
     test('audio: falls through when the remembered language is absent', () {

@@ -119,8 +119,43 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       // Stream ids are per-part: the previous episode's audio id is
       // meaningless on the new item, so let preferences pick the track.
       useCurrentAudioStreamSelection: false,
-      preserveCurrentTrackSelection: true,
+      // False, and this is the fix behind LANG1 (DEC-096 lid 1). Carrying the
+      // *playing* tracks across an item change hands the next episode a
+      // resolution and calls it a preference: an episode that lacked English
+      // and fell back to Dutch made Dutch the wish, and the episode after it
+      // never came back. What does travel is the viewer's own intent, which
+      // `TrackManager` holds and the reload passes on unchanged.
+      preserveCurrentTrackSelection: false,
       reason: 'episode navigation',
+    );
+  }
+
+  /// Record a deliberate language choice as this playback's session intent.
+  ///
+  /// The transcoding path never reaches [TrackManager.onSubtitleTrackChanged] —
+  /// it selects a different *source stream* and reloads — so without this a
+  /// choice made while transcoding would be invisible to layer 1 and the next
+  /// episode would resolve as if the viewer had said nothing.
+  void _recordSessionLanguageIntent({
+    String? audioLanguage,
+    String? audioTitle,
+    String? subtitleLanguage,
+    String? subtitleTitle,
+    bool subtitleForced = false,
+    bool subtitlesOff = false,
+  }) {
+    final manager = _trackManager;
+    if (manager == null) return;
+    final current = manager.sessionIntent;
+    final touchesSubtitles = subtitlesOff || subtitleLanguage != null;
+    manager.sessionIntent = PlaybackLanguageIntent(
+      origin: PlaybackIntentOrigin.session,
+      audioLanguage: audioLanguage ?? current?.audioLanguage,
+      audioTitle: audioLanguage != null ? audioTitle : current?.audioTitle,
+      subtitleLanguage: touchesSubtitles ? subtitleLanguage : current?.subtitleLanguage,
+      subtitleTitle: touchesSubtitles ? subtitleTitle : current?.subtitleTitle,
+      subtitleForced: touchesSubtitles ? subtitleForced : (current?.subtitleForced ?? false),
+      subtitlesOff: touchesSubtitles ? subtitlesOff : (current?.subtitlesOff ?? false),
     );
   }
 
@@ -152,22 +187,31 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     // Never let remembering break the switch it is attached to: the user asked
     // for a different subtitle, not for a bookkeeping guarantee.
     try {
-      final settings = await SettingsService.getInstance();
-      if (!settings.read(SettingsService.rememberTrackSelections)) return;
-
+      // No remember-switch check here any more: `TrackPreferenceStore` owns it,
+      // and the session intent below is set either way — with the switch off a
+      // deliberate choice still holds for the rest of this playback, it just
+      // does not become a series override (DEC-096 lid 3).
       if (subtitleStreamId != null) {
         if (subtitleStreamId == 0) {
           // Turning subtitles off here is as much a decision as picking one.
+          _recordSessionLanguageIntent(subtitlesOff: true);
           await TrackPreferenceStore.saveSubtitle(item, off: true);
+          await _trackManager?.announceRememberedChoice(kind: LanguageTrackKind.subtitles, subtitlesOff: true);
         } else {
           final choice = subtitleStreamLanguage(subtitleTracks, subtitleStreamId);
           if (choice != null) {
+            _recordSessionLanguageIntent(
+              subtitleLanguage: choice.language,
+              subtitleTitle: choice.title,
+              subtitleForced: choice.forced,
+            );
             await TrackPreferenceStore.saveSubtitle(
               item,
               language: choice.language,
               title: choice.title,
               forced: choice.forced,
             );
+            await _trackManager?.announceRememberedChoice(kind: LanguageTrackKind.subtitles, language: choice.language);
           }
         }
       }
@@ -175,7 +219,9 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       if (audioStreamId != null) {
         final choice = audioStreamLanguage(audioTracks, audioStreamId);
         if (choice != null) {
+          _recordSessionLanguageIntent(audioLanguage: choice.language, audioTitle: choice.title);
           await TrackPreferenceStore.saveAudio(item, language: choice.language, title: choice.title);
+          await _trackManager?.announceRememberedChoice(kind: LanguageTrackKind.audio, language: choice.language);
         }
       }
 
@@ -539,12 +585,17 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       _clearEpisodeLoadingFlags();
       if (isItemChange) _showChromeForSwappedItem();
 
+      // The manager is per item, the session intent is per playback: read it
+      // off the outgoing manager before disposing it, so a language the viewer
+      // chose two episodes ago still outranks anything the new file suggests.
+      final carriedSessionIntent = _trackManager?.sessionIntent;
       _trackManager?.dispose();
       final trackManager = _buildTrackManager(
         forPlayer: currentPlayer,
         metadata: metadata,
         plexClient: plexClient,
         getProfileSettings: () => userProfileProvider.profileSettings,
+        sessionIntent: carriedSessionIntent,
         preferredAudioTrack: currentAudioTrack,
         preferredSubtitleTrack: currentSubtitleTrack,
         preferredSecondarySubtitleTrack: currentSecondarySubtitleTrack,

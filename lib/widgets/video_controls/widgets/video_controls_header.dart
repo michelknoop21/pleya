@@ -41,14 +41,24 @@ class VideoControlsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // TV takes the desktop controls (`video_controls.dart`), so this header is
+    // drawn there too, but the remote cannot reach an `AppBarBackButton`
+    // (PB-2 / BACK1). Leaving the player is Menu/Back, handled in
+    // `video_controls/parts/key_events.dart`, on both the focused and the
+    // global key path. The spacer goes with the button so the title does not
+    // start behind a gap nothing fills.
+    final showsBack = showsVisibleBackAffordance();
+
     return Row(
       children: [
-        AppBarBackButton(
-          style: BackButtonStyle.video,
-          semanticLabel: t.common.back,
-          onPressed: onBack ?? () => Navigator.of(context).pop(true),
-        ),
-        const SizedBox(width: 16),
+        if (showsBack) ...[
+          AppBarBackButton(
+            style: BackButtonStyle.video,
+            semanticLabel: t.common.back,
+            onPressed: onBack ?? () => Navigator.of(context).pop(true),
+          ),
+          const SizedBox(width: 16),
+        ],
         Expanded(child: style == VideoHeaderStyle.singleLine ? _buildSingleLineTitle() : _buildMultiLineTitle()),
         Selector<WatchTogetherProvider, bool>(
           selector: (_, p) => p.isInSession,

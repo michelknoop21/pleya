@@ -99,6 +99,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvNavigationNl tvNavigation = _TranslationsTvNavigationNl._(_root);
 	@override late final _TranslationsTvMyPleyaNl tvMyPleya = _TranslationsTvMyPleyaNl._(_root);
 	@override late final _TranslationsTvContextMenuNl tvContextMenu = _TranslationsTvContextMenuNl._(_root);
+	@override late final _TranslationsLanguageSettingsNl languageSettings = _TranslationsLanguageSettingsNl._(_root);
 }
 
 // Path: states
@@ -335,8 +336,10 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String secondsUnit({required Object seconds}) => '${seconds} seconden';
 	@override String get defaultSleepTimer => 'Standaard slaap timer';
 	@override String minutesUnit({required Object minutes}) => 'bij ${minutes} minuten';
-	@override String get rememberTrackSelections => 'Onthoud track selecties per serie/film';
-	@override String get rememberTrackSelectionsDescription => 'Onthoud audio- en ondertitelkeuzes per titel';
+	@override String get rememberTrackSelections => 'Onthoud keuzes per serie';
+	@override String get rememberTrackSelectionsDescription => 'Een taal die je tijdens een serie kiest, geldt voor de volgende afleveringen. Reist via iCloud mee naar je andere Apple-toestellen.';
+	@override String get writeSeriesLanguageToServer => 'Spiegel naar Plex';
+	@override String get writeSeriesLanguageToServerDescription => 'Schrijft de keuze ook op de serie in Plex, zodat Android, Windows en de officiële Plex-apps hem volgen. Lukt dat niet, dan blijft je Pleya-voorkeur gewoon gelden.';
 	@override String get showChapterMarkersOnTimeline => 'Hoofdstukmarkeringen op tijdlijn tonen';
 	@override String get showChapterMarkersOnTimelineDescription => 'Verdeel de tijdlijn bij hoofdstukgrenzen';
 	@override String get clickVideoTogglesPlayback => 'Klik op de video om afspelen/pauzeren te wisselen.';
@@ -953,6 +956,7 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String minutesLeft({required Object minutes}) => '${minutes} min over';
 	@override String get moreLikeThis => 'Meer zoals dit';
 	@override String becauseYouWatched({required Object title}) => 'Omdat je ${title} gekeken hebt';
+	@override String get latestShows => 'Recent toegevoegde series';
 	@override String get topRated => 'Hoogst gewaardeerd';
 	@override String get somethingDifferent => 'Eens iets anders';
 	@override String get topPicksForYou => 'Aanbevolen voor jou';
@@ -2195,6 +2199,64 @@ class _TranslationsTvContextMenuNl extends TranslationsTvContextMenuEn {
 	@override String get failed => 'Dat is niet gelukt';
 }
 
+// Path: languageSettings
+class _TranslationsLanguageSettingsNl extends TranslationsLanguageSettingsEn {
+	_TranslationsLanguageSettingsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Taal en ondertitels';
+	@override String get description => 'Audio- en ondertiteltalen, en de series die hun eigen keuze houden';
+	@override String get globalHeader => 'Globale voorkeur';
+	@override String globalOwner({required Object name}) => 'Pleya-profiel ${name} · geldt voor alle content zonder eigen serievoorkeur';
+	@override String get globalOwnerNoProfile => 'Pleya-profiel · geldt voor alle content zonder eigen serievoorkeur';
+	@override String get audio => 'Audio';
+	@override String get audioFallbackNote => 'Ontbreekt de taal, dan de standaardtrack van het bestand';
+	@override String get subtitles => 'Ondertitels';
+	@override String get subtitlesNote => 'Voorkeurstaal voor alle content';
+	@override String get subtitleFallback => 'Terugvaltaal ondertitels';
+	@override String get subtitleFallbackNote => 'Ontbreekt je voorkeurstaal, dan deze. Ontbreekt die ook, dan gaan ondertitels uit';
+	@override String get subtitleDisplay => 'Ondertitels tonen';
+	@override String get subtitleDisplayNote => 'Wanneer ondertitels vanzelf aangaan';
+	@override String get subtitleDisplayForeign => 'Bij vreemde taal';
+	@override String get subtitleDisplayAlways => 'Altijd';
+	@override String get subtitleDisplayNever => 'Nooit automatisch';
+	@override String get originalLanguage => 'Originele taal';
+	@override String get noPreference => 'Geen voorkeur';
+	@override String get off => 'uit';
+	@override String get global => 'globaal';
+	@override String get forced => 'geforceerd';
+	@override String get rememberHeader => 'Onthouden';
+	@override String get seriesHeader => 'Serievoorkeuren';
+	@override String seriesCount({required Object count}) => '${count} series · ontstaan vanzelf als je tijdens een serie een andere taal kiest';
+	@override String get seriesEmpty => 'Serievoorkeuren ontstaan vanzelf als je tijdens een serie een andere taal kiest.';
+	@override String get seriesFootnote => 'Selecteer een serie om de voorkeur te bekijken of terug te zetten naar de globale voorkeur. Een aflevering die de taal mist, verandert hier niets aan.';
+	@override String rowLanguages({required Object audio, required Object subtitles}) => 'Audio: ${audio} · Ondertitels: ${subtitles}';
+	@override String rowOrigin({required Object date, required Object episode, required Object device}) => 'Gekozen op ${date} bij ${episode} · ${device}';
+	@override String rowOriginNoEpisode({required Object date, required Object device}) => 'Gekozen op ${date} · ${device}';
+	@override String rowOriginNoDevice({required Object date}) => 'Gekozen op ${date}';
+	@override String sheetOriginEpisode({required Object date, required Object episode, required Object device}) => 'Serievoorkeur, gekozen op ${date} bij ${episode} op ${device}.';
+	@override String sheetOrigin({required Object date}) => 'Serievoorkeur, gekozen op ${date}.';
+	@override String get sheetScopeLogical => 'Geldt overal waar Pleya deze serie als dezelfde herkent.';
+	@override String get sheetScopeServer => 'Geldt op de bron waar je hem koos.';
+	@override String sheetProfileValue({required Object value}) => 'Pleya-profiel: ${value}';
+	@override String get useGlobal => 'Gebruik globale voorkeur';
+	@override String get useGlobalNote => 'wist deze serievoorkeur';
+	@override String get sheetFooter => 'Een andere taal kies je tijdens het kijken, in het infopaneel.';
+	@override String toastRemembered({required Object kind, required Object language, required Object title}) => '${kind}: ${language} · onthouden voor ${title}';
+	@override String toastRememberedDetail({required Object global}) => 'Volgende afleveringen starten zo. Je globale voorkeur blijft ${global}.';
+	@override String get toastRememberedDetailNoGlobal => 'Volgende afleveringen starten zo.';
+	@override String toastSessionOnly({required Object kind, required Object language}) => '${kind}: ${language} · alleen deze keer';
+	@override String toastSessionOnlyDetail({required Object title}) => 'Onthouden per serie staat uit, dus er is niets bewaard voor ${title}.';
+	@override String toastFallback({required Object wanted, required Object kind, required Object actual}) => 'Geen ${wanted} ${kind} in deze aflevering · nu ${actual}';
+	@override String toastFallbackOff({required Object wanted}) => 'Geen ${wanted} ondertitels in deze aflevering · ondertitels uit';
+	@override String toastFallbackDetailSeries({required Object title, required Object wanted}) => 'Je voorkeur voor ${title} blijft ${wanted} en geldt weer zodra een aflevering hem heeft.';
+	@override String toastFallbackDetailGlobal({required Object wanted}) => 'Je globale voorkeur blijft ${wanted} en geldt weer zodra een aflevering hem heeft.';
+	@override String get kindAudio => 'Audio';
+	@override String get kindSubtitles => 'Ondertitels';
+}
+
 // Path: search.filters
 class _TranslationsSearchFiltersNl extends TranslationsSearchFiltersEn {
 	_TranslationsSearchFiltersNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -2864,8 +2926,10 @@ extension on TranslationsNl {
 			'settings.secondsUnit' => ({required Object seconds}) => '${seconds} seconden',
 			'settings.defaultSleepTimer' => 'Standaard slaap timer',
 			'settings.minutesUnit' => ({required Object minutes}) => 'bij ${minutes} minuten',
-			'settings.rememberTrackSelections' => 'Onthoud track selecties per serie/film',
-			'settings.rememberTrackSelectionsDescription' => 'Onthoud audio- en ondertitelkeuzes per titel',
+			'settings.rememberTrackSelections' => 'Onthoud keuzes per serie',
+			'settings.rememberTrackSelectionsDescription' => 'Een taal die je tijdens een serie kiest, geldt voor de volgende afleveringen. Reist via iCloud mee naar je andere Apple-toestellen.',
+			'settings.writeSeriesLanguageToServer' => 'Spiegel naar Plex',
+			'settings.writeSeriesLanguageToServerDescription' => 'Schrijft de keuze ook op de serie in Plex, zodat Android, Windows en de officiële Plex-apps hem volgen. Lukt dat niet, dan blijft je Pleya-voorkeur gewoon gelden.',
 			'settings.showChapterMarkersOnTimeline' => 'Hoofdstukmarkeringen op tijdlijn tonen',
 			'settings.showChapterMarkersOnTimelineDescription' => 'Verdeel de tijdlijn bij hoofdstukgrenzen',
 			'settings.clickVideoTogglesPlayback' => 'Klik op de video om afspelen/pauzeren te wisselen.',
@@ -3201,10 +3265,10 @@ extension on TranslationsNl {
 			'videoControls.noTracksAvailable' => 'Geen tracks beschikbaar',
 			'videoControls.subtitleDownloaded' => 'Ondertitel gedownload',
 			'videoControls.subtitleDownloadFailed' => 'Ondertitel downloaden mislukt',
-			'videoControls.searchLanguages' => 'Talen zoeken...',
-			'videoControls.airplayButton' => 'AirPlay',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.searchLanguages' => 'Talen zoeken...',
+			'videoControls.airplayButton' => 'AirPlay',
 			'userStatus.admin' => 'Beheerder',
 			'userStatus.restricted' => 'Beperkt',
 			'userStatus.protected' => 'Beschermd',
@@ -3379,6 +3443,7 @@ extension on TranslationsNl {
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min over',
 			'discover.moreLikeThis' => 'Meer zoals dit',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Omdat je ${title} gekeken hebt',
+			'discover.latestShows' => 'Recent toegevoegde series',
 			'discover.topRated' => 'Hoogst gewaardeerd',
 			'discover.somethingDifferent' => 'Eens iets anders',
 			'discover.topPicksForYou' => 'Aanbevolen voor jou',
@@ -3714,11 +3779,11 @@ extension on TranslationsNl {
 			'watchTogether.endSessionConfirmOverlay' => 'Dit beëindigt de kijksessie voor alle deelnemers.',
 			'watchTogether.leaveSessionConfirmOverlay' => 'Je wordt losgekoppeld van de kijksessie.',
 			'watchTogether.end' => 'Beëindigen',
+			_ => null,
+		} ?? switch (path) {
 			'watchTogether.leave' => 'Verlaten',
 			'watchTogether.syncing' => 'Synchroniseren...',
 			'watchTogether.joinWatchSession' => 'Kijksessie Deelnemen',
-			_ => null,
-		} ?? switch (path) {
 			'watchTogether.enterCodeHint' => 'Voer 5-teken code in',
 			'watchTogether.pasteFromClipboard' => 'Plakken van klembord',
 			'watchTogether.pleaseEnterCode' => 'Voer een sessiecode in',
@@ -4228,11 +4293,11 @@ extension on TranslationsNl {
 			'seerr.partiallyAvailable' => 'Deels beschikbaar',
 			'seerr.available' => 'Beschikbaar',
 			'seerr.alreadyRequested' => 'Al aangevraagd',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.pending' => 'In afwachting',
 			'seerr.approved' => 'Goedgekeurd',
 			'seerr.declined' => 'Afgewezen',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.failed' => 'Mislukt',
 			'seerr.completed' => 'Afgerond',
 			'seerr.requestConfirm' => ({required Object title}) => '"${title}" aanvragen?',
@@ -4446,6 +4511,55 @@ extension on TranslationsNl {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen.',
 			'tvContextMenu.failed' => 'Dat is niet gelukt',
+			'languageSettings.title' => 'Taal en ondertitels',
+			'languageSettings.description' => 'Audio- en ondertiteltalen, en de series die hun eigen keuze houden',
+			'languageSettings.globalHeader' => 'Globale voorkeur',
+			'languageSettings.globalOwner' => ({required Object name}) => 'Pleya-profiel ${name} · geldt voor alle content zonder eigen serievoorkeur',
+			'languageSettings.globalOwnerNoProfile' => 'Pleya-profiel · geldt voor alle content zonder eigen serievoorkeur',
+			'languageSettings.audio' => 'Audio',
+			'languageSettings.audioFallbackNote' => 'Ontbreekt de taal, dan de standaardtrack van het bestand',
+			'languageSettings.subtitles' => 'Ondertitels',
+			'languageSettings.subtitlesNote' => 'Voorkeurstaal voor alle content',
+			'languageSettings.subtitleFallback' => 'Terugvaltaal ondertitels',
+			'languageSettings.subtitleFallbackNote' => 'Ontbreekt je voorkeurstaal, dan deze. Ontbreekt die ook, dan gaan ondertitels uit',
+			'languageSettings.subtitleDisplay' => 'Ondertitels tonen',
+			'languageSettings.subtitleDisplayNote' => 'Wanneer ondertitels vanzelf aangaan',
+			'languageSettings.subtitleDisplayForeign' => 'Bij vreemde taal',
+			'languageSettings.subtitleDisplayAlways' => 'Altijd',
+			'languageSettings.subtitleDisplayNever' => 'Nooit automatisch',
+			'languageSettings.originalLanguage' => 'Originele taal',
+			'languageSettings.noPreference' => 'Geen voorkeur',
+			'languageSettings.off' => 'uit',
+			'languageSettings.global' => 'globaal',
+			'languageSettings.forced' => 'geforceerd',
+			'languageSettings.rememberHeader' => 'Onthouden',
+			'languageSettings.seriesHeader' => 'Serievoorkeuren',
+			'languageSettings.seriesCount' => ({required Object count}) => '${count} series · ontstaan vanzelf als je tijdens een serie een andere taal kiest',
+			'languageSettings.seriesEmpty' => 'Serievoorkeuren ontstaan vanzelf als je tijdens een serie een andere taal kiest.',
+			'languageSettings.seriesFootnote' => 'Selecteer een serie om de voorkeur te bekijken of terug te zetten naar de globale voorkeur. Een aflevering die de taal mist, verandert hier niets aan.',
+			'languageSettings.rowLanguages' => ({required Object audio, required Object subtitles}) => 'Audio: ${audio} · Ondertitels: ${subtitles}',
+			'languageSettings.rowOrigin' => ({required Object date, required Object episode, required Object device}) => 'Gekozen op ${date} bij ${episode} · ${device}',
+			'languageSettings.rowOriginNoEpisode' => ({required Object date, required Object device}) => 'Gekozen op ${date} · ${device}',
+			'languageSettings.rowOriginNoDevice' => ({required Object date}) => 'Gekozen op ${date}',
+			'languageSettings.sheetOriginEpisode' => ({required Object date, required Object episode, required Object device}) => 'Serievoorkeur, gekozen op ${date} bij ${episode} op ${device}.',
+			'languageSettings.sheetOrigin' => ({required Object date}) => 'Serievoorkeur, gekozen op ${date}.',
+			'languageSettings.sheetScopeLogical' => 'Geldt overal waar Pleya deze serie als dezelfde herkent.',
+			'languageSettings.sheetScopeServer' => 'Geldt op de bron waar je hem koos.',
+			'languageSettings.sheetProfileValue' => ({required Object value}) => 'Pleya-profiel: ${value}',
+			'languageSettings.useGlobal' => 'Gebruik globale voorkeur',
+			'languageSettings.useGlobalNote' => 'wist deze serievoorkeur',
+			'languageSettings.sheetFooter' => 'Een andere taal kies je tijdens het kijken, in het infopaneel.',
+			'languageSettings.toastRemembered' => ({required Object kind, required Object language, required Object title}) => '${kind}: ${language} · onthouden voor ${title}',
+			'languageSettings.toastRememberedDetail' => ({required Object global}) => 'Volgende afleveringen starten zo. Je globale voorkeur blijft ${global}.',
+			'languageSettings.toastRememberedDetailNoGlobal' => 'Volgende afleveringen starten zo.',
+			'languageSettings.toastSessionOnly' => ({required Object kind, required Object language}) => '${kind}: ${language} · alleen deze keer',
+			'languageSettings.toastSessionOnlyDetail' => ({required Object title}) => 'Onthouden per serie staat uit, dus er is niets bewaard voor ${title}.',
+			'languageSettings.toastFallback' => ({required Object wanted, required Object kind, required Object actual}) => 'Geen ${wanted} ${kind} in deze aflevering · nu ${actual}',
+			'languageSettings.toastFallbackOff' => ({required Object wanted}) => 'Geen ${wanted} ondertitels in deze aflevering · ondertitels uit',
+			'languageSettings.toastFallbackDetailSeries' => ({required Object title, required Object wanted}) => 'Je voorkeur voor ${title} blijft ${wanted} en geldt weer zodra een aflevering hem heeft.',
+			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Je globale voorkeur blijft ${wanted} en geldt weer zodra een aflevering hem heeft.',
+			'languageSettings.kindAudio' => 'Audio',
+			'languageSettings.kindSubtitles' => 'Ondertitels',
 			_ => null,
 		};
 	}

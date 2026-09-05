@@ -161,6 +161,7 @@ class TvDiscoveryRail extends StatefulWidget {
     this.onNavigateUp,
     this.onNavigateDown,
     this.automationRailIndex,
+    this.tileScrollAlignment = 0.5,
     this.precache,
   });
 
@@ -215,6 +216,10 @@ class TvDiscoveryRail extends StatefulWidget {
   /// mount (a golden, a focus test) wants — and what a release build gets
   /// anyway, since `AutomationNode` is a pass-through when `!kPleyaVerify`.
   final int? automationRailIndex;
+
+  /// Forwarded to every tile as [TvExpandableMediaTile.scrollAlignment]: the
+  /// vertical anchor a focused tile scrolls the page to.
+  final double tileScrollAlignment;
 
   /// Keep describing this rail's current tile even while the focus is
   /// elsewhere.
@@ -634,6 +639,7 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
             group: group,
             clientFor: widget.clientFor,
             focusNode: _nodeFor(group.groupId),
+            scrollAlignment: widget.tileScrollAlignment,
             autofocus: widget.autofocus && index == 0,
             // Instance is `<railIndex>.<tileIndex>` so one scenario can address
             // "the third tile of the second rail" without the rails having to

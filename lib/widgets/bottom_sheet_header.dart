@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pleya/widgets/app_bar_back_button.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -65,13 +66,20 @@ class BottomSheetHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final usesBackButton = leading == null && onBack != null;
+    // PB-2 / BACK1, the same defect as `AppBarBackButton` in a second widget:
+    // this arrow's tap target is an `InkResponse` inside `ExcludeFocusTraversal`,
+    // so a sheet sub-page on TV drew a visible back control with zero
+    // traversal-reachable nodes in its header. What replaces it is already
+    // there: `BottomSheetPageScaffold` wraps the page in a `Focus` that routes
+    // Menu/Back to this same `onBack`, so the key path is unchanged and only
+    // the chrome goes. An explicit `leading` from a caller is untouched.
+    final usesBackButton = leading == null && onBack != null && showsVisibleBackAffordance();
 
     // Determine the leading widget based on priority: leading > onBack > icon
     Widget? resolvedLeading;
     if (leading != null) {
       resolvedLeading = leading;
-    } else if (onBack != null) {
+    } else if (usesBackButton) {
       resolvedLeading = SizedBox(
         width: 24,
         height: kMinInteractiveDimension,

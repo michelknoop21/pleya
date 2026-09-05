@@ -100,6 +100,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsTvNavigationEn tvNavigation = TranslationsTvNavigationEn.internal(_root);
 	late final TranslationsTvMyPleyaEn tvMyPleya = TranslationsTvMyPleyaEn.internal(_root);
 	late final TranslationsTvContextMenuEn tvContextMenu = TranslationsTvContextMenuEn.internal(_root);
+	late final TranslationsLanguageSettingsEn languageSettings = TranslationsLanguageSettingsEn.internal(_root);
 }
 
 // Path: states
@@ -5466,6 +5467,162 @@ class TranslationsTvContextMenuEn {
 	String get failed => 'That did not work';
 }
 
+// Path: languageSettings
+class TranslationsLanguageSettingsEn {
+	TranslationsLanguageSettingsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Language & subtitles'
+	String get title => 'Language & subtitles';
+
+	/// en: 'Audio and subtitle languages, and the series that keep their own'
+	String get description => 'Audio and subtitle languages, and the series that keep their own';
+
+	/// en: 'Global preference'
+	String get globalHeader => 'Global preference';
+
+	/// en: 'Pleya profile ${name} · applies to everything without a series preference of its own'
+	String globalOwner({required Object name}) => 'Pleya profile ${name} · applies to everything without a series preference of its own';
+
+	/// en: 'Pleya profile · applies to everything without a series preference of its own'
+	String get globalOwnerNoProfile => 'Pleya profile · applies to everything without a series preference of its own';
+
+	/// en: 'Audio'
+	String get audio => 'Audio';
+
+	/// en: 'Without that language, the file's own default track'
+	String get audioFallbackNote => 'Without that language, the file\'s own default track';
+
+	/// en: 'Subtitles'
+	String get subtitles => 'Subtitles';
+
+	/// en: 'Preferred language for everything'
+	String get subtitlesNote => 'Preferred language for everything';
+
+	/// en: 'Subtitle fallback language'
+	String get subtitleFallback => 'Subtitle fallback language';
+
+	/// en: 'Used when your preferred language is missing. Missing as well, and subtitles go off'
+	String get subtitleFallbackNote => 'Used when your preferred language is missing. Missing as well, and subtitles go off';
+
+	/// en: 'Show subtitles'
+	String get subtitleDisplay => 'Show subtitles';
+
+	/// en: 'When subtitles come on by themselves'
+	String get subtitleDisplayNote => 'When subtitles come on by themselves';
+
+	/// en: 'With foreign audio'
+	String get subtitleDisplayForeign => 'With foreign audio';
+
+	/// en: 'Always'
+	String get subtitleDisplayAlways => 'Always';
+
+	/// en: 'Never automatically'
+	String get subtitleDisplayNever => 'Never automatically';
+
+	/// en: 'Original language'
+	String get originalLanguage => 'Original language';
+
+	/// en: 'No preference'
+	String get noPreference => 'No preference';
+
+	/// en: 'off'
+	String get off => 'off';
+
+	/// en: 'global'
+	String get global => 'global';
+
+	/// en: 'forced'
+	String get forced => 'forced';
+
+	/// en: 'Remembering'
+	String get rememberHeader => 'Remembering';
+
+	/// en: 'Series preferences'
+	String get seriesHeader => 'Series preferences';
+
+	/// en: '${count} series · they appear by themselves when you pick another language during a series'
+	String seriesCount({required Object count}) => '${count} series · they appear by themselves when you pick another language during a series';
+
+	/// en: 'Series preferences appear by themselves when you pick another language during a series.'
+	String get seriesEmpty => 'Series preferences appear by themselves when you pick another language during a series.';
+
+	/// en: 'Select a series to see its preference or to put it back to the global one. An episode that is missing the language changes nothing here.'
+	String get seriesFootnote => 'Select a series to see its preference or to put it back to the global one. An episode that is missing the language changes nothing here.';
+
+	/// en: 'Audio: ${audio} · Subtitles: ${subtitles}'
+	String rowLanguages({required Object audio, required Object subtitles}) => 'Audio: ${audio} · Subtitles: ${subtitles}';
+
+	/// en: 'Chosen on ${date} at ${episode} · ${device}'
+	String rowOrigin({required Object date, required Object episode, required Object device}) => 'Chosen on ${date} at ${episode} · ${device}';
+
+	/// en: 'Chosen on ${date} · ${device}'
+	String rowOriginNoEpisode({required Object date, required Object device}) => 'Chosen on ${date} · ${device}';
+
+	/// en: 'Chosen on ${date}'
+	String rowOriginNoDevice({required Object date}) => 'Chosen on ${date}';
+
+	/// en: 'Series preference, chosen on ${date} at ${episode} on ${device}.'
+	String sheetOriginEpisode({required Object date, required Object episode, required Object device}) => 'Series preference, chosen on ${date} at ${episode} on ${device}.';
+
+	/// en: 'Series preference, chosen on ${date}.'
+	String sheetOrigin({required Object date}) => 'Series preference, chosen on ${date}.';
+
+	/// en: 'Applies wherever Pleya recognises this series as the same one.'
+	String get sheetScopeLogical => 'Applies wherever Pleya recognises this series as the same one.';
+
+	/// en: 'Applies on the source it was chosen on.'
+	String get sheetScopeServer => 'Applies on the source it was chosen on.';
+
+	/// en: 'Pleya profile: ${value}'
+	String sheetProfileValue({required Object value}) => 'Pleya profile: ${value}';
+
+	/// en: 'Use global preference'
+	String get useGlobal => 'Use global preference';
+
+	/// en: 'clears this series preference'
+	String get useGlobalNote => 'clears this series preference';
+
+	/// en: 'You pick a different language while watching, in the info panel.'
+	String get sheetFooter => 'You pick a different language while watching, in the info panel.';
+
+	/// en: '${kind}: ${language} · remembered for ${title}'
+	String toastRemembered({required Object kind, required Object language, required Object title}) => '${kind}: ${language} · remembered for ${title}';
+
+	/// en: 'The next episodes start this way. Your global preference stays ${global}.'
+	String toastRememberedDetail({required Object global}) => 'The next episodes start this way. Your global preference stays ${global}.';
+
+	/// en: 'The next episodes start this way.'
+	String get toastRememberedDetailNoGlobal => 'The next episodes start this way.';
+
+	/// en: '${kind}: ${language} · this playback only'
+	String toastSessionOnly({required Object kind, required Object language}) => '${kind}: ${language} · this playback only';
+
+	/// en: 'Remembering per series is off, so nothing was stored for ${title}.'
+	String toastSessionOnlyDetail({required Object title}) => 'Remembering per series is off, so nothing was stored for ${title}.';
+
+	/// en: 'No ${wanted} ${kind} in this episode · now ${actual}'
+	String toastFallback({required Object wanted, required Object kind, required Object actual}) => 'No ${wanted} ${kind} in this episode · now ${actual}';
+
+	/// en: 'No ${wanted} subtitles in this episode · subtitles off'
+	String toastFallbackOff({required Object wanted}) => 'No ${wanted} subtitles in this episode · subtitles off';
+
+	/// en: 'Your preference for ${title} stays ${wanted} and applies again as soon as an episode has it.'
+	String toastFallbackDetailSeries({required Object title, required Object wanted}) => 'Your preference for ${title} stays ${wanted} and applies again as soon as an episode has it.';
+
+	/// en: 'Your global preference stays ${wanted} and applies again as soon as an episode has it.'
+	String toastFallbackDetailGlobal({required Object wanted}) => 'Your global preference stays ${wanted} and applies again as soon as an episode has it.';
+
+	/// en: 'Audio'
+	String get kindAudio => 'Audio';
+
+	/// en: 'Subtitles'
+	String get kindSubtitles => 'Subtitles';
+}
+
 // Path: search.filters
 class TranslationsSearchFiltersEn {
 	TranslationsSearchFiltersEn.internal(this._root);
@@ -8241,6 +8398,55 @@ extension on Translations {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Done on ${done} of ${total} sources.',
 			'tvContextMenu.failed' => 'That did not work',
+			'languageSettings.title' => 'Language & subtitles',
+			'languageSettings.description' => 'Audio and subtitle languages, and the series that keep their own',
+			'languageSettings.globalHeader' => 'Global preference',
+			'languageSettings.globalOwner' => ({required Object name}) => 'Pleya profile ${name} · applies to everything without a series preference of its own',
+			'languageSettings.globalOwnerNoProfile' => 'Pleya profile · applies to everything without a series preference of its own',
+			'languageSettings.audio' => 'Audio',
+			'languageSettings.audioFallbackNote' => 'Without that language, the file\'s own default track',
+			'languageSettings.subtitles' => 'Subtitles',
+			'languageSettings.subtitlesNote' => 'Preferred language for everything',
+			'languageSettings.subtitleFallback' => 'Subtitle fallback language',
+			'languageSettings.subtitleFallbackNote' => 'Used when your preferred language is missing. Missing as well, and subtitles go off',
+			'languageSettings.subtitleDisplay' => 'Show subtitles',
+			'languageSettings.subtitleDisplayNote' => 'When subtitles come on by themselves',
+			'languageSettings.subtitleDisplayForeign' => 'With foreign audio',
+			'languageSettings.subtitleDisplayAlways' => 'Always',
+			'languageSettings.subtitleDisplayNever' => 'Never automatically',
+			'languageSettings.originalLanguage' => 'Original language',
+			'languageSettings.noPreference' => 'No preference',
+			'languageSettings.off' => 'off',
+			'languageSettings.global' => 'global',
+			'languageSettings.forced' => 'forced',
+			'languageSettings.rememberHeader' => 'Remembering',
+			'languageSettings.seriesHeader' => 'Series preferences',
+			'languageSettings.seriesCount' => ({required Object count}) => '${count} series · they appear by themselves when you pick another language during a series',
+			'languageSettings.seriesEmpty' => 'Series preferences appear by themselves when you pick another language during a series.',
+			'languageSettings.seriesFootnote' => 'Select a series to see its preference or to put it back to the global one. An episode that is missing the language changes nothing here.',
+			'languageSettings.rowLanguages' => ({required Object audio, required Object subtitles}) => 'Audio: ${audio} · Subtitles: ${subtitles}',
+			'languageSettings.rowOrigin' => ({required Object date, required Object episode, required Object device}) => 'Chosen on ${date} at ${episode} · ${device}',
+			'languageSettings.rowOriginNoEpisode' => ({required Object date, required Object device}) => 'Chosen on ${date} · ${device}',
+			'languageSettings.rowOriginNoDevice' => ({required Object date}) => 'Chosen on ${date}',
+			'languageSettings.sheetOriginEpisode' => ({required Object date, required Object episode, required Object device}) => 'Series preference, chosen on ${date} at ${episode} on ${device}.',
+			'languageSettings.sheetOrigin' => ({required Object date}) => 'Series preference, chosen on ${date}.',
+			'languageSettings.sheetScopeLogical' => 'Applies wherever Pleya recognises this series as the same one.',
+			'languageSettings.sheetScopeServer' => 'Applies on the source it was chosen on.',
+			'languageSettings.sheetProfileValue' => ({required Object value}) => 'Pleya profile: ${value}',
+			'languageSettings.useGlobal' => 'Use global preference',
+			'languageSettings.useGlobalNote' => 'clears this series preference',
+			'languageSettings.sheetFooter' => 'You pick a different language while watching, in the info panel.',
+			'languageSettings.toastRemembered' => ({required Object kind, required Object language, required Object title}) => '${kind}: ${language} · remembered for ${title}',
+			'languageSettings.toastRememberedDetail' => ({required Object global}) => 'The next episodes start this way. Your global preference stays ${global}.',
+			'languageSettings.toastRememberedDetailNoGlobal' => 'The next episodes start this way.',
+			'languageSettings.toastSessionOnly' => ({required Object kind, required Object language}) => '${kind}: ${language} · this playback only',
+			'languageSettings.toastSessionOnlyDetail' => ({required Object title}) => 'Remembering per series is off, so nothing was stored for ${title}.',
+			'languageSettings.toastFallback' => ({required Object wanted, required Object kind, required Object actual}) => 'No ${wanted} ${kind} in this episode · now ${actual}',
+			'languageSettings.toastFallbackOff' => ({required Object wanted}) => 'No ${wanted} subtitles in this episode · subtitles off',
+			'languageSettings.toastFallbackDetailSeries' => ({required Object title, required Object wanted}) => 'Your preference for ${title} stays ${wanted} and applies again as soon as an episode has it.',
+			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Your global preference stays ${wanted} and applies again as soon as an episode has it.',
+			'languageSettings.kindAudio' => 'Audio',
+			'languageSettings.kindSubtitles' => 'Subtitles',
 			_ => null,
 		};
 	}

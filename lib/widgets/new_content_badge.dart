@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../theme/mono_theme.dart' show kBrandGradient;
+import '../theme/mono_tokens.dart';
+import 'tv/tv_unified_layout.dart';
 
 /// How recently an item must have been added to still count as "new".
 const Duration _newWindow = Duration(days: 14);
@@ -54,6 +56,34 @@ class NewContentBadge extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.4),
+      ),
+    );
+  }
+}
+
+/// The TV form of the same marker: a small amber dot in the poster corner
+/// (hoofdstuk 34 and 33.6, "amber alleen als klein semantisch punt"; DEC-095).
+///
+/// Same predicate as [NewContentBadge] — [newBadgeLabel] decides *whether*,
+/// this only decides *how* — so a card is new on TV exactly when it is new
+/// everywhere else. The wording the pill showed goes to assistive tech, where
+/// a dot on its own would say nothing.
+class NewContentDot extends StatelessWidget {
+  final MediaItem item;
+  final double scale;
+  const NewContentDot({super.key, required this.item, required this.scale});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = newBadgeLabel(item);
+    if (label == null) return const SizedBox.shrink();
+    final size = TvDiscoveryLayout.newDotSize * scale;
+    return Semantics(
+      label: label,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: tokens(context).accentAlt),
       ),
     );
   }
