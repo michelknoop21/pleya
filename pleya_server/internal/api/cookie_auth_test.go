@@ -232,40 +232,10 @@ func TestCookieModeRejectsAForeignOrigin(t *testing.T) {
 	}
 }
 
-// Zonder Origin ook, en dat is opzet: cookiemodus bestaat voor browsers, en een
-// browser zet Origin op elke POST. Wie hem weglaat is geen browser, en toelaten
-// zou de controle in één regel curl te omzeilen maken.
-func TestCookieModeRejectsARequestWithoutOrigin(t *testing.T) {
-	e := newEnv(t)
-	e.setup(e.putSetupCode())
-
-	rec := e.loginCookieMode("michel", "een-lang-genoeg-wachtwoord", "", http.StatusForbidden)
-	e.expectCode(rec, api.CodeOriginRejected)
-}
-
-// web_origin en cors_origins zijn de twee andere bronnen van een toegestane
-// origin, en ze werken pas nadat een beheerder ze heeft gezet.
-func TestCookieModeAcceptsTheConfiguredOrigins(t *testing.T) {
-	e := newEnv(t)
-	e.setup(e.putSetupCode())
-
-	const web = "https://pleya.thuis"
-	const dev = "http://localhost:5173"
-
-	// Eerst weigeren ze allebei; anders bewijst het accepteren hieronder niets
-	// over de instelling maar hooguit over een te ruime controle.
-	e.loginCookieMode("michel", "een-lang-genoeg-wachtwoord", web, http.StatusForbidden)
-	e.loginCookieMode("michel", "een-lang-genoeg-wachtwoord", dev, http.StatusForbidden)
-
-	e.patchSettings(map[string]any{
-		"web_origin":   web,
-		"cors_origins": []string{dev},
-	}, http.StatusOK)
-
-	e.loginCookieMode("michel", "een-lang-genoeg-wachtwoord", web, http.StatusOK)
-	e.loginCookieMode("michel", "een-lang-genoeg-wachtwoord", dev, http.StatusOK)
-	e.loginCookieMode("michel", "een-lang-genoeg-wachtwoord", foreignOrigin, http.StatusForbidden)
-}
+// De matrixclaim van regel 27 (welke herkomst wordt toegelaten en welke krijgt
+// auth.origin_rejected) staat sinds S1.7 in authorize_matrix_test.go, als
+// tweede as van dezelfde ronde en op login én refresh. Wat hier stond dekte
+// alleen login, en twee plekken die hetzelfde beweren lopen uit elkaar.
 
 // TestTokenModeIsUnchanged is de compatibiliteitstoets uit hoofdstuk 17d.1,
 // uitgevoerd in plaats van opgeschreven.

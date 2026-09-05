@@ -252,46 +252,11 @@ func TestRevokedAPITokenStaysDeadAfterTheRegisterIsGone(t *testing.T) {
 	}
 }
 
-// De drie rollen (K rij 2), en hier anders dan bij een beheerroute.
-//
-// Zonder user_id gaan beide endpoints over de aanvrager zelf, en dan antwoordt
-// elke rol 2xx: het doel bestaat voor zichzelf altijd. Met user_id van een
-// ander is het een beheerhandeling, en dan geldt de 404-regel weer, met een
-// weigering die byte-gelijk is aan die van een beheerhandeling op een ander.
-func TestAPITokensThreeRoles(t *testing.T) {
-	e := newEnv(t)
-	e.setup(e.putSetupCode())
-
-	adminID := e.createUser("admin", "aya")
-	memberID := e.createUser("member", "sanne")
-	restrictedID := e.createUser("restricted", "kind")
-	admin, member, restricted := e.tokenFor(adminID), e.tokenFor(memberID), e.tokenFor(restrictedID)
-
-	// Op zichzelf: iedereen mag.
-	e.listTokens(apiTokensPath, http.StatusOK, asUser(admin))
-	e.listTokens(apiTokensPath, http.StatusOK, asUser(member))
-	e.listTokens(apiTokensPath, http.StatusOK, asUser(restricted))
-	e.createToken(map[string]any{"name": "eigen", "scope": "read"}, http.StatusCreated, asUser(member))
-	e.createToken(map[string]any{"name": "eigen", "scope": "read"}, http.StatusCreated, asUser(restricted))
-
-	// Op een ander: alleen owner en admin.
-	otherPath := apiTokensPath + "?user_id=" + memberID.String()
-	e.listTokens(otherPath, http.StatusOK)
-	e.listTokens(otherPath, http.StatusOK, asUser(admin))
-	e.listTokens(apiTokensPath+"?user_id="+restrictedID.String(), http.StatusNotFound, asUser(member))
-
-	memberBody := e.do(http.MethodGet, apiTokensPath+"?user_id="+restrictedID.String(), nil, asUser(member)).Body.String()
-	other := e.do(http.MethodPatch, "/pleya/v1/users/"+adminID.String(),
-		map[string]string{"role": "member"}, asUser(member))
-	if other.Body.String() != memberBody {
-		t.Fatalf("de weigering verschilt van die van een beheerhandeling op een ander:\n%s\n%s",
-			memberBody, other.Body.String())
-	}
-
-	if rec := e.do(http.MethodGet, apiTokensPath, nil, withoutAuth); rec.Code != http.StatusUnauthorized {
-		t.Fatalf("zonder token gaf %d, verwacht 401", rec.Code)
-	}
-}
+// De drie-rollen-ronde over dit oppervlak staat sinds S1.7 in
+// authorize_matrix_test.go, tabelgedreven en tegen één referentie. Hij stond
+// hier als eigen test, en op vier andere plekken net zo, elk met een eigen
+// referentie voor de byte-gelijke weigering; twee plekken die hetzelfde
+// beweren en uit elkaar lopen zijn erger dan één.
 
 // Het bereik begrenst de adminklasse, ook wanneer de rol hem wel haalt.
 //
@@ -327,11 +292,12 @@ func TestAPITokenScopeCapsTheAdminClass(t *testing.T) {
 		t.Fatalf("een leestoken op /libraries gaf %d: %s", rec.Code, rec.Body.String())
 	}
 
-	// De weigering is die van een lid.
-	memberBody := e.do(http.MethodGet, "/pleya/v1/settings", nil,
-		asUser(e.tokenFor(e.createUser("member", "sanne")))).Body.String()
-	if got := e.do(http.MethodGet, "/pleya/v1/settings", nil, asToken(read.Secret)).Body.String(); got != memberBody {
-		t.Fatalf("de weigering van een leestoken verschilt van die van een lid:\n%s\n%s", got, memberBody)
+	// De weigering is dezelfde als die van een gebruiker die er niet bij mag, en
+	// tegen dezelfde referentie als de ronde in authorize_matrix_test.go: één
+	// canonieke weigering voor het hele beheeroppervlak, en niet één per test.
+	denial := e.canonicalNotFound()
+	if got := e.do(http.MethodGet, "/pleya/v1/settings", nil, asToken(read.Secret)).Body.String(); got != denial {
+		t.Fatalf("de weigering van een leestoken is niet byte-gelijk aan die van een niet-bestaand id:\n%s\n%s", got, denial)
 	}
 }
 

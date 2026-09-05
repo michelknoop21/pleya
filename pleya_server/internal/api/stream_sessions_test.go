@@ -109,40 +109,11 @@ func TestStreamSessionsWithoutWatchStateCarryNoPosition(t *testing.T) {
 	}
 }
 
-// De drie rollen (K rij 2). Een lid en een beperkte gebruiker zien niet dat dit
-// oppervlak bestaat, en hun weigering is byte-gelijk aan die van een
-// beheerhandeling op een ander.
-func TestStreamSessionsThreeRoles(t *testing.T) {
-	e := newEnv(t)
-	e.setup(e.putSetupCode())
-
-	admin := e.tokenFor(e.createUser("admin", "aya"))
-	member := e.tokenFor(e.createUser("member", "sanne"))
-	restricted := e.tokenFor(e.createUser("restricted", "kind"))
-
-	e.streamSessions(http.StatusOK)
-	e.streamSessions(http.StatusOK, asUser(admin))
-	e.streamSessions(http.StatusNotFound, asUser(member))
-	e.streamSessions(http.StatusNotFound, asUser(restricted))
-
-	memberBody := e.do(http.MethodGet, streamSessionsPath, nil, asUser(member)).Body.String()
-	restrictedBody := e.do(http.MethodGet, streamSessionsPath, nil, asUser(restricted)).Body.String()
-	if memberBody != restrictedBody {
-		t.Fatalf("de weigering verschilt per rol:\n%s\n%s", memberBody, restrictedBody)
-	}
-
-	other := e.do(http.MethodPatch, "/pleya/v1/users/"+e.createUser("member", "wim").String(),
-		map[string]string{"role": "admin"}, asUser(member))
-	if other.Body.String() != memberBody {
-		t.Fatalf("de weigering van /stream-sessions verschilt van die van een beheerhandeling op een ander:\n%s\n%s",
-			memberBody, other.Body.String())
-	}
-
-	anonymous := e.do(http.MethodGet, streamSessionsPath, nil, withoutAuth)
-	if anonymous.Code != http.StatusUnauthorized {
-		t.Fatalf("zonder token gaf %d, verwacht 401", anonymous.Code)
-	}
-}
+// De drie-rollen-ronde over dit oppervlak staat sinds S1.7 in
+// authorize_matrix_test.go, tabelgedreven en tegen één referentie. Hij stond
+// hier als eigen test, en op vier andere plekken net zo, elk met een eigen
+// referentie voor de byte-gelijke weigering; twee plekken die hetzelfde
+// beweren en uit elkaar lopen zijn erger dan één.
 
 // K rij 5 en K rij 15: het overzicht draagt geen geheim van de streamsessie en
 // geen token van de aanvrager. De sessie-id staat er wél in, en dat is opzet:

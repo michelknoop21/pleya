@@ -196,37 +196,11 @@ func TestFailedLoginCarriesNoIdentity(t *testing.T) {
 	t.Fatal("de geslaagde login staat niet in het log")
 }
 
-// De drie rollen (K rij 2).
-func TestAuditThreeRoles(t *testing.T) {
-	e := newEnv(t)
-	e.setup(e.putSetupCode())
-
-	admin := e.tokenFor(e.createUser("admin", "aya"))
-	member := e.tokenFor(e.createUser("member", "sanne"))
-	restricted := e.tokenFor(e.createUser("restricted", "kind"))
-
-	e.auditPage(auditPath, http.StatusOK)
-	e.auditPage(auditPath, http.StatusOK, asUser(admin))
-	e.auditPage(auditPath, http.StatusNotFound, asUser(member))
-	e.auditPage(auditPath, http.StatusNotFound, asUser(restricted))
-
-	memberBody := e.do(http.MethodGet, auditPath, nil, asUser(member)).Body.String()
-	restrictedBody := e.do(http.MethodGet, auditPath, nil, asUser(restricted)).Body.String()
-	if memberBody != restrictedBody {
-		t.Fatalf("de weigering verschilt per rol:\n%s\n%s", memberBody, restrictedBody)
-	}
-
-	other := e.do(http.MethodPatch, "/pleya/v1/users/"+e.createUser("member", "wim").String(),
-		map[string]string{"role": "admin"}, asUser(member))
-	if other.Body.String() != memberBody {
-		t.Fatalf("de weigering van /audit verschilt van die van een beheerhandeling op een ander:\n%s\n%s",
-			memberBody, other.Body.String())
-	}
-
-	if rec := e.do(http.MethodGet, auditPath, nil, withoutAuth); rec.Code != http.StatusUnauthorized {
-		t.Fatalf("zonder token gaf %d, verwacht 401", rec.Code)
-	}
-}
+// De drie-rollen-ronde over dit oppervlak staat sinds S1.7 in
+// authorize_matrix_test.go, tabelgedreven en tegen één referentie. Hij stond
+// hier als eigen test, en op vier andere plekken net zo, elk met een eigen
+// referentie voor de byte-gelijke weigering; twee plekken die hetzelfde
+// beweren en uit elkaar lopen zijn erger dan één.
 
 // Pagineren, filteren en de grenzen eromheen.
 func TestAuditPagesFiltersAndBounds(t *testing.T) {

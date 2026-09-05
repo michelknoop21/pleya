@@ -180,104 +180,159 @@ func (s *Server) SetClock(now func() time.Time) { s.now = now }
 // beheerscherm een instelling die niet draait.
 func (s *Server) settings() settings.Values { return s.opts.Settings.Current() }
 
+// route is één registratie in de mux: het patroon en de handler die erachter
+// hangt.
+//
+// De mux wordt uitsluitend uit deze tabel gevuld (routes() hieronder is de
+// enige plek in dit pakket die s.mux.Handle aanroept), en dat is de reden dat
+// het type bestaat. K rij 1 van het securityplan eist een test die *alle*
+// routes langsloopt en vaststelt dat alleen de publieke lijst zonder token
+// antwoordt. http.ServeMux geeft zijn patronen niet terug, dus zonder deze
+// tabel zou zo'n test een eigen lijst moeten bijhouden, en dan toetst hij
+// alleen de routes waar iemand aan gedacht heeft: precies de routes die geen
+// probleem zijn. Nu valt een nieuwe route er vanzelf in.
+type route struct {
+	pattern string
+	handler http.Handler
+}
+
+// publicPatterns is de lijst uit K rij 1: de patronen die zonder credential
+// antwoorden, met per patroon de reden. Alles wat er niet in staat hoort 401 te
+// geven, en routes_internal_test.go loopt de tabel hierboven langs om dat te
+// toetsen.
+//
+// Eén plek in server.go en één test, zoals het securityplan het beschrijft. Een
+// route hieraan toevoegen is daarmee een zichtbare handeling in een review, en
+// niet iets dat volgt uit het weglaten van middleware.
+//
+// De laatste twee zijn geen endpoint en staan er daarom met hun reden bij. "/"
+// is de meegeleverde webclient: statische bestanden die per definitie vóór het
+// inloggen geladen worden. "/pleya/v1/" is de terugval voor een onbekend
+// protocolpad; hij voert niets uit en antwoordt library.not_found, zodat een
+// client de foutvorm van het protocol krijgt in plaats van HTML.
+var publicPatterns = map[string]string{
+	"GET /healthz":                "leefbaarheid, buiten het protocol",
+	"GET /readyz":                 "gereedheid, buiten het protocol",
+	"GET /pleya/v1/info":          "klasse public: wat deze server is en of setup nog moet",
+	"POST /pleya/v1/auth/setup":   "klasse public: de eerste eigenaar bestaat nog niet",
+	"POST /pleya/v1/auth/login":   "klasse public: het credential wordt hier gemaakt",
+	"POST /pleya/v1/auth/refresh": "klasse public: het refreshtoken is zelf het bewijs",
+	"/":                           "de meegeleverde webclient; statische bestanden, geen handeling",
+	"/pleya/v1/":                  "terugval voor een onbekend protocolpad; voert niets uit",
+}
+
+// routes vult de mux uit routeTable en doet verder niets.
+//
+// De splitsing is er zodat een test dezelfde tabel kan lezen die de mux heeft
+// gevuld. Wie hier een tweede s.mux.Handle bijzet haalt die route uit de
+// enumeratie van K rij 1, en daarmee uit de test die bewijst dat hij een token
+// vraagt.
 func (s *Server) routes() {
+	for _, rt := range s.routeTable() {
+		s.mux.Handle(rt.pattern, rt.handler)
+	}
+}
+
+func (s *Server) routeTable() []route {
 	const p = "/pleya/v1"
 
-	// Operationeel, buiten het protocol. /healthz zegt of het proces leeft en
-	// wordt niet rood van een database die even weg is; /readyz wordt pas groen
-	// als de migraties gedraaid zijn.
-	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
-	s.mux.HandleFunc("GET /readyz", s.handleReadyz)
+	table := []route{
+		// Operationeel, buiten het protocol. /healthz zegt of het proces leeft en
+		// wordt niet rood van een database die even weg is; /readyz wordt pas groen
+		// als de migraties gedraaid zijn.
+		{"GET /healthz", http.HandlerFunc(s.handleHealthz)},
+		{"GET /readyz", http.HandlerFunc(s.handleReadyz)},
 
-	// Klasse public.
-	s.mux.HandleFunc("GET "+p+"/info", s.handleInfo)
-	s.mux.HandleFunc("POST "+p+"/auth/setup", s.handleSetup)
-	s.mux.HandleFunc("POST "+p+"/auth/login", s.handleLogin)
-	s.mux.HandleFunc("POST "+p+"/auth/refresh", s.handleRefresh)
+		// Klasse public.
+		{"GET " + p + "/info", http.HandlerFunc(s.handleInfo)},
+		{"POST " + p + "/auth/setup", http.HandlerFunc(s.handleSetup)},
+		{"POST " + p + "/auth/login", http.HandlerFunc(s.handleLogin)},
+		{"POST " + p + "/auth/refresh", http.HandlerFunc(s.handleRefresh)},
 
-	// Klasse authenticated.
-	s.mux.Handle("POST "+p+"/auth/stream-token", s.authenticated(s.handleStreamToken))
-	s.mux.Handle("POST "+p+"/auth/stream-session", s.authenticated(s.handleStreamSession))
-	s.mux.Handle("GET "+p+"/server", s.authenticated(s.handleServer))
-	s.mux.Handle("GET "+p+"/libraries", s.authenticated(s.handleLibraries))
-	s.mux.Handle("GET "+p+"/libraries/{library_id}/items", s.authenticated(s.handleLibraryItems))
-	s.mux.Handle("GET "+p+"/items/{item_id}", s.authenticated(s.handleItem))
-	s.mux.Handle("GET "+p+"/items/{item_id}/children", s.authenticated(s.handleChildren))
-	s.mux.Handle("GET "+p+"/search", s.authenticated(s.handleSearch))
-	s.mux.Handle("GET "+p+"/hubs/{hub_id}", s.authenticated(s.handleHub))
-	s.mux.Handle("GET "+p+"/artwork/{artwork_id}", s.authenticated(s.handleArtwork))
-	s.mux.Handle("POST "+p+"/watch-state", s.authenticated(s.handleWatchStateReport))
-	s.mux.Handle("GET "+p+"/watch-state", s.authenticated(s.handleWatchStateList))
+		// Klasse authenticated.
+		{"POST " + p + "/auth/stream-token", s.authenticated(s.handleStreamToken)},
+		{"POST " + p + "/auth/stream-session", s.authenticated(s.handleStreamSession)},
+		{"GET " + p + "/server", s.authenticated(s.handleServer)},
+		{"GET " + p + "/libraries", s.authenticated(s.handleLibraries)},
+		{"GET " + p + "/libraries/{library_id}/items", s.authenticated(s.handleLibraryItems)},
+		{"GET " + p + "/items/{item_id}", s.authenticated(s.handleItem)},
+		{"GET " + p + "/items/{item_id}/children", s.authenticated(s.handleChildren)},
+		{"GET " + p + "/search", s.authenticated(s.handleSearch)},
+		{"GET " + p + "/hubs/{hub_id}", s.authenticated(s.handleHub)},
+		{"GET " + p + "/artwork/{artwork_id}", s.authenticated(s.handleArtwork)},
+		{"POST " + p + "/watch-state", s.authenticated(s.handleWatchStateReport)},
+		{"GET " + p + "/watch-state", s.authenticated(s.handleWatchStateList)},
 
-	// Gebruikersbeheer (DEC-100, stap 4). De autorisatieklasse staat in de
-	// handler en niet in de route: "admin, of owner op zichzelf" is per
-	// endpoint anders, en een middleware per klasse zou dat verschil verbergen.
-	s.mux.Handle("POST "+p+"/users", s.authenticated(s.handleCreateUser))
-	s.mux.Handle("GET "+p+"/users", s.authenticated(s.handleListUsers))
-	// GET /users/me (S1.4) staat bewust vóór de {id}-routes in dit blok en
-	// niet erin: hij is de enige die geen doel uit het pad leest. Er is geen
-	// GET /users/{id}, dus "me" botst met niets.
-	s.mux.Handle("GET "+p+"/users/me", s.authenticated(s.handleCurrentUser))
-	s.mux.Handle("PATCH "+p+"/users/{id}", s.authenticated(s.handleUpdateUser))
-	s.mux.Handle("DELETE "+p+"/users/{id}", s.authenticated(s.handleDeleteUser))
-	s.mux.Handle("PUT "+p+"/users/{id}/permissions", s.authenticated(s.handleSetPermissions))
+		// Gebruikersbeheer (DEC-100, stap 4). De autorisatieklasse staat in de
+		// handler en niet in de route: "admin, of owner op zichzelf" is per
+		// endpoint anders, en een middleware per klasse zou dat verschil verbergen.
+		{"POST " + p + "/users", s.authenticated(s.handleCreateUser)},
+		{"GET " + p + "/users", s.authenticated(s.handleListUsers)},
+		// GET /users/me (S1.4) staat bewust vóór de {id}-routes in dit blok en
+		// niet erin: hij is de enige die geen doel uit het pad leest. Er is geen
+		// GET /users/{id}, dus "me" botst met niets.
+		{"GET " + p + "/users/me", s.authenticated(s.handleCurrentUser)},
+		{"PATCH " + p + "/users/{id}", s.authenticated(s.handleUpdateUser)},
+		{"DELETE " + p + "/users/{id}", s.authenticated(s.handleDeleteUser)},
+		{"PUT " + p + "/users/{id}/permissions", s.authenticated(s.handleSetPermissions)},
 
-	// Serverinstellingen (S1.2, J.2 rij 2). Klasse admin, en net als bij
-	// gebruikersbeheer staat die klasse in de handler: requireAdmin schrijft de
-	// 404 die een niet-beheerder hoort te zien.
-	s.mux.Handle("GET "+p+"/settings", s.authenticated(s.handleGetSettings))
-	s.mux.Handle("PATCH "+p+"/settings", s.authenticated(s.handlePatchSettings))
+		// Serverinstellingen (S1.2, J.2 rij 2). Klasse admin, en net als bij
+		// gebruikersbeheer staat die klasse in de handler: requireAdmin schrijft de
+		// 404 die een niet-beheerder hoort te zien.
+		{"GET " + p + "/settings", s.authenticated(s.handleGetSettings)},
+		{"PATCH " + p + "/settings", s.authenticated(s.handlePatchSettings)},
 
-	// Serverdiagnostiek (S1.3, J.2 rijen 4 tot en met 7). Alle vier klasse
-	// admin. GET /server hierboven blijft authenticated en groeit alleen voor
-	// een beheerder; deze vier bestaan voor een lid helemaal niet.
-	s.mux.Handle("GET "+p+"/server/environment", s.authenticated(s.handleServerEnvironment))
-	s.mux.Handle("GET "+p+"/server/log", s.authenticated(s.handleServerLog))
-	s.mux.Handle("POST "+p+"/server/connectivity-check", s.authenticated(s.handleConnectivityCheck))
-	s.mux.Handle("POST "+p+"/server/rotate-signing-key", s.authenticated(s.handleRotateSigningKey))
+		// Serverdiagnostiek (S1.3, J.2 rijen 4 tot en met 7). Alle vier klasse
+		// admin. GET /server hierboven blijft authenticated en groeit alleen voor
+		// een beheerder; deze vier bestaan voor een lid helemaal niet.
+		{"GET " + p + "/server/environment", s.authenticated(s.handleServerEnvironment)},
+		{"GET " + p + "/server/log", s.authenticated(s.handleServerLog)},
+		{"POST " + p + "/server/connectivity-check", s.authenticated(s.handleConnectivityCheck)},
+		{"POST " + p + "/server/rotate-signing-key", s.authenticated(s.handleRotateSigningKey)},
 
-	// Lopende streams (S1.4, J.2 rij 8). Klasse admin, net als de vier
-	// diagnostiekroutes hierboven: dit zegt wie er kijkt en op welk toestel,
-	// en dat is geen antwoord voor een huisgenoot.
-	s.mux.Handle("GET "+p+"/stream-sessions", s.authenticated(s.handleStreamSessions))
+		// Lopende streams (S1.4, J.2 rij 8). Klasse admin, net als de vier
+		// diagnostiekroutes hierboven: dit zegt wie er kijkt en op welk toestel,
+		// en dat is geen antwoord voor een huisgenoot.
+		{"GET " + p + "/stream-sessions", s.authenticated(s.handleStreamSessions)},
 
-	// API-tokens (S1.5, J.2 rij 12 en 13). Klasse authenticated en niet admin:
-	// RB-20 zegt "een gebruiker (zelf, of een beheerder namens iemand)", dus de
-	// eigen tokens zijn zelfbediening en `user_id` is de beheerdersvorm. De
-	// autorisatie is daarmee die van GET /sessions (matrixregel 15) en niet die
-	// van een beheerroute.
-	s.mux.Handle("POST "+p+"/auth/api-tokens", s.authenticated(s.handleCreateAPIToken))
-	s.mux.Handle("GET "+p+"/auth/api-tokens", s.authenticated(s.handleListAPITokens))
+		// API-tokens (S1.5, J.2 rij 12 en 13). Klasse authenticated en niet admin:
+		// RB-20 zegt "een gebruiker (zelf, of een beheerder namens iemand)", dus de
+		// eigen tokens zijn zelfbediening en `user_id` is de beheerdersvorm. De
+		// autorisatie is daarmee die van GET /sessions (matrixregel 15) en niet die
+		// van een beheerroute.
+		{"POST " + p + "/auth/api-tokens", s.authenticated(s.handleCreateAPIToken)},
+		{"GET " + p + "/auth/api-tokens", s.authenticated(s.handleListAPITokens)},
 
-	// Auditlog (S1.5, J.2 rij 14). Klasse admin: het is de enige plek waar
-	// staat wie wat wanneer deed, inclusief mislukte logins, en dat is geen
-	// antwoord voor wie de handelingen zelf niet mag doen.
-	s.mux.Handle("GET "+p+"/audit", s.authenticated(s.handleAudit))
+		// Auditlog (S1.5, J.2 rij 14). Klasse admin: het is de enige plek waar
+		// staat wie wat wanneer deed, inclusief mislukte logins, en dat is geen
+		// antwoord voor wie de handelingen zelf niet mag doen.
+		{"GET " + p + "/audit", s.authenticated(s.handleAudit)},
 
-	// Sessies (DEC-103, stap 6). logout staat bij auth omdat hij over de eigen
-	// sessie gaat; de twee endpoints eronder gaan over sessies als resource.
-	s.mux.Handle("POST "+p+"/auth/logout", s.authenticated(s.handleLogout))
-	s.mux.Handle("GET "+p+"/sessions", s.authenticated(s.handleListSessions))
-	s.mux.Handle("DELETE "+p+"/sessions/{id}", s.authenticated(s.handleRevokeSession))
+		// Sessies (DEC-103, stap 6). logout staat bij auth omdat hij over de eigen
+		// sessie gaat; de twee endpoints eronder gaan over sessies als resource.
+		{"POST " + p + "/auth/logout", s.authenticated(s.handleLogout)},
+		{"GET " + p + "/sessions", s.authenticated(s.handleListSessions)},
+		{"DELETE " + p + "/sessions/{id}", s.authenticated(s.handleRevokeSession)},
 
-	// Klasse authenticated of met een streamtoken in de querystring: een externe
-	// speler kan geen header zetten.
-	s.mux.Handle("GET "+p+"/subtitles/{subtitle_id}", s.streamAuthorized(s.handleSubtitle))
+		// Klasse authenticated of met een streamtoken in de querystring: een externe
+		// speler kan geen header zetten.
+		{"GET " + p + "/subtitles/{subtitle_id}", s.streamAuthorized(s.handleSubtitle)},
 
-	// Klasse authenticated, met een streamtoken in de querystring, of met een
-	// browser-streamsessie: een niet-geheime ss in de URL plus de cookie
-	// waarvan de naam die id draagt (DEC-051).
-	s.mux.Handle("GET "+p+"/stream/{version_id}", s.streamAuthorized(s.handleStream))
+		// Klasse authenticated, met een streamtoken in de querystring, of met een
+		// browser-streamsessie: een niet-geheime ss in de URL plus de cookie
+		// waarvan de naam die id draagt (DEC-051).
+		{"GET " + p + "/stream/{version_id}", s.streamAuthorized(s.handleStream)},
 
-	// Alles wat onder /pleya/v1 valt en hierboven niet staat is een onbekende
-	// protocolroute, en die krijgt de foutvorm van het protocol. Zonder deze
-	// regel zou hij bij de SPA-terugval hieronder belanden en een client een
-	// pagina HTML zien waar hij JSON verwacht. Het patroon eindigt op een
-	// schuine streep en dekt dus de hele deelboom, terwijl elke exacte route
-	// hierboven specifieker is en dus wint.
-	s.mux.HandleFunc(p+"/", func(w http.ResponseWriter, _ *http.Request) {
-		writeError(w, s.log, CodeNotFound, "unknown endpoint", nil)
-	})
+		// Alles wat onder /pleya/v1 valt en hierboven niet staat is een onbekende
+		// protocolroute, en die krijgt de foutvorm van het protocol. Zonder deze
+		// regel zou hij bij de SPA-terugval hieronder belanden en een client een
+		// pagina HTML zien waar hij JSON verwacht. Het patroon eindigt op een
+		// schuine streep en dekt dus de hele deelboom, terwijl elke exacte route
+		// hierboven specifieker is en dus wint.
+		{p + "/", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			writeError(w, s.log, CodeNotFound, "unknown endpoint", nil)
+		})},
+	}
 
 	// De meegeleverde webclient, op het minst specifieke patroon dat er
 	// bestaat. /healthz, /readyz en elke route onder /pleya/v1 houden daardoor
@@ -289,10 +344,11 @@ func (s *Server) routes() {
 	// daarom in de webhandler zelf, die alles buiten GET en HEAD met een 405
 	// afwijst in plaats van met een pagina.
 	if s.opts.Web != nil {
-		s.mux.Handle("/", s.opts.Web)
+		table = append(table, route{"/", s.opts.Web})
 	} else {
-		s.mux.Handle("/", web.Handler())
+		table = append(table, route{"/", web.Handler()})
 	}
+	return table
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {

@@ -84,42 +84,11 @@ func TestSettingsStartAsEnvironment(t *testing.T) {
 	}
 }
 
-// De drie rollen op beide endpoints (K rij 2). Een lid en een beperkte
-// gebruiker zien niet dat het beheeroppervlak bestaat: 404, en hun antwoorden
-// zijn onderling gelijk.
-func TestSettingsThreeRoles(t *testing.T) {
-	e := newEnv(t)
-	e.setup(e.putSetupCode())
-
-	admin := e.tokenFor(e.createUser("admin", "aya"))
-	member := e.tokenFor(e.createUser("member", "sanne"))
-	restricted := e.tokenFor(e.createUser("restricted", "kind"))
-
-	e.getSettings(http.StatusOK)                // owner
-	e.getSettings(http.StatusOK, asUser(admin)) // admin telt mee als beheerder
-	e.getSettings(http.StatusNotFound, asUser(member))
-	e.getSettings(http.StatusNotFound, asUser(restricted))
-
-	patch := map[string]any{"server_name": "Kelder"}
-	e.patchSettings(patch, http.StatusNotFound, asUser(member))
-	e.patchSettings(patch, http.StatusNotFound, asUser(restricted))
-
-	memberBody := e.do(http.MethodGet, settingsPath, nil, asUser(member)).Body.String()
-	restrictedBody := e.do(http.MethodGet, settingsPath, nil, asUser(restricted)).Body.String()
-	if memberBody != restrictedBody {
-		t.Fatalf("de weigering verschilt per rol:\n%s\n%s", memberBody, restrictedBody)
-	}
-
-	// En hij is byte-gelijk aan de weigering van het beheeroppervlak dat er al
-	// was (K rij 2). Twee verschillende weigeringen zouden een lid laten
-	// afleiden welke van de twee bestaat.
-	other := e.do(http.MethodPatch, "/pleya/v1/users/"+e.createUser("member", "wim").String(),
-		map[string]string{"role": "admin"}, asUser(member))
-	if other.Body.String() != memberBody {
-		t.Fatalf("de weigering van /settings verschilt van die van een beheerhandeling op een ander:\n%s\n%s",
-			memberBody, other.Body.String())
-	}
-}
+// De drie-rollen-ronde over dit oppervlak staat sinds S1.7 in
+// authorize_matrix_test.go, tabelgedreven en tegen één referentie. Hij stond
+// hier als eigen test, en op vier andere plekken net zo, elk met een eigen
+// referentie voor de byte-gelijke weigering; twee plekken die hetzelfde
+// beweren en uit elkaar lopen zijn erger dan één.
 
 // Een geslaagde PATCH geldt vanaf het eerstvolgende verzoek, zonder herstart.
 //

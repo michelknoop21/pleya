@@ -99,62 +99,11 @@ func TestServerDetailShowsAdminFieldsOnlyToAdmins(t *testing.T) {
 	}
 }
 
-// De drie rollen op elk van de vier nieuwe routes (K rij 2, autorisatiematrix
-// regel 17 tot en met 20). De weigering van een lid is byte-gelijk aan die van
-// een beheerhandeling op een ander, zodat het bestaan van het beheeroppervlak
-// niet uit het verschil af te leiden is.
-func TestServerAdminRoutesThreeRoles(t *testing.T) {
-	e := newEnv(t)
-	e.setup(e.putSetupCode())
-
-	admin := e.tokenFor(e.createUser("admin", "aya"))
-	member := e.tokenFor(e.createUser("member", "sanne"))
-	restricted := e.tokenFor(e.createUser("restricted", "kind"))
-
-	// De weigering waar alles mee vergeleken wordt: een lid dat de rol van een
-	// ander probeert te wijzigen.
-	reference := e.do(http.MethodPatch, "/pleya/v1/users/"+e.createUser("member", "wim").String(),
-		map[string]string{"role": "admin"}, asUser(member)).Body.String()
-
-	for _, route := range []struct {
-		method, path string
-		body         any
-		want         int
-	}{
-		{http.MethodGet, environmentPath, nil, http.StatusOK},
-		{http.MethodGet, logPath, nil, http.StatusOK},
-		{http.MethodPost, connectivityPath, nil, http.StatusOK},
-		// rotate blijft hier op de bevestigingsfout staan: de handeling zelf
-		// trekt elke sessie in, en dan zijn de andere rollen in deze test hun
-		// token kwijt. TestRotateSigningKeyInvalidatesEveryToken doet de
-		// geslaagde weg, met een eigen omgeving.
-		{http.MethodPost, rotatePath, map[string]string{"confirm": "nee"}, http.StatusConflict},
-	} {
-		name := route.method + " " + route.path
-		if rec := e.do(route.method, route.path, route.body); rec.Code != route.want {
-			t.Errorf("%s als owner gaf %d, verwacht %d: %s", name, rec.Code, route.want, rec.Body.String())
-		}
-		if rec := e.do(route.method, route.path, route.body, asUser(admin)); rec.Code != route.want {
-			t.Errorf("%s als admin gaf %d, verwacht %d: %s", name, rec.Code, route.want, rec.Body.String())
-		}
-
-		memberRec := e.do(route.method, route.path, route.body, asUser(member))
-		if memberRec.Code != http.StatusNotFound {
-			t.Errorf("%s als member gaf %d, verwacht 404: %s", name, memberRec.Code, memberRec.Body.String())
-		}
-		restrictedRec := e.do(route.method, route.path, route.body, asUser(restricted))
-		if restrictedRec.Code != http.StatusNotFound {
-			t.Errorf("%s als restricted gaf %d, verwacht 404", name, restrictedRec.Code)
-		}
-		if memberRec.Body.String() != restrictedRec.Body.String() {
-			t.Errorf("%s: de weigering verschilt per rol", name)
-		}
-		if memberRec.Body.String() != reference {
-			t.Errorf("%s: de weigering verschilt van die van een beheerhandeling op een ander:\n%s\n%s",
-				name, memberRec.Body.String(), reference)
-		}
-	}
-}
+// De drie-rollen-ronde over dit oppervlak staat sinds S1.7 in
+// authorize_matrix_test.go, tabelgedreven en tegen één referentie. Hij stond
+// hier als eigen test, en op vier andere plekken net zo, elk met een eigen
+// referentie voor de byte-gelijke weigering; twee plekken die hetzelfde
+// beweren en uit elkaar lopen zijn erger dan één.
 
 // GET /server/environment toont alleen de eigen naamruimte, en maskeert wat een
 // geheim is (K rij 11 en 15).
