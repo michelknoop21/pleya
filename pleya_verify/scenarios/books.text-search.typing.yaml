@@ -1,0 +1,54 @@
+name: books.text-search.typing
+target: ios-sim
+# Zoeken in boek, gereden zoals een lezer hem rijdt: de reader open, het
+# vergrootglas in de chrome, en de zoekterm zelf getypt.
+#
+# REQUIRES `PLEYA_VERIFY_BOOKS=1` en, voor een vergelijking met golden 09, ook
+# `PLEYA_VERIFY_IOS_UDID=<iPhone 15 Pro>`. En idb, want dit is het eerste
+# iOS-scenario dat typt: `brew install facebook/fb/idb`. `verify.dart doctor`
+# zegt of hij er is.
+#
+# Dit is niet books.text-search.layout met een omweg. Dat scenario krijgt de
+# zoekterm mee van de route-opener en bewijst dat de twaalf rijen landen waar de
+# golden ze zet. Wat het niet kan bewijzen is de weg ernaartoe, en die weg heeft
+# drie stukken die alleen een echte toetsaanslag laat zien: dat het vergrootglas
+# de pagina opent, dat het veld uit zichzelf de focus neemt, en dat het
+# systeemtoetsenbord over de resultaten komt te staan zonder ze onbereikbaar te
+# maken. De widgettests typen wel, maar op een fake toetsenbord dat nooit iets
+# afdekt.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - open: screen.books
+  - open: screen.book_reader
+steps:
+  - wait_until: {id: screen.book_reader, timeout: 15000}
+  - settle: 1500
+  # De deur. Golden 09 koos een gepushte pagina en geen modale presentatie, dus
+  # de glyf hoort net zo te openen als de inhoudsopgaveglyf ernaast.
+  - assert: {id: books.reader.search, insideViewport: true}
+  # 306 en 78 zijn de maten van BookReaderLayout en niet een getal dat met de
+  # hand op het beeld is uitgeteld: de rij loopt tot 393 min de chromemarge van
+  # 24, dus het bookmarkslot ligt 343 tot 369, de tussenruimte 24 daarvoor, en
+  # het zoekslot 293 tot 319 op een band van 62 met een hoogte van 32. Dezelfde
+  # rekensom legt `Aa` op 243, waar de README hem ook heeft gemeten.
+  #
+  # Geen minimumTapTarget hier. Golden 07 zet deze chrome op slots van 26 en dat
+  # is goedgekeurd; een assertie op 44 zou een goedgekeurd scherm afkeuren.
+  - tap: {x: 306, y: 78}
+  - wait_until: {id: screen.book_text_search, timeout: 15000}
+  - settle: 2000
+  # Leeg veld, en de telling zwijgt: onder de drempel van de bron is er geen
+  # zoekopdracht gedraaid, en dan hoort er niets over resultaten te staan.
+  - snapshot: text-search-empty
+  - type: "desert"
+  - settle: 2000
+  - assert: {id: books.text_search.count, insideViewport: true}
+  - assert: {id: "books.text_search.result[dune/ch03#p12]", insideViewport: true}
+  - assert: {id: "books.text_search.result[dune/ch05#p04]", below: "books.text_search.result[dune/ch03#p12]"}
+  # Het toetsenbord staat nu over de onderkant van de lijst. De eerste rijen
+  # horen daar niet door te verschuiven: de kaart begint op de kop en niet op
+  # wat er onderaan nog vrij is.
+  - snapshot: text-search-typed

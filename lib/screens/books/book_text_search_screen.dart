@@ -202,6 +202,13 @@ class _Header extends StatelessWidget {
                         focusNode: focus,
                         onChanged: onChanged,
                         textInputAction: TextInputAction.search,
+                        // A query is not prose. Typing golden 09's own term on a
+                        // real keyboard gets `dessert` offered over `desert`,
+                        // and taking that suggestion searches a word the reader
+                        // never asked for. The app already turns it off for
+                        // URLs, passwords and PINs; a search field belongs in
+                        // that list.
+                        autocorrect: false,
                         style: const TextStyle(fontSize: 16),
                         decoration: const InputDecoration(
                           isDense: true,

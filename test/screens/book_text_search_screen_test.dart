@@ -337,6 +337,18 @@ void main() {
     }
   });
 
+  group('the field is a query field, not a prose field', () {
+    /// Typing golden 09's own term on a real keyboard gets `dessert` offered
+    /// over `desert`, and the suggestion bubble lands on the count line. Taking
+    /// it searches a word the reader never asked for. Found by making a scenario
+    /// type instead of seeding the query; the app already turns autocorrect off
+    /// for URLs, passwords and PINs.
+    testWidgets('autocorrect is off', (tester) async {
+      await _pumpSearch(tester, query: '');
+      expect(tester.widget<TextField>(find.byType(TextField)).autocorrect, isFalse);
+    });
+  });
+
   group('what this golden stops at', () {
     testWidgets('a row is drawn and opens nothing', (tester) async {
       await _pumpSearch(tester);

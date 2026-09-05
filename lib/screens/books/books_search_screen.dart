@@ -249,6 +249,10 @@ class _Header extends StatelessWidget {
                         focusNode: focus,
                         onChanged: onChanged,
                         textInputAction: TextInputAction.search,
+                        // Same reason as Zoeken in boek: a title or an author
+                        // name is not prose, and a corrected query searches
+                        // something the reader did not type.
+                        autocorrect: false,
                         style: const TextStyle(fontSize: 16),
                         // `filled: false`, because a dark InputDecorationTheme
                         // fills a field by default and that second surface sat

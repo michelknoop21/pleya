@@ -98,6 +98,10 @@ class IosSimulatorDriver implements VerificationDriver {
   @override
   List<String> get driverLog => List.unmodifiable(_driverLog);
 
+  /// Named so the report says what it is for, and so the doctor's own test can
+  /// assert that it is reported without being required.
+  static const String _idbCheck = 'idb (only needed by a scenario that types)';
+
   @override
   Future<DriverDoctorReport> doctor() async {
     final checks = <String, Object?>{};
@@ -119,7 +123,12 @@ class IosSimulatorDriver implements VerificationDriver {
       checks['device'] = false;
     }
 
+    // Everything above decides readiness; idb does not. Only a scenario with a
+    // `type` step needs it, so a machine without it still runs every other
+    // scenario — reported, and deliberately not counted.
     final ready = deviceError == null && checks.values.every((v) => v == true || v is! bool);
+    final idb = await _run('idb', ['--help']);
+    checks[_idbCheck] = idb.exitCode == 0;
     return DriverDoctorReport(ready: ready, checks: checks);
   }
 
@@ -380,11 +389,30 @@ class IosSimulatorDriver implements VerificationDriver {
     await _requireClient().inputKey(key);
   }
 
+  /// Types into whatever holds keyboard focus, through idb's HID keyboard.
+  ///
+  /// **Not the transport, and deliberately.** An endpoint that set a
+  /// controller's text would prove that a query produces results, which the
+  /// widget tests already prove and prove better. What only a real keystroke
+  /// can show is the rest of it: that the field takes focus at all, that the
+  /// system keyboard comes up where the golden says results are, and that the
+  /// list underneath stays reachable past it. That is why this takes the same
+  /// road the tvOS driver takes rather than the one iOS uses for [press] and
+  /// [tap] — those address a point or a key code, and this addresses the
+  /// keyboard.
+  ///
+  /// idb is a soft dependency: [doctor] reports whether it is there, and a
+  /// scenario without a `type` step never touches it.
   @override
-  Future<void> typeText(String text) {
-    throw UnsupportedError(
-      'typeText: no /v1/input/text endpoint exists yet — not needed by any Fase 8-11 scenario so far',
-    );
+  Future<void> typeText(String text) async {
+    final udid = await _resolveDevice();
+    final result = await _run('idb', ['ui', 'text', '--udid', udid, text]);
+    if (result.exitCode != 0) {
+      throw StateError(
+        'idb ui text failed (exit ${result.exitCode}): ${result.stderr}\n'
+        'Install it with `brew install facebook/fb/idb`; `verify.dart doctor` reports whether it is there.',
+      );
+    }
   }
 
   @override
