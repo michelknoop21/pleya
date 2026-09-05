@@ -764,6 +764,49 @@ void main() {
       expect(offset(tester), 0, reason: 'the billboard is on screen under the CTA that just took the ring');
       expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
     });
+
+    testWidgets('HERO4: the billboard comes back into view whoever hands the CTA the ring', (tester) async {
+      // The press the report was photographed on does not go through any entry
+      // point of this widget, which is why hardening them was not enough.
+      //
+      // Play something from a Home row and come back. `onPlaybackReturned`
+      // refreshes the item, Home re-projects, and the tile the push left from
+      // is gone — so the shared content scope has no remembered child, and
+      // `FocusScopeNode.requestFocus` descends into the *first focusable
+      // descendant* of the content instead. Since DEC-095 the carousel is a
+      // layer beside the list rather than a child of it, so it is mounted at
+      // any scroll offset and that first descendant is the Afspelen pill. The
+      // ring lands on it, `focusPrimary()` is never called, and the feed stays
+      // 721 px down: artwork above the fold, the pill drawn at y=19 behind the
+      // opaque top band. Measured over the real remote path in
+      // `tvos.home.hero-return-after-playback`, focus-trace hop 14
+      // (`play_button -> tvHeroPlay` on `key:Escape`).
+      //
+      // So the invariant is not "these three callers scroll first" but "the
+      // billboard holding the ring means the billboard is on screen", and it
+      // is asserted here the only way that distinguishes them: by focusing the
+      // node directly, exactly as the scope does.
+      await bootTallFeed(tester);
+
+      heroNode(tester, 'tvHeroPlay').requestFocus();
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(
+        offset(tester),
+        greaterThan(0),
+        reason: 'if the feed never scrolled, this test is not exercising the case it exists for',
+      );
+
+      // What the pop does: the remembered child is gone, the scope descends.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+      heroNode(tester, 'tvHeroPlay').requestFocus();
+      await tester.pumpAndSettle();
+
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
+      expect(offset(tester), 0, reason: 'the CTA holds the ring, so the billboard is under it');
+    });
   });
 
   group('restoration (hoofdstuk 7.6 / fase-8 brief §19)', () {

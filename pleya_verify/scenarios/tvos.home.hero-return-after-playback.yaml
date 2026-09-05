@@ -1,0 +1,82 @@
+name: tvos.home.hero-return-after-playback
+target: tvos-sim
+# HERO4, the state the report was photographed in: "terug op Home na afspelen
+# stonden alleen de hero-knoppen in beeld, artwork weg, rails eronder".
+#
+# `tvos.home.hero-return-from-route` walks the same detail-page return *without*
+# playing anything and records that it never reaches this state: Menu restores
+# the tile the push left from. Playing is what takes the tile away.
+# `onPlaybackReturned` refreshes the item, Home re-projects, and the remembered
+# child of the shared content scope is gone — so the Menu that leaves the detail
+# page has nothing to restore and the ring goes to the first focusable
+# descendant of the content, which is the billboard's Afspelen pill. The feed is
+# still scrolled 721 px down under it.
+#
+# The measured hops of the probe run
+# (`tvos-home-hero-return-after-playback-1788618271734`, focus-trace 11-14):
+# `play_button -> VideoPlayerScreen`, `VideoPlayerScreen -> PlayPause`,
+# `PlayPause -> play_button` (the clip is a couple of seconds long and mpv
+# returns on its own), then `play_button -> tvHeroPlay` on the Menu press.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  # IntroGate's cold-start splash paints over an already-ready screen.
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - assert: {id: discover.hero, insideViewport: true}
+  - snapshot: 00-home-rest
+
+  # Down onto Afspelen, down again into the first rail: the second press is
+  # what scrolls the billboard off the top (DEC-095, one row is 57% of canvas).
+  - press: down
+  - settle: 1000
+  - assert: {id: discover.hero.play, focused: true}
+  - press: down
+  - settle: 1200
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
+  - snapshot: 01-rail-focused
+
+  # Into the detail page, and from there into the player. A movie's detail page
+  # opens with its primary action focused (`_scheduleTvDetailReveal`,
+  # `focusPrimaryAction: metadata.isMovie`), so one Select starts playback.
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 20000}
+  - settle: 2500
+  - snapshot: 02-detail
+  - press: select
+  - wait_until: {id: player.surface, timeout: 25000}
+  - snapshot: 03-player
+
+  # No press here. `sampleMediaMp4Bytes` is a real, very short clip whose
+  # `duration_ms` is a fixture fiction, so mpv reaches its own end and returns
+  # to the detail page exactly like a Menu press would — the same auto-return
+  # `media-detail.episode-refresh` documents. Waiting on the detail screen
+  # rather than pressing keeps the two from racing.
+  - wait_until: {id: screen.media_detail, timeout: 30000}
+  - settle: 2500
+
+  # And this is the press. One Menu out of the detail page, back onto a Home
+  # that has re-projected under it.
+  - press: menu
+  - wait_until: {id: screen.discover, timeout: 20000}
+  - settle: 2500
+  - snapshot: 04-returned
+
+  # The contract, and the whole of HERO4: whichever path hands the ring to the
+  # billboard, the billboard is on screen under it. Both clauses, because the
+  # defect satisfies the first: the pill holds the focus while the artwork is
+  # 721 px above the fold and the pill itself is drawn at y=19 behind the
+  # opaque top band.
+  - assert: {id: discover.hero.play, focused: true}
+  - assert: {id: discover.hero, insideViewport: true}
+  - assert: {id: discover.hero.play, below: nav.discover}
+
+  # A second resting frame, so the state above is judged as a settled one and
+  # not as a frame caught mid-transition.
+  - settle: 3000
+  - snapshot: 05-returned-still
+  - assert: {id: discover.hero, insideViewport: true}
