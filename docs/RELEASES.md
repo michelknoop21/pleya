@@ -148,8 +148,47 @@ under `Notes`.
 - de billboard die de ring krijgt staat ook in beeld, langs welk pad ook (HERO4)
 <!-- END GENERATED -->
 
+## 2.8.0 · build 259 · 5 September 2026
+
+<!-- commit: 72227db -->
+
+### New
+
+- **The Apple TV home screen is a billboard with a feed under it.** The navigation moved to a
+  horizontal bar across the top, so nothing takes width away from the artwork. A featured film
+  fills the frame, and the first row peeks up from the bottom edge to say the page continues.
+  Walking through the rows no longer pushes the billboard around.
+- **My Pleya is a destination of its own.** Watchlist, requests, libraries, servers, settings,
+  logs, watch together and about sit on one page frame instead of behind a sidebar.
+- **Films and Series have their own landing pages, with a catalog behind them.** A title that
+  lives on more than one of your servers appears once. Pressing play asks which source to use
+  only when that choice makes a difference.
+- **Language and subtitles can be set per series.** A show you watch subtitled stays subtitled,
+  including the episodes you have not opened yet, and a change offers to apply to the whole
+  series rather than to the episode in front of you.
+
+### Improved
+
+- **"Recently released" on the home screen means the last 90 days.** It had no lower bound at
+  all, so a library that had just been filled with older films put a 1998 title under a heading
+  promising the opposite.
+- **The player overlay keeps its distance from the left edge.** Title, season and episode, and
+  the timeline sat against the very edge of the picture, which is where a television crops.
+- **Artwork is requested at the resolution of the screen it lands on.** The detail backdrop was
+  being enlarged from a smaller image.
+
 ### Fixed
 
+- **One press on the remote ring is one step.** A press was arriving twice, so the top bar
+  skipped a tab and a step down skipped a row. A press on the ring is a touch and a press at the
+  same time, and tvOS reports those over two separate paths.
+- **Coming back to the home screen after playing something shows the artwork again.** The
+  buttons of the billboard could take the remote while the picture itself had scrolled off the
+  top, which left two buttons floating over the navigation bar with nothing behind them.
+- **Up from the first row brings the billboard back into view**, rather than only back into the
+  focus order.
+- **A vertical step arrives in the column it left from**, and the last tile of a row has room to
+  expand into instead of running off the page.
 - **Leaving the player gives you the library back straight away.** Closing a title used to wait
   for the server to confirm where you stopped, and on a slow or unreachable connection that was
   several seconds of black screen. The position is written in the background now, and if it does
@@ -162,8 +201,35 @@ under `Notes`.
 - **"Now playing" in the sidebar can be reached with a remote.** It was drawn but skipped by
   D-pad navigation, so on Apple TV you could see it and never select it.
 - **Sending a log no longer runs into the same refusal again and again.** The relay accepts one
-  upload per minute. A second press inside that minute now tells you how much of the minute is
-  left instead of firing another request that comes back refused.
+  upload per minute. A second press inside that minute now says how much of the minute is left
+  instead of firing another request that comes back refused.
+- Overlays and context menus stay inside the area a television actually shows.
+- The top row of the catalog no longer touches the safe top edge, and the header actions stay
+  reachable after stepping left out of the grid.
+- A library that disappeared no longer leaves the Libraries page blank, and switching libraries
+  quickly no longer lets a slow one overwrite the choice you just made.
+- The back button is gone from surfaces a remote could never reach it on.
+
+### Worth checking
+
+This build is the Apple TV redesign, so it is the remote that needs the mileage rather than the
+screenshots. Four things in particular:
+
+1. Walk the top bar left and right, landing on Home included. Every press should move exactly
+   one tab.
+2. Menu on Home should leave the app. Menu anywhere else, a My Pleya section included, should
+   stay in it.
+3. Scroll the home screen down, open a title, play it, and come back with Menu. The billboard
+   should be on screen, not two buttons over the navigation bar.
+4. Look at what the home billboard offers. Films released in the last three months, nothing
+   older.
+
+### Notes
+
+- iOS and macOS are unchanged in this build. Everything above is Apple TV.
+- The build number is the same 259 that was installed directly from Xcode earlier today, because
+  that one never reached TestFlight. This is not that build: it carries everything up to
+  `72227db`.
 
 ## 2.8.0 · build 240 · 21 August 2026
 
