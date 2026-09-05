@@ -128,6 +128,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | HERO3 | De Home-hero toont niet alleen recent uitgebrachte films: "Recent uitgebracht" had geen tijdvenster, en items zonder releasedatum reden mee op `addedAt`. Besluit 5 september: 90 dagen op releasedatum, zonder datum buiten de hero (DEC-097) | FIXED, hardware open | `531ae19c` |
 | PLR1 | Tekst van de spelerlaag valt links buiten het title-safe gebied (titelbalk op x = 0, tijdlijn op 24 pt) terwijl elke andere TV-surface `tvPageInset` betaalt | FIXED, hardware open | `36118056` |
 | WALK | Een `walk`-stap in Pleya Verify die een richting herhaalt en per hop meldt welke focusbare kandidaat is overgeslagen, zodat sprongen niet meer per geval op het toestel gevonden hoeven te worden. Kern in `c4ffcd16` (DEC-098); open: `nav.profile-id`, vier scenario's op de simulator, twee sabotagecontroles, docs | IN PROGRESS | `c4ffcd16` |
+| CI1 | CI staat op `main` sinds 3 september rood en zegt daardoor niets meer over een PR. Drie checks: codegen-drift op `git diff lib/` na `scripts/codegen.sh`, 79 rode tests, en Verify - macOS + iOS simulator. Geen ervan komt van het SYS-werk op deze branch. De codegen-stap maskeerde bovendien vier latere stappen, die op `skipped` bleven staan | IN PROGRESS | n.v.t. |
 
 ## Wat er per item bekend is
 
