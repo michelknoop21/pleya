@@ -63,7 +63,7 @@ setup:
   - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
 steps:
   - wait_until: {id: <automation id>, timeout: 30000}
-  - assert: {id: <automation id>, insideViewport: true, state: {<field>: <value>}}
+  - assert: {id: <automation id>, insideViewport: true, visible: true, state: {<field>: <value>}}
   - press: <up|down|left|right|select|menu|delete>       # tvOS only
   - snapshot: <name>                                      # writes screenshot + ui-tree
 ```
@@ -83,6 +83,13 @@ mirroring a real `bool`/`enum`), never a proxy that merely correlates with it. `
 the kind of false-PASS Fase 12 exists to catch; see `pleya_verify/scenarios/tvos.sidebar.collapse.yaml`
 for a fully commented, worked example, including why that scenario asserts on `state.collapsed`
 specifically instead of geometry alone.
+
+`visible:` answers a question geometry cannot. The shell keeps every tab mounted in an
+`IndexedStack`, which lays out all of its children, so the screen nobody is looking at reports the
+same rect as the screen on show; `insideViewport` passes on both. `assert: {id: screen.<tab>,
+visible: true}` is what proves which one is actually being drawn. A node with no mounted render
+object reports no visibility at all, and asserting on it fails as not evaluable rather than
+quietly satisfying `visible: false`.
 
 For geometry assertions (`insideViewport`, `notOverlapping`, `minimumTapTarget`, `below`/`above`/
 `leftOf`/`rightOf`, `sameRow`/`sameColumn`), see `pleya_verify/geometry/SPEC.md` for the full

@@ -60,7 +60,7 @@ Geen parameters. 200 met JSON:
 ```json
 {
   "declared": [{"id": "nav.discover", "role": "...", "label": "..."}],
-  "discovered": [{"label": "...", "focused": false, "canRequestFocus": true, "bounds": {"x": 0, "y": 0, "width": 0, "height": 0}}],
+  "discovered": [{"label": "...", "focused": false, "canRequestFocus": true, "visible": true, "bounds": {"x": 0, "y": 0, "width": 0, "height": 0}}],
   "duplicates": ["<declared id die dubbel geregistreerd was>"]
 }
 ```
@@ -71,6 +71,18 @@ A.2/A.8 in het Pleya Verify-plan); `discovered` komt uit een live walk van
 gevuld zodra er een gefocust widget bestaat. `bounds` ontbreekt op een node
 zonder gemount `RenderBox` (bv. niet zichtbaar). Labels lopen door
 `LogRedactionManager.redact()`. Triggert geen events.
+
+`visible` zegt of de node getekend zou worden als er nu een frame viel, en
+ontbreekt op dezelfde grond als `bounds`: zonder gemount render-object is de
+vraag niet te beantwoorden, en dan staat het veld er niet in plaats van dat
+er geraden wordt. Het is niet af te leiden uit `bounds`. De schil houdt elke
+tab gemount in een `IndexedStack`, die al zijn kinderen lay-out, dus het
+scherm waar niemand naar kijkt meldt dezelfde rechthoek als het scherm dat er
+staat. `visible` komt uit twee bronnen: `paintsChild` omhoog door de
+render-boom (offstage, opacity nul, dichtgeklapte doos, sliver buiten zijn
+viewport) plus een `Visibility`-controle door de element-boom, want die
+widget slaat `paint` over zonder `paintsChild` te overschrijven en is net
+degene die `IndexedStack` om elk kind zet.
 
 ### `GET /v1/focus`
 
@@ -215,8 +227,9 @@ valt de call terug op `stableFrames`):
 predicaat voldaan is, of `{"ok": false, "reason": "timeout"}` na `timeoutMs`
 (default 5000). `event` matcht op naam (weggelaten = elk event) sinds
 `since` (default 0) en pollt `/v1/events`'s bron elke 100ms. `node` matcht op
-`id`/`visible` (afgeleid van `bounds != null`)/`focused` tegen `/v1/ui_tree`'s
-`declared`+`discovered` nodes. `stableFrames` wacht dat aantal frames via
+`id`/`visible`/`focused` tegen `/v1/ui_tree`'s `declared`+`discovered` nodes;
+`visible` leest het gelijknamige veld van de node en valt terug op
+`bounds != null` wanneer die het niet meldt. `stableFrames` wacht dat aantal frames via
 `SchedulerBinding.endOfFrame` (no-op zonder `WidgetsBinding`). Triggert geen
 events zelf.
 

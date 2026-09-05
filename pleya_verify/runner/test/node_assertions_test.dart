@@ -1,10 +1,11 @@
 import 'package:pleya_verify_runner/src/engine/node_assertions.dart';
 import 'package:test/test.dart';
 
-Map<String, Object?> _node(String id, {Map<String, Object?>? state, bool? focused}) => {
+Map<String, Object?> _node(String id, {Map<String, Object?>? state, bool? focused, bool? visible}) => {
   'id': id,
   'role': 'test',
   if (focused != null) 'focused': focused,
+  if (visible != null) 'visible': visible,
   if (state != null) 'state': state,
 };
 
@@ -125,6 +126,43 @@ void main() {
       );
       expect(results.single.ok, isFalse);
       expect(results.single.message, contains('expected true'));
+    });
+  });
+
+  group('visible', () {
+    test('passes when the node is being drawn', () {
+      final results = evaluateNodeAssertions(
+        {'id': 'screen.books_home', 'visible': true},
+        uiTree: _tree([_node('screen.books_home', visible: true)]),
+      );
+      expect(results.single.ok, isTrue);
+      expect(results.single.predicate, 'visible');
+    });
+
+    /// The point of the field: a tab parked in the shell's `IndexedStack`
+    /// has a full rect and is still not on screen.
+    test('fails when the node is mounted but not drawn', () {
+      final results = evaluateNodeAssertions(
+        {'id': 'screen.books_home', 'visible': true},
+        uiTree: _tree([_node('screen.books_home', visible: false)]),
+      );
+      expect(results.single.ok, isFalse);
+      expect(results.single.message, contains('expected true'));
+    });
+
+    /// Not the same as `false`. A node the app could not measure must not
+    /// quietly satisfy `visible: false` — that would turn every unmounted
+    /// screen into proof that the right one is showing.
+    test('a node that reports no visibility is not evaluable', () {
+      expect(
+        () => evaluateNodeAssertions(
+          {'id': 'screen.books_home', 'visible': false},
+          uiTree: _tree([_node('screen.books_home')]),
+        ),
+        throwsA(
+          isA<NodeAssertionException>().having((e) => e.message, 'message', contains('does not report visibility')),
+        ),
+      );
     });
   });
 

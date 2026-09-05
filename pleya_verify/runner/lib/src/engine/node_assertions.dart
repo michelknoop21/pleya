@@ -1,12 +1,13 @@
-/// Turns an `assert:` step's `state:`/`focused:` fields into
+/// Turns an `assert:` step's `state:`/`focused:`/`visible:` fields into
 /// [NodeAssertionResult]s — presence and the geometry predicates live in
-/// `geometry_assertions.dart`; these two read the rest of what
+/// `geometry_assertions.dart`; these three read the rest of what
 /// `GET /v1/ui_tree` already reports for a declared node, no new production
 /// code required for a node that already publishes one:
 ///
 /// ```yaml
 /// - assert: {id: nav.discover, state: {collapsed: true}}
 /// - assert: {id: library.filter.sort, focused: true}
+/// - assert: {id: screen.books_home, visible: true}
 /// ```
 ///
 /// `state` checks each key against the node's own `AutomationNode.state`
@@ -15,9 +16,11 @@
 /// publishes `{'child_count': ...}`, and so on. A node with no `state`
 /// callback is reported distinctly from a mismatched value — the same
 /// "not evaluable" vs. "measured and wrong" split `geometry_assertions.dart`
-/// uses for a missing rect. `focused` reads the `focused` field every
-/// declared node already reports (`AutomationRegistry.snapshot`), so it
-/// needs no widget-level opt-in at all.
+/// uses for a missing rect. `focused` and `visible` read fields every
+/// declared node already reports (`AutomationRegistry.snapshot`), so they
+/// need no widget-level opt-in at all. `visible` is what separates the tab
+/// on screen from the ones the shell keeps mounted behind it — they all have
+/// a full rect, so geometry alone cannot tell them apart.
 ///
 /// Generic by construction: neither predicate is specific to any one
 /// screen or widget, so a scenario for a future Unified TV surface gets
@@ -70,7 +73,7 @@ class NodeAssertionResult {
 
 /// Every non-geometry key an `assert:` step's `state`/`focused` handling
 /// recognizes.
-const Set<String> nodeFieldPredicates = {'state', 'focused'};
+const Set<String> nodeFieldPredicates = {'state', 'focused', 'visible'};
 
 /// Evaluates an `assert:` step's `state`/`focused` fields against an
 /// already-fetched [uiTree]. Pure — no I/O — same shape as
@@ -118,6 +121,31 @@ List<NodeAssertionResult> evaluateNodeAssertions(Map<String, Object?> args, {req
         actual: actual,
         ok: ok,
         message: ok ? "'$subjectId'.focused is $actual" : "'$subjectId'.focused is $actual, expected $expectedFocused",
+      ),
+    );
+  }
+
+  // Unlike `focused`, a missing field is not read as `false` here. The shell
+  // keeps every tab mounted, so "the app could not measure this" and "this is
+  // mounted but not drawn" are different answers, and collapsing them would
+  // let an unmountable node satisfy `visible: false`.
+  if (args['visible'] case final bool expectedVisible) {
+    final node = _nodeFor(subjectId, uiTree);
+    final actual = node['visible'];
+    if (actual is! bool) {
+      throw NodeAssertionException(
+        "'$subjectId' does not report visibility — it has no mounted render object to answer with",
+      );
+    }
+    final ok = actual == expectedVisible;
+    results.add(
+      NodeAssertionResult(
+        predicate: 'visible',
+        subjectId: subjectId,
+        expected: expectedVisible,
+        actual: actual,
+        ok: ok,
+        message: ok ? "'$subjectId'.visible is $actual" : "'$subjectId'.visible is $actual, expected $expectedVisible",
       ),
     );
   }

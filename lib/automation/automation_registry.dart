@@ -78,6 +78,7 @@ class AutomationRegistry {
         'focused': node.focusNode?.hasFocus ?? false,
         if (node.focusNode != null) 'canRequestFocus': node.focusNode!.canRequestFocus,
         if (_boundsOf(node.contextGetter?.call()) case final bounds?) 'bounds': _boundsToJson(bounds),
+        if (_visibilityOf(node.contextGetter?.call()) case final visible?) 'visible': visible,
         'state': ?node.state?.call(),
       });
     }
@@ -120,14 +121,61 @@ class AutomationRegistry {
     for (final focusNode in focusNodes) {
       final label = focusNode.debugLabel;
       final bounds = _boundsOf(focusNode.context);
+      final visible = _visibilityOf(focusNode.context);
       discovered.add({
         if (label != null) 'label': LogRedactionManager.redact(label),
         'focused': focusNode.hasFocus,
         'canRequestFocus': focusNode.canRequestFocus,
         if (bounds != null) 'bounds': _boundsToJson(bounds),
+        if (visible != null) 'visible': visible,
       });
     }
     return discovered;
+  }
+
+  /// Whether this node would end up on screen if a frame were painted now,
+  /// or `null` when there is nothing mounted to answer the question with —
+  /// the same "reported without the field rather than with a guess" rule
+  /// [_boundsOf] follows.
+  ///
+  /// Two sources, because neither one alone is enough:
+  ///
+  /// * The render tree answers for everything that declares it skips its
+  ///   child: `RenderOffstage`, a zero `RenderOpacity`, a collapsed box, a
+  ///   sliver scrolled out of its viewport. `paintsChild` is exactly that
+  ///   question, asked at every step up to the root.
+  /// * `Visibility` is the hole in that: it skips `paint` without overriding
+  ///   `paintsChild`, so the render walk calls a hidden child painted. That
+  ///   would be a footnote if `IndexedStack` did not wrap every one of its
+  ///   children in precisely that widget — which is how the shell keeps all
+  ///   tabs mounted, and why a tab nobody is looking at reports the same
+  ///   rect as the one on screen. So the element tree gets asked too.
+  bool? _visibilityOf(BuildContext? context) {
+    if (context == null || !context.mounted) return null;
+    try {
+      final renderObject = context.findRenderObject();
+      if (renderObject == null || !renderObject.attached) return null;
+
+      var child = renderObject;
+      for (var parent = child.parent; parent != null; child = parent, parent = parent.parent) {
+        if (!parent.paintsChild(child)) return false;
+      }
+
+      var visible = true;
+      context.visitAncestorElements((element) {
+        if (element.widget case Visibility(visible: false)) {
+          visible = false;
+          return false;
+        }
+        return true;
+      });
+      return visible;
+    } catch (_) {
+      // An element that is mounted but no longer active throws on an
+      // ancestor lookup. Same degradation as the FocusManager walk above:
+      // report nothing rather than fail the whole snapshot.
+      return null;
+    }
   }
 
   Rect? _boundsOf(BuildContext? context) {

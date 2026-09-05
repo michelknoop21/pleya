@@ -41,6 +41,12 @@ steps:
   # Slot 4 is Boeken, not Live TV and not Downloads: books win the dynamic
   # slot when the profile has them.
   - assert: {id: nav.books, insideViewport: true}
+  # Which screen is actually being drawn. The shell keeps every tab mounted in
+  # an `IndexedStack`, so Discover has a full-viewport rect right now too and
+  # every geometry predicate passes on it — `visible` is the only field that
+  # separates the page on screen from the ones parked behind it.
+  - assert: {id: screen.books, visible: true}
+  - assert: {id: screen.discover, visible: false}
   - settle: 2000
   # The three rails golden 01b puts on this page, in its order. `assert` fails
   # on an id the ui tree does not carry, so naming them is what proves the page

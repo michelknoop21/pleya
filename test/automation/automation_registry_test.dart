@@ -113,4 +113,100 @@ void main() {
     expect(node['bounds'], {'x': 0.0, 'y': 0.0, 'width': 30.0, 'height': 10.0});
     expect(node['state'], {'selected': true});
   });
+
+  group('visible', () {
+    /// The shell keeps every tab mounted in an `IndexedStack`, and an
+    /// `IndexedStack` lays out all of its children — so the tab nobody is
+    /// looking at reports the same rect as the one on screen. Bounds alone
+    /// therefore cannot tell a scenario which screen is being drawn.
+    testWidgets('an IndexedStack child that is not the selected one is not visible', (tester) async {
+      final contexts = <int, BuildContext>{};
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: IndexedStack(
+              index: 1,
+              children: [
+                for (var i = 0; i < 2; i++)
+                  Builder(
+                    builder: (context) {
+                      contexts[i] = context;
+                      return const SizedBox(width: 30, height: 10);
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final tokens = [
+        for (var i = 0; i < 2; i++)
+          AutomationRegistry.instance.register(
+            AutomationDeclaredNode(id: 'stack-child-$i', role: 'screen', contextGetter: () => contexts[i]),
+          ),
+      ];
+      addTearDown(() {
+        for (final token in tokens) {
+          AutomationRegistry.instance.unregister(token);
+        }
+      });
+
+      final declared = (AutomationRegistry.instance.snapshot()['declared'] as List).cast<Map<String, Object?>>();
+      final hidden = declared.firstWhere((n) => n['id'] == 'stack-child-0');
+      final shown = declared.firstWhere((n) => n['id'] == 'stack-child-1');
+
+      expect(hidden['bounds'], isNotNull, reason: 'the hidden child is laid out — that is the whole problem');
+      expect(shown['bounds'], hidden['bounds'], reason: 'geometry cannot tell the two apart');
+      expect(hidden['visible'], isFalse);
+      expect(shown['visible'], isTrue);
+    });
+
+    /// `Visibility` is not the only way to disappear: an `Offstage` or a
+    /// fully faded `Opacity` skip painting too, and those the render tree
+    /// answers for by itself.
+    testWidgets('a fully faded ancestor makes a node invisible', (tester) async {
+      late BuildContext context;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Opacity(
+              opacity: 0,
+              child: Builder(
+                builder: (inner) {
+                  context = inner;
+                  return const SizedBox(width: 30, height: 10);
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final token = AutomationRegistry.instance.register(
+        AutomationDeclaredNode(id: 'faded-probe', role: 'button', contextGetter: () => context),
+      );
+      addTearDown(() => AutomationRegistry.instance.unregister(token));
+
+      final declared = (AutomationRegistry.instance.snapshot()['declared'] as List).cast<Map<String, Object?>>();
+      expect(declared.firstWhere((n) => n['id'] == 'faded-probe')['visible'], isFalse);
+    });
+
+    /// Same rule as `bounds`: a node the registry cannot measure is reported
+    /// without the field rather than with a guess, so an assertion on it
+    /// fails as "not evaluable" instead of silently passing.
+    test('a node without a mounted context reports no visibility at all', () {
+      final token = AutomationRegistry.instance.register(
+        const AutomationDeclaredNode(id: 'contextless-probe', role: 'button'),
+      );
+      addTearDown(() => AutomationRegistry.instance.unregister(token));
+
+      final declared = (AutomationRegistry.instance.snapshot()['declared'] as List).cast<Map<String, Object?>>();
+      final node = declared.firstWhere((n) => n['id'] == 'contextless-probe');
+
+      expect(node.containsKey('visible'), isFalse);
+    });
+  });
 }

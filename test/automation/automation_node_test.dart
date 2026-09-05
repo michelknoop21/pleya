@@ -165,4 +165,46 @@ void main() {
       expect(AutomationScreenRegistry.instance.snapshot().single, containsPair('ready', true));
     });
   }, skip: _verifyOn ? false : _skipReason);
+
+  group('AutomationScreen is addressable in the UI tree, not only in /v1/screens', () {
+    /// Readiness answers "has this screen finished loading", which a screen
+    /// parked behind another answers just as cheerfully as the one on show.
+    /// Proving *which* tab is being drawn needs the screen to be a node in
+    /// `/v1/ui_tree` with a `visible` field, and before this it was not there
+    /// at all: an assertion on `screen.books` failed with "not in the UI
+    /// tree".
+    testWidgets('the tab in an IndexedStack that is not selected reports visible: false', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: IndexedStack(
+            index: 1,
+            children: [
+              // Identical boxes on purpose: two tabs of a shell are both
+              // laid out to the same frame, and that is the point below.
+              AutomationScreen(
+                id: 'screen.probe_hidden',
+                readiness: () => const AutomationReadiness.ready(),
+                child: const SizedBox(width: 300, height: 600),
+              ),
+              AutomationScreen(
+                id: 'screen.probe_shown',
+                readiness: () => const AutomationReadiness.ready(),
+                child: const SizedBox(width: 300, height: 600),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final hidden = _declaredById('screen.probe_hidden');
+      final shown = _declaredById('screen.probe_shown');
+
+      expect(hidden, isNotNull);
+      expect(shown, isNotNull);
+      expect(hidden!['role'], 'screen');
+      expect(shown!['bounds'], hidden['bounds'], reason: 'both tabs are laid out — geometry cannot separate them');
+      expect(hidden['visible'], isFalse);
+      expect(shown['visible'], isTrue);
+    });
+  }, skip: _verifyOn ? false : _skipReason);
 }

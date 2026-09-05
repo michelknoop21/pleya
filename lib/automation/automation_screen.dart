@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import 'automation_event_log.dart';
+import 'automation_registry.dart';
 import 'pleya_verify.dart';
 
 enum AutomationReadinessState { loading, ready, error }
@@ -76,6 +77,7 @@ class AutomationScreen extends StatefulWidget {
 
 class _AutomationScreenState extends State<AutomationScreen> {
   int? _token;
+  int? _nodeToken;
   bool? _lastReady;
 
   @override
@@ -105,12 +107,23 @@ class _AutomationScreenState extends State<AutomationScreen> {
     // for a screen that has since finished, which is exactly what a
     // `wait_until: {id: screen.…}` step blocks on.
     _token = AutomationScreenRegistry.instance.register(widget.id, () => widget.readiness());
+    // The same id as a node in `/v1/ui_tree`, so a scenario can ask where a
+    // screen is and whether it is being drawn. Readiness alone cannot answer
+    // the second question: the shell keeps every tab mounted in an
+    // `IndexedStack`, and a tab parked behind the one on show reports itself
+    // ready — and, being laid out, with a full-viewport rect as well.
+    _nodeToken = AutomationRegistry.instance.register(
+      AutomationDeclaredNode(id: widget.id, role: 'screen', contextGetter: () => mounted ? context : null),
+    );
   }
 
   void _unregister() {
     final token = _token;
     if (token != null) AutomationScreenRegistry.instance.unregister(token);
     _token = null;
+    final nodeToken = _nodeToken;
+    if (nodeToken != null) AutomationRegistry.instance.unregister(nodeToken);
+    _nodeToken = null;
   }
 
   void _checkReadiness() {

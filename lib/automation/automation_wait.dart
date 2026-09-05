@@ -48,7 +48,12 @@ class AutomationWait {
       ];
       final match = nodes.where((n) {
         if (id != null && n['id'] != id) return false;
-        if (wantVisible != null && (n['bounds'] != null) != wantVisible) return false;
+        // The node's own answer, not `bounds != null`: an `IndexedStack`
+        // lays out every tab it keeps mounted, so the old derivation called
+        // the screen parked behind the visible one visible too. Nodes that
+        // cannot report it (no mounted render object) fall back to the old
+        // rule rather than dropping out of every wait.
+        if (wantVisible != null && (n['visible'] as bool? ?? n['bounds'] != null) != wantVisible) return false;
         if (wantFocused != null && n['focused'] != wantFocused) return false;
         return true;
       });
