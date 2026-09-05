@@ -109,6 +109,7 @@ Future<void> showTvHomeCustomizePanel(
   return OverlaySheetController.showAdaptive<void>(
     context,
     presentation: OverlaySheetPresentation.panel,
+    constraints: tvWidePanelConstraints(MediaQuery.sizeOf(context)),
     initialFocusNode: initialFocusNode,
     restoreLauncherFocus: true,
     builder: (sheetContext) => ListenableBuilder(

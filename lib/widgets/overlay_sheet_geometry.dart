@@ -168,6 +168,17 @@ const double _panelEnterDistance = 24;
 /// end because its rows carry server, library, quality and progress on one line.
 const double _tvPanelReferenceWidth = 1000;
 
+/// Reference width of a *wide* TV panel: one that carries full-width list rows
+/// rather than a picker's single column.
+///
+/// Mockup 32 B draws "Home aanpassen" at 1560, and it needs the room: a row
+/// there is four mini posters, two tiers of text and up to four buttons on one
+/// line. At [_tvPanelReferenceWidth] the text column was crushed to an ellipsis
+/// on the smallest canvas CAT1 has to survive, so the row said nothing about
+/// which row it was. The source picker and the filter panel keep the narrower
+/// number, because a list a remote walks is better when it is not a wall.
+const double _tvWidePanelReferenceWidth = 1560;
+
 /// Reference corner radius, from hoofdstuk 14.1's "hoekradius 20–24".
 const double _tvPanelReferenceRadius = 22;
 
@@ -216,6 +227,15 @@ const double _tvPanelShadowContactOffset = 6;
 /// host's clipped edge instead of guessing at the number. One source of truth,
 /// which is the whole point of putting the reference conversion in this file.
 double tvPanelBorderRadius(Size viewport) => viewport.width * (_tvPanelReferenceRadius / _tvReferenceWidth);
+
+/// Constraints for a TV panel of full-width rows; see
+/// [_tvWidePanelReferenceWidth]. Pass as `constraints:` to
+/// `OverlaySheetController.showAdaptive`, which honours an explicit box and
+/// then clamps it to the viewport like any other.
+BoxConstraints tvWidePanelConstraints(Size viewport) => BoxConstraints(
+  maxWidth: viewport.width * (_tvWidePanelReferenceWidth / _tvReferenceWidth),
+  maxHeight: viewport.height * _tvPanelMaxHeightFraction,
+);
 
 /// Turn a presentation plus a viewport into concrete placement numbers.
 ///

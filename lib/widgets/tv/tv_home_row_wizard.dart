@@ -32,7 +32,6 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../focus/focusable_text_field.dart';
-import '../focusable_filter_chip.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
@@ -68,6 +67,7 @@ Future<HomeCustomRow?> showTvHomeRowWizard(
   return OverlaySheetController.showAdaptive<HomeCustomRow>(
     context,
     presentation: OverlaySheetPresentation.panel,
+    constraints: tvWidePanelConstraints(MediaQuery.sizeOf(context)),
     initialFocusNode: initialFocusNode,
     restoreLauncherFocus: true,
     builder: (sheetContext) => TvHomeRowWizard(
@@ -298,19 +298,23 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
     children: [
       _stepHeader(mono, scale, t.unifiedCatalog.homeRows.stepName, t.unifiedCatalog.homeRows.stepNameBody),
       TvHomeWizardFieldLabel(text: t.unifiedCatalog.homeRows.kind, scale: scale),
-      // Chips, not option rows. `TvCatalogOptionRow` is a full-width list row
-      // and lays itself out as one, so two of them side by side in an
-      // unbounded Row have no width to divide — which is a layout assertion,
-      // not a cosmetic difference. The chip is also what C1 draws.
+      // The panel's own CTA capsule, not `FocusableFilterChip`. Two reasons,
+      // and neither is taste. `TvCatalogOptionRow` is a full-width list row and
+      // lays itself out as one, so two side by side in an unbounded Row have no
+      // width to divide, which is a layout assertion. And the filter chip's
+      // selected state is the red brand accent: hoofdstuk 34 pins the primary
+      // CTA white and 33.6 #2 records that the mockup's red button loses, so a
+      // red pill here would be the one red thing on a monochrome page.
       Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           for (final kind in const [MediaKind.movie, MediaKind.show]) ...[
             if (kind == MediaKind.show) SizedBox(width: TvHomeRowsLayout.actionGap * scale),
-            FocusableFilterChip(
+            TvPanelButton(
+              scale: scale,
               label: kind == MediaKind.movie ? t.unifiedCatalog.moviesTitle : t.unifiedCatalog.seriesTitle,
               icon: kind == MediaKind.movie ? Symbols.movie_rounded : Symbols.live_tv_rounded,
-              selected: _kind == kind,
+              primary: _kind == kind,
               focusNode: _nodeFor('kind.${kind.id}'),
               // Changing the kind changes which libraries take part, so a
               // source restriction picked under the other kind names libraries
@@ -329,11 +333,18 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
       ),
       SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
       TvHomeWizardFieldLabel(text: t.unifiedCatalog.homeRows.name, scale: scale),
+      // Both styles stated rather than inherited. The panel sets its own type
+      // everywhere else, and a field that falls back to the Material theme's
+      // default sits at a different size and weight from the label directly
+      // above it — which on a 10-foot surface reads as a different kind of
+      // control, not as a smaller font.
       FocusableTextField(
         controller: _name,
         focusNode: _nodeFor('name'),
+        style: TextStyle(fontSize: TvHomeRowsLayout.titleFontSize * scale, color: mono.text),
         decoration: InputDecoration(
           hintText: homeCustomRowLabel(HomeCustomRow(id: _id, kind: _kind, preferences: _preferences)),
+          hintStyle: TextStyle(fontSize: TvHomeRowsLayout.titleFontSize * scale, color: mono.textMuted),
           border: const OutlineInputBorder(),
         ),
         onChanged: (_) => setState(() {}),
