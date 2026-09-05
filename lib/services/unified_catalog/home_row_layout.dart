@@ -18,9 +18,14 @@
 ///   earliest row the user dragged it from. Ranking by the *last* would push a
 ///   merge below rows the user had deliberately placed under one of its halves.
 ///
-/// A row with no contributing ids at all — the synthesized Continue Watching
-/// and recent-films rows — is never hidden and never ranked; it keeps its
-/// incoming position, which is the position the projection provider gave it.
+/// A synthesized row has no contributing hub ids, so it answers for itself:
+/// its own [UnifiedMediaHub.hubId] is its name in the layout space. That is
+/// what makes Recent uitgebracht orderable and hideable alongside the backend
+/// rows (DEC-100 (4) locks exactly two rows, Uitgelicht and Verder kijken, and
+/// Recent uitgebracht is not one of them), and what lets a row the viewer
+/// defined take part in the same order list as everything else. A synthesized
+/// row the stored layout has never seen still keeps its incoming position,
+/// because an id absent from both lists ranks last and hides nothing.
 ///
 /// Pure, and top-level rather than a method on the provider, because it is the
 /// product rule and not the storage: `test/services/home_row_layout_test.dart`
@@ -42,7 +47,7 @@ List<UnifiedMediaHub> applyHomeLayoutToUnifiedRows(
       ? List.of(rows)
       : [
           for (final row in rows)
-            if (row.contributingRowIds.isEmpty || !row.contributingRowIds.every(hiddenRowIds.contains)) row,
+            if (!_layoutIdsOf(row).every(hiddenRowIds.contains)) row,
         ];
 
   if (order.isEmpty) return visible;
@@ -50,7 +55,7 @@ List<UnifiedMediaHub> applyHomeLayoutToUnifiedRows(
   final rank = {for (var i = 0; i < order.length; i++) order[i]: i};
   int rankOf(UnifiedMediaHub row) {
     var best = order.length;
-    for (final id in row.contributingRowIds) {
+    for (final id in _layoutIdsOf(row)) {
       final r = rank[id];
       if (r != null && r < best) best = r;
     }
@@ -64,3 +69,11 @@ List<UnifiedMediaHub> applyHomeLayoutToUnifiedRows(
   indexed.sort((a, b) => a.$2 != b.$2 ? a.$2.compareTo(b.$2) : a.$3.compareTo(b.$3));
   return [for (final e in indexed) e.$1];
 }
+
+/// The names [row] answers to in `HomeLayoutProvider`'s id space.
+///
+/// The contributing hubs for a projected row, and the row's own id for a
+/// synthesized one. Never empty, so "hidden when every name is hidden" cannot
+/// be vacuously true — an empty list would make `every` return true and hide
+/// every synthesized row the moment anything at all was hidden.
+List<String> _layoutIdsOf(UnifiedMediaHub row) => row.contributingRowIds.isEmpty ? [row.hubId] : row.contributingRowIds;

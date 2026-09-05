@@ -55,6 +55,7 @@ import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
 import '../../providers/discover_provider.dart';
+import '../../providers/home_custom_rows_provider.dart';
 import '../../providers/home_layout_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/tv_home_projection_provider.dart';
@@ -64,6 +65,7 @@ import '../../media/unified/unified_route_context.dart';
 import '../../services/settings_service.dart';
 import '../../services/unified_catalog/home_row_layout.dart';
 import '../../theme/mono_tokens.dart';
+import '../../utils/home_custom_row_labels.dart';
 import '../../utils/layout_constants.dart';
 import '../state_view.dart';
 import 'tv_content_row.dart';
@@ -366,18 +368,33 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
   /// of a shipped Home on the strength of a sketch would be a product change
   /// made silently.
   ///
-  /// Hoofdstuk 17.5's hide/reorder applies to the recommendation rows, and
-  /// applies to the *unified* ones: see `home_row_layout.dart` for why a merged
-  /// row needs every contributor hidden before it disappears. Continue Watching
-  /// and Recently Released sit outside that layout, exactly as they did before
-  /// — neither was ever one of the rows the settings screen lists.
-  List<UnifiedMediaHub> _rows(TvHomeProjectionProvider projection, HomeLayoutProvider? layout) {
+  /// Hoofdstuk 17.5's hide/reorder applies to the *unified* rows: see
+  /// `home_row_layout.dart` for why a merged row needs every contributor hidden
+  /// before it disappears.
+  ///
+  /// **Continue Watching is the only row outside the layout.** It used to be
+  /// two: DEC-100 (4) locks Uitgelicht and Verder kijken and nothing else, and
+  /// mockup 32 B draws Recent uitgebracht with the same move and hide controls
+  /// as a backend row. It already carried a contributing row id from
+  /// `projectHubs`, so nothing had to be invented for it — it simply reaches
+  /// the layout now, where it always could have.
+  ///
+  /// The rows the viewer defined go in at the front, which is where a Home with
+  /// no stored order draws them: directly under Verder kijken, as DEC-100 (5)
+  /// asks. Once anything has been moved the stored order decides instead, and
+  /// their position here stops mattering.
+  List<UnifiedMediaHub> _rows(
+    TvHomeProjectionProvider projection,
+    HomeLayoutProvider? layout,
+    HomeCustomRowsProvider? customRows,
+  ) {
     final cw = projection.continueWatching;
     final latest = projection.latestMovies;
-    final hubs = layout == null
-        ? projection.hubs
-        : applyHomeLayoutToUnifiedRows(projection.hubs, hiddenRowIds: layout.hiddenRowIds, order: layout.order);
-    return [if (cw != null && cw.groups.isNotEmpty) cw, if (latest != null) latest, ...hubs];
+    final orderable = [...?customRows?.visibleRows(titleFor: homeCustomRowLabel), ?latest, ...projection.hubs];
+    final laidOut = layout == null
+        ? orderable
+        : applyHomeLayoutToUnifiedRows(orderable, hiddenRowIds: layout.hiddenRowIds, order: layout.order);
+    return [if (cw != null && cw.groups.isNotEmpty) cw, ...laidOut];
   }
 
   /// Hoofdstuk 9.5's last sentence, and fase-8 brief §22's "0 hero groups":
@@ -403,7 +420,8 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
     final projection = context.watch<TvHomeProjectionProvider>();
     final discover = context.watch<DiscoverProvider>();
     final layout = context.watch<HomeLayoutProvider?>();
-    final rows = _rows(projection, layout);
+    final customRows = context.watch<HomeCustomRowsProvider?>();
+    final rows = _rows(projection, layout, customRows);
     // Read off the projection's own row rather than matched against a slug
     // literal: the slug is a parameter of `projectContinueWatching`, so a
     // literal here would be a second definition that can drift from it.

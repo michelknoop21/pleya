@@ -24,6 +24,7 @@ class StorageService extends BaseSharedPreferencesService {
   static const String _keyActiveProfileId = PreferenceSyncScope.activeProfileIdKey;
   static const String _keyHomeRowOrder = 'home_row_order';
   static const String _keyHiddenHomeRows = 'hidden_home_rows';
+  static const String _keyHomeCustomRows = 'home_custom_rows';
 
   // Key prefixes for per-id storage
   static const String _prefixServerEndpoint = 'server_endpoint_';
@@ -369,6 +370,19 @@ class StorageService extends BaseSharedPreferencesService {
 
   Set<String> getHiddenHomeRows(String? profileId) {
     return (_getStringList('${_homePrefix(profileId)}$_keyHiddenHomeRows') ?? const []).toSet();
+  }
+
+  /// The profile's own Home rows (ROW1/DEC-100), one JSON object per entry.
+  ///
+  /// A list of lines rather than one document, so a corrupt entry costs its
+  /// own row instead of the whole set — `HomeCustomRow.decode` drops it and
+  /// the rest still load.
+  Future<void> saveHomeCustomRows(String? profileId, List<String> encodedRows) async {
+    await _setStringList('${_homePrefix(profileId)}$_keyHomeCustomRows', encodedRows);
+  }
+
+  List<String> getHomeCustomRows(String? profileId) {
+    return _getStringList('${_homePrefix(profileId)}$_keyHomeCustomRows') ?? const [];
   }
 
   String _homePrefix(String? profileId) => profileId == null ? _userPrefix : _userPrefixForProfileId(profileId);

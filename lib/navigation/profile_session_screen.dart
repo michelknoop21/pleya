@@ -17,6 +17,7 @@ import '../profiles/active_profile_provider.dart';
 import '../providers/companion_remote_provider.dart';
 import '../providers/discover_provider.dart';
 import '../providers/hidden_libraries_provider.dart';
+import '../providers/home_custom_rows_provider.dart';
 import '../providers/home_layout_provider.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/multi_server_provider.dart';
@@ -237,6 +238,20 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   storageService: context.read<StorageService>(),
                   multiServer: context.read<MultiServerProvider>(),
                 ),
+              ),
+              // ROW1/DEC-100: the content of the rows this profile defined
+              // itself. Registered after LibrariesProvider because it reads
+              // all three source providers, and lazy like its neighbours — a
+              // profile with no saved rows never starts a merge, and the
+              // constructor's first load costs nothing for an empty list.
+              ChangeNotifierProvider(
+                create: (context) => HomeCustomRowsProvider(
+                  layout: context.read<HomeLayoutProvider>(),
+                  multiServer: context.read<MultiServerProvider>(),
+                  libraries: context.read<LibrariesProvider>(),
+                  hiddenLibraries: context.read<HiddenLibrariesProvider>(),
+                ),
+                lazy: true,
               ),
               // Fase 3's lifecycle owner for the unified catalogs, holding the
               // two hoofdstuk 10.1 defines: Films and Series. Profile-scoped

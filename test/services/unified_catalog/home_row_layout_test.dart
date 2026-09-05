@@ -62,14 +62,42 @@ void main() {
     );
   });
 
-  test('a synthesized row with no contributors is never hidden', () {
-    // Continue Watching and Recently Released: they were never in the settings
-    // screen's list, so no stored preference can name them, and a hidden-set
-    // membership test against an empty contributor list must not drop them.
+  test('a synthesized row survives a hidden set that does not name it', () {
+    // The guard against a vacuous `every`: a row with no contributors answers
+    // for itself, so an empty contributor list must never make "all of its ids
+    // are hidden" trivially true.
     final rows = [_row('pleya:home:continue-watching')];
     expect(_ids(applyHomeLayoutToUnifiedRows(rows, hiddenRowIds: {'s1:a', 's1:b'}, order: const [])), [
       'pleya:home:continue-watching',
     ]);
+  });
+
+  test('a synthesized row hides under its own hub id', () {
+    // ROW1/DEC-100: Recent uitgebracht and a row the viewer defined are both
+    // synthesized, and both have to be hideable. Only Uitgelicht and Verder
+    // kijken are fixed, and they are fixed by never reaching this function.
+    final rows = [_row('hub:pleya:latest-movies'), _row('hub:pleya:custom:r1')];
+    expect(_ids(applyHomeLayoutToUnifiedRows(rows, hiddenRowIds: {'hub:pleya:latest-movies'}, order: const [])), [
+      'hub:pleya:custom:r1',
+    ]);
+  });
+
+  test('a synthesized row ranks under its own hub id', () {
+    final rows = [
+      _row('hub:pleya:latest-movies'),
+      _row('a', contributors: ['s1:a']),
+      _row('hub:pleya:custom:r1'),
+    ];
+    expect(
+      _ids(
+        applyHomeLayoutToUnifiedRows(
+          rows,
+          hiddenRowIds: const {},
+          order: const ['hub:pleya:custom:r1', 's1:a', 'hub:pleya:latest-movies'],
+        ),
+      ),
+      ['hub:pleya:custom:r1', 'a', 'hub:pleya:latest-movies'],
+    );
   });
 
   test('rows sort by the stored order, unknown rows keeping their place at the end', () {
