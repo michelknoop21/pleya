@@ -38,6 +38,17 @@ import '../../widgets/mobile/mobile_source_picker_sheet.dart';
 import '../../widgets/skeletons.dart';
 import '../libraries/content_state_builder.dart' show SliverErrorState;
 
+/// The `currentSourceKey` Home's Play hands to the source picker.
+///
+/// `initialFocusSourceKey` (where the picker should put its initial focus)
+/// and "the source the surface behind the picker already shows" (only true
+/// when a picker is reopened from a detail page) are two different
+/// questions. Home's Play has no detail page behind it, so the answer to the
+/// second question is always null here — never `initialFocusSourceKey`,
+/// which is what a never-played row would otherwise be mislabelled with.
+@visibleForTesting
+String? homePlayCurrentSourceKey({required String initialFocusSourceKey}) => null;
+
 class MobileHomeScreen extends StatefulWidget {
   /// Opens Zoeken. Comes from `MainScreen` through [DiscoverScreen], because
   /// this screen is mounted deep inside the Home tab and tab selection belongs
@@ -80,7 +91,7 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
               representative: group.representativeSource.item,
               sources: sources,
               preferredSourceKey: preferredSourceKey,
-              currentSourceKey: initialFocusSourceKey,
+              currentSourceKey: homePlayCurrentSourceKey(initialFocusSourceKey: initialFocusSourceKey),
               preferredServerId: preferredServerId,
               coverage: coverage,
             );
