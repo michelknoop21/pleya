@@ -30,10 +30,9 @@ import '../../providers/tv_discovery_landing_provider.dart';
 import '../../services/unified_catalog/home_row_layout.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/media_navigation_helper.dart';
+import '../../widgets/mobile/mobile_discovery_shell.dart';
 import '../../widgets/mobile/mobile_media_rail.dart';
 import '../../widgets/mobile/mobile_page_header.dart';
-import '../../widgets/mobile/mobile_refresh_scope.dart';
-import '../../widgets/skeletons.dart';
 import '../libraries/content_state_builder.dart' show SliverEmptyState, SliverErrorState;
 
 /// Which landing this is. Deliberately not [UnifiedHubKind], which has five
@@ -103,59 +102,51 @@ class MobileLandingScreen extends StatelessWidget {
     // nothing at all for the fetch that feeds it.
     final isLoading = discover.isLoading;
     final errorMessage = discover.errorMessage;
-    final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
     return AutomationScreen(
       id: kind.screenAutomationId,
       readiness: () => isLoading ? const AutomationReadiness.loading('hubs') : const AutomationReadiness.ready(),
-      child: Material(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        child: MobileRefreshScope(
-          onRefresh: discover.load,
-          child: CustomScrollView(
-            slivers: [
+      child: mobileDiscoveryScaffold(
+        context: context,
+        onRefresh: discover.load,
+        slivers: [
+          SliverToBoxAdapter(
+            child: MobilePageHeader(
+              activeProfile: activeProfile,
+              onSearchTap: onSearchTap ?? () {},
+              automationId: AutomationIds.landingHeader,
+              searchAutomationId: AutomationIds.landingHeaderSearch,
+              avatarAutomationId: AutomationIds.landingHeaderAvatar,
+              automationInstance: kind.automationInstance,
+            ),
+          ),
+          SliverToBoxAdapter(child: _TitleRow(kind: kind)),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          if (isLoading) mobileHubRowsSkeletonSliver,
+          if (!isLoading && errorMessage != null) SliverErrorState(message: errorMessage, onRetry: discover.load),
+          // A landing has no hero, so an empty projection is a blank page
+          // rather than a page missing its rows. Home can leave this out;
+          // this screen cannot.
+          if (!isLoading && errorMessage == null && hubs.isEmpty)
+            SliverEmptyState(
+              message: t.unifiedCatalog.discovery.emptyTitle,
+              icon: Symbols.inbox_rounded,
+              subtitle: t.unifiedCatalog.discovery.emptyBody,
+            ),
+          if (!isLoading && errorMessage == null)
+            for (var i = 0; i < hubs.length; i++)
               SliverToBoxAdapter(
-                child: MobilePageHeader(
-                  activeProfile: activeProfile,
-                  onSearchTap: onSearchTap ?? () {},
-                  automationId: AutomationIds.landingHeader,
-                  searchAutomationId: AutomationIds.landingHeaderSearch,
-                  avatarAutomationId: AutomationIds.landingHeaderAvatar,
-                  automationInstance: kind.automationInstance,
+                child: MobileMediaRail(
+                  hub: hubs[i],
+                  railIndex: i,
+                  automationId: AutomationIds.landingRail,
+                  itemAutomationId: AutomationIds.landingRailItem,
+                  instancePrefix: kind.automationInstance,
+                  onCardTap: (group) => _openDetails(context, group),
                 ),
               ),
-              SliverToBoxAdapter(child: _TitleRow(kind: kind)),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              if (isLoading)
-                const SliverToBoxAdapter(
-                  child: Column(children: [SkeletonHubRow(), SkeletonHubRow(), SkeletonHubRow()]),
-                ),
-              if (!isLoading && errorMessage != null) SliverErrorState(message: errorMessage, onRetry: discover.load),
-              // A landing has no hero, so an empty projection is a blank page
-              // rather than a page missing its rows. Home can leave this out;
-              // this screen cannot.
-              if (!isLoading && errorMessage == null && hubs.isEmpty)
-                SliverEmptyState(
-                  message: t.unifiedCatalog.discovery.emptyTitle,
-                  icon: Symbols.inbox_rounded,
-                  subtitle: t.unifiedCatalog.discovery.emptyBody,
-                ),
-              if (!isLoading && errorMessage == null)
-                for (var i = 0; i < hubs.length; i++)
-                  SliverToBoxAdapter(
-                    child: MobileMediaRail(
-                      hub: hubs[i],
-                      railIndex: i,
-                      automationId: AutomationIds.landingRail,
-                      itemAutomationId: AutomationIds.landingRailItem,
-                      instancePrefix: kind.automationInstance,
-                      onCardTap: (group) => _openDetails(context, group),
-                    ),
-                  ),
-              SliverToBoxAdapter(child: SizedBox(height: bottomPadding + 16)),
-            ],
-          ),
-        ),
+          mobileDiscoveryTailSliver(context),
+        ],
       ),
     );
   }
@@ -192,7 +183,7 @@ class _TitleRow extends StatelessWidget {
                 kind.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800),
+                style: mobileDiscoveryTitleStyle,
               ),
             ),
             AutomationNode(

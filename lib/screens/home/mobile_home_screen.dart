@@ -29,13 +29,12 @@ import '../../utils/media_navigation_helper.dart';
 import '../../utils/video_player_navigation.dart';
 import '../../widgets/media_card_grid_layout.dart';
 import '../../widgets/mobile/mobile_chip_bar.dart';
+import '../../widgets/mobile/mobile_discovery_shell.dart';
 import '../../widgets/mobile/mobile_hero_card.dart';
 import '../../widgets/mobile/mobile_media_card.dart';
 import '../../widgets/mobile/mobile_media_rail.dart';
 import '../../widgets/mobile/mobile_page_header.dart';
-import '../../widgets/mobile/mobile_refresh_scope.dart';
 import '../../widgets/mobile/mobile_source_picker_sheet.dart';
-import '../../widgets/skeletons.dart';
 import '../libraries/content_state_builder.dart' show SliverErrorState;
 
 /// The `currentSourceKey` Home's Play hands to the source picker.
@@ -174,67 +173,61 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
 
     final isLoading = discover.isLoading;
     final errorMessage = discover.errorMessage;
-    final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
-    return Material(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: MobileRefreshScope(
-        onRefresh: discover.load,
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: MobilePageHeader(activeProfile: activeProfile, onSearchTap: widget.onSearchTap ?? () {}),
-            ),
-            SliverToBoxAdapter(
-              child: MobileChipBar(selected: _chip, onSelected: (chip) => setState(() => _chip = chip)),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 16)),
-            // `Voor jou` names what a filtered Home is: the same recommendation
-            // feed, narrowed to one kind. Only with a chip active, because
-            // unfiltered Home carries the hero and the wordmark instead and
-            // needs no second title (`home-comp-gefilterd.png`, [DEC-094]).
-            if (_chip != MobileHomeChip.home)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Text(
-                    t.discover.forYou,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ),
-            if (_chip == MobileHomeChip.home)
-              SliverLayoutBuilder(builder: (context, constraints) => _heroSliver(context, constraints, homeProjection)),
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            if (isLoading)
-              const SliverToBoxAdapter(child: Column(children: [SkeletonHubRow(), SkeletonHubRow(), SkeletonHubRow()])),
-            if (errorMessage != null) SliverErrorState(message: errorMessage, onRetry: discover.load),
-            if (!isLoading && errorMessage == null) ...[
-              if (continueWatching != null && !continueWatching.isEmpty)
-                SliverToBoxAdapter(
-                  child: MobileMediaRail(
-                    hub: continueWatching,
-                    railIndex: 0,
-                    shape: MobileCardShape.wide,
-                    isContinueWatching: true,
-                    onCardTap: _openDetails,
-                  ),
-                ),
-              for (var i = 0; i < hubs.length; i++)
-                SliverToBoxAdapter(
-                  child: MobileMediaRail(
-                    hub: hubs[i],
-                    railIndex: continueWatching != null ? i + 1 : i,
-                    onCardTap: _openDetails,
-                  ),
-                ),
-            ],
-            SliverToBoxAdapter(child: SizedBox(height: bottomPadding + 16)),
-          ],
+    return mobileDiscoveryScaffold(
+      context: context,
+      onRefresh: discover.load,
+      slivers: [
+        SliverToBoxAdapter(
+          child: MobilePageHeader(activeProfile: activeProfile, onSearchTap: widget.onSearchTap ?? () {}),
         ),
-      ),
+        SliverToBoxAdapter(
+          child: MobileChipBar(selected: _chip, onSelected: (chip) => setState(() => _chip = chip)),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        // `Voor jou` names what a filtered Home is: the same recommendation
+        // feed, narrowed to one kind. Only with a chip active, because
+        // unfiltered Home carries the hero and the wordmark instead and
+        // needs no second title (`home-comp-gefilterd.png`, [DEC-094]).
+        if (_chip != MobileHomeChip.home)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Text(
+                t.discover.forYou,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: mobileDiscoveryTitleStyle,
+              ),
+            ),
+          ),
+        if (_chip == MobileHomeChip.home)
+          SliverLayoutBuilder(builder: (context, constraints) => _heroSliver(context, constraints, homeProjection)),
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        if (isLoading) mobileHubRowsSkeletonSliver,
+        if (errorMessage != null) SliverErrorState(message: errorMessage, onRetry: discover.load),
+        if (!isLoading && errorMessage == null) ...[
+          if (continueWatching != null && !continueWatching.isEmpty)
+            SliverToBoxAdapter(
+              child: MobileMediaRail(
+                hub: continueWatching,
+                railIndex: 0,
+                shape: MobileCardShape.wide,
+                isContinueWatching: true,
+                onCardTap: _openDetails,
+              ),
+            ),
+          for (var i = 0; i < hubs.length; i++)
+            SliverToBoxAdapter(
+              child: MobileMediaRail(
+                hub: hubs[i],
+                railIndex: continueWatching != null ? i + 1 : i,
+                onCardTap: _openDetails,
+              ),
+            ),
+        ],
+        mobileDiscoveryTailSliver(context),
+      ],
     );
   }
 }
