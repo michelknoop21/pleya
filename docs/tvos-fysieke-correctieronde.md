@@ -132,7 +132,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | NAVSEL1 | `tvos.nav.destination-select` sprak de app op twee punten tegen: het verwachtte Films na één RIGHT vanaf Home terwijl Series daar staat, en het eiste een Select om van bestemming te wisselen terwijl focus dat sinds 2 september zelf doet. Gedraaid, rood op de eerste, en verwijderd; `tvos.nav.focus-switches-destination` dekt het en is groen | FIXED | `17d47592` |
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
 | RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
-| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) staat klaar op zijn functieschets van dezelfde dag; de ingang en de tags zijn op zijn eerste reactie hertekend | OPEN, mockup 32 ter beoordeling | n.v.t. |
+| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) goedgekeurd op 5 september, DEC-100 accepted, 9.1, 17.5 en 23 aangepast; bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -3003,10 +3003,13 @@ orderlijst van `HomeLayoutProvider`; een rij-id voor zo'n object dat niet botst 
 volledige paging van hoofdstuk 12 te draaien. De teller volgt 10.7: pas exact als alle bronnen
 uitgeput zijn, anders "42 geladen".
 
-Open voor Michel: akkoord op A1a tot en met C4, en twee keuzes erin. De ingang (A1a, A1b of
-allebei) en drie stappen in plaats van vier (C2). Daarna een DEC, de aanpassing van 9.1, 17.5 en
-23 (het contextmenu krijgt een paginabrede actie), en de bouwronde met een negatieve controle op `TvContentFeed`: een widgettest die
-een eigen rij uit een bewaard filter tussen de hubrijen eist, rood op de huidige code.
+**Goedgekeurd door Michel op 5 september**, letterlijk: "Ja dit is top akkoord", op A1a en A1b
+samen (de voetregel als zichtbare plek, het contextmenu als korte weg), A2, B en C1 tot en met C4
+met drie stappen. Vastgelegd als [DEC-100](DECISIONS.md#dec-100); 9.1, 17.5 en 23 van de spec
+zijn aangepast. De bouw is een eigen ronde en komt na CAT5, dat eerder in de tabel staat. De
+negatieve controle staat in DEC-100: een widgettest op `TvContentFeed` die een eigen rij uit een
+bewaard filter tussen de hubrijen eist, met de hero en Verder kijken op hun vaste plek, rood op de
+huidige code.
 
 ### RAIL1, het fase-6 railcontract is bij een verhuizing achtergebleven
 
