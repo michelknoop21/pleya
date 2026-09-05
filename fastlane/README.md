@@ -93,6 +93,14 @@ Tonen wat er nu als App Store "What's New" op de bewerkbare versie staat: fastla
 
 Releasenotes uit docs/RELEASES.md als App Store "What's New" zetten: fastlane whats_new build:227
 
+### preview
+
+```sh
+[bundle exec] fastlane preview
+```
+
+Losse previewbuild → TestFlight, zonder aan het App Store-versierecord te koppelen
+
 ### beta
 
 ```sh
