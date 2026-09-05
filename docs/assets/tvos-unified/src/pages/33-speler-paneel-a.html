@@ -2,7 +2,7 @@
 .video { position: absolute; inset: 0; }
 .video img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; filter: brightness(.5); }
 /* bovenband: eindigt op 640, de onderste 120 lopen naar de video zodat het beeld eronder leesbaar blijft */
-.panel { position: absolute; left: 0; right: 0; top: 0; height: 660px; padding: 44px var(--inset) 0;
+.panel { position: absolute; left: 0; right: 0; top: 0; height: 672px; padding: 44px var(--inset) 0;
   background: linear-gradient(180deg, rgba(20,20,20,.96) 0%, rgba(20,20,20,.94) 74%, rgba(20,20,20,.72) 88%, rgba(20,20,20,0) 100%); }
 .ptabs { display: flex; gap: 12px; align-items: center; height: 52px; }
 .ptabs .now { margin-left: auto; font-size: 20px; color: var(--ink-3); white-space: nowrap; }
@@ -12,8 +12,10 @@
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 24px; }
 .cols.one { grid-template-columns: 1fr; }
 .sec { font-size: 20px; font-weight: 500; color: var(--ink-3); letter-spacing: .02em; text-transform: uppercase; margin: 0 0 16px 22px; }
-.col .rows { gap: 8px; }
-.col .row { min-height: 64px; padding: 0 22px; gap: 18px; }
+.col .rows { gap: 12px; }
+/* de ring steekt 12 px buiten de rij; de buren mogen er niet overheen tekenen */
+.col .row.focus, .chip-btn.focus { position: relative; z-index: 1; }
+.col .row { min-height: 62px; padding: 0 22px; gap: 18px; }
 .col .row .t { font-size: 22px; }
 .col .row .s { font-size: 17px; margin-top: 1px; }
 .col .row .val { font-size: 21px; }
@@ -32,7 +34,7 @@
 .step .ic { width: 22px; height: 22px; color: var(--ink); flex: none; }
 .step.rest .ic { color: var(--ink-4); }
 .step.rest .val { color: var(--ink-2); }
-.hintbar { position: absolute; left: var(--inset); right: var(--inset); top: 604px; display: flex; align-items: center; justify-content: space-between; }
+.hintbar { position: absolute; left: var(--inset); right: var(--inset); top: 612px; display: flex; align-items: center; justify-content: space-between; }
 .hintbar .hint { font-size: 19px; }
 .hintbar .pos { font-size: 19px; color: var(--ink-3); }
 .badge-now { display: inline-flex; align-items: center; gap: 8px; font-size: 18px; color: var(--ink-2); background: var(--fill-2); border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
