@@ -48,6 +48,19 @@ const (
 	CodeOwnerImmutable  = "auth.owner_immutable"
 	CodeSessionNotFound = "auth.session_not_found"
 
+	// CodePermissionNotAllowed is de code die venster 1 toevoegt voor een
+	// rechtencombinatie die de rol van het doel verbiedt (J.2 rij 11): manage
+	// voor een restricted (DEC-098 paragraaf 3). Tot nu toe droeg dat geval
+	// auth.user_not_found, en dat was de minst onjuiste van wat er stond.
+	//
+	// Hij hoort bij de 409's en niet bij de 404's, en dat is de uitzondering
+	// die de regel bevestigt: de 404-regel verbergt het bestaan van iets dat de
+	// aanvrager niet mag zien, maar de aanvrager is hier per definitie een
+	// beheerder die de gebruiker en de bibliotheek allebei al mag zien. Er valt
+	// niets te verbergen, alleen iets uit te leggen, en een 404 zou dan een
+	// beheerder laten zoeken naar een gebruiker die er gewoon is.
+	CodePermissionNotAllowed = "auth.permission_not_allowed"
+
 	CodeNotFound         = "library.not_found"
 	CodeScanInProgress   = "library.scan_in_progress"
 	CodeCursorInvalid    = "library.cursor_invalid"
@@ -120,10 +133,11 @@ var errorTable = map[string]struct {
 	CodeSetupCodeInvalid:      {http.StatusUnauthorized, false},
 	CodeRateLimited:           {http.StatusTooManyRequests, true},
 
-	CodeUserNotFound:    {http.StatusNotFound, false},
-	CodeUsernameTaken:   {http.StatusConflict, false},
-	CodeOwnerImmutable:  {http.StatusConflict, false},
-	CodeSessionNotFound: {http.StatusNotFound, false},
+	CodeUserNotFound:         {http.StatusNotFound, false},
+	CodeUsernameTaken:        {http.StatusConflict, false},
+	CodeOwnerImmutable:       {http.StatusConflict, false},
+	CodeSessionNotFound:      {http.StatusNotFound, false},
+	CodePermissionNotAllowed: {http.StatusConflict, false},
 
 	CodeNotFound:         {http.StatusNotFound, false},
 	CodeScanInProgress:   {http.StatusConflict, true},

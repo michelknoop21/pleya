@@ -169,6 +169,42 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, userWire(user))
 }
 
+// handleCurrentUser is GET /users/me (S1.4, J.2 rij 9): de User van de
+// aanvrager zelf.
+//
+// De enige regel in de autorisatiematrix waar elke rol 200 krijgt, en dat is
+// geen uitzondering op de 404-regel maar de toepassing ervan: het doel is de
+// aanvrager, en die bestaat voor zichzelf altijd. Er is geen id in het pad en
+// geen parameter, dus er valt niets te raden en niets te lekken.
+//
+// `me` botst niet met een echt id: er is geen GET /users/{id} in het contract,
+// en id.Parse zou het woord ook niet als id lezen.
+//
+// Zonder dit endpoint identificeert een client zich op naam, en dat gaat mis
+// zodra iemand hernoemd wordt. Onderhandeling loopt daarom over
+// `capabilities.users` en niet over `administration`: dit is geen
+// beheerhandeling, en een lid dat zijn eigen rol wil weten hoeft geen
+// beheerder te zijn.
+func (s *Server) handleCurrentUser(w http.ResponseWriter, r *http.Request) {
+	req, ok := s.resolveRequester(w, r)
+	if !ok {
+		return
+	}
+	self, err := s.opts.Auth.GetUser(r.Context(), req.id)
+	if errors.Is(err, auth.ErrUserNotFound) {
+		// Tussen resolveRequester en hier is de gebruiker verwijderd. Dezelfde
+		// 404 als daar, en geen 500: dat is een normale uitkomst van een
+		// accesstoken dat zijn gebruiker overleeft.
+		writeError(w, s.log, CodeUserNotFound, "not found", nil)
+		return
+	}
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, userWire(self))
+}
+
 // handleListUsers is matrixregel 14: member en restricted zien alleen zichzelf.
 func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	req, ok := s.resolveRequester(w, r)
@@ -344,14 +380,21 @@ func (s *Server) handleSetPermissions(w http.ResponseWriter, r *http.Request) {
 		writeError(w, s.log, CodeNotFound, "not found", nil)
 		return
 	case errors.Is(err, auth.ErrRestrictedCannotManage):
-		// DEC-098 §3 verbiedt manage voor restricted, maar het coderegister
-		// (hoofdstuk 7.1) heeft er geen eigen code voor en het contractvenster
-		// is dicht: een achtste protocolwijziging mag niet. auth.user_not_found
-		// is de eerlijkste van de codes die er wel zijn en staat al als 404 op
-		// dit endpoint: het gevraagde doel, deze gebruiker met manage, bestaat
-		// niet. Zie de openstaande punten in het PS-9-verslag; een eigen code
-		// hoort in het eerstvolgende protocolvenster.
-		writeError(w, s.log, CodeUserNotFound, "restricted cannot hold manage", nil)
+		// DEC-098 §3 verbiedt manage voor restricted. Tot venster 1 had het
+		// coderegister daar geen code voor en stond hier auth.user_not_found,
+		// met de aantekening dat een eigen code in het eerstvolgende
+		// protocolvenster hoorde. Dat is dit venster (J.2 rij 11), en de code
+		// is auth.permission_not_allowed met 409.
+		//
+		// Het verschil is niet cosmetisch. Een 404 zei tegen een beheerder dat
+		// de gebruiker of de bibliotheek niet bestond, terwijl allebei
+		// bestonden en alleen de combinatie verboden was; dat is de enige
+		// weigering op dit endpoint die niets verbergt, want de aanvrager is
+		// per definitie een beheerder die beide kanten al mag zien. 409 en
+		// niet 400: de body is geldig, de toestand van het doel maakt hem
+		// onuitvoerbaar.
+		writeError(w, s.log, CodePermissionNotAllowed, "restricted cannot hold manage",
+			map[string]any{"permission": "manage", "role": string(auth.RoleRestricted)})
 		return
 	case err != nil:
 		writeInternal(w, s.log, err)

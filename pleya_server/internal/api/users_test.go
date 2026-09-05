@@ -341,9 +341,15 @@ func TestRestrictedNeverGetsManage(t *testing.T) {
 		"permissions": []map[string]string{
 			{"library_id": films.ID.String(), "permission": "manage"},
 		}})
-	if rec.Code != http.StatusNotFound {
+	// 409 en niet 404 sinds S1.4 (J.2 rij 11). De aanvrager is een beheerder
+	// die de gebruiker en de bibliotheek allebei mag zien, dus er is niets te
+	// verbergen; wat er wel is, is een combinatie die de rol van het doel
+	// verbiedt, en dat is een conflict.
+	if rec.Code != http.StatusConflict {
 		t.Fatalf("manage voor restricted gaf %d: %s", rec.Code, rec.Body.String())
 	}
+	e.expectCode(rec, api.CodePermissionNotAllowed)
+	e.record("ErrorEnvelope", http.MethodPut, "/pleya/v1/users/{id}/permissions", rec)
 
 	// De transactie draaide terug: er staat geen half toegekende lijst.
 	var count int
@@ -424,4 +430,74 @@ func TestDeleteUserCascades(t *testing.T) {
 	if rec := e.do(http.MethodGet, "/pleya/v1/libraries", nil, asUser(access)); rec.Code != http.StatusNotFound {
 		t.Fatalf("een verwijderde gebruiker kreeg %d op /libraries", rec.Code)
 	}
+}
+
+// GET /users/me (S1.4, J.2 rij 9), matrixregel 22.
+//
+// De enige regel van de matrix waar elke rol 200 krijgt. Dat is geen gat in de
+// 404-regel: het doel is de aanvrager zelf, er is geen id in het pad en geen
+// parameter, dus er is niets te raden. De test schrijft dat uit voor alle vier
+// de rollen, want een implementatie die requireAdmin gebruikt zou voor twee van
+// de vier groen blijven op elke andere test in dit bestand.
+func TestCurrentUserAnswersEveryRoleAboutItself(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	var ownerID string
+	if err := e.pool.QueryRow(context.Background(),
+		`SELECT id FROM users WHERE role = 'owner'`).Scan(&ownerID); err != nil {
+		t.Fatal(err)
+	}
+
+	admin := e.createUserViaAPI("aya", "nog-een-lang-wachtwoord", "admin", http.StatusOK)
+	member := e.createUserViaAPI("sanne", "nog-een-lang-wachtwoord", "member", http.StatusOK)
+	restricted := e.createUserViaAPI("tim", "nog-een-lang-wachtwoord", "restricted", http.StatusOK)
+
+	var self api.UserWire
+	e.getJSON("/pleya/v1/users/me", "User", http.StatusOK, &self)
+	if self.ID != ownerID || self.Username != "michel" || self.Role != "owner" {
+		t.Fatalf("de owner kreeg %+v terug", self)
+	}
+
+	for _, tc := range []struct {
+		name string
+		user api.UserWire
+	}{{"admin", admin}, {"member", member}, {"restricted", restricted}} {
+		access := e.loginAs(tc.user.Username, "nog-een-lang-wachtwoord", http.StatusOK)
+		rec := e.do(http.MethodGet, "/pleya/v1/users/me", nil, asUser(access))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s kreeg %d op GET /users/me: %s", tc.name, rec.Code, rec.Body.String())
+		}
+		var got api.UserWire
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatal(err)
+		}
+		if got != tc.user {
+			t.Fatalf("%s kreeg %+v, verwacht zichzelf (%+v)", tc.name, got, tc.user)
+		}
+	}
+}
+
+// Zonder token bestaat het endpoint niet, en een gebruiker die tussen het
+// minten van zijn token en dit verzoek verdwijnt krijgt 404 en geen 500.
+func TestCurrentUserNeedsALivingIdentity(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	anonymous := e.do(http.MethodGet, "/pleya/v1/users/me", nil, withoutAuth)
+	if anonymous.Code != http.StatusUnauthorized {
+		t.Fatalf("GET /users/me zonder token gaf %d, verwacht 401", anonymous.Code)
+	}
+
+	member := e.createUserViaAPI("sanne", "nog-een-lang-wachtwoord", "member", http.StatusOK)
+	access := e.loginAs(member.Username, "nog-een-lang-wachtwoord", http.StatusOK)
+	if rec := e.do(http.MethodDelete, "/pleya/v1/users/"+member.ID, nil); rec.Code != http.StatusNoContent {
+		t.Fatalf("verwijderen gaf %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec := e.do(http.MethodGet, "/pleya/v1/users/me", nil, asUser(access))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("een verwijderde gebruiker kreeg %d op GET /users/me: %s", rec.Code, rec.Body.String())
+	}
+	e.expectCode(rec, api.CodeUserNotFound)
 }

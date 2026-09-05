@@ -497,9 +497,15 @@ contract keurt ze af.
 | `auth.username_taken` | 409 | nee | die gebruikersnaam is al in gebruik |
 | `auth.owner_immutable` | 409 | nee | de owner kan niet verwijderd of gedegradeerd worden |
 | `auth.session_not_found` | 404 | nee | de sessie bestaat niet, of niet voor u; zie hoofdstuk 17 |
+| `auth.permission_not_allowed` | 409 | nee | de rol van het doel verbiedt deze trede: `restricted` krijgt nooit `manage`. `details` draagt `permission` en `role` |
 | `settings.invalid_value` | 400 | nee | een waarde in `PATCH /settings` valt buiten zijn grens; `details` draagt veld en grens |
 | `server.confirm_mismatch` | 409 | nee | een destructieve handeling zonder de juiste bevestiging; `details.expected` zegt welk woord er moet staan. Voor S1.3 is dat `POST /server/rotate-signing-key` met `confirm: "rotate"` |
 | `server.internal` | 500 | nee | de handler liep op een fout die hij niet had voorzien; `details.request_id` verwijst naar de logregel. `nee` en niet `ja`: het contract dwingt een boolean af waar "onbekend" het eerlijke antwoord is, en een deterministische panic die als herhaalbaar binnenkomt levert een client op die precies het verzoek blijft sturen dat de server omver duwde |
+
+`auth.permission_not_allowed` is de ene code in het `auth.`-domein die geen `404` is, en dat is geen
+gat in de regel hieronder. Die regel verbergt het bestaan van iets dat de aanvrager niet mag zien;
+hier mag de aanvrager, een beheerder, de gebruiker en de bibliotheek allebei al zien, en is alleen de
+combinatie verboden. Zie 16.3.
 
 **`404` en niet `403`, overal.** Een resource die u niet mag zien bestaat voor u niet, ook niet in
 zoekresultaten en ook niet als u het id raadt. Dat gold vóór PS-9 al als regel, hoewel er toen nog
@@ -1005,6 +1011,7 @@ bestaan (latere fasen).
 | --- | --- |
 | `POST /pleya/v1/users` | `admin` |
 | `GET /pleya/v1/users` | `authenticated`, gefilterd |
+| `GET /pleya/v1/users/me` | `authenticated`, altijd zichzelf |
 | `PATCH /pleya/v1/users/{id}` | `admin`, of `owner` op zichzelf |
 | `DELETE /pleya/v1/users/{id}` | `admin` |
 | `PUT /pleya/v1/users/{id}/permissions` | `admin` |
@@ -1023,6 +1030,13 @@ bestaan (latere fasen).
 
 `GET /pleya/v1/users`: `owner` en `admin` zien iedereen; `member` en `restricted` zien in dit antwoord
 uitsluitend zichzelf.
+
+`GET /pleya/v1/users/me` geeft één `User`: die van de aanvrager. Elke rol krijgt `200`, want het doel
+is de aanvrager zelf en er staat geen id in het pad. Beschikbaar wanneer `capabilities.users` waar is;
+`administration` is er niet voor nodig, en een lid dat zijn eigen rol wil weten hoeft geen beheerder
+te zijn. Een oudere server kent de route niet en antwoordt `404`; een client valt dan terug op de naam
+waarmee hij inlogde, en dat is precies wat er misgaat zodra iemand hernoemd wordt. `me` botst niet met
+een id: er is geen `GET /pleya/v1/users/{id}`.
 
 `PATCH /pleya/v1/users/{id}` accepteert `role`, `password`, of beide; minimaal één veld is verplicht.
 Een poging om de owner te degraderen geeft `auth.owner_immutable`.
@@ -1045,9 +1059,17 @@ Een poging om de owner te degraderen geeft `auth.owner_immutable`.
 ] }
 ```
 
+`manage` voor een `restricted` wordt geweigerd met `auth.permission_not_allowed` (`409`), en de hele
+lijst gaat er dan af, ook de treden die op zichzelf wel mochten. Dit is de ene weigering op dit
+endpoint die geen `404` is, en dat volgt uit de regel in plaats van er een uitzondering op te maken:
+`404` verbergt het bestaan van iets dat de aanvrager niet mag zien, en de aanvrager is hier per
+definitie een beheerder die de gebruiker en de bibliotheek allebei al mag zien. Er is niets te
+verbergen, alleen iets uit te leggen, en een `404` liet een beheerder zoeken naar een gebruiker die er
+gewoon was.
+
 ### 16.4 De autorisatiematrix
 
-Eenentwintig regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien
+Drieëntwintig regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien
 zijn de bindende matrix van DEC-105; elke slice die daarna een endpoint toevoegt zet zijn eigen
 regel erbij en sluit niet zonder (K.3 van het securityplan).
 
@@ -1074,12 +1096,18 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 19 | `GET /server/log` | logregels met paden, adressen en tokens | klasse `admin`, `404` voor de rest; uit een ringbuffer in het geheugen en nooit uit een bestand, geredigeerd op de weg erin |
 | 20 | `POST /server/connectivity-check` | de server als prober van het interne netwerk | klasse `admin`, `404` voor de rest; geen aanvraagbody, doel is altijd het eigen `public_url`, vaste time-out, geen omleidingen, en een letterlijk privé-adres komt niet door `PATCH /settings` |
 | 21 | `POST /server/rotate-signing-key` | elke sessie van het huishouden | klasse `admin`, `404` voor de rest; `confirm: "rotate"` verplicht, en het antwoord draagt de nieuwe sleutel niet |
+| 22 | `GET /users/me` | niets | klasse `authenticated`, en de enige regel waar élke rol `200` krijgt: het doel is de aanvrager zelf, er staat geen id in het pad en er is geen parameter, dus er valt niets te raden. Het antwoord bevat nooit een andere gebruiker (S1.4) |
+| 23 | `GET /stream-sessions` | wie er kijkt, op welk toestel, en waarnaar | klasse `admin`, `404` voor de rest; geen geheim van de streamsessie en geen token in het antwoord, en de lijst bevat uitsluitend sessies die op dit moment nog bytes kunnen ophalen (S1.4) |
 
-Regel 17 tot en met 21 hebben één ding gemeen dat de eerste zestien niet hebben: ze lekken niets uit
-de bibliotheek maar uit de installatie. Een lijst omgevingsvariabelen, een logregel met een pad of
+Regel 22 is de enige waar geen enkele rol wordt geweigerd, en hij staat er juist daarom: een
+implementatie die hem per ongeluk achter `requireAdmin` zet blijft voor `owner` en `admin` groen op
+elke andere controle, en breekt alleen voor de twee rollen die niemand handmatig probeert.
+
+Regel 17 tot en met 21 en regel 23 hebben één ding gemeen dat de eerste zestien niet hebben: ze lekken
+niets uit de bibliotheek maar uit de installatie. Een lijst omgevingsvariabelen, een logregel met een pad of
 een adres, en de vraag of de server via een proxy draait zijn samen genoeg om te weten waar hij
-staat en waar hij aan hangt. Vandaar dat regel 17 de enige van de eenentwintig is waar het endpoint
-zelf gewoon antwoordt en alleen de velden meebewegen met de klasse.
+staat en waar hij aan hangt. Vandaar dat regel 17 de enige is waar het endpoint zelf gewoon
+antwoordt en alleen de velden meebewegen met de klasse.
 
 Regel 8 tot en met 11 zijn de subtiele: een streamtoken of streamsessie leeft twee tot vijf minuten
 zelfstandig nadat hij is uitgegeven. De rechtencontrole staat daarom op het **aanvraagpad**, niet
@@ -1196,8 +1224,9 @@ container herstart.
 
 ## 17b. Serverdiagnostiek
 
-Vier endpoints van klasse `admin`, plus acht velden die `GET /pleya/v1/server` er voor een
-beheerder bij krijgt. Ze kwamen met S1.3, binnen hetzelfde protocolvenster 1.
+Vijf endpoints van klasse `admin`, plus acht velden die `GET /pleya/v1/server` er voor een
+beheerder bij krijgt. De eerste vier plus de velden kwamen met S1.3, het overzicht van lopende
+streams (17b.6) met S1.4, allemaal binnen hetzelfde protocolvenster 1.
 
 ### 17b.1 `GET /server` groeit met de klasse en niet met een parameter
 
@@ -1283,6 +1312,40 @@ sleutel ongewijzigd.
 Ook het token van de aanvrager is hierna dood. Opnieuw inloggen hoort erbij, en is het bewijs dat de
 rotatie gewerkt heeft. Het antwoord draagt de nieuwe sleutel niet.
 
+### 17b.6 Lopende streams
+
+`GET /pleya/v1/stream-sessions` geeft de browser-streamsessies (6.4a) die op dit moment nog bytes
+kunnen ophalen, met de gebruiker, het toestel, het item en de positie erbij.
+
+```json
+{ "items": [
+  { "id": "0198f2d0-...", "user_id": "0198f2d0-...", "username": "michel",
+    "device_name": "Apple TV woonkamer",
+    "item_id": "0198f2d0-...", "item_title": "A3", "item_kind": "episode",
+    "position_ms": 1830000, "duration_ms": 4380000,
+    "started_at": "2026-09-05T20:04:11Z", "last_used_at": "2026-09-05T20:31:48Z",
+    "expires_at": "2026-09-05T21:01:48Z" }
+] }
+```
+
+**Actief betekent hier precies wat het streampad accepteert**, en geen haar breder: niet ingetrokken,
+niet verlopen, en de auth-sessie waaruit de streamsessie is uitgegeven evenmin ingetrokken. Die derde
+voorwaarde is de gemakkelijkst te vergeten, want de rij van de streamsessie ziet er dan ongeschonden
+uit. Een overzicht dat ruimer telt toont iemand die op zijn eerstvolgende aanvraag een `401` krijgt,
+en daar gaat een beheerder naar handelen.
+
+`position_ms` komt uit de kijkstatus van diezelfde gebruiker op datzelfde item, niet uit de sessie:
+die weet alleen welke versie er open staat. Zolang er niets is gerapporteerd ontbreken `position_ms`
+en `duration_ms` allebei, en dat is iets anders dan positie nul.
+
+Ongepagineerd, want het aantal is per gebruiker begrensd door `max_stream_sessions` (17a.2) en groeit
+dus met het huishouden en niet met de bibliotheek. Er staat geen geheim in: het geheim van een
+streamsessie leeft uitsluitend in de cookie `pleya_ss_<id>`, en de id zelf is niet geheim.
+
+Wat er niet in staat is de stamboom van een aflevering. Wie "serie S2 · A3" wil tonen haalt dat met
+`item_id` uit `GET /pleya/v1/items/{item_id}`; een tweede, denormaliseerde kopie hier zou een tweede
+bron maken voor dezelfde vraag.
+
 ---
 
 ## 18. Endpointoverzicht
@@ -1310,6 +1373,7 @@ rotatie gewerkt heeft. Het antwoord draagt de nieuwe sleutel niet.
 | `GET /pleya/v1/watch-state` | `authenticated` | ja |
 | `POST /pleya/v1/users` | `admin` | nee |
 | `GET /pleya/v1/users` | `authenticated`, gefilterd | nee |
+| `GET /pleya/v1/users/me` | `authenticated`, altijd zichzelf | nee |
 | `PATCH /pleya/v1/users/{id}` | `admin`, of `owner` op zichzelf | nee |
 | `DELETE /pleya/v1/users/{id}` | `admin` | nee |
 | `PUT /pleya/v1/users/{id}/permissions` | `admin` | nee |
@@ -1321,13 +1385,15 @@ rotatie gewerkt heeft. Het antwoord draagt de nieuwe sleutel niet.
 | `GET /pleya/v1/server/log` | `admin` | nee |
 | `POST /pleya/v1/server/connectivity-check` | `admin` | nee |
 | `POST /pleya/v1/server/rotate-signing-key` | `admin` | nee |
+| `GET /pleya/v1/stream-sessions` | `admin` | nee |
 
-Tweeëndertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Vierendertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
-twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), en de laatste vier de
-serverdiagnostiek uit hoofdstuk 17b (S1.3). `GET /pleya/v1/server` staat er maar één keer in en
-groeit met de klasse van de aanvrager, niet met een tweede regel. De rest van venster 1 landt bij de
-commitgrens die hem bedient.
+twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
+uit hoofdstuk 17b (S1.3), en de laatste twee `GET /users/me` uit 16.3 en het stroomoverzicht uit
+17b.6 (S1.4). `GET /pleya/v1/server` staat er maar één keer in en groeit met de klasse van de
+aanvrager, niet met een tweede regel. De rest van venster 1 landt bij de commitgrens die hem
+bedient.
 
 ---
 

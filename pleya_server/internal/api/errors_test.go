@@ -30,6 +30,7 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"auth.username_taken":            {409, false},
 		"auth.owner_immutable":           {409, false},
 		"auth.session_not_found":         {404, false},
+		"auth.permission_not_allowed":    {409, false},
 		"library.not_found":              {404, false},
 		"library.scan_in_progress":       {409, true},
 		"library.cursor_invalid":         {400, false},
@@ -48,10 +49,10 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 	}
 
 	// Deze tabel spiegelt hoofdstuk 7.1 voor zover deze server hem draait.
-	// settings.invalid_value kwam erbij met S1.2 en server.confirm_mismatch met
-	// S1.3, elk samen met het endpoint dat hem stuurt: een code in het register
-	// zonder handler zou hier groen staan en in het contract een belofte zijn
-	// die niemand nakomt.
+	// settings.invalid_value kwam erbij met S1.2, server.confirm_mismatch met
+	// S1.3 en auth.permission_not_allowed met S1.4, elk samen met het endpoint
+	// dat hem stuurt: een code in het register zonder handler zou hier groen
+	// staan en in het contract een belofte zijn die niemand nakomt.
 
 	for code, expect := range want {
 		entry, ok := errorTable[code]

@@ -59,6 +59,15 @@ void main() {
     'ServerEnvironment',
     'ServerLog',
     'ConnectivityCheck',
+    // S1.4 adds the running-streams overview. Same reasoning once more: it
+    // answers "who is watching right now on which device", which is an admin
+    // screen (S10) and not something a living-room client renders.
+    //
+    // `GET /users/me` arrives in the same slice and adds no line here: it
+    // answers with `User`, which the eight PS-9 entries above already defer.
+    // The app will read it once it stops identifying itself by name, and that
+    // is the phase that removes `User` from this list.
+    'StreamSessionList',
   };
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
@@ -104,8 +113,8 @@ void main() {
       );
     });
 
-    test('covers the 54 fixtures the contract ships', () {
-      expect(fixtures, hasLength(54));
+    test('covers the 56 fixtures the contract ships', () {
+      expect(fixtures, hasLength(56));
     });
 
     for (final fixture in fixtures) {

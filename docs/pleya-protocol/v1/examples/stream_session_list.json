@@ -1,0 +1,29 @@
+{
+  "items": [
+    {
+      "id": "0198f2d0-0004-7000-8000-000000000001",
+      "user_id": "0198f2d0-0002-7000-8000-000000000001",
+      "username": "michel",
+      "device_name": "Apple TV woonkamer",
+      "item_id": "0198f2d0-0003-7000-8000-000000000009",
+      "item_title": "A3",
+      "item_kind": "episode",
+      "position_ms": 1830000,
+      "duration_ms": 4380000,
+      "started_at": "2026-09-05T20:04:11Z",
+      "last_used_at": "2026-09-05T20:31:48Z",
+      "expires_at": "2026-09-05T21:01:48Z"
+    },
+    {
+      "id": "0198f2d0-0004-7000-8000-000000000002",
+      "user_id": "0198f2d0-0002-7000-8000-000000000002",
+      "username": "sanne",
+      "device_name": "iPhone van Sanne",
+      "item_id": "0198f2d0-0003-7000-8000-000000000011",
+      "item_title": "Grease",
+      "item_kind": "movie",
+      "started_at": "2026-09-05T20:30:02Z",
+      "expires_at": "2026-09-05T21:00:02Z"
+    }
+  ]
+}

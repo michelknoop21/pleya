@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "auth.permission_not_allowed",
+    "message": "restricted cannot hold manage",
+    "retryable": false,
+    "details": {
+      "permission": "manage",
+      "role": "restricted"
+    }
+  }
+}

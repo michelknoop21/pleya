@@ -249,6 +249,16 @@
       "file": "settings.json",
       "schema": "Settings",
       "note": "twee sleutels uit de database, de rest uit de omgeving"
+    },
+    {
+      "file": "stream_session_list.json",
+      "schema": "StreamSessionList",
+      "note": "venster 1: twee lopende streams, de tweede zonder gemelde positie"
+    },
+    {
+      "file": "error_permission_not_allowed.json",
+      "schema": "ErrorEnvelope",
+      "note": "venster 1: manage voor een restricted, 409 in plaats van de oude 404"
     }
   ]
 }

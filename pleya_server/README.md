@@ -110,9 +110,9 @@ een geweigerd event wordt beantwoord met de actuele toestand en gelogd, en verde
 
 ## Wat er op de lijn zit
 
-Tweeëndertig operaties op achtentwintig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
-daarna PS-9, de twee daarna de serverinstellingen van S1.2, en de laatste vier de serverdiagnostiek
-van S1.3.
+Vierendertig operaties op dertig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
+daarna PS-9, de twee daarna de serverinstellingen van S1.2, de vier daarna de serverdiagnostiek
+van S1.3, en de laatste twee `GET /users/me` en het overzicht van lopende streams uit S1.4.
 
 | Endpoint | Klasse |
 | --- | --- |
@@ -130,10 +130,12 @@ van S1.3.
 | `POST /pleya/v1/watch-state`, `GET /pleya/v1/watch-state` | geauthenticeerd |
 | `POST /pleya/v1/users`, `PATCH`/`DELETE /users/{id}`, `PUT /users/{id}/permissions` | admin |
 | `GET /pleya/v1/users` | geauthenticeerd, gefilterd op rol |
+| `GET /pleya/v1/users/me` | geauthenticeerd; elke rol krijgt zichzelf |
 | `POST /pleya/v1/auth/logout`, `GET /pleya/v1/sessions`, `DELETE /pleya/v1/sessions/{id}` | geauthenticeerd op de eigen sessies, admin op elke |
 | `GET /pleya/v1/settings`, `PATCH /pleya/v1/settings` | admin |
 | `GET /pleya/v1/server/environment`, `/server/log` | admin |
 | `POST /pleya/v1/server/connectivity-check`, `/server/rotate-signing-key` | admin |
+| `GET /pleya/v1/stream-sessions` | admin |
 
 Buiten het protocol staat er nog één route: `GET /` en elk pad dat geen bestand en geen protocolroute is levert
 `index.html` van de webbundel. `/pleya/v1/*`, `/healthz` en `/readyz` houden altijd voorrang, en een

@@ -207,6 +207,10 @@ func (s *Server) routes() {
 	// endpoint anders, en een middleware per klasse zou dat verschil verbergen.
 	s.mux.Handle("POST "+p+"/users", s.authenticated(s.handleCreateUser))
 	s.mux.Handle("GET "+p+"/users", s.authenticated(s.handleListUsers))
+	// GET /users/me (S1.4) staat bewust vóór de {id}-routes in dit blok en
+	// niet erin: hij is de enige die geen doel uit het pad leest. Er is geen
+	// GET /users/{id}, dus "me" botst met niets.
+	s.mux.Handle("GET "+p+"/users/me", s.authenticated(s.handleCurrentUser))
 	s.mux.Handle("PATCH "+p+"/users/{id}", s.authenticated(s.handleUpdateUser))
 	s.mux.Handle("DELETE "+p+"/users/{id}", s.authenticated(s.handleDeleteUser))
 	s.mux.Handle("PUT "+p+"/users/{id}/permissions", s.authenticated(s.handleSetPermissions))
@@ -224,6 +228,11 @@ func (s *Server) routes() {
 	s.mux.Handle("GET "+p+"/server/log", s.authenticated(s.handleServerLog))
 	s.mux.Handle("POST "+p+"/server/connectivity-check", s.authenticated(s.handleConnectivityCheck))
 	s.mux.Handle("POST "+p+"/server/rotate-signing-key", s.authenticated(s.handleRotateSigningKey))
+
+	// Lopende streams (S1.4, J.2 rij 8). Klasse admin, net als de vier
+	// diagnostiekroutes hierboven: dit zegt wie er kijkt en op welk toestel,
+	// en dat is geen antwoord voor een huisgenoot.
+	s.mux.Handle("GET "+p+"/stream-sessions", s.authenticated(s.handleStreamSessions))
 
 	// Sessies (DEC-103, stap 6). logout staat bij auth omdat hij over de eigen
 	// sessie gaat; de twee endpoints eronder gaan over sessies als resource.
