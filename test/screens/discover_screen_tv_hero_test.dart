@@ -62,12 +62,26 @@ import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
 
+/// The instant `DataAggregationService` measures the hero window against in
+/// this file. Pinning it is the whole of HERO5: DEC-097 keeps only films
+/// released inside 90 days, the service reads a clock for that, and a file
+/// that lets it read the wall clock goes red on a date nobody chose. Every
+/// fixture below sits inside the window relative to *this* instant, and the
+/// oldest of them (`2026-04-01`) has a month of room under the cutoff.
+final DateTime _fixtureNow = DateTime(2026, 6, 1);
+
+/// The release date a fixture gets when it does not name one. DEC-097 puts a
+/// film without a date outside the hero by contract, so a fixture that means
+/// to reach the hero has to carry one; there is no "no opinion" left to
+/// express here.
+const String _defaultRelease = '2026-05-01';
+
 MediaItem _movie(
   String id, {
   required String title,
   String? guid,
   String serverId = 'server_1',
-  String? originallyAvailableAt,
+  String originallyAvailableAt = _defaultRelease,
   int? year,
 }) => MediaItem(
   id: id,
@@ -428,7 +442,7 @@ Future<_TvHeroHarness> _pumpTvHero(
     );
   }
 
-  final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+  final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager, now: () => _fixtureNow));
   final hiddenLibrariesProvider = HiddenLibrariesProvider();
   final librariesProvider = LibrariesProvider();
   final watchTogetherProvider = WatchTogetherProvider();
