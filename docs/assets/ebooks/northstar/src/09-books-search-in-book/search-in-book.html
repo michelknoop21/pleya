@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pleya golden 09 · Zoeken in boek</title>
+<style>
+
+/* Fonts: the app's own Inter cuts (assets/fonts) so metrics match. Literata is
+   deliberately absent. It is the reading face of golden 07, and a result
+   snippet is not a page of the book: it is a UI row that quotes one. */
+@font-face{font-family:'Inter';font-weight:400;src:url('../../../../../../assets/fonts/Inter-Regular.otf')}
+@font-face{font-family:'Inter';font-weight:500;src:url('../../../../../../assets/fonts/Inter-Medium.otf')}
+@font-face{font-family:'Inter';font-weight:700;src:url('../../../../../../assets/fonts/Inter-Bold.otf')}
+
+/* Tokens from lib/theme/mono_theme.dart (dark, non-OLED), as in golden 04.
+   --match is the amber the reader already owns: golden 07 sets its dark-theme
+   highlight on rgba(245,197,66,.26), so this is that same colour used as ink
+   instead of as fill. One amber in the product, two forms. */
+:root{
+  --accent:#E5140F;
+  --bg:#141414; --surface:#1F1F1F; --hair:#2E2E2E;
+  --ink:#fff; --ink-92:rgba(255,255,255,.92); --ink-68:rgba(255,255,255,.68);
+  --ink-50:rgba(255,255,255,.5); --ink-45:rgba(255,255,255,.45);
+  --match:#F5C542;
+  --r-md:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:393px;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+.screen{position:relative;width:393px;height:852px;overflow:hidden;background:var(--bg)}
+.screen[hidden],.spec[hidden]{display:none}
+
+/* iOS status bar + Dynamic Island, as in every frame of this set. Panel 9 does
+   not draw one; every other panel of the comp that shows a full screen does,
+   and a pushed page has one. */
+.status{position:absolute;left:0;right:0;top:0;height:54px;z-index:20;pointer-events:none}
+.status .time{position:absolute;left:38px;top:18px;font-size:17px;font-weight:700;letter-spacing:-.2px}
+.status .island{position:absolute;left:50%;top:11px;width:125px;height:37px;margin-left:-62px;background:#000;border-radius:20px}
+.status .right{position:absolute;right:30px;top:21px;display:flex;gap:7px;align-items:center}
+.sig{display:flex;gap:2px;align-items:flex-end}.sig i{display:block;width:3.5px;background:#fff;border-radius:1px}
+.bat{width:27px;height:13px;border:1.6px solid rgba(255,255,255,.55);border-radius:4px;position:relative}
+.bat::after{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:20px;background:#fff;border-radius:2px}
+.bat::before{content:"";position:absolute;right:-4px;top:3.5px;width:1.8px;height:4px;background:rgba(255,255,255,.55);border-radius:0 2px 2px 0}
+
+/* ---- Header. The same pushed-page head golden 06 uses for the other page the
+   reader chrome opens: one back glyph on 16, the title on 56, the band 62-94
+   every screen in this set keeps. Panel 9 puts `Annuleer` beside the field
+   instead; see the README for why the arrow wins here. ---- */
+.nav{position:absolute;left:0;right:0;top:62px;height:32px;display:flex;align-items:center;gap:14px;padding:0 16px}
+.nav .back{width:26px;height:26px;flex:0 0 auto}
+.nav h1{font-size:22px;font-weight:700;letter-spacing:-.3px}
+
+/* The field of 05-zoeken.png, measured and reused by golden 04: 16 pt margins,
+   36 tall, top on 109. It is the same object, so it keeps the same geometry. */
+.field{position:absolute;left:16px;right:16px;top:109px;height:36px;border-radius:10px;background:var(--surface);
+       display:flex;align-items:center;padding:0 16px;gap:12px}
+.field svg{width:17px;height:17px;flex:0 0 auto}
+.field .q{font-size:16px;color:var(--ink)}
+.field .clear{margin-left:auto}
+
+/* The count sits on the band golden 04 gives its chip row and golden 02 its
+   `128 boeken` line. There are no category chips here: search in a book returns
+   one kind of thing, and a chip row with one chip is not a filter. */
+.count{position:absolute;left:16px;right:16px;top:161px;height:18px;font-size:13px;line-height:18px;color:var(--ink-50)}
+
+/* ---- The result list. One rounded card with hairlines between the rows, the
+   shape golden 04 chose over the comp's card-per-row and golden 06 kept. ---- */
+.list{position:absolute;left:16px;right:16px;top:191px;background:var(--surface);border-radius:var(--r-md);overflow:hidden}
+.res{position:relative;padding:14px 16px}
+.res + .res::before{content:"";position:absolute;left:16px;right:0;top:0;height:1px;background:var(--hair)}
+/* The row's first line is its chapter, which is what a result is: a place in
+   the publication. The page label is a suffix in weaker ink and only appears
+   when the publication carries a page-list; it never identifies the row. */
+.res .loc{font-size:13px;font-weight:500;line-height:18px;color:var(--ink-92)}
+.res .loc em{font-style:normal;font-weight:400;color:var(--ink-45)}
+/* Two lines of context, clipped with an ellipsis at the end of the second. The
+   leading and trailing `…` in the copy are the excerpt's own: they say the
+   sentence continues outside the window, which is a different statement from
+   the clip. */
+.res .ex{margin-top:3px;font-size:15px;line-height:21px;color:var(--ink-68);
+         display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.res .ex mark{background:none;color:var(--match);font-weight:500}
+
+.home-ind{position:absolute;left:50%;bottom:8px;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#fff;z-index:30}
+
+/* ---- Specimen frame (09b). A shape specification of the row, not a runtime
+   state: no screen shows the same result twice. ---- */
+.spec{position:relative;width:393px;background:var(--bg);padding-bottom:28px}
+.spec .lbl{padding:24px 16px 9px 16px;font-size:13px;color:var(--ink-50);letter-spacing:.3px;text-transform:uppercase}
+.spec .list{position:relative;left:auto;right:auto;top:auto;margin:0 16px}
+</style>
+</head>
+<body>
+
+<template id="statusbar">
+  <div class="status">
+    <div class="time">9:41</div><div class="island"></div>
+    <div class="right"><div class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:9px"></i><i style="height:12px"></i></div>
+      <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 9.5a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2Zm0-3.6c1.5 0 2.9.6 3.9 1.6l-1.3 1.3A3.7 3.7 0 0 0 8 7.7c-1 0-1.9.4-2.6 1.1L4.1 7.5C5.1 6.5 6.5 5.9 8 5.9Zm0-3.7c2.5 0 4.9 1 6.6 2.7l-1.3 1.3A7.4 7.4 0 0 0 8 4.1c-2 0-3.9.8-5.3 2.2L1.4 4.9A9.3 9.3 0 0 1 8 2.2Z" fill="#fff"/></svg>
+      <div class="bat"></div></div>
+  </div>
+</template>
+
+<template id="header">
+  <div class="nav">
+    <svg class="back" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 7 12l8 8"/></svg>
+    <h1>Zoeken in boek</h1>
+  </div>
+  <div class="field">
+    <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+    <span class="q">desert</span>
+    <svg class="clear" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </div>
+</template>
+
+<section class="screen" id="results"></section>
+<section class="spec" id="rowtypes"></section>
+
+<script>
+  const tpl = (id) => document.getElementById(id).content.cloneNode(true);
+
+  /// The fixture is Dune, the book golden 01b, 05 and 07 all read, searched on
+  /// `desert`. Every excerpt is written for this repository, not quoted from
+  /// the novel. Two of them are not new: the fifth and sixth are the sentences
+  /// that stand on the page golden 07 draws, so this list and the approved
+  /// reader really are the same book. They also share a page, which is the
+  /// whole point of the row's first line being a chapter and not a page.
+  ///
+  /// `loc` is the chapter label, `page` the optional page-list label, and the
+  /// excerpt carries its matches as <mark>. Nothing here ranks: the list is in
+  /// publication order, which is a place in a book and not a score.
+  ///
+  /// An excerpt is a window around the match and not a whole sentence, which is
+  /// why every one of them opens and closes on `…`. Most windows fit the two
+  /// lines the row gives them; the seventh chapter is deliberately longer than
+  /// that, because the row has to cope with a window that overruns and clipping
+  /// is what it does.
+  const RESULTS = [
+    {loc: 'Hoofdstuk 3',  page: '41',  ex: '… the caravan moved after dark, when the <mark>desert</mark> gave back the day’s heat …'},
+    {loc: 'Hoofdstuk 5',  page: '88',  ex: '… no map of the <mark>desert</mark> stays true …'},
+    {loc: 'Hoofdstuk 7',  page: '132', ex: '… she had been taught to read the <mark>desert</mark> the way other children were taught to read a face, and she was never once wrong about either of them …'},
+    {loc: 'Hoofdstuk 9',  page: '176', ex: '… water is the only currency the <mark>desert</mark> accepts, and it takes payment in advance …'},
+    {loc: 'Hoofdstuk 12', page: '248', ex: '… felt the tremor of the <mark>desert</mark> under his feet, a rhythm he had come to know …'},
+    {loc: 'Hoofdstuk 12', page: '248', ex: '… In the silence he heard the voice of the <mark>desert</mark>, old and patient …'},
+    {loc: 'Hoofdstuk 15', page: '302', ex: '… the <mark>desert</mark> does not forgive a second mistake, and rarely waits for the first …'},
+    {loc: 'Hoofdstuk 18', page: '359', ex: '… every crossing of the <mark>desert</mark> is two crossings, the planned and the survived …'},
+    {loc: 'Hoofdstuk 21', page: '415', ex: '… by noon the sun stood over the <mark>desert</mark> like a judgment, and nothing moved …'},
+    {loc: 'Hoofdstuk 24', page: '468', ex: '… he had stopped calling it the <mark>desert</mark>. It had a name now, and a name changes …'},
+    {loc: 'Hoofdstuk 27', page: '502', ex: '… many were lost in the <mark>desert</mark>, and the <mark>desert</mark> kept no record of them …'},
+    {loc: 'Hoofdstuk 30', page: '548', ex: '… the <mark>desert</mark> had been a wall, then a road, and at the end of it a house …'},
+  ];
+
+  function row(r) {
+    const el = document.createElement('div');
+    el.className = 'res';
+    const loc = document.createElement('div');
+    loc.className = 'loc';
+    loc.innerHTML = r.page ? r.loc + ' <em>· Pagina ' + r.page + '</em>' : r.loc;
+    const ex = document.createElement('div');
+    ex.className = 'ex';
+    ex.innerHTML = r.ex;
+    el.append(loc, ex);
+    return el;
+  }
+
+  function build(host) {
+    host.className = 'screen';
+    host.appendChild(tpl('statusbar'));
+    host.appendChild(tpl('header'));
+    const count = document.createElement('div');
+    count.className = 'count';
+    count.textContent = RESULTS.length + ' resultaten gevonden';
+    host.appendChild(count);
+    const list = document.createElement('div');
+    list.className = 'list';
+    RESULTS.forEach((r) => list.appendChild(row(r)));
+    host.appendChild(list);
+    host.appendChild(Object.assign(document.createElement('div'), {className: 'home-ind'}));
+  }
+
+  build(document.getElementById('results'));
+
+  /// 09b lifts the row out of the screen so the six shapes it has to hold can
+  /// be judged next to each other: how long an excerpt may be before it clips,
+  /// what two matches in one excerpt look like, what two results in one place
+  /// look like, and what is left of the first line when the publication has no
+  /// page-list.
+  (function rowtypes() {
+    const host = document.getElementById('rowtypes');
+    const CASES = [
+      ['Twee regels, de treffer in het midden', [RESULTS[4]]],
+      ['Eén regel', [RESULTS[1]]],
+      ['Fragment dat afgekapt wordt', [RESULTS[2]]],
+      ['Twee treffers in één fragment', [RESULTS[10]]],
+      ['Twee resultaten op dezelfde plek', [RESULTS[4], RESULTS[5]]],
+      ['Publicatie zonder page-list', [{loc: RESULTS[4].loc, page: null, ex: RESULTS[4].ex}]],
+    ];
+    for (const [label, rows] of CASES) {
+      const lbl = document.createElement('div');
+      lbl.className = 'lbl'; lbl.textContent = label;
+      const list = document.createElement('div');
+      list.className = 'list';
+      rows.forEach((r) => list.appendChild(row(r)));
+      host.append(lbl, list);
+    }
+  })();
+
+  const which = new URLSearchParams(location.search).get('screen') || 'results';
+  document.querySelectorAll('.screen,.spec').forEach((s) => { s.hidden = s.id !== which; });
+
+  /// Reported so the specimen frame is rendered at exactly its own height
+  /// instead of a number guessed and then corrected.
+  window.specHeight = () => Math.ceil(document.getElementById('rowtypes').getBoundingClientRect().height);
+</script>
+</body>
+</html>

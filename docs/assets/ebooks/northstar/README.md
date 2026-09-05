@@ -53,6 +53,8 @@ en die set elkaar raken, wint de set voor de uitvoering en de comp voor de e-boo
 | `08a-reader-settings.png` | Leesinstellingen, canonieke staat over de leespagina | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `08b-reader-large-type.png` | Dezelfde pagina op de grootste lettergrootte, blad dicht | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 | `08c-reader-settings-controls.png` | Detail: de vijf bedieningen met hun staten | approved | detailuitsnede, 1179×1851 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `09a-books-search-in-book.png` | Zoeken in boek, canonieke staat op `desert` in Dune met twaalf treffers | approved | iPhone 15 Pro, 1179×2556 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
+| `09b-books-search-in-book-rowtypes.png` | Detail: de zes vormen die een resultaatrij moet kunnen dragen | approved | detailuitsnede, 1179×2814 | DEC-094, DEC-090 | 2026-09-04 | zie onder |
 
 Golden 00 is op 3 september 2026 door Michel in de chat goedgekeurd, na visuele beoordeling van
 00a en 00b op volle resolutie. Een approved golden staat hier altijd samen met zijn bron onder
@@ -835,6 +837,211 @@ bij elkaar.** Op 26 punt breed is het verschil tussen de eerste en de tweede sto
 tekening. De reeks leest van smal naar breed en de gekozen stop is duidelijk, maar of vier stops
 hier vier verschillende iconen waard zijn is een oordeel over het beeld en geen meting.
 
+## Golden 09, Zoeken in boek (approved)
+
+Wat er opengaat achter het vergrootglas in de chrome van golden 07: één zoekopdracht door de
+publicatie die openstaat, en een lijst plekken om naartoe te springen. Inhoud van paneel 9 van de
+comp, uitvoering op de zoekkop die golden 04 uit `05-zoeken.png` heeft nagemeten en op de
+gepushte-paginakop van golden 06. Twee frames: `09a` de canonieke staat, `09b` een detailuitsnede
+van de resultaatrij.
+
+**Goedgekeurd op 5 september 2026 en gebouwd als `d6a3fbbf`.** Wat er tegen deze golden staat en
+waar de bouw van het beeld afwijkt staat verderop, onder *Wat er tegen golden 09 gebouwd is*.
+
+`09a-books-search-in-book.png` is de **hoofdstaat**: `desert` in Dune, twaalf treffers, de lijst
+loopt door onder de onderrand. `09b-books-search-in-book-rowtypes.png` is een **ondersteunende
+vormspecificatie** van de rij en geen runtime-staat; hij zet dezelfde rij zes keer neer en geen
+scherm doet dat. De lege staat zit er niet in, zie de open punten onderaan.
+
+**Dit is niet golden 04.** Dat scherm doorzoekt de plank en levert boeken, auteurs en boekenseries;
+dit doorzoekt één publicatie en levert plekken erin. De twee delen de kop en het veld, en verder
+niets: hier staan geen categoriechips, want er is één soort resultaat, en er staat geen tabbalk,
+want dit is een pagina van de reader zoals de inhoudsopgave van golden 06 dat is.
+
+**Presentatie en zoekmachine zijn twee contracten, en dit is het eerste.** De golden legt vast hoe
+een treffer eruitziet en wat hij over zichzelf zegt. Of dat via de Readium-search-API loopt of via
+een eigen index, of de index op de server of op het toestel staat, hoe er gerangschikt wordt,
+of er stemming of fuzzy matching bij komt en of eerdere zoektermen bewaard worden: geen van die
+vragen wordt hier beantwoord, en het beeld hoeft niet mee te veranderen als ze beantwoord worden.
+
+**Wat de rij wél moet kunnen dragen**, want daar is de vorm op gekozen. Eén resultaat is een
+locator, een hoofdstuklabel, een fragment en de posities van de treffers binnen dat fragment:
+
+```
+result -> locator + chapterLabel + excerpt + matchRanges
+```
+
+De locator is de identiteit en het enige waarop genavigeerd wordt. Het hoofdstuklabel komt uit het
+navigatiedocument, het fragment is een venster om de treffer heen en niet een hele zin, en de
+matchranges zijn er meer dan één per fragment. Wat er niet in zit is even belangrijk: **geen
+tekenindex in een string en geen schermpagina**, want allebei zijn ze weg zodra de lezer de
+tekengrootte verzet. `Pagina 248` is optionele navigatiemetadata uit de `page-list` en nooit de
+identiteit van een resultaat. Het scherm bewijst dat zelf: de vijfde en de zesde treffer staan
+allebei op `Hoofdstuk 12 · Pagina 248`, want het zijn de twee zinnen die op de pagina staan die
+golden 07 tekent. Wie een resultaat op zijn paginalabel aanspreekt kan die twee niet uit elkaar
+houden.
+
+De maatvoering is gemeten op het gerenderde frame. De kop staat op de band 62 tot 94 met de
+terugpijl op 16 en de titel van 65 tot 91, precies waar golden 06 hem heeft. Het veld staat van 109
+tot 145 op 16 pt marge, de geometrie die golden 04 uit de set overnam. De telling staat van 161 tot
+179, de band waar golden 04 zijn chiprij zet en golden 02 zijn `128 boeken`. De kaart begint op 191,
+loopt van 16 tot 377 met een hoekradius van 12, `#1F1F1F` als grond en `#2E2E2E` als haarlijn die
+16 pt inspringt. Een rij met twee regels fragment is 91 hoog, een met één regel 70; in de eerste rij
+staat het hoofdstuklabel van 205 tot 223 en het fragment van 226 tot 268. De achtste rij begint op
+807 en wordt door de onderrand gesneden. De hele lijst is 1071 hoog in een venster dat er 661 laat
+zien.
+
+**De keuzes die paneel 9 niet maakt, en die dus goedgekeurd of afgewezen moeten worden.**
+
+- **Zoeken is een gepushte pagina en de deur is de terugpijl, niet `Annuleer`.** Paneel 9 zet
+  `Annuleer` naast het veld, het iOS-idioom voor een modale zoekpresentatie. Drie dingen wijzen de
+  andere kant op. Golden 07 heeft de inhoudsopgaveglyf al een gepushte pagina laten openen, en de
+  twee glyfs van dezelfde chrome zouden anders twee verschillende soorten scherm openen. Golden 04
+  heeft Pleya's eigen zoekscherm al als gepushte pagina met een terugpijl neergezet, zonder
+  `Annuleer`. En terugkeren moet dezelfde locator en dezelfde leesinstellingen opleveren, wat een
+  pop over de readerroute structureel doet en een modale presentatie zelf moet regelen. Dit is
+  dezelfde afweging die golden 06 maakte toen de comp er een terugpijl én een kruis in zette: één
+  deur per handeling.
+- **De eerste regel van een rij is het hoofdstuk, met het paginalabel als achtervoegsel in zwakkere
+  inkt.** Paneel 9 schrijft er alleen `Pagina 102`. Dat kan niet: golden 05 heeft de paginatelling
+  bibliografische editiemetadata gemaakt, golden 06 hing `Ga naar pagina` aan de `page-list`, en
+  golden 07 heeft de voet drie vormen gegeven waarvan er twee helemaal geen paginalabel hebben. Een
+  publicatie zonder bruikbare `page-list` heeft dus geen paginalabel, en dan houdt de rij
+  `Hoofdstuk 12` over. Dat is de laatste vorm in `09b`.
+- **De lijst staat in publicatievolgorde en niet op relevantie.** Paneel 9 loopt van pagina 102 naar
+  502 en dat is de volgorde die overgenomen is. Een plaats in een boek is geen score, dus deze
+  volgorde is ook geen rangschikking en houdt de rankingvraag open in plaats van hem stil te
+  beantwoorden.
+- **Eén kaart met haarlijnen, geen kaart per treffer.** Paneel 9 tekent twaalf losse kaarten. Golden
+  04 koos hier al anders, met minder randen op een scherm dat toch al veel moet laten zien, en
+  golden 06 hield die vorm aan. Bij rijen die in hoogte verschillen scheelt het bovendien twaalf
+  losse hoogtes die elk hun eigen ruimte eromheen zouden vragen.
+- **Twee regels fragment, en de rij groeit of krimpt mee.** Een kort venster levert een rij van 70,
+  een lang venster van 91, en wat daar nog overheen gaat wordt op de tweede regel afgekapt. Het
+  alternatief is een vaste rijhoogte met altijd twee regels, wat een korte treffer een lege regel
+  geeft. `09b` zet de drie gevallen onder elkaar.
+- **De treffer is amber inkt op halfvet, geen vlak.** Dat is de kleur van paneel 9, en het is
+  dezelfde amber die de reader al bezit: golden 07 zet zijn donkere markering op
+  `rgba(245,197,66,.26)`, dus dit is `#F5C542` als inkt in plaats van als vulling. Eén amber in het
+  product, twee vormen. Een gevuld merkvlak zou hier het verkeerde zeggen, want op een leespagina
+  betekent zo'n vlak een markering die de lezer zelf heeft gemaakt; accentrood zou botsen met
+  "geselecteerd" en "speelt nu".
+- **Er staat geen chevron achter een rij.** Golden 04 en 05 zetten er een achter rijen die
+  navigeren, maar golden 06 doet dat niet bij zijn hoofdstukrijen, en dit zijn hoofdstukrijen met
+  een fragment eronder. Twaalf chevrons zouden bovendien elk 18 pt van het fragment afhalen.
+- **`12 resultaten gevonden` blijft staan zoals de comp hem schrijft.** Golden 02 zet er
+  `128 boeken` en dus geen werkwoord, maar dat is een plank die er altijd is; dit is een antwoord op
+  iets wat je net hebt getypt.
+- **Het toetsenbord staat niet in de canonieke golden.** Paneel 9 tekent er geen, en het zou de
+  onderste helft van de resultaten afdekken, precies het deel waar het scrollgedrag te zien is.
+- **Het fragment is gezet in Inter en niet in Literata.** De tekst komt uit het boek, de rij niet:
+  dit is een lijst in de app-chrome en geen leesblad. Literata blijft het leesoppervlak zelf.
+
+**Wat deze golden openlaat**, zodat het later een besluit is en geen omissie:
+
+- **De lege staat.** Paneel 9 tekent hem niet en golden 04 heeft hem om dezelfde reden buiten de
+  bibliotheekzoekgolden gehouden: een scherm zonder resultaten is een eigen compositie. Hier weegt
+  dat zwaarder dan daar, want één boek is een klein corpus en een zoekterm die niets oplevert is
+  geen randgeval. Een derde frame is er niet gemaakt omdat de opdracht dat niet vroeg; hij is één
+  voordracht werk zodra hij gewenst is.
+- **Wat een tik op een resultaat doet.** De rij is aanklikbaar en levert een locator op. Hoe de
+  reader daarheen gaat, of de treffer daarna nog gemarkeerd is, of er een terugsprong naar de plek
+  van vóór de zoekopdracht is en of het zoekscherm bij terugkeer nog gevuld is, staat hier niet.
+- **Wat er tijdens het typen gebeurt.** Het frame toont het antwoord, niet de weg ernaartoe. Of er
+  live gezocht wordt of pas bij invoeren, wat er tussen die twee momenten in beeld staat en wat een
+  lange zoekopdracht in een dik boek onderweg laat zien is een eigen vraag.
+- **Hoe lang een fragmentvenster is.** De golden legt vast dat het venster om de treffer heen ligt
+  en dat de rij twee regels toont. Hoeveel tekens de bron eromheen meegeeft is een parameter van de
+  bron.
+- **De liggende stand en de iPad**, om dezelfde reden als bij golden 07 en 08.
+
+**Bewuste verschillen met het beeld die geen goedkeuring nodig hebben.** Paneel 9 tekent geen
+statusbalk; elk ander volledig scherm van de comp doet dat wel en een gepushte pagina heeft er een.
+De zoekterm is `desert` en niet `woestijn`: de vaste fixture voert Dune als Engelse editie en golden
+07 heeft de leespagina om die reden in het Engels gezet, dus een Nederlandse zoekterm zou hier niets
+vinden. De kop en de telling blijven wél Nederlands, want die maakt de app. De twaalf fragmenten
+zijn voor deze repository geschreven en niet uit het boek geciteerd; de vijfde en de zesde zijn de
+twee zinnen die golden 07 al op zijn pagina heeft staan, zodat deze lijst en de goedgekeurde reader
+aantoonbaar hetzelfde boek zijn. De rij loopt onder de home-indicator door, dezelfde eis die golden
+01b en 02 aan de tabbalk stelden: tijdelijk overlappen mag, permanent onbereikbaar maken niet, dus
+de implementatie zet er onderaan scrollruimte onder.
+
+## Wat er tegen golden 09 gebouwd is
+
+`lib/screens/books/book_text_search_screen.dart` met `lib/screens/books/widgets/book_text_search_row.dart`,
+op `lib/books/book_text_search.dart` voor wat een treffer is en `lib/books/book_text_search_layout.dart`
+voor waar hij landt. De deur is de vergrootglas-glyf die golden 07 in de chrome tekende en die tot nu
+toe inert was; hij opent een gepushte pagina, dezelfde soort scherm als de inhoudsopgave achter de
+glyf ernaast.
+
+**De locator is de identiteit en het enige waarop genavigeerd wordt.** Een tekenindex en een
+schermpagina zijn dat allebei niet: die zijn weg zodra de lezer de tekengrootte verzet, en dat is
+precies wat golden 08 hem laat doen. Pagina 248 is optionele navigatiemetadata. De vijfde en de
+zesde treffer staan er allebei op, en dat zijn de twee zinnen die op de leespagina van golden 07
+naast elkaar staan, dus een paginanummer kan hier niet uit elkaar houden wat de golden wel uit
+elkaar houdt.
+
+**Presentatie en zoekmachine zijn twee contracten en dit is het eerste.** Wat een treffer is en wat
+hij over zichzelf zegt ligt vast in `BookTextSearch`; hoe er gematcht wordt, waar een index staat en
+hoe kort een zoekterm mag zijn zit erachter, met `minQueryLength` als de enige vraag die het scherm
+eraan stelt. De tellingsregel leest die drempel en zegt daaronder niets, in plaats van nul treffers
+te melden voor een zoekopdracht die nooit gelopen heeft. `DemoBookTextSearch` doorzoekt de twaalf
+Dune-passages echt, met gevouwen substringmatching in publicatievolgorde, en is daar eerlijk over:
+die bron wordt vervangen, niet uitgebreid. `foldForSearch` vouwt per code unit, want de matchranges
+hangen aan die offsets. `BooksSource` heeft er een `textSearch` bij die standaard `null` is, zodat
+een bron zonder zoekindex geen zoekpagina belooft.
+
+**De rij groeit mee met zijn fragment.** 70 punt bij één regel, 91 bij twee, en daarna klapt hij af.
+Een vaste rijhoogte zou een korte treffer een lege regel geven, en de golden tekent er geen. De
+haarlijn zit in de rij zelf en niet ertussen: een scheiding met eigen hoogte zou elke rij erna een
+punt omlaag duwen en de achtste niet meer op 807 laten beginnen.
+
+Bewijs: `pleya_verify/scenarios/books.text-search.layout.yaml` en
+`pleya_verify/scenarios/books.text-search.typing.yaml` groen op de vastgezette iPhone 15
+Pro-simulator, plus 42 tests in `test/screens/book_text_search_screen_test.dart` en
+`test/books/book_text_search_test.dart`. De vier banden liggen op de getallen van het beeld: de
+kopband op 62, het veld op 109, de tellingsregel op 161 en de kaart op 191. Elf van de twaalf
+fragmenten lopen over twee regels, het tweede over één, en de rijen erna liggen op de posities die
+`BookTextSearchLayout.positions` uit die regeltelling voorspelt.
+
+Wat de bouw opleverde, en wat geen enkele test zag:
+
+- **Het zoekveld corrigeerde de zoekterm.** Typ `desert` en iOS biedt `dessert` aan, met de
+  suggestiebubbel over de tellingsregel; wie hem aanneemt zoekt een woord dat hij niet intikte. Een
+  titel of een woord uit een boek is geen proza. Autocorrectie staat nu uit op beide boekenzoekvelden
+  en sinds `57cd5865` ook op het zoekveld van de rest van de app. Gevonden door een scenario te laten
+  typen in plaats van de zoekterm voor te bakken, wat meteen de aanleiding was om de
+  iOS-simulatordriver te leren typen (`23fd3875`).
+- **Een covertitel brak middenin een woord.** `DE ALCH` boven `EMIST` op de plank. De tekengrootte
+  volgde de hele titellengte, terwijl wat op één regel moet passen het langste woord is; dat wordt nu
+  gemeten in plaats van getabelleerd (`476fe73d`).
+- **Alle boeken en Boeken zoeken droegen de volle Material-pijl** waar elke golden in deze reeks een
+  chevron zet. Ook `476fe73d`, met een architectuurtest eronder.
+
+Bewuste verschillen met het beeld:
+
+- **De getekende omslagen lezen zachter en donkerder dan de golden.** Vorm, kleur en positie kloppen,
+  de rendering van het verloop niet helemaal.
+- **De statusbalk toont de echte tijd**, zoals bij elke simulatorvergelijking in deze reeks.
+- **De tabbalk valt weg.** Golden 02 en 04 tekenen er een; beide schermen worden op de
+  profielnavigator gepusht en die ligt boven de schil. Bekend, en het hoort in een eigen ronde over de
+  navigatiestructuur, niet in deze.
+
+Wat bewust niet gebouwd is:
+
+- **Springen naar een treffer.** Een rij is getekend, is aan te raken en opent niets. Waar de lezer
+  naartoe reist als hij een locator kiest is een van de dingen die deze golden openlaat, dus er is
+  hier niets om mee te reizen.
+- **De lege staat en de niets-gevondenstaat.** De golden tekent alleen de canonieke staat met twaalf
+  treffers; het scherm zwijgt onder de drempel en meldt nul treffers erboven, en verder is er geen
+  vorm goedgekeurd.
+- **Zoeken buiten de publicatie die openstaat.** Dat is golden 04 en een ander contract.
+- **Het schermtoetsenbord in de evidence.** idb typt als hardwaretoetsenbord en iOS toont er dan geen,
+  dus geen enkele screenshot van deze reeks heeft er een. Wat het toetsenbord met de lijst doet is
+  daarom via `viewInsets` vastgelegd in `test/screens/book_text_search_screen_test.dart`: van de
+  twaalf resultaten blijven er drie boven de toetsen staan en de andere negen zijn allemaal vrij te
+  scrollen. De vier omwegen die niet werkten staan in `docs/testing/pleya-verify-for-agents.md`.
+
 ## Wat er tegen golden 08 gebouwd is
 
 `lib/screens/books/widgets/reader_settings_sheet.dart`, met `lib/books/reader_settings.dart` voor de
@@ -899,7 +1106,15 @@ Bewuste verschillen met het beeld:
 Wat bewust niet gebouwd is:
 
 - **De scrollmodus.** De schakelaar is getekend en er is niets dat hem beweegt, zoals `Ga naar pagina`
-  in golden 06.
+  in golden 06. Op 5 september 2026 vroeg Michel waarom hij op een echt toestel niet aan te zetten is.
+  Dat klopt en het is zo bedoeld: `ReaderSettings.scrollMode` is een compile-time `static const bool`
+  en `ReaderScrollModeRow` is een label, een hint en een `ReaderSwitch` zonder tikdoel, dus een tik
+  landt op niets. Verticaal scrollen in plaats van bladeren is een tweede leesmodus met een eigen
+  paginavorm, een eigen voet en een eigen antwoord op wat een pagina dan nog is, en die vraagt een
+  eigen golden. Het besluit van diezelfde dag: het blijft zoals golden 08 het tekent, dus geen
+  implementatie en ook geen gedimde variant, want dimmen wijkt zelf af van het goedgekeurde beeld.
+  Nagemeten op de melding: de knop staat links op een grijze baan, dus de schakelaar leest als uit en
+  wekt geen valse indruk van aan.
 - **Terugzetten op de standaard.** Geen knop, want de golden tekent er geen.
 - **Onthouden.** Een instelling geldt zolang de reader open is. Waar een leesvoorkeur bewaard wordt is
   een profielinstelling en dat is golden 12, met PS-15 eronder.
@@ -1454,6 +1669,20 @@ Twee opeenvolgende runs leverden identieke bestanden op (md5 `9d2cd994…`, `320
 een letter uit de repository laadt in plaats van er een van het besturingssysteem te lenen, dus de
 render is nu ook buiten macOS reproduceerbaar. De md5's van voordracht A staan hier niet meer; die
 frames leunden op de systeem-Georgia en zijn daarmee toch niet na te maken.
+
+Golden 09 gaat net zo, met `938` als hoogte voor het rijenframe; ook die komt uit
+`window.specHeight()`.
+
+```
+cd docs/assets/ebooks/northstar/src/09-books-search-in-book
+export NODE_PATH=/opt/homebrew/lib/node_modules:/opt/homebrew/lib/node_modules/@playwright/test/node_modules
+node render.js search-in-book.html ../../09a-books-search-in-book.png results
+node render.js search-in-book.html ../../09b-books-search-in-book-rowtypes.png rowtypes 938
+```
+
+Op 4 september 2026 leverden twee opeenvolgende runs identieke bestanden op (md5 `0d26ccb4…` en
+`845c999e…`). Dit is de eerste golden van de set zonder eigen fixture-artwork: er staat geen cover
+op, dus er is niets te tekenen dat een commerciële afbeelding zou benaderen.
 
 **Elke golden van deze set reproduceert nu vanuit elke clone.** Golden 07 was de uitzondering zolang
 zijn tekstkolom `Georgia` aan het besturingssysteem vroeg; revisie B laadt Literata uit
