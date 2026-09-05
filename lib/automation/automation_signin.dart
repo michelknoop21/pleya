@@ -291,8 +291,12 @@ Future<Map<String, Object?>> handleAutomationOpen(Map<String, Object?> body) asy
     if (tab == null) {
       return {'ok': false, 'error': 'unsupported screen "$screen" — no nav-tab mapping registered for it yet'};
     }
-    if (!AutomationNavigationHooks.instance.selectTab(tab)) {
+    final selected = AutomationNavigationHooks.instance.selectTab(tab);
+    if (selected == null) {
       return {'ok': false, 'error': 'MainScreen is not mounted to open a tab on'};
+    }
+    if (!selected) {
+      return {'ok': false, 'error': 'destination "$screen" is not available on this platform'};
     }
   }
 

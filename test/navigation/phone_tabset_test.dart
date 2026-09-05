@@ -150,7 +150,33 @@ void main() {
       );
     });
 
-    test('on the phone Zoeken lights Home, because that is where its entry point is', () {
+    test('on the phone Zoeken lights Home when it was opened from Home', () {
+      expect(
+        mainScreenSelectedBarTab(
+          currentTab: NavigationTabId.search,
+          isOffline: false,
+          barTabs: _bar(isOffline: false, isPhone: true),
+          searchOrigin: NavigationTabId.discover,
+        ),
+        NavigationTabId.discover,
+        reason: '05-zoeken.png shows the search surface with Home active',
+      );
+    });
+
+    test('on the phone Zoeken lights the tab it was opened from, not always Home', () {
+      expect(
+        mainScreenSelectedBarTab(
+          currentTab: NavigationTabId.search,
+          isOffline: false,
+          barTabs: _bar(isOffline: false, isPhone: true),
+          searchOrigin: NavigationTabId.movies,
+        ),
+        NavigationTabId.movies,
+        reason: '05-zoeken.png only proves the Home case; searching from Films must not silently light Home',
+      );
+    });
+
+    test('with no recorded origin, Zoeken falls back to Home, same as the cold-start / restored-session case', () {
       expect(
         mainScreenSelectedBarTab(
           currentTab: NavigationTabId.search,
@@ -158,7 +184,6 @@ void main() {
           barTabs: _bar(isOffline: false, isPhone: true),
         ),
         NavigationTabId.discover,
-        reason: '05-zoeken.png shows the search surface with Home active',
       );
     });
 

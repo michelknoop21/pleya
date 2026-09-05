@@ -226,6 +226,7 @@ NavigationTabId mainScreenSelectedBarTab({
   required NavigationTabId currentTab,
   required bool isOffline,
   required List<NavigationTabId> barTabs,
+  NavigationTabId? searchOrigin,
 }) {
   final preferred = switch (currentTab) {
     NavigationTabId.discover ||
@@ -244,13 +245,19 @@ NavigationTabId mainScreenSelectedBarTab({
     // of this function. That fallback lights Home, which is exactly the bug
     // this projection exists to prevent, one destination further along.
     //
-    // Bibliotheken became a row in Mijn Pleya, so Mijn Pleya lights up. Zoeken
-    // is entered from the search icon on Home instead, so Home stays lit, and
-    // that is what `05-zoeken.png` shows (DEC-094).
+    // Bibliotheken became a row in Mijn Pleya, so Mijn Pleya lights up.
     NavigationTabId.libraries =>
       isOffline ? NavigationTabId.downloads : _ownSlotOr(NavigationTabId.libraries, barTabs, NavigationTabId.myPleya),
-    NavigationTabId.search =>
-      isOffline ? NavigationTabId.downloads : _ownSlotOr(NavigationTabId.search, barTabs, NavigationTabId.discover),
+    // Zoeken is entered from the search icon on whichever tab the user was
+    // already on, so the bar keeps lighting that tab rather than always
+    // reverting to Home — `05-zoeken.png` only proves the Home case, since
+    // that is the surface it was shot from. `searchOrigin` is `null` only
+    // when the app never recorded a switch into Zoeken (a cold `search`
+    // startup tab, restored session state); `discover` is the same fallback
+    // the Home case already produces.
+    NavigationTabId.search => isOffline
+        ? NavigationTabId.downloads
+        : _ownSlotOr(NavigationTabId.search, barTabs, searchOrigin ?? NavigationTabId.discover),
     NavigationTabId.watchlist ||
     NavigationTabId.requests ||
     NavigationTabId.settings ||
@@ -341,6 +348,11 @@ class _MainScreenState extends State<MainScreen>
   /// start because servers bind asynchronously. Applied once it becomes
   /// available (see [_handleLiveTvChanged]); cleared on any explicit selection.
   NavigationTabId? _pendingStartupTab;
+
+  /// The tab that was active right before switching into Zoeken, so the bar
+  /// can return to it rather than always assuming Home (`mainScreenSelectedBarTab`).
+  /// Stale once Zoeken is no longer current, but never read in that state.
+  NavigationTabId? _searchOpenedFromTab;
 
   /// Whether we auto-switched to Downloads because the previous tab was unavailable offline
   bool _autoSwitchedToDownloads = false;
@@ -1649,11 +1661,18 @@ class _MainScreenState extends State<MainScreen>
     }
   }
 
-  void _selectTab(NavigationTabId tab) {
+  /// `false` when [tab] is not visible in the current mode: the tab is
+  /// unchanged, and the caller (`AutomationNavigationHooks`, ultimately
+  /// `/v1/open`) can report that instead of polling out a full timeout
+  /// waiting for a screen that was never going to mount.
+  bool _selectTab(NavigationTabId tab) {
     // Guard: ignore if tab isn't available in current mode
-    if (!_getVisibleTabs(_isOffline).any((t) => t.id == tab)) return;
+    if (!_getVisibleTabs(_isOffline).any((t) => t.id == tab)) return false;
 
     final previousTab = _currentTab;
+    if (tab == NavigationTabId.search && previousTab != NavigationTabId.search) {
+      _searchOpenedFromTab = previousTab;
+    }
     setState(() {
       _currentTab = tab;
       // An explicit selection cancels any deferred startup-section switch.
@@ -1702,6 +1721,7 @@ class _MainScreenState extends State<MainScreen>
         }
       });
     }
+    return true;
   }
 
   /// Handle library selection from side navigation rail
@@ -1854,6 +1874,7 @@ class _MainScreenState extends State<MainScreen>
       currentTab: _currentTab,
       isOffline: _isOffline,
       barTabs: tabs.map((tab) => tab.id).toList(),
+      searchOrigin: _searchOpenedFromTab,
     );
     final selectedIndex = tabs.indexWhere((tab) => tab.id == projected);
 
