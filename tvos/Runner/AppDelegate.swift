@@ -86,22 +86,26 @@ import wakelock_plus
     return false
   }
 
-  // NAV1, the second half: one arrow press that moves the focus twice.
+  // NAV1, the second half: one arrow press that moved the focus twice.
   //
-  // `super` ends in the engine's `synthesizeRemotePressType:`, and for an
-  // arrow the pinned fork posts a complete keydown/keyup pair on *both*
-  // `.began` and `.ended` of the same `UIPress` (log `wa6v9`, build 255).
-  // Select is balanced (keydown on `.began`, keyup on `.ended`).
+  // Nothing is filtered here on purpose. The double step was never a phase
+  // problem: `super` posts one keydown on `.began` and one keyup on `.ended`,
+  // exactly as it should. What doubled it was the Menu passthrough. The
+  // engine answers an *enable* on `flutter/tvos_system_navigation` with
+  // `releaseAllSynthesizedPresses` (a synthetic keyup for every remote key it
+  // still holds), and `.ended` then re-taps the released arrow as a fresh
+  // down/up pair (`tapIfMissingKeyDown:YES`). The press that lands on the
+  // Home tab raises the passthrough, so that press stepped twice (log
+  // `wa6v9`, build 255). `TvosSystemNavigationService` now parks the enable
+  // until every key is up.
   //
-  // Nothing is filtered here on purpose. Both answers for the `.ended` phase
-  // were tried on the device on 5 September 2026 and both are worse than the
-  // double step: yielding it to UIKit (`false`, build 256) trips
-  // `_UIFocusMovementPressGestureRecognizer _verifyTrackingPresses:` because
-  // the engine had claimed the matching `.began`; swallowing it (`true`
-  // without `super`, build 257) leaves the remote stuck in one direction, so
-  // the engine keeps state across the phases that this level cannot see.
-  // A timing heuristic in Dart (build 254, log `ld1t1`) ate 65 real presses.
-  // The fix belongs in the fork; see `docs/tvos-fysieke-correctieronde.md`.
+  // Both answers that were tried here for `.ended` are worse: yielding it to
+  // UIKit (`false`, build 256) trips `_verifyTrackingPresses:` because the
+  // engine claimed the matching `.began`; swallowing it (`true` without
+  // `super`, build 257) leaves the key in the engine's pressed set, and its
+  // 0.4 s / 80 ms repeat timer then steps in that direction forever. The
+  // engine file is reconstructed by `scripts/tvos_engine_source.sh`; the
+  // contract is in `docs/tvos-remote-press-pipeline.md`.
 
   /// For the log line only. The symbolic cases are not reliable on tvOS 26 (the
   /// runtime delivers 2040 for select and 2041 for menu where the SDK compiles

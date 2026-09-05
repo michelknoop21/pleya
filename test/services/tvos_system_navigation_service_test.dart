@@ -73,6 +73,56 @@ void main() {
       ]);
     });
 
+    // NAV1, the real cause (docs/tvos-fysieke-correctieronde.md, "NAV1, de
+    // fase-oorzaak"). The engine fork answers an enable with
+    // releaseAllSynthesizedPresses: every Siri Remote key it still holds
+    // down gets a synthetic keyup, and the press's own .ended then re-taps
+    // it as a fresh down/up pair. Enabling while an arrow is held is what
+    // turned one press into two steps, so the enable has to wait for the
+    // release.
+    testWidgets('enabling while a remote key is held waits for the key-up', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+
+      await simulateKeyDownEvent(LogicalKeyboardKey.arrowLeft);
+      await TvosSystemNavigationService.setMenuPassthroughEnabled(true);
+      expect(sent, isEmpty, reason: 'an arrow is still down');
+
+      await simulateKeyUpEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+
+      expect(sent, [
+        {'menuPassthroughEnabled': true},
+      ]);
+    });
+
+    testWidgets('a disable while the enable is waiting cancels it', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+
+      await simulateKeyDownEvent(LogicalKeyboardKey.arrowRight);
+      await TvosSystemNavigationService.setMenuPassthroughEnabled(true);
+      await TvosSystemNavigationService.setMenuPassthroughEnabled(false);
+      await simulateKeyUpEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(sent, [
+        {'menuPassthroughEnabled': false},
+      ], reason: 'off goes out at once; the parked on must not follow it after the key-up');
+    });
+
+    testWidgets('disabling is never deferred, a held key must not keep Menu with the system', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+
+      await TvosSystemNavigationService.setMenuPassthroughEnabled(true);
+      await simulateKeyDownEvent(LogicalKeyboardKey.select);
+      await TvosSystemNavigationService.setMenuPassthroughEnabled(false);
+
+      expect(sent, [
+        {'menuPassthroughEnabled': true},
+        {'menuPassthroughEnabled': false},
+      ]);
+      await simulateKeyUpEvent(LogicalKeyboardKey.select);
+    });
+
     test('a changed value after a no-op repeat sends again', () async {
       TvDetectionService.debugSetAppleTVOverride(true);
 
