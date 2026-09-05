@@ -291,6 +291,7 @@ const Set<String> _routeScreens = {
   AutomationIds.screenBookDetail,
   AutomationIds.screenBooksToc,
   AutomationIds.screenBookReader,
+  AutomationIds.screenBookTextSearch,
 };
 
 /// `POST /v1/open` body: `{"screen": "screen.discover", "timeoutMs"?}`.
