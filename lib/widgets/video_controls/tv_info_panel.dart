@@ -52,6 +52,11 @@ class TvInfoPanel extends StatefulWidget {
   final List<MediaChapter> chapters;
   final Future<void> Function(Duration)? onSeekToChapter;
 
+  /// Reports a completed seek, the way the chapter sheet does. It is the only
+  /// path to `WatchTogetherProvider.onLocalSeek`, so a chapter jump made from
+  /// the panel would otherwise leave the peers behind.
+  final void Function(Duration position)? onSeekCompleted;
+
   /// Whether ambient lighting is currently enabled.
   final bool isAmbientEnabled;
 
@@ -73,6 +78,7 @@ class TvInfoPanel extends StatefulWidget {
     required this.trackControlsState,
     required this.chapters,
     required this.onSeekToChapter,
+    this.onSeekCompleted,
     required this.isAmbientEnabled,
     required this.ambientSupported,
     required this.onSetAmbientIntensity,
@@ -168,9 +174,14 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
       if (!mounted) return;
       if (_subViewTopNode.context != null) {
         _subViewTopNode.requestFocus();
-      } else {
-        _scopeNode.requestFocus();
+        return;
       }
+      // Version and quality is built from the shared picker, whose tiles this
+      // panel cannot hand a node to. Focusing the scope alone leaves the ring
+      // nowhere — the AUD2 failure again — so walk it onto the first focusable
+      // the sub-view actually mounted.
+      _scopeNode.requestFocus();
+      _scopeNode.nextFocus();
     });
   }
 
@@ -417,10 +428,8 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
     };
     return Row(
       children: [
-        IconButton(
-          onPressed: _closeSubView,
-          icon: const AppIcon(Symbols.arrow_back_ios_new_rounded, fill: 1, color: Colors.white, size: 20),
-        ),
+        TvPanelBackButton(onPressed: _closeSubView),
+        const SizedBox(width: 16),
         Text(title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
         const SizedBox(width: 12),
         Text(crumb, style: const TextStyle(color: TvPanelTheme.textFaint, fontSize: 14)),
@@ -528,6 +537,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
           serverId: state.serverId,
           firstFocusNode: _subViewTopNode,
           onSeekToChapter: widget.onSeekToChapter,
+          onSeekCompleted: widget.onSeekCompleted,
           onDone: _closeSubView,
         );
       case TvInfoPanelSubView.sleepTimer:

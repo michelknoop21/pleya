@@ -67,11 +67,43 @@ enum TvPanelRowKind {
 /// One helper rather than seven private modulo expressions: every value row in
 /// the panel steps the same way, so a bug in the arithmetic is fixed once.
 T stepValue<T>(List<T> values, T current, int delta, {bool Function(T a, T b)? equals}) {
+  return values[(_indexOfValue(values, current, equals) + delta) % values.length];
+}
+
+int _indexOfValue<T>(List<T> values, T current, bool Function(T a, T b)? equals) {
   final eq = equals ?? (T a, T b) => a == b;
-  var index = values.indexWhere((v) => eq(v, current));
-  if (index < 0) index = 0;
-  final next = (index + delta) % values.length;
-  return values[next < 0 ? next + values.length : next];
+  final index = values.indexWhere((v) => eq(v, current));
+  return index < 0 ? 0 : index;
+}
+
+/// The neighbour [delta] steps away, or null when [current] already sits at
+/// that end of [values].
+///
+/// LEFT and RIGHT clamp where Select cycles, and the null is the point: an
+/// absent callback is not consumed by [FocusableWrapper], so the key falls
+/// through to focus traversal and the ring leaves the column sideways. Without
+/// it a column of nothing but value rows swallows both horizontal directions
+/// forever — which is exactly the Video tab on an Android TV, where neither
+/// HDR, shaders nor ambient lighting is offered and only two stepping rows
+/// remain.
+T? stepValueClamped<T>(List<T> values, T current, int delta, {bool Function(T a, T b)? equals}) {
+  final next = _indexOfValue(values, current, equals) + delta;
+  return next < 0 || next >= values.length ? null : values[next];
+}
+
+/// The LEFT/RIGHT callbacks of a value row, clamped at both ends.
+({VoidCallback? left, VoidCallback? right}) clampedSteps<T>(
+  List<T> values,
+  T current,
+  void Function(T value) apply, {
+  bool Function(T a, T b)? equals,
+}) {
+  final previous = stepValueClamped(values, current, -1, equals: equals);
+  final next = stepValueClamped(values, current, 1, equals: equals);
+  return (
+    left: previous == null ? null : () => apply(previous),
+    right: next == null ? null : () => apply(next),
+  );
 }
 
 /// A single focusable row in a TV panel section.
@@ -511,6 +543,52 @@ class TvPanelGroup extends StatelessWidget {
         borderRadius: BorderRadius.circular(TvPanelTheme.groupRadius),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: rows),
+    );
+  }
+}
+
+/// The round back control of a sub-view header. A bare Material [IconButton]
+/// would be the one focusable in the panel drawing no focus of its own: under
+/// `monoTheme` its overlay is a 10% wash on an already dark surface (DEC-053).
+class TvPanelBackButton extends StatelessWidget {
+  const TvPanelBackButton({super.key, required this.onPressed, this.focusNode});
+
+  final VoidCallback onPressed;
+  final FocusNode? focusNode;
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusableWrapper(
+      focusNode: focusNode,
+      onSelect: onPressed,
+      focusShape: BoxShape.circle,
+      autoScroll: false,
+      mode: FocusIndicatorMode.delegated,
+      disableScale: true,
+      child: Builder(
+        builder: (context) {
+          final focused = CardFocusScope.maybeOf(context) ?? false;
+          return GestureDetector(
+            onTap: onPressed,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: focused ? TvPanelTheme.focusFill : TvPanelTheme.inactivePill,
+              ),
+              child: AppIcon(
+                Symbols.arrow_back_ios_new_rounded,
+                fill: 1,
+                color: focused ? TvPanelTheme.focusInk : Colors.white,
+                size: 18,
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

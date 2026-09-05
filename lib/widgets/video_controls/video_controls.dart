@@ -1083,6 +1083,7 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                         ),
                         chapters: _chapters,
                         onSeekToChapter: widget.onSeekRequested,
+                        onSeekCompleted: widget.onSeekCompleted,
                         isAmbientEnabled: widget.isAmbientLightingEnabled,
                         ambientSupported: widget.onSetAmbientIntensity != null,
                         onSetAmbientIntensity: (mode) => widget.onSetAmbientIntensity?.call(mode),

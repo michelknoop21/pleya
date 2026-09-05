@@ -58,6 +58,27 @@ class TvAudioTab extends StatelessWidget {
   static String volumeBoostLabel(int percent) =>
       percent <= 100 ? t.common.off : t.videoControls.tvPanel.volumeBoostStep(percent: percent - 100);
 
+  /// The boost row while mpv can still act on it. `volume-max` is stepped
+  /// clamped (LEFT/RIGHT) and cycled (Select) like every other value row.
+  Widget _boostRow({required FocusNode? focusNode, required int maxVol}) {
+    final steps = clampedSteps(kTvPanelVolumeBoostSteps, maxVol, (value) => applyVolumeBoost(player, value));
+    return TvPanelRow.value(
+      focusNode: focusNode,
+      onNavigateUp: focusNode == null ? null : onNavigateUp,
+      icon: Symbols.volume_up_rounded,
+      title: t.videoControls.tvPanel.volumeBoost,
+      subtitle: t.videoControls.tvPanel.volumeBoostHint,
+      value: volumeBoostLabel(maxVol),
+      highlighted: maxVol > 100,
+      onSelect: () => applyVolumeBoost(player, stepValue(kTvPanelVolumeBoostSteps, maxVol, 1)),
+      onStepLeft: steps.left,
+      onStepRight: steps.right,
+      automationId: AutomationIds.playerPanelRow,
+      automationInstance: 'volume_boost',
+      automationState: () => {'percent': maxVol},
+    );
+  }
+
   String _audioOutputModeLabel(AudioOutputMode mode) => switch (mode) {
     AudioOutputMode.auto => t.videoSettings.audioOutputModes.auto,
     AudioOutputMode.passthrough => t.videoSettings.audioOutputModes.passthrough,
@@ -234,21 +255,7 @@ class TvAudioTab extends StatelessWidget {
                             automationId: AutomationIds.playerPanelRow,
                             automationInstance: 'volume_boost',
                           )
-                        : TvPanelRow.value(
-                            focusNode: boostNode,
-                            onNavigateUp: boostNode == null ? null : onNavigateUp,
-                            icon: Symbols.volume_up_rounded,
-                            title: t.videoControls.tvPanel.volumeBoost,
-                            subtitle: t.videoControls.tvPanel.volumeBoostHint,
-                            value: volumeBoostLabel(maxVol),
-                            highlighted: maxVol > 100,
-                            onSelect: () => applyVolumeBoost(player, stepValue(kTvPanelVolumeBoostSteps, maxVol, 1)),
-                            onStepLeft: () => applyVolumeBoost(player, stepValue(kTvPanelVolumeBoostSteps, maxVol, -1)),
-                            onStepRight: () => applyVolumeBoost(player, stepValue(kTvPanelVolumeBoostSteps, maxVol, 1)),
-                            automationId: AutomationIds.playerPanelRow,
-                            automationInstance: 'volume_boost',
-                            automationState: () => {'percent': maxVol},
-                          ),
+                        : _boostRow(focusNode: boostNode, maxVol: maxVol),
                   ),
                   TvPanelRow(
                     icon: Symbols.sync_rounded,
@@ -262,19 +269,22 @@ class TvAudioTab extends StatelessWidget {
                   ),
                   ValueListenableBuilder<AudioOutputMode>(
                     valueListenable: settings.listenable(SettingsService.audioOutputMode),
-                    builder: (context, mode, _) => TvPanelRow.value(
-                      icon: Symbols.surround_sound_rounded,
-                      title: t.videoSettings.audioOutputTitle,
-                      subtitle: _audioOutputModeDescription(mode),
-                      value: _audioOutputModeLabel(mode),
-                      highlighted: mode != AudioOutputMode.pcm,
-                      onSelect: () => _setOutputMode(stepValue(AudioOutputMode.values, mode, 1)),
-                      onStepLeft: () => _setOutputMode(stepValue(AudioOutputMode.values, mode, -1)),
-                      onStepRight: () => _setOutputMode(stepValue(AudioOutputMode.values, mode, 1)),
-                      automationId: AutomationIds.playerPanelRow,
-                      automationInstance: 'audio_output_mode',
-                      automationState: () => {'mode': mode.name},
-                    ),
+                    builder: (context, mode, _) {
+                      final steps = clampedSteps(AudioOutputMode.values, mode, _setOutputMode);
+                      return TvPanelRow.value(
+                        icon: Symbols.surround_sound_rounded,
+                        title: t.videoSettings.audioOutputTitle,
+                        subtitle: _audioOutputModeDescription(mode),
+                        value: _audioOutputModeLabel(mode),
+                        highlighted: mode != AudioOutputMode.pcm,
+                        onSelect: () => _setOutputMode(stepValue(AudioOutputMode.values, mode, 1)),
+                        onStepLeft: steps.left,
+                        onStepRight: steps.right,
+                        automationId: AutomationIds.playerPanelRow,
+                        automationInstance: 'audio_output_mode',
+                        automationState: () => {'mode': mode.name},
+                      );
+                    },
                   ),
                   // Priority only means something under Auto; the explicit modes
                   // already say which property they protect. Dimmed and skipped
@@ -286,6 +296,9 @@ class TvAudioTab extends StatelessWidget {
                       valueListenable: settings.listenable(SettingsService.audioPriority),
                       builder: (context, priority, _) {
                         final active = mode == AudioOutputMode.auto;
+                        final steps = active
+                            ? clampedSteps(AudioPriority.values, priority, _setPriority)
+                            : (left: null, right: null);
                         return TvPanelRow.value(
                           icon: Symbols.tune_rounded,
                           title: t.videoSettings.audioPriorityTitle,
@@ -294,8 +307,8 @@ class TvAudioTab extends StatelessWidget {
                           dimmed: !active,
                           canRequestFocus: active,
                           onSelect: active ? () => _setPriority(stepValue(AudioPriority.values, priority, 1)) : null,
-                          onStepLeft: active ? () => _setPriority(stepValue(AudioPriority.values, priority, -1)) : null,
-                          onStepRight: active ? () => _setPriority(stepValue(AudioPriority.values, priority, 1)) : null,
+                          onStepLeft: steps.left,
+                          onStepRight: steps.right,
                           automationId: AutomationIds.playerPanelRow,
                           automationInstance: 'audio_priority',
                         );
@@ -581,14 +594,15 @@ class TvSubtitlesTab extends StatelessWidget {
                 valueListenable: settings.listenable(SettingsService.subtitleFontSize),
                 builder: (context, stored, _) {
                   final size = nearestTextSize(stored);
+                  final steps = clampedSteps(kTvPanelSubtitleSizes, size, (value) => applyTextSize(player, value));
                   return TvPanelRow.value(
                     icon: Symbols.format_size_rounded,
                     title: t.videoControls.tvPanel.textSize,
                     subtitle: t.videoControls.tvPanel.textSizeHint,
                     value: textSizeLabel(size),
                     onSelect: () => applyTextSize(player, stepValue(kTvPanelSubtitleSizes, size, 1)),
-                    onStepLeft: () => applyTextSize(player, stepValue(kTvPanelSubtitleSizes, size, -1)),
-                    onStepRight: () => applyTextSize(player, stepValue(kTvPanelSubtitleSizes, size, 1)),
+                    onStepLeft: steps.left,
+                    onStepRight: steps.right,
                     automationId: AutomationIds.playerPanelRow,
                     automationInstance: 'subtitle_text_size',
                     automationState: () => {'size': size},

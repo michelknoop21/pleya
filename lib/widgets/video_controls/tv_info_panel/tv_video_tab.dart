@@ -26,6 +26,9 @@ const List<String> kAmbientIntensityModes = ['off', 'subtle', 'balanced', 'brigh
 /// Playback speeds a value row steps through; the same list the sheet offers.
 const List<double> kTvPanelSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0];
 
+/// Box-fit modes: contain, cover, fill.
+const List<int> kTvPanelBoxFitModes = [0, 1, 2];
+
 /// Zoom presets, the same list the sheet offers.
 const List<double> kTvPanelZoomPresets = [0.5, 0.75, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5, 1.75, 2.0];
 
@@ -94,7 +97,7 @@ class TvVideoTab extends StatelessWidget {
   void _stepBoxFit(int delta) {
     final set = onSetBoxFitMode;
     if (set != null) {
-      set(stepValue(const [0, 1, 2], boxFitMode, delta));
+      set(stepValue(kTvPanelBoxFitModes, boxFitMode, delta));
     } else {
       onCycleBoxFit?.call();
     }
@@ -114,15 +117,21 @@ class TvVideoTab extends StatelessWidget {
     onSetAmbientIntensity(stepValue(kAmbientIntensityModes, current, delta));
   }
 
-  Future<void> _stepSpeed(int delta) async {
-    final next = stepValue(kTvPanelSpeeds, player.state.rate, delta, equals: (a, b) => (a - b).abs() < 0.01);
-    await player.setRate(next);
-    await SettingsService.instance.write(SettingsService.defaultPlaybackSpeed, next);
+  static bool _sameSpeed(double a, double b) => (a - b).abs() < 0.01;
+
+  static bool _sameZoom(double a, double b) => (a - b).abs() < 0.005;
+
+  Future<void> _applySpeed(double rate) async {
+    await player.setRate(rate);
+    await SettingsService.instance.write(SettingsService.defaultPlaybackSpeed, rate);
   }
+
+  Future<void> _stepSpeed(int delta) =>
+      _applySpeed(stepValue(kTvPanelSpeeds, player.state.rate, delta, equals: _sameSpeed));
 
   void _stepZoom(int delta) {
     final current = VideoFilterManager.normalizeZoomScale(videoZoomScale);
-    onVideoZoomChanged?.call(stepValue(kTvPanelZoomPresets, current, delta, equals: (a, b) => (a - b).abs() < 0.005));
+    onVideoZoomChanged?.call(stepValue(kTvPanelZoomPresets, current, delta, equals: _sameZoom));
   }
 
   String _versionQualityValue() {
@@ -151,6 +160,12 @@ class TvVideoTab extends StatelessWidget {
     final display = <Widget>[];
     if (onCycleBoxFit != null || onSetBoxFitMode != null) {
       final node = nodeFor();
+      final setBoxFit = onSetBoxFitMode;
+      // Without a setter only the forward cycle exists, so neither direction
+      // steps and both fall through to traversal.
+      final steps = setBoxFit == null
+          ? (left: null, right: null)
+          : clampedSteps(kTvPanelBoxFitModes, boxFitMode, setBoxFit);
       display.add(
         TvPanelRow.value(
           focusNode: node,
@@ -160,8 +175,8 @@ class TvVideoTab extends StatelessWidget {
           value: _boxFitLabel(boxFitMode),
           highlighted: boxFitMode != 0,
           onSelect: () => _stepBoxFit(1),
-          onStepLeft: () => _stepBoxFit(-1),
-          onStepRight: () => _stepBoxFit(1),
+          onStepLeft: steps.left,
+          onStepRight: steps.right,
           automationId: AutomationIds.playerPanelRow,
           automationInstance: 'aspect_ratio',
         ),
@@ -170,6 +185,12 @@ class TvVideoTab extends StatelessWidget {
     if (onVideoZoomChanged != null) {
       final node = nodeFor();
       final zoom = VideoFilterManager.normalizeZoomScale(videoZoomScale);
+      final steps = clampedSteps(
+        kTvPanelZoomPresets,
+        zoom,
+        (value) => onVideoZoomChanged?.call(value),
+        equals: _sameZoom,
+      );
       display.add(
         TvPanelRow.value(
           focusNode: node,
@@ -179,8 +200,8 @@ class TvVideoTab extends StatelessWidget {
           value: '${(zoom * 100).round()}%',
           highlighted: (zoom - 1.0).abs() > 0.0001,
           onSelect: () => _stepZoom(1),
-          onStepLeft: () => _stepZoom(-1),
-          onStepRight: () => _stepZoom(1),
+          onStepLeft: steps.left,
+          onStepRight: steps.right,
           automationId: AutomationIds.playerPanelRow,
           automationInstance: 'zoom',
         ),
@@ -228,6 +249,11 @@ class TvVideoTab extends StatelessWidget {
     }
     if (ambientSupported) {
       final node = nodeFor();
+      final steps = clampedSteps(
+        kAmbientIntensityModes,
+        ambientEnabled ? ambientIntensity : 'off',
+        onSetAmbientIntensity,
+      );
       display.add(
         TvPanelRow.value(
           focusNode: node,
@@ -237,8 +263,8 @@ class TvVideoTab extends StatelessWidget {
           value: _ambientLabel(),
           highlighted: ambientEnabled,
           onSelect: () => _stepAmbient(1),
-          onStepLeft: () => _stepAmbient(-1),
-          onStepRight: () => _stepAmbient(1),
+          onStepLeft: steps.left,
+          onStepRight: steps.right,
           automationId: AutomationIds.playerPanelRow,
           automationInstance: 'ambient',
         ),
@@ -254,6 +280,7 @@ class TvVideoTab extends StatelessWidget {
           initialData: player.state.rate,
           builder: (context, snapshot) {
             final rate = snapshot.data ?? 1.0;
+            final steps = clampedSteps(kTvPanelSpeeds, rate, _applySpeed, equals: _sameSpeed);
             return TvPanelRow.value(
               focusNode: node,
               onNavigateUp: upFor(node),
@@ -262,8 +289,8 @@ class TvVideoTab extends StatelessWidget {
               value: formatPlaybackRate(rate, normalAtOne: true),
               highlighted: (rate - 1.0).abs() > 0.01,
               onSelect: () => _stepSpeed(1),
-              onStepLeft: () => _stepSpeed(-1),
-              onStepRight: () => _stepSpeed(1),
+              onStepLeft: steps.left,
+              onStepRight: steps.right,
               automationId: AutomationIds.playerPanelRow,
               automationInstance: 'speed',
               automationState: () => {'rate': rate},

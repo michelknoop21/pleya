@@ -25,6 +25,10 @@ class TvChapterSubView extends StatelessWidget {
   final String? serverId;
   final FocusNode firstFocusNode;
   final Future<void> Function(Duration)? onSeekToChapter;
+
+  /// Same contract as `ChapterSheet`: the seek is reported once it landed, so
+  /// Watch Together can carry it to the peers.
+  final void Function(Duration position)? onSeekCompleted;
   final VoidCallback onDone;
 
   const TvChapterSubView({
@@ -34,12 +38,14 @@ class TvChapterSubView extends StatelessWidget {
     required this.serverId,
     required this.firstFocusNode,
     required this.onSeekToChapter,
+    this.onSeekCompleted,
     required this.onDone,
   });
 
   Future<void> _jumpTo(Duration position) async {
     final clamped = clampSeekPosition(player, position);
     await (onSeekToChapter ?? player.seek)(clamped);
+    onSeekCompleted?.call(clamped);
     onDone();
   }
 

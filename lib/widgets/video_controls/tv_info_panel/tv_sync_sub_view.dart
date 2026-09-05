@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../automation/automation_ids.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../mpv/mpv.dart';
 import '../../../utils/formatters.dart';
@@ -87,10 +88,12 @@ class _TvSyncSubViewState extends State<TvSyncSubView> {
                   subtitle: t.videoControls.tvPanel.syncStepHint,
                   value: formatSyncOffset(_offset.toDouble()),
                   highlighted: _offset != 0,
-                  onStepLeft: () => _apply(_offset - TvSyncSubView.stepMs),
-                  onStepRight: () => _apply(_offset + TvSyncSubView.stepMs),
+                  onStepLeft: _offset <= -TvSyncSubView.maxAbsMs ? null : () => _apply(_offset - TvSyncSubView.stepMs),
+                  onStepRight: _offset >= TvSyncSubView.maxAbsMs ? null : () => _apply(_offset + TvSyncSubView.stepMs),
                   onSelect: () => _apply(_offset + TvSyncSubView.stepMs),
-                  automationId: null,
+                  automationId: AutomationIds.playerPanelRow,
+                  automationInstance: 'sync_offset',
+                  automationState: () => {'offsetMs': _offset},
                 ),
                 TvPanelRow(
                   title: t.videoControls.resetToZero,

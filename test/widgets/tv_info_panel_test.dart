@@ -6,6 +6,7 @@ import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/mpv/models.dart';
 import 'package:pleya/mpv/player/player_state.dart';
 import 'package:pleya/services/audio_output_coordinator.dart';
@@ -14,6 +15,7 @@ import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/video_controls/models/track_controls_state.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel.dart';
+import 'package:pleya/widgets/video_controls/tv_info_panel/tv_audio_subtitle_tabs.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel/tv_panel_widgets.dart';
 import 'package:pleya/widgets/video_controls/widgets/track_chapter_controls.dart';
 
@@ -132,6 +134,43 @@ void main() {
     expect(priority.canRequestFocus, isFalse);
   });
 
+  testWidgets('a value row clamps at its ends so the ring can leave the column (PNL2)', (tester) async {
+    // Wrapping was the old behaviour and it is wrong twice over: RIGHT on
+    // +200% dropped the boost back to Off, and a column of nothing but value
+    // rows consumed both horizontal directions forever.
+    expect(stepValueClamped(kTvPanelVolumeBoostSteps, 300, 1), isNull);
+    expect(stepValueClamped(kTvPanelVolumeBoostSteps, 100, -1), isNull);
+    expect(stepValueClamped(kTvPanelVolumeBoostSteps, 150, 1), 200);
+
+    await SettingsService.instance.write(SettingsService.maxVolume, 300);
+    final h = await _pumpPanel(tester, initial: TvInfoPanelRequest.audio);
+    final boost = h.row(tester, 'Volume boost');
+    expect(boost.onStepRight, isNull, reason: 'at the top RIGHT belongs to traversal, not to the value');
+    expect(boost.onStepLeft, isNotNull);
+    // Select still cycles: one button can only offer a cycle.
+    expect(boost.onSelect, isNotNull);
+  });
+
+  testWidgets('a chapter jump from the panel reports the seek (Watch Together)', (tester) async {
+    final seeks = <Duration>[];
+    final completed = <Duration>[];
+    final h = await _pumpPanel(
+      tester,
+      initial: TvInfoPanelRequest.chapters,
+      chapters: [
+        MediaChapter(id: 1, index: 0, startTimeOffset: 0, title: 'Arrakis'),
+        MediaChapter(id: 2, index: 1, startTimeOffset: 600000, title: 'Sietch Tabr'),
+      ],
+      onSeekToChapter: (position) async => seeks.add(position),
+      onSeekCompleted: completed.add,
+    );
+    await h.focusRow(tester, '2. Sietch Tabr');
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+    expect(seeks, [const Duration(minutes: 10)]);
+    expect(completed, seeks, reason: 'onSeekCompleted is the only path to WatchTogetherProvider.onLocalSeek');
+  });
+
   testWidgets('the Video pill is translated (STR1) and the stats row says On, not OK', (tester) async {
     await SettingsService.instance.write(SettingsService.showPerformanceOverlay, true);
     await _pumpPanel(tester, initial: TvInfoPanelRequest.video);
@@ -209,7 +248,13 @@ class _Harness {
   }
 }
 
-Future<_Harness> _pumpPanel(WidgetTester tester, {TvInfoPanelRequest initial = TvInfoPanelRequest.information}) async {
+Future<_Harness> _pumpPanel(
+  WidgetTester tester, {
+  TvInfoPanelRequest initial = TvInfoPanelRequest.information,
+  List<MediaChapter> chapters = const [],
+  Future<void> Function(Duration)? onSeekToChapter,
+  void Function(Duration)? onSeekCompleted,
+}) async {
   final player = _PanelPlayer();
   addTearDown(player.dispose);
   final harness = _Harness(player);
@@ -232,8 +277,9 @@ Future<_Harness> _pumpPanel(WidgetTester tester, {TvInfoPanelRequest initial = T
               subtitleSyncOffset: 0,
               canControl: true,
             ),
-            chapters: const [],
-            onSeekToChapter: null,
+            chapters: chapters,
+            onSeekToChapter: onSeekToChapter,
+            onSeekCompleted: onSeekCompleted,
             isAmbientEnabled: false,
             ambientSupported: false,
             // ignore: no-empty-block - ambient is not exercised here
