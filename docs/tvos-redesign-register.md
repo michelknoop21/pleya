@@ -74,7 +74,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | MOC-17 | Live TV, één navigatiebalk, volledige functionaliteit | PB-8 | OPEN | |
 | MOC-18 | Speler-OSD | approval | OPEN | |
 | MOC-19 | Spelerinfopaneel | PB-9 | VERVANGEN door MOC-33 | |
-| MOC-33 | Spelerinfopaneel als enige spelermenu op TV, mockup 33 vervangt 19 (PLR2 in de correctieronde), negen standen | PB-9, DEC-101 | GEBOUWD, Mac-run open | SHA volgt |
+| MOC-33 | Spelerinfopaneel als enige spelermenu op TV, mockup 33 vervangt 19 (PLR2 in de correctieronde), negen standen | PB-9, DEC-101 | GEBOUWD, Mac-run open | `5cb5c33` |
 
 ## SYSTEEM EN META
 
