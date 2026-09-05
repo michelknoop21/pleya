@@ -188,6 +188,18 @@ class UnifiedCatalogFilterSelection {
 
   bool get isEmpty => activeCount == 0;
 
+  /// How many narrowings apply to the *items* rather than to which sources take
+  /// part: CAT5's "2 actief" under the Filters row of the rail.
+  ///
+  /// Not [activeCount]. The rail states the source restriction on its own row,
+  /// directly above ("Alle · 3 servers"), so counting it again one line lower
+  /// says the viewer made two choices where they made one. [activeCount] keeps
+  /// counting all five, because the panel those rows both open has all five
+  /// sections in it and hoofdstuk 10.6 puts the count on the panel's own
+  /// button.
+  int get itemFilterCount =>
+      (genres.isEmpty ? 0 : 1) + (years.isEmpty ? 0 : 1) + (watchState == UnifiedWatchFilter.all ? 0 : 1);
+
   /// Whether anything here narrows *which sources take part*, as opposed to
   /// which items they return. Drives the "Alle bronnen" action's own label.
   bool get restrictsSources => serverIds.isNotEmpty || libraryKeys.isNotEmpty;

@@ -2132,6 +2132,7 @@ class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
 	@override String get loadMore => 'Meer laden';
 	@override String get loadingMore => 'Meer laden…';
 	@override late final _TranslationsUnifiedCatalogSortNl sort = _TranslationsUnifiedCatalogSortNl._(_root);
+	@override late final _TranslationsUnifiedCatalogRailNl rail = _TranslationsUnifiedCatalogRailNl._(_root);
 	@override late final _TranslationsUnifiedCatalogFiltersNl filters = _TranslationsUnifiedCatalogFiltersNl._(_root);
 	@override late final _TranslationsUnifiedCatalogStatesNl states = _TranslationsUnifiedCatalogStatesNl._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsNl semantics = _TranslationsUnifiedCatalogSemanticsNl._(_root);
@@ -2641,6 +2642,18 @@ class _TranslationsUnifiedCatalogSortNl extends TranslationsUnifiedCatalogSortEn
 	@override String get newestRelease => 'Nieuwste release';
 	@override String get oldestRelease => 'Oudste release';
 	@override String get recentlyWatched => 'Recent bekeken';
+}
+
+// Path: unifiedCatalog.rail
+class _TranslationsUnifiedCatalogRailNl extends TranslationsUnifiedCatalogRailEn {
+	_TranslationsUnifiedCatalogRailNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get sources => 'Bronnen';
+	@override String get noFilters => 'Geen';
+	@override String filtersActive({required Object count}) => '${count} actief';
 }
 
 // Path: unifiedCatalog.filters
@@ -4441,6 +4454,9 @@ extension on TranslationsNl {
 			'unifiedCatalog.sort.newestRelease' => 'Nieuwste release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oudste release',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recent bekeken',
+			'unifiedCatalog.rail.sources' => 'Bronnen',
+			'unifiedCatalog.rail.noFilters' => 'Geen',
+			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} actief',
 			'unifiedCatalog.filters.title' => 'Filters',
 			'unifiedCatalog.filters.status' => 'Status',
 			'unifiedCatalog.filters.genre' => 'Genre',

@@ -8,10 +8,14 @@ import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/platform_detector.dart';
-import 'package:pleya/widgets/library_header_bar.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/widgets/tv/tv_catalog_filter_panel.dart';
+import 'package:pleya/focus/focus_theme.dart';
+import 'package:pleya/utils/layout_constants.dart';
+import 'package:pleya/widgets/tv/tv_catalog_filter_rail.dart';
 import 'package:pleya/widgets/tv/tv_catalog_header_bar.dart';
+import 'package:pleya/widgets/tv/tv_catalog_selection_tags.dart';
+import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:pleya/widgets/tv/tv_catalog_sort_panel.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -137,67 +141,122 @@ Widget _shell(Widget child) {
 /// composition, and the composition is entirely in these two widgets.
 Widget _page({
   required List<UnifiedMediaGroup> groups,
-  required List<FocusNode> actionNodes,
-  int filterBadge = 0,
-  String? sourcesValue,
+  List<TvCatalogSelectionTag>? tags,
+  List<FocusNode>? railNodes,
   String? title,
-  String? sortValue,
   bool isComplete = false,
   bool isLoadingMore = false,
   int failedLibraries = 0,
   ScrollController? controller,
-}) => Column(
-  crossAxisAlignment: CrossAxisAlignment.stretch,
-  children: [
-    TvCatalogHeaderBar(
-      title: title ?? t.unifiedCatalog.moviesTitle,
-      actions: [
-        TvCatalogHeaderAction(
-          icon: Symbols.dns_rounded,
-          action: LibraryHeaderAction(
-            label: t.unifiedCatalog.allSources,
-            value: sourcesValue,
-            focusNode: actionNodes[0],
-            onPressed: () {},
-          ),
-        ),
-        TvCatalogHeaderAction(
-          icon: Symbols.filter_list_rounded,
-          badgeCount: filterBadge,
-          action: LibraryHeaderAction(
-            label: t.unifiedCatalog.filters.title,
-            focusNode: actionNodes[1],
-            onPressed: () {},
-          ),
-        ),
-        TvCatalogHeaderAction(
-          icon: Symbols.swap_vert_rounded,
-          action: LibraryHeaderAction(
-            label: t.unifiedCatalog.sort.title,
-            value: sortValue ?? sortLabel(UnifiedCatalogSort.titleAsc),
-            focusNode: actionNodes[2],
-            onPressed: () {},
-          ),
-        ),
-      ],
-    ),
-    Expanded(
-      child: TvUnifiedMediaGrid(
-        controller: controller,
-        groups: groups,
-        onActivate: (_) {},
-        hasMore: !isComplete,
-        isLoadingMore: isLoadingMore,
-        onLoadMore: () {},
-        footer: TvUnifiedGridFooter(
-          loadedCount: groups.length,
-          isComplete: isComplete,
-          isLoadingMore: isLoadingMore,
-          failedLibraryCount: failedLibraries,
+}) {
+  final selection = tags ?? const [TvCatalogSelectionTag('Titel A\u2013Z', muted: true)];
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      TvCatalogHeaderBar(
+        title: title ?? t.unifiedCatalog.moviesTitle,
+        // The open rail carries the tags itself, so the heading gives them up
+        // \u2014 the same swap `TvUnifiedCatalogScreen.build` makes.
+        tags: railNodes == null ? selection : const [],
+      ),
+      Expanded(
+        child: Builder(
+          builder: (context) {
+            final scale = TvLayoutConstants.scaleOf(context);
+            final width = MediaQuery.sizeOf(context).width;
+            final leading = railNodes == null
+                ? 0.0
+                : width * ((TvCatalogLayout.railWidth + TvCatalogLayout.railGridGap) / TvCatalogGrid.referenceWidth);
+            final grid = TvCatalogGrid.forWidth(width, scale: scale, reservedLeading: leading);
+            final top = TvCatalogGrid.focusHeadroom(
+              cardHeight: TvCatalogLayout.cardHeight(grid.cardWidth, scale),
+              focusScale: FocusTheme.fullCardFocusScale,
+            );
+            return Stack(
+              children: [
+                Positioned.fill(
+                  child: _grid(
+                    groups: groups,
+                    controller: controller,
+                    isComplete: isComplete,
+                    isLoadingMore: isLoadingMore,
+                    failedLibraries: failedLibraries,
+                    reservedLeading: leading,
+                  ),
+                ),
+                if (railNodes == null)
+                  Positioned(
+                    left: 0,
+                    top: top,
+                    bottom: 0,
+                    width: grid.inset,
+                    child: IgnorePointer(child: TvCatalogFilterRailStrip(scale: scale)),
+                  )
+                else
+                  Positioned(
+                    left: grid.inset,
+                    top: top,
+                    width: width * (TvCatalogLayout.railWidth / TvCatalogGrid.referenceWidth),
+                    child: TvCatalogFilterRailPanel(
+                      scale: scale,
+                      tags: selection,
+                      onClear: () {},
+                      clearFocusNode: railNodes[3],
+                      rows: [
+                        TvCatalogFilterRailRow(
+                          icon: Symbols.dns_rounded,
+                          label: t.unifiedCatalog.rail.sources,
+                          value: t.unifiedCatalog.sources(count: 2),
+                          focusNode: railNodes[0],
+                          onPressed: () {},
+                        ),
+                        TvCatalogFilterRailRow(
+                          icon: Symbols.filter_list_rounded,
+                          label: t.unifiedCatalog.filters.title,
+                          value: t.unifiedCatalog.rail.filtersActive(count: 2),
+                          focusNode: railNodes[1],
+                          onPressed: () {},
+                        ),
+                        TvCatalogFilterRailRow(
+                          icon: Symbols.swap_vert_rounded,
+                          label: t.unifiedCatalog.sort.title,
+                          value: sortLabel(UnifiedCatalogSort.titleAsc),
+                          focusNode: railNodes[2],
+                          onPressed: () {},
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
-    ),
-  ],
+    ],
+  );
+}
+
+Widget _grid({
+  required List<UnifiedMediaGroup> groups,
+  required bool isComplete,
+  required bool isLoadingMore,
+  required int failedLibraries,
+  required double reservedLeading,
+  ScrollController? controller,
+}) => TvUnifiedMediaGrid(
+  controller: controller,
+  reservedLeading: reservedLeading,
+  groups: groups,
+  onActivate: (_) {},
+  hasMore: !isComplete,
+  isLoadingMore: isLoadingMore,
+  onLoadMore: () {},
+  footer: TvUnifiedGridFooter(
+    loadedCount: groups.length,
+    isComplete: isComplete,
+    isLoadingMore: isLoadingMore,
+    failedLibraryCount: failedLibraries,
+  ),
 );
 
 void main() {
@@ -212,8 +271,9 @@ void main() {
     TvGoldenArtwork.remove();
   });
 
-  List<FocusNode> nodes(WidgetTester tester) {
-    final list = [for (var i = 0; i < 3; i++) FocusNode(debugLabel: 'action$i')];
+  /// The four focus nodes an open rail needs: three rows and Wissen.
+  List<FocusNode> railNodes(WidgetTester tester) {
+    final list = [for (var i = 0; i < 4; i++) FocusNode(debugLabel: 'rail$i')];
     addTearDown(() {
       for (final node in list) {
         node.dispose();
@@ -227,7 +287,7 @@ void main() {
   // the type hierarchy — which is exactly what should be able to carry it.
   testWidgets('films, default state', (tester) async {
     setGoldenSurfaceSize(tester);
-    await tester.pumpWidget(_shell(_page(groups: tvGoldenCatalog(), actionNodes: nodes(tester))));
+    await tester.pumpWidget(_shell(_page(groups: tvGoldenCatalog())));
     await tester.pumpAndSettle();
     await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_films_default');
   });
@@ -237,8 +297,7 @@ void main() {
   // its neighbours.
   testWidgets('films, a card focused', (tester) async {
     setGoldenSurfaceSize(tester);
-    final actionNodes = nodes(tester);
-    await tester.pumpWidget(_shell(_page(groups: tvGoldenCatalog(), actionNodes: actionNodes)));
+    await tester.pumpWidget(_shell(_page(groups: tvGoldenCatalog())));
     await tester.pumpAndSettle();
     final card = find.byType(TvUnifiedMediaGrid);
     expect(card, findsOneWidget);
@@ -250,25 +309,30 @@ void main() {
     await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_films_card_focused');
   });
 
-  // Hoofdstuk 7.4's other end of the traversal, and the state the Filters badge
-  // of 10.6 is actually seen in.
-  testWidgets('films, a header action focused with filters active', (tester) async {
+  // CAT5's other end of the traversal: the rail open over a re-columned grid,
+  // which is the state the whole of DEC-093 is about. Five columns instead of
+  // six, the panel standing on the page inset, and the selection said twice \u2014 as
+  // rows and as tags \u2014 because once the rail is open both live in it.
+  testWidgets('films, the rail open with filters active', (tester) async {
     setGoldenSurfaceSize(tester);
-    final actionNodes = nodes(tester);
+    final rail = railNodes(tester);
     await tester.pumpWidget(
       _shell(
         _page(
           groups: tvGoldenCatalog(),
-          actionNodes: actionNodes,
-          filterBadge: 3,
-          sourcesValue: t.unifiedCatalog.sources(count: 2),
+          railNodes: rail,
+          tags: const [
+            TvCatalogSelectionTag('Niet bekeken'),
+            TvCatalogSelectionTag('Sciencefiction'),
+            TvCatalogSelectionTag('Titel A\u2013Z', muted: true),
+          ],
         ),
       ),
     );
     await tester.pumpAndSettle();
-    actionNodes[1].requestFocus();
+    rail[0].requestFocus();
     await tester.pumpAndSettle();
-    await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_films_header_focused');
+    await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_films_rail_open');
   });
 
   // Hoofdstuk 10.7 and 29 together: an exhausted catalog states its exact
@@ -285,15 +349,7 @@ void main() {
     final controller = ScrollController();
     addTearDown(controller.dispose);
     await tester.pumpWidget(
-      _shell(
-        _page(
-          groups: tvGoldenCatalog(),
-          actionNodes: nodes(tester),
-          isComplete: true,
-          failedLibraries: 1,
-          controller: controller,
-        ),
-      ),
+      _shell(_page(groups: tvGoldenCatalog(), isComplete: true, failedLibraries: 1, controller: controller)),
     );
     await tester.pumpAndSettle();
     controller.jumpTo(controller.position.maxScrollExtent);
@@ -329,7 +385,7 @@ void main() {
       ]),
       ...tvGoldenCatalog().take(9),
     ];
-    await tester.pumpWidget(_shell(_page(groups: groups, actionNodes: nodes(tester))));
+    await tester.pumpWidget(_shell(_page(groups: groups)));
     await tester.pumpAndSettle();
     await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_films_long_titles');
   });
@@ -341,7 +397,7 @@ void main() {
         Builder(
           builder: (context) => Stack(
             children: [
-              _page(groups: tvGoldenCatalog(), actionNodes: nodes(tester)),
+              _page(groups: tvGoldenCatalog()),
               Center(
                 child: ElevatedButton(
                   onPressed: () => showTvCatalogSortPanel(context, selected: UnifiedCatalogSort.recentlyAdded),
@@ -369,7 +425,7 @@ void main() {
         Builder(
           builder: (context) => Stack(
             children: [
-              _page(groups: tvGoldenCatalog(), actionNodes: nodes(tester)),
+              _page(groups: tvGoldenCatalog()),
               Center(
                 child: ElevatedButton(
                   onPressed: () => showTvCatalogFilterPanel(
@@ -403,7 +459,7 @@ void main() {
         Builder(
           builder: (context) => Stack(
             children: [
-              _page(groups: tvGoldenCatalog(), actionNodes: nodes(tester)),
+              _page(groups: tvGoldenCatalog()),
               Center(
                 child: ElevatedButton(
                   onPressed: () => showTvCatalogFilterPanel(
@@ -441,7 +497,7 @@ void main() {
         Builder(
           builder: (context) => Stack(
             children: [
-              _page(groups: tvGoldenCatalog(), actionNodes: nodes(tester)),
+              _page(groups: tvGoldenCatalog()),
               Center(
                 child: ElevatedButton(
                   onPressed: () => showTvCatalogFilterPanel(
@@ -480,7 +536,7 @@ void main() {
         Builder(
           builder: (context) => Stack(
             children: [
-              _page(groups: tvGoldenCatalog(), actionNodes: nodes(tester)),
+              _page(groups: tvGoldenCatalog()),
               Center(
                 child: ElevatedButton(
                   onPressed: () => showTvCatalogFilterPanel(
@@ -521,18 +577,14 @@ void main() {
   // than to grade both pages to the same mood.
   testWidgets('series, default state', (tester) async {
     setGoldenSurfaceSize(tester);
-    await tester.pumpWidget(
-      _shell(_page(groups: tvGoldenSeriesCatalog(), actionNodes: nodes(tester), title: t.unifiedCatalog.seriesTitle)),
-    );
+    await tester.pumpWidget(_shell(_page(groups: tvGoldenSeriesCatalog(), title: t.unifiedCatalog.seriesTitle)));
     await tester.pumpAndSettle();
     await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_series_default');
   });
 
   testWidgets('series, a card focused', (tester) async {
     setGoldenSurfaceSize(tester);
-    await tester.pumpWidget(
-      _shell(_page(groups: tvGoldenSeriesCatalog(), actionNodes: nodes(tester), title: t.unifiedCatalog.seriesTitle)),
-    );
+    await tester.pumpWidget(_shell(_page(groups: tvGoldenSeriesCatalog(), title: t.unifiedCatalog.seriesTitle)));
     await tester.pumpAndSettle();
     Focus.of(tester.element(find.text('Ted Lasso'))).requestFocus();
     await tester.pumpAndSettle();
@@ -562,11 +614,12 @@ void main() {
       _shell(
         _page(
           groups: tvGoldenCatalog(),
-          actionNodes: nodes(tester),
           title: 'Filme',
-          filterBadge: 2,
-          sourcesValue: 'Alle Quellen',
-          sortValue: 'Zuletzt hinzugefügt',
+          tags: const [
+            TvCatalogSelectionTag('Nicht gesehen'),
+            TvCatalogSelectionTag('Wissenschaftsfiktion'),
+            TvCatalogSelectionTag('Zuletzt hinzugefügt', muted: true),
+          ],
         ),
       ),
     );
@@ -591,7 +644,7 @@ void main() {
         Builder(
           builder: (context) => Stack(
             children: [
-              _page(groups: tvGoldenCatalog(), actionNodes: nodes(tester)),
+              _page(groups: tvGoldenCatalog()),
               Center(
                 child: ElevatedButton(
                   onPressed: () => showTvCatalogFilterPanel(

@@ -76,6 +76,7 @@ class TvUnifiedMediaGrid extends StatefulWidget {
     this.initialFocusedGroupId,
     this.onFocusedGroupChanged,
     this.precache,
+    this.reservedLeading = 0,
   });
 
   final List<UnifiedMediaGroup> groups;
@@ -129,6 +130,13 @@ class TvUnifiedMediaGrid extends StatefulWidget {
   /// posters a focus move warms, without a network.
   @visibleForTesting
   final UnifiedArtworkPrecache? precache;
+
+  /// Width held back before the first column, for CAT5's open controls rail.
+  ///
+  /// Handed to [TvCatalogGrid.forWidth] rather than added as padding here: the
+  /// column count has to be resolved from what is left over, or the grid keeps
+  /// six columns and the sixth runs off the right edge.
+  final double reservedLeading;
 
   @override
   State<TvUnifiedMediaGrid> createState() => TvUnifiedMediaGridState();
@@ -320,7 +328,11 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
   @override
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
-    final grid = TvCatalogGrid.forWidth(MediaQuery.sizeOf(context).width, scale: scale);
+    final grid = TvCatalogGrid.forWidth(
+      MediaQuery.sizeOf(context).width,
+      scale: scale,
+      reservedLeading: widget.reservedLeading,
+    );
     _grid = grid;
     final rows = <Widget>[];
 

@@ -1909,6 +1909,11 @@
       "oldestRelease": "Oldest release",
       "recentlyWatched": "Recently watched"
     },
+    "rail": {
+      "sources": "Sources",
+      "noFilters": "None",
+      "filtersActive": "${count} active"
+    },
     "filters": {
       "title": "Filters",
       "status": "Status",

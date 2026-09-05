@@ -1,6 +1,6 @@
-/// Remote reachability for the Films/Series catalog header (hoofdstuk 7.4 of
-/// docs/tvos-unified-experience.md, read with 7.6's focus memory), and the page
-/// heading DEC-068 made load-bearing.
+/// Remote reachability for the Films/Series catalog controls (hoofdstuk 7.4 of
+/// docs/tvos-unified-experience.md as CAT5 rewrote it), and the page heading
+/// DEC-068 made load-bearing.
 ///
 /// ## Why this file exists next to the goldens
 ///
@@ -15,13 +15,13 @@
 ///
 /// That is the gap this file closes, and it closes it against the real
 /// `TvMoviesScreen`/`TvSeriesScreen`, not a reconstruction: the wrapper is what
-/// chooses the heading, and the shared screen is what owns `_focusHeader`,
-/// `_focusGrid` and the per-action `onNavigate*` callbacks. Reconstructing
-/// either would prove the reconstruction.
+/// chooses the heading, and the shared screen is what owns `_openRail`,
+/// `_closeRail`, `_focusGrid` and the per-row `onNavigate*` callbacks.
+/// Reconstructing either would prove the reconstruction.
 ///
 /// Focus assertions read `FocusManager.instance.primaryFocus?.debugLabel`,
-/// which is the production node's own label (`TvCatalogSourcesAction`,
-/// `TvCatalogFiltersAction`, `TvCatalogSortAction`, `TvUnifiedCard(<groupId>)`)
+/// which is the production node's own label (`TvCatalogRailSources`,
+/// `TvCatalogRailFilters`, `TvCatalogRailSort`, `TvUnifiedCard(<groupId>)`)
 /// rather than a test-side handle — so a rename in the screen surfaces here as
 /// a failure instead of a silent pass against a stale assumption.
 library;
@@ -54,6 +54,7 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/tv/tv_catalog_filter_rail.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
 import 'package:provider/provider.dart';
 
@@ -242,150 +243,67 @@ void main() {
   // ---------------------------------------------------------------------------
   // Grid → header (hoofdstuk 7.4, and 7.6's default slot)
   // ---------------------------------------------------------------------------
+  // Grid → rail → grid (CAT5 / DEC-093)
+  //
+  // The three requirements DEC-093 states, and the column arithmetic, live in
+  // `tv_catalog_filter_rail_test.dart`. What is proven here is the part that
+  // has to hold for *every* row rather than for the one the rail opens on: no
+  // row is a dead end, and none of them reaches for the bar by accident.
+  // ---------------------------------------------------------------------------
 
-  testWidgets('UP from the first grid row lands on Filters', (tester) async {
-    await pump(tester, kind: MediaKind.movie);
-
+  /// Opens the rail from the first card and walks down to [row].
+  Future<void> openRailAt(WidgetTester tester, String row) async {
     focusGrid(tester);
-    await tester.pump();
-    expect(focusedLabel(), startsWith('TvUnifiedCard('), reason: 'the grid should hold focus before UP');
+    await tester.pumpAndSettle();
+    await press(tester, LogicalKeyboardKey.arrowLeft);
+    await tester.pumpAndSettle();
+    const order = ['TvCatalogRailSources', 'TvCatalogRailFilters', 'TvCatalogRailSort'];
+    for (var i = 0; i < order.indexOf(row); i++) {
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+    }
+    expect(focusedLabel(), row);
+  }
 
-    await press(tester, LogicalKeyboardKey.arrowUp);
-
-    // Filters rather than Sources: hoofdstuk 7.6 makes UP return to the last
-    // used action, and Filters is the standing default before the viewer has
-    // used one.
-    expect(focusedLabel(), 'TvCatalogFiltersAction');
-  });
-
-  // ---------------------------------------------------------------------------
-  // Header → grid
-  // ---------------------------------------------------------------------------
-
-  testWidgets('DOWN from every header action returns to the grid', (tester) async {
+  testWidgets('RIGHT from every rail row returns to the grid', (tester) async {
     await pump(tester, kind: MediaKind.movie);
 
-    // Reached by walking from where UP lands (Filters), so each pass exercises
-    // a real traversal rather than a poked focus node. The step is spelled out
-    // per action rather than searched for: UP always returns to Filters here
-    // (`_lastUsedSlot` only moves when a panel is actually opened), so the path
-    // to each neighbour is known, and a wrong one should fail the test rather
-    // than let it hunt around the header.
-    const walk = <String, List<LogicalKeyboardKey>>{
-      'TvCatalogSourcesAction': [LogicalKeyboardKey.arrowLeft],
-      'TvCatalogFiltersAction': [],
-      'TvCatalogSortAction': [LogicalKeyboardKey.arrowRight],
-    };
-
-    for (final entry in walk.entries) {
-      focusGrid(tester);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), 'TvCatalogFiltersAction', reason: 'UP should always land on the default slot');
-
-      for (final key in entry.value) {
-        await press(tester, key);
-      }
-      expect(focusedLabel(), entry.key);
-
-      await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedLabel(), startsWith('TvUnifiedCard('), reason: 'DOWN from ${entry.key} should return to the grid');
+    for (final row in ['TvCatalogRailSources', 'TvCatalogRailFilters', 'TvCatalogRailSort']) {
+      await openRailAt(tester, row);
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      expect(focusedLabel(), startsWith('TvUnifiedCard('), reason: 'RIGHT from $row should return to the grid');
     }
   });
 
-  // ---------------------------------------------------------------------------
-  // Along the header
-  // ---------------------------------------------------------------------------
-
-  testWidgets('LEFT and RIGHT walk Sources ↔ Filters ↔ Sort', (tester) async {
-    await pump(tester, kind: MediaKind.movie);
-
-    focusGrid(tester);
-    await tester.pump();
-    await press(tester, LogicalKeyboardKey.arrowUp);
-    expect(focusedLabel(), 'TvCatalogFiltersAction');
-
-    await press(tester, LogicalKeyboardKey.arrowLeft);
-    expect(focusedLabel(), 'TvCatalogSourcesAction');
-
-    await press(tester, LogicalKeyboardKey.arrowRight);
-    expect(focusedLabel(), 'TvCatalogFiltersAction');
-
-    await press(tester, LogicalKeyboardKey.arrowRight);
-    expect(focusedLabel(), 'TvCatalogSortAction');
-
-    // The right edge is an edge, not a wrap: nothing lies beyond Sort.
-    await press(tester, LogicalKeyboardKey.arrowRight);
-    expect(focusedLabel(), 'TvCatalogSortAction');
-
-    await press(tester, LogicalKeyboardKey.arrowLeft);
-    expect(focusedLabel(), 'TvCatalogFiltersAction');
-  });
-
-  // ---------------------------------------------------------------------------
-  // Out of the page
-  // ---------------------------------------------------------------------------
-
-  testWidgets('LEFT from Sources hands focus to the sidebar', (tester) async {
+  testWidgets('LEFT from every rail row reaches for the top navigation, and takes the rail down with it', (
+    tester,
+  ) async {
     final harness = await pump(tester, kind: MediaKind.movie);
-
-    focusGrid(tester);
-    await tester.pump();
-    await press(tester, LogicalKeyboardKey.arrowUp);
-    await press(tester, LogicalKeyboardKey.arrowLeft);
-    expect(focusedLabel(), 'TvCatalogSourcesAction');
-    expect(harness.sidebarFocusCalls, 0, reason: 'walking within the header must not reach for the sidebar');
-
-    await press(tester, LogicalKeyboardKey.arrowLeft);
-    expect(harness.sidebarFocusCalls, 1);
-  });
-
-  testWidgets('LEFT from the first grid column hands focus to the sidebar', (tester) async {
-    final harness = await pump(tester, kind: MediaKind.movie);
-
-    focusGrid(tester);
-    await tester.pump();
-    expect(focusedLabel(), startsWith('TvUnifiedCard('));
-
-    await press(tester, LogicalKeyboardKey.arrowLeft);
-    expect(harness.sidebarFocusCalls, 1);
-  });
-
-  // Fase 7 added `onNavigateUp: _focusSidebar` to all three header actions: on
-  // the TV shell "the sidebar" is the top navigation, so UP out of the header
-  // is how a viewer reaches the bar from the catalog. Nothing pressed UP from a
-  // header action before this test — every other `arrowUp` in the suite leaves
-  // a grid or a rail — so the contract was wired and unproven.
-  //
-  // What this asserts is the screen's half: it *asks* the shell to move focus.
-  // That the bar then takes it is the shell's half, proven in
-  // `tv_root_shell_test.dart`; the two meet in `MainScreen._focusSidebar`,
-  // which no test mounts (see that file's note).
-  testWidgets('UP from every header action reaches for the top navigation', (tester) async {
-    final harness = await pump(tester, kind: MediaKind.movie);
-
-    const walk = <String, List<LogicalKeyboardKey>>{
-      'TvCatalogSourcesAction': [LogicalKeyboardKey.arrowLeft],
-      'TvCatalogFiltersAction': [],
-      'TvCatalogSortAction': [LogicalKeyboardKey.arrowRight],
-    };
 
     var expectedCalls = 0;
-    for (final entry in walk.entries) {
-      focusGrid(tester);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowUp);
-      for (final key in entry.value) {
-        await press(tester, key);
-      }
-      expect(focusedLabel(), entry.key);
-      expect(harness.sidebarFocusCalls, expectedCalls, reason: 'reaching ${entry.key} must not call for the bar');
+    for (final row in ['TvCatalogRailSources', 'TvCatalogRailFilters', 'TvCatalogRailSort']) {
+      await openRailAt(tester, row);
+      expect(harness.sidebarFocusCalls, expectedCalls, reason: 'walking within the rail must not reach for the bar');
 
-      await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(++expectedCalls, harness.sidebarFocusCalls, reason: 'UP from ${entry.key} should ask for the bar');
+      await press(tester, LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(++expectedCalls, harness.sidebarFocusCalls, reason: 'LEFT from $row should ask for the bar');
       // The screen asks; it does not move the ring itself. Moving focus here
       // too would race the shell and leave the ring somewhere neither owns.
-      expect(focusedLabel(), entry.key, reason: 'UP from ${entry.key} must leave the ring where it was');
+      // The rail does close, because a rail standing open with the focus
+      // elsewhere costs the grid a column for nothing the viewer can see.
+      expect(find.byKey(tvCatalogFilterRailKey), findsNothing);
     }
+  });
+
+  testWidgets('DOWN off the last rail row is an edge, not a wrap', (tester) async {
+    await pump(tester, kind: MediaKind.movie);
+
+    // Nothing is filtered, so there is no Wissen row under Sortering.
+    await openRailAt(tester, 'TvCatalogRailSort');
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(focusedLabel(), 'TvCatalogRailSort');
   });
 }

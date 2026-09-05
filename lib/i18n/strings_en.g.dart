@@ -5335,6 +5335,7 @@ class TranslationsUnifiedCatalogEn {
 	String get loadingMore => 'Loading more…';
 
 	late final TranslationsUnifiedCatalogSortEn sort = TranslationsUnifiedCatalogSortEn.internal(_root);
+	late final TranslationsUnifiedCatalogRailEn rail = TranslationsUnifiedCatalogRailEn.internal(_root);
 	late final TranslationsUnifiedCatalogFiltersEn filters = TranslationsUnifiedCatalogFiltersEn.internal(_root);
 	late final TranslationsUnifiedCatalogStatesEn states = TranslationsUnifiedCatalogStatesEn.internal(_root);
 	late final TranslationsUnifiedCatalogSemanticsEn semantics = TranslationsUnifiedCatalogSemanticsEn.internal(_root);
@@ -6383,6 +6384,24 @@ class TranslationsUnifiedCatalogSortEn {
 
 	/// en: 'Recently watched'
 	String get recentlyWatched => 'Recently watched';
+}
+
+// Path: unifiedCatalog.rail
+class TranslationsUnifiedCatalogRailEn {
+	TranslationsUnifiedCatalogRailEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Sources'
+	String get sources => 'Sources';
+
+	/// en: 'None'
+	String get noFilters => 'None';
+
+	/// en: '${count} active'
+	String filtersActive({required Object count}) => '${count} active';
 }
 
 // Path: unifiedCatalog.filters
@@ -8328,6 +8347,9 @@ extension on Translations {
 			'unifiedCatalog.sort.newestRelease' => 'Newest release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oldest release',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recently watched',
+			'unifiedCatalog.rail.sources' => 'Sources',
+			'unifiedCatalog.rail.noFilters' => 'None',
+			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} active',
 			'unifiedCatalog.filters.title' => 'Filters',
 			'unifiedCatalog.filters.status' => 'Status',
 			'unifiedCatalog.filters.genre' => 'Genre',

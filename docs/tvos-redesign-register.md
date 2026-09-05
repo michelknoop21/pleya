@@ -188,9 +188,10 @@ bereikbaarheidsprobleem.
 Ze staan op minstens tien TV-oppervlakken, waaronder de TV-home-feed, Kijklijst, Downloads, de
 vier Seerr-schermen, Zoeken, de afleveringenlijst van detail, en Bibliotheken.
 
-Er bestaat al een goed voorbeeld om naar toe te werken: `_EmptyState` in
-`tv_unified_catalog_screen.dart:800-843` leest `TvLayoutConstants.scaleOf` en de referentiematen
-uit `tv_unified_layout.dart`, en heeft goldens. Hij is alleen privé aan dat ene scherm. Let op dat
+Er bestaat al een goed voorbeeld om naar toe te werken: `TvCatalogEmptyState` in
+`widgets/tv/tv_catalog_empty_state.dart` leest `TvLayoutConstants.scaleOf` en de referentiematen
+uit `tv_unified_layout.dart`, en heeft goldens. Hij was privé aan de catalogus en is dat sinds
+CAT5 niet meer, dus het overnemen kost nu geen extractie meer. Let op dat
 diezelfde klem uit SYS-3 ook onder dit patroon zit, dus SYS-3 gaat er logisch aan vooraf.
 `tv_content_feed.dart:500-512` is een derde, met de hand gemaakte lege staat die de schaal
 helemaal negeert en dus dezelfde fout heeft.

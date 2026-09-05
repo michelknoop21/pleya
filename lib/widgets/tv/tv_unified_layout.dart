@@ -498,6 +498,84 @@ class TvCatalogLayout {
   /// The placeholder behind artwork that has not loaded, and behind a source
   /// with no poster at all.
   static const double artworkPlaceholderFill = 0.06;
+
+  // ---------------------------------------------------------------------------
+  // CAT5: the collapsible controls rail left of the grid (DEC-093, mockup 28)
+  // ---------------------------------------------------------------------------
+
+  /// Width of the open rail, and the gap between it and the first poster
+  /// column. Both are *box* measurements, so both are fractions of the viewport
+  /// against [TvCatalogGrid.referenceWidth] rather than `scale` multiples (see
+  /// [TvCatalogGrid.forWidth] on why that distinction is not cosmetic).
+  ///
+  /// 330 and 34 are mockup 28 D2's own numbers. Together they cost 364 of the
+  /// 1808 reference pixels between the page insets, which is what turns six
+  /// columns into five: `(1808 - 364 + 22) / (281 + 22)` is 4.84, and the
+  /// resolver rounds. Because every term in that expression is the same
+  /// fraction of the width, the answer does not depend on the viewport: the
+  /// rail costs exactly one column at 1920, at 1280 and on the golden canvas.
+  static const double railWidth = 330;
+  static const double railGridGap = 34;
+
+  /// The closed rail: hoofdstuk 8.1's own left margin holds a quiet vertical
+  /// line, and the grid keeps all six columns.
+  ///
+  /// It is the only thing on the page that says LEFT from column 0 does
+  /// something, so it is drawn rather than merely implied. It is a
+  /// hairline and not a control, which is why it may live in the overscan band
+  /// that 8.1 forbids *text and focus rings*. Nothing about the page's meaning
+  /// is lost on a set that clips it.
+  static const double railStripWidth = 3;
+  static const double railStripHeight = 76;
+  static const double railStripAlpha = 0.14;
+
+  /// The open rail's own metrics, in the same scaled units as the rest of this
+  /// class: mockup 28 D2's reference pixels divided by the 1.85 tvOS render
+  /// scale of DEC-028 and the 0.85 scale floor an Apple TV lands on.
+  static const double railPanelPadding = 6.5;
+  static const double railPanelRadius = 10;
+  static const double railRowHeight = 48;
+  static const double railRowRadius = 8;
+  static const double railRowPaddingHorizontal = 11.5;
+  static const double railRowFocusRingGap = 3;
+  static const double railIconSize = 16.5;
+  static const double railIconGap = 10;
+  static const double railChevronSize = 13;
+  static const double railLabelFontSize = 14;
+  static const double railValueFontSize = 11.5;
+  static const double railValueGap = 1.5;
+  static const double railDividerInset = 11.5;
+  static const double railDividerGap = 5;
+  static const double railTagsPaddingHorizontal = 11.5;
+  static const double railTagsPaddingVertical = 6.5;
+  static const double railClearHeight = 36;
+  static const double railClearFontSize = 12;
+  static const double railClearIconSize = 13;
+
+  /// Fill and sheen of a rail row. Idle rows carry nothing at all, because the panel
+  /// itself is the surface, and three filled rows inside a filled panel is the
+  /// "stickers on a rectangle" failure `tvPanelDecoration` documents.
+  static const double railRowFocusedFill = 0.10;
+
+  /// One selection tag, the same object in the heading (collapsed) and in the
+  /// panel (open), because they are one statement of what is currently applied
+  /// seen from two distances.
+  static const double tagFontSize = 11.5;
+  static const double tagHeight = 18;
+  static const double tagRadius = 4;
+  static const double tagPaddingHorizontal = 5;
+  static const double tagGap = 5;
+  static const double tagOutline = 0.28;
+
+  /// How many filter tags the heading shows before the rest collapse into a
+  /// single `+N`.
+  ///
+  /// A cap rather than a scroll view: the tags are deliberately not operable
+  /// (DEC-093 moved them to the heading precisely because nothing there has to
+  /// be reachable any more), so a row that overflows has no way to reveal what
+  /// it hid. Three plus an overflow count always fits beside the longest
+  /// heading this page has.
+  static const int tagOverflowThreshold = 3;
 }
 
 /// A resolved Films/Series grid: how many columns fit, and how wide a card is.
@@ -515,12 +593,22 @@ class TvCatalogGrid {
     required this.gutter,
     required this.inset,
     required this.bottomSafeMargin,
+    this.leading = 0,
   });
 
   final int columns;
   final double cardWidth;
   final double gutter;
   final double inset;
+
+  /// Width reserved between [inset] and the first column, for something that is
+  /// not part of the grid: CAT5's open controls rail, and nothing else so far.
+  ///
+  /// It is a property of the resolved grid rather than padding a caller adds
+  /// afterwards, because the column count has to be computed from what is
+  /// *left*: reserving the width outside the resolver gives six columns that no
+  /// longer fit, and the last one runs off the right edge.
+  final double leading;
 
   /// The overscan margin under the last row, so nothing the user needs to read
   /// ends up in the band at the bottom edge.
@@ -560,8 +648,17 @@ class TvCatalogGrid {
   /// could only ever be right for one of them.
   EdgeInsets scrollPadding({required double cardHeight, required double focusScale}) {
     final growth = cardHeight * (focusScale - 1) / 2;
-    return EdgeInsets.fromLTRB(inset, growth, inset, bottomSafeMargin + growth);
+    return EdgeInsets.fromLTRB(inset + leading, growth, inset, bottomSafeMargin + growth);
   }
+
+  /// The vertical offset the first row's *box* sits at inside a grid drawn with
+  /// [scrollPadding]: the room a focused top-row card's ring grows into.
+  ///
+  /// Public so anything standing beside the grid (CAT5's rail) can line up with
+  /// the first poster row instead of with the viewport, without re-deriving the
+  /// expression the padding already owns.
+  static double focusHeadroom({required double cardHeight, required double focusScale}) =>
+      cardHeight * (focusScale - 1) / 2;
 
   /// Ideal card width on the 1920-wide reference surface, expressed as a
   /// fraction so it converts like every other box measurement in this file
@@ -586,7 +683,9 @@ class TvCatalogGrid {
   /// binnen de buitenste 56 pixels" — so this spends the slack the shared
   /// constant was holding in reserve, and spends it on artwork.
   static const double _referenceInset = 56;
-  static const double _referenceWidth = 1920;
+
+  /// The surface every box measurement in this file is a fraction of.
+  static const double referenceWidth = 1920;
 
   /// Hard bounds on the result. Six and seven are the contract's band; the
   /// clamp exists for surfaces the contract does not describe, where honouring
@@ -610,11 +709,17 @@ class TvCatalogGrid {
   /// [scale] is still taken, because a caller resolving a grid has one and the
   /// card *content* inside it needs it; it deliberately does not enter the box
   /// arithmetic.
-  factory TvCatalogGrid.forWidth(double width, {required double scale}) {
-    final inset = width * (_referenceInset / _referenceWidth);
-    final gutter = width * (_referenceGutter / _referenceWidth);
-    final available = math.max(0.0, width - inset * 2);
-    final ideal = width * (_referenceCardWidth / _referenceWidth);
+  ///
+  /// [reservedLeading] is width taken out of the content box before the first
+  /// column, in logical pixels, for CAT5's open rail. It is subtracted before the
+  /// column count is rounded, so the grid genuinely re-columns around the rail
+  /// rather than keeping six columns and pushing the sixth off the screen.
+  factory TvCatalogGrid.forWidth(double width, {required double scale, double reservedLeading = 0}) {
+    final inset = width * (_referenceInset / referenceWidth);
+    final gutter = width * (_referenceGutter / referenceWidth);
+    final leading = reservedLeading.clamp(0.0, math.max(0.0, width - inset * 2)).toDouble();
+    final available = math.max(0.0, width - inset * 2 - leading);
+    final ideal = width * (_referenceCardWidth / referenceWidth);
 
     // Round to the column count whose cards land closest to the ideal width,
     // rather than flooring: flooring biases every surface towards cards wider
@@ -628,7 +733,8 @@ class TvCatalogGrid {
       cardWidth: cardWidth,
       gutter: gutter,
       inset: inset,
-      bottomSafeMargin: width * (TvCatalogLayout.bottomSafeInset / _referenceWidth),
+      bottomSafeMargin: width * (TvCatalogLayout.bottomSafeInset / referenceWidth),
+      leading: leading,
     );
   }
 }

@@ -111,7 +111,9 @@ void main() {
   });
   tearDownAll(() => TvDetectionService.debugSetAppleTVOverride(null));
 
-  testWidgets('E13: choosing a sort returns focus to the Sort action, never to a grid card', (tester) async {
+  testWidgets('E13: choosing a sort returns focus to the Sortering row of the rail, never to a grid card', (
+    tester,
+  ) async {
     resetSharedPreferencesForTest();
     SettingsService.resetForTesting();
     await SettingsService.getInstance();
@@ -169,15 +171,16 @@ void main() {
     await tester.pump();
     expect(cardNode.hasPrimaryFocus, isTrue);
 
-    // Open the sort panel — the only way `_updatePreferences` for a sort
-    // mutation is ever reached — and choose a different sort.
-    final sortNode = tester
-        .widgetList<Focus>(find.byType(Focus))
-        .map((f) => f.focusNode)
-        .whereType<FocusNode>()
-        .firstWhere((n) => n.debugLabel == 'TvCatalogSortAction');
-    sortNode.requestFocus();
-    await tester.pump();
+    // LEFT off column 0 opens CAT5's rail, and two DOWNs reach Sortering,
+    // the route a viewer actually takes, rather than a poked focus node.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvCatalogRailSort');
+
     SelectKeyUpSuppressor.clearSuppression();
     await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
@@ -198,12 +201,12 @@ void main() {
     expect(
       find.byType(TvCatalogSortPanel),
       findsNothing,
-      reason: 'the panel itself is gone — the header may now legitimately show the new sort as its own value',
+      reason: 'the panel itself is gone, so the rail may now legitimately show the new sort as its own value',
     );
     expect(
       FocusManager.instance.primaryFocus?.debugLabel,
-      'TvCatalogSortAction',
-      reason: 'hoofdstuk 7.6: the action that opened the panel gets focus back, not the grid card focus was on before',
+      'TvCatalogRailSort',
+      reason: 'hoofdstuk 7.6: the row that opened the panel gets focus back, not the grid card focus was on before',
     );
   });
 }

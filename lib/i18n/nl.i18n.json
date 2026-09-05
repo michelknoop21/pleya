@@ -1841,6 +1841,11 @@
       "oldestRelease": "Oudste release",
       "recentlyWatched": "Recent bekeken"
     },
+    "rail": {
+      "sources": "Bronnen",
+      "noFilters": "Geen",
+      "filtersActive": "${count} actief"
+    },
     "filters": {
       "title": "Filters",
       "status": "Status",

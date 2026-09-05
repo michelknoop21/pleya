@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
@@ -34,9 +33,10 @@ import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
-import 'package:pleya/widgets/library_header_bar.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/widgets/tv/tv_catalog_header_bar.dart';
+import 'package:pleya/widgets/tv/tv_catalog_selection_tags.dart';
+import 'package:pleya/widgets/tv/tv_catalog_skeleton_grid.dart';
 import 'package:pleya/widgets/tv/tv_catalog_sort_panel.dart';
 import 'package:pleya/widgets/tv/tv_media_source_picker.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
@@ -250,7 +250,6 @@ Widget _screenShell(_ScreenHarness harness) => ChangeNotifierProvider<MultiServe
 /// two states whose picture is entirely about content.
 Widget _page({
   required List<UnifiedMediaGroup> groups,
-  required List<FocusNode> actionNodes,
   required ValueChanged<UnifiedMediaGroup> onActivate,
   bool isLoadingMore = false,
   ScrollController? controller,
@@ -259,29 +258,9 @@ Widget _page({
   children: [
     TvCatalogHeaderBar(
       title: t.unifiedCatalog.moviesTitle,
-      actions: [
-        TvCatalogHeaderAction(
-          icon: Symbols.dns_rounded,
-          action: LibraryHeaderAction(label: t.unifiedCatalog.allSources, focusNode: actionNodes[0], onPressed: () {}),
-        ),
-        TvCatalogHeaderAction(
-          icon: Symbols.filter_list_rounded,
-          action: LibraryHeaderAction(
-            label: t.unifiedCatalog.filters.title,
-            focusNode: actionNodes[1],
-            onPressed: () {},
-          ),
-        ),
-        TvCatalogHeaderAction(
-          icon: Symbols.swap_vert_rounded,
-          action: LibraryHeaderAction(
-            label: t.unifiedCatalog.sort.title,
-            value: sortLabel(UnifiedCatalogSort.titleAsc),
-            focusNode: actionNodes[2],
-            onPressed: () {},
-          ),
-        ),
-      ],
+      // Nothing filtered, so the only tag is the sort \u2014 the resting state of
+      // the heading since CAT5 moved the controls into the rail.
+      tags: [TvCatalogSelectionTag(sortLabel(UnifiedCatalogSort.titleAsc), muted: true)],
     ),
     Expanded(
       child: TvUnifiedMediaGrid(
@@ -333,16 +312,6 @@ void main() {
     await StorageService.getInstance();
   });
 
-  List<FocusNode> nodes(WidgetTester tester) {
-    final list = [for (var i = 0; i < 3; i++) FocusNode(debugLabel: 'action$i')];
-    addTearDown(() {
-      for (final node in list) {
-        node.dispose();
-      }
-    });
-    return list;
-  }
-
   _ScreenHarness harnessFor(_ServerBehaviour behaviour) {
     final harness = _ScreenHarness(behaviour);
     addTearDown(harness.dispose);
@@ -393,15 +362,7 @@ void main() {
     final controller = ScrollController();
     addTearDown(controller.dispose);
     await tester.pumpWidget(
-      _shell(
-        _page(
-          groups: tvGoldenCatalog(),
-          actionNodes: nodes(tester),
-          onActivate: (_) {},
-          isLoadingMore: true,
-          controller: controller,
-        ),
-      ),
+      _shell(_page(groups: tvGoldenCatalog(), onActivate: (_) {}, isLoadingMore: true, controller: controller)),
     );
     await tester.pumpAndSettle();
     controller.jumpTo(controller.position.maxScrollExtent);
@@ -471,7 +432,6 @@ void main() {
         Builder(
           builder: (context) => _page(
             groups: groups,
-            actionNodes: nodes(tester),
             onActivate: (group) => activateUnifiedMediaGroup(
               context,
               group: group,

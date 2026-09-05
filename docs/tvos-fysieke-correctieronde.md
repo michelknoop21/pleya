@@ -83,7 +83,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LIB3 | TV-tabs dragen nog de oude rode onderstreping | FIXED, hardware open | `3e9d31b` |
 | LIB4 | Bibliotheken draait op alles behalve de kiezer nog de oude layout: kop, achtergrond, acties en landing wijken af van `libraries-a.png` en `libraries-d.png` | VERVANGEN door LIB7 | n.v.t. |
 | LIB7 | Bibliotheken wordt bronbeheer: bladeren loopt via de catalogus met bronfilter, Collecties en Afspeellijsten worden eigen unified ingangen; DEC-092 accepted, mockup 27 goedgekeurd, bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
-| CAT5 | De catalogusacties gaan naar een inklapbare rail links van het raster, met de gekozen filters als tags rechtsboven; DEC-093 accepted, mockup 28 D1/D2 goedgekeurd, bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
+| CAT5 | De catalogusacties gaan naar een inklapbare rail links van het raster, met de gekozen filters als tags rechtsboven; DEC-093 accepted, mockup 28 D1/D2 goedgekeurd, gebouwd op 5 september. De rail is 330 referentiepixels breed en begint op de 8.1-grens; vijf kolommen passen ook op de 1280x918-ondergrens van CAT1 | FIXED, hardware open | `SHA-CAT5` |
 | LIB5 | De spotlight-titel op Bibliotheken valt over de tabrij, en maakt de actieve tab minder leesbaar dan de inactieve | OPEN | n.v.t. |
 | LIB6 | Complete mockupset voor Bibliotheken: mockup 26, negen states in `docs/assets/tvos-unified/mockups-2026-09-04/`, gebouwd op `tv.css` en `build.mjs` van de 09-25-familie, die nu in `docs/assets/tvos-unified/src/` staan | KLAAR, contract afgewezen | n.v.t. |
 | WL2 | Kijklijst end-to-end in Pleya Verify | OPEN | n.v.t. |
@@ -2067,6 +2067,169 @@ Goedgekeurd door Michel op 4 september op D1 en D2. DEC-093 staat op accepted, 1
 10.6 van de spec zijn aangepast, en state D van mockup 27 is op dezelfde rail
 hertekend. De bouw is een eigen ronde; de negatieve controle staat in DEC-093, en de
 CAT4-test wordt daarbij herschreven op de rail in plaats van weggegooid.
+
+#### De bouwronde, 5 september
+
+**Negatieve controle eerst.** `test/screens/tv/tv_catalog_filter_rail_test.dart` pompt
+Alle films via de echte `TvMoviesScreen` en stelt de drie eisen uit DEC-093, plus de
+twee maten die het besluit openliet. Tegen de code van vóór deze ronde zijn alle tien
+de assertions rood, en rood op gedrag en niet op een ontbrekend symbool: het bestand
+verwees naar de paneel-key als losse `ValueKey`, zodat het compileerde en dus echt
+draaide. Wat de run zei: LEFT vanaf kolom 0 gaf de focus aan de shell in plaats van
+aan `TvCatalogRailSources`, de kop droeg drie `FocusableWrapper`s, UP vanaf de eerste
+gridrij landde op de kop in plaats van bij de bovenbalk, en het raster stond op zes
+kolommen in beide standen. Na de bouw staat de key op de echte
+`tvCatalogFilterRailKey`, zodat een hernoeming in de productiecode hier alsnog
+omvalt.
+
+**Wie het bezat.** De drie acties zaten in `tv_catalog_header_bar.dart` als
+`TvCatalogHeaderAction` op het gedeelde `LibraryHeaderAction`-model, en
+`tv_unified_catalog_screen.dart` bedraadde ze. De kop is nu een titel met tags en
+draagt geen focusnode meer; de rail staat in `tv_catalog_filter_rail.dart` en wordt
+door hetzelfde scherm bedraad.
+
+**Waarom het raster meebeweegt en niet alleen opschuift.** `TvCatalogGrid.forWidth`
+rondt het kolomaantal af op de beschikbare breedte. Zou de rail als padding buiten de
+rekenaar blijven, dan houdt het raster zijn zes kolommen en valt de zesde buiten
+beeld; dat is precies wat mockup 28 D2 tekent, waar de vijfde kaart tegen de
+rechterrand aan wordt afgesneden. De rekenaar krijgt daarom `reservedLeading` en
+geeft het terug als `TvCatalogGrid.leading`, dat de linker scrollpadding meeneemt. De
+rail staat in een `Stack` boven precies die gereserveerde band, want het raster
+bezit zijn eigen zijranden en die eigenaar wilde ik niet uit elkaar trekken over twee
+widgets.
+
+**De twee maten die DEC-093 openliet.**
+
+De breedte van de rail is 330 referentiepixels, de maat van mockup 28 D2, met 34
+ertussen naar de eerste kolom. Het paneel begint op de zijrand van het raster, 56
+referentiepixels, en dat is de ondergrens van 8.1 zelf; het eindigt op 386, dus geen
+tekst en geen focusring komt in de buitenste band. De focusring van een rijtje ligt
+er nog eens binnen, want het paneel heeft 10 referentiepixels eigen padding en de
+ring staat daar 6 binnen. Wat wél in de band ligt is de streep van de dichte stand,
+op ongeveer 28 referentiepixels van de rand, zoals mockup 28 D1 hem tekent. Dat is
+bewust: 8.1 beschermt tekst en focusringen, en dit is een haarlijn zonder betekenis
+die verloren gaat. Een set die hem afsnijdt verliest de affordance, niet de functie.
+
+Vijf kolommen passen op de 1280x918-ondergrens van CAT1, en ze passen daar niet
+toevallig. Elke term in de kolomsom is dezelfde fractie van de breedte, dus het
+afgeronde kolomaantal hangt niet van het canvas af: dicht is
+`(1808 + 22) / (281 + 22)` gelijk aan 6,04 en open `(1444 + 22) / 303` gelijk aan
+4,84. Zes en vijf, op 1920, op 1280 en op het goldencanvas. De kaart wordt open
+271 referentiepixels breed tegen 281 dicht, vier procent smaller.
+`test/screens/tv/tv_catalog_filter_rail_test.dart` telt de kolommen op beide
+oppervlakken uit de gerenderde kaartrechthoeken, niet uit de rekenaar.
+
+**Wat de traversal nu is.** LEFT vanaf kolom 0 opent de rail met de focus op
+Bronnen. RIGHT en Menu sluiten hem en zetten de focus terug op dezelfde kaart, wat
+werkt omdat het raster zijn nodes op `groupId` bewaart en de kaart de herkolommering
+van vijf naar zes overleeft. UP en LEFT vanuit een rijtje sluiten de rail en vragen
+de bovenbalk aan. UP vanaf de eerste gridrij gaat rechtstreeks naar de bovenbalk,
+want er staat geen kop meer tussen.
+
+Twee dingen die daar onder vandaan kwamen en die geen ontwerpkeuze waren:
+
+1. DOWN vanaf de onderste railrij liep door naar het raster. Een ontbrekende
+   `onNavigateDown` laat `FocusableWrapper` de toets doorgeven aan de gerichte
+   traversal van Flutter zelf, en die stapt opzij het raster in, met een rail die
+   open blijft staan terwijl de focus er niet meer is. `_railEdge` is een expliciete
+   lege handler op de onderste rij.
+2. DOWN vanuit de bovenbalk had niets meer om op te landen. De kop bestond vanaf het
+   eerste frame, een raster niet: de bewaarde voorkeuren worden asynchroon gelezen en
+   tot dan staat het skelet er. `_focusEntry` onthoudt het verzoek en probeert het
+   opnieuw vanuit `_onCatalogChanged` en aan het eind van `_restorePreferences`, en
+   laat het los zodra de pagina op een staat is geland die helemaal geen raster
+   heeft. Zonder die herkansing slikt een koude catalogus de druk.
+
+**De lege staat kon de filters niet meer bereiken.** De rail opent op LEFT vanaf
+kolom 0, en een catalogus waar het filter niets overlaat heeft geen kolom 0. De
+staat die de filterknoppen het hardst nodig heeft was daarmee de enige die er niet
+bij kon. `TvCatalogEmptyState` krijgt daarom `onActionNavigateLeft`, zodat LEFT vanaf
+de ene knop die zo'n staat heeft de rail alsnog opent.
+
+**Refactor die meeliep.** `tv_unified_catalog_screen.dart` stond op 868 regels en
+kreeg er bedrading bij. `TvCatalogSkeletonGrid` en de lege staat zijn er ongewijzigd
+uit gehaald naar `tv_catalog_skeleton_grid.dart` en `tv_catalog_empty_state.dart`;
+de lege staat is daarbij publiek geworden, wat SYS-4 een oppervlak scheelt dat het
+anders zelf had moeten extraheren. Dat haalde er 225 regels uit, de rail zette er
+186 terug, en het scherm staat nu op 829.
+
+Dat is nog steeds ruim over de grens uit CLAUDE.md, en dat blijft zo staan. Wat er
+als volgende uit kan is het activatieblok (`_activate`, `_openContextMenu` en de
+gecachete `_sourceResolver`, samen bijna honderd regels), maar die drie zijn deze
+ronde niet aangeraakt en de resolver houdt schermstaat vast, dus de extractie is
+geen zuivere verplaatsing. Hij hoort bij de eerstvolgende wijziging die het
+activatiepad zelf raakt. `tv_catalog_filter_panel.dart` (857 regels) is om dezelfde
+reden ongemoeid: de rail opent hetzelfde paneel via dezelfde aanroep.
+
+**Blast radius en tests.** Drie suites zijn nieuw en zeven zijn meegegaan.
+Nieuw zijn de negatieve controle hierboven, inmiddels elf assertions;
+`tv_catalog_selection_tags_test.dart`, dat de volgorde, de cap en de aparte status
+van de sorteertag vastlegt buiten een widgetboom om, want die lijst wordt op twee
+plekken getekend en een golden kan er maar één van laten zien; en
+`tv_catalog_filter_rail_panel_test.dart` voor de hoogte van het paneel.
+`tv_catalog_header_reachability_test.dart` heet nu
+`tv_catalog_controls_reachability_test.dart` en bewaakt hetzelfde mechanisme op zijn
+nieuwe plek: de bovenbalk die vraagt voordat er iets te focussen is, en een
+content-scope die een node onthoudt die met de rail is verdwenen.
+`tv_unified_catalog_focus_test.dart` bewijst wat voor elke rij moet gelden in plaats
+van voor de rij waarop de rail opent. `tv_catalog_header_bar_test.dart` meet CAT3's
+rechterrand op de tags; die meting gaat over de `Row` en niet over wat er als tweede
+kind in staat, dus hij overleeft de wissel ongewijzigd.
+`tv_unified_catalog_screen_focus_test.dart` (E13) loopt nu via de rail naar
+Sortering. In `tv_destination_restoration_test.dart` verviel één druk: terugkomen op
+een bestemming landt meteen op de kaart in plaats van een rij erboven. De twee
+goldenbestanden van de catalogus stellen de pagina nu samen zoals het scherm dat
+doet, met de rail erin, en `tv_catalog_films_header_focused` is vervangen door
+`tv_catalog_films_rail_open`.
+
+**Twee randgevallen die eruit kwamen.** Wissen staat alleen in de rail zolang er iets
+gefilterd is, dus de druk erop haalt de rij weg waar de afstandsbediening op staat.
+De ring verdwijnt daar niet van, en dat maakt het makkelijk te missen: Flutter geeft
+hem aan de buur die het overleeft, hier Sortering, een rij verder van waar de kijker
+stond. `_clearFilters` verplaatst de focus nu zelf naar Filters. Met die regel
+weggehaald is de assertie rood met "Actual: TvCatalogRailSort".
+
+En het paneel kon over de onderrand lopen. De kop knipt zijn tags af op drie plus een
+teller, het paneel doet dat bewust niet, dus achttien gekozen genres maakten het
+paneel hoger dan de pagina. Het staat nu in een band die onderaan door de
+overscanmarge van het raster wordt begrensd, met een `Align` erboven zodat het nog
+steeds om zijn eigen rijen heen krimpt, en de inhoud zit in een scrollview die onder
+een losse hoogte meekrimpt en onder een strakke afknipt. Zonder die scrollview zegt
+de test "A RenderFlex overflowed by 13 pixels on the bottom".
+
+**Bewijs.** `scripts/ci_checks.sh` groen, en `test/screens/tv/` plus
+`test/widgets/tv/` groen op 428 tests. De volledige suite houdt 93 falers over: 78 goldens,
+die op macOS structureel rood staan om fontrasterisatie, en vijftien in
+`discover_hero_activation_test.dart`, die met gestashte wijzigingen net zo hard falen
+en dus niet van deze ronde zijn.
+
+Beeld: de dichte en de open stand zijn gerenderd op het goldencanvas en naast mockup
+28 D1 en D2 gelegd, en de open stand daarnaast op 1920x1080, waar de schaal niet meer
+geklemd is. Eén afwijking kwam daaruit en is gefixt: de tags in het paneel werden
+over de volle paneelbreedte uitgerekt, omdat een `Center` in een `Wrap` onder een
+uitgerekte `Column` de hele breedte pakt. `Align(widthFactor: 1)` krimpt hem terug
+naar de tekst.
+
+**De goldens staan open, en dat is een omgevingsgrens.** Negentien
+catalogusgoldens tekenen nu iets anders en moeten opnieuw gegenereerd worden; op
+macOS kan dat niet, want daar is de hele suite al rood van fontrasterisatie. De
+route uit eerdere rondes is een Linux-container, en die is deze keer tot het einde
+uitgeprobeerd. Uitkomst: hij reproduceert de referenties niet. Op ongewijzigde code
+in `ghcr.io/cirruslabs/flutter:3.44.0` onder amd64-emulatie faalden alle negentien,
+met 45 procent van de pixels anders op een pagina vol coverart en 17 procent op een
+paneel. Het beeld zelf klopt; wat verschilt is de dithering van de verlopen in de
+artwork en de antialiasing van de tekst, met uitschieters tot 235 per kanaal in het
+ruispatroon. Een golden die daar wordt weggeschreven is op CI meteen weer rood.
+
+De goldens zijn daarom niet aangeraakt. Wie ze regenereert doet dat op hetzelfde
+Linux als CI: `flutter test --update-goldens test/goldens/tv_unified_catalog_golden_test.dart
+test/goldens/tv_unified_catalog_states_golden_test.dart`, en
+`tv_catalog_films_header_focused.png` vervalt daarbij ten gunste van
+`tv_catalog_films_rail_open.png`. Tot dat gebeurd is staat de goldenstap van CI rood
+op deze negentien, en op niets anders.
+
+**Wat verder niet bewezen is.** Hardware. De rail is nooit op een Apple TV gezien, en
+de Pleya Verify-scenario's raken de catalogus niet, wat VER4 al als gat beschrijft.
 
 
 ### HERO2, de titelband was de hoogte van het logo en niet van de titel
