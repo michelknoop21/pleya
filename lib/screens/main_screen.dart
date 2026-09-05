@@ -972,6 +972,31 @@ class _MainScreenState extends State<MainScreen>
         scopedRouteObserver.subscribe(this, route);
       }
     }
+
+    // My Pleya only exists on the mobile shell, and the screens list has to
+    // agree with the tab list about that. Rebuild the screens when the answer
+    // actually changes (a fold, a window resize) rather than on every build.
+    //
+    // The same holds for Films and Series, which only the iPhone gets: a fold
+    // or a resize that turns a phone into a tablet has to drop two tabs and two
+    // screens together, so both answers are read here and both feed the same
+    // rebuild.
+    //
+    // Resolved here rather than in build() + addPostFrameCallback: that left a
+    // one-frame window where _currentIndex (already reading the new
+    // isMobile/isPhone through _getVisibleTabs) and _screens (still built for
+    // the old ones) disagreed, so IndexedStack could show the wrong screen for
+    // a frame right after a resize. didChangeDependencies always runs before
+    // the build it precedes, so a synchronous field mutation here — no
+    // setState needed — lands before that build ever reads either value.
+    final isMobile = PlatformDetector.isMobile(context);
+    final isPhone = PlatformDetector.isPhone(context);
+    if (isMobile != _isMobile || isPhone != _isPhone) {
+      _isMobile = isMobile;
+      _isPhone = isPhone;
+      _screens = _buildScreens(_isOffline);
+      _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
+    }
   }
 
   void _setupCompanionRemote() {
@@ -1990,27 +2015,6 @@ class _MainScreenState extends State<MainScreen>
   @override
   Widget build(BuildContext context) {
     final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
-    // My Pleya only exists on the mobile shell, and the screens list has to
-    // agree with the tab list about that. Rebuild the screens when the answer
-    // actually changes (a fold, a window resize) rather than on every build.
-    //
-    // The same holds for Films and Series, which only the iPhone gets: a fold
-    // or a resize that turns a phone into a tablet has to drop two tabs and two
-    // screens together, so both answers are read here and both feed the same
-    // rebuild.
-    final isMobile = PlatformDetector.isMobile(context);
-    final isPhone = PlatformDetector.isPhone(context);
-    if (isMobile != _isMobile || isPhone != _isPhone) {
-      _isMobile = isMobile;
-      _isPhone = isPhone;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        setState(() {
-          _screens = _buildScreens(_isOffline);
-          _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
-        });
-      });
-    }
     return AutomationScreen(
       id: AutomationIds.screenMain,
       readiness: () => const AutomationReadiness.ready(),
