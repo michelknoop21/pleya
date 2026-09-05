@@ -61,6 +61,9 @@ under `Notes`.
 - Mijn Pleya-secties op één paginaframe, en de bibliotheekkiezer op tvOS
 - een contentroute opent binnen de shell, en houdt de topnav
 - media detail sluit zichzelf via TvNestedRouteScope wanneer genest (PB-1)
+- de Home-hero full-bleed met de rail die eronder piept, en een dichtere railstapel (HOME1, I18N5)
+- taalvoorkeuren in vier lagen, met het Pleya-profiel als eigenaar (LANG1, DEC-096)
+- de pagina Taal en ondertitels, de serievoorkeur-sheet en de twee toasts (LANG1, DEC-096)
 
 ### Improved
 - scheidingslijnen volgen de werkelijke rijhoogte
@@ -127,6 +130,10 @@ under `Notes`.
 - verzoen de bibliotheekselectie met de bibliotheken die er zijn (LIB1)
 - laat de laatst gekozen bibliotheek de trage vorige overleven (LIB2)
 - geen rode rul meer onder de open tab op TV (LIB3)
+- de hero vraagt artwork in de bronratio aan, zodat de widget de uitsnede bezit (HERO1)
+- de titelband van de hero past twee regels, niet alleen het logo (HERO2)
+- een gefocuste rail ankert onder de navbalk, zonder band voor de hero (HOME1)
+- de linkerkolom past op één scherm, en de melding hangt niet meer aan het transport (LANG1)
 <!-- END GENERATED -->
 
 ### Fixed
