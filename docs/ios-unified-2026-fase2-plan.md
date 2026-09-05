@@ -1,6 +1,7 @@
 # Pleya iOS Unified 2026 fase 2: Series en Films als eigen bestemming
 
-**Status:** voorstel, wacht op akkoord. Geen productiecode gewijzigd.
+**Status:** voorstel, wacht op akkoord. De twee besluiten die stap 2 en stap 6 blokkeerden zijn op
+5 september 2026 genomen en staan in sectie C en E. Geen productiecode gewijzigd.
 **Datum:** 5 september 2026
 **Branch:** `claude/ios-redesign-progress-5j7yao` op `22a7674`
 **Authority:** DEC-090 (bevroren northstar), DEC-091, DEC-092, de beelden `01-series-landing.png`,
@@ -50,7 +51,8 @@ verdween, het scherm werd nooit gebouwd, en elke route erachter was onbereikbaar
 
 ## C. Het kernbesluit: een chip en een tab zijn niet hetzelfde oppervlak
 
-Dit is de enige vraag in fase 2 die niet uit de implementatie volgt, en hij moet vóór stap 1 vallen.
+Dit was de enige vraag in fase 2 die niet uit de implementatie volgde. Hij is beantwoord; de
+redenering blijft staan omdat de bouw hem nodig heeft.
 
 Fase 1 heeft de chips Series en Films op Home laten schakelen naar `landing.seriesRails` en
 `landing.movieRails`. Zodra Series en Films eigen tabs worden, wijzen die chips naar exact dezelfde
@@ -65,17 +67,17 @@ De bevroren beelden lossen dat op, en anders dan het fase-1-plan aanneemt:
   chipbalk, rijen uit de landingprojectie, en in de tabbalk is **Series** actief.
 
 Ze verschillen dus in titel, in hero, in chipbalk, in databron en in welke tab oplicht. Dat zijn vijf
-verschillen, geen nuance. Het voorstel is daarom:
+verschillen, geen nuance.
 
-**De chip filtert het Home-aanbod; de tab opent de landing.** Concreet betekent dat één gerichte
-wijziging in `mobile_home_screen.dart`: de chipselectie leest niet langer
-`landing.seriesRails`/`movieRails` maar filtert `homeProjection.hubs` op `MediaKind`, en het scherm
-zet de titel `Voor jou` boven de rijen zodra een chip actief is.
+**Besloten op 5 september 2026: de chip filtert het Home-aanbod, de tab opent de landing.**
+Concreet betekent dat één gerichte wijziging in `mobile_home_screen.dart`: de chipselectie leest niet
+langer `landing.seriesRails`/`movieRails` maar filtert `homeProjection.hubs` op `MediaKind`, en het
+scherm zet de titel `Voor jou` boven de rijen zodra een chip actief is. De hero blijft verdwijnen bij
+een actieve chip, zoals fase 1 hem al bouwt, en Home blijft de actieve tab.
 
-Valt dit besluit anders, dan is het alternatief dat de chips op Home dezelfde tab selecteren
-waar ze naar verwijzen (chip en tab zijn dan één bestemming met twee ingangen). Dat is minder werk
-en wijkt af van twee bevroren beelden. Ik bouw het alternatief niet zonder expliciete keuze, want het
-raakt het enige oppervlak dat fase 1 al opgeleverd heeft.
+De twee afgewezen alternatieven, voor de volledigheid: de chip laten schakelen naar de tab (één
+bestemming, twee ingangen) wijkt af van twee bevroren beelden, en de chipbalk weghalen draait een
+deel van fase 1 terug zonder dat Nieuw en Genres er al zijn om hem te vullen.
 
 ## D. Scope
 
@@ -87,7 +89,7 @@ raakt het enige oppervlak dat fase 1 al opgeleverd heeft.
 3. **Zoeken als eigen ingang** vanaf het zoekicoon in `MobilePageHeader`, met de tabbalk zichtbaar en
    Home actief, precies zoals `05-zoeken.png` het toont.
 4. **Bibliotheken als rij in Mijn Pleya**, zodat de bestemming bereikbaar blijft.
-5. **Chipsemantiek** volgens sectie C, als het besluit valt.
+5. **Chipsemantiek** volgens sectie C.
 
 ## E. Expliciete non-scope
 
@@ -97,12 +99,12 @@ filtersheet (fase 3), de inhoud en opmaak van het zoekscherm zelf (fase 4), deta
 desktop, TV, en de twee open Home-details uit DEC-090 paragraaf 10. `search_screen.dart` wordt in
 fase 2 niet inhoudelijk aangeraakt; er komt alleen een ingang bij.
 
-`Alle series ›` en `Alle films ›` verwijzen naar een scherm dat pas in fase 3 bestaat. Voorstel: de
-actie **wordt getekend en is inactief** tot fase 3, met een duidelijke reden in de code, in plaats van
-hem tijdelijk naar `LibraryBrowseTab` te sturen. Dat laatste opent een bibliotheekgebonden,
+`Alle series ›` en `Alle films ›` verwijzen naar een scherm dat pas in fase 3 bestaat. **Besloten op
+5 september 2026: de actie wordt getekend en is inactief** tot fase 3, met de reden in de code, in
+plaats van hem tijdelijk naar `LibraryBrowseTab` te sturen. Dat laatste opent een bibliotheekgebonden,
 serverspecifiek scherm, terwijl de belofte van de knop een bronoverstijgende catalogus is. Een knop
-die het verkeerde doet is erger dan een knop die nog niet kan. Dit is de tweede beslissing die ik
-niet alleen neem.
+die het verkeerde doet is erger dan een knop die nog niet kan. Inactief betekent zichtbaar en niet
+aanraakbaar, niet grijs weggemoffeld: fase 3 zet er één handler onder en verder verandert er niets.
 
 ## F. Stappen
 
@@ -143,7 +145,8 @@ komen op dezelfde laag uit, zodat er één zoekingang is en niet twee.
 blijft in de zichtbare tablijst staan. `LibraryQuickPickerSheet` verhuist mee zodra de ingang
 verhuist.
 
-**Stap 6. Chips.** Sectie C, als het besluit gevallen is.
+**Stap 6. Chips.** Sectie C: de chipselectie filtert `homeProjection.hubs` op `MediaKind` in plaats
+van de landingrijen te lezen, en Home krijgt de titel `Voor jou` zodra een chip actief is.
 
 **Stap 7. Bewijs en documentatie.** Verify-scenario `ios.landing.northstar`: naar Series navigeren via
 `nav.series`, `landing.header` en `landing.title` in beeld, de eerste rij onder de titel, de tabbalk
@@ -167,11 +170,12 @@ enige die een gebruiker als "de app is stuk" ervaart.
 
 ## H. Open vragen
 
-1. **Chip of tab** (sectie C). Blokkeert stap 6, niet stap 1 tot en met 5.
-2. **`Alle series ›` inactief of tijdelijk naar Bibliotheken** (sectie E). Blokkeert stap 2.
-3. **Startsectie.** Moeten Series en Films kiesbaar worden als opstartscherm? Ze zijn nu tabs, dus het
+De twee vragen die stap 2 en stap 6 blokkeerden zijn op 5 september 2026 beantwoord en staan nu als
+besluit in sectie C en E. Wat openblijft, blokkeert niets:
+
+1. **Startsectie.** Moeten Series en Films kiesbaar worden als opstartscherm? Ze zijn nu tabs, dus het
    kan. Het is één regel, maar het is een productkeuze.
-4. **Live TV zonder tuner.** De balk toont vier slots als er geen Live TV is. De beelden tonen er
+2. **Live TV zonder tuner.** De balk toont vier slots als er geen Live TV is. De beelden tonen er
    altijd vijf. Geen blokkade, wel een zichtbaar verschil bij de visuele beoordeling.
 
 ## I. Stop
