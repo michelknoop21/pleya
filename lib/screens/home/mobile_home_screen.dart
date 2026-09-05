@@ -38,7 +38,12 @@ import '../../widgets/skeletons.dart';
 import '../libraries/content_state_builder.dart' show SliverErrorState;
 
 class MobileHomeScreen extends StatefulWidget {
-  const MobileHomeScreen({super.key});
+  /// Opens Zoeken. Comes from `MainScreen` through [DiscoverScreen], because
+  /// this screen is mounted deep inside the Home tab and tab selection belongs
+  /// to the shell (fase 2, [DEC-094]).
+  final VoidCallback? onSearchTap;
+
+  const MobileHomeScreen({super.key, this.onSearchTap});
 
   @override
   State<MobileHomeScreen> createState() => _MobileHomeScreenState();
@@ -150,10 +155,7 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
-              child: MobilePageHeader(
-                activeProfile: activeProfile,
-                onSearchTap: () {}, // Route to Zoeken lands in fase 4.
-              ),
+              child: MobilePageHeader(activeProfile: activeProfile, onSearchTap: widget.onSearchTap ?? () {}),
             ),
             SliverToBoxAdapter(
               child: MobileChipBar(selected: _chip, onSelected: (chip) => setState(() => _chip = chip)),

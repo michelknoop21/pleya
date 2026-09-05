@@ -1156,7 +1156,7 @@ class _MainScreenState extends State<MainScreen>
             onSearchTap: _openSearch,
           ),
           NavigationTabId.movies || NavigationTabId.series => const SizedBox.shrink(),
-          NavigationTabId.discover => DiscoverScreen(key: _discoverKey),
+          NavigationTabId.discover => DiscoverScreen(key: _discoverKey, onOpenSearch: _openSearch),
           NavigationTabId.libraries => LibrariesScreen(
             key: _librariesKey,
             onLibraryOrderChanged: _onLibraryOrderChanged,

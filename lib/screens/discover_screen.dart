@@ -80,7 +80,12 @@ import '../widgets/companion_remote/remote_session_dialog.dart';
 import 'companion_remote/mobile_remote_screen.dart';
 
 class DiscoverScreen extends StatefulWidget {
-  const DiscoverScreen({super.key});
+  /// Opens Zoeken from the iPhone Home header. Supplied by `MainScreen`, which
+  /// owns tab selection; null on every other form factor, where the header
+  /// does not exist (iOS Unified 2026 fase 2, [DEC-094]).
+  final VoidCallback? onOpenSearch;
+
+  const DiscoverScreen({super.key, this.onOpenSearch});
 
   /// The hero's pagination-dot row, so tests can measure its real rect
   /// against the "Verder kijken" heading directly below the hero.
@@ -1477,7 +1482,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     // Unified providers directly rather than this class's legacy fields.
     // iPad stays on the tree below — see the plan's H3.
     if (PlatformDetector.isPhone(context)) {
-      return const MobileHomeScreen();
+      return MobileHomeScreen(onSearchTap: widget.onOpenSearch);
     }
 
     final showServerNameOnHubs = svc.read(SettingsService.showServerNameOnHubs);
