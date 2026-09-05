@@ -21,4 +21,6 @@ node build.mjs 26-bibliotheken   # alleen mockup 26
 ```
 
 Playwright komt uit de globale installatie onder `/opt/homebrew`; het pad staat in
-`build.mjs`.
+`build.mjs`. Op een andere machine zetten `PLEYA_MOCKUP_PLAYWRIGHT` (pad naar `index.mjs`),
+`PLEYA_MOCKUP_DEST` (uitvoermap) en `PLEYA_MOCKUP_ART` (art-map, desnoods met plaatshouders)
+de drie vaste paden opzij; de standen van mockup 33 zijn zo in een Linux-container geschoten.

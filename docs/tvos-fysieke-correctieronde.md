@@ -133,6 +133,11 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
 | RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
 | ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) goedgekeurd op 5 september, DEC-100 accepted, 9.1, 17.5 en 23 aangepast; bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
+| PLR2 | Het veeg-omlaag-infopaneel wordt het enige spelermenu op TV. Gemeld door Michel op 5 september 2026 als "de geluidsinstellingen lijken niet goed te werken", uitgebreid tot het hele paneel per functie. Besluiten: één menu, vier tabs (Info · Video · Geluid · Ondertitels) met secties Weergave/Afspelen en Sporen/Uitvoer, video speelt door, mockup 33 vervangt mockup 19, DEC-101 na akkoord. Ontwerp in `src/pages/33-speler-paneel-*.html` | OPEN, ontwerp loopt | n.v.t. |
+| PLR3 | Tandwiel en sporenknop in de spelerbalk openen op TV nog de 10-foot `VideoSettingsSheet` en `TrackSheet`, naast het paneel; de sheet toont op tvOS een dode audio-apparaatkiezer omdat `PlatformDetector.isDesktop(context)` op TV waar is (`video_settings_sheet.dart:512,600`). Na PLR2 openen beide knoppen het paneel op het passende tabblad | OPEN | n.v.t. |
+| AUD1 | "Maximum volume" in het Audio-tabblad verhoogt alleen `volume-max` (`tv_audio_subtitle_tabs.dart:36-43`). Op TV is `VolumeControl` verborgen (`desktop_video_controls.dart:1163`), dus het volume blijft op 100 en vier drukken doen hoorbaar niets. Wordt Volumeversterking (Uit / +50% / +100% / +200%) die plafond én `volume` schrijft; inert met uitleg tijdens een bitstream | OPEN | n.v.t. |
+| AUD2 | Audio- en ondertitelsynchronisatie in het paneel openen zonder gefocust element: `SyncOffsetControl._buildFull` koppelt `sliderFocusNode` niet (`sync_offset_control.dart:341`, alleen `_buildCompact` doet dat op `:249`), dus `_syncSliderNode.requestFocus()` in `tv_info_panel.dart:138` is een no-op. De stapknoppen kleuren met `surfaceContainerHighest`, in dit thema het oppervlak zelf (DEC-053) | OPEN | n.v.t. |
+| PNL2 | Bedienbaarheid van het paneel: pills op een kale `Focus` zonder Select, waarderijen cyclen alleen vooruit op Select (snelheid zeven standen), hoofdstukken springt alleen naar de volgende, `t.common.ok` als aan-waarde van de statistiekrij (`tv_video_tab.dart:174`), lange uitlegzinnen als afgekapte trailing-waarde, geen `automationId` op paneel, pills of rijen, en nul widgettests op `TvInfoPanel`. STR1, STR2 en PNL1 sluiten hieronder mee | OPEN | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -3067,3 +3072,47 @@ per contract uit, dus "geen datum" is hier geen standpunt meer dat een fixture k
 
 Negatieve controle: dezelfde seam een jaar vooruit gezet reproduceert precies de acht rode tests,
 teruggezet zijn alle negen groen.
+
+
+### PLR2, het paneel per functie
+
+Gemeld door Michel op 5 september 2026: "ik heb het idee dat de geluidsinstellingen niet goed
+werken", met de vraag het hele veeg-omlaag-menu per functie na te kijken en te zeggen wat er
+ontbreekt. De audit staat hieronder; de bevindingen die werk opleveren hebben elk een eigen
+regel (PLR3, AUD1, AUD2, PNL2), zodat ze los een eindstatus krijgen.
+
+**Drie menu's naast elkaar.** Op de Apple TV bestaan het veeg-omlaag-paneel (`TvInfoPanel`),
+de 10-foot `VideoSettingsSheet` achter het tandwiel en de `TrackSheet` achter de sporenknop
+tegelijk. Ze overlappen voor de helft en spreken elkaar tegen: de sheet heeft zoom, versie en
+kwaliteit, slaaptimer, HDR, autoplay en shaders die het paneel mist, plus een apparaatkiezer die
+op tvOS niets kan kiezen; het paneel heeft Info, sfeerintensiteit in vier standen en de
+rendering-badge die de sheet mist. Het paneel is bovendien alleen met een veeg te openen
+(`key_events.dart:315-322`), en de simulator heeft geen aanraakvlak. Dat verklaart waarom er
+nul tests op staan en waarom Pleya Verify het niet kan adresseren.
+
+**Wat de audio-rijen doen.** Sporen kiezen werkt (`selectAudioTrack`, coordinator volgt de
+codec). Uitvoermodus en prioriteit werken (`audioOutputMode`, `audioPriority`,
+`AudioOutputCoordinator.onModeChanged`); Auto bitstreamt op tvOS alleen onder "Original Dolby"
+op een digitale poort met ac3/eac3, en een mislukte bitstream valt terug op PCM met een
+snackbar. Volume gelijkmaken en harde geluiden dempen werken via de arbiter en zijn inert
+tijdens een bitstream (DEC-013). De twee rijen die niet doen wat ze beloven zijn "Maximum
+volume" (AUD1) en de synchronisatie-subweergave (AUD2).
+
+**Besluiten van Michel, 5 september.** Eén menu op TV: het paneel; tandwiel en sporenknop worden
+ingangen op een tabblad. Een werkende volumeboost in plaats van het plafond. Mockup 19 opnieuw,
+want hij bevat een Wachtrij-pill en een "Onthouden voor deze titel"-schakelaar die met PB-9 en
+DEC-096 botsen, geeft de geluidsuitvoer geen plek, kopieert de globale stijlpagina half en tekent
+maar één stand. De video speelt door. Vier tabs: Info · Video · Geluid · Ondertitels, met Weergave
+en Afspelen als secties van Video en Sporen en Uitvoer als secties van Geluid.
+
+**Mockup 33** (`docs/assets/tvos-unified/src/pages/33-speler-paneel-*.html`, renders in
+`docs/assets/tvos-unified/mockups-2026-09-05/`, hier geschoten met een plaatshouder als
+backdrop omdat `art/` niet in git staat; de definitieve schoten komen van de Mac). Negen
+standen: A Info, B Video, C Geluid, D Ondertitels, E synchronisatie-subweergave, F
+hoofdstukken-subweergave, G slaaptimer-subweergave, H Geluid tijdens een Dolby-bitstream, I de
+spelerbalk met tandwiel en sporenknop als ingangen. Goedkeuring per stand, daarna DEC-101 en de
+bouwronde in de volgorde van het plan (negatieve controle eerst, kleine commits, SHA in de tabel).
+
+**Hardware only.** De veeg-opening, de bitstream-stand (H) en de hoorbaarheid van de boost en
+de synchronisatiestap zijn alleen op het toestel te toetsen; STATUS.md meldt dat er nog geen
+Apple TV-audiolog is.

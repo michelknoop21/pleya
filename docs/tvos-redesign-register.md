@@ -73,7 +73,8 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 |----|----------|---------|--------|--------------|
 | MOC-17 | Live TV, één navigatiebalk, volledige functionaliteit | PB-8 | OPEN | |
 | MOC-18 | Speler-OSD | approval | OPEN | |
-| MOC-19 | Spelerinfopaneel | PB-9 | OPEN | |
+| MOC-19 | Spelerinfopaneel | PB-9 | VERVANGEN door MOC-33 | |
+| MOC-33 | Spelerinfopaneel als enige spelermenu op TV, mockup 33 vervangt 19 (PLR2 in de correctieronde), negen standen, DEC-101 na akkoord | PB-9 | OPEN, ontwerp loopt | |
 
 ## SYSTEEM EN META
 
@@ -206,14 +207,14 @@ Hier staan ze bij de werkstroom die ze bezit.
 | I18N-2 | `nl.i18n.json` mist `search.voiceSearch` | SYS-5 | OPEN |
 | I18N-3 | `nl.i18n.json` mist `settings.visualEffects*` | SYS-5 | OPEN |
 | I18N-4 | `nl.i18n.json` mist `addServer.connectToPleyaServerCard*` en `addLocalFolder.*` | SYS-5 | OPEN |
-| STR-1 | Hardcoded "Video" in `tv_info_panel.dart:265` | SYS-5, MOC-19 | OPEN |
-| STR-2 | Hardcoded "(Forced)" in `track_label_builder.dart:203-205` | SYS-5, MOC-19 | OPEN |
+| STR-1 | Hardcoded "Video" in `tv_info_panel.dart:272` | SYS-5, MOC-33 | OPEN |
+| STR-2 | Hardcoded "(Forced)" in `track_label_builder.dart:203-205` | SYS-5, MOC-33 | OPEN |
 | STR-3 | Hardcoded "titles" in `actor_media_screen.dart:174` | SYS-5, MOC-25 | OPEN |
 | STR-4 | Hardcoded tagline in `auth_screen.dart:341` | SYS-5, MOC-22 | OPEN |
 | STR-5 | Hardcoded "Incorrect PIN" in `profile_activation.dart:57` | SYS-5, MOC-21 | OPEN |
 | TOK-1 | `TvPanelTheme.accent #F42B1F` naast `kAccent` | SYS-6 | OPEN |
 | TOK-2 | Serverstip `#3FBF5F` hardcoded in `tv_my_pleya_screen.dart:829` | SYS-6 | OPEN |
-| PNL-1 | Infopaneel gooit secundaire spoorlabels weg, `tv_audio_subtitle_tabs.dart:103, 375, 407` | MOC-19 | OPEN |
+| PNL-1 | Infopaneel gooit secundaire spoorlabels weg, `tv_audio_subtitle_tabs.dart:105, 375, 407` | MOC-33 | OPEN |
 | LIVE-1 | `PlatformDetector.shouldUseSideNavigation` waar op TV: twee navigatiebalken in Live TV | MOC-17 | OPEN |
 | ACT-2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | MOC-16, SYS-1 | OPEN |
 | OFF-1 | Geen reconnect-affordance op TV | MOC-23 | OPEN |

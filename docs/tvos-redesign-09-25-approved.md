@@ -60,6 +60,11 @@ vergelijkt tegen deze regels.
 | 17 | 17-live-tv.png | `1613ae54d7a4793f176920a6db02c5de7235fd8f2944536eb947e25ceed522f3` |
 | 18 | 18-speler.png | `e2c93b7e92d4b33257481e4ec52d7309a0856ec6307d3d1a75a1d6106c1ac485` |
 | 19 | 19-speler-infopanel.png | `f1cfd54beaca77af4922651f1827d6876462f381d4bfbff36bee817f4768a52a` |
+
+Mockup 19 is op 5 september 2026 vervangen door mockup 33 (PLR2 in
+`tvos-fysieke-correctieronde.md`): een Wachtrij-pill en een schakelaar "Onthouden voor deze
+titel" botsten met PB-9 en DEC-096, de geluidsuitvoer had geen plek en er was één stand getekend.
+De hash hierboven blijft staan als wat er destijds is goedgekeurd; 19 is geen bouwdoel meer.
 | 20 | 20-instellingen-uiterlijk.png | `8dc387fd7401b14bd36450f472bdcd0161d1492e58b6d1fb88b5215cd63b59dd` |
 | 21 | 21-profiel-kiezen.png | `f63f9c2e7b8b69bf4147045693ad4bed311735da2244557500c7696e9c46ffcb` |
 | 22 | 22-inloggen.png | `2216a6c69feaf6ff9732187bd6a4f84245f545320c240f86cfde8c2c0f7346cd` |
