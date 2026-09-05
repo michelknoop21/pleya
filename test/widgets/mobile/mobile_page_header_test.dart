@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:pleya/profiles/profile_avatar.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/mobile/mobile_page_header.dart';
 import 'package:pleya/widgets/pleya_logo.dart';
@@ -35,6 +36,14 @@ void main() {
 
     await tester.tap(find.byIcon(Symbols.search_rounded));
     expect(tapped, isTrue);
+  });
+
+  testWidgets('the avatar has no tap target — it names a surface, it does not activate one', (tester) async {
+    await pump(tester, onSearchTap: () {});
+    expect(
+      find.ancestor(of: find.byType(ProfileAvatar), matching: find.byType(GestureDetector)),
+      findsNothing,
+    );
   });
 
   testWidgets('extra actions render between the lockup and search', (tester) async {

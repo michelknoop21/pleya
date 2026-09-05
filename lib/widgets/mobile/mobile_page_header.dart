@@ -26,7 +26,6 @@ class MobilePageHeader extends StatelessWidget {
 
   final VoidCallback onSearchTap;
   final Profile? activeProfile;
-  final VoidCallback? onAvatarTap;
 
   /// Automation ids for this instance of the header, defaulting to Home's.
   ///
@@ -50,7 +49,6 @@ class MobilePageHeader extends StatelessWidget {
     this.actions = const [],
     required this.onSearchTap,
     required this.activeProfile,
-    this.onAvatarTap,
     this.automationId = AutomationIds.homeHeader,
     this.searchAutomationId = AutomationIds.homeHeaderSearch,
     this.avatarAutomationId = AutomationIds.homeHeaderAvatar,
@@ -84,11 +82,8 @@ class MobilePageHeader extends StatelessWidget {
             AutomationNode(
               id: avatarAutomationId,
               instance: automationInstance,
-              role: 'button',
-              child: GestureDetector(
-                onTap: onAvatarTap,
-                child: ProfileAvatar(profile: activeProfile, size: 32),
-              ),
+              role: 'image',
+              child: ProfileAvatar(profile: activeProfile, size: 32),
             ),
           ],
         ),

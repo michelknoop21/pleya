@@ -161,7 +161,9 @@ class AutomationIds {
   /// The header's search action.
   static const String homeHeaderSearch = 'home.header.search';
 
-  /// The header's profile avatar action.
+  /// The header's profile avatar. Not tappable: profile switching's own
+  /// entry point is elsewhere (fase 6, DEC-091), so this node exists for
+  /// scenarios to find the avatar, not to activate it.
   static const String homeHeaderAvatar = 'home.header.avatar';
 
   /// The Series/Films chip bar under the header.
@@ -266,7 +268,7 @@ class AutomationIds {
     {'id': playerSurface, 'role': 'surface', 'instanceable': false},
     {'id': homeHeader, 'role': 'region', 'instanceable': false},
     {'id': homeHeaderSearch, 'role': 'button', 'instanceable': false},
-    {'id': homeHeaderAvatar, 'role': 'button', 'instanceable': false},
+    {'id': homeHeaderAvatar, 'role': 'image', 'instanceable': false},
     {'id': homeChips, 'role': 'filter', 'instanceable': false},
     {'id': homeRail, 'role': 'rail', 'instanceable': true},
     {'id': homeRailItem, 'role': 'grid.item', 'instanceable': true},
@@ -274,7 +276,7 @@ class AutomationIds {
     {'id': screenMovies, 'role': 'screen', 'instanceable': false},
     {'id': landingHeader, 'role': 'region', 'instanceable': true},
     {'id': landingHeaderSearch, 'role': 'button', 'instanceable': true},
-    {'id': landingHeaderAvatar, 'role': 'button', 'instanceable': true},
+    {'id': landingHeaderAvatar, 'role': 'image', 'instanceable': true},
     {'id': landingTitle, 'role': 'region', 'instanceable': true},
     {'id': landingViewAll, 'role': 'button', 'instanceable': true},
     {'id': landingRail, 'role': 'rail', 'instanceable': true},
