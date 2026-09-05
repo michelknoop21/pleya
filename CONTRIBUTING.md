@@ -10,7 +10,11 @@
 ## Development
 
 - Follow Dart/Flutter conventions
-- Run `dart format .` to format Dart code (note: generated files like `*.g.dart` are excluded from CI checks)
+- Format Dart code without touching generated files:
+  `find lib test -name "*.dart" ! -name "*.g.dart" ! -name "*.freezed.dart" -print0 | xargs -0 dart format`.
+  Do **not** run a bare `dart format .`: `analysis_options.yaml` sets `page_width: 120` while
+  build_runner emits generated code at 80, so a bare run rewraps every `.g.dart` and the next CI
+  run fails on "Generated files are out of date" even though nothing was regenerated
 - Run `scripts/format_native.sh --fix` to format Kotlin, Swift, C++, C, Objective-C, and native headers
 - Run `flutter analyze` before submitting to check for issues
 - Run `flutter test` if tests are available
@@ -21,7 +25,7 @@
 The project includes automated CI checks that run on all pull requests:
 
 1. **Code Formatting**: Ensures code follows Dart and native formatting standards
-   - Run locally: `dart format .` to format Dart files
+   - Run locally: `scripts/ci_checks.sh`, which checks exactly the files CI checks (generated files excluded)
    - Run locally: `scripts/format_native.sh --fix` to format native files
    - Note: CI only checks non-generated files (excludes `.g.dart`, `.freezed.dart`)
    - Generated files are reformatted automatically by build tools
