@@ -128,7 +128,10 @@ void main() {
     late _Reading reading;
     coordinator.pushNested(
       coordinator.active,
-      TvNestedRoute(id: id, builder: (_) => _Probe(label: id, onBuild: (r) => reading = r)),
+      TvNestedRoute(
+        id: id,
+        builder: (_) => _Probe(label: id, onBuild: (r) => reading = r),
+      ),
     );
     await tester.pumpAndSettle();
     expect(find.text(id), findsOneWidget, reason: 'the route has to be on screen for its reading to mean anything');

@@ -143,7 +143,10 @@ void main() {
 
       coordinator.pushNested(
         coordinator.active,
-        TvNestedRoute(id: 'detail', builder: (_) => _CountingProbe(label: 'detail', onInit: () => builds++)),
+        TvNestedRoute(
+          id: 'detail',
+          builder: (_) => _CountingProbe(label: 'detail', onInit: () => builds++),
+        ),
       );
       await tester.pumpAndSettle();
       expect(find.text('detail'), findsOneWidget);
@@ -151,7 +154,10 @@ void main() {
 
       coordinator.pushNested(
         coordinator.active,
-        TvNestedRoute(id: 'person', builder: (_) => const Center(child: Text('person'))),
+        TvNestedRoute(
+          id: 'person',
+          builder: (_) => const Center(child: Text('person')),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -171,12 +177,18 @@ void main() {
 
       coordinator.pushNested(
         coordinator.active,
-        TvNestedRoute(id: 'detail', builder: (_) => _CountingProbe(label: 'detail', onInit: () => builds++)),
+        TvNestedRoute(
+          id: 'detail',
+          builder: (_) => _CountingProbe(label: 'detail', onInit: () => builds++),
+        ),
       );
       await tester.pumpAndSettle();
       coordinator.pushNested(
         coordinator.active,
-        TvNestedRoute(id: 'person', builder: (_) => const Center(child: Text('person'))),
+        TvNestedRoute(
+          id: 'person',
+          builder: (_) => const Center(child: Text('person')),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -188,7 +200,8 @@ void main() {
       expect(
         builds,
         1,
-        reason: 'this is the regression: before the fix Back rebuilt the detail from scratch, '
+        reason:
+            'this is the regression: before the fix Back rebuilt the detail from scratch, '
             'refetching its metadata and losing where the viewer was',
       );
     });
@@ -198,12 +211,18 @@ void main() {
 
       coordinator.pushNested(
         coordinator.active,
-        TvNestedRoute(id: 'detail', builder: (_) => _CountingProbe(label: 'detail', onInit: () {})),
+        TvNestedRoute(
+          id: 'detail',
+          builder: (_) => _CountingProbe(label: 'detail', onInit: () {}),
+        ),
       );
       await tester.pumpAndSettle();
       coordinator.pushNested(
         coordinator.active,
-        TvNestedRoute(id: 'person', builder: (_) => const Center(child: Text('person'))),
+        TvNestedRoute(
+          id: 'person',
+          builder: (_) => const Center(child: Text('person')),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -214,7 +233,8 @@ void main() {
       expect(
         excluded(find.text('detail', skipOffstage: false)),
         isTrue,
-        reason: 'mounted underneath must not mean reachable: an invisible screen the remote can '
+        reason:
+            'mounted underneath must not mean reachable: an invisible screen the remote can '
             'still walk into is the bug ExcludeFocus exists for',
       );
       expect(
@@ -244,7 +264,8 @@ void main() {
       expect(
         await route.result,
         isTrue,
-        reason: 'without this the watch-state change made on the detail is dropped and the row '
+        reason:
+            'without this the watch-state change made on the detail is dropped and the row '
             'it was opened from never refreshes',
       );
     });

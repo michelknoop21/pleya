@@ -114,8 +114,7 @@ class TvDisplayMetrics extends InheritedWidget {
   /// The shell's own box: the full window, before the top bar takes its band.
   final Size size;
 
-  static Size? maybeOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<TvDisplayMetrics>()?.size;
+  static Size? maybeOf(BuildContext context) => context.dependOnInheritedWidgetOfExactType<TvDisplayMetrics>()?.size;
 
   @override
   bool updateShouldNotify(TvDisplayMetrics oldWidget) => oldWidget.size != size;

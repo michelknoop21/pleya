@@ -284,12 +284,7 @@ class _ContentBoxMediaQuery extends StatelessWidget {
 /// does. Its absence (`of(context) == null`) is a screen's signal that it was
 /// not nested this time and should fall back to `Navigator.pop`.
 class TvNestedRouteScope extends InheritedWidget {
-  const TvNestedRouteScope({
-    super.key,
-    required this.dismiss,
-    required this.markResult,
-    required super.child,
-  });
+  const TvNestedRouteScope({super.key, required this.dismiss, required this.markResult, required super.child});
 
   final void Function([Object? result]) dismiss;
 

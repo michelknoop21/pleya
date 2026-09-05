@@ -325,6 +325,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     if (!mounted) return;
     TvNestedRouteScope.readOf(context)?.markResult(true);
   }
+
   final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0);
   bool _suppressBackAfterPop = false;
   final FocusNode _loadingFocusNode = FocusNode(debugLabel: 'MediaDetailLoading');
@@ -3977,9 +3978,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                   item: metadata,
                   client: _getArtworkMediaClient(context),
                   showInfo: false,
-                  localArtworkPathResolver: widget.isOffline
-                      ? (path) => _offlineArtworkLocalPath(context, path)
-                      : null,
+                  localArtworkPathResolver: widget.isOffline ? (path) => _offlineArtworkLocalPath(context, path) : null,
                 ),
                 _buildTvDetailRevealGate(revealContent, handleBack),
               ],
