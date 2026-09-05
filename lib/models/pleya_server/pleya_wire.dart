@@ -338,7 +338,10 @@ class PleyaError {
   final bool retryable;
   final Map<String, dynamic>? details;
 
-  /// Domain half of [code], one of auth, library, playback, session, storage.
+  /// Domain half of [code]: auth, library, playback, session, settings,
+  /// storage or server. The list is not closed. It grows one protocol
+  /// window at a time, so treat an unfamiliar domain as an unfamiliar
+  /// code and fall back to the generic message instead of branching.
   String get domain => code.split('.').first;
 
   /// `details.retry_after_ms` on a rate-limit answer. Null when the server did

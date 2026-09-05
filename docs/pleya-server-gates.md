@@ -311,9 +311,18 @@ regel opleveren zonder het contract aan te raken: beheerendpoints bestaan niet, 
 J.2. Zestien daarvan zijn nieuwe optionele antwoordvelden, nieuwe endpoints of nieuwe optionele
 aanvraagvelden achter een capability, en vallen onder regel 1, 4 en 5. Twee kregen een eigen
 redenering: `SetupRequest.server_name` botst met de gesloten aanvraagbody en wordt afgevangen met
-`setup_accepts_name` op `Info`, en `server` als zesde foutdomein verruimt een bestaand patroon.
+`setup_accepts_name` op `Info`, en het foutdomein verruimt een bestaand patroon.
 
-**Waarom dat zesde domein veilig is, en waarom dat bewezen moest worden.** Een verruiming van iets dat
+**Twee domeinen, niet één.** DEC-110 telde er één en dat bleek bij het uitvoeren te weinig: rij 2 van
+J.2 schrijft `settings.invalid_value` voor op `PATCH /settings`, en `settings` stond net zomin in het
+patroon als `server`. Beide zaten al in de zeventien, dus het venster dekt ze allebei; de tekst van
+DEC-110 telde ze niet allebei.
+[DEC-111](DECISIONS.md#dec-111-venster-1-voegt-twee-foutdomeinen-toe-niet-een-settings-komt-er-naast-server-bij)
+corrigeert dat en legt meteen de regel voor de volgende vensters vast: een venster dat een foutdomein
+toevoegt zegt dat met zoveel woorden, met de compatibiliteitstoets erbij. J.3 brengt `job` mee en J.5
+`reading`, dus die vraag komt terug.
+
+**Waarom die domeinen veilig zijn, en waarom dat bewezen moest worden.** Een verruiming van iets dat
 er al staat is niet hetzelfde als een toevoeging ernaast. Beide clients handelen een onbekende code
 generiek af: `PleyaError` draagt de code als `String` en takt er niet op, de enige domeintest in de app
 vraagt `startsWith('auth.')` en valt anders door, en `describeError` in `pleya_web` geeft een onbekende
@@ -326,6 +335,13 @@ lijst, één toetsing per item, en een sluitmoment dat aan `scripts/check_protoc
 (S2, bibliotheken en scans) staat al beschreven in J.3 en vraagt tóch een eigen besluit. In één keer
 openzetten voor J.2 tot en met J.7 is expliciet afgewezen: dat houdt het venster open tot het einde van
 het traject, en dan is het geen venster meer.
+
+**Meten gaat twee kanten op.** De negatieve controle in `scripts/check_protocol.py` keurt
+`plex.not_found` af, en dat blijft ze doen of het patroon nu vijf, zes of zeven domeinen kent. Ze zou
+dus niet opvallen wanneer een venster een domein toevoegt en het patroon vergeet. Er staat nu een
+tweede controle naast, `check_error_domains`, die van elk erkend domein eist dat het er ook doorheen komt, met de lijst met
+de hand geschreven zodat hij niet met het patroon meebeweegt. Aangetoond door het patroon terug te
+zetten op vijf domeinen: twee regels rood, `settings` en `server`.
 
 **Sluiting.** Nog niet gesloten. Het sluit bij taak S1.6 van de masterlijst, zodra `openapi.yaml`, de
 fixtures en de gegenereerde webclient bij zijn en `check_protocol.sh` groen is.

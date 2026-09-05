@@ -40,7 +40,8 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 
 **Waar het nu op wacht.** S0 is dicht en de Roadmap Drift Check erop staat in `STATUS.md`. **PS-11A
 loopt**, en S1 is de lopende slice. Het protocolvenster voor S1 is geopend met
-[DEC-110](DECISIONS.md) en staat nog open: het sluit bij S1.6. PS-14 blijft gesloten tot PS-11A af en
+[DEC-110](DECISIONS.md) en staat nog open: het sluit bij S1.6. [DEC-111](DECISIONS.md) corrigeert
+DEC-110 op één punt: venster 1 voegt twee foutdomeinen toe en niet één. PS-14 blijft gesloten tot PS-11A af en
 geïntegreerd bewezen is; dat is een volgorde, geen voorkeur.
 
 ---
@@ -70,7 +71,7 @@ geïntegreerd bewezen is; dat is een volgorde, geen voorkeur.
 | S1.4 | `GET /stream-sessions`, `GET /users/me`, foutcode `auth.permission_not_allowed` | `[ ]` | | |
 | S1.5 | API-tokens als sessies, `admin_audit` met het uitgebreide bereik | `[ ]` | | |
 | S1.8 | HttpOnly-refreshcookie, web-origin, externe URL, CORS-beleid (RB-29) | `[ ]` | | |
-| S1.6 | Capability `administration`, protocolvenster 1 dicht | `[~]` | venster geopend met [DEC-110](DECISIONS.md) op 5 sep 2026, voor precies de zeventien wijzigingen uit J.2; sluit zodra `openapi.yaml`, de fixtures en de gegenereerde webclient bij zijn en `check_protocol.sh` groen is | |
+| S1.6 | Capability `administration`, protocolvenster 1 dicht | `[~]` | venster geopend met [DEC-110](DECISIONS.md) op 5 sep 2026, voor precies de zeventien wijzigingen uit J.2; sluit zodra `openapi.yaml`, de fixtures en de gegenereerde webclient bij zijn en `check_protocol.sh` groen is. Eerste stuk staat: het foutdomein. [DEC-111](DECISIONS.md#dec-111-venster-1-voegt-twee-foutdomeinen-toe-niet-een-settings-komt-er-naast-server-bij) telt er twee in plaats van één (`server` en `settings`), het patroon in `openapi.yaml` draagt ze, `error_server_internal.json` en `error_settings_invalid_value.json` leggen ze vast, elke operatie draagt `500 InternalError`, en `check_error_domains` in `check_protocol.py` meet de andere kant op (patroon terug op vijf domeinen: twee regels rood). Met het domein erbij gaat `writeInternal` mee van `storage.unavailable` naar `server.internal`, met twee tests die de twee kanten van dat onderscheid vastleggen. De overige zestien rijen van J.2 landen bij de commitgrens die ze bedient, want de contractpoort eist dekking voor elk antwoordschema en zou anders rood staan tot S1.6 | |
 | S1.7 | Drie-rollen-test over elke nieuwe route | `[ ]` | | |
 
 ### S2 Bibliotheken, opslag, scans

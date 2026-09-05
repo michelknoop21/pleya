@@ -130,15 +130,23 @@ func writeError(w http.ResponseWriter, log *slog.Logger, code, message string, d
 
 // writeInternal verbergt de oorzaak voor de client en laat hem in het log.
 //
-// De status komt uit het coderegister en niet uit een eigen keuze. Een 500 met
-// storage.unavailable erin zou de tabel in hoofdstuk 7.1 tegenspreken, en dan
-// leest een client iets anders uit de status dan uit de code. Het register is
-// het contract, dus dat wint.
+// De code is server.internal en niet storage.unavailable. Het register is het
+// contract en de status komt daaruit, niet uit een eigen keuze; tot venster 1
+// had het register geen code voor een fout die de server zichzelf aandoet, en
+// toen was storage.unavailable de minst onjuiste van wat er stond. Sinds
+// DEC-111 staat server.internal erin en is die reden weg.
+//
+// Het verschil is niet cosmetisch. storage.unavailable is een 503 met
+// retryable=true en zegt tegen een client: de opslag is even weg, probeer het
+// zo nog eens. Een nil-pointer in een handler gaat bij elke poging opnieuw
+// stuk, en dan blijft een client de server raken op precies het verzoek dat
+// hem omver duwde. storage.unavailable blijft voor het geval waar de opslag
+// werkelijk niet bereikbaar is.
 func writeInternal(w http.ResponseWriter, log *slog.Logger, err error) {
 	if log != nil {
 		log.Error("interne fout", slog.String("error", err.Error()))
 	}
-	writeError(w, nil, CodeStorageUnavailable, "internal error", nil)
+	writeError(w, nil, CodeInternal, "internal error", nil)
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
