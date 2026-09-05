@@ -132,7 +132,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | NAVSEL1 | `tvos.nav.destination-select` sprak de app op twee punten tegen: het verwachtte Films na één RIGHT vanaf Home terwijl Series daar staat, en het eiste een Select om van bestemming te wisselen terwijl focus dat sinds 2 september zelf doet. Gedraaid, rood op de eerste, en verwijderd; `tvos.nav.focus-switches-destination` dekt het en is groen | FIXED | `17d47592` |
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
 | RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
-| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. Gevraagd door Michel op 5 september 2026. Er is nog geen ontwerp: mockupronde eerst | OPEN, mockups te maken | n.v.t. |
+| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Er is nog geen ontwerp: mockupronde eerst | OPEN, mockups te maken | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -2912,6 +2912,14 @@ op dat filter teruggeeft. Dat raakt het cataloguscontract, niet alleen de layout
 
 De tweede is **waar je het doet**. `HomeLayoutScreen` bestaat en kan verbergen en verslepen, maar
 zit onder Instellingen. Michel wil het op Home zelf, en de volgorde daar ook.
+
+**Wat vast blijft staan.** De hero en Verder kijken zijn geen onderdeel van de ordening: die
+blijven op hun plek en zijn niet te verplaatsen of te verbergen. Michel op 5 september: "Verder
+kijken en de hero kun je niet van positie wijzigen. Althans dat moet niet kunnen die blijven wel
+statisch." Dat is precies de grens die `HomeLayoutProvider` vandaag al trekt, in zijn eigen
+doccommentaar: hero en Continue Watching zijn vaste slivers in `DiscoverScreen` en komen niet in
+de layout voor. Het ontwerp mag die grens dus niet oprekken, en een mockup die de hero laat
+verslepen is fout.
 
 Wat er al ligt en wat niet. `HomeLayoutProvider` (`lib/providers/home_layout_provider.dart`) heeft
 de persistentie per profiel, `home_row_layout.dart` past hem toe en `TvContentFeed._rows` doet dat
