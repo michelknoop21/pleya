@@ -132,8 +132,10 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | NAVSEL1 | `tvos.nav.destination-select` sprak de app op twee punten tegen: het verwachtte Films na één RIGHT vanaf Home terwijl Series daar staat, en het eiste een Select om van bestemming te wisselen terwijl focus dat sinds 2 september zelf doet. Gedraaid, rood op de eerste, en verwijderd; `tvos.nav.focus-switches-destination` dekt het en is groen | FIXED | `17d47592` |
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
 | RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
-| GOLD1 | Negentien catalogusgoldens tekenen sinds CAT5 iets anders en zijn bewust niet bijgewerkt; CI is daarop rood en op niets anders. Ze zijn alleen op dezelfde Linux als CI te regenereren: macOS rasteriseert tekst anders, en een geëmuleerde amd64-container dithert de verlopen anders, gemeten op ongewijzigde code als 45 procent pixeldiff over alle negentien. Michel koos op 5 september de runner-route. `.github/workflows/goldens.yml` draait `flutter test --update-goldens` op de CI-runner en geeft de gewijzigde PNG's als artifact terug; de workflow schrijft niets naar de repo, want een golden die zichzelf goedkeurt bewijst niets. `tv_catalog_films_header_focused.png` vervalt voor `tv_catalog_films_rail_open.png` en moet met de hand weg | IN PROGRESS | n.v.t. |
-| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) goedgekeurd op 5 september, DEC-100 accepted, 9.1, 17.5 en 23 aangepast; bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
+| GOLD1 | Negentien catalogusgoldens tekenen sinds CAT5 iets anders en zijn bewust niet bijgewerkt; CI is daarop rood en op niets anders. Ze zijn alleen op dezelfde Linux als CI te regenereren: macOS rasteriseert tekst anders, en een geëmuleerde amd64-container dithert de verlopen anders, gemeten op ongewijzigde code als 45 procent pixeldiff over alle negentien. Michel koos op 5 september de runner-route. `.github/workflows/goldens.yml` draait `flutter test --update-goldens` op de CI-runner en geeft de gewijzigde PNG's als artifact terug; de workflow schrijft niets naar de repo, want een golden die zichzelf goedkeurt bewijst niets. `tv_catalog_films_header_focused.png` vervalt voor `tv_catalog_films_rail_open.png` en moet met de hand weg. Workflow gebouwd op 6 september; de run en het committen van de PNG's staan nog open | IN PROGRESS | `79799369` |
+| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) goedgekeurd op 5 september, DEC-100 accepted, 9.1, 17.5 en 23 aangepast. Gebouwd op 6 september in twee delen: het model, de opslag en de rij op Home, daarna de twee ingangen, het bewerkpaneel en de driestapsflow. Recent uitgebracht is daarbij de layout in gegaan, zoals mockup 32 B hem tekent | FIXED, hardware open | `040c939a`, `db1bc994` |
+| ROW1b | Op pointerplatforms tekent Home nog geen eigen rijen en kent `HomeLayoutScreen` ze niet. DEC-100 noemt dat als gevolg ("krijgt de eigen rijen erbij"), maar de bouwronde van 6 september is de tvOS-helft: `DiscoverScreen` heeft een eigen rijenpad en `HomeLayoutScreen` ordent op de pre-unified `homeRowId`-ruimte. Een bewaarde rij is er dus wel en wordt er niet getoond. Bewust gescheiden gehouden in plaats van half gedaan | OPEN | n.v.t. |
+| ROW1c | De laatste kaart van een eigen rij is een tegel "Alle N, in Alle films" die de catalogus met datzelfde filter opent (DEC-100 (2), mockup 32 A2). Nog niet gebouwd: dat is een extra tegel achter de laatste groep in `TvDiscoveryRail`, en die raakt `itemCount`, de stop op de rechterrand, de positie in de semantics, de focusnodes en de goldens van een widget die al door vijf testbestanden bewaakt wordt. Apart gehouden zodat de bouwronde van ROW1 niet aan een railwijziging hangt | OPEN | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -3201,6 +3203,65 @@ zijn aangepast. De bouw is een eigen ronde en komt na CAT5, dat eerder in de tab
 negatieve controle staat in DEC-100: een widgettest op `TvContentFeed` die een eigen rij uit een
 bewaard filter tussen de hubrijen eist, met de hero en Verder kijken op hun vaste plek, rood op de
 huidige code.
+
+### ROW1, de bouwronde
+
+Twee commits, en de grens ertussen is waar de gebruiker iets kan zien: `040c939a`
+laat een bewaarde rij bestaan en tekenen, `db1bc994` laat hem maken.
+
+**De negatieve controle stond eerst.** `test/screens/tv/tv_home_custom_rows_test.dart`
+is voor de code geschreven en was rood op de assertie, niet op een ontbrekend symbool:
+
+```
+Expected: ['Continue Watching', 'Nieuwe sci-fi', 'Recently Released', 'Recently Added']
+  Actual: ['Continue Watching', 'Recently Released', 'Recently Added']
+```
+
+Het bewaarde filter zit als JSON in de voorkeuren van het profiel, precies zoals
+een eerdere sessie het achtergelaten zou hebben, en de fake client paget een echte
+library. Dat de rij het filter volgt is daarmee een uitspraak over de merge en niet
+over de fixture. Na de bouw is er één regel aan dat bestand veranderd, de registratie
+van de nieuwe provider; geen enkele assertie.
+
+**Twee identiteiten per rij, en dat was bijna een bug.** In de ruimte van
+`HomeLayoutProvider` heet een eigen rij `#custom:<id>`; een serverId kan niet met
+`#` beginnen, dus botsen met `serverId:identifier` kan niet. In de ruimte van
+`UnifiedMediaHub` heet dezelfde rij `hub:pleya:custom:<id>`, want daar hangen
+focusgeheugen en herstel aan. De eerste versie liet de tweede naam ook voor de
+layout gelden, via de hubId-fallback in `homeLayoutIdsOf`. Het paneel schreef dan
+`hub:pleya:custom:<id>` in de volgorde terwijl `removeCustomRow` `#custom:<id>`
+opruimde: een verbergactie die niet terug te draaien was, en een volgorde-entry die
+zijn rij overleefde. De verplaats-test viel er meteen over. De rij noemt zijn
+layout-id nu zelf via `contributingRowIds`.
+
+**Recent uitgebracht is de layout in gegaan.** Dat is geen bijvangst maar wat
+mockup 32 B tekent: hij krijgt daar dezelfde verplaats- en verbergknoppen als een
+backendrij, en DEC-100 (4) zet precies twee rijen vast, Uitgelicht en Verder kijken.
+Hij droeg zijn contributing row id al uit `projectHubs`, dus er is niets voor
+uitgevonden; hij bereikte de layout alleen nooit omdat `_rows` hem ernaast zette.
+Een gesynthetiseerde rij zonder contributors antwoordt sindsdien op zijn eigen
+`hubId`, met een expliciete guard tegen de vacuous `every` die anders elke
+gesynthetiseerde rij zou verbergen zodra er iets verborgen was.
+
+**Wat er niet opnieuw gebouwd is.** De filterstap opent de panelen van de catalogus
+zelf op de juiste sectie, en de sorteerstap het sorteerpaneel. Een tweede genrelijst
+loopt bij de eerste gedeelde bugfix uit de pas. Het voorbeeld in stap 3 draait
+dezelfde `HomeCustomRowLoader` met dezelfde limiet als de rij zelf, dus wat C3 tekent
+is wat Home tekent, en de teller is die van 10.7: exact zodra elke bron uitgeput is,
+anders "N geladen".
+
+**Bestandsgrootte.** `tv_content_feed.dart` liep met de voetregel erbij naar 709
+regels en staat weer op 626, met de rijsamenstelling in `tv_home_row_assembly.dart`.
+Die is gedeeld met het paneel, zodat de feed en het paneel niet elk hun eigen
+volgorde kunnen afleiden: een paneel dat een rij ergens neerzet waar de feed hem
+vervolgens anders plaatst is precies het soort verschil dat niemand als bug meldt.
+Het paneel en de wizard hebben hun tegels en onderdelen in eigen bestanden.
+
+**Wat open blijft.** ROW1b, de pointerkant. En de tegel "Alle N, in Alle films" als
+laatste kaart van een eigen rij (DEC-100 (2)) staat er nog niet: dat is een extra
+tegel áchter de laatste groep in `TvDiscoveryRail`, en die raakt `itemCount`, de
+rechterrandstop, de positie in de semantics, de focusnodes en de goldens van een
+widget die al door vijf testbestanden bewaakt wordt. Die staat als ROW1c in de tabel.
 
 ### RAIL1, het fase-6 railcontract is bij een verhuizing achtergebleven
 
