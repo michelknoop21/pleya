@@ -158,7 +158,7 @@ class _BooksSearchScreenState extends State<BooksSearchScreen> {
                       children: [
                         for (final name in shown.authors)
                           AutomationNode(
-                            id: AutomationIds.booksSearchResult,
+                            id: AutomationIds.booksSearchResultAuthor,
                             instance: name,
                             role: 'list.item',
                             child: AuthorResultRow(name: name),
@@ -170,7 +170,7 @@ class _BooksSearchScreenState extends State<BooksSearchScreen> {
                       children: [
                         for (final series in shown.series)
                           AutomationNode(
-                            id: AutomationIds.booksSearchResult,
+                            id: AutomationIds.booksSearchResultSeries,
                             instance: series.id,
                             role: 'list.item',
                             child: SeriesResultRow(series: series),

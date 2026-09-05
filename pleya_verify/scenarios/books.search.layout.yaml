@@ -26,8 +26,16 @@ steps:
   - settle: 1500
   # The canonical state: three kinds of result from one query, and a chip for
   # each of them plus Alles.
+  #
+  # One id per section, because "dune" is both a book id and a series id in the
+  # demo source. Under the shared `books.search.result` those two rows collided:
+  # `/v1/ui_tree` listed the id under `duplicates` and gave the series row a
+  # positional `#2`, so the assertion below resolved whichever of the two
+  # registered first and would have changed meaning on a section reorder without
+  # anything failing.
   - assert: {id: "books.search.result[dune]", insideViewport: true}
-  - assert: {id: "books.search.result[Frank Herbert]", insideViewport: true}
+  - assert: {id: "books.search.result.author[Frank Herbert]", insideViewport: true}
+  - assert: {id: "books.search.result.series[dune]", insideViewport: true}
   - assert: {id: "books.search.category[all]", insideViewport: true}
   - assert: {id: "books.search.category[books]", insideViewport: true}
   - assert: {id: "books.search.category[authors]", insideViewport: true}

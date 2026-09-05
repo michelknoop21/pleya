@@ -78,9 +78,26 @@ class AutomationIds {
   /// search glyph on the books screens.
   static const String screenBooksSearch = 'screen.books_search';
 
-  /// One result row on that screen, whatever its kind. Instanceable, suffixed
-  /// with the book id, the author name or the series id.
+  /// One book row on that screen. Instanceable, suffixed with the book id.
+  ///
+  /// The three sections have three ids because their instance suffixes come
+  /// from three namespaces that can, and do, collide: the demo source carries
+  /// both `Book(id: 'dune')` and `BookSeries(id: 'dune')`. Sharing one base id
+  /// put those two rows under `duplicates` in `/v1/ui_tree` and gave the second
+  /// a positional `#2`, so an assertion on `books.search.result[dune]` resolved
+  /// whichever row registered first. Same defect, and same fix, as the three
+  /// Discover landings (see [heroForScope]); `test/automation/
+  /// books_search_result_ids_test.dart` holds the line.
+  ///
+  /// The book row keeps the unqualified name because
+  /// `pleya_verify/scenarios/books.search.layout.yaml` addresses it by it.
   static const String booksSearchResult = 'books.search.result';
+
+  /// One author row on that screen. Instanceable, suffixed with the name.
+  static const String booksSearchResultAuthor = 'books.search.result.author';
+
+  /// One series row on that screen. Instanceable, suffixed with the series id.
+  static const String booksSearchResultSeries = 'books.search.result.series';
 
   /// One category chip. Instanceable, suffixed with the
   /// [BookSearchCategory] name.
@@ -225,6 +242,8 @@ class AutomationIds {
     booksFilterGroup,
     booksFilterOption,
     booksSearchResult,
+    booksSearchResultAuthor,
+    booksSearchResultSeries,
     booksSearchCategory,
     booksDetailAction,
     booksTocPart,
@@ -253,6 +272,8 @@ class AutomationIds {
     {'id': booksFilterApply, 'role': 'button', 'instanceable': false},
     {'id': screenBooksSearch, 'role': 'screen', 'instanceable': false},
     {'id': booksSearchResult, 'role': 'list.item', 'instanceable': true},
+    {'id': booksSearchResultAuthor, 'role': 'list.item', 'instanceable': true},
+    {'id': booksSearchResultSeries, 'role': 'list.item', 'instanceable': true},
     {'id': booksSearchCategory, 'role': 'filter', 'instanceable': true},
     {'id': screenBookDetail, 'role': 'screen', 'instanceable': false},
     {'id': booksDetailCover, 'role': 'image', 'instanceable': false},

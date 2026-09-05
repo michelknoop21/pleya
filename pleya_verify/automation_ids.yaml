@@ -48,6 +48,12 @@ ids:
   - id: books.search.result
     role: list.item
     instanceable: true
+  - id: books.search.result.author
+    role: list.item
+    instanceable: true
+  - id: books.search.result.series
+    role: list.item
+    instanceable: true
   - id: books.search.category
     role: filter
     instanceable: true
