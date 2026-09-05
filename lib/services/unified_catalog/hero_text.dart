@@ -1,10 +1,13 @@
 /// Pure text derivations for a hero-style presentation of a
 /// [UnifiedMediaGroup]: one metadata line and a display title.
 ///
-/// Kept separate from any widget so both the tvOS billboard and the mobile
-/// hero card (fase 1 van het iOS Unified 2026-plan, `docs/ios-unified-2026-fase1-plan.md`
-/// stap 2) can share the same derivation without either importing the other's
-/// presentation layer.
+/// Kept separate from any widget so a presentation layer can use it without
+/// duplicating the derivation itself. Today's only caller is `MobileHeroCard`
+/// (fase 1 van het iOS Unified 2026-plan, `docs/ios-unified-2026-fase1-plan.md`
+/// stap 2); the tvOS billboard on `claude/netflix-redesign-b4x21v` builds its
+/// own meta line over a different item shape (legacy `MediaItem`, a different
+/// separator) and has not been moved onto this yet — that is TV-design work
+/// outside this file's scope, not a promise this file is already keeping.
 library;
 
 import '../../i18n/strings.g.dart';
