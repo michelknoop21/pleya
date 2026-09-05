@@ -66,6 +66,7 @@ under `Notes`.
 - de pagina Taal en ondertitels, de serievoorkeur-sheet en de twee toasts (LANG1, DEC-096)
 - een walk-stap die focussprongen zelf vindt, met een orakel dat niets meldt wat de traversal niet had kunnen kiezen (WALK)
 - NAV1 wordt bewaakt door Pleya Verify op het app-contract, en een remote-melding begint voortaan bij de bron en een logtrace (DEC-099)
+- de profielchip is adresseerbaar en vier walk-scenario's lopen de TV-oppervlakken af (WALK)
 
 ### Improved
 - scheidingslijnen volgen de werkelijke rijhoogte
@@ -143,6 +144,8 @@ under `Notes`.
 - de dubbele pijlfase wordt ingeslikt in plaats van aan UIKit gegeven, want UIKit asserteert op een einde zonder begin (NAV1)
 - de Swift-fasefilter is uit, want beide antwoorden op .ended zijn op het toestel slechter dan de dubbele stap (NAV1)
 - een pijldruk stapt weer één keer, want de Menu-passthrough wacht nu tot de remote los is (NAV1, de echte oorzaak)
+- elk pad naar de hero-CTA herstelt eerst de scrollpositie (HERO4)
+- de billboard die de ring krijgt staat ook in beeld, langs welk pad ook (HERO4)
 <!-- END GENERATED -->
 
 ### Fixed
