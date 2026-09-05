@@ -79,12 +79,6 @@ import wakelock_plus
   /// ahead of this point, and with the session branch returning `false` Menu
   /// reaches UIKit along with everything else.
   override func tvosHandlePress(fromUIEvent press: UIPress) -> Bool {
-    if Self.isDuplicateArrowPhase(press) {
-      // Claimed, not yielded. `true` without `super` is the one answer that
-      // both skips UIKit's responder chain and synthesizes nothing.
-      Self.pressLog.debug("\(Self.pressName(press), privacy: .public) -> swallow duplicate phase")
-      return true
-    }
     guard NativeInputSession.isActive else {
       return super.tvosHandlePress(fromUIEvent: press)
     }
@@ -92,55 +86,22 @@ import wakelock_plus
     return false
   }
 
-  /// The second half of NAV1: one arrow press that moves the focus twice.
-  ///
-  /// `super` ends in the engine's `synthesizeRemotePressType:`, and for an
-  /// arrow it posts a **complete keydown/keyup pair per press phase**. A single
-  /// press therefore arrives in Dart as two full pairs, separated by however
-  /// long the ring was held. Measured on the device (log `wa6v9`, 5 September
-  /// 2026, build 255, one press of Left):
-  ///
-  /// ```
-  /// 20.196  phase=0 uipress=92444   keydown arrowLeft / keyup arrowLeft
-  /// 20.197  FocusableWrapper -> onNavigateLeft          (step 1)
-  /// 20.301  phase=3 uipress=92444   keydown arrowLeft / keyup arrowLeft
-  /// 20.301  FocusableWrapper -> onNavigateLeft          (step 2, the defect)
-  /// ```
-  ///
-  /// Same `UIPress`, phases `.began` and `.ended`. Select in the same log is
-  /// correct — `.began` posts the keydown, `.ended` the keyup — so this is an
-  /// asymmetry in the fork's arrow path, not the general press contract.
-  ///
-  /// Why it has to be caught here and nowhere else. In Dart the second pair is
-  /// indistinguishable from an honest fast repeat: same key, same shape, and a
-  /// gap (80-230 ms across three device logs) that overlaps how fast a viewer
-  /// clicks. A timing heuristic in `AppleTvRemoteTouchService` was tried and
-  /// shipped as build 254; log `ld1t1` shows it swallowing 65 real presses,
-  /// which is worse than the defect it fixed. The phase is the only signal that
-  /// separates the two, and it exists only up here.
-  ///
-  /// The phase is swallowed, never yielded. Build 256 returned `false` here and
-  /// crashed on every arrow (`Runner-2026-09-05-111948.ips`): the swizzle then
-  /// runs the original `sendEvent:`, UIKit's
-  /// `_UIFocusMovementPressGestureRecognizer` receives a `pressesEnded:` for a
-  /// press whose `pressesBegan:` the engine had claimed, and
-  /// `_verifyTrackingPresses:` asserts. Answering `true` without calling
-  /// `super` keeps the press out of UIKit *and* out of the synthesizer, which
-  /// is exactly the state every arrow press was in before — minus the second
-  /// pair. The engine's own keyboard state is already balanced: it emitted a
-  /// complete pair at `.began`, so nothing is left half-pressed.
-  private static func isDuplicateArrowPhase(_ press: UIPress) -> Bool {
-    guard press.phase != .began else { return false }
-    switch press.type {
-    case .upArrow, .downArrow, .leftArrow, .rightArrow:
-      return true
-    default:
-      return press.key?.keyCode == .keyboardUpArrow
-        || press.key?.keyCode == .keyboardDownArrow
-        || press.key?.keyCode == .keyboardLeftArrow
-        || press.key?.keyCode == .keyboardRightArrow
-    }
-  }
+  // NAV1, the second half: one arrow press that moves the focus twice.
+  //
+  // `super` ends in the engine's `synthesizeRemotePressType:`, and for an
+  // arrow the pinned fork posts a complete keydown/keyup pair on *both*
+  // `.began` and `.ended` of the same `UIPress` (log `wa6v9`, build 255).
+  // Select is balanced (keydown on `.began`, keyup on `.ended`).
+  //
+  // Nothing is filtered here on purpose. Both answers for the `.ended` phase
+  // were tried on the device on 5 September 2026 and both are worse than the
+  // double step: yielding it to UIKit (`false`, build 256) trips
+  // `_UIFocusMovementPressGestureRecognizer _verifyTrackingPresses:` because
+  // the engine had claimed the matching `.began`; swallowing it (`true`
+  // without `super`, build 257) leaves the remote stuck in one direction, so
+  // the engine keeps state across the phases that this level cannot see.
+  // A timing heuristic in Dart (build 254, log `ld1t1`) ate 65 real presses.
+  // The fix belongs in the fork; see `docs/tvos-fysieke-correctieronde.md`.
 
   /// For the log line only. The symbolic cases are not reliable on tvOS 26 (the
   /// runtime delivers 2040 for select and 2041 for menu where the SDK compiles
