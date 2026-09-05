@@ -39,7 +39,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | ID | Werkitem | Besluit | Status | SHA / bewijs |
 |----|----------|---------|--------|--------------|
 | SYS-1a | Routecontract: een TV-contentroute opent in de shell in plaats van erboven | PB-1 | DONE | `5cafc10`, DEC-091 |
-| SYS-1b | Detail, collectie en persoon over dat contract | PB-1 | IN PROGRESS | gebouwd, bewijs onder, testdelta nog niet gemeten |
+| SYS-1b | Detail, collectie en persoon over dat contract | PB-1 | DONE | `bb79a82`, testdelta onder |
 | SYS-1c | Geneste routes krijgen de contentbox als `MediaQuery`, nodig voor de detailgeometrie | PB-1, INV-1 | DONE | `ad8c456`, testdelta onder |
 | SYS-2 | BACK1, geen zichtbare onbereikbare terugknop op TV | PB-2 | OPEN, geauditeerd | zie onder |
 | SYS-3a | OVR1a: de schaalbasis van paneelinhoud op TV | PB-5 | OPEN, oorzaak gevonden | zie onder |
@@ -231,12 +231,20 @@ De vierde groep pint de `PopScope` af op iOS, want dat is de enige plek waar hij
 wijziging `canPop: true` gaf: draai de correctie terug en die test wordt rood doordat de route
 onder het scherm vandaan popt.
 
-**Testdelta: nog niet gemeten.** De sessie die dit schreef had geen Flutter in de container, dus er
-is geen lokale run. De nullijn is 6245 geslaagd, 56 gefaald en 6 overgeslagen (met SYS-1c erbij);
-de CI-run op deze commit hoort daar dertien geslaagd bij te zetten en het aantal falers onveranderd
-te laten. Zolang dat niet in dit document staat blijft SYS-1b op IN PROGRESS. `flutter analyze`
-heeft deze diff om dezelfde reden als bij SYS-1c niet gezien: `Verify generated files committed`
-faalt op de basis en staat vóór analyze in dezelfde job.
+**Testdelta**, gemeten op CI omdat de sessie die dit schreef geen Flutter had:
+
+| | geslaagd | gefaald | overgeslagen |
+|---|---|---|---|
+| met SYS-1c `e73dcd34` ([run](https://github.com/michelknoop21/pleya/actions/runs/33958253528)) | 6245 | 56 | 6 |
+| met SYS-1b `bb79a825` ([run](https://github.com/michelknoop21/pleya/actions/runs/33961121517)) | 6258 | 56 | 6 |
+
+Dertien geslaagd erbij, wat exact de dertien nieuwe tests zijn, en het aantal falers is onveranderd.
+De 56 zijn de bestaande nullijn en staan ook op de basis.
+
+**Eén signaal ontbreekt, en niet door dit werk.** `flutter analyze` heeft deze diff om dezelfde
+reden als bij SYS-1c niet gezien: `Verify generated files committed` faalt op de basis wegens
+verouderde `.g.dart`-formattering en staat vóór analyze in dezelfde job, dus analyze, format en de
+twee unused-checks worden overgeslagen. Zodra de basis daar groen is hoort die run hier alsnog bij.
 
 **Wat bewust niet meeging.** Afspeellijstdetail (`PlaylistDetailScreen`) heeft geen mockup en staat
 niet in PB-1's opsomming, dus die blijft een volledig-venster-push. Dat is geen omissie maar de

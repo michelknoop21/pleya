@@ -182,7 +182,7 @@ duplicatie, maar het is wel makkelijk te verwarren.
 
 | Lijst | Wat het bezit | Stand op 5 september |
 |---|---|---|
-| [tvos-redesign-register.md](tvos-redesign-register.md) | het bouwen van mockup 09 tot en met 25, plus de systemische eigenaren eronder | 61 rijen: 4 DONE, 1 IN PROGRESS, 53 OPEN |
+| [tvos-redesign-register.md](tvos-redesign-register.md) | het bouwen van mockup 09 tot en met 25, plus de systemische eigenaren eronder | 56 rijen: 4 DONE, 3 GESLOTEN, 49 OPEN |
 | [tvos-fysieke-correctieronde.md](tvos-fysieke-correctieronde.md) | alles wat op een echte Apple TV is gezien, en elk los verzoek van Michel | 68 rijen: 24 FIXED, 3 NOT REPRODUCED, 2 goedgekeurd met bouw open, 2 DEFERRED, 32 OPEN |
 | [tvos-unified-experience.md](tvos-unified-experience.md) hoofdstuk 27 | de fasen 0 tot en met 10A en de afsluitende Final | 0 tot en met 10A gesloten, Final open |
 
@@ -194,10 +194,10 @@ en geen dubbeling, maar reken ze niet twee keer.
 
 1. ~~**SYS-1c** geneste routes krijgen de contentbox als `MediaQuery`.~~ DONE op `ad8c456`,
    met de testdelta van CI eronder in het register.
-2. **SYS-1b** detail, collectie en persoon over hetzelfde geneste routecontract. Staat op
-   IN PROGRESS: gebouwd, met dertien tests erbij, en de testdelta nog niet gemeten omdat de
-   container geen Flutter had.
-3. **SYS-3a** de schaalbasis van paneelinhoud op TV. SYS-3b is al DONE.
+2. ~~**SYS-1b** detail, collectie en persoon over hetzelfde geneste routecontract.~~ DONE op
+   `bb79a825`, dertien tests erbij en de testdelta van CI eronder in het register.
+3. **SYS-3a** de schaalbasis van paneelinhoud op TV. Dat is nu de eerstvolgende stap.
+   SYS-3b is al DONE.
 4. **De eerste echte Pleya Verify-journey**, over shell naar subpagina naar Back. Tot die
    er is geldt SYS-1 als implementation-proven en niet als end-to-end geaccepteerd.
 5. Daarna BACK1, de gedeelde lege staat, i18n en tokens, en dan de mockups in blokken:
