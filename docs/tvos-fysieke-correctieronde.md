@@ -2597,3 +2597,60 @@ is er zelfs op gebouwd. Het registreren van die pref zet echter synchronisatie a
 waarde die vandaag lokaal blijft, en dat is een gedragswijziging die buiten deze fase valt.
 Hij hoort bij dezelfde opruiming als het regex-gat in `preference_sync_policy_test.dart` dat
 `track_language_preferences` en `unified_source_preferences` al langer ongezien doorlaat.
+
+### NAV1, tweede oorzaak: een tweede native druk na de Home-refresh
+
+Heropend 5 september op de Apple TV met build 251, waar `51186c6` in zit. Log `y0w9x`
+(`curl -sS https://ice.pleya.app/logs/y0w9x`) laat per ringdruk die op Home landt twee complete
+native keydown/keyup-paren van dezelfde toets zien, 80 tot 230 ms uit elkaar, de tweede telkens
+net nadat "Fetched 20 on deck items" de Home-refresh afsluit. Geen `source=swipe`, geen
+`KeySimulator`: het is niet het aanraakpad waar NAV1 op gefixt is, en niet de Dart-kant van
+`GamepadService`. Het tweede paar komt over `flutter/keydata` binnen als een tweede fysieke druk,
+in drie van de vier gevallen zonder eigen `touch started` (`reason=no-active-touch`), in het
+vierde nog binnen de aanraking van de eerste. Het duplicaatvenster van 120 ms miste het.
+
+De navbalk is bewezen niet de eigenaar: `tv_top_navigation_test.dart:301` loopt precies de
+gemelde route af, één stop per druk, en is groen.
+
+**Fix, verankerd op de aanraakstroom.** `AppleTvRemoteTouchService` onthoudt het laatste
+afgeronde native paar (keydown én keyup) en of er sindsdien een `started` is geweest. Een tweede
+keydown van dezelfde toets zonder nieuwe aanraking, binnen 500 ms, is een duplicaat en wordt
+samen met zijn keyup geconsumeerd. Een echte tweede tik brengt zijn eigen `started` mee en gaat
+door; een ingedrukt gehouden richting heeft geen keyup ertussen en blijft herhalen. Vijf
+replay-tests in `apple_tv_remote_touch_service_test.dart` spelen de logregels na, met hun
+tijdsverschillen, en de 43 bestaande controles blijven groen.
+
+**Bron nog aan te wijzen, op het toestel.** Twee kandidaten buiten Dart: `universal_gamepad`
+ziet de Siri Remote als gamepad (log regel 15) en kan D-pad-input als toetsevent injecteren, of
+de engine-fork laat beide geswizzelde hops in `tvosHandlePress` landen en synthetiseert onder een
+zwaar frame twee keer. A/B: een build met `GamepadService` uit op Apple TV; verdwijnt het tweede
+paar uit de log, dan gaat de gamepad-bridge daar structureel uit, anders gaat de log naar de
+engine-fork. De dedupe blijft in beide gevallen staan. De simulator kan dit niet: geen
+aanraakvlak, en de kliktest van WALK ziet het dus ook niet.
+
+### HERO3, "Recent uitgebracht" had geen venster
+
+Gemeld 5 september op het toestel: de hero toont films die niet recent uitgebracht zijn.
+`getLatestMoviesFromAllServers` haalde de 100 laatst *toegevoegde* items, hield films over,
+sorteerde op releasedatum en nam de top 12; niets weigerde een film uit 1998, en een film zonder
+releasedatum reed mee op `addedAt`. DEC-067 en hoofdstuk 9.5 beloofden "recent uitgebracht"
+zonder te zeggen wat recent is. Besluit van Michel: 90 dagen op de releasedatum, en zonder datum
+buiten de hero (DEC-097). Vier HERO3-controles in `data_aggregation_bridge_test.dart` eisen de
+grens; de bestaande test die het oude gedrag vastlegde is bijgewerkt.
+
+Gevolg dat vooraf niet in de analyse stond: de Verify-fixture is een Pleya-fake-server over
+`/v1`, en dat contract draagt geen releasedatum. De hero-scenario's op de simulator zien dus de
+fallback, en dat is precies wat DEC-097 voor een Pleya Server voorschrijft tot het contract een
+releasedatum draagt. Dat protocolgat staat naast het identiteitsgat van LANG1.
+
+### PLR1, de spelerlaag betaalt de title-safe inset
+
+Gemeld 5 september met foto: de "B" van Bluey en de "S" van S3 afgesneden, "3:09" op de rand.
+De speler rendert op tvOS `DesktopVideoControls`; de titelbalk nam op alles wat niet macOS is
+`macOSLeftFullscreen` = 0, en het onderblok stond op 24. `main.dart` zet de tvOS-overscan-insets
+op nul, dus `SafeArea` helpt niet; elke andere TV-pagina betaalt `tvPageInset`. Nu de speler ook
+(titelbalk, onderblok, content strip, zwevende knoppen, en het infopaneel als ondergrens). Een
+widgettest eist dat titelblok en tijdlijn niet vóór de inset beginnen; `player.title`,
+`player.timeline` en `player.safe_area` bestaan voor Pleya Verify. Een spelerscenario wacht op
+een betrouwbare afspeelroute op de TV-shell (VER5) en is bewust niet gefaket; hardware is J4.
+

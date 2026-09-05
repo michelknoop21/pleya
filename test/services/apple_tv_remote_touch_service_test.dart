@@ -7,6 +7,79 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('AppleTvRemoteTouchService', () {
+    // NAV1, tweede oorzaak — replay van log y0w9x (build 251, 5 september).
+    // Een ringdruk die op Home landt werd 80-230 ms later gevolgd door een
+    // tweede compleet native keydown/keyup-paar van dezelfde toets, zonder
+    // eigen `started`. Eén druk, twee stappen. De reeksen hieronder zijn de
+    // logregels, met hun tijdsverschillen.
+    group('NAV1 replay uit log y0w9x', () {
+      test('08:31:40 — een tweede paar zonder nieuwe aanraking wordt geconsumeerd', () async {
+        final h = _Harness();
+        await h.send('started');
+        h.advance(const Duration(milliseconds: 108));
+        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowLeft)), isFalse);
+        h.advance(const Duration(milliseconds: 1));
+        await h.send('cancelled', x: 28.1, y: 16.1);
+        h.advance(const Duration(milliseconds: 2));
+        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowLeft)), isFalse);
+        h.advance(const Duration(milliseconds: 136));
+        // The duplicate: no `started` in between.
+        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowLeft)), isTrue);
+        h.advance(const Duration(milliseconds: 1));
+        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowLeft)), isTrue);
+      });
+
+      test('08:31:41 — ook als de eerste aanraking nog niet is losgelaten', () async {
+        final h = _Harness();
+        await h.send('started');
+        h.advance(const Duration(milliseconds: 30));
+        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isFalse);
+        h.advance(const Duration(milliseconds: 3));
+        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowRight)), isFalse);
+        h.advance(const Duration(milliseconds: 104));
+        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isTrue);
+        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowRight)), isTrue);
+        h.advance(const Duration(milliseconds: 59));
+        await h.send('cancelled');
+      });
+
+      test('een echte tweede tik brengt zijn eigen started mee en gaat door', () async {
+        final h = _Harness();
+        await h.send('started');
+        h.advance(const Duration(milliseconds: 100));
+        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isFalse);
+        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowRight)), isFalse);
+        await h.send('cancelled');
+        h.advance(const Duration(milliseconds: 120));
+        await h.send('started');
+        h.advance(const Duration(milliseconds: 100));
+        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isFalse);
+        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowRight)), isFalse);
+      });
+
+      test('een ingedrukt gehouden richting heeft geen keyup ertussen en blijft herhalen', () async {
+        final h = _Harness();
+        await h.send('started');
+        h.advance(const Duration(milliseconds: 100));
+        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowDown)), isFalse);
+        h.advance(const Duration(milliseconds: 150));
+        expect(h.service.handleNativeKeyEvent(_keyRepeat(LogicalKeyboardKey.arrowDown)), isFalse);
+        h.advance(const Duration(milliseconds: 150));
+        expect(h.service.handleNativeKeyEvent(_keyRepeat(LogicalKeyboardKey.arrowDown)), isFalse);
+        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowDown)), isFalse);
+      });
+
+      test('een andere toets na een afgerond paar is geen duplicaat', () async {
+        final h = _Harness();
+        await h.send('started');
+        h.advance(const Duration(milliseconds: 100));
+        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isFalse);
+        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowRight)), isFalse);
+        h.advance(const Duration(milliseconds: 100));
+        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowLeft)), isFalse);
+      });
+    });
+
     test('emits repeated horizontal swipes only after the repeat interval', () async {
       final harness = _Harness();
 

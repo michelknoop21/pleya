@@ -49,7 +49,17 @@ List<MediaItem> filterHiddenLibraryItems(List<MediaItem> items, Set<String>? hid
 class DataAggregationService {
   final MultiServerManager _serverManager;
 
-  DataAggregationService(this._serverManager);
+  DataAggregationService(this._serverManager, {DateTime Function()? now}) : _now = now ?? DateTime.now;
+
+  /// The clock the release window is measured against. A seam for tests;
+  /// production is `DateTime.now`.
+  final DateTime Function() _now;
+
+  /// How old a release may be and still count as "recent uitgebracht" for
+  /// the Home hero and the row of the same name (DEC-097, 5 September 2026:
+  /// 90 days). One constant, one owner; `FeaturedSelector` deliberately does
+  /// not repeat it.
+  static const Duration heroReleaseWindow = Duration(days: 90);
 
   /// Online clients, optionally restricted to [serverIds] — delta refreshes
   /// fan out to newly-online servers only. Always visibility-filtered: a
@@ -202,17 +212,22 @@ class DataAggregationService {
     // Hard films-only: no series, no series fallback.
     candidates = candidates.where((item) => item.kind == MediaKind.movie).toList();
 
-    // Release date descending. Items without a release date fall back to
-    // addedAt per item and sink below every dated film — addedAt is a
-    // last-resort tie-break, never the primary sort.
-    candidates.sort((a, b) {
-      final da = _releaseDate(a);
-      final db = _releaseDate(b);
-      if (da != null && db != null) return db.compareTo(da);
-      if (da != null) return -1;
-      if (db != null) return 1;
-      return (b.addedAt ?? 0).compareTo(a.addedAt ?? 0);
-    });
+    // "Recent uitgebracht" is a window on the release date, not an ordering
+    // (DEC-097). Before this there was no lower bound at all: the 100 most
+    // recently *added* items were sorted by release date and the top 12 kept,
+    // so a library back-filled with old films put a 1998 title in the hero
+    // under a heading that promised the opposite. A film without a release
+    // date cannot be recently released by any reading, so it is out as well:
+    // Pleya Server, Pleya Share and the local folder carry no date over the
+    // line today, and that is a protocol gap to close where the contract may
+    // change, not a reason to show "recently added" under this name.
+    final cutoff = _now().subtract(heroReleaseWindow);
+    final dated = <({MediaItem item, DateTime released})>[
+      for (final item in candidates)
+        if (_releaseDate(item) case final released? when !released.isBefore(cutoff)) (item: item, released: released),
+    ];
+    dated.sort((a, b) => b.released.compareTo(a.released));
+    candidates = [for (final entry in dated) entry.item];
 
     // Lightweight cross-server dedup on shared identity (guid) then globalKey.
     final seen = <String>{};
@@ -287,7 +302,7 @@ class DataAggregationService {
   }
 
   /// Parsed release date, or null when the item has no usable
-  /// `originallyAvailableAt` (those items sink to the bottom via addedAt).
+  /// `originallyAvailableAt` (those items are outside the release window).
   DateTime? _releaseDate(MediaItem item) {
     final raw = item.originallyAvailableAt;
     if (raw == null || raw.isEmpty) return null;
