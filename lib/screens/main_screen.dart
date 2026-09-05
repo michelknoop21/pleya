@@ -1171,6 +1171,15 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
+  /// On the phone, Home (inside [DiscoverScreen]) and both fase-2 landings
+  /// all watch the same `DiscoverProvider`, and `IndexedStack` keeps every
+  /// tab's screen mounted, offstage ones included. One `DiscoverProvider.load()`
+  /// therefore rebuilds and resorts all three at once, even though only one
+  /// is visible. Accepted rather than fixed: `TickerMode(enabled: false)`
+  /// already stops the offstage two from animating, so the extra cost is a
+  /// layout pass with nothing on screen to show for it, and splitting three
+  /// screens onto separate provider instances is a bigger architectural
+  /// change than this review round's scope covers.
   List<Widget> _buildScreens(bool offline) {
     return [
       for (final tab in _getVisibleTabs(offline))
