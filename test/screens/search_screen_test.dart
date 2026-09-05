@@ -248,6 +248,18 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  /// A film title is not prose. iOS offers `dessert` over `desert` and turns
+  /// the query into something the viewer never typed; the same defect the
+  /// books scenario surfaced, on the field that predates it.
+  testWidgets('autocorrect is off on the phone search field', (tester) async {
+    final client = _ProgrammableClient();
+    await _pumpSearchScreen(tester, client);
+
+    expect(tester.widget<TextField>(find.byType(TextField)).autocorrect, isFalse);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 MediaItem _item(String id, String title) => MediaItem(

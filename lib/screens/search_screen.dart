@@ -760,6 +760,10 @@ class _SearchScreenState extends State<SearchScreen>
                     controller: _searchController,
                     focusNode: _searchFocusNode,
                     textInputAction: TextInputAction.search,
+                    // Same reason as the two book search fields: a title, an
+                    // author or a show name is not prose, and iOS quietly
+                    // offers a correction that searches something else.
+                    autocorrect: false,
                     // Don't auto-open the TV keyboard the instant the field
                     // autofocuses: the field losing/regaining focus around the
                     // keyboard route races the auto-reopen guard and traps the
