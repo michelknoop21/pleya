@@ -18,7 +18,7 @@ zet in dezelfde commit de status om en vult het bewijs in. Een taak die zonder b
 
 Bewijs is een commit-sha, een testnaam, een meting of een bestandspad. "Werkt" is geen bewijs.
 
-Laatst bijgewerkt: 2026-09-05 (S0 gesloten, PS-11A gestart, protocolvenster 1 open). Bron voor de scope: `docs/pleya-server-rebaseline/`
+Laatst bijgewerkt: 2026-09-05 (S1.3 gesloten, planning als hoofdstuk 2 erbij). Bron voor de scope: `docs/pleya-server-rebaseline/`
 deel I (slices) en deel O (Definition of Done).
 
 ---
@@ -35,6 +35,10 @@ deel I (slices) en deel O (Definition of Done).
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **1** | **1** | **24** |
 
+Per taak, en dat is de maat die telt: **148 taken, 13 gereed, 2 bezig, 133 open.** S0 is dicht met
+acht van acht. S1 staat op drie van acht en is de lopende slice; de twee andere gereed-vinkjes zijn
+mockupgoedkeuringen die met poort P3 al binnen waren (S12.1 en S13.1).
+
 Gesloten vóór dit traject en niet in deze lijst: PS-0, PS-1, PS-2, PS-3, PS-3W, PS-4, PS-9.
 Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-reader (PS-15).
 
@@ -44,9 +48,78 @@ loopt**, en S1 is de lopende slice. Het protocolvenster voor S1 is geopend met
 DEC-110 op één punt: venster 1 voegt twee foutdomeinen toe en niet één. PS-14 blijft gesloten tot PS-11A af en
 geïntegreerd bewezen is; dat is een volgorde, geen voorkeur.
 
+
 ---
 
-## 2. Slices
+## 2. Planning: de volgorde van hier naar af
+
+Dit hoofdstuk beslist niets. De afhankelijkheidsgraaf staat in
+`docs/pleya-server-rebaseline/I-master-implementation-plan.md` (I.1), de stand per taak in
+hoofdstuk 3 hieronder; wat hier staat is die twee naast elkaar gelegd, zodat de vraag "wat moet er
+nog gebeuren en in welke volgorde" één antwoord heeft. Wie een andere volgorde kiest die dezelfde
+afhankelijkheden respecteert doet niets fout.
+
+### 2.1 De golven
+
+Elke golf is een topologisch niveau: alles erin kan pas beginnen als de golf ervoor staat, en
+binnen een golf is de volgorde vrij. De kolom "taken" telt wat er open of bezig is.
+
+| Golf | Slices | Taken | Wat het oplevert | Wacht op |
+| --- | --- | --- | --- | --- |
+| 1, loopt | S1, S2 | 11 | beheer-backend compleet: instellingen, diagnostiek, tokens, audit, bibliotheken, opslag, scans | niets |
+| 2 | S3, S4, S5, S6 | 22 | de catalogus verbreedt: boeken, `.nfo`-sidecars, artworkladder, filters en facetten, leesvoortgang | S1 voor S2; poort P5 vóór S6 |
+| 3 | S14, S16 | 12 | de Flutter-clients en de MCP-beheerlaag komen op het verbrede contract | S1, S3, S5, S6 |
+| 4 | S7, S8, S9, S10, S11, S12, S13 | 32 | Pleya Web: shell en designsysteem, consumer, boeken, beheer, setup-wizard, reader, speler | S7 kan meteen; de rest hangt aan golf 2 en 3 |
+| 5 | S17, S18, S23 | 15 | afspelen op eigen kracht: PlaybackPlan, transcode, downloads | S14 |
+| 6 | S19, S20, S21 | 15 | verzamelingen en afspeellijsten, persoonlijke laag, realtime | S1, S6, S2 |
+| 7 | S22 | 9 | metadata-providers met automatisch matchen en artwork | S4 |
+| 8 | S24, S25 | 11 | remote hardening en observability, back-up, restore, upgrade, faalpaden | S1, S2 |
+| slot | S15 | 8 | hardening, veertien golden journeys, documentatie, Plex-off gate, merge naar `main`, NAS | alles |
+| keuze | PS-12 | 0 | Plex-migratie, met een eigen vrijgave na S15 | Michel |
+
+**S22 staat laat en hoeft dat niet.** Hij kan starten zodra S4 staat, en hij is de zwaarste losse
+slice die er is. Hij staat hier achteraan omdat hij niets blokkeert, niet omdat hij moet
+wachten; wie ruimte heeft trekt hem naar voren.
+
+### 2.2 De kritieke lijn
+
+`S1 → S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15`. Vertraging daarop schuift de release op;
+vertraging op de rest niet, zolang alles vóór S15 klaar is. Deel I noemt dezelfde lijn, met S22 als
+zwaarste slice ernaast.
+
+De web-tak (S7 tot S13) hangt er in zijn geheel naast en is qua taken de grootste van allemaal: 32
+van de 135 resterende. Hij blokkeert alleen S15.
+
+### 2.3 Wat op een besluit wacht en niet op code
+
+| Wat | Blokkeert | Stand |
+| --- | --- | --- |
+| **P5, het locatorbesluit** (Readium Locator plus publicatie-digest, S6.1) | S6, en via S6 ook S9, S12, S14, S16, S20 en S21 | open; RB-12 is bijgesteld in deel E, het besluit zelf moet nog als DEC |
+| **Pushen naar `origin`** | niets technisch, wel elk verlies bij een schijfstoring | de branch bestaat op `origin` maar loopt er dertien commits op voor; pushen vraagt Michels go |
+| **PS-12 vrijgeven** | niets; het is een keuzefase | pas ná S15, met een eigen besluit |
+| Mockups 50, 51 en 36 | S12.1, S13.1, deel van S22.6 | goedgekeurd met poort P3 op 4 september; S12.1 en S13.1 zijn daarmee gesloten, S22.6 houdt de bouw van scherm 29 en 36 over |
+
+### 2.4 De poorten die nog dicht staan
+
+P5 (locator), P6 (acht protocolvensters geopend en gesloten), P7 (PS-5-hardwareronde, uitgesteld),
+P8 (Plex-off gate). Van de acht protocolvensters is er één open: venster 1, bij S1, met zeven van
+zeventien rijen erin. De volledige stand staat in hoofdstuk 4.
+
+### 2.5 Twee dingen die deze planning kunnen omgooien
+
+**Een protocolvenster dat te vroeg dichtgaat.** Elk venster opent en sluit met een DEC, en een rij
+die er niet in zat kost een nieuw besluit plus een nieuwe compatibiliteitstoets. De zeventien rijen
+van venster 1 landen daarom per commitgrens en niet in één klap, en dat patroon geldt voor de zeven
+vensters erna net zo.
+
+**De hardwareronde.** P7 is uitgesteld en niet vervallen: `docs/qa/ps5-hardware-round.md` noemt drie
+startvoorwaarden. Hij moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of PS-9-gedrag
+bevat, en hij staat als S15.6 in de laatste golf. Blijft hij daar liggen, dan schuift de release en
+niet de bouw.
+
+---
+
+## 3. Slices
 
 ### S0 Fundament
 
@@ -183,7 +256,7 @@ geïntegreerd bewezen is; dat is een volgorde, geen voorkeur.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S12.1 | Mockup 51 (readerschil op `@readium/navigator`) goedgekeurd | `[ ]` | | |
+| S12.1 | Mockup 51 (readerschil op `@readium/navigator`) goedgekeurd | `[x]` | gedekt door poort P3: mockup 51 is gebouwd, gereviewd (C.7) en op 4 september door Michel goedgekeurd, en zit met zijn gerenderde beeld in de APPROVED set met `SHA256SUMS`. Deze rij stond nog open omdat P3 zes mockups in één ronde afvinkte en de slice-rijen niet meebewogen | 2026-09-04 |
 | S12.2 | Spike Readium TypeScript Toolkit tegen het manifest; epub.js alleen als gedocumenteerde contingency | `[ ]` | | |
 | S12.3 | Reader met leespositie en client-local instellingen | `[ ]` | | |
 
@@ -191,7 +264,7 @@ geïntegreerd bewezen is; dat is een volgorde, geen voorkeur.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S13.1 | Mockup 50 (spelerschil) goedgekeurd | `[ ]` | | |
+| S13.1 | Mockup 50 (spelerschil) goedgekeurd | `[x]` | gedekt door poort P3, op dezelfde grond als S12.1: gebouwd, gereviewd (C.7), akkoord Michel 4 september, in de APPROVED set met `SHA256SUMS` | 2026-09-04 |
 | S13.2 | Schil met `<video>` op de streamsessie | `[ ]` | | |
 | S13.3 | Kijkstatus met `session_id` en `base_revision` | `[ ]` | | |
 | S13.4 | Ondertitelconversie naar WebVTT | `[ ]` | | |
@@ -290,7 +363,7 @@ geïntegreerd bewezen is; dat is een volgorde, geen voorkeur.
 | S22.3 | Automatisch matchen met driestapsregel en ambiguïteitslijst | `[ ]` | | |
 | S22.4 | Automatisch artwork ophalen naar de cache op de ladder | `[ ]` | | |
 | S22.5 | Correcties: bevestigen, afwijzen, fix-match, artwork kiezen met pin, per-field overrides met provenance | `[ ]` | | |
-| S22.6 | Mockup 36 goedgekeurd, scherm 29 en 36 gebouwd met provenance per veld | `[ ]` | | |
+| S22.6 | Mockup 36 goedgekeurd, scherm 29 en 36 gebouwd met provenance per veld | `[~]` | de goedkeuring van mockup 36 is binnen met poort P3 (4 september); wat deze rij openhoudt is het bouwen van scherm 29 en 36 in `pleya_web` | |
 | S22.7 | Attributie zichtbaar in web en app | `[ ]` | | |
 | S22.8 | Correctie overleeft drie rondes, SSRF-grens getest, venster 8 | `[ ]` | | |
 | S22.9 | PS-7 criteria 1 tot 4 op de NAS, journey 14 | `[ ]` | | |
@@ -336,7 +409,7 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 
 ---
 
-## 3. Poorten en releasevoorwaarden
+## 4. Poorten en releasevoorwaarden
 
 | # | Poort | Status | Bewijs |
 | --- | --- | --- | --- |
@@ -355,14 +428,14 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 
 ---
 
-## 4. Hoe deze lijst wordt bijgehouden
+## 5. Hoe deze lijst wordt bijgehouden
 
 1. Bij het starten van een taak: `[ ]` naar `[~]`.
 2. Bij het afronden: `[x]` plus bewijs plus datum, in dezelfde commit als het werk.
 3. Bij een blokkade: `[!]` plus de reden in de bewijskolom; een blokkade zonder reden is niet
    toegestaan.
-4. Bij het sluiten van een slice: de tabel in hoofdstuk 1 bijwerken en een Roadmap Drift Check
-   in `STATUS.md` (drie vragen uit architectuur 23.1).
+4. Bij het sluiten van een slice: de tabellen in hoofdstuk 1 en 2.1 bijwerken en een Roadmap Drift
+   Check in `STATUS.md` (drie vragen uit architectuur 23.1).
 5. Komt er werk bij dat hier niet staat, dan komt er eerst een regel bij, met een verwijzing
    naar de plek in `docs/pleya-server-rebaseline/` die het rechtvaardigt. Werk zonder regel is
    scope creep.
