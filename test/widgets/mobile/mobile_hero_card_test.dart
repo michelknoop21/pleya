@@ -11,6 +11,7 @@ import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/widgets/mobile/mobile_hero_card.dart';
 import 'package:pleya/widgets/mobile/mobile_hero_indicator.dart';
 import 'package:provider/provider.dart';
@@ -121,5 +122,81 @@ void main() {
       MobileHeroCard(groups: const [], width: 361, height: 220, onPlay: (_) {}, onSecondaryAction: (_) {}),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('gaining a second group after the first build restarts auto-advance', (tester) async {
+    await pump(
+      tester,
+      MobileHeroCard(groups: [group('i1', title: 'Dune')], width: 361, height: 220, onPlay: (_) {}, onSecondaryAction: (_) {}),
+    );
+
+    // Same tree shape and slot, so this updates MobileHeroCard's existing
+    // State rather than remounting it — an update, not a new widget.
+    await pump(
+      tester,
+      MobileHeroCard(
+        groups: [group('i1', title: 'Dune'), group('i2', title: 'Arrival')],
+        width: 361,
+        height: 220,
+        onPlay: (_) {},
+        onSecondaryAction: (_) {},
+      ),
+    );
+
+    await tester.pump(mobileHeroAutoAdvanceInterval + const Duration(milliseconds: 50));
+    await tester.pump(tokens(tester.element(find.byType(MobileHeroCard))).normal);
+
+    expect(find.text('Arrival'), findsOneWidget);
+  });
+
+  testWidgets('a disabled TickerMode stops the auto-advance timer', (tester) async {
+    tester.view.physicalSize = const Size(393, 852);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final manager = MultiServerManager();
+    final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+    addTearDown(multiServerProvider.dispose);
+
+    Widget buildTree(bool enabled) => ChangeNotifierProvider<MultiServerProvider>.value(
+      value: multiServerProvider,
+      child: MaterialApp(
+        theme: monoTheme(dark: true),
+        home: Scaffold(
+          body: TickerMode(
+            enabled: enabled,
+            child: MobileHeroCard(
+              groups: [group('i1', title: 'Dune'), group('i2', title: 'Arrival')],
+              width: 361,
+              height: 220,
+              onPlay: (_) {},
+              onSecondaryAction: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(buildTree(true));
+    await tester.pump();
+
+    await tester.pumpWidget(buildTree(false));
+    await tester.pump();
+
+    // Muted, not stopped: a Ticker under a disabled TickerMode still exists,
+    // it just never receives frames — so a still-scheduled animateToPage
+    // would sit frozen at its start value rather than fail visibly. Checking
+    // here would pass by accident whether or not the timer was cancelled.
+    // Re-enabling and letting any such frozen animation catch up is the
+    // signal that actually distinguishes the two: a `Timer.periodic` the fix
+    // never cancelled would have queued that animation while muted, and it
+    // completes the moment ticking resumes.
+    await tester.pump(mobileHeroAutoAdvanceInterval + const Duration(milliseconds: 50));
+    await tester.pumpWidget(buildTree(true));
+    await tester.pump();
+    await tester.pump(tokens(tester.element(find.byType(MobileHeroCard))).normal);
+
+    expect(find.text('Dune'), findsOneWidget, reason: 'off-screen: no advance should have happened');
+    expect(find.text('Arrival'), findsNothing);
   });
 }

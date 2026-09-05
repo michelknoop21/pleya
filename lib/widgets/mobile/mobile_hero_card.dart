@@ -5,6 +5,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 
 import '../../automation/automation_ids.dart';
@@ -49,18 +50,48 @@ class _MobileHeroCardState extends State<MobileHeroCard> {
   final PageController _controller = PageController();
   Timer? _timer;
   int _page = 0;
+  ValueListenable<TickerModeData>? _tickerModeNotifier;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // The IndexedStack tab this card lives under wraps its offstage children
+    // in TickerMode(enabled: false) — the same signal that already pauses
+    // this screen's animations. Ride it for the carousel timer too, instead
+    // of a second, TickerMode-unaware notion of "visible".
+    final notifier = TickerMode.getValuesNotifier(context);
+    if (!identical(notifier, _tickerModeNotifier)) {
+      _tickerModeNotifier?.removeListener(_onTickerModeChanged);
+      _tickerModeNotifier = notifier..addListener(_onTickerModeChanged);
+    }
     _restartAutoAdvance();
   }
 
   @override
+  void didUpdateWidget(covariant MobileHeroCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A group count that grows past 1 after the first build (the catalogue
+    // arriving late) has nothing else that restarts the carousel — only
+    // didChangeDependencies and a manual swipe do.
+    if (widget.groups.length != oldWidget.groups.length) {
+      _restartAutoAdvance();
+    }
+  }
+
+  @override
   void dispose() {
+    _tickerModeNotifier?.removeListener(_onTickerModeChanged);
     _timer?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _onTickerModeChanged() {
+    if (_tickerModeNotifier?.value.enabled == false) {
+      _timer?.cancel();
+    } else {
+      _restartAutoAdvance();
+    }
   }
 
   void _restartAutoAdvance() {
@@ -68,6 +99,7 @@ class _MobileHeroCardState extends State<MobileHeroCard> {
     // Reduce Motion: hoofdstuk 9.6 — no unattended rotation. A single slide
     // has nothing to advance to either.
     if (widget.groups.length <= 1 || MediaQuery.disableAnimationsOf(context)) return;
+    if (_tickerModeNotifier?.value.enabled == false) return;
     _timer = Timer.periodic(mobileHeroAutoAdvanceInterval, (_) => _advance());
   }
 
