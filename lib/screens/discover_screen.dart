@@ -159,6 +159,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Timer? _spotlightDebounce;
   bool _isTabVisible = true;
 
+  /// Cached in didChangeDependencies rather than read via
+  /// PlatformDetector.isPhone(context) at each _startAutoScroll call: that
+  /// call can happen from initState, before Theme.of(context) is safe.
+  bool _isPhone = false;
+
   // Track initial load so we can focus hero when content first appears
   bool _initialLoadComplete = false;
   bool _pendingTvBrowseRailFocus = false;
@@ -528,6 +533,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
 
+    final isPhone = PlatformDetector.isPhone(context);
+    if (isPhone != _isPhone) {
+      _isPhone = isPhone;
+      if (isPhone) {
+        _autoScrollTimer?.cancel();
+      } else if (_isTabVisible && !_isAutoScrollPaused) {
+        _startAutoScroll();
+      }
+    }
+
     // Home is the surface that carries the now-watching indicator, so it is
     // Home that asks Tautulli once a minute whether anyone is streaming. The
     // subscription cannot live in the button: the button only exists while
@@ -841,6 +856,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void _startAutoScroll() {
     _autoScrollTimer?.cancel();
     if (_isAutoScrollPaused) return;
+    // On the phone, _buildContent replaces this whole subtree with
+    // MobileHomeScreen (which has its own hero auto-advance) — the hero
+    // PageView and its controller below never get built, so this timer
+    // would just wake up every few seconds to find `!_heroController.hasClients`
+    // and bail, for the life of the session. Read from the cached field, not
+    // PlatformDetector.isPhone(context) directly: this can run from
+    // initState, before Theme.of(context) (which isMobile depends on) may be
+    // called.
+    if (_isPhone) return;
 
     if (PlatformDetector.isTV()) {
       // TV billboard cycles through the newest releases. Timer is created up
