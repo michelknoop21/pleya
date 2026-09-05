@@ -33,7 +33,7 @@ steps:
 
   # Down out of the bar lands on Afspelen (hoofdstuk 7.1). A cold start now
   # leaves the remote on the top navigation rather than on the content, so this
-  # press is the one that enters the page — see `tvos.nav.destination-select`.
+  # press is the one that enters the page — see `tvos.nav.focus-switches-destination`.
   - press: down
   - settle: 1000
   - assert: {id: discover.hero.play, focused: true}

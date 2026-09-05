@@ -51,6 +51,9 @@ ids:
   - id: nav.myPleya
     role: nav
     instanceable: false
+  - id: nav.profile
+    role: nav
+    instanceable: false
   - id: sidebar.rail
     role: sidebar
     instanceable: false

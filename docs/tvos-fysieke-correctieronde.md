@@ -61,7 +61,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | WT1 | Focus strandt na het vergeten van een kamer in Samen Kijken | FIXED | `614fc08` |
 | VER1 | Een assert met een verkeerd YAML-type eindigt groen | FIXED | `9d36bb5` |
 | WL1 | Focus strandt na het verwijderen van een kijklijstkaart | FIXED | `b3a3e5d` |
-| NAV1 | De bovenbalk slaat Home over. Heropend 5 september: log `y0w9x` (build 251) toont een tweede *native* keydown/keyup-paar na de druk die op Home landt. Oorzaak gevonden in de engine-fork, niet in de fasen: het aanzetten van de Menu-passthrough laat de ingedrukte pijl los, en `.ended` tikt hem opnieuw. Zie "NAV1, de echte oorzaak" | FIXED, app-contract in Verify, engine-helft HARDWARE ONLY (build 259) | `51186c6`, `531ae19c`, `7786a952` |
+| NAV1 | De bovenbalk slaat Home over. Heropend 5 september: log `y0w9x` (build 251) toont een tweede *native* keydown/keyup-paar na de druk die op Home landt. Oorzaak gevonden in de engine-fork, niet in de fasen: het aanzetten van de Menu-passthrough laat de ingedrukte pijl los, en `.ended` tikt hem opnieuw. Zie "NAV1, de echte oorzaak". Bevestigd op de Apple TV op 5 september 2026, build 259: links en rechts over de balk is één tab per druk, ook bij het landen op Home | VERIFIED | `51186c6`, `531ae19c`, `7786a952` |
 | LAND1 | De landing slaat de eerste contentrail over | FIXED, hardware open | `51186c6` |
 | TILE1 | Een tegel zonder actie zou de focus klemmen | NOT REPRODUCED | n.v.t. |
 | LAND4 | Verticaal navigeren verliest de horizontale positie | FIXED | `8686f5c` |
@@ -125,10 +125,15 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | REV1 | Apple Review Jellyfin: Home toont content, Films/Series leeg en concrete library niet zichtbaar (Apple Review, release-kritiek) | OPEN | n.v.t. |
 | LAND7 | Actieve discovery-rail krijgt geen vaste verticale focuspositie | OPEN | n.v.t. |
 | LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted. Data- en resolutielaag op eae19cb4, de pagina 31 A, de sheet 31 B en de toasts 31 C/D op a9a50ad9, de layout- en meldingscorrecties uit de simulatorronde op a5730f35. Het Verify-scenario is groen; de hardwareronde staat open | OPEN | eae19cb4, a9a50ad9, a5730f35 |
-| HERO3 | De Home-hero toont niet alleen recent uitgebrachte films: "Recent uitgebracht" had geen tijdvenster, en items zonder releasedatum reden mee op `addedAt`. Besluit 5 september: 90 dagen op releasedatum, zonder datum buiten de hero (DEC-097) | FIXED, hardware open | `531ae19c` |
-| PLR1 | Tekst van de spelerlaag valt links buiten het title-safe gebied (titelbalk op x = 0, tijdlijn op 24 pt) terwijl elke andere TV-surface `tvPageInset` betaalt | FIXED, hardware open | `36118056` |
-| WALK | Een `walk`-stap in Pleya Verify die een richting herhaalt en per hop meldt welke focusbare kandidaat is overgeslagen, zodat sprongen niet meer per geval op het toestel gevonden hoeven te worden. Kern in `c4ffcd16` (DEC-098); open: `nav.profile-id`, vier scenario's op de simulator, twee sabotagecontroles, docs | IN PROGRESS | `c4ffcd16` |
-| CI1 | CI staat op `main` sinds 3 september rood en zegt daardoor niets meer over een PR. Drie checks: codegen-drift op `git diff lib/` na `scripts/codegen.sh`, 79 rode tests, en Verify - macOS + iOS simulator. Geen ervan komt van het SYS-werk op deze branch. De codegen-stap maskeerde bovendien vier latere stappen, die op `skipped` bleven staan. Codegen, de 79 tests en de formattering zijn dicht; de volledige suite geeft 6335 groen, 6 overgeslagen, 0 rood. Verify - macOS + iOS simulator blijft open en staat als eigen regel VER-CI hieronder | FIXED | `c0f9427c`, `e76e3f06`, `edc30b6b`, `99442f0d`, `bd22a756`, `213c6e82` |
+| HERO3 | De Home-hero toont niet alleen recent uitgebrachte films: "Recent uitgebracht" had geen tijdvenster, en items zonder releasedatum reden mee op `addedAt`. Besluit 5 september: 90 dagen op releasedatum, zonder datum buiten de hero (DEC-097). Op de Apple TV bekeken op 5 september 2026, met "lijkt opgelost" als oordeel: de melding is weg, en de bibliotheek van Michel houdt genoeg over om de hero te vullen | VERIFIED | `531ae19c` |
+| PLR1 | Tekst van de spelerlaag valt links buiten het title-safe gebied (titelbalk op x = 0, tijdlijn op 24 pt) terwijl elke andere TV-surface `tvPageInset` betaalt. Bevestigd op de Apple TV op 5 september 2026: titel, seizoen/aflevering en tijdlijn staan vrij van de linkerrand | VERIFIED | `36118056` |
+| WALK | Een `walk`-stap in Pleya Verify die een richting herhaalt en per hop meldt welke focusbare kandidaat is overgeslagen, zodat sprongen niet meer per geval op het toestel gevonden hoeven te worden. Kern in `c4ffcd16` (DEC-098), `nav.profile` en de vier scenario's in `a9f69f18`, alle vier groen op de simulator, beide sabotagecontroles aantoonbaar rood | FIXED | `c4ffcd16`, `a9f69f18` |
+| HERO4 | Terug op Home na afspelen staat de pagina nog gescrold en de herolaag schuift mee: het artwork loopt boven beeld uit terwijl de CTA-rij op y=19 achter de navigatieband blijft staan. Nagespeeld over het echte drukpad: afspelen haalt de tegel weg, de content-scope daalt af naar de eerste focusbare afstammeling en dat is de Afspelen-pil, dus geen van de drie gehardde ingangen komt eraan te pas. Het contract hangt nu aan de carrousel die focus krijgt. Bevestigd op de Apple TV op 5 september 2026 | VERIFIED | `20e2bb37`, `17d47592`, `04152ca4` |
+| NAVSEL1 | `tvos.nav.destination-select` sprak de app op twee punten tegen: het verwachtte Films na één RIGHT vanaf Home terwijl Series daar staat, en het eiste een Select om van bestemming te wisselen terwijl focus dat sinds 2 september zelf doet. Gedraaid, rood op de eerste, en verwijderd; `tvos.nav.focus-switches-destination` dekt het en is groen | FIXED | `17d47592` |
+| HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
+| RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
+| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) goedgekeurd op 5 september, DEC-100 accepted, 9.1, 17.5 en 23 aangepast; bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
+| CI1 | CI stond op `main` sinds 3 september rood en zei daardoor niets meer over een PR. Drie checks. Codegen-drift op `git diff lib/` na `scripts/codegen.sh`: `analysis_options.yaml` zet `formatter.page_width` op 120, build_runner leest dat niet en emitteert op 80, en de kale `dart format .` uit CONTRIBUTING.md trok elk gegenereerd bestand naar 120. Die stap maskeerde vier latere stappen, die op `skipped` bleven staan, waaronder een formatteringsfout in vijf SYS-bestanden. 79 rode tests, waarvan 50 verouderde golden-referenties, 15 in `discover_hero_activation_test.dart` als HERO3-nasleep, 1 achterhaalde landing-golden, en de rest afzonderlijk gesloten als HERO5 en RAIL1. Volledige suite daarna 6335 groen, 6 overgeslagen, 0 rood, en `scripts/ci_checks.sh` groen. Verify - macOS + iOS simulator staat apart als VER-CI | FIXED | `c0f9427c`, `e76e3f06`, `edc30b6b`, `99442f0d`, `213c6e82` |
 | VER-CI | `Verify - macOS + iOS simulator` faalt op main en op elke PR, op twee stappen: `macos.smoke.boot` op `Bad state: flutter build macos failed (exit 1)`, en `discover.hero.layout` op `wait_until timed out after 15000ms: {id: discover.hero}`. Draait op `macos-26` en is per DEC-083 bewust geen required gate. Niet te reproduceren zonder macOS | OPEN | n.v.t. |
 
 ## Wat er per item bekend is
@@ -2715,3 +2720,352 @@ widgettest eist dat titelblok en tijdlijn niet vóór de inset beginnen; `player
 `player.timeline` en `player.safe_area` bestaan voor Pleya Verify. Een spelerscenario wacht op
 een betrouwbare afspeelroute op de TV-shell (VER5) en is bewust niet gefaket; hardware is J4.
 
+
+### WALK, de vier scenario's op de simulator
+
+De kern (`c4ffcd16`, DEC-098) was er al; wat openstond was het bewijs dat een walk op de echte
+oppervlakken doet wat hij belooft. Vier scenario's, één ronde per oppervlak, alle vier groen op de
+tvOS-simulator, plus twee sabotagecontroles die aantoonbaar rood waren.
+
+Het eerste gat was `nav.profile`. De profielchip is de linkerrand van de bovenbalk, dus de laatste
+hop van een walk naar links landde op een `discovered`-knoop die een scenario niet kan benoemen.
+Zonder id kan een walk over die balk drukken tellen, maar niet zeggen waar ze uitkomen.
+
+Het tweede gat was de generator. `tool/generate_automation_ids_yaml.dart` crashte met "type
+'InvalidType' is not a subtype of type 'FunctionType'", waardoor `automation_ids.yaml` met de hand
+werd bijgewerkt en dus kon gaan afwijken van de catalogus in Dart. De oorzaak was een import:
+`automation_ids.dart` haalde `navigation_tabs.dart` binnen voor alleen de enum `NavigationTabId`,
+en daarmee de hele widgetboom, die de kale Dart-VM langs de FFI use-site-transformer moest
+compileren. De enum staat nu in `lib/navigation/navigation_tab_id.dart` en `navigation_tabs.dart`
+re-exporteert hem, dus geen andere import verandert en de yaml is weer gegenereerd.
+
+#### Wat de hops laten zien
+
+De bovenbalk is zes stops: profielchip, Zoeken, Home, Series, Films, Mijn Pleya. Twee hops naar
+links, vijf terug naar rechts, alle zeven `ok`. Op Home drie hops omlaag (balk, hero-Afspelen,
+rail 0, rail 1) en twee terug omhoog. Op de taalpagina zes rijen, één per druk, ondanks
+rijhoogtes die verschillen omdat een rij met een noot eronder hoger is dan een schakelaar.
+
+De hub gaf het antwoord op een vraag die als tegenspraak in de lijst stond. `tvos.my-pleya.alignment`
+en `tvos.settings.language-preferences` noemen na twee keer omlaag een verschillende tegel, en de
+aanname was dat één van de twee verouderd was. Dat is niet zo. De entree-druk landt op
+`tvMyPleya_switchProfile`, de kop van de pagina, en pas daarna komen de tegels: `switchProfile`,
+`my_pleya.tile[libraries]`, `my_pleya.tile[settings]`, rand. `alignment` loopt zonder Select naar
+binnen en komt dus op `libraries` uit; `language-preferences` drukt eerst Select, en dat verplaatst
+de ring via `TvContentFocusAuthority.onDestinationSelected` al naar `switchProfile`, zodat dezelfde
+twee drukken een rij lager eindigen, op `settings`. Allebei kloppen, en het verschil is die ene
+druk. Geen van beide is bijgewerkt.
+
+#### De balk is sticky, en dat is geen sprong
+
+De walk omhoog op Home was in eerste instantie rood, en terecht gemeld. Op een pagina die tot de
+tweede rail gescrold staat, staat de bovenbalk op y=46 terwijl de rail die verlaten wordt op y=198
+staat en de rail waarnaar teruggekeerd wordt nog op y=-354, boven de vouw. Meetkundig ligt de balk
+er dus tussen, en het orakel zegt dat ook.
+
+Navigationeel ligt hij er niet tussen. `TvRailStack._handOver` bezit UP tussen rails en geeft de
+toets pas boven de eerste rail terug, dus de balk bereik je door eerst naar de hero te lopen. Dat
+is het LAND4-contract en geen defect, dus het scenario noemt de twee balkitems in `allow`. Per id,
+niet als ruimere marge: een overgeslagen rail op diezelfde hop blijft rood, en dat is precies wat
+de tweede sabotagecontrole aantoont.
+
+Reken erop dat elke verticale walk op een gescrold TV-oppervlak dezelfde vrijstelling nodig heeft.
+Het orakel kan niet zien dat een balk niet meebeweegt met de inhoud, en dat afleiden uit een
+vergelijking van het frame ervoor en erna zou een regel toevoegen die op een animerend frame kan
+omvallen. Een vrijstelling per scenario laat zien wélke knoop gepasseerd mag worden.
+
+#### De negatieve controles
+
+Beide zijn toegepast op een gebouwde app, gedraaid, en daarna teruggedraaid; geen van beide staat
+in een commit.
+
+`destinations[i + 1]` naar `destinations[i + 2]` in `tv_top_navigation.dart` laat de balk Home
+overslaan. De walk naar rechts valt op hop 2 met "expected to land on 'nav.discover' and landed on
+nav.series". `index + delta` naar `index + delta * 2` in `tv_rail_stack.dart` laat de stapel een
+rail overslaan. De walk omlaag valt op hop 3, met `discover.rail.item[2.0]` in plaats van `[1.0]`.
+
+Allebei vallen ze op de druk die de fout maakte, wat het punt van de stap is. Wel vallen ze als
+`expectMismatch` en niet als `skipped`, want `expect` wordt vóór het orakel gecontroleerd. Wie de
+overslagdetectie zelf wil zien afgaan, haalt `expect` weg en houdt de sabotage.
+
+Terzijde uit de tweede controle: de Home-feed van `catalog.mixed.v1` heeft minstens drie rails,
+niet twee. `discover.rail.item[2.0]` bestaat. Het scenario noemt de eerste twee landingen en stopt
+daar; VER4 blijft open, want geen rail is lang genoeg om te scrollen.
+
+### NAVSEL1, `tvos.nav.destination-select` sprak de app tegen en is weg
+
+Gevonden tijdens het WALK-werk, gedraaid op 5 september, en daarna verwijderd.
+
+Het scenario beweerde twee dingen. Eén druk naar rechts vanaf Home landt op `nav.movies`, en er
+is een Select nodig om van bestemming te wisselen. De balk is
+`search, home, series, movies, [liveTv], myPleya` (`lib/navigation/tv/tv_destination.dart`), dus
+daar staat Series, en `_focusTvDestination` (`lib/screens/main_screen.dart`) draait bij focus al
+`_tvNav.activate` en `_selectTab`.
+
+De run valt op de eerste van de twee, in bundel `tvos-nav-destination-select-1788614005520`:
+`assert failed: focused(nav.movies): 'nav.movies'.focused is false, expected true`. Verder komt
+hij niet, want de rest van dat blok staat op dezelfde druk: de assertie dat Home ná die druk nog
+`active` is, is de tweede helft van hetzelfde onjuiste model. Beide helften stammen uit het
+contract van vóór 2 september.
+
+Repareren zou een duplicaat opleveren. `tvos.nav.focus-switches-destination` dekt precies wat
+dit scenario claimde te dekken, en is in dezelfde sessie groen gedraaid
+(`tvos-nav-focus-switches-destination-1788615210216`): de koude start op de balk, `active` dat
+met de focus meeschuift zonder Select, DOWN als de enige weg naar binnen, UP terug, en een
+reeks drukken zonder wachttijd ertussen. De verwijzing in `tvos.home.hero-return` wijst nu daarheen.
+
+### HERO4, de hero schuift weg maar zijn knoppen blijven staan
+
+Gemeld met een foto: terug op Home na afspelen stonden alleen de hero-knoppen in beeld, artwork
+weg, rails eronder.
+
+De meting van 5 september staat in de bundel `tvos-home-hero-return-probe-1788613144700` en is
+niet omstreden. Home in rust zet `discover.hero` op y=0 en `discover.hero.play` op y=740,5. Zodra
+de eerste rail de focus krijgt staat de hero op y=-721,3 en de knoppenrij op y=19,1, en na de
+detailpagina en een Menu terug is dat nog steeds zo, in twee frames met 3 s ertussen.
+
+Wat die bundel er bovenop laat zien, en wat de vorige lezing miste: y=19 verschijnt al bij de
+tweede druk omlaag, vóór er iets gepusht is. De terugweg bewaart die toestand alleen. De
+gepushte route is dus niet de oorzaak.
+
+De screenshot van dezelfde stap laat de knoppen ook niet zien. Dat klopt: `textOpacity` is 0
+zolang een rij de focus heeft (33.2), dus in die toestand is de rij onzichtbaar én onbereikbaar.
+De foto toont het tegenovergestelde, zichtbare knoppen zonder artwork, en dat is de toestand
+waarin de hero-CTA de ring heeft terwijl de pagina gescrold staat.
+
+#### De gedeelde eigenaar, en wat er aan gehard is
+
+`TvContentFeed` heeft drie paden die de ring aan de billboard geven. `_focusHeroFromFirstRow`
+zet de scroll eerst terug op 0 en `tvos.home.hero-return` bewijst dat. `focusPrimary()` en de
+terugval in `focusRestored()` riepen `focusPlay()` rechtstreeks aan, zonder die scroll. Een
+`ListView` bouwt een hele `cacheExtent` door boven de viewport, `canRequestFocus` is waar voor
+een gemonteerde knoop buiten beeld, en een kale `requestFocus()` lokt geen `ensureVisible` uit.
+Wie langs `focusPrimary` binnenkomt op een gescrolde feed zet de ring dus op een billboard dat
+721 px boven de vouw hangt, met de knoppenrij op y=19 onder de balk en zonder artwork erachter.
+Dat is precies de foto.
+
+De drie paden lopen nu door één `_focusHeroCta`, die de scroll herstelt voordat hij de knoop om
+focus vraagt. De negatieve controle is `HERO4: DOWN out of the top navigation restores the
+scroll too` in `tv_content_feed_test.dart`: rood op de oude implementatie, op
+`expect(offset(tester), 0)`, groen erna, met de dertig tests van dat bestand groen.
+
+#### De druk, en waarom hij langs de drie ingangen heen gaat
+
+De vraag die openstond, welke druk `focusPrimary()` bereikt op een gescrolde Home, had een
+verkeerde vorm. Er is er geen. De melding zegt "terug op Home na afspelen", en die weg raakt
+`TvContentFeed` op geen enkel punt aan.
+
+Gemeten in `tvos-home-hero-return-after-playback-1788618751845`. Twee keer omlaag zet de ring op
+de eerste rij en de feed op 721 px. Select opent de detailpagina, Select speelt af, de clip is
+een paar seconden lang en mpv keert vanzelf terug naar de detailpagina (focustrace hop 11 tot 13).
+Dan één Menu, hop 14: `play_button` naar `tvHeroPlay` op `key:Escape`. In het frame erna staat
+`discover.hero` op y=-721,3 en `discover.hero.play` op y=19,1 met de ring erop. De schermafdruk
+`04-returned.png` is de foto van Michel, tot en met de twee pillen boven de navigatiebalk.
+
+De keten. `onPlaybackReturned` ververst het item, Home herprojecteert, en de tegel waar de push
+vandaan kwam bestaat niet meer. `_focusContent(restorePreviousFocus: true)` vraagt dan
+`contentScope.requestFocus()` en die heeft niets onthouden, dus hij daalt af naar de eerste
+focusbare afstammeling van de content. Sinds DEC-095 ligt de carrousel náást de lijst in plaats
+van erin, dus hij is gemonteerd bij elke scrollstand en die eerste afstammeling is de
+Afspelen-pil. De postframe-controle ziet daarna een gevulde `focusedChild` en slaat
+`focusDefault` over, dus `focusActiveTabIfReady` en `focusPrimary` komen er nooit aan te pas.
+
+Dat is ook waarom de knoppen op de foto zichtbaar zijn en in de eerdere meting niet: `textOpacity`
+is 0 zolang een *rij* de focus heeft, en hier heeft de hero hem.
+
+#### De fix
+
+Het contract is niet "deze drie aanroepers scrollen eerst" maar **de billboard die de ring heeft
+staat in beeld**. Dat hangt nu aan de carrousel die focus krijgt: één `Focus` zonder inhoud,
+zonder eigen focus en zonder traversal om de herolaag, precies zoals de rijen er al een hebben.
+`_focusHeroCta` deelt dezelfde `_revealHero`.
+
+De negatieve controle is `HERO4: the billboard comes back into view whoever hands the CTA the ring`
+in `tv_content_feed_test.dart`: de CTA-knoop rechtstreeks om focus vragen, zoals de scope het doet.
+Rood met `offset(tester)` op 468,365, groen erna, met de 31 tests van dat bestand groen.
+
+`tvos.home.hero-return-after-playback` is het bewijs uit de draaiende app en blijft staan. Zonder
+de fix faalt hij op `insideViewport(discover.hero)`; met de fix staat de hero op y=0 en de pil op
+y=740,5, bij dezelfde hop 14. `tvos.home.hero-return`, `tvos.home.hero-return-from-route`,
+`tvos.home.full-bleed` en `tvos.home.walk-rails` blijven groen.
+
+Op 5 september 2026 bevestigd op de Apple TV: de melding is weg. Daarmee is HERO4 `VERIFIED`, en
+staat het bewijs op twee benen — de simulator toont de toestand en het herstel, het toestel toont
+dat de weg die hem opleverde hem niet meer oplevert.
+
+`tvos.home.hero-return-from-route` blijft de tegenhanger en houdt zijn eigen kop: zonder afspelen
+bewaart de gepushte route de scroll, Menu zet de ring terug op de tegel waar hij vandaan kwam, en
+UP brengt de billboard van een teruggekeerde feed weer in beeld. Het verschil tussen die twee
+scenario's is precies waar de melding zat.
+
+### ROW1, eigen rails op Home
+
+Gevraagd door Michel op 5 september 2026, in zijn woorden: "het idee is dat je zelf rails aan kan
+maken door middel van een filter toe te passen en dan de inhoud van de filtering in de rails weer
+te geven", en dat moet "op de homescreen zelf kunnen doen maar wel op een mooie manier".
+
+Twee eisen zitten daarin, en ze zijn allebei nieuw.
+
+De eerste is de **bron van een rij**. Vandaag komt elke rij op Home uit een hub die de backend
+levert; `homeRowId` is `serverId:identifier` van die hub en `HomeLayoutProvider` bewaart alleen
+welke ervan verborgen zijn en in welke volgorde ze staan. Een rij die de gebruiker zelf definieert
+heeft geen hub achter zich. Zijn bron is een opgeslagen filter, en de inhoud is wat de catalogus
+op dat filter teruggeeft. Dat raakt het cataloguscontract, niet alleen de layout.
+
+De tweede is **waar je het doet**. `HomeLayoutScreen` bestaat en kan verbergen en verslepen, maar
+zit onder Instellingen. Michel wil het op Home zelf, en de volgorde daar ook.
+
+**Wat vast blijft staan.** De hero en Verder kijken zijn geen onderdeel van de ordening: die
+blijven op hun plek en zijn niet te verplaatsen of te verbergen. Michel op 5 september: "Verder
+kijken en de hero kun je niet van positie wijzigen. Althans dat moet niet kunnen die blijven wel
+statisch." Dat is precies de grens die `HomeLayoutProvider` vandaag al trekt, in zijn eigen
+doccommentaar: hero en Continue Watching zijn vaste slivers in `DiscoverScreen` en komen niet in
+de layout voor. Het ontwerp mag die grens dus niet oprekken, en een mockup die de hero laat
+verslepen is fout.
+
+Wat er al ligt en wat niet. `HomeLayoutProvider` (`lib/providers/home_layout_provider.dart`) heeft
+de persistentie per profiel, `home_row_layout.dart` past hem toe en `TvContentFeed._rows` doet dat
+op TV. Het filtermodel van de catalogus is er ook, en CAT5 geeft het een bedienbare vorm op TV. Wat
+ontbreekt is de brug: een filter als bewaarbaar object met een naam, een rij die eruit gebouwd
+wordt, en een manier om dat op Home te doen zonder de pagina in een beheerscherm te veranderen.
+
+Tot 5 september was er **geen mockup**. Gecontroleerd op alle branches, op bestandsnaam en op de
+inhoud van de HTML-bronnen, plus de niet-gecommitte mockupmap in `pleya-teleport/.unlazy/mockups`.
+De tvOS-set liep van 09 tot en met 31 zonder gat; 29 en 30 gaan over de hero, niet over rijbeheer.
+
+**Michels functieschets, 5 september.** Tijdens de ontwerpronde stuurde Michel een beeld met zes
+schermen als richting, met twee aanwijzingen erbij, letterlijk: "Inspiratie bron let wel op dat
+alle knoppen in tvos goed bereikbaar moeten zijn" en "Let op dat je niet vanuit mijn screenshot
+oude styling meeneemt is puur de functie die ik bedoel". De functie uit dat beeld: een knop "Home
+aanpassen" op Home zelf; een bewerkpaneel waarin de hero en Verder kijken bovenaan als vaste regels
+staan en elke andere rij omhoog, omlaag, bewerken en verbergen krijgt, met "Nieuwe rail" onderaan;
+en een stappenflow voor een nieuwe rij met naam en soort, filters, sortering en een voorbeeld met
+teller. De eerdere opzet met drie concurrerende ingangen (contextmenu, de rij als handvat, een
+ingeklapt overzicht) is daarmee vervallen: de richting ligt vast, de mockup tekent hem in de eigen
+tokens van de set.
+
+**Mockup 32, 5 september** (`docs/assets/tvos-unified/mockups-2026-09-04/32-eigen-rails-*.png`,
+bron in `src/pages/32-eigen-rails-*.html`). Zeven standen, in de taal van 30 (DEC-095) en 28 D2
+(DEC-093):
+
+- **A1, de ingang, hertekend.** De eerste versie zette "Home aanpassen" rechts op de hoogte van
+  de CTA-rij van de hero, bereikbaar met RIGHT vanaf Meer info. Michel, letterlijk: "de knop voor
+  home aanpassen is niet goed genoeg gepositioneerd voor tvos want je kunt hier niet hoed komen op
+  tvos en gaat wss ten kostem vam het kunnen bewegen door de hero rails". Klopt: RIGHT vanaf Meer
+  info is in 7.3 de slidewissel, en een knop aan de rechterrand van de hero kost die beweging. De
+  hero blijft dus zoals hij is, en de ingang staat nu in twee varianten die allebei zonder
+  horizontaal mikken te bereiken zijn.
+  - **A1a, de voetregel.** Eén regel over de volle breedte onder de laatste rij, in de gestippelde
+    tegeltaal van "Nieuwe rij" in B: icoon, "Home aanpassen" en een subregel. Eén DOWN vanaf de
+    laatste rij, geen horizontale beweging, altijd op dezelfde plek. Nadeel: wie acht rijen heeft
+    moet er acht voorbij.
+  - **A1b, het contextmenu.** Lang indrukken op elke kaart van Home geeft het menu van mockup 12
+    een laatste regel "Home aanpassen", achter een scheidingslijn onder Bron wijzigen. Eén druk
+    vanaf elke plek op Home, nul chrome op de pagina. Nadeel: niet zichtbaar tot je het menu kent.
+  Mijn voorstel is allebei: A1a als de zichtbare plek, A1b als de korte weg. Ze sluiten elkaar niet
+  uit en raken 7.3 geen van beide.
+- **A2, rust.** Dieper op Home, de geometrie van 30 C, met een eigen rij "Nieuwe sci-fi" tussen de
+  hubrijen. Alleen zijn naam als label; de eerste versie zette de filterkeuzes als tags naast het
+  label en Michel schrapte die: "Actieve filters hoeven niet weergeven te worden boven de rails".
+  De laatste kaart is een tegel "Alle 42, in Alle films" die de catalogus met ditzelfde filter
+  opent, de tegelvorm die DEC-064 al toestaat. Wat A2 beslist: een eigen rij is in rust van een
+  hubrij niet te onderscheiden; wat erin zit lees je in B of in de catalogus.
+- **B, bewerkmodus.** Eén paneel over de gedimde Home, 1560 breed, met elke rij als regel: icoon,
+  vier miniposters, naam met een subregel (bij een eigen rij het filter en de teller, bij een hub
+  de servers), en rechts de acties. Uitgelicht en Verder kijken staan bovenaan met een slot en het
+  woord "vast" en zijn niet focusbaar. Een hubrij krijgt omhoog, omlaag en Verbergen; een eigen rij
+  omhoog, omlaag, Bewerken en Verwijderen; een verborgen rij staat gedimd met Tonen. Onderaan een
+  gestippelde regel "Nieuwe rij". Bereikbaarheid: elke regel is een horizontale groep, UP en DOWN
+  houden de kolom vast, vaste regels worden overgeslagen, een uitgeschakelde pijl (omhoog op de
+  eerste beweegbare rij, omlaag op de laatste) blijft focusbaar zodat de kolom niet springt. Klaar
+  staat rechtsboven en is UP vanaf de eerste regel; Menu doet hetzelfde. Verplaatsen gaat per stap
+  met de pijlen, niet met optillen, want een gefocuste knop is op een afstandsbediening altijd te
+  vinden en een "opgetilde" toestand niet. De sleepgreep uit de schets vervalt op TV.
+- **C1, stap 1 van 3, naam en soort.** Chips Films en Series, daaronder het naamveld. De naam is
+  optioneel: leeg volgt hij het filter ("Sciencefiction, niet bekeken") en verandert mee, zodat een
+  rij zonder toetsenbord te maken is. Typen opent het systeemtoetsenbord van DEC-011.
+- **C2, stap 2 van 3, filters.** De regels van 28 D2, Status, Genre, Jaar en Bronnen, met Sortering
+  als vijfde regel in plaats van een eigen stap; de schets had er vier stappen van, dit zijn er
+  drie omdat sortering in de catalogus ook al in hetzelfde paneel zit. Select opent de lijst van
+  die regel, Menu sluit hem zonder wijziging, de tags eronder tonen de stand.
+- **C3, stap 3 van 3, voorbeeld.** Naam, teller en filter op één regel, de eerste vijf posters en
+  een "+37"-tegel. De rij landt direct onder Verder kijken; verplaatsen kan daarna in B. Rij
+  toevoegen sluit het paneel op Home met de focus op de eerste kaart van de nieuwe rij.
+- **C4, lege uitkomst.** De teller kleurt amber, het voorbeeld wordt een gestippelde plaatshouder
+  met de reden en een suggestie ("Er zijn 6 musicals, maar geen uit 2024 die je nog niet gezien
+  hebt"), Rij toevoegen is uitgeschakeld en de focus staat op Filters aanpassen, dat naar stap 2
+  terugspringt. Onder de zes titels blijft toevoegen mogelijk; zo'n rij krijgt op Home "korte rij"
+  naast het label. Een bewaarde rij die later leeg raakt verdwijnt in rust van Home en blijft in B
+  staan met "leeg" als subregel.
+
+Wat de bouw daarna raakt, buiten de layout: een bewaard filter als object met naam, soort, de
+`UnifiedCatalogFilterSelection` en de `UnifiedCatalogSort`, per profiel naast de bestaande hide- en
+orderlijst van `HomeLayoutProvider`; een rij-id voor zo'n object dat niet botst met
+`serverId:identifier`; en een catalogusvraag die de eerste kaarten en een teller levert zonder de
+volledige paging van hoofdstuk 12 te draaien. De teller volgt 10.7: pas exact als alle bronnen
+uitgeput zijn, anders "42 geladen".
+
+**Goedgekeurd door Michel op 5 september**, letterlijk: "Ja dit is top akkoord", op A1a en A1b
+samen (de voetregel als zichtbare plek, het contextmenu als korte weg), A2, B en C1 tot en met C4
+met drie stappen. Vastgelegd als [DEC-100](DECISIONS.md#dec-100); 9.1, 17.5 en 23 van de spec
+zijn aangepast. De bouw is een eigen ronde en komt na CAT5, dat eerder in de tabel staat. De
+negatieve controle staat in DEC-100: een widgettest op `TvContentFeed` die een eigen rij uit een
+bewaard filter tussen de hubrijen eist, met de hero en Verder kijken op hun vaste plek, rood op de
+huidige code.
+
+### RAIL1, het fase-6 railcontract is bij een verhuizing achtergebleven
+
+Er zijn twee bestanden met bijna dezelfde naam, en dat is geen duplicaat.
+`test/widgets/tv/tv_discovery_rail_test.dart` bewaakt geometrie en kolomgedrag en is meegegroeid
+met LAND2, LAND3 en LAND4. `test/widgets/tv_discovery_rail_test.dart` is de andere helft, uit de
+fase-6-commit `6e90fb4e`: de projectie, de focusidentiteit, activatie en toegankelijkheid. Die is
+bij de verhuizing naar `tv/` blijven staan en sindsdien niet meer meegelopen. `ci_checks.sh`
+draait geen `flutter test`, dus de pre-commit-gate zag vijf rode tests niet; dat is dezelfde blinde
+vlek als bij HERO5.
+
+Geen van de vijf wees een defect aan.
+
+Twee toetsten een afspraak die LAND2 (`2371c62`) bewust heeft vervangen. Elke rail tekende zijn
+eigen contextblok, ook de rails waar de afstandsbediening niet in stond, en op een gestapelde feed
+gaf dat twee focuscontexten tegelijk op het scherm. Nu beschrijft alleen de rail met de focus zijn
+tegel, en `alwaysDescribesCurrent` is de uitweg die TV Zoeken neemt, waar de caption de enige plek
+is waar een resultaat zijn titel draagt. Herschreven naar wat er nu geldt, en met de helft erbij
+die LAND2 niet raakte: de rail vergeet zijn tegel niet, hij beschrijft hem alleen niet meer.
+
+Twee andere lazen "welke tegel is actief" af aan datzelfde blok. Ze waren niet stuk maar blind, en
+geven de rail nu eerst de focus, zoals een verticale stap erheen dat ook doet.
+
+De vijfde zocht met `find.bySemanticsLabel` naar de partial-tekst. Die staat er, maar de
+`Semantics` om het wolkje heeft geen eigen container, dus de tekst voegt samen in de node van de
+kop: `"Recently Added\nSome sources did not answer"`. Dat is precies wat hoofdstuk 41 vraagt, en
+precies wat een exacte string niet vindt. De finder had geen faalstand, dus dat was geen test. De
+assertie leest nu de node van de kop.
+
+Sabotagecontrole: `alwaysDescribesCurrent: true` in de helper zet de twee focusgate-tests rood en
+laat de rest groen. Veertien tests groen in dit bestand, 1031 in `test/widgets` en
+`test/screens/tv` samen zonder falers.
+
+### HERO5, HERO3 maakte een testbestand afhankelijk van de wandklok
+
+Gesloten op `7ade2bc9`. `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`,
+acht tests, en dat stond er al voordat er vandaag iets aan de feed veranderde. Gemeten door de
+suite te draaien met en zonder de HERO4-wijziging: identiek rood.
+
+DEC-097 gaf het venster van 90 dagen één eigenaar met een clock-seam voor tests
+(`DataAggregationService.heroReleaseWindow`). Dit bestand gebruikte die seam niet, dus het las de
+echte klok. De fixtures lopen van 2026-04-01 tot 2026-08-01, de aggregatie meldde
+`Fetched 0 latest movies from all servers`, en de hero-assertions vielen om op een lege lijst.
+Het venster schoof elke dag verder op, dus dit werd niet vanzelf beter.
+
+`scripts/ci_checks.sh` draait geen `flutter test`, dus de pre-commit-gate merkte het niet. De
+CI-workflow wel.
+
+De harness pint de klok op 2026-06-01. De oudste fixture heeft daarmee een maand ruimte onder de
+cutoff en de datums blijven zoals ze waren; het venster heeft alleen een ondergrens, dus een
+fixture die verderop in het jaar uitkomt valt er niet buiten. Fixtures zónder datum vielen om
+dezelfde reden uit de hero, en dat is geen bijwerking: DEC-097 zet een film zonder releasedatum er
+per contract uit, dus "geen datum" is hier geen standpunt meer dat een fixture kan innemen.
+`_movie` geeft ze er een.
+
+Negatieve controle: dezelfde seam een jaar vooruit gezet reproduceert precies de acht rode tests,
+teruggezet zijn alle negen groen.

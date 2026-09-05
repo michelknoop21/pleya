@@ -18,135 +18,70 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### New
-- een Pleya Server is te ontkoppelen waar Verbindingen zegt dat het kan
-- lege huls voor het automation-contract (Fase 0)
-- declared+discovered registry en GET /v1/ui_tree (Fase 1)
-- automation-ids, AutomationNode en FocusableWrapper-ids (Fase 2)
-- focus-log, monotoon /v1/events en /v1/wait (Fase 3)
-- schermreadiness op de eerste vier schermen (Fase 4)
-- /v1/input/key en /v1/input/pointer (bij Fase 3/4)
-- diagnostic overlay, /v1/overlay, /v1/screenshot (Fase 5)
-- fixture-server routingkernel + dart:io-adapter (Deel B Fase 1)
-- PleyaFakeServer op de gedeelde fixture-kernel (Deel B Fase 2)
-- drie waarnemingsendpoints + methodevalidatie (Deel A Fase 2)
-- fixture-server compleet — auth, klok, control-plane, media (Deel B Fase 3)
-- setup-control-plane — /v1/signin, /v1/connections/seed, /v1/open (Deel A Fase 4)
-- ID-adoptie op sidebar/library/discover/media-detail/player + 3 events (Deel A Fase 5)
-- runner-skelet, scenariogrammatica, transport-client (Deel B Fase 6)
-- geometrie + impact-resolver (Deel B Fase 7)
-- macOS-driver, eerste scenario end-to-end (Deel B Fase 8)
-- one PleyaLogo widget for every place the mark appears
-- iOS-simulatordriver + discover.hero.layout (Deel B Fase 9)
-- tvOS-driver via idb HID + isolatiefix (Deel B Fase 10)
-- geometrie-assertions, fixture_mutate en open in de engine (Fase 11)
-- hero-layout op macOS + iOS, en een screenshot die bewijs is
-- architectuurbaseline Pleya Unified TV 2026
-- unified identity foundation
-- all-source resolver, visibility boundary, and coverage
-- unified catalog k-way merge engine
-- unified catalog k-way merge engine, with its Fase-3 provider
-- focus-trace vult zich altijd, sidebar-scenario op semantiek (Fase 11)
-- activation coordinator en TV source picker
-- prefetch unified-catalog poster artwork around the viewport
-- laatste Fase 11-scenario groen, twee echte tvOS-bugs gefixt
-- give Films and Series the depth a premium TV wall has
-- a series says how much of it there is, a film says what it is
-- close the complete catalogus, and give focus back its stable ground
-- Fase 13 afgerond, MCP-laag als dunne adapter boven de bestaande CLI
-- unified discovery — Home hero, Films/Series landings, Search en Verder kijken
-- de TV-root is een horizontale topnav, en Mijn Pleya is een echte bestemming
-- Home is a rounded billboard with a feed of its own, and rows stop moving it
-- unified TV surfaces, het register gesloten, en de merkketen op één autoriteit
-- Mijn Pleya-secties op één paginaframe, en de bibliotheekkiezer op tvOS
-- een contentroute opent binnen de shell, en houdt de topnav
-- media detail sluit zichzelf via TvNestedRouteScope wanneer genest (PB-1)
-- de Home-hero full-bleed met de rail die eronder piept, en een dichtere railstapel (HOME1, I18N5)
-- taalvoorkeuren in vier lagen, met het Pleya-profiel als eigenaar (LANG1, DEC-096)
-- de pagina Taal en ondertitels, de serievoorkeur-sheet en de twee toasts (LANG1, DEC-096)
-- een walk-stap die focussprongen zelf vindt, met een orakel dat niets meldt wat de traversal niet had kunnen kiezen (WALK)
-- NAV1 wordt bewaakt door Pleya Verify op het app-contract, en een remote-melding begint voortaan bij de bron en een logtrace (DEC-099)
-
-### Improved
-- scheidingslijnen volgen de werkelijke rijhoogte
-- één shape-contract voor CTA-knop en focusring
-
-### Fixed
-- de zijbalk kent één lijst bestemmingen, dus "nu aan het kijken" is ook bereikbaar
-- een achtergrondcyclus legt de rapportage naar Plex niet meer stil
-- drie randen van de hervat-rapportage dichtgezet na review
-- het verlaten van de speler wacht niet meer op de server
-- een geweigerde log-upload wordt niet meteen opnieuw geprobeerd
-- zijbalk, sessiebalk en verbreken hingen alle drie aan een toestand die niemand bezat
-- een verbroken Pleya Server-verbinding liet zijn rij en zijn refreshtoken achter
-- een mislukte refresh maakte de verbinding kapot in plaats van hem te markeren
-- de buildnummers van iOS, tvOS en macOS lopen weer gelijk
-- een mislukte persist van een rotatie blijft niet onopgemerkt
-- een geopende serie-detailpagina laat nieuwe afleveringen na afspelen zien
-- de gefocuste rij krijgt een markering in plaats van een omlijning
-- verbindingsrijen krijgen dezelfde focusweergave als de rest van instellingen
-- Over en Pleya Share volgen het gedeelde kaartcontract
-- kaders rond toetscombinaties volgen de gedeelde lijnkleur
-- revalidatie mag een gelijktijdige load-more niet stilzwijgend overschrijven
-- reject a reversed Range instead of empty-body or crash
-- run the artwork behind the topbar, and give the strip its own height
-- fade the full-width strip out later instead of zooming it in
-- geen PASS meer op bewijs uit de verkeerde app-instantie
-- poortdiscovery leest Library/Caches, en de scenario wacht op de hero zelf
-- independently confirmed corrections after unauthorized-commit review
-- register the unified catalog view preference with the sync policy
-- raise the source badge fill to an AA contrast floor over bright artwork
-- restore the libraries golden's name after a bulk rename mangled it
-- one reading per card, in hoofdstuk 25's order
-- back-suppressie causaal maken, filters-scenario eerlijk hernoemen, evidence-gat dicht
-- the four defects the independent visual audit confirmed
-- geen --enforce-lockfile voor pleya_verify subpackages
-- evidence-artifact upload sluit app-installcaches uit
-- idb-installatie in tvOS-gate repareren, DEC-066 rechtzetten
-- tvOS build ontbrak pod_install.sh voor niet-gecommitte tvos/Pods/
-- sluit de automation-controlplane fail-closed af
-- maak evidence-redactie structureel in plaats van exact-match
-- bind elke subprocess- en fixture-controlcall aan een echte deadline
-- garandeer één JSON-envelope op run/validate --json, ook bij een onverwachte crash
-- verwijder set_pref/focus/back uit de scenario-vocabulaire
-- J14 covered — regression tests for the filter panel's already-implemented empty-section behaviour
-- B17 — TV search corrects itself against hidden-library visibility instead of ignoring it
-- fill in the 11 new Phase-9 keys across all 14 locales that were still falling back to English
-- de UX/focus-herstelronde, twaalf gemelde gebreken plus menuSemantics
-- Mijn Pleya-secties bedienbaar maken, en Pleya Verify de tvOS-app laten bedienen
-- de lege logreader en de focus na het vergeten van een kamer
-- een assert die niets controleert eindigt niet meer groen
-- de kijklijst laat de afstandsbediening niet stranden na verwijderen
-- één druk op de ring is één focusstap, niet twee
-- alleen de rail waar de afstandsbediening staat beschrijft zijn tegel
-- een verticale stap komt aan in de kolom waar hij vandaan komt
-- de laatste tegel van een rail heeft ruimte om in uit te klappen
-- de bovenste rij van de catalogus krijgt de ruimte die haar ring vraagt
-- headeracties op de catalogus eindigen op de canonieke rechterrand (CAT3)
-- headercontrols blijven bereikbaar na een LEFT-uitstap uit het raster (CAT4)
-- elke overlay op TV krijgt de 10-voets paneelgeometrie (OVR1b)
-- behoud expliciete sheet presentation op TV (OVR2)
-- geen zichtbare terugknop op een oppervlak dat de afstandsbediening niet kan bedienen (BACK1)
-- houd het contextmenu uit de overscanband (FOC1)
-- vraag de detail-backdrop op de resolutie van het toestel (ART1)
-- verzoen de bibliotheekselectie met de bibliotheken die er zijn (LIB1)
-- laat de laatst gekozen bibliotheek de trage vorige overleven (LIB2)
-- geen rode rul meer onder de open tab op TV (LIB3)
-- de hero vraagt artwork in de bronratio aan, zodat de widget de uitsnede bezit (HERO1)
-- de titelband van de hero past twee regels, niet alleen het logo (HERO2)
-- een gefocuste rail ankert onder de navbalk, zonder band voor de hero (HOME1)
-- de linkerkolom past op één scherm, en de melding hangt niet meer aan het transport (LANG1)
-- de spelerlaag betaalt de title-safe inset op TV, net als elke andere TV-pagina (PLR1)
-- "Recent uitgebracht" krijgt een venster van 90 dagen, en een tweede native druk na de Home-refresh wordt geconsumeerd (HERO3, NAV1)
-- de consume van een dubbele ringdruk krijgt tanden via de early key handler (NAV1, derde oorzaak)
-- één pijldruk is weer één stap, gestopt op de fase in AppDelegate in plaats van op timing in Dart (NAV1)
-- de dubbele pijlfase wordt ingeslikt in plaats van aan UIKit gegeven, want UIKit asserteert op een einde zonder begin (NAV1)
-- de Swift-fasefilter is uit, want beide antwoorden op .ended zijn op het toestel slechter dan de dubbele stap (NAV1)
-- een pijldruk stapt weer één keer, want de Menu-passthrough wacht nu tot de remote los is (NAV1, de echte oorzaak)
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
+## 2.8.0 · build 262 · 5 September 2026
+
+<!-- commit: 06b2cc0 -->
+
+### Notes
+
+- The same Apple TV build as 260, with the release notes below it. Build 261 sits between the two
+  and is not this app: it is the code of build 245, rebuilt so a tester who had ended up on an
+  Apple TV build they were not meant to see could be moved back to what they already knew. It
+  went to one tester group and to nobody else.
+
+## 2.8.0 · build 261 · 5 September 2026
+
+<!-- commit: 55035a2 -->
+
+### Notes
+
+- Build 245 rebuilt under a new number, for one tester group. No code changed between the two, so
+  there is nothing here that build 245 did not already have.
+
+## 2.8.0 · build 260 · 5 September 2026
+
+<!-- commit: 72227db -->
+
+### New
+
+- **The Apple TV home screen is a billboard with a feed under it.** The navigation moved to a
+  horizontal bar across the top, so nothing takes width away from the artwork. A featured film
+  fills the frame, and the first row peeks up from the bottom edge to say the page continues.
+  Walking through the rows no longer pushes the billboard around.
+- **My Pleya is a destination of its own.** Watchlist, requests, libraries, servers, settings,
+  logs, watch together and about sit on one page frame instead of behind a sidebar.
+- **Films and Series have their own landing pages, with a catalog behind them.** A title that
+  lives on more than one of your servers appears once. Pressing play asks which source to use
+  only when that choice makes a difference.
+- **Language and subtitles can be set per series.** A show you watch subtitled stays subtitled,
+  including the episodes you have not opened yet, and a change offers to apply to the whole
+  series rather than to the episode in front of you.
+
+### Improved
+
+- **"Recently released" on the home screen means the last 90 days.** It had no lower bound at
+  all, so a library that had just been filled with older films put a 1998 title under a heading
+  promising the opposite.
+- **The player overlay keeps its distance from the left edge.** Title, season and episode, and
+  the timeline sat against the very edge of the picture, which is where a television crops.
+- **Artwork is requested at the resolution of the screen it lands on.** The detail backdrop was
+  being enlarged from a smaller image.
+
 ### Fixed
 
+- **One press on the remote ring is one step.** A press was arriving twice, so the top bar
+  skipped a tab and a step down skipped a row. A press on the ring is a touch and a press at the
+  same time, and tvOS reports those over two separate paths.
+- **Coming back to the home screen after playing something shows the artwork again.** The
+  buttons of the billboard could take the remote while the picture itself had scrolled off the
+  top, which left two buttons floating over the navigation bar with nothing behind them.
+- **Up from the first row brings the billboard back into view**, rather than only back into the
+  focus order.
+- **A vertical step arrives in the column it left from**, and the last tile of a row has room to
+  expand into instead of running off the page.
 - **Leaving the player gives you the library back straight away.** Closing a title used to wait
   for the server to confirm where you stopped, and on a slow or unreachable connection that was
   several seconds of black screen. The position is written in the background now, and if it does
@@ -159,8 +94,36 @@ under `Notes`.
 - **"Now playing" in the sidebar can be reached with a remote.** It was drawn but skipped by
   D-pad navigation, so on Apple TV you could see it and never select it.
 - **Sending a log no longer runs into the same refusal again and again.** The relay accepts one
-  upload per minute. A second press inside that minute now tells you how much of the minute is
-  left instead of firing another request that comes back refused.
+  upload per minute. A second press inside that minute now says how much of the minute is left
+  instead of firing another request that comes back refused.
+- Overlays and context menus stay inside the area a television actually shows.
+- The top row of the catalog no longer touches the safe top edge, and the header actions stay
+  reachable after stepping left out of the grid.
+- A library that disappeared no longer leaves the Libraries page blank, and switching libraries
+  quickly no longer lets a slow one overwrite the choice you just made.
+- The back button is gone from surfaces a remote could never reach it on.
+
+### Worth checking
+
+This build is the Apple TV redesign, so it is the remote that needs the mileage rather than the
+screenshots. Four things in particular:
+
+1. Walk the top bar left and right, landing on Home included. Every press should move exactly
+   one tab.
+2. Menu on Home should leave the app. Menu anywhere else, a My Pleya section included, should
+   stay in it.
+3. Scroll the home screen down, open a title, play it, and come back with Menu. The billboard
+   should be on screen, not two buttons over the navigation bar.
+4. Look at what the home billboard offers. Films released in the last three months, nothing
+   older.
+
+### Notes
+
+- iOS and macOS are unchanged in this build. Everything above is Apple TV.
+- Build 259 was withdrawn and this one replaces it, with the same code behind it. 259 took the
+  number of a build that had been installed straight from Xcode earlier that day and never
+  reached TestFlight, which left two different builds wearing one number. It was expired to end
+  that, and expiring cannot be undone.
 
 ## 2.8.0 · build 240 · 21 August 2026
 

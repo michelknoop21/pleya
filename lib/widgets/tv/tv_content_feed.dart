@@ -168,7 +168,7 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
   /// Falls through to the first row for a Home with no hero at all, so the
   /// remote is never stranded.
   bool focusPrimary() {
-    if (_heroKey.currentState?.focusPlay() ?? false) return true;
+    if (_focusHeroCta((hero) => hero.focusPlay())) return true;
     return _focusFirstRow();
   }
 
@@ -219,13 +219,60 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
       widget.onNavigateUp?.call();
       return;
     }
-    if (_scroll.hasClients && _scroll.offset > 0) _scroll.jumpTo(0);
-    if (_heroKey.currentState?.focusLastCta() ?? false) return;
+    if (_focusHeroCta((hero) => hero.focusLastCta())) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_heroKey.currentState?.focusLastCta() ?? false) return;
+      if (_focusHeroCta((hero) => hero.focusLastCta())) return;
       widget.onNavigateUp?.call();
     });
+  }
+
+  /// The one place that hands the ring to the billboard, whichever press asked.
+  ///
+  /// Restoring the offset is not this method's flourish, it is its reason to
+  /// exist, and the paragraphs above [_focusHeroFromFirstRow] are the long form
+  /// of why. What made it a shared concern is HERO4: the same reasoning applies
+  /// to `focusPrimary`, and `focusPrimary` did not do it. DOWN out of the top
+  /// navigation focuses the hero without any traversal in between, so it never
+  /// scrolled — and the feed is very often *not* at the top when it arrives,
+  /// because leaving Home for another destination keeps the scroll position
+  /// (hoofdstuk 9.6) and coming back from a pushed content route keeps it too.
+  /// The CTA row then took the ring 721 px above the fold, drawn at y=19 under
+  /// the opaque top band with no artwork behind it, which is the state that was
+  /// photographed on hardware. Measured in the bundle
+  /// `tvos-home-hero-return-probe-1788613144700`.
+  bool _focusHeroCta(bool Function(TvHeroBillboardCarouselState hero) request) {
+    if (!_hasHero) return false;
+    _revealHero();
+    final hero = _heroKey.currentState;
+    return hero != null && request(hero);
+  }
+
+  /// The invariant, and the one place that keeps it: **the billboard holding
+  /// the ring means the billboard is on screen.**
+  ///
+  /// Hardening the three entry points above was not enough, because the press
+  /// the report was photographed on goes through none of them. Play something
+  /// from a Home row and come back: `onPlaybackReturned` refreshes the item,
+  /// Home re-projects, and the tile the push left from no longer exists — so
+  /// the shared content scope has nothing remembered to restore and
+  /// `FocusScopeNode.requestFocus` descends into the first focusable
+  /// descendant of the content instead. Since DEC-095 the carousel is a layer
+  /// beside the list rather than a child of it, so it is mounted at any offset
+  /// and that first descendant is the Afspelen pill. The ring landed on it,
+  /// `focusPrimary()` was never called, and the feed stayed 721 px down:
+  /// artwork above the fold, the pill drawn at y=19 behind the opaque top band.
+  /// That is the photograph, and `tvos.home.hero-return-after-playback`
+  /// reproduces it over the real remote path (focus-trace hop 14,
+  /// `play_button -> tvHeroPlay` on `key:Escape`).
+  ///
+  /// So this is wired to the carousel *gaining the focus*, not to any caller.
+  /// `jumpTo` rather than `animateTo` for the same reason the CTA paths use it:
+  /// there is no frame at which an animated scroll can promise the billboard is
+  /// under the node that already holds the ring, and under reduced motion an
+  /// instant change is the right answer anyway.
+  void _revealHero() {
+    if (_scroll.hasClients && _scroll.offset > 0) _scroll.jumpTo(0);
   }
 
   /// The feed's scroll offset, so a test can prove the hero is back *in view*
@@ -408,39 +455,49 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
                 left: 0,
                 right: 0,
                 height: bleed.height,
-                child: ClipRect(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      AnimatedBuilder(
-                        animation: _scroll,
-                        builder: (context, child) => Transform.translate(
-                          offset: Offset(0, -(_scroll.hasClients ? _scroll.offset : 0.0)),
-                          child: child,
+                // Mirrors the rows' own `Focus` below: it carries no content,
+                // takes no focus of its own and no traversal, and exists only
+                // to hear its subtree gain the ring. See [_revealHero].
+                child: Focus(
+                  canRequestFocus: false,
+                  skipTraversal: true,
+                  onFocusChange: (has) {
+                    if (has) _revealHero();
+                  },
+                  child: ClipRect(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        AnimatedBuilder(
+                          animation: _scroll,
+                          builder: (context, child) => Transform.translate(
+                            offset: Offset(0, -(_scroll.hasClients ? _scroll.offset : 0.0)),
+                            child: child,
+                          ),
+                          child: TvHeroBillboardCarousel(
+                            key: _heroKey,
+                            groups: heroGroups,
+                            size: bleed,
+                            textBottom: textBottom,
+                            clientFor: _clientFor,
+                            autoplayEnabled: _autoplayEnabled,
+                            // 33.2: the hero's text fades once a row has the focus.
+                            textOpacity: _rowHasFocus ? 0 : 1,
+                            hideSpoilers: SettingsService.instance.read(SettingsService.hideSpoilers),
+                            initialGroupId: _heroGroupId,
+                            onActiveGroupChanged: (id) => _heroGroupId = id,
+                            onActivate: _activateHero,
+                            onNavigateDown: _focusFirstRow,
+                            onNavigateUp: widget.onNavigateUp,
+                            onBack: widget.onBack,
+                          ),
                         ),
-                        child: TvHeroBillboardCarousel(
-                          key: _heroKey,
-                          groups: heroGroups,
-                          size: bleed,
-                          textBottom: textBottom,
-                          clientFor: _clientFor,
-                          autoplayEnabled: _autoplayEnabled,
-                          // 33.2: the hero's text fades once a row has the focus.
-                          textOpacity: _rowHasFocus ? 0 : 1,
-                          hideSpoilers: SettingsService.instance.read(SettingsService.hideSpoilers),
-                          initialGroupId: _heroGroupId,
-                          onActiveGroupChanged: (id) => _heroGroupId = id,
-                          onActivate: _activateHero,
-                          onNavigateDown: _focusFirstRow,
-                          onNavigateUp: widget.onNavigateUp,
-                          onBack: widget.onBack,
-                        ),
-                      ),
-                      // Under full-bleed the picture steps back with the text
-                      // (mockup 30 B). Screen-fixed over the scrolled card,
-                      // see [TvHeroDimVeil].
-                      TvHeroDimVeil(dim: _rowHasFocus ? 1 : 0),
-                    ],
+                        // Under full-bleed the picture steps back with the text
+                        // (mockup 30 B). Screen-fixed over the scrolled card,
+                        // see [TvHeroDimVeil].
+                        TvHeroDimVeil(dim: _rowHasFocus ? 1 : 0),
+                      ],
+                    ),
                   ),
                 ),
               ),

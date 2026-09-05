@@ -62,18 +62,26 @@ import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
 
-/// The instant the hero's release window is measured from in this file.
-final _now = DateTime(2026, 8, 15);
+/// The instant `DataAggregationService` measures the hero window against in
+/// this file. Pinning it is the whole of HERO5: DEC-097 keeps only films
+/// released inside 90 days, the service reads a clock for that, and a file
+/// that lets it read the wall clock goes red on a date nobody chose. Every
+/// fixture below sits inside the window relative to *this* instant, and the
+/// oldest of them (`2026-04-01`) has a month of room under the cutoff.
+final DateTime _fixtureNow = DateTime(2026, 6, 1);
+
+/// The release date a fixture gets when it does not name one. DEC-097 puts a
+/// film without a date outside the hero by contract, so a fixture that means
+/// to reach the hero has to carry one; there is no "no opinion" left to
+/// express here.
+const String _defaultRelease = '2026-05-01';
 
 MediaItem _movie(
   String id, {
   required String title,
   String? guid,
   String serverId = 'server_1',
-  // Inside the hero's release window measured from [_now] (DEC-097). A film
-  // without a release date is out of the pool by design, so an undated default
-  // would leave every hero in this file empty.
-  String originallyAvailableAt = '2026-08-01',
+  String originallyAvailableAt = _defaultRelease,
   int? year,
 }) => MediaItem(
   id: id,
@@ -173,10 +181,10 @@ void main() {
     final harness = await _pumpTvHero(tester, {
       'server_1': [
         _movie('a1', title: 'Alpha', guid: 'plex://movie/alpha', year: 2026, originallyAvailableAt: '2026-08-01'),
-        _movie('b1', title: 'Bravo', guid: 'plex://movie/bravo', year: 2026, originallyAvailableAt: '2026-07-15'),
-        _movie('c1', title: 'Charlie', guid: 'plex://movie/charlie', year: 2026, originallyAvailableAt: '2026-07-01'),
-        _movie('d1', title: 'Delta', guid: 'plex://movie/delta', year: 2026, originallyAvailableAt: '2026-06-15'),
-        _movie('e1', title: 'Echo', guid: 'plex://movie/echo', year: 2026, originallyAvailableAt: '2026-06-01'),
+        _movie('b1', title: 'Bravo', guid: 'plex://movie/bravo', year: 2026, originallyAvailableAt: '2026-07-01'),
+        _movie('c1', title: 'Charlie', guid: 'plex://movie/charlie', year: 2026, originallyAvailableAt: '2026-06-01'),
+        _movie('d1', title: 'Delta', guid: 'plex://movie/delta', year: 2026, originallyAvailableAt: '2026-05-01'),
+        _movie('e1', title: 'Echo', guid: 'plex://movie/echo', year: 2026, originallyAvailableAt: '2026-04-01'),
       ],
       // Same three titles, different guids — the case the light guid dedup
       // cannot see and the identity pipeline has to bucket on title+year.
@@ -195,7 +203,7 @@ void main() {
           guid: 'jellyfin://bravo',
           serverId: 'server_2',
           year: 2026,
-          originallyAvailableAt: '2026-07-15',
+          originallyAvailableAt: '2026-07-01',
         ),
         _movie(
           'c2',
@@ -203,7 +211,7 @@ void main() {
           guid: 'jellyfin://charlie',
           serverId: 'server_2',
           year: 2026,
-          originallyAvailableAt: '2026-07-01',
+          originallyAvailableAt: '2026-06-01',
         ),
       ],
     });
@@ -434,12 +442,7 @@ Future<_TvHeroHarness> _pumpTvHero(
     );
   }
 
-  final multiServerProvider = MultiServerProvider(
-    manager,
-    // Pinned clock: the release window is a span, so a wall-clock `now` would
-    // walk the fixtures below out of the pool as the calendar moves.
-    DataAggregationService(manager, now: () => _now),
-  );
+  final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager, now: () => _fixtureNow));
   final hiddenLibrariesProvider = HiddenLibrariesProvider();
   final librariesProvider = LibrariesProvider();
   final watchTogetherProvider = WatchTogetherProvider();

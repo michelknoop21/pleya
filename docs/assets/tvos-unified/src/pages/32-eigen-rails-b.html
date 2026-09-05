@@ -1,0 +1,86 @@
+<style>
+/* gedeeld met mockup 30 (DEC-095): full-bleed hero, ambient tint, railstapel met DEC-087-band */
+.bleed { position: absolute; inset: 0; overflow: hidden; background: var(--bg); }
+.bleed img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 35%; }
+.bleed .scrim { position: absolute; inset: 0; }
+.amb { position: absolute; inset: 0; background: radial-gradient(120% 80% at 70% 0%, rgba(96,72,52,.55) 0%, rgba(20,20,20,0) 60%), var(--bg); }
+.amb.cool { background: radial-gradient(120% 80% at 70% 0%, rgba(52,72,96,.50) 0%, rgba(20,20,20,0) 60%), var(--bg); }
+.topfade { position: absolute; left: 0; right: 0; top: 0; height: 140px; background: linear-gradient(180deg, rgba(20,20,20,.72), rgba(20,20,20,0)); }
+.rails { position: absolute; left: var(--inset); right: 0; }
+.rails .rail-label { margin-bottom: 18px; }
+.rb { display: flex; gap: 22px; align-items: flex-end; height: 346px; }
+.rb .c { position: relative; flex: none; width: 231px; height: 346px; border-radius: var(--r-card); overflow: hidden; background: var(--surface); }
+.rb .c img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rb .c.w { width: 615px; }
+.rb .c.focus { box-shadow: 0 0 0 var(--ring-gap) var(--bg), 0 0 0 calc(var(--ring-gap) + var(--ring)) var(--ink); }
+.rb .c .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgba(255,255,255,.25); }
+.rb .c .prog i { display: block; height: 100%; background: var(--accent); }
+.rb .c .new { position: absolute; right: 12px; top: 12px; width: 12px; height: 12px; border-radius: 999px; background: var(--amber); }
+.rb .c .seen { position: absolute; right: 12px; top: 12px; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: var(--bg); display: grid; place-items: center; }
+.rb .c .seen .ic { width: 16px; height: 16px; }
+.rb .c .src { position: absolute; left: 12px; top: 12px; background: rgba(20,20,20,.78); font-size: 16px; font-weight: 500; padding: 4px 10px; border-radius: 6px; }
+.cap { margin-top: 18px; width: 615px; }
+.cap .t { font-size: 27px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cap .m { margin-top: 4px; font-size: 20px; line-height: 1.3; color: var(--ink-2); }
+.cap .m .sep { margin: 0 10px; color: var(--ink-4); }
+.cap .d { margin-top: 6px; font-size: 19px; line-height: 1.3; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail-label.next { margin-top: 26px; }
+/* ROW1: een eigen rij draagt zijn filter als stille tags naast het label, in de taal van 28 D1 */
+.lbl { display: flex; align-items: baseline; gap: 22px; margin-bottom: 18px; }
+.lbl .rail-label { margin-bottom: 0; }
+.lbl .tags { display: flex; gap: 8px; align-items: center; }
+.lbl .tags .tag { border-color: var(--ink-4); color: var(--ink-3); font-size: 17px; line-height: 26px; }
+.lbl .tags .tag.muted { border-style: dashed; }
+.lbl .cnt { margin-left: auto; margin-right: var(--inset); font-size: 20px; color: var(--ink-3); }
+/* de "Alle N"-tegel aan het eind van een eigen rij: de tegelvorm uit DEC-064 */
+.rb .c.all { background: var(--fill); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--ink-2); font-size: 22px; font-weight: 500; }
+.rb .c.all .ic { width: 30px; height: 30px; }
+.rb .c.all small { font-size: 18px; color: var(--ink-3); font-weight: 400; }
+</style>
+<style>
+.bleed img { opacity: .34; }
+.bleed .scrim { background: linear-gradient(180deg, rgba(20,20,20,.72) 0%, rgba(20,20,20,.35) 30%, var(--bg) 70%); }
+.panel { position: absolute; left: 50%; top: 118px; transform: translateX(-50%); width: 1560px; background: var(--surface); border-radius: 22px; padding: 30px 32px 26px; box-shadow: 0 40px 100px rgba(0,0,0,.6); }
+.panel .head { display: flex; align-items: flex-start; gap: 22px; }
+.panel .head h2 { font-size: 36px; font-weight: 700; line-height: 1.15; }
+.panel .head .sub { font-size: 20px; color: var(--ink-3); margin-top: 6px; }
+.panel .head .btn { margin-left: auto; }
+.list { margin-top: 22px; display: flex; flex-direction: column; gap: 8px; }
+.r { display: flex; align-items: center; gap: 20px; height: 84px; padding: 0 22px; border-radius: var(--r-tile); background: var(--elevated); }
+.r > .ic { width: 24px; height: 24px; color: var(--ink-3); flex: none; }
+.r .strip { display: flex; gap: 6px; }
+.r .strip img { width: 40px; height: 60px; border-radius: 5px; object-fit: cover; display: block; background: var(--surface); }
+.r .b { width: 560px; min-width: 0; }
+.r .t { font-size: 23px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r .s { font-size: 17px; color: var(--ink-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r .act { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.r .act .btn { height: 52px; padding: 0 22px; font-size: 20px; background: rgba(255,255,255,.10); }
+.r .act .btn.icon { width: 52px; padding: 0; }
+.r .act .btn .up { display: inline-grid; transform: rotate(180deg); }
+.r .act .btn.focus { box-shadow: 0 0 0 4px var(--elevated), 0 0 0 8px var(--ink); background: var(--ink); color: var(--bg); }
+.r .pin { font-size: 17px; color: var(--ink-4); border: 2px solid var(--ink-4); border-radius: 6px; padding: 0 8px; line-height: 26px; display: inline-flex; align-items: center; gap: 6px; }
+.r .pin .ic { width: 16px; height: 16px; }
+.r.fixed { background: var(--fill); }
+.r.fixed .t { color: var(--ink-2); }
+.r.off .strip, .r.off .b { opacity: .45; }
+.r.add { background: transparent; border: 2px dashed var(--hair); }
+.r.add > .ic, .r.add .t { color: var(--ink-2); }
+.r.add .b { width: auto; }
+.r.add .s { color: var(--ink-3); }
+</style>
+<div class="bleed"><img src="{{art:dune2-backdrop}}"><div class="scrim"></div></div>
+{{nav:Home|dim}}
+<div class="panel">
+  <div class="head"><div><h2>Home aanpassen</h2><div class="sub">Verplaats, verberg of bewerk je rijen. Uitgelicht en Verder kijken blijven waar ze staan.</div></div><div class="btn">{{icon:check}} Klaar</div></div>
+  <div class="list">
+    <div class="r fixed ">{{icon:lock}}<div class="strip"><img src="{{art:dune2-poster}}"><img src="{{art:severance-poster}}"><img src="{{art:oppenheimer-poster}}"><img src="{{art:andor-poster}}"></div><div class="b"><div class="t">Uitgelicht</div><div class="s">Altijd bovenaan</div></div><div class="act"><span class="pin">{{icon:lock}} vast</span></div></div>
+    <div class="r fixed ">{{icon:lock}}<div class="strip"><img src="{{art:eeaao-poster}}"><img src="{{art:barbie-poster}}"><img src="{{art:penguin-poster}}"><img src="{{art:poorthings-poster}}"></div><div class="b"><div class="t">Verder kijken</div><div class="s">Altijd op de tweede plaats</div></div><div class="act"><span class="pin">{{icon:lock}} vast</span></div></div>
+    <div class="r  ">{{icon:list}}<div class="strip"><img src="{{art:dune2-poster}}"><img src="{{art:dune1-poster}}"><img src="{{art:interstellar-poster}}"><img src="{{art:civilwar-poster}}"></div><div class="b"><div class="t">Nieuwe sci-fi</div><div class="s">Eigen rij · Films · Sciencefiction · Niet bekeken · 42 titels</div></div><div class="act"><div class="btn icon disabled"><span class="up">{{icon:chevd}}</span></div><div class="btn icon focus">{{icon:chevd}}</div><div class="btn">Bewerken</div><div class="btn">Verwijderen</div></div></div>
+    <div class="r  ">{{icon:film}}<div class="strip"><img src="{{art:conclave-poster}}"><img src="{{art:anora-poster}}"><img src="{{art:gladiator2-poster}}"><img src="{{art:wicked-poster}}"></div><div class="b"><div class="t">Recent uitgebracht</div><div class="s">Pleya-rij · laatste 90 dagen</div></div><div class="act"><div class="btn icon"><span class="up">{{icon:chevd}}</span></div><div class="btn icon">{{icon:chevd}}</div><div class="btn">Verbergen</div></div></div>
+    <div class="r  ">{{icon:show}}<div class="strip"><img src="{{art:severance-poster}}"><img src="{{art:shogun-poster}}"><img src="{{art:fallout-poster}}"><img src="{{art:silo-poster}}"></div><div class="b"><div class="t">Recent toegevoegde series</div><div class="s">Plex Familie · Jellyfin NAS</div></div><div class="act"><div class="btn icon"><span class="up">{{icon:chevd}}</span></div><div class="btn icon">{{icon:chevd}}</div><div class="btn">Verbergen</div></div></div>
+    <div class="r  ">{{icon:star}}<div class="strip"><img src="{{art:andor-poster}}"><img src="{{art:truedetective-poster}}"><img src="{{art:slowhorses-poster}}"><img src="{{art:penguin-poster}}"></div><div class="b"><div class="t">Omdat je Severance gekeken hebt</div><div class="s">Plex Familie</div></div><div class="act"><div class="btn icon"><span class="up">{{icon:chevd}}</span></div><div class="btn icon">{{icon:chevd}}</div><div class="btn">Verbergen</div></div></div>
+    <div class="r off ">{{icon:thumb}}<div class="strip"><img src="{{art:lalaland-poster}}"><img src="{{art:grandbudapest-poster}}"><img src="{{art:pastlives-poster}}"><img src="{{art:wonka-poster}}"></div><div class="b"><div class="t">Aanbevolen voor jou</div><div class="s">Jellyfin NAS · verborgen</div></div><div class="act"><div class="btn icon"><span class="up">{{icon:chevd}}</span></div><div class="btn icon disabled">{{icon:chevd}}</div><div class="btn">Tonen</div></div></div>
+    <div class="r add">{{icon:plus}}<div class="b"><div class="t">Nieuwe rij</div><div class="s">Uit een filter op films of series</div></div></div>
+  </div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 32 · B bewerkmodus: één paneel over de gedimde Home; Uitgelicht en Verder kijken staan vast en zijn niet focusbaar, elke andere regel is een horizontale groep, UP/DOWN houdt de kolom vast</div>

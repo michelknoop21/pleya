@@ -1,4 +1,4 @@
-import '../navigation/navigation_tabs.dart';
+import '../navigation/navigation_tab_id.dart';
 
 /// Stable, agent-addressable automation IDs on a closed set of domains:
 /// `screen`, `nav`, `sidebar`, `library`, `discover`, `detail`, `player`,
@@ -13,6 +13,13 @@ class AutomationIds {
   /// `nav.<NavigationTabId.name>` — derived from the enum itself, not a
   /// second hand-written list that could drift out of sync with it.
   static String navTab(NavigationTabId id) => 'nav.${id.name}';
+
+  /// The TV shell's profile chip, at the far left of the top bar. Not a
+  /// [NavigationTabId]: the chip opens the profile picker on the root
+  /// navigator and never becomes an active destination. It carries a `nav` id
+  /// anyway because it is a focus stop in the bar, and a walk over that bar
+  /// has to be able to name where the leftmost hop lands.
+  static const String navProfile = 'nav.profile';
 
   static const String screenMain = 'screen.main';
   static const String screenDiscover = 'screen.discover';
@@ -196,6 +203,7 @@ class AutomationIds {
     {'id': screenLibraries, 'role': 'screen', 'instanceable': false},
     {'id': screenMediaDetail, 'role': 'screen', 'instanceable': false},
     for (final tab in NavigationTabId.values) {'id': navTab(tab), 'role': 'nav', 'instanceable': false},
+    {'id': navProfile, 'role': 'nav', 'instanceable': false},
     {'id': sidebarRail, 'role': 'sidebar', 'instanceable': false},
     {'id': sidebarLibraryRow, 'role': 'nav.item', 'instanceable': true},
     {'id': libraryGrid, 'role': 'grid', 'instanceable': false},

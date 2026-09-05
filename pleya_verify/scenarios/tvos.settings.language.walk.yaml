@@ -1,0 +1,61 @@
+name: tvos.settings.language.walk
+target: tvos-sim
+# WALK, down the left column of Instellingen ▸ Taal en ondertitels (LANG1,
+# mockup 31 A).
+#
+# Six rows in one column: audio, ondertitels, terugval, weergave, and the two
+# switches. `tvos.settings.language-preferences` proves the page is reachable
+# and that the rows are on screen; what it cannot say is that DOWN visits them
+# one at a time. It presses DOWN twice and asserts the landing, which is green
+# on a page that skips a row as long as the row it skips is not one of those
+# two.
+#
+# The column is the interesting case for the oracle because the rows are not
+# equally tall — a row with a note under it is taller than a switch — and
+# directional traversal scores candidates against the source's band. A skip
+# here would be a real one.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - press: down
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
+
+  # Down the settings index to the language tile, which sits under Afspelen.
+  - press: down
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[settings.language]", timeout: 8000}
+  - press: select
+  - wait_until: {id: "my_pleya.section.content[language]", timeout: 15000}
+  - settle: 1000
+  - assert: {id: "my_pleya.section.tile[language.language_audio]", focused: true}
+  - snapshot: 00-page-opened
+
+  # Five hops for six rows. Every landing is named: on a settings column the
+  # order is the contract, and a walk that only counted presses would be green
+  # on a column that had reordered itself.
+  - walk:
+      direction: down
+      expect:
+        - "my_pleya.section.tile[language.language_subtitles]"
+        - "my_pleya.section.tile[language.language_fallback]"
+        - "my_pleya.section.tile[language.language_policy]"
+        - "my_pleya.section.tile[language.language_remember]"
+        - "my_pleya.section.tile[language.language_mirror]"
+      timeout: 40000
+      settle: 700
+  - assert: {id: "my_pleya.section.tile[language.language_mirror]", focused: true}
+  - snapshot: 01-column-walked

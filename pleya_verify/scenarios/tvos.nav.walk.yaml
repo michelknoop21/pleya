@@ -1,0 +1,51 @@
+name: tvos.nav.walk
+target: tvos-sim
+# WALK, on the surface the jumps were reported on: the top navigation bar.
+#
+# The bar is six focus stops wide — the profile chip, Zoeken, Home, Series,
+# Films and Mijn Pleya, in that order (hoofdstuk 33; no Live TV in this
+# fixture). Until now a scenario could only say where a named press landed,
+# which finds a jump one press at a time and only where someone thought to
+# look. A `walk` presses the same direction across the whole bar and judges
+# every hop against the frame it was issued in, so "Series to Zoeken over
+# Home" — the shape reported from the device — fails on the hop that made it
+# rather than on a later assertion that happens to disagree.
+#
+# `expect` names every landing on purpose. On a bar of six the order *is* the
+# contract, and a walk that only counted presses would go green on a bar that
+# had silently reordered itself.
+#
+# What this cannot say. The double step out of the touch layer (NAV1) is not
+# in reach here: `idb` sends one press and no touch stream, so the second
+# native press a Siri Remote produces never happens in the simulator. The
+# app-side half of that defect is guarded by `tvos.nav.held-press-lands-once`,
+# and the engine's half is HARDWARE ONLY (DEC-099). A green walk over this bar
+# is a statement about the traversal, not about the input layer.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  # IntroGate's cold-start splash paints over an already-ready screen.
+  - settle: 3500
+  - assert: {id: nav.discover, focused: true, state: {active: true}}
+  - snapshot: 00-cold-start
+
+  # Left, to the end of the bar. The profile chip is the last stop and the
+  # reason it carries `nav.profile` at all: without an id the walk's final hop
+  # would land on a node the scenario cannot name.
+  - walk: {direction: left, expect: [nav.search, nav.profile], timeout: 20000, settle: 800}
+  - assert: {id: nav.profile, focused: true}
+  - snapshot: 01-left-end
+
+  # And all the way back. Five hops, one per stop, ending on Mijn Pleya. The
+  # bar does not wrap (hoofdstuk 7.2), so this is the full width of it.
+  - walk:
+      direction: right
+      expect: [nav.search, nav.discover, nav.series, nav.movies, nav.myPleya]
+      timeout: 40000
+      settle: 800
+  - assert: {id: nav.myPleya, focused: true}
+  - snapshot: 02-right-end

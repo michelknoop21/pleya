@@ -1,0 +1,58 @@
+name: tvos.my-pleya.walk-grid
+target: tvos-sim
+# WALK, over the Mijn Pleya hub — the surface whose choreography went stale
+# twice already.
+#
+# Both older hub scenarios hard-code a route and each names a different tile as
+# the landing after two DOWNs. The run of 5 September 2026 shows they are both
+# right and the difference is a press: `tvos.my-pleya.alignment` walks in
+# without a Select and lands on `my_pleya.tile[libraries]`, while
+# `tvos.settings.language-preferences` presses Select first, which moves the
+# ring into the content at `tvMyPleya_switchProfile`, so its two DOWNs start a
+# row lower and land on `my_pleya.tile[settings]`. Neither is stale.
+#
+# What is fragile is the shape of both: a named route encodes the grid as it
+# was on the day it was written, and it fails on the assertion after the drift
+# rather than on the hop that drifted.
+#
+# This walk names no landing at all. It presses DOWN down the hub's first
+# column and lets the oracle judge every hop, so what it asserts is the one
+# thing that stays true across a reordering: no press passes over a tile a
+# viewer could have reached with it. A tile added, removed or moved changes
+# what the walk records, not whether it is green — and a tile the traversal
+# jumps over turns it red on the press that jumped.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  # To Mijn Pleya. The ring landing on a bar item is what switches the
+  # destination since 2 September 2026, so no Select is needed here.
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - settle: 800
+  - snapshot: 00-hub
+
+  # Down out of the bar and into the hub. This press is the entry, not part of
+  # the walk: a walk's first hop must move the focus, and the hub's own first
+  # landing is what the entry press decides.
+  - press: down
+  - settle: 1000
+  - snapshot: 01-hub-entered
+
+  # Down the column. Four presses is more than the column is deep on this
+  # fixture — the run of 5 September walked `tvMyPleya_switchProfile` to
+  # `my_pleya.tile[libraries]` to `my_pleya.tile[settings]` and then reported
+  # the edge, because `catalog.mixed.v1` seeds no watchlist, no Seerr and no
+  # downloads, so the hub's first group is absent. Reaching the bottom edge
+  # after a hop that did move is an answer, not a failure, so the surplus press
+  # costs nothing and the walk keeps working when that group appears.
+  - walk: {direction: down, steps: 4, timeout: 40000, settle: 900}
+  - snapshot: 02-column-walked

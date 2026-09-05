@@ -1,0 +1,99 @@
+<style>
+/* gedeeld met mockup 30 (DEC-095): full-bleed hero, ambient tint, railstapel met DEC-087-band */
+.bleed { position: absolute; inset: 0; overflow: hidden; background: var(--bg); }
+.bleed img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 35%; }
+.bleed .scrim { position: absolute; inset: 0; }
+.amb { position: absolute; inset: 0; background: radial-gradient(120% 80% at 70% 0%, rgba(96,72,52,.55) 0%, rgba(20,20,20,0) 60%), var(--bg); }
+.amb.cool { background: radial-gradient(120% 80% at 70% 0%, rgba(52,72,96,.50) 0%, rgba(20,20,20,0) 60%), var(--bg); }
+.topfade { position: absolute; left: 0; right: 0; top: 0; height: 140px; background: linear-gradient(180deg, rgba(20,20,20,.72), rgba(20,20,20,0)); }
+.rails { position: absolute; left: var(--inset); right: 0; }
+.rails .rail-label { margin-bottom: 18px; }
+.rb { display: flex; gap: 22px; align-items: flex-end; height: 346px; }
+.rb .c { position: relative; flex: none; width: 231px; height: 346px; border-radius: var(--r-card); overflow: hidden; background: var(--surface); }
+.rb .c img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rb .c.w { width: 615px; }
+.rb .c.focus { box-shadow: 0 0 0 var(--ring-gap) var(--bg), 0 0 0 calc(var(--ring-gap) + var(--ring)) var(--ink); }
+.rb .c .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgba(255,255,255,.25); }
+.rb .c .prog i { display: block; height: 100%; background: var(--accent); }
+.rb .c .new { position: absolute; right: 12px; top: 12px; width: 12px; height: 12px; border-radius: 999px; background: var(--amber); }
+.rb .c .seen { position: absolute; right: 12px; top: 12px; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: var(--bg); display: grid; place-items: center; }
+.rb .c .seen .ic { width: 16px; height: 16px; }
+.rb .c .src { position: absolute; left: 12px; top: 12px; background: rgba(20,20,20,.78); font-size: 16px; font-weight: 500; padding: 4px 10px; border-radius: 6px; }
+.cap { margin-top: 18px; width: 615px; }
+.cap .t { font-size: 27px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cap .m { margin-top: 4px; font-size: 20px; line-height: 1.3; color: var(--ink-2); }
+.cap .m .sep { margin: 0 10px; color: var(--ink-4); }
+.cap .d { margin-top: 6px; font-size: 19px; line-height: 1.3; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail-label.next { margin-top: 26px; }
+/* ROW1: een eigen rij draagt zijn filter als stille tags naast het label, in de taal van 28 D1 */
+.lbl { display: flex; align-items: baseline; gap: 22px; margin-bottom: 18px; }
+.lbl .rail-label { margin-bottom: 0; }
+.lbl .tags { display: flex; gap: 8px; align-items: center; }
+.lbl .tags .tag { border-color: var(--ink-4); color: var(--ink-3); font-size: 17px; line-height: 26px; }
+.lbl .tags .tag.muted { border-style: dashed; }
+.lbl .cnt { margin-left: auto; margin-right: var(--inset); font-size: 20px; color: var(--ink-3); }
+/* de "Alle N"-tegel aan het eind van een eigen rij: de tegelvorm uit DEC-064 */
+.rb .c.all { background: var(--fill); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--ink-2); font-size: 22px; font-weight: 500; }
+.rb .c.all .ic { width: 30px; height: 30px; }
+.rb .c.all small { font-size: 18px; color: var(--ink-3); font-weight: 400; }
+</style>
+<style>
+.bleed img { transform: translateY(-469px); opacity: .34; }
+.bleed .scrim { background: linear-gradient(180deg, rgba(20,20,20,.72) 0%, rgba(20,20,20,.20) 12%, rgba(20,20,20,.45) 26%, var(--bg) 40%); }
+.rails { top: 132px; opacity: .35; }
+.sheet { width: 760px; padding: 0; overflow: hidden; }
+.sheet .head { display: flex; gap: 22px; align-items: center; padding: 28px 32px 22px; border-bottom: 1px solid var(--hair); }
+.sheet .head img { width: 68px; height: 102px; border-radius: 8px; object-fit: cover; }
+.sheet .head .t { font-size: 28px; font-weight: 700; }
+.sheet .head .s { font-size: 20px; color: var(--ink-3); margin-top: 4px; }
+.opts { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
+.opt { display: flex; align-items: center; gap: 20px; height: 66px; padding: 0 18px; border-radius: 12px; font-size: 23px; }
+.opt .ic { width: 26px; height: 26px; color: var(--ink-2); }
+.opt .r { margin-left: auto; font-size: 19px; color: var(--ink-3); }
+.opt.focus { background: var(--elevated); box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--ink); }
+.opt.sep { height: 1px; background: var(--hair); margin: 6px 18px; padding: 0; }
+</style>
+<div class="bleed"><img src="{{art:dune2-backdrop}}"><div class="scrim"></div></div>
+{{nav:Home|dim}}
+<div class="rails">
+  <div class="rail-label">Verder kijken</div>
+  <div class="rb">
+    <div class="c w"><img src="{{art:eeaao-poster}}"><div class="prog"><i style="width:70%"></i></div></div>
+    <div class="c "><img src="{{art:barbie-poster}}"><div class="prog"><i style="width:30%"></i></div></div>
+    <div class="c "><img src="{{art:penguin-poster}}"><span class="src">2 bronnen</span><div class="prog"><i style="width:55%"></i></div></div>
+    <div class="c "><img src="{{art:poorthings-poster}}"><div class="prog"><i style="width:12%"></i></div></div>
+    <div class="c "><img src="{{art:conclave-poster}}"><div class="prog"><i style="width:80%"></i></div></div>
+    <div class="c "><img src="{{art:wonka-poster}}"><div class="prog"><i style="width:40%"></i></div></div>
+  </div>
+  <div class="cap"><div class="t">Everything Everywhere All at Once</div><div class="m">42 min resterend<span class="sep">·</span>2022<span class="sep">·</span>Avontuur<span class="sep">·</span>2u 19m</div><div class="d">Een uitgebluste wasserette-eigenaar wordt meegesleurd in een strijd door het multiversum.</div></div>
+  <div class="rail-label next">Nieuwe sci-fi</div>
+  <div class="rb">
+    <div class="c "><img src="{{art:dune2-poster}}"><span class="new"></span></div>
+    <div class="c "><img src="{{art:dune1-poster}}"></div>
+    <div class="c "><img src="{{art:interstellar-poster}}"></div>
+    <div class="c "><img src="{{art:civilwar-poster}}"><span class="new"></span></div>
+    <div class="c "><img src="{{art:spiderverse-poster}}"></div>
+    <div class="c "><img src="{{art:substance-poster}}"></div>
+    <div class="c "><img src="{{art:nosferatu-poster}}"></div>
+    <div class="c all">{{icon:grid}}Alle 42<small>in Alle films</small></div>
+  </div>
+</div>
+<div class="scrim" style="background:rgba(20,20,20,.5)"></div>
+<div class="modal sheet">
+  <div class="head"><img src="{{art:eeaao-poster}}"><div><div class="t">Everything Everywhere All at Once</div><div class="s">2022 · Avontuur · 2u 19m · 2 bronnen · 1u 37m bekeken</div></div></div>
+  <div class="opts">
+    <div class="opt">{{icon:play}} Hervatten <span class="r">nog 42 min</span></div>
+    <div class="opt">{{icon:refresh}} Vanaf het begin</div>
+    <div class="opt">{{icon:info}} Meer info</div>
+    <div class="opt sep"></div>
+    <div class="opt">{{icon:bookmark}} Aan kijklijst toevoegen</div>
+    <div class="opt">{{icon:check}} Markeer als gekeken</div>
+    <div class="opt">{{icon:eyeoff}} Verwijder uit Verder kijken</div>
+    <div class="opt sep"></div>
+    <div class="opt">{{icon:swap}} Bron wijzigen <span class="r">NAS · Films 4K</span></div>
+    <div class="opt sep"></div>
+    <div class="opt focus">{{icon:edit}} Home aanpassen <span class="r">rijen en volgorde</span></div>
+  </div>
+  <div style="padding:0 32px 26px;display:flex;justify-content:flex-end"><div class="btn">Sluiten</div></div>
+</div>
+<div class="note">CANDIDATE · MOCKUP 32 · A1b de ingang in het contextmenu: lang indrukken op elke kaart van Home geeft het menu van 12 een laatste regel "Home aanpassen"; één druk vanaf elke plek, nul chrome op de pagina</div>

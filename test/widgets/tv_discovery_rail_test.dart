@@ -9,6 +9,7 @@ import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv/tv_discovery_rail.dart';
+import 'package:pleya/widgets/tv/tv_section_header.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 import '../test_helpers/golden.dart';
@@ -84,19 +85,15 @@ void main() {
       final third = discoveryContextFor(films[2]);
       expect(first.title, isNot(third.title));
 
-      // A rail nobody is standing in describes nothing. This used to read the
-      // other way round — the block filled in on arrival, before any press —
-      // and a stacked feed then showed one caption per rail at once, which on a
-      // physical Apple TV read as two focus contexts on screen together. The
-      // contract note on the block in `tv_discovery_rail.dart` settles it for
-      // every surface that stacks rails: the projection belongs to the item
-      // that has the focus, and to no other.
+      // A rail nobody is standing in describes nothing (LAND2, `2371c62`). This
+      // file asserted the opposite until then — "before any press the rail
+      // describes its first tile" — because every rail drew its own block and a
+      // stacked feed showed one caption per rail at once. `alwaysDescribesCurrent`
+      // is the opt-out, and TV Search is the surface that takes it.
       expect(find.text(first.title), findsNothing);
-      expect(find.text(third.title), findsNothing);
 
-      railOf(tester).focusGroup(films.first.groupId);
+      railOf(tester).focusCurrent();
       await tester.pumpAndSettle();
-
       expect(find.text(first.title), findsOneWidget);
       expect(find.text(third.title), findsNothing);
 
@@ -107,10 +104,12 @@ void main() {
       expect(find.text(first.title), findsNothing);
     });
 
-    // A move *off* the rail empties the block, because the rail no longer holds
-    // the focus. What it must not lose is *where* it was: stepping back in
-    // describes the same tile again rather than starting over at the first.
-    testWidgets('losing focus empties the block but not the rail\'s memory', (tester) async {
+    // A move off the rail empties the block but not the memory. LAND2 took the
+    // caption away from a rail the remote has left; what it did not touch is
+    // *where* that rail resumes, which is the tile the viewer walked off, never
+    // the first one. The two used to be asserted through the same widget, so
+    // this test read as "the block survives" and could not tell them apart.
+    testWidgets('losing focus empties the block but not the tile it remembers', (tester) async {
       setGoldenSurfaceSize(tester);
       final films = tvDiscoveryFilmsRow();
       final outside = FocusNode(debugLabel: 'outside');
@@ -135,13 +134,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(discoveryContextFor(films[1]).title), findsNothing);
 
+      // And back. `focusCurrent` is what a vertical step into this rail calls,
+      // so this is the return trip, not a second way of naming a tile.
       expect(railOf(tester).focusCurrent(), isTrue);
       await tester.pumpAndSettle();
-      expect(
-        find.text(discoveryContextFor(films[1]).title),
-        findsOneWidget,
-        reason: 'the rail came back to the tile it was left on, not to its first',
-      );
+      expect(find.text(discoveryContextFor(films[1]).title), findsOneWidget);
+      expect(find.text(discoveryContextFor(films.first).title), findsNothing);
     });
 
     // Hoofdstuk 15: episode context only when the data is really there.
@@ -176,8 +174,9 @@ void main() {
       await tester.pumpWidget(_shell(_rail(groups: films, initialFocusedGroupId: films[2].groupId)));
       await tester.pumpAndSettle();
 
-      // The block reads the remembered tile back, and only a rail that holds
-      // the focus draws it, so the focus goes in first.
+      // The block is the probe for "which tile is current", and since LAND2 it
+      // is drawn only while the rail holds the focus — so the rail is given the
+      // focus before it is read, exactly as a vertical step into it would.
       expect(railOf(tester).focusCurrent(), isTrue);
       await tester.pumpAndSettle();
       expect(find.text(discoveryContextFor(films[2]).title), findsOneWidget);
@@ -185,8 +184,6 @@ void main() {
       // Now a late source lands and pushes two groups in front of it.
       final lengthened = [tvDiscoveryThreeSourceGroup(), tvDiscoveryLongTitleGroup(), ...films];
       await tester.pumpWidget(_shell(_rail(groups: lengthened, initialFocusedGroupId: films[2].groupId)));
-      await tester.pumpAndSettle();
-      expect(railOf(tester).focusCurrent(), isTrue);
       await tester.pumpAndSettle();
 
       expect(
@@ -287,11 +284,8 @@ void main() {
     // so once in its heading rather than over the page.
     testWidgets('a partial rail says so in its heading and keeps its content', (tester) async {
       setGoldenSurfaceSize(tester);
-      // Without a handle the semantics tree is not built and
-      // `find.bySemanticsLabel` reports zero matches for a label that is in
-      // fact rendered. The sibling test above already takes one out.
-      final handle = tester.ensureSemantics();
       final films = tvDiscoveryFilmsRow();
+      final handle = tester.ensureSemantics();
       await tester.pumpWidget(_shell(_rail(groups: films, isPartial: true)));
       await tester.pumpAndSettle();
 
@@ -299,14 +293,19 @@ void main() {
       // every affected heading competed with the row title (hoofdstuk 41 asks
       // for subtle). The full wording still has to reach assistive tech.
       expect(find.text(t.unifiedCatalog.discovery.partial), findsNothing);
-      // A substring match, because the wording is delivered exactly the way the
-      // glyph is meant to be read: as a footnote to the row title. The
-      // annotation has no container of its own, so it merges into the heading's
-      // node and the rendered label is "<row title>\n<partial wording>". An
-      // equality match asks for a node that is only the footnote, and a node
-      // like that would be a separate stop for assistive tech rather than the
-      // aside this is.
-      expect(find.bySemanticsLabel(RegExp(RegExp.escape(t.unifiedCatalog.discovery.partial))), findsOneWidget);
+
+      // Read off the heading's own node rather than through
+      // `find.bySemanticsLabel`. The glyph's `Semantics` has no container of
+      // its own, so its wording merges into the heading and the node reads
+      // "Recently Added\nSome sources did not answer" — which is precisely
+      // hoofdstuk 41's "says so once in its heading", and precisely what an
+      // exact-string finder cannot see. The finder was the wrong instrument,
+      // not the widget: it matched nothing whatever the widget did, so this
+      // assertion never had a failing state to be a test of.
+      final heading = tester.getSemantics(find.byType(TvSectionHeader));
+      expect(heading.label, contains(t.discover.recentlyAdded));
+      expect(heading.label, contains(t.unifiedCatalog.discovery.partial));
+
       expect(find.byKey(ValueKey(films.first.groupId)), findsOneWidget);
       handle.dispose();
     });

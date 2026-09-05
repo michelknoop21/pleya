@@ -1,0 +1,57 @@
+name: tvos.home.walk-rails
+target: tvos-sim
+# WALK, downwards through Home: bar, hero, first rail, second rail, and back.
+#
+# A vertical walk is where the rails' own scrolling makes the judgement
+# delicate, and it is the reason `walk` measures in the frame *before* the
+# press: entering a rail scrolls it to its anchor (DEC-095), so a tile judged
+# afterwards is compared against positions the press itself produced.
+#
+# The landings are named because two of them are deliberate deviations from
+# plain directional traversal and would otherwise read as findings: DOWN out
+# of the bar lands on the hero's Afspelen pill rather than on the nearest
+# thing below the pill, and DOWN out of the hero lands on the tile the rail
+# remembers rather than the geometrically nearest one.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - assert: {id: nav.discover, focused: true}
+  - snapshot: 00-landing
+
+  # Down the page. 1200 ms of settle per hop covers the rail's scroll to its
+  # anchor; a shorter one judges a frame that is still moving.
+  - walk:
+      direction: down
+      expect: [discover.hero.play, "discover.rail.item[0.0]", "discover.rail.item[1.0]"]
+      timeout: 40000
+      settle: 1200
+  - snapshot: 01-second-rail
+
+  # And back up, which is P1's return path with every hop judged rather than
+  # only the endpoint: the hero has to come back into view, not just back into
+  # the focus tree.
+  #
+  # `allow` names the top bar, and the run of 5 September is why. The bar does
+  # not scroll with the feed: on a page scrolled to the second rail it sits at
+  # y=46 while the rail being left sits at y=198 and the rail being returned to
+  # is still at y=-354, above the fold. Geometrically the bar is therefore
+  # between the two rails, and the oracle reported it as passed over. It is not
+  # a jump: `TvRailStack._handOver` owns UP between rails and only yields at the
+  # top of the feed, so the bar is reached by walking up to the hero first
+  # (LAND4). The exemption is named per id rather than widened into a margin —
+  # a rail skipped on this same hop is still red, and so is any other candidate.
+  - walk:
+      direction: up
+      expect: ["discover.rail.item[0.0]", discover.hero.play]
+      allow: [nav.profile, nav.search]
+      timeout: 30000
+      settle: 1200
+  - assert: {id: discover.hero, insideViewport: true}
+  - assert: {id: discover.hero.play, focused: true}
+  - snapshot: 02-hero-returned
