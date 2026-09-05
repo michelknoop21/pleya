@@ -27,6 +27,7 @@ class EvidenceBundle {
     Directory('${dir.path}/screenshots').createSync(recursive: true);
     Directory('${dir.path}/ui-tree').createSync(recursive: true);
     Directory('${dir.path}/fixture').createSync(recursive: true);
+    Directory('${dir.path}/walks').createSync(recursive: true);
   }
 
   /// Not redacted here, deliberately: `manifest.json` is machine-read (the
@@ -67,6 +68,19 @@ class EvidenceBundle {
   File saveScreenshot(String name, Uint8List bytes) {
     final file = File('${dir.path}/screenshots/$name.png');
     file.writeAsBytesSync(bytes);
+    return file;
+  }
+
+  /// One `walk:` step's full record — every hop, its verdict, and the two
+  /// focus measurements it was judged on.
+  ///
+  /// Separate from `manifest.json` because it is bulky and because it is the
+  /// artefact a later run gets *replayed* against: with the pre-frame tree
+  /// saved beside it (`ui-tree/walk-<line>-hop-<k>.json`), a verdict can be
+  /// re-derived offline without the simulator that produced it.
+  File saveWalk(String name, Map<String, Object?> walk) {
+    final file = File('${dir.path}/walks/$name.json');
+    file.writeAsStringSync(_prettyJson.convert(walk));
     return file;
   }
 

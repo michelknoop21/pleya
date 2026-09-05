@@ -4,6 +4,7 @@ import 'automation_id_catalog.dart';
 import 'automation_id_grammar.dart';
 import 'model.dart';
 import 'remote_keys.dart';
+import 'walk_args.dart';
 
 /// Structurally validates an already-parsed [Scenario]: the disjoint
 /// setup/step vocabularies ([C9]), the tvOS tap-forbidden rule ([C2] —
@@ -71,6 +72,9 @@ List<ScenarioError> validateScenario(Scenario scenario, AutomationIdCatalog cata
     if (step.verb == 'assert') {
       _validateAssert(step, scenario, errors);
     }
+    if (step.verb == 'walk') {
+      _validateWalk(step, scenario, errors);
+    }
     _validateStepBody(step, scenario, catalog, errors);
   }
 
@@ -126,6 +130,8 @@ void _validateStepBody(ScenarioStep step, Scenario scenario, AutomationIdCatalog
 /// id reference is checked here.
 Iterable<String> _findIdRefs(Object? args) sync* {
   if (args is Map) {
+    // `walk`'s `stopAt`/`expect`/`allow` hold bare ids, not `{id: ...}` maps.
+    yield* walkIdRefs(args);
     for (final entry in args.entries) {
       if (entry.key == 'id' && entry.value is String) yield entry.value as String;
       if (binaryGeometryPredicates.contains(entry.key) && entry.value is String) yield entry.value as String;
@@ -246,5 +252,16 @@ void _validateAssert(ScenarioStep step, Scenario scenario, List<ScenarioError> e
         ),
       );
     }
+  }
+}
+
+/// A `walk:` obeys its own grammar ([parseWalkArgs]) and, like `press`, is
+/// checked here so a malformed one costs a millisecond instead of a build, an
+/// install and a launch.
+void _validateWalk(ScenarioStep step, Scenario scenario, List<ScenarioError> errors) {
+  try {
+    parseWalkArgs(step.args);
+  } on WalkArgsException catch (e) {
+    errors.add(ScenarioError(sourcePath: scenario.sourcePath, line: step.line, message: e.message));
   }
 }

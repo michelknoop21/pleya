@@ -159,6 +159,90 @@ class FakeDriver implements VerificationDriver {
   Future<void> tap(double x, double y) async {}
 }
 
+/// A row of focusables and a remote that moves through it, so the walk
+/// dispatch can be proven without a simulator.
+///
+/// The row is horizontal, five nodes wide, laid out the way the TV nav bar is
+/// (`nav.<name>` at y 54, 110 wide, 134 apart). [step] is what one press does:
+/// 1 is a healthy remote, 2 is the NAV1 double step, 0 is the edge, and -1
+/// walks backwards. [postShift] moves everything sideways after each press,
+/// which is a rail scrolling itself into place — the case that makes rects
+/// useless across a press and node numbers necessary.
+class WalkDriver extends FakeDriver {
+  WalkDriver({this.step = 1, this.postShift = 0, this.wrap = false, this.appearAfterPress = false, int startAt = 0})
+    : index = startAt;
+
+  final int step;
+  final double postShift;
+  final bool wrap;
+
+  /// Nothing ahead of the focus exists yet: each landing is built by the press
+  /// that reaches it, so it is absent from the frame the judgement is made in.
+  /// That is the shape of a rail whose tiles are created as they scroll in.
+  final bool appearAfterPress;
+
+  static const List<String> ids = ['nav.search', 'nav.discover', 'nav.series', 'nav.movies', 'nav.myPleya'];
+
+  int index;
+
+  /// How many presses this driver has seen — named apart from [FakeDriver.presses],
+  /// which records the key/hold of each one.
+  int pressCount = 0;
+  final List<String> pressedKeys = [];
+
+  double get _shift => postShift * pressCount;
+
+  Map<String, Object?> _bounds(int i) => {'x': 96 + i * 134 + _shift, 'y': 54.0, 'width': 110.0, 'height': 56.0};
+
+  /// Node numbers are the app's own per-`FocusNode` identity: stable across
+  /// frames, unrelated to position.
+  int _node(int i) => 100 + i;
+
+  @override
+  Future<Map<String, Object?>> uiTree() async => {
+    'declared': [
+      for (var i = 0; i < ids.length; i++)
+        if (!(appearAfterPress && i > index))
+          {'id': ids[i], 'role': 'nav.item', 'focused': i == index, 'node': _node(i), 'bounds': _bounds(i)},
+    ],
+    'discovered': const [],
+    'duplicates': const [],
+  };
+
+  @override
+  Future<Map<String, Object?>> focus() async => {
+    'label': ids[index],
+    'focused': true,
+    'node': _node(index),
+    'bounds': _bounds(index),
+  };
+
+  @override
+  Future<Map<String, Object?>> viewport() async => {'available': true, 'width': 1920.0, 'height': 1080.0};
+
+  @override
+  Future<void> press(String key, {Duration? hold}) async {
+    pressedKeys.add(key);
+    pressCount++;
+    final next = index + step;
+    if (wrap) {
+      index = next % ids.length;
+    } else {
+      index = next.clamp(0, ids.length - 1);
+    }
+  }
+}
+
+Future<ScenarioRunResult> _runWalk(String walkStep, WalkDriver driver, Directory repoRoot) {
+  final source = 'name: walk.test\ntarget: tvos-sim\nsetup:\n  - launch\nsteps:\n  - $walkStep\n';
+  return runScenario(
+    scenario: parseScenarioString(source, sourcePath: 'inline.yaml'),
+    scenarioSource: source,
+    driver: driver,
+    repoRoot: repoRoot,
+  );
+}
+
 void main() {
   late Directory repoRoot;
 
@@ -636,5 +720,145 @@ void main() {
       repoRoot: repoRoot,
     );
     expect(result.bundleDir.path, startsWith('${repoRoot.path}/.build/pleya-verify/fixture-dir-'));
+  });
+
+  group('walk', () {
+    test('a healthy row passes, and every hop lands in the bundle', () async {
+      final driver = WalkDriver();
+      final result = await _runWalk('walk: {direction: right, steps: 3, timeout: 5000, settle: 0}', driver, repoRoot);
+
+      expect(result.passed, isTrue, reason: result.failureMessage);
+      expect(driver.pressedKeys, ['right', 'right', 'right']);
+
+      final walk = jsonDecode(File('${result.bundleDir.path}/walks/walk-6.json').readAsStringSync());
+      expect((walk['hops'] as List), hasLength(3));
+      expect((walk['hops'] as List).every((h) => (h as Map)['kind'] == 'ok'), isTrue);
+      expect(walk['stop'], 'steps');
+      // The frame each hop was judged in, kept so a verdict is re-derivable
+      // without the simulator that produced it.
+      expect(File('${result.bundleDir.path}/ui-tree/walk-6-hop-1.json').existsSync(), isTrue);
+      expect(File('${result.bundleDir.path}/report.md').readAsStringSync(), contains('hop 1: ok'));
+    });
+
+    test('a double step is reported with the destination it passed over', () async {
+      final driver = WalkDriver(step: 2);
+      final result = await _runWalk('walk: {direction: right, steps: 3, timeout: 5000, settle: 0}', driver, repoRoot);
+
+      expect(result.passed, isFalse);
+      expect(result.failureMessage, contains('nav.discover'));
+      expect(result.failureMessage, contains('passing over'));
+      // Fails fast: the second press is never issued from a position the app
+      // should not have been in.
+      expect(driver.pressedKeys, ['right']);
+      expect(File('${result.bundleDir.path}/screenshots/walk-6-hop-1.png').existsSync(), isTrue);
+    });
+
+    test('allow silences exactly the candidate it names', () async {
+      final driver = WalkDriver(step: 2);
+      final result = await _runWalk(
+        'walk: {direction: right, steps: 2, timeout: 5000, settle: 0, allow: [nav.discover, nav.movies]}',
+        driver,
+        repoRoot,
+      );
+
+      expect(result.passed, isTrue, reason: result.failureMessage);
+    });
+
+    test('stopAt ends the walk green as soon as that id has the focus', () async {
+      final driver = WalkDriver();
+      final result = await _runWalk(
+        'walk: {direction: right, steps: 9, timeout: 5000, settle: 0, stopAt: nav.series}',
+        driver,
+        repoRoot,
+      );
+
+      expect(result.passed, isTrue, reason: result.failureMessage);
+      expect(driver.pressedKeys, hasLength(2));
+      final walk = jsonDecode(File('${result.bundleDir.path}/walks/walk-6.json').readAsStringSync());
+      expect(walk['stop'], 'stopAt');
+    });
+
+    test('a stopAt that never arrives is a failure, not a quiet pass', () async {
+      final driver = WalkDriver();
+      final result = await _runWalk(
+        'walk: {direction: right, steps: 2, timeout: 5000, settle: 0, stopAt: nav.myPleya}',
+        driver,
+        repoRoot,
+      );
+
+      expect(result.passed, isFalse);
+      expect(result.failureMessage, contains('nav.myPleya'));
+    });
+
+    test('running out of row after a real hop is an edge, and green', () async {
+      final driver = WalkDriver();
+      final result = await _runWalk('walk: {direction: right, steps: 9, timeout: 5000, settle: 0}', driver, repoRoot);
+
+      expect(result.passed, isTrue, reason: result.failureMessage);
+      final walk = jsonDecode(File('${result.bundleDir.path}/walks/walk-6.json').readAsStringSync());
+      expect(walk['stop'], 'edge');
+    });
+
+    test('a walk that never moves at all proves nothing and is red', () async {
+      final driver = WalkDriver(step: 0);
+      final result = await _runWalk('walk: {direction: right, steps: 3, timeout: 5000, settle: 0}', driver, repoRoot);
+
+      expect(result.passed, isFalse);
+      expect(result.failureMessage, contains('did not move'));
+    });
+
+    test('a wrap to the other end is notForward', () async {
+      final driver = WalkDriver(wrap: true, startAt: 4);
+      final result = await _runWalk('walk: {direction: right, steps: 2, timeout: 5000, settle: 0}', driver, repoRoot);
+
+      expect(result.passed, isFalse);
+      expect(result.failureMessage, contains('not in the direction pressed'));
+    });
+
+    test('expect names every landing, and a mismatch says which hop', () async {
+      final driver = WalkDriver();
+      final result = await _runWalk(
+        'walk: {direction: right, timeout: 5000, settle: 0, expect: [nav.discover, nav.movies]}',
+        driver,
+        repoRoot,
+      );
+
+      expect(result.passed, isFalse);
+      expect(result.failureMessage, contains('hop 2'));
+      expect(result.failureMessage, contains('nav.movies'));
+    });
+
+    test('expect that matches passes', () async {
+      final driver = WalkDriver();
+      final result = await _runWalk(
+        'walk: {direction: right, timeout: 5000, settle: 0, expect: [nav.discover, nav.series]}',
+        driver,
+        repoRoot,
+      );
+
+      expect(result.passed, isTrue, reason: result.failureMessage);
+    });
+
+    test('a row that scrolls under the press is still judged, on node identity', () async {
+      // Every rect moves 240px left after each press. A walk that matched
+      // frames by geometry would pair the landing with its neighbour.
+      final driver = WalkDriver(postShift: -240);
+      final result = await _runWalk('walk: {direction: right, steps: 3, timeout: 5000, settle: 0}', driver, repoRoot);
+
+      expect(result.passed, isTrue, reason: result.failureMessage);
+      final hops =
+          (jsonDecode(File('${result.bundleDir.path}/walks/walk-6.json').readAsStringSync())
+                  as Map<String, Object?>)['hops']
+              as List;
+      expect((hops.first as Map)['scrolled'], isTrue);
+    });
+
+    test('a walk whose every landing is built by the press itself is inconclusive, and red', () async {
+      final driver = WalkDriver(appearAfterPress: true);
+      final result = await _runWalk('walk: {direction: right, steps: 2, timeout: 5000, settle: 0}', driver, repoRoot);
+
+      expect(result.passed, isFalse);
+      expect(result.failureMessage, contains('judged nothing'));
+    });
   });
 }
