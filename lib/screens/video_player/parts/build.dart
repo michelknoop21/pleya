@@ -312,6 +312,7 @@ extension _VideoPlayerBuildMethods on VideoPlayerScreenState {
                         boxFitMode: _videoFilterManager?.boxFitMode ?? 0,
                         videoZoomScale: _videoFilterManager?.zoomScale ?? 1.0,
                         onCycleBoxFitMode: _cycleBoxFitMode,
+                        onSetBoxFitMode: _setBoxFitMode,
                         onVideoZoomChanged: _setVideoZoom,
                         onZoomIn: _zoomVideoIn,
                         onZoomOut: _zoomVideoOut,

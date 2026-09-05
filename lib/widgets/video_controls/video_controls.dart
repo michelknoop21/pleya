@@ -267,6 +267,9 @@ class PlexVideoControls extends StatefulWidget {
   final double videoZoomScale;
   final VoidCallback? onTogglePIPMode;
   final VoidCallback? onCycleBoxFitMode;
+
+  /// Sets the box-fit mode directly; the TV panel steps it both ways.
+  final ValueChanged<int>? onSetBoxFitMode;
   final ValueChanged<double>? onVideoZoomChanged;
   final VoidCallback? onZoomIn;
   final VoidCallback? onZoomOut;
@@ -387,6 +390,7 @@ class PlexVideoControls extends StatefulWidget {
     this.videoZoomScale = 1.0,
     this.onTogglePIPMode,
     this.onCycleBoxFitMode,
+    this.onSetBoxFitMode,
     this.onVideoZoomChanged,
     this.onZoomIn,
     this.onZoomOut,
@@ -547,6 +551,10 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
   // Infuse-style swipe-down TV info panel (TV platforms only).
   bool _tvInfoPanelVisible = false;
 
+  /// Where the panel opens: the swipe asks for Info, the buttons for their tab
+  /// (DEC-101). Read once when the panel mounts.
+  TvInfoPanelRequest _tvInfoPanelRequest = TvInfoPanelRequest.information;
+
   @override
   void initState() {
     super.initState();
@@ -640,8 +648,9 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
 
   /// Open the Infuse-style TV info panel (swipe-down). Controls are hidden while
   /// it is up; the panel owns its own focus scope.
-  void _showTvInfoPanel() {
+  void _showTvInfoPanel([TvInfoPanelRequest request = TvInfoPanelRequest.information]) {
     if (_tvInfoPanelVisible) return;
+    _tvInfoPanelRequest = request;
     // Set the flag before hiding controls so the focus-reclaim path
     // (_onChromeChanged → _reclaimFocusAfterControlsHide, which fires
     // synchronously during hide()) sees the panel is open and stays out of the
@@ -1078,6 +1087,7 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                         ambientSupported: widget.onSetAmbientIntensity != null,
                         onSetAmbientIntensity: (mode) => widget.onSetAmbientIntensity?.call(mode),
                         onClose: _hideTvInfoPanel,
+                        initial: _tvInfoPanelRequest,
                       ),
                     ),
                   if (_isScreenLocked)

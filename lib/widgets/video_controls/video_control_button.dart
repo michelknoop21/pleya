@@ -34,6 +34,10 @@ class VideoControlButton extends StatelessWidget {
   /// Custom key event handler for focus navigation.
   final KeyEventResult Function(FocusNode, KeyEvent)? onKeyEvent;
 
+  /// Stable automation id (see lib/automation/automation_ids.dart), so Pleya
+  /// Verify can land on this button by name. Only honoured with a [focusNode].
+  final String? automationId;
+
   final ValueChanged<bool>? onFocusChange;
 
   final bool autofocus;
@@ -48,6 +52,7 @@ class VideoControlButton extends StatelessWidget {
     this.isActive = false,
     this.focusNode,
     this.onKeyEvent,
+    this.automationId,
     this.onFocusChange,
     this.autofocus = false,
   });
@@ -76,6 +81,8 @@ class VideoControlButton extends StatelessWidget {
         onFocusChange: onFocusChange,
         autofocus: autofocus,
         semanticLabel: semanticLabel,
+        automationId: automationId,
+        automationRole: 'button',
         // A real circle, not a radius-20 guess that only lands right while the
         // button happens to be 40px.
         focusShape: BoxShape.circle,

@@ -178,7 +178,7 @@ class _SyncOffsetControlState extends State<SyncOffsetControl> {
           width: size,
           height: size,
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            color: tokens(context).surfaceElevated,
             borderRadius: const BorderRadius.all(Radius.circular(8)),
           ),
           child: Icon(icon, color: tokens(context).text, size: iconSize),
@@ -211,7 +211,7 @@ class _SyncOffsetControlState extends State<SyncOffsetControl> {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            color: tokens(context).surfaceElevated,
             borderRadius: const BorderRadius.all(Radius.circular(8)),
           ),
           child: Icon(icon, color: tokens(context).text, size: 22),
@@ -339,6 +339,10 @@ class _SyncOffsetControlState extends State<SyncOffsetControl> {
                 child: SliderTheme(
                   data: SliderTheme.of(context).copyWith(tickMarkShape: SliderTickMarkShape.noTickMark),
                   child: Slider(
+                    // The same node the compact layout attaches: without it a
+                    // caller's requestFocus() lands on a node that is in no
+                    // tree, and the view opens with nothing focused (AUD2).
+                    focusNode: widget.sliderFocusNode,
                     value: sliderValue,
                     min: _sliderMin,
                     max: _sliderMax,

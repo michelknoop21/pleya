@@ -1,0 +1,85 @@
+name: tvos.player.panel
+target: tvos-sim
+# PLR2 / PLR3 (DEC-101): on TV the player panel is the only player menu, and
+# the tune button is the way in for a simulator that has no touch surface to
+# swipe on. The walk into the player is the one `tvos.home.hero-return-after-
+# playback` measured; from `player.surface` on, this scenario is the new part.
+#
+# UP with the controls hidden shows them with play/pause focused
+# (`_showControlsWithFocus`); RIGHT from play/pause on TV lands on the first
+# track control, the tune button (`desktop_video_controls.dart`,
+# `_handleButtonKeyEvent`: `rightTarget ??= isTV ? _trackControlFocusNodes.first`).
+# Select there asks for the panel on Video (`TrackChapterControls.onOpenTvPanel`),
+# and the panel lands on the first row of the Display group.
+#
+# The fixture clip is a few seconds long, so the presses are tight and the
+# settles short; if mpv reaches its own end first the `wait_until` on
+# `player.panel` is what fails, and that is a fixture length problem, not a
+# panel one (VER4 has the same shape).
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - press: down
+  - settle: 800
+  - press: down
+  - settle: 800
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 20000}
+  - settle: 1500
+  - press: select
+  - wait_until: {id: player.surface, timeout: 25000}
+  - settle: 600
+
+  # Controls up, then over to the tune button.
+  - press: up
+  - settle: 400
+  - press: right
+  - settle: 300
+  - assert: {id: player.settings_button, focused: true}
+  - press: select
+  - wait_until: {id: player.panel, timeout: 5000}
+  - settle: 400
+  - snapshot: 01-panel-video
+
+  # The panel opened on Video, inside the title-safe rect, with the first row
+  # of the Display group under the ring.
+  - assert: {id: player.panel, state: {tab: video, subView: none}}
+  - assert: {id: player.panel, insideViewport: true}
+  - assert: {id: "player.panel.tab[video]", state: {active: true}}
+  - assert: {id: "player.panel.row[aspect_ratio]", focused: true}
+
+  # A value row steps with RIGHT and stays focused: Letterbox → Fill screen.
+  - press: right
+  - settle: 300
+  - assert: {id: "player.panel.row[aspect_ratio]", focused: true}
+  - assert: {id: "player.panel.row[aspect_ratio]", state: {value: "Fill screen"}}
+  - press: left
+  - settle: 300
+  - assert: {id: "player.panel.row[aspect_ratio]", state: {value: "Letterbox"}}
+  - snapshot: 02-panel-stepped
+
+  # UP from the first row goes to the pill; RIGHT on the pill switches the tab.
+  - press: up
+  - settle: 300
+  - assert: {id: "player.panel.tab[video]", focused: true}
+  - press: right
+  - settle: 300
+  - assert: {id: player.panel, state: {tab: audio, subView: none}}
+  - assert: {id: "player.panel.tab[audio]", state: {active: true}}
+  - snapshot: 03-panel-audio
+
+  # Menu closes the panel and hands the remote back to the player: a second UP
+  # must show the controls again, which only works when the hidden-controls
+  # handler got its focus back.
+  - press: menu
+  - settle: 600
+  - press: up
+  - settle: 400
+  - assert: {id: player.title, insideViewport: true}
+  - snapshot: 04-back-to-player

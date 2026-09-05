@@ -132,6 +132,18 @@ ids:
   - id: player.safe_area
     role: region
     instanceable: false
+  - id: player.panel
+    role: region
+    instanceable: false
+  - id: player.panel.tab
+    role: tab
+    instanceable: true
+  - id: player.panel.row
+    role: list.item
+    instanceable: true
+  - id: player.settings_button
+    role: button
+    instanceable: false
   - id: tvos.menu_passthrough
     role: service
     instanceable: false

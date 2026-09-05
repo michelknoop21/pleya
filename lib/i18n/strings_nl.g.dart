@@ -689,6 +689,7 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	@override String get timelineSlider => 'Videotijdlijn';
 	@override String get volumeSlider => 'Volumeniveau';
 	@override String get volumeHandledByDevice => 'Volume wordt tijdens doorvoer door je audioapparaat geregeld';
+	@override String get forcedTrackSuffix => '(Geforceerd)';
 	@override String endsAt({required Object time}) => 'Eindigt om ${time}';
 	@override String get pipActive => 'Afspelen in beeld-in-beeld';
 	@override String get pipFailed => 'Beeld-in-beeld kon niet worden gestart';
@@ -2318,6 +2319,37 @@ class _TranslationsVideoControlsTvPanelNl extends TranslationsVideoControlsTvPan
 	@override String get tracks => 'Sporen';
 	@override String get options => 'Opties';
 	@override String get more => 'Meer…';
+	@override String get video => 'Video';
+	@override String get display => 'Weergave';
+	@override String get playback => 'Afspelen';
+	@override String get output => 'Uitvoer';
+	@override String get styleAndTiming => 'Stijl en timing';
+	@override String get volumeBoost => 'Volumeversterking';
+	@override String get volumeBoostHint => 'Voor stille titels; werkt op het geluid van Pleya zelf';
+	@override String volumeBoostStep({required Object percent}) => '+${percent}%';
+	@override String get paused => 'Gepauzeerd';
+	@override String get passthroughSetsLevel => 'Dolby-passthrough loopt; je receiver bepaalt het niveau';
+	@override String chaptersOf({required Object current, required Object total}) => '${current} van ${total}';
+	@override String get textSize => 'Tekstgrootte';
+	@override String get textSizeHint => 'Direct zichtbaar in beeld';
+	@override String get textSizeSmall => 'Klein';
+	@override String get textSizeNormal => 'Normaal';
+	@override String get textSizeLarge => 'Groot';
+	@override String get textSizeExtraLarge => 'Extra groot';
+	@override String get background => 'Achtergrond';
+	@override String get backgroundHint => 'Zwart vlak achter de tekst';
+	@override String get allStyleSettings => 'Alle stijlinstellingen';
+	@override String get allStyleSettingsPath => 'Mijn Pleya ▸ Instellingen ▸ Ondertitelstijl · kleur, rand, positie, vet';
+	@override String get offset => 'Verschuiving';
+	@override String get syncStepHint => 'Links en rechts 100 ms per stap · vasthouden blijft stappen';
+	@override String get syncKeepsForAllTitles => 'Blijft staan voor alle titels tot je hem terugzet';
+	@override String get hint => 'Kiezen past direct toe · Links en rechts stappen een waarde · Menu sluit het paneel';
+	@override String get hintBack => 'Menu gaat terug';
+	@override String get sleepActive => 'Slaaptimer loopt';
+	@override String sleepActiveHint({required Object time, required Object remaining}) => 'Pauzeert om ${time} · nog ${remaining}';
+	@override String get sleepAfter => 'Na een tijd';
+	@override String get sleepEndOfNextEpisode => 'Einde van de volgende aflevering';
+	@override String get shadersNone => 'Geen';
 }
 
 // Path: videoControls.pipErrors
@@ -3230,6 +3262,37 @@ extension on TranslationsNl {
 			'videoControls.tvPanel.tracks' => 'Sporen',
 			'videoControls.tvPanel.options' => 'Opties',
 			'videoControls.tvPanel.more' => 'Meer…',
+			'videoControls.tvPanel.video' => 'Video',
+			'videoControls.tvPanel.display' => 'Weergave',
+			'videoControls.tvPanel.playback' => 'Afspelen',
+			'videoControls.tvPanel.output' => 'Uitvoer',
+			'videoControls.tvPanel.styleAndTiming' => 'Stijl en timing',
+			'videoControls.tvPanel.volumeBoost' => 'Volumeversterking',
+			'videoControls.tvPanel.volumeBoostHint' => 'Voor stille titels; werkt op het geluid van Pleya zelf',
+			'videoControls.tvPanel.volumeBoostStep' => ({required Object percent}) => '+${percent}%',
+			'videoControls.tvPanel.paused' => 'Gepauzeerd',
+			'videoControls.tvPanel.passthroughSetsLevel' => 'Dolby-passthrough loopt; je receiver bepaalt het niveau',
+			'videoControls.tvPanel.chaptersOf' => ({required Object current, required Object total}) => '${current} van ${total}',
+			'videoControls.tvPanel.textSize' => 'Tekstgrootte',
+			'videoControls.tvPanel.textSizeHint' => 'Direct zichtbaar in beeld',
+			'videoControls.tvPanel.textSizeSmall' => 'Klein',
+			'videoControls.tvPanel.textSizeNormal' => 'Normaal',
+			'videoControls.tvPanel.textSizeLarge' => 'Groot',
+			'videoControls.tvPanel.textSizeExtraLarge' => 'Extra groot',
+			'videoControls.tvPanel.background' => 'Achtergrond',
+			'videoControls.tvPanel.backgroundHint' => 'Zwart vlak achter de tekst',
+			'videoControls.tvPanel.allStyleSettings' => 'Alle stijlinstellingen',
+			'videoControls.tvPanel.allStyleSettingsPath' => 'Mijn Pleya ▸ Instellingen ▸ Ondertitelstijl · kleur, rand, positie, vet',
+			'videoControls.tvPanel.offset' => 'Verschuiving',
+			'videoControls.tvPanel.syncStepHint' => 'Links en rechts 100 ms per stap · vasthouden blijft stappen',
+			'videoControls.tvPanel.syncKeepsForAllTitles' => 'Blijft staan voor alle titels tot je hem terugzet',
+			'videoControls.tvPanel.hint' => 'Kiezen past direct toe · Links en rechts stappen een waarde · Menu sluit het paneel',
+			'videoControls.tvPanel.hintBack' => 'Menu gaat terug',
+			'videoControls.tvPanel.sleepActive' => 'Slaaptimer loopt',
+			'videoControls.tvPanel.sleepActiveHint' => ({required Object time, required Object remaining}) => 'Pauzeert om ${time} · nog ${remaining}',
+			'videoControls.tvPanel.sleepAfter' => 'Na een tijd',
+			'videoControls.tvPanel.sleepEndOfNextEpisode' => 'Einde van de volgende aflevering',
+			'videoControls.tvPanel.shadersNone' => 'Geen',
 			'videoControls.fullscreenButton' => 'Volledig scherm activeren',
 			'videoControls.exitFullscreenButton' => 'Volledig scherm verlaten',
 			'videoControls.alwaysOnTopButton' => 'Altijd bovenop',
@@ -3240,6 +3303,7 @@ extension on TranslationsNl {
 			'videoControls.timelineSlider' => 'Videotijdlijn',
 			'videoControls.volumeSlider' => 'Volumeniveau',
 			'videoControls.volumeHandledByDevice' => 'Volume wordt tijdens doorvoer door je audioapparaat geregeld',
+			'videoControls.forcedTrackSuffix' => '(Geforceerd)',
 			'videoControls.endsAt' => ({required Object time}) => 'Eindigt om ${time}',
 			'videoControls.pipActive' => 'Afspelen in beeld-in-beeld',
 			'videoControls.pipFailed' => 'Beeld-in-beeld kon niet worden gestart',

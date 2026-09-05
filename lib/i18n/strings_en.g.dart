@@ -1701,6 +1701,9 @@ class TranslationsVideoControlsEn {
 	/// en: 'Volume is controlled by your audio device during passthrough'
 	String get volumeHandledByDevice => 'Volume is controlled by your audio device during passthrough';
 
+	/// en: '(Forced)'
+	String get forcedTrackSuffix => '(Forced)';
+
 	/// en: 'Ends at ${time}'
 	String endsAt({required Object time}) => 'Ends at ${time}';
 
@@ -5756,6 +5759,99 @@ class TranslationsVideoControlsTvPanelEn {
 
 	/// en: 'More…'
 	String get more => 'More…';
+
+	/// en: 'Video'
+	String get video => 'Video';
+
+	/// en: 'Display'
+	String get display => 'Display';
+
+	/// en: 'Playback'
+	String get playback => 'Playback';
+
+	/// en: 'Output'
+	String get output => 'Output';
+
+	/// en: 'Style and timing'
+	String get styleAndTiming => 'Style and timing';
+
+	/// en: 'Volume boost'
+	String get volumeBoost => 'Volume boost';
+
+	/// en: 'For quiet titles; boosts Pleya\'s own sound'
+	String get volumeBoostHint => 'For quiet titles; boosts Pleya\'s own sound';
+
+	/// en: '+${percent}%'
+	String volumeBoostStep({required Object percent}) => '+${percent}%';
+
+	/// en: 'Paused'
+	String get paused => 'Paused';
+
+	/// en: 'Dolby passthrough is running; your receiver sets the level'
+	String get passthroughSetsLevel => 'Dolby passthrough is running; your receiver sets the level';
+
+	/// en: '${current} of ${total}'
+	String chaptersOf({required Object current, required Object total}) => '${current} of ${total}';
+
+	/// en: 'Text size'
+	String get textSize => 'Text size';
+
+	/// en: 'Visible in the picture right away'
+	String get textSizeHint => 'Visible in the picture right away';
+
+	/// en: 'Small'
+	String get textSizeSmall => 'Small';
+
+	/// en: 'Normal'
+	String get textSizeNormal => 'Normal';
+
+	/// en: 'Large'
+	String get textSizeLarge => 'Large';
+
+	/// en: 'Extra large'
+	String get textSizeExtraLarge => 'Extra large';
+
+	/// en: 'Background'
+	String get background => 'Background';
+
+	/// en: 'Black box behind the text'
+	String get backgroundHint => 'Black box behind the text';
+
+	/// en: 'All style settings'
+	String get allStyleSettings => 'All style settings';
+
+	/// en: 'My Pleya ▸ Settings ▸ Subtitle style · colour, border, position, bold'
+	String get allStyleSettingsPath => 'My Pleya ▸ Settings ▸ Subtitle style · colour, border, position, bold';
+
+	/// en: 'Offset'
+	String get offset => 'Offset';
+
+	/// en: 'Left and right 100 ms per step · hold to keep stepping'
+	String get syncStepHint => 'Left and right 100 ms per step · hold to keep stepping';
+
+	/// en: 'Stays for every title until you reset it'
+	String get syncKeepsForAllTitles => 'Stays for every title until you reset it';
+
+	/// en: 'Choosing applies right away · Left and right step a value · Menu closes the panel'
+	String get hint => 'Choosing applies right away · Left and right step a value · Menu closes the panel';
+
+	/// en: 'Menu goes back'
+	String get hintBack => 'Menu goes back';
+
+	/// en: 'Sleep timer running'
+	String get sleepActive => 'Sleep timer running';
+
+	/// en: 'Pauses at ${time} · ${remaining} left'
+	String sleepActiveHint({required Object time, required Object remaining}) => 'Pauses at ${time} · ${remaining} left';
+
+	/// en: 'After a time'
+	String get sleepAfter => 'After a time';
+
+	/// en: 'End of the next episode'
+	String get sleepEndOfNextEpisode => 'End of the next episode';
+
+	/// en: 'None'
+	String get shadersNone => 'None';
 }
 
 // Path: videoControls.pipErrors
@@ -7084,6 +7180,37 @@ extension on Translations {
 			'videoControls.tvPanel.tracks' => 'Tracks',
 			'videoControls.tvPanel.options' => 'Options',
 			'videoControls.tvPanel.more' => 'More…',
+			'videoControls.tvPanel.video' => 'Video',
+			'videoControls.tvPanel.display' => 'Display',
+			'videoControls.tvPanel.playback' => 'Playback',
+			'videoControls.tvPanel.output' => 'Output',
+			'videoControls.tvPanel.styleAndTiming' => 'Style and timing',
+			'videoControls.tvPanel.volumeBoost' => 'Volume boost',
+			'videoControls.tvPanel.volumeBoostHint' => 'For quiet titles; boosts Pleya\'s own sound',
+			'videoControls.tvPanel.volumeBoostStep' => ({required Object percent}) => '+${percent}%',
+			'videoControls.tvPanel.paused' => 'Paused',
+			'videoControls.tvPanel.passthroughSetsLevel' => 'Dolby passthrough is running; your receiver sets the level',
+			'videoControls.tvPanel.chaptersOf' => ({required Object current, required Object total}) => '${current} of ${total}',
+			'videoControls.tvPanel.textSize' => 'Text size',
+			'videoControls.tvPanel.textSizeHint' => 'Visible in the picture right away',
+			'videoControls.tvPanel.textSizeSmall' => 'Small',
+			'videoControls.tvPanel.textSizeNormal' => 'Normal',
+			'videoControls.tvPanel.textSizeLarge' => 'Large',
+			'videoControls.tvPanel.textSizeExtraLarge' => 'Extra large',
+			'videoControls.tvPanel.background' => 'Background',
+			'videoControls.tvPanel.backgroundHint' => 'Black box behind the text',
+			'videoControls.tvPanel.allStyleSettings' => 'All style settings',
+			'videoControls.tvPanel.allStyleSettingsPath' => 'My Pleya ▸ Settings ▸ Subtitle style · colour, border, position, bold',
+			'videoControls.tvPanel.offset' => 'Offset',
+			'videoControls.tvPanel.syncStepHint' => 'Left and right 100 ms per step · hold to keep stepping',
+			'videoControls.tvPanel.syncKeepsForAllTitles' => 'Stays for every title until you reset it',
+			'videoControls.tvPanel.hint' => 'Choosing applies right away · Left and right step a value · Menu closes the panel',
+			'videoControls.tvPanel.hintBack' => 'Menu goes back',
+			'videoControls.tvPanel.sleepActive' => 'Sleep timer running',
+			'videoControls.tvPanel.sleepActiveHint' => ({required Object time, required Object remaining}) => 'Pauses at ${time} · ${remaining} left',
+			'videoControls.tvPanel.sleepAfter' => 'After a time',
+			'videoControls.tvPanel.sleepEndOfNextEpisode' => 'End of the next episode',
+			'videoControls.tvPanel.shadersNone' => 'None',
 			_ => null,
 		} ?? switch (path) {
 			'videoControls.fullscreenButton' => 'Enter fullscreen',
@@ -7096,6 +7223,7 @@ extension on Translations {
 			'videoControls.timelineSlider' => 'Video timeline',
 			'videoControls.volumeSlider' => 'Volume level',
 			'videoControls.volumeHandledByDevice' => 'Volume is controlled by your audio device during passthrough',
+			'videoControls.forcedTrackSuffix' => '(Forced)',
 			'videoControls.endsAt' => ({required Object time}) => 'Ends at ${time}',
 			'videoControls.pipActive' => 'Playing in Picture-in-Picture',
 			'videoControls.pipFailed' => 'Picture-in-picture failed to start',

@@ -68,6 +68,15 @@ extension _VideoPlayerShaderMethods on VideoPlayerScreenState {
     });
   }
 
+  /// Set a BoxFit mode directly (0 contain, 1 cover, 2 fill): the TV panel
+  /// steps it backwards as well as forwards. Same ambient rule as the cycle.
+  void _setBoxFitMode(int mode) {
+    _ambientLightingService?.disable();
+    _setPlayerState(() {
+      _videoFilterManager?.setBoxFitMode(mode);
+    });
+  }
+
   void _showZoomToast(double zoomScale) {
     _toastController.show(Symbols.zoom_in_rounded, t.videoControls.zoomPercent(percent: (zoomScale * 100).round()));
   }

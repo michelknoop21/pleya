@@ -30,6 +30,12 @@ class VersionQualityPicker extends StatelessWidget {
   final ValueChanged<int> onVersionSelected;
   final ValueChanged<TranscodeQualityPreset> onQualitySelected;
 
+  /// What closes the picker after a choice. Defaults to the overlay sheet the
+  /// picker normally lives in; the TV panel passes its own sub-view close, as
+  /// there is no sheet scope above it and `OverlaySheetController.of` would
+  /// throw.
+  final VoidCallback? onDismiss;
+
   const VersionQualityPicker({
     super.key,
     required this.availableVersions,
@@ -39,6 +45,7 @@ class VersionQualityPicker extends StatelessWidget {
     required this.onVersionSelected,
     required this.onQualitySelected,
     this.sourceDurationMs,
+    this.onDismiss,
   });
 
   @override
@@ -54,7 +61,7 @@ class VersionQualityPicker extends StatelessWidget {
         sourceDurationMs: sourceDurationMs,
         sourceSizeBytes: _sourceSizeBytes(),
         onSelected: (preset) {
-          OverlaySheetController.of(context).close();
+          _dismiss(context);
           onQualitySelected(preset);
         },
         showHeader: showVersions,
@@ -66,7 +73,7 @@ class VersionQualityPicker extends StatelessWidget {
         versions: availableVersions,
         selectedIndex: selectedMediaIndex,
         onSelected: (index) {
-          OverlaySheetController.of(context).close();
+          _dismiss(context);
           onVersionSelected(index);
         },
         showHeader: showQuality,
@@ -86,6 +93,15 @@ class VersionQualityPicker extends StatelessWidget {
       return versionColumn;
     } else {
       return qualityColumn;
+    }
+  }
+
+  void _dismiss(BuildContext context) {
+    final dismiss = onDismiss;
+    if (dismiss != null) {
+      dismiss();
+    } else {
+      OverlaySheetController.of(context).close();
     }
   }
 

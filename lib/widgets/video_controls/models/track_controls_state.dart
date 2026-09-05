@@ -39,6 +39,10 @@ class TrackControlsState {
   final bool isAlwaysOnTop;
   final VoidCallback? onTogglePIPMode;
   final VoidCallback? onCycleBoxFitMode;
+
+  /// Sets the box-fit mode directly (0 contain, 1 cover, 2 fill), so a TV
+  /// value row can step backwards as well as forwards.
+  final ValueChanged<int>? onSetBoxFitMode;
   final ValueChanged<double>? onVideoZoomChanged;
   final VoidCallback? onResetVideoZoom;
   final VoidCallback? onToggleRotationLock;
@@ -99,6 +103,7 @@ class TrackControlsState {
     this.isAlwaysOnTop = false,
     this.onTogglePIPMode,
     this.onCycleBoxFitMode,
+    this.onSetBoxFitMode,
     this.onVideoZoomChanged,
     this.onResetVideoZoom,
     this.onToggleRotationLock,
