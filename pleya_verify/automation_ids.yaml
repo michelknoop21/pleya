@@ -141,6 +141,33 @@ ids:
   - id: home.rail.item
     role: grid.item
     instanceable: true
+  - id: screen.series
+    role: screen
+    instanceable: false
+  - id: screen.movies
+    role: screen
+    instanceable: false
+  - id: landing.header
+    role: region
+    instanceable: true
+  - id: landing.header.search
+    role: button
+    instanceable: true
+  - id: landing.header.avatar
+    role: button
+    instanceable: true
+  - id: landing.title
+    role: region
+    instanceable: true
+  - id: landing.view_all
+    role: button
+    instanceable: true
+  - id: landing.rail
+    role: rail
+    instanceable: true
+  - id: landing.rail.item
+    role: grid.item
+    instanceable: true
   - id: sheet.source_picker
     role: sheet
     instanceable: false

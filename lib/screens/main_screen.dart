@@ -67,6 +67,7 @@ import '../utils/desktop_window_padding.dart';
 import '../widgets/side_navigation_rail.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/key_event_utils.dart';
+import 'home/mobile_landing_screen.dart';
 import 'discover_screen.dart';
 import 'libraries/library_quick_picker_sheet.dart';
 import 'libraries/libraries_screen.dart';
@@ -115,28 +116,35 @@ bool shouldRenderMainScreenOffline({
   return providerOffline || (startupOfflineUntilConnected && !hasVisibleConnectedServers);
 }
 
-/// Destinations that get no slot in the mobile bottom bar. Every one of them is
-/// still built by [_MainScreenState._buildScreens] and still reachable. The
-/// name says where the slot went, not that the destination did.
-///
-/// - Kijklijst, Downloads, Aanvragen and Instellingen: rows in Mijn Pleya.
-/// - Bibliotheken: a row in Mijn Pleya since fase 2, together with the library
-///   quick picker that used to hang off this slot's long-press (DEC-094).
-/// - Zoeken: the search icon in [MobilePageHeader] on Home. It stays a tab, so
-///   there is exactly one `SearchScreen` in the tree; `mainScreenSelectedBarTab`
-///   keeps Home lit while it is on screen, which is what `05-zoeken.png` shows.
+/// Destinations that get no slot in any mobile bottom bar, because My Pleya
+/// holds them instead. Every one of them is still built by
+/// [_MainScreenState._buildScreens] and still reachable.
 ///
 /// Downloads is the exception offline: with Home, Series, Films, Bibliotheken,
 /// Live TV, Zoeken and Aanvragen all gone there is room for it, and it is what
 /// the user came for.
-const _mobileTabsOutsideBar = {
+const _mobileTabsInsideMyPleya = {
   NavigationTabId.watchlist,
   NavigationTabId.downloads,
   NavigationTabId.requests,
   NavigationTabId.settings,
-  NavigationTabId.libraries,
-  NavigationTabId.search,
 };
+
+/// The two destinations fase 2 takes out of the **phone's** bar to make room
+/// for Series and Films. Both keep their tab and stay reachable; the name says
+/// where the slot went, not that the destination did.
+///
+/// - Bibliotheken: a row in Mijn Pleya, together with the library quick picker
+///   that used to hang off this slot's long-press (DEC-094).
+/// - Zoeken: the search icon in the mobile page header. It stays a tab, so
+///   there is exactly one `SearchScreen` in the tree; `mainScreenSelectedBarTab`
+///   keeps Home lit while it is on screen, which is what `05-zoeken.png` shows.
+///
+/// Phone-only, and deliberately so. The iPad is [PlatformDetector.isMobile] but
+/// not [PlatformDetector.isPhone], so it does not get Series and Films
+/// (DEC-092: fase 2 is an iPhone phase). Dropping these two on the iPad as well
+/// would cost it two slots and hand it nothing back.
+const _phoneTabsOutsideBar = {NavigationTabId.libraries, NavigationTabId.search};
 
 /// The bottom bar's own order on a phone: Home · Series · Films · Live TV ·
 /// Mijn Pleya, as `01-series-landing.png` and `05-zoeken.png` show it.
@@ -156,12 +164,15 @@ List<NavigationTab> mainScreenBottomNavigationTabs({
   required bool isMobile,
   required bool isOffline,
   required NavigationTabId currentTab,
+  bool isPhone = false,
 }) {
   if (!isMobile) return visibleTabs;
   final slots = visibleTabs.where((tab) {
-    if (!_mobileTabsOutsideBar.contains(tab.id)) return true;
+    if (isPhone && _phoneTabsOutsideBar.contains(tab.id)) return false;
+    if (!_mobileTabsInsideMyPleya.contains(tab.id)) return true;
     return isOffline && tab.id == NavigationTabId.downloads;
   }).toList();
+  if (!isPhone) return slots;
   // Leading slots first in the order above, then everything else in the order
   // [allNavigationTabs] gave it. Written as two passes rather than a sort so
   // the tail's relative order is preserved by construction: a comparator that
@@ -172,6 +183,12 @@ List<NavigationTab> mainScreenBottomNavigationTabs({
     ...slots.where((tab) => !_phoneBarOrder.contains(tab.id)),
   ];
 }
+
+/// [tab]'s own bar slot when it still has one, and [whenAbsent] when it does
+/// not. The phone's bar has no Bibliotheken and no Zoeken since fase 2; the
+/// iPad's still has both.
+NavigationTabId _ownSlotOr(NavigationTabId tab, List<NavigationTabId> barTabs, NavigationTabId whenAbsent) =>
+    barTabs.contains(tab) ? tab : whenAbsent;
 
 /// Which bottom-bar destination should light up for [currentTab].
 ///
@@ -218,17 +235,22 @@ NavigationTabId mainScreenSelectedBarTab({
     // Offline the bar is Downloads plus My Pleya, so Downloads points at
     // itself; online it lives behind My Pleya.
     NavigationTabId.downloads => isOffline ? NavigationTabId.downloads : NavigationTabId.myPleya,
-    // Bibliotheken lost its slot in fase 2 and is now a row in Mijn Pleya, so
-    // that is the slot that lights up. Named rather than left to the
-    // `barTabs.first` fallback at the bottom of this function: the fallback
-    // would light Home, which is the exact bug this projection exists to
-    // prevent, one destination further along.
-    NavigationTabId.libraries => isOffline ? NavigationTabId.downloads : NavigationTabId.myPleya,
-    // Zoeken also lost its slot, but it is entered from the search icon on
-    // Home rather than from Mijn Pleya, so Home stays lit. That is what
-    // `05-zoeken.png` shows: the full search surface with Home active in the
-    // bar (DEC-094).
-    NavigationTabId.search => isOffline ? NavigationTabId.downloads : NavigationTabId.discover,
+    // Bibliotheken and Zoeken are the two fase-2 movers, and both ask the bar
+    // rather than assume: on the phone they have no slot and light the surface
+    // that now holds their entry point, on the iPad they still have their own
+    // and light that.
+    //
+    // Named here rather than left to the `barTabs.first` fallback at the bottom
+    // of this function. That fallback lights Home, which is exactly the bug
+    // this projection exists to prevent, one destination further along.
+    //
+    // Bibliotheken became a row in Mijn Pleya, so Mijn Pleya lights up. Zoeken
+    // is entered from the search icon on Home instead, so Home stays lit, and
+    // that is what `05-zoeken.png` shows (DEC-094).
+    NavigationTabId.libraries =>
+      isOffline ? NavigationTabId.downloads : _ownSlotOr(NavigationTabId.libraries, barTabs, NavigationTabId.myPleya),
+    NavigationTabId.search =>
+      isOffline ? NavigationTabId.downloads : _ownSlotOr(NavigationTabId.search, barTabs, NavigationTabId.discover),
     NavigationTabId.watchlist ||
     NavigationTabId.requests ||
     NavigationTabId.settings ||
@@ -345,6 +367,12 @@ class _MainScreenState extends State<MainScreen>
 
   late List<Widget> _screens;
   final GlobalKey<State<DiscoverScreen>> _discoverKey = GlobalKey();
+  // The two fase-2 landings. `MobileLandingScreen` is stateless, so these carry
+  // no `TabVisibilityAware` or `FocusableTab` state today; they exist so
+  // `_screenKeyFor` answers for every destination instead of returning null for
+  // two of them, which is what silently skipped onTabShown/onTabHidden.
+  final GlobalKey _seriesKey = GlobalKey();
+  final GlobalKey _moviesKey = GlobalKey();
   final GlobalKey<State<LibrariesScreen>> _librariesKey = GlobalKey();
   final GlobalKey<State<LiveTvScreen>> _liveTvKey = GlobalKey();
   final GlobalKey<State<SearchScreen>> _searchKey = GlobalKey();
@@ -963,6 +991,23 @@ class _MainScreenState extends State<MainScreen>
     receiver.onSearchAction = _openSearchWithQuery;
   }
 
+  /// The single entry point to Zoeken from a surface that has no tab slot for
+  /// it: the search icon in the mobile page header, on Home and on both
+  /// landings (fase 2, [DEC-094]).
+  ///
+  /// It is a tab selection, not a route push and not an overlay layer above the
+  /// `IndexedStack`. A push on the profile navigator would cover the tab bar,
+  /// and `05-zoeken.png` shows the bar standing with Home lit. A layer would
+  /// mount a second `SearchScreen` beside the one `_buildScreens` already
+  /// builds, so every `search.*` automation id would name two nodes at once,
+  /// which is the collision `AutomationIds.myPleyaSectionTile` documents. It
+  /// would also need its own back handling, while `_handleMainBack` already
+  /// returns to the first visible tab.
+  ///
+  /// `mainScreenSelectedBarTab` keeps Home lit while Zoeken is on screen, and
+  /// `_selectTab` focuses the search field itself.
+  void _openSearch() => _openSearchWithQuery(null);
+
   /// Open the search tab and, when a finished query came with it (companion
   /// remote, Assistant voice search), run it straight away.
   void _openSearchWithQuery(String? query) {
@@ -1096,6 +1141,20 @@ class _MainScreenState extends State<MainScreen>
     return [
       for (final tab in _getVisibleTabs(offline))
         switch (tab.id) {
+          // The phone gets the fase-2 landings; TV renders Films and Series in
+          // its own shell and everything else never sees these two tabs at all
+          // (the `isPhone` gate in `getVisibleTabs`), so the empty branch stays
+          // for the form factors that can hold the tab without a screen.
+          NavigationTabId.series when _isPhone => MobileLandingScreen(
+            key: _seriesKey,
+            kind: MobileLandingKind.series,
+            onSearchTap: _openSearch,
+          ),
+          NavigationTabId.movies when _isPhone => MobileLandingScreen(
+            key: _moviesKey,
+            kind: MobileLandingKind.movies,
+            onSearchTap: _openSearch,
+          ),
           NavigationTabId.movies || NavigationTabId.series => const SizedBox.shrink(),
           NavigationTabId.discover => DiscoverScreen(key: _discoverKey),
           NavigationTabId.libraries => LibrariesScreen(
@@ -1762,6 +1821,7 @@ class _MainScreenState extends State<MainScreen>
     return mainScreenBottomNavigationTabs(
       visibleTabs: _getVisibleTabs(_isOffline),
       isMobile: PlatformDetector.isMobile(context),
+      isPhone: PlatformDetector.isPhone(context),
       isOffline: _isOffline,
       currentTab: _currentTab,
     );
@@ -1771,7 +1831,8 @@ class _MainScreenState extends State<MainScreen>
   GlobalKey? _screenKeyFor(NavigationTabId tab) {
     return switch (tab) {
       NavigationTabId.discover => _discoverKey,
-      NavigationTabId.movies || NavigationTabId.series => null,
+      NavigationTabId.series => _seriesKey,
+      NavigationTabId.movies => _moviesKey,
       NavigationTabId.libraries => _librariesKey,
       NavigationTabId.liveTv => _liveTvKey,
       NavigationTabId.search => _searchKey,

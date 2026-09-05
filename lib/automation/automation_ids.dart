@@ -174,6 +174,27 @@ class AutomationIds {
   /// `[<railIndex>.<itemIndex>]`.
   static const String homeRailItem = 'home.rail.item';
 
+  /// The Series and Films landing screens (iOS Unified 2026 fase 2, DEC-094).
+  static const String screenSeries = 'screen.series';
+  static const String screenMovies = 'screen.movies';
+
+  /// A landing's header, title line, "Alle series"/"Alle films" action and one
+  /// of its rails. All four are instanceable and all four carry the landing's
+  /// kind, because Home, Series and Films are children of the same
+  /// `IndexedStack` and therefore all mounted at once: an id without the kind
+  /// would name two rows at the same moment, which is the collision
+  /// [myPleyaSectionTile] documents.
+  ///
+  /// `landing.header[series]`, `landing.title[movies]`,
+  /// `landing.view_all[series]`, `landing.rail[series.0]`.
+  static const String landingHeader = 'landing.header';
+  static const String landingHeaderSearch = 'landing.header.search';
+  static const String landingHeaderAvatar = 'landing.header.avatar';
+  static const String landingTitle = 'landing.title';
+  static const String landingViewAll = 'landing.view_all';
+  static const String landingRail = 'landing.rail';
+  static const String landingRailItem = 'landing.rail.item';
+
   /// The mobile source-picker sheet as a whole.
   static const String sheetSourcePicker = 'sheet.source_picker';
 
@@ -197,6 +218,13 @@ class AutomationIds {
     myPleyaLogRow,
     homeRail,
     homeRailItem,
+    landingHeader,
+    landingHeaderSearch,
+    landingHeaderAvatar,
+    landingTitle,
+    landingViewAll,
+    landingRail,
+    landingRailItem,
     sheetSourcePickerRow,
   };
 
@@ -242,6 +270,15 @@ class AutomationIds {
     {'id': homeChips, 'role': 'filter', 'instanceable': false},
     {'id': homeRail, 'role': 'rail', 'instanceable': true},
     {'id': homeRailItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': screenSeries, 'role': 'screen', 'instanceable': false},
+    {'id': screenMovies, 'role': 'screen', 'instanceable': false},
+    {'id': landingHeader, 'role': 'region', 'instanceable': true},
+    {'id': landingHeaderSearch, 'role': 'button', 'instanceable': true},
+    {'id': landingHeaderAvatar, 'role': 'button', 'instanceable': true},
+    {'id': landingTitle, 'role': 'region', 'instanceable': true},
+    {'id': landingViewAll, 'role': 'button', 'instanceable': true},
+    {'id': landingRail, 'role': 'rail', 'instanceable': true},
+    {'id': landingRailItem, 'role': 'grid.item', 'instanceable': true},
     {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
   ];

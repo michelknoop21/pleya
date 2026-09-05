@@ -40,6 +40,18 @@ class MobileMediaRail extends StatelessWidget {
   /// long-press menu; other rails do not.
   final bool isContinueWatching;
 
+  /// Automation ids for this rail, defaulting to Home's.
+  ///
+  /// The landings pass their own, for the reason `MobilePageHeader.automationId`
+  /// spells out: Home, Series and Films live in one `IndexedStack` at the same
+  /// time, so `home.rail[0]` would name three different rows at once.
+  final String automationId;
+  final String itemAutomationId;
+
+  /// Prefix in front of the row index, so two surfaces sharing an id set stay
+  /// apart: `landing.rail[series.0]` next to `landing.rail[movies.0]`.
+  final String? instancePrefix;
+
   const MobileMediaRail({
     super.key,
     required this.hub,
@@ -48,7 +60,13 @@ class MobileMediaRail extends StatelessWidget {
     this.onViewAll,
     this.onCardTap,
     this.isContinueWatching = false,
+    this.automationId = AutomationIds.homeRail,
+    this.itemAutomationId = AutomationIds.homeRailItem,
+    this.instancePrefix,
   });
+
+  /// `<railIndex>` on Home, `<prefix>.<railIndex>` on a landing.
+  String get _railInstance => instancePrefix == null ? '$railIndex' : '$instancePrefix.$railIndex';
 
   @override
   Widget build(BuildContext context) {
@@ -57,8 +75,8 @@ class MobileMediaRail extends StatelessWidget {
     final cardHeight = cardWidth / aspect + MediaCardGridLayout.textExtentFor(context);
 
     return AutomationNode(
-      id: AutomationIds.homeRail,
-      instance: '$railIndex',
+      id: automationId,
+      instance: _railInstance,
       role: 'rail',
       child: Column(
         crossAxisAlignment: .start,
@@ -98,8 +116,8 @@ class MobileMediaRail extends StatelessWidget {
                 return Padding(
                   padding: EdgeInsets.only(right: index == hub.groups.length - 1 ? 0 : mobileRailGutter),
                   child: AutomationNode(
-                    id: AutomationIds.homeRailItem,
-                    instance: '$railIndex.$index',
+                    id: itemAutomationId,
+                    instance: '$_railInstance.$index',
                     role: 'grid.item',
                     child: _RailCardCell(
                       group: group,

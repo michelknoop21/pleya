@@ -28,19 +28,41 @@ class MobilePageHeader extends StatelessWidget {
   final Profile? activeProfile;
   final VoidCallback? onAvatarTap;
 
+  /// Automation ids for this instance of the header, defaulting to Home's.
+  ///
+  /// The landings mount their own set rather than reusing Home's. Home, Series
+  /// and Films are all children of the same `IndexedStack`, so all three
+  /// headers are mounted at once, and the automation registry holds offstage
+  /// nodes too: three headers claiming `home.header` would resolve as
+  /// `home.header`, `home.header#2` and `home.header#3`, and a scenario would
+  /// get whichever came first. That is the collision [AutomationIds.myPleyaSectionTile]
+  /// documents, one surface further along.
+  final String automationId;
+  final String searchAutomationId;
+  final String avatarAutomationId;
+
+  /// Suffix distinguishing two headers that share an id set, i.e. the Series
+  /// and Films landings.
+  final String? automationInstance;
+
   const MobilePageHeader({
     super.key,
     this.actions = const [],
     required this.onSearchTap,
     required this.activeProfile,
     this.onAvatarTap,
+    this.automationId = AutomationIds.homeHeader,
+    this.searchAutomationId = AutomationIds.homeHeaderSearch,
+    this.avatarAutomationId = AutomationIds.homeHeaderAvatar,
+    this.automationInstance,
   });
 
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.viewPaddingOf(context).top;
     return AutomationNode(
-      id: AutomationIds.homeHeader,
+      id: automationId,
+      instance: automationInstance,
       role: 'region',
       child: Padding(
         padding: EdgeInsets.only(left: 16, right: 16, top: topInset + 12, bottom: 12),
@@ -50,7 +72,8 @@ class MobilePageHeader extends StatelessWidget {
             const Spacer(),
             ...actions,
             AutomationNode(
-              id: AutomationIds.homeHeaderSearch,
+              id: searchAutomationId,
+              instance: automationInstance,
               role: 'button',
               child: IconButton(
                 onPressed: onSearchTap,
@@ -59,7 +82,8 @@ class MobilePageHeader extends StatelessWidget {
               ),
             ),
             AutomationNode(
-              id: AutomationIds.homeHeaderAvatar,
+              id: avatarAutomationId,
+              instance: automationInstance,
               role: 'button',
               child: GestureDetector(
                 onTap: onAvatarTap,
