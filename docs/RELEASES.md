@@ -21,7 +21,7 @@ under `Notes`.
 Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
-## 2.8.0 · build 259 · 5 September 2026
+## 2.8.0 · build 260 · 5 September 2026
 
 <!-- commit: 72227db -->
 
@@ -100,9 +100,10 @@ screenshots. Four things in particular:
 ### Notes
 
 - iOS and macOS are unchanged in this build. Everything above is Apple TV.
-- The build number is the same 259 that was installed directly from Xcode earlier today, because
-  that one never reached TestFlight. This is not that build: it carries everything up to
-  `72227db`.
+- Build 259 was withdrawn and this one replaces it, with the same code behind it. 259 took the
+  number of a build that had been installed straight from Xcode earlier that day and never
+  reached TestFlight, which left two different builds wearing one number. It was expired to end
+  that, and expiring cannot be undone.
 
 ## 2.8.0 · build 240 · 21 August 2026
 
