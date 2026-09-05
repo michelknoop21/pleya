@@ -116,35 +116,31 @@ bool shouldRenderMainScreenOffline({
   return providerOffline || (startupOfflineUntilConnected && !hasVisibleConnectedServers);
 }
 
-/// Destinations that get no slot in any mobile bottom bar, because My Pleya
-/// holds them instead. Every one of them is still built by
-/// [_MainScreenState._buildScreens] and still reachable.
+/// Destinations with no bar slot of their own, and where that slot went.
 ///
+/// `phoneOnly: false` — every mobile shell drops it in favour of Mijn Pleya,
+/// still built by [_MainScreenState._buildScreens] and still reachable there.
 /// Downloads is the exception offline: with Home, Series, Films, Bibliotheken,
 /// Live TV, Zoeken and Aanvragen all gone there is room for it, and it is what
 /// the user came for.
-const _mobileTabsInsideMyPleya = {
-  NavigationTabId.watchlist,
-  NavigationTabId.downloads,
-  NavigationTabId.requests,
-  NavigationTabId.settings,
-};
-
-/// The two destinations fase 2 takes out of the **phone's** bar to make room
-/// for Series and Films. Both keep their tab and stay reachable; the name says
-/// where the slot went, not that the destination did.
 ///
+/// `phoneOnly: true` — only the **phone's** bar drops it, to make room for
+/// Series and Films; the iPad keeps its own slot (DEC-092: fase 2 is an
+/// iPhone phase, and dropping these on the iPad too would cost it two slots
+/// and hand it nothing back):
 /// - Bibliotheken: a row in Mijn Pleya, together with the library quick picker
 ///   that used to hang off this slot's long-press (DEC-094).
 /// - Zoeken: the search icon in the mobile page header. It stays a tab, so
 ///   there is exactly one `SearchScreen` in the tree; `mainScreenSelectedBarTab`
-///   keeps Home lit while it is on screen, which is what `05-zoeken.png` shows.
-///
-/// Phone-only, and deliberately so. The iPad is [PlatformDetector.isMobile] but
-/// not [PlatformDetector.isPhone], so it does not get Series and Films
-/// (DEC-092: fase 2 is an iPhone phase). Dropping these two on the iPad as well
-/// would cost it two slots and hand it nothing back.
-const _phoneTabsOutsideBar = {NavigationTabId.libraries, NavigationTabId.search};
+///   decides which slot lights up while it is on screen.
+const _tabsWithoutBarSlot = <NavigationTabId, ({bool phoneOnly})>{
+  NavigationTabId.watchlist: (phoneOnly: false),
+  NavigationTabId.downloads: (phoneOnly: false),
+  NavigationTabId.requests: (phoneOnly: false),
+  NavigationTabId.settings: (phoneOnly: false),
+  NavigationTabId.libraries: (phoneOnly: true),
+  NavigationTabId.search: (phoneOnly: true),
+};
 
 /// The bottom bar's own order on a phone: Home · Series · Films · Live TV ·
 /// Mijn Pleya, as `01-series-landing.png` and `05-zoeken.png` show it.
@@ -168,8 +164,9 @@ List<NavigationTab> mainScreenBottomNavigationTabs({
 }) {
   if (!isMobile) return visibleTabs;
   final slots = visibleTabs.where((tab) {
-    if (isPhone && _phoneTabsOutsideBar.contains(tab.id)) return false;
-    if (!_mobileTabsInsideMyPleya.contains(tab.id)) return true;
+    final rule = _tabsWithoutBarSlot[tab.id];
+    if (rule == null) return true;
+    if (rule.phoneOnly) return !isPhone;
     return isOffline && tab.id == NavigationTabId.downloads;
   }).toList();
   if (!isPhone) return slots;
