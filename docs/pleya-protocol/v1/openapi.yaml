@@ -1431,6 +1431,18 @@ components:
           required: [id]
           properties:
             id: { $ref: "#/components/schemas/Id" }
+            setup_accepts_name:
+              type: boolean
+              default: false
+              description: |
+                De server neemt `server_name` aan op `POST /auth/setup` en legt
+                hem vast als de instelling `server_name`. Optioneel en op `Info`
+                en niet in `capabilities`, want het is geen functie die aan of
+                uit staat maar een eigenschap van dit ene endpoint, en het is het
+                enige veld dat een client vóór het inloggen moet weten. Zonder
+                deze vlag laat een client `server_name` weg: `SetupRequest` is
+                gesloten, dus een oudere server wijst het veld af in plaats van
+                het te negeren.
         capabilities:
           $ref: "#/components/schemas/Capabilities"
         auth:
@@ -1507,16 +1519,38 @@ components:
             POST /auth/refresh (RB-29, hoofdstuk 17d) en zet het refreshcredential
             desgevraagd in een HttpOnly-cookie. Bedoeld voor browsers; een client
             zonder cookiejar heeft er niets aan en laat het veld weg.
+        administration:
+          type: boolean
+          default: false
+          description: |
+            De server heeft een beheeroppervlak: `GET`/`PATCH /settings`, de vier
+            routes onder `/server`, `GET /stream-sessions` en `GET /audit`. Een
+            client die de vlag niet ziet toont geen beheer, en dat is geen
+            beveiliging maar netheid: de server weigert onafhankelijk daarvan met
+            `404` voor wie er niet bij mag (hoofdstuk 16.4, regel 16 tot en met
+            26).
+
+            Eén vlag voor het hele oppervlak en niet één per endpoint. De zes
+            routes kwamen in vier slices tegelijk met deze vlag, en een client
+            die ze los zou moeten onderhandelen krijgt zes vragen waarvan het
+            antwoord altijd hetzelfde is.
+        mcp:
+          type: boolean
+          default: false
+          description: |
+            De server biedt een MCP-endpoint aan waarmee een agent hem kan
+            beheren (RB-19, RB-20). Staat op `false` tot de slice die het bouwt;
+            `Server.mcp` draagt dan het adres en het aantal tools.
 
     ServerDetail:
       type: object
       required: [id, name, version, started_at]
       description: |
-        De eerste vier velden zijn klasse `authenticated`. De negen daaronder
+        De eerste vier velden zijn klasse `authenticated`. De tien daaronder
         gaan alleen mee voor klasse `admin` (acht met S1.3, `web_origin` met
-        S1.8): ze beschrijven hoe deze server draait, en dat is voor een
-        huisgenoot geen informatie maar een verkenning. Een client die ze niet
-        krijgt is dus geen beheerder, en verbergt het beheeroppervlak.
+        S1.8, `mcp` met S1.6): ze beschrijven hoe deze server draait, en dat is
+        voor een huisgenoot geen informatie maar een verkenning. Een client die
+        ze niet krijgt is dus geen beheerder, en verbergt het beheeroppervlak.
       properties:
         id: { $ref: "#/components/schemas/Id" }
         name: { type: string }
@@ -1580,6 +1614,23 @@ components:
               description: Hetzelfde antwoord als /readyz, maar dan achter authenticatie en met de tellers ernaast.
             jobs_running: { type: integer }
             jobs_failed: { type: integer }
+        mcp:
+          type: object
+          required: [enabled, tool_count]
+          description: |
+            De MCP-beheerlaag, klasse `admin` net als de velden erboven. Zolang
+            `capabilities.mcp` `false` is staat hier `enabled: false` met
+            `tool_count: 0` en geen `url`: het object bestaat dan wel en zegt
+            precies dat er niets aanstaat, wat een ander antwoord is dan een
+            server die de vraag niet kent.
+          properties:
+            enabled: { type: boolean }
+            url:
+              type: string
+              description: Het adres van het MCP-endpoint. Afwezig zolang het uit staat.
+            tool_count:
+              type: integer
+              description: Het aantal tools dat het endpoint aanbiedt, zodat een beheerscherm ziet of de laag compleet is.
 
     ServerEnvironment:
       type: object
@@ -1673,6 +1724,17 @@ components:
         password: { type: string, minLength: 8 }
         device_id: { $ref: "#/components/schemas/DeviceId" }
         device_name: { $ref: "#/components/schemas/DeviceName" }
+        server_name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: |
+            De naam van deze server, meteen bij het aanmaken van de eigenaar.
+            Alleen te sturen wanneer `info.server.setup_accepts_name` waar is;
+            deze body is gesloten. Dezelfde grenzen als de instelling
+            `server_name`, want het is diezelfde instelling: setup schrijft hem,
+            `GET /server` toont hem, en `GET /settings` noemt hem daarna met
+            bron `db`.
 
     LoginRequest:
       type: object

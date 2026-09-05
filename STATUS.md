@@ -1,6 +1,6 @@
 # STATUS · Pleya
 
-_Laatst gewerkt: 2026-09-04. **PS-9 is gesloten en S0 van de re-baseline ook.** Alle zes implementatiestappen zijn af, de vijf
+_Laatst gewerkt: 2026-09-05. **S1 van de re-baseline is gesloten; daarvóór PS-9 en S0.** Alle zes implementatiestappen zijn af, de vijf
 acceptatiecriteria hebben elk hun bewijs, en het stopcriterium is op de draaiende NAS gehaald in
 plaats van alleen in een container. De volgende fase in de vastgelegde doorloop is PS-11A en die is
 niet gestart; er loopt op dit moment dus geen serverfase. Daarvóór, op 2026-09-01, is DEC-097's
@@ -12,6 +12,51 @@ gedupliceerd. Op 2026-09-03 is ook [DEC-107](docs/DECISIONS.md) geland: e-books 
 met PS-14 ontworpen en PS-15/PS-16 begrensd, alle drie nog niet vrijgegeven._
 
 ## Waar was ik
+
+**S1 is gesloten (5 september).** De acht taken van de tweede slice staan alle op gereed. S1.1 tot en
+met S1.5 en S1.8 landden eerder op de dag; deze sessie sloot S1.7 (de drie-rollen-ronde over de
+autorisatiematrix, plus K rij 1) en S1.6 (de laatste drie rijen van protocolvenster 1, en het venster
+dicht met [DEC-112](docs/DECISIONS.md)). `openapi.yaml` is weer bevroren. De eerstvolgende slice is
+**S2** en die is niet gestart; hij vraagt zijn eigen venster, venster 2, met een eigen besluit.
+
+Drie dingen die deze sessie opleverde en die de volgende sessie moet weten.
+
+De byte-gelijke weigering stond op zes plekken tegen twee verschillende referenties: vier tests
+vergeleken met een beheerhandeling op een *bestaande* ander, één met de weigering van een lid op
+`/settings`, terwijl K rij 2 letterlijk een *niet-bestaand* id noemt. Er is er nu één,
+`e.canonicalNotFound()`, en het is de sterkste van de twee: `PATCH /users/{id}` op een id dat niet
+bestaat, gedaan door de owner. De vijf verspreide `ThreeRoles`-tests zijn vervangen en niet
+aangevuld.
+
+K rij 1 had geen eigen taakregel en is toegewezen aan S1.7, met de reden erbij in de masterlijst.
+Om hem uitputtend te maken vult `routes()` de mux nu uit `routeTable()` en is dat de enige plek die
+`s.mux.Handle` aanroept; `publicPatterns` is de ene regel die het securityplan vraagt. Bevinding
+onderweg: status plus foutcode onderscheidt de publieke POST's niet van een beveiligde route, want
+login, setup en refresh antwoorden op een leeg lichaam ook 401.
+
+`SetupRequest.server_name` heeft gedrag gekregen en niet alleen een schema. J.2 noemt het veld
+zonder te zeggen wat de server ermee doet, en de contractpoort zou een schema zonder handler
+doorlaten. Setup schrijft nu werkelijk de instelling `server_name`, en toetst hem vóór het
+inwisselen van de eenmalige setupcode.
+
+### Roadmap Drift Check op S1
+
+Is er iets gebouwd dat niet in scope stond? Twee dingen, allebei met een reden en allebei klein. De
+routetabel in `server.go` is een herstructurering zonder gedragswijziging, en hij is de enige manier
+om K rij 1 uitputtend te meten in plaats van tegen een handgeschreven lijst. En `Server.mcp` staat in
+het contract terwijl er geen MCP-laag is: dat is de vorm en niet de functie, en hij hoort in dit
+venster omdat het contract er met dezelfde commit weer op slot gaat. Er is geen MCP-code bijgekomen;
+die is slice S16.
+
+Is er scope blijven liggen? Nee binnen S1. Wel staat er iets naast: de matrixregels 1 tot en met 15
+zijn niet in de tabelvorm van S1.7 gegoten. Die zijn de bindende matrix van DEC-105 en worden
+elders bewezen, elk met een opstelling die niet in deze vorm past; de dekkingstest begint daarom bij
+regel 16 en dat staat er in het bestand zelf bij.
+
+Klopt de volgende slice nog? Ja. S2 is de eerstvolgende, met dezelfde afhankelijkheid als in deel I,
+en S1 heeft er geen bij gemaakt. S2 vraagt protocolvenster 2 en dat is een eigen besluit; venster 1
+is dicht en er staat er nu geen open.
+
 
 **S0 is gesloten (4 september, avond).** De acht taken van de eerste slice staan alle op gereed en
 poort P9 is groen. Daarmee is de voorwaarde uit [DEC-108](docs/DECISIONS.md) gehaald en mag PS-11A

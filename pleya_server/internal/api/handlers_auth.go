@@ -11,6 +11,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/settings"
 )
 
 // unknownDeviceName is de vaste plaatshouder voor een sessie zonder bekend
@@ -48,7 +49,15 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			FeatureLevel: FeatureLevel,
 			Profile:      "full",
 		},
-		Server: InfoServer{ID: s.opts.ServerID.String()},
+		Server: InfoServer{
+			ID: s.opts.ServerID.String(),
+			// SetupAcceptsName hangt aan de opslag en niet aan een constante
+			// (J.2 rij 10). server_name bij setup is de instelling server_name,
+			// en zonder server_settings-tabel is er niets om hem in te
+			// bewaren; dan is "ja, stuur maar" een belofte die de volgende
+			// aanvraag alweer kwijt is.
+			SetupAcceptsName: s.opts.Settings != nil && s.opts.Settings.HasStore(),
+		},
 		Capabilities: Capabilities{
 			Browse:  true,
 			Search:  true,
@@ -79,6 +88,12 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			// credential_mode en zetten het refreshcredential desgevraagd in een
 			// HttpOnly-cookie (RB-29).
 			CookieAuth: true,
+			// Administration: aan sinds S1.6, voor het oppervlak dat S1.2 tot
+			// en met S1.5 hebben gebouwd (J.2 rij 1).
+			Administration: true,
+			// MCP: uit tot slice S16. De vlag staat er nu al omdat het
+			// protocolvenster nu open is (J.2 rij 15).
+			MCP: false,
 		},
 		Auth: InfoAuth{
 			Methods:       []string{"password"},
@@ -93,6 +108,11 @@ type setupRequest struct {
 	Password   string `json:"password"`
 	DeviceID   string `json:"device_id"`
 	DeviceName string `json:"device_name"`
+
+	// ServerName (J.2 rij 10) is de instelling server_name, gezet op het moment
+	// dat er nog geen beheerder is om PATCH /settings te doen. Optioneel, en
+	// alleen te sturen wanneer info.server.setup_accepts_name waar is.
+	ServerName string `json:"server_name"`
 }
 
 func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +132,16 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	// wachtwoord dat het schema wel afkeurt maar de server al heeft opgeslagen.
 	if len(req.Password) < 8 {
 		writeError(w, s.log, CodeSetupCodeInvalid, "password too short", nil)
+		return
+	}
+
+	// De servernaam wordt hier al getoetst en pas na CompleteSetup weggeschreven.
+	// Andersom zou een naam van vijfenzestig tekens de setupcode opbranden: die
+	// is eenmalig, dus de tweede poging met een kortere naam zou stuiten op
+	// auth.setup_already_completed en de eigenaar zou een server zonder naam
+	// overhouden.
+	serverName, ok := s.validateSetupServerName(w, req.ServerName)
+	if !ok {
 		return
 	}
 
@@ -145,9 +175,66 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if serverName != nil {
+		// Op naam van de zojuist aangemaakte eigenaar, want server_settings
+		// houdt bij wie een sleutel heeft gezet en er is geen andere gebruiker.
+		if err := s.opts.Settings.Apply(r.Context(),
+			map[string]json.RawMessage{settings.KeyServerName: *serverName}, ownerID); err != nil {
+			// De eigenaar bestaat op dit punt al en de setupcode is verbruikt;
+			// terugdraaien kan niet meer. Een 500 is dan het eerlijke antwoord:
+			// de handeling is half gelukt, en een 200 met de oude naam zou dat
+			// verbergen.
+			writeInternal(w, s.log, err)
+			return
+		}
+	}
+
 	s.limiter.reset("setup")
 	s.issueTokens(w, r, ownerID, deviceID(req.DeviceID), deviceName(req.DeviceName), auditSetup,
 		credentialModeToken)
+}
+
+// validateSetupServerName toetst server_name tegen dezelfde grenzen als
+// PATCH /settings, en geeft nil wanneer het veld niet is meegestuurd.
+//
+// Dezelfde grenzen omdat het dezelfde instelling is: settings.Parse is de enige
+// plek waar ze staan, en een tweede controle hier zou meteen uit elkaar kunnen
+// lopen met de eerste.
+func (s *Server) validateSetupServerName(w http.ResponseWriter, raw string) (*json.RawMessage, bool) {
+	if raw == "" {
+		return nil, true
+	}
+	if s.opts.Settings == nil || !s.opts.Settings.HasStore() {
+		// info.server.setup_accepts_name stond op false; deze client heeft de
+		// onderhandeling overgeslagen. Doen alsof de naam is aangenomen zou een
+		// server opleveren die anders heet dan het setupscherm zei.
+		writeInternal(w, s.log, errors.New("server_name bij setup zonder opslag voor instellingen"))
+		return nil, false
+	}
+
+	encoded, err := json.Marshal(raw)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return nil, false
+	}
+	value := json.RawMessage(encoded)
+	if _, err := settings.Parse(settings.KeyServerName, value); err != nil {
+		var invalid *settings.InvalidValueError
+		if errors.As(err, &invalid) {
+			details := map[string]any{"field": invalid.Field}
+			if invalid.Minimum != "" {
+				details["minimum"] = invalid.Minimum
+			}
+			if invalid.Maximum != "" {
+				details["maximum"] = invalid.Maximum
+			}
+			writeError(w, s.log, CodeSettingsInvalidValue, invalid.Error(), details)
+			return nil, false
+		}
+		writeInternal(w, s.log, err)
+		return nil, false
+	}
+	return &value, true
 }
 
 type loginRequest struct {

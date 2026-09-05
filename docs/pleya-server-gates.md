@@ -27,7 +27,9 @@ aan de lopende fase, niet aan een vast fasenummer, gelijk aan `CLAUDE.md`; bij h
 ging het venster een tweede keer open, zie sectie 6 hieronder en
 [DEC-101](DECISIONS.md#dec-101-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5).
 Een derde keer voor S1 van PS-11A, zie sectie 7 en
-[DEC-110](DECISIONS.md#dec-110-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein).
+[DEC-110](DECISIONS.md#dec-110-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein);
+dat venster is met S1.6 weer gesloten,
+[DEC-112](DECISIONS.md#dec-112-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen).
 
 ---
 
@@ -300,7 +302,16 @@ fase daarna, tot de volgende expliciete venstervraag.
 ## 7. Het S1-contractvenster van PS-11A
 
 Op 5 september 2026 ging het venster een derde keer open, met
-[DEC-110](DECISIONS.md#dec-110-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein).
+[DEC-110](DECISIONS.md#dec-110-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein),
+en op dezelfde dag weer dicht met S1.6 en
+[DEC-112](DECISIONS.md#dec-112-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen).
+Alle zeventien rijen zijn geland: veertien in S1.1 tot en met S1.5 en S1.8, en de laatste drie
+(`capabilities.administration`, `SetupRequest.server_name` met `Info.server.setup_accepts_name`, en
+`capabilities.mcp` met `Server.mcp`) in S1.6. Van die drie is er één met gedrag erachter: setup
+schrijft de instelling `server_name` werkelijk weg, en toetst hem vóór het inwisselen van de
+eenmalige setupcode. De twee andere zijn onderhandelingsvlaggen, en `mcp` staat op `false` tot slice
+S16 de laag bouwt: het venster legt de vorm vast omdat het contract er daarna weer op slot gaat, niet
+de functie.
 
 **Waarom.** S0 is gesloten en PS-11A vrijgegeven. Zijn eerste slice is beheer-basis, en die kan geen
 regel opleveren zonder het contract aan te raken: beheerendpoints bestaan niet, de capability

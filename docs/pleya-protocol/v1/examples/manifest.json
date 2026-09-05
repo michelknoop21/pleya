@@ -22,6 +22,16 @@
       "note": "PS-9: users en sessions aan"
     },
     {
+      "file": "info_administration.json",
+      "schema": "Info",
+      "note": "S1.6: administration aan, mcp uit, en setup neemt een servernaam aan"
+    },
+    {
+      "file": "setup_request_with_name.json",
+      "schema": "SetupRequest",
+      "note": "S1.6: server_name bij setup, alleen te sturen als info.server.setup_accepts_name waar is"
+    },
+    {
       "file": "server_detail.json",
       "schema": "ServerDetail",
       "note": "klasse authenticated: wat een lid ziet"

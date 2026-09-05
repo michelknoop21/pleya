@@ -23,5 +23,9 @@
     "ready": true,
     "jobs_running": 1,
     "jobs_failed": 0
+  },
+  "mcp": {
+    "enabled": false,
+    "tool_count": 0
   }
 }

@@ -78,6 +78,15 @@ void main() {
     'ApiTokenList',
     'ApiTokenCreated',
     'AuditPage',
+    // S1.6 adds `server_name` to the setup body (protocol window 1, row 10).
+    // There is no Dart type for it to defer *from*: `completeSetup` in
+    // `pleya_server_auth_service.dart` composes the body as a literal map, so
+    // this fixture has nothing to parse it. Naming the schema here rather than
+    // leaving it out of the manifest keeps the hole visible; the phase that
+    // gives the app a typed setup request, or a setup screen that names the
+    // server, is the one that removes this line. On web the field belongs to
+    // the setup wizard, which is slice S11.
+    'SetupRequest',
   };
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
@@ -123,8 +132,8 @@ void main() {
       );
     });
 
-    test('covers the 62 fixtures the contract ships', () {
-      expect(fixtures, hasLength(62));
+    test('covers the 64 fixtures the contract ships', () {
+      expect(fixtures, hasLength(64));
     });
 
     for (final fixture in fixtures) {
@@ -163,6 +172,21 @@ void main() {
     test('a PS-4 server says no to sessions, so the device fields stay off the wire', () {
       final info = PleyaInfo.fromJson(load('info_ps4.json'));
       expect(info.capabilities.sessions, isFalse);
+    });
+
+    test('an S1.6 server still parses, though the app reads neither new flag', () {
+      // `administration` and `mcp` are for the web admin (S10) and the MCP
+      // layer (S16); the Flutter client has no screen for either, so
+      // `PleyaCapabilities` deliberately gains no field here. What this proves
+      // is the other half of that decision: the two flags plus
+      // `server.setup_accepts_name` do not break the type that does read this
+      // response. A wire model that choked on an unknown field would make every
+      // later capability a breaking change.
+      final info = PleyaInfo.fromJson(load('info_administration.json'));
+      expect(info.major, 1);
+      expect(info.capabilities.users, isTrue);
+      expect(info.capabilities.sessions, isTrue);
+      expect(info.capabilities.transcode, isFalse);
     });
 
     test('the pre-connection default claims nothing at all', () {

@@ -183,7 +183,10 @@ Precies daarom staat er zo weinig in.
 ```json
 {
   "protocol": { "major": 1, "feature_level": 1, "profile": "full" },
-  "server": { "id": "0198f2a1-7c3e-7b21-9f44-1c2d3e4f5a6b" },
+  "server": {
+    "id": "0198f2a1-7c3e-7b21-9f44-1c2d3e4f5a6b",
+    "setup_accepts_name": true
+  },
   "capabilities": {
     "browse": true,
     "search": true,
@@ -192,6 +195,10 @@ Precies daarom staat er zo weinig in.
     "watch_state_ownership": true,
     "stream_sessions": true,
     "sessions": true,
+    "api_tokens": true,
+    "cookie_auth": true,
+    "administration": true,
+    "mcp": false,
     "playback_plan": false,
     "transcode": false,
     "downloads": false,
@@ -206,6 +213,24 @@ Precies daarom staat er zo weinig in.
 `capabilities.users` staat aan zodra de server echte gebruikers kent (hoofdstuk 16);
 `capabilities.sessions` staat aan zodra hij device-scoped sessies kent (hoofdstuk 17) en dus
 `device_id`/`device_name` op `/auth/login` en `/auth/setup` verstaat.
+
+`capabilities.administration` staat aan zodra het beheeroppervlak bestaat: `GET`/`PATCH /settings`
+(17a), de vier routes onder `/server` (17b), `GET /stream-sessions` (17b.6) en `GET /audit` (17c.3).
+Eén vlag voor die zes en niet zes vlaggen, want ze kwamen samen en het antwoord zou zes keer
+hetzelfde zijn. De vlag is netheid en geen beveiliging: een client die hem niet ziet toont geen
+beheer, en de server weigert los daarvan met `404` voor wie er niet bij mag (16.4, regel 16 tot en
+met 26).
+
+`capabilities.mcp` staat aan zodra er een MCP-endpoint is waarmee een agent deze server kan beheren.
+Zolang hij uit staat draagt `Server.mcp` de vorm met `enabled: false`, en dat is een ander antwoord
+dan een afwezig object: het eerste zegt dat de laag bestaat en uit staat, het tweede dat deze server
+de vraag niet kent.
+
+`server.setup_accepts_name` staat naast `server.id` en niet in `capabilities`, want het is geen
+functie die aan of uit staat maar een eigenschap van één endpoint: `POST /auth/setup` neemt dan
+`server_name` aan (6.1). Het staat op `Info` omdat het het enige veld is dat een client vóór het
+inloggen moet weten, en het hangt aan de opslag: zonder `server_settings` is er niets om de naam in
+te bewaren.
 
 `server.id` is er om de server te herkennen tussen opgeslagen verbindingen. Verder staat er geen
 gebruikersgegeven in, geen padnaam, en **geen servernaam, versie of buildnummer**. Die drie zijn
@@ -238,10 +263,22 @@ De eerste start van een server drukt een eenmalige setupcode af op de console. E
 standaardwachtwoord en geen ingebouwd account.
 
 ```json
-{ "setup_code": "K7M-2QX-91B", "username": "michel", "password": "..." }
+{ "setup_code": "K7M-2QX-91B", "username": "michel", "password": "...", "server_name": "Kelder" }
 ```
 
 Antwoord: hetzelfde tokenpaar als 6.2. Een tweede aanroep geeft `auth.setup_already_completed`.
+
+`server_name` is optioneel en alleen te sturen wanneer `info.server.setup_accepts_name` waar is; deze
+body is gesloten, dus een oudere server wijst het veld af in plaats van het te negeren. Het is
+dezelfde instelling als `Settings.server_name`, met dezelfde grenzen (17a.2): de server schrijft hem
+weg, `GET /server` toont hem, en `GET /settings` noemt hem daarna met bron `db`. Zonder het veld
+blijft de omgevingswaarde gelden, met bron `env`.
+
+Het bestaat omdat setup het enige moment is waarop er nog geen beheerder is die `PATCH /settings` kan
+doen, en een server die "Pleya" heet tot iemand hem hernoemt is precies het soort ding dat niemand
+hernoemt. De naam wordt getoetst **vóór** de setupcode wordt ingewisseld: die code is eenmalig, dus
+een naam die door de grens zakt mag hem niet opbranden. Een naam buiten zijn grens geeft
+`settings.invalid_value` met het veld en de grens erbij.
 
 ### 6.2 `POST /pleya/v1/auth/login`
 
@@ -1108,7 +1145,7 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 14 | `GET /users` | lijst | `member`/`restricted` zien alleen zichzelf |
 | 15 | `GET /sessions`, `DELETE /sessions/{id}` | sessie-id | eigen sessies, of `admin`; anders `404` |
 | 16 | `GET /settings`, `PATCH /settings` | het bestaan van het beheeroppervlak | klasse `admin`; `member` en `restricted` krijgen `404` met dezelfde body als een beheerhandeling op een ander (S1.2) |
-| 17 | `GET /server` | hoe de server draait | de acht velden van S1.3 alleen voor klasse `admin`; een lid krijgt `200` met precies het antwoord dat het altijd kreeg |
+| 17 | `GET /server` | hoe de server draait | de beheervelden (17b.1) alleen voor klasse `admin`; een lid krijgt `200` met precies het antwoord dat het altijd kreeg. De regel telt ze niet op: het waren er acht bij S1.3, negen na `web_origin` (S1.8) en tien na `mcp` (S1.6), en een aantal in deze kolom veroudert stil bij elke slice die er een bij zet |
 | 18 | `GET /server/environment` | omgeving en credentials | klasse `admin`, `404` voor de rest; alleen `PLEYA_SERVER_*` plus een gemaskeerde `DATABASE_URL`, en een naam die een geheim aankondigt gaat er in zijn geheel af |
 | 19 | `GET /server/log` | logregels met paden, adressen en tokens | klasse `admin`, `404` voor de rest; uit een ringbuffer in het geheugen en nooit uit een bestand, geredigeerd op de weg erin |
 | 20 | `POST /server/connectivity-check` | de server als prober van het interne netwerk | klasse `admin`, `404` voor de rest; geen aanvraagbody, doel is altijd het eigen `public_url`, vaste time-out, geen omleidingen, en een letterlijk privé-adres komt niet door `PATCH /settings` |
@@ -1276,15 +1313,22 @@ container herstart.
 
 ## 17b. Serverdiagnostiek
 
-Vijf endpoints van klasse `admin`, plus acht velden die `GET /pleya/v1/server` er voor een
-beheerder bij krijgt. De eerste vier plus de velden kwamen met S1.3, het overzicht van lopende
-streams (17b.6) met S1.4, allemaal binnen hetzelfde protocolvenster 1.
+Vijf endpoints van klasse `admin`, plus tien velden die `GET /pleya/v1/server` er voor een
+beheerder bij krijgt. De eerste vier endpoints plus acht van de velden kwamen met S1.3, het overzicht
+van lopende streams (17b.6) met S1.4, `web_origin` met S1.8 en `mcp` met S1.6, allemaal binnen
+hetzelfde protocolvenster 1.
 
 ### 17b.1 `GET /server` groeit met de klasse en niet met een parameter
 
 Een lid krijgt `id`, `name`, `version` en `started_at`, precies zoals sinds PS-2. Een beheerder
-krijgt daarnaast `public_url`, `listen`, `behind_proxy`, `trusted_proxies[]`, `build`,
-`database{version, schema}`, `ffprobe{found, version}` en `health{ready, jobs_running, jobs_failed}`.
+krijgt daarnaast `public_url`, `web_origin`, `listen`, `behind_proxy`, `trusted_proxies[]`, `build`,
+`database{version, schema}`, `ffprobe{found, version}`, `health{ready, jobs_running, jobs_failed}` en
+`mcp{enabled, url, tool_count}`.
+
+`mcp` is de enige van de tien die nu nog niets meet: `enabled` is `false` en `tool_count` is `0`
+zolang `capabilities.mcp` uit staat. Het object staat er toch, omdat de vorm bij dit protocolvenster
+hoort en de laag zelf bij een latere slice; een afwezig object zou straks iets anders betekenen dan
+nu, terwijl het antwoord hetzelfde blijft.
 
 Geen `?fields=` en geen tweede endpoint. Wie de velden krijgt is een beheerder, en wie ze niet
 krijgt heeft geen manier om te zien dat ze bestaan. Een client leest daar meteen uit of hij het

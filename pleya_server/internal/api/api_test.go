@@ -88,8 +88,15 @@ func TestInfoBeforeAndAfterSetup(t *testing.T) {
 
 	// /info draagt geen servernaam, versie of buildnummer: die staan achter
 	// authenticatie in /server.
+	//
+	// De verboden lijst noemde tot S1.6 ook `"name"` en `"version"` als kale
+	// woorden. Dat werkte zolang er geen veld bestond waar die letters
+	// onschuldig in voorkomen, en `setup_accepts_name` (J.2 rij 10) is dat veld:
+	// hij draagt geen naam, hij zegt of setup er een aanneemt. De sleutels staan
+	// hier daarom met hun JSON-vorm erbij, zodat de meting over velden gaat en
+	// niet over letters.
 	raw := e.do(http.MethodGet, "/pleya/v1/info", nil, withoutAuth).Body.String()
-	for _, forbidden := range []string{"Zolder", "0.2.0-test", "version", "name"} {
+	for _, forbidden := range []string{"Zolder", "0.2.0-test", `"version"`, `"name"`, `"build"`} {
 		if strings.Contains(raw, forbidden) {
 			t.Fatalf("/info lekt %q: %s", forbidden, raw)
 		}

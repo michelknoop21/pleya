@@ -2585,6 +2585,105 @@ Geaccepteerd door Michel op 5 september 2026, in de keuzeronde over het foutdome
 
 ---
 
+## DEC-112: protocolvenster 1 gaat dicht; de laatste drie rijen en wat ze wel en niet vastleggen
+
+**Date:** 2026-09-05
+**Status:** accepted
+
+**Context:** [DEC-110](#dec-110-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein)
+opende het venster voor precies de zeventien wijzigingen uit J.2 van het re-baseline-pakket, met het
+sluitmoment op S1.6. [DEC-111](#dec-111-venster-1-voegt-twee-foutdomeinen-toe-niet-een-settings-komt-er-naast-server-bij)
+corrigeerde die opening op één punt. Veertien van de zeventien rijen zijn geland in S1.1 tot en met
+S1.5 en S1.8. Dit besluit landt de laatste drie en sluit het venster.
+
+De drie zijn rij 1 (`capabilities.administration`), rij 10 (`SetupRequest.server_name` plus
+`Info.server.setup_accepts_name`) en rij 15 (`capabilities.mcp` plus
+`Server.mcp{enabled, url, tool_count}`).
+
+**De compatibiliteitstoets langs de zes regels van hoofdstuk 3.**
+
+Regel 1, een nieuw optioneel antwoordveld: `administration`, `mcp`, `setup_accepts_name` en
+`Server.mcp` zijn alle vier antwoordvelden en geen ervan is verplicht om te lezen. `Capabilities`
+draagt geen `additionalProperties: false`, `Info.server` en `ServerDetail` evenmin. Een client die
+ze negeert werkt door; dat is gemeten en niet aangenomen, met een fixture die de Dart-wiretypes
+parseren zonder dat `PleyaCapabilities` een veld erbij krijgt.
+
+Regel 2 en 3: er wordt niets hernoemd, verwijderd of van betekenis veranderd. `Server.name` blijft
+wat het was; `server_name` bij setup zet die naam en verandert hem niet van betekenis.
+
+Regel 4, een nieuw verplicht aanvraagveld: `server_name` is optioneel, en de default reproduceert het
+oude gedrag letterlijk. Zonder het veld blijft de omgevingswaarde gelden met bron `env`, precies
+zoals vóór deze wijziging. Dat is getoetst met een test die de bron leest en niet alleen de waarde,
+want een implementatie die bij elke setup de omgevingswaarde wegschrijft zou op de waarde groen staan
+en de instelling voorgoed op `db` zetten.
+
+Regel 5, de gesloten aanvraagbody: `SetupRequest` houdt `additionalProperties: false`, en daarom
+bestaat `info.server.setup_accepts_name`. Een client stuurt `server_name` pas als die vlag waar is.
+De vlag staat op `Info` en niet in `capabilities`, want het is geen functie die aan of uit staat maar
+een eigenschap van één endpoint, en `Info` is wat een client vóór het inloggen ziet.
+
+Regel 6, enums: geen van de drie rijen voegt een enumwaarde toe.
+
+**Twee dingen die dit besluit expliciet niet doet.**
+
+`capabilities.mcp` staat op `false` en `Server.mcp` draagt `enabled: false` met `tool_count: 0`. Er
+komt geen MCP-endpoint bij, geen tool en geen route. De laag is slice S16, en die bouwen omdat de
+vlag er nu staat zou vooruitbouwen zijn. Wat hier wél gebeurt is de **vorm** vastleggen, en dat is de
+enige reden dat het in dit venster hoort: het contract is bevroren zodra dit venster sluit, en een
+boolean plus een object van drie velden zou anders een eigen venster kosten. Het object staat er
+daarom altijd voor een beheerder en niet pas wanneer de laag aanstaat: een afwezig object zegt "deze
+server kent de vraag niet", en dat wordt straks onwaar terwijl het antwoord hetzelfde blijft.
+
+`capabilities.administration` is één vlag voor zes routes en niet zes vlaggen. De routes kwamen in
+vier slices maar binnen één venster, en een client die ze los zou moeten onderhandelen krijgt zes
+vragen met altijd hetzelfde antwoord. De vlag is bovendien netheid en geen beveiliging: hij zegt of
+een client een beheerscherm toont, en de server weigert daar los van met `404` voor wie er niet bij
+mag (hoofdstuk 16.4, regel 16 tot en met 26).
+
+**Waarom `server_name` bij setup gedrag krijgt en niet alleen een schema.** J.2 rij 10 noemt het veld
+zonder te zeggen wat de server ermee doet. Een schema zonder gedrag is een belofte die niemand
+nakomt, en de contractpoort zou hem doorlaten omdat hij alleen naar de vorm kijkt. De keuze is
+daarom dat setup de instelling `server_name` werkelijk wegschrijft, met dezelfde grenzen als
+`PATCH /settings` en via dezelfde parser, zodat de twee niet uit elkaar kunnen lopen. De controle
+staat **vóór** het inwisselen van de setupcode: die code is eenmalig, dus een naam van
+vijfenzestig tekens zou hem anders opbranden en een eigenaar zonder naam achterlaten.
+
+Het bestaansrecht van het veld is dat setup het enige moment is waarop er nog geen beheerder is die
+`PATCH /settings` kan doen. Een server die "Pleya" heet tot iemand hem hernoemt is precies het soort
+ding dat niemand hernoemt.
+
+**Decision:** protocolvenster 1 is **gesloten**. `docs/pleya-protocol/v1/openapi.yaml` is weer
+bevroren tot een besluit een volgend venster expliciet opent, en de zeventien rijen van J.2 zijn
+alle zeventien geland. Een wijziging die hierna nodig blijkt is een nieuw venster met een eigen
+besluit en een eigen toetsing langs de zes regels, ook wanneer hij klein is en ook wanneer hij bij
+S1 hoort.
+
+`feature_level` blijft 1, om dezelfde reden als in DEC-110 en DEC-111: het niveau zegt wat de
+implementatie begrijpt, en `capabilities` blijft leidend voor wat er werkelijk is.
+
+**Consequences:** `openapi.yaml` draagt `Capabilities.administration` en `Capabilities.mcp`,
+`Info.server.setup_accepts_name`, `SetupRequest.server_name` en `ServerDetail.mcp`. Twee fixtures
+komen erbij (`info_administration.json`, `setup_request_with_name.json`) en
+`server_detail_admin.json` draagt het mcp-object; de manifestlijst gaat van 62 naar 64, en de
+telling in `test/pleya_server/pleya_wire_contract_test.dart` mee. `SetupRequest` komt op de lijst van
+uitgestelde schema's in dat bestand: de Flutter-app stelt zijn setupbody als een letterlijke map
+samen en heeft er geen wiretype voor, en op web hoort het veld bij de setup-wizard van slice S11.
+De gegenereerde TypeScript maakt beide capability-vlaggen verplicht, dus de fixtures in
+`Navigation.test.ts` en `navItems.test.ts` dragen ze. `docs/pleya-protocol-v1.md` hoofdstuk 5 toont
+de drie nieuwe velden met hun uitleg, 6.1 beschrijft `server_name` met zijn volgorde-eis, en 17b
+telt tien beheervelden in plaats van acht: `web_origin` was er met S1.8 al bij gekomen zonder dat de
+prozatelling meebewoog, en regel 17 van de autorisatiematrix telt ze daarom niet meer op.
+
+Afgewezen: `capabilities.mcp` pas met slice S16 toevoegen. Dat is verdedigbaar op scope maar duur op
+proces: het kost een heel protocolvenster, met besluit en compatibiliteitstoets, voor één boolean en
+één object waarvan de vorm nu al vastligt. Ook afgewezen: `server_name` als schema zonder handler,
+waarbij S11 het gedrag zou bouwen. Dan staat er tot die slice een veld in het contract dat de server
+aanneemt en weggooit, en dat is erger dan geen veld.
+
+Geaccepteerd door Michel op 5 september 2026, met het vrijgeven van S1.6 als sluitstuk van S1.
+
+---
+
 ## Hernummering van 4 september 2026
 
 `feat/pleyaserver` liep 196 commits achter op `main` en beide takken hadden in die tijd

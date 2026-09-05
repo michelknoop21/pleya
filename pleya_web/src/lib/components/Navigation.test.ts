@@ -22,7 +22,9 @@ const caps: Capabilities = {
   stream_sessions: false,
   sessions: false,
   api_tokens: false,
-  cookie_auth: false
+  cookie_auth: false,
+  administration: false,
+  mcp: false
 };
 const items = navItems(caps, 2);
 

@@ -208,6 +208,13 @@ func (s *Server) fillServerAdminDetail(r *http.Request, detail *ServerDetail) {
 		}
 	}
 	detail.Health = &health
+
+	// De MCP-laag (J.2 rij 15). Het object staat er altijd voor een beheerder
+	// en is nu altijd uit: slice S16 bouwt de laag, dit venster legt alleen de
+	// vorm vast. Een afwezig object zou iets anders zeggen, namelijk dat deze
+	// server de vraag niet kent, en dat is straks niet meer waar terwijl het
+	// antwoord hetzelfde blijft.
+	detail.MCP = &ServerMCPWire{Enabled: false, ToolCount: 0}
 }
 
 // behindProxy zegt of déze aanvraag via een vertrouwde proxy binnenkwam.

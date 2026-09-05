@@ -29,12 +29,19 @@ type InfoProtocol struct {
 	Profile      string `json:"profile"`
 }
 
-// InfoServer draagt alleen een id. Geen servernaam, geen versie en geen
-// buildnummer: die zijn nuttig bij foutzoeken en staan daarom in GET /server,
-// achter authenticatie. Een versienummer aan de buitenkant vertelt een scanner
-// precies welke bekende zwakke plekken het proberen waard zijn.
+// InfoServer draagt een id en één onderhandelingsvlag. Geen servernaam, geen
+// versie en geen buildnummer: die zijn nuttig bij foutzoeken en staan daarom in
+// GET /server, achter authenticatie. Een versienummer aan de buitenkant vertelt
+// een scanner precies welke bekende zwakke plekken het proberen waard zijn.
 type InfoServer struct {
 	ID string `json:"id"`
+
+	// SetupAcceptsName (J.2 rij 10) zegt dat POST /auth/setup het veld
+	// server_name aanneemt. Hier en niet in Capabilities: het is geen functie
+	// die aan of uit staat maar een eigenschap van dat ene endpoint, en het is
+	// het enige veld dat een client vóór het inloggen moet weten. SetupRequest
+	// is gesloten, dus zonder deze vlag stuurt een client server_name niet.
+	SetupAcceptsName bool `json:"setup_accepts_name"`
 }
 
 // InfoAuth zegt hoe er ingelogd kan worden.
@@ -89,6 +96,22 @@ type Capabilities struct {
 	// credential_mode meestuurt een weigering krijgen van een oudere server in
 	// plaats van een veld dat stil wegvalt.
 	CookieAuth bool `json:"cookie_auth"`
+
+	// Administration (J.2 rij 1). Aan sinds S1.6, en hij dekt wat S1.2 tot en
+	// met S1.5 hebben gebouwd: GET/PATCH /settings, de vier routes onder
+	// /server, GET /stream-sessions en GET /audit.
+	//
+	// Eén vlag voor het hele oppervlak. Een client die zes vlaggen zou moeten
+	// lezen krijgt zes vragen met altijd hetzelfde antwoord, want de routes
+	// kwamen samen. En de vlag is netheid en geen beveiliging: de server
+	// weigert onafhankelijk ervan met 404 voor wie er niet bij mag.
+	Administration bool `json:"administration"`
+
+	// MCP (RB-19, RB-20, J.2 rij 15). Uit, en dat blijft zo tot slice S16 de
+	// laag werkelijk bouwt. Hij staat er nu al omdat het protocolvenster nu
+	// open is: een vlag die pas met de implementatie meekomt zou een tweede
+	// venster kosten voor een boolean.
+	MCP bool `json:"mcp"`
 }
 
 // ServerDetail is het antwoord van GET /server.
@@ -121,6 +144,18 @@ type ServerDetail struct {
 	Database       *ServerDatabaseWire `json:"database,omitempty"`
 	FFprobe        *ServerFFprobeWire  `json:"ffprobe,omitempty"`
 	Health         *ServerHealthWire   `json:"health,omitempty"`
+	MCP            *ServerMCPWire      `json:"mcp,omitempty"`
+}
+
+// ServerMCPWire is de MCP-beheerlaag in GET /server, klasse admin (J.2 rij 15).
+//
+// Zolang capabilities.mcp uit staat draagt hij enabled false en tool_count 0,
+// zonder url. Dat is een ander antwoord dan een afwezig object: het eerste zegt
+// "de laag bestaat en staat uit", het tweede "deze server kent de vraag niet".
+type ServerMCPWire struct {
+	Enabled   bool    `json:"enabled"`
+	URL       *string `json:"url,omitempty"`
+	ToolCount int     `json:"tool_count"`
 }
 
 // TokenPair is wat setup, login en refresh teruggeven.
