@@ -11,7 +11,7 @@
 .ptabs .back .crumb { font-size: 20px; font-weight: 400; color: var(--ink-3); margin-left: 6px; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 24px; }
 .cols.one { grid-template-columns: 1fr; }
-.sec { font-size: 20px; font-weight: 500; color: var(--ink-3); letter-spacing: .02em; text-transform: uppercase; margin: 0 0 10px 4px; }
+.sec { font-size: 20px; font-weight: 500; color: var(--ink-3); letter-spacing: .02em; text-transform: uppercase; margin: 0 0 10px 22px; }
 .col .rows { gap: 8px; }
 .col .row { min-height: 64px; padding: 0 22px; gap: 18px; }
 .col .row .t { font-size: 22px; }
@@ -21,15 +21,17 @@
 .col .row.dim .t, .col .row.dim .val { color: var(--ink-3); }
 .col .row.dim .s { color: var(--ink-4); }
 .col .row.static { background: transparent; border: 2px dashed var(--hair); }
-.col .row .ic.chev { width: 22px; height: 22px; color: var(--ink-3); }
+.col .row .ic.chev { width: 22px; height: 22px; color: var(--ink-3); flex: none; }
 .col .row .radio, .col .row .check { width: 28px; height: 28px; }
+.col .row .check .ic { color: var(--bg); width: 18px; height: 18px; }
 .col .row .switch { width: 58px; height: 32px; }
 .col .row .switch::after { width: 24px; height: 24px; }
 .col .row .switch.on::after { left: 30px; }
 /* waarderij met focus: pijlen zichtbaar */
-.step { display: inline-flex; align-items: center; gap: 12px; }
-.step .ic { width: 22px; height: 22px; color: var(--ink-2); flex: none; }
-.step > .ic:last-child { color: var(--ink-2); }
+.step { display: inline-flex; align-items: center; gap: 10px; }
+.step .ic { width: 22px; height: 22px; color: var(--ink); flex: none; }
+.step.rest .ic { color: var(--ink-4); }
+.step.rest .val { color: var(--ink-2); }
 .hintbar { position: absolute; left: var(--inset); right: var(--inset); top: 604px; display: flex; align-items: center; justify-content: space-between; }
 .hintbar .hint { font-size: 19px; }
 .hintbar .pos { font-size: 19px; color: var(--ink-3); }
@@ -38,7 +40,7 @@
 </style>
 <div class="video"><img src="{{art:dune2-backdrop}}"></div>
 <div class="panel">
-<div class="ptabs"><div class="back"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px"><path d="m15 6-6 6 6 6"/></svg>Slaaptimer<span class="crumb">Video ▸ Afspelen</span></div><div class="now">Dune: Part Two · 1:16:42 · NAS · Direct play</div></div>
+<div class="ptabs"><div class="back"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg>Slaaptimer<span class="crumb">Video ▸ Afspelen</span></div><div class="now">Dune: Part Two · 1:16:42 · NAS · Direct play</div></div>
 <div class="cols">
   <div class="col"><div class="sec">Actief</div><div class="rows">
     <div class="row sel"><div class="body"><div class="t">Slaaptimer loopt</div><div class="s">Pauzeert om 23:14 · nog 23 min</div></div><div class="btn quiet" style="height:44px;font-size:19px;padding:0 20px">Annuleren</div></div>

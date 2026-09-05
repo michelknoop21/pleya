@@ -11,7 +11,7 @@
 .ptabs .back .crumb { font-size: 20px; font-weight: 400; color: var(--ink-3); margin-left: 6px; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 24px; }
 .cols.one { grid-template-columns: 1fr; }
-.sec { font-size: 20px; font-weight: 500; color: var(--ink-3); letter-spacing: .02em; text-transform: uppercase; margin: 0 0 10px 4px; }
+.sec { font-size: 20px; font-weight: 500; color: var(--ink-3); letter-spacing: .02em; text-transform: uppercase; margin: 0 0 10px 22px; }
 .col .rows { gap: 8px; }
 .col .row { min-height: 64px; padding: 0 22px; gap: 18px; }
 .col .row .t { font-size: 22px; }
@@ -21,15 +21,17 @@
 .col .row.dim .t, .col .row.dim .val { color: var(--ink-3); }
 .col .row.dim .s { color: var(--ink-4); }
 .col .row.static { background: transparent; border: 2px dashed var(--hair); }
-.col .row .ic.chev { width: 22px; height: 22px; color: var(--ink-3); }
+.col .row .ic.chev { width: 22px; height: 22px; color: var(--ink-3); flex: none; }
 .col .row .radio, .col .row .check { width: 28px; height: 28px; }
+.col .row .check .ic { color: var(--bg); width: 18px; height: 18px; }
 .col .row .switch { width: 58px; height: 32px; }
 .col .row .switch::after { width: 24px; height: 24px; }
 .col .row .switch.on::after { left: 30px; }
 /* waarderij met focus: pijlen zichtbaar */
-.step { display: inline-flex; align-items: center; gap: 12px; }
-.step .ic { width: 22px; height: 22px; color: var(--ink-2); flex: none; }
-.step > .ic:last-child { color: var(--ink-2); }
+.step { display: inline-flex; align-items: center; gap: 10px; }
+.step .ic { width: 22px; height: 22px; color: var(--ink); flex: none; }
+.step.rest .ic { color: var(--ink-4); }
+.step.rest .val { color: var(--ink-2); }
 .hintbar { position: absolute; left: var(--inset); right: var(--inset); top: 604px; display: flex; align-items: center; justify-content: space-between; }
 .hintbar .hint { font-size: 19px; }
 .hintbar .pos { font-size: 19px; color: var(--ink-3); }
@@ -41,17 +43,17 @@
 <div class="ptabs"><div class="chip-btn">{{icon:info}} Info</div><div class="chip-btn on">{{icon:monitor}} Video</div><div class="chip-btn">{{icon:audio}} Geluid</div><div class="chip-btn">{{icon:cc}} Ondertitels</div><div class="now">Dune: Part Two · 1:16:42 · NAS · Direct play</div></div>
 <div class="cols">
   <div class="col"><div class="sec">Weergave</div><div class="rows">
-    <div class="row focus"><div class="body"><div class="t">Beeldverhouding</div></div><div class="step"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px"><path d="m15 6-6 6 6 6"/></svg><span class="val on">Letterbox</span>{{icon:chev}}</div></div>
-    <div class="row "><div class="body"><div class="t">Zoom</div></div><div class="val">100%</div></div>
+    <div class="row focus"><div class="body"><div class="t">Beeldverhouding</div></div><div class="step"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg><span class="val on">Letterbox</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div></div>
+    <div class="row "><div class="body"><div class="t">Zoom</div></div><div class="step rest"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg><span class="val">100%</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div></div>
     <div class="row "><div class="body"><div class="t">HDR</div></div><div class="switch on"></div></div>
-    <div class="row "><div class="body"><div class="t">Shaders</div><div class="s">Geen</div></div><div class="val">Uit</div><span class="ic chev">{{icon:chev}}</span></div>
-    <div class="row "><div class="body"><div class="t">Sfeerverlichting</div></div><div class="val on">Gebalanceerd</div></div>
+    <div class="row "><div class="body"><div class="t">Shaders</div><div class="s">Geen</div></div><div class="val">Uit</div><svg class="ic chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
+    <div class="row "><div class="body"><div class="t">Sfeerverlichting</div></div><div class="step rest"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg><span class="val">Gebalanceerd</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div></div>
   </div></div>
   <div class="col"><div class="sec">Afspelen</div><div class="rows">
-    <div class="row "><div class="body"><div class="t">Snelheid</div></div><div class="val">1,0×</div></div>
-    <div class="row "><div class="body"><div class="t">Hoofdstukken</div><div class="s">Hoofdstuk 7 · The Water of Life</div></div><div class="val">7 van 12</div><span class="ic chev">{{icon:chev}}</span></div>
-    <div class="row "><div class="body"><div class="t">Versie en kwaliteit</div><div class="s">2160p HEVC · 38 GB</div></div><div class="val">Origineel</div><span class="ic chev">{{icon:chev}}</span></div>
-    <div class="row "><div class="body"><div class="t">Slaaptimer</div></div><div class="val">Uit</div><span class="ic chev">{{icon:chev}}</span></div>
+    <div class="row "><div class="body"><div class="t">Snelheid</div></div><div class="step rest"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg><span class="val">1,0×</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div></div>
+    <div class="row "><div class="body"><div class="t">Hoofdstukken</div><div class="s">Hoofdstuk 7 · The Water of Life</div></div><div class="val">7 van 12</div><svg class="ic chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
+    <div class="row "><div class="body"><div class="t">Versie en kwaliteit</div><div class="s">2160p HEVC · 38 GB</div></div><div class="val">Origineel</div><svg class="ic chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
+    <div class="row "><div class="body"><div class="t">Slaaptimer</div></div><div class="val">Uit</div><svg class="ic chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
     <div class="row "><div class="body"><div class="t">Volgende aflevering automatisch</div></div><div class="switch on"></div></div>
     <div class="row "><div class="body"><div class="t">Afspeelstatistiek</div></div><div class="switch"></div></div>
   </div></div>
