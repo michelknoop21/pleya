@@ -419,4 +419,85 @@ void main() {
     final suffixed = declared.firstWhere((n) => n['id'] == 'header-twice#2');
     expect((suffixed['state']! as Map<String, Object?>)['library'], 'Movies');
   });
+
+  test('a FocusNode keeps one node number across snapshots, and two nodes never share one', () {
+    final first = FocusNode(debugLabel: 'node-number-first');
+    final second = FocusNode(debugLabel: 'node-number-second');
+    addTearDown(() {
+      first.dispose();
+      second.dispose();
+    });
+
+    final tokens = [
+      AutomationRegistry.instance.register(
+        AutomationDeclaredNode(id: 'node-number.first', role: 'button', focusNode: first),
+      ),
+      AutomationRegistry.instance.register(
+        AutomationDeclaredNode(id: 'node-number.second', role: 'button', focusNode: second),
+      ),
+    ];
+    addTearDown(() {
+      for (final token in tokens) {
+        AutomationRegistry.instance.unregister(token);
+      }
+    });
+
+    Map<String, Object?> declaredFor(String id) => (AutomationRegistry.instance.snapshot()['declared'] as List)
+        .cast<Map<String, Object?>>()
+        .firstWhere((n) => n['id'] == id);
+
+    final firstNumber = declaredFor('node-number.first')['node'];
+    final secondNumber = declaredFor('node-number.second')['node'];
+
+    expect(firstNumber, isA<int>());
+    expect(secondNumber, isA<int>());
+    expect(firstNumber, isNot(secondNumber));
+
+    // Stable across snapshots is the whole point: a focus walk lines up the
+    // frame before a press against the frame after it, and a number that was
+    // re-derived per snapshot would pair up the wrong two nodes.
+    expect(declaredFor('node-number.first')['node'], firstNumber);
+    expect(declaredFor('node-number.second')['node'], secondNumber);
+  });
+
+  test('a declared node without a FocusNode carries no node number', () {
+    final token = AutomationRegistry.instance.register(
+      const AutomationDeclaredNode(id: 'node-number.nodeless', role: 'text'),
+    );
+    addTearDown(() => AutomationRegistry.instance.unregister(token));
+
+    final declared = (AutomationRegistry.instance.snapshot()['declared'] as List)
+        .cast<Map<String, Object?>>()
+        .firstWhere((n) => n['id'] == 'node-number.nodeless');
+
+    // Absent rather than null: the runner treats `node` as optional and falls
+    // back to rects, and a null would have to be special-cased everywhere.
+    expect(declared.containsKey('node'), isFalse);
+  });
+
+  testWidgets('the focus snapshot reports the same node number the tree does', (tester) async {
+    final focusNode = FocusNode(debugLabel: 'node-number-focus');
+    addTearDown(focusNode.dispose);
+
+    final token = AutomationRegistry.instance.register(
+      AutomationDeclaredNode(id: 'node-number.focused', role: 'button', focusNode: focusNode),
+    );
+    addTearDown(() => AutomationRegistry.instance.unregister(token));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Focus(focusNode: focusNode, child: const SizedBox(width: 10, height: 10)),
+      ),
+    );
+    focusNode.requestFocus();
+    await tester.pump();
+
+    final declared = (AutomationRegistry.instance.snapshot()['declared'] as List)
+        .cast<Map<String, Object?>>()
+        .firstWhere((n) => n['id'] == 'node-number.focused');
+    final focus = AutomationRegistry.instance.focusSnapshot();
+
+    expect(focus, isNotNull);
+    expect(focus!['node'], declared['node']);
+  });
 }
