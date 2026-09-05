@@ -78,5 +78,45 @@ class TvLayoutConstants {
 
   static double scaleForSize(Size size) => scaleForHeight(size.height);
 
-  static double scaleOf(BuildContext context) => scaleForSize(MediaQuery.sizeOf(context));
+  /// The ten-foot scale for [context].
+  ///
+  /// Reads [TvDisplayMetrics] before `MediaQuery`, and the difference matters
+  /// exactly once: inside a nested TV route. INV-1 of
+  /// `docs/tvos-redesign-implementatiecontract.md` makes such a route see the
+  /// content box rather than the window, and the content box is shorter than
+  /// the window by the height of the top bar. Feeding that to a *typography*
+  /// scale would shrink every letter in a nested route by about nine per cent
+  /// against the same screen mounted as a destination root — two renderings of
+  /// one screen, differing only in how it was opened.
+  ///
+  /// So the viewport shrinks and the scale does not. The display size is a
+  /// property of the panel someone is sitting in front of, which no amount of
+  /// chrome above the content changes. Off TV, and in any test that did not
+  /// mount the shell, nothing is published and this is `MediaQuery` as before.
+  static double scaleOf(BuildContext context) =>
+      scaleForSize(TvDisplayMetrics.maybeOf(context) ?? MediaQuery.sizeOf(context));
+}
+
+/// The size of the whole TV display, published once by the shell.
+///
+/// It exists because [TvLayoutConstants.scaleOf] used to derive the ten-foot
+/// scale from `MediaQuery.sizeOf`, and INV-1 took that reading away: a nested
+/// route's `MediaQuery` is its content box now, deliberately. Everything that
+/// asks "how far away is the viewer" still needs the panel, not the box, and
+/// this is where it asks.
+///
+/// Published by `TvRootShell` around its whole frame, so the destination roots
+/// and the nested routes above them resolve the same value and one screen
+/// renders identically whichever way it was opened.
+class TvDisplayMetrics extends InheritedWidget {
+  const TvDisplayMetrics({super.key, required this.size, required super.child});
+
+  /// The shell's own box: the full window, before the top bar takes its band.
+  final Size size;
+
+  static Size? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<TvDisplayMetrics>()?.size;
+
+  @override
+  bool updateShouldNotify(TvDisplayMetrics oldWidget) => oldWidget.size != size;
 }

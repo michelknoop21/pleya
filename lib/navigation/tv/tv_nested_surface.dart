@@ -171,8 +171,64 @@ class TvNestedSurfaceState extends State<TvNestedSurface> {
   Widget build(BuildContext context) => TvNestedBackOwner(
     child: TvNestedRouteScope(
       dismiss: widget.dismiss,
-      child: Focus(focusNode: _anchor, canRequestFocus: false, skipTraversal: true, child: widget.child),
+      child: Focus(
+        focusNode: _anchor,
+        canRequestFocus: false,
+        skipTraversal: true,
+        child: _ContentBoxMediaQuery(child: widget.child),
+      ),
     ),
+  );
+}
+
+/// INV-1: a nested TV route sees the content box, never the window.
+///
+/// The shell hands this surface an `Expanded` under the top bar, so the box it
+/// gets is already the right one — but `MediaQuery` above it still describes
+/// the whole window, and that is what a screen reads. Every screen written for
+/// a full-window push therefore lays out against a height it does not have:
+/// roughly a top bar too much, every time, on detail, collection, person and
+/// each settings subpage as PB-1 moves them in here.
+///
+/// Corrected here rather than in the screens, because the invariant is what has
+/// to hold. A per-screen fix is one `MediaQuery` patch for detail, and then the
+/// same bug again at collection, and again at person, and again at whatever the
+/// next approved surface is. This is the one place every nested route passes
+/// through.
+///
+/// The top inset goes with it. `TvShellSurface` already documents the shell as
+/// the owner of the top safe inset; leaving a non-zero `padding.top` here would
+/// invite a nested screen to inset a second time under a bar that already did,
+/// which is exactly the band of dead space that note describes.
+///
+/// The ten-foot type scale is deliberately *not* affected: see
+/// `TvDisplayMetrics`, which the shell publishes so `scaleOf` keeps reading the
+/// panel while layout reads the box.
+class _ContentBoxMediaQuery extends StatelessWidget {
+  const _ContentBoxMediaQuery({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final media = MediaQuery.of(context);
+      // An unbounded axis means this surface is being measured, not laid out
+      // (a scrollable parent in a test, say). Substituting infinity for a size
+      // is worse than leaving the ambient value alone.
+      final size = Size(
+        constraints.hasBoundedWidth ? constraints.maxWidth : media.size.width,
+        constraints.hasBoundedHeight ? constraints.maxHeight : media.size.height,
+      );
+      return MediaQuery(
+        data: media.copyWith(
+          size: size,
+          padding: media.padding.copyWith(top: 0),
+          viewPadding: media.viewPadding.copyWith(top: 0),
+        ),
+        child: child,
+      );
+    },
   );
 }
 
