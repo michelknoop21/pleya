@@ -110,15 +110,16 @@ een geweigerd event wordt beantwoord met de actuele toestand en gelogd, en verde
 
 ## Wat er op de lijn zit
 
-Achtentwintig operaties op vierentwintig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
-daarna PS-9, en de laatste twee de serverinstellingen van S1.2.
+Tweeëndertig operaties op achtentwintig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
+daarna PS-9, de twee daarna de serverinstellingen van S1.2, en de laatste vier de serverdiagnostiek
+van S1.3.
 
 | Endpoint | Klasse |
 | --- | --- |
 | `GET /pleya/v1/info` | publiek |
 | `POST /pleya/v1/auth/setup`, `/auth/login`, `/auth/refresh` | publiek |
 | `POST /pleya/v1/auth/stream-token` | geauthenticeerd |
-| `GET /pleya/v1/server` | geauthenticeerd |
+| `GET /pleya/v1/server` | geauthenticeerd; voor een admin acht velden erbij |
 | `GET /pleya/v1/libraries`, `/libraries/{id}/items` | geauthenticeerd |
 | `GET /pleya/v1/items/{id}`, `/items/{id}/children` | geauthenticeerd |
 | `GET /pleya/v1/search`, `/hubs/{hub_id}` | geauthenticeerd |
@@ -131,6 +132,8 @@ daarna PS-9, en de laatste twee de serverinstellingen van S1.2.
 | `GET /pleya/v1/users` | geauthenticeerd, gefilterd op rol |
 | `POST /pleya/v1/auth/logout`, `GET /pleya/v1/sessions`, `DELETE /pleya/v1/sessions/{id}` | geauthenticeerd op de eigen sessies, admin op elke |
 | `GET /pleya/v1/settings`, `PATCH /pleya/v1/settings` | admin |
+| `GET /pleya/v1/server/environment`, `/server/log` | admin |
+| `POST /pleya/v1/server/connectivity-check`, `/server/rotate-signing-key` | admin |
 
 Buiten het protocol staat er nog één route: `GET /` en elk pad dat geen bestand en geen protocolroute is levert
 `index.html` van de webbundel. `/pleya/v1/*`, `/healthz` en `/readyz` houden altijd voorrang, en een
@@ -138,7 +141,8 @@ onbekend pad onder `/pleya/v1` krijgt de foutvorm van het protocol en geen pagin
 `internal/web` en `internal/api/web_routes_test.go` toetsen dat.
 
 Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), verzamelingen en
-afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer (PS-11A). Die geven een 404, en
+afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer (bibliotheken, opslag en scans in
+S2, API-tokens en audit in S1.5). Die geven een 404, en
 `capabilities` in `/info` zegt hetzelfde: `browse`, `search`, `artwork`, `watch_state`,
 `watch_state_ownership`, `stream_sessions`, `users` en `sessions` staan op `true`, en capabilities is
 leidend. `administration` staat er nog niet bij: die vlag hoort bij S1.6, wanneer venster 1 sluit.

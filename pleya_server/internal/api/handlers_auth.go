@@ -79,15 +79,6 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) handleServer(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, ServerDetail{
-		ID:        s.opts.ServerID.String(),
-		Name:      s.settings().ServerName(),
-		Version:   s.opts.Version,
-		StartedAt: formatTime(s.opts.StartedAt),
-	})
-}
-
 type setupRequest struct {
 	SetupCode  string `json:"setup_code"`
 	Username   string `json:"username"`

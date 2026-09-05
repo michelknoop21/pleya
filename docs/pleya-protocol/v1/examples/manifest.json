@@ -23,7 +23,32 @@
     },
     {
       "file": "server_detail.json",
-      "schema": "ServerDetail"
+      "schema": "ServerDetail",
+      "note": "klasse authenticated: wat een lid ziet"
+    },
+    {
+      "file": "server_detail_admin.json",
+      "schema": "ServerDetail",
+      "note": "klasse admin: de acht velden van S1.3 erbij"
+    },
+    {
+      "file": "server_environment.json",
+      "schema": "ServerEnvironment",
+      "note": "alleen de eigen naamruimte, DSN gemaskeerd"
+    },
+    {
+      "file": "server_log.json",
+      "schema": "ServerLog",
+      "note": "uit de ringbuffer, nieuwste eerst, geredigeerd"
+    },
+    {
+      "file": "connectivity_check.json",
+      "schema": "ConnectivityCheck"
+    },
+    {
+      "file": "error_confirm_mismatch.json",
+      "schema": "ErrorEnvelope",
+      "note": "rotate-signing-key zonder de juiste bevestiging"
     },
     {
       "file": "token_pair.json",

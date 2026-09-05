@@ -498,6 +498,7 @@ contract keurt ze af.
 | `auth.owner_immutable` | 409 | nee | de owner kan niet verwijderd of gedegradeerd worden |
 | `auth.session_not_found` | 404 | nee | de sessie bestaat niet, of niet voor u; zie hoofdstuk 17 |
 | `settings.invalid_value` | 400 | nee | een waarde in `PATCH /settings` valt buiten zijn grens; `details` draagt veld en grens |
+| `server.confirm_mismatch` | 409 | nee | een destructieve handeling zonder de juiste bevestiging; `details.expected` zegt welk woord er moet staan. Voor S1.3 is dat `POST /server/rotate-signing-key` met `confirm: "rotate"` |
 | `server.internal` | 500 | nee | de handler liep op een fout die hij niet had voorzien; `details.request_id` verwijst naar de logregel. `nee` en niet `ja`: het contract dwingt een boolean af waar "onbekend" het eerlijke antwoord is, en een deterministische panic die als herhaalbaar binnenkomt levert een client op die precies het verzoek blijft sturen dat de server omver duwde |
 
 **`404` en niet `403`, overal.** Een resource die u niet mag zien bestaat voor u niet, ook niet in
@@ -1046,9 +1047,9 @@ Een poging om de owner te degraderen geeft `auth.owner_immutable`.
 
 ### 16.4 De autorisatiematrix
 
-Zestien regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien zijn
-de bindende matrix van DEC-105; elke slice die daarna een endpoint toevoegt zet zijn eigen regel
-erbij en sluit niet zonder (K.3 van het securityplan).
+Eenentwintig regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien
+zijn de bindende matrix van DEC-105; elke slice die daarna een endpoint toevoegt zet zijn eigen
+regel erbij en sluit niet zonder (K.3 van het securityplan).
 
 | # | Endpoint | Lekvector | Vereiste controle |
 | --- | --- | --- | --- |
@@ -1068,6 +1069,17 @@ erbij en sluit niet zonder (K.3 van het securityplan).
 | 14 | `GET /users` | lijst | `member`/`restricted` zien alleen zichzelf |
 | 15 | `GET /sessions`, `DELETE /sessions/{id}` | sessie-id | eigen sessies, of `admin`; anders `404` |
 | 16 | `GET /settings`, `PATCH /settings` | het bestaan van het beheeroppervlak | klasse `admin`; `member` en `restricted` krijgen `404` met dezelfde body als een beheerhandeling op een ander (S1.2) |
+| 17 | `GET /server` | hoe de server draait | de acht velden van S1.3 alleen voor klasse `admin`; een lid krijgt `200` met precies het antwoord dat het altijd kreeg |
+| 18 | `GET /server/environment` | omgeving en credentials | klasse `admin`, `404` voor de rest; alleen `PLEYA_SERVER_*` plus een gemaskeerde `DATABASE_URL`, en een naam die een geheim aankondigt gaat er in zijn geheel af |
+| 19 | `GET /server/log` | logregels met paden, adressen en tokens | klasse `admin`, `404` voor de rest; uit een ringbuffer in het geheugen en nooit uit een bestand, geredigeerd op de weg erin |
+| 20 | `POST /server/connectivity-check` | de server als prober van het interne netwerk | klasse `admin`, `404` voor de rest; geen aanvraagbody, doel is altijd het eigen `public_url`, vaste time-out, geen omleidingen, en een letterlijk privé-adres komt niet door `PATCH /settings` |
+| 21 | `POST /server/rotate-signing-key` | elke sessie van het huishouden | klasse `admin`, `404` voor de rest; `confirm: "rotate"` verplicht, en het antwoord draagt de nieuwe sleutel niet |
+
+Regel 17 tot en met 21 hebben één ding gemeen dat de eerste zestien niet hebben: ze lekken niets uit
+de bibliotheek maar uit de installatie. Een lijst omgevingsvariabelen, een logregel met een pad of
+een adres, en de vraag of de server via een proxy draait zijn samen genoeg om te weten waar hij
+staat en waar hij aan hangt. Vandaar dat regel 17 de enige van de eenentwintig is waar het endpoint
+zelf gewoon antwoordt en alleen de velden meebewegen met de klasse.
 
 Regel 8 tot en met 11 zijn de subtiele: een streamtoken of streamsessie leeft twee tot vijf minuten
 zelfstandig nadat hij is uitgegeven. De rechtencontrole staat daarom op het **aanvraagpad**, niet
@@ -1145,6 +1157,7 @@ omgevingswaarde en `source: env`, en niet als ontbrekend veld.
 | `stream_token_ttl` | duur | `1m` tot `15m` |
 | `stream_session_ttl` | duur | `5m` tot `120m` |
 | `max_stream_sessions` | geheel getal | 1 tot 32 |
+| `public_url` | tekst | absolute `http`- of `https`-URL, geen inloggegevens, geen querystring, geen fragment, geen letterlijk privé-adres; leeg is toegestaan |
 
 Een duur heeft dezelfde vorm als de omgevingsvariabele ernaast (`15m`, `720h`), zodat een beheerder
 niet twee notaties hoeft te kennen voor dezelfde instelling. Wat eruit komt kun je zo weer
@@ -1154,6 +1167,17 @@ Een waarde buiten de grens geeft `400` met `settings.invalid_value`, en `details
 `minimum` en `maximum`. De body is gesloten: een onbekende sleutel is een fout en geen veld dat stil
 wegvalt (regel 5 van hoofdstuk 3). Een patch met een geldige en een ongeldige sleutel wijzigt er
 nul; half doorgevoerd beheer laat een antwoord achter dat niet klopt met wat er staat.
+
+`public_url` kwam met S1.3 en heeft geen lengtegrens maar een vormgrens. De reden is dat hij het
+enige doel is dat `POST /server/connectivity-check` aanroept: een waarde die naar `169.254.169.254`
+of naar de buren wijst maakt van een beheerknop een scanner van het interne netwerk. Een **naam**
+wordt niet opgezocht, want wie de zone beheert kan hem na de controle toch verzetten; wat de
+controle koopt is dat een beheerder de server niet met één `PATCH` op een metadata-endpoint kan
+richten.
+
+De omgevingslaag valt daar bewust buiten. `PLEYA_SERVER_PUBLIC_URL` komt van wie de container
+draait, en op een thuisnetwerk ís `192.168.x.y` het juiste publieke adres. De grens ligt bij wat er
+over de API binnenkomt, niet bij wat de operator zelf instelt.
 
 ### 17a.3 Wat geen instelling is
 
@@ -1167,6 +1191,97 @@ Een geslaagde `PATCH` geldt vanaf het eerstvolgende verzoek: het eerstvolgende a
 nieuwe TTL, `GET /server` toont de nieuwe naam, en de negende streamsessie volgt de nieuwe grens.
 Zonder die eigenschap zou een beheerscherm een instelling tonen die niet draait tot iemand de
 container herstart.
+
+---
+
+## 17b. Serverdiagnostiek
+
+Vier endpoints van klasse `admin`, plus acht velden die `GET /pleya/v1/server` er voor een
+beheerder bij krijgt. Ze kwamen met S1.3, binnen hetzelfde protocolvenster 1.
+
+### 17b.1 `GET /server` groeit met de klasse en niet met een parameter
+
+Een lid krijgt `id`, `name`, `version` en `started_at`, precies zoals sinds PS-2. Een beheerder
+krijgt daarnaast `public_url`, `listen`, `behind_proxy`, `trusted_proxies[]`, `build`,
+`database{version, schema}`, `ffprobe{found, version}` en `health{ready, jobs_running, jobs_failed}`.
+
+Geen `?fields=` en geen tweede endpoint. Wie de velden krijgt is een beheerder, en wie ze niet
+krijgt heeft geen manier om te zien dat ze bestaan. Een client leest daar meteen uit of hij het
+beheeroppervlak moet tonen.
+
+`behind_proxy` gaat over **deze aanvraag** en niet over de configuratie: hij is waar wanneer de
+tegenpartij in `trusted_proxies` staat én er werkelijk een forwarding-header op stond. Zonder de
+eerste voorwaarde zou elke client zelf bepalen wat de server hier antwoordt.
+
+`ffprobe` is gemeten bij het opstarten. Een subprocess starten om een beheerscherm te vullen is een
+prijs per verzoek voor een antwoord dat in een container niet verandert.
+
+### 17b.2 Het log komt uit het geheugen
+
+`GET /pleya/v1/server/log?level=&limit=` geeft de laatste vijfhonderd regels uit een ringbuffer,
+nieuwste eerst. Nooit uit een bestand: een endpoint dat een pad opent is een bestandsbrowser met een
+filter ervoor, en er is geen versie van dat idee die veilig blijft zodra iemand het pad mag
+beïnvloeden.
+
+De regels zijn geredigeerd op de weg de buffer **in**. Daardoor bestaat er geen leespad dat de
+redactie kan overslaan, en staat een token dat per ongeluk in een logregel belandde ook niet in het
+geheugen van het proces te wachten op een lezer. De denylist is dezelfde als die van de app; de
+gedeelde testvectoren staan in `pleya_verify/redact/cases.json`.
+
+`level` is unknown-safe: een waarde die deze server niet kent is geen fout maar geen filter. `limit`
+loopt van 1 tot 500, en een hogere waarde wordt daarheen teruggebracht in plaats van geweigerd; de
+bovengrens is de capaciteit van de buffer, dus een grotere zou een belofte zijn die niet waar te
+maken is.
+
+`message` draagt het bericht met zijn attributen erachter. Zonder die attributen zou de helft van
+elke regel wegvallen: een fout staat niet in het bericht maar in het veld ernaast, en "interne fout"
+zonder `error=` is een aankondiging en geen logregel.
+
+### 17b.3 De omgeving, gemaskeerd
+
+`GET /pleya/v1/server/environment` toont `PLEYA_SERVER_*` plus een gemaskeerde `DATABASE_URL`, en
+verder niets. De rest van de procesomgeving hoort bij de container en kan credentials van heel
+andere diensten dragen.
+
+Een variabele waarvan de naam een geheim aankondigt (`PASSWORD`, `SECRET`, `KEY`, `TOKEN`, en
+verwanten, per woord en niet per deelstring) gaat er in zijn geheel af, ook wanneer de waarde er
+geen is. `PLEYA_SERVER_ACCESS_TOKEN_TTL` komt dus als `[REDACTED]` terug. Dat kost niets, want de
+TTL staat met zijn bron en zijn grens in `GET /settings`, en het houdt de regel op één vraag die
+niet per variabele opnieuw beoordeeld hoeft te worden.
+
+`redacted` zegt per regel of de getoonde waarde de echte is. Zonder dat veld zou een beheerder een
+gemaskeerde DSN voor de werkelijke instelling aanzien.
+
+### 17b.4 De bereikbaarheidscontrole kent één doel
+
+`POST /pleya/v1/server/connectivity-check` heeft geen aanvraagbody, en dat is de beveiliging: het
+doel is altijd het eigen `public_url`, dus er is niets aan de aanvrager om het ergens anders heen te
+richten. Vaste time-out, geen omleidingen volgen.
+
+Twee metingen. `public_url_reachable` vraagt `/pleya/v1/info` op en zegt of het adres van buitenaf
+terugkomt bij deze server. `range_intact` vraagt zestien bytes van de meegeleverde bundel met een
+`Range`-header en eist `206` met een `Content-Range`. Een tussenliggende proxy die ranges wegbuffert
+antwoordt `200` met het hele bestand; dat is in HTTP-termen geen fout, maar het breekt direct play
+en is aan de clientkant een speler die bij elke seek hapert.
+
+Zonder ingesteld `public_url` zijn beide `false`. Dat is het eerlijke antwoord op een vraag die
+nergens heen kan, en geen fout.
+
+### 17b.5 Sleutelrotatie trekt alles in
+
+`POST /pleya/v1/server/rotate-signing-key` vraagt `confirm: "rotate"` en antwoordt `204`. Een fout
+of ontbrekend woord geeft `409 server.confirm_mismatch`.
+
+De volgorde ligt vast: **eerst elke sessie intrekken, dan pas de sleutel vervangen**. Een nieuwe
+sleutel maakt op zichzelf alleen de ondertekende tokens ongeldig; het refreshtoken is een
+ondoorzichtige string die gehasht in de database staat en van geen sleutel afhangt. Zou de sleutel
+eerst gaan en de schrijfactie mislukken, dan blijft er een server over waarvan de accesstokens dood
+zijn en de refreshtokens leven, en dan logt elke client zichzelf meteen weer in met precies de keten
+die de beheerder wilde verbreken. Deze volgorde faalt de veilige kant op: iedereen uitgelogd, de
+sleutel ongewijzigd.
+
+Ook het token van de aanvrager is hierna dood. Opnieuw inloggen hoort erbij, en is het bewijs dat de
+rotatie gewerkt heeft. Het antwoord draagt de nieuwe sleutel niet.
 
 ---
 
@@ -1202,10 +1317,16 @@ container herstart.
 | `DELETE /pleya/v1/sessions/{id}` | `owner`, of `admin` op elke sessie | nee |
 | `GET /pleya/v1/settings` | `admin` | nee |
 | `PATCH /pleya/v1/settings` | `admin` | nee |
+| `GET /pleya/v1/server/environment` | `admin` | nee |
+| `GET /pleya/v1/server/log` | `admin` | nee |
+| `POST /pleya/v1/server/connectivity-check` | `admin` | nee |
+| `POST /pleya/v1/server/rotate-signing-key` | `admin` | nee |
 
-Achtentwintig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
-PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), en de
-laatste twee zijn de serverinstellingen uit hoofdstuk 17a (S1.2). De rest van venster 1 landt bij de
+Tweeëndertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
+twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), en de laatste vier de
+serverdiagnostiek uit hoofdstuk 17b (S1.3). `GET /pleya/v1/server` staat er maar één keer in en
+groeit met de klasse van de aanvrager, niet met een tweede regel. De rest van venster 1 landt bij de
 commitgrens die hem bedient.
 
 ---

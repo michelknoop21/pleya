@@ -43,6 +43,20 @@ services:
       PLEYA_SERVER_INODE_TRUST: ${PLEYA_SERVER_INODE_TRUST:-}
 
       PLEYA_SERVER_NAME: ${PLEYA_SERVER_NAME:-Pleya}
+
+      # Het adres waarop clients deze server bereiken, en het enige doel dat
+      # POST /server/connectivity-check aanroept. Leeg laten mag; dan meldt die
+      # controle dat er niets te bereiken valt. Een beheerder kan hem over de
+      # API overschrijven, maar dan gelden er strengere grenzen dan hier: van
+      # buiten wordt een privé-adres geweigerd, uit deze omgeving niet, want op
+      # een thuisnetwerk is 192.168.x.y het juiste antwoord.
+      PLEYA_SERVER_PUBLIC_URL: ${PLEYA_SERVER_PUBLIC_URL:-}
+
+      # De adressen en bereiken waarvan forwarding-headers worden aangenomen,
+      # komma-gescheiden (10.0.0.1 of 172.18.0.0/16). Bewust geen instelling:
+      # wie dit over de API kan zetten kan de server elke client laten geloven.
+      PLEYA_SERVER_TRUSTED_PROXIES: ${PLEYA_SERVER_TRUSTED_PROXIES:-}
+
       PLEYA_SERVER_SCAN_ON_START: ${PLEYA_SERVER_SCAN_ON_START:-true}
       PLEYA_SERVER_SCAN_INTERVAL: ${PLEYA_SERVER_SCAN_INTERVAL:-6h}
       PLEYA_SERVER_JOB_WORKERS: ${PLEYA_SERVER_JOB_WORKERS:-2}

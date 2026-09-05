@@ -44,12 +44,14 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"settings.invalid_value":         {400, false},
 		"session.stream_session_limit":   {429, false},
 		"server.internal":                {500, false},
+		"server.confirm_mismatch":        {409, false},
 	}
 
 	// Deze tabel spiegelt hoofdstuk 7.1 voor zover deze server hem draait.
-	// settings.invalid_value kwam erbij met S1.2, samen met het endpoint dat
-	// hem stuurt: een code in het register zonder handler zou hier groen staan
-	// en in het contract een belofte zijn die niemand nakomt.
+	// settings.invalid_value kwam erbij met S1.2 en server.confirm_mismatch met
+	// S1.3, elk samen met het endpoint dat hem stuurt: een code in het register
+	// zonder handler zou hier groen staan en in het contract een belofte zijn
+	// die niemand nakomt.
 
 	for code, expect := range want {
 		entry, ok := errorTable[code]

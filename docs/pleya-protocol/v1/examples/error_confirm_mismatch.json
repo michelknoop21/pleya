@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "server.confirm_mismatch",
+    "message": "confirm must be rotate",
+    "retryable": false,
+    "details": {
+      "expected": "rotate"
+    }
+  }
+}

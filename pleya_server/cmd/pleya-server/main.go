@@ -22,6 +22,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/database"
+	"github.com/edde746/plezy/pleya_server/internal/diag"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/httpserver"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
@@ -35,6 +36,16 @@ import (
 
 // version wordt bij het bouwen gezet met -ldflags "-X main.version=...".
 var version = "dev"
+
+// buildLine is het veld build in GET /server voor klasse admin.
+//
+// Versie, Go-versie en platform, want dat is precies wat een melding bruikbaar
+// maakt: welke binary draait er, op welke toolchain, op welke architectuur. Wat
+// er niet in staat is het pad van de build of de naam van de machine; dat zegt
+// iets over waar hij gebouwd is en niets over wat er draait.
+func buildLine() string {
+	return fmt.Sprintf("%s (%s, %s/%s)", version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+}
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
@@ -50,7 +61,13 @@ func run() int {
 		return config.ExitUsage
 	}
 
-	log := logging.New(cfg.LogLevel, os.Stdout)
+	// De ringbuffer hangt naast de gewone logger en is wat GET /server/log
+	// teruggeeft (S1.3, K rij 11). Hij staat hier en niet dieper omdat elk
+	// subsysteem zijn logger van deze afleidt: een buffer die later wordt
+	// aangehaakt mist precies de opstartregels waar een storingsonderzoek mee
+	// begint.
+	logRing := logging.NewRing(0)
+	log := logging.NewWithRing(cfg.LogLevel, os.Stdout, logRing)
 	startup := logging.Component(log, "startup")
 
 	startup.Info("pleya server start",
@@ -135,6 +152,7 @@ func run() int {
 	}
 
 	prober := ffprobe.New(cfg.FFprobePath, cfg.FFprobeTimeout)
+	var ffprobeStatus api.FFprobeStatus
 	if ffprobeVersion, err := prober.Available(ctx); err != nil {
 		// Zonder ffprobe komt er geen enkele versie in de catalogus. Dat is een
 		// waarschuwing en geen startfout: bladeren door wat er al staat blijft
@@ -142,6 +160,7 @@ func run() int {
 		startup.Warn("ffprobe is niet bereikbaar; scannen levert niets op",
 			slog.String("path", cfg.FFprobePath), slog.String("error", err.Error()))
 	} else {
+		ffprobeStatus = api.FFprobeStatus{Found: true, Version: ffprobeVersion}
 		startup.Info("ffprobe gereed", slog.String("version", ffprobeVersion))
 	}
 
@@ -208,6 +227,7 @@ func run() int {
 		StreamTokenTTL:    cfg.StreamTokenTTL,
 		StreamSessionTTL:  cfg.StreamSessionTTL,
 		MaxStreamSessions: auth.MaxActiveStreamSessions,
+		PublicURL:         cfg.PublicURL,
 	}, settings.NewStore(pool), logging.Component(log, "settings"))
 	if err := settingsCache.Reload(ctx); err != nil {
 		startup.Warn("instellingen lezen mislukt, de omgeving blijft gelden", slog.String("error", err.Error()))
@@ -233,6 +253,13 @@ func run() int {
 		WatchLease:         cfg.WatchLease,
 		Revocations:        revocations,
 		Settings:           settingsCache,
+		Diag:               diag.NewStore(pool),
+		Log:                logRing,
+		Listen:             cfg.HTTPAddr,
+		TrustedProxies:     cfg.TrustedProxies,
+		Build:              buildLine(),
+		FFprobe:            ffprobeStatus,
+		ConfigDir:          cfg.ConfigDir,
 	})
 
 	srv := httpserver.New(httpserver.Options{

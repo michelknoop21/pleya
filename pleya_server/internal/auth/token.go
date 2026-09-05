@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -64,16 +65,36 @@ type Claims struct {
 // niet. Wat een JWT verder biedt (meerdere algoritmes, sleutelrotatie via een
 // header, een publieke verificatiesleutel) heeft deze server niet nodig.
 type Signer struct {
-	key []byte
+	// De sleutel wisselt in zijn geheel om en wordt nooit ter plaatse bewerkt:
+	// POST /server/rotate-signing-key vervangt hem terwijl er aanvragen lopen,
+	// en een half omgewisselde sleutel zou tokens ondertekenen die niemand meer
+	// kan verifiëren. Zie Rotate.
+	key atomic.Pointer[[]byte]
 	now func() time.Time
 }
 
 // NewSigner bouwt een ondertekenaar rond de sleutel.
 func NewSigner(key []byte) (*Signer, error) {
-	if len(key) < 32 {
-		return nil, fmt.Errorf("ondertekensleutel is %d bytes; minimaal 32 nodig", len(key))
+	if len(key) < KeyLength {
+		return nil, fmt.Errorf("ondertekensleutel is %d bytes; minimaal %d nodig", len(key), KeyLength)
 	}
-	return &Signer{key: key, now: time.Now}, nil
+	s := &Signer{now: time.Now}
+	s.key.Store(&key)
+	return s, nil
+}
+
+// Rotate neemt een nieuwe sleutel in gebruik.
+//
+// Vanaf de eerstvolgende aanvraag faalt elk token dat op de oude sleutel is
+// gemunt met ErrTokenSignature, en dat is precies wat een beheerder vraagt die
+// roteert. De oude sleutel wordt niet aangehouden: een overgangsvenster zou de
+// handeling betekenisloos maken zolang het duurt.
+func (s *Signer) Rotate(key []byte) error {
+	if len(key) < KeyLength {
+		return fmt.Errorf("ondertekensleutel is %d bytes; minimaal %d nodig", len(key), KeyLength)
+	}
+	s.key.Store(&key)
+	return nil
 }
 
 // SetClock laat een test de tijd bepalen.
@@ -137,7 +158,7 @@ func (s *Signer) Verify(token string, want TokenType) (Claims, error) {
 }
 
 func (s *Signer) sign(body string) []byte {
-	mac := hmac.New(sha256.New, s.key)
+	mac := hmac.New(sha256.New, *s.key.Load())
 	mac.Write([]byte(body))
 	return mac.Sum(nil)
 }

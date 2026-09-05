@@ -437,13 +437,139 @@ paths:
       tags: [discovery]
       operationId: getServer
       summary: Serverdetail achter authenticatie.
+      description: |
+        Klasse `authenticated`. Voor klasse `admin` komen er acht velden bij
+        (S1.3): `public_url`, `listen`, `behind_proxy`, `trusted_proxies`,
+        `build`, `database`, `ffprobe` en `health`. Een lid krijgt hetzelfde
+        antwoord als altijd, zonder die velden en zonder een aanwijzing dat ze
+        bestaan.
       responses:
         "200":
-          description: Naam, versie en starttijd.
+          description: Naam, versie en starttijd; voor een beheerder ook hoe de server draait.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ServerDetail" }
         "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /server/environment:
+    get:
+      tags: [administration]
+      operationId: getServerEnvironment
+      summary: De omgevingsvariabelen van deze server.
+      description: |
+        Klasse `admin`. Alleen `PLEYA_SERVER_*` plus een gemaskeerde
+        `DATABASE_URL`; de rest van de procesomgeving hoort bij de container en
+        kan credentials van heel andere diensten dragen. Een lid of een
+        beperkte gebruiker krijgt `404`.
+      responses:
+        "200":
+          description: De variabelen, gesorteerd op naam.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServerEnvironment" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /server/log:
+    get:
+      tags: [administration]
+      operationId: getServerLog
+      summary: De laatste logregels.
+      description: |
+        Klasse `admin`. De regels komen uit een ringbuffer in het geheugen en
+        nooit uit een bestand, en ze zijn geredigeerd op de weg de buffer in.
+        Nieuwste eerst.
+      parameters:
+        - name: level
+          in: query
+          required: false
+          description: Ondergrens. Een waarde die deze server niet kent is geen fout maar geen filter.
+          schema: { $ref: "#/components/schemas/LogLevel" }
+        - name: limit
+          in: query
+          required: false
+          description: Hoogstens 500, de capaciteit van de buffer. Een hogere waarde wordt daarheen teruggebracht.
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+      responses:
+        "200":
+          description: De regels, nieuwste eerst.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServerLog" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /server/connectivity-check:
+    post:
+      tags: [administration]
+      operationId: checkConnectivity
+      summary: Is deze server van buiten bereikbaar, en komen ranges heel aan.
+      description: |
+        Klasse `admin`. Er is geen aanvraagbody, en dat is de beveiliging: het
+        doel is altijd het eigen `public_url` en er is dus niets aan de
+        aanvrager om het ergens anders heen te richten. Vaste time-out, geen
+        omleidingen. Zonder ingesteld `public_url` is het antwoord `false` op
+        beide metingen, want er is dan niets aan te roepen.
+      responses:
+        "200":
+          description: De uitkomst van de twee metingen.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectivityCheck" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /server/rotate-signing-key:
+    post:
+      tags: [administration]
+      operationId: rotateSigningKey
+      summary: Vervang de ondertekensleutel en trek elke sessie in.
+      description: |
+        Klasse `admin`, en de bevestiging is verplicht: `confirm` moet
+        letterlijk `rotate` zijn.
+
+        De handeling trekt eerst elke sessie in en vervangt daarna pas de
+        sleutel. Andersom zou een mislukte schrijfactie een server achterlaten
+        waarvan de accesstokens dood zijn en de refreshtokens leven, en dan
+        logt elke client zichzelf meteen weer in met precies de keten die de
+        beheerder wilde verbreken.
+
+        Ook het token van de aanvrager is hierna dood; opnieuw inloggen hoort
+        erbij. Het antwoord draagt de nieuwe sleutel niet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RotateSigningKeyRequest" }
+      responses:
+        "204": { description: "Sleutel vervangen; alle sessies zijn ingetrokken." }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "409":
+          description: server.confirm_mismatch. De bevestiging ontbreekt of klopt niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /settings:
@@ -1136,11 +1262,148 @@ components:
     ServerDetail:
       type: object
       required: [id, name, version, started_at]
+      description: |
+        De eerste vier velden zijn klasse `authenticated`. De acht daaronder
+        gaan alleen mee voor klasse `admin` (S1.3): ze beschrijven hoe deze
+        server draait, en dat is voor een huisgenoot geen informatie maar een
+        verkenning. Een client die ze niet krijgt is dus geen beheerder, en
+        verbergt het beheeroppervlak.
       properties:
         id: { $ref: "#/components/schemas/Id" }
         name: { type: string }
         version: { type: string }
         started_at: { $ref: "#/components/schemas/Timestamp" }
+        public_url:
+          type: string
+          description: |
+            Het adres waarop deze server van buiten bereikbaar hoort te zijn.
+            Leeg wanneer er geen is ingesteld. Ook een instelling
+            (`Settings.public_url`); dit veld toont de waarde die nu geldt.
+        listen:
+          type: string
+          description: Het bindadres van het proces, bijvoorbeeld `:8080`. Geen instelling.
+        behind_proxy:
+          type: boolean
+          description: |
+            True wanneer déze aanvraag via een vertrouwde proxy binnenkwam: de
+            tegenpartij staat in `trusted_proxies` én er stond een
+            forwarding-header op. Zonder de eerste voorwaarde zou elke client
+            het antwoord zelf kunnen bepalen.
+        trusted_proxies:
+          type: array
+          description: De adressen en bereiken waarvan de server forwarding-headers aanneemt. Geen instelling.
+          items: { type: string }
+        build:
+          type: string
+          description: Versie, toolchain en platform van de draaiende binary.
+        database:
+          type: object
+          required: [version, schema]
+          properties:
+            version:
+              type: string
+              description: Het versienummer van Postgres, zonder de distributieregel erachter.
+            schema:
+              type: integer
+              description: De hoogste toegepaste migratie.
+        ffprobe:
+          type: object
+          description: Gemeten bij het opstarten, niet per aanvraag.
+          required: [found]
+          properties:
+            found: { type: boolean }
+            version: { type: string }
+        health:
+          type: object
+          required: [ready, jobs_running, jobs_failed]
+          properties:
+            ready:
+              type: boolean
+              description: Hetzelfde antwoord als /readyz, maar dan achter authenticatie en met de tellers ernaast.
+            jobs_running: { type: integer }
+            jobs_failed: { type: integer }
+
+    ServerEnvironment:
+      type: object
+      required: [entries]
+      description: |
+        De omgevingsvariabelen van deze server, en niet die van de container
+        eromheen: alleen `PLEYA_SERVER_*` plus een gemaskeerde `DATABASE_URL`.
+        Een variabele waarvan de naam een geheim aankondigt gaat er in zijn
+        geheel af, ook wanneer de waarde er geen is: de TTL's staan met hun
+        bron en hun grens in `GET /settings`, dus die uitzondering kost niets.
+      properties:
+        entries:
+          type: array
+          items:
+            type: object
+            required: [key, value, redacted]
+            properties:
+              key: { type: string }
+              value: { type: string }
+              redacted:
+                type: boolean
+                description: |
+                  True wanneer de waarde hierboven niet de echte is. Zonder dit
+                  veld zou een beheerder een gemaskeerde DSN voor de werkelijke
+                  instelling aanzien.
+
+    LogLevel:
+      type: string
+      description: Het niveau van een logregel, en de ondergrens van `?level=`.
+      enum: [debug, info, warn, error]
+      x-unknown-safe: true
+
+    ServerLog:
+      type: object
+      required: [entries]
+      description: |
+        De laatste regels uit een ringbuffer in het geheugen, nieuwste eerst.
+        Nooit uit een bestand: een endpoint dat een pad opent is een
+        bestandsbrowser met een filter ervoor. De regels zijn geredigeerd op de
+        weg de buffer in, dus er is geen leespad dat die redactie overslaat.
+      properties:
+        entries:
+          type: array
+          items:
+            type: object
+            required: [at, level, message]
+            properties:
+              at: { $ref: "#/components/schemas/Timestamp" }
+              level: { $ref: "#/components/schemas/LogLevel" }
+              component:
+                type: string
+                description: Het subsysteem dat de regel schreef, bijvoorbeeld `scanner` of `http`.
+              message:
+                type: string
+                description: Het bericht met zijn attributen erachter, geredigeerd en afgekapt.
+
+    ConnectivityCheck:
+      type: object
+      required: [public_url_reachable, range_intact, behind_proxy]
+      properties:
+        public_url_reachable:
+          type: boolean
+          description: Het eigen `public_url` gaf `200` op `/pleya/v1/info`, binnen de vaste time-out en zonder omleiding.
+        range_intact:
+          type: boolean
+          description: |
+            Een `Range`-aanvraag kwam als `206` met een `Content-Range` terug.
+            Een tussenliggende proxy die ranges wegbuffert antwoordt `200` met
+            het hele bestand, en dat breekt direct play: aan de clientkant is
+            dat een speler die bij elke seek hapert.
+        behind_proxy: { type: boolean }
+
+    RotateSigningKeyRequest:
+      type: object
+      required: [confirm]
+      additionalProperties: false
+      properties:
+        confirm:
+          type: string
+          description: Moet letterlijk `rotate` zijn. Een vast woord en geen boolean, want dit is een handeling die iemand met opzet uitschrijft.
+          enum: [rotate]
+          x-unknown-safe: false
 
     SetupRequest:
       type: object
@@ -1667,7 +1930,8 @@ components:
     Settings:
       type: object
       required:
-        [server_name, access_token_ttl, refresh_token_ttl, stream_token_ttl, stream_session_ttl, max_stream_sessions]
+        [server_name, access_token_ttl, refresh_token_ttl, stream_token_ttl, stream_session_ttl,
+         max_stream_sessions, public_url]
       description: |
         De volledige set. Elke sleutel is er altijd, ook wanneer niemand hem ooit
         heeft gewijzigd; dan staat er de waarde uit de omgeving met `source:
@@ -1679,6 +1943,7 @@ components:
         stream_token_ttl: { $ref: "#/components/schemas/SettingDuration" }
         stream_session_ttl: { $ref: "#/components/schemas/SettingDuration" }
         max_stream_sessions: { $ref: "#/components/schemas/SettingInteger" }
+        public_url: { $ref: "#/components/schemas/SettingString" }
 
     SettingsPatch:
       type: object
@@ -1711,6 +1976,19 @@ components:
           description: 1 tot 32.
           minimum: 1
           maximum: 32
+        public_url:
+          type: string
+          description: |
+            Absolute `http`- of `https`-URL zonder inloggegevens, querystring of
+            fragment; leeg maakt de sleutel leeg en laat de omgeving weer
+            gelden. Een letterlijk privé-, loopback- of link-local-adres wordt
+            geweigerd: dit is het enige doel dat
+            `POST /server/connectivity-check` aanroept, en een adres in het
+            interne netwerk maakt van die knop een scanner. Een naam wordt niet
+            opgezocht, want wie de zone beheert kan hem na de controle toch
+            verzetten; de omgeving valt er bewust buiten, want op een
+            thuisnetwerk ís `192.168.x.y` het juiste antwoord.
+          maxLength: 2048
 
     Session:
       type: object

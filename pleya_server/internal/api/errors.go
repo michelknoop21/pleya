@@ -86,6 +86,22 @@ const (
 	// een client op die de server blijft raken op precies het verzoek dat hem
 	// omver duwde.
 	CodeInternal = "server.internal"
+
+	// CodeConfirmMismatch is het antwoord op een destructieve handeling waarvan
+	// de bevestiging ontbreekt of niet klopt (K rij 16). Voor S1.3 is dat
+	// POST /server/rotate-signing-key met confirm: "rotate".
+	//
+	// Een eigen code en geen settings.invalid_value: dit is geen waarde buiten
+	// een grens maar een handeling die niet is bevestigd, en 409 zegt dat ook
+	// in de status. Hij staat in het domein server, dat DEC-111 met venster 1
+	// heeft toegevoegd; het foutpatroon in het contract draagt hem daarmee al,
+	// dus er is geen schemawijziging voor nodig.
+	//
+	// De aanleiding voor het bestaan is een gat tussen twee plannen: J.2 laat
+	// de foutkolom van rotate-signing-key leeg, terwijl K rij 16 een 409 op een
+	// ontbrekende of foute confirm eist. Van die twee is K de specifiekere en
+	// de veiligste, en die is hier gevolgd.
+	CodeConfirmMismatch = "server.confirm_mismatch"
 )
 
 // httpStatus koppelt elke code aan zijn status en aan retryable. Het staat in
@@ -126,7 +142,8 @@ var errorTable = map[string]struct {
 	CodeSettingsInvalidValue: {http.StatusBadRequest, false},
 	CodeStreamSessionLimit:   {http.StatusTooManyRequests, false},
 
-	CodeInternal: {http.StatusInternalServerError, false},
+	CodeInternal:        {http.StatusInternalServerError, false},
+	CodeConfirmMismatch: {http.StatusConflict, false},
 }
 
 // writeError stuurt de foutvorm met de status en retryable die bij de code horen.

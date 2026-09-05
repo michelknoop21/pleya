@@ -1,0 +1,24 @@
+{
+  "id": "0198f2a1-7c3e-7b21-9f44-1c2d3e4f5a6b",
+  "name": "Zolder",
+  "version": "0.2.0",
+  "started_at": "2026-08-18T19:25:33Z",
+  "public_url": "https://web.pleya.app",
+  "listen": ":8080",
+  "behind_proxy": true,
+  "trusted_proxies": ["172.18.0.0/16"],
+  "build": "0.2.0 (go1.26.6, linux/arm64)",
+  "database": {
+    "version": "18.6",
+    "schema": 8
+  },
+  "ffprobe": {
+    "found": true,
+    "version": "8.0"
+  },
+  "health": {
+    "ready": true,
+    "jobs_running": 1,
+    "jobs_failed": 0
+  }
+}

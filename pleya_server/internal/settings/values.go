@@ -12,6 +12,11 @@ type Base struct {
 	StreamTokenTTL    time.Duration
 	StreamSessionTTL  time.Duration
 	MaxStreamSessions int
+
+	// PublicURL mag leeg zijn: een server zonder publiek adres is een geldige
+	// opstelling, en dan zegt POST /server/connectivity-check dat eerlijk in
+	// plaats van iets aan te roepen.
+	PublicURL string
 }
 
 // Values is de set zoals hij op dit moment geldt: per sleutel een waarde en de
@@ -46,6 +51,11 @@ func (v Values) RefreshTokenTTL() time.Duration  { return v.duration(KeyRefreshT
 func (v Values) StreamTokenTTL() time.Duration   { return v.duration(KeyStreamTokenTTL) }
 func (v Values) StreamSessionTTL() time.Duration { return v.duration(KeyStreamSessionTTL) }
 
+func (v Values) PublicURL() string {
+	s, _ := v.values[KeyPublicURL].(string)
+	return s
+}
+
 func (v Values) MaxStreamSessions() int {
 	n, _ := v.values[KeyMaxStreamSessions].(int)
 	return n
@@ -65,6 +75,7 @@ func newValues(base Base, stored map[string]any) Values {
 			KeyStreamTokenTTL:    base.StreamTokenTTL,
 			KeyStreamSessionTTL:  base.StreamSessionTTL,
 			KeyMaxStreamSessions: base.MaxStreamSessions,
+			KeyPublicURL:         base.PublicURL,
 		},
 		sources: map[string]Source{},
 	}

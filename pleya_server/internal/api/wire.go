@@ -77,11 +77,30 @@ type Capabilities struct {
 }
 
 // ServerDetail is het antwoord van GET /server.
+//
+// De eerste vier velden zijn klasse authenticated en staan er sinds PS-2. De
+// acht daaronder kwamen met S1.3 (J.2 rij 3) en gaan alleen mee voor klasse
+// admin: ze beschrijven hoe deze server draait, en dat is voor een huisgenoot
+// geen informatie maar een verkenning.
+//
+// Pointers en geen kale waarden, want het verschil tussen "afwezig" en "leeg"
+// draagt hier betekenis. Een lid ziet public_url niet; een beheerder van een
+// server zonder publiek adres ziet hem als lege tekst, en dat is een ander
+// antwoord op een andere vraag.
 type ServerDetail struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	Version   string `json:"version"`
 	StartedAt string `json:"started_at"`
+
+	PublicURL      *string             `json:"public_url,omitempty"`
+	Listen         *string             `json:"listen,omitempty"`
+	BehindProxy    *bool               `json:"behind_proxy,omitempty"`
+	TrustedProxies *[]string           `json:"trusted_proxies,omitempty"`
+	Build          *string             `json:"build,omitempty"`
+	Database       *ServerDatabaseWire `json:"database,omitempty"`
+	FFprobe        *ServerFFprobeWire  `json:"ffprobe,omitempty"`
+	Health         *ServerHealthWire   `json:"health,omitempty"`
 }
 
 // TokenPair is wat setup, login en refresh teruggeven.

@@ -12,7 +12,10 @@ import (
 
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
+	"github.com/edde746/plezy/pleya_server/internal/config"
+	"github.com/edde746/plezy/pleya_server/internal/diag"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/logging"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/watch"
 	"github.com/edde746/plezy/pleya_server/internal/web"
@@ -30,6 +33,49 @@ type Options struct {
 	Name      string
 	Version   string
 	StartedAt time.Time
+
+	// Diag levert de meetwaarden van GET /server voor klasse admin (S1.3).
+	// Nil is toegestaan: dan blijven database en de jobtellers weg en toont
+	// health alleen ready. Dat is het gedrag van een server zonder
+	// diagnostiekstore, niet een stille nul.
+	Diag *diag.Store
+
+	// Log is de ringbuffer achter GET /server/log. Nil betekent een lege lijst
+	// en geen fout: er is dan niets vastgelegd, en dat is iets anders dan een
+	// endpoint dat niet bestaat.
+	Log *logging.Ring
+
+	// Listen, TrustedProxies en Build staan in GET /server voor klasse admin.
+	// Ze komen uit de omgeving en zijn met opzet geen instelling (K rij 14):
+	// wie het bindadres of de vertrouwde proxy's over de API kan zetten kan de
+	// server van het netwerk halen of hem elke client laten geloven.
+	Listen         string
+	TrustedProxies []config.TrustedProxy
+	Build          string
+
+	// FFprobe is de meting van het opstarten. Per aanvraag opnieuw meten zou
+	// een subprocess per beheerverzoek betekenen voor een antwoord dat in een
+	// container niet verandert.
+	FFprobe FFprobeStatus
+
+	// ConfigDir is de map met de ondertekensleutel. POST /server/rotate-signing-key
+	// heeft hem nodig; leeg betekent dat dat endpoint niets kan bewaren en
+	// server.internal antwoordt in plaats van te doen alsof.
+	ConfigDir string
+
+	// Environ levert de procesomgeving voor GET /server/environment. Nil neemt
+	// os.Environ; een test geeft er een eigen set voor mee.
+	Environ func() []string
+
+	// ProbeClient doet de aanroepen van POST /server/connectivity-check. Nil
+	// neemt een client met de vaste time-out en zonder redirects.
+	ProbeClient *http.Client
+
+	// Web is de handler voor de meegeleverde bundel. Nil neemt de ingebedde
+	// bundel; een test geeft er een eigen bestandsboom voor mee, zodat de
+	// rangecontrole van de connectivity-check op een echt bestand meet in
+	// plaats van op de melding dat er geen bundel is.
+	Web http.Handler
 
 	// De TTL's uit de omgeving. Ze zijn de onderste laag: Settings hieronder
 	// legt er de opgeslagen waarden overheen, en de handlers lezen die set en
@@ -64,6 +110,12 @@ type Options struct {
 	Revocations *auth.Revocations
 
 	Argon2 auth.Argon2Params
+}
+
+// FFprobeStatus is wat er bij het opstarten van ffprobe gevonden is.
+type FFprobeStatus struct {
+	Found   bool
+	Version string
 }
 
 // Server is de router met zijn afhankelijkheden.
@@ -165,6 +217,14 @@ func (s *Server) routes() {
 	s.mux.Handle("GET "+p+"/settings", s.authenticated(s.handleGetSettings))
 	s.mux.Handle("PATCH "+p+"/settings", s.authenticated(s.handlePatchSettings))
 
+	// Serverdiagnostiek (S1.3, J.2 rijen 4 tot en met 7). Alle vier klasse
+	// admin. GET /server hierboven blijft authenticated en groeit alleen voor
+	// een beheerder; deze vier bestaan voor een lid helemaal niet.
+	s.mux.Handle("GET "+p+"/server/environment", s.authenticated(s.handleServerEnvironment))
+	s.mux.Handle("GET "+p+"/server/log", s.authenticated(s.handleServerLog))
+	s.mux.Handle("POST "+p+"/server/connectivity-check", s.authenticated(s.handleConnectivityCheck))
+	s.mux.Handle("POST "+p+"/server/rotate-signing-key", s.authenticated(s.handleRotateSigningKey))
+
 	// Sessies (DEC-103, stap 6). logout staat bij auth omdat hij over de eigen
 	// sessie gaat; de twee endpoints eronder gaan over sessies als resource.
 	s.mux.Handle("POST "+p+"/auth/logout", s.authenticated(s.handleLogout))
@@ -199,7 +259,11 @@ func (s *Server) routes() {
 	// smaller pad, en dan is er geen volgorde. De methodecontrole staat
 	// daarom in de webhandler zelf, die alles buiten GET en HEAD met een 405
 	// afwijst in plaats van met een pagina.
-	s.mux.Handle("/", web.Handler())
+	if s.opts.Web != nil {
+		s.mux.Handle("/", s.opts.Web)
+	} else {
+		s.mux.Handle("/", web.Handler())
+	}
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {

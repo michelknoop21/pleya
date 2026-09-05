@@ -22,5 +22,9 @@
   "max_stream_sessions": {
     "value": 8,
     "source": "env"
+  },
+  "public_url": {
+    "value": "https://web.pleya.app",
+    "source": "db"
   }
 }

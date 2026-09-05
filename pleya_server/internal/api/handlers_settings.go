@@ -44,6 +44,10 @@ type SettingsWire struct {
 	StreamTokenTTL    SettingStringWire `json:"stream_token_ttl"`
 	StreamSessionTTL  SettingStringWire `json:"stream_session_ttl"`
 	MaxStreamSessions SettingIntWire    `json:"max_stream_sessions"`
+
+	// PublicURL kwam met S1.3, want POST /server/connectivity-check heeft een
+	// doel nodig en GET /server toont hem. Leeg betekent "niet ingesteld".
+	PublicURL SettingStringWire `json:"public_url"`
 }
 
 // settingsPatch is de gesloten aanvraagbody (schema SettingsPatch).
@@ -58,6 +62,7 @@ type settingsPatch struct {
 	StreamTokenTTL    *json.RawMessage `json:"stream_token_ttl"`
 	StreamSessionTTL  *json.RawMessage `json:"stream_session_ttl"`
 	MaxStreamSessions *json.RawMessage `json:"max_stream_sessions"`
+	PublicURL         *json.RawMessage `json:"public_url"`
 }
 
 func (p settingsPatch) keys() map[string]json.RawMessage {
@@ -69,6 +74,7 @@ func (p settingsPatch) keys() map[string]json.RawMessage {
 		settings.KeyStreamTokenTTL:    p.StreamTokenTTL,
 		settings.KeyStreamSessionTTL:  p.StreamSessionTTL,
 		settings.KeyMaxStreamSessions: p.MaxStreamSessions,
+		settings.KeyPublicURL:         p.PublicURL,
 	} {
 		if raw != nil {
 			out[key] = *raw
@@ -87,6 +93,7 @@ func settingsWire(v settings.Values) SettingsWire {
 		RefreshTokenTTL:  text(settings.KeyRefreshTokenTTL),
 		StreamTokenTTL:   text(settings.KeyStreamTokenTTL),
 		StreamSessionTTL: text(settings.KeyStreamSessionTTL),
+		PublicURL:        text(settings.KeyPublicURL),
 		MaxStreamSessions: SettingIntWire{
 			Value:  v.MaxStreamSessions(),
 			Source: string(v.Source(settings.KeyMaxStreamSessions)),

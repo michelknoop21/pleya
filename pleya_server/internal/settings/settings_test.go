@@ -178,3 +178,50 @@ func mustJSON(t *testing.T, v string) json.RawMessage {
 	}
 	return raw
 }
+
+// public_url is de zevende sleutel (S1.3). Zijn grens is geen lengte maar een
+// vorm: K rij 13 wil dat een beheerder de connectivity-check niet op het
+// interne netwerk kan richten.
+func TestPublicURLRejectsPrivateAndMalformedTargets(t *testing.T) {
+	for _, raw := range []string{
+		`"http://169.254.169.254/latest/meta-data/"`,
+		`"http://192.168.1.10:8080"`,
+		`"http://10.0.0.5"`,
+		`"https://127.0.0.1"`,
+		`"https://localhost:8080"`,
+		`"https://[::1]"`,
+		`"ftp://pleya.example"`,
+		`"https://user:pass@pleya.example"`,
+		`"https://pleya.example/?token=x"`,
+		`"geen-url"`,
+		`42`,
+	} {
+		if _, err := settings.Parse(settings.KeyPublicURL, json.RawMessage(raw)); err == nil {
+			t.Errorf("%s werd geaccepteerd als publiek adres", raw)
+		}
+	}
+}
+
+func TestPublicURLAcceptsAPublicAddress(t *testing.T) {
+	for _, raw := range []string{
+		`"https://web.pleya.app"`,
+		`"https://web.pleya.app/pleya"`,
+		`"http://203.0.113.10:8080"`,
+	} {
+		if _, err := settings.Parse(settings.KeyPublicURL, json.RawMessage(raw)); err != nil {
+			t.Errorf("%s werd geweigerd: %v", raw, err)
+		}
+	}
+}
+
+// Leegmaken mag: dan valt de sleutel terug op de omgeving, net als elke andere
+// sleutel zonder rij in de tabel.
+func TestPublicURLCanBeCleared(t *testing.T) {
+	value, err := settings.Parse(settings.KeyPublicURL, json.RawMessage(`""`))
+	if err != nil {
+		t.Fatalf("leegmaken werd geweigerd: %v", err)
+	}
+	if value != "" {
+		t.Fatalf("leegmaken gaf %q", value)
+	}
+}

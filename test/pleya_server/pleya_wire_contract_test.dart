@@ -51,6 +51,14 @@ void main() {
     // above: the screen that reads it is the web admin (S10), and the Flutter
     // app has no settings-of-the-server page in this slice.
     'Settings',
+    // S1.3 adds the server diagnostics surface. Same reasoning again, and one
+    // more on top: an environment listing and a log tail belong on an admin
+    // screen and nowhere near a living-room client. `ServerDetail` is *not*
+    // deferred, because the app already reads it; the eight admin-only fields
+    // it grew are optional, so the existing type keeps parsing both fixtures.
+    'ServerEnvironment',
+    'ServerLog',
+    'ConnectivityCheck',
   };
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
@@ -96,8 +104,8 @@ void main() {
       );
     });
 
-    test('covers the 49 fixtures the contract ships', () {
-      expect(fixtures, hasLength(49));
+    test('covers the 54 fixtures the contract ships', () {
+      expect(fixtures, hasLength(54));
     });
 
     for (final fixture in fixtures) {

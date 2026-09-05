@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -12,18 +13,22 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
+	"github.com/edde746/plezy/pleya_server/internal/diag"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/logging"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
 	"github.com/edde746/plezy/pleya_server/internal/watch"
+	"github.com/edde746/plezy/pleya_server/internal/web"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -125,6 +130,11 @@ type env struct {
 	argon2  auth.Argon2Params
 	signer  *auth.Signer
 	logs    *logCapture
+	ring    *logging.Ring
+	environ []string
+	config  string
+	log     *slog.Logger
+	probes  *probeLog
 
 	// settings is dezelfde cache als die de server leest. Een test die de
 	// tabel rechtstreeks vult moet hem kunnen herladen, want de server doet dat
@@ -182,6 +192,33 @@ func newEnv(t *testing.T) *env {
 	watchStore := watch.NewStore(pool)
 	logs := newLogCapture()
 
+	// De ringbuffer achter GET /server/log, met dezelfde keten als in
+	// productie: alles wat de server logt gaat er in, geredigeerd, en gaat
+	// daarnaast door naar de handler eronder.
+	ring := logging.NewRing(0)
+	logger := slog.New(ring.Handler(logs))
+
+	// Een eigen configmap, want POST /server/rotate-signing-key schrijft de
+	// ondertekensleutel weg. t.TempDir ruimt hem op.
+	configDir := t.TempDir()
+
+	// Elke uitgaande aanvraag van POST /server/connectivity-check gaat langs
+	// deze transport. K rij 13 belooft dat de check maar één adres kent, en
+	// dat is alleen te bewijzen door te tellen wat er werkelijk uitgaat.
+	probes := newProbeLog()
+
+	// Een omgeving die de test bepaalt. os.Environ zou de test laten afhangen
+	// van wat er toevallig in de shell stond, en dan bewijst "er lekt niets"
+	// alleen iets over deze machine.
+	environ := []string{
+		"DATABASE_URL=postgres://pleya:zeergeheim@db:5432/pleya?sslmode=disable",
+		"PLEYA_SERVER_HTTP_ADDR=:8080",
+		"PLEYA_SERVER_ACCESS_TOKEN_TTL=15m",
+		"PLEYA_SERVER_TRANSCODE_DIR=/transcode",
+		"HOME=/root",
+		"PATH=/usr/local/bin",
+	}
+
 	// De instellingen met hun tabel erachter, zoals in productie. Een cache
 	// zonder opslag zou PATCH /settings ongetest laten en de hot reload
 	// hieronder tot een geheugentruc maken.
@@ -192,7 +229,7 @@ func newEnv(t *testing.T) *env {
 		StreamTokenTTL:    5 * time.Minute,
 		StreamSessionTTL:  30 * time.Minute,
 		MaxStreamSessions: auth.MaxActiveStreamSessions,
-	}, settings.NewStore(pool), slog.New(logs))
+	}, settings.NewStore(pool), logger)
 	if err := settingsCache.Reload(ctx); err != nil {
 		t.Fatalf("instellingen laden: %v", err)
 	}
@@ -202,7 +239,7 @@ func newEnv(t *testing.T) *env {
 		Auth:               authStore,
 		Watch:              watchStore,
 		Signer:             signer,
-		Logger:             slog.New(logs),
+		Logger:             logger,
 		Ready:              func() bool { return true },
 		ServerID:           serverID,
 		Name:               "Zolder",
@@ -217,11 +254,88 @@ func newEnv(t *testing.T) *env {
 		Settings:           settingsCache,
 		WatchLease:         watch.MinLease,
 		Argon2:             light,
+		Revocations:        auth.NewRevocations(0),
+		Diag:               diag.NewStore(pool),
+		Log:                ring,
+		Listen:             ":8080",
+		Build:              "0.2.0-test (go-test, linux/amd64)",
+		FFprobe:            api.FFprobeStatus{Found: true, Version: "8.0"},
+		ConfigDir:          configDir,
+		Environ:            func() []string { return environ },
+		// Dezelfde client als in productie, met alleen een tellende transport
+		// eronder: het omleidingsbeleid dat de test toetst is daarmee dat van
+		// de server en niet dat van de test.
+		ProbeClient: api.NewProbeClient(probes),
+
+		// Een echte bundel met één bestand erin. De rangecontrole van
+		// POST /server/connectivity-check meet op http.ServeContent, en zonder
+		// bundel zou hij op de melding "geen bundel" meten en altijd false
+		// geven: een test die dan groen staat bewijst het tegenovergestelde
+		// van wat hij beweert.
+		Web: web.HandlerFor(web.Options{FS: fstest.MapFS{
+			web.IndexFile: &fstest.MapFile{Data: []byte(strings.Repeat("pleya web bundel\n", 8))},
+		}}),
 	})
 
 	return &env{t: t, server: srv, store: store, auth: authStore, watch: watchStore, pool: pool,
 		root: root, libs: libs, cap: shared, argon2: light, signer: signer, logs: logs,
-		settings: settingsCache}
+		settings: settingsCache, ring: ring, environ: environ, config: configDir,
+		log: logger, probes: probes}
+}
+
+// logger geeft de logger die de server zelf gebruikt, inclusief de
+// ringbuffer erachter. Een test die GET /server/log toetst moet er iets in
+// kunnen zetten dat van de server had kunnen komen.
+func (e *env) logger() *slog.Logger { return e.log }
+
+// probeLog telt wat POST /server/connectivity-check naar buiten stuurt, en
+// koppelt een verzonnen naam aan een testserver.
+//
+// Die koppeling is geen truc om de validatie te omzeilen maar precies het
+// gedrag dat config.PublicURLIsPrivate beschrijft: hij weigert een letterlijk
+// privé-adres en zoekt een naam niet op, want de aanvrager beheert de zone en
+// kan hem na de controle toch verzetten. Een testserver luistert op 127.0.0.1,
+// dus zonder naam zou er geen enkel adres zijn waarmee deze endpoints te
+// toetsen zijn.
+type probeLog struct {
+	mu      sync.Mutex
+	targets []string
+	hosts   map[string]string
+}
+
+func newProbeLog() *probeLog { return &probeLog{hosts: map[string]string{}} }
+
+// publish geeft de URL waarop server onder deze naam bereikbaar is.
+func (p *probeLog) publish(name string, server *httptest.Server) string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.hosts[name+":80"] = strings.TrimPrefix(server.URL, "http://")
+	return "http://" + name
+}
+
+func (p *probeLog) RoundTrip(r *http.Request) (*http.Response, error) {
+	p.mu.Lock()
+	p.targets = append(p.targets, r.URL.String())
+	p.mu.Unlock()
+
+	transport := &http.Transport{DialContext: p.dial}
+	defer transport.CloseIdleConnections()
+	return transport.RoundTrip(r)
+}
+
+func (p *probeLog) dial(ctx context.Context, network, addr string) (net.Conn, error) {
+	p.mu.Lock()
+	if mapped, ok := p.hosts[addr]; ok {
+		addr = mapped
+	}
+	p.mu.Unlock()
+	return (&net.Dialer{}).DialContext(ctx, network, addr)
+}
+
+func (p *probeLog) seen() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return append([]string{}, p.targets...)
 }
 
 // scanAll draait één volledige scanronde over elke bibliotheek.

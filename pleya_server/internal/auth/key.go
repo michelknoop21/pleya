@@ -65,3 +65,50 @@ func LoadOrCreateSigningKey(configDir string) (key []byte, created bool, err err
 	}
 	return key, true, nil
 }
+
+// RotateSigningKey vervangt de ondertekensleutel op schijf en geeft de nieuwe
+// terug.
+//
+// Schrijven gaat via een tijdelijk bestand naast het echte, dat daarna over de
+// oude naam wordt gehernoemd. Rechtstreeks over het bestaande bestand schrijven
+// laat bij een onderbreking een half beschreven sleutel achter, en dan start de
+// server daarna niet meer op: LoadOrCreateSigningKey weigert een sleutel die te
+// kort is, en maakt er geen nieuwe voor in de plaats.
+//
+// De oude sleutel wordt niet bewaard. Dat is de bedoeling van roteren, en het
+// is de reden dat de aanroeper er in dezelfde handeling alle sessies bij
+// intrekt (Store.RevokeAllSessions): de tokens die op de oude sleutel gemunt
+// zijn moeten dood zijn, niet met terugwerkende kracht te herstellen.
+func RotateSigningKey(configDir string) ([]byte, error) {
+	key := make([]byte, KeyLength)
+	if _, err := rand.Read(key); err != nil {
+		return nil, fmt.Errorf("sleutel genereren: %w", err)
+	}
+
+	path := filepath.Join(configDir, KeyFileName)
+	tmp := path + ".new"
+
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("%s aanmaken: %w", tmp, err)
+	}
+	if _, err := f.WriteString(hex.EncodeToString(key) + "\n"); err != nil {
+		f.Close()
+		_ = os.Remove(tmp)
+		return nil, fmt.Errorf("%s schrijven: %w", tmp, err)
+	}
+	if err := f.Sync(); err != nil {
+		f.Close()
+		_ = os.Remove(tmp)
+		return nil, fmt.Errorf("%s doorschrijven: %w", tmp, err)
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmp)
+		return nil, fmt.Errorf("%s sluiten: %w", tmp, err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return nil, fmt.Errorf("%s vervangen: %w", path, err)
+	}
+	return key, nil
+}

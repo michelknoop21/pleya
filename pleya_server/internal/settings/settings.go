@@ -25,6 +25,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/edde746/plezy/pleya_server/internal/config"
 )
 
 // De sleutels. Ze staan in het contract (schema Settings en SettingsPatch), dus
@@ -36,6 +38,7 @@ const (
 	KeyStreamTokenTTL    = "stream_token_ttl"
 	KeyStreamSessionTTL  = "stream_session_ttl"
 	KeyMaxStreamSessions = "max_stream_sessions"
+	KeyPublicURL         = "public_url"
 )
 
 // Source zegt welke laag deze waarde levert.
@@ -59,6 +62,11 @@ const (
 	KindDuration Kind = iota
 	KindInt
 	KindString
+
+	// KindURL is een tekstsleutel met een eigen grens: de vorm uit
+	// config.ParsePublicURL, en geen letterlijk privé- of link-local-adres
+	// (K rij 13). Een lege waarde betekent "niet ingesteld" en is toegestaan.
+	KindURL
 )
 
 // Definition is één sleutel met zijn grenzen.
@@ -85,6 +93,13 @@ var Definitions = []Definition{
 	{Key: KeyStreamTokenTTL, Kind: KindDuration, MinDuration: time.Minute, MaxDuration: 15 * time.Minute},
 	{Key: KeyStreamSessionTTL, Kind: KindDuration, MinDuration: 5 * time.Minute, MaxDuration: 120 * time.Minute},
 	{Key: KeyMaxStreamSessions, Kind: KindInt, MinInt: 1, MaxInt: 32},
+
+	// Het publieke adres. De grens is geen lengte maar een vorm, en de reden
+	// staat in K rij 13: dit is het enige doel dat
+	// POST /server/connectivity-check ooit aanroept, dus een waarde die naar
+	// 169.254.169.254 of naar de buren wijst maakt van een beheerknop een
+	// scanner van het interne netwerk.
+	{Key: KeyPublicURL, Kind: KindURL, MinLen: 0, MaxLen: 2048},
 }
 
 // Find geeft de definitie van een sleutel.
@@ -106,6 +121,8 @@ func (d Definition) Minimum() string {
 		return d.MinDuration.String()
 	case KindInt:
 		return strconv.Itoa(d.MinInt)
+	case KindURL:
+		return ""
 	default:
 		return strconv.Itoa(d.MinLen)
 	}
@@ -168,6 +185,29 @@ func Parse(key string, raw json.RawMessage) (any, error) {
 			return nil, &InvalidValueError{Field: key, Minimum: def.Minimum(), Maximum: def.Maximum()}
 		}
 		return d, nil
+
+	case KindURL:
+		var text string
+		if err := json.Unmarshal(raw, &text); err != nil {
+			return nil, &InvalidValueError{Field: key, Reason: "verwacht een URL als tekst"}
+		}
+		trimmed := strings.TrimSpace(text)
+		if trimmed == "" {
+			// Leegmaken is een geldige handeling: dan valt de sleutel terug op
+			// de omgeving, net als elke andere sleutel zonder rij.
+			return "", nil
+		}
+		if len(trimmed) > def.MaxLen {
+			return nil, &InvalidValueError{Field: key, Reason: "is te lang", Maximum: def.Maximum()}
+		}
+		u, err := config.ParsePublicURL(trimmed)
+		if err != nil {
+			return nil, &InvalidValueError{Field: key, Reason: err.Error()}
+		}
+		if config.PublicURLIsPrivate(u) {
+			return nil, &InvalidValueError{Field: key, Reason: config.ErrPublicURLPrivate.Error()}
+		}
+		return trimmed, nil
 
 	case KindInt:
 		// json.Number en niet int: 8.5 komt anders als 8 binnen, en een

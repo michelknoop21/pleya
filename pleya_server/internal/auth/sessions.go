@@ -120,3 +120,55 @@ func (s *Store) TouchSession(ctx context.Context, sessionID id.ID, now time.Time
 	}
 	return nil
 }
+
+// RevokeAllSessions trekt elke levende sessie in en geeft hun ids terug.
+//
+// Hoort bij POST /server/rotate-signing-key (J.2, K rij 16). Een nieuwe
+// ondertekensleutel maakt elk accesstoken en elk streamtoken meteen ongeldig,
+// want de handtekening klopt niet meer, maar het refreshtoken is een
+// ondoorzichtige string die gehasht in de database staat en van geen sleutel
+// afhangt. Zonder deze stap zou rotatie dus elke sessie uitloggen en meteen
+// weer laten inloggen, en dat is het tegenovergestelde van wat een beheerder
+// bedoelt die zijn sleutel roteert.
+//
+// De teruggegeven ids gaan naar het intrekkingsregister (DEC-099), zodat de
+// grens van twee seconden ook hier geldt voor een stream die al liep.
+func (s *Store) RevokeAllSessions(ctx context.Context, now time.Time) ([]id.ID, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	rows, err := tx.Query(ctx,
+		`UPDATE sessions SET revoked_at = $1 WHERE revoked_at IS NULL RETURNING id`, now)
+	if err != nil {
+		return nil, fmt.Errorf("alle sessies intrekken: %w", err)
+	}
+	var revoked []id.ID
+	for rows.Next() {
+		var sessionID id.ID
+		if err := rows.Scan(&sessionID); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		revoked = append(revoked, sessionID)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if _, err := tx.Exec(ctx,
+		`UPDATE auth_refresh_tokens SET revoked_at = $1 WHERE revoked_at IS NULL`, now); err != nil {
+		return nil, fmt.Errorf("alle refreshtokens intrekken: %w", err)
+	}
+	if _, err := tx.Exec(ctx,
+		`UPDATE stream_sessions SET revoked_at = $1 WHERE revoked_at IS NULL`, now); err != nil {
+		return nil, fmt.Errorf("alle browserstreamsessies intrekken: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return revoked, nil
+}

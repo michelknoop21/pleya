@@ -40,6 +40,18 @@ type Config struct {
 	// inlichting voor wie het netwerk aftast.
 	ServerName string
 
+	// PublicURL is het adres waarop deze server van buiten bereikbaar hoort te
+	// zijn. De server gebruikt hem nergens om iets te bouwen; hij is er om
+	// POST /server/connectivity-check een doel te geven en om in GET /server te
+	// staan. De omgeving is hier de onderste laag: een beheerder kan hem via
+	// PATCH /settings overschrijven, en dan gelden de grenzen uit K rij 13.
+	PublicURL string
+
+	// TrustedProxies zijn de adressen en bereiken waarvan de server
+	// forwarding-headers aanneemt. Bewust geen instelling (K rij 14): wie dit
+	// over de API kan zetten kan de server elke client laten geloven.
+	TrustedProxies []TrustedProxy
+
 	Libraries  []LibrarySpec
 	InodeTrust map[string]InodeTrust
 
@@ -164,6 +176,19 @@ func Load(getenv Getenv) (*Config, error) {
 	cfg.ShutdownTimeout = timeout
 
 	cfg.ServerName = valueOr(getenv, "PLEYA_SERVER_NAME", DefaultServerName)
+
+	cfg.PublicURL = strings.TrimSpace(getenv("PLEYA_SERVER_PUBLIC_URL"))
+	if cfg.PublicURL != "" {
+		if err := ValidatePublicURL(cfg.PublicURL); err != nil {
+			return nil, fmt.Errorf("PLEYA_SERVER_PUBLIC_URL: %w", err)
+		}
+	}
+
+	proxies, err := ParseTrustedProxies(getenv("PLEYA_SERVER_TRUSTED_PROXIES"))
+	if err != nil {
+		return nil, fmt.Errorf("PLEYA_SERVER_TRUSTED_PROXIES: %w", err)
+	}
+	cfg.TrustedProxies = proxies
 
 	libraries, err := ParseLibraries(getenv("PLEYA_SERVER_LIBRARIES"))
 	if err != nil {

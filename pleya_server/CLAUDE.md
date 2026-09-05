@@ -6,9 +6,10 @@ regel in deze map wijzigt.
 
 De werkregels per fase staan in de sectie Pleya Server van [../CLAUDE.md](../CLAUDE.md) en gelden
 onverkort: lees hoofdstuk 23 plus je eigen fase, blijf binnen de Phase ID, bouw niets uit een latere
-fase vooruit, en schrijf geen latere productvereiste weg. **PS-9 is gesloten op 4 september 2026.**
-De volgende fase in de vastgelegde doorloop is PS-11A en die is niet gestart, dus er is op dit moment
-geen lopende serverfase: nieuw werk hier vraagt eerst een vrijgave.
+fase vooruit, en schrijf geen latere productvereiste weg. **PS-9 is gesloten op 4 september 2026** en
+**PS-11A loopt sindsdien**, vrijgegeven met [DEC-108](../docs/DECISIONS.md). De uitvoering gaat per
+slice en per commitgrens; welke er open staat leest `docs/PLEYA-SERVER-MASTERLIST.md`. Werk buiten de
+lopende commitgrens is te vroeg, ook binnen dezelfde fase.
 
 De stand van de ontwikkeling staat in [../docs/PLEYA-SERVER-MASTERLIST.md](../docs/PLEYA-SERVER-MASTERLIST.md)
 en het plan in [../docs/pleya-server-rebaseline/](../docs/pleya-server-rebaseline/). Werk je hier,
@@ -73,10 +74,13 @@ internal/api/       HTTP-laag, wire-types, foutcodes, rate limiter, range en str
 internal/auth/      Argon2id, tokens, streamsessies, ondertekensleutel op schijf
 internal/catalog/   domeintypes, cursor, store gesplitst in lezen en schrijven
 internal/config/    alle PLEYA_SERVER_*-variabelen, bibliotheken, inodevertrouwen
+internal/diag/      de meetwaarden achter GET /server voor klasse admin
 internal/ffprobe/   aanroep en omzetting naar detectiemetadata
 internal/fileid/    de stat-tupel achter de zwakke validator, per platform
 internal/id/        eigen UUIDv7, monotoon binnen een milliseconde
 internal/jobs/      duurzame wachtrij in dezelfde database
+internal/logging/   JSON-logger, redactie (gedeelde vectoren met de app) en de ringbuffer
+                    achter GET /server/log
 internal/migrate/   voorwaartse migraties, sql/ als embed
 internal/scanner/   walk, judge, signature, sidecars, inode per platform
 internal/watch/     het conflictmodel uit DEC-049 als pure functie, plus zijn opslag
@@ -105,9 +109,15 @@ een client mag er nooit op matchen.
 beide kijkstatus-endpoints en `POST /auth/stream-session`; sinds PS-9 de vijf routes onder `/users`
 (DEC-100), `GET`/`DELETE /sessions` en `POST /auth/logout` (DEC-103). `capabilities.watch_state`,
 `watch_state_ownership`, `stream_sessions`, `users` en `sessions` staan daarmee alle vijf op `true`.
+Sinds S1.2 en S1.3 staat het eerste stuk beheer erbij: `GET`/`PATCH /settings`, en de
+serverdiagnostiek `GET /server/environment`, `GET /server/log`, `POST /server/connectivity-check` en
+`POST /server/rotate-signing-key`, alle vijf klasse admin. `GET /server` groeit daarbij met de klasse
+van de aanvrager en niet met een parameter. `capabilities.administration` staat er nog niet bij: die
+vlag hoort bij S1.6, wanneer protocolvenster 1 sluit.
+
 Wat er níét is blijft 404: `playback/plan` (PS-6), afspeelsessies (PS-8), verzamelingen (PS-9C),
-geschiedenis (PS-9P) en beheer (PS-11A). `verify-local.sh` en `TestScopeBoundaryAfterPS4`
-controleren dat.
+geschiedenis (PS-9P) en de rest van beheer (bibliotheken, opslag en scans in S2, API-tokens en audit
+in S1.5). `verify-local.sh` en `TestScopeBoundaryAfterPS4` controleren dat.
 
 **Intrekken is in het geheugen, en dat is een keuze met een grens.** `auth.Revocations`
 (`internal/auth/revocation.go`) is een set ingetrokken sessie-ids, gevuld bij het opstarten uit
