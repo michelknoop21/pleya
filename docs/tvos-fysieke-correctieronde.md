@@ -131,7 +131,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | HERO4 | Terug op Home na afspelen staat de pagina nog gescrold en de herolaag schuift mee: het artwork loopt boven beeld uit terwijl de CTA-rij op y=19 achter de navigatieband blijft staan. Nagespeeld over het echte drukpad: afspelen haalt de tegel weg, de content-scope daalt af naar de eerste focusbare afstammeling en dat is de Afspelen-pil, dus geen van de drie gehardde ingangen komt eraan te pas. Het contract hangt nu aan de carrousel die focus krijgt. Bevestigd op de Apple TV op 5 september 2026 | VERIFIED | `20e2bb37`, `17d47592`, `04152ca4` |
 | NAVSEL1 | `tvos.nav.destination-select` sprak de app op twee punten tegen: het verwachtte Films na één RIGHT vanaf Home terwijl Series daar staat, en het eiste een Select om van bestemming te wisselen terwijl focus dat sinds 2 september zelf doet. Gedraaid, rood op de eerste, en verwijderd; `tvos.nav.focus-switches-destination` dekt het en is groen | FIXED | `17d47592` |
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
-| RAIL1 | `test/widgets/tv_discovery_rail_test.dart` staat rood op `main`, vijf tests: focusgedreven metadata (2), focusidentiteit en herstel (2) en de kop van een gedeeltelijke rail (1). Gemeten met en zonder de HERO4-wijziging van 5 september: identiek rood, dus niet van die ronde | OPEN | n.v.t. |
+| RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
 
 ## Wat er per item bekend is
 
@@ -2894,6 +2894,38 @@ dat de weg die hem opleverde hem niet meer oplevert.
 bewaart de gepushte route de scroll, Menu zet de ring terug op de tegel waar hij vandaan kwam, en
 UP brengt de billboard van een teruggekeerde feed weer in beeld. Het verschil tussen die twee
 scenario's is precies waar de melding zat.
+
+### RAIL1, het fase-6 railcontract is bij een verhuizing achtergebleven
+
+Er zijn twee bestanden met bijna dezelfde naam, en dat is geen duplicaat.
+`test/widgets/tv/tv_discovery_rail_test.dart` bewaakt geometrie en kolomgedrag en is meegegroeid
+met LAND2, LAND3 en LAND4. `test/widgets/tv_discovery_rail_test.dart` is de andere helft, uit de
+fase-6-commit `6e90fb4e`: de projectie, de focusidentiteit, activatie en toegankelijkheid. Die is
+bij de verhuizing naar `tv/` blijven staan en sindsdien niet meer meegelopen. `ci_checks.sh`
+draait geen `flutter test`, dus de pre-commit-gate zag vijf rode tests niet; dat is dezelfde blinde
+vlek als bij HERO5.
+
+Geen van de vijf wees een defect aan.
+
+Twee toetsten een afspraak die LAND2 (`2371c62`) bewust heeft vervangen. Elke rail tekende zijn
+eigen contextblok, ook de rails waar de afstandsbediening niet in stond, en op een gestapelde feed
+gaf dat twee focuscontexten tegelijk op het scherm. Nu beschrijft alleen de rail met de focus zijn
+tegel, en `alwaysDescribesCurrent` is de uitweg die TV Zoeken neemt, waar de caption de enige plek
+is waar een resultaat zijn titel draagt. Herschreven naar wat er nu geldt, en met de helft erbij
+die LAND2 niet raakte: de rail vergeet zijn tegel niet, hij beschrijft hem alleen niet meer.
+
+Twee andere lazen "welke tegel is actief" af aan datzelfde blok. Ze waren niet stuk maar blind, en
+geven de rail nu eerst de focus, zoals een verticale stap erheen dat ook doet.
+
+De vijfde zocht met `find.bySemanticsLabel` naar de partial-tekst. Die staat er, maar de
+`Semantics` om het wolkje heeft geen eigen container, dus de tekst voegt samen in de node van de
+kop: `"Recently Added\nSome sources did not answer"`. Dat is precies wat hoofdstuk 41 vraagt, en
+precies wat een exacte string niet vindt. De finder had geen faalstand, dus dat was geen test. De
+assertie leest nu de node van de kop.
+
+Sabotagecontrole: `alwaysDescribesCurrent: true` in de helper zet de twee focusgate-tests rood en
+laat de rest groen. Veertien tests groen in dit bestand, 1031 in `test/widgets` en
+`test/screens/tv` samen zonder falers.
 
 ### HERO5, HERO3 maakte een testbestand afhankelijk van de wandklok
 
