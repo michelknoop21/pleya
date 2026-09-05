@@ -1,0 +1,40 @@
+name: ios.landing.northstar
+target: ios-sim
+# The Series landing as fase 2 delivers it: the shared header, the title line
+# with its "Alle series" action, the first rail under that title, and the tab
+# bar still standing with Series lit. Observation only, like
+# ios.home.northstar — every node asserted here is one the product renders on
+# its own, with no verify-only behaviour behind it.
+#
+# `open` rather than a tap at coordinates: `screen.series` is mapped to the tab
+# in `_screenToTab`, so this drives the app's own `_selectTab` and does not
+# break the day a bar slot moves.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - open: screen.series
+steps:
+  - wait_until: {id: screen.series, timeout: 15000}
+  # Same cold-start settle as ios.home.northstar: wait past IntroGate's splash
+  # before measuring anything.
+  - settle: 3500
+  # The header is the fase-1 one, unchanged, so its search control still has to
+  # be a real 44pt target. On this surface it is also the only way to Zoeken.
+  - assert: {id: "landing.header[series]", insideViewport: true}
+  - assert: {id: "landing.header.search[series]", insideViewport: true, minimumTapTarget: 44}
+  # The title line, and the "Alle series" action on that same line. The action
+  # is drawn and inert until fase 3; that it is *drawn* is the thing to pin, so
+  # fase 3 changes one handler and not the layout.
+  - assert: {id: "landing.title[series]", insideViewport: true}
+  - assert: {id: "landing.view_all[series]", insideViewport: true}
+  - assert: {id: "landing.view_all[series]", sameRow: "landing.title[series]"}
+  # The first rail sits under the title. A landing has no hero, so this is what
+  # the top of the page is for.
+  - assert: {id: "landing.rail[series.0]", below: "landing.title[series]"}
+  - assert: {id: "landing.rail[series.0]", insideViewport: true}
+  # The bar stays, and Series is the slot that lights up.
+  - assert: {id: nav.bar, insideViewport: true}
+  - assert: {id: nav.series, insideViewport: true}
+  - snapshot: landing-northstar
