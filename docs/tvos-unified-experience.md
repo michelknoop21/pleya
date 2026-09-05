@@ -589,6 +589,13 @@ DOWN: de feed scrolt tot "Verder kijken" onder de balk staat, de herotekst
 dooft en het beeld treedt terug; daaronder de railstapel van 17.
 ```
 
+> **Eigen rijen, [DEC-100](DECISIONS.md#dec-100).** Tussen de hubrijen kunnen rijen staan die de
+> kijker zelf uit een bewaard filter heeft gemaakt (17.5). In rust zijn ze van een hubrij niet te
+> onderscheiden; hun laatste kaart is een tegel "Alle N" naar de catalogus met datzelfde filter.
+> Onder de laatste rij staat een voetregel "Home aanpassen", één DOWN vanaf die rij; dezelfde actie
+> staat als laatste regel in het contextmenu van elke kaart op Home (23). De hero en zijn CTA-rij
+> veranderen hier niet door. Mockup 32 A1a, A1b en A2 zijn bindend.
+
 ### 9.2 Hero-maat
 
 > **Herzien op 4 september 2026, [DEC-095](DECISIONS.md#dec-095).** De alinea hieronder
@@ -1375,6 +1382,18 @@ van globale row titles. Een echt server-specifieke hub krijgt bijvoorbeeld "Aanb
 Familie", of een subtiele server-subtitle, maar alleen wanneer die broncontext inhoudelijk relevant
 is.
 
+> **Herzien op 5 september 2026, [DEC-100](DECISIONS.md#dec-100).** Naast de hubrijen bestaan
+> eigen rijen: een bewaard filter per profiel met soort (films of series), een
+> `UnifiedCatalogFilterSelection`, een `UnifiedCatalogSort` en een optionele naam die anders het
+> filter volgt. Op TV gebeurt het beheer op Home zelf, in één paneel over de gedimde pagina
+> (mockup 32 B): Uitgelicht en Verder kijken staan bovenaan als vaste, niet-focusbare regels; een
+> hubrij krijgt omhoog, omlaag en Verbergen, een eigen rij omhoog, omlaag, Bewerken en
+> Verwijderen; elke regel is een horizontale focusgroep en UP/DOWN houdt de kolom vast; Klaar is UP
+> vanaf de eerste regel en Menu doet hetzelfde. Een nieuwe rij ontstaat in drie stappen (naam en
+> soort, filters met sortering, voorbeeld met teller; mockup 32 C1 tot en met C4) en landt onder
+> Verder kijken. Een leeg filter is niet te bewaren; onder de zes titels wel, met "korte rij" naast
+> het label. `HomeLayoutScreen` onder Instellingen blijft het pointerpad en kent dezelfde rijen.
+
 ---
 
 ## 18. Mijn Pleya op TV
@@ -1578,6 +1597,11 @@ verwijderen van servercontent; metadata bewerken.
 **Acties die alleen in Bibliotheken thuishoren:** scan library; analyseer; prullenbak leegmaken;
 metadata-refresh op hele library; folder browsing. Collectionbeheer en playlistbeheer horen bij hun
 eigen ingangen in Mijn Pleya (4.5, DEC-092).
+
+**Paginabrede actie op Home:** "Home aanpassen" staat als laatste regel achter een scheidingslijn in
+het contextmenu van elke kaart op Home, en opent het paneel van 17.5 ([DEC-100](DECISIONS.md#dec-100),
+mockup 32 A1b). Het is de enige regel in het menu die niet over het item gaat; op andere pagina's
+staat hij er niet.
 
 Een destructive action mag nooit rechtstreeks op `representativeSource` worden uitgevoerd.
 
