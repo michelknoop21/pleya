@@ -79,11 +79,59 @@ import wakelock_plus
   /// ahead of this point, and with the session branch returning `false` Menu
   /// reaches UIKit along with everything else.
   override func tvosHandlePress(fromUIEvent press: UIPress) -> Bool {
+    if Self.isDuplicateArrowPhase(press) {
+      Self.pressLog.debug("\(Self.pressName(press), privacy: .public) -> drop duplicate phase")
+      return false
+    }
     guard NativeInputSession.isActive else {
       return super.tvosHandlePress(fromUIEvent: press)
     }
     Self.pressLog.debug("\(Self.pressName(press), privacy: .public) -> yield to UIKit")
     return false
+  }
+
+  /// The second half of NAV1: one arrow press that moves the focus twice.
+  ///
+  /// `super` ends in the engine's `synthesizeRemotePressType:`, and for an
+  /// arrow it posts a **complete keydown/keyup pair per press phase**. A single
+  /// press therefore arrives in Dart as two full pairs, separated by however
+  /// long the ring was held. Measured on the device (log `wa6v9`, 5 September
+  /// 2026, build 255, one press of Left):
+  ///
+  /// ```
+  /// 20.196  phase=0 uipress=92444   keydown arrowLeft / keyup arrowLeft
+  /// 20.197  FocusableWrapper -> onNavigateLeft          (step 1)
+  /// 20.301  phase=3 uipress=92444   keydown arrowLeft / keyup arrowLeft
+  /// 20.301  FocusableWrapper -> onNavigateLeft          (step 2, the defect)
+  /// ```
+  ///
+  /// Same `UIPress`, phases `.began` and `.ended`. Select in the same log is
+  /// correct — `.began` posts the keydown, `.ended` the keyup — so this is an
+  /// asymmetry in the fork's arrow path, not the general press contract.
+  ///
+  /// Why it has to be caught here and nowhere else. In Dart the second pair is
+  /// indistinguishable from an honest fast repeat: same key, same shape, and a
+  /// gap (80-230 ms across three device logs) that overlaps how fast a viewer
+  /// clicks. A timing heuristic in `AppleTvRemoteTouchService` was tried and
+  /// shipped as build 254; log `ld1t1` shows it swallowing 65 real presses,
+  /// which is worse than the defect it fixed. The phase is the only signal that
+  /// separates the two, and it exists only up here.
+  ///
+  /// Returning `false` hands the press to UIKit, which has nothing focusable to
+  /// give it — the same inert path the native-keyboard branch below relies on.
+  /// The engine's own keyboard state is already balanced: it emitted a complete
+  /// pair at `.began`, so nothing is left half-pressed.
+  private static func isDuplicateArrowPhase(_ press: UIPress) -> Bool {
+    guard press.phase != .began else { return false }
+    switch press.type {
+    case .upArrow, .downArrow, .leftArrow, .rightArrow:
+      return true
+    default:
+      return press.key?.keyCode == .keyboardUpArrow
+        || press.key?.keyCode == .keyboardDownArrow
+        || press.key?.keyCode == .keyboardLeftArrow
+        || press.key?.keyCode == .keyboardRightArrow
+    }
   }
 
   /// For the log line only. The symbolic cases are not reliable on tvOS 26 (the

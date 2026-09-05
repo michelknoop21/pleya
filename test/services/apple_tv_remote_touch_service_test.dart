@@ -8,94 +8,41 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('AppleTvRemoteTouchService', () {
-    // NAV1, tweede oorzaak — replay van log y0w9x (build 251, 5 september).
-    // Een ringdruk die op Home landt werd 80-230 ms later gevolgd door een
-    // tweede compleet native keydown/keyup-paar van dezelfde toets, zonder
-    // eigen `started`. Eén druk, twee stappen. De reeksen hieronder zijn de
-    // logregels, met hun tijdsverschillen.
-    group('NAV1 replay uit log y0w9x', () {
-      test('08:31:40 — een tweede paar zonder nieuwe aanraking wordt geconsumeerd', () async {
-        final h = _Harness();
-        await h.send('started');
-        h.advance(const Duration(milliseconds: 108));
-        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowLeft)), isFalse);
-        h.advance(const Duration(milliseconds: 1));
-        await h.send('cancelled', x: 28.1, y: 16.1);
-        h.advance(const Duration(milliseconds: 2));
-        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowLeft)), isFalse);
-        h.advance(const Duration(milliseconds: 136));
-        // The duplicate: no `started` in between.
-        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowLeft)), isTrue);
-        h.advance(const Duration(milliseconds: 1));
-        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowLeft)), isTrue);
-      });
-
-      test('08:31:41 — ook als de eerste aanraking nog niet is losgelaten', () async {
-        final h = _Harness();
-        await h.send('started');
-        h.advance(const Duration(milliseconds: 30));
-        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isFalse);
-        h.advance(const Duration(milliseconds: 3));
-        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowRight)), isFalse);
-        h.advance(const Duration(milliseconds: 104));
-        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isTrue);
-        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowRight)), isTrue);
-        h.advance(const Duration(milliseconds: 59));
-        await h.send('cancelled');
-      });
-
-      test('een echte tweede tik brengt zijn eigen started mee en gaat door', () async {
-        final h = _Harness();
-        await h.send('started');
-        h.advance(const Duration(milliseconds: 100));
-        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isFalse);
-        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowRight)), isFalse);
-        await h.send('cancelled');
-        h.advance(const Duration(milliseconds: 120));
-        await h.send('started');
-        h.advance(const Duration(milliseconds: 100));
-        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isFalse);
-        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowRight)), isFalse);
-      });
-
-      test('een ingedrukt gehouden richting heeft geen keyup ertussen en blijft herhalen', () async {
-        final h = _Harness();
-        await h.send('started');
-        h.advance(const Duration(milliseconds: 100));
-        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowDown)), isFalse);
-        h.advance(const Duration(milliseconds: 150));
-        expect(h.service.handleNativeKeyEvent(_keyRepeat(LogicalKeyboardKey.arrowDown)), isFalse);
-        h.advance(const Duration(milliseconds: 150));
-        expect(h.service.handleNativeKeyEvent(_keyRepeat(LogicalKeyboardKey.arrowDown)), isFalse);
-        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowDown)), isFalse);
-      });
-
-      // NAV1, derde oorzaak — log 3zsde (build 252, 5 september). De twee
-      // tests hierboven bewijzen dat de dienst het tweede paar herként; deze
-      // twee bewijzen waar dat oordeel wel en niet aankomt. In het echte
-      // logboek stond `consume native keydown reason=repeated-pair-without-touch
-      // age=99ms` één millisecond boven `FocusableWrapper:
-      // result=KeyEventResult.handled reason=onNavigateLeft`.
-      testWidgets('HardwareKeyboard alleen houdt een geconsumeerd duplicaat niet tegen', (tester) async {
+    // NAV1 — waar de dubbele stap vandaan kwam, en waar hij gestopt wordt.
+    //
+    // Drie toestellogs uit één ochtend. `y0w9x` en `3zsde` toonden per ringdruk
+    // twee complete keydown/keyup-paren, 80-230 ms uit elkaar. Een heuristiek
+    // hier die het tweede paar herkende ging mee in build 254 en at in `ld1t1`
+    // 65 echte drukken op; die is weg (zie `_shouldConsumeNativeDirectional`).
+    // `wa6v9` wees de oorzaak aan: één `UIPress`, twee fasen, en de engine-fork
+    // synthetiseert voor pijltjes een heel paar per fase. Dat wordt nu in
+    // `AppDelegate.swift` afgevangen, waar de fase zichtbaar is.
+    //
+    // Wat hier overblijft is de laag die bewijst dat een consume in deze dienst
+    // überhaupt ergens op landt — want dat deed hij niet.
+    group('een consume moet de focustree ook echt bereiken', () {
+      testWidgets('HardwareKeyboard alleen houdt een geconsumeerde toets niet tegen', (tester) async {
         final h = _Harness();
         final received = <KeyEvent>[];
         HardwareKeyboard.instance.addHandler(h.service.handleNativeKeyEvent);
         addTearDown(() => HardwareKeyboard.instance.removeHandler(h.service.handleNativeKeyEvent));
         await _focusRecorder(tester, received);
 
-        await _pressPair(h, received: received);
-        h.advance(const Duration(milliseconds: 99));
+        // Een veeg claimt de richting, dus de native pijl hoort geslikt te
+        // worden — dat is de bedoeling die al in die code stond.
+        await h.send('started', x: 500, y: 500);
+        await h.send('move', x: 380, y: 490);
         received.clear();
         await _sendPair(LogicalKeyboardKey.arrowLeft);
 
         // Dit is geen wens, dit is de SDK: `KeyEventManager.handleKeyData`
         // gooit het resultaat van `_hardwareKeyboard.handleKeyEvent` weg en
         // roept `_dispatchKeyMessage` er onvoorwaardelijk achteraan
-        // (services/hardware_keyboard.dart:1118). Vandaar de tweede stap.
-        expect(received, hasLength(2), reason: 'de SDK levert het duplicaat af ondanks de consume');
+        // (services/hardware_keyboard.dart:1118).
+        expect(received, hasLength(2), reason: 'de SDK levert de toets af ondanks de consume');
       });
 
-      testWidgets('met de early key handler erbij bereikt het duplicaat de focustree niet', (tester) async {
+      testWidgets('met de early key handler erbij bereikt hij de focustree niet', (tester) async {
         final h = _Harness();
         final received = <KeyEvent>[];
         HardwareKeyboard.instance.addHandler(h.service.handleNativeKeyEvent);
@@ -106,15 +53,15 @@ void main() {
         });
         await _focusRecorder(tester, received);
 
-        await _pressPair(h, received: received);
-        h.advance(const Duration(milliseconds: 99));
+        await h.send('started', x: 500, y: 500);
+        await h.send('move', x: 380, y: 490);
         received.clear();
         await _sendPair(LogicalKeyboardKey.arrowLeft);
 
-        expect(received, isEmpty, reason: 'één ringdruk mag één stap zijn');
+        expect(received, isEmpty);
       });
 
-      testWidgets('een echte tweede druk komt er nog steeds door', (tester) async {
+      testWidgets('een gewone druk komt er onaangeroerd doorheen', (tester) async {
         final h = _Harness();
         final received = <KeyEvent>[];
         HardwareKeyboard.instance.addHandler(h.service.handleNativeKeyEvent);
@@ -125,25 +72,19 @@ void main() {
         });
         await _focusRecorder(tester, received);
 
-        await _pressPair(h, received: received);
-        await h.send('cancelled');
-        h.advance(const Duration(milliseconds: 120));
         await h.send('started');
-        h.advance(const Duration(milliseconds: 100));
-        received.clear();
+        h.advance(const Duration(milliseconds: 30));
         await _sendPair(LogicalKeyboardKey.arrowLeft);
-
         expect(received, hasLength(2));
-      });
 
-      test('een andere toets na een afgerond paar is geen duplicaat', () async {
-        final h = _Harness();
-        await h.send('started');
-        h.advance(const Duration(milliseconds: 100));
-        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isFalse);
-        expect(h.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowRight)), isFalse);
-        h.advance(const Duration(milliseconds: 100));
-        expect(h.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowLeft)), isFalse);
+        // En de tweede, en de derde: er is geen venster meer dat drukken
+        // opeet. `ld1t1` verloor er hier vier van de vijf.
+        for (var i = 0; i < 3; i++) {
+          h.advance(const Duration(milliseconds: 90));
+          received.clear();
+          await _sendPair(LogicalKeyboardKey.arrowLeft);
+          expect(received, hasLength(2), reason: 'druk ${i + 2} moet er ook door');
+        }
       });
     });
 
@@ -811,14 +752,6 @@ Future<void> _focusRecorder(WidgetTester tester, List<KeyEvent> received) async 
 Future<void> _sendPair(LogicalKeyboardKey key) async {
   await simulateKeyDownEvent(key);
   await simulateKeyUpEvent(key);
-}
-
-/// The honest first press: a touch, then one complete pair.
-Future<void> _pressPair(_Harness h, {required List<KeyEvent> received}) async {
-  await h.send('started');
-  h.advance(const Duration(milliseconds: 30));
-  await _sendPair(LogicalKeyboardKey.arrowLeft);
-  expect(received, hasLength(2), reason: 'de echte druk hoort gewoon aan te komen');
 }
 
 const _rawEnterKey = LogicalKeyboardKey(0x0d);

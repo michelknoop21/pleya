@@ -342,7 +342,6 @@ class AppleTvRemoteTouchService {
     _touchActiveNotifier.value = true;
     // A new touch is a new physical gesture: whatever native pair completed
     // before it may legitimately repeat now.
-    _touchStartedSinceCompletedPair = true;
     _startX = x;
     _startY = y;
     _anchorX = x;
@@ -646,61 +645,27 @@ class AppleTvRemoteTouchService {
   /// the swipe axis independently, so a diagonal swipe can produce a native
   /// arrow on a *different* axis than the synthetic one. Matching only the
   /// same key would let that through as a second, sideways move.
-  /// The most recent native directional press that ran to completion
-  /// (keydown *and* keyup), and whether a new touch has begun since.
+  /// A duplicate directional press is **not** filtered here, deliberately.
   ///
-  /// Log `y0w9x` of 5 September 2026 (NAV1, second cause): a ring press that
-  /// lands on Home was followed 80-230 ms later by a *second* complete native
-  /// keydown/keyup pair of the same key, delivered over `flutter/keydata` as if
-  /// the ring had been pressed again — and, in three of four cases, with no
-  /// `started` of its own. A physical press is always a touch first, so a
-  /// second pair that no new touch precedes is a duplicate by construction.
-  /// That is what this tracks: not a timer, the touch stream. The window below
-  /// only bounds staleness.
-  LogicalKeyboardKey? _completedNativeDirectionalKey;
-  DateTime? _completedNativeDirectionalAt;
-  bool _touchStartedSinceCompletedPair = true;
-  LogicalKeyboardKey? _consumedDuplicateKeyDown;
-
-  /// Upper bound on how long a completed pair can veto a repeat of itself.
-  /// The observed duplicates sat at 80-230 ms; a real second tap always
-  /// brings a `started` and is never affected by this.
-  static const Duration duplicateNativePairWindow = Duration(milliseconds: 500);
-
-  bool _isDuplicateNativePair(KeyEvent event) {
-    if (event is! KeyDownEvent) return false;
-    final key = _completedNativeDirectionalKey;
-    final at = _completedNativeDirectionalAt;
-    if (key == null || at == null || key != event.logicalKey) return false;
-    if (_touchStartedSinceCompletedPair) return false;
-    return _now().difference(at) <= duplicateNativePairWindow;
-  }
-
-  void _trackNativeDirectionalPair(KeyEvent event) {
-    if (event is KeyUpEvent) {
-      _completedNativeDirectionalKey = event.logicalKey;
-      _completedNativeDirectionalAt = _now();
-      _touchStartedSinceCompletedPair = false;
-    }
-  }
-
+  /// NAV1's second pair was first attacked from this side: track the last
+  /// completed pair, veto a repeat of the same key that no new touch preceded.
+  /// It shipped as build 254 and was wrong. Log `ld1t1` shows it swallowing 65
+  /// real presses — the window does not slide, so one delivered press blacked
+  /// out the next half second, and fast clicking through a rail lost four
+  /// presses in five. Every discriminator available in Dart was measured
+  /// against three device logs and each one failed on at least one of them: the
+  /// gap (80-230 ms) overlaps how fast a viewer clicks, the keydown-to-keyup
+  /// duration is 4 ms in one log and 120 ms in another for the *same* honest
+  /// press, and the touch stream carries no event between the two pairs.
+  ///
+  /// The signal that does separate them exists one layer down. Log `wa6v9`
+  /// (build 255) pinned it: both pairs carry the same `UIPress`, one in phase
+  /// `.began` and one in `.ended`, because the engine fork synthesizes a whole
+  /// pair per phase for arrows. `PleyaFlutterViewController.isDuplicateArrowPhase`
+  /// in `tvos/Runner/AppDelegate.swift` drops the second phase, so nothing
+  /// reaches Dart that needs guessing about. Do not reintroduce a timing rule
+  /// here; it cannot be made correct with what this layer can see.
   bool _shouldConsumeNativeDirectional(KeyEvent event) {
-    // A duplicate pair is consumed whole: the keydown here, and its keyup
-    // below, so the focus tree never sees an unbalanced release.
-    if (_isDuplicateNativePair(event)) {
-      _consumedDuplicateKeyDown = event.logicalKey;
-      _log(
-        'consume native keydown logical=${_keyName(event.logicalKey)} '
-        'reason=repeated-pair-without-touch age=${_now().difference(_completedNativeDirectionalAt!).inMilliseconds}ms',
-      );
-      return true;
-    }
-    if (event is KeyUpEvent && _consumedDuplicateKeyDown == event.logicalKey) {
-      _consumedDuplicateKeyDown = null;
-      _log('consume native keyup logical=${_keyName(event.logicalKey)} reason=repeated-pair-without-touch');
-      return true;
-    }
-    _trackNativeDirectionalPair(event);
     if (_currentDirectionalOwner() == _DirectionalOwner.swipe) {
       _log(
         'consume native ${_eventTypeName(event)} logical=${_keyName(event.logicalKey)} '
