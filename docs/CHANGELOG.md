@@ -43,8 +43,8 @@ landings delen nu één shell (`mobile_discovery_shell.dart`) voor hun skeleton-
 in plaats van elk hun eigen kopie te bouwen.
 
 De stand van de poorten: analyzer 0 errors en 0 warnings op de bekende 40 info-lints, `flutter test`
-volledig groen op de nulmeting (5596 geslaagd, 6 overgeslagen, nul fouten) plus de nieuwe testgevallen
-uit deze ronde, elk apart en in de volledige suite geverifieerd.
+5612 geslaagd en 6 overgeslagen zonder enkele fout (5596 op de nulmeting plus 16 nieuwe testgevallen
+uit deze ronde).
 `ios.home.northstar`, `ios.landing.northstar` en `discover.hero.layout` zijn in deze omgeving niet
 opnieuw gedraaid: die vragen een macOS/iOS-sim-target, niet beschikbaar in deze Linux-container, hetzelfde
 ontbrekende bewijs dat DEC-094 al vastlegt.
