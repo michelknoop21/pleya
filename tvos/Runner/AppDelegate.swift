@@ -80,8 +80,10 @@ import wakelock_plus
   /// reaches UIKit along with everything else.
   override func tvosHandlePress(fromUIEvent press: UIPress) -> Bool {
     if Self.isDuplicateArrowPhase(press) {
-      Self.pressLog.debug("\(Self.pressName(press), privacy: .public) -> drop duplicate phase")
-      return false
+      // Claimed, not yielded. `true` without `super` is the one answer that
+      // both skips UIKit's responder chain and synthesizes nothing.
+      Self.pressLog.debug("\(Self.pressName(press), privacy: .public) -> swallow duplicate phase")
+      return true
     }
     guard NativeInputSession.isActive else {
       return super.tvosHandlePress(fromUIEvent: press)
@@ -117,10 +119,16 @@ import wakelock_plus
   /// which is worse than the defect it fixed. The phase is the only signal that
   /// separates the two, and it exists only up here.
   ///
-  /// Returning `false` hands the press to UIKit, which has nothing focusable to
-  /// give it — the same inert path the native-keyboard branch below relies on.
-  /// The engine's own keyboard state is already balanced: it emitted a complete
-  /// pair at `.began`, so nothing is left half-pressed.
+  /// The phase is swallowed, never yielded. Build 256 returned `false` here and
+  /// crashed on every arrow (`Runner-2026-09-05-111948.ips`): the swizzle then
+  /// runs the original `sendEvent:`, UIKit's
+  /// `_UIFocusMovementPressGestureRecognizer` receives a `pressesEnded:` for a
+  /// press whose `pressesBegan:` the engine had claimed, and
+  /// `_verifyTrackingPresses:` asserts. Answering `true` without calling
+  /// `super` keeps the press out of UIKit *and* out of the synthesizer, which
+  /// is exactly the state every arrow press was in before — minus the second
+  /// pair. The engine's own keyboard state is already balanced: it emitted a
+  /// complete pair at `.began`, so nothing is left half-pressed.
   private static func isDuplicateArrowPhase(_ press: UIPress) -> Bool {
     guard press.phase != .began else { return false }
     switch press.type {
