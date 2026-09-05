@@ -5,72 +5,8 @@ import '../../../automation/automation_node.dart';
 import '../../../automation/automation_screen.dart';
 import '../../../books/book_filter.dart';
 import '../../../i18n/strings.g.dart';
-
-/// Golden 03's measurements, in logical pixels at the viewport it was drawn on
-/// (`docs/assets/ebooks/northstar/03a-filters-status.png`, 393 × 852).
-///
-/// Every number here was read off `04-filters-sheet.png` from the iOS Unified
-/// set rather than chosen, so a books sheet and a films sheet are the same
-/// object with different content in it.
-class BookFilterSheetMetrics {
-  BookFilterSheetMetrics._();
-
-  /// The viewport the golden was drawn on, and the top edge of the sheet on
-  /// it. The sheet keeps that ratio on other screen heights rather than a
-  /// fixed 600, so it neither overflows a shorter phone nor floats on a taller
-  /// one.
-  static const double referenceHeight = 852;
-  static const double referenceTopInset = 252;
-  static const double heightFactor = (referenceHeight - referenceTopInset) / referenceHeight;
-
-  static const double cornerRadius = 13;
-  static const double handleWidth = 36;
-  static const double handleHeight = 5;
-  static const double handleTop = 8;
-
-  /// Header band: 20 pt margins, its own 24 pt row starting 24 pt down.
-  static const double pageMargin = 20;
-  static const double headerTop = 24;
-  static const double headerHeight = 24;
-
-  /// Where both panes begin, measured from the top of the sheet.
-  static const double paneTop = 61;
-
-  static const double railWidth = 131;
-  static const double groupRowHeight = 43.5;
-
-  /// The white edge on the active group. A tint alone is invisible here: in
-  /// `monoTheme` the container colours resolve to the same value as the
-  /// surface behind them (DEC-053).
-  static const double groupEdgeWidth = 3;
-
-  static const double optionRowHeight = 37;
-  static const double optionGap = 10.5;
-  static const double optionMargin = 16;
-  static const double optionRadius = 9;
-
-  /// Action bar: a 40 pt row 15 pt down, then the home indicator's room. At
-  /// the golden's 34 pt bottom inset that adds up to its measured 97.
-  static const double actionRowTop = 15;
-  static const double actionRowHeight = 40;
-  static const double actionRowGap = 8;
-  static const double applyWidth = 130;
-
-  static const Color surface = Color(0xFF1F1F1F);
-  static const Color divider = Color(0xFF303030);
-  static const Color activeGroup = Color(0xFF2A2A2A);
-  static const Color selectedOption = Color(0xFF3E3E3E);
-  static const Color handle = Color(0xFF575757);
-}
-
-/// The reader-facing name of a status choice. Here rather than inside the
-/// sheet because Alle boeken's result line names the same four values.
-String bookStatusLabel(BookStatusFilter status) => switch (status) {
-  BookStatusFilter.all => t.books.statusAll,
-  BookStatusFilter.unread => t.books.statusUnread,
-  BookStatusFilter.read => t.books.statusRead,
-  BookStatusFilter.downloaded => t.books.statusDownloaded,
-};
+import 'book_filter_sheet_metrics.dart';
+import 'book_filter_sheet_panes.dart';
 
 /// Opens the filter sheet and answers what the reader applied.
 ///
@@ -149,7 +85,7 @@ class _BookFilterSheetState extends State<BookFilterSheet> {
                   children: [
                     SizedBox(
                       width: BookFilterSheetMetrics.railWidth,
-                      child: _GroupRail(
+                      child: BookFilterGroupRail(
                         groups: _groups,
                         selected: _group,
                         filter: _staged,
@@ -160,7 +96,7 @@ class _BookFilterSheetState extends State<BookFilterSheet> {
                     // The right pane scrolls on its own; the rail stays put, so
                     // a long group never scrolls its own heading off screen.
                     Expanded(
-                      child: _OptionPane(
+                      child: BookFilterOptionPane(
                         group: _group,
                         options: widget.options,
                         filter: _staged,
@@ -241,202 +177,6 @@ class _Header extends StatelessWidget {
                 style: TextStyle(fontSize: 13.5, color: Colors.white.withValues(alpha: 0.62)),
               ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GroupRail extends StatelessWidget {
-  const _GroupRail({required this.groups, required this.selected, required this.filter, required this.onSelect});
-
-  final List<BookFilterGroup> groups;
-  final BookFilterGroup selected;
-  final BookFilter filter;
-  final ValueChanged<BookFilterGroup> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.only(top: _paneTopOffset),
-      children: [
-        for (final group in groups)
-          AutomationNode(
-            id: AutomationIds.booksFilterGroup,
-            instance: group.name,
-            role: 'filter.group',
-            child: _GroupRow(
-              group: group,
-              isSelected: group == selected,
-              count: filter.countFor(group),
-              onTap: () => onSelect(group),
-            ),
-          ),
-      ],
-    );
-  }
-
-  /// Both panes start at [BookFilterSheetMetrics.paneTop] from the top of the
-  /// sheet; the handle and the header have already used part of that.
-  static const double _paneTopOffset =
-      BookFilterSheetMetrics.paneTop - (BookFilterSheetMetrics.headerTop + BookFilterSheetMetrics.headerHeight);
-}
-
-class _GroupRow extends StatelessWidget {
-  const _GroupRow({required this.group, required this.isSelected, required this.count, required this.onTap});
-
-  final BookFilterGroup group;
-  final bool isSelected;
-  final int count;
-  final VoidCallback onTap;
-
-  static String label(BookFilterGroup group) => switch (group) {
-    BookFilterGroup.status => t.books.filterStatus,
-    BookFilterGroup.genre => t.books.filterGenre,
-    BookFilterGroup.series => t.books.filterSeries,
-    BookFilterGroup.author => t.books.filterAuthor,
-    BookFilterGroup.language => t.books.filterLanguage,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final ink = isSelected ? Colors.white : Colors.white.withValues(alpha: 0.62);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: SizedBox(
-        height: BookFilterSheetMetrics.groupRowHeight,
-        // `expand`, because a Stack hands its non-positioned children loose
-        // constraints: without it the label sized itself to one line of text
-        // and sat against the top of a 43.5 pt row instead of in the middle
-        // of it. Nothing in the widget tree complains; it only shows up
-        // against the golden.
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (isSelected) const ColoredBox(color: BookFilterSheetMetrics.activeGroup),
-            if (isSelected)
-              const Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: BookFilterSheetMetrics.groupEdgeWidth,
-                child: ColoredBox(color: Colors.white),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(BookFilterSheetMetrics.pageMargin, 0, 16, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      label(group),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: ink,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                  if (count > 0)
-                    Text(
-                      '$count',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: ink,
-                        fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _OptionPane extends StatelessWidget {
-  const _OptionPane({required this.group, required this.options, required this.filter, required this.onToggle});
-
-  final BookFilterGroup group;
-  final BookFilterOptions options;
-  final BookFilter filter;
-  final ValueChanged<String> onToggle;
-
-  /// Status renders from its enum: its four choices are the golden's, not the
-  /// shelf's.
-  List<BookFilterOption> get _options => group == BookFilterGroup.status
-      ? [
-          for (final status in BookStatusFilter.values)
-            BookFilterOption(value: status.name, label: bookStatusLabel(status)),
-        ]
-      : options.forGroup(group);
-
-  @override
-  Widget build(BuildContext context) {
-    final chosen = filter.valuesFor(group);
-    final items = _options;
-    return ListView.separated(
-      padding: const EdgeInsets.only(
-        top: _GroupRail._paneTopOffset + BookFilterSheetMetrics.optionGap / 2,
-        bottom: BookFilterSheetMetrics.optionGap,
-      ),
-      itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: BookFilterSheetMetrics.optionGap),
-      itemBuilder: (context, index) {
-        final option = items[index];
-        return AutomationNode(
-          id: AutomationIds.booksFilterOption,
-          instance: option.value,
-          role: 'filter.option',
-          child: _OptionRow(
-            option: option,
-            isSelected: chosen.contains(option.value),
-            onTap: () => onToggle(option.value),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _OptionRow extends StatelessWidget {
-  const _OptionRow({required this.option, required this.isSelected, required this.onTap});
-
-  final BookFilterOption option;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: BookFilterSheetMetrics.optionMargin),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Container(
-          height: BookFilterSheetMetrics.optionRowHeight,
-          padding: const EdgeInsets.symmetric(horizontal: BookFilterSheetMetrics.optionMargin),
-          decoration: BoxDecoration(
-            color: isSelected ? BookFilterSheetMetrics.selectedOption : Colors.transparent,
-            borderRadius: BorderRadius.circular(BookFilterSheetMetrics.optionRadius),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  option.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 15.5),
-                ),
-              ),
-              if (isSelected) const Icon(Icons.check_rounded, size: 19, color: Colors.white),
-            ],
-          ),
         ),
       ),
     );

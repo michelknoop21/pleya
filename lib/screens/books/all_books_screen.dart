@@ -18,6 +18,7 @@ import 'book_detail_screen.dart';
 import 'books_search_screen.dart';
 import 'widgets/book_cover.dart';
 import 'widgets/book_filter_sheet.dart';
+import 'widgets/book_filter_sheet_metrics.dart';
 import 'widgets/book_rail.dart';
 
 /// Alle boeken, built against approved golden 02

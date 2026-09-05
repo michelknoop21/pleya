@@ -78,7 +78,7 @@ class AutomationRegistry {
         'focused': node.focusNode?.hasFocus ?? false,
         if (node.focusNode != null) 'canRequestFocus': node.focusNode!.canRequestFocus,
         if (_boundsOf(node.contextGetter?.call()) case final bounds?) 'bounds': _boundsToJson(bounds),
-        if (_visibilityOf(node.contextGetter?.call()) case final visible?) 'visible': visible,
+        'visible': ?_visibilityOf(node.contextGetter?.call()),
         'state': ?node.state?.call(),
       });
     }
@@ -127,7 +127,7 @@ class AutomationRegistry {
         'focused': focusNode.hasFocus,
         'canRequestFocus': focusNode.canRequestFocus,
         if (bounds != null) 'bounds': _boundsToJson(bounds),
-        if (visible != null) 'visible': visible,
+        'visible': ?visible,
       });
     }
     return discovered;
