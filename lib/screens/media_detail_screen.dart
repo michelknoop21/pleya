@@ -310,6 +310,21 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   late final ScrollController _scrollController;
   final ScrollController _extrasScrollController = ScrollController();
   bool _watchStateChanged = false;
+
+  /// Records a watch-state change on both the local flag and, when this screen
+  /// is a nested TV route, on the route itself.
+  ///
+  /// The two are not the same thing. `_dismissTvDetail` substitutes the flag
+  /// for an omitted result, but it only runs when this screen closes itself.
+  /// Back pressed while focus sits in the top bar pops the route through
+  /// `MainScreen`, which knows nothing about this flag, so without the second
+  /// write the change is dropped and the row this was opened from never
+  /// refreshes.
+  void _markWatchStateChanged() {
+    _watchStateChanged = true;
+    if (!mounted) return;
+    TvNestedRouteScope.readOf(context)?.markResult(true);
+  }
   final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0);
   bool _suppressBackAfterPop = false;
   final FocusNode _loadingFocusNode = FocusNode(debugLabel: 'MediaDetailLoading');
@@ -446,7 +461,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   @override
   void onWatchStateChanged(WatchStateEvent event) {
-    _watchStateChanged = true;
+    _markWatchStateChanged();
     if (event.changeType == WatchStateChangeType.removedFromContinueWatching) return;
 
     // Lists keep their server snapshots untouched; cards and the hero resolve
@@ -2577,7 +2592,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                 key: contextMenuKey,
                 item: season,
                 onRefresh: (itemId) {
-                  _watchStateChanged = true;
+                  _markWatchStateChanged();
                   unawaited(_refreshItemInPlace(itemId));
                 },
                 onListRefresh: () {
@@ -3894,7 +3909,21 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
           _maybeLoadMoreForInitialEpisode();
         }
         final hideSpoilers = SettingsService.instance.read(SettingsService.hideSpoilers);
-        final detailScale = TvLayoutConstants.scaleForSize(size);
+        // Deliberately the panel and not `size`. `size` is the box this screen
+        // was given, which INV-1 makes shorter than the window inside a nested
+        // route; that is right for *how much room there is* and wrong for the
+        // ten-foot scale, which is a property of the panel someone sits in
+        // front of (see `TvDisplayMetrics`).
+        //
+        // Deriving it from the box also broke a contract that used to hold by
+        // accident: `_buildTvDetailForeground` reserves the action row at
+        // `_tvDetailActionSize * scale` while `_buildActionButtons` renders it
+        // at `_tvDetailActionSize * TvLayoutConstants.scaleOf(context)`, and
+        // `_unifiedSourceLineHeight` is panel-scaled too. Box and panel agreed
+        // until SYS-1c split them, after which the reserve under-allotted by
+        // about four logical pixels and the action row and source line
+        // overflowed the foreground box into the rail below it.
+        final detailScale = TvLayoutConstants.scaleOf(context);
         final spotlightTop = (size.height * 0.08).clamp(44.0 * detailScale, 110.0 * detailScale).toDouble();
         final rawRailHeight = _estimateTvDetailRailHeight(size, detailHubs);
         if (!_tvDetailRevealed && _isTvDetailReadyToReveal(metadata)) {

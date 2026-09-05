@@ -42,9 +42,25 @@ import 'tv_navigation_coordinator.dart';
 import 'tv_nested_back_owner.dart';
 
 class TvNestedSurface extends StatefulWidget {
-  const TvNestedSurface({super.key, required this.route, required this.dismiss, required this.child});
+  const TvNestedSurface({
+    super.key,
+    required this.route,
+    required this.dismiss,
+    required this.child,
+    this.covered = false,
+  });
 
   final TvNestedRoute route;
+
+  /// Whether another nested route is stacked on top of this one.
+  ///
+  /// A surface used to be torn down the moment it stopped being the top of the
+  /// stack, so `mounted` was all the retry below needed to know. It now stays
+  /// mounted underneath, which is the point: the screen keeps its state and its
+  /// caller keeps its `BuildContext`. That makes the old assumption wrong, and
+  /// a pending focus entry has to be told, or it keeps ticking against a
+  /// subtree the remote is not allowed to reach.
+  final bool covered;
 
   /// Closes this route from anywhere inside its subtree. Exposed to
   /// descendants as [TvNestedRouteScope] — see that class for why a screen
@@ -81,6 +97,16 @@ class TvNestedSurfaceState extends State<TvNestedSurface> {
   Timer? _retry;
   bool _entryPending = false;
   DateTime? _entryDeadline;
+
+  @override
+  void didUpdateWidget(TvNestedSurface oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Covered means something else deliberately took over, which is exactly
+    // what [cancelPendingEntry] is for. `ExcludeFocus` already makes the retry
+    // find nothing, so this is not what keeps the focus safe; it stops a timer
+    // running for its full budget against a subtree nobody can enter.
+    if (widget.covered && !oldWidget.covered) cancelPendingEntry();
+  }
 
   @override
   void dispose() {
@@ -167,10 +193,15 @@ class TvNestedSurfaceState extends State<TvNestedSurface> {
     _retry = null;
   }
 
+  /// Stable across rebuilds, so [TvNestedRouteScope.updateShouldNotify] does not
+  /// see a new callback every frame and rebuild every dependent screen.
+  void _markResult(Object? value) => widget.route.pendingResult = value;
+
   @override
   Widget build(BuildContext context) => TvNestedBackOwner(
     child: TvNestedRouteScope(
       dismiss: widget.dismiss,
+      markResult: _markResult,
       child: Focus(
         focusNode: _anchor,
         canRequestFocus: false,
@@ -253,13 +284,28 @@ class _ContentBoxMediaQuery extends StatelessWidget {
 /// does. Its absence (`of(context) == null`) is a screen's signal that it was
 /// not nested this time and should fall back to `Navigator.pop`.
 class TvNestedRouteScope extends InheritedWidget {
-  const TvNestedRouteScope({super.key, required this.dismiss, required super.child});
+  const TvNestedRouteScope({
+    super.key,
+    required this.dismiss,
+    required this.markResult,
+    required super.child,
+  });
 
   final void Function([Object? result]) dismiss;
+
+  /// Records what this route should complete with if it is popped by someone
+  /// other than the screen itself, which Back from the top bar does.
+  final void Function(Object? value) markResult;
 
   static TvNestedRouteScope? of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<TvNestedRouteScope>();
 
+  /// Reads the scope without depending on it, for a write from a callback where
+  /// a dependency would schedule a rebuild the caller does not need.
+  static TvNestedRouteScope? readOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<TvNestedRouteScope>();
+
   @override
-  bool updateShouldNotify(TvNestedRouteScope oldWidget) => !identical(dismiss, oldWidget.dismiss);
+  bool updateShouldNotify(TvNestedRouteScope oldWidget) =>
+      !identical(dismiss, oldWidget.dismiss) || !identical(markResult, oldWidget.markResult);
 }

@@ -272,7 +272,8 @@ class TvRootShell extends StatelessWidget {
                         child: ListenableBuilder(
                           listenable: coordinator,
                           builder: (context, screens) {
-                            final nested = coordinator.activeNestedRoute;
+                            final stack = coordinator.nestedRoutesFor(coordinator.active);
+                            final nested = stack.isEmpty ? null : stack.last;
                             // The destination's own screens stay mounted
                             // underneath: the `IndexedStack` keeps its scroll
                             // position, its providers and its focus nodes, so
@@ -311,12 +312,51 @@ class TvRootShell extends StatelessWidget {
                                 // the catalog routes open the same way and
                                 // have the same focus-entry problem the
                                 // moment their content lands late.
-                                if (nested != null)
-                                  TvNestedSurface(
-                                    key: nested.surfaceKey,
-                                    route: nested,
-                                    dismiss: dismissNestedRoute,
-                                    child: Builder(builder: nested.builder),
+                                //
+                                // The whole stack is built, not just the top.
+                                // `pushNested` keeps a real stack, and building
+                                // only its last entry took the one underneath
+                                // out of the tree and disposed its `State`.
+                                // Two things broke on that, both reachable the
+                                // moment SYS-1b put a second surface on the
+                                // stack:
+                                //
+                                //  - Opening a cast member from a detail page
+                                //    threw the detail away. Back rebuilt it
+                                //    from nothing: metadata refetched, season,
+                                //    episode and scroll position gone.
+                                //  - Worse, and the everyday path: a caller
+                                //    that is itself nested gets unmounted when
+                                //    it opens a detail, so the
+                                //    `context.mounted` guards in
+                                //    `media_navigation_helper` and `MediaCard`
+                                //    bail and the post-navigation callbacks
+                                //    never run. Mark something watched from
+                                //    "Alle films" and the row it came from did
+                                //    not refresh; delete a collection and it
+                                //    stayed in the grid.
+                                //
+                                // Same three layers as the destination roots
+                                // above: offstage so it does not paint,
+                                // `ExcludeFocus` so it is not reachable, and
+                                // `TickerMode` so it does not animate behind
+                                // the route on top of it.
+                                for (var i = 0; i < stack.length; i++)
+                                  ExcludeFocus(
+                                    excluding: i != stack.length - 1,
+                                    child: Offstage(
+                                      offstage: i != stack.length - 1,
+                                      child: TickerMode(
+                                        enabled: i == stack.length - 1,
+                                        child: TvNestedSurface(
+                                          key: stack[i].surfaceKey,
+                                          route: stack[i],
+                                          dismiss: dismissNestedRoute,
+                                          covered: i != stack.length - 1,
+                                          child: Builder(builder: stack[i].builder),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                               ],
                             );
