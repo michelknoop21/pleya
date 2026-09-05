@@ -65,6 +65,8 @@ Mockup 19 is op 5 september 2026 vervangen door mockup 33 (PLR2 in
 `tvos-fysieke-correctieronde.md`): een Wachtrij-pill en een schakelaar "Onthouden voor deze
 titel" botsten met PB-9 en DEC-096, de geluidsuitvoer had geen plek en er was één stand getekend.
 De hash hierboven blijft staan als wat er destijds is goedgekeurd; 19 is geen bouwdoel meer.
+Mockup 33 is op 5 september 2026 goedgekeurd (DEC-101); de negen standen staan in
+`../assets/tvos-unified/mockups-2026-09-05/` en de bron in `src/pages/33-speler-paneel-*.html`.
 | 20 | 20-instellingen-uiterlijk.png | `8dc387fd7401b14bd36450f472bdcd0161d1492e58b6d1fb88b5215cd63b59dd` |
 | 21 | 21-profiel-kiezen.png | `f63f9c2e7b8b69bf4147045693ad4bed311735da2244557500c7696e9c46ffcb` |
 | 22 | 22-inloggen.png | `2216a6c69feaf6ff9732187bd6a4f84245f545320c240f86cfde8c2c0f7346cd` |
