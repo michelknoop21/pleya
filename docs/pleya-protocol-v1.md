@@ -498,7 +498,7 @@ contract keurt ze af.
 | `auth.owner_immutable` | 409 | nee | de owner kan niet verwijderd of gedegradeerd worden |
 | `auth.session_not_found` | 404 | nee | de sessie bestaat niet, of niet voor u; zie hoofdstuk 17 |
 | `settings.invalid_value` | 400 | nee | een waarde in `PATCH /settings` valt buiten zijn grens; `details` draagt veld en grens |
-| `server.internal` | 500 | ja | de handler liep op een fout die hij niet had voorzien; `details.request_id` verwijst naar de logregel |
+| `server.internal` | 500 | nee | de handler liep op een fout die hij niet had voorzien; `details.request_id` verwijst naar de logregel. `nee` en niet `ja`: het contract dwingt een boolean af waar "onbekend" het eerlijke antwoord is, en een deterministische panic die als herhaalbaar binnenkomt levert een client op die precies het verzoek blijft sturen dat de server omver duwde |
 
 **`404` en niet `403`, overal.** Een resource die u niet mag zien bestaat voor u niet, ook niet in
 zoekresultaten en ook niet als u het id raadt. Dat gold vóór PS-9 al als regel, hoewel er toen nog

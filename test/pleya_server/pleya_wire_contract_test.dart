@@ -302,7 +302,7 @@ void main() {
       final internal = PleyaError.fromJson(load('error_server_internal.json'));
       expect(internal.code, 'server.internal');
       expect(internal.domain, 'server');
-      expect(internal.retryable, isTrue);
+      expect(internal.retryable, isFalse);
       expect(internal.details?['request_id'], isA<String>());
 
       final invalid = PleyaError.fromJson(load('error_settings_invalid_value.json'));

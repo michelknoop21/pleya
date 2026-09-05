@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -12,11 +11,6 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
-
-// maxBodyBytes begrenst een aanvraagbody. De grootste die dit protocol kent is
-// een setupverzoek met drie korte velden, plus sinds PS-9 optioneel device_id
-// en device_name.
-const maxBodyBytes = 8 << 10
 
 // unknownDeviceName is de vaste plaatshouder voor een sessie zonder bekend
 // toestel (DEC-102): geen capability, of een client die niets stuurt.
@@ -482,7 +476,11 @@ func (s *Server) rateLimit(w http.ResponseWriter, key string) bool {
 // /auth/login staat niet in openapi.yaml, en een status verzinnen die er niet in
 // staat is net zo goed een contractbreuk als een veld hernoemen.
 func (s *Server) decodeBody(w http.ResponseWriter, r *http.Request, target any, code string) bool {
-	dec := json.NewDecoder(io.LimitReader(r.Body, maxBodyBytes))
+	// De grens zelf staat in bodyLimit, als middleware, zodat hij ook geldt
+	// voor een handler die r.Body zonder decodeBody leest. Wat hier overblijft
+	// is het vertalen van de fout: MaxBytesReader geeft een echte fout, en die
+	// wordt de code die het contract voor dit endpoint noemt.
+	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 
 	if err := dec.Decode(target); err != nil {

@@ -86,9 +86,6 @@ func New(opts Options) *Server {
 // SetClock laat een test de tijd bepalen.
 func (s *Server) SetClock(now func() time.Time) { s.now = now }
 
-// Handler geeft de router.
-func (s *Server) Handler() http.Handler { return s.logging(s.mux) }
-
 func (s *Server) routes() {
 	const p = "/pleya/v1"
 
@@ -423,50 +420,6 @@ func bearerToken(r *http.Request) (string, bool) {
 // Hoofdstuk 18 vraagt om een correlatie-id per aanvraag dat ook in de logregels
 // van de scanner terugkomt. Zonder dat laatste is "waarom duurde deze start zo
 // lang" niet te beantwoorden.
-func (s *Server) logging(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		started := time.Now()
-		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
-		requestID := id.New().String()
-
-		ctx := context.WithValue(r.Context(), requestIDKey{}, requestID)
-		next.ServeHTTP(rec, r.WithContext(ctx))
-
-		s.log.Info("request",
-			slog.String("request_id", requestID),
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-			slog.Int("status", rec.status),
-			slog.Duration("duration", time.Since(started)))
-	})
-}
-
-type requestIDKey struct{}
-
-type statusRecorder struct {
-	http.ResponseWriter
-	status  int
-	written bool
-}
-
-func (r *statusRecorder) WriteHeader(status int) {
-	if !r.written {
-		r.status = status
-		r.written = true
-	}
-	r.ResponseWriter.WriteHeader(status)
-}
-
-func (r *statusRecorder) Write(b []byte) (int, error) {
-	r.written = true
-	return r.ResponseWriter.Write(b)
-}
-
 // queryInt leest een optionele numerieke parameter.
 func queryInt(r *http.Request, name string) (int, bool) {
 	raw := strings.TrimSpace(r.URL.Query().Get(name))
