@@ -117,7 +117,7 @@ class MediaRatingBadge extends StatelessWidget {
           SvgPicture.asset(info.assetPath, width: size, height: size)
         else
           AppIcon(fallbackIcon, fill: 1, color: foreground, size: size),
-        SizedBox(width: spacing ?? (isInline ? 4 : 4)),
+        SizedBox(width: spacing ?? 4),
         Text(label, maxLines: 1, overflow: TextOverflow.clip, style: style),
       ],
     );

@@ -639,6 +639,8 @@ class _MainScreenState extends State<MainScreen>
       final activeProfile = context.read<ActiveProfileProvider>();
       _activeProfileForListener = activeProfile;
       _lastSeenProfileId = activeProfile.activeId;
+      // Vals alarm: hij wordt verwijderd via _activeProfileForListener in dispose.
+      // ignore: always-remove-listener
       activeProfile.addListener(_onActiveProfileChanged);
       _plexHomeService = context.read<PlexHomeService>();
       unawaited(_plexHomeService!.start());

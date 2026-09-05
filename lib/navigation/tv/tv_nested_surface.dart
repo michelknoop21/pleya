@@ -144,6 +144,10 @@ class TvNestedSurfaceState extends State<TvNestedSurface> {
     return asked;
   }
 
+  // Vals alarm: currentState is State<StatefulWidget>?, en FocusableTab is een
+  // mixin daarop. De linter kan die toepasbaarheid niet zien en noemt de
+  // check daarom altijd false; dat is hij niet.
+  // ignore: avoid-unrelated-type-assertions
   bool get _hasScreenContract => widget.route.screenKey?.currentState is FocusableTab;
 
   /// [allowFallback] is false on the very first attempt against a screen that

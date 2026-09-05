@@ -218,41 +218,42 @@ class _TvPageChipCapsule extends StatelessWidget {
               if (focused) scrollContextToCenter(node.context);
             },
       child: ExcludeSemantics(
-        child: Padding(
-          padding: EdgeInsets.all(TvCatalogLayout.actionFocusRingGap * scale),
-          child: Container(
-            decoration: ShapeDecoration(
-              shape: shape,
-              color: tk.text.withValues(alpha: TvCatalogLayout.actionFill),
-            ),
-            padding: EdgeInsets.symmetric(
-              horizontal: TvCatalogLayout.actionPaddingHorizontal * scale,
-              vertical: TvCatalogLayout.actionPaddingVertical * scale,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (chip.icon != null) ...[
-                  Icon(
-                    chip.icon,
-                    size: TvCatalogLayout.actionIconSize * scale,
-                    color: tk.text.withValues(alpha: ink),
-                  ),
-                  SizedBox(width: TvCatalogLayout.actionIconGap * scale),
-                ],
-                Text(
-                  chip.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: TvCatalogLayout.actionFontSize * scale,
-                    fontWeight: FontWeight.w600,
-                    color: tk.text.withValues(alpha: ink),
-                    height: 1.1,
-                  ),
+        child: Container(
+          // Margin, not a Padding wrapper: a Container lays out margin, then
+          // decoration, then padding, so this is the same picture one widget
+          // shallower.
+          margin: EdgeInsets.all(TvCatalogLayout.actionFocusRingGap * scale),
+          decoration: ShapeDecoration(
+            shape: shape,
+            color: tk.text.withValues(alpha: TvCatalogLayout.actionFill),
+          ),
+          padding: EdgeInsets.symmetric(
+            horizontal: TvCatalogLayout.actionPaddingHorizontal * scale,
+            vertical: TvCatalogLayout.actionPaddingVertical * scale,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (chip.icon != null) ...[
+                Icon(
+                  chip.icon,
+                  size: TvCatalogLayout.actionIconSize * scale,
+                  color: tk.text.withValues(alpha: ink),
                 ),
+                SizedBox(width: TvCatalogLayout.actionIconGap * scale),
               ],
-            ),
+              Text(
+                chip.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: TvCatalogLayout.actionFontSize * scale,
+                  fontWeight: FontWeight.w600,
+                  color: tk.text.withValues(alpha: ink),
+                  height: 1.1,
+                ),
+              ),
+            ],
           ),
         ),
       ),

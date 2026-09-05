@@ -1,3 +1,8 @@
+// De setState-aanroepen achter een await in dit bestand staan achter
+// _isCurrentQuickConnectAttempt, en die begint met `mounted &&`. De linter herkent alleen een
+// letterlijke mounted-controle, dus hij ziet de guard niet.
+// ignore_for_file: use-setstate-synchronously
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';

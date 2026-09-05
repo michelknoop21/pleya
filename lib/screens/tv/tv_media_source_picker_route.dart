@@ -603,7 +603,10 @@ class _PickerSessionState extends State<_PickerSession> {
   void _startBackgroundResolution() {
     final resolve = widget.environment.resolveMoreSources;
     if (resolve == null) return;
-    setState(() => _isResolving = true);
+    // A plain assignment: this runs from initState, before the first build.
+    // The two setState calls below are a different case, they land after an
+    // await and do need to schedule a frame.
+    _isResolving = true;
     unawaited(
       resolve(() => _chosen || !mounted).then(
         (incoming) {

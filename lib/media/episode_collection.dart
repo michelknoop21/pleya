@@ -60,6 +60,10 @@ Future<MediaItem?> fetchFirstEpisodeForSeason(
   String seasonRatingKey, {
   String? seriesId,
 }) async {
+  // Vals alarm: de linter ziet alleen het statische type. Concrete
+  // clients implementeren dit capability-contract wel, dus de check is
+  // niet altijd false.
+  // ignore: avoid-unrelated-type-assertions
   final seasonPagingClient = client is SeasonEpisodePagingClient ? client as SeasonEpisodePagingClient : null;
   final page = seriesId != null && seasonPagingClient != null
       ? await seasonPagingClient.fetchSeasonEpisodesPage(seriesId, seasonRatingKey, start: 0, size: 1)
@@ -229,6 +233,10 @@ Future<LibraryPage<MediaItem>> fetchSeasonEpisodePage(
   required int start,
   required int size,
 }) async {
+  // Vals alarm: de linter ziet alleen het statische type. Concrete
+  // clients implementeren dit capability-contract wel, dus de check is
+  // niet altijd false.
+  // ignore: avoid-unrelated-type-assertions
   final seasonPagingClient = client is SeasonEpisodePagingClient ? client as SeasonEpisodePagingClient : null;
   final page = seasonPagingClient != null
       ? await seasonPagingClient.fetchSeasonEpisodesPage(show.id, season.id, start: start, size: size)

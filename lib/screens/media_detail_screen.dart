@@ -3256,6 +3256,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     final season = _flattenedSeasonForDirectEpisodePaging;
     if (season != null) {
       final seriesId = _seriesIdForSeason(season);
+      // Vals alarm: de linter ziet alleen het statische type. Concrete
+      // clients implementeren dit capability-contract wel, dus de check is
+      // niet altijd false.
+      // ignore: avoid-unrelated-type-assertions
       final seasonPagingClient = client is SeasonEpisodePagingClient ? client as SeasonEpisodePagingClient : null;
       final page = seriesId != null && seasonPagingClient != null
           ? await seasonPagingClient.fetchSeasonEpisodesPage(seriesId, season.id, start: start, size: size)

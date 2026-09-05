@@ -712,6 +712,8 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     if (_suppressedOnDeckKeys.isNotEmpty) {
       // Self-cleaning: once the server stops returning a suppressed item, its
       // scrobble has landed and the suppression is no longer needed.
+      // Vals alarm: beide kanten zijn String-sleutels.
+      // ignore: avoid-collection-methods-with-unrelated-types
       _suppressedOnDeckKeys.retainAll({for (final item in fetched) item.globalKey});
       if (_suppressedOnDeckKeys.isNotEmpty) {
         fetched = fetched.where((item) => !_suppressedOnDeckKeys.contains(item.globalKey)).toList();

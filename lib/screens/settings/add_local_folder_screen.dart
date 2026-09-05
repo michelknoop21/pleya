@@ -162,6 +162,9 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
     } else {
       uri = await SafStorageService.instance.pickDirectory();
     }
+    // De kiezer is een native venster en kan de kijker overleven: wie hem
+    // openzet en daarna terugnavigeert laat dit scherm ongemonteerd achter.
+    if (!mounted) return;
     if (uri != null) {
       setState(() {
         _directoryUri = uri;

@@ -22,10 +22,14 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
   Future<MediaServerResponse> _getWithFailover(
     String path, {
     Map<String, dynamic>? queryParameters,
+    // Deel van de signatuur die de implementatie in plex_client.dart invult;
+    // deze declaratie gebruikt hem zelf niet.
     // ignore: unused_element_parameter
     Map<String, String>? headers,
+    // Zie hierboven.
     // ignore: unused_element_parameter
     Duration? timeout,
+    // Zie hierboven.
     // ignore: unused_element_parameter
     AbortController? abort,
     bool allowEndpointFailover = true,

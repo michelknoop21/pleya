@@ -190,49 +190,50 @@ class _ActionCapsule extends StatelessWidget {
       focusShapeBorder: shape,
       disableScale: true,
       semanticLabel: _semanticLabel,
-      child: Padding(
-        padding: EdgeInsets.all(TvCatalogLayout.actionFocusRingGap * scale),
-        child: Container(
-          decoration: ShapeDecoration(
-            shape: shape,
-            color: tk.text.withValues(alpha: TvCatalogLayout.actionFill),
-          ),
-          padding: EdgeInsets.symmetric(
-            horizontal: TvCatalogLayout.actionPaddingHorizontal * scale,
-            vertical: TvCatalogLayout.actionPaddingVertical * scale,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                action.icon,
-                size: TvCatalogLayout.actionIconSize * scale,
-                color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
-              ),
-              SizedBox(width: TvCatalogLayout.actionIconGap * scale),
-              Text(
-                _label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: TvCatalogLayout.actionFontSize * scale,
-                  fontWeight: FontWeight.w600,
-                  // Secondary ink while the action is idle. Full white on three
-                  // labels next to a full-white title is four things shouting;
-                  // the value is still perfectly readable at three metres one
-                  // step down, and the title gets the top of the hierarchy back.
-                  color: tk.text.withValues(
-                    alpha: action.badgeCount > 0 ? TvCatalogLayout.inkPrimary : TvCatalogLayout.inkSecondary,
-                  ),
-                  height: 1.1,
+      child: Container(
+        // Margin, not a Padding wrapper: a Container lays out margin, then
+        // decoration, then padding, so this is the same picture one widget
+        // shallower.
+        margin: EdgeInsets.all(TvCatalogLayout.actionFocusRingGap * scale),
+        decoration: ShapeDecoration(
+          shape: shape,
+          color: tk.text.withValues(alpha: TvCatalogLayout.actionFill),
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: TvCatalogLayout.actionPaddingHorizontal * scale,
+          vertical: TvCatalogLayout.actionPaddingVertical * scale,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              action.icon,
+              size: TvCatalogLayout.actionIconSize * scale,
+              color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
+            ),
+            SizedBox(width: TvCatalogLayout.actionIconGap * scale),
+            Text(
+              _label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: TvCatalogLayout.actionFontSize * scale,
+                fontWeight: FontWeight.w600,
+                // Secondary ink while the action is idle. Full white on three
+                // labels next to a full-white title is four things shouting;
+                // the value is still perfectly readable at three metres one
+                // step down, and the title gets the top of the hierarchy back.
+                color: tk.text.withValues(
+                  alpha: action.badgeCount > 0 ? TvCatalogLayout.inkPrimary : TvCatalogLayout.inkSecondary,
                 ),
+                height: 1.1,
               ),
-              if (action.badgeCount > 0) ...[
-                SizedBox(width: TvCatalogLayout.actionIconGap * scale),
-                _CountBadge(count: action.badgeCount, scale: scale),
-              ],
+            ),
+            if (action.badgeCount > 0) ...[
+              SizedBox(width: TvCatalogLayout.actionIconGap * scale),
+              _CountBadge(count: action.badgeCount, scale: scale),
             ],
-          ),
+          ],
         ),
       ),
     );
