@@ -127,7 +127,8 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted. Data- en resolutielaag op eae19cb4, de pagina 31 A, de sheet 31 B en de toasts 31 C/D op a9a50ad9, de layout- en meldingscorrecties uit de simulatorronde op a5730f35. Het Verify-scenario is groen; de hardwareronde staat open | OPEN | eae19cb4, a9a50ad9, a5730f35 |
 | HERO3 | De Home-hero toont niet alleen recent uitgebrachte films: "Recent uitgebracht" had geen tijdvenster, en items zonder releasedatum reden mee op `addedAt`. Besluit 5 september: 90 dagen op releasedatum, zonder datum buiten de hero (DEC-097) | FIXED, hardware open | `531ae19c` |
 | PLR1 | Tekst van de spelerlaag valt links buiten het title-safe gebied (titelbalk op x = 0, tijdlijn op 24 pt) terwijl elke andere TV-surface `tvPageInset` betaalt | FIXED, hardware open | `36118056` |
-| WALK | Een `walk`-stap in Pleya Verify die een richting herhaalt en per hop meldt welke focusbare kandidaat is overgeslagen, zodat sprongen niet meer per geval op het toestel gevonden hoeven te worden. Kern in `c4ffcd16` (DEC-098); open: `nav.profile-id`, vier scenario's op de simulator, twee sabotagecontroles, docs | IN PROGRESS | `c4ffcd16` |
+| WALK | Een `walk`-stap in Pleya Verify die een richting herhaalt en per hop meldt welke focusbare kandidaat is overgeslagen, zodat sprongen niet meer per geval op het toestel gevonden hoeven te worden. Kern in `c4ffcd16` (DEC-098), `nav.profile` en de vier scenario's in `a9f69f18`, alle vier groen op de simulator, beide sabotagecontroles aantoonbaar rood | FIXED | `c4ffcd16`, `a9f69f18` |
+| NAVSEL1 | `tvos.nav.destination-select` spreekt de app op twee punten tegen: het verwacht Films na één RIGHT vanaf Home terwijl Series daar staat, en het eist een Select om van bestemming te wisselen terwijl focus dat sinds 2 september zelf doet. Volledig gedekt door `tvos.nav.focus-switches-destination` | OPEN | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -2713,3 +2714,91 @@ widgettest eist dat titelblok en tijdlijn niet vóór de inset beginnen; `player
 `player.timeline` en `player.safe_area` bestaan voor Pleya Verify. Een spelerscenario wacht op
 een betrouwbare afspeelroute op de TV-shell (VER5) en is bewust niet gefaket; hardware is J4.
 
+
+### WALK, de vier scenario's op de simulator
+
+De kern (`c4ffcd16`, DEC-098) was er al; wat openstond was het bewijs dat een walk op de echte
+oppervlakken doet wat hij belooft. Vier scenario's, één ronde per oppervlak, alle vier groen op de
+tvOS-simulator, plus twee sabotagecontroles die aantoonbaar rood waren.
+
+Het eerste gat was `nav.profile`. De profielchip is de linkerrand van de bovenbalk, dus de laatste
+hop van een walk naar links landde op een `discovered`-knoop die een scenario niet kan benoemen.
+Zonder id kan een walk over die balk drukken tellen, maar niet zeggen waar ze uitkomen.
+
+Het tweede gat was de generator. `tool/generate_automation_ids_yaml.dart` crashte met "type
+'InvalidType' is not a subtype of type 'FunctionType'", waardoor `automation_ids.yaml` met de hand
+werd bijgewerkt en dus kon gaan afwijken van de catalogus in Dart. De oorzaak was een import:
+`automation_ids.dart` haalde `navigation_tabs.dart` binnen voor alleen de enum `NavigationTabId`,
+en daarmee de hele widgetboom, die de kale Dart-VM langs de FFI use-site-transformer moest
+compileren. De enum staat nu in `lib/navigation/navigation_tab_id.dart` en `navigation_tabs.dart`
+re-exporteert hem, dus geen andere import verandert en de yaml is weer gegenereerd.
+
+#### Wat de hops laten zien
+
+De bovenbalk is zes stops: profielchip, Zoeken, Home, Series, Films, Mijn Pleya. Twee hops naar
+links, vijf terug naar rechts, alle zeven `ok`. Op Home drie hops omlaag (balk, hero-Afspelen,
+rail 0, rail 1) en twee terug omhoog. Op de taalpagina zes rijen, één per druk, ondanks
+rijhoogtes die verschillen omdat een rij met een noot eronder hoger is dan een schakelaar.
+
+De hub gaf het antwoord op een vraag die als tegenspraak in de lijst stond. `tvos.my-pleya.alignment`
+en `tvos.settings.language-preferences` noemen na twee keer omlaag een verschillende tegel, en de
+aanname was dat één van de twee verouderd was. Dat is niet zo. De entree-druk landt op
+`tvMyPleya_switchProfile`, de kop van de pagina, en pas daarna komen de tegels: `switchProfile`,
+`my_pleya.tile[libraries]`, `my_pleya.tile[settings]`, rand. `alignment` loopt zonder Select naar
+binnen en komt dus op `libraries` uit; `language-preferences` drukt eerst Select, en dat verplaatst
+de ring via `TvContentFocusAuthority.onDestinationSelected` al naar `switchProfile`, zodat dezelfde
+twee drukken een rij lager eindigen, op `settings`. Allebei kloppen, en het verschil is die ene
+druk. Geen van beide is bijgewerkt.
+
+#### De balk is sticky, en dat is geen sprong
+
+De walk omhoog op Home was in eerste instantie rood, en terecht gemeld. Op een pagina die tot de
+tweede rail gescrold staat, staat de bovenbalk op y=46 terwijl de rail die verlaten wordt op y=198
+staat en de rail waarnaar teruggekeerd wordt nog op y=-354, boven de vouw. Meetkundig ligt de balk
+er dus tussen, en het orakel zegt dat ook.
+
+Navigationeel ligt hij er niet tussen. `TvRailStack._handOver` bezit UP tussen rails en geeft de
+toets pas boven de eerste rail terug, dus de balk bereik je door eerst naar de hero te lopen. Dat
+is het LAND4-contract en geen defect, dus het scenario noemt de twee balkitems in `allow`. Per id,
+niet als ruimere marge: een overgeslagen rail op diezelfde hop blijft rood, en dat is precies wat
+de tweede sabotagecontrole aantoont.
+
+Reken erop dat elke verticale walk op een gescrold TV-oppervlak dezelfde vrijstelling nodig heeft.
+Het orakel kan niet zien dat een balk niet meebeweegt met de inhoud, en dat afleiden uit een
+vergelijking van het frame ervoor en erna zou een regel toevoegen die op een animerend frame kan
+omvallen. Een vrijstelling per scenario laat zien wélke knoop gepasseerd mag worden.
+
+#### De negatieve controles
+
+Beide zijn toegepast op een gebouwde app, gedraaid, en daarna teruggedraaid; geen van beide staat
+in een commit.
+
+`destinations[i + 1]` naar `destinations[i + 2]` in `tv_top_navigation.dart` laat de balk Home
+overslaan. De walk naar rechts valt op hop 2 met "expected to land on 'nav.discover' and landed on
+nav.series". `index + delta` naar `index + delta * 2` in `tv_rail_stack.dart` laat de stapel een
+rail overslaan. De walk omlaag valt op hop 3, met `discover.rail.item[2.0]` in plaats van `[1.0]`.
+
+Allebei vallen ze op de druk die de fout maakte, wat het punt van de stap is. Wel vallen ze als
+`expectMismatch` en niet als `skipped`, want `expect` wordt vóór het orakel gecontroleerd. Wie de
+overslagdetectie zelf wil zien afgaan, haalt `expect` weg en houdt de sabotage.
+
+Terzijde uit de tweede controle: de Home-feed van `catalog.mixed.v1` heeft minstens drie rails,
+niet twee. `discover.rail.item[2.0]` bestaat. Het scenario noemt de eerste twee landingen en stopt
+daar; VER4 blijft open, want geen rail is lang genoeg om te scrollen.
+
+### NAVSEL1, `tvos.nav.destination-select` spreekt de app tegen
+
+Gevonden tijdens het WALK-werk, niet gedraaid. Het scenario beweert twee dingen die geen van beide
+meer waar zijn.
+
+Het verwacht dat één druk naar rechts vanaf Home op `nav.movies` landt. De balk is
+`search, home, series, movies, [liveTv], myPleya` (`lib/navigation/tv/tv_destination.dart`), dus
+daar staat Series. En het eist een Select om van bestemming te wisselen, terwijl
+`_focusTvDestination` (`lib/screens/main_screen.dart`) bij focus al `_tvNav.activate` en
+`_selectTab` draait; de assertie dat Home ná die druk nog `active` is, kan dus niet kloppen.
+
+Alles wat het claimt te dekken staat correct in `tvos.nav.focus-switches-destination`: de koude
+start op de balk, de pagina die de focus volgt zonder Select, DOWN als de enige weg naar binnen,
+UP terug, en een snelle reeks drukken zonder wachttijd ertussen. Dat maakt dit vermoedelijk een
+scenario dat verwijderd hoort te worden in plaats van bijgewerkt, maar het draait eerst, want welke
+helft rood staat is nog niet gemeten.
