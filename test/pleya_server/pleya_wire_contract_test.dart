@@ -68,6 +68,16 @@ void main() {
     // The app will read it once it stops identifying itself by name, and that
     // is the phase that removes `User` from this list.
     'StreamSessionList',
+    // S1.5 adds API tokens and the audit log. Both belong to the same web admin
+    // screen (S10.6 for the token list, S10.5 for diagnostics), and an agent
+    // credential is by definition not something a living-room client mints.
+    //
+    // `SessionList` was already deferred above, so the two new fields on
+    // `Session` (`kind` and `scope`) add no line here; the slice that builds a
+    // session screen in the app is the one that removes that entry.
+    'ApiTokenList',
+    'ApiTokenCreated',
+    'AuditPage',
   };
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
@@ -113,8 +123,8 @@ void main() {
       );
     });
 
-    test('covers the 56 fixtures the contract ships', () {
-      expect(fixtures, hasLength(56));
+    test('covers the 61 fixtures the contract ships', () {
+      expect(fixtures, hasLength(61));
     });
 
     for (final fixture in fixtures) {

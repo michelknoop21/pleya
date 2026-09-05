@@ -73,7 +73,7 @@ Achttien tabellen, in acht migraties.
 | Kijkstatus | `watch_states` | het conflictmodel uit DEC-049, met de eigenaar in de rij |
 | Streamsessies | `stream_sessions` | de browserkant van autorisatie uit DEC-051 |
 | Gebruikers en rechten | `users`, `sessions`, `library_permissions` | vier rollen en de sessieketen uit PS-9 (DEC-098, DEC-102) |
-| Beheer | `server_settings`, `admin_audit` | instellingen met een grens (S1.2); `admin_audit` staat er en wordt gevuld door S1.5 |
+| Beheer | `server_settings`, `admin_audit` | instellingen met een grens (S1.2); `admin_audit` wordt gevuld sinds S1.5 en bewaart negentig dagen |
 
 Drie keuzes die uitleg verdienen, en die als [DEC-040](../docs/DECISIONS.md#dec-040-grouping-key-en-identiteit-zijn-twee-dingen-in-het-catalogusschema)
 tot en met [DEC-043](../docs/DECISIONS.md#dec-043-de-inodebetrouwbaarheid-staat-per-root-in-de-database-en-wordt-gemeten-en-niet-aangenomen)
@@ -110,9 +110,10 @@ een geweigerd event wordt beantwoord met de actuele toestand en gelogd, en verde
 
 ## Wat er op de lijn zit
 
-Vierendertig operaties op dertig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
+Zevenendertig operaties op tweeëndertig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
 daarna PS-9, de twee daarna de serverinstellingen van S1.2, de vier daarna de serverdiagnostiek
-van S1.3, en de laatste twee `GET /users/me` en het overzicht van lopende streams uit S1.4.
+van S1.3, de twee daarna `GET /users/me` en het overzicht van lopende streams uit S1.4, en de
+laatste drie de API-tokens en het auditlog van S1.5.
 
 | Endpoint | Klasse |
 | --- | --- |
@@ -136,18 +137,27 @@ van S1.3, en de laatste twee `GET /users/me` en het overzicht van lopende stream
 | `GET /pleya/v1/server/environment`, `/server/log` | admin |
 | `POST /pleya/v1/server/connectivity-check`, `/server/rotate-signing-key` | admin |
 | `GET /pleya/v1/stream-sessions` | admin |
+| `POST`/`GET /pleya/v1/auth/api-tokens` | geauthenticeerd op zichzelf, admin met `user_id` |
+| `GET /pleya/v1/audit` | admin |
 
 Buiten het protocol staat er nog één route: `GET /` en elk pad dat geen bestand en geen protocolroute is levert
 `index.html` van de webbundel. `/pleya/v1/*`, `/healthz` en `/readyz` houden altijd voorrang, en een
 onbekend pad onder `/pleya/v1` krijgt de foutvorm van het protocol en geen pagina HTML.
 `internal/web` en `internal/api/web_routes_test.go` toetsen dat.
 
+Een API-token is geen apart credentialtype maar een rij in `sessions` met `kind = 'api'` (RB-20). Het
+gaat als bearer mee zoals een accesstoken, wordt op zijn hash opgezocht in plaats van op een
+handtekening geverifieerd, en wordt ingetrokken met `DELETE /sessions/{id}` zoals elk ander toestel.
+Zijn bereik (`read`, `maintenance`, `admin`) kan nooit boven de rol van de eigenaar, en begrenst de
+adminklasse ook wanneer de rol hem wel haalt.
+
 Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), verzamelingen en
 afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer (bibliotheken, opslag en scans in
-S2, API-tokens en audit in S1.5). Die geven een 404, en
+S2). Die geven een 404, en
 `capabilities` in `/info` zegt hetzelfde: `browse`, `search`, `artwork`, `watch_state`,
-`watch_state_ownership`, `stream_sessions`, `users` en `sessions` staan op `true`, en capabilities is
-leidend. `administration` staat er nog niet bij: die vlag hoort bij S1.6, wanneer venster 1 sluit.
+`watch_state_ownership`, `stream_sessions`, `users`, `sessions` en `api_tokens` staan op `true`, en
+capabilities is leidend. `administration` staat er nog niet bij: die vlag hoort bij S1.6, wanneer
+venster 1 sluit.
 
 Drie dingen aan `/stream` verrassen als je ze niet verwacht. Eén bereik per aanvraag levert een
 `206`; **meerdere bereiken leveren het hele bestand als `200`**, want `multipart/byteranges` wordt

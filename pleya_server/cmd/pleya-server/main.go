@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
+	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/database"
@@ -199,6 +200,10 @@ func run() int {
 	workCtx, stopWork := context.WithCancel(ctx)
 	defer stopWork()
 
+	// admin_audit (S1.5). Eén store voor de schrijfhaak in de API en voor de
+	// opruimronde in housekeeping, zodat de bewaartermijn op één plek staat.
+	auditStore := audit.NewStore(pool)
+
 	workers := &sync.WaitGroup{}
 	workers.Add(3)
 	go func() { defer workers.Done(); runner.Run(workCtx) }()
@@ -208,7 +213,7 @@ func run() int {
 	}()
 	go func() {
 		defer workers.Done()
-		housekeeping(workCtx, runner, authStore, revocations, logging.Component(log, "housekeeping"))
+		housekeeping(workCtx, runner, authStore, revocations, auditStore, logging.Component(log, "housekeeping"))
 	}()
 
 	if cfg.ScanOnStart {
@@ -254,6 +259,7 @@ func run() int {
 		Revocations:        revocations,
 		Settings:           settingsCache,
 		Diag:               diag.NewStore(pool),
+		Audit:              auditStore,
 		Log:                logRing,
 		Listen:             cfg.HTTPAddr,
 		TrustedProxies:     cfg.TrustedProxies,

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
@@ -19,12 +20,20 @@ import (
 // niet mee.
 
 // SessionWire is het wire-type van een sessie (schema Session).
+//
+// kind en scope kwamen met S1.5 (J.2 rij 13). Een API-token is een sessie, dus
+// het staat in dit overzicht naast de toestellen; zonder kind zou een
+// beheerder een agent niet van een telefoon kunnen onderscheiden en zou hij de
+// verkeerde intrekken. scope ontbreekt op alles wat geen API-token is.
 type SessionWire struct {
 	ID         string `json:"id"`
 	DeviceName string `json:"device_name"`
 	CreatedAt  string `json:"created_at"`
 	LastSeenAt string `json:"last_seen_at"`
 	Current    bool   `json:"current"`
+	Kind       string `json:"kind"`
+	Scope      string `json:"scope,omitempty"`
+	ExpiresAt  string `json:"expires_at,omitempty"`
 }
 
 // SessionListWire is het antwoord van GET /sessions.
@@ -68,7 +77,7 @@ func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 		target = parsed
 	}
 
-	sessions, err := s.opts.Auth.ListSessions(r.Context(), target)
+	sessions, err := s.opts.Auth.ListSessions(r.Context(), target, s.now().UTC())
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
@@ -82,13 +91,19 @@ func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 
 	items := make([]SessionWire, 0, len(sessions))
 	for _, sess := range sessions {
-		items = append(items, SessionWire{
+		item := SessionWire{
 			ID:         sess.ID.String(),
 			DeviceName: sess.DeviceName,
 			CreatedAt:  sess.CreatedAt.UTC().Format(time.RFC3339),
 			LastSeenAt: sess.LastSeenAt.UTC().Format(time.RFC3339),
 			Current:    sess.ID == current,
-		})
+			Kind:       sess.Kind,
+			Scope:      string(sess.Scope),
+		}
+		if !sess.ExpiresAt.IsZero() {
+			item.ExpiresAt = sess.ExpiresAt.UTC().Format(time.RFC3339)
+		}
+		items = append(items, item)
 	}
 	writeJSON(w, http.StatusOK, SessionListWire{Items: items})
 }
@@ -126,6 +141,7 @@ func (s *Server) handleRevokeSession(w http.ResponseWriter, r *http.Request) {
 	if !s.revokeSession(w, r, sessionID) {
 		return
 	}
+	s.auditEvent(r, auditRevokeSession, sessionID.String(), audit.OutcomeOK, nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -139,6 +155,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if !s.revokeSession(w, r, sessionID) {
 		return
 	}
+	s.auditEvent(r, auditLogout, sessionID.String(), audit.OutcomeOK, nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 

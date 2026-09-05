@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
@@ -71,6 +72,9 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			// stap 2; GET/DELETE /sessions, POST /auth/logout en het
 			// intrekkingsregister maken de belofte pas waar.
 			Sessions: true,
+			// APITokens: aan sinds S1.5. POST en GET /auth/api-tokens bestaan,
+			// en Session draagt kind en scope.
+			APITokens: true,
 		},
 		Auth: InfoAuth{
 			Methods:       []string{"password"},
@@ -116,9 +120,14 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	err = s.opts.Auth.CompleteSetup(r.Context(), req.SetupCode, req.Username, hash, s.now().UTC())
 	switch {
 	case errors.Is(err, auth.ErrSetupCompleted):
+		s.auditAnonymous(r, auditSetup, audit.OutcomeDenied, map[string]any{"reason": "already_completed"})
 		writeError(w, s.log, CodeSetupAlreadyCompleted, "setup already completed", nil)
 		return
 	case errors.Is(err, auth.ErrSetupCodeInvalid):
+		// De code zelf gaat niet mee in detail. Hij is een geheim zolang setup
+		// openstaat, en een auditlog dat mislukte pogingen letterlijk bewaart
+		// zou het raden ervan makkelijker maken in plaats van zichtbaar.
+		s.auditAnonymous(r, auditSetup, audit.OutcomeDenied, map[string]any{"reason": "code_invalid"})
 		writeError(w, s.log, CodeSetupCodeInvalid, "setup code invalid or expired", nil)
 		return
 	case err != nil:
@@ -133,7 +142,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.limiter.reset("setup")
-	s.issueTokens(w, r, ownerID, deviceID(req.DeviceID), deviceName(req.DeviceName))
+	s.issueTokens(w, r, ownerID, deviceID(req.DeviceID), deviceName(req.DeviceName), auditSetup)
 }
 
 type loginRequest struct {
@@ -156,6 +165,11 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// sleutel is een emmer, geen claim.
 	limiterKey := "login:" + req.Username
 	if !s.rateLimit(w, limiterKey) {
+		// Een geweigerde poging staat in het auditlog en niet alleen in de
+		// emmer van de limiter: de limiter vergeet, het log niet, en het
+		// patroon over een nacht is precies wat een beheerder wil zien.
+		s.auditAnonymous(r, auditLogin, audit.OutcomeDenied,
+			map[string]any{"username": req.Username, "reason": "rate_limited"})
 		return
 	}
 
@@ -193,6 +207,14 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !ok || !known {
+		// De gebruikersnaam gaat mee en het wachtwoord niet. Zonder de naam is
+		// de regel onbruikbaar (welk account wordt aangevallen), en met het
+		// wachtwoord zou het auditlog een woordenlijst worden van wat mensen
+		// bijna goed typen, inclusief hun echte wachtwoord met één tikfout.
+		//
+		// user_id blijft leeg, ook wanneer de naam bestaat: zie auditAnonymous.
+		s.auditAnonymous(r, auditLogin, audit.OutcomeDenied,
+			map[string]any{"username": req.Username, "reason": "invalid_credentials"})
 		writeError(w, s.log, CodeInvalidCredentials, "invalid credentials", nil)
 		return
 	}
@@ -206,7 +228,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.limiter.reset(limiterKey)
-	s.issueTokens(w, r, user.ID, deviceID(req.DeviceID), deviceName(req.DeviceName))
+	s.issueTokens(w, r, user.ID, deviceID(req.DeviceID), deviceName(req.DeviceName), auditLogin)
 }
 
 type refreshRequest struct {
@@ -388,7 +410,7 @@ func (s *Server) handleStreamSession(w http.ResponseWriter, r *http.Request) {
 // issueTokens opent een sessie en geeft een vers paar uit na setup of login
 // (DEC-102). deviceID is nil zonder capability of zonder een toestel-id van de
 // client; deviceName draagt in dat geval al de vaste plaatshouder.
-func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.ID, deviceID *string, deviceName string) {
+func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.ID, deviceID *string, deviceName string, operation string) {
 	now := s.now().UTC()
 	sessionID, err := s.opts.Auth.CreateSession(r.Context(), userID, deviceID, deviceName, now)
 	if err != nil {
@@ -411,6 +433,14 @@ func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.I
 		writeInternal(w, s.log, err)
 		return
 	}
+
+	// De auditregel staat hier en niet bij de aanroeper: pas hier bestaan de
+	// gebruiker én de sessie, en een regel zonder session_id zou de vraag "welk
+	// toestel is er binnengekomen" onbeantwoord laten. auditFor en niet
+	// auditEvent, want deze aanvraag droeg zelf geen claims: de identiteit
+	// ontstaat tijdens de handeling.
+	s.auditFor(r, userID, sessionID, operation, audit.OutcomeOK,
+		map[string]any{"device_name": deviceName})
 
 	writeJSON(w, http.StatusOK, TokenPair{
 		AccessToken:  access,

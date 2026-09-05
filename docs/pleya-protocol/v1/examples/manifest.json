@@ -220,6 +220,31 @@
       "note": "een device-gebonden sessie naast een legacy-sessie"
     },
     {
+      "file": "session_list_api_token.json",
+      "schema": "SessionList",
+      "note": "S1.5: een toestel en een API-token in hetzelfde overzicht"
+    },
+    {
+      "file": "api_token_list.json",
+      "schema": "ApiTokenList",
+      "note": "zonder geheimen; die bestaan alleen nog bij de aanvrager"
+    },
+    {
+      "file": "api_token_created.json",
+      "schema": "ApiTokenCreated",
+      "note": "het enige antwoord dat een tokengeheim draagt"
+    },
+    {
+      "file": "error_scope_exceeds_role.json",
+      "schema": "ErrorEnvelope",
+      "note": "scope admin voor een lid"
+    },
+    {
+      "file": "audit_page.json",
+      "schema": "AuditPage",
+      "note": "nieuwste eerst; de mislukte login draagt geen user_id"
+    },
+    {
       "file": "error_user_not_found.json",
       "schema": "ErrorEnvelope"
     },

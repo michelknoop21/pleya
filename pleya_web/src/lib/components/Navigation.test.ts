@@ -20,7 +20,8 @@ const caps: Capabilities = {
   users: false,
   watch_state_ownership: false,
   stream_sessions: false,
-  sessions: false
+  sessions: false,
+  api_tokens: false
 };
 const items = navItems(caps, 2);
 

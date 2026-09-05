@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
@@ -454,6 +455,8 @@ func (s *Server) handleRotateSigningKey(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if req.Confirm != rotateConfirmWord {
+		s.auditEvent(r, auditRotateSigningKey, "", audit.OutcomeDenied,
+			map[string]any{"reason": "confirm_mismatch"})
 		writeError(w, s.log, CodeConfirmMismatch,
 			"confirm must be "+rotateConfirmWord, map[string]any{"expected": rotateConfirmWord})
 		return
@@ -485,5 +488,10 @@ func (s *Server) handleRotateSigningKey(w http.ResponseWriter, r *http.Request) 
 
 	s.log.Warn("ondertekensleutel geroteerd; alle sessies zijn ingetrokken",
 		slog.Int("sessies", len(revoked)))
+	// De regel wordt geschreven met de claims van een token dat op dit moment
+	// al dood is, en dat is precies de bedoeling: het log moet zeggen wie er
+	// geroteerd heeft, niet wie er daarna nog mocht.
+	s.auditEvent(r, auditRotateSigningKey, "", audit.OutcomeOK,
+		map[string]any{"sessions_revoked": len(revoked)})
 	w.WriteHeader(http.StatusNoContent)
 }

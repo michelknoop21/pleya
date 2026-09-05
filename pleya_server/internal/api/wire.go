@@ -74,6 +74,13 @@ type Capabilities struct {
 	// ingetrokken sessie is binnen twee seconden ongeldig, ook voor een lopende
 	// stream (DEC-099).
 	Sessions bool `json:"sessions"`
+
+	// APITokens (RB-20, J.2 rij 12 en 13). Aan sinds S1.5. De vlag zegt dat
+	// POST en GET /auth/api-tokens bestaan en dat Session kind en scope draagt.
+	// Hij staat naast `sessions` en niet erin: een client die sessies kent maar
+	// deze vlag niet ziet, toont het sessieoverzicht zonder de tokenkolom, en
+	// dat is een geldig scherm.
+	APITokens bool `json:"api_tokens"`
 }
 
 // ServerDetail is het antwoord van GET /server.

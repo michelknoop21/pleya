@@ -498,6 +498,7 @@ contract keurt ze af.
 | `auth.owner_immutable` | 409 | nee | de owner kan niet verwijderd of gedegradeerd worden |
 | `auth.session_not_found` | 404 | nee | de sessie bestaat niet, of niet voor u; zie hoofdstuk 17 |
 | `auth.permission_not_allowed` | 409 | nee | de rol van het doel verbiedt deze trede: `restricted` krijgt nooit `manage`. `details` draagt `permission` en `role` |
+| `auth.scope_exceeds_role` | 400 | nee | het gevraagde bereik van een API-token komt boven de rol van de eigenaar uit; `details` draagt `scope` en `role`. `400` en geen `409`: er is geen toestand die dit verzoek in de weg zit en later anders kan zijn, het verzoek zelf klopt niet |
 | `settings.invalid_value` | 400 | nee | een waarde in `PATCH /settings` valt buiten zijn grens; `details` draagt veld en grens |
 | `server.confirm_mismatch` | 409 | nee | een destructieve handeling zonder de juiste bevestiging; `details.expected` zegt welk woord er moet staan. Voor S1.3 is dat `POST /server/rotate-signing-key` met `confirm: "rotate"` |
 | `server.internal` | 500 | nee | de handler liep op een fout die hij niet had voorzien; `details.request_id` verwijst naar de logregel. `nee` en niet `ja`: het contract dwingt een boolean af waar "onbekend" het eerlijke antwoord is, en een deterministische panic die als herhaalbaar binnenkomt levert een client op die precies het verzoek blijft sturen dat de server omver duwde |
@@ -1069,7 +1070,7 @@ gewoon was.
 
 ### 16.4 De autorisatiematrix
 
-Drieëntwintig regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien
+Zesentwintig regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien
 zijn de bindende matrix van DEC-105; elke slice die daarna een endpoint toevoegt zet zijn eigen
 regel erbij en sluit niet zonder (K.3 van het securityplan).
 
@@ -1098,10 +1099,26 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 21 | `POST /server/rotate-signing-key` | elke sessie van het huishouden | klasse `admin`, `404` voor de rest; `confirm: "rotate"` verplicht, en het antwoord draagt de nieuwe sleutel niet |
 | 22 | `GET /users/me` | niets | klasse `authenticated`, en de enige regel waar élke rol `200` krijgt: het doel is de aanvrager zelf, er staat geen id in het pad en er is geen parameter, dus er valt niets te raden. Het antwoord bevat nooit een andere gebruiker (S1.4) |
 | 23 | `GET /stream-sessions` | wie er kijkt, op welk toestel, en waarnaar | klasse `admin`, `404` voor de rest; geen geheim van de streamsessie en geen token in het antwoord, en de lijst bevat uitsluitend sessies die op dit moment nog bytes kunnen ophalen (S1.4) |
+| 24 | `POST /auth/api-tokens` | een credential met te veel bereik of te lange geldigheid | klasse `authenticated` op zichzelf, `admin` met `user_id` van een ander. Het bereik wordt getoetst tegen de rol van de **eigenaar** en niet die van de aanvrager, anders is `user_id` een manier om een lid beheerrechten te geven zonder zijn rol te wijzigen. Een aanvraag die zelf met een API-token binnenkomt mag alleen minten met bereik `admin`; anders `404`, byte-gelijk aan een beheerroute (S1.5) |
+| 25 | `GET /auth/api-tokens` | het bestaan van andermans agents | klasse `authenticated` op zichzelf, `admin` met `?user_id=`; anders `404`. Nooit een geheim, en nooit de hash ervan (S1.5) |
+| 26 | `GET /audit` | wie wat wanneer deed, inclusief mislukte logins | klasse `admin`, `404` voor de rest. Niet "de eigen regels voor iedereen": de lijst is niet per gebruiker te filteren zonder de regels zonder gebruiker, juist de mislukte logins, ergens te laten vallen, en een auditlog met stille gaten is erger dan geen (S1.5) |
 
 Regel 22 is de enige waar geen enkele rol wordt geweigerd, en hij staat er juist daarom: een
 implementatie die hem per ongeluk achter `requireAdmin` zet blijft voor `owner` en `admin` groen op
 elke andere controle, en breekt alleen voor de twee rollen die niemand handmatig probeert.
+
+Regel 24 en 25 lijken daarop maar zijn het niet: zonder `user_id` antwoorden ze elke rol, mét
+`user_id` van een ander zijn ze een beheerhandeling. Dat is dezelfde vorm als regel 15, en met opzet
+geen admin-only oppervlak. Een lid dat een leestoken voor zijn eigen bibliotheek wil, zou anders een
+beheerder moeten vragen die alleen een token met de rechten van dat lid kán maken: hetzelfde token,
+met een mens ertussen. En was elk API-token een beheerding, dan zou `auth.scope_exceeds_role` een
+dode code zijn, want een beheerder overschrijdt zijn eigen rol nooit.
+
+**Het bereik van een API-token begrenst de adminklasse, ook wanneer de rol hem haalt.** Een token met
+bereik `read` of `maintenance` zakt door dezelfde poort als een lid, met dezelfde 404: het
+beheeroppervlak hoort net zomin te bestaan voor een credential dat er niet bij mag als voor een
+gebruiker die er niet bij mag. Onder die klasse verandert het bereik niets, want daar zijn het de
+eigen rechten van de eigenaar, en die worden per aanvraag opnieuw gelezen.
 
 Regel 17 tot en met 21 en regel 23 hebben één ding gemeen dat de eerste zestien niet hebben: ze lekken
 niets uit de bibliotheek maar uit de installatie. Een lijst omgevingsvariabelen, een logregel met een pad of
@@ -1348,6 +1365,105 @@ bron maken voor dezelfde vraag.
 
 ---
 
+## 17c. API-tokens en het auditlog
+
+Beschikbaar wanneer `capabilities.api_tokens` waar is. Het auditlog hoort bij het beheeroppervlak en
+onderhandelt over `administration`.
+
+### 17c.1 Een API-token is een sessie
+
+Een agent kan de refreshflow niet lopen. Die vraagt een client die een antwoord bewaart, opnieuw
+aanbiedt en op een rotatie reageert; wat een agent wel kan is één bearer meesturen. Dat token is een
+gewone rij in `sessions` met `kind: api` en de tokennaam als `device_name`.
+
+Dat is de hele architectuurkeuze, en hij is er een van weglaten. Er is één intrekkingspad
+(`DELETE /sessions/{id}`), één register, één overzicht. Een apart tokenmodel ernaast zou twee
+intrekkingspaden opleveren, en dan is de vraag "is dit credential nog geldig" op twee plekken te
+beantwoorden en op één plek te vergeten.
+
+| Methode en pad | Klasse |
+| --- | --- |
+| `POST /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` met `user_id` van een ander |
+| `GET /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` met `?user_id=` |
+
+```json
+{ "token": { "id": "0198f2d0-...", "user_id": "0198f2d0-...",
+             "name": "Home Assistant", "scope": "read",
+             "created_at": "2026-09-05T09:00:00Z",
+             "last_seen_at": "2026-09-05T09:00:00Z",
+             "expires_at": "2026-12-04T09:00:00Z" },
+  "secret": "plyat1_..." }
+```
+
+**Het geheim staat precies één keer in een antwoord.** De server bewaart alleen de SHA-256 ervan, net
+als bij een refreshtoken, dus een tweede kans bestaat niet en een databasedump levert geen bruikbaar
+token op. Het voorvoegsel `plyat1_` is geen versiering: het laat de server zonder gokken kiezen welk
+verificatiepad hij loopt, en het maakt een gelekt geheim vindbaar in een logbestand of een
+repository, precies de plek waar een langlevend token belandt.
+
+**Standaard negentig dagen, en "nooit" bestaat niet.** `expires_in_days` mag tussen 1 en 3650. Een
+token zonder vervaldatum is de vorm die jaren later nog in een oude configuratie meeloopt en die
+niemand mist tot iemand hem vindt.
+
+### 17c.2 Het bereik ligt nooit boven de rol
+
+`scope` is een ladder: `read`, `maintenance`, `admin`. `admin` haalt de adminklasse en vraagt dus rol
+`owner` of `admin` bij de **eigenaar** van het token; de andere twee vragen niets wat een gewone
+gebruiker niet al heeft. Een aanvraag die de rol overschrijdt krijgt `auth.scope_exceeds_role` met
+het bereik en de rol in `details`.
+
+`maintenance` is gereserveerd voor de operationele handelingen die later komen (back-up,
+onderhoudsmodus, herstel) en onderscheidt zich vandaag in geen enkele operatie van `read`. Dat staat
+hier expliciet, want een bereik dat een naam heeft maar geen gedrag is anders alleen aan de code te
+zien.
+
+Wat het bereik wél doet zodra het token bestaat, staat in 16.4: het begrenst de adminklasse, ook
+wanneer de rol hem haalt. En één regel die uit de bouw kwam en in geen enkel plan stond: **een token
+mint alleen tokens wanneer het zelf bereik `admin` heeft.** Zonder die regel toetst
+`auth.scope_exceeds_role` het bereik tegen de rol, is de rol van een leestoken van een beheerder
+`admin`, en mint een leestoken een beheertoken. Dat is rechtenverhoging via het endpoint dat er juist
+een grens op moest zetten.
+
+### 17c.3 Het auditlog
+
+`GET /pleya/v1/audit?source=&limit=&cursor=`, klasse `admin`, nieuwste eerst.
+
+```json
+{ "items": [
+  { "id": "0198f2d0-...", "at": "2026-09-05T12:00:00Z",
+    "user_id": "0198f2d0-...", "session_id": "0198f2d0-...",
+    "source": "http", "operation": "createApiToken",
+    "target": "0198f2d0-...", "outcome": "ok" },
+  { "id": "0198f2d0-...", "at": "2026-09-05T11:58:12Z",
+    "source": "http", "operation": "login", "outcome": "denied" }
+], "next_cursor": null }
+```
+
+**Het bereik is ruimer dan mutaties op beheerendpoints.** Erin: beheer- en datamutaties, geslaagde en
+mislukte logins, het aanmaken en intrekken van tokens en sessies, rol- en rechtenwijzigingen,
+sleutelrotatie, en de configuratie die de beveiliging raakt. Eruit: catalogusreads, playbackticks en
+leesvoortgang. Een log dat alleen wijzigingen ziet, mist de vraag die na een incident als eerste
+gesteld wordt: wie is er wanneer binnengekomen, en met welk credential. Een log dat álles ziet wordt
+niet gelezen.
+
+`operation` is de `operationId` uit dit contract en niet het pad. Een pad verandert mee met een
+route-refactor en breekt dan de leesbaarheid van een log dat jaren teruggaat.
+
+`user_id` en `session_id` mogen ontbreken, en bij een mislukte login ontbreken ze allebei: er is dan
+geen vastgestelde identiteit. De naam die geprobeerd is staat in de tabel maar niet in het antwoord;
+hem als identiteit koppelen zou een gebruiker impliceren die er niet is, of het account van een ander
+een mislukte login in de schoenen schuiven.
+
+`detail` uit de tabel staat niet in het antwoord. Het bestaat voor de context die een beheerder na een
+incident nodig heeft, maar het is vrije vorm, en vrije vorm in een antwoord is de weg waarlangs er
+ooit iets in belandt dat er niet in hoort.
+
+**Negentig dagen, en dat is geen instelling.** Een bewaartermijn die een beheerder kan verlagen, kan
+een aanvaller met beheerrechten verlagen, en dan is de eerste handeling na het binnenkomen het wissen
+van het spoor ernaartoe.
+
+---
+
 ## 18. Endpointoverzicht
 
 | Methode en pad | Klasse | Gepagineerd |
@@ -1386,12 +1502,16 @@ bron maken voor dezelfde vraag.
 | `POST /pleya/v1/server/connectivity-check` | `admin` | nee |
 | `POST /pleya/v1/server/rotate-signing-key` | `admin` | nee |
 | `GET /pleya/v1/stream-sessions` | `admin` | nee |
+| `POST /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` via `user_id` | nee |
+| `GET /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` via `?user_id=` | nee |
+| `GET /pleya/v1/audit` | `admin` | ja |
 
-Vierendertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Zevenendertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
-uit hoofdstuk 17b (S1.3), en de laatste twee `GET /users/me` uit 16.3 en het stroomoverzicht uit
-17b.6 (S1.4). `GET /pleya/v1/server` staat er maar één keer in en groeit met de klasse van de
+uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
+17b.6 (S1.4), en de laatste drie de API-tokens en het auditlog uit hoofdstuk 17c (S1.5).
+`GET /pleya/v1/server` staat er maar één keer in en groeit met de klasse van de
 aanvrager, niet met een tweede regel. De rest van venster 1 landt bij de commitgrens die hem
 bedient.
 

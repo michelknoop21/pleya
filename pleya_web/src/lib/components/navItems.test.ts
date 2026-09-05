@@ -16,7 +16,8 @@ const all: Capabilities = {
   users: false,
   watch_state_ownership: false,
   stream_sessions: false,
-  sessions: false
+  sessions: false,
+  api_tokens: false
 };
 
 describe('capabilities bepalen de navigatie', () => {

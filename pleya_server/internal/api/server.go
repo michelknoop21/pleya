@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/config"
@@ -33,6 +34,12 @@ type Options struct {
 	Name      string
 	Version   string
 	StartedAt time.Time
+
+	// Audit is admin_audit (S1.5, VRAGENLIJST 23). Nil is toegestaan en betekent
+	// dat er niets geschreven en niets gelezen wordt: GET /audit antwoordt dan
+	// server.internal en niet een lege lijst, want "er is niets gebeurd" is een
+	// ander antwoord dan "ik houd het niet bij".
+	Audit *audit.Store
 
 	// Diag levert de meetwaarden van GET /server voor klasse admin (S1.3).
 	// Nil is toegestaan: dan blijven database en de jobtellers weg en toont
@@ -234,6 +241,19 @@ func (s *Server) routes() {
 	// en dat is geen antwoord voor een huisgenoot.
 	s.mux.Handle("GET "+p+"/stream-sessions", s.authenticated(s.handleStreamSessions))
 
+	// API-tokens (S1.5, J.2 rij 12 en 13). Klasse authenticated en niet admin:
+	// RB-20 zegt "een gebruiker (zelf, of een beheerder namens iemand)", dus de
+	// eigen tokens zijn zelfbediening en `user_id` is de beheerdersvorm. De
+	// autorisatie is daarmee die van GET /sessions (matrixregel 15) en niet die
+	// van een beheerroute.
+	s.mux.Handle("POST "+p+"/auth/api-tokens", s.authenticated(s.handleCreateAPIToken))
+	s.mux.Handle("GET "+p+"/auth/api-tokens", s.authenticated(s.handleListAPITokens))
+
+	// Auditlog (S1.5, J.2 rij 14). Klasse admin: het is de enige plek waar
+	// staat wie wat wanneer deed, inclusief mislukte logins, en dat is geen
+	// antwoord voor wie de handelingen zelf niet mag doen.
+	s.mux.Handle("GET "+p+"/audit", s.authenticated(s.handleAudit))
+
 	// Sessies (DEC-103, stap 6). logout staat bij auth omdat hij over de eigen
 	// sessie gaat; de twee endpoints eronder gaan over sessies als resource.
 	s.mux.Handle("POST "+p+"/auth/logout", s.authenticated(s.handleLogout))
@@ -327,12 +347,40 @@ func sessionIDFromContext(ctx context.Context) id.ID {
 	return sessionID
 }
 
-// authenticated eist een geldig accesstoken in de Authorization-header.
+// scopeContextKey draagt het bereik van het API-token van deze aanvraag.
+type scopeContextKey struct{}
+
+// withAPIScope zet het bereik in de context. Een aanvraag met een gewoon
+// accesstoken krijgt hem niet, en dat is het onderscheid waar requireAdmin op
+// leest: "geen bereik" is een mens achter een toestel en niet een agent.
+func withAPIScope(ctx context.Context, scope auth.APITokenScope) context.Context {
+	return context.WithValue(ctx, scopeContextKey{}, scope)
+}
+
+// apiScopeFromContext geeft het bereik, en of deze aanvraag er een had.
+func apiScopeFromContext(ctx context.Context) (auth.APITokenScope, bool) {
+	scope, ok := ctx.Value(scopeContextKey{}).(auth.APITokenScope)
+	return scope, ok
+}
+
+// authenticated eist een geldig accesstoken of API-token in de
+// Authorization-header.
+//
+// De twee zijn aan hun vorm te onderscheiden en niet aan een mislukte poging:
+// een API-token begint met auth.APITokenPrefix, een accesstoken met `ply1.`.
+// Dat scheelt niet alleen een databaseronde per onzin-token, het houdt ook de
+// foutmelding eerlijk. Zou de middleware eerst de handtekening proberen en bij
+// elke mislukking de database bevragen, dan zou een verlopen accesstoken via
+// het tokenpad alsnog als "bestaat niet" terugkomen.
 func (s *Server) authenticated(next http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, ok := bearerToken(r)
 		if !ok {
 			writeError(w, s.log, CodeTokenInvalid, "no bearer token", nil)
+			return
+		}
+		if auth.LooksLikeAPIToken(token) {
+			s.authenticatedByAPIToken(w, r, token, next)
 			return
 		}
 		claims, err := s.opts.Signer.Verify(token, auth.TokenAccess)
@@ -345,6 +393,52 @@ func (s *Server) authenticated(next http.HandlerFunc) http.Handler {
 		}
 		next(w, r.WithContext(withClaims(r.Context(), claims)))
 	})
+}
+
+// authenticatedByAPIToken is het tweede pad van authenticated (S1.5, RB-20).
+//
+// Het bouwt dezelfde Claims als een accesstoken zou dragen, zodat elke handler
+// erachter niet hoeft te weten waar zijn aanvrager vandaan komt: subjectID en
+// currentSessionID lezen hetzelfde veld, en de rol wordt zoals altijd per
+// aanvraag uit de database gelezen. Wat er bij komt is het bereik in de
+// context.
+//
+// Hier staat wél een databaseronde per aanvraag, en dat is een bewuste keuze.
+// Het alternatief is een cache, en die zou de intrekkingsgarantie van twee
+// seconden precies zo lang breken als de cache leeft. De frequentie past bij de
+// drager: een agent doet aanvragen op menselijk tempo, niet per streamblok.
+func (s *Server) authenticatedByAPIToken(w http.ResponseWriter, r *http.Request, token string, next http.HandlerFunc) {
+	identity, err := s.opts.Auth.VerifyAPIToken(r.Context(), token, s.now().UTC())
+	switch {
+	case errors.Is(err, auth.ErrAPITokenExpired):
+		// Dezelfde code als een verlopen accesstoken. De drager kan er niets
+		// anders mee dan een nieuw token vragen, en het protocol heeft er al
+		// een naam voor.
+		writeError(w, s.log, CodeTokenExpired, "token expired", nil)
+		return
+	case errors.Is(err, auth.ErrAPITokenInvalid):
+		writeError(w, s.log, CodeTokenInvalid, "token invalid", nil)
+		return
+	case err != nil:
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	claims := auth.Claims{
+		Subject:   identity.UserID.String(),
+		Sid:       identity.SessionID.String(),
+		Type:      auth.TokenAccess,
+		ExpiresAt: identity.ExpiresAt.Unix(),
+	}
+	// Ook het register nog, ook al keek de query net naar revoked_at. De query
+	// dekt een herstart, het register dekt het moment tussen twee
+	// databaserondes; ze overlappen met opzet.
+	if !s.sessionLives(w, claims) {
+		return
+	}
+
+	ctx := withAPIScope(withClaims(r.Context(), claims), identity.Scope)
+	next(w, r.WithContext(ctx))
 }
 
 // sessionLives is de O(1)-controle uit DEC-099: draagt dit credential een sid

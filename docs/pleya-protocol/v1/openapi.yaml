@@ -245,6 +245,147 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /auth/api-tokens:
+    post:
+      tags: [auth]
+      operationId: createApiToken
+      summary: Maak een API-token.
+      description: |
+        Klasse `authenticated` op zichzelf, `admin` met `user_id` van een ander.
+        Dezelfde regel als `GET /sessions`, en met opzet geen beheerroute: RB-20
+        beschrijft een token dat een gebruiker voor zichzelf maakt, of een
+        beheerder namens iemand.
+
+        Een API-token is een sessie met `kind: api`. Het valt onder
+        `DELETE /sessions/{id}`, onder dezelfde intrekking binnen twee seconden,
+        en het staat in `GET /sessions` naast de toestellen.
+
+        `secret` staat precies één keer in een antwoord: hier. De server bewaart
+        alleen de hash ervan, dus een tweede kans is er niet.
+
+        Het bereik komt nooit boven de rol van de eigenaar. Een aanvraag die dat
+        wel doet krijgt `auth.scope_exceeds_role`, met het gevraagde bereik en de
+        rol in `details`.
+
+        Een aanvraag die zelf met een API-token is geauthenticeerd kan alleen
+        tokens maken wanneer dat token bereik `admin` heeft; anders is het
+        antwoord `404`, byte-gelijk aan dat van een beheerroute. Zonder die
+        regel zou een `read`-token van een beheerder een `admin`-token kunnen
+        maken, want het bereik wordt tegen de rol getoetst en de rol is dan
+        `admin`.
+
+        Beschikbaar wanneer `capabilities.api_tokens` waar is.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ApiTokenRequest" }
+      responses:
+        "201":
+          description: Het token, met het geheim erbij.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiTokenCreated" }
+        "400":
+          description: |
+            auth.scope_exceeds_role wanneer het bereik boven de rol van de
+            eigenaar uitkomt, session.invalid bij een naam, bereik of
+            geldigheidsduur die niet klopt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: |
+            auth.user_not_found. user_id is niet van de aanvrager en de
+            aanvrager is geen admin, of de aanvraag komt van een API-token
+            zonder bereik `admin`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+    get:
+      tags: [auth]
+      operationId: listApiTokens
+      summary: De levende API-tokens van een gebruiker.
+      description: |
+        Klasse `authenticated` op zichzelf, `admin` met `?user_id=`. Zonder
+        geheimen: die bestaan na het aanmaken alleen nog bij de aanvrager.
+
+        Ingetrokken en verlopen tokens staan er niet in, om dezelfde reden als
+        bij `GET /sessions`: de lijst beantwoordt wat er nú met dit account kan
+        praten.
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          description: Alleen bruikbaar door `owner` en `admin`. Zonder deze parameter de eigen tokens.
+          schema: { $ref: "#/components/schemas/Id" }
+      responses:
+        "200":
+          description: De tokens.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiTokenList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. user_id is niet van de aanvrager en de aanvrager is geen admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /audit:
+    get:
+      tags: [administration]
+      operationId: listAudit
+      summary: Het auditlog.
+      description: |
+        Klasse `admin`. Eén regel per beherende handeling, nieuwste eerst.
+
+        Het bereik is ruimer dan alleen mutaties op beheerendpoints: geslaagde
+        en mislukte logins, het aanmaken en intrekken van tokens en sessies,
+        rol- en rechtenwijzigingen, en de configuratie die de beveiliging raakt.
+        Wat er niet in staat is even bewust: catalogusreads, playbackticks en
+        leesvoortgang zijn volume zonder beveiligingsbetekenis.
+
+        Regels worden negentig dagen bewaard en daarna door de opruimronde
+        verwijderd. Die termijn is geen instelling: een bewaartermijn die een
+        beheerder kan verlagen, kan een aanvaller met beheerrechten verlagen.
+
+        `detail` uit de tabel staat niet in het antwoord. Het is vrije vorm, en
+        vrije vorm in een antwoord is de weg waarlangs er ooit iets in belandt
+        dat er niet in hoort.
+      parameters:
+        - name: source
+          in: query
+          required: false
+          description: |
+            `http` of `mcp`. Een onbekende waarde is geen fout maar een filter
+            dat niets oplevert.
+          schema: { type: string }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: De regels.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditPage" }
+        "400":
+          description: library.cursor_invalid.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager is geen admin of owner.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /users:
     post:
       tags: [users]
@@ -1335,6 +1476,15 @@ components:
             en POST /auth/logout. Een client stuurt device_id/device_name pas
             wanneer deze vlag waar is; zonder de vlag krijgt de sessie
             device_id NULL en een vaste plaatshouder als naam.
+        api_tokens:
+          type: boolean
+          default: false
+          description: |
+            De server kent API-tokens als sessies (RB-20): POST en GET
+            /auth/api-tokens bestaan, en Session draagt kind, scope en
+            expires_at. De vlag staat naast `sessions` en niet erin: een client
+            die sessies kent maar deze vlag niet ziet, toont het
+            sessieoverzicht zonder tokens, en dat is een geldig scherm.
 
     ServerDetail:
       type: object
@@ -2126,16 +2276,170 @@ components:
     Session:
       type: object
       required: [id, device_name, created_at, last_seen_at, current]
+      description: |
+        kind, scope en expires_at kwamen met S1.5. Ze zijn optioneel omdat een
+        oudere client ze niet kent en een oudere server ze niet stuurt; een
+        client die ze wel leest onderscheidt een agent van een telefoon en
+        trekt daarmee de juiste in.
       properties:
         id: { $ref: "#/components/schemas/Id" }
         device_name:
           type: string
-          description: Een vaste plaatshouder voor een sessie zonder bekend toestel.
+          description: |
+            Een vaste plaatshouder voor een sessie zonder bekend toestel. Voor
+            een API-token is dit de naam die de beheerder gaf.
         created_at: { $ref: "#/components/schemas/Timestamp" }
         last_seen_at: { $ref: "#/components/schemas/Timestamp" }
         current:
           type: boolean
           description: True voor de sessie die deze aanvraag zelf doet.
+        kind: { $ref: "#/components/schemas/SessionKind" }
+        scope:
+          allOf:
+            - $ref: "#/components/schemas/ApiTokenScope"
+          description: Alleen aanwezig op een sessie met kind `api`.
+        expires_at:
+          allOf:
+            - $ref: "#/components/schemas/Timestamp"
+          description: |
+            Alleen aanwezig op een sessie met kind `api`. Een toestelsessie
+            eindigt met haar refreshketen en niet op een datum in haar eigen rij.
+
+    SessionKind:
+      type: string
+      x-unknown-safe: true
+      enum: [device, api, legacy]
+      description: |
+        `device` is een toestel, `api` een API-token (RB-20), `legacy` een keten
+        die migratie 0007 overnam en waar geen toestel bij hoort. Nieuwe waarden
+        mogen erbij; een client die er een niet kent behandelt hem als `device`.
+
+    ApiTokenScope:
+      type: string
+      x-unknown-safe: true
+      enum: [read, maintenance, admin]
+      description: |
+        Een ladder, laag naar hoog. `read` mag lezen wat de eigenaar mag lezen
+        en niets beheren; `admin` haalt de adminklasse, mits de rol van de
+        eigenaar dat ook doet. `maintenance` is gereserveerd voor de
+        operationele handelingen die later komen (back-up, onderhoudsmodus,
+        herstel) en onderscheidt zich vandaag in geen enkele operatie van
+        `read`; dat staat hier expliciet in plaats van dat het gedrag het
+        suggereert.
+
+    ApiToken:
+      type: object
+      required: [id, user_id, name, scope, created_at, last_seen_at, expires_at]
+      description: Een API-token zonder zijn geheim.
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        user_id: { $ref: "#/components/schemas/Id" }
+        name:
+          type: string
+          maxLength: 64
+          description: Het label in het overzicht. Geen document.
+        scope: { $ref: "#/components/schemas/ApiTokenScope" }
+        created_at: { $ref: "#/components/schemas/Timestamp" }
+        last_seen_at: { $ref: "#/components/schemas/Timestamp" }
+        expires_at: { $ref: "#/components/schemas/Timestamp" }
+
+    ApiTokenList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ApiToken" }
+
+    ApiTokenCreated:
+      type: object
+      required: [token, secret]
+      description: |
+        Een eigen schema en niet ApiToken met een optioneel geheimveld. Een
+        optioneel `secret` op het lijsttype zou een lezer laten denken dat het
+        er soms in kan staan, en dan is de vraag "kan dit antwoord een geheim
+        dragen" niet meer aan het type te zien.
+      properties:
+        token: { $ref: "#/components/schemas/ApiToken" }
+        secret:
+          type: string
+          description: |
+            Het geheim, precies één keer. De server bewaart alleen de hash. Het
+            begint met een herkenbaar voorvoegsel zodat het in een logbestand of
+            een repository terug te vinden is.
+
+    ApiTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [name, scope]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        scope: { $ref: "#/components/schemas/ApiTokenScope" }
+        expires_in_days:
+          type: integer
+          minimum: 1
+          maximum: 3650
+          default: 90
+          description: |
+            Standaard negentig dagen. "Nooit" bestaat niet: een token zonder
+            vervaldatum is de vorm die jaren later nog in een oude configuratie
+            meeloopt en die niemand mist tot iemand hem vindt.
+        user_id:
+          allOf:
+            - $ref: "#/components/schemas/Id"
+          description: |
+            Alleen bruikbaar door `owner` en `admin`. Zonder dit veld gaat het
+            token over de aanvrager zelf.
+
+    AuditOutcome:
+      type: string
+      x-unknown-safe: true
+      enum: [ok, denied, failed]
+      description: |
+        `denied` is de aanvrager die het niet mocht of iets aanbood dat niet
+        klopte; een mislukte login is `denied` en geen `failed`. `failed` is de
+        server die het niet kon.
+
+    AuditSource:
+      type: string
+      x-unknown-safe: true
+      enum: [http, mcp]
+
+    AuditEntry:
+      type: object
+      required: [id, at, source, operation, outcome]
+      description: |
+        user_id en session_id kunnen ontbreken: een mislukte login heeft geen
+        van beide, want er is dan geen vastgestelde identiteit.
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        at: { $ref: "#/components/schemas/Timestamp" }
+        user_id: { $ref: "#/components/schemas/Id" }
+        session_id: { $ref: "#/components/schemas/Id" }
+        source: { $ref: "#/components/schemas/AuditSource" }
+        operation:
+          type: string
+          description: |
+            De operationId uit dit contract, niet het pad. Een pad verandert mee
+            met een route-refactor en breekt dan de leesbaarheid van een log dat
+            jaren teruggaat.
+        target:
+          type: string
+          description: Waar de handeling over ging, meestal een id.
+        outcome: { $ref: "#/components/schemas/AuditOutcome" }
+
+    AuditPage:
+      allOf:
+        - { $ref: "#/components/schemas/Page" }
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/AuditEntry" }
 
     SessionList:
       type: object

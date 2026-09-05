@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
+	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/diag"
@@ -135,6 +136,9 @@ type env struct {
 	config  string
 	log     *slog.Logger
 	probes  *probeLog
+	audit   *audit.Store
+
+	revocations *auth.Revocations
 
 	// settings is dezelfde cache als die de server leest. Een test die de
 	// tabel rechtstreeks vult moet hem kunnen herladen, want de server doet dat
@@ -234,6 +238,18 @@ func newEnv(t *testing.T) *env {
 		t.Fatalf("instellingen laden: %v", err)
 	}
 
+	// admin_audit met zijn echte tabel eronder (S1.5). Een nep-store zou de
+	// schrijfhaak toetsen zonder de vraag te beantwoorden of er werkelijk een
+	// rij ontstaat.
+	auditStore := audit.NewStore(pool)
+
+	// Het intrekkingsregister als eigen variabele, zodat een test hem kan
+	// legen. Dat is de enige manier om te toetsen dat een leespad ook zonder
+	// register de intrekking ziet, en zonder die toets is een implementatie die
+	// alleen het register raadpleegt niet te onderscheiden van een die het
+	// goed doet.
+	revocations := auth.NewRevocations(0)
+
 	srv := api.New(api.Options{
 		Catalog:            store,
 		Auth:               authStore,
@@ -254,8 +270,9 @@ func newEnv(t *testing.T) *env {
 		Settings:           settingsCache,
 		WatchLease:         watch.MinLease,
 		Argon2:             light,
-		Revocations:        auth.NewRevocations(0),
+		Revocations:        revocations,
 		Diag:               diag.NewStore(pool),
+		Audit:              auditStore,
 		Log:                ring,
 		Listen:             ":8080",
 		Build:              "0.2.0-test (go-test, linux/amd64)",
@@ -280,7 +297,19 @@ func newEnv(t *testing.T) *env {
 	return &env{t: t, server: srv, store: store, auth: authStore, watch: watchStore, pool: pool,
 		root: root, libs: libs, cap: shared, argon2: light, signer: signer, logs: logs,
 		settings: settingsCache, ring: ring, environ: environ, config: configDir,
-		log: logger, probes: probes}
+		log: logger, probes: probes, audit: auditStore, revocations: revocations}
+}
+
+// freshRevocations leegt het intrekkingsregister, zoals na een herstart van het
+// proces. Purge met een tijdstip ver vooruit haalt elke inschrijving eruit; een
+// eigen Reset op het productietype zou een methode zijn die alleen een test
+// gebruikt.
+func (e *env) freshRevocations() {
+	e.t.Helper()
+	e.revocations.Purge(time.Now().Add(24 * time.Hour))
+	if n := e.revocations.Len(); n != 0 {
+		e.t.Fatalf("het register is niet leeg: %d inschrijvingen", n)
+	}
 }
 
 // logger geeft de logger die de server zelf gebruikt, inclusief de

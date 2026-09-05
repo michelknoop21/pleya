@@ -22,6 +22,18 @@ type Session struct {
 	DeviceName string
 	CreatedAt  time.Time
 	LastSeenAt time.Time
+
+	// Kind en Scope komen met S1.5 (J.2 rij 13). Een sessie die een toestel is
+	// draagt kind `device` en geen bereik; een API-token draagt `api` plus zijn
+	// bereik. Legacy is de derde: een keten die migratie 0007 overnam en waar
+	// geen toestel bij hoort.
+	Kind  string
+	Scope APITokenScope
+
+	// ExpiresAt is de nulwaarde voor een toestelsessie. Alleen een API-token
+	// heeft een eigen einddatum; een toestelsessie eindigt wanneer haar
+	// refreshketen eindigt en niet op een datum in haar eigen rij.
+	ExpiresAt time.Time
 }
 
 // ErrSessionNotFound betekent dat er geen actieve sessie met dit id is.
@@ -32,11 +44,17 @@ var ErrSessionNotFound = errors.New("sessie bestaat niet")
 // Ingetrokken sessies staan er niet meer in: het endpoint beantwoordt "waar ben
 // ik nu ingelogd", en een lijst met dode toestellen erin maakt de enige vraag
 // die ertoe doet moeilijker te beantwoorden.
-func (s *Store) ListSessions(ctx context.Context, userID id.ID) ([]Session, error) {
+//
+// Sinds S1.5 geldt dat ook voor verlopen rijen. Alleen een API-token heeft een
+// eigen `expires_at`, dus die clausule kan geen bestaande toestelsessie raken;
+// wat hij wegneemt is een token dat op zijn eerstvolgende aanvraag 401 geeft en
+// tot dan in het overzicht zou staan alsof hij nog werkt.
+func (s *Store) ListSessions(ctx context.Context, userID id.ID, now time.Time) ([]Session, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, user_id, device_name, created_at, last_seen_at
+		SELECT id, user_id, device_name, created_at, last_seen_at, kind, scope, expires_at
 		FROM sessions WHERE user_id = $1 AND revoked_at IS NULL
-		ORDER BY created_at, id`, userID)
+		  AND (expires_at IS NULL OR expires_at > $2)
+		ORDER BY created_at, id`, userID, now)
 	if err != nil {
 		return nil, fmt.Errorf("sessies lezen: %w", err)
 	}
@@ -45,8 +63,17 @@ func (s *Store) ListSessions(ctx context.Context, userID id.ID) ([]Session, erro
 	sessions := []Session{}
 	for rows.Next() {
 		var sess Session
-		if err := rows.Scan(&sess.ID, &sess.UserID, &sess.DeviceName, &sess.CreatedAt, &sess.LastSeenAt); err != nil {
+		var scope *string
+		var expires *time.Time
+		if err := rows.Scan(&sess.ID, &sess.UserID, &sess.DeviceName, &sess.CreatedAt, &sess.LastSeenAt,
+			&sess.Kind, &scope, &expires); err != nil {
 			return nil, err
+		}
+		if scope != nil {
+			sess.Scope = APITokenScope(*scope)
+		}
+		if expires != nil {
+			sess.ExpiresAt = *expires
 		}
 		sessions = append(sessions, sess)
 	}

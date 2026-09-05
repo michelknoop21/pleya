@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
@@ -45,11 +46,29 @@ func (s *Server) pathUserID(w http.ResponseWriter, r *http.Request, code string)
 type requester struct {
 	id   id.ID
 	role auth.Role
+
+	// scope en viaAPIToken beschrijven het credential en niet de gebruiker
+	// (S1.5). Een aanvraag met een gewoon accesstoken heeft geen bereik: daar
+	// zit een mens achter een toestel, en die is begrensd door zijn rol alleen.
+	scope       auth.APITokenScope
+	viaAPIToken bool
 }
 
 // isAdmin zegt of deze aanvrager de admin-klasse haalt. owner telt mee: hij
 // heeft alles van admin (specificatie 16.1).
 func (r requester) isAdmin() bool { return r.role == auth.RoleOwner || r.role == auth.RoleAdmin }
+
+// scopeReachesAdmin zegt of het credential zelf de adminklasse mag halen.
+//
+// Waar voor elk gewoon accesstoken: het bereik is een eigenschap van
+// API-tokens, en een aanvraag zonder bereik wordt door de rol begrensd zoals
+// altijd.
+func (r requester) scopeReachesAdmin() bool {
+	if !r.viaAPIToken {
+		return true
+	}
+	return r.scope == auth.APIScopeAdmin
+}
 
 // resolveRequester leest id en rol van de aanvrager.
 //
@@ -71,7 +90,11 @@ func (s *Server) resolveRequester(w http.ResponseWriter, r *http.Request) (reque
 		writeInternal(w, s.log, err)
 		return requester{}, false
 	}
-	return requester{id: userID, role: role}, true
+	req := requester{id: userID, role: role}
+	if scope, ok := apiScopeFromContext(r.Context()); ok {
+		req.scope, req.viaAPIToken = scope, true
+	}
+	return req, true
 }
 
 // requireAdmin is de admin-klasse als poort.
@@ -79,12 +102,22 @@ func (s *Server) resolveRequester(w http.ResponseWriter, r *http.Request) (reque
 // Een member die een admin-endpoint aanroept krijgt 404 en geen 403, dezelfde
 // regel als overal (hoofdstuk 7.1): het bestaan van het beheeroppervlak lekt
 // niet naar wie er niet bij mag.
+//
+// Sinds S1.5 is er een tweede weg door deze poort te falen: een API-token met
+// een bereik onder `admin` (K rij 22). Het bereik kan nooit boven de rol, maar
+// het kan er wel onder liggen, en dat is precies waar een token met beperkt
+// bereik voor bestaat. Zonder deze regel zou een `read`-token van een beheerder
+// alles mogen wat de beheerder mag, en dan is het bereik decoratie.
+//
+// De weigering is byte-gelijk aan die van een lid, en dat is geen slordigheid:
+// het beheeroppervlak hoort net zomin te bestaan voor een token dat er niet bij
+// mag als voor een gebruiker die er niet bij mag.
 func (s *Server) requireAdmin(w http.ResponseWriter, r *http.Request) (requester, bool) {
 	req, ok := s.resolveRequester(w, r)
 	if !ok {
 		return requester{}, false
 	}
-	if !req.isAdmin() {
+	if !req.isAdmin() || !req.scopeReachesAdmin() {
 		writeError(w, s.log, CodeUserNotFound, "not found", nil)
 		return requester{}, false
 	}
@@ -166,6 +199,8 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		writeInternal(w, s.log, err)
 		return
 	}
+	s.auditEvent(r, auditCreateUser, user.ID.String(), audit.OutcomeOK,
+		map[string]any{"role": string(user.Role)})
 	writeJSON(w, http.StatusOK, userWire(user))
 }
 
@@ -312,6 +347,13 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		writeInternal(w, s.log, err)
 		return
 	}
+	// Wat er gewijzigd is en niet waarin. Een nieuwe rol is een feit dat in het
+	// log hoort; een nieuw wachtwoord is een feit, de waarde ervan niet.
+	detail := map[string]any{"password_changed": hash != nil}
+	if role != nil {
+		detail["role"] = string(*role)
+	}
+	s.auditEvent(r, auditUpdateUser, targetID.String(), audit.OutcomeOK, detail)
 	writeJSON(w, http.StatusOK, userWire(user))
 }
 
@@ -336,6 +378,7 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		writeInternal(w, s.log, err)
 		return
 	}
+	s.auditEvent(r, auditDeleteUser, targetID.String(), audit.OutcomeOK, nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -393,6 +436,8 @@ func (s *Server) handleSetPermissions(w http.ResponseWriter, r *http.Request) {
 		// per definitie een beheerder die beide kanten al mag zien. 409 en
 		// niet 400: de body is geldig, de toestand van het doel maakt hem
 		// onuitvoerbaar.
+		s.auditEvent(r, auditSetPermissions, targetID.String(), audit.OutcomeDenied,
+			map[string]any{"reason": "restricted_cannot_manage"})
 		writeError(w, s.log, CodePermissionNotAllowed, "restricted cannot hold manage",
 			map[string]any{"permission": "manage", "role": string(auth.RoleRestricted)})
 		return
@@ -410,5 +455,7 @@ func (s *Server) handleSetPermissions(w http.ResponseWriter, r *http.Request) {
 	for _, p := range stored {
 		items = append(items, LibraryPermissionWire{LibraryID: p.LibraryID.String(), Permission: p.Permission})
 	}
+	s.auditEvent(r, auditSetPermissions, targetID.String(), audit.OutcomeOK,
+		map[string]any{"count": len(items)})
 	writeJSON(w, http.StatusOK, LibraryPermissionListWire{Items: items})
 }

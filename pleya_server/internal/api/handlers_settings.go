@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sort"
 
+	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 )
 
@@ -160,12 +162,27 @@ func (s *Server) handlePatchSettings(w http.ResponseWriter, r *http.Request) {
 			if invalid.Maximum != "" {
 				details["maximum"] = invalid.Maximum
 			}
+			s.auditEvent(r, auditPatchSettings, "", audit.OutcomeDenied,
+				map[string]any{"field": invalid.Field, "reason": "invalid_value"})
 			writeError(w, s.log, CodeSettingsInvalidValue, invalid.Error(), details)
 			return
 		}
 		writeInternal(w, s.log, err)
 		return
 	}
+
+	// De namen van de gewijzigde sleutels, niet hun waarden. Twee van de zeven
+	// zijn TTL's die de beveiliging raken, en dát een beheerder eraan draaide is
+	// wat het log moet vastleggen; wat de nieuwe waarde is staat in
+	// GET /settings, dat de bron per sleutel toch al toont.
+	changed := make([]string, 0, len(keys))
+	for k := range keys {
+		changed = append(changed, k)
+	}
+	// Gesorteerd, want een map-iteratie in Go is willekeurig en twee identieke
+	// patches horen niet twee verschillende logregels op te leveren.
+	sort.Strings(changed)
+	s.auditEvent(r, auditPatchSettings, "", audit.OutcomeOK, map[string]any{"keys": changed})
 
 	writeJSON(w, http.StatusOK, settingsWire(s.settings()))
 }

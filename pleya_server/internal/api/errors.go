@@ -61,6 +61,19 @@ const (
 	// beheerder laten zoeken naar een gebruiker die er gewoon is.
 	CodePermissionNotAllowed = "auth.permission_not_allowed"
 
+	// CodeScopeExceedsRole is het antwoord van POST /auth/api-tokens op een
+	// bereik dat boven de rol van de eigenaar uitkomt (J.2 rij 12, K rij 22).
+	//
+	// 400 en geen 409: er is geen toestand die dit verzoek in de weg zit en die
+	// later anders zou kunnen zijn, het verzoek zelf klopt niet. details draagt
+	// het gevraagde bereik en de rol, zodat een beheerscherm kan zeggen wat er
+	// mis is zonder de tekst te lezen.
+	//
+	// De rol in het antwoord is die van de toekomstige eigenaar en niet die van
+	// de aanvrager. Dat lekt niets: wie hier komt is de eigenaar zelf, of een
+	// beheerder die de rol van zijn gebruikers sowieso ziet in GET /users.
+	CodeScopeExceedsRole = "auth.scope_exceeds_role"
+
 	CodeNotFound         = "library.not_found"
 	CodeScanInProgress   = "library.scan_in_progress"
 	CodeCursorInvalid    = "library.cursor_invalid"
@@ -138,6 +151,7 @@ var errorTable = map[string]struct {
 	CodeOwnerImmutable:       {http.StatusConflict, false},
 	CodeSessionNotFound:      {http.StatusNotFound, false},
 	CodePermissionNotAllowed: {http.StatusConflict, false},
+	CodeScopeExceedsRole:     {http.StatusBadRequest, false},
 
 	CodeNotFound:         {http.StatusNotFound, false},
 	CodeScanInProgress:   {http.StatusConflict, true},
