@@ -37,6 +37,12 @@ class AutomationIds {
   static const String libraryFilterSort = 'library.filter.sort';
 
   /// The Discover hero billboard as a whole.
+  /// The tvOS Menu passthrough as `TvosSystemNavigationService` sees it: no
+  /// widget, no bounds, only `state`. Published so a scenario can prove that
+  /// no enable went to the engine while a remote key was down (NAV1, DEC-099);
+  /// the engine's own half of that defect is out of the simulator's reach.
+  static const String tvosMenuPassthrough = 'tvos.menu_passthrough';
+
   static const String discoverHero = 'discover.hero';
 
   /// The hero's smart-play button.
@@ -149,6 +155,18 @@ class AutomationIds {
   /// The video player's rendering surface (`lib/mpv/video.dart`).
   static const String playerSurface = 'player.surface';
 
+  /// The player overlay's title block (title line plus the episode line) — the
+  /// text a set that overscans cuts first, which is what PLR1 was.
+  static const String playerTitle = 'player.title';
+
+  /// The timeline row of the player overlay: elapsed, bar, remaining/ends-at.
+  static const String playerTimeline = 'player.timeline';
+
+  /// The inner title-safe rect of the player overlay, the same shape and the
+  /// same reasoning as [discoverSafeArea]: registered *inside* the inset the
+  /// overlay pays, so `notClipped` against it means something.
+  static const String playerSafeArea = 'player.safe_area';
+
   /// Base ids a scenario may address as `id[instance]` — see
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
@@ -201,5 +219,9 @@ class AutomationIds {
     {'id': myPleyaChip, 'role': 'button', 'instanceable': true},
     {'id': myPleyaLogRow, 'role': 'list.item', 'instanceable': true},
     {'id': playerSurface, 'role': 'surface', 'instanceable': false},
+    {'id': playerTitle, 'role': 'region', 'instanceable': false},
+    {'id': playerTimeline, 'role': 'region', 'instanceable': false},
+    {'id': playerSafeArea, 'role': 'region', 'instanceable': false},
+    {'id': tvosMenuPassthrough, 'role': 'service', 'instanceable': false},
   ];
 }

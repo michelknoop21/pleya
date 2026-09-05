@@ -1,0 +1,79 @@
+name: tvos.nav.held-press-lands-once
+target: tvos-sim
+# NAV1 (docs/tvos-fysieke-correctieronde.md, "NAV1, de echte oorzaak"). One
+# arrow press onto the Home tab moved the focus twice, and only that press.
+#
+# The mechanism lives in the engine fork, not in the phases. When the ring
+# lands on Home the app enables the Menu passthrough, and the engine answers an
+# enable with `releaseAllSynthesizedPresses`: a synthetic keyup for the arrow
+# that is still held. The press's own `.ended` then finds no keydown and re-taps
+# the arrow as a fresh pair (`tapIfMissingKeyDown:YES`). Step two. See
+# docs/tvos-remote-press-pipeline.md, side door 1 and 2.
+#
+# Why a *held* press. An idb tap is down and up within a few milliseconds, and
+# the passthrough message reaches the engine after the up: nothing to release,
+# nothing to re-tap. On the Siri Remote a click holds the ring for 80-230 ms
+# (log wa6v9), which is longer than the round trip. `holdMs: 250` puts the
+# simulator in the same window and stays under the engine's 400 ms repeat
+# delay, so the only second step that can show up is the defect.
+#
+# Negative control: with `TvosSystemNavigationService` sending the enable at
+# once (the pre-7786a952 code) the held LEFT from Series lands on Search, not
+# on Home, and this scenario is red. The fix parks the enable until the key is
+# up.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - assert: {id: nav.discover, focused: true, state: {active: true}}
+
+  # Off Home first. Leaving Home disables the passthrough, and a disable
+  # releases nothing, so a short press is enough here.
+  - press: right
+  - wait_until: {focused: nav.series, timeout: 5000}
+  - settle: 600
+  - assert: {id: nav.series, focused: true, state: {active: true}}
+  - snapshot: 00-series
+
+  # --- Held LEFT onto Home: one step, not two -----------------------------
+  - press: {key: left, holdMs: 250}
+  - settle: 900
+  - assert: {id: nav.discover, focused: true, state: {active: true}}
+  - assert: {id: nav.search, state: {active: false}}
+  # The app-side contract, measurable here: the enable that this landing
+  # raises waited for the key-up (one parked flush) and nothing went to the
+  # engine while the arrow was down.
+  - assert: {id: tvos.menu_passthrough, state: {enabled: true, parked: false, parkedFlushes: 1, enablesSentWhileKeysHeld: 0}}
+  - snapshot: 01-held-left-lands-on-home
+
+  # --- Held RIGHT off Home: the disable path, must stay a single step ------
+  - press: {key: right, holdMs: 250}
+  - settle: 900
+  - assert: {id: nav.series, focused: true, state: {active: true}}
+  - assert: {id: nav.movies, state: {active: false}}
+  - snapshot: 02-held-right-one-step
+
+  # --- Held LEFT onto Home from the other side --------------------------
+  # Search is left of Home. Landing on Home from Search raises the passthrough
+  # too, and a second step here would end on Series.
+  - press: {key: left, holdMs: 250}
+  - wait_until: {focused: nav.discover, timeout: 5000}
+  - settle: 600
+  - press: {key: left, holdMs: 250}
+  - wait_until: {focused: nav.search, timeout: 5000}
+  - settle: 600
+  - assert: {id: nav.search, focused: true, state: {active: true}}
+  - press: {key: right, holdMs: 250}
+  - settle: 900
+  - assert: {id: nav.discover, focused: true, state: {active: true}}
+  - assert: {id: nav.series, state: {active: false}}
+  # Third landing on Home under a held key (Series to Home above, and now
+  # Search to Home): a parked flush per landing, still no enable while held.
+  # The disables on leaving Home go out at once and are not counted; a
+  # disable releases nothing in the engine.
+  - assert: {id: tvos.menu_passthrough, state: {enabled: true, parked: false, parkedFlushes: 3, enablesSentWhileKeysHeld: 0}}
+  - snapshot: 03-held-right-from-search-lands-on-home

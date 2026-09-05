@@ -6,10 +6,13 @@ import 'package:crypto/crypto.dart';
 import '../driver/instance_discovery.dart';
 import '../driver/verification_driver.dart';
 import '../fixture/fixture_server_handle.dart';
+import '../focus_walk.dart';
+import '../geometry.dart';
 import '../redact.dart';
 import '../transport/verify_client.dart';
 import '../scenario/model.dart';
 import '../scenario/remote_keys.dart';
+import '../scenario/walk_args.dart';
 import 'evidence_bundle.dart';
 import 'geometry_assertions.dart';
 import 'node_assertions.dart';
@@ -226,6 +229,9 @@ Future<ScenarioRunResult> runScenario({
           // overlay, which mounts *above* an already-ready screen rather
           // than gating it, so no `wait_until` can see it finish.
           await Future<void>.delayed(Duration(milliseconds: (step.args as int?) ?? 500));
+        case 'walk':
+          final walkRecord = await _dispatchWalk(step, driver, bundle);
+          record.addAll(walkRecord);
         case 'press':
           final press = parsePressArgs(step.args);
           record['input_route'] = driver.inputRoute;
@@ -346,6 +352,201 @@ Future<ScenarioRunResult> runScenario({
   bundle.writeDriverLog(driver.driverLog);
 
   return ScenarioRunResult(passed: passed, failureMessage: failureMessage, bundleDir: bundle.dir);
+}
+
+/// Walks [step]'s direction, judging every hop in the frame the press was
+/// issued in.
+///
+/// Two facts from the exploration shape this. Rects move under the press being
+/// judged — a rail scrolls the moment focus enters it — so the *pre* frame is
+/// the only honest one to measure against, and the landing has to be found
+/// back in it by `node` number rather than by geometry. And a `discovered`
+/// node has no identity of its own beyond that number, which is why
+/// `AutomationRegistry` hands one out at all.
+///
+/// Fails fast: the first red hop throws with the source, the landing and every
+/// passed-over candidate named, because a walk that carried on would measure
+/// its remaining hops from a position the app should never have been in.
+Future<Map<String, Object?>> _dispatchWalk(ScenarioStep step, VerificationDriver driver, EvidenceBundle bundle) async {
+  final walk = parseWalkArgs(step.args);
+  final direction = WalkDirection.parse(walk.direction)!;
+  final allow = walk.allow.toSet();
+  final name = 'walk-${step.line}';
+  final deadline = DateTime.now().add(walk.timeout);
+
+  final hops = <Map<String, Object?>>[];
+  var stop = 'steps';
+  var inconclusive = 0;
+
+  Never failHop(String message, Map<String, Object?> hop) {
+    hops.add(hop);
+    bundle.saveWalk(name, {'direction': walk.direction, 'stop': 'failed', 'hops': hops});
+    throw StateError(message);
+  }
+
+  for (var k = 1; k <= walk.steps; k++) {
+    if (DateTime.now().isAfter(deadline)) {
+      failHop('walk timed out after ${walk.timeout.inMilliseconds}ms at hop $k', {'hop': k, 'kind': 'timeout'});
+    }
+
+    final preTree = await driver.uiTree();
+    final preViewportRaw = await driver.viewport();
+    final preCandidates = walkCandidatesFrom(preTree);
+    final preFocus = await driver.focus();
+    final from = locateFocus(preFocus, preCandidates);
+    final hop = <String, Object?>{'hop': k, 'direction': walk.direction};
+
+    if (from == null) {
+      failHop('walk hop $k has nothing focused to start from — the app has no primary focus', hop);
+    }
+    hop['from'] = from.toJson();
+
+    await _recordInput(driver, hop, () => driver.press(direction.name));
+    if (walk.settle > Duration.zero) await Future<void>.delayed(walk.settle);
+
+    final postFocus = await driver.focus();
+    final postTree = await driver.uiTree();
+    final postCandidates = walkCandidatesFrom(postTree);
+    final landed = locateFocus(postFocus, postCandidates);
+    hop['to'] = landed?.toJson();
+
+    // Every hop keeps the frame it was judged in, so a verdict can be
+    // re-derived offline from the bundle alone.
+    bundle.saveUiTree('$name-hop-$k', {
+      'viewport': preViewportRaw,
+      'pre': preTree,
+      'focus_before': preFocus,
+      'focus_after': postFocus,
+    });
+
+    if (landed == null || _sameNode(from, landed)) {
+      // "A walk that does not move proves nothing" — but only on the first
+      // hop. After a hop that did move, standing still is the edge of the
+      // surface, which is an answer.
+      hop['kind'] = 'edge';
+      hop['message'] = 'the focus did not move';
+      if (k == 1) {
+        failHop('walk hop 1 did not move the focus, so this walk proves nothing', hop);
+      }
+      if (walk.stopAt != null) {
+        failHop("walk reached the edge at hop $k without ever focusing '${walk.stopAt}'", hop);
+      }
+      if (walk.expect.isNotEmpty) {
+        failHop('walk reached the edge at hop $k, but expect names ${walk.expect.length} landings', hop);
+      }
+      hops.add(hop);
+      stop = 'edge';
+      break;
+    }
+
+    final expectedId = walk.expect.length >= k ? walk.expect[k - 1] : null;
+    if (expectedId != null && landed.id != expectedId) {
+      hop['kind'] = 'expectMismatch';
+      hop['message'] = "hop $k was expected to land on '$expectedId' and landed on ${landed.describe}";
+      failHop(hop['message']! as String, hop);
+    }
+
+    // The landing, back in the frame the press was issued in. Absent means the
+    // node was built by the scroll this press caused.
+    final toInPre = _matchInPre(preCandidates, landed);
+    if (toInPre != null &&
+        ((landed.rect.left - toInPre.rect.left).abs() > 0.5 || (landed.rect.top - toInPre.rect.top).abs() > 0.5)) {
+      // The landing moved under the press that reached it — a rail scrolling
+      // itself into place. Worth recording next to the verdict, because it is
+      // the reason the judgement is made in the pre-frame at all.
+      hop['scrolled'] = true;
+    }
+
+    final viewport = _viewportRect(preViewportRaw, preTree);
+    final verdict = judgeHop(
+      from: from,
+      to: toInPre,
+      direction: direction,
+      candidates: preCandidates,
+      viewport: viewport,
+      allow: allow,
+      expected: expectedId != null,
+    );
+    hop['kind'] = verdict.kind.name;
+    hop['message'] = verdict.message;
+    if (verdict.passedOver.isNotEmpty) {
+      hop['passedOver'] = [for (final n in verdict.passedOver) n.toJson()];
+    }
+
+    switch (verdict.kind) {
+      case HopVerdictKind.inconclusive:
+        inconclusive++;
+      case HopVerdictKind.ok:
+        break;
+      case HopVerdictKind.skipped:
+      case HopVerdictKind.notForward:
+        bundle.saveUiTree('$name-hop-$k-post', postTree);
+        try {
+          bundle.saveScreenshot('$name-hop-$k', await driver.screenshot());
+        } catch (_) {
+          // A missing screenshot must not replace the real failure.
+        }
+        failHop(verdict.message, hop);
+    }
+
+    hops.add(hop);
+
+    if (walk.stopAt != null && landed.id == walk.stopAt) {
+      stop = 'stopAt';
+      break;
+    }
+  }
+
+  if (hops.isNotEmpty && inconclusive == hops.length) {
+    bundle.saveWalk(name, {'direction': walk.direction, 'stop': 'failed', 'hops': hops});
+    throw StateError(
+      'every hop of this walk landed on a node that did not exist in the frame its press was issued in, so the '
+      'walk judged nothing — raise `settle`, or walk a surface that does not rebuild under the press',
+    );
+  }
+  if (walk.stopAt != null && stop != 'stopAt') {
+    bundle.saveWalk(name, {'direction': walk.direction, 'stop': 'failed', 'hops': hops});
+    throw StateError("walk finished its ${walk.steps} steps without ever focusing '${walk.stopAt}'");
+  }
+
+  final record = {'direction': walk.direction, 'stop': stop, 'hops': hops};
+  bundle.saveWalk(name, record);
+  return {'walk': '$name.json', 'stop': stop, 'hops': hops};
+}
+
+/// Two measurements of the same focusable. By number when both have one; a
+/// rect otherwise, which is all a node with no `FocusNode` of its own leaves.
+bool _sameNode(WalkNode a, WalkNode b) {
+  if (a.node != null && b.node != null) return a.node == b.node;
+  if (a.id != null && a.id == b.id) return true;
+  return (a.rect.left - b.rect.left).abs() < 0.5 && (a.rect.top - b.rect.top).abs() < 0.5;
+}
+
+/// The landing as it stood *before* the press, or null when it was not there.
+WalkNode? _matchInPre(List<WalkNode> preCandidates, WalkNode landed) {
+  for (final c in preCandidates) {
+    if (_sameNode(c, landed)) return c;
+  }
+  return null;
+}
+
+/// `/v1/viewport` as a rect in the same root space `/v1/ui_tree` reports
+/// bounds in. Falls back to the union of everything measurable when the app
+/// cannot answer, so a walk still runs on a target whose viewport endpoint is
+/// unavailable rather than silently treating every candidate as offscreen.
+GeoRect _viewportRect(Map<String, Object?> raw, Map<String, Object?> tree) {
+  final width = raw['width'];
+  final height = raw['height'];
+  if (width is num && height is num) {
+    return GeoRect(left: 0, top: 0, width: width.toDouble(), height: height.toDouble());
+  }
+  var right = 0.0;
+  var bottom = 0.0;
+  for (final node in walkCandidatesFrom(tree)) {
+    if (node.rect.right > right) right = node.rect.right;
+    if (node.rect.bottom > bottom) bottom = node.rect.bottom;
+  }
+  return GeoRect(left: 0, top: 0, width: right, height: bottom);
 }
 
 /// The transport client, or a message naming the verb that needed it.
@@ -571,6 +772,12 @@ String _buildReport(Scenario scenario, Map<String, Object?> manifest) {
   for (final raw in manifest['steps'] as List<Map<String, Object?>>) {
     final ok = raw['ok'] == true ? 'PASS' : 'FAIL';
     buffer.writeln('- [$ok] `${raw['verb']}` (line ${raw['line']})${raw['error'] != null ? ' — ${raw['error']}' : ''}');
+    // A walk's finding is per hop, and a report that only said PASS/FAIL for
+    // the whole step would hide which press went wrong.
+    for (final hop in (raw['hops'] as List?) ?? const []) {
+      final h = hop as Map<String, Object?>;
+      buffer.writeln('  - hop ${h['hop']}: ${h['kind']} — ${h['message']}');
+    }
   }
   return buffer.toString();
 }

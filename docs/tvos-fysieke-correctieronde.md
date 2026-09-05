@@ -61,7 +61,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | WT1 | Focus strandt na het vergeten van een kamer in Samen Kijken | FIXED | `614fc08` |
 | VER1 | Een assert met een verkeerd YAML-type eindigt groen | FIXED | `9d36bb5` |
 | WL1 | Focus strandt na het verwijderen van een kijklijstkaart | FIXED | `b3a3e5d` |
-| NAV1 | De bovenbalk slaat Home over | FIXED, hardware open | `51186c6` |
+| NAV1 | De bovenbalk slaat Home over. Heropend 5 september: log `y0w9x` (build 251) toont een tweede *native* keydown/keyup-paar na de druk die op Home landt. Oorzaak gevonden in de engine-fork, niet in de fasen: het aanzetten van de Menu-passthrough laat de ingedrukte pijl los, en `.ended` tikt hem opnieuw. Zie "NAV1, de echte oorzaak" | FIXED, app-contract in Verify, engine-helft HARDWARE ONLY (build 259) | `51186c6`, `531ae19c`, `7786a952` |
 | LAND1 | De landing slaat de eerste contentrail over | FIXED, hardware open | `51186c6` |
 | TILE1 | Een tegel zonder actie zou de focus klemmen | NOT REPRODUCED | n.v.t. |
 | LAND4 | Verticaal navigeren verliest de horizontale positie | FIXED | `8686f5c` |
@@ -125,6 +125,9 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | REV1 | Apple Review Jellyfin: Home toont content, Films/Series leeg en concrete library niet zichtbaar (Apple Review, release-kritiek) | OPEN | n.v.t. |
 | LAND7 | Actieve discovery-rail krijgt geen vaste verticale focuspositie | OPEN | n.v.t. |
 | LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted. Data- en resolutielaag op eae19cb4, de pagina 31 A, de sheet 31 B en de toasts 31 C/D op a9a50ad9, de layout- en meldingscorrecties uit de simulatorronde op a5730f35. Het Verify-scenario is groen; de hardwareronde staat open | OPEN | eae19cb4, a9a50ad9, a5730f35 |
+| HERO3 | De Home-hero toont niet alleen recent uitgebrachte films: "Recent uitgebracht" had geen tijdvenster, en items zonder releasedatum reden mee op `addedAt`. Besluit 5 september: 90 dagen op releasedatum, zonder datum buiten de hero (DEC-097) | FIXED, hardware open | `531ae19c` |
+| PLR1 | Tekst van de spelerlaag valt links buiten het title-safe gebied (titelbalk op x = 0, tijdlijn op 24 pt) terwijl elke andere TV-surface `tvPageInset` betaalt | FIXED, hardware open | `36118056` |
+| WALK | Een `walk`-stap in Pleya Verify die een richting herhaalt en per hop meldt welke focusbare kandidaat is overgeslagen, zodat sprongen niet meer per geval op het toestel gevonden hoeven te worden. Kern in `c4ffcd16` (DEC-098); open: `nav.profile-id`, vier scenario's op de simulator, twee sabotagecontroles, docs | IN PROGRESS | `c4ffcd16` |
 
 ## Wat er per item bekend is
 
@@ -2594,3 +2597,119 @@ is er zelfs op gebouwd. Het registreren van die pref zet echter synchronisatie a
 waarde die vandaag lokaal blijft, en dat is een gedragswijziging die buiten deze fase valt.
 Hij hoort bij dezelfde opruiming als het regex-gat in `preference_sync_policy_test.dart` dat
 `track_language_preferences` en `unified_source_preferences` al langer ongezien doorlaat.
+
+### NAV1, tweede oorzaak: een tweede native druk na de Home-refresh
+
+Heropend 5 september op de Apple TV met build 251, waar `51186c6` in zit. Log `y0w9x`
+(`curl -sS https://ice.pleya.app/logs/y0w9x`) laat per ringdruk die op Home landt twee complete
+native keydown/keyup-paren van dezelfde toets zien, 80 tot 230 ms uit elkaar, de tweede telkens
+net nadat "Fetched 20 on deck items" de Home-refresh afsluit. Geen `source=swipe`, geen
+`KeySimulator`: het is niet het aanraakpad waar NAV1 op gefixt is, en niet de Dart-kant van
+`GamepadService`. Het tweede paar komt over `flutter/keydata` binnen als een tweede fysieke druk,
+in drie van de vier gevallen zonder eigen `touch started` (`reason=no-active-touch`), in het
+vierde nog binnen de aanraking van de eerste. Het duplicaatvenster van 120 ms miste het.
+
+De navbalk is bewezen niet de eigenaar: `tv_top_navigation_test.dart:301` loopt precies de
+gemelde route af, één stop per druk, en is groen.
+
+**Fix, verankerd op de aanraakstroom.** `AppleTvRemoteTouchService` onthoudt het laatste
+afgeronde native paar (keydown én keyup) en of er sindsdien een `started` is geweest. Een tweede
+keydown van dezelfde toets zonder nieuwe aanraking, binnen 500 ms, is een duplicaat en wordt
+samen met zijn keyup geconsumeerd. Een echte tweede tik brengt zijn eigen `started` mee en gaat
+door; een ingedrukt gehouden richting heeft geen keyup ertussen en blijft herhalen. Vijf
+replay-tests in `apple_tv_remote_touch_service_test.dart` spelen de logregels na, met hun
+tijdsverschillen, en de 43 bestaande controles blijven groen.
+
+**Bron nog aan te wijzen, op het toestel.** Twee kandidaten buiten Dart: `universal_gamepad`
+ziet de Siri Remote als gamepad (log regel 15) en kan D-pad-input als toetsevent injecteren, of
+de engine-fork laat beide geswizzelde hops in `tvosHandlePress` landen en synthetiseert onder een
+zwaar frame twee keer. A/B: een build met `GamepadService` uit op Apple TV; verdwijnt het tweede
+paar uit de log, dan gaat de gamepad-bridge daar structureel uit, anders gaat de log naar de
+engine-fork. De dedupe blijft in beide gevallen staan. De simulator kan dit niet: geen
+aanraakvlak, en de kliktest van WALK ziet het dus ook niet.
+
+### NAV1, de echte oorzaak: de Menu-passthrough laat de ingedrukte pijl los
+
+Gesloten op 5 september na acht toestelbuilds (DEC-099). De tabel is de volledige meetreeks; wie hier
+later naar kijkt hoeft niets ervan te herhalen.
+
+| Build | Wat erin zat | Log | Uitkomst |
+|-------|--------------|-----|----------|
+| 252 | dedupe in `AppleTvRemoteTouchService` (`531ae19c`) | `3zsde` | tweede paar blijft |
+| 253 | idem, gamepad-bridge uit | `6zuye` | tweede paar blijft; `universal_gamepad` is niet de bron |
+| 254 | early key handler (`34f9356f`) plus 500 ms-heuristiek | `ld1t1` | 65 echte drukken opgegeten |
+| 255 | `press-diag` vanuit Swift: fase en `UIPress`-adres per druk | `wa6v9` | de meting die de oorzaak bevat |
+| 256 | `.ended` van een pijl aan UIKit gegeven (`67992a57`) | crashlog | `_verifyTrackingPresses:` asserteert op elke pijl |
+| 257 | `.ended` ingeslikt (`79adcc8a`) | geen crash | remote blijft in één richting hangen |
+| 258 | filter uit (`5c0db0a1`) | | bedienbaar, dubbele stap terug |
+| 259 | passthrough wacht op key-up (`7786a952`) | | te bevestigen op het toestel |
+
+**Wat log `wa6v9` werkelijk zegt.** De eerste twee drukken zijn goed: omhoog (10:59:18.862,
+keydown op fase 0, keyup op fase 3, 80 ms later) en rechts, weg van Home (19.475 en 19.581).
+De derde druk, links terug naar Home, krijgt op fase 0 een keydown én 3 ms later een keyup, en
+op fase 3 een tweede compleet paar. Elke druk daarna wisselt Home in en uit en verdubbelt. Het
+is dus niet "de engine post een paar per fase", zoals de vorige analyse zei. Het is één
+specifieke druk: die welke op de Home-tab landt.
+
+**De engine, gelezen in plaats van geraden.** `scripts/tvos_engine_source.sh` reconstrueert
+`FlutterViewController.mm` uit de patchreeks van de fork; `docs/tvos-remote-press-pipeline.md`
+beschrijft het pad per station. Drie regels doen het:
+
+1. `setMenuPressPassthroughEnabled:YES` roept `releaseAllSynthesizedPresses`, een synthetische
+   keyup voor elke toets die de engine vasthoudt. De app zet die vlag zodra de focus op de
+   Home-tab in de balk staat (`shouldPassTvosMenuToSystem`, `isCurrentTabRoot`).
+2. `.ended` synthetiseert met `tapIfMissingKeyDown:YES`: een toets die niet meer in de set
+   staat krijgt een vers down/up-paar. Dat is stap twee.
+3. De herhaaltimer (0,4 s, daarna 80 ms) loopt zolang de toets in de set staat. Dat is 257:
+   de ingeslikte `.ended` haalde de pijl nooit uit de set.
+
+Geen enkel signaal in Dart onderscheidt het tweede paar van een echte snelle druk, en de fase
+op zichzelf is onschuldig. De enige plek waar het te zien was, is het kanaalbericht dat de app
+tussen de keydown en de keyup verstuurde, en dat stond niet in de log.
+
+**Fix bij de afzender.** `TvosSystemNavigationService` parkeert een enable tot
+`HardwareKeyboard.physicalKeysPressed` leeg is en stuurt hem op de eerstvolgende key-up; een
+disable laat in de engine niets los en gaat direct. Drie tests in
+`tvos_system_navigation_service_test.dart`, twee rood vóór de fix. De filter in `AppDelegate`
+is weg (`5c0db0a1`); de early key handler uit `34f9356f` blijft, want die is het enige
+Dart-pad dat een druk kan stoppen en de dedupe leunt erop.
+
+**Wat Pleya Verify bewijst, en wat niet.** Met een NSLog-regel per druk in de Swift-hook is
+gemeten dat een idb-druk in de simulator `tvosHandlePress(fromUIEvent:)` nooit bereikt (nul
+hits in tien drukken, hook beschikbaar). De engine-helft van deze bevinding is dus niet in de
+simulator te reproduceren en blijft `HARDWARE ONLY`. Het contract van de app wél:
+`TvosSystemNavigationService` publiceert `tvos.menu_passthrough` met `parkedFlushes` en
+`enablesSentWhileKeysHeld`, en `tvos.nav.held-press-lands-once.yaml` landt met
+`holdMs: 250` drie keer op Home en eist 3 en 0. Groen met de deferral (bundel
+`tvos-nav-held-press-lands-once-1788605245133`); rood zonder (deferral uitgeschakeld in dezelfde build, bundel `tvos-nav-held-press-lands-once-1788605599538`: `parkedFlushes` 0, `enablesSentWhileKeysHeld` 1). De unit-tests in `tvos_system_navigation_service_test.dart` dekken dezelfde vier waarden.
+
+**Open op hardware.** Build 259 staat op het toestel. Te bevestigen: links en rechts over de
+balk landen één tab per druk, ook op Home; Menu op Home verlaat de app nog; Menu op een andere
+tab of in een sectie blijft in de app.
+
+### HERO3, "Recent uitgebracht" had geen venster
+
+Gemeld 5 september op het toestel: de hero toont films die niet recent uitgebracht zijn.
+`getLatestMoviesFromAllServers` haalde de 100 laatst *toegevoegde* items, hield films over,
+sorteerde op releasedatum en nam de top 12; niets weigerde een film uit 1998, en een film zonder
+releasedatum reed mee op `addedAt`. DEC-067 en hoofdstuk 9.5 beloofden "recent uitgebracht"
+zonder te zeggen wat recent is. Besluit van Michel: 90 dagen op de releasedatum, en zonder datum
+buiten de hero (DEC-097). Vier HERO3-controles in `data_aggregation_bridge_test.dart` eisen de
+grens; de bestaande test die het oude gedrag vastlegde is bijgewerkt.
+
+Gevolg dat vooraf niet in de analyse stond: de Verify-fixture is een Pleya-fake-server over
+`/v1`, en dat contract draagt geen releasedatum. De hero-scenario's op de simulator zien dus de
+fallback, en dat is precies wat DEC-097 voor een Pleya Server voorschrijft tot het contract een
+releasedatum draagt. Dat protocolgat staat naast het identiteitsgat van LANG1.
+
+### PLR1, de spelerlaag betaalt de title-safe inset
+
+Gemeld 5 september met foto: de "B" van Bluey en de "S" van S3 afgesneden, "3:09" op de rand.
+De speler rendert op tvOS `DesktopVideoControls`; de titelbalk nam op alles wat niet macOS is
+`macOSLeftFullscreen` = 0, en het onderblok stond op 24. `main.dart` zet de tvOS-overscan-insets
+op nul, dus `SafeArea` helpt niet; elke andere TV-pagina betaalt `tvPageInset`. Nu de speler ook
+(titelbalk, onderblok, content strip, zwevende knoppen, en het infopaneel als ondergrens). Een
+widgettest eist dat titelblok en tijdlijn niet vóór de inset beginnen; `player.title`,
+`player.timeline` en `player.safe_area` bestaan voor Pleya Verify. Een spelerscenario wacht op
+een betrouwbare afspeelroute op de TV-shell (VER5) en is bewust niet gefaket; hardware is J4.
+

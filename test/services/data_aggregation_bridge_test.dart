@@ -724,7 +724,11 @@ void main() {
       },
     );
 
-    test('getLatestMoviesFromAllServers sorts by release date, films only, addedAt sinks the dateless', () async {
+    test('getLatestMoviesFromAllServers keeps only films released inside the window, newest first', () async {
+      // DEC-097: 90 days on the release date. A 2010 film and a film without a
+      // date used to be kept (this test once asserted exactly that); now they
+      // are out, because "recent uitgebracht" is a promise about the date.
+      service = DataAggregationService(manager, now: () => DateTime(2024, 7, 1));
       final client = PlexClient.forTesting(
         config: PlexConfig(
           baseUrl: 'https://plex.example.com',
@@ -778,8 +782,70 @@ void main() {
 
       final result = await service.getLatestMoviesFromAllServers(limit: 12);
 
-      expect(result.items.map((item) => item.id), ['new-film', 'old-film', 'dateless']);
+      expect(result.items.map((item) => item.id), ['new-film']);
       expect(result.succeededServerIds, {'plex-1'});
+    });
+
+    // HERO3 / DEC-097 — the window has an edge, and the edge is the date.
+    Future<List<String>> latestIds(DateTime now, List<Map<String, Object?>> metadata) async {
+      final client = PlexClient.forTesting(
+        config: PlexConfig(
+          baseUrl: 'https://plex.example.com',
+          token: 'token',
+          clientIdentifier: 'client-id',
+          product: 'Plezy',
+          version: 'test',
+        ),
+        serverId: ServerId('plex-1'),
+        serverName: 'Plex',
+        httpClient: MockClient((req) async {
+          if (req.url.path == '/library/recentlyAdded') {
+            return _json({
+              'MediaContainer': {'Metadata': metadata},
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      addTearDown(client.close);
+      manager.debugRegisterClientForTesting(client);
+      service = DataAggregationService(manager, now: () => now);
+      final result = await service.getLatestMoviesFromAllServers(limit: 12);
+      return result.items.map((item) => item.id).toList();
+    }
+
+    Map<String, Object?> film(String id, String? released, {int addedAt = 1}) => {
+      'ratingKey': id,
+      'type': 'movie',
+      'title': id,
+      if (released != null) 'originallyAvailableAt': released,
+      'addedAt': addedAt,
+    };
+
+    test('HERO3: a film released 30 days ago is in, one released 91 days ago is out', () async {
+      final ids = await latestIds(DateTime(2026, 9, 5), [
+        film('thirty', '2026-08-06'),
+        film('ninety-one', '2026-06-06'),
+      ]);
+      expect(ids, ['thirty']);
+    });
+
+    test('HERO3: exactly 90 days ago is still inside the window', () async {
+      final ids = await latestIds(DateTime(2026, 9, 5), [film('ninety', '2026-06-07')]);
+      expect(ids, ['ninety']);
+    });
+
+    test('HERO3: a film without a release date is out, however recently it was added', () async {
+      final ids = await latestIds(DateTime(2026, 9, 5), [
+        film('dateless', null, addedAt: 999),
+        film('dated', '2026-09-01'),
+      ]);
+      expect(ids, ['dated']);
+    });
+
+    test('HERO3: a pool with nothing inside the window is empty, never padded from older films', () async {
+      final ids = await latestIds(DateTime(2026, 9, 5), [film('old', '2010-01-01'), film('older', '1998-05-01')]);
+      expect(ids, isEmpty);
     });
 
     test('getLatestShowsFromAllServers sorts by addedAt, dedupes cross-server, drops episodes', () async {

@@ -157,4 +157,68 @@ void main() {
           'setupVerbs/stepVerbs in model.dart',
     );
   });
+
+  group('walk', () {
+    Scenario walkScenario(String step) => parseScenarioString(
+      'name: walk.check\ntarget: tvos-sim\nsetup:\n  - launch\nsteps:\n  - $step\n',
+      sourcePath: 'inline.yaml',
+    );
+
+    List<String> errorsFor(String step) => [for (final e in validateScenario(walkScenario(step), catalog)) e.message];
+
+    test('the canonical shapes validate', () {
+      expect(errorsFor('walk: {direction: right, steps: 5, timeout: 5000}'), isEmpty);
+      expect(
+        errorsFor('walk: {direction: down, steps: 8, stopAt: discover.rail, timeout: 5000, settle: 600}'),
+        isEmpty,
+      );
+      expect(errorsFor('walk: {direction: right, timeout: 5000, expect: [nav.series, nav.movies]}'), isEmpty);
+      expect(errorsFor('walk: {direction: down, steps: 3, timeout: 5000, allow: [discover.hero.play]}'), isEmpty);
+    });
+
+    test('a direction that is not one of the four is rejected', () {
+      expect(errorsFor('walk: {direction: sideways, steps: 2, timeout: 5000}').single, contains('direction'));
+    });
+
+    test('a walk with no timeout is rejected, like every other bounded step', () {
+      expect(errorsFor('walk: {direction: right, steps: 2}').single, contains('timeout'));
+    });
+
+    test('steps and expect cannot disagree about how long the walk is', () {
+      expect(
+        errorsFor('walk: {direction: right, steps: 5, timeout: 5000, expect: [nav.series]}').single,
+        contains('disagrees'),
+      );
+    });
+
+    test('stopAt and expect are two different tests, not one step', () {
+      expect(
+        errorsFor('walk: {direction: right, steps: 3, timeout: 5000, stopAt: nav.series, expect: [nav.series]}').single,
+        contains('two different tests'),
+      );
+    });
+
+    test('an unknown field is rejected rather than ignored', () {
+      // The `assert` lesson: a step that silently drops what it does not
+      // recognize records a green verdict for a claim nobody checked.
+      expect(
+        errorsFor('walk: {direction: right, steps: 2, timeout: 5000, until: nav.series}').single,
+        contains('until'),
+      );
+    });
+
+    test('a typo in stopAt, expect or allow fails here, not minutes into a run', () {
+      expect(errorsFor('walk: {direction: right, steps: 2, timeout: 5000, stopAt: nav.seriez}'), [
+        contains('nav.seriez'),
+      ]);
+      expect(errorsFor('walk: {direction: right, timeout: 5000, expect: [nav.seriez]}'), [contains('nav.seriez')]);
+      expect(errorsFor('walk: {direction: right, steps: 2, timeout: 5000, allow: [nav.seriez]}'), [
+        contains('nav.seriez'),
+      ]);
+    });
+
+    test('an instanceable id keeps working in expect', () {
+      expect(errorsFor('walk: {direction: down, timeout: 5000, expect: ["discover.rail.item[2.0]"]}'), isEmpty);
+    });
+  });
 }

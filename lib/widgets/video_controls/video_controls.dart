@@ -58,6 +58,8 @@ import '../../utils/codec_utils.dart';
 import '../../utils/formatters.dart';
 import '../../utils/haptics.dart';
 import '../../utils/platform_detector.dart';
+import '../tv/tv_page_surface.dart';
+import 'widgets/player_safe_area.dart';
 import '../../utils/player_utils.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/provider_extensions.dart';
@@ -983,6 +985,8 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                     ),
                   // Speed indicator overlay for long-press 2x
                   if (_showSpeedIndicator) Positioned.fill(child: IgnorePointer(child: _buildSpeedIndicator())),
+                  // The measurable title-safe rect (Pleya Verify only, PLR1).
+                  if (PlatformDetector.isTV()) ?PlayerSafeArea.maybe(context),
                   // Stream-driven VLC-style pill (rate changes, backend-switch notifications)
                   Positioned.fill(
                     child: IgnorePointer(
@@ -1033,7 +1037,7 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                     AnimatedPositioned(
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeInOut,
-                      right: 24,
+                      right: PlatformDetector.isTV() ? tvPageInset(context) : 24,
                       bottom: () {
                         if (!_showControls) return 24.0;
                         if (widget.chromeController.contentStripVisible) return 180.0;
@@ -1050,7 +1054,7 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeInOut,
                       top: _showControls ? (isMobile ? 100.0 : 60.0) : 16.0,
-                      left: 16,
+                      left: PlatformDetector.isTV() ? tvPageInset(context) : 16,
                       child: AnimatedOpacity(
                         opacity: (!_autoHidePerformanceOverlay || _showControls) ? 1.0 : 0.0,
                         duration: const Duration(milliseconds: 200),

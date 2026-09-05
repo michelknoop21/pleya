@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -8,6 +10,7 @@ import '../../media/media_item.dart';
 import '../../media/media_source_info.dart';
 import '../../mpv/mpv.dart';
 import '../../services/settings_service.dart';
+import '../tv/tv_page_surface.dart';
 import '../app_icon.dart';
 import 'models/track_controls_state.dart';
 import 'sheets/subtitle_search_sheet.dart';
@@ -226,7 +229,11 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
                 // Keep the panel — and its top pill bar / focused rows — inside a
                 // title-safe margin so no text lands just past the visible edge.
                 final size = MediaQuery.sizeOf(context);
-                final hMargin = (size.width * 0.055).clamp(40.0, 96.0);
+                // The same token every TV page pays (`tvPageInset`), so the
+                // player has one owner of its title-safe margin instead of a
+                // percentage of its own (PLR1). Never narrower than the 5.5%
+                // this panel used before, so its rows do not creep outward.
+                final hMargin = math.max(tvPageInset(context), (size.width * 0.055).clamp(40.0, 96.0));
                 final vMargin = (size.height * 0.06).clamp(20.0, 64.0);
                 final maxPanelHeight = (size.height - vMargin * 2).clamp(240.0, 460.0);
                 return Container(

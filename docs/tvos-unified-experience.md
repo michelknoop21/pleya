@@ -654,7 +654,10 @@ eigen constraint-gebaseerde geometry.
 
 De hero bevat alleen films of series, geen losse afleveringen.
 
-**Bron: recent uitgebrachte films, exclusief.** Zolang de pool van geschikte, gededupliceerde
+**Bron: recent uitgebrachte films, exclusief.** "Recent" is een releasedatum van ten hoogste 90
+dagen geleden, en een film zonder releasedatum telt niet mee (DEC-097; tot 5 september 2026 was
+er geen venster en reed een film zonder datum mee op toevoegdatum, wat HERO3 in de correctieronde
+opleverde). Zolang de pool van geschikte, gededupliceerde
 recent uitgebrachte films niet leeg is bevat de hero uitsluitend die films, op releasedatum geordend,
 in de volgorde die `DiscoverProvider.latestMovies` al oplevert (besluit Michel, 30 augustus 2026: de
 hero blijft de etalage van wat nieuw uit is, niet van wat het aanbevelingsmodel kiest). Deduplicatie

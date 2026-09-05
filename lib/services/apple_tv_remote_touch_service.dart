@@ -183,7 +183,51 @@ class AppleTvRemoteTouchService {
     _listening = false;
   }
 
+  /// Every key this handler decided to swallow, so [blockConsumedKeyEvent] can
+  /// swallow the same one where it counts. Identity, not a copy of the key:
+  /// both hooks are handed the very same [KeyEvent] instance out of one
+  /// `KeyMessage`, and a key-based match would also block the honest second
+  /// press of the same direction.
+  KeyEvent? _consumedEvent;
+
+  /// The early key handler, and the only place a consumed press actually
+  /// stops.
+  ///
+  /// Returning `true` from [handleNativeKeyEvent] does not stop anything.
+  /// `KeyEventManager.handleKeyData` (SDK 3.44,
+  /// `services/hardware_keyboard.dart:1118`) reads
+  ///
+  /// ```dart
+  /// _hardwareKeyboard.handleKeyEvent(event);
+  /// _dispatchKeyMessage(<KeyEvent>[event], null);
+  /// ```
+  ///
+  /// — the result of the first line is discarded, and the message goes to
+  /// `FocusManager` regardless. Log `3zsde` of 5 September 2026 (build 252)
+  /// shows both halves one millisecond apart: `consume native keydown
+  /// reason=repeated-pair-without-touch age=99ms`, and directly under it
+  /// `FocusableWrapper: result=KeyEventResult.handled reason=onNavigateLeft`.
+  /// The duplicate was recognised and moved the focus anyway, so NAV1 stayed
+  /// open with a fix that logged success.
+  ///
+  /// `FocusManager._handleKeyMessage` runs its early handlers before it walks
+  /// the focus tree and returns straight away on `handled`
+  /// (`widgets/focus_manager.dart:2233-2256`), which is what
+  /// `AppleTvNativeTextEntry` already relies on for the keyboard session.
+  KeyEventResult blockConsumedKeyEvent(KeyEvent event) {
+    if (!identical(event, _consumedEvent)) return KeyEventResult.ignored;
+    _consumedEvent = null;
+    _log('block consumed ${_eventTypeName(event)} logical=${_keyName(event.logicalKey)}');
+    return KeyEventResult.handled;
+  }
+
   bool handleNativeKeyEvent(KeyEvent event) {
+    final consumed = _decideNativeKeyEvent(event);
+    if (consumed) _consumedEvent = event;
+    return consumed;
+  }
+
+  bool _decideNativeKeyEvent(KeyEvent event) {
     _log('native ${_eventTypeName(event)} logical=${_keyName(event.logicalKey)}');
     if (_isMediaPlaybackKey(event.logicalKey)) {
       _log('consume native media key reason=direct-playback-action');
@@ -296,6 +340,8 @@ class AppleTvRemoteTouchService {
   void _startTouch(double x, double y) {
     _touchActive = true;
     _touchActiveNotifier.value = true;
+    // A new touch is a new physical gesture: whatever native pair completed
+    // before it may legitimately repeat now.
     _startX = x;
     _startY = y;
     _anchorX = x;
@@ -599,6 +645,26 @@ class AppleTvRemoteTouchService {
   /// the swipe axis independently, so a diagonal swipe can produce a native
   /// arrow on a *different* axis than the synthetic one. Matching only the
   /// same key would let that through as a second, sideways move.
+  /// A duplicate directional press is **not** filtered here, deliberately.
+  ///
+  /// NAV1's second pair was first attacked from this side: track the last
+  /// completed pair, veto a repeat of the same key that no new touch preceded.
+  /// It shipped as build 254 and was wrong. Log `ld1t1` shows it swallowing 65
+  /// real presses — the window does not slide, so one delivered press blacked
+  /// out the next half second, and fast clicking through a rail lost four
+  /// presses in five. Every discriminator available in Dart was measured
+  /// against three device logs and each one failed on at least one of them: the
+  /// gap (80-230 ms) overlaps how fast a viewer clicks, the keydown-to-keyup
+  /// duration is 4 ms in one log and 120 ms in another for the *same* honest
+  /// press, and the touch stream carries no event between the two pairs.
+  ///
+  /// The signal that does separate them exists one layer down. Log `wa6v9`
+  /// (build 255) pinned it: both pairs carry the same `UIPress`, one in phase
+  /// `.began` and one in `.ended`, because the engine fork synthesizes a whole
+  /// pair per phase for arrows. `PleyaFlutterViewController.isDuplicateArrowPhase`
+  /// in `tvos/Runner/AppDelegate.swift` drops the second phase, so nothing
+  /// reaches Dart that needs guessing about. Do not reintroduce a timing rule
+  /// here; it cannot be made correct with what this layer can see.
   bool _shouldConsumeNativeDirectional(KeyEvent event) {
     if (_currentDirectionalOwner() == _DirectionalOwner.swipe) {
       _log(
@@ -706,15 +772,21 @@ class AppleTvRemoteTouchService {
     }
   }
 
+  /// Both hooks, always together: the first decides, the second enforces.
+  /// Registering only the [HardwareKeyboard] half is what NAV1 shipped as, and
+  /// it silently does nothing — see [blockConsumedKeyEvent].
   void _registerNativeKeyHandler() {
     if (_nativeKeyHandlerRegistered) return;
     HardwareKeyboard.instance.addHandler(handleNativeKeyEvent);
+    FocusManager.instance.addEarlyKeyEventHandler(blockConsumedKeyEvent);
     _nativeKeyHandlerRegistered = true;
   }
 
   void _unregisterNativeKeyHandler() {
     if (!_nativeKeyHandlerRegistered) return;
     HardwareKeyboard.instance.removeHandler(handleNativeKeyEvent);
+    FocusManager.instance.removeEarlyKeyEventHandler(blockConsumedKeyEvent);
+    _consumedEvent = null;
     _nativeKeyHandlerRegistered = false;
   }
 

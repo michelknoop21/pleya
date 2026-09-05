@@ -15,7 +15,22 @@ const Set<String> setupVerbs = {'reset_app', 'seed', 'sign_in', 'open', 'install
 /// `back` had the same problem as `set_pref`/`focus` above — advertised,
 /// validated, never implemented, never defined — and is removed for the
 /// same reason.
-const Set<String> stepVerbs = {'press', 'tap', 'type', 'wait_until', 'assert', 'snapshot', 'settle', 'fixture_mutate', 'overlay'};
+const Set<String> stepVerbs = {
+  'press',
+  'tap',
+  'type',
+  'wait_until',
+  'assert',
+  'snapshot',
+  'settle',
+  'fixture_mutate',
+  'overlay',
+  // A walk is a sequence of presses with a judgement between each pair of
+  // frames, so it is shaped like `press`, not like `assert`: both existing
+  // evaluators are pure functions over one frame, and a focus jump is two
+  // frames with a press in between. See `pleya_verify/focus_walk/SPEC.md`.
+  'walk',
+};
 
 /// One entry of a scenario's `setup:` or `steps:` list.
 ///

@@ -3,6 +3,29 @@ import 'package:flutter/widgets.dart';
 
 import '../utils/log_redaction_manager.dart';
 
+/// A stable, process-scoped number for one `FocusNode`, handed out on first
+/// sight and never reused.
+///
+/// `/v1/ui_tree`'s `discovered` list has no identity: `label` is
+/// `'FocusableWrapper'` for most of the app, and `focused` is true for the
+/// whole ancestor chain of the focused node, so two frames cannot be lined up
+/// against each other by anything but a rect. That is exactly what a focus
+/// walk needs and exactly what a rect cannot give it, because rects move under
+/// the press being judged — rails scroll on focus, so the node that was at
+/// `x=740` before is at `x=380` after, and matching by geometry across the
+/// press silently pairs up the wrong two nodes.
+///
+/// An [Expando] is the right shape for it: the number lives as long as the
+/// `FocusNode` does and disappears with it, so a rebuilt subtree gets new
+/// numbers rather than a stale map growing for the life of the process. The
+/// numbers are meaningful **within one app run only** — nothing persists them,
+/// and a scenario must never hard-code one.
+final Expando<int> _nodeNumbers = Expando<int>('pleyaVerifyNodeNumber');
+int _nextNodeNumber = 1;
+
+/// The number for [node], assigning one if this is the first time it is seen.
+int automationNodeNumber(FocusNode node) => _nodeNumbers[node] ??= _nextNodeNumber++;
+
 /// A stable, agent-addressable UI node registered by a widget under
 /// `kPleyaVerify`. Populated starting with the automation-ID rollout (A.2 in
 /// the Pleya Verify plan); the registry works — and `/v1/ui_tree` reports
@@ -78,6 +101,7 @@ class AutomationRegistry {
         if (node.label != null) 'label': LogRedactionManager.redact(node.label!),
         'focused': node.focusNode?.hasFocus ?? false,
         if (node.focusNode != null) 'canRequestFocus': node.focusNode!.canRequestFocus,
+        if (node.focusNode != null) 'node': automationNodeNumber(node.focusNode!),
         if (_boundsOf(node.contextGetter?.call()) case final bounds?) 'bounds': _boundsToJson(bounds),
         'state': ?node.state?.call(),
       });
@@ -203,6 +227,7 @@ class AutomationRegistry {
       if (label != null) 'label': LogRedactionManager.redact(label),
       'focused': node.hasFocus,
       'canRequestFocus': node.canRequestFocus,
+      'node': automationNodeNumber(node),
       if (bounds != null) 'bounds': _boundsToJson(bounds),
     };
   }
@@ -225,6 +250,7 @@ class AutomationRegistry {
         if (label != null) 'label': LogRedactionManager.redact(label),
         'focused': focusNode.hasFocus,
         'canRequestFocus': focusNode.canRequestFocus,
+        'node': automationNodeNumber(focusNode),
         if (bounds != null) 'bounds': _boundsToJson(bounds),
       });
     }

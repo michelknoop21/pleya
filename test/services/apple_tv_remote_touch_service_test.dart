@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/diagnostics/select_trace_recorder.dart';
@@ -7,6 +8,86 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('AppleTvRemoteTouchService', () {
+    // NAV1 — waar de dubbele stap vandaan kwam, en waar hij gestopt wordt.
+    //
+    // Drie toestellogs uit één ochtend. `y0w9x` en `3zsde` toonden per ringdruk
+    // twee complete keydown/keyup-paren, 80-230 ms uit elkaar. Een heuristiek
+    // hier die het tweede paar herkende ging mee in build 254 en at in `ld1t1`
+    // 65 echte drukken op; die is weg (zie `_shouldConsumeNativeDirectional`).
+    // `wa6v9` wees de oorzaak aan: één `UIPress`, twee fasen, en de engine-fork
+    // synthetiseert voor pijltjes een heel paar per fase. Dat wordt nu in
+    // `AppDelegate.swift` afgevangen, waar de fase zichtbaar is.
+    //
+    // Wat hier overblijft is de laag die bewijst dat een consume in deze dienst
+    // überhaupt ergens op landt — want dat deed hij niet.
+    group('een consume moet de focustree ook echt bereiken', () {
+      testWidgets('HardwareKeyboard alleen houdt een geconsumeerde toets niet tegen', (tester) async {
+        final h = _Harness();
+        final received = <KeyEvent>[];
+        HardwareKeyboard.instance.addHandler(h.service.handleNativeKeyEvent);
+        addTearDown(() => HardwareKeyboard.instance.removeHandler(h.service.handleNativeKeyEvent));
+        await _focusRecorder(tester, received);
+
+        // Een veeg claimt de richting, dus de native pijl hoort geslikt te
+        // worden — dat is de bedoeling die al in die code stond.
+        await h.send('started', x: 500, y: 500);
+        await h.send('move', x: 380, y: 490);
+        received.clear();
+        await _sendPair(LogicalKeyboardKey.arrowLeft);
+
+        // Dit is geen wens, dit is de SDK: `KeyEventManager.handleKeyData`
+        // gooit het resultaat van `_hardwareKeyboard.handleKeyEvent` weg en
+        // roept `_dispatchKeyMessage` er onvoorwaardelijk achteraan
+        // (services/hardware_keyboard.dart:1118).
+        expect(received, hasLength(2), reason: 'de SDK levert de toets af ondanks de consume');
+      });
+
+      testWidgets('met de early key handler erbij bereikt hij de focustree niet', (tester) async {
+        final h = _Harness();
+        final received = <KeyEvent>[];
+        HardwareKeyboard.instance.addHandler(h.service.handleNativeKeyEvent);
+        FocusManager.instance.addEarlyKeyEventHandler(h.service.blockConsumedKeyEvent);
+        addTearDown(() {
+          HardwareKeyboard.instance.removeHandler(h.service.handleNativeKeyEvent);
+          FocusManager.instance.removeEarlyKeyEventHandler(h.service.blockConsumedKeyEvent);
+        });
+        await _focusRecorder(tester, received);
+
+        await h.send('started', x: 500, y: 500);
+        await h.send('move', x: 380, y: 490);
+        received.clear();
+        await _sendPair(LogicalKeyboardKey.arrowLeft);
+
+        expect(received, isEmpty);
+      });
+
+      testWidgets('een gewone druk komt er onaangeroerd doorheen', (tester) async {
+        final h = _Harness();
+        final received = <KeyEvent>[];
+        HardwareKeyboard.instance.addHandler(h.service.handleNativeKeyEvent);
+        FocusManager.instance.addEarlyKeyEventHandler(h.service.blockConsumedKeyEvent);
+        addTearDown(() {
+          HardwareKeyboard.instance.removeHandler(h.service.handleNativeKeyEvent);
+          FocusManager.instance.removeEarlyKeyEventHandler(h.service.blockConsumedKeyEvent);
+        });
+        await _focusRecorder(tester, received);
+
+        await h.send('started');
+        h.advance(const Duration(milliseconds: 30));
+        await _sendPair(LogicalKeyboardKey.arrowLeft);
+        expect(received, hasLength(2));
+
+        // En de tweede, en de derde: er is geen venster meer dat drukken
+        // opeet. `ld1t1` verloor er hier vier van de vijf.
+        for (var i = 0; i < 3; i++) {
+          h.advance(const Duration(milliseconds: 90));
+          received.clear();
+          await _sendPair(LogicalKeyboardKey.arrowLeft);
+          expect(received, hasLength(2), reason: 'druk ${i + 2} moet er ook door');
+        }
+      });
+    });
+
     test('emits repeated horizontal swipes only after the repeat interval', () async {
       final harness = _Harness();
 
@@ -644,6 +725,33 @@ class _Harness {
   void advance(Duration duration) {
     now = now.add(duration);
   }
+}
+
+/// A focused node that records every key event that reaches the focus tree —
+/// the layer `FocusableWrapper` lives on, and the one the log showed the
+/// duplicate still arriving at.
+Future<void> _focusRecorder(WidgetTester tester, List<KeyEvent> received) async {
+  final node = FocusNode(debugLabel: 'nav1-recorder');
+  addTearDown(node.dispose);
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Focus(
+        focusNode: node,
+        onKeyEvent: (_, event) {
+          received.add(event);
+          return KeyEventResult.handled;
+        },
+        child: const SizedBox.expand(),
+      ),
+    ),
+  );
+  node.requestFocus();
+  await tester.pump();
+}
+
+Future<void> _sendPair(LogicalKeyboardKey key) async {
+  await simulateKeyDownEvent(key);
+  await simulateKeyUpEvent(key);
 }
 
 const _rawEnterKey = LogicalKeyboardKey(0x0d);

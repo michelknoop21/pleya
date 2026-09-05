@@ -15,7 +15,10 @@ import '../../services/apple_tv_remote_touch_service.dart';
 import '../../services/fullscreen_state_manager.dart';
 import '../../services/scrub_preview_source.dart';
 import '../../utils/desktop_window_padding.dart';
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../utils/platform_detector.dart';
+import '../tv/tv_page_surface.dart';
 import '../../utils/formatters.dart';
 import '../../i18n/strings.g.dart';
 import '../../focus/focusable_wrapper.dart';
@@ -822,7 +825,12 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
                 // Content strip (TV/dpad only) — replaces normal controls
                 if (_contentStripVisible && widget.useDpadNavigation)
                   Container(
-                    padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8, top: 32),
+                    padding: EdgeInsets.only(
+                      left: tvPageInset(context),
+                      right: tvPageInset(context),
+                      bottom: 8,
+                      top: 32,
+                    ),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
@@ -887,15 +895,25 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
   }
 
   Widget _buildTopBarContent(BuildContext _, double leftPadding) {
+    // On TV the overlay pays the same title-safe inset as every other TV
+    // surface. `main.dart` zeroes tvOS's own overscan insets app-wide, so
+    // `SafeArea` gives nothing here and the macOS branch above resolved to 0:
+    // the first glyph of the title sat on scan line zero of a 1080p canvas,
+    // and a set that overscans cut it off (PLR1).
+    final tvInset = PlatformDetector.isTV() ? tvPageInset(context) : null;
     final topBar = Padding(
-      padding: .only(left: leftPadding, right: 16),
+      padding: .only(left: tvInset ?? leftPadding, right: tvInset ?? 16),
       child: Row(
         children: [
           Expanded(
-            child: VideoControlsHeader(
-              metadata: widget.metadata,
-              style: Platform.isMacOS ? VideoHeaderStyle.singleLine : VideoHeaderStyle.multiLine,
-              onBack: widget.onBack,
+            child: AutomationNode(
+              id: AutomationIds.playerTitle,
+              role: 'region',
+              child: VideoControlsHeader(
+                metadata: widget.metadata,
+                style: Platform.isMacOS ? VideoHeaderStyle.singleLine : VideoHeaderStyle.multiLine,
+                onBack: widget.onBack,
+              ),
             ),
           ),
           if (_isLive && (widget.captureBuffer == null || widget.isAtLiveEdge)) ...[
@@ -919,7 +937,9 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
   Widget _buildBottomControlsContent(BuildContext _, {required bool hasFrame}) {
     final canInteract = _canControl && hasFrame;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      // 24 is a desktop-window margin; a television pays its title-safe inset
+      // instead, so "3:09" and "Eindigt om" stay clear of the overscan band.
+      padding: EdgeInsets.symmetric(horizontal: PlatformDetector.isTV() ? tvPageInset(context) : 24, vertical: 16),
       child: Column(
         children: [
           // Row 1: Timeline (LiveTimelineBar for time-shifted live, VideoTimelineBar for VOD)
@@ -937,23 +957,27 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
               enabled: canInteract,
             ),
           ] else if (!_isLive) ...[
-            VideoTimelineBar(
-              player: widget.player,
-              chapters: widget.chapters,
-              chaptersLoaded: widget.chaptersLoaded,
-              showChapterMarkersOnTimeline: widget.showChapterMarkersOnTimeline,
-              onSeek: widget.onSeek,
-              onSeekEnd: widget.onSeekEnd,
-              onScrubStart: widget.onScrubStart,
-              onScrubEnd: widget.onScrubEnd,
-              horizontalLayout: true,
-              focusNode: _timelineFocusNode,
-              onKeyEvent: _handleTimelineKeyEvent,
-              onFocusChange: _onFocusChange,
-              enabled: canInteract,
-              thumbnailDataBuilder: widget.thumbnailDataBuilder,
-              showKeyRepeatThumbnail: _showKeyRepeatThumbnail,
-              previewPosition: _timelinePreviewPosition,
+            AutomationNode(
+              id: AutomationIds.playerTimeline,
+              role: 'region',
+              child: VideoTimelineBar(
+                player: widget.player,
+                chapters: widget.chapters,
+                chaptersLoaded: widget.chaptersLoaded,
+                showChapterMarkersOnTimeline: widget.showChapterMarkersOnTimeline,
+                onSeek: widget.onSeek,
+                onSeekEnd: widget.onSeekEnd,
+                onScrubStart: widget.onScrubStart,
+                onScrubEnd: widget.onScrubEnd,
+                horizontalLayout: true,
+                focusNode: _timelineFocusNode,
+                onKeyEvent: _handleTimelineKeyEvent,
+                onFocusChange: _onFocusChange,
+                enabled: canInteract,
+                thumbnailDataBuilder: widget.thumbnailDataBuilder,
+                showKeyRepeatThumbnail: _showKeyRepeatThumbnail,
+                previewPosition: _timelinePreviewPosition,
+              ),
             ),
           ],
           // Row 2: Playback controls and options

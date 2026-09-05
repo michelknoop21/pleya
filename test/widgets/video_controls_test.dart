@@ -15,13 +15,16 @@ import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/watch_together/providers/watch_together_provider.dart';
 import 'package:pleya/widgets/video_controls/video_controls.dart';
 import 'package:pleya/widgets/video_controls/desktop_video_controls.dart';
+import 'package:pleya/widgets/video_controls/widgets/video_controls_header.dart';
+import 'package:pleya/widgets/tv/tv_page_surface.dart';
+import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/video_controls/widgets/video_timeline_bar.dart';
+import 'package:provider/provider.dart';
 import 'package:pleya/widgets/video_controls/painters/buffer_range_painter.dart';
 import 'package:pleya/widgets/video_controls/widgets/mobile_skip_zones.dart';
 import 'package:pleya/widgets/video_controls/widgets/skip_marker_button.dart';
 import 'package:pleya/widgets/video_controls/widgets/sync_offset_control.dart';
 import 'package:pleya/widgets/video_controls/widgets/timeline_slider.dart';
-import 'package:pleya/widgets/video_controls/widgets/video_timeline_bar.dart';
-import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
 import '../test_helpers/watch_together_fakes.dart';
@@ -46,6 +49,96 @@ const _testTokens = MonoTokens(
 );
 
 void main() {
+  // ============================================================
+  // PLR1: the overlay pays the title-safe inset on TV
+  // ============================================================
+
+  group('PLR1 — de spelerlaag betaalt de title-safe inset op TV', () {
+    setUp(() async {
+      LocaleSettings.setLocaleSync(AppLocale.en);
+      await initializeDateFormatting('en');
+      resetSharedPreferencesForTest();
+      SettingsService.resetForTesting();
+      await SettingsService.getInstance();
+      TvDetectionService.debugSetAppleTVOverride(true);
+    });
+
+    tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+    /// The overlay on a 1920x1080 canvas, the way an Apple TV lays it out,
+    /// with the controls shown and the video's chrome "visible".
+    Future<void> pumpTvOverlay(WidgetTester tester) async {
+      final player = FakeSyncPlayer(
+        playing: true,
+        position: const Duration(minutes: 3, seconds: 9),
+        duration: const Duration(minutes: 7),
+      );
+      addTearDown(player.dispose);
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final watchTogether = WatchTogetherProvider();
+      addTearDown(watchTogether.dispose);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<WatchTogetherProvider>.value(
+          value: watchTogether,
+          child: MaterialApp(
+            theme: ThemeData(extensions: const [_testTokens]),
+            home: Scaffold(
+              body: SizedBox(
+                width: 1920,
+                height: 1080,
+                child: DesktopVideoControls(
+                  player: player,
+                  metadata: MediaItem(
+                    id: '1',
+                    backend: MediaBackend.plex,
+                    kind: MediaKind.episode,
+                    title: 'Curry Quest',
+                    grandparentTitle: 'Bluey',
+                    parentIndex: 3,
+                    index: 9,
+                  ),
+                  chapters: const [],
+                  chaptersLoaded: true,
+                  seekTimeSmall: 10,
+                  // ignore: no-empty-block - not exercised by these tests
+                  onSeekToPreviousChapter: () {},
+                  // ignore: no-empty-block - not exercised by these tests
+                  onSeekToNextChapter: () {},
+                  // ignore: no-empty-block - not exercised by these tests
+                  onSeek: (_) {},
+                  // ignore: no-empty-block - not exercised by these tests
+                  onSeekEnd: (_) {},
+                  getReplayIcon: (_) => Icons.replay_10,
+                  getForwardIcon: (_) => Icons.forward_10,
+                  useDpadNavigation: true,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('de titelbalk en de tijdlijn beginnen niet vóór de page inset', (tester) async {
+      await pumpTvOverlay(tester);
+      final inset = tvPageInset(tester.element(find.byType(DesktopVideoControls)));
+      // The page inset is the token every other TV surface pays (75.48 device
+      // points on an Apple TV once `_AppleTvScale` has done its work; 48 on
+      // this unscaled 1080p canvas). Before PLR1 the header sat at 0 and the
+      // timeline row at 24, both inside the overscan band of hoofdstuk 8.1.
+      expect(inset, greaterThan(24));
+      final header = tester.getTopLeft(find.byType(VideoControlsHeader));
+      expect(header.dx, greaterThanOrEqualTo(inset), reason: 'title block starts at ${header.dx}');
+      final timeline = tester.getTopLeft(find.byType(VideoTimelineBar));
+      expect(timeline.dx, greaterThanOrEqualTo(inset), reason: 'timeline starts at ${timeline.dx}');
+      final timelineRight = tester.getBottomRight(find.byType(VideoTimelineBar)).dx;
+      expect(1920 - timelineRight, greaterThanOrEqualTo(inset - 1), reason: 'timeline ends at $timelineRight');
+    });
+  });
+
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('resolveShaderTogglePreset', () {

@@ -64,6 +64,8 @@ under `Notes`.
 - de Home-hero full-bleed met de rail die eronder piept, en een dichtere railstapel (HOME1, I18N5)
 - taalvoorkeuren in vier lagen, met het Pleya-profiel als eigenaar (LANG1, DEC-096)
 - de pagina Taal en ondertitels, de serievoorkeur-sheet en de twee toasts (LANG1, DEC-096)
+- een walk-stap die focussprongen zelf vindt, met een orakel dat niets meldt wat de traversal niet had kunnen kiezen (WALK)
+- NAV1 wordt bewaakt door Pleya Verify op het app-contract, en een remote-melding begint voortaan bij de bron en een logtrace (DEC-099)
 
 ### Improved
 - scheidingslijnen volgen de werkelijke rijhoogte
@@ -134,6 +136,13 @@ under `Notes`.
 - de titelband van de hero past twee regels, niet alleen het logo (HERO2)
 - een gefocuste rail ankert onder de navbalk, zonder band voor de hero (HOME1)
 - de linkerkolom past op één scherm, en de melding hangt niet meer aan het transport (LANG1)
+- de spelerlaag betaalt de title-safe inset op TV, net als elke andere TV-pagina (PLR1)
+- "Recent uitgebracht" krijgt een venster van 90 dagen, en een tweede native druk na de Home-refresh wordt geconsumeerd (HERO3, NAV1)
+- de consume van een dubbele ringdruk krijgt tanden via de early key handler (NAV1, derde oorzaak)
+- één pijldruk is weer één stap, gestopt op de fase in AppDelegate in plaats van op timing in Dart (NAV1)
+- de dubbele pijlfase wordt ingeslikt in plaats van aan UIKit gegeven, want UIKit asserteert op een einde zonder begin (NAV1)
+- de Swift-fasefilter is uit, want beide antwoorden op .ended zijn op het toestel slechter dan de dubbele stap (NAV1)
+- een pijldruk stapt weer één keer, want de Menu-passthrough wacht nu tot de remote los is (NAV1, de echte oorzaak)
 <!-- END GENERATED -->
 
 ### Fixed
