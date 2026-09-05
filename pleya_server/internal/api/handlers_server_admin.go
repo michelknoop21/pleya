@@ -173,6 +173,7 @@ func (s *Server) requesterIsAdmin(r *http.Request) bool {
 
 func (s *Server) fillServerAdminDetail(r *http.Request, detail *ServerDetail) {
 	publicURL := s.settings().PublicURL()
+	webOrigin := s.settings().WebOrigin()
 	listen := s.opts.Listen
 	behindProxy := s.behindProxy(r)
 	proxies := config.TrustedProxyStrings(s.opts.TrustedProxies)
@@ -182,6 +183,7 @@ func (s *Server) fillServerAdminDetail(r *http.Request, detail *ServerDetail) {
 	build := s.opts.Build
 
 	detail.PublicURL = &publicURL
+	detail.WebOrigin = &webOrigin
 	detail.Listen = &listen
 	detail.BehindProxy = &behindProxy
 	detail.TrustedProxies = &proxies

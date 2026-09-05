@@ -225,3 +225,117 @@ func TestPublicURLCanBeCleared(t *testing.T) {
 		t.Fatalf("leegmaken gaf %q", value)
 	}
 }
+
+// web_origin en cors_origins zijn de achtste en negende sleutel (S1.8, RB-29).
+//
+// Hun grens is de vorm van een origin, en die is smaller dan die van public_url
+// op het pad en ruimer op het adres. Hoofdstuk 17d.3 legt uit waarom.
+func TestWebOriginRejectsWhatIsNotAnOrigin(t *testing.T) {
+	for _, raw := range []string{
+		`"web.pleya.app"`,
+		`"ftp://web.pleya.app"`,
+		`"https://web.pleya.app/admin"`,
+		`"https://web.pleya.app?x=1"`,
+		`"https://user:pw@web.pleya.app"`,
+		`"*"`,
+		`42`,
+	} {
+		if _, err := settings.Parse(settings.KeyWebOrigin, json.RawMessage(raw)); err == nil {
+			t.Errorf("%s werd geaccepteerd als web_origin", raw)
+		}
+	}
+}
+
+// Het adres van het eigen netwerk hoort er juist wél in te mogen. Deze test
+// staat naast die in internal/config omdat de sleutel de grens ook echt moet
+// dóórlaten: een definitie die per ongeluk KindURL zou zijn, komt hier boven.
+func TestWebOriginAcceptsThePrivateAddressesPublicURLRejects(t *testing.T) {
+	for _, raw := range []string{
+		`"http://nas:8832"`,
+		`"http://192.168.1.10:8832"`,
+		`"http://localhost:5173"`,
+		`"https://web.pleya.app"`,
+		`""`,
+	} {
+		if _, err := settings.Parse(settings.KeyWebOrigin, json.RawMessage(raw)); err != nil {
+			t.Errorf("%s werd geweigerd als web_origin: %v", raw, err)
+		}
+	}
+
+	// De andere kant: precies de waarden die public_url weigert omdat ze een
+	// letterlijk privé-adres zijn, horen als web_origin te mogen. "nas" staat er
+	// niet bij, want dat is een naam, en die zoekt public_url bewust niet op.
+	for _, raw := range []string{
+		`"http://192.168.1.10:8832"`,
+		`"http://localhost:5173"`,
+	} {
+		if _, err := settings.Parse(settings.KeyPublicURL, json.RawMessage(raw)); err == nil {
+			t.Errorf("%s hoort als public_url juist geweigerd te worden", raw)
+		}
+	}
+}
+
+func TestCORSOriginsBounds(t *testing.T) {
+	value, err := settings.Parse(settings.KeyCORSOrigins,
+		json.RawMessage(`["https://web.pleya.app","http://NAS:8832/"]`))
+	if err != nil {
+		t.Fatalf("een geldige lijst werd geweigerd: %v", err)
+	}
+	list, ok := value.([]string)
+	if !ok || len(list) != 2 || list[1] != "http://nas:8832" {
+		t.Fatalf("kreeg %#v", value)
+	}
+
+	empty, err := settings.Parse(settings.KeyCORSOrigins, json.RawMessage(`[]`))
+	if err != nil {
+		t.Fatalf("de lege lijst werd geweigerd: %v", err)
+	}
+	if len(empty.([]string)) != 0 {
+		t.Fatalf("de lege lijst gaf %#v", empty)
+	}
+
+	for _, raw := range []string{
+		`["https://web.pleya.app","https://WEB.pleya.app"]`,
+		`["*"]`,
+		`["https://web.pleya.app/admin"]`,
+		`"https://web.pleya.app"`,
+		`[1,2]`,
+	} {
+		if _, err := settings.Parse(settings.KeyCORSOrigins, json.RawMessage(raw)); err == nil {
+			t.Errorf("%s werd geaccepteerd als cors_origins", raw)
+		}
+	}
+}
+
+// Ook de lijst moet zijn eigen uitvoer terug kunnen lezen: het beheerscherm
+// toont de set en stuurt hem terug.
+func TestCORSOriginsEncodeRoundTrips(t *testing.T) {
+	parsed, err := settings.Parse(settings.KeyCORSOrigins, json.RawMessage(`["http://nas:8832"]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := settings.Encode(parsed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != `["http://nas:8832"]` {
+		t.Fatalf("encode gaf %s", raw)
+	}
+	again, err := settings.Parse(settings.KeyCORSOrigins, raw)
+	if err != nil {
+		t.Fatalf("de eigen uitvoer werd geweigerd: %v", err)
+	}
+	if len(again.([]string)) != 1 {
+		t.Fatalf("terug gelezen als %#v", again)
+	}
+
+	// Een nil-lijst gaat als [] de kolom in en niet als null: "geen origins" is
+	// een waarde, "geen waarde" is het ontbreken van de rij.
+	nilRaw, err := settings.Encode([]string(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(nilRaw) != `[]` {
+		t.Fatalf("een lege lijst werd %s", nilRaw)
+	}
+}

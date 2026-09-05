@@ -118,6 +118,14 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "403":
+          description: |
+            auth.origin_rejected. Alleen op het cookiepad: de aanvraag droeg
+            credential_mode cookie en kwam van een origin die deze server niet
+            toestaat, of droeg helemaal geen Origin. Zie hoofdstuk 17d.4.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "409": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
@@ -145,6 +153,12 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/TokenPair" }
         "401": { $ref: "#/components/responses/Error" }
+        "403":
+          description: |
+            auth.origin_rejected. Alleen op het cookiepad; zie hoofdstuk 17d.4.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /auth/stream-token:
@@ -1485,16 +1499,24 @@ components:
             expires_at. De vlag staat naast `sessions` en niet erin: een client
             die sessies kent maar deze vlag niet ziet, toont het
             sessieoverzicht zonder tokens, en dat is een geldig scherm.
+        cookie_auth:
+          type: boolean
+          default: false
+          description: |
+            De server kent `credential_mode` op POST /auth/login en
+            POST /auth/refresh (RB-29, hoofdstuk 17d) en zet het refreshcredential
+            desgevraagd in een HttpOnly-cookie. Bedoeld voor browsers; een client
+            zonder cookiejar heeft er niets aan en laat het veld weg.
 
     ServerDetail:
       type: object
       required: [id, name, version, started_at]
       description: |
-        De eerste vier velden zijn klasse `authenticated`. De acht daaronder
-        gaan alleen mee voor klasse `admin` (S1.3): ze beschrijven hoe deze
-        server draait, en dat is voor een huisgenoot geen informatie maar een
-        verkenning. Een client die ze niet krijgt is dus geen beheerder, en
-        verbergt het beheeroppervlak.
+        De eerste vier velden zijn klasse `authenticated`. De negen daaronder
+        gaan alleen mee voor klasse `admin` (acht met S1.3, `web_origin` met
+        S1.8): ze beschrijven hoe deze server draait, en dat is voor een
+        huisgenoot geen informatie maar een verkenning. Een client die ze niet
+        krijgt is dus geen beheerder, en verbergt het beheeroppervlak.
       properties:
         id: { $ref: "#/components/schemas/Id" }
         name: { type: string }
@@ -1506,6 +1528,15 @@ components:
             Het adres waarop deze server van buiten bereikbaar hoort te zijn.
             Leeg wanneer er geen is ingesteld. Ook een instelling
             (`Settings.public_url`); dit veld toont de waarde die nu geldt.
+        web_origin:
+          type: string
+          description: |
+            De canonieke origin van de webclient die bij deze server hoort,
+            bijvoorbeeld `https://pleya.thuis`. Leeg wanneer er geen is
+            ingesteld. Ook een instelling (`Settings.web_origin`); dit veld toont
+            de waarde die nu geldt. `cors_origins` staat hier bewust niet naast:
+            dat is beleid en geen adres, en een lijst vertrouwde origins vertelt
+            wie het proberen waard is (hoofdstuk 17d.3).
         listen:
           type: string
           description: Het bindadres van het proces, bijvoorbeeld `:8080`. Geen instelling.
@@ -1652,13 +1683,38 @@ components:
         password: { type: string, minLength: 1 }
         device_id: { $ref: "#/components/schemas/DeviceId" }
         device_name: { $ref: "#/components/schemas/DeviceName" }
+        credential_mode: { $ref: "#/components/schemas/CredentialMode" }
 
     RefreshRequest:
       type: object
-      required: [refresh_token]
       additionalProperties: false
+      minProperties: 1
+      description: |
+        Zonder `credential_mode`, of met `credential_mode: token`, is
+        `refresh_token` verplicht en is dit de body die er sinds v1 in staat. Met
+        `credential_mode: cookie` komt het credential uit de cookie
+        `pleya_refresh` en hoort `refresh_token` er niet bij; staan ze er
+        allebei, dan weigert de server met `auth.token_invalid`, want dan zijn er
+        twee bronnen en geen manier om te weten welke bedoeld is.
       properties:
         refresh_token: { type: string, minLength: 1 }
+        credential_mode: { $ref: "#/components/schemas/CredentialMode" }
+
+    CredentialMode:
+      type: string
+      description: |
+        Waar het refreshcredential heen gaat. Optioneel, en alleen te sturen
+        wanneer `capabilities.cookie_auth` waar is: de bodies zijn gesloten, dus
+        een oudere server wijst het veld af in plaats van het stil te laten
+        vallen.
+
+        Afwezig betekent `token`, en `token` reproduceert het gedrag van v1: het
+        credential staat als `refresh_token` in het antwoord. Bij `cookie` zet de
+        server het in een `HttpOnly`-, `SameSite=Strict`-cookie op
+        `Path=/pleya/v1/auth/refresh`, blijft `refresh_token` uit het antwoord,
+        en moet de aanvraag een toegestane `Origin` dragen (hoofdstuk 17d).
+      enum: [token, cookie]
+      x-unknown-safe: false
 
     DeviceId:
       type: string
@@ -1676,12 +1732,20 @@ components:
 
     TokenPair:
       type: object
-      required: [access_token, refresh_token, token_type, expires_in_ms]
+      required: [access_token, token_type, expires_in_ms]
       properties:
         access_token: { type: string }
         refresh_token:
           type: string
-          description: Roteert bij elk gebruik; het oude vervalt onmiddellijk.
+          description: |
+            Roteert bij elk gebruik; het oude vervalt onmiddellijk.
+
+            Aanwezig tenzij de aanvraag `credential_mode: cookie` droeg; dan
+            staat het credential in de cookie `pleya_refresh` en komt het niet in
+            het lichaam. Het veld staat daarom niet in `required`. Voor een
+            client die `credential_mode` niet stuurt verandert er niets: die
+            krijgt het altijd, en de voorwaarde ligt volledig bij de client zelf
+            (hoofdstuk 17d.1).
         token_type: { type: string, const: bearer }
         expires_in_ms: { $ref: "#/components/schemas/DurationMs" }
 
@@ -2210,11 +2274,25 @@ components:
         value: { type: integer }
         source: { $ref: "#/components/schemas/SettingSource" }
 
+    SettingStringList:
+      type: object
+      required: [value, source]
+      description: |
+        Een sleutel met een lijst als waarde. De lijst staat als JSON-array in de
+        kolom en in het antwoord, en niet als tekst met scheidingstekens: dat
+        laatste zou een waarde met een scheidingsteken erin stil in tweeën
+        knippen. De lege lijst is een geldige waarde en betekent "geen".
+      properties:
+        value:
+          type: array
+          items: { type: string }
+        source: { $ref: "#/components/schemas/SettingSource" }
+
     Settings:
       type: object
       required:
         [server_name, access_token_ttl, refresh_token_ttl, stream_token_ttl, stream_session_ttl,
-         max_stream_sessions, public_url]
+         max_stream_sessions, public_url, web_origin, cors_origins]
       description: |
         De volledige set. Elke sleutel is er altijd, ook wanneer niemand hem ooit
         heeft gewijzigd; dan staat er de waarde uit de omgeving met `source:
@@ -2227,6 +2305,8 @@ components:
         stream_session_ttl: { $ref: "#/components/schemas/SettingDuration" }
         max_stream_sessions: { $ref: "#/components/schemas/SettingInteger" }
         public_url: { $ref: "#/components/schemas/SettingString" }
+        web_origin: { $ref: "#/components/schemas/SettingString" }
+        cors_origins: { $ref: "#/components/schemas/SettingStringList" }
 
     SettingsPatch:
       type: object
@@ -2272,6 +2352,27 @@ components:
             verzetten; de omgeving valt er bewust buiten, want op een
             thuisnetwerk ís `192.168.x.y` het juiste antwoord.
           maxLength: 2048
+        web_origin:
+          type: string
+          description: |
+            Een origin: `schema://host[:poort]`, `http` of `https`, zonder pad,
+            inloggegevens, querystring of fragment. Leeg maakt de sleutel leeg.
+            Anders dan bij `public_url` is een privé-adres hier wél toegestaan:
+            dit is geen doel dat de server aanroept maar een verwachting over wie
+            hém aanroept, en `http://nas:8832` is op een thuisnetwerk precies de
+            juiste waarde.
+          maxLength: 2048
+        cors_origins:
+          type: array
+          description: |
+            Origins die deze API cross-origin mogen aanroepen, elk in dezelfde
+            vorm als `web_origin`. Ten hoogste zestien, elk uniek, en `*` wordt
+            geweigerd. De lege lijst betekent: geen, en is de default.
+          maxItems: 16
+          uniqueItems: true
+          items:
+            type: string
+            maxLength: 2048
 
     Session:
       type: object

@@ -275,6 +275,10 @@ sturen wanneer `capabilities.sessions` waar is (hoofdstuk 17):
 Plex-clientidentifier. Stuurt een client geen van beide, of kent hij de capability niet, dan krijgt de
 sessie `device_id NULL` en een vaste plaatshouder als naam, hetzelfde gedrag als vóór PS-9.
 
+`credential_mode` is een tweede optioneel veld, alleen te sturen wanneer `capabilities.cookie_auth`
+waar is. Het bepaalt waar het refreshcredential heen gaat: in het antwoordlichaam, of in een
+`HttpOnly`-cookie die JavaScript niet kan lezen. Hoofdstuk 17d beschrijft het volledig.
+
 ### 6.3 `POST /pleya/v1/auth/refresh`
 
 Klasse: **`public`**, want het refreshtoken is zelf het bewijs.
@@ -286,6 +290,10 @@ Klasse: **`public`**, want het refreshtoken is zelf het bewijs.
 Het antwoord is een nieuw paar. **Het refreshtoken roteert bij elk gebruik** en het oude vervalt
 onmiddellijk. Een tweede aanroep met hetzelfde refreshtoken geeft `auth.refresh_token_reused`, en de
 server mag de hele keten dan ongeldig maken.
+
+Ook hier bestaat `credential_mode`. Draagt de aanvraag `{"credential_mode": "cookie"}`, dan komt het
+oude refreshcredential uit de cookie en gaat het nieuwe er weer in, en blijft `refresh_token` uit
+lichaam en antwoord. Zie 17d.
 
 ### 6.4 `POST /pleya/v1/auth/stream-token`
 
@@ -499,6 +507,7 @@ contract keurt ze af.
 | `auth.session_not_found` | 404 | nee | de sessie bestaat niet, of niet voor u; zie hoofdstuk 17 |
 | `auth.permission_not_allowed` | 409 | nee | de rol van het doel verbiedt deze trede: `restricted` krijgt nooit `manage`. `details` draagt `permission` en `role` |
 | `auth.scope_exceeds_role` | 400 | nee | het gevraagde bereik van een API-token komt boven de rol van de eigenaar uit; `details` draagt `scope` en `role`. `400` en geen `409`: er is geen toestand die dit verzoek in de weg zit en later anders kan zijn, het verzoek zelf klopt niet |
+| `auth.origin_rejected` | 403 | nee | een aanvraag in cookiemodus komt van een origin die deze server niet toestaat, of draagt helemaal geen `Origin`. Alleen op `POST /auth/login` en `POST /auth/refresh`, en alleen op het cookiepad; zie 17d.4 |
 | `settings.invalid_value` | 400 | nee | een waarde in `PATCH /settings` valt buiten zijn grens; `details` draagt veld en grens |
 | `server.confirm_mismatch` | 409 | nee | een destructieve handeling zonder de juiste bevestiging; `details.expected` zegt welk woord er moet staan. Voor S1.3 is dat `POST /server/rotate-signing-key` met `confirm: "rotate"` |
 | `server.internal` | 500 | nee | de handler liep op een fout die hij niet had voorzien; `details.request_id` verwijst naar de logregel. `nee` en niet `ja`: het contract dwingt een boolean af waar "onbekend" het eerlijke antwoord is, en een deterministische panic die als herhaalbaar binnenkomt levert een client op die precies het verzoek blijft sturen dat de server omver duwde |
@@ -507,6 +516,13 @@ contract keurt ze af.
 gat in de regel hieronder. Die regel verbergt het bestaan van iets dat de aanvrager niet mag zien;
 hier mag de aanvrager, een beheerder, de gebruiker en de bibliotheek allebei al zien, en is alleen de
 combinatie verboden. Zie 16.3.
+
+`auth.origin_rejected` is de tweede uitzondering, en op een andere grond. De regel hieronder
+verbergt het bestaan van een **resource**; hier is de resource `POST /auth/refresh`, klasse `public`,
+en het bestaan ervan staat in deze specificatie. Er valt niets te verbergen. Wat geweigerd wordt is
+niet een identiteit maar een **herkomst**, en die weigering moet leesbaar zijn: een `404` zou een
+legitieme webclient met een verkeerd ingestelde `web_origin` vertellen dat het endpoint niet bestaat,
+en dan zoekt een beheerder in de verkeerde helft van zijn opstelling. Zie 17d.4.
 
 **`404` en niet `403`, overal.** Een resource die u niet mag zien bestaat voor u niet, ook niet in
 zoekresultaten en ook niet als u het id raadt. Dat gold vóór PS-9 al als regel, hoewel er toen nog
@@ -1070,7 +1086,7 @@ gewoon was.
 
 ### 16.4 De autorisatiematrix
 
-Zesentwintig regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien
+Zevenentwintig regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien
 zijn de bindende matrix van DEC-105; elke slice die daarna een endpoint toevoegt zet zijn eigen
 regel erbij en sluit niet zonder (K.3 van het securityplan).
 
@@ -1102,6 +1118,16 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 24 | `POST /auth/api-tokens` | een credential met te veel bereik of te lange geldigheid | klasse `authenticated` op zichzelf, `admin` met `user_id` van een ander. Het bereik wordt getoetst tegen de rol van de **eigenaar** en niet die van de aanvrager, anders is `user_id` een manier om een lid beheerrechten te geven zonder zijn rol te wijzigen. Een aanvraag die zelf met een API-token binnenkomt mag alleen minten met bereik `admin`; anders `404`, byte-gelijk aan een beheerroute (S1.5) |
 | 25 | `GET /auth/api-tokens` | het bestaan van andermans agents | klasse `authenticated` op zichzelf, `admin` met `?user_id=`; anders `404`. Nooit een geheim, en nooit de hash ervan (S1.5) |
 | 26 | `GET /audit` | wie wat wanneer deed, inclusief mislukte logins | klasse `admin`, `404` voor de rest. Niet "de eigen regels voor iedereen": de lijst is niet per gebruiker te filteren zonder de regels zonder gebruiker, juist de mislukte logins, ergens te laten vallen, en een auditlog met stille gaten is erger dan geen (S1.5) |
+| 27 | `POST /auth/login`, `POST /auth/refresh` in cookiemodus | een vreemde pagina die de refreshcookie van de browser laat meeliften | klasse `public`, dus de drie rollen zeggen hier niets; wat er wél op past is de **herkomst**. Alleen same-origin, `web_origin` of een waarde uit `cors_origins`; iets anders of geen `Origin` geeft `403` `auth.origin_rejected`. De cookie draagt `Path=/pleya/v1/auth/refresh` en `SameSite=Strict`, dus hij bereikt geen andere route en reist niet cross-site (S1.8, hoofdstuk 17d) |
+
+**Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
+zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
+`404` krijgt. Op login en refresh is er per definitie nog geen identiteit: het endpoint bestaat juist
+om er een te maken. De lekvector zit dan niet in wie het vraagt maar in wat de browser er
+automatisch bij doet, en de enige controle die daarop past is die op de origin. Hij staat in deze
+matrix en niet ernaast omdat K.3 van het securityplan geen uitzondering kent: elke slice die een
+autorisatiebeslissing toevoegt zet zijn regel erbij, ook wanneer die beslissing niet over een rol
+gaat.
 
 Regel 22 is de enige waar geen enkele rol wordt geweigerd, en hij staat er juist daarom: een
 implementatie die hem per ongeluk achter `requireAdmin` zet blijft voor `owner` en `admin` groen op
@@ -1203,6 +1229,8 @@ omgevingswaarde en `source: env`, en niet als ontbrekend veld.
 | `stream_session_ttl` | duur | `5m` tot `120m` |
 | `max_stream_sessions` | geheel getal | 1 tot 32 |
 | `public_url` | tekst | absolute `http`- of `https`-URL, geen inloggegevens, geen querystring, geen fragment, geen letterlijk privé-adres; leeg is toegestaan |
+| `web_origin` | tekst | een origin: `schema://host[:poort]`, `http` of `https`, geen pad, geen inloggegevens, geen querystring, geen fragment; een privé-adres is hier wél toegestaan; leeg is toegestaan |
+| `cors_origins` | lijst van tekst | ten hoogste 16 origins in dezelfde vorm als `web_origin`, elk uniek, geen `*`; de lege lijst is de default |
 
 Een duur heeft dezelfde vorm als de omgevingsvariabele ernaast (`15m`, `720h`), zodat een beheerder
 niet twee notaties hoeft te kennen voor dezelfde instelling. Wat eruit komt kun je zo weer
@@ -1223,6 +1251,13 @@ richten.
 De omgevingslaag valt daar bewust buiten. `PLEYA_SERVER_PUBLIC_URL` komt van wie de container
 draait, en op een thuisnetwerk ís `192.168.x.y` het juiste publieke adres. De grens ligt bij wat er
 over de API binnenkomt, niet bij wat de operator zelf instelt.
+
+`web_origin` en `cors_origins` kwamen met S1.8 en dragen die privé-grens níét. Ze zijn geen doel dat
+de server aanroept maar een verwachting over wie hém aanroept, dus de aanval uit K rij 13 bestaat er
+niet. Het omgekeerde geldt wel: `http://nas:8832` en `http://192.168.1.10:8832` zijn precies de
+waarden die een thuisopstelling nodig heeft, en die weigeren zou de instelling onbruikbaar maken op
+het netwerk waar Pleya Server thuishoort. Wat er wél af gaat is alles wat een origin niet is: een
+pad, een querystring, een fragment, inloggegevens, en `*`.
 
 ### 17a.3 Wat geen instelling is
 
@@ -1464,6 +1499,168 @@ van het spoor ernaartoe.
 
 ---
 
+## 17d. De refreshcookie en het origin-model
+
+Beschikbaar wanneer `capabilities.cookie_auth` waar is. Kwam met S1.8, binnen protocolvenster 1.
+
+Een browser heeft geen veilige bewaarplaats voor een langlevend credential. `localStorage` is
+leesbaar voor elk stukje JavaScript dat op de pagina draait, dus één XSS levert een refreshtoken op
+dat maanden geldig is en op elk ander toestel opnieuw in te wisselen. Een `HttpOnly`-cookie is dat
+niet: hij reist mee zonder dat de pagina hem kan lezen. Dat is de hele winst, en het is er één van
+schade beperken en niet van XSS voorkomen.
+
+### 17d.1 `credential_mode`, en wat het niet verandert
+
+`POST /auth/login` en `POST /auth/refresh` accepteren één nieuw optioneel veld:
+
+```json
+{ "username": "michel", "password": "...", "credential_mode": "cookie" }
+```
+
+Twee waarden, `token` en `cookie`. Afwezig betekent `token`, en `token` is exact het gedrag van
+vandaag: het refreshcredential staat in het antwoordlichaam als `refresh_token`, er wordt geen cookie
+gezet, en er is geen origin-controle.
+
+Bij `cookie` verandert er precies drie dingen. Het antwoord draagt **geen** `refresh_token` meer. De
+server zet in plaats daarvan `Set-Cookie: pleya_refresh=<geheim>; HttpOnly; SameSite=Strict;
+Path=/pleya/v1/auth/refresh`, met `Secure` erbij wanneer de aanvraag over TLS binnenkwam. En de
+aanvraag moet een toegestane `Origin` dragen (17d.4). Het accesstoken blijft in het lichaam, want dat
+is kortlevend en hoort in het geheugen van de pagina.
+
+Het credential zelf is hetzelfde ondoorzichtige refreshtoken als altijd, met dezelfde rotatie,
+hetzelfde respijtvenster en dezelfde hergebruikdetectie uit 6.3. Er is geen tweede soort credential
+en geen tweede tabel; alleen het vervoermiddel verschilt.
+
+**De toets aan de zes regels uit hoofdstuk 3**, want dit raakt twee gesloten aanvraagbodies en één
+antwoordschema.
+
+| Regel | Uitkomst |
+| --- | --- |
+| 1, nieuw optioneel antwoordveld | niet van toepassing; er komt geen veld bij |
+| 2, niets hernoemen of verwijderen | `refresh_token` blijft bestaan op `TokenPair` en op `RefreshRequest`, met dezelfde naam en dezelfde betekenis. Wat verandert is dat hij niet meer `required` is. Voor elke client die vandaag bestaat verandert er niets: die stuurt `credential_mode` niet, en krijgt het veld dus altijd. Het veld is niet weg, het is voorwaardelijk, en de voorwaarde staat volledig bij de client |
+| 3, geen betekeniswijziging | `refresh_token` betekent nog steeds hetzelfde. `token_type` en `expires_in_ms` ook |
+| 4, geen nieuw verplicht aanvraagveld | `credential_mode` is optioneel met een gedocumenteerde default (`token`) die het oude gedrag reproduceert. `RefreshRequest.refresh_token` gaat van verplicht naar optioneel, en dat is verruimen: een oude client blijft hem sturen en wordt bediend |
+| 5, gesloten aanvraagbody | precies daarom staat `credential_mode` achter `capabilities.cookie_auth`. Een oudere server wijst het veld af in plaats van het stil te laten vallen, en dat is de bedoeling: een client die om een cookie vraagt en er geen krijgt, hoort dat te weten |
+| 6, enumwaarde | `credential_mode` is een nieuw enum-veld in een **aanvraag**, dus gesloten aan de kant van de client (`x-unknown-safe: false`). Een derde waarde erbij zou geen enkele client breken, minder accepteren wel |
+
+De vorm die regel 2 het dichtst nadert is `TokenPair.refresh_token`. Een alternatief was een tweede
+antwoordschema achter een `oneOf`, en dat is afgewogen: het houdt `TokenPair` letterlijk ongemoeid,
+maar het maakt van het antwoord van `/auth/login` een unie in elke gegenereerde client, inclusief de
+clients die cookiemodus nooit zullen gebruiken. Eén voorwaardelijk veld met de voorwaarde erbij is
+kleiner en eerlijker dan een unie die iedereen moet uitpakken.
+
+### 17d.2 De cookie autoriseert één endpoint, en niets anders
+
+De openingsregel van hoofdstuk 6 en K rij 7 van het securityplan zijn er duidelijk over: **de API
+accepteert alleen `Authorization: Bearer`.** Er is geen enkele route onder `/pleya/v1` die een
+identiteit uit een cookie afleidt. Die regel blijft precies zoals hij was, en de refreshcookie is er geen uitzondering
+op, want hij autoriseert geen identiteit maar één handeling.
+
+Dat is geen belofte maar een `Path`. `pleya_refresh` draagt `Path=/pleya/v1/auth/refresh`, dus de
+browser stuurt hem uitsluitend naar dat ene endpoint mee. Op `GET /libraries`, op `POST /users`, op
+`GET /stream` en op elke andere route bestaat hij eenvoudigweg niet: hij komt niet aan. Wat hij op
+`/auth/refresh` oplevert is geen sessie maar een nieuw tokenpaar, en pas dat accesstoken opent de
+rest van de API.
+
+Er zijn daarmee twee cookies in dit protocol, en ze zijn allebei van dezelfde soort. `pleya_ss_<id>`
+uit 6.4a autoriseert `GET /stream` en `GET /subtitles` en niets anders; `pleya_refresh` autoriseert
+`POST /auth/refresh` en niets anders. Geen van beide is een sessiecookie in de gebruikelijke zin, en
+geen van beide vervangt de bearer-header ergens.
+
+Anders dan bij `pleya_ss_<id>` doet `Path` hier wél securitywerk, en dat verschil is de moeite van
+het benoemen waard. Daar is `Path` een leesbaarheidskeuze, want de cookienaam draagt de sessie-id en
+dát is het mechanisme. Hier is het pad de enige reden dat een cookie die maanden geldig is niet bij
+elke aanvraag op de lijn staat.
+
+`SameSite=Strict`, en dat is een keuze met gevolgen. Een browser stuurt zo'n cookie niet mee op een
+cross-site aanvraag, ook niet vanaf een origin die in `cors_origins` staat. Cookiemodus werkt
+daarmee alleen wanneer web en server dezelfde site zijn: de meegeleverde bundel op de server zelf,
+of een reverse proxy die beide onder één hostnaam hangt. Dat is precies de opstelling die RB-29 als
+voorkeur noemt, en het sluit de opstelling die RB-29 uitsluit ook werkelijk uit: een ontwerp dat
+leunt op third-party cookies tussen `web.pleya.app` en een willekeurige Pleya Server is met deze
+cookie niet te bouwen. Een webclient op een andere site gebruikt `credential_mode: token` met een
+bearer, of krijgt een expliciet ontworpen BFF-flow, en die staat niet in deze versie.
+
+### 17d.3 Drie adressen, en waarom het er geen vier zijn
+
+| Sleutel | Beantwoordt | Wie leest hem |
+| --- | --- | --- |
+| `public_url` | waar is déze server van buiten bereikbaar | `POST /server/connectivity-check`, en de beheerder |
+| `web_origin` | welke webclient hoort canoniek bij deze server | de origin-controle in 17d.4 |
+| `cors_origins[]` | welke andere origins mogen deze API aanroepen | de CORS-laag in 17d.5, en de origin-controle |
+
+Alle drie zijn **instellingen** in `server_settings`, met hun grens in 17a.2, en alle drie zijn
+klasse `admin` op `GET`/`PATCH /settings`.
+
+**Er komt geen aparte `external_url`.** De plannen noemen die naam, en het is dezelfde vraag als
+`public_url`: het externe basisadres van deze server. Die sleutel bestaat sinds S1.3 en heeft al een
+lezer. Een tweede sleutel met dezelfde betekenis zou de vraag "waar sta ik" op twee plekken
+beantwoordbaar maken en op één plek te vergeten, en dan wijst de bereikbaarheidscontrole naar het ene
+adres terwijl het beheerscherm het andere toont.
+
+`web_origin` staat daarnaast als optioneel veld op `ServerDetail`, voor klasse `admin`, naast
+`public_url`. Die twee samen beantwoorden de vraag van het netwerkscherm: waar sta ik, en welke
+webclient hoort bij mij. `cors_origins` staat er níét bij, en dat is geen slordigheid: het is beleid
+en geen adres, en een lijst vertrouwde origins op een endpoint dat elke geauthenticeerde identiteit
+mag opvragen vertelt precies welke herkomst het proberen waard is.
+
+`cors_origins` is de eerste instelling met een lijst als waarde. Hij staat als JSON-array in de
+`jsonb`-kolom, en niet als tekst met scheidingstekens: een gescheiden tekstwaarde zou een origin met
+een komma erin stil in tweeën knippen, en de vorm die eruit komt zou niet meer die zijn die je erin
+kunt sturen. De grens is per element dezelfde vorm als `web_origin`, plus een maximum van zestien en
+geen dubbele.
+
+### 17d.4 De origin-controle
+
+Op het cookiepad, en alleen daar, eist de server een `Origin`-header die hij toestaat. Toegestaan is:
+
+1. de origin van de aanvraag zelf, afgeleid uit `Host` en het schema (same-origin);
+2. `web_origin`, wanneer die is ingesteld;
+3. elke waarde in `cors_origins`.
+
+Alles anders, en ook een aanvraag zonder `Origin`, geeft `403` met `auth.origin_rejected`.
+
+**Waarom een ontbrekende `Origin` ook wordt geweigerd.** Cookiemodus bestaat voor browsers, en een
+browser zet `Origin` op elke `POST`, ook op een same-origin `POST`. Een aanvraag zonder die header
+komt dus niet van een browser, en een client die geen browser is heeft geen cookiejar en geen baat
+bij deze modus. Hem toelaten zou de controle in één regel curl te omzeilen maken, en dan beschermt hij
+niets.
+
+**Waarom de controle niet op de hele API staat.** Een aanvraag met een bearer-header draagt geen
+ambient authority: een pagina op een vreemde origin kan die header niet zetten zonder dat de browser
+er eerst CORS voor vraagt. Er valt daar dus niets te vervalsen. De cookie is het enige credential dat
+een browser uit zichzelf meestuurt, dus de cookiemodus is ook het enige pad waar CSRF bestaat.
+
+Een geweigerde **login** gaat het auditlog in als `login` met uitkomst `denied` en de geweigerde
+origin in `detail`; die haak bestaat al voor een mislukte inlogpoging en dit is er één. Een geweigerde
+**refresh** gaat naar het log en niet naar het auditlog: het auditbereik is met S1.5 uitputtend
+vastgelegd en `refresh` staat er niet in, en dat bereik oprekken hoort bij een besluit en niet bij
+deze wijziging. De regel komt daarmee wel in de ringbuffer achter `GET /server/log` terecht, dus een
+beheerder ziet het patroon.
+
+Een `credential_mode` met een waarde die deze server niet kent wordt afgewezen zoals elke andere body
+die hij niet kan bedienen: `auth.invalid_credentials` op login, `auth.token_invalid` op refresh. Geen
+nieuwe status en geen stille terugval op `token`, want een client die om een cookie vraagt en er geen
+krijgt hoort dat te merken (regel 5 van hoofdstuk 3).
+
+### 17d.5 CORS
+
+Draagt een aanvraag een `Origin` die in `cors_origins` staat of gelijk is aan `web_origin`, dan
+antwoordt de server met `Access-Control-Allow-Origin: <die origin>` en `Vary: Origin`. Een
+`OPTIONS`-preflight op een pad onder `/pleya/v1` wordt met `204` beantwoord, met de toegestane
+methoden en `Authorization` plus `Content-Type` als toegestane headers.
+
+**`Access-Control-Allow-Credentials` staat er niet bij, en dat is opzet.** Zonder die header is
+cross-origin toegang bearer-only, en dat is precies wat hoofdstuk 4 en K rij 7 zeggen. Samen met
+`SameSite=Strict` op de refreshcookie betekent het dat cookiemodus per constructie same-site is en
+dat er geen weg is waarlangs iemand er per ongeluk een third-party-cookie-ontwerp op bouwt.
+
+Een origin die de server niet kent krijgt geen `Access-Control-Allow-Origin`. Er komt geen fout uit:
+de browser blokkeert het antwoord zelf, en een server die daar een eigen status van maakt zou een
+origin-lijst prijsgeven aan wie hem afloopt.
+
+---
+
 ## 18. Endpointoverzicht
 
 | Methode en pad | Klasse | Gepagineerd |
@@ -1514,6 +1711,12 @@ uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomo
 `GET /pleya/v1/server` staat er maar één keer in en groeit met de klasse van de
 aanvrager, niet met een tweede regel. De rest van venster 1 landt bij de commitgrens die hem
 bedient.
+
+**S1.8 voegt er geen operatie aan toe.** De refreshcookie uit hoofdstuk 17d is een modus op twee
+bestaande endpoints en geen derde endpoint ernaast; het blijven dus zevenendertig. De
+`OPTIONS`-preflight uit 17d.5 staat er ook niet tussen: die is HTTP-infrastructuur die elke
+CORS-sprekende server voert, geen operatie van dit protocol, en hij draagt geen lichaam waar een
+client iets uit leest.
 
 ---
 

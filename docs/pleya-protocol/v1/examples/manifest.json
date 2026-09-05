@@ -240,6 +240,11 @@
       "note": "scope admin voor een lid"
     },
     {
+      "file": "error_origin_rejected.json",
+      "schema": "ErrorEnvelope",
+      "note": "cookiemodus vanaf een origin die de server niet toestaat"
+    },
+    {
       "file": "audit_page.json",
       "schema": "AuditPage",
       "note": "nieuwste eerst; de mislukte login draagt geen user_id"

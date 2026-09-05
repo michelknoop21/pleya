@@ -39,6 +39,8 @@ const (
 	KeyStreamSessionTTL  = "stream_session_ttl"
 	KeyMaxStreamSessions = "max_stream_sessions"
 	KeyPublicURL         = "public_url"
+	KeyWebOrigin         = "web_origin"
+	KeyCORSOrigins       = "cors_origins"
 )
 
 // Source zegt welke laag deze waarde levert.
@@ -67,6 +69,17 @@ const (
 	// config.ParsePublicURL, en geen letterlijk privé- of link-local-adres
 	// (K rij 13). Een lege waarde betekent "niet ingesteld" en is toegestaan.
 	KindURL
+
+	// KindOrigin is schema, host en poort, en verder niets
+	// (config.NormalizeOrigin). Smaller dan KindURL op het pad, ruimer op het
+	// adres: een origin die naar het eigen netwerk wijst is hier juist de
+	// normale waarde, want dit is geen doel dat de server aanroept.
+	KindOrigin
+
+	// KindOriginList is een lijst van KindOrigin, ten hoogste
+	// config.MaxCORSOrigins lang en zonder dubbele. De enige sleutel met een
+	// lijst als waarde; hij gaat als JSON-array de jsonb-kolom in.
+	KindOriginList
 )
 
 // Definition is één sleutel met zijn grenzen.
@@ -100,6 +113,14 @@ var Definitions = []Definition{
 	// 169.254.169.254 of naar de buren wijst maakt van een beheerknop een
 	// scanner van het interne netwerk.
 	{Key: KeyPublicURL, Kind: KindURL, MinLen: 0, MaxLen: 2048},
+
+	// Het origin-model (S1.8, RB-29). web_origin is de canonieke webclient,
+	// cors_origins de lijst die er cross-origin bij mag. Ze dragen de
+	// privé-grens van public_url níét, en de reden staat in hoofdstuk 17a.2:
+	// dit zijn geen doelen die de server aanroept maar verwachtingen over wie
+	// hém aanroept, en op een thuisnetwerk is http://nas:8832 precies goed.
+	{Key: KeyWebOrigin, Kind: KindOrigin, MinLen: 0, MaxLen: 2048},
+	{Key: KeyCORSOrigins, Kind: KindOriginList, MinInt: 0, MaxInt: config.MaxCORSOrigins},
 }
 
 // Find geeft de definitie van een sleutel.
@@ -119,9 +140,9 @@ func (d Definition) Minimum() string {
 	switch d.Kind {
 	case KindDuration:
 		return d.MinDuration.String()
-	case KindInt:
+	case KindInt, KindOriginList:
 		return strconv.Itoa(d.MinInt)
-	case KindURL:
+	case KindURL, KindOrigin:
 		return ""
 	default:
 		return strconv.Itoa(d.MinLen)
@@ -132,7 +153,7 @@ func (d Definition) Maximum() string {
 	switch d.Kind {
 	case KindDuration:
 		return d.MaxDuration.String()
-	case KindInt:
+	case KindInt, KindOriginList:
 		return strconv.Itoa(d.MaxInt)
 	default:
 		return strconv.Itoa(d.MaxLen)
@@ -209,6 +230,39 @@ func Parse(key string, raw json.RawMessage) (any, error) {
 		}
 		return trimmed, nil
 
+	case KindOrigin:
+		var text string
+		if err := json.Unmarshal(raw, &text); err != nil {
+			return nil, &InvalidValueError{Field: key, Reason: "verwacht een origin als tekst"}
+		}
+		trimmed := strings.TrimSpace(text)
+		if trimmed == "" {
+			// Leegmaken laat de sleutel terugvallen op de omgeving, net als bij
+			// elke andere sleutel zonder rij.
+			return "", nil
+		}
+		if len(trimmed) > def.MaxLen {
+			return nil, &InvalidValueError{Field: key, Reason: "is te lang", Maximum: def.Maximum()}
+		}
+		origin, err := config.NormalizeOrigin(trimmed)
+		if err != nil {
+			return nil, &InvalidValueError{Field: key, Reason: err.Error()}
+		}
+		return origin, nil
+
+	case KindOriginList:
+		var items []string
+		if err := json.Unmarshal(raw, &items); err != nil {
+			return nil, &InvalidValueError{Field: key, Reason: "verwacht een lijst van origins",
+				Minimum: def.Minimum(), Maximum: def.Maximum()}
+		}
+		origins, err := config.NormalizeOrigins(items)
+		if err != nil {
+			return nil, &InvalidValueError{Field: key, Reason: err.Error(),
+				Minimum: def.Minimum(), Maximum: def.Maximum()}
+		}
+		return origins, nil
+
 	case KindInt:
 		// json.Number en niet int: 8.5 komt anders als 8 binnen, en een
 		// stilzwijgend afgekapte waarde is precies het soort verschil tussen
@@ -252,6 +306,14 @@ func Encode(value any) (json.RawMessage, error) {
 	case int:
 		return json.Marshal(v)
 	case string:
+		return json.Marshal(v)
+	case []string:
+		// Een nil-lijst zou als `null` de kolom in gaan, en `null` is iets
+		// anders dan de lege lijst: het eerste is "geen waarde", het tweede
+		// "uitdrukkelijk geen origins". Deze sleutel kent alleen het tweede.
+		if v == nil {
+			return json.Marshal([]string{})
+		}
 		return json.Marshal(v)
 	default:
 		return nil, fmt.Errorf("waarde van onbekend type %T", value)

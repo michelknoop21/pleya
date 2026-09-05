@@ -20,6 +20,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
+	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/diag"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/id"
@@ -146,7 +147,25 @@ type env struct {
 	settings *settings.Cache
 }
 
-func newEnv(t *testing.T) *env {
+// envOption past api.Options aan vóór de server gebouwd wordt.
+//
+// Voor het handjevol eigenschappen dat niet via een endpoint te zetten is en
+// wel gedrag bepaalt: de vertrouwde proxy's, bijvoorbeeld, waarvan K rij 8 zegt
+// dat ze de Secure-vlag op een cookie bepalen. Zonder deze haak zou zo'n test
+// een tweede, half opgetuigde server moeten bouwen, en dan bewijst hij iets over
+// die server en niet over deze.
+type envOption func(*api.Options)
+
+func withTrustedProxies(t *testing.T, raw string) envOption {
+	t.Helper()
+	proxies, err := config.ParseTrustedProxies(raw)
+	if err != nil {
+		t.Fatalf("vertrouwde proxy's %q: %v", raw, err)
+	}
+	return func(o *api.Options) { o.TrustedProxies = proxies }
+}
+
+func newEnv(t *testing.T, opts ...envOption) *env {
 	t.Helper()
 	testsupport.HasFFmpeg(t)
 
@@ -250,7 +269,7 @@ func newEnv(t *testing.T) *env {
 	// goed doet.
 	revocations := auth.NewRevocations(0)
 
-	srv := api.New(api.Options{
+	options := api.Options{
 		Catalog:            store,
 		Auth:               authStore,
 		Watch:              watchStore,
@@ -292,7 +311,11 @@ func newEnv(t *testing.T) *env {
 		Web: web.HandlerFor(web.Options{FS: fstest.MapFS{
 			web.IndexFile: &fstest.MapFile{Data: []byte(strings.Repeat("pleya web bundel\n", 8))},
 		}}),
-	})
+	}
+	for _, opt := range opts {
+		opt(&options)
+	}
+	srv := api.New(options)
 
 	return &env{t: t, server: srv, store: store, auth: authStore, watch: watchStore, pool: pool,
 		root: root, libs: libs, cap: shared, argon2: light, signer: signer, logs: logs,
@@ -615,16 +638,35 @@ func (e *env) record(schema, method, path string, rec *httptest.ResponseRecorder
 	if e.cap == nil || schema == "" {
 		return
 	}
-	e.cap.add(e.t, schema, method, path, rec)
+	e.cap.add(e.t, schema, "", method, path, rec)
 }
 
-func (c *capture) add(t *testing.T, schema, method, path string, rec *httptest.ResponseRecorder) {
+// recordVariant legt een tweede vorm van hetzelfde antwoord vast.
+//
+// Eén endpoint kan meer dan één lichaam teruggeven waar het contract over gaat:
+// POST /auth/login antwoordt met en zonder refresh_token, afhankelijk van
+// credential_mode (S1.8). De ontdubbeling hieronder gaat op schema, methode, pad
+// en status, dus zonder label zou de tweede vorm stil wegvallen, en zou het van
+// de volgorde van de tests afhangen wélke van de twee de contractpoort te zien
+// krijgt. Het label raakt alleen de bestandsnaam; de manifestregel blijft zeggen
+// wat er werkelijk is opgehaald.
+func (e *env) recordVariant(schema, variant, method, path string, rec *httptest.ResponseRecorder) {
+	if e.cap == nil || schema == "" {
+		return
+	}
+	e.cap.add(e.t, schema, variant, method, path, rec)
+}
+
+func (c *capture) add(t *testing.T, schema, variant, method, path string, rec *httptest.ResponseRecorder) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	// Dezelfde endpoint met dezelfde status komt in meerdere tests langs. Eén
 	// bestand per combinatie is genoeg; twee keer valideren voegt niets toe.
 	name := sanitize(schema + "_" + method + "_" + path + "_" + itoa(rec.Code))
+	if variant != "" {
+		name += "_" + sanitize(variant)
+	}
 	for _, existing := range c.entries {
 		if existing.File == name+".json" {
 			return

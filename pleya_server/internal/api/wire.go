@@ -81,14 +81,26 @@ type Capabilities struct {
 	// deze vlag niet ziet, toont het sessieoverzicht zonder de tokenkolom, en
 	// dat is een geldig scherm.
 	APITokens bool `json:"api_tokens"`
+
+	// CookieAuth (RB-29, J.2 rij 16). Aan sinds S1.8. De vlag zegt dat
+	// POST /auth/login en POST /auth/refresh het veld credential_mode kennen en
+	// het refreshcredential desgevraagd in een HttpOnly-cookie zetten. Beide
+	// bodies zijn gesloten, dus zonder deze onderhandeling zou een client die
+	// credential_mode meestuurt een weigering krijgen van een oudere server in
+	// plaats van een veld dat stil wegvalt.
+	CookieAuth bool `json:"cookie_auth"`
 }
 
 // ServerDetail is het antwoord van GET /server.
 //
 // De eerste vier velden zijn klasse authenticated en staan er sinds PS-2. De
-// acht daaronder kwamen met S1.3 (J.2 rij 3) en gaan alleen mee voor klasse
-// admin: ze beschrijven hoe deze server draait, en dat is voor een huisgenoot
-// geen informatie maar een verkenning.
+// negen daaronder gaan alleen mee voor klasse admin: acht met S1.3 (J.2 rij 3)
+// en web_origin met S1.8. Ze beschrijven hoe deze server draait, en dat is voor
+// een huisgenoot geen informatie maar een verkenning.
+//
+// cors_origins staat er bewust niet bij. Die lijst is beleid en geen adres, en
+// een opsomming van vertrouwde origins vertelt precies welke herkomst het
+// proberen waard is; hij staat in GET /settings en verder nergens.
 //
 // Pointers en geen kale waarden, want het verschil tussen "afwezig" en "leeg"
 // draagt hier betekenis. Een lid ziet public_url niet; een beheerder van een
@@ -101,6 +113,7 @@ type ServerDetail struct {
 	StartedAt string `json:"started_at"`
 
 	PublicURL      *string             `json:"public_url,omitempty"`
+	WebOrigin      *string             `json:"web_origin,omitempty"`
 	Listen         *string             `json:"listen,omitempty"`
 	BehindProxy    *bool               `json:"behind_proxy,omitempty"`
 	TrustedProxies *[]string           `json:"trusted_proxies,omitempty"`
@@ -111,9 +124,15 @@ type ServerDetail struct {
 }
 
 // TokenPair is wat setup, login en refresh teruggeven.
+//
+// RefreshToken draagt omitempty sinds S1.8: in cookiemodus zit het credential in
+// de cookie pleya_refresh en hoort het niet in het lichaam. Het weglaten is het
+// hele punt van RB-29, want een refreshtoken dat óók in het antwoord staat is met
+// één regel JavaScript alsnog te lezen. Voor een client die credential_mode niet
+// stuurt staat het er altijd; zie hoofdstuk 17d.1 voor de compatibiliteitstoets.
 type TokenPair struct {
 	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 	TokenType    string `json:"token_type"`
 	ExpiresInMs  int64  `json:"expires_in_ms"`
 }

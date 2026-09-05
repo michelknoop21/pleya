@@ -17,6 +17,13 @@ type Base struct {
 	// opstelling, en dan zegt POST /server/connectivity-check dat eerlijk in
 	// plaats van iets aan te roepen.
 	PublicURL string
+
+	// WebOrigin en CORSOrigins zijn de omgevingslaag van het origin-model
+	// (S1.8). Leeg en nil zijn de normale waarden: draait de bundel same-origin
+	// op de server zelf, dan is er geen tweede origin om toe te laten en is de
+	// origin van de aanvraag al genoeg.
+	WebOrigin   string
+	CORSOrigins []string
 }
 
 // Values is de set zoals hij op dit moment geldt: per sleutel een waarde en de
@@ -56,6 +63,22 @@ func (v Values) PublicURL() string {
 	return s
 }
 
+func (v Values) WebOrigin() string {
+	s, _ := v.values[KeyWebOrigin].(string)
+	return s
+}
+
+// CORSOrigins geeft een kopie, want de lezer is een aanvraagpad en een gedeelde
+// slice die per ongeluk gesorteerd of aangevuld wordt zou de set wijzigen die
+// elke andere aanvraag leest.
+func (v Values) CORSOrigins() []string {
+	list, _ := v.values[KeyCORSOrigins].([]string)
+	if len(list) == 0 {
+		return nil
+	}
+	return append([]string(nil), list...)
+}
+
 func (v Values) MaxStreamSessions() int {
 	n, _ := v.values[KeyMaxStreamSessions].(int)
 	return n
@@ -76,6 +99,8 @@ func newValues(base Base, stored map[string]any) Values {
 			KeyStreamSessionTTL:  base.StreamSessionTTL,
 			KeyMaxStreamSessions: base.MaxStreamSessions,
 			KeyPublicURL:         base.PublicURL,
+			KeyWebOrigin:         base.WebOrigin,
+			KeyCORSOrigins:       base.CORSOrigins,
 		},
 		sources: map[string]Source{},
 	}

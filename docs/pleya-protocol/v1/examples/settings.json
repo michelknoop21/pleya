@@ -26,5 +26,15 @@
   "public_url": {
     "value": "https://web.pleya.app",
     "source": "db"
+  },
+  "web_origin": {
+    "value": "https://web.pleya.app",
+    "source": "db"
+  },
+  "cors_origins": {
+    "value": [
+      "http://localhost:5173"
+    ],
+    "source": "db"
   }
 }

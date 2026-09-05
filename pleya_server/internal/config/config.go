@@ -47,6 +47,14 @@ type Config struct {
 	// PATCH /settings overschrijven, en dan gelden de grenzen uit K rij 13.
 	PublicURL string
 
+	// WebOrigin is de canonieke origin van de webclient die bij deze server
+	// hoort; CORSOrigins zijn de origins die de API cross-origin mogen
+	// aanroepen (RB-29, S1.8). Allebei zijn ze de onderste laag van een
+	// instelling, net als PublicURL: een beheerder zet ze via PATCH /settings,
+	// en wat hier staat geldt zolang hij dat niet deed.
+	WebOrigin   string
+	CORSOrigins []string
+
 	// TrustedProxies zijn de adressen en bereiken waarvan de server
 	// forwarding-headers aanneemt. Bewust geen instelling (K rij 14): wie dit
 	// over de API kan zetten kan de server elke client laten geloven.
@@ -182,6 +190,19 @@ func Load(getenv Getenv) (*Config, error) {
 		if err := ValidatePublicURL(cfg.PublicURL); err != nil {
 			return nil, fmt.Errorf("PLEYA_SERVER_PUBLIC_URL: %w", err)
 		}
+	}
+
+	if raw := strings.TrimSpace(getenv("PLEYA_SERVER_WEB_ORIGIN")); raw != "" {
+		origin, err := NormalizeOrigin(raw)
+		if err != nil {
+			return nil, fmt.Errorf("PLEYA_SERVER_WEB_ORIGIN: %w", err)
+		}
+		cfg.WebOrigin = origin
+	}
+
+	cfg.CORSOrigins, err = ParseCORSOrigins(getenv("PLEYA_SERVER_CORS_ORIGINS"))
+	if err != nil {
+		return nil, fmt.Errorf("PLEYA_SERVER_CORS_ORIGINS: %w", err)
 	}
 
 	proxies, err := ParseTrustedProxies(getenv("PLEYA_SERVER_TRUSTED_PROXIES"))

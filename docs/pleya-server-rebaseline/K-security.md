@@ -24,7 +24,7 @@ bundel, `frame-ancestors 'none'`.
 | 4 | IDOR op boeken, leesvoortgang, scans, jobs | elke resource loopt via `MayAccess` op de bibliotheek of via `requireAdmin`; `reading_states` altijd gescoped op de aanroeper | tests met twee gebruikers en twee bibliotheken op elk nieuw endpoint; `GET /reading-state` van een ander geeft nooit rijen | S3, S6 |
 | 5 | Token- of sessiemisbruik na intrekking | bestaand; erbij: sleutelrotatie trekt alles in, en `GET /stream-sessions` toont geen geheimen | test: na rotatie geeft elk oud token 401 binnen 2 s; het antwoord van `/stream-sessions` bevat geen `ss`-geheim of token | S1 |
 | 6 | Verwijderde gebruiker | bestaand (404 in plaats van 500); erbij: `reading_states` en `library_permissions` cascaderen | test: verwijderen, daarna tokens en rijen weg | S6 |
-| 7 | CSRF op schrijvende beheerroutes | de API accepteert alleen `Authorization: Bearer`, geen cookie-auth op `/pleya/v1` behalve de streamsessie-cookie die alleen `GET /stream` en `/subtitles` autoriseert; `Content-Type: application/json` verplicht op elke body | test: een `POST /libraries` met alleen de streamsessie-cookie en zonder bearer geeft 401; een `text/plain`-body geeft 415 | S1 |
+| 7 | CSRF op schrijvende beheerroutes | de API accepteert alleen `Authorization: Bearer`, geen cookie-auth op `/pleya/v1` behalve twee cookies die elk precies één handeling autoriseren en geen identiteit: de streamsessie-cookie voor `GET /stream` en `/subtitles`, en de refreshcookie uit rij 20 voor `POST /auth/refresh`; `Content-Type: application/json` verplicht op elke body | test: een `POST /libraries` met alleen de streamsessie-cookie en zonder bearer geeft 401; idem met alleen de refreshcookie; een `text/plain`-body geeft 415 | S1 |
 | 8 | Cookiesemantiek | `pleya_ss_<id>` blijft `HttpOnly`, `SameSite=Strict`, `Path=/pleya/v1`, `Secure` wanneer de proxy TLS meldt (`X-Forwarded-Proto` van een vertrouwde proxy) | test: achter een vertrouwde proxy met `https` krijgt de cookie `Secure`; zonder proxyheader niet | S1 |
 | 9 | Streamtoken-misbruik | bestaand: 5 minuten, één versie, per aanvraag opnieuw geautoriseerd; het EPUB-bestand gebruikt geen streamtoken | test: een streamtoken voor versie A opent geen `/ebooks/{b}/file` | S3 |
 | 10 | Pad-traversal via bibliotheek- of opslagconfiguratie | `root_paths` moeten letterlijk in de opsomming uit de mounts staan; geen normalisatie van invoer, geen bestandsbrowser; symlinks in de opsomming worden geresolved en buiten de mounts geweigerd | tests: `../`, absolute paden buiten de mounts, een symlink naar buiten, een pad met NUL: allemaal 400 `storage.root_not_offered` en nul `stat`-aanroepen buiten de mounts (gemeten met een test-`fs`) | S2 |
@@ -47,6 +47,28 @@ bundel, `frame-ancestors 'none'`.
 | 28 | SSRF via provider-URL's of artwork-URL's | alleen hosts uit een vaste lijst per provider, geen redirects naar buiten die lijst, geen privé-adressen | tests: een kandidaat met artwork-URL naar `169.254.169.254` wordt genegeerd en gelogd | S22 |
 | 29 | Downloadbestanden als omweg om bibliotheekrecht | `download`-recht per bibliotheek getoetst bij aanvraag én bij elke byte-aanvraag; download van een ander is 404 | tests met twee gebruikers | S23 |
 | 20 | Tokens in browseropslag | vervangen door RB-29: HttpOnly-refreshcookie, accesstoken in geheugen, same-origin als voorkeur, anders een expliciete BFF-flow; nooit third-party cookies | e2e: `document.cookie` bevat geen refresh; refresh werkt na herladen; cross-origin aanvraag zonder toegestane origin geeft 403 | S1 |
+
+## K.2a Rij 7 en rij 20 spreken elkaar niet tegen
+
+Op het oog wel. Rij 7 zegt dat er geen cookie-auth op `/pleya/v1` is, en rij 20 zet er een
+refreshcookie naast. Beide bleven staan toen RB-29 erbij kwam, en het gat is bij S1.8 gedicht in
+plaats van weggeschreven.
+
+De verzoening is dat een cookie in dit protocol nooit een **identiteit** draagt, alleen een
+**handeling**. `pleya_ss_<id>` autoriseert `GET /stream` en `GET /subtitles` voor één versie;
+`pleya_refresh` autoriseert `POST /auth/refresh` en levert daar een tokenpaar op, geen sessie. Op
+elke andere route bestaat geen van beide, en dat is geen belofte maar een `Path`: de refreshcookie
+draagt `Path=/pleya/v1/auth/refresh`, dus de browser stuurt hem nergens anders heen.
+
+Wat rij 7 verbiedt blijft daarmee volledig verboden: er is geen route onder `/pleya/v1` waar een
+cookie de bearer-header vervangt. Wat rij 20 toevoegt is één publiek endpoint waar het credential
+zelf het bewijs is, precies zoals `refresh_token` in het lichaam dat al was, alleen buiten het bereik
+van JavaScript.
+
+Twee dingen dekken de rest af. De refreshcookie is `SameSite=Strict`, dus hij reist niet cross-site
+mee, en de server weigert een cookiemodus-aanvraag met een origin die hij niet toestaat met `403`
+`auth.origin_rejected`. De volledige uitwerking staat in hoofdstuk 17d van
+`docs/pleya-protocol-v1.md`, en regel 27 van de autorisatiematrix is de bijbehorende rij.
 
 ## K.3 Bewijs dat elke slice levert
 

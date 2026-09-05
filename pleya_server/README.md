@@ -113,7 +113,8 @@ een geweigerd event wordt beantwoord met de actuele toestand en gelogd, en verde
 Zevenendertig operaties op tweeëndertig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
 daarna PS-9, de twee daarna de serverinstellingen van S1.2, de vier daarna de serverdiagnostiek
 van S1.3, de twee daarna `GET /users/me` en het overzicht van lopende streams uit S1.4, en de
-laatste drie de API-tokens en het auditlog van S1.5.
+laatste drie de API-tokens en het auditlog van S1.5. S1.8 komt er niet bij: de refreshcookie is een
+modus op login en refresh en geen endpoint ernaast.
 
 | Endpoint | Klasse |
 | --- | --- |
@@ -372,6 +373,9 @@ curl -s -X PATCH -H "Authorization: Bearer $A" -H 'Content-Type: application/jso
 | `stream_token_ttl` | duur | `1m` tot `15m` |
 | `stream_session_ttl` | duur | `5m` tot `120m` |
 | `max_stream_sessions` | geheel getal | 1 tot 32 |
+| `public_url` | tekst | absolute `http(s)`-URL, geen inloggegevens, querystring of fragment, geen letterlijk privé-adres (S1.3) |
+| `web_origin` | tekst | een origin: `schema://host[:poort]`, geen pad; een privé-adres mag hier wél (S1.8) |
+| `cors_origins` | lijst van tekst | ten hoogste 16 origins in dezelfde vorm, elk uniek, geen `*` (S1.8) |
 
 Een wijziging geldt vanaf het eerstvolgende verzoek, zonder herstart: het eerstvolgende token draagt
 de nieuwe TTL. Een waarde buiten de grens geeft `400` met `settings.invalid_value`, het veld en de
@@ -380,6 +384,32 @@ grens erbij, en wijzigt niets, ook niet aan de sleutels die in dezelfde aanvraag
 Wat hier niet tussen staat is bewust: het bindadres, de vertrouwde proxy's, de schrijfbare paden en
 de ondertekensleutel blijven `.env` en containerconfiguratie. Wie het bindadres over de API kan
 zetten kan de server van het netwerk halen of hem juist openzetten.
+
+### De refreshcookie voor een browser
+
+Sinds S1.8 accepteren `POST /auth/login` en `POST /auth/refresh` het optionele veld
+`credential_mode`. Zonder dat veld verandert er niets: het refreshtoken komt in het antwoord, zoals
+altijd. Met `"credential_mode": "cookie"` zet de server het in plaats daarvan in een
+`HttpOnly`-cookie op `Path=/pleya/v1/auth/refresh`, en blijft `refresh_token` uit het antwoord.
+JavaScript op de pagina komt er dan niet bij, en de cookie bereikt geen enkele andere route.
+
+```sh
+B=http://127.0.0.1:8832/pleya/v1
+
+# Inloggen in cookiemodus. De Origin-header is verplicht en moet toegestaan zijn.
+curl -s -c jar.txt -H 'Content-Type: application/json' -H "Origin: http://127.0.0.1:8832" \
+  -d '{"username":"michel","password":"...","credential_mode":"cookie"}' $B/auth/login
+
+# Verversen met alleen de cookie: geen refresh_token in de body.
+curl -s -b jar.txt -c jar.txt -H 'Content-Type: application/json' \
+  -H "Origin: http://127.0.0.1:8832" -d '{"credential_mode":"cookie"}' $B/auth/refresh
+```
+
+De cookie is `SameSite=Strict`, dus cookiemodus werkt alleen wanneer web en server dezelfde site
+zijn: de meegeleverde bundel, of een reverse proxy die beide onder één hostnaam hangt. Draait de
+webclient op een andere origin, zet die dan in `web_origin` of `cors_origins` en gebruik daar de
+gewone tokenmodus; het protocol kent geen third-party cookies. Een aanvraag in cookiemodus vanaf een
+origin die niet is toegestaan, of zonder `Origin`, geeft `403 auth.origin_rejected`.
 
 De voortgang van een lopende scan staat in `scan_runs` en in de logregels `scan gestart` en
 `scan klaar`. Er is bewust geen endpoint voor: realtime is PS-11, en een trage NAS die lijkt te hangen

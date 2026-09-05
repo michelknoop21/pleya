@@ -36,6 +36,15 @@ fake-server van Verify aangepast.
 | Refreshcookie voor web | tokens in browseropslag | `POST /auth/login` en `/auth/refresh` accepteren `credential_mode: cookie` (optioneel bodyveld achter `capabilities.cookie_auth`) en zetten dan een HttpOnly, Secure, SameSite-cookie; `Server.web_origin`, `external_url`, `cors_origins[]` als instellingen | negeert | valt terug op tokens | `cookie_auth` | `auth.origin_rejected` 403 |
 | `Error`-envelop bij panic | 500 zonder body | `server.internal` met request-id | negeert | n.v.t. | | 500 |
 
+**Rij 16, zoals hij bij S1.8 geland is.** De rij noemt drie namen en laat in het midden of het
+instellingen zijn of velden op `Server`. Alle drie zijn instelling; `web_origin` staat daarnaast als
+optioneel veld op `ServerDetail` voor klasse `admin`, `cors_origins` niet. En er komt **geen aparte
+`external_url`**: dat is dezelfde vraag als `public_url`, die met S1.3 al de zevende instelling werd
+en al een lezer heeft in `POST /server/connectivity-check`. Twee sleutels met dezelfde betekenis
+zouden de vraag "waar sta ik" op twee plekken beantwoordbaar maken en op één plek te vergeten. De
+onderbouwing en de compatibiliteitstoets langs de zes regels staan in hoofdstuk 17d van
+`docs/pleya-protocol-v1.md`.
+
 ## J.3 Venster 2 (S2): bibliotheken, opslag, scans
 
 | Wijziging | Nieuw | Compatibiliteit | Onderhandeling | Fout |

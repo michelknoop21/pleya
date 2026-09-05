@@ -233,6 +233,8 @@ func run() int {
 		StreamSessionTTL:  cfg.StreamSessionTTL,
 		MaxStreamSessions: auth.MaxActiveStreamSessions,
 		PublicURL:         cfg.PublicURL,
+		WebOrigin:         cfg.WebOrigin,
+		CORSOrigins:       cfg.CORSOrigins,
 	}, settings.NewStore(pool), logging.Component(log, "settings"))
 	if err := settingsCache.Reload(ctx); err != nil {
 		startup.Warn("instellingen lezen mislukt, de omgeving blijft gelden", slog.String("error", err.Error()))

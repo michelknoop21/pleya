@@ -38,6 +38,17 @@ type SettingIntWire struct {
 	Source string `json:"source"`
 }
 
+// SettingStringListWire is één sleutel met een lijst (schema
+// SettingStringList). Voorlopig alleen cors_origins.
+//
+// Value is nooit nil in het antwoord: de lege lijst is een geldige waarde en
+// `null` is dat niet. Een client die `null` naast `[]` zou moeten afhandelen
+// doet twee controles waar er één hoort.
+type SettingStringListWire struct {
+	Value  []string `json:"value"`
+	Source string   `json:"source"`
+}
+
 // SettingsWire is het antwoord van beide endpoints (schema Settings).
 type SettingsWire struct {
 	ServerName        SettingStringWire `json:"server_name"`
@@ -50,6 +61,11 @@ type SettingsWire struct {
 	// PublicURL kwam met S1.3, want POST /server/connectivity-check heeft een
 	// doel nodig en GET /server toont hem. Leeg betekent "niet ingesteld".
 	PublicURL SettingStringWire `json:"public_url"`
+
+	// Het origin-model kwam met S1.8 (RB-29). WebOrigin is de canonieke
+	// webclient, CORSOrigins de lijst die er cross-origin bij mag.
+	WebOrigin   SettingStringWire     `json:"web_origin"`
+	CORSOrigins SettingStringListWire `json:"cors_origins"`
 }
 
 // settingsPatch is de gesloten aanvraagbody (schema SettingsPatch).
@@ -65,6 +81,8 @@ type settingsPatch struct {
 	StreamSessionTTL  *json.RawMessage `json:"stream_session_ttl"`
 	MaxStreamSessions *json.RawMessage `json:"max_stream_sessions"`
 	PublicURL         *json.RawMessage `json:"public_url"`
+	WebOrigin         *json.RawMessage `json:"web_origin"`
+	CORSOrigins       *json.RawMessage `json:"cors_origins"`
 }
 
 func (p settingsPatch) keys() map[string]json.RawMessage {
@@ -77,6 +95,8 @@ func (p settingsPatch) keys() map[string]json.RawMessage {
 		settings.KeyStreamSessionTTL:  p.StreamSessionTTL,
 		settings.KeyMaxStreamSessions: p.MaxStreamSessions,
 		settings.KeyPublicURL:         p.PublicURL,
+		settings.KeyWebOrigin:         p.WebOrigin,
+		settings.KeyCORSOrigins:       p.CORSOrigins,
 	} {
 		if raw != nil {
 			out[key] = *raw
@@ -96,9 +116,15 @@ func settingsWire(v settings.Values) SettingsWire {
 		StreamTokenTTL:   text(settings.KeyStreamTokenTTL),
 		StreamSessionTTL: text(settings.KeyStreamSessionTTL),
 		PublicURL:        text(settings.KeyPublicURL),
+		WebOrigin:        text(settings.KeyWebOrigin),
 		MaxStreamSessions: SettingIntWire{
 			Value:  v.MaxStreamSessions(),
 			Source: string(v.Source(settings.KeyMaxStreamSessions)),
+		},
+		CORSOrigins: SettingStringListWire{
+			// Nooit nil de lijn op: zie SettingStringListWire.
+			Value:  append([]string{}, v.CORSOrigins()...),
+			Source: string(v.Source(settings.KeyCORSOrigins)),
 		},
 	}
 }
@@ -171,8 +197,9 @@ func (s *Server) handlePatchSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// De namen van de gewijzigde sleutels, niet hun waarden. Twee van de zeven
-	// zijn TTL's die de beveiliging raken, en dát een beheerder eraan draaide is
+	// De namen van de gewijzigde sleutels, niet hun waarden. Vier van de negen
+	// raken de beveiliging (twee TTL's en sinds S1.8 het origin-model), en dát
+	// een beheerder eraan draaide is
 	// wat het log moet vastleggen; wat de nieuwe waarde is staat in
 	// GET /settings, dat de bron per sleutel toch al toont.
 	changed := make([]string, 0, len(keys))

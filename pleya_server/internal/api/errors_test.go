@@ -32,6 +32,7 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"auth.session_not_found":         {404, false},
 		"auth.permission_not_allowed":    {409, false},
 		"auth.scope_exceeds_role":        {400, false},
+		"auth.origin_rejected":           {403, false},
 		"library.not_found":              {404, false},
 		"library.scan_in_progress":       {409, true},
 		"library.cursor_invalid":         {400, false},
@@ -51,8 +52,9 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 
 	// Deze tabel spiegelt hoofdstuk 7.1 voor zover deze server hem draait.
 	// settings.invalid_value kwam erbij met S1.2, server.confirm_mismatch met
-	// S1.3, auth.permission_not_allowed met S1.4 en auth.scope_exceeds_role met
-	// S1.5, elk samen met het endpoint dat hem stuurt: een code in het register
+	// S1.3, auth.permission_not_allowed met S1.4, auth.scope_exceeds_role met
+	// S1.5 en auth.origin_rejected met S1.8, elk samen met het endpoint dat hem
+	// stuurt: een code in het register
 	// zonder handler zou hier groen staan en in het contract een belofte zijn
 	// die niemand nakomt.
 

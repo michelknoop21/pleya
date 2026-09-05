@@ -74,6 +74,21 @@ const (
 	// beheerder die de rol van zijn gebruikers sowieso ziet in GET /users.
 	CodeScopeExceedsRole = "auth.scope_exceeds_role"
 
+	// CodeOriginRejected is het antwoord op een aanvraag in cookiemodus vanaf
+	// een origin die deze server niet toestaat, of zonder Origin-header
+	// (J.2 rij 16, K rij 20). Alleen op POST /auth/login en POST /auth/refresh,
+	// en alleen op het cookiepad.
+	//
+	// 403 en geen 404, en dat is na auth.permission_not_allowed de tweede
+	// uitzondering op de 404-regel. Die regel verbergt het bestaan van een
+	// resource die de aanvrager niet mag zien; hier is de resource klasse public
+	// en staat zijn bestaan in de specificatie. Wat geweigerd wordt is geen
+	// identiteit maar een herkomst, en die weigering moet leesbaar zijn: een 404
+	// zou een legitieme webclient met een verkeerd ingestelde web_origin
+	// vertellen dat het endpoint niet bestaat, en dan zoekt een beheerder in de
+	// verkeerde helft van zijn opstelling.
+	CodeOriginRejected = "auth.origin_rejected"
+
 	CodeNotFound         = "library.not_found"
 	CodeScanInProgress   = "library.scan_in_progress"
 	CodeCursorInvalid    = "library.cursor_invalid"
@@ -152,6 +167,7 @@ var errorTable = map[string]struct {
 	CodeSessionNotFound:      {http.StatusNotFound, false},
 	CodePermissionNotAllowed: {http.StatusConflict, false},
 	CodeScopeExceedsRole:     {http.StatusBadRequest, false},
+	CodeOriginRejected:       {http.StatusForbidden, false},
 
 	CodeNotFound:         {http.StatusNotFound, false},
 	CodeScanInProgress:   {http.StatusConflict, true},

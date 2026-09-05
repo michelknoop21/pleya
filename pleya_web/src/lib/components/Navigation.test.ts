@@ -21,7 +21,8 @@ const caps: Capabilities = {
   watch_state_ownership: false,
   stream_sessions: false,
   sessions: false,
-  api_tokens: false
+  api_tokens: false,
+  cookie_auth: false
 };
 const items = navItems(caps, 2);
 

@@ -178,6 +178,24 @@ func NewRefreshToken() (token string, hash []byte, err error) {
 	return token, HashOpaque(token), nil
 }
 
+// RefreshCookieName en RefreshCookiePath zijn de cookie uit RB-29 (S1.8).
+//
+// Het pad is het securitymodel eromheen en geen nettigheidje. Een browser
+// stuurt een cookie alleen naar een pad dat eronder valt, dus deze waarde zorgt
+// dat een credential dat maanden geldig is uitsluitend op POST /auth/refresh op
+// de lijn staat en op geen enkele andere route bestaat. Dat is wat K rij 7
+// ("geen cookie-auth op /pleya/v1") en RB-29 met elkaar verzoent: de cookie
+// autoriseert één handeling en nooit een identiteit.
+//
+// Eén vaste naam, anders dan bij de streamsessie. Daar draagt de naam de
+// sessie-id omdat twee tabbladen twee levende streams kunnen hebben; hier is
+// één credential per browser precies de bedoeling, en een tweede Set-Cookie
+// hoort de eerste dus te vervangen.
+const (
+	RefreshCookieName = "pleya_refresh"
+	RefreshCookiePath = "/pleya/v1/auth/refresh"
+)
+
 // HashOpaque geeft de opslagvorm van een ondoorzichtig geheim.
 func HashOpaque(token string) []byte {
 	sum := sha256.Sum256([]byte(token))

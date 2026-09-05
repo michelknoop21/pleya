@@ -28,15 +28,17 @@ const maxRequestBodyBytes = 8 << 10
 // aanmaakt en de uiteindelijke status wil zien, ook de 500 die recovery
 // schrijft. recovery staat daaronder zodat hij die id uit de context kan lezen.
 // securityHeaders zet zijn headers op de heenweg, dus ze staan er ook op een
-// antwoord dat recovery schrijft. bodyLimit staat het dichtst bij de mux, want
-// hij raakt alleen het verzoek.
+// antwoord dat recovery schrijft. cors staat daaronder omdat hij een preflight
+// zelf afmaakt en de mux dan niet meer hoeft te bereiken, en boven bodyLimit
+// omdat een preflight geen lichaam heeft. bodyLimit staat het dichtst bij de
+// mux, want hij raakt alleen het verzoek.
 func (s *Server) Handler() http.Handler { return s.chain(s.mux) }
 
 // chain is de keten zelf, los van de mux, zodat een test hem op een eigen
 // handler kan leggen. Zou de test de volgorde overschrijven, dan bewees hij een
 // keten die niet draait.
 func (s *Server) chain(inner http.Handler) http.Handler {
-	return s.logging(s.recovery(s.securityHeaders(s.bodyLimit(inner))))
+	return s.logging(s.recovery(s.securityHeaders(s.cors(s.bodyLimit(inner)))))
 }
 
 // recovery vangt een panic af en maakt er de foutvorm van het protocol van.

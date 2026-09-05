@@ -4,9 +4,12 @@
   "version": "0.2.0",
   "started_at": "2026-08-18T19:25:33Z",
   "public_url": "https://web.pleya.app",
+  "web_origin": "https://web.pleya.app",
   "listen": ":8080",
   "behind_proxy": true,
-  "trusted_proxies": ["172.18.0.0/16"],
+  "trusted_proxies": [
+    "172.18.0.0/16"
+  ],
   "build": "0.2.0 (go1.26.6, linux/arm64)",
   "database": {
     "version": "18.6",

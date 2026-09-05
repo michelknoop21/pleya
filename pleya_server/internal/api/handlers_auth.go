@@ -75,6 +75,10 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			// APITokens: aan sinds S1.5. POST en GET /auth/api-tokens bestaan,
 			// en Session draagt kind en scope.
 			APITokens: true,
+			// CookieAuth: aan sinds S1.8. Login en refresh kennen
+			// credential_mode en zetten het refreshcredential desgevraagd in een
+			// HttpOnly-cookie (RB-29).
+			CookieAuth: true,
 		},
 		Auth: InfoAuth{
 			Methods:       []string{"password"},
@@ -142,19 +146,30 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.limiter.reset("setup")
-	s.issueTokens(w, r, ownerID, deviceID(req.DeviceID), deviceName(req.DeviceName), auditSetup)
+	s.issueTokens(w, r, ownerID, deviceID(req.DeviceID), deviceName(req.DeviceName), auditSetup,
+		credentialModeToken)
 }
 
 type loginRequest struct {
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	DeviceID   string `json:"device_id"`
-	DeviceName string `json:"device_name"`
+	Username       string `json:"username"`
+	Password       string `json:"password"`
+	DeviceID       string `json:"device_id"`
+	DeviceName     string `json:"device_name"`
+	CredentialMode string `json:"credential_mode"`
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
 	if !s.decodeBody(w, r, &req, CodeInvalidCredentials) {
+		return
+	}
+
+	// Vóór de limiter en vóór het wachtwoord. Een aanvraag van een origin die
+	// deze server niet toestaat hoort de emmer van het slachtoffer niet leeg te
+	// trekken, en er valt niets te verifiëren voor een pagina die dit antwoord
+	// toch niet mag lezen.
+	mode, ok := s.credentialMode(w, r, req.CredentialMode, CodeInvalidCredentials, auditLogin)
+	if !ok {
 		return
 	}
 
@@ -228,11 +243,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.limiter.reset(limiterKey)
-	s.issueTokens(w, r, user.ID, deviceID(req.DeviceID), deviceName(req.DeviceName), auditLogin)
+	s.issueTokens(w, r, user.ID, deviceID(req.DeviceID), deviceName(req.DeviceName), auditLogin, mode)
 }
 
 type refreshRequest struct {
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken   string `json:"refresh_token"`
+	CredentialMode string `json:"credential_mode"`
 }
 
 func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
@@ -240,7 +256,29 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	if !s.decodeBody(w, r, &req, CodeTokenInvalid) {
 		return
 	}
-	if strings.TrimSpace(req.RefreshToken) == "" {
+
+	mode, ok := s.credentialMode(w, r, req.CredentialMode, CodeTokenInvalid, "")
+	if !ok {
+		return
+	}
+
+	presented := strings.TrimSpace(req.RefreshToken)
+	if mode == credentialModeCookie {
+		// Twee bronnen is geen bron. Wie een token in het lichaam zet én om de
+		// cookie vraagt heeft twee credentials en geen manier om te zeggen welk
+		// van de twee hij bedoelt, en stilzwijgend kiezen is precies hoe een
+		// client per ongeluk het verkeerde blijft roteren.
+		if presented != "" {
+			writeError(w, s.log, CodeTokenInvalid, "refresh token in both body and cookie", nil)
+			return
+		}
+		cookie, err := r.Cookie(auth.RefreshCookieName)
+		if err != nil || strings.TrimSpace(cookie.Value) == "" {
+			writeError(w, s.log, CodeTokenInvalid, "refresh cookie missing", nil)
+			return
+		}
+		presented = strings.TrimSpace(cookie.Value)
+	} else if presented == "" {
 		writeError(w, s.log, CodeTokenInvalid, "refresh token missing", nil)
 		return
 	}
@@ -253,11 +291,19 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 
 	now := s.now().UTC()
 	outcome, sid, subjectID, err := s.opts.Auth.RotateRefreshToken(r.Context(),
-		auth.HashOpaque(req.RefreshToken), newHash, now.Add(s.settings().RefreshTokenTTL()), now,
+		auth.HashOpaque(presented), newHash, now.Add(s.settings().RefreshTokenTTL()), now,
 		s.opts.RefreshGraceWindow)
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
+	}
+
+	// Een afgewezen refresh in cookiemodus laat geen dode cookie achter. Zonder
+	// deze regel blijft de browser bij elke volgende poging een credential
+	// meesturen dat nooit meer werkt, en dan lijkt "opnieuw inloggen" niet te
+	// helpen.
+	if mode == credentialModeCookie && outcome != auth.RefreshOK && outcome != auth.RefreshReplayed {
+		s.clearRefreshCookie(w)
 	}
 
 	switch outcome {
@@ -295,12 +341,7 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, TokenPair{
-		AccessToken:  access,
-		RefreshToken: newToken,
-		TokenType:    "bearer",
-		ExpiresInMs:  (claims.ExpiresAt - claims.IssuedAt) * 1000,
-	})
+	s.writeTokenPair(w, r, mode, access, newToken, (claims.ExpiresAt-claims.IssuedAt)*1000)
 }
 
 type streamTokenRequest struct {
@@ -394,7 +435,12 @@ func (s *Server) handleStreamSession(w http.ResponseWriter, r *http.Request) {
 		// het beter maakt is dat JavaScript er niet bij kan en dat hij niet in
 		// browsergeschiedenis, logs of referrers belandt. HttpOnly is geen
 		// versleuteling en wordt hier ook niet als zodanig gepresenteerd.
-		Secure:   r.TLS != nil,
+		//
+		// requestIsSecure en niet r.TLS != nil: achter een TLS-terminerende
+		// proxy is de verbinding met de browser wél beveiligd, en dan hoort
+		// Secure erop (K rij 8). De proxy moet daarvoor vertrouwd zijn, anders
+		// zou een client de vlag op zijn eigen cookie kunnen bepalen.
+		Secure:   s.requestIsSecure(r),
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		Expires:  session.ExpiresAt,
@@ -410,7 +456,7 @@ func (s *Server) handleStreamSession(w http.ResponseWriter, r *http.Request) {
 // issueTokens opent een sessie en geeft een vers paar uit na setup of login
 // (DEC-102). deviceID is nil zonder capability of zonder een toestel-id van de
 // client; deviceName draagt in dat geval al de vaste plaatshouder.
-func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.ID, deviceID *string, deviceName string, operation string) {
+func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.ID, deviceID *string, deviceName string, operation, mode string) {
 	now := s.now().UTC()
 	sessionID, err := s.opts.Auth.CreateSession(r.Context(), userID, deviceID, deviceName, now)
 	if err != nil {
@@ -442,11 +488,126 @@ func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.I
 	s.auditFor(r, userID, sessionID, operation, audit.OutcomeOK,
 		map[string]any{"device_name": deviceName})
 
-	writeJSON(w, http.StatusOK, TokenPair{
-		AccessToken:  access,
-		RefreshToken: refresh,
-		TokenType:    "bearer",
-		ExpiresInMs:  (claims.ExpiresAt - claims.IssuedAt) * 1000,
+	s.writeTokenPair(w, r, mode, access, refresh, (claims.ExpiresAt-claims.IssuedAt)*1000)
+}
+
+// De twee waarden van credential_mode (J.2 rij 16, hoofdstuk 17d).
+const (
+	credentialModeToken  = "token"
+	credentialModeCookie = "cookie"
+)
+
+// credentialMode leest het veld, toetst de origin wanneer het om de cookie
+// vraagt, en schrijft zelf het antwoord wanneer een van beide misgaat.
+//
+// De origin-controle staat hier en niet in een middleware, want hij geldt
+// uitsluitend voor het cookiepad. Een aanvraag met een bearer draagt geen
+// ambient authority: een vreemde pagina kan die header niet zetten zonder dat
+// de browser er eerst CORS voor vraagt, en er valt daar dus niets te
+// vervalsen. De cookie is het enige credential dat een browser uit zichzelf
+// meestuurt, dus de cookiemodus is ook het enige pad waar CSRF bestaat.
+//
+// operation is de auditoperatie voor een weigering, of leeg wanneer er geen
+// haak voor bestaat. Voor refresh is hij leeg: het auditbereik ligt sinds S1.5
+// vast en `refresh` staat er niet in, en dat bereik oprekken hoort bij een
+// besluit en niet bij deze wijziging. De weigering gaat dan naar het log, en
+// daarmee in de ringbuffer achter GET /server/log.
+func (s *Server) credentialMode(w http.ResponseWriter, r *http.Request, raw, badRequestCode, operation string) (string, bool) {
+	switch strings.TrimSpace(raw) {
+	case "", credentialModeToken:
+		return credentialModeToken, true
+	case credentialModeCookie:
+	default:
+		// Geen stille terugval op token. Een client die om een cookie vraagt en
+		// er geen krijgt hoort dat te merken (regel 5 van hoofdstuk 3), en een
+		// waarde die deze server niet kent is een verzoek dat hij niet kan
+		// bedienen.
+		writeError(w, s.log, badRequestCode, "unknown credential_mode", nil)
+		return "", false
+	}
+
+	origin := strings.TrimSpace(r.Header.Get("Origin"))
+	if s.originAllowed(r, origin) {
+		return credentialModeCookie, true
+	}
+
+	// Een lege Origin valt hier ook onder, en dat is opzet. Cookiemodus bestaat
+	// voor browsers, en een browser zet Origin op elke POST, ook op een
+	// same-origin POST. Een aanvraag zonder die header komt dus niet van een
+	// browser, en toelaten zou de controle in één regel curl te omzeilen maken.
+	detail := map[string]any{"origin": origin}
+	if origin == "" {
+		detail["origin"] = "(afwezig)"
+	}
+	if operation != "" {
+		s.auditAnonymous(r, operation, audit.OutcomeDenied,
+			map[string]any{"reason": "origin_rejected", "origin": detail["origin"]})
+	}
+	s.log.Warn("cookiemodus geweigerd op een niet-toegestane origin",
+		"path", r.URL.Path, "origin", detail["origin"])
+	writeError(w, s.log, CodeOriginRejected, "origin not allowed for cookie credentials", detail)
+	return "", false
+}
+
+// writeTokenPair schrijft het antwoord van setup, login en refresh.
+//
+// In tokenmodus staat het refreshcredential in het lichaam, precies zoals sinds
+// v1. In cookiemodus staat het in de cookie en blijft het veld weg: het weglaten
+// is het hele punt, want een refreshtoken dat óók in het lichaam staat is met
+// één regel JavaScript alsnog te lezen en dan koopt HttpOnly niets.
+func (s *Server) writeTokenPair(w http.ResponseWriter, r *http.Request, mode, access, refresh string, expiresInMs int64) {
+	pair := TokenPair{
+		AccessToken: access,
+		TokenType:   "bearer",
+		ExpiresInMs: expiresInMs,
+	}
+	if mode == credentialModeCookie {
+		s.setRefreshCookie(w, r, refresh)
+	} else {
+		pair.RefreshToken = refresh
+	}
+	writeJSON(w, http.StatusOK, pair)
+}
+
+// setRefreshCookie zet het refreshcredential buiten het bereik van JavaScript.
+//
+// SameSite=Strict, en dat is een keuze met gevolgen: een browser stuurt zo'n
+// cookie niet mee op een cross-site aanvraag, ook niet vanaf een origin die in
+// cors_origins staat. Cookiemodus werkt daarmee alleen same-site, en dat is
+// precies de opstelling die RB-29 als voorkeur noemt. Het sluit de opstelling
+// die RB-29 uitsluit ook werkelijk uit: een ontwerp dat leunt op
+// third-party cookies is met deze cookie niet te bouwen.
+//
+// Secure hangt aan de aanvraag en niet aan een instelling. Op http://nas:8832
+// zou een Secure-cookie door de browser worden weggegooid, en dan werkt inloggen
+// niet meer; achter een TLS-proxy hoort hij er wel op (K rij 8).
+func (s *Server) setRefreshCookie(w http.ResponseWriter, r *http.Request, secret string) {
+	// De levensduur komt uit dezelfde instelling als het token zelf, en de
+	// vervaltijd van de serverklok. Een cookie die langer leeft dan zijn
+	// credential levert een browser op die een dood geheim blijft meesturen;
+	// korter zou de gebruiker eruit gooien terwijl zijn sessie nog geldig is.
+	ttl := s.settings().RefreshTokenTTL()
+	http.SetCookie(w, &http.Cookie{
+		Name:     auth.RefreshCookieName,
+		Value:    secret,
+		Path:     auth.RefreshCookiePath,
+		Secure:   s.requestIsSecure(r),
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Expires:  s.now().UTC().Add(ttl),
+		MaxAge:   int(ttl.Seconds()),
+	})
+}
+
+// clearRefreshCookie haalt een dood credential bij de browser weg.
+func (s *Server) clearRefreshCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     auth.RefreshCookieName,
+		Value:    "",
+		Path:     auth.RefreshCookiePath,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
 	})
 }
 

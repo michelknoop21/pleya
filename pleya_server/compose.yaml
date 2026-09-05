@@ -52,6 +52,17 @@ services:
       # een thuisnetwerk is 192.168.x.y het juiste antwoord.
       PLEYA_SERVER_PUBLIC_URL: ${PLEYA_SERVER_PUBLIC_URL:-}
 
+      # De canonieke origin van de webclient die bij deze server hoort, en de
+      # origins die de API cross-origin mogen aanroepen (komma-gescheiden).
+      # Allebei alleen schema, host en poort: http://nas:8832, geen pad. Ook
+      # allebei een instelling, dus een beheerder kan ze over de API zetten;
+      # anders dan bij PUBLIC_URL is een privé-adres hier ook van buiten
+      # toegestaan, want dit is geen doel dat de server aanroept maar een
+      # verwachting over wie hém aanroept. Leeg laten is de normale opstelling:
+      # de bundel draait op de server zelf en is dus same-origin.
+      PLEYA_SERVER_WEB_ORIGIN: ${PLEYA_SERVER_WEB_ORIGIN:-}
+      PLEYA_SERVER_CORS_ORIGINS: ${PLEYA_SERVER_CORS_ORIGINS:-}
+
       # De adressen en bereiken waarvan forwarding-headers worden aangenomen,
       # komma-gescheiden (10.0.0.1 of 172.18.0.0/16). Bewust geen instelling:
       # wie dit over de API kan zetten kan de server elke client laten geloven.
