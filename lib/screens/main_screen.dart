@@ -1863,11 +1863,11 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
-  List<NavigationTab> _getBottomNavigationTabs(BuildContext context) {
+  List<NavigationTab> _getBottomNavigationTabs() {
     return mainScreenBottomNavigationTabs(
       visibleTabs: _getVisibleTabs(_isOffline),
-      isMobile: PlatformDetector.isMobile(context),
-      isPhone: PlatformDetector.isPhone(context),
+      isMobile: _isMobile,
+      isPhone: _isPhone,
       isOffline: _isOffline,
       currentTab: _currentTab,
     );
@@ -1891,7 +1891,7 @@ class _MainScreenState extends State<MainScreen>
   }
 
   Widget _buildBottomNavigationBar(BuildContext context, {required bool hideLabels}) {
-    final tabs = _getBottomNavigationTabs(context);
+    final tabs = _getBottomNavigationTabs();
     final projected = mainScreenSelectedBarTab(
       currentTab: _currentTab,
       isOffline: _isOffline,
