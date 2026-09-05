@@ -9,9 +9,9 @@ import '../focus/dpad_navigator.dart';
 import '../focus/focusable_wrapper.dart';
 import '../focus/input_mode_tracker.dart';
 import '../i18n/strings.g.dart';
-import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_server_client.dart';
+import '../media/unified/source_row_descriptor.dart';
 import '../providers/trackers_provider.dart';
 import '../providers/trakt_account_provider.dart';
 import '../services/trackers/anilist/anilist_tracker.dart';
@@ -155,7 +155,7 @@ class _RatingBottomSheetState extends State<RatingBottomSheet> {
     final loading = _loading.contains(_serverKey);
     final status = _statuses[_serverKey];
     final subtitle =
-        '${_backendLabel(client.backend)} - ${client.serverName ?? widget.item.serverName ?? t.common.unknown}';
+        '${backendDisplayLabel(client.backend)} - ${client.serverName ?? widget.item.serverName ?? t.common.unknown}';
 
     if (client.capabilities.numericUserRating) {
       final value = (_serverStars * 2).round().clamp(0, 10).toInt();
@@ -620,12 +620,6 @@ class _RatingBottomSheetState extends State<RatingBottomSheet> {
     return () => nodes[index].requestFocus();
   }
 
-  String _backendLabel(MediaBackend backend) => switch (backend) {
-    MediaBackend.plex => 'Plex',
-    MediaBackend.jellyfin => 'Jellyfin',
-    MediaBackend.local => 'Local',
-    MediaBackend.pleyaServer => 'Pleya Server',
-  };
 }
 
 const _serverKey = 'server';

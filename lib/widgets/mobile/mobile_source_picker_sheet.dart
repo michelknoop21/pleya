@@ -67,20 +67,12 @@ class MobileSourcePickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
-    final showBackend = sources.map((s) => s.backend).toSet().length > 1;
-    final descriptors = [
-      for (final source in sources)
-        (
-          source: source,
-          descriptor: describeSource(
-            source,
-            showBackend: showBackend,
-            isPreferred: source.sourceKey == preferredSourceKey,
-            isCurrent: source.sourceKey == currentSourceKey,
-            isPreferredServer: source.serverId.value == preferredServerId,
-          ),
-        ),
-    ];
+    final descriptors = describeSourcesWithSource(
+      sources,
+      preferredSourceKey: preferredSourceKey,
+      currentSourceKey: currentSourceKey,
+      preferredServerId: preferredServerId,
+    );
 
     return AutomationNode(
       id: AutomationIds.sheetSourcePicker,

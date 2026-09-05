@@ -127,6 +127,24 @@ List<SourceRowDescriptor> describeSources(
   ];
 }
 
+/// [describeSources], keeping each descriptor paired with the source it came
+/// from — for a caller (a row that opens the source on tap) that needs both,
+/// rather than re-deriving [describeSources]' own body to get the pairing.
+List<({UnifiedMediaSource source, SourceRowDescriptor descriptor})> describeSourcesWithSource(
+  List<UnifiedMediaSource> sources, {
+  String? preferredSourceKey,
+  String? currentSourceKey,
+  String? preferredServerId,
+}) {
+  final descriptors = describeSources(
+    sources,
+    preferredSourceKey: preferredSourceKey,
+    currentSourceKey: currentSourceKey,
+    preferredServerId: preferredServerId,
+  );
+  return [for (var i = 0; i < sources.length; i++) (source: sources[i], descriptor: descriptors[i])];
+}
+
 /// Describes one source. Prefer [describeSources]; this is public for the
 /// single-source callers and for tests that pin one field at a time.
 SourceRowDescriptor describeSource(

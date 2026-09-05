@@ -297,4 +297,15 @@ void main() {
       expect(descriptors[1].isPreferredServer, isFalse);
     });
   });
+
+  group('describeSourcesWithSource pairs each descriptor with the source it came from', () {
+    test('same order, same fields, plus the source', () {
+      final nas = _source(serverId: 'nas');
+      final attic = _source(serverId: 'attic', id: 'i2');
+      final paired = describeSourcesWithSource([nas, attic]);
+
+      expect(paired.map((p) => p.source), [nas, attic]);
+      expect(paired.map((p) => p.descriptor.sourceKey), describeSources([nas, attic]).map((d) => d.sourceKey));
+    });
+  });
 }
