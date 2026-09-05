@@ -132,7 +132,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | NAVSEL1 | `tvos.nav.destination-select` sprak de app op twee punten tegen: het verwachtte Films na één RIGHT vanaf Home terwijl Series daar staat, en het eiste een Select om van bestemming te wisselen terwijl focus dat sinds 2 september zelf doet. Gedraaid, rood op de eerste, en verwijderd; `tvos.nav.focus-switches-destination` dekt het en is groen | FIXED | `17d47592` |
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
 | RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
-| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1, A2, B, C1 tot en met C4) staat klaar op zijn functieschets van dezelfde dag | OPEN, mockup 32 ter beoordeling | n.v.t. |
+| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) staat klaar op zijn functieschets van dezelfde dag; de ingang en de tags zijn op zijn eerste reactie hertekend | OPEN, mockup 32 ter beoordeling | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -2946,17 +2946,28 @@ tokens van de set.
 bron in `src/pages/32-eigen-rails-*.html`). Zeven standen, in de taal van 30 (DEC-095) en 28 D2
 (DEC-093):
 
-- **A1, de ingang.** De landing van 30 A1, met rechts op de hoogte van de CTA-rij de knop "Home
-  aanpassen". Hij staat in dezelfde focusrij als Afspelen en Meer info: RIGHT vanaf Meer info landt
-  erop, RIGHT daarvandaan wisselt de slide. Dat is een wijziging van 7.3, waar RIGHT vanaf Meer
-  info nu de slide wisselt; de knop schuift daar één positie tussen. Wat A1 beslist: de ingang zit
-  op Home en niet onder Instellingen, en hij is met twee drukken vanaf de rustfocus bereikbaar.
+- **A1, de ingang, hertekend.** De eerste versie zette "Home aanpassen" rechts op de hoogte van
+  de CTA-rij van de hero, bereikbaar met RIGHT vanaf Meer info. Michel, letterlijk: "de knop voor
+  home aanpassen is niet goed genoeg gepositioneerd voor tvos want je kunt hier niet hoed komen op
+  tvos en gaat wss ten kostem vam het kunnen bewegen door de hero rails". Klopt: RIGHT vanaf Meer
+  info is in 7.3 de slidewissel, en een knop aan de rechterrand van de hero kost die beweging. De
+  hero blijft dus zoals hij is, en de ingang staat nu in twee varianten die allebei zonder
+  horizontaal mikken te bereiken zijn.
+  - **A1a, de voetregel.** Eén regel over de volle breedte onder de laatste rij, in de gestippelde
+    tegeltaal van "Nieuwe rij" in B: icoon, "Home aanpassen" en een subregel. Eén DOWN vanaf de
+    laatste rij, geen horizontale beweging, altijd op dezelfde plek. Nadeel: wie acht rijen heeft
+    moet er acht voorbij.
+  - **A1b, het contextmenu.** Lang indrukken op elke kaart van Home geeft het menu van mockup 12
+    een laatste regel "Home aanpassen", achter een scheidingslijn onder Bron wijzigen. Eén druk
+    vanaf elke plek op Home, nul chrome op de pagina. Nadeel: niet zichtbaar tot je het menu kent.
+  Mijn voorstel is allebei: A1a als de zichtbare plek, A1b als de korte weg. Ze sluiten elkaar niet
+  uit en raken 7.3 geen van beide.
 - **A2, rust.** Dieper op Home, de geometrie van 30 C, met een eigen rij "Nieuwe sci-fi" tussen de
-  hubrijen. Bij focus staan de filterkeuzes als stille tags naast het label, in de tagtaal van 28
-  D1 met de sortering gestippeld; zonder focus staan ze er niet. De laatste kaart is een tegel "Alle
-  42, in Alle films" die de catalogus met ditzelfde filter opent, de tegelvorm die DEC-064 al
-  toestaat. Wat A2 beslist: een eigen rij is in rust van een hubrij niet te onderscheiden, en het
-  filter is zichtbaar zonder chrome toe te voegen.
+  hubrijen. Alleen zijn naam als label; de eerste versie zette de filterkeuzes als tags naast het
+  label en Michel schrapte die: "Actieve filters hoeven niet weergeven te worden boven de rails".
+  De laatste kaart is een tegel "Alle 42, in Alle films" die de catalogus met ditzelfde filter
+  opent, de tegelvorm die DEC-064 al toestaat. Wat A2 beslist: een eigen rij is in rust van een
+  hubrij niet te onderscheiden; wat erin zit lees je in B of in de catalogus.
 - **B, bewerkmodus.** Eén paneel over de gedimde Home, 1560 breed, met elke rij als regel: icoon,
   vier miniposters, naam met een subregel (bij een eigen rij het filter en de teller, bij een hub
   de servers), en rechts de acties. Uitgelicht en Verder kijken staan bovenaan met een slot en het
@@ -2992,9 +3003,9 @@ orderlijst van `HomeLayoutProvider`; een rij-id voor zo'n object dat niet botst 
 volledige paging van hoofdstuk 12 te draaien. De teller volgt 10.7: pas exact als alle bronnen
 uitgeput zijn, anders "42 geladen".
 
-Open voor Michel: akkoord op A1 tot en met C4, en twee keuzes erin. De plek van de ingang (A1,
-met de 7.3-wijziging) en drie stappen in plaats van vier (C2). Daarna een DEC, de aanpassing van
-7.3, 9.1 en 17.5, en de bouwronde met een negatieve controle op `TvContentFeed`: een widgettest die
+Open voor Michel: akkoord op A1a tot en met C4, en twee keuzes erin. De ingang (A1a, A1b of
+allebei) en drie stappen in plaats van vier (C2). Daarna een DEC, de aanpassing van 9.1, 17.5 en
+23 (het contextmenu krijgt een paginabrede actie), en de bouwronde met een negatieve controle op `TvContentFeed`: een widgettest die
 een eigen rij uit een bewaard filter tussen de hubrijen eist, rood op de huidige code.
 
 ### RAIL1, het fase-6 railcontract is bij een verhuizing achtergebleven

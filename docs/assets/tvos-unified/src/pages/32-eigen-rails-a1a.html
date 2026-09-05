@@ -39,30 +39,26 @@
 </style>
 <style>
 .rails { top: 132px; }
+.foot { margin: 34px var(--inset) 0 0; height: 96px; border: 2px dashed var(--hair); border-radius: var(--r-tile); display: flex; align-items: center; gap: 22px; padding: 0 28px; }
+.foot .ic { width: 28px; height: 28px; color: var(--ink-2); }
+.foot .t { font-size: 24px; font-weight: 500; }
+.foot .s { font-size: 19px; color: var(--ink-3); margin-top: 2px; }
+.foot.focus { background: var(--elevated); border-color: transparent; box-shadow: 0 0 0 var(--ring-gap) var(--bg), 0 0 0 calc(var(--ring-gap) + var(--ring)) var(--ink); }
 </style>
-<div class="amb cool"></div><div class="topfade"></div>
+<div class="amb"></div><div class="topfade"></div>
 {{nav:Home}}
 <div class="rails">
-  <div class="rail-label">Nieuwe sci-fi</div>
+  <div class="rail-label">Aanbevolen voor jou</div>
   <div class="rb">
-    <div class="c w focus"><img src="{{art:dune2-backdrop}}"><span class="new"></span></div>
-    <div class="c "><img src="{{art:dune1-poster}}"></div>
-    <div class="c "><img src="{{art:interstellar-poster}}"></div>
-    <div class="c "><img src="{{art:civilwar-poster}}"><span class="new"></span></div>
-    <div class="c "><img src="{{art:spiderverse-poster}}"></div>
-    <div class="c all">{{icon:grid}}Alle 42<small>in Alle films</small></div>
+    <div class="c "><img src="{{art:lalaland-poster}}"></div>
+    <div class="c "><img src="{{art:grandbudapest-poster}}"><span class="seen">{{icon:check}}</span></div>
+    <div class="c "><img src="{{art:pastlives-poster}}"></div>
+    <div class="c "><img src="{{art:wonka-poster}}"></div>
+    <div class="c "><img src="{{art:barbie-poster}}"></div>
+    <div class="c "><img src="{{art:holdovers-poster}}"></div>
+    <div class="c "><img src="{{art:anora-poster}}"></div>
+    <div class="c "><img src="{{art:oppenheimer-poster}}"><span class="seen">{{icon:check}}</span></div>
   </div>
-  <div class="cap"><div class="t">Dune: Part Two</div><div class="m">2024<span class="sep">·</span>Sciencefiction<span class="sep">·</span>2u 46m<span class="sep">·</span>2 bronnen</div><div class="d">Paul Atreides verenigt zich met Chani en de Fremen en zint op wraak op de samenzweerders die zijn familie vernietigden.</div></div>
-  <div class="rail-label next">Omdat je Severance gekeken hebt</div>
-  <div class="rb">
-    <div class="c "><img src="{{art:andor-poster}}"></div>
-    <div class="c "><img src="{{art:truedetective-poster}}"><span class="seen">{{icon:check}}</span></div>
-    <div class="c "><img src="{{art:slowhorses-poster}}"></div>
-    <div class="c "><img src="{{art:silo-poster}}"><span class="new"></span></div>
-    <div class="c "><img src="{{art:penguin-poster}}"></div>
-    <div class="c "><img src="{{art:fallout-poster}}"><span class="seen">{{icon:check}}</span></div>
-    <div class="c "><img src="{{art:shogun-poster}}"></div>
-    <div class="c "><img src="{{art:thebear-poster}}"></div>
-  </div>
+  <div class="foot focus">{{icon:edit}}<div><div class="t">Home aanpassen</div><div class="s">Rijen verplaatsen of verbergen, een eigen rij maken uit een filter</div></div></div>
 </div>
-<div class="note">CANDIDATE · MOCKUP 32 · A2 rust: een eigen rij tussen de hubrijen, alleen zijn naam als label en een "Alle 42"-tegel als laatste kaart; van een hubrij niet te onderscheiden</div>
+<div class="note">CANDIDATE · MOCKUP 32 · A1a de ingang als voetregel: één regel over de volle breedte onder de laatste rij, één DOWN vanaf die rij zonder mikken; de hero en zijn slides blijven onaangeraakt</div>
