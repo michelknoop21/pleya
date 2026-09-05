@@ -80,10 +80,47 @@ Wat een log moet bevatten voordat er een build wordt gemaakt:
   `AppleTvRemoteTouchService`);
 - de **kanaalberichten** die de app in datzelfde venster verstuurt. Een keyup binnen enkele
   milliseconden na een keydown, terwijl de ring nog vast zit, is nooit UIKit; dan heeft de app
-  iets tegen de engine gezegd.
+  iets tegen de engine gezegd. `TvosSystemNavigationService` logt zijn berichten sinds
+  `7786a952` op debug-niveau.
 
 Log `wa6v9` had de eerste twee. Het derde ontbrak, en daarmee is drie uur in fasen gezocht die
 in orde waren.
+
+Het beoordelen is geautomatiseerd:
+
+```bash
+scripts/tvos_press_trace.sh wa6v9        # of een bestandspad
+```
+
+De trace print elke relevante regel met het verschil in milliseconden en zet drie vlaggen:
+`EARLY-KEYUP` (keyup binnen 40 ms na de keydown, zijdeur 1), `RE-TAP` (verse keydown binnen
+400 ms na zo'n keyup, zijdeur 2) en `ENABLE-HELD` (een passthrough-enable terwijl een toets
+vastzit). Exit 2 zodra er één staat. Op `wa6v9` geeft hij acht `EARLY-KEYUP` en acht `RE-TAP`,
+één paar per druk die op Home landde; op `3zsde` (build 252) twaalf en achttien.
+
+## Bewijs met Pleya Verify: wat de simulator raakt en wat niet
+
+Gemeten op 5 september 2026, met een NSLog-regel per druk in station 3: tijdens een scenario
+van tien HID-drukken bereikte **geen enkele** druk `tvosHandlePress(fromUIEvent:)`, terwijl
+de hook zelf beschikbaar was (`engine press hook available=true`, de regel stond in de
+binary). Een idb-druk loopt in de simulator niet door de geswizzelde `sendEvent:` maar door
+het gewone toetsenbordpad van de engine. Station 4 t/m 7, en dus alle drie de zijdeuren, zijn
+vanuit de simulator niet te raken. De engine-helft van NAV1 is `HARDWARE ONLY`, en dat
+blijft zo zolang idb de enige invoerroute is.
+
+Wat wél te bewijzen is, is het contract van de app: **geen enable naar de engine zolang een
+toets vastzit.** `press: {key: left, holdMs: 250}` is een echte vastgehouden HID-druk
+(`idb ui key --duration`), en `HardwareKeyboard` ziet die keydown en keyup los van elkaar,
+ook op het toetsenbordpad. `TvosSystemNavigationService` publiceert daarvoor een eigen
+node, `tvos.menu_passthrough`, zonder widget en zonder bounds, met vier waarden:
+`enabled` (laatst verstuurd), `parked` (er wacht een enable), `parkedFlushes` (enables die op
+een key-up hebben gewacht) en `enablesSentWhileKeysHeld` (enables die tóch weggingen terwijl
+een toets vastzat; een disable telt niet, die laat niets los).
+
+`pleya_verify/scenarios/tvos.nav.held-press-lands-once.yaml` landt met een vastgehouden druk
+drie keer op Home en eist na de eerste en de derde landing `parkedFlushes` 1 en 3 met
+`enablesSentWhileKeysHeld` 0. Blijf onder de 400 ms, anders meet je de herhaaltimer. De
+uitkomst met en zonder de deferral staat in de correctieronde bij NAV1.
 
 ## Waar een fix hoort
 

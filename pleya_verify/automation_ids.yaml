@@ -129,3 +129,6 @@ ids:
   - id: player.safe_area
     role: region
     instanceable: false
+  - id: tvos.menu_passthrough
+    role: service
+    instanceable: false

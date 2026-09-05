@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../automation/automation_ids.dart';
+import '../automation/automation_registry.dart';
+import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
 
 /// Tells the tvOS engine fork whether Menu belongs to the system (leave the
@@ -33,10 +36,40 @@ class TvosSystemNavigationService {
   /// Whether an enable is parked until the last held key is released.
   static bool _enableDeferred = false;
 
+  /// Enables that waited for a key-up before going out. The signature of the
+  /// fix, and what `tvos.nav.held-press-lands-once` asserts on.
+  static int _parkedFlushes = 0;
+
+  /// Enables that went out while a key was down. Stays zero with the
+  /// deferral in place; the negative control of the scenario makes it one.
+  /// A disable while held is fine and is not counted: it releases nothing.
+  static int _enablesSentWhileKeysHeld = 0;
+
+  static int? _automationToken;
+
+  /// What `/v1/ui_tree` reports under [AutomationIds.tvosMenuPassthrough].
+  @visibleForTesting
+  static Map<String, Object?> automationState() => {
+    'enabled': _menuPassthroughEnabled,
+    'parked': _enableDeferred,
+    'parkedFlushes': _parkedFlushes,
+    'enablesSentWhileKeysHeld': _enablesSentWhileKeysHeld,
+  };
+
+  static void _ensureAutomationNode() {
+    if (_automationToken != null) return;
+    _automationToken = AutomationRegistry.instance.register(
+      AutomationDeclaredNode(id: AutomationIds.tvosMenuPassthrough, role: 'service', state: automationState),
+    );
+  }
+
   static Future<void> setMenuPassthroughEnabled(bool enabled) async {
     if (!PlatformDetector.isAppleTV()) return;
+    _ensureAutomationNode();
 
-    if (enabled && HardwareKeyboard.instance.physicalKeysPressed.isNotEmpty) {
+    final held = HardwareKeyboard.instance.physicalKeysPressed;
+    if (enabled && held.isNotEmpty) {
+      _log('enable parked, keys held: ${held.map((k) => k.debugName).join(',')}');
       _deferEnableUntilKeysReleased();
       return;
     }
@@ -48,6 +81,8 @@ class TvosSystemNavigationService {
     if (_menuPassthroughEnabled == enabled) return;
 
     _menuPassthroughEnabled = enabled;
+    if (enabled && HardwareKeyboard.instance.physicalKeysPressed.isNotEmpty) _enablesSentWhileKeysHeld++;
+    _log('send menuPassthroughEnabled=$enabled');
     await _channel.send({'menuPassthroughEnabled': enabled});
   }
 
@@ -68,11 +103,19 @@ class TvosSystemNavigationService {
   /// Never claims the event.
   static bool _flushDeferredEnableOnRelease(KeyEvent event) {
     if (event is KeyUpEvent && HardwareKeyboard.instance.physicalKeysPressed.isEmpty) {
+      _log('keys released, sending the parked enable');
       _cancelDeferredEnable();
+      _parkedFlushes++;
       unawaited(_send(true));
     }
     return false;
   }
+
+  /// Debug level, like the key events in `AppleTvRemoteTouchService`, so a
+  /// device log shows this message *between* a keydown and a stray keyup.
+  /// That is the third signal the NAV1 logs lacked
+  /// (docs/tvos-remote-press-pipeline.md, meetprotocol).
+  static void _log(String message) => appLogger.d('TvosSystemNavigationService: $message');
 
   /// Test-only: clears the last-sent cache and any parked enable so a test
   /// can assert on the next [setMenuPassthroughEnabled] call regardless of
@@ -82,5 +125,7 @@ class TvosSystemNavigationService {
   static void debugResetMenuPassthroughCache() {
     _cancelDeferredEnable();
     _menuPassthroughEnabled = null;
+    _parkedFlushes = 0;
+    _enablesSentWhileKeysHeld = 0;
   }
 }

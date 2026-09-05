@@ -37,6 +37,12 @@ class AutomationIds {
   static const String libraryFilterSort = 'library.filter.sort';
 
   /// The Discover hero billboard as a whole.
+  /// The tvOS Menu passthrough as `TvosSystemNavigationService` sees it: no
+  /// widget, no bounds, only `state`. Published so a scenario can prove that
+  /// no enable went to the engine while a remote key was down (NAV1, DEC-099);
+  /// the engine's own half of that defect is out of the simulator's reach.
+  static const String tvosMenuPassthrough = 'tvos.menu_passthrough';
+
   static const String discoverHero = 'discover.hero';
 
   /// The hero's smart-play button.
@@ -216,5 +222,6 @@ class AutomationIds {
     {'id': playerTitle, 'role': 'region', 'instanceable': false},
     {'id': playerTimeline, 'role': 'region', 'instanceable': false},
     {'id': playerSafeArea, 'role': 'region', 'instanceable': false},
+    {'id': tvosMenuPassthrough, 'role': 'service', 'instanceable': false},
   ];
 }

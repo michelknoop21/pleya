@@ -123,6 +123,28 @@ void main() {
       await simulateKeyUpEvent(LogicalKeyboardKey.select);
     });
 
+    testWidgets('the automation state counts a parked flush and never a send while held', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+
+      await simulateKeyDownEvent(LogicalKeyboardKey.arrowLeft);
+      await TvosSystemNavigationService.setMenuPassthroughEnabled(true);
+      expect(TvosSystemNavigationService.automationState(), {
+        'enabled': null,
+        'parked': true,
+        'parkedFlushes': 0,
+        'enablesSentWhileKeysHeld': 0,
+      });
+
+      await simulateKeyUpEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(TvosSystemNavigationService.automationState(), {
+        'enabled': true,
+        'parked': false,
+        'parkedFlushes': 1,
+        'enablesSentWhileKeysHeld': 0,
+      });
+    });
+
     test('a changed value after a no-op repeat sends again', () async {
       TvDetectionService.debugSetAppleTVOverride(true);
 

@@ -79,6 +79,14 @@ import wakelock_plus
   /// ahead of this point, and with the session branch returning `false` Menu
   /// reaches UIKit along with everything else.
   override func tvosHandlePress(fromUIEvent press: UIPress) -> Bool {
+    // Station 3 of docs/tvos-remote-press-pipeline.md: one line per hop, with
+    // the raw type, the phase and the press identity, so a log can tell a
+    // `.began`/`.ended` pair of one press from two presses. NSLog, like the
+    // hook-availability line below: `Logger` info lines never reached
+    // `log show` on the simulator, NSLog does (`scripts/tvos_sim.sh logs`).
+    NSLog(
+      "[PleyaTvosPress] press=%@ phase=%ld uipress=%lx", Self.pressName(press), press.phase.rawValue,
+      ObjectIdentifier(press).hashValue & 0xffff)
     guard NativeInputSession.isActive else {
       return super.tvosHandlePress(fromUIEvent: press)
     }

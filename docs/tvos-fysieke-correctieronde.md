@@ -61,7 +61,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | WT1 | Focus strandt na het vergeten van een kamer in Samen Kijken | FIXED | `614fc08` |
 | VER1 | Een assert met een verkeerd YAML-type eindigt groen | FIXED | `9d36bb5` |
 | WL1 | Focus strandt na het verwijderen van een kijklijstkaart | FIXED | `b3a3e5d` |
-| NAV1 | De bovenbalk slaat Home over. Heropend 5 september: log `y0w9x` (build 251) toont een tweede *native* keydown/keyup-paar na de druk die op Home landt. Oorzaak gevonden in de engine-fork, niet in de fasen: het aanzetten van de Menu-passthrough laat de ingedrukte pijl los, en `.ended` tikt hem opnieuw. Zie "NAV1, de echte oorzaak" | FIXED, hardware open (build 259) | `51186c6`, `531ae19c`, `7786a952` |
+| NAV1 | De bovenbalk slaat Home over. Heropend 5 september: log `y0w9x` (build 251) toont een tweede *native* keydown/keyup-paar na de druk die op Home landt. Oorzaak gevonden in de engine-fork, niet in de fasen: het aanzetten van de Menu-passthrough laat de ingedrukte pijl los, en `.ended` tikt hem opnieuw. Zie "NAV1, de echte oorzaak" | FIXED, app-contract in Verify, engine-helft HARDWARE ONLY (build 259) | `51186c6`, `531ae19c`, `7786a952` |
 | LAND1 | De landing slaat de eerste contentrail over | FIXED, hardware open | `51186c6` |
 | TILE1 | Een tegel zonder actie zou de focus klemmen | NOT REPRODUCED | n.v.t. |
 | LAND4 | Verticaal navigeren verliest de horizontale positie | FIXED | `8686f5c` |
@@ -2673,6 +2673,15 @@ disable laat in de engine niets los en gaat direct. Drie tests in
 `tvos_system_navigation_service_test.dart`, twee rood vóór de fix. De filter in `AppDelegate`
 is weg (`5c0db0a1`); de early key handler uit `34f9356f` blijft, want die is het enige
 Dart-pad dat een druk kan stoppen en de dedupe leunt erop.
+
+**Wat Pleya Verify bewijst, en wat niet.** Met een NSLog-regel per druk in de Swift-hook is
+gemeten dat een idb-druk in de simulator `tvosHandlePress(fromUIEvent:)` nooit bereikt (nul
+hits in tien drukken, hook beschikbaar). De engine-helft van deze bevinding is dus niet in de
+simulator te reproduceren en blijft `HARDWARE ONLY`. Het contract van de app wél:
+`TvosSystemNavigationService` publiceert `tvos.menu_passthrough` met `parkedFlushes` en
+`enablesSentWhileKeysHeld`, en `tvos.nav.held-press-lands-once.yaml` landt met
+`holdMs: 250` drie keer op Home en eist 3 en 0. Groen met de deferral (bundel
+`tvos-nav-held-press-lands-once-1788605245133`); rood zonder (deferral uitgeschakeld in dezelfde build, bundel `tvos-nav-held-press-lands-once-1788605599538`: `parkedFlushes` 0, `enablesSentWhileKeysHeld` 1). De unit-tests in `tvos_system_navigation_service_test.dart` dekken dezelfde vier waarden.
 
 **Open op hardware.** Build 259 staat op het toestel. Te bevestigen: links en rechts over de
 balk landen één tab per druk, ook op Home; Menu op Home verlaat de app nog; Menu op een andere
