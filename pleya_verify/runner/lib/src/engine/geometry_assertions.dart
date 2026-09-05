@@ -22,6 +22,7 @@
 library;
 
 import '../geometry.dart';
+import 'ambiguous_ids.dart';
 
 /// Unary predicates: subject rect only.
 const Set<String> unaryGeometryPredicates = {'insideViewport', 'minimumTapTarget'};
@@ -184,6 +185,10 @@ GeoRect _viewportRect(Map<String, Object?> viewport) {
 /// `contextGetter` returned null), the second that the id never appeared —
 /// two different bugs that a single "not found" would merge.
 GeoRect _rectFor(String id, Map<String, Object?> uiTree) {
+  // Before the lookup, not after: the walk below returns the first match, so
+  // on a duplicated id it would answer with a rect that is only one of the
+  // candidates. See [ambiguousIdMessage].
+  if (ambiguousIdMessage(id, uiTree) case final message?) throw GeometryAssertionException(message);
   for (final key in ['declared', 'discovered']) {
     final nodes = uiTree[key];
     if (nodes is! List) continue;

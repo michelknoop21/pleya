@@ -24,6 +24,8 @@
 /// both for free the moment its widgets publish a `state` callback.
 library;
 
+import 'ambiguous_ids.dart';
+
 class NodeAssertionException implements Exception {
   final String message;
 
@@ -127,6 +129,10 @@ List<NodeAssertionResult> evaluateNodeAssertions(Map<String, Object?> args, {req
 /// second — the same lookup order `geometry_assertions.dart`'s `_rectFor`
 /// uses.
 Map<String, Object?> _nodeFor(String id, Map<String, Object?> uiTree) {
+  // Same guard, and the same reason, as `geometry_assertions.dart`'s
+  // `_rectFor`: the walk below takes the first match, which on a duplicated id
+  // is a coin toss. See [ambiguousIdMessage].
+  if (ambiguousIdMessage(id, uiTree) case final message?) throw NodeAssertionException(message);
   for (final key in ['declared', 'discovered']) {
     final nodes = uiTree[key];
     if (nodes is! List) continue;
