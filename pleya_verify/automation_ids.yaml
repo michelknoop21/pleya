@@ -120,3 +120,12 @@ ids:
   - id: player.surface
     role: surface
     instanceable: false
+  - id: player.title
+    role: region
+    instanceable: false
+  - id: player.timeline
+    role: region
+    instanceable: false
+  - id: player.safe_area
+    role: region
+    instanceable: false
