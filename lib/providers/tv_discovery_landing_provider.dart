@@ -102,17 +102,15 @@ class TvDiscoveryLandingProvider extends ChangeNotifier with DisposableChangeNot
       final movieBackendHubs = <MediaHub>[];
       final seriesBackendHubs = <MediaHub>[];
       for (final hub in _discover.hubs) {
-        switch (UnifiedHubKind.fromHubType(hub.type)) {
-          case UnifiedHubKind.movie:
+        switch (UnifiedHubKind.fromHubType(hub.type).singleKindSurface) {
+          case UnifiedCatalogSurface.movies:
             movieBackendHubs.add(hub);
-          case UnifiedHubKind.show:
+          case UnifiedCatalogSurface.series:
             seriesBackendHubs.add(hub);
           // Mixed/episode/other rows have no single Films-or-Series home and
           // are left for Home's own projection (hoofdstuk 17.1) rather than
           // guessed onto one landing.
-          case UnifiedHubKind.episode:
-          case UnifiedHubKind.mixed:
-          case UnifiedHubKind.other:
+          case null:
             break;
         }
       }

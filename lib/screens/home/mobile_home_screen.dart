@@ -64,8 +64,8 @@ class MobileHomeScreen extends StatefulWidget {
 class _MobileHomeScreenState extends State<MobileHomeScreen> {
   MobileHomeChip _chip = MobileHomeChip.home;
 
-  static List<UnifiedMediaHub> _ofKind(List<UnifiedMediaHub> hubs, UnifiedHubKind kind) =>
-      hubs.where((hub) => hub.kind == kind).toList();
+  static List<UnifiedMediaHub> _ofSurface(List<UnifiedMediaHub> hubs, UnifiedCatalogSurface surface) =>
+      hubs.where((hub) => hub.kind.singleKindSurface == surface).toList();
 
   Future<void> _openDetails(UnifiedMediaGroup group) async {
     await navigateToMediaItemDetails(context, group.representativeSource.item);
@@ -166,8 +166,8 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
     // screen has an empty state at all.
     final rawHubs = switch (_chip) {
       MobileHomeChip.home => homeProjection.hubs,
-      MobileHomeChip.series => _ofKind(homeProjection.hubs, UnifiedHubKind.show),
-      MobileHomeChip.movies => _ofKind(homeProjection.hubs, UnifiedHubKind.movie),
+      MobileHomeChip.series => _ofSurface(homeProjection.hubs, UnifiedCatalogSurface.series),
+      MobileHomeChip.movies => _ofSurface(homeProjection.hubs, UnifiedCatalogSurface.movies),
     };
     final hubs = applyHomeLayoutToUnifiedRows(rawHubs, hiddenRowIds: layout.hiddenRowIds, order: layout.order);
     final continueWatching = _chip == MobileHomeChip.home ? homeProjection.continueWatching : null;
@@ -224,7 +224,11 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
                 ),
               for (var i = 0; i < hubs.length; i++)
                 SliverToBoxAdapter(
-                  child: MobileMediaRail(hub: hubs[i], railIndex: i + 1, onCardTap: _openDetails),
+                  child: MobileMediaRail(
+                    hub: hubs[i],
+                    railIndex: continueWatching != null ? i + 1 : i,
+                    onCardTap: _openDetails,
+                  ),
                 ),
             ],
             SliverToBoxAdapter(child: SizedBox(height: bottomPadding + 16)),

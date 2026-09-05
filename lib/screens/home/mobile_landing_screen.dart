@@ -48,9 +48,11 @@ enum MobileLandingKind {
   /// the other one's while both are mounted.
   String get automationInstance => name;
 
-  UnifiedHubKind get hubKind => switch (this) {
-    MobileLandingKind.series => UnifiedHubKind.show,
-    MobileLandingKind.movies => UnifiedHubKind.movie,
+  /// The single-kind catalogue surface this landing shows — the same
+  /// partition the Home chip filters on ([UnifiedHubKind.singleKindSurface]).
+  UnifiedCatalogSurface get surface => switch (this) {
+    MobileLandingKind.series => UnifiedCatalogSurface.series,
+    MobileLandingKind.movies => UnifiedCatalogSurface.movies,
   };
 
   String get screenAutomationId => switch (this) {

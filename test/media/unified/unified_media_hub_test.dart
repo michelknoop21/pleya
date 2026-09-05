@@ -70,6 +70,17 @@ void main() {
       expect(UnifiedHubKind.merged([UnifiedHubKind.movie, UnifiedHubKind.show]), UnifiedHubKind.mixed);
       expect(UnifiedHubKind.merged(const []), UnifiedHubKind.other);
     });
+
+    // The single partition the Home chip filter, the landing rail split and
+    // MobileLandingKind all read instead of each writing their own switch
+    // (bevinding 10, DEC-094-addendum).
+    test('singleKindSurface partitions movie/show and drops the rest', () {
+      expect(UnifiedHubKind.movie.singleKindSurface, UnifiedCatalogSurface.movies);
+      expect(UnifiedHubKind.show.singleKindSurface, UnifiedCatalogSurface.series);
+      expect(UnifiedHubKind.episode.singleKindSurface, isNull);
+      expect(UnifiedHubKind.mixed.singleKindSurface, isNull);
+      expect(UnifiedHubKind.other.singleKindSurface, isNull);
+    });
   });
 
   group('UnifiedHubKey', () {

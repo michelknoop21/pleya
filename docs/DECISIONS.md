@@ -786,6 +786,13 @@ lijst en op desktop bestaan die tabs niet, dus de keuze zou daar stilzwijgend op
 opgeslagen sectie die niet zichtbaar is valt al terug via `resolveDefaultTab`, dus er is geen migratie
 nodig.
 
+*Addendum (fase-2-review, bevinding 10):* "dezelfde regel" hierboven stond bij het schrijven van dit
+besluit nog drie keer onafhankelijk in code: een dode `MobileLandingKind.hubKind`-getter zonder
+aanroepers, de chip-switch in `mobile_home_screen.dart`, en `TvDiscoveryLandingProvider._project()`'s
+eigen `UnifiedHubKind`-switch. Alle drie lezen nu `UnifiedHubKind.singleKindSurface`
+(`lib/media/unified/unified_media_hub.dart`), één plek die de partitie vastlegt, met een test die de
+chip-uitkomst en de landing-uitkomst tegen elkaar controleert op dezelfde invoer.
+
 **Consequences:** De F0-poort is **niet** groen. `claude/f0-unused-gate` bestaat niet op `origin`, dus er
 viel niets te mergen. In plaats daarvan is er een nulmeting op de basiscommit `befc523c` gedraaid met de
 gepinde SDK, en na afloop opnieuw. Beide keren exact dezelfde zeventien meldingen, dus fase 2 heeft er

@@ -314,6 +314,65 @@ void main() {
     expect(find.text('Trending overal'), findsNothing);
   });
 
+  testWidgets('the chip filter and the landing rail split agree on the same hubs', (tester) async {
+    // Same fixture as the test above, read through both partitions at once:
+    // the Home chip (UnifiedHubKind.singleKindSurface via _ofSurface) and
+    // TvDiscoveryLandingProvider's own split. Bevinding 10: these used to be
+    // three independent switches; this pins that they now agree because they
+    // share one.
+    aggregation.hubs = [
+      _hub('Trending films', items: [_movie('t1')]),
+      _hub('Trending series', items: [_show('t2')], type: 'show'),
+      _hub('Trending overal', items: [_movie('t3')], type: 'mixed'),
+    ];
+
+    await pumpHome(tester);
+    await tester.runAsync(discover.load);
+    await tester.pump();
+    await tester.pump();
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+
+    final landing = tester.element(find.byType(MobileHomeScreen)).read<TvDiscoveryLandingProvider>();
+
+    await tester.tap(find.text('Series'));
+    await tester.pump();
+    final chipSeriesTitles = tester
+        .widgetList<MobileMediaRail>(find.byType(MobileMediaRail))
+        .map((rail) => rail.hub.title)
+        .toSet();
+    expect(chipSeriesTitles, landing.seriesRails.map((h) => h.title).toSet());
+
+    await tester.tap(find.text('Movies'));
+    await tester.pump();
+    final chipMoviesTitles = tester
+        .widgetList<MobileMediaRail>(find.byType(MobileMediaRail))
+        .map((rail) => rail.hub.title)
+        .toSet();
+    expect(chipMoviesTitles, landing.movieRails.map((h) => h.title).toSet());
+  });
+
+  testWidgets('without Continue Watching, the first hub still gets railIndex 0', (tester) async {
+    aggregation.hubs = [
+      _hub('Trending series', items: [_show('t1')], type: 'show'),
+    ];
+
+    await pumpHome(tester);
+    await tester.runAsync(discover.load);
+    await tester.pump();
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+
+    // The Series chip switches off Continue Watching (it belongs to Home
+    // only), so the hub loop's railIndex must not carry a gap where it used
+    // to sit.
+    await tester.tap(find.text('Series'));
+    await tester.pump();
+
+    final rail = tester.widget<MobileMediaRail>(find.byType(MobileMediaRail).first);
+    expect(rail.railIndex, 0);
+  });
+
   testWidgets('a chip that filters everything away leaves a page, not an exception', (tester) async {
     aggregation.hubs = [
       _hub('Trending overal', items: [_movie('t3')], type: 'mixed'),
