@@ -127,7 +127,13 @@ void main() {
   testWidgets('gaining a second group after the first build restarts auto-advance', (tester) async {
     await pump(
       tester,
-      MobileHeroCard(groups: [group('i1', title: 'Dune')], width: 361, height: 220, onPlay: (_) {}, onSecondaryAction: (_) {}),
+      MobileHeroCard(
+        groups: [group('i1', title: 'Dune')],
+        width: 361,
+        height: 220,
+        onPlay: (_) {},
+        onSecondaryAction: (_) {},
+      ),
     );
 
     // Same tree shape and slot, so this updates MobileHeroCard's existing
@@ -135,7 +141,10 @@ void main() {
     await pump(
       tester,
       MobileHeroCard(
-        groups: [group('i1', title: 'Dune'), group('i2', title: 'Arrival')],
+        groups: [
+          group('i1', title: 'Dune'),
+          group('i2', title: 'Arrival'),
+        ],
         width: 361,
         height: 220,
         onPlay: (_) {},
@@ -166,7 +175,10 @@ void main() {
           body: TickerMode(
             enabled: enabled,
             child: MobileHeroCard(
-              groups: [group('i1', title: 'Dune'), group('i2', title: 'Arrival')],
+              groups: [
+                group('i1', title: 'Dune'),
+                group('i2', title: 'Arrival'),
+              ],
               width: 361,
               height: 220,
               onPlay: (_) {},

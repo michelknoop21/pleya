@@ -39,9 +39,7 @@ void main() {
     expect(picked, MobileHomeChip.home);
   });
 
-  testWidgets('there is no chip for Home, so a fresh Home state has nothing selected to toggle off', (
-    tester,
-  ) async {
+  testWidgets('there is no chip for Home, so a fresh Home state has nothing selected to toggle off', (tester) async {
     // Both chips render as their unselected variant when Home is active —
     // this only guards against a future Home chip reintroducing the toggle
     // guard incorrectly.

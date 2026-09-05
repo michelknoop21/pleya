@@ -252,9 +252,10 @@ NavigationTabId mainScreenSelectedBarTab({
     // when the app never recorded a switch into Zoeken (a cold `search`
     // startup tab, restored session state); `discover` is the same fallback
     // the Home case already produces.
-    NavigationTabId.search => isOffline
-        ? NavigationTabId.downloads
-        : _ownSlotOr(NavigationTabId.search, barTabs, searchOrigin ?? NavigationTabId.discover),
+    NavigationTabId.search =>
+      isOffline
+          ? NavigationTabId.downloads
+          : _ownSlotOr(NavigationTabId.search, barTabs, searchOrigin ?? NavigationTabId.discover),
     NavigationTabId.watchlist ||
     NavigationTabId.requests ||
     NavigationTabId.settings ||

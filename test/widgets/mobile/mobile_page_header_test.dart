@@ -40,10 +40,7 @@ void main() {
 
   testWidgets('the avatar has no tap target — it names a surface, it does not activate one', (tester) async {
     await pump(tester, onSearchTap: () {});
-    expect(
-      find.ancestor(of: find.byType(ProfileAvatar), matching: find.byType(GestureDetector)),
-      findsNothing,
-    );
+    expect(find.ancestor(of: find.byType(ProfileAvatar), matching: find.byType(GestureDetector)), findsNothing);
   });
 
   testWidgets('extra actions render between the lockup and search', (tester) async {

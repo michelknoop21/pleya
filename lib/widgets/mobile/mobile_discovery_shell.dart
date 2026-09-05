@@ -31,6 +31,9 @@ Widget mobileDiscoveryScaffold({
 }) {
   return Material(
     color: Theme.of(context).scaffoldBackgroundColor,
-    child: MobileRefreshScope(onRefresh: onRefresh, child: CustomScrollView(slivers: slivers)),
+    child: MobileRefreshScope(
+      onRefresh: onRefresh,
+      child: CustomScrollView(slivers: slivers),
+    ),
   );
 }

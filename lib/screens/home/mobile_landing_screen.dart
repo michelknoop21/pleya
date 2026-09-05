@@ -179,12 +179,7 @@ class _TitleRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
-              child: Text(
-                kind.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: mobileDiscoveryTitleStyle,
-              ),
+              child: Text(kind.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: mobileDiscoveryTitleStyle),
             ),
             AutomationNode(
               id: AutomationIds.landingViewAll,

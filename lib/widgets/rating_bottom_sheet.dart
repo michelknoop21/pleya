@@ -619,7 +619,6 @@ class _RatingBottomSheetState extends State<RatingBottomSheet> {
     if (index < 0 || index >= nodes.length) return null;
     return () => nodes[index].requestFocus();
   }
-
 }
 
 const _serverKey = 'server';
