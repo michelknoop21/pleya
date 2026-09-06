@@ -1762,6 +1762,9 @@ class TranslationsVideoControlsEn {
 
 	/// en: 'AirPlay'
 	String get airplayButton => 'AirPlay';
+
+	/// en: '(Forced)'
+	String get forcedTrackSuffix => '(Forced)';
 }
 
 // Path: userStatus
@@ -5756,6 +5759,99 @@ class TranslationsVideoControlsTvPanelEn {
 
 	/// en: 'More…'
 	String get more => 'More…';
+
+	/// en: 'Video'
+	String get video => 'Video';
+
+	/// en: 'Display'
+	String get display => 'Display';
+
+	/// en: 'Playback'
+	String get playback => 'Playback';
+
+	/// en: 'Output'
+	String get output => 'Output';
+
+	/// en: 'Style and timing'
+	String get styleAndTiming => 'Style and timing';
+
+	/// en: 'Volume boost'
+	String get volumeBoost => 'Volume boost';
+
+	/// en: 'For quiet titles; boosts Pleya's own sound'
+	String get volumeBoostHint => 'For quiet titles; boosts Pleya\'s own sound';
+
+	/// en: '+${percent}%'
+	String volumeBoostStep({required Object percent}) => '+${percent}%';
+
+	/// en: 'Paused'
+	String get paused => 'Paused';
+
+	/// en: 'Dolby passthrough is running; your receiver sets the level'
+	String get passthroughSetsLevel => 'Dolby passthrough is running; your receiver sets the level';
+
+	/// en: '${current} of ${total}'
+	String chaptersOf({required Object current, required Object total}) => '${current} of ${total}';
+
+	/// en: 'Text size'
+	String get textSize => 'Text size';
+
+	/// en: 'Visible in the picture right away'
+	String get textSizeHint => 'Visible in the picture right away';
+
+	/// en: 'Small'
+	String get textSizeSmall => 'Small';
+
+	/// en: 'Normal'
+	String get textSizeNormal => 'Normal';
+
+	/// en: 'Large'
+	String get textSizeLarge => 'Large';
+
+	/// en: 'Extra large'
+	String get textSizeExtraLarge => 'Extra large';
+
+	/// en: 'Background'
+	String get background => 'Background';
+
+	/// en: 'Black box behind the text'
+	String get backgroundHint => 'Black box behind the text';
+
+	/// en: 'All style settings'
+	String get allStyleSettings => 'All style settings';
+
+	/// en: 'My Pleya ▸ Settings ▸ Subtitle style · colour, border, position, bold'
+	String get allStyleSettingsPath => 'My Pleya ▸ Settings ▸ Subtitle style · colour, border, position, bold';
+
+	/// en: 'Offset'
+	String get offset => 'Offset';
+
+	/// en: 'Left and right 100 ms per step · hold to keep stepping'
+	String get syncStepHint => 'Left and right 100 ms per step · hold to keep stepping';
+
+	/// en: 'Stays for every title until you reset it'
+	String get syncKeepsForAllTitles => 'Stays for every title until you reset it';
+
+	/// en: 'Choosing applies right away · Left and right step a value · Menu closes the panel'
+	String get hint => 'Choosing applies right away · Left and right step a value · Menu closes the panel';
+
+	/// en: 'Menu goes back'
+	String get hintBack => 'Menu goes back';
+
+	/// en: 'Sleep timer running'
+	String get sleepActive => 'Sleep timer running';
+
+	/// en: 'Pauses at ${time} · ${remaining} left'
+	String sleepActiveHint({required Object time, required Object remaining}) => 'Pauses at ${time} · ${remaining} left';
+
+	/// en: 'After a time'
+	String get sleepAfter => 'After a time';
+
+	/// en: 'End of the next episode'
+	String get sleepEndOfNextEpisode => 'End of the next episode';
+
+	/// en: 'None'
+	String get shadersNone => 'None';
 }
 
 // Path: videoControls.pipErrors
@@ -7086,6 +7182,37 @@ extension on Translations {
 			'videoControls.tvPanel.more' => 'More…',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.tvPanel.video' => 'Video',
+			'videoControls.tvPanel.display' => 'Display',
+			'videoControls.tvPanel.playback' => 'Playback',
+			'videoControls.tvPanel.output' => 'Output',
+			'videoControls.tvPanel.styleAndTiming' => 'Style and timing',
+			'videoControls.tvPanel.volumeBoost' => 'Volume boost',
+			'videoControls.tvPanel.volumeBoostHint' => 'For quiet titles; boosts Pleya\'s own sound',
+			'videoControls.tvPanel.volumeBoostStep' => ({required Object percent}) => '+${percent}%',
+			'videoControls.tvPanel.paused' => 'Paused',
+			'videoControls.tvPanel.passthroughSetsLevel' => 'Dolby passthrough is running; your receiver sets the level',
+			'videoControls.tvPanel.chaptersOf' => ({required Object current, required Object total}) => '${current} of ${total}',
+			'videoControls.tvPanel.textSize' => 'Text size',
+			'videoControls.tvPanel.textSizeHint' => 'Visible in the picture right away',
+			'videoControls.tvPanel.textSizeSmall' => 'Small',
+			'videoControls.tvPanel.textSizeNormal' => 'Normal',
+			'videoControls.tvPanel.textSizeLarge' => 'Large',
+			'videoControls.tvPanel.textSizeExtraLarge' => 'Extra large',
+			'videoControls.tvPanel.background' => 'Background',
+			'videoControls.tvPanel.backgroundHint' => 'Black box behind the text',
+			'videoControls.tvPanel.allStyleSettings' => 'All style settings',
+			'videoControls.tvPanel.allStyleSettingsPath' => 'My Pleya ▸ Settings ▸ Subtitle style · colour, border, position, bold',
+			'videoControls.tvPanel.offset' => 'Offset',
+			'videoControls.tvPanel.syncStepHint' => 'Left and right 100 ms per step · hold to keep stepping',
+			'videoControls.tvPanel.syncKeepsForAllTitles' => 'Stays for every title until you reset it',
+			'videoControls.tvPanel.hint' => 'Choosing applies right away · Left and right step a value · Menu closes the panel',
+			'videoControls.tvPanel.hintBack' => 'Menu goes back',
+			'videoControls.tvPanel.sleepActive' => 'Sleep timer running',
+			'videoControls.tvPanel.sleepActiveHint' => ({required Object time, required Object remaining}) => 'Pauses at ${time} · ${remaining} left',
+			'videoControls.tvPanel.sleepAfter' => 'After a time',
+			'videoControls.tvPanel.sleepEndOfNextEpisode' => 'End of the next episode',
+			'videoControls.tvPanel.shadersNone' => 'None',
 			'videoControls.fullscreenButton' => 'Enter fullscreen',
 			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			'videoControls.alwaysOnTopButton' => 'Always on top',
@@ -7123,6 +7250,7 @@ extension on Translations {
 			'videoControls.subtitleDownloadFailed' => 'Failed to download subtitle',
 			'videoControls.searchLanguages' => 'Search languages...',
 			'videoControls.airplayButton' => 'AirPlay',
+			'videoControls.forcedTrackSuffix' => '(Forced)',
 			'userStatus.admin' => 'Admin',
 			'userStatus.restricted' => 'Restricted',
 			'userStatus.protected' => 'Protected',
@@ -7566,6 +7694,8 @@ extension on Translations {
 			'collections.title' => 'Collections',
 			'collections.collection' => 'Collection',
 			'collections.empty' => 'Collection is empty',
+			_ => null,
+		} ?? switch (path) {
 			'collections.unknownLibrarySection' => 'Cannot delete: Unknown library section',
 			'collections.deleteCollection' => 'Delete Collection',
 			'collections.deleteConfirm' => ({required Object title}) => 'Delete "${title}"? This can\'t be undone.',
@@ -7598,8 +7728,6 @@ extension on Translations {
 			'playlists.oneItem' => '1 item',
 			'playlists.emptyPlaylist' => 'This playlist is empty',
 			'playlists.deleteConfirm' => 'Delete Playlist?',
-			_ => null,
-		} ?? switch (path) {
 			'playlists.deleteMessage' => ({required Object name}) => 'Are you sure you want to delete "${name}"?',
 			'playlists.created' => 'Playlist created',
 			'playlists.deleted' => 'Playlist deleted',
@@ -8080,6 +8208,8 @@ extension on Translations {
 			'seerr.edit' => 'Edit',
 			'seerr.cancelRequest' => 'Cancel request',
 			'seerr.cancelRequestConfirm' => 'Cancel this request?',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.discoverTitle' => 'Discover on Requests',
 			'seerr.trending' => 'Trending',
 			'seerr.popularMovies' => 'Popular movies',
@@ -8112,8 +8242,6 @@ extension on Translations {
 			'tautulli.modeApiKey' => 'API key',
 			'tautulli.modeApiKeyHelp' => 'The permanent key from Settings, Web Interface. It grants full access to Tautulli, so use it only if the device token does not work for you.',
 			'tautulli.deviceToken' => 'Device token',
-			_ => null,
-		} ?? switch (path) {
 			'tautulli.apiKey' => 'API key',
 			'tautulli.testConnection' => 'Test connection',
 			'tautulli.save' => 'Save',

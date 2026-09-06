@@ -24,6 +24,7 @@ import '../../i18n/strings.g.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../models/livetv_capture_buffer.dart';
 import 'models/track_controls_state.dart';
+import 'tv_info_panel/tv_panel_types.dart';
 import 'widgets/content_strip.dart';
 import 'widgets/live_timeline_bar.dart';
 import 'widgets/first_frame_guard.dart';
@@ -131,6 +132,12 @@ class DesktopVideoControls extends StatefulWidget {
   /// panel instead of the content strip.
   final VoidCallback? onTvInfoPanelRequested;
 
+  /// Called when a button in the bar asks for the TV panel on a given tab: the
+  /// tune button for Video, the tracks button for Sound or Subtitles, the
+  /// chapters button for the chapter list. On TV the panel is the only player
+  /// menu (DEC-101); the sheets stay for desktop and mobile.
+  final ValueChanged<TvInfoPanelRequest>? onTvInfoPanelTabRequested;
+
   /// Called when a seek should be executed by the owning screen.
   final Future<void> Function(Duration position)? onSeekRequested;
 
@@ -180,6 +187,7 @@ class DesktopVideoControls extends StatefulWidget {
     this.onStartAutoHide,
     this.onContentStripVisibilityChanged,
     this.onTvInfoPanelRequested,
+    this.onTvInfoPanelTabRequested,
     this.onSeekRequested,
     this.onSeekCompleted,
   });
@@ -1191,6 +1199,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
                     }
                   },
                   hideChaptersAndQueue: widget.useDpadNavigation && _hasStripContent,
+                  onOpenTvPanel: PlatformDetector.isTV() ? widget.onTvInfoPanelTabRequested : null,
                 ),
               ],
             ),

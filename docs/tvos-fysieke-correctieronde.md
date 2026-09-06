@@ -107,15 +107,15 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | I18N2 | `nl.i18n.json` mist `search.voiceSearch` | OPEN | n.v.t. |
 | I18N3 | `nl.i18n.json` mist `settings.visualEffects*` | OPEN | n.v.t. |
 | I18N4 | `nl.i18n.json` mist `addServer.connectToPleyaServerCard*` en `addLocalFolder.*` | OPEN | n.v.t. |
-| STR1 | Hardcoded "Video" in `tv_info_panel.dart:265` | OPEN | n.v.t. |
-| STR2 | Hardcoded "(Forced)" in `track_label_builder.dart:203-205` | OPEN | n.v.t. |
+| STR1 | Hardcoded "Video" in `tv_info_panel.dart:265`; nu `videoControls.tvPanel.video` (PLR2) | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
+| STR2 | Hardcoded "(Forced)" in `track_label_builder.dart:203-205`; nu `videoControls.forcedTrackSuffix` (PLR2) | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
 | STR3 | Hardcoded "titles" in `actor_media_screen.dart:174` | OPEN | n.v.t. |
 | STR4 | Hardcoded tagline in `auth_screen.dart:341` | OPEN | n.v.t. |
 | STR5 | Hardcoded "Incorrect PIN" in `profile_activation.dart:57` | OPEN | n.v.t. |
 | TOK1 | `TvPanelTheme.accent #F42B1F` staat naast `kAccent` | OPEN | n.v.t. |
 | TOK2 | Serverstip `#3FBF5F` hardcoded in `tv_my_pleya_screen.dart:829` | OPEN | n.v.t. |
 | TOK3 | De segmented tabstijl houdt op TV zijn eigen accentrul (seizoentabs, Seerr-aanvraagfilters) | OPEN | n.v.t. |
-| PNL1 | Infopaneel gooit de secundaire spoorlabels van `TrackLabelBuilder` weg | OPEN | n.v.t. |
+| PNL1 | Infopaneel gooit de secundaire spoorlabels van `TrackLabelBuilder` weg; nu de tweede regel van elke spoorrij (PLR2) | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
 | LIVE1 | Live TV tekent twee navigatiebalken via `PlatformDetector.shouldUseSideNavigation` | OPEN | n.v.t. |
 | ACT2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | OPEN | n.v.t. |
 | ACT3 | `tvMyPleya.activitySubtitle` belooft samen kijken en remote die de tegel niet levert | OPEN | n.v.t. |
@@ -133,6 +133,12 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
 | RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
 | ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) goedgekeurd op 5 september, DEC-100 accepted, 9.1, 17.5 en 23 aangepast; bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
+| PLR2 | Het veeg-omlaag-infopaneel wordt het enige spelermenu op TV. Gemeld door Michel op 5 september 2026 als "de geluidsinstellingen lijken niet goed te werken", uitgebreid tot het hele paneel per functie. Besluiten: één menu, vier tabs (Info · Video · Geluid · Ondertitels) met secties Weergave/Afspelen en Sporen/Uitvoer, video speelt door, mockup 33 vervangt mockup 19, DEC-101 na akkoord. Ontwerp in `src/pages/33-speler-paneel-*.html`, goedgekeurd op 5 september na drie correctierondes, DEC-101 accepted. Gebouwd: paneel als glaskaart, vier tabs met twee kolommen, subweergaven, `TvPanelRow`-API, tests in `test/widgets/tv_info_panel_test.dart`, scenario `tvos.player.panel.yaml`. De testrun, `flutter analyze` en het scenario wachten op de Mac; hardware daarna | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
+| PLR3 | Tandwiel en sporenknop in de spelerbalk openen op TV nog de 10-foot `VideoSettingsSheet` en `TrackSheet`, naast het paneel; de sheet toont op tvOS een dode audio-apparaatkiezer omdat `PlatformDetector.isDesktop(context)` op TV waar is (`video_settings_sheet.dart:512,600`). Na PLR2 openen beide knoppen het paneel op het passende tabblad. Gebouwd: `TrackChapterControls.onOpenTvPanel`, `DesktopVideoControls.onTvInfoPanelTabRequested`, `TvInfoPanelRequest`; de sheet-gate is `isDesktopOS()` | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
+| AUD1 | "Maximum volume" in het Audio-tabblad verhoogt alleen `volume-max` (`tv_audio_subtitle_tabs.dart:36-43`). Op TV is `VolumeControl` verborgen (`desktop_video_controls.dart:1163`), dus het volume blijft op 100 en vier drukken doen hoorbaar niets. Wordt Volumeversterking (Uit / +50% / +100% / +200%) die plafond én `volume` schrijft; inert met uitleg tijdens een bitstream. Gebouwd: `TvAudioTab.applyVolumeBoost`, test "volume boost raises the ceiling and then the level" | FIXED, testrun groen, hoorbaarheid HARDWARE ONLY | `5cb5c33`, `de2e554`, `6d64bbd` |
+| AUD2 | Audio- en ondertitelsynchronisatie in het paneel openen zonder gefocust element: `SyncOffsetControl._buildFull` koppelt `sliderFocusNode` niet (`sync_offset_control.dart:341`, alleen `_buildCompact` doet dat op `:249`), dus `_syncSliderNode.requestFocus()` in `tv_info_panel.dart:138` is een no-op. De stapknoppen kleuren met `surfaceContainerHighest`, in dit thema het oppervlak zelf (DEC-053). Gebouwd: `_buildFull` koppelt de node en kleurt met `surfaceElevated` (gedeelde eigenaar); het paneel gebruikt `TvSyncSubView` zonder slider, test "the sync sub-view opens on its value row" | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
+| PNL2 | Bedienbaarheid van het paneel: pills op een kale `Focus` zonder Select, waarderijen cyclen alleen vooruit op Select (snelheid zeven standen), hoofdstukken springt alleen naar de volgende, `t.common.ok` als aan-waarde van de statistiekrij (`tv_video_tab.dart:174`), lange uitlegzinnen als afgekapte trailing-waarde, geen `automationId` op paneel, pills of rijen, en nul widgettests op `TvInfoPanel`. STR1, STR2 en PNL1 sluiten hieronder mee. Gebouwd: pills op `FocusableWrapper`, LEFT/RIGHT via `onStepLeft/Right`, hoofdstukkenlijst, `t.common.on`, uitleg als subregel, ids `player.panel`, `player.panel.tab[…]`, `player.panel.row[…]`, `player.settings_button`, tien widgettests | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
+| PNL3 | Select op een pill die al actief is verplaatste de focus niet naar de rijen. `_focusContent` hangt aan `addPostFrameCallback`, en die vraagt zelf geen frame aan; op dat pad zet `_selectTab` niets dirty, dus er kwam geen frame en de ring bleef op de pill staan. Gevonden door de testronde, niet door de review. Gerepareerd met `_afterNextFrame`, dat de callback plant én `scheduleFrame()` aanroept, voor alle drie de focusverplaatsingen van het paneel | FIXED, testrun groen, hardware open | `6d64bbd` |
 | CI1 | CI stond op `main` sinds 3 september rood en zei daardoor niets meer over een PR. Drie checks. Codegen-drift op `git diff lib/` na `scripts/codegen.sh`: `analysis_options.yaml` zet `formatter.page_width` op 120, build_runner leest dat niet en emitteert op 80, en de kale `dart format .` uit CONTRIBUTING.md trok elk gegenereerd bestand naar 120. Die stap maskeerde vier latere stappen, die op `skipped` bleven staan, waaronder een formatteringsfout in vijf SYS-bestanden. 79 rode tests, waarvan 50 verouderde golden-referenties, 15 in `discover_hero_activation_test.dart` als HERO3-nasleep, 1 achterhaalde landing-golden, en de rest afzonderlijk gesloten als HERO5 en RAIL1. Volledige suite daarna 6335 groen, 6 overgeslagen, 0 rood, en `scripts/ci_checks.sh` groen. Verify - macOS + iOS simulator staat apart als VER-CI | FIXED | `c0f9427c`, `e76e3f06`, `edc30b6b`, `99442f0d`, `213c6e82` |
 | VER-CI | `Verify - macOS + iOS simulator` faalt op main en op elke PR, op twee stappen: `macos.smoke.boot` op `Bad state: flutter build macos failed (exit 1)`, en `discover.hero.layout` op `wait_until timed out after 15000ms: {id: discover.hero}`. Draait op `macos-26` en is per DEC-083 bewust geen required gate. Niet te reproduceren zonder macOS | OPEN | n.v.t. |
 
@@ -3069,3 +3075,121 @@ per contract uit, dus "geen datum" is hier geen standpunt meer dat een fixture k
 
 Negatieve controle: dezelfde seam een jaar vooruit gezet reproduceert precies de acht rode tests,
 teruggezet zijn alle negen groen.
+
+
+### PLR2, het paneel per functie
+
+Gemeld door Michel op 5 september 2026: "ik heb het idee dat de geluidsinstellingen niet goed
+werken", met de vraag het hele veeg-omlaag-menu per functie na te kijken en te zeggen wat er
+ontbreekt. De audit staat hieronder; de bevindingen die werk opleveren hebben elk een eigen
+regel (PLR3, AUD1, AUD2, PNL2), zodat ze los een eindstatus krijgen.
+
+**Drie menu's naast elkaar.** Op de Apple TV bestaan het veeg-omlaag-paneel (`TvInfoPanel`),
+de 10-foot `VideoSettingsSheet` achter het tandwiel en de `TrackSheet` achter de sporenknop
+tegelijk. Ze overlappen voor de helft en spreken elkaar tegen: de sheet heeft zoom, versie en
+kwaliteit, slaaptimer, HDR, autoplay en shaders die het paneel mist, plus een apparaatkiezer die
+op tvOS niets kan kiezen; het paneel heeft Info, sfeerintensiteit in vier standen en de
+rendering-badge die de sheet mist. Het paneel is bovendien alleen met een veeg te openen
+(`key_events.dart:315-322`), en de simulator heeft geen aanraakvlak. Dat verklaart waarom er
+nul tests op staan en waarom Pleya Verify het niet kan adresseren.
+
+**Wat de audio-rijen doen.** Sporen kiezen werkt (`selectAudioTrack`, coordinator volgt de
+codec). Uitvoermodus en prioriteit werken (`audioOutputMode`, `audioPriority`,
+`AudioOutputCoordinator.onModeChanged`); Auto bitstreamt op tvOS alleen onder "Original Dolby"
+op een digitale poort met ac3/eac3, en een mislukte bitstream valt terug op PCM met een
+snackbar. Volume gelijkmaken en harde geluiden dempen werken via de arbiter en zijn inert
+tijdens een bitstream (DEC-013). De twee rijen die niet doen wat ze beloven zijn "Maximum
+volume" (AUD1) en de synchronisatie-subweergave (AUD2).
+
+**Besluiten van Michel, 5 september.** Eén menu op TV: het paneel; tandwiel en sporenknop worden
+ingangen op een tabblad. Een werkende volumeboost in plaats van het plafond. Mockup 19 opnieuw,
+want hij bevat een Wachtrij-pill en een "Onthouden voor deze titel"-schakelaar die met PB-9 en
+DEC-096 botsen, geeft de geluidsuitvoer geen plek, kopieert de globale stijlpagina half en tekent
+maar één stand. De video speelt door. Vier tabs: Info · Video · Geluid · Ondertitels, met Weergave
+en Afspelen als secties van Video en Sporen en Uitvoer als secties van Geluid.
+
+**Mockup 33** (`docs/assets/tvos-unified/src/pages/33-speler-paneel-*.html`, renders in
+`docs/assets/tvos-unified/mockups-2026-09-05/`, hier geschoten met een plaatshouder als
+backdrop omdat `art/` niet in git staat; de definitieve schoten komen van de Mac). Negen
+standen: A Info, B Video, C Geluid, D Ondertitels, E synchronisatie-subweergave, F
+hoofdstukken-subweergave, G slaaptimer-subweergave, H Geluid tijdens een Dolby-bitstream, I de
+spelerbalk met tandwiel en sporenknop als ingangen. Goedkeuring per stand, daarna DEC-101 en de
+bouwronde in de volgorde van het plan (negatieve controle eerst, kleine commits, SHA in de tabel).
+
+**Goedgekeurd door Michel op 5 september 2026**, letterlijk "Akkoord", na drie correctierondes op
+de negen standen: het onzichtbare vinkje (tv.css kleurt elk rij-icoon ink-2, ook op de witte
+schijf), de stapchevrons in twee maten, de focusring die achter de volgende rij verdween (rijen op
+8 px terwijl de ring 12 px uitsteekt), en het oordeel "het voelt nog cheap", waarna de vlakke band
+met elf losse dozen een zwevende glaskaart met gegroepeerde rijen en een witte focusvulling werd.
+Vastgelegd als DEC-101. De bouw volgt de volgorde van het plan; per stap een regel met SHA.
+
+**Bouwronde, 5 september.** In één reeks, omdat Flutter in deze container ontbreekt en de
+negatieve controles dus pas op de Mac rood-dan-groen te tonen zijn. Wat er staat:
+`TvPanelRow` met `kind` (action, choice, value, toggle), `subtitle`, `onStepLeft/Right`,
+`canRequestFocus` en automation-ids, en `TvPanelGroup`, `TvPanelColumns`, `TvPanelStaticRow`;
+het paneel als zwevende kaart met `BackdropFilter` (`kTvPanelBlurSigma`, op hardware te wegen),
+pills op `FocusableWrapper` met Select, een subweergave-enum met `TvSyncSubView` (geen slider),
+`TvChapterSubView`, `TvSleepTimerSubView` (op de service, niet op `SleepTimerContent`, die
+zonder overlay-scope de spelerroute popt), `TvShaderSubView` en `VersionQualityPicker` met
+`onDismiss`; Video met Weergave en Afspelen, Geluid met Sporen en Uitvoer, Ondertitels met Sporen
+en Stijl en timing; `TvInfoPanelRequest` van tandwiel, sporenknop en hoofdstukkenknop naar het
+paneel; `onSetBoxFitMode` door `TrackControlsState`, `VideoControls` en `VideoFilterManager`;
+`forcedTrackSuffix`; de sheet-gate op `isDesktopOS()`; de i18n-sleutels in en en nl met de
+gegenereerde klassen met de hand in het slang-formaat bijgewerkt, zodat `dart run slang` op de
+Mac een lege diff hoort te geven.
+
+**Reviewronde, `de2e554`.** Vijf bevindingen, alle vijf terecht, alle vijf gesloten. Een
+subweergave zonder eigen landingsnode (versie en kwaliteit komt uit de gedeelde picker) opende
+met de ring nergens; de fallback loopt hem nu naar de eerste focusbare die er werkelijk staat.
+LEFT en RIGHT klemmen sindsdien waar Select cyclet: de ontbrekende callback op de rand valt door
+naar de traversal, zodat een kolom met alleen waarderijen te verlaten is, en dat is precies het
+Video-tabblad op een Android TV; het lost tegelijk op dat RIGHT op +200% terugsprong naar Uit.
+Een hoofdstuksprong meldt zich weer via `onSeekCompleted`, de enige weg naar
+`WatchTogetherProvider.onLocalSeek`. De terugpijl van een subweergave was een kale `IconButton`
+zonder eigen focus (DEC-053) en is nu `TvPanelBackButton`. Twee tests erbij: het klemmen aan de
+randen, en de gemelde hoofdstuksprong.
+
+**Testronde, 6 september.** De reeks is alsnog gedraaid, niet op de Mac maar in de container:
+de Flutter-SDK uit `.fvmrc` (3.44.0) is er los naast gezet, dus `check_flutter_version.sh` klaagt
+niet en `dart format` geeft dezelfde uitvoer als CI. Wat er groen staat: `flutter analyze` zonder
+errors of warnings (48 infos), `dart format` over lib en test zonder wijziging, unused code en
+unused files leeg, en de volledige suite op 6260 geslaagd, 6 overgeslagen, 66 rood. Die 66 zijn de
+nullijn van main, geen ervan raakt dit werk: 51 goldens en 15 uit
+`discover_hero_activation_test.dart`.
+
+Drie dingen kwamen eruit die er in de bouw- en de reviewronde niet uit kwamen.
+
+De eerste is een echt defect, en het staat als PNL3 in de tabel: Select op een pill die al actief
+is verplaatste de focus niet. Alle drie de focusverplaatsingen van het paneel hingen aan
+`addPostFrameCallback`, en die plant een callback voor de volgende frame zonder er een aan te
+vragen. Op dat ene pad zet `_selectTab` niets dirty, dus er kwam geen frame en de callback bleef
+staan. In de test valt dat hard op, want `WidgetTester.pump` tekent alleen als er een frame
+gepland is; achter een spelend beeld tekent tvOS toch en zie je het niet, achter een gepauzeerd
+beeld wel. `_afterNextFrame` vraagt de frame nu expliciet aan.
+
+De tweede was de test zelf. De snelheidstest drukte twee keer RIGHT zonder frame ertussen, en de
+rij leest zijn waarde uit `player.streams.rate`: beide drukken stapten dus vanaf dezelfde oude
+waarde. Op een afstandsbediening zit er altijd een frame tussen; in de test moet die er staan.
+
+De derde is de gedeelde eigenaar uit PLR3. De sheet-gate ging van `isDesktop(context)` naar
+`isDesktopOS()`, en daarmee toont de sheet op een Linux-testhost wel degelijk de
+audio-apparaatrij, met "Auto" als waarde. `video_settings_sheet_test.dart` zocht "Auto" in de hele
+boom en vond er twee. De assertie leest hem nu uit de rij zelf, want de test gaat over de
+uitvoermodus en niet over hoe vaak het woord voorkomt.
+
+**Wat CI hierna nog rood houdt, en waarom het niet van deze branch is.** Code Analysis breekt op
+`Verify generated files committed`, en Unit Tests op dezelfde 66. Beide zijn op main al maanden
+rood en zijn hier gereproduceerd: `build_runner` schrijft gegenereerde code op 80 kolommen terwijl
+de gecommitte bestanden op 120 staan, dus `git diff --exit-code lib/` slaat aan zonder dat er iets
+verouderd is. PR #1 heeft dat als CI1 al opgelost (`e76e3f06`, plus `99442f0d`, `bd22a756` en
+`213c6e82` voor de hero- en goldensuites) en staat daar groen. Die reeks raakt 121 bestanden en
+hoort niet in deze PR overgezet te worden; zodra CI1 op main staat, gaat deze branch met een merge
+mee.
+
+**Wat hier niet kon draaien.** Het Verify-scenario `tvos.player.panel.yaml` vraagt een macOS- of
+tvOS-simulatorbuild, dus dat bewijs ontbreekt nog, net als `/pleya-tvbuild`. Elke regel hierboven
+gaat pas van "testrun groen" naar `VERIFIED` als die twee er zijn.
+
+**Hardware only.** De veeg-opening, de bitstream-stand (H) en de hoorbaarheid van de boost en
+de synchronisatiestap zijn alleen op het toestel te toetsen; STATUS.md meldt dat er nog geen
+Apple TV-audiolog is.

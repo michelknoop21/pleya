@@ -1,14 +1,22 @@
 // Bouwt pages/*.html (fragmenten met {{tokens}}) naar out/*.html en schiet ze op
 // exact 1920×1080 (@1x, zoals de northstar-set) naar ~/Downloads/mockups-tvos.
 // Gebruik: node build.mjs [paginanaam ...]
-import { chromium } from '/opt/homebrew/lib/node_modules/@playwright/test/node_modules/playwright/index.mjs';
+// Drie env-overrides voor een machine zonder de Homebrew-installatie (bijvoorbeeld een
+// Linux-container met een globale Playwright): PLEYA_MOCKUP_PLAYWRIGHT wijst het Playwright-
+// module aan, PLEYA_MOCKUP_DEST de map voor de schoten, PLEYA_MOCKUP_ART een art-map met
+// plaatshouders. Zonder die variabelen gedraagt het script zich als voorheen.
 import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
 
+const { chromium } = await import(
+  process.env.PLEYA_MOCKUP_PLAYWRIGHT ?? '/opt/homebrew/lib/node_modules/@playwright/test/node_modules/playwright/index.mjs'
+);
+
 const ROOT = new URL('.', import.meta.url).pathname;
 const OUT = join(ROOT, 'out');
-const DEST = join(homedir(), 'Downloads', 'mockups-tvos');
+const DEST = process.env.PLEYA_MOCKUP_DEST ?? join(homedir(), 'Downloads', 'mockups-tvos');
+const ART = process.env.PLEYA_MOCKUP_ART ?? '../art';
 mkdirSync(OUT, { recursive: true });
 mkdirSync(DEST, { recursive: true });
 
@@ -102,7 +110,7 @@ function render(src) {
       const focusNav = flags.find(x => x.startsWith('focus='))?.slice(6);
       return topnav(a.trim(), { live: flags.includes('live'), dim: flags.includes('dim'), avatar: flags.includes('avatar'), focusNav });
     })
-    .replace(/\{\{art:([\w-]+)\}\}/g, (_, n) => `../art/${n}.jpg`);
+    .replace(/\{\{art:([\w-]+)\}\}/g, (_, n) => `${ART}/${n}.jpg`);
 }
 
 const wanted = process.argv.slice(2);
