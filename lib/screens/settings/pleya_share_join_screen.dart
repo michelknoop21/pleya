@@ -41,7 +41,10 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
   @override
   void initState() {
     super.initState();
-    _refresh();
+    // The fields directly rather than through _refresh: there is no frame to
+    // rebuild yet, so a setState before the first build has nothing to do.
+    _scanningSubnet = false;
+    _discovery = _discover();
   }
 
   @override

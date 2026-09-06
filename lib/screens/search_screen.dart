@@ -176,6 +176,8 @@ class _SearchScreenState extends State<SearchScreen>
       // loaded — the cold-start race this row is about — it dispatched
       // against whatever was in memory at that instant, and this rerun
       // corrects it against the real set the moment it lands.
+      // Vals alarm: hij wordt verwijderd via _hiddenLibrariesForTvRefresh in dispose.
+      // ignore: always-remove-listener
       _hiddenLibrariesForTvRefresh = context.hiddenLibraries..addListener(_onHiddenLibrariesChanged);
       unawaited(
         SpeechSearchService.instance.isSupported().then((supported) {

@@ -85,7 +85,10 @@ class _FocusGlowOverlayState extends State<FocusGlowOverlay> {
       });
     } else {
       // Fade out; _handleFadeEnd hides the portal once opacity reaches 0.
-      setState(() => _visible = false);
+      // A plain assignment: didUpdateWidget already runs inside a rebuild of
+      // this element, so setState here would only schedule the frame that is
+      // being built.
+      _visible = false;
     }
   }
 

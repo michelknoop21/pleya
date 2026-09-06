@@ -1,5 +1,12 @@
 # Handoff: Mijn Pleya op tvOS, stand op 2 september 2026
 
+
+> **Afgerond sessiedocument.** Het werk hierin is klaar en de bevindingen zijn
+> overgenomen in [tvos-redesign-register.md](tvos-redesign-register.md) en
+> [tvos-fysieke-correctieronde.md](tvos-fysieke-correctieronde.md). Dit bestand blijft
+> staan voor het bewijs en de redenering; zoek de actuele stand niet hier maar in
+> [DESIGN-INDEX.md](DESIGN-INDEX.md).
+
 Wat af is, wat bewezen is, en waar de volgende sessie begint. De audit zelf en
 het bewijs erachter staan in `docs/tvos-my-pleya-audit-2026-09-02.md`.
 

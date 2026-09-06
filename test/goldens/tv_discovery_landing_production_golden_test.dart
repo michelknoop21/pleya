@@ -528,10 +528,23 @@ void main() {
     await expectMatchesGolden(find.byType(MaterialApp), 'tv_discovery_production_series_middle_focused');
   });
 
-  testWidgets('series landing, a Continue Watching episode with progress focused', (tester) async {
-    // DEC-065 punt 3: "het gefocuste CW-item draagt de episode-still van de
-    // concrete aflevering waar beschikbaar" — so the episode card, not the
-    // series card, is what the expanded focus state has to render.
+  // This used to focus a Continue Watching episode on the series landing and
+  // photograph it, for DEC-065 punt 3: "het gefocuste CW-item draagt de
+  // episode-still van de concrete aflevering waar beschikbaar". That contract
+  // has not gone anywhere, but the surface it is proven on has.
+  // `TvDiscoveryLandingProvider._project` sorts backend hubs into a Films row
+  // or a Series row by hub kind and drops episode, mixed and other rows on
+  // purpose (hoofdstuk 17.1): they have no single Films-or-Series home and
+  // belong to Home's own projection. So a series landing has no Continue
+  // Watching rail to focus, and the old test failed on an empty `firstWhere`
+  // rather than on a picture.
+  //
+  // The picture now lives where the rail does:
+  // `tv_home_production_first_row_focused.png` in
+  // `test/goldens/tv_home_production_golden_test.dart` shows the same
+  // Harbourlight fixture focused as a wide episode still, with "S2 E4 · 28 min
+  // left" under it. What is left to hold here is the rule that replaced it.
+  testWidgets('series landing keeps Continue Watching off, however full the on deck is', (tester) async {
     await bootstrap(tester);
     aggregation.hubsResult = richSeriesHubs;
     aggregation.onDeckResult = continueWatchingOnDeck;
@@ -541,13 +554,18 @@ void main() {
     await tester.pumpWidget(shell(const TvSeriesLandingScreen()));
     await tester.pumpAndSettle();
 
-    final continueWatching = landing.seriesRails.first;
-    final episode = continueWatching.groups.firstWhere((g) => g.representativeSource.item.kind == MediaKind.episode);
-    final rails = tester.stateList<TvDiscoveryRailState>(find.byType(TvDiscoveryRail));
-    expect(rails.any((rail) => rail.focusGroup(episode.groupId)), isTrue);
-    await tester.pumpAndSettle();
-
-    await expectMatchesGolden(find.byType(MaterialApp), 'tv_discovery_production_series_episode_focused');
+    expect(
+      continueWatchingOnDeck().any((item) => item.kind == MediaKind.episode),
+      isTrue,
+      reason: 'precondition: the on deck this landing is fed does carry episodes',
+    );
+    expect(
+      landing.seriesRails
+          .expand((rail) => rail.groups)
+          .where((g) => g.representativeSource.item.kind == MediaKind.episode),
+      isEmpty,
+      reason: 'episode rows belong to Home, not to a Films-or-Series landing (hoofdstuk 17.1)',
+    );
   });
 
   testWidgets('series landing, View All focused', (tester) async {

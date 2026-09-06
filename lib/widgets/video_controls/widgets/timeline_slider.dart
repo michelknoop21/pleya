@@ -110,7 +110,7 @@ class _TimelineSliderState extends State<TimelineSlider> {
     // live position. 5s tolerance covers keyframe snapping on seeks.
     final pending = _pendingSeekValue;
     if (pending != null && (widget.position.inMilliseconds - pending).abs() < 5000) {
-      _clearPendingSeek();
+      _clearPendingSeekFields();
     }
     if (oldWidget.enabled && !widget.enabled && _scrubbing) {
       // The gestures map is only registered while enabled, so the swap
@@ -123,11 +123,20 @@ class _TimelineSliderState extends State<TimelineSlider> {
   }
 
   void _clearPendingSeek() {
+    if (_clearPendingSeekFields()) setState(() {});
+  }
+
+  /// The state half of [_clearPendingSeek], without scheduling a frame.
+  /// Returns whether anything actually changed.
+  ///
+  /// didUpdateWidget already runs inside a rebuild, so calling the setState
+  /// version from there would schedule the frame it is in.
+  bool _clearPendingSeekFields() {
     _pendingSeekFailsafe?.cancel();
     _pendingSeekFailsafe = null;
-    if (_pendingSeekValue != null) {
-      setState(() => _pendingSeekValue = null);
-    }
+    if (_pendingSeekValue == null) return false;
+    _pendingSeekValue = null;
+    return true;
   }
 
   void _handleScrubStart(DragStartDetails details, BuildContext sliderContext) {

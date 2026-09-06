@@ -7,6 +7,8 @@ mixin _JellyfinLiveTvMethods on MediaServerCacheMixin {
   Future<List<Map<String, dynamic>>> _safeFetchItemsArray(
     String path,
     Map<String, dynamic> queryParameters, {
+    // Deel van de signatuur die de implementatie invult; deze declaratie
+    // gebruikt hem zelf niet.
     // ignore: unused_element_parameter
     _HubRetryPolicy? retry,
   });
