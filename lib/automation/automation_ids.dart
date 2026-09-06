@@ -174,6 +174,24 @@ class AutomationIds {
   /// overlay pays, so `notClipped` against it means something.
   static const String playerSafeArea = 'player.safe_area';
 
+  /// The TV player panel (`TvInfoPanel`) as a whole; `state` carries the active
+  /// tab and sub-view, so a scenario can prove which layer is open.
+  static const String playerPanel = 'player.panel';
+
+  /// One pill of the panel. Instanceable: `[information|video|audio|subtitles]`;
+  /// `state.active` says whether it is the open tab.
+  static const String playerPanelTab = 'player.panel.tab';
+
+  /// One row of the panel. Instanceable: suffixed with the row's key
+  /// (`speed`, `volume_boost`, `audio.track.0`, …); `state` carries the row
+  /// kind and its value, selection or on/off, whichever applies.
+  static const String playerPanelRow = 'player.panel.row';
+
+  /// The tune button in the player bar. On TV it opens [playerPanel] on the
+  /// Video tab; RIGHT from play/pause lands on it, which is how a scenario
+  /// reaches the panel on a simulator that cannot swipe.
+  static const String playerSettingsButton = 'player.settings_button';
+
   /// Base ids a scenario may address as `id[instance]` — see
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
@@ -189,6 +207,8 @@ class AutomationIds {
     myPleyaSectionTile,
     myPleyaChip,
     myPleyaLogRow,
+    playerPanelTab,
+    playerPanelRow,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -230,6 +250,10 @@ class AutomationIds {
     {'id': playerTitle, 'role': 'region', 'instanceable': false},
     {'id': playerTimeline, 'role': 'region', 'instanceable': false},
     {'id': playerSafeArea, 'role': 'region', 'instanceable': false},
+    {'id': playerPanel, 'role': 'region', 'instanceable': false},
+    {'id': playerPanelTab, 'role': 'tab', 'instanceable': true},
+    {'id': playerPanelRow, 'role': 'list.item', 'instanceable': true},
+    {'id': playerSettingsButton, 'role': 'button', 'instanceable': false},
     {'id': tvosMenuPassthrough, 'role': 'service', 'instanceable': false},
   ];
 }

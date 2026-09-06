@@ -1,3 +1,4 @@
+import '../i18n/strings.g.dart';
 import 'codec_utils.dart';
 import 'language_codes.dart';
 
@@ -201,7 +202,7 @@ class TrackLabelBuilder {
     }
 
     if (forced && !_saysForced(primary)) {
-      primary = '$primary (Forced)';
+      primary = '$primary ${t.videoControls.forcedTrackSuffix}';
     }
 
     final secondaryParts = [?secondaryTitle, ...techParts];

@@ -7,6 +7,7 @@ import 'package:pleya/mpv/player/player_streams.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/focusable_list_tile.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/widgets/video_controls/sheets/video_settings_sheet.dart';
 
@@ -50,8 +51,11 @@ void main() {
 
     expect(find.text('Audio Output Mode'), findsOneWidget);
     // Off-device there is no route to report, so the mode shows on its own
-    // rather than as "Auto (now: …)".
-    expect(find.text('Auto'), findsOneWidget);
+    // rather than as "Auto (now: …)". Read from its own row: on a desktop host
+    // the audio-device row above it carries the label "Auto" as well, and this
+    // assertion is about the output mode, not about how often the word occurs.
+    final modeRow = find.ancestor(of: find.text('Audio Output Mode'), matching: find.byType(FocusableListTile));
+    expect(find.descendant(of: modeRow, matching: find.text('Auto')), findsOneWidget);
   });
 
   testWidgets('shows the audio output mode on Apple TV too', (tester) async {
