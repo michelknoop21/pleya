@@ -59,6 +59,8 @@ under `Notes`.
 - films en series als route-identiteit
 - het backendmerkje deelt de gegenereerde logo-bron
 - Unified 2026 fase 1, de iPhone-Home als eigen scherm
+- eigen Home-rijen ook op desktop/mobiel
+- "Alle N"-tegel als laatste kaart van een eigen rij
 
 ### Improved
 - scheidingslijnen volgen de werkelijke rijhoogte
@@ -116,6 +118,10 @@ under `Notes`.
 - de nieuwe route-ids afhandelen in de bestaande shells
 - de opstartsplash tekent de lockup ook via PleyaWordmark
 - fase-1 acceptance, de iPad houdt zijn eigen tabbalk
+- elf gegenereerde modelbestanden terug op de generatorbreedte
+- zes Containers in een Padding worden een Container met margin (avoid-wrapping-in-padding)
+- de macOS+iOS-job kan groen: ad-hoc signing op de runner en de hero-scenario's bewijzen de DEC-097-fallback (VER-CI)
+- PREF1, export/import vraagt nu de PreferenceSyncPolicyRegistry
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026

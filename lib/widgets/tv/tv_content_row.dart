@@ -40,9 +40,12 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../i18n/strings.g.dart';
+import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
+import '../../services/unified_catalog/home_custom_row_view_all.dart';
 import 'tv_discovery_rail.dart';
 import 'tv_unified_layout.dart';
 
@@ -60,6 +63,8 @@ class TvContentRow extends StatelessWidget {
     this.onNavigateDown,
     this.automationRailIndex,
     this.tileScrollAlignment = 0.5,
+    this.viewAllTarget,
+    this.onViewAll,
   });
 
   /// A projected Home row: Continue Watching, or one of
@@ -100,8 +105,23 @@ class TvContentRow extends StatelessWidget {
   /// the rows underneath it.
   static double height(double scale) => TvDiscoveryLayout.railSectionHeight(scale);
 
+  /// Where this row's own "Alle N" tile should send the viewer (ROW1c,
+  /// DEC-100 (2)). Null for every row but a viewer-defined one that already
+  /// has content — see `HomeCustomRowsProvider.viewAllTargetsByHubId`, which
+  /// the feed matches back up to [hub] by [UnifiedMediaHub.hubId].
+  final HomeCustomRowViewAllTarget? viewAllTarget;
+
+  /// Reports a press on that tile. The feed owns the actual navigation — the
+  /// same split as [onActivate] and [onContextMenu] — because opening the
+  /// catalog needs [UnifiedCatalogs], which this row does not hold.
+  final ValueChanged<HomeCustomRowViewAllTarget>? onViewAll;
+
+  static String _destinationLabel(MediaKind kind) =>
+      kind == MediaKind.movie ? t.unifiedCatalog.discovery.allMovies : t.unifiedCatalog.discovery.allSeries;
+
   @override
   Widget build(BuildContext context) {
+    final target = viewAllTarget;
     return TvDiscoveryRail(
       key: railKey,
       title: hub.title,
@@ -116,6 +136,13 @@ class TvContentRow extends StatelessWidget {
       onNavigateDown: onNavigateDown,
       automationRailIndex: automationRailIndex,
       tileScrollAlignment: tileScrollAlignment,
+      viewAll: target == null
+          ? null
+          : TvDiscoveryViewAllTile(
+              count: target.count,
+              destinationLabel: _destinationLabel(target.kind),
+              onSelect: () => onViewAll?.call(target),
+            ),
     );
   }
 }

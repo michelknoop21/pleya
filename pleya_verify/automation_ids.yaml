@@ -87,6 +87,9 @@ ids:
   - id: discover.hero.play
     role: button
     instanceable: false
+  - id: discover.continue_watching
+    role: rail
+    instanceable: false
   - id: discover.rail
     role: rail
     instanceable: true

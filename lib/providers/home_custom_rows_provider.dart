@@ -37,6 +37,7 @@ import '../media/unified/unified_media_hub.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../services/unified_catalog/home_custom_row.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
+import '../services/unified_catalog/home_custom_row_view_all.dart';
 import '../utils/global_key_utils.dart';
 import 'hidden_libraries_provider.dart';
 import 'home_layout_provider.dart';
@@ -152,6 +153,22 @@ class HomeCustomRowsProvider extends ChangeNotifier with DisposableChangeNotifie
     for (final row in allRows(titleFor: titleFor))
       if (row.groups.isNotEmpty) row,
   ];
+
+  /// Where each visible row's own "Alle N" tile should send the viewer
+  /// (ROW1c, DEC-100 (2)), keyed by the same [UnifiedMediaHub.hubId]
+  /// [visibleRows] gave that row — the feed matches the two back up by that
+  /// key, because the target itself cannot live on [UnifiedMediaHub] (see
+  /// `home_custom_row_view_all.dart`).
+  Map<String, HomeCustomRowViewAllTarget> viewAllTargetsByHubId() => {
+    for (final row in _layout.customRows)
+      if (_content[row.id] case final content? when content.groups.isNotEmpty)
+        UnifiedMediaHub.synthesizedHubId(row.hubSlug): HomeCustomRowViewAllTarget(
+          kind: row.kind,
+          filters: row.filters,
+          sort: row.sort,
+          count: content.loadedCount,
+        ),
+  };
 
   /// Re-asks one row's filter. Called after an edit, where the row's id is the
   /// same and its content is not.

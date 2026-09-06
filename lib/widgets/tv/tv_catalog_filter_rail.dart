@@ -157,12 +157,14 @@ class TvCatalogFilterRailPanel extends StatelessWidget {
             children: [
               for (final row in rows) _RailRow(row: row, scale: scale),
               if (tags.isNotEmpty) ...[
-                Padding(
-                  padding: EdgeInsets.symmetric(
+                Container(
+                  // Margin, not a Padding wrapper: same box, one widget shallower.
+                  margin: EdgeInsets.symmetric(
                     horizontal: TvCatalogLayout.railDividerInset * scale,
                     vertical: TvCatalogLayout.railDividerGap * scale,
                   ),
-                  child: Container(height: 1, color: tk.outline),
+                  height: 1,
+                  color: tk.outline,
                 ),
                 Padding(
                   padding: EdgeInsets.symmetric(
@@ -232,64 +234,64 @@ class _RailRowState extends State<_RailRow> {
       disableScale: true,
       focusShapeBorder: shape,
       semanticLabel: '${row.label}: ${row.value}',
-      child: Padding(
+      child: Container(
         // The ring is held off the row for the reason `TvPanelButton`
         // documents: `FocusableWrapper` paints it on its child's bounds, and a
         // white ring flush against a filled row reads as a slightly fatter row.
-        padding: EdgeInsets.all(TvCatalogLayout.railRowFocusRingGap * scale),
-        child: Container(
-          height: TvCatalogLayout.railRowHeight * scale,
-          decoration: ShapeDecoration(
-            shape: shape,
-            color: _isFocused ? tk.text.withValues(alpha: TvCatalogLayout.railRowFocusedFill) : Colors.transparent,
-          ),
-          padding: EdgeInsets.symmetric(horizontal: TvCatalogLayout.railRowPaddingHorizontal * scale),
-          child: Row(
-            children: [
-              Icon(
-                row.icon,
-                size: TvCatalogLayout.railIconSize * scale,
-                color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
-              ),
-              SizedBox(width: TvCatalogLayout.railIconGap * scale),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      row.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: TvCatalogLayout.railLabelFontSize * scale,
-                        fontWeight: FontWeight.w500,
-                        color: tk.text,
-                        height: 1.1,
-                      ),
+        // Margin rather than a Padding wrapper: a Container lays out margin,
+        // then decoration, then padding, so the bounds are the same.
+        margin: EdgeInsets.all(TvCatalogLayout.railRowFocusRingGap * scale),
+        height: TvCatalogLayout.railRowHeight * scale,
+        decoration: ShapeDecoration(
+          shape: shape,
+          color: _isFocused ? tk.text.withValues(alpha: TvCatalogLayout.railRowFocusedFill) : Colors.transparent,
+        ),
+        padding: EdgeInsets.symmetric(horizontal: TvCatalogLayout.railRowPaddingHorizontal * scale),
+        child: Row(
+          children: [
+            Icon(
+              row.icon,
+              size: TvCatalogLayout.railIconSize * scale,
+              color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
+            ),
+            SizedBox(width: TvCatalogLayout.railIconGap * scale),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    row.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: TvCatalogLayout.railLabelFontSize * scale,
+                      fontWeight: FontWeight.w500,
+                      color: tk.text,
+                      height: 1.1,
                     ),
-                    SizedBox(height: TvCatalogLayout.railValueGap * scale),
-                    Text(
-                      row.value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: TvCatalogLayout.railValueFontSize * scale,
-                        color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
-                        height: 1.1,
-                      ),
+                  ),
+                  SizedBox(height: TvCatalogLayout.railValueGap * scale),
+                  Text(
+                    row.value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: TvCatalogLayout.railValueFontSize * scale,
+                      color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
+                      height: 1.1,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              SizedBox(width: TvCatalogLayout.railIconGap * scale),
-              Icon(
-                Symbols.chevron_right_rounded,
-                size: TvCatalogLayout.railChevronSize * scale,
-                color: tk.text.withValues(alpha: TvSourcePickerLayout.inkTertiary),
-              ),
-            ],
-          ),
+            ),
+            SizedBox(width: TvCatalogLayout.railIconGap * scale),
+            Icon(
+              Symbols.chevron_right_rounded,
+              size: TvCatalogLayout.railChevronSize * scale,
+              color: tk.text.withValues(alpha: TvSourcePickerLayout.inkTertiary),
+            ),
+          ],
         ),
       ),
     );
@@ -344,37 +346,36 @@ class _ClearRowState extends State<_ClearRow> {
       onBack: widget.onBack,
       disableScale: true,
       focusShapeBorder: shape,
-      child: Padding(
-        padding: EdgeInsets.all(TvCatalogLayout.railRowFocusRingGap * scale),
-        child: Container(
-          height: TvCatalogLayout.railClearHeight * scale,
-          decoration: ShapeDecoration(
-            shape: shape,
-            color: _isFocused ? tk.text.withValues(alpha: TvCatalogLayout.railRowFocusedFill) : Colors.transparent,
-          ),
-          padding: EdgeInsets.symmetric(horizontal: TvCatalogLayout.railRowPaddingHorizontal * scale),
-          child: Row(
-            children: [
-              Icon(
-                Symbols.close_rounded,
-                size: TvCatalogLayout.railClearIconSize * scale,
-                color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
-              ),
-              SizedBox(width: TvCatalogLayout.railIconGap * scale),
-              Expanded(
-                child: Text(
-                  t.unifiedCatalog.states.clearFilters,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: TvCatalogLayout.railClearFontSize * scale,
-                    color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
-                    height: 1.1,
-                  ),
+      child: Container(
+        // Margin, not a Padding wrapper: same bounds for the focus ring.
+        margin: EdgeInsets.all(TvCatalogLayout.railRowFocusRingGap * scale),
+        height: TvCatalogLayout.railClearHeight * scale,
+        decoration: ShapeDecoration(
+          shape: shape,
+          color: _isFocused ? tk.text.withValues(alpha: TvCatalogLayout.railRowFocusedFill) : Colors.transparent,
+        ),
+        padding: EdgeInsets.symmetric(horizontal: TvCatalogLayout.railRowPaddingHorizontal * scale),
+        child: Row(
+          children: [
+            Icon(
+              Symbols.close_rounded,
+              size: TvCatalogLayout.railClearIconSize * scale,
+              color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
+            ),
+            SizedBox(width: TvCatalogLayout.railIconGap * scale),
+            Expanded(
+              child: Text(
+                t.unifiedCatalog.states.clearFilters,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: TvCatalogLayout.railClearFontSize * scale,
+                  color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
+                  height: 1.1,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

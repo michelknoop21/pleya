@@ -42,11 +42,21 @@ class InvalidExportFileException extends SettingsExportException {
 
 /// Serializes / restores user-facing SharedPreferences to a JSON file.
 ///
-/// Strategy is allow-by-default: every key is exported unless it matches an
-/// exact denylist or a prefix denylist of auth/cache/internal keys. User-scoped
+/// Strategy is deny-by-default: [isExportable] asks [PreferenceSyncPolicyRegistry],
+/// the same authority the iCloud sync layer answers to, so a key unregistered
+/// there is local-only everywhere, not just on one of the two paths. User-scoped
 /// keys (prefixed with `user_{uuid}_`) have that prefix stripped on export and
 /// re-applied with the current user's prefix on import, so preferences follow
 /// whichever account is signed in on the target device.
+///
+/// This used to be its own allow-by-default denylist (PREF1): a key was
+/// exported unless this service remembered to forbid it, while the registry
+/// answered a different question for the same key on the import side
+/// (`isUserScopedBaseKey`, below). ROW1d hit the seam first: the three
+/// Home-row keys leaked into an export because only the registry, not this
+/// service, knew they were local-only, and the fix repeated those three keys
+/// in the old denylist. Asking the registry directly makes that patch, and
+/// the general divergence behind it, unnecessary.
 class SettingsExportService {
   static const int formatVersion = 1;
   static const String fileExtension = 'json';
@@ -58,112 +68,13 @@ class SettingsExportService {
   static const String _typeString = 'string';
   static const String _typeStringList = 'stringList';
 
-  /// Exact keys never included in the export. Matches the auth/account state
-  /// tracked by [StorageService] plus multi-server and view-state keys.
-  static const Set<String> _denyKeys = {
-    // Credentials (from StorageService._credentialKeys)
-    'server_url',
-    'token',
-    'plex_token',
-    'server_data',
-    'client_identifier',
-    'user_profile',
-    'current_user_uuid',
-    'home_users_cache',
-    'home_users_cache_expiry',
-    'active_app_profile_id',
-    // Multi-server routing
-    'servers_list',
-    'server_order',
-    // CredentialVault encryption key for DB-stored connection tokens
-    'credential_vault_key_v1',
-    // View state, not settings
-    'selected_library_index',
-    'selected_library_key',
-    // Download location: a path that exists on a Mac means nothing on an Apple
-    // TV or a phone, and moving someone's download folder is not a preference
-    // you want another device to decide.
-    'custom_download_path',
-    'custom_download_path_type',
-    // Home rows: order, hidden set, and the rows the viewer defined themselves
-    // (ROW1d). `PreferenceSyncPolicyRegistry` declares all three local-only,
-    // but this service answers to the list you are reading and never asked the
-    // registry, so they left in an export anyway. They came back unscoped,
-    // because the inverse step *does* ask the registry: `isUserScopedBaseKey`
-    // reads `isProfileScoped`, and a key registered device-local is not
-    // re-prefixed. An unscoped `home_custom_rows` is a key `StorageService`
-    // never reads — it goes through `_homePrefix` — so the import reported
-    // success and the rows were not there.
-    //
-    // Denying them here is what makes the registry's `exportable: false` true
-    // for these three rather than aspirational. The general divergence, that a
-    // registered non-exportable key can still be exported, is PREF1 and is not
-    // fixed by widening this list.
-    'home_row_order',
-    'hidden_home_rows',
-    'home_custom_rows',
-    // Internal migration flags
-    'buffer_size_migrated_to_auto',
-    'pleya_legacy_prefs_migrated_v1',
-    // The iCloud-sync toggle itself must not sync (would fight across devices).
-    'icloud_sync_enabled',
-    // Jellyseerr/Overseerr session: vault-encrypted with a device-local key
-    // (credential_vault_key_v1, denied above), so the blob is unusable on
-    // another device. Deny it so export/iCloud doesn't ship a dead payload or
-    // write an unscoped `seerr_session` the active profile never loads.
-    'seerr_session',
-    // Tautulli session: same vault-encrypted, device-local shape as the Seerr
-    // one, and a heavier credential — a Tautulli key opens that server's whole
-    // admin API, including `sql` and `delete_all_user_history`. It must not
-    // leave the device in an export or an iCloud payload, and an unscoped
-    // `tautulli_session` written on a second device would only decode to a
-    // permanent "not configured".
-    'tautulli_session',
-  };
-
-  /// Prefix denylist. A key is excluded if it starts with any of these.
-  /// The tracker prefixes (`trakt_`, `mal_`, `anilist_`, `simkl_`) cover
-  /// OAuth session tokens and runtime sync queues. The `enable_*` feature
-  /// toggles use a different prefix and stay exportable. Profile runtime
-  /// caches are also excluded because they belong to local connection state.
-  static const List<String> _denyPrefixes = [
-    'server_endpoint_',
-    'episode_count_',
-    'watched_threshold_',
-    'trakt_',
-    'mal_',
-    'anilist_',
-    'simkl_',
-    'plex_home_users_',
-    'profile_last_used_',
-    // Pleya Share: catalogs are large (KVS quota), tokens/guests are
-    // security-sensitive, and share progress already syncs via the host.
-    'pleya_share_catalog_',
-    'pleya_share_pendingwatch_',
-    'pleya_share_tokens',
-    'pleya_share_guests',
-    'pleya_share_watch_',
-    // Server-scoped Tautulli integrations (`tautulli_integration_{id}`). Same
-    // reasoning as the `tautulli_session` key above, and a prefix because the
-    // key carries the machine identifier. Worth spelling out: unlike the
-    // per-profile session this key has no `user_` prefix, so nothing else here
-    // would have kept it out of an export.
-    'tautulli_integration_',
-  ];
-
   /// Literal prefix used by [StorageService._userPrefix] for any scoped key.
   static const String userPrefixRoot = 'user_';
 
-  static bool isExportable(String strippedKey) {
-    if (_denyKeys.contains(strippedKey)) return false;
-    for (final prefix in _denyPrefixes) {
-      if (strippedKey.startsWith(prefix)) return false;
-    }
-    return true;
-  }
+  static bool isExportable(String strippedKey) => PreferenceSyncPolicyRegistry.isExportable(strippedKey);
 
   /// Resolves a full prefs key to the base key used in the export/KVS format
-  /// for [currentUserUuid], or null if the key should not sync — because it's
+  /// for [currentUserUuid], or null if the key should not sync: because it's
   /// scoped to another user, or it's denylisted. Shared by [buildExportMap]
   /// and [ICloudSyncService] so both apply identical eligibility + scoping.
   static String? syncBaseKey(String fullKey, {String? currentUserUuid}) {
@@ -188,7 +99,7 @@ class SettingsExportService {
 
   /// Builds the export map from the given prefs. Pure and testable.
   ///
-  /// [currentUserUuid] — if set, keys prefixed with `user_{uuid}_` have that
+  /// [currentUserUuid]: if set, keys prefixed with `user_{uuid}_` have that
   /// prefix stripped so they can be re-scoped on import. Keys belonging to any
   /// OTHER user are skipped (we only export the active user's prefs).
   static Map<String, dynamic> buildExportMap(
@@ -232,7 +143,7 @@ class SettingsExportService {
   ///
   /// Each key in the import overwrites whatever value currently exists at the
   /// same (possibly re-scoped) key. Keys not present in the import are left
-  /// alone — this is a per-key replacement, not a global wipe.
+  /// alone; this is a per-key replacement, not a global wipe.
   ///
   /// Throws [SettingsExportException] for structural problems.
   static Future<ImportResult> applyImportMap(
@@ -360,7 +271,7 @@ class SettingsExportService {
     final bytes = Uint8List.fromList(utf8.encode(jsonString));
     final fileName = await _defaultFileName();
 
-    // Android TV has no document picker — write to the app docs dir and let
+    // Android TV has no document picker, write to the app docs dir and let
     // the caller surface the path.
     if (Platform.isAndroid && TvDetectionService.isTVSync()) {
       return _writeToAppDocuments(fileName, bytes);

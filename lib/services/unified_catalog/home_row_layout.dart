@@ -32,6 +32,7 @@
 /// asserts it against sets and lists, with no provider and no widget.
 library;
 
+import '../../media/media_hub.dart';
 import '../../media/unified/unified_media_hub.dart';
 
 /// Applies [hiddenRowIds] and [order] — both in `HomeLayoutProvider`'s legacy
@@ -82,3 +83,21 @@ List<UnifiedMediaHub> applyHomeLayoutToUnifiedRows(
 /// row's rank stops matching where the viewer put it.
 List<String> homeLayoutIdsOf(UnifiedMediaHub row) =>
     row.contributingRowIds.isEmpty ? [row.hubId] : row.contributingRowIds;
+
+/// A viewer-defined Home row's projected content (ROW1b), in the [MediaHub]
+/// shape the phone/desktop feed and the settings screen already draw.
+///
+/// [row]'s own contributing id (its `HomeCustomRow.layoutRowId`, e.g.
+/// `#custom:<id>`) becomes the hub's [MediaHub.identifier], not a synthesized
+/// title or [UnifiedMediaHub.hubId]. That is what lets `homeRowId` resolve it
+/// back to the same id `HomeLayoutProvider` already stores hide/order
+/// preferences against, rather than wrapping it in the `serverId:identifier`
+/// shape a real backend hub uses.
+MediaHub mediaHubFromCustomRow(UnifiedMediaHub row) => MediaHub(
+  id: row.hubId,
+  identifier: row.contributingRowIds.isNotEmpty ? row.contributingRowIds.first : row.hubId,
+  title: row.title,
+  type: row.kind.name,
+  items: [for (final group in row.groups) group.representativeSource.item],
+  size: row.groups.length,
+);

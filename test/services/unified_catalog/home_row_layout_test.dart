@@ -7,7 +7,15 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/unified/canonical_media_identity.dart';
+import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_hub.dart';
+import 'package:pleya/media/unified/unified_media_source.dart';
+import 'package:pleya/media/unified/unified_watch_state.dart';
+import 'package:pleya/providers/home_layout_provider.dart';
 import 'package:pleya/services/unified_catalog/home_row_layout.dart';
 
 UnifiedMediaHub _row(String id, {List<String> contributors = const []}) => UnifiedMediaHub(
@@ -19,6 +27,20 @@ UnifiedMediaHub _row(String id, {List<String> contributors = const []}) => Unifi
 );
 
 List<String> _ids(List<UnifiedMediaHub> rows) => [for (final r in rows) r.hubId];
+
+MediaItem _item(String id, String serverId) =>
+    MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.movie, title: id, serverId: serverId);
+
+UnifiedMediaGroup _group(String id, String serverId) {
+  final source = UnifiedMediaSource.fromItem(_item(id, serverId));
+  return UnifiedMediaGroup(
+    groupId: id,
+    identity: CanonicalMediaIdentity.movie(title: id, year: 2021),
+    sources: [source],
+    representativeSourceKey: source.sourceKey,
+    watchState: UnifiedWatchState(representativeSourceKey: source.sourceKey, isWatched: false),
+  );
+}
 
 void main() {
   test('no preferences leaves the projection order untouched', () {
@@ -138,5 +160,50 @@ void main() {
   test('the sort is stable for rows the stored order has never seen', () {
     final rows = [_row('x'), _row('y'), _row('z')];
     expect(_ids(applyHomeLayoutToUnifiedRows(rows, hiddenRowIds: const {}, order: ['s1:unrelated'])), ['x', 'y', 'z']);
+  });
+
+  group('mediaHubFromCustomRow (ROW1b)', () {
+    test('the legacy identifier is the row\'s own contributing id, not its hubId', () {
+      final row = UnifiedMediaHub(
+        hubId: 'hub:pleya:custom:abc',
+        title: 'Sci-fi',
+        kind: UnifiedHubKind.movie,
+        groups: [_group('m1', 's1')],
+        contributingRowIds: const ['#custom:abc'],
+      );
+      final hub = mediaHubFromCustomRow(row);
+
+      expect(hub.identifier, '#custom:abc');
+      // The point of the fix: without it, `homeRowId` would wrap this in
+      // `serverId:identifier` and produce `:#custom:abc`, a different id than
+      // the one `HomeLayoutProvider.saveCustomRow`/`removeCustomRow` already
+      // store hide/order preferences against.
+      expect(homeRowId(hub), '#custom:abc');
+    });
+
+    test('falls back to hubId when a row somehow carries no contributing id', () {
+      final row = UnifiedMediaHub(
+        hubId: 'hub:pleya:custom:abc',
+        title: 'Sci-fi',
+        kind: UnifiedHubKind.movie,
+        groups: const [],
+      );
+      expect(mediaHubFromCustomRow(row).identifier, 'hub:pleya:custom:abc');
+    });
+
+    test('each group\'s representative item becomes one MediaHub item, in order', () {
+      final row = UnifiedMediaHub(
+        hubId: 'hub:pleya:custom:abc',
+        title: 'Sci-fi',
+        kind: UnifiedHubKind.movie,
+        groups: [_group('m1', 's1'), _group('m2', 's1')],
+        contributingRowIds: const ['#custom:abc'],
+      );
+      final hub = mediaHubFromCustomRow(row);
+
+      expect(hub.title, 'Sci-fi');
+      expect(hub.size, 2);
+      expect(hub.items.map((i) => i.id), ['m1', 'm2']);
+    });
   });
 }

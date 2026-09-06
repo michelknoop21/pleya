@@ -26,10 +26,16 @@ void main() {
     expect(ICloudSyncService.mergeProgressMaps(null, '{"a":1}', watchedMap: false), '{"a":1}');
   });
 
-  test('local progress keys sync, share keys do not', () {
+  test('local progress keys are recognized, but neither they nor share keys export', () {
     expect(ICloudSyncService.isLocalProgressKey('local_progress_x'), isTrue);
     expect(ICloudSyncService.isLocalProgressKey('local_watched_x'), isTrue);
-    expect(SettingsExportService.isExportable('local_progress_x'), isTrue);
+    // PREF1: isExportable now asks the registry, which registers
+    // `local_progress_`/`local_watched_` as device-local runtime caches (a
+    // frozen copy from the legacy-store migration, not the live value the
+    // actual sync path reads). `mergeProgressMaps` above is legacy inbound
+    // compatibility only, kept to read what older clients already wrote to
+    // iCloud, not evidence that the export/import file should carry these.
+    expect(SettingsExportService.isExportable('local_progress_x'), isFalse);
     for (final denied in [
       'pleya_share_catalog_abc',
       'pleya_share_pendingwatch_abc',

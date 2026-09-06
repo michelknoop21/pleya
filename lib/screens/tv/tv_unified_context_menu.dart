@@ -539,9 +539,12 @@ class _ActionMenuPanel extends StatelessWidget {
               ),
             ),
             if (extraActionLabel != null) ...[
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: TvSourcePickerLayout.rowGap * scale),
-                child: Container(height: 1, color: mono.outline),
+              Container(
+                // Margin, not a Padding wrapper: a Container lays the margin
+                // outside its own box, which is what the wrapper did.
+                margin: EdgeInsets.symmetric(vertical: TvSourcePickerLayout.rowGap * scale),
+                height: 1,
+                color: mono.outline,
               ),
               TvCatalogOptionRow(
                 key: const ValueKey('tvContextMenuExtraAction'),

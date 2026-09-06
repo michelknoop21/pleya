@@ -54,15 +54,20 @@ import '../../media/ids.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
+import '../../media/media_kind.dart';
 import '../../providers/discover_provider.dart';
 import '../../providers/home_custom_rows_provider.dart';
 import '../../providers/home_layout_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/tv_home_projection_provider.dart';
+import '../../providers/unified_catalogs.dart';
 import '../../screens/tv/tv_discovery_activation_mixin.dart';
 import '../../screens/tv/tv_root_shell.dart' show TvShellSurface;
+import '../../screens/tv/tv_unified_catalog_screen.dart';
 import '../../media/unified/unified_route_context.dart';
 import '../../services/settings_service.dart';
+import '../../services/unified_catalog/home_custom_row_view_all.dart';
+import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../state_view.dart';
@@ -326,6 +331,26 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
         extraAction: (label: t.unifiedCatalog.homeRows.customize, onSelected: _openCustomize),
       );
 
+  /// ROW1c: a viewer-defined row's own "Alle N" tile opens the complete
+  /// catalog with that row's exact filter and sort already applied, for this
+  /// visit only (Michel, 6 September 2026) — see
+  /// [TvUnifiedCatalogScreen.initialFilterOverride].
+  Future<void> _openViewAll(HomeCustomRowViewAllTarget target) {
+    final catalogs = context.read<UnifiedCatalogs>();
+    return Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TvUnifiedCatalogScreen(
+          catalog: catalogs.forKind(target.kind),
+          title: target.kind == MediaKind.movie
+              ? t.unifiedCatalog.discovery.allMovies
+              : t.unifiedCatalog.discovery.allSeries,
+          onManageServers: widget.onManageServers,
+          initialFilterOverride: UnifiedCatalogPreferences(sort: target.sort, filters: target.filters),
+        ),
+      ),
+    );
+  }
+
   /// Refreshes every source [group] carries after a hoofdstuk-23 write landed.
   ///
   /// **Not "the projection recomputes on its own" — that is true of Continue
@@ -403,6 +428,10 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
     final layout = context.watch<HomeLayoutProvider?>();
     final customRows = context.watch<HomeCustomRowsProvider?>();
     final rows = tvHomeFeedRows(projection: projection, layout: layout, customRows: customRows);
+    // ROW1c. Built once per build rather than looked up per row: `viewAll`
+    // hubIds move as the feed reorders, and matching by the same key the rows
+    // are already keyed on is simpler than a second lookup per row.
+    final viewAllTargets = customRows?.viewAllTargetsByHubId() ?? const <String, HomeCustomRowViewAllTarget>{};
     // Read off the projection's own row rather than matched against a slug
     // literal: the slug is a parameter of `projectContinueWatching`, so a
     // literal here would be a second definition that can drift from it.
@@ -562,6 +591,8 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
                               // screen and no band is held open for the hero.
                               tileScrollAlignment: TvHomeLayout.rowTileScrollAlignment(viewportHeight, scale),
                               automationRailIndex: i,
+                              viewAllTarget: viewAllTargets[rows[i].hubId],
+                              onViewAll: _openViewAll,
                             ),
                           ),
                         ],
