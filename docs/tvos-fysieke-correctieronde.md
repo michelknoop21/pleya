@@ -160,6 +160,9 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | AUD2 | Audio- en ondertitelsynchronisatie in het paneel openen zonder gefocust element: `SyncOffsetControl._buildFull` koppelt `sliderFocusNode` niet (`sync_offset_control.dart:341`, alleen `_buildCompact` doet dat op `:249`), dus `_syncSliderNode.requestFocus()` in `tv_info_panel.dart:138` is een no-op. De stapknoppen kleuren met `surfaceContainerHighest`, in dit thema het oppervlak zelf (DEC-053). Gebouwd: `_buildFull` koppelt de node en kleurt met `surfaceElevated` (gedeelde eigenaar); het paneel gebruikt `TvSyncSubView` zonder slider, test "the sync sub-view opens on its value row" | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
 | PNL2 | Bedienbaarheid van het paneel: pills op een kale `Focus` zonder Select, waarderijen cyclen alleen vooruit op Select (snelheid zeven standen), hoofdstukken springt alleen naar de volgende, `t.common.ok` als aan-waarde van de statistiekrij (`tv_video_tab.dart:174`), lange uitlegzinnen als afgekapte trailing-waarde, geen `automationId` op paneel, pills of rijen, en nul widgettests op `TvInfoPanel`. STR1, STR2 en PNL1 sluiten hieronder mee. Gebouwd: pills op `FocusableWrapper`, LEFT/RIGHT via `onStepLeft/Right`, hoofdstukkenlijst, `t.common.on`, uitleg als subregel, ids `player.panel`, `player.panel.tab[…]`, `player.panel.row[…]`, `player.settings_button`, tien widgettests | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
 | PNL3 | Select op een pill die al actief is verplaatste de focus niet naar de rijen. `_focusContent` hangt aan `addPostFrameCallback`, en die vraagt zelf geen frame aan; op dat pad zet `_selectTab` niets dirty, dus er kwam geen frame en de ring bleef op de pill staan. Gevonden door de testronde, niet door de review. Gerepareerd met `_afterNextFrame`, dat de callback plant én `scheduleFrame()` aanroept, voor alle drie de focusverplaatsingen van het paneel | FIXED, testrun groen, hardware open | `6d64bbd` |
+| PLR4 | Het spelerpaneel is te hoog voor zijn eigen hoogtekap: de twee kolommen van het tabblad Video scrollen in plaats van te passen, waardoor Shaders, Ambient, Automatisch volgende afspelen en Prestatie-overlay onder de rand verdwijnen (Michel, 6 september, foto op hardware, build 264) | OPEN | n.v.t. |
+| PLR5 | LEFT en RIGHT op een waarderij stappen de waarde, dus de kolomwissel is alleen mogelijk als de waarde toevallig aan zijn eind staat: vanaf Beeldverhouding kom je niet bij de rechterkolom zonder de beeldverhouding te wijzigen. Michel vraagt om een rij die je eerst aanklikt voordat LEFT/RIGHT hem verstelt (6 september). Dit wijzigt het paneelcontract van DEC-101 ("Links en rechts stappen een waarde") en gaat dus als besluit | OPEN, besluit nodig | n.v.t. |
+| PLR6 | Menu sluit het paneel niet op hardware: het paneel houdt de afstandsbediening vast en de app moet geforceerd worden afgesloten (Michel, 6 september, build 264). De Dart-kant is aantoonbaar niet de oorzaak: `Menu closes the panel from a focused row (PLR6 contract)` in `test/widgets/tv_info_panel_test.dart` is groen, dus een Escape-KeyDown bij een gefocuste rij sluit het paneel. Verdachte is het native drukpad; het meegestuurde log `5pyur` dekt alleen de run *na* het geforceerd afsluiten en bewijst niets over de vastloper | OPEN, blokkerend | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -3470,3 +3473,65 @@ gaat pas van "testrun groen" naar `VERIFIED` als die twee er zijn.
 **Hardware only.** De veeg-opening, de bitstream-stand (H) en de hoorbaarheid van de boost en
 de synchronisatiestap zijn alleen op het toestel te toetsen; STATUS.md meldt dat er nog geen
 Apple TV-audiolog is.
+
+### PLR4, PLR5 en PLR6, het spelerpaneel op hardware
+
+Drie meldingen van Michel op 6 september 2026, alle drie op een fysieke Apple TV
+met build 264, alle drie over hetzelfde oppervlak: het spelerpaneel van mockup 33.
+
+**PLR4, de kap is krapper dan de inhoud.** `tv_info_panel.dart:297` begrenst de
+kaart op `min(schermhoogte * 0,56, 620)` en `TvPanelColumns` geeft elke kolom een
+eigen `SingleChildScrollView`. Past de inhoud niet, dan verdwijnt de rest zonder
+melding onder de rand; er is geen affordance die zegt dat er meer staat.
+
+Gemeten in de widgettest op 1920x1080, met de testfonts: een rij is 63 logische
+pixels, de kop plus groepsmarge 48, en de kaart draagt buiten de kolommen om nog
+129 (pilbalk, tussenruimte, voetregel, padding). Acht rijen leveren een kaart van
+492 tegen een kap van 605. Het volledige stel dat een Apple TV toont is groter dan
+wat de testopstelling opbouwt: links Beeldverhouding, Zoom, HDR, Shaders en
+Ambient, rechts Afspeelsnelheid, Hoofdstukken, Versie en kwaliteit, Slaaptimer,
+Automatisch volgende afspelen en Prestatie-overlay. Dat is 6 x 63 + 48 = 426 voor
+de hoogste kolom, plus 129, dus 555 tegen 605. Op papier past het met vijftig
+pixels over; op het toestel is de foto duidelijk en past het niet.
+
+Dat verschil van vijftig pixels is dus de hele marge, en de testopstelling is
+precies het instrument dat hem niet betrouwbaar meet: de echte lettertype-metrics
+van tvOS ontbreken erin. Dezelfde discrepantie staat bij CAT8 beschreven. De
+conclusie die wel hard is: de kap is een willekeurige fractie die geen relatie
+heeft met wat het tabblad nodig heeft, en hij zit zo dicht op de inhoud dat één
+extra rij hem breekt. De richting van de reparatie is de kap afleiden van de
+beschikbare title-safe hoogte in plaats van van 0,56, en het scrollen te laten
+staan als vangnet voor het pathologische geval.
+
+**PLR5, LEFT en RIGHT horen bij de waarde en niet bij de kolom.** Een waarderij
+verstelt op LEFT en RIGHT. `clampedSteps` geeft aan de uiteinden `null` terug,
+zodat de ring de kolom kan verlaten (dat is PNL2 en het staat in
+`side_navigation_rail`-stijl vastgelegd in de testsuite), maar dat betekent ook:
+staat de waarde in het midden, dan kun je de kolom niet uit zonder hem te
+veranderen. Vanaf Beeldverhouding is de rechterkolom onbereikbaar tenzij je de
+beeldverhouding aanpast.
+
+Michels voorstel is een rij die je eerst aanklikt: buiten die stand navigeren
+LEFT en RIGHT tussen de kolommen, binnen die stand verstellen ze de waarde. Dat
+is een ander interactiemodel dan het goedgekeurde paneel van DEC-101, waarvan de
+voetregel letterlijk "Links en rechts stappen een waarde" belooft, en het raakt
+elke waarderij van het paneel plus de voetregeltekst. Het gaat daarom als
+DEC-voorstel en niet als stille correctie.
+
+**PLR6, het paneel is niet te verlaten.** Michel kwam er niet uit zonder de app
+af te sluiten. De Dart-kant is niet de oorzaak, en dat is nu vastgelegd in plaats
+van aangenomen: `Menu closes the panel from a focused row (PLR6 contract)` zet de
+focus op een rij en stuurt één Escape-KeyDown, en het paneel sluit. Dat is precies
+het pad dat `handleBackKeyAction` op Apple TV neemt, want daar draait `onBack` op
+de KeyDown en wordt de KeyUp zwijgend geslikt. De spelerlaag zelf staat bewust
+opzij zolang het paneel staat (`key_events.dart:92` en `:206`), dus als het paneel
+de toets niet krijgt, vangt niemand hem op. Dat maakt de vastloper ook compleet:
+geen enkele laag antwoordt nog op Menu.
+
+Het log dat Michel meestuurde (`5pyur`) helpt hier niet, en het is het vermelden
+waard waarom niet: de ringbuffer leeft per run, en dit log begint bij het opstarten
+ná het geforceerd afsluiten. Wat erin staat over Menu gaat over het diagnosescherm,
+niet over de speler. Voor de oorzaak is een log nodig uit de run waarin het
+misgaat, en dat is precies de run die de gebruiker niet kan verlaten om te
+uploaden. Volgende stap is daarom een build op het toestel met Xcode eraan, zodat
+de console meeleest terwijl het paneel klemt.

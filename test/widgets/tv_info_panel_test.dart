@@ -181,6 +181,20 @@ void main() {
     expect(find.text('OK'), findsNothing);
   });
 
+  testWidgets('Menu closes the panel from a focused row (PLR6 contract)', (tester) async {
+    final h = await _pumpPanel(tester, initial: TvInfoPanelRequest.video);
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+    expect(h.focusedRow(tester), isNotNull, reason: 'the row must own the focus before Menu is judged');
+
+    // On Apple TV `handleBackKeyAction` runs onBack on the KeyDown and swallows
+    // the KeyUp, so the down alone must close it. PLR6 reports the panel as
+    // inescapable on hardware; this proves the Dart side is not the reason.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(h.closed, isTrue);
+  });
+
   testWidgets('on TV the tune button asks for the panel instead of a sheet (PLR3)', (tester) async {
     final player = _PanelPlayer();
     addTearDown(player.dispose);
