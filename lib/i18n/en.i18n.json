@@ -1913,6 +1913,7 @@
     },
     "filters": {
       "title": "Filters",
+      "activeCount": "${count} active",
       "status": "Status",
       "genre": "Genre",
       "year": "Year",

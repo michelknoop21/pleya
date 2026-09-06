@@ -6245,6 +6245,9 @@ class TranslationsUnifiedCatalogFiltersEn {
 	/// en: 'Filters'
 	String get title => 'Filters';
 
+	/// en: '${count} active'
+	String activeCount({required Object count}) => '${count} active';
+
 	/// en: 'Status'
 	String get status => 'Status';
 
@@ -8180,6 +8183,7 @@ extension on Translations {
 			'unifiedCatalog.sort.oldestRelease' => 'Oldest release',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recently watched',
 			'unifiedCatalog.filters.title' => 'Filters',
+			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} active',
 			'unifiedCatalog.filters.status' => 'Status',
 			'unifiedCatalog.filters.genre' => 'Genre',
 			'unifiedCatalog.filters.year' => 'Year',

@@ -203,6 +203,41 @@ class AutomationIds {
   /// One row in [sheetSourcePicker]. Instanceable: suffixed `[<index>]`.
   static const String sheetSourcePickerRow = 'sheet.source_picker.row';
 
+  /// The Alle films/Alle series catalogue screens (iOS Unified 2026 fase 3,
+  /// `docs/ios-unified-2026-fase3-plan.md`). Two separate consts rather than
+  /// one instanceable id, the same choice [screenSeries]/[screenMovies] made:
+  /// each screen is pushed on its own, kind is the whole identity.
+  static const String screenCatalogMovies = 'screen.catalog_movies';
+  static const String screenCatalogSeries = 'screen.catalog_series';
+
+  /// A catalogue screen's header, its three chips, its count line, its grid
+  /// and one grid cell. All instanceable and all carry the kind
+  /// (`catalog.chip.filters[movies]`, `catalog.grid.item[series.4]`) for the
+  /// same reason [landingHeader] does: a screen the viewer left on the
+  /// Navigator stack can still be mounted underneath the one they are
+  /// looking at.
+  static const String catalogHeader = 'catalog.header';
+  static const String catalogChipSources = 'catalog.chip.sources';
+  static const String catalogChipFilters = 'catalog.chip.filters';
+  static const String catalogChipSort = 'catalog.chip.sort';
+  static const String catalogCount = 'catalog.count';
+  static const String catalogGrid = 'catalog.grid';
+  static const String catalogGridItem = 'catalog.grid.item';
+
+  /// The catalogue filter sheet (fase 3) as a whole, one category row, one
+  /// option row, and its two footer actions. Not suffixed with a kind: a
+  /// modal sheet is exclusive, so only one of these is ever mounted at once.
+  static const String sheetCatalogFilters = 'sheet.catalog_filters';
+  static const String sheetCatalogFiltersCategory = 'sheet.catalog_filters.category';
+  static const String sheetCatalogFiltersOption = 'sheet.catalog_filters.option';
+  static const String sheetCatalogFiltersClear = 'sheet.catalog_filters.clear';
+  static const String sheetCatalogFiltersApply = 'sheet.catalog_filters.apply';
+
+  /// The catalogue sort sheet (fase 3) and one of its options. Same exclusive
+  /// reasoning as [sheetCatalogFilters].
+  static const String sheetCatalogSort = 'sheet.catalog_sort';
+  static const String sheetCatalogSortOption = 'sheet.catalog_sort.option';
+
   /// Base ids a scenario may address as `id[instance]` — see
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
@@ -228,6 +263,16 @@ class AutomationIds {
     landingRail,
     landingRailItem,
     sheetSourcePickerRow,
+    catalogHeader,
+    catalogChipSources,
+    catalogChipFilters,
+    catalogChipSort,
+    catalogCount,
+    catalogGrid,
+    catalogGridItem,
+    sheetCatalogFiltersCategory,
+    sheetCatalogFiltersOption,
+    sheetCatalogSortOption,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -283,5 +328,21 @@ class AutomationIds {
     {'id': landingRailItem, 'role': 'grid.item', 'instanceable': true},
     {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
+    {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},
+    {'id': screenCatalogSeries, 'role': 'screen', 'instanceable': false},
+    {'id': catalogHeader, 'role': 'region', 'instanceable': true},
+    {'id': catalogChipSources, 'role': 'button', 'instanceable': true},
+    {'id': catalogChipFilters, 'role': 'button', 'instanceable': true},
+    {'id': catalogChipSort, 'role': 'button', 'instanceable': true},
+    {'id': catalogCount, 'role': 'region', 'instanceable': true},
+    {'id': catalogGrid, 'role': 'grid', 'instanceable': true},
+    {'id': catalogGridItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': sheetCatalogFilters, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetCatalogFiltersCategory, 'role': 'list.item', 'instanceable': true},
+    {'id': sheetCatalogFiltersOption, 'role': 'list.item', 'instanceable': true},
+    {'id': sheetCatalogFiltersClear, 'role': 'button', 'instanceable': false},
+    {'id': sheetCatalogFiltersApply, 'role': 'button', 'instanceable': false},
+    {'id': sheetCatalogSort, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetCatalogSortOption, 'role': 'list.item', 'instanceable': true},
   ];
 }
