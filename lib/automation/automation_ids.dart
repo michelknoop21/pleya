@@ -43,17 +43,27 @@ class AutomationIds {
   static const String libraryFilterFilters = 'library.filter.filters';
   static const String libraryFilterSort = 'library.filter.sort';
 
-  /// The Discover hero billboard as a whole.
   /// The tvOS Menu passthrough as `TvosSystemNavigationService` sees it: no
   /// widget, no bounds, only `state`. Published so a scenario can prove that
   /// no enable went to the engine while a remote key was down (NAV1, DEC-099);
   /// the engine's own half of that defect is out of the simulator's reach.
   static const String tvosMenuPassthrough = 'tvos.menu_passthrough';
 
+  /// The Discover hero billboard as a whole.
   static const String discoverHero = 'discover.hero';
 
   /// The hero's smart-play button.
   static const String discoverHeroPlay = 'discover.hero.play';
+
+  /// The Continue Watching section on the phone, tablet and desktop Home
+  /// (`DiscoverScreen`, not the TV feed). Present whenever the row has items.
+  ///
+  /// Its `state` publishes `hero_visible`, mirroring the screen's own
+  /// `_isHeroSectionVisible`: DEC-097 point 3 makes "no recently released
+  /// film" mean "no hero, Continue Watching first", and a scenario that wants
+  /// to prove that fallback needs a node that exists in the fallback state.
+  /// The hero node cannot carry it, because in that state it is not built.
+  static const String discoverContinueWatching = 'discover.continue_watching';
 
   /// One discovery rail's tile band, on a Films/Series landing or the TV Home
   /// feed. Instanceable: suffixed `[<railIndex>]`, top to bottom.
@@ -174,6 +184,24 @@ class AutomationIds {
   /// overlay pays, so `notClipped` against it means something.
   static const String playerSafeArea = 'player.safe_area';
 
+  /// The TV player panel (`TvInfoPanel`) as a whole; `state` carries the active
+  /// tab and sub-view, so a scenario can prove which layer is open.
+  static const String playerPanel = 'player.panel';
+
+  /// One pill of the panel. Instanceable: `[information|video|audio|subtitles]`;
+  /// `state.active` says whether it is the open tab.
+  static const String playerPanelTab = 'player.panel.tab';
+
+  /// One row of the panel. Instanceable: suffixed with the row's key
+  /// (`speed`, `volume_boost`, `audio.track.0`, …); `state` carries the row
+  /// kind and its value, selection or on/off, whichever applies.
+  static const String playerPanelRow = 'player.panel.row';
+
+  /// The tune button in the player bar. On TV it opens [playerPanel] on the
+  /// Video tab; RIGHT from play/pause lands on it, which is how a scenario
+  /// reaches the panel on a simulator that cannot swipe.
+  static const String playerSettingsButton = 'player.settings_button';
+
   /// Base ids a scenario may address as `id[instance]` — see
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
@@ -189,6 +217,8 @@ class AutomationIds {
     myPleyaSectionTile,
     myPleyaChip,
     myPleyaLogRow,
+    playerPanelTab,
+    playerPanelRow,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -214,6 +244,7 @@ class AutomationIds {
     {'id': libraryFilterSort, 'role': 'filter', 'instanceable': false},
     {'id': discoverHero, 'role': 'hero', 'instanceable': false},
     {'id': discoverHeroPlay, 'role': 'button', 'instanceable': false},
+    {'id': discoverContinueWatching, 'role': 'rail', 'instanceable': false},
     {'id': discoverRail, 'role': 'rail', 'instanceable': true},
     {'id': discoverRailItem, 'role': 'grid.item', 'instanceable': true},
     {'id': discoverSafeArea, 'role': 'region', 'instanceable': false},
@@ -230,6 +261,10 @@ class AutomationIds {
     {'id': playerTitle, 'role': 'region', 'instanceable': false},
     {'id': playerTimeline, 'role': 'region', 'instanceable': false},
     {'id': playerSafeArea, 'role': 'region', 'instanceable': false},
+    {'id': playerPanel, 'role': 'region', 'instanceable': false},
+    {'id': playerPanelTab, 'role': 'tab', 'instanceable': true},
+    {'id': playerPanelRow, 'role': 'list.item', 'instanceable': true},
+    {'id': playerSettingsButton, 'role': 'button', 'instanceable': false},
     {'id': tvosMenuPassthrough, 'role': 'service', 'instanceable': false},
   ];
 }

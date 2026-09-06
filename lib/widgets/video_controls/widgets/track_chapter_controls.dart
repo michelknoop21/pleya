@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 
+import '../../../automation/automation_ids.dart';
 import '../../../focus/dpad_navigator.dart';
 import '../../../media/media_item.dart';
 import '../../../media/media_version.dart';
@@ -21,6 +22,7 @@ import '../sheets/chapter_sheet.dart';
 import '../sheets/queue_sheet.dart';
 import '../sheets/track_sheet.dart';
 import '../sheets/video_settings_sheet.dart';
+import '../tv_info_panel/tv_panel_types.dart';
 import '../../../services/shader_service.dart';
 import '../video_control_button.dart';
 
@@ -51,6 +53,10 @@ class TrackChapterControls extends StatelessWidget {
   /// Whether to hide the chapters and queue buttons (mobile uses content strip instead)
   final bool hideChaptersAndQueue;
 
+  /// On TV, the buttons open the player panel on a tab instead of a sheet
+  /// (DEC-101). Null everywhere else, and the sheets behave as before.
+  final ValueChanged<TvInfoPanelRequest>? onOpenTvPanel;
+
   const TrackChapterControls({
     super.key,
     required this.player,
@@ -65,6 +71,7 @@ class TrackChapterControls extends StatelessWidget {
     this.onNavigateUp,
     this.onNavigateDown,
     this.hideChaptersAndQueue = false,
+    this.onOpenTvPanel,
   });
 
   List<MediaVersion> get availableVersions => trackControlsState.availableVersions;
@@ -162,12 +169,14 @@ class TrackChapterControls extends StatelessWidget {
     required bool isDesktop,
     String? tooltip,
     bool isActive = false,
+    String? automationId,
   }) {
     return VideoControlButton(
       icon: icon,
       tooltip: tooltip,
       semanticLabel: semanticLabel,
       isActive: isActive,
+      automationId: automationId,
       focusNode: focusNodes != null && focusNodes!.length > buttonIndex ? focusNodes![buttonIndex] : null,
       onKeyEvent: focusNodes != null ? (node, event) => _handleButtonKeyEvent(node, event, buttonIndex) : null,
       onFocusChange: onFocusChange,
@@ -208,11 +217,17 @@ class TrackChapterControls extends StatelessWidget {
                 buttonIndex: 0,
                 icon: Symbols.tune_rounded,
                 isActive: isActive,
+                automationId: AutomationIds.playerSettingsButton,
                 tooltip: t.videoControls.settingsButton,
                 semanticLabel: t.videoControls.settingsButton,
                 isMobile: isMobile,
                 isDesktop: isDesktop,
                 onPressed: () {
+                  final openPanel = onOpenTvPanel;
+                  if (openPanel != null) {
+                    openPanel(TvInfoPanelRequest.video);
+                    return;
+                  }
                   onCancelAutoHide?.call();
                   OverlaySheetController.of(context)
                       .show(
@@ -271,6 +286,11 @@ class TrackChapterControls extends StatelessWidget {
               isMobile: isMobile,
               isDesktop: isDesktop,
               onPressed: () {
+                final openPanel = onOpenTvPanel;
+                if (openPanel != null) {
+                  openPanel(hasSubtitleControls ? TvInfoPanelRequest.subtitles : TvInfoPanelRequest.audio);
+                  return;
+                }
                 onCancelAutoHide?.call();
                 OverlaySheetController.of(context)
                     .show(
@@ -295,6 +315,11 @@ class TrackChapterControls extends StatelessWidget {
               isMobile: isMobile,
               isDesktop: isDesktop,
               onPressed: () {
+                final openPanel = onOpenTvPanel;
+                if (openPanel != null) {
+                  openPanel(TvInfoPanelRequest.chapters);
+                  return;
+                }
                 onCancelAutoHide?.call();
                 OverlaySheetController.of(context)
                     .show(

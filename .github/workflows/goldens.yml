@@ -1,0 +1,98 @@
+name: Goldens - Regenerate
+
+# Golden PNGs are rendered by the CI runner, and only a run on that same Linux
+# reproduces them. Regenerating them on a developer machine writes references
+# that CI then rejects: macOS rasterises text differently, and an emulated
+# amd64 container dithers the catalogue's gradients differently again — the
+# measured diff on unchanged code was 45 percent of the pixels on a page full
+# of cover art.
+#
+# So this job runs `flutter test --update-goldens` on the runner and hands the
+# result back as an artifact. Download it, unpack it over `test/goldens/`, look
+# at the images, and commit them.
+#
+# It writes nothing to the repository itself. A workflow that pushed its own
+# goldens would make "the reference matches the code" true by construction, and
+# the whole point of a golden is that a person looked at it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: "Test files to update, space-separated. Empty means every test under test/goldens."
+        required: false
+        default: "test/goldens/tv_unified_catalog_golden_test.dart test/goldens/tv_unified_catalog_states_golden_test.dart"
+
+jobs:
+  update-goldens:
+    name: Update goldens
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: "stable"
+          flutter-version-file: .fvmrc
+          cache: true
+          pub-cache: false
+
+      - name: Cache Pub dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.pub-cache
+          key: ${{ runner.os }}-pub-v3-${{ hashFiles('**/pubspec.yaml', '**/pubspec.lock') }}
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Update goldens
+        # Through the environment rather than `${{ }}` in the script body: the
+        # input is a string a person types, and interpolating it into shell
+        # source would let it be something other than a list of paths.
+        env:
+          TARGETS: ${{ inputs.targets }}
+        run: |
+          targets="$TARGETS"
+          if [ -z "$targets" ]; then targets="test/goldens"; fi
+          echo "Updating goldens for: $targets"
+          flutter test --update-goldens $targets
+
+      - name: Collect changed goldens
+        id: collect
+        run: |
+          mkdir -p /tmp/goldens-out
+          # Modified references and brand-new ones both count; a reference the
+          # run did not touch is left out, so the artifact is the diff and not
+          # a copy of the directory.
+          {
+            git diff --name-only -- 'test/goldens/*.png'
+            git ls-files --others --exclude-standard -- 'test/goldens/*.png'
+          } | sort -u > /tmp/goldens-changed.txt
+          count=$(wc -l < /tmp/goldens-changed.txt | tr -d ' ')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" = "0" ]; then
+            echo "No golden changed. The references on this branch already match what the runner draws."
+            exit 0
+          fi
+          echo "Changed goldens ($count):"
+          cat /tmp/goldens-changed.txt
+          while IFS= read -r file; do
+            mkdir -p "/tmp/goldens-out/$(dirname "$file")"
+            cp "$file" "/tmp/goldens-out/$file"
+          done < /tmp/goldens-changed.txt
+          cp /tmp/goldens-changed.txt /tmp/goldens-out/CHANGED.txt
+
+      - name: Upload goldens
+        if: steps.collect.outputs.count != '0'
+        uses: actions/upload-artifact@v7
+        with:
+          name: goldens-${{ github.sha }}
+          path: /tmp/goldens-out
+          if-no-files-found: error
+          retention-days: 7

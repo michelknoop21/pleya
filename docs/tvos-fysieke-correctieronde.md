@@ -83,7 +83,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | LIB3 | TV-tabs dragen nog de oude rode onderstreping | FIXED, hardware open | `3e9d31b` |
 | LIB4 | Bibliotheken draait op alles behalve de kiezer nog de oude layout: kop, achtergrond, acties en landing wijken af van `libraries-a.png` en `libraries-d.png` | VERVANGEN door LIB7 | n.v.t. |
 | LIB7 | Bibliotheken wordt bronbeheer: bladeren loopt via de catalogus met bronfilter, Collecties en Afspeellijsten worden eigen unified ingangen; DEC-092 accepted, mockup 27 goedgekeurd, bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
-| CAT5 | De catalogusacties gaan naar een inklapbare rail links van het raster, met de gekozen filters als tags rechtsboven; DEC-093 accepted, mockup 28 D1/D2 goedgekeurd, bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
+| CAT5 | De catalogusacties gaan naar een inklapbare rail links van het raster, met de gekozen filters als tags rechtsboven; DEC-093 accepted, mockup 28 D1/D2 goedgekeurd, gebouwd op 5 september. De rail is 330 referentiepixels breed en begint op de 8.1-grens; vijf kolommen passen ook op de 1280x918-ondergrens van CAT1 | FIXED, hardware open | `1bcc3d26` |
 | LIB5 | De spotlight-titel op Bibliotheken valt over de tabrij, en maakt de actieve tab minder leesbaar dan de inactieve | OPEN | n.v.t. |
 | LIB6 | Complete mockupset voor Bibliotheken: mockup 26, negen states in `docs/assets/tvos-unified/mockups-2026-09-04/`, gebouwd op `tv.css` en `build.mjs` van de 09-25-familie, die nu in `docs/assets/tvos-unified/src/` staan | KLAAR, contract afgewezen | n.v.t. |
 | WL2 | Kijklijst end-to-end in Pleya Verify | OPEN | n.v.t. |
@@ -107,15 +107,15 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | I18N2 | `nl.i18n.json` mist `search.voiceSearch` | OPEN | n.v.t. |
 | I18N3 | `nl.i18n.json` mist `settings.visualEffects*` | OPEN | n.v.t. |
 | I18N4 | `nl.i18n.json` mist `addServer.connectToPleyaServerCard*` en `addLocalFolder.*` | OPEN | n.v.t. |
-| STR1 | Hardcoded "Video" in `tv_info_panel.dart:265` | OPEN | n.v.t. |
-| STR2 | Hardcoded "(Forced)" in `track_label_builder.dart:203-205` | OPEN | n.v.t. |
+| STR1 | Hardcoded "Video" in `tv_info_panel.dart:265`; nu `videoControls.tvPanel.video` (PLR2) | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
+| STR2 | Hardcoded "(Forced)" in `track_label_builder.dart:203-205`; nu `videoControls.forcedTrackSuffix` (PLR2) | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
 | STR3 | Hardcoded "titles" in `actor_media_screen.dart:174` | OPEN | n.v.t. |
 | STR4 | Hardcoded tagline in `auth_screen.dart:341` | OPEN | n.v.t. |
 | STR5 | Hardcoded "Incorrect PIN" in `profile_activation.dart:57` | OPEN | n.v.t. |
 | TOK1 | `TvPanelTheme.accent #F42B1F` staat naast `kAccent` | OPEN | n.v.t. |
 | TOK2 | Serverstip `#3FBF5F` hardcoded in `tv_my_pleya_screen.dart:829` | OPEN | n.v.t. |
 | TOK3 | De segmented tabstijl houdt op TV zijn eigen accentrul (seizoentabs, Seerr-aanvraagfilters) | OPEN | n.v.t. |
-| PNL1 | Infopaneel gooit de secundaire spoorlabels van `TrackLabelBuilder` weg | OPEN | n.v.t. |
+| PNL1 | Infopaneel gooit de secundaire spoorlabels van `TrackLabelBuilder` weg; nu de tweede regel van elke spoorrij (PLR2) | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
 | LIVE1 | Live TV tekent twee navigatiebalken via `PlatformDetector.shouldUseSideNavigation` | OPEN | n.v.t. |
 | ACT2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | OPEN | n.v.t. |
 | ACT3 | `tvMyPleya.activitySubtitle` belooft samen kijken en remote die de tegel niet levert | OPEN | n.v.t. |
@@ -132,10 +132,33 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | NAVSEL1 | `tvos.nav.destination-select` sprak de app op twee punten tegen: het verwachtte Films na één RIGHT vanaf Home terwijl Series daar staat, en het eiste een Select om van bestemming te wisselen terwijl focus dat sinds 2 september zelf doet. Gedraaid, rood op de eerste, en verwijderd; `tvos.nav.focus-switches-destination` dekt het en is groen | FIXED | `17d47592` |
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
 | RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
-| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) goedgekeurd op 5 september, DEC-100 accepted, 9.1, 17.5 en 23 aangepast; bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
+| GOLD1 | Negentien catalogusgoldens tekenen sinds CAT5 iets anders en zijn bewust niet bijgewerkt; CI is daarop rood en op niets anders. Ze zijn alleen op dezelfde Linux als CI te regenereren: macOS rasteriseert tekst anders, en een geëmuleerde amd64-container dithert de verlopen anders, gemeten op ongewijzigde code als 45 procent pixeldiff over alle negentien. Michel koos op 5 september de runner-route. `.github/workflows/goldens.yml` draait `flutter test --update-goldens` op de CI-runner en geeft de gewijzigde PNG's als artifact terug; de workflow schrijft niets naar de repo, want een golden die zichzelf goedkeurt bewijst niets. `tv_catalog_films_header_focused.png` vervalt voor `tv_catalog_films_rail_open.png` en moest met de hand weg. Michel draaide de workflow op 6 september (GOLD1-run 34029671870) en committede de negentien PNG's als `11bd8b5f`. CI - Sanity Checks stond daarna nog rood, maar de Unit Tests-job (waar de goldens in zitten) was groen; het rode restje was Code Analysis met dezelfde `dart_code_linter`-waarschuwingen die ook al op de vorige commit stonden, dus losstaand van GOLD1 (zie de flaky-precommit-notitie). De vervallen `tv_catalog_films_header_focused.png` bleek nog in de repo te staan zonder enige testreferentie; verwijderd | FIXED | `11bd8b5f`, `3ab4061c` |
 | SRC1 | Twee gekoppelde Plex-servers, beide online, en het filterpaneel van Alle series toont er één bij Servers. Gemeld door Michel op 6 september 2026, bevestigd met een device-log (upload-ID 12e1y). Pad 1 (`fetchServers` laat een resource stil vallen) uitgesloten: beide servers kwamen terug uit `/resources`. Pad 3 (bibliotheken niet opgehaald) uitgesloten: geen `Failed neutral library fetch`-regel. Het was pad 2, en specifieker dan verwacht: de tweede server verbond niet omdat de reconcile-pass met het verse, correct gescoopte token uit `/resources` werd geblokkeerd door de `_unreachableSince`-30-secondenmemory die de eerdere, cache-gebaseerde poging had gezet. Die memory is bedoeld om een stortvloed van aanroepers met dezelfde data tegen te houden, niet een aanroeper met echt andere data. Gerepareerd met een `retryRecentFailures`-parameter. Een codereview vond dat de eerste versie hem alleen op de reconcile-aanroep zette; de twee synchrone fallbacks in `_bindPlexHome` en `_bindLocalPlexConnection` hadden dezelfde blootstelling en zijn in dezelfde ronde alsnog gedekt | FIXED, hardware open | `PENDING` |
-| CI1 | CI stond op `main` sinds 3 september rood en zei daardoor niets meer over een PR. Drie checks. Codegen-drift op `git diff lib/` na `scripts/codegen.sh`: `analysis_options.yaml` zet `formatter.page_width` op 120, build_runner leest dat niet en emitteert op 80, en de kale `dart format .` uit CONTRIBUTING.md trok elk gegenereerd bestand naar 120. Die stap maskeerde vier latere stappen, die op `skipped` bleven staan, waaronder een formatteringsfout in vijf SYS-bestanden. 79 rode tests, waarvan 50 verouderde golden-referenties, 15 in `discover_hero_activation_test.dart` als HERO3-nasleep, 1 achterhaalde landing-golden, en de rest afzonderlijk gesloten als HERO5 en RAIL1. Volledige suite daarna 6335 groen, 6 overgeslagen, 0 rood, en `scripts/ci_checks.sh` groen. Verify - macOS + iOS simulator staat apart als VER-CI | FIXED, op `main` via `5ece3f0` (PR #1, 6 september) | `c0f9427c`, `e76e3f06`, `edc30b6b`, `99442f0d`, `213c6e82` |
-| VER-CI | `Verify - macOS + iOS simulator` faalt op main en op elke PR, op twee stappen: `macos.smoke.boot` op `Bad state: flutter build macos failed (exit 1)`, en `discover.hero.layout` op `wait_until timed out after 15000ms: {id: discover.hero}`. Draait op `macos-26` en is per DEC-083 bewust geen required gate. Niet te reproduceren zonder macOS | OPEN | n.v.t. |
+| ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) goedgekeurd op 5 september, DEC-100 accepted, 9.1, 17.5 en 23 aangepast. Gebouwd op 6 september in twee delen: het model, de opslag en de rij op Home, daarna de twee ingangen, het bewerkpaneel en de driestapsflow. Recent uitgebracht is daarbij de layout in gegaan, zoals mockup 32 B hem tekent | FIXED, hardware open | `040c939a`, `db1bc994`, `a721013d` |
+| ROW1b | Op pointerplatforms tekende Home nog geen eigen rijen en kende `HomeLayoutScreen` ze niet. `mediaHubFromCustomRow` (`home_row_layout.dart`) projecteert een eigen rij naar de legacy `MediaHub`-vorm die `HubSection` en `HomeLayoutScreen` al tekenen, met de rij se eigen `contributingRowId` als `identifier` in plaats van `hubId`. Onderweg bleek `homeRowId` die `#custom:`-vorm te wikkelen in `serverId:identifier`: een eigen rij op desktop kreeg zo een andere id (`:#custom:<id>`) dan waar `HomeLayoutProvider.saveCustomRow`/`removeCustomRow` al tegen opslaan (`#custom:<id>`), dus verbergen/herordenen had niets gedaan. `homeRowId` herkent de vorm nu en laat hem ongewikkeld. `DiscoverScreen` zet eigen rijen vóór de backend-hubs (DEC-100 (5)) en toont alleen zichtbare, niet-lege rijen (DEC-100 (6)); `HomeLayoutScreen` toont ook lege rijen zodat een viewer ze terug kan zetten. Negatieve controle in `home_row_layout_test.dart` was rood zonder de `homeRowId`-fix | FIXED, hardware open | `4a20deff` |
+| ROW1c | De laatste kaart van een eigen rij is een tegel "Alle N, in Alle films" die de catalogus met datzelfde filter opent (DEC-100 (2), mockup 32 A2). Nog niet gebouwd: dat is een extra tegel achter de laatste groep in `TvDiscoveryRail`, en die raakt `itemCount`, de stop op de rechterrand, de positie in de semantics, de focusnodes en de goldens van een widget die al door vijf testbestanden bewaakt wordt. Apart gehouden zodat de bouwronde van ROW1 niet aan een railwijziging hangt | OPEN | n.v.t. |
+| ROW1d | `home_custom_rows` staat niet in `PreferenceSyncPolicyRegistry` (`lib/services/preferences/preference_sync_policy.dart:390` registreert alleen `home_row_order` en `hidden_home_rows`). `SettingsExportService.syncBaseKey` strippt het `user_<uuid>_`-voorvoegsel onvoorwaardelijk en toetst daarna aan zijn eigen denylist, dus de sleutel gaat de export in; bij import beslist `isUserScopedBaseKey`, en dat delegeert naar `isProfileScoped`. Een niet-geregistreerde sleutel valt terug op `localOnly` met scope `deviceLocal`, dus hij landt ongescoopt en is daarna onzichtbaar voor de provider die de gescoopte sleutel leest. De import meldt succes en de rijen komen niet mee. Er hangt ook geen `PreferenceRefreshFamily` aan, dus een remote apply of een import herlaadt `HomeLayoutProvider` niet voor deze sleutel. Uit de reviewronde van 6 september, de enige van de dertien die data raakt Gesloten door de sleutel te registreren naast zijn twee broers, die dezelfde provider bezit, en door alle drie in de denylist van de exportservice te herhalen zodat het `exportable: false` van de registry ook echt geldt. De volledigheidstest las alleen sleutels die via een `...Pref(...)`-constructor gedeclareerd zijn en zag de kale `static const String _keyX`-constanten van `StorageService` niet; die derde patroonregel is erbij, en noemt de sleutel bij naam zodra de registratie weg is. Drie negatieve controles waren aantoonbaar rood | FIXED | `ca55d656` |
+| ROW1e | `TvPanelButton` heeft geen `onNavigateDown`-parameter (`lib/widgets/tv/tv_panel_primitives.dart:63`), dus `TvHomeEntryRowTile` bedraadt DOWN alleen op de twee pijlknoppen. `_step(index, primary, 1)` en `_step(index, remove, 1)` in `tv_home_customize_panel.dart:363` zijn daarmee dode code, en DOWN vanaf Verbergen, Bewerken of Verwijderen valt terug op Flutters geometrische traversal, precies wat de doccommentaar in `tv_home_row_tiles.dart` zegt te voorkomen. Door beide reviewrondes onafhankelijk gevonden Gesloten door de parameter aan de gedeelde knop toe te voegen en de twee kolommen hem te laten binden; de clamp in `_step` doet de rest. Twee negatieve controles waren rood. De derde niet: RIGHT vanaf de laatste knop van een rij bleef al staan, want rechts is daar niets, en die staat er als contracttest bij | FIXED | `5b2ce68d` |
+| ROW1f | De wizard opent met de ring op Annuleren. `_footer(scale)` wordt gretig in de `Column`-children gebouwd terwijl de stapinhoud in een `LayoutBuilder` zit, dus `_nodeFor('footer.back')` is de eerste aanroep en pakt de initial-focus node (`tv_home_row_wizard.dart:142`, `:229`, `:505`). Eén Select en de wizard is dicht Gesloten door de eerste stop met naam te noemen, de soort die gekozen is, in plaats van hem aan de bouwvolgorde over te laten. De overlay vraagt de focus pas in de tweede post-frame callback aan, dus een node binnen de `LayoutBuilder` is dan aangehaakt. Negatieve controle rood op de oude regel | FIXED | `dccc83d6` |
+| ROW1g | Een nieuwe rij landt onderaan zodra er ooit een volgorde is opgeslagen. `applyHomeLayoutToUnifiedRows` rangschikt een id dat niet in `order` staat als `order.length` (`lib/services/unified_catalog/home_row_layout.dart:57`), terwijl `TvHomeCustomizeController.move` bij de eerste verplaatsing alle id's wegschrijft. De string die we shippen zegt "Lands directly under Continue Watching" en DEC-100 (5) vraagt datzelfde Gesloten door een echt nieuwe rij ook de kop van de volgorde te laten claimen, en alleen als er een volgorde is: er een aanmaken zou van "nooit gesorteerd" stilletjes "wel gesorteerd" maken. De algemene regel dat een onbekend id achteraan rangschikt blijft staan, want voor een backend-hub die er later bij komt klopt hij. Negatieve controle rood op het echte symptoom | FIXED | `d997a81c` |
+| ROW1h | Een bronwijziging tijdens een lopende rijlaad gaat verloren. `_load` keert meteen terug als de rij in `_inFlight` zit (`lib/providers/home_custom_rows_provider.dart:163`), en de landende laad vergelijkt alleen de rijwaarde, niet de bibliotheekgeneratie: `refreshAll` wist `_loadedFor`, de landende laad schrijft de verouderde waarde er weer in, en de her-controle in de `finally` ziet dan geen verschil meer Gesloten door een laad de generatie te laten dragen waaronder hij begon: beide helften, de rij én de bronnen, moeten nog gelden voordat een antwoord bewaard wordt. Een antwoord bewaren dat er één mist zou de rij ook als geladen markeren en juist de ronde afzeggen die het rechtzet. Nieuw testbestand `test/providers/home_custom_rows_provider_test.dart`; de negatieve controle telde één laadaanroep waar er twee horen | FIXED | `88c2b181` |
+| ROW1i | `CatalogHomeCustomRowLoader` roept `loadMore()` één keer aan en annuleert daarna altijd de lopende cursors, terwijl `_fillBuffers` na het grace-venster van twee seconden bewust cursors laat doorlopen die niet als failed gemarkeerd staan (`catalog_service.dart:335`). Een trage bibliotheek levert dan geen fout en geen inhoud: de rij toont de verkeerde eerste twintig en meldt zich niet partieel, want `failedLibraryIds` blijft leeg Gesloten aan beide kanten. De ronde wordt herhaald zolang er nog iets antwoordt en de rij niet vol is, want er komt geen tweede aanroep waarin een trage bibliotheek alsnog meegemerged wordt; en wat er bij het stoppen nog loopt telt mee als partiële dekking, naast wat gefaald is. De service kreeg `awaitPendingFetches` als publieke seam en `hasPendingFetches` om traag van leeg te onderscheiden. Twee negatieve controles rood | FIXED | `286b25dd` |
+| ROW1j | `clearLibraryPreferencesForServer` en `clearLibraryPreferencesForServerEverywhere` (`lib/services/storage_service.dart:301`, `:312`) snoeien `home_custom_rows` niet, dus een rij die naar een verwijderde server wijst blijft als onzichtbare voorkeur staan. Hij levert `HomeCustomRowContent.empty` en verdwijnt daarmee van Home, en als Home daardoor leeg is geeft `TvContentFeed` de lege staat terug vóór de voetregel, dus er is geen ingang meer om hem op te ruimen Gesloten op de bereikbaarheid: de lege staat draagt de voetregel nu ook, en alleen als er eigen rijen bewaard zijn. Het snoeien van `home_custom_rows` in `clearLibraryPreferencesForServer` is bewust niet gedaan. DEC-100 (6) zegt juist dat een rij die leeg raakt in het paneel blijft staan, en een bewaarde rij weggooien omdat een server verdwijnt is onomkeerbaar terwijl die server morgen terug kan zijn. Wat er werkelijk kapot was, was dat je er niet meer bij kon. Negatieve controle rood, met de tegenproef ernaast dat een profiel zonder eigen rijen de kale melding houdt | FIXED | `29ce0bfe` |
+| ROW1k | Verwijderen is fire-and-forget zonder vervangend focusdoel: `onRemove: (row) => unawaited(controller.remove(row))` (`tv_home_customize_controller.dart:59`) laat de ring op de node van een rij staan die uit de lijst verdwijnt. Alleen `_move` zet een `_pendingFocusKey`; verwijderen doet dat niet Gesloten door de rij die de plek inneemt de ring te geven, of de rij erboven als er niets onder zit, of Nieuwe rij als de lijst leegloopt, geklemd op een kolom die het doel echt heeft. Twee negatieve controles rood | FIXED | `b44484a6` |
+| ROW1l | De `initialFocusNode` van het bewerkpaneel en van de wizard wordt aangemaakt in `showTvHomeCustomizePanel` (`tv_home_customize_panel.dart:108`) en `showTvHomeRowWizard` (`tv_home_row_wizard.dart:66`) en nooit gedisposet. `tv_catalog_sort_panel.dart:87` doet dat wel, onvoorwaardelijk, en is het model Gesloten door het paneel en de wizard hem precies één keer te laten opruimen, wie hem ook vasthield en ook wanneer niemand hem vasthield; dezelfde eigendomsafspraak als `tv_catalog_sort_panel`. Het lek zelf is met de hand nagegaan en niet met een test vastgelegd, want Flutter geeft geen publieke manier om te vragen of een `FocusNode` al opgeruimd is. Wat er wel staat is een dubbele open-en-sluit, want een tweede dispose gooit | FIXED | `73c21d24` |
+| ROW1m | Diezelfde node heeft geen doel als `entries()` leeg is: `_nodeFor` wordt alleen vanuit `_entryRow` aangeroepen, dus zonder eigen rijen adopteert niets hem en opent het paneel zonder ring, want `TvHomeNewRowTile` krijgt geen autofocus Gesloten door de eerste stop met naam te noemen: de bovenste pijl van de eerste verplaatsbare rij, en Nieuwe rij als er geen rij is om hem aan te geven. Het gedrag was erger dan gemeld: de overlay valt bij een onaangehaakte node terug op zijn eerste focusbare afstammeling, en dat is Klaar in de kop, dus één Select sloot het paneel dat je net opende. Negatieve controle rood | FIXED | `73c21d24` |
+| ROW1n | Het extra-action-pad in `lib/screens/tv/tv_unified_context_menu.dart:116` slaat de `context.mounted`-guard over: `extraAction!.onSelected()` draait na een `await` op een context die de regel eronder wél toetst voordat hij hem gebruikt Gesloten; dezelfde guard als de regel eronder. Geen zinnige negatieve controle zonder de widgetboom te verbouwen: de context moet precies tussen het sluiten van het menu en de volgende regel verdwijnen. De bewaking is de symmetrie | FIXED | `4bd8863e` |
+| ROW1o | `_reconcile` keert terug op `_layout.customRows.isEmpty` zonder zijn `_libraryKeys`-baseline bij te werken (`home_custom_rows_provider.dart:217`), dus de eerste bronwijziging ná het toevoegen van een eerste rij meet tegen een verouderde nulmeting Gesloten door de nulmeting altijd bij te werken en alleen het herladen aan de vraag te hangen of er iets te herladen valt. Het gebrek was groter dan gemeld: het gaat niet om een overbodige verversing maar om een gemiste. Een bibliotheekset die verandert en terugverandert terwijl het profiel geen rijen heeft las als geen verandering, en de rij die er tussendoor bijkwam hield het antwoord voor bibliotheken die er niet meer waren. Negatieve controle rood | FIXED | `4bd8863e` |
+| CAT6 | `_closeRail` (`lib/screens/tv/tv_unified_catalog_screen.dart:534`) strandt de focus op de drie gridloze staten: `_focusGrid` gaat via `_gridKey.currentState`, en dat is null zolang de skeleton, de foutstaat of een van de twee lege staten getekend wordt. Het pad is bereikbaar omdat `TvCatalogEmptyState` met `onActionNavigateLeft: _openRail` bedraad is, waarna RIGHT of Menu de rail sluit en de ring nergens landt. Hoort bij CAT5, niet bij ROW1 Het mechanisme klopt: `_focusGrid` gaat via `_gridKey.currentState` en dat is null op alle drie de rasterloze staten, dus de aanvraag is daar een stille no-op. Het gevolg treedt niet op. Twee keer niet: de lege staat zet de focus zelf op zijn actie zodra hij het raster vervangt, en de focus scope geeft de ring terug aan het kind dat hij vóór het openen van de rail had. Beide gedragingen zijn van iemand anders, dus ze liggen nu vast in twee tests: de foutstaat, waar de rail alleen via de actie te openen is, en het raster dat onder een open rail vandaan verdwijnt, waar de scope ook geen kaart meer heeft om op terug te vallen. Een eerst geschreven fix met een eigen focusnode is teruggedraaid | NOT REPRODUCED | `609d7cb5` |
+| PREF1 | `SettingsExportService.isExportable` beslist op zijn eigen denylist en raadpleegt `PreferenceSyncPolicyRegistry` niet, terwijl de import de registry wél leest via `isUserScopedBaseKey`. Een sleutel die de registry als `exportable: false` heeft staan gaat daardoor tóch de export in, en een sleutel die de registry device-local noemt komt ongescoopt terug. ROW1d heeft dat voor de drie Home-sleutels dichtgezet door ze in de denylist te herhalen. Op Michels besluit van 6 september sluitend gemaakt: `isExportable` roept nu rechtstreeks `PreferenceSyncPolicyRegistry.isExportable` aan, en de oude denylist (`_denyKeys`/`_denyPrefixes`) is weg. Raakt zo'n twintig `_deviceLocalPref`/`_unifiedCatalogViewPref`-sleutels die eerst wel meegingen in een export. Bijvangst: `test/services/icloud_progress_merge_test.dart` bleek een verouderde aanname te testen, `local_progress_`/`local_watched_` zijn sinds de overstap naar `PreferenceSyncCoordinator` al geen live syncpad meer via deze service. Negatieve controle in `preference_sync_policy_test.dart` bevestigt voor vijf sleutels dat de oude denylist ze nooit noemde | FIXED | `0588c48e` |
+| CI1 | CI stond op `main` sinds 3 september rood en zei daardoor niets meer over een PR. Drie checks. Codegen-drift op `git diff lib/` na `scripts/codegen.sh`: `analysis_options.yaml` zet `formatter.page_width` op 120, build_runner leest dat niet en emitteert op 80, en de kale `dart format .` uit CONTRIBUTING.md trok elk gegenereerd bestand naar 120. Die stap maskeerde vier latere stappen, die op `skipped` bleven staan, waaronder een formatteringsfout in vijf SYS-bestanden. 79 rode tests, waarvan 50 verouderde golden-referenties, 15 in `discover_hero_activation_test.dart` als HERO3-nasleep, 1 achterhaalde landing-golden, en de rest afzonderlijk gesloten als HERO5 en RAIL1. Volledige suite daarna 6335 groen, 6 overgeslagen, 0 rood, en `scripts/ci_checks.sh` groen. Verify - macOS + iOS simulator staat apart als VER-CI | FIXED | `c0f9427c`, `e76e3f06`, `edc30b6b`, `99442f0d`, `213c6e82` |
+| VER-CI | `Verify - macOS + iOS simulator` faalde in alle 34 runs sinds de job bestaat, op twee losse oorzaken. (1) macOS: `flutter build macos --debug` eindigt op "No profiles for 'nl.michelknoop.pleya'"; de hosted runner heeft geen Apple Development-certificaat en de Debug-config vraagt erom, terwijl de driver het geïsoleerde exemplaar toch ad hoc signeert. (2) iOS-simulator: `discover.hero.layout` wachtte op `discover.hero`, maar DEC-097 punt 2 sluit films zonder releasedatum uit en het `/v1`-contract draagt er geen, dus het fixture levert per besluit geen hero; op iPhone en Mac is er dan geen hero-sectie en ook geen fallback-node. Fix: ad-hoc signing via `FLUTTER_XCODE_*` in de workflow-env, en de scenario's `discover.layout` en `discover.layout.macos` bewijzen de DEC-097-fallback op het nieuwe node `discover.continue_watching` (`state.hero_visible == false`, in beeld). Per DEC-083 geen required gate. Bewijs: Verify-run 34031268108 op PR #3, beide stappen groen, de eerste groene run van deze job sinds hij bestaat; `discover.layout.macos` slaagde daarnaast lokaal end-to-end. | FIXED | PR #3 |
+| PLR2 | Het veeg-omlaag-infopaneel wordt het enige spelermenu op TV. Gemeld door Michel op 5 september 2026 als "de geluidsinstellingen lijken niet goed te werken", uitgebreid tot het hele paneel per functie. Besluiten: één menu, vier tabs (Info · Video · Geluid · Ondertitels) met secties Weergave/Afspelen en Sporen/Uitvoer, video speelt door, mockup 33 vervangt mockup 19, DEC-101 na akkoord. Ontwerp in `src/pages/33-speler-paneel-*.html`, goedgekeurd op 5 september na drie correctierondes, DEC-101 accepted. Gebouwd: paneel als glaskaart, vier tabs met twee kolommen, subweergaven, `TvPanelRow`-API, tests in `test/widgets/tv_info_panel_test.dart`, scenario `tvos.player.panel.yaml`. De testrun, `flutter analyze` en het scenario wachten op de Mac; hardware daarna | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
+| PLR3 | Tandwiel en sporenknop in de spelerbalk openen op TV nog de 10-foot `VideoSettingsSheet` en `TrackSheet`, naast het paneel; de sheet toont op tvOS een dode audio-apparaatkiezer omdat `PlatformDetector.isDesktop(context)` op TV waar is (`video_settings_sheet.dart:512,600`). Na PLR2 openen beide knoppen het paneel op het passende tabblad. Gebouwd: `TrackChapterControls.onOpenTvPanel`, `DesktopVideoControls.onTvInfoPanelTabRequested`, `TvInfoPanelRequest`; de sheet-gate is `isDesktopOS()` | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
+| AUD1 | "Maximum volume" in het Audio-tabblad verhoogt alleen `volume-max` (`tv_audio_subtitle_tabs.dart:36-43`). Op TV is `VolumeControl` verborgen (`desktop_video_controls.dart:1163`), dus het volume blijft op 100 en vier drukken doen hoorbaar niets. Wordt Volumeversterking (Uit / +50% / +100% / +200%) die plafond én `volume` schrijft; inert met uitleg tijdens een bitstream. Gebouwd: `TvAudioTab.applyVolumeBoost`, test "volume boost raises the ceiling and then the level" | FIXED, testrun groen, hoorbaarheid HARDWARE ONLY | `5cb5c33`, `de2e554`, `6d64bbd` |
+| AUD2 | Audio- en ondertitelsynchronisatie in het paneel openen zonder gefocust element: `SyncOffsetControl._buildFull` koppelt `sliderFocusNode` niet (`sync_offset_control.dart:341`, alleen `_buildCompact` doet dat op `:249`), dus `_syncSliderNode.requestFocus()` in `tv_info_panel.dart:138` is een no-op. De stapknoppen kleuren met `surfaceContainerHighest`, in dit thema het oppervlak zelf (DEC-053). Gebouwd: `_buildFull` koppelt de node en kleurt met `surfaceElevated` (gedeelde eigenaar); het paneel gebruikt `TvSyncSubView` zonder slider, test "the sync sub-view opens on its value row" | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
+| PNL2 | Bedienbaarheid van het paneel: pills op een kale `Focus` zonder Select, waarderijen cyclen alleen vooruit op Select (snelheid zeven standen), hoofdstukken springt alleen naar de volgende, `t.common.ok` als aan-waarde van de statistiekrij (`tv_video_tab.dart:174`), lange uitlegzinnen als afgekapte trailing-waarde, geen `automationId` op paneel, pills of rijen, en nul widgettests op `TvInfoPanel`. STR1, STR2 en PNL1 sluiten hieronder mee. Gebouwd: pills op `FocusableWrapper`, LEFT/RIGHT via `onStepLeft/Right`, hoofdstukkenlijst, `t.common.on`, uitleg als subregel, ids `player.panel`, `player.panel.tab[…]`, `player.panel.row[…]`, `player.settings_button`, tien widgettests | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
+| PNL3 | Select op een pill die al actief is verplaatste de focus niet naar de rijen. `_focusContent` hangt aan `addPostFrameCallback`, en die vraagt zelf geen frame aan; op dat pad zet `_selectTab` niets dirty, dus er kwam geen frame en de ring bleef op de pill staan. Gevonden door de testronde, niet door de review. Gerepareerd met `_afterNextFrame`, dat de callback plant én `scheduleFrame()` aanroept, voor alle drie de focusverplaatsingen van het paneel | FIXED, testrun groen, hardware open | `6d64bbd` |
 
 ## Wat er per item bekend is
 
@@ -2071,6 +2094,169 @@ Goedgekeurd door Michel op 4 september op D1 en D2. DEC-093 staat op accepted, 1
 hertekend. De bouw is een eigen ronde; de negatieve controle staat in DEC-093, en de
 CAT4-test wordt daarbij herschreven op de rail in plaats van weggegooid.
 
+#### De bouwronde, 5 september
+
+**Negatieve controle eerst.** `test/screens/tv/tv_catalog_filter_rail_test.dart` pompt
+Alle films via de echte `TvMoviesScreen` en stelt de drie eisen uit DEC-093, plus de
+twee maten die het besluit openliet. Tegen de code van vóór deze ronde zijn alle tien
+de assertions rood, en rood op gedrag en niet op een ontbrekend symbool: het bestand
+verwees naar de paneel-key als losse `ValueKey`, zodat het compileerde en dus echt
+draaide. Wat de run zei: LEFT vanaf kolom 0 gaf de focus aan de shell in plaats van
+aan `TvCatalogRailSources`, de kop droeg drie `FocusableWrapper`s, UP vanaf de eerste
+gridrij landde op de kop in plaats van bij de bovenbalk, en het raster stond op zes
+kolommen in beide standen. Na de bouw staat de key op de echte
+`tvCatalogFilterRailKey`, zodat een hernoeming in de productiecode hier alsnog
+omvalt.
+
+**Wie het bezat.** De drie acties zaten in `tv_catalog_header_bar.dart` als
+`TvCatalogHeaderAction` op het gedeelde `LibraryHeaderAction`-model, en
+`tv_unified_catalog_screen.dart` bedraadde ze. De kop is nu een titel met tags en
+draagt geen focusnode meer; de rail staat in `tv_catalog_filter_rail.dart` en wordt
+door hetzelfde scherm bedraad.
+
+**Waarom het raster meebeweegt en niet alleen opschuift.** `TvCatalogGrid.forWidth`
+rondt het kolomaantal af op de beschikbare breedte. Zou de rail als padding buiten de
+rekenaar blijven, dan houdt het raster zijn zes kolommen en valt de zesde buiten
+beeld; dat is precies wat mockup 28 D2 tekent, waar de vijfde kaart tegen de
+rechterrand aan wordt afgesneden. De rekenaar krijgt daarom `reservedLeading` en
+geeft het terug als `TvCatalogGrid.leading`, dat de linker scrollpadding meeneemt. De
+rail staat in een `Stack` boven precies die gereserveerde band, want het raster
+bezit zijn eigen zijranden en die eigenaar wilde ik niet uit elkaar trekken over twee
+widgets.
+
+**De twee maten die DEC-093 openliet.**
+
+De breedte van de rail is 330 referentiepixels, de maat van mockup 28 D2, met 34
+ertussen naar de eerste kolom. Het paneel begint op de zijrand van het raster, 56
+referentiepixels, en dat is de ondergrens van 8.1 zelf; het eindigt op 386, dus geen
+tekst en geen focusring komt in de buitenste band. De focusring van een rijtje ligt
+er nog eens binnen, want het paneel heeft 10 referentiepixels eigen padding en de
+ring staat daar 6 binnen. Wat wél in de band ligt is de streep van de dichte stand,
+op ongeveer 28 referentiepixels van de rand, zoals mockup 28 D1 hem tekent. Dat is
+bewust: 8.1 beschermt tekst en focusringen, en dit is een haarlijn zonder betekenis
+die verloren gaat. Een set die hem afsnijdt verliest de affordance, niet de functie.
+
+Vijf kolommen passen op de 1280x918-ondergrens van CAT1, en ze passen daar niet
+toevallig. Elke term in de kolomsom is dezelfde fractie van de breedte, dus het
+afgeronde kolomaantal hangt niet van het canvas af: dicht is
+`(1808 + 22) / (281 + 22)` gelijk aan 6,04 en open `(1444 + 22) / 303` gelijk aan
+4,84. Zes en vijf, op 1920, op 1280 en op het goldencanvas. De kaart wordt open
+271 referentiepixels breed tegen 281 dicht, vier procent smaller.
+`test/screens/tv/tv_catalog_filter_rail_test.dart` telt de kolommen op beide
+oppervlakken uit de gerenderde kaartrechthoeken, niet uit de rekenaar.
+
+**Wat de traversal nu is.** LEFT vanaf kolom 0 opent de rail met de focus op
+Bronnen. RIGHT en Menu sluiten hem en zetten de focus terug op dezelfde kaart, wat
+werkt omdat het raster zijn nodes op `groupId` bewaart en de kaart de herkolommering
+van vijf naar zes overleeft. UP en LEFT vanuit een rijtje sluiten de rail en vragen
+de bovenbalk aan. UP vanaf de eerste gridrij gaat rechtstreeks naar de bovenbalk,
+want er staat geen kop meer tussen.
+
+Twee dingen die daar onder vandaan kwamen en die geen ontwerpkeuze waren:
+
+1. DOWN vanaf de onderste railrij liep door naar het raster. Een ontbrekende
+   `onNavigateDown` laat `FocusableWrapper` de toets doorgeven aan de gerichte
+   traversal van Flutter zelf, en die stapt opzij het raster in, met een rail die
+   open blijft staan terwijl de focus er niet meer is. `_railEdge` is een expliciete
+   lege handler op de onderste rij.
+2. DOWN vanuit de bovenbalk had niets meer om op te landen. De kop bestond vanaf het
+   eerste frame, een raster niet: de bewaarde voorkeuren worden asynchroon gelezen en
+   tot dan staat het skelet er. `_focusEntry` onthoudt het verzoek en probeert het
+   opnieuw vanuit `_onCatalogChanged` en aan het eind van `_restorePreferences`, en
+   laat het los zodra de pagina op een staat is geland die helemaal geen raster
+   heeft. Zonder die herkansing slikt een koude catalogus de druk.
+
+**De lege staat kon de filters niet meer bereiken.** De rail opent op LEFT vanaf
+kolom 0, en een catalogus waar het filter niets overlaat heeft geen kolom 0. De
+staat die de filterknoppen het hardst nodig heeft was daarmee de enige die er niet
+bij kon. `TvCatalogEmptyState` krijgt daarom `onActionNavigateLeft`, zodat LEFT vanaf
+de ene knop die zo'n staat heeft de rail alsnog opent.
+
+**Refactor die meeliep.** `tv_unified_catalog_screen.dart` stond op 868 regels en
+kreeg er bedrading bij. `TvCatalogSkeletonGrid` en de lege staat zijn er ongewijzigd
+uit gehaald naar `tv_catalog_skeleton_grid.dart` en `tv_catalog_empty_state.dart`;
+de lege staat is daarbij publiek geworden, wat SYS-4 een oppervlak scheelt dat het
+anders zelf had moeten extraheren. Dat haalde er 225 regels uit, de rail zette er
+186 terug, en het scherm staat nu op 829.
+
+Dat is nog steeds ruim over de grens uit CLAUDE.md, en dat blijft zo staan. Wat er
+als volgende uit kan is het activatieblok (`_activate`, `_openContextMenu` en de
+gecachete `_sourceResolver`, samen bijna honderd regels), maar die drie zijn deze
+ronde niet aangeraakt en de resolver houdt schermstaat vast, dus de extractie is
+geen zuivere verplaatsing. Hij hoort bij de eerstvolgende wijziging die het
+activatiepad zelf raakt. `tv_catalog_filter_panel.dart` (857 regels) is om dezelfde
+reden ongemoeid: de rail opent hetzelfde paneel via dezelfde aanroep.
+
+**Blast radius en tests.** Drie suites zijn nieuw en zeven zijn meegegaan.
+Nieuw zijn de negatieve controle hierboven, inmiddels elf assertions;
+`tv_catalog_selection_tags_test.dart`, dat de volgorde, de cap en de aparte status
+van de sorteertag vastlegt buiten een widgetboom om, want die lijst wordt op twee
+plekken getekend en een golden kan er maar één van laten zien; en
+`tv_catalog_filter_rail_panel_test.dart` voor de hoogte van het paneel.
+`tv_catalog_header_reachability_test.dart` heet nu
+`tv_catalog_controls_reachability_test.dart` en bewaakt hetzelfde mechanisme op zijn
+nieuwe plek: de bovenbalk die vraagt voordat er iets te focussen is, en een
+content-scope die een node onthoudt die met de rail is verdwenen.
+`tv_unified_catalog_focus_test.dart` bewijst wat voor elke rij moet gelden in plaats
+van voor de rij waarop de rail opent. `tv_catalog_header_bar_test.dart` meet CAT3's
+rechterrand op de tags; die meting gaat over de `Row` en niet over wat er als tweede
+kind in staat, dus hij overleeft de wissel ongewijzigd.
+`tv_unified_catalog_screen_focus_test.dart` (E13) loopt nu via de rail naar
+Sortering. In `tv_destination_restoration_test.dart` verviel één druk: terugkomen op
+een bestemming landt meteen op de kaart in plaats van een rij erboven. De twee
+goldenbestanden van de catalogus stellen de pagina nu samen zoals het scherm dat
+doet, met de rail erin, en `tv_catalog_films_header_focused` is vervangen door
+`tv_catalog_films_rail_open`.
+
+**Twee randgevallen die eruit kwamen.** Wissen staat alleen in de rail zolang er iets
+gefilterd is, dus de druk erop haalt de rij weg waar de afstandsbediening op staat.
+De ring verdwijnt daar niet van, en dat maakt het makkelijk te missen: Flutter geeft
+hem aan de buur die het overleeft, hier Sortering, een rij verder van waar de kijker
+stond. `_clearFilters` verplaatst de focus nu zelf naar Filters. Met die regel
+weggehaald is de assertie rood met "Actual: TvCatalogRailSort".
+
+En het paneel kon over de onderrand lopen. De kop knipt zijn tags af op drie plus een
+teller, het paneel doet dat bewust niet, dus achttien gekozen genres maakten het
+paneel hoger dan de pagina. Het staat nu in een band die onderaan door de
+overscanmarge van het raster wordt begrensd, met een `Align` erboven zodat het nog
+steeds om zijn eigen rijen heen krimpt, en de inhoud zit in een scrollview die onder
+een losse hoogte meekrimpt en onder een strakke afknipt. Zonder die scrollview zegt
+de test "A RenderFlex overflowed by 13 pixels on the bottom".
+
+**Bewijs.** `scripts/ci_checks.sh` groen, en `test/screens/tv/` plus
+`test/widgets/tv/` groen op 428 tests. De volledige suite houdt 93 falers over: 78 goldens,
+die op macOS structureel rood staan om fontrasterisatie, en vijftien in
+`discover_hero_activation_test.dart`, die met gestashte wijzigingen net zo hard falen
+en dus niet van deze ronde zijn.
+
+Beeld: de dichte en de open stand zijn gerenderd op het goldencanvas en naast mockup
+28 D1 en D2 gelegd, en de open stand daarnaast op 1920x1080, waar de schaal niet meer
+geklemd is. Eén afwijking kwam daaruit en is gefixt: de tags in het paneel werden
+over de volle paneelbreedte uitgerekt, omdat een `Center` in een `Wrap` onder een
+uitgerekte `Column` de hele breedte pakt. `Align(widthFactor: 1)` krimpt hem terug
+naar de tekst.
+
+**De goldens staan open, en dat is een omgevingsgrens.** Negentien
+catalogusgoldens tekenen nu iets anders en moeten opnieuw gegenereerd worden; op
+macOS kan dat niet, want daar is de hele suite al rood van fontrasterisatie. De
+route uit eerdere rondes is een Linux-container, en die is deze keer tot het einde
+uitgeprobeerd. Uitkomst: hij reproduceert de referenties niet. Op ongewijzigde code
+in `ghcr.io/cirruslabs/flutter:3.44.0` onder amd64-emulatie faalden alle negentien,
+met 45 procent van de pixels anders op een pagina vol coverart en 17 procent op een
+paneel. Het beeld zelf klopt; wat verschilt is de dithering van de verlopen in de
+artwork en de antialiasing van de tekst, met uitschieters tot 235 per kanaal in het
+ruispatroon. Een golden die daar wordt weggeschreven is op CI meteen weer rood.
+
+De goldens zijn daarom niet aangeraakt. Wie ze regenereert doet dat op hetzelfde
+Linux als CI: `flutter test --update-goldens test/goldens/tv_unified_catalog_golden_test.dart
+test/goldens/tv_unified_catalog_states_golden_test.dart`, en
+`tv_catalog_films_header_focused.png` vervalt daarbij ten gunste van
+`tv_catalog_films_rail_open.png`. Tot dat gebeurd is staat de goldenstap van CI rood
+op deze negentien, en op niets anders.
+
+**Wat verder niet bewezen is.** Hardware. De rail is nooit op een Apple TV gezien, en
+de Pleya Verify-scenario's raken de catalogus niet, wat VER4 al als gat beschrijft.
+
 
 ### HERO2, de titelband was de hoogte van het logo en niet van de titel
 
@@ -2503,7 +2689,7 @@ Pleya-profiel staan. De negen controles zijn eerst rood aangetoond: A rood op vi
 assertions, C, D, F, G en H rood, en B, E en I bleken al voldaan door de code van
 17 augustus. Voor A, C, D, F, G en H is per fix teruggedraaid dat de controle dan
 weer rood wordt, dus de controles hebben tanden. Twee dingen kwamen er bovenop die
-niet in de analyse stonden: een terugval werd niet alleen doorgegeven maar ook
+niet in de analyse stonden: een terugval werd doorgegeven én
 *weggeschreven* (prioriteit `navigation` triggerde `onAudioTrackChanged`, dus hij
 overschreef de serievoorkeur zelf), en de schakelaar "onthouden" werd door de
 aanroepers gecontroleerd in plaats van door de opslag, waardoor het
@@ -2891,13 +3077,40 @@ y=740,5, bij dezelfde hop 14. `tvos.home.hero-return`, `tvos.home.hero-return-fr
 `tvos.home.full-bleed` en `tvos.home.walk-rails` blijven groen.
 
 Op 5 september 2026 bevestigd op de Apple TV: de melding is weg. Daarmee is HERO4 `VERIFIED`, en
-staat het bewijs op twee benen, de simulator toont de toestand en het herstel, het toestel toont
+staat het bewijs op twee benen: de simulator toont de toestand en het herstel, het toestel toont
 dat de weg die hem opleverde hem niet meer oplevert.
 
 `tvos.home.hero-return-from-route` blijft de tegenhanger en houdt zijn eigen kop: zonder afspelen
 bewaart de gepushte route de scroll, Menu zet de ring terug op de tegel waar hij vandaan kwam, en
 UP brengt de billboard van een teruggekeerde feed weer in beeld. Het verschil tussen die twee
 scenario's is precies waar de melding zat.
+
+### GOLD1, de catalogusgoldens horen op de runner geregenereerd te worden
+
+CAT5 verplaatste de catalogusacties naar een rail links van het raster, en negentien goldens
+tekenen sindsdien een ander scherm. Ze zijn bewust niet bijgewerkt, want een golden die je op je
+eigen machine schrijft is geen referentie voor CI.
+
+Dat is gemeten en niet aangenomen. Op **ongewijzigde** code faalt in
+`ghcr.io/cirruslabs/flutter:3.44.0` onder amd64-emulatie alle negentien, met ongeveer 45 procent
+pixeldiff op een pagina vol coverart. De Flutter-versie is niet de verdachte: framework-revisie en
+engine-hash in de container zijn identiek aan die lokaal. Het is de dithering van de verlopen onder
+emulatie. Een native arm64-variant van dat image bestaat niet, het is single-arch.
+
+Michel koos op 5 september de runner-route. `.github/workflows/goldens.yml` is een
+`workflow_dispatch`-job met de twee catalogusbestanden als standaardinvoer; hij draait
+`flutter test --update-goldens` op dezelfde `ubuntu-latest` als `ci.yml`, verzamelt wat er gewijzigd
+of nieuw is onder `test/goldens/` en zet dat als artifact klaar. Hij commit niets. Een workflow die
+zijn eigen goldens pusht maakt "de referentie past bij de code" waar door constructie, en een golden
+bestaat er juist om door iemand bekeken te zijn.
+
+`tv_catalog_films_header_focused.png` hoort bij een header die CAT5 heeft opgeheven en vervalt voor
+`tv_catalog_films_rail_open.png`. Een verwijdering is geen wijziging die de job kan zien, dus die
+gaat met de hand.
+
+Terzijde, want het kostte een half uur: hangt `docker pull` eindeloos zonder foutmelding, dan is dat
+de `osxkeychain` credential-helper. `DOCKER_CONFIG` naar een map met een lege `config.json` en hij
+loopt door.
 
 ### ROW1, eigen rails op Home
 
@@ -3013,6 +3226,74 @@ zijn aangepast. De bouw is een eigen ronde en komt na CAT5, dat eerder in de tab
 negatieve controle staat in DEC-100: een widgettest op `TvContentFeed` die een eigen rij uit een
 bewaard filter tussen de hubrijen eist, met de hero en Verder kijken op hun vaste plek, rood op de
 huidige code.
+
+### ROW1, de bouwronde
+
+Twee commits, en de grens ertussen is waar de gebruiker iets kan zien: `040c939a`
+laat een bewaarde rij bestaan en tekenen, `db1bc994` laat hem maken.
+
+**De negatieve controle stond eerst.** `test/screens/tv/tv_home_custom_rows_test.dart`
+is voor de code geschreven en was rood op de assertie, niet op een ontbrekend symbool:
+
+```
+Expected: ['Continue Watching', 'Nieuwe sci-fi', 'Recently Released', 'Recently Added']
+  Actual: ['Continue Watching', 'Recently Released', 'Recently Added']
+```
+
+Het bewaarde filter zit als JSON in de voorkeuren van het profiel, precies zoals
+een eerdere sessie het achtergelaten zou hebben, en de fake client paget een echte
+library. Dat de rij het filter volgt is daarmee een uitspraak over de merge en niet
+over de fixture. Na de bouw is er één regel aan dat bestand veranderd, de registratie
+van de nieuwe provider; geen enkele assertie.
+
+**Twee identiteiten per rij, en dat was bijna een bug.** In de ruimte van
+`HomeLayoutProvider` heet een eigen rij `#custom:<id>`; een serverId kan niet met
+`#` beginnen, dus botsen met `serverId:identifier` kan niet. In de ruimte van
+`UnifiedMediaHub` heet dezelfde rij `hub:pleya:custom:<id>`, want daar hangen
+focusgeheugen en herstel aan. De eerste versie liet de tweede naam ook voor de
+layout gelden, via de hubId-fallback in `homeLayoutIdsOf`. Het paneel schreef dan
+`hub:pleya:custom:<id>` in de volgorde terwijl `removeCustomRow` `#custom:<id>`
+opruimde: een verbergactie die niet terug te draaien was, en een volgorde-entry die
+zijn rij overleefde. De verplaats-test viel er meteen over. De rij noemt zijn
+layout-id nu zelf via `contributingRowIds`.
+
+**Recent uitgebracht is de layout in gegaan.** Dat is geen bijvangst maar wat
+mockup 32 B tekent: hij krijgt daar dezelfde verplaats- en verbergknoppen als een
+backendrij, en DEC-100 (4) zet precies twee rijen vast, Uitgelicht en Verder kijken.
+Hij droeg zijn contributing row id al uit `projectHubs`, dus er is niets voor
+uitgevonden; hij bereikte de layout alleen nooit omdat `_rows` hem ernaast zette.
+Een gesynthetiseerde rij zonder contributors antwoordt sindsdien op zijn eigen
+`hubId`, met een expliciete guard tegen de vacuous `every` die anders elke
+gesynthetiseerde rij zou verbergen zodra er iets verborgen was.
+
+**Wat er niet opnieuw gebouwd is.** De filterstap opent de panelen van de catalogus
+zelf op de juiste sectie, en de sorteerstap het sorteerpaneel. Een tweede genrelijst
+loopt bij de eerste gedeelde bugfix uit de pas. Het voorbeeld in stap 3 draait
+dezelfde `HomeCustomRowLoader` met dezelfde limiet als de rij zelf, dus wat C3 tekent
+is wat Home tekent, en de teller is die van 10.7: exact zodra elke bron uitgeput is,
+anders "N geladen".
+
+**Bestandsgrootte.** `tv_content_feed.dart` liep met de voetregel erbij naar 709
+regels en staat weer op 626, met de rijsamenstelling in `tv_home_row_assembly.dart`.
+Die is gedeeld met het paneel, zodat de feed en het paneel niet elk hun eigen
+volgorde kunnen afleiden: een paneel dat een rij ergens neerzet waar de feed hem
+vervolgens anders plaatst is precies het soort verschil dat niemand als bug meldt.
+Het paneel en de wizard hebben hun tegels en onderdelen in eigen bestanden.
+
+**Wat de schermafbeeldingen erbij deden.** Het paneel en de drie wizardstappen zijn
+via het goldenharnas op de 1038x584-ondergrens gerenderd en bekeken. Drie dingen
+kwamen daar pas uit. Het paneel was te smal: op de gedeelde panelbreedte werd de
+tekstkolom van een rij tot "Nie..." en "Own ..." geknepen, dus de regel zei niet meer
+welke rij het was. De soortkeuze in stap 1 stond in rode pillen, want de gekozen staat
+van `FocusableFilterChip` is het merkaccent, en dat was het enige rode ding op een
+monochrome pagina. En het naamveld erfde de Material-typografie, waardoor het op een
+ander formaat stond dan het label erboven. Alle drie gerepareerd in `a721013d`.
+
+**Wat open blijft.** ROW1b, de pointerkant. En de tegel "Alle N, in Alle films" als
+laatste kaart van een eigen rij (DEC-100 (2)) staat er nog niet: dat is een extra
+tegel áchter de laatste groep in `TvDiscoveryRail`, en die raakt `itemCount`, de
+rechterrandstop, de positie in de semantics, de focusnodes en de goldens van een
+widget die al door vijf testbestanden bewaakt wordt. Die staat als ROW1c in de tabel.
 
 ### RAIL1, het fase-6 railcontract is bij een verhuizing achtergebleven
 
@@ -3200,3 +3481,120 @@ deze twee tests, verder ongewijzigd).
 **Nog niet op hardware bevestigd dat dit Michels servers daadwerkelijk laat verschijnen.** De fix
 verhelpt het pad dat het device-log aanwijst, maar de volgende TV-build moet tonen dat `G-Plexflix` nu
 wél in de Servers-categorie staat. Zet SRC1 pas op VERIFIED na die run.
+
+### PLR2, het paneel per functie
+
+Gemeld door Michel op 5 september 2026: "ik heb het idee dat de geluidsinstellingen niet goed
+werken", met de vraag het hele veeg-omlaag-menu per functie na te kijken en te zeggen wat er
+ontbreekt. De audit staat hieronder; de bevindingen die werk opleveren hebben elk een eigen
+regel (PLR3, AUD1, AUD2, PNL2), zodat ze los een eindstatus krijgen.
+
+**Drie menu's naast elkaar.** Op de Apple TV bestaan het veeg-omlaag-paneel (`TvInfoPanel`),
+de 10-foot `VideoSettingsSheet` achter het tandwiel en de `TrackSheet` achter de sporenknop
+tegelijk. Ze overlappen voor de helft en spreken elkaar tegen: de sheet heeft zoom, versie en
+kwaliteit, slaaptimer, HDR, autoplay en shaders die het paneel mist, plus een apparaatkiezer die
+op tvOS niets kan kiezen; het paneel heeft Info, sfeerintensiteit in vier standen en de
+rendering-badge die de sheet mist. Het paneel is bovendien alleen met een veeg te openen
+(`key_events.dart:315-322`), en de simulator heeft geen aanraakvlak. Dat verklaart waarom er
+nul tests op staan en waarom Pleya Verify het niet kan adresseren.
+
+**Wat de audio-rijen doen.** Sporen kiezen werkt (`selectAudioTrack`, coordinator volgt de
+codec). Uitvoermodus en prioriteit werken (`audioOutputMode`, `audioPriority`,
+`AudioOutputCoordinator.onModeChanged`); Auto bitstreamt op tvOS alleen onder "Original Dolby"
+op een digitale poort met ac3/eac3, en een mislukte bitstream valt terug op PCM met een
+snackbar. Volume gelijkmaken en harde geluiden dempen werken via de arbiter en zijn inert
+tijdens een bitstream (DEC-013). De twee rijen die niet doen wat ze beloven zijn "Maximum
+volume" (AUD1) en de synchronisatie-subweergave (AUD2).
+
+**Besluiten van Michel, 5 september.** Eén menu op TV: het paneel; tandwiel en sporenknop worden
+ingangen op een tabblad. Een werkende volumeboost in plaats van het plafond. Mockup 19 opnieuw,
+want hij bevat een Wachtrij-pill en een "Onthouden voor deze titel"-schakelaar die met PB-9 en
+DEC-096 botsen, geeft de geluidsuitvoer geen plek, kopieert de globale stijlpagina half en tekent
+maar één stand. De video speelt door. Vier tabs: Info · Video · Geluid · Ondertitels, met Weergave
+en Afspelen als secties van Video en Sporen en Uitvoer als secties van Geluid.
+
+**Mockup 33** (`docs/assets/tvos-unified/src/pages/33-speler-paneel-*.html`, renders in
+`docs/assets/tvos-unified/mockups-2026-09-05/`, hier geschoten met een plaatshouder als
+backdrop omdat `art/` niet in git staat; de definitieve schoten komen van de Mac). Negen
+standen: A Info, B Video, C Geluid, D Ondertitels, E synchronisatie-subweergave, F
+hoofdstukken-subweergave, G slaaptimer-subweergave, H Geluid tijdens een Dolby-bitstream, I de
+spelerbalk met tandwiel en sporenknop als ingangen. Goedkeuring per stand, daarna DEC-101 en de
+bouwronde in de volgorde van het plan (negatieve controle eerst, kleine commits, SHA in de tabel).
+
+**Goedgekeurd door Michel op 5 september 2026**, letterlijk "Akkoord", na drie correctierondes op
+de negen standen: het onzichtbare vinkje (tv.css kleurt elk rij-icoon ink-2, ook op de witte
+schijf), de stapchevrons in twee maten, de focusring die achter de volgende rij verdween (rijen op
+8 px terwijl de ring 12 px uitsteekt), en het oordeel "het voelt nog cheap", waarna de vlakke band
+met elf losse dozen een zwevende glaskaart met gegroepeerde rijen en een witte focusvulling werd.
+Vastgelegd als DEC-101. De bouw volgt de volgorde van het plan; per stap een regel met SHA.
+
+**Bouwronde, 5 september.** In één reeks, omdat Flutter in deze container ontbreekt en de
+negatieve controles dus pas op de Mac rood-dan-groen te tonen zijn. Wat er staat:
+`TvPanelRow` met `kind` (action, choice, value, toggle), `subtitle`, `onStepLeft/Right`,
+`canRequestFocus` en automation-ids, en `TvPanelGroup`, `TvPanelColumns`, `TvPanelStaticRow`;
+het paneel als zwevende kaart met `BackdropFilter` (`kTvPanelBlurSigma`, op hardware te wegen),
+pills op `FocusableWrapper` met Select, een subweergave-enum met `TvSyncSubView` (geen slider),
+`TvChapterSubView`, `TvSleepTimerSubView` (op de service, niet op `SleepTimerContent`, die
+zonder overlay-scope de spelerroute popt), `TvShaderSubView` en `VersionQualityPicker` met
+`onDismiss`; Video met Weergave en Afspelen, Geluid met Sporen en Uitvoer, Ondertitels met Sporen
+en Stijl en timing; `TvInfoPanelRequest` van tandwiel, sporenknop en hoofdstukkenknop naar het
+paneel; `onSetBoxFitMode` door `TrackControlsState`, `VideoControls` en `VideoFilterManager`;
+`forcedTrackSuffix`; de sheet-gate op `isDesktopOS()`; de i18n-sleutels in en en nl met de
+gegenereerde klassen met de hand in het slang-formaat bijgewerkt, zodat `dart run slang` op de
+Mac een lege diff hoort te geven.
+
+**Reviewronde, `de2e554`.** Vijf bevindingen, alle vijf terecht, alle vijf gesloten. Een
+subweergave zonder eigen landingsnode (versie en kwaliteit komt uit de gedeelde picker) opende
+met de ring nergens; de fallback loopt hem nu naar de eerste focusbare die er werkelijk staat.
+LEFT en RIGHT klemmen sindsdien waar Select cyclet: de ontbrekende callback op de rand valt door
+naar de traversal, zodat een kolom met alleen waarderijen te verlaten is, en dat is precies het
+Video-tabblad op een Android TV; het lost tegelijk op dat RIGHT op +200% terugsprong naar Uit.
+Een hoofdstuksprong meldt zich weer via `onSeekCompleted`, de enige weg naar
+`WatchTogetherProvider.onLocalSeek`. De terugpijl van een subweergave was een kale `IconButton`
+zonder eigen focus (DEC-053) en is nu `TvPanelBackButton`. Twee tests erbij: het klemmen aan de
+randen, en de gemelde hoofdstuksprong.
+
+**Testronde, 6 september.** De reeks is alsnog gedraaid, niet op de Mac maar in de container:
+de Flutter-SDK uit `.fvmrc` (3.44.0) is er los naast gezet, dus `check_flutter_version.sh` klaagt
+niet en `dart format` geeft dezelfde uitvoer als CI. Wat er groen staat: `flutter analyze` zonder
+errors of warnings (48 infos), `dart format` over lib en test zonder wijziging, unused code en
+unused files leeg, en de volledige suite op 6260 geslaagd, 6 overgeslagen, 66 rood. Die 66 zijn de
+nullijn van main, geen ervan raakt dit werk: 51 goldens en 15 uit
+`discover_hero_activation_test.dart`.
+
+Drie dingen kwamen eruit die er in de bouw- en de reviewronde niet uit kwamen.
+
+De eerste is een echt defect, en het staat als PNL3 in de tabel: Select op een pill die al actief
+is verplaatste de focus niet. Alle drie de focusverplaatsingen van het paneel hingen aan
+`addPostFrameCallback`, en die plant een callback voor de volgende frame zonder er een aan te
+vragen. Op dat ene pad zet `_selectTab` niets dirty, dus er kwam geen frame en de callback bleef
+staan. In de test valt dat hard op, want `WidgetTester.pump` tekent alleen als er een frame
+gepland is; achter een spelend beeld tekent tvOS toch en zie je het niet, achter een gepauzeerd
+beeld wel. `_afterNextFrame` vraagt de frame nu expliciet aan.
+
+De tweede was de test zelf. De snelheidstest drukte twee keer RIGHT zonder frame ertussen, en de
+rij leest zijn waarde uit `player.streams.rate`: beide drukken stapten dus vanaf dezelfde oude
+waarde. Op een afstandsbediening zit er altijd een frame tussen; in de test moet die er staan.
+
+De derde is de gedeelde eigenaar uit PLR3. De sheet-gate ging van `isDesktop(context)` naar
+`isDesktopOS()`, en daarmee toont de sheet op een Linux-testhost wel degelijk de
+audio-apparaatrij, met "Auto" als waarde. `video_settings_sheet_test.dart` zocht "Auto" in de hele
+boom en vond er twee. De assertie leest hem nu uit de rij zelf, want de test gaat over de
+uitvoermodus en niet over hoe vaak het woord voorkomt.
+
+**Wat CI hierna nog rood houdt, en waarom het niet van deze branch is.** Code Analysis breekt op
+`Verify generated files committed`, en Unit Tests op dezelfde 66. Beide zijn op main al maanden
+rood en zijn hier gereproduceerd: `build_runner` schrijft gegenereerde code op 80 kolommen terwijl
+de gecommitte bestanden op 120 staan, dus `git diff --exit-code lib/` slaat aan zonder dat er iets
+verouderd is. PR #1 heeft dat als CI1 al opgelost (`e76e3f06`, plus `99442f0d`, `bd22a756` en
+`213c6e82` voor de hero- en goldensuites) en staat daar groen. Die reeks raakt 121 bestanden en
+hoort niet in deze PR overgezet te worden; zodra CI1 op main staat, gaat deze branch met een merge
+mee.
+
+**Wat hier niet kon draaien.** Het Verify-scenario `tvos.player.panel.yaml` vraagt een macOS- of
+tvOS-simulatorbuild, dus dat bewijs ontbreekt nog, net als `/pleya-tvbuild`. Elke regel hierboven
+gaat pas van "testrun groen" naar `VERIFIED` als die twee er zijn.
+
+**Hardware only.** De veeg-opening, de bitstream-stand (H) en de hoorbaarheid van de boost en
+de synchronisatiestap zijn alleen op het toestel te toetsen; STATUS.md meldt dat er nog geen
+Apple TV-audiolog is.

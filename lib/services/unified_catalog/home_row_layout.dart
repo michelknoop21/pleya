@@ -18,15 +18,21 @@
 ///   earliest row the user dragged it from. Ranking by the *last* would push a
 ///   merge below rows the user had deliberately placed under one of its halves.
 ///
-/// A row with no contributing ids at all — the synthesized Continue Watching
-/// and recent-films rows — is never hidden and never ranked; it keeps its
-/// incoming position, which is the position the projection provider gave it.
+/// A synthesized row has no contributing hub ids, so it answers for itself:
+/// its own [UnifiedMediaHub.hubId] is its name in the layout space. That is
+/// what makes Recent uitgebracht orderable and hideable alongside the backend
+/// rows (DEC-100 (4) locks exactly two rows, Uitgelicht and Verder kijken, and
+/// Recent uitgebracht is not one of them), and what lets a row the viewer
+/// defined take part in the same order list as everything else. A synthesized
+/// row the stored layout has never seen still keeps its incoming position,
+/// because an id absent from both lists ranks last and hides nothing.
 ///
 /// Pure, and top-level rather than a method on the provider, because it is the
 /// product rule and not the storage: `test/services/home_row_layout_test.dart`
 /// asserts it against sets and lists, with no provider and no widget.
 library;
 
+import '../../media/media_hub.dart';
 import '../../media/unified/unified_media_hub.dart';
 
 /// Applies [hiddenRowIds] and [order] — both in `HomeLayoutProvider`'s legacy
@@ -42,7 +48,7 @@ List<UnifiedMediaHub> applyHomeLayoutToUnifiedRows(
       ? List.of(rows)
       : [
           for (final row in rows)
-            if (row.contributingRowIds.isEmpty || !row.contributingRowIds.every(hiddenRowIds.contains)) row,
+            if (!homeLayoutIdsOf(row).every(hiddenRowIds.contains)) row,
         ];
 
   if (order.isEmpty) return visible;
@@ -50,7 +56,7 @@ List<UnifiedMediaHub> applyHomeLayoutToUnifiedRows(
   final rank = {for (var i = 0; i < order.length; i++) order[i]: i};
   int rankOf(UnifiedMediaHub row) {
     var best = order.length;
-    for (final id in row.contributingRowIds) {
+    for (final id in homeLayoutIdsOf(row)) {
       final r = rank[id];
       if (r != null && r < best) best = r;
     }
@@ -64,3 +70,34 @@ List<UnifiedMediaHub> applyHomeLayoutToUnifiedRows(
   indexed.sort((a, b) => a.$2 != b.$2 ? a.$2.compareTo(b.$2) : a.$3.compareTo(b.$3));
   return [for (final e in indexed) e.$1];
 }
+
+/// The names [row] answers to in `HomeLayoutProvider`'s id space.
+///
+/// The contributing hubs for a projected row, and the row's own id for a
+/// synthesized one. Never empty, so "hidden when every name is hidden" cannot
+/// be vacuously true — an empty list would make `every` return true and hide
+/// every synthesized row the moment anything at all was hidden.
+///
+/// Public because the customise panel writes the order back through it: a row's
+/// position in the list has to become *every* id it answers to, or a merged
+/// row's rank stops matching where the viewer put it.
+List<String> homeLayoutIdsOf(UnifiedMediaHub row) =>
+    row.contributingRowIds.isEmpty ? [row.hubId] : row.contributingRowIds;
+
+/// A viewer-defined Home row's projected content (ROW1b), in the [MediaHub]
+/// shape the phone/desktop feed and the settings screen already draw.
+///
+/// [row]'s own contributing id (its `HomeCustomRow.layoutRowId`, e.g.
+/// `#custom:<id>`) becomes the hub's [MediaHub.identifier], not a synthesized
+/// title or [UnifiedMediaHub.hubId]. That is what lets `homeRowId` resolve it
+/// back to the same id `HomeLayoutProvider` already stores hide/order
+/// preferences against, rather than wrapping it in the `serverId:identifier`
+/// shape a real backend hub uses.
+MediaHub mediaHubFromCustomRow(UnifiedMediaHub row) => MediaHub(
+  id: row.hubId,
+  identifier: row.contributingRowIds.isNotEmpty ? row.contributingRowIds.first : row.hubId,
+  title: row.title,
+  type: row.kind.name,
+  items: [for (final group in row.groups) group.representativeSource.item],
+  size: row.groups.length,
+);

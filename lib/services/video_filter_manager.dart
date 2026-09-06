@@ -156,8 +156,11 @@ class VideoFilterManager {
   double resetZoom() => setZoomScale(1.0);
 
   /// Cycle through BoxFit modes: contain → cover → fill → contain (for button)
-  void cycleBoxFitMode() {
-    _boxFitMode = (_boxFitMode + 1) % 3;
+  void cycleBoxFitMode() => setBoxFitMode((_boxFitMode + 1) % 3);
+
+  /// Set a BoxFit mode directly: 0 contain, 1 cover, 2 fill.
+  void setBoxFitMode(int mode) {
+    _boxFitMode = mode.clamp(0, 2);
     onBoxFitModeChanged?.call(_boxFitMode);
     updateVideoFilter();
   }

@@ -3,7 +3,7 @@
 ///
 /// One screen for both catalogs, because they differ in exactly two things a
 /// parameter can carry: which [MediaKind] they browse and what the heading
-/// says. Everything else — the header actions, the grid, paging, the four
+/// says. Everything else (the controls rail, the grid, paging, the four
 /// content states, activation, persisted preferences — is identical by
 /// contract, and two copies of it would drift within a phase.
 ///
@@ -20,13 +20,35 @@
 /// two pages returns to a live merge with its pages and its scroll position
 /// intact rather than restarting one.
 ///
-/// ## The three states the header can be in
+/// ## Where the remote can go (hoofdstuk 7.4, rewritten by CAT5)
 ///
-/// Hoofdstuk 7.4 fixes the traversal: topnav → header actions → grid, and back
-/// up. On the current root shell "topnav" is the sidebar, which fase 7 replaces
-/// without changing anything here. UP from the first grid row returns to the
-/// header action the user last used — not always the first one, which is the
-/// fase-5A interaction fix this page and Bibliotheken share.
+/// Until 4 September 2026 the traversal was topnav → three header actions →
+/// grid, and back up. [DEC-093](../../../docs/DECISIONS.md#dec-093) moved those
+/// actions into a rail left of the grid, and the shape is now:
+///
+/// ```
+///            topnav
+///              │ DOWN            UP │
+///              ▼                    │
+///   rail ◀── LEFT ── grid ──────────┘
+///        ── RIGHT/Menu ──▶
+/// ```
+///
+/// Two consequences worth stating, because both were load-bearing before:
+///
+/// * **DOWN out of the topnav lands on a card**, not on a control. That is what
+///   CAT4 spent a whole finding forbidding, but CAT4 was about a *header* the
+///   viewer could no longer reach; with the controls one LEFT away from column
+///   0 there is nothing left to be cut off from, and landing on the content is
+///   the honest answer. `_focusEntry` is where that happens, and it waits for
+///   the grid rather than assuming it is there.
+/// * **UP from the first grid row goes straight to the topnav.** There is no
+///   header row in between any more, so 7.4's "Up vanaf de eerste gridrij gaat
+///   naar de dichtstbijzijnde headeractie" has nothing to land on.
+///
+/// The rail is never a dead end: UP and LEFT out of it close it and reach for
+/// the topnav, RIGHT and Menu close it and put the remote back on the card it
+/// came from.
 library;
 
 import 'dart:async';
@@ -35,6 +57,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../focus/focus_theme.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
 import '../../media/media_backend.dart';
@@ -57,25 +80,32 @@ import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/global_key_utils.dart';
 import '../../utils/layout_constants.dart';
-import '../../widgets/library_header_bar.dart';
+import '../../widgets/tv/tv_catalog_empty_state.dart';
 import '../../widgets/tv/tv_catalog_filter_panel.dart';
+import '../../widgets/tv/tv_catalog_filter_rail.dart';
 import '../../widgets/tv/tv_catalog_header_bar.dart';
-import '../../widgets/tv/tv_panel_primitives.dart';
+import '../../widgets/tv/tv_catalog_selection_tags.dart';
+import '../../widgets/tv/tv_catalog_skeleton_grid.dart';
 import '../../widgets/tv/tv_catalog_sort_panel.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
-import '../../widgets/tv/tv_unified_media_card.dart';
 import '../../widgets/tv/tv_unified_media_grid.dart';
 import 'tv_media_source_picker_route.dart';
 import 'tv_unified_activation.dart';
 import 'tv_unified_context_menu.dart';
 
-/// Which header action UP from the grid returns to (hoofdstuk 7.4 read
-/// together with 7.6's focus memory).
-enum _HeaderSlot { sources, filters, sort }
-
 /// How many frames [_TvUnifiedCatalogScreenState._scheduleRestore] waits for a
 /// scrollable to exist before giving up.
 const int _restoreAttempts = 8;
+
+/// What [TvDestinationFocusMemory.focusedElementId] carries for this screen: a
+/// rail that was open when the viewer left the destination is open when they
+/// come back.
+///
+/// It used to carry the last used header action. That memory has no subject any
+/// more (DEC-093 has the rail always open on Bronnen), and the field is the
+/// only per-destination place this screen has to keep a fact that is neither a
+/// card nor a scroll offset.
+const String _railOpenToken = 'rail';
 
 class TvUnifiedCatalogScreen extends StatefulWidget {
   const TvUnifiedCatalogScreen({
@@ -123,18 +153,24 @@ class TvUnifiedCatalogScreen extends StatefulWidget {
 class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> implements FocusableTab {
   final _gridKey = GlobalKey<TvUnifiedMediaGridState>();
   final _scrollController = ScrollController();
-  final _sourcesFocus = FocusNode(debugLabel: 'TvCatalogSourcesAction');
-  final _filtersFocus = FocusNode(debugLabel: 'TvCatalogFiltersAction');
-  final _sortFocus = FocusNode(debugLabel: 'TvCatalogSortAction');
+  final _sourcesFocus = FocusNode(debugLabel: 'TvCatalogRailSources');
+  final _filtersFocus = FocusNode(debugLabel: 'TvCatalogRailFilters');
+  final _sortFocus = FocusNode(debugLabel: 'TvCatalogRailSort');
+  final _clearFocus = FocusNode(debugLabel: 'TvCatalogRailClear');
 
   /// The user's stored setup. Kept whole: what is *applied* is this constrained
   /// to the live capabilities, which change with the source restriction.
   UnifiedCatalogPreferences _preferences = UnifiedCatalogPreferences.defaults;
   bool _preferencesLoaded = false;
 
-  /// Hoofdstuk 7.6: UP from the grid returns to the action the user last
-  /// operated, so a second visit to Filters does not start at Sources again.
-  _HeaderSlot _lastUsedSlot = _HeaderSlot.filters;
+  /// Whether the controls rail is open (CAT5). Closed is the resting state:
+  /// Michel's condition on choosing the rail was "dan moet dit niet altijd in
+  /// beeld blijven deze zijbalk".
+  bool _railExpanded = false;
+
+  /// Set while the screen still owes someone an entry focus: DOWN out of the
+  /// topnav on a catalog whose grid has not been built yet. See [_tryEntryFocus].
+  bool _wantsEntryFocus = false;
 
   /// The card the remote is on, by stable `groupId` — mirrored out of the grid
   /// so it can be handed on after the grid itself is gone.
@@ -162,9 +198,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     _scrollController.addListener(_rememberScrollOffset);
     final place = widget.restoreFrom;
     _focusedGroupId = place.groupId;
-    if (place.focusedElementId case final String slot) {
-      _lastUsedSlot = _HeaderSlot.values.firstWhere((s) => s.name == slot, orElse: () => _lastUsedSlot);
-    }
+    _railExpanded = place.focusedElementId == _railOpenToken;
     if (!place.isEmpty) _pendingRestore = place;
     unawaited(_restorePreferences());
   }
@@ -178,7 +212,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   void deactivate() {
     widget.onRemember?.call(
       TvDestinationFocusMemory(
-        focusedElementId: _lastUsedSlot.name,
+        focusedElementId: _railExpanded ? _railOpenToken : null,
         groupId: _focusedGroupId,
         scrollOffset: _scrollOffset,
       ),
@@ -194,12 +228,19 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     _sourcesFocus.dispose();
     _filtersFocus.dispose();
     _sortFocus.dispose();
+    _clearFocus.dispose();
     super.dispose();
   }
 
   void _onCatalogChanged() {
     if (mounted) setState(() {});
     _scheduleRestore();
+    if (_wantsEntryFocus) {
+      // After the frame this rebuild produces: the grid's `State` only exists
+      // once it has been built, and an entry focus asked for before the first
+      // page landed has nothing to land on yet.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _tryEntryFocus());
+    }
   }
 
   void _rememberScrollOffset() {
@@ -253,6 +294,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       _preferences = pruned;
       _preferencesLoaded = true;
     });
+    if (_wantsEntryFocus) WidgetsBinding.instance.addPostFrameCallback((_) => _tryEntryFocus());
     if (pruned != stored) unawaited(UnifiedCatalogQueryStore.write(widget.catalog.query.kind, pruned));
     _scheduleRestore();
     await _applyQuery(startIfNeeded: true);
@@ -431,10 +473,6 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   // ---------------------------------------------------------------------------
 
   Future<void> _openFilters({required TvCatalogFilterSection initialSection}) async {
-    _lastUsedSlot =
-        initialSection == TvCatalogFilterSection.servers || initialSection == TvCatalogFilterSection.libraries
-        ? _HeaderSlot.sources
-        : _HeaderSlot.filters;
     final result = await showTvCatalogFilterPanel(
       context,
       selection: _preferences.filters,
@@ -448,7 +486,6 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   }
 
   Future<void> _openSort() async {
-    _lastUsedSlot = _HeaderSlot.sort;
     final result = await showTvCatalogSortPanel(context, selected: _preferences.sort);
     if (result == null || !mounted) return;
     await _updatePreferences(_preferences.copyWith(sort: result));
@@ -460,18 +497,6 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
 
   void _focusGrid() => _gridKey.currentState?.focusGrid();
 
-  /// UP from the grid: the last used action, or Filters as the standing
-  /// default — it is the one that changes the page most and the one hoofdstuk
-  /// 10.6 gives the count badge to.
-  void _focusHeader() {
-    final node = switch (_lastUsedSlot) {
-      _HeaderSlot.sources => _sourcesFocus,
-      _HeaderSlot.filters => _filtersFocus,
-      _HeaderSlot.sort => _sortFocus,
-    };
-    if (node.canRequestFocus) node.requestFocus();
-  }
-
   /// UP or LEFT out of the header, into the root navigation.
   ///
   /// Hoofdstuk 7.4 asks for UP; the shell resolves what is up there. On the
@@ -479,35 +504,99 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// rail — see [TvRootShell] on why one method serves both.
   void _focusSidebar() => MainScreenFocusScope.of(context, listen: false)?.focusSidebar();
 
-  /// LEFT out of the grid's first column (CAT4): the one-press escape to the
-  /// bar the grid's own edge takes without walking back up through the
-  /// header.
+  // ---------------------------------------------------------------------------
+  // The rail (CAT5 / DEC-093)
+  // ---------------------------------------------------------------------------
+
+  /// LEFT off column 0, and LEFT off the one action an empty state has.
   ///
-  /// `_focusHeader()` first is not cosmetic. `TvRootShell.onFocusContent`'s
-  /// `restorePreviousFocus` branch restores through Flutter's own
-  /// `FocusScopeNode.focusedChild` — the content scope's raw memory of
-  /// whichever node it last held — not through [focusActiveTabIfReady]. A
-  /// grid card that reaches the bar this way, never having passed through the
-  /// header, leaves the card as that memory, so the next DOWN out of the bar
-  /// restores straight to the card and never reaches the header at all. Hoofdstuk
-  /// 7.4 documents the header as the one thing DOWN out of the bar always
-  /// restores to, with the card "one step further down" and the screen's own
-  /// responsibility ([_focusGrid]'s `initialFocusedGroupId`) — so the content
-  /// scope's memory has to agree, which means putting the header in focus
-  /// before handing off. `FocusNode.requestFocus()` updates the enclosing
-  /// scope's remembered child synchronously, so the bar still receives the
-  /// ring on this same press.
-  void _exitGridToSidebar() {
-    _focusHeader();
+  /// The focus request is deferred a frame on purpose: the rail's nodes are
+  /// only attached once the panel has been built, and `requestFocus` on a node
+  /// that is not in the tree yet does nothing at all, and silently, which is the
+  /// shape of bug this correctieronde keeps finding.
+  void _openRail() {
+    if (_railExpanded) return;
+    setState(() => _railExpanded = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_railExpanded) return;
+      // Always Bronnen, per DEC-093, not the row last used. The rail is a
+      // short list the eye reads top to bottom, and opening it halfway down
+      // costs more than the press it saves.
+      if (_sourcesFocus.canRequestFocus) _sourcesFocus.requestFocus();
+    });
+  }
+
+  /// RIGHT or Menu out of the rail: back to the card it was opened from.
+  ///
+  /// [_focusGrid] prefers the remembered `groupId`, and the grid keys its nodes
+  /// on that rather than on position, so the card survives the re-column from
+  /// five back to six.
+  void _closeRail() {
+    if (!_railExpanded) return;
+    setState(() => _railExpanded = false);
+    _focusGrid();
+  }
+
+  /// UP or LEFT out of the rail: the topnav, with the rail closed behind it.
+  ///
+  /// Closing is not cosmetic. A rail left open with the focus somewhere else
+  /// keeps a column off the grid for no reason the viewer can see, and DOWN out
+  /// of the topnav would then land back in it rather than on the content.
+  /// DOWN off the bottom of the rail: nothing at all.
+  ///
+  /// Explicit rather than left null. `FocusableWrapper` treats a missing
+  /// handler as "not mine" and falls through to Flutter's own directional
+  /// traversal, which from the last rail row walks sideways into the grid, and
+  /// leaves the rail standing open with the focus somewhere else, which is the
+  /// one state [_leaveRailUpwards] exists to prevent.
+  void _railEdge() {}
+
+  void _leaveRailUpwards() {
+    if (_railExpanded) setState(() => _railExpanded = false);
     _focusSidebar();
   }
 
-  /// DOWN out of the top navigation, per hoofdstuk 7.4: "Down vanaf topnav
-  /// focust de eerste headeractie."
+  /// DOWN out of the top navigation.
+  ///
+  /// Hoofdstuk 7.4 said "focust de eerste headeractie"; since CAT5 there is no
+  /// header action, so this lands on the content: the rail if it is open,
+  /// otherwise the card the viewer was last on.
   @override
   void focusActiveTabIfReady() {
     if (!mounted) return;
-    _focusHeader();
+    _wantsEntryFocus = true;
+    _tryEntryFocus();
+  }
+
+  /// Puts the remote on the content, once there is content to put it on.
+  ///
+  /// The header used to make this trivial: it exists from the first frame, so
+  /// `focusActiveTabIfReady` could always land somewhere. A grid cannot promise
+  /// that, because the stored preferences are read asynchronously and the skeleton
+  /// stands in until the first page arrives, so the request is remembered and
+  /// retried from the two places that produce a new frame with a grid in it:
+  /// [_onCatalogChanged] and the end of [_restorePreferences].
+  ///
+  /// It gives up once the page has settled on a state that has no grid at all.
+  /// Those states focus their own action ([TvCatalogEmptyState] autofocuses
+  /// it), and a request left standing would steal the focus back off it the
+  /// moment a late page arrived.
+  void _tryEntryFocus() {
+    if (!mounted || !_wantsEntryFocus) return;
+    if (_railExpanded) {
+      if (_sourcesFocus.canRequestFocus) {
+        _wantsEntryFocus = false;
+        _sourcesFocus.requestFocus();
+      }
+      return;
+    }
+    final grid = _gridKey.currentState;
+    if (grid != null && grid.hasFocusableCard) {
+      _wantsEntryFocus = false;
+      grid.focusGrid();
+      return;
+    }
+    if (_preferencesLoaded && !widget.catalog.isInitialLoading) _wantsEntryFocus = false;
   }
 
   // ---------------------------------------------------------------------------
@@ -544,55 +633,153 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TvCatalogHeaderBar(title: widget.title, actions: _headerActions()),
-          Expanded(child: _buildBody()),
+          // The tags are capped here and uncapped in the rail: the heading has
+          // one line and no way to scroll, the panel wraps.
+          TvCatalogHeaderBar(title: widget.title, tags: _railExpanded ? const [] : _selectionTags()),
+          Expanded(child: _buildContentArea()),
         ],
       ),
     );
   }
 
-  List<TvCatalogHeaderAction> _headerActions() {
+  /// The grid, with the rail standing beside it.
+  ///
+  /// A `Stack` rather than a `Row`, because the grid owns its own horizontal
+  /// padding and always has: it is the thing that resolves the page inset, and
+  /// putting it in a flex would mean handing that job to this method and
+  /// getting the two edges from two different places. Instead the grid holds
+  /// back [TvCatalogGrid.leading] on its left, and the rail is positioned into
+  /// exactly that band.
+  Widget _buildContentArea() {
+    final scale = TvLayoutConstants.scaleOf(context);
+    final width = MediaQuery.sizeOf(context).width;
+    final grid = TvCatalogGrid.forWidth(width, scale: scale, reservedLeading: _railLeading(width));
+    // The same headroom the grid reserves above its first row for a focused
+    // card's ring, so the rail's top edge lines up with the first poster
+    // instead of with the viewport.
+    final top = TvCatalogGrid.focusHeadroom(
+      cardHeight: TvCatalogLayout.cardHeight(grid.cardWidth, scale),
+      focusScale: FocusTheme.fullCardFocusScale,
+    );
+
+    return Stack(
+      children: [
+        Positioned.fill(child: _buildBody()),
+        if (_railExpanded)
+          Positioned(
+            left: grid.inset,
+            top: top,
+            // Bounded at the bottom by the page's own overscan margin, with the
+            // panel aligned to the top of that band. `Align` hands its child a
+            // *loose* height, so the panel still shrink-wraps to its rows; what
+            // the bound buys is that a selection long enough to outgrow the
+            // page scrolls inside the panel instead of overflowing it.
+            bottom: grid.bottomSafeMargin,
+            width: width * (TvCatalogLayout.railWidth / TvCatalogGrid.referenceWidth),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: TvCatalogFilterRailPanel(
+                key: tvCatalogFilterRailKey,
+                scale: scale,
+                rows: _railRows(),
+                tags: _selectionTags(capped: false),
+                onClear: _preferences.filters.isEmpty ? null : _clearFilters,
+                clearFocusNode: _clearFocus,
+                onClearNavigateUp: () => _sortFocus.requestFocus(),
+                onClearNavigateDown: _railEdge,
+                onClearNavigateLeft: _leaveRailUpwards,
+                onClearNavigateRight: _closeRail,
+                onClearBack: _closeRail,
+              ),
+            ),
+          )
+        else
+          Positioned(
+            left: 0,
+            top: top,
+            bottom: 0,
+            width: grid.inset,
+            // Decoration, not a control: it must not take a hit test off the
+            // page behind it, and there is nothing to hit-test it *for*.
+            child: IgnorePointer(child: TvCatalogFilterRailStrip(scale: scale)),
+          ),
+      ],
+    );
+  }
+
+  /// How much width the rail takes out of the grid's content box.
+  ///
+  /// Zero while it is closed, because the strip lives in the page's own left margin,
+  /// so all six columns stay. It is the panel plus its gap while it is open,
+  /// which is what turns six columns into five.
+  double _railLeading(double width) => _railExpanded
+      ? width * ((TvCatalogLayout.railWidth + TvCatalogLayout.railGridGap) / TvCatalogGrid.referenceWidth)
+      : 0;
+
+  List<TvCatalogSelectionTag> _selectionTags({bool capped = true}) => tvCatalogSelectionTags(
+    filters: _effectiveFilters,
+    sort: _preferences.sort,
+    sourcesLabel: _sourcesLabel(_effectiveFilters),
+    overflowAfter: capped ? TvCatalogLayout.tagOverflowThreshold : null,
+  );
+
+  /// Clears every filter, from the rail's Wissen row or from the
+  /// filtered-empty state's own button.
+  ///
+  /// The focus move is not optional. Wissen is only drawn while something is
+  /// filtered, so pressing it removes the row the remote is standing on.
+  /// Without this line the ring does not vanish, which is what makes the bug
+  /// easy to miss: Flutter hands it to whatever sibling survives, and measured
+  /// here that is Sortering, one row further from where the viewer was. Naming
+  /// the destination is the difference between a move the viewer can follow and
+  /// one the framework picked. From the empty state the guard is false and
+  /// nothing moves, because there the button survives its own press.
+  Future<void> _clearFilters() {
+    if (_clearFocus.hasFocus) _filtersFocus.requestFocus();
+    return _updatePreferences(_preferences.copyWith(filters: UnifiedCatalogFilterSelection.empty));
+  }
+
+  List<TvCatalogFilterRailRow> _railRows() {
     final filters = _effectiveFilters;
+    final itemFilters = filters.itemFilterCount;
     return [
-      TvCatalogHeaderAction(
+      TvCatalogFilterRailRow(
         icon: Symbols.dns_rounded,
-        action: LibraryHeaderAction(
-          label: t.unifiedCatalog.allSources,
-          value: _sourcesLabel(filters),
-          isActive: filters.restrictsSources,
-          focusNode: _sourcesFocus,
-          onPressed: () => _openFilters(initialSection: TvCatalogFilterSection.servers),
-          onNavigateRight: () => _filtersFocus.requestFocus(),
-          onNavigateLeft: _focusSidebar,
-          onNavigateUp: _focusSidebar,
-          onNavigateDown: _focusGrid,
-        ),
+        label: t.unifiedCatalog.rail.sources,
+        value: _sourcesLabel(filters) ?? t.unifiedCatalog.allSources,
+        focusNode: _sourcesFocus,
+        onPressed: () => _openFilters(initialSection: TvCatalogFilterSection.servers),
+        onNavigateUp: _leaveRailUpwards,
+        onNavigateDown: () => _filtersFocus.requestFocus(),
+        onNavigateLeft: _leaveRailUpwards,
+        onNavigateRight: _closeRail,
+        onBack: _closeRail,
       ),
-      TvCatalogHeaderAction(
+      TvCatalogFilterRailRow(
         icon: Symbols.filter_list_rounded,
-        badgeCount: filters.activeCount,
-        action: LibraryHeaderAction(
-          label: t.unifiedCatalog.filters.title,
-          isActive: !filters.isEmpty,
-          focusNode: _filtersFocus,
-          onPressed: () => _openFilters(initialSection: TvCatalogFilterSection.status),
-          onNavigateLeft: () => _sourcesFocus.requestFocus(),
-          onNavigateRight: () => _sortFocus.requestFocus(),
-          onNavigateUp: _focusSidebar,
-          onNavigateDown: _focusGrid,
-        ),
+        label: t.unifiedCatalog.filters.title,
+        value: itemFilters == 0
+            ? t.unifiedCatalog.rail.noFilters
+            : t.unifiedCatalog.rail.filtersActive(count: itemFilters),
+        focusNode: _filtersFocus,
+        onPressed: () => _openFilters(initialSection: TvCatalogFilterSection.status),
+        onNavigateUp: () => _sourcesFocus.requestFocus(),
+        onNavigateDown: () => _sortFocus.requestFocus(),
+        onNavigateLeft: _leaveRailUpwards,
+        onNavigateRight: _closeRail,
+        onBack: _closeRail,
       ),
-      TvCatalogHeaderAction(
+      TvCatalogFilterRailRow(
         icon: Symbols.swap_vert_rounded,
-        action: LibraryHeaderAction(
-          label: t.unifiedCatalog.sort.title,
-          value: sortLabel(_preferences.sort),
-          focusNode: _sortFocus,
-          onPressed: _openSort,
-          onNavigateLeft: () => _filtersFocus.requestFocus(),
-          onNavigateUp: _focusSidebar,
-          onNavigateDown: _focusGrid,
-        ),
+        label: t.unifiedCatalog.sort.title,
+        value: sortLabel(_preferences.sort),
+        focusNode: _sortFocus,
+        onPressed: _openSort,
+        onNavigateUp: () => _filtersFocus.requestFocus(),
+        onNavigateDown: _preferences.filters.isEmpty ? _railEdge : () => _clearFocus.requestFocus(),
+        onNavigateLeft: _leaveRailUpwards,
+        onNavigateRight: _closeRail,
+        onBack: _closeRail,
       ),
     ];
   }
@@ -609,31 +796,36 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     final snapshot = catalog.snapshot;
 
     if (!_preferencesLoaded || (catalog.isInitialLoading && snapshot.groups.isEmpty)) {
-      return const TvCatalogSkeletonGrid(key: tvCatalogSkeletonKey);
+      return TvCatalogSkeletonGrid(
+        key: tvCatalogSkeletonKey,
+        reservedLeading: _railLeading(MediaQuery.sizeOf(context).width),
+      );
     }
 
     // Hoofdstuk 29: a full-page error only when there is no usable catalog at
     // all. Anything that loaded stays on screen, however many libraries failed.
     if (snapshot.groups.isEmpty) {
       if (snapshot.initialLoadFailed || catalog.loadFailed) {
-        return _EmptyState(
+        return TvCatalogEmptyState(
           title: t.unifiedCatalog.states.errorTitle,
           body: t.unifiedCatalog.states.errorBody,
           actionLabel: t.common.retry,
           onAction: catalog.refresh,
+          onActionNavigateLeft: _openRail,
         );
       }
       // An empty *filtered* result is a different situation from an empty
       // catalog, and needs a different way out (hoofdstuk 29).
       if (!_effectiveFilters.isEmpty) {
-        return _EmptyState(
+        return TvCatalogEmptyState(
           title: t.unifiedCatalog.states.filterEmptyTitle,
           body: t.unifiedCatalog.states.filterEmptyBody,
           actionLabel: t.unifiedCatalog.states.clearFilters,
-          onAction: () => _updatePreferences(_preferences.copyWith(filters: UnifiedCatalogFilterSelection.empty)),
+          onAction: _clearFilters,
+          onActionNavigateLeft: _openRail,
         );
       }
-      return _EmptyState(title: t.unifiedCatalog.states.emptyTitle, body: t.unifiedCatalog.states.emptyBody);
+      return TvCatalogEmptyState(title: t.unifiedCatalog.states.emptyTitle, body: t.unifiedCatalog.states.emptyBody);
     }
 
     return TvUnifiedMediaGrid(
@@ -647,221 +839,15 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       onLoadMore: catalog.loadMore,
       onActivate: _activate,
       onContextMenu: _openContextMenu,
-      onExitTop: _focusHeader,
-      onExitLeft: _exitGridToSidebar,
+      onExitTop: _focusSidebar,
+      onExitLeft: _openRail,
+      reservedLeading: _railLeading(MediaQuery.sizeOf(context).width),
       clientFor: (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
       footer: TvUnifiedGridFooter(
         loadedCount: snapshot.groups.length,
         isComplete: snapshot.isComplete,
         isLoadingMore: catalog.isLoadingMore,
         failedLibraryCount: snapshot.failedLibraryIds.length,
-      ),
-    );
-  }
-}
-
-/// Centred title, body and one optional action — the shape all four of
-/// hoofdstuk 29's non-content states share, so they cannot drift apart.
-/// Finds the loading placeholder. Public so a test can assert *which* waiting
-/// state is on screen rather than merely that the grid is absent.
-const Key tvCatalogSkeletonKey = ValueKey('tvCatalogSkeleton');
-
-/// What the page looks like before the first round of results lands.
-///
-/// A centred spinner on an otherwise empty page was the first build, and it is
-/// the one frame that undoes the rest: the user presses Films and gets a black
-/// screen with a small red circle in it, then the catalogue appears all at
-/// once. Nothing about it says a wall of posters is coming.
-///
-/// So the placeholder is the page, on the page's own geometry —
-/// [TvCatalogGrid.forWidth] is the same call the real grid makes, so the
-/// columns, the card width, the gutter and the outer inset are not
-/// approximated here, they are identical. The posters resolve in place instead
-/// of replacing something shaped differently, and the first thing the eye is
-/// given is the layout it is about to read.
-///
-/// Deliberately still. A shimmer is the reflex, and it would cost the goldens
-/// their determinism — `pumpAndSettle` never returns under a repeating
-/// animation — for motion that a 10-foot surface reads as flicker rather than
-/// as progress.
-class TvCatalogSkeletonGrid extends StatelessWidget {
-  const TvCatalogSkeletonGrid({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final mono = tokens(context);
-    final scale = TvLayoutConstants.scaleOf(context);
-    final grid = TvCatalogGrid.forWidth(MediaQuery.sizeOf(context).width, scale: scale);
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final inset = TvCatalogLayout.cardContentInset(scale);
-        final cardHeight = (grid.cardWidth - inset * 2) / TvCatalogLayout.posterAspectRatio;
-        // Enough rows to reach the bottom edge, so the placeholder fills the
-        // surface it is standing in for rather than floating in the top half of
-        // it. Partly-visible rows count: the real grid has them too.
-        final rows = constraints.maxHeight.isFinite
-            ? ((constraints.maxHeight + grid.gutter) / (cardHeight + grid.gutter)).ceil().clamp(1, 6)
-            : 2;
-
-        // Not a bare ClipRect: the bottom row is meant to run off the edge the
-        // way the real grid's does, and a Column that overtops its constraints
-        // asserts before anything gets clipped. A scroll view the user cannot
-        // scroll gives the Column the unbounded height it needs and clips the
-        // result — which is also, structurally, what the real grid is.
-        return SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: grid.inset),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var row = 0; row < rows; row++) ...[
-                  if (row > 0) SizedBox(height: grid.gutter),
-                  Row(
-                    children: [
-                      for (var column = 0; column < grid.columns; column++) ...[
-                        if (column > 0) SizedBox(width: grid.gutter),
-                        _SkeletonCard(width: grid.cardWidth, scale: scale, mono: mono),
-                      ],
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// One placeholder card: the poster block and the two text bars under it, on
-/// the metrics [TvUnifiedMediaCard] uses for the real thing.
-class _SkeletonCard extends StatelessWidget {
-  const _SkeletonCard({required this.width, required this.scale, required this.mono});
-
-  final double width;
-  final double scale;
-  final MonoTokens mono;
-
-  @override
-  Widget build(BuildContext context) {
-    final barHeight = TvCatalogLayout.cardTitleFontSize * scale;
-    final metaHeight = TvCatalogLayout.cardMetaFontSize * scale;
-
-    // The same inset the real card carries, and it is made of two things.
-    // `TvUnifiedMediaCard` sizes the *wrapper* to the grid's card width, and
-    // inside that wrapper `FocusableWrapper` draws its ring as a border — which
-    // costs [FocusTheme.focusBorderWidth] a side whether or not the card has the
-    // focus — before the card's own focus-ring gap pads it again. Sizing the
-    // placeholder poster to the full column made every poster on screen shrink
-    // and shift at the moment the data landed, which is the one frame this
-    // placeholder exists to make uneventful. Counting only the gap and not the
-    // border left two thirds of that jump in place.
-    final inset = TvCatalogLayout.cardContentInset(scale);
-    final posterWidth = width - inset * 2;
-
-    return SizedBox(
-      width: width,
-      child: Padding(
-        padding: EdgeInsets.all(inset),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              key: tvCatalogPosterKey,
-              width: posterWidth,
-              height: posterWidth / TvCatalogLayout.posterAspectRatio,
-              decoration: BoxDecoration(
-                color: mono.text.withValues(alpha: TvCatalogLayout.skeletonArtworkFill),
-                borderRadius: BorderRadius.circular(TvCatalogLayout.cardRadius * scale),
-              ),
-            ),
-            SizedBox(height: TvCatalogLayout.cardFooterPaddingVertical * scale),
-            _SkeletonBar(
-              width: posterWidth * TvCatalogLayout.skeletonTitleWidthFraction,
-              height: barHeight,
-              scale: scale,
-              mono: mono,
-            ),
-            SizedBox(height: TvCatalogLayout.cardFooterLineGap * scale * 2),
-            _SkeletonBar(
-              width: posterWidth * TvCatalogLayout.skeletonMetaWidthFraction,
-              height: metaHeight,
-              scale: scale,
-              mono: mono,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SkeletonBar extends StatelessWidget {
-  const _SkeletonBar({required this.width, required this.height, required this.scale, required this.mono});
-
-  final double width;
-  final double height;
-  final double scale;
-  final MonoTokens mono;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: mono.text.withValues(alpha: TvCatalogLayout.skeletonTextFill),
-        borderRadius: BorderRadius.circular(TvCatalogLayout.skeletonBarRadius * scale),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.title, required this.body, this.actionLabel, this.onAction});
-
-  final String title;
-  final String body;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final tk = tokens(context);
-    final scale = TvLayoutConstants.scaleOf(context);
-    return Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.5),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: TvSourcePickerLayout.titleFontSize * scale,
-                fontWeight: FontWeight.w600,
-                color: tk.text,
-              ),
-            ),
-            SizedBox(height: TvCatalogLayout.cardFooterLineGap * scale * 2),
-            Text(
-              body,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: TvSourcePickerLayout.subtitleFontSize * scale,
-                color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
-              ),
-            ),
-            if (actionLabel != null && onAction != null) ...[
-              SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
-              TvPanelButton(scale: scale, label: actionLabel!, onPressed: onAction!, primary: true, autofocus: true),
-            ],
-          ],
-        ),
       ),
     );
   }

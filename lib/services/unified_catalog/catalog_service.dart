@@ -37,6 +37,11 @@ import 'unified_catalog_snapshot.dart';
 Set<String> _noRememberedSources() => const {};
 
 class UnifiedCatalogService {
+  /// How long one round waits for a wave of page fetches before returning
+  /// with what has settled (E5, hoofdstuk 12.6). Named so a caller that builds
+  /// its own service does not have to copy the number to override it.
+  static const Duration defaultProgressiveLoadingGrace = Duration(seconds: 2);
+
   UnifiedCatalogService({
     required UnifiedCatalogQuery query,
     required List<CatalogLibrary> libraries,
@@ -45,7 +50,7 @@ class UnifiedCatalogService {
     this.groupsPerPage = 20,
     this.maxConcurrentFetches = 4,
     this.maxRawItemsPerLoadMore = 500,
-    this.progressiveLoadingGrace = const Duration(seconds: 2),
+    this.progressiveLoadingGrace = defaultProgressiveLoadingGrace,
     Set<String> Function()? preferredSourceKeys,
   }) : _clientFor = clientFor,
        _preferredSourceKeys = preferredSourceKeys ?? _noRememberedSources {
@@ -121,6 +126,15 @@ class UnifiedCatalogService {
 
   /// The library set this service currently merges over.
   List<CatalogLibrary> get libraries => [for (final c in _cursors) c.library];
+
+  /// A page fetch is still running somewhere.
+  ///
+  /// A caller that is about to stop asking needs this to tell two situations
+  /// apart that [UnifiedCatalogSnapshot] cannot: a library that answered with
+  /// nothing, and one that has not answered yet. Only the first is covered by
+  /// [UnifiedCatalogSnapshot.failedLibraryIds], because being slow is not
+  /// failing (ROW1i).
+  bool get hasPendingFetches => _cursors.any((c) => c.fetchInFlight);
 
   /// Settled-state snapshot — never mid-flight; the caller owns any
   /// transient `isInitialLoading`/`isLoadingMore` flags around calling
@@ -354,6 +368,15 @@ class UnifiedCatalogService {
   /// a grid that fills in a moment and a permanent empty state. Every fetch is
   /// already bounded by [MediaServerTimeouts.unifiedCatalogLibraryPage], so
   /// this cannot wait longer than one page fetch is allowed to take.
+  /// Waits out every page fetch still running, and says whether there was one.
+  ///
+  /// [loadMore] does this on its own only when a round produced nothing at all,
+  /// and that is right for a grid: a slow library merges in on the next
+  /// `onLoadMore` or the next restart. A caller that asks exactly once and then
+  /// tears the service down has no next round, so this is the seam that lets it
+  /// finish the question it started (ROW1i).
+  Future<bool> awaitPendingFetches() => _awaitPendingFetches(_generation, <UnifiedSourceCursor>{});
+
   Future<bool> _awaitPendingFetches(int myGeneration, Set<UnifiedSourceCursor> failedThisCall) async {
     final waited = [
       for (final cursor in _cursors)

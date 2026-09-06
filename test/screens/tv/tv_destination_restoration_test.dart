@@ -515,11 +515,10 @@ void main() {
       // viewer is back among the same cards rather than at the top of the page.
       expect(gridOffset(tester), offsetWhenLeft);
 
-      // Re-enter the content: DOWN out of the header lands on the card the
-      // viewer was left on, which is hoofdstuk 7.4's "Down vanaf header gaat
-      // naar het laatst gefocuste griditem" read across a destination switch.
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      await tester.pumpAndSettle();
+      // Re-entering the content puts the remote back on the card the viewer
+      // was left on. Since CAT5 that happens on the way in, because there is no header
+      // row between the bar and the grid any more, so the destination switch
+      // itself lands on the card rather than one press above it.
       expect(focusedCardGroupId(tester), leftOn);
     });
   }

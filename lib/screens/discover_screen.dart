@@ -26,9 +26,12 @@ import '../utils/media_image_helper.dart';
 import '../widgets/optimized_media_image.dart' show blurArtwork;
 import '../widgets/home_hero_artwork.dart';
 import '../providers/discover_provider.dart';
+import '../providers/home_custom_rows_provider.dart';
 import '../providers/multi_server_provider.dart';
 import 'tv/tv_discovery_activation_mixin.dart';
 import '../providers/home_layout_provider.dart';
+import '../services/unified_catalog/home_row_layout.dart';
+import '../utils/home_custom_row_labels.dart';
 import '../providers/watch_state_store.dart';
 import '../widgets/discover_refresh_action.dart';
 import '../widgets/hub_section.dart';
@@ -130,11 +133,30 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // `TvHomeProjectionProvider.heroGroups` through `TvContentFeed` (DEC-067).
   List<MediaItem> get _latestMovies => _discover.latestMovies;
   HomeLayoutProvider? _homeLayout;
+  HomeCustomRowsProvider? _customRows;
+
+  // ROW1b: the rows the viewer defined themselves, projected into the legacy
+  // [MediaHub] shape this screen already draws (`mediaHubFromCustomRow`).
+  // Empty ones are dropped here, same as the TV feed (DEC-100 (6)) — a row
+  // reserving space it may never fill would push the backend hubs down the
+  // page and then pull them back up.
+  List<MediaHub> get _customRowHubs =>
+      _customRows?.visibleRows(titleFor: homeCustomRowLabel).map(mediaHubFromCustomRow).toList(growable: false) ??
+      const [];
+
   // User layout (hide + reorder) applied here for the phone/desktop sliver
   // loop. The TV feed applies the same preferences to its *unified* rows
   // instead (`home_row_layout.dart`), because a merged row has more than one
   // legacy id and `apply`'s single `idOf` cannot express that.
-  List<MediaHub> get _hubs => _homeLayout?.apply(_discover.hubs, _hubIdentity) ?? _discover.hubs;
+  //
+  // Custom rows go in front of the backend hubs before the layout is applied,
+  // which is where DEC-100 (5) puts a new one when nothing has been
+  // reordered yet: directly under Verder kijken.
+  List<MediaHub> get _hubs {
+    final combined = [..._customRowHubs, ..._discover.hubs];
+    return _homeLayout?.apply(combined, _hubIdentity) ?? combined;
+  }
+
   bool get _hasMoreContinueWatching => _discover.hasMoreContinueWatching;
   bool get _isLoading => _discover.isLoading;
   bool get _areHubsLoading => _discover.areHubsLoading;
@@ -327,7 +349,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     // subscription cannot live in the button: the button only exists while
     // there is something to show, and a widget that unmounts when the answer
     // is "nobody" could never learn that the answer changed. Kept before the
-    // early return below, which is about a different provider.
+    // rebind checks below, which return early when neither provider changed.
     final nowWatching = context.read<NowWatchingProvider?>();
     if (!identical(nowWatching, _nowWatching)) {
       _nowWatching?.releaseAmbient();
@@ -339,13 +361,30 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     // initState left us listening to a stale notifier: the settings screen
     // wrote to the new one and home only caught up after an app restart.
     final layout = Provider.of<HomeLayoutProvider>(context);
-    if (identical(layout, _homeLayout)) return;
-    _homeLayout?.removeListener(_onHomeLayoutChanged);
-    _homeLayout = layout..addListener(_onHomeLayoutChanged);
-    _updateHubKeys();
+    final layoutChanged = !identical(layout, _homeLayout);
+    if (layoutChanged) {
+      _homeLayout?.removeListener(_onHomeLayoutChanged);
+      _homeLayout = layout..addListener(_onHomeLayoutChanged);
+    }
+
+    // ROW1b. Lazy like its registration in `ProfileSessionScreen`: a profile
+    // with no saved rows never starts a merge, so this stays null there.
+    final customRows = Provider.of<HomeCustomRowsProvider?>(context);
+    final customRowsChanged = !identical(customRows, _customRows);
+    if (customRowsChanged) {
+      _customRows?.removeListener(_onCustomRowsChanged);
+      _customRows = customRows?..addListener(_onCustomRowsChanged);
+    }
+
+    if (layoutChanged || customRowsChanged) _updateHubKeys();
   }
 
   void _onHomeLayoutChanged() {
+    if (!mounted) return;
+    setState(_updateHubKeys);
+  }
+
+  void _onCustomRowsChanged() {
     if (!mounted) return;
     setState(_updateHubKeys);
   }
@@ -556,6 +595,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void dispose() {
     _discover.removeListener(_onDiscoverChanged);
     _homeLayout?.removeListener(_onHomeLayoutChanged);
+    _customRows?.removeListener(_onCustomRowsChanged);
     _nowWatching?.releaseAmbient();
     WidgetsBinding.instance.removeObserver(this);
     _autoScrollTimer?.cancel();
@@ -1270,25 +1310,34 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 // On Deck / Continue Watching
                 if (_onDeck.isNotEmpty)
                   SliverToBoxAdapter(
-                    child: HubSection(
-                      key: _continueWatchingHubKey,
-                      hub: MediaHub(
-                        id: 'continue_watching',
-                        title: t.discover.continueWatching,
-                        type: 'mixed',
-                        identifier: '_continue_watching_',
-                        size: _onDeck.length + (_hasMoreContinueWatching ? 1 : 0),
-                        more: _hasMoreContinueWatching,
-                        items: _onDeck,
+                    child: AutomationNode(
+                      id: AutomationIds.discoverContinueWatching,
+                      role: 'rail',
+                      // `hero_visible` mirrors the real bool, never a proxy: a
+                      // Verify scenario asserts the DEC-097 fallback ("no
+                      // recent film, so no hero and Continue Watching first")
+                      // on this node because the hero node is not built then.
+                      state: () => {'hero_visible': _isHeroSectionVisible},
+                      child: HubSection(
+                        key: _continueWatchingHubKey,
+                        hub: MediaHub(
+                          id: 'continue_watching',
+                          title: t.discover.continueWatching,
+                          type: 'mixed',
+                          identifier: '_continue_watching_',
+                          size: _onDeck.length + (_hasMoreContinueWatching ? 1 : 0),
+                          more: _hasMoreContinueWatching,
+                          items: _onDeck,
+                        ),
+                        icon: Symbols.play_circle_rounded,
+                        onRefresh: _discover.updateItem,
+                        onRemoveFromContinueWatching: _discover.refreshContinueWatching,
+                        isInContinueWatching: true,
+                        loadMoreItems: _discover.loadAllContinueWatching,
+                        onVerticalNavigation: (isUp) => _handleVerticalNavigation(0, isUp),
+                        onNavigateUp: _focusTopBoundary,
+                        onNavigateToSidebar: _navigateToSidebar,
                       ),
-                      icon: Symbols.play_circle_rounded,
-                      onRefresh: _discover.updateItem,
-                      onRemoveFromContinueWatching: _discover.refreshContinueWatching,
-                      isInContinueWatching: true,
-                      loadMoreItems: _discover.loadAllContinueWatching,
-                      onVerticalNavigation: (isUp) => _handleVerticalNavigation(0, isUp),
-                      onNavigateUp: _focusTopBoundary,
-                      onNavigateToSidebar: _navigateToSidebar,
                     ),
                   ),
 

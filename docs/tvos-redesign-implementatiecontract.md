@@ -151,6 +151,12 @@ verzonnen; de bestaande globale voorkeuren blijven de opslag. Alle audio-opties 
 blijven. De secundaire labels van `TrackLabelBuilder` worden werkelijk gebruikt, en de
 hardcoded labels "Video" en "(Forced)" worden vertaald.
 
+Aanvulling 5 september 2026 (DEC-101): mockup 33 vervangt 19 als taal. Het paneel is op TV het
+enige spelermenu; het tandwiel, de sporenknop en de hoofdstukkenknop openen het op het passende
+tabblad en `VideoSettingsSheet` en `TrackSheet` zijn op TV geen ingang meer. Slaaptimer, zoom,
+versie en kwaliteit, HDR, shaders en autoplay verhuizen in het paneel. De stijlrijen in het
+paneel schrijven de bestaande globale voorkeuren en raken taal niet (LANG1, DEC-096).
+
 ## PB-10 Uiterlijk: nieuwe voorkeuren zijn echte voorkeuren
 
 20 is visueel goedgekeurd. De nieuwe bedieningselementen die er als echte instelling in staan

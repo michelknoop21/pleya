@@ -142,12 +142,40 @@ void main() {
     }
   });
 
+  test('PREF1: the export gate matches the registry for keys the old denylist never named', () {
+    // Before PREF1, `SettingsExportService.isExportable` kept its own
+    // allow-by-default denylist and never asked the registry. These keys were
+    // registered `exportable: false` here but absent from that denylist, so
+    // the old export gate returned true for every one of them: this would
+    // have been red against the pre-fix implementation.
+    for (final key in [
+      'enable_hardware_decoding',
+      'enable_hdr',
+      'audio_passthrough',
+      'volume',
+      'unified_catalog_preferences',
+    ]) {
+      expect(PreferenceSyncPolicyRegistry.isExportable(key), isFalse, reason: key);
+      expect(SettingsExportService.isExportable(key), isFalse, reason: key);
+    }
+  });
+
   test('every declared preference key is registered, so none falls through by accident', () {
     // The registry is deny-by-default, which is right, but a forgotten
     // registration is then silent: the preference simply stops syncing. This
     // scans the declarations and demands an answer for each one. A new
     // preference makes it red until somebody decides what it is.
-    final patterns = [RegExp(r"Pref[a-zA-Z<>]*\(\s*'([a-z0-9_.]+)'"), RegExp(r"super\(\s*'([a-z0-9_.]+)'")];
+    //
+    // The third pattern was added by ROW1d. The first two only see a key
+    // declared through a `...Pref(...)` constructor, and `StorageService`
+    // declares its own as bare `static const String _keyX = '...'`. So
+    // `home_custom_rows` was invisible here: it shipped unregistered, left in
+    // an export anyway, and came back under a key nothing reads.
+    final patterns = [
+      RegExp(r"Pref[a-zA-Z<>]*\(\s*'([a-z0-9_.]+)'"),
+      RegExp(r"super\(\s*'([a-z0-9_.]+)'"),
+      RegExp(r"static const String _(?:key|prefix)[A-Za-z0-9]* = '([a-z0-9_.]+)';"),
+    ];
     final declared = <String>{};
     for (final entity in Directory('lib').listSync(recursive: true)) {
       if (entity is! File || !entity.path.endsWith('.dart')) continue;

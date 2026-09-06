@@ -12,14 +12,14 @@ import '../test_helpers/prefs.dart';
 // Per the task brief we only round-trip through the *pure* helpers
 // `buildExportMap` and `applyImportMap` against an in-memory
 // SharedPreferencesWithCache. That covers the user-prefix re-scoping, the
-// allow/deny filtering, and the typed value (de)serialization — which is
+// allow/deny filtering, and the typed value (de)serialization, which is
 // where the format-stability risk lives.
 
 void main() {
   setUp(resetSharedPreferencesForTest);
 
   // ============================================================
-  // buildExportMap — header fields
+  // buildExportMap: header fields
   // ============================================================
 
   group('buildExportMap header', () {
@@ -44,26 +44,29 @@ void main() {
   });
 
   // ============================================================
-  // buildExportMap — type encoding round-trip
+  // buildExportMap: type encoding round-trip
   // ============================================================
 
   group('buildExportMap type encoding', () {
     test('encodes bool / int / double / string / stringList with type markers', () async {
+      // PREF1: isExportable now asks the registry, so these have to be real
+      // registered global keys rather than invented names: an unregistered
+      // key is local-only by default and would not appear in the map at all.
       final prefs = await BaseSharedPreferencesService.sharedCache();
-      await prefs.setBool('flag_a', true);
-      await prefs.setInt('count_a', 42);
-      await prefs.setDouble('volume', 0.75);
-      await prefs.setString('name', 'plezy');
-      await prefs.setStringList('list_a', const ['x', 'y']);
+      await prefs.setBool('auto_play_next_episode', true);
+      await prefs.setInt('seek_time_small', 42);
+      await prefs.setDouble('default_playback_speed', 0.75);
+      await prefs.setString('app_locale', 'nl');
+      await prefs.setStringList('mpv_config_presets', const ['x', 'y']);
 
       final out = SettingsExportService.buildExportMap(prefs);
       final p = out['prefs'] as Map<String, dynamic>;
 
-      expect(p['flag_a'], {'type': 'bool', 'value': true});
-      expect(p['count_a'], {'type': 'int', 'value': 42});
-      expect(p['volume'], {'type': 'double', 'value': 0.75});
-      expect(p['name'], {'type': 'string', 'value': 'plezy'});
-      expect(p['list_a'], {
+      expect(p['auto_play_next_episode'], {'type': 'bool', 'value': true});
+      expect(p['seek_time_small'], {'type': 'int', 'value': 42});
+      expect(p['default_playback_speed'], {'type': 'double', 'value': 0.75});
+      expect(p['app_locale'], {'type': 'string', 'value': 'nl'});
+      expect(p['mpv_config_presets'], {
         'type': 'stringList',
         'value': ['x', 'y'],
       });
@@ -71,21 +74,21 @@ void main() {
   });
 
   // ============================================================
-  // buildExportMap — denylist filtering
+  // buildExportMap: denylist filtering
   // ============================================================
 
   group('buildExportMap denylist', () {
     test('drops exact-deny credential keys', () async {
       final prefs = await BaseSharedPreferencesService.sharedCache();
-      // Sample of the credential bucket — should never leak.
+      // Sample of the credential bucket, should never leak.
       await prefs.setString('plex_token', 'abc');
       await prefs.setString('client_identifier', 'xyz');
       await prefs.setString('current_user_uuid', 'user-1');
       await prefs.setString('active_app_profile_id', 'profile-1');
       await prefs.setString('user_profile', '{}');
       await prefs.setString('credential_vault_key_v1', 'base64-key');
-      // Plus a good-faith key that should stay.
-      await prefs.setBool('keep_me', true);
+      // Plus a real, registered global key that should stay.
+      await prefs.setBool('theme_mode', true);
 
       final out = SettingsExportService.buildExportMap(prefs);
       final p = out['prefs'] as Map<String, dynamic>;
@@ -96,7 +99,7 @@ void main() {
       expect(p, isNot(contains('active_app_profile_id')));
       expect(p, isNot(contains('user_profile')));
       expect(p, isNot(contains('credential_vault_key_v1')));
-      expect(p, contains('keep_me'));
+      expect(p, contains('theme_mode'));
     });
 
     // Both integration sessions are vault-encrypted with a device-local key, so
@@ -159,7 +162,7 @@ void main() {
 
     test('drops MAL / AniList / SIMKL session keys but keeps their feature toggles', () async {
       final prefs = await BaseSharedPreferencesService.sharedCache();
-      // Stripped tracker session tokens — these would carry access_token /
+      // Stripped tracker session tokens: these would carry access_token /
       // refresh_token JSON if they leaked into the export.
       await prefs.setString('mal_session', '{"access_token":"a","refresh_token":"r"}');
       await prefs.setString('anilist_session', '{"access_token":"a"}');
@@ -210,6 +213,50 @@ void main() {
       expect((out['prefs'] as Map), isNot(contains('custom_download_path_type')));
     });
 
+    // ROW1d found these three leaking through the old denylist-only export
+    // path: stored under the profile prefix and declared local-only in the
+    // registry, but the export path never asked it. They came back unscoped,
+    // `home_custom_rows` instead of `user_<uuid>_home_custom_rows`, which is
+    // a key no provider reads, so the import reported success and the rows
+    // were not there. PREF1 replaced the export path's own denylist with a
+    // direct call to the registry, so these three are now the general case
+    // rather than a special-cased fix.
+    test('drops the Home-row keys the registry declares local-only', () async {
+      final prefs = await BaseSharedPreferencesService.sharedCache();
+      await prefs.setStringList('user_alice_home_custom_rows', const ['{"id":"r1"}']);
+      await prefs.setStringList('user_alice_home_row_order', const ['srv:1:hub.recent']);
+      await prefs.setStringList('user_alice_hidden_home_rows', const ['srv:1:hub.latest']);
+
+      final out = SettingsExportService.buildExportMap(prefs, currentUserUuid: 'alice');
+      final p = out['prefs'] as Map;
+
+      expect(p, isNot(contains('home_custom_rows')));
+      expect(p, isNot(contains('home_row_order')));
+      expect(p, isNot(contains('hidden_home_rows')));
+    });
+
+    test('an import carrying them writes no unscoped Home-row key', () async {
+      final prefs = await BaseSharedPreferencesService.sharedCache();
+      await SettingsExportService.applyImportMap(
+        {
+          'formatVersion': SettingsExportService.formatVersion,
+          'prefs': {
+            'home_custom_rows': {
+              'type': 'stringList',
+              'value': ['{"id":"r1"}'],
+            },
+          },
+        },
+        prefs,
+        currentUserUuid: 'bob',
+      );
+
+      // Neither under the bare key, which nothing reads, nor under bob's
+      // prefix: a row naming another device's libraries is not bob's row.
+      expect(prefs.getStringList('home_custom_rows'), isNull);
+      expect(prefs.getStringList('user_bob_home_custom_rows'), isNull);
+    });
+
     test('drops the internal migration flag', () async {
       final prefs = await BaseSharedPreferencesService.sharedCache();
       await prefs.setBool('buffer_size_migrated_to_auto', true);
@@ -219,14 +266,14 @@ void main() {
   });
 
   // ============================================================
-  // buildExportMap — user-prefix scoping
+  // buildExportMap: user-prefix scoping
   // ============================================================
 
   group('buildExportMap user-scoping', () {
     test('strips the active user prefix on export', () async {
       final prefs = await BaseSharedPreferencesService.sharedCache();
       await prefs.setStringList('user_alice_library_order', const ['a', 'b']);
-      await prefs.setBool('user_alice_hidden_libraries_does_not_exist', true);
+      await prefs.setBool('user_alice_hidden_libraries', true);
 
       final out = SettingsExportService.buildExportMap(prefs, currentUserUuid: 'alice');
       final p = out['prefs'] as Map<String, dynamic>;
@@ -237,9 +284,9 @@ void main() {
         'type': 'stringList',
         'value': ['a', 'b'],
       });
-      // Anything else under user_ that *isn't* the active user is excluded —
-      // the synthetic key above lives under "alice" and so it goes through.
-      expect(p, contains('hidden_libraries_does_not_exist'));
+      // A second real, registered profile-scoped key under "alice" also goes
+      // through, stripped of its prefix like the first.
+      expect(p, contains('hidden_libraries'));
     });
 
     test('skips other users\' scoped keys entirely', () async {
@@ -255,19 +302,19 @@ void main() {
         'type': 'stringList',
         'value': ['a'],
       });
-      // bob's was filtered out — there's no second pref with that name.
+      // bob's was filtered out; there's no second pref with that name.
       expect(p.values.where((v) => (v as Map)['value'] is List && (v['value'] as List).contains('b')), isEmpty);
     });
 
     test('without currentUserUuid: every user_-prefixed key is skipped', () async {
       final prefs = await BaseSharedPreferencesService.sharedCache();
       await prefs.setStringList('user_alice_library_order', const ['a']);
-      await prefs.setBool('global_flag', true);
+      await prefs.setBool('theme_mode', true);
 
       final out = SettingsExportService.buildExportMap(prefs); // no UUID
       final p = out['prefs'] as Map<String, dynamic>;
 
-      expect(p, contains('global_flag'));
+      expect(p, contains('theme_mode'));
       // Every user_-scoped key is skipped because we have no active user.
       expect(p.keys.where((k) => k.startsWith('user_')), isEmpty);
       expect(p, isNot(contains('library_order')));
@@ -275,7 +322,7 @@ void main() {
   });
 
   // ============================================================
-  // applyImportMap — version + structure validation
+  // applyImportMap: version + structure validation
   // ============================================================
 
   group('applyImportMap validation', () {
@@ -331,21 +378,23 @@ void main() {
   });
 
   // ============================================================
-  // applyImportMap — typed writes
+  // applyImportMap: typed writes
   // ============================================================
 
   group('applyImportMap typed writes', () {
     test('writes bool / int / double / string / stringList back into prefs', () async {
+      // PREF1: applyImportMap gates on isExportable too, so these need to be
+      // real registered global keys, not invented names.
       final prefs = await BaseSharedPreferencesService.sharedCache();
       final result = await SettingsExportService.applyImportMap(
         {
           'formatVersion': SettingsExportService.formatVersion,
           'prefs': {
-            'a_flag': {'type': 'bool', 'value': true},
-            'a_int': {'type': 'int', 'value': 7},
-            'a_double': {'type': 'double', 'value': 1.5},
-            'a_string': {'type': 'string', 'value': 'hi'},
-            'a_list': {
+            'auto_play_next_episode': {'type': 'bool', 'value': true},
+            'seek_time_small': {'type': 'int', 'value': 7},
+            'default_playback_speed': {'type': 'double', 'value': 1.5},
+            'app_locale': {'type': 'string', 'value': 'hi'},
+            'mpv_config_presets': {
               'type': 'stringList',
               'value': ['x', 'y'],
             },
@@ -358,11 +407,11 @@ void main() {
       expect(result.keysImported, 5);
       expect(result.keysSkipped, 0);
 
-      expect(prefs.getBool('a_flag'), isTrue);
-      expect(prefs.getInt('a_int'), 7);
-      expect(prefs.getDouble('a_double'), 1.5);
-      expect(prefs.getString('a_string'), 'hi');
-      expect(prefs.getStringList('a_list'), ['x', 'y']);
+      expect(prefs.getBool('auto_play_next_episode'), isTrue);
+      expect(prefs.getInt('seek_time_small'), 7);
+      expect(prefs.getDouble('default_playback_speed'), 1.5);
+      expect(prefs.getString('app_locale'), 'hi');
+      expect(prefs.getStringList('mpv_config_presets'), ['x', 'y']);
     });
 
     test('double accepts num input (importing an int as double)', () async {
@@ -371,8 +420,8 @@ void main() {
         {
           'formatVersion': SettingsExportService.formatVersion,
           'prefs': {
-            // Value is encoded as int but typed as double — should still write.
-            'speed': {'type': 'double', 'value': 2},
+            // Value is encoded as int but typed as double, should still write.
+            'default_playback_speed': {'type': 'double', 'value': 2},
           },
         },
         prefs,
@@ -380,7 +429,7 @@ void main() {
       );
 
       expect(result.keysImported, 1);
-      expect(prefs.getDouble('speed'), 2.0);
+      expect(prefs.getDouble('default_playback_speed'), 2.0);
     });
 
     test('skips entries with mismatched type/value pairs without throwing', () async {
@@ -425,7 +474,9 @@ void main() {
             'server_endpoint_srv': {'type': 'string', 'value': 'http://attacker.test'},
             'plex_home_users_conn': {'type': 'string', 'value': '[]'},
             'profile_last_used_stale': {'type': 'int', 'value': 1},
-            'good_key': {'type': 'bool', 'value': true},
+            // A real, registered global key: should survive alongside the
+            // deny-listed ones above.
+            'auto_play_next_episode': {'type': 'bool', 'value': true},
           },
         },
         prefs,
@@ -440,12 +491,12 @@ void main() {
       expect(prefs.getString('server_endpoint_srv'), isNull);
       expect(prefs.getString('plex_home_users_conn'), isNull);
       expect(prefs.getInt('profile_last_used_stale'), isNull);
-      expect(prefs.getBool('good_key'), isTrue);
+      expect(prefs.getBool('auto_play_next_episode'), isTrue);
     });
   });
 
   // ============================================================
-  // applyImportMap — user-scoped re-scoping
+  // applyImportMap: user-scoped re-scoping
   // ============================================================
 
   group('applyImportMap user-scoping', () {
@@ -466,8 +517,8 @@ void main() {
             'library_sort_section1': {'type': 'string', 'value': 'titleSort'},
             'library_grouping_section1': {'type': 'string', 'value': 'shows'},
             'library_tab_section1': {'type': 'string', 'value': 'recommended'},
-            // global key — must NOT be scoped
-            'enable_hardware_decoding': {'type': 'bool', 'value': true},
+            // global key, must NOT be scoped
+            'auto_play_next_episode': {'type': 'bool', 'value': true},
           },
         },
         prefs,
@@ -485,8 +536,8 @@ void main() {
       expect(prefs.getString('user_alice_library_tab_section1'), 'recommended');
 
       // Global key stays unscoped.
-      expect(prefs.getBool('enable_hardware_decoding'), isTrue);
-      expect(prefs.getBool('user_alice_enable_hardware_decoding'), isNull);
+      expect(prefs.getBool('auto_play_next_episode'), isTrue);
+      expect(prefs.getBool('user_alice_auto_play_next_episode'), isNull);
     });
   });
 
@@ -498,12 +549,13 @@ void main() {
     test('build → JSON → parse → apply produces the same key/value/type', () async {
       final prefs = await BaseSharedPreferencesService.sharedCache();
 
-      // Seed a representative mix.
-      await prefs.setBool('enable_hardware_decoding', true);
+      // Seed a representative mix. PREF1: these have to be real registered
+      // global keys now, not invented names.
+      await prefs.setBool('auto_play_next_episode', true);
       await prefs.setInt('seek_time_small', 15);
-      await prefs.setDouble('volume', 0.75);
+      await prefs.setDouble('default_playback_speed', 0.75);
       await prefs.setString('subtitle_text_color', '#FFFFFF');
-      await prefs.setStringList('shader_list', const ['a', 'b', 'c']);
+      await prefs.setStringList('mpv_config_presets', const ['a', 'b', 'c']);
       // User-scoped data for "alice".
       await prefs.setStringList('user_alice_library_order', const ['lib-1', 'lib-2']);
       // Credential we expect to be stripped.
@@ -519,22 +571,22 @@ void main() {
       expect(prefs.getInt('seek_time_small'), isNull);
       expect(prefs.getStringList('user_alice_library_order'), isNull);
 
-      // Parse back and import — same alice, so scoped keys round-trip cleanly.
+      // Parse back and import: same alice, so scoped keys round-trip cleanly.
       final decoded = json.decode(encoded) as Map<String, dynamic>;
       final result = await SettingsExportService.applyImportMap(decoded, prefs, currentUserUuid: 'alice');
 
       // 6 expected keys round-trip; the count includes the unrelated
-      // `plezy_legacy_prefs_migrated_v1` flag the cache plants. We only assert
+      // `pleya_legacy_prefs_migrated_v1` flag the cache plants. We only assert
       // it is at LEAST our expected six keys, not an exact count.
       expect(result.keysImported, greaterThanOrEqualTo(6));
       expect(result.keysSkipped, 0);
 
       // Values restored under their original keys (with re-applied scoping).
-      expect(prefs.getBool('enable_hardware_decoding'), isTrue);
+      expect(prefs.getBool('auto_play_next_episode'), isTrue);
       expect(prefs.getInt('seek_time_small'), 15);
-      expect(prefs.getDouble('volume'), 0.75);
+      expect(prefs.getDouble('default_playback_speed'), 0.75);
       expect(prefs.getString('subtitle_text_color'), '#FFFFFF');
-      expect(prefs.getStringList('shader_list'), ['a', 'b', 'c']);
+      expect(prefs.getStringList('mpv_config_presets'), ['a', 'b', 'c']);
       expect(prefs.getStringList('user_alice_library_order'), ['lib-1', 'lib-2']);
 
       // Credential never came back.
@@ -551,7 +603,7 @@ void main() {
 
       // Bob imports. Scoped base key gets re-applied with bob's prefix.
       final result = await SettingsExportService.applyImportMap(exportMap, prefs, currentUserUuid: 'bob');
-      // The cache plants `plezy_legacy_prefs_migrated_v1` on first init, so
+      // The cache plants `pleya_legacy_prefs_migrated_v1` on first init, so
       // the export count includes that flag too. Just confirm the scoped
       // value made it through.
       expect(result.keysImported, greaterThanOrEqualTo(1));

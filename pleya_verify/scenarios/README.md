@@ -20,7 +20,7 @@ Grammar and vocabulary: `pleya_verify/runner/lib/src/scenario/model.dart`
 instanceable as `id[instance]`).
 
 Three of the four scenarios the Pleya Verify Definition of Done requires
-(`tvos.sidebar.collapse`, `discover.hero.layout`, `media-detail.episode-refresh`)
+(`tvos.sidebar.collapse`, `discover.layout`, `media-detail.episode-refresh`)
 land here in Fase 11. `tvos.library.filters` does not: the Pleya Server wire
 contract carries no filter parameter or endpoint at all (G13 in
 `docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md`, not scheduled before a catalog
@@ -45,7 +45,7 @@ commands above:
 
 - **`portable`** (Linux, required-candidate): `list scenarios --json` plus
   `validate` on every file here, no driver dispatch.
-- **`macos-verify`** (macOS): `macos.smoke.boot` and `discover.hero.layout`
+- **`macos-verify`** (macOS): `macos.smoke.boot` and `discover.layout`
   via `dart run bin/verify.dart run <scenario> --json`.
 - **`tvos-verify`** (macOS, `workflow_dispatch`/`schedule` only, not
   required): `tvos.smoke.boot`.

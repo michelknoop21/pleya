@@ -509,7 +509,10 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
 
   Widget _buildMenuView() {
     final sleepTimer = SleepTimerService();
-    final isDesktop = PlatformDetector.isDesktop(context);
+    // The audio-device list is an mpv desktop feature; `isDesktop(context)` is
+    // true on a television too (isMobile is false there), which put a picker
+    // with nothing to pick on Apple TV (PLR3).
+    final isDesktop = PlatformDetector.isDesktopOS();
 
     return ListView(
       children: [

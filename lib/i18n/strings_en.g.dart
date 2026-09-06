@@ -1762,6 +1762,9 @@ class TranslationsVideoControlsEn {
 
 	/// en: 'AirPlay'
 	String get airplayButton => 'AirPlay';
+
+	/// en: '(Forced)'
+	String get forcedTrackSuffix => '(Forced)';
 }
 
 // Path: userStatus
@@ -5335,11 +5338,13 @@ class TranslationsUnifiedCatalogEn {
 	String get loadingMore => 'Loading more…';
 
 	late final TranslationsUnifiedCatalogSortEn sort = TranslationsUnifiedCatalogSortEn.internal(_root);
+	late final TranslationsUnifiedCatalogRailEn rail = TranslationsUnifiedCatalogRailEn.internal(_root);
 	late final TranslationsUnifiedCatalogFiltersEn filters = TranslationsUnifiedCatalogFiltersEn.internal(_root);
 	late final TranslationsUnifiedCatalogStatesEn states = TranslationsUnifiedCatalogStatesEn.internal(_root);
 	late final TranslationsUnifiedCatalogSemanticsEn semantics = TranslationsUnifiedCatalogSemanticsEn.internal(_root);
 	late final TranslationsUnifiedCatalogDiscoveryEn discovery = TranslationsUnifiedCatalogDiscoveryEn.internal(_root);
 	late final TranslationsUnifiedCatalogHomeEn home = TranslationsUnifiedCatalogHomeEn.internal(_root);
+	late final TranslationsUnifiedCatalogHomeRowsEn homeRows = TranslationsUnifiedCatalogHomeRowsEn.internal(_root);
 }
 
 // Path: tvNavigation
@@ -5756,6 +5761,99 @@ class TranslationsVideoControlsTvPanelEn {
 
 	/// en: 'More…'
 	String get more => 'More…';
+
+	/// en: 'Video'
+	String get video => 'Video';
+
+	/// en: 'Display'
+	String get display => 'Display';
+
+	/// en: 'Playback'
+	String get playback => 'Playback';
+
+	/// en: 'Output'
+	String get output => 'Output';
+
+	/// en: 'Style and timing'
+	String get styleAndTiming => 'Style and timing';
+
+	/// en: 'Volume boost'
+	String get volumeBoost => 'Volume boost';
+
+	/// en: 'For quiet titles; boosts Pleya's own sound'
+	String get volumeBoostHint => 'For quiet titles; boosts Pleya\'s own sound';
+
+	/// en: '+${percent}%'
+	String volumeBoostStep({required Object percent}) => '+${percent}%';
+
+	/// en: 'Paused'
+	String get paused => 'Paused';
+
+	/// en: 'Dolby passthrough is running; your receiver sets the level'
+	String get passthroughSetsLevel => 'Dolby passthrough is running; your receiver sets the level';
+
+	/// en: '${current} of ${total}'
+	String chaptersOf({required Object current, required Object total}) => '${current} of ${total}';
+
+	/// en: 'Text size'
+	String get textSize => 'Text size';
+
+	/// en: 'Visible in the picture right away'
+	String get textSizeHint => 'Visible in the picture right away';
+
+	/// en: 'Small'
+	String get textSizeSmall => 'Small';
+
+	/// en: 'Normal'
+	String get textSizeNormal => 'Normal';
+
+	/// en: 'Large'
+	String get textSizeLarge => 'Large';
+
+	/// en: 'Extra large'
+	String get textSizeExtraLarge => 'Extra large';
+
+	/// en: 'Background'
+	String get background => 'Background';
+
+	/// en: 'Black box behind the text'
+	String get backgroundHint => 'Black box behind the text';
+
+	/// en: 'All style settings'
+	String get allStyleSettings => 'All style settings';
+
+	/// en: 'My Pleya ▸ Settings ▸ Subtitle style · colour, border, position, bold'
+	String get allStyleSettingsPath => 'My Pleya ▸ Settings ▸ Subtitle style · colour, border, position, bold';
+
+	/// en: 'Offset'
+	String get offset => 'Offset';
+
+	/// en: 'Left and right 100 ms per step · hold to keep stepping'
+	String get syncStepHint => 'Left and right 100 ms per step · hold to keep stepping';
+
+	/// en: 'Stays for every title until you reset it'
+	String get syncKeepsForAllTitles => 'Stays for every title until you reset it';
+
+	/// en: 'Choosing applies right away · Left and right step a value · Menu closes the panel'
+	String get hint => 'Choosing applies right away · Left and right step a value · Menu closes the panel';
+
+	/// en: 'Menu goes back'
+	String get hintBack => 'Menu goes back';
+
+	/// en: 'Sleep timer running'
+	String get sleepActive => 'Sleep timer running';
+
+	/// en: 'Pauses at ${time} · ${remaining} left'
+	String sleepActiveHint({required Object time, required Object remaining}) => 'Pauses at ${time} · ${remaining} left';
+
+	/// en: 'After a time'
+	String get sleepAfter => 'After a time';
+
+	/// en: 'End of the next episode'
+	String get sleepEndOfNextEpisode => 'End of the next episode';
+
+	/// en: 'None'
+	String get shadersNone => 'None';
 }
 
 // Path: videoControls.pipErrors
@@ -6385,6 +6483,24 @@ class TranslationsUnifiedCatalogSortEn {
 	String get recentlyWatched => 'Recently watched';
 }
 
+// Path: unifiedCatalog.rail
+class TranslationsUnifiedCatalogRailEn {
+	TranslationsUnifiedCatalogRailEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Sources'
+	String get sources => 'Sources';
+
+	/// en: 'None'
+	String get noFilters => 'None';
+
+	/// en: '${count} active'
+	String filtersActive({required Object count}) => '${count} active';
+}
+
 // Path: unifiedCatalog.filters
 class TranslationsUnifiedCatalogFiltersEn {
 	TranslationsUnifiedCatalogFiltersEn.internal(this._root);
@@ -6526,6 +6642,159 @@ class TranslationsUnifiedCatalogHomeEn {
 
 	/// en: 'Featured'
 	String get featured => 'Featured';
+}
+
+// Path: unifiedCatalog.homeRows
+class TranslationsUnifiedCatalogHomeRowsEn {
+	TranslationsUnifiedCatalogHomeRowsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Customise Home'
+	String get customize => 'Customise Home';
+
+	/// en: 'Move or hide rows, or build one from a filter'
+	String get customizeSubtitle => 'Move or hide rows, or build one from a filter';
+
+	/// en: 'Move, hide or edit your rows. Featured and Continue Watching stay where they are.'
+	String get customizeIntro => 'Move, hide or edit your rows. Featured and Continue Watching stay where they are.';
+
+	/// en: 'Featured'
+	String get featured => 'Featured';
+
+	/// en: 'Always at the top'
+	String get alwaysFirst => 'Always at the top';
+
+	/// en: 'Always second'
+	String get alwaysSecond => 'Always second';
+
+	/// en: 'fixed'
+	String get fixed => 'fixed';
+
+	/// en: 'Done'
+	String get done => 'Done';
+
+	/// en: 'Move up'
+	String get moveUp => 'Move up';
+
+	/// en: 'Move down'
+	String get moveDown => 'Move down';
+
+	/// en: 'Hide'
+	String get hide => 'Hide';
+
+	/// en: 'Show'
+	String get show => 'Show';
+
+	/// en: 'Edit'
+	String get edit => 'Edit';
+
+	/// en: 'Remove'
+	String get remove => 'Remove';
+
+	/// en: 'hidden'
+	String get hiddenNote => 'hidden';
+
+	/// en: 'empty'
+	String get emptyNote => 'empty';
+
+	/// en: 'short row'
+	String get shortRow => 'short row';
+
+	/// en: 'Own row'
+	String get ownRow => 'Own row';
+
+	/// en: 'Pleya row'
+	String get pleyaRow => 'Pleya row';
+
+	/// en: 'New row'
+	String get newRow => 'New row';
+
+	/// en: 'From a filter on films or series'
+	String get newRowSubtitle => 'From a filter on films or series';
+
+	/// en: 'All ${count}, in ${catalog}'
+	String allInCatalog({required Object count, required Object catalog}) => 'All ${count}, in ${catalog}';
+
+	/// en: 'New row'
+	String get wizardTitle => 'New row';
+
+	/// en: 'Edit row'
+	String get wizardEditTitle => 'Edit row';
+
+	/// en: 'Name and type'
+	String get stepName => 'Name and type';
+
+	/// en: 'Filters'
+	String get stepFilters => 'Filters';
+
+	/// en: 'Preview'
+	String get stepPreview => 'Preview';
+
+	/// en: 'A row shows the films or series that match a filter.'
+	String get stepNameBody => 'A row shows the films or series that match a filter.';
+
+	/// en: 'The same choices as in the full catalogue. Every line opens its own list.'
+	String get stepFiltersBody => 'The same choices as in the full catalogue. Every line opens its own list.';
+
+	/// en: 'This is how the row will look on Home.'
+	String get stepPreviewBody => 'This is how the row will look on Home.';
+
+	/// en: 'Type'
+	String get kind => 'Type';
+
+	/// en: 'Name'
+	String get name => 'Name';
+
+	/// en: 'Leave empty and the name follows the filter, and keeps following it.'
+	String get nameHint => 'Leave empty and the name follows the filter, and keeps following it.';
+
+	/// en: 'Status'
+	String get status => 'Status';
+
+	/// en: 'Genre'
+	String get genre => 'Genre';
+
+	/// en: 'Year'
+	String get year => 'Year';
+
+	/// en: 'Sources'
+	String get sources => 'Sources';
+
+	/// en: 'Sorting'
+	String get sorting => 'Sorting';
+
+	/// en: 'All years'
+	String get allYears => 'All years';
+
+	/// en: 'Next'
+	String get next => 'Next';
+
+	/// en: 'Back'
+	String get back => 'Back';
+
+	/// en: 'Add row'
+	String get addRow => 'Add row';
+
+	/// en: 'Save row'
+	String get saveRow => 'Save row';
+
+	/// en: 'Adjust filters'
+	String get adjustFilters => 'Adjust filters';
+
+	/// en: 'Lands directly under Continue Watching. You can move it afterwards in Customise Home.'
+	String get landsBelowContinue => 'Lands directly under Continue Watching. You can move it afterwards in Customise Home.';
+
+	/// en: 'Nothing matches this filter'
+	String get emptyPreviewTitle => 'Nothing matches this filter';
+
+	/// en: 'Widen the filter, or pick a different sort.'
+	String get emptyPreviewBody => 'Widen the filter, or pick a different sort.';
+
+	/// en: '+${count}'
+	String morePosters({required Object count}) => '+${count}';
 }
 
 // Path: tvMyPleya.semantics
@@ -7086,6 +7355,37 @@ extension on Translations {
 			'videoControls.tvPanel.more' => 'More…',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.tvPanel.video' => 'Video',
+			'videoControls.tvPanel.display' => 'Display',
+			'videoControls.tvPanel.playback' => 'Playback',
+			'videoControls.tvPanel.output' => 'Output',
+			'videoControls.tvPanel.styleAndTiming' => 'Style and timing',
+			'videoControls.tvPanel.volumeBoost' => 'Volume boost',
+			'videoControls.tvPanel.volumeBoostHint' => 'For quiet titles; boosts Pleya\'s own sound',
+			'videoControls.tvPanel.volumeBoostStep' => ({required Object percent}) => '+${percent}%',
+			'videoControls.tvPanel.paused' => 'Paused',
+			'videoControls.tvPanel.passthroughSetsLevel' => 'Dolby passthrough is running; your receiver sets the level',
+			'videoControls.tvPanel.chaptersOf' => ({required Object current, required Object total}) => '${current} of ${total}',
+			'videoControls.tvPanel.textSize' => 'Text size',
+			'videoControls.tvPanel.textSizeHint' => 'Visible in the picture right away',
+			'videoControls.tvPanel.textSizeSmall' => 'Small',
+			'videoControls.tvPanel.textSizeNormal' => 'Normal',
+			'videoControls.tvPanel.textSizeLarge' => 'Large',
+			'videoControls.tvPanel.textSizeExtraLarge' => 'Extra large',
+			'videoControls.tvPanel.background' => 'Background',
+			'videoControls.tvPanel.backgroundHint' => 'Black box behind the text',
+			'videoControls.tvPanel.allStyleSettings' => 'All style settings',
+			'videoControls.tvPanel.allStyleSettingsPath' => 'My Pleya ▸ Settings ▸ Subtitle style · colour, border, position, bold',
+			'videoControls.tvPanel.offset' => 'Offset',
+			'videoControls.tvPanel.syncStepHint' => 'Left and right 100 ms per step · hold to keep stepping',
+			'videoControls.tvPanel.syncKeepsForAllTitles' => 'Stays for every title until you reset it',
+			'videoControls.tvPanel.hint' => 'Choosing applies right away · Left and right step a value · Menu closes the panel',
+			'videoControls.tvPanel.hintBack' => 'Menu goes back',
+			'videoControls.tvPanel.sleepActive' => 'Sleep timer running',
+			'videoControls.tvPanel.sleepActiveHint' => ({required Object time, required Object remaining}) => 'Pauses at ${time} · ${remaining} left',
+			'videoControls.tvPanel.sleepAfter' => 'After a time',
+			'videoControls.tvPanel.sleepEndOfNextEpisode' => 'End of the next episode',
+			'videoControls.tvPanel.shadersNone' => 'None',
 			'videoControls.fullscreenButton' => 'Enter fullscreen',
 			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			'videoControls.alwaysOnTopButton' => 'Always on top',
@@ -7123,6 +7423,7 @@ extension on Translations {
 			'videoControls.subtitleDownloadFailed' => 'Failed to download subtitle',
 			'videoControls.searchLanguages' => 'Search languages...',
 			'videoControls.airplayButton' => 'AirPlay',
+			'videoControls.forcedTrackSuffix' => '(Forced)',
 			'userStatus.admin' => 'Admin',
 			'userStatus.restricted' => 'Restricted',
 			'userStatus.protected' => 'Protected',
@@ -7566,6 +7867,8 @@ extension on Translations {
 			'collections.title' => 'Collections',
 			'collections.collection' => 'Collection',
 			'collections.empty' => 'Collection is empty',
+			_ => null,
+		} ?? switch (path) {
 			'collections.unknownLibrarySection' => 'Cannot delete: Unknown library section',
 			'collections.deleteCollection' => 'Delete Collection',
 			'collections.deleteConfirm' => ({required Object title}) => 'Delete "${title}"? This can\'t be undone.',
@@ -7598,8 +7901,6 @@ extension on Translations {
 			'playlists.oneItem' => '1 item',
 			'playlists.emptyPlaylist' => 'This playlist is empty',
 			'playlists.deleteConfirm' => 'Delete Playlist?',
-			_ => null,
-		} ?? switch (path) {
 			'playlists.deleteMessage' => ({required Object name}) => 'Are you sure you want to delete "${name}"?',
 			'playlists.created' => 'Playlist created',
 			'playlists.deleted' => 'Playlist deleted',
@@ -8080,6 +8381,8 @@ extension on Translations {
 			'seerr.edit' => 'Edit',
 			'seerr.cancelRequest' => 'Cancel request',
 			'seerr.cancelRequestConfirm' => 'Cancel this request?',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.discoverTitle' => 'Discover on Requests',
 			'seerr.trending' => 'Trending',
 			'seerr.popularMovies' => 'Popular movies',
@@ -8112,8 +8415,6 @@ extension on Translations {
 			'tautulli.modeApiKey' => 'API key',
 			'tautulli.modeApiKeyHelp' => 'The permanent key from Settings, Web Interface. It grants full access to Tautulli, so use it only if the device token does not work for you.',
 			'tautulli.deviceToken' => 'Device token',
-			_ => null,
-		} ?? switch (path) {
 			'tautulli.apiKey' => 'API key',
 			'tautulli.testConnection' => 'Test connection',
 			'tautulli.save' => 'Save',
@@ -8328,6 +8629,9 @@ extension on Translations {
 			'unifiedCatalog.sort.newestRelease' => 'Newest release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oldest release',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recently watched',
+			'unifiedCatalog.rail.sources' => 'Sources',
+			'unifiedCatalog.rail.noFilters' => 'None',
+			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} active',
 			'unifiedCatalog.filters.title' => 'Filters',
 			'unifiedCatalog.filters.status' => 'Status',
 			'unifiedCatalog.filters.genre' => 'Genre',
@@ -8364,6 +8668,54 @@ extension on Translations {
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
 			'unifiedCatalog.home.featured' => 'Featured',
+			'unifiedCatalog.homeRows.customize' => 'Customise Home',
+			'unifiedCatalog.homeRows.customizeSubtitle' => 'Move or hide rows, or build one from a filter',
+			'unifiedCatalog.homeRows.customizeIntro' => 'Move, hide or edit your rows. Featured and Continue Watching stay where they are.',
+			'unifiedCatalog.homeRows.featured' => 'Featured',
+			'unifiedCatalog.homeRows.alwaysFirst' => 'Always at the top',
+			'unifiedCatalog.homeRows.alwaysSecond' => 'Always second',
+			'unifiedCatalog.homeRows.fixed' => 'fixed',
+			'unifiedCatalog.homeRows.done' => 'Done',
+			'unifiedCatalog.homeRows.moveUp' => 'Move up',
+			'unifiedCatalog.homeRows.moveDown' => 'Move down',
+			'unifiedCatalog.homeRows.hide' => 'Hide',
+			'unifiedCatalog.homeRows.show' => 'Show',
+			'unifiedCatalog.homeRows.edit' => 'Edit',
+			'unifiedCatalog.homeRows.remove' => 'Remove',
+			'unifiedCatalog.homeRows.hiddenNote' => 'hidden',
+			'unifiedCatalog.homeRows.emptyNote' => 'empty',
+			'unifiedCatalog.homeRows.shortRow' => 'short row',
+			'unifiedCatalog.homeRows.ownRow' => 'Own row',
+			'unifiedCatalog.homeRows.pleyaRow' => 'Pleya row',
+			'unifiedCatalog.homeRows.newRow' => 'New row',
+			'unifiedCatalog.homeRows.newRowSubtitle' => 'From a filter on films or series',
+			'unifiedCatalog.homeRows.allInCatalog' => ({required Object count, required Object catalog}) => 'All ${count}, in ${catalog}',
+			'unifiedCatalog.homeRows.wizardTitle' => 'New row',
+			'unifiedCatalog.homeRows.wizardEditTitle' => 'Edit row',
+			'unifiedCatalog.homeRows.stepName' => 'Name and type',
+			'unifiedCatalog.homeRows.stepFilters' => 'Filters',
+			'unifiedCatalog.homeRows.stepPreview' => 'Preview',
+			'unifiedCatalog.homeRows.stepNameBody' => 'A row shows the films or series that match a filter.',
+			'unifiedCatalog.homeRows.stepFiltersBody' => 'The same choices as in the full catalogue. Every line opens its own list.',
+			'unifiedCatalog.homeRows.stepPreviewBody' => 'This is how the row will look on Home.',
+			'unifiedCatalog.homeRows.kind' => 'Type',
+			'unifiedCatalog.homeRows.name' => 'Name',
+			'unifiedCatalog.homeRows.nameHint' => 'Leave empty and the name follows the filter, and keeps following it.',
+			'unifiedCatalog.homeRows.status' => 'Status',
+			'unifiedCatalog.homeRows.genre' => 'Genre',
+			'unifiedCatalog.homeRows.year' => 'Year',
+			'unifiedCatalog.homeRows.sources' => 'Sources',
+			'unifiedCatalog.homeRows.sorting' => 'Sorting',
+			'unifiedCatalog.homeRows.allYears' => 'All years',
+			'unifiedCatalog.homeRows.next' => 'Next',
+			'unifiedCatalog.homeRows.back' => 'Back',
+			'unifiedCatalog.homeRows.addRow' => 'Add row',
+			'unifiedCatalog.homeRows.saveRow' => 'Save row',
+			'unifiedCatalog.homeRows.adjustFilters' => 'Adjust filters',
+			'unifiedCatalog.homeRows.landsBelowContinue' => 'Lands directly under Continue Watching. You can move it afterwards in Customise Home.',
+			'unifiedCatalog.homeRows.emptyPreviewTitle' => 'Nothing matches this filter',
+			'unifiedCatalog.homeRows.emptyPreviewBody' => 'Widen the filter, or pick a different sort.',
+			'unifiedCatalog.homeRows.morePosters' => ({required Object count}) => '+${count}',
 			'tvNavigation.activeDestination' => 'current section',
 			'tvNavigation.attentionRequired' => 'needs attention',
 			'tvMyPleya.groupContent' => 'My content',

@@ -1,0 +1,26 @@
+name: discover.layout.macos
+target: macos
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 20000}
+  # Same fallback as discover.layout (DEC-097 point 3): the fixture carries no
+  # release date, so the hero pool is empty by design and Continue Watching
+  # leads. The desktop-only checks are the sidebar rail and the nav item. No
+  # notOverlapping against sidebar.rail here: that node reports the rail's
+  # hover band (220pt, wider than the drawn 80pt rail by design, see
+  # side_navigation_rail.dart), and a full-width section starting at 80pt
+  # sits under it on purpose. The old hero scenario measured the play button,
+  # a small control well to the right of the band, not a section.
+  - wait_until: {id: discover.continue_watching, timeout: 20000}
+  - settle: 3500
+  - assert: {id: sidebar.rail, insideViewport: true}
+  - assert: {id: discover.continue_watching, state: {hero_visible: false}}
+  - assert: {id: discover.continue_watching, insideViewport: true}
+  - assert: {id: nav.discover, insideViewport: true, minimumTapTarget: 44}
+  # No snapshot step, as before on this target: window-scoped `screencapture`
+  # needs a permission the driver cannot grant itself (Fase 13 finding), and
+  # the assertions above are the evidence this scenario exists for.

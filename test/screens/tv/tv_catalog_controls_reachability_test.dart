@@ -1,5 +1,29 @@
-/// CAT4: "Bron, filters en sortering mogelijk onbereikbaar"
-/// (`docs/tvos-fysieke-correctieronde.md`).
+/// CAT4, rewritten onto CAT5's rail: can the remote still get back into the
+/// catalog after leaving it (`docs/tvos-fysieke-correctieronde.md`).
+///
+/// ## What changed under this file, and why it is not simply deleted
+///
+/// CAT4 was "Bron, filters en sortering mogelijk onbereikbaar", and its
+/// assertion was that a single DOWN out of the top bar lands on a *header
+/// action*, because the header was the only way to reach the three controls,
+/// and `restorePreviousFocus` could quietly route around it.
+/// [DEC-093](../../../docs/DECISIONS.md#dec-093) removed that header. The
+/// controls are one LEFT from column 0 now, so landing on a card is the right
+/// answer rather than the bug, and DEC-093 says this file "wordt herschreven op
+/// de rail, niet verwijderd".
+///
+/// The mechanism it guards is unchanged and is still mounted nowhere else, so
+/// what it guards has simply moved:
+///
+/// 1. **The bar can ask before there is anything to focus.** The header existed
+///    from the first frame; a grid does not, because the stored preferences are
+///    read asynchronously. `_focusEntry`'s retry is what covers that gap, and
+///    without it a cold catalog swallows the press.
+/// 2. **The content scope can remember a node that has since gone.** Leaving
+///    the rail upwards closes it, so the `FocusScopeNode.focusedChild`
+///    `restorePreviousFocus` restores through is a rail row that no longer
+///    exists. That is the same class of stale memory CAT4 was about, from the other
+///    end.
 ///
 /// ## Why the existing suites do not cover this
 ///
@@ -53,6 +77,7 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/tv/tv_catalog_filter_rail.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
 import 'package:provider/provider.dart';
 
@@ -291,7 +316,7 @@ void main() {
     return hostKey.currentState!;
   }
 
-  testWidgets('DOWN out of the bar lands on the header the first time', (tester) async {
+  testWidgets('DOWN out of the bar lands in the catalog the first time, before the grid exists', (tester) async {
     final coordinator = TvNavigationCoordinator()..updateConditions(const TvNavConditions(hasLiveTv: false));
     addTearDown(coordinator.dispose);
 
@@ -300,51 +325,47 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(TvUnifiedMediaGrid), findsOneWidget, reason: 'sanity: the catalog must have loaded cards');
-    expect(focusedLabel(), 'TvCatalogFiltersAction', reason: 'DOWN into a cold catalog should land on the header');
+    // The press happens while the page is still a skeleton: `openCatalog`
+    // asks for content focus in the same turn it pushes the route, and the
+    // stored preferences have not been read yet. Landing on a card means the
+    // request survived that gap instead of being dropped on the floor.
+    expect(focusedLabel(), startsWith('TvUnifiedCard('), reason: 'DOWN into a cold catalog should reach the grid');
   });
 
-  testWidgets('CAT4: after LEFT exits the grid straight to the bar, DOWN a second time still lands on the header', (
-    tester,
-  ) async {
+  testWidgets('CAT5: after the rail was open and the viewer left upwards, DOWN out of the bar lands in the '
+      'content again', (tester) async {
     final coordinator = TvNavigationCoordinator()..updateConditions(const TvNavConditions(hasLiveTv: false));
     addTearDown(coordinator.dispose);
 
     final host = await pump(tester, coordinator);
     host.openCatalog(TvDestinationId.movies);
     await tester.pumpAndSettle();
-    expect(focusedLabel(), 'TvCatalogFiltersAction', reason: 'arrival lands on the header');
+    expect(focusedLabel(), startsWith('TvUnifiedCard('));
 
-    // One DOWN into the grid: the first card, column 0.
-    await press(tester, LogicalKeyboardKey.arrowDown);
-    expect(focusedLabel(), startsWith('TvUnifiedCard('), reason: 'DOWN from the header enters the grid');
-
-    // LEFT from column 0 exits straight to the bar (`onExitLeft`), the way a
-    // viewer walking left off the edge of the first row does — it never
-    // passes back through the header.
+    // LEFT off column 0 opens the rail, the one route to the controls now.
     await press(tester, LogicalKeyboardKey.arrowLeft);
-    expect(
-      FocusManager.instance.primaryFocus?.debugLabel,
-      'tvNav_${TvDestinationId.movies.name}',
-      reason: 'LEFT off the first column hands focus to the bar item for the active destination',
-    );
+    expect(find.byKey(tvCatalogFilterRailKey), findsOneWidget);
+    expect(focusedLabel(), 'TvCatalogRailSources');
 
-    // The remote is now standing in the bar on the same destination it just
-    // left. Pressing DOWN here is `TvRootShell`'s own `onNavigateDown` wiring
-    // — the same single press hoofdstuk 7.4 documents as "Down vanaf topnav
-    // focust de eerste headeractie", and the same press the first assertion
-    // in this file proved lands on the header from a cold catalog.
-    await press(tester, LogicalKeyboardKey.arrowDown);
-
-    // The contract `TvRootShell.onFocusContent` documents: "Each
-    // destination therefore restores its own position in
-    // `focusActiveTabIfReady` ... the catalog to the header action you last
-    // used. The card itself is one step further down." A single DOWN out of
-    // the bar must land here regardless of which control the viewer used to
-    // leave the grid.
+    // UP out of the rail: the rail closes and the bar takes the ring. What the
+    // content scope now remembers as its focused child is a node that has been
+    // disposed along with the panel.
+    await press(tester, LogicalKeyboardKey.arrowUp);
     expect(
       focusedLabel(),
-      'TvCatalogFiltersAction',
-      reason: 'CAT4: DOWN out of the bar must land on the header, never straight back on a grid card.',
+      'tvNav_${TvDestinationId.movies.name}',
+      reason: 'UP out of the rail hands focus to the bar item for the active destination',
+    );
+    expect(find.byKey(tvCatalogFilterRailKey), findsNothing);
+
+    // The press CAT4 was about, on the mechanism CAT4 was about:
+    // `SidebarFocusCoordinator.focusContent`'s `restorePreviousFocus` branch,
+    // with a stale remembered child underneath it.
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(
+      focusedLabel(),
+      startsWith('TvUnifiedCard('),
+      reason: 'DOWN out of the bar must land in the catalog, not on a node the rail took with it',
     );
   });
 }
