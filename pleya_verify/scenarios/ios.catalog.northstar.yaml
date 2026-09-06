@@ -1,0 +1,52 @@
+name: ios.catalog.northstar
+target: ios-sim
+# Alle films: the header, the three chips, the count line and the grid as
+# fase 3 delivers them (iOS Unified 2026 fase 3,
+# docs/ios-unified-2026-fase3-plan.md), against the frozen
+# `03-alle-films.png` and `04-filters-sheet.png`. Reached the same way a
+# viewer reaches it, a tap on the landing's "Alle films ›" action, rather
+# than a coordinate on the bar: `screen.catalog_movies` is a push, not a tab,
+# so `open` cannot reach it (see DEC-105).
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - open: screen.movies
+steps:
+  - wait_until: {id: screen.movies, timeout: 15000}
+  - settle: 3500
+  - assert: {id: "landing.view_all[movies]", insideViewport: true}
+  - tap: {id: "landing.view_all[movies]"}
+  - wait_until: {id: screen.catalog_movies, timeout: 15000}
+  - settle: 500
+  # Header: back arrow, title, search, all on one row and all reachable.
+  - assert: {id: "catalog.header[movies]", insideViewport: true}
+  - assert: {id: "catalog.header.search[movies]", insideViewport: true, minimumTapTarget: 44}
+  # The three chips sit under the header, in the order the mockup draws them:
+  # Alle bronnen, Filters, Sorteren.
+  - assert: {id: "catalog.chip.sources[movies]", insideViewport: true}
+  - assert: {id: "catalog.chip.filters[movies]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: "catalog.chip.sort[movies]", insideViewport: true}
+  - assert: {id: "catalog.chip.sources[movies]", above: "catalog.count[movies]"}
+  # The count line sits between the chips and the grid, never a summed total
+  # across sources (10.7, paragraaf 5/6 van het auditrapport). This asserts
+  # presence and position, not the number itself, which the fixture's real
+  # item count decides.
+  - assert: {id: "catalog.count[movies]", insideViewport: true}
+  - assert: {id: "catalog.grid[movies]", below: "catalog.count[movies]"}
+  - assert: {id: "catalog.grid[movies]", insideViewport: true}
+  - assert: {id: "catalog.grid.item[movies.0]", insideViewport: true}
+  - snapshot: catalog-grid-northstar
+  # Filters sheet: opens on Status from the Filters chip, shows the
+  # two-zone rail-and-options layout, and both footer actions are reachable.
+  - tap: {id: "catalog.chip.filters[movies]"}
+  - wait_until: {id: sheet.catalog_filters, timeout: 5000}
+  - settle: 500
+  - assert: {id: sheet.catalog_filters, insideViewport: true}
+  - assert: {id: "sheet.catalog_filters.category[status]", insideViewport: true}
+  - assert: {id: "sheet.catalog_filters.category[genre]", insideViewport: true}
+  - assert: {id: sheet.catalog_filters.apply, insideViewport: true, minimumTapTarget: 44}
+  - snapshot: catalog-filters-sheet-northstar
+  - tap: {id: sheet.catalog_filters.apply}
+  - wait_until: {id: "catalog.grid[movies]", timeout: 5000}

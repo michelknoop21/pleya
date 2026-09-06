@@ -99,7 +99,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
   late final AnimationController _anim;
   final _scopeNode = FocusScopeNode(debugLabel: 'TvInfoPanelScope');
 
-  /// Which value row Select has entered, if any (DEC-102). The footer and the
+  /// Which value row Select has entered, if any (DEC-107). The footer and the
   /// panel's Menu handler both read it.
   final _valueRows = TvPanelValueRowController();
   late final List<FocusNode> _pillNodes;
@@ -237,7 +237,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
     if (event.logicalKey.isBackKey) {
       return handleBackKeyAction(event, () {
         // Menu peels one layer at a time: the entered value row first
-        // (DEC-102), then an open sub-view, then the panel itself.
+        // (DEC-107), then an open sub-view, then the panel itself.
         if (_valueRows.hasEnteredRow) {
           _valueRows.leave();
         } else if (_subView != TvInfoPanelSubView.none) {
@@ -497,7 +497,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
   }
 
   Widget _buildFooter() {
-    // Three states, in the order Menu peels them (DEC-102): an entered value
+    // Three states, in the order Menu peels them (DEC-107): an entered value
     // row, an open sub-view, the panel at rest.
     final hint = _valueRows.hasEnteredRow
         ? t.videoControls.tvPanel.hintValueRow

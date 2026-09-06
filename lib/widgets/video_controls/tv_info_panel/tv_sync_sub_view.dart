@@ -92,7 +92,7 @@ class _TvSyncSubViewState extends State<TvSyncSubView> {
                   onStepRight: _offset >= TvSyncSubView.maxAbsMs ? null : () => _apply(_offset + TvSyncSubView.stepMs),
                   onSelect: () => _apply(_offset + TvSyncSubView.stepMs),
                   // One row on its own page: there is no column to leave, and
-                  // `syncStepHint` promises a direct step (DEC-102).
+                  // `syncStepHint` promises a direct step (DEC-107).
                   entersOnSelect: false,
                   automationId: AutomationIds.playerPanelRow,
                   automationInstance: 'sync_offset',

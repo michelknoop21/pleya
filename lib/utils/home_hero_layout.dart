@@ -237,6 +237,16 @@ enum HomeHeroSharpPresentation {
   /// portrait, where a centred island reads as a small card rather than a
   /// hero.
   fullWidth,
+
+  /// A rounded, inset billboard *within* the page (iOS Unified 2026 fase 1,
+  /// `docs/ios-unified-2026-fase1-plan.md` stap 6; DEC-102). The caller —
+  /// `MobileHeroCard` — already hands in the inset box (screen width minus
+  /// the mockup's 16pt margin either side, height minus the same margin), so
+  /// this presentation fills exactly that box with `BoxFit.cover`, the same
+  /// shape the wide-box branch already draws, just scoped to a smaller
+  /// canvas. There is no ambient wash to blend into: a self-contained card
+  /// has no soft edge bleeding into the page the way a full-bleed hero does.
+  mobileFeatured,
 }
 
 /// [requestedSharpTop] starts the sharp layer at the hardware safe area —
@@ -261,11 +271,16 @@ HomeHeroArtGeometry homeHeroArtGeometry({
   if (heroHeight <= 0 || screenWidth <= 0) return HomeHeroArtGeometry.zero;
 
   final isWideBox = screenWidth / heroHeight >= billboardNarrowAspectRatioThreshold;
-  if (isWideBox || kind == BillboardArtKind.fallback) {
+  // mobileFeatured is always this same cover-fill shape, just against the
+  // caller's already-inset box rather than the full hero canvas: it never
+  // asks for the island/full-width letterboxing math the switch further
+  // down exists for.
+  if (isWideBox || kind == BillboardArtKind.fallback || presentation == HomeHeroSharpPresentation.mobileFeatured) {
     // Full-bleed cover fill: either the box is wide enough that a 16:9
-    // backdrop needs no island treatment, or there is no 16:9/square source
-    // at all (fallback) and the caller draws it blurred as atmosphere. Either
-    // way there is no gap around the frame for an ambient layer to fill.
+    // backdrop needs no island treatment, there is no 16:9/square source at
+    // all (fallback) and the caller draws it blurred as atmosphere, or the
+    // presentation is mobileFeatured. Either way there is no gap around the
+    // frame for an ambient layer to fill.
     return HomeHeroArtGeometry(
       canvasWidth: screenWidth,
       canvasHeight: heroHeight,
@@ -330,6 +345,9 @@ HomeHeroArtGeometry homeHeroArtGeometry({
     case (HomeHeroSharpPresentation.island, BillboardArtKind.widescreen):
       naturalWidth = screenWidth;
       naturalHeight = math.min(screenWidth * 9 / 16, heroHeight);
+    case (HomeHeroSharpPresentation.mobileFeatured, _):
+      naturalWidth = screenWidth; // unreachable: mobileFeatured returns above
+      naturalHeight = heroHeight; // unreachable: mobileFeatured returns above
     case (_, BillboardArtKind.fallback):
       naturalWidth = screenWidth; // unreachable: handled above
       naturalHeight = heroHeight; // unreachable: handled above

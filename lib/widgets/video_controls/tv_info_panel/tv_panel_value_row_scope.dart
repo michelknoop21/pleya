@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 
 /// Which value row of the player panel currently owns LEFT and RIGHT.
 ///
-/// DEC-102. A value row used to consume LEFT and RIGHT whenever it had a step
+/// DEC-107. A value row used to consume LEFT and RIGHT whenever it had a step
 /// to make, and `clampedSteps` only handed the key back at the ends of the
 /// list. A value sitting in the middle of its list therefore had no way out of
 /// its column: from Aspect ratio the right-hand column was unreachable without

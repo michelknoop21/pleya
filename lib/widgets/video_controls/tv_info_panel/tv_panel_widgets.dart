@@ -56,7 +56,7 @@ enum TvPanelRowKind {
   /// One of several exclusive choices; shows a radio or a check.
   choice,
 
-  /// A value Select enters, after which LEFT and RIGHT step it (DEC-102);
+  /// A value Select enters, after which LEFT and RIGHT step it (DEC-107);
   /// shows ‹ value › while entered and the bare value at rest.
   value,
 
@@ -76,7 +76,7 @@ int _indexOfValue<T>(List<T> values, T current, bool Function(T a, T b)? equals)
 /// A step past the end does nothing rather than wrapping: RIGHT on +200%
 /// dropping the volume boost back to Off was the old behaviour and it surprised
 /// people. Leaving the column sideways is no longer this null's job — a row at
-/// rest never takes LEFT or RIGHT at all (DEC-102) — but the clamp still holds
+/// rest never takes LEFT or RIGHT at all (DEC-107) — but the clamp still holds
 /// the ring inside an entered row.
 T? stepValueClamped<T>(List<T> values, T current, int delta, {bool Function(T a, T b)? equals}) {
   final next = _indexOfValue(values, current, equals) + delta;
@@ -104,7 +104,7 @@ T? stepValueClamped<T>(List<T> values, T current, int delta, {bool Function(T a,
 /// [onNavigateUp] to return to the pill bar.
 ///
 /// A row with [onStepLeft] or [onStepRight] is *entered* before it steps
-/// (DEC-102): Select enters it, and only then do LEFT and RIGHT reach the row.
+/// (DEC-107): Select enters it, and only then do LEFT and RIGHT reach the row.
 /// At rest the traversal gets them, so the ring leaves the column wherever the
 /// value happens to sit. Select on an entered row leaves it again; so does
 /// Menu, and so does any move that takes the focus elsewhere. Entering is
@@ -131,7 +131,7 @@ class TvPanelRow extends StatefulWidget {
   final bool autofocus;
   final bool canRequestFocus;
 
-  /// Whether Select enters this row before LEFT and RIGHT step it (DEC-102).
+  /// Whether Select enters this row before LEFT and RIGHT step it (DEC-107).
   /// The sync sub-view opts out: it is a single row on its own page with its
   /// own footer promising a direct 100 ms step, so there is no column to leave
   /// and nothing for the two-state model to buy.
@@ -285,7 +285,7 @@ class _TvPanelRowState extends State<TvPanelRow> {
   bool get _entered => _values?.isEntered(this) ?? false;
 
   /// Select. On a stepping row this is the enter/leave toggle and nothing
-  /// else: DEC-102 (2) drops the old "Select cycles forward", because one key
+  /// else: DEC-107 (2) drops the old "Select cycles forward", because one key
   /// cannot do both. Only [handleOneShotSelect] runs it, so it fires on the
   /// key-down and the release is consumed by the wrapper — there is no second
   /// suppressor to arm, and arming one would be the pin-open leak that

@@ -133,6 +133,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
 | RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
 | GOLD1 | Negentien catalogusgoldens tekenen sinds CAT5 iets anders en zijn bewust niet bijgewerkt; CI is daarop rood en op niets anders. Ze zijn alleen op dezelfde Linux als CI te regenereren: macOS rasteriseert tekst anders, en een geëmuleerde amd64-container dithert de verlopen anders, gemeten op ongewijzigde code als 45 procent pixeldiff over alle negentien. Michel koos op 5 september de runner-route. `.github/workflows/goldens.yml` draait `flutter test --update-goldens` op de CI-runner en geeft de gewijzigde PNG's als artifact terug; de workflow schrijft niets naar de repo, want een golden die zichzelf goedkeurt bewijst niets. `tv_catalog_films_header_focused.png` vervalt voor `tv_catalog_films_rail_open.png` en moest met de hand weg. Michel draaide de workflow op 6 september (GOLD1-run 34029671870) en committede de negentien PNG's als `11bd8b5f`. CI - Sanity Checks stond daarna nog rood, maar de Unit Tests-job (waar de goldens in zitten) was groen; het rode restje was Code Analysis met dezelfde `dart_code_linter`-waarschuwingen die ook al op de vorige commit stonden, dus losstaand van GOLD1 (zie de flaky-precommit-notitie). De vervallen `tv_catalog_films_header_focused.png` bleek nog in de repo te staan zonder enige testreferentie; verwijderd | FIXED | `11bd8b5f`, `3ab4061c` |
+| SRC1 | Twee gekoppelde Plex-servers, beide online, en het filterpaneel van Alle series toont er één bij Servers. Gemeld door Michel op 6 september 2026, bevestigd met een device-log (upload-ID 12e1y). Pad 1 (`fetchServers` laat een resource stil vallen) uitgesloten: beide servers kwamen terug uit `/resources`. Pad 3 (bibliotheken niet opgehaald) uitgesloten: geen `Failed neutral library fetch`-regel. Het was pad 2, en specifieker dan verwacht: de tweede server verbond niet omdat de reconcile-pass met het verse, correct gescoopte token uit `/resources` werd geblokkeerd door de `_unreachableSince`-30-secondenmemory die de eerdere, cache-gebaseerde poging had gezet. Die memory is bedoeld om een stortvloed van aanroepers met dezelfde data tegen te houden, niet een aanroeper met echt andere data. Gerepareerd met een `retryRecentFailures`-parameter. Een codereview vond dat de eerste versie hem alleen op de reconcile-aanroep zette; de twee synchrone fallbacks in `_bindPlexHome` en `_bindLocalPlexConnection` hadden dezelfde blootstelling en zijn in dezelfde ronde alsnog gedekt | FIXED, hardware open | `PENDING` |
 | ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) goedgekeurd op 5 september, DEC-100 accepted, 9.1, 17.5 en 23 aangepast. Gebouwd op 6 september in twee delen: het model, de opslag en de rij op Home, daarna de twee ingangen, het bewerkpaneel en de driestapsflow. Recent uitgebracht is daarbij de layout in gegaan, zoals mockup 32 B hem tekent | FIXED, hardware open | `040c939a`, `db1bc994`, `a721013d` |
 | ROW1b | Op pointerplatforms tekende Home nog geen eigen rijen en kende `HomeLayoutScreen` ze niet. `mediaHubFromCustomRow` (`home_row_layout.dart`) projecteert een eigen rij naar de legacy `MediaHub`-vorm die `HubSection` en `HomeLayoutScreen` al tekenen, met de rij se eigen `contributingRowId` als `identifier` in plaats van `hubId`. Onderweg bleek `homeRowId` die `#custom:`-vorm te wikkelen in `serverId:identifier`: een eigen rij op desktop kreeg zo een andere id (`:#custom:<id>`) dan waar `HomeLayoutProvider.saveCustomRow`/`removeCustomRow` al tegen opslaan (`#custom:<id>`), dus verbergen/herordenen had niets gedaan. `homeRowId` herkent de vorm nu en laat hem ongewikkeld. `DiscoverScreen` zet eigen rijen vóór de backend-hubs (DEC-100 (5)) en toont alleen zichtbare, niet-lege rijen (DEC-100 (6)); `HomeLayoutScreen` toont ook lege rijen zodat een viewer ze terug kan zetten. Negatieve controle in `home_row_layout_test.dart` was rood zonder de `homeRowId`-fix | FIXED, hardware open | `4a20deff` |
 | ROW1c | De laatste kaart van een eigen rij is een tegel "Alle N, in Alle films" die de catalogus met datzelfde filter opent (DEC-100 (2), mockup 32 A2). `UnifiedHubViewAll` bleef ongemoeid (hoofdstuk 10.2a's architectuurgrens); in plaats daarvan bouwt `HomeCustomRowsProvider.viewAllTargetsByHubId` een parallelle map van rij-hubId naar `HomeCustomRowViewAllTarget`, die `TvContentFeed` per rij aan `TvContentRow` doorgeeft. `TvDiscoveryRail` kreeg een optionele `viewAll`-tegel: `itemCount`, de stop op de rechterrand, een eigen focusnode en de semantics zijn aangepast, elke bestaande rail zonder `viewAll` blijft ongewijzigd. `TvUnifiedCatalogScreen` kreeg `initialFilterOverride`: opent met het rij-filter, schrijft niets terug (Michels besluit 6 september: tijdelijk venster, niet blijvend), een bewuste wijziging tijdens dat bezoek blijft gewoon opslaan. Vier gerichte widgettests op de tegel plus een provider- en een screen-test. Hardware- en golden-bewijs staan nog open: geen nieuwe golden toegevoegd, de visuele tegelstijl is niet tegen mockup 32 A2 getoetst | FIXED, hardware en goldens open | `825316d5` |
@@ -3356,6 +3357,135 @@ per contract uit, dus "geen datum" is hier geen standpunt meer dat een fixture k
 Negatieve controle: dezelfde seam een jaar vooruit gezet reproduceert precies de acht rode tests,
 teruggezet zijn alle negen groen.
 
+### SRC1, twee Plex-servers en één rij bij Servers
+
+Gemeld door Michel op 6 september 2026: twee Plex-servers gekoppeld, allebei online, en het
+filterpaneel van Alle series toont er één onder Servers.
+
+**Het paneel is uitgesloten, niet aangenomen.** `tv_catalog_filter_panel.dart` bouwt zijn
+Servers-rijen uit `widget.libraries`, dat is `UnifiedCatalogProvider.eligibleLibraries`, en
+`_servers` groepeert die op `library.serverId.value`. Vier tests in
+`test/widgets/tv/tv_catalog_foundation_test.dart` draaien dat met twee servers (`nas`/NAS en
+`attic`/Zolder) en staan groen. De categorie is bovendien onvoorwaardelijk: `_supports` geeft voor
+`servers` en `libraries` altijd `true`, want die twee worden uitgevoerd door een cursor uit de
+merge te laten en niet door een backend iets te vragen. Eén rij betekent dus één server in
+`eligibleLibraries`, niet een paneel dat er één verbergt.
+
+**Stroomopwaarts blijven drie paden over**, en de vraag is welke:
+
+1. `PlexAuthService.fetchServers` levert de tweede server niet, de resource parseert niet.
+2. `refreshTokensForProfile` verbindt hem niet binnen `perServerConnect` (6,5 s), waarna
+   `ActiveProfileBinder` hem buiten `visibleServerIds` laat en `isServerVisible` hem uit
+   `eligibleCatalogLibraries` filtert.
+3. `getMediaLibrariesFromAllServers` haalt zijn bibliotheken niet op.
+
+Pad 2 en 3 noemden hun verlies al bij naam in de log: `refreshTokensForProfile: failed to connect
+<naam>` en `Failed neutral library fetch from <id>`, plus `ActiveProfileBinder: bound X/Y Plex
+servers`. Pad 1 deed dat niet, en dat is het pad dat precies dit symptoom maakt.
+
+**Wat er aan pad 1 mankeerde.** `fetchServers` verzamelt resources die niet parseren in
+`invalidServers` en gooit alleen wanneer er géén enkele bruikbare overblijft. Eén onbruikbare naast
+één bruikbare gaf dus stilletjes één server terug, zonder één logregel. `PlexServer.fromJson` eist
+`name`, `clientIdentifier`, `accessToken` en minstens één parseerbare `connection`; ontbreekt er
+één, dan verdwijnt de server zonder spoor en meldt elke laag eronder eerlijk de ene server die hij
+kreeg.
+
+Reproductie in `test/services/plex_auth_service_test.dart`: een resources-antwoord met twee servers
+waarvan de tweede geen `accessToken` heeft levert `['srv-1']` op en een lege log. Dat was de
+negatieve controle en hij was aantoonbaar rood. De fix logt per overgeslagen resource zijn naam,
+zijn machine-id en de reden.
+
+`_resourceLabel` bouwt die regel met de hand in plaats van de resource-map te dumpen, want die map
+draagt `accessToken`. Een tweede test legt dat vast: de naam staat in de log, het token niet. Dat is
+dezelfde regel die `test/services/preferences/log_safety_test.dart` elders bewaakt, en hij geldt
+hier extra omdat deze regel bedoeld is om in een bugmelding geplakt te worden.
+
+**Bevestigd met een device-log.** Michel stuurde een screenshot van de logviewer met upload-ID
+`12e1y`. Die is op te halen bij de relay (`https://ice.pleya.app/logs/12e1y`) en bevat de complete
+opstartsequentie van zijn Apple TV, twee Plex-servers gekoppeld aan Plex Home.
+
+`GET https://clients.plex.tv/api/v2/resources … → 200 (324ms)` met `{servers: 2}` sluit pad 1 uit:
+beide servers kwamen terug, geen resource viel stil. Geen `Failed neutral library fetch`-regel sluit
+pad 3 uit. Wat er wél staat:
+
+```
+[15:10:51.907] ActiveProfileBinder: rebinding for Michel (…)
+[15:10:51.957] ActiveProfileBinder: connecting Michel from cached server metadata while resources refresh {servers: 2}
+[15:10:52.281] GET https://clients.plex.tv/api/v2/resources … → 200 (324ms)
+[15:10:52.281] ActiveProfileBinder: resource refresh completed for Michel {servers: 2}
+…zestien connectiekandidaten voor de tweede server, waaronder meerdere echte HTTP 401…
+[15:10:54.271] ERROR No working Plex server connection endpoints after race {candidateCount: 16}
+[15:10:54.272] ERROR refreshTokensForProfile: failed to connect G-Plexflix
+[15:10:54.273] ActiveProfileBinder: bound 1/2 Plex servers for Michel
+…
+[15:10:54.369] ERROR refreshTokensForProfile: failed to connect G-Plexflix
+              Exception: No working connection found (G-Plexflix was unreachable moments ago)
+```
+
+Dat is pad 2, en de tweede regel is de eigenlijke oorzaak. Er zijn twee bindpogingen voor de tweede
+server (`G-Plexflix`, een gedeelde/geleende server, niet Michels eigen NAS): de eerste, optimistische
+poging met het gecachte token uit `_bindOptimisticallyFromCache`, en een tweede vanuit
+`_reconcileWhenFetchLands` nádat de live `/resources`-fetch al was geland, met het verse en voor déze
+server correct gescoopte token. De eerste poging faalde echt: van de zestien kandidaten kwamen er
+meerdere terug met een letterlijke HTTP 401 (de server antwoordde, het token werd afgewezen), niet
+enkel timeouts. Die faalpoging zette `_unreachableSince[G-Plexflix]`. De tweede poging, met het token
+dat wél had gewerkt, kwam er niet eens aan toe: `_createClientForServer` zag de recente faalregistratie
+en gooide meteen `"was unreachable moments ago"`, zonder een enkele kandidaat te proberen.
+
+`_unreachableSince` bestaat om een stortvloed van aanroepers die tot dezelfde conclusie zouden komen
+met dezelfde data te bundelen (eigen doc comment: "Remembering the verdict briefly makes the second
+and third caller fail instantly instead"). De reconcile-aanroep is geen zo'n aanroeper: hij draagt
+data die de optimistische poging nooit had, namelijk het net opgehaalde, per-server token. De memory
+blokkeerde hier niet een zinloze herhaling maar de ene poging die de zaak had kunnen redden, en dat is
+precies het gat tussen wat `_reconcileWhenFetchLands`'s eigen doc comment belooft ("retry servers the
+optimistic pass left offline") en wat er gebeurde.
+
+**De fix.** `refreshTokensForProfile` en `_createClientForServer` krijgen een
+`retryRecentFailures`-parameter, standaard `false`. Alleen de reconcile-aanroep in
+`active_profile_binder.dart` zet hem op `true`: dat is de enige aanroeper die per definitie andere
+data draagt dan de poging die de memory zette. Elke andere aanroeper, inclusief de optimistische pass
+zelf, blijft de memory eerbiedigen.
+
+Reproductie en negatieve controle in `test/profiles/active_profile_binder_test.dart`: de bestaande
+test "optimistic cached bind settles without waiting for the resource refresh, then reconciles" kreeg
+twee assertions op een nieuwe `retryRecentFailuresCalls`-lijst op de test-fake. Zonder de fix leverde
+dat `[false, false]` op (rood); met de fix `[false, true]`. `_createClientForServer` zelf is niet apart
+unit-testbaar (`multi_server_manager_test.dart` documenteert al dat die methode een echte netwerkrace
+draait en geen fake `PlexClient`-fabriek heeft), dus de dekking zit op het niveau waar de codebase dat
+al voor deze klasse bugs doet: de binder die de parameter doorgeeft.
+
+**Codereview vond de fix onvolledig.** `/code-review` en twee onafhankelijke verificatie-subagents
+wezen alle drie op dezelfde twee resterende plekken: `_connectFromServers`, de gedeelde helper achter
+`refreshTokensForProfile`, kreeg de parameter niet. Twee van zijn aanroepers zijn structureel gelijk
+aan de reconcile-aanroep, maar zaten niet in de eerste versie.
+
+`_bindPlexHome` heeft een synchrone fallback: als de optimistische pass voor élke server faalt (niet
+alleen één, zoals in het device-log), wordt `_reconcileWhenFetchLands` nooit ingepland, want die
+scheduling zit achter `_bindOptimisticallyFromCache`'s eigen `if (result.visibleServerIds.isEmpty)
+return result;`. De binder valt dan direct terug op de al lopende `/resources`-fetch en verbindt
+daarmee, maar via `_connectFromServers` zonder de bypass. Bij een volledig verlopen gecached token had
+dit een hele profielbinding op nul servers kunnen laten eindigen, terwijl de net opgehaalde data
+bewees dat ze bereikbaar waren. `_bindLocalPlexConnection` (gedeelde/geleende Plex-connecties, niet
+alleen Plex Home) heeft precies dezelfde vorm op zijn eigen fallback.
+
+Beide zijn nu ook gedekt: `_connectFromServers` geeft `retryRecentFailures` door, en de twee fallbacks
+zetten hem op `true`, met dezelfde motivatie als de reconcile-aanroep. De twee andere aanroepers van
+`_connectFromServers` (`_connectPlexServers`'s eerste poging, `_connectFromCachedServers`'s
+laatste-redmiddel op stale data) blijven bewust op de standaardwaarde `false`: geen van beide draagt
+data die een eerdere poging in dezelfde bindpas nog niet had.
+
+Twee nieuwe tests, elk eerst rood gemaakt door de bijbehorende aanroep terug te zetten naar de
+standaardwaarde en weer groen na herstel: één voor `_bindPlexHome`'s fallback (een gecached token dat
+voor élke server faalt, gevolgd door een geslaagde live fetch), één voor `_bindLocalPlexConnection`
+via een geleende `PlexAccountConnection` aan een lokaal profiel.
+
+Bewijs: `flutter analyze` zonder errors of warnings, `active_profile_binder_test.dart` op 19 tests
+groen, en de volledige suite op 6341 geslaagd, 0 rood, 6 overgeslagen (twee meer dan de 6339 van vóór
+deze twee tests, verder ongewijzigd).
+
+**Nog niet op hardware bevestigd dat dit Michels servers daadwerkelijk laat verschijnen.** De fix
+verhelpt het pad dat het device-log aanwijst, maar de volgende TV-build moet tonen dat `G-Plexflix` nu
+wél in de Servers-categorie staat. Zet SRC1 pas op VERIFIED na die run.
 
 ### PLR2, het paneel per functie
 
@@ -3536,7 +3666,7 @@ voetregel letterlijk "Links en rechts stappen een waarde" belooft, en het raakt
 elke waarderij van het paneel plus de voetregeltekst. Het gaat daarom als
 DEC-voorstel en niet als stille correctie.
 
-**Goedgekeurd als [DEC-102](DECISIONS.md#dec-102) en gebouwd in `08814bac`.**
+**Goedgekeurd als [DEC-107](DECISIONS.md#dec-107) en gebouwd in `08814bac`.**
 Select klikt een waarderij aan en laat hem weer los, LEFT en RIGHT bereiken de
 rij alleen in die stand, en Menu pelt één laag per druk: eerst de rij, dan een
 open subweergave, dan het paneel. De pijlen naast de waarde staan er alleen als

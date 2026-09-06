@@ -202,6 +202,96 @@ class AutomationIds {
   /// reaches the panel on a simulator that cannot swipe.
   static const String playerSettingsButton = 'player.settings_button';
 
+  /// The mobile bottom navigation bar as a whole (bounds, not per-tab). The
+  /// per-tab nodes are [navTab], mounted on both the side rail and this bar.
+  static const String navBar = 'nav.bar';
+
+  /// The mobile Home header (lockup, and on Home the conditional actions,
+  /// search and avatar) — iOS Unified 2026 fase 1,
+  /// `docs/ios-unified-2026-fase1-plan.md` stap 3.
+  static const String homeHeader = 'home.header';
+
+  /// The header's search action.
+  static const String homeHeaderSearch = 'home.header.search';
+
+  /// The header's profile avatar. Not tappable: profile switching's own
+  /// entry point is elsewhere (fase 6, DEC-102), so this node exists for
+  /// scenarios to find the avatar, not to activate it.
+  static const String homeHeaderAvatar = 'home.header.avatar';
+
+  /// The Series/Films chip bar under the header.
+  static const String homeChips = 'home.chips';
+
+  /// One mobile media rail. Instanceable: suffixed `[<railIndex>]`.
+  static const String homeRail = 'home.rail';
+
+  /// One card in [homeRail]. Instanceable: suffixed
+  /// `[<railIndex>.<itemIndex>]`.
+  static const String homeRailItem = 'home.rail.item';
+
+  /// The Series and Films landing screens (iOS Unified 2026 fase 2, DEC-104).
+  static const String screenSeries = 'screen.series';
+  static const String screenMovies = 'screen.movies';
+
+  /// A landing's header, title line, "Alle series"/"Alle films" action and one
+  /// of its rails. All four are instanceable and all four carry the landing's
+  /// kind, because Home, Series and Films are children of the same
+  /// `IndexedStack` and therefore all mounted at once: an id without the kind
+  /// would name two rows at the same moment, which is the collision
+  /// [myPleyaSectionTile] documents.
+  ///
+  /// `landing.header[series]`, `landing.title[movies]`,
+  /// `landing.view_all[series]`, `landing.rail[series.0]`.
+  static const String landingHeader = 'landing.header';
+  static const String landingHeaderSearch = 'landing.header.search';
+  static const String landingHeaderAvatar = 'landing.header.avatar';
+  static const String landingTitle = 'landing.title';
+  static const String landingViewAll = 'landing.view_all';
+  static const String landingRail = 'landing.rail';
+  static const String landingRailItem = 'landing.rail.item';
+
+  /// The mobile source-picker sheet as a whole.
+  static const String sheetSourcePicker = 'sheet.source_picker';
+
+  /// One row in [sheetSourcePicker]. Instanceable: suffixed `[<index>]`.
+  static const String sheetSourcePickerRow = 'sheet.source_picker.row';
+
+  /// The Alle films/Alle series catalogue screens (iOS Unified 2026 fase 3,
+  /// `docs/ios-unified-2026-fase3-plan.md`). Two separate consts rather than
+  /// one instanceable id, the same choice [screenSeries]/[screenMovies] made:
+  /// each screen is pushed on its own, kind is the whole identity.
+  static const String screenCatalogMovies = 'screen.catalog_movies';
+  static const String screenCatalogSeries = 'screen.catalog_series';
+
+  /// A catalogue screen's header, its three chips, its count line, its grid
+  /// and one grid cell. All instanceable and all carry the kind
+  /// (`catalog.chip.filters[movies]`, `catalog.grid.item[series.4]`) for the
+  /// same reason [landingHeader] does: a screen the viewer left on the
+  /// Navigator stack can still be mounted underneath the one they are
+  /// looking at.
+  static const String catalogHeader = 'catalog.header';
+  static const String catalogHeaderSearch = 'catalog.header.search';
+  static const String catalogChipSources = 'catalog.chip.sources';
+  static const String catalogChipFilters = 'catalog.chip.filters';
+  static const String catalogChipSort = 'catalog.chip.sort';
+  static const String catalogCount = 'catalog.count';
+  static const String catalogGrid = 'catalog.grid';
+  static const String catalogGridItem = 'catalog.grid.item';
+
+  /// The catalogue filter sheet (fase 3) as a whole, one category row, one
+  /// option row, and its two footer actions. Not suffixed with a kind: a
+  /// modal sheet is exclusive, so only one of these is ever mounted at once.
+  static const String sheetCatalogFilters = 'sheet.catalog_filters';
+  static const String sheetCatalogFiltersCategory = 'sheet.catalog_filters.category';
+  static const String sheetCatalogFiltersOption = 'sheet.catalog_filters.option';
+  static const String sheetCatalogFiltersClear = 'sheet.catalog_filters.clear';
+  static const String sheetCatalogFiltersApply = 'sheet.catalog_filters.apply';
+
+  /// The catalogue sort sheet (fase 3) and one of its options. Same exclusive
+  /// reasoning as [sheetCatalogFilters].
+  static const String sheetCatalogSort = 'sheet.catalog_sort';
+  static const String sheetCatalogSortOption = 'sheet.catalog_sort.option';
+
   /// Base ids a scenario may address as `id[instance]` — see
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
@@ -219,6 +309,27 @@ class AutomationIds {
     myPleyaLogRow,
     playerPanelTab,
     playerPanelRow,
+    homeRail,
+    homeRailItem,
+    landingHeader,
+    landingHeaderSearch,
+    landingHeaderAvatar,
+    landingTitle,
+    landingViewAll,
+    landingRail,
+    landingRailItem,
+    sheetSourcePickerRow,
+    catalogHeader,
+    catalogHeaderSearch,
+    catalogChipSources,
+    catalogChipFilters,
+    catalogChipSort,
+    catalogCount,
+    catalogGrid,
+    catalogGridItem,
+    sheetCatalogFiltersCategory,
+    sheetCatalogFiltersOption,
+    sheetCatalogSortOption,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -234,6 +345,7 @@ class AutomationIds {
     {'id': screenMediaDetail, 'role': 'screen', 'instanceable': false},
     for (final tab in NavigationTabId.values) {'id': navTab(tab), 'role': 'nav', 'instanceable': false},
     {'id': navProfile, 'role': 'nav', 'instanceable': false},
+    {'id': navBar, 'role': 'nav', 'instanceable': false},
     {'id': sidebarRail, 'role': 'sidebar', 'instanceable': false},
     {'id': sidebarLibraryRow, 'role': 'nav.item', 'instanceable': true},
     {'id': libraryGrid, 'role': 'grid', 'instanceable': false},
@@ -266,5 +378,39 @@ class AutomationIds {
     {'id': playerPanelRow, 'role': 'list.item', 'instanceable': true},
     {'id': playerSettingsButton, 'role': 'button', 'instanceable': false},
     {'id': tvosMenuPassthrough, 'role': 'service', 'instanceable': false},
+    {'id': homeHeader, 'role': 'region', 'instanceable': false},
+    {'id': homeHeaderSearch, 'role': 'button', 'instanceable': false},
+    {'id': homeHeaderAvatar, 'role': 'image', 'instanceable': false},
+    {'id': homeChips, 'role': 'filter', 'instanceable': false},
+    {'id': homeRail, 'role': 'rail', 'instanceable': true},
+    {'id': homeRailItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': screenSeries, 'role': 'screen', 'instanceable': false},
+    {'id': screenMovies, 'role': 'screen', 'instanceable': false},
+    {'id': landingHeader, 'role': 'region', 'instanceable': true},
+    {'id': landingHeaderSearch, 'role': 'button', 'instanceable': true},
+    {'id': landingHeaderAvatar, 'role': 'image', 'instanceable': true},
+    {'id': landingTitle, 'role': 'region', 'instanceable': true},
+    {'id': landingViewAll, 'role': 'button', 'instanceable': true},
+    {'id': landingRail, 'role': 'rail', 'instanceable': true},
+    {'id': landingRailItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
+    {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},
+    {'id': screenCatalogSeries, 'role': 'screen', 'instanceable': false},
+    {'id': catalogHeader, 'role': 'region', 'instanceable': true},
+    {'id': catalogHeaderSearch, 'role': 'button', 'instanceable': true},
+    {'id': catalogChipSources, 'role': 'button', 'instanceable': true},
+    {'id': catalogChipFilters, 'role': 'button', 'instanceable': true},
+    {'id': catalogChipSort, 'role': 'button', 'instanceable': true},
+    {'id': catalogCount, 'role': 'region', 'instanceable': true},
+    {'id': catalogGrid, 'role': 'grid', 'instanceable': true},
+    {'id': catalogGridItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': sheetCatalogFilters, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetCatalogFiltersCategory, 'role': 'list.item', 'instanceable': true},
+    {'id': sheetCatalogFiltersOption, 'role': 'list.item', 'instanceable': true},
+    {'id': sheetCatalogFiltersClear, 'role': 'button', 'instanceable': false},
+    {'id': sheetCatalogFiltersApply, 'role': 'button', 'instanceable': false},
+    {'id': sheetCatalogSort, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetCatalogSortOption, 'role': 'list.item', 'instanceable': true},
   ];
 }

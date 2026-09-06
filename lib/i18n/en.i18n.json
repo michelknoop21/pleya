@@ -792,6 +792,7 @@
   },
   "discover": {
     "title": "Discover",
+    "forYou": "For you",
     "switchProfile": "Switch Profile",
     "noContentAvailable": "No content available",
     "addMediaToLibraries": "Add some media to your libraries",
@@ -1917,7 +1918,8 @@
     "chooseAnotherSource": "Choose another source",
     "rowSemantics": "Source ${index} of ${count}: ${description}",
     "preferredServer": "Preferred server",
-    "setPreferredServer": "Always use ${server}"
+    "setPreferredServer": "Always use ${server}",
+    "playOnServer": "Play on ${server}"
   },
   "unifiedCatalog": {
     "moviesTitle": "Movies",
@@ -1949,6 +1951,7 @@
     },
     "filters": {
       "title": "Filters",
+      "activeCount": "${count} active",
       "status": "Status",
       "genre": "Genre",
       "year": "Year",

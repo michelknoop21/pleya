@@ -207,6 +207,12 @@ class PlexAuthService {
       } catch (e) {
         // Collect invalid servers for debugging
         invalidServers.add(resource as Map<String, dynamic>);
+        // Say so. A dropped resource is a server the account has and the app
+        // will not show, and every surface below this one (the sidebar, the
+        // source filter of Films and Series) then honestly reports the servers
+        // it was handed. Without this line the whole symptom is "I coupled two
+        // servers and see one", with nothing in the log naming the second.
+        appLogger.w('Plex resources: skipping ${_resourceLabel(resource)}, reason: $e');
         continue;
       }
     }
@@ -221,6 +227,18 @@ class PlexAuthService {
     }
 
     return servers;
+  }
+
+  /// A resource's name and machine id, and deliberately nothing else.
+  ///
+  /// The raw resource map carries `accessToken`, so it must never be logged
+  /// whole. This line exists to be pasted into a bug report.
+  static String _resourceLabel(Object? resource) {
+    if (resource is! Map) return 'an unreadable Plex resource';
+    final name = resource['name'];
+    final id = resource['clientIdentifier'];
+    final label = name is String && name.isNotEmpty ? '"$name"' : 'an unnamed server';
+    return id is String && id.isNotEmpty ? '$label ($id)' : label;
   }
 
   /// Get user information

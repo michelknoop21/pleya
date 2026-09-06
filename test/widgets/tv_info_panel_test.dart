@@ -86,7 +86,7 @@ void main() {
   testWidgets('volume boost raises the ceiling and then the level (AUD1)', (tester) async {
     final h = await _pumpPanel(tester, initial: TvInfoPanelRequest.audio);
     await h.focusRow(tester, 'Volume boost');
-    // Select enters the row and RIGHT steps it (DEC-102); Select no longer
+    // Select enters the row and RIGHT steps it (DEC-107); Select no longer
     // cycles the value itself.
     await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await tester.pumpAndSettle();
@@ -148,7 +148,7 @@ void main() {
 
   testWidgets('an entered value row clamps at its ends instead of wrapping (PNL2)', (tester) async {
     // Wrapping was the old behaviour and it is wrong: RIGHT on +200% dropped
-    // the boost back to Off. Under DEC-102 the clamp no longer doubles as the
+    // the boost back to Off. Under DEC-107 the clamp no longer doubles as the
     // way out of the column — that is the row's rest state — but a step past
     // the end must still do nothing.
     expect(stepValueClamped(kTvPanelVolumeBoostSteps, 300, 1), isNull);
@@ -163,10 +163,10 @@ void main() {
     expect(boost.stepsValue, isTrue, reason: 'Select enters this row, it no longer cycles the value');
   });
 
-  // PLR5 / DEC-102. Michel on hardware: from a value row the other column is
+  // PLR5 / DEC-107. Michel on hardware: from a value row the other column is
   // unreachable unless you change the value. Zoom sits at 100%, in the middle
   // of `kTvPanelZoomPresets`, so `clampedSteps` hands back neither direction
-  // and the old row swallowed both. Red before DEC-102 on both counts: the
+  // and the old row swallowed both. Red before DEC-107 on both counts: the
   // ring stayed put and the value moved.
   testWidgets('a value row at rest lets RIGHT cross to the other column without stepping (PLR5)', (tester) async {
     final zoom = <double>[];
@@ -197,7 +197,7 @@ void main() {
     expect(zoom, [1.1], reason: 'an entered row steps');
     expect(h.focusedRow(tester)?.title, 'Zoom', reason: 'and keeps the ring');
 
-    // Menu peels the row first. The panel must survive it, or DEC-102 would
+    // Menu peels the row first. The panel must survive it, or DEC-107 would
     // hand PLR6 a second way to trap the remote.
     await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();

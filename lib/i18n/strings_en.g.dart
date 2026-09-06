@@ -2312,6 +2312,9 @@ class TranslationsDiscoverEn {
 	/// en: 'Discover'
 	String get title => 'Discover';
 
+	/// en: 'For you'
+	String get forYou => 'For you';
+
 	/// en: 'Switch Profile'
 	String get switchProfile => 'Switch Profile';
 
@@ -5291,6 +5294,9 @@ class TranslationsSourcePickerEn {
 
 	/// en: 'Always use ${server}'
 	String setPreferredServer({required Object server}) => 'Always use ${server}';
+
+	/// en: 'Play on ${server}'
+	String playOnServer({required Object server}) => 'Play on ${server}';
 }
 
 // Path: unifiedCatalog
@@ -6515,6 +6521,9 @@ class TranslationsUnifiedCatalogFiltersEn {
 	/// en: 'Filters'
 	String get title => 'Filters';
 
+	/// en: '${count} active'
+	String activeCount({required Object count}) => '${count} active';
+
 	/// en: 'Status'
 	String get status => 'Status';
 
@@ -7586,6 +7595,7 @@ extension on Translations {
 			'connections.disconnectServerConfirm' => ({required Object name}) => 'Disconnect from "${name}"? The sign-in for this server is removed from this device. Downloaded items are kept.',
 			'connections.reauthRequired' => 'Sign-in required',
 			'discover.title' => 'Discover',
+			'discover.forYou' => 'For you',
 			'discover.switchProfile' => 'Switch Profile',
 			'discover.noContentAvailable' => 'No content available',
 			'discover.addMediaToLibraries' => 'Add some media to your libraries',
@@ -7869,9 +7879,9 @@ extension on Translations {
 			'liveTv.rulesProcessRequested' => 'Rule re-evaluation requested',
 			'liveTv.recordShow' => 'Record show',
 			'collections.title' => 'Collections',
-			'collections.collection' => 'Collection',
 			_ => null,
 		} ?? switch (path) {
+			'collections.collection' => 'Collection',
 			'collections.empty' => 'Collection is empty',
 			'collections.unknownLibrarySection' => 'Cannot delete: Unknown library section',
 			'collections.deleteCollection' => 'Delete Collection',
@@ -8383,9 +8393,9 @@ extension on Translations {
 			'seerr.approve' => 'Approve',
 			'seerr.decline' => 'Decline',
 			'seerr.edit' => 'Edit',
-			'seerr.cancelRequest' => 'Cancel request',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.cancelRequest' => 'Cancel request',
 			'seerr.cancelRequestConfirm' => 'Cancel this request?',
 			'seerr.discoverTitle' => 'Discover on Requests',
 			'seerr.trending' => 'Trending',
@@ -8613,6 +8623,7 @@ extension on Translations {
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Source ${index} of ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Preferred server',
 			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Always use ${server}',
+			'sourcePicker.playOnServer' => ({required Object server}) => 'Play on ${server}',
 			'unifiedCatalog.moviesTitle' => 'Movies',
 			'unifiedCatalog.seriesTitle' => 'Series',
 			'unifiedCatalog.sources' => ({required Object count}) => '${count} sources',
@@ -8637,6 +8648,7 @@ extension on Translations {
 			'unifiedCatalog.rail.noFilters' => 'None',
 			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} active',
 			'unifiedCatalog.filters.title' => 'Filters',
+			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} active',
 			'unifiedCatalog.filters.status' => 'Status',
 			'unifiedCatalog.filters.genre' => 'Genre',
 			'unifiedCatalog.filters.year' => 'Year',

@@ -64,6 +64,8 @@ Future<void> deleteProfile(BuildContext context, Profile profile) async {
   // And how they had Films and Series set up (hoofdstuk 22): a genre or a
   // library selection describes what someone browses, so it leaves with them
   // rather than greeting the next profile on this device.
+  // `storage.userScopeForProfileId` rather than `activeUserScope()`: the
+  // profile being deleted need not be the active one.
   await UnifiedCatalogQueryStore.clearForProfileScope(storage.userScopeForProfileId(profile.id));
   // And what this profile's servers turned out to offer ([DEC-069]): a
   // remembered Live TV capability describes someone else's tuner, and a scope

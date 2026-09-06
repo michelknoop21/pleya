@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:pleya/widgets/pleya_logo.dart';
 import '../widgets/server_activities_button.dart';
+import 'home/mobile_home_screen.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import '../focus/focusable_action_bar.dart';
@@ -76,7 +77,7 @@ import '../widgets/companion_remote/remote_session_dialog.dart';
 import 'companion_remote/mobile_remote_screen.dart';
 
 class DiscoverScreen extends StatefulWidget {
-  const DiscoverScreen({super.key, this.onManageServers});
+  const DiscoverScreen({super.key, this.onManageServers, this.onOpenSearch});
 
   /// Hoofdstuk 14.7's escape hatch from the unified source picker's
   /// `NoUsableSource` state ("every source for this title is
@@ -85,6 +86,11 @@ class DiscoverScreen extends StatefulWidget {
   /// situation. Used by [_buildTvHeroActions] when a featured Home-hero
   /// title routes through the fase-4 activation coordinator.
   final VoidCallback? onManageServers;
+
+  /// Opens Zoeken from the iPhone Home header. Supplied by `MainScreen`, which
+  /// owns tab selection; null on every other form factor, where the header
+  /// does not exist (iOS Unified 2026 fase 2, [DEC-104]).
+  final VoidCallback? onOpenSearch;
 
   /// The hero's pagination-dot row, so tests can measure its real rect
   /// against the "Verder kijken" heading directly below the hero.
@@ -172,6 +178,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   bool _isAutoScrollPaused = false;
   bool _heroFocusPausedAutoScroll = false;
   bool _isTabVisible = true;
+
+  /// Cached in didChangeDependencies rather than read via
+  /// PlatformDetector.isPhone(context) at each _startAutoScroll call: that
+  /// call can happen from initState, before Theme.of(context) is safe.
+  bool _isPhone = false;
 
   // Track initial load so we can focus hero when content first appears
   bool _initialLoadComplete = false;
@@ -343,6 +354,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
+    final isPhone = PlatformDetector.isPhone(context);
+    if (isPhone != _isPhone) {
+      _isPhone = isPhone;
+      if (isPhone) {
+        _autoScrollTimer?.cancel();
+      } else if (_isTabVisible && !_isAutoScrollPaused) {
+        _startAutoScroll();
+      }
+    }
 
     // Home is the surface that carries the now-watching indicator, so it is
     // Home that asks Tautulli once a minute whether anyone is streaming. The
@@ -628,6 +649,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void _startAutoScroll() {
     _autoScrollTimer?.cancel();
     if (_isAutoScrollPaused) return;
+    // On the phone, _buildContent replaces this whole subtree with
+    // MobileHomeScreen (which has its own hero auto-advance) — the hero
+    // PageView and its controller below never get built, so this timer
+    // would just wake up every few seconds to find `!_heroController.hasClients`
+    // and bail, for the life of the session. Read from the cached field, not
+    // PlatformDetector.isPhone(context) directly: this can run from
+    // initState, before Theme.of(context) (which isMobile depends on) may be
+    // called.
+    if (_isPhone) return;
 
     // TV does not rotate from here any more: `TvHeroBillboardCarousel` owns its
     // own 8-second timer and every hoofdstuk 9.6 pause condition, because the
@@ -1275,6 +1305,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
     if (PlatformDetector.isTV()) {
       return _buildTvContent(context);
+    }
+
+    // iOS Unified 2026 fase 1 (docs/ios-unified-2026-fase1-plan.md stap 8):
+    // the iPhone Home surface is its own screen, reading the platform-neutral
+    // Unified providers directly rather than this class's legacy fields.
+    // iPad stays on the tree below — see the plan's H3.
+    if (PlatformDetector.isPhone(context)) {
+      return MobileHomeScreen(onSearchTap: widget.onOpenSearch);
     }
 
     final showServerNameOnHubs = svc.read(SettingsService.showServerNameOnHubs);

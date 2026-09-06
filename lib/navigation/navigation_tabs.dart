@@ -12,22 +12,53 @@ import 'navigation_tab_id.dart';
 
 export 'navigation_tab_id.dart';
 
-/// Bottom-nav icon with a red→amber brand dot above the active tab,
-/// mirroring the navigation mockup. The dot slot is always reserved so
-/// selected and unselected icons stay vertically aligned.
+/// How a bottom bar paints itself. The tabset, the destinations and every
+/// callback are identical in both: this decides paint, nothing else.
+///
+/// The boundary exists because fase 1 was an iPhone phase and the bottom bar
+/// is one widget shared with the iPad. Same shape as the Home boundary in
+/// `discover_screen.dart`: one `PlatformDetector` call at the shell, an
+/// explicit value passed down, and no platform check anywhere inside the
+/// destinations. [DEC-103] records the decision; fase 2 is where an iPad
+/// authority decides whether the iPad follows.
+enum TabBarPresentation {
+  /// The bar as it stood before iOS Unified 2026 fase 1: a red-to-amber brand
+  /// dot above the active glyph, white label, and a red 18x3 indicator drawn
+  /// over the top edge by the shell. iPad and every other non-phone shell.
+  classic,
+
+  /// The fase-1 bar: no dot, no indicator, and the active slot in [kAccent],
+  /// glyph and label alike. iPhone only.
+  unified2026,
+}
+
+/// Bottom-nav icon in the presentation the shell asked for.
+///
+/// In [TabBarPresentation.classic] the dot slot is always reserved so selected
+/// and unselected icons stay vertically aligned. In
+/// [TabBarPresentation.unified2026] there is no dot, every glyph sits on the
+/// same baseline, and the active one is drawn in [kAccent]; the matching label
+/// colour is a `NavigationBarTheme` override at the bar itself
+/// (`mobileTabBarTheme` in `main_screen.dart`), since the label is Material's,
+/// not this widget's. iOS Unified 2026 fase 1,
+/// `docs/ios-unified-2026-fase1-plan.md` stap 9.
 class _TabIcon extends StatelessWidget {
   final IconData icon;
   final String? svgAsset;
   final bool selected;
+  final TabBarPresentation presentation;
 
-  /// Replaces the glyph without touching the dot or the alignment above it.
-  /// My Pleya uses it to show the active profile's avatar.
+  /// Replaces the glyph without touching the slot around it. My Pleya uses it
+  /// to show the active profile's avatar.
   final Widget? glyph;
 
-  const _TabIcon({required this.icon, this.svgAsset, required this.selected, this.glyph});
+  const _TabIcon({required this.icon, this.svgAsset, required this.selected, required this.presentation, this.glyph});
 
   @override
   Widget build(BuildContext context) {
+    if (presentation == TabBarPresentation.unified2026) {
+      return glyph ?? NavGlyph(svgAsset: svgAsset, icon: icon, size: 24, color: selected ? kAccent : null);
+    }
     return Column(
       mainAxisSize: .min,
       children: [
@@ -60,22 +91,52 @@ class _TabIcon extends StatelessWidget {
 /// The avatar carries no semantics of its own: the destination's label already
 /// announces "My Pleya", and an image announcing a second time would only get
 /// in the way. The PIN badge is dropped too: at 24 logical pixels it is three
-/// pixels of noise under a selection dot, and the lock still shows everywhere
-/// the profile is actually chosen.
+/// pixels of noise, and the lock still shows everywhere the profile is
+/// actually chosen.
+///
+/// In [TabBarPresentation.unified2026] selection is a 2 pt [kAccent] ring
+/// around the avatar rather than a tint: an avatar is a photo, so recolouring
+/// it is not available the way it is for the other four glyphs (fase 1 stap
+/// 9). The outer size stays 24 either way, so the slot does not shift when the
+/// tab is selected. In [TabBarPresentation.classic] the avatar is drawn plain
+/// and the dot above it carries the selection, exactly as before fase 1.
 class MyPleyaTabIcon extends StatelessWidget {
   final bool selected;
+  final TabBarPresentation presentation;
 
-  const MyPleyaTabIcon({super.key, required this.selected});
+  /// Outer glyph size, matching the other four bottom-bar slots.
+  static const double _size = 24;
+
+  /// Ring thickness, taken off the avatar rather than added around it.
+  static const double _ringWidth = 2;
+
+  const MyPleyaTabIcon({super.key, required this.selected, required this.presentation});
 
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<ActiveProfileProvider?>()?.active;
+    if (profile == null) {
+      return _TabIcon(icon: Symbols.account_circle_rounded, selected: selected, presentation: presentation);
+    }
+    final ringed = selected && presentation == TabBarPresentation.unified2026;
+    final avatar = ExcludeSemantics(
+      child: ProfileAvatar(profile: profile, size: ringed ? _size - 2 * _ringWidth : _size, showLockBadge: false),
+    );
     return _TabIcon(
       icon: Symbols.account_circle_rounded,
       selected: selected,
-      glyph: profile == null
-          ? null
-          : ExcludeSemantics(child: ProfileAvatar(profile: profile, size: 24, showLockBadge: false)),
+      presentation: presentation,
+      glyph: ringed
+          ? Container(
+              width: _size,
+              height: _size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: kAccent, width: _ringWidth),
+              ),
+              child: Center(child: avatar),
+            )
+          : avatar,
     );
   }
 }
@@ -111,20 +172,20 @@ class NavigationTab {
     required this.getLabel,
   });
 
-  NavigationDestination toDestination() {
+  NavigationDestination toDestination({required TabBarPresentation presentation}) {
     // My Pleya is the one slot whose icon is state, not a constant: it shows
     // whoever is signed in. Resolved here rather than at the call site so
     // every bar that renders this tab gets the same treatment.
     if (id == NavigationTabId.myPleya) {
       return NavigationDestination(
-        icon: const MyPleyaTabIcon(selected: false),
-        selectedIcon: const MyPleyaTabIcon(selected: true),
+        icon: MyPleyaTabIcon(selected: false, presentation: presentation),
+        selectedIcon: MyPleyaTabIcon(selected: true, presentation: presentation),
         label: getLabel(),
       );
     }
     return NavigationDestination(
-      icon: _TabIcon(icon: icon, svgAsset: svgAsset, selected: false),
-      selectedIcon: _TabIcon(icon: icon, svgAsset: svgAsset, selected: true),
+      icon: _TabIcon(icon: icon, svgAsset: svgAsset, selected: false, presentation: presentation),
+      selectedIcon: _TabIcon(icon: icon, svgAsset: svgAsset, selected: true, presentation: presentation),
       label: getLabel(),
     );
   }
@@ -137,6 +198,7 @@ class NavigationTab {
     bool hasSeerr = false,
     bool hasWatchlist = false,
     bool isMobile = false,
+    bool isPhone = false,
   }) {
     final tabs = getVisibleTabs(
       isOffline: isOffline,
@@ -144,6 +206,7 @@ class NavigationTab {
       hasSeerr: hasSeerr,
       hasWatchlist: hasWatchlist,
       isMobile: isMobile,
+      isPhone: isPhone,
     );
     return tabs.indexWhere((tab) => tab.id == id);
   }
@@ -160,12 +223,21 @@ class NavigationTab {
   /// Kijklijst, Aanvragen and Instellingen inside Mijn Pleya there. So the
   /// destination is visible on mobile **and** TV, and `PlatformDetector.isTV()`
   /// is checked separately because [isMobile] returns false on a TV.
+  ///
+  /// [isPhone] gates the Films and Series destinations, which iOS Unified 2026
+  /// fase 2 gives the iPhone (DEC-104). It is passed in rather than derived
+  /// here because `PlatformDetector.isPhone` needs a `BuildContext` and this
+  /// function has none. Same shape as [TabBarPresentation]: one
+  /// `PlatformDetector` call at the shell, an explicit value travelling down,
+  /// and no platform check inside. The iPad is [isMobile] but not [isPhone],
+  /// so it keeps the tabset it had before fase 2 (DEC-103).
   static List<NavigationTab> getVisibleTabs({
     required bool isOffline,
     bool hasLiveTv = false,
     bool hasSeerr = false,
     bool hasWatchlist = false,
     bool isMobile = false,
+    bool isPhone = false,
   }) {
     return allNavigationTabs.where((tab) {
       if (isOffline && tab.onlineOnly) return false;
@@ -180,12 +252,20 @@ class NavigationTab {
       // and every route inside Mijn Pleya was unreachable.
       if (tab.id == NavigationTabId.myPleya && !isMobile && !PlatformDetector.isTV()) return false;
       if (tab.id == NavigationTabId.downloads && PlatformDetector.isAppleTV()) return false;
-      // The unified Films and Series catalogs are 10-foot surfaces (hoofdstuk
-      // 10 of docs/tvos-unified-experience.md) and exist on TV only for now.
-      // Desktop and mobile keep browsing through Bibliotheken, which is the
-      // advanced, source-specific interface and stays untouched by fase 5 —
-      // that is also what keeps this addition invisible to iOS and macOS.
-      if ((tab.id == NavigationTabId.movies || tab.id == NavigationTabId.series) && !PlatformDetector.isTV()) {
+      // The unified Films and Series catalogs are TV **and** iPhone
+      // destinations. On TV they are the 10-foot surfaces of hoofdstuk 10 of
+      // docs/tvos-unified-experience.md; on the iPhone they are the two
+      // landings of iOS Unified 2026 fase 2 (`01-series-landing.png`,
+      // `02-films-landing.png`, DEC-104), which replace the Home chips as the
+      // way to reach a single-kind catalogue.
+      //
+      // Desktop and iPad keep browsing through Bibliotheken. The iPad is
+      // excluded on purpose and not by oversight: fase 2 is an iPhone phase and
+      // the iPad has its own authority (DEC-103), so [isPhone] is the gate, not
+      // [isMobile].
+      if ((tab.id == NavigationTabId.movies || tab.id == NavigationTabId.series) &&
+          !isPhone &&
+          !PlatformDetector.isTV()) {
         return false;
       }
       return true;
@@ -203,6 +283,7 @@ class NavigationTab {
     bool hasSeerr = false,
     bool hasWatchlist = false,
     bool isMobile = false,
+    bool isPhone = false,
     required NavigationTabId? preferredStartup,
   }) {
     final tabs = getVisibleTabs(
@@ -211,6 +292,7 @@ class NavigationTab {
       hasSeerr: hasSeerr,
       hasWatchlist: hasWatchlist,
       isMobile: isMobile,
+      isPhone: isPhone,
     );
     if (isOffline && tabs.any((t) => t.id == NavigationTabId.downloads)) {
       return NavigationTabId.downloads;
@@ -266,8 +348,13 @@ const allNavigationTabs = [
   ),
   // Films and Series sit directly under Home, matching the order the Unified
   // TV mockups put them in (Home · Films · Series · Live TV · Mijn Pleya) and
-  // the information architecture of hoofdstuk 3. Visible on TV only; see
-  // [NavigationTab.getVisibleTabs].
+  // the information architecture of hoofdstuk 3. Visible on TV and on the
+  // iPhone; see [NavigationTab.getVisibleTabs].
+  //
+  // The iPhone northstar orders them the other way round (Home · Series · Films
+  // · Live TV · Mijn Pleya). That is a bottom-bar ordering and it lives with the
+  // bottom bar, in `mainScreenBottomNavigationTabs`, so this list keeps the TV
+  // order it was given under a TV authority.
   NavigationTab(
     id: NavigationTabId.movies,
     onlineOnly: true,
