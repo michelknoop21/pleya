@@ -184,31 +184,72 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
   /// travels with its row instead of staying on the row that took its place.
   String? _pendingFocusKey;
 
+  /// Not a row key: `_key` always carries a layout id, so nothing can collide
+  /// with this.
+  static const String _newRowFocusKey = '#newRow';
+
+  /// The `_nodes` key that ended up holding the host's node, if a row took it.
+  String? _borrowedKey;
+
+  /// Nieuwe rij took it instead, which is what happens when there is no row to
+  /// give it to.
+  bool _newRowBorrowedInitial = false;
+
   @override
   void dispose() {
-    for (final node in _nodes.values) {
-      node.dispose();
+    for (final entry in _nodes.entries) {
+      if (entry.key != _borrowedKey) entry.value.dispose();
     }
     _doneNode?.dispose();
-    _newRowNode?.dispose();
+    if (!_newRowBorrowedInitial) _newRowNode?.dispose();
+    // Exactly once, whoever ended up holding it, and also when nobody did
+    // (ROW1l). The host creates this node and hands it over; `_nodes` used to
+    // be the only thing that ever disposed it, so a panel with no movable rows
+    // never adopted it and it was simply dropped. Same ownership as
+    // `tv_catalog_sort_panel`.
+    widget.initialFocusNode?.dispose();
     super.dispose();
   }
 
   String _key(String layoutId, TvHomeRowColumn column) => '$layoutId#${column.name}';
 
+  /// The control the panel opens on: the first movable row's own up arrow.
+  ///
+  /// Null when there is no such row, and then Nieuwe rij takes the node
+  /// instead. Stated rather than "whichever key asks first" (ROW1m): that rule
+  /// was only ever answered from `_entryRow`, so a profile with nothing movable
+  /// left the node unattached, the overlay fell through to its first descendant
+  /// and the ring opened on Klaar. One Select and the panel the viewer had just
+  /// opened was gone again.
+  String? get _initialRowKey =>
+      widget.entries.isEmpty ? null : _key(widget.entries.first.layoutIds.first, TvHomeRowColumn.up);
+
+  bool get _initialTaken => _borrowedKey != null || _newRowBorrowedInitial;
+
   FocusNode _nodeFor(String layoutId, TvHomeRowColumn column) {
     final key = _key(layoutId, column);
-    // The host's initial-focus node is borrowed for the very first stop, so the
-    // overlay opens with the ring already on a real control rather than on a
-    // node this panel would then have to hand it over from.
-    if (_nodes.isEmpty && widget.initialFocusNode != null) {
-      return _nodes[key] = widget.initialFocusNode!;
+    final initial = widget.initialFocusNode;
+    if (initial != null && !_initialTaken && key == _initialRowKey) {
+      _borrowedKey = key;
+      return _nodes[key] = initial;
     }
     return _nodes.putIfAbsent(key, () => FocusNode(debugLabel: 'TvHomeCustomize.$key'));
   }
 
   FocusNode get _done => _doneNode ??= FocusNode(debugLabel: 'TvHomeCustomize.done');
-  FocusNode get _newRow => _newRowNode ??= FocusNode(debugLabel: 'TvHomeCustomize.newRow');
+
+  FocusNode get _newRow {
+    final existing = _newRowNode;
+    if (existing != null) return existing;
+    final initial = widget.initialFocusNode;
+    // The entry rows are built before this one, so by now a row has taken the
+    // node if there was a row to take it.
+    if (initial != null && !_initialTaken && _initialRowKey == null) {
+      _newRowBorrowedInitial = true;
+      return _newRowNode = initial;
+    }
+    return _newRowNode = FocusNode(debugLabel: 'TvHomeCustomize.newRow');
+  }
 
   List<TvHomeRowColumn> _columnsOf(TvHomeRowEntry entry) => entry.isCustom
       ? const [TvHomeRowColumn.up, TvHomeRowColumn.down, TvHomeRowColumn.primary, TvHomeRowColumn.remove]
@@ -230,6 +271,25 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
     _nodeFor(widget.entries[target].layoutIds.first, wanted).requestFocus();
   }
 
+  /// Where the ring goes when the row under it is about to disappear (ROW1k).
+  ///
+  /// The row that slides up into this place, or the one above when there is
+  /// nothing below, or Nieuwe rij when the list runs out entirely. Clamped to a
+  /// column the target actually has, the same way [_step] is: only an own row
+  /// carries Verwijderen, and that is the button being pressed.
+  void _remove(int index, HomeCustomRow row) {
+    final entries = widget.entries;
+    final neighbour = index + 1 < entries.length ? entries[index + 1] : (index > 0 ? entries[index - 1] : null);
+    if (neighbour == null) {
+      _pendingFocusKey = _newRowFocusKey;
+    } else {
+      final columns = _columnsOf(neighbour);
+      final wanted = columns.contains(TvHomeRowColumn.remove) ? TvHomeRowColumn.remove : columns.last;
+      _pendingFocusKey = _key(neighbour.layoutIds.first, wanted);
+    }
+    widget.onRemove(row);
+  }
+
   void _move(int index, int delta, TvHomeRowColumn column) {
     // The row is about to change places, so remember the control rather than
     // the position: after the rebuild the ring belongs on the same button of
@@ -242,6 +302,10 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
     final key = _pendingFocusKey;
     if (key == null) return;
     _pendingFocusKey = null;
+    if (key == _newRowFocusKey) {
+      _newRow.requestFocus();
+      return;
+    }
     _nodes[key]?.requestFocus();
   }
 
@@ -358,7 +422,7 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
       onMoveUp: () => _move(index, -1, TvHomeRowColumn.up),
       onMoveDown: () => _move(index, 1, TvHomeRowColumn.down),
       onPrimary: custom == null ? () => widget.onToggleHidden(entry) : () => widget.onEdit(custom),
-      onRemove: custom == null ? null : () => widget.onRemove(custom),
+      onRemove: custom == null ? null : () => _remove(index, custom),
       onNavigateUp: (column) => _step(index, column, -1),
       onNavigateDown: (column) => _step(index, column, 1),
     );

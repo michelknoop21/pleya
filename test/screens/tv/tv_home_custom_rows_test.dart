@@ -213,7 +213,16 @@ void main() {
     },
   }) => jsonEncode({'id': id, 'kind': kind, 'name': name, 'query': query});
 
-  Future<void> boot(WidgetTester tester, {List<String> savedRows = const [], List<MediaItem>? catalog}) async {
+  /// [barren] gives the profile a Home with nothing on it: no Verder kijken, no
+  /// recent films, no hubs. That is the state a removed or offline server
+  /// leaves behind, and the one ROW1j is about.
+  Future<void> boot(
+    WidgetTester tester, {
+    List<String> savedRows = const [],
+    List<MediaItem>? catalog,
+    bool barren = false,
+    bool continueWatchingOnly = false,
+  }) async {
     // StorageService stores a string list as one JSON string, so the fixture
     // writes exactly what an earlier session would have left in that key.
     resetSharedPreferencesForTest(initialAsync: {if (savedRows.isNotEmpty) 'home_custom_rows': jsonEncode(savedRows)});
@@ -234,12 +243,20 @@ void main() {
     );
     manager.debugRegisterClientForTesting(client);
 
-    final aggregation = _FakeAggregation(manager)
-      ..onDeck = [_episode('e1', show: 'Severance')]
-      ..latestMovies = [_film('m1', title: 'Dune')]
-      ..hubs = [
-        _hub('movie.recentlyadded', 'Recently Added', [_film('m5', title: 'Casablanca', genre: 'Drama')]),
-      ];
+    final aggregation = _FakeAggregation(manager);
+    if (!barren) {
+      aggregation.onDeck = [_episode('e1', show: 'Severance')];
+      // Verder kijken is a fixed row and never one of the panel's entries, so
+      // leaving it alone is how a Home with a footer but nothing movable is
+      // reached.
+      if (!continueWatchingOnly) {
+        aggregation
+          ..latestMovies = [_film('m1', title: 'Dune')]
+          ..hubs = [
+            _hub('movie.recentlyadded', 'Recently Added', [_film('m5', title: 'Casablanca', genre: 'Drama')]),
+          ];
+      }
+    }
     final multiServer = MultiServerProvider(manager, aggregation);
     hiddenLibraries = HiddenLibrariesProvider();
     libraries = LibrariesProvider()
@@ -398,6 +415,33 @@ void main() {
     expect(nodeLabelled(tester, 'tvHomeCustomizeFooter').hasPrimaryFocus, isTrue);
   });
 
+  // ROW1j. The footer is the only way into the panel from Home, and it lived
+  // inside the branch that draws rows. A profile whose servers went away has a
+  // Home with nothing on it and, until this, no way at all to reach the rows it
+  // had saved: the context-menu entry (A1b) needs a card, and there is none.
+  testWidgets('an empty Home still offers the way into the panel', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()], barren: true, catalog: const []);
+
+    expect(find.text(t.discover.noContentAvailable), findsOneWidget);
+    expect(find.byKey(tvHomeCustomizeFooterKey), findsOneWidget);
+
+    // And it actually opens, which is the whole point of it being there.
+    nodeLabelled(tester, 'tvHomeCustomizeFooter').requestFocus();
+    await tester.pump();
+    SelectKeyUpSuppressor.clearSuppression();
+    await press(tester, LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(tvHomeCustomizePanelKey), findsOneWidget);
+  });
+
+  testWidgets('a Home with nothing saved keeps the bare empty state', (tester) async {
+    await boot(tester, barren: true, catalog: const []);
+
+    expect(find.text(t.discover.noContentAvailable), findsOneWidget);
+    expect(find.byKey(tvHomeCustomizeFooterKey), findsNothing);
+  });
+
   testWidgets('the panel draws the fixed rows locked and every other row movable', (tester) async {
     await boot(tester, savedRows: [savedRowJson()]);
     await openPanel(tester);
@@ -459,6 +503,43 @@ void main() {
     await press(tester, LogicalKeyboardKey.arrowRight);
 
     expect(hide.hasPrimaryFocus, isTrue);
+  });
+
+  // ROW1m. With nothing movable to give it to, the borrowed node stayed
+  // unattached, the overlay fell through to its first focusable descendant and
+  // that is Klaar in the header. One Select and the panel was shut again.
+  testWidgets('a panel with no movable rows opens on Nieuwe rij, not on Klaar', (tester) async {
+    // Only Verder kijken on Home. It is a fixed row, so the panel has the
+    // footer to open it and not one movable row inside.
+    await boot(tester, continueWatchingOnly: true, catalog: const []);
+    await openPanel(tester);
+
+    expect(find.byKey(tvHomeCustomizePanelKey), findsOneWidget);
+    expect(
+      Focus.maybeOf(tester.element(find.text(t.unifiedCatalog.homeRows.done).first), scopeOk: true)!.hasPrimaryFocus,
+      isFalse,
+      reason: 'one Select on Klaar closes the panel that was just opened',
+    );
+    // Asked of the tree rather than by node name: the control that adopts the
+    // host's node keeps the host's own debugLabel.
+    expect(
+      Focus.maybeOf(tester.element(find.text(t.unifiedCatalog.homeRows.newRow).first), scopeOk: true)!.hasPrimaryFocus,
+      isTrue,
+    );
+  });
+
+  testWidgets('opening and closing the panel twice frees the borrowed node exactly once', (tester) async {
+    // A double dispose throws, and so does a use after dispose; the second
+    // round is what would trip over either (ROW1l).
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.done);
+    await tester.pumpAndSettle();
+    await openPanel(tester);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.done);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('moving a row down writes the order and Home follows it', (tester) async {
@@ -551,6 +632,31 @@ void main() {
 
     await activateByLabel(tester, t.unifiedCatalog.homeRows.done);
     expect(rowTitles(tester), [t.discover.continueWatching, 'Nieuwe sci-fi', 'Recently Added']);
+  });
+
+  // ROW1k. `_move` remembers which control the ring belongs on after the list
+  // has been rebuilt. Removing had no such answer, so the ring stayed on a node
+  // belonging to a row that no longer exists and the remote went quiet.
+  testWidgets('removing a row hands the ring to the row that takes its place', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.remove);
+    await tester.pumpAndSettle();
+
+    // The row below inherits the ring, clamped to the column it actually has:
+    // only an own row carries Verwijderen.
+    expect(nodeLabelled(tester, 'TvHomeCustomize.:pleya:home:latest-movies#primary').hasPrimaryFocus, isTrue);
+  });
+
+  testWidgets('removing the last row left hands the ring to Nieuwe rij', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()], barren: true, catalog: const []);
+    await openPanel(tester);
+
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.remove);
+    await tester.pumpAndSettle();
+
+    expect(nodeLabelled(tester, 'TvHomeCustomize.newRow').hasPrimaryFocus, isTrue);
   });
 
   testWidgets('removing an own row takes its stored layout entries with it', (tester) async {

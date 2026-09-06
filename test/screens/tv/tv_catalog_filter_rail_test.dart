@@ -59,10 +59,18 @@ import '../../test_helpers/prefs.dart';
 /// One library that answers immediately, with enough titles that the first row
 /// is a row at both column counts the rail switches between.
 class _FakeLibraryClient implements MediaServerClient {
-  _FakeLibraryClient(this.id, {required this.items});
+  _FakeLibraryClient(this.id, {required this.items, this.alwaysFails = false});
 
   final String id;
-  final List<MediaItem> items;
+
+  /// Mutable, so a test can take the catalog's content away underneath an open
+  /// rail and reach the state that has no grid *and* nothing for the focus
+  /// scope to fall back on.
+  List<MediaItem> items;
+
+  /// Every page fetch throws, which is how the page reaches the state that has
+  /// a Retry and no grid at all (CAT6).
+  final bool alwaysFails;
 
   @override
   ServerId get serverId => ServerId(id);
@@ -83,6 +91,7 @@ class _FakeLibraryClient implements MediaServerClient {
     MediaKind? libraryKind,
     AbortController? abort,
   }) async {
+    if (alwaysFails) throw StateError('library unavailable');
     final end = (query.offset + query.limit).clamp(0, items.length);
     final slice = query.offset >= items.length ? const <MediaItem>[] : items.sublist(query.offset, end);
     return LibraryPage<MediaItem>(items: slice, totalCount: items.length, offset: query.offset);
@@ -99,8 +108,12 @@ MediaItem _item(String id, {required String title}) =>
     MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.movie, title: title, serverId: 'nas');
 
 class _Harness {
-  _Harness() {
-    client = _FakeLibraryClient('nas', items: [for (var i = 0; i < 18; i++) _item('i$i', title: 'Film $i')]);
+  _Harness({bool failing = false}) {
+    client = _FakeLibraryClient(
+      'nas',
+      items: [for (var i = 0; i < 18; i++) _item('i$i', title: 'Film $i')],
+      alwaysFails: failing,
+    );
     manager = MultiServerManager()..debugRegisterClientForTesting(client);
     multiServer = MultiServerProvider(manager, DataAggregationService(manager));
     libraries = LibrariesProvider()
@@ -146,12 +159,12 @@ void main() {
     await StorageService.getInstance();
   });
 
-  Future<_Harness> pump(WidgetTester tester, {Size surfaceSize = const Size(1280, 720)}) async {
+  Future<_Harness> pump(WidgetTester tester, {Size surfaceSize = const Size(1280, 720), bool failing = false}) async {
     tester.view.physicalSize = surfaceSize;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final harness = _Harness();
+    final harness = _Harness(failing: failing);
     addTearDown(harness.dispose);
 
     await tester.pumpWidget(
@@ -182,6 +195,11 @@ void main() {
   }
 
   String? focusedLabel() => FocusManager.instance.primaryFocus?.debugLabel;
+
+  /// The Retry button's own node, asked of the tree: it is built with an
+  /// internal node, so there is no name to look it up by.
+  FocusNode retryFocus(WidgetTester tester) =>
+      Focus.maybeOf(tester.element(find.text(t.common.retry).first), scopeOk: true)!;
 
   void focusGrid(WidgetTester tester) =>
       tester.state<TvUnifiedMediaGridState>(find.byType(TvUnifiedMediaGrid)).focusGrid();
@@ -240,6 +258,58 @@ void main() {
     await press(tester, LogicalKeyboardKey.arrowRight);
     expect(find.byKey(tvCatalogFilterRailKey), findsNothing, reason: 'RIGHT collapses the rail again');
     expect(focusedLabel(), card, reason: 'the focus returns to the card the rail was opened from');
+  });
+
+  // CAT6, and what these two pin is that it does *not* happen. `_closeRail`
+  // hands the ring to the grid, and the three states that have no grid never
+  // built one, so that request really is a silent no-op there — the review that
+  // read the code was right about the mechanism. The outcome is still correct,
+  // twice over: the empty state autofocuses its own action when it replaces the
+  // grid, and the focus scope restores the child it had before the rail opened.
+  // These tests exist because both of those are somebody else's behaviour. Take
+  // the autofocus off the empty state, or change how the scope recovers, and
+  // the ring lands nowhere with nothing in `_closeRail` to catch it.
+  testWidgets('CAT6: the grid disappearing under an open rail does not leave the ring in it', (tester) async {
+    final harness = await pump(tester);
+
+    focusGrid(tester);
+    await tester.pumpAndSettle();
+    await press(tester, LogicalKeyboardKey.arrowLeft);
+    expect(focusedLabel(), 'TvCatalogRailSources');
+
+    // The card the scope would otherwise fall back on is gone by the time the
+    // rail closes, so nothing implicit can rescue the ring here.
+    harness.client.items = const [];
+    await harness.catalogs.movies.refresh();
+    await tester.pumpAndSettle();
+    expect(find.byType(TvUnifiedMediaGrid), findsNothing);
+
+    await press(tester, LogicalKeyboardKey.arrowRight);
+
+    expect(find.byKey(tvCatalogFilterRailKey), findsNothing);
+    expect(
+      FocusManager.instance.primaryFocus?.context,
+      isNotNull,
+      reason: 'the ring is on something that is actually on screen',
+    );
+    expect(focusedLabel(), isNot('TvCatalogRailSources'), reason: 'and not on the rail that just collapsed');
+  });
+
+  testWidgets('CAT6: closing the rail from a gridless state hands the ring back to its action', (tester) async {
+    await pump(tester, failing: true);
+
+    expect(find.byType(TvUnifiedMediaGrid), findsNothing, reason: 'sanity: the failed page has no grid');
+    expect(find.text(t.common.retry), findsOneWidget);
+    expect(retryFocus(tester).hasPrimaryFocus, isTrue, reason: 'the state focuses its own action on arrival');
+
+    await press(tester, LogicalKeyboardKey.arrowLeft);
+    expect(find.byKey(tvCatalogFilterRailKey), findsOneWidget);
+    expect(focusedLabel(), 'TvCatalogRailSources');
+
+    await press(tester, LogicalKeyboardKey.arrowRight);
+
+    expect(find.byKey(tvCatalogFilterRailKey), findsNothing, reason: 'RIGHT collapses the rail again');
+    expect(retryFocus(tester).hasPrimaryFocus, isTrue, reason: 'and the ring is on the page, not in the closed rail');
   });
 
   testWidgets('CAT5: the page heading carries no focusable action any more', (tester) async {

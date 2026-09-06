@@ -119,6 +119,34 @@ void main() {
     );
   });
 
+  // ROW1o. `_reconcile` gave up early while the profile had no rows, and gave up
+  // without writing down what it had seen. The next comparison was therefore
+  // made against the library set this provider was *built* with, so a set that
+  // moved and moved back in the meantime read as no change at all.
+  test('a library set that changes while there are no rows still updates the baseline', () async {
+    await layout.removeCustomRow('r1');
+    final provider = build();
+    addTearDown(provider.dispose);
+    await pumpEventQueue();
+    expect(loader.calls, isEmpty, reason: 'no rows, nothing to ask');
+
+    // Two libraries now, and nobody to tell.
+    libraries.debugSetLibraries([_library('films'), _library('docs')]);
+    await pumpEventQueue();
+
+    await layout.saveCustomRow(row);
+    await pumpEventQueue();
+    expect(loader.calls, hasLength(1), reason: 'the new row is asked, against the two libraries');
+    loader.answer(0);
+    await pumpEventQueue();
+
+    // Back to one. Measured against a stale baseline this is "no change".
+    libraries.debugSetLibraries([_library('films')]);
+    await pumpEventQueue();
+
+    expect(loader.calls, hasLength(2), reason: 'the row still held the answer for two libraries');
+  });
+
   test('nothing reloads when the library set did not actually change', () async {
     final provider = build();
     addTearDown(provider.dispose);

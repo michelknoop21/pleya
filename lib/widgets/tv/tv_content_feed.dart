@@ -427,7 +427,9 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
     // re-projection changes the former and not the latter.
     _rowStack.layOut(rows.map((row) => row.hubId));
 
-    if (rows.isEmpty && heroGroups.isEmpty && !reserveHeroSpace) return _emptyOrLoading(discover);
+    if (rows.isEmpty && heroGroups.isEmpty && !reserveHeroSpace) {
+      return _emptyOrLoading(discover, hasSavedRows: customRows?.hasSavedRows ?? false);
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -596,7 +598,15 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
   MediaServerClient? Function(String serverId) get _clientFor =>
       (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId));
 
-  Widget _emptyOrLoading(DiscoverProvider discover) {
+  /// The page with nothing on it.
+  ///
+  /// [hasSavedRows] puts the footer here too (ROW1j). It normally lives under
+  /// the last row, and a profile whose servers went away has no rows, no cards
+  /// and therefore no context menu either — so the rows it had saved became
+  /// unreachable, exactly when a viewer would want to go and look at them.
+  /// Without saved rows there is nothing to customise and the bare message
+  /// stays bare.
+  Widget _emptyOrLoading(DiscoverProvider discover, {required bool hasSavedRows}) {
     if (discover.isLoading || discover.areHubsLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -618,6 +628,15 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
           Text(t.discover.noContentAvailable, style: TextStyle(color: tk.text)),
           const SizedBox(height: 8),
           Text(t.discover.addMediaToLibraries, style: TextStyle(color: tk.textMuted)),
+          if (hasSavedRows) ...[
+            SizedBox(height: TvDiscoveryLayout.sectionGap * TvLayoutConstants.scaleOf(context)),
+            TvHomeCustomizeFooter(
+              focusNode: _customizeFocus,
+              scale: TvLayoutConstants.scaleOf(context),
+              onPressed: _openCustomize,
+              // Nothing above it here, so UP is an end like the other three.
+            ),
+          ],
         ],
       ),
     );

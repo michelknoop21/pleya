@@ -132,9 +132,13 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
   @override
   void dispose() {
     _name.dispose();
-    for (final node in _nodes.values) {
-      node.dispose();
+    for (final entry in _nodes.entries) {
+      if (entry.key != _borrowedKey) entry.value.dispose();
     }
+    // Exactly once, and also when no control adopted it (ROW1l). The host makes
+    // this node and hands it over; `_nodes` used to be the only thing that
+    // disposed it.
+    widget.initialFocusNode?.dispose();
     super.dispose();
   }
 
@@ -150,12 +154,14 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
   /// throwing itself away.
   String get _initialFocusKey => 'kind.${_kind.id}';
 
-  bool _adoptedInitialFocus = false;
+  /// The `_nodes` key holding the host's node, so `dispose` does not free it
+  /// twice.
+  String? _borrowedKey;
 
   FocusNode _nodeFor(String key) {
     final initial = widget.initialFocusNode;
-    if (initial != null && !_adoptedInitialFocus && key == _initialFocusKey) {
-      _adoptedInitialFocus = true;
+    if (initial != null && _borrowedKey == null && key == _initialFocusKey) {
+      _borrowedKey = key;
       return _nodes[key] = initial;
     }
     return _nodes.putIfAbsent(key, () => FocusNode(debugLabel: 'TvHomeRowWizard.$key'));
