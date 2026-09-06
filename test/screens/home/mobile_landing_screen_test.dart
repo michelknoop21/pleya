@@ -15,6 +15,8 @@ import 'package:pleya/providers/home_layout_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/tv_discovery_landing_provider.dart';
+import 'package:pleya/providers/unified_catalogs.dart';
+import 'package:pleya/screens/home/mobile_catalog_screen.dart';
 import 'package:pleya/screens/home/mobile_landing_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -138,6 +140,7 @@ void main() {
   late LibrariesProvider libraries;
   late DiscoverProvider discover;
   late HomeLayoutProvider homeLayout;
+  late UnifiedCatalogs catalogs;
 
   setUp(() async {
     resetSharedPreferencesForTest();
@@ -152,9 +155,13 @@ void main() {
     libraries = LibrariesProvider();
     discover = DiscoverProvider(multiServer, hiddenLibraries, libraries, isProfileBinding: () => false);
     homeLayout = HomeLayoutProvider();
+    // `_TitleRow`'s handler pushes `MobileCatalogScreen`, which reads this on
+    // construction (iOS Unified 2026 fase 3).
+    catalogs = UnifiedCatalogs(multiServer: multiServer, libraries: libraries, hiddenLibraries: hiddenLibraries);
   });
 
   tearDown(() {
+    catalogs.dispose();
     homeLayout.dispose();
     discover.dispose();
     libraries.dispose();
@@ -176,6 +183,7 @@ void main() {
           ChangeNotifierProvider<TvDiscoveryLandingProvider>(
             create: (context) => TvDiscoveryLandingProvider(discover: discover, multiServer: multiServer),
           ),
+          Provider<UnifiedCatalogs>.value(value: catalogs),
         ],
         child: MaterialApp(
           theme: monoTheme(dark: true),
@@ -248,7 +256,7 @@ void main() {
     expect(find.byType(MobilePageHeader), findsOneWidget, reason: 'the header is shared with Home unchanged');
   });
 
-  testWidgets('the Alle-action is drawn and inert until fase 3', (tester) async {
+  testWidgets('the Alle-action pushes the complete catalogue (iOS Unified 2026 fase 3)', (tester) async {
     aggregation.hubs = [
       _hub('Series row', items: [_show('s1')], type: 'show'),
     ];
@@ -256,14 +264,39 @@ void main() {
     await pumpLanding(tester, MobileLandingKind.series);
     await settle(tester);
 
-    // Visible, and not hidden behind an enabled-looking control that does
-    // nothing: there is no button widget under it at all yet. Fase 3 puts one
-    // handler there and nothing else changes.
     expect(find.text('All series'), findsOneWidget);
+    expect(find.byType(MobileCatalogScreen), findsNothing);
+
     await tester.tap(find.text('All series'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+
     expect(tester.takeException(), isNull);
-    expect(find.text('Series'), findsOneWidget, reason: 'tapping it navigates nowhere');
+    final pushed = tester.widget<MobileCatalogScreen>(find.byType(MobileCatalogScreen));
+    expect(pushed.kind, MobileCatalogKind.series);
+  });
+
+  testWidgets("the pushed catalogue's search action pops and reaches the landing's own search target", (
+    tester,
+  ) async {
+    var opened = 0;
+    aggregation.hubs = [
+      _hub('Series row', items: [_show('s1')], type: 'show'),
+    ];
+
+    await pumpLanding(tester, MobileLandingKind.series, onSearchTap: () => opened++);
+    await settle(tester);
+
+    await tester.tap(find.text('All series'));
+    await tester.pumpAndSettle();
+    expect(find.byType(MobileCatalogScreen), findsOneWidget);
+
+    final catalogueSearch = find.descendant(of: find.byType(MobileCatalogScreen), matching: find.byTooltip('Search'));
+    expect(catalogueSearch, findsOneWidget);
+    await tester.tap(catalogueSearch);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MobileCatalogScreen), findsNothing, reason: 'the search action closes the pushed screen');
+    expect(opened, 1);
   });
 
   testWidgets('while loading it shows a skeleton rather than an empty page', (tester) async {

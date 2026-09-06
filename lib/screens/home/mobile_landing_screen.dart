@@ -34,6 +34,7 @@ import '../../widgets/mobile/mobile_discovery_shell.dart';
 import '../../widgets/mobile/mobile_media_rail.dart';
 import '../../widgets/mobile/mobile_page_header.dart';
 import '../libraries/content_state_builder.dart' show SliverEmptyState, SliverErrorState;
+import 'mobile_catalog_screen.dart';
 
 /// Which landing this is. Deliberately not [UnifiedHubKind], which has five
 /// values: `episode`, `mixed` and `other` are rows Home keeps and no landing
@@ -67,6 +68,13 @@ enum MobileLandingKind {
   String get viewAllLabel => switch (this) {
     MobileLandingKind.series => t.unifiedCatalog.discovery.allSeries,
     MobileLandingKind.movies => t.unifiedCatalog.discovery.allMovies,
+  };
+
+  /// The complete-catalogue screen this landing's "Alle series/films ›"
+  /// action opens (iOS Unified 2026 fase 3).
+  MobileCatalogKind get catalogKind => switch (this) {
+    MobileLandingKind.series => MobileCatalogKind.series,
+    MobileLandingKind.movies => MobileCatalogKind.movies,
   };
 }
 
@@ -120,7 +128,7 @@ class MobileLandingScreen extends StatelessWidget {
               automationInstance: kind.automationInstance,
             ),
           ),
-          SliverToBoxAdapter(child: _TitleRow(kind: kind)),
+          SliverToBoxAdapter(child: _TitleRow(kind: kind, onSearchTap: onSearchTap)),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
           if (isLoading) mobileHubRowsSkeletonSliver,
           if (!isLoading && errorMessage != null) SliverErrorState(message: errorMessage, onRetry: discover.load),
@@ -154,18 +162,23 @@ class MobileLandingScreen extends StatelessWidget {
 
 /// `Series` with `Alle series ›` on the same line, as the northstar draws it.
 ///
-/// The action is **drawn and inert** until fase 3 builds the complete
-/// catalogue behind it. Sending it to `LibraryBrowseTab` in the meantime was
-/// rejected: that opens a library-bound, server-specific screen, while this
-/// button promises a catalogue that spans every source. A button that does the
-/// wrong thing is worse than one that cannot do it yet ([DEC-094]).
-///
-/// Inert means visible and not tappable, not greyed away: fase 3 puts one
-/// handler underneath and nothing else changes.
+/// The action opened the complete catalogue as of iOS Unified 2026 fase 3
+/// (`docs/ios-unified-2026-fase3-plan.md`): a plain `Navigator.push` of
+/// [MobileCatalogScreen], the same kind of push a detail card already is —
+/// see that screen's own doc comment for why this is a push and not a tab
+/// state. Before fase 3 the action was drawn and inert; fase 3 put exactly
+/// one handler underneath and changed nothing else about this row.
 class _TitleRow extends StatelessWidget {
   final MobileLandingKind kind;
+  final VoidCallback? onSearchTap;
 
-  const _TitleRow({required this.kind});
+  const _TitleRow({required this.kind, this.onSearchTap});
+
+  void _openCatalog(BuildContext context) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => MobileCatalogScreen(kind: kind.catalogKind, onSearchTap: onSearchTap)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -185,15 +198,19 @@ class _TitleRow extends StatelessWidget {
               id: AutomationIds.landingViewAll,
               instance: kind.automationInstance,
               role: 'button',
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    kind.viewAllLabel,
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: tokens(context).textMuted),
-                  ),
-                  Icon(Symbols.chevron_right_rounded, size: 20, color: tokens(context).textMuted),
-                ],
+              child: InkWell(
+                onTap: () => _openCatalog(context),
+                borderRadius: BorderRadius.circular(8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      kind.viewAllLabel,
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: tokens(context).textMuted),
+                    ),
+                    Icon(Symbols.chevron_right_rounded, size: 20, color: tokens(context).textMuted),
+                  ],
+                ),
               ),
             ),
           ],
