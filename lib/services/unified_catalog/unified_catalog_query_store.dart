@@ -32,6 +32,8 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../../media/media_kind.dart';
 import '../../utils/app_logger.dart';
 import '../settings_service.dart';
@@ -49,6 +51,26 @@ class UnifiedCatalogQueryStore {
     final completer = Completer<void>();
     _writeLock = completer.future;
     return previous.then((_) => action()).whenComplete(completer.complete);
+  }
+
+  /// Resets the write-serialization lock to a fresh, already-resolved
+  /// future. Test-only.
+  ///
+  /// A widget test that triggers a fire-and-forget [write] (as
+  /// `MobileCatalogScreen._updatePreferences` does) and ends before that
+  /// write's continuation has run leaves `_writeLock` pointing at a future
+  /// that resolved inside *that* test's own `testWidgets` zone. The next
+  /// test's `write` chains its own action onto that same future via `.then`,
+  /// and on this Flutter test binding a continuation registered from a
+  /// different zone than the one a future resolved in is never delivered,
+  /// even though the future itself reports as completed. The result is a
+  /// silent, permanent hang on every `write` call for the rest of the test
+  /// process, not a flaky one: call this from `setUp` in any test that can
+  /// reach `write` through a widget interaction rather than a direct,
+  /// awaited call.
+  @visibleForTesting
+  static void resetForTesting() {
+    _writeLock = Future<void>.value();
   }
 
   /// An empty scope (no active profile) is a namespace of its own, so a

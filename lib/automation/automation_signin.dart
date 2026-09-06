@@ -258,6 +258,11 @@ Future<Map<String, Object?>> _persistConnectionAndBindProfile(
 const Map<String, NavigationTabId> _screenToTab = {
   AutomationIds.screenDiscover: NavigationTabId.discover,
   AutomationIds.screenLibraries: NavigationTabId.libraries,
+  // The fase-2 landings. Mapped so a scenario reaches them the way the app
+  // does, through `_selectTab`, rather than by tapping a bar slot at
+  // coordinates that shift the moment the tabset changes.
+  AutomationIds.screenSeries: NavigationTabId.series,
+  AutomationIds.screenMovies: NavigationTabId.movies,
 };
 
 /// `POST /v1/open` body: `{"screen": "screen.discover", "timeoutMs"?}`.
@@ -286,8 +291,12 @@ Future<Map<String, Object?>> handleAutomationOpen(Map<String, Object?> body) asy
     if (tab == null) {
       return {'ok': false, 'error': 'unsupported screen "$screen" — no nav-tab mapping registered for it yet'};
     }
-    if (!AutomationNavigationHooks.instance.selectTab(tab)) {
+    final selected = AutomationNavigationHooks.instance.selectTab(tab);
+    if (selected == null) {
       return {'ok': false, 'error': 'MainScreen is not mounted to open a tab on'};
+    }
+    if (!selected) {
+      return {'ok': false, 'error': 'destination "$screen" is not available on this platform'};
     }
   }
 

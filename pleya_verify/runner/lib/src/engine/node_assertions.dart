@@ -151,7 +151,7 @@ List<NodeAssertionResult> evaluateNodeAssertions(Map<String, Object?> args, {req
 }
 
 /// Looks a node up by id, declared nodes first and discovered focusables
-/// second — the same lookup order `geometry_assertions.dart`'s `_rectFor`
+/// second, the same lookup order `geometry_assertions.dart`'s `rectForNode`
 /// uses.
 Map<String, Object?> _nodeFor(String id, Map<String, Object?> uiTree) {
   for (final key in ['declared', 'discovered']) {

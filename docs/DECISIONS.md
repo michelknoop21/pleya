@@ -1886,3 +1886,431 @@ en legt het oude gedrag vast: na een volledige-venster push is niets in de balk 
 **Decision:** (1) **Het veeg-omlaag-paneel is op TV het enige spelermenu.** Het tandwiel opent het op Video, de sporenknop op Geluid of Ondertitels, de hoofdstukkenknop op Video met de hoofdstukkenlijst open; de veeg blijft Info. `VideoSettingsSheet` en `TrackSheet` blijven voor desktop en mobiel en zijn op TV geen ingang meer. (2) **Vier tabs met secties:** Info; Video met Weergave (beeldverhouding, zoom, HDR, shaders, sfeerverlichting) en Afspelen (snelheid, hoofdstukken, versie en kwaliteit, slaaptimer, volgende aflevering automatisch, afspeelstatistiek); Geluid met Sporen en Uitvoer (volumeversterking, audio-synchronisatie, uitvoermodus, prioriteit, volume gelijkmaken, harde geluiden dempen); Ondertitels met Sporen (uit, sporen, online zoeken) en Stijl en timing (ondertitelvertraging, tekstgrootte, achtergrond, en een niet-focusbare verwijzing naar de globale stijlpagina). Geen Wachtrij-pill (PB-9), geen onthouden-schakelaar (DEC-096). (3) **Subweergaven in hetzelfde `FocusScope`:** synchronisatie, hoofdstukken, slaaptimer, versie en kwaliteit, shaders. Menu gaat één laag terug. (4) **Bediening:** LEFT en RIGHT stappen een waarderij, Select cyclet vooruit; Select op een pill kiest de tab en focust de eerste rij; rijen zijn tweeregelig met de secundaire labels van `TrackLabelBuilder`. Een rij die door een andere instelling zijn zin verliest (prioriteit buiten Auto, harde geluiden zonder gelijkmaken) wordt gedimd en niet-focusbaar in plaats van verwijderd, zodat de focus in het paneel blijft. (5) **Volumeversterking** (Uit, +50%, +100%, +200%) schrijft `volume-max` en daarna `volume`, en bewaart beide; tijdens een gemeten bitstream is de rij inert met de uitleg als subregel, net als de twee loudness-rijen (DEC-013). (6) **Stijl in het paneel** schrijft de bestaande globale voorkeuren (`subtitleFontSize`, `subtitleBackgroundOpacity`) en past ze live toe; positie blijft op de globale pagina omdat `sub-pos` van `VideoFilterManager` is; taal verandert nooit vanuit het paneel (DEC-096). (7) **De video speelt door** terwijl het paneel open is. (8) **Mockup 33 is de taal:** een zwevende kaart op de pagina-inset met blur op het beeld, per sectie één vlak met hairlines tussen de rijen, focus als witte vulling met donkere tekst (dezelfde `FocusIndicatorMode.fill` die `TvPanelRow` al gebruikt), witte schakelaars, geen rood of amber als actieve waarde (TOK-1 krijgt hier zijn antwoord: `TvPanelTheme.accent` verdwijnt uit het paneel).
 **Consequences:** Mockup 19 staat in `docs/tvos-redesign-09-25-approved.md` als vervangen; mockup 33 is de gehashte set van `docs/assets/tvos-unified/mockups-2026-09-05/`. PB-9 in het implementatiecontract krijgt de zin dat de sheets op TV geen ingang meer zijn. De bouw volgt de volgorde van het plan: eerst een testharnas op `TvInfoPanel`, dan de strings (STR1, STR2, de "OK"-waarde), de rij-API (`subtitle`, `onStepLeft/Right`, `automationId`, `kind`), de secundaire labels (PNL1), pills op `FocusableWrapper`, LEFT/RIGHT op waarderijen met `onSetBoxFitMode` in `TrackControlsState`, de synchronisatie-subweergave zonder Material-slider plus de fix van `sliderFocusNode` bij de gedeelde eigenaar, de subweergave-enum met hoofdstukken, slaaptimer op `SleepTimerService` zelf (niet `SleepTimerContent`, die zonder overlay-scope de spelerroute popt), `VersionQualityPicker` met `onDismiss`, de Weergave- en stijlrijen, de volumeversterking, de routering van tandwiel en sporenknop, de automation-ids `player.panel`, `player.panel.tab` en `player.panel.row` met geregenereerde yaml, en een Pleya Verify-scenario `tvos.player.panel.yaml`. `SettingsService.volume` deelt zijn betekenis met de desktop-slider; op één toestel met TV-override kan een boost in de slider landen, en dat is aanvaard omdat voorkeuren per apparaat zijn. Hardware only blijven de veeg-opening, de bitstream-stand, de hoorbaarheid van de boost en de synchronisatiestap. Goedgekeurd door Michel op 5 september 2026 op A tot en met I, na twee correctierondes (selectors, chevrons, focusring, en de stap van losse dozen naar een glaskaart): "Akkoord".
 
+
+## DEC-106: `feat/netflix-mobile` wordt niet gemerged; Zoeken wordt opnieuw gebouwd als fase 4
+
+**Date:** 2026-09-06
+**Status:** accepted
+
+**Context:** Bij het landen van de iOS Unified 2026-stack op `main` (PR #5, branch
+`integration/ios-unified-main-sync`) kwam `feat/netflix-mobile` boven water. Die branch is geen
+aanvulling en geen oudere kopie: hij takt af op `22a7674b`, precies het punt waar fase 1 sloot, en
+heeft daarna fase 2, fase 3 én fase 4 (Zoeken) zelfstandig gebouwd, op 3 en 4 september. De tak die
+in PR #5 zit deed fase 2 en fase 3 opnieuw op 5 en 6 september, met een adversariële reviewronde van
+twintig bevindingen erachteraan. Het zijn dus twee implementaties van dezelfde twee schermen, met
+eigen DEC-nummers (093, 094, 095 daar; 102 tot en met 105 hier) en een andere opdeling:
+`feat/netflix-mobile` splitst de catalogus in `mobile_catalog_controller.dart`,
+`mobile_catalog_grid.dart`, `mobile_catalog_header.dart`, `mobile_filter_categories.dart` en
+`mobile_shell_scope.dart`, waar deze tak één `MobileCatalogScreen` met twee sheets houdt.
+Zeventien bestanden botsen hard, waaronder `mobile_catalog_screen.dart` (343 tegen 635 regels) en
+`mobile_landing_screen.dart` (117 tegen 225 regels), die aan beide kanten vanaf nul geschreven zijn.
+
+**Decision:** `feat/netflix-mobile` wordt niet gemerged. De implementatie in PR #5 is de
+gebouwde fase 2 en fase 3, en blijft dat. De branch blijft staan als historie en als leesbaar
+referentiemateriaal, maar is geen bron meer voor een merge.
+
+Zoeken op de projectie, wat daar fase 4 is (DEC-095 op die branch), is echte functionaliteit die
+deze tak niet heeft en die niet vervalt. Het wordt opnieuw gebouwd als een eigen fase 4, op de
+componenten van fase 1 tot en met 3, met een eigen plan en een eigen DEC. Overnemen kan niet
+stukje voor stukje: `mobile_search_body.dart` importeert `mobile_catalog_header.dart`,
+`focusable_filter_chip.dart` en `mobile_search_results.dart`, alle drie onderdelen van de andere
+opdeling, dus een cherry-pick sleept die opdeling mee het scherm in dat er niet op gebouwd is.
+
+**Consequences:** `docs/DESIGN-INDEX.md` beschrijft `feat/netflix-mobile` nog als de iOS-branch met
+DEC-090 tot en met DEC-092; die paragraaf klopt historisch maar wijst niet meer naar de tak die
+landt. Twee dingen die de andere branch wel had en deze niet, en die bij fase 4 opnieuw langs moeten
+komen: de nieuwe i18n-sleutels zijn daar in alle veertien locales vertaald en hier alleen in `en` en
+`nl`, en `search_text.dart` bevat een genormaliseerde zoekvergelijking die hier nog niet bestaat. Er
+is niets weggegooid uit PR #5 om deze keuze mogelijk te maken; er is alleen niets uit
+`feat/netflix-mobile` bijgekomen.
+
+## DEC-105: fase 3 zet Alle films/Alle series en de filtersheet, tap-by-id in Verify
+
+**Date:** 2026-09-06
+**Status:** accepted
+
+**Context:** Fase 3 van [DEC-090](#dec-090-ios-unified-2026-northstar-bevroren-21-mockups-bindend-voor-de-iphone-interface)
+bouwt de complete, bronoverstijgende catalogus achter de "Alle films ›"/"Alle series ›"-actie die
+fase 2 getekend en inert liet staan, volgens
+[docs/ios-unified-2026-fase3-plan.md](ios-unified-2026-fase3-plan.md). De bindende beelden zijn
+`03-alle-films.png` en `04-filters-sheet.png`. Dit nummer was bij het schrijven op deze branch
+DEC-101, niet het volgende getal na DEC-094 op deze branch: `origin/main` gebruikte DEC-091 tot en
+met DEC-101 al, met eigen inhoud onder DEC-091, 092, 094 en 101, dus die vier botsten op naam bij de
+merge naar main. De integratiebranch `integration/ios-unified-main-sync` heeft die botsing opgelost
+door deze branch zijn DEC-090, 091, 092, 094 en 101 te hernummeren naar DEC-090 (ongewijzigd) en
+DEC-102 tot en met DEC-105; main's eigen DEC-091 tot en met DEC-101 zijn ongemoeid gebleven. Dit
+document draagt het nieuwe nummer.
+
+**Decision:**
+
+*Eén scherm voor Films en Series, een push en geen tabtoestand.* `MobileCatalogScreen(kind:
+MobileCatalogKind)` leest `UnifiedCatalogs.forKind` en wordt vanaf `_TitleRow` in
+`mobile_landing_screen.dart` met een gewone `Navigator.push` geopend, net als een detailpagina. Het
+beeld `06-film-detail.png` toont de bestaande gepushte detailpagina mét onderbalk terwijl
+`media_detail_screen.dart` die balk vandaag al niet laat doorschijnen; de onderbalk in de
+northstar-set is dus generieke apparaatchrome voor de review, geen functionele eis. `open:` in
+`automation_signin.dart` blijft daarom ongemoeid (die tabel is voor tabwissels); het scenario bereikt
+het scherm met `tap` op `landing.view_all[series]`/`[movies]`.
+
+*`tap` kan nu ook een automation-id.* De Verify-engine kende alleen `tap: {x, y}`, en vaste
+coördinaten voor een gepushte, niet-tab-bestemming zijn precies de brosheid die
+`ios.landing.northstar`'s eigen commentaar bij `open` al afwijst. `run_scenario.dart`'s `tap`-case
+accepteert nu ook `tap: {id: "..."}`, opgelost via dezelfde `GET /v1/ui_tree`-oproep en dezelfde
+rect-parser die `assert`'s geometriepredikaten al gebruiken (`geometry_assertions.dart`'s `_rectFor`,
+hernoemd naar de publieke `rectForNode`). Geen nieuwe automation-capaciteit, één bestaande lookup op
+een tweede plek toegepast, met drie eigen tests in `run_scenario_test.dart` (219 runnertests groen,
+tegen 216 bij de nulmeting).
+
+*Twee nieuwe sheets, geen uitbreiding van de Plex-gebonden `FiltersBottomSheet`.* `MobileCatalogFiltersSheet`
+werkt op `UnifiedCatalogFilterSelection`/`UnifiedFilterOptions` en kent geen backend; een tweekoloms
+rail-en-opties-paneel met draft-tot-Toepassen, gemodelleerd naar de TV-filterpanel-doc-comment
+(gelezen via `git show origin/main:lib/widgets/tv/tv_catalog_filter_panel.dart`, want dat bestand
+bestaat niet op deze branch). `MobileCatalogSortSheet` is klein en gemodelleerd naar
+`WatchlistSortSheet`. Eén nieuwe i18n-sleutel na controle van de bestaande set:
+`unifiedCatalog.filters.activeCount` voor de "N actief"-regel die mockup 04 toont en die de TV-sheet
+niet had.
+
+*De badge-chip is een lokale wrapper, niet een wijziging aan `FocusableFilterChip`.* Het getal op de
+Filters-chip is een `_CatalogHeaderChip`-achtige `Stack`+`Positioned` om het bestaande, elders
+hergebruikte chip-component heen, niet een nieuwe parameter erop.
+
+*`UnifiedCatalogQueryStore.clearForProfileScope` kreeg zijn ene aanroeper*, in
+`profile_delete_flow.dart`, met `storage.userScopeForProfileId(profile.id)` (niet
+`activeUserScope()`: het te verwijderen profiel hoeft niet het actieve profiel te zijn).
+`PreferredServerStore`/`SourcePreferenceStore`'s eigen `clearForProfileScope` blijven zelf ook
+ongeroepen buiten hun tests; dat is opgeschreven, niet stilzwijgend meegepakt.
+
+*`Provider<UnifiedCatalogs>` is geregistreerd* in `profile_session_screen.dart`, naast
+`TvDiscoveryLandingProvider`/`TvHomeProjectionProvider`, met een expliciete `dispose:` zoals
+`unified_catalogs.dart:86-89` voorschrijft: `UnifiedCatalogs` is geen `ChangeNotifier`. Deze ene
+registratie, plus dat het scherm en de sheets `buildUnifiedCatalogQuery`, `UnifiedCatalogQueryStore`
+en `loadUnifiedFilterOptions` nu echt aanroepen, en dat de prefetcher aan het grid hangt, laat acht
+van de zeventien F0-meldingen uit DEC-104 verdwijnen: de `UnifiedCatalogs`-klasse en zijn bestand, de
+`buildUnifiedCatalogQuery`-functie, de `UnifiedCatalogQueryStore`-klasse en zijn bestand, de
+`loadUnifiedFilterOptions`-functie en zijn bestand, en `unified_artwork_prefetcher.dart` als bestand.
+De overige negen (waaronder `eligibleSourceServers`, de source-picker-resolver van fase 5, en de
+watchlist/search-projection-meldingen van andere fases) blijven open en wachten op de fase die ze
+gebruikt.
+
+*Een genuine testinfrastructuurhindernis, niet opgelost, en breder dan eerder in deze sessie
+aangenomen.* Het nieuwe `test/screens/home/mobile_catalog_screen_test.dart` (9 tests) hangt
+deterministisch na vijf van de negen tests wanneer het hele bestand in één `flutter test`-aanroep
+draait in de containeromgeving van deze sessie. Een eerdere versie van dit besluit meldde dat elke
+test afzonderlijk wel groen was; een latere, herhaalde poging om dat opnieuw te bevestigen met echte
+tooloutput weerlegde dat. `a previously stored selection is restored on the next open`, die zijn
+`await UnifiedCatalogQueryStore.write(...)` rechtstreeks in de testbody aanroept vóór
+`pumpCatalog`, hing ook **los van elke andere test**, in drie aparte pogingen op rij, terwijl
+`shows the populated grid, the count line and the chip labels once loaded` in dezelfde sessie
+herhaaldelijk in ruim een seconde slaagde.
+
+Met tijdelijke diagnostische `print`-regels (niet meegecommit) in `_locked`, `write`,
+`BaseSharedPreferencesService.initializeInstance` en `sharedCache` bleek de vastloop niet, zoals
+eerder aangenomen, in `UnifiedCatalogQueryStore`'s eigen schrijflock te zitten: die loste zijn
+`previous`-future gewoon op en startte de actieclosure. De trace liep door tot en met een tweede,
+al-gecachte aanroep van `StorageService.getInstance()` (vermoedelijk vanuit
+`HiddenLibrariesProvider.ensureInitialized()`'s eigen `_loadFromStorage`, die in dezelfde `setUp`
+wordt aangeroepen) en stopte daarna volledig, zonder enige verdere regel, exceptie of doorlopende
+CPU-tijd. Dat is exact hetzelfde symptoom als het eerder gedocumenteerde patroon bij `_writeLock` (een
+Future die als voltooid geldt maar wiens continuation nergens meer aankomt), alleen dan op een andere
+aanroeplijn en zichtbaar bínnen één testbody in plaats van alleen tussen twee opeenvolgende tests. De
+eerdere verklaring ("een schrijfactie via een gebaar in test N laat test N+1 hangen") is dus geen
+volledige beschrijving van het probleem; het onderliggende gevaar zit dieper, in hoe deze
+`flutter_tester`-sandbox een tweede aanroep op een van `BaseSharedPreferencesService`'s statische
+async singletons afhandelt, ongeacht of die aanroep uit een vorige test of uit dezelfde test komt.
+
+Onderzocht en verworpen als (volledige) verklaring: een lekkende `MultiServerManager` (bevestigd door
+disposal te herstructureren zonder effect), een echte netwerkoproep via de prefetcher (bevestigd door
+een test-only `debugPrefetcher`-naald op `MobileCatalogScreen` toe te voegen, die blijft, want hij is
+sowieso de juiste beveiliging tegen een widgettest die per ongeluk `precacheImage` aanroept), en het
+aantal voorgaande tests (een no-op-test ertussen verschuift het hangpunt niet). Toegevoegd:
+`UnifiedCatalogQueryStore.resetForTesting()`, naar het voorbeeld van `SettingsService`'s eigen
+`resetForTesting()`. Die blijft een zinnige beveiliging voor de duidelijk begrepen helft van het
+probleem (een fire-and-forget schrijfactie die de volgende test in het bestand raakt), ook al is nu
+aangetoond dat hij niet elke vorm van deze vastloop dekt. Dit is uitdrukkelijk geen codedefect in de
+fase-3-code zelf: de geïsoleerde `test()`-herhaling zonder `testWidgets()` rondt in minder dan een
+seconde af, en de vastloop zit in de teststack, niet in `UnifiedCatalogQueryStore`,
+`HiddenLibrariesProvider` of `MobileCatalogScreen`.
+
+*Opgelost op 6 september 2026, en de diagnose hierboven was op één punt mis.* De vastloop is niet
+omgevingsspecifiek: hij reproduceerde onverkort op de Linux-runner van GitHub Actions, waar de
+Unit Tests-job van PR #5 op drie tests van dit bestand tien minuten per stuk uitliep
+(`6543 tests passed, 3 failed`). Daarmee verviel de aanname dat dit aan de sandbox van één sessie
+lag en werd het een blokkerende, eigen bevinding.
+
+De ontbrekende schakel was de zone, niet de sandbox. `setUp` maakt de statische prefs-cache aan via
+`SettingsService.getInstance()` en `StorageService.getInstance()`, en dus in de echte zone. Een
+`testWidgets`-body draait in de FakeAsync-zone. Een future die in de ene zone voltooide levert zijn
+continuation in de andere nooit af, precies het symptoom dat hierboven correct beschreven maar aan
+de sandbox toegeschreven werd. De drie tests die hingen zijn exact de drie met een kale
+`await UnifiedCatalogQueryStore.write/read` in de body; de test die die aanroep niet doet slaagde
+ook op CI. Ze gebruiken nu `tester.runAsync`, dat in de echte zone draait, hetzelfde idioom dat
+`mobile_home_screen_test.dart` al voor `discover.load` gebruikt. Het bestand loopt daarmee in drie
+seconden in plaats van drie keer tien minuten, en hoeft niet meer uit een testrun gesloten te worden.
+
+`UnifiedCatalogQueryStore.resetForTesting()` blijft staan: hij dekt de andere helft, een
+fire-and-forget schrijfactie via een gebaar die de volgende test raakt, en die helft is met deze fix
+niet verdwenen. De "twee lege-toestandtests staan bewust achteraan"-ordening in het testbestand was
+een omzeiling van dit probleem en is met de oorzaak vervallen.
+
+**Consequences:** Zie het eindrapport voor de exacte analyze-, test- en ci_checks-cijfers en voor
+welk Apple-platformbewijs in deze Linux-containeromgeving expliciet ontbreekt in plaats van gemeten.
+De DEC-091/092/094/101-naamsbotsing met `origin/main` is opgelost op de integratiebranch
+`integration/ios-unified-main-sync`: deze branch zijn DEC-091, 092, 094 en 101 zijn daar hernummerd
+naar DEC-102 tot en met DEC-105. Fase 4 (Zoeken) begint bij een eigen plan.
+
+## DEC-104: fase 2 maakt Series en Films bestemmingen, en scheidt de chip van de tab
+
+**Date:** 2026-09-05
+**Status:** accepted
+
+**Context:** Fase 2 van [DEC-090](#dec-090-ios-unified-2026-northstar-bevroren-21-mockups-bindend-voor-de-iphone-interface)
+is een navigatiefase, volgens [docs/ios-unified-2026-fase2-plan.md](ios-unified-2026-fase2-plan.md).
+De bindende beelden zijn `01-series-landing.png`, `02-films-landing.png`, `05-zoeken.png` en
+`home-comp-gefilterd.png`. DEC-093 is gereserveerd voor de F0-sessie en blijft hier ongebruikt.
+
+**Decision:**
+
+*De tabset.* `getVisibleTabs` krijgt een `isPhone`-parameter en die is de poort voor Films en Series.
+De waarde reist mee in plaats van ter plekke afgeleid te worden, want `PlatformDetector.isPhone` heeft
+een `BuildContext` nodig en de tablijst wordt op plekken gebouwd die er geen hebben. Dat is dezelfde
+vorm als `TabBarPresentation` uit [DEC-103](#dec-103-fase-1-levert-de-iphone-home-als-eigen-scherm-en-de-ipad-houdt-zijn-bestaande-presentatie):
+een enkele `PlatformDetector`-aanroep bij de schil, een expliciete waarde die meereist, en geen
+platformcheck in het filter. De iPad is wel `isMobile` en niet `isPhone` en houdt daarmee alles wat hij
+had, want fase 2 is een iPhone-fase.
+
+Bibliotheken en Zoeken raken hun balkslot kwijt en blijven bestemming, via de set die dat mechanisme al
+had. Aan `getVisibleTabs` trekken zou de fout herhalen die in `navigation_tabs.dart` zelf staat
+opgeschreven: de pil verdween, `_buildScreens` bouwde het scherm nooit, en elke route erachter was
+onbereikbaar. Beide zijn ook alleen op de telefoon uit de balk; de iPad zou anders twee slots verliezen
+en er niets voor terugkrijgen.
+
+De balkvolgorde op de telefoon is Home, Series, Films, Live TV, Mijn Pleya. `allNavigationTabs` houdt
+de TV-volgorde met Films voor Series, want die lijst valt onder een TV-authority. Alleen de balk draait
+om, en dat kan omdat de balk nergens op index werkt.
+
+*De chip en de tab zijn twee oppervlakken.* De chip op Home filtert `homeProjection.hubs` en zet de
+titel `Voor jou`; de tab opent de landing. Ze verschillen in titel, hero, chipbalk, databron en welke
+tab oplicht, precies zoals `home-comp-gefilterd.png` en `01-series-landing.png` het naast elkaar tonen.
+Bleef de chip de landingrijen lezen, dan was de een een tweede deur naar de ander.
+
+Filteren gebeurt **per rij** op `UnifiedMediaHub.kind`, niet op `MediaKind`, dat in deze codebase geen
+soort van een rij is. Het is dezelfde regel die `TvDiscoveryLandingProvider` al toepast als hij dezelfde
+projectie splitst: `mixed`, `episode` en `other` horen bij geen van beide landings en worden er niet
+naartoe geraden. Er komt dus geen tweede filtersemantiek bij. Het gevolg hoort erbij: op een server
+waarvan de hubs grotendeels `mixed` zijn blijft er onder een chip weinig over, tot aan niets, en daarom
+heeft de landing een lege toestand die Home niet had.
+
+*De Alle-actie is getekend en inactief* tot fase 3. Hem zolang naar `LibraryBrowseTab` sturen is
+afgewezen: dat opent een bibliotheekgebonden, serverspecifiek scherm terwijl de knop een
+bronoverstijgende catalogus belooft.
+
+*Zoeken is een tab gebleven, niet een schermlaag.* Het plan stelde een laag binnen `MainScreen` voor,
+boven de `IndexedStack` en onder de `NavigationBar`. Dat is niet gebouwd. `SearchScreen` staat in
+`getVisibleTabs` en wordt dus sowieso door `_buildScreens` gebouwd, dus een tweede exemplaar in een laag
+erboven zou elke `search.*`-automation-id op hetzelfde moment twee knopen laten aanwijzen, wat de
+botsing is die bij `AutomationIds.myPleyaSectionTile` staat beschreven. Het zou bovendien eigen
+terugafhandeling vragen terwijl `_handleMainBack` al naar de eerste zichtbare tab teruggaat. Het icoon
+roept nu `_selectTab(search)` aan, de balk blijft staan en Home blijft oplichten, zoals `05-zoeken.png`
+het toont. De terugpijl en de titel `Zoeken` uit dat beeld horen bij de opmaak van het zoekscherm zelf
+en zijn fase 4.
+
+*De landing-automation-ids dragen de soort.* Alle zeven zijn instanceable en gesuffixeerd met `series`
+of `movies`. Home, Series en Films zijn kinderen van dezelfde `IndexedStack` en dus alle drie tegelijk
+gemount, en de registry houdt offstage schermen ook vast: zonder de soort zou `landing.rail[0]` op
+hetzelfde moment twee rijen aanwijzen. Om dezelfde reden krijgen `MobilePageHeader` en `MobileMediaRail`
+optionele id-parameters in plaats van dat de landing een eigen kopie van die widgets krijgt.
+
+*Series en Films worden geen opstartsectie.* `_startupSectionOptions` is een platformonafhankelijke
+lijst en op desktop bestaan die tabs niet, dus de keuze zou daar stilzwijgend op Home terugvallen. Een
+opgeslagen sectie die niet zichtbaar is valt al terug via `resolveDefaultTab`, dus er is geen migratie
+nodig.
+
+*Addendum (fase-2-review, bevinding 10):* "dezelfde regel" hierboven stond bij het schrijven van dit
+besluit nog drie keer onafhankelijk in code: een dode `MobileLandingKind.hubKind`-getter zonder
+aanroepers, de chip-switch in `mobile_home_screen.dart`, en `TvDiscoveryLandingProvider._project()`'s
+eigen `UnifiedHubKind`-switch. Alle drie lezen nu `UnifiedHubKind.singleKindSurface`
+(`lib/media/unified/unified_media_hub.dart`), één plek die de partitie vastlegt, met een test die de
+chip-uitkomst en de landing-uitkomst tegen elkaar controleert op dezelfde invoer.
+
+**Consequences:** De F0-poort is **niet** groen. `claude/f0-unused-gate` bestaat niet op `origin`, dus er
+viel niets te mergen. In plaats daarvan is er een nulmeting op de basiscommit `befc523c` gedraaid met de
+gepinde SDK, en na afloop opnieuw. Beide keren exact dezelfde zeventien meldingen, dus fase 2 heeft er
+geen enkele aan toegevoegd:
+
+*10 unused code:* `isRetryableServerWriteFailure` (`media_server_exceptions.dart:106`), `UnifiedCatalogs`
+(`unified_catalogs.dart:46`), `unifiedActionOutcomeMessage` (`unified_action_outcome.dart:3`),
+`searchProjection` (`search_projection.dart:69`), `eligibleSourceServers` (`source_resolver.dart:130`),
+`nextFocusAfterAvailabilityChange` en `mergeLateSources` (`unified_activation_coordinator.dart:444` en
+`:480`), `buildUnifiedCatalogQuery` (`unified_catalog_filters.dart:358`), `UnifiedCatalogQueryStore`
+(`unified_catalog_query_store.dart:41`), `loadUnifiedFilterOptions` (`unified_filter_options.dart:52`).
+
+*7 unused files:* `providers/unified_catalogs.dart`, `services/rating_actions.dart`,
+`services/unified_action_outcome.dart`, `services/unified_catalog/search_projection.dart`,
+`services/unified_catalog/unified_artwork_prefetcher.dart`,
+`services/unified_catalog/unified_catalog_query_store.dart`,
+`services/unified_catalog/unified_filter_options.dart`.
+
+Alle zeventien komen uit de F0-merge en blijven werk voor die sessie. Ze staan hier opgeschreven omdat ze
+nergens anders stonden: `docs/F0-EVIDENCE.md` dekt analyze en de testsuite en heeft geen unused-sectie.
+
+Wat wel gemeten is: `flutter analyze` nul errors en nul warnings op de bekende 40 info-lints,
+`flutter test` 5596 geslaagd en 6 overgeslagen zonder enkele fout, de negen Verify-scenario's allemaal
+`validate` OK, en de 216 runnertests groen. De twee `backend_badge`-goldens die het fase-2-plan als bekend
+falend noemt slagen hier wel; die goldens draaien op Linux, net als CI, en het bekende falen was op macOS.
+
+Wat **niet** gemeten is, en dus ontbrekend bewijs blijft: `ios.home.northstar`, `ios.landing.northstar` en
+`discover.hero.layout` hebben target `ios-sim` en zijn in een Linux-container zonder Xcode niet uit te
+voeren. Punt 4, 5 en 6 van de Definition of Done staan daarmee open, en het contactvel naast de twee
+bevroren beelden ook. `scripts/format_native.sh --check` faalt om dezelfde soort reden, een ontbrekende
+`swift-format`; fase 2 raakt geen enkel native bestand.
+
+Twee dingen zijn onderweg opgelost die het plan niet voorzag. `screen.series` en `screen.movies` zijn aan
+`_screenToTab` toegevoegd zodat `/v1/open` de landings bereikt en het scenario niet op coordinaten hoeft
+te tikken. En `tool/generate_automation_ids_yaml.dart` loopt in deze omgeving vast in de FFI-transform van
+de Dart VM, dus `pleya_verify/automation_ids.yaml` is met de hand in het formaat van de generator
+geschreven; `test/architecture/automation_ids_yaml_test.dart` bewijst dat het exact met
+`AutomationIds.catalog()` overeenkomt.
+
+De twee open Home-details uit DEC-090 paragraaf 10 blijven open. Fase 3 begint bij een eigen plan en zet
+een handler onder de Alle-actie.
+
+## DEC-103: fase 1 levert de iPhone-Home als eigen scherm, en de iPad houdt zijn bestaande presentatie
+
+**Date:** 2026-09-03
+**Status:** accepted
+
+**Context:** Fase 1 van [DEC-090](#dec-090-ios-unified-2026-northstar-bevroren-21-mockups-bindend-voor-de-iphone-interface)
+bouwt de Home-verticale plak uit het bevroren beeldenpakket, volgens
+[docs/ios-unified-2026-fase1-plan.md](ios-unified-2026-fase1-plan.md). Tijdens de bouw liepen drie
+dingen anders dan het plan aannam, en één ervan vraagt een besluit van Michel in plaats van van de
+implementatie.
+
+**Decision:** De iPhone-Home is een eigen scherm, `lib/screens/home/mobile_home_screen.dart`, dat
+`DiscoverScreen._buildContent` kiest op `PlatformDetector.isPhone`. De presentatiegrens is daarmee
+één regel op één plek in plaats van breedtecondities door het bestaande Home-scherm heen. iPad,
+desktop en TV lopen ongewijzigd door de bestaande tak. De kaarten, rijen, header, chips, hero en
+bronkiezer staan onder `lib/widgets/mobile/`, delen de bestaande primitieven
+(`MediaCardGridLayout`, `OptimizedMediaImage`, `Pressable`, `FocusableFilterChip`, `PleyaWordmark`,
+`ProfileAvatar`, `MediaContextMenu`) en bouwen op de F0-catalogus in plaats van op een tweede
+mobiel mediamodel.
+
+Drie afwijkingen van het plan, alle drie bewust:
+
+1. Het plan schreef stap 2 als een verplaatsing uit `lib/widgets/tv/`. Die map bestaat niet op deze
+   branch: F0 heeft de platformneutrale kern gemerged en de TV-presentatie bewust niet. De inhoud is
+   daarom vanuit `provenance/netflix-redesign-f8e0e59` overgezet naar de doelpaden uit het plan
+   (`lib/services/unified_catalog/hero_text.dart`, `lib/media/unified/source_row_descriptor.dart`).
+   Het resultaat is hetzelfde bestand op dezelfde plek; alleen de herkomst is een kopie, geen `git mv`.
+2. F0 landde `TvHomeProjectionProvider` en `TvDiscoveryLandingProvider` wel als klasse, maar
+   registreerde ze niet. `profile_session_screen.dart` doet dat nu, in dezelfde volgorde als de
+   tvOS-branch.
+3. De bottom bar is gedeeld met de iPad. Het plan noteert dat zelf (regel 61: een iPad krijgt
+   dezelfde vijf slots als een iPhone) en schrijft de restyle in stap 9 toch ongescoped voor, terwijl
+   het regressiepunt 8a een gelijk iPad-Home-screenshot vóór en na eist. Die twee kunnen niet allebei
+   waar zijn. Het is opgelost in het voordeel van punt 8a: **fase 1 was een iPhone-fase, dus de iPad
+   houdt de bar die hij vóór fase 1 had.** `TabBarPresentation` in `navigation_tabs.dart` heeft twee
+   waarden, `classic` en `unified2026`, en die kiezen alleen verf: dezelfde tabset, dezelfde
+   bestemmingen, dezelfde callbacks. De keuze valt op één plek, in `_buildBottomNavigationBar`, uit
+   één `PlatformDetector.isPhone`-aanroep, en reist als waarde mee naar `toDestination`. Dat is
+   dezelfde vorm als de Home-grens in `discover_screen.dart`: geen platformcheck in de tabitems, geen
+   tweede navigatielogica, en geen iPad-herontwerp. De haptiek bij een tabwissel hangt aan dezelfde
+   waarde, zodat de iPad zich ook in gedrag gedraagt zoals vóór fase 1. Of de iPad de nieuwe bar
+   alsnog overneemt, is een besluit voor de fase die een eigen iPad-authority heeft.
+
+**Consequences:** De twee open Home-details uit DEC-090 paragraaf 10 blijven open. `mobile_hero_actions.dart`
+en `mobile_hero_indicator.dart` bevatten daarvoor een naam en een tijdelijke standaard, expliciet
+gedocumenteerd als plaatshouder en niet als besluit: `HeroSecondaryAction.moreInfo` en
+`HeroIndicatorStyle.persistentDots`. Ze zijn één regel te wisselen zodra het besluit valt. De tabset
+is ongewijzigd; er is geen bestemming verplaatst of verwijderd. `ios.home.northstar` observeert de
+Home met productcontracten en zonder verify-only gedrag. Fase 2 begint bij een eigen plan, niet bij
+het uitbreiden van dit scherm.
+
+Twee dingen zijn bij het sluiten van fase 1 gemeten in plaats van beredeneerd. Het eerste is de
+iPad: `discover.hero.layout` is met dezelfde gepinde SDK, hetzelfde iPad-toestel, dezelfde fixture,
+dezelfde route en dezelfde captureprocedure gedraaid op `2ec6ba4` en op de fase-1-tip, allebei PASS,
+en van de 4.036.560 pixels verschillen er 1635, allemaal binnen een vak van 155 bij 26 pixels
+linksboven: de klok in de statusbalk. De iPad-driver komt uit `PLEYA_VERIFY_IOS_UDID`, die de
+ios-sim-driver al kende.
+
+Het tweede is wat fase 1 *niet* end-to-end kan bewijzen. Het productpad is er, en het is op
+code- en widgetniveau gedekt (`mobile_activation_test.dart`, `mobile_source_picker_sheet_test.dart`);
+wat ontbreekt is de Verify-infrastructuur om het in één scenario te rijden. De juiste status is
+daarom *productpad geïmplementeerd, gedekt op widgetniveau, volledige Verify-E2E geblokkeerd door
+ontbrekende multi-backend-fixtureinfrastructuur*, en niet "ongetest".
+
+Die blokkade is drieledig, en alle drie de delen zijn nodig. Wie er één bouwt, heeft nog niets:
+
+1. **Een poolable-backendfixture (Plex of Jellyfin).** De huidige fixtureserver spreekt het
+   Pleya-Server-protocol, en `_neverMergedBackends` in `grouping_service.dart` sluit
+   `MediaBackend.pleyaServer` uit van elke samenvoeging. Dat is een **productcontract** zolang de
+   external-id-ondersteuning van Pleya Server (PS-7) niet bestaat, geen technische hobbel die een
+   scenario mag omzeilen: een fixture die toch laat mergen bewijst iets wat het product niet doet.
+2. **Meer dan één fixtureserver per scenario.** `run_scenario.dart` start er precies één en kent één
+   `{{fixture}}`-placeholder. Twee bronnen vragen twee servers met elk een eigen `base_url` en
+   `server_id`.
+3. **Een scenarioverb voor `connectionsSeed`.** `verify_client.dart` heeft de aanroep al en
+   `/v1/connections/seed` staat al in de protocol-allowlist, maar geen enkele verb in
+   `run_scenario.dart` roept hem aan, dus een scenario kan die tweede server niet registreren.
+
+Dat is werk voor een eigen Verify-infrastructuurfase, of voor de productfase die deze E2E-poort
+werkelijk nodig heeft. Het is geen openstaand fase-1-defect.
+
+## DEC-102: de mobiele hero-presentatie heet mobileFeatured, en de chip-ambiguïteit is opgelost
+
+**Date:** 2026-09-03
+**Status:** accepted
+
+**Context:** Twee punten uit het fase-1-plan vroegen een besluit voordat er gebouwd werd. Het eerste
+is de hero. `home_hero_layout.dart` kent vandaag `island` (iPad-portret) en `fullWidth`
+(iPhone-portret); de northstar vraagt een afgeronde billboard-kaart op inset 16. Hoofdstuk 9.4 van
+`docs/tvos-unified-experience.md` op de tvOS-redesignbranch rechtvaardigt de eigen TV-billboard met
+de belofte dat de bestaande mobiele geometrie byte-identiek blijft. Het tweede is de geselecteerde
+chip, waarover de bevroren beelden elkaar tegenspraken: de Home-comp toont een donkerrode vulling,
+mockup 15 een witte vulling, en mockup 05, 10, 11, 12 en 19 een rode omlijning.
+
+**Decision:** De derde presentatie heet **`mobileFeatured`**, niet `phone`. De naam beschrijft de
+layout en niet het apparaat, en `home_hero_layout.dart` blijft vrij van `PlatformDetector`-aanroepen:
+de aanroeper kiest de presentatie. Daarmee kan de iPad hem later kiezen zonder dat de hero verbouwd
+hoeft te worden, en zonder dat er nu een uitspraak over de iPad gedaan wordt. `island` en `fullWidth`
+veranderen niet, dus de bestaande regressiepins in `test/utils/home_hero_layout_test.dart` blijven
+zoals ze zijn. De belofte uit 9.4 versmalt van "de mobiele geometrie" naar "`island` en `fullWidth`".
+
+De geselecteerde chip is een **rode omlijning met rode tekst**, de variant die vijf van de
+eenentwintig bevroren beelden tonen. De comp heeft op dit punt geen mockup naast zich, dus de
+mockups winnen zoals paragraaf 9 van het rapport voorschrijft. Geselecteerd en ingedrukt blijven
+gescheiden semantiek: geselecteerd is een blijvende toestand met de rode omlijning, ingedrukt is de
+momentane aanraakreactie van `Pressable`. Ze worden niet op één visuele eigenschap samengevoegd.
+
+De drie headeracties op Home (Nu aan het kijken, Samen kijken, Afstandsbediening) blijven in fase 1
+staan waar ze staan. De fase-1-header is daardoor voller dan de comp; dat is een goedgekeurde
+afwijking en telt bij de visuele beoordeling van fase 1 niet als verschil met de northstar. Ze
+vervalt in de fase die de rootnavigatie migreert.
+
+**Consequences:** Paragraaf 9a van [het auditrapport](ios-unified-2026-audit.md) legt de chipkeuze en
+de goedgekeurde afwijking vast. Een implementatie die `mobileFeatured` toevoegt raakt de twee
+bestaande presentaties niet en houdt de bijbehorende tests ongewijzigd. De twee open Home-details uit
+DEC-090 paragraaf 10, de secundaire hero-CTA en de carousel-indicator, blijven open.
+
+## DEC-090: iOS Unified 2026 northstar bevroren, 21 mockups bindend voor de iPhone-interface
+
+**Date:** 2026-09-03
+**Status:** accepted
+
+**Context:** De iPhone-interface krijgt dezelfde productlaag als de tvOS Netflix-redesign (Pleya Unified TV 2026, DEC-063 op de branch `claude/netflix-redesign-b4x21v`; dat nummer verwijst daar naar de architectuurbaseline en hier naar iets anders, zie de nummeropmerking onderaan deze context). Michel leverde vijf Netflix-achtige iOS-comps aan als compositiereferentie (Home, Home gefilterd, Serie-detail, Mijn Pleya, profiel laden). Een audit van die comps tegen de redesign-branch, vastgelegd in [docs/ios-unified-2026-audit.md](ios-unified-2026-audit.md), vond zeven botsingen met de TV-baseline en telde 21 schermen die de comps niet dekten. Die 21 zijn als HTML tegen de echte tokens uit `lib/theme/mono_theme.dart` gebouwd, met de brandingassets van de redesign-branch en echt TMDb-artwork, op een iPhone 15 Pro-viewport geschoten, in één ronde op tekstmaten en uitlijning gecorrigeerd, en door Michel goedgekeurd ("Akkoord", 3 september 2026). Het nummer van deze entry is bewust DEC-090 en niet het eerstvolgende nummer op deze branch (DEC-069): de redesign-branch heeft de nummers tot en met DEC-089 al in gebruik, en de merge van `main` in die branch heeft eerder al een nummerbotsing moeten oplossen. DEC-090 is op beide branches vrij.
+
+**Decision:** De 21 beelden in `docs/assets/ios-unified/northstar/` (`01-series-landing` tot en met `21-activiteit`) zijn de bevroren visuele implementatie-authority voor iPhone/iOS. Ze zijn als één samenhangende productfamilie goedgekeurd, niet als losse schermen en niet alleen Home: landings, complete catalogus, filters, zoeken, film- en seriedetail, bronkeuze, contextmenu, Live TV, kijklijst, downloads, meldingen, instellingen, bibliotheken, profielkeuze, inloggen, Mijn Pleya, aanvragen, speler en activiteit. Implementatie wordt tegen deze set beoordeeld; een zichtbare afwijking in compositie, hiërarchie of maatvoering is een nieuw besluit dat goedkeuring vraagt.
+
+*Authority-volgorde* voor de iOS-interface, van hoog naar laag:
+
+1. de goedgekeurde iOS-northstar-mockups in `docs/assets/ios-unified/northstar/`, en voor Home, Home gefilterd en het profiel-laadscherm de vijf aangeleverde comps, die sinds 3 september 2026 byte-identiek in diezelfde map staan onder een naam in plaats van een nummer (`home-comp`, `home-comp-gefilterd`, `profiel-laden-comp`, `serie-detail-comp`, `mijn-pleya-comp`; hashes in paragraaf 4.8 van het rapport). Waar een comp en een mockup elkaar raken wint de mockup. Het opnemen van die vijf verandert niets aan wat is goedgekeurd en niets aan deze rangorde: het repareert dat Home, de eerste surface die gebouwd wordt, anders een authority zou hebben die alleen op één machine bestond. De bevroren set blijft de 21 genummerde beelden;
+2. het bijbehorende rapport `docs/ios-unified-2026-audit.md`, dat de tokens, de navigatie en de zeven beslispunten vastlegt;
+3. voor Pleya-branding en de gedeelde Unified 2026-principes: de goedgekeurde tvOS-redesign-branch `claude/netflix-redesign-b4x21v` en zijn northstar-set (DEC-065 op die branch), met `mono_theme.dart`, `mono_tokens.dart`, `pleya_wordmark.dart` en hoofdstuk 8, 18, 33 en 34 van `docs/tvos-unified-experience.md` als bron;
+4. de bestaande iOS-code voor functionele en platformcontracten: navigatie via `ProfileNavigationScope`, sheets via `OverlaySheetHost`, kaarten via `MediaCardGridLayout`, de mobiele hero-geometrie in `home_hero_layout.dart`.
+
+De oude mobiele UI op `main` (de Home-header met los P-icoon en handgezette tekst, de tabbalk Home · Bibliotheken · Zoeken · Mijn Pleya, de platte Mijn Pleya-lijst) is geen visuele authority waar hij met deze set strijdig is. Hij blijft functionele referentie voor wat een scherm doet, niet voor hoe het eruitziet.
+
+*Geen Netflix-kopie.* De Netflix iOS 2025/2026-screenshots waren compositiereferentie voor de comps. Vanaf dit besluit is de Pleya-northstar de maat: een implementatie wordt beoordeeld tegen de 21 beelden en het rapport, niet opnieuw rechtstreeks tegen Netflix. Waar de mockups van Netflix afwijken (het wordmark-lockup, de witte Play-capsule, de `2 bronnen`-capsule, de bronregel op detail, de drie groepen van Mijn Pleya) is die afwijking het product.
+
+*Open design details, non-blocking.* Twee details op de Home-comp zijn niet beslist en staan in paragraaf 10 van het rapport: (A) de secundaire hero-CTA, `+ Mijn lijst` in de comp tegenover `Meer info` in het TV-contract, en (B) de vijf permanente carousel-dots tegenover de tijdelijke segmentindicator uit hoofdstuk 9.6. Ze blokkeren de implementatie van de overige schermen niet, ze worden niet stilzwijgend door een implementator beslist, ze vragen een expliciet besluit van Michel vóór de definitieve Home-implementatie, en ze maken de overige geometrie en compositie van Home niet voorlopig. De Home-compositie is goedgekeurd; alleen deze twee details zijn open.
+
+**Consequences:** Deze commit bevat uitsluitend assets, het rapport en deze entry; `NavigationTabId`, de tabbalk, de landings, detail, sheets, Mijn Pleya en `TvDiscoveryLandingProvider` zijn niet aangeraakt. De bouw begint met een apart fase-1-plan tegen deze set. De HTML-bronnen van de mockups leven buiten de repository, zoals bij DEC-065; het rapport beschrijft hoe een beeld opnieuw gerenderd wordt. De getoonde titels en hun artwork zijn niet bindend en dienen uitsluitend als interne designreferentie. Een latere merge van `claude/netflix-redesign-b4x21v` naar `main` mag deze entry niet hernummeren: DEC-090 is op beide branches vrij gehouden.

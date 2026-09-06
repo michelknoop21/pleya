@@ -1,0 +1,257 @@
+/// The iPhone Home surface: header, chips, hero, Verder kijken, rails. iOS
+/// Unified 2026 fase 1, `docs/ios-unified-2026-fase1-plan.md` stap 8.
+///
+/// `DiscoverScreen._buildContent` picks this on `PlatformDetector.isPhone`;
+/// desktop, iPad and TV keep their existing trees untouched. The three
+/// headeractions (Nu aan het kijken, Samen kijken, Afstandsbediening) stay in
+/// the header until fase 6 migrates the root navigation (DEC-102) — that is
+/// why this header is fuller than the Home comp, a known, approved fase-1
+/// deviation, not an oversight.
+library;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show SliverConstraints;
+import 'package:provider/provider.dart';
+
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
+import '../../i18n/strings.g.dart';
+import '../../media/unified/source_coverage_state.dart';
+import '../../media/unified/unified_media_group.dart';
+import '../../media/unified/unified_media_hub.dart';
+import '../../media/unified/unified_route_context.dart';
+import '../../profiles/active_profile_provider.dart';
+import '../../providers/discover_provider.dart';
+import '../../providers/home_layout_provider.dart';
+import '../../providers/tv_home_projection_provider.dart';
+import '../../services/unified_catalog/home_row_layout.dart';
+import '../../services/unified_catalog/mobile_activation.dart';
+import '../../utils/home_hero_layout.dart';
+import '../../utils/media_navigation_helper.dart';
+import '../../utils/video_player_navigation.dart';
+import '../../widgets/media_card_grid_layout.dart';
+import '../../widgets/mobile/mobile_chip_bar.dart';
+import '../../widgets/mobile/mobile_discovery_shell.dart';
+import '../../widgets/mobile/mobile_hero_card.dart';
+import '../../widgets/mobile/mobile_media_card.dart';
+import '../../widgets/mobile/mobile_media_rail.dart';
+import '../../widgets/mobile/mobile_page_header.dart';
+import '../../widgets/mobile/mobile_source_picker_sheet.dart';
+import '../libraries/content_state_builder.dart' show SliverErrorState;
+
+/// The `currentSourceKey` Home's Play hands to the source picker.
+///
+/// `initialFocusSourceKey` (where the picker should put its initial focus)
+/// and "the source the surface behind the picker already shows" (only true
+/// when a picker is reopened from a detail page) are two different
+/// questions. Home's Play has no detail page behind it, so the answer to the
+/// second question is always null here — never `initialFocusSourceKey`,
+/// which is what a never-played row would otherwise be mislabelled with.
+@visibleForTesting
+String? homePlayCurrentSourceKey({required String initialFocusSourceKey}) => null;
+
+class MobileHomeScreen extends StatefulWidget {
+  /// Opens Zoeken. Comes from `MainScreen` through [DiscoverScreen], because
+  /// this screen is mounted deep inside the Home tab and tab selection belongs
+  /// to the shell (fase 2, [DEC-104]).
+  final VoidCallback? onSearchTap;
+
+  const MobileHomeScreen({super.key, this.onSearchTap});
+
+  @override
+  State<MobileHomeScreen> createState() => _MobileHomeScreenState();
+}
+
+class _MobileHomeScreenState extends State<MobileHomeScreen> {
+  MobileHomeChip _chip = MobileHomeChip.home;
+
+  static List<UnifiedMediaHub> _ofSurface(List<UnifiedMediaHub> hubs, UnifiedCatalogSurface surface) =>
+      hubs.where((hub) => hub.kind.singleKindSurface == surface).toList();
+
+  Future<void> _openDetails(UnifiedMediaGroup group) async {
+    await navigateToMediaItemDetails(context, group.representativeSource.item);
+  }
+
+  Future<void> _play(UnifiedMediaGroup group) async {
+    await activateMobileMediaGroup(
+      context,
+      group: group,
+      intent: UnifiedActivationIntent.play,
+      availabilityFor: (source) => source.availability,
+      coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
+      showPicker:
+          ({
+            required sources,
+            required initialFocusSourceKey,
+            preferredSourceKey,
+            preferredServerId,
+            required coverage,
+          }) {
+            return showMobileSourcePickerSheet(
+              context,
+              representative: group.representativeSource.item,
+              sources: sources,
+              preferredSourceKey: preferredSourceKey,
+              currentSourceKey: homePlayCurrentSourceKey(initialFocusSourceKey: initialFocusSourceKey),
+              preferredServerId: preferredServerId,
+              coverage: coverage,
+            );
+          },
+      onRouted: (source) => navigateToVideoPlayer(context, metadata: source.item),
+    );
+  }
+
+  /// The rail directly under the hero, so the hero-plus-first-rail viewport
+  /// fill (`homeHeroHeight`) budgets against the right shape. Verder kijken
+  /// (16:9) when it exists, else the first hub's shape (portrait 2:3).
+  double _firstRailHeight(BuildContext context, {required bool wide}) {
+    final cardWidth = wide ? mobileRailWideCardWidth : mobileRailCardWidth;
+    final aspect = wide ? 16 / 9 : 2 / 3;
+    const titleRowHeight = 28.0; // MobileMediaRail's title row + its gap.
+    return titleRowHeight + cardWidth / aspect + MediaCardGridLayout.textExtentFor(context);
+  }
+
+  Widget _heroSliver(BuildContext context, SliverConstraints constraints, TvHomeProjectionProvider homeProjection) {
+    final width = MediaQuery.sizeOf(context).width - 32;
+    // The space this hero actually has, not the whole viewport: the header and
+    // the chip bar are scrolled past before it starts. Measuring against the
+    // full extent filled the hero down to the bottom bar and pushed the first
+    // rail entirely below the fold, which is the one thing `homeHeroHeight`
+    // exists to prevent.
+    final available = constraints.viewportMainAxisExtent - constraints.precedingScrollExtent;
+    final hasContinueWatching = homeProjection.continueWatching?.isEmpty == false;
+    final height =
+        homeHeroHeight(
+          useSideNav: false,
+          viewportExtent: available,
+          screenHeight: MediaQuery.sizeOf(context).height,
+          screenWidth: MediaQuery.sizeOf(context).width,
+          statusBarHeight: MediaQuery.paddingOf(context).top,
+          firstRailHeight: _firstRailHeight(context, wide: hasContinueWatching),
+        ) -
+        16;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: MobileHeroCard(
+          groups: homeProjection.heroGroups,
+          width: width,
+          height: height,
+          onPlay: _play,
+          onSecondaryAction: _openDetails,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final discover = context.watch<DiscoverProvider>();
+    final homeProjection = context.watch<TvHomeProjectionProvider>();
+    final layout = context.watch<HomeLayoutProvider>();
+    final activeProfile = context.watch<ActiveProfileProvider?>()?.active;
+
+    // A chip filters Home's own rows; it does not open the landing. Those are
+    // two surfaces and the frozen images show them as two: the chip keeps the
+    // chip bar, drops the hero, titles the page `Voor jou` and leaves Home lit
+    // in the bar (`home-comp-gefilterd.png`), while the tab has a title line
+    // with `Alle series`, no chip bar, and lights its own slot
+    // (`01-series-landing.png`). Reading the landing rails here would make one
+    // of the two a second door to the other ([DEC-104]).
+    //
+    // Filtering is per row, on `UnifiedMediaHub.kind`, which is the rule
+    // `TvDiscoveryLandingProvider` already applies when it splits the same
+    // projection: `mixed`, `episode` and `other` rows have no single Films-or-
+    // Series home and are not guessed onto one. That is why a chip can leave
+    // few rows, or none, on a server whose hubs are mostly mixed, and why this
+    // screen has an empty state at all.
+    final rawHubs = switch (_chip) {
+      MobileHomeChip.home => homeProjection.hubs,
+      MobileHomeChip.series => _ofSurface(homeProjection.hubs, UnifiedCatalogSurface.series),
+      MobileHomeChip.movies => _ofSurface(homeProjection.hubs, UnifiedCatalogSurface.movies),
+    };
+    final hubs = applyHomeLayoutToUnifiedRows(rawHubs, hiddenRowIds: layout.hiddenRowIds, order: layout.order);
+    final continueWatching = _chip == MobileHomeChip.home ? homeProjection.continueWatching : null;
+    // Whether this screen actually draws a hero, not whether it could: the
+    // pool is empty on a source without release dates (DEC-097 point 2), and a
+    // chip filters the hero away entirely.
+    final heroVisible = _chip == MobileHomeChip.home && homeProjection.heroGroups.isNotEmpty;
+
+    final isLoading = discover.isLoading;
+    final errorMessage = discover.errorMessage;
+
+    return mobileDiscoveryScaffold(
+      context: context,
+      onRefresh: discover.load,
+      slivers: [
+        SliverToBoxAdapter(
+          child: MobilePageHeader(activeProfile: activeProfile, onSearchTap: widget.onSearchTap ?? () {}),
+        ),
+        SliverToBoxAdapter(
+          child: MobileChipBar(selected: _chip, onSelected: (chip) => setState(() => _chip = chip)),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        // `Voor jou` names what a filtered Home is: the same recommendation
+        // feed, narrowed to one kind. Only with a chip active, because
+        // unfiltered Home carries the hero and the wordmark instead and
+        // needs no second title (`home-comp-gefilterd.png`, [DEC-104]).
+        if (_chip != MobileHomeChip.home)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Text(
+                t.discover.forYou,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: mobileDiscoveryTitleStyle,
+              ),
+            ),
+          ),
+        // Only when there is something to show. `MobileHeroCard` answers an
+        // empty group list with a `SizedBox` at the full hero height, so
+        // building it anyway reserves a hero-sized blank band above the first
+        // rail. That is exactly the state DEC-097 point 3 describes (no
+        // recently released film, so no hero and Continue Watching first), and
+        // reserving the space there contradicts it.
+        if (heroVisible)
+          SliverLayoutBuilder(builder: (context, constraints) => _heroSliver(context, constraints, homeProjection)),
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        if (isLoading) mobileHubRowsSkeletonSliver,
+        if (errorMessage != null) SliverErrorState(message: errorMessage, onRetry: discover.load),
+        if (!isLoading && errorMessage == null) ...[
+          if (continueWatching != null && !continueWatching.isEmpty)
+            SliverToBoxAdapter(
+              // The same node `DiscoverScreen` puts around its own Continue
+              // Watching rail, because on the iPhone this screen replaces that
+              // tree (fase 1) and a scenario addressing `discover` must not
+              // have to know which of the two drew the row. `hero_visible`
+              // mirrors the real bool here too: `discover.layout` asserts the
+              // DEC-097 fallback on this node, since the hero node is not
+              // built in that state.
+              child: AutomationNode(
+                id: AutomationIds.discoverContinueWatching,
+                role: 'rail',
+                state: () => {'hero_visible': heroVisible},
+                child: MobileMediaRail(
+                  hub: continueWatching,
+                  railIndex: 0,
+                  shape: MobileCardShape.wide,
+                  isContinueWatching: true,
+                  onCardTap: _openDetails,
+                ),
+              ),
+            ),
+          for (var i = 0; i < hubs.length; i++)
+            SliverToBoxAdapter(
+              child: MobileMediaRail(
+                hub: hubs[i],
+                railIndex: continueWatching != null ? i + 1 : i,
+                onCardTap: _openDetails,
+              ),
+            ),
+        ],
+        mobileDiscoveryTailSliver(context),
+      ],
+    );
+  }
+}

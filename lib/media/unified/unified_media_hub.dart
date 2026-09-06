@@ -49,7 +49,25 @@ enum UnifiedHubKind {
     if (distinct.length == 1) return distinct.single;
     return UnifiedHubKind.mixed;
   }
+
+  /// The single-kind catalogue surface this row belongs to on Home's chip
+  /// filter and on a landing — `null` for [episode], [mixed] and [other],
+  /// which have no single Films-or-Series home ([DEC-104]).
+  ///
+  /// The one place this partition is written down: the Home chip filter
+  /// (`mobile_home_screen.dart`) and `TvDiscoveryLandingProvider`'s rail
+  /// split both read [singleKindSurface] instead of repeating the switch.
+  UnifiedCatalogSurface? get singleKindSurface => switch (this) {
+    UnifiedHubKind.movie => UnifiedCatalogSurface.movies,
+    UnifiedHubKind.show => UnifiedCatalogSurface.series,
+    UnifiedHubKind.episode || UnifiedHubKind.mixed || UnifiedHubKind.other => null,
+  };
 }
+
+/// The two single-kind catalogue surfaces a discovery row can belong to:
+/// the Films landing/chip or the Series landing/chip. See
+/// [UnifiedHubKind.singleKindSurface].
+enum UnifiedCatalogSurface { movies, series }
 
 /// The complete-catalogus destination a landing row offers behind
 /// "Alles bekijken" (hoofdstuk 10.2b, DEC-064: a first-class route, not a

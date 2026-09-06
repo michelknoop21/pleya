@@ -155,8 +155,10 @@ class FakeDriver implements VerificationDriver {
   @override
   Future<void> typeText(String text) async {}
 
+  final List<(double, double)> tapPoints = [];
+
   @override
-  Future<void> tap(double x, double y) async {}
+  Future<void> tap(double x, double y) async => tapPoints.add((x, y));
 }
 
 /// A row of focusables and a remote that moves through it, so the walk
@@ -357,6 +359,47 @@ void main() {
       final press = (manifest['steps'] as List).cast<Map<String, Object?>>().firstWhere((s) => s['verb'] == 'press');
       expect(press['hold_ms'], 1200);
     });
+  });
+
+  test('tap: {x, y} still taps the literal point', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.tap_xy\ntarget: macos\nsetup:\n  - launch\nsteps:\n  - tap: {x: 12, y: 34}\n',
+      sourcePath: 'inline.yaml',
+    );
+    final driver = FakeDriver();
+
+    final result = await runScenario(scenario: scenario, scenarioSource: 'source', driver: driver, repoRoot: repoRoot);
+
+    expect(result.passed, isTrue);
+    expect(driver.tapPoints, [(12.0, 34.0)]);
+  });
+
+  test('tap: {id} resolves to the node\'s centre via the live ui_tree, not a hardcoded point', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.tap_id\ntarget: macos\nsetup:\n  - launch\nsteps:\n  - tap: {id: sidebar.rail}\n',
+      sourcePath: 'inline.yaml',
+    );
+    final driver = FakeDriver(boundsForSidebar: true);
+
+    final result = await runScenario(scenario: scenario, scenarioSource: 'source', driver: driver, repoRoot: repoRoot);
+
+    expect(result.passed, isTrue);
+    // bounds x:0 y:0 width:200 height:800 -> centre (100, 400).
+    expect(driver.tapPoints, [(100.0, 400.0)]);
+  });
+
+  test('tap: {id} on a node with no bounds fails the run rather than tapping (0, 0)', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.tap_id_unmounted\ntarget: macos\nsetup:\n  - launch\nsteps:\n  - tap: {id: sidebar.rail}\n',
+      sourcePath: 'inline.yaml',
+    );
+    final driver = FakeDriver();
+
+    final result = await runScenario(scenario: scenario, scenarioSource: 'source', driver: driver, repoRoot: repoRoot);
+
+    expect(result.passed, isFalse);
+    expect(result.failureMessage, contains('sidebar.rail'));
+    expect(driver.tapPoints, isEmpty);
   });
 
   test('assert on an id the driver never reports fails the run and still writes a bundle', () async {
