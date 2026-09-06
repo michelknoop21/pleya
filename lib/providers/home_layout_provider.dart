@@ -11,7 +11,17 @@ import '../services/unified_catalog/home_custom_row.dart';
 /// human-readable identifier ('home.continue', 'tv.recentlyadded') over the
 /// opaque id. Rows sharing an identity (e.g. several "Because you watched"
 /// rows) are treated as one block.
-String homeRowId(MediaHub hub) => '${hub.serverId ?? ''}:${hub.identifier ?? hub.id}';
+///
+/// A row the viewer defined themselves (ROW1b) already carries its own name
+/// in this space, [HomeCustomRow.layoutRowId], on [MediaHub.identifier]
+/// (`mediaHubFromCustomRow`). Wrapping that in `serverId:identifier` would
+/// give it a second, different id than the one [HomeLayoutProvider] actually
+/// stores hide/order preferences against.
+String homeRowId(MediaHub hub) {
+  final identifier = hub.identifier;
+  if (identifier != null && HomeCustomRow.isCustomLayoutRowId(identifier)) return identifier;
+  return '${hub.serverId ?? ''}:${identifier ?? hub.id}';
+}
 
 /// User-defined layout of the home screen rows: which rows are hidden, in what
 /// order they appear, and which of them the viewer defined themselves. Hero and

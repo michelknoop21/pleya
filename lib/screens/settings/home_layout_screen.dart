@@ -5,7 +5,10 @@ import 'package:provider/provider.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_hub.dart';
 import '../../providers/discover_provider.dart';
+import '../../providers/home_custom_rows_provider.dart';
 import '../../providers/home_layout_provider.dart';
+import '../../services/unified_catalog/home_row_layout.dart';
+import '../../utils/home_custom_row_labels.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/settings_page.dart';
 
@@ -17,10 +20,21 @@ class HomeLayoutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final layout = context.watch<HomeLayoutProvider>();
+    // ROW1b: rows the viewer defined themselves take part in the same list,
+    // in front like DiscoverScreen and the TV panel. `allRows`, not
+    // `visibleRows` — a row that has gone empty is still something the viewer
+    // must be able to find here and turn back on.
+    final customRows =
+        context.watch<HomeCustomRowsProvider?>()?.allRows(titleFor: homeCustomRowLabel).map(mediaHubFromCustomRow) ??
+        const <MediaHub>[];
     // One entry per row identity — duplicate identities (several "Because you
     // watched" rows) move and hide as one block.
     final rows = <String, MediaHub>{};
-    for (final hub in layout.apply(context.watch<DiscoverProvider>().hubs, homeRowId, dropHidden: false)) {
+    for (final hub in layout.apply(
+      [...customRows, ...context.watch<DiscoverProvider>().hubs],
+      homeRowId,
+      dropHidden: false,
+    )) {
       rows.putIfAbsent(homeRowId(hub), () => hub);
     }
     final ids = rows.keys.toList();
