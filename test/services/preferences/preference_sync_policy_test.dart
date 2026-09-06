@@ -147,7 +147,17 @@ void main() {
     // registration is then silent: the preference simply stops syncing. This
     // scans the declarations and demands an answer for each one. A new
     // preference makes it red until somebody decides what it is.
-    final patterns = [RegExp(r"Pref[a-zA-Z<>]*\(\s*'([a-z0-9_.]+)'"), RegExp(r"super\(\s*'([a-z0-9_.]+)'")];
+    //
+    // The third pattern was added by ROW1d. The first two only see a key
+    // declared through a `...Pref(...)` constructor, and `StorageService`
+    // declares its own as bare `static const String _keyX = '...'`. So
+    // `home_custom_rows` was invisible here: it shipped unregistered, left in
+    // an export anyway, and came back under a key nothing reads.
+    final patterns = [
+      RegExp(r"Pref[a-zA-Z<>]*\(\s*'([a-z0-9_.]+)'"),
+      RegExp(r"super\(\s*'([a-z0-9_.]+)'"),
+      RegExp(r"static const String _(?:key|prefix)[A-Za-z0-9]* = '([a-z0-9_.]+)';"),
+    ];
     final declared = <String>{};
     for (final entity in Directory('lib').listSync(recursive: true)) {
       if (entity is! File || !entity.path.endsWith('.dart')) continue;

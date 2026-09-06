@@ -210,6 +210,48 @@ void main() {
       expect((out['prefs'] as Map), isNot(contains('custom_download_path_type')));
     });
 
+    // ROW1d. The three Home-row keys are stored under the profile prefix and
+    // declared local-only in the registry, but the export path answers to its
+    // own denylist and never asked the registry. So they left in an export,
+    // and came back unscoped: `home_custom_rows` instead of
+    // `user_<uuid>_home_custom_rows`, which is a key no provider reads. The
+    // import reported success and the rows were not there.
+    test('drops the Home-row keys the registry declares local-only', () async {
+      final prefs = await BaseSharedPreferencesService.sharedCache();
+      await prefs.setStringList('user_alice_home_custom_rows', const ['{"id":"r1"}']);
+      await prefs.setStringList('user_alice_home_row_order', const ['srv:1:hub.recent']);
+      await prefs.setStringList('user_alice_hidden_home_rows', const ['srv:1:hub.latest']);
+
+      final out = SettingsExportService.buildExportMap(prefs, currentUserUuid: 'alice');
+      final p = out['prefs'] as Map;
+
+      expect(p, isNot(contains('home_custom_rows')));
+      expect(p, isNot(contains('home_row_order')));
+      expect(p, isNot(contains('hidden_home_rows')));
+    });
+
+    test('an import carrying them writes no unscoped Home-row key', () async {
+      final prefs = await BaseSharedPreferencesService.sharedCache();
+      await SettingsExportService.applyImportMap(
+        {
+          'formatVersion': SettingsExportService.formatVersion,
+          'prefs': {
+            'home_custom_rows': {
+              'type': 'stringList',
+              'value': ['{"id":"r1"}'],
+            },
+          },
+        },
+        prefs,
+        currentUserUuid: 'bob',
+      );
+
+      // Neither under the bare key, which nothing reads, nor under bob's
+      // prefix: a row naming another device's libraries is not bob's row.
+      expect(prefs.getStringList('home_custom_rows'), isNull);
+      expect(prefs.getStringList('user_bob_home_custom_rows'), isNull);
+    });
+
     test('drops the internal migration flag', () async {
       final prefs = await BaseSharedPreferencesService.sharedCache();
       await prefs.setBool('buffer_size_migrated_to_auto', true);

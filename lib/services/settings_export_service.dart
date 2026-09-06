@@ -85,6 +85,23 @@ class SettingsExportService {
     // you want another device to decide.
     'custom_download_path',
     'custom_download_path_type',
+    // Home rows: order, hidden set, and the rows the viewer defined themselves
+    // (ROW1d). `PreferenceSyncPolicyRegistry` declares all three local-only,
+    // but this service answers to the list you are reading and never asked the
+    // registry, so they left in an export anyway. They came back unscoped,
+    // because the inverse step *does* ask the registry: `isUserScopedBaseKey`
+    // reads `isProfileScoped`, and a key registered device-local is not
+    // re-prefixed. An unscoped `home_custom_rows` is a key `StorageService`
+    // never reads — it goes through `_homePrefix` — so the import reported
+    // success and the rows were not there.
+    //
+    // Denying them here is what makes the registry's `exportable: false` true
+    // for these three rather than aspirational. The general divergence, that a
+    // registered non-exportable key can still be exported, is PREF1 and is not
+    // fixed by widening this list.
+    'home_row_order',
+    'hidden_home_rows',
+    'home_custom_rows',
     // Internal migration flags
     'buffer_size_migrated_to_auto',
     'pleya_legacy_prefs_migrated_v1',

@@ -389,6 +389,14 @@ class PreferenceSyncPolicyRegistry {
     // measurement is green; the stored format already uses portable ids.
     'home_row_order': _homeLayoutPref,
     'hidden_home_rows': _homeLayoutPref,
+    // The rows the viewer defined themselves (ROW1, DEC-100). Same owner as
+    // the two above — `HomeLayoutProvider` reads all three in one `refresh()` —
+    // and local-only for a reason of its own: a saved row is a filter over
+    // concrete libraries, which is exactly the value `_unifiedCatalogViewPref`
+    // below keeps on one device. A row naming libraries the receiving device
+    // cannot see loads empty, and DEC-100 (6) then takes it off Home, so it
+    // would arrive invisible and with no cause on screen.
+    'home_custom_rows': _homeLayoutPref,
 
     // -- Device-local by semantics, not by name.
     //    A download path that exists on a Mac means nothing on an Apple TV;
@@ -446,6 +454,14 @@ class PreferenceSyncPolicyRegistry {
     'buffer_size_migrated_to_auto': _runtimeCache,
     'download_paths_normalized_version': _runtimeCache,
     'pleya_legacy_prefs_migrated_v1': _runtimeCache,
+    // Bookkeeping the registry never had an answer for, found by the guard in
+    // `preference_sync_policy_test.dart` once it started reading the key
+    // constants in `StorageService` and friends as well (ROW1d). A "have we
+    // run this once" flag and two updater timestamps: local by nature, and
+    // travelling would make another device skip a migration it still needs.
+    'profile_migration_v1_done': _runtimeCache,
+    'update_last_check_time': _runtimeCache,
+    'update_skipped_version': _runtimeCache,
     'pleya_pref_device_id_v1': _runtimeCache,
     'pleya_pref_revisions_v1': _runtimeCache,
     'pleya_pref_quarantine_v1': _runtimeCache,
