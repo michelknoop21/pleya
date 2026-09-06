@@ -1,5 +1,12 @@
 # Handoff: Mijn Pleya en het topnav-contract op tvOS, 3 september 2026
 
+
+> **Afgerond sessiedocument.** Het werk hierin is klaar en de bevindingen zijn
+> overgenomen in [tvos-redesign-register.md](tvos-redesign-register.md) en
+> [tvos-fysieke-correctieronde.md](tvos-fysieke-correctieronde.md). Dit bestand blijft
+> staan voor het bewijs en de redenering; zoek de actuele stand niet hier maar in
+> [DESIGN-INDEX.md](DESIGN-INDEX.md).
+
 Vervolg op `docs/tvos-my-pleya-styling-audit-2026-09-02.md`. Die ronde mat en
 ontwierp; deze bouwt. Wat af is staat hieronder met zijn bewijs, wat open staat
 staat er met de reden en het eerstvolgende commando.

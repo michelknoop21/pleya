@@ -8,6 +8,7 @@ import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_playlist.dart';
 import '../media/unified/unified_route_context.dart';
+import '../navigation/tv/tv_content_route_registry.dart';
 import '../screens/collection_detail_screen.dart';
 import '../screens/main_screen.dart';
 import '../screens/media_detail_screen.dart';
@@ -253,10 +254,19 @@ Future<MediaNavigationResult> navigateToMediaItem(
   switch (mi.kind) {
     case MediaKind.collection:
       recorder.close(traceId, SelectTraceOutcome.hubDetail);
-      final result = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(builder: (context) => CollectionDetailScreen(collection: mi)),
+      // PB-1/SYS-1b: collection (mockup 24) keeps the top navigation, so on TV
+      // it opens inside the shell. `openTvContentRoute` answers null off TV and
+      // wherever no shell is listening, which is the signal to push as before.
+      final nested = openTvContentRoute(
+        id: 'tvCollection_${mi.globalKey}',
+        builder: (_) => CollectionDetailScreen(collection: mi),
       );
+      final result = nested == null
+          ? await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(builder: (context) => CollectionDetailScreen(collection: mi)),
+            )
+          : (await nested) as bool?;
       // If collection was deleted, signal that list refresh is needed
       if (result == true) {
         return MediaNavigationResult.listRefreshNeeded;
@@ -352,6 +362,25 @@ Future<MediaNavigationResult> navigateToMediaItem(
   }
 }
 
+/// The nested route's identity for a detail target.
+///
+/// `pushNested` discards a re-push of the id already on top, so this decides
+/// what counts as "the same screen": a second Select on the same card must open
+/// one screen and need one Back. The season and episode a show is entered at
+/// are part of it, because they are part of what the screen shows — the same
+/// series opened at season 1 and at season 3 is two different pages, and
+/// collapsing them would leave the viewer on the season they did not pick.
+///
+/// [MediaItem.globalKey] rather than the bare id: two servers can hand out the
+/// same rating key, and a person browsing both would otherwise find the second
+/// title silently discarded as a duplicate of the first.
+String tvDetailRouteId(MediaDetailNavigationTarget target) {
+  final buffer = StringBuffer('tvDetail_${target.metadata.globalKey}');
+  if (target.initialSeasonId != null) buffer.write('_s${target.initialSeasonId}');
+  if (target.initialEpisodeId != null) buffer.write('_e${target.initialEpisodeId}');
+  return buffer.toString();
+}
+
 Future<MediaNavigationResult> navigateToMediaItemDetails(
   BuildContext context,
   MediaItem mi, {
@@ -372,9 +401,19 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
     target.metadata,
     note: metadataOverride == null ? null : 'override',
   );
-  final result = await Navigator.push<bool>(
-    context,
-    mediaDetailRoute(
+  // PB-1/SYS-1b: film (09) and series (10) detail keep the top navigation, so
+  // on TV they open inside the shell rather than over it. `openTvContentRoute`
+  // answers null off TV and wherever no shell is listening — every other
+  // platform, and any test that mounts this path on its own — and that null is
+  // the signal to push the way this call site always did.
+  //
+  // [heroTag] survives the switch as an argument and stops flying as an
+  // animation: a hero needs two routes on one navigator to fly between, and a
+  // nested route is not one. TV detail opens on the fade
+  // [mediaDetailRoute] gives it, so there was no hero on this platform to lose.
+  final nested = openTvContentRoute(
+    id: tvDetailRouteId(target),
+    builder: (_) => mediaDetailPage(
       metadata: target.metadata,
       isOffline: isOffline,
       initialSeasonIndex: target.initialSeasonIndex,
@@ -386,6 +425,22 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
       onChangeSource: onChangeSource,
     ),
   );
+  final result = nested == null
+      ? await Navigator.push<bool>(
+          context,
+          mediaDetailRoute(
+            metadata: target.metadata,
+            isOffline: isOffline,
+            initialSeasonIndex: target.initialSeasonIndex,
+            initialSeasonId: target.initialSeasonId,
+            initialEpisodeId: target.initialEpisodeId,
+            heroTag: heroTag,
+            traceId: traceId,
+            unifiedRouteContext: unifiedRouteContext,
+            onChangeSource: onChangeSource,
+          ),
+        )
+      : (await nested) as bool?;
   // Backstop for a screen that never got as far as its metadata: a fast back,
   // a route replaced under it, a server that never answered. Closing here as
   // `detail` rather than abandoning keeps that from reading as a defect, while

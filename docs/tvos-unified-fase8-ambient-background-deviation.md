@@ -1,5 +1,11 @@
 # Roadmap deviation proposal — hoofdstuk 9.3 "Ambient background" uit fase 8
 
+
+> **Afgehandeld afwijkingsvoorstel.** De fase die dit voorstel betrof is gesloten en het
+> besluit is doorgevoerd; de statusregel bovenaan zegt hoe. Dit bestand blijft staan als
+> de vastlegging van die afwijking. Welke beeldenset vandaag bindt en wat de
+> eerstvolgende stap is, staat in [DESIGN-INDEX.md](DESIGN-INDEX.md).
+
 **Datum:** 31 augustus 2026
 **Fase:** 8 (Final TV Home Experience)
 **Status:** goedgekeurd door Michel, 1 september 2026 — **doorgevoerd**: hoofdstuk 9.3's ambient tint en `tv_ambient_background.dart` staan vanaf nu in fase 9, hoofdstuk 9.3 zelf ongewijzigd

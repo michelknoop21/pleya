@@ -54,6 +54,7 @@ import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../navigation/tv/tv_nested_surface.dart';
 import '../../profiles/profile.dart';
 import '../../theme/mono_tokens.dart';
+import '../../utils/layout_constants.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../widgets/tv/tv_top_navigation.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
@@ -195,124 +196,173 @@ class TvRootShell extends StatelessWidget {
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              return MainScreenFocusScope(
-                focusSidebar: onFocusNav,
-                focusContent: onFocusContent,
-                isSidebarFocused: isNavFocused,
-                // A top bar takes height, not width. Every horizontal value the
-                // scope carries is therefore the full viewport: content on TV
-                // starts at the left edge and is as wide as the screen, and the
-                // bleed builders that counter-animate a sliding rail have
-                // nothing to counter here. Passing the real numbers rather than
-                // leaving them null is what keeps `foregroundWidthOf` and
-                // `fullBleedWidthOf` agreeing on this shell.
-                sideNavigationWidth: 0,
-                reservedSideNavigationWidth: 0,
-                foregroundLeft: 0,
-                foregroundWidth: constraints.maxWidth,
-                viewportWidth: constraints.maxWidth,
-                selectLibrary: selectLibrary,
-                openSettings: openSettings,
-                tvContentFocus: contentFocus,
-                child: _TvShellFrame(
-                  nav: FocusScope(
-                    node: navFocusScope,
-                    child: ListenableBuilder(
-                      listenable: coordinator,
-                      builder: (context, _) => TvTopNavigation(
-                        destinations: coordinator.destinations,
-                        active: coordinator.active,
-                        nodes: navNodes,
-                        profile: profile,
-                        // Audit divergentie 13, mockup 30 E: the bar dims
-                        // under an overlay. `isCurrent` flips when a sheet or
-                        // dialog is pushed above this route, and reading it
-                        // here makes that push rebuild the bar.
-                        dimmed: !(ModalRoute.of(context)?.isCurrent ?? true),
-                        onSelect: onSelectDestination,
-                        onFocusDestination: onFocusDestination,
-                        // DOWN out of the bar is the one press that means
-                        // "put me in the content"; `_focusContent` arms the
-                        // intent, and whatever can satisfy it consumes it —
-                        // now if the destination is ready, later if it is
-                        // still waiting on a server (P2).
-                        onNavigateDown: () => onFocusContent(restorePreviousFocus: true),
-                        onOpenProfiles: onOpenProfiles,
-                        // Hoofdstuk 18.4. Read here rather than passed down
-                        // from `MainScreen` so the bar is the only thing that
-                        // rebuilds when a token expires, and read through a
-                        // selector on the *auth* flag specifically: a server
-                        // merely going offline is not something the viewer
-                        // can act on, and marking it would train them to
-                        // ignore the dot that means they can.
-                        // Nullable: this shell is also mounted in tests and
-                        // in early startup frames that have no registry yet,
-                        // and "no provider" is not "attention required".
-                        needsAttention: context.select<MultiServerProvider?, bool>(
-                          (p) => p?.hasAuthErrorServers ?? false,
+              // Published here, around the bar as well as the content, so a
+              // destination root and a nested route above it resolve the same
+              // ten-foot scale. INV-1 makes the nested route's `MediaQuery` its
+              // content box; without this the same screen would set type nine
+              // per cent smaller when opened as a route than when opened as a
+              // destination. See [TvDisplayMetrics].
+              return TvDisplayMetrics(
+                size: constraints.biggest,
+                child: MainScreenFocusScope(
+                  focusSidebar: onFocusNav,
+                  focusContent: onFocusContent,
+                  isSidebarFocused: isNavFocused,
+                  // A top bar takes height, not width. Every horizontal value the
+                  // scope carries is therefore the full viewport: content on TV
+                  // starts at the left edge and is as wide as the screen, and the
+                  // bleed builders that counter-animate a sliding rail have
+                  // nothing to counter here. Passing the real numbers rather than
+                  // leaving them null is what keeps `foregroundWidthOf` and
+                  // `fullBleedWidthOf` agreeing on this shell.
+                  sideNavigationWidth: 0,
+                  reservedSideNavigationWidth: 0,
+                  foregroundLeft: 0,
+                  foregroundWidth: constraints.maxWidth,
+                  viewportWidth: constraints.maxWidth,
+                  selectLibrary: selectLibrary,
+                  openSettings: openSettings,
+                  tvContentFocus: contentFocus,
+                  child: _TvShellFrame(
+                    nav: FocusScope(
+                      node: navFocusScope,
+                      child: ListenableBuilder(
+                        listenable: coordinator,
+                        builder: (context, _) => TvTopNavigation(
+                          destinations: coordinator.destinations,
+                          active: coordinator.active,
+                          nodes: navNodes,
+                          profile: profile,
+                          // Audit divergentie 13, mockup 30 E: the bar dims
+                          // under an overlay. `isCurrent` flips when a sheet or
+                          // dialog is pushed above this route, and reading it
+                          // here makes that push rebuild the bar.
+                          dimmed: !(ModalRoute.of(context)?.isCurrent ?? true),
+                          onSelect: onSelectDestination,
+                          onFocusDestination: onFocusDestination,
+                          // DOWN out of the bar is the one press that means
+                          // "put me in the content"; `_focusContent` arms the
+                          // intent, and whatever can satisfy it consumes it —
+                          // now if the destination is ready, later if it is
+                          // still waiting on a server (P2).
+                          onNavigateDown: () => onFocusContent(restorePreviousFocus: true),
+                          onOpenProfiles: onOpenProfiles,
+                          // Hoofdstuk 18.4. Read here rather than passed down
+                          // from `MainScreen` so the bar is the only thing that
+                          // rebuilds when a token expires, and read through a
+                          // selector on the *auth* flag specifically: a server
+                          // merely going offline is not something the viewer
+                          // can act on, and marking it would train them to
+                          // ignore the dot that means they can.
+                          // Nullable: this shell is also mounted in tests and
+                          // in early startup frames that have no registry yet,
+                          // and "no provider" is not "attention required".
+                          needsAttention: context.select<MultiServerProvider?, bool>(
+                            (p) => p?.hasAuthErrorServers ?? false,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  content: (topBandHeight) => FocusScope(
-                    node: contentFocusScope,
-                    // No autofocus: focus is moved deliberately, so a
-                    // rebuild cannot pull the remote back out of the bar.
-                    child: TvShellSurface(
-                      topBandHeight: topBandHeight,
-                      child: ListenableBuilder(
-                        listenable: coordinator,
-                        builder: (context, screens) {
-                          final nested = coordinator.activeNestedRoute;
-                          // The destination's own screens stay mounted
-                          // underneath: the `IndexedStack` keeps its scroll
-                          // position, its providers and its focus nodes, so
-                          // popping "Alle films" returns to a landing that
-                          // never went away (hoofdstuk 24 — a nested route is
-                          // not allowed to cost a reload). The route on top
-                          // is built for the active destination only, so a
-                          // destination switch does tear it down — see
-                          // [child] on where its place is kept instead.
-                          return Stack(
-                            children: [
-                              // Offstage rather than removed, for the reason
-                              // above; `TickerMode` stops its animations from
-                              // running behind the route on top of it, and
-                              // `ExcludeFocus` keeps it out of the focus
-                              // tree.
-                              //
-                              // `Offstage` alone removes hit-testing and
-                              // painting, not focusability — so with a
-                              // nested route open, the destination root
-                              // underneath stayed a full set of focusable
-                              // widgets in the same scope as the route on
-                              // top of it. That is the second half of P5:
-                              // the first is `IndexedStack` in
-                              // `MainScreen._buildTickerAwareStack`, and a
-                              // fix in only one of the two still leaves a
-                              // reachable invisible screen.
-                              ExcludeFocus(
-                                excluding: nested != null,
-                                child: Offstage(
-                                  offstage: nested != null,
-                                  child: TickerMode(enabled: nested == null, child: screens!),
+                    content: (topBandHeight) => FocusScope(
+                      node: contentFocusScope,
+                      // No autofocus: focus is moved deliberately, so a
+                      // rebuild cannot pull the remote back out of the bar.
+                      child: TvShellSurface(
+                        topBandHeight: topBandHeight,
+                        child: ListenableBuilder(
+                          listenable: coordinator,
+                          builder: (context, screens) {
+                            final stack = coordinator.nestedRoutesFor(coordinator.active);
+                            final nested = stack.isEmpty ? null : stack.last;
+                            // The destination's own screens stay mounted
+                            // underneath: the `IndexedStack` keeps its scroll
+                            // position, its providers and its focus nodes, so
+                            // popping "Alle films" returns to a landing that
+                            // never went away (hoofdstuk 24 — a nested route is
+                            // not allowed to cost a reload). The route on top
+                            // is built for the active destination only, so a
+                            // destination switch does tear it down — see
+                            // [child] on where its place is kept instead.
+                            return Stack(
+                              children: [
+                                // Offstage rather than removed, for the reason
+                                // above; `TickerMode` stops its animations from
+                                // running behind the route on top of it, and
+                                // `ExcludeFocus` keeps it out of the focus
+                                // tree.
+                                //
+                                // `Offstage` alone removes hit-testing and
+                                // painting, not focusability — so with a
+                                // nested route open, the destination root
+                                // underneath stayed a full set of focusable
+                                // widgets in the same scope as the route on
+                                // top of it. That is the second half of P5:
+                                // the first is `IndexedStack` in
+                                // `MainScreen._buildTickerAwareStack`, and a
+                                // fix in only one of the two still leaves a
+                                // reachable invisible screen.
+                                ExcludeFocus(
+                                  excluding: nested != null,
+                                  child: Offstage(
+                                    offstage: nested != null,
+                                    child: TickerMode(enabled: nested == null, child: screens!),
+                                  ),
                                 ),
-                              ),
-                              // Every nested route, not only Mijn Pleya's:
-                              // the catalog routes open the same way and
-                              // have the same focus-entry problem the
-                              // moment their content lands late.
-                              if (nested != null)
-                                TvNestedSurface(
-                                  key: nested.surfaceKey,
-                                  route: nested,
-                                  dismiss: dismissNestedRoute,
-                                  child: Builder(builder: nested.builder),
-                                ),
-                            ],
-                          );
-                        },
-                        child: child,
+                                // Every nested route, not only Mijn Pleya's:
+                                // the catalog routes open the same way and
+                                // have the same focus-entry problem the
+                                // moment their content lands late.
+                                //
+                                // The whole stack is built, not just the top.
+                                // `pushNested` keeps a real stack, and building
+                                // only its last entry took the one underneath
+                                // out of the tree and disposed its `State`.
+                                // Two things broke on that, both reachable the
+                                // moment SYS-1b put a second surface on the
+                                // stack:
+                                //
+                                //  - Opening a cast member from a detail page
+                                //    threw the detail away. Back rebuilt it
+                                //    from nothing: metadata refetched, season,
+                                //    episode and scroll position gone.
+                                //  - Worse, and the everyday path: a caller
+                                //    that is itself nested gets unmounted when
+                                //    it opens a detail, so the
+                                //    `context.mounted` guards in
+                                //    `media_navigation_helper` and `MediaCard`
+                                //    bail and the post-navigation callbacks
+                                //    never run. Mark something watched from
+                                //    "Alle films" and the row it came from did
+                                //    not refresh; delete a collection and it
+                                //    stayed in the grid.
+                                //
+                                // Same three layers as the destination roots
+                                // above: offstage so it does not paint,
+                                // `ExcludeFocus` so it is not reachable, and
+                                // `TickerMode` so it does not animate behind
+                                // the route on top of it.
+                                for (var i = 0; i < stack.length; i++)
+                                  ExcludeFocus(
+                                    excluding: i != stack.length - 1,
+                                    child: Offstage(
+                                      offstage: i != stack.length - 1,
+                                      child: TickerMode(
+                                        enabled: i == stack.length - 1,
+                                        child: TvNestedSurface(
+                                          key: stack[i].surfaceKey,
+                                          route: stack[i],
+                                          dismiss: dismissNestedRoute,
+                                          covered: i != stack.length - 1,
+                                          child: Builder(builder: stack[i].builder),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                          child: child,
+                        ),
                       ),
                     ),
                   ),
