@@ -217,7 +217,8 @@ Future<ScenarioRunResult> runScenario({
         case 'tap':
           record['input_route'] = driver.inputRoute;
           final args = step.args as Map<String, Object?>;
-          await driver.tap((args['x'] as num).toDouble(), (args['y'] as num).toDouble());
+          final (x, y) = await _resolveTapPoint(args, driver);
+          await driver.tap(x, y);
         case 'type':
           record['input_route'] = driver.inputRoute;
           await driver.typeText(step.args as String);
@@ -328,6 +329,29 @@ Future<ScenarioRunResult> runScenario({
   bundle.writeDriverLog(driver.driverLog);
 
   return ScenarioRunResult(passed: passed, failureMessage: failureMessage, bundleDir: bundle.dir);
+}
+
+/// `tap`'s two ways to say where: `{x, y}` in raw viewport points, or
+/// `{id}` naming an automation id whose centre is looked up in the live
+/// `GET /v1/ui_tree`: the same call and the same [rectForNode] parser
+/// `assert`'s geometry predicates already use, applied at a second call
+/// site rather than duplicated.
+///
+/// `{id}` exists because a fixed `{x, y}` on a pushed screen (no tab, so
+/// `open` cannot reach it) is exactly the coordinate brittleness
+/// `ios.landing.northstar`'s own comment on `open` rejects for a bar slot: a
+/// layout change would silently break the tap without touching the
+/// scenario, and there is no automation capability being invented here,
+/// only an existing lookup reused.
+Future<(double, double)> _resolveTapPoint(Map<String, Object?> args, VerificationDriver driver) async {
+  if (args['id'] case final String id) {
+    final rect = rectForNode(id, await driver.uiTree());
+    return (rect.centerX, rect.centerY);
+  }
+  if (args case {'x': final num x, 'y': final num y}) {
+    return (x.toDouble(), y.toDouble());
+  }
+  throw ArgumentError('tap needs either {id} or {x, y}: $args');
 }
 
 /// The transport client, or a message naming the verb that needed it.
