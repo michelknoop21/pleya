@@ -136,51 +136,46 @@ class TvHomeWizardFilterLine extends StatelessWidget {
         SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
         onPressed();
       },
-      child: Padding(
-        padding: EdgeInsets.all(TvHomeRowsLayout.rowFocusRingGap * scale),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: TvHomeRowsLayout.rowPaddingHorizontal * scale,
-            vertical: TvHomeRowsLayout.rowGap * scale,
-          ),
-          decoration: BoxDecoration(
-            color: mono.text.withValues(alpha: TvHomeRowsLayout.rowFill),
-            borderRadius: BorderRadius.circular(TvHomeRowsLayout.rowRadius * scale),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: TvHomeRowsLayout.leadingIconSize * scale, color: mono.textMuted),
-              SizedBox(width: TvHomeRowsLayout.leadingGap * scale),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: TvHomeRowsLayout.titleFontSize * scale,
-                        fontWeight: FontWeight.w600,
-                        color: mono.text,
-                      ),
+      child: Container(
+        // Margin, not a Padding wrapper: same bounds for the focus ring.
+        margin: EdgeInsets.all(TvHomeRowsLayout.rowFocusRingGap * scale),
+        padding: EdgeInsets.symmetric(
+          horizontal: TvHomeRowsLayout.rowPaddingHorizontal * scale,
+          vertical: TvHomeRowsLayout.rowGap * scale,
+        ),
+        decoration: BoxDecoration(
+          color: mono.text.withValues(alpha: TvHomeRowsLayout.rowFill),
+          borderRadius: BorderRadius.circular(TvHomeRowsLayout.rowRadius * scale),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: TvHomeRowsLayout.leadingIconSize * scale, color: mono.textMuted),
+            SizedBox(width: TvHomeRowsLayout.leadingGap * scale),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: TvHomeRowsLayout.titleFontSize * scale,
+                      fontWeight: FontWeight.w600,
+                      color: mono.text,
                     ),
-                    SizedBox(height: TvHomeRowsLayout.titleGap * scale),
-                    Text(
-                      value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: TvHomeRowsLayout.subtitleFontSize * scale, color: mono.textMuted),
-                    ),
-                  ],
-                ),
+                  ),
+                  SizedBox(height: TvHomeRowsLayout.titleGap * scale),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: TvHomeRowsLayout.subtitleFontSize * scale, color: mono.textMuted),
+                  ),
+                ],
               ),
-              Icon(
-                Symbols.chevron_right_rounded,
-                size: TvHomeRowsLayout.leadingIconSize * scale,
-                color: mono.textMuted,
-              ),
-            ],
-          ),
+            ),
+            Icon(Symbols.chevron_right_rounded, size: TvHomeRowsLayout.leadingIconSize * scale, color: mono.textMuted),
+          ],
         ),
       ),
     );

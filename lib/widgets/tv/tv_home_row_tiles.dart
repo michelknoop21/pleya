@@ -367,20 +367,19 @@ class _ArrowButton extends StatelessWidget {
               onPressed();
             }
           : null,
-      child: Padding(
-        padding: EdgeInsets.all(TvHomeRowsLayout.rowFocusRingGap * scale),
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: mono.text.withValues(alpha: TvHomeRowsLayout.rowFill),
-          ),
-          child: Icon(
-            icon,
-            size: TvHomeRowsLayout.leadingIconSize * scale,
-            color: mono.text.withValues(alpha: enabled ? 1 : TvHomeRowsLayout.dimmed),
-          ),
+      child: Container(
+        // Margin, not a Padding wrapper: same bounds for the focus ring.
+        margin: EdgeInsets.all(TvHomeRowsLayout.rowFocusRingGap * scale),
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: mono.text.withValues(alpha: TvHomeRowsLayout.rowFill),
+        ),
+        child: Icon(
+          icon,
+          size: TvHomeRowsLayout.leadingIconSize * scale,
+          color: mono.text.withValues(alpha: enabled ? 1 : TvHomeRowsLayout.dimmed),
         ),
       ),
     );
