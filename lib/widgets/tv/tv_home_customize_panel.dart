@@ -188,31 +188,68 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
   /// with this.
   static const String _newRowFocusKey = '#newRow';
 
+  /// The `_nodes` key that ended up holding the host's node, if a row took it.
+  String? _borrowedKey;
+
+  /// Nieuwe rij took it instead, which is what happens when there is no row to
+  /// give it to.
+  bool _newRowBorrowedInitial = false;
+
   @override
   void dispose() {
-    for (final node in _nodes.values) {
-      node.dispose();
+    for (final entry in _nodes.entries) {
+      if (entry.key != _borrowedKey) entry.value.dispose();
     }
     _doneNode?.dispose();
-    _newRowNode?.dispose();
+    if (!_newRowBorrowedInitial) _newRowNode?.dispose();
+    // Exactly once, whoever ended up holding it, and also when nobody did
+    // (ROW1l). The host creates this node and hands it over; `_nodes` used to
+    // be the only thing that ever disposed it, so a panel with no movable rows
+    // never adopted it and it was simply dropped. Same ownership as
+    // `tv_catalog_sort_panel`.
+    widget.initialFocusNode?.dispose();
     super.dispose();
   }
 
   String _key(String layoutId, TvHomeRowColumn column) => '$layoutId#${column.name}';
 
+  /// The control the panel opens on: the first movable row's own up arrow.
+  ///
+  /// Null when there is no such row, and then Nieuwe rij takes the node
+  /// instead. Stated rather than "whichever key asks first" (ROW1m): that rule
+  /// was only ever answered from `_entryRow`, so a profile with nothing movable
+  /// left the node unattached, the overlay fell through to its first descendant
+  /// and the ring opened on Klaar. One Select and the panel the viewer had just
+  /// opened was gone again.
+  String? get _initialRowKey =>
+      widget.entries.isEmpty ? null : _key(widget.entries.first.layoutIds.first, TvHomeRowColumn.up);
+
+  bool get _initialTaken => _borrowedKey != null || _newRowBorrowedInitial;
+
   FocusNode _nodeFor(String layoutId, TvHomeRowColumn column) {
     final key = _key(layoutId, column);
-    // The host's initial-focus node is borrowed for the very first stop, so the
-    // overlay opens with the ring already on a real control rather than on a
-    // node this panel would then have to hand it over from.
-    if (_nodes.isEmpty && widget.initialFocusNode != null) {
-      return _nodes[key] = widget.initialFocusNode!;
+    final initial = widget.initialFocusNode;
+    if (initial != null && !_initialTaken && key == _initialRowKey) {
+      _borrowedKey = key;
+      return _nodes[key] = initial;
     }
     return _nodes.putIfAbsent(key, () => FocusNode(debugLabel: 'TvHomeCustomize.$key'));
   }
 
   FocusNode get _done => _doneNode ??= FocusNode(debugLabel: 'TvHomeCustomize.done');
-  FocusNode get _newRow => _newRowNode ??= FocusNode(debugLabel: 'TvHomeCustomize.newRow');
+
+  FocusNode get _newRow {
+    final existing = _newRowNode;
+    if (existing != null) return existing;
+    final initial = widget.initialFocusNode;
+    // The entry rows are built before this one, so by now a row has taken the
+    // node if there was a row to take it.
+    if (initial != null && !_initialTaken && _initialRowKey == null) {
+      _newRowBorrowedInitial = true;
+      return _newRowNode = initial;
+    }
+    return _newRowNode = FocusNode(debugLabel: 'TvHomeCustomize.newRow');
+  }
 
   List<TvHomeRowColumn> _columnsOf(TvHomeRowEntry entry) => entry.isCustom
       ? const [TvHomeRowColumn.up, TvHomeRowColumn.down, TvHomeRowColumn.primary, TvHomeRowColumn.remove]

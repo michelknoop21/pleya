@@ -221,6 +221,7 @@ void main() {
     List<String> savedRows = const [],
     List<MediaItem>? catalog,
     bool barren = false,
+    bool continueWatchingOnly = false,
   }) async {
     // StorageService stores a string list as one JSON string, so the fixture
     // writes exactly what an earlier session would have left in that key.
@@ -244,12 +245,17 @@ void main() {
 
     final aggregation = _FakeAggregation(manager);
     if (!barren) {
-      aggregation
-        ..onDeck = [_episode('e1', show: 'Severance')]
-        ..latestMovies = [_film('m1', title: 'Dune')]
-        ..hubs = [
-          _hub('movie.recentlyadded', 'Recently Added', [_film('m5', title: 'Casablanca', genre: 'Drama')]),
-        ];
+      aggregation.onDeck = [_episode('e1', show: 'Severance')];
+      // Verder kijken is a fixed row and never one of the panel's entries, so
+      // leaving it alone is how a Home with a footer but nothing movable is
+      // reached.
+      if (!continueWatchingOnly) {
+        aggregation
+          ..latestMovies = [_film('m1', title: 'Dune')]
+          ..hubs = [
+            _hub('movie.recentlyadded', 'Recently Added', [_film('m5', title: 'Casablanca', genre: 'Drama')]),
+          ];
+      }
     }
     final multiServer = MultiServerProvider(manager, aggregation);
     hiddenLibraries = HiddenLibrariesProvider();
@@ -497,6 +503,43 @@ void main() {
     await press(tester, LogicalKeyboardKey.arrowRight);
 
     expect(hide.hasPrimaryFocus, isTrue);
+  });
+
+  // ROW1m. With nothing movable to give it to, the borrowed node stayed
+  // unattached, the overlay fell through to its first focusable descendant and
+  // that is Klaar in the header. One Select and the panel was shut again.
+  testWidgets('a panel with no movable rows opens on Nieuwe rij, not on Klaar', (tester) async {
+    // Only Verder kijken on Home. It is a fixed row, so the panel has the
+    // footer to open it and not one movable row inside.
+    await boot(tester, continueWatchingOnly: true, catalog: const []);
+    await openPanel(tester);
+
+    expect(find.byKey(tvHomeCustomizePanelKey), findsOneWidget);
+    expect(
+      Focus.maybeOf(tester.element(find.text(t.unifiedCatalog.homeRows.done).first), scopeOk: true)!.hasPrimaryFocus,
+      isFalse,
+      reason: 'one Select on Klaar closes the panel that was just opened',
+    );
+    // Asked of the tree rather than by node name: the control that adopts the
+    // host's node keeps the host's own debugLabel.
+    expect(
+      Focus.maybeOf(tester.element(find.text(t.unifiedCatalog.homeRows.newRow).first), scopeOk: true)!.hasPrimaryFocus,
+      isTrue,
+    );
+  });
+
+  testWidgets('opening and closing the panel twice frees the borrowed node exactly once', (tester) async {
+    // A double dispose throws, and so does a use after dispose; the second
+    // round is what would trip over either (ROW1l).
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.done);
+    await tester.pumpAndSettle();
+    await openPanel(tester);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.done);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('moving a row down writes the order and Home follows it', (tester) async {
