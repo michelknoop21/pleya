@@ -19,7 +19,6 @@ under `Notes`.
 
 <!-- BEGIN GENERATED -->
 ### New
-- een Pleya Server is te ontkoppelen waar Verbindingen zegt dat het kan
 - lege huls voor het automation-contract (Fase 0)
 - declared+discovered registry en GET /v1/ui_tree (Fase 1)
 - automation-ids, AutomationNode en FocusableWrapper-ids (Fase 2)
@@ -36,7 +35,6 @@ under `Notes`.
 - runner-skelet, scenariogrammatica, transport-client (Deel B Fase 6)
 - geometrie + impact-resolver (Deel B Fase 7)
 - macOS-driver, eerste scenario end-to-end (Deel B Fase 8)
-- one PleyaLogo widget for every place the mark appears
 - iOS-simulatordriver + discover.hero.layout (Deel B Fase 9)
 - tvOS-driver via idb HID + isolatiefix (Deel B Fase 10)
 - geometrie-assertions, fixture_mutate en open in de engine (Fase 11)
@@ -58,31 +56,11 @@ under `Notes`.
 - de ui-boom zegt nu welk scherm getekend wordt
 
 ### Improved
-- scheidingslijnen volgen de werkelijke rijhoogte
-- één shape-contract voor CTA-knop en focusring
 - de vijf leesinstellingen-controls naar een eigen bestand
 - de filtersheet uit één bestand van 519 regels gehaald
 
 ### Fixed
-- de zijbalk kent één lijst bestemmingen, dus "nu aan het kijken" is ook bereikbaar
-- een achtergrondcyclus legt de rapportage naar Plex niet meer stil
-- drie randen van de hervat-rapportage dichtgezet na review
-- het verlaten van de speler wacht niet meer op de server
-- een geweigerde log-upload wordt niet meteen opnieuw geprobeerd
-- zijbalk, sessiebalk en verbreken hingen alle drie aan een toestand die niemand bezat
-- een verbroken Pleya Server-verbinding liet zijn rij en zijn refreshtoken achter
-- een mislukte refresh maakte de verbinding kapot in plaats van hem te markeren
-- de buildnummers van iOS, tvOS en macOS lopen weer gelijk
-- een mislukte persist van een rotatie blijft niet onopgemerkt
-- een geopende serie-detailpagina laat nieuwe afleveringen na afspelen zien
-- de gefocuste rij krijgt een markering in plaats van een omlijning
-- verbindingsrijen krijgen dezelfde focusweergave als de rest van instellingen
-- Over en Pleya Share volgen het gedeelde kaartcontract
-- kaders rond toetscombinaties volgen de gedeelde lijnkleur
-- revalidatie mag een gelijktijdige load-more niet stilzwijgend overschrijven
 - reject a reversed Range instead of empty-body or crash
-- run the artwork behind the topbar, and give the strip its own height
-- fade the full-width strip out later instead of zooming it in
 - geen PASS meer op bewijs uit de verkeerde app-instantie
 - poortdiscovery leest Library/Caches, en de scenario wacht op de hero zelf
 - back-suppressie causaal maken, filters-scenario eerlijk hernoemen, evidence-gat dicht
@@ -115,22 +93,76 @@ under `Notes`.
 - het zoekveld corrigeert de zoekterm niet meer
 <!-- END GENERATED -->
 
+### New
+
+- **On iPhone, the bottom bar now has five destinations.** Series and Films get their own tab
+  instead of only living inside Home, and a fourth slot adapts to what your server offers: Live
+  TV, then your Watchlist, then Downloads, whichever is available first. Search moved from the
+  bar to a header icon, the same place it already sits on other screens.
+
 ### Fixed
 
+- **The search field no longer corrects what you typed.** iOS could quietly offer a spelling
+  correction while you searched, with the suggestion sitting right over the result count. Taking
+  it searched for a word you never typed. Autocorrect is off on the search field now.
+
+## 2.8.0 · build 245 · 29 August 2026
+
+<!-- commit: 55035a2d -->
+
+### New
+
+- **A Pleya Server connection can be disconnected from Settings → Connections**, the same place
+  every other connection type already offered it. Removing one used to mean going two screens
+  deeper into profile management, and the banner that suggested disconnecting showed a "sign
+  back in" prompt for the very connection you wanted gone.
+
+### Improved
+
+- Divider lines between settings rows now follow the row's real height, so a row that renders
+  nothing (like the connection status line, which only shows up sometimes) no longer leaves a
+  doubled or thicker hairline behind it.
+- Settings rows, cards and buttons share one border and focus style across the app. Connections,
+  About, Pleya Share and Keyboard Shortcuts used to each draw a slightly different card edge, and
+  a button's outline could differ from its own focus ring; both now come from the same shape.
+- The home screen backdrop runs behind the status bar and top controls on iPhone without a seam,
+  instead of showing a flat colour band above the artwork. A wide backdrop is no longer cropped in
+  tighter to make room for that; the fade above the play button was adjusted instead, so wide
+  artwork stays fully visible.
+
+### Fixed
+
+- **"Now playing" in the sidebar can be reached with a remote.** It was drawn but skipped by
+  D-pad navigation, so on Apple TV you could see it and never select it.
+- **Playback keeps reporting to Plex after the app has been in the background.** Coming back to
+  Pleya on Apple TV could close the reporting session for good: nothing showed in Plex or
+  Tautulli for the rest of the film, and the resume position stayed frozen at the moment you put
+  the app away. Coming back opens a fresh session, the position you actually stopped at is
+  written, and a player that comes back already paused now shows correctly too.
 - **Leaving the player gives you the library back straight away.** Closing a title used to wait
   for the server to confirm where you stopped, and on a slow or unreachable connection that was
   several seconds of black screen. The position is written in the background now, and if it does
   not reach the server it is kept on the device and sent with the next sync.
-- **Playback keeps reporting to Plex after the app has been in the background.** Coming back to
-  Pleya on Apple TV could close the reporting session for good: nothing showed in Plex or
-  Tautulli for the rest of the film, and the resume position stayed frozen at the moment you put
-  the app away. Coming back opens a fresh session, and the position you actually stopped at is
-  written.
-- **"Now playing" in the sidebar can be reached with a remote.** It was drawn but skipped by
-  D-pad navigation, so on Apple TV you could see it and never select it.
 - **Sending a log no longer runs into the same refusal again and again.** The relay accepts one
   upload per minute. A second press inside that minute now tells you how much of the minute is
   left instead of firing another request that comes back refused.
+- The sidebar, the connection status bar and disconnecting a server could each get stuck on state
+  nobody kept up to date. The sidebar could open with nothing selectable in it if a row (a
+  reconnect prompt, "Now playing") disappeared right as you navigated to it. A server could keep
+  showing a "reconnect" banner after the connection was already fixed, or after you had
+  disconnected it yourself. All three are fixed together.
+- Disconnecting a Pleya Server connection could leave it behind: the connection's row, and the
+  login token stored with it, stayed on the device even after every profile using it had
+  disconnected.
+- A Pleya Server session that failed to refresh once could get stuck saying "Session expired" for
+  good, even after the actual problem (a slow network, a proxy hiccup) had passed. A failed
+  refresh is retried on the next launch now instead of permanently signing you out, and only an
+  actual rejection from the server counts as a sign-out.
+- A rare storage hiccup while renewing a Pleya Server login could silently invalidate every device
+  signed in to that account the next time it tried to renew. It is retried instead of treated as
+  if it had worked.
+- An open series page picks up a newly added episode right after playback, instead of needing you
+  to leave and come back.
 
 ## 2.8.0 · build 240 · 21 August 2026
 

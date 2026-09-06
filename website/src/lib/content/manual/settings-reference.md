@@ -5,7 +5,7 @@ order: 17
 group: Devices and settings
 icon: settings
 summary: Every settings group, what each option changes, and which ones matter most.
-updated: 2026-08-22
+updated: 2026-09-06
 ---
 
 # Settings reference
@@ -60,7 +60,9 @@ Settings sit in the navigation on desktop and Apple TV, and inside
 ## Connections
 
 Add and remove servers, add a Plex account, add a local folder, and set which libraries are
-visible. This is also where a server that is no longer reachable gets removed.
+visible. This is also where a server that is no longer reachable gets removed, including a
+Pleya Server connection whose sign-in has expired: disconnecting it does not need it to be
+reachable first.
 
 ## Integrations
 

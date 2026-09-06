@@ -5,17 +5,22 @@ order: 11
 group: More to watch
 icon: search
 summary: Searching across every connected server, by keyboard, by voice, or by remote.
-updated: 2026-08-17
+updated: 2026-09-06
 ---
 
 # Search
 
-The **Search** tab looks through every connected server at once, on title, cast member or
-keyword.
+Search looks through every connected server at once, on title, cast member or keyword.
 
 ![Search results across two servers](/docs-media/search-results.png)
 
 On a computer, **Cmd+F** on macOS and **Ctrl+F** on Windows and Linux open it directly.
+
+## Finding search on iPhone and iPad
+
+Search does not have its own slot in the bottom bar. Tap the magnifying glass in the header of
+Home, Series or Films to open it, from any tab. On desktop and Apple TV it is still a
+destination of its own in the navigation.
 
 ## Searching on Apple TV
 
