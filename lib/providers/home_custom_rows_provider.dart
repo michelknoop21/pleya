@@ -243,10 +243,16 @@ class HomeCustomRowsProvider extends ChangeNotifier with DisposableChangeNotifie
   void _onOnlineServersChanged(Set<String> onlineServerIds) => _reconcile();
 
   void _reconcile() {
-    if (_layout.customRows.isEmpty) return;
     final keys = _currentLibraryKeys();
-    if (setEquals(keys, _libraryKeys)) return;
+    final changed = !setEquals(keys, _libraryKeys);
+    // The baseline is kept current even while there is nothing to reload
+    // (ROW1o). Leaving it behind meant the next comparison was made against the
+    // library set this provider was *built* with, so a set that changed and
+    // changed back while the profile had no rows read as no change at all, and
+    // the row added in between kept an answer computed against libraries that
+    // were no longer there.
     _libraryKeys = keys;
+    if (!changed || _layout.customRows.isEmpty) return;
     _sourceGeneration++;
     unawaited(refreshAll());
   }

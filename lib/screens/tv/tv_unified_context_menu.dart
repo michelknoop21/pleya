@@ -114,7 +114,10 @@ Future<void> showTvUnifiedContextMenu(
   );
 
   if (extraChosen) {
-    extraAction!.onSelected();
+    // Same guard as the line below, and for the same reason: this runs after an
+    // await, and the extra entry opens another panel off this context. The
+    // asymmetry was ROW1n.
+    if (context.mounted) extraAction!.onSelected();
     return;
   }
   if (chosen == null || !context.mounted) return;
