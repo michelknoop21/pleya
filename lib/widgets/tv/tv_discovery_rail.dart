@@ -42,9 +42,12 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
+import '../../focus/card_focus_scope.dart';
+import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_item.dart';
@@ -56,6 +59,7 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/formatters.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/media_image_helper.dart' show ImageType;
+import '../app_icon.dart';
 import 'tv_expandable_media_tile.dart';
 import 'tv_section_header.dart';
 import 'tv_unified_layout.dart';
@@ -163,6 +167,7 @@ class TvDiscoveryRail extends StatefulWidget {
     this.automationRailIndex,
     this.tileScrollAlignment = 0.5,
     this.precache,
+    this.viewAll,
   });
 
   final String title;
@@ -171,6 +176,11 @@ class TvDiscoveryRail extends StatefulWidget {
   /// grouping, no filtering and no fetching of its own — hoofdstuk 10.2a's
   /// architecture boundary is that a TV widget never builds a discovery row.
   final List<UnifiedMediaGroup> groups;
+
+  /// A trailing "Alle N" card past [groups] (ROW1c, DEC-100 (2)). Null for
+  /// every rail but a viewer-defined row's own — a backend hub has no single
+  /// filter behind it to reopen the catalog with.
+  final TvDiscoveryViewAllTile? viewAll;
 
   final ValueChanged<UnifiedMediaGroup> onActivate;
 
@@ -256,6 +266,17 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   final _scroll = ScrollController();
   late final ValueNotifier<UnifiedMediaGroup?> _focused;
 
+  /// The view-all tile's own node. Not in [_nodes] — there is exactly one of
+  /// it per rail, it answers to no `groupId`, and a sentinel key would only
+  /// invite a collision this way rules out by construction.
+  final _viewAllNode = FocusNode(debugLabel: 'tvDiscoveryViewAllTile');
+
+  /// The index the view-all tile sits at when [TvDiscoveryRail.viewAll] is
+  /// set — one past every real group, which is also the effective last index
+  /// of the row for traversal, reveal and the right-edge stop.
+  int get _viewAllIndex => widget.groups.length;
+  int get _lastIndex => widget.viewAll == null ? widget.groups.length - 1 : _viewAllIndex;
+
   /// Whether the remote is standing anywhere in this rail.
   ///
   /// Separate from [_focused] because the two answer different questions.
@@ -337,6 +358,7 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     for (final node in _nodes.values) {
       node.dispose();
     }
+    _viewAllNode.dispose();
     _scroll.dispose();
     _focused.dispose();
     _holdsFocus.dispose();
@@ -469,13 +491,18 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   /// would send the step past a rail that is plainly there, which is the one
   /// thing the contract rules out.
   bool focusColumn(int column) {
-    if (widget.groups.isEmpty) return false;
-    return _focusIndex(column.clamp(0, widget.groups.length - 1));
+    if (widget.groups.isEmpty && widget.viewAll == null) return false;
+    return _focusIndex(column.clamp(0, _lastIndex));
   }
 
+  /// The node standing for [index] right now — a real tile's, if it has been
+  /// built, or the view-all tile's, which is never virtualized away since it
+  /// is always the very last item in the `ListView`. Null only for a real
+  /// tile the viewport has not built yet.
+  FocusNode? _nodeAt(int index) => index == _viewAllIndex ? _viewAllNode : _nodes[widget.groups[index].groupId];
+
   bool _focusIndex(int index) {
-    final groupId = widget.groups[index].groupId;
-    final node = _nodes[groupId];
+    final node = _nodeAt(index);
     if (node != null && node.parent != null && node.canRequestFocus) {
       node.requestFocus();
       return true;
@@ -500,7 +527,7 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     if (target != null) _scroll.jumpTo(target);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final built = _nodes[groupId];
+      final built = _nodeAt(index);
       if (built != null && built.parent != null && built.canRequestFocus) built.requestFocus();
     });
     WidgetsBinding.instance.ensureVisualUpdate();
@@ -627,12 +654,55 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
       // Lazy by construction: only the tiles the viewport can reach are built,
       // so a rail of forty groups costs the images of the six on screen
       // (hoofdstuk 42).
-      itemCount: widget.groups.length,
+      itemCount: widget.groups.length + (widget.viewAll == null ? 0 : 1),
       itemBuilder: (context, index) {
+        // Hard stops at both ends of the row, on every branch below. Left as
+        // `null` these fall through to Flutter's geometric traversal, and on a
+        // stacked feed the nearest focusable to the right of a row's last tile
+        // is the *next row's* first tile — so RIGHT off the end of Continue
+        // Watching silently dropped the viewer a row down, which reads as the
+        // remote having a mind of its own. A row is horizontal; its ends are
+        // ends (the same convention the top navigation states as "geen wrap
+        // van laatste naar eerste").
+        final onNavigateLeft = index == 0 ? () {} : null;
+        final onNavigateRight = index == _lastIndex ? () {} : null;
+
+        if (index == _viewAllIndex) {
+          final viewAll = widget.viewAll!;
+          return Padding(
+            padding: EdgeInsets.zero,
+            child: _TvDiscoveryViewAllTile(
+              viewAll: viewAll,
+              focusNode: _viewAllNode,
+              scrollAlignment: widget.tileScrollAlignment,
+              automationId: AutomationIds.discoverRailItem,
+              automationInstance: widget.automationRailIndex == null ? null : '${widget.automationRailIndex}.$index',
+              semanticLabel: t.unifiedCatalog.homeRows.allInCatalog(
+                count: viewAll.count,
+                catalog: viewAll.destinationLabel,
+              ),
+              onFocusChange: (focused) {
+                // Same gain-only rule as a real tile — see below — but the
+                // block itself goes blank: there is no title or synopsis to
+                // describe a "browse all" affordance, and holding the last
+                // real tile's projection on screen while the remote sits here
+                // would describe content the remote has left.
+                if (!focused) return;
+                _focused.value = null;
+                _revealFocused(index, scale);
+              },
+              onNavigateUp: widget.onNavigateUp == null ? null : () => widget.onNavigateUp!(index),
+              onNavigateDown: widget.onNavigateDown == null ? null : () => widget.onNavigateDown!(index),
+              onNavigateLeft: onNavigateLeft,
+              onNavigateRight: onNavigateRight,
+            ),
+          );
+        }
+
         final group = widget.groups[index];
         return Padding(
           // Between tiles only, so the row's outer edges stay on the page inset.
-          padding: EdgeInsets.only(right: index == widget.groups.length - 1 ? 0 : TvDiscoveryLayout.itemGap * scale),
+          padding: EdgeInsets.only(right: index == _lastIndex ? 0 : TvDiscoveryLayout.itemGap * scale),
           child: TvExpandableMediaTile(
             // Stable across a re-projection that reorders or lengthens the row.
             key: ValueKey(group.groupId),
@@ -648,6 +718,9 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
             automationInstance: widget.automationRailIndex == null ? null : '${widget.automationRailIndex}.$index',
             onSelect: () => widget.onActivate(group),
             onContextMenu: widget.onContextMenu == null ? null : () => widget.onContextMenu!(group),
+            // The count stays the row's own content count, view-all tile or
+            // not: the tile is a navigational affordance, not one of "N"
+            // items, so it takes no place of its own in this announcement.
             semanticLabel:
                 '${semanticLabelFor(group)}, '
                 '${t.unifiedCatalog.discovery.semantics.position(position: index + 1, count: widget.groups.length)}',
@@ -667,16 +740,8 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
             // so LEFT and RIGHT move it without having to say so.
             onNavigateUp: widget.onNavigateUp == null ? null : () => widget.onNavigateUp!(index),
             onNavigateDown: widget.onNavigateDown == null ? null : () => widget.onNavigateDown!(index),
-            // Hard stops at both ends of the row. Left as `null` these fall
-            // through to Flutter's geometric traversal, and on a stacked feed
-            // the nearest focusable to the right of a row's last tile is the
-            // *next row's* first tile — so RIGHT off the end of Continue
-            // Watching silently dropped the viewer a row down, which reads as
-            // the remote having a mind of its own. A row is horizontal; its
-            // ends are ends (the same convention the top navigation states as
-            // "geen wrap van laatste naar eerste").
-            onNavigateLeft: index == 0 ? () {} : null,
-            onNavigateRight: index == widget.groups.length - 1 ? () {} : null,
+            onNavigateLeft: onNavigateLeft,
+            onNavigateRight: onNavigateRight,
           ),
         );
       },
@@ -755,6 +820,181 @@ class _MetaBlock extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// The "Alle N" tile a viewer-defined row's own [TvDiscoveryRail] draws as its
+/// last card (ROW1c, DEC-100 (2), mockup 32 A2): a saved catalog filter opened
+/// on its own kind's complete catalog, one card past the row's own content.
+class TvDiscoveryViewAllTile {
+  const TvDiscoveryViewAllTile({required this.count, required this.destinationLabel, required this.onSelect});
+
+  final int count;
+
+  /// "Alle films" / "Alle series" — the destination's own name, not the row's.
+  final String destinationLabel;
+  final VoidCallback onSelect;
+}
+
+/// Same geometry and focus contract as [TvExpandableMediaTile] (hoofdstuk
+/// 10.2a's "height is constant, only width moves"), a solid card instead of
+/// artwork. A sibling widget rather than a mode on that one: every internal
+/// method there works from `widget.group`, and a nullable branch through all
+/// of them for one tile with no poster, no badges and no watch state would
+/// have been the worse hack.
+class _TvDiscoveryViewAllTile extends StatefulWidget {
+  const _TvDiscoveryViewAllTile({
+    required this.viewAll,
+    required this.semanticLabel,
+    this.focusNode,
+    this.onFocusChange,
+    this.onNavigateUp,
+    this.onNavigateDown,
+    this.onNavigateLeft,
+    this.onNavigateRight,
+    this.automationId,
+    this.automationInstance,
+    this.scrollAlignment = 0.5,
+  });
+
+  final TvDiscoveryViewAllTile viewAll;
+  final String semanticLabel;
+  final FocusNode? focusNode;
+  final ValueChanged<bool>? onFocusChange;
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateDown;
+  final VoidCallback? onNavigateLeft;
+  final VoidCallback? onNavigateRight;
+  final String? automationId;
+  final String? automationInstance;
+  final double scrollAlignment;
+
+  @override
+  State<_TvDiscoveryViewAllTile> createState() => _TvDiscoveryViewAllTileState();
+}
+
+class _TvDiscoveryViewAllTileState extends State<_TvDiscoveryViewAllTile> {
+  bool _isFocused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = TvLayoutConstants.scaleOf(context);
+    final radius = TvDiscoveryLayout.cardRadius * scale;
+    final width = _isFocused ? TvDiscoveryLayout.wideWidth(scale) : TvDiscoveryLayout.posterWidth(scale);
+
+    return FocusableWrapper(
+      focusNode: widget.focusNode,
+      // Never: this tile is always the row's last, and a rail's autofocus
+      // only ever lands on its first (`index == 0` in the rail's own
+      // itemBuilder), so this branch is dead in practice — stated rather
+      // than threaded through as an unused parameter.
+      autofocus: false,
+      automationId: widget.automationId,
+      automationInstance: widget.automationInstance,
+      automationRole: 'grid.item',
+      scrollAlignment: widget.scrollAlignment,
+      onSelect: widget.viewAll.onSelect,
+      onNavigateUp: widget.onNavigateUp,
+      onNavigateDown: widget.onNavigateDown,
+      onNavigateLeft: widget.onNavigateLeft,
+      onNavigateRight: widget.onNavigateRight,
+      onFocusChange: (focused) {
+        if (mounted && focused != _isFocused) setState(() => _isFocused = focused);
+        widget.onFocusChange?.call(focused);
+      },
+      disableScale: true,
+      mode: FocusIndicatorMode.delegated,
+      semanticLabel: widget.semanticLabel,
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: EdgeInsets.all(TvDiscoveryLayout.cardFocusRingGap * scale),
+          child: AnimatedContainer(
+            duration: reduceMotion(context, FocusTheme.getAnimationDuration(context)),
+            curve: Curves.easeOutCubic,
+            width: width,
+            height: TvDiscoveryLayout.cardHeight * scale,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(
+                    alpha: _isFocused ? TvDiscoveryLayout.cardFocusShadowAlpha : TvDiscoveryLayout.cardShadowAlpha,
+                  ),
+                  blurRadius:
+                      (_isFocused ? TvDiscoveryLayout.cardFocusShadowBlur : TvDiscoveryLayout.cardShadowBlur) * scale,
+                  offset: Offset(
+                    0,
+                    (_isFocused ? TvDiscoveryLayout.cardFocusShadowOffsetY : TvDiscoveryLayout.cardShadowOffsetY) *
+                        scale,
+                  ),
+                ),
+              ],
+            ),
+            child: CardFocusBorder(
+              borderRadius: radius,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(radius),
+                child: _ViewAllCardContent(viewAll: widget.viewAll, scale: scale),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The card's own content: a grid glyph and "Alle N, in Alle films" (DEC-100
+/// (2)). Static — nothing here changes with focus, unlike a poster tile's
+/// artwork lift, because there is no picture underneath to light.
+///
+/// One `Text`, not the two visually distinct tiers mockup 32 A2 draws, and
+/// deliberately so: [t.unifiedCatalog.homeRows.allInCatalog] is one translated sentence, and
+/// a translation is free to reorder count and destination or drop the comma
+/// that happens to separate them in Dutch and English. Splitting it into two
+/// styled halves would mean assuming a structure only two of fourteen
+/// languages are guaranteed to have.
+class _ViewAllCardContent extends StatelessWidget {
+  const _ViewAllCardContent({required this.viewAll, required this.scale});
+
+  final TvDiscoveryViewAllTile viewAll;
+  final double scale;
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    return ColoredBox(
+      color: tk.surfaceElevated,
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10 * scale),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppIcon(
+                Symbols.grid_view_rounded,
+                fill: 1,
+                size: 22 * scale,
+                color: tk.text.withValues(alpha: TvDiscoveryLayout.inkSecondary),
+              ),
+              SizedBox(height: 10 * scale),
+              Text(
+                t.unifiedCatalog.homeRows.allInCatalog(count: viewAll.count, catalog: viewAll.destinationLabel),
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: tk.text.withValues(alpha: TvDiscoveryLayout.inkPrimary),
+                  fontSize: TvDiscoveryLayout.metaContextFontSize * scale,
+                  fontWeight: FontWeight.w600,
+                  height: TvDiscoveryLayout.metaLineHeight,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

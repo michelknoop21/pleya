@@ -10,8 +10,14 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
+import 'package:pleya/media/unified/canonical_media_identity.dart';
+import 'package:pleya/media/unified/unified_media_group.dart';
+import 'package:pleya/media/unified/unified_media_hub.dart';
+import 'package:pleya/media/unified/unified_media_source.dart';
+import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/home_custom_rows_provider.dart';
 import 'package:pleya/providers/home_layout_provider.dart';
@@ -25,6 +31,19 @@ import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 
 import '../test_helpers/prefs.dart';
+
+UnifiedMediaGroup _group(String id) {
+  final source = UnifiedMediaSource.fromItem(
+    MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.movie, title: id, serverId: 'nas'),
+  );
+  return UnifiedMediaGroup(
+    groupId: id,
+    identity: CanonicalMediaIdentity.movie(title: id, year: 2021),
+    sources: [source],
+    representativeSourceKey: source.sourceKey,
+    watchState: UnifiedWatchState(representativeSourceKey: source.sourceKey, isWatched: false),
+  );
+}
 
 /// A loader whose answers are handed out by the test, one completer per call.
 class _ManualLoader implements HomeCustomRowLoader {
@@ -159,5 +178,37 @@ void main() {
     await pumpEventQueue();
 
     expect(loader.calls, hasLength(1));
+  });
+
+  group('viewAllTargetsByHubId (ROW1c)', () {
+    test('a row with content is keyed by its UnifiedMediaHub.hubId, not its layoutRowId', () async {
+      final provider = build();
+      addTearDown(provider.dispose);
+      await pumpEventQueue();
+      loader.pending[0].complete(HomeCustomRowContent(groups: [_group('m1'), _group('m2')], isExact: true));
+      await pumpEventQueue();
+
+      final targets = provider.viewAllTargetsByHubId();
+      final hubId = UnifiedMediaHub.synthesizedHubId(row.hubSlug);
+      expect(hubId, isNot(row.layoutRowId), reason: 'the two id spaces are deliberately different (ROW1b)');
+      expect(targets, contains(hubId));
+      final target = targets[hubId]!;
+      expect(target.kind, row.kind);
+      expect(target.filters, row.filters);
+      expect(target.sort, row.sort);
+      expect(target.count, 2);
+    });
+
+    test('a row with no content yet, or that loaded empty, has no target', () async {
+      final provider = build();
+      addTearDown(provider.dispose);
+      await pumpEventQueue();
+      // Still in flight: never answered.
+      expect(provider.viewAllTargetsByHubId(), isEmpty);
+
+      loader.pending[0].complete(const HomeCustomRowContent(isExact: true));
+      await pumpEventQueue();
+      expect(provider.viewAllTargetsByHubId(), isEmpty, reason: 'an empty row has nothing behind an Alle N tile');
+    });
   });
 }

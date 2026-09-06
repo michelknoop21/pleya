@@ -115,6 +115,7 @@ class TvUnifiedCatalogScreen extends StatefulWidget {
     this.onManageServers,
     this.restoreFrom = TvDestinationFocusMemory.empty,
     this.onRemember,
+    this.initialFilterOverride,
   });
 
   /// Built and owned by `UnifiedCatalogs` in the profile subtree, never here:
@@ -145,6 +146,15 @@ class TvUnifiedCatalogScreen extends StatefulWidget {
   /// only ever read by the next build of this screen, so writing it once per
   /// visit is enough and a per-frame write would be noise on the hot path.
   final ValueChanged<TvDestinationFocusMemory>? onRemember;
+
+  /// A filter to open with instead of the stored per-profile one (ROW1c,
+  /// DEC-100 (2)'s "Alle N" tile): the viewer's own custom row, opened for one
+  /// visit only. Not persisted, and not written back even if the stored
+  /// preferences needed pruning against known sources — leaving this screen
+  /// restores whatever the viewer had set here before (Michel, 6 September
+  /// 2026). A deliberate edit made *while* viewing the override still saves
+  /// normally, the same as any other visit: only the initial seed is transient.
+  final UnifiedCatalogPreferences? initialFilterOverride;
 
   @override
   State<TvUnifiedCatalogScreen> createState() => _TvUnifiedCatalogScreenState();
@@ -280,13 +290,22 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// Loads the stored setup, prunes sources that no longer exist, and starts
   /// the merge — in that order, so the first fetch already carries the user's
   /// filters instead of loading the unfiltered catalog and replacing it.
+  ///
+  /// [TvUnifiedCatalogScreen.initialFilterOverride], when set, replaces the
+  /// stored read outright rather than being merged with it: an "Alle N" visit
+  /// is a specific, complete filter, not an amendment to whatever the viewer
+  /// had set here before. The pruning against known sources still runs, in
+  /// memory only; nothing here is written back, so leaving the screen loses
+  /// nothing the viewer had stored.
   Future<void> _restorePreferences() async {
-    final stored = await UnifiedCatalogQueryStore.read(widget.catalog.query.kind);
+    final override = widget.initialFilterOverride;
+    final stored = override ?? await UnifiedCatalogQueryStore.read(widget.catalog.query.kind);
     if (!mounted) return;
     // Hoofdstuk 10.6: "Een bron/library die niet meer bestaat wordt bij openen
     // automatisch uit de opgeslagen selectie verwijderd." Written back, unlike
     // a capability-suppressed filter, because a key naming a removed server has
-    // no row left in the panel to untick it with.
+    // no row left in the panel to untick it with — except for an override,
+    // which has no stored row to begin with.
     final pruned = stored.copyWith(
       filters: stored.filters.withKnownSources(knownServerIds: _knownServerIds, knownLibraryKeys: _knownLibraryKeys),
     );
@@ -295,7 +314,9 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       _preferencesLoaded = true;
     });
     if (_wantsEntryFocus) WidgetsBinding.instance.addPostFrameCallback((_) => _tryEntryFocus());
-    if (pruned != stored) unawaited(UnifiedCatalogQueryStore.write(widget.catalog.query.kind, pruned));
+    if (override == null && pruned != stored) {
+      unawaited(UnifiedCatalogQueryStore.write(widget.catalog.query.kind, pruned));
+    }
     _scheduleRestore();
     await _applyQuery(startIfNeeded: true);
   }
