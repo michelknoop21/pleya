@@ -142,11 +142,11 @@ bool shouldRenderMainScreenOffline({
 /// the user came for.
 ///
 /// `phoneOnly: true` — only the **phone's** bar drops it, to make room for
-/// Series and Films; the iPad keeps its own slot (DEC-092: fase 2 is an
+/// Series and Films; the iPad keeps its own slot (DEC-103: fase 2 is an
 /// iPhone phase, and dropping these on the iPad too would cost it two slots
 /// and hand it nothing back):
 /// - Bibliotheken: a row in Mijn Pleya, together with the library quick picker
-///   that used to hang off this slot's long-press (DEC-094).
+///   that used to hang off this slot's long-press (DEC-104).
 /// - Zoeken: the search icon in the mobile page header. It stays a tab, so
 ///   there is exactly one `SearchScreen` in the tree; `mainScreenSelectedBarTab`
 ///   decides which slot lights up while it is on screen.
@@ -1252,7 +1252,7 @@ class _MainScreenState extends State<MainScreen>
 
   /// The single entry point to Zoeken from a surface that has no tab slot for
   /// it: the search icon in the mobile page header, on Home and on both
-  /// landings (fase 2, [DEC-094]).
+  /// landings (fase 2, [DEC-104]).
   ///
   /// It is a tab selection, not a route push and not an overlay layer above the
   /// `IndexedStack`. A push on the profile navigator would cover the tab bar,
@@ -1420,7 +1420,7 @@ class _MainScreenState extends State<MainScreen>
           // tab — same reasoning as the discovery landings below, extended
           // to the Home hero's fase-6 activation wiring. `onOpenSearch`
           // opens Zoeken from the iPhone Home header (iOS Unified 2026
-          // fase 2, DEC-094); both callbacks coexist since Home renders on
+          // fase 2, DEC-104); both callbacks coexist since Home renders on
           // every form factor.
           NavigationTabId.discover => DiscoverScreen(
             key: _discoverKey,
@@ -2404,7 +2404,7 @@ class _MainScreenState extends State<MainScreen>
   bool _isMobile = false;
 
   /// Whether this shell is an iPhone-sized handheld, which is what gives Films
-  /// and Series a tab (fase 2, DEC-094). Kept beside [_isMobile] and resolved
+  /// and Series a tab (fase 2, DEC-104). Kept beside [_isMobile] and resolved
   /// in the same place for the same reason: `PlatformDetector.isPhone` needs a
   /// `BuildContext`, and the tab list is built in places that have none.
   bool _isPhone = false;
@@ -2462,7 +2462,7 @@ class _MainScreenState extends State<MainScreen>
     // Home boundary in `discover_screen.dart`: one `PlatformDetector` call
     // here, an explicit value passed down, and no platform check inside the
     // destinations. Fase 1 was an iPhone phase and this bar is shared with the
-    // iPad, so the iPad keeps the presentation it had before fase 1 (DEC-092).
+    // iPad, so the iPad keeps the presentation it had before fase 1 (DEC-103).
     final presentation = PlatformDetector.isPhone(context)
         ? TabBarPresentation.unified2026
         : TabBarPresentation.classic;

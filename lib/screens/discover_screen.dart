@@ -86,7 +86,7 @@ class DiscoverScreen extends StatefulWidget {
 
   /// Opens Zoeken from the iPhone Home header. Supplied by `MainScreen`, which
   /// owns tab selection; null on every other form factor, where the header
-  /// does not exist (iOS Unified 2026 fase 2, [DEC-094]).
+  /// does not exist (iOS Unified 2026 fase 2, [DEC-104]).
   final VoidCallback? onOpenSearch;
 
   /// The hero's pagination-dot row, so tests can measure its real rect

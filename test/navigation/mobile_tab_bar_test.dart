@@ -101,7 +101,7 @@ void main() {
     // The iPad keeps this one. Fase 1 was an iPhone phase, so everything the
     // restyle changed has to be absent here: the brand dot is still reserved
     // above every glyph, no glyph is tinted, and the selected label keeps the
-    // theme's own colour rather than kAccent (DEC-092).
+    // theme's own colour rather than kAccent (DEC-103).
     final tabs = _phoneTabs();
     await tester.pumpWidget(
       MaterialApp(

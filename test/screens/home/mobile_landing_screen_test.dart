@@ -32,7 +32,7 @@ import 'package:provider/provider.dart';
 import '../../test_helpers/prefs.dart';
 
 /// The Series and Films landings against the frozen `01-series-landing.png` and
-/// `02-films-landing.png` (iOS Unified 2026 fase 2, [DEC-094]).
+/// `02-films-landing.png` (iOS Unified 2026 fase 2, [DEC-104]).
 ///
 /// Mounted end to end over the real provider stack, like
 /// `mobile_home_screen_test.dart`: the rows on screen come out of the same

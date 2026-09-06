@@ -205,7 +205,7 @@ class AutomationIds {
   static const String homeHeaderSearch = 'home.header.search';
 
   /// The header's profile avatar. Not tappable: profile switching's own
-  /// entry point is elsewhere (fase 6, DEC-091), so this node exists for
+  /// entry point is elsewhere (fase 6, DEC-102), so this node exists for
   /// scenarios to find the avatar, not to activate it.
   static const String homeHeaderAvatar = 'home.header.avatar';
 
@@ -219,7 +219,7 @@ class AutomationIds {
   /// `[<railIndex>.<itemIndex>]`.
   static const String homeRailItem = 'home.rail.item';
 
-  /// The Series and Films landing screens (iOS Unified 2026 fase 2, DEC-094).
+  /// The Series and Films landing screens (iOS Unified 2026 fase 2, DEC-104).
   static const String screenSeries = 'screen.series';
   static const String screenMovies = 'screen.movies';
 

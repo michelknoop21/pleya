@@ -19,7 +19,7 @@ apparaatchrome voor de reviewer, geen functionele eis. Het scherm leest `Unified
 niet een tweede bronlogica: activatie gaat via dezelfde `navigateToMediaItemDetails`-route als de
 rail-kaarten. `MobileCatalogFiltersSheet` (twee zones, rail-en-opties, draft-tot-Toepassen) en
 `MobileCatalogSortSheet` zijn nieuw, geen uitbreiding van de Plex-gebonden `FiltersBottomSheet` onder
-Bibliotheken: die twee blijven uit elkaar, zoals DEC-094 al vastlegde.
+Bibliotheken: die twee blijven uit elkaar, zoals DEC-104 al vastlegde.
 
 Verify kon een gepushte, niet-tab-bestemming voorheen alleen met vaste `{x, y}`-coördinaten bereiken.
 `tap` in `run_scenario.dart` accepteert nu ook `tap: {id: "..."}`, opgelost via dezelfde
@@ -31,7 +31,7 @@ met `tap` op `landing.view_all[movies]` in plaats van `open`.
 `UnifiedCatalogQueryStore.clearForProfileScope` kreeg zijn ene aanroeper, in de profiel-delete-flow.
 `Provider<UnifiedCatalogs>` is geregistreerd in `profile_session_screen.dart`. Samen met dat het
 scherm en de sheets de F0-laag nu echt aanroepen, verdwijnen acht van de zeventien F0-meldingen uit
-DEC-094: gemeten met `scripts/ci_checks.sh`, niet aangenomen. `PreferredServerStore`/
+DEC-104: gemeten met `scripts/ci_checks.sh`, niet aangenomen. `PreferredServerStore`/
 `SourcePreferenceStore`'s eigen `clearForProfileScope` blijven zelf ook ongeroepen; dat is
 opgeschreven voor een latere fase, niet stilzwijgend meegepakt.
 
@@ -42,7 +42,7 @@ hangen, maar dezelfde vastloop ook binnen één test, op een tweede aanroep van 
 mobile_catalog_screen_test.dart` hangt daardoor deterministisch bij een volle bestandsrun, en één test
 hing ook los van de rest, in drie herhaalde pogingen. Een geïsoleerde `test()`-herhaling zonder
 `testWidgets()` rondt in minder dan een seconde af: het zit in de teststack, niet in de fase-3-code.
-DEC-101 schrijft de volledige diagnose uit, inclusief wat verworpen is als verklaring.
+DEC-105 schrijft de volledige diagnose uit, inclusief wat verworpen is als verklaring.
 
 De stand van de poorten: analyzer 0 errors en 0 warnings op de bekende 40 info-lints. `scripts/
 ci_checks.sh` daalt van de 17 F0-meldingen (10 unused-code, 7 unused-files) bij de nulmeting naar 9
@@ -51,9 +51,9 @@ ci_checks.sh` daalt van de 17 F0-meldingen (10 unused-code, 7 unused-files) bij 
 stond op zes bestanden na, hersteld vóór deze commit. `format_native.sh --check` en de drie
 Apple-platform-Verify-scenario's (`ios.home.northstar`, `ios.landing.northstar`,
 `discover.hero.layout`) zijn in deze Linux-container niet uitvoerbaar, hetzelfde ontbrekende bewijs
-als bij het sluiten van fase 2. Dit nummer is DEC-101 op beide branches: `origin/main` gebruikt
-DEC-091 tot en met DEC-100 al met eigen inhoud onder drie ervan, wat merge-werk blijft voor een latere
-sessie.
+als bij het sluiten van fase 2. Dit nummer was op deze branch DEC-101; `origin/main` gebruikte dat
+nummer en DEC-091 tot en met DEC-100 al met eigen inhoud onder drie ervan. Bij de merge naar main is
+deze entry hernummerd naar DEC-105, zie [DEC-105](DECISIONS.md#dec-105).
 
 ## [2026-09-05] Adversariële review op fase 1 en 2: 20 bevindingen verwerkt
 
@@ -71,7 +71,7 @@ derde chip te tekenen. Zoeken openen vanuit Films of Series licht voortaan die t
 gemount" en "bestemming niet zichtbaar op dit platform", zodat `/v1/open` niet meer de volle timeout
 uitloopt op een tab die nooit ging bestaan.
 
-Twee bevindingen raakten dezelfde wortel als DEC-094 zelf. De series/films-classificatie stond drie keer
+Twee bevindingen raakten dezelfde wortel als DEC-104 zelf. De series/films-classificatie stond drie keer
 onafhankelijk in code (een dode `MobileLandingKind.hubKind`-getter, de chip-switch, en
 `TvDiscoveryLandingProvider`'s eigen switch); alle drie lezen nu `UnifiedHubKind.singleKindSurface`, met
 een test die de chip-uitkomst en de landing-uitkomst tegen elkaar controleert. En `_screens` kon voor
@@ -98,7 +98,7 @@ De stand van de poorten: analyzer 0 errors en 0 warnings op de bekende 40 info-l
 uit deze ronde).
 `ios.home.northstar`, `ios.landing.northstar` en `discover.hero.layout` zijn in deze omgeving niet
 opnieuw gedraaid: die vragen een macOS/iOS-sim-target, niet beschikbaar in deze Linux-container, hetzelfde
-ontbrekende bewijs dat DEC-094 al vastlegt.
+ontbrekende bewijs dat DEC-104 al vastlegt.
 
 ## [2026-09-05] iOS Unified 2026 fase 2: Series en Films als bestemming
 
@@ -131,7 +131,7 @@ De stand van de poorten, zonder afronding naar boven: analyzer 0 errors en 0 war
 40 info-lints, `flutter test` 5596 geslaagd en 6 overgeslagen zonder enkele fout, alle negen
 Verify-scenario's `validate` OK en de 216 runnertests groen. `scripts/ci_checks.sh` blijft **rood** op
 dezelfde 10 unused-code- en 7 unused-files-meldingen als bij de nulmeting vooraf, dus fase 2 heeft er
-geen aan toegevoegd; alle zeventien komen uit F0 en staan nu uitgeschreven in DEC-094, want ze stonden
+geen aan toegevoegd; alle zeventien komen uit F0 en staan nu uitgeschreven in DEC-104, want ze stonden
 nergens anders. De branch `claude/f0-unused-gate` waar het plan naar verwees bestaat niet op `origin`,
 dus er viel niets te mergen en de nulmeting is in plaats daarvan het attributiemiddel.
 
@@ -142,7 +142,7 @@ ontbrekende `swift-format`; fase 2 raakt geen enkel native bestand.
 
 Drieentwintig nieuwe tests, waaronder punt 7 van de Definition of Done als test: alles wat zijn balkslot
 kwijtraakte staat nog in `getVisibleTabs`, en dat is de lijst die `_buildScreens` en `_selectTab` allebei
-aflopen. DEC-094 legt de besluiten en de twee afwijkingen van het plan vast.
+aflopen. DEC-104 legt de besluiten en de twee afwijkingen van het plan vast.
 
 ## [2026-09-03] iOS Unified 2026 fase 1: de iPhone-Home
 
@@ -160,14 +160,14 @@ De bottom bar is gerestyled zoals stap 9 van het plan hem beschrijft: geen merks
 glyph, geen rode 18×3-indicator, het actieve slot in rood, en een rode ring om de avatar van Mijn
 Pleya. De tabset is niet aangeraakt. Die bar is gedeeld met de iPad, en omdat fase 1 een
 iPhone-fase is houdt de iPad de bar die hij had: `TabBarPresentation` kiest alleen verf, de keuze
-valt op één plek in `main_screen.dart` en reist als waarde mee, net als de Home-grens (DEC-092).
+valt op één plek in `main_screen.dart` en reist als waarde mee, net als de Home-grens (DEC-103).
 
 De stand van de poorten, zonder afronding naar boven: analyzer 0 errors en 0 warnings op de bekende
 40 info-lints, testsuite groen op de twee gedocumenteerde `backend_badge`-goldens na, beide
 iOS-simulatorscenario's PASS, en `scripts/ci_checks.sh` **rood** op 10 unused-code- en
 7 unused-files-meldingen die alle zeventien uit F0 komen en die deze fase niet aanraakt.
 
-Zesentachtig nieuwe tests, `ios.home.northstar` als Verify-scenario, en DEC-091 en DEC-092 leggen de
+Zesentachtig nieuwe tests, `ios.home.northstar` als Verify-scenario, en DEC-102 en DEC-103 leggen de
 besluiten en de drie afwijkingen van het plan vast. De twee open Home-details uit DEC-090 (de
 secundaire hero-CTA en de carousel-indicator) staan als benoemde plaatshouder in de code en zijn
 één regel te wisselen zodra ze vallen.

@@ -387,7 +387,7 @@ Elke stap is één commit, tenzij anders vermeld. Alle commands met `PATH=/Volum
 
 **Stap 10. Verificatie en documentatie**
 
-- BESTANDEN: nieuw `pleya_verify/scenarios/ios.home.northstar.yaml` (`target: ios-sim`; `wait_until screen.discover`, `wait_until discover.hero`, `assert home.header insideViewport`, `assert home.header.search minimumTapTarget: 44`, `assert discover.hero insideViewport`, `assert discover.hero.play minimumTapTarget: 44`, `assert home.rail[0] below: discover.hero`, `assert nav.bar insideViewport`, `snapshot: home-northstar`); `docs/DECISIONS.md` DEC-091 (H2) en DEC-092 (fase 1 gesloten); `docs/CHANGELOG.md`.
+- BESTANDEN: nieuw `pleya_verify/scenarios/ios.home.northstar.yaml` (`target: ios-sim`; `wait_until screen.discover`, `wait_until discover.hero`, `assert home.header insideViewport`, `assert home.header.search minimumTapTarget: 44`, `assert discover.hero insideViewport`, `assert discover.hero.play minimumTapTarget: 44`, `assert home.rail[0] below: discover.hero`, `assert nav.bar insideViewport`, `snapshot: home-northstar`); `docs/DECISIONS.md` DEC-102 (H2) en DEC-103 (fase 1 gesloten); `docs/CHANGELOG.md`.
 - BEWIJS: PASS; contactvel `northstar-home.png | home-northstar.png` naast elkaar (script in scratchpad, niet in de repo) ter beoordeling; geen claim "pixel perfect".
 
 ### Commit-grenzen
@@ -406,7 +406,7 @@ Elke stap is één commit, tenzij anders vermeld. Alle commands met `PATH=/Volum
 8. Desktop (native macOS-build) en tvOS-simulator: `discover.hero.layout.macos` en `tvos.smoke.boot` PASS, als bewijs dat de andere shells niet bewogen zijn.
 8a. iPad: `test/screens/discover_hero_activation_test.dart` groen zonder wijziging, inclusief de bestaande pins op 768, 834 en 1024 pt en de `tabletPortrait`-tier, plus een screenshot van de iPad-Home vóór en na fase 1 die gelijk is. Dat is het bewijs dat de gedeelde wijzigingen de bestaande iPad-Home niet hebben aangeraakt.
 9. `discover_screen.dart` niet gegroeid; `mobile_home_screen.dart` onder 400 regels; geen bestand in `lib/widgets/mobile/` boven 400.
-10. DEC-091 en DEC-092 in `docs/DECISIONS.md`; A en B nog open en zo gemarkeerd in de code.
+10. DEC-102 en DEC-103 in `docs/DECISIONS.md`; A en B nog open en zo gemarkeerd in de code.
 11. Geen import uit `lib/widgets/tv/` in `lib/widgets/mobile/` of `lib/screens/home/`.
 
 ## H. Open risks en vragen
@@ -434,10 +434,10 @@ is dat precies hetzelfde probleem als bij de Home-comp. Duw `f8e0e59` naar de re
 reeks gebouwd wordt, ongeacht welke vorm het wordt. Het ongecommitte TV-railwerk in die werkboom
 raakt de reeks niet: er wordt op een commit gewerkt, niet op de werkboom.
 
-H2. **DEC-091: derde hero-presentatie.** Akkoord verwerkt. De presentatie heet `mobileFeatured`, niet
+H2. **DEC-102: derde hero-presentatie.** Akkoord verwerkt. De presentatie heet `mobileFeatured`, niet
 `phone`, en `home_hero_layout.dart` blijft vrij van platformchecks: de caller kiest. Hoofdstuk 9.4 op
 de tvOS-branch belooft dat de mobiele geometrie byte-identiek blijft; `island` en `fullWidth` blijven
-dat, de belofte versmalt van "alles" naar die twee. Vast te leggen als DEC-091.
+dat, de belofte versmalt van "alles" naar die twee. Vast te leggen als DEC-102.
 
 H3. **iPad.** Akkoord verwerkt. Fase 1 laat de iPad op de bestaande Home. Nieuw in dit plan is het
 bewijs daarvoor: DoD-punt 8a eist de bestaande iPad-pins ongewijzigd plus een gelijk screenshot vóór

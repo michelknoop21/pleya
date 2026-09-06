@@ -281,6 +281,15 @@ Vier hernoemingen dus, en main is de stam, dus die vier verschuiven aan de kant 
 branch. Main loopt tot 096 en heeft precies één gat, op **090**, dat door iOS' bevroren
 northstarbesluit bezet is. Vanaf **097** is alles vrij.
 
+**Bijgewerkt na de daadwerkelijke merge.** `claude/ios-fase3-catalogus` (niet
+`feat/netflix-mobile`, waar deze paragraaf oorspronkelijk over ging, maar dezelfde
+lineage met fase 3 erbovenop) is geland op `integration/ios-unified-main-sync`. Main
+liep op dat moment door tot **DEC-101**, met eigen inhoud onder 091, 092, 094 én 101 (een
+vierde botsing, ontstaan na fase 3, die deze paragraaf nog niet kende). Alle vier zijn
+hernummerd naar **DEC-102 tot en met DEC-105**; DEC-090 bleef ongewijzigd, zoals hierboven
+al vastgelegd. Zie [DEC-105](DECISIONS.md#dec-105) voor het volledige verslag van de
+hernummering.
+
 ### De drie andere sets staan niet op `main`
 
 iOS, Web en Ebooks leven elk op hun eigen branch. Zolang dat zo is kan niemand ze naast

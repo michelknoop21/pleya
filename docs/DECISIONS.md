@@ -1887,7 +1887,7 @@ en legt het oude gedrag vast: na een volledige-venster push is niets in de balk 
 **Consequences:** Mockup 19 staat in `docs/tvos-redesign-09-25-approved.md` als vervangen; mockup 33 is de gehashte set van `docs/assets/tvos-unified/mockups-2026-09-05/`. PB-9 in het implementatiecontract krijgt de zin dat de sheets op TV geen ingang meer zijn. De bouw volgt de volgorde van het plan: eerst een testharnas op `TvInfoPanel`, dan de strings (STR1, STR2, de "OK"-waarde), de rij-API (`subtitle`, `onStepLeft/Right`, `automationId`, `kind`), de secundaire labels (PNL1), pills op `FocusableWrapper`, LEFT/RIGHT op waarderijen met `onSetBoxFitMode` in `TrackControlsState`, de synchronisatie-subweergave zonder Material-slider plus de fix van `sliderFocusNode` bij de gedeelde eigenaar, de subweergave-enum met hoofdstukken, slaaptimer op `SleepTimerService` zelf (niet `SleepTimerContent`, die zonder overlay-scope de spelerroute popt), `VersionQualityPicker` met `onDismiss`, de Weergave- en stijlrijen, de volumeversterking, de routering van tandwiel en sporenknop, de automation-ids `player.panel`, `player.panel.tab` en `player.panel.row` met geregenereerde yaml, en een Pleya Verify-scenario `tvos.player.panel.yaml`. `SettingsService.volume` deelt zijn betekenis met de desktop-slider; op één toestel met TV-override kan een boost in de slider landen, en dat is aanvaard omdat voorkeuren per apparaat zijn. Hardware only blijven de veeg-opening, de bitstream-stand, de hoorbaarheid van de boost en de synchronisatiestap. Goedgekeurd door Michel op 5 september 2026 op A tot en met I, na twee correctierondes (selectors, chevrons, focusring, en de stap van losse dozen naar een glaskaart): "Akkoord".
 
 
-## DEC-101: fase 3 zet Alle films/Alle series en de filtersheet, tap-by-id in Verify
+## DEC-105: fase 3 zet Alle films/Alle series en de filtersheet, tap-by-id in Verify
 
 **Date:** 2026-09-06
 **Status:** accepted
@@ -1896,10 +1896,13 @@ en legt het oude gedrag vast: na een volledige-venster push is niets in de balk 
 bouwt de complete, bronoverstijgende catalogus achter de "Alle films ›"/"Alle series ›"-actie die
 fase 2 getekend en inert liet staan, volgens
 [docs/ios-unified-2026-fase3-plan.md](ios-unified-2026-fase3-plan.md). De bindende beelden zijn
-`03-alle-films.png` en `04-filters-sheet.png`. Dit nummer is DEC-101, niet het volgende getal na
-DEC-094 op deze branch: `origin/main` gebruikt DEC-091 tot en met DEC-100 al, met eigen inhoud onder
-DEC-091, 092 en 094, dus die drie botsen op naam bij een toekomstige merge. Dat is merge-werk en wordt
-hier niet opgelost; DEC-101 is op het moment van schrijven op beide branches vrij.
+`03-alle-films.png` en `04-filters-sheet.png`. Dit nummer was bij het schrijven op deze branch
+DEC-101, niet het volgende getal na DEC-094 op deze branch: `origin/main` gebruikte DEC-091 tot en
+met DEC-101 al, met eigen inhoud onder DEC-091, 092, 094 en 101, dus die vier botsten op naam bij de
+merge naar main. De integratiebranch `integration/ios-unified-main-sync` heeft die botsing opgelost
+door deze branch zijn DEC-090, 091, 092, 094 en 101 te hernummeren naar DEC-090 (ongewijzigd) en
+DEC-102 tot en met DEC-105; main's eigen DEC-091 tot en met DEC-101 zijn ongemoeid gebleven. Dit
+document draagt het nieuwe nummer.
 
 **Decision:**
 
@@ -1945,7 +1948,7 @@ ongeroepen buiten hun tests; dat is opgeschreven, niet stilzwijgend meegepakt.
 `unified_catalogs.dart:86-89` voorschrijft: `UnifiedCatalogs` is geen `ChangeNotifier`. Deze ene
 registratie, plus dat het scherm en de sheets `buildUnifiedCatalogQuery`, `UnifiedCatalogQueryStore`
 en `loadUnifiedFilterOptions` nu echt aanroepen, en dat de prefetcher aan het grid hangt, laat acht
-van de zeventien F0-meldingen uit DEC-094 verdwijnen: de `UnifiedCatalogs`-klasse en zijn bestand, de
+van de zeventien F0-meldingen uit DEC-104 verdwijnen: de `UnifiedCatalogs`-klasse en zijn bestand, de
 `buildUnifiedCatalogQuery`-functie, de `UnifiedCatalogQueryStore`-klasse en zijn bestand, de
 `loadUnifiedFilterOptions`-functie en zijn bestand, en `unified_artwork_prefetcher.dart` als bestand.
 De overige negen (waaronder `eligibleSourceServers`, de source-picker-resolver van fase 5, en de
@@ -1995,10 +1998,11 @@ fase 3 zelf hoort op te lossen.
 
 **Consequences:** Zie het eindrapport voor de exacte analyze-, test- en ci_checks-cijfers en voor
 welk Apple-platformbewijs in deze Linux-containeromgeving expliciet ontbreekt in plaats van gemeten.
-De DEC-091/092/094-naamsbotsing met `origin/main` blijft openstaand merge-werk. Fase 4 (Zoeken) begint
-bij een eigen plan.
+De DEC-091/092/094/101-naamsbotsing met `origin/main` is opgelost op de integratiebranch
+`integration/ios-unified-main-sync`: deze branch zijn DEC-091, 092, 094 en 101 zijn daar hernummerd
+naar DEC-102 tot en met DEC-105. Fase 4 (Zoeken) begint bij een eigen plan.
 
-## DEC-094: fase 2 maakt Series en Films bestemmingen, en scheidt de chip van de tab
+## DEC-104: fase 2 maakt Series en Films bestemmingen, en scheidt de chip van de tab
 
 **Date:** 2026-09-05
 **Status:** accepted
@@ -2013,7 +2017,7 @@ De bindende beelden zijn `01-series-landing.png`, `02-films-landing.png`, `05-zo
 *De tabset.* `getVisibleTabs` krijgt een `isPhone`-parameter en die is de poort voor Films en Series.
 De waarde reist mee in plaats van ter plekke afgeleid te worden, want `PlatformDetector.isPhone` heeft
 een `BuildContext` nodig en de tablijst wordt op plekken gebouwd die er geen hebben. Dat is dezelfde
-vorm als `TabBarPresentation` uit [DEC-092](#dec-092-fase-1-levert-de-iphone-home-als-eigen-scherm-en-de-ipad-houdt-zijn-bestaande-presentatie):
+vorm als `TabBarPresentation` uit [DEC-103](#dec-103-fase-1-levert-de-iphone-home-als-eigen-scherm-en-de-ipad-houdt-zijn-bestaande-presentatie):
 een enkele `PlatformDetector`-aanroep bij de schil, een expliciete waarde die meereist, en geen
 platformcheck in het filter. De iPad is wel `isMobile` en niet `isPhone` en houdt daarmee alles wat hij
 had, want fase 2 is een iPhone-fase.
@@ -2114,7 +2118,7 @@ geschreven; `test/architecture/automation_ids_yaml_test.dart` bewijst dat het ex
 De twee open Home-details uit DEC-090 paragraaf 10 blijven open. Fase 3 begint bij een eigen plan en zet
 een handler onder de Alle-actie.
 
-## DEC-092: fase 1 levert de iPhone-Home als eigen scherm, en de iPad houdt zijn bestaande presentatie
+## DEC-103: fase 1 levert de iPhone-Home als eigen scherm, en de iPad houdt zijn bestaande presentatie
 
 **Date:** 2026-09-03
 **Status:** accepted
@@ -2195,7 +2199,7 @@ Die blokkade is drieledig, en alle drie de delen zijn nodig. Wie er één bouwt,
 Dat is werk voor een eigen Verify-infrastructuurfase, of voor de productfase die deze E2E-poort
 werkelijk nodig heeft. Het is geen openstaand fase-1-defect.
 
-## DEC-091: de mobiele hero-presentatie heet mobileFeatured, en de chip-ambiguïteit is opgelost
+## DEC-102: de mobiele hero-presentatie heet mobileFeatured, en de chip-ambiguïteit is opgelost
 
 **Date:** 2026-09-03
 **Status:** accepted

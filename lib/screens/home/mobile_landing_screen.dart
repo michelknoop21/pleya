@@ -9,7 +9,7 @@
 ///
 /// Deliberately no hero and no chip bar. Those belong to Home, which is a
 /// different surface with a different question ("what should I watch"), while a
-/// landing answers "show me everything of one kind". [DEC-094] records the
+/// landing answers "show me everything of one kind". [DEC-104] records the
 /// split.
 library;
 

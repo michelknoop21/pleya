@@ -239,7 +239,7 @@ enum HomeHeroSharpPresentation {
   fullWidth,
 
   /// A rounded, inset billboard *within* the page (iOS Unified 2026 fase 1,
-  /// `docs/ios-unified-2026-fase1-plan.md` stap 6; DEC-091). The caller —
+  /// `docs/ios-unified-2026-fase1-plan.md` stap 6; DEC-102). The caller —
   /// `MobileHeroCard` — already hands in the inset box (screen width minus
   /// the mockup's 16pt margin either side, height minus the same margin), so
   /// this presentation fills exactly that box with `BoxFit.cover`, the same

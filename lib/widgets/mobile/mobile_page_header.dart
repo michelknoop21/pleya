@@ -21,7 +21,7 @@ import '../pleya_wordmark.dart';
 class MobilePageHeader extends StatelessWidget {
   /// Extra actions between the lockup and search/avatar — the header stays
   /// wider than the comp in fase 1 for the three destinations that have not
-  /// migrated yet (DEC-091), rather than dropping them silently.
+  /// migrated yet (DEC-102), rather than dropping them silently.
   final List<Widget> actions;
 
   final VoidCallback onSearchTap;

@@ -275,7 +275,7 @@ void main() {
     expect(find.text('Continue Watching'), findsNothing);
     expect(find.text('Trending'), findsNothing);
     expect(find.text('For you'), findsOneWidget);
-    // The chip bar survives a selection: a chip is not a tab (DEC-094).
+    // The chip bar survives a selection: a chip is not a tab (DEC-104).
     expect(find.byType(MobileChipBar), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

@@ -4,7 +4,7 @@
 beschikbaar in deze uitvoering). Geen productiecode gewijzigd vóór dit document.
 **Datum:** 6 september 2026
 **Branch:** `claude/ios-fase3-catalogus`, afgetakt van `claude/ios-fase2-review-fixes` op `86d91bcc`.
-**Authority:** DEC-090 (bevroren northstar), DEC-091, DEC-092, DEC-094, de beelden
+**Authority:** DEC-090 (bevroren northstar), DEC-102, DEC-103, DEC-104, de beelden
 `03-alle-films.png` en `04-filters-sheet.png` in `docs/assets/ios-unified/northstar/`, paragraaf 5,
 6 en 10 van [docs/ios-unified-2026-audit.md](ios-unified-2026-audit.md), en sectie E van
 [docs/ios-unified-2026-fase1-plan.md](ios-unified-2026-fase1-plan.md).
@@ -20,7 +20,7 @@ header, de rail en de kaart uit fase 1 en 2 blijven ongewijzigd.
 |---|---|
 | Branch, HEAD | `claude/ios-fase3-catalogus`, afgetakt van `86d91bcc` |
 | Working tree | schoon vóór dit document |
-| Fase 2 | gesloten, DEC-094 op `accepted` |
+| Fase 2 | gesloten, DEC-104 op `accepted` |
 | Northstar-freeze | intact |
 | Flutter-SDK | 3.44.0 zelf geïnstalleerd in deze sessie (git-clone van de pinned tag, geen Mac
   beschikbaar in deze uitvoeringsomgeving, wel Linux met netwerktoegang) |
@@ -29,7 +29,7 @@ header, de rail en de kaart uit fase 1 en 2 blijven ongewijzigd.
 | `flutter test` op `86d91bcc` | loopt op het moment van schrijven, resultaat volgt in het
   eindrapport |
 | `scripts/ci_checks.sh` | verwacht rood op de 17 F0-meldingen (10 unused-code, 7 unused-files) uit
-  DEC-094, ongewijzigd sinds fase 2 |
+  DEC-104, ongewijzigd sinds fase 2 |
 | `pleya_verify` (ios-sim, macOS, tvOS-sim) | **niet uitvoerbaar in deze sessie**: geen Xcode, geen
   simulator, geen macOS. Dit is geen kortere inspanning die ik oversla, het is een omgeving zonder
   Apple-toolchain. Zie sectie H. |
@@ -119,7 +119,7 @@ inpakt in een `Stack` met een `Positioned`-badge. Dat is dezelfde aanpak als `di
 andere eenmalige composities in deze codebase: een gedeeld primitief blijft gedeeld, de opsmuk is
 lokaal.
 
-**C6. De filtersheet is nieuw, geen uitbreiding van `FiltersBottomSheet`.** DEC-094 en paragraaf 6/8
+**C6. De filtersheet is nieuw, geen uitbreiding van `FiltersBottomSheet`.** DEC-104 en paragraaf 6/8
 van het auditrapport zijn hier eenduidig: `FiltersBottomSheet`
 (`lib/screens/libraries/filters_bottom_sheet.dart`) is Plex-gebonden (`MediaFilter`, `PlexClient`,
 serverId/libraryKey als verplichte parameters) en blijft waar hij is, onder Bibliotheken. De nieuwe
@@ -188,7 +188,7 @@ die ik er stilzwijgend bij pak.
 ## E. Expliciete non-scope
 
 - `LibraryBrowseTab` en `FiltersBottomSheet` blijven ongewijzigd en blijven de route onder
-  Bibliotheken (sectie E fase-1-plan, DEC-094).
+  Bibliotheken (sectie E fase-1-plan, DEC-104).
 - Geen bronwissel, geen contextmenu, geen detailpagina-wijziging: dat is fase 5.
 - Geen wijziging aan `MobilePageHeader`, `MobileMediaRail`, `MobileMediaCard`, `home_hero_layout.dart`
   of de tabbalk: fase 1 en 2 blijven zoals ze zijn.

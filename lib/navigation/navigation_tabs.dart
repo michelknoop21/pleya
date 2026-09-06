@@ -19,7 +19,7 @@ export 'navigation_tab_id.dart';
 /// is one widget shared with the iPad. Same shape as the Home boundary in
 /// `discover_screen.dart`: one `PlatformDetector` call at the shell, an
 /// explicit value passed down, and no platform check anywhere inside the
-/// destinations. [DEC-092] records the decision; fase 2 is where an iPad
+/// destinations. [DEC-103] records the decision; fase 2 is where an iPad
 /// authority decides whether the iPad follows.
 enum TabBarPresentation {
   /// The bar as it stood before iOS Unified 2026 fase 1: a red-to-amber brand
@@ -225,12 +225,12 @@ class NavigationTab {
   /// is checked separately because [isMobile] returns false on a TV.
   ///
   /// [isPhone] gates the Films and Series destinations, which iOS Unified 2026
-  /// fase 2 gives the iPhone (DEC-094). It is passed in rather than derived
+  /// fase 2 gives the iPhone (DEC-104). It is passed in rather than derived
   /// here because `PlatformDetector.isPhone` needs a `BuildContext` and this
   /// function has none. Same shape as [TabBarPresentation]: one
   /// `PlatformDetector` call at the shell, an explicit value travelling down,
   /// and no platform check inside. The iPad is [isMobile] but not [isPhone],
-  /// so it keeps the tabset it had before fase 2 (DEC-092).
+  /// so it keeps the tabset it had before fase 2 (DEC-103).
   static List<NavigationTab> getVisibleTabs({
     required bool isOffline,
     bool hasLiveTv = false,
@@ -256,12 +256,12 @@ class NavigationTab {
       // destinations. On TV they are the 10-foot surfaces of hoofdstuk 10 of
       // docs/tvos-unified-experience.md; on the iPhone they are the two
       // landings of iOS Unified 2026 fase 2 (`01-series-landing.png`,
-      // `02-films-landing.png`, DEC-094), which replace the Home chips as the
+      // `02-films-landing.png`, DEC-104), which replace the Home chips as the
       // way to reach a single-kind catalogue.
       //
       // Desktop and iPad keep browsing through Bibliotheken. The iPad is
       // excluded on purpose and not by oversight: fase 2 is an iPhone phase and
-      // the iPad has its own authority (DEC-092), so [isPhone] is the gate, not
+      // the iPad has its own authority (DEC-103), so [isPhone] is the gate, not
       // [isMobile].
       if ((tab.id == NavigationTabId.movies || tab.id == NavigationTabId.series) &&
           !isPhone &&

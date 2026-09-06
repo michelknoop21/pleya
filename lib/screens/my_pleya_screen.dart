@@ -42,7 +42,7 @@ class MyPleyaScreen extends StatelessWidget {
   /// Opens the library quick picker. On the phone this row is the only thing
   /// left that can: fase 2 took Bibliotheken out of the bottom bar, and the
   /// picker's single entry point was a long-press over that slot, so it left
-  /// with it (DEC-094). Null where the bar still holds the slot, and the
+  /// with it (DEC-104). Null where the bar still holds the slot, and the
   /// long-press is then simply not offered twice.
   ///
   /// Takes a [BuildContext] rather than closing over one, and it has to: the

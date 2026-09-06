@@ -6,7 +6,7 @@
 /// reorder immediately, unlike the filter sheet's item predicates) and on
 /// `MobileSourcePickerSheet`'s presentation: `OverlaySheetController.show`
 /// rather than `showAdaptive`, because this sheet only ever opens from
-/// `MobileCatalogScreen`, which is itself phone-only (DEC-094).
+/// `MobileCatalogScreen`, which is itself phone-only (DEC-104).
 library;
 
 import 'package:flutter/material.dart';

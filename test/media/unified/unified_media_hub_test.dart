@@ -73,7 +73,7 @@ void main() {
 
     // The single partition the Home chip filter, the landing rail split and
     // MobileLandingKind all read instead of each writing their own switch
-    // (bevinding 10, DEC-094-addendum).
+    // (bevinding 10, DEC-104-addendum).
     test('singleKindSurface partitions movie/show and drops the rest', () {
       expect(UnifiedHubKind.movie.singleKindSurface, UnifiedCatalogSurface.movies);
       expect(UnifiedHubKind.show.singleKindSurface, UnifiedCatalogSurface.series);

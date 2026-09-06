@@ -52,7 +52,7 @@ enum UnifiedHubKind {
 
   /// The single-kind catalogue surface this row belongs to on Home's chip
   /// filter and on a landing — `null` for [episode], [mixed] and [other],
-  /// which have no single Films-or-Series home ([DEC-094]).
+  /// which have no single Films-or-Series home ([DEC-104]).
   ///
   /// The one place this partition is written down: the Home chip filter
   /// (`mobile_home_screen.dart`) and `TvDiscoveryLandingProvider`'s rail

@@ -4,7 +4,7 @@
 5 september 2026 genomen en staan in sectie C en E. Geen productiecode gewijzigd.
 **Datum:** 5 september 2026
 **Branch:** `claude/ios-redesign-progress-5j7yao` op `22a7674`
-**Authority:** DEC-090 (bevroren northstar), DEC-091, DEC-092, de beelden `01-series-landing.png`,
+**Authority:** DEC-090 (bevroren northstar), DEC-102, DEC-103, de beelden `01-series-landing.png`,
 `02-films-landing.png`, `05-zoeken.png`, `home-comp.png` en `home-comp-gefilterd.png` in
 `docs/assets/ios-unified/northstar/`, en sectie E van
 [docs/ios-unified-2026-fase1-plan.md](ios-unified-2026-fase1-plan.md).
@@ -21,7 +21,7 @@ Mijn Pleya. Het is een navigatiefase met twee nieuwe schermen, geen tweede visue
 |---|---|
 | Branch, HEAD | `claude/ios-redesign-progress-5j7yao`, `22a7674` |
 | Working tree | schoon |
-| Fase 1 | gesloten, DEC-091 en DEC-092 op `accepted` |
+| Fase 1 | gesloten, DEC-102 en DEC-103 op `accepted` |
 | Northstar-freeze | intact, `SHA256SUMS` dekt alle 26 beelden |
 | `scripts/ci_checks.sh` | **rood** op 10 unused-code- en 7 unused-files-meldingen uit F0 |
 | Flutter-SDK | niet aanwezig in de agentomgeving; 3.44.0 staat gepind in `.fvmrc` |

@@ -4,7 +4,7 @@ import 'package:pleya/screens/main_screen.dart';
 
 /// The tabset iOS Unified 2026 fase 2 gives the iPhone, and the promise that
 /// comes with it: no destination lost a slot without gaining an entry point
-/// somewhere else ([DEC-094], `01-series-landing.png`, `05-zoeken.png`).
+/// somewhere else ([DEC-104], `01-series-landing.png`, `05-zoeken.png`).
 ///
 /// Built from the real `getVisibleTabs` and the real
 /// `mainScreenBottomNavigationTabs` rather than a fixture, so a tabset change

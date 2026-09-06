@@ -4,7 +4,7 @@
 /// `DiscoverScreen._buildContent` picks this on `PlatformDetector.isPhone`;
 /// desktop, iPad and TV keep their existing trees untouched. The three
 /// headeractions (Nu aan het kijken, Samen kijken, Afstandsbediening) stay in
-/// the header until fase 6 migrates the root navigation (DEC-091) — that is
+/// the header until fase 6 migrates the root navigation (DEC-102) — that is
 /// why this header is fuller than the Home comp, a known, approved fase-1
 /// deviation, not an oversight.
 library;
@@ -51,7 +51,7 @@ String? homePlayCurrentSourceKey({required String initialFocusSourceKey}) => nul
 class MobileHomeScreen extends StatefulWidget {
   /// Opens Zoeken. Comes from `MainScreen` through [DiscoverScreen], because
   /// this screen is mounted deep inside the Home tab and tab selection belongs
-  /// to the shell (fase 2, [DEC-094]).
+  /// to the shell (fase 2, [DEC-104]).
   final VoidCallback? onSearchTap;
 
   const MobileHomeScreen({super.key, this.onSearchTap});
@@ -155,7 +155,7 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
     // in the bar (`home-comp-gefilterd.png`), while the tab has a title line
     // with `Alle series`, no chip bar, and lights its own slot
     // (`01-series-landing.png`). Reading the landing rails here would make one
-    // of the two a second door to the other ([DEC-094]).
+    // of the two a second door to the other ([DEC-104]).
     //
     // Filtering is per row, on `UnifiedMediaHub.kind`, which is the rule
     // `TvDiscoveryLandingProvider` already applies when it splits the same
@@ -188,7 +188,7 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
         // `Voor jou` names what a filtered Home is: the same recommendation
         // feed, narrowed to one kind. Only with a chip active, because
         // unfiltered Home carries the hero and the wordmark instead and
-        // needs no second title (`home-comp-gefilterd.png`, [DEC-094]).
+        // needs no second title (`home-comp-gefilterd.png`, [DEC-104]).
         if (_chip != MobileHomeChip.home)
           SliverToBoxAdapter(
             child: Padding(

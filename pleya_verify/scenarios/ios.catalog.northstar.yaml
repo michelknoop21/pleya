@@ -6,7 +6,7 @@ target: ios-sim
 # `03-alle-films.png` and `04-filters-sheet.png`. Reached the same way a
 # viewer reaches it, a tap on the landing's "Alle films ›" action, rather
 # than a coordinate on the bar: `screen.catalog_movies` is a push, not a tab,
-# so `open` cannot reach it (see DEC-101).
+# so `open` cannot reach it (see DEC-105).
 setup:
   - reset_app
   - seed: catalog.mixed.v1
