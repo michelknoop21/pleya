@@ -310,6 +310,68 @@ void main() {
     expect(multiServerProvider.expectedServerIds.toSet(), {'srv-1', 'jf-machine'});
   });
 
+  // SRC1: a joined/borrowed Plex connection binds through _bindLocalPlexConnection,
+  // which has the same optimistic-then-fallback shape as _bindPlexHome and the
+  // same gap: the fallback must carry retryRecentFailures, or a server whose
+  // cached token only just went stale never gets a real try with the fresh one.
+  test(
+    'joined Plex connection: when the cached token fails for every server, the fresh-fetch fallback is not blocked by the failure memory',
+    () async {
+      binder.dispose();
+      multiServerProvider.dispose();
+
+      final capturingManager = _CapturingMultiServerManager(failFirstNCalls: 1);
+      manager = capturingManager;
+      multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+      binder = ActiveProfileBinder(
+        activeProfile: activeProfile,
+        connections: connections,
+        profileConnections: profileConnections,
+        serverManager: manager,
+        multiServerProvider: multiServerProvider,
+        pinPrompt: (_, {String? errorMessage}) async => null,
+        shouldDeferInitialBind: (_) async => false,
+        plexAuth: PlexAuthService.forTesting(
+          http: MediaServerHttpClient(
+            client: MockClient(
+              (_) async =>
+                  http.Response(jsonEncode([_serverJson()]), 200, headers: {'content-type': 'application/json'}),
+            ),
+          ),
+        ),
+      );
+
+      final profile = await createActiveLocalProfile('local-borrowed');
+      final plexAccount = PlexAccountConnection(
+        id: 'plex.account',
+        accountToken: 'account-token',
+        clientIdentifier: 'client-id',
+        accountLabel: 'Friend',
+        servers: [_server(accessToken: 'account-server-token')],
+        createdAt: DateTime(2026, 1, 1),
+      );
+      await connections.upsert(plexAccount);
+      await profileConnections.upsert(
+        ProfileConnection(
+          profileId: profile.id,
+          connectionId: plexAccount.id,
+          userToken: 'cached-token',
+          userIdentifier: 'home-user-uuid',
+          tokenAcquiredAt: DateTime(2026, 1, 1),
+        ),
+      );
+
+      await binder.rebindActive().timeout(const Duration(seconds: 2));
+
+      expect(activeProfile.lastBindingSucceeded, isTrue);
+      // Call 1: the optimistic pass, with the cached token, for nothing.
+      // Call 2: _bindLocalPlexConnection's own fallback, with the servers the
+      // live /resources fetch just returned.
+      expect(capturingManager.refreshCalls, 2);
+      expect(capturingManager.retryRecentFailuresCalls, [false, true]);
+    },
+  );
+
   group('Plex Home token cache policy', () {
     test('cold start uses cached token instead of forcing PIN revalidation', () {
       expect(shouldUsePlexHomeTokenCache(preVerified: false, hasBoundOnce: false), isTrue);
@@ -342,11 +404,12 @@ void main() {
     Future<({String profileId, _CapturingMultiServerManager manager})> preparePlexHomeBind({
       required bool protected,
       required http.Client httpClient,
+      int failFirstNCalls = 0,
     }) async {
       binder.dispose();
       multiServerProvider.dispose();
 
-      final capturingManager = _CapturingMultiServerManager();
+      final capturingManager = _CapturingMultiServerManager(failFirstNCalls: failFirstNCalls);
       manager = capturingManager;
       multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
       binder = ActiveProfileBinder(
@@ -486,6 +549,52 @@ void main() {
       expect(account?.servers.single.accessToken, 'server-token');
     });
 
+    // SRC1: the reconcile pass above is only ever scheduled once the
+    // optimistic pass has bound *something* (see _bindOptimisticallyFromCache's
+    // own early return on an empty result). When the cached token is stale
+    // for every server, the optimistic pass binds nothing at all, and the
+    // synchronous fallback right there in _bindPlexHome, not the background
+    // reconcile, is what has to retry with the live fetch's data.
+    test(
+      'when the cached token fails for every server, the same-pass fresh-fetch fallback is not blocked by the failure memory',
+      () async {
+        final prepared = await preparePlexHomeBind(
+          protected: false,
+          httpClient: MockClient(
+            (request) async =>
+                http.Response(jsonEncode([_serverJson()]), 200, headers: {'content-type': 'application/json'}),
+          ),
+          // The optimistic pass (call 1) fails for every server. The real
+          // manager would set _unreachableSince here.
+          failFirstNCalls: 1,
+        );
+
+        await binder.rebindActive().timeout(const Duration(seconds: 2));
+
+        expect(activeProfile.lastBindingSucceeded, isTrue);
+        expect(binder.debugLastBoundProfileId, prepared.profileId);
+        // Call 1: the optimistic pass, with the cached token, for nothing.
+        // Call 2: _bindPlexHome's own fallback, with the servers the live
+        // /resources fetch just returned.
+        expect(prepared.manager.refreshCalls, 2);
+        // The optimistic pass has nothing fresher than what it's already
+        // using, so it must not bypass the failure memory.
+        // The fallback carries data the optimistic pass never had. Without
+        // the bypass it is rejected on sight by the memory the optimistic
+        // pass's failure just set moments earlier, and the profile ends up
+        // with zero bound servers even though the live fetch just proved
+        // them reachable, which is the reported symptom, on the very first
+        // activation instead of a background reconcile.
+        expect(prepared.manager.retryRecentFailuresCalls, [false, true]);
+
+        // No reconcile is scheduled here (the optimistic pass bound nothing),
+        // so a third call would mean this test stopped exercising the
+        // fallback path it's named for.
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(prepared.manager.refreshCalls, 2);
+      },
+    );
+
     test('membership change in the background refresh triggers a full rebind', () async {
       final fetchGate = Completer<void>();
       final prepared = await preparePlexHomeBind(
@@ -579,6 +688,15 @@ JellyfinConnection _jellyfinConnection() {
 }
 
 class _CapturingMultiServerManager extends MultiServerManager {
+  _CapturingMultiServerManager({this.failFirstNCalls = 0});
+
+  /// SRC1: every server fails to connect on the first [failFirstNCalls]
+  /// calls, then succeeds on every call after. Simulates the real
+  /// `_unreachableSince` failure an optimistic pass leaves behind, so a test
+  /// can check whether the *next* call carries different-enough data to be
+  /// worth retrying instead of being rejected on sight.
+  final int failFirstNCalls;
+
   int refreshCalls = 0;
   PlexAccountConnection? lastConnection;
 
@@ -596,6 +714,7 @@ class _CapturingMultiServerManager extends MultiServerManager {
     refreshCalls++;
     lastConnection = connection;
     retryRecentFailuresCalls.add(retryRecentFailures);
+    if (refreshCalls <= failFirstNCalls) return const {};
     return connection.servers.map((server) => server.clientIdentifier).toSet();
   }
 }

@@ -386,7 +386,16 @@ class ActiveProfileBinder {
         if (servers.isNotEmpty) {
           appLogger.i('ActiveProfileBinder: using cached token for ${profile.displayName} (${servers.length} servers)');
           unawaited(_persistRefreshedServers(account, servers));
-          return _connectFromServers(account, cachedToken, servers, profile.displayName);
+          // retryRecentFailures: true (SRC1). Reached only when the optimistic
+          // pass above tried every cached server and failed all of them,
+          // which means _unreachableSince is set for each one from moments
+          // ago. [servers] is the live /resources answer that just landed:
+          // real per-server tokens and URIs the optimistic pass never had, on
+          // a server it may have failed for a reason that fresh data fixes
+          // (a stale or wrongly-scoped cached token). Without the bypass this
+          // connect is rejected on sight and the profile ends up with zero
+          // bound servers even though the servers just proved reachable.
+          return _connectFromServers(account, cachedToken, servers, profile.displayName, retryRecentFailures: true);
         }
         appLogger.w(
           'ActiveProfileBinder: cached token returned 0 servers for ${profile.displayName} — wiping and re-minting',
@@ -592,7 +601,20 @@ class ActiveProfileBinder {
     if (servers != null && servers.isNotEmpty) {
       unawaited(_persistRefreshedServers(conn, servers));
     }
-    final ids = await _connectFromServers(conn, userToken, servers ?? const <PlexServer>[], profile.displayName);
+    // retryRecentFailures: true (SRC1). Both paths that reach here carry data
+    // an earlier attempt in this same pass didn't have: either the cached
+    // token's optimistic pass above failed for every server (setting
+    // _unreachableSince moments ago) and [servers] is the live /resources
+    // answer with real per-server tokens, or there was no cached token at all
+    // and [userToken] was just minted via /switch, in which case nothing in
+    // this pass tried it yet regardless of what _unreachableSince remembers.
+    final ids = await _connectFromServers(
+      conn,
+      userToken,
+      servers ?? const <PlexServer>[],
+      profile.displayName,
+      retryRecentFailures: true,
+    );
     await profileConnections.markUsed(profile.id, conn.id);
     return ids;
   }
@@ -666,19 +688,25 @@ class ActiveProfileBinder {
     return _connectFromServers(account, userToken, servers, profileLabel);
   }
 
+  /// [retryRecentFailures]: see [MultiServerManager.refreshTokensForProfile].
+  /// Pass `true` only when [servers] is data an earlier attempt in this same
+  /// bind pass didn't have (SRC1): never for a first attempt, and never for
+  /// the [_connectFromCachedServers] last-resort fallback, which is reusing
+  /// data rather than correcting it.
   Future<_ProfileBindResult> _connectFromServers(
     PlexAccountConnection account,
     String userToken,
     List<PlexServer> servers,
-    String profileLabel,
-  ) async {
+    String profileLabel, {
+    bool retryRecentFailures = false,
+  }) async {
     if (servers.isEmpty) {
       appLogger.w('ActiveProfileBinder: no servers for $profileLabel on ${account.accountLabel}');
       return const _ProfileBindResult.empty();
     }
     final stopwatch = Stopwatch()..start();
     final updatedConn = account.copyWith(servers: servers);
-    final boundIds = await serverManager.refreshTokensForProfile(updatedConn);
+    final boundIds = await serverManager.refreshTokensForProfile(updatedConn, retryRecentFailures: retryRecentFailures);
     appLogger.i(
       'ActiveProfileBinder: bound ${boundIds.length}/${servers.length} Plex servers for $profileLabel',
       error: {'elapsedMs': stopwatch.elapsedMilliseconds},
