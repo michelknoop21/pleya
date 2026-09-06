@@ -2080,7 +2080,7 @@ class _MainScreenState extends State<MainScreen>
     if (_isTvShell) {
       if (_tvSectionForTab(tab) case final TvMyPleyaSection section) {
         _openTvMyPleyaSection(section);
-        return;
+        return true;
       }
       _tvNav.syncToTab(tab);
     }
