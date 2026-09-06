@@ -25,6 +25,8 @@ under `Notes`.
 - het infopaneel als enige spelermenu op TV, gebouwd naar mockup 33 (PLR2, PLR3, AUD1, AUD2, PNL2, STR1, STR2, PNL1)
 - ROW1, een eigen Home-rij uit een bewaard filter
 - ROW1, Home aanpassen vanaf Home zelf
+- eigen Home-rijen ook op desktop/mobiel
+- "Alle N"-tegel als laatste kaart van een eigen rij
 
 ### Fixed
 - drie reviewbevindingen op het geneste routecontract
@@ -47,6 +49,7 @@ under `Notes`.
 - elf gegenereerde modelbestanden terug op de generatorbreedte
 - zes Containers in een Padding worden een Container met margin (avoid-wrapping-in-padding)
 - de macOS+iOS-job kan groen: ad-hoc signing op de runner en de hero-scenario's bewijzen de DEC-097-fallback (VER-CI)
+- PREF1, export/import vraagt nu de PreferenceSyncPolicyRegistry
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
