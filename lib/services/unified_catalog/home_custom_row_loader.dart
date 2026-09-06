@@ -13,10 +13,23 @@
 /// one restarting whenever a server blinks.
 ///
 /// So this drives [UnifiedCatalogService] directly, with `groupsPerPage` set to
-/// what a row can show, and calls `loadMore` exactly once. It is the same merge
-/// engine, the same identity pipeline and the same neutral query the catalog
-/// uses — hoofdstuk 12's "geen tweede projectie-architectuur" holds — just
-/// asked one question instead of kept open.
+/// what a row can show. It is the same merge engine, the same identity pipeline
+/// and the same neutral query the catalog uses — hoofdstuk 12's "geen tweede
+/// projectie-architectuur" holds — just asked one question instead of kept
+/// open.
+///
+/// ## One question, but it does get finished
+///
+/// `loadMore` returns as soon as the fast libraries have answered and leaves a
+/// slow one running: for a grid that is exactly right, because the next
+/// `onLoadMore` merges it in. A row has no next call — it takes its answer and
+/// the service is thrown away — so returning there would abort the slow library
+/// mid-fetch and leave the row showing the first twenty of the libraries that
+/// happened to be quick, in a row that claims to be sorted. Nothing would ever
+/// correct it. So the round is repeated for as long as something is still
+/// answering and the row is not full (ROW1i). Every fetch is bounded by
+/// `MediaServerTimeouts.unifiedCatalogLibraryPage`, so this cannot outlive one
+/// page fetch per round.
 ///
 /// ## The count is the one from 10.7, not a total
 ///
@@ -45,6 +58,10 @@ class HomeCustomRowContent {
 
   /// A participating library did not answer. The row still shows what it has
   /// (hoofdstuk 21.4), and says its coverage is partial.
+  ///
+  /// Covers two things, not one: a library that failed, and a library that was
+  /// still fetching when the row stopped asking. The second does not appear in
+  /// `failedLibraryIds` — nothing failed — and used to pass for full coverage.
   final bool isPartial;
 
   const HomeCustomRowContent({this.groups = const [], this.isExact = false, this.isPartial = false});
@@ -71,15 +88,21 @@ class CatalogHomeCustomRowLoader implements HomeCustomRowLoader {
     required bool Function(ServerId serverId) isServerVisible,
     required Set<String> Function() hiddenLibraryKeys,
     required MediaServerClient? Function(ServerId serverId) clientFor,
+    Duration grace = UnifiedCatalogService.defaultProgressiveLoadingGrace,
   }) : _libraries = libraries,
        _isServerVisible = isServerVisible,
        _hiddenLibraryKeys = hiddenLibraryKeys,
-       _clientFor = clientFor;
+       _clientFor = clientFor,
+       _grace = grace;
 
   final List<MediaLibrary> Function() _libraries;
   final bool Function(ServerId serverId) _isServerVisible;
   final Set<String> Function() _hiddenLibraryKeys;
   final MediaServerClient? Function(ServerId serverId) _clientFor;
+
+  /// The round's own wait, passed through so a test that stalls a library on
+  /// purpose does not have to spend the real two seconds per case.
+  final Duration _grace;
 
   @override
   Future<HomeCustomRowContent> load(HomeCustomRow row, {required int limit}) async {
@@ -108,13 +131,21 @@ class CatalogHomeCustomRowLoader implements HomeCustomRowLoader {
       libraries: participating,
       clientFor: _clientFor,
       groupsPerPage: limit,
+      progressiveLoadingGrace: _grace,
     );
     try {
-      final snapshot = await service.loadMore();
+      var snapshot = await service.loadMore();
+      // There is no second call to merge a slow library into, so finish the
+      // fetches this round started rather than aborting them below. The loop
+      // ends on its own: each turn requires something to have actually been in
+      // flight, and a row that fills stops asking.
+      while (!snapshot.isComplete && snapshot.groups.length < limit && await service.awaitPendingFetches()) {
+        snapshot = await service.loadMore();
+      }
       return HomeCustomRowContent(
         groups: snapshot.groups,
         isExact: snapshot.isComplete,
-        isPartial: snapshot.failedLibraryIds.isNotEmpty,
+        isPartial: snapshot.failedLibraryIds.isNotEmpty || service.hasPendingFetches,
       );
     } finally {
       // One question asked and answered. A cursor still inside its
