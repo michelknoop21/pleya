@@ -3503,6 +3503,24 @@ extra rij hem breekt. De richting van de reparatie is de kap afleiden van de
 beschikbare title-safe hoogte in plaats van van 0,56, en het scrollen te laten
 staan als vangnet voor het pathologische geval.
 
+**Gerepareerd in `5e07551f`.** De kap is nu de beschikbare hoogte binnen de
+title-safe band, gemeten met een `LayoutBuilder` binnen de `SafeArea` in plaats
+van met een fractie van `MediaQuery.sizeOf`. De kaart dimensioneert zichzelf nog
+steeds op zijn inhoud, dus bij 1080 met deze rijen is er niets aan te zien: hij
+blijft 555 hoog. Wat verandert is de ruimte erboven, van vijftig pixels naar
+ruim vierhonderd, en die is er voor de rijen die de echte tvOS-metrics groter
+maken dan de testfonts.
+
+De negatieve controle bouwt het volledige stel van elf rijen op, inclusief de
+vier die de oude testopstelling niet maakte omdat de nepspeler geen mpv claimde
+en de staat geen shaderservice, sfeerverlichting, hoofdstukken of tweede versie
+had. **Bij 1080p was die test ook op de oude code groen**, precies zoals de
+meting hierboven voorspelt, dus daar is hij geen negatieve controle en steunt het
+bewijs op de foto. Rood was hij bij de twee kleinere hoogtes waar de kap wél
+bijt: op 900p verborg de rechterkolom 51 pixels, op 720p verborgen beide kolommen
+89 en 152. Die drie hoogtes staan nu alle drie in de test, zodat de eigenschap
+zelf vastligt en niet alleen de ene resolutie waarop hij toevallig al klopte.
+
 **PLR5, LEFT en RIGHT horen bij de waarde en niet bij de kolom.** Een waarderij
 verstelt op LEFT en RIGHT. `clampedSteps` geeft aan de uiteinden `null` terug,
 zodat de ring de kolom kan verlaten (dat is PNL2 en het staat in
@@ -3535,3 +3553,43 @@ niet over de speler. Voor de oorzaak is een log nodig uit de run waarin het
 misgaat, en dat is precies de run die de gebruiker niet kan verlaten om te
 uploaden. Volgende stap is daarom een build op het toestel met Xcode eraan, zodat
 de console meeleest terwijl het paneel klemt.
+
+**Wat de ronde van 6 september hieraan toevoegde.** De engine-fork is gelezen
+(`scripts/tvos_engine_source.sh`, v3.44.0+3) om de ene verklaring te toetsen die
+bij het logbeeld past: `sendSynthesizedKeyEventOfType:` houdt in
+`synthesizedPressedKeys` bij welke toetsen de engine ingedrukt denkt, en laat een
+Down vallen wanneer de toets er al in staat, terwijl hij een Up wél doorlaat en de
+toets er dan uit haalt. Blijft escape in die verzameling achter, dan zie je precies
+wat het log toont: een KeyUp in het Flutter-toetsenpad zonder KeyDown ervoor.
+
+Alleen: dat verklaart één verloren druk, geen vastloper. Diezelfde Up ruimt de
+toets op, dus de eerstvolgende druk komt weer aan. **De engine-verklaring
+voorspelt "Menu werkt bij de tweede druk", en Michel meldt dat Menu helemaal niet
+werkt.** Wie de devicerun doet moet dat als eerste toetsen: werkt Menu bij een
+tweede of derde druk, dan is dit het spoor; blijft hij dood, dan is de oorzaak
+ergens anders en is deze bookkeeping hooguit een bijverschijnsel. De passthrough
+is in de speler niet de verdachte: `shouldPassTvosMenuToSystem` eist
+`isSidebarFocused`, en dat is achter de speler nooit waar.
+
+De Dart-kant is verder afgetast dan de ene contracttest en blijft overeind. Met de
+focus op de pill sluit Escape het paneel; met `unfocus()` valt de focus terug op
+`TvInfoPanelScope` zelf en sluit Escape nog steeds, want de `FocusScope` van het
+paneel zit dan zelf in het toetsenpad. Er is dus geen focusstand gevonden waarin
+het paneel de toets misloopt.
+
+Eén tweede-orde bevinding staat hier apart, omdat hij een gok zou zijn als hij als
+oorzaak werd gepresenteerd. `_close()` in `tv_info_panel.dart` zet `_closing` op
+waar en roept `widget.onClose()` pas aan vanuit de voltooiing van een omgekeerde
+animatie van 260 ms. Voltooit die animatie ooit niet, dan blijft `_closing` staan
+en doet elke volgende Menu-druk niets, terwijl beide spelerlagen bewust opzij
+staan zolang het paneel er is (`key_events.dart:92` en `:206`). Eén verloren
+sluiting wordt daarmee een permanente. Dat is een robuustheidsgebrek, geen bewezen
+oorzaak, en het wordt niet gerepareerd voordat de devicerun heeft laten zien of de
+Down überhaupt aankomt.
+
+**Wat er niet bewezen is.** Er is geen reproductie: het paneel opent op Apple TV
+alleen via een veeg over het aanraakvlak, en de simulator heeft dat vlak niet. Er
+is geen log uit de run waarin het misgaat. De regel blijft daarom `HARDWARE ONLY`
+en gaat niet naar `FIXED` op een redenering. **Michel: plan een devicerun met Xcode
+eraan**, open het paneel met een veeg, druk Menu twee of drie keer, en laat de
+console meelezen; de meetregels staan in `docs/tvos-remote-press-pipeline.md`.
