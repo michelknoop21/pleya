@@ -89,7 +89,7 @@ List<GeometryAssertionResult> evaluateGeometryAssertions(
 
   for (final entry in args.entries) {
     if (!geometryPredicates.contains(entry.key)) continue;
-    final subject = _rectFor(subjectId, uiTree);
+    final subject = rectForNode(subjectId, uiTree);
 
     if (unaryGeometryPredicates.contains(entry.key)) {
       results.add(
@@ -111,7 +111,7 @@ List<GeometryAssertionResult> evaluateGeometryAssertions(
         predicate: entry.key,
         subjectId: subjectId,
         otherId: otherId,
-        verdict: _evaluateBinary(entry.key, subject, _rectFor(otherId, uiTree)),
+        verdict: _evaluateBinary(entry.key, subject, rectForNode(otherId, uiTree)),
       ),
     );
   }
@@ -203,7 +203,7 @@ GeoRect _viewportRect(Map<String, Object?> viewport) {
 /// there at all: the first means it is registered but unmounted (its
 /// `contextGetter` returned null), the second that the id never appeared —
 /// two different bugs that a single "not found" would merge.
-GeoRect _rectFor(String id, Map<String, Object?> uiTree) {
+GeoRect rectForNode(String id, Map<String, Object?> uiTree) {
   for (final key in ['declared', 'discovered']) {
     final nodes = uiTree[key];
     if (nodes is! List) continue;

@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-import 'media_card.dart';
+import 'skeletons.dart';
 
 /// Placeholder that mirrors the poster + title + subtitle layout of a real
 /// media card. Rendered in a sparse grid while items for that slot are in

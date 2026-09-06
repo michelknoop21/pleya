@@ -1848,7 +1848,8 @@
     "chooseAnotherSource": "Andere bron kiezen",
     "rowSemantics": "Bron ${index} van ${count}: ${description}",
     "preferredServer": "Voorkeursserver",
-    "setPreferredServer": "Altijd ${server} gebruiken"
+    "setPreferredServer": "Altijd ${server} gebruiken",
+    "playOnServer": "Afspelen op ${server}"
   },
   "unifiedCatalog": {
     "moviesTitle": "Films",

@@ -16,12 +16,15 @@ import '../media/media_server_client.dart';
 import '../profiles/active_profile_provider.dart';
 import '../providers/companion_remote_provider.dart';
 import '../providers/discover_provider.dart';
+import '../providers/tv_discovery_landing_provider.dart';
+import '../providers/tv_home_projection_provider.dart';
 import '../providers/hidden_libraries_provider.dart';
 import '../providers/home_custom_rows_provider.dart';
 import '../providers/home_layout_provider.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/playback_state_provider.dart';
+import '../providers/unified_catalogs.dart';
 import '../providers/seerr_provider.dart';
 import '../providers/tautulli_provider.dart';
 import '../providers/tv_discovery_landing_provider.dart';
@@ -266,7 +269,10 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               // merge. Neither one opens a connection before a screen calls
               // `ensureStarted()`. A plain Provider rather than a
               // ChangeNotifierProvider because the notifiers are the two
-              // catalogs inside, which screens listen to individually.
+              // catalogs inside, which screens listen to individually. Read by
+              // `MobileCatalogScreen` (iOS Unified 2026 fase 3,
+              // docs/ios-unified-2026-fase3-plan.md) as well as the TV
+              // catalogue screens.
               Provider<UnifiedCatalogs>(
                 create: (context) => UnifiedCatalogs(
                   multiServer: context.read<MultiServerProvider>(),
@@ -365,11 +371,15 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   );
                 },
               ),
-              // Fase 6 (hoofdstuk 10.2a, DEC-064): the Films/Series landing
+              // Platform-neutral Unified projections (fase 6, hoofdstuk 10.2a,
+              // DEC-064, on TV; F0 on iOS): the Films/Series landing
               // projection. Reads the same `DiscoverProvider` Home already
               // fetches through — never a second fetch of hubs/on-deck — and
               // is torn down with this same profile subtree, like
-              // `UnifiedCatalogs` above.
+              // `UnifiedCatalogs` below. Registered unconditionally, no
+              // platform guard: TV's `TvDiscoveryLandingProvider` and mobile's
+              // `MobileHomeScreen` (fase 1,
+              // docs/ios-unified-2026-fase1-plan.md) both consume it.
               ChangeNotifierProvider(
                 create: (context) => TvDiscoveryLandingProvider(
                   discover: context.read<DiscoverProvider>(),

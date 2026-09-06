@@ -7,6 +7,7 @@ import '../automation/automation_event_log.dart';
 import '../automation/automation_route_state.dart';
 import '../automation/automation_ids.dart';
 import '../automation/automation_navigation_hooks.dart';
+import '../automation/automation_node.dart';
 import '../automation/automation_screen.dart';
 import '../automation/pleya_verify.dart';
 import '../media/ids.dart';
@@ -43,6 +44,7 @@ import '../services/app_exit_service.dart';
 import '../services/tvos_system_navigation_service.dart';
 import '../services/update_service.dart';
 import '../utils/app_logger.dart';
+import '../utils/haptics.dart';
 import '../widgets/auth_error_banner.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/platform_detector.dart';
@@ -80,6 +82,7 @@ import '../utils/desktop_window_padding.dart';
 import '../widgets/side_navigation_rail.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/key_event_utils.dart';
+import 'home/mobile_landing_screen.dart';
 import 'discover_screen.dart';
 import 'libraries/library_quick_picker_sheet.dart';
 import 'libraries/libraries_screen.dart';
@@ -130,18 +133,43 @@ bool shouldRenderMainScreenOffline({
   return providerOffline || (startupOfflineUntilConnected && !hasVisibleConnectedServers);
 }
 
-/// Destinations that are hidden from the mobile bottom bar because My Pleya
-/// holds them instead.
+/// Destinations with no bar slot of their own, and where that slot went.
 ///
-/// Downloads is the exception offline: with Home, Libraries, Live TV, Search
-/// and Requests all gone there is room for it, and it is what the user came
-/// for.
-const _mobileTabsInsideMyPleya = {
-  NavigationTabId.watchlist,
-  NavigationTabId.downloads,
-  NavigationTabId.requests,
-  NavigationTabId.settings,
+/// `phoneOnly: false` — every mobile shell drops it in favour of Mijn Pleya,
+/// still built by [_MainScreenState._buildScreens] and still reachable there.
+/// Downloads is the exception offline: with Home, Series, Films, Bibliotheken,
+/// Live TV, Zoeken and Aanvragen all gone there is room for it, and it is what
+/// the user came for.
+///
+/// `phoneOnly: true` — only the **phone's** bar drops it, to make room for
+/// Series and Films; the iPad keeps its own slot (DEC-092: fase 2 is an
+/// iPhone phase, and dropping these on the iPad too would cost it two slots
+/// and hand it nothing back):
+/// - Bibliotheken: a row in Mijn Pleya, together with the library quick picker
+///   that used to hang off this slot's long-press (DEC-094).
+/// - Zoeken: the search icon in the mobile page header. It stays a tab, so
+///   there is exactly one `SearchScreen` in the tree; `mainScreenSelectedBarTab`
+///   decides which slot lights up while it is on screen.
+const _tabsWithoutBarSlot = <NavigationTabId, ({bool phoneOnly})>{
+  NavigationTabId.watchlist: (phoneOnly: false),
+  NavigationTabId.downloads: (phoneOnly: false),
+  NavigationTabId.requests: (phoneOnly: false),
+  NavigationTabId.settings: (phoneOnly: false),
+  NavigationTabId.libraries: (phoneOnly: true),
+  NavigationTabId.search: (phoneOnly: true),
 };
+
+/// The bottom bar's own order on a phone: Home · Series · Films · Live TV ·
+/// Mijn Pleya, as `01-series-landing.png` and `05-zoeken.png` show it.
+///
+/// [allNavigationTabs] puts Films before Series because that is the order the
+/// Unified TV mockups use, and that list is under a TV authority. Reordering it
+/// there would move the TV rail; reordering here moves only the phone's bar.
+///
+/// Safe because the bar never works on index: `onDestinationSelected` calls
+/// `_selectTab(tabs[i].id)` and `selectedIndex` comes from an `indexWhere` on
+/// the tab id, so the bar's order is free to differ from the screens list.
+const _phoneBarOrder = [NavigationTabId.discover, NavigationTabId.series, NavigationTabId.movies];
 
 @visibleForTesting
 List<NavigationTab> mainScreenBottomNavigationTabs({
@@ -149,13 +177,32 @@ List<NavigationTab> mainScreenBottomNavigationTabs({
   required bool isMobile,
   required bool isOffline,
   required NavigationTabId currentTab,
+  bool isPhone = false,
 }) {
   if (!isMobile) return visibleTabs;
-  return visibleTabs.where((tab) {
-    if (!_mobileTabsInsideMyPleya.contains(tab.id)) return true;
+  final slots = visibleTabs.where((tab) {
+    final rule = _tabsWithoutBarSlot[tab.id];
+    if (rule == null) return true;
+    if (rule.phoneOnly) return !isPhone;
     return isOffline && tab.id == NavigationTabId.downloads;
   }).toList();
+  if (!isPhone) return slots;
+  // Leading slots first in the order above, then everything else in the order
+  // [allNavigationTabs] gave it. Written as two passes rather than a sort so
+  // the tail's relative order is preserved by construction: a comparator that
+  // calls every unranked tab equal only keeps them in place if the sort is
+  // stable, and `List.sort` is not.
+  return [
+    for (final id in _phoneBarOrder) ...slots.where((tab) => tab.id == id),
+    ...slots.where((tab) => !_phoneBarOrder.contains(tab.id)),
+  ];
 }
+
+/// [tab]'s own bar slot when it still has one, and [whenAbsent] when it does
+/// not. The phone's bar has no Bibliotheken and no Zoeken since fase 2; the
+/// iPad's still has both.
+NavigationTabId _ownSlotOr(NavigationTabId tab, List<NavigationTabId> barTabs, NavigationTabId whenAbsent) =>
+    barTabs.contains(tab) ? tab : whenAbsent;
 
 /// Which bottom-bar destination should light up for [currentTab].
 ///
@@ -171,11 +218,29 @@ List<NavigationTab> mainScreenBottomNavigationTabs({
 /// `_normalizeTabForMode` has moved the selection. In those cases the first
 /// bar destination is the honest fallback, and it is the same thing the bar
 /// would have shown anyway, only now deliberately.
+/// The mobile bottom bar's own selected-slot colour: the active label turns
+/// [kAccent], matching the active glyph `_TabIcon` already draws. iOS Unified
+/// 2026 fase 1, `docs/ios-unified-2026-fase1-plan.md` stap 9.
+///
+/// Applied at the bar rather than in `monoTheme` on purpose: the theme's
+/// `navigationBarTheme` is inherited by every `NavigationBar` in the app, and
+/// this red is a decision about this one bar.
+NavigationBarThemeData mobileTabBarTheme(NavigationBarThemeData base) {
+  final baseLabel = base.labelTextStyle;
+  return base.copyWith(
+    labelTextStyle: WidgetStateProperty.resolveWith((states) {
+      final style = baseLabel?.resolve(states) ?? const TextStyle();
+      return states.contains(WidgetState.selected) ? style.copyWith(color: kAccent) : style;
+    }),
+  );
+}
+
 @visibleForTesting
 NavigationTabId mainScreenSelectedBarTab({
   required NavigationTabId currentTab,
   required bool isOffline,
   required List<NavigationTabId> barTabs,
+  NavigationTabId? searchOrigin,
 }) {
   final preferred = switch (currentTab) {
     // Films and Series are TV-only and never appear in a bottom bar, so they
@@ -185,12 +250,33 @@ NavigationTabId mainScreenSelectedBarTab({
     NavigationTabId.discover ||
     NavigationTabId.movies ||
     NavigationTabId.series ||
-    NavigationTabId.libraries ||
-    NavigationTabId.liveTv ||
-    NavigationTabId.search => isOffline ? NavigationTabId.downloads : currentTab,
+    NavigationTabId.liveTv => isOffline ? NavigationTabId.downloads : currentTab,
     // Offline the bar is Downloads plus My Pleya, so Downloads points at
     // itself; online it lives behind My Pleya.
     NavigationTabId.downloads => isOffline ? NavigationTabId.downloads : NavigationTabId.myPleya,
+    // Bibliotheken and Zoeken are the two fase-2 movers, and both ask the bar
+    // rather than assume: on the phone they have no slot and light the surface
+    // that now holds their entry point, on the iPad they still have their own
+    // and light that.
+    //
+    // Named here rather than left to the `barTabs.first` fallback at the bottom
+    // of this function. That fallback lights Home, which is exactly the bug
+    // this projection exists to prevent, one destination further along.
+    //
+    // Bibliotheken became a row in Mijn Pleya, so Mijn Pleya lights up.
+    NavigationTabId.libraries =>
+      isOffline ? NavigationTabId.downloads : _ownSlotOr(NavigationTabId.libraries, barTabs, NavigationTabId.myPleya),
+    // Zoeken is entered from the search icon on whichever tab the user was
+    // already on, so the bar keeps lighting that tab rather than always
+    // reverting to Home — `05-zoeken.png` only proves the Home case, since
+    // that is the surface it was shot from. `searchOrigin` is `null` only
+    // when the app never recorded a switch into Zoeken (a cold `search`
+    // startup tab, restored session state); `discover` is the same fallback
+    // the Home case already produces.
+    NavigationTabId.search =>
+      isOffline
+          ? NavigationTabId.downloads
+          : _ownSlotOr(NavigationTabId.search, barTabs, searchOrigin ?? NavigationTabId.discover),
     NavigationTabId.watchlist ||
     NavigationTabId.requests ||
     NavigationTabId.settings ||
@@ -403,6 +489,11 @@ class _MainScreenState extends State<MainScreen>
   /// available (see [_handleLiveTvChanged]); cleared on any explicit selection.
   NavigationTabId? _pendingStartupTab;
 
+  /// The tab that was active right before switching into Zoeken, so the bar
+  /// can return to it rather than always assuming Home (`mainScreenSelectedBarTab`).
+  /// Stale once Zoeken is no longer current, but never read in that state.
+  NavigationTabId? _searchOpenedFromTab;
+
   /// Whether we auto-switched to Downloads because the previous tab was unavailable offline
   bool _autoSwitchedToDownloads = false;
 
@@ -428,9 +519,12 @@ class _MainScreenState extends State<MainScreen>
 
   late List<Widget> _screens;
   final GlobalKey<State<DiscoverScreen>> _discoverKey = GlobalKey();
-  // Plain keys: both are stateless wrappers over the shared catalog screen, so
-  // there is no state to reach into — the key only keeps each page's element
-  // identity stable across a tab switch.
+  // Plain keys: `TvMoviesLandingScreen`/`TvSeriesLandingScreen` and the two
+  // fase-2 `MobileLandingScreen` landings are all stateless wrappers over the
+  // shared catalog screen, so there is no state to reach into — the key only
+  // keeps each page's element identity stable across a tab switch, and lets
+  // `_screenKeyFor` answer for every destination instead of returning null for
+  // two of them, which is what silently skipped onTabShown/onTabHidden.
   final GlobalKey _moviesKey = GlobalKey();
   final GlobalKey _seriesKey = GlobalKey();
   final GlobalKey<State<LibrariesScreen>> _librariesKey = GlobalKey();
@@ -1094,6 +1188,31 @@ class _MainScreenState extends State<MainScreen>
         scopedRouteObserver.subscribe(this, route);
       }
     }
+
+    // My Pleya only exists on the mobile shell, and the screens list has to
+    // agree with the tab list about that. Rebuild the screens when the answer
+    // actually changes (a fold, a window resize) rather than on every build.
+    //
+    // The same holds for Films and Series, which only the iPhone gets: a fold
+    // or a resize that turns a phone into a tablet has to drop two tabs and two
+    // screens together, so both answers are read here and both feed the same
+    // rebuild.
+    //
+    // Resolved here rather than in build() + addPostFrameCallback: that left a
+    // one-frame window where _currentIndex (already reading the new
+    // isMobile/isPhone through _getVisibleTabs) and _screens (still built for
+    // the old ones) disagreed, so IndexedStack could show the wrong screen for
+    // a frame right after a resize. didChangeDependencies always runs before
+    // the build it precedes, so a synchronous field mutation here — no
+    // setState needed — lands before that build ever reads either value.
+    final isMobile = PlatformDetector.isMobile(context);
+    final isPhone = PlatformDetector.isPhone(context);
+    if (isMobile != _isMobile || isPhone != _isPhone) {
+      _isMobile = isMobile;
+      _isPhone = isPhone;
+      _screens = _buildScreens(_isOffline);
+      _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
+    }
   }
 
   void _setupCompanionRemote() {
@@ -1130,6 +1249,23 @@ class _MainScreenState extends State<MainScreen>
     receiver.onHome = () => _selectTab(NavigationTabId.discover);
     receiver.onSearchAction = _openSearchWithQuery;
   }
+
+  /// The single entry point to Zoeken from a surface that has no tab slot for
+  /// it: the search icon in the mobile page header, on Home and on both
+  /// landings (fase 2, [DEC-094]).
+  ///
+  /// It is a tab selection, not a route push and not an overlay layer above the
+  /// `IndexedStack`. A push on the profile navigator would cover the tab bar,
+  /// and `05-zoeken.png` shows the bar standing with Home lit. A layer would
+  /// mount a second `SearchScreen` beside the one `_buildScreens` already
+  /// builds, so every `search.*` automation id would name two nodes at once,
+  /// which is the collision `AutomationIds.myPleyaSectionTile` documents. It
+  /// would also need its own back handling, while `_handleMainBack` already
+  /// returns to the first visible tab.
+  ///
+  /// `mainScreenSelectedBarTab` keeps Home lit while Zoeken is on screen, and
+  /// `_selectTab` focuses the search field itself.
+  void _openSearch() => _openSearchWithQuery(null);
 
   /// Open the search tab and, when a finished query came with it (companion
   /// remote, Assistant voice search), run it straight away.
@@ -1266,6 +1402,15 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
+  /// On the phone, Home (inside [DiscoverScreen]) and both fase-2 landings
+  /// all watch the same `DiscoverProvider`, and `IndexedStack` keeps every
+  /// tab's screen mounted, offstage ones included. One `DiscoverProvider.load()`
+  /// therefore rebuilds and resorts all three at once, even though only one
+  /// is visible. Accepted rather than fixed: `TickerMode(enabled: false)`
+  /// already stops the offstage two from animating, so the extra cost is a
+  /// layout pass with nothing on screen to show for it, and splitting three
+  /// screens onto separate provider instances is a bigger architectural
+  /// change than this review round's scope covers.
   List<Widget> _buildScreens(bool offline) {
     return [
       for (final tab in _getVisibleTabs(offline))
@@ -1273,25 +1418,46 @@ class _MainScreenState extends State<MainScreen>
           // `onManageServers` is hoofdstuk 14.7's escape from a source
           // picker with nothing reachable, and only this shell can change
           // tab — same reasoning as the discovery landings below, extended
-          // to the Home hero's fase-6 activation wiring.
+          // to the Home hero's fase-6 activation wiring. `onOpenSearch`
+          // opens Zoeken from the iPhone Home header (iOS Unified 2026
+          // fase 2, DEC-094); both callbacks coexist since Home renders on
+          // every form factor.
           NavigationTabId.discover => DiscoverScreen(
             key: _discoverKey,
             onManageServers: () => _selectTab(NavigationTabId.settings),
+            onOpenSearch: _openSearch,
           ),
           // Fase 6 of docs/tvos-unified-experience.md (hoofdstuk 10.2a,
           // DEC-064): the discovery landing, one level above the fase-5
           // complete catalog those screens still are behind "Alles
-          // bekijken".
-          NavigationTabId.movies => TvMoviesLandingScreen(
+          // bekijken". TV only; the phone gets the fase-2 landings below
+          // (the `isPhone` gate in `getVisibleTabs`).
+          NavigationTabId.movies when !_isPhone => TvMoviesLandingScreen(
             landingKey: _moviesKey,
             onManageServers: () => _selectTab(NavigationTabId.settings),
             onOpenAll: () => _openTvCompleteCatalog(TvDestinationId.movies),
           ),
-          NavigationTabId.series => TvSeriesLandingScreen(
+          NavigationTabId.series when !_isPhone => TvSeriesLandingScreen(
             landingKey: _seriesKey,
             onManageServers: () => _selectTab(NavigationTabId.settings),
             onOpenAll: () => _openTvCompleteCatalog(TvDestinationId.series),
           ),
+          // The phone gets the fase-2 landings; TV renders Films and Series
+          // above and everything else never sees these two tabs at all (the
+          // `isPhone` gate in `getVisibleTabs`), so the trailing empty branch
+          // stays only for the form factors that can hold the tab without a
+          // screen.
+          NavigationTabId.series when _isPhone => MobileLandingScreen(
+            key: _seriesKey,
+            kind: MobileLandingKind.series,
+            onSearchTap: _openSearch,
+          ),
+          NavigationTabId.movies when _isPhone => MobileLandingScreen(
+            key: _moviesKey,
+            kind: MobileLandingKind.movies,
+            onSearchTap: _openSearch,
+          ),
+          NavigationTabId.movies || NavigationTabId.series => const SizedBox.shrink(),
           NavigationTabId.libraries => LibrariesScreen(
             key: _librariesKey,
             onLibraryOrderChanged: _onLibraryOrderChanged,
@@ -1318,7 +1484,11 @@ class _MainScreenState extends State<MainScreen>
                     onSwitchProfile: () => unawaited(_openProfilesFromShell()),
                     onSignOut: () => unawaited(AccountUiActions.logout(context)),
                   )
-                : MyPleyaScreen(key: _myPleyaKey, onOpenTab: _selectTab),
+                : MyPleyaScreen(
+                    key: _myPleyaKey,
+                    onOpenTab: _selectTab,
+                    onOpenLibraryPicker: _isPhone ? _showLibraryQuickPicker : null,
+                  ),
         },
     ];
   }
@@ -1337,6 +1507,7 @@ class _MainScreenState extends State<MainScreen>
     hasSeerr: _hasSeerr,
     hasWatchlist: _hasWatchlist,
     isMobile: _isMobile,
+    isPhone: _isPhone,
     preferredStartup: SettingsService.instanceOrNull?.read(SettingsService.startupSection),
   );
 
@@ -1894,9 +2065,13 @@ class _MainScreenState extends State<MainScreen>
     }
   }
 
-  void _selectTab(NavigationTabId tab) {
+  /// `false` when [tab] is not visible in the current mode: the tab is
+  /// unchanged, and the caller (`AutomationNavigationHooks`, ultimately
+  /// `/v1/open`) can report that instead of polling out a full timeout
+  /// waiting for a screen that was never going to mount.
+  bool _selectTab(NavigationTabId tab) {
     // Guard: ignore if tab isn't available in current mode
-    if (!_getVisibleTabs(_isOffline).any((t) => t.id == tab)) return;
+    if (!_getVisibleTabs(_isOffline).any((t) => t.id == tab)) return false;
 
     // Fase 7, hoofdstuk 18.2: on TV these four live inside Mijn Pleya rather
     // than beside Home. Every existing caller — the companion remote, a
@@ -1911,6 +2086,9 @@ class _MainScreenState extends State<MainScreen>
     }
 
     final previousTab = _currentTab;
+    if (tab == NavigationTabId.search && previousTab != NavigationTabId.search) {
+      _searchOpenedFromTab = previousTab;
+    }
     setState(() {
       _currentTab = tab;
       // An explicit selection cancels any deferred startup-section switch.
@@ -1977,6 +2155,7 @@ class _MainScreenState extends State<MainScreen>
         }
       });
     }
+    return true;
   }
 
   /// Selects Mijn Pleya and opens [section] inside it.
@@ -2224,6 +2403,12 @@ class _MainScreenState extends State<MainScreen>
   /// from the same value instead of each re-reading the layout.
   bool _isMobile = false;
 
+  /// Whether this shell is an iPhone-sized handheld, which is what gives Films
+  /// and Series a tab (fase 2, DEC-094). Kept beside [_isMobile] and resolved
+  /// in the same place for the same reason: `PlatformDetector.isPhone` needs a
+  /// `BuildContext`, and the tab list is built in places that have none.
+  bool _isPhone = false;
+
   /// Get navigation tabs filtered by offline mode
   List<NavigationTab> _getVisibleTabs(bool isOffline) {
     return NavigationTab.getVisibleTabs(
@@ -2232,13 +2417,15 @@ class _MainScreenState extends State<MainScreen>
       hasSeerr: _hasSeerr,
       hasWatchlist: _hasWatchlist,
       isMobile: _isMobile,
+      isPhone: _isPhone,
     );
   }
 
-  List<NavigationTab> _getBottomNavigationTabs(BuildContext context) {
+  List<NavigationTab> _getBottomNavigationTabs() {
     return mainScreenBottomNavigationTabs(
       visibleTabs: _getVisibleTabs(_isOffline),
-      isMobile: PlatformDetector.isMobile(context),
+      isMobile: _isMobile,
+      isPhone: _isPhone,
       isOffline: _isOffline,
       currentTab: _currentTab,
     );
@@ -2262,23 +2449,42 @@ class _MainScreenState extends State<MainScreen>
   }
 
   Widget _buildBottomNavigationBar(BuildContext context, {required bool hideLabels}) {
-    final tabs = _getBottomNavigationTabs(context);
+    final tabs = _getBottomNavigationTabs();
     final projected = mainScreenSelectedBarTab(
       currentTab: _currentTab,
       isOffline: _isOffline,
       barTabs: tabs.map((tab) => tab.id).toList(),
+      searchOrigin: _searchOpenedFromTab,
     );
     final selectedIndex = tabs.indexWhere((tab) => tab.id == projected);
-    final navigationBar = NavigationBar(
+
+    // The one place the bar's presentation is decided, the same shape as the
+    // Home boundary in `discover_screen.dart`: one `PlatformDetector` call
+    // here, an explicit value passed down, and no platform check inside the
+    // destinations. Fase 1 was an iPhone phase and this bar is shared with the
+    // iPad, so the iPad keeps the presentation it had before fase 1 (DEC-092).
+    final presentation = PlatformDetector.isPhone(context)
+        ? TabBarPresentation.unified2026
+        : TabBarPresentation.classic;
+    final isUnified = presentation == TabBarPresentation.unified2026;
+
+    final bar = NavigationBar(
       selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
       onDestinationSelected: (i) {
-        if (i >= 0 && i < tabs.length) _selectTab(tabs[i].id);
+        if (i < 0 || i >= tabs.length) return;
+        // Part of the fase-1 presentation, so it stays on the phone side: the
+        // iPad's bar behaves exactly as it did before fase 1.
+        if (isUnified && tabs[i].id != _currentTab) Haptics.light();
+        _selectTab(tabs[i].id);
       },
       labelBehavior: hideLabels
           ? NavigationDestinationLabelBehavior.alwaysHide
           : NavigationDestinationLabelBehavior.alwaysShow,
-      destinations: tabs.map((tab) => tab.toDestination()).toList(),
+      destinations: tabs.map((tab) => _withNavTabAutomation(tab, presentation)).toList(),
     );
+    final navigationBar = isUnified
+        ? NavigationBarTheme(data: mobileTabBarTheme(NavigationBarTheme.of(context)), child: bar)
+        : bar;
 
     // Netflix mobile: frosted near-black bar. Blur the content scrolling
     // behind it; the translucent color comes from navigationBarTheme.
@@ -2286,75 +2492,84 @@ class _MainScreenState extends State<MainScreen>
       child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18), child: bar),
     );
 
+    Widget withNavBarAutomation(Widget bar) => AutomationNode(id: AutomationIds.navBar, role: 'nav', child: bar);
+
     final librariesIndex = tabs.indexWhere((tab) => tab.id == NavigationTabId.libraries);
-    if (tabs.isEmpty) return frosted(navigationBar);
+    if (tabs.isEmpty) return frosted(withNavBarAutomation(navigationBar));
 
     return frosted(
-      LayoutBuilder(
-        builder: (context, constraints) {
-          if (!constraints.hasBoundedWidth) return navigationBar;
+      withNavBarAutomation(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (!constraints.hasBoundedWidth) return navigationBar;
 
-          final itemWidth = constraints.maxWidth / tabs.length;
-          final isRtl = Directionality.of(context) == TextDirection.rtl;
+            final itemWidth = constraints.maxWidth / tabs.length;
+            final isRtl = Directionality.of(context) == TextDirection.rtl;
 
-          double itemLeft(int index) => isRtl ? constraints.maxWidth - (itemWidth * (index + 1)) : itemWidth * index;
+            double itemLeft(int index) => isRtl ? constraints.maxWidth - (itemWidth * (index + 1)) : itemWidth * index;
 
-          return Stack(
-            children: [
-              navigationBar,
-              // Solid red indicator bar above the active icon.
-              if (selectedIndex >= 0)
-                Positioned(
-                  left: itemLeft(selectedIndex) + (itemWidth - 18) / 2,
-                  top: 0,
-                  width: 18,
-                  height: 3,
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(color: kAccent, borderRadius: BorderRadius.circular(2)),
+            return Stack(
+              children: [
+                navigationBar,
+                // The classic bar's solid red indicator above the active icon.
+                // The unified bar has none: there the active slot itself is
+                // red (fase 1 stap 9).
+                if (!isUnified && selectedIndex >= 0)
+                  Positioned(
+                    left: itemLeft(selectedIndex) + (itemWidth - 18) / 2,
+                    top: 0,
+                    width: 18,
+                    height: 3,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(color: kAccent, borderRadius: BorderRadius.circular(2)),
+                      ),
                     ),
                   ),
-                ),
-              if (librariesIndex >= 0)
-                Positioned(
-                  left: itemLeft(librariesIndex),
-                  top: 0,
-                  bottom: 0,
-                  width: itemWidth,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    excludeFromSemantics: true,
-                    onLongPress: () {
-                      Feedback.forLongPress(context);
-                      _showLibraryQuickPicker(context);
-                    },
-                    child: const SizedBox.expand(),
+                if (librariesIndex >= 0)
+                  Positioned(
+                    left: itemLeft(librariesIndex),
+                    top: 0,
+                    bottom: 0,
+                    width: itemWidth,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      excludeFromSemantics: true,
+                      onLongPress: () {
+                        Feedback.forLongPress(context);
+                        _showLibraryQuickPicker(context);
+                      },
+                      child: const SizedBox.expand(),
+                    ),
                   ),
-                ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
+    );
+  }
+
+  /// Wraps one tab's icon/selectedIcon in [AutomationNode] so `nav.<id>`
+  /// resolves on both the mobile bar and the desktop/TV rail
+  /// ([SideNavigationRail] mounts the same id) — iOS Unified 2026 fase 1,
+  /// `docs/ios-unified-2026-fase1-plan.md` stap 3.
+  NavigationDestination _withNavTabAutomation(NavigationTab tab, TabBarPresentation presentation) {
+    final destination = tab.toDestination(presentation: presentation);
+    final id = AutomationIds.navTab(tab.id);
+    Widget wrap(Widget icon) => AutomationNode(id: id, role: 'nav.item', child: icon);
+    return NavigationDestination(
+      icon: wrap(destination.icon),
+      selectedIcon: destination.selectedIcon == null ? null : wrap(destination.selectedIcon!),
+      label: destination.label,
+      tooltip: destination.tooltip,
+      enabled: destination.enabled,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
-    // My Pleya only exists on the mobile shell, and the screens list has to
-    // agree with the tab list about that. Rebuild the screens when the answer
-    // actually changes (a fold, a window resize) rather than on every build.
-    final isMobile = PlatformDetector.isMobile(context);
-    if (isMobile != _isMobile) {
-      _isMobile = isMobile;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        setState(() {
-          _screens = _buildScreens(_isOffline);
-          _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
-        });
-      });
-    }
     return AutomationScreen(
       id: AutomationIds.screenMain,
       readiness: () => const AutomationReadiness.ready(),

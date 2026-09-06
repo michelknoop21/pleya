@@ -54,6 +54,9 @@ ids:
   - id: nav.profile
     role: nav
     instanceable: false
+  - id: nav.bar
+    role: nav
+    instanceable: false
   - id: sidebar.rail
     role: sidebar
     instanceable: false
@@ -147,3 +150,105 @@ ids:
   - id: tvos.menu_passthrough
     role: service
     instanceable: false
+  - id: home.header
+    role: region
+    instanceable: false
+  - id: home.header.search
+    role: button
+    instanceable: false
+  - id: home.header.avatar
+    role: image
+    instanceable: false
+  - id: home.chips
+    role: filter
+    instanceable: false
+  - id: home.rail
+    role: rail
+    instanceable: true
+  - id: home.rail.item
+    role: grid.item
+    instanceable: true
+  - id: screen.series
+    role: screen
+    instanceable: false
+  - id: screen.movies
+    role: screen
+    instanceable: false
+  - id: landing.header
+    role: region
+    instanceable: true
+  - id: landing.header.search
+    role: button
+    instanceable: true
+  - id: landing.header.avatar
+    role: image
+    instanceable: true
+  - id: landing.title
+    role: region
+    instanceable: true
+  - id: landing.view_all
+    role: button
+    instanceable: true
+  - id: landing.rail
+    role: rail
+    instanceable: true
+  - id: landing.rail.item
+    role: grid.item
+    instanceable: true
+  - id: sheet.source_picker
+    role: sheet
+    instanceable: false
+  - id: sheet.source_picker.row
+    role: list.item
+    instanceable: true
+  - id: screen.catalog_movies
+    role: screen
+    instanceable: false
+  - id: screen.catalog_series
+    role: screen
+    instanceable: false
+  - id: catalog.header
+    role: region
+    instanceable: true
+  - id: catalog.header.search
+    role: button
+    instanceable: true
+  - id: catalog.chip.sources
+    role: button
+    instanceable: true
+  - id: catalog.chip.filters
+    role: button
+    instanceable: true
+  - id: catalog.chip.sort
+    role: button
+    instanceable: true
+  - id: catalog.count
+    role: region
+    instanceable: true
+  - id: catalog.grid
+    role: grid
+    instanceable: true
+  - id: catalog.grid.item
+    role: grid.item
+    instanceable: true
+  - id: sheet.catalog_filters
+    role: sheet
+    instanceable: false
+  - id: sheet.catalog_filters.category
+    role: list.item
+    instanceable: true
+  - id: sheet.catalog_filters.option
+    role: list.item
+    instanceable: true
+  - id: sheet.catalog_filters.clear
+    role: button
+    instanceable: false
+  - id: sheet.catalog_filters.apply
+    role: button
+    instanceable: false
+  - id: sheet.catalog_sort
+    role: sheet
+    instanceable: false
+  - id: sheet.catalog_sort.option
+    role: list.item
+    instanceable: true

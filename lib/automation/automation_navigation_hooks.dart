@@ -10,24 +10,24 @@ class AutomationNavigationHooks {
 
   static final AutomationNavigationHooks instance = AutomationNavigationHooks._();
 
-  void Function(NavigationTabId tab)? _selectTab;
+  bool Function(NavigationTabId tab)? _selectTab;
 
-  void registerSelectTab(void Function(NavigationTabId tab) selectTab) {
+  void registerSelectTab(bool Function(NavigationTabId tab) selectTab) {
     _selectTab = selectTab;
   }
 
-  void unregisterSelectTab(void Function(NavigationTabId tab) selectTab) {
+  void unregisterSelectTab(bool Function(NavigationTabId tab) selectTab) {
     if (identical(_selectTab, selectTab)) _selectTab = null;
   }
 
-  /// `false` when no `MainScreen` is mounted to drive — the caller (`/v1/open`)
-  /// turns that into a clear error response, never a crash on a null hook.
-  bool selectTab(NavigationTabId tab) {
-    final hook = _selectTab;
-    if (hook == null) return false;
-    hook(tab);
-    return true;
-  }
+  /// `null` when no `MainScreen` is mounted to drive — the caller (`/v1/open`)
+  /// turns that into a clear "not mounted" error, never a crash on a null
+  /// hook. Otherwise the hook's own answer: `true` when the tab was
+  /// selected, `false` when `MainScreen` rejected it because it is not
+  /// visible in the current mode — a different, equally clear error, rather
+  /// than the caller polling out a full timeout waiting for a screen that
+  /// was never going to mount.
+  bool? selectTab(NavigationTabId tab) => _selectTab?.call(tab);
 
   /// A hook `AuthScreen` registers under `kPleyaVerify`: the same
   /// push-`ProfileSessionScreen`-after-first-bind tail its own
