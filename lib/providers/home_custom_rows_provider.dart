@@ -113,6 +113,11 @@ class HomeCustomRowsProvider extends ChangeNotifier with DisposableChangeNotifie
 
   bool isLoading(String rowId) => _inFlight.contains(rowId);
 
+  /// The profile has rows of its own, whether or not any of them has content
+  /// yet. Home asks this to decide whether an otherwise empty page still needs
+  /// the way into the customise panel (ROW1j).
+  bool get hasSavedRows => _layout.customRows.isNotEmpty;
+
   /// Every saved row that has been asked at least once, as a feed row, empty
   /// ones included.
   ///

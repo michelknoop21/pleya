@@ -213,7 +213,15 @@ void main() {
     },
   }) => jsonEncode({'id': id, 'kind': kind, 'name': name, 'query': query});
 
-  Future<void> boot(WidgetTester tester, {List<String> savedRows = const [], List<MediaItem>? catalog}) async {
+  /// [barren] gives the profile a Home with nothing on it: no Verder kijken, no
+  /// recent films, no hubs. That is the state a removed or offline server
+  /// leaves behind, and the one ROW1j is about.
+  Future<void> boot(
+    WidgetTester tester, {
+    List<String> savedRows = const [],
+    List<MediaItem>? catalog,
+    bool barren = false,
+  }) async {
     // StorageService stores a string list as one JSON string, so the fixture
     // writes exactly what an earlier session would have left in that key.
     resetSharedPreferencesForTest(initialAsync: {if (savedRows.isNotEmpty) 'home_custom_rows': jsonEncode(savedRows)});
@@ -234,12 +242,15 @@ void main() {
     );
     manager.debugRegisterClientForTesting(client);
 
-    final aggregation = _FakeAggregation(manager)
-      ..onDeck = [_episode('e1', show: 'Severance')]
-      ..latestMovies = [_film('m1', title: 'Dune')]
-      ..hubs = [
-        _hub('movie.recentlyadded', 'Recently Added', [_film('m5', title: 'Casablanca', genre: 'Drama')]),
-      ];
+    final aggregation = _FakeAggregation(manager);
+    if (!barren) {
+      aggregation
+        ..onDeck = [_episode('e1', show: 'Severance')]
+        ..latestMovies = [_film('m1', title: 'Dune')]
+        ..hubs = [
+          _hub('movie.recentlyadded', 'Recently Added', [_film('m5', title: 'Casablanca', genre: 'Drama')]),
+        ];
+    }
     final multiServer = MultiServerProvider(manager, aggregation);
     hiddenLibraries = HiddenLibrariesProvider();
     libraries = LibrariesProvider()
@@ -396,6 +407,33 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(nodeLabelled(tester, 'tvHomeCustomizeFooter').hasPrimaryFocus, isTrue);
+  });
+
+  // ROW1j. The footer is the only way into the panel from Home, and it lived
+  // inside the branch that draws rows. A profile whose servers went away has a
+  // Home with nothing on it and, until this, no way at all to reach the rows it
+  // had saved: the context-menu entry (A1b) needs a card, and there is none.
+  testWidgets('an empty Home still offers the way into the panel', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()], barren: true, catalog: const []);
+
+    expect(find.text(t.discover.noContentAvailable), findsOneWidget);
+    expect(find.byKey(tvHomeCustomizeFooterKey), findsOneWidget);
+
+    // And it actually opens, which is the whole point of it being there.
+    nodeLabelled(tester, 'tvHomeCustomizeFooter').requestFocus();
+    await tester.pump();
+    SelectKeyUpSuppressor.clearSuppression();
+    await press(tester, LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(tvHomeCustomizePanelKey), findsOneWidget);
+  });
+
+  testWidgets('a Home with nothing saved keeps the bare empty state', (tester) async {
+    await boot(tester, barren: true, catalog: const []);
+
+    expect(find.text(t.discover.noContentAvailable), findsOneWidget);
+    expect(find.byKey(tvHomeCustomizeFooterKey), findsNothing);
   });
 
   testWidgets('the panel draws the fixed rows locked and every other row movable', (tester) async {
