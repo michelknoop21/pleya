@@ -673,6 +673,8 @@ class HostPlaybackCoordinator {
 
   void _armSafetyIfGated() {
     _cancelSafety();
+    // Vals alarm: beide kanten zijn peer-ids van hetzelfde type.
+    // ignore: avoid-collection-methods-with-unrelated-types
     if (_gatingPeers().difference({myPeerId}).isEmpty) return;
     _safetyTimer = Timer(const Duration(milliseconds: safetyTimeoutMs), () {
       if (_phase != PlaybackPhase.waitingForPeers) return;

@@ -693,15 +693,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
           await _navigateToRelated(
             context,
             mediaItem!.kind == MediaKind.season ? mediaItem.parentId : mediaItem.grandparentId,
-            (item) {
-              final target = mediaDetailNavigationTargetFor(mediaItem, metadataOverride: item);
-              return mediaDetailRoute(
-                metadata: target.metadata,
-                initialSeasonIndex: target.initialSeasonIndex,
-                initialSeasonId: target.initialSeasonId,
-                initialEpisodeId: target.initialEpisodeId,
-              );
-            },
+            (ctx, item) => navigateToMediaItemDetails(ctx, mediaItem, metadataOverride: item),
             t.messages.errorLoadingSeries,
           );
           break;
@@ -848,10 +840,17 @@ class MediaContextMenuState extends State<MediaContextMenu> {
   }
 
   /// Navigate to a related item (series or season)
+  ///
+  /// [open] rather than a `Route` builder since PB-1/SYS-1b: on TV a detail
+  /// screen is a nested route inside the shell and has no `Route` at all, so a
+  /// call site that builds one has already decided the wrong thing. Handing the
+  /// decision to `navigateToMediaItemDetails` keeps this menu on whichever
+  /// shape that one call site picks, and stops the target computation from
+  /// living in two places.
   Future<void> _navigateToRelated(
     BuildContext context,
     String? id,
-    Route<Object?> Function(MediaItem) routeBuilder,
+    Future<void> Function(BuildContext context, MediaItem metadata) open,
     String errorPrefix,
   ) async {
     if (id == null) return;
@@ -862,7 +861,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
     try {
       final metadata = await client.fetchItem(id);
       if (metadata != null && context.mounted) {
-        await Navigator.push(context, routeBuilder(metadata));
+        await open(context, metadata);
         _notifyRefresh(refreshItemId);
       }
     } catch (e) {
