@@ -99,6 +99,7 @@ under `Notes`.
 - de mobiele Home draagt discover.continue_watching en reserveert geen lege hero-band
 - de hoogtekap van het spelerpaneel volgt de title-safe band en niet meer een vaste fractie (PLR4)
 - de vastloop in mobile_catalog_screen_test was een zonekruising, geen omgeving
+- de chips op Alle films openen hun sheet weer, want het scherm draagt nu zijn eigen overlay-host (CAT9)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
