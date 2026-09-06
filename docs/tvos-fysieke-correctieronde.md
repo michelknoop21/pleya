@@ -160,9 +160,9 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | AUD2 | Audio- en ondertitelsynchronisatie in het paneel openen zonder gefocust element: `SyncOffsetControl._buildFull` koppelt `sliderFocusNode` niet (`sync_offset_control.dart:341`, alleen `_buildCompact` doet dat op `:249`), dus `_syncSliderNode.requestFocus()` in `tv_info_panel.dart:138` is een no-op. De stapknoppen kleuren met `surfaceContainerHighest`, in dit thema het oppervlak zelf (DEC-053). Gebouwd: `_buildFull` koppelt de node en kleurt met `surfaceElevated` (gedeelde eigenaar); het paneel gebruikt `TvSyncSubView` zonder slider, test "the sync sub-view opens on its value row" | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
 | PNL2 | Bedienbaarheid van het paneel: pills op een kale `Focus` zonder Select, waarderijen cyclen alleen vooruit op Select (snelheid zeven standen), hoofdstukken springt alleen naar de volgende, `t.common.ok` als aan-waarde van de statistiekrij (`tv_video_tab.dart:174`), lange uitlegzinnen als afgekapte trailing-waarde, geen `automationId` op paneel, pills of rijen, en nul widgettests op `TvInfoPanel`. STR1, STR2 en PNL1 sluiten hieronder mee. Gebouwd: pills op `FocusableWrapper`, LEFT/RIGHT via `onStepLeft/Right`, hoofdstukkenlijst, `t.common.on`, uitleg als subregel, ids `player.panel`, `player.panel.tab[…]`, `player.panel.row[…]`, `player.settings_button`, tien widgettests | FIXED, testrun groen, Verify + hardware open | `5cb5c33`, `de2e554`, `6d64bbd` |
 | PNL3 | Select op een pill die al actief is verplaatste de focus niet naar de rijen. `_focusContent` hangt aan `addPostFrameCallback`, en die vraagt zelf geen frame aan; op dat pad zet `_selectTab` niets dirty, dus er kwam geen frame en de ring bleef op de pill staan. Gevonden door de testronde, niet door de review. Gerepareerd met `_afterNextFrame`, dat de callback plant én `scheduleFrame()` aanroept, voor alle drie de focusverplaatsingen van het paneel | FIXED, testrun groen, hardware open | `6d64bbd` |
-| PLR4 | Het spelerpaneel is te hoog voor zijn eigen hoogtekap: de twee kolommen van het tabblad Video scrollen in plaats van te passen, waardoor Shaders, Ambient, Automatisch volgende afspelen en Prestatie-overlay onder de rand verdwijnen (Michel, 6 september, foto op hardware, build 264) | OPEN | n.v.t. |
-| PLR5 | LEFT en RIGHT op een waarderij stappen de waarde, dus de kolomwissel is alleen mogelijk als de waarde toevallig aan zijn eind staat: vanaf Beeldverhouding kom je niet bij de rechterkolom zonder de beeldverhouding te wijzigen. Michel vraagt om een rij die je eerst aanklikt voordat LEFT/RIGHT hem verstelt (6 september). Dit wijzigt het paneelcontract van DEC-101 ("Links en rechts stappen een waarde") en gaat dus als besluit | OPEN, besluit nodig | n.v.t. |
-| PLR6 | Menu sluit het paneel niet op hardware: het paneel houdt de afstandsbediening vast en de app moet geforceerd worden afgesloten (Michel, 6 september, build 264). De Dart-kant is aantoonbaar niet de oorzaak: `Menu closes the panel from a focused row (PLR6 contract)` in `test/widgets/tv_info_panel_test.dart` is groen, dus een Escape-KeyDown bij een gefocuste rij sluit het paneel. Verdachte is het native drukpad; het meegestuurde log `5pyur` dekt alleen de run *na* het geforceerd afsluiten en bewijst niets over de vastloper | OPEN, blokkerend | n.v.t. |
+| PLR4 | Het spelerpaneel is te hoog voor zijn eigen hoogtekap: de twee kolommen van het tabblad Video scrollen in plaats van te passen, waardoor Shaders, Ambient, Automatisch volgende afspelen en Prestatie-overlay onder de rand verdwijnen (Michel, 6 september, foto op hardware, build 264) | FIXED | `5e07551f` |
+| PLR5 | LEFT en RIGHT op een waarderij stappen de waarde, dus de kolomwissel is alleen mogelijk als de waarde toevallig aan zijn eind staat: vanaf Beeldverhouding kom je niet bij de rechterkolom zonder de beeldverhouding te wijzigen. Michel vraagt om een rij die je eerst aanklikt voordat LEFT/RIGHT hem verstelt (6 september). Dit wijzigt het paneelcontract van DEC-101 ("Links en rechts stappen een waarde") en gaat dus als besluit | FIXED | `08814bac` |
+| PLR6 | Menu sluit het paneel niet op hardware: het paneel houdt de afstandsbediening vast en de app moet geforceerd worden afgesloten (Michel, 6 september, build 264). De Dart-kant is aantoonbaar niet de oorzaak: `Menu closes the panel from a focused row (PLR6 contract)` in `test/widgets/tv_info_panel_test.dart` is groen, dus een Escape-KeyDown bij een gefocuste rij sluit het paneel. Verdachte is het native drukpad; het meegestuurde log `5pyur` dekt alleen de run *na* het geforceerd afsluiten en bewijst niets over de vastloper | HARDWARE ONLY, blokkerend | n.v.t. |
 
 ## Wat er per item bekend is
 
@@ -3535,6 +3535,27 @@ is een ander interactiemodel dan het goedgekeurde paneel van DEC-101, waarvan de
 voetregel letterlijk "Links en rechts stappen een waarde" belooft, en het raakt
 elke waarderij van het paneel plus de voetregeltekst. Het gaat daarom als
 DEC-voorstel en niet als stille correctie.
+
+**Goedgekeurd als [DEC-102](DECISIONS.md#dec-102) en gebouwd in `08814bac`.**
+Select klikt een waarderij aan en laat hem weer los, LEFT en RIGHT bereiken de
+rij alleen in die stand, en Menu pelt één laag per druk: eerst de rij, dan een
+open subweergave, dan het paneel. De pijlen naast de waarde staan er alleen als
+de rij aanstaat, want een stand die je niet ziet is de val van DEC-053.
+
+De negatieve controle gebruikt Zoom en niet Beeldverhouding, om een reden die
+het noteren waard is: het tabblad geeft de beeldverhoudingsrij alleen stappen
+wanneer `onSetBoxFitMode` er is, en de testopstelling zette alleen
+`onCycleBoxFitMode`, dus die rij stapte in de test helemaal niet. Zoom staat op
+100%, midden in `kTvPanelZoomPresets`, en is daarmee wél de rij uit de melding.
+Met de oude bediening stapte RIGHT hem naar 110% en bleef de ring staan; nu
+bereikt hij de andere kolom en verandert er niets.
+
+Wat hier tegen elkaar afweegt: dit maakt de weg naar buiten één druk langer op
+precies het oppervlak dat in PLR6 op hardware niet te verlaten was. De test
+`Select enters a value row, Menu leaves it and keeps the panel open` bewaakt
+daarom expliciet dat het paneel de eerste Menu overleeft en de tweede hem sluit.
+Op hardware is dat nog niet nagelopen; dat hoort bij dezelfde devicerun als
+PLR6.
 
 **PLR6, het paneel is niet te verlaten.** Michel kwam er niet uit zonder de app
 af te sluiten. De Dart-kant is niet de oorzaak, en dat is nu vastgelegd in plaats
