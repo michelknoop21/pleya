@@ -184,6 +184,10 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
   /// travels with its row instead of staying on the row that took its place.
   String? _pendingFocusKey;
 
+  /// Not a row key: `_key` always carries a layout id, so nothing can collide
+  /// with this.
+  static const String _newRowFocusKey = '#newRow';
+
   @override
   void dispose() {
     for (final node in _nodes.values) {
@@ -230,6 +234,25 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
     _nodeFor(widget.entries[target].layoutIds.first, wanted).requestFocus();
   }
 
+  /// Where the ring goes when the row under it is about to disappear (ROW1k).
+  ///
+  /// The row that slides up into this place, or the one above when there is
+  /// nothing below, or Nieuwe rij when the list runs out entirely. Clamped to a
+  /// column the target actually has, the same way [_step] is: only an own row
+  /// carries Verwijderen, and that is the button being pressed.
+  void _remove(int index, HomeCustomRow row) {
+    final entries = widget.entries;
+    final neighbour = index + 1 < entries.length ? entries[index + 1] : (index > 0 ? entries[index - 1] : null);
+    if (neighbour == null) {
+      _pendingFocusKey = _newRowFocusKey;
+    } else {
+      final columns = _columnsOf(neighbour);
+      final wanted = columns.contains(TvHomeRowColumn.remove) ? TvHomeRowColumn.remove : columns.last;
+      _pendingFocusKey = _key(neighbour.layoutIds.first, wanted);
+    }
+    widget.onRemove(row);
+  }
+
   void _move(int index, int delta, TvHomeRowColumn column) {
     // The row is about to change places, so remember the control rather than
     // the position: after the rebuild the ring belongs on the same button of
@@ -242,6 +265,10 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
     final key = _pendingFocusKey;
     if (key == null) return;
     _pendingFocusKey = null;
+    if (key == _newRowFocusKey) {
+      _newRow.requestFocus();
+      return;
+    }
     _nodes[key]?.requestFocus();
   }
 
@@ -358,7 +385,7 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
       onMoveUp: () => _move(index, -1, TvHomeRowColumn.up),
       onMoveDown: () => _move(index, 1, TvHomeRowColumn.down),
       onPrimary: custom == null ? () => widget.onToggleHidden(entry) : () => widget.onEdit(custom),
-      onRemove: custom == null ? null : () => widget.onRemove(custom),
+      onRemove: custom == null ? null : () => _remove(index, custom),
       onNavigateUp: (column) => _step(index, column, -1),
       onNavigateDown: (column) => _step(index, column, 1),
     );

@@ -591,6 +591,31 @@ void main() {
     expect(rowTitles(tester), [t.discover.continueWatching, 'Nieuwe sci-fi', 'Recently Added']);
   });
 
+  // ROW1k. `_move` remembers which control the ring belongs on after the list
+  // has been rebuilt. Removing had no such answer, so the ring stayed on a node
+  // belonging to a row that no longer exists and the remote went quiet.
+  testWidgets('removing a row hands the ring to the row that takes its place', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.remove);
+    await tester.pumpAndSettle();
+
+    // The row below inherits the ring, clamped to the column it actually has:
+    // only an own row carries Verwijderen.
+    expect(nodeLabelled(tester, 'TvHomeCustomize.:pleya:home:latest-movies#primary').hasPrimaryFocus, isTrue);
+  });
+
+  testWidgets('removing the last row left hands the ring to Nieuwe rij', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()], barren: true, catalog: const []);
+    await openPanel(tester);
+
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.remove);
+    await tester.pumpAndSettle();
+
+    expect(nodeLabelled(tester, 'TvHomeCustomize.newRow').hasPrimaryFocus, isTrue);
+  });
+
   testWidgets('removing an own row takes its stored layout entries with it', (tester) async {
     await boot(tester, savedRows: [savedRowJson()]);
     await layout.setOrder(['#custom:r1', ':pleya:home:latest-movies']);
