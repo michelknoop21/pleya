@@ -43,17 +43,27 @@ class AutomationIds {
   static const String libraryFilterFilters = 'library.filter.filters';
   static const String libraryFilterSort = 'library.filter.sort';
 
-  /// The Discover hero billboard as a whole.
   /// The tvOS Menu passthrough as `TvosSystemNavigationService` sees it: no
   /// widget, no bounds, only `state`. Published so a scenario can prove that
   /// no enable went to the engine while a remote key was down (NAV1, DEC-099);
   /// the engine's own half of that defect is out of the simulator's reach.
   static const String tvosMenuPassthrough = 'tvos.menu_passthrough';
 
+  /// The Discover hero billboard as a whole.
   static const String discoverHero = 'discover.hero';
 
   /// The hero's smart-play button.
   static const String discoverHeroPlay = 'discover.hero.play';
+
+  /// The Continue Watching section on the phone, tablet and desktop Home
+  /// (`DiscoverScreen`, not the TV feed). Present whenever the row has items.
+  ///
+  /// Its `state` publishes `hero_visible`, mirroring the screen's own
+  /// `_isHeroSectionVisible`: DEC-097 point 3 makes "no recently released
+  /// film" mean "no hero, Continue Watching first", and a scenario that wants
+  /// to prove that fallback needs a node that exists in the fallback state.
+  /// The hero node cannot carry it, because in that state it is not built.
+  static const String discoverContinueWatching = 'discover.continue_watching';
 
   /// One discovery rail's tile band, on a Films/Series landing or the TV Home
   /// feed. Instanceable: suffixed `[<railIndex>]`, top to bottom.
@@ -234,6 +244,7 @@ class AutomationIds {
     {'id': libraryFilterSort, 'role': 'filter', 'instanceable': false},
     {'id': discoverHero, 'role': 'hero', 'instanceable': false},
     {'id': discoverHeroPlay, 'role': 'button', 'instanceable': false},
+    {'id': discoverContinueWatching, 'role': 'rail', 'instanceable': false},
     {'id': discoverRail, 'role': 'rail', 'instanceable': true},
     {'id': discoverRailItem, 'role': 'grid.item', 'instanceable': true},
     {'id': discoverSafeArea, 'role': 'region', 'instanceable': false},

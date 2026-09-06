@@ -1,0 +1,24 @@
+name: discover.layout
+target: ios-sim
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  # This scenario proves the DEC-097 fallback, not the hero. The fixture is a
+  # Pleya fake server and the /v1 contract carries no release date, so the
+  # 90-day "recently released" window (DEC-097 point 2) leaves the hero pool
+  # empty on purpose; point 3 then says: no hero, Continue Watching first,
+  # nothing back-filled from older films. Until the contract carries a date,
+  # a hero here would be the bug, so it is asserted absent through the one
+  # node that exists in the fallback state.
+  - wait_until: {id: discover.continue_watching, timeout: 15000}
+  # IntroGate's cold-start splash overlay (~2.8s) paints on top of an
+  # already-ready DiscoverScreen — it has no automation id, so no
+  # wait_until can see it finish; settle past it before measuring.
+  - settle: 3500
+  - assert: {id: discover.continue_watching, state: {hero_visible: false}}
+  - assert: {id: discover.continue_watching, insideViewport: true}
+  - snapshot: discover-fallback

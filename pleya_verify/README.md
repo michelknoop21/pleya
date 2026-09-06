@@ -43,7 +43,7 @@ reimplemented scenario or driver logic:
 
 - **`portable`** (Linux): `list scenarios --json` plus `validate` on every scenario file, no driver
   dispatch.
-- **`macos-verify`** (macOS): `run` for `macos.smoke.boot` and `discover.hero.layout`.
+- **`macos-verify`** (macOS): `run` for `macos.smoke.boot` and `discover.layout`.
 - **`tvos-verify`** (macOS, `workflow_dispatch`/`schedule` only, not required): `run` for
   `tvos.smoke.boot`.
 

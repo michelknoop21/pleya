@@ -116,7 +116,7 @@ void _applyCatalogShowsV1(PleyaFakeServer server) {
 
 /// A mix of both library kinds — three movies, one show with one season and
 /// three episodes — plus non-empty `recently_added`/`continue_watching`
-/// hubs, for scenarios (`discover.hero.layout`) that need more than one
+/// hubs, for scenarios (`discover.layout`) that need more than one
 /// content shape on screen at once.
 void _applyCatalogMixedV1(PleyaFakeServer server) {
   const fixture = 'catalog.mixed.v1';
