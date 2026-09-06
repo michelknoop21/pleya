@@ -61,10 +61,17 @@ func (s *Store) SyncLibraries(ctx context.Context, specs []LibrarySpec) ([]Libra
 	for _, spec := range specs {
 		var lib Library
 		lib.Slug, lib.Title, lib.Kind = spec.Slug, spec.Title, spec.Kind
+		lib.Managed, lib.ScanOnStart = ManagedConfig, true
 
+		// managed is expliciet 'config' en niet de kolomdefault: dit is het pad
+		// dat de omgeving synct, en de default bestaat voor een rij die buiten dit
+		// pad om wordt ingevoegd. S2.5 moet deze ON CONFLICT DO UPDATE nog een
+		// guard geven zodat een via de API geadopteerde ('db') bibliotheek hier niet
+		// weer wordt overschreven; vandaag bestaat dat pad nog niet, dus die guard
+		// zou vooruitbouwen zonder een aanroeper.
 		err := tx.QueryRow(ctx, `
-			INSERT INTO libraries (id, slug, title, kind)
-			VALUES ($1, $2, $3, $4)
+			INSERT INTO libraries (id, slug, title, kind, managed)
+			VALUES ($1, $2, $3, $4, 'config')
 			ON CONFLICT (slug) DO UPDATE
 			SET title = EXCLUDED.title, kind = EXCLUDED.kind, updated_at = now()
 			RETURNING id`, id.New(), spec.Slug, spec.Title, spec.Kind).Scan(&lib.ID)
@@ -103,7 +110,7 @@ func (s *Store) SyncLibraries(ctx context.Context, specs []LibrarySpec) ([]Libra
 // afleveringen meetellen zou een getal opleveren dat nergens mee overeenkomt.
 func (s *Store) Libraries(ctx context.Context) ([]Library, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT l.id, l.slug, l.title, l.kind,
+		SELECT l.id, l.slug, l.title, l.kind, l.managed, l.scan_interval_seconds, l.scan_on_start,
 		       (SELECT count(*) FROM media_items i
 		         WHERE i.library_id = l.id AND i.kind IN ('movie', 'show'))
 		FROM libraries l
@@ -116,7 +123,8 @@ func (s *Store) Libraries(ctx context.Context) ([]Library, error) {
 	var out []Library
 	for rows.Next() {
 		var l Library
-		if err := rows.Scan(&l.ID, &l.Slug, &l.Title, &l.Kind, &l.ItemCount); err != nil {
+		if err := rows.Scan(&l.ID, &l.Slug, &l.Title, &l.Kind, &l.Managed,
+			&l.ScanIntervalSeconds, &l.ScanOnStart, &l.ItemCount); err != nil {
 			return nil, err
 		}
 		out = append(out, l)
@@ -128,8 +136,9 @@ func (s *Store) Libraries(ctx context.Context) ([]Library, error) {
 func (s *Store) Library(ctx context.Context, libraryID id.ID) (Library, error) {
 	var l Library
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, slug, title, kind FROM libraries WHERE id = $1`, libraryID).
-		Scan(&l.ID, &l.Slug, &l.Title, &l.Kind)
+		`SELECT id, slug, title, kind, managed, scan_interval_seconds, scan_on_start
+		 FROM libraries WHERE id = $1`, libraryID).
+		Scan(&l.ID, &l.Slug, &l.Title, &l.Kind, &l.Managed, &l.ScanIntervalSeconds, &l.ScanOnStart)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return l, ErrNotFound
 	}

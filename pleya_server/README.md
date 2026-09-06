@@ -63,7 +63,7 @@ verandert.
 
 ## Wat het schema draagt
 
-Achttien tabellen, in acht migraties.
+Achttien tabellen, in negen migraties.
 
 | Groep | Tabellen | Waarvoor |
 | --- | --- | --- |

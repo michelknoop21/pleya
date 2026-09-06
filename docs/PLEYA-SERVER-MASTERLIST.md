@@ -18,7 +18,7 @@ zet in dezelfde commit de status om en vult het bewijs in. Een taak die zonder b
 
 Bewijs is een commit-sha, een testnaam, een meting of een bestandspad. "Werkt" is geen bewijs.
 
-Laatst bijgewerkt: 2026-09-05 (S1.6 gesloten, en daarmee S1). Bron voor de scope: `docs/pleya-server-rebaseline/`
+Laatst bijgewerkt: 2026-09-06 (S2.1 gesloten, S2 gestart). Bron voor de scope: `docs/pleya-server-rebaseline/`
 deel I (slices) en deel O (Definition of Done).
 
 ---
@@ -28,14 +28,14 @@ deel I (slices) en deel O (Definition of Done).
 | Blok | Slices | Gereed | Bezig | Open |
 | --- | --- | --- | --- | --- |
 | Fundament en integratie | S0 | 1 | 0 | 0 |
-| Backend basis | S1 tot S6 | 1 | 0 | 5 |
+| Backend basis | S1 tot S6 | 1 | 1 | 4 |
 | Web | S7 tot S13 | 0 | 0 | 7 |
 | Clients en agents | S14, S16 | 0 | 0 | 2 |
 | Uitgebreide scope | S17 tot S25 | 0 | 0 | 9 |
 | Afronding | S15 | 0 | 0 | 1 |
-| **Totaal** | **26** | **2** | **0** | **24** |
+| **Totaal** | **26** | **2** | **1** | **23** |
 
-Per taak, en dat is de maat die telt: **148 taken, 18 gereed, 0 bezig, 130 open.** S0 en S1 zijn
+Per taak, en dat is de maat die telt: **148 taken, 19 gereed, 0 bezig, 129 open.** S0 en S1 zijn
 allebei dicht, met acht van acht; de twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
 
@@ -45,11 +45,13 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 **Waar het nu op wacht.** S0 is dicht en de Roadmap Drift Check erop staat in `STATUS.md`. **PS-11A
 loopt**, en **S1 is dicht**: S1.7 sloot de drie-rollen-ronde plus K rij 1, en S1.6 landde de laatste
 drie rijen van venster 1 en sloot het venster. De eerstvolgende slice is **S2** (bibliotheken,
-opslag, scans), en die is niet gestart; hij vraagt zijn eigen protocolvenster, venster 2, met een
-eigen besluit (J.3). Het venster voor S1 ging open met [DEC-110](DECISIONS.md), werd op één punt
-gecorrigeerd door [DEC-111](DECISIONS.md) (venster 1 voegt twee foutdomeinen toe en niet één) en is
-met S1.6 gesloten met [DEC-112](DECISIONS.md); `openapi.yaml` is daarmee weer bevroren. PS-14 blijft
-gesloten tot PS-11A af en geïntegreerd bewezen is; dat is een volgorde, geen voorkeur.
+opslag, scans), en die is gestart: S2.1 landde de migratie en de `managed`-kolom, zonder de lijn aan
+te raken en dus zonder protocolvenster. Venster 2 opent bij S2.2, wanneer `Library` voor het eerst
+over de lijn met deze velden gaat; dat vraagt een eigen besluit, ook al staat het al beschreven in
+J.3. Het venster voor S1 ging open met [DEC-110](DECISIONS.md), werd op één punt gecorrigeerd door
+[DEC-111](DECISIONS.md) (venster 1 voegt twee foutdomeinen toe en niet één) en is met S1.6 gesloten
+met [DEC-112](DECISIONS.md); `openapi.yaml` is daarmee weer bevroren. PS-14 blijft gesloten tot
+PS-11A af en geïntegreerd bewezen is; dat is een volgorde, geen voorkeur.
 
 
 ---
@@ -69,7 +71,7 @@ binnen een golf is de volgorde vrij. De kolom "taken" telt wat er open of bezig 
 
 | Golf | Slices | Taken | Wat het oplevert | Wacht op |
 | --- | --- | --- | --- | --- |
-| 1, loopt | S1, S2 | 6 | beheer-backend compleet: instellingen, diagnostiek, tokens, audit, bibliotheken, opslag, scans | niets |
+| 1, loopt | S1, S2 | 5 | beheer-backend compleet: instellingen, diagnostiek, tokens, audit, bibliotheken, opslag, scans | niets |
 | 2 | S3, S4, S5, S6 | 22 | de catalogus verbreedt: boeken, `.nfo`-sidecars, artworkladder, filters en facetten, leesvoortgang | S1 voor S2; poort P5 vóór S6 |
 | 3 | S14, S16 | 12 | de Flutter-clients en de MCP-beheerlaag komen op het verbrede contract | S1, S3, S5, S6 |
 | 4 | S7, S8, S9, S10, S11, S12, S13 | 32 | Pleya Web: shell en designsysteem, consumer, boeken, beheer, setup-wizard, reader, speler | S7 kan meteen; de rest hangt aan golf 2 en 3 |
@@ -166,7 +168,7 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S2.1 | Migratie `0009`, `managed`, scaninstellingen op `libraries` | `[ ]` | | |
+| S2.1 | Migratie `0009`, `managed`, scaninstellingen op `libraries` | `[x]` | **Schema, geen contract.** `0009_libraries_managed.sql` voegt `managed` (`config`/`db`, default `config`), `scan_interval_seconds` (nullable, `NULL` betekent de globale interval) en `scan_on_start` (default `true`, het gedrag dat elke bibliotheek al had) toe aan `libraries`. Geen endpoint raakt de lijn in deze commit, dus geen wire-wijziging en geen protocolvenster nodig; venster 2 opent bij S2.2, wanneer `Library` voor het eerst met deze velden over de lijn gaat. **Eigenaarschap.** `SyncLibraries` (`internal/catalog/store.go`) zet `managed = 'config'` expliciet op elke rij die uit `PLEYA_SERVER_LIBRARIES` komt, in plaats van op de kolomdefault te leunen; de default zelf is voor een rij die buiten dat pad om ontstaat. De `ON CONFLICT DO UPDATE` krijgt hier nog geen guard tegen het overschrijven van een `db`-beheerde rij: die rij bestaat nog niet vóór S2.5 (adopt), en een guard zonder aanroeper is vooruitbouwen. Dat staat als redenering in de code zelf. **Bewijs.** `scripts/go-tool.sh vet ./...` schoon; `test ./...` groen met de wegwerp-Postgres, nul `--- SKIP` (`TestSyncLibrariesIsConfigManagedWithScanDefaults` in `internal/catalog/store_write_test.go` dekt de defaults en de idempotentie van een herhaalde sync); `check_protocol.sh` ongewijzigd groen (24 paden, 7 foutdomeinen, contract onaangeraakt); `ci_checks.sh` groen (dart format, codegen, native format, analyze, dart_code_linter); `flutter test test/pleya_server/` 250 groen. | 2026-09-06 |
 | S2.2 | CRUD op `/libraries` met `confirm` bij verwijderen | `[ ]` | | |
 | S2.3 | `GET /storage/roots` uit de mounts, recheck | `[ ]` | | |
 | S2.4 | Scans en jobs over HTTP, annuleren, retry, backoff op `probe_attempts` | `[ ]` | | |

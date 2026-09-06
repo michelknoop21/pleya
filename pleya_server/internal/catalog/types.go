@@ -14,6 +14,16 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
+// LibraryManaged zegt wie een bibliotheek onderhoudt (S2.1).
+type LibraryManaged string
+
+const (
+	// ManagedConfig: overschreven door PLEYA_SERVER_LIBRARIES bij elke sync.
+	ManagedConfig LibraryManaged = "config"
+	// ManagedDB: alleen door de API (S2.2), en met rust gelaten door de config-sync.
+	ManagedDB LibraryManaged = "db"
+)
+
 // Library is één bibliotheek.
 type Library struct {
 	ID        id.ID
@@ -21,6 +31,10 @@ type Library struct {
 	Title     string
 	Kind      string // movies of shows
 	ItemCount int
+
+	Managed             LibraryManaged
+	ScanIntervalSeconds *int
+	ScanOnStart         bool
 }
 
 // StorageLocation is één geconfigureerde root van een bibliotheek.
