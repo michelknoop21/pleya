@@ -44,6 +44,9 @@ under `Notes`.
 - de geleende focusnode had geen eigenaar en geen doel
 - twee kleine gaten, één in het contextmenu en één in de bronbewaking
 - negen gegenereerde bestanden terug op build_runner-canonieke vorm
+- elf gegenereerde modelbestanden terug op de generatorbreedte
+- zes Containers in een Padding worden een Container met margin (avoid-wrapping-in-padding)
+- de macOS+iOS-job kan groen: ad-hoc signing op de runner en de hero-scenario's bewijzen de DEC-097-fallback (VER-CI)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
