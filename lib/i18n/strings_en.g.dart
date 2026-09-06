@@ -5834,8 +5834,11 @@ class TranslationsVideoControlsTvPanelEn {
 	/// en: 'Stays for every title until you reset it'
 	String get syncKeepsForAllTitles => 'Stays for every title until you reset it';
 
-	/// en: 'Choosing applies right away · Left and right step a value · Menu closes the panel'
-	String get hint => 'Choosing applies right away · Left and right step a value · Menu closes the panel';
+	/// en: 'Choosing applies right away · Select opens a value row · Menu closes the panel'
+	String get hint => 'Choosing applies right away · Select opens a value row · Menu closes the panel';
+
+	/// en: 'Left and right step the value · Select or Menu is done'
+	String get hintValueRow => 'Left and right step the value · Select or Menu is done';
 
 	/// en: 'Menu goes back'
 	String get hintBack => 'Menu goes back';
@@ -7379,7 +7382,8 @@ extension on Translations {
 			'videoControls.tvPanel.offset' => 'Offset',
 			'videoControls.tvPanel.syncStepHint' => 'Left and right 100 ms per step · hold to keep stepping',
 			'videoControls.tvPanel.syncKeepsForAllTitles' => 'Stays for every title until you reset it',
-			'videoControls.tvPanel.hint' => 'Choosing applies right away · Left and right step a value · Menu closes the panel',
+			'videoControls.tvPanel.hint' => 'Choosing applies right away · Select opens a value row · Menu closes the panel',
+			'videoControls.tvPanel.hintValueRow' => 'Left and right step the value · Select or Menu is done',
 			'videoControls.tvPanel.hintBack' => 'Menu goes back',
 			'videoControls.tvPanel.sleepActive' => 'Sleep timer running',
 			'videoControls.tvPanel.sleepActiveHint' => ({required Object time, required Object remaining}) => 'Pauses at ${time} · ${remaining} left',
@@ -7866,9 +7870,9 @@ extension on Translations {
 			'liveTv.recordShow' => 'Record show',
 			'collections.title' => 'Collections',
 			'collections.collection' => 'Collection',
-			'collections.empty' => 'Collection is empty',
 			_ => null,
 		} ?? switch (path) {
+			'collections.empty' => 'Collection is empty',
 			'collections.unknownLibrarySection' => 'Cannot delete: Unknown library section',
 			'collections.deleteCollection' => 'Delete Collection',
 			'collections.deleteConfirm' => ({required Object title}) => 'Delete "${title}"? This can\'t be undone.',
@@ -8380,9 +8384,9 @@ extension on Translations {
 			'seerr.decline' => 'Decline',
 			'seerr.edit' => 'Edit',
 			'seerr.cancelRequest' => 'Cancel request',
-			'seerr.cancelRequestConfirm' => 'Cancel this request?',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.cancelRequestConfirm' => 'Cancel this request?',
 			'seerr.discoverTitle' => 'Discover on Requests',
 			'seerr.trending' => 'Trending',
 			'seerr.popularMovies' => 'Popular movies',

@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../focus/card_focus_scope.dart';
 import '../../../focus/focusable_wrapper.dart';
 import '../../app_icon.dart';
+import 'tv_panel_value_row_scope.dart';
 
 /// Shared visual tokens for the TV player panel (mockup 33, DEC-101).
 ///
@@ -55,19 +56,12 @@ enum TvPanelRowKind {
   /// One of several exclusive choices; shows a radio or a check.
   choice,
 
-  /// A value that LEFT/RIGHT step and Select cycles; shows ‹ value ›.
+  /// A value Select enters, after which LEFT and RIGHT step it (DEC-102);
+  /// shows ‹ value › while entered and the bare value at rest.
   value,
 
   /// On/off; shows a switch glyph.
   toggle,
-}
-
-/// Steps [current] through [values] by [delta], wrapping at both ends.
-///
-/// One helper rather than seven private modulo expressions: every value row in
-/// the panel steps the same way, so a bug in the arithmetic is fixed once.
-T stepValue<T>(List<T> values, T current, int delta, {bool Function(T a, T b)? equals}) {
-  return values[(_indexOfValue(values, current, equals) + delta) % values.length];
 }
 
 int _indexOfValue<T>(List<T> values, T current, bool Function(T a, T b)? equals) {
@@ -79,13 +73,11 @@ int _indexOfValue<T>(List<T> values, T current, bool Function(T a, T b)? equals)
 /// The neighbour [delta] steps away, or null when [current] already sits at
 /// that end of [values].
 ///
-/// LEFT and RIGHT clamp where Select cycles, and the null is the point: an
-/// absent callback is not consumed by [FocusableWrapper], so the key falls
-/// through to focus traversal and the ring leaves the column sideways. Without
-/// it a column of nothing but value rows swallows both horizontal directions
-/// forever — which is exactly the Video tab on an Android TV, where neither
-/// HDR, shaders nor ambient lighting is offered and only two stepping rows
-/// remain.
+/// A step past the end does nothing rather than wrapping: RIGHT on +200%
+/// dropping the volume boost back to Off was the old behaviour and it surprised
+/// people. Leaving the column sideways is no longer this null's job — a row at
+/// rest never takes LEFT or RIGHT at all (DEC-102) — but the clamp still holds
+/// the ring inside an entered row.
 T? stepValueClamped<T>(List<T> values, T current, int delta, {bool Function(T a, T b)? equals}) {
   final next = _indexOfValue(values, current, equals) + delta;
   return next < 0 || next >= values.length ? null : values[next];
@@ -109,10 +101,16 @@ T? stepValueClamped<T>(List<T> values, T current, int delta, {bool Function(T a,
 /// `TrackLabel`, or the explanation of why a row is inert). The trailing
 /// follows [kind]. Vertical D-pad movement between rows is the enclosing
 /// [FocusScope]'s directional traversal; only the first row of a tab wires
-/// [onNavigateUp] to return to the pill bar. LEFT and RIGHT reach the row only
-/// when [onStepLeft]/[onStepRight] are set, so a choice row lets the traversal
-/// cross into the other column.
-class TvPanelRow extends StatelessWidget {
+/// [onNavigateUp] to return to the pill bar.
+///
+/// A row with [onStepLeft] or [onStepRight] is *entered* before it steps
+/// (DEC-102): Select enters it, and only then do LEFT and RIGHT reach the row.
+/// At rest the traversal gets them, so the ring leaves the column wherever the
+/// value happens to sit. Select on an entered row leaves it again; so does
+/// Menu, and so does any move that takes the focus elsewhere. Entering is
+/// tracked by [TvPanelValueRowController] one level up, so at most one row in
+/// the panel is entered.
+class TvPanelRow extends StatefulWidget {
   final FocusNode? focusNode;
   final IconData? icon;
   final String title;
@@ -132,6 +130,12 @@ class TvPanelRow extends StatelessWidget {
   final VoidCallback? onNavigateDown;
   final bool autofocus;
   final bool canRequestFocus;
+
+  /// Whether Select enters this row before LEFT and RIGHT step it (DEC-102).
+  /// The sync sub-view opts out: it is a single row on its own page with its
+  /// own footer promising a direct 100 ms step, so there is no column to leave
+  /// and nothing for the two-state model to buy.
+  final bool entersOnSelect;
   final TvPanelRowKind kind;
   final String? automationId;
   final String? automationInstance;
@@ -158,13 +162,14 @@ class TvPanelRow extends StatelessWidget {
     this.onNavigateDown,
     this.autofocus = false,
     this.canRequestFocus = true,
+    this.entersOnSelect = true,
     this.kind = TvPanelRowKind.action,
     this.automationId,
     this.automationInstance,
     this.automationState,
   });
 
-  /// A row whose value LEFT/RIGHT step and Select cycles.
+  /// A row Select enters, after which LEFT and RIGHT step its value.
   const TvPanelRow.value({
     super.key,
     this.focusNode,
@@ -181,6 +186,7 @@ class TvPanelRow extends StatelessWidget {
     this.onNavigateDown,
     this.autofocus = false,
     this.canRequestFocus = true,
+    this.entersOnSelect = true,
     this.automationId,
     this.automationInstance,
     this.automationState,
@@ -211,6 +217,7 @@ class TvPanelRow extends StatelessWidget {
     this.automationInstance,
     this.automationState,
   }) : kind = TvPanelRowKind.choice,
+       entersOnSelect = true,
        showChevron = false,
        highlighted = false,
        toggled = false,
@@ -236,6 +243,7 @@ class TvPanelRow extends StatelessWidget {
     this.automationInstance,
     this.automationState,
   }) : kind = TvPanelRowKind.toggle,
+       entersOnSelect = true,
        value = null,
        selected = false,
        showChevron = false,
@@ -245,45 +253,99 @@ class TvPanelRow extends StatelessWidget {
        onStepLeft = null,
        onStepRight = null;
 
+  /// Whether Select enters this row instead of activating it.
+  bool get stepsValue => entersOnSelect && (onStepLeft != null || onStepRight != null);
+
+  @override
+  State<TvPanelRow> createState() => _TvPanelRowState();
+}
+
+class _TvPanelRowState extends State<TvPanelRow> {
+  TvPanelValueRowController? _values;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _values = TvPanelValueRowScope.maybeOf(context);
+  }
+
+  @override
+  void dispose() {
+    // After the frame: a tab switch disposes its rows while the tree is being
+    // rebuilt, and notifying listeners there would rebuild during a build.
+    // The token keeps its identity, so a row that was already left does
+    // nothing and one that was entered cannot clear a newer entry.
+    final values = _values;
+    if (values != null && values.isEntered(this)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => values.leave(this));
+    }
+    super.dispose();
+  }
+
+  bool get _entered => _values?.isEntered(this) ?? false;
+
+  /// Select. On a stepping row this is the enter/leave toggle and nothing
+  /// else: DEC-102 (2) drops the old "Select cycles forward", because one key
+  /// cannot do both. Only [handleOneShotSelect] runs it, so it fires on the
+  /// key-down and the release is consumed by the wrapper — there is no second
+  /// suppressor to arm, and arming one would be the pin-open leak that
+  /// `handleBackKeyAction` documents.
+  VoidCallback? get _onSelect {
+    final values = _values;
+    if (!widget.stepsValue || values == null) return widget.onSelect;
+    return () => values.toggle(this);
+  }
+
   Object? _state() {
-    final extra = automationState?.call();
+    final extra = widget.automationState?.call();
     return {
-      'kind': kind.name,
-      if (value != null) 'value': value,
-      if (kind == TvPanelRowKind.choice) 'selected': selected,
-      if (kind == TvPanelRowKind.toggle) 'on': toggled,
-      if (dimmed) 'dimmed': true,
+      'kind': widget.kind.name,
+      if (widget.value != null) 'value': widget.value,
+      if (widget.kind == TvPanelRowKind.choice) 'selected': widget.selected,
+      if (widget.kind == TvPanelRowKind.toggle) 'on': widget.toggled,
+      if (widget.dimmed) 'dimmed': true,
+      if (widget.stepsValue) 'entered': _entered,
       if (extra is Map) ...extra.cast<String, Object?>(),
     };
   }
 
   @override
   Widget build(BuildContext context) {
+    final entered = _entered;
+    // A row outside the two-state model (the sync sub-view, and any row whose
+    // steps are both absent) keeps its horizontal keys at all times.
+    final takesSteps = entered || !widget.stepsValue;
     // A dimmed row stays focusable unless the caller says otherwise, so a
     // column never loses its focus when a setting elsewhere makes it inert.
     return FocusableWrapper(
-      focusNode: focusNode,
-      autofocus: autofocus,
-      canRequestFocus: canRequestFocus,
-      onSelect: onSelect,
-      onNavigateLeft: onStepLeft,
-      onNavigateRight: onStepRight,
-      onNavigateUp: onNavigateUp,
-      onNavigateDown: onNavigateDown,
+      focusNode: widget.focusNode,
+      autofocus: widget.autofocus,
+      canRequestFocus: widget.canRequestFocus,
+      onSelect: _onSelect,
+      // Only an entered row takes the horizontal keys; at rest they belong to
+      // the traversal so the ring can cross to the other column (PLR5).
+      onNavigateLeft: takesSteps ? widget.onStepLeft : null,
+      onNavigateRight: takesSteps ? widget.onStepRight : null,
+      onNavigateUp: widget.onNavigateUp,
+      onNavigateDown: widget.onNavigateDown,
+      // A move that takes the focus away leaves the row in the same press.
+      onFocusChange: (hasFocus) {
+        if (!hasFocus) _values?.leave(this);
+      },
       borderRadius: TvPanelTheme.rowRadius,
       autoScroll: true,
       // The row paints its own focus (white fill, dark ink): the wrapper's
       // translucent fill cannot recolour the text underneath it.
       mode: FocusIndicatorMode.delegated,
       disableScale: true,
-      automationId: automationId,
-      automationInstance: automationInstance,
-      automationRole: kind.name,
-      automationState: automationId == null ? null : _state,
+      automationId: widget.automationId,
+      automationInstance: widget.automationInstance,
+      automationRole: widget.kind.name,
+      automationState: widget.automationId == null ? null : _state,
       child: Builder(
         builder: (context) {
           final focused = CardFocusScope.maybeOf(context) ?? false;
-          return _TvPanelRowBody(row: this, focused: focused);
+          return _TvPanelRowBody(row: widget, focused: focused, entered: entered);
         },
       ),
     );
@@ -291,10 +353,15 @@ class TvPanelRow extends StatelessWidget {
 }
 
 class _TvPanelRowBody extends StatelessWidget {
-  const _TvPanelRowBody({required this.row, required this.focused});
+  const _TvPanelRowBody({required this.row, required this.focused, this.entered = false});
 
   final TvPanelRow row;
   final bool focused;
+
+  /// A stepping row that Select has entered. The arrows are the only thing
+  /// that says so: without them the state works and nothing shows it, which is
+  /// the [DEC-053] failure again.
+  final bool entered;
 
   Color get _ink => focused ? TvPanelTheme.focusInk : (row.dimmed ? TvPanelTheme.textMuted : Colors.white);
   Color get _inkMuted =>
@@ -366,6 +433,7 @@ class _TvPanelRowBody extends StatelessWidget {
       case TvPanelRowKind.toggle:
         return _SwitchGlyph(on: row.toggled, focused: focused, dimmed: row.dimmed);
       case TvPanelRowKind.value:
+        if (!entered) return _valueText();
         final chevronColor = focused ? TvPanelTheme.focusInk : TvPanelTheme.textDim;
         return Row(
           mainAxisSize: MainAxisSize.min,

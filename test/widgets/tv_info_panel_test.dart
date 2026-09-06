@@ -63,9 +63,11 @@ void main() {
     expect(focused!.title, 'Aspect ratio');
   });
 
-  testWidgets('LEFT on the speed row steps the rate down, RIGHT steps it up (PNL2)', (tester) async {
+  testWidgets('LEFT on an entered speed row steps the rate down, RIGHT steps it up (PNL2)', (tester) async {
     final h = await _pumpPanel(tester, initial: TvInfoPanelRequest.video);
     await h.focusRow(tester, 'Playback Speed');
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
     expect(h.player.state.rate, 1.0);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
@@ -84,7 +86,11 @@ void main() {
   testWidgets('volume boost raises the ceiling and then the level (AUD1)', (tester) async {
     final h = await _pumpPanel(tester, initial: TvInfoPanelRequest.audio);
     await h.focusRow(tester, 'Volume boost');
+    // Select enters the row and RIGHT steps it (DEC-102); Select no longer
+    // cycles the value itself.
     await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
 
     expect(h.player.writes, containsAllInOrder(['volume-max=150', 'volume=150.0']));
@@ -99,6 +105,8 @@ void main() {
     expect(find.text('Paused'), findsNWidgets(3));
     await h.focusRow(tester, 'Volume boost');
     await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
     expect(h.player.writes.where((w) => w.startsWith('volume')), isEmpty, reason: 'a paused row writes nothing');
   });
@@ -138,10 +146,11 @@ void main() {
     expect(priority.canRequestFocus, isFalse);
   });
 
-  testWidgets('a value row clamps at its ends so the ring can leave the column (PNL2)', (tester) async {
-    // Wrapping was the old behaviour and it is wrong twice over: RIGHT on
-    // +200% dropped the boost back to Off, and a column of nothing but value
-    // rows consumed both horizontal directions forever.
+  testWidgets('an entered value row clamps at its ends instead of wrapping (PNL2)', (tester) async {
+    // Wrapping was the old behaviour and it is wrong: RIGHT on +200% dropped
+    // the boost back to Off. Under DEC-102 the clamp no longer doubles as the
+    // way out of the column — that is the row's rest state — but a step past
+    // the end must still do nothing.
     expect(stepValueClamped(kTvPanelVolumeBoostSteps, 300, 1), isNull);
     expect(stepValueClamped(kTvPanelVolumeBoostSteps, 100, -1), isNull);
     expect(stepValueClamped(kTvPanelVolumeBoostSteps, 150, 1), 200);
@@ -149,10 +158,73 @@ void main() {
     await SettingsService.instance.write(SettingsService.maxVolume, 300);
     final h = await _pumpPanel(tester, initial: TvInfoPanelRequest.audio);
     final boost = h.row(tester, 'Volume boost');
-    expect(boost.onStepRight, isNull, reason: 'at the top RIGHT belongs to traversal, not to the value');
+    expect(boost.onStepRight, isNull, reason: 'at the top there is nothing to step to');
     expect(boost.onStepLeft, isNotNull);
-    // Select still cycles: one button can only offer a cycle.
-    expect(boost.onSelect, isNotNull);
+    expect(boost.stepsValue, isTrue, reason: 'Select enters this row, it no longer cycles the value');
+  });
+
+  // PLR5 / DEC-102. Michel on hardware: from a value row the other column is
+  // unreachable unless you change the value. Zoom sits at 100%, in the middle
+  // of `kTvPanelZoomPresets`, so `clampedSteps` hands back neither direction
+  // and the old row swallowed both. Red before DEC-102 on both counts: the
+  // ring stayed put and the value moved.
+  testWidgets('a value row at rest lets RIGHT cross to the other column without stepping (PLR5)', (tester) async {
+    final zoom = <double>[];
+    final h = await _pumpFullVideoTab(tester, onVideoZoomChanged: zoom.add);
+    await h.focusRow(tester, 'Zoom');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+
+    expect(zoom, isEmpty, reason: 'a row at rest must not step');
+    expect(h.focusedRow(tester)?.title, isNot('Zoom'), reason: 'RIGHT belongs to the traversal until Select enters');
+  });
+
+  testWidgets('Select enters a value row, Menu leaves it and keeps the panel open (PLR5)', (tester) async {
+    final zoom = <double>[];
+    final h = await _pumpFullVideoTab(tester, onVideoZoomChanged: zoom.add);
+    await h.focusRow(tester, 'Zoom');
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(t.videoControls.tvPanel.hintValueRow),
+      findsOneWidget,
+      reason: 'the footer says which state holds',
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(zoom, [1.1], reason: 'an entered row steps');
+    expect(h.focusedRow(tester)?.title, 'Zoom', reason: 'and keeps the ring');
+
+    // Menu peels the row first. The panel must survive it, or DEC-102 would
+    // hand PLR6 a second way to trap the remote.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(h.closed, isFalse, reason: 'Menu leaves the row before it closes the panel');
+    expect(find.text(t.videoControls.tvPanel.hint), findsOneWidget);
+
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(h.closed, isTrue, reason: 'and the next Menu closes it');
+  });
+
+  testWidgets('moving the focus away leaves the entered row behind (PLR5)', (tester) async {
+    final zoom = <double>[];
+    final h = await _pumpFullVideoTab(tester, onVideoZoomChanged: zoom.add);
+    await h.focusRow(tester, 'Zoom');
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(h.focusedRow(tester)?.title, isNot('Zoom'));
+    expect(find.text(t.videoControls.tvPanel.hint), findsOneWidget, reason: 'no row is entered any more');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(zoom, isEmpty, reason: 'the entered state does not travel with the ring');
   });
 
   testWidgets('a chapter jump from the panel reports the seek (Watch Together)', (tester) async {
@@ -262,7 +334,11 @@ List<double> _columnScrollExtents(WidgetTester tester) {
 /// leaves four of them out — no shader service, no ambient support, no
 /// chapters and no second version — which is exactly why the panel measured
 /// as fitting while the hardware photo shows it does not (PLR4).
-Future<_Harness> _pumpFullVideoTab(WidgetTester tester, {Size viewSize = const Size(1920, 1080)}) async {
+Future<_Harness> _pumpFullVideoTab(
+  WidgetTester tester, {
+  Size viewSize = const Size(1920, 1080),
+  ValueChanged<double>? onVideoZoomChanged,
+}) async {
   final shaderPlayer = _PanelPlayer();
   addTearDown(shaderPlayer.dispose);
   return _pumpPanel(
@@ -277,8 +353,7 @@ Future<_Harness> _pumpFullVideoTab(WidgetTester tester, {Size viewSize = const S
     trackControlsState: TrackControlsState(
       // ignore: no-empty-block - the tab only needs the row to exist
       onCycleBoxFitMode: () {},
-      // ignore: no-empty-block - the tab only needs the row to exist
-      onVideoZoomChanged: (_) {},
+      onVideoZoomChanged: onVideoZoomChanged ?? (_) {},
       audioSyncOffset: 0,
       subtitleSyncOffset: 0,
       canControl: true,

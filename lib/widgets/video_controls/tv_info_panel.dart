@@ -27,6 +27,7 @@ import 'tv_info_panel/tv_audio_subtitle_tabs.dart';
 import 'tv_info_panel/tv_chapter_sub_view.dart';
 import 'tv_info_panel/tv_information_tab.dart';
 import 'tv_info_panel/tv_panel_types.dart';
+import 'tv_info_panel/tv_panel_value_row_scope.dart';
 import 'tv_info_panel/tv_panel_widgets.dart';
 import 'tv_info_panel/tv_shader_sub_view.dart';
 import 'tv_info_panel/tv_sleep_timer_sub_view.dart';
@@ -97,6 +98,10 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
 
   late final AnimationController _anim;
   final _scopeNode = FocusScopeNode(debugLabel: 'TvInfoPanelScope');
+
+  /// Which value row Select has entered, if any (DEC-102). The footer and the
+  /// panel's Menu handler both read it.
+  final _valueRows = TvPanelValueRowController();
   late final List<FocusNode> _pillNodes;
 
   // First focusable row of the current tab; the pill's DOWN focuses it and its
@@ -126,6 +131,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
   @override
   void dispose() {
     _anim.dispose();
+    _valueRows.dispose();
     _scopeNode.dispose();
     for (final n in _pillNodes) {
       n.dispose();
@@ -230,7 +236,11 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
   KeyEventResult _handleScopeKey(FocusNode node, KeyEvent event) {
     if (event.logicalKey.isBackKey) {
       return handleBackKeyAction(event, () {
-        if (_subView != TvInfoPanelSubView.none) {
+        // Menu peels one layer at a time: the entered value row first
+        // (DEC-102), then an open sub-view, then the panel itself.
+        if (_valueRows.hasEnteredRow) {
+          _valueRows.leave();
+        } else if (_subView != TvInfoPanelSubView.none) {
           _closeSubView();
         } else {
           _close();
@@ -325,17 +335,20 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
                               BoxShadow(color: Color(0x80000000), blurRadius: 60, offset: Offset(0, 30)),
                             ],
                           ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _subView == TvInfoPanelSubView.none ? _buildPillBar() : _buildSubViewHeader(),
-                              const SizedBox(height: 18),
-                              Flexible(
-                                child: _subView == TvInfoPanelSubView.none ? _buildTabContent() : _buildSubView(),
-                              ),
-                              _buildFooter(),
-                            ],
+                          child: TvPanelValueRowScope(
+                            notifier: _valueRows,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _subView == TvInfoPanelSubView.none ? _buildPillBar() : _buildSubViewHeader(),
+                                const SizedBox(height: 18),
+                                Flexible(
+                                  child: _subView == TvInfoPanelSubView.none ? _buildTabContent() : _buildSubView(),
+                                ),
+                                ListenableBuilder(listenable: _valueRows, builder: (context, _) => _buildFooter()),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -484,7 +497,11 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
   }
 
   Widget _buildFooter() {
-    final hint = _subView == TvInfoPanelSubView.none ? t.videoControls.tvPanel.hint : t.videoControls.tvPanel.hintBack;
+    // Three states, in the order Menu peels them (DEC-102): an entered value
+    // row, an open sub-view, the panel at rest.
+    final hint = _valueRows.hasEnteredRow
+        ? t.videoControls.tvPanel.hintValueRow
+        : (_subView == TvInfoPanelSubView.none ? t.videoControls.tvPanel.hint : t.videoControls.tvPanel.hintBack);
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(vertical: 12),

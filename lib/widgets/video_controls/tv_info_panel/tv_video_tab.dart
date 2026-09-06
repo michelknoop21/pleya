@@ -94,15 +94,6 @@ class TvVideoTab extends StatelessWidget {
     _ => t.videoControls.letterbox,
   };
 
-  void _stepBoxFit(int delta) {
-    final set = onSetBoxFitMode;
-    if (set != null) {
-      set(stepValue(kTvPanelBoxFitModes, boxFitMode, delta));
-    } else {
-      onCycleBoxFit?.call();
-    }
-  }
-
   String _ambientLabel() {
     if (!ambientEnabled) return t.common.off;
     return switch (ambientIntensity) {
@@ -112,11 +103,6 @@ class TvVideoTab extends StatelessWidget {
     };
   }
 
-  void _stepAmbient(int delta) {
-    final current = ambientEnabled ? ambientIntensity : 'off';
-    onSetAmbientIntensity(stepValue(kAmbientIntensityModes, current, delta));
-  }
-
   static bool _sameSpeed(double a, double b) => (a - b).abs() < 0.01;
 
   static bool _sameZoom(double a, double b) => (a - b).abs() < 0.005;
@@ -124,14 +110,6 @@ class TvVideoTab extends StatelessWidget {
   Future<void> _applySpeed(double rate) async {
     await player.setRate(rate);
     await SettingsService.instance.write(SettingsService.defaultPlaybackSpeed, rate);
-  }
-
-  Future<void> _stepSpeed(int delta) =>
-      _applySpeed(stepValue(kTvPanelSpeeds, player.state.rate, delta, equals: _sameSpeed));
-
-  void _stepZoom(int delta) {
-    final current = VideoFilterManager.normalizeZoomScale(videoZoomScale);
-    onVideoZoomChanged?.call(stepValue(kTvPanelZoomPresets, current, delta, equals: _sameZoom));
   }
 
   String _versionQualityValue() {
@@ -174,7 +152,6 @@ class TvVideoTab extends StatelessWidget {
           title: t.videoControls.aspectRatioButton,
           value: _boxFitLabel(boxFitMode),
           highlighted: boxFitMode != 0,
-          onSelect: () => _stepBoxFit(1),
           onStepLeft: steps.left,
           onStepRight: steps.right,
           automationId: AutomationIds.playerPanelRow,
@@ -199,7 +176,6 @@ class TvVideoTab extends StatelessWidget {
           title: t.videoSettings.zoom,
           value: '${(zoom * 100).round()}%',
           highlighted: (zoom - 1.0).abs() > 0.0001,
-          onSelect: () => _stepZoom(1),
           onStepLeft: steps.left,
           onStepRight: steps.right,
           automationId: AutomationIds.playerPanelRow,
@@ -262,7 +238,6 @@ class TvVideoTab extends StatelessWidget {
           title: t.videoControls.ambientLighting,
           value: _ambientLabel(),
           highlighted: ambientEnabled,
-          onSelect: () => _stepAmbient(1),
           onStepLeft: steps.left,
           onStepRight: steps.right,
           automationId: AutomationIds.playerPanelRow,
@@ -288,7 +263,6 @@ class TvVideoTab extends StatelessWidget {
               title: t.videoSettings.playbackSpeed,
               value: formatPlaybackRate(rate, normalAtOne: true),
               highlighted: (rate - 1.0).abs() > 0.01,
-              onSelect: () => _stepSpeed(1),
               onStepLeft: steps.left,
               onStepRight: steps.right,
               automationId: AutomationIds.playerPanelRow,
