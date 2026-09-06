@@ -855,7 +855,13 @@ class ActiveProfileBinder {
         // optimistic pass left offline. Newly-online expected servers are
         // promoted into the visibility filter by MultiServerProvider when the
         // status emission this triggers lands.
-        await serverManager.refreshTokensForProfile(account.copyWith(servers: fresh));
+        //
+        // retryRecentFailures: true because `fresh` is exactly the data the
+        // optimistic pass didn't have: a server it left offline on a stale
+        // or wrongly-scoped cached token must get a real attempt with the
+        // token/URIs this fetch just confirmed, not an instant rejection from
+        // a memory of the earlier, different attempt (SRC1).
+        await serverManager.refreshTokensForProfile(account.copyWith(servers: fresh), retryRecentFailures: true);
       }().catchError((Object error, StackTrace stackTrace) {
         appLogger.w(
           'ActiveProfileBinder: background reconcile failed for $profileLabel',

@@ -322,13 +322,29 @@ class MultiServerManager {
   ///
   /// Handles finding working connection, loading cached endpoint,
   /// creating config, and building client with failover support.
-  Future<PlexClient> _createClientForServer({required PlexServer server, required String clientIdentifier}) async {
+  ///
+  /// [retryRecentFailures] skips the [_unreachableSince] memory. That memory
+  /// exists to collapse a burst of callers who would reach the *same*
+  /// conclusion from the *same* data (see its own doc comment), not to block a
+  /// caller who is retrying with materially different data the earlier
+  /// attempt never had, such as a rotated per-server token or a changed
+  /// URI. [refreshTokensForProfile]'s reconcile caller is exactly that case:
+  /// it runs after a fresh `/resources` fetch has landed, specifically to
+  /// retry servers an earlier, cache-based attempt left offline. Honouring
+  /// the memory there defeats that retry before it can try the new token.
+  Future<PlexClient> _createClientForServer({
+    required PlexServer server,
+    required String clientIdentifier,
+    bool retryRecentFailures = false,
+  }) async {
     final serverId = server.clientIdentifier;
     final stopwatch = Stopwatch()..start();
 
-    final lastFailure = _unreachableSince[serverId];
-    if (lastFailure != null && DateTime.now().difference(lastFailure) < _unreachableMemory) {
-      throw Exception('No working connection found (${server.name} was unreachable moments ago)');
+    if (!retryRecentFailures) {
+      final lastFailure = _unreachableSince[serverId];
+      if (lastFailure != null && DateTime.now().difference(lastFailure) < _unreachableMemory) {
+        throw Exception('No working connection found (${server.name} was unreachable moments ago)');
+      }
     }
 
     // Get storage and load cached endpoint for this server
@@ -554,9 +570,15 @@ class MultiServerManager {
   /// Returns the [clientIdentifier]s that ended up actually bound (token
   /// reused or freshly connected). Failed servers are excluded so the
   /// caller's visibility filter doesn't surface unreachable servers.
+  ///
+  /// [retryRecentFailures]: see [_createClientForServer]. Pass `true` only
+  /// when [connection] carries data an earlier attempt didn't have (a fresh
+  /// `/resources` fetch); the default `false` keeps the burst-collapsing
+  /// memory intact for every other caller.
   Future<Set<String>> refreshTokensForProfile(
     PlexAccountConnection connection, {
     Duration timeout = MediaServerTimeouts.perServerConnect,
+    bool retryRecentFailures = false,
   }) async {
     if (connection.servers.isEmpty) return const {};
     final bound = <String>{};
@@ -581,6 +603,7 @@ class MultiServerManager {
         final client = await _createClientForServer(
           server: server,
           clientIdentifier: connection.clientIdentifier,
+          retryRecentFailures: retryRecentFailures,
         ).namedTimeout(timeout, operation: 'connect to ${server.name}');
         final oldClient = _clients[serverId];
         if (oldClient != null) _closeClient(oldClient);

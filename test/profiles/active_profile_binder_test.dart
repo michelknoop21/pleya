@@ -462,6 +462,9 @@ void main() {
       expect(binder.debugLastBoundProfileId, prepared.profileId);
       expect(prepared.manager.refreshCalls, 1);
       expect(prepared.manager.lastConnection?.servers.single.accessToken, 'home-user-token');
+      // The optimistic pass has no fresher data than what it's using right
+      // now, so it must not bypass the unreachable-failure memory.
+      expect(prepared.manager.retryRecentFailuresCalls, [false]);
 
       fetchGate.complete();
 
@@ -469,6 +472,14 @@ void main() {
       // per-server tokens in place.
       await pumpUntil(() async => prepared.manager.refreshCalls == 2);
       expect(prepared.manager.lastConnection?.servers.single.accessToken, 'server-token');
+      // SRC1: this call carries a server the optimistic pass may have left
+      // offline on a stale or wrongly-scoped cached token. If it honoured the
+      // unreachable-failure memory the way a plain retry would, a server the
+      // optimistic pass failed to reach would stay unreachable for 30 seconds
+      // even though this call has the token that actually works, which is
+      // the reported symptom (a joined server present and online, but never
+      // appearing in the unified catalog's per-server filter).
+      expect(prepared.manager.retryRecentFailuresCalls, [false, true]);
 
       // And the refreshed metadata was persisted onto the stored account row.
       final account = await connections.getPlexAccount('plex.account');
@@ -571,13 +582,20 @@ class _CapturingMultiServerManager extends MultiServerManager {
   int refreshCalls = 0;
   PlexAccountConnection? lastConnection;
 
+  /// One entry per [refreshTokensForProfile] call, in order, so a test can
+  /// tell the optimistic pass's call from the reconcile's without relying on
+  /// timing.
+  final List<bool> retryRecentFailuresCalls = [];
+
   @override
   Future<Set<String>> refreshTokensForProfile(
     PlexAccountConnection connection, {
     Duration timeout = MediaServerTimeouts.perServerConnect,
+    bool retryRecentFailures = false,
   }) async {
     refreshCalls++;
     lastConnection = connection;
+    retryRecentFailuresCalls.add(retryRecentFailures);
     return connection.servers.map((server) => server.clientIdentifier).toSet();
   }
 }
@@ -589,6 +607,7 @@ class _FailingPlexMultiServerManager extends MultiServerManager {
   Future<Set<String>> refreshTokensForProfile(
     PlexAccountConnection connection, {
     Duration timeout = MediaServerTimeouts.perServerConnect,
+    bool retryRecentFailures = false,
   }) async {
     refreshCalls++;
     for (final server in connection.servers) {
@@ -607,6 +626,7 @@ class _BlockingMixedMultiServerManager extends MultiServerManager {
   Future<Set<String>> refreshTokensForProfile(
     PlexAccountConnection connection, {
     Duration timeout = MediaServerTimeouts.perServerConnect,
+    bool retryRecentFailures = false,
   }) async {
     if (!plexStarted.isCompleted) plexStarted.complete();
     await releasePlex.future;

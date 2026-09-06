@@ -133,7 +133,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
 | RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
 | ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) goedgekeurd op 5 september, DEC-100 accepted, 9.1, 17.5 en 23 aangepast; bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
-| SRC1 | Twee gekoppelde Plex-servers, beide online, en het filterpaneel van Alle series toont er één bij Servers. Gemeld door Michel op 6 september 2026. Het paneel is uitgesloten: `tv_catalog_foundation_test.dart` toont twee servers (`nas`, `attic`) en staat groen, en de keten `LibrariesProvider` → `eligibleCatalogLibraries` → `_servers` draagt de server-id per bibliotheek door. Er blijven drie stroomopwaartse paden over, en twee daarvan logden hun verlies al met naam (`refreshTokensForProfile: failed to connect …`, `Failed neutral library fetch from …`). Het derde deed dat niet: `PlexAuthService.fetchServers` liet een resource die niet parseert stil vallen. Dat is gerepareerd, zodat de eerstvolgende run de ontbrekende server bij naam noemt. Blijft open tot een device-log één van de drie aanwijst | HARDWARE ONLY | `PENDING` |
+| SRC1 | Twee gekoppelde Plex-servers, beide online, en het filterpaneel van Alle series toont er één bij Servers. Gemeld door Michel op 6 september 2026, bevestigd met een device-log (upload-ID 12e1y). Pad 1 (`fetchServers` laat een resource stil vallen) uitgesloten: beide servers kwamen terug uit `/resources`. Pad 3 (bibliotheken niet opgehaald) uitgesloten: geen `Failed neutral library fetch`-regel. Het was pad 2, en specifieker dan verwacht: de tweede server verbond niet omdat de reconcile-pass met het verse, correct gescoopte token uit `/resources` werd geblokkeerd door de `_unreachableSince`-30-secondenmemory die de eerdere, cache-gebaseerde poging had gezet. Die memory is bedoeld om een stortvloed van aanroepers met dezelfde data tegen te houden, niet een aanroeper met echt andere data. Gerepareerd met een `retryRecentFailures`-parameter die alleen de reconcile-aanroep gebruikt | FIXED, hardware open | `PENDING` |
 | CI1 | CI stond op `main` sinds 3 september rood en zei daardoor niets meer over een PR. Drie checks. Codegen-drift op `git diff lib/` na `scripts/codegen.sh`: `analysis_options.yaml` zet `formatter.page_width` op 120, build_runner leest dat niet en emitteert op 80, en de kale `dart format .` uit CONTRIBUTING.md trok elk gegenereerd bestand naar 120. Die stap maskeerde vier latere stappen, die op `skipped` bleven staan, waaronder een formatteringsfout in vijf SYS-bestanden. 79 rode tests, waarvan 50 verouderde golden-referenties, 15 in `discover_hero_activation_test.dart` als HERO3-nasleep, 1 achterhaalde landing-golden, en de rest afzonderlijk gesloten als HERO5 en RAIL1. Volledige suite daarna 6335 groen, 6 overgeslagen, 0 rood, en `scripts/ci_checks.sh` groen. Verify - macOS + iOS simulator staat apart als VER-CI | FIXED, op `main` via `5ece3f0` (PR #1, 6 september) | `c0f9427c`, `e76e3f06`, `edc30b6b`, `99442f0d`, `213c6e82` |
 | VER-CI | `Verify - macOS + iOS simulator` faalt op main en op elke PR, op twee stappen: `macos.smoke.boot` op `Bad state: flutter build macos failed (exit 1)`, en `discover.hero.layout` op `wait_until timed out after 15000ms: {id: discover.hero}`. Draait op `macos-26` en is per DEC-083 bewust geen required gate. Niet te reproduceren zonder macOS | OPEN | n.v.t. |
 
@@ -3114,7 +3114,63 @@ draagt `accessToken`. Een tweede test legt dat vast: de naam staat in de log, he
 dezelfde regel die `test/services/preferences/log_safety_test.dart` elders bewaakt, en hij geldt
 hier extra omdat deze regel bedoeld is om in een bugmelding geplakt te worden.
 
-**Blijft open.** Dit maakt het defect zichtbaar, het bewijst nog niet dat het Michels defect ís. Wat
-de eerstvolgende run erover zegt is beslissend: staat er `Plex resources: skipping "<naam>"` in de
-log, dan is het pad 1; staat er `ActiveProfileBinder: bound 1/2 Plex servers`, dan is het pad 2.
-`HARDWARE ONLY`, want de simulator heeft Michels twee servers niet.
+**Bevestigd met een device-log.** Michel stuurde een screenshot van de logviewer met upload-ID
+`12e1y`. Die is op te halen bij de relay (`https://ice.pleya.app/logs/12e1y`) en bevat de complete
+opstartsequentie van zijn Apple TV, twee Plex-servers gekoppeld aan Plex Home.
+
+`GET https://clients.plex.tv/api/v2/resources … → 200 (324ms)` met `{servers: 2}` sluit pad 1 uit:
+beide servers kwamen terug, geen resource viel stil. Geen `Failed neutral library fetch`-regel sluit
+pad 3 uit. Wat er wél staat:
+
+```
+[15:10:51.907] ActiveProfileBinder: rebinding for Michel (…)
+[15:10:51.957] ActiveProfileBinder: connecting Michel from cached server metadata while resources refresh {servers: 2}
+[15:10:52.281] GET https://clients.plex.tv/api/v2/resources … → 200 (324ms)
+[15:10:52.281] ActiveProfileBinder: resource refresh completed for Michel {servers: 2}
+…zestien connectiekandidaten voor de tweede server, waaronder meerdere echte HTTP 401…
+[15:10:54.271] ERROR No working Plex server connection endpoints after race {candidateCount: 16}
+[15:10:54.272] ERROR refreshTokensForProfile: failed to connect G-Plexflix
+[15:10:54.273] ActiveProfileBinder: bound 1/2 Plex servers for Michel
+…
+[15:10:54.369] ERROR refreshTokensForProfile: failed to connect G-Plexflix
+              Exception: No working connection found (G-Plexflix was unreachable moments ago)
+```
+
+Dat is pad 2, en de tweede regel is de eigenlijke oorzaak. Er zijn twee bindpogingen voor de tweede
+server (`G-Plexflix`, een gedeelde/geleende server, niet Michels eigen NAS): de eerste, optimistische
+poging met het gecachte token uit `_bindOptimisticallyFromCache`, en een tweede vanuit
+`_reconcileWhenFetchLands` nádat de live `/resources`-fetch al was geland, met het verse en voor déze
+server correct gescoopte token. De eerste poging faalde echt: van de zestien kandidaten kwamen er
+meerdere terug met een letterlijke HTTP 401 (de server antwoordde, het token werd afgewezen), niet
+enkel timeouts. Die faalpoging zette `_unreachableSince[G-Plexflix]`. De tweede poging, met het token
+dat wél had gewerkt, kwam er niet eens aan toe: `_createClientForServer` zag de recente faalregistratie
+en gooide meteen `"was unreachable moments ago"`, zonder een enkele kandidaat te proberen.
+
+`_unreachableSince` bestaat om een stortvloed van aanroepers die tot dezelfde conclusie zouden komen
+met dezelfde data te bundelen (eigen doc comment: "Remembering the verdict briefly makes the second
+and third caller fail instantly instead"). De reconcile-aanroep is geen zo'n aanroeper: hij draagt
+data die de optimistische poging nooit had, namelijk het net opgehaalde, per-server token. De memory
+blokkeerde hier niet een zinloze herhaling maar de ene poging die de zaak had kunnen redden, en dat is
+precies het gat tussen wat `_reconcileWhenFetchLands`'s eigen doc comment belooft ("retry servers the
+optimistic pass left offline") en wat er gebeurde.
+
+**De fix.** `refreshTokensForProfile` en `_createClientForServer` krijgen een
+`retryRecentFailures`-parameter, standaard `false`. Alleen de reconcile-aanroep in
+`active_profile_binder.dart` zet hem op `true`: dat is de enige aanroeper die per definitie andere
+data draagt dan de poging die de memory zette. Elke andere aanroeper, inclusief de optimistische pass
+zelf, blijft de memory eerbiedigen.
+
+Reproductie en negatieve controle in `test/profiles/active_profile_binder_test.dart`: de bestaande
+test "optimistic cached bind settles without waiting for the resource refresh, then reconciles" kreeg
+twee assertions op een nieuwe `retryRecentFailuresCalls`-lijst op de test-fake. Zonder de fix leverde
+dat `[false, false]` op (rood); met de fix `[false, true]`. `_createClientForServer` zelf is niet apart
+unit-testbaar (`multi_server_manager_test.dart` documenteert al dat die methode een echte netwerkrace
+draait en geen fake `PlexClient`-fabriek heeft), dus de dekking zit op het niveau waar de codebase dat
+al voor deze klasse bugs doet: de binder die de parameter doorgeeft.
+
+Bewijs: `flutter analyze` zonder errors of warnings, de volledige `active_profile_binder_test.dart`
+(17 tests) en `multi_server_manager_test.dart` groen, en de volledige suite zonder regressie.
+
+**Nog niet op hardware bevestigd dat dit Michels servers daadwerkelijk laat verschijnen.** De fix
+verhelpt het pad dat het device-log aanwijst, maar de volgende TV-build moet tonen dat `G-Plexflix` nu
+wél in de Servers-categorie staat. Zet SRC1 pas op VERIFIED na die run.
