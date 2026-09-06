@@ -164,6 +164,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | PLR4 | Het spelerpaneel is te hoog voor zijn eigen hoogtekap: de twee kolommen van het tabblad Video scrollen in plaats van te passen, waardoor Shaders, Ambient, Automatisch volgende afspelen en Prestatie-overlay onder de rand verdwijnen (Michel, 6 september, foto op hardware, build 264) | FIXED | `5e07551f` |
 | PLR5 | LEFT en RIGHT op een waarderij stappen de waarde, dus de kolomwissel is alleen mogelijk als de waarde toevallig aan zijn eind staat: vanaf Beeldverhouding kom je niet bij de rechterkolom zonder de beeldverhouding te wijzigen. Michel vraagt om een rij die je eerst aanklikt voordat LEFT/RIGHT hem verstelt (6 september). Dit wijzigt het paneelcontract van DEC-101 ("Links en rechts stappen een waarde") en gaat dus als besluit | FIXED | `08814bac` |
 | PLR6 | Menu sluit het paneel niet op hardware: het paneel houdt de afstandsbediening vast en de app moet geforceerd worden afgesloten (Michel, 6 september, build 264). De Dart-kant is aantoonbaar niet de oorzaak: `Menu closes the panel from a focused row (PLR6 contract)` in `test/widgets/tv_info_panel_test.dart` is groen, dus een Escape-KeyDown bij een gefocuste rij sluit het paneel. Verdachte is het native drukpad; het meegestuurde log `5pyur` dekt alleen de run *na* het geforceerd afsluiten en bewijst niets over de vastloper | HARDWARE ONLY, blokkerend | n.v.t. |
+| CAT9 | **iOS.** Op Alle films doet geen enkele chip iets: Bronnen, Filters en Sorteren reageren niet op een tik (Michel, 6 september, build 266). `MobileCatalogScreen` wordt door `MobileLandingScreen._TitleRow` gepusht op de navigator bóven `MainScreen`, en `MainScreen.build` is juist wat de `OverlaySheetHost` plaatst; de gepushte route is dus een broer van de eigenaar van de host en nooit een afstammeling. `OverlaySheetController.of` vond niets: een assertie in debug, een ingeslikte `scope!` in release, dus een dode chip zonder foutmelding | FIXED | `3b0a9b65` |
 
 ## Wat er per item bekend is
 
@@ -3744,3 +3745,43 @@ is geen log uit de run waarin het misgaat. De regel blijft daarom `HARDWARE ONLY
 en gaat niet naar `FIXED` op een redenering. **Michel: plan een devicerun met Xcode
 eraan**, open het paneel met een veeg, druk Menu twee of drie keer, en laat de
 console meelezen; de meetregels staan in `docs/tvos-remote-press-pipeline.md`.
+
+### CAT9, de chips op Alle films deden niets op iOS
+
+Michel op 6 september, build 266: "Filters ios werken helemaal niet bij alle films, kan er niet op
+drukken." Dit is de eerste iOS-bevinding in dit document; de lijst is tot nu toe tvOS, maar de
+staande regel is dat een melding die werk oplevert hier landt en niet ergens anders.
+
+**Wat er misging.** `MobileLandingScreen._TitleRow` opent het catalogusscherm met
+`Navigator.of(context).push`. Die `Navigator` is de profielnavigator, en die zit *boven*
+`MainScreen`. `MainScreen.build` is precies de plek die de `OverlaySheetHost` plaatst. De gepushte
+`MobileCatalogScreen` is daarmee een broer van het scherm dat de host bezit, nooit een afstammeling,
+en `OverlaySheetController.of` kijkt alleen omhoog. In een debugbuild valt dat op als
+`No OverlaySheetHost found in context`; in een releasebuild is die assertie weggecompileerd, gooit
+`scope!` een null-check die het framework opvangt, en gebeurt er bij een tik dus letterlijk niets.
+Alle drie de chips zijn geraakt, niet alleen Filters.
+
+**Waarom de bestaande tests dit niet zagen.** `pumpCatalog` in
+`test/screens/home/mobile_catalog_screen_test.dart` zette de host er direct omheen en pushte niets.
+Dat is een geldige montage voor het scherm zelf, maar niet de montage die de app gebruikt, en het
+verschil tussen die twee is precies de bug. `pumpPushedCatalog` doet het nu zoals de app het doet.
+
+**De fix, en de val erin.** Het scherm draagt zijn eigen host, zoals elk ander gepusht scherm hier
+(hubdetail, mediadetail, het Seerr-detail). De eerste poging was niet genoeg en dat is het opmerken
+waard: `_openFilters` en `_openSort` gebruikten de context van de `State`, en de host wordt in
+`build` geplaatst, dus die host is een *afstammeling* van die context en `of` vindt hem nog steeds
+niet. De sheetopeners krijgen daarom een context uit een `Builder` ónder de host. Zonder die tweede
+stap opende er nog steeds niets, en de testopstelling met een buitenste host maskeerde dat door de
+sheet achter de route te tekenen.
+
+**Reikwijdte.** `MobileCatalogScreen` is het enige scherm uit de mobiele fasen 1 tot en met 3 dat op
+deze manier gepusht wordt (`MaterialPageRoute` komt in `lib/screens/home/` precies één keer voor);
+de andere mobiele schermen zijn tabinhoud onder `MainScreen` en zitten dus wél onder de host.
+
+**Derde val, en die is zelf veroorzaakt.** De host installeert een `PopScope`, en de eerste versie
+van de `onSystemBack` riep `Navigator.maybePop()` aan. Die callback *is* juist wat de `PopScope`
+draait wanneer hij de pop weigerde, dus opnieuw om een pop vragen komt regelrecht terug op dezelfde
+plek: een lus die de route laat hangen. `mobile_landing_screen_test` liep daarop vast op
+`the pushed catalogue's search action pops and reaches the landing's own search target`, en dat is
+ook precies hoe het gevonden is: de volledige suite bleef op die ene test staan. Het zusterscherm
+gebruikt `Navigator.pop`, en dat is de reden.
