@@ -1887,6 +1887,43 @@ en legt het oude gedrag vast: na een volledige-venster push is niets in de balk 
 **Consequences:** Mockup 19 staat in `docs/tvos-redesign-09-25-approved.md` als vervangen; mockup 33 is de gehashte set van `docs/assets/tvos-unified/mockups-2026-09-05/`. PB-9 in het implementatiecontract krijgt de zin dat de sheets op TV geen ingang meer zijn. De bouw volgt de volgorde van het plan: eerst een testharnas op `TvInfoPanel`, dan de strings (STR1, STR2, de "OK"-waarde), de rij-API (`subtitle`, `onStepLeft/Right`, `automationId`, `kind`), de secundaire labels (PNL1), pills op `FocusableWrapper`, LEFT/RIGHT op waarderijen met `onSetBoxFitMode` in `TrackControlsState`, de synchronisatie-subweergave zonder Material-slider plus de fix van `sliderFocusNode` bij de gedeelde eigenaar, de subweergave-enum met hoofdstukken, slaaptimer op `SleepTimerService` zelf (niet `SleepTimerContent`, die zonder overlay-scope de spelerroute popt), `VersionQualityPicker` met `onDismiss`, de Weergave- en stijlrijen, de volumeversterking, de routering van tandwiel en sporenknop, de automation-ids `player.panel`, `player.panel.tab` en `player.panel.row` met geregenereerde yaml, en een Pleya Verify-scenario `tvos.player.panel.yaml`. `SettingsService.volume` deelt zijn betekenis met de desktop-slider; op één toestel met TV-override kan een boost in de slider landen, en dat is aanvaard omdat voorkeuren per apparaat zijn. Hardware only blijven de veeg-opening, de bitstream-stand, de hoorbaarheid van de boost en de synchronisatiestap. Goedgekeurd door Michel op 5 september 2026 op A tot en met I, na twee correctierondes (selectors, chevrons, focusring, en de stap van losse dozen naar een glaskaart): "Akkoord".
 
 
+## DEC-106: `feat/netflix-mobile` wordt niet gemerged; Zoeken wordt opnieuw gebouwd als fase 4
+
+**Date:** 2026-09-06
+**Status:** accepted
+
+**Context:** Bij het landen van de iOS Unified 2026-stack op `main` (PR #5, branch
+`integration/ios-unified-main-sync`) kwam `feat/netflix-mobile` boven water. Die branch is geen
+aanvulling en geen oudere kopie: hij takt af op `22a7674b`, precies het punt waar fase 1 sloot, en
+heeft daarna fase 2, fase 3 én fase 4 (Zoeken) zelfstandig gebouwd, op 3 en 4 september. De tak die
+in PR #5 zit deed fase 2 en fase 3 opnieuw op 5 en 6 september, met een adversariële reviewronde van
+twintig bevindingen erachteraan. Het zijn dus twee implementaties van dezelfde twee schermen, met
+eigen DEC-nummers (093, 094, 095 daar; 102 tot en met 105 hier) en een andere opdeling:
+`feat/netflix-mobile` splitst de catalogus in `mobile_catalog_controller.dart`,
+`mobile_catalog_grid.dart`, `mobile_catalog_header.dart`, `mobile_filter_categories.dart` en
+`mobile_shell_scope.dart`, waar deze tak één `MobileCatalogScreen` met twee sheets houdt.
+Zeventien bestanden botsen hard, waaronder `mobile_catalog_screen.dart` (343 tegen 635 regels) en
+`mobile_landing_screen.dart` (117 tegen 225 regels), die aan beide kanten vanaf nul geschreven zijn.
+
+**Decision:** `feat/netflix-mobile` wordt niet gemerged. De implementatie in PR #5 is de
+gebouwde fase 2 en fase 3, en blijft dat. De branch blijft staan als historie en als leesbaar
+referentiemateriaal, maar is geen bron meer voor een merge.
+
+Zoeken op de projectie, wat daar fase 4 is (DEC-095 op die branch), is echte functionaliteit die
+deze tak niet heeft en die niet vervalt. Het wordt opnieuw gebouwd als een eigen fase 4, op de
+componenten van fase 1 tot en met 3, met een eigen plan en een eigen DEC. Overnemen kan niet
+stukje voor stukje: `mobile_search_body.dart` importeert `mobile_catalog_header.dart`,
+`focusable_filter_chip.dart` en `mobile_search_results.dart`, alle drie onderdelen van de andere
+opdeling, dus een cherry-pick sleept die opdeling mee het scherm in dat er niet op gebouwd is.
+
+**Consequences:** `docs/DESIGN-INDEX.md` beschrijft `feat/netflix-mobile` nog als de iOS-branch met
+DEC-090 tot en met DEC-092; die paragraaf klopt historisch maar wijst niet meer naar de tak die
+landt. Twee dingen die de andere branch wel had en deze niet, en die bij fase 4 opnieuw langs moeten
+komen: de nieuwe i18n-sleutels zijn daar in alle veertien locales vertaald en hier alleen in `en` en
+`nl`, en `search_text.dart` bevat een genormaliseerde zoekvergelijking die hier nog niet bestaat. Er
+is niets weggegooid uit PR #5 om deze keuze mogelijk te maken; er is alleen niets uit
+`feat/netflix-mobile` bijgekomen.
+
 ## DEC-105: fase 3 zet Alle films/Alle series en de filtersheet, tap-by-id in Verify
 
 **Date:** 2026-09-06
