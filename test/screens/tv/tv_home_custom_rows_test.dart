@@ -515,6 +515,36 @@ void main() {
     expect(layout.hiddenRowIds, isNot(contains('#custom:r1')));
   });
 
+  // ROW1f. The wizard opened with the ring on Annuleren, one Select from
+  // closing itself. `_footer(scale)` is built eagerly into the Column's
+  // children while the step body sits in a `LayoutBuilder` that only runs
+  // during layout, so `_nodeFor('footer.back')` was the first call and the
+  // "first one wins" rule handed it the initial-focus node.
+  testWidgets('the wizard opens on the step, not on Annuleren', (tester) async {
+    await boot(tester);
+    await openPanel(tester);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.newRow);
+    await tester.pumpAndSettle();
+
+    // The adopted node keeps the host's own debugLabel, so this asks the tree
+    // which control holds the ring rather than asking for a name.
+    Focus focusOf(String label) => tester.widget<Focus>(
+      find
+          .ancestor(
+            of: find.descendant(of: find.byKey(tvHomeRowWizardKey), matching: find.text(label)),
+            matching: find.byType(Focus),
+          )
+          .first,
+    );
+
+    expect(focusOf(t.unifiedCatalog.moviesTitle).focusNode!.hasPrimaryFocus, isTrue);
+    expect(
+      focusOf(t.common.cancel).focusNode!.hasPrimaryFocus,
+      isFalse,
+      reason: 'one Select on Annuleren throws the whole wizard away',
+    );
+  });
+
   testWidgets('the new-row flow saves a row and Home draws it', (tester) async {
     await boot(tester);
     await openPanel(tester);

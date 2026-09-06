@@ -138,8 +138,26 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
     super.dispose();
   }
 
+  /// The control the wizard opens on: the kind that is currently chosen, which
+  /// is the first stop of the first step and, on an edit, the answer that is
+  /// already true.
+  ///
+  /// Stated rather than "whichever key asks first". That was the rule until
+  /// ROW1f, and the answer it gave was Annuleren: `_footer(scale)` is built
+  /// eagerly into the Column's children while the step body sits inside a
+  /// `LayoutBuilder`, which only runs during layout. So the footer asked first,
+  /// took the initial-focus node, and the wizard opened one Select away from
+  /// throwing itself away.
+  String get _initialFocusKey => 'kind.${_kind.id}';
+
+  bool _adoptedInitialFocus = false;
+
   FocusNode _nodeFor(String key) {
-    if (_nodes.isEmpty && widget.initialFocusNode != null) return _nodes[key] = widget.initialFocusNode!;
+    final initial = widget.initialFocusNode;
+    if (initial != null && !_adoptedInitialFocus && key == _initialFocusKey) {
+      _adoptedInitialFocus = true;
+      return _nodes[key] = initial;
+    }
     return _nodes.putIfAbsent(key, () => FocusNode(debugLabel: 'TvHomeRowWizard.$key'));
   }
 
