@@ -93,6 +93,19 @@ class HomeCustomRowsProvider extends ChangeNotifier with DisposableChangeNotifie
   /// detectable. See [_onLayoutChanged].
   final Map<String, HomeCustomRow> _loadedFor = {};
 
+  /// Which sources each entry in [_content] was loaded against.
+  ///
+  /// The row value is not enough on its own. A load already in flight is not
+  /// joined (see [_load]), so a library appearing or disappearing in that
+  /// window reached nobody: `refreshAll` cleared [_loadedFor], the landing load
+  /// wrote the stale answer straight back into it, and the re-check at the end
+  /// of [_load] then found nothing to redo. The row kept the answer to a
+  /// question about a set of libraries that no longer existed (ROW1h).
+  final Map<String, int> _loadedGeneration = {};
+
+  /// Bumped whenever the participating library set changes.
+  int _sourceGeneration = 0;
+
   Set<String> _libraryKeys = const {};
 
   /// What [rowId]'s filter yielded, or null while it has never been asked.
@@ -139,11 +152,13 @@ class HomeCustomRowsProvider extends ChangeNotifier with DisposableChangeNotifie
   /// same and its content is not.
   Future<void> refreshRow(String rowId) {
     _loadedFor.remove(rowId);
+    _loadedGeneration.remove(rowId);
     return _load(rowId);
   }
 
   Future<void> refreshAll() {
     _loadedFor.clear();
+    _loadedGeneration.clear();
     return _loadAll();
   }
 
@@ -163,14 +178,20 @@ class HomeCustomRowsProvider extends ChangeNotifier with DisposableChangeNotifie
     if (_inFlight.contains(rowId)) return;
     final row = _layout.customRowById(rowId);
     if (row == null) return;
+    final generation = _sourceGeneration;
     _inFlight.add(rowId);
     safeNotifyListeners();
     try {
       final content = await _loader.load(row, limit: kHomeCustomRowCardLimit);
       if (isDisposed) return;
-      if (_layout.customRowById(rowId) == row) {
+      // Both halves of the question have to still hold: the row it was asked
+      // for, and the sources it was asked against. Storing an answer that fails
+      // either is not just wrong on screen, it also marks the row as loaded and
+      // so cancels the round that would have corrected it.
+      if (_layout.customRowById(rowId) == row && generation == _sourceGeneration) {
         _content[rowId] = content;
         _loadedFor[rowId] = row;
+        _loadedGeneration[rowId] = generation;
       }
     } finally {
       _inFlight.remove(rowId);
@@ -179,9 +200,11 @@ class HomeCustomRowsProvider extends ChangeNotifier with DisposableChangeNotifie
         if (current == null) {
           _content.remove(rowId);
           _loadedFor.remove(rowId);
+          _loadedGeneration.remove(rowId);
         }
         safeNotifyListeners();
-        if (current != null && _loadedFor[rowId] != current) unawaited(_load(rowId));
+        final stale = _loadedFor[rowId] != current || _loadedGeneration[rowId] != _sourceGeneration;
+        if (current != null && stale) unawaited(_load(rowId));
       }
     }
   }
@@ -201,6 +224,7 @@ class HomeCustomRowsProvider extends ChangeNotifier with DisposableChangeNotifie
       if (ids.contains(id)) continue;
       _content.remove(id);
       _loadedFor.remove(id);
+      _loadedGeneration.remove(id);
       changed = true;
     }
     for (final row in rows) {
@@ -218,6 +242,7 @@ class HomeCustomRowsProvider extends ChangeNotifier with DisposableChangeNotifie
     final keys = _currentLibraryKeys();
     if (setEquals(keys, _libraryKeys)) return;
     _libraryKeys = keys;
+    _sourceGeneration++;
     unawaited(refreshAll());
   }
 
