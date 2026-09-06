@@ -6,7 +6,7 @@
 /// categories on the left (Status, Genre, Jaar, Servers, Bibliotheken, each
 /// present only when the participating backends can execute it), and the
 /// active category's choices on the right. The TV sheet this is modelled on
-/// (`tv_catalog_filter_panel.dart`, read via `git show origin/main:...` — it
+/// (`tv_catalog_filter_panel.dart`, read via `git show origin/main:...`, it
 /// does not exist on this branch) took the same two-zone shape for the same
 /// reason a stacked list gives: on a 393pt-wide phone a heading-per-section
 /// column is even more awkward than on a ten-foot screen, and an unavailable
@@ -16,9 +16,9 @@
 /// selection is mutated by every tap; the catalog behind the sheet does not
 /// restart its query until the caller receives this sheet's result. On touch
 /// that is a UX choice rather than the remote-control necessity it is on TV
-/// (hoofdstuk 10.6), but the effect the codebase already relies on —
-/// closing without Toepassen leaves the previous query untouched — is the
-/// same either way.
+/// (hoofdstuk 10.6), but the effect the codebase already relies on (closing
+/// without Toepassen leaves the previous query untouched) is the same
+/// either way.
 library;
 
 import 'dart:async';
@@ -85,7 +85,7 @@ class MobileCatalogFiltersSheet extends StatefulWidget {
   final UnifiedCatalogFilterSelection selection;
   final UnifiedFilterCapabilities capabilities;
 
-  /// Every eligible library, restricted or not — a server the user has
+  /// Every eligible library, restricted or not: a server the user has
   /// excluded still needs a row, or there is no way back to it.
   final List<CatalogLibrary> libraries;
   final MediaServerClient? Function(String serverId) clientFor;
@@ -276,7 +276,10 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
         Text(t.unifiedCatalog.filters.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
         const Spacer(),
         if (activeCount > 0)
-          Text(t.unifiedCatalog.filters.activeCount(count: activeCount), style: TextStyle(color: tk.textMuted)),
+          Text(
+            t.unifiedCatalog.filters.activeCount(count: activeCount),
+            style: TextStyle(color: tk.textMuted),
+          ),
       ],
     );
   }

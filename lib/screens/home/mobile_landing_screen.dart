@@ -128,7 +128,9 @@ class MobileLandingScreen extends StatelessWidget {
               automationInstance: kind.automationInstance,
             ),
           ),
-          SliverToBoxAdapter(child: _TitleRow(kind: kind, onSearchTap: onSearchTap)),
+          SliverToBoxAdapter(
+            child: _TitleRow(kind: kind, onSearchTap: onSearchTap),
+          ),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
           if (isLoading) mobileHubRowsSkeletonSliver,
           if (!isLoading && errorMessage != null) SliverErrorState(message: errorMessage, onRetry: discover.load),
@@ -164,7 +166,7 @@ class MobileLandingScreen extends StatelessWidget {
 ///
 /// The action opened the complete catalogue as of iOS Unified 2026 fase 3
 /// (`docs/ios-unified-2026-fase3-plan.md`): a plain `Navigator.push` of
-/// [MobileCatalogScreen], the same kind of push a detail card already is —
+/// [MobileCatalogScreen], the same kind of push a detail card already is:
 /// see that screen's own doc comment for why this is a push and not a tab
 /// state. Before fase 3 the action was drawn and inert; fase 3 put exactly
 /// one handler underneath and changed nothing else about this row.
@@ -175,9 +177,11 @@ class _TitleRow extends StatelessWidget {
   const _TitleRow({required this.kind, this.onSearchTap});
 
   void _openCatalog(BuildContext context) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => MobileCatalogScreen(kind: kind.catalogKind, onSearchTap: onSearchTap)));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MobileCatalogScreen(kind: kind.catalogKind, onSearchTap: onSearchTap),
+      ),
+    );
   }
 
   @override

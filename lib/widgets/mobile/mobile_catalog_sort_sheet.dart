@@ -24,10 +24,8 @@ import '../overlay_sheet.dart';
 Future<UnifiedCatalogSort?> showMobileCatalogSortSheet(BuildContext context, {required UnifiedCatalogSort current}) {
   return OverlaySheetController.of(context).show<UnifiedCatalogSort>(
     showDragHandle: true,
-    builder: (sheetContext) => MobileCatalogSortSheet(
-      current: current,
-      onChosen: (sort) => OverlaySheetController.of(sheetContext).pop(sort),
-    ),
+    builder: (sheetContext) =>
+        MobileCatalogSortSheet(current: current, onChosen: (sort) => OverlaySheetController.of(sheetContext).pop(sort)),
   );
 }
 

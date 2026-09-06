@@ -5,10 +5,10 @@
 ///
 /// One screen for both kinds, the same choice `MobileLandingScreen` and the
 /// TV catalogue screen it is modelled on (`tv_unified_catalog_screen.dart`,
-/// read via `git show origin/main:...` — it does not exist on this branch)
+/// read via `git show origin/main:...`, it does not exist on this branch)
 /// both make: the difference is which [MediaKind] the catalog reads and what
 /// the header says, nothing else. It owns presentation and the query it
-/// asks for; it owns no source logic — activation goes through the same
+/// asks for; it owns no source logic: activation goes through the same
 /// `navigateToMediaItemDetails` call the rails above it already use, on the
 /// group's representative source, not a second picker.
 ///
@@ -91,7 +91,7 @@ class MobileCatalogScreen extends StatefulWidget {
   final VoidCallback? onSearchTap;
 
   /// Test-only seam. When set, this prefetcher is used instead of
-  /// constructing the real one, and this widget never disposes it — the
+  /// constructing the real one, and this widget never disposes it; the
   /// caller that built it owns it. Without this seam a widget test that
   /// scrolls a populated grid triggers the real `precacheImage`, which
   /// dispatches an actual network fetch no test mocks, hanging the test
@@ -141,7 +141,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   };
 
   /// Loads the stored setup, prunes sources that no longer exist, then starts
-  /// the merge — same order and same reasoning as
+  /// the merge, same order and same reasoning as
   /// `TvUnifiedCatalogScreen._restorePreferences`: the first fetch should
   /// already carry the user's filters instead of loading unfiltered and
   /// replacing it a frame later.
@@ -168,7 +168,11 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     final selection = _preferences.filters;
     final participating = _catalog.eligibleLibraries.where(selection.selects);
     final capabilities = unifiedFilterCapabilitiesFor(participating.map((l) => l.backend));
-    final query = buildUnifiedCatalogQuery(kind: widget.kind.mediaKind, preferences: _preferences, capabilities: capabilities);
+    final query = buildUnifiedCatalogQuery(
+      kind: widget.kind.mediaKind,
+      preferences: _preferences,
+      capabilities: capabilities,
+    );
     final alreadyRunning = !startIfNeeded || _catalog.hasStarted;
     if (alreadyRunning && query == _catalog.query && !_restrictionChanged(selection)) {
       return Future<void>.value();
@@ -214,9 +218,10 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     await _updatePreferences(_preferences.copyWith(filters: result));
   }
 
-  Future<void> _openDetails(UnifiedMediaGroup group) => navigateToMediaItemDetails(context, group.representativeSource.item);
+  Future<void> _openDetails(UnifiedMediaGroup group) =>
+      navigateToMediaItemDetails(context, group.representativeSource.item);
 
-  /// "All sources" until something is excluded, then how many are left —
+  /// "All sources" until something is excluded, then how many are left:
   /// same rule `TvUnifiedCatalogScreen._sourcesLabel` uses.
   String _sourcesLabel(UnifiedCatalogFilterSelection filters) {
     if (!filters.restrictsSources) return t.unifiedCatalog.allSources;
@@ -225,7 +230,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   }
 
   /// The right-hand half of the count row: what is actively narrowing the
-  /// result, or nothing at all. Genre and year only — server/library
+  /// result, or nothing at all. Genre and year only: server/library
   /// restriction already shows on the sources chip, and repeating it here
   /// would say the same thing twice.
   String? _filterSummary(UnifiedCatalogFilterSelection filters) {
@@ -467,29 +472,26 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                         crossAxisSpacing: mobileRailGutter,
                         childAspectRatio: cardWidth / cardHeight,
                       ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          if (index >= snapshot.groups.length) {
-                            if (snapshot.hasMore && !_catalog.isLoadingMore) {
-                              unawaited(_catalog.loadMore());
-                            }
-                            return const SkeletonMediaCard();
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        if (index >= snapshot.groups.length) {
+                          if (snapshot.hasMore && !_catalog.isLoadingMore) {
+                            unawaited(_catalog.loadMore());
                           }
-                          final group = snapshot.groups[index];
-                          return AutomationNode(
-                            id: AutomationIds.catalogGridItem,
-                            instance: '${widget.kind.automationInstance}.$index',
-                            role: 'grid.item',
-                            child: MobileMediaCard(
-                              group: group,
-                              shape: MobileCardShape.portrait,
-                              width: cardWidth,
-                              onTap: () => _openDetails(group),
-                            ),
-                          );
-                        },
-                        childCount: snapshot.groups.length + (snapshot.hasMore ? 3 : 0),
-                      ),
+                          return const SkeletonMediaCard();
+                        }
+                        final group = snapshot.groups[index];
+                        return AutomationNode(
+                          id: AutomationIds.catalogGridItem,
+                          instance: '${widget.kind.automationInstance}.$index',
+                          role: 'grid.item',
+                          child: MobileMediaCard(
+                            group: group,
+                            shape: MobileCardShape.portrait,
+                            width: cardWidth,
+                            onTap: () => _openDetails(group),
+                          ),
+                        );
+                      }, childCount: snapshot.groups.length + (snapshot.hasMore ? 3 : 0)),
                     ),
                   ),
                 ),
@@ -553,7 +555,7 @@ class _FilterChipWithBadge extends StatelessWidget {
 }
 
 /// The 2:3 grid on its own geometry, before the first round of results
-/// lands — same reasoning `TvCatalogSkeletonGrid` gives: the placeholder is
+/// lands, same reasoning `TvCatalogSkeletonGrid` gives: the placeholder is
 /// the page's own layout, not a centred spinner that gets replaced by a
 /// differently-shaped wall of posters a frame later.
 class _CatalogSkeletonGrid extends StatelessWidget {
@@ -616,7 +618,11 @@ class _EmptyState extends StatelessWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: tk.text),
             ),
             const SizedBox(height: 8),
-            Text(body, textAlign: TextAlign.center, style: TextStyle(color: tk.textMuted)),
+            Text(
+              body,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: tk.textMuted),
+            ),
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 16),
               FilledButton(onPressed: onAction, child: Text(actionLabel!)),
