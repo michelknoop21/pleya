@@ -133,6 +133,8 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | HERO5 | `test/screens/discover_screen_tv_hero_test.dart` stond rood op `main`, acht tests, als nasleep van HERO3: het 90-dagenvenster kreeg een clock-seam voor tests, maar dit bestand gebruikte hem niet en las dus de wandklok. De harness pint de klok nu op 2026-06-01 en `_movie` geeft een dateloze fixture een releasedatum, want DEC-097 zet een film zonder datum per contract buiten de hero. Fixture-datums zijn niet verschoven. Negatieve controle: de seam een jaar vooruit reproduceert de acht rode tests | FIXED | `7ade2bc9` |
 | RAIL1 | `test/widgets/tv_discovery_rail_test.dart` stond rood op `main`, vijf tests. Geen defect: twee toetsten de afspraak die LAND2 verving, twee lazen "welke tegel is actief" af aan een blok dat sindsdien focusgebonden is, en de vijfde zocht met een exacte string naar een label dat samengevoegd in de node van de kop staat. Herschreven naar wat er nu geldt, met een sabotagecontrole op de focusgate | FIXED | `9179ac2e` |
 | ROW1 | Eigen rails op Home, samengesteld door de gebruiker: je legt een filter vast en de inhoud daarvan wordt een rij. Bedienbaar op Home zelf, niet weggestopt in Instellingen, en de volgorde is daar ook te wijzigen. De hero en Verder kijken blijven statisch en zijn niet te verplaatsen. Gevraagd door Michel op 5 september 2026. Mockup 32 (A1a, A1b, A2, B, C1 tot en met C4) goedgekeurd op 5 september, DEC-100 accepted, 9.1, 17.5 en 23 aangepast; bouwronde open | GOEDGEKEURD, bouw open | n.v.t. |
+| SRC1 | Twee gekoppelde Plex-servers, beide online, en het filterpaneel van Alle series toont er één bij Servers. Gemeld door Michel op 6 september 2026. Het paneel is uitgesloten: `tv_catalog_foundation_test.dart` toont twee servers (`nas`, `attic`) en staat groen, en de keten `LibrariesProvider` → `eligibleCatalogLibraries` → `_servers` draagt de server-id per bibliotheek door. Er blijven drie stroomopwaartse paden over, en twee daarvan logden hun verlies al met naam (`refreshTokensForProfile: failed to connect …`, `Failed neutral library fetch from …`). Het derde deed dat niet: `PlexAuthService.fetchServers` liet een resource die niet parseert stil vallen. Dat is gerepareerd, zodat de eerstvolgende run de ontbrekende server bij naam noemt. Blijft open tot een device-log één van de drie aanwijst | HARDWARE ONLY | `PENDING` |
+| CI2 | `main` staat rood sinds 3 september, op beide workflows. CI - Sanity Checks heeft drie oorzaken, alle drie al gerepareerd en groen op `claude/netflix-redesign-b4x21v`: Code Analysis viel om op een codegen-diff (`e76e3f0`, gegenereerde code stond op 120 kolommen doordat een kale `dart format .` ook `*.g.dart` pakt terwijl build_runner op 80 emitteert), en Unit Tests op 51 goldens die op macOS gemaakt zijn terwijl CI Linux draait (`213c6e8`) plus 15 tests in `discover_hero_activation_test.dart` die de wandklok lezen tegen het 90-dagenvenster van DEC-097 (`99442f0`). Hier lokaal nagemeten op Flutter 3.44.0: 6250 geslaagd, 66 rood, 6 overgeslagen, en zonder de goldens blijven precies die 15 over, ook op een schone boom. Die drie zitten vast in PR #1, die nog een draft is. Pleya Verify is een losse vierde oorzaak en staat óók rood op die branch: `flutter build macos` eindigt op exit 1 en `discover.hero.layout` loopt op de iOS-sim in een `wait_until`-timeout. Niet vanuit een Linux-container te onderzoeken | GOEDGEKEURD, merge open; Verify OPEN | `e76e3f0`, `213c6e8`, `99442f0` |
 
 ## Wat er per item bekend is
 
@@ -2888,7 +2890,7 @@ y=740,5, bij dezelfde hop 14. `tvos.home.hero-return`, `tvos.home.hero-return-fr
 `tvos.home.full-bleed` en `tvos.home.walk-rails` blijven groen.
 
 Op 5 september 2026 bevestigd op de Apple TV: de melding is weg. Daarmee is HERO4 `VERIFIED`, en
-staat het bewijs op twee benen — de simulator toont de toestand en het herstel, het toestel toont
+staat het bewijs op twee benen, de simulator toont de toestand en het herstel, het toestel toont
 dat de weg die hem opleverde hem niet meer oplevert.
 
 `tvos.home.hero-return-from-route` blijft de tegenhanger en houdt zijn eigen kop: zonder afspelen
@@ -3067,3 +3069,51 @@ per contract uit, dus "geen datum" is hier geen standpunt meer dat een fixture k
 
 Negatieve controle: dezelfde seam een jaar vooruit gezet reproduceert precies de acht rode tests,
 teruggezet zijn alle negen groen.
+
+### SRC1, twee Plex-servers en één rij bij Servers
+
+Gemeld door Michel op 6 september 2026: twee Plex-servers gekoppeld, allebei online, en het
+filterpaneel van Alle series toont er één onder Servers.
+
+**Het paneel is uitgesloten, niet aangenomen.** `tv_catalog_filter_panel.dart` bouwt zijn
+Servers-rijen uit `widget.libraries`, dat is `UnifiedCatalogProvider.eligibleLibraries`, en
+`_servers` groepeert die op `library.serverId.value`. Vier tests in
+`test/widgets/tv/tv_catalog_foundation_test.dart` draaien dat met twee servers (`nas`/NAS en
+`attic`/Zolder) en staan groen. De categorie is bovendien onvoorwaardelijk: `_supports` geeft voor
+`servers` en `libraries` altijd `true`, want die twee worden uitgevoerd door een cursor uit de
+merge te laten en niet door een backend iets te vragen. Eén rij betekent dus één server in
+`eligibleLibraries`, niet een paneel dat er één verbergt.
+
+**Stroomopwaarts blijven drie paden over**, en de vraag is welke:
+
+1. `PlexAuthService.fetchServers` levert de tweede server niet, de resource parseert niet.
+2. `refreshTokensForProfile` verbindt hem niet binnen `perServerConnect` (6,5 s), waarna
+   `ActiveProfileBinder` hem buiten `visibleServerIds` laat en `isServerVisible` hem uit
+   `eligibleCatalogLibraries` filtert.
+3. `getMediaLibrariesFromAllServers` haalt zijn bibliotheken niet op.
+
+Pad 2 en 3 noemden hun verlies al bij naam in de log: `refreshTokensForProfile: failed to connect
+<naam>` en `Failed neutral library fetch from <id>`, plus `ActiveProfileBinder: bound X/Y Plex
+servers`. Pad 1 deed dat niet, en dat is het pad dat precies dit symptoom maakt.
+
+**Wat er aan pad 1 mankeerde.** `fetchServers` verzamelt resources die niet parseren in
+`invalidServers` en gooit alleen wanneer er géén enkele bruikbare overblijft. Eén onbruikbare naast
+één bruikbare gaf dus stilletjes één server terug, zonder één logregel. `PlexServer.fromJson` eist
+`name`, `clientIdentifier`, `accessToken` en minstens één parseerbare `connection`; ontbreekt er
+één, dan verdwijnt de server zonder spoor en meldt elke laag eronder eerlijk de ene server die hij
+kreeg.
+
+Reproductie in `test/services/plex_auth_service_test.dart`: een resources-antwoord met twee servers
+waarvan de tweede geen `accessToken` heeft levert `['srv-1']` op en een lege log. Dat was de
+negatieve controle en hij was aantoonbaar rood. De fix logt per overgeslagen resource zijn naam,
+zijn machine-id en de reden.
+
+`_resourceLabel` bouwt die regel met de hand in plaats van de resource-map te dumpen, want die map
+draagt `accessToken`. Een tweede test legt dat vast: de naam staat in de log, het token niet. Dat is
+dezelfde regel die `test/services/preferences/log_safety_test.dart` elders bewaakt, en hij geldt
+hier extra omdat deze regel bedoeld is om in een bugmelding geplakt te worden.
+
+**Blijft open.** Dit maakt het defect zichtbaar, het bewijst nog niet dat het Michels defect ís. Wat
+de eerstvolgende run erover zegt is beslissend: staat er `Plex resources: skipping "<naam>"` in de
+log, dan is het pad 1; staat er `ActiveProfileBinder: bound 1/2 Plex servers`, dan is het pad 2.
+`HARDWARE ONLY`, want de simulator heeft Michels twee servers niet.
