@@ -43,6 +43,7 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/global_key_utils.dart';
 import '../../utils/media_navigation_helper.dart';
 import '../../widgets/app_icon.dart';
+import '../../utils/platform_detector.dart';
 import '../../widgets/focusable_filter_chip.dart';
 import '../../widgets/media_card_grid_layout.dart';
 import '../../widgets/mobile/mobile_catalog_filters_sheet.dart';
@@ -50,6 +51,7 @@ import '../../widgets/mobile/mobile_catalog_sort_sheet.dart';
 import '../../widgets/mobile/mobile_media_card.dart';
 import '../../widgets/mobile/mobile_media_rail.dart' show mobileRailGutter, mobileRailInset;
 import '../../widgets/mobile/mobile_refresh_scope.dart';
+import '../../widgets/overlay_sheet.dart';
 import '../../widgets/skeleton_media_card.dart';
 
 /// Which catalogue this is. Deliberately its own enum, not [MediaKind]
@@ -199,15 +201,20 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     await _applyQuery();
   }
 
-  Future<void> _openSort() async {
-    final result = await showMobileCatalogSortSheet(context, current: _preferences.sort);
+  /// [sheetContext] must sit *below* this screen's [OverlaySheetHost], so it
+  /// cannot be the state's own `context`: the host is built inside [build],
+  /// which makes it a descendant of that context and invisible to
+  /// `OverlaySheetController.of`, which only looks upward. See the note on the
+  /// host in [build] (CAT9).
+  Future<void> _openSort(BuildContext sheetContext) async {
+    final result = await showMobileCatalogSortSheet(sheetContext, current: _preferences.sort);
     if (result == null || !mounted) return;
     await _updatePreferences(_preferences.copyWith(sort: result));
   }
 
-  Future<void> _openFilters({required MobileCatalogFilterSection initialSection}) async {
+  Future<void> _openFilters(BuildContext sheetContext, {required MobileCatalogFilterSection initialSection}) async {
     final result = await showMobileCatalogFiltersSheet(
-      context,
+      sheetContext,
       selection: _preferences.filters,
       capabilities: _capabilities,
       libraries: _catalog.eligibleLibraries,
@@ -281,18 +288,42 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
       readiness: () => !_preferencesLoaded || (_catalog.isInitialLoading && _catalog.snapshot.groups.isEmpty)
           ? const AutomationReadiness.loading('catalog')
           : const AutomationReadiness.ready(),
-      child: Scaffold(
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              _buildHeader(),
-              _buildChips(filters),
-              const SizedBox(height: 8),
-              _buildCountRow(filters),
-              const SizedBox(height: 8),
-              Expanded(child: _buildBody(filters)),
-            ],
+      // This screen carries its own host, the way every other pushed screen
+      // does (hub detail, media detail, the Seerr detail). It is pushed by
+      // `MobileLandingScreen._TitleRow` with `Navigator.of(context).push`,
+      // which resolves to the profile navigator *above* `MainScreen` — and
+      // `MainScreen.build` is what installs the host. The pushed route is
+      // therefore a sibling of the host's owner, never a descendant, so
+      // `OverlaySheetController.of` found nothing and all three chips were
+      // dead: an assert in debug, a swallowed `scope!` in release (CAT9).
+      child: OverlaySheetHost(
+        // Mirrors the Seerr detail screen: keeps the iOS interactive
+        // swipe-back, and a system back with a sheet open closes the sheet.
+        canPop: PlatformDetector.isHandheldIOS(context),
+        // `pop`, never `maybePop`: this callback *is* what the host's PopScope
+        // runs when it refused the pop, so asking to pop again lands straight
+        // back here. That loop hangs the route (it hung
+        // `mobile_landing_screen_test`'s search-pops-back test outright).
+        onSystemBack: () {
+          final navigator = Navigator.of(context);
+          if (mounted && navigator.canPop()) navigator.pop();
+        },
+        child: Builder(
+          // Below the host, so the chips can reach it.
+          builder: (sheetContext) => Scaffold(
+            body: SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  _buildChips(sheetContext, filters),
+                  const SizedBox(height: 8),
+                  _buildCountRow(filters),
+                  const SizedBox(height: 8),
+                  Expanded(child: _buildBody(filters)),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -339,7 +370,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     );
   }
 
-  Widget _buildChips(UnifiedCatalogFilterSelection filters) {
+  Widget _buildChips(BuildContext sheetContext, UnifiedCatalogFilterSelection filters) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: mobileRailInset),
       child: SingleChildScrollView(
@@ -354,7 +385,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                 icon: Symbols.dns_rounded,
                 label: _sourcesLabel(filters),
                 selected: filters.restrictsSources,
-                onPressed: () => _openFilters(initialSection: MobileCatalogFilterSection.servers),
+                onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.servers),
               ),
             ),
             const SizedBox(width: 8),
@@ -366,7 +397,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                 icon: Symbols.filter_list_rounded,
                 label: t.unifiedCatalog.filters.title,
                 selected: !filters.isEmpty,
-                onPressed: () => _openFilters(initialSection: MobileCatalogFilterSection.status),
+                onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.status),
               ),
             ),
             const SizedBox(width: 8),
@@ -377,7 +408,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
               child: FocusableFilterChip(
                 icon: Symbols.swap_vert_rounded,
                 label: mobileCatalogSortLabel(_preferences.sort),
-                onPressed: _openSort,
+                onPressed: () => _openSort(sheetContext),
               ),
             ),
           ],

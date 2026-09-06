@@ -199,6 +199,51 @@ void main() {
     await tester.pump();
   }
 
+  /// Mounts the screen the way `_TitleRow` does: pushed with
+  /// `Navigator.of(context).push` onto a navigator that sits *above* the
+  /// screen holding the `OverlaySheetHost`. `MaterialApp.home` stands in for
+  /// `MainScreen` here — same shape, one screen under a host, pushing onto the
+  /// navigator over it.
+  Future<void> pumpPushedCatalog(WidgetTester tester, {MobileCatalogKind kind = MobileCatalogKind.movies}) async {
+    tester.view.physicalSize = const Size(393, 852);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
+          Provider<UnifiedCatalogs>.value(value: catalogs),
+        ],
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: OverlaySheetHost(
+            child: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => MobileCatalogScreen(
+                          kind: kind,
+                          debugPrefetcher: UnifiedArtworkPrefetcher(clientFor: (_) => null, precache: (_, _) async {}),
+                        ),
+                      ),
+                    ),
+                    child: const Text('All movies'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('All movies'));
+    await tester.pumpAndSettle();
+  }
+
   Future<void> settle(WidgetTester tester) async {
     // `pumpAndSettle` first: it drives the sheet-close animation and the
     // *awaited* half of `_updatePreferences` (`_applyQuery`, which restarts
@@ -221,6 +266,38 @@ void main() {
     await tester.pump();
     await tester.tap(finder);
   }
+
+  // The screen is not mounted the way the app mounts it. `MobileLandingScreen`
+  // is a tab inside `MainScreen`, and `MainScreen.build` is what installs the
+  // `OverlaySheetHost`; `_TitleRow` then pushes this screen with
+  // `Navigator.of(context).push`, which resolves to the profile navigator
+  // *above* `MainScreen`. The pushed route is therefore a sibling of the
+  // screen that owns the host, not a descendant of it, and
+  // `OverlaySheetController.of` finds nothing. In debug that trips an assert;
+  // in a release build the assert is gone and `scope!` throws, the framework
+  // swallows it, and every chip is simply dead. Michel on iOS, build 266:
+  // "Filters werken helemaal niet bij alle films, kan er niet op drukken."
+  //
+  // `pumpCatalog` wraps the screen in a host directly, so it cannot see this;
+  // this test pushes the screen the way the app does.
+  testWidgets('every chip still opens its sheet when the screen is pushed as a route (CAT9)', (tester) async {
+    await pumpPushedCatalog(tester);
+    await settle(tester);
+
+    await tapChip(tester, find.text(t.unifiedCatalog.filters.title));
+    await tester.pumpAndSettle();
+    expect(find.text(t.unifiedCatalog.filters.genre), findsOneWidget, reason: 'the Filters chip must open its sheet');
+    await tester.tap(find.text(t.unifiedCatalog.filters.apply));
+    await settle(tester);
+
+    await tapChip(tester, find.text(mobileCatalogSortLabel(UnifiedCatalogSort.titleAsc)));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(mobileCatalogSortLabel(UnifiedCatalogSort.recentlyAdded)),
+      findsOneWidget,
+      reason: 'and so must the Sort chip',
+    );
+  });
 
   testWidgets('shows a skeleton before the stored preferences and the first page have loaded', (tester) async {
     await pumpCatalog(tester);
