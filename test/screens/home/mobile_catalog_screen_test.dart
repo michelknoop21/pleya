@@ -3,7 +3,7 @@
 /// `docs/ios-unified-2026-fase3-plan.md`). Mounted over the real
 /// `UnifiedCatalogProvider`/`UnifiedCatalogs` stack, the same way
 /// `unified_catalog_provider_test.dart` exercises the provider and
-/// `mobile_landing_screen_test.dart` exercises a sibling mobile screen — a
+/// `mobile_landing_screen_test.dart` exercises a sibling mobile screen: a
 /// fake `MediaServerClient` stands in for the network, everything else is
 /// the real merge/query/filter pipeline.
 library;
@@ -88,14 +88,8 @@ class _FakeLibraryClient implements MediaServerClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-MediaItem _movie(String id, {required String title, required String serverId}) => MediaItem(
-  id: id,
-  backend: MediaBackend.plex,
-  kind: MediaKind.movie,
-  title: title,
-  serverId: serverId,
-  year: 2024,
-);
+MediaItem _movie(String id, {required String title, required String serverId}) =>
+    MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.movie, title: title, serverId: serverId, year: 2024);
 
 MediaLibrary _library(String id, {required String serverId}) => MediaLibrary(
   id: id,
@@ -157,7 +151,11 @@ void main() {
 
     emptyManager = MultiServerManager()..debugRegisterClientForTesting(_FakeLibraryClient('s1'));
     emptyMultiServer = MultiServerProvider(emptyManager, DataAggregationService(emptyManager));
-    emptyCatalogs = UnifiedCatalogs(multiServer: emptyMultiServer, libraries: libraries, hiddenLibraries: hiddenLibraries);
+    emptyCatalogs = UnifiedCatalogs(
+      multiServer: emptyMultiServer,
+      libraries: libraries,
+      hiddenLibraries: hiddenLibraries,
+    );
   });
 
   tearDown(() {
@@ -169,7 +167,11 @@ void main() {
     emptyMultiServer.dispose();
   });
 
-  Future<void> pumpCatalog(WidgetTester tester, {MobileCatalogKind kind = MobileCatalogKind.movies, bool useEmpty = false}) async {
+  Future<void> pumpCatalog(
+    WidgetTester tester, {
+    MobileCatalogKind kind = MobileCatalogKind.movies,
+    bool useEmpty = false,
+  }) async {
     tester.view.physicalSize = const Size(393, 852);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -187,7 +189,7 @@ void main() {
               kind: kind,
               // A real prefetcher would dispatch a real `precacheImage`
               // network fetch the moment the grid renders, which nothing
-              // here mocks — it hangs the test instead of failing it.
+              // here mocks; it hangs the test instead of failing it.
               debugPrefetcher: UnifiedArtworkPrefetcher(clientFor: (_) => null, precache: (_, _) async {}),
             ),
           ),
@@ -260,9 +262,9 @@ void main() {
 
     await tester.tap(find.text(mobileCatalogSortLabel(UnifiedCatalogSort.recentlyAdded)));
     // `settle`, not `pumpAndSettle`: the choice writes the query store
-    // fire-and-forget (see the `tearDown` doc comment above), and that write
-    // needs real wall-clock time via `runAsync` to actually land before this
-    // test ends — `pumpAndSettle` alone does not guarantee that.
+    // fire-and-forget, and that write needs real wall-clock time via
+    // `runAsync` to actually land before this test ends; `pumpAndSettle`
+    // alone does not guarantee that.
     await settle(tester);
 
     expect(find.text(mobileCatalogSortLabel(UnifiedCatalogSort.recentlyAdded)), findsOneWidget);
@@ -275,7 +277,7 @@ void main() {
     final callsBeforeFilter = client.fetchCalls;
 
     // The Filters chip opens the sheet on Status, unlike the sources chip
-    // (which opens on Servers) — Status is the one category whose options
+    // (which opens on Servers). Status is the one category whose options
     // do not depend on what the fake client happens to have loaded.
     await tapChip(tester, find.text(t.unifiedCatalog.filters.title));
     await tester.pumpAndSettle();
@@ -283,7 +285,7 @@ void main() {
 
     await tester.tap(find.text(t.unifiedCatalog.filters.unwatched));
     await tester.tap(find.text(t.unifiedCatalog.filters.apply));
-    // `settle`, not `pumpAndSettle` — see the sort-chip test above.
+    // `settle`, not `pumpAndSettle`: see the sort-chip test above.
     await settle(tester);
 
     expect(client.fetchCalls, greaterThan(callsBeforeFilter));
@@ -291,7 +293,10 @@ void main() {
   });
 
   testWidgets('a previously stored selection is restored on the next open', (tester) async {
-    await UnifiedCatalogQueryStore.write(MediaKind.movie, UnifiedCatalogPreferences.defaults.copyWith(sort: UnifiedCatalogSort.recentlyAdded));
+    await UnifiedCatalogQueryStore.write(
+      MediaKind.movie,
+      UnifiedCatalogPreferences.defaults.copyWith(sort: UnifiedCatalogSort.recentlyAdded),
+    );
 
     await pumpCatalog(tester);
     await settle(tester);
@@ -299,9 +304,7 @@ void main() {
     expect(find.text(mobileCatalogSortLabel(UnifiedCatalogSort.recentlyAdded)), findsOneWidget);
   });
 
-  testWidgets('a stored library restriction naming a library that no longer exists is dropped on open', (
-    tester,
-  ) async {
+  testWidgets('a stored library restriction naming a library that no longer exists is dropped on open', (tester) async {
     await UnifiedCatalogQueryStore.write(
       MediaKind.movie,
       UnifiedCatalogPreferences.defaults.copyWith(
@@ -341,9 +344,7 @@ void main() {
   testWidgets('shows the filtered-empty state when a stored selection matches nothing', (tester) async {
     await UnifiedCatalogQueryStore.write(
       MediaKind.movie,
-      UnifiedCatalogPreferences.defaults.copyWith(
-        filters: const UnifiedCatalogFilterSelection(genres: {'Horror'}),
-      ),
+      UnifiedCatalogPreferences.defaults.copyWith(filters: const UnifiedCatalogFilterSelection(genres: {'Horror'})),
     );
 
     await pumpCatalog(tester, useEmpty: true);

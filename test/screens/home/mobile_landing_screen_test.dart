@@ -275,9 +275,7 @@ void main() {
     expect(pushed.kind, MobileCatalogKind.series);
   });
 
-  testWidgets("the pushed catalogue's search action pops and reaches the landing's own search target", (
-    tester,
-  ) async {
+  testWidgets("the pushed catalogue's search action pops and reaches the landing's own search target", (tester) async {
     var opened = 0;
     aggregation.hubs = [
       _hub('Series row', items: [_show('s1')], type: 'show'),
