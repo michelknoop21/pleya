@@ -174,6 +174,7 @@ class TvHomeEntryRowTile extends StatelessWidget {
                 : t.unifiedCatalog.homeRows.edit,
             onPressed: onPrimary,
             onNavigateUp: () => onNavigateUp(TvHomeRowColumn.primary),
+            onNavigateDown: () => onNavigateDown(TvHomeRowColumn.primary),
           ),
           if (onRemove != null) ...[
             SizedBox(width: TvHomeRowsLayout.actionGap * scale),
@@ -184,6 +185,7 @@ class TvHomeEntryRowTile extends StatelessWidget {
               label: t.unifiedCatalog.homeRows.remove,
               onPressed: onRemove!,
               onNavigateUp: () => onNavigateUp(TvHomeRowColumn.remove),
+              onNavigateDown: () => onNavigateDown(TvHomeRowColumn.remove),
               onNavigateRight: () {},
             ),
           ],

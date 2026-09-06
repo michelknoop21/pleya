@@ -73,6 +73,7 @@ class TvPanelButton extends StatefulWidget {
     this.onNavigateLeft,
     this.onNavigateRight,
     this.onNavigateUp,
+    this.onNavigateDown,
   });
 
   final double scale;
@@ -85,6 +86,11 @@ class TvPanelButton extends StatefulWidget {
   final VoidCallback? onNavigateLeft;
   final VoidCallback? onNavigateRight;
   final VoidCallback? onNavigateUp;
+
+  /// Bound wherever a button is a stop in a grid rather than the last row of a
+  /// panel. It was missing until ROW1e, and its absence was silent: the two
+  /// columns that wanted it simply fell through to geometric traversal.
+  final VoidCallback? onNavigateDown;
 
   @override
   State<TvPanelButton> createState() => _TvPanelButtonState();
@@ -114,6 +120,7 @@ class _TvPanelButtonState extends State<TvPanelButton> {
       onNavigateLeft: widget.onNavigateLeft,
       onNavigateRight: widget.onNavigateRight,
       onNavigateUp: widget.onNavigateUp,
+      onNavigateDown: widget.onNavigateDown,
       onSelect: () {
         SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
         widget.onPressed();

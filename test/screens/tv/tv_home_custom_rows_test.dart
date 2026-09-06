@@ -415,6 +415,50 @@ void main() {
     expect(find.text(t.unifiedCatalog.homeRows.newRow), findsOneWidget);
   });
 
+  // ROW1e. The panel's grid is the whole navigation: every column steps to the
+  // same column one row on, and `_step` clamps to what the target row has. Two
+  // of the four columns never got asked, because `TvPanelButton` had no
+  // `onNavigateDown` to bind, so DOWN off Verbergen, Bewerken or Verwijderen
+  // fell through to Flutter's geometric traversal, which is what the doc
+  // comment on these tiles says the grid exists to prevent.
+  testWidgets('DOWN off the primary action steps to the next row, not to geometry', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+
+    nodeLabelled(tester, 'TvHomeCustomize.#custom:r1#primary').requestFocus();
+    await tester.pump();
+    await press(tester, LogicalKeyboardKey.arrowDown);
+
+    expect(nodeLabelled(tester, 'TvHomeCustomize.:pleya:home:latest-movies#primary').hasPrimaryFocus, isTrue);
+  });
+
+  testWidgets('DOWN off Verwijderen clamps to the column the next row has', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+
+    // Only an own row carries Verwijderen, so the row below has no such column
+    // and `_step` falls back to its last one.
+    nodeLabelled(tester, 'TvHomeCustomize.#custom:r1#remove').requestFocus();
+    await tester.pump();
+    await press(tester, LogicalKeyboardKey.arrowDown);
+
+    expect(nodeLabelled(tester, 'TvHomeCustomize.:pleya:home:latest-movies#primary').hasPrimaryFocus, isTrue);
+  });
+
+  testWidgets('RIGHT off the primary action of a row without Verwijderen goes nowhere', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+
+    // Verbergen is the last control on a backend row. Without a stop there,
+    // RIGHT walks into the next row's first button.
+    final hide = nodeLabelled(tester, 'TvHomeCustomize.:pleya:home:latest-movies#primary');
+    hide.requestFocus();
+    await tester.pump();
+    await press(tester, LogicalKeyboardKey.arrowRight);
+
+    expect(hide.hasPrimaryFocus, isTrue);
+  });
+
   testWidgets('moving a row down writes the order and Home follows it', (tester) async {
     await boot(tester, savedRows: [savedRowJson()]);
     await openPanel(tester);
