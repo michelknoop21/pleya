@@ -110,11 +110,12 @@ een geweigerd event wordt beantwoord met de actuele toestand en gelogd, en verde
 
 ## Wat er op de lijn zit
 
-Zevenendertig operaties op tweeëndertig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
+Veertig operaties op drieëndertig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
 daarna PS-9, de twee daarna de serverinstellingen van S1.2, de vier daarna de serverdiagnostiek
-van S1.3, de twee daarna `GET /users/me` en het overzicht van lopende streams uit S1.4, en de
-laatste drie de API-tokens en het auditlog van S1.5. S1.8 komt er niet bij: de refreshcookie is een
-modus op login en refresh en geen endpoint ernaast.
+van S1.3, de twee daarna `GET /users/me` en het overzicht van lopende streams uit S1.4, de
+drie daarna de API-tokens en het auditlog van S1.5, en de laatste drie de bibliotheek-CRUD van
+S2.2. S1.8 komt er niet bij: de refreshcookie is een modus op login en refresh en geen endpoint
+ernaast.
 
 | Endpoint | Klasse |
 | --- | --- |
@@ -122,7 +123,8 @@ modus op login en refresh en geen endpoint ernaast.
 | `POST /pleya/v1/auth/setup`, `/auth/login`, `/auth/refresh` | publiek |
 | `POST /pleya/v1/auth/stream-token` | geauthenticeerd |
 | `GET /pleya/v1/server` | geauthenticeerd; voor een admin acht velden erbij |
-| `GET /pleya/v1/libraries`, `/libraries/{id}/items` | geauthenticeerd |
+| `GET /pleya/v1/libraries`, `/libraries/{id}/items` | geauthenticeerd; voor een admin drie velden erbij (S2.2) |
+| `POST /pleya/v1/libraries`, `PATCH`/`DELETE /libraries/{id}` | admin |
 | `GET /pleya/v1/items/{id}`, `/items/{id}/children` | geauthenticeerd |
 | `GET /pleya/v1/search`, `/hubs/{hub_id}` | geauthenticeerd |
 | `GET /pleya/v1/artwork/{id}` | geauthenticeerd |

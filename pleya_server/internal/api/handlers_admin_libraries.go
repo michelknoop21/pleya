@@ -1,0 +1,238 @@
+package api
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+	"strings"
+
+	"github.com/edde746/plezy/pleya_server/internal/audit"
+	"github.com/edde746/plezy/pleya_server/internal/catalog"
+	"github.com/edde746/plezy/pleya_server/internal/config"
+)
+
+// CRUD op /libraries (S2.2, J.3 venster 2). Klasse admin, zoals elk
+// beheeroppervlak: requireAdmin schrijft de 404 die een niet-beheerder hoort te
+// zien, byte-gelijk aan die van een gebruiker die niet meer bestaat.
+//
+// Geen van de drie handlers raakt het bestandssysteem aan. root_paths komen
+// letterlijk uit de aanvraag; storage.root_not_offered vandaag betekent
+// "overlapt met een bestaande root of met een andere root in dezelfde
+// aanvraag", en S2.3 breidt die controle uit met de echte opsomming uit de
+// mounts zonder dat de code of de handler-vorm verandert.
+
+func validLibraryKind(kind string) bool {
+	for _, k := range config.LibraryKinds {
+		if k == kind {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Server) handleCreateLibrary(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+
+	var req CreateLibraryRequest
+	if !s.decodeBody(w, r, &req, CodeStorageRootNotOffered) {
+		return
+	}
+
+	req.Title = strings.TrimSpace(req.Title)
+	if req.Title == "" || !validLibraryKind(req.Kind) || len(req.RootPaths) == 0 {
+		writeError(w, s.log, CodeStorageRootNotOffered, "title, kind or root_paths missing or invalid", nil)
+		return
+	}
+	for _, root := range req.RootPaths {
+		if !strings.HasPrefix(root, "/") {
+			writeError(w, s.log, CodeStorageRootNotOffered, "root_paths must be absolute", nil)
+			return
+		}
+	}
+	if req.ScanIntervalSeconds != nil && *req.ScanIntervalSeconds <= 0 {
+		writeError(w, s.log, CodeStorageRootNotOffered, "scan_interval_seconds must be positive", nil)
+		return
+	}
+
+	scanOnStart := true
+	if req.ScanOnStart != nil {
+		scanOnStart = *req.ScanOnStart
+	}
+
+	lib, err := s.opts.Catalog.CreateLibrary(r.Context(), req.Title, req.Kind, req.RootPaths)
+	switch {
+	case errors.Is(err, catalog.ErrSlugTaken):
+		writeError(w, s.log, CodeSlugTaken, "slug taken", nil)
+		return
+	case errors.Is(err, catalog.ErrRootNotOffered):
+		writeError(w, s.log, CodeStorageRootNotOffered, "root not offered", nil)
+		return
+	case err != nil:
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	// scan_interval_seconds en scan_on_start zijn geen kolommen die
+	// CreateLibrary zet (die blijven op hun default totdat een beheerder ze
+	// expliciet kiest); een POST met een van beide erbij is een PATCH in
+	// dezelfde aanvraag en geen tweede aanmaakpad in de store.
+	if req.ScanIntervalSeconds != nil || req.ScanOnStart != nil {
+		lib, err = s.opts.Catalog.UpdateLibrary(r.Context(), lib.ID, catalog.LibraryUpdate{
+			ScanIntervalSet:     req.ScanIntervalSeconds != nil,
+			ScanIntervalSeconds: req.ScanIntervalSeconds,
+			ScanOnStart:         &scanOnStart,
+		})
+		if err != nil {
+			writeInternal(w, s.log, err)
+			return
+		}
+	}
+
+	s.auditEvent(r, auditCreateLibrary, lib.ID.String(), audit.OutcomeOK,
+		map[string]any{"title": lib.Title, "kind": lib.Kind})
+	writeJSON(w, http.StatusCreated, adminLibraryWire(lib))
+}
+
+func (s *Server) handleUpdateLibrary(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+	libraryID, ok := s.pathID(w, r, "library_id")
+	if !ok {
+		return
+	}
+
+	var req UpdateLibraryRequest
+	if !s.decodeBody(w, r, &req, CodeStorageRootNotOffered) {
+		return
+	}
+
+	patch := catalog.LibraryUpdate{Kind: req.Kind, ScanOnStart: req.ScanOnStart}
+
+	if req.Title != nil {
+		title := strings.TrimSpace(*req.Title)
+		if title == "" {
+			writeError(w, s.log, CodeStorageRootNotOffered, "title must not be blank", nil)
+			return
+		}
+		patch.Title = &title
+	}
+	if req.Kind != nil && !validLibraryKind(*req.Kind) {
+		writeError(w, s.log, CodeStorageRootNotOffered, "unknown kind", nil)
+		return
+	}
+	if req.RootPaths != nil {
+		if len(*req.RootPaths) == 0 {
+			writeError(w, s.log, CodeStorageRootNotOffered, "root_paths must not be empty", nil)
+			return
+		}
+		for _, root := range *req.RootPaths {
+			if !strings.HasPrefix(root, "/") {
+				writeError(w, s.log, CodeStorageRootNotOffered, "root_paths must be absolute", nil)
+				return
+			}
+		}
+		patch.RootPaths = *req.RootPaths
+	}
+	if req.ScanIntervalSeconds != nil {
+		var seconds *int
+		if err := json.Unmarshal(req.ScanIntervalSeconds, &seconds); err != nil {
+			writeError(w, s.log, CodeStorageRootNotOffered, "scan_interval_seconds unreadable", nil)
+			return
+		}
+		if seconds != nil && *seconds <= 0 {
+			writeError(w, s.log, CodeStorageRootNotOffered, "scan_interval_seconds must be positive", nil)
+			return
+		}
+		patch.ScanIntervalSet = true
+		patch.ScanIntervalSeconds = seconds
+	}
+
+	if req.Kind != nil {
+		empty, err := s.opts.Catalog.LibraryIsEmpty(r.Context(), libraryID)
+		if err != nil {
+			s.writeStoreError(w, err)
+			return
+		}
+		if !empty {
+			writeError(w, s.log, CodeLibraryNotEmpty, "library is not empty", nil)
+			return
+		}
+	}
+
+	lib, err := s.opts.Catalog.UpdateLibrary(r.Context(), libraryID, patch)
+	switch {
+	case errors.Is(err, catalog.ErrNotFound):
+		writeError(w, s.log, CodeNotFound, "not found", nil)
+		return
+	case errors.Is(err, catalog.ErrRootNotOffered):
+		writeError(w, s.log, CodeStorageRootNotOffered, "root not offered", nil)
+		return
+	case err != nil:
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	s.auditEvent(r, auditUpdateLibrary, lib.ID.String(), audit.OutcomeOK, nil)
+	writeJSON(w, http.StatusOK, adminLibraryWire(lib))
+}
+
+func (s *Server) handleDeleteLibrary(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+	libraryID, ok := s.pathID(w, r, "library_id")
+	if !ok {
+		return
+	}
+
+	lib, err := s.opts.Catalog.Library(r.Context(), libraryID)
+	if err != nil {
+		s.writeStoreError(w, err)
+		return
+	}
+
+	var req DeleteLibraryRequest
+	if !s.decodeBody(w, r, &req, CodeLibraryConfirmMismatch) {
+		return
+	}
+	if req.Confirm != lib.Title {
+		s.auditEvent(r, auditDeleteLibrary, lib.ID.String(), audit.OutcomeDenied,
+			map[string]any{"reason": "confirm_mismatch"})
+		writeError(w, s.log, CodeLibraryConfirmMismatch,
+			"confirm must be the library title", map[string]any{"expected": lib.Title})
+		return
+	}
+
+	if err := s.opts.Catalog.DeleteLibrary(r.Context(), libraryID); err != nil {
+		if errors.Is(err, catalog.ErrNotFound) {
+			writeError(w, s.log, CodeNotFound, "not found", nil)
+			return
+		}
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	s.auditEvent(r, auditDeleteLibrary, libraryID.String(), audit.OutcomeOK,
+		map[string]any{"title": lib.Title})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// adminLibraryWire is Library met de velden die alleen klasse admin ziet
+// (J.3): de aanroeper heeft requireAdmin al gehaald, dus dit is de volledige
+// vorm en niet een keuze die de handler nog moet maken.
+func adminLibraryWire(l catalog.Library) Library {
+	managed := string(l.Managed)
+	scanInterval := l.ScanIntervalSeconds
+	return Library{
+		ID:                  l.ID.String(),
+		Title:               l.Title,
+		Kind:                l.Kind,
+		ItemCount:           l.ItemCount,
+		Managed:             &managed,
+		ScanIntervalSeconds: &scanInterval,
+		ScanOnStart:         &l.ScanOnStart,
+	}
+}

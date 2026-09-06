@@ -254,6 +254,15 @@ func (s *Server) routeTable() []route {
 		{"POST " + p + "/auth/stream-session", s.authenticated(s.handleStreamSession)},
 		{"GET " + p + "/server", s.authenticated(s.handleServer)},
 		{"GET " + p + "/libraries", s.authenticated(s.handleLibraries)},
+
+		// Bibliotheekbeheer (S2.2, J.3 venster 2, matrixregels 28 tot en met
+		// 30). Klasse admin, en net als bij instellingen en gebruikersbeheer
+		// staat die klasse in de handler: requireAdmin schrijft de 404 die een
+		// niet-beheerder hoort te zien.
+		{"POST " + p + "/libraries", s.authenticated(s.handleCreateLibrary)},
+		{"PATCH " + p + "/libraries/{library_id}", s.authenticated(s.handleUpdateLibrary)},
+		{"DELETE " + p + "/libraries/{library_id}", s.authenticated(s.handleDeleteLibrary)},
+
 		{"GET " + p + "/libraries/{library_id}/items", s.authenticated(s.handleLibraryItems)},
 		{"GET " + p + "/items/{item_id}", s.authenticated(s.handleItem)},
 		{"GET " + p + "/items/{item_id}/children", s.authenticated(s.handleChildren)},

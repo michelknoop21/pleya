@@ -110,9 +110,10 @@ type matrixProbe struct {
 
 // matrixFixture is de opstelling waar elke probe uit put.
 type matrixFixture struct {
-	tokens map[string]string
-	self   map[string]id.ID
-	other  id.ID // het doel van een beheerhandeling: een bestaande gebruiker
+	tokens    map[string]string
+	self      map[string]id.ID
+	other     id.ID  // het doel van een beheerhandeling: een bestaande gebruiker
+	libraryID string // een bestaande bibliotheek, voor de PATCH/DELETE-probes van S2.2
 }
 
 const (
@@ -224,6 +225,34 @@ func matrixProbes() []matrixProbe {
 		{row: 26, name: "GET /audit", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/audit"), body: noBody,
 			ok: http.StatusOK, expect: adminSurface()},
+
+		// Regels 28 tot en met 30 zijn S2.2 (J.3 venster 2). POST krijgt bij
+		// elke aanroep een verse titel en root_path (id.New() erin): dezelfde
+		// probe draait voor owner en admin allebei, en een tweede aanmaak met
+		// dezelfde titel zou op library.slug_taken stuklopen in plaats van op
+		// de rolcontrole die hier gemeten wordt. PATCH gebruikt de bestaande
+		// bibliotheek en is idempotent (dezelfde titel opnieuw zetten). DELETE
+		// blijft op de bevestigingsfout staan, hetzelfde patroon als regel 21:
+		// een fout confirm laat de bibliotheek intact, dus de probe is
+		// herhaalbaar voor owner én admin zonder de fixture leeg te trekken.
+		{row: 28, name: "POST /libraries", method: http.MethodPost,
+			path: fixedPath("/pleya/v1/libraries"),
+			body: func(*matrixFixture) any {
+				uniq := id.New().String()
+				return map[string]any{
+					"title": "Matrixprobe " + uniq, "kind": "movies",
+					"root_paths": []string{"/media/matrix-" + uniq},
+				}
+			},
+			ok: http.StatusCreated, expect: adminSurface()},
+		{row: 29, name: "PATCH /libraries/{id}", method: http.MethodPatch,
+			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID },
+			body: func(*matrixFixture) any { return map[string]any{"title": "Films"} },
+			ok:   http.StatusOK, expect: adminSurface()},
+		{row: 30, name: "DELETE /libraries/{id}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID },
+			body: func(*matrixFixture) any { return map[string]string{"confirm": "nee"} },
+			ok:   http.StatusConflict, expect: adminSurface()},
 	}
 }
 
@@ -272,6 +301,9 @@ func newMatrixFixture(e *env) *matrixFixture {
 	// Het doel van een beheerhandeling op een ander: een gebruiker die niemand
 	// in de tabel zelf is, zodat "op een ander" ook voor de owner een ander is.
 	f.other = e.createUser("member", "matrix-doel")
+	// Een bestaande bibliotheek voor de PATCH/DELETE-probes van S2.2 (regel 29
+	// en 30): e.libs[0] is "films", door newEnv zelf gesynct.
+	f.libraryID = e.libs[0].ID.String()
 	return f
 }
 

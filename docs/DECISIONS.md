@@ -2684,6 +2684,79 @@ Geaccepteerd door Michel op 5 september 2026, met het vrijgeven van S1.6 als slu
 
 ---
 
+## DEC-113: het protocolvenster gaat open voor S2, en `job` wordt het achtste foutdomein
+
+**Date:** 2026-09-06
+**Status:** accepted
+
+**Context:** S1 is dicht en protocolvenster 1 is gesloten met [DEC-112](#dec-112-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen).
+De eerstvolgende slice, S2 (bibliotheken, opslag, scans), kan geen regel opleveren zonder het
+contract aan te raken: al de eerste commit die dit venster nodig heeft (S2.2, CRUD op `/libraries`)
+breidt `Library` uit en voegt drie endpoints toe. Het venster staat dicht, en er is geen moment
+waarop het vanzelf opengaat.
+
+De tien wijzigingen van venster 2 staan al beschreven in
+`docs/pleya-server-rebaseline/J-api-schema-migratie.md` J.3, met per wijziging het gedrag van een
+oude client tegen een nieuwe server. Dit besluit voegt daar niets aan toe; het opent het venster voor
+precies die tien, op dezelfde manier als bij S1 (DEC-110): in één keer voor de hele tabel, ook al
+landt de implementatie verspreid over S2.2 tot en met S2.6.
+
+**De toetsing.** Alle tien zijn nieuwe optionele antwoordvelden, nieuwe endpoints of nieuwe optionele
+aanvraagvelden achter de bestaande capability `administration` (regel 1, 4 en 5). Geen enkele
+hernoemt een veld (regel 2), verandert de betekenis van een bestaand veld (regel 3) of voegt een
+enum-waarde toe aan een veld dat niet unknown-safe is (regel 6): `Library.managed` en
+`Scan.state`/`Job.state` zijn dat expliciet wel, met `x-unknown-safe: true`, precies zoals
+`LibraryKind` dat al deed.
+
+`POST /libraries` raakt regel 5 (gesloten aanvraagbody) recht: `title`, `kind`, `root_paths[]` en de
+twee optionele scanvelden, en niets anders. `PATCH /libraries/{id}` is dezelfde vorm met alles
+optioneel. Geen van beide voegt een verplicht veld toe aan een bestaande body (er is geen bestaande
+POST/PATCH op `/libraries`), dus regel 4 is hier niet van toepassing in plaats van geschonden.
+
+**`job` is het enige nieuwe foutdomein.** Het patroon op `ErrorEnvelope.error.code` gaat van
+`^(auth|library|playback|session|settings|storage|server)\.[a-z0-9_]+$` naar diezelfde zeven plus
+`job`. De overige nieuwe codes vallen binnen bestaande domeinen: `library.slug_taken`,
+`library.not_empty`, `library.confirm_mismatch` en `library.not_config_managed` in `library`
+(dat laatste komt met S2.5, adopt), `storage.root_not_offered` in `storage` (beide bestonden al
+sinds vóór venster 1). Alleen `job.not_cancellable` (S2.4) opent het nieuwe domein. Dat is dezelfde
+soort verruiming als `server` bij DEC-110: geen enum en dus geen regel 6, maar wel bewijsplichtig.
+Het bewijs is identiek aan dat van DEC-110: beide clients behandelen een onbekend domein generiek
+(`PleyaError.domain` in Dart is niets meer dan de helft vóór de punt, en `describeError` op web geeft
+voor een onbekende code een generieke melding) en takken nergens op het domein zelf.
+
+Een tweede geval verdient zijn eigen redenering: `library.scan_in_progress` staat al sinds vóór dit
+venster in het register (het is de "dode code" die S2.4 zijn zender geeft, `POST
+/libraries/{id}/scan`). Dat is geen contractwijziging: de code bestond al, alleen zonder route die
+hem ooit stuurde, en dus geen aparte regel in deze toetsing.
+
+**Decision:** Het contractvenster gaat open voor **precies de tien wijzigingen uit J.3**, op dezelfde
+manier als bij S1 (DEC-110) en bij PS-3 en PS-9 daarvoor. `ErrorEnvelope.error.code` krijgt `job` als
+achtste domein, pas van kracht zodra S2.4 `job.not_cancellable` daadwerkelijk stuurt.
+`scripts/check_protocol.py` en de docstring van `PleyaError.domain` schuiven van zeven naar acht
+domeinen mee op het moment dat die code landt, niet eerder: een domein reserveren vóór er een code in
+zit zou de negatieve controle "een foutcode buiten de domeinen" een domein laten doorlaten dat het
+register nog niet kent. Zodra `openapi.yaml`, de fixtures en de gegenereerde webclient zijn
+bijgewerkt en `scripts/check_protocol.sh` slaagt voor de laatste van de tien, sluit het venster weer;
+dat is taak S2.6 in de masterlijst. Wijzigingen die niet in J.3 staan vallen buiten dit venster, ook
+wanneer ze tijdens S2 handig blijken.
+
+`feature_level` gaat niet omhoog: venster 2 is additief en onderhandelt per capability, en de
+bestaande `administration`-vlag dekt het hele oppervlak al sinds venster 1. Er komt geen nieuwe
+capability bij; S2 voegt beheeroppervlak toe aan een klasse die al bestaat, net zoals gebruikersbeheer
+en instellingen dat bij S1 deden.
+
+**Consequences:** `docs/pleya-server-gates.md` krijgt een achtste regel voor dit venster, analoog aan
+S1. De vriezing zelf verandert niet: buiten dit venster blijft `openapi.yaml` bevroren, en venster 3
+(S3, boeken) vraagt een eigen besluit ook al staat het al beschreven in J.4.
+
+Afgewezen: het venster per commitgrens apart openen (één besluit voor S2.2, één voor S2.3, enzovoort).
+Dat zou zes besluiten kosten voor tien wijzigingen die J.3 al als één samenhangende tabel beschrijft,
+en het is precies de reden dat DEC-110 het venster voor S1 ook in één keer opende.
+
+Geaccepteerd door Michel op 6 september 2026, met het vrijgeven van S2.2 als eerste landing.
+
+---
+
 ## Hernummering van 4 september 2026
 
 `feat/pleyaserver` liep 196 commits achter op `main` en beide takken hadden in die tijd

@@ -548,6 +548,10 @@ contract keurt ze af.
 | `settings.invalid_value` | 400 | nee | een waarde in `PATCH /settings` valt buiten zijn grens; `details` draagt veld en grens |
 | `server.confirm_mismatch` | 409 | nee | een destructieve handeling zonder de juiste bevestiging; `details.expected` zegt welk woord er moet staan. Voor S1.3 is dat `POST /server/rotate-signing-key` met `confirm: "rotate"` |
 | `server.internal` | 500 | nee | de handler liep op een fout die hij niet had voorzien; `details.request_id` verwijst naar de logregel. `nee` en niet `ja`: het contract dwingt een boolean af waar "onbekend" het eerlijke antwoord is, en een deterministische panic die als herhaalbaar binnenkomt levert een client op die precies het verzoek blijft sturen dat de server omver duwde |
+| `library.slug_taken` | 409 | nee | `POST /libraries`: de titel vereenvoudigt tot een slug die al bestaat, van een andere aanvraag of van een bibliotheek uit `PLEYA_SERVER_LIBRARIES` (S2.2) |
+| `library.not_empty` | 409 | nee | `PATCH /libraries/{id}`: `kind` mag alleen wisselen als de bibliotheek geen enkel item draagt (S2.2) |
+| `library.confirm_mismatch` | 409 | nee | `DELETE /libraries/{id}` zonder of met een foute `confirm`; `details.expected` draagt de titel die er had moeten staan. Een eigen code naast `server.confirm_mismatch` (die blijft voor `POST /server/rotate-signing-key`), zodat een client niet op het pad hoeft te kijken om te weten welk woord verwacht wordt (K rij 16, S2.2) |
+| `storage.root_not_offered` | 400 | nee | `POST` en `PATCH /libraries`: een `root_path` is niet uniek beschikbaar (overlapt met een bestaande root of met een andere root in dezelfde aanvraag), geen absoluut pad, of de aanvraagbody zelf is onleesbaar. S2.3 breidt de controle uit met de echte opsomming uit de mounts; de code verandert daarbij niet (S2.2, K rij 10) |
 
 `auth.permission_not_allowed` is de ene code in het `auth.`-domein die geen `404` is, en dat is geen
 gat in de regel hieronder. Die regel verbergt het bestaan van iets dat de aanvrager niet mag zien;
@@ -1123,7 +1127,7 @@ gewoon was.
 
 ### 16.4 De autorisatiematrix
 
-Zevenentwintig regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien
+Dertig regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien
 zijn de bindende matrix van DEC-105; elke slice die daarna een endpoint toevoegt zet zijn eigen
 regel erbij en sluit niet zonder (K.3 van het securityplan).
 
@@ -1156,6 +1160,9 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 25 | `GET /auth/api-tokens` | het bestaan van andermans agents | klasse `authenticated` op zichzelf, `admin` met `?user_id=`; anders `404`. Nooit een geheim, en nooit de hash ervan (S1.5) |
 | 26 | `GET /audit` | wie wat wanneer deed, inclusief mislukte logins | klasse `admin`, `404` voor de rest. Niet "de eigen regels voor iedereen": de lijst is niet per gebruiker te filteren zonder de regels zonder gebruiker, juist de mislukte logins, ergens te laten vallen, en een auditlog met stille gaten is erger dan geen (S1.5) |
 | 27 | `POST /auth/login`, `POST /auth/refresh` in cookiemodus | een vreemde pagina die de refreshcookie van de browser laat meeliften | klasse `public`, dus de drie rollen zeggen hier niets; wat er wél op past is de **herkomst**. Alleen same-origin, `web_origin` of een waarde uit `cors_origins`; iets anders of geen `Origin` geeft `403` `auth.origin_rejected`. De cookie draagt `Path=/pleya/v1/auth/refresh` en `SameSite=Strict`, dus hij bereikt geen andere route en reist niet cross-site (S1.8, hoofdstuk 17d) |
+| 28 | `POST /libraries` | het bestaan van het beheeroppervlak | klasse `admin`, `404` voor de rest; gesloten body (S2.2) |
+| 29 | `PATCH /libraries/{id}` | direct id | klasse `admin`, `404` voor de rest, ook op een bestaande bibliotheek waar de aanvrager alleen `view` op heeft: een bibliotheekrecht is geen beheerrol (S2.2) |
+| 30 | `DELETE /libraries/{id}` | direct id, plus de bevestiging | klasse `admin`, `404` voor de rest; de bevestiging (`confirm: "<title>"`) wordt pas getoetst ná de rolcontrole, dus een lid krijgt nooit `409` (K rij 16, S2.2) |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -1705,6 +1712,50 @@ origin-lijst prijsgeven aan wie hem afloopt.
 
 ---
 
+### 17e.1 `managed` zegt wie een bibliotheek onderhoudt
+
+Een bibliotheek uit `PLEYA_SERVER_LIBRARIES` draagt `managed: config`; een bibliotheek die
+`POST /libraries` aanmaakt draagt `managed: db`. Het onderscheid bestaat omdat de config-sync bij
+elke herstart de bibliotheken uit de omgeving opnieuw wegschrijft: zonder dit veld zou die sync een
+via de API bewerkte bibliotheek bij de volgende herstart overschrijven met wat er op dat moment in
+de omgeving staat. Vandaag raakt de sync uitsluitend `config`-rijen aan; hoe een `db`-rij bewust naar
+`config` terug kan (of andersom, via `POST /libraries/{id}/adopt`) is S2.5.
+
+`managed`, `scan_interval_seconds` en `scan_on_start` gaan alleen mee voor klasse `admin` (matrixregel
+1 blijft ongewijzigd: elke rol met recht op de bibliotheek ziet hem in de lijst, alleen deze drie
+velden bewegen mee met de klasse van de aanvrager, net als de acht beheervelden op `GET /server`
+sinds S1.3).
+
+### 17e.2 Een slug wordt afgeleid, nooit gestuurd
+
+`POST /libraries` accepteert geen `slug`-veld. De server leidt hem af van `title` (kleine letters,
+cijfers en koppeltekens; een titel zonder een enkel bruikbaar teken valt terug op `library`) en
+weigert met `library.slug_taken` zodra die afleiding samenvalt met een bestaande bibliotheek, ook een
+`config`-beheerde. Twee titels die tot dezelfde slug vereenvoudigen ("Films!" en "Films?") botsen
+dus op elkaar, net zo goed als op een bibliotheek uit de omgeving.
+
+`root_paths` worden in deze fase uitsluitend structureel gevalideerd: een absoluut pad, geen overlap
+met een bestaande root en geen overlap binnen dezelfde aanvraag. Geen van beide endpoints raakt
+hiervoor het bestandssysteem aan. `storage.root_not_offered` is voorlopig de enige 400 die
+`POST`/`PATCH /libraries` kennen; S2.3 breidt de controle uit met de echte opsomming uit de mounts,
+zonder dat de code verandert.
+
+`kind` mag op `PATCH /libraries/{id}` alleen wisselen zolang de bibliotheek geen enkel item draagt
+(`library.not_empty` anders), op elk niveau: een serie zonder afleveringen is net zo leeg als een
+bibliotheek zonder series.
+
+### 17e.3 Verwijderen is database-only, met een verplichte bevestiging
+
+`DELETE /libraries/{id}` verwijdert de bibliotheek en alles wat eronder hangt uitsluitend in de
+database (cascade via de foreign keys uit hoofdstuk 17.2); geen bestand op de mediamount wordt
+aangeraakt. De bevestiging volgt K rij 16: `confirm` moet letterlijk de titel van de bibliotheek
+zijn, en een ontbrekende of foute waarde geeft `library.confirm_mismatch` met de verwachte titel in
+`details.expected`. Dat is een eigen code naast `server.confirm_mismatch` (die blijft voor
+`POST /server/rotate-signing-key`): twee verschillende handelingen die hetzelfde codepad delen zouden
+een client dwingen op het pad te kijken om te weten welk woord er verwacht wordt.
+
+---
+
 ## 18. Endpointoverzicht
 
 | Methode en pad | Klasse | Gepagineerd |
@@ -1717,7 +1768,10 @@ origin-lijst prijsgeven aan wie hem afloopt.
 | `POST /pleya/v1/auth/stream-session` | `authenticated` | nee |
 | `POST /pleya/v1/auth/logout` | `authenticated` | nee |
 | `GET /pleya/v1/server` | `authenticated` | nee |
-| `GET /pleya/v1/libraries` | `authenticated` | nee |
+| `GET /pleya/v1/libraries` | `authenticated`; drie velden erbij voor `admin` | nee |
+| `POST /pleya/v1/libraries` | `admin` | nee |
+| `PATCH /pleya/v1/libraries/{id}` | `admin` | nee |
+| `DELETE /pleya/v1/libraries/{id}` | `admin` | nee |
 | `GET /pleya/v1/libraries/{id}/items` | `authenticated` | ja |
 | `GET /pleya/v1/items/{id}` | `authenticated` | nee |
 | `GET /pleya/v1/items/{id}/children` | `authenticated` | ja |
@@ -1747,18 +1801,19 @@ origin-lijst prijsgeven aan wie hem afloopt.
 | `GET /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` via `?user_id=` | nee |
 | `GET /pleya/v1/audit` | `admin` | ja |
 
-Zevenendertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Veertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
-17b.6 (S1.4), en de laatste drie de API-tokens en het auditlog uit hoofdstuk 17c (S1.5).
-`GET /pleya/v1/server` staat er maar één keer in en groeit met de klasse van de
-aanvrager, niet met een tweede regel. De rest van venster 1 landt bij de commitgrens die hem
-bedient.
+17b.6 (S1.4), de drie daarna de API-tokens en het auditlog uit hoofdstuk 17c (S1.5), en de laatste
+drie de bibliotheek-CRUD van S2.2 (J.3, venster 2).
+`GET /pleya/v1/server` en `GET /pleya/v1/libraries` staan er elk maar één keer in en groeien met de
+klasse van de aanvrager, niet met een tweede regel. De rest van venster 2 landt bij de commitgrens
+die hem bedient.
 
 **S1.8 voegt er geen operatie aan toe.** De refreshcookie uit hoofdstuk 17d is een modus op twee
-bestaande endpoints en geen derde endpoint ernaast; het blijven dus zevenendertig. De
-`OPTIONS`-preflight uit 17d.5 staat er ook niet tussen: die is HTTP-infrastructuur die elke
+bestaande endpoints en geen derde endpoint ernaast; die telling bleef dus op zevenendertig staan tot
+S2.2. De `OPTIONS`-preflight uit 17d.5 staat er ook niet tussen: die is HTTP-infrastructuur die elke
 CORS-sprekende server voert, geen operatie van dit protocol, en hij draagt geen lichaam waar een
 client iets uit leest.
 

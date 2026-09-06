@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/id"
@@ -439,4 +441,242 @@ func (s *Store) LatestScanRun(ctx context.Context, libraryID id.ID) (id.ID, stri
 		return id.Nil, "", time.Time{}, ErrNotFound
 	}
 	return runID, state, started, err
+}
+
+// De schrijflaag van S2.2: bibliotheken die een beheerder over de API
+// aanmaakt, aanpast en verwijdert.
+
+// ErrSlugTaken betekent dat libraries.slug al bestaat: twee titels die naar
+// dezelfde slug afronden ("Films!" en "Films?" worden allebei "films"), of een
+// titel die toevallig samenvalt met de slug van een bibliotheek uit
+// PLEYA_SERVER_LIBRARIES.
+var ErrSlugTaken = errors.New("die slug is al in gebruik")
+
+// ErrLibraryNotEmpty betekent dat de bibliotheek nog media_items draagt.
+var ErrLibraryNotEmpty = errors.New("de bibliotheek bevat nog items")
+
+// ErrRootNotOffered betekent dat een root_path niet uniek beschikbaar is: hij
+// overlapt met een root die al bij een andere bibliotheek hoort, of met een
+// andere root in dezelfde aanvraag. S2.3 breidt deze controle uit met de echte
+// opsomming uit de mounts; tot dan is "beschikbaar" niet meer dan "nog niet
+// geclaimd".
+var ErrRootNotOffered = errors.New("deze root is niet beschikbaar")
+
+// slugify maakt van een titel een slug: kleine letters, cijfers en
+// koppeltekens, zonder leidende, dubbele of afsluitende streepjes. Een titel
+// zonder een enkel bruikbaar teken (bijvoorbeeld enkel leestekens) valt terug
+// op "library"; een botsing daarop is ErrSlugTaken, zoals elke andere.
+func slugify(title string) string {
+	var b strings.Builder
+	prevDash := true
+	for _, r := range strings.ToLower(title) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			prevDash = false
+		default:
+			if !prevDash {
+				b.WriteByte('-')
+				prevDash = true
+			}
+		}
+	}
+	out := strings.TrimRight(b.String(), "-")
+	if out == "" {
+		return "library"
+	}
+	return out
+}
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
+
+// rootsOverlap zegt of twee absolute paden elkaar bevatten of gelijk zijn,
+// dezelfde controle als config.ParseLibraries voor de omgeving al draait.
+func rootsOverlap(a, b string) bool {
+	if a == b {
+		return true
+	}
+	return strings.HasPrefix(a, strings.TrimSuffix(b, "/")+"/") ||
+		strings.HasPrefix(b, strings.TrimSuffix(a, "/")+"/")
+}
+
+// CreateLibrary voegt een door de API beheerde bibliotheek toe (S2.2, managed
+// = db: dit is het enige pad dat dat ooit zet).
+//
+// Geen enkel bestand wordt aangeraakt: root_paths komen letterlijk uit de
+// aanvraag, en tot S2.3 de opsomming uit de mounts bouwt is er niets om ze
+// veilig tegen te toetsen (mounts.Inspect doet ook een schrijfprobe, en die op
+// een door de client verzonnen pad loslaten zou K rij 10 juist schenden). Een
+// aanroeper met een pad buiten de mounts krijgt dus vandaag geen weigering
+// daarop; dat komt met S2.3. fs_type en inode_trusted blijven op hun
+// kolomdefault staan tot een latere scan of S2.3 ze meet.
+func (s *Store) CreateLibrary(ctx context.Context, title, kind string, rootPaths []string) (Library, error) {
+	for i, a := range rootPaths {
+		for _, b := range rootPaths[i+1:] {
+			if rootsOverlap(a, b) {
+				return Library{}, ErrRootNotOffered
+			}
+		}
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Library{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	slug := slugify(title)
+	var lib Library
+	err = tx.QueryRow(ctx, `
+		INSERT INTO libraries (id, slug, title, kind, managed)
+		VALUES ($1, $2, $3, $4, 'db')
+		RETURNING id`, id.New(), slug, title, kind).Scan(&lib.ID)
+	if isUniqueViolation(err) {
+		return Library{}, ErrSlugTaken
+	}
+	if err != nil {
+		return Library{}, fmt.Errorf("bibliotheek %q vastleggen: %w", title, err)
+	}
+
+	for _, root := range rootPaths {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO storage_locations (id, library_id, root_path)
+			VALUES ($1, $2, $3)`, id.New(), lib.ID, root); err != nil {
+			if isUniqueViolation(err) {
+				return Library{}, ErrRootNotOffered
+			}
+			return Library{}, fmt.Errorf("root %s vastleggen: %w", root, err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return Library{}, err
+	}
+	lib.Slug, lib.Title, lib.Kind = slug, title, kind
+	lib.Managed, lib.ScanOnStart = ManagedDB, true
+	return lib, nil
+}
+
+// LibraryUpdate draagt de optionele velden van PATCH /libraries/{id}.
+//
+// Een nil veld betekent onveranderd. RootPaths vervangt bij niet-nil de hele
+// set (de handler wijst een lege lijst af vóórdat dit de store bereikt).
+// ScanIntervalSet onderscheidt "niet meegestuurd" van "meegestuurd met null"
+// (gebruik de globale interval): een kale *int kan dat onderscheid niet dragen.
+type LibraryUpdate struct {
+	Title     *string
+	Kind      *string
+	RootPaths []string
+
+	ScanIntervalSet     bool
+	ScanIntervalSeconds *int
+	ScanOnStart         *bool
+}
+
+// UpdateLibrary past een bibliotheek aan.
+//
+// Of kind mag wisselen (alleen als de bibliotheek leeg is) controleert de
+// aanroeper vooraf met LibraryIsEmpty: de foutcode bij "niet leeg" is
+// library.not_empty en niet storage.root_not_offered, dus die keuze hoort in
+// de handler en niet hier verstopt.
+func (s *Store) UpdateLibrary(ctx context.Context, libraryID id.ID, patch LibraryUpdate) (Library, error) {
+	for i, a := range patch.RootPaths {
+		for _, b := range patch.RootPaths[i+1:] {
+			if rootsOverlap(a, b) {
+				return Library{}, ErrRootNotOffered
+			}
+		}
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Library{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if patch.Title != nil {
+		if _, err := tx.Exec(ctx, `UPDATE libraries SET title = $2, updated_at = now() WHERE id = $1`,
+			libraryID, *patch.Title); err != nil {
+			return Library{}, fmt.Errorf("titel bijwerken: %w", err)
+		}
+	}
+	if patch.Kind != nil {
+		if _, err := tx.Exec(ctx, `UPDATE libraries SET kind = $2, updated_at = now() WHERE id = $1`,
+			libraryID, *patch.Kind); err != nil {
+			return Library{}, fmt.Errorf("soort bijwerken: %w", err)
+		}
+	}
+	if patch.ScanIntervalSet {
+		if _, err := tx.Exec(ctx, `UPDATE libraries SET scan_interval_seconds = $2 WHERE id = $1`,
+			libraryID, patch.ScanIntervalSeconds); err != nil {
+			return Library{}, fmt.Errorf("scaninterval bijwerken: %w", err)
+		}
+	}
+	if patch.ScanOnStart != nil {
+		if _, err := tx.Exec(ctx, `UPDATE libraries SET scan_on_start = $2 WHERE id = $1`,
+			libraryID, *patch.ScanOnStart); err != nil {
+			return Library{}, fmt.Errorf("scan_on_start bijwerken: %w", err)
+		}
+	}
+	if patch.RootPaths != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM storage_locations WHERE library_id = $1`, libraryID); err != nil {
+			return Library{}, fmt.Errorf("oude roots wissen: %w", err)
+		}
+		for _, root := range patch.RootPaths {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO storage_locations (id, library_id, root_path)
+				VALUES ($1, $2, $3)`, id.New(), libraryID, root); err != nil {
+				if isUniqueViolation(err) {
+					return Library{}, ErrRootNotOffered
+				}
+				return Library{}, fmt.Errorf("root %s vastleggen: %w", root, err)
+			}
+		}
+	}
+
+	var lib Library
+	err = tx.QueryRow(ctx, `
+		SELECT id, slug, title, kind, managed, scan_interval_seconds, scan_on_start
+		FROM libraries WHERE id = $1`, libraryID).
+		Scan(&lib.ID, &lib.Slug, &lib.Title, &lib.Kind, &lib.Managed, &lib.ScanIntervalSeconds, &lib.ScanOnStart)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Library{}, ErrNotFound
+	}
+	if err != nil {
+		return Library{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Library{}, err
+	}
+	return lib, nil
+}
+
+// LibraryIsEmpty zegt of een bibliotheek nog enig media_items-item draagt, op
+// elk niveau. Dit is de voorwaarde voor S2.2's kind-wissel en geen telling
+// voor de UI; die blijft item_count.
+func (s *Store) LibraryIsEmpty(ctx context.Context, libraryID id.ID) (bool, error) {
+	var exists bool
+	err := s.pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM media_items WHERE library_id = $1)`, libraryID).Scan(&exists)
+	return !exists, err
+}
+
+// DeleteLibrary verwijdert een bibliotheek en alles wat eronder hangt.
+//
+// Uitsluitend in de database: storage_locations, media_items, media_versions,
+// media_files en media_streams cascaderen via de FK's uit 0002_catalog.sql.
+// Geen bestand op schijf wordt aangeraakt, want de scanner heeft nooit
+// schrijftoegang tot een mediamount.
+func (s *Store) DeleteLibrary(ctx context.Context, libraryID id.ID) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM libraries WHERE id = $1`, libraryID)
+	if err != nil {
+		return fmt.Errorf("bibliotheek verwijderen: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }

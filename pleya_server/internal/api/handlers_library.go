@@ -16,6 +16,15 @@ func (s *Server) handleLibraries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// managed, scan_interval_seconds en scan_on_start gaan sinds S2.2 alleen
+	// mee voor klasse admin (J.3). resolveRequester en niet requireAdmin: dit
+	// endpoint blijft voor elke rol 200, alleen de velden bewegen mee met de
+	// klasse, net als GET /server sinds S1.3.
+	req, ok := s.resolveRequester(w, r)
+	if !ok {
+		return
+	}
+
 	libs, err := s.opts.Catalog.Libraries(r.Context())
 	if err != nil {
 		writeInternal(w, s.log, err)
@@ -26,6 +35,10 @@ func (s *Server) handleLibraries(w http.ResponseWriter, r *http.Request) {
 	// Een lege lijst is [] en nooit null.
 	out := LibraryList{Items: make([]Library, 0, len(libs))}
 	for _, l := range libs {
+		if req.isAdmin() {
+			out.Items = append(out.Items, adminLibraryWire(l))
+			continue
+		}
 		out.Items = append(out.Items, Library{
 			ID:        l.ID.String(),
 			Title:     l.Title,

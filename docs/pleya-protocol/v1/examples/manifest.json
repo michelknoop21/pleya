@@ -299,6 +299,44 @@
       "file": "error_permission_not_allowed.json",
       "schema": "ErrorEnvelope",
       "note": "venster 1: manage voor een restricted, 409 in plaats van de oude 404"
+    },
+    {
+      "file": "library_admin.json",
+      "schema": "Library",
+      "note": "S2.2: klasse admin, met managed, scan_interval_seconds en scan_on_start"
+    },
+    {
+      "file": "create_library_request.json",
+      "schema": "CreateLibraryRequest"
+    },
+    {
+      "file": "update_library_request.json",
+      "schema": "UpdateLibraryRequest",
+      "note": "scan_interval_seconds expliciet op null: gebruik de globale interval"
+    },
+    {
+      "file": "delete_library_request.json",
+      "schema": "DeleteLibraryRequest"
+    },
+    {
+      "file": "error_slug_taken.json",
+      "schema": "ErrorEnvelope",
+      "note": "S2.2: twee titels die tot dezelfde slug vereenvoudigen"
+    },
+    {
+      "file": "error_library_not_empty.json",
+      "schema": "ErrorEnvelope",
+      "note": "S2.2: kind-wissel op een bibliotheek die nog items draagt"
+    },
+    {
+      "file": "error_library_confirm_mismatch.json",
+      "schema": "ErrorEnvelope",
+      "note": "S2.2: DELETE /libraries/{id} zonder de juiste titel als confirm"
+    },
+    {
+      "file": "error_storage_root_not_offered.json",
+      "schema": "ErrorEnvelope",
+      "note": "S2.2: root_path niet uniek beschikbaar, geen absoluut pad, of onleesbare body"
     }
   ]
 }

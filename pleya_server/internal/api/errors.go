@@ -95,12 +95,39 @@ const (
 	CodeSearchQueryEmpty = "library.search_query_empty"
 	CodeVersionMultifile = "library.version_multifile"
 
+	// CodeSlugTaken is het antwoord van POST /libraries op een titel die naar
+	// een slug afrondt die al bestaat (J.3, S2.2): twee titels die tot dezelfde
+	// slug vereenvoudigen, of een titel die toevallig samenvalt met de slug van
+	// een bibliotheek uit PLEYA_SERVER_LIBRARIES.
+	CodeSlugTaken = "library.slug_taken"
+
+	// CodeLibraryNotEmpty is het antwoord van PATCH /libraries/{id} op een
+	// kind-wissel terwijl de bibliotheek nog items draagt (J.3, S2.2).
+	CodeLibraryNotEmpty = "library.not_empty"
+
+	// CodeLibraryConfirmMismatch is het antwoord van DELETE /libraries/{id} op
+	// een ontbrekende of foute confirm (J.3, K rij 16, S2.2). Een eigen code in
+	// het domein library en niet server.confirm_mismatch: die laatste bestaat
+	// al voor POST /server/rotate-signing-key (DEC-111), en een tweede
+	// handeling die dezelfde code deelt zou een client dwingen op het pad te
+	// kijken om te weten welk woord er verwacht wordt.
+	CodeLibraryConfirmMismatch = "library.confirm_mismatch"
+
 	CodeVersionUnavailable  = "playback.version_unavailable"
 	CodeRangeNotSatisfiable = "playback.range_not_satisfiable"
 	CodeNotPlayable         = "playback.not_playable"
 
 	CodeStorageUnavailable = "storage.unavailable"
 	CodeStorageFull        = "storage.full"
+
+	// CodeStorageRootNotOffered is het antwoord van POST en PATCH /libraries op
+	// een root_path die niet uniek beschikbaar is (J.3, K rij 10, S2.2): hij
+	// overlapt met een root van een andere bibliotheek of met een andere root
+	// in dezelfde aanvraag, is geen absoluut pad, of de body zelf is onleesbaar.
+	// Dit is voorlopig de enige 400 die deze twee endpoints kennen; S2.3 breidt
+	// de controle uit met de echte opsomming uit de mounts, zonder dat de code
+	// verandert.
+	CodeStorageRootNotOffered = "storage.root_not_offered"
 
 	CodeSessionInvalid = "session.invalid"
 
@@ -169,18 +196,22 @@ var errorTable = map[string]struct {
 	CodeScopeExceedsRole:     {http.StatusBadRequest, false},
 	CodeOriginRejected:       {http.StatusForbidden, false},
 
-	CodeNotFound:         {http.StatusNotFound, false},
-	CodeScanInProgress:   {http.StatusConflict, true},
-	CodeCursorInvalid:    {http.StatusBadRequest, false},
-	CodeSearchQueryEmpty: {http.StatusBadRequest, false},
-	CodeVersionMultifile: {http.StatusConflict, false},
+	CodeNotFound:               {http.StatusNotFound, false},
+	CodeScanInProgress:         {http.StatusConflict, true},
+	CodeCursorInvalid:          {http.StatusBadRequest, false},
+	CodeSearchQueryEmpty:       {http.StatusBadRequest, false},
+	CodeVersionMultifile:       {http.StatusConflict, false},
+	CodeSlugTaken:              {http.StatusConflict, false},
+	CodeLibraryNotEmpty:        {http.StatusConflict, false},
+	CodeLibraryConfirmMismatch: {http.StatusConflict, false},
 
 	CodeVersionUnavailable:  {http.StatusConflict, true},
 	CodeRangeNotSatisfiable: {http.StatusRequestedRangeNotSatisfiable, false},
 	CodeNotPlayable:         {http.StatusUnsupportedMediaType, false},
 
-	CodeStorageUnavailable: {http.StatusServiceUnavailable, true},
-	CodeStorageFull:        {http.StatusInsufficientStorage, false},
+	CodeStorageUnavailable:    {http.StatusServiceUnavailable, true},
+	CodeStorageFull:           {http.StatusInsufficientStorage, false},
+	CodeStorageRootNotOffered: {http.StatusBadRequest, false},
 
 	CodeSessionInvalid:       {http.StatusBadRequest, false},
 	CodeSettingsInvalidValue: {http.StatusBadRequest, false},

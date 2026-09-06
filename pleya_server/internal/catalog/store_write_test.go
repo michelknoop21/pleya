@@ -2,6 +2,7 @@ package catalog_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -78,5 +79,250 @@ func TestSyncLibrariesIsConfigManagedWithScanDefaults(t *testing.T) {
 	}
 	if len(all) != 1 {
 		t.Fatalf("een herhaalde sync leverde %d bibliotheken op, verwacht 1", len(all))
+	}
+}
+
+// TestCreateLibraryIsDBManaged dekt S2.2: een via de API aangemaakte
+// bibliotheek draagt managed 'db' en niet 'config', en scan_on_start start op
+// true zoals elke bibliotheek dat doet.
+func TestCreateLibraryIsDBManaged(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	lib, err := store.CreateLibrary(ctx, "Documentaires", "movies", []string{"/media/docs"})
+	if err != nil {
+		t.Fatalf("CreateLibrary: %v", err)
+	}
+	if lib.Managed != catalog.ManagedDB {
+		t.Fatalf("CreateLibrary gaf managed %q, verwacht %q", lib.Managed, catalog.ManagedDB)
+	}
+	if lib.Slug != "documentaires" {
+		t.Fatalf("CreateLibrary gaf slug %q, verwacht %q", lib.Slug, "documentaires")
+	}
+	if !lib.ScanOnStart {
+		t.Fatal("CreateLibrary gaf scan_on_start false, verwacht true")
+	}
+
+	fromDB, err := store.Library(ctx, lib.ID)
+	if err != nil {
+		t.Fatalf("Library: %v", err)
+	}
+	if fromDB.Managed != catalog.ManagedDB {
+		t.Fatalf("Library gaf managed %q uit de database, verwacht %q", fromDB.Managed, catalog.ManagedDB)
+	}
+
+	roots, err := store.StorageLocations(ctx, lib.ID)
+	if err != nil {
+		t.Fatalf("StorageLocations: %v", err)
+	}
+	if len(roots) != 1 || roots[0].RootPath != "/media/docs" {
+		t.Fatalf("StorageLocations gaf %+v, verwacht precies /media/docs", roots)
+	}
+}
+
+// TestCreateLibraryTitlesThatSlugifyTheSameAreRejected dekt library.slug_taken
+// (J.3): twee titels die tot dezelfde slug vereenvoudigen mogen niet allebei
+// een bibliotheek opleveren.
+func TestCreateLibraryTitlesThatSlugifyTheSameAreRejected(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	if _, err := store.CreateLibrary(ctx, "Films!", "movies", []string{"/media/a"}); err != nil {
+		t.Fatalf("eerste CreateLibrary: %v", err)
+	}
+	_, err := store.CreateLibrary(ctx, "Films?", "movies", []string{"/media/b"})
+	if !errors.Is(err, catalog.ErrSlugTaken) {
+		t.Fatalf("tweede CreateLibrary gaf %v, verwacht ErrSlugTaken", err)
+	}
+}
+
+// TestCreateLibraryRejectsOverlappingRoots dekt storage.root_not_offered voor
+// het geval waarin twee root_paths in dezelfde aanvraag elkaar bevatten, en
+// voor het geval waarin een root al bij een andere bibliotheek hoort.
+func TestCreateLibraryRejectsOverlappingRoots(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	_, err := store.CreateLibrary(ctx, "Overlap", "movies", []string{"/media/a", "/media/a/sub"})
+	if !errors.Is(err, catalog.ErrRootNotOffered) {
+		t.Fatalf("overlappende roots in één aanvraag gaven %v, verwacht ErrRootNotOffered", err)
+	}
+
+	if _, err := store.CreateLibrary(ctx, "Eerst", "movies", []string{"/media/claimed"}); err != nil {
+		t.Fatalf("eerste CreateLibrary: %v", err)
+	}
+	_, err = store.CreateLibrary(ctx, "Tweede", "movies", []string{"/media/claimed"})
+	if !errors.Is(err, catalog.ErrRootNotOffered) {
+		t.Fatalf("een al geclaimde root gaf %v, verwacht ErrRootNotOffered", err)
+	}
+}
+
+// TestUpdateLibraryScanIntervalDistinguishesAbsentFromNull dekt het
+// driewaardige gedrag van scan_interval_seconds in een PATCH: niet meegestuurd
+// laat de kolom onveranderd, meegestuurd met een waarde zet hem, en
+// meegestuurd met null zet hem terug naar NULL (gebruik de globale interval).
+func TestUpdateLibraryScanIntervalDistinguishesAbsentFromNull(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	lib, err := store.CreateLibrary(ctx, "Reeks", "shows", []string{"/media/reeks"})
+	if err != nil {
+		t.Fatalf("CreateLibrary: %v", err)
+	}
+
+	// Niet meegestuurd: onveranderd (blijft nil).
+	after, err := store.UpdateLibrary(ctx, lib.ID, catalog.LibraryUpdate{})
+	if err != nil {
+		t.Fatalf("UpdateLibrary (leeg): %v", err)
+	}
+	if after.ScanIntervalSeconds != nil {
+		t.Fatalf("een lege patch veranderde scan_interval_seconds naar %v", *after.ScanIntervalSeconds)
+	}
+
+	// Meegestuurd met een waarde: gezet.
+	seconds := 3600
+	after, err = store.UpdateLibrary(ctx, lib.ID, catalog.LibraryUpdate{
+		ScanIntervalSet: true, ScanIntervalSeconds: &seconds,
+	})
+	if err != nil {
+		t.Fatalf("UpdateLibrary (zet): %v", err)
+	}
+	if after.ScanIntervalSeconds == nil || *after.ScanIntervalSeconds != 3600 {
+		t.Fatalf("UpdateLibrary (zet) gaf %v, verwacht 3600", after.ScanIntervalSeconds)
+	}
+
+	// Meegestuurd met null: terug naar NULL.
+	after, err = store.UpdateLibrary(ctx, lib.ID, catalog.LibraryUpdate{ScanIntervalSet: true})
+	if err != nil {
+		t.Fatalf("UpdateLibrary (wis): %v", err)
+	}
+	if after.ScanIntervalSeconds != nil {
+		t.Fatalf("UpdateLibrary (wis) liet scan_interval_seconds op %v staan, verwacht nil", *after.ScanIntervalSeconds)
+	}
+}
+
+// TestUpdateLibraryReplacesRootPaths dekt dat een PATCH met root_paths de hele
+// set vervangt en niet aanvult.
+func TestUpdateLibraryReplacesRootPaths(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	lib, err := store.CreateLibrary(ctx, "Verplaatst", "movies", []string{"/media/oud"})
+	if err != nil {
+		t.Fatalf("CreateLibrary: %v", err)
+	}
+	if _, err := store.UpdateLibrary(ctx, lib.ID, catalog.LibraryUpdate{
+		RootPaths: []string{"/media/nieuw"},
+	}); err != nil {
+		t.Fatalf("UpdateLibrary: %v", err)
+	}
+
+	roots, err := store.StorageLocations(ctx, lib.ID)
+	if err != nil {
+		t.Fatalf("StorageLocations: %v", err)
+	}
+	if len(roots) != 1 || roots[0].RootPath != "/media/nieuw" {
+		t.Fatalf("StorageLocations gaf %+v na de patch, verwacht precies /media/nieuw", roots)
+	}
+}
+
+// TestLibraryIsEmptyReflectsMediaItems dekt de voorwaarde voor S2.2's
+// kind-wissel: leeg is leeg op elk niveau, niet alleen op het bovenste.
+func TestLibraryIsEmptyReflectsMediaItems(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	lib, err := store.CreateLibrary(ctx, "Gevuld", "movies", []string{"/media/gevuld"})
+	if err != nil {
+		t.Fatalf("CreateLibrary: %v", err)
+	}
+
+	empty, err := store.LibraryIsEmpty(ctx, lib.ID)
+	if err != nil {
+		t.Fatalf("LibraryIsEmpty (vooraf): %v", err)
+	}
+	if !empty {
+		t.Fatal("een net aangemaakte bibliotheek gaf niet-leeg")
+	}
+
+	if _, _, err := store.ResolveItem(ctx, catalog.ItemRef{
+		LibraryID: lib.ID, Kind: "movie", GroupingKey: "een-film", Title: "Een film",
+	}); err != nil {
+		t.Fatalf("ResolveItem: %v", err)
+	}
+
+	empty, err = store.LibraryIsEmpty(ctx, lib.ID)
+	if err != nil {
+		t.Fatalf("LibraryIsEmpty (erna): %v", err)
+	}
+	if empty {
+		t.Fatal("een bibliotheek met een item gaf leeg")
+	}
+}
+
+// TestDeleteLibraryCascadesInTheDatabaseOnly dekt dat verwijderen alles
+// eronder in de database opruimt en nooit een bestand op schijf aanraakt (er
+// is hier geen bestand om aan te raken; deze test bewijst uitsluitend de
+// databasekant, de bestandskant volgt uit architectuur: de scanner heeft geen
+// schrijftoegang tot een mediamount).
+func TestDeleteLibraryCascadesInTheDatabaseOnly(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	lib, err := store.CreateLibrary(ctx, "Weg", "movies", []string{"/media/weg"})
+	if err != nil {
+		t.Fatalf("CreateLibrary: %v", err)
+	}
+	if _, _, err := store.ResolveItem(ctx, catalog.ItemRef{
+		LibraryID: lib.ID, Kind: "movie", GroupingKey: "weg-film", Title: "Weg film",
+	}); err != nil {
+		t.Fatalf("ResolveItem: %v", err)
+	}
+
+	if err := store.DeleteLibrary(ctx, lib.ID); err != nil {
+		t.Fatalf("DeleteLibrary: %v", err)
+	}
+
+	if _, err := store.Library(ctx, lib.ID); !errors.Is(err, catalog.ErrNotFound) {
+		t.Fatalf("Library na verwijdering gaf %v, verwacht ErrNotFound", err)
+	}
+	roots, err := store.StorageLocations(ctx, lib.ID)
+	if err != nil {
+		t.Fatalf("StorageLocations na verwijdering: %v", err)
+	}
+	if len(roots) != 0 {
+		t.Fatalf("StorageLocations na verwijdering gaf %+v, verwacht geen rijen (cascade)", roots)
+	}
+
+	if err := store.DeleteLibrary(ctx, lib.ID); !errors.Is(err, catalog.ErrNotFound) {
+		t.Fatalf("een tweede verwijdering gaf %v, verwacht ErrNotFound", err)
 	}
 }

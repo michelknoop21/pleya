@@ -873,7 +873,12 @@ paths:
       tags: [library]
       operationId: listLibraries
       summary: Alle zichtbare bibliotheken.
-      description: Niet gepagineerd; een huishouden heeft er een handvol.
+      description: |
+        Niet gepagineerd; een huishouden heeft er een handvol.
+
+        `managed`, `scan_interval_seconds` en `scan_on_start` gaan alleen mee
+        voor klasse `admin` (S2.2, J.3); voor de rest ziet dit endpoint er
+        precies zo uit als vóór S2.
       responses:
         "200":
           description: Bibliotheken.
@@ -881,6 +886,111 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/LibraryList" }
         "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [library]
+      operationId: createLibrary
+      summary: Maak een door de API beheerde bibliotheek aan.
+      description: |
+        Klasse `admin`. De aangemaakte bibliotheek draagt `managed: db`, en
+        blijft dat: de config-sync die `PLEYA_SERVER_LIBRARIES` leest raakt
+        haar niet aan.
+
+        `root_paths` worden vandaag alleen structureel gevalideerd (absoluut
+        pad, geen overlap met een bestaande root of met een andere root in
+        dezelfde aanvraag) en niet tegen het bestandssysteem: er is geen
+        bestand met deze commit aangeraakt. S2.3 breidt de controle uit met de
+        echte opsomming uit de mounts, zonder dat deze foutcode verandert.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateLibraryRequest" }
+      responses:
+        "201":
+          description: De aangemaakte bibliotheek.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Library" }
+        "400":
+          description: storage.root_not_offered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "409":
+          description: library.slug_taken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /libraries/{library_id}:
+    patch:
+      tags: [library]
+      operationId: updateLibrary
+      summary: Werk een bibliotheek bij.
+      description: |
+        Klasse `admin`. Elk veld is optioneel; alleen wat wordt meegestuurd
+        verandert. `kind` mag alleen wisselen zolang de bibliotheek geen enkel
+        item draagt.
+      parameters:
+        - $ref: "#/components/parameters/LibraryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateLibraryRequest" }
+      responses:
+        "200":
+          description: De bijgewerkte bibliotheek.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Library" }
+        "400":
+          description: storage.root_not_offered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: library.not_empty.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: deleteLibrary
+      summary: Verwijder een bibliotheek.
+      description: |
+        Klasse `admin`, en de bevestiging is verplicht: `confirm` moet
+        letterlijk de titel van de bibliotheek zijn (K rij 16).
+
+        Verwijdert uitsluitend in de database. Geen bestand op schijf wordt
+        aangeraakt.
+      parameters:
+        - $ref: "#/components/parameters/LibraryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeleteLibraryRequest" }
+      responses:
+        "204": { description: "Bibliotheek verwijderd." }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: library.confirm_mismatch.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /libraries/{library_id}/items:
@@ -1909,6 +2019,14 @@ components:
         Er mag binnen v1 een soort bij komen. Een client die de soort niet kent
         toont de bibliotheek niet, en faalt niet.
 
+    LibraryManaged:
+      type: string
+      enum: [config, db]
+      x-unknown-safe: true
+      description: |
+        config: overschreven door PLEYA_SERVER_LIBRARIES bij elke sync. db:
+        alleen door deze API (S2.2).
+
     Library:
       type: object
       required: [id, title, kind, item_count]
@@ -1917,6 +2035,18 @@ components:
         title: { type: string }
         kind: { $ref: "#/components/schemas/LibraryKind" }
         item_count: { type: integer, minimum: 0 }
+        managed:
+          allOf: [{ $ref: "#/components/schemas/LibraryManaged" }]
+          description: Alleen voor klasse admin (S2.2, J.3).
+        scan_interval_seconds:
+          type: [integer, "null"]
+          minimum: 1
+          description: |
+            Alleen voor klasse admin. null betekent: gebruik de globale
+            scan-interval van de server (S2.2, J.3).
+        scan_on_start:
+          type: boolean
+          description: Alleen voor klasse admin (S2.2, J.3).
 
     LibraryList:
       type: object
@@ -1925,6 +2055,43 @@ components:
         items:
           type: array
           items: { $ref: "#/components/schemas/Library" }
+
+    CreateLibraryRequest:
+      type: object
+      required: [title, kind, root_paths]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1 }
+        kind: { $ref: "#/components/schemas/LibraryKind" }
+        root_paths:
+          type: array
+          minItems: 1
+          items: { type: string }
+        scan_interval_seconds: { type: integer, minimum: 1 }
+        scan_on_start: { type: boolean }
+
+    UpdateLibraryRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1 }
+        kind: { $ref: "#/components/schemas/LibraryKind" }
+        root_paths:
+          type: array
+          minItems: 1
+          items: { type: string }
+        scan_interval_seconds: { type: [integer, "null"], minimum: 1 }
+        scan_on_start: { type: boolean }
+
+    DeleteLibraryRequest:
+      type: object
+      required: [confirm]
+      additionalProperties: false
+      properties:
+        confirm:
+          type: string
+          description: Moet letterlijk de titel van de bibliotheek zijn (K rij 16).
+          x-unknown-safe: false
 
     ItemKind:
       type: string

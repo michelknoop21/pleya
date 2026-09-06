@@ -87,6 +87,17 @@ void main() {
     // server, is the one that removes this line. On web the field belongs to
     // the setup wizard, which is slice S11.
     'SetupRequest',
+    // S2.2 adds admin CRUD on /libraries. Same reasoning as SetupRequest: the
+    // app has no request type to defer *from*, because it never creates,
+    // edits or deletes a library. That is a web admin screen (S9), not a
+    // living-room client. `Library` itself is *not* deferred: `PleyaLibrary`
+    // already exists (`LibraryList` reads it), and the three admin-only
+    // fields it grew are optional, so the existing type keeps parsing both
+    // the plain and the admin fixture, the same reasoning `ServerDetail` used
+    // above.
+    'CreateLibraryRequest',
+    'UpdateLibraryRequest',
+    'DeleteLibraryRequest',
   };
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
@@ -100,6 +111,7 @@ void main() {
     'StreamToken': (json) => PleyaStreamToken.fromJson(json),
     'ErrorEnvelope': (json) => PleyaError.fromJson(json),
     'LibraryList': (json) => PleyaLibrary.listFromJson(json),
+    'Library': (json) => PleyaLibrary.fromJson(json),
     'Item': (json) => PleyaItem.fromJson(json),
     'ItemPage': (json) => PleyaItemPage.fromJson(json),
     'UserState': (json) => PleyaUserState.fromJson(json),
@@ -132,8 +144,8 @@ void main() {
       );
     });
 
-    test('covers the 64 fixtures the contract ships', () {
-      expect(fixtures, hasLength(64));
+    test('covers the 72 fixtures the contract ships', () {
+      expect(fixtures, hasLength(72));
     });
 
     for (final fixture in fixtures) {

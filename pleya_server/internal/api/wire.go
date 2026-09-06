@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -179,16 +180,64 @@ type StreamToken struct {
 }
 
 // Library is één bibliotheek op de lijn.
+//
+// managed, scan_interval_seconds en scan_on_start gaan sinds S2.2 alleen mee
+// voor klasse admin (J.3): voor een huisgenoot is dat geen kijkinformatie maar
+// beheerdetail. scan_interval_seconds is ook voor een admin nullable (NULL
+// betekent: gebruik de globale interval), dus dit veld draagt een pointer naar
+// een pointer: de buitenste beslist of het veld er voor deze rol bij staat, de
+// binnenste of de waarde zelf null is. roots[] en last_scan volgen met S2.3 en
+// S2.4, wanneer er ook werkelijk iets zinnigs in te vullen is.
 type Library struct {
 	ID        string `json:"id"`
 	Title     string `json:"title"`
 	Kind      string `json:"kind"`
 	ItemCount int    `json:"item_count"`
+
+	Managed             *string `json:"managed,omitempty"`
+	ScanIntervalSeconds **int   `json:"scan_interval_seconds,omitempty"`
+	ScanOnStart         *bool   `json:"scan_on_start,omitempty"`
 }
 
 // LibraryList is het antwoord van GET /libraries.
 type LibraryList struct {
 	Items []Library `json:"items"`
+}
+
+// CreateLibraryRequest is de gesloten aanvraagbody van POST /libraries (J.3).
+type CreateLibraryRequest struct {
+	Title               string   `json:"title"`
+	Kind                string   `json:"kind"`
+	RootPaths           []string `json:"root_paths"`
+	ScanIntervalSeconds *int     `json:"scan_interval_seconds"`
+	ScanOnStart         *bool    `json:"scan_on_start"`
+}
+
+// UpdateLibraryRequest is de gesloten aanvraagbody van PATCH /libraries/{id}
+// (J.3). Elk veld is een pointer: afwezig betekent onveranderd.
+//
+// scan_interval_seconds is bovendien zelf nullable, en heeft daarom een kale
+// (niet-pointer) json.RawMessage: encoding/json zet een `*json.RawMessage` bij
+// het JSON-literaal null zelf op nil, vóórdat RawMessage's eigen
+// UnmarshalJSON ooit wordt aangeroepen, en dan is "niet meegestuurd" en
+// "meegestuurd met null" opnieuw hetzelfde ongeval als bij een kale `*int`. Een
+// niet-pointer json.RawMessage krijgt zijn UnmarshalJSON wél aangeroepen op
+// null en bewaart dan de letterlijke bytes `null`; alleen een afwezige sleutel
+// laat het veld op zijn Go-zero (een nil slice) staan. Zie
+// TestUpdateLibraryScanIntervalDistinguishesAbsentFromNull in de catalog-laag
+// voor het gedrag dat dit onderscheid mogelijk maakt.
+type UpdateLibraryRequest struct {
+	Title               *string         `json:"title"`
+	Kind                *string         `json:"kind"`
+	RootPaths           *[]string       `json:"root_paths"`
+	ScanIntervalSeconds json.RawMessage `json:"scan_interval_seconds"`
+	ScanOnStart         *bool           `json:"scan_on_start"`
+}
+
+// DeleteLibraryRequest is de gesloten aanvraagbody van DELETE /libraries/{id}
+// (K rij 16, J.3): confirm moet letterlijk de titel van de bibliotheek zijn.
+type DeleteLibraryRequest struct {
+	Confirm string `json:"confirm"`
 }
 
 // Artwork draagt de ids van de beschikbare afbeeldingen.

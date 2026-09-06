@@ -30,6 +30,9 @@ Een derde keer voor S1 van PS-11A, zie sectie 7 en
 [DEC-110](DECISIONS.md#dec-110-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein);
 dat venster is met S1.6 weer gesloten,
 [DEC-112](DECISIONS.md#dec-112-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen).
+Een vierde keer voor S2, zie sectie 8 en
+[DEC-113](DECISIONS.md#dec-113-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein);
+dat venster staat open tot S2.6.
 
 ---
 
@@ -354,5 +357,31 @@ tweede controle naast, `check_error_domains`, die van elk erkend domein eist dat
 de hand geschreven zodat hij niet met het patroon meebeweegt. Aangetoond door het patroon terug te
 zetten op vijf domeinen: twee regels rood, `settings` en `server`.
 
-**Sluiting.** Nog niet gesloten. Het sluit bij taak S1.6 van de masterlijst, zodra `openapi.yaml`, de
-fixtures en de gegenereerde webclient bij zijn en `check_protocol.sh` groen is.
+**Sluiting.** Gesloten met taak S1.6 van de masterlijst en
+[DEC-112](DECISIONS.md#dec-112-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen):
+`openapi.yaml`, de fixtures en de gegenereerde webclient zijn bijgewerkt en `check_protocol.sh` was
+groen op alle zeventien rijen.
+
+## 8. Het S2-contractvenster van PS-11A
+
+Op 6 september 2026 ging het venster een vierde keer open, met
+[DEC-113](DECISIONS.md#dec-113-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein).
+Anders dan bij S1 landt de implementatie hier over meerdere commits binnen dezelfde slice: S2.2 heeft
+er drie van de tien geland (`POST`/`PATCH`/`DELETE /libraries`, plus de `Library`-uitbreiding met
+`managed`, `scan_interval_seconds` en `scan_on_start`), de rest volgt in S2.3 tot en met S2.5.
+
+**Wat erin zit.** Precies de tien wijzigingen uit
+`docs/pleya-server-rebaseline/J-api-schema-migratie.md` J.3: de drie hierboven, `POST
+/libraries/{id}/scan`, `POST /libraries/{id}/adopt`, `GET /storage/roots`,
+`POST /storage/roots/recheck`, `GET /scans` met `GET /scans/{id}`, en `GET /jobs` met
+`POST /jobs/{id}/cancel` en `POST /jobs/{id}/retry`.
+
+**Eén nieuw foutdomein, en pas wanneer er ook echt een code in zit.** `job` komt erbij zodra
+`job.not_cancellable` landt (S2.4); tot dan blijft het patroon op zeven domeinen staan, dezelfde
+discipline als bij `settings` en `server` in venster 1 (DEC-111). De overige nieuwe codes vallen in
+bestaande domeinen: `library.slug_taken`, `library.not_empty`, `library.confirm_mismatch` en
+`library.not_config_managed` (dat laatste komt met S2.5, adopt) in `library`,
+`storage.root_not_offered` in `storage`.
+
+**Sluiting.** Nog niet gesloten. Het sluit bij taak S2.6 van de masterlijst, zodra alle tien rijen
+geland zijn en `check_protocol.sh` groen is.

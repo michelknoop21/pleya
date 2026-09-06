@@ -48,13 +48,17 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"session.stream_session_limit":   {429, false},
 		"server.internal":                {500, false},
 		"server.confirm_mismatch":        {409, false},
+		"library.slug_taken":             {409, false},
+		"library.not_empty":              {409, false},
+		"library.confirm_mismatch":       {409, false},
+		"storage.root_not_offered":       {400, false},
 	}
 
 	// Deze tabel spiegelt hoofdstuk 7.1 voor zover deze server hem draait.
 	// settings.invalid_value kwam erbij met S1.2, server.confirm_mismatch met
 	// S1.3, auth.permission_not_allowed met S1.4, auth.scope_exceeds_role met
-	// S1.5 en auth.origin_rejected met S1.8, elk samen met het endpoint dat hem
-	// stuurt: een code in het register
+	// S1.5, auth.origin_rejected met S1.8 en de vier bibliotheekcodes met S2.2,
+	// elk samen met het endpoint dat hem stuurt: een code in het register
 	// zonder handler zou hier groen staan en in het contract een belofte zijn
 	// die niemand nakomt.
 

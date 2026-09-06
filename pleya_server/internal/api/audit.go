@@ -41,6 +41,9 @@ const (
 	auditSetPermissions   = "setPermissions"
 	auditPatchSettings    = "patchSettings"
 	auditRotateSigningKey = "rotateSigningKey"
+	auditCreateLibrary    = "createLibrary"
+	auditUpdateLibrary    = "updateLibrary"
+	auditDeleteLibrary    = "deleteLibrary"
 )
 
 // auditEvent schrijft één regel over de aanvrager van deze aanvraag.
