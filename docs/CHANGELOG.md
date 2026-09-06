@@ -4,6 +4,57 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-06] iOS Unified 2026 fase 3: Alle films, Alle series en de filtersheet
+
+Fase 2 liet een getekende, inerte "Alle films ›"/"Alle series ›"-actie achter op de landing. Fase 3
+zet daar de complete, bronoverstijgende catalogus onder plus de filter- en sorteersheet die erbij
+horen, tegen de bevroren `03-alle-films.png` en `04-filters-sheet.png`. Geen tweede visuele ronde op
+wat al staat: header, rail en kaart uit fase 1 en 2 blijven ongewijzigd.
+
+`MobileCatalogScreen(kind: MobileCatalogKind)` is één scherm voor Films en Series, gepusht vanaf
+`_TitleRow` met een gewone `Navigator.push`, net als een detailpagina. Dat is geen kleinere keuze dan
+een tabtoestand: `06-film-detail.png` toont Films nog gemarkeerd terwijl `media_detail_screen.dart`
+vandaag al een volledige push zonder onderbalk is, dus de onderbalk in de mockups is generieke
+apparaatchrome voor de reviewer, geen functionele eis. Het scherm leest `UnifiedCatalogs.forKind`,
+niet een tweede bronlogica: activatie gaat via dezelfde `navigateToMediaItemDetails`-route als de
+rail-kaarten. `MobileCatalogFiltersSheet` (twee zones, rail-en-opties, draft-tot-Toepassen) en
+`MobileCatalogSortSheet` zijn nieuw, geen uitbreiding van de Plex-gebonden `FiltersBottomSheet` onder
+Bibliotheken: die twee blijven uit elkaar, zoals DEC-094 al vastlegde.
+
+Verify kon een gepushte, niet-tab-bestemming voorheen alleen met vaste `{x, y}`-coördinaten bereiken.
+`tap` in `run_scenario.dart` accepteert nu ook `tap: {id: "..."}`, opgelost via dezelfde
+`GET /v1/ui_tree`-oproep en dezelfde rect-parser die `assert`'s geometriepredikaten al gebruiken. Geen
+nieuwe automation-capaciteit, één bestaande lookup op een tweede plek toegepast: 219 runnertests groen
+tegen 216 bij de nulmeting. Het nieuwe scenario `ios.catalog.northstar.yaml` bereikt het scherm zo,
+met `tap` op `landing.view_all[movies]` in plaats van `open`.
+
+`UnifiedCatalogQueryStore.clearForProfileScope` kreeg zijn ene aanroeper, in de profiel-delete-flow.
+`Provider<UnifiedCatalogs>` is geregistreerd in `profile_session_screen.dart`. Samen met dat het
+scherm en de sheets de F0-laag nu echt aanroepen, verdwijnen acht van de zeventien F0-meldingen uit
+DEC-094: gemeten met `scripts/ci_checks.sh`, niet aangenomen. `PreferredServerStore`/
+`SourcePreferenceStore`'s eigen `clearForProfileScope` blijven zelf ook ongeroepen; dat is
+opgeschreven voor een latere fase, niet stilzwijgend meegepakt.
+
+Een testinfrastructuurhindernis in deze containeromgeving bleek dieper te zitten dan een eerste
+diagnose liet zien: niet alleen een schrijfactie in de ene `testWidgets`-test die de volgende laat
+hangen, maar dezelfde vastloop ook binnen één test, op een tweede aanroep van een van
+`BaseSharedPreferencesService`'s statische async singletons. `test/screens/home/
+mobile_catalog_screen_test.dart` hangt daardoor deterministisch bij een volle bestandsrun, en één test
+hing ook los van de rest, in drie herhaalde pogingen. Een geïsoleerde `test()`-herhaling zonder
+`testWidgets()` rondt in minder dan een seconde af: het zit in de teststack, niet in de fase-3-code.
+DEC-101 schrijft de volledige diagnose uit, inclusief wat verworpen is als verklaring.
+
+De stand van de poorten: analyzer 0 errors en 0 warnings op de bekende 40 info-lints. `scripts/
+ci_checks.sh` daalt van de 17 F0-meldingen (10 unused-code, 7 unused-files) bij de nulmeting naar 9
+(6 unused-code, 3 unused-files); de negen die overblijven horen bij latere fases
+(`eligibleSourceServers`, de fase-5-bronkiezer-resolver, watchlist/search-projectie). `dart format`
+stond op zes bestanden na, hersteld vóór deze commit. `format_native.sh --check` en de drie
+Apple-platform-Verify-scenario's (`ios.home.northstar`, `ios.landing.northstar`,
+`discover.hero.layout`) zijn in deze Linux-container niet uitvoerbaar, hetzelfde ontbrekende bewijs
+als bij het sluiten van fase 2. Dit nummer is DEC-101 op beide branches: `origin/main` gebruikt
+DEC-091 tot en met DEC-100 al met eigen inhoud onder drie ervan, wat merge-werk blijft voor een latere
+sessie.
+
 ## [2026-09-05] Adversariële review op fase 1 en 2: 20 bevindingen verwerkt
 
 Een reviewronde over de volledige fase 1- en fase 2-diff leverde twintig bevindingen op, van een chip

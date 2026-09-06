@@ -719,6 +719,117 @@ De required-candidate `portable`-gate en de uitgevoerde iOS/tvOS Verify-scenario
 **Consequences:** Pleya Verify Core 1.0 is hiermee compleet: deterministic fixture-backed scenario's, drie platformdrivers (macOS/iOS-sim/tvOS-sim), UI-boom/focus/events/geometrie-assertions, autoritatieve compositor-screenshots als visuele waarheid, complete evidencebundels, false-PASS-verdediging (Fase 12), CLI, MCP-laag (Fase 13), CI-orkestratie (Fase 14), fail-closed control-plane-auth, bounded execution, en redactie-/securityhardening (dit besluit). Bekende, niet-blokkerende grenzen: macOS-hosted-buildsigning in CI, `tvos.library.filters` (DEFERRED voor G13, [DEC-063](#dec-063-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)), en tvOS-D-pad-navigatie binnen het systeemtoetsenbord (niet simuleerbaar, zie CONTRIBUTING.md). Geen nieuwe featurescope geopend; een volgende sessie die verder wil dan Core 1.0 begint bij een expliciet nieuw besluit, niet bij het stilzwijgend heropenen van Fase 1 t/m 15.
 
 
+## DEC-101: fase 3 zet Alle films/Alle series en de filtersheet, tap-by-id in Verify
+
+**Date:** 2026-09-06
+**Status:** accepted
+
+**Context:** Fase 3 van [DEC-090](#dec-090-ios-unified-2026-northstar-bevroren-21-mockups-bindend-voor-de-iphone-interface)
+bouwt de complete, bronoverstijgende catalogus achter de "Alle films ›"/"Alle series ›"-actie die
+fase 2 getekend en inert liet staan, volgens
+[docs/ios-unified-2026-fase3-plan.md](ios-unified-2026-fase3-plan.md). De bindende beelden zijn
+`03-alle-films.png` en `04-filters-sheet.png`. Dit nummer is DEC-101, niet het volgende getal na
+DEC-094 op deze branch: `origin/main` gebruikt DEC-091 tot en met DEC-100 al, met eigen inhoud onder
+DEC-091, 092 en 094, dus die drie botsen op naam bij een toekomstige merge. Dat is merge-werk en wordt
+hier niet opgelost; DEC-101 is op het moment van schrijven op beide branches vrij.
+
+**Decision:**
+
+*Eén scherm voor Films en Series, een push en geen tabtoestand.* `MobileCatalogScreen(kind:
+MobileCatalogKind)` leest `UnifiedCatalogs.forKind` en wordt vanaf `_TitleRow` in
+`mobile_landing_screen.dart` met een gewone `Navigator.push` geopend, net als een detailpagina. Het
+beeld `06-film-detail.png` toont de bestaande gepushte detailpagina mét onderbalk terwijl
+`media_detail_screen.dart` die balk vandaag al niet laat doorschijnen; de onderbalk in de
+northstar-set is dus generieke apparaatchrome voor de review, geen functionele eis. `open:` in
+`automation_signin.dart` blijft daarom ongemoeid (die tabel is voor tabwissels); het scenario bereikt
+het scherm met `tap` op `landing.view_all[series]`/`[movies]`.
+
+*`tap` kan nu ook een automation-id.* De Verify-engine kende alleen `tap: {x, y}`, en vaste
+coördinaten voor een gepushte, niet-tab-bestemming zijn precies de brosheid die
+`ios.landing.northstar`'s eigen commentaar bij `open` al afwijst. `run_scenario.dart`'s `tap`-case
+accepteert nu ook `tap: {id: "..."}`, opgelost via dezelfde `GET /v1/ui_tree`-oproep en dezelfde
+rect-parser die `assert`'s geometriepredikaten al gebruiken (`geometry_assertions.dart`'s `_rectFor`,
+hernoemd naar de publieke `rectForNode`). Geen nieuwe automation-capaciteit, één bestaande lookup op
+een tweede plek toegepast, met drie eigen tests in `run_scenario_test.dart` (219 runnertests groen,
+tegen 216 bij de nulmeting).
+
+*Twee nieuwe sheets, geen uitbreiding van de Plex-gebonden `FiltersBottomSheet`.* `MobileCatalogFiltersSheet`
+werkt op `UnifiedCatalogFilterSelection`/`UnifiedFilterOptions` en kent geen backend; een tweekoloms
+rail-en-opties-paneel met draft-tot-Toepassen, gemodelleerd naar de TV-filterpanel-doc-comment
+(gelezen via `git show origin/main:lib/widgets/tv/tv_catalog_filter_panel.dart`, want dat bestand
+bestaat niet op deze branch). `MobileCatalogSortSheet` is klein en gemodelleerd naar
+`WatchlistSortSheet`. Eén nieuwe i18n-sleutel na controle van de bestaande set:
+`unifiedCatalog.filters.activeCount` voor de "N actief"-regel die mockup 04 toont en die de TV-sheet
+niet had.
+
+*De badge-chip is een lokale wrapper, niet een wijziging aan `FocusableFilterChip`.* Het getal op de
+Filters-chip is een `_CatalogHeaderChip`-achtige `Stack`+`Positioned` om het bestaande, elders
+hergebruikte chip-component heen, niet een nieuwe parameter erop.
+
+*`UnifiedCatalogQueryStore.clearForProfileScope` kreeg zijn ene aanroeper*, in
+`profile_delete_flow.dart`, met `storage.userScopeForProfileId(profile.id)` (niet
+`activeUserScope()`: het te verwijderen profiel hoeft niet het actieve profiel te zijn).
+`PreferredServerStore`/`SourcePreferenceStore`'s eigen `clearForProfileScope` blijven zelf ook
+ongeroepen buiten hun tests; dat is opgeschreven, niet stilzwijgend meegepakt.
+
+*`Provider<UnifiedCatalogs>` is geregistreerd* in `profile_session_screen.dart`, naast
+`TvDiscoveryLandingProvider`/`TvHomeProjectionProvider`, met een expliciete `dispose:` zoals
+`unified_catalogs.dart:86-89` voorschrijft: `UnifiedCatalogs` is geen `ChangeNotifier`. Deze ene
+registratie, plus dat het scherm en de sheets `buildUnifiedCatalogQuery`, `UnifiedCatalogQueryStore`
+en `loadUnifiedFilterOptions` nu echt aanroepen, en dat de prefetcher aan het grid hangt, laat acht
+van de zeventien F0-meldingen uit DEC-094 verdwijnen: de `UnifiedCatalogs`-klasse en zijn bestand, de
+`buildUnifiedCatalogQuery`-functie, de `UnifiedCatalogQueryStore`-klasse en zijn bestand, de
+`loadUnifiedFilterOptions`-functie en zijn bestand, en `unified_artwork_prefetcher.dart` als bestand.
+De overige negen (waaronder `eligibleSourceServers`, de source-picker-resolver van fase 5, en de
+watchlist/search-projection-meldingen van andere fases) blijven open en wachten op de fase die ze
+gebruikt.
+
+*Een genuine testinfrastructuurhindernis, niet opgelost, en breder dan eerder in deze sessie
+aangenomen.* Het nieuwe `test/screens/home/mobile_catalog_screen_test.dart` (9 tests) hangt
+deterministisch na vijf van de negen tests wanneer het hele bestand in één `flutter test`-aanroep
+draait in de containeromgeving van deze sessie. Een eerdere versie van dit besluit meldde dat elke
+test afzonderlijk wel groen was; een latere, herhaalde poging om dat opnieuw te bevestigen met echte
+tooloutput weerlegde dat. `a previously stored selection is restored on the next open`, die zijn
+`await UnifiedCatalogQueryStore.write(...)` rechtstreeks in de testbody aanroept vóór
+`pumpCatalog`, hing ook **los van elke andere test**, in drie aparte pogingen op rij, terwijl
+`shows the populated grid, the count line and the chip labels once loaded` in dezelfde sessie
+herhaaldelijk in ruim een seconde slaagde.
+
+Met tijdelijke diagnostische `print`-regels (niet meegecommit) in `_locked`, `write`,
+`BaseSharedPreferencesService.initializeInstance` en `sharedCache` bleek de vastloop niet, zoals
+eerder aangenomen, in `UnifiedCatalogQueryStore`'s eigen schrijflock te zitten: die loste zijn
+`previous`-future gewoon op en startte de actieclosure. De trace liep door tot en met een tweede,
+al-gecachte aanroep van `StorageService.getInstance()` (vermoedelijk vanuit
+`HiddenLibrariesProvider.ensureInitialized()`'s eigen `_loadFromStorage`, die in dezelfde `setUp`
+wordt aangeroepen) en stopte daarna volledig, zonder enige verdere regel, exceptie of doorlopende
+CPU-tijd. Dat is exact hetzelfde symptoom als het eerder gedocumenteerde patroon bij `_writeLock` (een
+Future die als voltooid geldt maar wiens continuation nergens meer aankomt), alleen dan op een andere
+aanroeplijn en zichtbaar bínnen één testbody in plaats van alleen tussen twee opeenvolgende tests. De
+eerdere verklaring ("een schrijfactie via een gebaar in test N laat test N+1 hangen") is dus geen
+volledige beschrijving van het probleem; het onderliggende gevaar zit dieper, in hoe deze
+`flutter_tester`-sandbox een tweede aanroep op een van `BaseSharedPreferencesService`'s statische
+async singletons afhandelt, ongeacht of die aanroep uit een vorige test of uit dezelfde test komt.
+
+Onderzocht en verworpen als (volledige) verklaring: een lekkende `MultiServerManager` (bevestigd door
+disposal te herstructureren zonder effect), een echte netwerkoproep via de prefetcher (bevestigd door
+een test-only `debugPrefetcher`-naald op `MobileCatalogScreen` toe te voegen, die blijft, want hij is
+sowieso de juiste beveiliging tegen een widgettest die per ongeluk `precacheImage` aanroept), en het
+aantal voorgaande tests (een no-op-test ertussen verschuift het hangpunt niet). Toegevoegd:
+`UnifiedCatalogQueryStore.resetForTesting()`, naar het voorbeeld van `SettingsService`'s eigen
+`resetForTesting()`. Die blijft een zinnige beveiliging voor de duidelijk begrepen helft van het
+probleem (een fire-and-forget schrijfactie die de volgende test in het bestand raakt), ook al is nu
+aangetoond dat hij niet elke vorm van deze vastloop dekt. Dit is uitdrukkelijk geen codedefect in de
+fase-3-code zelf: de geïsoleerde `test()`-herhaling zonder `testWidgets()` rondt in minder dan een
+seconde af, en de vastloop zit in de teststack, niet in `UnifiedCatalogQueryStore`,
+`HiddenLibrariesProvider` of `MobileCatalogScreen`. Het is grond voor een aparte
+testinfrastructuursessie op een echte Mac, waar dit mogelijk niet reproduceert, en niet iets dat
+fase 3 zelf hoort op te lossen.
+
+**Consequences:** Zie het eindrapport voor de exacte analyze-, test- en ci_checks-cijfers en voor
+welk Apple-platformbewijs in deze Linux-containeromgeving expliciet ontbreekt in plaats van gemeten.
+De DEC-091/092/094-naamsbotsing met `origin/main` blijft openstaand merge-werk. Fase 4 (Zoeken) begint
+bij een eigen plan.
+
 ## DEC-094: fase 2 maakt Series en Films bestemmingen, en scheidt de chip van de tab
 
 **Date:** 2026-09-05
