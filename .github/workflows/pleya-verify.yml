@@ -95,6 +95,19 @@ jobs:
     permissions:
       contents: read
     timeout-minutes: 30
+    env:
+      # The hosted runner has no Apple Development certificate, and the Debug
+      # configuration of macos/Runner.xcodeproj asks for one ("No profiles for
+      # 'nl.michelknoop.pleya' were found"). The macOS driver re-signs its
+      # isolated copy ad hoc anyway (`codesign --sign -`), so the build may be
+      # ad hoc too. flutter_tools forwards every FLUTTER_XCODE_<SETTING> to
+      # xcodebuild as a build setting, which is its documented route for CI
+      # signing without touching the project (ios/xcodeproj.dart,
+      # environmentVariablesAsXcodeBuildSettings; used by build_macos.dart).
+      FLUTTER_XCODE_CODE_SIGN_IDENTITY: "-"
+      FLUTTER_XCODE_CODE_SIGN_STYLE: Manual
+      FLUTTER_XCODE_DEVELOPMENT_TEAM: ""
+      FLUTTER_XCODE_PROVISIONING_PROFILE_SPECIFIER: ""
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -136,10 +149,10 @@ jobs:
         working-directory: pleya_verify/runner
         run: dart run bin/verify.dart run ../scenarios/macos.smoke.boot.yaml --json
 
-      - name: discover.hero.layout (target ios-sim)
+      - name: discover.layout (target ios-sim)
         if: always()
         working-directory: pleya_verify/runner
-        run: dart run bin/verify.dart run ../scenarios/discover.hero.layout.yaml --json
+        run: dart run bin/verify.dart run ../scenarios/discover.layout.yaml --json
 
       - name: Upload evidence bundles
         if: always()
