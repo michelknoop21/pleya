@@ -18,7 +18,32 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### New
+- een geneste route krijgt de contentbox als MediaQuery (SYS-1c)
+- detail, collectie en persoon over het geneste routecontract (SYS-1b)
+- CAT5, de catalogusacties naar een inklapbare rail links van het raster
+- het infopaneel als enige spelermenu op TV, gebouwd naar mockup 33 (PLR2, PLR3, AUD1, AUD2, PNL2, STR1, STR2, PNL1)
+- ROW1, een eigen Home-rij uit een bewaard filter
+- ROW1, Home aanpassen vanaf Home zelf
+
+### Fixed
+- drie reviewbevindingen op het geneste routecontract
+- schaalcorrectie terug naar de ene grootheid die echt mismatchte
+- de linterwaarschuwingen die Code Analysis blokkeerden, per stuk beoordeeld (CI1)
+- de vijf bevindingen uit de review op het spelerpaneel
+- ROW1, wat de schermafbeeldingen lieten zien
+- eigen Home-rijen overleven een export niet, en dat was stil
+- DOWN off de paneelknoppen viel uit het focusraster
+- de rijwizard opende met de ring op Annuleren
+- een nieuwe eigen rij landde onderaan zodra er ooit versleept was
+- een bronwijziging tijdens een lopende rijlaad ging verloren
+- een eigen rij gaf een trage bibliotheek geen kans, en zweeg erover
+- een leeg Home liet je niet meer bij je eigen rijen
+- na Verwijderen bleef de ring op een rij staan die er niet meer was
+- het paneel vraagt zelf een frame aan als het de focus verplaatst (PNL3)
+- de geleende focusnode had geen eigenaar en geen doel
+- twee kleine gaten, één in het contextmenu en één in de bronbewaking
+- negen gegenereerde bestanden terug op build_runner-canonieke vorm
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
