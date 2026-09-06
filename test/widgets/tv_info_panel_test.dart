@@ -12,6 +12,7 @@ import 'package:pleya/mpv/player/player_state.dart';
 import 'package:pleya/services/audio_output_coordinator.dart';
 import 'package:pleya/services/audio_output_decision.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/shader_service.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/video_controls/models/track_controls_state.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel.dart';
@@ -195,6 +196,29 @@ void main() {
     expect(h.closed, isTrue);
   });
 
+  // PLR4. The hardware photo shows the Video tab losing its last rows under
+  // the card edge. The old cap was `min(height * 0.56, 620)`, a fraction with
+  // no relation to what the tab needs; at 1080 it happened to leave fifty
+  // pixels of slack, which is why the panel measured as fitting here while it
+  // did not on the set. These three heights pin the property the cap now has:
+  // the card is bounded by the title-safe band, so it grows to its content
+  // instead of hiding rows. Red before the fix at 900 (right column 51px
+  // hidden) and at 720 (both columns, 89 and 152).
+  for (final height in [1080.0, 900.0, 720.0]) {
+    testWidgets('the full Video tab fits inside the card at ${height.toInt()}p (PLR4)', (tester) async {
+      await _pumpFullVideoTab(tester, viewSize: Size(1920, height));
+
+      expect(find.byType(TvPanelRow), findsNWidgets(11), reason: 'five display rows and six playback rows');
+      final extents = _columnScrollExtents(tester);
+      expect(extents, hasLength(2), reason: 'the Video tab is two columns, each with its own scroll view');
+      expect(
+        extents,
+        everyElement(0.0),
+        reason: 'no row may sit under the card edge without an affordance; extents were $extents',
+      );
+    });
+  }
+
   testWidgets('on TV the tune button asks for the panel instead of a sheet (PLR3)', (tester) async {
     final player = _PanelPlayer();
     addTearDown(player.dispose);
@@ -222,6 +246,48 @@ void main() {
       reason: 'no sheet title: nothing opened but the panel',
     );
   });
+}
+
+/// The scroll extent of each [TvPanelColumns] column, in the order they are
+/// laid out. Zero means the column fits: nothing is hidden under the card edge.
+List<double> _columnScrollExtents(WidgetTester tester) {
+  final columns = find.descendant(of: find.byType(TvPanelColumns), matching: find.byType(Scrollable));
+  return List<double>.generate(
+    columns.evaluate().length,
+    (i) => tester.state<ScrollableState>(columns.at(i)).position.maxScrollExtent,
+  );
+}
+
+/// The Video tab with every row a real Apple TV builds. The default harness
+/// leaves four of them out — no shader service, no ambient support, no
+/// chapters and no second version — which is exactly why the panel measured
+/// as fitting while the hardware photo shows it does not (PLR4).
+Future<_Harness> _pumpFullVideoTab(WidgetTester tester, {Size viewSize = const Size(1920, 1080)}) async {
+  final shaderPlayer = _PanelPlayer();
+  addTearDown(shaderPlayer.dispose);
+  return _pumpPanel(
+    tester,
+    initial: TvInfoPanelRequest.video,
+    ambientSupported: true,
+    viewSize: viewSize,
+    chapters: [
+      MediaChapter(id: 1, index: 0, startTimeOffset: 0, title: 'Arrakis'),
+      MediaChapter(id: 2, index: 1, startTimeOffset: 2760000, title: 'The Water of Life'),
+    ],
+    trackControlsState: TrackControlsState(
+      // ignore: no-empty-block - the tab only needs the row to exist
+      onCycleBoxFitMode: () {},
+      // ignore: no-empty-block - the tab only needs the row to exist
+      onVideoZoomChanged: (_) {},
+      audioSyncOffset: 0,
+      subtitleSyncOffset: 0,
+      canControl: true,
+      shaderService: ShaderService(shaderPlayer),
+      serverSupportsTranscoding: true,
+      // ignore: no-empty-block - the tab only needs the row to exist
+      onSwitchQualityPreset: (_) {},
+    ),
+  );
 }
 
 class _Harness {
@@ -275,34 +341,39 @@ Future<_Harness> _pumpPanel(
   List<MediaChapter> chapters = const [],
   Future<void> Function(Duration)? onSeekToChapter,
   void Function(Duration)? onSeekCompleted,
+  bool ambientSupported = false,
+  TrackControlsState? trackControlsState,
+  Size viewSize = const Size(1920, 1080),
 }) async {
   final player = _PanelPlayer();
   addTearDown(player.dispose);
   final harness = _Harness(player);
-  tester.view.physicalSize = const Size(1920, 1080);
+  tester.view.physicalSize = viewSize;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
         body: SizedBox(
-          width: 1920,
-          height: 1080,
+          width: viewSize.width,
+          height: viewSize.height,
           child: TvInfoPanel(
             player: player,
             metadata: MediaItem(id: '1', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Dune: Part Two'),
-            trackControlsState: TrackControlsState(
-              // ignore: no-empty-block - the tab only needs the row to exist
-              onCycleBoxFitMode: () {},
-              audioSyncOffset: 0,
-              subtitleSyncOffset: 0,
-              canControl: true,
-            ),
+            trackControlsState:
+                trackControlsState ??
+                TrackControlsState(
+                  // ignore: no-empty-block - the tab only needs the row to exist
+                  onCycleBoxFitMode: () {},
+                  audioSyncOffset: 0,
+                  subtitleSyncOffset: 0,
+                  canControl: true,
+                ),
             chapters: chapters,
             onSeekToChapter: onSeekToChapter,
             onSeekCompleted: onSeekCompleted,
             isAmbientEnabled: false,
-            ambientSupported: false,
+            ambientSupported: ambientSupported,
             // ignore: no-empty-block - ambient is not exercised here
             onSetAmbientIntensity: (_) {},
             onClose: () => harness.closed = true,
@@ -325,6 +396,11 @@ class _PanelPlayer extends FakeSyncPlayer {
   static const _dutch = AudioTrack(id: '2', language: 'nl', codec: 'ac3', channels: 6);
 
   final writes = <String>[];
+
+  /// `ShaderService.isSupported` gates on this, and the Shaders row gates on
+  /// that. Without it the Video tab silently loses a row.
+  @override
+  String get playerType => 'mpv';
 
   @override
   PlayerState get state => super.state.copyWith(

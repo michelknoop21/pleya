@@ -285,16 +285,25 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
           },
           child: SafeArea(
             bottom: false,
-            child: Builder(
-              builder: (context) {
+            child: LayoutBuilder(
+              builder: (context, constraints) {
                 // tvOS overscan insets are zeroed app-wide (see main.dart), so
                 // the outer edge of the surface can be cut on sets that still
                 // overscan. The card sits on the same title-safe inset every TV
                 // page pays (`tvPageInset`, PLR1).
-                final size = MediaQuery.sizeOf(context);
                 final hInset = tvPageInset(context);
-                final top = (size.height * 0.037).clamp(24.0, 48.0);
-                final maxHeight = math.min(size.height * 0.56, 620.0);
+                final top = (constraints.maxHeight * 0.037).clamp(24.0, 48.0);
+                // The cap is the title-safe band the card may occupy, not a
+                // fraction of the screen. `min(height * 0.56, 620)` was
+                // unrelated to what a tab needs: at 1080 it left the Video tab
+                // fifty pixels of slack, and every row past that vanished under
+                // the card edge with no affordance saying so (PLR4). The card
+                // still sizes itself to its content — the Column is
+                // `mainAxisSize.min` — so a short tab is unchanged; only a tall
+                // one is allowed to grow instead of hiding rows. The columns
+                // keep their own scroll views as the last resort for a screen
+                // that really is too short.
+                final maxHeight = math.max(0.0, constraints.maxHeight - top * 2);
                 return Padding(
                   padding: EdgeInsets.fromLTRB(hInset, top, hInset, 0),
                   child: AutomationNode(
