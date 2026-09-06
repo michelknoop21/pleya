@@ -183,6 +183,9 @@ ids:
   - id: catalog.header
     role: region
     instanceable: true
+  - id: catalog.header.search
+    role: button
+    instanceable: true
   - id: catalog.chip.sources
     role: button
     instanceable: true

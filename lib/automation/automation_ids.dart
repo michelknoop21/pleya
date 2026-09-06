@@ -217,6 +217,7 @@ class AutomationIds {
   /// Navigator stack can still be mounted underneath the one they are
   /// looking at.
   static const String catalogHeader = 'catalog.header';
+  static const String catalogHeaderSearch = 'catalog.header.search';
   static const String catalogChipSources = 'catalog.chip.sources';
   static const String catalogChipFilters = 'catalog.chip.filters';
   static const String catalogChipSort = 'catalog.chip.sort';
@@ -264,6 +265,7 @@ class AutomationIds {
     landingRailItem,
     sheetSourcePickerRow,
     catalogHeader,
+    catalogHeaderSearch,
     catalogChipSources,
     catalogChipFilters,
     catalogChipSort,
@@ -331,6 +333,7 @@ class AutomationIds {
     {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},
     {'id': screenCatalogSeries, 'role': 'screen', 'instanceable': false},
     {'id': catalogHeader, 'role': 'region', 'instanceable': true},
+    {'id': catalogHeaderSearch, 'role': 'button', 'instanceable': true},
     {'id': catalogChipSources, 'role': 'button', 'instanceable': true},
     {'id': catalogChipFilters, 'role': 'button', 'instanceable': true},
     {'id': catalogChipSort, 'role': 'button', 'instanceable': true},
