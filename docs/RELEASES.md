@@ -19,37 +19,6 @@ under `Notes`.
 
 <!-- BEGIN GENERATED -->
 ### New
-- een geneste route krijgt de contentbox als MediaQuery (SYS-1c)
-- detail, collectie en persoon over het geneste routecontract (SYS-1b)
-- CAT5, de catalogusacties naar een inklapbare rail links van het raster
-- het infopaneel als enige spelermenu op TV, gebouwd naar mockup 33 (PLR2, PLR3, AUD1, AUD2, PNL2, STR1, STR2, PNL1)
-- ROW1, een eigen Home-rij uit een bewaard filter
-- ROW1, Home aanpassen vanaf Home zelf
-- een Pleya Server is te ontkoppelen waar Verbindingen zegt dat het kan
-- lege huls voor het automation-contract (Fase 0)
-- declared+discovered registry en GET /v1/ui_tree (Fase 1)
-- automation-ids, AutomationNode en FocusableWrapper-ids (Fase 2)
-- focus-log, monotoon /v1/events en /v1/wait (Fase 3)
-- schermreadiness op de eerste vier schermen (Fase 4)
-- /v1/input/key en /v1/input/pointer (bij Fase 3/4)
-- diagnostic overlay, /v1/overlay, /v1/screenshot (Fase 5)
-- fixture-server routingkernel + dart:io-adapter (Deel B Fase 1)
-- PleyaFakeServer op de gedeelde fixture-kernel (Deel B Fase 2)
-- drie waarnemingsendpoints + methodevalidatie (Deel A Fase 2)
-- fixture-server compleet — auth, klok, control-plane, media (Deel B Fase 3)
-- setup-control-plane — /v1/signin, /v1/connections/seed, /v1/open (Deel A Fase 4)
-- ID-adoptie op sidebar/library/discover/media-detail/player + 3 events (Deel A Fase 5)
-- runner-skelet, scenariogrammatica, transport-client (Deel B Fase 6)
-- geometrie + impact-resolver (Deel B Fase 7)
-- macOS-driver, eerste scenario end-to-end (Deel B Fase 8)
-- one PleyaLogo widget for every place the mark appears
-- iOS-simulatordriver + discover.hero.layout (Deel B Fase 9)
-- tvOS-driver via idb HID + isolatiefix (Deel B Fase 10)
-- geometrie-assertions, fixture_mutate en open in de engine (Fase 11)
-- hero-layout op macOS + iOS, en een screenshot die bewijs is
-- focus-trace vult zich altijd, sidebar-scenario op semantiek (Fase 11)
-- laatste Fase 11-scenario groen, twee echte tvOS-bugs gefixt
-- Fase 13 afgerond, MCP-laag als dunne adapter boven de bestaande CLI
 - identiteit en bronmodel over servers heen
 - resolver, dekking en de k-way merge-engine
 - activatiebeslissing en de onthouden bronkeuze
@@ -59,18 +28,50 @@ under `Notes`.
 - films en series als route-identiteit
 - het backendmerkje deelt de gegenereerde logo-bron
 - Unified 2026 fase 1, de iPhone-Home als eigen scherm
+- een geneste route krijgt de contentbox als MediaQuery (SYS-1c)
+- detail, collectie en persoon over het geneste routecontract (SYS-1b)
+- Series en Films krijgen een tabslot op de iPhone
+- MobileLandingScreen voor Series en Films
+- het zoekicoon op Home opent Zoeken
+- Bibliotheken als rij in Mijn Pleya
+- de chip filtert Home, de tab opent de landing
+- CAT5, de catalogusacties naar een inklapbare rail links van het raster
+- het infopaneel als enige spelermenu op TV, gebouwd naar mockup 33 (PLR2, PLR3, AUD1, AUD2, PNL2, STR1, STR2, PNL1)
+- ROW1, een eigen Home-rij uit een bewaard filter
+- ROW1, Home aanpassen vanaf Home zelf
+- automation-ids en i18n-sleutel voor de catalogusschermen
+- filter- en sorteersheet voor de catalogusschermen
+- MobileCatalogScreen (Alle films/Alle series)
+- de handler onder de landing-actie "Alle films/series ›"
+- tap op automation-id in de Verify-engine
 - eigen Home-rijen ook op desktop/mobiel
 - "Alle N"-tegel als laatste kaart van een eigen rij
+- een waarderij van het spelerpaneel wordt eerst aangeklikt, en pas dan stappen links en rechts (PLR5, DEC-102)
 
 ### Improved
-- scheidingslijnen volgen de werkelijke rijhoogte
-- één shape-contract voor CTA-knop en focusring
+- één UnifiedHubKind.singleKindSurface i.p.v. drie switches
+- één tabel voor bar-slot-beleid i.p.v. twee losse sets
+- _getBottomNavigationTabs leest de gecachte _isMobile/_isPhone
+- geen hero-autoscroll-timers meer op de telefoon
+- gedeelde shell voor Home en de landings, geen kopie meer
+- mobileFeatured deelt de wide-box-tak i.p.v. hem te kopiëren
+- hergebruik bestaande source-helpers i.p.v. ze te kopiëren
 
 ### Fixed
+- de nieuwe route-ids afhandelen in de bestaande shells
+- de opstartsplash tekent de lockup ook via PleyaWordmark
+- fase-1 acceptance, de iPad houdt zijn eigen tabbalk
 - drie reviewbevindingen op het geneste routecontract
 - schaalcorrectie terug naar de ene grootheid die echt mismatchte
 - de linterwaarschuwingen die Code Analysis blokkeerden, per stuk beoordeeld (CI1)
+- Play geeft nooit een nooit-afgespeelde bron uit voor "Current source"
+- tik op de al-gekozen chip schakelt terug naar Home
+- hero-carrousel herstart bij late groepen en stopt buiten beeld
 - de vijf bevindingen uit de review op het spelerpaneel
+- "Play on ${server}" loopt door i18n in plaats van vast Engels
+- dode onAvatarTap weg uit MobilePageHeader, rol wordt image
+- Zoeken onthoudt herkomst-tab; _selectTab geeft een echt resultaat
+- _isMobile/_isPhone en _screens raken niet meer een frame uit de pas
 - ROW1, wat de schermafbeeldingen lieten zien
 - eigen Home-rijen overleven een export niet, en dat was stil
 - DOWN off de paneelknoppen viel uit het focusraster
@@ -78,50 +79,26 @@ under `Notes`.
 - een nieuwe eigen rij landde onderaan zodra er ooit versleept was
 - een bronwijziging tijdens een lopende rijlaad ging verloren
 - een eigen rij gaf een trage bibliotheek geen kans, en zweeg erover
+- een Plex-server die niet parseert verdwijnt niet meer zonder logregel (SRC1)
 - een leeg Home liet je niet meer bij je eigen rijen
 - na Verwijderen bleef de ring op een rij staan die er niet meer was
 - het paneel vraagt zelf een frame aan als het de focus verplaatst (PNL3)
 - de geleende focusnode had geen eigenaar en geen doel
 - twee kleine gaten, één in het contextmenu en één in de bronbewaking
 - negen gegenereerde bestanden terug op build_runner-canonieke vorm
-- de zijbalk kent één lijst bestemmingen, dus "nu aan het kijken" is ook bereikbaar
-- een achtergrondcyclus legt de rapportage naar Plex niet meer stil
-- drie randen van de hervat-rapportage dichtgezet na review
-- het verlaten van de speler wacht niet meer op de server
-- een geweigerde log-upload wordt niet meteen opnieuw geprobeerd
-- zijbalk, sessiebalk en verbreken hingen alle drie aan een toestand die niemand bezat
-- een verbroken Pleya Server-verbinding liet zijn rij en zijn refreshtoken achter
-- een mislukte refresh maakte de verbinding kapot in plaats van hem te markeren
-- de buildnummers van iOS, tvOS en macOS lopen weer gelijk
-- een mislukte persist van een rotatie blijft niet onopgemerkt
-- een geopende serie-detailpagina laat nieuwe afleveringen na afspelen zien
-- de gefocuste rij krijgt een markering in plaats van een omlijning
-- verbindingsrijen krijgen dezelfde focusweergave als de rest van instellingen
-- Over en Pleya Share volgen het gedeelde kaartcontract
-- kaders rond toetscombinaties volgen de gedeelde lijnkleur
-- revalidatie mag een gelijktijdige load-more niet stilzwijgend overschrijven
-- reject a reversed Range instead of empty-body or crash
-- run the artwork behind the topbar, and give the strip its own height
-- fade the full-width strip out later instead of zooming it in
-- geen PASS meer op bewijs uit de verkeerde app-instantie
-- poortdiscovery leest Library/Caches, en de scenario wacht op de hero zelf
-- back-suppressie causaal maken, filters-scenario eerlijk hernoemen, evidence-gat dicht
-- geen --enforce-lockfile voor pleya_verify subpackages
-- evidence-artifact upload sluit app-installcaches uit
-- idb-installatie in tvOS-gate repareren, DEC-066 rechtzetten
-- tvOS build ontbrak pod_install.sh voor niet-gecommitte tvos/Pods/
-- sluit de automation-controlplane fail-closed af
-- maak evidence-redactie structureel in plaats van exact-match
-- bind elke subprocess- en fixture-controlcall aan een echte deadline
-- garandeer één JSON-envelope op run/validate --json, ook bij een onverwachte crash
-- verwijder set_pref/focus/back uit de scenario-vocabulaire
-- de nieuwe route-ids afhandelen in de bestaande shells
-- de opstartsplash tekent de lockup ook via PleyaWordmark
-- fase-1 acceptance, de iPad houdt zijn eigen tabbalk
+- Provider<UnifiedCatalogs>-registratie en clearForProfileScope-aanroeper
 - elf gegenereerde modelbestanden terug op de generatorbreedte
 - zes Containers in een Padding worden een Container met margin (avoid-wrapping-in-padding)
 - de macOS+iOS-job kan groen: ad-hoc signing op de runner en de hero-scenario's bewijzen de DEC-097-fallback (VER-CI)
 - PREF1, export/import vraagt nu de PreferenceSyncPolicyRegistry
+- twee analyzer-fouten uit de merge, buiten de tekstuele conflicten
+- een vers, correct token krijgt niet meer instant "unreachable" van een oudere poging (SRC1)
+- retryRecentFailures ook op de twee synchrone fallback-aanroepen (SRC1, review)
+- drie dubbele imports in profile_session_screen.dart uit de merge
+- zeventien gegenereerde bestanden terug op de generatorbreedte
+- de mobiele Home draagt discover.continue_watching en reserveert geen lege hero-band
+- de hoogtekap van het spelerpaneel volgt de title-safe band en niet meer een vaste fractie (PLR4)
+- de vastloop in mobile_catalog_screen_test was een zonekruising, geen omgeving
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
