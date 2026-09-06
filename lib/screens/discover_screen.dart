@@ -1310,25 +1310,34 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 // On Deck / Continue Watching
                 if (_onDeck.isNotEmpty)
                   SliverToBoxAdapter(
-                    child: HubSection(
-                      key: _continueWatchingHubKey,
-                      hub: MediaHub(
-                        id: 'continue_watching',
-                        title: t.discover.continueWatching,
-                        type: 'mixed',
-                        identifier: '_continue_watching_',
-                        size: _onDeck.length + (_hasMoreContinueWatching ? 1 : 0),
-                        more: _hasMoreContinueWatching,
-                        items: _onDeck,
+                    child: AutomationNode(
+                      id: AutomationIds.discoverContinueWatching,
+                      role: 'rail',
+                      // `hero_visible` mirrors the real bool, never a proxy: a
+                      // Verify scenario asserts the DEC-097 fallback ("no
+                      // recent film, so no hero and Continue Watching first")
+                      // on this node because the hero node is not built then.
+                      state: () => {'hero_visible': _isHeroSectionVisible},
+                      child: HubSection(
+                        key: _continueWatchingHubKey,
+                        hub: MediaHub(
+                          id: 'continue_watching',
+                          title: t.discover.continueWatching,
+                          type: 'mixed',
+                          identifier: '_continue_watching_',
+                          size: _onDeck.length + (_hasMoreContinueWatching ? 1 : 0),
+                          more: _hasMoreContinueWatching,
+                          items: _onDeck,
+                        ),
+                        icon: Symbols.play_circle_rounded,
+                        onRefresh: _discover.updateItem,
+                        onRemoveFromContinueWatching: _discover.refreshContinueWatching,
+                        isInContinueWatching: true,
+                        loadMoreItems: _discover.loadAllContinueWatching,
+                        onVerticalNavigation: (isUp) => _handleVerticalNavigation(0, isUp),
+                        onNavigateUp: _focusTopBoundary,
+                        onNavigateToSidebar: _navigateToSidebar,
                       ),
-                      icon: Symbols.play_circle_rounded,
-                      onRefresh: _discover.updateItem,
-                      onRemoveFromContinueWatching: _discover.refreshContinueWatching,
-                      isInContinueWatching: true,
-                      loadMoreItems: _discover.loadAllContinueWatching,
-                      onVerticalNavigation: (isUp) => _handleVerticalNavigation(0, isUp),
-                      onNavigateUp: _focusTopBoundary,
-                      onNavigateToSidebar: _navigateToSidebar,
                     ),
                   ),
 
