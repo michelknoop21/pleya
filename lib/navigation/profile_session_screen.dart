@@ -23,6 +23,7 @@ import '../providers/home_layout_provider.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/playback_state_provider.dart';
+import '../providers/unified_catalogs.dart';
 import '../providers/seerr_provider.dart';
 import '../providers/tautulli_provider.dart';
 import '../profiles/plex_home_service.dart';
@@ -346,6 +347,22 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   continueWatchingTitle: t.discover.continueWatching,
                   latestMoviesTitle: t.discover.recentlyReleased,
                 ),
+                lazy: true,
+              ),
+              // Films/Series' complete catalogue (iOS Unified 2026 fase 3,
+              // docs/ios-unified-2026-fase3-plan.md), read by
+              // `MobileCatalogScreen`. Not a `ChangeNotifierProvider`:
+              // `UnifiedCatalogs` itself is a plain owner object, not a
+              // `ChangeNotifier`, see its own doc comment on why the two
+              // `UnifiedCatalogProvider`s it lazily builds are disposed by
+              // hand here instead.
+              Provider(
+                create: (context) => UnifiedCatalogs(
+                  multiServer: context.read<MultiServerProvider>(),
+                  libraries: context.read<LibrariesProvider>(),
+                  hiddenLibraries: context.read<HiddenLibrariesProvider>(),
+                ),
+                dispose: (_, catalogs) => catalogs.dispose(),
                 lazy: true,
               ),
               ChangeNotifierProvider(create: (_) => WatchlistStore()..bindProfile(activeId)),

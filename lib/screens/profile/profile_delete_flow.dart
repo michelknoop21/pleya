@@ -12,6 +12,7 @@ import '../../profiles/profile_registry.dart';
 import '../../providers/download_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../services/storage_service.dart';
+import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/dialogs.dart';
 import '../../utils/snackbar_helper.dart';
@@ -51,6 +52,11 @@ Future<void> deleteProfile(BuildContext context, Profile profile) async {
 
   await downloadProvider.deleteDownloadsForProfile(profile.id);
   await database.deleteRecommendationDataForProfile(profile.id);
+  // Hoofdstuk 22: which genres/years someone browses Films/Series with is
+  // theirs, and it leaves with the profile rather than ageing out.
+  // `storage.userScopeForProfileId` rather than `activeUserScope()`: the
+  // profile being deleted need not be the active one.
+  await UnifiedCatalogQueryStore.clearForProfileScope(storage.userScopeForProfileId(profile.id));
   await removeAllProfileConnectionsAndCleanup(
     profileId: profile.id,
     profileConnections: pcRegistry,
