@@ -47,6 +47,18 @@ dart_code_linter:
     - prefer-enums-by-name
     - prefer-commenting-analyzer-ignores
 
+    # Reported as advice, not as a gate. dart_code_linter gives this rule
+    # Severity.warning, and `flutter analyze` in CI treats a warning as a
+    # failure. It fires 183 times, almost all of them on callbacks whose
+    # signature Flutter fixes: a builder that is handed a child it does not
+    # draw, an onFocusChange that only cares that focus moved, a listener that
+    # ignores its event. Those parameters cannot be removed without breaking
+    # the signature, so the only way to silence them is an ignore comment on
+    # each one, which buys nothing and costs 183 lines. The finding itself is
+    # still worth reading, so it stays on at info level.
+    - avoid-unused-parameters:
+        severity: info
+
     # --- Disable noisy rules from recommended preset ---
     - no-magic-number: false
     - avoid-dynamic: false

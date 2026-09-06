@@ -1,5 +1,11 @@
 # Roadmap deviation proposal — fase-6 DoD "Geen duplicate titel in één Home-rij"
 
+
+> **Afgehandeld afwijkingsvoorstel.** De fase die dit voorstel betrof is gesloten en het
+> besluit is doorgevoerd; de statusregel bovenaan zegt hoe. Dit bestand blijft staan als
+> de vastlegging van die afwijking. Welke beeldenset vandaag bindt en wat de
+> eerstvolgende stap is, staat in [DESIGN-INDEX.md](DESIGN-INDEX.md).
+
 **Datum:** 31 augustus 2026
 **Fase:** 6 (Unified Discovery)
 **Status:** goedgekeurd door Michel, 31 augustus 2026 — **geleverd en gesloten in fase 8, 31 augustus 2026**

@@ -136,11 +136,20 @@ void main() {
       durationMs: 7200000,
       artPath: heroArtPath,
       backgroundSquarePath: heroSquarePath,
+      // Inside the hero's release window (DEC-097). Without a release date a
+      // film is out of the pool by design, so an undated fixture renders no
+      // hero at all and every assertion below fails on a missing title.
+      originallyAvailableAt: '2026-08-01',
     );
 
     final client = _FakeHeroClient(movie, continueWatching: continueWatching);
     final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-    final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+    final multiServerProvider = MultiServerProvider(
+      manager,
+      // Pinned clock, so the window is measured against a fixed point and the
+      // fixture above does not age out of it as the wall clock moves.
+      DataAggregationService(manager, now: () => _now),
+    );
     final hiddenLibrariesProvider = HiddenLibrariesProvider();
     final librariesProvider = LibrariesProvider();
     final watchTogetherProvider = WatchTogetherProvider();
@@ -700,6 +709,9 @@ class _RouteSpy extends NavigatorObserver {
   Iterable<String?> get names => pushed.map((route) => route.settings.name);
 }
 
+/// The instant the hero's release window is measured from in this file.
+final _now = DateTime(2026, 8, 15);
+
 class _FakeHeroClient implements MediaServerClient {
   _FakeHeroClient(this.movie, {this.continueWatching = const []});
 
@@ -708,6 +720,12 @@ class _FakeHeroClient implements MediaServerClient {
 
   @override
   ServerId get serverId => ServerId('server_1');
+
+  /// The aggregator asks every client for shows as well as films. Without this
+  /// the call lands in [noSuchMethod] and the run logs a failed fetch on a test
+  /// that is otherwise fine, which reads as a defect and is not one.
+  @override
+  Future<List<MediaItem>> fetchRecentlyAddedShows({int limit = 50}) async => const [];
 
   @override
   String? get serverName => 'Server';

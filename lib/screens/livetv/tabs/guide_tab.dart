@@ -1127,6 +1127,9 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
       await _showDayPicker();
       return;
     }
+    // Het menu erboven is een await: het tabblad kan weg zijn tegen de tijd dat
+    // er een keuze uitkomt.
+    if (!mounted) return;
     setState(() {
       _gridStart = DateTime(day.year, day.month, day.day, value);
       _gridEnd = _gridStart.add(const Duration(hours: 6));
