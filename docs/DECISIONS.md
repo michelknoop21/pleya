@@ -2029,9 +2029,28 @@ probleem (een fire-and-forget schrijfactie die de volgende test in het bestand r
 aangetoond dat hij niet elke vorm van deze vastloop dekt. Dit is uitdrukkelijk geen codedefect in de
 fase-3-code zelf: de geïsoleerde `test()`-herhaling zonder `testWidgets()` rondt in minder dan een
 seconde af, en de vastloop zit in de teststack, niet in `UnifiedCatalogQueryStore`,
-`HiddenLibrariesProvider` of `MobileCatalogScreen`. Het is grond voor een aparte
-testinfrastructuursessie op een echte Mac, waar dit mogelijk niet reproduceert, en niet iets dat
-fase 3 zelf hoort op te lossen.
+`HiddenLibrariesProvider` of `MobileCatalogScreen`.
+
+*Opgelost op 6 september 2026, en de diagnose hierboven was op één punt mis.* De vastloop is niet
+omgevingsspecifiek: hij reproduceerde onverkort op de Linux-runner van GitHub Actions, waar de
+Unit Tests-job van PR #5 op drie tests van dit bestand tien minuten per stuk uitliep
+(`6543 tests passed, 3 failed`). Daarmee verviel de aanname dat dit aan de sandbox van één sessie
+lag en werd het een blokkerende, eigen bevinding.
+
+De ontbrekende schakel was de zone, niet de sandbox. `setUp` maakt de statische prefs-cache aan via
+`SettingsService.getInstance()` en `StorageService.getInstance()`, en dus in de echte zone. Een
+`testWidgets`-body draait in de FakeAsync-zone. Een future die in de ene zone voltooide levert zijn
+continuation in de andere nooit af, precies het symptoom dat hierboven correct beschreven maar aan
+de sandbox toegeschreven werd. De drie tests die hingen zijn exact de drie met een kale
+`await UnifiedCatalogQueryStore.write/read` in de body; de test die die aanroep niet doet slaagde
+ook op CI. Ze gebruiken nu `tester.runAsync`, dat in de echte zone draait, hetzelfde idioom dat
+`mobile_home_screen_test.dart` al voor `discover.load` gebruikt. Het bestand loopt daarmee in drie
+seconden in plaats van drie keer tien minuten, en hoeft niet meer uit een testrun gesloten te worden.
+
+`UnifiedCatalogQueryStore.resetForTesting()` blijft staan: hij dekt de andere helft, een
+fire-and-forget schrijfactie via een gebaar die de volgende test raakt, en die helft is met deze fix
+niet verdwenen. De "twee lege-toestandtests staan bewust achteraan"-ordening in het testbestand was
+een omzeiling van dit probleem en is met de oorzaak vervallen.
 
 **Consequences:** Zie het eindrapport voor de exacte analyze-, test- en ci_checks-cijfers en voor
 welk Apple-platformbewijs in deze Linux-containeromgeving expliciet ontbreekt in plaats van gemeten.

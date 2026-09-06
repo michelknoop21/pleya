@@ -293,9 +293,15 @@ void main() {
   });
 
   testWidgets('a previously stored selection is restored on the next open', (tester) async {
-    await UnifiedCatalogQueryStore.write(
-      MediaKind.movie,
-      UnifiedCatalogPreferences.defaults.copyWith(sort: UnifiedCatalogSort.recentlyAdded),
+    // `runAsync`, niet een kale await: de statische prefs-cache is in `setUp`
+    // aangemaakt, dus in de echte zone. Een `testWidgets`-body draait in de
+    // FakeAsync-zone, en een future die in een andere zone voltooide levert
+    // daar zijn continuation nooit af. Zie de noot boven de laatste twee tests.
+    await tester.runAsync(
+      () => UnifiedCatalogQueryStore.write(
+        MediaKind.movie,
+        UnifiedCatalogPreferences.defaults.copyWith(sort: UnifiedCatalogSort.recentlyAdded),
+      ),
     );
 
     await pumpCatalog(tester);
@@ -305,35 +311,37 @@ void main() {
   });
 
   testWidgets('a stored library restriction naming a library that no longer exists is dropped on open', (tester) async {
-    await UnifiedCatalogQueryStore.write(
-      MediaKind.movie,
-      UnifiedCatalogPreferences.defaults.copyWith(
-        filters: const UnifiedCatalogFilterSelection(libraryKeys: {'s1:ghost-library'}),
+    await tester.runAsync(
+      () => UnifiedCatalogQueryStore.write(
+        MediaKind.movie,
+        UnifiedCatalogPreferences.defaults.copyWith(
+          filters: const UnifiedCatalogFilterSelection(libraryKeys: {'s1:ghost-library'}),
+        ),
       ),
     );
 
     await pumpCatalog(tester);
     await settle(tester);
 
-    final restored = await UnifiedCatalogQueryStore.read(MediaKind.movie);
+    final restored = (await tester.runAsync(() => UnifiedCatalogQueryStore.read(MediaKind.movie)))!;
     expect(restored.filters.libraryKeys, isEmpty, reason: 'a vanished library has no row left to untick it with');
     // The prune is also written back, so the badge does not keep counting a
     // restriction the panel can no longer show.
     expect(find.text(t.unifiedCatalog.filters.title), findsOneWidget);
   });
 
-  // The two empty-state tests are deliberately last: reaching the pure
-  // "loaded, nothing here" render path is what production code does the
-  // moment a catalogue has zero groups and no error, and nothing about it is
-  // test-visible-broken. But an environment-specific flakiness in this
-  // sandboxed container's `flutter_tester` process reliably hangs the *next*
-  // test's `UnifiedCatalogQueryStore.write` call after any test that reaches
-  // this render path, no matter how many unrelated tests run in between and
-  // regardless of whether that render path was reached via a mid-test
-  // dispose/rebuild or a wholly separate setUp-built fixture. Every test
-  // here has been individually verified correct in isolation and in a wide
-  // range of combinations; this ordering sidesteps the environment issue
-  // rather than papering over an actual code defect.
+  // Deze twee stonden hier als laatste omdat de vastloop hierna toesloeg, en
+  // dat is opgelost, niet omzeild. De oorzaak was geen omgeving en geen
+  // flakiness: `setUp` maakt de statische prefs-cache aan
+  // (`SettingsService.getInstance`, `StorageService.getInstance`) en dus in de
+  // echte zone, terwijl een `testWidgets`-body in de FakeAsync-zone draait. Een
+  // future die in de ene zone voltooide levert zijn continuation in de andere
+  // nooit af, dus elke kale `await UnifiedCatalogQueryStore.write/read` in een
+  // body hing stil en permanent, tot de timeout van tien minuten. Op CI net zo
+  // goed als lokaal. De drie tests die zo'n directe aanroep doen gebruiken nu
+  // `tester.runAsync`, dat in de echte zone draait; daarmee loopt dit bestand
+  // in seconden in plaats van drie keer tien minuten. De volgorde hieronder is
+  // sindsdien willekeurig en mag veranderen.
   testWidgets('shows the generic empty state when the catalog has nothing and no filter is active', (tester) async {
     await pumpCatalog(tester, useEmpty: true);
     await settle(tester);
@@ -342,9 +350,11 @@ void main() {
   });
 
   testWidgets('shows the filtered-empty state when a stored selection matches nothing', (tester) async {
-    await UnifiedCatalogQueryStore.write(
-      MediaKind.movie,
-      UnifiedCatalogPreferences.defaults.copyWith(filters: const UnifiedCatalogFilterSelection(genres: {'Horror'})),
+    await tester.runAsync(
+      () => UnifiedCatalogQueryStore.write(
+        MediaKind.movie,
+        UnifiedCatalogPreferences.defaults.copyWith(filters: const UnifiedCatalogFilterSelection(genres: {'Horror'})),
+      ),
     );
 
     await pumpCatalog(tester, useEmpty: true);

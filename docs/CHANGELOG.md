@@ -44,6 +44,14 @@ hing ook los van de rest, in drie herhaalde pogingen. Een geïsoleerde `test()`-
 `testWidgets()` rondt in minder dan een seconde af: het zit in de teststack, niet in de fase-3-code.
 DEC-105 schrijft de volledige diagnose uit, inclusief wat verworpen is als verklaring.
 
+**Nagekomen op 6 september:** die hindernis was niet omgevingsspecifiek en is opgelost. Hij
+reproduceerde op de Linux-runner van GitHub Actions, waar drie tests van dit bestand tien minuten
+per stuk uitliepen. De oorzaak is de zone: `setUp` maakt de statische prefs-cache aan in de echte
+zone, een `testWidgets`-body draait in de FakeAsync-zone, en een future die in de ene zone voltooide
+levert zijn continuation in de andere nooit af. De drie tests met een kale `await`-aanroep op
+`UnifiedCatalogQueryStore` gebruiken nu `tester.runAsync`; het bestand loopt in drie seconden en
+hoeft niet meer uitgesloten te worden.
+
 De stand van de poorten: analyzer 0 errors en 0 warnings op de bekende 40 info-lints. `scripts/
 ci_checks.sh` daalt van de 17 F0-meldingen (10 unused-code, 7 unused-files) bij de nulmeting naar 9
 (6 unused-code, 3 unused-files); de negen die overblijven horen bij latere fases
