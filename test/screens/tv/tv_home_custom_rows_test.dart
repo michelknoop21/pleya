@@ -51,6 +51,8 @@ import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/offline_mode_provider.dart';
 import 'package:pleya/providers/tv_home_projection_provider.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
+import 'package:pleya/services/unified_catalog/home_custom_row.dart';
+import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
@@ -486,6 +488,55 @@ void main() {
       'Nieuwe sci-fi',
       'Recently Added',
     ]);
+  });
+
+  // ROW1g. The shipped string says a new row "lands directly under Continue
+  // Watching", and DEC-100 (5) asks for the same. It did, right up until the
+  // viewer moved anything: `move` writes every id into the order, and
+  // `applyHomeLayoutToUnifiedRows` ranks an id the order has never seen as
+  // `order.length`, which is last.
+  testWidgets('a new row lands under Verder kijken even when an order was saved', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await layout.setOrder([':pleya:home:latest-movies', '#custom:r1']);
+    await tester.pumpAndSettle();
+
+    await layout.saveCustomRow(
+      const HomeCustomRow(
+        id: 'r2',
+        kind: MediaKind.movie,
+        name: 'Net binnen',
+        preferences: UnifiedCatalogPreferences.defaults,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(rowTitles(tester).take(2), [t.discover.continueWatching, 'Net binnen']);
+  });
+
+  testWidgets('editing a row leaves it where the viewer put it', (tester) async {
+    await boot(
+      tester,
+      savedRows: [
+        savedRowJson(),
+        savedRowJson(id: 'r2', name: 'Net binnen'),
+      ],
+    );
+    await layout.setOrder([':pleya:home:latest-movies', '#custom:r2', '#custom:r1']);
+    await tester.pumpAndSettle();
+
+    // Same id, new name: a rename is not a new row and must not jump the queue.
+    await layout.saveCustomRow(
+      const HomeCustomRow(
+        id: 'r2',
+        kind: MediaKind.movie,
+        name: 'Andere naam',
+        preferences: UnifiedCatalogPreferences.defaults,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(layout.order.first, ':pleya:home:latest-movies');
+    expect(layout.order.indexOf('#custom:r2'), 1);
   });
 
   testWidgets('hiding a backend row takes it off Home and leaves it in the panel', (tester) async {

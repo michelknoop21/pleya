@@ -112,8 +112,16 @@ class HomeLayoutProvider extends ChangeNotifier with DisposableChangeNotifierMix
   ///
   /// New rows go to the front of the stored list, which is where a Home with no
   /// stored order draws them: directly under the fixed rows, as DEC-100 (5)
-  /// asks. Once the viewer has moved anything, [order] decides instead and this
-  /// position stops mattering.
+  /// asks.
+  ///
+  /// A stored order overrules that position, and used to overrule it wrongly
+  /// (ROW1g). `applyHomeLayoutToUnifiedRows` ranks an id the order has never
+  /// seen as `order.length`, which is last, and the panel's own `move` writes
+  /// every id at the first reorder. So a viewer who had ever moved a row got
+  /// the next new one at the bottom of Home, while the string next to the
+  /// button said it would land directly under Verder kijken. A new row
+  /// therefore claims the front of the order as well, and only a genuinely new
+  /// one: an edit keeps its id and must keep its place.
   Future<void> saveCustomRow(HomeCustomRow row) async {
     if (!_isInitialized) await _initialize();
     final existing = _customRows.indexWhere((r) => r.id == row.id);
@@ -126,6 +134,14 @@ class HomeLayoutProvider extends ChangeNotifier with DisposableChangeNotifierMix
     }
     _customRows = next;
     await _persistCustomRows();
+    // Only when there is an order to join. Writing one here where none existed
+    // would turn "the viewer has never reordered" into "they have", which is
+    // the flag the projection order still answers to.
+    final rowId = row.layoutRowId;
+    if (existing < 0 && _order.isNotEmpty && !_order.contains(rowId)) {
+      await setOrder([rowId, ..._order]);
+      return;
+    }
     safeNotifyListeners();
   }
 
