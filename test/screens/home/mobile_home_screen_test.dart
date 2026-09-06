@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_registry.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_hub.dart';
@@ -132,6 +134,14 @@ class _FakeClient implements MediaServerClient {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+/// `AutomationNode` is een pass-through zonder
+/// `--dart-define=PLEYA_VERIFY=true`, dus registratie is in een gewone
+/// `flutter test`-run niet waarneembaar. Zelfde vorm als
+/// `test/automation/automation_node_test.dart`: standaard overgeslagen, met het
+/// commando in de skip-reden.
+const bool _verifyOn = bool.fromEnvironment('PLEYA_VERIFY');
+const String _skipReason = 'run with --dart-define=PLEYA_VERIFY=true';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -279,6 +289,55 @@ void main() {
     expect(find.byType(MobileChipBar), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('zonder recent uitgebrachte film reserveert Home geen hero-band (DEC-097 punt 3)', (tester) async {
+    // De fallback die `discover.layout` op de simulator meet: het /v1-contract
+    // draagt geen releasedatum, dus het 90-dagenvenster laat de heropool leeg.
+    // Punt 3 zegt dan: geen hero, Verder kijken eerst. `MobileHeroCard`
+    // antwoordt op een lege groepenlijst met een SizedBox op de volle
+    // herohoogte, dus hem tóch bouwen zet een lege band boven de eerste rij en
+    // duwt die uit beeld.
+    aggregation.latestMovies = [];
+    aggregation.onDeck = [_movie('d1', title: 'Half Watched')];
+    aggregation.hubs = [
+      _hub('Trending', items: [_movie('t1')]),
+    ];
+
+    await pumpHome(tester);
+    await tester.runAsync(discover.load);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(MobileHeroCard), findsNothing, reason: 'lege heropool hoort geen ruimte te reserveren');
+    expect(find.text('Continue Watching'), findsOneWidget);
+
+    // En de rij staat echt boven in beeld, niet achter een lege band.
+    final railTop = tester.getTopLeft(find.text('Continue Watching')).dy;
+    expect(railTop, lessThan(tester.view.physicalSize.height / 2));
+    expect(tester.takeException(), isNull);
+  });
+
+  group('de mobiele Home draagt de Verder kijken-node die discover.layout adresseert', () {
+    testWidgets('discover.continue_watching bestaat, met hero_visible uit de echte bool', (tester) async {
+      aggregation.latestMovies = [];
+      aggregation.onDeck = [_movie('d1', title: 'Half Watched')];
+
+      await pumpHome(tester);
+      await tester.runAsync(discover.load);
+      await tester.pump();
+      await tester.pump();
+
+      // Op de iPhone vervangt dit scherm de boom van `DiscoverScreen` (fase 1),
+      // dus het moet dezelfde node dragen: `discover.layout` adresseert hem en
+      // mag niet hoeven weten welk van de twee schermen de rij tekende.
+      final declared = (AutomationRegistry.instance.snapshot()['declared'] as List).cast<Map<String, Object?>>();
+      final node = declared.firstWhere(
+        (n) => n['id'] == AutomationIds.discoverContinueWatching,
+        orElse: () => throw StateError('discover.continue_watching ontbreekt op de mobiele Home'),
+      );
+      expect((node['state']! as Map<String, Object?>)['hero_visible'], isFalse);
+    });
+  }, skip: _verifyOn ? false : _skipReason);
 
   testWidgets('a chip filters Home per row on the hub kind, and mixed rows drop out', (tester) async {
     aggregation.latestMovies = [_movie('m1', title: 'Recent One', year: 2026)];

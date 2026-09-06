@@ -13,6 +13,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show SliverConstraints;
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/unified/source_coverage_state.dart';
 import '../../media/unified/unified_media_group.dart';
@@ -170,6 +172,10 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
     };
     final hubs = applyHomeLayoutToUnifiedRows(rawHubs, hiddenRowIds: layout.hiddenRowIds, order: layout.order);
     final continueWatching = _chip == MobileHomeChip.home ? homeProjection.continueWatching : null;
+    // Whether this screen actually draws a hero, not whether it could: the
+    // pool is empty on a source without release dates (DEC-097 point 2), and a
+    // chip filters the hero away entirely.
+    final heroVisible = _chip == MobileHomeChip.home && homeProjection.heroGroups.isNotEmpty;
 
     final isLoading = discover.isLoading;
     final errorMessage = discover.errorMessage;
@@ -201,7 +207,13 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
               ),
             ),
           ),
-        if (_chip == MobileHomeChip.home)
+        // Only when there is something to show. `MobileHeroCard` answers an
+        // empty group list with a `SizedBox` at the full hero height, so
+        // building it anyway reserves a hero-sized blank band above the first
+        // rail. That is exactly the state DEC-097 point 3 describes (no
+        // recently released film, so no hero and Continue Watching first), and
+        // reserving the space there contradicts it.
+        if (heroVisible)
           SliverLayoutBuilder(builder: (context, constraints) => _heroSliver(context, constraints, homeProjection)),
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
         if (isLoading) mobileHubRowsSkeletonSliver,
@@ -209,12 +221,24 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
         if (!isLoading && errorMessage == null) ...[
           if (continueWatching != null && !continueWatching.isEmpty)
             SliverToBoxAdapter(
-              child: MobileMediaRail(
-                hub: continueWatching,
-                railIndex: 0,
-                shape: MobileCardShape.wide,
-                isContinueWatching: true,
-                onCardTap: _openDetails,
+              // The same node `DiscoverScreen` puts around its own Continue
+              // Watching rail, because on the iPhone this screen replaces that
+              // tree (fase 1) and a scenario addressing `discover` must not
+              // have to know which of the two drew the row. `hero_visible`
+              // mirrors the real bool here too: `discover.layout` asserts the
+              // DEC-097 fallback on this node, since the hero node is not
+              // built in that state.
+              child: AutomationNode(
+                id: AutomationIds.discoverContinueWatching,
+                role: 'rail',
+                state: () => {'hero_visible': heroVisible},
+                child: MobileMediaRail(
+                  hub: continueWatching,
+                  railIndex: 0,
+                  shape: MobileCardShape.wide,
+                  isContinueWatching: true,
+                  onCardTap: _openDetails,
+                ),
               ),
             ),
           for (var i = 0; i < hubs.length; i++)
