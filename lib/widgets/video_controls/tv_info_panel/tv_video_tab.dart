@@ -402,7 +402,10 @@ class TvVideoTab extends StatelessWidget {
           TvPanelGroup(children: display),
         ],
       ],
-      right: [TvPanelSectionHeader(label: t.videoControls.tvPanel.playback), TvPanelGroup(children: playback)],
+      right: [
+        TvPanelSectionHeader(label: t.videoControls.tvPanel.playback),
+        TvPanelGroup(children: playback),
+      ],
     );
   }
 }

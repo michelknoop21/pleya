@@ -71,7 +71,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(h.player.state.rate, 0.75);
 
+    // One press per frame: the row reads the rate from a stream, so two
+    // presses without a frame in between both step off the same old value.
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
     expect(h.player.state.rate, 1.25);
@@ -199,7 +202,11 @@ void main() {
     await tester.tap(find.byTooltip(t.videoControls.settingsButton));
     await tester.pumpAndSettle();
     expect(requested, TvInfoPanelRequest.video);
-    expect(find.text(t.videoControls.settingsButton), findsNothing, reason: 'no sheet title: nothing opened but the panel');
+    expect(
+      find.text(t.videoControls.settingsButton),
+      findsNothing,
+      reason: 'no sheet title: nothing opened but the panel',
+    );
   });
 }
 

@@ -100,10 +100,7 @@ T? stepValueClamped<T>(List<T> values, T current, int delta, {bool Function(T a,
 }) {
   final previous = stepValueClamped(values, current, -1, equals: equals);
   final next = stepValueClamped(values, current, 1, equals: equals);
-  return (
-    left: previous == null ? null : () => apply(previous),
-    right: next == null ? null : () => apply(next),
-  );
+  return (left: previous == null ? null : () => apply(previous), right: next == null ? null : () => apply(next));
 }
 
 /// A single focusable row in a TV panel section.
@@ -300,9 +297,11 @@ class _TvPanelRowBody extends StatelessWidget {
   final bool focused;
 
   Color get _ink => focused ? TvPanelTheme.focusInk : (row.dimmed ? TvPanelTheme.textMuted : Colors.white);
-  Color get _inkMuted => focused ? TvPanelTheme.focusInkMuted : (row.dimmed ? TvPanelTheme.textDim : TvPanelTheme.textFaint);
-  Color get _inkValue =>
-      focused ? TvPanelTheme.focusInk : (row.dimmed ? TvPanelTheme.textFaint : (row.highlighted ? Colors.white : TvPanelTheme.textMuted));
+  Color get _inkMuted =>
+      focused ? TvPanelTheme.focusInkMuted : (row.dimmed ? TvPanelTheme.textDim : TvPanelTheme.textFaint);
+  Color get _inkValue => focused
+      ? TvPanelTheme.focusInk
+      : (row.dimmed ? TvPanelTheme.textFaint : (row.highlighted ? Colors.white : TvPanelTheme.textMuted));
 
   @override
   Widget build(BuildContext context) {
@@ -319,10 +318,7 @@ class _TvPanelRowBody extends StatelessWidget {
       child: Row(
         children: [
           if (row.leading != null) ...[row.leading!, const SizedBox(width: 16)],
-          if (row.icon != null) ...[
-            AppIcon(row.icon!, fill: 1, color: _ink, size: 22),
-            const SizedBox(width: 14),
-          ],
+          if (row.icon != null) ...[AppIcon(row.icon!, fill: 1, color: _ink, size: 22), const SizedBox(width: 14)],
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -424,10 +420,7 @@ class _ChoiceMark extends StatelessWidget {
             width: 24,
             height: 24,
             alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: focused ? TvPanelTheme.focusInk : Colors.white,
-            ),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: focused ? TvPanelTheme.focusInk : Colors.white),
             child: AppIcon(
               Symbols.check_rounded,
               fill: 1,
@@ -448,7 +441,12 @@ class _ChoiceMark extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Flexible(
-          child: Text(value!, style: TextStyle(color: valueColor, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+          child: Text(
+            value!,
+            style: TextStyle(color: valueColor, fontSize: 14),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         const SizedBox(width: 12),
         mark,
@@ -639,7 +637,11 @@ class TvPanelColumns extends StatelessWidget {
     Widget column(List<Widget> children) => FocusTraversalGroup(
       child: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: children),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: children,
+        ),
       ),
     );
     return Row(

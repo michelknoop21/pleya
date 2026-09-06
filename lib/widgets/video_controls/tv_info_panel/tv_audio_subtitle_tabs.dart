@@ -359,7 +359,10 @@ class TvAudioTab extends StatelessWidget {
                     TvPanelSectionHeader(label: t.videoControls.tvPanel.tracks),
                     if (trackRows.isNotEmpty) TvPanelGroup(children: trackRows),
                   ],
-                  right: [TvPanelSectionHeader(label: t.videoControls.tvPanel.output), TvPanelGroup(children: output)],
+                  right: [
+                    TvPanelSectionHeader(label: t.videoControls.tvPanel.output),
+                    TvPanelGroup(children: output),
+                  ],
                 );
               },
             );
@@ -624,7 +627,10 @@ class TvSubtitlesTab extends StatelessWidget {
             ];
 
             return TvPanelColumns(
-              left: [TvPanelSectionHeader(label: t.videoControls.tvPanel.tracks), TvPanelGroup(children: rows)],
+              left: [
+                TvPanelSectionHeader(label: t.videoControls.tvPanel.tracks),
+                TvPanelGroup(children: rows),
+              ],
               right: [
                 TvPanelSectionHeader(label: t.videoControls.tvPanel.styleAndTiming),
                 TvPanelGroup(children: style),

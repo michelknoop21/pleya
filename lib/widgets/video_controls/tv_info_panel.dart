@@ -111,8 +111,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
     super.initState();
     _pillNodes = List.generate(TvInfoPanelTab.values.length, (i) => FocusNode(debugLabel: 'TvInfoPill$i'));
     _anim = AnimationController(vsync: this, duration: const Duration(milliseconds: 260))..forward();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+    _afterNextFrame(() {
       if (_subView != TvInfoPanelSubView.none) {
         _focusSubView();
       } else if (widget.initial.tab == TvInfoPanelTab.information) {
@@ -152,15 +151,27 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
       });
     }
     if (focusPill) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _pillNodes[tab.index].requestFocus();
-      });
+      _afterNextFrame(() => _pillNodes[tab.index].requestFocus());
     }
   }
 
-  void _focusContent({bool fallbackToPill = false}) {
+  /// Runs [action] once the rows it wants to focus have been laid out.
+  ///
+  /// The frame is asked for explicitly. A post-frame callback does not request
+  /// one, and the panel moves the focus on paths where nothing was marked
+  /// dirty: Select on the pill that is already active rebuilds nothing, so the
+  /// callback would wait for whatever draws next. Behind a playing picture that
+  /// is the next video frame and nobody notices; on a paused one there is no
+  /// next frame and the ring simply never leaves the pill.
+  void _afterNextFrame(VoidCallback action) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (mounted) action();
+    });
+    WidgetsBinding.instance.scheduleFrame();
+  }
+
+  void _focusContent({bool fallbackToPill = false}) {
+    _afterNextFrame(() {
       if (_contentTopNode.context != null) {
         _contentTopNode.requestFocus();
       } else if (fallbackToPill) {
@@ -170,8 +181,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
   }
 
   void _focusSubView() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+    _afterNextFrame(() {
       if (_subViewTopNode.context != null) {
         _subViewTopNode.requestFocus();
         return;
@@ -302,7 +312,9 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
                             color: TvPanelTheme.card,
                             borderRadius: BorderRadius.circular(22),
                             border: Border.all(color: TvPanelTheme.cardBorder),
-                            boxShadow: const [BoxShadow(color: Color(0x80000000), blurRadius: 60, offset: Offset(0, 30))],
+                            boxShadow: const [
+                              BoxShadow(color: Color(0x80000000), blurRadius: 60, offset: Offset(0, 30)),
+                            ],
                           ),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -310,7 +322,9 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
                             children: [
                               _subView == TvInfoPanelSubView.none ? _buildPillBar() : _buildSubViewHeader(),
                               const SizedBox(height: 18),
-                              Flexible(child: _subView == TvInfoPanelSubView.none ? _buildTabContent() : _buildSubView()),
+                              Flexible(
+                                child: _subView == TvInfoPanelSubView.none ? _buildTabContent() : _buildSubView(),
+                              ),
                               _buildFooter(),
                             ],
                           ),
@@ -390,7 +404,10 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
               color: isActive ? TvPanelTheme.activePill : TvPanelTheme.inactivePill,
               borderRadius: BorderRadius.circular(22),
               boxShadow: hasFocus
-                  ? const [BoxShadow(color: TvPanelTheme.focusInk, spreadRadius: 2), BoxShadow(color: Colors.white, spreadRadius: 4)]
+                  ? const [
+                      BoxShadow(color: TvPanelTheme.focusInk, spreadRadius: 2),
+                      BoxShadow(color: Colors.white, spreadRadius: 4),
+                    ]
                   : const [],
             ),
             child: Row(
@@ -398,7 +415,10 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
               children: [
                 AppIcon(icon, fill: 1, color: ink, size: 18),
                 const SizedBox(width: 8),
-                Text(label, style: TextStyle(color: ink, fontSize: 15, fontWeight: FontWeight.w600)),
+                Text(
+                  label,
+                  style: TextStyle(color: ink, fontSize: 15, fontWeight: FontWeight.w600),
+                ),
               ],
             ),
           );
@@ -409,13 +429,22 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
 
   Widget _buildSubViewHeader() {
     final (title, crumb) = switch (_subView) {
-      TvInfoPanelSubView.audioSync => (t.videoSettings.audioSync, '${t.videoControls.tvPanel.audio} ▸ ${t.videoControls.tvPanel.output}'),
+      TvInfoPanelSubView.audioSync => (
+        t.videoSettings.audioSync,
+        '${t.videoControls.tvPanel.audio} ▸ ${t.videoControls.tvPanel.output}',
+      ),
       TvInfoPanelSubView.subtitleSync => (
         t.videoSettings.subtitleSync,
         '${t.videoControls.subtitlesLabel} ▸ ${t.videoControls.tvPanel.styleAndTiming}',
       ),
-      TvInfoPanelSubView.chapters => (t.videoControls.chapters, '${t.videoControls.tvPanel.video} ▸ ${t.videoControls.tvPanel.playback}'),
-      TvInfoPanelSubView.sleepTimer => (t.videoSettings.sleepTimer, '${t.videoControls.tvPanel.video} ▸ ${t.videoControls.tvPanel.playback}'),
+      TvInfoPanelSubView.chapters => (
+        t.videoControls.chapters,
+        '${t.videoControls.tvPanel.video} ▸ ${t.videoControls.tvPanel.playback}',
+      ),
+      TvInfoPanelSubView.sleepTimer => (
+        t.videoSettings.sleepTimer,
+        '${t.videoControls.tvPanel.video} ▸ ${t.videoControls.tvPanel.playback}',
+      ),
       TvInfoPanelSubView.versionQuality => (
         versionQualityPickerTitle(
           showVersions: widget.trackControlsState.availableVersions.length > 1,
@@ -423,14 +452,20 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
         ),
         '${t.videoControls.tvPanel.video} ▸ ${t.videoControls.tvPanel.playback}',
       ),
-      TvInfoPanelSubView.shaders => (t.shaders.title, '${t.videoControls.tvPanel.video} ▸ ${t.videoControls.tvPanel.display}'),
+      TvInfoPanelSubView.shaders => (
+        t.shaders.title,
+        '${t.videoControls.tvPanel.video} ▸ ${t.videoControls.tvPanel.display}',
+      ),
       TvInfoPanelSubView.none => ('', ''),
     };
     return Row(
       children: [
         TvPanelBackButton(onPressed: _closeSubView),
         const SizedBox(width: 16),
-        Text(title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+        Text(
+          title,
+          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+        ),
         const SizedBox(width: 12),
         Text(crumb, style: const TextStyle(color: TvPanelTheme.textFaint, fontSize: 14)),
         const SizedBox(width: 24),
@@ -444,11 +479,18 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: TvPanelTheme.hairline))),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: TvPanelTheme.hairline)),
+      ),
       child: Row(
         children: [
           Expanded(
-            child: Text(hint, style: const TextStyle(color: TvPanelTheme.textDim, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+            child: Text(
+              hint,
+              style: const TextStyle(color: TvPanelTheme.textDim, fontSize: 13),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           _ChapterPositionLine(player: widget.player, chapters: widget.chapters),
         ],

@@ -1701,9 +1701,6 @@ class TranslationsVideoControlsEn {
 	/// en: 'Volume is controlled by your audio device during passthrough'
 	String get volumeHandledByDevice => 'Volume is controlled by your audio device during passthrough';
 
-	/// en: '(Forced)'
-	String get forcedTrackSuffix => '(Forced)';
-
 	/// en: 'Ends at ${time}'
 	String endsAt({required Object time}) => 'Ends at ${time}';
 
@@ -1765,6 +1762,9 @@ class TranslationsVideoControlsEn {
 
 	/// en: 'AirPlay'
 	String get airplayButton => 'AirPlay';
+
+	/// en: '(Forced)'
+	String get forcedTrackSuffix => '(Forced)';
 }
 
 // Path: userStatus
@@ -5778,7 +5778,7 @@ class TranslationsVideoControlsTvPanelEn {
 	/// en: 'Volume boost'
 	String get volumeBoost => 'Volume boost';
 
-	/// en: 'For quiet titles; boosts Pleya\'s own sound'
+	/// en: 'For quiet titles; boosts Pleya's own sound'
 	String get volumeBoostHint => 'For quiet titles; boosts Pleya\'s own sound';
 
 	/// en: '+${percent}%'
@@ -7180,6 +7180,8 @@ extension on Translations {
 			'videoControls.tvPanel.tracks' => 'Tracks',
 			'videoControls.tvPanel.options' => 'Options',
 			'videoControls.tvPanel.more' => 'More…',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.tvPanel.video' => 'Video',
 			'videoControls.tvPanel.display' => 'Display',
 			'videoControls.tvPanel.playback' => 'Playback',
@@ -7211,8 +7213,6 @@ extension on Translations {
 			'videoControls.tvPanel.sleepAfter' => 'After a time',
 			'videoControls.tvPanel.sleepEndOfNextEpisode' => 'End of the next episode',
 			'videoControls.tvPanel.shadersNone' => 'None',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.fullscreenButton' => 'Enter fullscreen',
 			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			'videoControls.alwaysOnTopButton' => 'Always on top',
@@ -7223,7 +7223,6 @@ extension on Translations {
 			'videoControls.timelineSlider' => 'Video timeline',
 			'videoControls.volumeSlider' => 'Volume level',
 			'videoControls.volumeHandledByDevice' => 'Volume is controlled by your audio device during passthrough',
-			'videoControls.forcedTrackSuffix' => '(Forced)',
 			'videoControls.endsAt' => ({required Object time}) => 'Ends at ${time}',
 			'videoControls.pipActive' => 'Playing in Picture-in-Picture',
 			'videoControls.pipFailed' => 'Picture-in-picture failed to start',
@@ -7251,6 +7250,7 @@ extension on Translations {
 			'videoControls.subtitleDownloadFailed' => 'Failed to download subtitle',
 			'videoControls.searchLanguages' => 'Search languages...',
 			'videoControls.airplayButton' => 'AirPlay',
+			'videoControls.forcedTrackSuffix' => '(Forced)',
 			'userStatus.admin' => 'Admin',
 			'userStatus.restricted' => 'Restricted',
 			'userStatus.protected' => 'Protected',
@@ -7694,6 +7694,8 @@ extension on Translations {
 			'collections.title' => 'Collections',
 			'collections.collection' => 'Collection',
 			'collections.empty' => 'Collection is empty',
+			_ => null,
+		} ?? switch (path) {
 			'collections.unknownLibrarySection' => 'Cannot delete: Unknown library section',
 			'collections.deleteCollection' => 'Delete Collection',
 			'collections.deleteConfirm' => ({required Object title}) => 'Delete "${title}"? This can\'t be undone.',
@@ -7726,8 +7728,6 @@ extension on Translations {
 			'playlists.oneItem' => '1 item',
 			'playlists.emptyPlaylist' => 'This playlist is empty',
 			'playlists.deleteConfirm' => 'Delete Playlist?',
-			_ => null,
-		} ?? switch (path) {
 			'playlists.deleteMessage' => ({required Object name}) => 'Are you sure you want to delete "${name}"?',
 			'playlists.created' => 'Playlist created',
 			'playlists.deleted' => 'Playlist deleted',
@@ -8208,6 +8208,8 @@ extension on Translations {
 			'seerr.edit' => 'Edit',
 			'seerr.cancelRequest' => 'Cancel request',
 			'seerr.cancelRequestConfirm' => 'Cancel this request?',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.discoverTitle' => 'Discover on Requests',
 			'seerr.trending' => 'Trending',
 			'seerr.popularMovies' => 'Popular movies',
@@ -8240,8 +8242,6 @@ extension on Translations {
 			'tautulli.modeApiKey' => 'API key',
 			'tautulli.modeApiKeyHelp' => 'The permanent key from Settings, Web Interface. It grants full access to Tautulli, so use it only if the device token does not work for you.',
 			'tautulli.deviceToken' => 'Device token',
-			_ => null,
-		} ?? switch (path) {
 			'tautulli.apiKey' => 'API key',
 			'tautulli.testConnection' => 'Test connection',
 			'tautulli.save' => 'Save',

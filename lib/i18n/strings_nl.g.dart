@@ -689,7 +689,6 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	@override String get timelineSlider => 'Videotijdlijn';
 	@override String get volumeSlider => 'Volumeniveau';
 	@override String get volumeHandledByDevice => 'Volume wordt tijdens doorvoer door je audioapparaat geregeld';
-	@override String get forcedTrackSuffix => '(Geforceerd)';
 	@override String endsAt({required Object time}) => 'Eindigt om ${time}';
 	@override String get pipActive => 'Afspelen in beeld-in-beeld';
 	@override String get pipFailed => 'Beeld-in-beeld kon niet worden gestart';
@@ -711,6 +710,7 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	@override String get subtitleDownloadFailed => 'Ondertitel downloaden mislukt';
 	@override String get searchLanguages => 'Talen zoeken...';
 	@override String get airplayButton => 'AirPlay';
+	@override String get forcedTrackSuffix => '(Geforceerd)';
 }
 
 // Path: userStatus
@@ -3297,13 +3297,14 @@ extension on TranslationsNl {
 			'videoControls.exitFullscreenButton' => 'Volledig scherm verlaten',
 			'videoControls.alwaysOnTopButton' => 'Altijd bovenop',
 			'videoControls.rotationLockButton' => 'Rotatievergrendeling',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.lockScreen' => 'Vergrendel scherm',
 			'videoControls.screenLockButton' => 'Schermvergrendeling',
 			'videoControls.longPressToUnlock' => 'Lang indrukken om te ontgrendelen',
 			'videoControls.timelineSlider' => 'Videotijdlijn',
 			'videoControls.volumeSlider' => 'Volumeniveau',
 			'videoControls.volumeHandledByDevice' => 'Volume wordt tijdens doorvoer door je audioapparaat geregeld',
-			'videoControls.forcedTrackSuffix' => '(Geforceerd)',
 			'videoControls.endsAt' => ({required Object time}) => 'Eindigt om ${time}',
 			'videoControls.pipActive' => 'Afspelen in beeld-in-beeld',
 			'videoControls.pipFailed' => 'Beeld-in-beeld kon niet worden gestart',
@@ -3329,10 +3330,9 @@ extension on TranslationsNl {
 			'videoControls.noTracksAvailable' => 'Geen tracks beschikbaar',
 			'videoControls.subtitleDownloaded' => 'Ondertitel gedownload',
 			'videoControls.subtitleDownloadFailed' => 'Ondertitel downloaden mislukt',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.searchLanguages' => 'Talen zoeken...',
 			'videoControls.airplayButton' => 'AirPlay',
+			'videoControls.forcedTrackSuffix' => '(Geforceerd)',
 			'userStatus.admin' => 'Beheerder',
 			'userStatus.restricted' => 'Beperkt',
 			'userStatus.protected' => 'Beschermd',
@@ -3811,6 +3811,8 @@ extension on TranslationsNl {
 			'playlists.errorLoading' => 'Fout bij laden afspeellijsten',
 			'playlists.errorAdding' => 'Fout bij toevoegen aan afspeellijst',
 			'playlists.errorReordering' => 'Fout bij herschikken van afspeellijstitem',
+			_ => null,
+		} ?? switch (path) {
 			'playlists.errorRemoving' => 'Fout bij verwijderen uit afspeellijst',
 			'watchTogether.title' => 'Samen Kijken',
 			'watchTogether.description' => 'Kijk synchroon met vrienden en familie',
@@ -3843,8 +3845,6 @@ extension on TranslationsNl {
 			'watchTogether.endSessionConfirmOverlay' => 'Dit beëindigt de kijksessie voor alle deelnemers.',
 			'watchTogether.leaveSessionConfirmOverlay' => 'Je wordt losgekoppeld van de kijksessie.',
 			'watchTogether.end' => 'Beëindigen',
-			_ => null,
-		} ?? switch (path) {
 			'watchTogether.leave' => 'Verlaten',
 			'watchTogether.syncing' => 'Synchroniseren...',
 			'watchTogether.joinWatchSession' => 'Kijksessie Deelnemen',
@@ -4325,6 +4325,8 @@ extension on TranslationsNl {
 			'pleyaShare.hostDescriptionAndroid' => 'Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Delen blijft op de achtergrond draaien met een melding.',
 			'pleyaShare.scanningSubnet' => 'Netwerk scannen…',
 			'seerr.title' => 'Aanvragen',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.hubSubtitle' => 'Vraag films en series aan op je Jellyseerr- of Overseerr-server.',
 			'seerr.notConfigured' => 'Niet ingesteld',
 			'seerr.serverUrl' => 'Server-URL',
@@ -4357,8 +4359,6 @@ extension on TranslationsNl {
 			'seerr.partiallyAvailable' => 'Deels beschikbaar',
 			'seerr.available' => 'Beschikbaar',
 			'seerr.alreadyRequested' => 'Al aangevraagd',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.pending' => 'In afwachting',
 			'seerr.approved' => 'Goedgekeurd',
 			'seerr.declined' => 'Afgewezen',
