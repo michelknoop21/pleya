@@ -1,0 +1,85 @@
+<style>
+/* Detailhero in de taal van mockup 30 / DEC-095: schermvullende backdrop, Inter-titel
+   in zinsvorm, puntgescheiden metadata. De informatiegroep is onderaan verankerd,
+   zoals de code hem tekent (Align bottomLeft), zodat een extra regel omhoog groeit
+   en de rail blijft staan. */
+.bleed { position: absolute; inset: 0; overflow: hidden; background: var(--bg); }
+.bleed img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 35%; }
+.bleed .scrim { position: absolute; inset: 0; background:
+  linear-gradient(90deg, rgba(20,20,20,.92) 0%, rgba(20,20,20,.70) 28%, rgba(20,20,20,.12) 56%, rgba(20,20,20,0) 100%),
+  linear-gradient(180deg, rgba(20,20,20,.66) 0%, rgba(20,20,20,0) 18%, rgba(20,20,20,0) 44%, rgba(20,20,20,.78) 66%, var(--bg) 88%); }
+.htext { position: absolute; left: var(--inset); bottom: 560px; width: 900px; }
+.htext h1 { font-size: 56px; font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
+.htext .meta { margin-top: 12px; }
+.htext .meta .sep { margin: 0 10px; color: var(--ink-4); }
+.htext .syn { margin-top: 12px; font-size: 22px; line-height: 1.35; color: var(--ink-2);
+              display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.htext .btn-row { margin-top: 26px; }
+.htext .btn small { font-weight: 400; color: rgba(20,20,20,.62); margin-left: 4px; }
+.src-line { margin-top: 20px; display: flex; align-items: center; gap: 16px; font-size: 20px; color: var(--ink-3); }
+.src-line .v { color: var(--ink-2); }
+.src-line .chg { color: var(--ink); font-weight: 500; padding: 7px 16px; border-radius: 999px; background: rgba(255,255,255,.12); }
+/* railstapel: label 27/500, 18 naar de band, band 346 (DEC-087) */
+.rails { position: absolute; left: var(--inset); right: 0; top: 560px; }
+.rails .rail-label { margin-bottom: 18px; }
+.rb { display: flex; gap: 22px; align-items: flex-end; height: 346px; }
+.rb .c { position: relative; flex: none; width: 615px; height: 346px; border-radius: var(--r-card); overflow: hidden; background: var(--surface); }
+.rb .c img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rb .c .len { position: absolute; right: 12px; bottom: 12px; background: rgba(20,20,20,.78); font-size: 16px; font-weight: 500; padding: 4px 10px; border-radius: 6px; }
+.rb .c .kind { position: absolute; left: 12px; top: 12px; background: rgba(20,20,20,.78); font-size: 16px; font-weight: 500; padding: 4px 10px; border-radius: 6px; }
+.caps { display: flex; gap: 22px; }
+.caps .cap { width: 615px; margin-top: 18px; }
+.caps .cap .t { font-size: 27px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.menu-hint { position: absolute; right: var(--inset); top: 560px; }
+.eps-head { display: flex; align-items: center; gap: 28px; margin-bottom: 26px; }
+.eps-head .rail-label { margin: 0; }
+.eps-head .count { font-size: 20px; color: var(--ink-3); }
+.caps .cap .s { margin-top: 4px; font-size: 20px; color: var(--ink-3); }
+.caps .cap .d { margin-top: 6px; font-size: 19px; line-height: 1.35; color: var(--ink-3);
+                display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rb .c .num { position: absolute; left: 12px; top: 12px; background: rgba(20,20,20,.78); font-size: 16px; font-weight: 500; padding: 4px 10px; border-radius: 6px; }
+.rb .c .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgba(255,255,255,.25); }
+.rb .c .prog i { display: block; height: 100%; background: var(--accent); }
+.rb .c .seen { position: absolute; right: 12px; top: 12px; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: var(--bg); display: grid; place-items: center; }
+.rb .c .seen .ic { width: 16px; height: 16px; }
+.rb .c.focus { box-shadow: 0 0 0 var(--ring-gap) var(--bg), 0 0 0 calc(var(--ring-gap) + var(--ring)) var(--ink); }
+</style>
+<div class="bleed"><img src="{{art:dune2-backdrop}}"><div class="scrim"></div></div>
+{{nav:Series|live}}
+
+<div class="htext">
+  <h1>Severance</h1>
+  <div class="meta">Serie<span class="sep">·</span>Drama · Mysterie<span class="sep">·</span>2022<span class="sep">·</span>2 seizoenen<span class="sep">·</span>4K Dolby Vision</div>
+  <div class="syn">Mark leidt een team dat hun werkherinneringen chirurgisch heeft laten scheiden van hun privéleven. Als een mysterieuze collega buiten het werk opduikt, begint hij de waarheid achter zijn baan te ontrafelen.</div>
+  <div class="btn-row">
+    <div class="btn primary focus">{{icon:play}} Hervatten <small>· S2 E4 · nog 18 min</small></div>
+    <div class="btn icon" title="Kijklijst">{{icon:plus}}</div>
+    <div class="btn icon" title="Bekeken">{{icon:check}}</div>
+    <div class="btn icon" title="Meer">{{icon:more}}</div>
+  </div>
+  <div class="src-line">Bron:<span class="v">NAS • Series 4K</span><span class="chg">Wijzigen</span><span>2 bronnen</span></div>
+</div>
+
+<div class="rails">
+  <div class="eps-head">
+    <div class="rail-label">Afleveringen</div>
+    <div class="chips">
+      <div class="chip-btn">Seizoen 1</div>
+      <div class="chip-btn on">Seizoen 2</div>
+      <div class="chip-btn">Specials</div>
+    </div>
+    <div class="count">10 afleveringen · 6 bekeken</div>
+  </div>
+  <div class="rb">
+    <div class="c"><img src="{{art:dune2-backdrop}}" style="object-position:30% 40%"><span class="num">E3</span><span class="seen">{{icon:check}}</span></div>
+    <div class="c focus"><img src="{{art:dune1-backdrop}}"><span class="num">E4</span><div class="prog"><i style="width:65%"></i></div></div>
+    <div class="c"><img src="{{art:dune2-backdrop}}" style="object-position:80% 20%"><span class="num">E5</span></div>
+  </div>
+  <div class="caps">
+    <div class="cap"><div class="t">Who Is Alive?</div><div class="s">Bekeken</div></div>
+    <div class="cap"><div class="t">Woe's Hollow</div><div class="s">nog 18 min · 21 februari 2025</div><div class="d">Het team gaat op een teambuildingreis buiten het gebouw. Irving vindt iets in de sneeuw.</div></div>
+    <div class="cap"><div class="t">Trojan's Horse</div><div class="s">28 februari 2025</div></div>
+  </div>
+</div>
+<div class="hint menu-hint"><kbd>Menu</kbd> terug naar Series</div>
+<div class="note">CANDIDATE · MOCKUP 37 C · Seriedetail · seizoenchips met een actieve afleveringenrail (PB-4), gefocuste aflevering draagt zijn synopsis</div>
