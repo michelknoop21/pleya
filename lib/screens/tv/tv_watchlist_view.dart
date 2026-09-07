@@ -301,8 +301,16 @@ class TvWatchlistViewState extends State<TvWatchlistView> {
   /// The focus request is deferred a frame on purpose: the rail's nodes are
   /// only attached once the panel has been built, and `requestFocus` on a node
   /// that is not in the tree yet does nothing at all, and silently.
+  /// CAT17: an already open rail takes the focus instead of returning. A rail
+  /// standing open with the ring on a card is a page the remote cannot leave,
+  /// because this is the only LEFT a card offers. Synchronously, because
+  /// without a `setState` nothing schedules the frame a post-frame callback
+  /// would wait for.
   void _openRail() {
-    if (_railExpanded) return;
+    if (_railExpanded) {
+      if (_firstRailFocus.canRequestFocus) _firstRailFocus.requestFocus();
+      return;
+    }
     setState(() {
       _railExpanded = true;
       _subview = null;

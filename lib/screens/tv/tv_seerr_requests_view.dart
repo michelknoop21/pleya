@@ -170,8 +170,16 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
     if (!widget.isLoading) _wantsEntryFocus = false;
   }
 
+  /// CAT17: an already open rail takes the focus instead of returning. A rail
+  /// standing open with the ring on a card is a page the remote cannot leave,
+  /// because this is the only LEFT a card offers. Synchronously, because
+  /// without a `setState` nothing schedules the frame a post-frame callback
+  /// would wait for.
   void _openRail() {
-    if (_railExpanded) return;
+    if (_railExpanded) {
+      if (_statusFocus.canRequestFocus) _statusFocus.requestFocus();
+      return;
+    }
     setState(() {
       _railExpanded = true;
       _statusSubview = false;

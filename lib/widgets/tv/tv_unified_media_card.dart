@@ -67,6 +67,7 @@ class TvUnifiedMediaCard extends StatelessWidget {
     this.onNavigateDown,
     this.onNavigateLeft,
     this.onNavigateRight,
+    this.onBack,
     this.onFocusChange,
   });
 
@@ -98,6 +99,11 @@ class TvUnifiedMediaCard extends StatelessWidget {
   final VoidCallback? onNavigateDown;
   final VoidCallback? onNavigateLeft;
   final VoidCallback? onNavigateRight;
+
+  /// Menu on this card, see [TvCatalogCard.onBack]. Null unless the screen has
+  /// a surface of its own open that the press should close first.
+  final VoidCallback? onBack;
+
   final ValueChanged<bool>? onFocusChange;
 
   @override
@@ -147,6 +153,7 @@ class TvUnifiedMediaCard extends StatelessWidget {
       onNavigateDown: onNavigateDown,
       onNavigateLeft: onNavigateLeft,
       onNavigateRight: onNavigateRight,
+      onBack: onBack,
       onFocusChange: onFocusChange,
       semanticLabel: semanticLabelFor(group),
     );

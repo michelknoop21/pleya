@@ -342,6 +342,48 @@ void main() {
     expect(focusedLabel(), card);
   });
 
+  // CAT17: the two ways back into a rail that is standing open with the ring
+  // somewhere else. That state is reachable, since a panel closing over a
+  // re-paged grid is what put the viewer there on hardware, and before these
+  // two it was
+  // terminal: LEFT called `_openRail`, which returned on its own `_railExpanded`
+  // guard without moving anything, and a card carries no Menu of its own.
+  testWidgets('CAT17: LEFT from column 0 re-enters a rail that is already open', (tester) async {
+    await pump(tester);
+
+    focusGrid(tester);
+    await tester.pumpAndSettle();
+    await press(tester, LogicalKeyboardKey.arrowLeft);
+    expect(find.byKey(tvCatalogFilterRailKey), findsOneWidget);
+
+    // The ring back on a card with the rail left standing, which is where the
+    // grid used to drop it after a sort.
+    focusGrid(tester);
+    await tester.pumpAndSettle();
+    expect(focusedLabel(), startsWith('TvUnifiedCard('));
+    expect(find.byKey(tvCatalogFilterRailKey), findsOneWidget, reason: 'the rail is still open behind it');
+
+    await press(tester, LogicalKeyboardKey.arrowLeft);
+    expect(focusedLabel(), 'TvCatalogRailSources', reason: 'LEFT reaches the open rail instead of doing nothing');
+    expect(find.byKey(tvCatalogFilterRailKey), findsOneWidget);
+  });
+
+  testWidgets('CAT17: Menu on a card closes a rail that is standing open', (tester) async {
+    await pump(tester);
+
+    focusGrid(tester);
+    await tester.pumpAndSettle();
+    await press(tester, LogicalKeyboardKey.arrowLeft);
+    focusGrid(tester);
+    await tester.pumpAndSettle();
+    final card = focusedLabel();
+    expect(find.byKey(tvCatalogFilterRailKey), findsOneWidget);
+
+    await press(tester, LogicalKeyboardKey.escape);
+    expect(find.byKey(tvCatalogFilterRailKey), findsNothing, reason: 'the open surface takes the press first');
+    expect(focusedLabel(), card, reason: 'and the ring stays where it was');
+  });
+
   testWidgets('CAT5: UP and DOWN walk Bronnen ↔ Filters ↔ Sortering', (tester) async {
     await pump(tester);
 

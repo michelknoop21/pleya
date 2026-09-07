@@ -389,6 +389,110 @@ void main() {
 
       expect(exitedTop, 1, reason: 'nothing left to focus, so control goes back to whatever can still act');
     });
+
+    // CAT17: the rescue above is for the card *under the ring*, and the grid
+    // remembers the last card it held long after the focus has moved on, into
+    // the catalog rail for one. A sort change re-pages the catalog, so the
+    // remembered card is routinely gone, and a rescue that only consults the
+    // memory yanks the focus out of whatever the viewer is actually operating.
+    // On a real Apple TV that left the rail standing open with the ring on a
+    // grid card, which is a page the remote cannot leave: LEFT off column 0
+    // re-opens an already open rail (a no-op) and a card carries no Menu.
+    testWidgets('a card that disappears while the focus is elsewhere leaves that focus alone', (tester) async {
+      final outside = FocusNode(debugLabel: 'OutsideTheGrid');
+      addTearDown(outside.dispose);
+      var exitedTop = 0;
+
+      Widget frame(List<int> indexes) => TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: InputModeTracker(
+            child: Scaffold(
+              body: Column(
+                children: [
+                  Focus(focusNode: outside, child: const SizedBox(width: 200, height: 40)),
+                  Expanded(
+                    child: TvUnifiedMediaGrid(
+                      groups: [for (final i in indexes) _group(i)],
+                      onActivate: (_) {},
+                      hasMore: false,
+                      isLoadingMore: false,
+                      onLoadMore: () {},
+                      onExitTop: () => exitedTop++,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(frame([0, 1, 2, 3]));
+      await tester.pumpAndSettle();
+      Focus.of(tester.element(find.text('Title 1'))).requestFocus();
+      await tester.pumpAndSettle();
+
+      // The viewer walks out of the grid, the way LEFT off column 0 opens the
+      // rail. The grid keeps remembering card 1; it no longer holds it.
+      outside.requestFocus();
+      await tester.pumpAndSettle();
+      expect(outside.hasPrimaryFocus, isTrue);
+
+      await tester.pumpWidget(frame([0, 2, 3]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Title 1'), findsNothing, reason: 'the remembered card is really gone');
+      expect(outside.hasPrimaryFocus, isTrue, reason: 'the grid does not hold the focus, so it has none to rescue');
+      expect(exitedTop, 0, reason: 'and nothing to hand back up either');
+    });
+
+    testWidgets('but it still remembers where to put the ring when the grid is asked for it', (tester) async {
+      final outside = FocusNode(debugLabel: 'OutsideTheGrid');
+      addTearDown(outside.dispose);
+      final gridKey = GlobalKey<TvUnifiedMediaGridState>();
+
+      Widget frame(List<int> indexes) => TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: InputModeTracker(
+            child: Scaffold(
+              body: Column(
+                children: [
+                  Focus(focusNode: outside, child: const SizedBox(width: 200, height: 40)),
+                  Expanded(
+                    child: TvUnifiedMediaGrid(
+                      key: gridKey,
+                      groups: [for (final i in indexes) _group(i)],
+                      onActivate: (_) {},
+                      hasMore: false,
+                      isLoadingMore: false,
+                      onLoadMore: () {},
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(frame([0, 1, 2, 3]));
+      await tester.pumpAndSettle();
+      Focus.of(tester.element(find.text('Title 1'))).requestFocus();
+      await tester.pumpAndSettle();
+      outside.requestFocus();
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(frame([0, 2, 3]));
+      await tester.pumpAndSettle();
+
+      // Closing the rail asks the grid for the focus back. The card it stood on
+      // is gone, so it lands on the survivor the removal picked, not nowhere.
+      gridKey.currentState!.focusGrid();
+      await tester.pumpAndSettle();
+      expect(Focus.of(tester.element(find.text('Title 2'))).hasPrimaryFocus, isTrue);
+    });
   });
 
   testWidgets('J3: the grid renders and focuses without overflow at the lowest supported TV surface', (tester) async {

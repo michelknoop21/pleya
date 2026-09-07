@@ -57,6 +57,8 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
 import '../../media/media_backend.dart';
@@ -532,14 +534,31 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   // The rail (CAT5 / DEC-093)
   // ---------------------------------------------------------------------------
 
+  /// What this page is called in the `tv.catalog.*` automation ids, alongside
+  /// `watchlist`, `requests` and `search`. Films and Series are one screen and
+  /// two surfaces: a scenario that walks one must not address the other.
+  String get _surface => widget.catalog.query.kind == MediaKind.movie ? 'movies' : 'series';
+
   /// LEFT off column 0, and LEFT off the one action an empty state has.
   ///
   /// The focus request is deferred a frame on purpose: the rail's nodes are
   /// only attached once the panel has been built, and `requestFocus` on a node
   /// that is not in the tree yet does nothing at all, and silently, which is the
   /// shape of bug this correctieronde keeps finding.
+  ///
+  /// An *already* open rail is the CAT17 case, and it takes the other branch
+  /// for two reasons. It has to move the focus rather than return, because a
+  /// rail standing open with the ring on a card is a page the remote cannot
+  /// leave: this is the only LEFT the card offers. And it has to do it
+  /// synchronously, because without a `setState` nothing schedules a frame, so
+  /// a post-frame callback would simply never run, the same trap
+  /// `TvCatalogFilterPanel._enterOptions` documents. The nodes are attached
+  /// already, which is what makes that safe here and not on the opening path.
   void _openRail() {
-    if (_railExpanded) return;
+    if (_railExpanded) {
+      if (_sourcesFocus.canRequestFocus) _sourcesFocus.requestFocus();
+      return;
+    }
     setState(() => _railExpanded = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_railExpanded) return;
@@ -685,18 +704,23 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     return TvCatalogRailScaffold(
       cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
       rail: _railExpanded
-          ? TvCatalogFilterRailPanel(
-              key: tvCatalogFilterRailKey,
-              scale: scale,
-              rows: _railRows(),
-              tags: _selectionTags(capped: false),
-              onClear: _preferences.filters.isEmpty ? null : _clearFilters,
-              clearFocusNode: _clearFocus,
-              onClearNavigateUp: () => _sortFocus.requestFocus(),
-              onClearNavigateDown: _railEdge,
-              onClearNavigateLeft: _leaveRailUpwards,
-              onClearNavigateRight: _closeRail,
-              onClearBack: _closeRail,
+          ? AutomationNode(
+              id: AutomationIds.tvCatalogRail,
+              instance: _surface,
+              role: 'region',
+              child: TvCatalogFilterRailPanel(
+                key: tvCatalogFilterRailKey,
+                scale: scale,
+                rows: _railRows(),
+                tags: _selectionTags(capped: false),
+                onClear: _preferences.filters.isEmpty ? null : _clearFilters,
+                clearFocusNode: _clearFocus,
+                onClearNavigateUp: () => _sortFocus.requestFocus(),
+                onClearNavigateDown: _railEdge,
+                onClearNavigateLeft: _leaveRailUpwards,
+                onClearNavigateRight: _closeRail,
+                onClearBack: _closeRail,
+              ),
             )
           : null,
       body: _buildBody(),
@@ -735,6 +759,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       TvCatalogFilterRailRow(
         icon: Symbols.dns_rounded,
         label: t.unifiedCatalog.rail.sources,
+        automationInstance: '$_surface.sources',
         value: _sourcesLabel(filters) ?? t.unifiedCatalog.allSources,
         focusNode: _sourcesFocus,
         onPressed: () => _openFilters(initialSection: TvCatalogFilterSection.servers),
@@ -747,6 +772,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       TvCatalogFilterRailRow(
         icon: Symbols.filter_list_rounded,
         label: t.unifiedCatalog.filters.title,
+        automationInstance: '$_surface.filters',
         value: itemFilters == 0
             ? t.unifiedCatalog.rail.noFilters
             : t.unifiedCatalog.rail.filtersActive(count: itemFilters),
@@ -761,6 +787,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       TvCatalogFilterRailRow(
         icon: Symbols.swap_vert_rounded,
         label: t.unifiedCatalog.sort.title,
+        automationInstance: '$_surface.sort',
         value: sortLabel(_preferences.sort),
         focusNode: _sortFocus,
         onPressed: _openSort,
@@ -834,26 +861,37 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       );
     }
 
-    return TvUnifiedMediaGrid(
-      key: _gridKey,
-      controller: _scrollController,
-      initialFocusedGroupId: _focusedGroupId,
-      onFocusedGroupChanged: (groupId) => _focusedGroupId = groupId,
-      groups: snapshot.groups,
-      hasMore: snapshot.hasMore,
-      isLoadingMore: catalog.isLoadingMore,
-      onLoadMore: catalog.loadMore,
-      onActivate: _activate,
-      onContextMenu: _openContextMenu,
-      onExitTop: _focusSidebar,
-      onExitLeft: _openRail,
-      reservedLeading: _railLeading(MediaQuery.sizeOf(context).width),
-      clientFor: (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
-      footer: TvUnifiedGridFooter(
-        loadedCount: snapshot.groups.length,
-        isComplete: snapshot.isComplete,
+    return AutomationNode(
+      id: AutomationIds.tvCatalogGrid,
+      instance: _surface,
+      role: 'grid',
+      child: TvUnifiedMediaGrid(
+        key: _gridKey,
+        controller: _scrollController,
+        initialFocusedGroupId: _focusedGroupId,
+        onFocusedGroupChanged: (groupId) => _focusedGroupId = groupId,
+        groups: snapshot.groups,
+        hasMore: snapshot.hasMore,
         isLoadingMore: catalog.isLoadingMore,
-        failedLibraryCount: snapshot.failedLibraryIds.length,
+        onLoadMore: catalog.loadMore,
+        onActivate: _activate,
+        onContextMenu: _openContextMenu,
+        onExitTop: _focusSidebar,
+        onExitLeft: _openRail,
+        // Menu on a card, but only while the rail is standing open: an open
+        // surface answers Back before the shell's own chain does, the rule the
+        // rail rows already follow with their `onBack: _closeRail`. Null with the
+        // rail closed, so Menu on the catalog itself keeps going where it went
+        // (CAT17).
+        onBack: _railExpanded ? _closeRail : null,
+        reservedLeading: _railLeading(MediaQuery.sizeOf(context).width),
+        clientFor: (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
+        footer: TvUnifiedGridFooter(
+          loadedCount: snapshot.groups.length,
+          isComplete: snapshot.isComplete,
+          isLoadingMore: catalog.isLoadingMore,
+          failedLibraryCount: snapshot.failedLibraryIds.length,
+        ),
       ),
     );
   }

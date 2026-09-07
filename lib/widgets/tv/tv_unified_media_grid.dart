@@ -41,6 +41,7 @@ class TvUnifiedMediaGrid extends StatefulWidget {
     this.clientFor,
     this.onExitTop,
     this.onExitLeft,
+    this.onBack,
     this.footer,
     this.controller,
     this.initialFocusedGroupId,
@@ -77,6 +78,11 @@ class TvUnifiedMediaGrid extends StatefulWidget {
   /// LEFT out of the first column. On the current root shell that is the
   /// sidebar; fase 7 replaces what sits there without changing this contract.
   final VoidCallback? onExitLeft;
+
+  /// Menu on a card. Null on a surface where Back belongs to the shell, which
+  /// is the resting state; a screen binds it while it has a surface of its own
+  /// standing open that the press should close first (CAT17).
+  final VoidCallback? onBack;
 
   /// Drawn under the last row — the count line and the partial-state notice.
   final Widget? footer;
@@ -160,6 +166,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       onLoadMore: widget.onLoadMore,
       onExitTop: widget.onExitTop,
       onExitLeft: widget.onExitLeft,
+      onBack: widget.onBack,
       reservedLeading: widget.reservedLeading,
       footer: widget.footer,
       nodeDebugLabel: 'TvUnifiedCard',
@@ -178,6 +185,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
           onNavigateDown: cell.onNavigateDown,
           onNavigateLeft: cell.onNavigateLeft,
           onNavigateRight: cell.onNavigateRight,
+          onBack: cell.onBack,
         );
       },
     );

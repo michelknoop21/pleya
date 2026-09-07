@@ -65,13 +65,35 @@ class _FakeLibraryClient implements MediaServerClient {
   @override
   MediaBackend get backend => MediaBackend.plex;
 
+  /// Honours `sort`, `offset` and `limit`, which is the whole point of the
+  /// fixture for E13: a fake that ignores the query returns the same page one
+  /// whatever the viewer sorts by, and then nothing ever leaves the grid.
+  /// On a real library a sort change re-pages, so page one holds different
+  /// titles afterwards, which is the condition CAT17 lives in.
   @override
   Future<LibraryPage<MediaItem>> fetchLibraryPagedContent(
     String libraryId, {
     required LibraryQuery query,
     MediaKind? libraryKind,
     AbortController? abort,
-  }) async => LibraryPage<MediaItem>(items: items, totalCount: items.length, offset: query.offset);
+  }) async {
+    final ordered = [...items];
+    ordered.sort(switch (query.sort?.field) {
+      'addedAt' => (a, b) => (a.addedAt ?? 0).compareTo(b.addedAt ?? 0),
+      _ => (a, b) => (a.title ?? '').compareTo(b.title ?? ''),
+    });
+    if (query.sort?.direction == LibrarySortDirection.descending) {
+      final reversed = ordered.reversed.toList();
+      ordered
+        ..clear()
+        ..addAll(reversed);
+    }
+    return LibraryPage<MediaItem>(
+      items: ordered.skip(query.offset).take(query.limit).toList(),
+      totalCount: ordered.length,
+      offset: query.offset,
+    );
+  }
 
   @override
   Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds();
@@ -80,14 +102,26 @@ class _FakeLibraryClient implements MediaServerClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-MediaItem _movie(String id, {required String title}) => MediaItem(
+MediaItem _movie(String id, {required String title, int? addedAt}) => MediaItem(
   id: id,
   backend: MediaBackend.plex,
   kind: MediaKind.movie,
   title: title,
+  addedAt: addedAt,
   serverId: 'nas',
   serverName: 'nas',
 );
+
+/// One page worth of titles plus one, with the alphabet and the added-at order
+/// deliberately opposite: sorted by title page one is T00..T49, sorted by
+/// recently-added it is T50..T01. The card the viewer was standing on before
+/// opening the rail is therefore off page one after the sort, which is what
+/// makes the grid drop its node.
+const int _catalogPageSize = 50;
+
+List<MediaItem> _oppositelyOrderedMovies() => [
+  for (var i = 0; i <= _catalogPageSize; i++) _movie('m$i', title: 'T${i.toString().padLeft(2, '0')}', addedAt: i),
+];
 
 Widget _shell(Widget child) {
   final theme = monoTheme(dark: true);
@@ -121,7 +155,7 @@ void main() {
     SelectKeyUpSuppressor.clearSuppression();
     addTearDown(SelectKeyUpSuppressor.clearSuppression);
 
-    final client = _FakeLibraryClient([_movie('m1', title: 'Alpha'), _movie('m2', title: 'Bravo')]);
+    final client = _FakeLibraryClient(_oppositelyOrderedMovies());
     final manager = MultiServerManager()..debugRegisterClientForTesting(client);
     final multiServer = MultiServerProvider(manager, DataAggregationService(manager));
     final libraries = LibrariesProvider()
@@ -148,7 +182,11 @@ void main() {
     addTearDown(multiServer.dispose);
 
     await catalog.ensureStarted();
-    expect(catalog.snapshot.groups, hasLength(2), reason: 'the grid needs real cards to hold focus on');
+    expect(
+      catalog.snapshot.groups.length,
+      lessThan(client.items.length),
+      reason: 'page one is a subset of the library, so the sort below really changes which titles are on it',
+    );
     final firstGroupId = catalog.snapshot.groups.first.groupId;
 
     setGoldenSurfaceSize(tester);
@@ -202,6 +240,11 @@ void main() {
       find.byType(TvCatalogSortPanel),
       findsNothing,
       reason: 'the panel itself is gone, so the rail may now legitimately show the new sort as its own value',
+    );
+    expect(
+      catalog.snapshot.groups.map((g) => g.groupId),
+      isNot(contains(firstGroupId)),
+      reason: 'CAT17: the card the viewer stood on before opening the rail has left page one',
     );
     expect(
       FocusManager.instance.primaryFocus?.debugLabel,

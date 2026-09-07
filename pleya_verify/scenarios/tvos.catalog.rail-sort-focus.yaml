@@ -1,0 +1,74 @@
+name: tvos.catalog.rail-sort-focus
+target: tvos-sim
+# CAT17, in the place it was reported: choose a sort in the catalog rail, and
+# the ring has to stay in the rail.
+#
+# What made this worth a scenario rather than only a widget test. The defect
+# was not in the rail and not in the panel: the grid re-pages on a sort change,
+# the card the viewer had been standing on before opening the rail is off page
+# one afterwards, and the grid then rescued a focus it no longer held —
+# landing the ring on a card with the rail still open. From there the remote
+# had nothing: LEFT re-opened an already open rail and a card carries no Menu.
+# Three widget tests pin each half; this one is the whole path in one build,
+# over the real fixture, with the sort request really re-paging.
+#
+# The sort panel itself is driven blind on purpose. It carries no automation
+# ids, and adding a set for two presses would put more untested surface in the
+# tree than it proves. It opens with the ring on the sort currently in force
+# (`initialFocusNode` on the selected row), so one DOWN is one different sort,
+# and the assertion that matters is where the ring is when the panel is gone.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  # IntroGate's cold-start splash paints over an already-ready screen.
+  - settle: 3500
+
+  # Along the top bar to Films and into it. The bar does not wrap, so this is
+  # the same walk `tvos.nav.walk` proves the order of.
+  - walk: {direction: right, expect: [nav.search, nav.discover, nav.series, nav.movies], timeout: 40000, settle: 800}
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[movies]", timeout: 20000}
+  - settle: 1500
+  - snapshot: 00-catalog
+
+  # LEFT off column 0 opens the rail on Bronnen (DEC-093), two DOWNs reach
+  # Sortering.
+  - press: left
+  - settle: 800
+  - assert: {id: "tv.catalog.rail[movies]"}
+  - assert: {id: "tv.catalog.rail.row[movies.sources]", focused: true}
+  - press: down
+  - settle: 600
+  - press: down
+  - settle: 600
+  - assert: {id: "tv.catalog.rail.row[movies.sort]", focused: true}
+  - snapshot: 01-rail-sort
+
+  # Open the panel, take the sort below the one in force, and apply it. The
+  # panel closes on the choice; the catalog re-pages behind it.
+  - press: select
+  - settle: 1200
+  - press: down
+  - settle: 600
+  - press: select
+  - settle: 3000
+  - snapshot: 02-after-sort
+
+  # The point of the whole file.
+  - assert: {id: "tv.catalog.rail[movies]"}
+  - assert: {id: "tv.catalog.rail.row[movies.sort]", focused: true}
+
+  # And the rail still closes from where the ring is, which is what the viewer
+  # could not do on build 268. Shown rather than asserted: the DSL has a
+  # presence predicate and no absence one, so `03-rail-closed` is the evidence
+  # that the panel is gone. What *is* asserted is the half that a screenshot
+  # cannot carry — the grid is addressable again on the frame after Menu, which
+  # it would also be with the rail standing open, so read the two together.
+  - press: menu
+  - settle: 1000
+  - assert: {id: "tv.catalog.grid[movies]"}
+  - snapshot: 03-rail-closed

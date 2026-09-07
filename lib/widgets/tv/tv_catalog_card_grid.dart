@@ -355,6 +355,21 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
   /// Drops nodes for items that are gone, and rescues focus if one of them had
   /// it (hoofdstuk 7.6: "kaart verdwijnt door filter/verwijdering →
   /// eerstvolgende buur").
+  ///
+  /// "Had it" means the ring was on that card at this moment, which is a
+  /// narrower thing than [_focusedId]. That field is a *memory*: it is seeded
+  /// from [TvCatalogCardGrid.initialFocusedId] before anything has been focused
+  /// at all, and it is never cleared when the focus walks out of the grid. So
+  /// the replacement is always recorded, because the next [focusGrid] has to
+  /// land somewhere sensible, but the focus is only moved when the grid is
+  /// holding it.
+  ///
+  /// CAT17 is what the wider reading cost. A sort change re-pages the catalog,
+  /// so the remembered card is routinely absent from the new page one, and the
+  /// rescue fired while the viewer was standing in the catalog rail, one frame
+  /// after `_withLauncherFocusRestore` had put the ring back on Sortering. The
+  /// ring ended on a grid card with the rail still open, and from there the
+  /// remote had no way back into it.
   void _reconcileNodes({required List<String> previous}) {
     final live = widget.itemIds.toSet();
     final removed = _nodes.keys.where((id) => !live.contains(id)).toList();
@@ -362,6 +377,9 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
 
     final focusedId = _focusedId;
     final losesFocus = focusedId != null && removed.contains(focusedId);
+    // Read before the dispose loop, while the node is still attached: after it
+    // there is nothing left to ask.
+    final heldTheFocus = losesFocus && (_nodes[focusedId]?.hasFocus ?? false);
     // Measured against the *old* list: the neighbour a user expects is the card
     // that was next to theirs before the update, and the new list no longer
     // contains the position to measure from.
@@ -374,6 +392,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
 
     final replacement = _nearestSurvivor(previous: previous, from: oldIndex);
     _focusedId = replacement;
+    if (!heldTheFocus) return;
     // After the frame that removes the card: the replacement's node may not be
     // attached yet on this one.
     WidgetsBinding.instance.addPostFrameCallback((_) {

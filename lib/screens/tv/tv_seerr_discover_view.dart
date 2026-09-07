@@ -242,8 +242,16 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
     return false;
   }
 
+  /// CAT17: an already open rail takes the focus instead of returning. A rail
+  /// standing open with the ring on a card is a page the remote cannot leave,
+  /// because this is the only LEFT a card offers. Synchronously, because
+  /// without a `setState` nothing schedules the frame a post-frame callback
+  /// would wait for.
   void _openRail() {
-    if (_railExpanded) return;
+    if (_railExpanded) {
+      if (_kindFocus.canRequestFocus) _kindFocus.requestFocus();
+      return;
+    }
     setState(() {
       _railExpanded = true;
       _subview = null;
