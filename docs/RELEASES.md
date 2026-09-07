@@ -77,8 +77,20 @@ under `Notes`.
 - PS-9 stap 4 en 6, gebruikersbeheer en sessie-intrekking
 - PS-9-clientkant, een eigen profielsoort voor Pleya Server
 - de Home-hero full-bleed met de rail die eronder piept, en een dichtere railstapel (HOME1, I18N5)
+- taalvoorkeuren in vier lagen, met het Pleya-profiel als eigenaar (LANG1, DEC-096)
 - S0.6, de NAS-migratiefixture op schema 7
 - S0.7 en poort P9, de contractdekking wordt afgeleid in plaats van bijgehouden
+- de pagina Taal en ondertitels, de serievoorkeur-sheet en de twee toasts (LANG1, DEC-096)
+- venster 1 verruimt het foutdomein, en de controle meet twee kanten op
+- S1.1, recovery, lichaamslimiet en securityheaders op de API
+- S1.2, serverinstellingen met een grens en hot reload
+- S1.3, serverdiagnostiek met een ringbuffer en één doel
+- S1.4, lopende streams, de eigen gebruiker en een code die uitlegt
+- S1.5, API-tokens als sessies en een auditlog dat verder kijkt dan mutaties
+- S1.8, de refreshcookie buiten het bereik van JavaScript en een origin dat vastligt
+- S1.6, de laatste drie rijen van venster 1, en het venster dicht
+- S2.1, managed en scaninstellingen op libraries
+- S2.2, CRUD op libraries en protocolvenster 2 open
 
 ### Improved
 - semantische bronaudit op codec- en containerlijsten
