@@ -1783,7 +1783,19 @@
     "errorAuth": "Inloggen mislukt. Controleer je gegevens.",
     "errorForbidden": "Je hebt hier geen rechten voor.",
     "errorNetwork": "Kan de server niet bereiken. Controleer de URL.",
-    "errorGeneric": "Er ging iets mis. Probeer opnieuw."
+    "errorGeneric": "Er ging iets mis. Probeer opnieuw.",
+    "kindMovie": "Film",
+    "kindShow": "Serie",
+    "requestCount": "${count} aanvragen",
+    "oneRequest": "1 aanvraag",
+    "railKind": "Soort",
+    "railGenre": "Genre",
+    "railStatus": "Status",
+    "allGenres": "Alle genres",
+    "filterDeclined": "Afgewezen",
+    "discoverNow": "Populair nu",
+    "noRequestsInFilter": "Er staat op dit moment niets op ${status}.",
+    "noRequestsYet": "Er is nog niets aangevraagd."
   },
   "tautulli": {
     "title": "Tautulli",

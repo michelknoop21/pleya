@@ -1692,7 +1692,19 @@
     "errorGeneric": "Something went wrong. Try again.",
     "searchPlaceholder": "Search for a movie or show to request",
     "byStreamingService": "By streaming service",
-    "showAll": "Show all"
+    "showAll": "Show all",
+    "kindMovie": "Movie",
+    "kindShow": "Show",
+    "requestCount": "${count} requests",
+    "oneRequest": "1 request",
+    "railKind": "Type",
+    "railGenre": "Genre",
+    "railStatus": "Status",
+    "allGenres": "All genres",
+    "filterDeclined": "Declined",
+    "discoverNow": "Popular now",
+    "noRequestsInFilter": "No requests are ${status} right now.",
+    "noRequestsYet": "Nothing has been requested yet."
   },
   "tautulli": {
     "title": "Tautulli",

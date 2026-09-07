@@ -4673,6 +4673,42 @@ class TranslationsSeerrEn {
 
 	/// en: 'Show all'
 	String get showAll => 'Show all';
+
+	/// en: 'Movie'
+	String get kindMovie => 'Movie';
+
+	/// en: 'Show'
+	String get kindShow => 'Show';
+
+	/// en: '${count} requests'
+	String requestCount({required Object count}) => '${count} requests';
+
+	/// en: '1 request'
+	String get oneRequest => '1 request';
+
+	/// en: 'Type'
+	String get railKind => 'Type';
+
+	/// en: 'Genre'
+	String get railGenre => 'Genre';
+
+	/// en: 'Status'
+	String get railStatus => 'Status';
+
+	/// en: 'All genres'
+	String get allGenres => 'All genres';
+
+	/// en: 'Declined'
+	String get filterDeclined => 'Declined';
+
+	/// en: 'Popular now'
+	String get discoverNow => 'Popular now';
+
+	/// en: 'No requests are ${status} right now.'
+	String noRequestsInFilter({required Object status}) => 'No requests are ${status} right now.';
+
+	/// en: 'Nothing has been requested yet.'
+	String get noRequestsYet => 'Nothing has been requested yet.';
 }
 
 // Path: tautulli
@@ -8442,6 +8478,18 @@ extension on Translations {
 			'seerr.searchPlaceholder' => 'Search for a movie or show to request',
 			'seerr.byStreamingService' => 'By streaming service',
 			'seerr.showAll' => 'Show all',
+			'seerr.kindMovie' => 'Movie',
+			'seerr.kindShow' => 'Show',
+			'seerr.requestCount' => ({required Object count}) => '${count} requests',
+			'seerr.oneRequest' => '1 request',
+			'seerr.railKind' => 'Type',
+			'seerr.railGenre' => 'Genre',
+			'seerr.railStatus' => 'Status',
+			'seerr.allGenres' => 'All genres',
+			'seerr.filterDeclined' => 'Declined',
+			'seerr.discoverNow' => 'Popular now',
+			'seerr.noRequestsInFilter' => ({required Object status}) => 'No requests are ${status} right now.',
+			'seerr.noRequestsYet' => 'Nothing has been requested yet.',
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli tracks who watches what on your Plex server. Connect it to see viewers, statistics and live activity inside Pleya.',
 			'tautulli.adminOnlyNote' => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.',

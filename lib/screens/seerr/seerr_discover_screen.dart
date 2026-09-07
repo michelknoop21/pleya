@@ -24,6 +24,7 @@ import '../../widgets/pill_input_decoration.dart';
 import '../../widgets/seerr_poster_card.dart';
 import '../../widgets/skeletons.dart';
 import '../../widgets/state_view.dart';
+import '../tv/tv_seerr_discover_view.dart';
 import 'seerr_discover_filter_bar.dart';
 import 'seerr_grid_sliver.dart';
 import 'seerr_media_detail_screen.dart';
@@ -99,6 +100,17 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   List<SeerrGenre> _tvGenres = const [];
   int? _genreId;
   _SeerrRow? _genreRow; // single paginated grid when a genre is active
+
+  /// The shelf "Alles tonen" expanded, on TV only.
+  ///
+  /// A mode of this page rather than a pushed `SeerrRowGridScreen`: mockup 35 B
+  /// draws the expanded row *with the rail beside it*, and the rail's state is
+  /// this screen's. Pushing a second screen would mean ferrying the type, the
+  /// genre and the provider into it and every change back out again.
+  _SeerrRow? _expandedRow;
+
+  /// The TV presentation, when there is one.
+  final GlobalKey<TvSeerrDiscoverViewState> _tvKey = GlobalKey<TvSeerrDiscoverViewState>();
 
   // Streaming services for this region, plus the row that follows the pick.
   List<SeerrWatchProvider> _providers = const [];
@@ -429,6 +441,8 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       );
     }
 
+    if (PlatformDetector.isTV()) return _buildTv();
+
     return FocusedScrollScaffold(
       title: Text(t.seerr.discoverTitle),
       actions: seerrDiscoverAppBarActions(onOpenRequests: _openRequests),
@@ -438,6 +452,133 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         ..._query.isEmpty ? _buildDiscoverSlivers() : _buildSearchSlivers(),
       ],
     );
+  }
+
+  /// Ontdekken on TV (DEC-108, mockup 35 A and 35 B).
+  ///
+  /// The type tabs and the genre picker move into the rail, and the streaming
+  /// chips with them; what is left above the content is the search field, which
+  /// this screen still builds itself. The three grid modes — a search, a genre,
+  /// an expanded shelf — are one `grid` here, because to the viewer they are the
+  /// same page showing one list instead of several.
+  Widget _buildTv() {
+    final grid = _tvGridPage();
+    return TvSeerrDiscoverView(
+      key: _tvKey,
+      searchField: _buildSearchField(),
+      shelves: grid != null ? const [] : _tvShelves(),
+      grid: grid,
+      type: _type,
+      onTypeSelected: (type) {
+        _collapseRowGrid();
+        _onTypeSelected(type);
+      },
+      genres: [for (final genre in _activeGenres) (id: genre.id, name: genre.name)],
+      genreId: _genreId,
+      onGenreSelected: (id) {
+        _collapseRowGrid();
+        _onGenreSelected(id);
+      },
+      providers: [for (final provider in _providers) (id: provider.id, name: provider.name)],
+      providerId: _provider?.id,
+      onProviderSelected: (id) {
+        _collapseRowGrid();
+        unawaited(_selectProvider(id == null ? null : _providers.firstWhere((p) => p.id == id)));
+      },
+      isLoading: _query.isEmpty ? _visibleRows.any((row) => row.loadingFirst) && _allEmpty : _searching,
+      error: _tvError(),
+      onReload: () {
+        if (_query.isNotEmpty) {
+          unawaited(_runSearch(_query));
+        } else {
+          unawaited(_retry());
+        }
+      },
+      onActivate: _openDetail,
+      onLeaveGrid: _tvGridPage() == null ? null : _leaveTvGrid,
+      onExitTop: _navigateToSidebar,
+    );
+  }
+
+  /// Menu out of a grid mode: back to whatever the page was showing before.
+  ///
+  /// An expanded shelf collapses; a search clears; a genre or a provider is
+  /// unset. In every case the page returns to its shelves rather than leaving
+  /// the section, which is what a viewer means by Menu one level in.
+  void _leaveTvGrid() {
+    if (_collapseRowGrid()) return;
+    if (_query.isNotEmpty) {
+      _clearSearch();
+      return;
+    }
+    if (_genreId != null) {
+      _onGenreSelected(null);
+      return;
+    }
+    if (_provider != null) unawaited(_selectProvider(null));
+  }
+
+  /// The one list the page shows instead of its shelves, or null while it shows
+  /// them.
+  TvSeerrGridPage? _tvGridPage() {
+    if (_query.isNotEmpty) {
+      return TvSeerrGridPage(
+        title: t.seerr.title,
+        items: _filteredSearchResults,
+        hasMore: _searchPage < _searchTotalPages,
+        isLoadingMore: _searchLoadingMore,
+        onLoadMore: () => unawaited(_loadMoreSearch()),
+      );
+    }
+    final expanded = _expandedRow;
+    if (expanded != null) return _tvGridFor(expanded, expanded.title);
+    final genreRow = _genreRow;
+    if (_type != SeerrDiscoverType.all && _genreId != null && genreRow != null) {
+      return _tvGridFor(genreRow, _tvGenreTitle());
+    }
+    final providerRow = _providerRow;
+    if (providerRow != null && _provider != null) return _tvGridFor(providerRow, _provider!.name);
+    return null;
+  }
+
+  String _tvGenreTitle() {
+    for (final genre in _activeGenres) {
+      if (genre.id == _genreId) return genre.name;
+    }
+    return t.seerr.title;
+  }
+
+  TvSeerrGridPage _tvGridFor(_SeerrRow row, String title) => TvSeerrGridPage(
+    title: title,
+    items: row.items,
+    hasMore: row.hasMore,
+    isLoadingMore: row.loadingMore,
+    onLoadMore: () => unawaited(_loadMore(row)),
+  );
+
+  List<TvSeerrShelf> _tvShelves() => [
+    for (final row in _visibleRows)
+      if (!row.loadingFirst)
+        TvSeerrShelf(
+          // The title is the identity: the row objects are rebuilt on a type
+          // change and two shelves never share a title within one type.
+          id: row.title,
+          title: row.title,
+          items: row.items,
+          hasMore: row.hasMore,
+          isLoadingMore: row.loadingMore,
+          onLoadMore: () => unawaited(_loadMore(row)),
+          onShowAll: () => _openRowGrid(row),
+        ),
+  ];
+
+  /// The message to show when the page has nothing at all, or null.
+  String? _tvError() {
+    if (_query.isNotEmpty) return _searchErrored ? t.seerr.errorNetwork : null;
+    if (_expandedRow?.errored ?? false) return seerrErrorMessage(_expandedRow!.errorKind);
+    if (_genreRow?.errored ?? false) return seerrErrorMessage(_genreRow!.errorKind);
+    if (_allLoaded && _allErrored) return seerrErrorMessage(_dominantErrorKind);
+    return null;
   }
 
   /// Type segments plus, in discover mode with a type active, that type's
@@ -705,11 +846,28 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   }
 
   void _openRowGrid(_SeerrRow row) {
+    if (PlatformDetector.isTV()) {
+      setState(() => _expandedRow = row);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _tvKey.currentState?.focusFirstContent();
+      });
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SeerrRowGridScreen(title: row.title, fetch: row.fetch),
       ),
     );
+  }
+
+  /// Menu out of the expanded row, back to the shelves.
+  bool _collapseRowGrid() {
+    if (_expandedRow == null) return false;
+    setState(() => _expandedRow = null);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _tvKey.currentState?.focusFirstContent();
+    });
+    return true;
   }
 
   /// Streaming services for this region. Picking one swaps the row underneath,

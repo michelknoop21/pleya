@@ -69,6 +69,7 @@ class TvCatalogGridCell {
     this.onNavigateDown,
     this.onNavigateLeft,
     this.onNavigateRight,
+    this.onBack,
   });
 
   final int index;
@@ -86,6 +87,9 @@ class TvCatalogGridCell {
   final VoidCallback? onNavigateDown;
   final VoidCallback? onNavigateLeft;
   final VoidCallback? onNavigateRight;
+
+  /// Menu on this card — see [TvCatalogCard.onBack].
+  final VoidCallback? onBack;
 }
 
 class TvCatalogCardGrid extends StatefulWidget {
@@ -106,6 +110,7 @@ class TvCatalogCardGrid extends StatefulWidget {
     this.onFocusedIdChanged,
     this.onFocusedCell,
     this.reservedLeading = 0,
+    this.onBack,
     this.nodeDebugLabel = 'TvCatalogCard',
   });
 
@@ -171,6 +176,9 @@ class TvCatalogCardGrid extends StatefulWidget {
   /// column count has to be resolved from what is left over, or the grid keeps
   /// six columns and the sixth runs off the right edge.
   final double reservedLeading;
+
+  /// Menu on any card. Null leaves the press to the route.
+  final VoidCallback? onBack;
 
   /// Prefix of the focus nodes' debug labels, so a focus trace says which grid
   /// a node belongs to when two are mounted at once.
@@ -488,6 +496,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
         onNavigateDown: isLastRow && widget.hasMore && !widget.isLoadingMore ? widget.onLoadMore : null,
         onNavigateLeft: isFirstColumn ? widget.onExitLeft : null,
         onNavigateRight: null,
+        onBack: widget.onBack,
       ),
     );
   }

@@ -128,15 +128,19 @@ void main() {
       expect(bar.showDivider, isFalse);
     });
 
-    testWidgets('the results grid sits on the same left margin as the page above it', (tester) async {
+    testWidgets('the results grid is no longer this page on TV at all (DEC-108)', (tester) async {
+      // P7 gave `buildSeerrGridSliver` a TV branch so its results would at least
+      // line up with the search field above them. DEC-108 took the whole page
+      // off it: Aanvragen now renders `TvSeerrDiscoverView`, whose columns come
+      // from `TvCatalogGrid.forWidth` like every other TV surface, and the
+      // branch is gone rather than left standing unreachable. What the sliver
+      // still serves is the phone and the desktop, on the 8px inset those have
+      // always had — which is what the "off TV" group below asserts, and this
+      // one now asserts is *also* what TV would get if it ever reached here.
       await pumpGrid(tester);
 
       final first = tester.getRect(find.byType(SeerrPosterCard).first);
-      expect(
-        first.left,
-        closeTo(TvLayoutConstants.horizontalInset, 0.5),
-        reason: 'it used to start at 8 — 64 logical pixels left of the search field, inside the overscan band',
-      );
+      expect(first.left, closeTo(8, 0.5));
     });
 
     /// The card's own focus node — a descendant of the card, not an ancestor,

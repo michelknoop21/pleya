@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../models/seerr/seerr_request.dart';
+import '../../navigation/main_screen_scope.dart';
 import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
 import '../../theme/mono_tokens.dart';
@@ -19,6 +20,10 @@ import '../../widgets/focusable_list_tile.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../widgets/seerr_request_row.dart';
+import '../../utils/platform_detector.dart';
+import '../tv/tv_seerr_requests_view.dart';
+import 'seerr_media_detail_screen.dart';
+import '../../models/seerr/seerr_media.dart';
 
 /// Jellyseerr / Overseerr requests-management screen.
 ///
@@ -35,7 +40,7 @@ class SeerrRequestsScreen extends StatefulWidget {
 class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   static const double _hInset = 16;
 
-  String _filter = 'all';
+  TvSeerrRequestFilter _filter = TvSeerrRequestFilter.all;
   List<SeerrRequest> _items = const [];
   int _page = 1;
   int _totalPages = 1;
@@ -52,6 +57,10 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   static const _filterKeys = ['all', 'pending', 'approved', 'available'];
   final Map<String, GlobalKey> _filterChipKeys = {for (final k in _filterKeys) k: GlobalKey()};
 
+  /// The TV presentation. It owns the rail, the grid and the focus traversal;
+  /// this state owns the fetches, the actions and the counts.
+  final GlobalKey<TvSeerrRequestsViewState> _tvKey = GlobalKey<TvSeerrRequestsViewState>();
+
   /// Counts shown next to the filter tabs. Zero means "not known yet"; the tab
   /// then renders without a number instead of claiming there are none.
   ({int total, int pending, int approved, int available, int processing})? _counts;
@@ -64,6 +73,26 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     _load(reset: true);
     _loadCounts();
     _revealSelectedFilter();
+    _requestTvEntryFocus();
+  }
+
+  /// The focus this page lands on when it opens, on TV.
+  ///
+  /// Off TV `FocusedScrollScaffold` does this itself: it owns a scope and calls
+  /// `nextFocus()` on it once, in keyboard mode. The TV branch does not go
+  /// through that scaffold any more (DEC-108), so nothing asked, and a pushed
+  /// Alle aanvragen came up with the page focused and no item on it. On tvOS
+  /// that is a page you cannot leave, because the engine claims every press
+  /// before UIKit's responder chain sees it.
+  ///
+  /// The view answers it rather than this state: it knows whether the rail is
+  /// open, and it keeps asking until the first page has actually arrived —
+  /// at this point the grid is still a skeleton with nothing focusable in it.
+  void _requestTvEntryFocus() {
+    if (!PlatformDetector.isTV()) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _tvKey.currentState?.focusContent();
+    });
   }
 
   @override
@@ -106,7 +135,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
       }
     });
     try {
-      final result = await client.getRequests(filter: _filter, page: nextPage, requestedBy: requestedBy);
+      final result = await client.getRequests(filter: _filter.wire, page: nextPage, requestedBy: requestedBy);
       if (!mounted || gen != _loadGen) return;
       setState(() {
         _items = reset ? result.items : [..._items, ...result.items];
@@ -151,7 +180,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     if (mounted) setState(() => _counts = counts);
   }
 
-  void _onFilter(String filter) {
+  void _onFilter(TvSeerrRequestFilter filter) {
     if (filter == _filter) return;
     setState(() => _filter = filter);
     _revealSelectedFilter();
@@ -219,6 +248,8 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     final canManage = provider.canManageRequests;
     final ownUserId = provider.session?.userId;
 
+    if (PlatformDetector.isTV()) return _buildTv(canManage);
+
     return FocusedScrollScaffold(
       title: Text(canManage ? t.seerr.allRequests : t.seerr.myRequests),
       slivers: [
@@ -230,12 +261,62 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     );
   }
 
+  /// Alle aanvragen on TV (DEC-108 (3) and (4), mockup 35 C1 and 35 D).
+  ///
+  /// The discover bar is gone here: on TV this page is reached *from* Ontdekken,
+  /// so a row that offers to go back there is a loop, and the rail is where a
+  /// catalog-language page keeps its controls.
+  Widget _buildTv(bool canManage) {
+    return TvSeerrRequestsView(
+      key: _tvKey,
+      title: canManage ? t.seerr.allRequests : t.seerr.myRequests,
+      requests: _items,
+      filter: _filter,
+      onFilterChanged: _onFilter,
+      onActivate: _openDetail,
+      isLoading: _loading,
+      hasMore: _page < _totalPages && !_loading,
+      isLoadingMore: _loadingMore,
+      onLoadMore: () => unawaited(_load()),
+      onReload: () => unawaited(_load(reset: true)),
+      counts: _counts,
+      error: _error,
+      onExitTop: () => MainScreenFocusScope.of(context, listen: false)?.focusSidebar(),
+    );
+  }
+
+  /// Select on a request card: the title it is about.
+  ///
+  /// Not the approve/decline actions the mobile row carries. On TV those go
+  /// through the unified context menu (PB-5), which is the reasoning DEC-108
+  /// used to choose the grid over the list in the first place — a card with
+  /// buttons on it would be the exception rather than the rule.
+  void _openDetail(SeerrRequest request) {
+    final tmdbId = request.tmdbId;
+    if (tmdbId == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SeerrMediaDetailScreen(
+          media: SeerrMedia(
+            tmdbId: tmdbId,
+            mediaType: request.mediaType,
+            title: request.mediaTitle ?? '',
+            year: request.mediaYear,
+            posterPath: request.posterPath,
+            backdropPath: request.backdropPath,
+            status: request.mediaStatus,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _filterRow() {
-    final tabs = <(String, String, int?)>[
-      ('all', t.seerr.filterAll, _counts?.total),
-      ('pending', t.seerr.filterPending, _counts?.pending),
-      ('approved', t.seerr.filterApproved, _counts?.approved),
-      ('available', t.seerr.filterAvailable, _counts?.available),
+    final tabs = <(TvSeerrRequestFilter, String, int?)>[
+      (TvSeerrRequestFilter.all, t.seerr.filterAll, _counts?.total),
+      (TvSeerrRequestFilter.pending, t.seerr.filterPending, _counts?.pending),
+      (TvSeerrRequestFilter.approved, t.seerr.filterApproved, _counts?.approved),
+      (TvSeerrRequestFilter.available, t.seerr.filterAvailable, _counts?.available),
     ];
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 4),
@@ -252,7 +333,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
             for (var i = 0; i < tabs.length; i++) ...[
               if (i > 0) const SizedBox(width: 2),
               FocusableTabChip(
-                key: _filterChipKeys[tabs[i].$1],
+                key: _filterChipKeys[tabs[i].$1.wire],
                 style: TabChipStyle.segmented,
                 label: (tabs[i].$3 ?? 0) > 0 ? '${tabs[i].$2}  ${tabs[i].$3}' : tabs[i].$2,
                 isSelected: _filter == tabs[i].$1,
@@ -272,7 +353,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   void _revealSelectedFilter() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_filterScrollController.hasClients) return;
-      final context = _filterChipKeys[_filter]?.currentContext;
+      final context = _filterChipKeys[_filter.wire]?.currentContext;
       if (context == null) return;
       Scrollable.ensureVisible(
         context,

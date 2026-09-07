@@ -34,7 +34,10 @@ void main() {
     final nl = seerrSection('nl');
 
     // A handful are the same word in both languages and stay that way.
-    const sharedWords = {'fourKBadge', 'percentMatch', 'server', 'cast'};
+    // `railGenre` and `railStatus` joined them with DEC-108: "Genre" and
+    // "Status" are the Dutch words, and inventing a difference for the sake of
+    // this assertion would make the rail read worse than leaving it alone.
+    const sharedWords = {'fourKBadge', 'percentMatch', 'server', 'cast', 'railGenre', 'railStatus'};
     final copies = en.keys.where((k) => !sharedWords.contains(k) && nl[k] == en[k]);
 
     expect(copies, isEmpty);

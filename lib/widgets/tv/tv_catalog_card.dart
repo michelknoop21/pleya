@@ -58,6 +58,7 @@ class TvCatalogCard extends StatefulWidget {
     this.onNavigateDown,
     this.onNavigateLeft,
     this.onNavigateRight,
+    this.onBack,
     this.onFocusChange,
     this.semanticLabel,
   });
@@ -113,6 +114,13 @@ class TvCatalogCard extends StatefulWidget {
   final VoidCallback? onNavigateDown;
   final VoidCallback? onNavigateLeft;
   final VoidCallback? onNavigateRight;
+
+  /// Menu on this card. Null is the ordinary case and leaves the press to the
+  /// route, which is what pops a nested screen; a page that is *itself* in a
+  /// sub-mode — Ontdekken with one shelf expanded — sets it so Menu leaves that
+  /// mode before it leaves the page.
+  final VoidCallback? onBack;
+
   final ValueChanged<bool>? onFocusChange;
 
   /// What a screen reader reads for the whole card. The child is wrapped in
@@ -159,6 +167,7 @@ class _TvCatalogCardState extends State<TvCatalogCard> {
         onNavigateDown: widget.onNavigateDown,
         onNavigateLeft: widget.onNavigateLeft,
         onNavigateRight: widget.onNavigateRight,
+        onBack: widget.onBack,
         borderRadius: radius,
         focusScale: FocusTheme.fullCardFocusScale,
         // DEC-065 punt 4: the ring goes round the *artwork alone*, so the

@@ -2021,6 +2021,18 @@ class _TranslationsSeerrNl extends TranslationsSeerrEn {
 	@override String get errorForbidden => 'Je hebt hier geen rechten voor.';
 	@override String get errorNetwork => 'Kan de server niet bereiken. Controleer de URL.';
 	@override String get errorGeneric => 'Er ging iets mis. Probeer opnieuw.';
+	@override String get kindMovie => 'Film';
+	@override String get kindShow => 'Serie';
+	@override String requestCount({required Object count}) => '${count} aanvragen';
+	@override String get oneRequest => '1 aanvraag';
+	@override String get railKind => 'Soort';
+	@override String get railGenre => 'Genre';
+	@override String get railStatus => 'Status';
+	@override String get allGenres => 'Alle genres';
+	@override String get filterDeclined => 'Afgewezen';
+	@override String get discoverNow => 'Populair nu';
+	@override String noRequestsInFilter({required Object status}) => 'Er staat op dit moment niets op ${status}.';
+	@override String get noRequestsYet => 'Er is nog niets aangevraagd.';
 }
 
 // Path: tautulli
@@ -4517,6 +4529,18 @@ extension on TranslationsNl {
 			'seerr.errorForbidden' => 'Je hebt hier geen rechten voor.',
 			'seerr.errorNetwork' => 'Kan de server niet bereiken. Controleer de URL.',
 			'seerr.errorGeneric' => 'Er ging iets mis. Probeer opnieuw.',
+			'seerr.kindMovie' => 'Film',
+			'seerr.kindShow' => 'Serie',
+			'seerr.requestCount' => ({required Object count}) => '${count} aanvragen',
+			'seerr.oneRequest' => '1 aanvraag',
+			'seerr.railKind' => 'Soort',
+			'seerr.railGenre' => 'Genre',
+			'seerr.railStatus' => 'Status',
+			'seerr.allGenres' => 'Alle genres',
+			'seerr.filterDeclined' => 'Afgewezen',
+			'seerr.discoverNow' => 'Populair nu',
+			'seerr.noRequestsInFilter' => ({required Object status}) => 'Er staat op dit moment niets op ${status}.',
+			'seerr.noRequestsYet' => 'Er is nog niets aangevraagd.',
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli houdt bij wie wat kijkt op je Plex-server. Koppel hem om kijkers, statistieken en live activiteit in Pleya te zien.',
 			'tautulli.adminOnlyNote' => 'Tautulli heeft één sleutel die zijn hele beheer-API opent, dus die blijft op dit toestel en alleen jij ziet wat hij meldt. De mensen met wie je je server deelt merken er niets van en hoeven niets in te stellen.',
