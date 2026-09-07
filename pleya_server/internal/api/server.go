@@ -16,6 +16,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/diag"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/watch"
@@ -83,6 +84,18 @@ type Options struct {
 	// rangecontrole van de connectivity-check op een echt bestand meet in
 	// plaats van op de melding dat er geen bundel is.
 	Web http.Handler
+
+	// MediaRoots is PLEYA_SERVER_MEDIA_DIRS (S2.3): de roots die de operator
+	// via de container-mounts aanbiedt. GET /storage/roots somt ze op, en
+	// POST/PATCH /libraries toetst een root_path tegen exact deze lijst
+	// (rootOffered in handlers_admin_libraries.go) — een letterlijke
+	// setvergelijking zonder bestandssysteemaanroep, wat K rij 10 eist.
+	MediaRoots []string
+
+	// Jobs is de wachtrij achter POST /storage/roots/recheck (S2.3). Nil
+	// betekent dat dat endpoint niets kan inplannen en server.internal
+	// antwoordt in plaats van te doen alsof er een ronde loopt.
+	Jobs *jobs.Runner
 
 	// De TTL's uit de omgeving. Ze zijn de onderste laag: Settings hieronder
 	// legt er de opgeslagen waarden overheen, en de handlers lezen die set en
@@ -262,6 +275,11 @@ func (s *Server) routeTable() []route {
 		{"POST " + p + "/libraries", s.authenticated(s.handleCreateLibrary)},
 		{"PATCH " + p + "/libraries/{library_id}", s.authenticated(s.handleUpdateLibrary)},
 		{"DELETE " + p + "/libraries/{library_id}", s.authenticated(s.handleDeleteLibrary)},
+
+		// Opslag (S2.3, J.3 venster 2, matrixregels 31 en 32). Klasse admin,
+		// zelfde vorm als hierboven.
+		{"GET " + p + "/storage/roots", s.authenticated(s.handleStorageRoots)},
+		{"POST " + p + "/storage/roots/recheck", s.authenticated(s.handleRecheckStorageRoots)},
 
 		{"GET " + p + "/libraries/{library_id}/items", s.authenticated(s.handleLibraryItems)},
 		{"GET " + p + "/items/{item_id}", s.authenticated(s.handleItem)},

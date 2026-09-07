@@ -896,11 +896,11 @@ paths:
         blijft dat: de config-sync die `PLEYA_SERVER_LIBRARIES` leest raakt
         haar niet aan.
 
-        `root_paths` worden vandaag alleen structureel gevalideerd (absoluut
-        pad, geen overlap met een bestaande root of met een andere root in
-        dezelfde aanvraag) en niet tegen het bestandssysteem: er is geen
-        bestand met deze commit aangeraakt. S2.3 breidt de controle uit met de
-        echte opsomming uit de mounts, zonder dat deze foutcode verandert.
+        `root_paths` worden structureel gevalideerd (geen overlap met een
+        bestaande root of met een andere root in dezelfde aanvraag) en tegen
+        de opsomming uit `GET /storage/roots`: een root_path moet onder een
+        van de mounts uit `PLEYA_SERVER_MEDIA_DIRS` vallen. Geen van beide
+        controles raakt het bestandssysteem aan.
       requestBody:
         required: true
         content:
@@ -988,6 +988,55 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "409":
           description: library.confirm_mismatch.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /storage/roots:
+    get:
+      tags: [administration]
+      operationId: listStorageRoots
+      summary: Welke mediamounts deze installatie kent, en wie ze gebruikt.
+      description: |
+        Klasse `admin`. De lijst is de opsomming uit `PLEYA_SERVER_MEDIA_DIRS`
+        (S2.3), aangevuld met elke root die al aan een bibliotheek hangt: een
+        root die uit die instelling is verdwenen blijft zichtbaar met
+        `mounted: false` in plaats van stilzwijgend te verdwijnen.
+
+        `root_paths` op `POST`/`PATCH /libraries` moeten letterlijk onder een
+        van deze mounts vallen (hoofdstuk 17e.4 van de specificatie).
+      responses:
+        "200":
+          description: De mounts, gesorteerd op pad.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StorageRootList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /storage/roots/recheck:
+    post:
+      tags: [administration]
+      operationId: recheckStorageRoots
+      summary: Meet elke geclaimde root opnieuw.
+      description: |
+        Klasse `admin`. Plant een meetronde in (bestandssysteemtype en
+        inodevertrouwen) op elke geclaimde root en antwoordt meteen met `202`;
+        de meting zelf loopt buiten de aanvraag om via de jobwachtrij, zodat
+        een trage of tijdelijk onbereikbare mount de aanvrager niet laat
+        wachten. Een tweede tik terwijl de eerste nog loopt wordt
+        gededupliceerd.
+      responses:
+        "202": { description: "Meetronde ingepland." }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -2092,6 +2141,62 @@ components:
           type: string
           description: Moet letterlijk de titel van de bibliotheek zijn (K rij 16).
           x-unknown-safe: false
+
+    InodeTrustSource:
+      type: string
+      enum: [fstype_default, config_override, measured]
+      x-unknown-safe: true
+      description: |
+        fstype_default: afgeleid uit het bestandssysteemtype. config_override:
+        `PLEYA_SERVER_INODE_TRUST`. measured: het resultaat van
+        `POST /storage/roots/recheck` (S2.3).
+
+    StorageRootLibraryRef:
+      type: object
+      required: [id, title]
+      description: |
+        Met de unieke constraint op een root_path is dit vandaag hoogstens één
+        element per root; het schema draagt een lijst omdat J.3 dat vastlegt.
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        title: { type: string }
+
+    StorageRoot:
+      type: object
+      required:
+        [
+          path,
+          fs_type,
+          inode_trusted,
+          inode_trust_source,
+          mounted,
+          free_bytes,
+          total_bytes,
+          libraries,
+        ]
+      properties:
+        path: { type: string }
+        fs_type:
+          oneOf:
+            - { type: string }
+            - { type: "null" }
+          description: null zolang de root niet gemount is of nog nooit gemeten is.
+        inode_trusted: { type: boolean }
+        inode_trust_source: { $ref: "#/components/schemas/InodeTrustSource" }
+        mounted: { type: boolean }
+        free_bytes: { type: integer, minimum: 0 }
+        total_bytes: { type: integer, minimum: 0 }
+        libraries:
+          type: array
+          items: { $ref: "#/components/schemas/StorageRootLibraryRef" }
+
+    StorageRootList:
+      type: object
+      required: [roots]
+      properties:
+        roots:
+          type: array
+          items: { $ref: "#/components/schemas/StorageRoot" }
 
     ItemKind:
       type: string

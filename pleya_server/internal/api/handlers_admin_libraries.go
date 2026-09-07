@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/edde746/plezy/pleya_server/internal/audit"
@@ -15,15 +16,44 @@ import (
 // beheeroppervlak: requireAdmin schrijft de 404 die een niet-beheerder hoort te
 // zien, byte-gelijk aan die van een gebruiker die niet meer bestaat.
 //
-// Geen van de drie handlers raakt het bestandssysteem aan. root_paths komen
-// letterlijk uit de aanvraag; storage.root_not_offered vandaag betekent
-// "overlapt met een bestaande root of met een andere root in dezelfde
-// aanvraag", en S2.3 breidt die controle uit met de echte opsomming uit de
-// mounts zonder dat de code of de handler-vorm verandert.
+// Geen van de drie handlers raakt het bestandssysteem aan. CreateLibrary en
+// UpdateLibrary in internal/catalog blijven ongewijzigd sinds S2.2: zij
+// toetsen alleen structureel (geen overlap met een bestaande root of met een
+// andere root in dezelfde aanvraag). Sinds S2.3 komt daar hier, vóór de store
+// ooit wordt aangeroepen, de echte opsomming uit de mounts bij: rootOffered
+// hieronder toetst een root_path tegen s.opts.MediaRoots zonder het
+// bestandssysteem aan te raken (K rij 10 verbiedt zowel een bestandsbrowser als
+// een stat-aanroep op een door de client verzonnen pad).
 
 func validLibraryKind(kind string) bool {
 	for _, k := range config.LibraryKinds {
 		if k == kind {
+			return true
+		}
+	}
+	return false
+}
+
+// rootOffered zegt of root onder één van s.opts.MediaRoots valt, de door de
+// operator gedeclareerde mounts (S2.3, `PLEYA_SERVER_MEDIA_DIRS`).
+//
+// De echte NAS-installatie hangt meerdere bibliotheken onder één mount
+// (`/media/library/Films`, `/media/library/Series`, zie
+// testsupport/fixtures/nas-schema7.sql), dus dit is een prefixcontrole en geen
+// gelijkheid: een offered root dekt zichzelf en elke submap eronder.
+//
+// Geen normalisatie: `filepath.Clean(root) != root` verwerpt in één klap een
+// `../`, een dubbele slash en een spatie-genormaliseerde variant, zonder ooit
+// naar het bestandssysteem te kijken. Dat is ook waarom een symlink die
+// ergens anders naartoe wijst hier nooit doorkomt: de vergelijking is zuiver
+// tekstueel tegen een lijst die de operator zelf declareert, en resolvet nooit
+// wat de client instuurt.
+func (s *Server) rootOffered(root string) bool {
+	if root == "" || strings.ContainsRune(root, 0) || filepath.Clean(root) != root {
+		return false
+	}
+	for _, offered := range s.opts.MediaRoots {
+		if root == offered || strings.HasPrefix(root, strings.TrimSuffix(offered, "/")+"/") {
 			return true
 		}
 	}
@@ -46,8 +76,8 @@ func (s *Server) handleCreateLibrary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, root := range req.RootPaths {
-		if !strings.HasPrefix(root, "/") {
-			writeError(w, s.log, CodeStorageRootNotOffered, "root_paths must be absolute", nil)
+		if !s.rootOffered(root) {
+			writeError(w, s.log, CodeStorageRootNotOffered, "root_paths must be one of GET /storage/roots", nil)
 			return
 		}
 	}
@@ -160,8 +190,8 @@ func (s *Server) handleUpdateLibrary(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, root := range *req.RootPaths {
-			if !strings.HasPrefix(root, "/") {
-				writeError(w, s.log, CodeStorageRootNotOffered, "root_paths must be absolute", nil)
+			if !s.rootOffered(root) {
+				writeError(w, s.log, CodeStorageRootNotOffered, "root_paths must be one of GET /storage/roots", nil)
 				return
 			}
 		}

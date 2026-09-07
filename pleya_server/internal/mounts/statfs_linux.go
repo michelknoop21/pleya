@@ -40,13 +40,14 @@ var fsMagic = map[int64]string{
 // ST_RDONLY niet doorgeeft, en dan meldt statfs een read-only mount als
 // beschrijfbaar. mountinfo klopt daar wel, en levert bovendien een echte
 // bestandssysteemnaam op in plaats van een magic die vertaald moet worden.
-func statfs(path string) (fsType string, readOnly bool, free uint64, err error) {
+func statfs(path string) (fsType string, readOnly bool, free uint64, total uint64, err error) {
 	var st syscall.Statfs_t
 	if err = syscall.Statfs(path, &st); err != nil {
-		return "", false, 0, err
+		return "", false, 0, 0, err
 	}
 
 	free = st.Bavail * uint64(st.Bsize)
+	total = st.Blocks * uint64(st.Bsize)
 	readOnly = st.Flags&stRDOnly != 0
 
 	magic := int64(st.Type)
@@ -60,7 +61,7 @@ func statfs(path string) (fsType string, readOnly bool, free uint64, err error) 
 		readOnly = readOnly || entry.readOnly
 	}
 
-	return fsType, readOnly, free, nil
+	return fsType, readOnly, free, total, nil
 }
 
 type mountEntry struct {

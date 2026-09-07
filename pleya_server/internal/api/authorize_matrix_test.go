@@ -253,6 +253,12 @@ func matrixProbes() []matrixProbe {
 			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID },
 			body: func(*matrixFixture) any { return map[string]string{"confirm": "nee"} },
 			ok:   http.StatusConflict, expect: adminSurface()},
+		{row: 31, name: "GET /storage/roots", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/storage/roots"), body: noBody,
+			ok: http.StatusOK, expect: adminSurface()},
+		{row: 32, name: "POST /storage/roots/recheck", method: http.MethodPost,
+			path: fixedPath("/pleya/v1/storage/roots/recheck"), body: noBody,
+			ok: http.StatusAccepted, expect: adminSurface()},
 	}
 }
 

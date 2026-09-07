@@ -368,7 +368,8 @@ Op 6 september 2026 ging het venster een vierde keer open, met
 [DEC-113](DECISIONS.md#dec-113-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein).
 Anders dan bij S1 landt de implementatie hier over meerdere commits binnen dezelfde slice: S2.2 heeft
 er drie van de tien geland (`POST`/`PATCH`/`DELETE /libraries`, plus de `Library`-uitbreiding met
-`managed`, `scan_interval_seconds` en `scan_on_start`), de rest volgt in S2.3 tot en met S2.5.
+`managed`, `scan_interval_seconds` en `scan_on_start`), S2.3 er twee bij (`GET /storage/roots` en
+`POST /storage/roots/recheck`), de rest volgt in S2.4 en S2.5.
 
 **Wat erin zit.** Precies de tien wijzigingen uit
 `docs/pleya-server-rebaseline/J-api-schema-migratie.md` J.3: de drie hierboven, `POST

@@ -179,6 +179,7 @@ func run() int {
 		Instance: serverID.String()[:8],
 	})
 	runner.Register(JobScanLibrary, scanHandler(catalogStore, sc, logging.Component(log, "scanner")))
+	runner.Register(api.JobStorageRecheckRoots, storageRecheckHandler(catalogStore, cfg, logging.Component(log, "storage")))
 
 	if n, err := runner.Requeue(ctx); err != nil {
 		startup.Warn("lopende jobs terugzetten mislukt", slog.String("error", err.Error()))
@@ -244,6 +245,8 @@ func run() int {
 		Catalog:            catalogStore,
 		Auth:               authStore,
 		Watch:              watch.NewStore(pool),
+		MediaRoots:         cfg.MediaDirs,
+		Jobs:               runner,
 		Signer:             signer,
 		Logger:             logging.Component(log, "http"),
 		Ready:              ready.ok,

@@ -24,6 +24,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/diag"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
@@ -298,6 +299,14 @@ func newEnv(t *testing.T, opts ...envOption) *env {
 		FFprobe:            api.FFprobeStatus{Found: true, Version: "8.0"},
 		ConfigDir:          configDir,
 		Environ:            func() []string { return environ },
+		// Alles onder /media is aangeboden (S2.3): de fixtures in dit bestand
+		// en de meeste testbestanden verzinnen hun root_paths onder /media
+		// zonder dat ze werkelijk bestaan, en dat is precies wat rootOffered
+		// toestaat (een pad- en prefixcontrole, geen bestandssysteemaanroep).
+		MediaRoots: []string{"/media"},
+		// Dezelfde pool als de store, zodat POST /storage/roots/recheck
+		// werkelijk een rij in jobs wegschrijft en niet tegen nil valt.
+		Jobs: jobs.New(jobs.Options{Pool: pool, Logger: logger, Instance: "test"}),
 		// Dezelfde client als in productie, met alleen een tellende transport
 		// eronder: het omleidingsbeleid dat de test toetst is daarmee dat van
 		// de server en niet dat van de test.

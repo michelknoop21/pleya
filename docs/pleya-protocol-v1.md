@@ -551,7 +551,7 @@ contract keurt ze af.
 | `library.slug_taken` | 409 | nee | `POST /libraries`: de titel vereenvoudigt tot een slug die al bestaat, van een andere aanvraag of van een bibliotheek uit `PLEYA_SERVER_LIBRARIES` (S2.2) |
 | `library.not_empty` | 409 | nee | `PATCH /libraries/{id}`: `kind` mag alleen wisselen als de bibliotheek geen enkel item draagt (S2.2) |
 | `library.confirm_mismatch` | 409 | nee | `DELETE /libraries/{id}` zonder of met een foute `confirm`; `details.expected` draagt de titel die er had moeten staan. Een eigen code naast `server.confirm_mismatch` (die blijft voor `POST /server/rotate-signing-key`), zodat een client niet op het pad hoeft te kijken om te weten welk woord verwacht wordt (K rij 16, S2.2) |
-| `storage.root_not_offered` | 400 | nee | `POST` en `PATCH /libraries`: een `root_path` is niet uniek beschikbaar (overlapt met een bestaande root of met een andere root in dezelfde aanvraag), geen absoluut pad, of de aanvraagbody zelf is onleesbaar. S2.3 breidt de controle uit met de echte opsomming uit de mounts; de code verandert daarbij niet (S2.2, K rij 10) |
+| `storage.root_not_offered` | 400 | nee | `POST` en `PATCH /libraries`: een `root_path` overlapt met een bestaande root of met een andere root in dezelfde aanvraag, valt niet onder een van de mounts uit `PLEYA_SERVER_MEDIA_DIRS` (S2.3, hoofdstuk 17e.4), of de aanvraagbody zelf is onleesbaar |
 
 `auth.permission_not_allowed` is de ene code in het `auth.`-domein die geen `404` is, en dat is geen
 gat in de regel hieronder. Die regel verbergt het bestaan van iets dat de aanvrager niet mag zien;
@@ -1163,6 +1163,8 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 28 | `POST /libraries` | het bestaan van het beheeroppervlak | klasse `admin`, `404` voor de rest; gesloten body (S2.2) |
 | 29 | `PATCH /libraries/{id}` | direct id | klasse `admin`, `404` voor de rest, ook op een bestaande bibliotheek waar de aanvrager alleen `view` op heeft: een bibliotheekrecht is geen beheerrol (S2.2) |
 | 30 | `DELETE /libraries/{id}` | direct id, plus de bevestiging | klasse `admin`, `404` voor de rest; de bevestiging (`confirm: "<title>"`) wordt pas getoetst ná de rolcontrole, dus een lid krijgt nooit `409` (K rij 16, S2.2) |
+| 31 | `GET /storage/roots` | welke mediamounts en bibliotheken deze installatie kent | klasse `admin`, `404` voor de rest (S2.3) |
+| 32 | `POST /storage/roots/recheck` | een meetronde forceren op elke geclaimde root | klasse `admin`, `404` voor de rest; geen aanvraagbody, en het antwoord draagt geen gevoelige data terug (S2.3) |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -1734,11 +1736,10 @@ weigert met `library.slug_taken` zodra die afleiding samenvalt met een bestaande
 `config`-beheerde. Twee titels die tot dezelfde slug vereenvoudigen ("Films!" en "Films?") botsen
 dus op elkaar, net zo goed als op een bibliotheek uit de omgeving.
 
-`root_paths` worden in deze fase uitsluitend structureel gevalideerd: een absoluut pad, geen overlap
-met een bestaande root en geen overlap binnen dezelfde aanvraag. Geen van beide endpoints raakt
-hiervoor het bestandssysteem aan. `storage.root_not_offered` is voorlopig de enige 400 die
-`POST`/`PATCH /libraries` kennen; S2.3 breidt de controle uit met de echte opsomming uit de mounts,
-zonder dat de code verandert.
+`root_paths` worden structureel gevalideerd (geen overlap met een bestaande root en geen overlap
+binnen dezelfde aanvraag, in `internal/catalog`) en, sinds S2.3, tegen de opsomming uit
+`PLEYA_SERVER_MEDIA_DIRS` (hoofdstuk 17e.4). Geen van beide endpoints raakt hiervoor het
+bestandssysteem aan. `storage.root_not_offered` is de enige 400 die `POST`/`PATCH /libraries` kennen.
 
 `kind` mag op `PATCH /libraries/{id}` alleen wisselen zolang de bibliotheek geen enkel item draagt
 (`library.not_empty` anders), op elk niveau: een serie zonder afleveringen is net zo leeg als een
@@ -1753,6 +1754,32 @@ zijn, en een ontbrekende of foute waarde geeft `library.confirm_mismatch` met de
 `details.expected`. Dat is een eigen code naast `server.confirm_mismatch` (die blijft voor
 `POST /server/rotate-signing-key`): twee verschillende handelingen die hetzelfde codepad delen zouden
 een client dwingen op het pad te kijken om te weten welk woord er verwacht wordt.
+
+### 17e.4 Een root is aangeboden of hij bestaat niet voor de aanvrager
+
+`GET /storage/roots` somt de mounts op die `PLEYA_SERVER_MEDIA_DIRS` declareert, aangevuld met elke
+root die al aan een bibliotheek hangt (zodat een root die uit de instelling is verdwenen zichtbaar
+blijft met `mounted: false` in plaats van stilzwijgend te verdwijnen). Voor een geclaimde root komt
+`fs_type`, `inode_trusted` en `inode_trust_source` uit de laatste meting in `storage_locations`; voor
+een nog niet geclaimde kandidaat is dat de live soort-standaard, dezelfde regel als bij het opstarten.
+`mounted`, `free_bytes` en `total_bytes` zijn altijd live.
+
+`root_paths` op `POST`/`PATCH /libraries` worden tegen dezelfde lijst getoetst, en dat is een pad- en
+prefixcontrole tegen `PLEYA_SERVER_MEDIA_DIRS` en niets anders: geen normalisatie van invoer (een pad
+dat na `filepath.Clean` verandert, zoals een `../` of een dubbele slash, is per definitie geen
+letterlijke match), geen bestandsbrowser, en geen enkele aanroep naar het bestandssysteem op wat de
+client instuurt (K rij 10). Een offered root dekt zichzelf en elke submap eronder: de NAS-installatie
+hangt drie bibliotheken onder één mount (`/media/library/Films`, `/media/library/Kids`,
+`/media/library/Series`), en dat blijft zo. `CreateLibrary` en `UpdateLibrary` in `internal/catalog`
+veranderen hierdoor niet: zij bleven sinds S2.2 al structureel (geen overlap), en deze controle staat
+ervóór in de handler.
+
+`POST /storage/roots/recheck` beantwoordt met `202` en meet daarna, buiten de aanvraag om, elke
+geclaimde root opnieuw (bestandssysteemtype, en of de scanner de inodes ervan mag vertrouwen) en
+schrijft de uitkomst in `storage_locations`. Dat gebeurt via de bestaande jobwachtrij (hoofdstuk
+17.1) en niet synchroon in de aanvraag: een write-probe op een trage of tijdelijk niet reagerende NAS-
+of USB-mount hoort de aanvrager niet te laten wachten. Een tweede rechecktik terwijl de eerste nog
+loopt wordt gededupliceerd, dezelfde regel als bij een scanronde.
 
 ---
 
@@ -1772,6 +1799,8 @@ een client dwingen op het pad te kijken om te weten welk woord er verwacht wordt
 | `POST /pleya/v1/libraries` | `admin` | nee |
 | `PATCH /pleya/v1/libraries/{id}` | `admin` | nee |
 | `DELETE /pleya/v1/libraries/{id}` | `admin` | nee |
+| `GET /pleya/v1/storage/roots` | `admin` | nee |
+| `POST /pleya/v1/storage/roots/recheck` | `admin` | nee |
 | `GET /pleya/v1/libraries/{id}/items` | `authenticated` | ja |
 | `GET /pleya/v1/items/{id}` | `authenticated` | nee |
 | `GET /pleya/v1/items/{id}/children` | `authenticated` | ja |
@@ -1801,12 +1830,13 @@ een client dwingen op het pad te kijken om te weten welk woord er verwacht wordt
 | `GET /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` via `?user_id=` | nee |
 | `GET /pleya/v1/audit` | `admin` | ja |
 
-Veertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Tweeënveertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
-17b.6 (S1.4), de drie daarna de API-tokens en het auditlog uit hoofdstuk 17c (S1.5), en de laatste
-drie de bibliotheek-CRUD van S2.2 (J.3, venster 2).
+17b.6 (S1.4), de drie daarna de API-tokens en het auditlog uit hoofdstuk 17c (S1.5), de drie daarna de
+bibliotheek-CRUD van S2.2, en de laatste twee `GET /storage/roots` en `POST /storage/roots/recheck`
+van S2.3 (samen J.3, venster 2, rijen 7 en 8).
 `GET /pleya/v1/server` en `GET /pleya/v1/libraries` staan er elk maar één keer in en groeien met de
 klasse van de aanvrager, niet met een tweede regel. De rest van venster 2 landt bij de commitgrens
 die hem bedient.
