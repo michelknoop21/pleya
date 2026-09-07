@@ -11,6 +11,14 @@
 | Besluit | [DEC-108](DECISIONS.md#dec-108) |
 | Komt uit | CAT11 in `tvos-fysieke-correctieronde.md` |
 
+## De tekst in het beeld is niet de status
+
+De notitie rechtsboven in elke PNG zegt nog "PROPOSED". Dat is dezelfde situatie als bij 09
+tot en met 25, waar de beelden "CANDIDATE" dragen: **dit manifest is de statusautoriteit,
+niet de tekst in het beeld.** De beelden zijn bewust niet opnieuw geschoten om die ene regel
+te wijzigen, want dan veranderen de pixels en daarmee de hashes hieronder, terwijl er aan het
+ontwerp niets verandert.
+
 ## Wat de goedkeuring dekt
 
 Hetzelfde als bij 09 tot en met 25: compositie, hiërarchie, dichtheid, framing,
