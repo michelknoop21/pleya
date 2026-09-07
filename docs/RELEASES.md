@@ -50,6 +50,7 @@ under `Notes`.
 - de kijklijst in de catalogustaal (DEC-108, mockup 34)
 - Aanvragen en Ontdekken in de catalogustaal (DEC-108, mockup 35)
 - Zoeken in de catalogustaal, en de kop die SEARCH1 sluit (DEC-108, mockup 36)
+- MOC-10 seizoenchips met één actieve afleveringenrail (PB-4)
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
@@ -110,6 +111,10 @@ under `Notes`.
 - ongebruikte import uit de CAT10-test
 - een lege catalogus laat de afstandsbediening nergens op staan (CAT14)
 - acht bevindingen uit een onafhankelijke Codex-challenge (CAT16)
+- de zijbalk blijft bereikbaar na een sorteerkeuze (CAT17)
+- het spelerpaneel op de gedeelde typeladder (PLR7)
+- de drie rake punten uit de Codex-challenge op CAT17 en PLR7
+- OVR1a op filmdetail, en de volledige synopsis (DEC-109)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
