@@ -179,6 +179,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | I18N6 | 64 sleutels uit `en.i18n.json` ontbreken nog in `nl.i18n.json` en renderen dus Engels voor een Nederlandse gebruiker: de iCloud-synchronisatie-instellingen, Pleya Server toevoegen, Pleya Share's uitleg, de zoekfoutmeldingen, de logupload-meldingen, Samen kijken, Downloads, en `videoControls.skipIntro`/`skipCredits`/`nextEpisode`. Ze staan met naam in `knownGaps` in `test/i18n/nl_locale_parity_test.dart`, dus de lijst is de werklijst. Komt uit ROW1q; hoort onder SYS-5 in het register | OPEN | n.v.t. |
 | CAT17 | Een sorteerkeuze in de catalogus laat de zijbalk open staan en onbereikbaar achter: Menu doet niets, LINKS doet niets, en pas na het scherm verlaten en opnieuw openen is de balk weer te bedienen (Michel, 7 september, hardware, build 268, log `h43qp`). In dat log staat het patroon tweemaal: Select op een sorteerrij, dan de fetch met de nieuwe sortering, dan Escape met `KeyEventResult.ignored reason=fall-through`, en vier keer LINKS `handled reason=onNavigateLeft` zonder dat de focusvlaggen veranderen. Die vlaggen (`up=true,down=false,left=true,right=false`, `onBack=false`) horen bij een gridkaart in kolom 0, niet bij een railrij | FIXED, hardware open | `159f4dab`, `7dc3431b` |
 | PLR7 | Het spelerpaneel voelt opgeblazen: rijen en type zijn merkbaar groter dan op elk ander TV-oppervlak (Michel, 7 september, foto op hardware). `tv_panel_widgets.dart` codeert zijn maten hard en leest `TvLayoutConstants.scaleOf` nergens, dus een rijlabel staat op 17px en een rij op 62px waar de 8.3-ladder maal de TV-schaal 0,85 op dit toestel 14,0px en 54px geeft | FIXED, hardware open | `7de9f996`, `7dc3431b` |
+| DET1 | Filmdetail: de synopsis wordt afgekapt zonder dat hij te openen is, en de pagina voelt opgeblazen (Michel, 7 september, hardware). Root cause is OVR1a (SYS-3a) op een tweede oppervlak: `detailScale` in `media_detail_screen.dart` las de contentbox van deze route in plaats van `TvDisplayMetrics`, tegen INV-1 in. Mockup 37 (DEC-109) legt de correctie en de nieuwe "Meer lezen"-affordance vast; de mockup-vergelijking op het echte apparaat is niet in deze ronde herhaald | FIXED, hardware open | `dc989713`, DEC-109 |
 
 ## Wat er per item bekend is
 
@@ -3959,3 +3960,45 @@ Apple TV-venster (1038x584, schaal 0,85) en op het canonieke canvas (1920x1080, 
 1,0). Op de oude waarden meet het label 17,0 op allebei, waar 14,03 en 16,5 hoort: rood
 op beide. De negentien bestaande gedragstests, inclusief de PLR4-fittests op drie
 hoogtes en de PLR6-contracttest, blijven groen. Er is geen golden die dit paneel tekent.
+
+### DET1: filmdetail las de contentbox voor zijn schaal, niet het paneel
+
+Gemeld op 7 september 2026 op hardware: de synopsis wordt afgekapt zonder een manier om
+hem te openen, en de pagina voelt opgeblazen. Mockup 37 (`docs/tvos-redesign-37-approved.md`,
+DEC-109) legt de doelcompositie vast; dit is de bouw ervan.
+
+**Root cause.** OVR1a is eerder onderzocht op de TV-paneeltaal
+(`TvSourcePickerLayout`/`TvCatalogLayout`) en daar `NOT REPRODUCED` bevonden: die
+basiswaarden zijn al voorgedeeld door de 0,85-klem, dus de klem is daar geen fout. Op
+filmdetail geldt dat niet. `media_detail_screen.dart:3917` berekende `detailScale` met
+`TvLayoutConstants.scaleForSize(size)` op de contentbox van deze route, terwijl INV-1
+voorschrijft dat de tienvoetsschaal uit `TvDisplayMetrics` komt: een geneste route is
+korter dan het paneel omdat de topnav er een band van afhaalt, en die verkorting hoort de
+typografie niet mee te krimpen. De titel-, synopsis- en actierijmaten van deze pagina
+(56, 18, `_tvDetailActionSize`) zijn canonieke ontwerpwaarden uit de herotaal van
+DEC-095/mockup 30, niet voorgedeeld zoals de paneelconstanten, dus hier is de klembasis
+wel de fout.
+
+**De fix.** `detailScale` leest nu `TvLayoutConstants.scaleOf(context)`, hetzelfde pad als
+de actierij al gebruikte sinds SYS-1c; de losse `scaleOf`-aanroep die dat verschil moest
+opvangen is vervallen omdat beide nu overeenkomen. `test/screens/media_detail_ovr1a_scale_test.dart`
+zet een geneste contentbox van 900 logisch onder een gepubliceerd paneel van 1080 logisch
+(schaal 0,85 tegenover 1,0) en toont dat de titel op de paneelschaal rendert, niet op de
+kortere box.
+
+**Wat er niet bij hoort.** De exacte referentie-pixelwaarden uit de melding (titel 75,5 om
+64, synopsis 25,5 om 22-24, actierij 72,3 om 60) zijn niet opnieuw gemeten op een echt
+toestel binnen deze bouwronde; de test hierboven bewijst het mechanisme (paneel wint van
+contentbox), niet de exacte getallen op hardware. Die meting hoort bij de fysieke
+controleronde van dit werk.
+
+**Ernaast, nieuw gedrag.** Een compacte "Meer lezen"-actie tussen de synopsis en de
+actierij, alleen aanwezig bij echte tekstoverflow, die een scrollbaar paneel opent met de
+volledige tekst (DEC-109). `test/screens/media_detail_synopsis_panel_test.dart` bewijst het
+focuscontract: geen actie en geen focusval zonder overflow, UP/DOWN tussen actierij en
+actie, SELECT opent, Menu sluit en herstelt de focus.
+
+**Bewijs.** `dc989713`. Golden `tv_detail_source_line` opnieuw opgenomen op de
+gecorrigeerde schaal; de bestaande suite op `test/screens/media_detail_screen_test.dart`
+en `test/navigation/tv/tv_detail_route_contract_test.dart` blijft groen. MOC-10's
+seizoenchips (PB-4) en de VER5-Verify-dekking zijn hier niet meegenomen.
