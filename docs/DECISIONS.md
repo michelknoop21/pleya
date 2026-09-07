@@ -2331,3 +2331,49 @@ De oude mobiele UI op `main` (de Home-header met los P-icoon en handgezette teks
 **Context:** Michel meldde op 7 september drie dingen die op hetzelfde neerkomen: de filtering van Alle films en Alle series moet ook op de andere lijstvensters komen, de resterende goldens moeten uitgewerkt, en op de aanvragen- en zoekvensters zijn de items veel groter dan elders. Dat laatste heeft drie oorzaken naast elkaar en staat als CAT11 in `docs/tvos-fysieke-correctieronde.md`: zoeken tekent zijn resultaten op TV met `TvDiscoveryRail` en dus in de brede 16:9-tegels van de Home-feed (`search_screen.dart:810`), de Seerr-rasters rekenen hun kolommen uit met `MediaGridGeometry.resolve` en de dichtheidsschuif (`seerr_grid_sliver.dart:45`) in plaats van met `TvCatalogGrid.forWidth`, en `SeerrRequestRow` gebruikt een miniatuur van 44 tot 72 pixels op diezelfde schuif (`seerr_request_row.dart:55`) zonder de TV-schaal ooit te lezen. De mockups die deze drie schermen dekten (13, 14 en 15 uit `approved-2026-09-03/`) zijn van vóór [DEC-093](#dec-093), dat zelf al opschreef dat mockup 14 erop achterloopt. Michel koos vooraf dat de filters alleen visueel gelijkgetrokken worden en dat elk scherm zijn eigen filtermodel houdt: `UnifiedCatalogFilterSelection` is vastgeklonken aan het catalogusdomein (`CatalogLibrary`, en `UnifiedCatalogs.forKind` gooit voor alles buiten movie en show), dus kijklijst en aanvragen kunnen hem niet overnemen. Mockup 34 tot en met 36 zijn op 7 september voorgedragen en goedgekeurd; het manifest met de hashes staat in [`tvos-redesign-34-36-approved.md`](tvos-redesign-34-36-approved.md).
 **Decision:** (1) **Kijklijst, Aanvragen en Zoeken tekenen in de catalogustaal.** Kaart 281 bij 422 op de rasterinset, dezelfde titel- en metaregel, en de CAT5-rail links met zijn dichte en open stand. Dat vervangt op die drie schermen `MediaGridGeometry`, de dichtheidsschuif en de brede feedtegel. (2) **Elk scherm houdt zijn eigen filtermodel** en leent alleen de presentatie. De kijklijst krijgt Soort, Beschikbaarheid en Sortering, en **geen Bronnen**: een kijklijstitem is één identiteit over alle servers heen (hoofdstuk 20), dus daar valt niets te kiezen. Aanvragen krijgen Soort, Genre uit de TMDB-lijst en Status, en ook geen Bronnen, want een aanvraag heeft nog geen bron. `TvCatalogFilterRailRow` draagt dat al zonder catalogusbegrip in zijn API. (3) **Alle aanvragen wordt een raster met de status als capsule op de kaart** (mockup 35 C1), niet de lijst van 35 C2. Bij de 389 aanvragen op het toestel toont C1 er twaalf per scherm tegen vijf, C2 zou een tweede kaarttaal in stand houden terwijl de melding juist over die afwijking ging, en het argument vóór een lijst — een rij die zijn eigen goedkeur- en afwijsknoppen draagt — telt op TV niet, want acties lopen daar via het unified contextmenu (PB-5). De prijs is de datum naast de aanvrager, die op 281 breed niet past, en die is bewust opgegeven. De aanvraagstatus blijft Seerr-state (PB-3). (4) **De statuskeuze wordt een subweergave van de rail** met de aantallen erbij, in plaats van de segmented tabbalk die als TOK3 in het register staat en op TV nergens anders voorkomt. Menu of LEFT gaat één laag terug, zoals in het spelerpaneel ([DEC-101](#dec-101) punt 3). (5) **SEARCH1 is gesloten:** de sectiekop op Zoeken heet "Films" met het aantal ernaast, en is een kop en geen railtitel, dus hij beweegt niet mee met de focus. (6) **`--focus-headroom` is een tokengrootheid in het mockupsysteem.** Een gefocuste kaart schaalt om zijn onderrand, dus de ring reikt 33 pixels boven de rustdoos; elke band waarin een kaart focus kan hebben reserveert dat. Het is dezelfde grootheid als `TvCatalogGrid.focusHeadroom` in `scrollPadding`, en beeld en code zeggen daarmee hetzelfde.
 **Consequences:** MOC-13, MOC-14 en MOC-15 wijzen naar de nieuwe beelden; wat mockup 13, 14 en 15 over deze drie schermen zeiden vervalt, de rest van de 09-25-set blijft staan. `35-aanvragen-c2.png` blijft in de map als vastlegging van de afweging, zoals mockup 26 dat doet voor het afgewezen bibliotheekcontract; er wordt niet tegen gebouwd. Bibliotheken zit bewust niet in deze set: mockup 27 dekt bronbeheer in vijf standen, is goedgekeurd onder [DEC-092](#dec-092), en state D tekent het openen in de catalogus al mét de CAT5-rail, dus daar ontbreekt geen ontwerp maar een bouwronde, en die staat als LIB7. De bouw is een eigen ronde met eigen bewijs: per scherm reproduceren, root cause bij de gedeelde eigenaar, een negatieve controle die aantoonbaar rood was, gerichte tests, en een Verify-scenario. `WL2` (kijklijst) en `REQ1` (aanvragen) staan al als open Verify-dekking in het register en worden daarmee gesloten. Wat open blijft en niet stilzwijgend meegenomen mag worden: de kijklijst betaalt voor het filter Beschikbaar een volledige ronde langs alle servers (`watchlist_screen.dart:120`), en dat bestaande gedrag bepaalt wat de rail daar mag beloven.
+
+## DEC-109: De volledige synopsis krijgt een focusbare "Meer lezen"-actie die alleen bij echte overflow bestaat
+
+**Date:** 2026-09-07
+**Status:** accepted
+**Context:** Twee fysieke meldingen op filmdetail en seriedetail: de synopsis wordt op een gemeten
+viewport (1037,84 x 583,78 logisch, root 1920x1080, devicePixelRatio 2,0, DEC-028-schaal 1,85)
+afgekapt zonder dat hij te openen is, en de pagina voelt opgeblazen omdat de resterende 54% van
+het scherm onder de informatiegroep leeg blijft als er geen hubs zijn. Gemeten met de echte
+`MediaDetailScreen` op die viewport: titel 75,5 referentie-px tegen mockup 64, synopsis 25,5
+tegen mockup 23 (hoofdstuk 8.3 staat 22-24 toe), actierij 72,3 tegen mockup 60. Herleid naar het
+canonieke 1920x1080-canvas draait het om: 56, 18 en 46 zijn daar te klein. `detailScale` leest de
+contentbox (`media_detail_screen.dart:3917`) in plaats van `TvDisplayMetrics` zoals INV-1
+voorschrijft, en dat is OVR1a (SYS-3a) op een tweede oppervlak. Noch mockup 09, noch mockup 10
+heeft een affordance om de volledige synopsis te lezen; mockup 37 A tot en met D, goedgekeurd in
+[`tvos-redesign-37-approved.md`](tvos-redesign-37-approved.md), legt die vast en corrigeert
+daarnaast de regelklem (vier regels in 09 tegen drie die hoofdstuk 8.3 toestaat) en de onderrand
+(09 en 10 eindigen circa zes pixels van de rand tegen `bottomSafeInset` 81 uit
+[DEC-087](#dec-087) in). 37 volgt daarbij de herotaal van [DEC-095](#dec-095) en mockup 30
+(Inter 56 in zinsvorm, puntgescheiden metadata, schermvullende backdrop), niet de letterlijke
+ArchivoBlack-taal van 09 en 10, want de draaiende app tekent Home al in de nieuwe taal.
+**Decision:** De synopsis blijft een compacte tekst van maximaal drie regels op TV. Zodra de tekst
+op de gerenderde breedte echt afkapt, verschijnt een focusbare "Meer lezen"-actie in de taal van
+`TvViewAllAction` (geen los tekstlinkje) die een scrollbaar paneel opent via
+`OverlaySheetController.showAdaptive` met `OverlaySheetPresentation.panel` en
+`restoreLauncherFocus: true`, hergebruikt van de bestaande sheet op deze pagina
+(`media_detail_screen.dart:1645`) en zonder een tweede `OverlaySheetHost` (INV-1). Scrollen met
+pijltjes zonder focusbare regels volgt het patroon uit `logs_screen.dart` (`_scroll`,
+toetsafhandeling). Rustfocus blijft op de primaire afspeelactie; de "Meer lezen"-actie zit in de
+actierij en is alleen bereikbaar en aanwezig bij echte overflow, zodat er zonder overflow geen
+lege focuspositie ontstaat. UP vanaf de actierij bereikt de actie, nogmaals UP de topnav, DOWN
+keert terug, SELECT opent het paneel, Menu sluit het en herstelt focus exact op de actie.
+`hideSpoilers` blijft in het paneel gelden. Het paneel gebruikt de bestaande i18n-sleutel
+`discover.overview` als titel; alleen het actielabel is een nieuwe sleutel. Mobiel en desktop
+behouden `CollapsibleText` en krijgen geen paneel. MOC-09 en MOC-10 dekken de rest van de
+compositie: gedeelde TV-detailprimitives waar film en serie dezelfde regels hebben, gescheiden
+geometrie waar 37 A en 37 C verschillen (serie heeft geen "Vanaf het begin"), en voor 10 de
+horizontale seizoenchips met één actieve afleveringenrail uit PB-4.
+**Consequences:** De Verify-fixture (`pleya_verify/fixture_server`, `addItem` in
+`lib/src/pleya_fake_server.dart:209-231`) heeft geen synopsisveld en het bevroren `/v1`-protocol
+ook niet, dus de fixtureroute kan de overflow-melding principieel niet tonen; deterministisch
+bewijs voor de synopsis komt uit widgettests, visueel bewijs uit de simulator op de demoserver.
+VER5 (geen Verify-scenario bereikt de TV-detailpagina) sluit als onderdeel van deze bouwronde.
+In 37 C valt de synopsis van de gefocuste aflevering onder de schermrand; dat moet in beeld komen
+zodra de rail focus krijgt en meescrolt, en is gedrag dat bij de bouw van MOC-10 hoort, geen
+nieuwe mockup.
