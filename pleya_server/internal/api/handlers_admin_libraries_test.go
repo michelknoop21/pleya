@@ -289,6 +289,96 @@ func TestLibraryListHidesManagementFieldsFromMembers(t *testing.T) {
 	}
 }
 
+// TestLibraryListHidesManagementFieldsFromReadScopedAPIToken dekt de
+// codex-fix op J.3: handleLibraries toetste tot dan toe alleen req.isAdmin(),
+// nooit req.scopeReachesAdmin(). Een read-scoped API-token van een admin haalt
+// de rol wel maar het bereik niet (net als requireAdmin dat elders altijd
+// samen toetst), en zag daardoor toch managed/scan_interval_seconds/scan_on_start.
+func TestLibraryListHidesManagementFieldsFromReadScopedAPIToken(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	created := e.createToken(map[string]any{"name": "Leestoken", "scope": "read"}, http.StatusCreated)
+
+	rec := e.do(http.MethodGet, "/pleya/v1/libraries", nil, asToken(created.Secret))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /libraries met een read-token gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	var raw struct {
+		Items []map[string]any `json:"items"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
+		t.Fatal(err)
+	}
+	if len(raw.Items) == 0 {
+		t.Fatal("een read-token van een admin zag geen enkele bibliotheek")
+	}
+	for _, item := range raw.Items {
+		for _, field := range []string{"managed", "scan_interval_seconds", "scan_on_start"} {
+			if _, present := item[field]; present {
+				t.Fatalf("GET /libraries met een read-scoped token van een admin droeg %q, "+
+					"terwijl het bereik de adminklasse niet haalt", field)
+			}
+		}
+	}
+}
+
+// TestUpdateLibraryRepeatingCurrentKindSkipsNotEmptyCheck dekt de codex-fix:
+// handleUpdateLibrary triggerde de not-empty-check op de enkele aanwezigheid
+// van "kind" in de body, ook als de waarde gelijk was aan de huidige kind. Een
+// PATCH die title wijzigt maar (zoals sommige clients doen) toch de bestaande
+// kind meestuurt, hoorde niet tegen een gevulde bibliotheek te knallen.
+func TestUpdateLibraryRepeatingCurrentKindSkipsNotEmptyCheck(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	// e.libs[0] is "films" (movies), gevuld door newEnv's scanAll: dus niet leeg.
+	filmsID := e.libs[0].ID.String()
+	rec := e.do(http.MethodPatch, "/pleya/v1/libraries/"+filmsID, map[string]any{
+		"title": "Films Hernoemd", "kind": "movies",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("PATCH met de ongewijzigde kind op een gevulde bibliotheek gaf %d, verwacht 200: %s",
+			rec.Code, rec.Body.String())
+	}
+	var lib api.Library
+	if err := json.Unmarshal(rec.Body.Bytes(), &lib); err != nil {
+		t.Fatal(err)
+	}
+	if lib.Title != "Films Hernoemd" || lib.Kind != "movies" {
+		t.Fatalf("PATCH gaf %+v", lib)
+	}
+}
+
+// TestUpdateLibraryRejectsExplicitNullOnNonNullableFields dekt de codex-fix op
+// {"title": null} en {"kind": null}: een kale *string kan "afwezig" en
+// "meegestuurd met null" niet uit elkaar houden en liet dat vóór de fix
+// stilzwijgend als no-op door, terwijl title en kind niet-nullable zijn.
+func TestUpdateLibraryRejectsExplicitNullOnNonNullableFields(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	created := e.createLibraryViaAPI(t, "Nulltest", "movies", []string{"/media/nulltest"})
+
+	titleRec := e.do(http.MethodPatch, "/pleya/v1/libraries/"+created.ID, map[string]any{"title": nil})
+	if titleRec.Code != http.StatusBadRequest {
+		t.Fatalf("PATCH met title:null gaf %d, verwacht 400: %s", titleRec.Code, titleRec.Body.String())
+	}
+
+	kindRec := e.do(http.MethodPatch, "/pleya/v1/libraries/"+created.ID, map[string]any{"kind": nil})
+	if kindRec.Code != http.StatusBadRequest {
+		t.Fatalf("PATCH met kind:null gaf %d, verwacht 400: %s", kindRec.Code, kindRec.Body.String())
+	}
+
+	// De bibliotheek zelf is door beide afgewezen aanvragen niet aangeraakt.
+	var list api.LibraryList
+	e.getJSON("/pleya/v1/libraries", "", http.StatusOK, &list)
+	for _, l := range list.Items {
+		if l.ID == created.ID && l.Title != "Nulltest" {
+			t.Fatalf("een afgewezen PATCH veranderde de titel toch naar %q", l.Title)
+		}
+	}
+}
+
 // createLibraryViaAPI is de testhulp die de handlers hierboven al bewijst; hij
 // bestaat zodat andere tests een db-beheerde bibliotheek kunnen opzetten
 // zonder de aanmaak zelf opnieuw te controleren.

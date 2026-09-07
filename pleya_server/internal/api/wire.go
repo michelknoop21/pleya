@@ -226,9 +226,13 @@ type CreateLibraryRequest struct {
 // laat het veld op zijn Go-zero (een nil slice) staan. Zie
 // TestUpdateLibraryScanIntervalDistinguishesAbsentFromNull in de catalog-laag
 // voor het gedrag dat dit onderscheid mogelijk maakt.
+// Title en Kind zijn zelf ook niet-nullable velden en dragen daarom dezelfde
+// kale json.RawMessage als scan_interval_seconds: {"title": null} moet 400
+// geven en geen stille no-op, en een *string kan "afwezig" en "null" niet uit
+// elkaar houden.
 type UpdateLibraryRequest struct {
-	Title               *string         `json:"title"`
-	Kind                *string         `json:"kind"`
+	Title               json.RawMessage `json:"title"`
+	Kind                json.RawMessage `json:"kind"`
 	RootPaths           *[]string       `json:"root_paths"`
 	ScanIntervalSeconds json.RawMessage `json:"scan_interval_seconds"`
 	ScanOnStart         *bool           `json:"scan_on_start"`

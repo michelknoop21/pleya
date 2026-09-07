@@ -104,24 +104,55 @@ func (s *Server) handleUpdateLibrary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Nodig vóór de body zelfs gelezen is: de not-empty-check hieronder moet
+	// de nieuwe kind tegen de huidige vergelijken (niet tegen "is er een kind
+	// meegestuurd"), en zonder deze aanroep zou een niet-bestaand id pas na de
+	// mutatiepoging in de store aan het licht komen.
+	current, err := s.opts.Catalog.Library(r.Context(), libraryID)
+	if err != nil {
+		s.writeStoreError(w, err)
+		return
+	}
+
 	var req UpdateLibraryRequest
 	if !s.decodeBody(w, r, &req, CodeStorageRootNotOffered) {
 		return
 	}
 
-	patch := catalog.LibraryUpdate{Kind: req.Kind, ScanOnStart: req.ScanOnStart}
+	patch := catalog.LibraryUpdate{ScanOnStart: req.ScanOnStart}
 
 	if req.Title != nil {
-		title := strings.TrimSpace(*req.Title)
-		if title == "" {
+		var title *string
+		if err := json.Unmarshal(req.Title, &title); err != nil {
+			writeError(w, s.log, CodeStorageRootNotOffered, "title unreadable", nil)
+			return
+		}
+		if title == nil {
+			writeError(w, s.log, CodeStorageRootNotOffered, "title must not be null", nil)
+			return
+		}
+		trimmed := strings.TrimSpace(*title)
+		if trimmed == "" {
 			writeError(w, s.log, CodeStorageRootNotOffered, "title must not be blank", nil)
 			return
 		}
-		patch.Title = &title
+		patch.Title = &trimmed
 	}
-	if req.Kind != nil && !validLibraryKind(*req.Kind) {
-		writeError(w, s.log, CodeStorageRootNotOffered, "unknown kind", nil)
-		return
+	if req.Kind != nil {
+		var kind *string
+		if err := json.Unmarshal(req.Kind, &kind); err != nil {
+			writeError(w, s.log, CodeStorageRootNotOffered, "kind unreadable", nil)
+			return
+		}
+		if kind == nil {
+			writeError(w, s.log, CodeStorageRootNotOffered, "kind must not be null", nil)
+			return
+		}
+		if !validLibraryKind(*kind) {
+			writeError(w, s.log, CodeStorageRootNotOffered, "unknown kind", nil)
+			return
+		}
+		patch.Kind = kind
 	}
 	if req.RootPaths != nil {
 		if len(*req.RootPaths) == 0 {
@@ -150,7 +181,11 @@ func (s *Server) handleUpdateLibrary(w http.ResponseWriter, r *http.Request) {
 		patch.ScanIntervalSeconds = seconds
 	}
 
-	if req.Kind != nil {
+	// Alleen een écht andere kind vraagt om de not-empty-check. Zonder de
+	// vergelijking met current.Kind zou een PATCH die de huidige kind gewoon
+	// herhaalt (title-only clients sturen kind vaak toch mee) een gevulde
+	// bibliotheek onnodig afwijzen.
+	if patch.Kind != nil && *patch.Kind != current.Kind {
 		empty, err := s.opts.Catalog.LibraryIsEmpty(r.Context(), libraryID)
 		if err != nil {
 			s.writeStoreError(w, err)

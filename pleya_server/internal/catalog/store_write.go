@@ -503,6 +503,40 @@ func rootsOverlap(a, b string) bool {
 		strings.HasPrefix(b, strings.TrimSuffix(a, "/")+"/")
 }
 
+// existingRootConflicts zegt of één van roots overlapt met een storage_location
+// die al aan een ándere bibliotheek dan excludeLibraryID hangt. Bij een aanmaak
+// bestaat de bibliotheek zelf nog niet, dus id.Nil (excludeLibraryID) sluit
+// niets uit en telt elke bestaande rij mee; bij een patch sluit dat de eigen,
+// nog te vervangen rijen van de bibliotheek uit.
+//
+// Zonder deze controle vangt rootsOverlap alleen overlap binnen dezelfde
+// aanvraag: een nieuwe root /media/kids onder een al bestaande /media/kids's
+// ouder-bibliotheek kwam er tot deze fix ongehinderd doorheen.
+func existingRootConflicts(ctx context.Context, tx pgx.Tx, excludeLibraryID id.ID, roots []string) (bool, error) {
+	if len(roots) == 0 {
+		return false, nil
+	}
+	rows, err := tx.Query(ctx, `
+		SELECT root_path FROM storage_locations WHERE library_id != $1`, excludeLibraryID)
+	if err != nil {
+		return false, fmt.Errorf("bestaande roots lezen: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var existing string
+		if err := rows.Scan(&existing); err != nil {
+			return false, err
+		}
+		for _, root := range roots {
+			if rootsOverlap(root, existing) {
+				return true, nil
+			}
+		}
+	}
+	return false, rows.Err()
+}
+
 // CreateLibrary voegt een door de API beheerde bibliotheek toe (S2.2, managed
 // = db: dit is het enige pad dat dat ooit zet).
 //
@@ -527,6 +561,12 @@ func (s *Store) CreateLibrary(ctx context.Context, title, kind string, rootPaths
 		return Library{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+
+	if conflict, err := existingRootConflicts(ctx, tx, id.Nil, rootPaths); err != nil {
+		return Library{}, err
+	} else if conflict {
+		return Library{}, ErrRootNotOffered
+	}
 
 	slug := slugify(title)
 	var lib Library
@@ -596,6 +636,28 @@ func (s *Store) UpdateLibrary(ctx context.Context, libraryID id.ID, patch Librar
 		return Library{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Vóór elke mutatie: bestaat de bibliotheek nog? Zonder deze controle
+	// vertaalt een patch met root_paths op een niet-bestaand id zich in een
+	// FK-violation op de INSERT hieronder, en die is geen ErrNotFound maar een
+	// kale 500 — de DELETE ervoor raakt 0 rijen zonder fout te geven, dus die
+	// verraadt het probleem niet.
+	var exists bool
+	if err := tx.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM libraries WHERE id = $1)`, libraryID).Scan(&exists); err != nil {
+		return Library{}, err
+	}
+	if !exists {
+		return Library{}, ErrNotFound
+	}
+
+	if patch.RootPaths != nil {
+		if conflict, err := existingRootConflicts(ctx, tx, libraryID, patch.RootPaths); err != nil {
+			return Library{}, err
+		} else if conflict {
+			return Library{}, ErrRootNotOffered
+		}
+	}
 
 	if patch.Title != nil {
 		if _, err := tx.Exec(ctx, `UPDATE libraries SET title = $2, updated_at = now() WHERE id = $1`,

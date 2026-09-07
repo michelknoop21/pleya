@@ -19,7 +19,10 @@ func (s *Server) handleLibraries(w http.ResponseWriter, r *http.Request) {
 	// managed, scan_interval_seconds en scan_on_start gaan sinds S2.2 alleen
 	// mee voor klasse admin (J.3). resolveRequester en niet requireAdmin: dit
 	// endpoint blijft voor elke rol 200, alleen de velden bewegen mee met de
-	// klasse, net als GET /server sinds S1.3.
+	// klasse, net als GET /server sinds S1.3. isAdmin() alleen is niet genoeg:
+	// een read-scoped API-token van een admin haalt de rol wel maar het bereik
+	// niet, en scopeReachesAdmin() is precies het onderscheid dat requireAdmin
+	// elders ook toetst.
 	req, ok := s.resolveRequester(w, r)
 	if !ok {
 		return
@@ -35,7 +38,7 @@ func (s *Server) handleLibraries(w http.ResponseWriter, r *http.Request) {
 	// Een lege lijst is [] en nooit null.
 	out := LibraryList{Items: make([]Library, 0, len(libs))}
 	for _, l := range libs {
-		if req.isAdmin() {
+		if req.isAdmin() && req.scopeReachesAdmin() {
 			out.Items = append(out.Items, adminLibraryWire(l))
 			continue
 		}

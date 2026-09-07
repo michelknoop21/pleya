@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
+	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
 )
@@ -166,6 +167,92 @@ func TestCreateLibraryRejectsOverlappingRoots(t *testing.T) {
 	_, err = store.CreateLibrary(ctx, "Tweede", "movies", []string{"/media/claimed"})
 	if !errors.Is(err, catalog.ErrRootNotOffered) {
 		t.Fatalf("een al geclaimde root gaf %v, verwacht ErrRootNotOffered", err)
+	}
+}
+
+// TestCreateLibraryRejectsRootNestedUnderExistingLibrary dekt de codex-fix op
+// storage.root_not_offered: rootsOverlap toetste tot dan toe alleen root_paths
+// binnen dezelfde aanvraag onderling, nooit tegen storage_locations die al aan
+// een andere bibliotheek hangen. /media/kids onder een bestaande /media (en
+// omgekeerd, /media/films/.. als parent van een bestaande root) moest daardoor
+// ongehinderd door twee bibliotheken kunnen scannen dezelfde boom.
+func TestCreateLibraryRejectsRootNestedUnderExistingLibrary(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	if _, err := store.CreateLibrary(ctx, "Media", "movies", []string{"/media"}); err != nil {
+		t.Fatalf("eerste CreateLibrary: %v", err)
+	}
+	if _, err := store.CreateLibrary(ctx, "Kids", "movies", []string{"/media/kids"}); !errors.Is(err, catalog.ErrRootNotOffered) {
+		t.Fatalf("een root onder een bestaande bibliotheek gaf %v, verwacht ErrRootNotOffered", err)
+	}
+
+	if _, err := store.CreateLibrary(ctx, "Series", "shows", []string{"/mnt/series/sub"}); err != nil {
+		t.Fatalf("tweede CreateLibrary: %v", err)
+	}
+	if _, err := store.CreateLibrary(ctx, "SeriesParent", "shows", []string{"/mnt/series"}); !errors.Is(err, catalog.ErrRootNotOffered) {
+		t.Fatalf("een root die een bestaande root omvat gaf %v, verwacht ErrRootNotOffered", err)
+	}
+}
+
+// TestUpdateLibraryRootPathsRejectsOverlapWithAnotherLibrary dekt dezelfde fix
+// op het PATCH-pad, plus dat de eigen (nog te vervangen) roots van de
+// bibliotheek zelf niet als conflict tellen: een patch die de eigen root
+// herhaalt mag niet tegen zichzelf botsen.
+func TestUpdateLibraryRootPathsRejectsOverlapWithAnotherLibrary(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	if _, err := store.CreateLibrary(ctx, "Films", "movies", []string{"/media/films"}); err != nil {
+		t.Fatalf("eerste CreateLibrary: %v", err)
+	}
+	kids, err := store.CreateLibrary(ctx, "Kids", "movies", []string{"/media/kids"})
+	if err != nil {
+		t.Fatalf("tweede CreateLibrary: %v", err)
+	}
+
+	// Patchen naar een root onder de andere bibliotheek: geweigerd.
+	_, err = store.UpdateLibrary(ctx, kids.ID, catalog.LibraryUpdate{
+		RootPaths: []string{"/media/films/sub"},
+	})
+	if !errors.Is(err, catalog.ErrRootNotOffered) {
+		t.Fatalf("een patch naar een root onder een andere bibliotheek gaf %v, verwacht ErrRootNotOffered", err)
+	}
+
+	// De eigen root herhalen mag wél: dat is geen conflict met zichzelf.
+	if _, err := store.UpdateLibrary(ctx, kids.ID, catalog.LibraryUpdate{
+		RootPaths: []string{"/media/kids"},
+	}); err != nil {
+		t.Fatalf("een patch die de eigen root herhaalt gaf %v, verwacht geen fout", err)
+	}
+}
+
+// TestUpdateLibraryOnUnknownIDReturnsNotFoundEvenWithRootPaths dekt de tweede
+// codex-fix: vóór deze fix raakte de DELETE op storage_locations 0 rijen
+// (geen fout), knalde de INSERT erna op de foreign key naar een niet-bestaand
+// library_id, en kwam dat als een kale 500 naar boven in plaats van
+// ErrNotFound.
+func TestUpdateLibraryOnUnknownIDReturnsNotFoundEvenWithRootPaths(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	_, err := store.UpdateLibrary(ctx, id.New(), catalog.LibraryUpdate{
+		RootPaths: []string{"/media/spook"},
+	})
+	if !errors.Is(err, catalog.ErrNotFound) {
+		t.Fatalf("PATCH met root_paths op een niet-bestaand id gaf %v, verwacht ErrNotFound", err)
 	}
 }
 
