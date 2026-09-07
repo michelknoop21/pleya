@@ -97,6 +97,13 @@ class AutomationIds {
   /// One row in [mediaDetailEpisodeList]. Instanceable: suffixed `[<index>]`.
   static const String mediaDetailEpisodeListItem = 'media-detail.episode-list.item';
 
+  /// The horizontal seizoenchips row on TV series detail (PB-4, DEC-109), the
+  /// only focus row that changes which season [mediaDetailEpisodeList] shows.
+  static const String mediaDetailSeasonChips = 'media-detail.season-chips';
+
+  /// One chip in [mediaDetailSeasonChips]. Instanceable: suffixed `[<index>]`.
+  static const String mediaDetailSeasonChip = 'media-detail.season-chip';
+
   /// The Mijn Pleya hub as a screen. Its own `AutomationScreen`, because
   /// `screen.main` is mounted for the whole session and says nothing about
   /// which destination is on show.
@@ -318,6 +325,7 @@ class AutomationIds {
     sidebarLibraryRow,
     libraryGridItem,
     mediaDetailEpisodeListItem,
+    mediaDetailSeasonChip,
     discoverRail,
     discoverRailItem,
     myPleyaTile,
@@ -386,6 +394,8 @@ class AutomationIds {
     {'id': discoverSafeArea, 'role': 'region', 'instanceable': false},
     {'id': mediaDetailEpisodeList, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailEpisodeListItem, 'role': 'list.item', 'instanceable': true},
+    {'id': mediaDetailSeasonChips, 'role': 'list', 'instanceable': false},
+    {'id': mediaDetailSeasonChip, 'role': 'chip', 'instanceable': true},
     {'id': screenMyPleya, 'role': 'screen', 'instanceable': false},
     {'id': myPleyaTile, 'role': 'grid.item', 'instanceable': true},
     {'id': myPleyaSection, 'role': 'region', 'instanceable': true},

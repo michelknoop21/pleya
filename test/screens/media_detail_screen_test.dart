@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/focus/dpad_navigator.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
@@ -308,9 +310,13 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
+    // PB-4: both seasons are season-chip choices now, so "Specials" is
+    // visible — the thing that matters is which season's episodes render,
+    // and that stays Season 1, not Specials.
     expect(find.text('Season 1'), findsOneWidget);
-    expect(find.text('Specials'), findsNothing);
+    expect(find.text('Specials'), findsOneWidget);
     expect(find.text('S1E1'), findsOneWidget);
+    expect(find.text('Special 1'), findsNothing);
   });
 
   testWidgets('TV detail summary uses light theme foreground color', (tester) async {
@@ -632,12 +638,23 @@ void main() {
     await tester.pump();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
-    tester.state<TvBrowseRailState>(find.byType(TvBrowseRail)).requestFocus();
+
+    // PB-4: switching season is a chip RIGHT, not a vertical step within the
+    // rail — there is only ever one active season rail now.
+    FocusNode seasonChipFocusNode(int index) {
+      for (final element in tester.allElements) {
+        final widget = element.widget;
+        if (widget is Focus && widget.focusNode?.debugLabel == 'season_tab_$index') return widget.focusNode!;
+      }
+      throw StateError('No season chip focus node at index $index');
+    }
+
+    seasonChipFocusNode(0).requestFocus();
     await tester.pump();
 
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
     expect(find.text('Episode 2'), findsNothing);
 
@@ -646,6 +663,223 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('Episode 2'), findsOneWidget);
+  });
+
+  testWidgets('TV detail shows one active season chip row and no chips for a single-season show', (tester) async {
+    await SettingsService.getInstance();
+
+    final show = MediaItem(
+      id: 'show_1',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.show,
+      title: 'The Show',
+      serverId: 'server_1',
+      serverName: 'Server',
+    );
+    final season1 = MediaItem(
+      id: 'season_1',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.season,
+      title: 'Season 1',
+      index: 1,
+      parentId: show.id,
+      serverId: show.serverId,
+      serverName: show.serverName,
+    );
+    final episode1 = MediaItem(
+      id: 'episode_1',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.episode,
+      title: 'Episode 1',
+      index: 1,
+      parentId: season1.id,
+      parentIndex: season1.index,
+      grandparentId: show.id,
+      serverId: show.serverId,
+      serverName: show.serverName,
+    );
+    final client = _FakeMediaServerClient(
+      show: show,
+      childrenByParent: {
+        show.id: [season1],
+        season1.id: [episode1],
+      },
+    );
+    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+    final provider = MultiServerProvider(manager, DataAggregationService(manager));
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: ChangeNotifierProvider<MultiServerProvider>.value(
+          value: provider,
+          child: MaterialApp(
+            builder: withNoticeLayer(),
+            theme: monoTheme(dark: true),
+            home: withProfileNavigationScope(
+              child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // One season is nothing to choose between (PB-4): no chip row.
+    expect(
+      find.byWidgetPredicate((w) => w is AutomationNode && w.id == AutomationIds.mediaDetailSeasonChips),
+      findsNothing,
+    );
+    expect(find.text('Episode 1'), findsOneWidget);
+  });
+
+  testWidgets('TV detail season chip switch keeps pagination and restores per-season focus memory', (tester) async {
+    await SettingsService.getInstance();
+
+    final show = MediaItem(
+      id: 'show_1',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.show,
+      title: 'The Show',
+      serverId: 'server_1',
+      serverName: 'Server',
+    );
+    final season1 = MediaItem(
+      id: 'season_1',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.season,
+      title: 'Season 1',
+      index: 1,
+      parentId: show.id,
+      serverId: show.serverId,
+      serverName: show.serverName,
+    );
+    final season2 = MediaItem(
+      id: 'season_2',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.season,
+      title: 'Season 2',
+      index: 2,
+      parentId: show.id,
+      serverId: show.serverId,
+      serverName: show.serverName,
+    );
+    MediaItem episodeOf(MediaItem season, int index, String title) => MediaItem(
+      id: '${season.id}_e$index',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.episode,
+      title: title,
+      index: index,
+      parentId: season.id,
+      parentIndex: season.index,
+      grandparentId: show.id,
+      serverId: show.serverId,
+      serverName: show.serverName,
+    );
+    final alpha = episodeOf(season1, 1, 'Alpha');
+    final bravo = episodeOf(season1, 2, 'Bravo');
+    final charlie = episodeOf(season2, 1, 'Charlie');
+
+    final client = _FakeMediaServerClient(
+      show: show,
+      childrenByParent: {
+        show.id: [season1, season2],
+        season1.id: [alpha, bravo],
+        season2.id: [charlie],
+      },
+    );
+    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+    final provider = MultiServerProvider(manager, DataAggregationService(manager));
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: ChangeNotifierProvider<MultiServerProvider>.value(
+          value: provider,
+          child: MaterialApp(
+            builder: withNoticeLayer(),
+            theme: monoTheme(dark: true),
+            home: withProfileNavigationScope(
+              child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(
+      find.byWidgetPredicate((w) => w is AutomationNode && w.id == AutomationIds.mediaDetailSeasonChips),
+      findsOneWidget,
+    );
+
+    FocusNode seasonChipFocusNode(int index) {
+      for (final element in tester.allElements) {
+        final widget = element.widget;
+        if (widget is Focus && widget.focusNode?.debugLabel == 'season_tab_$index') return widget.focusNode!;
+      }
+      throw StateError('No season chip focus node at index $index');
+    }
+
+    // The rail reveals with focus on its own scope; entering it (DOWN, which
+    // `TvBrowseRail` treats as "enter the topmost hub") lands on Alpha. UP
+    // from there is PB-4's contract: the active season chip, not the action
+    // row — the rail's own per-item focus is virtualised (a repainted ring
+    // driven by an internal index, not real `FocusNode`s per card), so this
+    // suite checks the chip/rail contract at the level that is actually a
+    // `FocusNode`: the chip.
+    tester.state<TvBrowseRailState>(find.byType(TvBrowseRail)).requestFocus();
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'season_tab_0');
+
+    // RIGHT switches to Season 2 — pagination for it is fetched fresh.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('Charlie'), findsOneWidget);
+    expect(find.text('Alpha'), findsNothing);
+    expect(find.text('Bravo'), findsNothing);
+    expect(seasonChipFocusNode(1).hasPrimaryFocus, isTrue);
+
+    // LEFT back to Season 1: its episodes render again from the pager's
+    // cache (no second fetch is asserted here — `_fetchSeasonEpisodes` owns
+    // that — this is about the chip and the rail agreeing on what to show).
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('Alpha'), findsOneWidget);
+    expect(find.text('Bravo'), findsOneWidget);
+    expect(find.text('Charlie'), findsNothing);
+
+    // DOWN from the chip reaches the rail again (the other half of the
+    // chip/rail contract). Exactly which episode the rail's own
+    // `HubFocusMemory` restores there — keyed by the season's now-stable hub
+    // id — is this suite's known gap: it is a real `FocusNode` on the chip
+    // but not on the rail's own cards, so it is not provable at this level.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
   });
 
   group('watch state freshness (phone layout)', () {
