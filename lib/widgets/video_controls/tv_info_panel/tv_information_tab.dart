@@ -7,6 +7,7 @@ import '../../../mpv/mpv.dart';
 import '../../../utils/formatters.dart';
 import '../../../utils/provider_extensions.dart';
 import '../../app_icon.dart';
+import '../../tv/tv_unified_layout.dart';
 import '../../optimized_media_image.dart';
 import 'tv_panel_widgets.dart';
 
@@ -80,75 +81,86 @@ class _TvInformationTabState extends State<TvInformationTab> {
     final genres = metadata.genres ?? const <String>[];
     final metaParts = _metadataParts();
 
+    final m = TvPanelMetrics.of(context);
+    final posterWidth = m.gap(120);
+    final posterHeight = m.gap(180);
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      padding: EdgeInsets.fromLTRB(m.rowPaddingHorizontal, m.gap(8), m.rowPaddingHorizontal, m.gap(20)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(m.gap(8)),
             child: SizedBox(
-              width: 120,
-              height: 180,
+              width: posterWidth,
+              height: posterHeight,
               child: poster != null
                   ? OptimizedMediaImage.poster(
                       client: client,
                       imagePath: poster,
-                      width: 120,
-                      height: 180,
+                      width: posterWidth,
+                      height: posterHeight,
                       fit: BoxFit.cover,
-                      errorWidget: (_, _, _) => const ColoredBox(
-                        color: Color(0x22FFFFFF),
-                        child: AppIcon(Symbols.movie_rounded, fill: 1, color: Colors.white38, size: 40),
+                      errorWidget: (_, _, _) => ColoredBox(
+                        color: const Color(0x22FFFFFF),
+                        child: AppIcon(Symbols.movie_rounded, fill: 1, color: Colors.white38, size: m.gap(40)),
                       ),
                     )
-                  : const ColoredBox(
-                      color: Color(0x22FFFFFF),
-                      child: AppIcon(Symbols.movie_rounded, fill: 1, color: Colors.white38, size: 40),
+                  : ColoredBox(
+                      color: const Color(0x22FFFFFF),
+                      child: AppIcon(Symbols.movie_rounded, fill: 1, color: Colors.white38, size: m.gap(40)),
                     ),
             ),
           ),
-          const SizedBox(width: 20),
+          SizedBox(width: m.gap(20)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   metadata.displayTitle,
-                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: TvSourcePickerLayout.titleFontSize * m.scale,
+                    fontWeight: FontWeight.w700,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (metadata.displaySubtitle != null && metadata.displaySubtitle!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: m.gap(4)),
                   Text(
                     metadata.displaySubtitle!,
-                    style: const TextStyle(color: TvPanelTheme.textMuted, fontSize: 15),
+                    style: TextStyle(color: TvPanelTheme.textMuted, fontSize: m.titleFontSize),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
                 if (metaParts.isNotEmpty) ...[
-                  const SizedBox(height: 10),
+                  SizedBox(height: m.gap(10)),
                   Text(
                     metaParts.join('  ·  '),
-                    style: const TextStyle(color: TvPanelTheme.textFaint, fontSize: 13, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: TvPanelTheme.textFaint,
+                      fontSize: m.subtitleFontSize,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
                 if (genres.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  SizedBox(height: m.gap(6)),
                   Text(
                     genres.join(', '),
-                    style: const TextStyle(color: TvPanelTheme.textFaint, fontSize: 13),
+                    style: TextStyle(color: TvPanelTheme.textFaint, fontSize: m.subtitleFontSize),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
                 if (metadata.summary != null && metadata.summary!.isNotEmpty) ...[
-                  const SizedBox(height: 14),
+                  SizedBox(height: m.gap(14)),
                   Text(
                     metadata.summary!,
-                    style: const TextStyle(color: TvPanelTheme.textMuted, fontSize: 14, height: 1.45),
+                    style: TextStyle(color: TvPanelTheme.textMuted, fontSize: m.markValueFontSize, height: 1.45),
                     maxLines: 6,
                     overflow: TextOverflow.ellipsis,
                   ),

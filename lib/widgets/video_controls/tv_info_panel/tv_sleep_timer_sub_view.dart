@@ -57,7 +57,7 @@ class TvSleepTimerSubView extends StatelessWidget {
               ],
             ),
           );
-          left.add(const SizedBox(height: 14));
+          left.add(SizedBox(height: TvPanelMetrics.of(context).gap(14)));
           first = false;
         }
         left.add(TvPanelSectionHeader(label: t.videoControls.sleepTimerStopAtHeader));

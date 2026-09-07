@@ -88,8 +88,12 @@ class TvChapterSubView extends StatelessWidget {
               width: 72,
               height: 40,
               fit: BoxFit.cover,
-              errorWidget: (context, url, error) =>
-                  const AppIcon(Symbols.image_rounded, fill: 1, color: Colors.white54, size: 24),
+              errorWidget: (context, url, error) => AppIcon(
+                Symbols.image_rounded,
+                fill: 1,
+                color: Colors.white54,
+                size: TvPanelMetrics.of(context).gap(24),
+              ),
             ),
             isCurrent: isCurrent,
             borderColor: Colors.white,

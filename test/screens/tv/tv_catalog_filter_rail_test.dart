@@ -140,6 +140,10 @@ class _Harness {
 
   int sidebarFocusCalls = 0;
 
+  /// Menu presses that got past the screen, which is what the shell's back
+  /// chain and a nested route's pop both live on.
+  int backPressesReachingTheShell = 0;
+
   void dispose() {
     catalogs.dispose();
     hiddenLibraries.dispose();
@@ -183,7 +187,19 @@ void main() {
                 focusContent: () {},
                 isSidebarFocused: false,
                 sideNavigationWidth: 0,
-                child: const Scaffold(body: TvMoviesScreen()),
+                // Stands in for whatever owns Back above this screen: the
+                // shell's own chain on a destination root, the nested route
+                // when the catalog was pushed from an "Alle N" tile. It only
+                // counts, so a press that never reaches it is visible.
+                child: Focus(
+                  onKeyEvent: (node, event) {
+                    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+                      harness.backPressesReachingTheShell++;
+                    }
+                    return KeyEventResult.ignored;
+                  },
+                  child: const Scaffold(body: TvMoviesScreen()),
+                ),
               ),
             ),
           ),
@@ -382,6 +398,33 @@ void main() {
     await press(tester, LogicalKeyboardKey.escape);
     expect(find.byKey(tvCatalogFilterRailKey), findsNothing, reason: 'the open surface takes the press first');
     expect(focusedLabel(), card, reason: 'and the ring stays where it was');
+  });
+
+  // CAT17's other half, and the one an independent review asked for: binding
+  // Menu on a card must not take the press away from whatever owns Back above
+  // this screen. It does not, because the binding is conditional. With the rail
+  // closed the card offers no `onBack` at all, so `FocusableWrapper` falls
+  // through and the press travels; with the rail open the press is spent on the
+  // rail, and the next one travels. That is the same peel the player panel does
+  // per DEC-107, one layer per press.
+  testWidgets('CAT17: Menu peels the rail first and reaches the shell on the next press', (tester) async {
+    final harness = await pump(tester);
+
+    focusGrid(tester);
+    await tester.pumpAndSettle();
+    expect(harness.backPressesReachingTheShell, 0, reason: 'sanity: nothing has pressed Menu yet');
+
+    await press(tester, LogicalKeyboardKey.arrowLeft);
+    focusGrid(tester);
+    await tester.pumpAndSettle();
+    expect(find.byKey(tvCatalogFilterRailKey), findsOneWidget);
+
+    await press(tester, LogicalKeyboardKey.escape);
+    expect(find.byKey(tvCatalogFilterRailKey), findsNothing, reason: 'press one closes the rail');
+    expect(harness.backPressesReachingTheShell, 0, reason: 'and is spent there, not passed on as well');
+
+    await press(tester, LogicalKeyboardKey.escape);
+    expect(harness.backPressesReachingTheShell, 1, reason: 'press two travels, so the chain above is intact');
   });
 
   testWidgets('CAT5: UP and DOWN walk Bronnen ↔ Filters ↔ Sortering', (tester) async {

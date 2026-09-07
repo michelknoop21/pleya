@@ -395,8 +395,17 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     if (!heldTheFocus) return;
     // After the frame that removes the card: the replacement's node may not be
     // attached yet on this one.
+    //
+    // The supersede check covers the frame in between. It is deliberately not
+    // defended against two reconciles racing: a callback scheduled from
+    // `didUpdateWidget` runs at the end of that same frame, so a later update
+    // cannot get in front of it, and a test written for that race passes
+    // either way. What it does catch is the focus moving inside the grid
+    // between this build and the end of the frame, which `_buildCell` records
+    // by writing `_focusedId`. A rescue whose own replacement is no longer the
+    // answer has been overtaken and must not fire.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (!mounted || _focusedId != replacement) return;
       final node = replacement == null ? null : _nodes[replacement];
       if (node != null && node.canRequestFocus) {
         node.requestFocus();

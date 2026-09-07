@@ -675,7 +675,7 @@ class _ChapterPositionLine extends StatelessWidget {
         }
         return Text(
           parts.join(' · '),
-          style: const TextStyle(color: TvPanelTheme.textDim, fontSize: 13),
+          style: TextStyle(color: TvPanelTheme.textDim, fontSize: TvPanelMetrics.of(context).subtitleFontSize),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         );

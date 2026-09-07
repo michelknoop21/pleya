@@ -322,6 +322,23 @@ void main() {
     });
   }
 
+  // The Video tab's rows were only half the panel. An independent review
+  // pointed out that the Information tab and the sub-views kept their own
+  // pixel values, so "the panel is on the shared ladder" was not yet true and
+  // the measurement above could not tell. This one reads the Info tab's own
+  // title, which stood at a hardcoded 22 whatever the display was.
+  testWidgets('the Information tab follows the same ladder (PLR7)', (tester) async {
+    final h = await _pumpPanel(tester, viewSize: const Size(1038, 584));
+    expect(h.focusedPill(), 'information');
+
+    final title = tester.widget<Text>(find.text('Dune: Part Two'));
+    expect(
+      title.style?.fontSize,
+      closeTo(TvSourcePickerLayout.titleFontSize * 0.85, 0.01),
+      reason: 'the Info tab heading is the panel title tier, not a number of its own',
+    );
+  });
+
   testWidgets('on TV the tune button asks for the panel instead of a sheet (PLR3)', (tester) async {
     final player = _PanelPlayer();
     addTearDown(player.dispose);

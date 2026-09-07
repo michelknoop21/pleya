@@ -56,24 +56,28 @@ class _TvSyncSubViewState extends State<TvSyncSubView> {
 
   @override
   Widget build(BuildContext context) {
+    final m = TvPanelMetrics.of(context);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 4, 4, 18),
+            padding: EdgeInsets.fromLTRB(m.gap(4), m.gap(4), m.gap(4), m.gap(18)),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
                 Text(
                   formatSyncOffset(_offset.toDouble()),
-                  style: const TextStyle(color: Colors.white, fontSize: 44, fontWeight: FontWeight.w700, height: 1),
+                  style: TextStyle(color: Colors.white, fontSize: m.gap(44), fontWeight: FontWeight.w700, height: 1),
                 ),
-                const SizedBox(width: 18),
+                SizedBox(width: m.gap(18)),
                 Flexible(
-                  child: Text(_description(), style: const TextStyle(color: TvPanelTheme.textMuted, fontSize: 16)),
+                  child: Text(
+                    _description(),
+                    style: TextStyle(color: TvPanelTheme.textMuted, fontSize: m.valueFontSize),
+                  ),
                 ),
               ],
             ),
@@ -107,10 +111,10 @@ class _TvSyncSubViewState extends State<TvSyncSubView> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 14, 4, 4),
+            padding: EdgeInsets.fromLTRB(m.gap(4), m.gap(14), m.gap(4), m.gap(4)),
             child: Text(
               t.videoControls.tvPanel.syncKeepsForAllTitles,
-              style: const TextStyle(color: TvPanelTheme.textFaint, fontSize: 13),
+              style: TextStyle(color: TvPanelTheme.textFaint, fontSize: m.subtitleFontSize),
             ),
           ),
         ],

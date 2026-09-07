@@ -172,12 +172,23 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
 
   /// CAT17: an already open rail takes the focus instead of returning. A rail
   /// standing open with the ring on a card is a page the remote cannot leave,
-  /// because this is the only LEFT a card offers. Synchronously, because
-  /// without a `setState` nothing schedules the frame a post-frame callback
-  /// would wait for.
+  /// because this is the only LEFT a card offers.
+  ///
+  /// A rail showing a subview is the case that has to go through
+  /// [_closeSubview] rather than straight at the row: the parent rows are not
+  /// mounted while the subview stands in for them, and `requestFocus` on an
+  /// unattached node reports `canRequestFocus` true and then does nothing at
+  /// all, which would leave the remote exactly as stuck as before. With no
+  /// subview the nodes are attached, and the request has to be synchronous
+  /// because without a `setState` nothing schedules the frame a post-frame
+  /// callback would wait for.
   void _openRail() {
     if (_railExpanded) {
-      if (_statusFocus.canRequestFocus) _statusFocus.requestFocus();
+      if (_statusSubview) {
+        _closeSubview();
+      } else if (_statusFocus.canRequestFocus) {
+        _statusFocus.requestFocus();
+      }
       return;
     }
     setState(() {
