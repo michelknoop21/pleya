@@ -1,9 +1,12 @@
 # Mockup 34 tot en met 36, voorgedragen op 7 september 2026
 
-**Status: PROPOSED. Er mag niets van gebouwd worden voordat Michel per beeld akkoord
-geeft.** Dat is de werkwijze die de e-booksset vastlegt en die hier onverkort geldt: een
-schermgolden is het ontwerpcontract voor één venster, en `proposed` betekent dat het
-contract nog niet gesloten is.
+**Status: APPROVED, 7 september 2026.** Het manifest met de hashes en wat de goedkeuring
+precies dekt staat in [`docs/tvos-redesign-34-36-approved.md`](../../tvos-redesign-34-36-approved.md),
+het besluit eronder is [DEC-108](../../DECISIONS.md#dec-108).
+
+Eén uitzondering: `35-aanvragen-c2.png` is **niet** goedgekeurd. Die was de andere kant van
+de keuze bij Alle aanvragen en blijft staan als vastlegging van de afweging, zoals mockup 26
+dat doet voor het afgewezen bibliotheekcontract. Er wordt niet tegen gebouwd.
 
 ## Waar deze set vandaan komt
 
@@ -27,15 +30,16 @@ Die drie gaan over dezelfde drie schermen, dus ze zitten in één set.
 | 34 D | `34-kijklijst-d` | Lege staat mét filter, wat iets anders is dan een lege kijklijst |
 | 35 A | `35-aanvragen-a` | Ontdekken via Aanvragen in de kaarttaal van de catalogus |
 | 35 B | `35-aanvragen-b` | "Alles tonen" op een Seerr-rij, met de Seerr-eigen railregels |
-| 35 C1 | `35-aanvragen-c1` | **Keuze:** Alle aanvragen als raster met statuscapsule |
-| 35 C2 | `35-aanvragen-c2` | **Keuze:** Alle aanvragen als lijst, op TV-maat |
+| 35 C1 | `35-aanvragen-c1` | **Gekozen:** Alle aanvragen als raster met statuscapsule |
+| 35 C2 | `35-aanvragen-c2` | Niet gekozen; bewaard als afweging |
 | 35 D | `35-aanvragen-d` | De statuskeuze als subweergave van de rail, met aantallen |
 | 36 A | `36-zoeken-a` | Zoeken in rust, met recent gezocht |
 | 36 B | `36-zoeken-b` | Resultaten, en het antwoord op SEARCH1 |
 | 36 C | `36-zoeken-c` | Geen resultaten, met de Aanvragen-uitweg |
 
-**35 C1 en C2 zijn twee kanten van één vraag**, geen twee schermen. Er hoort er precies
-één goedgekeurd te worden.
+**35 C1 is gekozen.** De redenering staat in het approval-manifest en in DEC-108: twaalf
+aanvragen per scherm tegen vijf, geen tweede kaarttaal, en het argument vóór een lijst (een
+rij met eigen knoppen) telt op TV niet omdat acties daar via het contextmenu lopen.
 
 ## Wat er bewust niet in zit
 

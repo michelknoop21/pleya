@@ -10,7 +10,7 @@ staat in [docs/DESIGN-INDEX.md](../../DESIGN-INDEX.md).
 | `approved-2026-09-03/` | 09 tot en met 25 | goedgekeurd doelbeeld. De PNG's zeggen zelf nog "candidate"; het [approval-manifest](../../tvos-redesign-09-25-approved.md) is de statusautoriteit, niet de tekst in het beeld |
 | `mockups-2026-09-04/` | 26 tot en met 31 | **de nieuwste**, goedgekeurd. Onder DEC-092 tot en met DEC-096 |
 | `mockups-2026-09-05/` | 33, het spelerpaneel in negen standen | goedgekeurd, DEC-101; vervangt mockup 19 |
-| `mockups-2026-09-07/` | 34 kijklijst, 35 aanvragen, 36 zoeken | **proposed**, nog niet goedgekeurd: er wordt niets van gebouwd tot Michel per beeld akkoord geeft. Zie het manifest in die map |
+| `mockups-2026-09-07/` | 34 kijklijst, 35 aanvragen, 36 zoeken | goedgekeurd 7 september, DEC-108; manifest met hashes in [tvos-redesign-34-36-approved.md](../../tvos-redesign-34-36-approved.md). `35-aanvragen-c2` is de niet-gekozen kant van één vraag en blijft staan als afweging |
 | `mockups-2026-09-02/` | Mijn Pleya-secties | goedgekeurd voor die secties |
 | de vijf `*-reference.png` hier los | los | **historisch**, de voorloper van de northstar-set. Drie ervan worden nergens meer genoemd |
 | `src/` | de HTML-bron | waar de mockups uit gerenderd worden, met `build.mjs` en `tv.css`. Wijzig een beeld hier en render opnieuw, teken er geen tweede versie naast |
