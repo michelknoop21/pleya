@@ -65,7 +65,12 @@ List<Widget> seerrDiscoverAppBarActions({required VoidCallback onOpenRequests}) 
 ];
 
 class SeerrDiscoverScreen extends StatefulWidget {
-  const SeerrDiscoverScreen({super.key});
+  const SeerrDiscoverScreen({super.key, this.initialQuery});
+
+  /// A term to open on, already typed. Mockup 36 C's "Zoek op Aanvragen" hands
+  /// the query Zoeken found nothing for straight over, so the viewer does not
+  /// type it a second time on a remote.
+  final String? initialQuery;
 
   @override
   State<SeerrDiscoverScreen> createState() => _SeerrDiscoverScreenState();
@@ -151,6 +156,14 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     ];
     unawaited(_loadAll());
     unawaited(_loadProviders());
+    final initial = widget.initialQuery?.trim();
+    if (initial != null && initial.isNotEmpty) {
+      // Through the controller rather than straight into `_runSearch`, so the
+      // field shows the term as well as searching for it — the page must not
+      // read as if it decided on its own what to look for.
+      _searchController.text = initial;
+      _onSearchChanged(initial);
+    }
   }
 
   @override

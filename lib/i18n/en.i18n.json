@@ -375,7 +375,14 @@
     "errorNetwork": "Couldn't reach your servers. Check your connection and try again.",
     "noServersTitle": "No servers available",
     "noServersBody": "Add or connect a server to search your media.",
-    "voiceSearch": "Voice search"
+    "voiceSearch": "Voice search",
+    "resultCount": "${count} results",
+    "oneResult": "1 result",
+    "noResultsShort": "no results",
+    "nothingOnServersTitle": "Nothing found on your servers",
+    "nothingOnServersBody": "None of your ${count} media servers has a title like this.",
+    "nothingOnOneServerBody": "Your media server has no title like this.",
+    "searchOnRequests": "Search on Requests"
   },
   "hotkeys": {
     "setShortcutFor": "Set Shortcut for ${actionName}",

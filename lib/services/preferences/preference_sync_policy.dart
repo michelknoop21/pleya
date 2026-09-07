@@ -449,6 +449,12 @@ class PreferenceSyncPolicyRegistry {
 
     // -- Runtime and view state.
     'search_history': _runtimeCache,
+    // The other half of Zoeken's recency (mockup 36 A): the titles that were
+    // opened from a result, drawn as the row at rest on TV. Same policy as the
+    // query strings it sits beside — it is a convenience this device rebuilds
+    // by being used, and a row of posters from someone else's television is not
+    // a preference anyone set.
+    'search_recent_items': _runtimeCache,
     'watch_together_recent_rooms': _runtimeCache,
     'cleaned_old_image_cache': _runtimeCache,
     'buffer_size_migrated_to_auto': _runtimeCache,

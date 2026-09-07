@@ -348,7 +348,14 @@
       "episodes": "Afleveringen",
       "people": "Personen",
       "other": "Overig"
-    }
+    },
+    "resultCount": "${count} resultaten",
+    "oneResult": "1 resultaat",
+    "noResultsShort": "geen resultaten",
+    "nothingOnServersTitle": "Niets gevonden op je servers",
+    "nothingOnServersBody": "Geen van je ${count} mediaservers heeft een titel die hierop lijkt.",
+    "nothingOnOneServerBody": "Je mediaserver heeft geen titel die hierop lijkt.",
+    "searchOnRequests": "Zoek op Aanvragen"
   },
   "hotkeys": {
     "setShortcutFor": "Stel sneltoets in voor ${actionName}",

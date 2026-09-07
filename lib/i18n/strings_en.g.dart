@@ -1237,6 +1237,27 @@ class TranslationsSearchEn {
 
 	/// en: 'Voice search'
 	String get voiceSearch => 'Voice search';
+
+	/// en: '${count} results'
+	String resultCount({required Object count}) => '${count} results';
+
+	/// en: '1 result'
+	String get oneResult => '1 result';
+
+	/// en: 'no results'
+	String get noResultsShort => 'no results';
+
+	/// en: 'Nothing found on your servers'
+	String get nothingOnServersTitle => 'Nothing found on your servers';
+
+	/// en: 'None of your ${count} media servers has a title like this.'
+	String nothingOnServersBody({required Object count}) => 'None of your ${count} media servers has a title like this.';
+
+	/// en: 'Your media server has no title like this.'
+	String get nothingOnOneServerBody => 'Your media server has no title like this.';
+
+	/// en: 'Search on Requests'
+	String get searchOnRequests => 'Search on Requests';
 }
 
 // Path: hotkeys
@@ -7272,6 +7293,13 @@ extension on Translations {
 			'search.noServersTitle' => 'No servers available',
 			'search.noServersBody' => 'Add or connect a server to search your media.',
 			'search.voiceSearch' => 'Voice search',
+			'search.resultCount' => ({required Object count}) => '${count} results',
+			'search.oneResult' => '1 result',
+			'search.noResultsShort' => 'no results',
+			'search.nothingOnServersTitle' => 'Nothing found on your servers',
+			'search.nothingOnServersBody' => ({required Object count}) => 'None of your ${count} media servers has a title like this.',
+			'search.nothingOnOneServerBody' => 'Your media server has no title like this.',
+			'search.searchOnRequests' => 'Search on Requests',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Set Shortcut for ${actionName}',
 			'hotkeys.clearShortcut' => 'Clear shortcut',
 			'hotkeys.noShortcutSet' => 'No shortcut set',
@@ -7417,6 +7445,8 @@ extension on Translations {
 			'videoControls.aspectRatioButton' => 'Aspect ratio',
 			'videoControls.ambientLighting' => 'Ambient lighting',
 			'videoControls.ambientIntensitySubtle' => 'Subtle',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.ambientIntensityBalanced' => 'Balanced',
 			'videoControls.ambientIntensityBright' => 'Bright',
 			'videoControls.tvPanel.information' => 'Information',
@@ -7424,8 +7454,6 @@ extension on Translations {
 			'videoControls.tvPanel.tracks' => 'Tracks',
 			'videoControls.tvPanel.options' => 'Options',
 			'videoControls.tvPanel.more' => 'More…',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.tvPanel.video' => 'Video',
 			'videoControls.tvPanel.display' => 'Display',
 			'videoControls.tvPanel.playback' => 'Playback',
@@ -7931,6 +7959,8 @@ extension on Translations {
 			'liveTv.recordNotAvailable' => 'Recording not available for this program',
 			'liveTv.recordingCancelled' => 'Recording cancelled',
 			'liveTv.recordingRuleDeleted' => 'Recording rule deleted',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.processRecordingRules' => 'Re-evaluate rules',
 			'liveTv.loadingRecordings' => 'Loading recordings...',
 			'liveTv.recordingInProgress' => 'Recording now',
@@ -7938,8 +7968,6 @@ extension on Translations {
 			'liveTv.editRule' => 'Edit rule',
 			'liveTv.editRuleAction' => 'Edit',
 			'liveTv.recordingRuleUpdated' => 'Recording rule updated',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.guideReloadRequested' => 'Guide refresh requested',
 			'liveTv.rulesProcessRequested' => 'Rule re-evaluation requested',
 			'liveTv.recordShow' => 'Record show',
@@ -8445,6 +8473,8 @@ extension on Translations {
 			'seerr.server' => 'Server',
 			'seerr.qualityProfile' => 'Quality profile',
 			'seerr.rootFolder' => 'Root folder',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.myRequests' => 'My requests',
 			'seerr.allRequests' => 'All requests',
 			'seerr.filterAll' => 'All',
@@ -8452,8 +8482,6 @@ extension on Translations {
 			'seerr.filterApproved' => 'Approved',
 			'seerr.filterAvailable' => 'Available',
 			'seerr.filterMovies' => 'Movies',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.filterShows' => 'Shows',
 			'seerr.approve' => 'Approve',
 			'seerr.decline' => 'Decline',

@@ -62,12 +62,19 @@ class TvCatalogCardRail extends StatefulWidget {
   /// Fired when the focus reaches within [loadMoreThreshold] cards of the end.
   final VoidCallback onLoadMore;
 
-  /// The rail above and the rail below. Both explicit rather than left null:
-  /// a null handler falls through to Flutter's directional traversal, which on
-  /// a page of horizontally scrolling rows lands on whichever card happens to
-  /// be nearest in pixels rather than on the row the viewer meant.
-  final VoidCallback? onExitUp;
-  final VoidCallback? onExitDown;
+  /// The rail above and the rail below, told which column the step left from.
+  ///
+  /// Both explicit rather than left null: a null handler falls through to
+  /// Flutter's directional traversal, which on a page of horizontally scrolling
+  /// rows lands on whichever card happens to be nearest in pixels rather than
+  /// on the row the viewer meant.
+  ///
+  /// The index is what LAND4 needs. A rail keeps focus memory — that is what
+  /// makes returning from a detail page work — but that memory must not decide
+  /// where UP and DOWN land: standing on item 2 of this rail, item 2 of the
+  /// next one is the destination however far right that rail was parked.
+  final ValueChanged<int>? onExitUp;
+  final ValueChanged<int>? onExitDown;
 
   /// LEFT off the first card. On these pages that opens CAT5's rail.
   final VoidCallback? onExitLeft;
@@ -96,7 +103,15 @@ class TvCatalogCardRail extends StatefulWidget {
 
 class TvCatalogCardRailState extends State<TvCatalogCardRail> {
   final Map<String, FocusNode> _nodes = {};
+  final _controller = ScrollController();
   String? _focusedId;
+
+  /// The pitch this rail was last laid out on, so [focusColumn] can scroll to a
+  /// card that has not been built yet. Set in `build` rather than recomputed,
+  /// because the geometry depends on the viewport and on `reservedLeading`, and
+  /// a second computation is a second thing to keep in step.
+  double _pitch = 0;
+  double _leadingPad = 0;
 
   @override
   void didUpdateWidget(TvCatalogCardRail oldWidget) {
@@ -109,6 +124,7 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
 
   @override
   void dispose() {
+    _controller.dispose();
     for (final node in _nodes.values) {
       node.dispose();
     }
@@ -127,6 +143,44 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
   }
 
   bool get hasFocusableCard => _nodes.values.any((node) => node.canRequestFocus);
+
+  /// LAND4's destination for a vertical step that left column [column].
+  ///
+  /// Same index is the preferred rule; the clamp is what the geometry rule
+  /// reduces to here. Every rail in the catalog language is laid out by
+  /// [TvCatalogGrid.forWidth] at one card width and one gutter, so column *n*
+  /// of one rail sits at the same horizontal centre as column *n* of the next,
+  /// and "nearest centre" and "same index" are the same answer. A shorter rail
+  /// clamps on its last card: six items, focus on five, into a rail of four
+  /// gives item four.
+  ///
+  /// Deliberately not [focusRail]: that one restores what this rail remembers,
+  /// which is right for arriving from a detail page and wrong for a step from
+  /// the rail above.
+  bool focusColumn(int column) {
+    if (widget.itemIds.isEmpty) return false;
+    final target = column.clamp(0, widget.itemIds.length - 1);
+    final node = _nodes[widget.itemIds[target]];
+    if (node != null && node.canRequestFocus) {
+      node.requestFocus();
+      return true;
+    }
+    // The card is real but not built: a `ListView` only builds what is in view,
+    // and this rail may be parked somewhere else entirely. Bring the column
+    // into view first and ask again next frame — without this, LAND4 would hold
+    // only for the part of a rail that happens to be on screen, which is the
+    // half of the bug that is hardest to see.
+    if (!_controller.hasClients || _pitch <= 0) return false;
+    final position = _controller.position;
+    final wanted = (_leadingPad + target * _pitch).clamp(position.minScrollExtent, position.maxScrollExtent);
+    _controller.jumpTo(wanted);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final built = _nodes[widget.itemIds[target]];
+      if (built != null && built.canRequestFocus) built.requestFocus();
+    });
+    return true;
+  }
 
   void _focusIndex(int index) {
     if (index < 0 || index >= widget.itemIds.length) return;
@@ -150,10 +204,13 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     // a focused card scales about its centre, so half the growth reaches past
     // each edge of the row's box, and a `ListView` clips at its own bounds.
     final headroom = TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: widget.focusScale);
+    _pitch = grid.cardWidth + grid.gutter;
+    _leadingPad = grid.inset + grid.leading;
 
     return SizedBox(
       height: cardHeight + headroom * 2,
       child: ListView.separated(
+        controller: _controller,
         scrollDirection: Axis.horizontal,
         // The ring of the first card reaches into the page margin, and the row
         // must not shear it off — the padding below is what it grows into, and
@@ -176,8 +233,8 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
                 widget.onFocusedIdChanged?.call(id);
                 _maybeLoadMore(index);
               },
-              onNavigateUp: widget.onExitUp,
-              onNavigateDown: widget.onExitDown,
+              onNavigateUp: widget.onExitUp == null ? null : () => widget.onExitUp!(index),
+              onNavigateDown: widget.onExitDown == null ? null : () => widget.onExitDown!(index),
               onNavigateLeft: index == 0 ? widget.onExitLeft : () => _focusIndex(index - 1),
               // The backstop the threshold above does not cover: `hasMore` can
               // become true after the focus has already settled on the last

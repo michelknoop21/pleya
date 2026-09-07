@@ -21,9 +21,19 @@ import '../../utils/layout_constants.dart';
 import 'tv_unified_layout.dart';
 
 class TvSectionHeader extends StatelessWidget {
-  const TvSectionHeader({super.key, required this.title, this.isPartial = false, this.partialLabel});
+  const TvSectionHeader({super.key, required this.title, this.count, this.isPartial = false, this.partialLabel});
 
   final String title;
+
+  /// How many items the band under this heading holds, drawn small and dim
+  /// beside the title — mockup 36 B's "Films 4".
+  ///
+  /// It is part of the heading rather than of the band because that is what
+  /// closes SEARCH1: the number says how many results this section has, and it
+  /// must not move with the focus the way a rail caption does. Null on every
+  /// surface where the count is not a fact worth stating, which is all of them
+  /// except Zoeken.
+  final int? count;
 
   /// True when at least one source that should have contributed to this rail
   /// did not answer. The rail still shows what it has.
@@ -56,6 +66,18 @@ class TvSectionHeader extends StatelessWidget {
             ),
           ),
         ),
+        if (count != null) ...[
+          SizedBox(width: TvDiscoveryLayout.viewAllIconGap * scale * 2),
+          Text(
+            '$count',
+            style: TextStyle(
+              color: tk.text.withValues(alpha: TvCatalogLayout.inkTertiary),
+              fontSize: TvDiscoveryLayout.metaContextFontSize * scale,
+              height: TvDiscoveryLayout.metaLineHeight,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
         // Icon only, no visible sentence. A written "some sources did not
         // answer" beside every affected heading competed with the row title it
         // was supposed to be a footnote to; the glyph at tertiary ink is the

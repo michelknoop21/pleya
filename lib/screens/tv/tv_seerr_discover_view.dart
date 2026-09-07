@@ -295,11 +295,22 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
     });
   }
 
-  /// Moves between shelves. The rail below, or the rail above; off the top of
-  /// the first shelf the search pill.
-  void _focusShelf(int index) {
+  /// Moves between shelves, keeping the column (LAND4).
+  ///
+  /// A rail's own focus memory is what makes returning from a detail page land
+  /// where you left; it must not decide a vertical step. Standing on the third
+  /// card of one shelf, the third card of the next is the destination however
+  /// far right that shelf happens to be parked.
+  void _focusShelf(int index, {int column = 0}) {
     if (index < 0) return;
     if (index >= widget.shelves.length) return;
+    _railKeyFor(widget.shelves[index].id).currentState?.focusColumn(column);
+  }
+
+  /// Arriving at a shelf from somewhere that is not another shelf — the rail
+  /// closing, the page opening — where the memory *is* the right answer.
+  void _restoreShelf(int index) {
+    if (index < 0 || index >= widget.shelves.length) return;
     _railKeyFor(widget.shelves[index].id).currentState?.focusRail();
   }
 
@@ -592,8 +603,8 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
                     semanticLabel: t.seerr.showAll,
                     focusNode: _viewAllFocusFor(shelves[i].id),
                     onSelect: shelves[i].onShowAll,
-                    onNavigateUp: i == 0 ? widget.onExitTop : () => _focusShelf(i - 1),
-                    onNavigateDown: () => _focusShelf(i),
+                    onNavigateUp: i == 0 ? widget.onExitTop : () => _restoreShelf(i - 1),
+                    onNavigateDown: () => _restoreShelf(i),
                   ),
                 ],
               ),
@@ -620,8 +631,8 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
         onLoadMore: shelf.onLoadMore,
         reservedLeading: _railLeading(),
         nodeDebugLabel: 'TvSeerrShelfCard',
-        onExitUp: () => _viewAllFocusFor(shelf.id).requestFocus(),
-        onExitDown: index == shelves.length - 1 ? null : () => _focusShelf(index + 1),
+        onExitUp: (_) => _viewAllFocusFor(shelf.id).requestFocus(),
+        onExitDown: index == shelves.length - 1 ? null : (column) => _focusShelf(index + 1, column: column),
         onExitLeft: _openRail,
         itemBuilder: (context, cell) {
           final media = shelf.items[cell.index];

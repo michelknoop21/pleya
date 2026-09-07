@@ -500,6 +500,13 @@ class _TranslationsSearchNl extends TranslationsSearchEn {
 	@override String get recentSearches => 'Recent gezocht';
 	@override String get clearHistory => 'Wissen';
 	@override late final _TranslationsSearchFiltersNl filters = _TranslationsSearchFiltersNl._(_root);
+	@override String resultCount({required Object count}) => '${count} resultaten';
+	@override String get oneResult => '1 resultaat';
+	@override String get noResultsShort => 'geen resultaten';
+	@override String get nothingOnServersTitle => 'Niets gevonden op je servers';
+	@override String nothingOnServersBody({required Object count}) => 'Geen van je ${count} mediaservers heeft een titel die hierop lijkt.';
+	@override String get nothingOnOneServerBody => 'Je mediaserver heeft geen titel die hierop lijkt.';
+	@override String get searchOnRequests => 'Zoek op Aanvragen';
 }
 
 // Path: hotkeys
@@ -3223,6 +3230,13 @@ extension on TranslationsNl {
 			'search.filters.episodes' => 'Afleveringen',
 			'search.filters.people' => 'Personen',
 			'search.filters.other' => 'Overig',
+			'search.resultCount' => ({required Object count}) => '${count} resultaten',
+			'search.oneResult' => '1 resultaat',
+			'search.noResultsShort' => 'geen resultaten',
+			'search.nothingOnServersTitle' => 'Niets gevonden op je servers',
+			'search.nothingOnServersBody' => ({required Object count}) => 'Geen van je ${count} mediaservers heeft een titel die hierop lijkt.',
+			'search.nothingOnOneServerBody' => 'Je mediaserver heeft geen titel die hierop lijkt.',
+			'search.searchOnRequests' => 'Zoek op Aanvragen',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Stel sneltoets in voor ${actionName}',
 			'hotkeys.clearShortcut' => 'Wis sneltoets',
 			'hotkeys.noShortcutSet' => 'Geen sneltoets ingesteld',
@@ -3395,6 +3409,8 @@ extension on TranslationsNl {
 			'videoControls.tvPanel.allStyleSettingsPath' => 'Mijn Pleya ▸ Instellingen ▸ Ondertitelstijl · kleur, rand, positie, vet',
 			'videoControls.tvPanel.offset' => 'Verschuiving',
 			'videoControls.tvPanel.syncStepHint' => 'Links en rechts 100 ms per stap · vasthouden blijft stappen',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.tvPanel.syncKeepsForAllTitles' => 'Blijft staan voor alle titels tot je hem terugzet',
 			'videoControls.tvPanel.hint' => 'Kiezen past direct toe · Links en rechts stappen een waarde · Menu sluit het paneel',
 			'videoControls.tvPanel.hintBack' => 'Menu gaat terug',
@@ -3402,8 +3418,6 @@ extension on TranslationsNl {
 			'videoControls.tvPanel.sleepActiveHint' => ({required Object time, required Object remaining}) => 'Pauzeert om ${time} · nog ${remaining}',
 			'videoControls.tvPanel.sleepAfter' => 'Na een tijd',
 			'videoControls.tvPanel.sleepEndOfNextEpisode' => 'Einde van de volgende aflevering',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.tvPanel.shadersNone' => 'Geen',
 			'videoControls.tvPanel.hintValueRow' => 'Links en rechts stappen de waarde · Select of Menu is klaar',
 			'videoControls.fullscreenButton' => 'Volledig scherm activeren',
@@ -3909,6 +3923,8 @@ extension on TranslationsNl {
 			'playlists.playlistName' => 'Naam afspeellijst',
 			'playlists.enterPlaylistName' => 'Voer naam afspeellijst in',
 			'playlists.delete' => 'Afspeellijst verwijderen',
+			_ => null,
+		} ?? switch (path) {
 			'playlists.removeItem' => 'Verwijderen uit afspeellijst',
 			'playlists.smartPlaylist' => 'Slimme afspeellijst',
 			'playlists.itemCount' => ({required Object count}) => '${count} items',
@@ -3916,8 +3932,6 @@ extension on TranslationsNl {
 			'playlists.emptyPlaylist' => 'Deze afspeellijst is leeg',
 			'playlists.deleteConfirm' => 'Afspeellijst verwijderen?',
 			'playlists.deleteMessage' => ({required Object name}) => 'Weet je zeker dat je "${name}" wilt verwijderen?',
-			_ => null,
-		} ?? switch (path) {
 			'playlists.created' => 'Afspeellijst gemaakt',
 			'playlists.deleted' => 'Afspeellijst verwijderd',
 			'playlists.itemAdded' => 'Toegevoegd aan afspeellijst',
@@ -4423,6 +4437,8 @@ extension on TranslationsNl {
 			'pleyaShare.joinDescription' => 'Kies een host op je netwerk of voer het adres in, en typ daarna de 6-cijferige code die op dat apparaat staat.',
 			'pleyaShare.hostsFound' => 'Hosts op je netwerk',
 			'pleyaShare.searching' => 'Zoeken naar hosts…',
+			_ => null,
+		} ?? switch (path) {
 			'pleyaShare.noHostsFound' => 'Geen hosts gevonden. Zet delen aan op het andere apparaat en controleer of beide op hetzelfde netwerk zitten.',
 			'pleyaShare.refresh' => 'Opnieuw zoeken',
 			'pleyaShare.manualHost' => 'Hostadres (IP)',
@@ -4430,8 +4446,6 @@ extension on TranslationsNl {
 			'pleyaShare.scanQr' => 'QR-code scannen',
 			'pleyaShare.scanQrHint' => 'Richt de camera op de QR-code op het host-apparaat',
 			'pleyaShare.cameraPermissionDenied' => 'Camera-toegang is nodig om de QR-code te scannen.',
-			_ => null,
-		} ?? switch (path) {
 			'pleyaShare.connect' => 'Verbinden',
 			'pleyaShare.pairFailed' => 'Koppelen mislukt. Controleer de code en probeer opnieuw.',
 			'pleyaShare.paired' => ({required Object name}) => 'Verbonden met ${name}',

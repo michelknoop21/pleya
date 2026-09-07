@@ -35,7 +35,6 @@ import '../services/apple_tv_native_text_entry.dart';
 import '../services/settings_service.dart';
 import '../services/speech_search_service.dart';
 import '../utils/app_logger.dart';
-import '../utils/layout_constants.dart';
 import '../utils/native_input_session.dart';
 import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
@@ -44,11 +43,16 @@ import '../widgets/pill_input_decoration.dart';
 import '../widgets/focusable_media_card.dart';
 import '../widgets/skeletons.dart';
 import '../widgets/state_view.dart';
-import '../widgets/tv/tv_discovery_rail.dart';
-import '../widgets/tv/tv_rail_stack.dart';
+import '../widgets/tv/tv_catalog_item_card.dart';
 import '../widgets/tv/tv_unified_layout.dart';
+import '../widgets/tv/tv_unified_media_card.dart';
 import '../widgets/tv_virtual_keyboard.dart';
 import 'tv/tv_discovery_activation_mixin.dart';
+import 'tv/tv_search_view.dart';
+import 'seerr/seerr_discover_screen.dart';
+import '../media/media_server_client.dart';
+import '../services/search_recents.dart';
+import '../utils/media_navigation_helper.dart';
 
 import '../utils/focus_utils.dart';
 import 'main_screen.dart';
@@ -121,7 +125,15 @@ class _SearchScreenState extends State<SearchScreen>
   // `_firstResultFocusNode`'s card in the non-TV list, and UP/DOWN between the
   // rails at one column (LAND4). Keyed on the section name rather than on a
   // position: which sections are non-empty changes with every query.
-  final _tvRails = TvRailStack();
+  // TV only: the DEC-108 presentation. It owns the bands and their focus
+  // traversal; this state owns the fetches and the query.
+  final _tvSearchKey = GlobalKey<TvSearchViewState>();
+
+  // TV only (mockup 36 A): the titles opened from an earlier search, which is
+  // what "Recent gezocht" draws. `_history` is the other recency — the query
+  // strings — and stays what desktop and mobile show.
+  List<MediaItem> _recentItems = const [];
+  final _clearRecentsFocus = FocusNode(debugLabel: 'TvSearchClearRecents');
   bool _isSearching = false;
   bool _hasSearched = false;
   late final Debounce _searchDebounce;
@@ -160,6 +172,7 @@ class _SearchScreenState extends State<SearchScreen>
     _searchDebounce = debounce(_performSearch, const Duration(milliseconds: 500));
     _searchController.addListener(_onSearchChanged);
     _history = SettingsService.instance.read(SettingsService.searchHistory);
+    _recentItems = readSearchRecents();
     FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
     _nativeEntryUnavailable = PlatformDetector.isAppleTV() && AppleTvNativeTextEntry.instance.isUnavailable;
     // Warm the visibility set so the first query already filters against the
@@ -280,6 +293,7 @@ class _SearchScreenState extends State<SearchScreen>
     _hiddenLibrariesForTvRefresh?.removeListener(_onHiddenLibrariesChanged);
     _searchFocusNode.dispose();
     _firstResultFocusNode.dispose();
+    _clearRecentsFocus.dispose();
     super.dispose();
   }
 
@@ -688,16 +702,200 @@ class _SearchScreenState extends State<SearchScreen>
     }
   }
 
-  /// TV header: query pill + voice button + keyboard. No FocusableTextField
-  /// here — nothing that can trigger the modal machinery.
+  /// Zoeken on TV (DEC-108, mockup 36 A, B and C).
   ///
-  /// On Apple TV the pill itself is the input: select opens the native
-  /// system keyboard, which is also the Siri-Remote dictation surface,
-  /// so the inline D-pad keyboard only renders as fallback when the native
-  /// path is broken. Everywhere else the pill stays read-only and the inline
-  /// keyboard is the input.
-  List<Widget> _buildTvSearchHeader(BuildContext context) {
+  /// The page is `TvSearchView` whole rather than a branch inside the sliver
+  /// tree below: every part of the TV presentation — field, bands, states — is
+  /// laid out by that view, and a TV that shared the desktop `CustomScrollView`
+  /// was how the phone list ended up on a ten-foot panel in the first place
+  /// (CAT11).
+  Widget _buildTv(BuildContext context) {
+    final multiServer = context.watch<MultiServerProvider>();
+    final seerrConfigured = context.watch<SeerrProvider?>()?.isConfigured ?? false;
+    final sections = _tvSections(context, multiServer);
+    final total = _hasSearched ? _tvResultCount() : null;
+    return Scaffold(
+      body: SafeArea(
+        child: TvSearchView(
+          key: _tvSearchKey,
+          searchField: _buildTvSearchField(context, total),
+          sections: sections,
+          hasQuery: _hasSearched,
+          isSearching: _isSearching,
+          totalResultCount: total,
+          error: switch (_searchError) {
+            null => null,
+            _SearchError.noServers => t.search.noServersBody,
+            _ => t.search.errorNetwork,
+          },
+          onRetry: _retrySearch,
+          // 36 C's way out, and only where it leads somewhere. It hands the
+          // query to Ontdekken rather than running the old inline Seerr row:
+          // that row is `seerrRowMetricsOf`'s phone-sized tile, which is the
+          // very thing CAT11 reported, and Ontdekken is now a TV page of its
+          // own that can hold the answer properly.
+          onSearchOnRequests: seerrConfigured && _searchController.text.trim().isNotEmpty
+              ? () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => SeerrDiscoverScreen(initialQuery: _searchController.text.trim())),
+                )
+              : null,
+          serverCount: multiServer.totalServerCount,
+          onExitLeft: _navigateToSidebar,
+          onExitTop: focusSearchInput,
+        ),
+      ),
+    );
+  }
+
+  /// Every result the projection holds, across all seven sections.
+  ///
+  /// Counted off the projection rather than off `_searchResults`, because the
+  /// two are different numbers: the flat list has one entry per *source*, and
+  /// what 36 B states beside the pill is what the page draws — one per title.
+  int _tvResultCount() {
+    final projection = _tvProjection;
+    if (projection == null) return 0;
+    return projection.movies.length +
+        projection.shows.length +
+        projection.episodes.length +
+        projection.collections.length +
+        projection.playlists.length +
+        projection.people.length +
+        projection.other.length;
+  }
+
+  /// The bands, in hoofdstuk 16.1's order — or, before anything has been
+  /// searched for, the one row of titles opened from an earlier search
+  /// (mockup 36 A).
+  List<TvSearchSection> _tvSections(BuildContext context, MultiServerProvider multiServer) {
+    MediaServerClient? clientFor(String serverId) => multiServer.serverManager.getClient(ServerId(serverId));
+
+    if (!_hasSearched) {
+      if (_recentItems.isEmpty) return const [];
+      return [
+        TvSearchSection(
+          id: 'recent',
+          title: t.search.recentSearches,
+          actionLabel: t.search.clearHistory,
+          onAction: _clearRecents,
+          actionFocusNode: _clearRecentsFocus,
+          itemIds: [for (final item in _recentItems) item.globalKey],
+          cardBuilder: (context, cell) => TvCatalogItemCard(
+            item: _recentItems[cell.index],
+            width: cell.width,
+            clientFor: clientFor,
+            focusNode: cell.focusNode,
+            onSelect: () => _openConcrete(_recentItems[cell.index]),
+            onFocusChange: cell.onFocusChange,
+            onNavigateUp: cell.onNavigateUp,
+            onNavigateDown: cell.onNavigateDown,
+            onNavigateLeft: cell.onNavigateLeft,
+            onNavigateRight: cell.onNavigateRight,
+          ),
+        ),
+      ];
+    }
+
+    final projection = _tvProjection;
+    if (projection == null) return const [];
+
+    TvSearchSection groups(String id, String title, List<UnifiedMediaGroup> groups) => TvSearchSection(
+      id: id,
+      title: title,
+      itemIds: [for (final group in groups) group.groupId],
+      cardBuilder: (context, cell) => TvUnifiedMediaCard(
+        group: groups[cell.index],
+        width: cell.width,
+        clientFor: clientFor,
+        focusNode: cell.focusNode,
+        // Activation goes through the fase-4 coordinator, never a
+        // representative-source shortcut (hoofdstuk 4.4). Unchanged from the
+        // rail this replaces; only the tile it hangs on is different.
+        onSelect: () => _activateSearchGroup(groups[cell.index]),
+        onContextMenu: () => openDiscoveryContextMenu(groups[cell.index]),
+        onFocusChange: cell.onFocusChange,
+        onNavigateUp: cell.onNavigateUp,
+        onNavigateDown: cell.onNavigateDown,
+        onNavigateLeft: cell.onNavigateLeft,
+        onNavigateRight: cell.onNavigateRight,
+      ),
+    );
+
+    TvSearchSection items(String id, String title, List<MediaItem> items) => TvSearchSection(
+      id: id,
+      title: title,
+      itemIds: [for (final item in items) item.globalKey],
+      cardBuilder: (context, cell) => TvCatalogItemCard(
+        item: items[cell.index],
+        width: cell.width,
+        clientFor: clientFor,
+        focusNode: cell.focusNode,
+        onSelect: () => _openConcrete(items[cell.index]),
+        onFocusChange: cell.onFocusChange,
+        onNavigateUp: cell.onNavigateUp,
+        onNavigateDown: cell.onNavigateDown,
+        onNavigateLeft: cell.onNavigateLeft,
+        onNavigateRight: cell.onNavigateRight,
+      ),
+    );
+
+    return [
+      if (projection.movies.isNotEmpty) groups('movies', t.unifiedCatalog.moviesTitle, projection.movies),
+      if (projection.shows.isNotEmpty) groups('shows', t.unifiedCatalog.seriesTitle, projection.shows),
+      if (projection.episodes.isNotEmpty) groups('episodes', t.search.filters.episodes, projection.episodes),
+      if (projection.collections.isNotEmpty) items('collections', t.collections.title, projection.collections),
+      if (projection.playlists.isNotEmpty) items('playlists', t.playlists.title, projection.playlists),
+      if (projection.people.isNotEmpty) items('people', t.search.filters.people, projection.people),
+      if (projection.other.isNotEmpty) items('other', t.search.filters.other, projection.other),
+    ];
+  }
+
+  /// Select on a unified result. Remembers the title it opened, so the row at
+  /// rest (36 A) is a row of things this viewer actually went to.
+  void _activateSearchGroup(UnifiedMediaGroup group) {
+    _rememberRecent(group.representativeSource.item);
+    activateDiscoveryGroup(group, onManageServers: widget.onManageServers);
+  }
+
+  /// Select on a source-concrete result — a collection, a playlist, a person —
+  /// and on a card in the row at rest. Both go through the same helper every
+  /// other list in the app opens an item with; the row at rest deliberately
+  /// takes the same path a fresh result does, so a title that has since been
+  /// removed fails where any other stale reference does rather than being
+  /// quietly dropped from the row.
+  void _openConcrete(MediaItem item) {
+    _rememberRecent(item);
+    unawaited(navigateToMediaItem(context, item, onRefresh: updateItem));
+  }
+
+  /// Empties the row at rest. It also clears the query chips, because on this
+  /// page the two are one idea with two presentations, and a Wissen that left
+  /// half of "recent" standing would be a lie about what it did.
+  void _clearRecents() {
+    clearSearchRecents();
+    _clearHistory();
+    setStateIfMounted(() => _recentItems = const []);
+  }
+
+  void _rememberRecent(MediaItem item) {
+    final next = rememberSearchRecent(item);
+    setStateIfMounted(() => _recentItems = next);
+  }
+
+  /// TV header: the query pill, and the count beside it.
+  ///
+  /// On Apple TV the pill itself is the input: select opens the native system
+  /// keyboard, which is also the Siri-Remote dictation surface, so the inline
+  /// D-pad keyboard only renders as fallback when the native path is broken.
+  /// Everywhere else the pill stays read-only and the inline keyboard is the
+  /// input.
+  Widget _buildTvSearchField(BuildContext context, int? total) {
     final nativePill = PlatformDetector.isAppleTV() && !_nativeEntryUnavailable;
+    final countLabel = TvSearchViewState.resultCountLabel(
+      hasQuery: _hasSearched,
+      isSearching: _isSearching,
+      total: total,
+    );
     final pill = ListenableBuilder(
       listenable: _searchController,
       builder: (context, _) {
@@ -707,71 +905,95 @@ class _SearchScreenState extends State<SearchScreen>
             context,
             hintText: t.search.hint,
             prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
+            // 36 B puts "14 resultaten" inside the pill, at tertiary ink. It is
+            // a statement about the query, so it belongs to the field that
+            // holds the query rather than to a line above the first band.
+            suffixIcon: countLabel == null
+                ? null
+                : Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: Text(
+                      countLabel,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: TvCatalogLayout.inkTertiary),
+                      ),
+                    ),
+                  ),
           ),
           isEmpty: text.isEmpty,
           child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
         );
       },
     );
-    return [
-      SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-          child: nativePill
-              ? FocusableButton(
-                  focusNode: _searchFocusNode,
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (nativePill)
+            FocusableButton(
+              focusNode: _searchFocusNode,
+              onPressed: _openNativeSearchEntry,
+              onNavigateLeft: _navigateToSidebar,
+              onNavigateDown: _handleTvKeyboardNavigateDown,
+              onBack: _handleTvKeyboardClose,
+              child: pill,
+            )
+          else
+            pill,
+          // Apple TV gets no mic button: the mic is on the remote and dictates
+          // the moment the system keyboard is up, which selecting the pill
+          // already does. Android TV needs one — there the mic opens
+          // RecognizerIntent.
+          if (_voiceSearchSupported && !PlatformDetector.isAppleTV())
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Center(
+                child: FocusableButton(
                   onPressed: _openNativeSearchEntry,
-                  onNavigateLeft: _navigateToSidebar,
-                  onNavigateDown: _handleTvKeyboardNavigateDown,
-                  onBack: _handleTvKeyboardClose,
-                  child: pill,
-                )
-              : pill,
-        ),
-      ),
-      // Apple TV gets no mic button: the mic is on the remote and dictates the
-      // moment the system keyboard is up, which selecting the pill already
-      // does. Android TV needs one — there the mic opens RecognizerIntent.
-      if (_voiceSearchSupported && !PlatformDetector.isAppleTV())
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-            child: Center(
-              child: FocusableButton(
-                onPressed: _openNativeSearchEntry,
-                child: TextButton.icon(
-                  onPressed: _openNativeSearchEntry,
-                  icon: const AppIcon(Symbols.mic_rounded, fill: 1),
-                  label: Text(t.search.voiceSearch),
+                  child: TextButton.icon(
+                    onPressed: _openNativeSearchEntry,
+                    icon: const AppIcon(Symbols.mic_rounded, fill: 1),
+                    label: Text(t.search.voiceSearch),
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-      if (!nativePill)
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-            child: Center(
-              child: TvVirtualKeyboardPanel(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                hintText: t.search.hint,
-                textInputAction: TextInputAction.search,
-                autofocus: false,
-                showPreview: false,
-                showCancelKey: false,
-                dismissOnPhysicalKeyboardInput: false,
-                onSubmitted: (_) => _handleSearchSubmit(),
-                onClose: _handleTvKeyboardClose,
-                onNavigateDown: _handleTvKeyboardNavigateDown,
+          if (!nativePill)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Center(
+                child: TvVirtualKeyboardPanel(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  hintText: t.search.hint,
+                  textInputAction: TextInputAction.search,
+                  autofocus: false,
+                  showPreview: false,
+                  showCancelKey: false,
+                  dismissOnPhysicalKeyboardInput: false,
+                  onSubmitted: (_) => _handleSearchSubmit(),
+                  onClose: _handleTvKeyboardClose,
+                  onNavigateDown: _handleTvKeyboardNavigateDown,
+                ),
               ),
             ),
-          ),
-        ),
-    ];
+        ],
+      ),
+    );
   }
 
+  /// The one "focus the first result" target every submit/keyboard-navigate
+  /// call site already used. On TV the view answers it — the first card of the
+  /// first band, or the one action an empty state has; off TV it is the first
+  /// card of the list, unchanged.
+  void _focusFirstResult() {
+    if (_tvSearchKey.currentState?.focusFirstResult() ?? false) return;
+    _firstResultFocusNode.requestFocus();
+  }
+
+  /// The desktop and mobile result list. TV never reaches this: `build`
+  /// returns [_buildTv] before the sliver tree is assembled.
   Widget _buildResultsList(BuildContext context) {
     final multiServer = context.watch<MultiServerProvider>();
     final showServerName = multiServer.totalServerCount > 1;
@@ -796,138 +1018,6 @@ class _SearchScreenState extends State<SearchScreen>
         }, childCount: results.length),
       ),
     );
-  }
-
-  /// TV only (hoofdstuk 16.1/16.2, fase 6): renders the unified sections
-  /// instead of [_buildFilterChips] + [_buildResultsList]. Films/Series/
-  /// Afleveringen are unified rows — one tile per logical title — activated
-  /// through the same fase-4 coordinator the discovery landings use
-  /// ([TvDiscoveryActivationMixin.activateDiscoveryGroup]), never a
-  /// representative-source shortcut. Collections, playlists, people and
-  /// anything hoofdstuk 16.1 does not name stay source-concrete, rendered
-  /// exactly like the non-TV result list — there is no identity rule to merge
-  /// them on, and hoofdstuk 16.1 says so outright.
-  List<Widget> _buildTvResultSections(BuildContext context) {
-    final projection = _tvProjection;
-    if (projection == null) return const [];
-    final multiServer = context.watch<MultiServerProvider>();
-    final scale = TvLayoutConstants.scaleOf(context);
-
-    // Which section is first is derived from the data — hoofdstuk 16.1's own
-    // section order, evaluated once — rather than from the order these
-    // section-builders happen to be *called* in below. A closure-order flag
-    // would silently break "focus the first result" the moment a future edit
-    // reordered one of the seven `if` lines without also reordering the flag
-    // logic; a value computed from `projection` itself can't drift from what
-    // is actually rendered first.
-    final firstNonEmptySection = [
-      if (projection.movies.isNotEmpty) 'movies',
-      if (projection.shows.isNotEmpty) 'shows',
-      if (projection.episodes.isNotEmpty) 'episodes',
-      if (projection.collections.isNotEmpty) 'collections',
-      if (projection.playlists.isNotEmpty) 'playlists',
-      if (projection.people.isNotEmpty) 'people',
-      if (projection.other.isNotEmpty) 'other',
-    ].firstOrNull;
-
-    // The rails, and only the rails: the four source-concrete sections are
-    // vertical lists of cards, not stacked bands, so they are not part of the
-    // column contract and Flutter's traversal reaches them the way it always
-    // did.
-    final railSections = [
-      if (projection.movies.isNotEmpty) 'movies',
-      if (projection.shows.isNotEmpty) 'shows',
-      if (projection.episodes.isNotEmpty) 'episodes',
-    ];
-    _tvRails.layOut(railSections);
-
-    List<Widget> groupSection(String key, String title, List<UnifiedMediaGroup> groups) {
-      final railIndex = railSections.indexOf(key);
-      return [
-        SliverToBoxAdapter(
-          child: SizedBox(
-            height: TvDiscoveryLayout.railSectionHeight(scale),
-            child: TvDiscoveryRail(
-              key: _tvRails.keyFor(key),
-              title: title,
-              groups: groups,
-              // A result's title lives only in the rail's caption, so here it
-              // is a label and not a projection of where the remote is. See
-              // [TvDiscoveryRail.alwaysDescribesCurrent]: on a feed the caption
-              // follows the focus, on a result list it names what you are
-              // looking at.
-              alwaysDescribesCurrent: true,
-              clientFor: (serverId) => multiServer.serverManager.getClient(ServerId(serverId)),
-              onActivate: (group) => activateDiscoveryGroup(group, onManageServers: widget.onManageServers),
-              onContextMenu: openDiscoveryContextMenu,
-              // Rail to rail at the same column (LAND4). Only between the three
-              // group rails: above the first one is the search field and below
-              // the last one are the source-concrete result lists, and both are
-              // reached correctly by Flutter's own traversal — which is what a
-              // null handler leaves it to.
-              onNavigateUp: _tvRails.up(railIndex),
-              onNavigateDown: _tvRails.down(railIndex),
-            ),
-          ),
-        ),
-      ];
-    }
-
-    List<Widget> itemSection(String key, String title, List<MediaItem> items) {
-      final isFirst = key == firstNonEmptySection;
-      return [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-            child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              final item = items[index];
-              return FocusableMediaCard(
-                key: Key(item.globalKey),
-                item: item,
-                forceListMode: true,
-                disableScale: true,
-                focusNode: isFirst && index == 0 ? _firstResultFocusNode : null,
-                onRefresh: updateItem,
-                onListRefresh: () => updateItem(item.id),
-                onNavigateLeft: _navigateToSidebar,
-                showServerName: multiServer.totalServerCount > 1,
-              );
-            }, childCount: items.length),
-          ),
-        ),
-      ];
-    }
-
-    return [
-      if (projection.movies.isNotEmpty) ...groupSection('movies', t.unifiedCatalog.moviesTitle, projection.movies),
-      if (projection.shows.isNotEmpty) ...groupSection('shows', t.unifiedCatalog.seriesTitle, projection.shows),
-      if (projection.episodes.isNotEmpty) ...groupSection('episodes', t.search.filters.episodes, projection.episodes),
-      if (projection.collections.isNotEmpty) ...itemSection('collections', t.collections.title, projection.collections),
-      if (projection.playlists.isNotEmpty) ...itemSection('playlists', t.playlists.title, projection.playlists),
-      if (projection.people.isNotEmpty) ...itemSection('people', t.search.filters.people, projection.people),
-      if (projection.other.isNotEmpty) ...itemSection('other', t.search.filters.other, projection.other),
-    ];
-  }
-
-  /// The one "focus the first result" target every submit/keyboard-navigate
-  /// call site already used before TV got unified sections. On TV, "first
-  /// result" is the first tile of the first discovery rail when one was
-  /// rendered — `TvRailStack.focusFirstCurrent()` reaches it through
-  /// `TvDiscoveryRailState.focusCurrent()`, the same API the discovery
-  /// landing uses for restoration — and falls back to `_firstResultFocusNode`
-  /// when the projection has no group sections (search matched only
-  /// collections/playlists/people). Non-TV never rendered a rail, so it
-  /// always falls straight to `_firstResultFocusNode`, unchanged from before
-  /// this projection existed.
-  void _focusFirstResult() {
-    if (_tvRails.focusFirstCurrent()) return;
-    _firstResultFocusNode.requestFocus();
   }
 
   /// Type filter chips shown above the results. A filter with no matches in the
@@ -1003,54 +1093,53 @@ class _SearchScreenState extends State<SearchScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (PlatformDetector.isTV()) return _buildTv(context);
+
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
           primary: false,
           slivers: [
             DesktopSliverAppBar(title: Text(t.common.search), floating: true),
-            if (PlatformDetector.isTV())
-              ..._buildTvSearchHeader(context)
-            else
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-                  child: FocusableTextField(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    textInputAction: TextInputAction.search,
-                    // Don't auto-open the TV keyboard the instant the field
-                    // autofocuses: the field losing/regaining focus around the
-                    // keyboard route races the auto-reopen guard and traps the
-                    // user in the keyboard. Open on explicit select instead —
-                    // same fix already applied to the Seerr search field.
-                    tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
-                    onNavigateLeft: _navigateToSidebar,
-                    onNavigateDown: _searchResults.isNotEmpty && !_isSearching ? _focusFirstResult : null,
-                    onEditingComplete: PlatformDetector.isTV() ? _handleSearchSubmit : null,
-                    onBack: () {
-                      if (_searchController.text.isNotEmpty) {
-                        _searchController.clear();
-                      } else {
-                        _navigateToSidebar();
-                      }
-                    },
-                    decoration: pillInputDecoration(
-                      context,
-                      hintText: t.search.hint,
-                      prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const AppIcon(Symbols.clear_rounded, fill: 1),
-                              onPressed: () {
-                                _searchController.clear();
-                              },
-                            )
-                          : null,
-                    ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                child: FocusableTextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  textInputAction: TextInputAction.search,
+                  // Don't auto-open the TV keyboard the instant the field
+                  // autofocuses: the field losing/regaining focus around the
+                  // keyboard route races the auto-reopen guard and traps the
+                  // user in the keyboard. Open on explicit select instead —
+                  // same fix already applied to the Seerr search field.
+                  tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
+                  onNavigateLeft: _navigateToSidebar,
+                  onNavigateDown: _searchResults.isNotEmpty && !_isSearching ? _focusFirstResult : null,
+                  onEditingComplete: PlatformDetector.isTV() ? _handleSearchSubmit : null,
+                  onBack: () {
+                    if (_searchController.text.isNotEmpty) {
+                      _searchController.clear();
+                    } else {
+                      _navigateToSidebar();
+                    }
+                  },
+                  decoration: pillInputDecoration(
+                    context,
+                    hintText: t.search.hint,
+                    prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const AppIcon(Symbols.clear_rounded, fill: 1),
+                            onPressed: () {
+                              _searchController.clear();
+                            },
+                          )
+                        : null,
                   ),
                 ),
               ),
+            ),
             if (_isSearching)
               SliverPadding(
                 padding: const EdgeInsets.all(16),
@@ -1103,10 +1192,7 @@ class _SearchScreenState extends State<SearchScreen>
                     icon: Symbols.search_off_rounded,
                   ),
                 )
-            else if (PlatformDetector.isTV()) ...[
-              ..._buildTvResultSections(context),
-              if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
-            ] else ...[
+            else ...[
               SliverToBoxAdapter(child: _buildFilterChips(context)),
               _buildResultsList(context),
               if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),

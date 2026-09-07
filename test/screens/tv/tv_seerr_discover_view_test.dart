@@ -295,4 +295,34 @@ void main() {
       reason: 'on the shelves Menu belongs to the route, or Aanvragen is the one section you cannot back out of',
     );
   });
+
+  testWidgets('LAND4: a step between shelves keeps its column, whatever the lower shelf remembers', (tester) async {
+    // A rail keeps focus memory — that is what makes returning from a detail
+    // page land where you left. It must not decide a vertical step: standing on
+    // the third card of one shelf, the third card of the next is where DOWN
+    // goes, however far right that shelf happens to be parked.
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await pumpView(tester, shelves: [_shelf('films', count: 8), _shelf('series', count: 8)]);
+    final rails = tester.stateList<TvCatalogCardRailState>(find.byType(TvCatalogCardRail)).toList();
+    expect(rails, hasLength(2), reason: 'sanity: two shelves are laid out at once');
+
+    String? focusedId() {
+      final label = FocusManager.instance.primaryFocus?.debugLabel;
+      final match = RegExp(r'^TvSeerrShelfCard\((.+)\)$').firstMatch(label ?? '');
+      return match?.group(1);
+    }
+
+    expect(rails.last.focusColumn(6), isTrue);
+    await tester.pumpAndSettle();
+    expect(focusedId(), rails.last.widget.itemIds[6], reason: 'sanity: the lower shelf is parked far right');
+
+    expect(rails.first.focusColumn(2), isTrue);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(focusedId(), rails.last.widget.itemIds[2]);
+  });
 }

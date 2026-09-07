@@ -337,6 +337,13 @@ class SettingsService extends BaseSharedPreferencesService {
 
   /// Recent search queries, most-recent first, capped at 15 by the search UI.
   static const searchHistory = StringListPref('search_history');
+
+  /// The titles opened from a search result, most-recent first, each entry a
+  /// JSON-encoded `MediaItem`. Drawn as "Recent gezocht" on TV (mockup 36 A);
+  /// desktop and mobile keep showing [searchHistory]'s query chips. Capped by
+  /// `searchRecentsLimit` in `services/search_recents.dart`, which owns the
+  /// read and write.
+  static const searchRecentItems = StringListPref('search_recent_items');
   static const viewMode = EnumPref<ViewMode>('view_mode', values: ViewMode.values, defaultValue: ViewMode.grid);
   static const seekTimeSmall = IntPref('seek_time_small', defaultValue: 10);
   static const seekTimeLarge = IntPref('seek_time_large', defaultValue: 30);

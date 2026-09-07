@@ -21,8 +21,11 @@ import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/platform_detector.dart';
-import 'package:pleya/widgets/tv/tv_discovery_rail.dart';
-import 'package:pleya/widgets/tv/tv_expandable_media_tile.dart';
+import 'package:pleya/services/search_recents.dart';
+import 'package:pleya/widgets/tv/tv_catalog_card_rail.dart';
+import 'package:pleya/widgets/tv/tv_section_header.dart';
+import 'package:pleya/widgets/tv/tv_catalog_item_card.dart';
+import 'package:pleya/widgets/tv/tv_unified_media_card.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -104,11 +107,11 @@ void main() {
 
     // The inline keyboard stays put; Done only jumps focus to the results.
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
-    // TV renders unified discovery rails now (fase 6, hoofdstuk 16.1/16.2):
-    // "the first result" is the first tile of the first rail, not a
-    // source-concrete card, so its debug label carries the rail's own
-    // per-group prefix instead of the non-TV list's fixed 'SearchFirstResult'.
-    expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('tvDiscoveryTile_'));
+    // TV draws the results as catalog cards in bands since DEC-108 (mockup
+    // 36 B): "the first result" is the first card of the first band, not a
+    // source-concrete card, so its debug label carries the band's own prefix
+    // instead of the non-TV list's fixed 'SearchFirstResult'.
+    expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('TvSearchCard(movies)'));
     expect(find.text('Movie 1'), findsOneWidget);
 
     // Dispose the screen so its still-armed debounce timer is cancelled.
@@ -129,50 +132,75 @@ void main() {
 
     expect(client.queries, ['movie']);
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
-    // TV renders unified discovery rails now (fase 6, hoofdstuk 16.1/16.2):
-    // "the first result" is the first tile of the first rail, not a
-    // source-concrete card, so its debug label carries the rail's own
-    // per-group prefix instead of the non-TV list's fixed 'SearchFirstResult'.
-    expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('tvDiscoveryTile_'));
+    // TV draws the results as catalog cards in bands since DEC-108 (mockup
+    // 36 B): "the first result" is the first card of the first band, not a
+    // source-concrete card, so its debug label carries the band's own prefix
+    // instead of the non-TV list's fixed 'SearchFirstResult'.
+    expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('TvSearchCard(movies)'));
   });
 
-  testWidgets('TV history chips are focusable and run their query on select', (tester) async {
+  testWidgets('the row at rest is the titles that were opened, not the queries that were typed (36 A)', (tester) async {
+    // Mockup 36 A. `search_history` still holds the query strings, and desktop
+    // and mobile still draw them as chips; TV draws what those queries were
+    // *for*. A row of past query strings asks a viewer to remember what "dune"
+    // got them; a row of posters is the thing itself, one press away.
     SettingsService.instance.write(SettingsService.searchHistory, ['star wars']);
-    final (client, _) = await _pumpTvSearchScreen(tester);
+    rememberSearchRecent(
+      MediaItem(
+        id: 'm1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Andor',
+        year: 2022,
+        serverId: 'server_1',
+        serverName: 'Server',
+      ),
+    );
+
+    await _pumpTvSearchScreen(tester);
     await tester.pumpAndSettle();
 
-    // The default TV landing state (history exists, nothing searched yet).
-    expect(find.text('star wars'), findsOneWidget);
-
-    // D-pad down from the keyboard panel until the history chip has focus.
-    var reachedChip = false;
-    for (var i = 0; i < 12 && !reachedChip; i++) {
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
-      await tester.pumpAndSettle();
-      reachedChip = FocusManager.instance.primaryFocus?.debugLabel == 'filter_chip_star wars';
-    }
-    expect(reachedChip, isTrue, reason: 'history chip must be reachable by D-pad');
-
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
-    await tester.pumpAndSettle();
-
-    expect(client.queries, ['star wars']);
-    expect(find.text('Movie 1'), findsOneWidget);
+    expect(find.text('Andor'), findsOneWidget);
+    expect(find.text('star wars'), findsNothing, reason: 'the query chips are the desktop presentation, not this one');
+    expect(find.byType(TvCatalogItemCard), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('TV clear-history keeps focus alive by returning it to the input', (tester) async {
+  testWidgets('Wissen empties both recencies, and hands the focus back to the input', (tester) async {
+    // 36 A draws no button beside the heading, and without one this row would
+    // be the one list on TV a viewer cannot clear — the chips it replaces
+    // always had a Wissen. It clears both halves, because on this page they
+    // are one idea with two presentations.
     SettingsService.instance.write(SettingsService.searchHistory, ['star wars']);
+    rememberSearchRecent(
+      MediaItem(
+        id: 'm1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Andor',
+        serverId: 'server_1',
+        serverName: 'Server',
+      ),
+    );
+
     final (_, key) = await _pumpTvSearchScreen(tester);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text(t.search.clearHistory).last);
+    // Through the remote rather than through a tap: this control only exists
+    // on TV, and `FocusableWrapper` is what carries Select there.
+    final action = Focus.maybeOf(tester.element(find.text(t.search.clearHistory).last), scopeOk: true)!;
+    action.requestFocus();
+    await tester.pumpAndSettle();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
     await tester.pumpAndSettle();
 
-    expect(find.text('star wars'), findsNothing);
+    expect(find.text('Andor'), findsNothing);
+    expect(readSearchRecents(), isEmpty);
+    expect(SettingsService.instance.read(SettingsService.searchHistory), isEmpty);
+    // The row unmounts under the button that was just pressed; without a new
+    // home primary focus dies with it and the D-pad goes dead.
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'SearchInput');
     expect(key.currentState, isNotNull);
   });
@@ -187,11 +215,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(_keyboardDoneKey());
     await tester.pumpAndSettle();
-    // TV renders unified discovery rails now (fase 6, hoofdstuk 16.1/16.2):
-    // "the first result" is the first tile of the first rail, not a
-    // source-concrete card, so its debug label carries the rail's own
-    // per-group prefix instead of the non-TV list's fixed 'SearchFirstResult'.
-    expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('tvDiscoveryTile_'));
+    // TV draws the results as catalog cards in bands since DEC-108 (mockup
+    // 36 B): "the first result" is the first card of the first band, not a
+    // source-concrete card, so its debug label carries the band's own prefix
+    // instead of the non-TV list's fixed 'SearchFirstResult'.
+    expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('TvSearchCard(movies)'));
 
     // A new search swaps the results sliver for skeletons (zero focusables) —
     // without the safety net, primary focus dies with the unmounted card.
@@ -258,16 +286,17 @@ void main() {
     (key.currentState! as Refreshable).refresh();
     await tester.pumpAndSettle();
 
-    // One rail (Films), one tile, carrying both sources — not two rows for
-    // one title.
-    expect(find.byType(TvDiscoveryRail), findsOneWidget);
-    expect(find.byType(TvSourceCountBadge), findsOneWidget);
-    expect(find.descendant(of: find.byType(TvSourceCountBadge), matching: find.text('2')), findsOneWidget);
+    // One band (Films), one card, carrying both sources — not two rows for
+    // one title. Since DEC-108 the multiplicity is the catalog card's own
+    // top-left marker (hoofdstuk 10.3) rather than the discovery rail's badge.
+    expect(find.byType(TvCatalogCardRail), findsOneWidget);
+    expect(find.byType(TvUnifiedMediaCard), findsOneWidget);
+    expect(find.text(t.unifiedCatalog.sources(count: 2)), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  group('LAND4: TV Search stacks rails, so a vertical step keeps its column', () {
+  group('LAND4: TV Zoeken stacks bands, so a vertical step keeps its column', () {
     MediaItem film(String id, String title) => MediaItem(
       id: id,
       backend: MediaBackend.plex,
@@ -286,20 +315,21 @@ void main() {
       serverName: 'Server',
     );
 
-    String? focusedTile() {
+    /// The column the focus stands on, read off the card's own debug label —
+    /// `TvSearchCard(<band>)(<id>)`.
+    String? focusedCardId() {
       final label = FocusManager.instance.primaryFocus?.debugLabel;
-      const prefix = 'tvDiscoveryTile_';
-      return label != null && label.startsWith(prefix) ? label.substring(prefix.length) : null;
+      final match = RegExp(r'^TvSearchCard\([a-z]+\)\((.+)\)$').firstMatch(label ?? '');
+      return match?.group(1);
     }
 
-    Future<List<TvDiscoveryRailState>> pumpResults(WidgetTester tester) async {
+    Future<List<TvCatalogCardRailState>> pumpResults(WidgetTester tester) async {
       TvDetectionService.debugSetAppleTVOverride(null);
       await TvDetectionService.getInstance(forceTv: true);
       TvDetectionService.setForceTVSync(true);
       tester.view.devicePixelRatio = 1.0;
-      // Taller than the usual TV fixture on purpose: two result rails have to
-      // be laid out at once for a step between them to mean anything, and a
-      // sliver below the viewport is never built.
+      // Taller than the usual TV fixture on purpose: two bands have to be laid
+      // out at once for a step between them to mean anything.
       tester.view.physicalSize = const Size(1280, 1600);
       addTearDown(() {
         tester.view.resetDevicePixelRatio();
@@ -337,55 +367,65 @@ void main() {
       (key.currentState! as Refreshable).refresh();
       await tester.pumpAndSettle();
       addTearDown(() async => tester.pumpWidget(const SizedBox.shrink()));
-      return tester.stateList<TvDiscoveryRailState>(find.byType(TvDiscoveryRail)).toList();
+      return tester.stateList<TvCatalogCardRailState>(find.byType(TvCatalogCardRail)).toList();
     }
 
-    testWidgets('DOWN from the Films rail lands on the same column of the Series rail', (tester) async {
-      final rails = await pumpResults(tester);
-      expect(rails, hasLength(2), reason: 'sanity: a Films rail and a Series rail');
-      final films = rails.first.widget.groups;
-      final series = rails.last.widget.groups;
+    testWidgets('DOWN from the Films band lands on the same column of the Series band', (tester) async {
+      final bands = await pumpResults(tester);
+      expect(bands, hasLength(2), reason: 'sanity: a Films band and a Series band');
+      final films = bands.first.widget.itemIds;
+      final series = bands.last.widget.itemIds;
 
-      // The lower rail is parked far right, so geometry would answer with the
-      // tile it remembers rather than the column the step came from.
-      expect(rails.last.focusGroup(series.first.groupId), isTrue);
+      // The lower band is parked far right, so its own focus memory would
+      // answer with the card it remembers rather than with the column the step
+      // came from — which is precisely what LAND4 forbids.
+      expect(bands.last.focusColumn(6), isTrue);
       await tester.pumpAndSettle();
-      for (var i = 0; i < 6; i++) {
-        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-        await tester.pumpAndSettle();
-      }
-      expect(focusedTile(), series[6].groupId, reason: 'sanity: the Series rail is parked far right');
+      expect(focusedCardId(), series[6], reason: 'sanity: the Series band is parked far right');
 
-      expect(rails.first.focusGroup(films[2].groupId), isTrue);
+      expect(bands.first.focusColumn(2), isTrue);
       await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pumpAndSettle();
-      expect(focusedTile(), series[2].groupId);
+      expect(focusedCardId(), series[2]);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.pumpAndSettle();
-      expect(focusedTile(), films[2].groupId, reason: 'and the round trip ends where it started');
+      expect(focusedCardId(), films[2], reason: 'and the round trip ends where it started');
     });
 
-    testWidgets('Search keeps naming its results, which LAND4 does not touch', (tester) async {
-      // Deliberate and load-bearing: on TV Search the caption under a rail is
-      // the only place a result's title appears, so it is a label rather than a
-      // projection of where the remote is. Gating it on focus would hand the
-      // viewer a page of unnamed artwork. LAND4 changes who decides a vertical
-      // step, and nothing about who may describe a tile — see
-      // [TvDiscoveryRail.alwaysDescribesCurrent] and the SEARCH1 row in
-      // docs/tvos-fysieke-correctieronde.md.
-      final rails = await pumpResults(tester);
+    testWidgets('SEARCH1: the section is named by a heading, which the focus does not move', (tester) async {
+      // The old build named a result through `TvDiscoveryRail`'s caption, with
+      // `alwaysDescribesCurrent` set — one rail carrying an exception to the
+      // rail contract, because on a feed that caption follows the focus and on
+      // a result page it must not. Mockup 36 B settles it the other way: the
+      // name is a heading above a band that owns no caption at all, so there
+      // is nothing left to make an exception for.
+      final bands = await pumpResults(tester);
 
+      expect(find.text(t.unifiedCatalog.moviesTitle), findsOneWidget);
+      expect(find.text(t.unifiedCatalog.seriesTitle), findsOneWidget);
       expect(
-        rails.map((rail) => rail.widget.alwaysDescribesCurrent),
-        everyElement(isTrue),
-        reason: 'every result rail names its current result, focus or no focus',
+        find.descendant(of: find.byType(TvSectionHeader), matching: find.text('8')),
+        findsNWidgets(2),
+        reason: 'the heading states how many results the section has',
       );
-      // And it is really on screen with the focus nowhere near it.
-      expect(rails.first.focusGroup(rails.first.widget.groups.first.groupId), isTrue);
+
+      expect(bands.first.focusColumn(0), isTrue);
       await tester.pumpAndSettle();
-      expect(find.text('Serie 0'), findsWidgets, reason: 'the Series rail is named while the focus is in Films');
+      expect(
+        find.text(t.unifiedCatalog.seriesTitle),
+        findsOneWidget,
+        reason: 'the Series heading stands while the focus is in Films — it names a section, not a position',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      expect(
+        find.text(t.unifiedCatalog.moviesTitle),
+        findsOneWidget,
+        reason: 'and moving within a band does not rewrite its heading',
+      );
     });
   });
 
@@ -433,7 +473,7 @@ void main() {
     (key.currentState! as Refreshable).refresh();
     await tester.pumpAndSettle();
 
-    expect(find.byType(TvDiscoveryRail), findsNothing);
+    expect(find.byType(TvCatalogCardRail), findsNothing, reason: 'off TV the source-concrete list is unchanged');
     expect(find.text('Dune'), findsNWidgets(2));
   });
 
