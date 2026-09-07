@@ -816,7 +816,22 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
           onActionNavigateLeft: _openRail,
         );
       }
-      return TvCatalogEmptyState(title: t.unifiedCatalog.states.emptyTitle, body: t.unifiedCatalog.states.emptyBody);
+      // The third state carries an action for the same reason the other two do,
+      // and not because there is much to retry: `TvCatalogEmptyState` draws
+      // *only* the button, so a state without one has no focusable widget at
+      // all. Alle films on a server with no films then stood as a page the
+      // remote could neither move within nor leave, and closing the rail over
+      // it landed the focus nowhere — the CAT12 hole, in the one state CAT12's
+      // fix did not reach. Verversen is also the honest offer here: an empty
+      // catalog is usually a scan that has not finished.
+      return TvCatalogEmptyState(
+        title: t.unifiedCatalog.states.emptyTitle,
+        body: t.unifiedCatalog.states.emptyBody,
+        actionLabel: t.common.retry,
+        onActionFocusNode: _stateActionFocus,
+        onAction: catalog.refresh,
+        onActionNavigateLeft: _openRail,
+      );
     }
 
     return TvUnifiedMediaGrid(

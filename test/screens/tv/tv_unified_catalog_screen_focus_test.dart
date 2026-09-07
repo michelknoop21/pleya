@@ -209,4 +209,69 @@ void main() {
       reason: 'hoofdstuk 7.6: the row that opened the panel gets focus back, not the grid card focus was on before',
     );
   });
+
+  testWidgets('CAT14: a catalog with nothing in it still has one thing the remote can stand on', (tester) async {
+    // `TvCatalogEmptyState` draws only its button, so a state without an action
+    // has no focusable widget at all. Alle films on a server with no films then
+    // stood as a page that could neither be moved within nor left — and on
+    // tvOS that is terminal, because the engine claims every press before
+    // UIKit's responder chain sees it. The error state and the filtered-empty
+    // state always carried an action; this third one did not.
+    resetSharedPreferencesForTest();
+    SettingsService.resetForTesting();
+    await SettingsService.getInstance();
+    LocaleSettings.setLocaleSync(AppLocale.en);
+
+    final client = _FakeLibraryClient(const []);
+    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+    final multiServer = MultiServerProvider(manager, DataAggregationService(manager));
+    final libraries = LibrariesProvider()
+      ..debugSetLibraries([
+        MediaLibrary(
+          id: '1',
+          backend: MediaBackend.plex,
+          title: 'Films',
+          kind: MediaKind.movie,
+          serverId: 'nas',
+          serverName: 'nas',
+        ),
+      ]);
+    final hiddenLibraries = HiddenLibrariesProvider();
+    final catalog = UnifiedCatalogProvider(
+      multiServer: multiServer,
+      libraries: libraries,
+      hiddenLibraries: hiddenLibraries,
+      kind: MediaKind.movie,
+    );
+    addTearDown(catalog.dispose);
+    addTearDown(libraries.dispose);
+    addTearDown(hiddenLibraries.dispose);
+    addTearDown(multiServer.dispose);
+
+    await catalog.ensureStarted();
+    expect(catalog.snapshot.groups, isEmpty, reason: 'this is the plain-empty state, not the filtered one');
+    expect(catalog.loadFailed, isFalse, reason: 'and not the error one either');
+
+    setGoldenSurfaceSize(tester);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<MultiServerProvider>.value(
+        value: multiServer,
+        child: _shell(TvUnifiedCatalogScreen(catalog: catalog, title: t.unifiedCatalog.moviesTitle)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.unifiedCatalog.states.emptyTitle), findsOneWidget);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'TvCatalogStateAction',
+      reason: 'the one action autofocuses, so the page opens with something focused rather than with nothing',
+    );
+
+    // And it is the way into the rail, which is the only place a viewer can do
+    // anything about an empty catalog — unhide a source, drop a filter.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('TvCatalogRail'));
+  });
 }
