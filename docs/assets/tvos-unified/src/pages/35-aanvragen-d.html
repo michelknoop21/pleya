@@ -1,7 +1,7 @@
 <style>
 .page { padding: 0 var(--grid-inset); }
 .head { display: flex; align-items: flex-end; gap: 22px; }
-.body { display: flex; gap: 34px; margin-top: 30px; align-items: flex-start; }
+.body { display: flex; gap: 34px; margin-top: calc(30px + var(--focus-headroom)); align-items: flex-start; }
 .panel { width: 330px; flex: none; background: var(--surface); border-radius: var(--r-tile); padding: 10px; }
 .panel .prow { display: flex; align-items: center; gap: 16px; height: 76px; padding: 0 18px; border-radius: 12px; }
 .panel .prow .ic { width: 26px; height: 26px; color: var(--ink-2); flex: none; }

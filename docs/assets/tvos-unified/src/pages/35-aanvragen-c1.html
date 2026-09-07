@@ -3,7 +3,7 @@
 .head { display: flex; align-items: flex-end; gap: 22px; }
 .head .tags { margin-left: auto; margin-bottom: 14px; display: flex; gap: 8px; align-items: center; }
 .head .tags .tag { border-color: var(--ink-4); color: var(--ink-3); font-size: 18px; line-height: 28px; }
-.body { display: flex; gap: 34px; margin-top: 30px; align-items: flex-start; }
+.body { display: flex; gap: 34px; margin-top: calc(30px + var(--focus-headroom)); align-items: flex-start; }
 .strip { width: 6px; flex: none; border-radius: 3px; background: var(--fill-2); margin-top: 6px; height: 460px; }
 .grid6 { display: grid; grid-template-columns: repeat(6, 281px); gap: 22px; }
 .grid6 .card .art { width: 281px; height: 422px; }

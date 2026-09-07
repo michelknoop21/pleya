@@ -33,6 +33,12 @@
   --r-card: 12px;
   --r-tile: 16px;
   --r-billboard: 18px;
+  /* Ruimte boven de eerste rij van een raster of rail waarin een kaart de focus
+     kan hebben. Een gefocuste kaart schaalt 1,05 om zijn onderrand, dus een
+     422-kaart groeit 21px omhoog, en daarbovenop komt de ring (gap 8 + 4). Zonder
+     die reservering valt de ring over de paginakop of het raillabel. In de code
+     heet dit `TvCatalogGrid.focusHeadroom` en zit het in `scrollPadding`. */
+  --focus-headroom: 36px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

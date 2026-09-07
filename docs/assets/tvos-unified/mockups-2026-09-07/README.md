@@ -47,6 +47,21 @@ haar kwam. Wat daar ontbreekt is geen ontwerp maar een bouwronde: LIB7 staat in 
 correctieronde als "goedgekeurd, bouw open". Een tweede mockupset erbij tekenen zou het
 werk verplaatsen in plaats van het te doen.
 
+## De headroom boven een raster
+
+Michel zag in de eerste ronde dat een gefocuste kaart in de bovenste rij over de paginakop
+viel. Dat is geen tekenfout maar precies het contract dat CAT10 in code afdwingt, en het
+hoort dus ook in het beeld te staan.
+
+Een gefocuste kaart schaalt 1,05 om zijn onderrand, dus een kaart van 422 groeit 21 pixels
+omhoog, en daarbovenop komt de ring: gap 8 plus lijn 4. Samen 33. `tv.css` draagt dat nu als
+`--focus-headroom: 36px`, en elke band waarin een kaart de focus kan hebben reserveert het
+boven zich. In de code is dit `TvCatalogGrid.focusHeadroom`, dat in `scrollPadding` zit.
+
+Wie een nieuwe pagina met een raster of rail tekent: zet die reservering erbij. Zonder is
+het beeld op de eerste blik goed en op de tweede fout, want de overlap ontstaat alleen in de
+gefocuste stand.
+
 ## Waar de nummers vandaan komen
 
 33 was het spelerpaneel (`../mockups-2026-09-05/`), dus deze set begint bij 34. De
