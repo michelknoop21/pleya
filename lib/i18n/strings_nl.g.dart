@@ -960,6 +960,8 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String recentlyAddedIn({required Object library}) => 'Recent toegevoegd in ${library}';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => 'Overzicht';
+	@override String get readMore => 'Meer lezen';
+	@override String get readMoreSemantic => 'Volledig overzicht lezen';
 	@override String get cast => 'Acteurs';
 	@override String get extras => 'Trailers & Extra\'s';
 	@override String get studio => 'Studio';
@@ -3623,6 +3625,8 @@ extension on TranslationsNl {
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Recent toegevoegd in ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Overzicht',
+			'discover.readMore' => 'Meer lezen',
+			'discover.readMoreSemantic' => 'Volledig overzicht lezen',
 			'discover.cast' => 'Acteurs',
 			'discover.extras' => 'Trailers & Extra\'s',
 			'discover.studio' => 'Studio',
@@ -3921,10 +3925,10 @@ extension on TranslationsNl {
 			'playlists.noPlaylists' => 'Geen afspeellijsten gevonden',
 			'playlists.create' => 'Afspeellijst maken',
 			'playlists.playlistName' => 'Naam afspeellijst',
-			'playlists.enterPlaylistName' => 'Voer naam afspeellijst in',
-			'playlists.delete' => 'Afspeellijst verwijderen',
 			_ => null,
 		} ?? switch (path) {
+			'playlists.enterPlaylistName' => 'Voer naam afspeellijst in',
+			'playlists.delete' => 'Afspeellijst verwijderen',
 			'playlists.removeItem' => 'Verwijderen uit afspeellijst',
 			'playlists.smartPlaylist' => 'Slimme afspeellijst',
 			'playlists.itemCount' => ({required Object count}) => '${count} items',
@@ -4435,10 +4439,10 @@ extension on TranslationsNl {
 			'pleyaShare.revokeGuest' => 'Apparaat verwijderen',
 			'pleyaShare.joinTitle' => 'Verbinden met Pleya Share',
 			'pleyaShare.joinDescription' => 'Kies een host op je netwerk of voer het adres in, en typ daarna de 6-cijferige code die op dat apparaat staat.',
-			'pleyaShare.hostsFound' => 'Hosts op je netwerk',
-			'pleyaShare.searching' => 'Zoeken naar hosts…',
 			_ => null,
 		} ?? switch (path) {
+			'pleyaShare.hostsFound' => 'Hosts op je netwerk',
+			'pleyaShare.searching' => 'Zoeken naar hosts…',
 			'pleyaShare.noHostsFound' => 'Geen hosts gevonden. Zet delen aan op het andere apparaat en controleer of beide op hetzelfde netwerk zitten.',
 			'pleyaShare.refresh' => 'Opnieuw zoeken',
 			'pleyaShare.manualHost' => 'Hostadres (IP)',

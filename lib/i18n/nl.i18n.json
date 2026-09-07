@@ -776,6 +776,8 @@
     "recentlyAddedIn": "Recent toegevoegd in ${library}",
     "playEpisode": "S${season}E${episode}",
     "overview": "Overzicht",
+    "readMore": "Meer lezen",
+    "readMoreSemantic": "Volledig overzicht lezen",
     "cast": "Acteurs",
     "extras": "Trailers & Extra's",
     "studio": "Studio",

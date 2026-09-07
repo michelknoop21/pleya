@@ -2359,10 +2359,11 @@ op de gerenderde breedte echt afkapt, verschijnt een focusbare "Meer lezen"-acti
 `restoreLauncherFocus: true`, hergebruikt van de bestaande sheet op deze pagina
 (`media_detail_screen.dart:1645`) en zonder een tweede `OverlaySheetHost` (INV-1). Scrollen met
 pijltjes zonder focusbare regels volgt het patroon uit `logs_screen.dart` (`_scroll`,
-toetsafhandeling). Rustfocus blijft op de primaire afspeelactie; de "Meer lezen"-actie zit in de
-actierij en is alleen bereikbaar en aanwezig bij echte overflow, zodat er zonder overflow geen
-lege focuspositie ontstaat. UP vanaf de actierij bereikt de actie, nogmaals UP de topnav, DOWN
-keert terug, SELECT opent het paneel, Menu sluit het en herstelt focus exact op de actie.
+toetsafhandeling). Rustfocus blijft op de primaire afspeelactie; de "Meer lezen"-actie staat als
+eigen focusstop tussen de synopsis en de actierij, en bestaat alleen bij echte overflow, zodat er
+zonder overflow geen lege focuspositie ontstaat. UP vanaf de actierij bereikt de actie, nogmaals
+UP de topnav, DOWN keert terug naar de actierij, SELECT opent het paneel, Menu sluit het en
+herstelt focus exact op de actie.
 `hideSpoilers` blijft in het paneel gelden. Het paneel gebruikt de bestaande i18n-sleutel
 `discover.overview` als titel; alleen het actielabel is een nieuwe sleutel. Mobiel en desktop
 behouden `CollapsibleText` en krijgen geen paneel. MOC-09 en MOC-10 dekken de rest van de

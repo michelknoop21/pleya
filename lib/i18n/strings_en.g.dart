@@ -2372,6 +2372,12 @@ class TranslationsDiscoverEn {
 	/// en: 'Overview'
 	String get overview => 'Overview';
 
+	/// en: 'Read more'
+	String get readMore => 'Read more';
+
+	/// en: 'Read the full overview'
+	String get readMoreSemantic => 'Read the full overview';
+
 	/// en: 'Cast'
 	String get cast => 'Cast';
 
@@ -7695,6 +7701,8 @@ extension on Translations {
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Recently Added in ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Overview',
+			'discover.readMore' => 'Read more',
+			'discover.readMoreSemantic' => 'Read the full overview',
 			'discover.cast' => 'Cast',
 			'discover.extras' => 'Trailers & Extras',
 			'discover.studio' => 'Studio',
@@ -7957,10 +7965,10 @@ extension on Translations {
 			'liveTv.recordingFailed' => 'Couldn\'t schedule recording',
 			'liveTv.recordingTargetMissing' => 'Couldn\'t determine recording library',
 			'liveTv.recordNotAvailable' => 'Recording not available for this program',
-			'liveTv.recordingCancelled' => 'Recording cancelled',
-			'liveTv.recordingRuleDeleted' => 'Recording rule deleted',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.recordingCancelled' => 'Recording cancelled',
+			'liveTv.recordingRuleDeleted' => 'Recording rule deleted',
 			'liveTv.processRecordingRules' => 'Re-evaluate rules',
 			'liveTv.loadingRecordings' => 'Loading recordings...',
 			'liveTv.recordingInProgress' => 'Recording now',
@@ -8471,10 +8479,10 @@ extension on Translations {
 			'seerr.quotaUnlimited' => 'Unlimited requests',
 			'seerr.advancedOptions' => 'Advanced options',
 			'seerr.server' => 'Server',
-			'seerr.qualityProfile' => 'Quality profile',
-			'seerr.rootFolder' => 'Root folder',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.qualityProfile' => 'Quality profile',
+			'seerr.rootFolder' => 'Root folder',
 			'seerr.myRequests' => 'My requests',
 			'seerr.allRequests' => 'All requests',
 			'seerr.filterAll' => 'All',

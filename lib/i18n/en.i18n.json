@@ -812,6 +812,8 @@
     "recentlyAddedIn": "Recently Added in ${library}",
     "playEpisode": "S${season}E${episode}",
     "overview": "Overview",
+    "readMore": "Read more",
+    "readMoreSemantic": "Read the full overview",
     "cast": "Cast",
     "extras": "Trailers & Extras",
     "studio": "Studio",

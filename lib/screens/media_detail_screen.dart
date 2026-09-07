@@ -126,11 +126,16 @@ import '../widgets/hub_section.dart';
 import '../widgets/ios_status_bar_tap_scroll_to_top.dart';
 import '../widgets/loading_indicator_box.dart';
 import '../widgets/tv/tv_media_source_picker.dart';
+import '../widgets/tv/tv_panel_primitives.dart';
+import '../widgets/tv/tv_unified_layout.dart';
+import '../widgets/tv/tv_view_all_action.dart';
 import '../widgets/tv_browse_rail.dart';
 import '../widgets/tv_spotlight_background.dart';
+import '../navigation/main_screen_scope.dart';
 import '../utils/error_message_utils.dart';
 
 part 'media_detail/action_buttons.dart';
+part 'media_detail/synopsis_panel.dart';
 
 const double _tvDetailTallPosterScale = TvBrowseRailLayout.compactTallPosterScale;
 const double _tvDetailEpisodeThumbnailScale = TvBrowseRailLayout.compactEpisodeThumbnailScale;
@@ -394,6 +399,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   late final FocusNode _playButtonFocusNode;
   late final FocusNode _ratingChipFocusNode;
+  // DEC-109: the "Meer lezen" action, only ever attached to a widget when the
+  // synopsis actually overflows. Unattached, `requestFocus` on it is a no-op.
+  late final FocusNode _tvDetailReadMoreFocusNode;
+  bool _tvDetailReadMoreVisible = false;
   Timer? _selectKeyTimer;
   bool _isSelectKeyDown = false;
   bool _longPressTriggered = false;
@@ -720,6 +729,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     _extrasFocusNode = FocusNode(debugLabel: 'extras_row');
     _extrasFocusNode.addListener(_handleExtrasFocusChange);
     _playButtonFocusNode = FocusNode(debugLabel: 'play_button');
+    _tvDetailReadMoreFocusNode = FocusNode(debugLabel: 'detail_read_more');
     _ratingChipFocusNode = FocusNode(debugLabel: 'rating_chip');
     _overviewFocusNode = FocusNode(debugLabel: 'overview');
     _castFocusNode = FocusNode(debugLabel: 'cast_row');
@@ -954,6 +964,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     _extrasFocusNode.removeListener(_handleExtrasFocusChange);
     _extrasFocusNode.dispose();
     _playButtonFocusNode.dispose();
+    _tvDetailReadMoreFocusNode.dispose();
     _ratingChipFocusNode.dispose();
     _overviewFocusNode.dispose();
     _castFocusNode.dispose();
@@ -2396,7 +2407,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   /// Focus the first available section above the primary action row.
   void _focusAboveActionRow() {
-    if (PlatformDetector.isTV()) return;
+    if (PlatformDetector.isTV()) {
+      // DEC-109: only a stop here when the synopsis actually overflows.
+      // Otherwise this stays a no-op, same as before that action existed —
+      // no empty focus position appears in its place.
+      if (_tvDetailReadMoreVisible) _tvDetailReadMoreFocusNode.requestFocus();
+      return;
+    }
     if (!widget.isOffline) _ratingChipFocusNode.requestFocus();
   }
 
@@ -3914,7 +3931,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
           _maybeLoadMoreForInitialEpisode();
         }
         final hideSpoilers = SettingsService.instance.read(SettingsService.hideSpoilers);
-        final detailScale = TvLayoutConstants.scaleForSize(size);
+        // OVR1a on this surface (DEC-109): the ten-foot scale is a property of
+        // the panel, not of this route's content box, which INV-1 already
+        // makes shorter than the window when nested under the topnav.
+        // `scaleForSize(size)` read the box and floored to 0.85 well before
+        // the panel itself would, overshooting every measurement below.
+        final detailScale = TvLayoutConstants.scaleOf(context);
         final spotlightTop = (size.height * 0.08).clamp(44.0 * detailScale, 110.0 * detailScale).toDouble();
         final rawRailHeight = _estimateTvDetailRailHeight(size, detailHubs);
         if (!_tvDetailRevealed && _isTvDetailReadyToReveal(metadata)) {
@@ -4045,16 +4067,15 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         final summaryGap = 6 * scale;
         final summaryFontSize = availableHeight < 260 * scale ? 16.2 * scale : 18 * scale;
         final summaryLineHeight = summaryFontSize * 1.35;
-        // The panel scale, not `scale`, and that difference is the whole point.
-        // Everything else in this function is reserved and drawn with the same
-        // `scale`, so it agrees with itself. The action row is not: it is drawn
-        // by `_buildActionButtons` at `_tvDetailActionSize *
-        // TvLayoutConstants.scaleOf(context)`, which `TvDisplayMetrics` pins to
-        // the panel. Box and panel were the same number until SYS-1c split them,
-        // after which this reserve came up about four logical pixels short and
-        // the action row and the source line below it overflowed the foreground
-        // box into the rail.
-        final actionHeight = _tvDetailActionSize * TvLayoutConstants.scaleOf(context);
+        final descriptionStyle = (theme.textTheme.bodyLarge ?? const TextStyle()).copyWith(
+          color: mutedForegroundColor,
+          fontSize: summaryFontSize,
+          height: 1.35,
+        );
+        // `_buildActionButtons` draws the row at `_tvDetailActionSize * scale`
+        // (same `TvLayoutConstants.scaleOf` now that `scale` is that value, see
+        // DEC-109), so this reserve agrees with what actually gets drawn.
+        final actionHeight = _tvDetailActionSize * scale;
         final actionGap = 12 * scale;
         final sourceLineHeight = _unifiedSourceLineHeight(context);
         final hasDescription = description != null && description.isNotEmpty;
@@ -4062,34 +4083,72 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         // stays stable as episode rows gain focus.
         final genres = metadata.genres ?? const <String>[];
         final genreBlockHeight = genres.isEmpty ? 0.0 : genreGap + genreLineHeight;
+        // DEC-109: `TvViewAllAction`'s real rendered height, reserved only for
+        // the lines where the synopsis actually truncates. Measured, not
+        // guessed — a guessed line-height multiplier and the real render can
+        // only drift apart (see `_unifiedSourceLineHeight` on the same point).
+        final readMoreGap = 6 * scale;
+        final readMoreLabelPainter = TextPainter(
+          text: TextSpan(
+            text: t.discover.readMore,
+            // Based on `DefaultTextStyle.of(context).style`, like
+            // `_unifiedSourceLineHeight`: the ambient font family is what
+            // `TvViewAllAction`'s own `Text` actually resolves against, and a
+            // bare `TextStyle` here would measure the platform fallback font
+            // instead and under-reserve for the real one.
+            style: DefaultTextStyle.of(
+              context,
+            ).style.copyWith(fontSize: TvDiscoveryLayout.viewAllActionFontSize * scale, fontWeight: .w600),
+          ),
+          textDirection: Directionality.of(context),
+        )..layout();
+        final readMoreContentHeight = readMoreLabelPainter.height > TvDiscoveryLayout.viewAllIconSize * scale
+            ? readMoreLabelPainter.height
+            : TvDiscoveryLayout.viewAllIconSize * scale;
+        readMoreLabelPainter.dispose();
+        final readMoreHeight =
+            readMoreContentHeight +
+            (2 * TvDiscoveryLayout.viewAllPaddingVertical * scale) +
+            (2 * TvDiscoveryLayout.viewAllFocusRingGap * scale);
         var summaryMaxLines = 0;
         var logoHeight = 0.0;
+        var readMoreVisible = false;
 
         for (var lines = hasDescription ? 3 : 0; lines >= 0; lines--) {
           final descriptionHeight = lines > 0 ? summaryGap + (summaryLineHeight * lines) : 0.0;
+          final overflowsAtLines =
+              lines > 0 && _tvDetailSynopsisOverflows(description!, descriptionStyle, constraints.maxWidth, lines);
+          final readMoreReserve = overflowsAtLines ? readMoreGap + readMoreHeight : 0.0;
           final reservedHeight =
               logoMetadataGap +
               metadataLineHeight +
               genreBlockHeight +
               descriptionHeight +
+              readMoreReserve +
               actionGap +
               actionHeight +
               sourceLineHeight;
           final remainingForLogo = availableHeight - reservedHeight;
           if (remainingForLogo >= minLogoHeight || lines == 0) {
             summaryMaxLines = lines;
+            readMoreVisible = overflowsAtLines;
             logoHeight = remainingForLogo <= 0 ? 0 : remainingForLogo.clamp(0, desiredLogoHeight).toDouble();
             break;
           }
         }
 
+        // Read by `_focusAboveActionRow`, outside the build phase, to know
+        // whether UP from the action row has anywhere to go (DEC-109).
+        _tvDetailReadMoreVisible = readMoreVisible;
         final showLogo = logoHeight > 0;
         final descriptionHeight = summaryMaxLines > 0 ? summaryGap + (summaryLineHeight * summaryMaxLines) : 0.0;
+        final readMoreBlockHeight = readMoreVisible ? readMoreGap + readMoreHeight : 0.0;
         final contentHeight =
             (showLogo ? logoHeight + logoMetadataGap : 0) +
             metadataLineHeight +
             genreBlockHeight +
             descriptionHeight +
+            readMoreBlockHeight +
             actionGap +
             actionHeight +
             sourceLineHeight;
@@ -4156,13 +4215,23 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                           description,
                           maxLines: summaryMaxLines,
                           overflow: .ellipsis,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: mutedForegroundColor,
-                            fontSize: summaryFontSize,
-                            height: 1.35,
-                          ),
+                          style: descriptionStyle,
                         ),
                       ),
+                      if (readMoreVisible) ...[
+                        SizedBox(height: readMoreGap),
+                        TvViewAllAction(
+                          label: t.discover.readMore,
+                          semanticLabel: t.discover.readMoreSemantic,
+                          focusNode: _tvDetailReadMoreFocusNode,
+                          onSelect: () => _openTvDetailSynopsisPanel(description),
+                          // Own focus stop between the synopsis and the action
+                          // row (DEC-109): UP from the action row lands here,
+                          // UP again reaches the topnav, DOWN returns.
+                          onNavigateUp: _focusTopNavigationFromDetail,
+                          onNavigateDown: _focusTvDetailActionRow,
+                        ),
+                      ],
                     ],
                     SizedBox(height: actionGap),
                     SizedBox(height: actionHeight, child: _buildActionButtons(metadata)),
