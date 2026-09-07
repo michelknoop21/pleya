@@ -18,6 +18,13 @@
 ///   with icon, label and current value per row, the selection as tags, and
 ///   Wissen underneath. The grid re-columns from six to five around it.
 ///
+/// [DEC-108](../../../docs/DECISIONS.md#dec-108) adds a third:
+///
+/// * **Opened onto one question** ([TvCatalogFilterRailSubview]) replaces the
+///   panel in place with a back row and one row per answer. It is what the
+///   kijklijst, Aanvragen and Zoeken use instead of an overlay panel, and it is
+///   what closes TOK3.
+///
 /// The second condition is met by [TvCatalogSelectionTagStrip], which draws the
 /// same tags beside the heading while the rail is closed.
 ///
@@ -31,6 +38,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../focus/dpad_navigator.dart';
 import '../../i18n/strings.g.dart';
@@ -52,12 +61,18 @@ class TvCatalogFilterRailRow {
     required this.value,
     required this.focusNode,
     required this.onPressed,
+    this.automationInstance,
     this.onNavigateUp,
     this.onNavigateDown,
     this.onNavigateLeft,
     this.onNavigateRight,
     this.onBack,
   });
+
+  /// What a Pleya Verify scenario calls this row:
+  /// `tv.catalog.rail.row[<surface>.<row>]`. Null leaves the row unaddressable,
+  /// which is what a surface with no scenario yet gets.
+  final String? automationInstance;
 
   final IconData icon;
   final String label;
@@ -155,7 +170,15 @@ class TvCatalogFilterRailPanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (final row in rows) _RailRow(row: row, scale: scale),
+              for (final row in rows)
+                AutomationNode(
+                  id: row.automationInstance == null ? null : AutomationIds.tvCatalogRailRow,
+                  instance: row.automationInstance,
+                  role: 'list.item',
+                  label: row.label,
+                  focusNode: row.focusNode,
+                  child: _RailRow(row: row, scale: scale),
+                ),
               if (tags.isNotEmpty) ...[
                 Container(
                   // Margin, not a Padding wrapper: same box, one widget shallower.
@@ -375,6 +398,410 @@ class _ClearRowState extends State<_ClearRow> {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Finds the rail opened onto one question. Public for the same reason
+/// [tvCatalogFilterRailKey] is: a test asserts *which* state the rail is in.
+const Key tvCatalogFilterRailSubviewKey = ValueKey('tvCatalogFilterRailSubview');
+
+/// One answer inside a rail subview: what it says, how many titles are behind
+/// it, and what picking it does.
+class TvCatalogRailOption {
+  const TvCatalogRailOption({
+    required this.label,
+    required this.isSelected,
+    required this.onPressed,
+    this.count,
+    this.automationInstance,
+  });
+
+  /// What a scenario calls this answer: `tv.catalog.rail.row[<surface>.<key>]`,
+  /// in the same family as the rows one layer up, because from the remote's
+  /// point of view they are the same list.
+  final String? automationInstance;
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onPressed;
+
+  /// Drawn on the right when the screen knows it. Null when it does not, which
+  /// is honest: mockup 35 D shows counts because Seerr reports them, and a
+  /// zero would claim there is nothing behind a choice that has simply not
+  /// been counted.
+  final int? count;
+}
+
+/// The rail opened onto one of its questions
+/// ([DEC-108](../../../docs/DECISIONS.md#dec-108) (4), mockup 35 D).
+///
+/// It replaces the panel in place rather than opening an overlay over it, and
+/// that is the whole point of the shape. On the catalog a rail row opens
+/// `showTvCatalogFilterPanel`, a sheet in front of the page, because that panel
+/// is two zones wide and carries a multi-select behind an Apply. A kijklijst's
+/// Soort and an aanvraag's Status are one column of radio options; putting
+/// those behind an overlay costs a focus hand-off out of the rail and back into
+/// it, for a list that already fits where the rail stands.
+///
+/// It also answers TOK3. The status choice used to be a `SegmentedTabGroup` —
+/// the one segmented accent on TV that no other TV surface carries — and this
+/// is what replaces it.
+///
+/// **The focus wiring is internal, unlike the panel's.** `TvCatalogFilterRailPanel`
+/// hands every direction to the screen because each of its rows has a different
+/// destination; here every row has the same three ([onNavigateLeft] back a
+/// layer, [onNavigateRight] to the grid, Menu back a layer) and the fourth is
+/// simply the row above or below. Wiring that in the screen would mean the
+/// screen owning a focus node per genre, and a rail row left unwired falls
+/// through to Flutter's directional traversal, which from a rail walks sideways
+/// into the grid and leaves the rail standing open with the focus somewhere
+/// else — the one state the whole rail contract exists to prevent.
+class TvCatalogFilterRailSubview extends StatefulWidget {
+  const TvCatalogFilterRailSubview({
+    super.key,
+    required this.title,
+    required this.options,
+    required this.scale,
+    required this.onBack,
+    this.onExitUp,
+    this.onExitDown,
+    this.onExitRight,
+  });
+
+  /// The question this subview answers — "Soort", "Status", "Sortering".
+  final String title;
+
+  final List<TvCatalogRailOption> options;
+  final double scale;
+
+  /// Back to the rail's own rows. Reached from the back row, from LEFT, and
+  /// from Menu, which is [DEC-101](../../../docs/DECISIONS.md#dec-101) punt 3's
+  /// "één laag terug" seen on a second surface.
+  final VoidCallback onBack;
+
+  /// UP off the back row and DOWN off the last option.
+  ///
+  /// Explicit rather than left null, for the reason the class doc gives: a null
+  /// handler is a fall-through into the grid, not a dead end.
+  final VoidCallback? onExitUp;
+  final VoidCallback? onExitDown;
+
+  /// RIGHT out of the subview — the grid, with the rail closed behind it.
+  final VoidCallback? onExitRight;
+
+  @override
+  State<TvCatalogFilterRailSubview> createState() => _TvCatalogFilterRailSubviewState();
+}
+
+class _TvCatalogFilterRailSubviewState extends State<TvCatalogFilterRailSubview> {
+  final _backFocus = FocusNode(debugLabel: 'TvCatalogRailSubviewBack');
+  List<FocusNode> _optionFocus = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _syncNodes();
+    // The subview opens on the answer the viewer currently has, rather than at
+    // the top of a list they then walk down — the same rule the sort panel
+    // follows with its `initialFocusNode`, and the same one mockup 35 D draws
+    // with the ring on "In afwachting".
+    WidgetsBinding.instance.addPostFrameCallback((_) => focusSelected());
+  }
+
+  @override
+  void didUpdateWidget(TvCatalogFilterRailSubview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.options.length != widget.options.length) _syncNodes();
+  }
+
+  void _syncNodes() {
+    final wanted = widget.options.length;
+    final nodes = [..._optionFocus];
+    while (nodes.length > wanted) {
+      nodes.removeLast().dispose();
+    }
+    while (nodes.length < wanted) {
+      nodes.add(FocusNode(debugLabel: 'TvCatalogRailSubviewOption${nodes.length}'));
+    }
+    _optionFocus = nodes;
+  }
+
+  @override
+  void dispose() {
+    _backFocus.dispose();
+    for (final node in _optionFocus) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
+  /// Puts the remote on the chosen answer, or on the back row when there is
+  /// nothing to choose from. Called on open and reachable from the screen, which
+  /// is what makes the subview a place the rail can hand the focus to.
+  void focusSelected() {
+    if (!mounted) return;
+    final index = widget.options.indexWhere((option) => option.isSelected);
+    final node = index >= 0 && index < _optionFocus.length ? _optionFocus[index] : _optionFocus.firstOrNull;
+    final target = node ?? _backFocus;
+    if (target.canRequestFocus) target.requestFocus();
+  }
+
+  void _focusOption(int index) {
+    if (index < 0 || index >= _optionFocus.length) return;
+    final node = _optionFocus[index];
+    if (node.canRequestFocus) node.requestFocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    final scale = widget.scale;
+    final options = widget.options;
+
+    return DecoratedBox(
+      decoration: tvPanelDecoration(tk, TvCatalogLayout.railPanelRadius * scale),
+      // Same reason the panel above scrolls: a question with a dozen answers —
+      // every genre TMDB knows — can outgrow the page, and a scroll view
+      // shrink-wraps under a loose height constraint and clips under a tight
+      // one, which turns an overflow into a list the traversal scrolls as it
+      // walks.
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(TvCatalogLayout.railPanelPadding * scale),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _RailBackRow(
+                title: widget.title,
+                scale: scale,
+                focusNode: _backFocus,
+                onPressed: widget.onBack,
+                onNavigateUp: widget.onExitUp,
+                onNavigateDown: options.isEmpty ? widget.onExitDown : () => _focusOption(0),
+                onNavigateLeft: widget.onBack,
+                onNavigateRight: widget.onExitRight,
+              ),
+              Container(
+                // Margin, not a Padding wrapper: same box, one widget shallower.
+                margin: EdgeInsets.symmetric(
+                  horizontal: TvCatalogLayout.railDividerInset * scale,
+                  vertical: TvCatalogLayout.railDividerGap * scale,
+                ),
+                height: 1,
+                color: tk.outline,
+              ),
+              for (var i = 0; i < options.length; i++)
+                AutomationNode(
+                  id: options[i].automationInstance == null ? null : AutomationIds.tvCatalogRailRow,
+                  instance: options[i].automationInstance,
+                  role: 'list.item',
+                  label: options[i].label,
+                  focusNode: _optionFocus[i],
+                  child: _RailOptionRow(
+                    option: options[i],
+                    scale: scale,
+                    focusNode: _optionFocus[i],
+                    onNavigateUp: i == 0 ? () => _backFocus.requestFocus() : () => _focusOption(i - 1),
+                    onNavigateDown: i == options.length - 1 ? widget.onExitDown : () => _focusOption(i + 1),
+                    onNavigateLeft: widget.onBack,
+                    onNavigateRight: widget.onExitRight,
+                    onBack: widget.onBack,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RailBackRow extends StatefulWidget {
+  const _RailBackRow({
+    required this.title,
+    required this.scale,
+    required this.onPressed,
+    required this.focusNode,
+    this.onNavigateUp,
+    this.onNavigateDown,
+    this.onNavigateLeft,
+    this.onNavigateRight,
+  });
+
+  final String title;
+  final double scale;
+  final VoidCallback onPressed;
+  final FocusNode focusNode;
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateDown;
+  final VoidCallback? onNavigateLeft;
+  final VoidCallback? onNavigateRight;
+
+  @override
+  State<_RailBackRow> createState() => _RailBackRowState();
+}
+
+class _RailBackRowState extends State<_RailBackRow> {
+  bool _isFocused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = widget.scale;
+    final tk = tokens(context);
+    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(TvCatalogLayout.railRowRadius * scale));
+
+    return FocusableWrapper(
+      focusNode: widget.focusNode,
+      onFocusChange: (focused) => setState(() => _isFocused = focused),
+      onSelect: widget.onPressed,
+      onNavigateUp: widget.onNavigateUp,
+      onNavigateDown: widget.onNavigateDown,
+      onNavigateLeft: widget.onNavigateLeft,
+      onNavigateRight: widget.onNavigateRight,
+      onBack: widget.onPressed,
+      disableScale: true,
+      focusShapeBorder: shape,
+      child: Container(
+        // Margin, not a Padding wrapper: same bounds for the focus ring.
+        margin: EdgeInsets.all(TvCatalogLayout.railRowFocusRingGap * scale),
+        height: TvCatalogLayout.railBackHeight * scale,
+        decoration: ShapeDecoration(
+          shape: shape,
+          color: _isFocused ? tk.text.withValues(alpha: TvCatalogLayout.railRowFocusedFill) : Colors.transparent,
+        ),
+        padding: EdgeInsets.symmetric(horizontal: TvCatalogLayout.railRowPaddingHorizontal * scale),
+        child: Row(
+          children: [
+            Icon(
+              Symbols.arrow_back_rounded,
+              size: TvCatalogLayout.railBackIconSize * scale,
+              color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
+            ),
+            SizedBox(width: TvCatalogLayout.railIconGap * scale),
+            Expanded(
+              child: Text(
+                widget.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: TvCatalogLayout.railBackFontSize * scale,
+                  color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
+                  height: 1.1,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RailOptionRow extends StatefulWidget {
+  const _RailOptionRow({
+    required this.option,
+    required this.scale,
+    required this.focusNode,
+    required this.onBack,
+    this.onNavigateUp,
+    this.onNavigateDown,
+    this.onNavigateLeft,
+    this.onNavigateRight,
+  });
+
+  final TvCatalogRailOption option;
+  final double scale;
+  final FocusNode focusNode;
+  final VoidCallback onBack;
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateDown;
+  final VoidCallback? onNavigateLeft;
+  final VoidCallback? onNavigateRight;
+
+  @override
+  State<_RailOptionRow> createState() => _RailOptionRowState();
+}
+
+class _RailOptionRowState extends State<_RailOptionRow> {
+  bool _isFocused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final option = widget.option;
+    final scale = widget.scale;
+    final tk = tokens(context);
+    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(TvCatalogLayout.railRowRadius * scale));
+    final count = option.count;
+
+    return FocusableWrapper(
+      focusNode: widget.focusNode,
+      onFocusChange: (focused) => setState(() => _isFocused = focused),
+      onSelect: option.onPressed,
+      onNavigateUp: widget.onNavigateUp,
+      onNavigateDown: widget.onNavigateDown,
+      onNavigateLeft: widget.onNavigateLeft,
+      onNavigateRight: widget.onNavigateRight,
+      onBack: widget.onBack,
+      // No scale, for the reason `_RailRow` gives: the rail stands against a
+      // grid that must hold still, and a row that grows on focus pushes the
+      // rows under it while the eye is reading them.
+      disableScale: true,
+      focusShapeBorder: shape,
+      semanticLabel: count == null ? option.label : '${option.label}, $count',
+      child: Container(
+        margin: EdgeInsets.all(TvCatalogLayout.railRowFocusRingGap * scale),
+        height: TvCatalogLayout.railOptionHeight * scale,
+        decoration: ShapeDecoration(
+          shape: shape,
+          color: _isFocused ? tk.text.withValues(alpha: TvCatalogLayout.railRowFocusedFill) : Colors.transparent,
+        ),
+        padding: EdgeInsets.symmetric(horizontal: TvCatalogLayout.railRowPaddingHorizontal * scale),
+        child: Row(
+          children: [
+            // The tick sits in the column the rail rows one layer up put their
+            // icon in, so the labels line up between the two layers. Reserved
+            // whether it is drawn or not: a checked row that shifts sideways
+            // under the eye is DEC-053's other half, where "this is the answer"
+            // and "this is where I am" have to stay two different statements.
+            SizedBox(
+              width: TvCatalogLayout.railIconSize * scale,
+              child: option.isSelected
+                  ? Icon(Symbols.check_rounded, size: TvCatalogLayout.railOptionCheckSize * scale, color: tk.text)
+                  : null,
+            ),
+            SizedBox(width: TvCatalogLayout.railIconGap * scale),
+            Expanded(
+              child: Text(
+                option.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: TvCatalogLayout.railOptionFontSize * scale,
+                  fontWeight: option.isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: tk.text.withValues(
+                    alpha: option.isSelected ? TvCatalogLayout.inkPrimary : TvCatalogLayout.railOptionIdleInk,
+                  ),
+                  height: 1.1,
+                ),
+              ),
+            ),
+            if (count != null) ...[
+              SizedBox(width: TvCatalogLayout.railIconGap * scale),
+              Text(
+                '$count',
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: TvCatalogLayout.railOptionCountFontSize * scale,
+                  color: tk.text.withValues(alpha: TvCatalogLayout.railOptionCountInk),
+                  height: 1.1,
+                ),
+              ),
+            ],
           ],
         ),
       ),

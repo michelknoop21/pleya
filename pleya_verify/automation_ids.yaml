@@ -255,3 +255,18 @@ ids:
   - id: sheet.catalog_sort.option
     role: list.item
     instanceable: true
+  - id: tv.catalog.grid
+    role: grid
+    instanceable: true
+  - id: tv.catalog.grid.item
+    role: grid.item
+    instanceable: true
+  - id: tv.catalog.rail
+    role: region
+    instanceable: true
+  - id: tv.catalog.rail.row
+    role: list.item
+    instanceable: true
+  - id: tv.catalog.state
+    role: region
+    instanceable: true

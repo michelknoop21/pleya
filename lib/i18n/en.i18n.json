@@ -1033,7 +1033,13 @@
     "filterAvailable": "Available",
     "sortRecentlyAdded": "Recently added",
     "sortTitle": "Title",
-    "sortYear": "Year"
+    "sortYear": "Year",
+    "emptyFilteredBody": "Your watchlist has ${count} titles, but none of them match this filter.",
+    "coverageIncompleteList": "One of your servers could not be reached, so this list may be incomplete.",
+    "rail": {
+      "kind": "Type",
+      "availability": "Availability"
+    }
   },
   "myPleya": {
     "title": "My Pleya",

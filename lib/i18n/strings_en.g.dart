@@ -2937,6 +2937,14 @@ class TranslationsWatchlistEn {
 
 	/// en: 'Year'
 	String get sortYear => 'Year';
+
+	/// en: 'Your watchlist has ${count} titles, but none of them match this filter.'
+	String emptyFilteredBody({required Object count}) => 'Your watchlist has ${count} titles, but none of them match this filter.';
+
+	/// en: 'One of your servers could not be reached, so this list may be incomplete.'
+	String get coverageIncompleteList => 'One of your servers could not be reached, so this list may be incomplete.';
+
+	late final TranslationsWatchlistRailEn rail = TranslationsWatchlistRailEn.internal(_root);
 }
 
 // Path: myPleya
@@ -6042,6 +6050,21 @@ class TranslationsLibrariesSortLabelsEn {
 	String get lastEpisodeDateAdded => 'Last Episode Date Added';
 }
 
+// Path: watchlist.rail
+class TranslationsWatchlistRailEn {
+	TranslationsWatchlistRailEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Type'
+	String get kind => 'Type';
+
+	/// en: 'Availability'
+	String get availability => 'Availability';
+}
+
 // Path: companionRemote.session
 class TranslationsCompanionRemoteSessionEn {
 	TranslationsCompanionRemoteSessionEn.internal(this._root);
@@ -7809,6 +7832,10 @@ extension on Translations {
 			'watchlist.sortRecentlyAdded' => 'Recently added',
 			'watchlist.sortTitle' => 'Title',
 			'watchlist.sortYear' => 'Year',
+			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Your watchlist has ${count} titles, but none of them match this filter.',
+			'watchlist.coverageIncompleteList' => 'One of your servers could not be reached, so this list may be incomplete.',
+			'watchlist.rail.kind' => 'Type',
+			'watchlist.rail.availability' => 'Availability',
 			'myPleya.title' => 'My Pleya',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 download', other: '{n} downloads', ), 
 			'liveTv.serverNotAvailable' => 'Live TV server is not available.',
@@ -7875,12 +7902,12 @@ extension on Translations {
 			'liveTv.editRule' => 'Edit rule',
 			'liveTv.editRuleAction' => 'Edit',
 			'liveTv.recordingRuleUpdated' => 'Recording rule updated',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.guideReloadRequested' => 'Guide refresh requested',
 			'liveTv.rulesProcessRequested' => 'Rule re-evaluation requested',
 			'liveTv.recordShow' => 'Record show',
 			'collections.title' => 'Collections',
-			_ => null,
-		} ?? switch (path) {
 			'collections.collection' => 'Collection',
 			'collections.empty' => 'Collection is empty',
 			'collections.unknownLibrarySection' => 'Cannot delete: Unknown library section',
@@ -8389,12 +8416,12 @@ extension on Translations {
 			'seerr.filterApproved' => 'Approved',
 			'seerr.filterAvailable' => 'Available',
 			'seerr.filterMovies' => 'Movies',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.filterShows' => 'Shows',
 			'seerr.approve' => 'Approve',
 			'seerr.decline' => 'Decline',
 			'seerr.edit' => 'Edit',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.cancelRequest' => 'Cancel request',
 			'seerr.cancelRequestConfirm' => 'Cancel this request?',
 			'seerr.discoverTitle' => 'Discover on Requests',

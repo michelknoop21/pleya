@@ -1208,6 +1208,9 @@ class _TranslationsWatchlistNl extends TranslationsWatchlistEn {
 	@override String get sortRecentlyAdded => 'Recent toegevoegd';
 	@override String get sortTitle => 'Titel';
 	@override String get sortYear => 'Jaar';
+	@override String emptyFilteredBody({required Object count}) => 'Je kijklijst heeft ${count} titels, maar geen enkele die binnen dit filter valt.';
+	@override String get coverageIncompleteList => 'Eén server was niet bereikbaar, dus deze lijst is mogelijk niet compleet.';
+	@override late final _TranslationsWatchlistRailNl rail = _TranslationsWatchlistRailNl._(_root);
 }
 
 // Path: myPleya
@@ -2448,6 +2451,17 @@ class _TranslationsLibrariesSortLabelsNl extends TranslationsLibrariesSortLabels
 	@override String get dateShared => 'Gedeeld op';
 	@override String get latestEpisodeAirDate => 'Laatste afleveringsuitzending';
 	@override String get lastEpisodeDateAdded => 'Datum laatst toegevoegde aflevering';
+}
+
+// Path: watchlist.rail
+class _TranslationsWatchlistRailNl extends TranslationsWatchlistRailEn {
+	_TranslationsWatchlistRailNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get kind => 'Soort';
+	@override String get availability => 'Beschikbaarheid';
 }
 
 // Path: companionRemote.session
@@ -3781,6 +3795,10 @@ extension on TranslationsNl {
 			'watchlist.sortRecentlyAdded' => 'Recent toegevoegd',
 			'watchlist.sortTitle' => 'Titel',
 			'watchlist.sortYear' => 'Jaar',
+			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Je kijklijst heeft ${count} titels, maar geen enkele die binnen dit filter valt.',
+			'watchlist.coverageIncompleteList' => 'Eén server was niet bereikbaar, dus deze lijst is mogelijk niet compleet.',
+			'watchlist.rail.kind' => 'Soort',
+			'watchlist.rail.availability' => 'Beschikbaarheid',
 			'myPleya.title' => 'Mijn Pleya',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 download', other: '{n} downloads', ), 
 			'liveTv.serverNotAvailable' => 'Live TV-server is niet beschikbaar.',
@@ -3886,12 +3904,12 @@ extension on TranslationsNl {
 			'playlists.emptyPlaylist' => 'Deze afspeellijst is leeg',
 			'playlists.deleteConfirm' => 'Afspeellijst verwijderen?',
 			'playlists.deleteMessage' => ({required Object name}) => 'Weet je zeker dat je "${name}" wilt verwijderen?',
+			_ => null,
+		} ?? switch (path) {
 			'playlists.created' => 'Afspeellijst gemaakt',
 			'playlists.deleted' => 'Afspeellijst verwijderd',
 			'playlists.itemAdded' => 'Toegevoegd aan afspeellijst',
 			'playlists.itemRemoved' => 'Verwijderd uit afspeellijst',
-			_ => null,
-		} ?? switch (path) {
 			'playlists.selectPlaylist' => 'Selecteer afspeellijst',
 			'playlists.errorCreating' => 'Fout bij maken afspeellijst',
 			'playlists.errorDeleting' => 'Fout bij verwijderen afspeellijst',
@@ -4400,12 +4418,12 @@ extension on TranslationsNl {
 			'pleyaShare.scanQr' => 'QR-code scannen',
 			'pleyaShare.scanQrHint' => 'Richt de camera op de QR-code op het host-apparaat',
 			'pleyaShare.cameraPermissionDenied' => 'Camera-toegang is nodig om de QR-code te scannen.',
+			_ => null,
+		} ?? switch (path) {
 			'pleyaShare.connect' => 'Verbinden',
 			'pleyaShare.pairFailed' => 'Koppelen mislukt. Controleer de code en probeer opnieuw.',
 			'pleyaShare.paired' => ({required Object name}) => 'Verbonden met ${name}',
 			'pleyaShare.pairUnreachable' => 'Host niet bereikbaar. Controleer het adres en het netwerk.',
-			_ => null,
-		} ?? switch (path) {
 			'pleyaShare.addFolder' => 'Lokale map toevoegen',
 			'pleyaShare.notificationTitle' => 'Media wordt gedeeld',
 			'pleyaShare.notificationText' => 'Andere Pleya-apparaten kunnen je lokale mappen streamen',

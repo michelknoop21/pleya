@@ -19,15 +19,36 @@ class TvCatalogEmptyState extends StatelessWidget {
     super.key,
     required this.title,
     required this.body,
+    this.icon,
     this.actionLabel,
     this.onAction,
+    this.onActionFocusNode,
     this.onActionNavigateLeft,
   });
+
+  /// Drawn above the title when the state has one.
+  ///
+  /// Optional, and absent on the catalog: mockups 34 D and 36 C give the
+  /// kijklijst and Zoeken a glyph because those two states are reached *while
+  /// looking for something*, and the mark says at a glance which of the two
+  /// searches came back empty — a filter or a query. The catalog's own states
+  /// were approved without one and keep it that way.
+  final IconData? icon;
 
   final String title;
   final String body;
   final String? actionLabel;
   final VoidCallback? onAction;
+
+  /// The action's node, so a caller can put the remote back on it.
+  ///
+  /// The button autofocuses on mount, which covers arriving at the state. It
+  /// does not cover *coming back* to it: LEFT off the button opens CAT5's rail,
+  /// and closing the rail again asks the grid for the focus — on a state with
+  /// no grid that request lands nowhere, and on tvOS a page with the focus and
+  /// no focused item is one you can neither move within nor leave, because the
+  /// engine claims every press before UIKit's responder chain sees it.
+  final FocusNode? onActionFocusNode;
 
   /// LEFT off the one action these states have.
   ///
@@ -36,6 +57,10 @@ class TvCatalogEmptyState extends StatelessWidget {
   /// Without this, the state that most needs the filter controls — "nothing
   /// matches these filters" — is the one state that cannot reach them.
   final VoidCallback? onActionNavigateLeft;
+
+  /// The glyph's size, in the same scaled units as the rest of hoofdstuk 8:
+  /// mockup 34 D's 88 reference pixels through DEC-028's render scale.
+  static const double iconSize = 42;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +72,14 @@ class TvCatalogEmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: TvCatalogEmptyState.iconSize * scale,
+                color: tk.text.withValues(alpha: TvCatalogLayout.inkTertiary),
+              ),
+              SizedBox(height: TvSourcePickerLayout.headerGap * scale),
+            ],
             Text(
               title,
               textAlign: TextAlign.center,
@@ -73,6 +106,7 @@ class TvCatalogEmptyState extends StatelessWidget {
                 onPressed: onAction!,
                 primary: true,
                 autofocus: true,
+                focusNode: onActionFocusNode,
                 onNavigateLeft: onActionNavigateLeft,
               ),
             ],

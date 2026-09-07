@@ -582,6 +582,29 @@ class TvCatalogLayout {
   static const double railClearFontSize = 12;
   static const double railClearIconSize = 13;
 
+  /// The rail opened onto one question (DEC-108 (4), mockup 35 D): a back row,
+  /// then one row per answer with its count on the right.
+  ///
+  /// Shorter than [railRowHeight], because a subview row carries one line where
+  /// a rail row carries a label over its current value. Same radius, same
+  /// focused fill, same horizontal padding — the viewer went one level deeper
+  /// into the same panel, not into a different one.
+  static const double railOptionHeight = 39;
+  static const double railOptionFontSize = 13;
+  static const double railOptionCountFontSize = 12;
+  static const double railOptionCheckSize = 14;
+  static const double railBackHeight = 39;
+  static const double railBackFontSize = 12.5;
+  static const double railBackIconSize = 14;
+
+  /// A count beside an option, and an unselected option's label.
+  ///
+  /// The count is a third-tier fact: it says how much is behind a choice, not
+  /// what the choice is, and at full ink a column of numbers competes with the
+  /// words beside them.
+  static const double railOptionCountInk = 0.42;
+  static const double railOptionIdleInk = 0.72;
+
   /// Fill and sheen of a rail row. Idle rows carry nothing at all, because the panel
   /// itself is the surface, and three filled rows inside a filled panel is the
   /// "stickers on a rectangle" failure `tvPanelDecoration` documents.

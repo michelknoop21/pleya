@@ -292,6 +292,25 @@ class AutomationIds {
   static const String sheetCatalogSort = 'sheet.catalog_sort';
   static const String sheetCatalogSortOption = 'sheet.catalog_sort.option';
 
+  /// The TV surfaces that share CAT5's rail and the catalog grid: Films,
+  /// Series, Kijklijst, Alle aanvragen and Zoeken
+  /// ([DEC-108](../../docs/DECISIONS.md#dec-108)).
+  ///
+  /// One instanceable family rather than one set per screen, because the widgets
+  /// really are one: a scenario that walks the kijklijst's grid and one that
+  /// walks Alle films are the same walk over `tv.catalog.grid[watchlist]` and
+  /// `tv.catalog.grid[movies]`. The instance is the surface, and for an item or
+  /// a rail row it is `<surface>.<index>` / `<surface>.<row>`, so the surfaces
+  /// never have to share a counter.
+  static const String tvCatalogGrid = 'tv.catalog.grid';
+  static const String tvCatalogGridItem = 'tv.catalog.grid.item';
+  static const String tvCatalogRail = 'tv.catalog.rail';
+  static const String tvCatalogRailRow = 'tv.catalog.rail.row';
+
+  /// The one non-content state a catalog-language page can be in: empty,
+  /// filtered-empty or failed. Instanceable by surface, like the rest.
+  static const String tvCatalogState = 'tv.catalog.state';
+
   /// Base ids a scenario may address as `id[instance]` — see
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
@@ -330,6 +349,11 @@ class AutomationIds {
     sheetCatalogFiltersCategory,
     sheetCatalogFiltersOption,
     sheetCatalogSortOption,
+    tvCatalogGrid,
+    tvCatalogGridItem,
+    tvCatalogRail,
+    tvCatalogRailRow,
+    tvCatalogState,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -412,5 +436,10 @@ class AutomationIds {
     {'id': sheetCatalogFiltersApply, 'role': 'button', 'instanceable': false},
     {'id': sheetCatalogSort, 'role': 'sheet', 'instanceable': false},
     {'id': sheetCatalogSortOption, 'role': 'list.item', 'instanceable': true},
+    {'id': tvCatalogGrid, 'role': 'grid', 'instanceable': true},
+    {'id': tvCatalogGridItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': tvCatalogRail, 'role': 'region', 'instanceable': true},
+    {'id': tvCatalogRailRow, 'role': 'list.item', 'instanceable': true},
+    {'id': tvCatalogState, 'role': 'region', 'instanceable': true},
   ];
 }

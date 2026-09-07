@@ -994,7 +994,13 @@
     "filterAvailable": "Beschikbaar",
     "sortRecentlyAdded": "Recent toegevoegd",
     "sortTitle": "Titel",
-    "sortYear": "Jaar"
+    "sortYear": "Jaar",
+    "emptyFilteredBody": "Je kijklijst heeft ${count} titels, maar geen enkele die binnen dit filter valt.",
+    "coverageIncompleteList": "Eén server was niet bereikbaar, dus deze lijst is mogelijk niet compleet.",
+    "rail": {
+      "kind": "Soort",
+      "availability": "Beschikbaarheid"
+    }
   },
   "myPleya": {
     "title": "Mijn Pleya",

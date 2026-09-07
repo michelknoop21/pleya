@@ -6,6 +6,7 @@ import '../widgets/focusable_filter_chip.dart';
 import '../i18n/strings.g.dart';
 import '../media/media_kind.dart';
 import '../media/watchlist_entry.dart';
+import '../media/watchlist_filter.dart';
 import '../models/seerr/seerr_media.dart';
 import '../providers/offline_mode_provider.dart';
 import '../providers/watchlist_provider.dart';
@@ -24,14 +25,12 @@ import '../widgets/watchlist_item_sheet.dart';
 import '../widgets/watchlist_sort_sheet.dart';
 import '../mixins/refreshable.dart';
 import '../navigation/main_screen_scope.dart';
-import '../focus/focus_theme.dart';
+import '../providers/multi_server_provider.dart';
+import '../media/ids.dart';
 import '../utils/grid_size_calculator.dart';
 import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
-import '../widgets/tv/tv_unified_layout.dart';
-
-/// Which slice of the kijklijst is on screen.
-enum WatchlistFilter { all, movies, shows, available }
+import 'tv/tv_watchlist_view.dart';
 
 /// The full kijklijst.
 ///
@@ -51,49 +50,22 @@ class WatchlistScreen extends StatefulWidget {
 
 class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableTab {
   bool _requestedLoad = false;
-  WatchlistFilter _filter = WatchlistFilter.all;
+  WatchlistFilterSelection _selection = WatchlistFilterSelection.none;
   WatchlistSort _sort = WatchlistSort.recentlyAdded;
 
-  /// Focus nodes by [WatchlistEntry.key], never by index — the same rule
-  /// `TvUnifiedMediaGrid` states and for the same reason. The list is re-sorted
-  /// on a sort change, re-filtered on a filter change and re-fetched on a
-  /// reload; position 12 is a different title after any of those, and a node
-  /// held by position would hand the focus to whatever slid into the slot.
-  ///
-  /// Before this the cards got no node at all: `WatchlistCard` accepted one and
-  /// the call site passed none, so there was nothing to focus programmatically
-  /// and nothing for the shell to restore to.
-  final Map<String, FocusNode> _nodes = {};
-
-  /// The card the remote is on, so a re-sort or an availability sweep knows
-  /// where the viewer was standing.
-  String? _focusedKey;
-
-  /// `isPlayable` per entry as of the last build.
-  ///
-  /// A lookup finishing flips a card from [WatchlistUnavailableCard] to
-  /// [FocusableMediaCard] — two different widget types, so the old element is
-  /// unmounted and a new one mounted in the same pass. The [FocusNode] survives
-  /// that (it is owned here, not by the card), but the `Focus` widget that held
-  /// it does not, and a detached node does not get its focus back on its own.
-  /// So the flip is detected and the focus re-requested after the frame. This
-  /// is the case the report described as "the list resolves and the remote is
-  /// suddenly nowhere".
-  final Map<String, bool> _playable = {};
-
-  /// The first filter chip, which is this screen's header: UP out of the first
-  /// grid row lands here, and so does a DOWN out of the bar on an empty list.
+  /// The first filter chip, which is this screen's header off TV: UP out of the
+  /// first grid row lands here, and so does a DOWN out of the bar on an empty
+  /// list.
   final FocusNode _filterBarFocus = FocusNode(debugLabel: 'watchlistFilterBar');
 
-  /// The entries of the last build, in display order.
-  List<WatchlistEntry> _entries = const [];
+  /// The TV presentation, when there is one. It owns the rail, the grid and the
+  /// focus traversal; this state owns the data and the sheets, which the phone
+  /// shares.
+  final GlobalKey<TvWatchlistViewState> _tvKey = GlobalKey<TvWatchlistViewState>();
 
   @override
   void dispose() {
     _filterBarFocus.dispose();
-    for (final node in _nodes.values) {
-      node.dispose();
-    }
     super.dispose();
   }
 
@@ -120,18 +92,23 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
 
   /// Turning on "Available" pays for a full sweep of everything still
   /// unresolved. Lazy resolving and filtering on availability contradict each
-  /// other: entries outside the viewport are still unknown, so without the
+  /// other: entries the cursor has not reached are still unknown, so without the
   /// sweep the filter would hide titles that are in fact there.
-  Future<void> _setFilter(WatchlistFilter filter) async {
-    setState(() => _filter = filter);
-    if (filter == WatchlistFilter.available) {
-      await context.read<WatchlistProvider?>()?.resolveAllUnknown();
-    }
+  ///
+  /// It is the one thing the rail may promise, and the reason it offers
+  /// Beschikbaarheid as two answers rather than three: "Niet beschikbaar" would
+  /// need the same sweep and would then be answering with a snapshot of what
+  /// happened to have resolved.
+  Future<void> _setSelection(WatchlistFilterSelection selection) async {
+    if (selection == _selection) return;
+    final needsSweep = selection.availableOnly && !_selection.availableOnly;
+    setState(() => _selection = selection);
+    if (needsSweep) await context.read<WatchlistProvider?>()?.resolveAllUnknown();
   }
 
   /// Pick an order. Nothing else happens: no fetch, no availability sweep.
   ///
-  /// The contrast with [_setFilter] is the point. Availability is a question
+  /// The contrast with [_setSelection] is the point. Availability is a question
   /// for the servers, so asking for it costs a round of lookups; order is a
   /// property of what is already loaded, so it costs a rebuild.
   Future<void> _pickSort() async {
@@ -143,15 +120,6 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
   List<WatchlistEntry> _sorted(WatchlistProvider provider) =>
       List<WatchlistEntry>.of(provider.entries)..sort(_sort.comparator(provider.sourcePriority));
 
-  List<WatchlistEntry> _applyFilter(List<WatchlistEntry> entries) {
-    return switch (_filter) {
-      WatchlistFilter.all => entries,
-      WatchlistFilter.movies => entries.where((e) => e.kind == MediaKind.movie).toList(),
-      WatchlistFilter.shows => entries.where((e) => e.kind == MediaKind.show).toList(),
-      WatchlistFilter.available => entries.where((e) => e.availability == WatchlistAvailability.available).toList(),
-    };
-  }
-
   Future<void> _openSheet(WatchlistProvider provider, WatchlistEntry entry) async {
     final action = await showWatchlistItemSheet(context, entry: entry, requestability: provider.requestability(entry));
     if (action == null || !mounted) return;
@@ -159,13 +127,15 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
       case WatchlistSheetAction.request:
         await _request(entry);
       case WatchlistSheetAction.remove:
-        // Where the card stood, read before it leaves: the slot is what the
-        // remote should keep, not the entry.
-        final slot = _entries.indexWhere((e) => e.key == entry.key);
         // No snackbar on success: the card leaves the grid, and that is the
         // confirmation. A failure still speaks, because there nothing moves.
+        //
+        // Nothing is done about the focus here any more. The card the remote
+        // was on is about to be disposed, and `TvCatalogCardGrid` already
+        // rescues that: it walks outward from the old position, forward first,
+        // so the card that slides up into the empty cell takes the ring, and an
+        // emptied grid falls back to whatever `onExitTop` points at.
         await WatchlistUiActions.remove(context, entry);
-        _restoreFocusAfterRemoval(slot);
       case WatchlistSheetAction.cancel:
         break;
     }
@@ -195,116 +165,35 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
 
   // ------------------------------------------------------------------ focus
 
-  FocusNode _nodeFor(String key) => _nodes.putIfAbsent(key, () => FocusNode(debugLabel: 'watchlistCard_$key'));
-
-  /// Drops nodes for entries that are gone, and re-requests the focus for an
-  /// entry whose card branch flipped under it.
-  ///
-  /// Called from `build`, because this screen's list is not a widget property:
-  /// it is derived from the provider, the filter and the sort on every build.
-  void _reconcile(List<WatchlistEntry> entries, WatchlistProvider? provider) {
-    final live = {for (final entry in entries) entry.key};
-    for (final key in _nodes.keys.where((k) => !live.contains(k)).toList()) {
-      _nodes.remove(key)?.dispose();
-      _playable.remove(key);
-    }
-
-    String? flipped;
-    for (final entry in entries) {
-      final playable = provider?.isPlayable(entry) ?? false;
-      final previous = _playable[entry.key];
-      _playable[entry.key] = playable;
-      if (previous != null && previous != playable && entry.key == _focusedKey) flipped = entry.key;
-    }
-    if (flipped == null) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final node = _nodes[flipped];
-      // Only if nothing else has claimed the focus in the meantime: the viewer
-      // may have moved on, and a lookup finishing is never a reason to pull
-      // them back.
-      if (node != null && node.canRequestFocus && !node.hasFocus) node.requestFocus();
-    });
-  }
-
-  /// Puts the remote back on the grid after the viewer removed the card they
-  /// were standing on.
-  ///
-  /// Losing the widget under a focused node hands primary focus to the
-  /// enclosing scope, which leaves the page focused with no item on it — and
-  /// on tvOS that is a grid you can neither move within nor leave, because the
-  /// engine claims every press before UIKit's responder chain sees it. Samen
-  /// Kijken's recent rooms have the identical shape one screen over.
-  ///
-  /// Driven from the remove action rather than from [_reconcile], for two
-  /// reasons. The removal is the one case where the viewer is demonstrably on
-  /// this grid and just acted on this card, so no "did that node still hold
-  /// the focus" test is needed — and that test would answer wrongly anyway,
-  /// because the sheet took the focus before the card ever went away. And a
-  /// filter change drops entries too, from the filter bar, where pulling the
-  /// remote back into the grid would be the wrong move.
-  ///
-  /// The slot is kept, not the neighbour: the card that slides up into the
-  /// empty cell is the one the eye is already on. The last card removed leaves
-  /// the slot past the end, so the grid's new last card takes it, and an
-  /// emptied grid falls back to the header.
-  void _restoreFocusAfterRemoval(int slot) {
-    if (!mounted || slot < 0 || !PlatformDetector.isTV()) return;
-    // After the frame: the provider notified, but the grid that must hold the
-    // node has not been rebuilt yet.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final target = _entries.isEmpty ? null : _entries[slot.clamp(0, _entries.length - 1)];
-      final node = target == null ? null : _nodes[target.key];
-      if (node != null && node.canRequestFocus) {
-        node.requestFocus();
-        return;
-      }
-      _focusHeader();
-    });
-  }
-
   /// DOWN out of the top navigation (hoofdstuk 7.1).
   ///
-  /// The card the viewer was on, then the first card, then the header. The last
-  /// fallback matters more than it looks: an empty or still-loading kijklijst
-  /// with nothing focusable strands the remote entirely, because on tvOS the
-  /// engine claims every press before UIKit's responder chain sees it.
+  /// On TV the view answers it — the rail if it is open, otherwise the card the
+  /// viewer was last on. Off TV the filter bar is the only thing on this page
+  /// that is programmatically focusable, and it is also this page's header.
   @override
   void focusActiveTabIfReady() {
     if (!mounted) return;
-    final remembered = _focusedKey;
-    final node = (remembered == null ? null : _nodes[remembered]) ?? _nodes[_entries.firstOrNull?.key];
-    if (node != null && node.canRequestFocus) {
-      node.requestFocus();
+    final tv = _tvKey.currentState;
+    if (tv != null) {
+      tv.focusContent();
       return;
     }
     if (_filterBarFocus.canRequestFocus) _filterBarFocus.requestFocus();
   }
 
-  /// UP out of the first grid row: this screen's header is its filter bar.
-  void _focusHeader() {
-    if (_filterBarFocus.canRequestFocus) _filterBarFocus.requestFocus();
-  }
-
-  /// LEFT off the first column. On the TV shell that is the top navigation —
-  /// see `TvRootShell` on why the coordinator's "sidebar" vocabulary is reused.
+  /// LEFT off the first column, and UP out of the rail. On the TV shell that is
+  /// the top navigation — see `TvRootShell` on why the coordinator's "sidebar"
+  /// vocabulary is reused.
   void _exitLeft() => MainScreenFocusScope.of(context, listen: false)?.focusSidebar();
-
-  void _focusIndex(int index) {
-    if (index < 0 || index >= _entries.length) return;
-    final node = _nodes[_entries[index].key];
-    if (node != null && node.canRequestFocus) node.requestFocus();
-  }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<WatchlistProvider?>();
     final isOffline = context.watch<OfflineModeProvider?>()?.isOffline ?? false;
     final all = provider == null ? const <WatchlistEntry>[] : _sorted(provider);
-    final entries = _applyFilter(all);
-    _entries = entries;
-    _reconcile(entries, provider);
+    final entries = _selection.apply(all);
+
+    if (PlatformDetector.isTV()) return _buildTv(provider, all, entries, isOffline: isOffline);
 
     return Scaffold(
       body: CustomScrollView(
@@ -316,12 +205,12 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
           SliverToBoxAdapter(
             child: _FilterBar(
               firstChipFocusNode: _filterBarFocus,
-              filter: _filter,
+              selection: _selection,
               // Availability needs live servers, so offline the filter is not
               // a slower answer but a wrong one. Sorting has no such problem
               // and stays where it is.
               showAvailable: !isOffline,
-              onChanged: _setFilter,
+              onChanged: (chip) => _setSelection(WatchlistFilterSelection.chip(chip)),
               sort: _sort,
               onSortPressed: _pickSort,
             ),
@@ -339,7 +228,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
                 message: all.isEmpty ? t.watchlist.emptyBody : null,
                 // Without a retry there is no focusable element left here, and
                 // a TV remote would have nowhere to go.
-                onRetry: all.isEmpty ? _reload : () => _setFilter(WatchlistFilter.all),
+                onRetry: all.isEmpty ? _reload : () => _setSelection(WatchlistFilterSelection.none),
                 retryLabel: all.isEmpty ? t.watchlist.retry : t.watchlist.filterAll,
               ),
             )
@@ -347,6 +236,44 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
             _buildGrid(provider, entries),
         ],
       ),
+    );
+  }
+
+  /// The kijklijst on TV: the same data, in the catalog language (DEC-108).
+  ///
+  /// The view is handed finished lists and callbacks and owns no provider of
+  /// its own — that split is what lets it be pumped in a test without a
+  /// `WatchlistProvider`, and it is why the sheets, the sweep and the load stay
+  /// here where the phone can share them.
+  Widget _buildTv(
+    WatchlistProvider? provider,
+    List<WatchlistEntry> all,
+    List<WatchlistEntry> entries, {
+    required bool isOffline,
+  }) {
+    return TvWatchlistView(
+      key: _tvKey,
+      entries: entries,
+      totalCount: all.length,
+      selection: _selection,
+      sort: _sort,
+      onSelectionChanged: _setSelection,
+      onSortChanged: (sort) => setState(() => _sort = sort),
+      onActivate: provider == null ? (_) {} : (entry) => _openSheet(provider, entry),
+      isLoading: provider == null || (provider.isLoading && all.isEmpty),
+      coverageComplete: provider?.isComplete ?? true,
+      offerAvailability: !isOffline,
+      onReload: _reload,
+      error: all.isEmpty ? provider?.error : null,
+      clientFor: (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
+      onNeedsAvailability: provider == null
+          ? null
+          : (wanted) {
+              for (final entry in wanted) {
+                provider.resolveAvailability(entry);
+              }
+            },
+      onExitTop: _exitLeft,
     );
   }
 
@@ -363,7 +290,6 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
   static int _titleLinesFor(double width) => ScreenBreakpoints.isDesktopOrLarger(width) ? 1 : 2;
 
   Widget _buildGrid(WatchlistProvider provider, List<WatchlistEntry> entries) {
-    if (PlatformDetector.isTV()) return _buildTvGrid(provider, entries);
     // The bottom bar is the shell's, not this screen's, so the room it takes
     // comes from the padding the shell leaves behind rather than from a number
     // typed in here.
@@ -442,96 +368,12 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
       ),
     );
   }
-
-  /// The kijklijst on TV, on the shared TV portrait geometry (P5/P6).
-  ///
-  /// Deliberately **not** the discovery rail's expandable tile: a rail is a
-  /// curated row you walk along, and a kijklijst of three hundred titles is a
-  /// wall you scroll — which is what [TvCatalogGrid] is for. What it does share
-  /// with every other TV surface is the geometry. Column count, card width,
-  /// gutter and page inset all come from [TvCatalogGrid.forWidth], so a poster
-  /// here is the size a poster is on Films and Series.
-  ///
-  /// It replaces `MediaGridGeometry` + `GridSizeCalculator` on this platform
-  /// only. Those are driven by `SettingsService.libraryDensity` — a preference
-  /// that means something on a desktop window someone resizes and nothing on a
-  /// fixed 10-foot panel — and they are why this grid's cards were a different
-  /// size from everything around them. The non-TV branch above is untouched;
-  /// the other seven `MediaGridGeometry` call sites are not this round's.
-  ///
-  /// Traversal is wired, not inferred, for the reason `TvUnifiedMediaGrid`'s
-  /// library doc gives: the delegate is lazy, so Flutter's directional policy
-  /// can walk into an unbuilt row and land nowhere, and UP out of the *first*
-  /// row has to reach the header while UP anywhere else stays in the grid.
-  Widget _buildTvGrid(WatchlistProvider provider, List<WatchlistEntry> entries) {
-    final scale = TvLayoutConstants.scaleOf(context);
-    final grid = TvCatalogGrid.forWidth(MediaQuery.sizeOf(context).width, scale: scale);
-    final cellHeight = MediaCardGridLayout.cardHeightFor(context, grid.cardWidth, titleLines: 1);
-
-    return SliverPadding(
-      // Same three insets the catalog grid pays, and for the same reasons: the
-      // page margin on the sides, room above for the half of a focused card's
-      // growth that goes upward, and the wider bottom band of P12 below.
-      // The growth is this card's, not the catalog card's: the cell is a tight
-      // constraint, so `cellHeight` is exactly the box that scales, and a
-      // `WatchlistCard` scales by [FocusTheme.focusScale] rather than by the
-      // catalog card's fuller step (CAT1).
-      padding: grid.scrollPadding(cardHeight: cellHeight, focusScale: FocusTheme.focusScale),
-      sliver: SliverGrid(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: grid.columns,
-          mainAxisSpacing: grid.gutter,
-          crossAxisSpacing: grid.gutter,
-          childAspectRatio: grid.cardWidth / cellHeight,
-        ),
-        delegate: SliverChildBuilderDelegate((context, index) {
-          final entry = entries[index];
-          // Viewport-driven, exactly as on the other platforms: a card asks for
-          // its own row as it is built, so a 300-title list never fans out 300
-          // lookups on open.
-          if (entry.availability == WatchlistAvailability.unknown) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) provider.resolveAvailability(entry);
-            });
-          }
-          final column = index % grid.columns;
-          final isFirstRow = index < grid.columns;
-          return Focus(
-            // Not a focusable of its own — `canRequestFocus: false` — only a
-            // place to hear that the card inside gained the focus, whichever of
-            // the two branches drew it.
-            canRequestFocus: false,
-            skipTraversal: true,
-            onFocusChange: (has) {
-              if (has) _focusedKey = entry.key;
-            },
-            child: WatchlistCard(
-              // Stable across a re-sort, a filter change and an availability
-              // flip — the same identity the focus node is keyed on.
-              key: ValueKey(entry.key),
-              entry: entry,
-              isPlayable: provider.isPlayable(entry),
-              onTap: () => _openSheet(provider, entry),
-              width: grid.cardWidth,
-              focusNode: _nodeFor(entry.key),
-              onNavigateUp: isFirstRow ? _focusHeader : () => _focusIndex(index - grid.columns),
-              onNavigateDown: index + grid.columns >= entries.length ? null : () => _focusIndex(index + grid.columns),
-              onNavigateLeft: column == 0 ? _exitLeft : () => _focusIndex(index - 1),
-              onNavigateRight: column == grid.columns - 1 || index + 1 >= entries.length
-                  ? null
-                  : () => _focusIndex(index + 1),
-            ),
-          );
-        }, childCount: entries.length),
-      ),
-    );
-  }
 }
 
 class _FilterBar extends StatefulWidget {
   const _FilterBar({
     required this.firstChipFocusNode,
-    required this.filter,
+    required this.selection,
     required this.showAvailable,
     required this.onChanged,
     required this.sort,
@@ -542,9 +384,9 @@ class _FilterBar extends StatefulWidget {
   /// grid row has to be able to reach it from outside this widget.
   final FocusNode firstChipFocusNode;
 
-  final WatchlistFilter filter;
+  final WatchlistFilterSelection selection;
   final bool showAvailable;
-  final ValueChanged<WatchlistFilter> onChanged;
+  final ValueChanged<WatchlistFilterChip> onChanged;
   final WatchlistSort sort;
   final VoidCallback onSortPressed;
 
@@ -554,7 +396,7 @@ class _FilterBar extends StatefulWidget {
 
 class _FilterBarState extends State<_FilterBar> {
   final ScrollController _controller = ScrollController();
-  final Map<WatchlistFilter, GlobalKey> _chipKeys = {for (final f in WatchlistFilter.values) f: GlobalKey()};
+  final Map<WatchlistFilterChip, GlobalKey> _chipKeys = {for (final f in WatchlistFilterChip.values) f: GlobalKey()};
 
   /// Matches the grid's own inset, so the first chip lines up with the first
   /// poster instead of starting somewhere of its own.
@@ -569,7 +411,7 @@ class _FilterBarState extends State<_FilterBar> {
   @override
   void didUpdateWidget(_FilterBar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.filter != widget.filter) _revealSelected();
+    if (oldWidget.selection != widget.selection) _revealSelected();
   }
 
   @override
@@ -578,12 +420,22 @@ class _FilterBarState extends State<_FilterBar> {
     super.dispose();
   }
 
+  /// Which chip stands for the selection on screen, or null when the rail set
+  /// something no single chip can express — which cannot happen from this bar,
+  /// but can from the TV rail on a build that shares the state.
+  WatchlistFilterChip? get _selectedChip {
+    for (final chip in WatchlistFilterChip.values) {
+      if (WatchlistFilterSelection.chip(chip) == widget.selection) return chip;
+    }
+    return null;
+  }
+
   /// Scrolls the active filter fully into view. Without this the selected chip
   /// could sit off-screen on a phone, and coming back to the tab showed a strip
   /// that started halfway through a word.
   void _revealSelected() {
     if (!mounted || !_controller.hasClients) return;
-    final context = _chipKeys[widget.filter]?.currentContext;
+    final context = _chipKeys[_selectedChip]?.currentContext;
     if (context == null) return;
     Scrollable.ensureVisible(
       context,
@@ -596,11 +448,11 @@ class _FilterBarState extends State<_FilterBar> {
 
   @override
   Widget build(BuildContext context) {
-    final options = <(WatchlistFilter, String)>[
-      (WatchlistFilter.all, t.watchlist.filterAll),
-      (WatchlistFilter.movies, t.watchlist.filterMovies),
-      (WatchlistFilter.shows, t.watchlist.filterShows),
-      if (widget.showAvailable) (WatchlistFilter.available, t.watchlist.filterAvailable),
+    final options = <(WatchlistFilterChip, String)>[
+      (WatchlistFilterChip.all, t.watchlist.filterAll),
+      (WatchlistFilterChip.movies, t.watchlist.filterMovies),
+      (WatchlistFilterChip.shows, t.watchlist.filterShows),
+      if (widget.showAvailable) (WatchlistFilterChip.available, t.watchlist.filterAvailable),
     ];
 
     return Padding(
@@ -635,7 +487,7 @@ class _FilterBarState extends State<_FilterBar> {
                         key: _chipKeys[value],
                         focusNode: value == options.first.$1 ? widget.firstChipFocusNode : null,
                         label: label,
-                        selected: widget.filter == value,
+                        selected: WatchlistFilterSelection.chip(value) == widget.selection,
                         onPressed: () => widget.onChanged(value),
                       ),
                     ),

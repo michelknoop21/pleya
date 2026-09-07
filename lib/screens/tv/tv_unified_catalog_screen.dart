@@ -57,7 +57,6 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
-import '../../focus/focus_theme.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
 import '../../media/media_backend.dart';
@@ -84,6 +83,7 @@ import '../../widgets/tv/tv_catalog_empty_state.dart';
 import '../../widgets/tv/tv_catalog_filter_panel.dart';
 import '../../widgets/tv/tv_catalog_filter_rail.dart';
 import '../../widgets/tv/tv_catalog_header_bar.dart';
+import '../../widgets/tv/tv_catalog_rail_scaffold.dart';
 import '../../widgets/tv/tv_catalog_selection_tags.dart';
 import '../../widgets/tv/tv_catalog_skeleton_grid.dart';
 import '../../widgets/tv/tv_catalog_sort_panel.dart';
@@ -168,6 +168,10 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   final _sortFocus = FocusNode(debugLabel: 'TvCatalogRailSort');
   final _clearFocus = FocusNode(debugLabel: 'TvCatalogRailClear');
 
+  /// The one action a state with no grid has (hoofdstuk 29). It is the only
+  /// thing left to put the remote on when the rail closes over an empty page.
+  final _stateActionFocus = FocusNode(debugLabel: 'TvCatalogStateAction');
+
   /// The user's stored setup. Kept whole: what is *applied* is this constrained
   /// to the live capabilities, which change with the source restriction.
   UnifiedCatalogPreferences _preferences = UnifiedCatalogPreferences.defaults;
@@ -239,6 +243,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     _filtersFocus.dispose();
     _sortFocus.dispose();
     _clearFocus.dispose();
+    _stateActionFocus.dispose();
     super.dispose();
   }
 
@@ -516,8 +521,6 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   // Focus traversal (hoofdstuk 7.4)
   // ---------------------------------------------------------------------------
 
-  void _focusGrid() => _gridKey.currentState?.focusGrid();
-
   /// UP or LEFT out of the header, into the root navigation.
   ///
   /// Hoofdstuk 7.4 asks for UP; the shell resolves what is up there. On the
@@ -555,7 +558,19 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   void _closeRail() {
     if (!_railExpanded) return;
     setState(() => _railExpanded = false);
-    _focusGrid();
+    final grid = _gridKey.currentState;
+    if (grid != null && grid.hasFocusableCard) {
+      grid.focusGrid();
+      return;
+    }
+    // No grid to go back to: an error or a filtered-empty catalog. Its one
+    // action autofocused when it was mounted, but that was before the rail took
+    // the focus off it, and a page focused with nothing focused on it is one
+    // the remote can neither move within nor leave.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _railExpanded) return;
+      if (_stateActionFocus.canRequestFocus) _stateActionFocus.requestFocus();
+    });
   }
 
   /// UP or LEFT out of the rail: the topnav, with the rail closed behind it.
@@ -663,79 +678,32 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     );
   }
 
-  /// The grid, with the rail standing beside it.
-  ///
-  /// A `Stack` rather than a `Row`, because the grid owns its own horizontal
-  /// padding and always has: it is the thing that resolves the page inset, and
-  /// putting it in a flex would mean handing that job to this method and
-  /// getting the two edges from two different places. Instead the grid holds
-  /// back [TvCatalogGrid.leading] on its left, and the rail is positioned into
-  /// exactly that band.
+  /// The grid, with the rail standing beside it — the shared placement of
+  /// [TvCatalogRailScaffold], which this screen used to own outright.
   Widget _buildContentArea() {
     final scale = TvLayoutConstants.scaleOf(context);
-    final width = MediaQuery.sizeOf(context).width;
-    final grid = TvCatalogGrid.forWidth(width, scale: scale, reservedLeading: _railLeading(width));
-    // The same headroom the grid reserves above its first row for a focused
-    // card's ring, so the rail's top edge lines up with the first poster
-    // instead of with the viewport.
-    final top = TvCatalogGrid.focusHeadroom(
-      cardHeight: TvCatalogLayout.cardHeight(grid.cardWidth, scale),
-      focusScale: FocusTheme.fullCardFocusScale,
-    );
-
-    return Stack(
-      children: [
-        Positioned.fill(child: _buildBody()),
-        if (_railExpanded)
-          Positioned(
-            left: grid.inset,
-            top: top,
-            // Bounded at the bottom by the page's own overscan margin, with the
-            // panel aligned to the top of that band. `Align` hands its child a
-            // *loose* height, so the panel still shrink-wraps to its rows; what
-            // the bound buys is that a selection long enough to outgrow the
-            // page scrolls inside the panel instead of overflowing it.
-            bottom: grid.bottomSafeMargin,
-            width: width * (TvCatalogLayout.railWidth / TvCatalogGrid.referenceWidth),
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: TvCatalogFilterRailPanel(
-                key: tvCatalogFilterRailKey,
-                scale: scale,
-                rows: _railRows(),
-                tags: _selectionTags(capped: false),
-                onClear: _preferences.filters.isEmpty ? null : _clearFilters,
-                clearFocusNode: _clearFocus,
-                onClearNavigateUp: () => _sortFocus.requestFocus(),
-                onClearNavigateDown: _railEdge,
-                onClearNavigateLeft: _leaveRailUpwards,
-                onClearNavigateRight: _closeRail,
-                onClearBack: _closeRail,
-              ),
-            ),
-          )
-        else
-          Positioned(
-            left: 0,
-            top: top,
-            bottom: 0,
-            width: grid.inset,
-            // Decoration, not a control: it must not take a hit test off the
-            // page behind it, and there is nothing to hit-test it *for*.
-            child: IgnorePointer(child: TvCatalogFilterRailStrip(scale: scale)),
-          ),
-      ],
+    return TvCatalogRailScaffold(
+      cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
+      rail: _railExpanded
+          ? TvCatalogFilterRailPanel(
+              key: tvCatalogFilterRailKey,
+              scale: scale,
+              rows: _railRows(),
+              tags: _selectionTags(capped: false),
+              onClear: _preferences.filters.isEmpty ? null : _clearFilters,
+              clearFocusNode: _clearFocus,
+              onClearNavigateUp: () => _sortFocus.requestFocus(),
+              onClearNavigateDown: _railEdge,
+              onClearNavigateLeft: _leaveRailUpwards,
+              onClearNavigateRight: _closeRail,
+              onClearBack: _closeRail,
+            )
+          : null,
+      body: _buildBody(),
     );
   }
 
-  /// How much width the rail takes out of the grid's content box.
-  ///
-  /// Zero while it is closed, because the strip lives in the page's own left margin,
-  /// so all six columns stay. It is the panel plus its gap while it is open,
-  /// which is what turns six columns into five.
-  double _railLeading(double width) => _railExpanded
-      ? width * ((TvCatalogLayout.railWidth + TvCatalogLayout.railGridGap) / TvCatalogGrid.referenceWidth)
-      : 0;
+  double _railLeading(double width) => TvCatalogRailScaffold.leadingFor(width, expanded: _railExpanded);
 
   List<TvCatalogSelectionTag> _selectionTags({bool capped = true}) => tvCatalogSelectionTags(
     filters: _effectiveFilters,
@@ -831,6 +799,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
           title: t.unifiedCatalog.states.errorTitle,
           body: t.unifiedCatalog.states.errorBody,
           actionLabel: t.common.retry,
+          onActionFocusNode: _stateActionFocus,
           onAction: catalog.refresh,
           onActionNavigateLeft: _openRail,
         );
@@ -842,6 +811,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
           title: t.unifiedCatalog.states.filterEmptyTitle,
           body: t.unifiedCatalog.states.filterEmptyBody,
           actionLabel: t.unifiedCatalog.states.clearFilters,
+          onActionFocusNode: _stateActionFocus,
           onAction: _clearFilters,
           onActionNavigateLeft: _openRail,
         );
