@@ -54,7 +54,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | ID | Werkitem | Besluit | Status | SHA / bewijs |
 |----|----------|---------|--------|--------------|
 | MOC-09 | Filmdetail | PB-1, PB-2, PB-3 | IN PROGRESS | `dc989713`, mockup 37/DEC-109: OVR1a op deze route gesloten (DET1) en de volledige-synopsisstaat gebouwd; de rest van 37 A's compositie tegen de goedgekeurde mockup is niet apart geaudit en er is geen hardwareronde geweest |
-| MOC-10 | Seriedetail, seizoenchips met één actieve afleveringenrail | PB-4 | OPEN | de synopsis-/schaalcorrectie uit DEC-109 geldt ook hier (gedeelde `_buildTvDetailForeground`), maar de horizontale seizoenchips met één actieve afleveringenrail (37 C) zijn niet gebouwd; huidige code draait nog op de verticale hub-per-seizoen uit `media_detail_screen.dart:4435-4509` |
+| MOC-10 | Seriedetail, seizoenchips met één actieve afleveringenrail | PB-4 | IN PROGRESS | `b490420d`: horizontale seizoenchips gebouwd, `_tvDetailHubs` toont voortaan één actieve rail met stabiele hub-id per seizoen (`HubFocusMemory` blijft werken), LEFT/RIGHT/UP/DOWN-contract staat, `_fetchSeasonEpisodes`-pager ongewijzigd hergebruikt. Open: de exacte kaartgeometrie/afstand tegen mockup 37 C is niet los geaudit, en er is geen hardware- of Verify-run geweest; de precieze episode-focusrestauratie na een seizoenwissel is niet los widget-getest omdat `TvBrowseRail`'s kaartfocus gevirtualiseerd is (geen los `FocusNode` per kaart) |
 | MOC-11 | Bronkeuze met backend-icoonwel | PB-15 | OPEN | |
 | MOC-12 | Unified contextmenu | PB-5 | OPEN | |
 
