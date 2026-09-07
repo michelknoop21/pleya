@@ -162,6 +162,83 @@ void main() {
     ]);
     expect(strip.tags.last.muted, isTrue, reason: 'there is no such thing as an unsorted kijklijst');
   });
+
+  testWidgets('a resolver that answers synchronously does not throw when a new page of entries arrives', (
+    tester,
+  ) async {
+    // `WatchlistProvider.resolveAvailability` can call `notifyListeners()`
+    // synchronously once a resolver is bound — `bind()` is what makes that
+    // true, which is exactly why the existing tests above (a bare callback
+    // with no provider behind it) never exercise this path. `didUpdateWidget`
+    // used to call `_seedAvailability()` outside a post-frame callback, unlike
+    // `initState`'s own call, so a synchronous notify arriving while a new
+    // `entries` list is still being applied landed mid-build: "setState() or
+    // markNeedsBuild() called during build".
+    late StateSetter setOuterState;
+    final entriesA = [_entry('a'), _entry('b')];
+    final entriesB = [_entry('a'), _entry('b'), _entry('c')];
+
+    Widget harness(List<WatchlistEntry> entries) => TranslationProvider(
+      child: MaterialApp(
+        theme: monoTheme(dark: true),
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            setOuterState = setState;
+            return Scaffold(
+              body: TvWatchlistView(
+                entries: entries,
+                totalCount: entries.length,
+                selection: WatchlistFilterSelection.none,
+                sort: WatchlistSort.recentlyAdded,
+                onSelectionChanged: (_) {},
+                onSortChanged: (_) {},
+                onActivate: (_) {},
+                isLoading: false,
+                coverageComplete: true,
+                offerAvailability: true,
+                onReload: () {},
+                // Stands in for the resolver's synchronous `notifyListeners()`:
+                // a `setState` on an ancestor, called from inside whatever
+                // build pass is running when this fires.
+                onNeedsAvailability: (_) => setOuterState(() {}),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(harness(entriesA));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull, reason: 'the initial seed already goes through a post-frame callback');
+
+    await tester.pumpWidget(harness(entriesB));
+    await tester.pumpAndSettle();
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: 'a synchronous notify while didUpdateWidget applies a new entries list must not crash the build',
+    );
+  });
+
+  testWidgets('re-entering a state with no grid asks for its action again, not just on first mount', (tester) async {
+    // `TvCatalogEmptyState` autofocuses its action on mount, but only once.
+    // Leaving the page — UP to the topnav — and coming back with a DOWN press,
+    // without the empty state itself remounting, has to ask again explicitly.
+    // `_tryEntryFocus` used to give up silently once there was no grid and the
+    // page was not loading, leaving that DOWN press to land nowhere.
+    await pumpView(tester, const []);
+    final state = tester.state<TvWatchlistViewState>(find.byType(TvWatchlistView));
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvWatchlistStateAction');
+
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, isNot('TvWatchlistStateAction'));
+
+    state.focusContent();
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvWatchlistStateAction');
+  });
 }
 
 /// The label the view uses for a sort, without importing the sheet that owns it

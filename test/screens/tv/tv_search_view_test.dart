@@ -58,6 +58,7 @@ void main() {
     VoidCallback? onSearchOnRequests,
     int serverCount = 3,
     VoidCallback? onExitTop,
+    VoidCallback? onExitLeft,
   }) async {
     key = GlobalKey<TvSearchViewState>();
     await tester.pumpWidget(
@@ -76,7 +77,7 @@ void main() {
               onRetry: onRetry,
               onSearchOnRequests: onSearchOnRequests,
               serverCount: serverCount,
-              onExitLeft: () {},
+              onExitLeft: onExitLeft ?? () {},
               onExitTop: onExitTop ?? () {},
             ),
           ),
@@ -214,5 +215,36 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pumpAndSettle();
     expect(exits, 1);
+  });
+
+  group('LEFT off the one action an error or no-results state has', () {
+    // Every sibling empty state on the catalog-language pages wires
+    // `onActionNavigateLeft` so LEFT reaches the sidebar — directional
+    // traversal cannot cross from this page's content `FocusScope` to that
+    // one on its own. These two states drew the button without it: LEFT did
+    // nothing on the one state a viewer most wants out of.
+    testWidgets('on the error state', (tester) async {
+      var exits = 0;
+      await pumpView(tester, error: 'boom', onRetry: () {}, onExitLeft: () => exits++);
+
+      final action = Focus.maybeOf(tester.element(find.text(t.common.retry)), scopeOk: true)!;
+      action.requestFocus();
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(exits, 1);
+    });
+
+    testWidgets('on the no-results state (36 C)', (tester) async {
+      var exits = 0;
+      await pumpView(tester, onSearchOnRequests: () {}, onExitLeft: () => exits++);
+
+      final action = Focus.maybeOf(tester.element(find.text(t.search.searchOnRequests)), scopeOk: true)!;
+      action.requestFocus();
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(exits, 1);
+    });
   });
 }

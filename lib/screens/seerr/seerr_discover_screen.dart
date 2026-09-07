@@ -590,6 +590,16 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     if (_query.isNotEmpty) return _searchErrored ? t.seerr.errorNetwork : null;
     if (_expandedRow?.errored ?? false) return seerrErrorMessage(_expandedRow!.errorKind);
     if (_genreRow?.errored ?? false) return seerrErrorMessage(_genreRow!.errorKind);
+    if (_providerRow?.errored ?? false) return seerrErrorMessage(_providerRow!.errorKind);
+    // The shelves' own aggregate failure, and only while shelves are what the
+    // page is actually showing. `_tvGridPage()` non-null means an expanded
+    // row, a genre or a provider grid is active; that grid has already
+    // answered for itself above (or has none of its own error and is simply
+    // showing its items), and must not be overridden by a shelf failure the
+    // viewer cannot even see any more — that was the bug: two failed
+    // discover shelves kept the page on Retry after a picked genre loaded
+    // fine, because this check ran unconditionally.
+    if (_tvGridPage() != null) return null;
     if (_allLoaded && _allErrored) return seerrErrorMessage(_dominantErrorKind);
     return null;
   }

@@ -175,7 +175,16 @@ class TvWatchlistViewState extends State<TvWatchlistView> {
   @override
   void didUpdateWidget(TvWatchlistView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.entries, widget.entries)) _seedAvailability();
+    // Deferred exactly like `initState`'s own call: `onNeedsAvailability` runs
+    // up into `WatchlistProvider.resolveAvailability`, which can call
+    // `notifyListeners()` synchronously once a resolver is bound. Called from
+    // here without a post-frame callback, that notification lands while this
+    // very widget's parent is still building — "setState() or
+    // markNeedsBuild() called during build" — because a new page of entries
+    // arriving is exactly what drives this method in the first place.
+    if (!identical(oldWidget.entries, widget.entries)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _seedAvailability());
+    }
     if (_wantsEntryFocus) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _tryEntryFocus());
     }
@@ -270,10 +279,19 @@ class TvWatchlistViewState extends State<TvWatchlistView> {
       grid.focusGrid();
       return;
     }
-    // The page has settled on a state with no grid at all. Those focus their own
-    // action ([TvCatalogEmptyState] autofocuses it), and a request left standing
-    // would steal the focus back off it the moment a late load arrived.
-    if (!widget.isLoading) _wantsEntryFocus = false;
+    // Still loading: no state has mounted to receive the ask yet. Leave
+    // `_wantsEntryFocus` set so a later call — the load finishing, or a retry
+    // — can still act on it, the same reason `didUpdateWidget` re-runs this.
+    if (widget.isLoading) return;
+    _wantsEntryFocus = false;
+    // A state with no grid. `TvCatalogEmptyState` autofocuses its own action
+    // on mount, but only on mount: this call can also arrive from re-entering
+    // the page later — UP to the topnav and DOWN again — with the empty state
+    // already built and its one-shot autofocus already spent. Without asking
+    // again explicitly, that DOWN press lands nowhere, because focus is still
+    // wherever the topnav left it. The same rescue [_focusContentAfterRail]
+    // performs when the rail closes over this same state.
+    if (_stateActionFocus.canRequestFocus) _stateActionFocus.requestFocus();
   }
 
   FocusNode get _firstRailFocus => _kindFocus;

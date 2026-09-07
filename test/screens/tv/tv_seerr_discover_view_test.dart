@@ -325,4 +325,39 @@ void main() {
     await tester.pumpAndSettle();
     expect(focusedId(), rails.last.widget.itemIds[2]);
   });
+
+  testWidgets('an empty shelf between two others does not throw off which shelf DOWN reaches', (tester) async {
+    // `_focusShelf`/`_restoreShelf` used to index `widget.shelves` — the
+    // unfiltered list — while every caller (the shelf below, the "Alles tonen"
+    // action above) hands over an index into the *visible* list `_buildBody`
+    // actually draws. A shelf whose first page failed, or an endpoint that
+    // legitimately answers with zero items, is filtered out of that visible
+    // list and never mounts a `TvCatalogCardRail` at all. With one such shelf
+    // between two real ones, DOWN off the first landed back on the rail it was
+    // already on, or resolved a rail that was never built.
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await pumpView(tester, shelves: [_shelf('films', count: 6), _shelf('empty', count: 0), _shelf('series', count: 6)]);
+
+    final rails = tester.stateList<TvCatalogCardRailState>(find.byType(TvCatalogCardRail)).toList();
+    expect(rails, hasLength(2), reason: 'the empty shelf draws nothing at all — sanity on the fixture');
+
+    String? focusedId() {
+      final label = FocusManager.instance.primaryFocus?.debugLabel;
+      final match = RegExp(r'^TvSeerrShelfCard\((.+)\)$').firstMatch(label ?? '');
+      return match?.group(1);
+    }
+
+    expect(rails.first.focusColumn(1), isTrue);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(
+      focusedId(),
+      rails.last.widget.itemIds[1],
+      reason: 'DOWN must reach the Series shelf, not park on Films or land nowhere',
+    );
+  });
 }

@@ -242,6 +242,7 @@ class TvSearchViewState extends State<TvSearchView> {
           actionLabel: widget.onRetry == null ? null : t.common.retry,
           onAction: widget.onRetry,
           onActionFocusNode: _stateActionFocus,
+          onActionNavigateLeft: widget.onExitLeft,
         ),
       );
     }
@@ -268,6 +269,7 @@ class TvSearchViewState extends State<TvSearchView> {
             actionLabel: action == null ? null : (onRequests != null ? t.search.searchOnRequests : t.common.retry),
             onAction: action,
             onActionFocusNode: _stateActionFocus,
+            onActionNavigateLeft: widget.onExitLeft,
           ),
         );
       }

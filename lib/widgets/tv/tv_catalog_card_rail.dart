@@ -116,10 +116,7 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
   @override
   void didUpdateWidget(TvCatalogCardRail oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final live = widget.itemIds.toSet();
-    for (final id in _nodes.keys.where((id) => !live.contains(id)).toList()) {
-      _nodes.remove(id)?.dispose();
-    }
+    _reconcileNodes(previous: oldWidget.itemIds);
   }
 
   @override
@@ -133,11 +130,86 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
 
   FocusNode _nodeFor(String id) => _nodes.putIfAbsent(id, () => FocusNode(debugLabel: '${widget.nodeDebugLabel}($id)'));
 
+  /// Drops nodes for items that are gone, and rescues focus if one of them had
+  /// it — the same rule [TvCatalogCardGrid._reconcileNodes] carries for the
+  /// grid, ported rather than reinvented. A card disappearing from under the
+  /// remote (a refresh, a filter, a page reload) used to just call
+  /// `_nodes.remove(id)?.dispose()`: `dispose()` frees the node all the way up
+  /// to the enclosing scope, and a rail that was holding focus left the page
+  /// focused with nothing focused on it — the tvOS dead page this whole
+  /// contract exists to prevent.
+  void _reconcileNodes({required List<String> previous}) {
+    final live = widget.itemIds.toSet();
+    final removed = _nodes.keys.where((id) => !live.contains(id)).toList();
+    if (removed.isEmpty) return;
+
+    final focusedId = _focusedId;
+    final losesFocus = focusedId != null && removed.contains(focusedId);
+    // Measured against the *old* list: the neighbour a viewer expects is the
+    // card that was next to theirs before the update, and the new list no
+    // longer contains the position to measure from.
+    final oldIndex = losesFocus ? previous.indexOf(focusedId) : -1;
+
+    for (final id in removed) {
+      _nodes.remove(id)?.dispose();
+    }
+    if (!losesFocus) return;
+
+    final replacement = _nearestSurvivor(previous: previous, from: oldIndex);
+    _focusedId = replacement;
+    // After the frame that removes the card: the replacement's node may not be
+    // attached yet on this one.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final node = replacement == null ? null : _nodes[replacement];
+      if (node != null && node.canRequestFocus) {
+        node.requestFocus();
+      } else {
+        // Nothing survived, or it has not been built yet. LEFT is what this
+        // rail's own callers wire to the CAT5 controls (`onExitLeft: _openRail`
+        // on every page), which is the only thing left to operate once the
+        // shelf under the remote has emptied.
+        widget.onExitLeft?.call();
+      }
+    });
+  }
+
+  /// The nearest still-present item to position [from] in the old list.
+  ///
+  /// Walks outward, forward first: a tie means a card that had survivors on
+  /// both sides disappeared, and the one *after* it is the one the viewer had
+  /// not reached yet — the same tie-break [TvCatalogCardGrid]'s own
+  /// `_nearestSurvivor` uses, for the same reason.
+  String? _nearestSurvivor({required List<String> previous, required int from}) {
+    if (from < 0) return widget.itemIds.firstOrNull;
+    final live = widget.itemIds.toSet();
+    for (var distance = 1; distance < previous.length; distance++) {
+      final after = from + distance;
+      if (after < previous.length && live.contains(previous[after])) return previous[after];
+      final before = from - distance;
+      if (before >= 0 && live.contains(previous[before])) return previous[before];
+    }
+    return widget.itemIds.firstOrNull;
+  }
+
   /// Puts the remote on the card it was last on, or on the first one.
+  ///
+  /// `node.parent != null` is the attachment test, and it is checked before
+  /// `canRequestFocus` on purpose: `_nodes` keeps an entry for every id this
+  /// rail has ever built, for the life of the widget, independent of whether
+  /// the `ListView` still has that cell on screen. A card that scrolled out of
+  /// view is detached — `FocusNode.canRequestFocus` is `true` on a detached
+  /// node, because it short-circuits on `enclosingScope == null` — so without
+  /// this test a scrolled-away rail answers `true` and `requestFocus()` on it
+  /// is a silent no-op. The return value is load-bearing for callers that stop
+  /// a search loop at the first `true` (`TvSearchView.focusFirstResult`,
+  /// `TvSeerrDiscoverViewState.focusFirstContent`): a false positive there
+  /// means nothing gets the focus at all. See `tv_discovery_rail.dart`'s
+  /// `_focusIndex`, which carries the same guard for the same reason.
   bool focusRail() {
     final remembered = _focusedId;
     final node = (remembered != null ? _nodes[remembered] : null) ?? _nodes[widget.itemIds.firstOrNull];
-    if (node == null || !node.canRequestFocus) return false;
+    if (node == null || node.parent == null || !node.canRequestFocus) return false;
     node.requestFocus();
     return true;
   }
@@ -161,15 +233,20 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     if (widget.itemIds.isEmpty) return false;
     final target = column.clamp(0, widget.itemIds.length - 1);
     final node = _nodes[widget.itemIds[target]];
-    if (node != null && node.canRequestFocus) {
+    // `node.parent != null` — see [focusRail] for why the attachment test has
+    // to come before `canRequestFocus`. A node this branch skips over is not
+    // "not built yet": `_nodes` only gains an entry once a cell has actually
+    // been built, so an entry that fails this test was built and then scrolled
+    // away, which is exactly the case the fallback below exists to recover.
+    if (node != null && node.parent != null && node.canRequestFocus) {
       node.requestFocus();
       return true;
     }
-    // The card is real but not built: a `ListView` only builds what is in view,
-    // and this rail may be parked somewhere else entirely. Bring the column
-    // into view first and ask again next frame — without this, LAND4 would hold
-    // only for the part of a rail that happens to be on screen, which is the
-    // half of the bug that is hardest to see.
+    // Either never built, or built and scrolled away: a `ListView` only keeps
+    // what is in view, and this rail may be parked somewhere else entirely.
+    // Bring the column into view first and ask again next frame — without
+    // this, LAND4 would hold only for the part of a rail that happens to be on
+    // screen, which is the half of the bug that is hardest to see.
     if (!_controller.hasClients || _pitch <= 0) return false;
     final position = _controller.position;
     final wanted = (_leadingPad + target * _pitch).clamp(position.minScrollExtent, position.maxScrollExtent);
@@ -177,7 +254,7 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final built = _nodes[widget.itemIds[target]];
-      if (built != null && built.canRequestFocus) built.requestFocus();
+      if (built != null && built.parent != null && built.canRequestFocus) built.requestFocus();
     });
     return true;
   }

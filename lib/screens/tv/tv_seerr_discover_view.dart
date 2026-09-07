@@ -295,6 +295,19 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
     });
   }
 
+  /// The shelves actually on screen, in the order they are drawn.
+  ///
+  /// `_buildBody` and `_focusShelf`/`_restoreShelf` have to agree on the same
+  /// list: a shelf whose first page failed, or an endpoint that legitimately
+  /// answers with zero items, is handed over with no items at all
+  /// (`_tvShelves()` in `seerr_discover_screen.dart` includes any row that is
+  /// not still loading). Indexing `widget.shelves` directly — the *unfiltered*
+  /// list — while every caller hands over an index into *this* one is how a
+  /// DOWN off a rail lands on the rail it is already on, or resolves a shelf
+  /// that was never mounted.
+  List<TvSeerrShelf> _visibleShelves() =>
+      widget.shelves.where((shelf) => shelf.items.isNotEmpty).toList(growable: false);
+
   /// Moves between shelves, keeping the column (LAND4).
   ///
   /// A rail's own focus memory is what makes returning from a detail page land
@@ -302,16 +315,18 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
   /// card of one shelf, the third card of the next is the destination however
   /// far right that shelf happens to be parked.
   void _focusShelf(int index, {int column = 0}) {
+    final shelves = _visibleShelves();
     if (index < 0) return;
-    if (index >= widget.shelves.length) return;
-    _railKeyFor(widget.shelves[index].id).currentState?.focusColumn(column);
+    if (index >= shelves.length) return;
+    _railKeyFor(shelves[index].id).currentState?.focusColumn(column);
   }
 
   /// Arriving at a shelf from somewhere that is not another shelf — the rail
   /// closing, the page opening — where the memory *is* the right answer.
   void _restoreShelf(int index) {
-    if (index < 0 || index >= widget.shelves.length) return;
-    _railKeyFor(widget.shelves[index].id).currentState?.focusRail();
+    final shelves = _visibleShelves();
+    if (index < 0 || index >= shelves.length) return;
+    _railKeyFor(shelves[index].id).currentState?.focusRail();
   }
 
   // ---------------------------------------------------------------------------
@@ -564,7 +579,7 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
     final grid = widget.grid;
     if (grid != null) return _buildGrid(scale, grid);
 
-    final shelves = widget.shelves.where((shelf) => shelf.items.isNotEmpty).toList(growable: false);
+    final shelves = _visibleShelves();
     if (shelves.isEmpty) {
       return _state(
         'empty',
