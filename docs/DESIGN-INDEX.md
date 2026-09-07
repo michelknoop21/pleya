@@ -18,11 +18,13 @@ heeft. Bij tegenspraak wint het document waar hier naar verwezen wordt, niet dez
 | Oppervlak | Set | Aantal | Staat | Waar | Branch |
 |---|---|---|---|---|---|
 | **tvOS** | `docs/assets/tvos-unified/` | 5 mappen | **actief** | zie §2 | `main` |
-| **iOS en mobiel** | `docs/assets/ios-unified/northstar/` | 21 schermen plus 5 comps | getekend, niet geland | alleen op de branch | `feat/netflix-mobile` |
+| **iOS en mobiel** | `docs/assets/ios-unified/northstar/` | 21 schermen plus 5 comps | **staat op `main`** sinds `011ffdbf`; fase 1 tot en met 3 gebouwd via PR #5 | §3 | `main` |
 | **Pleya Web** | `docs/assets/pleya-web-northstar/` | 46 schermen plus bron | getekend, niet geland | alleen op de branch | `integration/pleya-server-rebaseline` |
 | **Ebooks** | `docs/assets/ebooks/northstar/` | 9 schermen plus bron | getekend, niet geland | alleen op de branch | `feat/ebooks` |
 
-Alleen tvOS staat op `main`. De andere drie leven uitsluitend op hun eigen branch, en
+**Bijgewerkt 7 september 2026:** de iOS-set staat inmiddels ook op `main`, en `feat/netflix-mobile` is niet meer de tak die landt (DEC-106). De regel hieronder gold tot begin september en staat er nog voor de twee sets die het wél betreft.
+
+Alleen tvOS en iOS staan op `main`. De andere drie leven uitsluitend op hun eigen branch, en
 dat is de spreiding die dit document zichtbaar maakt. Zie §9 voor wat daaraan te doen is.
 
 `feat/pleyaserver` draagt een oudere kopie van de webset en mist 91 tvOS-bestanden die
@@ -183,7 +185,7 @@ duplicatie, maar het is wel makkelijk te verwarren.
 | Lijst | Wat het bezit | Stand op 5 september |
 |---|---|---|
 | [tvos-redesign-register.md](tvos-redesign-register.md) | het bouwen van mockup 09 tot en met 25, plus de systemische eigenaren eronder | 56 rijen: 4 DONE, 3 GESLOTEN, 49 OPEN |
-| [tvos-fysieke-correctieronde.md](tvos-fysieke-correctieronde.md) | alles wat op een echte Apple TV is gezien, en elk los verzoek van Michel | 68 rijen: 24 FIXED, 3 NOT REPRODUCED, 2 goedgekeurd met bouw open, 2 DEFERRED, 32 OPEN |
+| [tvos-fysieke-correctieronde.md](tvos-fysieke-correctieronde.md) | alles wat op een echte Apple TV is gezien, en elk los verzoek van Michel | groeiend; op 7 september kwamen CAT10, CAT11, ROW1p tot en met ROW1r, I18N6 en GOLD2 erbij |
 | [tvos-unified-experience.md](tvos-unified-experience.md) hoofdstuk 27 | de fasen 0 tot en met 10A en de afsluitende Final | 0 tot en met 10A gesloten, Final open |
 
 **Twee rijen staan in allebei de eerste twee**: SYS-1 en SYS-4. Het register bezit ze als
