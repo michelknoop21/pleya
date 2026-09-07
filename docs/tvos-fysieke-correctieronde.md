@@ -177,6 +177,8 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | ROW1r | De rijenlijst van het Home-aanpaspaneel lijkt onder de onderrand van de paneelkaart door te lopen; op beide foto's staan de onderste rijen half buiten de kaart (Michel, 7 september, hardware). Nagemeten op de tvOS-simulator met hetzelfde paneel open: in een verticale doorsnede door het midden (x=1900 van 3840) valt de helderheid op y=1987 van 48 naar 0 en blijft daar. De inhoud houdt dus op bij de paneelrand en er staat niets buiten; wat er half staat is de vólgende rijtegel, netjes afgekapt door de scrollende lijst. Dat is het gedrag dat `Flexible` plus `SingleChildScrollView` in `tv_home_customize_panel.dart:336` bedoelt te geven, en `tvWidePanelConstraints` levert de hoogtekap die het mogelijk maakt. Geen defect gevonden. Wat er wél ontbreekt is een teken dát er meer is: de lijst heeft geen fade, geen randmarkering en geen positieaanduiding, dus een half afgekapte rij aan de onderrand leest op een televisie als een fout in plaats van als een uitnodiging om door te scrollen. Dat is een ontwerpvraag en gaat mee in de mockupronde, niet als bugfix | NOT REPRODUCED | n.v.t. |
 | GOLD2 | `tv_home_production_long_titles.png` tekent sinds ROW1q iets anders: de voetregel onder de Home-feed heet nu "Home aanpassen" met een Nederlandse ondertitel waar "Customise Home" stond. Vastgesteld met een gecontroleerde vergelijking, niet met een aanname: `flutter test test/goldens/` op schone `efe2eaf3` gaf 77 falers, dezelfde run met de vertaling erin gaf er 78, en het verschil is precies deze ene test. De overige 77 zijn de Linux-referenties die op macOS al rood stonden, GOLD1's bekende toestand. Regenereren gaat via dezelfde runner-route als GOLD1: `.github/workflows/goldens.yml` met `test/goldens/tv_home_production_golden_test.dart` als invoer, artifact terug, met de hand committen. Lokaal bijwerken kan niet, want macOS rasteriseert tekst anders dan CI | OPEN, wacht op een runner-run | n.v.t. |
 | I18N6 | 64 sleutels uit `en.i18n.json` ontbreken nog in `nl.i18n.json` en renderen dus Engels voor een Nederlandse gebruiker: de iCloud-synchronisatie-instellingen, Pleya Server toevoegen, Pleya Share's uitleg, de zoekfoutmeldingen, de logupload-meldingen, Samen kijken, Downloads, en `videoControls.skipIntro`/`skipCredits`/`nextEpisode`. Ze staan met naam in `knownGaps` in `test/i18n/nl_locale_parity_test.dart`, dus de lijst is de werklijst. Komt uit ROW1q; hoort onder SYS-5 in het register | OPEN | n.v.t. |
+| CAT17 | Een sorteerkeuze in de catalogus laat de zijbalk open staan en onbereikbaar achter: Menu doet niets, LINKS doet niets, en pas na het scherm verlaten en opnieuw openen is de balk weer te bedienen (Michel, 7 september, hardware, build 268, log `h43qp`). In dat log staat het patroon tweemaal: Select op een sorteerrij, dan de fetch met de nieuwe sortering, dan Escape met `KeyEventResult.ignored reason=fall-through`, en vier keer LINKS `handled reason=onNavigateLeft` zonder dat de focusvlaggen veranderen. Die vlaggen (`up=true,down=false,left=true,right=false`, `onBack=false`) horen bij een gridkaart in kolom 0, niet bij een railrij | FIXED, hardware open | `159f4dab`, `7dc3431b` |
+| PLR7 | Het spelerpaneel voelt opgeblazen: rijen en type zijn merkbaar groter dan op elk ander TV-oppervlak (Michel, 7 september, foto op hardware). `tv_panel_widgets.dart` codeert zijn maten hard en leest `TvLayoutConstants.scaleOf` nergens, dus een rijlabel staat op 17px en een rij op 62px waar de 8.3-ladder maal de TV-schaal 0,85 op dit toestel 14,0px en 54px geeft | FIXED, hardware open | `7de9f996`, `7dc3431b` |
 
 ## Wat er per item bekend is
 
@@ -3810,3 +3812,150 @@ plek: een lus die de route laat hangen. `mobile_landing_screen_test` liep daarop
 `the pushed catalogue's search action pops and reaches the landing's own search target`, en dat is
 ook precies hoe het gevonden is: de volledige suite bleef op die ene test staan. Het zusterscherm
 gebruikt `Navigator.pop`, en dat is de reden.
+
+### CAT17: de zijbalk blijft open en onbereikbaar na een sorteerkeuze
+
+Gemeld op 7 september 2026 op een Apple TV met build 268, met logboek `h43qp`.
+Kies je in Alle films of Alle series een sortering, dan sluit het sorteerpaneel wel,
+maar blijft de rail links staan zonder dat je er nog in komt. Menu doet niets, LINKS
+doet niets. Pas na het scherm verlaten en opnieuw openen is de rail weer te bedienen,
+want dan zet `_tryEntryFocus` de ring op Bronnen.
+
+**Wat het log laat zien.** Twee keer hetzelfde patroon, om 17:19:10 en om 17:19:27.
+Select op een sorteerrij, meteen daarna de fetch met de nieuwe sortering, en daarna
+staat de focus op een knooppunt met `onNav(up=true,down=false,left=true,right=false)`
+en `onBack=false`. Dat is geen railrij: die dragen alle vier een `onBack`. Het is een
+gridkaart in kolom 0 buiten de eerste rij, want `_buildCell` bindt UP alleen op de
+eerste rij, LEFT alleen in kolom 0, en de catalogus gaf de grid geen `onBack` mee.
+Escape kwam wel degelijk in Dart aan (`menuPassthroughEnabled` stond de hele sessie op
+`false`) en werd door niemand opgepakt: `reason=fall-through`. De vier LINKS-drukken
+erna melden `handled reason=onNavigateLeft` terwijl er niets verandert, en dat is de
+tweede helft van de val: `onExitLeft` is `_openRail`, en die keerde op zijn eigen
+`if (_railExpanded) return;` meteen terug.
+
+**Root cause.** `TvCatalogCardGridState._reconcileNodes`. `_focusedId` is een
+herinnering aan de laatst gefocuste kaart: gezaaid uit `initialFocusedId` voordat er
+iets gefocust is, gezet bij elke focuswinst, en nooit gewist wanneer de focus de grid
+verlaat. `_reconcileNodes` las hem als een claim op de focus. Een sorteerwissel
+herpagineert de catalogus, dus de onthouden kaart staat niet meer op pagina één, en
+dan vroeg de grid post-frame de focus op voor de naaste overlevende. Dat gebeurde één
+frame ná `_withLauncherFocusRestore`, die de ring netjes op Sortering had teruggezet.
+De laatste schrijver wint, en dat was de grid.
+
+**Waarom de bestaande test dit niet zag.** `_FakeLibraryClient` in
+`test/screens/tv/tv_unified_catalog_screen_focus_test.dart` negeerde `query` en gaf bij
+elke sortering dezelfde twee items in dezelfde volgorde terug. De itemlijst veranderde
+dus nooit, `_reconcileNodes` draaide nooit, en E13 stond groen terwijl het toestel rood
+was. De fixture honoreert nu `sort`, `offset` en `limit` over 51 titels waarvan de
+alfabetische en de toegevoegd-op volgorde elkaars omgekeerde zijn, zodat pagina één
+werkelijk van inhoud wisselt. Op de oude implementatie eindigt E13 dan op
+`TvUnifiedCard(group:movie:t50:)` in plaats van op `TvCatalogRailSort`, wat precies de
+melding is.
+
+**De fix, in drie delen.** `_reconcileNodes` verplaatst de focus alleen nog wanneer de
+grid hem werkelijk vasthoudt (`hasFocus`, uitgelezen vóór de dispose-lus); de
+vervanger wordt wél altijd onthouden, zodat een latere `focusGrid` goed landt.
+`_openRail` focust een al open rail in plaats van niets te doen, synchroon, omdat er
+zonder `setState` geen frame gepland wordt waar een post-frame callback op kan wachten.
+En de grid krijgt `onBack: _railExpanded ? _closeRail : null`, zodat een open oppervlak
+Menu opeet voordat de terugketen van de shell hem ziet, dezelfde regel die de railrijen
+zelf al volgen. Met de rail dicht verandert er niets.
+
+**Reikwijdte.** Dezelfde `_openRail`-vorm staat in de kijklijst en in beide
+Seerr-vensters. Die kregen dezelfde drie regels, zonder eigen negatieve controle: er is
+daar geen railharnas in de testsuite en er is ook geen melding. De catalogus is de
+enige die met tests is dichtgetimmerd.
+
+**Bewijs.** `test/widgets/tv/tv_unified_media_grid_test.dart` (een kaart die verdwijnt
+terwijl de focus elders staat laat die focus met rust, en de grid onthoudt nog wel waar
+hij later moet landen), de heropgebouwde E13 in
+`test/screens/tv/tv_unified_catalog_screen_focus_test.dart`, en twee CAT17-tests in
+`test/screens/tv/tv_catalog_filter_rail_test.dart` voor LINKS en Menu. Alle vier rood
+vóór de fix. Daarnaast `pleya_verify/scenarios/tvos.catalog.rail-sort-focus.yaml`, dat
+het hele pad in één build loopt; daarvoor dragen de drie railrijen en de grid nu
+`tv.catalog.*`-automation-ids, zoals de kijklijst en de Seerr-vensters die al hadden.
+
+#### Wat de Verify-run wel en niet zegt
+
+`pleya_verify/scenarios/tvos.catalog.rail-sort-focus.yaml` staat groen op de
+tvOS-simulator, en `02-after-sort.png` laat zien wat de melding niet liet zien: na het
+kiezen van Titel Z-A staat de rail nog open met de witte ring op Sorteren. De weg erheen
+kostte drie rondes en die zijn het opschrijven waard. Series is geen catalogus maar een
+ontdekkingslanding met rijen en een "alles bekijken"-knop, dus Alle series ligt een Select
+verder; dat stond niet in een aanname maar in de focus-trace van de eerste run, die de
+node `TvDiscoveryViewAll` noemde. En Alle films is met deze fixture geen route: er zitten
+nul films in `catalog.mixed.v1`, dus die pagina tekent de lege staat en bouwt nooit een
+raster.
+
+Wat het scenario niet is, is de negatieve controle. De fixture heeft één serie, dus er is
+geen tweede pagina en de verwijdering die CAT17 veroorzaakt treedt er niet op; deze run
+zou op de oude implementatie waarschijnlijk ook groen zijn geweest. Het bewijst het pad en
+het focuscontract op een echte build. Het bewijs dát de regressie weg is, komt uit E13 in
+`tv_unified_catalog_screen_focus_test.dart`, die op de oude code eindigt op
+`TvUnifiedCard(group:movie:t50:)`.
+
+#### De Codex-challenge erop, en wat die opleverde
+
+Een onafhankelijke Codex-ronde over `42986a14..HEAD` kwam met vijf bevindingen. Vier
+ervan waren raak en zijn gesloten; één hield geen stand.
+
+**Raak, en het was mijn eigen fout.** De meegekopieerde `_openRail` in de kijklijst en de
+twee Seerr-vensters focuste bij een al open rail de bovenliggende railrij, ook wanneer
+er een subview open stond. Die rij is dan niet gemonteerd, want `_buildRail` geeft de
+subview terug in plaats van het paneel, en `requestFocus` op een niet-gekoppelde node
+meldt `canRequestFocus` true en doet vervolgens niets. De rem zat dus nog steeds vast op
+precies het scherm waar hij losgemaakt moest worden. De tak gaat nu door `_closeSubview`,
+dat al bestond en de juiste bovenliggende rij post-frame focust.
+
+**Raak, en met een test beantwoord.** Menu op een kaart binden zou de terugketen van de
+shell kunnen kortsluiten. Dat doet het niet, omdat de binding voorwaardelijk is: met de
+rail dicht draagt de kaart geen `onBack` en valt de druk door. De nieuwe test in
+`tv_catalog_filter_rail_test.dart` telt de drukken die het scherm passeren en eist dat de
+eerste Menu de rail sluit zonder door te geven, en de tweede wél doorgaat. Met een
+onvoorwaardelijke `onBack` staat hij rood op de tweede druk.
+
+**Raak, en de claim was te breed.** PLR7 stond alleen op de rijen en de kaartomlijsting.
+De Informatie-tab en de subviews hielden hun eigen pixelwaarden, met een titel op 22 en
+een sync-cijfer op 44. Die staan er nu ook op, en er is een tweede meting bij die
+de Informatie-tab leest; met de oude waarde meet hij 22,0 waar 18,7 hoort.
+
+**Raak als opmerking, niet opgelost.** De kijklijst en Alle aanvragen geven hun raster
+geen `onBack`, dus daar sluit Menu op een kaart een open rail nog niet. LINKS werkt er nu
+wel. Bewust blijven staan: het zijn drie oppervlakken zonder railharnas in de testsuite en
+zonder melding, en terugtoetssemantiek wijzigen zonder negatieve controle is precies wat
+deze ronde niet doet.
+
+**Hield geen stand.** Twee opeenvolgende verwijderingen zouden hun reddingscallbacks laten
+racen. Een callback die vanuit `didUpdateWidget` wordt ingepland draait aan het eind van
+datzelfde frame, dus een latere update kan er niet voor komen, en een test die de race
+probeert na te bootsen staat groen met én zonder de wacht. De controle staat er wel, maar
+voor iets anders: de focus die binnen hetzelfde frame naar een andere kaart verspringt,
+wat `_buildCell` in `_focusedId` schrijft. Wat er niet bij staat is een test, want die zou
+niets onderscheiden.
+
+### PLR7: het spelerpaneel stond niet op de gedeelde typeladder
+
+Gemeld op 7 september 2026 met een foto van het paneel op hardware: de rijen voelen
+opgeblazen naast de rest van de app.
+
+**Root cause.** `tv_panel_widgets.dart` en de kaartomlijsting in `tv_info_panel.dart`
+schreven hun maten als losse pixelwaarden op en lazen `TvLayoutConstants.scaleOf`
+nergens. Het paneel was daarmee het enige TV-oppervlak buiten de fase-4 paneeltaal.
+De Apple TV rendert Flutter op ongeveer 1038x584 logisch met een verhouding van 1,85
+(DEC-028), dus `scaleOf` staat daar op zijn klemvloer 0,85. Een rijlabel stond op 17
+logisch, oftewel 31,5 referentie-px, terwijl hoofdstuk 8.3 voor die tier 23 tot 26
+voorschrijft en elk ander paneel er 14,03 tekent. Een rij was 62 hoog waar dezelfde
+ladder 54,4 vraagt.
+
+**De fix.** `TvPanelMetrics` leest de schaal en zet elke maat om naar
+`TvSourcePickerLayout` maal die schaal: rijhoogte, rijpadding, de drie teksttiers en de
+sectiekop komen uit de gedeelde ladder, en wat de ladder geen mening over heeft (de
+keuzestip, de schakelaar, de terugknop, de hoekradii, de tussenruimtes) wordt met
+diezelfde schaal vermenigvuldigd. Een paneel dat zijn type schaalt en zijn meubilair
+niet komt er slechter uit dan een paneel dat niets schaalt.
+
+**Bewijs.** Twee metingen in `test/widgets/tv_info_panel_test.dart`, op het
+Apple TV-venster (1038x584, schaal 0,85) en op het canonieke canvas (1920x1080, schaal
+1,0). Op de oude waarden meet het label 17,0 op allebei, waar 14,03 en 16,5 hoort: rood
+op beide. De negentien bestaande gedragstests, inclusief de PLR4-fittests op drie
+hoogtes en de PLR6-contracttest, blijven groen. Er is geen golden die dit paneel tekent.

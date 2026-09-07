@@ -27,11 +27,21 @@ steps:
   # IntroGate's cold-start splash paints over an already-ready screen.
   - settle: 3500
 
-  # Along the top bar to Films and into it. The bar does not wrap, so this is
-  # the same walk `tvos.nav.walk` proves the order of.
-  - walk: {direction: right, expect: [nav.search, nav.discover, nav.series, nav.movies], timeout: 40000, settle: 800}
+  # Series, not Films, and that is a fixture fact rather than a preference:
+  # `catalog.mixed.v1` seeds shows and no movies ("Fetched 0 latest movies" in
+  # the app log of the first run), so Alle films draws `TvCatalogEmptyState` and
+  # never builds a grid at all. The cold start leaves the ring on Home and the
+  # bar does not wrap, so Series is one hop right; the order is the one
+  # `tvos.nav.walk` proves.
+  - walk: {direction: right, expect: [nav.series], timeout: 40000, settle: 800}
   - press: select
-  - wait_until: {id: "tv.catalog.grid[movies]", timeout: 20000}
+  - settle: 1500
+  # Series is a discovery landing, not the catalog: rails plus a "view all"
+  # button, and Alle series is one Select further. The first run's focus trace
+  # named the node (`TvDiscoveryViewAll`) after this press, which is how the
+  # route is known rather than guessed.
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[series]", timeout: 20000}
   - settle: 1500
   - snapshot: 00-catalog
 
@@ -39,13 +49,13 @@ steps:
   # Sortering.
   - press: left
   - settle: 800
-  - assert: {id: "tv.catalog.rail[movies]"}
-  - assert: {id: "tv.catalog.rail.row[movies.sources]", focused: true}
+  - assert: {id: "tv.catalog.rail[series]"}
+  - assert: {id: "tv.catalog.rail.row[series.sources]", focused: true}
   - press: down
   - settle: 600
   - press: down
   - settle: 600
-  - assert: {id: "tv.catalog.rail.row[movies.sort]", focused: true}
+  - assert: {id: "tv.catalog.rail.row[series.sort]", focused: true}
   - snapshot: 01-rail-sort
 
   # Open the panel, take the sort below the one in force, and apply it. The
@@ -59,8 +69,8 @@ steps:
   - snapshot: 02-after-sort
 
   # The point of the whole file.
-  - assert: {id: "tv.catalog.rail[movies]"}
-  - assert: {id: "tv.catalog.rail.row[movies.sort]", focused: true}
+  - assert: {id: "tv.catalog.rail[series]"}
+  - assert: {id: "tv.catalog.rail.row[series.sort]", focused: true}
 
   # And the rail still closes from where the ring is, which is what the viewer
   # could not do on build 268. Shown rather than asserted: the DSL has a
@@ -70,5 +80,5 @@ steps:
   # it would also be with the rail standing open, so read the two together.
   - press: menu
   - settle: 1000
-  - assert: {id: "tv.catalog.grid[movies]"}
+  - assert: {id: "tv.catalog.grid[series]"}
   - snapshot: 03-rail-closed
