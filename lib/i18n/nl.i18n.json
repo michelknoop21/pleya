@@ -327,7 +327,12 @@
     "audioSyncOffsetDescription": "Verschuif audio ten opzichte van beeld voor elke titel",
     "behavior": "Gedrag",
     "personalizedRecommendations": "Persoonlijke aanbevelingen",
-    "personalizedRecommendationsDescription": "Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat."
+    "personalizedRecommendationsDescription": "Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.",
+    "homeLayout": "Indeling van Home",
+    "homeLayoutDescription": "Herschik of verberg de rijen op het beginscherm",
+    "homeLayoutEmpty": "Open het beginscherm één keer, dan kunnen de rijen geladen worden",
+    "homeLayoutMoveUp": "Omhoog",
+    "homeLayoutMoveDown": "Omlaag"
   },
   "search": {
     "hint": "Zoek films, series, muziek...",
@@ -540,7 +545,8 @@
       "sleepActiveHint": "Pauzeert om ${time} · nog ${remaining}",
       "sleepAfter": "Na een tijd",
       "sleepEndOfNextEpisode": "Einde van de volgende aflevering",
-      "shadersNone": "Geen"
+      "shadersNone": "Geen",
+      "hintValueRow": "Links en rechts stappen de waarde · Select of Menu is klaar"
     },
     "fullscreenButton": "Volledig scherm activeren",
     "exitFullscreenButton": "Volledig scherm verlaten",
@@ -1892,7 +1898,8 @@
       "unwatched": "Niet bekeken",
       "unsupported": "Niet beschikbaar voor de huidige bronnen",
       "someUnavailable": "Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen",
-      "noValues": "Niets om uit te kiezen"
+      "noValues": "Niets om uit te kiezen",
+      "activeCount": "${count} actief"
     },
     "states": {
       "emptyTitle": "Deze catalogus is leeg",
@@ -1926,6 +1933,56 @@
     },
     "home": {
       "featured": "Uitgelicht"
+    },
+    "homeRows": {
+      "customize": "Home aanpassen",
+      "customizeSubtitle": "Verplaats of verberg rijen, of maak er een van een filter",
+      "customizeIntro": "Verplaats, verberg of bewerk je rijen. Uitgelicht en Verder kijken blijven staan waar ze staan.",
+      "featured": "Uitgelicht",
+      "alwaysFirst": "Altijd bovenaan",
+      "alwaysSecond": "Altijd tweede",
+      "fixed": "vast",
+      "done": "Klaar",
+      "moveUp": "Omhoog",
+      "moveDown": "Omlaag",
+      "hide": "Verbergen",
+      "show": "Tonen",
+      "edit": "Bewerken",
+      "remove": "Verwijderen",
+      "hiddenNote": "verborgen",
+      "emptyNote": "leeg",
+      "shortRow": "korte rij",
+      "ownRow": "Eigen rij",
+      "pleyaRow": "Pleya-rij",
+      "newRow": "Nieuwe rij",
+      "newRowSubtitle": "Van een filter op films of series",
+      "allInCatalog": "Alle ${count}, in ${catalog}",
+      "wizardTitle": "Nieuwe rij",
+      "wizardEditTitle": "Rij bewerken",
+      "stepName": "Naam en soort",
+      "stepFilters": "Filters",
+      "stepPreview": "Voorbeeld",
+      "stepNameBody": "Een rij toont de films of series die aan een filter voldoen.",
+      "stepFiltersBody": "Dezelfde keuzes als in de volledige catalogus. Elke regel opent zijn eigen lijst.",
+      "stepPreviewBody": "Zo komt de rij op Home te staan.",
+      "kind": "Soort",
+      "name": "Naam",
+      "nameHint": "Laat leeg en de naam volgt het filter, en blijft dat volgen.",
+      "status": "Status",
+      "genre": "Genre",
+      "year": "Jaar",
+      "sources": "Bronnen",
+      "sorting": "Sortering",
+      "allYears": "Alle jaren",
+      "next": "Volgende",
+      "back": "Terug",
+      "addRow": "Rij toevoegen",
+      "saveRow": "Rij opslaan",
+      "adjustFilters": "Filters aanpassen",
+      "landsBelowContinue": "Komt direct onder Verder kijken. Je kunt hem daarna verplaatsen in Home aanpassen.",
+      "emptyPreviewTitle": "Niets voldoet aan dit filter",
+      "emptyPreviewBody": "Maak het filter ruimer, of kies een andere sortering.",
+      "morePosters": "+${count}"
     }
   },
   "tvNavigation": {

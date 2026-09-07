@@ -479,6 +479,11 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get behavior => 'Gedrag';
 	@override String get personalizedRecommendations => 'Persoonlijke aanbevelingen';
 	@override String get personalizedRecommendationsDescription => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.';
+	@override String get homeLayout => 'Indeling van Home';
+	@override String get homeLayoutDescription => 'Herschik of verberg de rijen op het beginscherm';
+	@override String get homeLayoutEmpty => 'Open het beginscherm één keer, dan kunnen de rijen geladen worden';
+	@override String get homeLayoutMoveUp => 'Omhoog';
+	@override String get homeLayoutMoveDown => 'Omlaag';
 }
 
 // Path: search
@@ -2140,6 +2145,7 @@ class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogSemanticsNl semantics = _TranslationsUnifiedCatalogSemanticsNl._(_root);
 	@override late final _TranslationsUnifiedCatalogDiscoveryNl discovery = _TranslationsUnifiedCatalogDiscoveryNl._(_root);
 	@override late final _TranslationsUnifiedCatalogHomeNl home = _TranslationsUnifiedCatalogHomeNl._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeRowsNl homeRows = _TranslationsUnifiedCatalogHomeRowsNl._(_root);
 }
 
 // Path: tvNavigation
@@ -2352,6 +2358,7 @@ class _TranslationsVideoControlsTvPanelNl extends TranslationsVideoControlsTvPan
 	@override String get sleepAfter => 'Na een tijd';
 	@override String get sleepEndOfNextEpisode => 'Einde van de volgende aflevering';
 	@override String get shadersNone => 'Geen';
+	@override String get hintValueRow => 'Links en rechts stappen de waarde · Select of Menu is klaar';
 }
 
 // Path: videoControls.pipErrors
@@ -2709,6 +2716,7 @@ class _TranslationsUnifiedCatalogFiltersNl extends TranslationsUnifiedCatalogFil
 	@override String get unsupported => 'Niet beschikbaar voor de huidige bronnen';
 	@override String get someUnavailable => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen';
 	@override String get noValues => 'Niets om uit te kiezen';
+	@override String activeCount({required Object count}) => '${count} actief';
 }
 
 // Path: unifiedCatalog.states
@@ -2765,6 +2773,63 @@ class _TranslationsUnifiedCatalogHomeNl extends TranslationsUnifiedCatalogHomeEn
 
 	// Translations
 	@override String get featured => 'Uitgelicht';
+}
+
+// Path: unifiedCatalog.homeRows
+class _TranslationsUnifiedCatalogHomeRowsNl extends TranslationsUnifiedCatalogHomeRowsEn {
+	_TranslationsUnifiedCatalogHomeRowsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get customize => 'Home aanpassen';
+	@override String get customizeSubtitle => 'Verplaats of verberg rijen, of maak er een van een filter';
+	@override String get customizeIntro => 'Verplaats, verberg of bewerk je rijen. Uitgelicht en Verder kijken blijven staan waar ze staan.';
+	@override String get featured => 'Uitgelicht';
+	@override String get alwaysFirst => 'Altijd bovenaan';
+	@override String get alwaysSecond => 'Altijd tweede';
+	@override String get fixed => 'vast';
+	@override String get done => 'Klaar';
+	@override String get moveUp => 'Omhoog';
+	@override String get moveDown => 'Omlaag';
+	@override String get hide => 'Verbergen';
+	@override String get show => 'Tonen';
+	@override String get edit => 'Bewerken';
+	@override String get remove => 'Verwijderen';
+	@override String get hiddenNote => 'verborgen';
+	@override String get emptyNote => 'leeg';
+	@override String get shortRow => 'korte rij';
+	@override String get ownRow => 'Eigen rij';
+	@override String get pleyaRow => 'Pleya-rij';
+	@override String get newRow => 'Nieuwe rij';
+	@override String get newRowSubtitle => 'Van een filter op films of series';
+	@override String allInCatalog({required Object count, required Object catalog}) => 'Alle ${count}, in ${catalog}';
+	@override String get wizardTitle => 'Nieuwe rij';
+	@override String get wizardEditTitle => 'Rij bewerken';
+	@override String get stepName => 'Naam en soort';
+	@override String get stepFilters => 'Filters';
+	@override String get stepPreview => 'Voorbeeld';
+	@override String get stepNameBody => 'Een rij toont de films of series die aan een filter voldoen.';
+	@override String get stepFiltersBody => 'Dezelfde keuzes als in de volledige catalogus. Elke regel opent zijn eigen lijst.';
+	@override String get stepPreviewBody => 'Zo komt de rij op Home te staan.';
+	@override String get kind => 'Soort';
+	@override String get name => 'Naam';
+	@override String get nameHint => 'Laat leeg en de naam volgt het filter, en blijft dat volgen.';
+	@override String get status => 'Status';
+	@override String get genre => 'Genre';
+	@override String get year => 'Jaar';
+	@override String get sources => 'Bronnen';
+	@override String get sorting => 'Sortering';
+	@override String get allYears => 'Alle jaren';
+	@override String get next => 'Volgende';
+	@override String get back => 'Terug';
+	@override String get addRow => 'Rij toevoegen';
+	@override String get saveRow => 'Rij opslaan';
+	@override String get adjustFilters => 'Filters aanpassen';
+	@override String get landsBelowContinue => 'Komt direct onder Verder kijken. Je kunt hem daarna verplaatsen in Home aanpassen.';
+	@override String get emptyPreviewTitle => 'Niets voldoet aan dit filter';
+	@override String get emptyPreviewBody => 'Maak het filter ruimer, of kies een andere sortering.';
+	@override String morePosters({required Object count}) => '+${count}';
 }
 
 // Path: tvMyPleya.semantics
@@ -3115,6 +3180,11 @@ extension on TranslationsNl {
 			'settings.behavior' => 'Gedrag',
 			'settings.personalizedRecommendations' => 'Persoonlijke aanbevelingen',
 			'settings.personalizedRecommendationsDescription' => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.',
+			'settings.homeLayout' => 'Indeling van Home',
+			'settings.homeLayoutDescription' => 'Herschik of verberg de rijen op het beginscherm',
+			'settings.homeLayoutEmpty' => 'Open het beginscherm één keer, dan kunnen de rijen geladen worden',
+			'settings.homeLayoutMoveUp' => 'Omhoog',
+			'settings.homeLayoutMoveDown' => 'Omlaag',
 			'search.hint' => 'Zoek films, series, muziek...',
 			'search.tryDifferentTerm' => 'Probeer een andere zoekterm',
 			'search.searchYourMedia' => 'Zoek in je media',
@@ -3306,13 +3376,14 @@ extension on TranslationsNl {
 			'videoControls.tvPanel.sleepActiveHint' => ({required Object time, required Object remaining}) => 'Pauzeert om ${time} · nog ${remaining}',
 			'videoControls.tvPanel.sleepAfter' => 'Na een tijd',
 			'videoControls.tvPanel.sleepEndOfNextEpisode' => 'Einde van de volgende aflevering',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.tvPanel.shadersNone' => 'Geen',
+			'videoControls.tvPanel.hintValueRow' => 'Links en rechts stappen de waarde · Select of Menu is klaar',
 			'videoControls.fullscreenButton' => 'Volledig scherm activeren',
 			'videoControls.exitFullscreenButton' => 'Volledig scherm verlaten',
 			'videoControls.alwaysOnTopButton' => 'Altijd bovenop',
 			'videoControls.rotationLockButton' => 'Rotatievergrendeling',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.lockScreen' => 'Vergrendel scherm',
 			'videoControls.screenLockButton' => 'Schermvergrendeling',
 			'videoControls.longPressToUnlock' => 'Lang indrukken om te ontgrendelen',
@@ -3819,14 +3890,14 @@ extension on TranslationsNl {
 			'playlists.deleted' => 'Afspeellijst verwijderd',
 			'playlists.itemAdded' => 'Toegevoegd aan afspeellijst',
 			'playlists.itemRemoved' => 'Verwijderd uit afspeellijst',
+			_ => null,
+		} ?? switch (path) {
 			'playlists.selectPlaylist' => 'Selecteer afspeellijst',
 			'playlists.errorCreating' => 'Fout bij maken afspeellijst',
 			'playlists.errorDeleting' => 'Fout bij verwijderen afspeellijst',
 			'playlists.errorLoading' => 'Fout bij laden afspeellijsten',
 			'playlists.errorAdding' => 'Fout bij toevoegen aan afspeellijst',
 			'playlists.errorReordering' => 'Fout bij herschikken van afspeellijstitem',
-			_ => null,
-		} ?? switch (path) {
 			'playlists.errorRemoving' => 'Fout bij verwijderen uit afspeellijst',
 			'watchTogether.title' => 'Samen Kijken',
 			'watchTogether.description' => 'Kijk synchroon met vrienden en familie',
@@ -4333,14 +4404,14 @@ extension on TranslationsNl {
 			'pleyaShare.pairFailed' => 'Koppelen mislukt. Controleer de code en probeer opnieuw.',
 			'pleyaShare.paired' => ({required Object name}) => 'Verbonden met ${name}',
 			'pleyaShare.pairUnreachable' => 'Host niet bereikbaar. Controleer het adres en het netwerk.',
+			_ => null,
+		} ?? switch (path) {
 			'pleyaShare.addFolder' => 'Lokale map toevoegen',
 			'pleyaShare.notificationTitle' => 'Media wordt gedeeld',
 			'pleyaShare.notificationText' => 'Andere Pleya-apparaten kunnen je lokale mappen streamen',
 			'pleyaShare.hostDescriptionAndroid' => 'Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Delen blijft op de achtergrond draaien met een melding.',
 			'pleyaShare.scanningSubnet' => 'Netwerk scannen…',
 			'seerr.title' => 'Aanvragen',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.hubSubtitle' => 'Vraag films en series aan op je Jellyseerr- of Overseerr-server.',
 			'seerr.notConfigured' => 'Niet ingesteld',
 			'seerr.serverUrl' => 'Server-URL',
@@ -4536,6 +4607,7 @@ extension on TranslationsNl {
 			'unifiedCatalog.filters.unsupported' => 'Niet beschikbaar voor de huidige bronnen',
 			'unifiedCatalog.filters.someUnavailable' => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen',
 			'unifiedCatalog.filters.noValues' => 'Niets om uit te kiezen',
+			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} actief',
 			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
 			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
@@ -4559,6 +4631,54 @@ extension on TranslationsNl {
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Alle films bekijken, opent de volledige catalogus',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle series bekijken, opent de volledige catalogus',
 			'unifiedCatalog.home.featured' => 'Uitgelicht',
+			'unifiedCatalog.homeRows.customize' => 'Home aanpassen',
+			'unifiedCatalog.homeRows.customizeSubtitle' => 'Verplaats of verberg rijen, of maak er een van een filter',
+			'unifiedCatalog.homeRows.customizeIntro' => 'Verplaats, verberg of bewerk je rijen. Uitgelicht en Verder kijken blijven staan waar ze staan.',
+			'unifiedCatalog.homeRows.featured' => 'Uitgelicht',
+			'unifiedCatalog.homeRows.alwaysFirst' => 'Altijd bovenaan',
+			'unifiedCatalog.homeRows.alwaysSecond' => 'Altijd tweede',
+			'unifiedCatalog.homeRows.fixed' => 'vast',
+			'unifiedCatalog.homeRows.done' => 'Klaar',
+			'unifiedCatalog.homeRows.moveUp' => 'Omhoog',
+			'unifiedCatalog.homeRows.moveDown' => 'Omlaag',
+			'unifiedCatalog.homeRows.hide' => 'Verbergen',
+			'unifiedCatalog.homeRows.show' => 'Tonen',
+			'unifiedCatalog.homeRows.edit' => 'Bewerken',
+			'unifiedCatalog.homeRows.remove' => 'Verwijderen',
+			'unifiedCatalog.homeRows.hiddenNote' => 'verborgen',
+			'unifiedCatalog.homeRows.emptyNote' => 'leeg',
+			'unifiedCatalog.homeRows.shortRow' => 'korte rij',
+			'unifiedCatalog.homeRows.ownRow' => 'Eigen rij',
+			'unifiedCatalog.homeRows.pleyaRow' => 'Pleya-rij',
+			'unifiedCatalog.homeRows.newRow' => 'Nieuwe rij',
+			'unifiedCatalog.homeRows.newRowSubtitle' => 'Van een filter op films of series',
+			'unifiedCatalog.homeRows.allInCatalog' => ({required Object count, required Object catalog}) => 'Alle ${count}, in ${catalog}',
+			'unifiedCatalog.homeRows.wizardTitle' => 'Nieuwe rij',
+			'unifiedCatalog.homeRows.wizardEditTitle' => 'Rij bewerken',
+			'unifiedCatalog.homeRows.stepName' => 'Naam en soort',
+			'unifiedCatalog.homeRows.stepFilters' => 'Filters',
+			'unifiedCatalog.homeRows.stepPreview' => 'Voorbeeld',
+			'unifiedCatalog.homeRows.stepNameBody' => 'Een rij toont de films of series die aan een filter voldoen.',
+			'unifiedCatalog.homeRows.stepFiltersBody' => 'Dezelfde keuzes als in de volledige catalogus. Elke regel opent zijn eigen lijst.',
+			'unifiedCatalog.homeRows.stepPreviewBody' => 'Zo komt de rij op Home te staan.',
+			'unifiedCatalog.homeRows.kind' => 'Soort',
+			'unifiedCatalog.homeRows.name' => 'Naam',
+			'unifiedCatalog.homeRows.nameHint' => 'Laat leeg en de naam volgt het filter, en blijft dat volgen.',
+			'unifiedCatalog.homeRows.status' => 'Status',
+			'unifiedCatalog.homeRows.genre' => 'Genre',
+			'unifiedCatalog.homeRows.year' => 'Jaar',
+			'unifiedCatalog.homeRows.sources' => 'Bronnen',
+			'unifiedCatalog.homeRows.sorting' => 'Sortering',
+			'unifiedCatalog.homeRows.allYears' => 'Alle jaren',
+			'unifiedCatalog.homeRows.next' => 'Volgende',
+			'unifiedCatalog.homeRows.back' => 'Terug',
+			'unifiedCatalog.homeRows.addRow' => 'Rij toevoegen',
+			'unifiedCatalog.homeRows.saveRow' => 'Rij opslaan',
+			'unifiedCatalog.homeRows.adjustFilters' => 'Filters aanpassen',
+			'unifiedCatalog.homeRows.landsBelowContinue' => 'Komt direct onder Verder kijken. Je kunt hem daarna verplaatsen in Home aanpassen.',
+			'unifiedCatalog.homeRows.emptyPreviewTitle' => 'Niets voldoet aan dit filter',
+			'unifiedCatalog.homeRows.emptyPreviewBody' => 'Maak het filter ruimer, of kies een andere sortering.',
+			'unifiedCatalog.homeRows.morePosters' => ({required Object count}) => '+${count}',
 			'tvNavigation.activeDestination' => 'huidige sectie',
 			'tvNavigation.attentionRequired' => 'vereist aandacht',
 			'tvMyPleya.groupContent' => 'Mijn content',
