@@ -303,6 +303,7 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
         _focusNode.dispose();
       }
       _initFocusNode();
+      _adoptFocusStateOfNode();
     }
 
     // Update canRequestFocus
@@ -330,6 +331,33 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
     }
     _unregisterAutomationNode();
     super.dispose();
+  }
+
+  /// Takes over the focus state of whichever node this widget now holds
+  /// (ROW1p).
+  ///
+  /// Handing a wrapper a different node is not a focus change from the nodes'
+  /// point of view, so nothing reports one: the node that lost the focus tells
+  /// the `Focus` widget it used to hang on, and that widget is by then already
+  /// listening to its replacement. Without this the indicator stays where the
+  /// focus *was* while the focus itself moves on, and every further reorder
+  /// leaves another one behind — three white capsules in the Home customise
+  /// panel, four ringed arrows in the column beside them.
+  ///
+  /// A keyless list is what produces this. Flutter reuses the element in a slot
+  /// for whatever row now occupies it and hands it that row's node, so the
+  /// widgets move while the nodes stay with their rows.
+  ///
+  /// Deferred to after the frame because the notification runs into whoever
+  /// owns this wrapper, and that listener typically calls `setState` — which is
+  /// what `TvPanelButton` does to fill itself white. Calling it here would be a
+  /// `setState` during a descendant's build. One frame of the old indicator is
+  /// not visible; a rebuild assertion is.
+  void _adoptFocusStateOfNode() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _handleFocusChange(_focusNode.hasFocus);
+    });
   }
 
   void _handleFocusChange(bool hasFocus) {
