@@ -47,6 +47,9 @@ under `Notes`.
 - eigen Home-rijen ook op desktop/mobiel
 - "Alle N"-tegel als laatste kaart van een eigen rij
 - een waarderij van het spelerpaneel wordt eerst aangeklikt, en pas dan stappen links en rechts (PLR5, DEC-102)
+- de kijklijst in de catalogustaal (DEC-108, mockup 34)
+- Aanvragen en Ontdekken in de catalogustaal (DEC-108, mockup 35)
+- Zoeken in de catalogustaal, en de kop die SEARCH1 sluit (DEC-108, mockup 36)
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
@@ -56,6 +59,7 @@ under `Notes`.
 - gedeelde shell voor Home en de landings, geen kopie meer
 - mobileFeatured deelt de wide-box-tak i.p.v. hem te kopiëren
 - hergebruik bestaande source-helpers i.p.v. ze te kopiëren
+- de catalogustegel en het catalogusraster los van de unified catalog
 
 ### Fixed
 - de nieuwe route-ids afhandelen in de bestaande shells
@@ -100,6 +104,12 @@ under `Notes`.
 - de hoogtekap van het spelerpaneel volgt de title-safe band en niet meer een vaste fractie (PLR4)
 - de vastloop in mobile_catalog_screen_test was een zonekruising, geen omgeving
 - de chips op Alle films openen hun sheet weer, want het scherm draagt nu zijn eigen overlay-host (CAT9)
+- het Home-aanpaspaneel spreekt Nederlands, en een test bewaakt de rest (ROW1q)
+- een wrapper die een andere focusnode krijgt neemt diens staat over (ROW1p)
+- het catalogusraster houdt de focusring heel na een scroll (CAT10)
+- ongebruikte import uit de CAT10-test
+- een lege catalogus laat de afstandsbediening nergens op staan (CAT14)
+- acht bevindingen uit een onafhankelijke Codex-challenge (CAT16)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
