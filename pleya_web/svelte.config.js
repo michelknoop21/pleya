@@ -33,7 +33,23 @@ const config = {
       directives: {
         'default-src': ['self'],
         'script-src': ['self'],
-        'style-src': ['self'],
+        // Kit zet zelf, buiten elke pagina om, een onzichtbare live-regio
+        // (#svelte-announcer) neer om routewissels aan schermlezers voor te
+        // lezen, en stijlt die inline via JavaScript na hydratie. `mode:
+        // 'hash'` hasht alleen wat in de gegenereerde HTML zelf staat, dus
+        // deze runtime-mutatie valt daarbuiten en werd tot nu toe geblokkeerd
+        // (style-src-attr). Onschadelijk toen: dezelfde regel staat ook als
+        // losse stylesheet-regel op #svelte-announcer, dus het element bleef
+        // zichtbaar verborgen. `unsafe-hashes` is voor stijlattributen
+        // verplicht naast de hash zelf (CSP3 §match-source-expression); de
+        // hash hoort bij deze exacte, door Kit vastgelegde stijltekst en
+        // verandert alleen als een toekomstige Kit-versie de opmaak van de
+        // announcer wijzigt.
+        'style-src': [
+          'self',
+          'unsafe-hashes',
+          'sha256-S8qMpvofolR8Mpjy4kQvEm7m1q8clzU4dfDH0AmvZjo='
+        ],
         'font-src': ['self'],
         // blob: is de artworkroute. GET /pleya/v1/artwork/{id} is klasse
         // authenticated en accepteert alleen een Authorization-header, en een
