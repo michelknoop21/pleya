@@ -91,6 +91,7 @@ under `Notes`.
 - S1.6, de laatste drie rijen van venster 1, en het venster dicht
 - S2.1, managed en scaninstellingen op libraries
 - S2.2, CRUD op libraries en protocolvenster 2 open
+- S2.3, GET /storage/roots uit de mounts en de recheck
 
 ### Improved
 - semantische bronaudit op codec- en containerlijsten
@@ -169,6 +170,7 @@ under `Notes`.
 - de merge liet twee capability-fixtures en de gegenereerde client achter
 - een gefocuste rail ankert onder de navbalk, zonder band voor de hero (HOME1)
 - drie bevindingen uit de codex-challenge op de merge
+- vijf codex-bevindingen op /libraries vóór S2.3
 <!-- END GENERATED -->
 
 ### Fixed
