@@ -47,6 +47,8 @@
 /// recorded here rather than attempted.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../focus/focus_theme.dart';
@@ -175,6 +177,22 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
   /// visible range without re-deriving the column count from the viewport.
   TvCatalogGrid? _grid;
 
+  /// The card height that went with [_grid], kept beside it for the same
+  /// reason: [_keepFocusRingVisible] needs the row pitch and must not re-derive
+  /// it from a viewport that may already have changed.
+  double? _cardHeight;
+
+  /// Used when the caller hands in no controller of its own.
+  ///
+  /// The grid needs to be able to read and correct its own scroll offset
+  /// (CAT10), and a `SingleChildScrollView` without a controller keeps its
+  /// position where nothing else can reach it. A standalone mount — a golden, a
+  /// focus test — is exactly the case that used to have no controller at all,
+  /// and it is also the mount where the correction went unnoticed the longest.
+  ScrollController? _fallbackController;
+
+  ScrollController get _controller => widget.controller ?? (_fallbackController ??= ScrollController());
+
   @override
   void didUpdateWidget(TvUnifiedMediaGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -188,6 +206,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
   @override
   void dispose() {
     _prefetcher.dispose();
+    _fallbackController?.dispose();
     for (final node in _nodes.values) {
       node.dispose();
     }
@@ -213,6 +232,60 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       lastVisibleIndex: first + grid.columns - 1,
       posterSize: Size(grid.cardWidth, grid.cardWidth / TvCatalogLayout.posterAspectRatio),
     );
+  }
+
+  /// Keeps the whole of the focused card — ring included — inside the viewport
+  /// after directional traversal has had its say (CAT10, and CAT8 at the other
+  /// edge).
+  ///
+  /// The grid does not claim UP and DOWN between its own rows: [_buildCard]
+  /// binds `onNavigateUp` only on the first row and `onNavigateDown` only on
+  /// the last, so every move *within* the grid falls through to Flutter's
+  /// `DirectionalFocusAction` and ends in
+  /// `Scrollable.ensureVisible(alignmentPolicy: keepVisibleAtStart)`. That
+  /// reveals the card's **resting** box, and the resting box is not what gets
+  /// drawn: [FocusableWrapper] scales the card about its centre, so the ring
+  /// reaches [TvCatalogGrid.focusHeadroom] beyond the box at both ends.
+  ///
+  /// [TvCatalogGrid.scrollPadding] reserves exactly that headroom, which is why
+  /// the first row is whole at rest — and only at rest. `keepVisibleAtStart`
+  /// puts the resting box flush against the viewport, so it scrolls the
+  /// reservation itself out of view and the `SingleChildScrollView` clips what
+  /// was standing in it. Measured on the tvOS simulator on 7 September 2026:
+  /// at rest the top edge of the ring sits at y=445 of 2160 and after DOWN then
+  /// UP it is gone, with the rest of the ring 30 physical pixels higher.
+  ///
+  /// So rather than reveal a different box, this states the range the offset
+  /// may be in for the focused row and clamps it there. The upper bound is
+  /// where the ring meets the top edge, the lower bound where it meets the
+  /// bottom one; a card taller than the viewport keeps the top. It runs after
+  /// the frame because that is when traversal has already moved the position —
+  /// correcting before it would be overwritten by it.
+  void _keepFocusRingVisible(int index) {
+    final grid = _grid;
+    final cardHeight = _cardHeight;
+    if (grid == null || cardHeight == null) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_controller.hasClients) return;
+      final position = _controller.position;
+      if (!position.hasViewportDimension || !position.hasContentDimensions) return;
+
+      final growth = TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: FocusTheme.fullCardFocusScale);
+      // The row's box inside the scroll content. The top padding is that same
+      // growth, so on row zero the two cancel and the bound is simply 0.
+      final rowTop = growth + (index ~/ grid.columns) * (cardHeight + grid.gutter);
+
+      final upper = rowTop - growth;
+      final lower = rowTop + cardHeight + growth - position.viewportDimension;
+      final target = (position.pixels.clamp(math.min(lower, upper), upper) as double).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      );
+
+      if ((target - position.pixels).abs() < 0.5) return;
+      position.jumpTo(target);
+    });
   }
 
   /// How close to the end of the loaded pages the focus has to get before the
@@ -334,6 +407,8 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       reservedLeading: widget.reservedLeading,
     );
     _grid = grid;
+    final cardHeight = TvCatalogLayout.cardHeight(grid.cardWidth, scale);
+    _cardHeight = cardHeight;
     final rows = <Widget>[];
 
     for (var start = 0; start < widget.groups.length; start += grid.columns) {
@@ -342,7 +417,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
     }
 
     return SingleChildScrollView(
-      controller: widget.controller,
+      controller: _controller,
       // A bottom inset as well as the side ones. Hoofdstuk 8.1: "geen tekst of
       // focusring binnen de buitenste 56 pixels". With only the horizontal
       // padding the last row's count line and the partial-coverage notice sat
@@ -358,10 +433,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       // on first was the one row whose focus ring had no top edge.
       // Which box grows is the card's business, not the column resolver's, so
       // the height comes from the card that is actually drawn here (CAT1).
-      padding: grid.scrollPadding(
-        cardHeight: TvCatalogLayout.cardHeight(grid.cardWidth, scale),
-        focusScale: FocusTheme.fullCardFocusScale,
-      ),
+      padding: grid.scrollPadding(cardHeight: cardHeight, focusScale: FocusTheme.fullCardFocusScale),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -406,6 +478,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
         if (!hasFocus) return;
         _focusedGroupId = group.groupId;
         widget.onFocusedGroupChanged?.call(group.groupId);
+        _keepFocusRingVisible(index);
         _warmAround(index);
         _maybeLoadMore(index);
       },
