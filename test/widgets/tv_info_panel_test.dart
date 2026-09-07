@@ -18,6 +18,7 @@ import 'package:pleya/widgets/video_controls/models/track_controls_state.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel/tv_audio_subtitle_tabs.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel/tv_panel_widgets.dart';
+import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:pleya/widgets/video_controls/widgets/track_chapter_controls.dart';
 
 import '../test_helpers/prefs.dart';
@@ -287,6 +288,36 @@ void main() {
         extents,
         everyElement(0.0),
         reason: 'no row may sit under the card edge without an affordance; extents were $extents',
+      );
+    });
+  }
+
+  // PLR7. The panel used to write its own pixel values and never asked
+  // `TvLayoutConstants.scaleOf` anything, which made it the one TV surface that
+  // did not move with the ten-foot scale. The Apple TV renders Flutter at about
+  // 1038x584 logical with a 1.85 device ratio (DEC-028), so `scaleOf` sits on
+  // its 0.85 floor there: a row label stood at 17 logical, 31.5 reference px,
+  // against hoofdstuk 8.3's own 23-26 band for that tier, and a row was 62 tall
+  // where the same ladder asks for 54.4. Red on the old values at both sizes.
+  for (final (name, viewSize, scale) in [
+    ('the Apple TV viewport', const Size(1038, 584), 0.85),
+    ('the canonical canvas', const Size(1920, 1080), 1.0),
+  ]) {
+    testWidgets('rows follow the shared ten-foot ladder on $name (PLR7)', (tester) async {
+      await _pumpFullVideoTab(tester, viewSize: viewSize);
+
+      final title = tester.widget<Text>(find.text('Zoom'));
+      expect(
+        title.style?.fontSize,
+        closeTo(TvSourcePickerLayout.rowPrimaryFontSize * scale, 0.01),
+        reason: 'the row label is hoofdstuk 8.3s row-primary tier, not a number of its own',
+      );
+
+      final row = find.ancestor(of: find.text('Zoom'), matching: find.byType(TvPanelRow)).first;
+      expect(
+        tester.getSize(row).height,
+        closeTo(TvSourcePickerLayout.rowMinHeight * scale, 0.01),
+        reason: 'a single-line row rests on the shared minimum height',
       );
     });
   }

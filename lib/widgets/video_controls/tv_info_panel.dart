@@ -23,6 +23,7 @@ import '../tv/tv_page_surface.dart';
 import 'models/track_controls_state.dart';
 import 'sheets/subtitle_search_sheet.dart';
 import 'sheets/version_quality_sheet.dart';
+import '../tv/tv_unified_layout.dart';
 import 'tv_info_panel/tv_audio_subtitle_tabs.dart';
 import 'tv_info_panel/tv_chapter_sub_view.dart';
 import 'tv_info_panel/tv_information_tab.dart';
@@ -301,6 +302,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
                 // the outer edge of the surface can be cut on sets that still
                 // overscan. The card sits on the same title-safe inset every TV
                 // page pays (`tvPageInset`, PLR1).
+                final m = TvPanelMetrics.of(context);
                 final hInset = tvPageInset(context);
                 final top = (constraints.maxHeight * 0.037).clamp(24.0, 48.0);
                 // The cap is the title-safe band the card may occupy, not a
@@ -321,15 +323,15 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
                     role: 'region',
                     state: _automationState,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
+                      borderRadius: BorderRadius.circular(m.gap(22)),
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: kTvPanelBlurSigma, sigmaY: kTvPanelBlurSigma),
                         child: Container(
                           constraints: BoxConstraints(maxHeight: maxHeight),
-                          padding: const EdgeInsets.fromLTRB(28, 20, 28, 0),
+                          padding: EdgeInsets.fromLTRB(m.gap(28), m.gap(20), m.gap(28), 0),
                           decoration: BoxDecoration(
                             color: TvPanelTheme.card,
-                            borderRadius: BorderRadius.circular(22),
+                            borderRadius: BorderRadius.circular(m.gap(22)),
                             border: Border.all(color: TvPanelTheme.cardBorder),
                             boxShadow: const [
                               BoxShadow(color: Color(0x80000000), blurRadius: 60, offset: Offset(0, 30)),
@@ -342,7 +344,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _subView == TvInfoPanelSubView.none ? _buildPillBar() : _buildSubViewHeader(),
-                                const SizedBox(height: 18),
+                                SizedBox(height: m.gap(18)),
                                 Flexible(
                                   child: _subView == TvInfoPanelSubView.none ? _buildTabContent() : _buildSubView(),
                                 ),
@@ -376,7 +378,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
       initialData: widget.player.state.position,
       builder: (context, snapshot) => Text(
         _nowLine(snapshot.data ?? Duration.zero),
-        style: const TextStyle(color: TvPanelTheme.textFaint, fontSize: 14),
+        style: TextStyle(color: TvPanelTheme.textFaint, fontSize: TvPanelMetrics.of(context).subtitleFontSize),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.end,
@@ -385,16 +387,17 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
   }
 
   Widget _buildPillBar() {
+    final m = TvPanelMetrics.of(context);
     return Row(
       children: [
         _pill(TvInfoPanelTab.information, Symbols.info_rounded, t.videoControls.tvPanel.information),
-        const SizedBox(width: 8),
+        SizedBox(width: m.gap(8)),
         _pill(TvInfoPanelTab.video, Symbols.tv_rounded, t.videoControls.tvPanel.video),
-        const SizedBox(width: 8),
+        SizedBox(width: m.gap(8)),
         _pill(TvInfoPanelTab.audio, Symbols.volume_up_rounded, t.videoControls.tvPanel.audio),
-        const SizedBox(width: 8),
+        SizedBox(width: m.gap(8)),
         _pill(TvInfoPanelTab.subtitles, Symbols.subtitles_rounded, t.videoControls.subtitlesLabel),
-        const SizedBox(width: 24),
+        SizedBox(width: m.gap(24)),
         Expanded(child: _buildNowLine()),
       ],
     );
@@ -419,12 +422,13 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
         builder: (context) {
           final hasFocus = CardFocusScope.maybeOf(context) ?? false;
           final ink = isActive ? TvPanelTheme.focusInk : Colors.white;
+          final m = TvPanelMetrics.of(context);
           return AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: m.gap(16), vertical: m.gap(8)),
             decoration: BoxDecoration(
               color: isActive ? TvPanelTheme.activePill : TvPanelTheme.inactivePill,
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(m.gap(22)),
               boxShadow: hasFocus
                   ? const [
                       BoxShadow(color: TvPanelTheme.focusInk, spreadRadius: 2),
@@ -435,11 +439,11 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                AppIcon(icon, fill: 1, color: ink, size: 18),
-                const SizedBox(width: 8),
+                AppIcon(icon, fill: 1, color: ink, size: m.gap(18)),
+                SizedBox(width: m.gap(8)),
                 Text(
                   label,
-                  style: TextStyle(color: ink, fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: ink, fontSize: m.gap(15), fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -480,17 +484,25 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
       ),
       TvInfoPanelSubView.none => ('', ''),
     };
+    final m = TvPanelMetrics.of(context);
     return Row(
       children: [
         TvPanelBackButton(onPressed: _closeSubView),
-        const SizedBox(width: 16),
+        SizedBox(width: m.gap(16)),
         Text(
           title,
-          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: TvSourcePickerLayout.titleFontSize * m.scale,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-        const SizedBox(width: 12),
-        Text(crumb, style: const TextStyle(color: TvPanelTheme.textFaint, fontSize: 14)),
-        const SizedBox(width: 24),
+        SizedBox(width: m.gap(12)),
+        Text(
+          crumb,
+          style: TextStyle(color: TvPanelTheme.textFaint, fontSize: m.subtitleFontSize),
+        ),
+        SizedBox(width: m.gap(24)),
         Expanded(child: _buildNowLine()),
       ],
     );
@@ -502,9 +514,10 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
     final hint = _valueRows.hasEnteredRow
         ? t.videoControls.tvPanel.hintValueRow
         : (_subView == TvInfoPanelSubView.none ? t.videoControls.tvPanel.hint : t.videoControls.tvPanel.hintBack);
+    final m = TvPanelMetrics.of(context);
     return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      margin: EdgeInsets.only(top: m.gap(8)),
+      padding: EdgeInsets.symmetric(vertical: m.gap(12)),
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: TvPanelTheme.hairline)),
       ),
@@ -513,7 +526,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
           Expanded(
             child: Text(
               hint,
-              style: const TextStyle(color: TvPanelTheme.textDim, fontSize: 13),
+              style: TextStyle(color: TvPanelTheme.textDim, fontSize: m.subtitleFontSize),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

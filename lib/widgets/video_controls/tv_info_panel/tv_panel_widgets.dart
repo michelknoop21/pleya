@@ -3,7 +3,9 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../focus/card_focus_scope.dart';
 import '../../../focus/focusable_wrapper.dart';
+import '../../../utils/layout_constants.dart';
 import '../../app_icon.dart';
+import '../../tv/tv_unified_layout.dart';
 import 'tv_panel_value_row_scope.dart';
 
 /// Shared visual tokens for the TV player panel (mockup 33, DEC-101).
@@ -46,6 +48,60 @@ class TvPanelTheme {
 
   static const double rowRadius = 14;
   static const double groupRadius = 18;
+}
+
+/// The panel's measurements, on hoofdstuk 8.3's ladder times the ten-foot
+/// scale.
+///
+/// PLR7. This panel was written before the fase-4 panel language and kept its
+/// own pixel values, which made it the one TV surface that did not answer to
+/// [TvLayoutConstants.scaleOf]. On an Apple TV that scale is 0.85, so a row
+/// label stood at 17 where every other panel drew the same label at 14.0 and a
+/// row was 62 tall against 54.4, about a fifth larger in type, and immediately
+/// visible as "opgeblazen" next to the rest of the app. Worse than the size
+/// itself was the fixedness: on a display that scales the other way the panel
+/// alone would have stayed put.
+///
+/// Sizes come from [TvSourcePickerLayout] so there is one ladder and not two.
+/// What stays local is everything the ladder has no opinion about (glyph
+/// diameters, the switch, the corner radii), and those are multiplied by the
+/// same scale, because a panel that scales its type and not its furniture ends
+/// up worse proportioned than one that scales nothing.
+class TvPanelMetrics {
+  const TvPanelMetrics(this.scale);
+
+  factory TvPanelMetrics.of(BuildContext context) => TvPanelMetrics(TvLayoutConstants.scaleOf(context));
+
+  final double scale;
+
+  double get rowMinHeight => TvSourcePickerLayout.rowMinHeight * scale;
+  double get rowPaddingHorizontal => TvSourcePickerLayout.rowPaddingHorizontal * scale;
+  double get rowPaddingVertical => TvSourcePickerLayout.rowPaddingVertical * scale;
+  double get rowRadius => TvPanelTheme.rowRadius * scale;
+  double get groupRadius => TvPanelTheme.groupRadius * scale;
+
+  /// A row's own three tiers: what it is, what it is set to, and the quieter
+  /// second line under the title.
+  double get titleFontSize => TvSourcePickerLayout.rowPrimaryFontSize * scale;
+  double get valueFontSize => TvSourcePickerLayout.rowPrimaryFontSize * scale;
+  double get subtitleFontSize => TvSourcePickerLayout.rowSecondaryFontSize * scale;
+
+  /// The uppercase section label, and the value beside a choice mark.
+  double get sectionFontSize => TvSourcePickerLayout.statusFontSize * scale;
+  double get markValueFontSize => TvSourcePickerLayout.rowSecondaryFontSize * scale;
+
+  double get rowIconSize => 22 * scale;
+  double get chevronSize => 20 * scale;
+  double get markSize => 24 * scale;
+  double get markGlyphSize => 15 * scale;
+  double get switchWidth => 46 * scale;
+  double get switchHeight => 26 * scale;
+  double get switchInset => 3 * scale;
+  double get switchKnob => 20 * scale;
+  double get backButtonSize => 40 * scale;
+  double get backGlyphSize => 18 * scale;
+
+  double gap(double basis) => basis * scale;
 }
 
 /// What a row does when it is selected, which also decides its trailing.
@@ -372,20 +428,24 @@ class _TvPanelRowBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final trailing = row.trailing ?? _buildTrailing();
+    final m = TvPanelMetrics.of(context);
+    final trailing = row.trailing ?? _buildTrailing(m);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 120),
       curve: Curves.easeOutCubic,
-      constraints: const BoxConstraints(minHeight: 62),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+      constraints: BoxConstraints(minHeight: m.rowMinHeight),
+      padding: EdgeInsets.symmetric(horizontal: m.rowPaddingHorizontal, vertical: m.rowPaddingVertical),
       decoration: BoxDecoration(
         color: focused ? TvPanelTheme.focusFill : Colors.transparent,
-        borderRadius: BorderRadius.circular(TvPanelTheme.rowRadius),
+        borderRadius: BorderRadius.circular(m.rowRadius),
       ),
       child: Row(
         children: [
-          if (row.leading != null) ...[row.leading!, const SizedBox(width: 16)],
-          if (row.icon != null) ...[AppIcon(row.icon!, fill: 1, color: _ink, size: 22), const SizedBox(width: 14)],
+          if (row.leading != null) ...[row.leading!, SizedBox(width: m.gap(16))],
+          if (row.icon != null) ...[
+            AppIcon(row.icon!, fill: 1, color: _ink, size: m.rowIconSize),
+            SizedBox(width: m.gap(14)),
+          ],
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -395,7 +455,7 @@ class _TvPanelRowBody extends StatelessWidget {
                   row.title,
                   style: TextStyle(
                     color: _ink,
-                    fontSize: 17,
+                    fontSize: m.titleFontSize,
                     fontWeight: row.selected ? FontWeight.w700 : FontWeight.w500,
                     letterSpacing: -0.1,
                   ),
@@ -404,10 +464,10 @@ class _TvPanelRowBody extends StatelessWidget {
                 ),
                 if (row.subtitle != null && row.subtitle!.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 1),
+                    padding: EdgeInsets.only(top: m.gap(1)),
                     child: Text(
                       row.subtitle!,
-                      style: TextStyle(color: _inkMuted, fontSize: 13),
+                      style: TextStyle(color: _inkMuted, fontSize: m.subtitleFontSize),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -416,46 +476,49 @@ class _TvPanelRowBody extends StatelessWidget {
             ),
           ),
           if (trailing != null) ...[
-            const SizedBox(width: 12),
+            SizedBox(width: m.gap(12)),
             // Cap the trailing width so a long value ellipsizes inside the row
             // instead of overflowing past the group's edge.
-            ConstrainedBox(constraints: const BoxConstraints(maxWidth: 300), child: trailing),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: m.gap(300)),
+              child: trailing,
+            ),
           ],
         ],
       ),
     );
   }
 
-  Widget? _buildTrailing() {
+  Widget? _buildTrailing(TvPanelMetrics m) {
     switch (row.kind) {
       case TvPanelRowKind.choice:
         return _ChoiceMark(selected: row.selected, focused: focused, value: row.value, valueColor: _inkValue);
       case TvPanelRowKind.toggle:
         return _SwitchGlyph(on: row.toggled, focused: focused, dimmed: row.dimmed);
       case TvPanelRowKind.value:
-        if (!entered) return _valueText();
+        if (!entered) return _valueText(m);
         final chevronColor = focused ? TvPanelTheme.focusInk : TvPanelTheme.textDim;
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppIcon(Symbols.chevron_left_rounded, fill: 1, color: chevronColor, size: 20),
-            const SizedBox(width: 6),
-            Flexible(child: _valueText()),
-            const SizedBox(width: 6),
-            AppIcon(Symbols.chevron_right_rounded, fill: 1, color: chevronColor, size: 20),
+            AppIcon(Symbols.chevron_left_rounded, fill: 1, color: chevronColor, size: m.chevronSize),
+            SizedBox(width: m.gap(6)),
+            Flexible(child: _valueText(m)),
+            SizedBox(width: m.gap(6)),
+            AppIcon(Symbols.chevron_right_rounded, fill: 1, color: chevronColor, size: m.chevronSize),
           ],
         );
       case TvPanelRowKind.action:
         final children = <Widget>[];
-        if (row.value != null && row.value!.isNotEmpty) children.add(Flexible(child: _valueText()));
+        if (row.value != null && row.value!.isNotEmpty) children.add(Flexible(child: _valueText(m)));
         if (row.showChevron) {
-          if (children.isNotEmpty) children.add(const SizedBox(width: 8));
+          if (children.isNotEmpty) children.add(SizedBox(width: m.gap(8)));
           children.add(
             AppIcon(
               Symbols.chevron_right_rounded,
               fill: 1,
               color: focused ? TvPanelTheme.focusInkMuted : TvPanelTheme.textDim,
-              size: 20,
+              size: m.chevronSize,
             ),
           );
         }
@@ -464,9 +527,9 @@ class _TvPanelRowBody extends StatelessWidget {
     }
   }
 
-  Widget _valueText() => Text(
+  Widget _valueText(TvPanelMetrics m) => Text(
     row.value ?? '',
-    style: TextStyle(color: _inkValue, fontSize: 16),
+    style: TextStyle(color: _inkValue, fontSize: m.valueFontSize),
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
     textAlign: TextAlign.end,
@@ -483,22 +546,23 @@ class _ChoiceMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = TvPanelMetrics.of(context);
     final mark = selected
         ? Container(
-            width: 24,
-            height: 24,
+            width: m.markSize,
+            height: m.markSize,
             alignment: Alignment.center,
             decoration: BoxDecoration(shape: BoxShape.circle, color: focused ? TvPanelTheme.focusInk : Colors.white),
             child: AppIcon(
               Symbols.check_rounded,
               fill: 1,
               color: focused ? Colors.white : TvPanelTheme.focusInk,
-              size: 15,
+              size: m.markGlyphSize,
             ),
           )
         : Container(
-            width: 24,
-            height: 24,
+            width: m.markSize,
+            height: m.markSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: focused ? TvPanelTheme.focusInkMuted : TvPanelTheme.textFaint, width: 1.5),
@@ -511,12 +575,12 @@ class _ChoiceMark extends StatelessWidget {
         Flexible(
           child: Text(
             value!,
-            style: TextStyle(color: valueColor, fontSize: 14),
+            style: TextStyle(color: valueColor, fontSize: m.markValueFontSize),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: m.gap(12)),
         mark,
       ],
     );
@@ -538,20 +602,21 @@ class _SwitchGlyph extends StatelessWidget {
     final knob = on
         ? (focused ? Colors.white : TvPanelTheme.focusInk)
         : (focused ? TvPanelTheme.focusInkMuted : TvPanelTheme.textMuted);
+    final m = TvPanelMetrics.of(context);
     return Opacity(
       opacity: dimmed ? 0.5 : 1,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
-        width: 46,
-        height: 26,
-        padding: const EdgeInsets.all(3),
+        width: m.switchWidth,
+        height: m.switchHeight,
+        padding: EdgeInsets.all(m.switchInset),
         decoration: BoxDecoration(color: track, borderRadius: BorderRadius.circular(999)),
         child: AnimatedAlign(
           duration: const Duration(milliseconds: 120),
           alignment: on ? Alignment.centerRight : Alignment.centerLeft,
           child: Container(
-            width: 20,
-            height: 20,
+            width: m.switchKnob,
+            height: m.switchKnob,
             decoration: BoxDecoration(shape: BoxShape.circle, color: knob),
           ),
         ),
@@ -567,13 +632,14 @@ class TvPanelSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = TvPanelMetrics.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+      padding: EdgeInsets.fromLTRB(m.rowPaddingHorizontal, m.gap(4), m.rowPaddingHorizontal, m.gap(8)),
       child: Text(
         label.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           color: TvPanelTheme.textFaint,
-          fontSize: 12,
+          fontSize: m.sectionFontSize,
           fontWeight: FontWeight.w600,
           letterSpacing: 1.1,
         ),
@@ -590,24 +656,22 @@ class TvPanelGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = TvPanelMetrics.of(context);
     final rows = <Widget>[];
     for (var i = 0; i < children.length; i++) {
       if (i > 0) {
         rows.add(
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: SizedBox(height: 1, child: ColoredBox(color: TvPanelTheme.hairline)),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: m.rowPaddingHorizontal),
+            child: const SizedBox(height: 1, child: ColoredBox(color: TvPanelTheme.hairline)),
           ),
         );
       }
       rows.add(children[i]);
     }
     return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: TvPanelTheme.group,
-        borderRadius: BorderRadius.circular(TvPanelTheme.groupRadius),
-      ),
+      padding: EdgeInsets.all(m.gap(4)),
+      decoration: BoxDecoration(color: TvPanelTheme.group, borderRadius: BorderRadius.circular(m.groupRadius)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: rows),
     );
   }
@@ -624,6 +688,7 @@ class TvPanelBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = TvPanelMetrics.of(context);
     return FocusableWrapper(
       focusNode: focusNode,
       onSelect: onPressed,
@@ -638,8 +703,8 @@ class TvPanelBackButton extends StatelessWidget {
             onTap: onPressed,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 120),
-              width: 40,
-              height: 40,
+              width: m.backButtonSize,
+              height: m.backButtonSize,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -649,7 +714,7 @@ class TvPanelBackButton extends StatelessWidget {
                 Symbols.arrow_back_ios_new_rounded,
                 fill: 1,
                 color: focused ? TvPanelTheme.focusInk : Colors.white,
-                size: 18,
+                size: m.backGlyphSize,
               ),
             ),
           );
@@ -668,11 +733,12 @@ class TvPanelStaticRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = TvPanelMetrics.of(context);
     return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      margin: EdgeInsets.only(top: m.gap(8)),
+      padding: EdgeInsets.symmetric(horizontal: m.rowPaddingHorizontal, vertical: m.gap(10)),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(TvPanelTheme.rowRadius),
+        borderRadius: BorderRadius.circular(m.rowRadius),
         border: Border.all(color: TvPanelTheme.hairline, width: 1.5),
       ),
       child: Column(
@@ -681,11 +747,15 @@ class TvPanelStaticRow extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(color: TvPanelTheme.textMuted, fontSize: 17, fontWeight: FontWeight.w500),
+            style: TextStyle(color: TvPanelTheme.textMuted, fontSize: m.titleFontSize, fontWeight: FontWeight.w500),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          Text(subtitle, style: const TextStyle(color: TvPanelTheme.textDim, fontSize: 13), maxLines: 2),
+          Text(
+            subtitle,
+            style: TextStyle(color: TvPanelTheme.textDim, fontSize: m.subtitleFontSize),
+            maxLines: 2,
+          ),
         ],
       ),
     );
@@ -702,9 +772,10 @@ class TvPanelColumns extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = TvPanelMetrics.of(context);
     Widget column(List<Widget> children) => FocusTraversalGroup(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.only(bottom: m.gap(12)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -716,7 +787,7 @@ class TvPanelColumns extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(child: column(left)),
-        const SizedBox(width: 28),
+        SizedBox(width: m.gap(28)),
         Expanded(child: column(right)),
       ],
     );
