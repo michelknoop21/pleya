@@ -328,14 +328,19 @@ class TvCatalogLayout {
   /// upper bound of what the card lays out: over by at most one pixel, never
   /// under. `the computed card height bounds the height the card lays out` in
   /// `tv_unified_media_grid_test.dart` holds the two together.
-  static double cardHeight(double cardWidth, double scale) {
+  /// [extraMetaLines] adds the third line DEC-108 gives Alle aanvragen
+  /// ("Aangevraagd door michel") — gap and all, on the same rounding — so a
+  /// grid of those cards reserves the height it actually draws. Zero everywhere
+  /// else, which is every other surface: the parameter exists so the one screen
+  /// that is a line taller cannot be a *different* calculation.
+  static double cardHeight(double cardWidth, double scale, {int extraMetaLines = 0}) {
     final inset = cardContentInset(scale);
     final posterBlock = (cardWidth - inset * 2) / posterAspectRatio + inset * 2;
+    final metaLine = cardFooterLineGap * scale + (cardMetaFontSize * scale * cardMetaLineHeight).ceilToDouble();
     final footer =
         cardFooterPaddingVertical * scale * 2 +
         cardTitleFontSize * scale * cardTitleLineHeight * 2 +
-        cardFooterLineGap * scale +
-        (cardMetaFontSize * scale * cardMetaLineHeight).ceilToDouble();
+        metaLine * (1 + extraMetaLines);
     return posterBlock + footer;
   }
 
@@ -450,6 +455,27 @@ class TvCatalogLayout {
   static const double badgeRadius = 5;
   static const double badgeInset = 7;
 
+  /// The pill form of the same badge: DEC-108's aanvraagstatus, where a dot
+  /// carries the state and the word says what it is.
+  ///
+  /// A pill rather than the rectangle above, and the difference is doing work:
+  /// the rectangle marks a *fact* about the title ("2 bronnen") and the pill
+  /// marks a *state* it is in ("In afwachting"). Mockup 35 draws both on the
+  /// same artwork in the same fill, so they read as one family; the corner
+  /// radius is the only thing that separates them, which is as much difference
+  /// as the distinction is worth at three metres.
+  static const double badgePillRadius = 999;
+  static const double badgePillPaddingHorizontal = 9;
+  static const double badgeDotSize = 5.5;
+  static const double badgeDotGap = 4.5;
+
+  /// The badge label one step under white, for a state rather than a fact.
+  ///
+  /// On black at [badgeFill] rather than on the page, which is why it is its
+  /// own number and not [inkSecondary]: 0.62 white over a 55%-black capsule on
+  /// a bright poster is not the same reading as 0.62 white on `MonoTokens.bg`.
+  static const double badgeInkMuted = 0.72;
+
   /// Progress bar along the bottom edge of the artwork.
   static const double progressBarHeight = 4;
 
@@ -466,6 +492,10 @@ class TvCatalogLayout {
   /// read as one design system rather than two.
   static const double inkPrimary = 1;
   static const double inkSecondary = 0.62;
+
+  /// The third tier, for the one line that is context about a card rather than
+  /// a statement of what it is: DEC-108's "Aangevraagd door michel".
+  static const double inkTertiary = 0.42;
 
   /// Fill and outline of a header action capsule, as alphas on
   /// `MonoTokens.text` over the page background.

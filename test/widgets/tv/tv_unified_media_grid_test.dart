@@ -23,6 +23,7 @@ import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/tv/tv_catalog_card_grid.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_card.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
@@ -273,7 +274,7 @@ void main() {
 
       // Two rows short of the end, which is the threshold.
       final rows = (40 / columns).ceil();
-      final target = (rows - TvUnifiedMediaGridState.loadMoreRowThreshold) * columns;
+      final target = (rows - TvCatalogCardGrid.loadMoreRowThreshold) * columns;
       Focus.of(tester.element(find.text('Title $target'))).requestFocus();
       await tester.pumpAndSettle();
       expect(loads, greaterThan(0), reason: 'the page is requested while there is still a row to walk');
