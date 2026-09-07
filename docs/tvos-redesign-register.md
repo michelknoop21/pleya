@@ -62,9 +62,9 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 
 | ID | Werkitem | Besluit | Status | SHA / bewijs |
 |----|----------|---------|--------|--------------|
-| MOC-13 | Zoeken, permanente resultaattitel, SEARCH1 sluiten | PB-6 | OPEN | |
-| MOC-14 | Kijklijst | PB-3 | OPEN | |
-| MOC-15 | Aanvragen, Seerr-status blijft Seerr-state | PB-3 | OPEN | |
+| MOC-13 | Zoeken, permanente resultaattitel, SEARCH1 sluiten | PB-6 | OPEN, **mockup 36 voorgedragen** 7 sep | `mockups-2026-09-07/36-zoeken-*`, proposed |
+| MOC-14 | Kijklijst | PB-3 | OPEN, **mockup 34 voorgedragen** 7 sep | `mockups-2026-09-07/34-kijklijst-*`, proposed; vervangt wat mockup 14 zei, dat is van vóór DEC-093 |
+| MOC-15 | Aanvragen, Seerr-status blijft Seerr-state | PB-3 | OPEN, **mockup 35 voorgedragen** 7 sep | `mockups-2026-09-07/35-aanvragen-*`, proposed; C1 en C2 zijn één keuze |
 | MOC-16 | Activiteit, scope en capability-predicaat | PB-7 | OPEN | |
 
 ## PLAYBACK EN LIVE
