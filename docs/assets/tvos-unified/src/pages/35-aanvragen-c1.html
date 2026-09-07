@@ -1,0 +1,41 @@
+<style>
+.page { padding: 0 var(--grid-inset); }
+.head { display: flex; align-items: flex-end; gap: 22px; }
+.head .tags { margin-left: auto; margin-bottom: 14px; display: flex; gap: 8px; align-items: center; }
+.head .tags .tag { border-color: var(--ink-4); color: var(--ink-3); font-size: 18px; line-height: 28px; }
+.body { display: flex; gap: 34px; margin-top: 30px; align-items: flex-start; }
+.strip { width: 6px; flex: none; border-radius: 3px; background: var(--fill-2); margin-top: 6px; height: 460px; }
+.grid6 { display: grid; grid-template-columns: repeat(6, 281px); gap: 22px; }
+.grid6 .card .art { width: 281px; height: 422px; }
+.cap { position: absolute; left: 12px; top: 12px; display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 17px; font-weight: 500; background: rgba(20,20,20,.82); color: var(--ink-2); }
+.cap .d { width: 9px; height: 9px; border-radius: 999px; flex: none; }
+.cap.ok .d { background: var(--ok); } .cap.ok { color: var(--ink); }
+.cap.wait .d { background: var(--amber); }
+.cap.no .d { background: var(--accent); }
+.by { margin-top: 3px; font-size: 18px; color: var(--ink-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+{{nav:Mijn Pleya|live}}
+<div class="page">
+  <div class="head">
+    <div class="page-title">Alle aanvragen</div>
+    <div class="tags"><span class="tag">389 aanvragen</span></div>
+  </div>
+  <div class="body">
+    <div class="strip"></div>
+    <div class="grid6">
+      <div class="card focus"><div class="art"><img src="{{art:nosferatu-poster}}"><span class="cap ok"><i class="d"></i>Beschikbaar</span></div><div class="t">Nosferatu</div><div class="s">2024 · Film</div><div class="by">Aangevraagd door rapmadri</div></div>
+      <div class="card"><div class="art"><img src="{{art:gladiator2-poster}}"><span class="cap wait"><i class="d"></i>In afwachting</span></div><div class="t">Gladiator II</div><div class="s">2024 · Film</div><div class="by">Aangevraagd door michel</div></div>
+      <div class="card"><div class="art"><img src="{{art:joker2-poster}}"><span class="cap no"><i class="d"></i>Afgewezen</span></div><div class="t">Joker: Folie à Deux</div><div class="s">2024 · Film</div><div class="by">Aangevraagd door guido</div></div>
+      <div class="card"><div class="art"><img src="{{art:penguin-poster}}"><span class="cap ok"><i class="d"></i>Beschikbaar</span></div><div class="t">The Penguin</div><div class="s">2024 · Serie</div><div class="by">Aangevraagd door rapmadri</div></div>
+      <div class="card"><div class="art"><img src="{{art:wicked-poster}}"><span class="cap wait"><i class="d"></i>Goedgekeurd</span></div><div class="t">Wicked</div><div class="s">2024 · Film</div><div class="by">Aangevraagd door michel</div></div>
+      <div class="card"><div class="art"><img src="{{art:shogun-poster}}"><span class="cap ok"><i class="d"></i>Beschikbaar</span></div><div class="t">Shogun</div><div class="s">2024 · Serie</div><div class="by">Aangevraagd door guido</div></div>
+      <div class="card"><div class="art"><img src="{{art:substance-poster}}"><span class="cap wait"><i class="d"></i>In afwachting</span></div><div class="t">The Substance</div><div class="s">2024 · Film</div><div class="by">Aangevraagd door rapmadri</div></div>
+      <div class="card"><div class="art"><img src="{{art:conclave-poster}}"><span class="cap ok"><i class="d"></i>Beschikbaar</span></div><div class="t">Conclave</div><div class="s">2024 · Film</div><div class="by">Aangevraagd door michel</div></div>
+      <div class="card"><div class="art"><img src="{{art:fallout-poster}}"><span class="cap ok"><i class="d"></i>Beschikbaar</span></div><div class="t">Fallout</div><div class="s">2024 · Serie</div><div class="by">Aangevraagd door guido</div></div>
+      <div class="card"><div class="art"><img src="{{art:silo-poster}}"><span class="cap wait"><i class="d"></i>Goedgekeurd</span></div><div class="t">Silo</div><div class="s">2023 · Serie</div><div class="by">Aangevraagd door rapmadri</div></div>
+      <div class="card"><div class="art"><img src="{{art:civilwar-poster}}"><span class="cap ok"><i class="d"></i>Beschikbaar</span></div><div class="t">Civil War</div><div class="s">2024 · Film</div><div class="by">Aangevraagd door michel</div></div>
+      <div class="card"><div class="art"><img src="{{art:andor-poster}}"><span class="cap ok"><i class="d"></i>Beschikbaar</span></div><div class="t">Andor</div><div class="s">2022 · Serie</div><div class="by">Aangevraagd door guido</div></div>
+    </div>
+  </div>
+</div>
+<div class="note">PROPOSED · MOCKUP 35 C1 · KEUZE 1: Alle aanvragen als raster met statuscapsule</div>

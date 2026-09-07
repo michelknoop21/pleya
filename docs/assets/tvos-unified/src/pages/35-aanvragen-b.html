@@ -1,0 +1,51 @@
+<style>
+.page { padding: 0 var(--grid-inset); }
+.head { display: flex; align-items: flex-end; gap: 22px; }
+.body { display: flex; gap: 34px; margin-top: 30px; align-items: flex-start; }
+.panel { width: 330px; flex: none; background: var(--surface); border-radius: var(--r-tile); padding: 10px; }
+.panel .prow { display: flex; align-items: center; gap: 16px; height: 76px; padding: 0 18px; border-radius: 12px; }
+.panel .prow .ic { width: 26px; height: 26px; color: var(--ink-2); flex: none; }
+.panel .prow .b { flex: 1; min-width: 0; }
+.panel .prow .t { font-size: 22px; font-weight: 500; }
+.panel .prow .v { font-size: 18px; color: var(--ink-3); margin-top: 2px; }
+.panel .prow .chev { width: 20px; height: 20px; color: var(--ink-4); }
+.panel .prow.focus { background: var(--elevated); box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--ink); }
+.panel .hr { height: 1px; background: var(--hair); margin: 8px 18px; }
+.panel .sel { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 18px 12px; }
+.panel .sel .tag { border-color: var(--ink-4); color: var(--ink-2); }
+.panel .clear { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 18px; font-size: 19px; color: var(--ink-3); }
+.panel .clear .ic { width: 20px; height: 20px; }
+.grid5 { display: grid; grid-template-columns: repeat(5, 281px); gap: 22px; }
+.grid5 .card .art { width: 281px; height: 422px; }
+.cap { position: absolute; left: 12px; top: 12px; display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 17px; font-weight: 500; background: rgba(20,20,20,.82); color: var(--ink-2); }
+.cap .d { width: 9px; height: 9px; border-radius: 999px; flex: none; }
+.cap.ok .d { background: var(--ok); } .cap.ok { color: var(--ink); }
+.cap.wait .d { background: var(--amber); }
+</style>
+{{nav:Mijn Pleya|live}}
+<div class="page">
+  <div class="head"><div class="page-title">Populaire films</div></div>
+  <div class="body">
+    <div class="panel">
+      <div class="prow focus">{{icon:filter}}<div class="b"><div class="t">Soort</div><div class="v">Films</div></div>{{icon:chev}}</div>
+      <div class="prow">{{icon:star}}<div class="b"><div class="t">Genre</div><div class="v">Alle genres</div></div>{{icon:chev}}</div>
+      <div class="prow">{{icon:check}}<div class="b"><div class="t">Status</div><div class="v">Alles</div></div>{{icon:chev}}</div>
+      <div class="hr"></div>
+      <div class="sel"><span class="tag">Films</span></div>
+      <div class="clear">{{icon:close}} Filters wissen</div>
+    </div>
+    <div class="grid5">
+      <div class="card"><div class="art"><img src="{{art:gladiator2-poster}}"><span class="cap wait"><i class="d"></i>Aangevraagd</span></div><div class="t">Gladiator II</div><div class="s">2024 · Actie</div></div>
+      <div class="card"><div class="art"><img src="{{art:wicked-poster}}"></div><div class="t">Wicked</div><div class="s">2024 · Musical</div></div>
+      <div class="card"><div class="art"><img src="{{art:nosferatu-poster}}"><span class="cap ok"><i class="d"></i>Beschikbaar</span></div><div class="t">Nosferatu</div><div class="s">2024 · Horror</div></div>
+      <div class="card"><div class="art"><img src="{{art:substance-poster}}"></div><div class="t">The Substance</div><div class="s">2024 · Horror</div></div>
+      <div class="card"><div class="art"><img src="{{art:conclave-poster}}"></div><div class="t">Conclave</div><div class="s">2024 · Drama</div></div>
+      <div class="card"><div class="art"><img src="{{art:joker2-poster}}"></div><div class="t">Joker: Folie à Deux</div><div class="s">2024 · Drama</div></div>
+      <div class="card"><div class="art"><img src="{{art:poorthings-poster}}"></div><div class="t">Poor Things</div><div class="s">2023 · Drama</div></div>
+      <div class="card"><div class="art"><img src="{{art:civilwar-poster}}"></div><div class="t">Civil War</div><div class="s">2024 · Actie</div></div>
+      <div class="card"><div class="art"><img src="{{art:dune2-poster}}"><span class="cap ok"><i class="d"></i>Beschikbaar</span></div><div class="t">Dune: Part Two</div><div class="s">2024 · Sciencefiction</div></div>
+      <div class="card"><div class="art"><img src="{{art:anora-poster}}"></div><div class="t">Anora</div><div class="s">2024 · Drama</div></div>
+    </div>
+  </div>
+</div>
+<div class="note">PROPOSED · MOCKUP 35 B · "Alles tonen" op een Seerr-rij, met de Seerr-eigen railregels</div>

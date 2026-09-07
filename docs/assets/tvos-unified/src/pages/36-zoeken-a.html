@@ -1,0 +1,29 @@
+<style>
+.page { padding: 0 var(--grid-inset); }
+.sf { display: flex; align-items: center; gap: 20px; height: 84px; padding: 0 28px; border-radius: 999px; background: var(--surface); width: 900px; }
+.sf.focus { box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--ink); }
+.sf .ic { width: 30px; height: 30px; color: var(--ink-3); }
+.sf .ph { font-size: 26px; color: var(--ink-4); }
+.hint { margin-top: 40px; font-size: 24px; color: var(--ink-3); }
+.rail-label.first { margin-top: 46px; margin-bottom: 34px; }
+.rb { display: flex; gap: 22px; align-items: flex-start; }
+.rb .card { width: 281px; flex: none; }
+.rb .card .art { width: 281px; height: 422px; position: relative; border-radius: var(--r-card); overflow: hidden; background: var(--surface); }
+.rb .card .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rb .card .t { margin-top: 14px; font-size: 22px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb .card .s { margin-top: 3px; font-size: 19px; color: var(--ink-3); }
+</style>
+{{nav:Zoeken|live}}
+<div class="page">
+  <div class="sf focus">{{icon:search}}<span class="ph">Zoek films, series, afleveringen</span></div>
+  <div class="rail-label first">Recent gezocht</div>
+  <div class="rb">
+    <div class="card"><div class="art"><img src="{{art:dune2-poster}}"></div><div class="t">Dune: Part Two</div><div class="s">2024 · Film</div></div>
+    <div class="card"><div class="art"><img src="{{art:severance-poster}}"></div><div class="t">Severance</div><div class="s">2022 · Serie</div></div>
+    <div class="card"><div class="art"><img src="{{art:thebear-poster}}"></div><div class="t">The Bear</div><div class="s">2022 · Serie</div></div>
+    <div class="card"><div class="art"><img src="{{art:oppenheimer-poster}}"></div><div class="t">Oppenheimer</div><div class="s">2023 · Film</div></div>
+    <div class="card"><div class="art"><img src="{{art:andor-poster}}"></div><div class="t">Andor</div><div class="s">2022 · Serie</div></div>
+    <div class="card"><div class="art"><img src="{{art:interstellar-poster}}"></div><div class="t">Interstellar</div><div class="s">2014 · Film</div></div>
+  </div>
+</div>
+<div class="note">PROPOSED · MOCKUP 36 A · Zoeken in rust, met recent gezocht</div>

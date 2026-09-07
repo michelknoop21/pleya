@@ -1,0 +1,23 @@
+<style>
+.page { padding: 0 var(--grid-inset); }
+.sf { display: flex; align-items: center; gap: 20px; height: 84px; padding: 0 28px; border-radius: 999px; background: var(--surface); width: 900px; }
+.sf .ic { width: 30px; height: 30px; color: var(--ink-3); }
+.sf .q { font-size: 26px; color: var(--ink); }
+.sf .n { margin-left: auto; font-size: 20px; color: var(--ink-3); }
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 640px; text-align: center; }
+.empty .ic { width: 88px; height: 88px; color: var(--ink-4); }
+.empty h3 { margin-top: 30px; font-size: 38px; font-weight: 700; }
+.empty p { margin-top: 14px; font-size: 24px; color: var(--ink-3); max-width: 960px; line-height: 1.4; }
+.empty .btn { margin-top: 36px; }
+</style>
+{{nav:Zoeken|live}}
+<div class="page">
+  <div class="sf">{{icon:search}}<span class="q">nosferatu</span><span class="n">geen resultaten</span></div>
+  <div class="empty">
+    {{icon:search}}
+    <h3>Niets gevonden op je servers</h3>
+    <p>Geen van je drie mediaservers heeft een titel die hierop lijkt.</p>
+    <div class="btn focus">{{icon:plus}} Zoek op Aanvragen</div>
+  </div>
+</div>
+<div class="note">PROPOSED · MOCKUP 36 C · Geen resultaten, met de Aanvragen-uitweg</div>
