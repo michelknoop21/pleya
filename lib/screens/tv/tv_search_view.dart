@@ -287,6 +287,8 @@ class TvSearchViewState extends State<TvSearchView> {
     final geometry = TvCatalogGrid.forWidth(width, scale: scale);
     final headingInset = geometry.inset + TvCatalogLayout.cardContentInset(scale);
 
+    final onRequests = widget.onSearchOnRequests;
+
     return SingleChildScrollView(
       // Not the default clip: a focused card grows past its band's box, and the
       // page must not shear the ring off at the viewport edge.
@@ -318,14 +320,32 @@ class TvSearchViewState extends State<TvSearchView> {
                 ],
               ),
             ),
-            _buildBand(scale, i),
+            _buildBand(scale, i, isLast: i == widget.sections.length - 1 && onRequests != null),
           ],
+          // REQ2/REQ3: a query that did find something still has a way into
+          // Aanvragen — DOWN off the last band, not only off the CAT14 empty
+          // state above. `_stateActionFocus` is free here: nothing else in the
+          // results view uses it.
+          if (onRequests != null)
+            Padding(
+              padding: EdgeInsets.fromLTRB(headingInset, TvCatalogLayout.headerContentGap * scale, headingInset, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TvViewAllAction(
+                  label: t.search.searchOnRequests,
+                  semanticLabel: t.search.searchOnRequests,
+                  focusNode: _stateActionFocus,
+                  onSelect: onRequests,
+                  onNavigateUp: () => _restoreBand(widget.sections.length - 1),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildBand(double scale, int index) {
+  Widget _buildBand(double scale, int index, {bool isLast = false}) {
     final section = widget.sections[index];
     return AutomationNode(
       id: AutomationIds.tvCatalogGrid,
@@ -344,7 +364,9 @@ class TvSearchViewState extends State<TvSearchView> {
         onExitUp: section.hasAction
             ? (_) => section.actionFocusNode?.requestFocus()
             : (index == 0 ? (_) => widget.onExitTop() : (column) => _focusBand(index - 1, column)),
-        onExitDown: index == widget.sections.length - 1 ? null : (column) => _focusBand(index + 1, column),
+        onExitDown: index == widget.sections.length - 1
+            ? (isLast ? (_) => _stateActionFocus.requestFocus() : null)
+            : (column) => _focusBand(index + 1, column),
         onExitLeft: widget.onExitLeft,
         itemBuilder: (context, cell) => AutomationNode(
           id: AutomationIds.tvCatalogGridItem,

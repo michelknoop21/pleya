@@ -9,6 +9,7 @@ import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
 import '../../models/seerr/seerr_media.dart';
 import '../../navigation/main_screen_scope.dart';
+import '../../navigation/tv/tv_content_route_registry.dart';
 import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
 import '../../utils/app_logger.dart';
@@ -71,6 +72,24 @@ class SeerrDiscoverScreen extends StatefulWidget {
   /// the query Zoeken found nothing for straight over, so the viewer does not
   /// type it a second time on a remote.
   final String? initialQuery;
+
+  /// REQ2: opens inside the TV shell when there is one — `openTvContentRoute`
+  /// answers null off TV — so a caller never has to know whether it is pushing
+  /// a bare route over the shell (the DEC-091 trap that stranded 36 C's own
+  /// button in a modal only Menu-then-app-quit could leave) or an ordinary one.
+  static Future<void> open(BuildContext context, {String? initialQuery}) async {
+    final nested = openTvContentRoute(
+      id: 'tvSeerrDiscover',
+      builder: (_) => SeerrDiscoverScreen(initialQuery: initialQuery),
+    );
+    if (nested != null) {
+      await nested;
+      return;
+    }
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => SeerrDiscoverScreen(initialQuery: initialQuery)));
+  }
 
   @override
   State<SeerrDiscoverScreen> createState() => _SeerrDiscoverScreenState();

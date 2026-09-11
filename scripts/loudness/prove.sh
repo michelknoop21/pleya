@@ -7,6 +7,8 @@
 #   prove.sh --android DIR   measure <fixture>.android.wav files from LoudnessDspTest
 #                            against CHOSEN on the same fixture, and the drc
 #                            fixture against D, in time as well (the D row)
+#   prove.sh --plan I TP     print what plan() makes of one measurement, for the
+#                            parity test in test/services/loudness_planner_test.dart
 #
 # Candidates (G = the canonical programme gain, see loudness_planner.dart):
 #   A    volume=G, alimiter at -2 dBFS
@@ -32,8 +34,6 @@ here=$(cd "$(dirname "$0")" && pwd)
 fx=${LOUDNESS_FIXTURES:-build/loudness/fixtures}
 out=${LOUDNESS_OUT:-build/loudness/out}
 CHOSEN=${CHOSEN:-A4x}
-mkdir -p "$out"
-
 TARGET=-22 CEILING=-2 MAX_LOAD=6 DRC_TOL=0.5
 
 ff() { ffmpeg -hide_banner -nostdin -loglevel fatal -y "$@"; }
@@ -43,13 +43,25 @@ lin() { awk -v d="$1" 'BEGIN{printf "%.4f", 10^(d/20)}'; }
 # plan <I> <TP> -> "<gain> <reduction>" or "realtime"
 plan() {
   awk -v i="$1" -v tp="$2" -v t=$TARGET -v c=$CEILING -v m=$MAX_LOAD 'BEGIN{
-    if (i == "" || i+0 < -60 || i == "-inf" || tp+0 > 3) { print "realtime"; exit }
+    # measure.sh prints TP=nan when there is no true peak: a missing peak, as
+    # null is in Dart and Kotlin, not a number to plan with.
+    tp = tolower(tp); nopeak = (tp == "" || tp == "nan")
+    if (i == "" || i+0 < -60 || i == "-inf" || (!nopeak && tp+0 > 3)) { print "realtime"; exit }
     g = t - i; if (g > 12) g = 12; if (g < -30) g = -30
+    # No true peak: a boost is held at 0 (DEC-111 (6)); the held-back part is
+    # the reduction, so the judge does not expect -22.
+    if (nopeak) { r = g > 0 ? g : 0; printf "%.2f %.2f\n", g - r, r; exit }
     if (tp == "-inf") tp = -200
     load = (tp + g) - c; r = 0
     if (load > m) { r = load - m; g -= r }
     printf "%.2f %.2f\n", g, r }'
 }
+
+if [[ "${1:-}" == "--plan" ]]; then
+  plan "$2" "${3:-}"
+  exit 0
+fi
+mkdir -p "$out"
 
 limiter() { echo "alimiter=limit=$(lin "$1"):level=false:attack=5:release=50:latency=1"; }
 COMP="acompressor=threshold=-18dB:ratio=8:attack=5:release=250:makeup=1"

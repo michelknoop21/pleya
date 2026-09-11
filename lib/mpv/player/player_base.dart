@@ -712,6 +712,9 @@ abstract class PlayerBase with PlayerStreamControllersMixin implements Player {
   AudioLoudness get plannedLoudness => planLoudness(_loudnessPrefs, _loudnessEvidence);
 
   @override
+  AudioLoudness get effectiveLoudness => audioPath.effective.normalization;
+
+  @override
   Future<void> setAudioNormalization(AudioLoudness loudness) async {
     // Registers the wish only; the arbiter decides what actually reaches mpv,
     // because loudnorm needs decoded audio and a running bitstream has none.

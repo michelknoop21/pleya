@@ -40,6 +40,17 @@ enum AudioNormalizationMode { off, normalize, night }
 /// named that way so nobody mistakes it for the real thing.
 enum LoudnessMode { off, programme, realtime }
 
+/// Why a programme gain sits below what the target alone would ask for.
+enum ProgrammeGainLimit {
+  none,
+
+  /// A known true peak would have loaded the limiter past its 6 dB budget.
+  truePeakLoad,
+
+  /// DEC-111 (6): no reliable true peak, so a positive gain is held at 0 dB.
+  missingTruePeak,
+}
+
 /// The two independent loudness choices, the programme gain the planner
 /// derived from evidence, and the mpv filter chain that makes of them.
 ///
@@ -49,7 +60,12 @@ enum LoudnessMode { off, programme, realtime }
 /// rest of the television is instead of 5 dB above it (the old `I=-14`) or
 /// 7 dB below it (an untouched Dolby bitstream).
 class AudioLoudness {
-  const AudioLoudness({this.levelVolume = false, this.reduceLoudSounds = false, this.programmeGainDb});
+  const AudioLoudness({
+    this.levelVolume = false,
+    this.reduceLoudSounds = false,
+    this.programmeGainDb,
+    this.gainLimit = ProgrammeGainLimit.none,
+  });
 
   /// Bring every title to the same average level.
   final bool levelVolume;
@@ -60,6 +76,10 @@ class AudioLoudness {
   /// The fixed gain for this programme, from stored loudness evidence, or null
   /// when there is none and levelling has to run in realtime.
   final double? programmeGainDb;
+
+  /// What held [programmeGainDb] down, for plan and status. Diagnostic only:
+  /// the chains below read the gain, never this.
+  final ProgrammeGainLimit gainLimit;
 
   /// Bumped whenever a chain below changes what it does to the audio, so a
   /// log or a native side can tell which version produced a level.
@@ -116,15 +136,17 @@ class AudioLoudness {
       other is AudioLoudness &&
       other.levelVolume == levelVolume &&
       other.reduceLoudSounds == reduceLoudSounds &&
-      other.programmeGainDb == programmeGainDb;
+      other.programmeGainDb == programmeGainDb &&
+      other.gainLimit == gainLimit;
 
   @override
-  int get hashCode => Object.hash(levelVolume, reduceLoudSounds, programmeGainDb);
+  int get hashCode => Object.hash(levelVolume, reduceLoudSounds, programmeGainDb, gainLimit);
 
   @override
   String toString() =>
       'AudioLoudness(level: $levelVolume, reduceLoud: $reduceLoudSounds, mode: ${mode.name}'
-      '${programmeGainDb == null ? '' : ', gain: ${programmeGainDb!.toStringAsFixed(2)} dB'})';
+      '${programmeGainDb == null ? '' : ', gain: ${programmeGainDb!.toStringAsFixed(2)} dB'}'
+      '${gainLimit == ProgrammeGainLimit.none ? '' : ', limit: ${gainLimit.name}'})';
 }
 
 @freezed

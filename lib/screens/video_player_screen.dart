@@ -998,6 +998,21 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
       // decoder init, so it has to be set before loadfile.
       await currentPlayer.setProperty('ad-lavc-o', 'target_level=-31');
 
+      // DEC-111 (7): a coordinator per title, and its title boundary comes
+      // first. The previous title's evidence has to be gone before
+      // setAudioNormalization plans, and this title's lookup only runs after
+      // loadfile.
+      _audioOutput?.dispose();
+      final audioOutput = AudioOutputCoordinator(
+        player: currentPlayer,
+        settings: settingsService,
+        onPassthroughUnavailable: () {
+          if (mounted) showAppSnackBar(context, t.videoSettings.audioPassthroughUnavailable);
+        },
+      );
+      _audioOutput = audioOutput;
+      await audioOutput.beginTitle();
+
       // Loudness next, and unconditionally: the filter chain lives in the
       // shared mpv core, so an empty chain still has to clear whatever the
       // previous title left behind. Writing it before the output path is what
@@ -1012,15 +1027,6 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
       // Audio output path: Dolby bitstream, multichannel PCM or stereo. Runs
       // before loadfile because the Apple audio output samples the route once
       // at init — a session widened afterwards no longer helps.
-      _audioOutput?.dispose();
-      final audioOutput = AudioOutputCoordinator(
-        player: currentPlayer,
-        settings: settingsService,
-        onPassthroughUnavailable: () {
-          if (mounted) showAppSnackBar(context, t.videoSettings.audioPassthroughUnavailable);
-        },
-      );
-      _audioOutput = audioOutput;
       await audioOutput.prepare(audioCodec: _preferredAudioCodec());
 
       // Passthrough wins from loudness normalization (DEC-013), so say so

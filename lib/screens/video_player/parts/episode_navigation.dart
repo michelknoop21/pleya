@@ -538,6 +538,9 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       unawaited(DiscordRPCService.instance.stopPlayback());
       unawaited(TraktScrobbleService.instance.stopPlayback());
       unawaited(TrackerCoordinator.instance.stopPlayback());
+      // DEC-111 (7): another item is another title, so its loudness evidence
+      // starts over before loadfile. A reopen of the same item keeps it.
+      if (isItemChange) await _audioOutput?.beginTitle();
       if (!isCurrentReload()) return true;
 
       frameRatePlan.armStartupRefreshGate(currentPlayer);
