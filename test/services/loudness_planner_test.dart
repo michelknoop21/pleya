@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/loudness_evidence.dart';
 import 'package:pleya/mpv/models.dart';
@@ -25,6 +27,30 @@ LoudnessEvidence _scan(
 );
 
 void main() {
+  // DEC-111 (6): plan() in prove.sh judges the proof, so it has to plan what
+  // Dart and LoudnessDsp.planGainDb plan. measure.sh reports a missing true
+  // peak as TP=nan, which is the null here.
+  group('prove.sh plan() agrees with planProgrammeGain', () {
+    const cases = <(double, double?, String, double)>[
+      (-30, null, '', 0),
+      (-30, null, 'nan', 0),
+      (-30, null, 'NaN', 0),
+      (-18, null, 'nan', -4),
+      (-30, -20, '-20', 8),
+      (-30, -0.5, '-0.5', 4.5),
+      (-40, -30, '-30', 12),
+    ];
+    for (final (lufs, peak, tp, want) in cases) {
+      test('I=$lufs TP="$tp" -> $want dB', () async {
+        final r = await Process.run('bash', ['scripts/loudness/prove.sh', '--plan', '$lufs', tp]);
+        expect(r.exitCode, 0, reason: '${r.stderr}');
+        final shell = double.parse((r.stdout as String).trim().split(' ').first);
+        expect(shell, closeTo(want, 0.005), reason: 'prove.sh');
+        expect(programmeGainDb(_scan(lufs, peak: peak)), closeTo(want, 1e-9), reason: 'Dart');
+      });
+    }
+  });
+
   group('programme gain', () {
     test('lands the programme on -22', () {
       expect(programmeGainDb(_scan(-30)), 8.0);

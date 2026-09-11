@@ -2453,15 +2453,25 @@ nu "audioverwerking staat uit" in plaats van alleen "volume gelijkmaken". Dit ve
 (6) **Positieve gain vraagt true peak.** Een bron zonder betrouwbare true peak mag negatieve gain
 krijgen, maar positieve gain wordt op 0 dB begrensd, met de reden in plan en status. Een verzonnen
 TP is niet toegestaan. De limiter blijft een vangnet, geen vervanging. De regel staat gelijk in
-`programmeGainDb`, `LoudnessDsp.planGainDb` en `plan()` in `prove.sh`. De reden is een eigen veld op
+`planProgrammeGain`, `LoudnessDsp.planGainDb` en `plan()` in `prove.sh`; `measure.sh` meldt een
+ontbrekende true peak als `TP=nan`, en `plan()` leest dat als ontbrekend. De reden is een eigen veld op
 het plan, `AudioLoudness.gainLimit`: `missingTruePeak` voor deze cap, `truePeakLoad` wanneer een
 bekende true peak de gain inperkt, anders `none`. De diagnoseregel toont hem als `limit=`; de
 Android-wire krijgt hem niet, want de keten leest alleen de gain.
-(7) **Bewijs hoort bij één titel.** Het bewijs en het plan van titel A vervallen bij `open()` van
-titel B, vóór het eerste track-event. `startTitleLoudness` wist het bewijs vóór
-`setAudioNormalization`, want die plant meteen en de lookup voor B komt pas na loadfile; een wis in
-`player.open()` kwam dus te laat. `test/mpv/player_open_test.dart` opent A en B en laat zien dat B
-nooit de gain van A krijgt.
+(7) **Bewijs hoort bij één titel.** Bewijs en de programmagain die eruit volgt gelden voor één
+logisch media-item. Ze vervallen voordat een ander item speelt, of daarvoor nu een nieuwe player komt
+of dezelfde player in place wordt hergebruikt. De grens is `AudioOutputCoordinator.beginTitle`: die
+wist het bewijs en zet de onthouden track-id terug, zodat het eerste track-event van het nieuwe item
+de lookup opnieuw doet, ook als die track weer `"1"` heet. Het scherm roept hem aan bij de eerste
+open, vóór `setAudioNormalization`, want die plant meteen en de lookup komt pas na loadfile; een wis
+in `player.open()` kwam dus te laat. In `_reloadMediaInPlace` gebeurt het alleen bij `isItemChange`:
+volgende of vorige aflevering en een itemwissel in Watch Together. Een heropening van hetzelfde item,
+zoals de transcode-herstart of een audio- of ondertitelwissel, houdt zijn bewijs. Een versiewissel
+valt nu ook buiten de grens, terwijl een andere versie een ander bestand met een eigen meting is; of
+die een eigen grens krijgt wordt vóór E1 beslist.
+`test/mpv/player_open_test.dart` laat zien dat B nooit de gain van A krijgt,
+`test/services/audio_output_coordinator_test.dart` dat B met dezelfde track-id opnieuw wordt opgezocht
+en dat een heropening zonder titelgrens het bewijs laat staan.
 
 Drie bewuste afwijkingen van het oorspronkelijke plan, elk gemeten:
 - De decodebasis is `pcm-native-tl31-drc0`. mpv decodeert AC-3 met `ad-lavc-ac3drc` 0, de ffmpeg-cli

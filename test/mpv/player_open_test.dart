@@ -8,7 +8,7 @@ import 'package:pleya/media/loudness_evidence.dart';
 import 'package:pleya/mpv/mpv.dart';
 import 'package:pleya/mpv/player/platform/player_android.dart';
 import 'package:pleya/mpv/player/player_native.dart';
-import 'package:pleya/services/loudness/title_loudness.dart';
+import 'package:pleya/services/audio_output_coordinator.dart';
 import 'package:pleya/services/settings_service.dart';
 
 import '../test_helpers/prefs.dart';
@@ -84,8 +84,14 @@ void main() {
           try {
             const prefs = AudioLoudness(levelVolume: true);
             Map sentLoudness() => calls.lastWhere((c) => c.method == 'setLoudness').arguments as Map;
+            final coordinator = AudioOutputCoordinator(player: player, settings: await SettingsService.getInstance());
+            // What _initializePlayer does before loadfile.
+            Future<void> startTitle() async {
+              await coordinator.beginTitle();
+              await player.setAudioNormalization(prefs);
+            }
 
-            await startTitleLoudness(player, prefs);
+            await startTitle();
             await player.open(Media('https://example.test/a.mkv'));
             await player.setLoudnessEvidence(
               const LoudnessEvidence(
@@ -102,7 +108,7 @@ void main() {
             expect(sentLoudness()['gainDb'], 5.0, reason: 'title A plays its own programme gain');
 
             final sentBeforeB = calls.length;
-            await startTitleLoudness(player, prefs);
+            await startTitle();
             final bSends = calls.skip(sentBeforeB).where((c) => c.method == 'setLoudness');
             expect(bSends, isNotEmpty);
             for (final send in bSends) {

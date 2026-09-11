@@ -339,6 +339,17 @@ class AudioOutputCoordinator {
     unawaited(_useCodec(selection.audio?.codec));
   }
 
+  /// DEC-111 (7): the title boundary. Evidence belongs to one logical media
+  /// item, so the previous item's evidence, and the programme gain planned
+  /// from it, goes before the next item plays; the next track event looks up
+  /// again even when its track has the same id. Called on the first open and
+  /// when an in-place reload switches item, not when the same item reopens.
+  Future<void> beginTitle() async {
+    if (_disposed) return;
+    _loudnessTrackId = null;
+    await player.setLoudnessEvidence(null);
+  }
+
   /// The audio track whose evidence the player has, so a selection event that
   /// only moved the subtitles does not re-plan the audio.
   String? _loudnessTrackId;

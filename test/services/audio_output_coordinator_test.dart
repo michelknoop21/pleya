@@ -216,6 +216,73 @@ void main() {
       coordinator.dispose();
     });
 
+    test('DEC-111 (7): a new title on the same player looks its evidence up again', () async {
+      const episodeB = LoudnessEvidence(
+        source: LoudnessSource.serverScan,
+        method: 'ffmpeg-loudnorm-1',
+        methodVersion: 1,
+        integratedLufs: -31,
+        quality: LoudnessQuality.measuredFull,
+        coverageComplete: true,
+        basis: 'pcm-native-tl31-drc0',
+      );
+      final player = _FakePlayer();
+      var title = 'A';
+      final asked = <String>[];
+      final coordinator = AudioOutputCoordinator(
+        player: player,
+        settings: settings,
+        loudnessLookup: (track) {
+          asked.add('$title:${track?.id}');
+          return title == 'A' ? measured : episodeB;
+        },
+      );
+      await coordinator.beginTitle();
+      await coordinator.prepare(audioCodec: 'eac3');
+      player.select(const TrackSelection(audio: main));
+      await pumpEventQueue();
+      expect(player.loudnessEvidence, measured);
+
+      // Next episode, reloaded in place on the same player and coordinator.
+      title = 'B';
+      await coordinator.beginTitle();
+      expect(player.loudnessEvidence, isNull, reason: 'A\'s programme gain outlived the title');
+
+      // B's main mix is track '1' as well.
+      player.select(const TrackSelection(audio: main));
+      await pumpEventQueue();
+      expect(asked, ['A:1', 'B:1']);
+      expect(player.evidenceCalls, [null, measured, null, episodeB]);
+
+      coordinator.dispose();
+    });
+
+    test('DEC-111 (7): reopening the same title keeps its evidence', () async {
+      final player = _FakePlayer();
+      final asked = <String?>[];
+      final coordinator = AudioOutputCoordinator(
+        player: player,
+        settings: settings,
+        loudnessLookup: (track) {
+          asked.add(track?.id);
+          return measured;
+        },
+      );
+      await coordinator.beginTitle();
+      await coordinator.prepare(audioCodec: 'eac3');
+      player.select(const TrackSelection(audio: main));
+      await pumpEventQueue();
+
+      // A transcode restart or a version switch reopens the item without a
+      // title boundary; mpv selects the same track again.
+      player.select(const TrackSelection(audio: main));
+      await pumpEventQueue();
+      expect(asked, ['1']);
+      expect(player.evidenceCalls, [null, measured]);
+
+      coordinator.dispose();
+    });
+
     test('without a lookup the player evidence is left alone', () async {
       final player = _FakePlayer();
       final coordinator = AudioOutputCoordinator(player: player, settings: settings);

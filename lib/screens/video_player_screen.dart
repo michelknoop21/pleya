@@ -27,7 +27,6 @@ import '../media/episode_collection.dart';
 import '../media/live_tv_support.dart';
 import '../models/livetv_channel.dart';
 import '../services/live_seek_accumulator.dart';
-import '../services/loudness/title_loudness.dart';
 import '../services/plex_client.dart';
 import '../utils/session_identifier.dart';
 import '../database/app_database.dart';
@@ -999,20 +998,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
       // decoder init, so it has to be set before loadfile.
       await currentPlayer.setProperty('ad-lavc-o', 'target_level=-31');
 
-      // Loudness next, and unconditionally: the filter chain lives in the
-      // shared mpv core, so an empty chain still has to clear whatever the
-      // previous title left behind. Writing it before the output path is what
-      // keeps `af` from landing after `audio-spdif`, which mpv reports as a
-      // passthrough failure.
-      final loudness = AudioLoudness(
-        levelVolume: settingsService.read(SettingsService.audioLevelVolume),
-        reduceLoudSounds: settingsService.read(SettingsService.audioReduceLoudSounds),
-      );
-      await startTitleLoudness(currentPlayer, loudness);
-
-      // Audio output path: Dolby bitstream, multichannel PCM or stereo. Runs
-      // before loadfile because the Apple audio output samples the route once
-      // at init — a session widened afterwards no longer helps.
+      // DEC-111 (7): a coordinator per title, and its title boundary comes
+      // first. The previous title's evidence has to be gone before
+      // setAudioNormalization plans, and this title's lookup only runs after
+      // loadfile.
       _audioOutput?.dispose();
       final audioOutput = AudioOutputCoordinator(
         player: currentPlayer,
@@ -1022,6 +1011,22 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         },
       );
       _audioOutput = audioOutput;
+      await audioOutput.beginTitle();
+
+      // Loudness next, and unconditionally: the filter chain lives in the
+      // shared mpv core, so an empty chain still has to clear whatever the
+      // previous title left behind. Writing it before the output path is what
+      // keeps `af` from landing after `audio-spdif`, which mpv reports as a
+      // passthrough failure.
+      final loudness = AudioLoudness(
+        levelVolume: settingsService.read(SettingsService.audioLevelVolume),
+        reduceLoudSounds: settingsService.read(SettingsService.audioReduceLoudSounds),
+      );
+      await currentPlayer.setAudioNormalization(loudness);
+
+      // Audio output path: Dolby bitstream, multichannel PCM or stereo. Runs
+      // before loadfile because the Apple audio output samples the route once
+      // at init — a session widened afterwards no longer helps.
       await audioOutput.prepare(audioCodec: _preferredAudioCodec());
 
       // Passthrough wins from loudness normalization (DEC-013), so say so
