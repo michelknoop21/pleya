@@ -158,7 +158,12 @@ void main() {
   test('the tokens agree with what the widget draws', () {
     const scale = 0.85;
     final usable = TvDiscoveryLayout.railUsableWidth(_canvas.width, scale);
-    expect(usable, closeTo(964.9, 0.1));
+    // VER3: railLeadInset no longer pulls a ring-gap left of the page inset
+    // (the pull is what put the first tile's focus ring outside the safe
+    // zone), so the usable band lost twice that gap — 964.9 before, 956.4
+    // since. `fullTilesAtRest` still comes to six; DEC-087's six-tile
+    // invariant was never the tight fit that would have lost a tile to it.
+    expect(usable, closeTo(956.4, 0.1));
     expect(TvDiscoveryLayout.fullTilesAtRest(usable, scale), 6);
     expect(TvDiscoveryLayout.posterWidth(scale), closeTo(124.67, 0.01));
     expect(TvDiscoveryLayout.wideWidth(scale), closeTo(332.44, 0.01));

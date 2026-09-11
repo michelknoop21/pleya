@@ -979,10 +979,20 @@ class TvDiscoveryLayout {
   /// Distance from one resting tile's left edge to the next one's.
   static double railPitch(double scale) => tileWidth(scale, focused: false) + itemGap * scale;
 
-  /// The rail list's own leading inset: the page inset minus the gap the tile
-  /// pads itself by, so the first tile's *artwork* lines up with the heading
-  /// above it rather than sitting a ring-gap further right.
-  static double railLeadInset(double scale) => math.max(0.0, pageInset * scale - cardFocusRingGap * scale);
+  /// The rail list's own leading inset.
+  ///
+  /// VER3: this used to be the page inset minus the gap the tile pads itself
+  /// by (`pageInset * scale - cardFocusRingGap * scale`), so the first tile's
+  /// *artwork* lined up with the heading above it. But `FocusableWrapper`
+  /// measures the ring gap as part of the tile — `notClipped(discover.rail.
+  /// item[0.0], discover.safe_area)` failed by exactly `cardFocusRingGap *
+  /// scale`, because that gap sat left of [pageInset] while the artwork
+  /// inside it was fine. The ring itself paints in that gap, so what would
+  /// have clipped on a real overscanning TV was the ring, not a measurement
+  /// artefact. Decided in favour of the safe zone: the tile's own outer edge,
+  /// ring included, now sits on [pageInset] like every other page edge, and
+  /// the artwork sits one ring-gap further right than the heading above it.
+  static double railLeadInset(double scale) => pageInset * scale;
 
   /// What a tile grows by when it takes the focus, and therefore the room the
   /// band has to hold in reserve past its last tile (LAND3).

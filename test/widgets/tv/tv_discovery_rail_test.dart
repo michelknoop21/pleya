@@ -271,12 +271,23 @@ void main() {
       final groups = tvDiscoveryFilmsRow();
       final rail = await pumpRail(tester, groups);
       final inset = TvDiscoveryLayout.railLeadInset(0.85);
+      // VER3: the *independent* safe-zone boundary, not `railLeadInset` itself.
+      // A rail that pulls its own lead inset left of the safe zone (as it did
+      // before VER3's fix, to line the artwork up with the heading) still
+      // passes a check against itself — that is exactly how the bug slipped
+      // past this test and was only caught by `tvos.discovery.overscan`
+      // measuring `discover.rail.item[0.0]` against `discover.safe_area`.
+      final safeZone = TvDiscoveryLayout.pageInset * 0.85;
 
       for (final group in groups) {
         if (!rail.focusGroup(group.groupId)) continue;
         await tester.pumpAndSettle();
         final rect = rectOf(tester, group);
-        expect(rect.left, greaterThanOrEqualTo(inset - 0.5));
+        expect(
+          rect.left,
+          greaterThanOrEqualTo(safeZone - 0.5),
+          reason: 'VER3: the focus ring must stay inside the safe zone',
+        );
         expect(rect.right, lessThanOrEqualTo(_canvas.width - inset + 0.5));
       }
     });
