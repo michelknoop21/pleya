@@ -10,12 +10,28 @@ steps:
   # IntroGate's cold-start splash paints over an already-ready screen.
   - settle: 3500
 
-  # Same reachability finding `tvos.library.sort` documents: `open:
-  # screen.libraries` selects no library, so reach the one
-  # `catalog.shows.v1` seeds ("Shows") through the sidebar, the same path
-  # `tvos.sidebar.collapse` already proves lands on `screen.libraries`.
-  - press: left
-  - settle: 1200
+  # VER5: this used to reach "Shows" through the sidebar (`press: left`,
+  # `press: down`, `press: select`), the same path `tvos.sidebar.collapse`
+  # once proved landed on `screen.libraries`. That sidebar is gone: hoofdstuk
+  # 18.2 moved Bibliotheken (along with Kijklijst, Aanvragen and Instellingen)
+  # inside Mijn Pleya on TV, and the top nav (`nav.discover`, `nav.series`,
+  # `nav.movies`, `nav.myPleya`, `nav.search`) has no Libraries entry of its
+  # own to press Left or Down into. Confirmed on `catalog.shows.v1` with a
+  # probe run: three Rights from `tvNav_home` reach `nav.myPleya`, Select
+  # opens Mijn Pleya focused on "Wissel van profiel" (the profile card, not a
+  # tile), and Down moves onto `my_pleya.tile[libraries]` — the first tile of
+  # the "Bibliotheken en bronnen" group, which for this fixture (no watchlist,
+  # no Seerr, downloads hidden on tvOS) is the very first tile in the hub.
+  # Select on it opens `LibrariesScreen`, which auto-selects the fixture's one
+  # library exactly as it did when the sidebar handed it a click.
+  - press: right
+  - settle: 800
+  - press: right
+  - settle: 800
+  - press: right
+  - settle: 800
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
   - press: down
   - settle: 800
   - press: select
