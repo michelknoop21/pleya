@@ -89,7 +89,12 @@ class JellyfinClient
         _JellyfinLiveTvMethods,
         _JellyfinImageDownloadMethods,
         _JellyfinMetadataEditMethods
-    implements MediaServerClient, SeasonEpisodePagingClient, ScopedMediaServerClient, GracefullyCloseable {
+    implements
+        MediaServerClient,
+        SeasonEpisodePagingClient,
+        ScopedMediaServerClient,
+        PersonSearchClient,
+        GracefullyCloseable {
   JellyfinClient._({required this._connection, required this._http, FavoriteChannelsRepository? favoritesRepository})
     : _favoritesRepository = favoritesRepository ?? const SharedPreferencesFavoriteChannelsRepository();
 

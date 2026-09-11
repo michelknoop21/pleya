@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
@@ -13,6 +14,9 @@ import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/mixins/refreshable.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/screens/actor_media_screen.dart';
+import 'package:pleya/screens/collection_detail_screen.dart';
+import 'package:pleya/screens/media_detail_screen.dart';
 import 'package:pleya/screens/search_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -20,6 +24,7 @@ import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
+import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/services/search_recents.dart';
 import 'package:pleya/widgets/tv/tv_catalog_card_rail.dart';
@@ -29,6 +34,7 @@ import 'package:pleya/widgets/tv/tv_unified_media_card.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
+import '../test_helpers/profile_navigation.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -429,10 +435,20 @@ void main() {
     });
   });
 
-  testWidgets('non-TV search stays source-concrete for the same multi-server match', (tester) async {
+  testWidgets('desktop search stays source-concrete for the same multi-server match', (tester) async {
     // Same fixture as the TV dedup test above, pumped through the ordinary
-    // (non-TV) SearchScreen: mobile/desktop must keep showing one card per
-    // server, unchanged by the TV projection this fase adds.
+    // desktop SearchScreen: desktop must keep showing one card per server,
+    // unchanged by the unified projection I4 gives the phone build. A large,
+    // non-phone viewport is forced explicitly (`PlatformDetector.isPhone`
+    // has no debug override, unlike TV's `debugSetAppleTVOverride`) —
+    // without it the default flutter_test surface reads as phone-sized and
+    // this test would exercise the wrong build path.
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
     final clientA = _FakeMediaServerClient(
       items: [_dune('dune-a', 'server_a')],
       serverId: 'server_a',
@@ -475,6 +491,200 @@ void main() {
 
     expect(find.byType(TvCatalogCardRail), findsNothing, reason: 'off TV the source-concrete list is unchanged');
     expect(find.text('Dune'), findsNWidgets(2));
+  });
+
+  group('I4: phone unified search sections (05-zoeken.png)', () {
+    Future<GlobalKey<State<SearchScreen>>> pumpPhoneSearchScreen(
+      WidgetTester tester,
+      MediaServerClient client, {
+      List<NavigatorObserver> navigatorObservers = const [],
+    }) async {
+      // Phone-sized, unlike `_pumpSearchScreen`'s 1280×900: `PlatformDetector`
+      // has no debug override for `isPhone`, so the branch under test is only
+      // reached by an actual phone-shaped viewport. `physicalSize` is
+      // physical, not logical, pixels, and `isTablet` divides the logical
+      // diagonal by `devicePixelRatio * 160/2.54` — so getting a real iPhone
+      // logical size of 393×852 needs a physical size of 393×852 *times* the
+      // device pixel ratio, not 393×852 itself (`mobile_home_screen_test.dart`
+      // pairs that literal 393×852 with DPR 1.0 instead, for its own
+      // unrelated layout math, and a DPR of 1.0 here reads as a ~15" tablet).
+      tester.view.devicePixelRatio = 3.0;
+      tester.view.physicalSize = const Size(393 * 3, 852 * 3);
+      addTearDown(() {
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetPhysicalSize();
+      });
+
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+      final hiddenLibraries = HiddenLibrariesProvider();
+      addTearDown(hiddenLibraries.dispose);
+
+      final key = GlobalKey<State<SearchScreen>>();
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
+              ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
+            ],
+            child: MaterialApp(
+              theme: monoTheme(dark: true),
+              navigatorObservers: navigatorObservers,
+              // MediaDetailScreen (a movie/show group's activation target)
+              // requires ProfileNavigationScope above it in the tree — see
+              // the `_navigateToActorMedia`/detail-route gotcha in the
+              // project's own CLAUDE.md. It has to sit in `builder`, above
+              // the Navigator itself, not wrapped around `home` directly:
+              // `home` only wraps route 1's own page, a sibling Overlay
+              // entry to whatever `Navigator.push` adds next, so a route
+              // this test pushes would not inherit it either way.
+              builder: (context, child) => withProfileNavigationScope(child: child!),
+              home: SearchScreen(key: key),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      return key;
+    }
+
+    testWidgets('renders movies/shows unified with a source count, and collections/people alongside', (tester) async {
+      final client = _FakeMediaServerClient(
+        items: [
+          _dune('dune-a', 'server_1'),
+          MediaItem(
+            id: 'silo-1',
+            backend: MediaBackend.plex,
+            kind: MediaKind.show,
+            title: 'Silo',
+            serverId: 'server_1',
+            serverName: 'Server',
+          ),
+          MediaItem(
+            id: 'coll-1',
+            backend: MediaBackend.plex,
+            kind: MediaKind.collection,
+            title: 'Denis Villeneuve',
+            serverId: 'server_1',
+            serverName: 'Server',
+          ),
+        ],
+        people: [
+          MediaItem(
+            id: 'person-1',
+            backend: MediaBackend.plex,
+            kind: MediaKind.unknown,
+            title: 'Denzel Washington',
+            serverId: 'server_1',
+            serverName: 'Server',
+          ),
+        ],
+      );
+      final key = await pumpPhoneSearchScreen(tester, client);
+      (key.currentState! as SearchInputFocusable).setSearchQuery('dune');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Dune'), findsOneWidget);
+      // Both Dune (movie) and Silo (show) are single-source groups, so both
+      // rows carry the label — `05-zoeken.png` shows "1 bron" even alone.
+      expect(find.text(t.unifiedCatalog.oneSource), findsNWidgets(2));
+      expect(find.text('Silo'), findsOneWidget);
+      expect(find.text('Denis Villeneuve'), findsOneWidget, reason: 'collections render under their own section');
+      expect(find.text('Denzel Washington'), findsOneWidget, reason: 'SRCH-2: people render as their own section');
+      expect(find.byType(TvCatalogCardRail), findsNothing, reason: 'phone renders rows, not TV rails');
+    });
+
+    testWidgets('a unified group opens detail on its representative source', (tester) async {
+      // MediaDetailScreen itself needs a DownloadProvider (and more) that no
+      // test in this codebase stands up to mount it directly — the same
+      // reason the collection case below inspects the pushed route rather
+      // than letting it build.
+      final observer = _RecordingNavigatorObserver();
+      final client = _FakeMediaServerClient(items: [_dune('dune-a', 'server_1')]);
+      final key = await pumpPhoneSearchScreen(tester, client, navigatorObservers: [observer]);
+      (key.currentState! as SearchInputFocusable).setSearchQuery('dune');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Dune'));
+
+      final pushed = observer.lastPushedRoute;
+      expect(pushed, isA<MaterialPageRoute>());
+      final widget = (pushed! as MaterialPageRoute).builder(key.currentState!.context);
+      expect(widget, isA<MediaDetailScreen>());
+    });
+
+    testWidgets('a collection opens through the same source-concrete route every other list uses', (tester) async {
+      // CollectionDetailScreen itself needs a DownloadProvider and more that
+      // no test in this codebase currently stands up (nothing here mounts it
+      // directly) — out of scope to build for this workitem, since
+      // `_openConcrete`'s collection branch is pre-existing, unmodified
+      // `navigateToMediaItem` code already relied on by TV and desktop
+      // search alike. What I4 actually adds is the phone *row* calling it at
+      // all, which this proves by inspecting the pushed route's builder
+      // directly — a plain function call, not an inflate — so nothing here
+      // attempts the real screen's own construction.
+      final observer = _RecordingNavigatorObserver();
+      final client = _FakeMediaServerClient(
+        items: [
+          MediaItem(
+            id: 'coll-1',
+            backend: MediaBackend.plex,
+            kind: MediaKind.collection,
+            title: 'Denis Villeneuve',
+            serverId: 'server_1',
+            serverName: 'Server',
+          ),
+        ],
+      );
+      final key = await pumpPhoneSearchScreen(tester, client, navigatorObservers: [observer]);
+      (key.currentState! as SearchInputFocusable).setSearchQuery('denis');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+
+      // No `pump()` after the tap: `Navigator.push` and `didPush` both fire
+      // synchronously from the tap's own pointer-event dispatch, before any
+      // frame would actually build the pushed page and hit the missing
+      // provider.
+      await tester.tap(find.text('Denis Villeneuve'));
+
+      final pushed = observer.lastPushedRoute;
+      expect(pushed, isA<MaterialPageRoute>());
+      final widget = (pushed! as MaterialPageRoute).builder(key.currentState!.context);
+      expect(widget, isA<CollectionDetailScreen>());
+    });
+
+    testWidgets('a person opens ActorMediaScreen, never the generic media route (SRCH-2)', (tester) async {
+      final client = _FakeMediaServerClient(
+        items: const [],
+        people: [
+          MediaItem(
+            id: 'person-1',
+            backend: MediaBackend.plex,
+            kind: MediaKind.unknown,
+            title: 'Denzel Washington',
+            serverId: 'server_1',
+            serverName: 'Server',
+          ),
+        ],
+      );
+      final key = await pumpPhoneSearchScreen(tester, client);
+      (key.currentState! as SearchInputFocusable).setSearchQuery('denzel');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Denzel Washington'));
+      // Settle, not a single pump: mid-push-transition the incoming route is
+      // still `Offstage`, which `find.byType`'s default `skipOffstage: true`
+      // excludes even though the widget already exists in the tree.
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ActorMediaScreen), findsOneWidget);
+      expect(find.byType(MediaDetailScreen), findsNothing);
+    });
   });
 
   testWidgets('a slow earlier search cannot overwrite a newer one', (tester) async {
@@ -807,8 +1017,20 @@ Finder _keyboardDoneKey() {
   );
 }
 
-class _FakeMediaServerClient implements MediaServerClient {
+/// Captures the last pushed route without ever letting the test frame build
+/// it — see the collection-activation test above for why.
+class _RecordingNavigatorObserver extends NavigatorObserver {
+  Route<dynamic>? lastPushedRoute;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    lastPushedRoute = route;
+  }
+}
+
+class _FakeMediaServerClient implements MediaServerClient, PersonSearchClient {
   final List<MediaItem> items;
+  final List<MediaItem> people;
   final List<String> queries = [];
   final String _serverId;
   final String _serverName;
@@ -820,6 +1042,7 @@ class _FakeMediaServerClient implements MediaServerClient {
 
   _FakeMediaServerClient({
     required this.items,
+    this.people = const [],
     String serverId = 'server_1',
     String serverName = 'Server',
     this.externalIdsByItemId = const {},
@@ -843,6 +1066,19 @@ class _FakeMediaServerClient implements MediaServerClient {
     queries.add(query);
     return items;
   }
+
+  @override
+  Future<List<MediaItem>> searchPeople(String query, {int limit = 100}) async => people;
+
+  // ActorMediaScreen's own data need (I4/SRCH-2 activation coverage below):
+  // an empty page is enough to mount without a real backend.
+  @override
+  Future<LibraryPage<MediaItem>> fetchPersonMediaPage(
+    String personId, {
+    int? start,
+    int? size,
+    AbortController? abort,
+  }) async => LibraryPage<MediaItem>(items: const [], totalCount: 0, offset: 0);
 
   @override
   Future<ExternalIds> fetchExternalIds(String itemId) async => externalIdsByItemId[itemId] ?? const ExternalIds();

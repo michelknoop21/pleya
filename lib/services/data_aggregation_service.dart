@@ -17,7 +17,7 @@ import 'multi_server_manager.dart';
 
 typedef OnDeckAggregationResult = ({List<MediaItem> items, Set<String> succeededServerIds});
 typedef HubAggregationResult = ({List<MediaHub> hubs, Set<String> succeededServerIds});
-typedef SearchAggregationResult = ({List<MediaItem> items, Set<String> succeededServerIds});
+typedef SearchAggregationResult = ({List<MediaItem> items, List<MediaItem> people, Set<String> succeededServerIds});
 
 /// Drops items that live in a library the active profile has hidden.
 ///
@@ -564,11 +564,13 @@ class DataAggregationService {
     Set<String>? hiddenLibraryKeys,
   }) async {
     if (query.trim().isEmpty) {
-      return (items: const <MediaItem>[], succeededServerIds: const <String>{});
+      return (items: const <MediaItem>[], people: const <MediaItem>[], succeededServerIds: const <String>{});
     }
 
     final clients = _clientsFor(null);
-    if (clients.isEmpty) return (items: const <MediaItem>[], succeededServerIds: const <String>{});
+    if (clients.isEmpty) {
+      return (items: const <MediaItem>[], people: const <MediaItem>[], succeededServerIds: const <String>{});
+    }
 
     final resultLimit = limit ?? defaultMediaSearchLimit;
     final fetchLimit = resultLimit < defaultMediaSearchLimit ? defaultMediaSearchLimit : resultLimit;
@@ -582,10 +584,21 @@ class DataAggregationService {
         // minutes of skeletons while the healthy servers were long done. A
         // timeout counts as a failure, not as "this server has no matches".
         final items = await client.searchItems(query, limit: fetchLimit).timeout(MediaServerTimeouts.searchPerServer);
-        return (serverId: entry.key, items: items);
+        // SRCH-2: an optional side capability (like SeasonEpisodePagingClient),
+        // so a backend that cannot search people (local folder, Pleya Server,
+        // Pleya Share today) simply contributes none rather than failing.
+        // `searchPeople` never throws (see each client's own try/catch), so
+        // only the timeout needs guarding here.
+        List<MediaItem> people = const [];
+        if (client case final PersonSearchClient personClient) {
+          people = await personClient
+              .searchPeople(query, limit: fetchLimit)
+              .timeout(MediaServerTimeouts.searchPerServer, onTimeout: () => const <MediaItem>[]);
+        }
+        return (serverId: entry.key, items: items, people: people);
       } catch (e, st) {
         appLogger.e('Search failed on ${entry.key}', error: e, stackTrace: st);
-        return (serverId: null, items: <MediaItem>[]);
+        return (serverId: null, items: <MediaItem>[], people: const <MediaItem>[]);
       }
     });
 
@@ -602,10 +615,14 @@ class DataAggregationService {
     // UnifiedMediaGroup.sources asserts it is never a subset.
     final allResults = filterHiddenLibraryItems(perServer.expand((entry) => entry.items).toList(), hiddenLibraryKeys);
     final result = rankMediaSearchResults(allResults, query, limit: resultLimit);
+    // People stay source-concrete (hoofdstuk 16.1's rule for collections and
+    // playlists applies here too: there is no identity to merge two servers'
+    // actors on), so no ranking or dedup — just capped to the same budget.
+    final people = perServer.expand((entry) => entry.people).take(resultLimit).toList();
 
     appLogger.i('Found ${result.length} search results across ${succeededServerIds.length} servers');
 
-    return (items: result, succeededServerIds: succeededServerIds);
+    return (items: result, people: people, succeededServerIds: succeededServerIds);
   }
 
   /// Group libraries by server (internal aggregation helper).

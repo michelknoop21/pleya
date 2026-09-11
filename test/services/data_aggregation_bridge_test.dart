@@ -129,9 +129,72 @@ void main() {
 
       expect(results.items.map((item) => item.id), ['jf-show']);
       expect(results.succeededServerIds, {'plex-1', 'srv-1'});
-      expect(plexRequests.single.queryParameters['limit'], '100');
-      expect(plexRequests.single.queryParameters['searchTypes'], 'movies,tv');
-      expect(jellyfinRequests.single.queryParameters['Limit'], '100');
+      // SRCH-2: every client now also fans out a person search alongside its
+      // item search, so `/library/search`/`/Items` is no longer the only
+      // request either backend makes.
+      final plexItemRequest = plexRequests.singleWhere((u) => u.path == '/library/search');
+      expect(plexItemRequest.queryParameters['limit'], '100');
+      expect(plexItemRequest.queryParameters['searchTypes'], 'movies,tv');
+      final jellyfinItemRequest = jellyfinRequests.singleWhere((u) => u.path == '/Items');
+      expect(jellyfinItemRequest.queryParameters['Limit'], '100');
+    });
+
+    test('searchAcrossServers fans out searchPeople (SRCH-2) across every PersonSearchClient', () async {
+      final plexClient = PlexClient.forTesting(
+        config: PlexConfig(
+          baseUrl: 'https://plex.example.com',
+          token: 'token',
+          clientIdentifier: 'client-id',
+          product: 'Plezy',
+          version: 'test',
+        ),
+        serverId: ServerId('plex-1'),
+        serverName: 'Plex',
+        httpClient: MockClient((req) async {
+          if (req.url.path == '/library/search') {
+            return _json({'MediaContainer': {}});
+          }
+          if (req.url.path == '/hubs/search') {
+            return _json({
+              'MediaContainer': {
+                'Hub': [
+                  {
+                    'type': 'actor',
+                    'Directory': [
+                      {'id': 'plex-person', 'tag': 'Plex Actor'},
+                    ],
+                  },
+                ],
+              },
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      addTearDown(plexClient.close);
+      manager.debugRegisterClientForTesting(plexClient);
+
+      final jellyfinClient = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((req) async {
+          if (req.url.path == '/Items') return _json({'Items': []});
+          if (req.url.path == '/Persons') {
+            return _json({
+              'Items': [
+                {'Id': 'jf-person', 'Name': 'Jellyfin Actor'},
+              ],
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      addTearDown(jellyfinClient.close);
+      manager.debugRegisterJellyfinClientForTesting(jellyfinClient);
+
+      final results = await service.searchAcrossServers('denzel');
+
+      expect(results.people.map((p) => p.id), containsAll(['plex-person', 'jf-person']));
+      expect(results.people, everyElement(predicate<MediaItem>((p) => p.kind == MediaKind.unknown)));
     });
 
     // B8 / hoofdstuk 22: a hidden library is a hard visibility boundary, and
