@@ -500,6 +500,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     required MediaLibrary library,
     required bool isActive,
     required int tabIndex,
+    required bool showTvChooser,
   }) {
     return switch (type) {
       LibraryTabType.recommended => LibraryRecommendedTab(
@@ -510,6 +511,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
         onDataLoaded: () => _handleTabDataLoaded(tabIndex),
         onBack: focusTabBar,
         onNavigateToChrome: focusTabBar,
+        showTvChooser: showTvChooser,
       ),
       LibraryTabType.browse => LibraryBrowseTab(
         key: _browseTabKey,
@@ -1400,6 +1402,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
           library: selectedLibrary,
           isActive: tabController.index == index,
           tabIndex: index,
+          showTvChooser: showTvChooser,
         );
         if (useTvRecommendedBackdrop) return tabContent;
 

@@ -13,6 +13,8 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/library_header_bar.dart';
+import 'package:pleya/widgets/tv/tv_page_chip_bar.dart';
 import 'package:pleya/widgets/tv_browse_rail.dart';
 import 'package:pleya/widgets/tv_spotlight_background.dart';
 import 'package:provider/provider.dart';
@@ -62,7 +64,16 @@ List<MediaHub> _railHubs() => [_hub('recently_added', _railHubTitle), _hub('rece
 
 /// The composition of `_LibraryRecommendedTabState._buildTvContent`: a hero
 /// bounded by [contentTop]/[contentBottom] over a rail docked at bottom 0.
-Widget _libraryTvContent({required Size size, required double contentTop, required double contentBottom}) {
+///
+/// [header] reproduces the sibling in `libraries_screen.dart`'s Stack for the
+/// TV recommended backdrop: `buildTransparentTvTopBar()` drawn on top of this
+/// same content, at `Positioned(top: 0, left: 0, right: 0)` (LIB5).
+Widget _libraryTvContent({
+  required Size size,
+  required double contentTop,
+  required double contentBottom,
+  Widget? header,
+}) {
   final serverManager = MultiServerManager();
   return ChangeNotifierProvider<MultiServerProvider>(
     create: (_) => MultiServerProvider(serverManager, DataAggregationService(serverManager)),
@@ -97,6 +108,7 @@ Widget _libraryTvContent({required Size size, required double contentTop, requir
                   tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
                 ),
               ),
+              if (header != null) Positioned(top: 0, left: 0, right: 0, child: header),
             ],
           ),
         ),
@@ -104,6 +116,24 @@ Widget _libraryTvContent({required Size size, required double contentTop, requir
     ),
   );
 }
+
+const _libraryHeaderTitle = 'Bibliotheken';
+const _tabRowLabel = 'Aanbevolen';
+
+/// Stand-in for `buildTransparentTvTopBar()`: the page heading, the TV
+/// chooser row when there is more than one library, then the tab line —
+/// same three blocks, same heights.
+Widget _libraryHeader({required bool showTvChooser, required double chooserHeight}) => Column(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    const SizedBox(height: LibraryHeaderMetrics.titleHeight, child: Text(_libraryHeaderTitle)),
+    if (showTvChooser) SizedBox(height: chooserHeight, child: const Text('chooser')),
+    const SizedBox(
+      height: LibraryHeaderMetrics.barHeight,
+      child: Align(alignment: Alignment.centerLeft, child: Text(_tabRowLabel)),
+    ),
+  ],
+);
 
 double _railHeightFor(Size size) => TvBrowseRailLayout.estimateHeight(
   size: size,
@@ -301,6 +331,97 @@ void main() {
       expect(tightLines, greaterThanOrEqualTo(1));
       expect(roomyTitleFontSize, isNotNull, reason: 'the title keeps a real font size rather than being scaled away');
       expect(tester.takeException(), isNull, reason: 'no overflow while the band tightens');
+    });
+  });
+
+  group('hero clears the TV library chooser (LIB5)', () {
+    /// `TvPageChipBar.heightFor` needs a `BuildContext` for its scale, so grab
+    /// it from a throwaway pump the way `tv_library_chooser_test.dart` does.
+    Future<double> chooserHeightFor(WidgetTester tester) async {
+      late double height;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: monoTheme(dark: true),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                height = TvPageChipBar.heightFor(context);
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      );
+      return height;
+    }
+
+    testWidgets('the title clears the tab line when the chooser is showing', (tester) async {
+      const size = Size(1920, 1080);
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final scale = TvLayoutConstants.scaleForSize(size);
+      final chooserHeight = await chooserHeightFor(tester);
+      final proportionalTop = (size.height * 0.075).clamp(64.0 * scale, 120.0 * scale).toDouble();
+      final belowHeader = LibraryHeaderMetrics.totalHeight + chooserHeight + (12 * scale);
+      final contentTop = proportionalTop > belowHeader ? proportionalTop : belowHeader;
+      // A tight band, like the "short band" test above: the FittedBox guard
+      // then pins the block flush to contentTop, which is exactly the case
+      // LIB5 needs — a roomy band absorbs a wrong contentTop in empty space
+      // instead of drawing it.
+      final contentBottom = size.height - contentTop - 24 * scale;
+
+      await tester.pumpWidget(
+        _libraryTvContent(
+          size: size,
+          contentTop: contentTop,
+          contentBottom: contentBottom,
+          header: _libraryHeader(showTvChooser: true, chooserHeight: chooserHeight),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(
+        tester.getRect(find.text(_longTitle)).top,
+        greaterThanOrEqualTo(tester.getRect(find.text(_tabRowLabel)).bottom),
+        reason: 'the spotlight title must start clear of the tab line, chooser included',
+      );
+    });
+
+    testWidgets('LIB5 regression guard: leaving the chooser out of the clearance draws the title over the tab line', (
+      tester,
+    ) async {
+      const size = Size(1920, 1080);
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final scale = TvLayoutConstants.scaleForSize(size);
+      final chooserHeight = await chooserHeightFor(tester);
+      final proportionalTop = (size.height * 0.075).clamp(64.0 * scale, 120.0 * scale).toDouble();
+      // The pre-fix formula: the chooser is showing on screen but never enters
+      // the sum, so `belowHeader` understates the real header height by
+      // exactly `chooserHeight`.
+      final belowHeaderWithoutChooser = LibraryHeaderMetrics.totalHeight + (12 * scale);
+      final contentTop = proportionalTop > belowHeaderWithoutChooser ? proportionalTop : belowHeaderWithoutChooser;
+      final contentBottom = size.height - contentTop - 24 * scale;
+
+      await tester.pumpWidget(
+        _libraryTvContent(
+          size: size,
+          contentTop: contentTop,
+          contentBottom: contentBottom,
+          header: _libraryHeader(showTvChooser: true, chooserHeight: chooserHeight),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(
+        tester.getRect(find.text(_longTitle)).top,
+        lessThan(tester.getRect(find.text(_tabRowLabel)).bottom),
+        reason: 'pins LIB5: without the chooser height the old formula let the title draw over the tab line',
+      );
     });
   });
 }

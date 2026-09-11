@@ -20,6 +20,7 @@ import '../../../utils/provider_extensions.dart';
 import '../../../utils/watch_state_notifier.dart';
 import '../../../widgets/hub_section.dart';
 import '../../../widgets/settings_builder.dart';
+import '../../../widgets/tv/tv_page_chip_bar.dart';
 import '../../../widgets/tv_browse_rail.dart';
 import '../../../widgets/library_header_bar.dart';
 import '../../../widgets/tv_spotlight_background.dart';
@@ -31,6 +32,13 @@ import 'base_library_tab.dart';
 class LibraryRecommendedTab extends BaseLibraryTab<MediaHub> {
   final VoidCallback? onNavigateToChrome;
 
+  /// Whether the TV library chooser (`TvPageChipBar`) is riding above the tab
+  /// line right now. That row only exists when there is more than one visible
+  /// library (`tvLibraryChooserVisible`) and adds its own scaled height on top
+  /// of the fixed [LibraryHeaderMetrics.totalHeight], so the hero has to clear
+  /// it too or its title draws under the tab line (LIB5).
+  final bool showTvChooser;
+
   const LibraryRecommendedTab({
     super.key,
     required super.library,
@@ -39,6 +47,7 @@ class LibraryRecommendedTab extends BaseLibraryTab<MediaHub> {
     super.suppressAutoFocus,
     super.onBack,
     this.onNavigateToChrome,
+    this.showTvChooser = false,
   });
 
   @override
@@ -354,7 +363,14 @@ class _LibraryRecommendedTabState extends BaseLibraryTabState<MediaHub, LibraryR
     // that chrome is taller than the toolbar this offset was tuned against, so
     // the hero starts below it instead of under it.
     final proportionalTop = (size.height * 0.075).clamp(64.0 * scale, 120.0 * scale).toDouble();
-    final belowHeader = LibraryHeaderMetrics.totalHeight + (12 * scale);
+    // The TV library chooser rides above the tab line whenever there is more
+    // than one visible library (`tvLibraryChooserVisible`), which is the
+    // common case, and its own height scales with the screen while
+    // `LibraryHeaderMetrics.totalHeight` does not. Leaving it out understated
+    // the header on any Bibliotheken with more than one library and let the
+    // spotlight title draw under the tab line (LIB5).
+    final chooserHeight = widget.showTvChooser ? TvPageChipBar.heightFor(context) : 0.0;
+    final belowHeader = LibraryHeaderMetrics.totalHeight + chooserHeight + (12 * scale);
     final spotlightTop = proportionalTop > belowHeader ? proportionalTop : belowHeader;
     // The rail here is docked at bottom 0 — unlike the TV home screen, which
     // slides it down to a peek — so it occupies its full height and the hero
