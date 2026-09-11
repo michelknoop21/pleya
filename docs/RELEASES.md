@@ -133,6 +133,7 @@ under `Notes`.
 - GOLD2 regenerate tv_home_production references
 - titelbewijs resetten en paritybewijs gelijktrekken
 - Zoeken opent Aanvragen binnen de shell, ook met resultaten
+- toon servernaam bij personenresultaten (build 270)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
