@@ -4,7 +4,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show ValueNotifier, visibleForTesting;
 
 import '../media/loudness_evidence.dart';
-import '../mpv/models.dart' show AudioLoudness, AudioTrack, PlayerLog, TrackSelection;
+import '../mpv/models.dart' show AudioLoudness, AudioTrack, PlayerLog, ProgrammeGainLimit, TrackSelection;
 import '../mpv/player/player.dart';
 import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
@@ -337,6 +337,17 @@ class AudioOutputCoordinator {
   void _onTrackSelectionChanged(TrackSelection selection) {
     unawaited(_useLoudnessFor(selection.audio));
     unawaited(_useCodec(selection.audio?.codec));
+  }
+
+  /// DEC-111 (7): the title boundary. Evidence belongs to one logical media
+  /// item, so the previous item's evidence, and the programme gain planned
+  /// from it, goes before the next item plays; the next track event looks up
+  /// again even when its track has the same id. Called on the first open and
+  /// when an in-place reload switches item, not when the same item reopens.
+  Future<void> beginTitle() async {
+    if (_disposed) return;
+    _loudnessTrackId = null;
+    await player.setLoudnessEvidence(null);
   }
 
   /// The audio track whose evidence the player has, so a selection event that
@@ -681,6 +692,7 @@ class AudioOutputDiagnostics {
       p.mode.name,
       if (gain != null) '${gain >= 0 ? '+' : ''}${gain.toStringAsFixed(2)} dB',
       if (planSource != null) planSource!.wire,
+      if (p.gainLimit != ProgrammeGainLimit.none) 'limit=${p.gainLimit.name}',
     ].join(' ');
   }
 

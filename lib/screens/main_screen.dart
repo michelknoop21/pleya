@@ -1267,6 +1267,18 @@ class _MainScreenState extends State<MainScreen>
   /// `_selectTab` focuses the search field itself.
   void _openSearch() => _openSearchWithQuery(null);
 
+  /// I4: the back chevron `05-zoeken.png` draws in Zoeken's own header.
+  /// iOS has no system back gesture at this level the way Android's hardware
+  /// back key does (`_handleMainBack`), so the phone build needs an explicit
+  /// affordance back to wherever Zoeken was opened from — the same tab
+  /// `mainScreenSelectedBarTab` already lights while Zoeken is on screen.
+  void _closeSearch() {
+    final tabs = _getVisibleTabs(_isOffline);
+    final fallback = tabs.isNotEmpty ? tabs.first.id : null;
+    final target = _searchOpenedFromTab ?? fallback;
+    if (target != null) _selectTab(target);
+  }
+
   /// Open the search tab and, when a finished query came with it (companion
   /// remote, Assistant voice search), run it straight away.
   void _openSearchWithQuery(String? query) {
@@ -1467,6 +1479,7 @@ class _MainScreenState extends State<MainScreen>
           NavigationTabId.search => SearchScreen(
             key: _searchKey,
             onManageServers: () => _selectTab(NavigationTabId.settings),
+            onBack: _isPhone ? _closeSearch : null,
           ),
           NavigationTabId.requests => const SeerrDiscoverScreen(),
           NavigationTabId.downloads => DownloadsScreen(key: _downloadsKey),

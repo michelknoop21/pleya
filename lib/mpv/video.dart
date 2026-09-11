@@ -92,11 +92,30 @@ class _VideoState extends State<Video> {
     setState(() => _hasFirstFrame = value);
   }
 
+  /// DEC-111: the loudness plan and the filter chain the player handed mpv,
+  /// so a Verify scenario can check the chain instead of reading the log.
+  /// `af` is what the audio path resolved, empty while a bitstream holds the
+  /// plan back.
+  Map<String, Object?> _loudnessState() {
+    final player = widget.player;
+    final plan = player.plannedLoudness;
+    final applied = player.effectiveLoudness;
+    return {
+      'loudness': plan.mode.name,
+      'loudness_gain_db': plan.programmeGainDb,
+      'loudness_limit': plan.gainLimit.name,
+      'loudness_source': player.loudnessEvidence?.source.wire,
+      'loudness_suspended': applied != plan,
+      'af': applied.mpvFilter,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return AutomationNode(
       id: AutomationIds.playerSurface,
       role: 'surface',
+      state: _loudnessState,
       child: ColoredBox(
         color: _hasFirstFrame ? Colors.transparent : widget.backgroundColor,
         child: Stack(

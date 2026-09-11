@@ -79,7 +79,7 @@ class LoudnessDsp(val sampleRate: Int, val channels: Int) {
     const val TRANSIENT_HOLD_S = 2.0
 
     /**
-     * The canonical programme gain, identical to `programmeGainDb` in Dart.
+     * The canonical programme gain, identical to `planProgrammeGain` in Dart.
      * Used by the tests to prove both sides agree; at runtime Dart sends it.
      */
     fun planGainDb(integratedLufs: Double?, truePeakDbtp: Double?): Double? {
@@ -89,6 +89,9 @@ class LoudnessDsp(val sampleRate: Int, val channels: Int) {
       if (truePeakDbtp != null) {
         val load = (truePeakDbtp + gain) - CEILING_DBTP
         if (load > MAX_LIMITER_LOAD_DB) gain -= load - MAX_LIMITER_LOAD_DB
+      } else if (gain > 0.0) {
+        // DEC-111 (6): no true peak, no limiter load to check, so no boost.
+        gain = 0.0
       }
       return gain
     }

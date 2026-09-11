@@ -1,0 +1,95 @@
+name: tvos.player.loudness
+target: tvos-sim
+# LOUD1 / DEC-111: loudness on Apple without server evidence runs realtime
+# levelling, and the player surface publishes what it planned and which filter
+# chain it handed mpv (`Video._loudnessState`). A fresh app has "level volume"
+# off, so the scenario first asserts the empty chain, then switches it on from
+# the player panel and asserts the realtime chain.
+#
+# The fixture clip lasts two seconds, so playback is paused first; the player
+# opens with play/pause focused.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - press: down
+  - settle: 800
+  - press: down
+  - settle: 800
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 20000}
+  - settle: 1500
+  - press: select
+  - wait_until: {id: player.surface, timeout: 25000}
+  - settle: 200
+
+  # Pause before the clip runs out. The player opens with its controls up and
+  # play/pause focused (focus trace of the first run), so Select pauses.
+  - press: select
+  - settle: 400
+
+  # Level volume off: nothing planned, nothing in the chain.
+  - assert: {id: player.surface, state: {loudness: "off", af: "", loudness_suspended: false}}
+  - snapshot: 01-paused-loudness-off
+
+  # Over to the tune button: RIGHT walks every mounted transport button
+  # (skip forward, next chapter, next item; `_buttonFocusNodes` in
+  # `desktop_video_controls.dart`) before it falls through to the first track
+  # control. Then into the panel and across to the Audio tab.
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 300
+  - assert: {id: player.settings_button, focused: true}
+  - press: select
+  - wait_until: {id: player.panel, timeout: 5000}
+  - settle: 400
+  - press: up
+  - settle: 300
+  - press: right
+  - settle: 300
+  - assert: {id: player.panel, state: {tab: audio, subView: none}}
+  - snapshot: 02-panel-audio
+
+  # DOWN from the pill lands on the first track row (the fixture has one audio
+  # track); RIGHT crosses to the output column, which starts at the boost row.
+  - press: down
+  - settle: 300
+  - assert: {id: "player.panel.row[audio.track.0]", focused: true}
+  - press: right
+  - settle: 300
+  - assert: {id: "player.panel.row[volume_boost]", focused: true}
+
+  # Boost, sync, output mode, priority, then level volume.
+  - press: down
+  - settle: 250
+  - press: down
+  - settle: 250
+  - press: down
+  - settle: 250
+  - press: down
+  - settle: 300
+  - assert: {id: "player.panel.row[audio_level_volume]", focused: true, state: {on: false}}
+
+  # On: no evidence, so realtime levelling, and the chain mpv got says so.
+  - press: select
+  - settle: 600
+  - assert: {id: "player.panel.row[audio_level_volume]", state: {on: true}}
+  - assert: {id: player.surface, state: {loudness: realtime, af: "loudnorm=I=-22:TP=-2:LRA=9", loudness_suspended: false}}
+  - snapshot: 03-loudness-realtime
+
+  # Off again: the chain is emptied, not left with the realtime filter.
+  - press: select
+  - settle: 600
+  - assert: {id: "player.panel.row[audio_level_volume]", state: {on: false}}
+  - assert: {id: player.surface, state: {loudness: "off", af: ""}}
+  - snapshot: 04-loudness-off-again

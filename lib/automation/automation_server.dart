@@ -66,6 +66,7 @@ const Map<String, String> _kRouteMethods = {
   '/v1/wait': 'POST',
   '/v1/input/key': 'POST',
   '/v1/input/pointer': 'POST',
+  '/v1/input/text': 'POST',
   '/v1/overlay': 'POST',
   '/v1/screenshot': 'GET',
   '/v1/signin': 'POST',
@@ -256,6 +257,9 @@ class AutomationServer {
           return;
         }
         await _respondInputResult(request, dispatchAutomationPointerTap(Offset(x, y)));
+      case '/v1/input/text':
+        final body = await _readJsonBody(request);
+        await _respondInputResult(request, dispatchAutomationText(body['text'] as String? ?? ''));
       case '/v1/overlay':
         final body = await _readJsonBody(request);
         final current = AutomationOverlayController.instance.value;
@@ -376,6 +380,9 @@ class AutomationServer {
       case AutomationInputResult.unknownKey:
         request.response.statusCode = HttpStatus.badRequest;
         await _respondJson(request, {'result': 'unknownKey'});
+      case AutomationInputResult.noEditableTarget:
+        request.response.statusCode = HttpStatus.conflict;
+        await _respondJson(request, {'result': 'noEditableTarget'});
     }
   }
 

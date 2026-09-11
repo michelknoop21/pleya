@@ -125,6 +125,28 @@ void main() {
     });
   });
 
+  group('36 B: results still lead to Aanvragen (REQ3)', () {
+    testWidgets('a way down from the last band opens Zoek in aanvragen', (tester) async {
+      var requested = 0;
+      await pumpView(tester, sections: [_band('movies', 'Films', 2)], onSearchOnRequests: () => requested++);
+
+      expect(find.text(t.search.searchOnRequests), findsOneWidget);
+
+      final action = Focus.maybeOf(tester.element(find.text(t.search.searchOnRequests)), scopeOk: true)!;
+      action.requestFocus();
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(requested, 1);
+    });
+
+    testWidgets('without a Seerr the results page offers no way to Aanvragen', (tester) async {
+      await pumpView(tester, sections: [_band('movies', 'Films', 2)]);
+      expect(find.text(t.search.searchOnRequests), findsNothing);
+    });
+  });
+
   group('36 C: nothing found', () {
     testWidgets('names the servers that were searched and offers Aanvragen', (tester) async {
       var requested = 0;

@@ -38,7 +38,10 @@ class LoudnessDspTest {
     assertEquals(12.0, LoudnessDsp.planGainDb(-40.0, -30.0)!!, 1e-9)
     // +8 would load the limiter 9,5 dB; the gain gives way to a load of 6.
     assertEquals(4.5, LoudnessDsp.planGainDb(-30.0, -0.5)!!, 1e-9)
-    assertEquals(6.0, LoudnessDsp.planGainDb(-28.0, null)!!, 1e-9)
+    // DEC-111 (6): without a true peak a boost is held at 0, a cut passes.
+    assertEquals(0.0, LoudnessDsp.planGainDb(-28.0, null)!!, 1e-9)
+    assertEquals(0.0, LoudnessDsp.planGainDb(-30.0, null)!!, 1e-9)
+    assertEquals(-4.0, LoudnessDsp.planGainDb(-18.0, null)!!, 1e-9)
     assertNull(LoudnessDsp.planGainDb(-70.0, -60.0))
     assertNull(LoudnessDsp.planGainDb(Double.NaN, -10.0))
     assertNull(LoudnessDsp.planGainDb(-20.0, 3.5))

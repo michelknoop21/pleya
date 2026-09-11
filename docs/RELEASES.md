@@ -55,6 +55,11 @@ under `Notes`.
 - canoniek loudnessbewijs, gain-planner en vaste programmaketen
 - loudnessbewijs koppelen aan speler en audiotrack
 - Android-loudnessketen in Media3, met compressor op FFmpeg-tempo
+- I4 mobiele Zoeken-secties en SRCH-2 persoonzoeken
+- DEC-111 (6) en (7), true-peak-cap met reden en bewijs per titel
+- I4 Zoeken automation-IDs, playlist routing fix, full group coverage
+- add /v1/input/text endpoint for ios-sim/macOS
+- loudnessplan als Verify-state, LOUD1-scenario
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
@@ -126,6 +131,8 @@ under `Notes`.
 - VER3 first discovery tile's focus ring clears the safe zone
 - VER5 media-detail.episode-refresh reaches Bibliotheken via Mijn Pleya
 - GOLD2 regenerate tv_home_production references
+- titelbewijs resetten en paritybewijs gelijktrekken
+- Zoeken opent Aanvragen binnen de shell, ook met resultaten
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026

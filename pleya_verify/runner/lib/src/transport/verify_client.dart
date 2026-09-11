@@ -179,6 +179,8 @@ class VerifyClient {
 
   Future<Map<String, Object?>> inputPointer(double x, double y) => _postJson('/v1/input/pointer', {'x': x, 'y': y});
 
+  Future<Map<String, Object?>> inputText(String text) => _postJson('/v1/input/text', {'text': text});
+
   Future<Map<String, Object?>> overlay({bool? enabled, bool? showIds, bool? showBounds}) => _postJson('/v1/overlay', {
     if (enabled != null) 'enabled': enabled,
     if (showIds != null) 'showIds': showIds,
@@ -250,6 +252,7 @@ class VerifyClient {
     (method: 'POST', path: '/v1/wait'),
     (method: 'POST', path: '/v1/input/key'),
     (method: 'POST', path: '/v1/input/pointer'),
+    (method: 'POST', path: '/v1/input/text'),
     (method: 'POST', path: '/v1/overlay'),
     (method: 'GET', path: '/v1/screenshot'),
     (method: 'POST', path: '/v1/signin'),

@@ -2452,11 +2452,26 @@ nu "audioverwerking staat uit" in plaats van alleen "volume gelijkmaken". Dit ve
 `_loudnessRow` is weg. [DEC-013](#dec-013) blijft: passthrough wint.
 (6) **Positieve gain vraagt true peak.** Een bron zonder betrouwbare true peak mag negatieve gain
 krijgen, maar positieve gain wordt op 0 dB begrensd, met de reden in plan en status. Een verzonnen
-TP is niet toegestaan. De limiter blijft een vangnet, geen vervanging. Dit bouwt E1, met een
-plannertest.
-(7) **Bewijs hoort bij één titel.** Het bewijs en het plan van titel A vervallen bij `open()` van
-titel B, vóór het eerste track-event. E1 krijgt een regressietest die A en B opent en laat zien dat
-B nooit de gain van A krijgt.
+TP is niet toegestaan. De limiter blijft een vangnet, geen vervanging. De regel staat gelijk in
+`planProgrammeGain`, `LoudnessDsp.planGainDb` en `plan()` in `prove.sh`; `measure.sh` meldt een
+ontbrekende true peak als `TP=nan`, en `plan()` leest dat als ontbrekend. De reden is een eigen veld op
+het plan, `AudioLoudness.gainLimit`: `missingTruePeak` voor deze cap, `truePeakLoad` wanneer een
+bekende true peak de gain inperkt, anders `none`. De diagnoseregel toont hem als `limit=`; de
+Android-wire krijgt hem niet, want de keten leest alleen de gain.
+(7) **Bewijs hoort bij één titel.** Bewijs en de programmagain die eruit volgt gelden voor één
+logisch media-item. Ze vervallen voordat een ander item speelt, of daarvoor nu een nieuwe player komt
+of dezelfde player in place wordt hergebruikt. De grens is `AudioOutputCoordinator.beginTitle`: die
+wist het bewijs en zet de onthouden track-id terug, zodat het eerste track-event van het nieuwe item
+de lookup opnieuw doet, ook als die track weer `"1"` heet. Het scherm roept hem aan bij de eerste
+open, vóór `setAudioNormalization`, want die plant meteen en de lookup komt pas na loadfile; een wis
+in `player.open()` kwam dus te laat. In `_reloadMediaInPlace` gebeurt het alleen bij `isItemChange`:
+volgende of vorige aflevering en een itemwissel in Watch Together. Een heropening van hetzelfde item,
+zoals de transcode-herstart of een audio- of ondertitelwissel, houdt zijn bewijs. Een versiewissel
+valt nu ook buiten de grens, terwijl een andere versie een ander bestand met een eigen meting is; of
+die een eigen grens krijgt wordt vóór E1 beslist.
+`test/mpv/player_open_test.dart` laat zien dat B nooit de gain van A krijgt,
+`test/services/audio_output_coordinator_test.dart` dat B met dezelfde track-id opnieuw wordt opgezocht
+en dat een heropening zonder titelgrens het bewijs laat staan.
 
 Drie bewuste afwijkingen van het oorspronkelijke plan, elk gemeten:
 - De decodebasis is `pcm-native-tl31-drc0`. mpv decodeert AC-3 met `ad-lavc-ac3drc` 0, de ffmpeg-cli
@@ -2465,6 +2480,13 @@ Drie bewuste afwijkingen van het oorspronkelijke plan, elk gemeten:
   met -38 dB naar -39 LUFS.
 - De limiter werkt op true peak (4x oversampled), niet op sample peak. Een sample-peak-limiter liet
   op de ISP-fixture +1,6 dBTP door; A4x houdt die op -2,0 dBTP, Android op -1,9.
+
+**Fasering van het bewijs.** C3 en C4 bouwen en bewijzen het mechanisme: planner, keten en DSP.
+Productiebewijs bestaat nog niet. `AudioOutputCoordinator.loudnessLookup` wordt nergens gezet, dus
+tot E1 komt runtime altijd uit op realtime (`estimated`). E1 is de eerste fase die de lookup aan een
+bewijsbron koppelt, en wacht daarvoor op het serverveld (D5). Dat de lookup nu leeg is, is geen
+regressie. De titelwisseltest uit (7) bewijst alvast dat oud bewijs niet kan lekken zodra E1 dit pad
+aanzet.
 
 **Consequences:** Android en mpv landen op dezelfde fixtures binnen 0,1 LU van elkaar, en voor het
 eerst is ook het verloop in de tijd getoetst. Open staan: een benchmark op de playback-thread voor
@@ -2475,3 +2497,38 @@ daarvoor is geluid, stilte langer dan de hold, en weer geluid. De processor voeg
 toe zonder compensatie en heeft geen tail-drain. Zonder bewijs klinkt Android ongeveer 8 dB zachter
 dan met `audiofx`, en een zachte titel heeft tot een halve minuut nodig om op niveau te komen. Geen
 van deze punten is op hardware gemeten.
+## DEC-112: Personen in zoeken zijn een `MediaItem`, geen nieuw `MediaKind`
+
+**Date:** 2026-09-11
+**Status:** accepted
+
+**Context:** I4 (iOS Zoeken, [unified-2026-closure.md](unified-2026-closure.md) §5) loste SRCH-2 op:
+`UnifiedSearchProjection.people` bestond al als veld maar werd door geen enkele backend-client
+gevuld, dus de people-sectie was altijd leeg (ook op TV, waar de rij er al stond maar dood was).
+Voor het bouwen van een echte persoonresultaat moest gekozen worden hoe een persoon in het
+resultaatmodel past: een nieuw `MediaKind`, een apart model naast `MediaItem`, of hergebruik van
+`MediaItem` zelf. Michel koos tijdens de preflight expliciet voor bouwen binnen I4 in plaats van
+uitstellen, met de aantekening dat live-serververificatie tegen een echte Plex-server in de
+ontwikkelomgeving niet mogelijk was.
+
+**Decision:** Een persoon-hit is een `MediaItem` met `kind: MediaKind.unknown` en alleen
+id/title/thumbPath/serverId/serverName/backend gevuld. Er komt geen nieuw `MediaKind.person` en
+geen apart model. De `people`-sectie van `UnifiedSearchProjection` is zelf al de
+typediscriminator: activatie routeert op basis van *waar* het item vandaan komt (de people-lijst),
+niet op een veld van het item. Backend-kant: nieuwe `PersonSearchClient`-capability
+(`lib/media/media_server_client.dart`), Plex via `/hubs/search` (actor-hub, `Directory[]` met
+fallback op `Metadata[]`), Jellyfin via `/Persons`, gefanout in
+`data_aggregation_service.dart:searchAcrossServers` naast de bestaande item-search.
+
+**Consequences:** Geen migratie van bestaande `MediaKind`-switches nodig, en TV's al bestaande
+people-rij (`tv_search_view_test.dart`) hoeft niet aangepast te worden aan een nieuw kindtype. Hij
+riep voorheen `_openConcrete` aan op een altijd-lege lijst en is nu gekoppeld aan `_openPerson`. Het
+Jellyfin-pad is 2026-09-11 live geverifieerd tegen de Pleya Demo-server in de iOS-simulator: zoeken
+op een acteursnaam uit de cast van een echte titel levert de PERSONEN-sectie op en `_openPerson`
+opent `ActorMediaScreen` met de juiste titel. Het Plex-pad (`/hubs/search`) blijft ongeverifieerd
+tegen een echte server: de aanname over de hub-key en de `Directory`/`Metadata`-vorm is alleen
+onderbouwd met publieke API-kennis en de interne consistentie van hoe deze app al andere
+Plex-tag-objecten leest (zie `lib/services/plex_client.dart`, nieuwe `searchPeople`). Faalt de
+aanname, dan blijft de people-sectie op Plex stil leeg (gewrapt in try/catch), zonder crash maar ook
+zonder resultaat: dit is de eerstvolgende falsificatie voor wie een Plex-server met cast-metadata
+beschikbaar heeft.

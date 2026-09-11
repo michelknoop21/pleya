@@ -70,4 +70,50 @@ void main() {
     expect(result, AutomationInputResult.dispatched);
     expect(pressed, isTrue);
   });
+
+  testWidgets('text inserts into the focused field through its own controller', (tester) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: TextField(controller: controller, autofocus: true)),
+      ),
+    );
+    await tester.pump();
+
+    final result = dispatchAutomationText('batman');
+    await tester.pump();
+
+    expect(result, AutomationInputResult.dispatched);
+    expect(controller.text, 'batman');
+    expect(controller.selection, const TextSelection.collapsed(offset: 6));
+  });
+
+  testWidgets('text inserts at the current selection rather than replacing the whole field', (tester) async {
+    final controller = TextEditingController(text: 'bat');
+    addTearDown(controller.dispose);
+    controller.selection = const TextSelection.collapsed(offset: 3);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: TextField(controller: controller, autofocus: true)),
+      ),
+    );
+    await tester.pump();
+
+    dispatchAutomationText('man');
+    await tester.pump();
+
+    expect(controller.text, 'batman');
+  });
+
+  test('rejected when no text field is focused', () {
+    expect(dispatchAutomationText('batman'), AutomationInputResult.noEditableTarget);
+  });
+
+  test('blocked while a native input session owns the remote', () {
+    NativeInputSession.begin();
+    expect(dispatchAutomationText('batman'), AutomationInputResult.blockedByNativeSession);
+  });
 }

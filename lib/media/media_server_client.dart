@@ -707,6 +707,21 @@ abstract interface class SeasonEpisodePagingClient {
   });
 }
 
+/// Optional capability (SRCH-2) for backends that can search people by name.
+/// Checked via `is` in `data_aggregation_service.dart` exactly like
+/// [SeasonEpisodePagingClient]; a backend without the capability (local
+/// folder, Pleya Server, Pleya Share today) is simply skipped rather than
+/// required to implement a no-op.
+///
+/// A hit is a [MediaItem] with [MediaKind.unknown] carrying only what
+/// `ActorMediaScreen` needs to open the person — id, title, thumbPath,
+/// serverId, serverName, backend — never a new person model: the search
+/// projection's `people` section is itself the type discriminator, so
+/// nothing downstream needs a `MediaKind.person` to route these correctly.
+abstract interface class PersonSearchClient {
+  Future<List<MediaItem>> searchPeople(String query, {int limit = 100});
+}
+
 /// Cache-aware fetch helpers shared by both backends so the offline-first /
 /// network-then-cache pattern lives in one place.
 ///

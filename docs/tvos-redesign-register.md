@@ -346,7 +346,7 @@ Hier staan ze bij de werkstroom die ze bezit.
 | OFF-2 | Offline topnav toont dode pills | MOC-23, SYS-1 | OPEN |
 | OVR1b | Legacy `MediaContextMenu`, rating-sheet, kijklijst-item-sheet en Live TV-sheets vallen op tvOS in een 400x400 bottom sheet | SYS-3b | DONE, `96f2d45` |
 | STA-1 | `StateView` en `EmptyStateWidget` schalen niet op TV | SYS-4 | OPEN |
-| SRCH-2 | `people` wordt nooit aan `searchProjection` meegegeven | MOC-13 | OPEN |
+| SRCH-2 | `people` wordt nooit aan `searchProjection` meegegeven | MOC-13 | FIXED, `b5b8f0e8`, hardware open (DEC-112) |
 | ACT-3 | `tvMyPleya.activitySubtitle` belooft samen kijken en remote die de tegel niet levert | MOC-16 | OPEN |
 
 ## Tokenafwijkingen uit de audit

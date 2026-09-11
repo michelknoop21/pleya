@@ -449,10 +449,8 @@ class MacosDriver implements VerificationDriver {
   }
 
   @override
-  Future<void> typeText(String text) {
-    throw UnsupportedError(
-      'typeText: no /v1/input/text endpoint exists yet — not needed by any Fase 8-11 scenario so far',
-    );
+  Future<void> typeText(String text) async {
+    await _requireClient().inputText(text);
   }
 
   @override
