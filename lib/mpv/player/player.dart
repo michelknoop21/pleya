@@ -235,6 +235,10 @@ abstract class Player {
   /// suspends anything for a bitstream.
   AudioLoudness get plannedLoudness;
 
+  /// What the audio path actually gave mpv: [plannedLoudness], or none while a
+  /// bitstream suspends it.
+  AudioLoudness get effectiveLoudness;
+
   /// True once per playback session, the first time a running bitstream
   /// suspends the loudness setting the user asked for (DEC-013: the bitstream
   /// wins). Consumed by whoever shows the message, so the user is told at the
