@@ -206,9 +206,21 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
   /// `TvSeerrDiscoverViewState.focusFirstContent`): a false positive there
   /// means nothing gets the focus at all. See `tv_discovery_rail.dart`'s
   /// `_focusIndex`, which carries the same guard for the same reason.
+  ///
+  /// LAND5: a remembered card that was built and then scrolled away used to
+  /// fail the attachment test above and fall straight through to the first
+  /// card — [focusColumn] already has the right answer for exactly this "not
+  /// currently attached" case (bring the column into view, then focus it next
+  /// frame), so delegate to it by index instead of re-deriving that scroll.
+  /// Only the id-not-found case (never remembered, or the remembered card is
+  /// gone from [TvCatalogCardRail.itemIds]) still falls back to the first card.
   bool focusRail() {
     final remembered = _focusedId;
-    final node = (remembered != null ? _nodes[remembered] : null) ?? _nodes[widget.itemIds.firstOrNull];
+    if (remembered != null) {
+      final index = widget.itemIds.indexOf(remembered);
+      if (index >= 0 && focusColumn(index)) return true;
+    }
+    final node = _nodes[widget.itemIds.firstOrNull];
     if (node == null || node.parent == null || !node.canRequestFocus) return false;
     node.requestFocus();
     return true;
