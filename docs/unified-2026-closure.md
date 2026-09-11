@@ -113,7 +113,7 @@ eindronde.
 |---|---|---|---|
 | 1 | UNI0 | de documenten laten zeggen wat er op `main` staat | dit document, beide registers bijgewerkt, DEC-110 |
 | 2 | I4 iOS Zoeken (05) | mobiele presentatie op de gedeelde search, identity en activation; SRCH-2 in de gedeelde eigenaar | widgettests, ios-sim Verify, screenshot tegen 05, activation vanuit elke resultaatgroep bewezen |
-| 3 | T1 tvOS-blockers | PLR6 (eerst de fork lezen met `scripts/tvos_engine_source.sh`), LAND5, VER3, VER5, I18N1-4 en I18N6, STR3-5, GOLD2 via `goldens.yml`, LIB5 (reproductie of onderbouwd NOT REPRODUCED) | per item de stappen van de correctieronde; PLR6 komt niet verder dan `CODE/SIM CLOSED · HARDWARE OPEN` |
+| 3 | T1 tvOS-blockers | PLR6 (eerst de fork lezen met `scripts/tvos_engine_source.sh`), LAND5, VER3, VER5, I18N1-4 en I18N6, STR3-5, GOLD2 via `goldens.yml`, LIB5 (reproductie of onderbouwd NOT REPRODUCED) | per item de stappen van de correctieronde; PLR6 komt niet verder dan `CODE/SIM CLOSED · HARDWARE OPEN`. **`CODE/SIM CLOSED`**: gemerged in `main` via `314d5207`, LIB5/STR3-5/I18N1-4/I18N6/LAND5/VER3/VER5/GOLD2 elk `FIXED` in de correctieronde; PLR6 blijft `HARDWARE ONLY, blokkerend` tot §7 |
 | 4 | I5 bronkeuze (08) en contextmenu (09) | `UnifiedActivationCoordinator` beslist; sheets via de bestaande `OverlaySheetHost`; markeer-bekeken met groepssemantiek | geen tweede sheet-stack; contracttests |
 | 5 | I6 film- en seriedetail (06, 07) | gedeelde data, identity en activation, eigen mobiele widget; volledige synopsis; seizoenstaat blijft bewaard | widgettests en ios-sim Verify |
 | 6 | T2a tvOS detail en LIB7 | MOC-09 en MOC-10 compositie tegen mockup 37, MOC-11, MOC-12, LIB7 | per MOC eigen bewijs |
