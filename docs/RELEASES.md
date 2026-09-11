@@ -56,8 +56,10 @@ under `Notes`.
 - loudnessbewijs koppelen aan speler en audiotrack
 - Android-loudnessketen in Media3, met compressor op FFmpeg-tempo
 - I4 mobiele Zoeken-secties en SRCH-2 persoonzoeken
+- DEC-111 (6) en (7), true-peak-cap met reden en bewijs per titel
 - I4 Zoeken automation-IDs, playlist routing fix, full group coverage
 - add /v1/input/text endpoint for ios-sim/macOS
+- loudnessplan als Verify-state, LOUD1-scenario
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
@@ -122,6 +124,8 @@ under `Notes`.
 - het spelerpaneel op de gedeelde typeladder (PLR7)
 - de drie rake punten uit de Codex-challenge op CAT17 en PLR7
 - OVR1a op filmdetail, en de volledige synopsis (DEC-109)
+- titelbewijs resetten en paritybewijs gelijktrekken
+- Zoeken opent Aanvragen binnen de shell, ook met resultaten
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
