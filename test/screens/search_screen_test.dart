@@ -688,6 +688,35 @@ void main() {
       expect(find.byType(MediaDetailScreen), findsNothing);
     });
 
+    testWidgets('a person result shows its server name as a subtitle', (tester) async {
+      // People are source-concrete with no cross-server identity to merge on
+      // (searchAcrossServers): the same actor can legitimately surface once
+      // per matching server, so without a label two such rows render as
+      // indistinguishable duplicates (reported against build 270). The
+      // server name is the same distinguisher a movie/show result already
+      // gets via its source count.
+      final client = _FakeMediaServerClient(
+        items: const [],
+        people: [
+          MediaItem(
+            id: 'person-1',
+            backend: MediaBackend.plex,
+            kind: MediaKind.unknown,
+            title: 'Adam Sandler',
+            serverId: 'server_1',
+            serverName: 'Huiskamer',
+          ),
+        ],
+      );
+      final key = await pumpPhoneSearchScreen(tester, client);
+      (key.currentState! as SearchInputFocusable).setSearchQuery('adam sandler');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Adam Sandler'), findsOneWidget);
+      expect(find.text('Huiskamer'), findsOneWidget);
+    });
+
     testWidgets('an episode group opens detail on its representative source', (tester) async {
       // Episodes go through the same `_mobileGroupRow`/`_openMobileGroupDetails`
       // path as movies and shows (proven above) — this exercises it against

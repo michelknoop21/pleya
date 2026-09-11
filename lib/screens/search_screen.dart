@@ -1100,7 +1100,14 @@ class _SearchScreenState extends State<SearchScreen>
           sectionId: 'people',
           title: t.search.filters.people,
           children: [
-            for (final item in projection.people) _mobileItemRow(context, item, onTap: () => _openPerson(item)),
+            for (final item in projection.people)
+              // A person carries no cross-server identity to merge on
+              // (see searchAcrossServers): the same actor can legitimately
+              // appear once per server that matches, and without a label
+              // those rows are indistinguishable duplicates. serverName is
+              // the same distinguisher a movie/show result gets via its
+              // source count.
+              _mobileItemRow(context, item, onTap: () => _openPerson(item), subtitleOverride: item.serverName),
           ],
         ),
       if (showRest && projection.other.isNotEmpty)
@@ -1152,8 +1159,14 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
-  Widget _mobileItemRow(BuildContext context, MediaItem item, {required VoidCallback onTap}) {
-    return _mobileResultTile(context, item: item, trailingLabel: null, onTap: onTap);
+  Widget _mobileItemRow(BuildContext context, MediaItem item, {required VoidCallback onTap, String? subtitleOverride}) {
+    return _mobileResultTile(
+      context,
+      item: item,
+      trailingLabel: null,
+      onTap: onTap,
+      subtitleOverride: subtitleOverride,
+    );
   }
 
   Widget _mobileResultTile(
@@ -1161,10 +1174,11 @@ class _SearchScreenState extends State<SearchScreen>
     required MediaItem item,
     required String? trailingLabel,
     required VoidCallback onTap,
+    String? subtitleOverride,
   }) {
     final client = context.tryGetMediaClientWithFallback(serverIdOrNull(item.serverId));
     final muted = Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7);
-    final subtitle = _mobileResultSubtitle(item);
+    final subtitle = subtitleOverride ?? _mobileResultSubtitle(item);
     final fallbackIcon = item.isShow || item.isSeason || item.isEpisode ? Symbols.tv_rounded : Symbols.movie_rounded;
     return FocusableListTile(
       leading: ClipRRect(
