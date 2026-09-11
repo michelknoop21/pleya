@@ -43,6 +43,7 @@ void main() {
 
     var pickerOpened = false;
     UnifiedMediaSource? routed;
+    UnifiedMediaRouteContext? routedContext;
     final outcome = await tester.runAsync(
       () => activateMobileMediaGroup(
         context,
@@ -60,12 +61,16 @@ void main() {
               pickerOpened = true;
               return sources.first;
             },
-        onRouted: (s) => routed = s,
+        onRouted: (s, routeContext) {
+          routed = s;
+          routedContext = routeContext;
+        },
       ),
     );
 
     expect(pickerOpened, isFalse);
     expect(routed?.sourceKey, 'nas:i1');
+    expect(routedContext?.sourceKey, 'nas:i1');
     expect(outcome, MobileActivationOutcome.routed);
   });
 
@@ -76,6 +81,7 @@ void main() {
     final sources = [source('i1', serverId: 'nas'), source('i2', serverId: 'attic')];
     var pickerOpened = false;
     UnifiedMediaSource? routed;
+    UnifiedMediaRouteContext? routedContext;
     final outcome = await tester.runAsync(
       () => activateMobileMediaGroup(
         context,
@@ -93,12 +99,20 @@ void main() {
               pickerOpened = true;
               return sources.firstWhere((s) => s.sourceKey == 'attic:i2');
             },
-        onRouted: (s) => routed = s,
+        onRouted: (s, routeContext) {
+          routed = s;
+          routedContext = routeContext;
+        },
       ),
     );
 
     expect(pickerOpened, isTrue);
     expect(routed?.sourceKey, 'attic:i2');
+    // The chosen row builds its own route context too, same as the direct
+    // path: "Wijzigen"/failure-re-entry depend on this even when the choice
+    // came from the picker, not just when it was skipped.
+    expect(routedContext?.sourceKey, 'attic:i2');
+    expect(routedContext?.availableSourceKeys, unorderedEquals(['nas:i1', 'attic:i2']));
     expect(outcome, MobileActivationOutcome.routed);
   });
 
@@ -122,7 +136,7 @@ void main() {
               preferredServerId,
               required coverage,
             }) async => null,
-        onRouted: (_) => routedCalls++,
+        onRouted: (_, _) => routedCalls++,
       ),
     );
 
@@ -153,7 +167,7 @@ void main() {
               pickerOpened = true;
               return null;
             },
-        onRouted: (_) => routedCalls++,
+        onRouted: (_, _) => routedCalls++,
       ),
     );
 

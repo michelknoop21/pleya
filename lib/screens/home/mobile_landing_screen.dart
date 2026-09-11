@@ -21,15 +21,19 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../automation/automation_screen.dart';
 import '../../i18n/strings.g.dart';
+import '../../media/unified/source_coverage_state.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
+import '../../media/unified/unified_route_context.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../providers/discover_provider.dart';
 import '../../providers/home_layout_provider.dart';
+import '../../providers/multi_server_provider.dart';
 import '../../providers/tv_discovery_landing_provider.dart';
+import '../../screens/tv/tv_unified_activation.dart';
 import '../../services/unified_catalog/home_row_layout.dart';
+import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../../theme/mono_tokens.dart';
-import '../../utils/media_navigation_helper.dart';
 import '../../widgets/mobile/mobile_discovery_shell.dart';
 import '../../widgets/mobile/mobile_media_rail.dart';
 import '../../widgets/mobile/mobile_page_header.dart';
@@ -87,7 +91,18 @@ class MobileLandingScreen extends StatelessWidget {
   const MobileLandingScreen({super.key, required this.kind, this.onSearchTap});
 
   Future<void> _openDetails(BuildContext context, UnifiedMediaGroup group) async {
-    await navigateToMediaItemDetails(context, group.representativeSource.item);
+    final manager = context.read<MultiServerProvider>().serverManager;
+    final health = unifiedServerHealth(
+      isOnline: manager.isServerOnline,
+      authErrorServerIds: manager.authErrorServerIds,
+    );
+    await openMobileMediaGroup(
+      context,
+      group: group,
+      intent: UnifiedActivationIntent.details,
+      availabilityFor: (source) => unifiedSourceAvailability(source, health),
+      coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
+    );
   }
 
   @override

@@ -16,19 +16,21 @@ import 'package:provider/provider.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
+import '../../media/unified/source_availability.dart';
 import '../../media/unified/source_coverage_state.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
+import '../../media/unified/unified_media_source.dart';
 import '../../media/unified/unified_route_context.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../providers/discover_provider.dart';
 import '../../providers/home_layout_provider.dart';
+import '../../providers/multi_server_provider.dart';
 import '../../providers/tv_home_projection_provider.dart';
+import '../../screens/tv/tv_unified_activation.dart';
 import '../../services/unified_catalog/home_row_layout.dart';
-import '../../services/unified_catalog/mobile_activation.dart';
+import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../../utils/home_hero_layout.dart';
-import '../../utils/media_navigation_helper.dart';
-import '../../utils/video_player_navigation.dart';
 import '../../widgets/media_card_grid_layout.dart';
 import '../../widgets/mobile/mobile_chip_bar.dart';
 import '../../widgets/mobile/mobile_discovery_shell.dart';
@@ -36,19 +38,7 @@ import '../../widgets/mobile/mobile_hero_card.dart';
 import '../../widgets/mobile/mobile_media_card.dart';
 import '../../widgets/mobile/mobile_media_rail.dart';
 import '../../widgets/mobile/mobile_page_header.dart';
-import '../../widgets/mobile/mobile_source_picker_sheet.dart';
 import '../libraries/content_state_builder.dart' show SliverErrorState;
-
-/// The `currentSourceKey` Home's Play hands to the source picker.
-///
-/// `initialFocusSourceKey` (where the picker should put its initial focus)
-/// and "the source the surface behind the picker already shows" (only true
-/// when a picker is reopened from a detail page) are two different
-/// questions. Home's Play has no detail page behind it, so the answer to the
-/// second question is always null here — never `initialFocusSourceKey`,
-/// which is what a never-played row would otherwise be mislabelled with.
-@visibleForTesting
-String? homePlayCurrentSourceKey({required String initialFocusSourceKey}) => null;
 
 class MobileHomeScreen extends StatefulWidget {
   /// Opens Zoeken. Comes from `MainScreen` through [DiscoverScreen], because
@@ -68,36 +58,37 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
   static List<UnifiedMediaHub> _ofSurface(List<UnifiedMediaHub> hubs, UnifiedCatalogSurface surface) =>
       hubs.where((hub) => hub.kind.singleKindSurface == surface).toList();
 
+  /// Live, not the stamped [UnifiedMediaSource.availability]: a freshly
+  /// projected group's sources default to [SourceAvailability.unknown], and
+  /// reading that would send every activation through the picker's
+  /// no-usable-source path regardless of whether the server is actually up.
+  SourceAvailability Function(UnifiedMediaSource source) _availabilityFor(BuildContext context) {
+    final manager = context.read<MultiServerProvider>().serverManager;
+    final health = unifiedServerHealth(
+      isOnline: manager.isServerOnline,
+      authErrorServerIds: manager.authErrorServerIds,
+    );
+    return (source) => unifiedSourceAvailability(source, health);
+  }
+
   Future<void> _openDetails(UnifiedMediaGroup group) async {
-    await navigateToMediaItemDetails(context, group.representativeSource.item);
+    await openMobileMediaGroup(
+      context,
+      group: group,
+      intent: UnifiedActivationIntent.details,
+      availabilityFor: _availabilityFor(context),
+      coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
+    );
   }
 
   Future<void> _play(UnifiedMediaGroup group) async {
-    await activateMobileMediaGroup(
+    await openMobileMediaGroup(
       context,
       group: group,
       intent: UnifiedActivationIntent.play,
-      availabilityFor: (source) => source.availability,
+      availabilityFor: _availabilityFor(context),
       coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
-      showPicker:
-          ({
-            required sources,
-            required initialFocusSourceKey,
-            preferredSourceKey,
-            preferredServerId,
-            required coverage,
-          }) {
-            return showMobileSourcePickerSheet(
-              context,
-              representative: group.representativeSource.item,
-              sources: sources,
-              preferredSourceKey: preferredSourceKey,
-              currentSourceKey: homePlayCurrentSourceKey(initialFocusSourceKey: initialFocusSourceKey),
-              preferredServerId: preferredServerId,
-              coverage: coverage,
-            );
-          },
-      onRouted: (source) => navigateToVideoPlayer(context, metadata: source.item),
+      playDirectly: true,
     );
   }
 

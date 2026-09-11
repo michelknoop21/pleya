@@ -8,9 +8,9 @@
 /// read via `git show origin/main:...`, it does not exist on this branch)
 /// both make: the difference is which [MediaKind] the catalog reads and what
 /// the header says, nothing else. It owns presentation and the query it
-/// asks for; it owns no source logic: activation goes through the same
-/// `navigateToMediaItemDetails` call the rails above it already use, on the
-/// group's representative source, not a second picker.
+/// asks for; it owns no source logic: activation goes through
+/// `openMobileMediaGroup` (I5, workitem 4), the same coordinator-backed path
+/// the rails above it use.
 ///
 /// A push, not a tab state: `06-film-detail.png` shows the northstar's own
 /// pushed detail screen still carrying the bottom bar with Films lit, which
@@ -32,16 +32,21 @@ import '../../automation/automation_screen.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
 import '../../media/media_kind.dart';
+import '../../media/unified/source_availability.dart';
+import '../../media/unified/source_coverage_state.dart';
 import '../../media/unified/unified_media_group.dart';
+import '../../media/unified/unified_media_source.dart';
+import '../../media/unified/unified_route_context.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/unified_catalog_provider.dart';
 import '../../providers/unified_catalogs.dart';
+import '../../screens/tv/tv_unified_activation.dart';
+import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../../services/unified_catalog/unified_artwork_prefetcher.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/global_key_utils.dart';
-import '../../utils/media_navigation_helper.dart';
 import '../../widgets/app_icon.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/focusable_filter_chip.dart';
@@ -225,8 +230,26 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     await _updatePreferences(_preferences.copyWith(filters: result));
   }
 
-  Future<void> _openDetails(UnifiedMediaGroup group) =>
-      navigateToMediaItemDetails(context, group.representativeSource.item);
+  /// Live, not the stamped [UnifiedMediaSource.availability]: a freshly
+  /// projected group's sources default to [SourceAvailability.unknown], and
+  /// reading that would send every activation through the picker's
+  /// no-usable-source path regardless of whether the server is actually up.
+  SourceAvailability Function(UnifiedMediaSource source) get _availabilityFor {
+    final manager = context.read<MultiServerProvider>().serverManager;
+    final health = unifiedServerHealth(
+      isOnline: manager.isServerOnline,
+      authErrorServerIds: manager.authErrorServerIds,
+    );
+    return (source) => unifiedSourceAvailability(source, health);
+  }
+
+  Future<void> _openDetails(UnifiedMediaGroup group) => openMobileMediaGroup(
+    context,
+    group: group,
+    intent: UnifiedActivationIntent.details,
+    availabilityFor: _availabilityFor,
+    coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
+  );
 
   /// "All sources" until something is excluded, then how many are left:
   /// same rule `TvUnifiedCatalogScreen._sourcesLabel` uses.

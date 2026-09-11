@@ -28,9 +28,13 @@ import 'seerr/seerr_media_detail_screen.dart';
 import '../mixins/controller_disposer_mixin.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
+import '../media/unified/source_coverage_state.dart';
 import '../media/unified/unified_media_group.dart';
+import '../media/unified/unified_route_context.dart';
 import '../media/ids.dart';
 import '../providers/multi_server_provider.dart';
+import 'tv/tv_unified_activation.dart';
+import '../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../services/unified_catalog/search_projection.dart';
 import '../utils/external_ids_fetcher.dart';
 import '../utils/provider_extensions.dart';
@@ -1141,12 +1145,10 @@ class _SearchScreenState extends State<SearchScreen>
   /// 3 bronnen", true from one source up — `05-zoeken.png` shows "1 bron" on
   /// a single-source title, not a hidden label).
   ///
-  /// Select opens detail on the representative source, the same read
-  /// `mobile_home_screen.dart`'s own rail cards already use — full
-  /// source-aware activation is I6 (film/series detail unified), not this
-  /// workitem, and TV's own group activation
-  /// (`TvDiscoveryActivationMixin.activateDiscoveryGroup`) opens a TV-only
-  /// picker route this platform cannot show.
+  /// Select opens detail through `openMobileMediaGroup` (I5, workitem 4),
+  /// the same coordinator-backed path `mobile_home_screen.dart`'s rail cards
+  /// use — a picker only when the group actually has more than one usable
+  /// source, never a bare representative-source read.
   Widget _mobileGroupRow(BuildContext context, UnifiedMediaGroup group) {
     final item = group.representativeSource.item;
     return _mobileResultTile(
@@ -1228,9 +1230,23 @@ class _SearchScreenState extends State<SearchScreen>
     }
   }
 
-  /// A group's representative source, opened as a read — see [_mobileGroupRow].
+  /// See [_mobileGroupRow].
   void _openMobileGroupDetails(UnifiedMediaGroup group) {
-    unawaited(navigateToMediaItemDetails(context, group.representativeSource.item, onRefresh: updateItem));
+    final manager = context.read<MultiServerProvider>().serverManager;
+    final health = unifiedServerHealth(
+      isOnline: manager.isServerOnline,
+      authErrorServerIds: manager.authErrorServerIds,
+    );
+    unawaited(
+      openMobileMediaGroup(
+        context,
+        group: group,
+        intent: UnifiedActivationIntent.details,
+        availabilityFor: (source) => unifiedSourceAvailability(source, health),
+        coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
+        onRefresh: updateItem,
+      ),
+    );
   }
 
   /// The desktop result list. TV never reaches this: `build` returns

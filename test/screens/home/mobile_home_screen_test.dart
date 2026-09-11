@@ -146,12 +146,6 @@ const String _skipReason = 'run with --dart-define=PLEYA_VERIFY=true';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('Home Play never claims a source is already showing', () {
-    // Home has no detail page behind it, unlike a picker reopened from one:
-    // the initial-focus target is not "what's already playing".
-    expect(homePlayCurrentSourceKey(initialFocusSourceKey: 'nas:i1'), isNull);
-  });
-
   late _FakeAggregationService aggregation;
   late MultiServerManager manager;
   late MultiServerProvider multiServer;
