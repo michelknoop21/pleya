@@ -89,6 +89,9 @@ class LoudnessDsp(val sampleRate: Int, val channels: Int) {
       if (truePeakDbtp != null) {
         val load = (truePeakDbtp + gain) - CEILING_DBTP
         if (load > MAX_LIMITER_LOAD_DB) gain -= load - MAX_LIMITER_LOAD_DB
+      } else if (gain > 0.0) {
+        // DEC-111 (6): no true peak, no limiter load to check, so no boost.
+        gain = 0.0
       }
       return gain
     }

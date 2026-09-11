@@ -2452,11 +2452,16 @@ nu "audioverwerking staat uit" in plaats van alleen "volume gelijkmaken". Dit ve
 `_loudnessRow` is weg. [DEC-013](#dec-013) blijft: passthrough wint.
 (6) **Positieve gain vraagt true peak.** Een bron zonder betrouwbare true peak mag negatieve gain
 krijgen, maar positieve gain wordt op 0 dB begrensd, met de reden in plan en status. Een verzonnen
-TP is niet toegestaan. De limiter blijft een vangnet, geen vervanging. Dit bouwt E1, met een
-plannertest.
+TP is niet toegestaan. De limiter blijft een vangnet, geen vervanging. De regel staat gelijk in
+`programmeGainDb`, `LoudnessDsp.planGainDb` en `plan()` in `prove.sh`. De reden is een eigen veld op
+het plan, `AudioLoudness.gainLimit`: `missingTruePeak` voor deze cap, `truePeakLoad` wanneer een
+bekende true peak de gain inperkt, anders `none`. De diagnoseregel toont hem als `limit=`; de
+Android-wire krijgt hem niet, want de keten leest alleen de gain.
 (7) **Bewijs hoort bij één titel.** Het bewijs en het plan van titel A vervallen bij `open()` van
-titel B, vóór het eerste track-event. E1 krijgt een regressietest die A en B opent en laat zien dat
-B nooit de gain van A krijgt.
+titel B, vóór het eerste track-event. `startTitleLoudness` wist het bewijs vóór
+`setAudioNormalization`, want die plant meteen en de lookup voor B komt pas na loadfile; een wis in
+`player.open()` kwam dus te laat. `test/mpv/player_open_test.dart` opent A en B en laat zien dat B
+nooit de gain van A krijgt.
 
 Drie bewuste afwijkingen van het oorspronkelijke plan, elk gemeten:
 - De decodebasis is `pcm-native-tl31-drc0`. mpv decodeert AC-3 met `ad-lavc-ac3drc` 0, de ffmpeg-cli
@@ -2465,6 +2470,13 @@ Drie bewuste afwijkingen van het oorspronkelijke plan, elk gemeten:
   met -38 dB naar -39 LUFS.
 - De limiter werkt op true peak (4x oversampled), niet op sample peak. Een sample-peak-limiter liet
   op de ISP-fixture +1,6 dBTP door; A4x houdt die op -2,0 dBTP, Android op -1,9.
+
+**Fasering van het bewijs.** C3 en C4 bouwen en bewijzen het mechanisme: planner, keten en DSP.
+Productiebewijs bestaat nog niet. `AudioOutputCoordinator.loudnessLookup` wordt nergens gezet, dus
+tot E1 komt runtime altijd uit op realtime (`estimated`). E1 is de eerste fase die de lookup aan een
+bewijsbron koppelt, en wacht daarvoor op het serverveld (D5). Dat de lookup nu leeg is, is geen
+regressie. De titelwisseltest uit (7) bewijst alvast dat oud bewijs niet kan lekken zodra E1 dit pad
+aanzet.
 
 **Consequences:** Android en mpv landen op dezelfde fixtures binnen 0,1 LU van elkaar, en voor het
 eerst is ook het verloop in de tijd getoetst. Open staan: een benchmark op de playback-thread voor

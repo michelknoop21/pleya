@@ -27,6 +27,7 @@ import '../media/episode_collection.dart';
 import '../media/live_tv_support.dart';
 import '../models/livetv_channel.dart';
 import '../services/live_seek_accumulator.dart';
+import '../services/loudness/title_loudness.dart';
 import '../services/plex_client.dart';
 import '../utils/session_identifier.dart';
 import '../database/app_database.dart';
@@ -1007,7 +1008,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         levelVolume: settingsService.read(SettingsService.audioLevelVolume),
         reduceLoudSounds: settingsService.read(SettingsService.audioReduceLoudSounds),
       );
-      await currentPlayer.setAudioNormalization(loudness);
+      await startTitleLoudness(currentPlayer, loudness);
 
       // Audio output path: Dolby bitstream, multichannel PCM or stereo. Runs
       // before loadfile because the Apple audio output samples the route once

@@ -1,5 +1,5 @@
 import '../../media/loudness_evidence.dart';
-import '../../mpv/models.dart' show AudioLoudness;
+import '../../mpv/models.dart' show AudioLoudness, ProgrammeGainLimit;
 
 /// The canonical gain policy. Kotlin's `LoudnessDsp` carries the same numbers;
 /// `scripts/loudness/prove.sh` is the proof that both land in the same place.
@@ -27,12 +27,15 @@ abstract final class LoudnessPolicy {
 
 bool _finite(double? v) => v != null && v.isFinite;
 
-/// The fixed programme gain for [evidence], or null when the evidence may not
-/// be applied and the realtime fallback has to run.
+typedef ProgrammeGain = ({double gainDb, ProgrammeGainLimit limit});
+
+/// The fixed programme gain for [evidence] and what held it down, or null when
+/// the evidence may not be applied and the realtime fallback has to run.
 ///
 /// `gain = clamp(-22 - I, -30, +12)`; when the true peak after that gain would
-/// load the limiter by more than 6 dB, the gain drops by the excess.
-double? programmeGainDb(LoudnessEvidence? evidence) {
+/// load the limiter by more than 6 dB, the gain drops by the excess. Without a
+/// true peak a positive gain is held at 0 dB (DEC-111 (6)).
+ProgrammeGain? planProgrammeGain(LoudnessEvidence? evidence) {
   if (evidence == null) return null;
   if (evidence.methodVersion != LoudnessPolicy.supportedMethodVersion) return null;
   if (evidence.basis != LoudnessPolicy.clientBasis) return null;
@@ -54,11 +57,20 @@ double? programmeGainDb(LoudnessEvidence? evidence) {
   if (peak != null && (!peak.isFinite || peak > LoudnessPolicy.maxValidTruePeakDbtp)) return null;
 
   var gain = (LoudnessPolicy.targetLufs - lufs).clamp(LoudnessPolicy.minGainDb, LoudnessPolicy.maxGainDb);
+  var limit = ProgrammeGainLimit.none;
   if (peak != null) {
     final load = (peak + gain) - LoudnessPolicy.ceilingDbtp;
-    if (load > LoudnessPolicy.maxLimiterLoadDb) gain -= load - LoudnessPolicy.maxLimiterLoadDb;
+    if (load > LoudnessPolicy.maxLimiterLoadDb) {
+      gain -= load - LoudnessPolicy.maxLimiterLoadDb;
+      limit = ProgrammeGainLimit.truePeakLoad;
+    }
+  } else if (gain > 0) {
+    // No true peak means no limiter load to check, so a boost has no vetted
+    // ceiling to land under. A cut is safe either way.
+    gain = 0;
+    limit = ProgrammeGainLimit.missingTruePeak;
   }
-  return gain;
+  return (gainDb: gain, limit: limit);
 }
 
 /// Turns the user's switches plus whatever evidence there is into the one
@@ -66,8 +78,12 @@ double? programmeGainDb(LoudnessEvidence? evidence) {
 ///
 /// Evidence only matters while levelling is on; with it off there is nothing to
 /// level towards and no gain is carried.
-AudioLoudness planLoudness(AudioLoudness prefs, LoudnessEvidence? evidence) => AudioLoudness(
-  levelVolume: prefs.levelVolume,
-  reduceLoudSounds: prefs.reduceLoudSounds,
-  programmeGainDb: prefs.levelVolume ? programmeGainDb(evidence) : null,
-);
+AudioLoudness planLoudness(AudioLoudness prefs, LoudnessEvidence? evidence) {
+  final programme = prefs.levelVolume ? planProgrammeGain(evidence) : null;
+  return AudioLoudness(
+    levelVolume: prefs.levelVolume,
+    reduceLoudSounds: prefs.reduceLoudSounds,
+    programmeGainDb: programme?.gainDb,
+    gainLimit: programme?.limit ?? ProgrammeGainLimit.none,
+  );
+}

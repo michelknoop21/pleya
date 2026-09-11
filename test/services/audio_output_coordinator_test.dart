@@ -237,6 +237,13 @@ void main() {
         const AudioOutputDiagnostics(plan: AudioLoudness(levelVolume: true)).toString(),
         contains('loudness=realtime'),
       );
+      expect(
+        const AudioOutputDiagnostics(
+          plan: AudioLoudness(levelVolume: true, programmeGainDb: 0, gainLimit: ProgrammeGainLimit.missingTruePeak),
+          planSource: LoudnessSource.serverScan,
+        ).toString(),
+        contains('loudness=programme +0.00 dB server_scan limit=missingTruePeak'),
+      );
     });
   });
 

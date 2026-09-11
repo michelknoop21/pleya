@@ -4,7 +4,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show ValueNotifier, visibleForTesting;
 
 import '../media/loudness_evidence.dart';
-import '../mpv/models.dart' show AudioLoudness, AudioTrack, PlayerLog, TrackSelection;
+import '../mpv/models.dart' show AudioLoudness, AudioTrack, PlayerLog, ProgrammeGainLimit, TrackSelection;
 import '../mpv/player/player.dart';
 import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
@@ -681,6 +681,7 @@ class AudioOutputDiagnostics {
       p.mode.name,
       if (gain != null) '${gain >= 0 ? '+' : ''}${gain.toStringAsFixed(2)} dB',
       if (planSource != null) planSource!.wire,
+      if (p.gainLimit != ProgrammeGainLimit.none) 'limit=${p.gainLimit.name}',
     ].join(' ');
   }
 

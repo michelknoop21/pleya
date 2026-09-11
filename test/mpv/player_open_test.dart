@@ -8,6 +8,7 @@ import 'package:pleya/media/loudness_evidence.dart';
 import 'package:pleya/mpv/mpv.dart';
 import 'package:pleya/mpv/player/platform/player_android.dart';
 import 'package:pleya/mpv/player/player_native.dart';
+import 'package:pleya/services/loudness/title_loudness.dart';
 import 'package:pleya/services/settings_service.dart';
 
 import '../test_helpers/prefs.dart';
@@ -69,6 +70,54 @@ void main() {
       );
     });
 
+    test('DEC-111 (7): opening title B never plans against title A\'s evidence', () async {
+      final calls = <MethodCall>[];
+      await _withMockChannels(
+        methodChannelName: 'com.pleya/exo_player',
+        eventChannelName: 'com.pleya/exo_player/events',
+        methodHandler: (call) async {
+          calls.add(call);
+          return call.method == 'initialize' ? true : null;
+        },
+        testBody: () async {
+          final player = PlayerAndroid();
+          try {
+            const prefs = AudioLoudness(levelVolume: true);
+            Map sentLoudness() => calls.lastWhere((c) => c.method == 'setLoudness').arguments as Map;
+
+            await startTitleLoudness(player, prefs);
+            await player.open(Media('https://example.test/a.mkv'));
+            await player.setLoudnessEvidence(
+              const LoudnessEvidence(
+                source: LoudnessSource.serverScan,
+                method: 'ffmpeg-loudnorm-1',
+                methodVersion: 1,
+                integratedLufs: -27,
+                truePeakDbtp: -12,
+                quality: LoudnessQuality.measuredFull,
+                coverageComplete: true,
+                basis: 'pcm-native-tl31-drc0',
+              ),
+            );
+            expect(sentLoudness()['gainDb'], 5.0, reason: 'title A plays its own programme gain');
+
+            final sentBeforeB = calls.length;
+            await startTitleLoudness(player, prefs);
+            final bSends = calls.skip(sentBeforeB).where((c) => c.method == 'setLoudness');
+            expect(bSends, isNotEmpty);
+            for (final send in bSends) {
+              expect((send.arguments as Map)['gainDb'], isNull, reason: 'B got A\'s gain before its own lookup');
+            }
+            expect(player.plannedLoudness.programmeGainDb, isNull);
+            await player.open(Media('https://example.test/b.mkv'));
+            expect(sentLoudness()['gainDb'], isNull);
+          } finally {
+            await player.dispose();
+          }
+        },
+      );
+    });
+
     test('ExoPlayer receives the planned loudness, not two switches', () async {
       final calls = <MethodCall>[];
       await _withMockChannels(
@@ -88,6 +137,7 @@ void main() {
                 method: 'ffmpeg-loudnorm-1',
                 methodVersion: 1,
                 integratedLufs: -27,
+                truePeakDbtp: -12,
                 quality: LoudnessQuality.measuredFull,
                 coverageComplete: true,
                 basis: 'pcm-native-tl31-drc0',
