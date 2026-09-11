@@ -51,6 +51,10 @@ under `Notes`.
 - Aanvragen en Ontdekken in de catalogustaal (DEC-108, mockup 35)
 - Zoeken in de catalogustaal, en de kop die SEARCH1 sluit (DEC-108, mockup 36)
 - MOC-10 seizoenchips met één actieve afleveringenrail (PB-4)
+- loudness-proef met fixtures, onafhankelijke meter en kandidatentabel
+- canoniek loudnessbewijs, gain-planner en vaste programmaketen
+- loudnessbewijs koppelen aan speler en audiotrack
+- Android-loudnessketen in Media3, met compressor op FFmpeg-tempo
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
