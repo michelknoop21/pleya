@@ -5,7 +5,9 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show protected;
 import 'package:flutter/services.dart';
 
+import '../../media/loudness_evidence.dart';
 import '../../media/media_display_criteria.dart';
+import '../../services/loudness/loudness_planner.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/track_label_builder.dart';
 import '../font_loader.dart';
@@ -700,11 +702,27 @@ abstract class PlayerBase with PlayerStreamControllersMixin implements Player {
   // ignore: no-empty-block - base no-op, overridden by platform subclasses
   Future<void> setAudioPassthrough(bool enabled) async {}
 
+  AudioLoudness _loudnessPrefs = AudioLoudness.none;
+  LoudnessEvidence? _loudnessEvidence;
+
+  @override
+  LoudnessEvidence? get loudnessEvidence => _loudnessEvidence;
+
+  @override
+  AudioLoudness get plannedLoudness => planLoudness(_loudnessPrefs, _loudnessEvidence);
+
   @override
   Future<void> setAudioNormalization(AudioLoudness loudness) async {
     // Registers the wish only; the arbiter decides what actually reaches mpv,
     // because loudnorm needs decoded audio and a running bitstream has none.
-    await reconcileAudioPath(audioPath.request(normalization: loudness));
+    _loudnessPrefs = loudness;
+    await reconcileAudioPath(audioPath.request(normalization: plannedLoudness));
+  }
+
+  @override
+  Future<void> setLoudnessEvidence(LoudnessEvidence? evidence) async {
+    _loudnessEvidence = evidence;
+    await reconcileAudioPath(audioPath.request(normalization: plannedLoudness));
   }
 
   @override

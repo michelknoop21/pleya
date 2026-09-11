@@ -3,7 +3,8 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show ValueNotifier, visibleForTesting;
 
-import '../mpv/models.dart' show AudioTrack, PlayerLog, TrackSelection;
+import '../media/loudness_evidence.dart';
+import '../mpv/models.dart' show AudioLoudness, AudioTrack, PlayerLog, TrackSelection;
 import '../mpv/player/player.dart';
 import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
@@ -29,7 +30,19 @@ import 'settings_service.dart';
 /// reload, which is audible, so changes are debounced and skipped while the
 /// player is buffering.
 class AudioOutputCoordinator {
-  AudioOutputCoordinator({required this.player, required this.settings, this.onPassthroughUnavailable});
+  AudioOutputCoordinator({
+    required this.player,
+    required this.settings,
+    this.onPassthroughUnavailable,
+    this.loudnessLookup,
+  });
+
+  /// Finds the stored loudness evidence for an audio track, or null when the
+  /// source has none. Asked again on every audio-track change, because the
+  /// evidence belongs to one stream: a commentary track measured nothing
+  /// about the main mix. Null means the caller has no evidence source at all,
+  /// and the player's evidence is left alone.
+  final LoudnessEvidence? Function(AudioTrack? track)? loudnessLookup;
 
   /// Called once when a bitstream attempt is abandoned, so the player can say
   /// so instead of silently degrading.
@@ -316,9 +329,27 @@ class AudioOutputCoordinator {
   /// Re-evaluates after the user picks another audio track — a DTS track and
   /// an E-AC3 track want different output paths. Redundant with the selection
   /// stream, but arrives a beat earlier on the navigation path.
-  Future<void> onAudioTrackChanged(AudioTrack track) => _useCodec(track.codec);
+  Future<void> onAudioTrackChanged(AudioTrack track) async {
+    await _useLoudnessFor(track);
+    await _useCodec(track.codec);
+  }
 
-  void _onTrackSelectionChanged(TrackSelection selection) => unawaited(_useCodec(selection.audio?.codec));
+  void _onTrackSelectionChanged(TrackSelection selection) {
+    unawaited(_useLoudnessFor(selection.audio));
+    unawaited(_useCodec(selection.audio?.codec));
+  }
+
+  /// The audio track whose evidence the player has, so a selection event that
+  /// only moved the subtitles does not re-plan the audio.
+  String? _loudnessTrackId;
+
+  Future<void> _useLoudnessFor(AudioTrack? track) async {
+    final lookup = loudnessLookup;
+    if (lookup == null || _disposed) return;
+    if (track == null || track.id == _loudnessTrackId) return;
+    _loudnessTrackId = track.id;
+    await player.setLoudnessEvidence(lookup(track));
+  }
 
   Future<void> _useCodec(String? codec) async {
     // A track without codec metadata says nothing about the output path; keep
@@ -528,6 +559,8 @@ class AudioOutputCoordinator {
         // Not run through _readback: empty is a real answer here, and the one
         // that matters. A running bitstream has to show an empty chain.
         filters: values[0],
+        plan: player.plannedLoudness,
+        planSource: player.loudnessEvidence?.source,
         volume: _readback(values[1]),
         volumeMax: _readback(values[2]),
         sourceChannels: _readback(values[3]),
@@ -607,7 +640,22 @@ class VerifiedAudioOutput {
 /// what was being done to the audio on the way there, and is the half that
 /// grows every time a new question comes up.
 class AudioOutputDiagnostics {
-  const AudioOutputDiagnostics({this.filters, this.volume, this.volumeMax, this.sourceChannels});
+  const AudioOutputDiagnostics({
+    this.filters,
+    this.plan,
+    this.planSource,
+    this.volume,
+    this.volumeMax,
+    this.sourceChannels,
+  });
+
+  /// What the loudness planner asked for: mode and programme gain. Put next to
+  /// [filters], which is mpv's acknowledgement, the pair shows whether the plan
+  /// actually reached the audio or a bitstream suspended it.
+  final AudioLoudness? plan;
+
+  /// Where the programme gain came from, when there was evidence.
+  final LoudnessSource? planSource;
 
   /// mpv's actual filter chain. Empty means there is none; null means mpv did
   /// not answer. The distinction matters: an empty chain is what a running
@@ -625,9 +673,21 @@ class AudioOutputDiagnostics {
 
   bool get hasFilters => (filters ?? '').isNotEmpty;
 
+  String _describePlan() {
+    final p = plan;
+    if (p == null) return 'unknown';
+    final gain = p.programmeGainDb;
+    return [
+      p.mode.name,
+      if (gain != null) '${gain >= 0 ? '+' : ''}${gain.toStringAsFixed(2)} dB',
+      if (planSource != null) planSource!.wire,
+    ].join(' ');
+  }
+
   @override
   String toString() =>
       'af=${filters == null ? 'unknown' : (filters!.isEmpty ? 'none' : filters)}, '
+      'loudness=${_describePlan()}, '
       'volume=${volume ?? 'unknown'}/${volumeMax ?? 'unknown'}, '
       'source channels=${sourceChannels ?? 'unknown'}';
 }

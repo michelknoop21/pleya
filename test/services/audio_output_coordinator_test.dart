@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/media/loudness_evidence.dart';
 import 'package:pleya/mpv/models.dart';
 import 'package:pleya/mpv/player/player.dart';
 import 'package:pleya/mpv/player/player_state.dart';
@@ -27,7 +28,7 @@ class _FakePlayer implements Player {
       volume: const Stream<double>.empty(),
       rate: const Stream<double>.empty(),
       tracks: const Stream<Tracks>.empty(),
-      track: const Stream<TrackSelection>.empty(),
+      track: _selections.stream,
       log: _logs.stream,
       error: const Stream<PlayerError>.empty(),
       audioDevice: const Stream<AudioDevice>.empty(),
@@ -93,6 +94,21 @@ class _FakePlayer implements Player {
     }
   }
 
+  final List<LoudnessEvidence?> evidenceCalls = [];
+
+  @override
+  Future<void> setLoudnessEvidence(LoudnessEvidence? evidence) async => evidenceCalls.add(evidence);
+
+  @override
+  LoudnessEvidence? get loudnessEvidence => evidenceCalls.isEmpty ? null : evidenceCalls.last;
+
+  @override
+  AudioLoudness get plannedLoudness => AudioLoudness.none;
+
+  final StreamController<TrackSelection> _selections = StreamController<TrackSelection>.broadcast();
+
+  void select(TrackSelection selection) => _selections.add(selection);
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -155,6 +171,73 @@ void main() {
     await coordinator.onModeChanged();
 
     expect(player.passthroughCalls.length, callsBefore, reason: 'no writes after dispose');
+  });
+
+  group('loudness evidence', () {
+    const main = AudioTrack(id: '1', codec: 'eac3');
+    const commentary = AudioTrack(id: '2', codec: 'aac');
+    const measured = LoudnessEvidence(
+      source: LoudnessSource.serverScan,
+      method: 'ffmpeg-loudnorm-1',
+      methodVersion: 1,
+      integratedLufs: -27,
+      quality: LoudnessQuality.measuredFull,
+      coverageComplete: true,
+      basis: 'pcm-native-tl31-drc0',
+    );
+
+    test('is looked up per audio track and handed to the player', () async {
+      final player = _FakePlayer();
+      final asked = <String?>[];
+      final coordinator = AudioOutputCoordinator(
+        player: player,
+        settings: settings,
+        loudnessLookup: (track) {
+          asked.add(track?.id);
+          return track?.id == '1' ? measured : null;
+        },
+      );
+      await coordinator.prepare(audioCodec: 'eac3');
+
+      player.select(const TrackSelection(audio: main));
+      await pumpEventQueue();
+      expect(player.evidenceCalls, [measured]);
+
+      // A selection that only moved the subtitles must not re-plan the audio.
+      player.select(const TrackSelection(audio: main, subtitle: SubtitleTrack.off));
+      await pumpEventQueue();
+      expect(asked, ['1']);
+
+      // The commentary track has no measurement: the player is told so, rather
+      // than keeping the main mix's gain.
+      await coordinator.onAudioTrackChanged(commentary);
+      expect(player.evidenceCalls, [measured, null]);
+
+      coordinator.dispose();
+    });
+
+    test('without a lookup the player evidence is left alone', () async {
+      final player = _FakePlayer();
+      final coordinator = AudioOutputCoordinator(player: player, settings: settings);
+      await coordinator.prepare(audioCodec: 'eac3');
+      player.select(const TrackSelection(audio: main));
+      await pumpEventQueue();
+      expect(player.evidenceCalls, isEmpty);
+      coordinator.dispose();
+    });
+
+    test('the diagnostics carry the plan next to the filter readback', () {
+      const diagnostics = AudioOutputDiagnostics(
+        filters: 'lavfi-volume',
+        plan: AudioLoudness(levelVolume: true, programmeGainDb: 5),
+        planSource: LoudnessSource.serverScan,
+      );
+      expect(diagnostics.toString(), contains('loudness=programme +5.00 dB server_scan'));
+      expect(
+        const AudioOutputDiagnostics(plan: AudioLoudness(levelVolume: true)).toString(),
+        contains('loudness=realtime'),
+      );
+    });
   });
 
   test('clears the active-coordinator handle only if it still owns it', () async {

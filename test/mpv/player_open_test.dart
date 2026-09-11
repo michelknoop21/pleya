@@ -4,6 +4,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/media/loudness_evidence.dart';
 import 'package:pleya/mpv/mpv.dart';
 import 'package:pleya/mpv/player/platform/player_android.dart';
 import 'package:pleya/mpv/player/player_native.dart';
@@ -21,6 +22,53 @@ void main() {
   });
 
   group('player open', () {
+    test('evidence and switches meet in one fixed-gain af chain, and off clears it', () async {
+      final calls = <MethodCall>[];
+      await _withMockChannels(
+        methodChannelName: 'com.pleya/exo_player',
+        eventChannelName: 'com.pleya/exo_player/events',
+        methodHandler: (call) async {
+          calls.add(call);
+          return null;
+        },
+        testBody: () async {
+          final player = PlayerAndroid();
+          try {
+            String? lastAf() => calls
+                .where((c) => c.method == 'setMpvProperty' && (c.arguments as Map)['name'] == 'af')
+                .map((c) => (c.arguments as Map)['value'] as String)
+                .lastOrNull;
+
+            await player.setLoudnessEvidence(
+              const LoudnessEvidence(
+                source: LoudnessSource.serverScan,
+                method: 'ffmpeg-loudnorm-1',
+                methodVersion: 1,
+                integratedLufs: -27,
+                truePeakDbtp: -12,
+                quality: LoudnessQuality.measuredFull,
+                coverageComplete: true,
+                basis: 'pcm-native-tl31-drc0',
+              ),
+            );
+            await player.setAudioNormalization(const AudioLoudness(levelVolume: true));
+            expect(lastAf(), startsWith('volume=5.00dB:precision=float,aresample=192000,alimiter='));
+            expect(player.plannedLoudness.mode, LoudnessMode.programme);
+
+            // A next title without evidence falls back to realtime, not to the
+            // previous title's gain.
+            await player.setLoudnessEvidence(null);
+            expect(lastAf(), 'loudnorm=I=-22:TP=-2:LRA=9');
+
+            await player.setAudioNormalization(AudioLoudness.none);
+            expect(lastAf(), '');
+          } finally {
+            await player.dispose();
+          }
+        },
+      );
+    });
+
     test('ExoPlayer clears stale Dart track state before opening new media', () async {
       await _withMockChannels(
         methodChannelName: 'com.pleya/exo_player',

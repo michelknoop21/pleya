@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 
+import '../../../media/loudness_evidence.dart';
 import '../../../services/device_performance.dart';
 import '../../../services/settings_service.dart';
 import '../../models.dart';
@@ -286,7 +287,13 @@ class PlayerAndroid extends PlayerBase {
   @override
   Future<void> setAudioNormalization(AudioLoudness loudness) async {
     if (disposed) return;
-    await reconcileAudioPath(audioPath.request(normalization: loudness));
+    await super.setAudioNormalization(loudness);
+  }
+
+  @override
+  Future<void> setLoudnessEvidence(LoudnessEvidence? evidence) async {
+    if (disposed) return;
+    await super.setLoudnessEvidence(evidence);
   }
 
   /// Sends the *resolved* loudness state to ExoPlayer.

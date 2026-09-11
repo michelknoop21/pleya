@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import '../../media/loudness_evidence.dart';
 import '../../media/media_display_criteria.dart';
 import '../models.dart';
 import 'platform/player_android.dart';
@@ -217,6 +218,23 @@ abstract class Player {
   /// while enabled so the effects can process the stream; it only distinguishes
   /// on/off, so both switches collapse to one bit there.
   Future<void> setAudioNormalization(AudioLoudness loudness);
+
+  /// Loudness evidence for the audio stream about to play, or null when there
+  /// is none. Read once when a title opens and again when the audio track
+  /// changes; never swapped in mid-track, so a late server answer waits for
+  /// the next open instead of jumping the level under the viewer.
+  ///
+  /// The player combines it with the switches from [setAudioNormalization]
+  /// through `planLoudness`: usable evidence becomes one fixed programme gain,
+  /// anything else falls back to realtime levelling.
+  Future<void> setLoudnessEvidence(LoudnessEvidence? evidence);
+
+  /// The evidence last handed to [setLoudnessEvidence].
+  LoudnessEvidence? get loudnessEvidence;
+
+  /// The switches plus evidence as planned, before the audio-path arbiter
+  /// suspends anything for a bitstream.
+  AudioLoudness get plannedLoudness;
 
   /// True once per playback session, the first time a running bitstream
   /// suspends the loudness setting the user asked for (DEC-013: the bitstream
