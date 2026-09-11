@@ -284,6 +284,26 @@ wanneer `x`/`y` ontbreken. Geen pointer-equivalent op tvOS (geen aanraakvlak
 in de zin van deze API) — het endpoint bestaat er wel, maar een scenario-stap
 roept het net als `/v1/input/key` nooit aan op een tvOS-target.
 
+### `POST /v1/input/text`
+
+Body: `{"text": "batman"}`. Voegt `text` in op de huidige selectie van het
+op dit moment focused tekstveld — dezelfde bewerking als
+`tv_virtual_keyboard.dart`'s `_insert`, maar dan rechtstreeks op de
+`TextEditingController` achter `FocusManager.instance.primaryFocus`. Een
+synthetische toetsdruk (de `/v1/input/key`-route) bereikt het platform-IME-
+kanaal van een `EditableText` niet, dus tekeninvoer kan niet via
+`dispatchAutomationKey` lopen; dit endpoint bestaat naast dat endpoint,
+specifiek voor tekst.
+
+200 `{"result": "dispatched"}`; 409 bij een actieve native invoersessie, of
+wanneer er geen `EditableTextState` in de focus-chain zit (`{"result":
+"noEditableTarget"}` — er staat dus geen tekstveld gefocust).
+
+**Verboden als uitvoeringsroute voor een tvOS-scenariostap**, net als
+`/v1/input/key` — zie de tvOS-invoerroute-invariant hierboven.
+`TvosSimulatorDriver.typeText()` roept dit endpoint nooit aan; tvOS typt via
+idb HID (`scripts/tvos_sim.sh type`).
+
 ### `POST /v1/overlay`
 
 Body (alle velden optioneel, ontbrekend = ongewijzigd):

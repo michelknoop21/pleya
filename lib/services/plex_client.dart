@@ -206,7 +206,7 @@ typedef PlexWatcherRow = ({int accountId, String displayName, String? thumbUrl, 
 
 class PlexClient
     with MediaServerCacheMixin, _PlexLiveTvClientMethods
-    implements MediaServerClient, SeasonEpisodePagingClient, GracefullyCloseable {
+    implements MediaServerClient, SeasonEpisodePagingClient, PersonSearchClient, GracefullyCloseable {
   @override
   PlexConfig config;
 
@@ -3721,6 +3721,60 @@ class PlexClient
   Future<List<MediaItem>> searchItems(String query, {int limit = 100}) async {
     final results = await _search(query, limit: limit);
     return results.map((m) => PlexMappers.mediaItem(m)).toList();
+  }
+
+  /// SRCH-2: actor/person hits, from the global hub search rather than
+  /// `/library/search` — that endpoint's own `searchTypes` is hard-pinned to
+  /// `movies,tv` (see [_search]) and, being section-scoped, has no actor hub
+  /// to answer from. `/hubs/search` always returns every category hub in one
+  /// response; only the one with `type: 'actor'` is read here.
+  ///
+  /// An actor hub's entries are Plex's generic tag shape (`id`/`tag`/`thumb`)
+  /// — the same shape `PlexMappers` already reads for cast credits — under
+  /// `Directory` on every hub search response this client has seen, but both
+  /// keys are checked since that has not been confirmed against a live
+  /// server for this specific hub (see DEC pending SRCH-2 in
+  /// docs/DECISIONS.md).
+  @override
+  Future<List<MediaItem>> searchPeople(String query, {int limit = 100}) async {
+    try {
+      final response = await _getWithFailover(
+        '/hubs/search',
+        queryParameters: {'query': query, 'limit': limit},
+        allowEndpointFailover: false,
+      );
+      final container = _getMediaContainer(response);
+      final hubs = container?['Hub'] as List?;
+      if (hubs == null) return const [];
+
+      final results = <MediaItem>[];
+      for (final hub in hubs) {
+        if (hub is! Map || hub['type'] != 'actor') continue;
+        final entries = (hub['Directory'] as List?) ?? (hub['Metadata'] as List?) ?? const [];
+        for (final entry in entries) {
+          if (entry is! Map) continue;
+          final id = entry['id']?.toString();
+          final tag = entry['tag'] as String?;
+          if (id == null || tag == null || tag.isEmpty) continue;
+          results.add(
+            MediaItem(
+              id: id,
+              backend: MediaBackend.plex,
+              kind: MediaKind.unknown,
+              title: tag,
+              thumbPath: entry['thumb'] as String?,
+              serverId: serverId.value,
+              serverName: serverName,
+            ),
+          );
+        }
+        break;
+      }
+      return results.take(limit).toList();
+    } catch (e, st) {
+      appLogger.w('Plex person search failed', error: e, stackTrace: st);
+      return const [];
+    }
   }
 
   /// Two tiers, both measured against a live Plex Media Server on 16 August

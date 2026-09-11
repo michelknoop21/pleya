@@ -105,6 +105,12 @@ ids:
   - id: media-detail.episode-list.item
     role: list.item
     instanceable: true
+  - id: media-detail.season-chips
+    role: list
+    instanceable: false
+  - id: media-detail.season-chip
+    role: chip
+    instanceable: true
   - id: screen.my_pleya
     role: screen
     instanceable: false
@@ -197,6 +203,12 @@ ids:
     instanceable: true
   - id: landing.rail.item
     role: grid.item
+    instanceable: true
+  - id: search.results.section
+    role: region
+    instanceable: true
+  - id: search.results.item
+    role: list.item
     instanceable: true
   - id: sheet.source_picker
     role: sheet

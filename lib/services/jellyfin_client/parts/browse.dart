@@ -139,6 +139,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
   FailoverHttpClient get _http;
   MediaItem? _mapItem(Map<String, dynamic> json);
   List<MediaItem> _mapItems(Iterable<Map<String, dynamic>> items);
+  String? _absolutizeImagePath(String? path);
 
   /// Implemented by `_JellyfinLiveTvMethods`, which owns the
   /// `/FavoriteItems` transport. Declared here so [setFavorite] can reach it
@@ -1075,6 +1076,53 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     );
     throwIfHttpError(response);
     return _mapItems(_itemsArray(response.data));
+  }
+
+  /// SRCH-2: actor/person hits, via Jellyfin's own `/Persons` endpoint
+  /// (distinct from `/Items` — a person is not a `BaseItemDto` playable item,
+  /// it is filtered on `searchTerm` and returns its own `Items[]` of person
+  /// records with `Id`/`Name`/`PrimaryImageTag`). Never throws: a person
+  /// search failure must not fail the movie/show search alongside it.
+  ///
+  /// No `@override` — [PersonSearchClient] is only in `JellyfinClient`'s own
+  /// `implements` clause, not this mixin's `on` constraint, the same reason
+  /// `_absolutizeImagePath`'s forward declaration above carries none either.
+  Future<List<MediaItem>> searchPeople(String query, {int limit = 100}) async {
+    try {
+      final response = await _http.get(
+        '/Persons',
+        queryParameters: {
+          'userId': connection.userId,
+          'searchTerm': query,
+          'Limit': limit.toString(),
+          'enableImages': 'true',
+        },
+      );
+      throwIfHttpError(response);
+      final results = <MediaItem>[];
+      for (final person in _itemsArray(response.data)) {
+        final id = person['Id'] as String?;
+        final name = person['Name'] as String?;
+        if (id == null || name == null || name.isEmpty) continue;
+        final tag = person['PrimaryImageTag'] as String?;
+        final thumbPath = tag != null ? _absolutizeImagePath('/Items/${_segment(id)}/Images/Primary?tag=$tag') : null;
+        results.add(
+          MediaItem(
+            id: id,
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.unknown,
+            title: name,
+            thumbPath: thumbPath,
+            serverId: serverId.value,
+            serverName: serverName,
+          ),
+        );
+      }
+      return results;
+    } catch (e, st) {
+      appLogger.w('Jellyfin person search failed', error: e, stackTrace: st);
+      return const [];
+    }
   }
 
   @override

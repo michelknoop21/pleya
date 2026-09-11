@@ -8,10 +8,13 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import 'package:rate_limiter/rate_limiter.dart';
 
+import '../automation/automation_ids.dart';
+import '../automation/automation_node.dart';
 import '../focus/focusable_button.dart';
 import '../focus/focusable_text_field.dart';
 import '../i18n/strings.g.dart';
 import '../media/media_item.dart';
+import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../models/seerr/seerr_media.dart';
 import '../providers/hidden_libraries_provider.dart';
@@ -19,6 +22,7 @@ import '../providers/seerr_provider.dart';
 import '../widgets/focusable_filter_chip.dart';
 import '../widgets/focusable_list_tile.dart';
 import '../widgets/loading_indicator_box.dart';
+import '../widgets/optimized_media_image.dart';
 import '../widgets/seerr_poster_card.dart';
 import 'seerr/seerr_media_detail_screen.dart';
 import '../mixins/controller_disposer_mixin.dart';
@@ -51,8 +55,10 @@ import 'tv/tv_discovery_activation_mixin.dart';
 import 'tv/tv_search_view.dart';
 import 'seerr/seerr_discover_screen.dart';
 import '../media/media_server_client.dart';
+import '../navigation/tv/tv_content_route_registry.dart';
 import '../services/search_recents.dart';
 import '../utils/media_navigation_helper.dart';
+import 'actor_media_screen.dart';
 
 import '../utils/focus_utils.dart';
 import 'main_screen.dart';
@@ -85,13 +91,18 @@ class _AllServersFailed implements Exception {
 const int _searchHistoryLimit = 15;
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key, this.onManageServers});
+  const SearchScreen({super.key, this.onManageServers, this.onBack});
 
   /// Hoofdstuk 14.7's escape hatch from the unified source picker's
   /// `NoUsableSource` state — the same affordance the discovery landings
   /// and the Home hero offer for the same situation. Used by TV search's
   /// `activateDiscoveryGroup` calls.
   final VoidCallback? onManageServers;
+
+  /// I4/`05-zoeken.png`: the phone build's own back chevron, wired by
+  /// `MainScreen` to the tab Zoeken was opened from. Null on every other
+  /// platform — TV has no such header, and desktop's app bar predates it.
+  final VoidCallback? onBack;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -110,14 +121,14 @@ class _SearchScreenState extends State<SearchScreen>
   final _searchFocusNode = FocusNode(debugLabel: 'SearchInput');
   final _firstResultFocusNode = FocusNode(debugLabel: 'SearchFirstResult');
   List<MediaItem> _searchResults = [];
-  // TV only (hoofdstuk 16.1/16.2): the unified projection of the same
-  // `_searchResults` this screen already fetched. Built alongside
+  // TV and phone (hoofdstuk 16.1/16.2, I4): the unified projection of the
+  // same `_searchResults` this screen already fetched. Built alongside
   // `_searchResults` rather than derived from it in `build()`, because the
   // projection is async (identity resolution needs a network round trip per
-  // ambiguous title) and `build()` cannot await. Non-TV never reads this —
-  // desktop/mobile search stays exactly the source-concrete list it always
-  // was (DEC pending: fase 6 is a TV phase, `search_screen.dart` is shared).
-  UnifiedSearchProjection? _tvProjection;
+  // ambiguous title) and `build()` cannot await. Desktop never reads this —
+  // it stays exactly the source-concrete list it always was; desktop search
+  // unification is not part of I4's scope.
+  UnifiedSearchProjection? _projection;
   // TV only: the group rails of the result page, in the order hoofdstuk 16.1
   // draws them. It owns two things — reaching the first rail, so the existing
   // "focus the first result" call sites (OSK Done, keyboard navigate-down,
@@ -369,7 +380,7 @@ class _SearchScreenState extends State<SearchScreen>
     if (query.isEmpty) {
       setStateIfMounted(() {
         _searchResults = [];
-        _tvProjection = null;
+        _projection = null;
         _hasSearched = false;
         _searchError = null;
       });
@@ -459,22 +470,26 @@ class _SearchScreenState extends State<SearchScreen>
         throw const _AllServersFailed();
       }
       final neutral = aggregated.items;
-      // TV only (hoofdstuk 16.1/16.2, fase 6): project onto the unified
-      // model — "Dune (2021) — 3 bronnen", not one row per server. Runs
-      // after the staleness check above and rechecks it again below, since
-      // this await (identity resolution) is exactly the kind of network
-      // round trip `isStale()` exists to guard against — a slower "bat"
-      // landing after a faster "batman" must not overwrite the newer query's
-      // projection either. Desktop/mobile never take this branch, so their
+      // TV (hoofdstuk 16.1/16.2, fase 6) and phone (I4): project onto the
+      // unified model — "Dune (2021) — 3 bronnen", not one row per server.
+      // Runs after the staleness check above and rechecks it again below,
+      // since this await (identity resolution) is exactly the kind of
+      // network round trip `isStale()` exists to guard against — a slower
+      // "bat" landing after a faster "batman" must not overwrite the newer
+      // query's projection either. Desktop never takes this branch, so its
       // search stays the source-concrete list it always was.
-      UnifiedSearchProjection? tvProjection;
-      if (PlatformDetector.isTV()) {
-        tvProjection = await searchProjection(neutral, fetchExternalIds: externalIdsFetcherFor(multiServerProvider));
+      UnifiedSearchProjection? projection;
+      if (PlatformDetector.isTV() || PlatformDetector.isPhone(context)) {
+        projection = await searchProjection(
+          neutral,
+          fetchExternalIds: externalIdsFetcherFor(multiServerProvider),
+          people: aggregated.people,
+        );
         if (!mounted || isStale()) return;
       }
       setStateIfMounted(() {
         _searchResults = neutral;
-        _tvProjection = tvProjection;
+        _projection = projection;
         _isSearching = false;
         _lastSearchedQuery = query;
         _activeFilter = _SearchFilter.all;
@@ -492,7 +507,7 @@ class _SearchScreenState extends State<SearchScreen>
         // connection problem.
         _searchError = e is _NoServersAvailable ? _SearchError.noServers : _SearchError.network;
         _searchResults = const [];
-        _tvProjection = null;
+        _projection = null;
         // Reset the filter too: keeping it would leave an active chip whose
         // row is now hidden, i.e. an apparently empty list with no way back.
         _activeFilter = _SearchFilter.all;
@@ -753,7 +768,7 @@ class _SearchScreenState extends State<SearchScreen>
   /// two are different numbers: the flat list has one entry per *source*, and
   /// what 36 B states beside the pill is what the page draws — one per title.
   int _tvResultCount() {
-    final projection = _tvProjection;
+    final projection = _projection;
     if (projection == null) return 0;
     return projection.movies.length +
         projection.shows.length +
@@ -796,7 +811,7 @@ class _SearchScreenState extends State<SearchScreen>
       ];
     }
 
-    final projection = _tvProjection;
+    final projection = _projection;
     if (projection == null) return const [];
 
     TvSearchSection groups(String id, String title, List<UnifiedMediaGroup> groups) => TvSearchSection(
@@ -821,23 +836,27 @@ class _SearchScreenState extends State<SearchScreen>
       ),
     );
 
-    TvSearchSection items(String id, String title, List<MediaItem> items) => TvSearchSection(
-      id: id,
-      title: title,
-      itemIds: [for (final item in items) item.globalKey],
-      cardBuilder: (context, cell) => TvCatalogItemCard(
-        item: items[cell.index],
-        width: cell.width,
-        clientFor: clientFor,
-        focusNode: cell.focusNode,
-        onSelect: () => _openConcrete(items[cell.index]),
-        onFocusChange: cell.onFocusChange,
-        onNavigateUp: cell.onNavigateUp,
-        onNavigateDown: cell.onNavigateDown,
-        onNavigateLeft: cell.onNavigateLeft,
-        onNavigateRight: cell.onNavigateRight,
-      ),
-    );
+    // [onSelect] defaults to the source-concrete open every row here used
+    // before SRCH-2; only `people` overrides it, since a person is not a
+    // playable `MediaItem` `_openConcrete` can route (see [_openPerson]).
+    TvSearchSection items(String id, String title, List<MediaItem> items, {void Function(MediaItem item)? onSelect}) =>
+        TvSearchSection(
+          id: id,
+          title: title,
+          itemIds: [for (final item in items) item.globalKey],
+          cardBuilder: (context, cell) => TvCatalogItemCard(
+            item: items[cell.index],
+            width: cell.width,
+            clientFor: clientFor,
+            focusNode: cell.focusNode,
+            onSelect: () => (onSelect ?? _openConcrete)(items[cell.index]),
+            onFocusChange: cell.onFocusChange,
+            onNavigateUp: cell.onNavigateUp,
+            onNavigateDown: cell.onNavigateDown,
+            onNavigateLeft: cell.onNavigateLeft,
+            onNavigateRight: cell.onNavigateRight,
+          ),
+        );
 
     return [
       if (projection.movies.isNotEmpty) groups('movies', t.unifiedCatalog.moviesTitle, projection.movies),
@@ -845,7 +864,8 @@ class _SearchScreenState extends State<SearchScreen>
       if (projection.episodes.isNotEmpty) groups('episodes', t.search.filters.episodes, projection.episodes),
       if (projection.collections.isNotEmpty) items('collections', t.collections.title, projection.collections),
       if (projection.playlists.isNotEmpty) items('playlists', t.playlists.title, projection.playlists),
-      if (projection.people.isNotEmpty) items('people', t.search.filters.people, projection.people),
+      if (projection.people.isNotEmpty)
+        items('people', t.search.filters.people, projection.people, onSelect: _openPerson),
       if (projection.other.isNotEmpty) items('other', t.search.filters.other, projection.other),
     ];
   }
@@ -857,15 +877,46 @@ class _SearchScreenState extends State<SearchScreen>
     activateDiscoveryGroup(group, onManageServers: widget.onManageServers);
   }
 
-  /// Select on a source-concrete result — a collection, a playlist, a person —
-  /// and on a card in the row at rest. Both go through the same helper every
-  /// other list in the app opens an item with; the row at rest deliberately
-  /// takes the same path a fresh result does, so a title that has since been
+  /// Select on a source-concrete result — a collection or a playlist — and on
+  /// a card in the row at rest. Both go through the same helper every other
+  /// list in the app opens an item with; the row at rest deliberately takes
+  /// the same path a fresh result does, so a title that has since been
   /// removed fails where any other stale reference does rather than being
-  /// quietly dropped from the row.
+  /// quietly dropped from the row. A person result is never routed here —
+  /// see [_openPerson].
   void _openConcrete(MediaItem item) {
     _rememberRecent(item);
     unawaited(navigateToMediaItem(context, item, onRefresh: updateItem));
+  }
+
+  /// Select on a `people` result (SRCH-2). The item is a stand-in
+  /// (`search_projection.dart`'s own documented shape — id/title/thumbPath/
+  /// serverId/backend, `MediaKind.unknown`), not a real playable [MediaItem],
+  /// so it cannot go through [_openConcrete]/`navigateToMediaItem`: nothing
+  /// there has ever had a branch for a person, and one built to accept the
+  /// same generic `MediaItem` shape a movie or show arrives as would be a
+  /// second, silent way to reach `ActorMediaScreen` next to
+  /// `_navigateToActorMedia` in `media_detail_screen.dart`, which already
+  /// carries the real contract (a cast credit's id/tag/thumb). This calls the
+  /// same `ActorMediaScreen` directly instead.
+  ///
+  /// Not remembered in "recent gezocht" (36 A): that row's own reopen path
+  /// goes exclusively through [_openConcrete], and giving it a person here
+  /// without teaching it the same branch this method needed would silently
+  /// break on return, not just leave a person out of the row.
+  void _openPerson(MediaItem person) {
+    final serverId = person.serverId;
+    if (serverId == null) return;
+    ActorMediaScreen buildPerson(BuildContext _) => ActorMediaScreen(
+      actorName: person.displayTitle,
+      personId: person.id,
+      actorThumb: person.thumbPath,
+      serverId: serverId,
+      serverName: person.serverName,
+      backend: person.backend,
+    );
+    if (openTvContentRoute(id: 'tvPerson_${serverId}_${person.id}', builder: buildPerson) != null) return;
+    Navigator.push(context, MaterialPageRoute(builder: buildPerson));
   }
 
   /// Empties the row at rest. It also clears the query chips, because on this
@@ -992,8 +1043,187 @@ class _SearchScreenState extends State<SearchScreen>
     _firstResultFocusNode.requestFocus();
   }
 
-  /// The desktop and mobile result list. TV never reaches this: `build`
-  /// returns [_buildTv] before the sliver tree is assembled.
+  /// The phone result sections (I4, `05-zoeken.png`): the same `_projection`
+  /// TV renders as rails, presented as one rounded row-list card per
+  /// section — the phone's own list shape (`mobile_media_rail.dart`'s cards
+  /// are a horizontal-rail grid, the wrong shape for a results *list*).
+  ///
+  /// A specific type chip (movies/shows/episodes) narrows to just that
+  /// section; collections/playlists/people/other only ever show under "all",
+  /// matching how `_filteredResults` narrowed the desktop list before I4 —
+  /// picking a kind chip there dropped everything outside movie/show/episode
+  /// too.
+  Widget _buildMobileResults(BuildContext context) {
+    final projection = _projection;
+    if (projection == null) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    final showMovies = _activeFilter == _SearchFilter.all || _activeFilter == _SearchFilter.movies;
+    final showShows = _activeFilter == _SearchFilter.all || _activeFilter == _SearchFilter.shows;
+    final showEpisodes = _activeFilter == _SearchFilter.all || _activeFilter == _SearchFilter.episodes;
+    final showRest = _activeFilter == _SearchFilter.all;
+
+    final sections = <Widget>[
+      if (showMovies && projection.movies.isNotEmpty)
+        _MobileSearchSection(
+          sectionId: 'movies',
+          title: t.unifiedCatalog.moviesTitle,
+          children: [for (final group in projection.movies) _mobileGroupRow(context, group)],
+        ),
+      if (showShows && projection.shows.isNotEmpty)
+        _MobileSearchSection(
+          sectionId: 'shows',
+          title: t.unifiedCatalog.seriesTitle,
+          children: [for (final group in projection.shows) _mobileGroupRow(context, group)],
+        ),
+      if (showEpisodes && projection.episodes.isNotEmpty)
+        _MobileSearchSection(
+          sectionId: 'episodes',
+          title: t.search.filters.episodes,
+          children: [for (final group in projection.episodes) _mobileGroupRow(context, group)],
+        ),
+      if (showRest && projection.collections.isNotEmpty)
+        _MobileSearchSection(
+          sectionId: 'collections',
+          title: t.collections.title,
+          children: [
+            for (final item in projection.collections) _mobileItemRow(context, item, onTap: () => _openConcrete(item)),
+          ],
+        ),
+      if (showRest && projection.playlists.isNotEmpty)
+        _MobileSearchSection(
+          sectionId: 'playlists',
+          title: t.playlists.title,
+          children: [
+            for (final item in projection.playlists) _mobileItemRow(context, item, onTap: () => _openConcrete(item)),
+          ],
+        ),
+      if (showRest && projection.people.isNotEmpty)
+        _MobileSearchSection(
+          sectionId: 'people',
+          title: t.search.filters.people,
+          children: [
+            for (final item in projection.people) _mobileItemRow(context, item, onTap: () => _openPerson(item)),
+          ],
+        ),
+      if (showRest && projection.other.isNotEmpty)
+        _MobileSearchSection(
+          sectionId: 'other',
+          title: t.search.filters.other,
+          children: [
+            for (final item in projection.other) _mobileItemRow(context, item, onTap: () => _openConcrete(item)),
+          ],
+        ),
+    ];
+
+    if (sections.isEmpty) {
+      return SliverFillRemaining(
+        child: StateView.empty(
+          title: t.messages.noResultsFound,
+          message: t.search.tryDifferentTerm,
+          icon: Symbols.search_off_rounded,
+        ),
+      );
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      sliver: SliverList(delegate: SliverChildListDelegate(sections)),
+    );
+  }
+
+  /// A unified group's row: representative source's artwork/title, every
+  /// group always carrying its source count (hoofdstuk 16.1's "Dune (2021) —
+  /// 3 bronnen", true from one source up — `05-zoeken.png` shows "1 bron" on
+  /// a single-source title, not a hidden label).
+  ///
+  /// Select opens detail on the representative source, the same read
+  /// `mobile_home_screen.dart`'s own rail cards already use — full
+  /// source-aware activation is I6 (film/series detail unified), not this
+  /// workitem, and TV's own group activation
+  /// (`TvDiscoveryActivationMixin.activateDiscoveryGroup`) opens a TV-only
+  /// picker route this platform cannot show.
+  Widget _mobileGroupRow(BuildContext context, UnifiedMediaGroup group) {
+    final item = group.representativeSource.item;
+    return _mobileResultTile(
+      context,
+      item: item,
+      trailingLabel: group.sources.length == 1
+          ? t.unifiedCatalog.oneSource
+          : t.unifiedCatalog.sources(count: group.sources.length),
+      onTap: () => _openMobileGroupDetails(group),
+    );
+  }
+
+  Widget _mobileItemRow(BuildContext context, MediaItem item, {required VoidCallback onTap}) {
+    return _mobileResultTile(context, item: item, trailingLabel: null, onTap: onTap);
+  }
+
+  Widget _mobileResultTile(
+    BuildContext context, {
+    required MediaItem item,
+    required String? trailingLabel,
+    required VoidCallback onTap,
+  }) {
+    final client = context.tryGetMediaClientWithFallback(serverIdOrNull(item.serverId));
+    final muted = Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7);
+    final subtitle = _mobileResultSubtitle(item);
+    final fallbackIcon = item.isShow || item.isSeason || item.isEpisode ? Symbols.tv_rounded : Symbols.movie_rounded;
+    return FocusableListTile(
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: OptimizedMediaImage.poster(
+          client: client,
+          imagePath: item.posterThumb(),
+          width: 46,
+          height: 69,
+          fallbackIcon: fallbackIcon,
+          blurHash: item.posterBlurHash,
+        ),
+      ),
+      title: Text(item.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: subtitle == null ? null : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (trailingLabel != null) ...[Text(trailingLabel, style: TextStyle(color: muted)), const SizedBox(width: 4)],
+          AppIcon(Symbols.chevron_right_rounded, color: muted),
+        ],
+      ),
+      onTap: onTap,
+    );
+  }
+
+  String? _mobileResultSubtitle(MediaItem item) {
+    switch (item.kind) {
+      case MediaKind.episode:
+        final season = item.parentIndex;
+        final episode = item.index;
+        return season != null && episode != null
+            ? t.unifiedCatalog.discovery.episodeLabel(season: season, episode: episode)
+            : null;
+      case MediaKind.show:
+        final seasons = item.childCount;
+        final seasonLabel = seasons != null && seasons > 0
+            ? (seasons == 1 ? t.unifiedCatalog.oneSeason : t.unifiedCatalog.seasons(count: seasons))
+            : null;
+        final parts = [?item.year?.toString(), ?seasonLabel];
+        return parts.isEmpty ? null : parts.join(' · ');
+      case MediaKind.movie:
+        final parts = [?item.year?.toString(), ?item.genres?.firstOrNull];
+        return parts.isEmpty ? null : parts.join(' · ');
+      default:
+        return null;
+    }
+  }
+
+  /// A group's representative source, opened as a read — see [_mobileGroupRow].
+  void _openMobileGroupDetails(UnifiedMediaGroup group) {
+    unawaited(navigateToMediaItemDetails(context, group.representativeSource.item, onRefresh: updateItem));
+  }
+
+  /// The desktop result list. TV never reaches this: `build` returns
+  /// [_buildTv] before the sliver tree is assembled, and phone uses
+  /// [_buildMobileResults] instead.
   Widget _buildResultsList(BuildContext context) {
     final multiServer = context.watch<MultiServerProvider>();
     final showServerName = multiServer.totalServerCount > 1;
@@ -1094,13 +1324,21 @@ class _SearchScreenState extends State<SearchScreen>
   @override
   Widget build(BuildContext context) {
     if (PlatformDetector.isTV()) return _buildTv(context);
+    final isPhone = PlatformDetector.isPhone(context);
 
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
           primary: false,
           slivers: [
-            DesktopSliverAppBar(title: Text(t.common.search), floating: true),
+            DesktopSliverAppBar(
+              title: Text(t.common.search),
+              floating: true,
+              // I4/`05-zoeken.png`: only the phone build reaches Zoeken by tab
+              // selection rather than a pushed route (see `MainScreen._openSearch`),
+              // so it is the only one that needs an explicit way back.
+              leading: isPhone && widget.onBack != null ? BackButton(onPressed: widget.onBack) : null,
+            ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
@@ -1171,7 +1409,12 @@ class _SearchScreenState extends State<SearchScreen>
                     icon: Symbols.search_rounded,
                   ),
                 )
-            else if (_searchResults.isEmpty)
+            // On phone, "no results" has to look at the projection, not just
+            // `_searchResults`: SRCH-2 means a query can match a person with
+            // no matching title at all, and `_searchResults` alone would
+            // then read as empty even though `_buildMobileResults` has a
+            // people section to draw.
+            else if (isPhone ? (_projection?.isEmpty ?? _searchResults.isEmpty) : _searchResults.isEmpty)
               if (context.watch<SeerrProvider?>()?.isConfigured ?? false) ...[
                 SliverToBoxAdapter(
                   child: Padding(
@@ -1192,11 +1435,72 @@ class _SearchScreenState extends State<SearchScreen>
                     icon: Symbols.search_off_rounded,
                   ),
                 )
-            else ...[
+            else if (isPhone) ...[
+              SliverToBoxAdapter(child: _buildFilterChips(context)),
+              _buildMobileResults(context),
+              if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
+            ] else ...[
               SliverToBoxAdapter(child: _buildFilterChips(context)),
               _buildResultsList(context),
               if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One phone result section (I4): a small-caps label above a rounded card
+/// of rows, `05-zoeken.png`'s FILMS/SERIES/… groups. `Card` rather than a
+/// hand-rolled `Container`/`BoxDecoration`: it already reads the app's
+/// `CardTheme` surface color, so this needs no new token.
+class _MobileSearchSection extends StatelessWidget {
+  final String sectionId;
+  final String title;
+  final List<Widget> children;
+
+  const _MobileSearchSection({required this.sectionId, required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AutomationNode(
+      id: AutomationIds.searchResultsSection,
+      instance: sectionId,
+      role: 'region',
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Text(
+                title.toUpperCase(),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            Card(
+              margin: EdgeInsets.zero,
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  for (var i = 0; i < children.length; i++) ...[
+                    if (i > 0) const Divider(height: 1),
+                    AutomationNode(
+                      id: AutomationIds.searchResultsItem,
+                      instance: '$sectionId.$i',
+                      role: 'list.item',
+                      child: children[i],
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/media_kind.dart';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -67,5 +68,73 @@ void main() {
     expect(captured.single.queryParameters['limit'], '100');
     expect(captured.single.queryParameters['X-Plex-Container-Size'], '100');
     expect(captured.single.queryParameters['searchTypes'], 'movies,tv');
+  });
+
+  group('searchPeople (SRCH-2)', () {
+    test('reads the actor hub from /hubs/search, ignoring every other hub', () async {
+      final captured = <Uri>[];
+      final client = makeClient((request) async {
+        captured.add(request.url);
+        if (request.url.path == '/hubs/search') {
+          return _json({
+            'MediaContainer': {
+              'Hub': [
+                {
+                  'type': 'movie',
+                  'Metadata': [
+                    {'ratingKey': 'movie-1', 'type': 'movie', 'title': 'Dune'},
+                  ],
+                },
+                {
+                  'type': 'actor',
+                  'Directory': [
+                    {'id': '9001', 'tag': 'Denzel Washington', 'thumb': '/library/metadata/9001/thumb/123'},
+                    {'id': '9002', 'tag': 'Timothée Chalamet'},
+                  ],
+                },
+              ],
+            },
+          });
+        }
+        return http.Response('unexpected request', 500);
+      });
+      addTearDown(client.close);
+
+      final results = await client.searchPeople('denzel');
+
+      expect(captured.single.path, '/hubs/search');
+      expect(results.map((item) => item.id), ['9001', '9002']);
+      expect(results.first.title, 'Denzel Washington');
+      expect(results.first.thumbPath, '/library/metadata/9001/thumb/123');
+      expect(results.first.kind, MediaKind.unknown);
+      expect(results.first.serverId, 'plex-1');
+    });
+
+    test('no actor hub in the response yields no people', () async {
+      final client = makeClient((request) async {
+        return _json({
+          'MediaContainer': {
+            'Hub': [
+              {
+                'type': 'movie',
+                'Metadata': [
+                  {'ratingKey': 'movie-1', 'type': 'movie', 'title': 'Dune'},
+                ],
+              },
+            ],
+          },
+        });
+      });
+      addTearDown(client.close);
+
+      expect(await client.searchPeople('dune'), isEmpty);
+    });
+
+    test('a failing hub search degrades to no people rather than throwing', () async {
+      final client = makeClient((request) async => http.Response('server error', 500));
+      addTearDown(client.close);
+
+      expect(await client.searchPeople('anything'), isEmpty);
+    });
   });
 }
