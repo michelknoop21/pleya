@@ -2378,3 +2378,31 @@ VER5 (geen Verify-scenario bereikt de TV-detailpagina) sluit als onderdeel van d
 In 37 C valt de synopsis van de gefocuste aflevering onder de schermrand; dat moet in beeld komen
 zodra de rail focus krijgt en meescrolt, en is gedrag dat bij de bouw van MOC-10 hoort, geen
 nieuwe mockup.
+
+## DEC-110: De twee open Home-details uit de iOS-audit worden gesloten
+
+**Date:** 2026-09-11
+**Status:** accepted
+
+**Context:** [DEC-090](#dec-090) liet twee details op de Home-comp bewust open, vastgelegd in
+paragraaf 10 van [ios-unified-2026-audit.md](ios-unified-2026-audit.md): de secundaire hero-CTA
+(`+ Mijn lijst` in de comp tegenover `Meer info` in het TV-contract) en de carouselindicator (vijf
+permanente dots in de comp tegenover de tijdelijke segmentindicator uit hoofdstuk 9.6 van
+`tvos-unified-experience.md`). Beide staan sinds fase 1 als placeholder in de code, met een
+commentaar dat expliciet zegt dat het geen ontwerpbeslissing is
+(`mobile_hero_actions.dart:20-25`, `mobile_hero_indicator.dart:25-30`). Michel is akkoord gegaan
+met de aanbeveling om beide te sluiten in lijn met de al vastgelegde Unified-taal, in plaats van
+een aparte mobiele uitzondering te laten bestaan.
+
+**Decision:** De secundaire hero-CTA is `Meer info`, zoals het TV-contract al gebruikt.
+`mobileHeroSecondaryActionDefault` blijft op `HeroSecondaryAction.moreInfo` staan, en dat is vanaf
+nu de bevroren keuze en geen placeholder meer. De carouselindicator wordt de tijdelijke
+segmentindicator: `mobileHeroIndicatorStyleDefault` gaat van `HeroIndicatorStyle.persistentDots`
+naar `HeroIndicatorStyle.transientSegment`. Er komen geen permanente dots op iOS. Paragraaf 10 van
+de audit blijft bevroren en staat er als geschiedenis; deze entry is de sluiting ervan, niet een
+herschrijving. Het bouwwerk (de constante omzetten, de widgettest die de default vastlegt) is
+IOS-HOME-AB in [ios-unified-implementation-register.md](ios-unified-implementation-register.md).
+
+**Consequences:** Er is geen mobiele uitzondering meer op de indicatortaal van hoofdstuk 9.6.
+Resterend werk op Home valt daarmee samen met de rest van het functionele en visuele sluitwerk uit
+[unified-2026-closure.md](unified-2026-closure.md).

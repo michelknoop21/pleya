@@ -11,21 +11,9 @@ later iets urgenters bijkwam.
 
 ## Volgorde
 
-Eerst de systemische eigenaren die meerdere mockups blokkeren. Vastgesteld op 3 september 2026,
-na SYS-1a:
-
-1. SYS-1c, de detailpresentatie geschikt maken om binnen de bestaande shell te leven, onder
-   INV-1. Dit gaat vóór SYS-1b, want anders bewijs je PB-1 voor 09 en 10 met een uitzondering in
-   plaats van met het contract.
-2. SYS-1b, film- en seriedetail werkelijk over hetzelfde geneste routecontract openen.
-3. SYS-3a en SYS-3b, OVR1 systemisch sluiten met één gedeelde eigenaar voor de overlaymaat.
-4. De eerste echte Pleya Verify-journey, over shell naar Instellingen-subpagina naar Back, en
-   shell naar detail naar Back. Tot die er is geldt SYS-1 als implementation-proven maar niet als
-   end-to-end geaccepteerd.
-
-Daarna BACK1, de gedeelde staat- en lege-presentatie, en de i18n- en tokencorrectheid, gevolgd
-door 09 tot en met 12, dan 13 tot en met 16, dan 17 tot en met 19, dan 20 tot en met 25, tenzij
-een afhankelijkheid aantoonbaar een andere volgorde afdwingt.
+De werkvolgorde voor de tvOS-workitems in dit register staat vanaf 11 september 2026 in
+[unified-2026-closure.md](unified-2026-closure.md) (§5), samen met iOS en de gezamenlijke
+releasegate. Dit register blijft de status per workitem bezitten; de volgorde zelf niet meer.
 
 ## Één schrijver per worktree
 
@@ -42,7 +30,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | SYS-1b | Detail, collectie en persoon over dat contract | PB-1 | DONE | `bb79a82`, testdelta onder |
 | SYS-1c | Geneste routes krijgen de contentbox als `MediaQuery`, nodig voor de detailgeometrie | PB-1, INV-1 | DONE | `ad8c456`, testdelta onder |
 | SYS-2 | BACK1, geen zichtbare onbereikbare terugknop op TV | PB-2 | OPEN, geauditeerd | zie onder |
-| SYS-3a | OVR1a: de schaalbasis van paneelinhoud op TV | PB-5 | OPEN, oorzaak gevonden | zie onder |
+| SYS-3a | OVR1a: de schaalbasis van paneelinhoud op TV | PB-5 | IN PROGRESS | `dc989713`: alleen op de detailroute gesloten (DET1, DEC-109); de systemische eigenaar `scaleForHeight` zelf staat nog open voor de overige TV-oppervlakken |
 | SYS-3b | OVR1b: sheets zonder expliciete `presentation` vallen op 400x400 | PB-5 | DONE | `96f2d45` |
 | SYS-4 | Gedeelde staat- en lege-presentatie schaalt op TV | audit | OPEN, geauditeerd | zie onder |
 | SYS-5 | i18n-gaten en hardcoded strings | audit | OPEN | |
@@ -62,9 +50,9 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 
 | ID | Werkitem | Besluit | Status | SHA / bewijs |
 |----|----------|---------|--------|--------------|
-| MOC-13 | Zoeken, permanente resultaattitel, SEARCH1 sluiten | PB-6, DEC-108 | **mockup goedgekeurd**, bouw open | `mockups-2026-09-07/36-zoeken-*` |
-| MOC-14 | Kijklijst | PB-3, DEC-108 | **mockup goedgekeurd**, bouw open | `mockups-2026-09-07/34-kijklijst-*`; vervangt wat mockup 14 zei, dat is van vóór DEC-093 |
-| MOC-15 | Aanvragen, Seerr-status blijft Seerr-state | PB-3, DEC-108 | **mockup goedgekeurd**, bouw open | `mockups-2026-09-07/35-aanvragen-*`; C1 gekozen, C2 bewaard als afweging |
+| MOC-13 | Zoeken, permanente resultaattitel, SEARCH1 sluiten | PB-6, DEC-108 | CODE CLOSED · VERIFY/SIM OPEN | CODE `30aae55b`; geen groene Verify- of simulatorrun met bundel vastgelegd |
+| MOC-14 | Kijklijst | PB-3, DEC-108 | CODE CLOSED · VERIFY/SIM OPEN | CODE `81db408d`; WL2 is fixture-blocked, zie T3a in `unified-2026-closure.md` |
+| MOC-15 | Aanvragen, Seerr-status blijft Seerr-state | PB-3, DEC-108 | CODE CLOSED · VERIFY/SIM OPEN | CODE `110ee763`; REQ1 is fixture-blocked, zie T3a in `unified-2026-closure.md` |
 | MOC-16 | Activiteit, scope en capability-predicaat | PB-7 | OPEN | |
 
 ## PLAYBACK EN LIVE
@@ -74,7 +62,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | MOC-17 | Live TV, één navigatiebalk, volledige functionaliteit | PB-8 | OPEN | |
 | MOC-18 | Speler-OSD | approval | OPEN | |
 | MOC-19 | Spelerinfopaneel | PB-9 | VERVANGEN door MOC-33 | |
-| MOC-33 | Spelerinfopaneel als enige spelermenu op TV, mockup 33 vervangt 19 (PLR2 in de correctieronde), negen standen | PB-9, DEC-101 | GEBOUWD, Mac-run open | `5cb5c33` |
+| MOC-33 | Spelerinfopaneel als enige spelermenu op TV, mockup 33 vervangt 19 (PLR2 in de correctieronde), negen standen | PB-9, DEC-101 | CODE CLOSED · VERIFY/SIM OPEN | CODE `5cb5c33`; register zegt "Mac-run open", geen Verify-scenario van deze omvang groen vastgelegd; promotie vraagt een latere SHA met analyze en tests én het bedoelde Verify-scenario groen |
 
 ## SYSTEEM EN META
 
@@ -86,7 +74,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | MOC-23 | Offline | PB-12 | OPEN | |
 | MOC-24 | Collectie | PB-13 | OPEN | |
 | MOC-25 | Persoon, `CanonicalPersonIdentity` | PB-14 | OPEN | |
-| MOC-31 | Taal en ondertitels, vier lagen met het Pleya-profiel als eigenaar | DEC-096 | OPEN | eae19cb4 + a9a50ad9 + a5730f35, Verify-scenario groen op de tvOS-simulator; hardwareronde open |
+| MOC-31 | Taal en ondertitels, vier lagen met het Pleya-profiel als eigenaar | DEC-096 | CODE/SIM CLOSED · HARDWARE OPEN | CODE `eae19cb4`, `a9a50ad9`, `a5730f35`; VERIFY/SIM: `pleya_verify/scenarios/tvos.settings.language-preferences.yaml` groen op `a5730f35`, en `git log --oneline a5730f35..main` op de geraakte bestanden (de taalpagina, de serievoorkeur-sheet, `track_manager.dart`, `track_selection_service.dart`, `track_preference_store.dart`, het scenario zelf) geeft geen resultaten, dus de run dekt de huidige code nog; hardwareronde open |
 
 ## SYS-1a, wat er staat
 

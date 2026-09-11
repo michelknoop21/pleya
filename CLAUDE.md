@@ -74,6 +74,10 @@ Een bevinding die alleen op hardware te toetsen is krijgt `HARDWARE ONLY` en bli
 device-run is geweest. De simulator heeft geen aanraakvlak, dus invoer die over de touch-surface van
 de Siri Remote loopt is daar principieel niet te reproduceren.
 
+`docs/unified-2026-closure.md` bezit de werkvolgorde en de releasegate voor de Pleya Unified
+2026-afronding op iOS en tvOS; `docs/ios-unified-implementation-register.md` is daarbij de
+iOS-werklijst, naast het bestaande `docs/tvos-redesign-register.md` voor tvOS.
+
 ## Pleya Verify (end-to-end verificatie)
 `pleya_verify/` drijft echte scenario's tegen een echte macOS/iOS-sim/tvOS-sim-build, over een vast
 `/v1/*`-transportcontract, met een bewaarde bewijsbundel als resultaat. Zie
