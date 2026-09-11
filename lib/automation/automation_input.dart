@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' show EditableTextState, FocusManager;
 
 import '../utils/key_event_simulator.dart';
 import '../utils/native_input_session.dart';
@@ -35,7 +36,7 @@ class AutomationInput {
   static VoidCallback? onPointerModeRequested;
 }
 
-enum AutomationInputResult { dispatched, blockedByNativeSession, unknownKey }
+enum AutomationInputResult { dispatched, blockedByNativeSession, unknownKey, noEditableTarget }
 
 /// `POST /v1/input/key`. tvOS scenario steps must never call this — see the
 /// tvOS-invoerroute-invariant in pleya_verify/contract/verify_api_v1.md;
@@ -66,5 +67,35 @@ AutomationInputResult dispatchAutomationPointerTap(Offset position) {
   binding.handlePointerEvent(PointerUpEvent(pointer: pointer, position: position));
   binding.handlePointerEvent(PointerRemovedEvent(position: position));
   AutomationEventLog.instance.emit('input.received', {'source': 'transport', 'x': position.dx, 'y': position.dy});
+  return AutomationInputResult.dispatched;
+}
+
+/// `POST /v1/input/text`. Inserts [text] into the currently focused text
+/// field, on the model of `tv_virtual_keyboard.dart`'s `_insert`: a
+/// synthetic `KeyEvent` (the [dispatchAutomationKey] path) never reaches an
+/// `EditableText`'s platform IME channel, so character entry has to go
+/// through the focused field's `TextEditingController` directly, the same
+/// way the TV virtual keyboard edits a field without a real keyboard.
+AutomationInputResult dispatchAutomationText(String text) {
+  if (NativeInputSession.isActive) return AutomationInputResult.blockedByNativeSession;
+
+  final focusContext = FocusManager.instance.primaryFocus?.context;
+  final editableState = focusContext?.findAncestorStateOfType<EditableTextState>();
+  if (editableState == null) return AutomationInputResult.noEditableTarget;
+
+  final controller = editableState.widget.controller;
+  final value = controller.value;
+  final selection = value.selection;
+  final start = selection.isValid ? (selection.start < selection.end ? selection.start : selection.end) : null;
+  final end = selection.isValid ? (selection.start > selection.end ? selection.start : selection.end) : null;
+  final insertAt = start ?? value.text.length;
+  final replaceEnd = end ?? value.text.length;
+
+  controller.value = value.copyWith(
+    text: value.text.replaceRange(insertAt, replaceEnd, text),
+    selection: TextSelection.collapsed(offset: insertAt + text.length),
+    composing: TextRange.empty,
+  );
+  AutomationEventLog.instance.emit('input.received', {'source': 'transport', 'text': text});
   return AutomationInputResult.dispatched;
 }
