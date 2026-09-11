@@ -31,6 +31,12 @@ ff -i "$tmp/shape_mono.wav" -af "pan=5.1|FL=c0|FR=c0|FC=c0|LFE=0*c0|BL=0.5*c0|BR
 # Loud and quiet halves of 10 s each: the dynamic case a fixed gain must
 # leave alone and a realtime estimator must not pump on.
 ff -i "$tmp/shape_stereo.wav" -af "volume='if(lt(mod(t,20),10),0.03,0.8)':eval=frame" -c:a pcm_f32le "$tmp/dynamic.wav"
+# Reduce-loud-sounds: quiet dialogue, a 1 s passage 20 dB louder, quiet
+# again. After the programme gain the burst sits about 8 dB over the
+# compressor threshold and the quiet parts under its knee, so the jump in
+# and out exercises attack and release. prove.sh --android compares the
+# Android output with the ffmpeg reference in 10 ms windows (the D row).
+ff -i "$tmp/shape_stereo.wav" -t 20 -af "volume='if(between(t,10,11),1,0.1)':eval=frame" -c:a pcm_f32le "$tmp/drc.wav"
 
 # level <src> <target_lufs> <dst>: scale to the target, quantise, verify.
 level() {
@@ -50,6 +56,7 @@ level "$tmp/shape_mono.wav" -28 "$out/mono.wav"
 level "$tmp/shape_stereo.wav" -28 "$out/stereo.wav"
 level "$tmp/shape_5_1.wav" -28 "$out/5_1.wav"
 level "$tmp/dynamic.wav" -26 "$out/dynamic.wav"
+level "$tmp/drc.wav" -26 "$out/drc.wav"
 
 ff -f lavfi -i "anullsrc=r=48000:cl=stereo:d=20" -c:a pcm_s16le -bitexact -map_metadata -1 "$out/silence.wav"
 # -75 LUFS sits under ebur128's -70 absolute gate, so it is set by gain

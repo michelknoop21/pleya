@@ -3907,8 +3907,8 @@ class TranslationsVideoSettingsEn {
 	/// en: 'Normalize Loudness'
 	String get audioNormalization => 'Normalize Loudness';
 
-	/// en: 'Dolby passthrough is running, so volume levelling is paused. Your receiver sets the level.'
-	String get audioNormalizationSuspended => 'Dolby passthrough is running, so volume levelling is paused. Your receiver sets the level.';
+	/// en: 'Dolby passthrough is running, so audio processing is off. Your receiver sets the level.'
+	String get audioNormalizationSuspended => 'Dolby passthrough is running, so audio processing is off. Your receiver sets the level.';
 
 	/// en: 'Priority'
 	String get audioPriorityTitle => 'Priority';
@@ -8264,7 +8264,7 @@ extension on Translations {
 			'videoSettings.audioOutputRendering.dolbyAtmos' => 'Dolby Atmos',
 			'videoSettings.audioOutputNow' => ({required Object mode}) => 'now: ${mode}',
 			'videoSettings.audioNormalization' => 'Normalize Loudness',
-			'videoSettings.audioNormalizationSuspended' => 'Dolby passthrough is running, so volume levelling is paused. Your receiver sets the level.',
+			'videoSettings.audioNormalizationSuspended' => 'Dolby passthrough is running, so audio processing is off. Your receiver sets the level.',
 			'videoSettings.audioPriorityTitle' => 'Priority',
 			'videoSettings.audioPriorities.evenVolume' => 'Even volume',
 			'videoSettings.audioPriorities.originalDolby' => 'Original Dolby Atmos',

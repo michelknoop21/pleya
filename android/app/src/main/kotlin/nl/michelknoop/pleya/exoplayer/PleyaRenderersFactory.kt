@@ -45,6 +45,12 @@ class PleyaRenderersFactory(context: Context) : DefaultRenderersFactory(context)
 
   var videoDiagnosticsLogger: ((String, String, String) -> Unit)? = null
 
+  /**
+   * Pleya's loudness chain. One per sink (Media3 forbids sharing a processor
+   * chain between sinks), and this factory builds one sink per player.
+   */
+  val loudnessProcessor = LoudnessAudioProcessor()
+
   override fun buildVideoRenderers(
     context: Context,
     extensionRendererMode: Int,
@@ -104,8 +110,12 @@ class PleyaRenderersFactory(context: Context) : DefaultRenderersFactory(context)
     // PositionFixAudioSink reads it to bypass DefaultAudioSink's writtenDuration clamp.
     val rawPositionUs = AtomicLong(Long.MIN_VALUE)
 
+    // Float output stays off (enableFloatOutput is false from DefaultRenderersFactory):
+    // on the float path DefaultAudioSink skips user processors, and with it the
+    // loudness chain.
     val defaultSink = DefaultAudioSink.Builder(context)
       .setEnableFloatOutput(enableFloatOutput)
+      .setAudioProcessors(arrayOf(loudnessProcessor))
       .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
       .setAudioOutputProvider(RawPositionOutputProvider(realProvider, rawPositionUs, audioDiagnosticsLogger))
       .build()

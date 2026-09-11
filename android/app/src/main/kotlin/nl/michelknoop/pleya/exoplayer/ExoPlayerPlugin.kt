@@ -167,7 +167,7 @@ class ExoPlayerPlugin :
       "setBoxFitMode" -> handleSetBoxFitMode(call, result)
       "setVideoZoom" -> handleSetVideoZoom(call, result)
       "setDvConversionMode" -> handleSetDvConversionMode(call, result)
-      "setAudioNormalization" -> handleSetAudioNormalization(call, result)
+      "setLoudness" -> handleSetLoudness(call, result)
       "setAudioPassthrough" -> handleSetAudioPassthrough(call, result)
       "observeProperty" -> handleObserveProperty(call, result)
       "setMpvProperty" -> handleSetMpvProperty(call, result)
@@ -642,19 +642,22 @@ class ExoPlayerPlugin :
     } ?: result.error("NO_ACTIVITY", "Activity not available", null)
   }
 
-  private fun handleSetAudioNormalization(call: MethodCall, result: MethodChannel.Result) {
-    val enabled = call.argument<Boolean>("enabled")
-    if (enabled == null) {
-      result.error("INVALID_ARGS", "Missing 'enabled'", null)
+  private fun handleSetLoudness(call: MethodCall, result: MethodChannel.Result) {
+    val mode = call.argument<String>("mode")
+    val profileVersion = call.argument<Int>("profileVersion")
+    if (mode == null || profileVersion == null) {
+      result.error("INVALID_ARGS", "Missing 'mode' or 'profileVersion'", null)
       return
     }
+    val gainDb = call.argument<Double>("gainDb")
+    val drc = call.argument<Boolean>("drc") ?: false
     if (usingMpvFallback) {
-      // mpv applies loudnorm via the 'af' property the Dart layer also sends.
+      // mpv applies the same chain via the 'af' property the Dart layer also sends.
       result.success(true)
       return
     }
     activity?.runOnUiThread {
-      playerCore?.setAudioNormalization(enabled)
+      playerCore?.setLoudness(mode, gainDb, drc, profileVersion)
       result.success(true)
     } ?: result.error("NO_ACTIVITY", "Activity not available", null)
   }

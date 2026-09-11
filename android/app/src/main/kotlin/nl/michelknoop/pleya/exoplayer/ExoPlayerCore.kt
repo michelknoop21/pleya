@@ -214,12 +214,12 @@ class ExoPlayerCore(private val activity: Activity) : Player.Listener {
     get() = tunnelingDisabledForAudioCodec || tunnelingDisabledForVideoCodec || tunnelingDisabledForDecodedTrueHdPcm || tunnelingDisabledForAudioRecovery
   private var currentTunneledPlayback: Boolean = false
 
-  // Loudness normalization (#1289): audiofx effects only process non-tunneled
-  // PCM mixer streams, so while enabled we block direct/bitstream output and
+  // Loudness (#1289): LoudnessAudioProcessor only sees decoded non-tunneled
+  // PCM, so while any loudness mode is on we block direct/bitstream output and
   // disable tunneling.
   private var audioPassthroughEnabled: Boolean = false
   private var audioNormalizationEnabled: Boolean = false
-  private val audioNormalization = AudioNormalizationEffect(::emitLog)
+  private var loudnessParams: LoudnessDsp.Params = LoudnessDsp.Params.OFF
   private var pendingAudioRendererBounce: Boolean = false
   private val audioBounceTimeout = Runnable { completeAudioRendererBounce("audio renderer bounce timeout") }
   private var lastSeekable: Boolean? = null
@@ -533,6 +533,7 @@ class ExoPlayerCore(private val activity: Activity) : Player.Listener {
 
       // Use DefaultRenderersFactory with FFmpeg fallback for unsupported or blocked audio codecs.
       val renderersFactory = PleyaRenderersFactory(activity).apply {
+        loudnessProcessor.params = loudnessParams
         audioDiagnosticsLogger = { level, prefix, message -> emitLog(level, prefix, message) }
         videoDiagnosticsLogger = { level, prefix, message -> emitLog(level, prefix, message) }
         shouldBlockDirectAudioOutput = { format -> this@ExoPlayerCore.shouldBlockDirectAudioOutput(format, "sink support") }
@@ -1950,7 +1951,7 @@ class ExoPlayerCore(private val activity: Activity) : Player.Listener {
 
   private fun shouldBlockDirectAudioOutput(format: Format, reason: String): Boolean {
     val mimeType = format.sampleMimeType ?: return false
-    // Loudness normalization needs decoded PCM for the audiofx chain to act on.
+    // Loudness needs decoded PCM for LoudnessAudioProcessor to act on.
     if (audioNormalizationEnabled && isEncodedAudioMimeType(mimeType)) return true
     if (shouldBlockDirectOutputForPassthrough(mimeType, audioPassthroughEnabled)) return true
     if (directAudioOutputBlockedAfterFailure.contains(mimeType)) {
@@ -2517,14 +2518,10 @@ class ExoPlayerCore(private val activity: Activity) : Player.Listener {
           updateTunnelingState("encoded TrueHD output initialized", forceSelector = true)
         }
       }
-      // Re-key the normalization effect to the actual output channel count
-      // (DynamicsProcessing parameters are per-channel).
-      if (audioNormalizationEnabled) attachNormalizationEffect()
     }
 
     override fun onAudioSessionIdChanged(eventTime: AnalyticsListener.EventTime, audioSessionId: Int) {
       emitLog("debug", "audio", "Audio session id: $audioSessionId")
-      if (audioNormalizationEnabled) attachNormalizationEffect()
     }
 
     override fun onAudioTrackReleased(
@@ -2809,11 +2806,24 @@ class ExoPlayerCore(private val activity: Activity) : Player.Listener {
     updateTunnelingState("audio-delay")
   }
 
-  fun setAudioNormalization(enabled: Boolean) {
+  /**
+   * Hands the planned loudness to the processor. [gainDb] is the programme gain
+   * Dart planned from stored evidence (null in realtime and reduce-only);
+   * [profileVersion] has to match [LoudnessDsp.PROFILE_VERSION] or the two
+   * sides disagree about what the chain does.
+   */
+  fun setLoudness(mode: String?, gainDb: Double?, drc: Boolean, profileVersion: Int) {
+    val params = LoudnessDsp.Params(LoudnessDsp.Mode.parse(mode), gainDb ?: 0.0, drc, profileVersion)
+    if (profileVersion != LoudnessDsp.PROFILE_VERSION) {
+      emitLog("warn", "loudness", "Profile version $profileVersion from Dart, ${LoudnessDsp.PROFILE_VERSION} here")
+    }
+    loudnessParams = params
+    renderersFactory?.loudnessProcessor?.params = params
+    emitLog("info", "loudness", "Loudness ${params.mode.wire}, gain=${gainDb ?: "none"} dB, drc=$drc")
+
+    val enabled = params.mode != LoudnessDsp.Mode.OFF
     if (audioNormalizationEnabled == enabled) return
     audioNormalizationEnabled = enabled
-    emitLog("info", "audio-normalization", "Loudness normalization ${if (enabled) "enabled" else "disabled"}")
-    if (enabled) attachNormalizationEffect() else audioNormalization.release()
 
     if (exoPlayer == null) return
     // A selector-parameter change only re-inits the audio renderer when the
@@ -2852,16 +2862,6 @@ class ExoPlayerCore(private val activity: Activity) : Player.Listener {
     } else {
       updateTunnelingState("audio-passthrough")
     }
-  }
-
-  private fun attachNormalizationEffect() {
-    val sessionId = exoPlayer?.audioSessionId ?: C.AUDIO_SESSION_ID_UNSET
-    if (sessionId == C.AUDIO_SESSION_ID_UNSET) {
-      emitLog("debug", "audio-normalization", "Audio session id not ready; attach deferred")
-      return // onAudioSessionIdChanged re-attaches
-    }
-    val channels = lastAudioTrackConfig?.channelConfig?.let { Integer.bitCount(it) }
-    audioNormalization.attach(sessionId, channels)
   }
 
   // Two-phase audio renderer bounce: disable, wait for the playback thread to
@@ -3406,7 +3406,7 @@ class ExoPlayerCore(private val activity: Activity) : Player.Listener {
       "audioOutputOffload" to audioTrackConfig?.offload,
       "audioOutputBufferSize" to audioTrackConfig?.bufferSize,
       "audioNormalization" to audioNormalizationEnabled,
-      "audioNormalizationEffect" to audioNormalization.describe,
+      "loudness" to renderersFactory?.loudnessProcessor?.status(),
       "audioLastSinkError" to lastAudioSinkError,
       "audioRecoveryAttempts" to audioRecoveryAttempts,
       "audioRecoveryLastAction" to lastAudioRecoveryAction,
@@ -3521,7 +3521,6 @@ class ExoPlayerCore(private val activity: Activity) : Player.Listener {
     audioFocusManager?.release()
     audioFocusManager = null
 
-    audioNormalization.release()
     pendingAudioRendererBounce = false
 
     decoderInitName = null

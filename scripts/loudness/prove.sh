@@ -5,7 +5,8 @@
 #
 #   prove.sh                 fixtures from build/loudness/fixtures (run fixtures.sh first)
 #   prove.sh --android DIR   measure <fixture>.android.wav files from LoudnessDspTest
-#                            against CHOSEN on the same fixture
+#                            against CHOSEN on the same fixture, and the drc
+#                            fixture against D, in time as well (the D row)
 #
 # Candidates (G = the canonical programme gain, see loudness_planner.dart):
 #   A    volume=G, alimiter at -2 dBFS
@@ -16,6 +17,10 @@
 #   R    realtime loudnorm=I=-22:TP=-2:LRA=9, windows 0-10/0-30/0-60 s and a restart at 20 s
 #   D    A4x with the reduce-loud-sounds compressor (-18 dB, 8:1) ahead of the limiter;
 #        reported, not judged: compression lowers I by design
+#        Under --android the drc fixture is judged on its dynamic response: the
+#        level in 10 ms windows may differ from the ffmpeg D render by at most
+#        DRC_TOL dB anywhere, reported separately for the jump in (attack,
+#        10-10.5 s) and out (release, 11-11.5 s)
 #   mpv  CHOSEN through `mpv --ao=pcm` with the same af string
 #
 # Criteria on CHOSEN (default A4x): I within 1 LU of -22 minus the planner's
@@ -29,7 +34,7 @@ out=${LOUDNESS_OUT:-build/loudness/out}
 CHOSEN=${CHOSEN:-A4x}
 mkdir -p "$out"
 
-TARGET=-22 CEILING=-2 MAX_LOAD=6
+TARGET=-22 CEILING=-2 MAX_LOAD=6 DRC_TOL=0.5
 
 ff() { ffmpeg -hide_banner -nostdin -loglevel fatal -y "$@"; }
 field() { sed -E "s/.*$1=([^ ]+).*/\1/" <<<"$2"; }
@@ -59,6 +64,13 @@ chain() { # chain <candidate> <G> <TP> [measured json]
   esac
 }
 
+# levels <wav> [skip]: RMS level in dB per 10 ms window, one per line, after
+# dropping the first [skip] samples.
+levels() {
+  ffmpeg -hide_banner -nostdin -loglevel fatal -i "$1" -af "atrim=start_sample=${2:-0},asetpts=N/SR/TB,asetnsamples=n=480:p=0,astats=metadata=1:reset=1:measure_perchannel=none:measure_overall=RMS_level,ametadata=print:key=lavfi.astats.Overall.RMS_level:file=-" -f null - |
+    awk -F= '/RMS_level/{print $2}'
+}
+
 row() { printf '%-16s %-5s %7s %7s %7s %6s %7s %5s  %s\n' "$@"; }
 judge() { # judge <I> <TP> <clip> <expected I|any>
   # "any" when the planner already expects limiter work: the limited peaks
@@ -77,8 +89,9 @@ if [[ "${1:-}" == "--android" ]]; then
     m=$("$here/measure.sh" "$src")
     p=$(plan "$(field I "$m")" "$(field TP "$m")")
     [[ $p == realtime ]] && continue
-    g=${p% *}
-    ff -i "$src" -af "$(chain "$CHOSEN" "$g")" -ar 48000 -c:a pcm_f32le "$out/$name.ref.wav"
+    g=${p% *} cand=$CHOSEN
+    [[ $name == drc ]] && cand=D
+    ff -i "$src" -af "$(chain "$cand" "$g")" -ar 48000 -c:a pcm_f32le "$out/$name.ref.wav"
     ref=$("$here/measure.sh" "$out/$name.ref.wav")
     got=$("$here/measure.sh" "$f")
     d=$(awk -v a="$(field I "$got")" -v b="$(field I "$ref")" 'BEGIN{printf "%.2f", a-b}')
@@ -86,7 +99,21 @@ if [[ "${1:-}" == "--android" ]]; then
       'BEGIN{x=d<0?-d:d; print (x<=1 && tp+0<=-1.8 && c==0) ? "ok" : "FAIL"}')
     [[ $ok == ok ]] || fail=1
     row "$name" android "$g" "$(field I "$got")" "$(field TP "$got")" "$(field LRA "$got")" \
-      "$(field SP "$got")" "$(field CLIP "$got")" "$ok (dI vs $CHOSEN $d)"
+      "$(field SP "$got")" "$(field CLIP "$got")" "$ok (dI vs $cand $d)"
+    [[ $name == drc ]] || continue
+    # D: compared in time, the Android output shifted back by the limiter
+    # latency the test reports. Silence (below -70 dB) is skipped.
+    # The shift leaves the last Android window partly filled; it is dropped.
+    dyn=$(paste <(levels "$f" "$(cat "$dir/latency_frames")" | sed '$d') <(levels "$out/$name.ref.wav") | awk -v tol=$DRC_TOL '
+      NF < 2 || $1 ~ /inf/ || $2 ~ /inf/ || $2 < -70 { next }
+      { t = (NR - 1) / 100; d = $1 - $2; if (d < 0) d = -d
+        if (d > all) { all = d; at = t }
+        if (t >= 10 && t < 10.5 && d > atk) atk = d
+        if (t >= 11 && t < 11.5 && d > rel) rel = d }
+      END { printf "%s max|dL| %.2f dB at %.2f s, attack %.2f, release %.2f, tol %s\n",
+              (all <= tol && atk > 0 && rel > 0) ? "ok" : "FAIL", all, at, atk, rel, tol }')
+    [[ $dyn == ok* ]] || fail=1
+    row "$name" D "$g" - - - - - "$dyn"
   done
   exit $fail
 fi

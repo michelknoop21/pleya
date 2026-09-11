@@ -213,10 +213,9 @@ abstract class Player {
   /// Apply the loudness choices: level the volume, reduce loud sounds, or both.
   ///
   /// mpv backends swap the `af` chain per [AudioLoudness]. Android ExoPlayer
-  /// attaches platform audio effects (DynamicsProcessing on API 28+,
-  /// LoudnessEnhancer otherwise) and forces decoded non-tunneled PCM output
-  /// while enabled so the effects can process the stream; it only distinguishes
-  /// on/off, so both switches collapse to one bit there.
+  /// runs the same chain in its own PCM processor and forces decoded
+  /// non-tunneled output while any loudness mode is on, so the processor has
+  /// audio to work on.
   Future<void> setAudioNormalization(AudioLoudness loudness);
 
   /// Loudness evidence for the audio stream about to play, or null when there

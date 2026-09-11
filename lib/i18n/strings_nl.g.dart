@@ -1587,7 +1587,7 @@ class _TranslationsVideoSettingsNl extends TranslationsVideoSettingsEn {
 	@override late final _TranslationsVideoSettingsAudioOutputRenderingNl audioOutputRendering = _TranslationsVideoSettingsAudioOutputRenderingNl._(_root);
 	@override String audioOutputNow({required Object mode}) => 'nu: ${mode}';
 	@override String get audioNormalization => 'Volume normaliseren';
-	@override String get audioNormalizationSuspended => 'Dolby-doorvoer loopt, dus volume gelijkmaken staat uit. Je receiver bepaalt het niveau.';
+	@override String get audioNormalizationSuspended => 'Dolby-doorvoer loopt, dus audioverwerking staat uit. Je receiver bepaalt het niveau.';
 	@override String get audioPriorityTitle => 'Prioriteit';
 	@override late final _TranslationsVideoSettingsAudioPrioritiesNl audioPriorities = _TranslationsVideoSettingsAudioPrioritiesNl._(_root);
 	@override String get audioLevelVolume => 'Volume gelijkmaken';
@@ -4180,7 +4180,7 @@ extension on TranslationsNl {
 			'videoSettings.audioOutputRendering.dolbyAtmos' => 'Dolby Atmos',
 			'videoSettings.audioOutputNow' => ({required Object mode}) => 'nu: ${mode}',
 			'videoSettings.audioNormalization' => 'Volume normaliseren',
-			'videoSettings.audioNormalizationSuspended' => 'Dolby-doorvoer loopt, dus volume gelijkmaken staat uit. Je receiver bepaalt het niveau.',
+			'videoSettings.audioNormalizationSuspended' => 'Dolby-doorvoer loopt, dus audioverwerking staat uit. Je receiver bepaalt het niveau.',
 			'videoSettings.audioPriorityTitle' => 'Prioriteit',
 			'videoSettings.audioPriorities.evenVolume' => 'Gelijkmatig volume',
 			'videoSettings.audioPriorities.originalDolby' => 'Originele Dolby Atmos',

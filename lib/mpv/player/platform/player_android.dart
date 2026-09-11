@@ -15,7 +15,7 @@ class PlayerAndroid extends PlayerBase {
   int? _bufferSizeBytes;
   bool _tunnelingEnabled = true;
   String _dvConversionMode = 'auto';
-  bool _audioNormalizationEnabled = false;
+  Map<String, Object?>? _loudnessPayload;
   bool _audioPassthroughEnabled = false;
 
   static const String _passthroughCodecs = 'ac3,eac3,dts,dts-hd,truehd';
@@ -298,26 +298,28 @@ class PlayerAndroid extends PlayerBase {
 
   /// Sends the *resolved* loudness state to ExoPlayer.
   ///
-  /// The native effect is on/off only, so both switches collapse to one bit
-  /// here. Handing it the resolved state rather than the request is what keeps
+  /// The native side is `LoudnessAudioProcessor`, which runs the same chain as
+  /// mpv: the programme gain planned here, the optional compressor, and the
+  /// true-peak limiter; realtime mode is its own short-term estimator. Handing
+  /// it the resolved state rather than the request is what keeps
   /// `ExoPlayerCore` from forcing decoded non-tunneled PCM while a bitstream is
   /// running, so the arbitration needs no Kotlin side.
-  ///
-  /// Known divergence until the Android round: the native chain is a fixed
-  /// compressor with +15 dB makeup aimed at roughly -14 LUFS, while the mpv
-  /// chain now targets -22. Android is therefore louder than Apple until
-  /// `AudioNormalizationEffect.kt` gets a target.
   @override
   Future<void> applyNormalization(AudioLoudness loudness) async {
-    final enabled = loudness.isEnabled;
-    _audioNormalizationEnabled = enabled;
+    final payload = <String, Object?>{
+      'mode': loudness.mode.name,
+      'gainDb': loudness.programmeGainDb,
+      'drc': loudness.reduceLoudSounds,
+      'profileVersion': AudioLoudness.profileVersion,
+    };
+    _loudnessPayload = payload;
     final initFuture = _initFuture;
     if (initialized) {
-      await invoke('setAudioNormalization', {'enabled': enabled});
+      await invoke('setLoudness', payload);
     } else if (initFuture != null) {
       await initFuture;
-      if (!disposed && initialized && _audioNormalizationEnabled == enabled) {
-        await invoke('setAudioNormalization', {'enabled': enabled});
+      if (!disposed && initialized && identical(_loudnessPayload, payload)) {
+        await invoke('setLoudness', payload);
       }
     }
     // Keep the mpv af property flowing through setMpvProperty so the plugin's

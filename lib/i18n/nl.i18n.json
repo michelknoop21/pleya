@@ -1396,7 +1396,7 @@
     },
     "audioOutputNow": "nu: ${mode}",
     "audioNormalization": "Volume normaliseren",
-    "audioNormalizationSuspended": "Dolby-doorvoer loopt, dus volume gelijkmaken staat uit. Je receiver bepaalt het niveau.",
+    "audioNormalizationSuspended": "Dolby-doorvoer loopt, dus audioverwerking staat uit. Je receiver bepaalt het niveau.",
     "audioPriorityTitle": "Prioriteit",
     "audioPriorities": {
       "evenVolume": "Gelijkmatig volume",

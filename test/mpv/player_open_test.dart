@@ -69,6 +69,40 @@ void main() {
       );
     });
 
+    test('ExoPlayer receives the planned loudness, not two switches', () async {
+      final calls = <MethodCall>[];
+      await _withMockChannels(
+        methodChannelName: 'com.pleya/exo_player',
+        eventChannelName: 'com.pleya/exo_player/events',
+        methodHandler: (call) async {
+          calls.add(call);
+          return call.method == 'initialize' ? true : null;
+        },
+        testBody: () async {
+          final player = PlayerAndroid();
+          try {
+            await player.open(Media('https://example.test/movie.mkv'));
+            await player.setLoudnessEvidence(
+              const LoudnessEvidence(
+                source: LoudnessSource.serverScan,
+                method: 'ffmpeg-loudnorm-1',
+                methodVersion: 1,
+                integratedLufs: -27,
+                quality: LoudnessQuality.measuredFull,
+                coverageComplete: true,
+                basis: 'pcm-native-tl31-drc0',
+              ),
+            );
+            await player.setAudioNormalization(const AudioLoudness(levelVolume: true, reduceLoudSounds: true));
+            final sent = calls.lastWhere((c) => c.method == 'setLoudness').arguments as Map;
+            expect(sent, {'mode': 'programme', 'gainDb': 5.0, 'drc': true, 'profileVersion': 1});
+          } finally {
+            await player.dispose();
+          }
+        },
+      );
+    });
+
     test('ExoPlayer clears stale Dart track state before opening new media', () async {
       await _withMockChannels(
         methodChannelName: 'com.pleya/exo_player',
