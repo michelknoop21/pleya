@@ -665,18 +665,11 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
           onAfterWrite: (_) => _pushLoudness(),
         ),
 
-        // Hidden rather than disabled while levelling is off: without a level
-        // to hold, the compressor measurably clipped instead of helping.
-        SettingValueBuilder<bool>(
-          pref: SettingsService.audioLevelVolume,
-          builder: (context, levelling, _) => !levelling
-              ? const SizedBox.shrink()
-              : _SettingsToggleItem(
-                  pref: SettingsService.audioReduceLoudSounds,
-                  icon: Symbols.compress_rounded,
-                  title: t.videoSettings.audioReduceLoudSounds,
-                  onAfterWrite: (_) => _pushLoudness(),
-                ),
+        _SettingsToggleItem(
+          pref: SettingsService.audioReduceLoudSounds,
+          icon: Symbols.compress_rounded,
+          title: t.videoSettings.audioReduceLoudSounds,
+          onAfterWrite: (_) => _pushLoudness(),
         ),
 
         // Shader Preset (MPV only)

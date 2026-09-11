@@ -329,24 +329,19 @@ class TvAudioTab extends StatelessWidget {
                     ),
                   ),
                   ValueListenableBuilder<bool>(
-                    valueListenable: settings.listenable(SettingsService.audioLevelVolume),
-                    builder: (context, levelling, _) => ValueListenableBuilder<bool>(
-                      valueListenable: settings.listenable(SettingsService.audioReduceLoudSounds),
-                      // Without a level to hold, the compressor measurably
-                      // clipped instead of helping: dimmed while levelling is off.
-                      builder: (context, reduce, _) => _loudnessRow(
-                        icon: Symbols.compress_rounded,
-                        title: t.videoSettings.audioReduceLoudSounds,
-                        subtitle: t.videoSettings.audioReduceLoudSoundsDescription,
-                        enabled: reduce,
-                        active: levelling,
-                        bitstreaming: bitstreaming,
-                        instance: 'audio_reduce_loud_sounds',
-                        onToggle: () async {
-                          await settings.write(SettingsService.audioReduceLoudSounds, !reduce);
-                          await _pushLoudness();
-                        },
-                      ),
+                    valueListenable: settings.listenable(SettingsService.audioReduceLoudSounds),
+                    builder: (context, reduce, _) => _loudnessRow(
+                      icon: Symbols.compress_rounded,
+                      title: t.videoSettings.audioReduceLoudSounds,
+                      subtitle: t.videoSettings.audioReduceLoudSoundsDescription,
+                      enabled: reduce,
+                      active: true,
+                      bitstreaming: bitstreaming,
+                      instance: 'audio_reduce_loud_sounds',
+                      onToggle: () async {
+                        await settings.write(SettingsService.audioReduceLoudSounds, !reduce);
+                        await _pushLoudness();
+                      },
                     ),
                   ),
                 ];

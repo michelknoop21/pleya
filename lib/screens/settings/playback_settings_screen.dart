@@ -389,19 +389,16 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     onAfterWrite: (_) => _pushLoudness(),
   );
 
-  /// Gated on levelling, and that is a measurement rather than a shortcut: a
-  /// compressor with makeup gain and no loudness target ran a test excerpt up
-  /// to +5,4 dBFS while leaving the loudness range where it was.
-  Widget _audioReduceLoudSoundsTile() => SettingValueBuilder<bool>(
-    pref: SettingsService.audioLevelVolume,
-    builder: (context, levelling, _) => SettingSwitchTile(
-      pref: SettingsService.audioReduceLoudSounds,
-      icon: Symbols.compress_rounded,
-      title: t.videoSettings.audioReduceLoudSounds,
-      subtitle: t.videoSettings.audioReduceLoudSoundsDescription,
-      enabled: levelling,
-      onAfterWrite: (_) => _pushLoudness(),
-    ),
+  /// Independent of levelling. Reduce-only used to be refused because a
+  /// compressor with makeup gain and no ceiling ran a test excerpt to
+  /// +5,4 dBFS; with neutral makeup and the true-peak limiter behind it that
+  /// cannot happen, so the switch means what it says on its own.
+  Widget _audioReduceLoudSoundsTile() => SettingSwitchTile(
+    pref: SettingsService.audioReduceLoudSounds,
+    icon: Symbols.compress_rounded,
+    title: t.videoSettings.audioReduceLoudSounds,
+    subtitle: t.videoSettings.audioReduceLoudSoundsDescription,
+    onAfterWrite: (_) => _pushLoudness(),
   );
 
   /// Takes effect on the running player too, not just the next title. The

@@ -33,18 +33,23 @@ enum PlayerLogLevel { none, fatal, error, warn, info, verbose, debug, trace }
 /// carries no behaviour any more.
 enum AudioNormalizationMode { off, normalize, night }
 
-/// The two independent loudness choices and the mpv filter chain they make.
+/// How the loudness stage is running.
 ///
-/// The numbers are measured, not chosen. On a 120-second dialogue excerpt of an
-/// E-AC-3 Atmos title (dialnorm -27), decoded with dialnorm honoured, the
-/// levelling chain lands between -22,2 and -23,1 LUFS across AC-3 and E-AC-3
-/// and across dialnorm -27 and -28, with the true peak always at -2,0 dBFS.
-/// That target is EBU R128, the level broadcasters are held to, so Pleya ends
-/// up where the rest of the television is instead of 5 dB above it — where the
-/// old `I=-14` put it — or 7 dB below it, where an untouched Dolby bitstream
-/// sits.
+/// [programme] applies one fixed gain from stored evidence and is identical on
+/// every client; [realtime] is the fallback that guesses while it plays, and is
+/// named that way so nobody mistakes it for the real thing.
+enum LoudnessMode { off, programme, realtime }
+
+/// The two independent loudness choices, the programme gain the planner
+/// derived from evidence, and the mpv filter chain that makes of them.
+///
+/// The numbers are measured, not chosen; `scripts/loudness/prove.sh` renders
+/// every chain here and measures it with an independent meter. The target is
+/// EBU R128's -22 area, where broadcasters are held, so Pleya ends up where the
+/// rest of the television is instead of 5 dB above it (the old `I=-14`) or
+/// 7 dB below it (an untouched Dolby bitstream).
 class AudioLoudness {
-  const AudioLoudness({this.levelVolume = false, this.reduceLoudSounds = false});
+  const AudioLoudness({this.levelVolume = false, this.reduceLoudSounds = false, this.programmeGainDb});
 
   /// Bring every title to the same average level.
   final bool levelVolume;
@@ -52,37 +57,74 @@ class AudioLoudness {
   /// Narrow the gap between dialogue and loud effects.
   final bool reduceLoudSounds;
 
+  /// The fixed gain for this programme, from stored loudness evidence, or null
+  /// when there is none and levelling has to run in realtime.
+  final double? programmeGainDb;
+
+  /// Bumped whenever a chain below changes what it does to the audio, so a
+  /// log or a native side can tell which version produced a level.
+  static const profileVersion = 1;
+
   static const none = AudioLoudness();
+
+  /// True-peak limiter at -2 dBTP: alimiter run at 192 kHz, because a
+  /// sample-peak limiter let intersample peaks through at +1,6 dBTP on the ISP
+  /// fixture while this one held -2,0.
+  static const truePeakLimiter =
+      'aresample=192000,alimiter=limit=0.7943:level=false:attack=5:release=50:latency=1,aresample=48000';
+
+  /// Reduce-loud-sounds compressor behind a fixed gain. The threshold sits 4 dB
+  /// above the target, so dialogue at programme level passes and only what is
+  /// louder is pulled in; at the old -38 dB the fixtures dropped to -39 LUFS.
+  static const programmeCompressor = 'acompressor=threshold=-18dB:ratio=8:attack=5:release=250:makeup=1';
 
   /// mpv `af` chain ('' disables filtering).
   ///
-  /// [reduceLoudSounds] only does anything alongside [levelVolume], and that is
-  /// a measurement result rather than a simplification: a compressor with
-  /// makeup gain and no loudness target ran the same excerpt up to +5,4 dBFS —
-  /// clipping — while leaving the loudness range where it started. Reducing
-  /// dynamics is only safe once something is holding the level.
+  /// Without a programme gain the realtime chains run unchanged: single-pass
+  /// `loudnorm`, with the -38 dB compressor ahead of it when loud sounds are
+  /// reduced (that compressor narrowed a real excerpt from 10,2 to 6,4 LU at
+  /// -22,5 LUFS; `LRA` alone barely moves single-pass loudnorm). With a gain,
+  /// or with only loud sounds reduced, the chain is fixed and deterministic:
+  /// gain, optional compressor, true-peak limiter. The limiter is what makes
+  /// reduce-only safe now; a compressor with makeup and no ceiling once ran an
+  /// excerpt to +5,4 dBFS.
   String get mpvFilter {
-    if (!levelVolume) return '';
-    if (!reduceLoudSounds) return 'loudnorm=I=-22:TP=-2:LRA=9';
-    // `LRA` alone barely moves single-pass loudnorm (10,2 against 8,5 LU), so
-    // the compressor ahead of it is what actually narrows the range: 10,2 down
-    // to 6,4 LU at the same -22,5 LUFS.
-    return 'acompressor=threshold=-38dB:ratio=8:attack=5:release=250,loudnorm=I=-22:TP=-2:LRA=3';
+    if (!isEnabled) return '';
+    final gain = programmeGainDb;
+    if (levelVolume && gain == null) {
+      if (!reduceLoudSounds) return 'loudnorm=I=-22:TP=-2:LRA=9';
+      return 'acompressor=threshold=-38dB:ratio=8:attack=5:release=250,loudnorm=I=-22:TP=-2:LRA=3';
+    }
+    return [
+      if (levelVolume) 'volume=${gain!.toStringAsFixed(2)}dB:precision=float',
+      if (reduceLoudSounds) programmeCompressor,
+      truePeakLimiter,
+    ].join(',');
   }
 
-  /// Whether any loudness filtering is active. Android's native effect is
-  /// on/off only, so both switches collapse to this one bit there.
-  bool get isEnabled => levelVolume;
+  /// Whether any loudness processing is active.
+  bool get isEnabled => levelVolume || reduceLoudSounds;
+
+  LoudnessMode get mode {
+    if (!isEnabled) return LoudnessMode.off;
+    if (levelVolume && programmeGainDb == null) return LoudnessMode.realtime;
+    return LoudnessMode.programme;
+  }
 
   @override
   bool operator ==(Object other) =>
-      other is AudioLoudness && other.levelVolume == levelVolume && other.reduceLoudSounds == reduceLoudSounds;
+      other is AudioLoudness &&
+      other.levelVolume == levelVolume &&
+      other.reduceLoudSounds == reduceLoudSounds &&
+      other.programmeGainDb == programmeGainDb;
 
   @override
-  int get hashCode => Object.hash(levelVolume, reduceLoudSounds);
+  int get hashCode => Object.hash(levelVolume, reduceLoudSounds, programmeGainDb);
 
   @override
-  String toString() => 'AudioLoudness(level: $levelVolume, reduceLoud: $reduceLoudSounds)';
+  String toString() =>
+      'AudioLoudness(level: $levelVolume, reduceLoud: $reduceLoudSounds, mode: ${mode.name}'
+      '${programmeGainDb == null ? '' : ', gain: ${programmeGainDb!.toStringAsFixed(2)} dB'})';
 }
 
 @freezed
