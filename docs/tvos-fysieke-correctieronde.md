@@ -126,7 +126,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | ACT3 | `tvMyPleya.activitySubtitle` belooft samen kijken en remote die de tegel niet levert | OPEN | n.v.t. |
 | OFF1 | Geen reconnect-affordance op TV | OPEN | n.v.t. |
 | OFF2 | De offline topnav toont focusbare dode pills | OPEN | n.v.t. |
-| SRCH2 | `people` wordt nooit aan `searchProjection` meegegeven | OPEN | n.v.t. |
+| SRCH2 | `people` wordt nooit aan `searchProjection` meegegeven | FIXED, testrun groen, hardware open | `b5b8f0e8` | Gebouwd binnen I4 (iOS Zoeken), zie DEC-112. Nieuwe `PersonSearchClient`-fanout in Plex en Jellyfin vult `people` nu. TV's eigen people-rij riep voorheen `_openConcrete` aan op een lege lijst en is nu gekoppeld aan `_openPerson`. Jellyfin-pad live bevestigd in de iOS-simulator tegen de Pleya Demo-server; Plex `/hubs/search` blijft ongeverifieerd tegen een echte server, en de TV-rij zelf is niet op fysieke hardware bekeken |
 | REV1 | Apple Review Jellyfin: Home toont content, Films/Series leeg en concrete library niet zichtbaar (Apple Review, release-kritiek) | OPEN | n.v.t. |
 | LAND7 | Actieve discovery-rail krijgt geen vaste verticale focuspositie | OPEN | n.v.t. |
 | LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted. Data- en resolutielaag op eae19cb4, de pagina 31 A, de sheet 31 B en de toasts 31 C/D op a9a50ad9, de layout- en meldingscorrecties uit de simulatorronde op a5730f35. Het Verify-scenario is groen; de hardwareronde staat open | OPEN | eae19cb4, a9a50ad9, a5730f35 |

@@ -33,7 +33,7 @@ werkvolgorde.
 | 02 | Films-landing | IN PROGRESS | zelfde scherm als 01 | het scenario raakt 02 alleen indirect | n.v.t. | 15 |
 | 03 | Alle films | IN PROGRESS | `mobile_catalog_screen.dart`, DEC-105, CAT9 `3b0a9b65` | scenario `ios.catalog.northstar` bestaat; geen groene run vastgelegd | n.v.t. | 15 |
 | 04 | Filtersheet | IN PROGRESS | `mobile_catalog_filters_sheet.dart` en `mobile_catalog_sort_sheet.dart`; eigen widgettest ontbreekt | open | n.v.t. | 15 |
-| 05 | Zoeken | OPEN | `search_screen.dart`; DEC-108 geldt alleen voor TV | open | n.v.t. | 2 (I4) |
+| 05 | Zoeken | CODE CLOSED · VERIFY/SIM OPEN | `search_screen.dart` (mobiele sectie-UI), `PersonSearchClient` in Plex/Jellyfin (SRCH-2), DEC-112, `b5b8f0e8` | handmatige simulatorscreenshot tegen 05-zoeken.png (11 sep 2026): header/chevron/zoekbalk/filterchips/sectiekaarten kloppen met de northstar; Jellyfin-personenpad live bevestigd tegen Pleya Demo. Geen Pleya Verify-scenario: `search_screen.dart` heeft nul automation-IDs, dat is eigen instrumentatiewerk | n.v.t. | 2 (I4) |
 | 06 | Filmdetail | OPEN | `media_detail_screen.dart`; DEC-109 geldt alleen voor TV | open | n.v.t. | 5 (I6) |
 | 07 | Seriedetail met afleveringen | OPEN | idem | open | n.v.t. | 5 (I6) |
 | 08 | Bronkeuze-sheet | IN PROGRESS | `mobile_source_picker_sheet.dart` met test, alleen bereikbaar vanaf Play op Home | open | n.v.t. | 4 (I5) |
