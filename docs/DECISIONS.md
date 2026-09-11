@@ -2406,3 +2406,72 @@ IOS-HOME-AB in [ios-unified-implementation-register.md](ios-unified-implementati
 **Consequences:** Er is geen mobiele uitzondering meer op de indicatortaal van hoofdstuk 9.6.
 Resterend werk op Home valt daarmee samen met de rest van het functionele en visuele sluitwerk uit
 [unified-2026-closure.md](unified-2026-closure.md).
+
+## DEC-111: Loudness speelt op elk platform dezelfde programmaketen, en Android bewijst dat in de tijd
+
+**Date:** 2026-09-11
+**Status:** accepted
+
+**Context:** Pleya Unified Loudness Engine (plan `pleya-unified-loudness-engine`, fasen B1 t/m C3)
+vervangt de losse normalisatie per engine: `loudnorm` op mpv, `audiofx` op Android. Die twee
+landden ongeveer 8 dB uit elkaar. De proef in `scripts/loudness/` rendert elf fixtures met vaste
+seeds door vijf kandidaatketens en meet het resultaat met `measure.sh`, een ebur128-meter die los
+staat van de keten die hij beoordeelt. Een review van C3 vond dat de Android-compressor dezelfde
+eindtoestand haalde als `ffmpeg acompressor`, maar in een ander tempo: 5 ms na een sprong +2,29 dB
+tegen +0,39 dB, 200 ms na het loslaten -4,21 dB tegen 0,00 dB. Een I/TP/LRA-vergelijking zag dat
+niet, omdat die alleen het gemiddelde meet.
+
+**Decision:**
+(1) **Programmaketen.** Een titel met loudnessbewijs krijgt één vaste gain, gepland in
+`loudness_planner.dart` naar -22 LUFS, begrensd op -30 en +12 dB, met hooguit 6 dB belasting op een
+true-peak-limiter op -2 dBTP. Daarna volgt optioneel de compressor van "harde geluiden dempen", en
+dan de limiter. Op mpv is dat `volume`, `acompressor=threshold=-18dB:ratio=8:attack=5:release=250`
+en `alimiter` op 192 kHz (kandidaat A4x). Op Android draait `LoudnessDsp.kt` hetzelfde in Kotlin.
+Target, gain policy, compressorsemantiek en peak-contract zijn op dit pad gelijk tussen de engines.
+Dat is een eis, geen streven.
+(2) **Compressortijden volgen FFmpeg.** De coëfficiënt voor attack en release is
+`min(1, 4000 / (ms * sampleRate))`, de formule uit `af_sidechaincompress.c`, en niet
+`1 - exp(-1 / tau)`. De stap is daarmee vier keer zo groot als bij een klassieke eenpolige
+tijdconstante, en daar zat het verschil uit de review.
+(3) **De D-regel bewijst de dynamiek.** `prove.sh --android` vergelijkt de `drc`-fixture (zachte
+dialoog, 1 s op +20 dB, weer zacht) in vensters van 10 ms met de ffmpeg-render van kandidaat D. De
+Android-output wordt eerst terug geschoven met de limiterlatentie die de test wegschrijft (251
+frames op 48 kHz). De tolerantie is 0,5 dB per venster. Gemeten spreiding met de fix: max 0,10 dB,
+op de sprong in 0,08 en op het loslaten 0,08. Met de oude coëfficiënten werd het 2,18 dB op de
+attack en 6,26 dB op de release, en de regel faalde. Wie de compressor aanraakt, draait
+`fixtures.sh`, de Gradle-test en `prove.sh --android`.
+(4) **Realtime is een benadering.** Zonder bewijs schat Android met een K-gewogen kortetermijnmeter
+(3 s, +0,5 en -1 dB/s, bevroren in stilte en na een sprong van 8 LU) en mpv gebruikt `loudnorm`.
+Die paden mogen per engine verschillen, zolang de productbelofte gelijk blijft: rustig bijsturen
+naar -22, nooit boven het plafond. De status meldt dit pad als `estimated`.
+(5) **Harde geluiden dempen werkt ook zonder volume gelijkmaken.** Op Android zet `reduce=true` de
+PCM-keten aan, ook bij `level=false`. Tunneling en encoded passthrough vallen dan af. Een
+geforceerde passthrough schort de verwerking op, en de melding `audioNormalizationSuspended` zegt
+nu "audioverwerking staat uit" in plaats van alleen "volume gelijkmaken". Dit vervangt het deel van
+[DEC-101](#dec-101) dat de rij "harde geluiden" dimde zonder gelijkmaken; de `active`-parameter van
+`_loudnessRow` is weg. [DEC-013](#dec-013) blijft: passthrough wint.
+(6) **Positieve gain vraagt true peak.** Een bron zonder betrouwbare true peak mag negatieve gain
+krijgen, maar positieve gain wordt op 0 dB begrensd, met de reden in plan en status. Een verzonnen
+TP is niet toegestaan. De limiter blijft een vangnet, geen vervanging. Dit bouwt E1, met een
+plannertest.
+(7) **Bewijs hoort bij één titel.** Het bewijs en het plan van titel A vervallen bij `open()` van
+titel B, vóór het eerste track-event. E1 krijgt een regressietest die A en B opent en laat zien dat
+B nooit de gain van A krijgt.
+
+Drie bewuste afwijkingen van het oorspronkelijke plan, elk gemeten:
+- De decodebasis is `pcm-native-tl31-drc0`. mpv decodeert AC-3 met `ad-lavc-ac3drc` 0, de ffmpeg-cli
+  met `drc_scale` 1. De server meet daarom met `-drc_scale 0`.
+- De compressor staat op -18 dB en niet op -38 dB. Achter een vaste gain naar -22 zakten de fixtures
+  met -38 dB naar -39 LUFS.
+- De limiter werkt op true peak (4x oversampled), niet op sample peak. Een sample-peak-limiter liet
+  op de ISP-fixture +1,6 dBTP door; A4x houdt die op -2,0 dBTP, Android op -1,9.
+
+**Consequences:** Android en mpv landen op dezelfde fixtures binnen 0,1 LU van elkaar, en voor het
+eerst is ook het verloop in de tijd getoetst. Open staan: een benchmark op de playback-thread voor
+stereo, 5.1 en 7.1 op 48 kHz vóór de hardwareacceptatie (een operation count telt niet), daarna
+pas `log10` alleen in `status()` en gecachte `dbToLin`, mits de fixtures binnen tolerantie blijven.
+`stepRealtimeGain` mag na een verlopen hold geen verouderd target weer geldig maken; de test
+daarvoor is geluid, stilte langer dan de hold, en weer geluid. De processor voegt ongeveer 5,5 ms
+toe zonder compensatie en heeft geen tail-drain. Zonder bewijs klinkt Android ongeveer 8 dB zachter
+dan met `audiofx`, en een zachte titel heeft tot een halve minuut nodig om op niveau te komen. Geen
+van deze punten is op hardware gemeten.
