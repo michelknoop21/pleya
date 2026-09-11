@@ -25,77 +25,15 @@ import 'package:flutter_test/flutter_test.dart';
 /// vastleggen in plaats van een gebrek benoemen. `nl` is de taal waarin de app
 /// gebruikt wordt en waarin de gaten gemeld worden.
 void main() {
-  /// Wat er op 7 september 2026 in `nl` ontbrak, na het sluiten van ROW1q.
+  /// What was missing in `nl` after ROW1q closed on 7 September 2026 has since
+  /// been translated in full (I18N1-4 and I18N6, the tvOS T1 correction
+  /// round). The set stays declared, empty, rather than deleted: the next gap
+  /// a new English-only key opens has somewhere to be named the moment it is
+  /// found, instead of the test file needing surgery first.
   ///
-  /// Elke regel hier is een string die een Nederlandse gebruiker vandaag in het
-  /// Engels ziet. De lijst is dus geen uitzonderingenregister maar een
-  /// werklijst; hij hoort leeg te eindigen.
-  const knownGaps = <String>{
-    'addLocalFolder.entriesFound',
-    'addServer.addPleyaServerTitle',
-    'addServer.connectToPleyaServerCard',
-    'addServer.connectToPleyaServerCardSubtitle',
-    'addServer.connectToPleyaServerCardSubtitleScoped',
-    'addServer.enterPleyaServerUrlError',
-    'addServer.pleyaServerAddressHint',
-    'addServer.pleyaServerAddressLabel',
-    'addServer.pleyaServerChangeServer',
-    'addServer.pleyaServerConnected',
-    'addServer.pleyaServerCreateOwner',
-    'addServer.pleyaServerFindServer',
-    'addServer.pleyaServerNoPasswordMethod',
-    'addServer.pleyaServerPasswordTooShort',
-    'addServer.pleyaServerSetupCodeLabel',
-    'addServer.pleyaServerSetupExplainer',
-    'addServer.pleyaServerSetupTitle',
-    'common.timedOut',
-    'discover.forYou',
-    'discover.watched',
-    'downloads.storageFull',
-    'downloads.waitingForNetwork',
-    'libraries.itemCount',
-    'libraries.oneItem',
-    'messages.logsUploadNetworkError',
-    'messages.logsUploadRateLimited',
-    'messages.logsUploadRefused',
-    'messages.logsUploadServerError',
-    'messages.logsUploadTooLarge',
-    'pleyaShare.hostDescriptionIos',
-    'pleyaShare.howItWorksBody',
-    'pleyaShare.howItWorksTitle',
-    'search.errorNetwork',
-    'search.errorTitle',
-    'search.noServersBody',
-    'search.noServersTitle',
-    'search.voiceSearch',
-    'settings.icloudSync',
-    'settings.icloudSyncDescription',
-    'settings.icloudSyncEnableFailed',
-    'settings.icloudSyncLegacyPeer',
-    'settings.icloudSyncStatusError',
-    'settings.icloudSyncStatusLastSent',
-    'settings.icloudSyncStatusOversize',
-    'settings.icloudSyncStatusQuota',
-    'settings.icloudSyncStatusSyncing',
-    'settings.icloudSyncUnavailable',
-    'settings.libraryVisibility',
-    'settings.libraryVisibilityDescription',
-    'settings.requests',
-    'settings.requestsDescription',
-    'settings.sectionLibrary',
-    'settings.visualEffects',
-    'settings.visualEffectsAuto',
-    'settings.visualEffectsAutoDescription',
-    'settings.visualEffectsFull',
-    'settings.visualEffectsReduced',
-    'settings.visualEffectsReducedDescription',
-    'videoControls.nextEpisode',
-    'videoControls.skipCredits',
-    'videoControls.skipIntro',
-    'watchTogether.participantNeedsUpdate',
-    'watchTogether.resumingWithout',
-    'watchTogether.waitingForName',
-  };
+  /// Every entry here is a string a Dutch user would see in English today.
+  /// This is a worklist, not an exceptions register; it belongs empty.
+  const knownGaps = <String>{};
 
   Map<String, dynamic> localeJson(String locale) =>
       jsonDecode(File('lib/i18n/$locale.i18n.json').readAsStringSync()) as Map<String, dynamic>;
