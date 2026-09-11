@@ -750,9 +750,7 @@ class _SearchScreenState extends State<SearchScreen>
           // very thing CAT11 reported, and Ontdekken is now a TV page of its
           // own that can hold the answer properly.
           onSearchOnRequests: seerrConfigured && _searchController.text.trim().isNotEmpty
-              ? () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => SeerrDiscoverScreen(initialQuery: _searchController.text.trim())),
-                )
+              ? () => SeerrDiscoverScreen.open(context, initialQuery: _searchController.text.trim())
               : null,
           serverCount: multiServer.totalServerCount,
           onExitLeft: _navigateToSidebar,

@@ -415,7 +415,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   }
 
   void _openDiscover() {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SeerrDiscoverScreen()));
+    SeerrDiscoverScreen.open(context);
   }
 
   List<Widget> _contentSlivers(bool canManage, int? ownUserId) {
