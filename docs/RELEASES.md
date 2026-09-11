@@ -119,6 +119,12 @@ under `Notes`.
 - het spelerpaneel op de gedeelde typeladder (PLR7)
 - de drie rake punten uit de Codex-challenge op CAT17 en PLR7
 - OVR1a op filmdetail, en de volledige synopsis (DEC-109)
+- LIB5 spotlight title clears the TV library chooser row
+- STR3-5 hardcoded English strings on tvOS surfaces
+- I18N1-4 and I18N6, translate the remaining 64 nl gaps
+- LAND5 restore onto a scrolled-away card falls back to first
+- VER3 first discovery tile's focus ring clears the safe zone
+- VER5 media-detail.episode-refresh reaches Bibliotheken via Mijn Pleya
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
