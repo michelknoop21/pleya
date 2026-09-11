@@ -154,6 +154,7 @@ class _TranslationsAuthNl extends TranslationsAuthEn {
 	@override String get plexTokenLabel => 'Plex-authenticatietoken';
 	@override String get plexTokenHint => 'Voer je plex.tv-token in';
 	@override String get serviceNotReady => 'Authenticatieservice is nog niet klaar. Probeer het zo opnieuw.';
+	@override String get tagline => 'Jouw media, op jouw manier.';
 }
 
 // Path: common
@@ -904,6 +905,7 @@ class _TranslationsProfilesNl extends TranslationsProfilesEn {
 	@override String get borrowConnectionBorrowed => 'Verbinding geleend.';
 	@override String get borrowFailed => 'Kan verbinding niet lenen.';
 	@override String get incorrectPin => 'Onjuiste PIN.';
+	@override String get incorrectPinTryAgain => 'Onjuiste PIN. Probeer het opnieuw.';
 	@override String get sourceProfileMissingParentAccount => 'Het bronprofiel mist het bovenliggende account.';
 	@override String get failedToVerifyPin => 'Kan PIN niet verifiëren.';
 	@override String get newProfile => 'Nieuw profiel';
@@ -2926,6 +2928,7 @@ extension on TranslationsNl {
 			'auth.plexTokenLabel' => 'Plex-authenticatietoken',
 			'auth.plexTokenHint' => 'Voer je plex.tv-token in',
 			'auth.serviceNotReady' => 'Authenticatieservice is nog niet klaar. Probeer het zo opnieuw.',
+			'auth.tagline' => 'Jouw media, op jouw manier.',
 			'common.cancel' => 'Annuleren',
 			'common.save' => 'Opslaan',
 			'common.close' => 'Sluiten',
@@ -3410,9 +3413,9 @@ extension on TranslationsNl {
 			'videoControls.tvPanel.allStyleSettings' => 'Alle stijlinstellingen',
 			'videoControls.tvPanel.allStyleSettingsPath' => 'Mijn Pleya ▸ Instellingen ▸ Ondertitelstijl · kleur, rand, positie, vet',
 			'videoControls.tvPanel.offset' => 'Verschuiving',
-			'videoControls.tvPanel.syncStepHint' => 'Links en rechts 100 ms per stap · vasthouden blijft stappen',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.tvPanel.syncStepHint' => 'Links en rechts 100 ms per stap · vasthouden blijft stappen',
 			'videoControls.tvPanel.syncKeepsForAllTitles' => 'Blijft staan voor alle titels tot je hem terugzet',
 			'videoControls.tvPanel.hint' => 'Kiezen past direct toe · Links en rechts stappen een waarde · Menu sluit het paneel',
 			'videoControls.tvPanel.hintBack' => 'Menu gaat terug',
@@ -3587,6 +3590,7 @@ extension on TranslationsNl {
 			'profiles.borrowConnectionBorrowed' => 'Verbinding geleend.',
 			'profiles.borrowFailed' => 'Kan verbinding niet lenen.',
 			'profiles.incorrectPin' => 'Onjuiste PIN.',
+			'profiles.incorrectPinTryAgain' => 'Onjuiste PIN. Probeer het opnieuw.',
 			'profiles.sourceProfileMissingParentAccount' => 'Het bronprofiel mist het bovenliggende account.',
 			'profiles.failedToVerifyPin' => 'Kan PIN niet verifiëren.',
 			'profiles.newProfile' => 'Nieuw profiel',
@@ -3923,10 +3927,10 @@ extension on TranslationsNl {
 			'playlists.title' => 'Afspeellijsten',
 			'playlists.playlist' => 'Afspeellijst',
 			'playlists.noPlaylists' => 'Geen afspeellijsten gevonden',
-			'playlists.create' => 'Afspeellijst maken',
-			'playlists.playlistName' => 'Naam afspeellijst',
 			_ => null,
 		} ?? switch (path) {
+			'playlists.create' => 'Afspeellijst maken',
+			'playlists.playlistName' => 'Naam afspeellijst',
 			'playlists.enterPlaylistName' => 'Voer naam afspeellijst in',
 			'playlists.delete' => 'Afspeellijst verwijderen',
 			'playlists.removeItem' => 'Verwijderen uit afspeellijst',
@@ -4437,10 +4441,10 @@ extension on TranslationsNl {
 			'pleyaShare.pairedDevices' => 'Gekoppelde apparaten',
 			'pleyaShare.noGuests' => 'Nog geen apparaten gekoppeld',
 			'pleyaShare.revokeGuest' => 'Apparaat verwijderen',
-			'pleyaShare.joinTitle' => 'Verbinden met Pleya Share',
-			'pleyaShare.joinDescription' => 'Kies een host op je netwerk of voer het adres in, en typ daarna de 6-cijferige code die op dat apparaat staat.',
 			_ => null,
 		} ?? switch (path) {
+			'pleyaShare.joinTitle' => 'Verbinden met Pleya Share',
+			'pleyaShare.joinDescription' => 'Kies een host op je netwerk of voer het adres in, en typ daarna de 6-cijferige code die op dat apparaat staat.',
 			'pleyaShare.hostsFound' => 'Hosts op je netwerk',
 			'pleyaShare.searching' => 'Zoeken naar hosts…',
 			'pleyaShare.noHostsFound' => 'Geen hosts gevonden. Zet delen aan op het andere apparaat en controleer of beide op hetzelfde netwerk zitten.',

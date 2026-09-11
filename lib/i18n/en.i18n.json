@@ -30,7 +30,8 @@
     "tryAgain": "Try again",
     "plexTokenLabel": "Plex auth token",
     "plexTokenHint": "Enter your plex.tv token",
-    "serviceNotReady": "Authentication service is not ready yet. Try again in a moment."
+    "serviceNotReady": "Authentication service is not ready yet. Try again in a moment.",
+    "tagline": "Your media. Your way."
   },
   "common": {
     "cancel": "Cancel",
@@ -769,6 +770,7 @@
     "borrowConnectionBorrowed": "Connection borrowed.",
     "borrowFailed": "Failed to borrow connection.",
     "incorrectPin": "Incorrect PIN.",
+    "incorrectPinTryAgain": "Incorrect PIN. Please try again.",
     "sourceProfileMissingParentAccount": "Source profile is missing its parent account.",
     "failedToVerifyPin": "Failed to verify PIN.",
     "newProfile": "New profile",

@@ -55,7 +55,7 @@ Future<bool> activateProfileWithPin(BuildContext context, Profile profile) async
       binder.markUserInitiatedActivation(profile.id);
       return active.activate(profile, pin: pin);
     }
-    errorMessage = 'Incorrect PIN. Please try again.';
+    errorMessage = t.profiles.incorrectPinTryAgain;
   }
 }
 

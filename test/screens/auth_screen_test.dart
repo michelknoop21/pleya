@@ -120,6 +120,8 @@ void main() {
       expect(t.auth.chooseHowToSignIn, isNotEmpty);
       expect(t.auth.chooseHowToSignInDescription, isNotEmpty);
       expect(t.auth.tryAgain, isNotEmpty);
+      // STR4: the brand-header tagline was hardcoded English on every locale.
+      expect(t.auth.tagline, isNotEmpty);
       expect(t.serverSelection.noServersFoundTitle, isNotEmpty);
       expect(t.serverSelection.noServersFoundDescription, isNotEmpty);
       expect(t.serverSelection.noServersFoundTryJellyfin, isNotEmpty);

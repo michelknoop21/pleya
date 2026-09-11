@@ -171,7 +171,7 @@ class _ActorMediaScreenState extends BaseMediaListDetailScreen<ActorMediaScreen>
                   if (totalSize > 0) ...[
                     const SizedBox(height: 4),
                     Text(
-                      '$totalSize ${totalSize == 1 ? 'title' : 'titles'}',
+                      totalSize == 1 ? t.unifiedCatalog.oneTitle : t.unifiedCatalog.titleCount(count: totalSize),
                       style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
                   ],

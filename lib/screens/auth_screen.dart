@@ -341,7 +341,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Your media. Your way.',
+          t.auth.tagline,
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 12, letterSpacing: 1, color: textColor.withValues(alpha: 0.6)),
         ),

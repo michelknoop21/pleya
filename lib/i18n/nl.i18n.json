@@ -30,7 +30,8 @@
     "tryAgain": "Opnieuw proberen",
     "plexTokenLabel": "Plex-authenticatietoken",
     "plexTokenHint": "Voer je plex.tv-token in",
-    "serviceNotReady": "Authenticatieservice is nog niet klaar. Probeer het zo opnieuw."
+    "serviceNotReady": "Authenticatieservice is nog niet klaar. Probeer het zo opnieuw.",
+    "tagline": "Jouw media, op jouw manier."
   },
   "common": {
     "cancel": "Annuleren",
@@ -734,6 +735,7 @@
     "borrowConnectionBorrowed": "Verbinding geleend.",
     "borrowFailed": "Kan verbinding niet lenen.",
     "incorrectPin": "Onjuiste PIN.",
+    "incorrectPinTryAgain": "Onjuiste PIN. Probeer het opnieuw.",
     "sourceProfileMissingParentAccount": "Het bronprofiel mist het bovenliggende account.",
     "failedToVerifyPin": "Kan PIN niet verifiëren.",
     "newProfile": "Nieuw profiel",

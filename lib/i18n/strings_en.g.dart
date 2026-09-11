@@ -209,6 +209,9 @@ class TranslationsAuthEn {
 
 	/// en: 'Authentication service is not ready yet. Try again in a moment.'
 	String get serviceNotReady => 'Authentication service is not ready yet. Try again in a moment.';
+
+	/// en: 'Your media. Your way.'
+	String get tagline => 'Your media. Your way.';
 }
 
 // Path: common
@@ -2236,6 +2239,9 @@ class TranslationsProfilesEn {
 
 	/// en: 'Incorrect PIN.'
 	String get incorrectPin => 'Incorrect PIN.';
+
+	/// en: 'Incorrect PIN. Please try again.'
+	String get incorrectPinTryAgain => 'Incorrect PIN. Please try again.';
 
 	/// en: 'Source profile is missing its parent account.'
 	String get sourceProfileMissingParentAccount => 'Source profile is missing its parent account.';
@@ -6966,6 +6972,7 @@ extension on Translations {
 			'auth.plexTokenLabel' => 'Plex auth token',
 			'auth.plexTokenHint' => 'Enter your plex.tv token',
 			'auth.serviceNotReady' => 'Authentication service is not ready yet. Try again in a moment.',
+			'auth.tagline' => 'Your media. Your way.',
 			'common.cancel' => 'Cancel',
 			'common.save' => 'Save',
 			'common.close' => 'Close',
@@ -7450,9 +7457,9 @@ extension on Translations {
 			'videoControls.pipButton' => 'Picture-in-Picture mode',
 			'videoControls.aspectRatioButton' => 'Aspect ratio',
 			'videoControls.ambientLighting' => 'Ambient lighting',
-			'videoControls.ambientIntensitySubtle' => 'Subtle',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.ambientIntensitySubtle' => 'Subtle',
 			'videoControls.ambientIntensityBalanced' => 'Balanced',
 			'videoControls.ambientIntensityBright' => 'Bright',
 			'videoControls.tvPanel.information' => 'Information',
@@ -7662,6 +7669,7 @@ extension on Translations {
 			'profiles.borrowConnectionBorrowed' => 'Connection borrowed.',
 			'profiles.borrowFailed' => 'Failed to borrow connection.',
 			'profiles.incorrectPin' => 'Incorrect PIN.',
+			'profiles.incorrectPinTryAgain' => 'Incorrect PIN. Please try again.',
 			'profiles.sourceProfileMissingParentAccount' => 'Source profile is missing its parent account.',
 			'profiles.failedToVerifyPin' => 'Failed to verify PIN.',
 			'profiles.newProfile' => 'New profile',
@@ -7963,10 +7971,10 @@ extension on Translations {
 			'liveTv.alreadyScheduled' => 'This program is already scheduled',
 			'liveTv.dvrAdminRequired' => 'DVR settings require an admin account',
 			'liveTv.recordingFailed' => 'Couldn\'t schedule recording',
-			'liveTv.recordingTargetMissing' => 'Couldn\'t determine recording library',
-			'liveTv.recordNotAvailable' => 'Recording not available for this program',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.recordingTargetMissing' => 'Couldn\'t determine recording library',
+			'liveTv.recordNotAvailable' => 'Recording not available for this program',
 			'liveTv.recordingCancelled' => 'Recording cancelled',
 			'liveTv.recordingRuleDeleted' => 'Recording rule deleted',
 			'liveTv.processRecordingRules' => 'Re-evaluate rules',
@@ -8477,10 +8485,10 @@ extension on Translations {
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
 			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => '${remaining} of ${limit} requests left',
 			'seerr.quotaUnlimited' => 'Unlimited requests',
-			'seerr.advancedOptions' => 'Advanced options',
-			'seerr.server' => 'Server',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.advancedOptions' => 'Advanced options',
+			'seerr.server' => 'Server',
 			'seerr.qualityProfile' => 'Quality profile',
 			'seerr.rootFolder' => 'Root folder',
 			'seerr.myRequests' => 'My requests',

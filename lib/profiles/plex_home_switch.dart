@@ -1,4 +1,5 @@
 import '../exceptions/media_server_exceptions.dart';
+import '../i18n/strings.g.dart';
 import '../services/plex_auth_service.dart';
 import '../utils/app_logger.dart';
 
@@ -51,7 +52,7 @@ Future<PlexHomeSwitchResult> switchPlexHomeUserWithPin({
       return PlexHomeSwitchResult._(PlexHomeSwitchStatus.success, response.authToken);
     } on MediaServerHttpException catch (e) {
       if (e.statusCode == 403 && _isInvalidPin(e)) {
-        error = 'Incorrect PIN. Please try again.';
+        error = t.profiles.incorrectPinTryAgain;
         pin = null;
         // Force the next iteration to prompt even when the caller didn't
         // expect a PIN — Plex disagrees about whether one is required.
