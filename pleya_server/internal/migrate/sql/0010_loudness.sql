@@ -13,8 +13,10 @@ CREATE TABLE stream_loudness (
     file_id       uuid    NOT NULL REFERENCES media_files (id) ON DELETE CASCADE,
     stream_index  integer NOT NULL,
     -- Wire-veld "basis": de decodeconfiguratie waaronder gemeten is, bijvoorbeeld
-    -- "pcm-native-tl31-drc1". Een meting op de ene basis zegt niets over een andere, dus de basis
-    -- hoort in de sleutel en niet in een kolom ernaast.
+    -- "pcm-native-tl31-drc0" (LoudnessPolicy.clientBasis, lib/services/loudness/loudness_planner.dart,
+    -- DEC-111 afwijking 1: drc_scale 0 en niet 1, gelijk aan mpv's eigen ac3drc-default). Een meting
+    -- op de ene basis zegt niets over een andere, dus de basis hoort in de sleutel en niet in een
+    -- kolom ernaast.
     basis_key     text    NOT NULL,
     -- "ffmpeg-loudnorm-1", "tag-opus-r128-1", enzovoort. Twee methodes op dezelfde stream en basis
     -- zijn twee rijen: de tag-vertaling en de eigen meting bestaan naast elkaar, en store.go (D2)
