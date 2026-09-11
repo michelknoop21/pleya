@@ -55,6 +55,8 @@ under `Notes`.
 - canoniek loudnessbewijs, gain-planner en vaste programmaketen
 - loudnessbewijs koppelen aan speler en audiotrack
 - Android-loudnessketen in Media3, met compressor op FFmpeg-tempo
+- I4 mobiele Zoeken-secties en SRCH-2 persoonzoeken
+- I4 Zoeken automation-IDs, playlist routing fix, full group coverage
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
