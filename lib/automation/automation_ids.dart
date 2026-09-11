@@ -257,6 +257,18 @@ class AutomationIds {
   static const String landingRail = 'landing.rail';
   static const String landingRailItem = 'landing.rail.item';
 
+  /// One phone result-group section on Zoeken (I4, `05-zoeken.png`):
+  /// movies/shows/episodes/collections/playlists/people/other. Instanceable
+  /// by section id (`search.results.section[people]`) — hoofdstuk 16.1's
+  /// section names, the same ids the TV rails already use in
+  /// `SearchScreenState._tvSections`.
+  static const String searchResultsSection = 'search.results.section';
+
+  /// One row inside [searchResultsSection]. Instanceable
+  /// `<sectionId>.<index>` (`search.results.item[people.0]`), the same
+  /// `<family>.<index>` shape [landingRailItem]/[discoverRailItem] use.
+  static const String searchResultsItem = 'search.results.item';
+
   /// The mobile source-picker sheet as a whole.
   static const String sheetSourcePicker = 'sheet.source_picker';
 
@@ -345,6 +357,8 @@ class AutomationIds {
     landingViewAll,
     landingRail,
     landingRailItem,
+    searchResultsSection,
+    searchResultsItem,
     sheetSourcePickerRow,
     catalogHeader,
     catalogHeaderSearch,
@@ -427,6 +441,8 @@ class AutomationIds {
     {'id': landingViewAll, 'role': 'button', 'instanceable': true},
     {'id': landingRail, 'role': 'rail', 'instanceable': true},
     {'id': landingRailItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': searchResultsSection, 'role': 'region', 'instanceable': true},
+    {'id': searchResultsItem, 'role': 'list.item', 'instanceable': true},
     {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
     {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},

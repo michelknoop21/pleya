@@ -16,6 +16,7 @@ import '../screens/playlist/playlist_detail_screen.dart';
 import '../services/settings_service.dart';
 import '../utils/global_key_utils.dart';
 import 'plex_library_section_helpers.dart';
+import 'provider_extensions.dart';
 import 'video_player_navigation.dart';
 
 /// Result of media navigation indicating what action was taken
@@ -271,6 +272,25 @@ Future<MediaNavigationResult> navigateToMediaItem(
       if (result == true) {
         return MediaNavigationResult.listRefreshNeeded;
       }
+      return MediaNavigationResult.navigated;
+
+    case MediaKind.playlist:
+      // A search/catalogue hit only ever carries the neutral `MediaItem`
+      // shape (id/title/thumb), never the full `MediaPlaylist` this screen
+      // needs (playlistType, counts, …) — that only exists for a playlist
+      // reached through the dedicated Playlists tab, which already is a
+      // `MediaPlaylist` and takes the branch at the top of this function.
+      // Without this case a search hit fell through to `default` and opened
+      // the movie/show detail screen on a playlist.
+      final client = context.getMediaClientForItemOrNull(mi, isOffline: isOffline);
+      final playlist = await client?.fetchPlaylistMetadata(mi.id);
+      if (playlist == null) {
+        recorder.close(traceId, SelectTraceOutcome.none);
+        return MediaNavigationResult.unsupported;
+      }
+      if (!context.mounted) return MediaNavigationResult.unsupported;
+      recorder.close(traceId, SelectTraceOutcome.hubDetail);
+      await Navigator.push(context, MaterialPageRoute(builder: (context) => PlaylistDetailScreen(playlist: playlist)));
       return MediaNavigationResult.navigated;
 
     case MediaKind.artist:

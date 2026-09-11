@@ -9,6 +9,7 @@ import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_playlist.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/mixins/refreshable.dart';
@@ -17,6 +18,7 @@ import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/screens/actor_media_screen.dart';
 import 'package:pleya/screens/collection_detail_screen.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
+import 'package:pleya/screens/playlist/playlist_detail_screen.dart';
 import 'package:pleya/screens/search_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -685,6 +687,121 @@ void main() {
       expect(find.byType(ActorMediaScreen), findsOneWidget);
       expect(find.byType(MediaDetailScreen), findsNothing);
     });
+
+    testWidgets('an episode group opens detail on its representative source', (tester) async {
+      // Episodes go through the same `_mobileGroupRow`/`_openMobileGroupDetails`
+      // path as movies and shows (proven above) — this exercises it against
+      // the section that path actually branches on for its allowWeakFallback
+      // choice (search_projection.dart), a separate result group in its own
+      // right for I4's "activation vanuit elke resultaatgroep" exit criterion.
+      final observer = _RecordingNavigatorObserver();
+      final client = _FakeMediaServerClient(
+        items: [
+          MediaItem(
+            id: 'episode-1',
+            backend: MediaBackend.plex,
+            kind: MediaKind.episode,
+            title: 'The Way Out',
+            serverId: 'server_1',
+            serverName: 'Server',
+            parentIndex: 1,
+            index: 1,
+          ),
+        ],
+      );
+      final key = await pumpPhoneSearchScreen(tester, client, navigatorObservers: [observer]);
+      (key.currentState! as SearchInputFocusable).setSearchQuery('way out');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('The Way Out'));
+
+      final pushed = observer.lastPushedRoute;
+      expect(pushed, isA<MaterialPageRoute>());
+      final widget = (pushed! as MaterialPageRoute).builder(key.currentState!.context);
+      expect(widget, isA<MediaDetailScreen>());
+    });
+
+    testWidgets('a playlist opens PlaylistDetailScreen, not the generic media route', (tester) async {
+      // Search only ever hands back the neutral `MediaItem` shape for a
+      // playlist hit (id/title/thumb), never the full `MediaPlaylist`
+      // `PlaylistDetailScreen` needs — `navigateToMediaItem`'s playlist
+      // branch fetches it by id before opening the screen. Before that
+      // branch existed, `MediaKind.playlist` fell through to `default` and
+      // opened the movie/show detail page on a playlist instead.
+      final observer = _RecordingNavigatorObserver();
+      final client = _FakeMediaServerClient(
+        items: [
+          MediaItem(
+            id: 'playlist-1',
+            backend: MediaBackend.plex,
+            kind: MediaKind.playlist,
+            title: 'Friday Night Movies',
+            serverId: 'server_1',
+            serverName: 'Server',
+          ),
+        ],
+        playlistsById: {
+          'playlist-1': const MediaPlaylist(
+            id: 'playlist-1',
+            backend: MediaBackend.plex,
+            title: 'Friday Night Movies',
+            playlistType: 'video',
+          ),
+        },
+      );
+      final key = await pumpPhoneSearchScreen(tester, client, navigatorObservers: [observer]);
+      (key.currentState! as SearchInputFocusable).setSearchQuery('friday');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+
+      // No `pump()`, the same reason the collection case above avoids one:
+      // `PlaylistDetailScreen` needs a `DownloadProvider` this harness never
+      // stands up, so letting a frame actually build the pushed route would
+      // crash on the missing provider. Unlike the synchronous collection
+      // push, this one goes through an `await` (the playlist-metadata fetch)
+      // before `Navigator.push`, so a couple of bare microtask turns stand in
+      // for the pump: enough to let that fetch resolve and the push happen,
+      // never enough to reach a frame.
+      await tester.tap(find.text('Friday Night Movies'));
+      await Future<void>.value();
+      await Future<void>.value();
+
+      final pushed = observer.lastPushedRoute;
+      expect(pushed, isA<MaterialPageRoute>());
+      final widget = (pushed! as MaterialPageRoute).builder(key.currentState!.context);
+      expect(widget, isA<PlaylistDetailScreen>());
+    });
+
+    testWidgets('an "other" kind (hoofdstuk 16.1 does not name it) still opens through _openConcrete', (tester) async {
+      // A backend result Pleya has no dedicated section for (music, in this
+      // fixture) still renders and still activates, per search_projection.dart's
+      // own reasoning: a result the servers found and Pleya silently discards
+      // is worse than a section the shell chooses not to render.
+      final client = _FakeMediaServerClient(
+        items: [
+          MediaItem(
+            id: 'track-1',
+            backend: MediaBackend.plex,
+            kind: MediaKind.track,
+            title: 'Eclipse',
+            serverId: 'server_1',
+            serverName: 'Server',
+          ),
+        ],
+      );
+      final key = await pumpPhoneSearchScreen(tester, client);
+      (key.currentState! as SearchInputFocusable).setSearchQuery('eclipse');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Eclipse'), findsOneWidget);
+      // Music types are a known, pre-existing `unsupported` result (not an
+      // I4 concern) — tapping must not throw, which is what this actually
+      // guards against.
+      await tester.tap(find.text('Eclipse'));
+      await tester.pumpAndSettle();
+    });
   });
 
   testWidgets('a slow earlier search cannot overwrite a newer one', (tester) async {
@@ -1040,12 +1157,19 @@ class _FakeMediaServerClient implements MediaServerClient, PersonSearchClient {
   // production.
   final Map<String, ExternalIds> externalIdsByItemId;
 
+  // Keyed by playlist id (SRCH-2-style follow-up for playlist activation):
+  // a search hit only carries the neutral `MediaItem` shape, so
+  // `navigateToMediaItem`'s playlist branch fetches the real `MediaPlaylist`
+  // by id before it can open `PlaylistDetailScreen`.
+  final Map<String, MediaPlaylist> playlistsById;
+
   _FakeMediaServerClient({
     required this.items,
     this.people = const [],
     String serverId = 'server_1',
     String serverName = 'Server',
     this.externalIdsByItemId = const {},
+    this.playlistsById = const {},
   }) : _serverId = serverId,
        _serverName = serverName;
 
@@ -1082,6 +1206,9 @@ class _FakeMediaServerClient implements MediaServerClient, PersonSearchClient {
 
   @override
   Future<ExternalIds> fetchExternalIds(String itemId) async => externalIdsByItemId[itemId] ?? const ExternalIds();
+
+  @override
+  Future<MediaPlaylist?> fetchPlaylistMetadata(String id) async => playlistsById[id];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

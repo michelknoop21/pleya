@@ -8,6 +8,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import 'package:rate_limiter/rate_limiter.dart';
 
+import '../automation/automation_ids.dart';
+import '../automation/automation_node.dart';
 import '../focus/focusable_button.dart';
 import '../focus/focusable_text_field.dart';
 import '../i18n/strings.g.dart';
@@ -1063,21 +1065,25 @@ class _SearchScreenState extends State<SearchScreen>
     final sections = <Widget>[
       if (showMovies && projection.movies.isNotEmpty)
         _MobileSearchSection(
+          sectionId: 'movies',
           title: t.unifiedCatalog.moviesTitle,
           children: [for (final group in projection.movies) _mobileGroupRow(context, group)],
         ),
       if (showShows && projection.shows.isNotEmpty)
         _MobileSearchSection(
+          sectionId: 'shows',
           title: t.unifiedCatalog.seriesTitle,
           children: [for (final group in projection.shows) _mobileGroupRow(context, group)],
         ),
       if (showEpisodes && projection.episodes.isNotEmpty)
         _MobileSearchSection(
+          sectionId: 'episodes',
           title: t.search.filters.episodes,
           children: [for (final group in projection.episodes) _mobileGroupRow(context, group)],
         ),
       if (showRest && projection.collections.isNotEmpty)
         _MobileSearchSection(
+          sectionId: 'collections',
           title: t.collections.title,
           children: [
             for (final item in projection.collections) _mobileItemRow(context, item, onTap: () => _openConcrete(item)),
@@ -1085,6 +1091,7 @@ class _SearchScreenState extends State<SearchScreen>
         ),
       if (showRest && projection.playlists.isNotEmpty)
         _MobileSearchSection(
+          sectionId: 'playlists',
           title: t.playlists.title,
           children: [
             for (final item in projection.playlists) _mobileItemRow(context, item, onTap: () => _openConcrete(item)),
@@ -1092,6 +1099,7 @@ class _SearchScreenState extends State<SearchScreen>
         ),
       if (showRest && projection.people.isNotEmpty)
         _MobileSearchSection(
+          sectionId: 'people',
           title: t.search.filters.people,
           children: [
             for (final item in projection.people) _mobileItemRow(context, item, onTap: () => _openPerson(item)),
@@ -1099,6 +1107,7 @@ class _SearchScreenState extends State<SearchScreen>
         ),
       if (showRest && projection.other.isNotEmpty)
         _MobileSearchSection(
+          sectionId: 'other',
           title: t.search.filters.other,
           children: [
             for (final item in projection.other) _mobileItemRow(context, item, onTap: () => _openConcrete(item)),
@@ -1447,39 +1456,53 @@ class _SearchScreenState extends State<SearchScreen>
 /// hand-rolled `Container`/`BoxDecoration`: it already reads the app's
 /// `CardTheme` surface color, so this needs no new token.
 class _MobileSearchSection extends StatelessWidget {
+  final String sectionId;
   final String title;
   final List<Widget> children;
 
-  const _MobileSearchSection({required this.title, required this.children});
+  const _MobileSearchSection({required this.sectionId, required this.title, required this.children});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Text(
-              title.toUpperCase(),
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-                letterSpacing: 0.5,
+    return AutomationNode(
+      id: AutomationIds.searchResultsSection,
+      instance: sectionId,
+      role: 'region',
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Text(
+                title.toUpperCase(),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
-          ),
-          Card(
-            margin: EdgeInsets.zero,
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                for (var i = 0; i < children.length; i++) ...[if (i > 0) const Divider(height: 1), children[i]],
-              ],
+            Card(
+              margin: EdgeInsets.zero,
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  for (var i = 0; i < children.length; i++) ...[
+                    if (i > 0) const Divider(height: 1),
+                    AutomationNode(
+                      id: AutomationIds.searchResultsItem,
+                      instance: '$sectionId.$i',
+                      role: 'list.item',
+                      child: children[i],
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
