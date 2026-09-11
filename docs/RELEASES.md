@@ -125,6 +125,7 @@ under `Notes`.
 - LAND5 restore onto a scrolled-away card falls back to first
 - VER3 first discovery tile's focus ring clears the safe zone
 - VER5 media-detail.episode-refresh reaches Bibliotheken via Mijn Pleya
+- GOLD2 regenerate tv_home_production references
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
