@@ -95,4 +95,13 @@ void main() {
     await tester.tap(find.byType(MobileMediaCard).last);
     expect(tapped?.groupId, 'i1');
   });
+
+  testWidgets('long-press opens the unified group menu, not the legacy single-source one', (tester) async {
+    await pump(tester, MobileMediaRail(hub: hub(count: 1), railIndex: 0));
+
+    await tester.longPress(find.byType(MobileMediaCard).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mark as Watched'), findsOneWidget);
+  });
 }
