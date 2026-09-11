@@ -105,6 +105,10 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		// geen transcode_sessions.
 		"server_settings": true,
 		"admin_audit":     true,
+		// D1, uit pleya-server-loudness-measurement-proposal.md (D0, goedgekeurd). Een
+		// zelfstandig werkpakket naast PS-11A, geen onderdeel van de S1/S2-scope
+		// hierboven.
+		"stream_loudness": true,
 	}
 
 	rows, err := pool.Query(ctx, `
