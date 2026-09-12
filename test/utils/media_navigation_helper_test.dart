@@ -104,6 +104,34 @@ void main() {
         isTrue,
       );
     });
+
+    test('an explicit restart from beginning always overrides the details setting', () {
+      expect(
+        shouldOpenEpisodeDetailsForActivation(
+          playDirectly: true,
+          continueWatchingAction: ContinueWatchingAction.details,
+          episodeAction: EpisodeAction.play,
+          restartFromBeginning: true,
+        ),
+        isFalse,
+      );
+
+      expect(
+        shouldOpenContinueWatchingDetailsForActivation(
+          playDirectly: true,
+          continueWatchingAction: ContinueWatchingAction.details,
+        ),
+        isTrue,
+      );
+      expect(
+        shouldOpenContinueWatchingDetailsForActivation(
+          playDirectly: true,
+          continueWatchingAction: ContinueWatchingAction.details,
+          restartFromBeginning: true,
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('post-playback return handling', () {

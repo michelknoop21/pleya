@@ -127,9 +127,22 @@ bool shouldOpenEpisodeDetailsForActivation({
   required bool playDirectly,
   required ContinueWatchingAction continueWatchingAction,
   required EpisodeAction episodeAction,
+  bool restartFromBeginning = false,
 }) {
+  if (restartFromBeginning) return false;
   if (playDirectly) return continueWatchingAction == ContinueWatchingAction.details;
   return episodeAction == EpisodeAction.details;
+}
+
+/// Same details-vs-player question as [shouldOpenEpisodeDetailsForActivation],
+/// for the movie branch's Continue Watching setting.
+bool shouldOpenContinueWatchingDetailsForActivation({
+  required bool playDirectly,
+  required ContinueWatchingAction continueWatchingAction,
+  bool restartFromBeginning = false,
+}) {
+  if (restartFromBeginning) return false;
+  return playDirectly && continueWatchingAction == ContinueWatchingAction.details;
 }
 
 /// Decides what runs after a direct-to-player activation returns, for
@@ -189,10 +202,12 @@ void handlePlaybackReturn(
 /// what the legacy `MediaContextMenu`'s own `play_from_beginning` case does at
 /// its call site: the item that reaches the player carries a zeroed
 /// `viewOffsetMs`, and `resolveWatchState` is skipped so the fresh-fetch does
-/// not overwrite the zero with whatever the server last saw. Only takes effect
-/// on the two branches that actually reach the player (movie and
-/// clip/episode); a branch that opens a details screen instead ignores it, so
-/// the detail page never shows a falsely-zeroed progress bar.
+/// not overwrite the zero with whatever the server last saw. This overrides
+/// the Continue Watching/Episode Action "show details instead" setting on the
+/// two branches that can reach the player (movie and clip/episode): that
+/// setting governs passive activation (a row-card press), and letting it
+/// intercept an explicit "restart from beginning" menu pick would silently
+/// swap the command for a details screen instead of honouring it.
 ///
 /// [unifiedRouteContext] is the optional group context of hoofdstuk 15
 /// (docs/tvos-unified-experience.md): which group this concrete item was
@@ -241,11 +256,16 @@ Future<MediaNavigationResult> navigateToMediaItem(
   final settings = SettingsService.instanceOrNull;
   final continueWatchingAction = settings?.read(SettingsService.continueWatchingAction) ?? ContinueWatchingAction.play;
   final episodeAction = settings?.read(SettingsService.episodeAction) ?? EpisodeAction.play;
-  final shouldOpenContinueWatchingDetails = playDirectly && continueWatchingAction == ContinueWatchingAction.details;
+  final shouldOpenContinueWatchingDetails = shouldOpenContinueWatchingDetailsForActivation(
+    playDirectly: playDirectly,
+    continueWatchingAction: continueWatchingAction,
+    restartFromBeginning: restartFromBeginning,
+  );
   final shouldOpenEpisodeDetails = shouldOpenEpisodeDetailsForActivation(
     playDirectly: playDirectly,
     continueWatchingAction: continueWatchingAction,
     episodeAction: episodeAction,
+    restartFromBeginning: restartFromBeginning,
   );
 
   // Handle library section items (shared whole-library entries) — Plex-only;
