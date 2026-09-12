@@ -86,6 +86,7 @@ import 'home/mobile_landing_screen.dart';
 import 'discover_screen.dart';
 import 'libraries/library_quick_picker_sheet.dart';
 import 'libraries/libraries_screen.dart';
+import 'tv/sections/tv_libraries_screen.dart';
 import 'livetv/live_tv_screen.dart';
 import 'search_screen.dart';
 import 'seerr/seerr_discover_screen.dart';
@@ -563,10 +564,12 @@ class _MainScreenState extends State<MainScreen>
   /// [_buildTickerAwareStack] now keeps out of the focus tree (P5).
   final GlobalKey<State<WatchlistScreen>> _tvWatchlistKey = GlobalKey();
 
-  /// Reaches the `LibrariesScreen` inside Mijn Pleya ▸ Bibliotheken, so the
+  /// Reaches the `TvLibrariesScreen` inside Mijn Pleya ▸ Bibliotheken, so the
   /// hoofdstuk 6.4 adapter can call the same `loadLibraryByKey` the rail's
-  /// library rows have always called.
-  final GlobalKey<State<LibrariesScreen>> _tvLibrariesKey = GlobalKey();
+  /// library rows have always called. Not `LibrariesScreen` — DEC-092 (LIB7)
+  /// gave TV its own bronbeheer screen; the shared class still backs
+  /// [_librariesKey] above for desktop and mobile.
+  final GlobalKey<State<TvLibrariesScreen>> _tvLibrariesKey = GlobalKey();
 
   /// The remembered Live TV capability for this profile. See
   /// [TvLiveTvCapabilityStore] for why a poll may not clear it.

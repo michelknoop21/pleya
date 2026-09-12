@@ -1117,6 +1117,12 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	@override String get libraryOptions => 'Bibliotheek opties';
 	@override String get content => 'bibliotheekinhoud';
 	@override String get selectLibrary => 'Bibliotheek kiezen';
+	@override String get openInAllMovies => 'Openen in Alle films';
+	@override String get openInAllSeries => 'Openen in Alle series';
+	@override String get openInCatalogSubtitle => 'met deze bron als filter';
+	@override String get refreshAllLibraries => 'Alles vernieuwen';
+	@override String get reorder => 'Ordenen';
+	@override String get reorderIntro => 'Gebruik de pijltoetsen om de volgorde te wijzigen. Dit geldt voor de kiezer en voor Home.';
 	@override String filtersWithCount({required Object count}) => 'Filters (${count})';
 	@override String get noRecommendations => 'Geen aanbevelingen beschikbaar';
 	@override String get noCollections => 'Geen collecties in deze bibliotheek';
@@ -3821,6 +3827,12 @@ extension on TranslationsNl {
 			'libraries.libraryOptions' => 'Bibliotheek opties',
 			'libraries.content' => 'bibliotheekinhoud',
 			'libraries.selectLibrary' => 'Bibliotheek kiezen',
+			'libraries.openInAllMovies' => 'Openen in Alle films',
+			'libraries.openInAllSeries' => 'Openen in Alle series',
+			'libraries.openInCatalogSubtitle' => 'met deze bron als filter',
+			'libraries.refreshAllLibraries' => 'Alles vernieuwen',
+			'libraries.reorder' => 'Ordenen',
+			'libraries.reorderIntro' => 'Gebruik de pijltoetsen om de volgorde te wijzigen. Dit geldt voor de kiezer en voor Home.',
 			'libraries.filtersWithCount' => ({required Object count}) => 'Filters (${count})',
 			'libraries.noRecommendations' => 'Geen aanbevelingen beschikbaar',
 			'libraries.noCollections' => 'Geen collecties in deze bibliotheek',
@@ -3985,14 +3997,14 @@ extension on TranslationsNl {
 			'liveTv.cancelRecordingTitle' => 'Deze opname annuleren?',
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} wordt niet meer opgenomen.',
 			'liveTv.deleteRule' => 'Regel verwijderen',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.deleteRuleTitle' => 'Opnameregel verwijderen?',
 			'liveTv.deleteRuleMessage' => ({required Object title}) => 'Toekomstige afleveringen van ${title} worden niet opgenomen.',
 			'liveTv.recordingScheduled' => 'Opname gepland',
 			'liveTv.alreadyScheduled' => 'Dit programma is al gepland',
 			'liveTv.dvrAdminRequired' => 'DVR-instellingen vereisen een beheerdersaccount',
 			'liveTv.recordingFailed' => 'Kon opname niet plannen',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.recordingTargetMissing' => 'Kon opnamebibliotheek niet bepalen',
 			'liveTv.recordNotAvailable' => 'Opname niet beschikbaar voor dit programma',
 			'liveTv.recordingCancelled' => 'Opname geannuleerd',
@@ -4499,14 +4511,14 @@ extension on TranslationsNl {
 			'addServer.serverUrlsHelper' => 'Meerdere URL\'s toegestaan, gescheiden door komma\'s.',
 			'addServer.findServer' => 'Server zoeken',
 			'addServer.searchingLocalServers' => 'Lokale Jellyfin-servers zoeken...',
+			_ => null,
+		} ?? switch (path) {
 			'addServer.localServers' => 'Lokale Jellyfin-servers',
 			'addServer.username' => 'Gebruikersnaam',
 			'addServer.password' => 'Wachtwoord',
 			'addServer.signIn' => 'Inloggen',
 			'addServer.change' => 'Wijzigen',
 			'addServer.required' => 'Vereist',
-			_ => null,
-		} ?? switch (path) {
 			'addServer.couldNotReachServer' => 'Kon de server niet bereiken',
 			'addServer.signInFailed' => 'Inloggen mislukt',
 			'addServer.quickConnectFailed' => 'Quick Connect mislukt',

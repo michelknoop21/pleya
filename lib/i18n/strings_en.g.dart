@@ -2681,6 +2681,24 @@ class TranslationsLibrariesEn {
 	/// en: 'Select library'
 	String get selectLibrary => 'Select library';
 
+	/// en: 'Open in All Movies'
+	String get openInAllMovies => 'Open in All Movies';
+
+	/// en: 'Open in All Series'
+	String get openInAllSeries => 'Open in All Series';
+
+	/// en: 'with this source as filter'
+	String get openInCatalogSubtitle => 'with this source as filter';
+
+	/// en: 'Refresh All'
+	String get refreshAllLibraries => 'Refresh All';
+
+	/// en: 'Reorder'
+	String get reorder => 'Reorder';
+
+	/// en: 'Use the arrows to change the order. It applies to the source picker and to Home.'
+	String get reorderIntro => 'Use the arrows to change the order. It applies to the source picker and to Home.';
+
 	/// en: 'Filters (${count})'
 	String filtersWithCount({required Object count}) => 'Filters (${count})';
 
@@ -7801,6 +7819,12 @@ extension on Translations {
 			'libraries.libraryOptions' => 'Library options',
 			'libraries.content' => 'library content',
 			'libraries.selectLibrary' => 'Select library',
+			'libraries.openInAllMovies' => 'Open in All Movies',
+			'libraries.openInAllSeries' => 'Open in All Series',
+			'libraries.openInCatalogSubtitle' => 'with this source as filter',
+			'libraries.refreshAllLibraries' => 'Refresh All',
+			'libraries.reorder' => 'Reorder',
+			'libraries.reorderIntro' => 'Use the arrows to change the order. It applies to the source picker and to Home.',
 			'libraries.filtersWithCount' => ({required Object count}) => 'Filters (${count})',
 			'libraries.noRecommendations' => 'No recommendations available',
 			'libraries.noCollections' => 'No collections in this library',
@@ -7965,14 +7989,14 @@ extension on Translations {
 			'liveTv.cancelRecordingTitle' => 'Cancel this recording?',
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} will no longer be recorded.',
 			'liveTv.deleteRule' => 'Delete rule',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.deleteRuleTitle' => 'Delete recording rule?',
 			'liveTv.deleteRuleMessage' => ({required Object title}) => 'Future episodes of ${title} will not be recorded.',
 			'liveTv.recordingScheduled' => 'Recording scheduled',
 			'liveTv.alreadyScheduled' => 'This program is already scheduled',
 			'liveTv.dvrAdminRequired' => 'DVR settings require an admin account',
 			'liveTv.recordingFailed' => 'Couldn\'t schedule recording',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.recordingTargetMissing' => 'Couldn\'t determine recording library',
 			'liveTv.recordNotAvailable' => 'Recording not available for this program',
 			'liveTv.recordingCancelled' => 'Recording cancelled',
@@ -8479,14 +8503,14 @@ extension on Translations {
 			'seerr.allSeasons' => 'All seasons',
 			'seerr.seasonsRange' => ({required Object range}) => 'Seasons ${range}',
 			'seerr.seasonsCount' => ({required Object count}) => '${count} seasons',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.requestedBy' => ({required Object name}) => 'Requested by ${name}',
 			'seerr.fourK' => 'Request in 4K',
 			'seerr.fourKBadge' => '4K',
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
 			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => '${remaining} of ${limit} requests left',
 			'seerr.quotaUnlimited' => 'Unlimited requests',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.advancedOptions' => 'Advanced options',
 			'seerr.server' => 'Server',
 			'seerr.qualityProfile' => 'Quality profile',
