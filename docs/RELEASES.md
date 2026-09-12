@@ -63,6 +63,7 @@ under `Notes`.
 - mobiele contextmenu op unified groepssemantiek (I5, mockup 09)
 - mobiele bronkeuze, Wijzigen en playback-failure re-entry (I5, mockup 08)
 - long-press en multi-server in Pleya Verify, mockup 09 dicht
+- iPhone film-/seriedetail redesign (I6, mockup 06/07)
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
@@ -137,6 +138,7 @@ under `Notes`.
 - titelbewijs resetten en paritybewijs gelijktrekken
 - Zoeken opent Aanvragen binnen de shell, ook met resultaten
 - toon servernaam bij personenresultaten (build 270)
+- I6 review findings — Details-tab duplicate, dead episode states, deep-link paging
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
