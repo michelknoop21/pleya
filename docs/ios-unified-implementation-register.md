@@ -46,7 +46,7 @@ werkvolgorde.
 | 15 | Bibliotheken | OPEN | alleen verhuisd naar Mijn Pleya, `my_pleya_screen.dart:83-93` | open | n.v.t. | 8 (I7) |
 | 16 | Profiel kiezen | OPEN | `profile_switch_screen.dart` | open | open: PIN en wisselen op een iPhone | 10 (I8) |
 | 17 | Inloggen | OPEN | `auth_screen.dart` | open | open: eerste start op een iPhone | 10 (I8) |
-| 18 | Mijn Pleya volledig | OPEN | `my_pleya_screen.dart`, nog kale lijstrijen | open | n.v.t. | 8 (I7) |
+| 18 | Mijn Pleya volledig | CODE CLOSED · VERIFY/SIM OPEN | `my_pleya_screen.dart`, kaartrijen en `ServersScreen` naar northstar 18, DEC-113, `4eb138bc` | widgettests groen (`my_pleya_screen_test.dart`, TV-regressie in `tv_my_pleya_screen_test.dart` meegecheckt); geen ios-sim Verify-run tegen `18-mijn-pleya-volledig.png` vastgelegd | n.v.t. | 8 (I7) |
 | 19 | Aanvragen | OPEN | `seerr_discover_screen.dart`; DEC-108 geldt alleen voor TV | open | n.v.t. | 8 (I7) |
 | 20 | Speler | OPEN | `mobile_video_controls.dart` | open | open: afspelen in landschap | 12 (I9b) |
 | 21 | Activiteit | OPEN | mobiel alleen een sheet uit de Home-header (goedgekeurde afwijking, audit 9a) | open | n.v.t. | 8 (I7) |
