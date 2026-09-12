@@ -882,6 +882,133 @@ void main() {
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
   });
 
+  testWidgets('TV detail hero swaps to the focused episode\'s own summary', (tester) async {
+    // MOC-10 (mockup 37 C) asked for a per-card synopsis under the focused
+    // episode; the hero already swaps its metadata line and description to
+    // the focused episode via `_tvDetailFocusedEpisode`
+    // (`_buildTvDetailMetadataLine`/`_tvDetailDescription`), which delivers
+    // the same read-without-navigating-away outcome without a new
+    // focus-dependent-height component on the shared `TvBrowseRail`. This
+    // locks that behavior in.
+    await SettingsService.getInstance();
+
+    final show = MediaItem(
+      id: 'show_1',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.show,
+      title: 'The Show',
+      summary: 'Show-level summary.',
+      serverId: 'server_1',
+      serverName: 'Server',
+    );
+    final season1 = MediaItem(
+      id: 'season_1',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.season,
+      title: 'Season 1',
+      index: 1,
+      parentId: show.id,
+      serverId: show.serverId,
+      serverName: show.serverName,
+    );
+    final season2 = MediaItem(
+      id: 'season_2',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.season,
+      title: 'Season 2',
+      index: 2,
+      parentId: show.id,
+      serverId: show.serverId,
+      serverName: show.serverName,
+    );
+    MediaItem episodeOf(MediaItem season, int index, String title, String summary) => MediaItem(
+      id: '${season.id}_e$index',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.episode,
+      title: title,
+      summary: summary,
+      index: index,
+      parentId: season.id,
+      parentIndex: season.index,
+      grandparentId: show.id,
+      serverId: show.serverId,
+      serverName: show.serverName,
+    );
+    final alpha = episodeOf(season1, 1, 'Alpha', 'Alpha episode summary.');
+    final bravo = episodeOf(season1, 2, 'Bravo', 'Bravo episode summary.');
+    final charlie = episodeOf(season2, 1, 'Charlie', 'Charlie episode summary.');
+
+    final client = _FakeMediaServerClient(
+      show: show,
+      childrenByParent: {
+        show.id: [season1, season2],
+        season1.id: [alpha, bravo],
+        season2.id: [charlie],
+      },
+    );
+    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+    final provider = MultiServerProvider(manager, DataAggregationService(manager));
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: ChangeNotifierProvider<MultiServerProvider>.value(
+          value: provider,
+          child: MaterialApp(
+            builder: withNoticeLayer(),
+            theme: monoTheme(dark: true),
+            home: withProfileNavigationScope(
+              child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // A show's TV detail opens with focus already on the rail's first
+    // episode (DEC-109/PB-4), so the hero already shows Alpha, not the show.
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
+    expect(find.text('Alpha episode summary.'), findsOneWidget);
+    expect(find.text('Show-level summary.'), findsNothing);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+
+    expect(find.text('Bravo episode summary.'), findsOneWidget);
+    expect(find.text('Alpha episode summary.'), findsNothing);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+
+    // The chip is still part of the episode-browsing context (PB-4), so the
+    // hero deliberately keeps showing the last-focused episode here.
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'season_tab_0');
+    expect(find.text('Alpha episode summary.'), findsOneWidget);
+
+    // A second UP reaches the action row, which is the actual "leave episode
+    // context" signal (`_focusTvDetailActionRow` clears it explicitly).
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+
+    expect(find.text('Show-level summary.'), findsOneWidget);
+    expect(find.text('Alpha episode summary.'), findsNothing);
+  });
+
   group('watch state freshness (phone layout)', () {
     MediaItem buildShow() => MediaItem(
       id: 'show_1',
