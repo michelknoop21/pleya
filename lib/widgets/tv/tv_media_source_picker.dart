@@ -108,7 +108,7 @@ class TvMediaSourcePicker extends StatelessWidget {
   final bool isResolving;
 
   /// Artwork for the header. Null draws the poster-shaped stand-in of
-  /// [_ArtworkFallback] rather than an empty well.
+  /// [TvArtworkFallback] rather than an empty well.
   final Widget? artwork;
 
   /// The node the overlay host was told to focus when the panel opened, and
@@ -324,7 +324,7 @@ class _Header extends StatelessWidget {
             child: SizedBox(
               width: posterWidth,
               height: posterWidth / TvSourcePickerLayout.posterAspectRatio,
-              child: artwork ?? _ArtworkFallback(scale: scale, width: posterWidth),
+              child: artwork ?? TvArtworkFallback(scale: scale, width: posterWidth),
             ),
           ),
         ),
@@ -379,8 +379,8 @@ class _Header extends StatelessWidget {
 /// use for a missing poster, at the size artwork would occupy rather than at
 /// the size of an error icon. It stands *for* the artwork instead of marking
 /// its absence.
-class _ArtworkFallback extends StatelessWidget {
-  const _ArtworkFallback({required this.scale, required this.width});
+class TvArtworkFallback extends StatelessWidget {
+  const TvArtworkFallback({super.key, required this.scale, required this.width});
 
   final double scale;
   final double width;

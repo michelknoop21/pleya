@@ -127,6 +127,7 @@ Future<UnifiedActivationOutcome> activateUnifiedMediaGroup(
   required UnifiedActivationEnvironment environment,
   Widget? artwork,
   bool playDirectly = false,
+  bool restartFromBeginning = false,
   bool isOffline = false,
   void Function(String)? onRefresh,
   ValueChanged<MediaItem>? onPlaybackReturned,
@@ -158,6 +159,7 @@ Future<UnifiedActivationOutcome> activateUnifiedMediaGroup(
         environment: environment,
         artwork: artwork,
         playDirectly: playDirectly,
+        restartFromBeginning: restartFromBeginning,
         isOffline: isOffline,
         onRefresh: onRefresh,
         onPlaybackReturned: onPlaybackReturned,
@@ -192,6 +194,7 @@ Future<UnifiedActivationOutcome> activateUnifiedMediaGroup(
         environment: environment,
         artwork: artwork,
         playDirectly: playDirectly,
+        restartFromBeginning: restartFromBeginning,
         isOffline: isOffline,
         onRefresh: onRefresh,
         onPlaybackReturned: onPlaybackReturned,
@@ -231,6 +234,7 @@ Future<UnifiedActivationOutcome> _acceptChoice(
   required UnifiedActivationEnvironment environment,
   required Widget? artwork,
   required bool playDirectly,
+  bool restartFromBeginning = false,
   required bool isOffline,
   required void Function(String)? onRefresh,
   required ValueChanged<MediaItem>? onPlaybackReturned,
@@ -256,6 +260,7 @@ Future<UnifiedActivationOutcome> _acceptChoice(
     environment: environment,
     artwork: artwork,
     playDirectly: playDirectly,
+    restartFromBeginning: restartFromBeginning,
     isOffline: isOffline,
     onRefresh: onRefresh,
     onPlaybackReturned: onPlaybackReturned,
@@ -274,6 +279,7 @@ Future<UnifiedActivationOutcome> _routeToSource(
   required UnifiedActivationEnvironment environment,
   required Widget? artwork,
   required bool playDirectly,
+  bool restartFromBeginning = false,
   required bool isOffline,
   required void Function(String)? onRefresh,
   required ValueChanged<MediaItem>? onPlaybackReturned,
@@ -287,6 +293,7 @@ Future<UnifiedActivationOutcome> _routeToSource(
     onRefresh: onRefresh,
     isOffline: isOffline,
     playDirectly: playDirectly,
+    restartFromBeginning: restartFromBeginning,
     traceId: traceId,
     onPlaybackReturned: onPlaybackReturned,
     unifiedRouteContext: routeContext,
@@ -389,6 +396,65 @@ Future<void> _changeSourceFromDetail(
       coverage: routeContext.coverage,
       intent: UnifiedActivationIntent.details,
     ),
+    environment: environment,
+    artwork: artwork,
+    playDirectly: false,
+    isOffline: isOffline,
+    onRefresh: onRefresh,
+    onPlaybackReturned: onPlaybackReturned,
+    traceId: null,
+  );
+}
+
+/// Hoofdstuk 23's "Bron wijzigen" context-menu action: the same explicit
+/// source-selection intent as [_changeSourceFromDetail] — the picker opens
+/// regardless of a usable preferred server — but reached from a card's menu
+/// rather than from an already-open detail route, so there is nothing to pop
+/// first and no [UnifiedMediaRouteContext] to read a current source from.
+Future<UnifiedActivationOutcome> chooseSourceForUnifiedMediaGroup(
+  BuildContext context, {
+  required UnifiedMediaGroup group,
+  required UnifiedActivationEnvironment environment,
+  required bool isOffline,
+  Widget? artwork,
+  void Function(String)? onRefresh,
+  ValueChanged<MediaItem>? onPlaybackReturned,
+}) async {
+  final preferredSourceKey = await SourcePreferenceStore.read(group.identity);
+  final preferredServerId = await PreferredServerStore.read();
+  if (!context.mounted) return UnifiedActivationOutcome.cancelled;
+
+  final ordered = rankSources(
+    group.sources.map((s) => s.withAvailability(environment.availabilityFor(s))).toList(),
+    preferredSourceKey: preferredSourceKey,
+  );
+  // Hoofdstuk 14.7: even with nothing usable, the picker still opens and
+  // shows *why* — the same reason [NoUsableSource] renders its rows instead
+  // of a bare error — so a null focus (nothing usable at all) falls back to
+  // the first row rather than skipping the picker.
+  final initialFocus = selectInitialFocus(ordered, preferredSourceKey: preferredSourceKey) ?? ordered.first.sourceKey;
+  final coverage = environment.coverage ?? SourceCoverageState.none;
+
+  final chosen = await showUnifiedSourcePicker(
+    context,
+    group: group,
+    sources: ordered,
+    initialFocusSourceKey: initialFocus,
+    preferredSourceKey: preferredSourceKey,
+    preferredServerId: preferredServerId,
+    coverage: coverage,
+    intent: UnifiedActivationIntent.details,
+    environment: environment,
+    artwork: artwork,
+  );
+  if (chosen == null || !context.mounted) return UnifiedActivationOutcome.cancelled;
+
+  return _acceptChoice(
+    context,
+    group: group,
+    chosen: chosen,
+    coverage: coverage,
+    intent: UnifiedActivationIntent.details,
     environment: environment,
     artwork: artwork,
     playDirectly: false,

@@ -5577,6 +5577,12 @@ class TranslationsTvContextMenuEn {
 
 	/// en: 'That did not work'
 	String get failed => 'That did not work';
+
+	/// en: 'More Info'
+	String get moreInfo => 'More Info';
+
+	/// en: 'Change Source'
+	String get changeSource => 'Change Source';
 }
 
 // Path: languageSettings
@@ -8917,6 +8923,8 @@ extension on Translations {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Done on ${done} of ${total} sources.',
 			'tvContextMenu.failed' => 'That did not work',
+			'tvContextMenu.moreInfo' => 'More Info',
+			'tvContextMenu.changeSource' => 'Change Source',
 			'languageSettings.title' => 'Language & subtitles',
 			'languageSettings.description' => 'Audio and subtitle languages, and the series that keep their own',
 			'languageSettings.globalHeader' => 'Global preference',

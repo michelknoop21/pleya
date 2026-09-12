@@ -7,11 +7,20 @@
 /// those two apart is what stops the menu from acquiring a second, slightly
 /// different copy of either.
 ///
-/// **Why the menu never routes.** The playback picker ends in a route; this
-/// ends in a value and a message. A user who marks something watched from a row
-/// expects to still be on that row afterwards, so nothing here pushes, and the
+/// **Why the menu never routes itself.** A write ends in a value and a
+/// message: a user who marks something watched from a row expects to still be
+/// on that row afterwards, so a [UnifiedGroupAction] never pushes, and the
 /// overlay sheet's `restoreLauncherFocus` hands focus back to the tile that
 /// opened it.
+///
+/// Hoofdstuk 23's four navigation actions ([UnifiedNavigationAction] —
+/// Afspelen/Hervatten, Vanaf het begin, Meer info, Bron wijzigen) are the one
+/// exception, and they still keep the rule in spirit: this file only asks for
+/// one via the caller-supplied `onNavigate`, the same
+/// `activateUnifiedMediaGroup`/`showUnifiedSourcePicker` call a card press or
+/// the detail page's own "[ Wijzigen ]" already makes. The menu decides *that*
+/// a route should open and *which* of the four; the surface that opened the
+/// menu is the one that actually holds the environment a route needs.
 library;
 
 import 'dart:async';
@@ -42,6 +51,7 @@ import '../../widgets/overlay_sheet_geometry.dart';
 import '../../widgets/rating_bottom_sheet.dart';
 import '../../widgets/tv/tv_catalog_sort_panel.dart';
 import '../../widgets/tv/tv_panel_primitives.dart';
+import '../../widgets/tv/tv_media_source_picker.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/snackbar_helper.dart';
@@ -69,14 +79,28 @@ import 'tv_unified_context_actions.dart';
 /// entry in it would have to be filtered out again at every other call site.
 typedef TvContextMenuExtraAction = ({String label, VoidCallback onSelected});
 
+/// PB-5's order, exactly as hoofdstuk 23 names it: Afspelen of Hervatten,
+/// Afspelen vanaf het begin, Meer info, Bron wijzigen. "Bron wijzigen" only
+/// earns its row with more than one membership to choose between — the same
+/// gate [UnifiedMediaRouteContext.hasAlternativeSources] applies on the detail
+/// page, read here at group level since there is no open route yet to ask.
+List<UnifiedNavigationAction> _availableNavigationActions(UnifiedMediaGroup group) => [
+  UnifiedNavigationAction.playOrResume,
+  UnifiedNavigationAction.playFromBeginning,
+  UnifiedNavigationAction.moreInfo,
+  if (group.sources.length > 1) UnifiedNavigationAction.changeSource,
+];
+
 Future<void> showTvUnifiedContextMenu(
   BuildContext context, {
   required UnifiedMediaGroup group,
   required SourceAvailability Function(UnifiedMediaSource source) availabilityFor,
+  required Future<void> Function(UnifiedNavigationAction action) onNavigate,
   bool isInContinueWatching = false,
   bool isOffline = false,
   VoidCallback? onChanged,
   TvContextMenuExtraAction? extraAction,
+  Widget? artwork,
 }) async {
   final representative = group.representativeSource.item;
   final actions = availableUnifiedGroupActions(
@@ -89,23 +113,34 @@ Future<void> showTvUnifiedContextMenu(
       item: representative,
     ),
   );
-  if (actions.isEmpty && extraAction == null) return;
+  final navigationActions = _availableNavigationActions(group);
+  final hasResumeProgress = group.watchState.hasActiveProgress;
 
   // Run *after* the sheet is gone rather than from inside it: the extra entry
-  // opens another panel, and pushing one overlay from the builder context of
-  // the one still closing puts two panels on screen for a frame and leaves the
-  // focus restore pointing at a dead node.
+  // (and now a navigation action) opens another panel or pushes a route, and
+  // doing that from the builder context of the sheet still closing puts two
+  // panels on screen for a frame and leaves the focus restore pointing at a
+  // dead node.
   var extraChosen = false;
+  UnifiedNavigationAction? navigationChosen;
   final chosen = await OverlaySheetController.showAdaptive<UnifiedGroupAction>(
     context,
     presentation: OverlaySheetPresentation.panel,
     restoreLauncherFocus: true,
     builder: (sheetContext) => _ActionMenuPanel(
       title: representative.displayTitle,
+      year: representative.year,
+      artwork: artwork,
+      navigationActions: navigationActions,
+      navigationLabel: (action) => labelForUnifiedNavigationAction(action, hasResumeProgress: hasResumeProgress),
       actions: actions,
       extraActionLabel: extraAction?.label,
       onChooseExtra: () {
         extraChosen = true;
+        OverlaySheetController.closeAdaptive(sheetContext, null);
+      },
+      onChooseNavigation: (action) {
+        navigationChosen = action;
         OverlaySheetController.closeAdaptive(sheetContext, null);
       },
       onChoose: (action) => OverlaySheetController.closeAdaptive(sheetContext, action),
@@ -113,6 +148,10 @@ Future<void> showTvUnifiedContextMenu(
     ),
   );
 
+  if (navigationChosen != null) {
+    if (context.mounted) await onNavigate(navigationChosen!);
+    return;
+  }
   if (extraChosen) {
     // Same guard as the line below, and for the same reason: this runs after an
     // await, and the extra entry opens another panel off this context. The
@@ -232,6 +271,19 @@ String labelForUnifiedGroupAction(UnifiedGroupAction action) => switch (action) 
   UnifiedGroupAction.rate => t.mediaMenu.rate,
   UnifiedGroupAction.removeFromContinueWatching => t.mediaMenu.removeFromContinueWatching,
 };
+
+/// [hasResumeProgress] picks "Afspelen" or "Hervatten" for
+/// [UnifiedNavigationAction.playOrResume] — the same rule the TV Home hero
+/// pill uses (`resumeFractionFor`/`UnifiedWatchState.hasActiveProgress`), so
+/// the word on the menu row never disagrees with the word on the pill for the
+/// same title.
+String labelForUnifiedNavigationAction(UnifiedNavigationAction action, {required bool hasResumeProgress}) =>
+    switch (action) {
+      UnifiedNavigationAction.playOrResume => hasResumeProgress ? t.common.resume : t.common.play,
+      UnifiedNavigationAction.playFromBeginning => t.mediaMenu.playFromBeginning,
+      UnifiedNavigationAction.moreInfo => t.tvContextMenu.moreInfo,
+      UnifiedNavigationAction.changeSource => t.tvContextMenu.changeSource,
+    };
 
 /// Runs [action] against every source in [sources] and reports honestly.
 ///
@@ -466,16 +518,26 @@ Future<void> _applyToOneSource(
 class _ActionMenuPanel extends StatelessWidget {
   const _ActionMenuPanel({
     required this.title,
+    required this.year,
+    required this.artwork,
+    required this.navigationActions,
+    required this.navigationLabel,
     required this.actions,
     required this.onChoose,
+    required this.onChooseNavigation,
     required this.onClose,
     this.extraActionLabel,
     this.onChooseExtra,
   });
 
   final String title;
+  final int? year;
+  final Widget? artwork;
+  final List<UnifiedNavigationAction> navigationActions;
+  final String Function(UnifiedNavigationAction) navigationLabel;
   final List<UnifiedGroupAction> actions;
   final ValueChanged<UnifiedGroupAction> onChoose;
+  final ValueChanged<UnifiedNavigationAction> onChooseNavigation;
   final VoidCallback onClose;
 
   /// See [TvContextMenuExtraAction]. Drawn under a rule, so it reads as being
@@ -489,6 +551,64 @@ class _ActionMenuPanel extends StatelessWidget {
     final mono = tokens(context);
     final radius = tvPanelBorderRadius(MediaQuery.sizeOf(context));
 
+    // Mockup 12's three visual groups, in its order: the play-adjacent
+    // navigation rows, the write actions this file already had, and — its own
+    // section, under its own rule — "Bron wijzigen". `extraActionLabel`
+    // (Home-only) stays a fourth, trailing section exactly as before.
+    final leadingNav = navigationActions.where((a) => a != UnifiedNavigationAction.changeSource).toList();
+    final hasChangeSource = navigationActions.contains(UnifiedNavigationAction.changeSource);
+
+    // One flat sequence for `tvContextMenu.menuSemantics`'s "Action N of M":
+    // every group above is a different kind of action to this file, but to a
+    // listener they are just the rows of one menu, so the index/count pair
+    // spans all of them rather than resetting at each divider.
+    final totalRows =
+        leadingNav.length + actions.length + (hasChangeSource ? 1 : 0) + (extraActionLabel != null ? 1 : 0);
+    var rowIndex = 0;
+
+    Widget divider() => Container(
+      // Margin, not a Padding wrapper: a Container lays the margin outside its
+      // own box, which is what the wrapper did.
+      margin: EdgeInsets.symmetric(vertical: TvSourcePickerLayout.rowGap * scale),
+      height: 1,
+      color: mono.outline,
+    );
+
+    Widget navRow(UnifiedNavigationAction action) {
+      final label = navigationLabel(action);
+      final row = TvCatalogOptionRow(
+        key: ValueKey(action),
+        label: label,
+        semanticLabel: t.tvContextMenu.menuSemantics(index: rowIndex + 1, count: totalRows, label: label),
+        isSelected: false,
+        scale: scale,
+        onPressed: () => onChooseNavigation(action),
+      );
+      rowIndex++;
+      return row;
+    }
+
+    Widget writeRow(UnifiedGroupAction action) {
+      final label = labelForUnifiedGroupAction(action);
+      // `tvContextMenu.menuSemantics` — "Action 3 of 7: Mark as watched".
+      // Translated into sixteen locales and, until now, called from nowhere:
+      // this panel contained no `Semantics(` at all and the row's only
+      // accessibility output was the bare action name.
+      final row = TvCatalogOptionRow(
+        key: ValueKey(action),
+        label: label,
+        semanticLabel: t.tvContextMenu.menuSemantics(index: rowIndex + 1, count: totalRows, label: label),
+        // Nothing here is a setting, so nothing is "the current answer". A
+        // selected tint on an action row would read as "this one is already
+        // on".
+        isSelected: false,
+        scale: scale,
+        onPressed: () => onChoose(action),
+      );
+      rowIndex++;
+      return row;
+    }
+
     return DecoratedBox(
       decoration: tvPanelDecoration(mono, radius),
       child: Padding(
@@ -497,63 +617,40 @@ class _ActionMenuPanel extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: TvSourcePickerLayout.titleFontSize * scale,
-                fontWeight: FontWeight.w600,
-                color: mono.text.withValues(alpha: TvSourcePickerLayout.inkPrimary),
-              ),
-            ),
+            _MenuHeader(scale: scale, title: title, year: year, artwork: artwork),
             SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
             Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                itemCount: actions.length,
-                separatorBuilder: (_, _) => SizedBox(height: TvSourcePickerLayout.rowGap * scale),
-                itemBuilder: (context, index) => TvCatalogOptionRow(
-                  key: ValueKey(actions[index]),
-                  label: labelForUnifiedGroupAction(actions[index]),
-                  // `tvContextMenu.menuSemantics` — "Action 3 of 7: Mark as
-                  // watched". Translated into sixteen locales and, until now,
-                  // called from nowhere: this panel contained no `Semantics(`
-                  // at all and the row's only accessibility output was the bare
-                  // action name. Both `index` and `actions.length` are already
-                  // in scope here, which is why the composition belongs at the
-                  // call site rather than inside the shared row.
-                  semanticLabel: t.tvContextMenu.menuSemantics(
-                    index: index + 1,
-                    count: actions.length,
-                    label: labelForUnifiedGroupAction(actions[index]),
-                  ),
-                  // Nothing here is a setting, so nothing is "the current
-                  // answer". A selected tint on an action row would read as
-                  // "this one is already on".
-                  isSelected: false,
-                  scale: scale,
-                  onPressed: () => onChoose(actions[index]),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final (i, action) in leadingNav.indexed) ...[
+                      if (i > 0) SizedBox(height: TvSourcePickerLayout.rowGap * scale),
+                      navRow(action),
+                    ],
+                    if (leadingNav.isNotEmpty && actions.isNotEmpty) divider(),
+                    for (final (i, action) in actions.indexed) ...[
+                      if (i > 0) SizedBox(height: TvSourcePickerLayout.rowGap * scale),
+                      writeRow(action),
+                    ],
+                    if (hasChangeSource) ...[
+                      if (leadingNav.isNotEmpty || actions.isNotEmpty) divider(),
+                      navRow(UnifiedNavigationAction.changeSource),
+                    ],
+                    if (extraActionLabel != null) ...[
+                      divider(),
+                      TvCatalogOptionRow(
+                        key: const ValueKey('tvContextMenuExtraAction'),
+                        label: extraActionLabel!,
+                        isSelected: false,
+                        scale: scale,
+                        onPressed: onChooseExtra!,
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
-            if (extraActionLabel != null) ...[
-              Container(
-                // Margin, not a Padding wrapper: a Container lays the margin
-                // outside its own box, which is what the wrapper did.
-                margin: EdgeInsets.symmetric(vertical: TvSourcePickerLayout.rowGap * scale),
-                height: 1,
-                color: mono.outline,
-              ),
-              TvCatalogOptionRow(
-                key: const ValueKey('tvContextMenuExtraAction'),
-                label: extraActionLabel!,
-                isSelected: false,
-                scale: scale,
-                onPressed: onChooseExtra!,
-              ),
-            ],
             SizedBox(height: TvSourcePickerLayout.footerGap * scale),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -562,6 +659,63 @@ class _ActionMenuPanel extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The poster header of mockup 12/37: artwork (or [TvArtworkFallback]) beside
+/// the title. No intent question and no coverage line — those belong to the
+/// source picker's own header, and this menu is not asking "where", only
+/// "what next".
+class _MenuHeader extends StatelessWidget {
+  const _MenuHeader({required this.scale, required this.title, required this.year, required this.artwork});
+
+  final double scale;
+  final String title;
+  final int? year;
+  final Widget? artwork;
+
+  @override
+  Widget build(BuildContext context) {
+    final mono = tokens(context);
+    final posterWidth = TvSourcePickerLayout.posterWidth * scale;
+    final radius = BorderRadius.circular(TvSourcePickerLayout.artworkRadius * scale);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        DecoratedBox(
+          decoration: ShapeDecoration(
+            shape: RoundedRectangleBorder(
+              borderRadius: radius,
+              side: BorderSide(color: mono.outline, width: 1),
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: radius,
+            child: SizedBox(
+              width: posterWidth,
+              height: posterWidth / TvSourcePickerLayout.posterAspectRatio,
+              child: artwork ?? TvArtworkFallback(scale: scale, width: posterWidth),
+            ),
+          ),
+        ),
+        SizedBox(width: TvSourcePickerLayout.headerGap * scale),
+        Expanded(
+          child: Text(
+            year == null ? title : '$title ($year)',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: mono.text.withValues(alpha: TvSourcePickerLayout.inkPrimary),
+              fontSize: TvSourcePickerLayout.titleFontSize * scale,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.1,
+              height: 1.1,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -2304,6 +2304,8 @@ class _TranslationsTvContextMenuNl extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.';
 	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen.';
 	@override String get failed => 'Dat is niet gelukt';
+	@override String get moreInfo => 'Meer info';
+	@override String get changeSource => 'Bron wijzigen';
 }
 
 // Path: languageSettings
@@ -4921,6 +4923,8 @@ extension on TranslationsNl {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen.',
 			'tvContextMenu.failed' => 'Dat is niet gelukt',
+			'tvContextMenu.moreInfo' => 'Meer info',
+			'tvContextMenu.changeSource' => 'Bron wijzigen',
 			'languageSettings.title' => 'Taal en ondertitels',
 			'languageSettings.description' => 'Audio- en ondertiteltalen, en de series die hun eigen keuze houden',
 			'languageSettings.globalHeader' => 'Globale voorkeur',

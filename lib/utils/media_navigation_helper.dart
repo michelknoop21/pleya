@@ -185,6 +185,15 @@ void handlePlaybackReturn(
 /// activation; those surfaces use the Continue Watching action setting instead
 /// of the normal Episode Action setting.
 ///
+/// Set [restartFromBeginning] for an explicit "play from beginning" — mirrors
+/// what the legacy `MediaContextMenu`'s own `play_from_beginning` case does at
+/// its call site: the item that reaches the player carries a zeroed
+/// `viewOffsetMs`, and `resolveWatchState` is skipped so the fresh-fetch does
+/// not overwrite the zero with whatever the server last saw. Only takes effect
+/// on the two branches that actually reach the player (movie and
+/// clip/episode); a branch that opens a details screen instead ignores it, so
+/// the detail page never shows a falsely-zeroed progress bar.
+///
 /// [unifiedRouteContext] is the optional group context of hoofdstuk 15
 /// (docs/tvos-unified-experience.md): which group this concrete item was
 /// reached through, and which other sources exist. It is strictly additive —
@@ -209,6 +218,7 @@ Future<MediaNavigationResult> navigateToMediaItem(
   void Function(String)? onRefresh,
   bool isOffline = false,
   bool playDirectly = false,
+  bool restartFromBeginning = false,
   Object? heroTag,
   String? traceId,
   ValueChanged<MediaItem>? onPlaybackReturned,
@@ -317,8 +327,9 @@ Future<MediaNavigationResult> navigateToMediaItem(
       recorder.close(traceId, SelectTraceOutcome.player);
       final result = await navigateToVideoPlayer(
         context,
-        metadata: mi,
+        metadata: restartFromBeginning ? mi.copyWith(viewOffsetMs: 0) : mi,
         isOffline: isOffline,
+        resolveWatchState: !restartFromBeginning,
         onPlaybackInitFailed: unifiedRouteContext == null ? null : onPlaybackInitFailed,
       );
       if (context.mounted) {
@@ -331,8 +342,9 @@ Future<MediaNavigationResult> navigateToMediaItem(
         recorder.close(traceId, SelectTraceOutcome.player);
         final result = await navigateToVideoPlayer(
           context,
-          metadata: mi,
+          metadata: restartFromBeginning ? mi.copyWith(viewOffsetMs: 0) : mi,
           isOffline: isOffline,
+          resolveWatchState: !restartFromBeginning,
           onPlaybackInitFailed: unifiedRouteContext == null ? null : onPlaybackInitFailed,
         );
         if (context.mounted) {

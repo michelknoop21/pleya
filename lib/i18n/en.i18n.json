@@ -2126,7 +2126,9 @@
     "doneOnAll": "Done on all ${count} sources",
     "doneOnSome": "Done on ${done} of ${total} sources. The rest will be retried when they are back online.",
     "doneOnSomeNoRetry": "Done on ${done} of ${total} sources.",
-    "failed": "That did not work"
+    "failed": "That did not work",
+    "moreInfo": "More Info",
+    "changeSource": "Change Source"
   },
   "languageSettings": {
     "title": "Language & subtitles",

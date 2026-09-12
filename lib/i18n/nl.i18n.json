@@ -2126,7 +2126,9 @@
     "doneOnAll": "Gereed op alle ${count} bronnen",
     "doneOnSome": "Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.",
     "doneOnSomeNoRetry": "Gereed op ${done} van ${total} bronnen.",
-    "failed": "Dat is niet gelukt"
+    "failed": "Dat is niet gelukt",
+    "moreInfo": "Meer info",
+    "changeSource": "Bron wijzigen"
   },
   "languageSettings": {
     "title": "Taal en ondertitels",
