@@ -75,6 +75,12 @@ class TvSourcePickerLayout {
   /// Gap between the two text lines inside a row.
   static const double rowLineGap = 4;
 
+  /// Backend badge (33.9, richtinggevend): sized to the primary line's
+  /// cap-height rather than the full row, so it reads as a glyph in the text
+  /// rather than as a second icon competing with the resume-progress bar.
+  static const double rowBadgeSize = 18;
+  static const double rowBadgeGap = 12;
+
   /// Gap above the resume bar. Its own number rather than a multiple of
   /// [rowLineGap], because the bar is not a fourth line of text: at line
   /// spacing it sits on the descenders of the quality line and reads as an
