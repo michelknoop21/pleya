@@ -108,10 +108,11 @@ void main() {
     expect(find.text('Gideuh'), findsNothing);
   });
 
-  testWidgets('all three account actions from the old header menu are here', (tester) async {
+  testWidgets('the remaining account actions from the old header menu are here', (tester) async {
     await pumpScreen(tester);
 
-    expect(find.text(t.profiles.sectionTitle), findsOneWidget);
+    // Profiles lost its own row in northstar 18: the header identity is the
+    // only switcher now (see "tapping the identity opens that same screen").
     expect(find.text(t.common.settings), findsOneWidget);
     expect(find.text(t.common.logout), findsOneWidget);
   });
@@ -122,15 +123,6 @@ void main() {
     final route = routes.pushed.last as MaterialPageRoute<dynamic>;
     return route.builder(tester.element(find.byType(MyPleyaScreen)));
   }
-
-  testWidgets('Profiles opens the existing profile screen, not a second switcher', (tester) async {
-    await pumpScreen(tester);
-    routes.pushed.clear();
-
-    await tester.tap(find.text(t.profiles.sectionTitle));
-
-    expect(pushedScreen(tester), isA<ProfileSwitchScreen>());
-  });
 
   testWidgets('tapping the identity opens that same screen', (tester) async {
     await pumpScreen(tester);
@@ -155,6 +147,9 @@ void main() {
   testWidgets('Sign out asks first, and asking is the existing confirmation', (tester) async {
     await pumpScreen(tester);
 
+    // The card rows above it push Logout below the fold in the test viewport.
+    await tester.ensureVisible(find.text(t.common.logout));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(t.common.logout));
     await tester.pumpAndSettle();
 
@@ -170,10 +165,9 @@ void main() {
   testWidgets('offline the account actions stay reachable', (tester) async {
     await pumpScreen(tester, offline: true);
 
-    expect(find.text(t.profiles.sectionTitle), findsOneWidget);
     expect(find.text(t.common.settings), findsOneWidget);
     expect(find.text(t.common.logout), findsOneWidget);
-    // Requests is the one section that needs a live server, so it goes.
+    // Requests is the one section that needs a live server, so its card goes.
     expect(find.text(t.seerr.title), findsNothing);
   });
 

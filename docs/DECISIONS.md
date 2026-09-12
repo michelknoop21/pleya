@@ -2532,3 +2532,42 @@ Plex-tag-objecten leest (zie `lib/services/plex_client.dart`, nieuwe `searchPeop
 aanname, dan blijft de people-sectie op Plex stil leeg (gewrapt in try/catch), zonder crash maar ook
 zonder resultaat: dit is de eerstvolgende falsificatie voor wie een Plex-server met cast-metadata
 beschikbaar heeft.
+
+## DEC-113: I7-child 18 (Mijn Pleya volledig) hergebruikt TV's tiletaxonomie en laat "Nieuw voor jou" weg
+
+**Date:** 2026-09-12
+**Status:** accepted
+
+**Context:** Rij 8 (I7 Mijn Pleya, [unified-2026-closure.md](unified-2026-closure.md) §5) startte met
+child 18, `my_pleya_screen.dart`. Northstar 18 (`18-mijn-pleya-volledig.png`) groepeert de secties in
+drie blokken: een kaartrij "Mijn content" (Mijn lijst, Aanvragen, Downloads), een kaartrij
+"Bibliotheken en bronnen" (Bibliotheken, Servers, Activiteit) en een lijst "Pleya" (Nieuw voor jou,
+Samen kijken, Instellingen, Over Pleya). TV loste exact dezelfde taxonomie al op in
+`buildTvMyPleyaGroups` (`tv_my_pleya_screen.dart`): welke tegel bestaat, met welk icoon, welke titel
+en subtitel uit `t.tvMyPleya.*`, en de regel dat een teller van 0 geen teller toont. TV's eigen
+doc-comment zegt dat een opgeschaalde telefoonlijst geen 10-voet-oppervlak is. Dat gaat over de
+*widget*, niet over de brondata.
+
+**Decision:** `my_pleya_screen.dart` roept `buildTvMyPleyaGroups` rechtstreeks aan (import van
+`tv/tv_my_pleya_screen.dart` en `tv/tv_my_pleya_sections.dart`) en herverdeelt de tegels zelf over de
+drie mobiele groepen. Dat is een bewuste afwijking van TV's eigen groepindeling: Samen kijken zit op
+TV in de kaartrij "Bibliotheken en bronnen", op mobiel als lijstrij in "Pleya", precies zoals
+northstar 18 het laat zien. Er komt geen tweede tiletaxonomie naast de bestaande.
+
+`buildTvMyPleyaGroups` kent geen `TvMyPleyaSection` voor "Nieuw voor jou": dat is child 13
+(Meldingen), en het register zegt daarover letterlijk "bestaat niet". Er is geen enkele
+gebeurtenis-bron, geen ongelezen-status, niets om de rode stip uit de mockup te voeden. De rij is
+dus weggelaten in plaats van gebouwd met nepdata of een rij die nergens naartoe gaat. Dit is een
+zichtbare afwijking van de bevroren northstar (DEC-090 vraagt daar een DEC om), vandaar dit besluit:
+de rij komt terug zodra child 13 een echte databron oplevert.
+
+Servers krijgt op mobiel een nieuwe `ServersScreen` (`lib/screens/servers_screen.dart`), dezelfde
+wrap-aanpak als TV's `TvServersPage`: een kale `Scaffold`/`FocusedScrollScaffold` om de bestaande
+`ConnectionsSection`, geen tweede serverbeheer-implementatie.
+
+**Consequences:** Widgettests (`test/screens/my_pleya_screen_test.dart`) volgen de nieuwe indeling;
+de losse "Profielen"-lijstrij verviel omdat de header-identiteit al dezelfde `ProfileSwitchScreen`
+opent (northstar 18 toont ook geen aparte rij daarvoor). Geen ios-sim Verify-run tegen
+`18-mijn-pleya-volledig.png` vastgelegd deze sessie: widgettests en `flutter analyze` zijn het enige
+bewijs. Children 11, 12, 13, 14, 15, 19, 21 van I7 blijven ieder een eigen branch met eigen bewijs;
+dit besluit dekt alleen 18's eigen scherm.
