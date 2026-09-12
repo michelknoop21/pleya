@@ -18,28 +18,33 @@ extension _PhoneEpisodeTabs on _MediaDetailScreenState {
           children: [
             for (var i = 0; i < labels.length; i++)
               Expanded(
-                child: InkWell(
-                  onTap: () => _selectPhoneDetailTab(i),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Text(
-                          labels[i],
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: i == _selectedPhoneDetailTab ? .w700 : .w500,
-                            color: i == _selectedPhoneDetailTab
-                                ? theme.colorScheme.onSurface
-                                : theme.colorScheme.onSurfaceVariant,
+                child: AutomationNode(
+                  id: AutomationIds.mediaDetailPhoneTab,
+                  instance: '$i',
+                  role: 'tab',
+                  child: InkWell(
+                    onTap: () => _selectPhoneDetailTab(i),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Text(
+                            labels[i],
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: i == _selectedPhoneDetailTab ? .w700 : .w500,
+                              color: i == _selectedPhoneDetailTab
+                                  ? theme.colorScheme.onSurface
+                                  : theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
-                      ),
-                      Container(
-                        height: 2,
-                        color: i == _selectedPhoneDetailTab ? theme.colorScheme.primary : Colors.transparent,
-                      ),
-                    ],
+                        Container(
+                          height: 2,
+                          color: i == _selectedPhoneDetailTab ? theme.colorScheme.primary : Colors.transparent,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -57,7 +62,7 @@ extension _PhoneEpisodeTabs on _MediaDetailScreenState {
         return _buildPhoneEpisodesTab(context, metadata);
       case 1:
         return _relatedHubs.isEmpty
-            ? _sectionEmpty(context, t.messages.noEpisodesFoundGeneral)
+            ? _sectionEmpty(context, t.states.emptyTitle)
             : Column(
                 crossAxisAlignment: .start,
                 children: [
@@ -70,7 +75,7 @@ extension _PhoneEpisodeTabs on _MediaDetailScreenState {
       case 2:
         return (!widget.isOffline && _extras != null && _extras!.isNotEmpty)
             ? _buildExtrasSectionContent()
-            : _sectionEmpty(context, t.messages.noEpisodesFoundGeneral);
+            : _sectionEmpty(context, t.states.emptyTitle);
       default:
         final theme = Theme.of(context);
         return Column(
@@ -86,7 +91,7 @@ extension _PhoneEpisodeTabs on _MediaDetailScreenState {
             ],
             _buildPhoneCreditsLine(metadata),
             const SizedBox(height: 12),
-            ..._buildPhoneTrailingSections(context, metadata),
+            ..._buildPhoneWatchersAndInfoRows(context, metadata),
           ],
         );
     }
@@ -127,22 +132,27 @@ extension _PhoneEpisodeTabs on _MediaDetailScreenState {
     final theme = Theme.of(context);
     final current = _selectedSeasonIndex < _seasons.length ? _seasons[_selectedSeasonIndex] : null;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(999),
-      onTap: () => unawaited(_showPhoneSeasonPicker(context)),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: .min,
-          children: [
-            Text(current?.title ?? '', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: .w600)),
-            const SizedBox(width: 4),
-            Icon(Symbols.expand_more_rounded, size: 20, color: theme.colorScheme.onSurfaceVariant),
-          ],
+    return AutomationNode(
+      id: AutomationIds.mediaDetailPhoneSeasonDropdown,
+      role: 'button',
+      state: () => {'season_index': _selectedSeasonIndex, 'season_title': current?.title},
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => unawaited(_showPhoneSeasonPicker(context)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: .min,
+            children: [
+              Text(current?.title ?? '', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: .w600)),
+              const SizedBox(width: 4),
+              Icon(Symbols.expand_more_rounded, size: 20, color: theme.colorScheme.onSurfaceVariant),
+            ],
+          ),
         ),
       ),
     );
@@ -165,17 +175,26 @@ extension _PhoneEpisodeTabs on _MediaDetailScreenState {
       showDragHandle: true,
       builder: (sheetContext) {
         return SafeArea(
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: _seasons.length,
-            itemBuilder: (context, index) {
-              final season = _seasons[index];
-              return ListTile(
-                title: Text(season.title ?? ''),
-                trailing: index == _selectedSeasonIndex ? const Icon(Symbols.check_rounded) : null,
-                onTap: () => Navigator.pop(sheetContext, index),
-              );
-            },
+          child: AutomationNode(
+            id: AutomationIds.sheetSeasonPicker,
+            role: 'sheet',
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _seasons.length,
+              itemBuilder: (context, index) {
+                final season = _seasons[index];
+                return AutomationNode(
+                  id: AutomationIds.sheetSeasonPickerRow,
+                  instance: '$index',
+                  role: 'list.item',
+                  child: ListTile(
+                    title: Text(season.title ?? ''),
+                    trailing: index == _selectedSeasonIndex ? const Icon(Symbols.check_rounded) : null,
+                    onTap: () => Navigator.pop(sheetContext, index),
+                  ),
+                );
+              },
+            ),
           ),
         );
       },

@@ -136,6 +136,8 @@ import '../utils/error_message_utils.dart';
 import 'package:share_plus/share_plus.dart';
 
 part 'media_detail/action_buttons.dart';
+part 'media_detail/download_button.dart';
+part 'media_detail/unified_source_line.dart';
 part 'media_detail/synopsis_panel.dart';
 part 'media_detail/tv_season_chips.dart';
 part 'media_detail/phone_detail.dart';

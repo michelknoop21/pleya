@@ -111,6 +111,12 @@ ids:
   - id: media-detail.season-chip
     role: chip
     instanceable: true
+  - id: media-detail.phone-tab
+    role: tab
+    instanceable: true
+  - id: media-detail.phone-season-dropdown
+    role: button
+    instanceable: false
   - id: screen.my_pleya
     role: screen
     instanceable: false
@@ -220,6 +226,12 @@ ids:
     role: sheet
     instanceable: false
   - id: sheet.context_menu.item
+    role: list.item
+    instanceable: true
+  - id: sheet.season_picker
+    role: sheet
+    instanceable: false
+  - id: sheet.season_picker.row
     role: list.item
     instanceable: true
   - id: screen.catalog_movies

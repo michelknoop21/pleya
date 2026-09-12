@@ -27,6 +27,9 @@ bool applyNamedFixture(PleyaFakeServer server, String name) {
     case 'catalog.empty.v1':
       server.resetCatalog();
       return true;
+    case 'catalog.multiseason.v1':
+      _applyCatalogMultiseasonV1(server);
+      return true;
     default:
       return false;
   }
@@ -111,6 +114,57 @@ void _applyCatalogShowsV1(PleyaFakeServer server) {
       durationMs: 1500000 + episodeIndex * 1000,
       posterId: _registerArtwork(server, episodeId),
     );
+  }
+}
+
+/// "Beacon" — one show, two seasons of two episodes each. Every other named
+/// fixture's show has exactly one season, which never exercises the phone
+/// season picker (`_showPhoneSeasonPicker`, I6): its dropdown only renders
+/// when a show has more than one season.
+void _applyCatalogMultiseasonV1(PleyaFakeServer server) {
+  const fixture = 'catalog.multiseason.v1';
+  server.resetCatalog();
+
+  final libraryId = _mintId(server, fixture, 'library', 'shows');
+  server.addLibrary(id: libraryId, title: 'Shows', kind: 'shows', itemCount: 1);
+
+  final showId = _mintId(server, fixture, 'show', 'beacon');
+  server.addItem(
+    id: showId,
+    kind: 'show',
+    title: 'Beacon',
+    libraryId: libraryId,
+    year: 2025,
+    childCount: 2,
+    episodeCount: 4,
+    posterId: _registerArtwork(server, showId),
+  );
+
+  for (final seasonIndex in [1, 2]) {
+    final seasonId = _mintId(server, fixture, 'season', 'beacon-s0$seasonIndex');
+    server.addItem(
+      id: seasonId,
+      kind: 'season',
+      title: 'Season $seasonIndex',
+      parentId: showId,
+      index: seasonIndex,
+      childCount: 2,
+      episodeCount: 2,
+      posterId: _registerArtwork(server, seasonId),
+    );
+
+    for (final episodeIndex in [1, 2]) {
+      final episodeId = _mintId(server, fixture, 'episode', 'beacon-s0${seasonIndex}e0$episodeIndex');
+      server.addItem(
+        id: episodeId,
+        kind: 'episode',
+        title: 'S0${seasonIndex}E0$episodeIndex',
+        parentId: seasonId,
+        index: episodeIndex,
+        durationMs: 1400000 + episodeIndex * 1000,
+        posterId: _registerArtwork(server, episodeId),
+      );
+    }
   }
 }
 

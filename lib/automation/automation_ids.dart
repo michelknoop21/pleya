@@ -104,6 +104,17 @@ class AutomationIds {
   /// One chip in [mediaDetailSeasonChips]. Instanceable: suffixed `[<index>]`.
   static const String mediaDetailSeasonChip = 'media-detail.season-chip';
 
+  /// The phone series-detail tab strip button (I6, mockup 07): Afleveringen/
+  /// Vergelijkbaar/Extra's/Details. Instanceable: suffixed `[<index>]`,
+  /// same 4 tabs in the same order every time (not conditional like
+  /// [sheetContextMenuItem]), so an index is stable here.
+  static const String mediaDetailPhoneTab = 'media-detail.phone-tab';
+
+  /// The phone series-detail season dropdown button that opens
+  /// [sheetSeasonPicker] (I6, mockup 07). Only rendered when a show has more
+  /// than one season.
+  static const String mediaDetailPhoneSeasonDropdown = 'media-detail.phone-season-dropdown';
+
   /// The Mijn Pleya hub as a screen. Its own `AutomationScreen`, because
   /// `screen.main` is mounted for the whole session and says nothing about
   /// which destination is on show.
@@ -275,6 +286,13 @@ class AutomationIds {
   /// One row in [sheetSourcePicker]. Instanceable: suffixed `[<index>]`.
   static const String sheetSourcePickerRow = 'sheet.source_picker.row';
 
+  /// The phone series-detail season picker (I6, mockup 07) as a whole.
+  static const String sheetSeasonPicker = 'sheet.season_picker';
+
+  /// One row in [sheetSeasonPicker]. Instanceable: suffixed `[<index>]`,
+  /// same shape as [sheetSourcePickerRow].
+  static const String sheetSeasonPickerRow = 'sheet.season_picker.row';
+
   /// The mobile unified context menu (mockup 09,
   /// `docs/assets/ios-unified/northstar/09-contextmenu-sheet.png`) as a whole.
   static const String sheetContextMenu = 'sheet.context_menu';
@@ -349,6 +367,7 @@ class AutomationIds {
     libraryGridItem,
     mediaDetailEpisodeListItem,
     mediaDetailSeasonChip,
+    mediaDetailPhoneTab,
     discoverRail,
     discoverRailItem,
     myPleyaTile,
@@ -372,6 +391,7 @@ class AutomationIds {
     searchResultsItem,
     sheetSourcePickerRow,
     sheetContextMenuItem,
+    sheetSeasonPickerRow,
     catalogHeader,
     catalogHeaderSearch,
     catalogChipSources,
@@ -422,6 +442,8 @@ class AutomationIds {
     {'id': mediaDetailEpisodeListItem, 'role': 'list.item', 'instanceable': true},
     {'id': mediaDetailSeasonChips, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailSeasonChip, 'role': 'chip', 'instanceable': true},
+    {'id': mediaDetailPhoneTab, 'role': 'tab', 'instanceable': true},
+    {'id': mediaDetailPhoneSeasonDropdown, 'role': 'button', 'instanceable': false},
     {'id': screenMyPleya, 'role': 'screen', 'instanceable': false},
     {'id': myPleyaTile, 'role': 'grid.item', 'instanceable': true},
     {'id': myPleyaSection, 'role': 'region', 'instanceable': true},
@@ -459,6 +481,8 @@ class AutomationIds {
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
     {'id': sheetContextMenu, 'role': 'sheet', 'instanceable': false},
     {'id': sheetContextMenuItem, 'role': 'list.item', 'instanceable': true},
+    {'id': sheetSeasonPicker, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetSeasonPickerRow, 'role': 'list.item', 'instanceable': true},
     {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},
     {'id': screenCatalogSeries, 'role': 'screen', 'instanceable': false},
     {'id': catalogHeader, 'role': 'region', 'instanceable': true},

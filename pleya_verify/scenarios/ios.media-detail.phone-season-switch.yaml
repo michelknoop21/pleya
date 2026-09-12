@@ -1,0 +1,39 @@
+name: ios.media-detail.phone-season-switch
+target: ios-sim
+# I6 acceptance criterion "seizoenstaat blijft bewaard": picks a non-default
+# season via the phone season picker (mockup 07), switches away to another
+# tab and back, and proves the picked season survived — the exact regression
+# the code review flagged as having zero coverage. Both seasons in
+# catalog.multiseason.v1 have 2 episodes, so child_count can't tell them
+# apart — the season dropdown's own `season_index` state does.
+setup:
+  - reset_app
+  - seed: catalog.multiseason.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - settle: 3500
+  - tap: {id: home.header.search}
+  - settle: 800
+  - type: "beacon"
+  - wait_until: {id: "search.results.section[shows]", timeout: 10000}
+  - tap: {id: "search.results.item[shows.0]"}
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - settle: 2000
+  - assert: {id: media-detail.phone-season-dropdown, state: {season_index: 0}}
+  - snapshot: season-switch-season1
+  - tap: {id: media-detail.phone-season-dropdown}
+  - wait_until: {id: sheet.season_picker, timeout: 5000}
+  - settle: 400
+  - tap: {id: "sheet.season_picker.row[1]"}
+  - settle: 1000
+  - assert: {id: media-detail.phone-season-dropdown, state: {season_index: 1}}
+  - snapshot: season-switch-season2-selected
+  # Away to Details, then back to Afleveringen — season 2 must still be picked.
+  - tap: {id: "media-detail.phone-tab[3]"}
+  - settle: 600
+  - tap: {id: "media-detail.phone-tab[0]"}
+  - settle: 600
+  - assert: {id: media-detail.phone-season-dropdown, state: {season_index: 1}}
+  - snapshot: season-switch-preserved-after-tab-switch

@@ -28,7 +28,7 @@ extension _PhoneActionButtons on _MediaDetailScreenState {
     if (isShow) {
       final episode = _onDeckEpisode;
       if (episode != null) {
-        episodeCode = t.discover.playEpisode(season: episode.parentIndex ?? 0, episode: episode.index ?? 0);
+        episodeCode = t.discover.playEpisode(season: episode.parentIndex ?? 1, episode: episode.index ?? 1);
       } else {
         final seasonNum = defaultPlaybackSeason(_seasons)?.index ?? 1;
         episodeCode = t.discover.playEpisode(season: seasonNum, episode: 1);

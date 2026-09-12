@@ -11,6 +11,7 @@ extension _PhoneDetailScreen on _MediaDetailScreenState {
     MediaItem metadata,
     KeyEventResult Function(FocusNode, KeyEvent) handleBack,
   ) {
+    _schedulePhoneInitialEpisodePaging();
     final blockSystemBack = InputModeTracker.shouldBlockSystemBack(context);
 
     return PrimaryScrollController(
@@ -259,7 +260,6 @@ extension _PhoneDetailScreen on _MediaDetailScreenState {
   /// (mockup 06). Shows use [_buildPhoneSeriesTabs] instead.
   Widget _buildPhoneFlatDetailContent(BuildContext context, MediaItem metadata) {
     final theme = Theme.of(context);
-    final showEpisodesInline = metadata.isSeason && _episodes.isNotEmpty;
 
     return Column(
       crossAxisAlignment: .start,
@@ -274,13 +274,20 @@ extension _PhoneDetailScreen on _MediaDetailScreenState {
         ],
         _buildPhoneCreditsLine(metadata),
         const SizedBox(height: 20),
-        if (showEpisodesInline) ...[
+        // Gated on the item kind alone (not `_episodes.isNotEmpty`) so the
+        // loading and error branches below stay reachable — the outer gate
+        // used to require a non-empty list, which made both dead code and
+        // left a slow or failed fetch rendering as a silently "complete"
+        // season page with no episodes and no retry.
+        if (metadata.isSeason) ...[
           Text(t.libraries.groupings.episodes, style: theme.textTheme.titleLarge?.copyWith(fontWeight: .bold)),
           const SizedBox(height: 12),
           if (_isLoadingEpisodes)
             _MediaDetailScreenState._sectionLoading
           else if (_allEpisodesPageError && _episodes.isEmpty)
             _sectionError(t.messages.episodesLoadFailed, () => unawaited(_fetchAllEpisodes()))
+          else if (_episodes.isEmpty)
+            _sectionEmpty(context, t.messages.noEpisodesFoundGeneral)
           else
             _buildEpisodesList(),
           const SizedBox(height: 20),
@@ -290,9 +297,11 @@ extension _PhoneDetailScreen on _MediaDetailScreenState {
     );
   }
 
-  /// Related hubs, extras, now-watching/watchers/stats and the studio/rating
-  /// info rows — shared tail content used both by the flat (movie) layout and
-  /// the series "Details" tab.
+  /// Related hubs, extras, then [_buildPhoneWatchersAndInfoRows] — the flat
+  /// (movie) layout's full tail. The series "Details" tab uses only
+  /// [_buildPhoneWatchersAndInfoRows]: its related hubs and extras already
+  /// have their own "Vergelijkbaar"/"Extra's" tabs, so repeating them here
+  /// would show the same content twice.
   List<Widget> _buildPhoneTrailingSections(BuildContext context, MediaItem metadata) {
     final theme = Theme.of(context);
     return [
@@ -306,6 +315,14 @@ extension _PhoneDetailScreen on _MediaDetailScreenState {
         HubSection(hub: _relatedHubs[i], icon: _getRelatedHubIcon(_relatedHubs[i]), inset: true),
         const SizedBox(height: 12),
       ],
+      ..._buildPhoneWatchersAndInfoRows(context, metadata),
+    ];
+  }
+
+  /// Now-watching/watchers/stats and the studio/rating info rows only — no
+  /// extras or related hubs, see [_buildPhoneTrailingSections].
+  List<Widget> _buildPhoneWatchersAndInfoRows(BuildContext context, MediaItem metadata) {
+    return [
       NowWatchingLine(ratingKey: _metadata.id),
       if (_watchers?.watchers.isNotEmpty ?? false) WatchedByRow(watchers: _watchers!.watchers, scope: _watchers!.scope),
       if (_watchStats?.isNotEmpty ?? false) ...[const SizedBox(height: 8), WatchStatsRow(stats: _watchStats!)],
@@ -357,5 +374,16 @@ extension _PhoneDetailScreen on _MediaDetailScreenState {
         if (directors != null && directors.isNotEmpty) creditLine(t.metadataEdit.director, directors),
       ],
     );
+  }
+
+  /// Deep-linking to a specific episode (Continue Watching/Next Up) needs
+  /// [_maybeLoadMoreForInitialEpisode] to page further batches in when the
+  /// target isn't on the first page — [_scheduleInitialMobileDetailFocus]
+  /// does that too, but only alongside a `FocusNode`-based scroll-into-view
+  /// that has nothing to attach to on a touch UI, so the phone branch calls
+  /// this data-only half directly instead of that whole method.
+  void _schedulePhoneInitialEpisodePaging() {
+    if (widget.initialEpisodeId == null || _episodesContainInitialTarget) return;
+    _maybeLoadMoreForInitialEpisode();
   }
 }
