@@ -174,6 +174,7 @@ class _TranslationsCommonNl extends TranslationsCommonEn {
 	@override String get confirm => 'Bevestigen';
 	@override String get retry => 'Opnieuw proberen';
 	@override String get details => 'Details';
+	@override String get more => 'meer';
 	@override String get logout => 'Uitloggen';
 	@override String get unknown => 'Onbekend';
 	@override String get refresh => 'Vernieuwen';
@@ -1002,6 +1003,10 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get readMoreSemantic => 'Volledig overzicht lezen';
 	@override String get cast => 'Acteurs';
 	@override String get extras => 'Trailers & Extra\'s';
+	@override String get extrasTab => 'Extra\'s';
+	@override String get similarTitles => 'Vergelijkbaar';
+	@override String get share => 'Delen';
+	@override String get trailerLabel => 'Trailer';
 	@override String get studio => 'Studio';
 	@override String get rating => 'Leeftijd';
 	@override String get movie => 'Film';
@@ -3003,6 +3008,7 @@ extension on TranslationsNl {
 			'common.confirm' => 'Bevestigen',
 			'common.retry' => 'Opnieuw proberen',
 			'common.details' => 'Details',
+			'common.more' => 'meer',
 			'common.logout' => 'Uitloggen',
 			'common.unknown' => 'Onbekend',
 			'common.refresh' => 'Vernieuwen',
@@ -3476,9 +3482,9 @@ extension on TranslationsNl {
 			'videoControls.transcodeUnavailableFallback' => 'Transcoderen niet beschikbaar — originele kwaliteit wordt afgespeeld',
 			'videoControls.pipButton' => 'Beeld-in-beeld modus',
 			'videoControls.aspectRatioButton' => 'Beeldverhouding',
-			'videoControls.ambientLighting' => 'Omgevingsverlichting',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.ambientLighting' => 'Omgevingsverlichting',
 			'videoControls.ambientIntensitySubtle' => 'Subtiel',
 			'videoControls.ambientIntensityBalanced' => 'Evenwichtig',
 			'videoControls.ambientIntensityBright' => 'Fel',
@@ -3733,6 +3739,10 @@ extension on TranslationsNl {
 			'discover.readMoreSemantic' => 'Volledig overzicht lezen',
 			'discover.cast' => 'Acteurs',
 			'discover.extras' => 'Trailers & Extra\'s',
+			'discover.extrasTab' => 'Extra\'s',
+			'discover.similarTitles' => 'Vergelijkbaar',
+			'discover.share' => 'Delen',
+			'discover.trailerLabel' => 'Trailer',
 			'discover.studio' => 'Studio',
 			'discover.rating' => 'Leeftijd',
 			'discover.movie' => 'Film',
@@ -3986,13 +3996,13 @@ extension on TranslationsNl {
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} wordt niet meer opgenomen.',
 			'liveTv.deleteRule' => 'Regel verwijderen',
 			'liveTv.deleteRuleTitle' => 'Opnameregel verwijderen?',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.deleteRuleMessage' => ({required Object title}) => 'Toekomstige afleveringen van ${title} worden niet opgenomen.',
 			'liveTv.recordingScheduled' => 'Opname gepland',
 			'liveTv.alreadyScheduled' => 'Dit programma is al gepland',
 			'liveTv.dvrAdminRequired' => 'DVR-instellingen vereisen een beheerdersaccount',
 			'liveTv.recordingFailed' => 'Kon opname niet plannen',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.recordingTargetMissing' => 'Kon opnamebibliotheek niet bepalen',
 			'liveTv.recordNotAvailable' => 'Opname niet beschikbaar voor dit programma',
 			'liveTv.recordingCancelled' => 'Opname geannuleerd',
@@ -4500,13 +4510,13 @@ extension on TranslationsNl {
 			'addServer.findServer' => 'Server zoeken',
 			'addServer.searchingLocalServers' => 'Lokale Jellyfin-servers zoeken...',
 			'addServer.localServers' => 'Lokale Jellyfin-servers',
+			_ => null,
+		} ?? switch (path) {
 			'addServer.username' => 'Gebruikersnaam',
 			'addServer.password' => 'Wachtwoord',
 			'addServer.signIn' => 'Inloggen',
 			'addServer.change' => 'Wijzigen',
 			'addServer.required' => 'Vereist',
-			_ => null,
-		} ?? switch (path) {
 			'addServer.couldNotReachServer' => 'Kon de server niet bereiken',
 			'addServer.signInFailed' => 'Inloggen mislukt',
 			'addServer.quickConnectFailed' => 'Quick Connect mislukt',

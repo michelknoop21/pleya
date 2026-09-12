@@ -1,6 +1,52 @@
 part of '../media_detail_screen.dart';
 
 extension _MediaDetailActionButtons on _MediaDetailScreenState {
+  /// Resolves what "play" means for [metadata] (on-deck episode for a show,
+  /// first episode for a season, the item itself otherwise) and starts
+  /// playback. Shared by the TV/legacy action row and the phone primary button.
+  Future<void> _handlePlayPressed(MediaItem metadata) async {
+    // For TV shows, play the OnDeck episode if available
+    // Otherwise, play the first episode of the first season
+    if (metadata.isShow) {
+      if (_onDeckEpisode != null) {
+        appLogger.d('Playing on deck episode: ${_onDeckEpisode!.title}');
+        final playedId = _onDeckEpisode!.id;
+        await navigateToVideoPlayerWithRefresh(
+          context,
+          metadata: _onDeckEpisode!,
+          isOffline: widget.isOffline,
+          onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
+        );
+      } else {
+        // No on deck episode, fetch first episode of first season
+        await _playFirstEpisode();
+      }
+    } else if (metadata.isSeason) {
+      // For seasons, play the first episode
+      if (_episodes.isNotEmpty) {
+        final playedId = _episodes.first.id;
+        await navigateToVideoPlayerWithRefresh(
+          context,
+          metadata: _episodes.first,
+          isOffline: widget.isOffline,
+          onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
+        );
+      } else {
+        await _playFirstEpisode();
+      }
+    } else {
+      appLogger.d('Playing: ${metadata.title}');
+      // For movies or episodes, play directly
+      final playedId = metadata.id;
+      await navigateToVideoPlayerWithRefresh(
+        context,
+        metadata: metadata,
+        isOffline: widget.isOffline,
+        onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
+      );
+    }
+  }
+
   Widget _buildActionButtons(MediaItem metadata) {
     final isTv = PlatformDetector.isTV();
     final tvScale = TvLayoutConstants.scaleOf(context);
@@ -10,48 +56,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     final playTextStyle = TextStyle(fontSize: isTv ? 17 * tvScale : 16, fontWeight: .w700);
     final playButtonIcon = AppIcon(_getPlayButtonIcon(metadata), fill: 1, size: playIconSize);
 
-    Future<void> onPlayPressed() async {
-      // For TV shows, play the OnDeck episode if available
-      // Otherwise, play the first episode of the first season
-      if (metadata.isShow) {
-        if (_onDeckEpisode != null) {
-          appLogger.d('Playing on deck episode: ${_onDeckEpisode!.title}');
-          final playedId = _onDeckEpisode!.id;
-          await navigateToVideoPlayerWithRefresh(
-            context,
-            metadata: _onDeckEpisode!,
-            isOffline: widget.isOffline,
-            onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-          );
-        } else {
-          // No on deck episode, fetch first episode of first season
-          await _playFirstEpisode();
-        }
-      } else if (metadata.isSeason) {
-        // For seasons, play the first episode
-        if (_episodes.isNotEmpty) {
-          final playedId = _episodes.first.id;
-          await navigateToVideoPlayerWithRefresh(
-            context,
-            metadata: _episodes.first,
-            isOffline: widget.isOffline,
-            onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-          );
-        } else {
-          await _playFirstEpisode();
-        }
-      } else {
-        appLogger.d('Playing: ${metadata.title}');
-        // For movies or episodes, play directly
-        final playedId = metadata.id;
-        await navigateToVideoPlayerWithRefresh(
-          context,
-          metadata: metadata,
-          isOffline: widget.isOffline,
-          onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-        );
-      }
-    }
+    Future<void> onPlayPressed() => _handlePlayPressed(metadata);
 
     final primaryTrailer = _getPrimaryTrailer();
 

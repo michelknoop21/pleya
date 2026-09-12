@@ -133,10 +133,14 @@ import '../widgets/tv_browse_rail.dart';
 import '../widgets/tv_spotlight_background.dart';
 import '../navigation/main_screen_scope.dart';
 import '../utils/error_message_utils.dart';
+import 'package:share_plus/share_plus.dart';
 
 part 'media_detail/action_buttons.dart';
 part 'media_detail/synopsis_panel.dart';
 part 'media_detail/tv_season_chips.dart';
+part 'media_detail/phone_detail.dart';
+part 'media_detail/phone_action_buttons.dart';
+part 'media_detail/phone_episode_tabs.dart';
 
 const double _tvDetailTallPosterScale = TvBrowseRailLayout.compactTallPosterScale;
 const double _tvDetailEpisodeThumbnailScale = TvBrowseRailLayout.compactEpisodeThumbnailScale;
@@ -349,6 +353,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   double? _tvDetailStableRailHeight;
   MediaItem? _tvDetailFocusedEpisode;
   bool _tvDetailActionRowHasFocus = false;
+
+  // Phone-only series detail tabs (mockup 07): Afleveringen/Vergelijkbaar/Extra's/Details.
+  int _selectedPhoneDetailTab = 0;
+
+  void _selectPhoneDetailTab(int index) => setState(() => _selectedPhoneDetailTab = index);
+
+  void _selectPhoneSeason(int index) => setState(() => _selectedSeasonIndex = index);
 
   // Inline season tabs
   int _selectedSeasonIndex = 0;
@@ -3652,6 +3663,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
     if (isTv) {
       return _buildTvDetailScreen(context, metadata, _handleMediaDetailBackKey);
+    }
+
+    // Phone gets the mockup 06/07 redesign; iPad and desktop keep the
+    // existing overlay layout below (DEC-103 — iPad is a regression boundary).
+    if (PlatformDetector.isPhone(context)) {
+      return _buildPhoneDetailScreen(context, metadata, _handleMediaDetailBackKey);
     }
 
     _scheduleInitialMobileDetailFocus(metadata);

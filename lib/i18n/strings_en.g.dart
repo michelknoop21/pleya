@@ -252,6 +252,9 @@ class TranslationsCommonEn {
 	/// en: 'Details'
 	String get details => 'Details';
 
+	/// en: 'more'
+	String get more => 'more';
+
 	/// en: 'Logout'
 	String get logout => 'Logout';
 
@@ -2389,6 +2392,18 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Trailers & Extras'
 	String get extras => 'Trailers & Extras';
+
+	/// en: 'Extras'
+	String get extrasTab => 'Extras';
+
+	/// en: 'Similar'
+	String get similarTitles => 'Similar';
+
+	/// en: 'Share'
+	String get share => 'Share';
+
+	/// en: 'Trailer'
+	String get trailerLabel => 'Trailer';
 
 	/// en: 'Studio'
 	String get studio => 'Studio';
@@ -6983,6 +6998,7 @@ extension on Translations {
 			'common.confirm' => 'Confirm',
 			'common.retry' => 'Retry',
 			'common.details' => 'Details',
+			'common.more' => 'more',
 			'common.logout' => 'Logout',
 			'common.unknown' => 'Unknown',
 			'common.refresh' => 'Refresh',
@@ -7456,9 +7472,9 @@ extension on Translations {
 			'videoControls.transcodeUnavailableFallback' => 'Transcoding unavailable — playing original quality',
 			'videoControls.pipButton' => 'Picture-in-Picture mode',
 			'videoControls.aspectRatioButton' => 'Aspect ratio',
-			'videoControls.ambientLighting' => 'Ambient lighting',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.ambientLighting' => 'Ambient lighting',
 			'videoControls.ambientIntensitySubtle' => 'Subtle',
 			'videoControls.ambientIntensityBalanced' => 'Balanced',
 			'videoControls.ambientIntensityBright' => 'Bright',
@@ -7713,6 +7729,10 @@ extension on Translations {
 			'discover.readMoreSemantic' => 'Read the full overview',
 			'discover.cast' => 'Cast',
 			'discover.extras' => 'Trailers & Extras',
+			'discover.extrasTab' => 'Extras',
+			'discover.similarTitles' => 'Similar',
+			'discover.share' => 'Share',
+			'discover.trailerLabel' => 'Trailer',
 			'discover.studio' => 'Studio',
 			'discover.rating' => 'Rating',
 			'discover.movie' => 'Movie',
@@ -7966,13 +7986,13 @@ extension on Translations {
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} will no longer be recorded.',
 			'liveTv.deleteRule' => 'Delete rule',
 			'liveTv.deleteRuleTitle' => 'Delete recording rule?',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.deleteRuleMessage' => ({required Object title}) => 'Future episodes of ${title} will not be recorded.',
 			'liveTv.recordingScheduled' => 'Recording scheduled',
 			'liveTv.alreadyScheduled' => 'This program is already scheduled',
 			'liveTv.dvrAdminRequired' => 'DVR settings require an admin account',
 			'liveTv.recordingFailed' => 'Couldn\'t schedule recording',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.recordingTargetMissing' => 'Couldn\'t determine recording library',
 			'liveTv.recordNotAvailable' => 'Recording not available for this program',
 			'liveTv.recordingCancelled' => 'Recording cancelled',
@@ -8480,13 +8500,13 @@ extension on Translations {
 			'seerr.seasonsRange' => ({required Object range}) => 'Seasons ${range}',
 			'seerr.seasonsCount' => ({required Object count}) => '${count} seasons',
 			'seerr.requestedBy' => ({required Object name}) => 'Requested by ${name}',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.fourK' => 'Request in 4K',
 			'seerr.fourKBadge' => '4K',
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
 			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => '${remaining} of ${limit} requests left',
 			'seerr.quotaUnlimited' => 'Unlimited requests',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.advancedOptions' => 'Advanced options',
 			'seerr.server' => 'Server',
 			'seerr.qualityProfile' => 'Quality profile',
