@@ -611,6 +611,28 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     PaintingBinding.instance.imageCache.clearLiveImages();
   }
 
+  /// Health check first so stale "online" servers get marked offline and land
+  /// in the reconnection sweep.
+  ///
+  /// The sweep gets a second attempt because the first one runs against a
+  /// network stack that is not awake yet. Suspend kills established sockets
+  /// while the WiFi interface stays up, so every candidate times out, LAN
+  /// addresses included, and `connectivity_plus` reports no change at all. That
+  /// leaves the manual "reconnect" button as the only way back, and the UI
+  /// renders an offline server until someone presses it.
+  // ponytail: one retry on a fixed delay. Back off properly only if a log shows
+  // a stack that stays down past it.
+  Future<void> _probeAndReconnectAfterResume() async {
+    for (var attempt = 0; attempt < 2; attempt++) {
+      await _serverManager.checkServerHealth();
+      await _serverManager.reconnectOfflineServers();
+      if (_serverManager.offlineServerIds.isEmpty || attempt == 1) return;
+
+      await Future<void>.delayed(const Duration(seconds: 3));
+      if (!mounted) return;
+    }
+  }
+
   /// Fires [_autoDeleteAndSync] on each WiFi/Ethernet reconnect so rules run
   /// as soon as the device is back online. Listens on [OfflineModeProvider],
   /// which owns the app's single connectivity subscription and notifies on
@@ -701,12 +723,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
         // On desktop, resumed fires on every window focus (alt-tab), so apply a cooldown
         // to avoid piling up network probes from rapid alt-tabbing.
         if (_resumeProbeCooldown.shouldProbe()) {
-          // Await health check before reconnecting so stale "online" servers
-          // get marked offline and included in the reconnection sweep.
-          unawaited(() async {
-            await _serverManager.checkServerHealth();
-            await _serverManager.reconnectOfflineServers();
-          }());
+          unawaited(_probeAndReconnectAfterResume());
         }
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:

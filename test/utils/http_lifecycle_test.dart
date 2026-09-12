@@ -64,6 +64,23 @@ void main() {
       expect(inner.closeCount, 1);
     });
 
+    test('force-closes the inner client once the hard deadline passes', () async {
+      final inner = _DeferredSendClient();
+      final client = ManagedHttpClient(inner, debugLabel: 'test');
+
+      unawaited(client.send(http.Request('GET', Uri.parse('https://example.test/never'))));
+      await Future<void>.delayed(Duration.zero);
+
+      await client.closeGracefully(
+        drainTimeout: const Duration(milliseconds: 1),
+        hardCloseDeadline: const Duration(milliseconds: 50),
+      );
+      expect(inner.closeCount, 0, reason: 'the drain timeout alone still leaves room for the request to finish');
+
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      expect(inner.closeCount, 1, reason: 'a request that never reports back must not pin the client forever');
+    });
+
     test('preserves final response URL metadata', () async {
       final finalUrl = Uri.parse('https://example.test/final');
       final inner = _UrlResponseClient(finalUrl);
