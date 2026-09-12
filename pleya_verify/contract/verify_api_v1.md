@@ -272,12 +272,20 @@ endpoint nooit aan.
 
 ### `POST /v1/input/pointer`
 
-Body: `{"x": 100.0, "y": 200.0}` (logische pixels). Synthetiseert een tap
-(down + up) via `GestureBinding.handlePointerEvent`, door de echte hit-test-
-pipeline — geen directe callback-aanroep. Forceert eerst pointer-mode via
+Body: `{"x": 100.0, "y": 200.0, "holdMs": 600}` (logische pixels, `holdMs`
+optioneel). Synthetiseert een tap (down + up) via
+`GestureBinding.handlePointerEvent`, door de echte hit-test-pipeline — geen
+directe callback-aanroep. Forceert eerst pointer-mode via
 `AutomationInput.onPointerModeRequested` (`InputModeTracker`'s hook, naar het
 model van `GamepadService.onGamepadInput`), anders zou de app-brede
 `IgnorePointer` tijdens D-pad-navigatie de tap slikken.
+
+Met `holdMs` blijft de pointer die duur tussen down en up staan, ruim voorbij
+Flutter's `kLongPressTimeout` en dit wordt een echte long press, via dezelfde
+`onLongPress`-gestureherkenner als een vinger zou raken — geen synthetische
+callback-aanroep. Alleen de iOS-simulatordriver stuurt `holdMs` mee
+(`ios_simulator_driver.dart`); de scenario-validator wijst `tap: {holdMs}`
+buiten het `ios-sim`-target al af vóór een build/launch.
 
 200 `{"result": "dispatched"}`; 409 bij een actieve native invoersessie; 400
 wanneer `x`/`y` ontbreken. Geen pointer-equivalent op tvOS (geen aanraakvlak

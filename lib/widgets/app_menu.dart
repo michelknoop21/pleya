@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../automation/automation_node.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/focusable_tile_mixin.dart';
 import '../focus/input_mode_tracker.dart';
@@ -42,6 +43,13 @@ class AppMenuItem<T> extends AppMenuEntry<T> {
   final Color? stateLayerColor;
   final String? semanticLabel;
 
+  /// Registers this item under [AutomationNode], instanced with
+  /// [automationInstance]. Pure pass-through when null, like every other
+  /// `automationId` in the codebase (`focusable_wrapper.dart`), so callers
+  /// that never need a scenario to address a specific item pay nothing.
+  final String? automationId;
+  final String? automationInstance;
+
   const AppMenuItem({
     required this.value,
     this.label,
@@ -57,6 +65,8 @@ class AppMenuItem<T> extends AppMenuEntry<T> {
     this.foregroundColor,
     this.stateLayerColor,
     this.semanticLabel,
+    this.automationId,
+    this.automationInstance,
   }) : assert(label != null || child != null, 'AppMenuItem requires either label or child'),
        assert(subtitle == null || subtitleWidget == null, 'Provide subtitle or subtitleWidget, not both'),
        assert(icon == null || leading == null, 'Provide icon or leading, not both');
@@ -219,6 +229,10 @@ class AppMenuSheet<T> extends StatelessWidget {
   final ValueChanged<T>? onSelected;
   final bool closeOnSelected;
 
+  /// Registers the sheet as a whole under [AutomationNode]. Pure pass-through
+  /// when null, same convention as [AppMenuItem.automationId].
+  final String? automationId;
+
   const AppMenuSheet({
     super.key,
     this.title,
@@ -227,40 +241,45 @@ class AppMenuSheet<T> extends StatelessWidget {
     this.focusFirstItem = false,
     this.onSelected,
     this.closeOnSelected = true,
+    this.automationId,
   }) : assert(title == null || titleWidget == null, 'Provide title or titleWidget, not both');
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (titleWidget != null || title != null)
-          Padding(
-            padding: PlatformDetector.isTV()
-                ? const EdgeInsets.fromLTRB(14, 4, 14, 6)
-                : const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child:
-                titleWidget ??
-                Text(
-                  title!,
-                  style: Theme.of(context).textTheme.titleMedium,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-          ),
-        Flexible(
-          child: SingleChildScrollView(
-            child: AppMenuList<T>(
-              entries: entries,
-              focusFirstItem: focusFirstItem,
-              onSelected: (value) {
-                if (closeOnSelected) OverlaySheetController.closeAdaptive(context, value);
-                onSelected?.call(value);
-              },
+    return AutomationNode(
+      id: automationId,
+      role: 'sheet',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (titleWidget != null || title != null)
+            Padding(
+              padding: PlatformDetector.isTV()
+                  ? const EdgeInsets.fromLTRB(14, 4, 14, 6)
+                  : const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child:
+                  titleWidget ??
+                  Text(
+                    title!,
+                    style: Theme.of(context).textTheme.titleMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+            ),
+          Flexible(
+            child: SingleChildScrollView(
+              child: AppMenuList<T>(
+                entries: entries,
+                focusFirstItem: focusFirstItem,
+                onSelected: (value) {
+                  if (closeOnSelected) OverlaySheetController.closeAdaptive(context, value);
+                  onSelected?.call(value);
+                },
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -402,84 +421,95 @@ class _AppMenuItemTileState<T> extends State<AppMenuItemTile<T>> with FocusableT
     final trailing = item.trailing ?? (item.selected ? AppIcon(Symbols.check_rounded, size: 18) : null);
     final subtitle = item.subtitleWidget ?? (item.subtitle != null ? Text(item.subtitle!) : null);
 
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      selected: item.selected,
-      label: item.semanticLabel,
-      child: Focus(
-        focusNode: effectiveFocusNode,
-        canRequestFocus: enabled,
-        onKeyEvent: (node, event) {
-          if (SelectKeyUpSuppressor.consumeIfSuppressed(event)) return KeyEventResult.handled;
-          return dpadKeyHandler(onSelect: enabled ? widget.onPressed : null, trapHorizontalEdges: true)(node, event);
-        },
-        child: MouseRegion(
-          cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
-          onEnter: enabled ? (_) => setState(() => _isHovered = true) : null,
-          onExit: enabled ? (_) => setState(() => _isHovered = false) : null,
-          child: ClickableCursor(
-            enabled: enabled,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: enabled ? widget.onPressed : null,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                child: AnimatedContainer(
-                  duration: tokens(context).fast,
-                  decoration: BoxDecoration(
-                    color: background,
-                    borderRadius: BorderRadius.circular(tokens(context).radiusSm),
-                  ),
-                  constraints: BoxConstraints(minHeight: subtitle == null ? (tv ? 36 : 40) : (tv ? 46 : 52)),
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: tv ? 3 : 6),
-                  child: Row(
-                    children: [
-                      if (leading != null) ...[
-                        SizedBox(
-                          width: tv ? 20 : 24,
-                          child: IconTheme.merge(
-                            data: IconThemeData(color: foreground),
-                            child: leading,
-                          ),
-                        ),
-                        SizedBox(width: tv ? 10 : 12),
-                      ],
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            DefaultTextStyle.merge(
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: enabled ? foreground : colorScheme.onSurface.withValues(alpha: 0.38),
-                                fontWeight: item.selected ? FontWeight.w600 : null,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              child: item.child ?? Text(item.label!),
+    return AutomationNode(
+      id: item.automationId,
+      instance: item.automationInstance,
+      role: 'list.item',
+      focusNode: effectiveFocusNode,
+      child: Semantics(
+        button: true,
+        enabled: enabled,
+        selected: item.selected,
+        label: item.semanticLabel,
+        child: Focus(
+          focusNode: effectiveFocusNode,
+          canRequestFocus: enabled,
+          onKeyEvent: (node, event) {
+            if (SelectKeyUpSuppressor.consumeIfSuppressed(event)) return KeyEventResult.handled;
+            return dpadKeyHandler(onSelect: enabled ? widget.onPressed : null, trapHorizontalEdges: true)(node, event);
+          },
+          child: MouseRegion(
+            cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+            onEnter: enabled ? (_) => setState(() => _isHovered = true) : null,
+            onExit: enabled ? (_) => setState(() => _isHovered = false) : null,
+            child: ClickableCursor(
+              enabled: enabled,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: enabled ? widget.onPressed : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  child: AnimatedContainer(
+                    duration: tokens(context).fast,
+                    decoration: BoxDecoration(
+                      color: background,
+                      borderRadius: BorderRadius.circular(tokens(context).radiusSm),
+                    ),
+                    // Mobile's no-subtitle row: 42 here plus this Padding's
+                    // 2px vertical hits Apple's 44pt minimum tap target
+                    // exactly — Pleya Verify's ios.home.context-menu caught
+                    // the previous 40 falling 2px short. TV is unaffected,
+                    // it has no touch surface to hold that minimum against.
+                    constraints: BoxConstraints(minHeight: subtitle == null ? (tv ? 36 : 42) : (tv ? 46 : 52)),
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: tv ? 3 : 6),
+                    child: Row(
+                      children: [
+                        if (leading != null) ...[
+                          SizedBox(
+                            width: tv ? 20 : 24,
+                            child: IconTheme.merge(
+                              data: IconThemeData(color: foreground),
+                              child: leading,
                             ),
-                            if (subtitle != null)
+                          ),
+                          SizedBox(width: tv ? 10 : 12),
+                        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                               DefaultTextStyle.merge(
-                                style: textTheme.labelSmall?.copyWith(
-                                  color: enabled ? subtitleColor : colorScheme.onSurface.withValues(alpha: 0.38),
+                                style: textTheme.bodyMedium?.copyWith(
+                                  color: enabled ? foreground : colorScheme.onSurface.withValues(alpha: 0.38),
+                                  fontWeight: item.selected ? FontWeight.w600 : null,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                child: subtitle,
+                                child: item.child ?? Text(item.label!),
                               ),
-                          ],
+                              if (subtitle != null)
+                                DefaultTextStyle.merge(
+                                  style: textTheme.labelSmall?.copyWith(
+                                    color: enabled ? subtitleColor : colorScheme.onSurface.withValues(alpha: 0.38),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  child: subtitle,
+                                ),
+                            ],
+                          ),
                         ),
-                      ),
-                      if (trailing != null) ...[
-                        const SizedBox(width: 12),
-                        IconTheme.merge(
-                          data: IconThemeData(color: foreground),
-                          child: trailing,
-                        ),
+                        if (trailing != null) ...[
+                          const SizedBox(width: 12),
+                          IconTheme.merge(
+                            data: IconThemeData(color: foreground),
+                            child: trailing,
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),

@@ -27,9 +27,18 @@ class PleyaFakeServer {
     this.pageSizeCap = 100,
     this.artworkBytes = const [0x89, 0x50, 0x4e, 0x47],
     this.setupCode = 'VERIFY-SETUP-CODE',
+    this.serverId = 'srv-1',
     FixtureClock? clock,
   }) : clock = clock ?? FixtureClock(),
        _initialSetupRequired = setupRequired;
+
+  /// `server.id` in `/info`'s response and `/server`'s own `id` field.
+  /// Distinct fixture processes default to the same id — nothing needed one
+  /// to differ until a scenario had to connect the app to two servers at
+  /// once (unified cross-server grouping): `PleyaServerConnection.id` is
+  /// derived from this id (`automation_signin.dart`), so two servers sharing
+  /// it would collide into one connection instead of two.
+  final String serverId;
 
   /// Whether `/info` advertises the ownership model. Off by default, so a test
   /// that does not opt in proves what an older server sees: no base_revision,
@@ -395,7 +404,7 @@ class PleyaFakeServer {
       return _json(_error('auth.invalid_token'), status: 401);
     }
     if (path == '/server') {
-      return _json(const {'id': 'srv-1', 'name': 'Zolder', 'version': '0.2.0', 'started_at': '2026-08-18T19:25:33Z'});
+      return _json({'id': serverId, 'name': 'Zolder', 'version': '0.2.0', 'started_at': '2026-08-18T19:25:33Z'});
     }
     if (path == '/libraries') return _json({'items': libraries});
 
@@ -537,7 +546,7 @@ class PleyaFakeServer {
 
   Map<String, dynamic> _info() => {
     'protocol': {'major': 1, 'feature_level': 1, 'profile': 'full'},
-    'server': {'id': 'srv-1'},
+    'server': {'id': serverId},
     'capabilities': {
       'browse': true,
       'search': true,

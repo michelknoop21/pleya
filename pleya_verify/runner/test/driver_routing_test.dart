@@ -15,7 +15,7 @@ void main() {
     for (final methodStart in const [
       'Future<void> press(String key, {Duration? hold}) async {',
       'Future<void> typeText(String text) async {',
-      'Future<void> tap(double x, double y) {',
+      'Future<void> tap(double x, double y, {Duration? hold}) {',
     ]) {
       final startIndex = source.indexOf(methodStart);
       expect(startIndex, isNonNegative, reason: 'method signature not found (did it change?): $methodStart');

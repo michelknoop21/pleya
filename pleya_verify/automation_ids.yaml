@@ -216,6 +216,12 @@ ids:
   - id: sheet.source_picker.row
     role: list.item
     instanceable: true
+  - id: sheet.context_menu
+    role: sheet
+    instanceable: false
+  - id: sheet.context_menu.item
+    role: list.item
+    instanceable: true
   - id: screen.catalog_movies
     role: screen
     instanceable: false

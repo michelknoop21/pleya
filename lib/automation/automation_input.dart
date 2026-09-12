@@ -54,8 +54,12 @@ int _nextPointerId = 1;
 
 /// `POST /v1/input/pointer`. Synthesizes a tap (down + up) at [position] in
 /// logical pixels, going through the real gesture-binding hit-test pipeline
-/// rather than calling a widget's callback directly.
-AutomationInputResult dispatchAutomationPointerTap(Offset position) {
+/// rather than calling a widget's callback directly. [hold] keeps the
+/// pointer down between the two events — long enough (comfortably past
+/// Flutter's `kLongPressTimeout`) and this is a real long press, dispatched
+/// through the same `onLongPress` gesture recognizer a finger would trigger,
+/// not a synthetic callback invocation.
+Future<AutomationInputResult> dispatchAutomationPointerTap(Offset position, {Duration? hold}) async {
   if (NativeInputSession.isActive) return AutomationInputResult.blockedByNativeSession;
   AutomationInput.onPointerModeRequested?.call();
   scheduleFrameIfIdle();
@@ -64,9 +68,15 @@ AutomationInputResult dispatchAutomationPointerTap(Offset position) {
   final binding = GestureBinding.instance;
   binding.handlePointerEvent(PointerAddedEvent(position: position));
   binding.handlePointerEvent(PointerDownEvent(pointer: pointer, position: position));
+  if (hold != null) await Future<void>.delayed(hold);
   binding.handlePointerEvent(PointerUpEvent(pointer: pointer, position: position));
   binding.handlePointerEvent(PointerRemovedEvent(position: position));
-  AutomationEventLog.instance.emit('input.received', {'source': 'transport', 'x': position.dx, 'y': position.dy});
+  AutomationEventLog.instance.emit('input.received', {
+    'source': 'transport',
+    'x': position.dx,
+    'y': position.dy,
+    if (hold != null) 'holdMs': hold.inMilliseconds,
+  });
   return AutomationInputResult.dispatched;
 }
 

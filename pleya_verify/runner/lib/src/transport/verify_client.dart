@@ -177,7 +177,8 @@ class VerifyClient {
 
   Future<Map<String, Object?>> inputKey(String key) => _postJson('/v1/input/key', {'key': key});
 
-  Future<Map<String, Object?>> inputPointer(double x, double y) => _postJson('/v1/input/pointer', {'x': x, 'y': y});
+  Future<Map<String, Object?>> inputPointer(double x, double y, {int? holdMs}) =>
+      _postJson('/v1/input/pointer', {'x': x, 'y': y, if (holdMs != null) 'holdMs': holdMs});
 
   Future<Map<String, Object?>> inputText(String text) => _postJson('/v1/input/text', {'text': text});
 

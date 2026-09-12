@@ -256,7 +256,14 @@ class AutomationServer {
           await request.response.close();
           return;
         }
-        await _respondInputResult(request, dispatchAutomationPointerTap(Offset(x, y)));
+        final holdMs = (body['holdMs'] as num?)?.toInt();
+        await _respondInputResult(
+          request,
+          await dispatchAutomationPointerTap(
+            Offset(x, y),
+            hold: holdMs == null ? null : Duration(milliseconds: holdMs),
+          ),
+        );
       case '/v1/input/text':
         final body = await _readJsonBody(request);
         await _respondInputResult(request, dispatchAutomationText(body['text'] as String? ?? ''));

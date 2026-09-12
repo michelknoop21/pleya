@@ -1,0 +1,35 @@
+name: ios.home.context-menu
+target: ios-sim
+# Proves the mobile unified context menu (I5 mockup 09,
+# docs/assets/ios-unified/northstar/09-contextmenu-sheet.png) end to end: a
+# real long press on a Home rail card opens the sheet, and its first row
+# ("Markeer bekeken") is tappable and dispatches. `holdMs` on `tap` is the
+# only way to reach this menu — it opens exclusively via
+# `_RailCardCell.onLongPress` (mobile_media_rail.dart), never a plain tap.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  # Same cold-start settle every ios.home.* scenario waits out past IntroGate.
+  - settle: 3500
+  - wait_until: {id: "home.rail.item[0.0]", timeout: 10000}
+  - assert: {id: "home.rail.item[0.0]", insideViewport: true}
+  # 700ms comfortably clears Flutter's kLongPressTimeout (500ms); an ordinary
+  # tap here would navigate to detail instead of opening the menu.
+  - tap: {id: "home.rail.item[0.0]", holdMs: 700}
+  - wait_until: {id: sheet.context_menu, timeout: 8000}
+  # wait_until only proves the sheet mounted, not that its slide-up entrance
+  # finished — the first run caught it mid-animation, 6px past the bottom.
+  - settle: 600
+  - assert: {id: sheet.context_menu, insideViewport: true}
+  # markWatched/markUnwatched is the one action availableUnifiedGroupActions
+  # never omits (tv_unified_context_menu.dart), so it is the row every
+  # fixture item guarantees regardless of watchlist/continue-watching state.
+  - assert: {id: "sheet.context_menu.item[markWatched]", insideViewport: true, minimumTapTarget: 44}
+  - snapshot: context-menu-open
+  - tap: {id: "sheet.context_menu.item[markWatched]"}
+  - settle: 800
+  - snapshot: context-menu-dispatched

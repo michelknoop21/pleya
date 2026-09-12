@@ -275,6 +275,17 @@ class AutomationIds {
   /// One row in [sheetSourcePicker]. Instanceable: suffixed `[<index>]`.
   static const String sheetSourcePickerRow = 'sheet.source_picker.row';
 
+  /// The mobile unified context menu (mockup 09,
+  /// `docs/assets/ios-unified/northstar/09-contextmenu-sheet.png`) as a whole.
+  static const String sheetContextMenu = 'sheet.context_menu';
+
+  /// One action row in [sheetContextMenu]. Instanceable: suffixed with the
+  /// `UnifiedGroupAction.name` it dispatches (`sheet.context_menu.item[markWatched]`),
+  /// a name rather than an index because the action set is conditional on
+  /// group state and an index would silently address a different action on a
+  /// different fixture — the same reasoning [myPleyaTile] documents.
+  static const String sheetContextMenuItem = 'sheet.context_menu.item';
+
   /// The Alle films/Alle series catalogue screens (iOS Unified 2026 fase 3,
   /// `docs/ios-unified-2026-fase3-plan.md`). Two separate consts rather than
   /// one instanceable id, the same choice [screenSeries]/[screenMovies] made:
@@ -360,6 +371,7 @@ class AutomationIds {
     searchResultsSection,
     searchResultsItem,
     sheetSourcePickerRow,
+    sheetContextMenuItem,
     catalogHeader,
     catalogHeaderSearch,
     catalogChipSources,
@@ -445,6 +457,8 @@ class AutomationIds {
     {'id': searchResultsItem, 'role': 'list.item', 'instanceable': true},
     {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
+    {'id': sheetContextMenu, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetContextMenuItem, 'role': 'list.item', 'instanceable': true},
     {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},
     {'id': screenCatalogSeries, 'role': 'screen', 'instanceable': false},
     {'id': catalogHeader, 'role': 'region', 'instanceable': true},

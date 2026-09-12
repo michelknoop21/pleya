@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,10 +43,10 @@ void main() {
     expect(dispatchAutomationKey('doubleclick'), AutomationInputResult.unknownKey);
   });
 
-  test('blocked while a native input session owns the remote', () {
+  test('blocked while a native input session owns the remote', () async {
     NativeInputSession.begin();
     expect(dispatchAutomationKey('select'), AutomationInputResult.blockedByNativeSession);
-    expect(dispatchAutomationPointerTap(Offset.zero), AutomationInputResult.blockedByNativeSession);
+    expect(await dispatchAutomationPointerTap(Offset.zero), AutomationInputResult.blockedByNativeSession);
   });
 
   testWidgets('a pointer tap goes through the real hit-test pipeline and activates a button', (tester) async {
@@ -64,11 +65,48 @@ void main() {
     );
 
     final center = tester.getCenter(find.byType(ElevatedButton));
-    final result = dispatchAutomationPointerTap(center);
+    final result = await dispatchAutomationPointerTap(center);
     await tester.pump();
 
     expect(result, AutomationInputResult.dispatched);
     expect(pressed, isTrue);
+  });
+
+  testWidgets('a held pointer tap dispatches a real long press, not just an ordinary tap', (tester) async {
+    var tapped = false;
+    var longPressed = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: GestureDetector(
+            // A bare SizedBox paints nothing, so without `opaque` the
+            // recognizer never wins its own hit test — the tap-only test
+            // above gets this for free from ElevatedButton's painted Material
+            // surface, but a plain child needs it spelled out.
+            behavior: HitTestBehavior.opaque,
+            onTap: () => tapped = true,
+            onLongPress: () => longPressed = true,
+            child: const SizedBox(width: 100, height: 50),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final center = tester.getCenter(find.byType(GestureDetector));
+    final hold = kLongPressTimeout + const Duration(milliseconds: 100);
+    // Not awaited yet: the internal `Future.delayed(hold)` only resolves once
+    // something elapses the fake clock `testWidgets` runs on, and `tester.pump`
+    // is that something — awaiting the call before pumping would deadlock.
+    final resultFuture = dispatchAutomationPointerTap(center, hold: hold);
+    await tester.pump(hold);
+    final result = await resultFuture;
+    await tester.pump();
+
+    expect(result, AutomationInputResult.dispatched);
+    expect(longPressed, isTrue);
+    expect(tapped, isFalse);
   });
 
   testWidgets('text inserts into the focused field through its own controller', (tester) async {

@@ -63,22 +63,35 @@ Future<ScenarioRunResult> runScenario({
   // live client.
   var launchAttempted = false;
   var launched = false;
-  FixtureServerHandle? fixture;
+  // Keyed by the scenario's own `server:` name — `'default'` for a bare
+  // `seed: <fixture>`/`{{fixture}}`, unchanged for every scenario that only
+  // ever runs one. A second entry only exists once a `seed: {fixture,
+  // server}` step actually asks for one (unified cross-server grouping's
+  // multi-source picker needs two real, distinct servers to group against).
+  final fixtures = <String, FixtureServerHandle>{};
   VerifyInstance? instance;
   String? snapshotHash;
 
   Object resolvePlaceholders(
     Object? value,
-    FixtureServerHandle? fixture,
-    String? setupCode, {
+    Map<String, FixtureServerHandle> fixtures,
+    Map<String, String?> setupCodes, {
     Map<String, String> seededIds = const {},
   }) {
     if (value is String) {
-      if (value == '{{fixture}}') {
-        return fixture?.baseUrl ?? (throw StateError('"{{fixture}}" used but no fixture server is running'));
+      if (value == '{{fixture}}' || (value.startsWith('{{fixture:') && value.endsWith('}}'))) {
+        final name = value == '{{fixture}}' ? 'default' : value.substring('{{fixture:'.length, value.length - 2);
+        final handle = fixtures[name];
+        if (handle == null) throw StateError('"$value" used but fixture server "$name" is not running');
+        return handle.baseUrl;
       }
-      if (value == '{{fixture_setup_code}}') {
-        return setupCode ?? (throw StateError('"{{fixture_setup_code}}" used but no fixture server is running'));
+      if (value == '{{fixture_setup_code}}' || (value.startsWith('{{fixture_setup_code:') && value.endsWith('}}'))) {
+        final name = value == '{{fixture_setup_code}}'
+            ? 'default'
+            : value.substring('{{fixture_setup_code:'.length, value.length - 2);
+        final code = setupCodes[name];
+        if (code == null) throw StateError('"$value" used but no setup code is known for fixture server "$name"');
+        return code;
       }
       // `{{fixture_id:season/testserie-s01}}` — fixture ids are truncated
       // sha256 hashes, so a scenario names the thing it means by the slug
@@ -98,7 +111,7 @@ Future<ScenarioRunResult> runScenario({
     }
     if (value is Map<String, Object?>) {
       return {
-        for (final e in value.entries) e.key: resolvePlaceholders(e.value, fixture, setupCode, seededIds: seededIds),
+        for (final e in value.entries) e.key: resolvePlaceholders(e.value, fixtures, setupCodes, seededIds: seededIds),
       };
     }
     return value ?? '';
@@ -124,8 +137,10 @@ Future<ScenarioRunResult> runScenario({
           instance = driver.instance;
           record['instance'] = instance?.toJson();
         case 'sign_in':
-          final setupCode = fixture == null ? null : (await fixture.verifyState())['setupCode'] as String?;
-          final args = resolvePlaceholders(step.args, fixture, setupCode) as Map<String, Object?>;
+          final setupCodes = <String, String?>{
+            for (final e in fixtures.entries) e.key: (await e.value.verifyState())['setupCode'] as String?,
+          };
+          final args = resolvePlaceholders(step.args, fixtures, setupCodes) as Map<String, Object?>;
           final signinResult = await _requireClient(driver, 'sign_in').signin(
             baseUrl: args['base_url'] as String,
             username: args['username'] as String,
@@ -136,12 +151,35 @@ Future<ScenarioRunResult> runScenario({
             throw StateError('sign_in failed: ${signinResult['error']} (full response: $signinResult)');
           }
         case 'seed':
-          if (step.args case final String fixtureName) {
-            await fixture!.seed(fixtureName);
-          } else {
-            throw ArgumentError('seed needs a fixture name: ${step.args}');
+          // `seed: <fixture>` (the default server, unchanged) or
+          // `seed: {fixture: <fixture>, server: <name>}` — a second server
+          // for a scenario that needs the app connected to two at once. The
+          // named server starts lazily, right here, the first time a
+          // scenario actually asks for one; `server`'s own value becomes
+          // that server's `serverId` (see [FixtureServerHandle.start]), so
+          // naming it is the only thing a scenario has to do to get a
+          // second, distinct connection instead of a collision with the
+          // first.
+          final (serverName, fixtureName) = switch (step.args) {
+            final String name => ('default', name),
+            {'fixture': final String name, 'server': final String server} => (server, name),
+            {'fixture': final String name} => ('default', name),
+            _ => throw ArgumentError('seed needs a fixture name, or {fixture, server}: ${step.args}'),
+          };
+          var target = fixtures[serverName];
+          if (target == null) {
+            if (serverName == 'default') {
+              throw StateError('seed needs a fixture server, but this scenario never starts one');
+            }
+            target = await FixtureServerHandle.start(
+              fixtureServerPackageDir: Directory('${repoRoot.path}/pleya_verify/fixture_server'),
+              serverId: serverName,
+            );
+            fixtures[serverName] = target;
           }
+          await target.seed(fixtureName);
         case 'fixture_mutate':
+          final fixture = fixtures['default'];
           if (fixture == null) {
             throw StateError('fixture_mutate needs a fixture server, but this scenario never starts one');
           }
@@ -150,7 +188,8 @@ Future<ScenarioRunResult> runScenario({
             throw ArgumentError('fixture_mutate needs an "op" field naming a /__verify/ route: $raw');
           }
           final args =
-              resolvePlaceholders(raw, fixture, null, seededIds: await fixture.seededIds()) as Map<String, Object?>;
+              resolvePlaceholders(raw, fixtures, const {}, seededIds: await fixture.seededIds())
+                  as Map<String, Object?>;
           final op = args.remove('op') as String;
           record['op'] = op;
           // A generic pass-through to the fixture's own control plane (see
@@ -181,9 +220,9 @@ Future<ScenarioRunResult> runScenario({
           final resolvedArgs =
               resolvePlaceholders(
                     step.args,
-                    fixture,
-                    null,
-                    seededIds: fixture == null ? const {} : await fixture.seededIds(),
+                    fixtures,
+                    const {},
+                    seededIds: fixtures['default'] == null ? const {} : await fixtures['default']!.seededIds(),
                   )
                   as Map<String, Object?>;
           final (:geometry, :node) = await _dispatchAssert(resolvedArgs, driver);
@@ -242,7 +281,10 @@ Future<ScenarioRunResult> runScenario({
           record['input_route'] = driver.inputRoute;
           final args = step.args as Map<String, Object?>;
           final (x, y) = await _resolveTapPoint(args, driver);
-          await driver.tap(x, y);
+          final holdMsRaw = args['holdMs'];
+          final hold = holdMsRaw == null ? null : Duration(milliseconds: holdMsRaw as int);
+          if (hold != null) record['hold_ms'] = hold.inMilliseconds;
+          await driver.tap(x, y, hold: hold);
         case 'type':
           record['input_route'] = driver.inputRoute;
           await _recordInput(driver, record, () => driver.typeText(step.args as String));
@@ -265,7 +307,7 @@ Future<ScenarioRunResult> runScenario({
   try {
     await driver.build();
     if (_needsFixture(scenario)) {
-      fixture = await FixtureServerHandle.start(
+      fixtures['default'] = await FixtureServerHandle.start(
         fixtureServerPackageDir: Directory('${repoRoot.path}/pleya_verify/fixture_server'),
       );
     }
@@ -313,15 +355,26 @@ Future<ScenarioRunResult> runScenario({
         stepRecords.add({'verb': 'terminate', 'ok': false, 'error': redact('$e')});
       }
     }
-    if (fixture != null) {
-      try {
-        final state = await fixture.verifyState();
-        snapshotHash = state['snapshotHash'] as String?;
-        bundle.writeFixtureRequests(await fixture.requestsSince(0));
-      } catch (_) {
-        bundle.writeFixtureRequests(const []);
+    if (fixtures.isNotEmpty) {
+      final defaultFixture = fixtures['default'];
+      if (defaultFixture != null) {
+        try {
+          final state = await defaultFixture.verifyState();
+          snapshotHash = state['snapshotHash'] as String?;
+        } catch (_) {}
       }
-      await fixture.stop();
+      final allRequests = <Map<String, Object?>>[];
+      for (final entry in fixtures.entries) {
+        try {
+          allRequests.addAll([
+            for (final r in await entry.value.requestsSince(0)) {'server': entry.key, ...r},
+          ]);
+        } catch (_) {}
+      }
+      bundle.writeFixtureRequests(allRequests);
+      for (final handle in fixtures.values) {
+        await handle.stop();
+      }
     } else {
       bundle.writeFixtureRequests(const []);
     }

@@ -156,9 +156,13 @@ class FakeDriver implements VerificationDriver {
   Future<void> typeText(String text) async {}
 
   final List<(double, double)> tapPoints = [];
+  final List<Duration?> tapHolds = [];
 
   @override
-  Future<void> tap(double x, double y) async => tapPoints.add((x, y));
+  Future<void> tap(double x, double y, {Duration? hold}) async {
+    tapPoints.add((x, y));
+    tapHolds.add(hold);
+  }
 }
 
 /// A row of focusables and a remote that moves through it, so the walk

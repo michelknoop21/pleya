@@ -443,7 +443,7 @@ class TvosSimulatorDriver implements VerificationDriver {
   }
 
   @override
-  Future<void> tap(double x, double y) {
+  Future<void> tap(double x, double y, {Duration? hold}) {
     throw UnsupportedError('tap: tvOS has no touch surface — the scenario validator already rejects "tap" here');
   }
 

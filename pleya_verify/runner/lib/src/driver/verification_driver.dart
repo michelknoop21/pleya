@@ -103,7 +103,14 @@ abstract class VerificationDriver {
 
   Future<void> typeText(String text);
 
-  Future<void> tap(double x, double y);
+  /// A tap at ([x], [y]) in logical pixels. [hold] keeps the pointer down
+  /// between down and up, the same shape [press]'s hold has: a real long
+  /// press, supported only where the driver can express it (today only the
+  /// iOS-simulator driver, which holds the synthetic pointer down through
+  /// `/v1/input/pointer`'s `holdMs`) — every other driver must throw rather
+  /// than degrade it into an ordinary tap, for the same reason [press]
+  /// documents.
+  Future<void> tap(double x, double y, {Duration? hold});
 
   /// The driver's own operational log (build/launch/terminate events,
   /// captured process stdout/stderr) — `driver.log` in the evidence

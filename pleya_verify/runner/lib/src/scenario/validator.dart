@@ -69,6 +69,9 @@ List<ScenarioError> validateScenario(Scenario scenario, AutomationIdCatalog cata
     if (step.verb == 'press') {
       _validatePress(step, scenario, errors);
     }
+    if (step.verb == 'tap') {
+      _validateTap(step, scenario, errors);
+    }
     if (step.verb == 'assert') {
       _validateAssert(step, scenario, errors);
     }
@@ -169,6 +172,41 @@ void _validatePress(ScenarioStep step, Scenario scenario, List<ScenarioError> er
             "a long press ('holdMs') is only supported on a tvOS target — '${scenario.target}' presses through "
             '/v1/input/key, which synthesizes one indivisible key press with no down/up split, so a hold there '
             'would silently be an ordinary press',
+      ),
+    );
+  }
+}
+
+/// `tap: {id: ..., holdMs: 600}` makes the tap a long press — see
+/// `dispatchAutomationPointerTap`'s doc. Only the iOS-simulator driver can
+/// hold the synthetic pointer down (`macos_driver.dart`/
+/// `tvos_simulator_driver.dart` throw), so a `holdMs` outside `ios-sim` is
+/// rejected here rather than surfacing as a driver `UnsupportedError` after a
+/// full build and launch — the same early-vs-late tradeoff [_validatePress]
+/// makes for a tvOS-only hold.
+void _validateTap(ScenarioStep step, Scenario scenario, List<ScenarioError> errors) {
+  final args = step.args;
+  if (args is! Map) return;
+  final holdRaw = args['holdMs'];
+  if (holdRaw == null) return;
+  if (holdRaw is! int || holdRaw <= 0) {
+    errors.add(
+      ScenarioError(
+        sourcePath: scenario.sourcePath,
+        line: step.line,
+        message: "tap holdMs must be a positive whole number of milliseconds, got '$holdRaw'",
+      ),
+    );
+    return;
+  }
+  if (scenario.target != 'ios-sim') {
+    errors.add(
+      ScenarioError(
+        sourcePath: scenario.sourcePath,
+        line: step.line,
+        message:
+            "a long tap ('holdMs') is only supported on the ios-sim target — '${scenario.target}' has no "
+            'pointer-hold implementation yet',
       ),
     );
   }

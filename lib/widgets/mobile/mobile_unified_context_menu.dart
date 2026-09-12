@@ -14,6 +14,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
 import '../../media/unified/source_availability.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_source.dart';
@@ -53,12 +54,15 @@ Future<void> showMobileUnifiedContextMenu(
     showDragHandle: true,
     builder: (sheetContext) => AppMenuSheet<UnifiedGroupAction>(
       title: representative.displayTitle,
+      automationId: AutomationIds.sheetContextMenu,
       entries: [
         for (final action in actions)
           AppMenuItem<UnifiedGroupAction>(
             value: action,
             icon: _iconForUnifiedGroupAction(action),
             label: labelForUnifiedGroupAction(action),
+            automationId: AutomationIds.sheetContextMenuItem,
+            automationInstance: action.name,
           ),
       ],
     ),

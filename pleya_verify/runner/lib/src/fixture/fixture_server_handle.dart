@@ -63,10 +63,18 @@ class FixtureServerHandle {
   /// leave a live child process behind otherwise, with nothing left able to
   /// stop it: [stop] can only ever be called on the handle this method never
   /// got to return.
-  static Future<FixtureServerHandle> start({required Directory fixtureServerPackageDir}) async {
+  /// [serverId] is what `/info`/`/server` report back as `server.id`, and so
+  /// what `PleyaServerConnection.id` derives from (`automation_signin.dart`):
+  /// two fixture processes sharing an id would collide into one connection
+  /// instead of two, which is exactly what a scenario driving the app
+  /// against a second server (unified cross-server grouping) needs to avoid.
+  /// Null keeps the fixture's own default (`'srv-1'`), unchanged for every
+  /// scenario that only ever runs one.
+  static Future<FixtureServerHandle> start({required Directory fixtureServerPackageDir, String? serverId}) async {
     final process = await Process.start('dart', [
       'run',
       'bin/serve.dart',
+      if (serverId != null) ...['--server-id', serverId],
     ], workingDirectory: fixtureServerPackageDir.path);
 
     Future<void> killOrphan() async {
@@ -84,8 +92,7 @@ class FixtureServerHandle {
           .first
           .timeout(
             const Duration(seconds: 30),
-            onTimeout: () =>
-                throw StateError('fixture server did not print its {port, controlToken} line within 30s'),
+            onTimeout: () => throw StateError('fixture server did not print its {port, controlToken} line within 30s'),
           );
       final decoded = jsonDecode(firstLine) as Map<String, Object?>;
       final port = decoded['port'];

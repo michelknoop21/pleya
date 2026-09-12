@@ -454,7 +454,13 @@ class MacosDriver implements VerificationDriver {
   }
 
   @override
-  Future<void> tap(double x, double y) async {
+  Future<void> tap(double x, double y, {Duration? hold}) async {
+    if (hold != null) {
+      throw UnsupportedError(
+        'tap hold: this target has no pointer-hold implementation yet — only the iOS-simulator driver supports '
+        'holdMs today. The scenario validator rejects holdMs outside ios-sim before a run gets this far.',
+      );
+    }
     await _requireClient().inputPointer(x, y);
   }
 
