@@ -83,6 +83,32 @@ enum UnifiedGroupAction {
       this == UnifiedGroupAction.markUnwatched;
 }
 
+/// Hoofdstuk 23's four "veilige groepsacties": Afspelen of Hervatten, Afspelen
+/// vanaf het begin, Meer info, en Bron wijzigen (PB-5). Deliberately not a
+/// member of [UnifiedGroupAction]: those are writes that fan out to every
+/// membership through [resolveUnifiedActionTarget], while these are
+/// navigation — the same `activateUnifiedMediaGroup`/`showUnifiedSourcePicker`
+/// call a card press or a hero pill already makes. The menu only asks for one;
+/// it does not perform it itself (see `tv_unified_context_menu.dart`'s own
+/// library doc on why the menu never routes on its own).
+enum UnifiedNavigationAction {
+  /// "Afspelen" or "Hervatten" depending on whether the group has resume
+  /// progress — the same label rule the TV Home hero pill uses
+  /// (`resumeFractionFor`).
+  playOrResume,
+
+  /// "Afspelen vanaf het begin": always plays, and always from position zero.
+  playFromBeginning,
+
+  /// Opens the detail page rather than starting playback.
+  moreInfo,
+
+  /// Forces the source picker open, the same explicit intent as "[ Wijzigen
+  /// ]" on the detail page. Only worth offering with more than one source —
+  /// see [UnifiedMediaGroup.sources]'s length at the call site.
+  changeSource,
+}
+
 /// Why an action cannot be offered or carried out right now.
 enum UnifiedActionBlocker {
   /// The group has memberships, but none on a reachable server. A write has

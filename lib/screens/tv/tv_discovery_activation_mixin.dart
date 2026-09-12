@@ -35,6 +35,7 @@ import '../../providers/offline_mode_provider.dart';
 import '../../services/api_cache.dart';
 import '../../services/unified_catalog/source_resolver.dart';
 import 'tv_media_source_picker_route.dart';
+import 'tv_unified_context_actions.dart';
 import 'tv_unified_context_menu.dart';
 import 'tv_unified_activation.dart';
 
@@ -53,32 +54,15 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
     // details" the way a discovery tile press does.
     UnifiedActivationIntent intent = UnifiedActivationIntent.details,
     bool playDirectly = false,
+    bool restartFromBeginning = false,
   }) async {
-    final multiServer = context.read<MultiServerProvider>();
-    final manager = multiServer.serverManager;
-    final health = unifiedServerHealth(
-      isOnline: manager.isServerOnline,
-      authErrorServerIds: manager.authErrorServerIds,
-    );
-
     await activateUnifiedMediaGroup(
       context,
       group: group,
       intent: intent,
       playDirectly: playDirectly,
-      environment: buildUnifiedActivationEnvironment(
-        group: group,
-        health: health,
-        catalogServerIds: {
-          for (final serverId in manager.serverIds)
-            if (manager.isServerVisible(ServerId(serverId))) serverId,
-        },
-        // The provider notifies on every server health change, matching the
-        // fase-5 catalog's own use of it for hoofdstuk 14.4.
-        availabilityRevision: multiServer,
-        resolver: _sourceResolver(multiServer),
-        onManageServers: onManageServers,
-      ),
+      restartFromBeginning: restartFromBeginning,
+      environment: _buildEnvironment(group, onManageServers: onManageServers),
       // I19: the existing post-edit refresh path — `DiscoverProvider.updateItem`
       // re-fetches one item and swaps it into on-deck/hubs, then notifies —
       // is exactly the incremental refresh a player return needs. No second
@@ -87,6 +71,46 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
       // one call here is what reaches Home, both landings and Search alike.
       onPlaybackReturned: (item) =>
           unawaited(context.read<DiscoverProvider>().updateItem(item.id, serverId: item.serverId)),
+    );
+  }
+
+  /// Hoofdstuk 23's "Bron wijzigen" menu action, on the same environment
+  /// [activateDiscoveryGroup] builds — forces the picker open rather than
+  /// letting a preferred server or a lone usable source skip it.
+  Future<void> _changeSourceFromDiscoveryMenu(UnifiedMediaGroup group, {VoidCallback? onManageServers}) async {
+    await chooseSourceForUnifiedMediaGroup(
+      context,
+      group: group,
+      isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+      environment: _buildEnvironment(group, onManageServers: onManageServers),
+      onPlaybackReturned: (item) =>
+          unawaited(context.read<DiscoverProvider>().updateItem(item.id, serverId: item.serverId)),
+    );
+  }
+
+  /// What [activateDiscoveryGroup] and [_changeSourceFromDiscoveryMenu] agree
+  /// the world looks like right now — pulled out because the menu's "Bron
+  /// wijzigen" needs the identical environment, not a second read of server
+  /// health that could disagree with the one activation used a frame earlier.
+  UnifiedActivationEnvironment _buildEnvironment(UnifiedMediaGroup group, {VoidCallback? onManageServers}) {
+    final multiServer = context.read<MultiServerProvider>();
+    final manager = multiServer.serverManager;
+    final health = unifiedServerHealth(
+      isOnline: manager.isServerOnline,
+      authErrorServerIds: manager.authErrorServerIds,
+    );
+    return buildUnifiedActivationEnvironment(
+      group: group,
+      health: health,
+      catalogServerIds: {
+        for (final serverId in manager.serverIds)
+          if (manager.isServerVisible(ServerId(serverId))) serverId,
+      },
+      // The provider notifies on every server health change, matching the
+      // fase-5 catalog's own use of it for hoofdstuk 14.4.
+      availabilityRevision: multiServer,
+      resolver: _sourceResolver(multiServer),
+      onManageServers: onManageServers,
     );
   }
 
@@ -105,6 +129,7 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
     bool isInContinueWatching = false,
     VoidCallback? onChanged,
     TvContextMenuExtraAction? extraAction,
+    VoidCallback? onManageServers,
   }) async {
     final manager = context.read<MultiServerProvider>().serverManager;
     final health = unifiedServerHealth(
@@ -119,6 +144,23 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
       isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
       onChanged: onChanged,
       extraAction: extraAction,
+      onNavigate: (action) => switch (action) {
+        UnifiedNavigationAction.playOrResume => activateDiscoveryGroup(
+          group,
+          intent: UnifiedActivationIntent.play,
+          playDirectly: true,
+          onManageServers: onManageServers,
+        ),
+        UnifiedNavigationAction.playFromBeginning => activateDiscoveryGroup(
+          group,
+          intent: UnifiedActivationIntent.play,
+          playDirectly: true,
+          restartFromBeginning: true,
+          onManageServers: onManageServers,
+        ),
+        UnifiedNavigationAction.moreInfo => activateDiscoveryGroup(group, onManageServers: onManageServers),
+        UnifiedNavigationAction.changeSource => _changeSourceFromDiscoveryMenu(group, onManageServers: onManageServers),
+      },
     );
   }
 

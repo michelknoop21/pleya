@@ -60,6 +60,11 @@ under `Notes`.
 - I4 Zoeken automation-IDs, playlist routing fix, full group coverage
 - add /v1/input/text endpoint for ios-sim/macOS
 - loudnessplan als Verify-state, LOUD1-scenario
+- mobiele contextmenu op unified groepssemantiek (I5, mockup 09)
+- mobiele bronkeuze, Wijzigen en playback-failure re-entry (I5, mockup 08)
+- Bibliotheken wordt bronbeheer op TV (LIB7, DEC-092)
+- MOC-11 backend-icoonwel op elke bronrij
+- MOC-12 unified contextmenu met navigatie en posterkop
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
@@ -134,6 +139,11 @@ under `Notes`.
 - titelbewijs resetten en paritybewijs gelijktrekken
 - Zoeken opent Aanvragen binnen de shell, ook met resultaten
 - toon servernaam bij personenresultaten (build 270)
+- LIB7 review findings — focus race, stale-node fallback, reorder clamp, error copy
+- HTTP-client blijft niet hangen na een suspend-freeze
+- MOC-09/MOC-10 compositie tegen mockup 37 A/C
+- expliciete restart vanaf begin respecteren ondanks details-instelling
+- hard-close cancel niet onbeheerd laten falen, deadline niet resetten
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026

@@ -33,6 +33,7 @@ class ManagedHttpClient extends http.BaseClient {
   bool _closing = false;
   bool _innerClosed = false;
   Future<void>? _closeFuture;
+  Timer? _hardCloseTimer;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
@@ -52,24 +53,40 @@ class ManagedHttpClient extends http.BaseClient {
     }
   }
 
-  Future<void> closeGracefully({Duration drainTimeout = const Duration(seconds: 2)}) {
+  /// [hardCloseDeadline] bounds how long a request that never reports back may
+  /// keep the inner client alive. A deferred close is normally repaired by the
+  /// request finishing, but a platform client can hold a request that will
+  /// never call back: tvOS drops every socket while the app is suspended, and
+  /// the aborts sent on resume land on requests that are already gone. Without
+  /// a ceiling those clients, their connection pools and their sockets are
+  /// never released, and a failed endpoint race leaks one per candidate.
+  Future<void> closeGracefully({
+    Duration drainTimeout = const Duration(seconds: 2),
+    Duration hardCloseDeadline = const Duration(seconds: 30),
+  }) {
     _closing = true;
     if (_innerClosed) return Future<void>.value();
 
     final existing = _closeFuture;
     if (existing != null) return existing;
 
-    final future = _closeGracefully(drainTimeout);
+    final future = _closeGracefully(drainTimeout, hardCloseDeadline);
     _closeFuture = future;
     unawaited(
       future.then<void>(
         (_) {
-          if (!_innerClosed && identical(_closeFuture, future)) {
+          // Not cleared while a hard-close timer is armed: `_closeGracefully`
+          // always arms one before returning when it leaves the client open,
+          // so clearing here unconditionally let a second `closeGracefully()`
+          // call (e.g. `main.dart`'s shutdown path, which calls this and then
+          // `closeAllGracefully()`) re-enter `_closeGracefully` and cancel and
+          // re-arm the timer, resetting the very deadline it exists to bound.
+          if (!_innerClosed && _hardCloseTimer == null && identical(_closeFuture, future)) {
             _closeFuture = null;
           }
         },
         onError: (Object _, StackTrace _) {
-          if (!_innerClosed && identical(_closeFuture, future)) {
+          if (!_innerClosed && _hardCloseTimer == null && identical(_closeFuture, future)) {
             _closeFuture = null;
           }
         },
@@ -83,7 +100,7 @@ class ManagedHttpClient extends http.BaseClient {
     unawaited(closeGracefully());
   }
 
-  Future<void> _closeGracefully(Duration drainTimeout) async {
+  Future<void> _closeGracefully(Duration drainTimeout, Duration hardCloseDeadline) async {
     await _abortActive();
 
     var drainTimedOut = false;
@@ -106,6 +123,7 @@ class ManagedHttpClient extends http.BaseClient {
         'HTTP client close deferred until active requests finish',
         error: {'client': debugLabel, 'activeRequests': _active.length, 'drainTimedOut': drainTimedOut},
       );
+      _scheduleHardClose(hardCloseDeadline);
     } else if (drainTimedOut) {
       appLogger.d('HTTP client drain timed out, closed anyway', error: {'client': debugLabel});
     }
@@ -219,11 +237,38 @@ class ManagedHttpClient extends http.BaseClient {
     }
   }
 
+  /// Drop requests that never reported back and close anyway. Dropping them
+  /// first keeps [_tryCloseInner]'s "no active requests" rule as the single
+  /// gate on closing.
+  void _scheduleHardClose(Duration deadline) {
+    _hardCloseTimer?.cancel();
+    _hardCloseTimer = Timer(deadline, () {
+      _hardCloseTimer = null;
+      if (_innerClosed) return;
+      appLogger.w(
+        'HTTP client force-closed after its drain deadline',
+        error: {'client': debugLabel, 'abandonedRequests': _active.length},
+      );
+      final abandoned = _active.toList();
+      _active.clear();
+      for (final tracked in abandoned) {
+        unawaited(
+          tracked.cancel().catchError((Object e, StackTrace st) {
+            appLogger.d('HTTP request cancel failed during hard close', error: e, stackTrace: st);
+          }),
+        );
+      }
+      _tryCloseInner();
+    });
+  }
+
   void _tryCloseInner() {
     if (_innerClosed || _active.isNotEmpty) return;
     try {
       _inner.close();
       _innerClosed = true;
+      _hardCloseTimer?.cancel();
+      _hardCloseTimer = null;
       _instances.remove(this);
     } catch (e, st) {
       appLogger.w('HTTP client close failed', error: e, stackTrace: st);

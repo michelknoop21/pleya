@@ -139,7 +139,10 @@ part 'media_detail/synopsis_panel.dart';
 part 'media_detail/tv_season_chips.dart';
 
 const double _tvDetailTallPosterScale = TvBrowseRailLayout.compactTallPosterScale;
-const double _tvDetailEpisodeThumbnailScale = TvBrowseRailLayout.compactEpisodeThumbnailScale;
+// Mockup 37 C (MOC-10) shows full-width episode/extras cards, not the
+// pre-DEC-087 compact 0.8 scale: DEC-087's 615-wide card is the default
+// (`widePosterScale: 1.0`), and 37 C never shrinks it.
+const double _tvDetailEpisodeThumbnailScale = 1.0;
 const double _tvDetailActionSize = 46;
 const double _tvDetailActionRailGap = 4;
 const String _tvDetailSeasonsErrorHubId = 'detail_seasons_error';
@@ -3956,7 +3959,14 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
             ? rawRailHeight
             : stableRailHeight;
         final railTopPadding = 12 * detailScale;
-        final foregroundBottom = (railHeight - railTopPadding) + (_tvDetailActionRailGap * detailScale);
+        // Mockup 37/DEC-109 corrects 09 and 10 for landing ~6px from the
+        // bottom edge against `TvCatalogLayout.bottomSafeInset` (81, DEC-087,
+        // the same overscan reserve `TvPageSurface` and every other TV page
+        // give their last row). This screen builds its own Stack instead of
+        // `TvPageSurface`, so it has to read the token itself.
+        final bottomSafeInset = TvCatalogLayout.bottomSafeInset * detailScale;
+        final foregroundBottom =
+            (railHeight - railTopPadding) + (_tvDetailActionRailGap * detailScale) + bottomSafeInset;
         final spotlightLeft = (24 * detailScale).clamp(18.0, 40.0).toDouble();
 
         final revealContent = Stack(
@@ -3979,7 +3989,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 0,
+                bottom: bottomSafeInset,
                 child: Column(
                   mainAxisSize: .min,
                   crossAxisAlignment: .stretch,
@@ -4521,7 +4531,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   }
 
   double _tvDetailWidePosterScaleForHub(MediaHub hub) {
-    return _isTvDetailEpisodeHub(hub) || hub.id == _tvDetailExtrasHubId ? _tvDetailEpisodeThumbnailScale : 1.0;
+    return _tvDetailEpisodeThumbnailScale;
   }
 
   List<MediaHub> _tvDetailHubs(MediaItem metadata) {

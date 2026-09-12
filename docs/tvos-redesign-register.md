@@ -41,10 +41,10 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 
 | ID | Werkitem | Besluit | Status | SHA / bewijs |
 |----|----------|---------|--------|--------------|
-| MOC-09 | Filmdetail | PB-1, PB-2, PB-3 | IN PROGRESS | `dc989713`, mockup 37/DEC-109: OVR1a op deze route gesloten (DET1) en de volledige-synopsisstaat gebouwd; de rest van 37 A's compositie tegen de goedgekeurde mockup is niet apart geaudit en er is geen hardwareronde geweest |
-| MOC-10 | Seriedetail, seizoenchips met één actieve afleveringenrail | PB-4 | IN PROGRESS | `b490420d`: horizontale seizoenchips gebouwd, `_tvDetailHubs` toont voortaan één actieve rail met stabiele hub-id per seizoen (`HubFocusMemory` blijft werken), LEFT/RIGHT/UP/DOWN-contract staat, `_fetchSeasonEpisodes`-pager ongewijzigd hergebruikt. Open: de exacte kaartgeometrie/afstand tegen mockup 37 C is niet los geaudit, en er is geen hardware- of Verify-run geweest; de precieze episode-focusrestauratie na een seizoenwissel is niet los widget-getest omdat `TvBrowseRail`'s kaartfocus gevirtualiseerd is (geen los `FocusNode` per kaart) |
-| MOC-11 | Bronkeuze met backend-icoonwel | PB-15 | OPEN | |
-| MOC-12 | Unified contextmenu | PB-5 | OPEN | |
+| MOC-09 | Filmdetail | PB-1, PB-2, PB-3 | IN PROGRESS | `dc989713`, mockup 37/DEC-109: OVR1a op deze route gesloten (DET1) en de volledige-synopsisstaat gebouwd. Compositie-audit tegen 37 A gedaan (12 sep): de informatiegroep en de rail eindigden op de vaste `TvBrowseRail`-padding van 6px in plaats van `TvCatalogLayout.bottomSafeInset` (81, DEC-087): dit scherm was de enige van zeven TV-pagina's die dat token niet las. Gefixt en gecommit (`1805c75e`): beide `Positioned`-offsets lezen nu `TvCatalogLayout.bottomSafeInset * detailScale`. `flutter test test/screens/media_detail_screen_test.dart` (37) en `test/widgets/tv_browse_rail_test.dart` (47) groen; simulatorscreenshot tegen 37 A vergeleken, geen overlap. Nog open: geen Pleya Verify-scenario voor deze compositiefix en geen hardwareronde |
+| MOC-10 | Seriedetail, seizoenchips met één actieve afleveringenrail | PB-4 | IN PROGRESS | `b490420d`: horizontale seizoenchips gebouwd, `_tvDetailHubs` toont voortaan één actieve rail met stabiele hub-id per seizoen (`HubFocusMemory` blijft werken), LEFT/RIGHT/UP/DOWN-contract staat, `_fetchSeasonEpisodes`-pager ongewijzigd hergebruikt. Compositie-audit tegen 37 C gedaan (12 sep), twee bevindingen gefixt en gecommit (`1805c75e`, zelfde commit als MOC-09): (1) de gedeelde onderrand-fix hierboven raakt ook deze rail; (2) episode-/extra's-kaarten stonden op `compactEpisodeThumbnailScale` (0,8×, een pre-DEC-087 keuze), 37 C toont volle 615-kaarten, dus `_tvDetailEpisodeThumbnailScale` naar 1.0. Correctie op deze rij: de episode-focusrestauratie na een seizoenwissel is wél los widget-getest, `test/screens/media_detail_screen_test.dart:740` (`'TV detail season chip switch keeps pagination and restores per-season focus memory'`), groen. Synopsisgedragspunt uit `docs/tvos-redesign-37-approved.md` opgelost via bestaand gedrag in plaats van een nieuw component: de hero swapt al naar titel/metaregel/synopsis van de gefocuste episode (`_tvDetailFocusedEpisode`, `_buildTvDetailMetadataLine`/`_tvDetailDescription`), en dat is functioneel gelijkwaardig aan de per-kaart-synopsis uit de mockup (lezen zonder wegnavigeren) zonder focus-afhankelijke hoogte op de gedeelde `TvBrowseRail`/`media_card.dart` te bouwen. Vastgelegd in `test/screens/media_detail_screen_test.dart` (`'TV detail hero swaps to the focused episode's own summary'`), groen. Dit wijkt af van de letterlijke compositie in 37 C (hero blijft daar op serieniveau); productbesluit, geen mockup-update. Nog open: geen hardware- of Verify-run; geen `Series`-bibliotheek op de bereikbare demo-server om dit visueel te bevestigen buiten de sim-screenshot van MOC-09's fix |
+| MOC-11 | Bronkeuze met backend-icoonwel | PB-15 | IN PROGRESS | `968d794e`: `BackendBadge` op elke bronrij, ongeacht of backends binnen de groep verschillen (33.9, richtinggevend). Progressbalk, "Huidige bron"-markering en artwork-fallback waren al gebouwd sinds de 3-september-audit. `flutter test` op de bronpicker- en descriptor-tests groen (36 + eigen unit tests); 8 goldens van `tv_media_source_picker_golden_test.dart` falen nu, verwacht (het icoon verandert elke rij zichtbaar), niet geregenereerd (macOS-lokaal geeft font-afwijkende pixels t.o.v. de Linux-CI-referentie, regenereren via `goldens.yml`). Nog open: geen hardwareronde |
+| MOC-12 | Unified contextmenu | PB-5 | IN PROGRESS | `62e48d12`: `showTvUnifiedContextMenu` kreeg drie secties (navigatie: Hervatten/Afspelen vanaf het begin/Meer info, de bestaande schrijfacties, bronwijziging) plus een posterkop (artwork of `TvArtworkFallback`, titel+jaar). `restartFromBeginning` loopt door `navigateToMediaItem` → `activateUnifiedMediaGroup` → beide TV-activatiepaden, hergebruikt het bestaande `resolveWatchState`-mechanisme (`viewOffsetMs: 0`), zoals het mobiele contextmenu al doet. `chooseSourceForUnifiedMediaGroup` forceert de bronpicker vanuit een kaartmenu zonder een open detailroute te vervangen. Drie productbeslissingen (backend-icoonwel, vier navigatie-acties, posterkop) door de gebruiker bevestigd vóór bouw. Compositie-audit tegen mockup 12 gedaan op de tvOS-simulator (12 sep): secties, volgorde en posterkop kloppen structureel; voor een single-source item verschijnt terecht "Home aanpassen" i.p.v. "Bron wijzigen". Drie visuele gaten blijven open t.o.v. de mockup: (1) metadata-subregel onder de titel (genre/duur/bronnen/kijktijd) ontbreekt, (2) resterende tijd op de "Hervatten"-rij ontbreekt, (3) geen icoon per actierij. Bewust niet aangepakt deze ronde: de schrijfacties-volgorde wijkt af van de mockup (bestaande, geteste volgorde buiten scope), en de paneelbreedte (hangt af van SYS-3a/OVR1, nog IN PROGRESS). `flutter test test/screens/tv/tv_unified_navigation_action_test.dart` (4), `test/widgets/tv/ test/screens/tv/` (545) groen, `flutter analyze` schoon. Volledige testsuite met/zonder diff vergeleken: geen regressie t.o.v. `41d60ca6`. Nog open: geen Pleya Verify-scenario, geen hardwareronde, de drie visuele gaten hierboven |
 
 ## DISCOVERY EN PERSOONLIJK
 
@@ -176,12 +176,12 @@ aflevering horen er om de omgekeerde reden bij: dezelfde serie geopend op seizoe
 is twee pagina's.
 
 **Zelfsluiting.** `MediaDetailScreen._dismissTvDetail` bestond al sinds SYS-1a en werkt nu ook
-echt. Daarnaast:
+echt, op de volgende plekken:
 
 - `FocusableDetailScreenMixin` krijgt `dismissDetailScreen`, de gedeelde eigenaar voor collectie én
   persoon. De drie `Navigator.pop`-plekken erin (de `PopScope`, `handleBackFromContent`, de
   `onBack` van de actiebalk) gaan er nu langs.
-- `_deleteCollection` gaf zijn `true` — het "de lijst waar je vandaan kwam is verouderd"-signaal —
+- `_deleteCollection` gaf zijn `true` (het "de lijst waar je vandaan kwam is verouderd"-signaal)
   via `Navigator.pop`. Genest is dat hetzelfde `true` op de route.
 - De drie plekken in `media_detail_screen.dart` waar het scherm zichzelf sluit omdat de laatste
   aflevering of het laatste seizoen eronder verdween. Die krijgen `_closeAfterContentGone` en niet
@@ -193,7 +193,7 @@ echt. Daarnaast:
 
 De TV-tak van de detailpagina bouwde zijn eigen `OverlaySheetHost`. De shell heeft er al één, boven
 de balk. Een tweede zou de sheets van dit scherm binnen de contentbox hangen, onder de balk en op de
-verkeerde maat, en `onOverlaySheetOpenChanged` van de shell zou nooit afgaan — stap 1 van de
+verkeerde maat, en `onOverlaySheetOpenChanged` van de shell zou nooit afgaan: stap 1 van de
 terugketen uit hoofdstuk 7.5 zou dus niet weten dat er een sheet open stond. `OverlaySheetHost.maybeOf`
 loopt omhoog, dus weglaten geeft ze aan die van de shell in plaats van aan niets.
 
@@ -211,7 +211,7 @@ gekomen. Hij vraagt nu eerst `TvNestedRouteScope`.
 
 **Bewijs.** `test/navigation/tv/tv_detail_route_contract_test.dart`, dertien tests in vier groepen:
 de route-identiteit, detail, collectie, en de gedeelde zelfsluiting. Drie ervan zijn negatieve
-controle en leggen het oude gedrag vast — zonder shell gaat dezelfde aanroep gewoon naar de
+controle en leggen het oude gedrag vast: zonder shell gaat dezelfde aanroep gewoon naar de
 navigator, en niet-genest popt het scherm zijn eigen route. De schermen zelf worden nooit
 gemonteerd: de builder van een geneste route draait pas als een shell hem tekent, dus de keuze van
 de aanroepplek is één stap eerder waarneembaar dan het scherm.

@@ -69,11 +69,15 @@ scrolt door.
 Op de eerste voordracht botste de afleveringenteller met de Menu-hint in 37 C. Dat is gecorrigeerd
 vóór goedkeuring; de PNG in de repo is de gecorrigeerde versie.
 
-## Open gedragspunt uit de mockupronde
+## Gedragspunt uit de mockupronde, opgelost via een andere route
 
-In 37 C valt de synopsis van de gefocuste aflevering onder de schermrand. Die moet in beeld komen
-zodra de rail focus krijgt en meescrolt. Dat is gedrag en geen nieuwe mockup, en hoort bij de
-bouw van MOC-10.
+In 37 C valt de synopsis van de gefocuste aflevering onder de schermrand, met de hero op
+serieniveau. De letterlijke bouw daarvan (focus-afhankelijke hoogte op de gedeelde `TvBrowseRail`)
+is niet doorgezet: de hero swapt al naar titel, metaregel en synopsis van de gefocuste episode
+(`_tvDetailFocusedEpisode`), functioneel gelijkwaardig, zonder een nieuw component op een
+gedeelde, focus-kritieke widget. Productbesluit bij de bouw van MOC-10 (12 sep 2026), geen
+mockup-update. Vastgelegd in `test/screens/media_detail_screen_test.dart` (`'TV detail hero swaps
+to the focused episode's own summary'`).
 
 ## De beelden
 

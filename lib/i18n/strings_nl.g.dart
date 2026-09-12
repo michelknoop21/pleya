@@ -1097,6 +1097,8 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	@override String analyzing({required Object title}) => 'Analyseren "${title}"...';
 	@override String analysisStarted({required Object title}) => 'Analyse gestart voor "${title}"';
 	@override String get failedToAnalyze => 'Kon bibliotheek niet analyseren';
+	@override String get failedToRefreshMetadata => 'Kon metadata niet vernieuwen';
+	@override String get failedToScan => 'Kon bibliotheek niet scannen';
 	@override String get noLibrariesFound => 'Geen bibliotheken gevonden';
 	@override String get allLibrariesHidden => 'Alle bibliotheken zijn verborgen';
 	@override String hiddenLibrariesCount({required Object count}) => 'Verborgen bibliotheken (${count})';
@@ -1117,6 +1119,12 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	@override String get libraryOptions => 'Bibliotheek opties';
 	@override String get content => 'bibliotheekinhoud';
 	@override String get selectLibrary => 'Bibliotheek kiezen';
+	@override String get openInAllMovies => 'Openen in Alle films';
+	@override String get openInAllSeries => 'Openen in Alle series';
+	@override String get openInCatalogSubtitle => 'met deze bron als filter';
+	@override String get refreshAllLibraries => 'Alles vernieuwen';
+	@override String get reorder => 'Ordenen';
+	@override String get reorderIntro => 'Gebruik de pijltoetsen om de volgorde te wijzigen. Dit geldt voor de kiezer en voor Home.';
 	@override String filtersWithCount({required Object count}) => 'Filters (${count})';
 	@override String get noRecommendations => 'Geen aanbevelingen beschikbaar';
 	@override String get noCollections => 'Geen collecties in deze bibliotheek';
@@ -2296,6 +2304,8 @@ class _TranslationsTvContextMenuNl extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.';
 	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen.';
 	@override String get failed => 'Dat is niet gelukt';
+	@override String get moreInfo => 'Meer info';
+	@override String get changeSource => 'Bron wijzigen';
 }
 
 // Path: languageSettings
@@ -3801,6 +3811,8 @@ extension on TranslationsNl {
 			'libraries.analyzing' => ({required Object title}) => 'Analyseren "${title}"...',
 			'libraries.analysisStarted' => ({required Object title}) => 'Analyse gestart voor "${title}"',
 			'libraries.failedToAnalyze' => 'Kon bibliotheek niet analyseren',
+			'libraries.failedToRefreshMetadata' => 'Kon metadata niet vernieuwen',
+			'libraries.failedToScan' => 'Kon bibliotheek niet scannen',
 			'libraries.noLibrariesFound' => 'Geen bibliotheken gevonden',
 			'libraries.allLibrariesHidden' => 'Alle bibliotheken zijn verborgen',
 			'libraries.hiddenLibrariesCount' => ({required Object count}) => 'Verborgen bibliotheken (${count})',
@@ -3821,6 +3833,12 @@ extension on TranslationsNl {
 			'libraries.libraryOptions' => 'Bibliotheek opties',
 			'libraries.content' => 'bibliotheekinhoud',
 			'libraries.selectLibrary' => 'Bibliotheek kiezen',
+			'libraries.openInAllMovies' => 'Openen in Alle films',
+			'libraries.openInAllSeries' => 'Openen in Alle series',
+			'libraries.openInCatalogSubtitle' => 'met deze bron als filter',
+			'libraries.refreshAllLibraries' => 'Alles vernieuwen',
+			'libraries.reorder' => 'Ordenen',
+			'libraries.reorderIntro' => 'Gebruik de pijltoetsen om de volgorde te wijzigen. Dit geldt voor de kiezer en voor Home.',
 			'libraries.filtersWithCount' => ({required Object count}) => 'Filters (${count})',
 			'libraries.noRecommendations' => 'Geen aanbevelingen beschikbaar',
 			'libraries.noCollections' => 'Geen collecties in deze bibliotheek',
@@ -3983,6 +4001,8 @@ extension on TranslationsNl {
 			'liveTv.manageRecording' => 'Opname beheren',
 			'liveTv.cancelRecording' => 'Opname annuleren',
 			'liveTv.cancelRecordingTitle' => 'Deze opname annuleren?',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} wordt niet meer opgenomen.',
 			'liveTv.deleteRule' => 'Regel verwijderen',
 			'liveTv.deleteRuleTitle' => 'Opnameregel verwijderen?',
@@ -3991,8 +4011,6 @@ extension on TranslationsNl {
 			'liveTv.alreadyScheduled' => 'Dit programma is al gepland',
 			'liveTv.dvrAdminRequired' => 'DVR-instellingen vereisen een beheerdersaccount',
 			'liveTv.recordingFailed' => 'Kon opname niet plannen',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.recordingTargetMissing' => 'Kon opnamebibliotheek niet bepalen',
 			'liveTv.recordNotAvailable' => 'Opname niet beschikbaar voor dit programma',
 			'liveTv.recordingCancelled' => 'Opname geannuleerd',
@@ -4497,6 +4515,8 @@ extension on TranslationsNl {
 			'addServer.addJellyfinTitle' => 'Jellyfin-server toevoegen',
 			'addServer.serverUrls' => 'Server-URL\'s',
 			'addServer.serverUrlsHelper' => 'Meerdere URL\'s toegestaan, gescheiden door komma\'s.',
+			_ => null,
+		} ?? switch (path) {
 			'addServer.findServer' => 'Server zoeken',
 			'addServer.searchingLocalServers' => 'Lokale Jellyfin-servers zoeken...',
 			'addServer.localServers' => 'Lokale Jellyfin-servers',
@@ -4505,8 +4525,6 @@ extension on TranslationsNl {
 			'addServer.signIn' => 'Inloggen',
 			'addServer.change' => 'Wijzigen',
 			'addServer.required' => 'Vereist',
-			_ => null,
-		} ?? switch (path) {
 			'addServer.couldNotReachServer' => 'Kon de server niet bereiken',
 			'addServer.signInFailed' => 'Inloggen mislukt',
 			'addServer.quickConnectFailed' => 'Quick Connect mislukt',
@@ -4905,6 +4923,8 @@ extension on TranslationsNl {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Gereed op ${done} van ${total} bronnen.',
 			'tvContextMenu.failed' => 'Dat is niet gelukt',
+			'tvContextMenu.moreInfo' => 'Meer info',
+			'tvContextMenu.changeSource' => 'Bron wijzigen',
 			'languageSettings.title' => 'Taal en ondertitels',
 			'languageSettings.description' => 'Audio- en ondertiteltalen, en de series die hun eigen keuze houden',
 			'languageSettings.globalHeader' => 'Globale voorkeur',

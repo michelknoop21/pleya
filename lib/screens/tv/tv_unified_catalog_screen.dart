@@ -93,6 +93,7 @@ import '../../widgets/tv/tv_unified_layout.dart';
 import '../../widgets/tv/tv_unified_media_grid.dart';
 import 'tv_media_source_picker_route.dart';
 import 'tv_unified_activation.dart';
+import 'tv_unified_context_actions.dart';
 import 'tv_unified_context_menu.dart';
 
 /// How many frames [_TvUnifiedCatalogScreenState._scheduleRestore] waits for a
@@ -403,28 +404,19 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   // Activation — fase 4, and nothing else
   // ---------------------------------------------------------------------------
 
-  Future<void> _activate(UnifiedMediaGroup group) async {
-    final multiServer = context.read<MultiServerProvider>();
-    final manager = multiServer.serverManager;
-    final health = unifiedServerHealth(
-      isOnline: manager.isServerOnline,
-      authErrorServerIds: manager.authErrorServerIds,
-    );
-
+  Future<void> _activate(
+    UnifiedMediaGroup group, {
+    UnifiedActivationIntent intent = UnifiedActivationIntent.details,
+    bool playDirectly = false,
+    bool restartFromBeginning = false,
+  }) async {
     await activateUnifiedMediaGroup(
       context,
       group: group,
-      intent: UnifiedActivationIntent.details,
-      environment: buildUnifiedActivationEnvironment(
-        group: group,
-        health: health,
-        catalogServerIds: {for (final library in widget.catalog.participatingLibraries) library.serverId.value},
-        // The provider notifies on every server health change, which is what
-        // hoofdstuk 14.4 needs to disable a row under the cursor.
-        availabilityRevision: multiServer,
-        resolver: _sourceResolver(multiServer),
-        onManageServers: widget.onManageServers,
-      ),
+      intent: intent,
+      playDirectly: playDirectly,
+      restartFromBeginning: restartFromBeginning,
+      environment: _buildEnvironment(group),
       // I19: player return re-reads the concrete item that played and folds
       // it back into its group in place — no re-page, no lost scroll
       // position, no card that jumps under the cursor. `refreshItem` is a
@@ -437,6 +429,43 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
           return context.read<MultiServerProvider>().getClientForServer(ServerId(serverId))?.fetchItem(item.id);
         }),
       ),
+    );
+  }
+
+  /// Hoofdstuk 23's "Bron wijzigen" menu action, on the same environment
+  /// [_activate] builds.
+  Future<void> _changeSourceFromCatalogMenu(UnifiedMediaGroup group) async {
+    await chooseSourceForUnifiedMediaGroup(
+      context,
+      group: group,
+      isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+      environment: _buildEnvironment(group),
+      onPlaybackReturned: (item) => unawaited(
+        widget.catalog.refreshItem(item.globalKey, () async {
+          final serverId = item.serverId;
+          if (serverId == null) return null;
+          return context.read<MultiServerProvider>().getClientForServer(ServerId(serverId))?.fetchItem(item.id);
+        }),
+      ),
+    );
+  }
+
+  UnifiedActivationEnvironment _buildEnvironment(UnifiedMediaGroup group) {
+    final multiServer = context.read<MultiServerProvider>();
+    final manager = multiServer.serverManager;
+    final health = unifiedServerHealth(
+      isOnline: manager.isServerOnline,
+      authErrorServerIds: manager.authErrorServerIds,
+    );
+    return buildUnifiedActivationEnvironment(
+      group: group,
+      health: health,
+      catalogServerIds: {for (final library in widget.catalog.participatingLibraries) library.serverId.value},
+      // The provider notifies on every server health change, which is what
+      // hoofdstuk 14.4 needs to disable a row under the cursor.
+      availabilityRevision: multiServer,
+      resolver: _sourceResolver(multiServer),
+      onManageServers: widget.onManageServers,
     );
   }
 
@@ -456,6 +485,21 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       group: group,
       availabilityFor: (source) => unifiedSourceAvailability(source, health),
       isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+      onNavigate: (action) => switch (action) {
+        UnifiedNavigationAction.playOrResume => _activate(
+          group,
+          intent: UnifiedActivationIntent.play,
+          playDirectly: true,
+        ),
+        UnifiedNavigationAction.playFromBeginning => _activate(
+          group,
+          intent: UnifiedActivationIntent.play,
+          playDirectly: true,
+          restartFromBeginning: true,
+        ),
+        UnifiedNavigationAction.moreInfo => _activate(group),
+        UnifiedNavigationAction.changeSource => _changeSourceFromCatalogMenu(group),
+      },
     );
   }
 

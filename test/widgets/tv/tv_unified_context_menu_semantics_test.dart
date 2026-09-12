@@ -71,6 +71,7 @@ void main() {
                         context,
                         group: _group(),
                         availabilityFor: (_) => SourceAvailability.online,
+                        onNavigate: (_) async {},
                       ),
                       child: const Text('open'),
                     ),

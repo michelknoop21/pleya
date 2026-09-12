@@ -22,6 +22,7 @@ import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/unified/source_availability.dart';
 import '../../theme/mono_tokens.dart';
+import '../backend_badge.dart';
 import 'tv_source_row_descriptor.dart';
 import 'tv_unified_layout.dart';
 
@@ -315,95 +316,140 @@ class TvSourceRowState extends State<TvSourceRow> {
                   ),
           ),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Expanded(
-                  child: Text(
-                    descriptor.serverName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: primaryColor,
-                      fontSize: TvSourcePickerLayout.rowPrimaryFontSize * scale,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.1,
-                      height: 1.1,
-                    ),
-                  ),
-                ),
-                if (descriptor.statusLabel != null) ...[
-                  SizedBox(width: 12 * scale),
-                  _TvStatusLabel(scale: scale, descriptor: descriptor),
-                ],
-              ],
+            Padding(
+              padding: EdgeInsets.only(right: TvSourcePickerLayout.rowBadgeGap * scale),
+              child: BackendBadge(
+                backend: descriptor.backend,
+                size: TvSourcePickerLayout.rowBadgeSize * scale,
+                color: primaryColor,
+              ),
             ),
-            if (descriptor.contextParts.isNotEmpty) ...[
-              SizedBox(height: TvSourcePickerLayout.rowLineGap * scale),
-              Text(
-                descriptor.contextParts.join('  ·  '),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: secondaryColor,
-                  fontSize: TvSourcePickerLayout.rowSecondaryFontSize * scale,
-                  // Regular, not medium. Bold context under a bold server name
-                  // is two headings on one row, and the eye then has to read
-                  // both before it knows which server it is looking at.
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: 0.1,
-                  height: 1.15,
-                ),
+            Expanded(
+              child: _TvSourceRowBody(
+                scale: scale,
+                descriptor: descriptor,
+                primaryColor: primaryColor,
+                secondaryColor: secondaryColor,
+                tertiaryColor: tertiaryColor,
+                enabled: enabled,
               ),
-            ],
-            if (descriptor.qualityParts.isNotEmpty || descriptor.progressLabel != null) ...[
-              SizedBox(height: TvSourcePickerLayout.rowLineGap * scale * 0.75),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Expanded(
-                    child: Text(
-                      descriptor.qualityParts.join('  ·  '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: tertiaryColor,
-                        fontSize: TvSourcePickerLayout.rowTertiaryFontSize * scale,
-                        height: 1.15,
-                      ),
-                    ),
-                  ),
-                  if (descriptor.progressLabel != null) ...[
-                    SizedBox(width: 12 * scale),
-                    // A step brighter than the quality parts it shares the line
-                    // with: "where was I" is the reason this row is the one to
-                    // pick, and it is the half of the line worth reading.
-                    Text(
-                      descriptor.progressLabel!,
-                      style: TextStyle(
-                        color: secondaryColor,
-                        fontSize: TvSourcePickerLayout.rowTertiaryFontSize * scale,
-                        fontWeight: FontWeight.w500,
-                        height: 1.15,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-            if (descriptor.progressFraction != null) ...[
-              SizedBox(height: TvSourcePickerLayout.progressBarGap * scale),
-              _TvProgressBar(scale: scale, fraction: descriptor.progressFraction!, enabled: enabled),
-            ],
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _TvSourceRowBody extends StatelessWidget {
+  const _TvSourceRowBody({
+    required this.scale,
+    required this.descriptor,
+    required this.primaryColor,
+    required this.secondaryColor,
+    required this.tertiaryColor,
+    required this.enabled,
+  });
+
+  final double scale;
+  final TvSourceRowDescriptor descriptor;
+  final Color primaryColor;
+  final Color secondaryColor;
+  final Color tertiaryColor;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Expanded(
+              child: Text(
+                descriptor.serverName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: primaryColor,
+                  fontSize: TvSourcePickerLayout.rowPrimaryFontSize * scale,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.1,
+                  height: 1.1,
+                ),
+              ),
+            ),
+            if (descriptor.statusLabel != null) ...[
+              SizedBox(width: 12 * scale),
+              _TvStatusLabel(scale: scale, descriptor: descriptor),
+            ],
+          ],
+        ),
+        if (descriptor.contextParts.isNotEmpty) ...[
+          SizedBox(height: TvSourcePickerLayout.rowLineGap * scale),
+          Text(
+            descriptor.contextParts.join('  ·  '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: secondaryColor,
+              fontSize: TvSourcePickerLayout.rowSecondaryFontSize * scale,
+              // Regular, not medium. Bold context under a bold server name
+              // is two headings on one row, and the eye then has to read
+              // both before it knows which server it is looking at.
+              fontWeight: FontWeight.w400,
+              letterSpacing: 0.1,
+              height: 1.15,
+            ),
+          ),
+        ],
+        if (descriptor.qualityParts.isNotEmpty || descriptor.progressLabel != null) ...[
+          SizedBox(height: TvSourcePickerLayout.rowLineGap * scale * 0.75),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: Text(
+                  descriptor.qualityParts.join('  ·  '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: tertiaryColor,
+                    fontSize: TvSourcePickerLayout.rowTertiaryFontSize * scale,
+                    height: 1.15,
+                  ),
+                ),
+              ),
+              if (descriptor.progressLabel != null) ...[
+                SizedBox(width: 12 * scale),
+                // A step brighter than the quality parts it shares the line
+                // with: "where was I" is the reason this row is the one to
+                // pick, and it is the half of the line worth reading.
+                Text(
+                  descriptor.progressLabel!,
+                  style: TextStyle(
+                    color: secondaryColor,
+                    fontSize: TvSourcePickerLayout.rowTertiaryFontSize * scale,
+                    fontWeight: FontWeight.w500,
+                    height: 1.15,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+        if (descriptor.progressFraction != null) ...[
+          SizedBox(height: TvSourcePickerLayout.progressBarGap * scale),
+          _TvProgressBar(scale: scale, fraction: descriptor.progressFraction!, enabled: enabled),
+        ],
+      ],
     );
   }
 }

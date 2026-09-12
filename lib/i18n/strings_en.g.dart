@@ -2621,6 +2621,12 @@ class TranslationsLibrariesEn {
 	/// en: 'Failed to analyze library'
 	String get failedToAnalyze => 'Failed to analyze library';
 
+	/// en: 'Failed to refresh metadata'
+	String get failedToRefreshMetadata => 'Failed to refresh metadata';
+
+	/// en: 'Failed to scan library'
+	String get failedToScan => 'Failed to scan library';
+
 	/// en: 'No libraries found'
 	String get noLibrariesFound => 'No libraries found';
 
@@ -2680,6 +2686,24 @@ class TranslationsLibrariesEn {
 
 	/// en: 'Select library'
 	String get selectLibrary => 'Select library';
+
+	/// en: 'Open in All Movies'
+	String get openInAllMovies => 'Open in All Movies';
+
+	/// en: 'Open in All Series'
+	String get openInAllSeries => 'Open in All Series';
+
+	/// en: 'with this source as filter'
+	String get openInCatalogSubtitle => 'with this source as filter';
+
+	/// en: 'Refresh All'
+	String get refreshAllLibraries => 'Refresh All';
+
+	/// en: 'Reorder'
+	String get reorder => 'Reorder';
+
+	/// en: 'Use the arrows to change the order. It applies to the source picker and to Home.'
+	String get reorderIntro => 'Use the arrows to change the order. It applies to the source picker and to Home.';
 
 	/// en: 'Filters (${count})'
 	String filtersWithCount({required Object count}) => 'Filters (${count})';
@@ -5553,6 +5577,12 @@ class TranslationsTvContextMenuEn {
 
 	/// en: 'That did not work'
 	String get failed => 'That did not work';
+
+	/// en: 'More Info'
+	String get moreInfo => 'More Info';
+
+	/// en: 'Change Source'
+	String get changeSource => 'Change Source';
 }
 
 // Path: languageSettings
@@ -7781,6 +7811,8 @@ extension on Translations {
 			'libraries.analyzing' => ({required Object title}) => 'Analyzing "${title}"...',
 			'libraries.analysisStarted' => ({required Object title}) => 'Analysis started for "${title}"',
 			'libraries.failedToAnalyze' => 'Failed to analyze library',
+			'libraries.failedToRefreshMetadata' => 'Failed to refresh metadata',
+			'libraries.failedToScan' => 'Failed to scan library',
 			'libraries.noLibrariesFound' => 'No libraries found',
 			'libraries.allLibrariesHidden' => 'All libraries are hidden',
 			'libraries.hiddenLibrariesCount' => ({required Object count}) => 'Hidden libraries (${count})',
@@ -7801,6 +7833,12 @@ extension on Translations {
 			'libraries.libraryOptions' => 'Library options',
 			'libraries.content' => 'library content',
 			'libraries.selectLibrary' => 'Select library',
+			'libraries.openInAllMovies' => 'Open in All Movies',
+			'libraries.openInAllSeries' => 'Open in All Series',
+			'libraries.openInCatalogSubtitle' => 'with this source as filter',
+			'libraries.refreshAllLibraries' => 'Refresh All',
+			'libraries.reorder' => 'Reorder',
+			'libraries.reorderIntro' => 'Use the arrows to change the order. It applies to the source picker and to Home.',
 			'libraries.filtersWithCount' => ({required Object count}) => 'Filters (${count})',
 			'libraries.noRecommendations' => 'No recommendations available',
 			'libraries.noCollections' => 'No collections in this library',
@@ -7963,6 +8001,8 @@ extension on Translations {
 			'liveTv.manageRecording' => 'Manage recording',
 			'liveTv.cancelRecording' => 'Cancel recording',
 			'liveTv.cancelRecordingTitle' => 'Cancel this recording?',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} will no longer be recorded.',
 			'liveTv.deleteRule' => 'Delete rule',
 			'liveTv.deleteRuleTitle' => 'Delete recording rule?',
@@ -7971,8 +8011,6 @@ extension on Translations {
 			'liveTv.alreadyScheduled' => 'This program is already scheduled',
 			'liveTv.dvrAdminRequired' => 'DVR settings require an admin account',
 			'liveTv.recordingFailed' => 'Couldn\'t schedule recording',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.recordingTargetMissing' => 'Couldn\'t determine recording library',
 			'liveTv.recordNotAvailable' => 'Recording not available for this program',
 			'liveTv.recordingCancelled' => 'Recording cancelled',
@@ -8477,6 +8515,8 @@ extension on Translations {
 			'seerr.selectSeasons' => 'Select seasons',
 			'seerr.season' => ({required Object number}) => 'Season ${number}',
 			'seerr.allSeasons' => 'All seasons',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.seasonsRange' => ({required Object range}) => 'Seasons ${range}',
 			'seerr.seasonsCount' => ({required Object count}) => '${count} seasons',
 			'seerr.requestedBy' => ({required Object name}) => 'Requested by ${name}',
@@ -8485,8 +8525,6 @@ extension on Translations {
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
 			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => '${remaining} of ${limit} requests left',
 			'seerr.quotaUnlimited' => 'Unlimited requests',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.advancedOptions' => 'Advanced options',
 			'seerr.server' => 'Server',
 			'seerr.qualityProfile' => 'Quality profile',
@@ -8885,6 +8923,8 @@ extension on Translations {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Done on ${done} of ${total} sources.',
 			'tvContextMenu.failed' => 'That did not work',
+			'tvContextMenu.moreInfo' => 'More Info',
+			'tvContextMenu.changeSource' => 'Change Source',
 			'languageSettings.title' => 'Language & subtitles',
 			'languageSettings.description' => 'Audio and subtitle languages, and the series that keep their own',
 			'languageSettings.globalHeader' => 'Global preference',

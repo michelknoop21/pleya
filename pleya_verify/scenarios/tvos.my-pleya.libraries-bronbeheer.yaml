@@ -1,0 +1,67 @@
+name: tvos.my-pleya.libraries-bronbeheer
+target: tvos-sim
+# LIB7 (DEC-092): Bibliotheken is bronbeheer on TV, not a second browsing
+# screen. `tvos.my-pleya.section-libraries` proves the generic Mijn Pleya
+# nested-route contract (opens, focus lands inside, Menu returns); this
+# scenario proves what changed underneath it — every row is a management row
+# and Select opens the action sheet, not a tab bar with content.
+#
+# `tvos.my-pleya.library-chooser` and `tvos.library.sort` exercised the
+# tab/chooser/grid contract this decision removes on TV; they were not
+# rewritten here (out of LIB7's own scope) and are expected to fail against
+# this build until they are retired or rebuilt against bronbeheer.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+
+  # This fixture seeds no watchlist and no Seerr server, so "Mijn content" has
+  # no tiles and drops out of the hub entirely (hoofdstuk 33.8) — Bibliotheken
+  # is the first group, one DOWN from the profile header.
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+
+  - press: select
+  - wait_until: {id: "my_pleya.section[libraries]", timeout: 15000}
+  - settle: 1000
+  - snapshot: 00-bronbeheer-list
+
+  # Every library is a management row with its own title — not a tab, not a
+  # chooser chip.
+  - assert: {id: "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]", state: {title: Movies}}
+  - assert: {id: "my_pleya.section.tile[libraries.srv-1:c6fe01777910c423]", state: {title: Shows}}
+
+  - wait_until: {focused: "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]", timeout: 8000}
+  - press: select
+  - settle: 800
+  - snapshot: 01-action-sheet-movies
+
+  # Menu closes the sheet, not the section — the remote lands back on the row
+  # that opened it.
+  - press: menu
+  - settle: 500
+  - wait_until: {focused: "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]", timeout: 5000}
+  - snapshot: 02-sheet-closed
+
+  # State D: "Openen in Alle films" lands on the existing catalog with this
+  # library as a preset source filter — the same "Alle N" mechanism ROW1c
+  # already opens with a filter override, not a new browsing surface.
+  - press: select
+  - settle: 800
+  - press: up
+  - press: up
+  - press: up
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[movies]", timeout: 15000}
+  - settle: 1000
+  - snapshot: 03-opened-in-catalog

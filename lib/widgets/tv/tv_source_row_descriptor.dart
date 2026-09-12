@@ -29,6 +29,11 @@ import '../../utils/formatters.dart';
 class TvSourceRowDescriptor {
   final String sourceKey;
 
+  /// The badge glyph (33.9, richtinggevend): rendered on every row regardless
+  /// of [contextParts]' own backend word, which only appears there when
+  /// [describeSources] found more than one backend worth naming in text.
+  final MediaBackend backend;
+
   /// Line one, left: the server the user recognises.
   final String serverName;
 
@@ -63,6 +68,7 @@ class TvSourceRowDescriptor {
 
   const TvSourceRowDescriptor({
     required this.sourceKey,
+    required this.backend,
     required this.serverName,
     required this.contextParts,
     required this.qualityParts,
@@ -140,6 +146,7 @@ TvSourceRowDescriptor describeSource(
   final item = source.item;
   return TvSourceRowDescriptor(
     sourceKey: source.sourceKey,
+    backend: source.backend,
     // `serverName` already falls back to the server id in
     // `UnifiedMediaSource.fromItem`, so a row always has something to head it.
     serverName: source.serverName,

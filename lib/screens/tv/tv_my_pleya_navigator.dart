@@ -34,13 +34,13 @@ import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../watch_together/screens/watch_together_screen.dart';
 import '../now_watching_screen.dart';
 import '../downloads/downloads_screen.dart';
-import '../libraries/libraries_screen.dart';
 import '../seerr/seerr_discover_screen.dart';
 import '../settings/logs_screen.dart';
 import '../settings/settings_screen.dart';
 import '../watchlist_screen.dart';
 import 'tv_my_pleya_sections.dart';
 import 'sections/tv_about_screen.dart';
+import 'sections/tv_libraries_screen.dart';
 import 'sections/tv_servers_page.dart';
 
 /// The nested route a Mijn Pleya tile opens.
@@ -90,8 +90,10 @@ TvNestedRoute tvMyPleyaNestedRoute(TvMyPleyaSection section, {GlobalKey? librari
           // `loadLibraryByKey` the rail's library rows have always called.
           // Keyed by the route's own `screenKey`, which for this section *is*
           // `librariesKey`; a second key here would leave one of them resolving
-          // to nothing.
-          TvMyPleyaSection.libraries => LibrariesScreen(key: librariesKey),
+          // to nothing. `TvLibrariesScreen`, not the shared `LibrariesScreen`:
+          // DEC-092 (LIB7) is TV-only, and the shared class keeps serving
+          // desktop and mobile unchanged.
+          TvMyPleyaSection.libraries => TvLibrariesScreen(key: librariesKey),
           // `servers-a`. TvServersScreen mounted the desktop settings card
           // inside a TV page; this is the tile presentation on the shared frame.
           TvMyPleyaSection.servers => const TvServersPage(),

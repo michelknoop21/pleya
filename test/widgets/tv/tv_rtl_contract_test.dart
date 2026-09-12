@@ -285,6 +285,7 @@ void main() {
                         scale: 1,
                         descriptor: const TvSourceRowDescriptor(
                           sourceKey: 'nas:1',
+                          backend: MediaBackend.plex,
                           serverName: 'NAS',
                           contextParts: ['Films'],
                           qualityParts: ['2160p'],

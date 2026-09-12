@@ -892,6 +892,8 @@
     "analyzing": "Analyseren \"${title}\"...",
     "analysisStarted": "Analyse gestart voor \"${title}\"",
     "failedToAnalyze": "Kon bibliotheek niet analyseren",
+    "failedToRefreshMetadata": "Kon metadata niet vernieuwen",
+    "failedToScan": "Kon bibliotheek niet scannen",
     "noLibrariesFound": "Geen bibliotheken gevonden",
     "allLibrariesHidden": "Alle bibliotheken zijn verborgen",
     "hiddenLibrariesCount": "Verborgen bibliotheken (${count})",
@@ -912,6 +914,12 @@
     "libraryOptions": "Bibliotheek opties",
     "content": "bibliotheekinhoud",
     "selectLibrary": "Bibliotheek kiezen",
+    "openInAllMovies": "Openen in Alle films",
+    "openInAllSeries": "Openen in Alle series",
+    "openInCatalogSubtitle": "met deze bron als filter",
+    "refreshAllLibraries": "Alles vernieuwen",
+    "reorder": "Ordenen",
+    "reorderIntro": "Gebruik de pijltoetsen om de volgorde te wijzigen. Dit geldt voor de kiezer en voor Home.",
     "filtersWithCount": "Filters (${count})",
     "noRecommendations": "Geen aanbevelingen beschikbaar",
     "noCollections": "Geen collecties in deze bibliotheek",
@@ -2118,7 +2126,9 @@
     "doneOnAll": "Gereed op alle ${count} bronnen",
     "doneOnSome": "Gereed op ${done} van ${total} bronnen. De rest wordt opnieuw geprobeerd zodra ze weer online zijn.",
     "doneOnSomeNoRetry": "Gereed op ${done} van ${total} bronnen.",
-    "failed": "Dat is niet gelukt"
+    "failed": "Dat is niet gelukt",
+    "moreInfo": "Meer info",
+    "changeSource": "Bron wijzigen"
   },
   "languageSettings": {
     "title": "Taal en ondertitels",
