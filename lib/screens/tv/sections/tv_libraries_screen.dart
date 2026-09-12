@@ -93,6 +93,14 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
 
   bool _reordering = false;
 
+  /// Set by [loadLibraryByKey], consumed by the very next
+  /// [focusActiveTabIfReady]. `main_screen.dart`'s `_selectLibrary` calls both
+  /// back-to-back in the same postFrameCallback; `FocusMemoryTracker.lastFocusedKey`
+  /// only updates once the focus manager applies the pending change (a
+  /// microtask later), so reading it here would still see the *previous*
+  /// row and this method would win the race and refocus that instead.
+  String? _pendingExplicitFocusKey;
+
   @override
   void initState() {
     super.initState();
@@ -148,7 +156,17 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
   /// also the one place a viewer can still act from there (Alles vernieuwen).
   @override
   void focusActiveTabIfReady() {
-    final key = _nodes.lastFocusedKey ?? _firstRowKey(groupLibrariesByFirstAppearance(_currentLibraries()));
+    final pending = _pendingExplicitFocusKey;
+    _pendingExplicitFocusKey = null;
+    final currentKeys = _currentLibraries().map((l) => l.globalKey).toSet();
+    // A key naming a library that no longer exists (server offline, list
+    // changed since this was last the focused row) is exactly the stale-node
+    // trap CAT16/LAND5 already found elsewhere: `canRequestFocus` is true on
+    // a detached node too, so `requestFocus()` silently no-ops and this
+    // method must not `return` believing it worked.
+    final key =
+        [pending, _nodes.lastFocusedKey].firstWhere((k) => k != null && currentKeys.contains(k), orElse: () => null) ??
+        _firstRowKey(groupLibrariesByFirstAppearance(_currentLibraries()));
     if (key != null) {
       final node = _nodes.get(key);
       if (node.canRequestFocus) {
@@ -175,6 +193,7 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
   /// `requestFocus()` to a frame after the one the caller already waited for.
   @override
   void loadLibraryByKey(String libraryGlobalKey) {
+    _pendingExplicitFocusKey = libraryGlobalKey;
     final node = _nodes.get(libraryGlobalKey);
     if (node.canRequestFocus) node.requestFocus();
   }
@@ -234,7 +253,7 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
     message: t.libraries.refreshMetadataConfirm(title: library.title),
     action: () => context.getMediaClientForLibrary(library).refreshLibraryMetadata(library.id),
     successMessage: t.messages.metadataRefreshStarted(title: library.title),
-    failureMessage: t.libraries.failedToAnalyze,
+    failureMessage: t.libraries.failedToRefreshMetadata,
   );
 
   Future<void> _scan(MediaLibrary library) => _confirmAndRun(
@@ -242,7 +261,7 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
     message: t.libraries.scanLibraryConfirm(title: library.title),
     action: () => context.getPlexClientForLibrary(library).scanLibrary(library.id),
     successMessage: t.messages.libraryScanStarted(title: library.title),
-    failureMessage: t.libraries.failedToAnalyze,
+    failureMessage: t.libraries.failedToScan,
   );
 
   Future<void> _analyze(MediaLibrary library) => _confirmAndRun(
@@ -290,6 +309,7 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
     }
 
     if (_reordering) {
+      final reorderGroups = groupLibrariesByFirstAppearance(libraries);
       return TvPageSurface(
         title: t.libraries.title,
         automationInstance: 'libraries.reorder',
@@ -299,7 +319,7 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
           icon: Symbols.check_rounded,
           primary: false,
           focusNode: _reorderNode,
-          onNavigateDown: () => _nodes.get(_firstRowKey(groupLibrariesByFirstAppearance(libraries))!).requestFocus(),
+          onNavigateDown: () => _nodes.get(_firstRowKey(reorderGroups)!).requestFocus(),
           onPressed: () => setState(() => _reordering = false),
         ),
         children: [
@@ -308,7 +328,14 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
             child: Text(t.libraries.reorderIntro, style: TextStyle(color: tokens(context).textMuted)),
           ),
           _TvLibraryReorderList(
-            libraries: libraries,
+            // Server-grouped, not the provider's raw order: `_groupBounds`
+            // clamps a move to a contiguous run of the same `serverId`, and
+            // the provider's own order is not guaranteed contiguous (a
+            // library discovered after initial load is appended at the end,
+            // interleaving servers). Seeding from the same grouping the
+            // normal list already displays keeps every server's libraries
+            // adjacent, so the clamp bounds mean what the numbering shows.
+            libraries: [for (final serverKey in reorderGroups.serverOrder) ...reorderGroups.byServer[serverKey]!],
             hiddenKeys: hiddenKeys,
             nodes: _nodes,
             onExitUp: () => _reorderNode.requestFocus(),

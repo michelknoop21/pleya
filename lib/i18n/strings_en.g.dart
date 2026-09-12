@@ -2621,6 +2621,12 @@ class TranslationsLibrariesEn {
 	/// en: 'Failed to analyze library'
 	String get failedToAnalyze => 'Failed to analyze library';
 
+	/// en: 'Failed to refresh metadata'
+	String get failedToRefreshMetadata => 'Failed to refresh metadata';
+
+	/// en: 'Failed to scan library'
+	String get failedToScan => 'Failed to scan library';
+
 	/// en: 'No libraries found'
 	String get noLibrariesFound => 'No libraries found';
 
@@ -7799,6 +7805,8 @@ extension on Translations {
 			'libraries.analyzing' => ({required Object title}) => 'Analyzing "${title}"...',
 			'libraries.analysisStarted' => ({required Object title}) => 'Analysis started for "${title}"',
 			'libraries.failedToAnalyze' => 'Failed to analyze library',
+			'libraries.failedToRefreshMetadata' => 'Failed to refresh metadata',
+			'libraries.failedToScan' => 'Failed to scan library',
 			'libraries.noLibrariesFound' => 'No libraries found',
 			'libraries.allLibrariesHidden' => 'All libraries are hidden',
 			'libraries.hiddenLibrariesCount' => ({required Object count}) => 'Hidden libraries (${count})',
@@ -7987,10 +7995,10 @@ extension on Translations {
 			'liveTv.manageRecording' => 'Manage recording',
 			'liveTv.cancelRecording' => 'Cancel recording',
 			'liveTv.cancelRecordingTitle' => 'Cancel this recording?',
-			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} will no longer be recorded.',
-			'liveTv.deleteRule' => 'Delete rule',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} will no longer be recorded.',
+			'liveTv.deleteRule' => 'Delete rule',
 			'liveTv.deleteRuleTitle' => 'Delete recording rule?',
 			'liveTv.deleteRuleMessage' => ({required Object title}) => 'Future episodes of ${title} will not be recorded.',
 			'liveTv.recordingScheduled' => 'Recording scheduled',
@@ -8501,10 +8509,10 @@ extension on Translations {
 			'seerr.selectSeasons' => 'Select seasons',
 			'seerr.season' => ({required Object number}) => 'Season ${number}',
 			'seerr.allSeasons' => 'All seasons',
-			'seerr.seasonsRange' => ({required Object range}) => 'Seasons ${range}',
-			'seerr.seasonsCount' => ({required Object count}) => '${count} seasons',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.seasonsRange' => ({required Object range}) => 'Seasons ${range}',
+			'seerr.seasonsCount' => ({required Object count}) => '${count} seasons',
 			'seerr.requestedBy' => ({required Object name}) => 'Requested by ${name}',
 			'seerr.fourK' => 'Request in 4K',
 			'seerr.fourKBadge' => '4K',

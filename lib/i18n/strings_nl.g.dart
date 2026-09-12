@@ -1097,6 +1097,8 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	@override String analyzing({required Object title}) => 'Analyseren "${title}"...';
 	@override String analysisStarted({required Object title}) => 'Analyse gestart voor "${title}"';
 	@override String get failedToAnalyze => 'Kon bibliotheek niet analyseren';
+	@override String get failedToRefreshMetadata => 'Kon metadata niet vernieuwen';
+	@override String get failedToScan => 'Kon bibliotheek niet scannen';
 	@override String get noLibrariesFound => 'Geen bibliotheken gevonden';
 	@override String get allLibrariesHidden => 'Alle bibliotheken zijn verborgen';
 	@override String hiddenLibrariesCount({required Object count}) => 'Verborgen bibliotheken (${count})';
@@ -3807,6 +3809,8 @@ extension on TranslationsNl {
 			'libraries.analyzing' => ({required Object title}) => 'Analyseren "${title}"...',
 			'libraries.analysisStarted' => ({required Object title}) => 'Analyse gestart voor "${title}"',
 			'libraries.failedToAnalyze' => 'Kon bibliotheek niet analyseren',
+			'libraries.failedToRefreshMetadata' => 'Kon metadata niet vernieuwen',
+			'libraries.failedToScan' => 'Kon bibliotheek niet scannen',
 			'libraries.noLibrariesFound' => 'Geen bibliotheken gevonden',
 			'libraries.allLibrariesHidden' => 'Alle bibliotheken zijn verborgen',
 			'libraries.hiddenLibrariesCount' => ({required Object count}) => 'Verborgen bibliotheken (${count})',
@@ -3995,10 +3999,10 @@ extension on TranslationsNl {
 			'liveTv.manageRecording' => 'Opname beheren',
 			'liveTv.cancelRecording' => 'Opname annuleren',
 			'liveTv.cancelRecordingTitle' => 'Deze opname annuleren?',
-			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} wordt niet meer opgenomen.',
-			'liveTv.deleteRule' => 'Regel verwijderen',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} wordt niet meer opgenomen.',
+			'liveTv.deleteRule' => 'Regel verwijderen',
 			'liveTv.deleteRuleTitle' => 'Opnameregel verwijderen?',
 			'liveTv.deleteRuleMessage' => ({required Object title}) => 'Toekomstige afleveringen van ${title} worden niet opgenomen.',
 			'liveTv.recordingScheduled' => 'Opname gepland',
@@ -4509,10 +4513,10 @@ extension on TranslationsNl {
 			'addServer.addJellyfinTitle' => 'Jellyfin-server toevoegen',
 			'addServer.serverUrls' => 'Server-URL\'s',
 			'addServer.serverUrlsHelper' => 'Meerdere URL\'s toegestaan, gescheiden door komma\'s.',
-			'addServer.findServer' => 'Server zoeken',
-			'addServer.searchingLocalServers' => 'Lokale Jellyfin-servers zoeken...',
 			_ => null,
 		} ?? switch (path) {
+			'addServer.findServer' => 'Server zoeken',
+			'addServer.searchingLocalServers' => 'Lokale Jellyfin-servers zoeken...',
 			'addServer.localServers' => 'Lokale Jellyfin-servers',
 			'addServer.username' => 'Gebruikersnaam',
 			'addServer.password' => 'Wachtwoord',

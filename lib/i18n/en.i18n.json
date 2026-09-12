@@ -892,6 +892,8 @@
     "analyzing": "Analyzing \"${title}\"...",
     "analysisStarted": "Analysis started for \"${title}\"",
     "failedToAnalyze": "Failed to analyze library",
+    "failedToRefreshMetadata": "Failed to refresh metadata",
+    "failedToScan": "Failed to scan library",
     "noLibrariesFound": "No libraries found",
     "allLibrariesHidden": "All libraries are hidden",
     "hiddenLibrariesCount": "Hidden libraries (${count})",
