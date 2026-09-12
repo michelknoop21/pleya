@@ -41,8 +41,8 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 
 | ID | Werkitem | Besluit | Status | SHA / bewijs |
 |----|----------|---------|--------|--------------|
-| MOC-09 | Filmdetail | PB-1, PB-2, PB-3 | IN PROGRESS | `dc989713`, mockup 37/DEC-109: OVR1a op deze route gesloten (DET1) en de volledige-synopsisstaat gebouwd; de rest van 37 A's compositie tegen de goedgekeurde mockup is niet apart geaudit en er is geen hardwareronde geweest |
-| MOC-10 | Seriedetail, seizoenchips met één actieve afleveringenrail | PB-4 | IN PROGRESS | `b490420d`: horizontale seizoenchips gebouwd, `_tvDetailHubs` toont voortaan één actieve rail met stabiele hub-id per seizoen (`HubFocusMemory` blijft werken), LEFT/RIGHT/UP/DOWN-contract staat, `_fetchSeasonEpisodes`-pager ongewijzigd hergebruikt. Open: de exacte kaartgeometrie/afstand tegen mockup 37 C is niet los geaudit, en er is geen hardware- of Verify-run geweest; de precieze episode-focusrestauratie na een seizoenwissel is niet los widget-getest omdat `TvBrowseRail`'s kaartfocus gevirtualiseerd is (geen los `FocusNode` per kaart) |
+| MOC-09 | Filmdetail | PB-1, PB-2, PB-3 | IN PROGRESS | `dc989713`, mockup 37/DEC-109: OVR1a op deze route gesloten (DET1) en de volledige-synopsisstaat gebouwd. Compositie-audit tegen 37 A gedaan (12 sep): de informatiegroep en de rail eindigden op de vaste `TvBrowseRail`-padding van 6px in plaats van `TvCatalogLayout.bottomSafeInset` (81, DEC-087): dit scherm was de enige van zeven TV-pagina's die dat token niet las. Gefixt (`media_detail_screen.dart`, nog niet gecommit): beide `Positioned`-offsets lezen nu `TvCatalogLayout.bottomSafeInset * detailScale`. `flutter test test/screens/media_detail_screen_test.dart` (36) en `test/widgets/tv_browse_rail_test.dart` (47) groen; simulatorscreenshot tegen 37 A vergeleken, geen overlap. Nog open: geen Pleya Verify-scenario voor deze compositiefix en geen hardwareronde |
+| MOC-10 | Seriedetail, seizoenchips met één actieve afleveringenrail | PB-4 | IN PROGRESS | `b490420d`: horizontale seizoenchips gebouwd, `_tvDetailHubs` toont voortaan één actieve rail met stabiele hub-id per seizoen (`HubFocusMemory` blijft werken), LEFT/RIGHT/UP/DOWN-contract staat, `_fetchSeasonEpisodes`-pager ongewijzigd hergebruikt. Compositie-audit tegen 37 C gedaan (12 sep), twee bevindingen gefixt (zelfde commit als MOC-09, nog niet gecommit): (1) de gedeelde onderrand-fix hierboven raakt ook deze rail; (2) episode-/extra's-kaarten stonden op `compactEpisodeThumbnailScale` (0,8×, een pre-DEC-087 keuze), 37 C toont volle 615-kaarten, dus `_tvDetailEpisodeThumbnailScale` naar 1.0. Correctie op deze rij: de episode-focusrestauratie na een seizoenwissel is wél los widget-getest, `test/screens/media_detail_screen_test.dart:740` (`'TV detail season chip switch keeps pagination and restores per-season focus memory'`), groen. Nog open, niet aangepakt: de goedkeuringsnotitie bij mockup 37 (`docs/tvos-redesign-37-approved.md`) vraagt een synopsisregel onder de gefocuste episodekaart die in beeld komt en meescrolt zodra de rail focus krijgt: `TvBrowseRail` rendert per kaart geen synopsistekst, dit is een nieuw component, geen tuning, en is niet gebouwd. Geen hardware- of Verify-run; geen `Series`-bibliotheek op de bereikbare demo-server om dit visueel te bevestigen buiten de sim-screenshot van MOC-09's fix |
 | MOC-11 | Bronkeuze met backend-icoonwel | PB-15 | OPEN | |
 | MOC-12 | Unified contextmenu | PB-5 | OPEN | |
 
@@ -176,12 +176,12 @@ aflevering horen er om de omgekeerde reden bij: dezelfde serie geopend op seizoe
 is twee pagina's.
 
 **Zelfsluiting.** `MediaDetailScreen._dismissTvDetail` bestond al sinds SYS-1a en werkt nu ook
-echt. Daarnaast:
+echt, op de volgende plekken:
 
 - `FocusableDetailScreenMixin` krijgt `dismissDetailScreen`, de gedeelde eigenaar voor collectie én
   persoon. De drie `Navigator.pop`-plekken erin (de `PopScope`, `handleBackFromContent`, de
   `onBack` van de actiebalk) gaan er nu langs.
-- `_deleteCollection` gaf zijn `true` — het "de lijst waar je vandaan kwam is verouderd"-signaal —
+- `_deleteCollection` gaf zijn `true` (het "de lijst waar je vandaan kwam is verouderd"-signaal)
   via `Navigator.pop`. Genest is dat hetzelfde `true` op de route.
 - De drie plekken in `media_detail_screen.dart` waar het scherm zichzelf sluit omdat de laatste
   aflevering of het laatste seizoen eronder verdween. Die krijgen `_closeAfterContentGone` en niet
@@ -193,7 +193,7 @@ echt. Daarnaast:
 
 De TV-tak van de detailpagina bouwde zijn eigen `OverlaySheetHost`. De shell heeft er al één, boven
 de balk. Een tweede zou de sheets van dit scherm binnen de contentbox hangen, onder de balk en op de
-verkeerde maat, en `onOverlaySheetOpenChanged` van de shell zou nooit afgaan — stap 1 van de
+verkeerde maat, en `onOverlaySheetOpenChanged` van de shell zou nooit afgaan: stap 1 van de
 terugketen uit hoofdstuk 7.5 zou dus niet weten dat er een sheet open stond. `OverlaySheetHost.maybeOf`
 loopt omhoog, dus weglaten geeft ze aan die van de shell in plaats van aan niets.
 
@@ -211,7 +211,7 @@ gekomen. Hij vraagt nu eerst `TvNestedRouteScope`.
 
 **Bewijs.** `test/navigation/tv/tv_detail_route_contract_test.dart`, dertien tests in vier groepen:
 de route-identiteit, detail, collectie, en de gedeelde zelfsluiting. Drie ervan zijn negatieve
-controle en leggen het oude gedrag vast — zonder shell gaat dezelfde aanroep gewoon naar de
+controle en leggen het oude gedrag vast: zonder shell gaat dezelfde aanroep gewoon naar de
 navigator, en niet-genest popt het scherm zijn eigen route. De schermen zelf worden nooit
 gemonteerd: de builder van een geneste route draait pas als een shell hem tekent, dus de keuze van
 de aanroepplek is één stap eerder waarneembaar dan het scherm.
