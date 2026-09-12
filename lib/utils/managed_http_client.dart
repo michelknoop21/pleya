@@ -75,12 +75,18 @@ class ManagedHttpClient extends http.BaseClient {
     unawaited(
       future.then<void>(
         (_) {
-          if (!_innerClosed && identical(_closeFuture, future)) {
+          // Not cleared while a hard-close timer is armed: `_closeGracefully`
+          // always arms one before returning when it leaves the client open,
+          // so clearing here unconditionally let a second `closeGracefully()`
+          // call (e.g. `main.dart`'s shutdown path, which calls this and then
+          // `closeAllGracefully()`) re-enter `_closeGracefully` and cancel and
+          // re-arm the timer, resetting the very deadline it exists to bound.
+          if (!_innerClosed && _hardCloseTimer == null && identical(_closeFuture, future)) {
             _closeFuture = null;
           }
         },
         onError: (Object _, StackTrace _) {
-          if (!_innerClosed && identical(_closeFuture, future)) {
+          if (!_innerClosed && _hardCloseTimer == null && identical(_closeFuture, future)) {
             _closeFuture = null;
           }
         },
@@ -246,7 +252,11 @@ class ManagedHttpClient extends http.BaseClient {
       final abandoned = _active.toList();
       _active.clear();
       for (final tracked in abandoned) {
-        unawaited(tracked.cancel());
+        unawaited(
+          tracked.cancel().catchError((Object e, StackTrace st) {
+            appLogger.d('HTTP request cancel failed during hard close', error: e, stackTrace: st);
+          }),
+        );
       }
       _tryCloseInner();
     });
