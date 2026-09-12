@@ -60,6 +60,9 @@ under `Notes`.
 - I4 Zoeken automation-IDs, playlist routing fix, full group coverage
 - add /v1/input/text endpoint for ios-sim/macOS
 - loudnessplan als Verify-state, LOUD1-scenario
+- mobiele contextmenu op unified groepssemantiek (I5, mockup 09)
+- mobiele bronkeuze, Wijzigen en playback-failure re-entry (I5, mockup 08)
+- long-press en multi-server in Pleya Verify, mockup 09 dicht
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
