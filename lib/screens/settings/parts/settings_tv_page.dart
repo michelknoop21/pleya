@@ -167,6 +167,13 @@ extension _SettingsTvPage on _SettingsScreenState {
                     onSelect: () => open('language', (_) => const LanguageSettingsScreen()),
                   ),
                   TvMenuItem(
+                    key: _SettingsScreenState._kSubtitleStyling,
+                    icon: Symbols.subtitles_rounded,
+                    title: t.settings.subtitleStyling,
+                    subtitle: t.settings.subtitleStylingDescription,
+                    onSelect: () => open('subtitleStyling', (_) => const SubtitleStylingScreen()),
+                  ),
+                  TvMenuItem(
                     key: _SettingsScreenState._kTrackers,
                     icon: Symbols.sync_alt_rounded,
                     title: t.settings.trackers,
@@ -243,7 +250,7 @@ extension _SettingsTvPage on _SettingsScreenState {
                             ? t.settings.downloadLocationCustom
                             : t.settings.downloadLocationDefault,
                         subtitle: t.settings.downloads,
-                        onSelect: _showDownloadLocationDialog,
+                        onSelect: () => showDownloadLocationDialog(context, onChanged: _rebuild),
                       ),
                     _tvToggle(
                       key: _SettingsScreenState._kDownloadOnWifiOnly,

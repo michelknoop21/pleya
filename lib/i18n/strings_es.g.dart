@@ -1819,7 +1819,7 @@ class _TranslationsTvMyPleyaEs extends TranslationsTvMyPleyaEn {
 	@override String get downloadsSubtitle => 'Sin conexión y reglas de sincronización';
 	@override String get librariesSubtitle => 'Medios, colecciones, listas';
 	@override String get serversSubtitle => 'Conexiones y fuentes locales';
-	@override String get activitySubtitle => 'Viendo ahora, ver juntos, mando';
+	@override String get activitySubtitle => 'Viendo ahora';
 	@override String get watchTogetherSubtitle => 'Míralo sincronizado con amigos';
 	@override String get settingsSubtitle => 'Pantalla, reproductor, trackers';
 	@override String get logsSubtitle => 'Archivos de registro e informes de fallos';
@@ -3700,7 +3700,7 @@ extension on TranslationsEs {
 			'tvMyPleya.downloadsSubtitle' => 'Sin conexión y reglas de sincronización',
 			'tvMyPleya.librariesSubtitle' => 'Medios, colecciones, listas',
 			'tvMyPleya.serversSubtitle' => 'Conexiones y fuentes locales',
-			'tvMyPleya.activitySubtitle' => 'Viendo ahora, ver juntos, mando',
+			'tvMyPleya.activitySubtitle' => 'Viendo ahora',
 			'tvMyPleya.watchTogetherSubtitle' => 'Míralo sincronizado con amigos',
 			'tvMyPleya.settingsSubtitle' => 'Pantalla, reproductor, trackers',
 			'tvMyPleya.logsSubtitle' => 'Archivos de registro e informes de fallos',

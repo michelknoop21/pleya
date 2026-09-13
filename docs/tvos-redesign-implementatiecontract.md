@@ -34,7 +34,7 @@ is één shell- of geneste-navigatiecontract waarbij de root-chrome eigenaar bli
 route de content vervangt zonder de shell te vernietigen, de bestemmingsstaat in de balk juist
 blijft en de focus deterministisch is.
 
-Aanscherping 13 september 2026 ([DEC-115](DECISIONS.md#dec-115)): op filmdetail (09) en
+Aanscherping 13 september 2026 ([DEC-116](DECISIONS.md#dec-116)): op filmdetail (09) en
 seriedetail (10) blijft de shell eigenaar en blijft de topnav bereikbaar, maar hij staat daar
 standaard ingeklapt. UP vanuit de bovenste contentzone toont hem over het detail, DOWN klapt hem weer
 in. De opener kiest dit per route met `TvTopNavPresentation.collapsible`; collectie, persoon en de

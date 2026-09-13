@@ -29,7 +29,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | SYS-1a | Routecontract: een TV-contentroute opent in de shell in plaats van erboven | PB-1 | DONE | `5cafc10`, DEC-091 |
 | SYS-1b | Detail, collectie en persoon over dat contract | PB-1 | DONE | `bb79a82`, testdelta onder |
 | SYS-1c | Geneste routes krijgen de contentbox als `MediaQuery`, nodig voor de detailgeometrie | PB-1, INV-1 | DONE | `ad8c456`, testdelta onder |
-| SYS-2 | BACK1, geen zichtbare onbereikbare terugknop op TV | PB-2 | OPEN, geauditeerd | zie onder |
+| SYS-2 | BACK1, geen zichtbare onbereikbare terugknop op TV | PB-2 | CODE CLOSED · VERIFY/SIM OPEN | `f00e2fea`, `test/screens/tv/tv_back_affordance_test.dart`; geen Pleya Verify-scenario, hardwareronde open |
 | SYS-3a | OVR1a: de schaalbasis van paneelinhoud op TV | PB-5 | IN PROGRESS | `dc989713`: alleen op de detailroute gesloten (DET1, DEC-109); de systemische eigenaar `scaleForHeight` zelf staat nog open voor de overige TV-oppervlakken |
 | SYS-3b | OVR1b: sheets zonder expliciete `presentation` vallen op 400x400 | PB-5 | DONE | `96f2d45` |
 | SYS-4 | Gedeelde staat- en lege-presentatie schaalt op TV | audit | OPEN, geauditeerd | zie onder |
@@ -53,7 +53,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | MOC-13 | Zoeken, permanente resultaattitel, SEARCH1 sluiten | PB-6, DEC-108 | CODE CLOSED · VERIFY/SIM OPEN | CODE `30aae55b`; geen groene Verify- of simulatorrun met bundel vastgelegd |
 | MOC-14 | Kijklijst | PB-3, DEC-108 | CODE CLOSED · VERIFY/SIM OPEN | CODE `81db408d`; WL2 is fixture-blocked, zie T3a in `unified-2026-closure.md` |
 | MOC-15 | Aanvragen, Seerr-status blijft Seerr-state | PB-3, DEC-108 | CODE CLOSED · VERIFY/SIM OPEN | CODE `110ee763`; REQ1 is fixture-blocked, zie T3a in `unified-2026-closure.md` |
-| MOC-16 | Activiteit, scope en capability-predicaat | PB-7 | OPEN | |
+| MOC-16 | Activiteit, scope en capability-predicaat | PB-7 | CODE CLOSED · VERIFY/SIM OPEN, HARDWARE OPEN | `f4d6ad61`: capability-predicaat (`NowWatchingProvider.isAvailable`); `4598e1ea` (MOC-16b): eigen `TvNowWatchingScreen`, ACT2, ACT3; zie `docs/tvos-fysieke-correctieronde.md` ACT1 voor waarom de fixture-helft een apart besluit vraagt |
 
 ## PLAYBACK EN LIVE
 
@@ -328,26 +328,26 @@ Hier staan ze bij de werkstroom die ze bezit.
 
 | ID | Bevinding | Werkstroom | Status |
 |----|-----------|-----------|--------|
-| I18N-1 | `nl.i18n.json` mist `videoControls.skipIntro`, `skipCredits`, `nextEpisode` | SYS-5 | OPEN |
-| I18N-2 | `nl.i18n.json` mist `search.voiceSearch` | SYS-5 | OPEN |
-| I18N-3 | `nl.i18n.json` mist `settings.visualEffects*` | SYS-5 | OPEN |
-| I18N-4 | `nl.i18n.json` mist `addServer.connectToPleyaServerCard*` en `addLocalFolder.*` | SYS-5 | OPEN |
+| I18N-1 | `nl.i18n.json` mist `videoControls.skipIntro`, `skipCredits`, `nextEpisode` | SYS-5 | FIXED, `b18fafac` |
+| I18N-2 | `nl.i18n.json` mist `search.voiceSearch` | SYS-5 | FIXED, `b18fafac` |
+| I18N-3 | `nl.i18n.json` mist `settings.visualEffects*` | SYS-5 | FIXED, `b18fafac` |
+| I18N-4 | `nl.i18n.json` mist `addServer.connectToPleyaServerCard*` en `addLocalFolder.*` | SYS-5 | FIXED, `b18fafac` |
 | STR-1 | Hardcoded "Video" in `tv_info_panel.dart:272` | SYS-5, MOC-33 | FIXED, Mac-run open |
 | STR-2 | Hardcoded "(Forced)" in `track_label_builder.dart:203-205` | SYS-5, MOC-33 | FIXED, Mac-run open |
-| STR-3 | Hardcoded "titles" in `actor_media_screen.dart:174` | SYS-5, MOC-25 | OPEN |
-| STR-4 | Hardcoded tagline in `auth_screen.dart:341` | SYS-5, MOC-22 | OPEN |
-| STR-5 | Hardcoded "Incorrect PIN" in `profile_activation.dart:57` | SYS-5, MOC-21 | OPEN |
-| TOK-1 | `TvPanelTheme.accent #F42B1F` naast `kAccent` | SYS-6 | OPEN |
-| TOK-2 | Serverstip `#3FBF5F` hardcoded in `tv_my_pleya_screen.dart:829` | SYS-6 | OPEN |
+| STR-3 | Hardcoded "titles" in `actor_media_screen.dart:174` | SYS-5, MOC-25 | FIXED, hardware open, `5fb4e66c` |
+| STR-4 | Hardcoded tagline in `auth_screen.dart:341` | SYS-5, MOC-22 | FIXED, hardware open, `5fb4e66c` |
+| STR-5 | Hardcoded "Incorrect PIN" in `profile_activation.dart:57` | SYS-5, MOC-21 | FIXED, hardware open, `5fb4e66c` |
+| TOK-1 | `TvPanelTheme.accent #F42B1F` naast `kAccent` | SYS-6 | FIXED, hardware open, `5cb5c33` (MOC-33) |
+| TOK-2 | Serverstip `#3FBF5F` hardcoded in `tv_my_pleya_screen.dart:830` | SYS-6 | OPEN |
 | PNL-1 | Infopaneel gooit secundaire spoorlabels weg, `tv_audio_subtitle_tabs.dart:105, 375, 407` | MOC-33 | FIXED, Mac-run open |
 | LIVE-1 | `PlatformDetector.shouldUseSideNavigation` waar op TV: twee navigatiebalken in Live TV | MOC-17 | OPEN |
-| ACT-2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | MOC-16, SYS-1 | OPEN |
+| ACT-2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | MOC-16, SYS-1 | FIXED, hardware open, `4598e1ea` |
 | OFF-1 | Geen reconnect-affordance op TV | MOC-23 | OPEN |
 | OFF-2 | Offline topnav toont dode pills | MOC-23, SYS-1 | OPEN |
 | OVR1b | Legacy `MediaContextMenu`, rating-sheet, kijklijst-item-sheet en Live TV-sheets vallen op tvOS in een 400x400 bottom sheet | SYS-3b | DONE, `96f2d45` |
 | STA-1 | `StateView` en `EmptyStateWidget` schalen niet op TV | SYS-4 | OPEN |
 | SRCH-2 | `people` wordt nooit aan `searchProjection` meegegeven | MOC-13 | FIXED, `b5b8f0e8`, hardware open (DEC-112) |
-| ACT-3 | `tvMyPleya.activitySubtitle` belooft samen kijken en remote die de tegel niet levert | MOC-16 | OPEN |
+| ACT-3 | `tvMyPleya.activitySubtitle` belooft samen kijken en remote die de tegel niet levert | MOC-16 | FIXED, hardware open, `4598e1ea` |
 
 ## Tokenafwijkingen uit de audit
 

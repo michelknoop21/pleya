@@ -1819,7 +1819,7 @@ class _TranslationsTvMyPleyaPl extends TranslationsTvMyPleyaEn {
 	@override String get downloadsSubtitle => 'Offline i reguły synchronizacji';
 	@override String get librariesSubtitle => 'Media, kolekcje, playlisty';
 	@override String get serversSubtitle => 'Połączenia i źródła lokalne';
-	@override String get activitySubtitle => 'Teraz oglądane, wspólne oglądanie, pilot';
+	@override String get activitySubtitle => 'Teraz oglądane';
 	@override String get watchTogetherSubtitle => 'Oglądaj zsynchronizowany ze znajomymi';
 	@override String get settingsSubtitle => 'Wygląd, odtwarzacz, trackery';
 	@override String get logsSubtitle => 'Pliki dzienników i raporty awarii';
@@ -3700,7 +3700,7 @@ extension on TranslationsPl {
 			'tvMyPleya.downloadsSubtitle' => 'Offline i reguły synchronizacji',
 			'tvMyPleya.librariesSubtitle' => 'Media, kolekcje, playlisty',
 			'tvMyPleya.serversSubtitle' => 'Połączenia i źródła lokalne',
-			'tvMyPleya.activitySubtitle' => 'Teraz oglądane, wspólne oglądanie, pilot',
+			'tvMyPleya.activitySubtitle' => 'Teraz oglądane',
 			'tvMyPleya.watchTogetherSubtitle' => 'Oglądaj zsynchronizowany ze znajomymi',
 			'tvMyPleya.settingsSubtitle' => 'Wygląd, odtwarzacz, trackery',
 			'tvMyPleya.logsSubtitle' => 'Pliki dzienników i raporty awarii',

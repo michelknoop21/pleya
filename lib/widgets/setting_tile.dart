@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../i18n/strings.g.dart';
 import '../screens/settings/settings_utils.dart';
 import '../services/settings_service.dart';
 import '../theme/mono_tokens.dart';
 import 'app_icon.dart';
 import 'clickable_cursor.dart';
+import 'media_markers.dart';
 import 'settings_section.dart';
 
 /// Reactive setting tiles bound to a [Pref] via [SettingsService.listenable].
@@ -129,6 +131,12 @@ class SettingNavigationTile extends StatelessWidget {
   final FocusNode? focusNode;
   final IconData trailingIcon;
 
+  /// Amber dot next to the chevron, same convention and color
+  /// (`kAccentAlt`) as `TvTopNavigation`'s expired-session marker: something
+  /// the viewer can fix from here, not breakage, so it stays off the brand
+  /// red.
+  final bool needsAttention;
+
   const SettingNavigationTile({
     super.key,
     required this.icon,
@@ -138,6 +146,7 @@ class SettingNavigationTile extends StatelessWidget {
     this.onTap,
     this.focusNode,
     this.trailingIcon = Symbols.chevron_right_rounded,
+    this.needsAttention = false,
   }) : assert(destinationBuilder != null || onTap != null);
 
   @override
@@ -160,7 +169,16 @@ class SettingNavigationTile extends StatelessWidget {
           leading: SettingsIconBadge(icon),
           title: Text(title),
           subtitle: subtitle != null ? Text(subtitle!) : null,
-          trailing: AppIcon(trailingIcon, fill: 1, size: 20, color: tokens(context).textMuted),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (needsAttention) ...[
+                Semantics(label: t.tvNavigation.attentionRequired, child: const NewEpisodeDot()),
+                const SizedBox(width: 8),
+              ],
+              AppIcon(trailingIcon, fill: 1, size: 20, color: tokens(context).textMuted),
+            ],
+          ),
           onTap: activate,
         ),
       ),
