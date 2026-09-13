@@ -2571,3 +2571,56 @@ opent (northstar 18 toont ook geen aparte rij daarvoor). Geen ios-sim Verify-run
 `18-mijn-pleya-volledig.png` vastgelegd deze sessie: widgettests en `flutter analyze` zijn het enige
 bewijs. Children 11, 12, 13, 14, 15, 19, 21 van I7 blijven ieder een eigen branch met eigen bewijs;
 dit besluit dekt alleen 18's eigen scherm.
+
+## DEC-114: I7-child 15 (Bibliotheken) krijgt een eigen mobiel scherm naast de gedeelde `LibrariesScreen`
+
+**Date:** 2026-09-13
+**Status:** accepted
+
+**Context:** Preflight van het workitem (`docs/unified-2026-closure.md`§4) op de vier vragen:
+
+1. *Eigenaar:* geen. `LibrariesScreen` (2081 regels, gedeeld door desktop/mobiel/TV) selecteert op de
+   telefoon automatisch de eerste zichtbare bibliotheek (`_resolveLibraryKey`) en toont meteen de
+   inhoud; er bestaat geen picker-landing zoals northstar 15
+   (`docs/assets/ios-unified/northstar/15-bibliotheken.png`) toont. Wisselen gaat via de long-press
+   `LibraryQuickPickerSheet`, een lijst met servergroepen, geen kaartraster met serverfilterchips en
+   een "Recent toegevoegd"-rij.
+2. *Bestaand contract:* `MediaLibrary` draagt geen itemtelling; `TvLibrariesScreen` (DEC-092) haalt
+   die lazy op via één `fetchLibraryPagedContent(..., query: LibraryQuery(limit: 1))` per rij, nooit
+   herhaald bij falen. `LibraryQuery.sort` (`addedAt` descending) is het bestaande contract voor
+   "recent toegevoegd" binnen één bibliotheek. `openMobileMediaGroup` (I5, rij 08) is het bestaande
+   activatiepad voor een `UnifiedMediaGroup` vanaf mobiel.
+3. *Tests/Verify:* `tv_libraries_screen_test.dart` dekt TV's eigen vervanging; niets dekt een mobiele
+   picker, want die bestond niet.
+4. *Abstractie:* `TvLibrariesScreen` naast `LibrariesScreen` is precies het precedent dat hier past
+   (DEC-092: platform-specifiek scherm naast het gedeelde scherm, dat ongewijzigd blijft dienen waar
+   het al werkt). Er komt geen tweede management-sheet naast `LibrariesScreen`'s eigen
+   `_LibraryManagementSheet`: "Bewerken" opent de al bestaande, zelfstandige
+   `LibraryVisibilityScreen` (show/hide per bibliotheek), niet een nieuwe kopie.
+
+**Decision:** Nieuw `lib/screens/libraries/mobile_libraries_screen.dart`
+(`MobileLibrariesScreen`), bestemming voor `NavigationTabId.libraries` alleen op de telefoon
+(`when _isPhone` in `main_screen.dart`, hetzelfde patroon als de Films/Series-landings). Tikken op
+een kaart persisteert de selectie via `StorageService.saveSelectedLibraryKey` en pusht de bestaande
+`LibrariesScreen`, zonder tweede rendering van bibliotheekinhoud. De "Recent toegevoegd"-rij bouwt per
+item een single-source `UnifiedMediaGroup` rechtstreeks (`UnifiedMediaSource.fromItem` +
+`CanonicalMediaIdentity.opaque()`), zonder de volle `groupUnifiedMediaSources`-resolver: die lost
+cross-server dubbelingen op, en één bibliotheek heeft er per definitie maar één bron.
+
+`DesktopSliverAppBar` met een expliciete `leading: BackButton` vervangt `CustomAppBar.onBackPressed`:
+die laatste toont een terugknop alleen als de omringende route zelf kan poppen
+(`DesktopTopBar`'s `canPop`-check), en dit scherm is een tabinhoud in `MainScreen`'s ene rootroute,
+die nooit popt. `SearchScreen` liep tegen exact hetzelfde aan (I4) en loste het al zo op; dit volgt
+dat precedent in plaats van een tweede oplossing te verzinnen.
+
+**Consequences:** `_librariesKey` (`GlobalKey<State<LibrariesScreen>>` in `main_screen.dart`) is niet
+gekoppeld aan `MobileLibrariesScreen`, dus de `FullRefreshable`/`LibraryLoadable`/`FocusableTab`-hooks
+die op die key pattern-matchen worden op de telefoon stille no-ops zolang deze tab actief is
+(desktop/TV ongewijzigd). Geen van die hooks is vandaag D-pad- of aanraakgestuurd op dit scherm zelf,
+dus geen zichtbare regressie, maar een volgende sessie die een "ververs alles"-actie aan de telefoon
+toevoegt moet dit scherm er expliciet bij betrekken. `MobileMediaRail`'s eigen "Alles weergeven"-label
+(`t.common.viewAll`, "Alles weergeven") wijkt tekstueel af van de mockup's "Openen"; niet overschreven
+omdat dat een wijziging in het gedeelde railwidget voor alle aanroepers zou zijn voor één woord.
+Widgettests (`test/screens/libraries/mobile_libraries_screen_test.dart`) dekken het kaartraster, de
+serverfilterchips, verborgen bibliotheken, "Bewerken", de terugknop en de tik-naar-`LibrariesScreen`
+overdracht. Geen ios-sim Verify-run tegen `15-bibliotheken.png` vastgelegd deze sessie.
