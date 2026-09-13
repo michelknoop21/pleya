@@ -43,7 +43,7 @@ werkvolgorde.
 | 12 | Downloads | OPEN | `downloads_screen.dart` | open | n.v.t. | 8 (I7) |
 | 13 | Meldingen | OPEN | bestaat niet (audit 4.5) | open | n.v.t. | 8 (I7) |
 | 14 | Instellingen | OPEN | `settings_screen.dart` | open | n.v.t. | 8 (I7) |
-| 15 | Bibliotheken | OPEN | alleen verhuisd naar Mijn Pleya, `my_pleya_screen.dart:83-93` | open | n.v.t. | 8 (I7) |
+| 15 | Bibliotheken | CODE/SIM CLOSED · VERIFY/SIM OPEN | `mobile_libraries_screen.dart` (nieuw, DEC-114), `main_screen.dart` `when _isPhone` | widgettests groen (`mobile_libraries_screen_test.dart`: kaartraster, serverfilterchips, verborgen bibliotheken, Bewerken, terugknop, tik-naar-`LibrariesScreen`); geen ios-sim Verify-run tegen `15-bibliotheken.png` vastgelegd | n.v.t. | 8 (I7) |
 | 16 | Profiel kiezen | OPEN | `profile_switch_screen.dart` | open | open: PIN en wisselen op een iPhone | 10 (I8) |
 | 17 | Inloggen | OPEN | `auth_screen.dart` | open | open: eerste start op een iPhone | 10 (I8) |
 | 18 | Mijn Pleya volledig | CODE CLOSED · VERIFY/SIM OPEN | `my_pleya_screen.dart`, kaartrijen en `ServersScreen` naar northstar 18, DEC-113, `4eb138bc` | widgettests groen (`my_pleya_screen_test.dart`, TV-regressie in `tv_my_pleya_screen_test.dart` meegecheckt); geen ios-sim Verify-run tegen `18-mijn-pleya-volledig.png` vastgelegd | n.v.t. | 8 (I7) |

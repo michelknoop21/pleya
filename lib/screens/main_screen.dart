@@ -86,6 +86,7 @@ import 'home/mobile_landing_screen.dart';
 import 'discover_screen.dart';
 import 'libraries/library_quick_picker_sheet.dart';
 import 'libraries/libraries_screen.dart';
+import 'libraries/mobile_libraries_screen.dart';
 import 'tv/sections/tv_libraries_screen.dart';
 import 'livetv/live_tv_screen.dart';
 import 'search_screen.dart';
@@ -1473,6 +1474,13 @@ class _MainScreenState extends State<MainScreen>
             onSearchTap: _openSearch,
           ),
           NavigationTabId.movies || NavigationTabId.series => const SizedBox.shrink(),
+          // Northstar 15: the phone gets its own picker landing (a grid of
+          // library cards, mockup 15-bibliotheken.png) rather than the shared
+          // screen's auto-select-the-first-library behaviour. Desktop and TV
+          // keep `LibrariesScreen` unchanged, same split DEC-092 made for TV.
+          NavigationTabId.libraries when _isPhone => MobileLibrariesScreen(
+            onBack: () => _selectTab(NavigationTabId.myPleya),
+          ),
           NavigationTabId.libraries => LibrariesScreen(
             key: _librariesKey,
             onLibraryOrderChanged: _onLibraryOrderChanged,
