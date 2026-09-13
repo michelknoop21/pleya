@@ -14,6 +14,7 @@ import '../automation/pleya_verify.dart';
 import '../navigation/profile_navigation_scope.dart';
 import '../navigation/tv/tv_content_route_registry.dart';
 import '../navigation/tv/tv_nested_surface.dart';
+import 'tv/tv_root_shell.dart';
 import '../services/device_performance.dart';
 import '../services/image_cache_service.dart';
 import 'package:flutter/services.dart';
@@ -3948,14 +3949,27 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         // `scaleForSize(size)` read the box and floored to 0.85 well before
         // the panel itself would, overshooting every measurement below.
         final detailScale = TvLayoutConstants.scaleOf(context);
-        final spotlightTop = (size.height * 0.08).clamp(44.0 * detailScale, 110.0 * detailScale).toDouble();
+        // DEC-115: under the shell the top edge belongs to the shell, and it
+        // says how much this route has to keep clear itself through
+        // `MediaQuery.padding.top` (0 under a persistent bar, the bar's own
+        // overscan inset under a collapsible one). The 8% band is the frame of
+        // a standalone, full-window detail and stacked on top of the bar's
+        // band when nested.
+        final spotlightTop = TvShellSurface.isPresent(context)
+            ? MediaQuery.paddingOf(context).top
+            : (size.height * 0.08).clamp(44.0 * detailScale, 110.0 * detailScale).toDouble();
+        final spotlightLeft = (24 * detailScale).clamp(18.0, 40.0).toDouble();
+        // Same box `_buildTvDetailForeground`'s own `Positioned` below gives
+        // it, computed here too so the genre-line measurement in the
+        // reservation metrics agrees with what that widget actually renders.
+        final foregroundWidth = size.width - spotlightLeft - (size.width * 0.43);
         final showSeasonChips = _tvDetailShowsSeasonChips(metadata);
         final rawRailHeight = _estimateTvDetailRailHeight(size, detailHubs, showSeasonChips: showSeasonChips);
         if (!_tvDetailRevealed && _isTvDetailReadyToReveal(metadata)) {
           _scheduleTvDetailReveal(rawRailHeight, focusPrimaryAction: metadata.isMovie);
         }
         final stableRailHeight = _tvDetailStableRailHeight;
-        final railHeight = stableRailHeight == null || rawRailHeight > stableRailHeight
+        var railHeight = stableRailHeight == null || rawRailHeight > stableRailHeight
             ? rawRailHeight
             : stableRailHeight;
         final railTopPadding = 12 * detailScale;
@@ -3964,10 +3978,90 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         // the same overscan reserve `TvPageSurface` and every other TV page
         // give their last row). This screen builds its own Stack instead of
         // `TvPageSurface`, so it has to read the token itself.
-        final bottomSafeInset = TvCatalogLayout.bottomSafeInset * detailScale;
-        final foregroundBottom =
-            (railHeight - railTopPadding) + (_tvDetailActionRailGap * detailScale) + bottomSafeInset;
-        final spotlightLeft = (24 * detailScale).clamp(18.0, 40.0).toDouble();
+        final initialBottomSafeInset = TvCatalogLayout.bottomSafeInset * detailScale;
+        final initialForegroundBottom =
+            (railHeight - railTopPadding) + (_tvDetailActionRailGap * detailScale) + initialBottomSafeInset;
+        final initialRailHeight = railHeight;
+        // DET2: on a small panel with a tall active hub (a person rail, full-
+        // width extras cards), the reservation above can eat the whole
+        // foreground and overflow `_buildTvDetailForeground`'s Column — the
+        // metadata line, genres, the action row and the source line are drawn
+        // unconditionally there, and the title never degrades to zero either
+        // (see `_tvDetailMandatoryForegroundHeight`). Give space back in two
+        // steps, cheapest first: the rail's own bottom overscan margin (the
+        // rail sliding a few px closer to the true edge costs far less than
+        // the action row getting clipped), then the rail's "next hub" peek
+        // hint (`showNextHubPeek` below) if the margin alone was not enough.
+        // Both are decorative; the info band is not.
+        //
+        // Try clearing `_tvDetailIdealForegroundHeight` first — the mockup 37 A
+        // target of title + two synopsis lines + action row — then
+        // `_tvDetailMinimalForegroundHeight` (one line) before giving up on the
+        // synopsis entirely at the bare `_tvDetailMandatoryForegroundHeight`
+        // floor (DET2/H2, then the follow-up that added the minimal tier: a
+        // single tall-but-not-adversarial hub, a full-width episode rail under
+        // season chips with no extras involved, was landing straight on the
+        // zero-line floor and losing the focused-episode-synopsis swap along
+        // with it).
+        ({double bottomSafeInset, double foregroundBottom, double railHeight, bool showNextHubPeek, bool fits})
+        reserveFor(double targetForegroundHeight) {
+          var inset = initialBottomSafeInset;
+          var bottom = initialForegroundBottom;
+          var rail = initialRailHeight;
+          var peek = true;
+          final maxBottom = (size.height - spotlightTop - targetForegroundHeight)
+              .clamp(0.0, double.infinity)
+              .toDouble();
+          if (bottom > maxBottom) {
+            final insetGiveback = (bottom - maxBottom).clamp(0.0, inset);
+            inset -= insetGiveback;
+            bottom -= insetGiveback;
+            if (bottom > maxBottom && detailHubs.length > 1) {
+              peek = false;
+              final railHeightNoPeek = _estimateTvDetailRailHeight(
+                size,
+                detailHubs,
+                showSeasonChips: showSeasonChips,
+                includeNextHubPeek: false,
+              );
+              final peekGiveback = (rail - railHeightNoPeek).clamp(0.0, double.infinity).toDouble();
+              rail -= peekGiveback;
+              bottom -= peekGiveback;
+            }
+          }
+          return (
+            bottomSafeInset: inset,
+            foregroundBottom: bottom,
+            railHeight: rail,
+            showNextHubPeek: peek,
+            fits: bottom <= maxBottom,
+          );
+        }
+
+        final idealForegroundHeight = _tvDetailIdealForegroundHeight(context, metadata, detailScale, foregroundWidth);
+        var reservation = reserveFor(idealForegroundHeight);
+        if (!reservation.fits) {
+          final minimalForegroundHeight = _tvDetailMinimalForegroundHeight(
+            context,
+            metadata,
+            detailScale,
+            foregroundWidth,
+          );
+          reservation = reserveFor(minimalForegroundHeight);
+          if (!reservation.fits) {
+            final mandatoryForegroundHeight = _tvDetailMandatoryForegroundHeight(
+              context,
+              metadata,
+              detailScale,
+              foregroundWidth,
+            );
+            reservation = reserveFor(mandatoryForegroundHeight);
+          }
+        }
+        final bottomSafeInset = reservation.bottomSafeInset;
+        final foregroundBottom = reservation.foregroundBottom;
+        railHeight = reservation.railHeight;
+        final showNextHubPeek = reservation.showNextHubPeek;
 
         final revealContent = Stack(
           fit: StackFit.expand,
@@ -4017,6 +4111,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                       initialItemId: _tvDetailInitialItemId(metadata),
                       episodePosterModeForHub: _tvDetailEpisodePosterModeForHub,
                       automationIdForHub: _tvDetailAutomationIdForHub,
+                      showNextHubPeek: showNextHubPeek,
                     ),
                   ],
                 ),
@@ -4067,6 +4162,172 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     );
   }
 
+  /// Fixed per-scale metrics `_buildTvDetailForeground` degrades around and
+  /// `_buildTvDetailScreen` reserves against — one function so the two never
+  /// disagree about what these numbers are (DET2).
+  ({
+    double minLogoHeight,
+    double logoMetadataGap,
+    double metadataLineHeight,
+    double genreBlockHeight,
+    double summaryGap,
+    double actionGap,
+    double actionHeight,
+    double sourceLineHeight,
+  })
+  _tvDetailForegroundBaseMetrics(BuildContext context, MediaItem metadata, double scale, double foregroundWidth) {
+    final genres = metadata.genres ?? const <String>[];
+    final genreGap = 6 * scale;
+    final genreLineHeight = 22 * scale;
+    final genreLineCount = _tvDetailGenreLineCount(context, genres, scale, foregroundWidth);
+    return (
+      minLogoHeight: 60 * scale,
+      logoMetadataGap: 10 * scale,
+      metadataLineHeight: 22 * scale,
+      genreBlockHeight: genres.isEmpty ? 0.0 : genreGap + (genreLineHeight * genreLineCount),
+      summaryGap: 6 * scale,
+      actionGap: 12 * scale,
+      actionHeight: _tvDetailActionSize * scale,
+      sourceLineHeight: _unifiedSourceLineHeight(context),
+    );
+  }
+
+  TextStyle _tvDetailGenreTextStyle(double scale) =>
+      TextStyle(fontSize: 16 * scale, fontWeight: FontWeight.w600, letterSpacing: 0.1);
+
+  /// How many lines the genre line needs at [foregroundWidth], capped at 2
+  /// (the `Text` below carries the same cap via `maxLines`): a genre list
+  /// that overflows two lines still ellipses on the second, but nearly every
+  /// real title's genre list — unlike the six-plus TMDB list a demo fixture
+  /// like Paw Patrol can carry — fits in one or two. Previously this was a
+  /// hardcoded single line with `overflow: .ellipsis`, silently dropping
+  /// genres past the first line's width with no affordance to see the rest,
+  /// unlike every other field in this band.
+  int _tvDetailGenreLineCount(BuildContext context, List<String> genres, double scale, double foregroundWidth) {
+    if (genres.isEmpty || foregroundWidth <= 0) return 1;
+    final painter = TextPainter(
+      text: TextSpan(text: genres.join('  •  '), style: _tvDetailGenreTextStyle(scale)),
+      maxLines: 1,
+      textDirection: Directionality.of(context),
+    )..layout(maxWidth: foregroundWidth);
+    final needsSecondLine = painter.didExceedMaxLines;
+    painter.dispose();
+    return needsSecondLine ? 2 : 1;
+  }
+
+  /// The band that must always fit: the metadata line, genres, the action
+  /// row, the source line, and the title/logo at its own floor height —
+  /// everything `_buildTvDetailForeground` draws unconditionally or refuses
+  /// to shrink past zero. Only the synopsis may still degrade to nothing
+  /// below this; DET2 was a movie where even the mandatory band itself did
+  /// not fit, dropping the title along with it.
+  double _tvDetailMandatoryForegroundHeight(
+    BuildContext context,
+    MediaItem metadata,
+    double scale,
+    double foregroundWidth,
+  ) {
+    final m = _tvDetailForegroundBaseMetrics(context, metadata, scale, foregroundWidth);
+    return m.minLogoHeight +
+        m.logoMetadataGap +
+        m.metadataLineHeight +
+        m.genreBlockHeight +
+        m.actionGap +
+        m.actionHeight +
+        m.sourceLineHeight;
+  }
+
+  /// `TvViewAllAction`'s real rendered height, shared between the foreground's
+  /// own degradation loop and `_tvDetailIdealForegroundHeight` so both agree
+  /// on what "read more" costs (DET2/H2). Measured, not guessed — a guessed
+  /// line-height multiplier and the real render can only drift apart (see
+  /// `_unifiedSourceLineHeight` on the same point).
+  ///
+  /// Based on `Theme.of(context).textTheme.bodyMedium`, not
+  /// `DefaultTextStyle.of(context).style`: `_tvDetailIdealForegroundHeight`
+  /// calls this from `_buildTvDetailScreen`'s own `LayoutBuilder`, a context
+  /// still above the `Scaffold`/`Material` this screen builds, where
+  /// `DefaultTextStyle.of(context)` resolves to Flutter's debug fallback
+  /// style (48pt monospace) rather than the real theme — confirmed by
+  /// printing both from here and from `_buildTvDetailForeground`'s own,
+  /// Material-wrapped context: `DefaultTextStyle` differed, `textTheme.
+  /// bodyMedium` was identical. `Material` derives its own `DefaultTextStyle`
+  /// from this same value, so reading it directly here measures the real
+  /// font (`TvViewAllAction`'s bare `TextStyle` inherits it the same way)
+  /// without depending on which side of `Material` the caller sits.
+  double _tvDetailReadMoreHeight(BuildContext context, double scale) {
+    final readMoreLabelPainter = TextPainter(
+      text: TextSpan(
+        text: t.discover.readMore,
+        style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle()).copyWith(
+          fontSize: TvDiscoveryLayout.viewAllActionFontSize * scale,
+          fontWeight: .w600,
+        ),
+      ),
+      textDirection: Directionality.of(context),
+    )..layout();
+    final readMoreContentHeight = readMoreLabelPainter.height > TvDiscoveryLayout.viewAllIconSize * scale
+        ? readMoreLabelPainter.height
+        : TvDiscoveryLayout.viewAllIconSize * scale;
+    readMoreLabelPainter.dispose();
+    return readMoreContentHeight +
+        (2 * TvDiscoveryLayout.viewAllPaddingVertical * scale) +
+        (2 * TvDiscoveryLayout.viewAllFocusRingGap * scale);
+  }
+
+  /// A best-effort target above `_tvDetailMandatoryForegroundHeight`: room for
+  /// two lines of synopsis plus the "Read more" affordance a truncated
+  /// synopsis needs (DET2/H2 — mockup 37 A's "title + two lines + action row,
+  /// when there is room"). `_buildTvDetailScreen` tries to clear this first
+  /// and only falls back to the mandatory floor when the panel cannot spare
+  /// that much; the synopsis staying at one line then is a real space
+  /// constraint, not a regression. Uses the larger of the two font sizes
+  /// `_buildTvDetailForeground` may pick (DEC-109's `availableHeight < 260 *
+  /// scale` split) so this never under-reserves — the actual availableHeight
+  /// this produces is not known until after the reservation is applied.
+  double _tvDetailIdealForegroundHeight(
+    BuildContext context,
+    MediaItem metadata,
+    double scale,
+    double foregroundWidth,
+  ) {
+    return _tvDetailSynopsisForegroundHeight(context, metadata, scale, foregroundWidth, lines: 2);
+  }
+
+  /// A second, cheaper fallback between the mandatory floor and the ideal
+  /// two-line target: at least one line of synopsis (or the focused episode's
+  /// own summary, DEC's hero-swap behaviour) before giving up on it entirely.
+  /// Without this tier, a merely-tall single hub (a full-width episode rail
+  /// under season chips, no extras needed) fell straight through to
+  /// `_tvDetailMandatoryForegroundHeight` and dropped the synopsis on
+  /// completely ordinary content, not just the adversarial cast+extras
+  /// combination DET2 was built for.
+  double _tvDetailMinimalForegroundHeight(
+    BuildContext context,
+    MediaItem metadata,
+    double scale,
+    double foregroundWidth,
+  ) {
+    return _tvDetailSynopsisForegroundHeight(context, metadata, scale, foregroundWidth, lines: 1);
+  }
+
+  double _tvDetailSynopsisForegroundHeight(
+    BuildContext context,
+    MediaItem metadata,
+    double scale,
+    double foregroundWidth, {
+    required int lines,
+  }) {
+    final m = _tvDetailForegroundBaseMetrics(context, metadata, scale, foregroundWidth);
+    const largerSummaryFontSize = 18.0;
+    final summaryLineHeight = largerSummaryFontSize * scale * 1.35;
+    return _tvDetailMandatoryForegroundHeight(context, metadata, scale, foregroundWidth) +
+        m.summaryGap +
+        (summaryLineHeight * lines) +
+        m.summaryGap + // readMoreGap: same formula as summaryGap (6 * scale)
+        _tvDetailReadMoreHeight(context, scale);
+  }
+
   Widget _buildTvDetailForeground(
     BuildContext context,
     MediaItem metadata, {
@@ -4086,14 +4347,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         if (constraints.maxHeight <= 0 || constraints.maxWidth <= 0) return const SizedBox.shrink();
 
         final availableHeight = constraints.maxHeight.isFinite ? constraints.maxHeight : 264.0;
+        final metrics = _tvDetailForegroundBaseMetrics(context, metadata, scale, constraints.maxWidth);
         final desiredLogoHeight = 220 * scale;
-        final minLogoHeight = 60 * scale;
+        final minLogoHeight = metrics.minLogoHeight;
         final desiredLogoWidth = 790 * scale;
-        final metadataLineHeight = 22 * scale;
-        final genreLineHeight = 22 * scale;
-        final genreGap = 6 * scale;
-        final logoMetadataGap = 10 * scale;
-        final summaryGap = 6 * scale;
+        final metadataLineHeight = metrics.metadataLineHeight;
+        final logoMetadataGap = metrics.logoMetadataGap;
+        final summaryGap = metrics.summaryGap;
         final summaryFontSize = availableHeight < 260 * scale ? 16.2 * scale : 18 * scale;
         final summaryLineHeight = summaryFontSize * 1.35;
         final descriptionStyle = (theme.textTheme.bodyLarge ?? const TextStyle()).copyWith(
@@ -4104,41 +4364,23 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         // `_buildActionButtons` draws the row at `_tvDetailActionSize * scale`
         // (same `TvLayoutConstants.scaleOf` now that `scale` is that value, see
         // DEC-109), so this reserve agrees with what actually gets drawn.
-        final actionHeight = _tvDetailActionSize * scale;
-        final actionGap = 12 * scale;
-        final sourceLineHeight = _unifiedSourceLineHeight(context);
+        final actionHeight = metrics.actionHeight;
+        final actionGap = metrics.actionGap;
+        final sourceLineHeight = metrics.sourceLineHeight;
         final hasDescription = description != null && description.isNotEmpty;
         // Genres come from the show/movie, not the focused episode, so the line
         // stays stable as episode rows gain focus.
         final genres = metadata.genres ?? const <String>[];
-        final genreBlockHeight = genres.isEmpty ? 0.0 : genreGap + genreLineHeight;
+        final genreGap = 6 * scale;
+        final genreLineHeight = 22 * scale;
+        final genreLineCount = _tvDetailGenreLineCount(context, genres, scale, constraints.maxWidth);
+        final genreBlockHeight = metrics.genreBlockHeight;
         // DEC-109: `TvViewAllAction`'s real rendered height, reserved only for
         // the lines where the synopsis actually truncates. Measured, not
         // guessed — a guessed line-height multiplier and the real render can
         // only drift apart (see `_unifiedSourceLineHeight` on the same point).
-        final readMoreGap = 6 * scale;
-        final readMoreLabelPainter = TextPainter(
-          text: TextSpan(
-            text: t.discover.readMore,
-            // Based on `DefaultTextStyle.of(context).style`, like
-            // `_unifiedSourceLineHeight`: the ambient font family is what
-            // `TvViewAllAction`'s own `Text` actually resolves against, and a
-            // bare `TextStyle` here would measure the platform fallback font
-            // instead and under-reserve for the real one.
-            style: DefaultTextStyle.of(
-              context,
-            ).style.copyWith(fontSize: TvDiscoveryLayout.viewAllActionFontSize * scale, fontWeight: .w600),
-          ),
-          textDirection: Directionality.of(context),
-        )..layout();
-        final readMoreContentHeight = readMoreLabelPainter.height > TvDiscoveryLayout.viewAllIconSize * scale
-            ? readMoreLabelPainter.height
-            : TvDiscoveryLayout.viewAllIconSize * scale;
-        readMoreLabelPainter.dispose();
-        final readMoreHeight =
-            readMoreContentHeight +
-            (2 * TvDiscoveryLayout.viewAllPaddingVertical * scale) +
-            (2 * TvDiscoveryLayout.viewAllFocusRingGap * scale);
+        final readMoreGap = metrics.summaryGap;
+        final readMoreHeight = _tvDetailReadMoreHeight(context, scale);
         var summaryMaxLines = 0;
         var logoHeight = 0.0;
         var readMoreVisible = false;
@@ -4219,19 +4461,14 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                     if (genres.isNotEmpty) ...[
                       SizedBox(height: genreGap),
                       SizedBox(
-                        height: genreLineHeight,
+                        height: genreLineHeight * genreLineCount,
                         child: Align(
                           alignment: .centerLeft,
                           child: Text(
                             genres.join('  •  '),
-                            maxLines: 1,
+                            maxLines: genreLineCount,
                             overflow: .ellipsis,
-                            style: TextStyle(
-                              color: mutedForegroundColor,
-                              fontSize: 16 * scale,
-                              fontWeight: .w600,
-                              letterSpacing: 0.1,
-                            ),
+                            style: _tvDetailGenreTextStyle(scale).copyWith(color: mutedForegroundColor),
                           ),
                         ),
                       ),
@@ -4459,7 +4696,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     return null;
   }
 
-  double _estimateTvBrowseRailHeight(Size size, List<MediaHub> hubs) {
+  double _estimateTvBrowseRailHeight(Size size, List<MediaHub> hubs, {bool includeNextHubPeek = true}) {
     final svc = SettingsService.instance;
     return TvBrowseRailLayout.estimateHeight(
       size: size,
@@ -4470,11 +4707,17 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       widePosterScaleForHub: _tvDetailWidePosterScaleForHub,
       fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
       tallPosterScale: _tvDetailTallPosterScale,
+      includeNextHubPeek: includeNextHubPeek,
     );
   }
 
-  double _estimateTvDetailRailHeight(Size size, List<MediaHub> hubs, {required bool showSeasonChips}) {
-    final hubRailHeight = _estimateTvBrowseRailHeight(size, hubs);
+  double _estimateTvDetailRailHeight(
+    Size size,
+    List<MediaHub> hubs, {
+    required bool showSeasonChips,
+    bool includeNextHubPeek = true,
+  }) {
+    final hubRailHeight = _estimateTvBrowseRailHeight(size, hubs, includeNextHubPeek: includeNextHubPeek);
     final railHeight = hubRailHeight > 0 ? hubRailHeight : _estimateTvDetailEmptyRailReserveHeight(size);
     if (!showSeasonChips) return railHeight;
     // PB-4: the chip row sits above the rail and needs its own reserve, on

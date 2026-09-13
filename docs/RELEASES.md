@@ -148,8 +148,11 @@ under `Notes`.
 - expliciete restart vanaf begin respecteren ondanks details-instelling
 - hard-close cancel niet onbeheerd laten falen, deadline niet resetten
 - sluit gaten uit de I7-child-14-review (TV-bereikbaarheid, focus, dispose-race)
+- keep the detail info band above a tall rail reservation
 - MOC-16a, Activiteit-zichtbaarheid naar capability + echte data (PB-7) (#11)
+- give the detail synopsis a one-line tier and let genres wrap
 - MOC-16b, Activiteit TV-presentatie + ACT2/ACT3 (PB-7) (#12)
+- collapse the topnav on film and series detail (DEC-115)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026

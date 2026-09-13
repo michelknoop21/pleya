@@ -186,6 +186,10 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | REQ2 | Zoeken op TV, dan "Zoek in aanvragen": er opent een aanvraagvenster in light mode waar je alleen uitkomt door de app af te sluiten (Michel, 11 september, hardware, build 270). `search_screen.dart` pushte `SeerrDiscoverScreen` met een kale `MaterialPageRoute` op `Navigator.of(context)`, buiten de TV-shellroute (`openTvContentRoute`). Gebouwd: `SeerrDiscoverScreen.open(context, {initialQuery})`, één plek die `openTvContentRoute` probeert en pas bij `null` op `Navigator.push` terugvalt; `search_screen.dart` en `seerr_requests_screen.dart` gaan er nu allebei doorheen. Hardware-bevestiging na de fix staat nog open | FIXED, hardware-bevestiging open | n.v.t. |
 | REQ3 | Zodra Zoeken op TV resultaten vindt, is de balk "Zoek in aanvragen" niet meer te zien; zoeken in aanvragen kan dan niet meer (Michel, 11 september, hardware, build 270). `tv_search_view.dart` tekende de actie alleen in de CAT14-lege-staat, nooit onder echte resultaten. Gebouwd: een `TvViewAllAction`-rij onder de laatste band, die `_stateActionFocus` hergebruikt; DOWN vanaf de laatste band gaat er nu naartoe, UP terug naar de band. Regressietest `tv_search_view_test.dart` "a way down from the last band opens Zoek in aanvragen" stond rood op de oude implementatie. Hardware-bevestiging na de fix staat nog open | FIXED, hardware-bevestiging open | n.v.t. |
 | WL3 | Regressie van WL1: `watchlist_screen_test.dart` "removing the card the remote is on leaves the remote on a card" faalt op `github/main` zelf (`6be0efca`), dus onafhankelijk van deze taak en niet door de merge veroorzaakt. `Expected: true, Actual: false` op "the slot is kept, so the card that slid up into the empty cell takes the ring". Niet opgepakt zonder opdracht | OPEN | n.v.t. |
+| DET2 | Filmdetail toont geen titel/logo en geen synopsis meer, de metaregel en genres staan bovenaan, de actierij overflowt (`BOTTOM OVERFLOWED BY 12 PIXELS`) en de Acteurs-rail plus een stuk Trailers & Extra's vullen de rest van het scherm (Michel, screenshot, lokale build op main/later, geen TestFlight-build). Mockup 37 A is de doelcompositie. Veroorzaker `1805c75e` (MOC-09/MOC-10-compositie): `foregroundBottom` in `_buildTvDetailScreen` telt er `TvCatalogLayout.bottomSafeInset * detailScale` bovenop, en `_tvDetailEpisodeThumbnailScale` ging van 0,8 naar 1,0 waardoor `TvBrowseRailLayout.estimateHeight` via `maxActiveRailHeight` de hoogte van de hoogste hub reserveert, ook als een kleinere hub actief is. `_buildTvDetailForeground` liet bij ruimtegebrek eerst de synopsisregels vallen en dan het logo/de titel zonder ondergrens, dus de `Column` overflowde in plaats van te krimpen. Zie de prose-sectie onderaan voor de fix. iOS-audit (plan-stap 5), Pleya Verify-scenario en hardwareronde nog open | FIXED, iOS-audit + hardware open | `49b35d77` |
+| DET3 | Op film- en seriedetail blijft de synopsis ook na de minimale tier (`fb7ceefe`) onzichtbaar op zware hubs: House S8E5 in de tvOS-simulator geeft de informatieband 127 px, de vloer zonder synopsis vraagt 151 px (Michel, 13 september: "ik wil gewoon dat je synopsis kunt zien niet 1 line"). Twee oorzaken die samen optellen. De topnav-band neemt ~83 px, en `_buildTvDetailScreen` reserveert daaronder nog `spotlightTop` (8% van de box, ~80 px), een bovenmarge uit de tijd dat detail het hele venster had. Besluit DEC-116: de dubbele marge verdwijnt onder de shell, en film- en seriedetail krijgen een ingeklapte topnav als routecontract (`TvTopNavPresentation.collapsible`) die bij UP over het detail verschijnt. Geverifieerd in de tvOS-simulator tegen exact deze House-reproductie: synopsis zichtbaar, UP/DOWN/Back correct, geen layoutsprong | FIXED | `ddbd2ce3` |
+| DET4 | Seizoenchips op seriedetail: de niet-geselecteerde labels renderen met een verschoven of dubbele glyphrij (tvOS-simulator, House, 13 september). Reproduceerbaar na een herstart, niet in de hero-artwork op dezelfde hoogte en niet in de gedimde topnav-labels, dus geen schermscheuring en geen algemeen probleem met gedimde tekst. Beperkt tot `_TvSeasonChip` in `tv_season_chips.dart`. Root cause onbekend; mogelijk een Impeller-artefact dat alleen in de simulator optreedt | OPEN | |
+| SEARCH2 | Op Zoeken op TV, zodra je vanaf de resultaten naar beneden scrolt, blijven de topnav-labels ("Home Series Films Mijn Pleya") en het zoekveld met de resultaattelling zichtbaar op hun oorspronkelijke hoogte, over de rij die daar inmiddels gescrold onder staat (Michel, tvOS-simulator, 13 september, screenshot). Reproduceert identiek op `fb7ceefe`, dus onafhankelijk van DEC-116 en niet veroorzaakt door de topnav-collapse-fix; blijft ook staan na een paar seconden wachten, dus geen scroll-animatieartefact. Root cause niet gevonden: de topnav en het zoekveld (`TvSearchView`'s `Column [searchField, Expanded(_buildBody)]`) zitten buiten de `SingleChildScrollView` in `_buildBody` en zouden geometrisch niet met de scroll mee kunnen bewegen; er is geen aanwijsbare tweede render van diezelfde tekst gevonden. Nog niet onderzocht: of dit ook op andere TV-schermen met een sticky header optreedt, en of het op echte hardware reproduceert | OPEN | |
 
 ## Wat er per item bekend is
 
@@ -4033,3 +4037,54 @@ actie, SELECT opent, Menu sluit en herstelt de focus.
 gecorrigeerde schaal; de bestaande suite op `test/screens/media_detail_screen_test.dart`
 en `test/navigation/tv/tv_detail_route_contract_test.dart` blijft groen. MOC-10's
 seizoenchips (PB-4) en de VER5-Verify-dekking zijn hier niet meegenomen.
+
+### DET2: de informatieband overflowde onder een hoge railreservering
+
+Gemeld door Michel op een lokale build op main/later (screenshot, geen TestFlight-build):
+geen titel/logo en geen synopsis meer, de metaregel en genres bovenaan, de actierij
+afgekapt (`BOTTOM OVERFLOWED BY 12 PIXELS`), en de Acteurs-rail plus een stuk Trailers &
+Extra's vullen de rest van het scherm. Mockup 37 A is de doelcompositie.
+
+**Root cause.** `1805c75e` (MOC-09/MOC-10) telt `TvCatalogLayout.bottomSafeInset *
+detailScale` op bij `foregroundBottom`, en zet `_tvDetailEpisodeThumbnailScale` van 0,8
+naar 1,0. Op een klein paneel met een hoge actieve hub (een acteursrail, brede
+extra's-kaarten) kan die reservering het hele beschikbare oppervlak voor
+`_buildTvDetailForeground` opeten: de metaregel, genres, actierij en bronregel tekenen
+daar onvoorwaardelijk, en de degradatielus had geen ondergrens zodra de synopsis op nul
+regels stond, dus zakten titel en logo mee weg in plaats van dat de layout kromp.
+
+**De fix.** `_tvDetailMandatoryForegroundHeight` is nu een harde vloer (titel/logo op zijn
+minimum, metaregel, genres, actierij, bronregel) waar `_buildTvDetailScreen` tegen klemt:
+tekort wordt eerst van de rail's eigen onderrand-inset afgehaald, dan van de "volgende
+hub"-peek, als de vloer alleen zo niet past. Een tweede, zachtere doelwaarde
+(`_tvDetailIdealForegroundHeight`) probeert daarnaast ook twee regels synopsis plus de
+"Meer lezen"-affordance vrij te maken wanneer het paneel dat kan missen, zodat het
+gangbare geval (één rail, niet de adversariale combinatie van acteurs én extra's) dicht
+bij mockup 37 A's doelcompositie komt in plaats van op de kale vloer te blijven hangen.
+
+**Een gotcha onderweg (H1/H2 uit de pauze-analyse).** De eerste versie van de
+ideal-vloer-berekening riep de tekstmeting voor "Meer lezen" aan vanuit
+`_buildTvDetailScreen`'s eigen `LayoutBuilder`-context: die zit boven de
+`Scaffold`/`Material` die dit scherm zelf bouwt, waar `DefaultTextStyle.of(context)`
+terugvalt op Flutters debug-fallbackstijl (48pt monospace) in plaats van het echte
+thema. Bevestigd door dezelfde meting van daar en van binnen
+`_buildTvDetailForeground`'s eigen, wél Material-omhulde context te printen:
+`DefaultTextStyle` week af, `Theme.of(context).textTheme.bodyMedium` was identiek
+(`Material` leidt zijn eigen `DefaultTextStyle` van precies die waarde af). De gedeelde
+`_tvDetailReadMoreHeight`-helper leest die waarde nu rechtstreeks, ongeacht aan welke
+kant van `Material` de aanroeper zit.
+
+**Wat er niet bij hoort.** Stap 5 (iOS-audit) en stap 6 (dekkingstabel) uit de
+oorspronkelijke opdracht zijn niet uitgevoerd. Geen Pleya Verify-scenario en geen
+fixture-uitbreiding voor een film met cast+extra's. Geen simulator- of
+hardwarebevestiging tegen 37 A/37 C.
+
+**Bewijs.** `49b35d77`. Vier nieuwe widgettests in de DET2-groep van
+`test/screens/media_detail_screen_test.dart`: rood bevestigd op de ongewijzigde code
+(`RenderFlex overflow`) en op `1805c75e^` (synopsis al volledig afwezig, geen crash),
+groen na de fix. `test/screens/media_detail_ovr1a_scale_test.dart`,
+`test/screens/media_detail_synopsis_panel_test.dart` en `test/widgets/tv_browse_rail_test.dart`
+blijven groen (`tv_browse_rail.dart`'s wijziging is additief, elke bestaande aanroep
+behoudt zijn default). `scripts/ci_checks.sh` groen. Golden `tv_detail_source_line`
+faalt op dit platform ook op `0aa808dc` (vóór deze fix), dus dat is bestaande
+platform-staleness, geen regressie van deze wijziging.

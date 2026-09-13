@@ -18,6 +18,7 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_role.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
@@ -34,6 +35,8 @@ import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/watchlist_entry.dart';
 import 'package:pleya/media/watchlist_scope.dart';
 import 'package:pleya/media/watchlist_source.dart';
+import 'package:pleya/navigation/tv/tv_nested_surface.dart';
+import 'package:pleya/screens/tv/tv_root_shell.dart';
 import 'package:pleya/providers/download_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/watch_state_store.dart';
@@ -2404,6 +2407,486 @@ void main() {
       expect(source.fetches, 1);
     });
   });
+
+  group('DET2: the info band survives a rail reservation taller than the active hub', () {
+    const longSummary =
+        'A lonely young woman helps and befriends a dragon, whom she calls Scales. '
+        'But when he is kidnapped by an adult dragon, she decides to embark on a dangerous quest '
+        'that takes her across the ashen plains and into the mountain caves where the old dragons '
+        'still sleep, unaware that the journey is about to change everything she thought she knew.';
+
+    List<MediaRole> castRoles(int count) => [
+      for (var i = 0; i < count; i++) MediaRole(id: 'actor_$i', tag: 'Actor $i', role: 'Character $i'),
+    ];
+
+    List<MediaItem> extraItems(int count) => [
+      for (var i = 0; i < count; i++)
+        MediaItem(id: 'extra_$i', backend: MediaBackend.jellyfin, kind: MediaKind.clip, title: 'Extra $i'),
+    ];
+
+    Rect rectOfFocusLabel(WidgetTester tester, String label) {
+      for (final element in tester.allElements) {
+        final widget = element.widget;
+        if (widget is Focus && widget.focusNode?.debugLabel == label) {
+          return tester.getRect(find.byElementPredicate((e) => e == element));
+        }
+      }
+      throw StateError('No Focus with debugLabel "$label" found');
+    }
+
+    Future<void> pumpNestedDetail(
+      WidgetTester tester,
+      MediaItem metadata,
+      MultiServerProvider provider, {
+      required Size panelSize,
+      required Size nestedBoxSize,
+      double? shellTopInset,
+    }) async {
+      tester.view.physicalSize = panelSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await SettingsService.getInstance();
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: ChangeNotifierProvider<MultiServerProvider>.value(
+            value: provider,
+            child: MaterialApp(
+              builder: withNoticeLayer(),
+              theme: monoTheme(dark: true),
+              home: withProfileNavigationScope(
+                child: TvDisplayMetrics(
+                  size: panelSize,
+                  child: TvNestedRouteScope(
+                    dismiss: ([_]) {},
+                    markResult: (_) {},
+                    child: MediaQuery(
+                      data: MediaQueryData(
+                        size: nestedBoxSize,
+                        padding: EdgeInsets.only(top: shellTopInset ?? 0),
+                      ),
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: SizedBox.fromSize(
+                          size: nestedBoxSize,
+                          // `TvShellSurface` is what tells the screen the shell
+                          // owns its top edge (DEC-115); left out, the screen
+                          // frames itself the way a standalone push does.
+                          child: shellTopInset == null
+                              ? MediaDetailScreen(metadata: metadata)
+                              : TvShellSurface(child: MediaDetailScreen(metadata: metadata)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      for (var i = 0; i < 4; i++) {
+        await tester.pump();
+      }
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    // Standalone measurement (step 3 of the DET2 audit): the reservation the
+    // screen asks `TvBrowseRail` for is `estimateHeight`, which takes the
+    // *max* height across every hub, not the currently active one — this is
+    // deliberate (no relayout jitter switching hubs), but nothing then clamps
+    // how much of that max a screen may spend against the foreground. Here a
+    // wide-card Extras hub is taller than the Cast hub the screen actually
+    // shows, so the reservation the screen budgets for is the Extras height
+    // even while Cast is active.
+    test('estimateHeight reserves for the tallest hub, not the active one', () async {
+      await SettingsService.getInstance();
+      const panelSize = Size(1038, 584);
+      final density = SettingsService.instance.read(SettingsService.libraryDensity);
+      const episodePosterMode = EpisodePosterMode.seriesPoster;
+      final castHub = MediaHub(
+        id: 'detail_actors',
+        title: 'Cast',
+        type: 'person',
+        items: castRoles(8)
+            .map((r) => MediaItem(id: r.id!, backend: MediaBackend.jellyfin, kind: MediaKind.unknown, title: r.tag))
+            .toList(),
+        size: 8,
+      );
+      final extrasHub = MediaHub(id: 'detail_extras', title: 'Extras', type: 'clip', items: extraItems(6), size: 6);
+
+      double heightFor(List<MediaHub> hubs) => TvBrowseRailLayout.estimateHeight(
+        size: panelSize,
+        hubs: hubs,
+        density: density,
+        episodePosterMode: episodePosterMode,
+        widePosterScaleForHub: (_) => 1.0,
+      );
+
+      final castOnly = heightFor([castHub]);
+      final withExtrasActive = heightFor([castHub, extrasHub]);
+
+      // Both calls describe the *same* screen state (Cast is the one on
+      // screen in both), yet the reservation grows once a taller hub merely
+      // exists alongside it — the mechanism DET2 blames, independent of the
+      // scale/inset terms `_buildTvDetailScreen` adds on top.
+      expect(
+        withExtrasActive,
+        greaterThan(castOnly),
+        reason: 'the reservation should not grow from a hub that is not the one on screen',
+      );
+    });
+
+    testWidgets('a movie with cast and extras keeps title, synopsis and the action row on screen', (tester) async {
+      final movie = MediaItem(
+        id: 'movie_det2',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'A Very Long Motion Picture Title For Overflow Testing',
+        summary: longSummary,
+        genres: const ['Action', 'Adventure', 'Science Fiction'],
+        roles: castRoles(8),
+        year: 2024,
+        durationMs: 128 * 60 * 1000,
+        contentRating: 'PG-13',
+        serverId: 'server_1',
+        serverName: 'Server',
+      );
+
+      final client = _FakeMediaServerClient(show: movie, childrenByParent: const {}, extras: extraItems(6));
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      const panelSize = Size(1038, 584);
+      await pumpNestedDetail(tester, movie, provider, panelSize: panelSize, nestedBoxSize: const Size(1038, 480));
+
+      expect(tester.takeException(), isNull);
+
+      // The mandatory floor (title, metadata, genres, the action row, the
+      // source line) is what DET2 guarantees unconditionally — a person hub
+      // alone already needs most of a 584-logical-px panel (see the
+      // standalone measurement above), so the synopsis specifically may still
+      // collapse to nothing on this adversarial fixture. That is a real
+      // geometry constraint, not a regression: the moderate fixture below
+      // proves the synopsis survives too once the active hub is not this tall.
+      expect(find.text(movie.title!), findsWidgets);
+
+      final playButtonRect = rectOfFocusLabel(tester, 'play_button');
+      expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
+    });
+
+    // DET3 negative control. Under the shell the info band used to start
+    // at 8% of the box on top of the band the bar already reserved, which on
+    // House left the band 127 px against a 151 px floor. It has to start at
+    // the top inset the shell publishes instead.
+    testWidgets('under the shell the info band starts at the inset the shell publishes, not a second margin', (
+      tester,
+    ) async {
+      final movie = MediaItem(
+        id: 'movie_det3',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'A Moderate Motion Picture Title',
+        summary: longSummary,
+        genres: const ['Drama'],
+        roles: castRoles(4),
+        year: 2024,
+        durationMs: 100 * 60 * 1000,
+        serverId: 'server_1',
+        serverName: 'Server',
+      );
+      final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      const panelSize = Size(1038, 584);
+      const shellTopInset = 13.0;
+      await pumpNestedDetail(
+        tester,
+        movie,
+        provider,
+        panelSize: panelSize,
+        nestedBoxSize: panelSize,
+        shellTopInset: shellTopInset,
+      );
+      expect(tester.takeException(), isNull);
+
+      final band = tester
+          .widgetList<Positioned>(find.byType(Positioned))
+          .where((p) => p.right == panelSize.width * 0.43)
+          .toList();
+      expect(band, hasLength(1), reason: 'the info band is the one Positioned with the 43% right inset');
+      expect(
+        band.single.top,
+        shellTopInset,
+        reason: 'the shell owns the top edge; the 8% standalone margin (${panelSize.height * 0.08}) stacks on its band',
+      );
+    });
+
+    testWidgets(
+      'a movie opened as a destination root (full panel height) keeps title, two lines of synopsis and the action row',
+      (tester) async {
+        final movie = MediaItem(
+          id: 'movie_det2_moderate',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'A Moderate Motion Picture Title',
+          summary: longSummary,
+          genres: const ['Drama'],
+          roles: castRoles(4),
+          year: 2024,
+          durationMs: 100 * 60 * 1000,
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+        final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+        final provider = MultiServerProvider(manager, DataAggregationService(manager));
+        addTearDown(provider.dispose);
+
+        // Unlike the two adversarial tests above (nested under a topnav band,
+        // cast *and* extras both active-hub-tall), this is the same canonical
+        // panel but mounted as a destination root: the full 584 logical px
+        // are this screen's own content box, and only one hub (cast) is
+        // active. Room enough that the fix does not even need to touch the
+        // rail's own margins — proving the mandatory-floor mechanism is not
+        // what starves the synopsis when there is genuinely space for it.
+        const panelSize = Size(1038, 584);
+        await pumpNestedDetail(tester, movie, provider, panelSize: panelSize, nestedBoxSize: panelSize);
+
+        expect(tester.takeException(), isNull);
+
+        expect(find.text(movie.title!), findsWidgets);
+
+        final summaryFinder = find.text(movie.summary!);
+        expect(summaryFinder, findsOneWidget);
+        final summaryText = tester.widget<Text>(summaryFinder);
+        expect(summaryText.maxLines, greaterThanOrEqualTo(2));
+
+        final playButtonRect = rectOfFocusLabel(tester, 'play_button');
+        expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
+      },
+    );
+
+    testWidgets('a series with season chips, cast and extras keeps title and the action row on screen', (tester) async {
+      final show = MediaItem(
+        id: 'show_det2',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.show,
+        title: 'A Very Long Series Title For Overflow Testing',
+        summary: longSummary,
+        genres: const ['Drama', 'Mystery'],
+        roles: castRoles(8),
+        serverId: 'server_1',
+        serverName: 'Server',
+      );
+      final season1 = MediaItem(
+        id: 'season_1',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.season,
+        title: 'Season 1',
+        index: 1,
+        parentId: show.id,
+        serverId: show.serverId,
+        serverName: show.serverName,
+      );
+      final season2 = MediaItem(
+        id: 'season_2',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.season,
+        title: 'Season 2',
+        index: 2,
+        parentId: show.id,
+        serverId: show.serverId,
+        serverName: show.serverName,
+      );
+      final episode1 = MediaItem(
+        id: 'episode_1',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.episode,
+        title: 'Episode 1',
+        index: 1,
+        parentId: season1.id,
+        parentIndex: season1.index,
+        grandparentId: show.id,
+        serverId: show.serverId,
+        serverName: show.serverName,
+      );
+      final episode2 = MediaItem(
+        id: 'episode_2',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.episode,
+        title: 'Episode 2',
+        index: 1,
+        parentId: season2.id,
+        parentIndex: season2.index,
+        grandparentId: show.id,
+        serverId: show.serverId,
+        serverName: show.serverName,
+      );
+
+      final client = _FakeMediaServerClient(
+        show: show,
+        childrenByParent: {
+          show.id: [season1, season2],
+          season1.id: [episode1],
+          season2.id: [episode2],
+        },
+        extras: extraItems(6),
+      );
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      const panelSize = Size(1038, 584);
+      await pumpNestedDetail(tester, show, provider, panelSize: panelSize, nestedBoxSize: const Size(1038, 480));
+
+      expect(tester.takeException(), isNull);
+
+      expect(find.text('Season 1'), findsOneWidget);
+      // See the movie test above for why the synopsis specifically is not
+      // asserted here: the active episode rail (forced to full-width
+      // thumbnails, MOC-10) plus the season chip row already claims most of
+      // this adversarial 584-logical-px panel.
+      expect(find.text(show.title!), findsWidgets);
+
+      final playButtonRect = rectOfFocusLabel(tester, 'play_button');
+      expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
+    });
+
+    testWidgets('a series with season chips opened as a destination root keeps at least one line of synopsis', (
+      tester,
+    ) async {
+      // The follow-up to the two adversarial tests above: cast+extras
+      // together are enough to justify dropping the synopsis, but a lone
+      // season-chips + episode-rail hub on its own is ordinary content, not
+      // an edge case, and was still landing on the zero-line mandatory
+      // floor before the minimal tier was added. Opened as a destination
+      // root (see the moderate movie test above for why that matters) —
+      // nested under the shell topnav (INV-1's shorter content box), the
+      // same fixture still lands on zero: season chips plus any episode
+      // rail already exceed even the minimal budget in that box. That is a
+      // known, reported limitation (the shell-nested case feeling too
+      // dense for its available height), not something this tier fixes.
+      final show = MediaItem(
+        id: 'show_det2_minimal',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.show,
+        title: 'A Series With Season Chips And No Extra Hubs',
+        summary: longSummary,
+        genres: const ['Drama', 'Mystery'],
+        serverId: 'server_1',
+        serverName: 'Server',
+      );
+      final season1 = MediaItem(
+        id: 'season_1',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.season,
+        title: 'Season 1',
+        index: 1,
+        parentId: show.id,
+        serverId: show.serverId,
+        serverName: show.serverName,
+      );
+      // A second season only to satisfy `_tvDetailShowsSeasonChips`
+      // (`_seasons.length > 1`) — the chip row itself is what this test is
+      // about, so it needs to actually be showing.
+      final season2 = MediaItem(
+        id: 'season_2',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.season,
+        title: 'Season 2',
+        index: 2,
+        parentId: show.id,
+        serverId: show.serverId,
+        serverName: show.serverName,
+      );
+      final episodes = [
+        for (var i = 1; i <= 4; i++)
+          MediaItem(
+            id: 'episode_$i',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.episode,
+            title: 'Episode $i',
+            index: i,
+            parentId: season1.id,
+            parentIndex: season1.index,
+            grandparentId: show.id,
+            serverId: show.serverId,
+            serverName: show.serverName,
+          ),
+      ];
+
+      final client = _FakeMediaServerClient(
+        show: show,
+        childrenByParent: {
+          show.id: [season1, season2],
+          season1.id: episodes,
+          season2.id: const [],
+        },
+      );
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      const panelSize = Size(1038, 584);
+      await pumpNestedDetail(tester, show, provider, panelSize: panelSize, nestedBoxSize: panelSize);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Season 1'), findsOneWidget);
+
+      final summaryFinder = find.text(show.summary!);
+      expect(summaryFinder, findsOneWidget, reason: 'the minimal tier should keep at least one synopsis line');
+      final summaryText = tester.widget<Text>(summaryFinder);
+      expect(summaryText.maxLines, greaterThanOrEqualTo(1));
+
+      final playButtonRect = rectOfFocusLabel(tester, 'play_button');
+      expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
+    });
+
+    testWidgets('a title with more genres than fit on one line wraps to a second instead of hiding them', (
+      tester,
+    ) async {
+      final movie = MediaItem(
+        id: 'movie_det2_genres',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'A Movie With Many Genres',
+        summary: longSummary,
+        genres: const ['Family', 'Animation', 'Action', 'Adventure', 'Comedy', 'Crime', 'Science Fiction'],
+        year: 2024,
+        serverId: 'server_1',
+        serverName: 'Server',
+      );
+
+      final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      const panelSize = Size(1038, 584);
+      await pumpNestedDetail(tester, movie, provider, panelSize: panelSize, nestedBoxSize: panelSize);
+
+      expect(tester.takeException(), isNull);
+
+      final genreFinder = find.text(movie.genres!.join('  •  '));
+      expect(genreFinder, findsOneWidget, reason: 'the full genre list should still render as one string, wrapped');
+      final genreText = tester.widget<Text>(genreFinder);
+      expect(
+        genreText.maxLines,
+        greaterThan(1),
+        reason: 'more than one line must be available before ellipsis kicks in',
+      );
+
+      final playButtonRect = rectOfFocusLabel(tester, 'play_button');
+      expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
+    });
+  });
 }
 
 Future<void> _press(WidgetTester tester, LogicalKeyboardKey key) async {
@@ -2507,6 +2990,7 @@ class _FakeMediaServerClient implements MediaServerClient {
   final Map<String, Future<List<MediaItem>>> childrenPageFutures;
   final Map<String, Object> childrenPageErrors;
   final Future<List<MediaItem>>? pendingPlayableDescendants;
+  final List<MediaItem> extras;
   final childrenPageCalls = <({String parentId, int? start, int? size})>[];
   final fetchItemCalls = <String>[];
 
@@ -2516,9 +3000,13 @@ class _FakeMediaServerClient implements MediaServerClient {
     this.childrenPageFutures = const {},
     this.childrenPageErrors = const {},
     this.pendingPlayableDescendants,
+    this.extras = const [],
     this.id = 'server_1',
     this.name = 'Server',
   });
+
+  @override
+  Future<List<MediaItem>> fetchExtras(String id) async => extras;
 
   /// D14 mounts two of these at once, so the server a fake speaks for has to
   /// be a parameter rather than a constant.

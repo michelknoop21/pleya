@@ -9,6 +9,7 @@ import '../media/media_kind.dart';
 import '../media/media_playlist.dart';
 import '../media/unified/unified_route_context.dart';
 import '../navigation/tv/tv_content_route_registry.dart';
+import '../navigation/tv/tv_navigation_coordinator.dart';
 import '../screens/collection_detail_screen.dart';
 import '../screens/main_screen.dart';
 import '../screens/media_detail_screen.dart';
@@ -463,8 +464,12 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   // animation: a hero needs two routes on one navigator to fly between, and a
   // nested route is not one. TV detail opens on the fade
   // [mediaDetailRoute] gives it, so there was no hero on this platform to lose.
+  //
+  // DEC-115: film and series detail open with the bar tucked away, so the
+  // synopsis gets the height the bar used to take.
   final nested = openTvContentRoute(
     id: tvDetailRouteId(target),
+    topNav: TvTopNavPresentation.collapsible,
     builder: (_) => mediaDetailPage(
       metadata: target.metadata,
       isOffline: isOffline,

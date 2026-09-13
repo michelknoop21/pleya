@@ -372,6 +372,7 @@ class TvBrowseRailLayout {
     bool fullCardLayout = false,
     double tallPosterScale = 1.0,
     double widePosterScale = 1.0,
+    bool includeNextHubPeek = true,
   }) {
     if (hubs.isEmpty) return 0;
 
@@ -396,7 +397,7 @@ class TvBrowseRailLayout {
     final sectionHeight = hubSectionHeightFor(scale: scale, activeRailHeight: railHeight);
 
     return railTopPaddingForScale(scale) +
-        viewportHeightFor(hubCount: hubs.length, scale: scale, sectionHeight: sectionHeight) +
+        viewportHeightFor(hubCount: includeNextHubPeek ? hubs.length : 1, scale: scale, sectionHeight: sectionHeight) +
         railBottomPaddingForScale(scale);
   }
 }
@@ -467,6 +468,16 @@ class TvBrowseRail extends StatefulWidget {
   /// platform/service coupling here.
   final ValueListenable<bool>? selectSuppressionGestureSignal;
 
+  /// Whether the viewport reserves [TvBrowseRailLayout.nextHubPeekHeightForScale]
+  /// beyond the active hub's own section, hinting that another hub sits below.
+  /// True everywhere by default. DET2: a caller with an unusually tight bottom
+  /// band (media detail, on a small panel with a tall active hub) may set this
+  /// false to give that space back — the caller must derive its own reserved
+  /// height with the same flag (see [TvBrowseRailLayout.estimateHeight]'s
+  /// `includeNextHubPeek`), or the rail and the caller's own layout disagree
+  /// about where the rail actually starts.
+  final bool showNextHubPeek;
+
   const TvBrowseRail({
     super.key,
     required this.hubs,
@@ -498,6 +509,7 @@ class TvBrowseRail extends StatefulWidget {
     this.backgroundBleedLeft,
     this.selectSuppressionGestureSignal,
     this.automationIdForHub,
+    this.showNextHubPeek = true,
   });
 
   @override
@@ -1331,7 +1343,7 @@ class TvBrowseRailState extends State<TvBrowseRail> {
             if (height > viewportSectionHeight) viewportSectionHeight = height;
           }
           final viewportHeight = TvBrowseRailLayout.viewportHeightFor(
-            hubCount: widget.hubs.length,
+            hubCount: widget.showNextHubPeek ? widget.hubs.length : 1,
             scale: scale,
             sectionHeight: viewportSectionHeight,
           );
