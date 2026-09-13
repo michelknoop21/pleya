@@ -29,6 +29,7 @@ import '../../focus/focusable_wrapper.dart';
 import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
+import 'tv_catalog_artwork_window.dart';
 import 'tv_unified_layout.dart';
 
 /// The artwork box of a catalog card — the real one and the loading
@@ -291,7 +292,9 @@ class _ArtworkBox extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          artwork,
+          // CAT18: a card far from the grid's focus draws the fill instead, so
+          // it does not keep a decoded poster alive. See the window file.
+          if (TvCatalogArtworkScope.drawsArtwork(context)) artwork else const TvCatalogArtworkFill(),
           // Above the image and below every marker, so the poster brightens but
           // the badges keep the contrast they were measured for. The content
           // itself answers the remote, rather than only the chrome around it.
