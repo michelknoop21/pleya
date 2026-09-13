@@ -243,7 +243,7 @@ extension _SettingsTvPage on _SettingsScreenState {
                             ? t.settings.downloadLocationCustom
                             : t.settings.downloadLocationDefault,
                         subtitle: t.settings.downloads,
-                        onSelect: _showDownloadLocationDialog,
+                        onSelect: () => showDownloadLocationDialog(context, onChanged: _rebuild),
                       ),
                     _tvToggle(
                       key: _SettingsScreenState._kDownloadOnWifiOnly,

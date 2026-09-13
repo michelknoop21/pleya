@@ -24,7 +24,6 @@ import 'external_player_screen.dart';
 import 'language_settings_screen.dart';
 import 'mpv_config_screen.dart';
 import 'settings_utils.dart';
-import 'subtitle_styling_screen.dart';
 
 class PlaybackSettingsScreen extends StatefulWidget {
   const PlaybackSettingsScreen({super.key});
@@ -67,13 +66,12 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         _bufferSizeTile(),
         _defaultQualityTile(),
 
-        SettingsSectionHeader(t.settings.subtitlesAndConfig),
-        SettingNavigationTile(
-          icon: Symbols.subtitles_rounded,
-          title: t.settings.subtitleStyling,
-          subtitle: t.settings.subtitleStylingDescription,
-          destinationBuilder: (_) => const SubtitleStylingScreen(),
-        ),
+        // Ondertitel opmaak moved to the top-level Settings list (northstar
+        // 14, next to "Taal en ondertitels"), so there is exactly one way in
+        // instead of one nested two levels under Afspelen and one at the top.
+        // Only mpv.conf editing is left under this header, so it reads as
+        // "Advanced" rather than the stale "Subtitles & Configuration".
+        SettingsSectionHeader(t.settings.advanced),
         _mpvConfigTile(),
 
         // These three used to live only inside the player's settings sheet,

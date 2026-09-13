@@ -421,6 +421,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get creditsPatternDescription => 'Reguliere expressie om aftitelingmarkeringen in hoofdstuktitels te herkennen';
 	@override String get invalidRegex => 'Ongeldige reguliere expressie';
 	@override String get downloads => 'Downloads';
+	@override String get downloadsDescription => 'Opslaglocatie, alleen wifi, automatisch verwijderen';
 	@override String get downloadLocationDescription => 'Kies waar gedownloade content wordt opgeslagen';
 	@override String get downloadLocationDefault => 'Standaard (App-opslag)';
 	@override String get downloadLocationCustom => 'Aangepaste Locatie';
@@ -502,6 +503,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get personalizedRecommendations => 'Persoonlijke aanbevelingen';
 	@override String get personalizedRecommendationsDescription => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.';
 	@override String get sectionLibrary => 'App en afspelen';
+	@override String get sectionIntegrations => 'Koppelingen';
 	@override String get homeLayout => 'Indeling van Home';
 	@override String get homeLayoutDescription => 'Herschik of verberg de rijen op het beginscherm';
 	@override String get homeLayoutEmpty => 'Open het beginscherm één keer, dan kunnen de rijen geladen worden';
@@ -3233,6 +3235,7 @@ extension on TranslationsNl {
 			'settings.creditsPatternDescription' => 'Reguliere expressie om aftitelingmarkeringen in hoofdstuktitels te herkennen',
 			'settings.invalidRegex' => 'Ongeldige reguliere expressie',
 			'settings.downloads' => 'Downloads',
+			'settings.downloadsDescription' => 'Opslaglocatie, alleen wifi, automatisch verwijderen',
 			'settings.downloadLocationDescription' => 'Kies waar gedownloade content wordt opgeslagen',
 			'settings.downloadLocationDefault' => 'Standaard (App-opslag)',
 			'settings.downloadLocationCustom' => 'Aangepaste Locatie',
@@ -3314,6 +3317,7 @@ extension on TranslationsNl {
 			'settings.personalizedRecommendations' => 'Persoonlijke aanbevelingen',
 			'settings.personalizedRecommendationsDescription' => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.',
 			'settings.sectionLibrary' => 'App en afspelen',
+			'settings.sectionIntegrations' => 'Koppelingen',
 			'settings.homeLayout' => 'Indeling van Home',
 			'settings.homeLayoutDescription' => 'Herschik of verberg de rijen op het beginscherm',
 			'settings.homeLayoutEmpty' => 'Open het beginscherm één keer, dan kunnen de rijen geladen worden',
@@ -3485,10 +3489,10 @@ extension on TranslationsNl {
 			'videoControls.qualityBandwidthEstimate' => ({required Object bitrate}) => '~${bitrate} Mbps',
 			'videoControls.transcodeUnavailableFallback' => 'Transcoderen niet beschikbaar — originele kwaliteit wordt afgespeeld',
 			'videoControls.pipButton' => 'Beeld-in-beeld modus',
-			'videoControls.aspectRatioButton' => 'Beeldverhouding',
-			'videoControls.ambientLighting' => 'Omgevingsverlichting',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.aspectRatioButton' => 'Beeldverhouding',
+			'videoControls.ambientLighting' => 'Omgevingsverlichting',
 			'videoControls.ambientIntensitySubtle' => 'Subtiel',
 			'videoControls.ambientIntensityBalanced' => 'Evenwichtig',
 			'videoControls.ambientIntensityBright' => 'Fel',
@@ -3999,10 +4003,10 @@ extension on TranslationsNl {
 			'liveTv.noScheduledRecordings' => 'Geen geplande opnames',
 			'liveTv.noRecordingRules' => 'Nog geen opnameregels',
 			'liveTv.manageRecording' => 'Opname beheren',
-			'liveTv.cancelRecording' => 'Opname annuleren',
-			'liveTv.cancelRecordingTitle' => 'Deze opname annuleren?',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.cancelRecording' => 'Opname annuleren',
+			'liveTv.cancelRecordingTitle' => 'Deze opname annuleren?',
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} wordt niet meer opgenomen.',
 			'liveTv.deleteRule' => 'Regel verwijderen',
 			'liveTv.deleteRuleTitle' => 'Opnameregel verwijderen?',
@@ -4513,10 +4517,10 @@ extension on TranslationsNl {
 			'trackers.libraryFilter.libraries' => 'Bibliotheken',
 			'trackers.libraryFilter.noLibraries' => 'Geen bibliotheken beschikbaar',
 			'addServer.addJellyfinTitle' => 'Jellyfin-server toevoegen',
-			'addServer.serverUrls' => 'Server-URL\'s',
-			'addServer.serverUrlsHelper' => 'Meerdere URL\'s toegestaan, gescheiden door komma\'s.',
 			_ => null,
 		} ?? switch (path) {
+			'addServer.serverUrls' => 'Server-URL\'s',
+			'addServer.serverUrlsHelper' => 'Meerdere URL\'s toegestaan, gescheiden door komma\'s.',
 			'addServer.findServer' => 'Server zoeken',
 			'addServer.searchingLocalServers' => 'Lokale Jellyfin-servers zoeken...',
 			'addServer.localServers' => 'Lokale Jellyfin-servers',

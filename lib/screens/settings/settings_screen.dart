@@ -21,11 +21,9 @@ import '../../providers/hidden_libraries_provider.dart';
 import '../../providers/libraries_provider.dart';
 import '../../services/donation_service.dart';
 import '../../services/download_storage_service.dart';
-import '../../services/file_picker_service.dart';
 import '../../services/icloud_sync_service.dart';
 import 'icloud_sync_status_line.dart';
 import '../../services/preferences/preference_sync_coordinator.dart';
-import '../../services/saf_storage_service.dart';
 import '../../services/settings_export_service.dart';
 import '../../providers/seerr_provider.dart';
 import '../../providers/tautulli_provider.dart';
@@ -50,9 +48,9 @@ import '../../profiles/profile.dart';
 import '../../profiles/profile_registry.dart';
 import 'about_screen.dart';
 import 'add_connection_screen.dart';
-import 'connections_section.dart';
 import 'pleya_share_host_screen.dart';
 import 'appearance_settings_screen.dart';
+import 'downloads_settings_screen.dart';
 import 'keyboard_shortcuts_screen.dart';
 import 'home_layout_screen.dart';
 import 'library_visibility_screen.dart';
@@ -60,7 +58,10 @@ import 'logs_screen.dart';
 import 'language_settings_screen.dart';
 import 'playback_settings_screen.dart';
 import '../profile/profile_switch_screen.dart';
+import '../servers_screen.dart';
 import 'seerr_settings_screen.dart';
+import 'settings_utils.dart';
+import 'subtitle_styling_screen.dart';
 import 'tautulli_settings_screen.dart';
 import 'trackers_settings_screen.dart';
 import '../../widgets/loading_indicator_box.dart';
@@ -178,6 +179,11 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
   settings.SettingsService get _settingsService => settings.SettingsService.instance;
 
+  /// `setState` is `@protected`, so `_SettingsTvPage` (an extension, not a
+  /// `State` subclass method) cannot call it directly — this thin wrapper is
+  /// what it passes as `showDownloadLocationDialog`'s `onChanged`.
+  void _rebuild() => setState(() {});
+
   @override
   Widget build(BuildContext context) {
     // `settings-a`. The whole page, not a wrapper around the desktop cards:
@@ -209,17 +215,22 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
                         _buildHomeLayoutTile(),
                         _buildPlaybackTile(),
                         _buildLanguageTile(),
-                        _buildTrackersTile(),
-                        _buildRequestsTile(),
-                        _buildTautulliTile(),
+                        _buildSubtitleStylingTile(),
+                        if (!PlatformDetector.isAppleTV()) _buildDownloadsTile(),
                       ],
                     ),
 
-                    _buildConnectionsSection(),
+                    SettingsGroup(
+                      title: t.settings.sectionIntegrations,
+                      children: [
+                        _buildTrackersTile(),
+                        _buildRequestsTile(),
+                        _buildTautulliTile(),
+                        _buildProfilesTile(),
+                      ],
+                    ),
 
-                    _buildProfilesSection(),
-
-                    if (!PlatformDetector.isAppleTV()) _buildDownloadsSection(),
+                    _buildServersSection(),
 
                     if (_keyboardShortcutsSupported) ...[_buildKeyboardShortcutsSection()],
 
@@ -416,13 +427,26 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         keywords: const ['log', 'logs', 'debug', 'diagnostiek'],
         destinationBuilder: (_) => const LogsScreen(),
       ),
-      if (!Platform.isIOS)
-        _SettingsSearchEntry(
-          icon: Symbols.folder_rounded,
-          title: t.settings.downloads,
-          keywords: const ['download', 'offline', 'storage', 'opslag', 'locatie'],
-          onTap: (_) => _showDownloadLocationDialog(),
-        ),
+      _SettingsSearchEntry(
+        icon: Symbols.download_rounded,
+        title: t.settings.downloads,
+        subtitle: t.settings.downloadsDescription,
+        keywords: const ['download', 'offline', 'storage', 'wifi', 'opslag', 'locatie'],
+        destinationBuilder: (_) => const DownloadsSettingsScreen(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.subtitles_rounded,
+        title: t.settings.subtitleStyling,
+        subtitle: t.settings.subtitleStylingDescription,
+        keywords: const ['subtitle', 'caption', 'font', 'ondertitel', 'lettertype'],
+        destinationBuilder: (_) => const SubtitleStylingScreen(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.dns_rounded,
+        title: t.tvMyPleya.servers,
+        keywords: const ['server', 'plex', 'jellyfin', 'nas', 'servers'],
+        destinationBuilder: (_) => const ServersScreen(),
+      ),
       _SettingsSearchEntry(
         icon: Symbols.dns_rounded,
         title: t.settings.watchTogetherRelay,
@@ -574,6 +598,32 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     );
   }
 
+  /// Promoted out of "Video afspelen" (northstar 14): a top-level entry next
+  /// to "Taal en ondertitels" instead of nested two levels down. Same
+  /// destination and copy `PlaybackSettingsScreen` used, removed there so
+  /// there is exactly one way in.
+  Widget _buildSubtitleStylingTile() {
+    return SettingNavigationTile(
+      icon: Symbols.subtitles_rounded,
+      title: t.settings.subtitleStyling,
+      subtitle: t.settings.subtitleStylingDescription,
+      destinationBuilder: (_) => const SubtitleStylingScreen(),
+    );
+  }
+
+  /// Storage location, WiFi-only and auto-remove used to be three inline rows
+  /// in their own unlabelled card; northstar 14 draws "Downloads" as one row
+  /// with a summary, like every other entry in this group.
+  Widget _buildDownloadsTile() {
+    return SettingNavigationTile(
+      focusNode: _focusTracker.get(_kDownloadLocation),
+      icon: Symbols.download_rounded,
+      title: t.settings.downloads,
+      subtitle: t.settings.downloadsDescription,
+      destinationBuilder: (_) => const DownloadsSettingsScreen(),
+    );
+  }
+
   Widget _buildTrackersTile() {
     return Consumer2<TraktAccountProvider, TrackersProvider>(
       builder: (context, trakt, trackers, _) {
@@ -639,9 +689,35 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     );
   }
 
-  Widget _buildConnectionsSection() => const ConnectionsSection();
+  /// The full `ConnectionsSection` (add connection, host Pleya Share, every
+  /// server and local source with its own removable row) moved behind one
+  /// summary tile, northstar 14's single "Servers" row. [ServersScreen] is
+  /// the exact wrap My Pleya's own Servers card already uses (DEC-113) — the
+  /// same destination, reached from a second place, not a second copy of
+  /// server management.
+  Widget _buildServersSection() {
+    return Consumer<MultiServerProvider>(
+      builder: (context, servers, _) {
+        final manager = servers.serverManager;
+        final names = [for (final id in servers.serverIds) manager.serverDisplayName(ServerId(id))];
+        final subtitle = names.isEmpty ? t.connections.addConnectionSubtitleNoProfile : names.join(', ');
+        return SettingsGroup(
+          title: t.connections.sectionTitle,
+          children: [
+            SettingNavigationTile(
+              icon: Symbols.dns_rounded,
+              title: t.tvMyPleya.servers,
+              subtitle: subtitle,
+              needsAttention: servers.hasAuthErrorServers,
+              destinationBuilder: (_) => const ServersScreen(),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
-  Widget _buildProfilesSection() {
+  Widget _buildProfilesTile() {
     return StreamBuilder<List<Profile>>(
       stream: context.read<ProfileRegistry>().watchProfiles(),
       builder: (context, snapshot) {
@@ -655,60 +731,16 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
             : (activeName != null
                   ? t.profiles.summaryMultipleWithActive(count: count, activeName: activeName)
                   : t.profiles.summaryMultiple(count: count));
-        return SettingsGroup(
-          children: [
-            SettingNavigationTile(
-              icon: Symbols.group_rounded,
-              title: t.profiles.sectionTitle,
-              subtitle: subtitle,
-              onTap: () => Navigator.of(
-                context,
-                rootNavigator: true,
-              ).push(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen())),
-            ),
-          ],
+        return SettingNavigationTile(
+          icon: Symbols.group_rounded,
+          title: t.profiles.sectionTitle,
+          subtitle: subtitle,
+          onTap: () => Navigator.of(
+            context,
+            rootNavigator: true,
+          ).push(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen())),
         );
       },
-    );
-  }
-
-  Widget _buildDownloadsSection() {
-    final storageService = DownloadStorageService.instance;
-    final isCustom = storageService.isUsingCustomPath();
-
-    return SettingsGroup(
-      title: t.settings.downloads,
-      children: [
-        if (!Platform.isIOS)
-          FutureBuilder<String>(
-            future: storageService.getCurrentDownloadPathDisplay(),
-            builder: (context, snapshot) {
-              final currentPath = snapshot.data ?? '...';
-              return ListTile(
-                focusNode: _focusTracker.get(_kDownloadLocation),
-                leading: const AppIcon(Symbols.folder_rounded, fill: 1),
-                title: Text(isCustom ? t.settings.downloadLocationCustom : t.settings.downloadLocationDefault),
-                subtitle: Text(currentPath, maxLines: 2, overflow: .ellipsis),
-                trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
-                onTap: () => _showDownloadLocationDialog(),
-              );
-            },
-          ),
-        SettingSwitchTile(
-          focusNode: _focusTracker.get(_kDownloadOnWifiOnly),
-          pref: settings.SettingsService.downloadOnWifiOnly,
-          icon: Symbols.wifi_rounded,
-          title: t.settings.downloadOnWifiOnly,
-          subtitle: t.settings.downloadOnWifiOnlyDescription,
-        ),
-        SettingSwitchTile(
-          focusNode: _focusTracker.get(_kAutoRemoveWatchedDownloads),
-          pref: settings.SettingsService.autoRemoveWatchedDownloads,
-          icon: Symbols.delete_sweep_rounded,
-          title: t.settings.autoRemoveWatchedDownloads,
-          subtitle: t.settings.autoRemoveWatchedDownloadsDescription,
-        ),
-      ],
     );
   }
 
@@ -938,119 +970,6 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         _buildAutoCheckUpdatesOnStartupTile(),
       ],
     );
-  }
-
-  Future<void> _showDownloadLocationDialog() async {
-    final storageService = DownloadStorageService.instance;
-    final isCustom = storageService.isUsingCustomPath();
-
-    await showScopedDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(t.settings.downloads),
-        content: Column(
-          mainAxisSize: .min,
-          crossAxisAlignment: .start,
-          children: [
-            Text(t.settings.downloadLocationDescription),
-            const SizedBox(height: 16),
-            FutureBuilder<String>(
-              future: storageService.getCurrentDownloadPathDisplay(),
-              builder: (context, snapshot) {
-                return Text(
-                  t.settings.currentPath(path: snapshot.data ?? '...'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                );
-              },
-            ),
-          ],
-        ),
-        actions: [
-          if (isCustom)
-            DialogActionButton(
-              onPressed: () async {
-                // Run the async work first, then pop — popping first leaves
-                // setState inside _resetDownloadLocation racing against the
-                // already-dismissed dialog (and any re-opened instance).
-                await _resetDownloadLocation();
-                if (dialogContext.mounted) Navigator.pop(dialogContext);
-              },
-              label: t.settings.resetToDefault,
-            ),
-          DialogActionButton(onPressed: () => Navigator.pop(dialogContext), label: t.common.cancel),
-          DialogActionButton(
-            onPressed: () async {
-              await _selectDownloadLocation();
-              if (dialogContext.mounted) Navigator.pop(dialogContext);
-            },
-            label: t.settings.selectFolder,
-            isPrimary: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _selectDownloadLocation() async {
-    try {
-      String? selectedPath;
-      String pathType = 'file';
-
-      if (Platform.isAndroid) {
-        final safService = SafStorageService.instance;
-        selectedPath = await safService.pickDirectory();
-        if (selectedPath != null) {
-          pathType = 'saf';
-        } else if (PlatformDetector.isTV()) {
-          if (mounted) {
-            showErrorSnackBar(context, t.settings.downloadLocationSelectError);
-          }
-          return;
-        }
-      } else {
-        final result = await FilePickerService.instance.getDirectoryPath(dialogTitle: t.settings.selectFolder);
-        selectedPath = result;
-      }
-
-      if (selectedPath != null) {
-        if (pathType == 'file') {
-          final dir = Directory(selectedPath);
-          final isWritable = await DownloadStorageService.instance.isDirectoryWritable(dir);
-          if (!isWritable) {
-            if (mounted) {
-              showErrorSnackBar(context, t.settings.downloadLocationInvalid);
-            }
-            return;
-          }
-        }
-
-        await _settingsService.write(settings.SettingsService.customDownloadPath, selectedPath);
-        await _settingsService.write(settings.SettingsService.customDownloadPathType, pathType);
-        await DownloadStorageService.instance.refreshCustomPath();
-
-        if (mounted) {
-          // ignore: no-empty-block - setState triggers rebuild to reflect new download path
-          setState(() {});
-          showSuccessSnackBar(context, t.settings.downloadLocationChanged);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        showErrorSnackBar(context, t.settings.downloadLocationSelectError);
-      }
-    }
-  }
-
-  Future<void> _resetDownloadLocation() async {
-    await _settingsService.write(settings.SettingsService.customDownloadPath, null);
-    await _settingsService.write(settings.SettingsService.customDownloadPathType, null);
-    await DownloadStorageService.instance.refreshCustomPath();
-
-    if (mounted) {
-      // ignore: no-empty-block - setState triggers rebuild to reflect reset path
-      setState(() {});
-      showAppSnackBar(context, t.settings.downloadLocationReset);
-    }
   }
 
   Future<void> _showRelayUrlDialog() async {
