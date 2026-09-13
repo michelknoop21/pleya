@@ -1674,6 +1674,11 @@ class _MainScreenState extends State<MainScreen>
         _autoSwitchedToDownloads = false;
       }
     });
+    // The TV top nav bar owns its own destination list (`_tvNav`), separate
+    // from `_screens`/`_currentTab` above — without this, an offline flip
+    // left Home/Series/Films/Search as focusable pills whose Select did
+    // nothing, because the bar was never told the mode changed (MOC-23a).
+    _syncTvDestinations();
     _updateTvosMenuPassthrough();
 
     // Refresh sidebar focus after rebuilding navigation
@@ -2713,7 +2718,7 @@ class _MainScreenState extends State<MainScreen>
       _tvLiveTvRemembered = store;
       unawaited(store ? TvLiveTvCapabilityStore.remember() : TvLiveTvCapabilityStore.forget());
     }
-    final displaced = _tvNav.updateConditions(TvNavConditions(hasLiveTv: resolved.visible));
+    final displaced = _tvNav.updateConditions(TvNavConditions(hasLiveTv: resolved.visible, isOffline: _isOffline));
     if (displaced != null) _selectTab(displaced.tab);
   }
 

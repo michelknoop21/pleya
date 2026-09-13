@@ -151,6 +151,25 @@ void main() {
     });
   });
 
+  group('buildTvDestinations offline (MOC-23a)', () {
+    test('every online-only pill drops out, my pleya stays', () {
+      final destinations = buildTvDestinations(const TvNavConditions(hasLiveTv: true, isOffline: true));
+      expect(destinations, [TvDestinationId.myPleya]);
+    });
+
+    test('live tv drops out offline even when the capability is remembered', () {
+      final destinations = buildTvDestinations(const TvNavConditions(hasLiveTv: true, isOffline: true));
+      expect(destinations, isNot(contains(TvDestinationId.liveTv)));
+    });
+
+    test('coming back online restores the full online bar', () {
+      final offline = buildTvDestinations(const TvNavConditions(hasLiveTv: true, isOffline: true));
+      final online = buildTvDestinations(const TvNavConditions(hasLiveTv: true, isOffline: false));
+      expect(offline, isNot(equals(online)));
+      expect(online, contains(TvDestinationId.home));
+    });
+  });
+
   group('tvRootDestination', () {
     test('the root destination is home', () {
       expect(tvRootDestination, TvDestinationId.home);
@@ -193,6 +212,21 @@ void main() {
           visible,
           contains(destination.tab),
           reason: '${destination.name} is in the bar but its tab is not visible on TV',
+        );
+      }
+    });
+
+    test('offline, the bar still cannot name a destination the screens list will not build (MOC-23a)', () {
+      // Same invariant, offline: before MOC-23a, `TvNavConditions` had no
+      // offline condition at all, so the bar kept Home/Series/Films/Search —
+      // all `onlineOnly` tabs `getVisibleTabs` had already dropped — as
+      // focusable pills whose Select did nothing.
+      final visible = visibleOnTv(isOffline: true);
+      for (final destination in buildTvDestinations(const TvNavConditions(hasLiveTv: true, isOffline: true))) {
+        expect(
+          visible,
+          contains(destination.tab),
+          reason: '${destination.name} is in the offline bar but its tab is not visible on TV',
         );
       }
     });

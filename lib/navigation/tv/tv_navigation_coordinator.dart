@@ -75,16 +75,24 @@ class TvNavigationCoordinator extends ChangeNotifier {
   /// de gebruiker Live TV open heeft, gaat Pleya naar Home met een korte
   /// melding" — deciding that here rather than in the widget keeps the rule in
   /// one testable place.
+  ///
+  /// The fallback is [tvRootDestination] when it survived the recompute, and
+  /// [TvDestinationId.myPleya] when it did not (MOC-23a: offline drops Home
+  /// itself, which every case before it left standing). Mijn Pleya is the one
+  /// destination [buildTvDestinations] never removes, so it is always a valid
+  /// landing spot.
   TvDestinationId? updateConditions(TvNavConditions conditions) {
     final next = buildTvDestinations(conditions);
     if (listEquals(next, _destinations)) return null;
     _destinations = next;
 
+    final fallback = next.contains(tvRootDestination) ? tvRootDestination : TvDestinationId.myPleya;
+
     // A destination that is gone must not keep the focus ring either, or the
     // bar would have a focused item nobody can see.
-    if (!next.contains(_focused)) _focused = next.contains(_active) ? _active : tvRootDestination;
+    if (!next.contains(_focused)) _focused = next.contains(_active) ? _active : fallback;
 
-    final displaced = next.contains(_active) ? null : tvRootDestination;
+    final displaced = next.contains(_active) ? null : fallback;
     if (displaced != null) _active = displaced;
     notifyListeners();
     return displaced;
