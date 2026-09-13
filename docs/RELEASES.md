@@ -142,7 +142,7 @@ under `Notes`.
 - titelbewijs resetten en paritybewijs gelijktrekken
 - Zoeken opent Aanvragen binnen de shell, ook met resultaten
 - toon servernaam bij personenresultaten (build 270)
-- LIB7 review findings — focus race, stale-node fallback, reorder clamp, error copy
+- LIB7 review findings: focus race, stale-node fallback, reorder clamp, error copy
 - HTTP-client blijft niet hangen na een suspend-freeze
 - MOC-09/MOC-10 compositie tegen mockup 37 A/C
 - expliciete restart vanaf begin respecteren ondanks details-instelling
@@ -155,6 +155,7 @@ under `Notes`.
 - collapse the topnav on film and series detail (DEC-115)
 - DET6, filmdetail synopsis viel terug op 1 regel (Mayday)
 - MOC-20, Uiterlijk krijgt vier echte voorkeuren (PB-10)
+- MOC-21, Profiel kiezen krijgt de mockup-21-compositie op TV (beeld)
 - DET7, film- en seriedetail altijd volledig scherm
 <!-- END GENERATED -->
 

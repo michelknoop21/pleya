@@ -24,6 +24,7 @@ import '../../services/storage_service.dart';
 import '../../theme/mono_shapes.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/dialogs.dart';
+import '../../utils/platform_detector.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/app_menu.dart';
@@ -33,6 +34,7 @@ import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/profile_switching_overlay.dart';
 import '../libraries/state_messages.dart';
 import '../auth_screen.dart';
+import '../tv/tv_profile_gate.dart';
 import 'add_local_profile_screen.dart';
 import 'profile_delete_flow.dart';
 import 'profile_detail_screen.dart';
@@ -333,7 +335,20 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
   /// Netflix "Who's watching?" gate: centered display-font title, a wrap of
   /// large rounded avatars (name below, white ring on hover/focus), and a
   /// ghost "Manage profiles" button. Selection-only — no per-tile menus.
+  ///
+  /// MOC-21 ("beeld"): tvOS gets its own composition, [TvProfileGate], built
+  /// from real TV focus primitives instead of the mouse/touch-oriented
+  /// `FocusableActionDetector` below. Desktop and mobile are untouched.
   Widget _buildSelectionGate(ProfilesView view, String? activeId) {
+    if (PlatformDetector.isTV()) {
+      return TvProfileGate(
+        profiles: view.profiles,
+        switching: _switching,
+        focusNodeFor: _profileFocusNode,
+        onSelect: _switchTo,
+        onManageProfiles: _openManageProfiles,
+      );
+    }
     final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,

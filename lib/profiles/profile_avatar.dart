@@ -8,18 +8,38 @@ import '../utils/initials_palette.dart';
 import '../widgets/app_icon.dart';
 import 'profile.dart';
 
+/// [ProfileAvatar.shape]. Circle is every existing surface (topnav, the
+/// management list, Mijn Pleya); roundedSquare is MOC-21's TV selection gate,
+/// which mockup 21 draws as squircle tiles rather than the circular avatar
+/// used everywhere else.
+enum ProfileAvatarShape { circle, roundedSquare }
+
 class ProfileAvatar extends StatelessWidget {
   final Profile? profile;
   final double size;
   final bool showLockBadge;
+  final ProfileAvatarShape shape;
 
-  const ProfileAvatar({super.key, required this.profile, this.size = 40, this.showLockBadge = true});
+  /// Only read when [shape] is [ProfileAvatarShape.roundedSquare]. Defaults
+  /// to a tenth of [size], which reads as a squircle at MOC-21's 260-tile size
+  /// without needing every caller to pick a radius by hand.
+  final double? borderRadius;
+
+  const ProfileAvatar({
+    super.key,
+    required this.profile,
+    this.size = 40,
+    this.showLockBadge = true,
+    this.shape = ProfileAvatarShape.circle,
+    this.borderRadius,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final p = profile;
     final lockBadgeSize = size * 0.34;
+    final content = SizedBox(width: size, height: size, child: _buildContent(theme, p));
 
     return SizedBox(
       width: size,
@@ -27,9 +47,13 @@ class ProfileAvatar extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          ClipOval(
-            child: SizedBox(width: size, height: size, child: _buildContent(theme, p)),
-          ),
+          switch (shape) {
+            ProfileAvatarShape.circle => ClipOval(child: content),
+            ProfileAvatarShape.roundedSquare => ClipRRect(
+              borderRadius: BorderRadius.circular(borderRadius ?? size * 0.1),
+              child: content,
+            ),
+          },
           if (showLockBadge && p != null && p.isPinProtected)
             Positioned(
               right: -2,
