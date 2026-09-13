@@ -67,6 +67,7 @@ under `Notes`.
 - MOC-12 unified contextmenu met navigatie en posterkop
 - rebuild Mijn Pleya hub to northstar 18 (I7 child 18)
 - build Bibliotheken picker for I7 child 15 (northstar 15)
+- herindeel Instellingen naar northstar 14 (I7 child 14)
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
