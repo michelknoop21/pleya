@@ -270,6 +270,7 @@
     "creditsPatternDescription": "Regex pattern to match credits markers in chapter titles",
     "invalidRegex": "Invalid regular expression",
     "downloads": "Downloads",
+    "downloadsDescription": "Storage location, WiFi-only, auto-remove",
     "downloadLocationDescription": "Choose where to store downloaded content",
     "downloadLocationDefault": "Default (App Storage)",
     "downloadLocationCustom": "Custom Location",
@@ -348,14 +349,14 @@
     "window": "Window",
     "content": "Content",
     "player": "Player",
-    "subtitlesAndConfig": "Subtitles & Configuration",
     "seekAndTiming": "Seek & Timing",
     "audio": "Audio",
     "audioSyncOffsetDescription": "Shift audio relative to video for every title",
     "behavior": "Behavior",
     "personalizedRecommendations": "Personalized recommendations",
     "personalizedRecommendationsDescription": "Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.",
-    "sectionLibrary": "App & playback"
+    "sectionLibrary": "App & playback",
+    "sectionIntegrations": "Integrations"
   },
   "search": {
     "hint": "Search movies, shows, music...",

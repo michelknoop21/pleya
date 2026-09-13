@@ -2624,3 +2624,36 @@ omdat dat een wijziging in het gedeelde railwidget voor alle aanroepers zou zijn
 Widgettests (`test/screens/libraries/mobile_libraries_screen_test.dart`) dekken het kaartraster, de
 serverfilterchips, verborgen bibliotheken, "Bewerken", de terugknop en de tik-naar-`LibrariesScreen`
 overdracht. Geen ios-sim Verify-run tegen `15-bibliotheken.png` vastgelegd deze sessie.
+
+## DEC-115: I7-child 14 (Instellingen) promoveert "Ondertitel opmaak" naar een eigen tegel in plaats van de Taal-tegel te hernoemen, en bouwt geen 1080p-downloadkwaliteit
+
+**Date:** 2026-09-13
+**Status:** accepted
+
+**Context:** Northstar 14 (`14-instellingen.png`) toont in de kaart "App en afspelen" vijf tegels,
+waaronder één "Ondertitels" met subtitel "Stijl en standaardtaal". De bestaande
+`LanguageSettingsScreen` (DEC-096/mockup 31A) is een strak gechoreografeerde pagina
+(Globale voorkeur/Onthouden/Series-secties) die alleen taalvoorkeuren dekt, geen stijl. De
+gebruiker koos, via `AskUserQuestion`, de aanbevolen optie om de bestaande "Taal en
+ondertitels"-tegel naar "Ondertitels" te hernoemen. Bij het bouwen bleek een kale hernoeming
+misleidend: de tegel dekt ook audio-tracktaal, niet alleen ondertitels, en `SubtitleStylingScreen`
+(al bestaand, genest onder Afspelen) zou dan een snelkoppeling middenin DEC-096's bevroren layout
+moeten krijgen om "Stijl" te dekken. Northstar 14 noemt ook een tegel "Downloads · kwaliteit 1080p";
+die instelling bestaat nergens in de downloadpijplijn (`DownloadOperations`/drift-tabellen kennen
+geen kwaliteitskeuze), net zoals DEC-113 al deed met "Nieuw voor jou" voor Meldingen.
+
+**Decision:** De "Taal en ondertitels"-tegel blijft ongewijzigd getiteld en blijft linken naar
+`LanguageSettingsScreen`. `SubtitleStylingScreen` wordt gepromoveerd van genest-onder-Afspelen naar
+een eigen top-level tegel in de kaart "App en afspelen", naast de Taal-tegel. Functioneel dekt dat
+paar dezelfde twee dingen die de mockup in één tegel noemt ("Stijl" en "standaardtaal"), alleen als
+twee tegels in plaats van één: een zichtbare afwijking van northstar 14's letterlijke vijf tegels
+(zes in de kaart), gekozen omdat een kale hernoeming een tegel zou opleveren die zijn eigen subtitel
+niet dekt. De 1080p-downloadkwaliteit wordt niet gebouwd: er is geen databron om hem aan te koppelen,
+en er komt geen losse instelling die nergens op werkt.
+
+**Consequences:** `PlaybackSettingsScreen`'s kopregel "Ondertitels en configuratie" is hernoemd naar
+`t.settings.advanced` ("Geavanceerd"), omdat er na het weghalen van de Ondertitel-opmaaktegel alleen
+nog de mpv.conf-tegel onder staat. `SettingsScreen`'s zoekindex is uitgebreid met de nieuwe
+top-level tegel. Komt er ooit een echte downloadkwaliteitsinstelling, dan is dit de plek om de
+mockup-tegel alsnog te bouwen; tot die tijd blijft dit gat bewust openstaand, net als Meldingen'
+"Nieuw voor jou" (DEC-113).

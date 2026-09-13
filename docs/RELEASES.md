@@ -67,6 +67,7 @@ under `Notes`.
 - MOC-12 unified contextmenu met navigatie en posterkop
 - rebuild Mijn Pleya hub to northstar 18 (I7 child 18)
 - build Bibliotheken picker for I7 child 15 (northstar 15)
+- herindeel Instellingen naar northstar 14 (I7 child 14)
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
@@ -146,6 +147,7 @@ under `Notes`.
 - MOC-09/MOC-10 compositie tegen mockup 37 A/C
 - expliciete restart vanaf begin respecteren ondanks details-instelling
 - hard-close cancel niet onbeheerd laten falen, deadline niet resetten
+- sluit gaten uit de I7-child-14-review (TV-bereikbaarheid, focus, dispose-race)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026

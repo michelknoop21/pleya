@@ -939,6 +939,9 @@ class TranslationsSettingsEn {
 	/// en: 'Downloads'
 	String get downloads => 'Downloads';
 
+	/// en: 'Storage location, WiFi-only, auto-remove'
+	String get downloadsDescription => 'Storage location, WiFi-only, auto-remove';
+
 	/// en: 'Choose where to store downloaded content'
 	String get downloadLocationDescription => 'Choose where to store downloaded content';
 
@@ -1173,9 +1176,6 @@ class TranslationsSettingsEn {
 	/// en: 'Player'
 	String get player => 'Player';
 
-	/// en: 'Subtitles & Configuration'
-	String get subtitlesAndConfig => 'Subtitles & Configuration';
-
 	/// en: 'Seek & Timing'
 	String get seekAndTiming => 'Seek & Timing';
 
@@ -1196,6 +1196,9 @@ class TranslationsSettingsEn {
 
 	/// en: 'App & playback'
 	String get sectionLibrary => 'App & playback';
+
+	/// en: 'Integrations'
+	String get sectionIntegrations => 'Integrations';
 }
 
 // Path: search
@@ -7233,6 +7236,7 @@ extension on Translations {
 			'settings.creditsPatternDescription' => 'Regex pattern to match credits markers in chapter titles',
 			'settings.invalidRegex' => 'Invalid regular expression',
 			'settings.downloads' => 'Downloads',
+			'settings.downloadsDescription' => 'Storage location, WiFi-only, auto-remove',
 			'settings.downloadLocationDescription' => 'Choose where to store downloaded content',
 			'settings.downloadLocationDefault' => 'Default (App Storage)',
 			'settings.downloadLocationCustom' => 'Custom Location',
@@ -7311,7 +7315,6 @@ extension on Translations {
 			'settings.window' => 'Window',
 			'settings.content' => 'Content',
 			'settings.player' => 'Player',
-			'settings.subtitlesAndConfig' => 'Subtitles & Configuration',
 			'settings.seekAndTiming' => 'Seek & Timing',
 			'settings.audio' => 'Audio',
 			'settings.audioSyncOffsetDescription' => 'Shift audio relative to video for every title',
@@ -7319,6 +7322,7 @@ extension on Translations {
 			'settings.personalizedRecommendations' => 'Personalized recommendations',
 			'settings.personalizedRecommendationsDescription' => 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.',
 			'settings.sectionLibrary' => 'App & playback',
+			'settings.sectionIntegrations' => 'Integrations',
 			'search.hint' => 'Search movies, shows, music...',
 			'search.tryDifferentTerm' => 'Try a different search term',
 			'search.searchYourMedia' => 'Search your media',
@@ -7486,9 +7490,9 @@ extension on Translations {
 			'videoControls.transcodeUnavailableFallback' => 'Transcoding unavailable — playing original quality',
 			'videoControls.pipButton' => 'Picture-in-Picture mode',
 			'videoControls.aspectRatioButton' => 'Aspect ratio',
-			'videoControls.ambientLighting' => 'Ambient lighting',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.ambientLighting' => 'Ambient lighting',
 			'videoControls.ambientIntensitySubtle' => 'Subtle',
 			'videoControls.ambientIntensityBalanced' => 'Balanced',
 			'videoControls.ambientIntensityBright' => 'Bright',
@@ -8000,9 +8004,9 @@ extension on Translations {
 			'liveTv.noRecordingRules' => 'No recording rules yet',
 			'liveTv.manageRecording' => 'Manage recording',
 			'liveTv.cancelRecording' => 'Cancel recording',
-			'liveTv.cancelRecordingTitle' => 'Cancel this recording?',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.cancelRecordingTitle' => 'Cancel this recording?',
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} will no longer be recorded.',
 			'liveTv.deleteRule' => 'Delete rule',
 			'liveTv.deleteRuleTitle' => 'Delete recording rule?',
@@ -8514,9 +8518,9 @@ extension on Translations {
 			'seerr.requestFailed' => 'Request failed. Try again.',
 			'seerr.selectSeasons' => 'Select seasons',
 			'seerr.season' => ({required Object number}) => 'Season ${number}',
-			'seerr.allSeasons' => 'All seasons',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.allSeasons' => 'All seasons',
 			'seerr.seasonsRange' => ({required Object range}) => 'Seasons ${range}',
 			'seerr.seasonsCount' => ({required Object count}) => '${count} seasons',
 			'seerr.requestedBy' => ({required Object name}) => 'Requested by ${name}',
