@@ -63,7 +63,7 @@ class _TvNowWatchingScreenState extends State<TvNowWatchingScreen> {
       nested.dismiss(result);
       return;
     }
-    Navigator.pop(context, result);
+    if (Navigator.canPop(context)) Navigator.pop(context, result);
   }
 
   Future<void> _openSession(WatchSession session) async {
@@ -80,13 +80,26 @@ class _TvNowWatchingScreenState extends State<TvNowWatchingScreen> {
   Widget build(BuildContext context) {
     final now = context.watch<NowWatchingProvider?>()?.now;
 
+    // Every entry on this destination's nested-route stack shares the same
+    // dismiss callback (`TvRootShell`'s `dismissNestedRoute`), which always
+    // pops whatever is currently on top — not the entry that called it. This
+    // screen keeps rebuilding on provider changes even while a route it
+    // opened (e.g. a session's detail page, via `_openSession`) covers it, so
+    // without this check an empty state reached while covered would kick the
+    // user out of that detail page instead of closing itself. `TickerMode`
+    // is the shell's own covered/on-top signal (`TvRootShell` wraps every
+    // stack entry in `TickerMode(enabled: i == stack.length - 1)`), so riding
+    // it here needs no new plumbing, and a later uncover re-triggers this
+    // build and re-evaluates the same check.
+    final onTop = TickerMode.valuesOf(context).enabled;
+
     // Nothing left to show: leave rather than stand on an empty page, exactly
     // as the shared screen does. Deferred to after the frame because this can
     // land during a rebuild, and guarded so it happens exactly once.
-    if (now != null && !now.hasOthers && !_dismissing) {
+    if (onTop && now != null && !now.hasOthers && !_dismissing) {
       _dismissing = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _dismiss();
+        if (mounted && TickerMode.valuesOf(context).enabled) _dismiss();
       });
     }
 

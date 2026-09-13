@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
@@ -154,23 +156,73 @@ void main() {
       expect(find.byType(TvNowWatchingScreen), findsOneWidget);
     });
 
-    testWidgets('falls back to Navigator.pop when there is no nested-route scope', (tester) async {
+    // Every entry on a destination's nested-route stack shares the same
+    // dismiss callback in TvRootShell, which always pops whatever is
+    // currently on top, not the entry that called it. Opening a session from
+    // this screen (_openSession -> navigateToMediaItem) pushes a detail route
+    // onto that same stack, covering this screen while it keeps rebuilding on
+    // provider changes. Without a covered guard, an empty state reached while
+    // covered would dismiss the detail page on top instead of doing nothing.
+    testWidgets('does not dismiss while covered by a route it opened, only once uncovered again', (tester) async {
       final fixture = await _providerWith(NowWatching(sessions: [_session()]));
       addTearDown(fixture.provider.dispose);
+      var dismissed = false;
+      final onTop = ValueNotifier<bool>(false);
+      addTearDown(onTop.dispose);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<NowWatchingProvider>.value(
+          value: fixture.provider,
+          child: _asNestedRoute(
+            ValueListenableBuilder<bool>(
+              valueListenable: onTop,
+              builder: (context, value, child) => TickerMode(enabled: value, child: child!),
+              child: const TvNowWatchingScreen(),
+            ),
+            dismiss: ([_]) => dismissed = true,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      fixture.next.value = NowWatching.empty;
+      await fixture.provider.refresh();
+      await tester.pump();
+      await tester.pump();
+
+      expect(dismissed, isFalse);
+
+      onTop.value = true;
+      await tester.pump();
+      await tester.pump();
+
+      expect(dismissed, isTrue);
+    });
+
+    testWidgets('falls back to Navigator.pop (when it can) when there is no nested-route scope', (tester) async {
+      final fixture = await _providerWith(NowWatching(sessions: [_session()]));
+      addTearDown(fixture.provider.dispose);
+      final navigatorKey = GlobalKey<NavigatorState>();
 
       await tester.pumpWidget(
         ChangeNotifierProvider<NowWatchingProvider>.value(
           value: fixture.provider,
           child: MaterialApp(
             theme: monoTheme(dark: true),
-            home: Navigator(
-              onGenerateRoute: (_) =>
-                  MaterialPageRoute<void>(builder: (context) => const Scaffold(body: TvNowWatchingScreen())),
-            ),
+            navigatorKey: navigatorKey,
+            home: const Scaffold(body: Text('root')),
           ),
         ),
       );
-      await tester.pump();
+      // A real Navigator.pop fallback needs something below it to pop to,
+      // same as the shared screen's own Navigator.canPop guard: pushed here
+      // rather than as the initial route so there is one.
+      unawaited(
+        navigatorKey.currentState!.push(
+          MaterialPageRoute<void>(builder: (context) => const Scaffold(body: TvNowWatchingScreen())),
+        ),
+      );
+      await tester.pumpAndSettle();
       expect(find.byType(TvNowWatchingScreen), findsOneWidget);
 
       fixture.next.value = NowWatching.empty;
