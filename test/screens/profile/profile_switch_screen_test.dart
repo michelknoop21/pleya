@@ -13,8 +13,10 @@ import 'package:pleya/profiles/profile_connection.dart';
 import 'package:pleya/profiles/profile_connection_registry.dart';
 import 'package:pleya/profiles/profile_registry.dart';
 import 'package:pleya/screens/profile/profile_switch_screen.dart';
+import 'package:pleya/screens/tv/tv_profile_gate.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/platform_detector.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -196,6 +198,37 @@ void main() {
         findsOneWidget,
         reason: 'a gate that Back could dismiss would let someone past the profile choice',
       );
+    });
+  });
+
+  group('MOC-21: the gate forks per platform', () {
+    tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+    testWidgets('tvOS renders TvProfileGate, not the desktop/mobile tile', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      final harness = await _Harness.create(
+        profiles: [Profile.local(id: 'local-owner', displayName: 'Owner', createdAt: DateTime(2026, 1, 1))],
+      );
+
+      await tester.pumpWidget(harness.build(requireSelection: true));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TvProfileGate), findsOneWidget);
+      expect(find.text(t.screens.whoIsWatching), findsOneWidget);
+      expect(find.text(t.screens.manageProfiles), findsOneWidget);
+    });
+
+    testWidgets('non-TV keeps the existing gate composition unchanged', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(false);
+      final harness = await _Harness.create(
+        profiles: [Profile.local(id: 'local-owner', displayName: 'Owner', createdAt: DateTime(2026, 1, 1))],
+      );
+
+      await tester.pumpWidget(harness.build(requireSelection: true));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TvProfileGate), findsNothing);
+      expect(find.text(t.screens.whoIsWatching), findsOneWidget);
     });
   });
 }
