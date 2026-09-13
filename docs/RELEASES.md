@@ -146,6 +146,9 @@ under `Notes`.
 - MOC-09/MOC-10 compositie tegen mockup 37 A/C
 - expliciete restart vanaf begin respecteren ondanks details-instelling
 - hard-close cancel niet onbeheerd laten falen, deadline niet resetten
+- keep the detail info band above a tall rail reservation
+- give the detail synopsis a one-line tier and let genres wrap
+- collapse the topnav on film and series detail (DEC-115)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
