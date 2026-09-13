@@ -68,7 +68,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 
 | ID | Werkitem | Besluit | Status | SHA / bewijs |
 |----|----------|---------|--------|--------------|
-| MOC-20 | Instellingen, Uiterlijk, vier echte voorkeuren | PB-10 | OPEN | |
+| MOC-20 | Instellingen, Uiterlijk, vier echte voorkeuren | PB-10 | CODE CLOSED · HARDWARE OPEN | `7e0b2935` (PR #15): titels onder posters, hero-clearlogo, hero-auto-wissel en verminder-beweging, elk een echte `BoolPref` met ongewijzigd standaardgedrag; hardware-verificatie uitgesteld tot de gezamenlijke eindronde (`docs/unified-2026-closure.md` §7) |
 | MOC-21 | Profiel kiezen | approval | OPEN | |
 | MOC-22 | Inloggen, eerste start | PB-11 | OPEN | |
 | MOC-23 | Offline | PB-12 | OPEN | |
