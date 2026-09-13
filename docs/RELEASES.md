@@ -147,14 +147,12 @@ under `Notes`.
 - MOC-09/MOC-10 compositie tegen mockup 37 A/C
 - expliciete restart vanaf begin respecteren ondanks details-instelling
 - hard-close cancel niet onbeheerd laten falen, deadline niet resetten
-- keep the detail info band above a tall rail reservation
-- give the detail synopsis a one-line tier and let genres wrap
-- collapse the topnav on film and series detail (DEC-116)
 - sluit gaten uit de I7-child-14-review (TV-bereikbaarheid, focus, dispose-race)
+- keep the detail info band above a tall rail reservation
 - MOC-16a, Activiteit-zichtbaarheid naar capability + echte data (PB-7) (#11)
-- MOC-16b, Activiteit TV-presentatie + ACT2/ACT3 (PB-7)
-- MOC-16b, guard the Activiteit auto-dismiss against a covered route
-- MOC-16b, regenerate tv_shell_my_pleya_full golden after ACT3
+- give the detail synopsis a one-line tier and let genres wrap
+- MOC-16b, Activiteit TV-presentatie + ACT2/ACT3 (PB-7) (#12)
+- collapse the topnav on film and series detail (DEC-115)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
