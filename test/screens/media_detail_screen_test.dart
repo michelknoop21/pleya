@@ -2566,17 +2566,79 @@ void main() {
       expect(tester.takeException(), isNull);
 
       // The mandatory floor (title, metadata, genres, the action row, the
-      // source line) is what DET2 guarantees unconditionally — a person hub
-      // alone already needs most of a 584-logical-px panel (see the
-      // standalone measurement above), so the synopsis specifically may still
-      // collapse to nothing on this adversarial fixture. That is a real
-      // geometry constraint, not a regression: the moderate fixture below
-      // proves the synopsis survives too once the active hub is not this tall.
+      // source line) is what DET2 guarantees unconditionally. Before DET6
+      // (Michel, 13 september, hardware) the synopsis specifically still
+      // collapsed to nothing here — a person hub alone already needed most
+      // of a 584-logical-px panel (see the standalone measurement above).
+      // DET6 shrinks the active rail itself when the ideal two-line target
+      // does not otherwise fit, and that is enough even on this adversarial
+      // fixture to keep at least one line on screen.
       expect(find.text(movie.title!), findsWidgets);
+      expect(find.text(movie.summary!), findsOneWidget, reason: 'DET6 should keep the synopsis, not the rail, whole');
 
       final playButtonRect = rectOfFocusLabel(tester, 'play_button');
       expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
     });
+
+    // DET6 coverage for the exact reproduction of Michel's hardware report
+    // (13 september): a movie opened as a destination root (not nested — no
+    // shell topband to subtract) lands its ideal two-line reservation exactly
+    // on `_buildTvDetailForeground`'s own line-count boundary.
+    // `_tvDetailIdealForegroundHeight` and the loop's `lines: 2` branch compute
+    // the same real number — `minLogoHeight` — by construction, but via
+    // different orderings of the same additions; on the tvOS simulator this
+    // landed one came out a few ULPs below the other (device log:
+    // `remainingForLogo=50.99999999999997` against `minLogoHeight=51.0`),
+    // which the pre-`_tvDetailEpsilon` comparison rejected, dropping the
+    // second line for no real reason. This widget test's own arithmetic
+    // rounds the other way on this fixture — it passes with or without
+    // `_tvDetailEpsilon` — so it is not itself the negative control for that
+    // ULP-level collision (a fragile thing to pin to a specific Dart runtime
+    // and font metrics); the on-device log above is. Kept anyway as coverage
+    // for the destination-root + cast&extras shape, so a future change to
+    // this boundary that removes headroom on this host runtime still fails
+    // loudly here.
+    testWidgets(
+      'a movie with cast and extras opened as a destination root keeps two lines despite the exact-fit boundary',
+      (tester) async {
+        final movie = MediaItem(
+          id: 'movie_det6',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'A Very Long Motion Picture Title For Overflow Testing',
+          summary: longSummary,
+          genres: const ['Action', 'Adventure', 'Science Fiction'],
+          roles: castRoles(8),
+          year: 2024,
+          durationMs: 128 * 60 * 1000,
+          contentRating: 'PG-13',
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {}, extras: extraItems(6));
+        final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+        final provider = MultiServerProvider(manager, DataAggregationService(manager));
+        addTearDown(provider.dispose);
+
+        const panelSize = Size(1038, 584);
+        await pumpNestedDetail(tester, movie, provider, panelSize: panelSize, nestedBoxSize: panelSize);
+
+        expect(tester.takeException(), isNull);
+
+        final summaryFinder = find.text(movie.summary!);
+        expect(summaryFinder, findsOneWidget);
+        final summaryText = tester.widget<Text>(summaryFinder);
+        expect(
+          summaryText.maxLines,
+          greaterThanOrEqualTo(2),
+          reason: 'an exact-fit reservation should not lose a line to floating-point noise',
+        );
+
+        final playButtonRect = rectOfFocusLabel(tester, 'play_button');
+        expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
+      },
+    );
 
     // DET3 negative control. Under the shell the info band used to start
     // at 8% of the box on top of the band the bar already reserved, which on

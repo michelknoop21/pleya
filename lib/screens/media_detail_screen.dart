@@ -146,6 +146,25 @@ const double _tvDetailTallPosterScale = TvBrowseRailLayout.compactTallPosterScal
 const double _tvDetailEpisodeThumbnailScale = 1.0;
 const double _tvDetailActionSize = 46;
 const double _tvDetailActionRailGap = 4;
+// DET6: tolerance for the exact-fit comparison in `_buildTvDetailForeground`'s
+// line-count loop, where `remainingForLogo` and `minLogoHeight` are the same
+// real number by construction (see the comment at that comparison). Sized
+// well above float noise (observed drift: ~3e-14) and far below anything a
+// real shortfall would produce.
+const double _tvDetailEpsilon = 0.01;
+// DET6 (Michel, 13 september, hardware): the active rail (Acteurs, or
+// whichever hub `TvBrowseRailLayout.maxActiveRailHeight` reserves against —
+// DET2 already established that a taller *inactive* hub, like Trailers &
+// Extra's, can be the one actually driving the reservation) could still cost
+// the ideal two-line synopsis its second line on an adversarial hub
+// combination. Both `tallPosterScale` (person hubs) and `widePosterScale`
+// (wide-card hubs) shrink together at each fraction below, since either one
+// can be the max-height hub and the fix has to reach whichever it is.
+// Stepped rather than solved: the height `TvBrowseRailLayout.metricsForHub`
+// returns is linear in either scale, but `cardWidthFor`'s own density/width
+// branching would have to be mirrored exactly for a closed-form inverse to
+// stay correct.
+const List<double> _tvDetailRailShrinkFractions = [0.9, 0.8, 0.7, 0.6];
 const String _tvDetailSeasonsErrorHubId = 'detail_seasons_error';
 const String _tvDetailSeasonHubIdPrefix = 'detail_season_';
 const String _tvDetailExtrasHubId = 'detail_extras';
@@ -4040,6 +4059,40 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
         final idealForegroundHeight = _tvDetailIdealForegroundHeight(context, metadata, detailScale, foregroundWidth);
         var reservation = reserveFor(idealForegroundHeight);
+        var railTallPosterScale = _tvDetailTallPosterScale;
+        var railWidePosterScaleMultiplier = 1.0;
+        // DET6: `reserveFor` above already gave back the bottom safe inset
+        // and the next-hub peek, and the ideal two-line synopsis still does
+        // not fit. Before dropping to one line, try a smaller active rail at
+        // each fraction in turn, recomputing the same reservation against it.
+        if (!reservation.fits) {
+          final maxBottomForIdeal = (size.height - spotlightTop - idealForegroundHeight)
+              .clamp(0.0, double.infinity)
+              .toDouble();
+          for (final fraction in _tvDetailRailShrinkFractions) {
+            final shrunkRailHeight = _estimateTvDetailRailHeight(
+              size,
+              detailHubs,
+              showSeasonChips: showSeasonChips,
+              includeNextHubPeek: false,
+              tallPosterScale: _tvDetailTallPosterScale * fraction,
+              widePosterScaleMultiplier: fraction,
+            );
+            final shrunkBottom = (shrunkRailHeight - railTopPadding) + (_tvDetailActionRailGap * detailScale);
+            if (shrunkBottom <= maxBottomForIdeal) {
+              railTallPosterScale = _tvDetailTallPosterScale * fraction;
+              railWidePosterScaleMultiplier = fraction;
+              reservation = (
+                bottomSafeInset: 0.0,
+                foregroundBottom: shrunkBottom,
+                railHeight: shrunkRailHeight,
+                showNextHubPeek: false,
+                fits: true,
+              );
+              break;
+            }
+          }
+        }
         if (!reservation.fits) {
           final minimalForegroundHeight = _tvDetailMinimalForegroundHeight(
             context,
@@ -4105,8 +4158,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                       onRetryHub: _retryTvDetailHub,
                       onNavigateUp: () => _focusAboveTvDetailRail(metadata),
                       onBack: _popMediaDetailIfBackNotSuppressed,
-                      tallPosterScale: _tvDetailTallPosterScale,
-                      widePosterScaleForHub: _tvDetailWidePosterScaleForHub,
+                      tallPosterScale: railTallPosterScale,
+                      widePosterScaleForHub: (hub) =>
+                          _tvDetailWidePosterScaleForHub(hub) * railWidePosterScaleMultiplier,
                       initialHubId: _tvDetailInitialHubId(metadata),
                       initialItemId: _tvDetailInitialItemId(metadata),
                       episodePosterModeForHub: _tvDetailEpisodePosterModeForHub,
@@ -4400,7 +4454,16 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
               actionHeight +
               sourceLineHeight;
           final remainingForLogo = availableHeight - reservedHeight;
-          if (remainingForLogo >= minLogoHeight || lines == 0) {
+          // DET6 (Michel, 13 september, hardware): `_tvDetailIdealForegroundHeight`
+          // is built from exactly these same terms, so at its own target this
+          // comparison is an equality by construction — `remainingForLogo` and
+          // `minLogoHeight` are the same real number computed two different
+          // ways. Floating-point addition is not associative, so one of the
+          // two came out a few ULPs below the other (observed: 50.99999999999997
+          // vs 51.0) and tipped an exact-fit case into the one-line tier below
+          // it. `_tvDetailEpsilon` absorbs that noise without hiding a real
+          // shortfall — a genuine deficit is orders of magnitude bigger.
+          if (remainingForLogo >= minLogoHeight - _tvDetailEpsilon || lines == 0) {
             summaryMaxLines = lines;
             readMoreVisible = overflowsAtLines;
             logoHeight = remainingForLogo <= 0 ? 0 : remainingForLogo.clamp(0, desiredLogoHeight).toDouble();
@@ -4696,7 +4759,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     return null;
   }
 
-  double _estimateTvBrowseRailHeight(Size size, List<MediaHub> hubs, {bool includeNextHubPeek = true}) {
+  double _estimateTvBrowseRailHeight(
+    Size size,
+    List<MediaHub> hubs, {
+    bool includeNextHubPeek = true,
+    double tallPosterScale = _tvDetailTallPosterScale,
+    double widePosterScaleMultiplier = 1.0,
+  }) {
     final svc = SettingsService.instance;
     return TvBrowseRailLayout.estimateHeight(
       size: size,
@@ -4704,9 +4773,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       density: svc.read(SettingsService.libraryDensity),
       episodePosterMode: svc.read(SettingsService.episodePosterMode),
       episodePosterModeForHub: _tvDetailEpisodePosterModeForHub,
-      widePosterScaleForHub: _tvDetailWidePosterScaleForHub,
+      widePosterScaleForHub: (hub) => _tvDetailWidePosterScaleForHub(hub) * widePosterScaleMultiplier,
       fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
-      tallPosterScale: _tvDetailTallPosterScale,
+      tallPosterScale: tallPosterScale,
       includeNextHubPeek: includeNextHubPeek,
     );
   }
@@ -4716,8 +4785,16 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     List<MediaHub> hubs, {
     required bool showSeasonChips,
     bool includeNextHubPeek = true,
+    double tallPosterScale = _tvDetailTallPosterScale,
+    double widePosterScaleMultiplier = 1.0,
   }) {
-    final hubRailHeight = _estimateTvBrowseRailHeight(size, hubs, includeNextHubPeek: includeNextHubPeek);
+    final hubRailHeight = _estimateTvBrowseRailHeight(
+      size,
+      hubs,
+      includeNextHubPeek: includeNextHubPeek,
+      tallPosterScale: tallPosterScale,
+      widePosterScaleMultiplier: widePosterScaleMultiplier,
+    );
     final railHeight = hubRailHeight > 0 ? hubRailHeight : _estimateTvDetailEmptyRailReserveHeight(size);
     if (!showSeasonChips) return railHeight;
     // PB-4: the chip row sits above the rail and needs its own reserve, on
