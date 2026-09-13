@@ -358,11 +358,17 @@ class TvWatchlistViewState extends State<TvWatchlistView> {
     });
   }
 
-  /// UP or LEFT out of the rail: the topnav, with the rail closed behind it.
+  /// UP out of the rail: the topnav, with the rail closed behind it.
   ///
   /// Closing is not cosmetic. A rail left open with the focus somewhere else
   /// keeps a column off the grid for no reason the viewer can see, and DOWN out
   /// of the topnav would then land back in it rather than on the content.
+  ///
+  /// LEFT used to fall through here too, until CAT19 (Michel, 13 September):
+  /// the rail is the leftmost content on the page, so a second LEFT there
+  /// reached the topnav and a third one walked sideways along the bar to a
+  /// different destination — a filter session wandering off with no cue it was
+  /// about to happen. LEFT out of a rail row is [_railEdge] now.
   void _leaveRailUpwards() {
     if (_railExpanded) {
       setState(() {
@@ -500,7 +506,7 @@ class TvWatchlistViewState extends State<TvWatchlistView> {
         clearFocusNode: _clearFocus,
         onClearNavigateUp: () => _sortFocus.requestFocus(),
         onClearNavigateDown: _railEdge,
-        onClearNavigateLeft: _leaveRailUpwards,
+        onClearNavigateLeft: _railEdge,
         onClearNavigateRight: _closeRail,
         onClearBack: _closeRail,
       ),
@@ -522,7 +528,7 @@ class TvWatchlistViewState extends State<TvWatchlistView> {
         onPressed: () => _openSubview(TvWatchlistRailSubview.kind),
         onNavigateUp: _leaveRailUpwards,
         onNavigateDown: () => (availability ? _availabilityFocus : _sortFocus).requestFocus(),
-        onNavigateLeft: _leaveRailUpwards,
+        onNavigateLeft: _railEdge,
         onNavigateRight: _closeRail,
         onBack: _closeRail,
       ),
@@ -536,7 +542,7 @@ class TvWatchlistViewState extends State<TvWatchlistView> {
           onPressed: () => _openSubview(TvWatchlistRailSubview.availability),
           onNavigateUp: () => _kindFocus.requestFocus(),
           onNavigateDown: () => _sortFocus.requestFocus(),
-          onNavigateLeft: _leaveRailUpwards,
+          onNavigateLeft: _railEdge,
           onNavigateRight: _closeRail,
           onBack: _closeRail,
         ),
@@ -549,7 +555,7 @@ class TvWatchlistViewState extends State<TvWatchlistView> {
         onPressed: () => _openSubview(TvWatchlistRailSubview.sort),
         onNavigateUp: () => (availability ? _availabilityFocus : _kindFocus).requestFocus(),
         onNavigateDown: widget.selection.isEmpty ? _railEdge : () => _clearFocus.requestFocus(),
-        onNavigateLeft: _leaveRailUpwards,
+        onNavigateLeft: _railEdge,
         onNavigateRight: _closeRail,
         onBack: _closeRail,
       ),

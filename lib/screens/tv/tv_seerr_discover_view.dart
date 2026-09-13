@@ -285,6 +285,12 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
     });
   }
 
+  /// UP out of the rail: the topnav, with the rail closed behind it.
+  ///
+  /// LEFT used to fall through here too, until CAT19 (Michel, 13 September):
+  /// the rail is the leftmost content on the page, so a second LEFT reached the
+  /// topnav and a third one walked sideways along the bar to a different
+  /// destination. LEFT out of a rail row is [_railEdge] now.
   void _leaveRailUpwards() {
     if (_railExpanded) {
       setState(() {
@@ -295,7 +301,7 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
     widget.onExitTop?.call();
   }
 
-  /// DOWN off the bottom of the rail: nothing at all — see the kijklijst's own
+  /// LEFT and DOWN off an edge of the rail: nothing at all — see the kijklijst's own
   /// `_railEdge` for why this is explicit rather than null.
   void _railEdge() {}
 
@@ -458,7 +464,7 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
         clearFocusNode: _clearFocus,
         onClearNavigateUp: () => rows.last.focusNode.requestFocus(),
         onClearNavigateDown: _railEdge,
-        onClearNavigateLeft: _leaveRailUpwards,
+        onClearNavigateLeft: _railEdge,
         onClearNavigateRight: _closeRail,
         onClearBack: _closeRail,
       ),
@@ -510,7 +516,7 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
           onNavigateDown: i == specs.length - 1
               ? (_hasFilters ? () => _clearFocus.requestFocus() : _railEdge)
               : () => specs[i + 1].node.requestFocus(),
-          onNavigateLeft: _leaveRailUpwards,
+          onNavigateLeft: _railEdge,
           onNavigateRight: _closeRail,
           onBack: _closeRail,
         ),

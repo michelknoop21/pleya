@@ -276,24 +276,24 @@ void main() {
     }
   });
 
-  testWidgets('LEFT from every rail row reaches for the top navigation, and takes the rail down with it', (
+  testWidgets('LEFT from every rail row stays put, the rail is the leftmost content on the page (CAT19)', (
     tester,
   ) async {
     final harness = await pump(tester, kind: MediaKind.movie);
 
-    var expectedCalls = 0;
     for (final row in ['TvCatalogRailSources', 'TvCatalogRailFilters', 'TvCatalogRailSort']) {
       await openRailAt(tester, row);
-      expect(harness.sidebarFocusCalls, expectedCalls, reason: 'walking within the rail must not reach for the bar');
 
       await press(tester, LogicalKeyboardKey.arrowLeft);
       await tester.pumpAndSettle();
-      expect(++expectedCalls, harness.sidebarFocusCalls, reason: 'LEFT from $row should ask for the bar');
-      // The screen asks; it does not move the ring itself. Moving focus here
-      // too would race the shell and leave the ring somewhere neither owns.
-      // The rail does close, because a rail standing open with the focus
-      // elsewhere costs the grid a column for nothing the viewer can see.
-      expect(find.byKey(tvCatalogFilterRailKey), findsNothing);
+      // Until CAT19, LEFT was bound to the same handler as UP, so a second
+      // LEFT reached the bar and a third one walked sideways along it to a
+      // different destination — leaving "All movies" without any visual
+      // announcement. The rail is the leftmost content on the page, so LEFT
+      // out of a row is now a no-op: no bar focus, no closed rail.
+      expect(harness.sidebarFocusCalls, 0, reason: 'LEFT from $row must not reach for the bar');
+      expect(focusedLabel(), row, reason: 'LEFT from $row should leave the focus exactly where it was');
+      expect(find.byKey(tvCatalogFilterRailKey), findsOneWidget, reason: 'LEFT from $row must not close the rail');
     }
   });
 

@@ -46,9 +46,11 @@
 ///   header row in between any more, so 7.4's "Up vanaf de eerste gridrij gaat
 ///   naar de dichtstbijzijnde headeractie" has nothing to land on.
 ///
-/// The rail is never a dead end: UP and LEFT out of it close it and reach for
-/// the topnav, RIGHT and Menu close it and put the remote back on the card it
-/// came from.
+/// The rail is never a dead end for UP: it closes the rail and reaches for the
+/// topnav, and RIGHT and Menu close it and put the remote back on the card it
+/// came from. LEFT does nothing — the rail is the leftmost content on the
+/// page, and CAT19 found that letting it fall through to the topnav let a
+/// filter session wander off to a different catalog on the next LEFT press.
 library;
 
 import 'dart:async';
@@ -636,18 +638,21 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     });
   }
 
-  /// UP or LEFT out of the rail: the topnav, with the rail closed behind it.
+  /// LEFT and DOWN off an edge of the rail: nothing at all.
   ///
-  /// Closing is not cosmetic. A rail left open with the focus somewhere else
-  /// keeps a column off the grid for no reason the viewer can see, and DOWN out
-  /// of the topnav would then land back in it rather than on the content.
-  /// DOWN off the bottom of the rail: nothing at all.
+  /// LEFT used to fall through to [_leaveRailUpwards] too (CAT19, Michel, 13
+  /// September). The rail is already the leftmost content on the page, so a
+  /// second LEFT there landed on the topnav's Films pill, and a third one
+  /// walked sideways along the bar to Series — a filter session ending on a
+  /// different catalog with no visual cue that a run of LEFT presses was about
+  /// to leave the page. UP still reaches the topnav; only that direction says
+  /// "leave the page".
   ///
   /// Explicit rather than left null. `FocusableWrapper` treats a missing
   /// handler as "not mine" and falls through to Flutter's own directional
   /// traversal, which from the last rail row walks sideways into the grid, and
   /// leaves the rail standing open with the focus somewhere else, which is the
-  /// one state [_leaveRailUpwards] exists to prevent.
+  /// one state [_leaveRailUpwards] exists to prevent for UP.
   void _railEdge() {}
 
   void _leaveRailUpwards() {
@@ -761,7 +766,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
                 clearFocusNode: _clearFocus,
                 onClearNavigateUp: () => _sortFocus.requestFocus(),
                 onClearNavigateDown: _railEdge,
-                onClearNavigateLeft: _leaveRailUpwards,
+                onClearNavigateLeft: _railEdge,
                 onClearNavigateRight: _closeRail,
                 onClearBack: _closeRail,
               ),
@@ -809,7 +814,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         onPressed: () => _openFilters(initialSection: TvCatalogFilterSection.servers),
         onNavigateUp: _leaveRailUpwards,
         onNavigateDown: () => _filtersFocus.requestFocus(),
-        onNavigateLeft: _leaveRailUpwards,
+        onNavigateLeft: _railEdge,
         onNavigateRight: _closeRail,
         onBack: _closeRail,
       ),
@@ -824,7 +829,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         onPressed: () => _openFilters(initialSection: TvCatalogFilterSection.status),
         onNavigateUp: () => _sourcesFocus.requestFocus(),
         onNavigateDown: () => _sortFocus.requestFocus(),
-        onNavigateLeft: _leaveRailUpwards,
+        onNavigateLeft: _railEdge,
         onNavigateRight: _closeRail,
         onBack: _closeRail,
       ),
@@ -837,7 +842,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         onPressed: _openSort,
         onNavigateUp: () => _filtersFocus.requestFocus(),
         onNavigateDown: _preferences.filters.isEmpty ? _railEdge : () => _clearFocus.requestFocus(),
-        onNavigateLeft: _leaveRailUpwards,
+        onNavigateLeft: _railEdge,
         onNavigateRight: _closeRail,
         onBack: _closeRail,
       ),
