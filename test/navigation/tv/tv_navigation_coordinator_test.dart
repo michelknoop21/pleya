@@ -319,6 +319,37 @@ void main() {
       expect(coordinator.nestedRoutesFor(TvDestinationId.movies), isEmpty);
       expect(coordinator.nestedRoutesFor(TvDestinationId.series), isEmpty);
     });
+
+    // MOC-23a follow-up: updateConditions used to move `_active` off a
+    // destination without touching its nested stack, so a route pushed under
+    // it (a collection opened from Home, say) stayed in `_nested` forever
+    // with its `result` future never completed — a caller awaiting it hung.
+    test('a destination disappearing from the bar completes and drops its nested routes', () async {
+      final coordinator = TvNavigationCoordinator();
+      addTearDown(coordinator.dispose);
+      coordinator.activate(TvDestinationId.home);
+      final pushed = coordinator.pushNested(TvDestinationId.home, route('collection_42'));
+
+      coordinator.updateConditions(const TvNavConditions(hasLiveTv: false, isOffline: true));
+      final result = await pushed.result.timeout(
+        const Duration(seconds: 1),
+        onTimeout: () => throw StateError('a caller awaiting the route must not hang'),
+      );
+
+      expect(coordinator.nestedRoutesFor(TvDestinationId.home), isEmpty);
+      expect(result, isNull);
+    });
+
+    test('a destination that survives the recompute keeps its nested routes untouched', () {
+      final coordinator = TvNavigationCoordinator();
+      addTearDown(coordinator.dispose);
+      coordinator.pushNested(TvDestinationId.myPleya, route('settings'));
+      coordinator.activate(TvDestinationId.home);
+
+      coordinator.updateConditions(const TvNavConditions(hasLiveTv: false, isOffline: true));
+
+      expect(coordinator.nestedRoutesFor(TvDestinationId.myPleya), hasLength(1));
+    });
   });
 
   group('syncToTab', () {

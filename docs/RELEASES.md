@@ -157,7 +157,8 @@ under `Notes`.
 - MOC-20, Uiterlijk krijgt vier echte voorkeuren (PB-10)
 - MOC-21, Profiel kiezen krijgt de mockup-21-compositie op TV (beeld)
 - DET7, film- en seriedetail altijd volledig scherm
-- MOC-23a, offline drops dead pills from the TV top nav
+- MOC-23a, offline drops dead pills from the TV top nav (#18)
+- MOC-23a follow-up, close two regressions from the offline fix
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026

@@ -2104,7 +2104,7 @@ class _MainScreenState extends State<MainScreen>
   /// unchanged, and the caller (`AutomationNavigationHooks`, ultimately
   /// `/v1/open`) can report that instead of polling out a full timeout
   /// waiting for a screen that was never going to mount.
-  bool _selectTab(NavigationTabId tab) {
+  bool _selectTab(NavigationTabId tab, {bool isUserInitiated = true}) {
     // Guard: ignore if tab isn't available in current mode
     if (!_getVisibleTabs(_isOffline).any((t) => t.id == tab)) return false;
 
@@ -2130,8 +2130,10 @@ class _MainScreenState extends State<MainScreen>
       _pendingStartupTab = null;
       if (!_isOffline) {
         _lastOnlineTabId = tab;
-      } else if (previousTab != tab) {
+      } else if (isUserInitiated && previousTab != tab) {
         // User made an explicit offline selection, so don't auto-restore later.
+        // A bar-driven reselection (MOC-23a: the TV top nav recomputing after
+        // an offline flip) is not that signal and must not cancel the restore.
         _autoSwitchedToDownloads = false;
       }
     });
@@ -2706,7 +2708,8 @@ class _MainScreenState extends State<MainScreen>
   }
 
   /// Recomputes the bar and, when the active destination just disappeared,
-  /// moves to Home (hoofdstuk 19).
+  /// moves to Home (hoofdstuk 19) — or to Mijn Pleya when Home itself is the
+  /// one that disappeared (MOC-23a: offline).
   void _syncTvDestinations() {
     if (!_isTvShell) return;
     final resolved = resolveLiveTvCapability(
@@ -2719,7 +2722,9 @@ class _MainScreenState extends State<MainScreen>
       unawaited(store ? TvLiveTvCapabilityStore.remember() : TvLiveTvCapabilityStore.forget());
     }
     final displaced = _tvNav.updateConditions(TvNavConditions(hasLiveTv: resolved.visible, isOffline: _isOffline));
-    if (displaced != null) _selectTab(displaced.tab);
+    // Bar bookkeeping, not a user pick: must not clobber the offline tab
+    // `_handleOfflineStatusChanged` already chose, or cancel its restore latch.
+    if (displaced != null) _selectTab(displaced.tab, isUserInitiated: false);
   }
 
   /// The Mijn Pleya section a tab maps to on TV, or null when the tab is a
