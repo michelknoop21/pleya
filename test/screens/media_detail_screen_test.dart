@@ -2735,6 +2735,46 @@ void main() {
       },
     );
 
+    // DET7 negative control (Michel, 13 september: "Rand moet nooit blijven
+    // staan altijd volledig scherm"). A light title has room to spare, so the
+    // reservation never gave `TvCatalogLayout.bottomSafeInset` back and the
+    // rail stopped 81 × 0.85 logical px above the panel edge: the hard line
+    // DET5 photographed on hardware. Detail runs to the bottom edge instead.
+    testWidgets('the detail rail always runs to the bottom edge, also when the info band has room to spare', (
+      tester,
+    ) async {
+      final movie = MediaItem(
+        id: 'movie_det7_light',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'A Moderate Motion Picture Title',
+        summary: longSummary,
+        genres: const ['Drama'],
+        roles: castRoles(4),
+        year: 2024,
+        durationMs: 100 * 60 * 1000,
+        serverId: 'server_1',
+        serverName: 'Server',
+      );
+
+      final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      const panelSize = Size(1038, 584);
+      await pumpNestedDetail(tester, movie, provider, panelSize: panelSize, nestedBoxSize: panelSize);
+
+      expect(tester.takeException(), isNull);
+
+      final railRect = tester.getRect(find.byType(TvBrowseRail));
+      expect(
+        railRect.bottom,
+        greaterThanOrEqualTo(panelSize.height),
+        reason: 'no overscan band may stay under the detail rail',
+      );
+    });
+
     testWidgets('a series with season chips, cast and extras keeps title and the action row on screen', (tester) async {
       final show = MediaItem(
         id: 'show_det2',

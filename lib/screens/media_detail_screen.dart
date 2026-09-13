@@ -3992,26 +3992,24 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
             ? rawRailHeight
             : stableRailHeight;
         final railTopPadding = 12 * detailScale;
-        // Mockup 37/DEC-109 corrects 09 and 10 for landing ~6px from the
-        // bottom edge against `TvCatalogLayout.bottomSafeInset` (81, DEC-087,
-        // the same overscan reserve `TvPageSurface` and every other TV page
-        // give their last row). This screen builds its own Stack instead of
-        // `TvPageSurface`, so it has to read the token itself.
-        final initialBottomSafeInset = TvCatalogLayout.bottomSafeInset * detailScale;
+        // DET7 (Michel, 13 September): detail always uses the full screen, so
+        // unlike `TvPageSurface` it keeps no `TvCatalogLayout.bottomSafeInset`
+        // (DEC-087) under the rail. The rail's own bottom padding hangs off the
+        // edge too, at the scale `TvBrowseRail` reads it with.
+        final railBottomPadding = TvBrowseRailLayout.railBottomPaddingForScale(
+          TvBrowseRailLayout.scaleForSize(MediaQuery.sizeOf(context)),
+        );
         final initialForegroundBottom =
-            (railHeight - railTopPadding) + (_tvDetailActionRailGap * detailScale) + initialBottomSafeInset;
+            (railHeight - railTopPadding - railBottomPadding) + (_tvDetailActionRailGap * detailScale);
         final initialRailHeight = railHeight;
         // DET2: on a small panel with a tall active hub (a person rail, full-
         // width extras cards), the reservation above can eat the whole
         // foreground and overflow `_buildTvDetailForeground`'s Column — the
         // metadata line, genres, the action row and the source line are drawn
         // unconditionally there, and the title never degrades to zero either
-        // (see `_tvDetailMandatoryForegroundHeight`). Give space back in two
-        // steps, cheapest first: the rail's own bottom overscan margin (the
-        // rail sliding a few px closer to the true edge costs far less than
-        // the action row getting clipped), then the rail's "next hub" peek
-        // hint (`showNextHubPeek` below) if the margin alone was not enough.
-        // Both are decorative; the info band is not.
+        // (see `_tvDetailMandatoryForegroundHeight`). Give space back by
+        // dropping the rail's "next hub" peek hint (`showNextHubPeek` below):
+        // it is decorative; the info band is not.
         //
         // Try clearing `_tvDetailIdealForegroundHeight` first — the mockup 37 A
         // target of title + two synopsis lines + action row — then
@@ -4022,47 +4020,36 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         // season chips with no extras involved, was landing straight on the
         // zero-line floor and losing the focused-episode-synopsis swap along
         // with it).
-        ({double bottomSafeInset, double foregroundBottom, double railHeight, bool showNextHubPeek, bool fits})
-        reserveFor(double targetForegroundHeight) {
-          var inset = initialBottomSafeInset;
+        ({double foregroundBottom, double railHeight, bool showNextHubPeek, bool fits}) reserveFor(
+          double targetForegroundHeight,
+        ) {
           var bottom = initialForegroundBottom;
           var rail = initialRailHeight;
           var peek = true;
           final maxBottom = (size.height - spotlightTop - targetForegroundHeight)
               .clamp(0.0, double.infinity)
               .toDouble();
-          if (bottom > maxBottom) {
-            final insetGiveback = (bottom - maxBottom).clamp(0.0, inset);
-            inset -= insetGiveback;
-            bottom -= insetGiveback;
-            if (bottom > maxBottom && detailHubs.length > 1) {
-              peek = false;
-              final railHeightNoPeek = _estimateTvDetailRailHeight(
-                size,
-                detailHubs,
-                showSeasonChips: showSeasonChips,
-                includeNextHubPeek: false,
-              );
-              final peekGiveback = (rail - railHeightNoPeek).clamp(0.0, double.infinity).toDouble();
-              rail -= peekGiveback;
-              bottom -= peekGiveback;
-            }
+          if (bottom > maxBottom && detailHubs.length > 1) {
+            peek = false;
+            final railHeightNoPeek = _estimateTvDetailRailHeight(
+              size,
+              detailHubs,
+              showSeasonChips: showSeasonChips,
+              includeNextHubPeek: false,
+            );
+            final peekGiveback = (rail - railHeightNoPeek).clamp(0.0, double.infinity).toDouble();
+            rail -= peekGiveback;
+            bottom -= peekGiveback;
           }
-          return (
-            bottomSafeInset: inset,
-            foregroundBottom: bottom,
-            railHeight: rail,
-            showNextHubPeek: peek,
-            fits: bottom <= maxBottom,
-          );
+          return (foregroundBottom: bottom, railHeight: rail, showNextHubPeek: peek, fits: bottom <= maxBottom);
         }
 
         final idealForegroundHeight = _tvDetailIdealForegroundHeight(context, metadata, detailScale, foregroundWidth);
         var reservation = reserveFor(idealForegroundHeight);
         var railTallPosterScale = _tvDetailTallPosterScale;
         var railWidePosterScaleMultiplier = 1.0;
-        // DET6: `reserveFor` above already gave back the bottom safe inset
-        // and the next-hub peek, and the ideal two-line synopsis still does
+        // DET6: `reserveFor` above already gave back the next-hub peek, and
+        // the ideal two-line synopsis still does
         // not fit. Before dropping to one line, try a smaller active rail at
         // each fraction in turn, recomputing the same reservation against it.
         if (!reservation.fits) {
@@ -4078,12 +4065,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
               tallPosterScale: _tvDetailTallPosterScale * fraction,
               widePosterScaleMultiplier: fraction,
             );
-            final shrunkBottom = (shrunkRailHeight - railTopPadding) + (_tvDetailActionRailGap * detailScale);
+            final shrunkBottom =
+                (shrunkRailHeight - railTopPadding - railBottomPadding) + (_tvDetailActionRailGap * detailScale);
             if (shrunkBottom <= maxBottomForIdeal) {
               railTallPosterScale = _tvDetailTallPosterScale * fraction;
               railWidePosterScaleMultiplier = fraction;
               reservation = (
-                bottomSafeInset: 0.0,
                 foregroundBottom: shrunkBottom,
                 railHeight: shrunkRailHeight,
                 showNextHubPeek: false,
@@ -4111,7 +4098,6 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
             reservation = reserveFor(mandatoryForegroundHeight);
           }
         }
-        final bottomSafeInset = reservation.bottomSafeInset;
         final foregroundBottom = reservation.foregroundBottom;
         railHeight = reservation.railHeight;
         final showNextHubPeek = reservation.showNextHubPeek;
@@ -4136,7 +4122,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: bottomSafeInset,
+                bottom: -railBottomPadding,
                 child: Column(
                   mainAxisSize: .min,
                   crossAxisAlignment: .stretch,
