@@ -3,12 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../i18n/strings.g.dart';
 import '../screens/settings/settings_utils.dart';
 import '../services/settings_service.dart';
-import '../theme/mono_theme.dart';
 import '../theme/mono_tokens.dart';
 import 'app_icon.dart';
 import 'clickable_cursor.dart';
+import 'media_markers.dart';
 import 'settings_section.dart';
 
 /// Reactive setting tiles bound to a [Pref] via [SettingsService.listenable].
@@ -172,11 +173,7 @@ class SettingNavigationTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (needsAttention) ...[
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(color: kAccentAlt, shape: BoxShape.circle),
-                ),
+                Semantics(label: t.tvNavigation.attentionRequired, child: const NewEpisodeDot()),
                 const SizedBox(width: 8),
               ],
               AppIcon(trailingIcon, fill: 1, size: 20, color: tokens(context).textMuted),

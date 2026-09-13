@@ -18,7 +18,7 @@ import '../../services/settings_service.dart' as settings;
 import '../../widgets/app_icon.dart';
 import '../../widgets/setting_tile.dart';
 import '../../widgets/settings_page.dart';
-import 'settings_utils.dart';
+import 'download_location_dialog.dart';
 
 class DownloadsSettingsScreen extends StatefulWidget {
   const DownloadsSettingsScreen({super.key});

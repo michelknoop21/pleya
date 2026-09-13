@@ -59,8 +59,8 @@ import 'language_settings_screen.dart';
 import 'playback_settings_screen.dart';
 import '../profile/profile_switch_screen.dart';
 import '../servers_screen.dart';
+import 'download_location_dialog.dart';
 import 'seerr_settings_screen.dart';
-import 'settings_utils.dart';
 import 'subtitle_styling_screen.dart';
 import 'tautulli_settings_screen.dart';
 import 'trackers_settings_screen.dart';
@@ -87,6 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   static const _kAppearance = 'appearance';
   static const _kPlayback = 'playback';
   static const _kLanguage = 'language';
+  static const _kSubtitleStyling = 'subtitle_styling';
   static const _kTrackers = 'trackers';
   static const _kLibraryVisibility = 'library_visibility';
   static const _kHomeLayout = 'home_layout';
@@ -106,6 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   static const _kAutoCheckUpdatesOnStartup = 'auto_check_updates_on_startup';
   static const _kAbout = 'about';
   static const _kWatchTogetherRelay = 'watch_together_relay';
+  static const _kServers = 'servers';
   static const _kExportSettings = 'export_settings';
   static const _kImportSettings = 'import_settings';
   static const _kIcloudSync = 'icloud_sync';
@@ -604,6 +606,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   /// there is exactly one way in.
   Widget _buildSubtitleStylingTile() {
     return SettingNavigationTile(
+      focusNode: _focusTracker.get(_kSubtitleStyling),
       icon: Symbols.subtitles_rounded,
       title: t.settings.subtitleStyling,
       subtitle: t.settings.subtitleStylingDescription,
@@ -700,11 +703,12 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       builder: (context, servers, _) {
         final manager = servers.serverManager;
         final names = [for (final id in servers.serverIds) manager.serverDisplayName(ServerId(id))];
-        final subtitle = names.isEmpty ? t.connections.addConnectionSubtitleNoProfile : names.join(', ');
+        final subtitle = names.isEmpty ? t.tvMyPleya.noServers : names.join(', ');
         return SettingsGroup(
           title: t.connections.sectionTitle,
           children: [
             SettingNavigationTile(
+              focusNode: _focusTracker.get(_kServers),
               icon: Symbols.dns_rounded,
               title: t.tvMyPleya.servers,
               subtitle: subtitle,

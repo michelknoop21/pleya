@@ -495,7 +495,6 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get window => 'Venster';
 	@override String get content => 'Inhoud';
 	@override String get player => 'Speler';
-	@override String get subtitlesAndConfig => 'Ondertitels en configuratie';
 	@override String get seekAndTiming => 'Zoeken en timing';
 	@override String get audio => 'Audio';
 	@override String get audioSyncOffsetDescription => 'Verschuif audio ten opzichte van beeld voor elke titel';
@@ -3309,7 +3308,6 @@ extension on TranslationsNl {
 			'settings.window' => 'Venster',
 			'settings.content' => 'Inhoud',
 			'settings.player' => 'Speler',
-			'settings.subtitlesAndConfig' => 'Ondertitels en configuratie',
 			'settings.seekAndTiming' => 'Zoeken en timing',
 			'settings.audio' => 'Audio',
 			'settings.audioSyncOffsetDescription' => 'Verschuif audio ten opzichte van beeld voor elke titel',
@@ -3489,9 +3487,9 @@ extension on TranslationsNl {
 			'videoControls.qualityBandwidthEstimate' => ({required Object bitrate}) => '~${bitrate} Mbps',
 			'videoControls.transcodeUnavailableFallback' => 'Transcoderen niet beschikbaar — originele kwaliteit wordt afgespeeld',
 			'videoControls.pipButton' => 'Beeld-in-beeld modus',
+			'videoControls.aspectRatioButton' => 'Beeldverhouding',
 			_ => null,
 		} ?? switch (path) {
-			'videoControls.aspectRatioButton' => 'Beeldverhouding',
 			'videoControls.ambientLighting' => 'Omgevingsverlichting',
 			'videoControls.ambientIntensitySubtle' => 'Subtiel',
 			'videoControls.ambientIntensityBalanced' => 'Evenwichtig',
@@ -4003,9 +4001,9 @@ extension on TranslationsNl {
 			'liveTv.noScheduledRecordings' => 'Geen geplande opnames',
 			'liveTv.noRecordingRules' => 'Nog geen opnameregels',
 			'liveTv.manageRecording' => 'Opname beheren',
+			'liveTv.cancelRecording' => 'Opname annuleren',
 			_ => null,
 		} ?? switch (path) {
-			'liveTv.cancelRecording' => 'Opname annuleren',
 			'liveTv.cancelRecordingTitle' => 'Deze opname annuleren?',
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} wordt niet meer opgenomen.',
 			'liveTv.deleteRule' => 'Regel verwijderen',
@@ -4517,9 +4515,9 @@ extension on TranslationsNl {
 			'trackers.libraryFilter.libraries' => 'Bibliotheken',
 			'trackers.libraryFilter.noLibraries' => 'Geen bibliotheken beschikbaar',
 			'addServer.addJellyfinTitle' => 'Jellyfin-server toevoegen',
+			'addServer.serverUrls' => 'Server-URL\'s',
 			_ => null,
 		} ?? switch (path) {
-			'addServer.serverUrls' => 'Server-URL\'s',
 			'addServer.serverUrlsHelper' => 'Meerdere URL\'s toegestaan, gescheiden door komma\'s.',
 			'addServer.findServer' => 'Server zoeken',
 			'addServer.searchingLocalServers' => 'Lokale Jellyfin-servers zoeken...',

@@ -1176,9 +1176,6 @@ class TranslationsSettingsEn {
 	/// en: 'Player'
 	String get player => 'Player';
 
-	/// en: 'Subtitles & Configuration'
-	String get subtitlesAndConfig => 'Subtitles & Configuration';
-
 	/// en: 'Seek & Timing'
 	String get seekAndTiming => 'Seek & Timing';
 
@@ -7318,7 +7315,6 @@ extension on Translations {
 			'settings.window' => 'Window',
 			'settings.content' => 'Content',
 			'settings.player' => 'Player',
-			'settings.subtitlesAndConfig' => 'Subtitles & Configuration',
 			'settings.seekAndTiming' => 'Seek & Timing',
 			'settings.audio' => 'Audio',
 			'settings.audioSyncOffsetDescription' => 'Shift audio relative to video for every title',
@@ -7493,9 +7489,9 @@ extension on Translations {
 			'videoControls.qualityBandwidthEstimate' => ({required Object bitrate}) => '~${bitrate} Mbps',
 			'videoControls.transcodeUnavailableFallback' => 'Transcoding unavailable — playing original quality',
 			'videoControls.pipButton' => 'Picture-in-Picture mode',
+			'videoControls.aspectRatioButton' => 'Aspect ratio',
 			_ => null,
 		} ?? switch (path) {
-			'videoControls.aspectRatioButton' => 'Aspect ratio',
 			'videoControls.ambientLighting' => 'Ambient lighting',
 			'videoControls.ambientIntensitySubtle' => 'Subtle',
 			'videoControls.ambientIntensityBalanced' => 'Balanced',
@@ -8007,9 +8003,9 @@ extension on Translations {
 			'liveTv.noScheduledRecordings' => 'Nothing scheduled to record',
 			'liveTv.noRecordingRules' => 'No recording rules yet',
 			'liveTv.manageRecording' => 'Manage recording',
+			'liveTv.cancelRecording' => 'Cancel recording',
 			_ => null,
 		} ?? switch (path) {
-			'liveTv.cancelRecording' => 'Cancel recording',
 			'liveTv.cancelRecordingTitle' => 'Cancel this recording?',
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} will no longer be recorded.',
 			'liveTv.deleteRule' => 'Delete rule',
@@ -8521,9 +8517,9 @@ extension on Translations {
 			'seerr.requestSuccess' => 'Requested',
 			'seerr.requestFailed' => 'Request failed. Try again.',
 			'seerr.selectSeasons' => 'Select seasons',
+			'seerr.season' => ({required Object number}) => 'Season ${number}',
 			_ => null,
 		} ?? switch (path) {
-			'seerr.season' => ({required Object number}) => 'Season ${number}',
 			'seerr.allSeasons' => 'All seasons',
 			'seerr.seasonsRange' => ({required Object range}) => 'Seasons ${range}',
 			'seerr.seasonsCount' => ({required Object count}) => '${count} seasons',
