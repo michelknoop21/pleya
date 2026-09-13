@@ -89,6 +89,32 @@ void main() {
     });
   });
 
+  group('SettingsService PB-10 Appearance switches (MOC-20)', () {
+    test('each new preference defaults to the behavior that predates it', () async {
+      final settings = await SettingsService.getInstance();
+
+      expect(settings.read(SettingsService.tvShowTitlesUnderPosters), isTrue);
+      expect(settings.read(SettingsService.tvHeroClearLogo), isTrue);
+      expect(settings.read(SettingsService.tvHeroAutoAdvance), isTrue);
+      expect(settings.read(SettingsService.tvReduceMotion), isFalse);
+    });
+
+    test('reset settings restores each of the four to its default', () async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.tvShowTitlesUnderPosters, false);
+      await settings.write(SettingsService.tvHeroClearLogo, false);
+      await settings.write(SettingsService.tvHeroAutoAdvance, false);
+      await settings.write(SettingsService.tvReduceMotion, true);
+
+      await settings.resetAllSettings();
+
+      expect(settings.read(SettingsService.tvShowTitlesUnderPosters), isTrue);
+      expect(settings.read(SettingsService.tvHeroClearLogo), isTrue);
+      expect(settings.read(SettingsService.tvHeroAutoAdvance), isTrue);
+      expect(settings.read(SettingsService.tvReduceMotion), isFalse);
+    });
+  });
+
   group('SettingsService audio output mode', () {
     test('defaults to auto for a user who never touched passthrough', () async {
       final settings = await SettingsService.getInstance();

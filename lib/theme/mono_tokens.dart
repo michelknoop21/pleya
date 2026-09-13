@@ -1,11 +1,27 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import '../services/settings_service.dart';
+
 MonoTokens tokens(BuildContext context) => Theme.of(context).extension<MonoTokens>()!;
 
-/// Zero-duration when the user has "reduce motion" enabled (OS toggle), else [d].
-/// Lets animations crossfade/snap instead of moving for accessibility.
-Duration reduceMotion(BuildContext context, Duration d) => MediaQuery.disableAnimationsOf(context) ? Duration.zero : d;
+/// Zero-duration when the user has "reduce motion" enabled, either the OS
+/// accessibility toggle or [SettingsService.tvReduceMotion] (PB-10), else
+/// [d]. Lets animations crossfade/snap instead of moving.
+///
+/// The app-level toggle is read directly rather than through a listenable:
+/// its `SettingSwitchTile` restarts the app on write (same pattern as
+/// `visualEffects`/`forceTvMode`), which is what makes every one of this
+/// function's dozen call sites pick up a change without each needing its own
+/// reactive wiring. [SettingsService.instanceOrNull], not `.instance`: many
+/// widget tests that reach a call site never bootstrap the settings
+/// singleton, and the pref's own default (`false`) is the right answer for
+/// "not initialized yet" regardless.
+Duration reduceMotion(BuildContext context, Duration d) =>
+    MediaQuery.disableAnimationsOf(context) ||
+        (SettingsService.instanceOrNull?.read(SettingsService.tvReduceMotion) ?? false)
+    ? Duration.zero
+    : d;
 
 @immutable
 class MonoTokens extends ThemeExtension<MonoTokens> {

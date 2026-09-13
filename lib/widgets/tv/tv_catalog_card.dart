@@ -26,6 +26,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../focus/focus_theme.dart';
 import '../../focus/focusable_wrapper.dart';
+import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import 'tv_unified_layout.dart';
@@ -239,7 +240,18 @@ class _TvCatalogCardState extends State<TvCatalogCard> {
               ),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: TvCatalogLayout.cardContentInset(scale)),
-                child: _Footer(title: widget.title, meta: widget.meta, tertiary: widget.tertiary, scale: scale, tk: tk),
+                child: _Footer(
+                  title: widget.title,
+                  // `instanceOrNull`, not `.instance`: this card is built by
+                  // widget tests that never bootstrap the settings singleton,
+                  // and the pref's own default (`true`, unchanged behavior)
+                  // is the right answer for "not initialized yet" regardless.
+                  showTitle: SettingsService.instanceOrNull?.read(SettingsService.tvShowTitlesUnderPosters) ?? true,
+                  meta: widget.meta,
+                  tertiary: widget.tertiary,
+                  scale: scale,
+                  tk: tk,
+                ),
               ),
             ],
           ),
@@ -490,6 +502,7 @@ class TvCatalogResumeBar extends StatelessWidget {
 class _Footer extends StatelessWidget {
   const _Footer({
     required this.title,
+    required this.showTitle,
     required this.meta,
     required this.tertiary,
     required this.scale,
@@ -497,6 +510,11 @@ class _Footer extends StatelessWidget {
   });
 
   final String title;
+
+  /// PB-10 (MOC-20): "titels onder posters" aan of uit. When off, the title
+  /// line and its gap collapse rather than sitting blank, so meta and
+  /// tertiary move up into the space it leaves.
+  final bool showTitle;
   final String meta;
   final String? tertiary;
   final double scale;
@@ -519,27 +537,29 @@ class _Footer extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hoofdstuk 10.2: at most two lines — and always the height of two,
-          // whether the title needs them or not. Sizing to content made a card
-          // with a long title taller than the five beside it, so its footer sat
-          // lower and the row lost the baseline that makes a grid read as a
-          // grid. Ellipsis rather than shrinking, for the same reason: a title
-          // that fits by getting smaller stops matching its neighbours.
-          SizedBox(
-            height: TvCatalogLayout.cardTitleFontSize * scale * TvCatalogLayout.cardTitleLineHeight * 2,
-            child: Text(
-              title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: TvCatalogLayout.cardTitleFontSize * scale,
-                fontWeight: FontWeight.w600,
-                color: tk.text.withValues(alpha: TvCatalogLayout.inkPrimary),
-                height: TvCatalogLayout.cardTitleLineHeight,
+          if (showTitle) ...[
+            // Hoofdstuk 10.2: at most two lines — and always the height of two,
+            // whether the title needs them or not. Sizing to content made a card
+            // with a long title taller than the five beside it, so its footer sat
+            // lower and the row lost the baseline that makes a grid read as a
+            // grid. Ellipsis rather than shrinking, for the same reason: a title
+            // that fits by getting smaller stops matching its neighbours.
+            SizedBox(
+              height: TvCatalogLayout.cardTitleFontSize * scale * TvCatalogLayout.cardTitleLineHeight * 2,
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: TvCatalogLayout.cardTitleFontSize * scale,
+                  fontWeight: FontWeight.w600,
+                  color: tk.text.withValues(alpha: TvCatalogLayout.inkPrimary),
+                  height: TvCatalogLayout.cardTitleLineHeight,
+                ),
               ),
             ),
-          ),
-          SizedBox(height: TvCatalogLayout.cardFooterLineGap * scale),
+            SizedBox(height: TvCatalogLayout.cardFooterLineGap * scale),
+          ],
           Text(
             meta,
             maxLines: 1,

@@ -317,6 +317,14 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get tvFullCardLayoutDescription => 'Gebruik tv-kaarten met alleen afbeeldingen en namen van acteurs als overlay';
 	@override String get focusGlow => 'Focusgloed';
 	@override String get focusGlowDescription => 'Toon een zachte gloed rond de kaart met focus';
+	@override String get tvShowTitlesUnderPosters => 'Toon titels onder posters';
+	@override String get tvShowTitlesUnderPostersDescription => 'Druk de titel af onder elke poster in de catalogus';
+	@override String get tvReduceMotion => 'Verminder beweging';
+	@override String get tvReduceMotionDescription => 'Gebruik directe overgangen in plaats van kruisvervagingen en schuifanimaties in de hele app';
+	@override String get tvHeroClearLogo => 'Toon logo op uitgelichte banner';
+	@override String get tvHeroClearLogoDescription => 'Toon het logo van een titel op de startbanner in plaats van de gedrukte titel';
+	@override String get tvHeroAutoAdvance => 'Wissel uitgelichte banner automatisch';
+	@override String get tvHeroAutoAdvanceDescription => 'Wissel na een paar seconden vanzelf tussen uitgelichte titels';
 	@override String get visualEffects => 'Visuele effecten';
 	@override String get visualEffectsAuto => 'Automatisch';
 	@override String get visualEffectsAutoDescription => 'Vermindert effecten automatisch op apparaten met beperkte prestaties';
@@ -3130,6 +3138,14 @@ extension on TranslationsNl {
 			'settings.tvFullCardLayoutDescription' => 'Gebruik tv-kaarten met alleen afbeeldingen en namen van acteurs als overlay',
 			'settings.focusGlow' => 'Focusgloed',
 			'settings.focusGlowDescription' => 'Toon een zachte gloed rond de kaart met focus',
+			'settings.tvShowTitlesUnderPosters' => 'Toon titels onder posters',
+			'settings.tvShowTitlesUnderPostersDescription' => 'Druk de titel af onder elke poster in de catalogus',
+			'settings.tvReduceMotion' => 'Verminder beweging',
+			'settings.tvReduceMotionDescription' => 'Gebruik directe overgangen in plaats van kruisvervagingen en schuifanimaties in de hele app',
+			'settings.tvHeroClearLogo' => 'Toon logo op uitgelichte banner',
+			'settings.tvHeroClearLogoDescription' => 'Toon het logo van een titel op de startbanner in plaats van de gedrukte titel',
+			'settings.tvHeroAutoAdvance' => 'Wissel uitgelichte banner automatisch',
+			'settings.tvHeroAutoAdvanceDescription' => 'Wissel na een paar seconden vanzelf tussen uitgelichte titels',
 			'settings.visualEffects' => 'Visuele effecten',
 			'settings.visualEffectsAuto' => 'Automatisch',
 			'settings.visualEffectsAutoDescription' => 'Vermindert effecten automatisch op apparaten met beperkte prestaties',
@@ -3480,6 +3496,8 @@ extension on TranslationsNl {
 			'videoControls.chaptersButton' => 'Hoofdstukken',
 			'videoControls.versionsButton' => 'Videoversies',
 			'videoControls.versionQualityButton' => 'Versie en kwaliteit',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.versionColumnHeader' => 'Versie',
 			'videoControls.qualityColumnHeader' => 'Kwaliteit',
 			'videoControls.qualityOriginal' => 'Origineel',
@@ -3488,8 +3506,6 @@ extension on TranslationsNl {
 			'videoControls.transcodeUnavailableFallback' => 'Transcoderen niet beschikbaar — originele kwaliteit wordt afgespeeld',
 			'videoControls.pipButton' => 'Beeld-in-beeld modus',
 			'videoControls.aspectRatioButton' => 'Beeldverhouding',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.ambientLighting' => 'Omgevingsverlichting',
 			'videoControls.ambientIntensitySubtle' => 'Subtiel',
 			'videoControls.ambientIntensityBalanced' => 'Evenwichtig',
@@ -3994,6 +4010,8 @@ extension on TranslationsNl {
 			'liveTv.record' => 'Opnemen',
 			'liveTv.recordEpisode' => 'Aflevering opnemen',
 			'liveTv.recordSeries' => 'Serie opnemen',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.recordOptions' => 'Opnameopties',
 			'liveTv.recordings' => 'Opnames',
 			'liveTv.scheduledRecordings' => 'Gepland',
@@ -4002,8 +4020,6 @@ extension on TranslationsNl {
 			'liveTv.noRecordingRules' => 'Nog geen opnameregels',
 			'liveTv.manageRecording' => 'Opname beheren',
 			'liveTv.cancelRecording' => 'Opname annuleren',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.cancelRecordingTitle' => 'Deze opname annuleren?',
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} wordt niet meer opgenomen.',
 			'liveTv.deleteRule' => 'Regel verwijderen',
@@ -4508,6 +4524,8 @@ extension on TranslationsNl {
 			'trackers.libraryFilter.subtitleBlocked' => ({required Object count}) => '${count} geblokkeerd',
 			'trackers.libraryFilter.subtitleAllowed' => ({required Object count}) => '${count} toegestaan',
 			'trackers.libraryFilter.mode' => 'Filtermodus',
+			_ => null,
+		} ?? switch (path) {
 			'trackers.libraryFilter.modeBlacklist' => 'Zwarte lijst',
 			'trackers.libraryFilter.modeWhitelist' => 'Witte lijst',
 			'trackers.libraryFilter.modeHintBlacklist' => 'Synchroniseer alle bibliotheken behalve die hieronder aangevinkt zijn.',
@@ -4516,8 +4534,6 @@ extension on TranslationsNl {
 			'trackers.libraryFilter.noLibraries' => 'Geen bibliotheken beschikbaar',
 			'addServer.addJellyfinTitle' => 'Jellyfin-server toevoegen',
 			'addServer.serverUrls' => 'Server-URL\'s',
-			_ => null,
-		} ?? switch (path) {
 			'addServer.serverUrlsHelper' => 'Meerdere URL\'s toegestaan, gescheiden door komma\'s.',
 			'addServer.findServer' => 'Server zoeken',
 			'addServer.searchingLocalServers' => 'Lokale Jellyfin-servers zoeken...',

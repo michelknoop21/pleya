@@ -21,6 +21,7 @@ import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_route_context.dart';
 import 'package:pleya/media/unified/unified_watch_state.dart';
+import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/tv/tv_hero_billboard_card.dart';
 import 'package:pleya/widgets/tv/tv_hero_billboard_carousel.dart';
@@ -103,6 +104,7 @@ typedef _Activation = ({UnifiedMediaGroup group, UnifiedActivationIntent intent,
 void main() {
   setUp(() {
     resetSharedPreferencesForTest();
+    SettingsService.resetForTesting();
     LocaleSettings.setLocaleSync(AppLocale.en);
   });
 
@@ -540,6 +542,30 @@ void main() {
 
       expect(find.text(t.common.resume), findsOneWidget);
       expect(find.text(t.common.play), findsNothing);
+    });
+  });
+
+  group('PB-10: tvHeroClearLogo (MOC-20)', () {
+    testWidgets('an uninitialized SettingsService still shows the clearlogo (unchanged default)', (tester) async {
+      await pump(tester, [_group('g1', 'First')]);
+
+      expect(tester.widget<TvHeroBillboardCard>(find.byType(TvHeroBillboardCard)).showClearLogo, isTrue);
+    });
+
+    testWidgets('the default reaches the card as true', (tester) async {
+      await SettingsService.getInstance();
+      await pump(tester, [_group('g1', 'First')]);
+
+      expect(tester.widget<TvHeroBillboardCard>(find.byType(TvHeroBillboardCard)).showClearLogo, isTrue);
+    });
+
+    testWidgets('turning it off reaches the card as false', (tester) async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.tvHeroClearLogo, false);
+
+      await pump(tester, [_group('g1', 'First')]);
+
+      expect(tester.widget<TvHeroBillboardCard>(find.byType(TvHeroBillboardCard)).showClearLogo, isFalse);
     });
   });
 }

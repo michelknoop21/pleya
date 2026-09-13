@@ -627,6 +627,30 @@ class TranslationsSettingsEn {
 	/// en: 'Draw a soft glow around the focused card'
 	String get focusGlowDescription => 'Draw a soft glow around the focused card';
 
+	/// en: 'Show Titles Under Posters'
+	String get tvShowTitlesUnderPosters => 'Show Titles Under Posters';
+
+	/// en: 'Print the title under each poster in the catalog'
+	String get tvShowTitlesUnderPostersDescription => 'Print the title under each poster in the catalog';
+
+	/// en: 'Reduce Motion'
+	String get tvReduceMotion => 'Reduce Motion';
+
+	/// en: 'Use instant cuts instead of crossfades and slides throughout the app'
+	String get tvReduceMotionDescription => 'Use instant cuts instead of crossfades and slides throughout the app';
+
+	/// en: 'Show Logo on Featured Banner'
+	String get tvHeroClearLogo => 'Show Logo on Featured Banner';
+
+	/// en: 'Show a title's logo on the home banner instead of its printed title'
+	String get tvHeroClearLogoDescription => 'Show a title\'s logo on the home banner instead of its printed title';
+
+	/// en: 'Rotate Featured Banner Automatically'
+	String get tvHeroAutoAdvance => 'Rotate Featured Banner Automatically';
+
+	/// en: 'Cycle through featured titles on their own after a few seconds'
+	String get tvHeroAutoAdvanceDescription => 'Cycle through featured titles on their own after a few seconds';
+
 	/// en: 'Visual Effects'
 	String get visualEffects => 'Visual Effects';
 
@@ -7132,6 +7156,14 @@ extension on Translations {
 			'settings.tvFullCardLayoutDescription' => 'Use image-only TV cards with actor names overlaid',
 			'settings.focusGlow' => 'Focus Glow',
 			'settings.focusGlowDescription' => 'Draw a soft glow around the focused card',
+			'settings.tvShowTitlesUnderPosters' => 'Show Titles Under Posters',
+			'settings.tvShowTitlesUnderPostersDescription' => 'Print the title under each poster in the catalog',
+			'settings.tvReduceMotion' => 'Reduce Motion',
+			'settings.tvReduceMotionDescription' => 'Use instant cuts instead of crossfades and slides throughout the app',
+			'settings.tvHeroClearLogo' => 'Show Logo on Featured Banner',
+			'settings.tvHeroClearLogoDescription' => 'Show a title\'s logo on the home banner instead of its printed title',
+			'settings.tvHeroAutoAdvance' => 'Rotate Featured Banner Automatically',
+			'settings.tvHeroAutoAdvanceDescription' => 'Cycle through featured titles on their own after a few seconds',
 			'settings.visualEffects' => 'Visual Effects',
 			'settings.visualEffectsAuto' => 'Auto',
 			'settings.visualEffectsAutoDescription' => 'Reduce effects automatically on low-power devices',
@@ -7482,6 +7514,8 @@ extension on Translations {
 			'videoControls.chaptersButton' => 'Chapters',
 			'videoControls.versionsButton' => 'Video versions',
 			'videoControls.versionQualityButton' => 'Version & Quality',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.versionColumnHeader' => 'Version',
 			'videoControls.qualityColumnHeader' => 'Quality',
 			'videoControls.qualityOriginal' => 'Original',
@@ -7490,8 +7524,6 @@ extension on Translations {
 			'videoControls.transcodeUnavailableFallback' => 'Transcoding unavailable — playing original quality',
 			'videoControls.pipButton' => 'Picture-in-Picture mode',
 			'videoControls.aspectRatioButton' => 'Aspect ratio',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.ambientLighting' => 'Ambient lighting',
 			'videoControls.ambientIntensitySubtle' => 'Subtle',
 			'videoControls.ambientIntensityBalanced' => 'Balanced',
@@ -7996,6 +8028,8 @@ extension on Translations {
 			'liveTv.record' => 'Record',
 			'liveTv.recordEpisode' => 'Record Episode',
 			'liveTv.recordSeries' => 'Record Series',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.recordOptions' => 'Record Options',
 			'liveTv.recordings' => 'Recordings',
 			'liveTv.scheduledRecordings' => 'Scheduled',
@@ -8004,8 +8038,6 @@ extension on Translations {
 			'liveTv.noRecordingRules' => 'No recording rules yet',
 			'liveTv.manageRecording' => 'Manage recording',
 			'liveTv.cancelRecording' => 'Cancel recording',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.cancelRecordingTitle' => 'Cancel this recording?',
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} will no longer be recorded.',
 			'liveTv.deleteRule' => 'Delete rule',
@@ -8510,6 +8542,8 @@ extension on Translations {
 			'seerr.pending' => 'Pending',
 			'seerr.approved' => 'Approved',
 			'seerr.declined' => 'Declined',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.failed' => 'Failed',
 			'seerr.completed' => 'Completed',
 			'seerr.requestConfirm' => ({required Object title}) => 'Request "${title}"?',
@@ -8518,8 +8552,6 @@ extension on Translations {
 			'seerr.requestFailed' => 'Request failed. Try again.',
 			'seerr.selectSeasons' => 'Select seasons',
 			'seerr.season' => ({required Object number}) => 'Season ${number}',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.allSeasons' => 'All seasons',
 			'seerr.seasonsRange' => ({required Object range}) => 'Seasons ${range}',
 			'seerr.seasonsCount' => ({required Object count}) => '${count} seasons',

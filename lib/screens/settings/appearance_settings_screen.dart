@@ -50,6 +50,25 @@ class AppearanceSettingsScreen extends StatelessWidget {
             title: t.settings.focusGlow,
             subtitle: t.settings.focusGlowDescription,
           ),
+        if (PlatformDetector.isTV())
+          SettingSwitchTile(
+            pref: SettingsService.tvShowTitlesUnderPosters,
+            icon: Symbols.title_rounded,
+            title: t.settings.tvShowTitlesUnderPosters,
+            subtitle: t.settings.tvShowTitlesUnderPostersDescription,
+          ),
+        if (PlatformDetector.isTV())
+          SettingSwitchTile(
+            pref: SettingsService.tvReduceMotion,
+            icon: Symbols.motion_photos_off_rounded,
+            title: t.settings.tvReduceMotion,
+            subtitle: t.settings.tvReduceMotionDescription,
+            // App-wide: `reduceMotion()` (lib/theme/mono_tokens.dart) has a
+            // dozen call sites across every screen, not just this one, so a
+            // restart is what guarantees every one of them picks it up,
+            // the same reason `visualEffects` below restarts too.
+            onAfterWrite: (value) => _restartApp(context),
+          ),
         if (Platform.isAndroid) _visualEffectsSelector(context),
         SettingSwitchTile(
           pref: SettingsService.showEpisodeNumberOnCards,
@@ -72,6 +91,20 @@ class AppearanceSettingsScreen extends StatelessWidget {
             icon: Symbols.featured_play_list_rounded,
             title: t.settings.showHeroSection,
             subtitle: t.settings.showHeroSectionDescription,
+          ),
+        if (PlatformDetector.isTV())
+          SettingSwitchTile(
+            pref: SettingsService.tvHeroClearLogo,
+            icon: Symbols.branding_watermark_rounded,
+            title: t.settings.tvHeroClearLogo,
+            subtitle: t.settings.tvHeroClearLogoDescription,
+          ),
+        if (PlatformDetector.isTV())
+          SettingSwitchTile(
+            pref: SettingsService.tvHeroAutoAdvance,
+            icon: Symbols.slideshow_rounded,
+            title: t.settings.tvHeroAutoAdvance,
+            subtitle: t.settings.tvHeroAutoAdvanceDescription,
           ),
         SettingSwitchTile(
           pref: SettingsService.personalizedRecommendations,
