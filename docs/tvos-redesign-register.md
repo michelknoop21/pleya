@@ -53,7 +53,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | MOC-13 | Zoeken, permanente resultaattitel, SEARCH1 sluiten | PB-6, DEC-108 | CODE CLOSED · VERIFY/SIM OPEN | CODE `30aae55b`; geen groene Verify- of simulatorrun met bundel vastgelegd |
 | MOC-14 | Kijklijst | PB-3, DEC-108 | CODE CLOSED · VERIFY/SIM OPEN | CODE `81db408d`; WL2 is fixture-blocked, zie T3a in `unified-2026-closure.md` |
 | MOC-15 | Aanvragen, Seerr-status blijft Seerr-state | PB-3, DEC-108 | CODE CLOSED · VERIFY/SIM OPEN | CODE `110ee763`; REQ1 is fixture-blocked, zie T3a in `unified-2026-closure.md` |
-| MOC-16 | Activiteit, scope en capability-predicaat | PB-7 | IN PROGRESS | `f4d6ad61`: capability-predicaat gedaan (`NowWatchingProvider.isAvailable`), zie `docs/tvos-fysieke-correctieronde.md` ACT1 voor waarom de fixture-helft een apart besluit vraagt; MOC-16b (TV-presentatie, ACT2, ACT3) nog te bouwen |
+| MOC-16 | Activiteit, scope en capability-predicaat | PB-7 | CODE CLOSED · VERIFY/SIM OPEN, HARDWARE OPEN | `f4d6ad61`: capability-predicaat (`NowWatchingProvider.isAvailable`); `4598e1ea` (MOC-16b): eigen `TvNowWatchingScreen`, ACT2, ACT3; zie `docs/tvos-fysieke-correctieronde.md` ACT1 voor waarom de fixture-helft een apart besluit vraagt |
 
 ## PLAYBACK EN LIVE
 
@@ -341,13 +341,13 @@ Hier staan ze bij de werkstroom die ze bezit.
 | TOK-2 | Serverstip `#3FBF5F` hardcoded in `tv_my_pleya_screen.dart:830` | SYS-6 | OPEN |
 | PNL-1 | Infopaneel gooit secundaire spoorlabels weg, `tv_audio_subtitle_tabs.dart:105, 375, 407` | MOC-33 | FIXED, Mac-run open |
 | LIVE-1 | `PlatformDetector.shouldUseSideNavigation` waar op TV: twee navigatiebalken in Live TV | MOC-17 | OPEN |
-| ACT-2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | MOC-16, SYS-1 | OPEN |
+| ACT-2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | MOC-16, SYS-1 | FIXED, hardware open, `4598e1ea` |
 | OFF-1 | Geen reconnect-affordance op TV | MOC-23 | OPEN |
 | OFF-2 | Offline topnav toont dode pills | MOC-23, SYS-1 | OPEN |
 | OVR1b | Legacy `MediaContextMenu`, rating-sheet, kijklijst-item-sheet en Live TV-sheets vallen op tvOS in een 400x400 bottom sheet | SYS-3b | DONE, `96f2d45` |
 | STA-1 | `StateView` en `EmptyStateWidget` schalen niet op TV | SYS-4 | OPEN |
 | SRCH-2 | `people` wordt nooit aan `searchProjection` meegegeven | MOC-13 | FIXED, `b5b8f0e8`, hardware open (DEC-112) |
-| ACT-3 | `tvMyPleya.activitySubtitle` belooft samen kijken en remote die de tegel niet levert | MOC-16 | OPEN |
+| ACT-3 | `tvMyPleya.activitySubtitle` belooft samen kijken en remote die de tegel niet levert | MOC-16 | FIXED, hardware open, `4598e1ea` |
 
 ## Tokenafwijkingen uit de audit
 

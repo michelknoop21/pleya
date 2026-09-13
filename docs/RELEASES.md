@@ -148,7 +148,10 @@ under `Notes`.
 - expliciete restart vanaf begin respecteren ondanks details-instelling
 - hard-close cancel niet onbeheerd laten falen, deadline niet resetten
 - sluit gaten uit de I7-child-14-review (TV-bereikbaarheid, focus, dispose-race)
-- MOC-16a, Activiteit-zichtbaarheid naar capability + echte data (PB-7)
+- MOC-16a, Activiteit-zichtbaarheid naar capability + echte data (PB-7) (#11)
+- MOC-16b, Activiteit TV-presentatie + ACT2/ACT3 (PB-7)
+- MOC-16b, guard the Activiteit auto-dismiss against a covered route
+- MOC-16b, regenerate tv_shell_my_pleya_full golden after ACT3
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026

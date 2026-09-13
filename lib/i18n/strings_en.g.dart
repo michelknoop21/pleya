@@ -5528,8 +5528,8 @@ class TranslationsTvMyPleyaEn {
 	/// en: 'Connections and local sources'
 	String get serversSubtitle => 'Connections and local sources';
 
-	/// en: 'Now watching, watch together, remote'
-	String get activitySubtitle => 'Now watching, watch together, remote';
+	/// en: 'Now watching'
+	String get activitySubtitle => 'Now watching';
 
 	/// en: 'Watch in sync with friends'
 	String get watchTogetherSubtitle => 'Watch in sync with friends';
@@ -8911,7 +8911,7 @@ extension on Translations {
 			'tvMyPleya.downloadsSubtitle' => 'Offline and sync rules',
 			'tvMyPleya.librariesSubtitle' => 'Media, collections, playlists',
 			'tvMyPleya.serversSubtitle' => 'Connections and local sources',
-			'tvMyPleya.activitySubtitle' => 'Now watching, watch together, remote',
+			'tvMyPleya.activitySubtitle' => 'Now watching',
 			'tvMyPleya.watchTogetherSubtitle' => 'Watch in sync with friends',
 			'tvMyPleya.settingsSubtitle' => 'Display, player, trackers',
 			'tvMyPleya.logsSubtitle' => 'Log files and crash reporting',
