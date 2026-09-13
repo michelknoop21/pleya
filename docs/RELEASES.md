@@ -66,6 +66,7 @@ under `Notes`.
 - MOC-11 backend-icoonwel op elke bronrij
 - MOC-12 unified contextmenu met navigatie en posterkop
 - rebuild Mijn Pleya hub to northstar 18 (I7 child 18)
+- build Bibliotheken picker for I7 child 15 (northstar 15)
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
