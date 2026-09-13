@@ -119,21 +119,22 @@ eindronde.
 | 6 | T2a tvOS detail en LIB7 | MOC-09 en MOC-10 compositie tegen mockup 37, MOC-11, MOC-12, LIB7 | per MOC eigen bewijs. **`CODE/SIM CLOSED`**: MOC-09/MOC-10 (`1805c75e`), MOC-11 (`968d794e`), MOC-12 (`62e48d12`) en LIB7 (`eb5de4c9`) elk eigen bewijs op CODE/SIM-niveau; hardwareronde voor alle vijf blijft `HARDWARE OPEN` tot §7, en MOC-12's drie visuele gaten (metadata-subregel, resterende tijd, iconen per actierij) blijven bewust ongebouwd deze ronde |
 | 7 | T3a fixtures | alle vier: `catalog.watchlist.v1`, `seerr.requests.v1`, `activity.active-session.v1`, `catalog.long-rails.v1` | WL2, REQ1, ACT1 en VER4 dicht op de simulator; MYP1 dicht als deze fixtures Mijn Pleya volledig dekken, anders expliciet toegewezen aan I7-child 18 of T2b-child MOC-16 |
 | 8 | I7 Mijn Pleya (umbrella) | children, elk met eigen branch en tussentijdse merge: 18, 11, 12, 13 (projectie van bestaande events), 14, 15 (mobiel ontworpen, niet de TV verkleind), 19, 21 | elk child los naar `CODE/SIM CLOSED` |
-| 9 | T2b tvOS rest (umbrella) | children: MOC-16, MOC-17, MOC-18, MOC-20, MOC-21 met 22, MOC-23, MOC-24 met 25, SYS-2, SYS-4, SYS-5, SYS-6, SYS-7 | per child eigen bewijs |
+| 9 | T2b tvOS restschermen ronde 1 (umbrella) | children: MOC-16, MOC-20, MOC-21, MOC-23, MOC-24, MOC-25, SEL1-preflight, MOC-18 | per child eigen bewijs |
 | 10 | I8 account | 16, 17 en de profiel-laadcomp; PIN, toevoegen en wisselen, server offline, deels verbonden multi-server, eerste start, geen sessie, sessieherstel | widgettests en Verify |
 | 11 | I9a Live TV (10) | Nu op TV, Gids, Opnames; bestaande gids- en opnamefuncties blijven | widgettests en Verify |
 | 12 | I9b Speler (20) | landschap is het primaire acceptatiedoel; geen functie verdwijnt | widgettests en Verify |
 | 13 | T3b fixtures | de capabilities die de afronding daarna nog mist | per fixture het scenario dat erop wachtte |
 | 14 | IOS-HOME-AB | de indicator wordt de segmentindicator; A staat al op `moreInfo` | een test op de default |
-| 15 | Functionele closuregate | alle open Verify- en testschuld van gebouwde schermen dicht: 01 tot en met 04, de widgettest van de filtersheet, de landing-Verify voor 02 | geen open functionele schuld |
-| 16 | I10 visual acceptance | 21 schermen en 5 comps, per scherm huidige screenshot, northstar, verschil, fix, Verify; iPhone SE-klasse en iPhone 15 Pro; iPad als regressiegrens | alleen visueel werk; een functionele fix betekent dat die Verify opnieuw draait |
-| 17 | Hardware-eindronde | zie paragraaf 7 | |
-| 18 | TestFlight | exact de goedgekeurde archive | |
+| 15 | T2c uitgestelde goedgekeurde surfaces | MOC-17 (met LIVE-1), MOC-22 | per child eigen bewijs |
+| 16 | Functionele closuregate | alle open Verify- en testschuld van gebouwde schermen dicht: 01 tot en met 04, de widgettest van de filtersheet, de landing-Verify voor 02 | geen open functionele schuld |
+| 17 | I10 visual acceptance | 21 schermen en 5 comps, per scherm huidige screenshot, northstar, verschil, fix, Verify; iPhone SE-klasse en iPhone 15 Pro; iPad als regressiegrens | alleen visueel werk; een functionele fix betekent dat die Verify opnieuw draait |
+| 18 | Hardware-eindronde | zie paragraaf 7 | |
+| 19 | TestFlight | exact de goedgekeurde archive | |
 
-Vóór stap 17 moeten implementatie, tests, Verify, de simulatorgates, visual acceptance en de
+Vóór stap 18 moeten implementatie, tests, Verify, de simulatorgates, visual acceptance en de
 iPad-regressie klaar zijn, en `main` groen en schoon.
 
-Stap 16 controleert per scherm: marges, tekstgrootte, kaartverhouding en -dichtheid, koppen, de
+Stap 17 controleert per scherm: marges, tekstgrootte, kaartverhouding en -dichtheid, koppen, de
 tabbalk, gekozen en inactieve staat, sheets, safe areas en Dynamic Island, licht, donker en OLED
 waar dat telt, lange Nederlandse strings, lege, laad- en foutstaten, en tekstschaal voor
 toegankelijkheid.
