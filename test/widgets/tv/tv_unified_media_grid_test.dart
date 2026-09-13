@@ -23,6 +23,8 @@ import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/optimized_media_image.dart';
+import 'package:pleya/widgets/tv/tv_catalog_artwork_window.dart';
 import 'package:pleya/widgets/tv/tv_catalog_card_grid.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_card.dart';
@@ -492,6 +494,46 @@ void main() {
       gridKey.currentState!.focusGrid();
       await tester.pumpAndSettle();
       expect(Focus.of(tester.element(find.text('Title 2'))).hasPrimaryFocus, isTrue);
+    });
+  });
+
+  // CAT18: every card of every loaded page is built, and each held its decoded
+  // poster alive. Scrolling through Alle films grew memory until tvOS killed
+  // the app. The cells stay (traversal is wired across them); only rows far
+  // from the focus drop their image.
+  group('CAT18: posters are held only around the focus', () {
+    Future<void> focusCard(WidgetTester tester, String title) async {
+      Focus.of(tester.element(find.text(title))).requestFocus();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a long catalog draws posters for a window of rows, not every card', (tester) async {
+      await pumpGrid(tester, count: 400);
+      await focusCard(tester, 'Title 0');
+      final columns = columnsOf(tester);
+
+      expect(find.text('Title 399'), findsOneWidget, reason: 'every cell is still built');
+      expect(
+        find.byType(OptimizedMediaImage).evaluate().length,
+        lessThanOrEqualTo((tvCatalogArtworkWindowRows * 2 + 1) * columns),
+        reason: 'a card far from the focus must not keep a decoded poster alive',
+      );
+    });
+
+    testWidgets('the window follows the focus, and the far end keeps its focus node', (tester) async {
+      await pumpGrid(tester, count: 400);
+      final columns = columnsOf(tester);
+      final deep = 300 - 300 % columns;
+
+      await focusCard(tester, 'Title $deep');
+      final deepCard = find.ancestor(of: find.text('Title $deep'), matching: find.byType(TvUnifiedMediaCard));
+      expect(find.descendant(of: deepCard, matching: find.byType(OptimizedMediaImage)), findsOneWidget);
+      final firstCard = find.ancestor(of: find.text('Title 0'), matching: find.byType(TvUnifiedMediaCard));
+      expect(find.descendant(of: firstCard, matching: find.byType(OptimizedMediaImage)), findsNothing);
+
+      await focusCard(tester, 'Title 0');
+      expect(Focus.of(tester.element(find.text('Title 0'))).hasPrimaryFocus, isTrue);
+      expect(find.descendant(of: firstCard, matching: find.byType(OptimizedMediaImage)), findsOneWidget);
     });
   });
 

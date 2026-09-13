@@ -142,7 +142,7 @@ under `Notes`.
 - titelbewijs resetten en paritybewijs gelijktrekken
 - Zoeken opent Aanvragen binnen de shell, ook met resultaten
 - toon servernaam bij personenresultaten (build 270)
-- LIB7 review findings — focus race, stale-node fallback, reorder clamp, error copy
+- LIB7 review findings: focus race, stale-node fallback, reorder clamp, error copy
 - HTTP-client blijft niet hangen na een suspend-freeze
 - MOC-09/MOC-10 compositie tegen mockup 37 A/C
 - expliciete restart vanaf begin respecteren ondanks details-instelling
@@ -159,6 +159,7 @@ under `Notes`.
 - DET7, film- en seriedetail altijd volledig scherm
 - MOC-23a, offline drops dead pills from the TV top nav (#18)
 - MOC-23a follow-up, close two regressions from the offline fix (#19)
+- CAT18, het catalogusraster houdt alleen posters rond de focus vast
 - CAT19, LEFT vanuit de filterrail springt niet meer naar Series
 <!-- END GENERATED -->
 

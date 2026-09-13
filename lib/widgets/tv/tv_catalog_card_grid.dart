@@ -49,6 +49,7 @@ import 'package:flutter/material.dart';
 
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
+import 'tv_catalog_artwork_window.dart';
 import 'tv_unified_layout.dart';
 
 /// One cell's wiring, handed to [TvCatalogCardGrid.itemBuilder].
@@ -211,6 +212,10 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
   /// The last resolved grid, so a focus change can turn a card index into a
   /// visible range without re-deriving the column count from the viewport.
   TvCatalogGrid? _grid;
+
+  /// The row the poster window is centred on (CAT18). Moves with the focus,
+  /// but only every few rows; see [tvCatalogArtworkShouldRecenter].
+  int? _artworkCenterRow;
 
   /// The card height that went with [_grid], kept beside it for the same
   /// reason: [_keepFocusRingVisible] needs the row pitch and must not re-derive
@@ -447,10 +452,17 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     final cardHeight = widget.cardHeight(grid.cardWidth);
     _cardHeight = cardHeight;
     final rows = <Widget>[];
+    final focusedIndex = _focusedId == null ? -1 : widget.itemIds.indexOf(_focusedId!);
+    final centerRow = _artworkCenterRow ??= focusedIndex < 0 ? 0 : focusedIndex ~/ grid.columns;
 
     for (var start = 0; start < widget.itemIds.length; start += grid.columns) {
       final end = (start + grid.columns).clamp(0, widget.itemIds.length);
-      rows.add(_buildRow(grid: grid, start: start, end: end, isFirstRow: start == 0));
+      rows.add(
+        TvCatalogArtworkScope(
+          drawArtwork: tvCatalogArtworkRowInWindow(row: start ~/ grid.columns, centerRow: centerRow),
+          child: _buildRow(grid: grid, start: start, end: end, isFirstRow: start == 0),
+        ),
+      );
     }
 
     return SingleChildScrollView(
@@ -510,6 +522,11 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
         onFocusChange: (hasFocus) {
           if (!hasFocus) return;
           _focusedId = id;
+          final row = index ~/ grid.columns;
+          final center = _artworkCenterRow;
+          if (center == null || tvCatalogArtworkShouldRecenter(focusedRow: row, centerRow: center)) {
+            setState(() => _artworkCenterRow = row);
+          }
           widget.onFocusedIdChanged?.call(id);
           _keepFocusRingVisible(index);
           widget.onFocusedCell?.call(index, grid);
