@@ -11,6 +11,7 @@ import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/providers/now_watching_provider.dart';
 import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/providers/watchlist_provider.dart';
 import 'package:pleya/services/api_cache.dart';
@@ -61,6 +62,17 @@ class StockedWatchlistDouble extends WatchlistProvider {
 class ConfiguredSeerrDouble extends SeerrProvider {
   @override
   bool get isConfigured => true;
+}
+
+/// PB-7: the Activiteit tile asks `NowWatchingProvider.isAvailable` (an owned
+/// Plex server and a paired Tautulli instance) rather than `hasOnlinePlexServers`
+/// directly. The closures are never invoked because [isAvailable] is
+/// overridden outright.
+class AvailableNowWatchingDouble extends NowWatchingProvider {
+  AvailableNowWatchingDouble() : super(client: () => null, enabled: () => false);
+
+  @override
+  bool get isAvailable => true;
 }
 
 /// Keeps a database out of a widget test: [StockedWatchlistDouble] never

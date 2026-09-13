@@ -260,4 +260,39 @@ void main() {
     expect(service.calls, 0);
     expect(provider.hasOthers, isFalse);
   });
+
+  group('isAvailable (PB-7 capability predicate)', () {
+    test('true with both an owned server and a paired Tautulli client', () {
+      final provider = _provider(_FakeService(() => NowWatching.empty), enabled: true);
+      addTearDown(provider.dispose);
+
+      expect(provider.isAvailable, isTrue);
+    });
+
+    test('false without an owned server, even with a paired client', () {
+      final provider = _provider(_FakeService(() => NowWatching.empty), enabled: false);
+      addTearDown(provider.dispose);
+
+      expect(provider.isAvailable, isFalse);
+    });
+
+    test('false without a paired Tautulli client, even on an owned server', () {
+      final provider = NowWatchingProvider(
+        client: () => null,
+        enabled: () => true,
+        service: _FakeService(() => NowWatching.empty),
+      );
+      addTearDown(provider.dispose);
+
+      expect(provider.isAvailable, isFalse);
+    });
+
+    test('stays true with zero current sessions: an empty result is a valid state', () {
+      final provider = _provider(_FakeService(() => NowWatching.empty), enabled: true);
+      addTearDown(provider.dispose);
+
+      expect(provider.hasOthers, isFalse);
+      expect(provider.isAvailable, isTrue);
+    });
+  });
 }

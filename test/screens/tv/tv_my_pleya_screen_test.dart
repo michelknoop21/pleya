@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/providers/now_watching_provider.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_sections.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
@@ -146,22 +147,34 @@ void main() {
       TvDetectionService.debugSetAppleTVOverride(null);
     });
 
-    Future<void> pump(WidgetTester tester, {bool full = false, Size size = const Size(1280, 720)}) async {
+    Future<void> pump(
+      WidgetTester tester, {
+      bool full = false,
+      bool nowWatchingAvailable = false,
+      Size size = const Size(1280, 720),
+    }) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
       // Hoofdstuk 18.3's conditional tiles, all switched on. Off by default so
       // every existing test in this group keeps the short hub it was written
-      // against.
+      // against. `nowWatchingAvailable` is the one PB-7 needs on its own,
+      // independent of watchlist/Seerr/Plex, to test the Activiteit tile's
+      // predicate in isolation.
       WatchlistProvider? watchlist;
       SeerrProvider? seerr;
+      NowWatchingProvider? nowWatching;
       if (full) {
         manager.debugRegisterClientForTesting(OnlinePlexClientDouble('nas', 'NAS'));
         watchlist = StockedWatchlistDouble();
         addTearDown(watchlist.dispose);
         seerr = ConfiguredSeerrDouble();
         addTearDown(seerr.dispose);
+      }
+      if (full || nowWatchingAvailable) {
+        nowWatching = AvailableNowWatchingDouble();
+        addTearDown(nowWatching.dispose);
       }
 
       await tester.pumpWidget(
@@ -171,6 +184,7 @@ void main() {
               ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
               if (watchlist != null) ChangeNotifierProvider<WatchlistProvider>.value(value: watchlist),
               if (seerr != null) ChangeNotifierProvider<SeerrProvider>.value(value: seerr),
+              if (nowWatching != null) ChangeNotifierProvider<NowWatchingProvider>.value(value: nowWatching),
             ],
             child: MaterialApp(
               debugShowCheckedModeBanner: false,
@@ -216,6 +230,26 @@ void main() {
       // uses — the tile and the tab cannot disagree about whether the feature
       // exists on this device.
       expect(find.text(t.navigation.downloads), findsNothing);
+    });
+
+    // PB-7: an online Plex server is no longer sufficient on its own. Negative
+    // control for the predicate this workitem replaces — before this change
+    // `OnlinePlexClientDouble` alone was enough to show the tile, and this
+    // must be red on the pre-fix code or it proves nothing.
+    testWidgets('Activiteit stays hidden with an online Plex server but no Tautulli source', (tester) async {
+      manager.debugRegisterClientForTesting(OnlinePlexClientDouble('nas', 'NAS'));
+      await pump(tester);
+
+      expect(find.text(t.tvMyPleya.activity), findsNothing);
+    });
+
+    // PB-7's other half: capability and data availability decide this, not the
+    // presence of a concrete `PlexClient`. Tautulli Now Watching is a valid
+    // source on its own.
+    testWidgets('Activiteit appears once a Tautulli source is available', (tester) async {
+      await pump(tester, nowWatchingAvailable: true);
+
+      expect(find.text(t.tvMyPleya.activity), findsOneWidget);
     });
 
     testWidgets('a tile opens its own section and nothing else', (tester) async {
