@@ -65,6 +65,7 @@ under `Notes`.
 - Bibliotheken wordt bronbeheer op TV (LIB7, DEC-092)
 - MOC-11 backend-icoonwel op elke bronrij
 - MOC-12 unified contextmenu met navigatie en posterkop
+- rebuild Mijn Pleya hub to northstar 18 (I7 child 18)
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
