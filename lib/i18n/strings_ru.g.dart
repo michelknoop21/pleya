@@ -1819,7 +1819,7 @@ class _TranslationsTvMyPleyaRu extends TranslationsTvMyPleyaEn {
 	@override String get downloadsSubtitle => 'Офлайн и правила синхронизации';
 	@override String get librariesSubtitle => 'Медиа, коллекции, плейлисты';
 	@override String get serversSubtitle => 'Подключения и локальные источники';
-	@override String get activitySubtitle => 'Сейчас смотрят, совместный просмотр, пульт';
+	@override String get activitySubtitle => 'Сейчас смотрят';
 	@override String get watchTogetherSubtitle => 'Смотрите синхронно с друзьями';
 	@override String get settingsSubtitle => 'Отображение, плеер, трекеры';
 	@override String get logsSubtitle => 'Файлы журналов и отчёты о сбоях';
@@ -3700,7 +3700,7 @@ extension on TranslationsRu {
 			'tvMyPleya.downloadsSubtitle' => 'Офлайн и правила синхронизации',
 			'tvMyPleya.librariesSubtitle' => 'Медиа, коллекции, плейлисты',
 			'tvMyPleya.serversSubtitle' => 'Подключения и локальные источники',
-			'tvMyPleya.activitySubtitle' => 'Сейчас смотрят, совместный просмотр, пульт',
+			'tvMyPleya.activitySubtitle' => 'Сейчас смотрят',
 			'tvMyPleya.watchTogetherSubtitle' => 'Смотрите синхронно с друзьями',
 			'tvMyPleya.settingsSubtitle' => 'Отображение, плеер, трекеры',
 			'tvMyPleya.logsSubtitle' => 'Файлы журналов и отчёты о сбоях',

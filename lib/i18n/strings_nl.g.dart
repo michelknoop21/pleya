@@ -2281,7 +2281,7 @@ class _TranslationsTvMyPleyaNl extends TranslationsTvMyPleyaEn {
 	@override String get downloadsSubtitle => 'Offline en synchronisatieregels';
 	@override String get librariesSubtitle => 'Media, collecties, afspeellijsten';
 	@override String get serversSubtitle => 'Verbindingen en lokale bronnen';
-	@override String get activitySubtitle => 'Nu kijken, samen kijken, remote';
+	@override String get activitySubtitle => 'Nu aan het kijken';
 	@override String get watchTogetherSubtitle => 'Kijk gelijk met vrienden';
 	@override String get settingsSubtitle => 'Weergave, speler, trackers';
 	@override String get logsSubtitle => 'Logbestanden en crashrapportage';
@@ -4909,7 +4909,7 @@ extension on TranslationsNl {
 			'tvMyPleya.downloadsSubtitle' => 'Offline en synchronisatieregels',
 			'tvMyPleya.librariesSubtitle' => 'Media, collecties, afspeellijsten',
 			'tvMyPleya.serversSubtitle' => 'Verbindingen en lokale bronnen',
-			'tvMyPleya.activitySubtitle' => 'Nu kijken, samen kijken, remote',
+			'tvMyPleya.activitySubtitle' => 'Nu aan het kijken',
 			'tvMyPleya.watchTogetherSubtitle' => 'Kijk gelijk met vrienden',
 			'tvMyPleya.settingsSubtitle' => 'Weergave, speler, trackers',
 			'tvMyPleya.logsSubtitle' => 'Logbestanden en crashrapportage',

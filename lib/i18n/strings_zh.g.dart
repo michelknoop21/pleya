@@ -1819,7 +1819,7 @@ class _TranslationsTvMyPleyaZh extends TranslationsTvMyPleyaEn {
 	@override String get downloadsSubtitle => '离线与同步规则';
 	@override String get librariesSubtitle => '媒体、合集、播放列表';
 	@override String get serversSubtitle => '连接与本地来源';
-	@override String get activitySubtitle => '正在观看、一起看、遥控';
+	@override String get activitySubtitle => '正在观看';
 	@override String get watchTogetherSubtitle => '与好友同步观看';
 	@override String get settingsSubtitle => '显示、播放器、追踪器';
 	@override String get logsSubtitle => '日志文件与崩溃报告';
@@ -3700,7 +3700,7 @@ extension on TranslationsZh {
 			'tvMyPleya.downloadsSubtitle' => '离线与同步规则',
 			'tvMyPleya.librariesSubtitle' => '媒体、合集、播放列表',
 			'tvMyPleya.serversSubtitle' => '连接与本地来源',
-			'tvMyPleya.activitySubtitle' => '正在观看、一起看、遥控',
+			'tvMyPleya.activitySubtitle' => '正在观看',
 			'tvMyPleya.watchTogetherSubtitle' => '与好友同步观看',
 			'tvMyPleya.settingsSubtitle' => '显示、播放器、追踪器',
 			'tvMyPleya.logsSubtitle' => '日志文件与崩溃报告',

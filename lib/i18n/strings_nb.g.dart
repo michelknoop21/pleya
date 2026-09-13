@@ -1819,7 +1819,7 @@ class _TranslationsTvMyPleyaNb extends TranslationsTvMyPleyaEn {
 	@override String get downloadsSubtitle => 'Frakoblet og synkroniseringsregler';
 	@override String get librariesSubtitle => 'Medier, samlinger, spillelister';
 	@override String get serversSubtitle => 'Tilkoblinger og lokale kilder';
-	@override String get activitySubtitle => 'Ser nå, se sammen, fjernkontroll';
+	@override String get activitySubtitle => 'Ser nå';
 	@override String get watchTogetherSubtitle => 'Se synkront med venner';
 	@override String get settingsSubtitle => 'Visning, spiller, trackere';
 	@override String get logsSubtitle => 'Loggfiler og krasjrapporter';
@@ -3700,7 +3700,7 @@ extension on TranslationsNb {
 			'tvMyPleya.downloadsSubtitle' => 'Frakoblet og synkroniseringsregler',
 			'tvMyPleya.librariesSubtitle' => 'Medier, samlinger, spillelister',
 			'tvMyPleya.serversSubtitle' => 'Tilkoblinger og lokale kilder',
-			'tvMyPleya.activitySubtitle' => 'Ser nå, se sammen, fjernkontroll',
+			'tvMyPleya.activitySubtitle' => 'Ser nå',
 			'tvMyPleya.watchTogetherSubtitle' => 'Se synkront med venner',
 			'tvMyPleya.settingsSubtitle' => 'Visning, spiller, trackere',
 			'tvMyPleya.logsSubtitle' => 'Loggfiler og krasjrapporter',
