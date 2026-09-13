@@ -79,6 +79,12 @@ class NowWatchingProvider extends ChangeNotifier with DisposableChangeNotifierMi
   /// Whether the presence control should exist at all.
   bool get hasOthers => _now.hasOthers;
 
+  /// Whether this source could ever show anything: an owned Plex server and a
+  /// paired Tautulli instance, the same pair [_poll] itself gates on. PB-7's
+  /// capability predicate — an empty [now] is still a valid, visible empty
+  /// state, so this deliberately does not also require [hasOthers].
+  bool get isAvailable => _client() != null && _enabled();
+
   List<WatchSession> get sessions => _now.sessions;
 
   /// The interval currently in force, or null when nothing is polling. Exposed

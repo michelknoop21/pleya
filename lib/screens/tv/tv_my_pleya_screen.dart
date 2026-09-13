@@ -34,6 +34,7 @@ import '../../profiles/profile.dart';
 import '../../profiles/profile_avatar.dart';
 import '../../providers/download_provider.dart';
 import '../../providers/multi_server_provider.dart';
+import '../../providers/now_watching_provider.dart';
 import '../../providers/seerr_provider.dart';
 import '../../providers/watchlist_provider.dart';
 import '../../theme/mono_theme.dart';
@@ -275,9 +276,11 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
       // `NavigationTab.getVisibleTabs` uses, so the tile and the tab cannot
       // disagree about whether the feature exists on this device.
       showDownloads: !PlatformDetector.isAppleTV(),
-      // Hoofdstuk 18.3: "Server Activities verschijnt alleen wanneer een
-      // relevante Plex-bron aanwezig is."
-      showActivity: servers.hasOnlinePlexServers,
+      // PB-7: capability and data availability decide this now, not merely
+      // "a concrete PlexClient exists". Tautulli Now Watching is the one
+      // supported source today; Watch Together and Pleya Remote are separate
+      // product concepts and stay out (docs/tvos-redesign-implementatiecontract.md).
+      showActivity: context.watch<NowWatchingProvider?>()?.isAvailable ?? false,
       watchlistCount: watchlist?.entriesByRecentlyAdded.length,
       downloadCount: downloads == null ? null : downloads.downloadedMovies.length + downloads.downloadedShows.length,
     );

@@ -53,6 +53,7 @@ import 'package:pleya/screens/search_screen.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/providers/now_watching_provider.dart';
 import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/providers/unified_catalogs.dart';
 import 'package:pleya/providers/watchlist_provider.dart';
@@ -311,6 +312,8 @@ void main() {
       addTearDown(watchlist.dispose);
       final seerr = ConfiguredSeerrDouble();
       addTearDown(seerr.dispose);
+      final nowWatching = AvailableNowWatchingDouble();
+      addTearDown(nowWatching.dispose);
 
       setGoldenSurfaceSize(tester);
       await tester.pumpWidget(
@@ -321,6 +324,7 @@ void main() {
               ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
               ChangeNotifierProvider<WatchlistProvider>.value(value: watchlist),
               ChangeNotifierProvider<SeerrProvider>.value(value: seerr),
+              ChangeNotifierProvider<NowWatchingProvider>.value(value: nowWatching),
             ],
             child: child,
           ),
@@ -334,6 +338,7 @@ void main() {
       // rather than quietly redrawing the golden.
       expect(find.text(t.watchlist.title), findsOneWidget);
       expect(find.text(t.seerr.title), findsOneWidget);
+      expect(find.text(t.tvMyPleya.activity), findsOneWidget);
       expect(find.text(t.navigation.downloads), findsNothing, reason: 'hoofdstuk 18.3: never on an Apple TV');
 
       await expectMatchesGolden(find.byType(TvRootShell), 'tv_shell_my_pleya_full');

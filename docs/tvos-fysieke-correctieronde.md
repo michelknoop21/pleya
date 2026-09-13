@@ -1023,6 +1023,22 @@ door het productpredicaat te versoepelen, een tegel te faken of iets op
 verifyMode te hardcoderen. Het wacht op een protocolgetrouwe Plex-fixture of op
 een echte abstractielaag.
 
+**13 september 2026, MOC-16a (PB-7), `f4d6ad61`.** Het predicaat zelf is
+gecorrigeerd: `NowWatchingProvider.isAvailable` (een eigen Plex-server plus
+een gepaarde Tautulli-instantie) vervangt `hasOnlinePlexServers`. Dat lost
+deze bevinding niet op, want de acceptance gap zat nooit in het predicaat
+maar in wat Pleya Verify kan naspelen. Nagekeken: `pleya_verify/`'s
+fixtureserver (`pleya_verify/fixture_server/`) fakeert uitsluitend het Pleya
+Server-protocol (`/pleya/v1/*`, `docs/pleya-protocol/v1/openapi.yaml`) en
+heeft geen Plex-oppervlak en geen Tautulli-oppervlak. `NowWatchingProvider`
+praat met een echte `TautulliClient`, Plex-gebonden per constructie
+(`TautulliProvider`: "Tautulli has a single admin key"). Een protocolgetrouwe
+fixture betekent dus een fake Plex-server plus een fake Tautulli-server in
+`pleya_verify`, of een echte Plex/Tautulli-abstractielaag die Verify kan
+seeden: allebei nieuwe infrastructuur op de schaal van `PleyaFakeServer`
+zelf, geen losse fixture-case in `named_fixtures.dart`. Blijft `ACCEPTANCE
+GAP` tot die keuze gemaakt is.
+
 ### HERO1, alleen op hardware
 
 De technische kant staat: ratio-bewuste requestgrootte, `ImageType.heroArt`, een
