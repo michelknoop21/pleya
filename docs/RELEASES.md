@@ -155,6 +155,7 @@ under `Notes`.
 - collapse the topnav on film and series detail (DEC-115)
 - DET6, filmdetail synopsis viel terug op 1 regel (Mayday)
 - MOC-20, Uiterlijk krijgt vier echte voorkeuren (PB-10)
+- MOC-21, Profiel kiezen krijgt de mockup-21-compositie op TV (beeld)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
