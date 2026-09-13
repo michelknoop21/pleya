@@ -148,6 +148,7 @@ under `Notes`.
 - expliciete restart vanaf begin respecteren ondanks details-instelling
 - hard-close cancel niet onbeheerd laten falen, deadline niet resetten
 - sluit gaten uit de I7-child-14-review (TV-bereikbaarheid, focus, dispose-race)
+- MOC-16a, Activiteit-zichtbaarheid naar capability + echte data (PB-7)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
