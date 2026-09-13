@@ -2699,6 +2699,134 @@ void main() {
       final playButtonRect = rectOfFocusLabel(tester, 'play_button');
       expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
     });
+
+    testWidgets('a series with season chips opened as a destination root keeps at least one line of synopsis', (
+      tester,
+    ) async {
+      // The follow-up to the two adversarial tests above: cast+extras
+      // together are enough to justify dropping the synopsis, but a lone
+      // season-chips + episode-rail hub on its own is ordinary content, not
+      // an edge case, and was still landing on the zero-line mandatory
+      // floor before the minimal tier was added. Opened as a destination
+      // root (see the moderate movie test above for why that matters) —
+      // nested under the shell topnav (INV-1's shorter content box), the
+      // same fixture still lands on zero: season chips plus any episode
+      // rail already exceed even the minimal budget in that box. That is a
+      // known, reported limitation (the shell-nested case feeling too
+      // dense for its available height), not something this tier fixes.
+      final show = MediaItem(
+        id: 'show_det2_minimal',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.show,
+        title: 'A Series With Season Chips And No Extra Hubs',
+        summary: longSummary,
+        genres: const ['Drama', 'Mystery'],
+        serverId: 'server_1',
+        serverName: 'Server',
+      );
+      final season1 = MediaItem(
+        id: 'season_1',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.season,
+        title: 'Season 1',
+        index: 1,
+        parentId: show.id,
+        serverId: show.serverId,
+        serverName: show.serverName,
+      );
+      // A second season only to satisfy `_tvDetailShowsSeasonChips`
+      // (`_seasons.length > 1`) — the chip row itself is what this test is
+      // about, so it needs to actually be showing.
+      final season2 = MediaItem(
+        id: 'season_2',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.season,
+        title: 'Season 2',
+        index: 2,
+        parentId: show.id,
+        serverId: show.serverId,
+        serverName: show.serverName,
+      );
+      final episodes = [
+        for (var i = 1; i <= 4; i++)
+          MediaItem(
+            id: 'episode_$i',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.episode,
+            title: 'Episode $i',
+            index: i,
+            parentId: season1.id,
+            parentIndex: season1.index,
+            grandparentId: show.id,
+            serverId: show.serverId,
+            serverName: show.serverName,
+          ),
+      ];
+
+      final client = _FakeMediaServerClient(
+        show: show,
+        childrenByParent: {
+          show.id: [season1, season2],
+          season1.id: episodes,
+          season2.id: const [],
+        },
+      );
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      const panelSize = Size(1038, 584);
+      await pumpNestedDetail(tester, show, provider, panelSize: panelSize, nestedBoxSize: panelSize);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Season 1'), findsOneWidget);
+
+      final summaryFinder = find.text(show.summary!);
+      expect(summaryFinder, findsOneWidget, reason: 'the minimal tier should keep at least one synopsis line');
+      final summaryText = tester.widget<Text>(summaryFinder);
+      expect(summaryText.maxLines, greaterThanOrEqualTo(1));
+
+      final playButtonRect = rectOfFocusLabel(tester, 'play_button');
+      expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
+    });
+
+    testWidgets('a title with more genres than fit on one line wraps to a second instead of hiding them', (
+      tester,
+    ) async {
+      final movie = MediaItem(
+        id: 'movie_det2_genres',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'A Movie With Many Genres',
+        summary: longSummary,
+        genres: const ['Family', 'Animation', 'Action', 'Adventure', 'Comedy', 'Crime', 'Science Fiction'],
+        year: 2024,
+        serverId: 'server_1',
+        serverName: 'Server',
+      );
+
+      final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      const panelSize = Size(1038, 584);
+      await pumpNestedDetail(tester, movie, provider, panelSize: panelSize, nestedBoxSize: panelSize);
+
+      expect(tester.takeException(), isNull);
+
+      final genreFinder = find.text(movie.genres!.join('  •  '));
+      expect(genreFinder, findsOneWidget, reason: 'the full genre list should still render as one string, wrapped');
+      final genreText = tester.widget<Text>(genreFinder);
+      expect(
+        genreText.maxLines,
+        greaterThan(1),
+        reason: 'more than one line must be available before ellipsis kicks in',
+      );
+
+      final playButtonRect = rectOfFocusLabel(tester, 'play_button');
+      expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
+    });
   });
 }
 

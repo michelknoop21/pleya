@@ -90,3 +90,4 @@ pleya_server/.responses/
 
 # Local golden-diff artifacts from failed test runs (never commit these)
 test/goldens/failures/
+docs/responsive-audit/
