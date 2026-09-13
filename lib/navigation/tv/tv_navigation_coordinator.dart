@@ -81,10 +81,24 @@ class TvNavigationCoordinator extends ChangeNotifier {
   /// itself, which every case before it left standing). Mijn Pleya is the one
   /// destination [buildTvDestinations] never removes, so it is always a valid
   /// landing spot.
+  ///
+  /// A destination that disappears takes its nested stack with it: any
+  /// [TvNestedRoute] pushed under it completes with `null` (same contract as
+  /// [clearNestedRoutes]), so a caller awaiting one does not hang forever, and
+  /// it cannot resurface with stale state if the destination comes back.
   TvDestinationId? updateConditions(TvNavConditions conditions) {
     final next = buildTvDestinations(conditions);
     if (listEquals(next, _destinations)) return null;
+    final removed = _destinations.where((id) => !next.contains(id));
     _destinations = next;
+
+    for (final id in removed) {
+      final stack = _nested.remove(id);
+      if (stack == null) continue;
+      for (final route in stack) {
+        route.completeResult(null);
+      }
+    }
 
     final fallback = next.contains(tvRootDestination) ? tvRootDestination : TvDestinationId.myPleya;
 
