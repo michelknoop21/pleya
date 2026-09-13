@@ -156,6 +156,7 @@ under `Notes`.
 - DET6, filmdetail synopsis viel terug op 1 regel (Mayday)
 - MOC-20, Uiterlijk krijgt vier echte voorkeuren (PB-10)
 - MOC-21, Profiel kiezen krijgt de mockup-21-compositie op TV (beeld)
+- DET7, film- en seriedetail altijd volledig scherm
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
