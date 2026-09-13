@@ -221,6 +221,12 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
     });
   }
 
+  /// UP out of the rail: the topnav, with the rail closed behind it.
+  ///
+  /// LEFT used to fall through here too, until CAT19 (Michel, 13 September):
+  /// the rail is the leftmost content on the page, so a second LEFT reached the
+  /// topnav and a third one walked sideways along the bar to a different
+  /// destination. LEFT out of a rail row is [_railEdge] now.
   void _leaveRailUpwards() {
     if (_railExpanded) {
       setState(() {
@@ -231,8 +237,9 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
     widget.onExitTop?.call();
   }
 
-  /// DOWN off the bottom of the rail: nothing at all. Explicit, because a null
-  /// handler walks sideways into the grid and leaves the rail standing open.
+  /// LEFT and DOWN off an edge of the rail: nothing at all. Explicit, because a
+  /// null handler walks sideways into the grid and leaves the rail standing
+  /// open.
   void _railEdge() {}
 
   void _closeSubview() {
@@ -358,7 +365,7 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
             onPressed: () => setState(() => _statusSubview = true),
             onNavigateUp: _leaveRailUpwards,
             onNavigateDown: widget.filter == TvSeerrRequestFilter.all ? _railEdge : () => _clearFocus.requestFocus(),
-            onNavigateLeft: _leaveRailUpwards,
+            onNavigateLeft: _railEdge,
             onNavigateRight: _closeRail,
             onBack: _closeRail,
           ),
@@ -375,7 +382,7 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
         clearFocusNode: _clearFocus,
         onClearNavigateUp: () => _statusFocus.requestFocus(),
         onClearNavigateDown: _railEdge,
-        onClearNavigateLeft: _leaveRailUpwards,
+        onClearNavigateLeft: _railEdge,
         onClearNavigateRight: _closeRail,
         onClearBack: _closeRail,
       ),
