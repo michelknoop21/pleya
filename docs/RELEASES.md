@@ -153,6 +153,7 @@ under `Notes`.
 - give the detail synopsis a one-line tier and let genres wrap
 - MOC-16b, Activiteit TV-presentatie + ACT2/ACT3 (PB-7) (#12)
 - collapse the topnav on film and series detail (DEC-115)
+- MOC-20, Uiterlijk krijgt vier echte voorkeuren (PB-10)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
