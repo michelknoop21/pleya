@@ -142,7 +142,7 @@ under `Notes`.
 - titelbewijs resetten en paritybewijs gelijktrekken
 - Zoeken opent Aanvragen binnen de shell, ook met resultaten
 - toon servernaam bij personenresultaten (build 270)
-- LIB7 review findings: focus race, stale-node fallback, reorder clamp, error copy
+- LIB7 review findings — focus race, stale-node fallback, reorder clamp, error copy
 - HTTP-client blijft niet hangen na een suspend-freeze
 - MOC-09/MOC-10 compositie tegen mockup 37 A/C
 - expliciete restart vanaf begin respecteren ondanks details-instelling
