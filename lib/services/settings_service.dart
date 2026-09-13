@@ -357,6 +357,12 @@ class SettingsService extends BaseSharedPreferencesService {
   static const hoverExpandCards = BoolPref('hover_expand_cards', defaultValue: true);
   static const tvFullCardLayout = BoolPref('tv_full_card_layout', defaultValue: false);
   static const focusGlow = BoolPref('focus_glow', defaultValue: true);
+  // PB-10 (MOC-20): four Appearance switches for TV, each defaulting to the
+  // behavior that predates them.
+  static const tvShowTitlesUnderPosters = BoolPref('tv_show_titles_under_posters', defaultValue: true);
+  static const tvHeroClearLogo = BoolPref('tv_hero_clear_logo', defaultValue: true);
+  static const tvHeroAutoAdvance = BoolPref('tv_hero_auto_advance', defaultValue: true);
+  static const tvReduceMotion = BoolPref('tv_reduce_motion', defaultValue: false);
   static const useGlobalHubs = BoolPref('use_global_hubs', defaultValue: true);
   static const showServerNameOnHubs = BoolPref('show_server_name_on_hubs');
   static const groupLibrariesByServer = BoolPref('group_libraries_by_server', defaultValue: true);
@@ -953,6 +959,10 @@ class SettingsService extends BaseSharedPreferencesService {
     viewMode,
     showHeroSection,
     hoverExpandCards,
+    tvShowTitlesUnderPosters,
+    tvHeroClearLogo,
+    tvHeroAutoAdvance,
+    tvReduceMotion,
     continueWatchingAction,
     episodeAction,
     seekTimeSmall,

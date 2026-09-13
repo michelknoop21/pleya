@@ -63,6 +63,7 @@ import '../../i18n/strings.g.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_route_context.dart';
+import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../app_icon.dart';
@@ -356,6 +357,11 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
               hideSpoilers: widget.hideSpoilers,
               textOpacity: widget.textOpacity,
               textBottom: widget.textBottom,
+              // `instanceOrNull`, not `.instance`: this carousel is built by
+              // widget tests that never bootstrap the settings singleton, and
+              // the pref's own default (`true`, unchanged behavior) is the
+              // right answer for "not initialized yet" regardless.
+              showClearLogo: SettingsService.instanceOrNull?.read(SettingsService.tvHeroClearLogo) ?? true,
               artwork: AnimatedSwitcher(
                 duration: reduceMotion(context, TvHomeLayout.heroCrossfade),
                 // Both layers on screen at once during the fade, the outgoing one

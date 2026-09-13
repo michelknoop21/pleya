@@ -650,6 +650,25 @@ void main() {
         reason: '33.2: focus leaving the hero dims its text',
       );
     });
+
+    testWidgets('PB-10: tvHeroAutoAdvance off holds the rotation even though every other condition allows it', (
+      tester,
+    ) async {
+      await boot(tester, latestMovies: twoRecentFilms());
+      final first = heroGroup(tester).groupId;
+      await SettingsService.instance.write(SettingsService.tvHeroAutoAdvance, false);
+
+      // Forces `_autoplayEnabled` to be recomputed against the new pref, the
+      // same technique the "leaving the destination" test above uses.
+      final key = tester.state<TvContentFeedState>(find.byType(TvContentFeed));
+      key.setDestinationActive(false);
+      await tester.pump();
+      key.setDestinationActive(true);
+      await tester.pump();
+
+      await tester.pump(TvHomeLayout.heroAutoAdvance * 3);
+      expect(heroGroup(tester).groupId, first);
+    });
   });
 
   group('P1: the hero comes back into view, not just back into the focus tree', () {

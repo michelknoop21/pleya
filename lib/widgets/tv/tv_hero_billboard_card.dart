@@ -91,6 +91,7 @@ class TvHeroBillboardCard extends StatelessWidget {
     this.client,
     this.hideSpoilers = false,
     this.textOpacity = 1.0,
+    this.showClearLogo = true,
   });
 
   final UnifiedMediaGroup group;
@@ -138,6 +139,12 @@ class TvHeroBillboardCard extends StatelessWidget {
   /// parameter. The picture stepping back with the text is [TvHeroDimVeil],
   /// which the feed lays over this card rather than inside it.
   final double textOpacity;
+
+  /// PB-10 (MOC-20): "clearlogo op de hero aan of uit". Defaults to on, the
+  /// behavior that predates the setting. Passed in rather than read from a
+  /// settings service here, same reason as [textOpacity]: this widget is
+  /// presentation only and decides nothing for itself.
+  final bool showClearLogo;
 
   @override
   Widget build(BuildContext context) {
@@ -191,6 +198,7 @@ class TvHeroBillboardCard extends StatelessWidget {
                 tokens: tk,
                 hideSpoilers: hideSpoilers,
                 actions: actions,
+                showClearLogo: showClearLogo,
               ),
             ),
           ),
@@ -322,6 +330,7 @@ class _HeroText extends StatelessWidget {
     required this.tokens,
     required this.hideSpoilers,
     required this.actions,
+    required this.showClearLogo,
   });
 
   final UnifiedMediaGroup group;
@@ -331,6 +340,7 @@ class _HeroText extends StatelessWidget {
   final MonoTokens tokens;
   final bool hideSpoilers;
   final Widget actions;
+  final bool showClearLogo;
 
   @override
   Widget build(BuildContext context) {
@@ -400,7 +410,7 @@ class _HeroText extends StatelessWidget {
   /// when it does not. Both occupy the same reserved band, so the metadata line
   /// under them sits in one place whichever a slide turns out to have.
   Widget _titleBlock(BuildContext context) {
-    final logo = item.clearLogoPath;
+    final logo = showClearLogo ? item.clearLogoPath : null;
     // The band fits the tallest thing it can hold, which is a two-line title;
     // the logo keeps its own smaller height inside it (HERO2).
     final band = TvHomeLayout.heroTitleBandHeight * scale;

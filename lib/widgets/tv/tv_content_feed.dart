@@ -307,7 +307,19 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
   /// nav watching the billboard cycle is the case hoofdstuk 9.6 is describing,
   /// not one it excludes. A *content row* holding the focus is excluded, and
   /// that is a condition 9.6 names.
-  bool get _autoplayEnabled => _destinationActive && _appResumed && _routeIsCurrent && !_rowHasFocus && _atTop;
+  ///
+  /// PB-10's [SettingsService.tvHeroAutoAdvance] is a sixth condition, read
+  /// here rather than through a listenable: this getter is already
+  /// recomputed on every build, and this widget rebuilds on every one of the
+  /// other five conditions changing, so Home does not need its own listener
+  /// for a toggle the Appearance screen's switch tile already reacts to.
+  bool get _autoplayEnabled =>
+      _destinationActive &&
+      _appResumed &&
+      _routeIsCurrent &&
+      !_rowHasFocus &&
+      _atTop &&
+      SettingsService.instance.read(SettingsService.tvHeroAutoAdvance);
 
   bool get _routeIsCurrent => ModalRoute.of(context)?.isCurrent ?? true;
 
