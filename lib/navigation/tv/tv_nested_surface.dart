@@ -48,6 +48,7 @@ class TvNestedSurface extends StatefulWidget {
     required this.dismiss,
     required this.child,
     this.covered = false,
+    this.topInset = 0,
   });
 
   final TvNestedRoute route;
@@ -66,6 +67,12 @@ class TvNestedSurface extends StatefulWidget {
   /// descendants as [TvNestedRouteScope] — see that class for why a screen
   /// needs this instead of a plain `Navigator.pop`.
   final void Function([Object? result]) dismiss;
+
+  /// The top edge this route has to respect itself, published to it as
+  /// `MediaQuery.padding.top`. 0 under a persistent bar, which already spent
+  /// the overscan; the bar's own inset under a collapsible one, whose box
+  /// starts at the top of the window (DEC-115).
+  final double topInset;
 
   final Widget child;
 
@@ -210,7 +217,7 @@ class TvNestedSurfaceState extends State<TvNestedSurface> {
         focusNode: _anchor,
         canRequestFocus: false,
         skipTraversal: true,
-        child: _ContentBoxMediaQuery(child: widget.child),
+        child: _ContentBoxMediaQuery(topInset: widget.topInset, child: widget.child),
       ),
     ),
   );
@@ -240,8 +247,9 @@ class TvNestedSurfaceState extends State<TvNestedSurface> {
 /// `TvDisplayMetrics`, which the shell publishes so `scaleOf` keeps reading the
 /// panel while layout reads the box.
 class _ContentBoxMediaQuery extends StatelessWidget {
-  const _ContentBoxMediaQuery({required this.child});
+  const _ContentBoxMediaQuery({required this.topInset, required this.child});
 
+  final double topInset;
   final Widget child;
 
   @override
@@ -258,8 +266,8 @@ class _ContentBoxMediaQuery extends StatelessWidget {
       return MediaQuery(
         data: media.copyWith(
           size: size,
-          padding: media.padding.copyWith(top: 0),
-          viewPadding: media.viewPadding.copyWith(top: 0),
+          padding: media.padding.copyWith(top: topInset),
+          viewPadding: media.viewPadding.copyWith(top: topInset),
         ),
         child: child,
       );

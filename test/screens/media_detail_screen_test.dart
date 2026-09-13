@@ -36,6 +36,7 @@ import 'package:pleya/media/watchlist_entry.dart';
 import 'package:pleya/media/watchlist_scope.dart';
 import 'package:pleya/media/watchlist_source.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
+import 'package:pleya/screens/tv/tv_root_shell.dart';
 import 'package:pleya/providers/download_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/watch_state_store.dart';
@@ -2439,6 +2440,7 @@ void main() {
       MultiServerProvider provider, {
       required Size panelSize,
       required Size nestedBoxSize,
+      double? shellTopInset,
     }) async {
       tester.view.physicalSize = panelSize;
       tester.view.devicePixelRatio = 1;
@@ -2460,12 +2462,20 @@ void main() {
                     dismiss: ([_]) {},
                     markResult: (_) {},
                     child: MediaQuery(
-                      data: MediaQueryData(size: nestedBoxSize),
+                      data: MediaQueryData(
+                        size: nestedBoxSize,
+                        padding: EdgeInsets.only(top: shellTopInset ?? 0),
+                      ),
                       child: Align(
                         alignment: Alignment.topLeft,
                         child: SizedBox.fromSize(
                           size: nestedBoxSize,
-                          child: MediaDetailScreen(metadata: metadata),
+                          // `TvShellSurface` is what tells the screen the shell
+                          // owns its top edge (DEC-115); left out, the screen
+                          // frames itself the way a standalone push does.
+                          child: shellTopInset == null
+                              ? MediaDetailScreen(metadata: metadata)
+                              : TvShellSurface(child: MediaDetailScreen(metadata: metadata)),
                         ),
                       ),
                     ),
@@ -2566,6 +2576,55 @@ void main() {
 
       final playButtonRect = rectOfFocusLabel(tester, 'play_button');
       expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
+    });
+
+    // DET3 negative control. Under the shell the info band used to start
+    // at 8% of the box on top of the band the bar already reserved, which on
+    // House left the band 127 px against a 151 px floor. It has to start at
+    // the top inset the shell publishes instead.
+    testWidgets('under the shell the info band starts at the inset the shell publishes, not a second margin', (
+      tester,
+    ) async {
+      final movie = MediaItem(
+        id: 'movie_det3',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'A Moderate Motion Picture Title',
+        summary: longSummary,
+        genres: const ['Drama'],
+        roles: castRoles(4),
+        year: 2024,
+        durationMs: 100 * 60 * 1000,
+        serverId: 'server_1',
+        serverName: 'Server',
+      );
+      final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      const panelSize = Size(1038, 584);
+      const shellTopInset = 13.0;
+      await pumpNestedDetail(
+        tester,
+        movie,
+        provider,
+        panelSize: panelSize,
+        nestedBoxSize: panelSize,
+        shellTopInset: shellTopInset,
+      );
+      expect(tester.takeException(), isNull);
+
+      final band = tester
+          .widgetList<Positioned>(find.byType(Positioned))
+          .where((p) => p.right == panelSize.width * 0.43)
+          .toList();
+      expect(band, hasLength(1), reason: 'the info band is the one Positioned with the 43% right inset');
+      expect(
+        band.single.top,
+        shellTopInset,
+        reason: 'the shell owns the top edge; the 8% standalone margin (${panelSize.height * 0.08}) stacks on its band',
+      );
     });
 
     testWidgets(

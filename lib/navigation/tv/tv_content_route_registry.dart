@@ -65,9 +65,10 @@ Future<Object?>? openTvContentRoute({
   required WidgetBuilder builder,
   String? restoreFocusKey,
   GlobalKey? screenKey,
+  TvTopNavPresentation topNav = TvTopNavPresentation.persistent,
 }) {
   if (!tvContentRouteRegistry.isAvailable) return null;
   return tvContentRouteRegistry.push(
-    TvNestedRoute(id: id, builder: builder, restoreFocusKey: restoreFocusKey, screenKey: screenKey),
+    TvNestedRoute(id: id, builder: builder, restoreFocusKey: restoreFocusKey, screenKey: screenKey, topNav: topNav),
   );
 }

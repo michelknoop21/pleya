@@ -228,37 +228,47 @@ class TvRootShell extends StatelessWidget {
                       node: navFocusScope,
                       child: ListenableBuilder(
                         listenable: coordinator,
-                        builder: (context, _) => TvTopNavigation(
-                          destinations: coordinator.destinations,
-                          active: coordinator.active,
-                          nodes: navNodes,
-                          profile: profile,
-                          // Audit divergentie 13, mockup 30 E: the bar dims
-                          // under an overlay. `isCurrent` flips when a sheet or
-                          // dialog is pushed above this route, and reading it
-                          // here makes that push rebuild the bar.
-                          dimmed: !(ModalRoute.of(context)?.isCurrent ?? true),
-                          onSelect: onSelectDestination,
-                          onFocusDestination: onFocusDestination,
-                          // DOWN out of the bar is the one press that means
-                          // "put me in the content"; `_focusContent` arms the
-                          // intent, and whatever can satisfy it consumes it —
-                          // now if the destination is ready, later if it is
-                          // still waiting on a server (P2).
-                          onNavigateDown: () => onFocusContent(restorePreviousFocus: true),
-                          onOpenProfiles: onOpenProfiles,
-                          // Hoofdstuk 18.4. Read here rather than passed down
-                          // from `MainScreen` so the bar is the only thing that
-                          // rebuilds when a token expires, and read through a
-                          // selector on the *auth* flag specifically: a server
-                          // merely going offline is not something the viewer
-                          // can act on, and marking it would train them to
-                          // ignore the dot that means they can.
-                          // Nullable: this shell is also mounted in tests and
-                          // in early startup frames that have no registry yet,
-                          // and "no provider" is not "attention required".
-                          needsAttention: context.select<MultiServerProvider?, bool>(
-                            (p) => p?.hasAuthErrorServers ?? false,
+                        builder: (context, _) => _TvCollapsibleNav(
+                          // DEC-115. Derived from the focus authority, never
+                          // stored: a hidden bar is by definition one the
+                          // remote is not in, so the ring can never sit on an
+                          // item nobody can see.
+                          overlay: coordinator.activeNestedRoute?.topNav == TvTopNavPresentation.collapsible,
+                          hidden:
+                              coordinator.activeNestedRoute?.topNav == TvTopNavPresentation.collapsible &&
+                              !isNavFocused,
+                          child: TvTopNavigation(
+                            destinations: coordinator.destinations,
+                            active: coordinator.active,
+                            nodes: navNodes,
+                            profile: profile,
+                            // Audit divergentie 13, mockup 30 E: the bar dims
+                            // under an overlay. `isCurrent` flips when a sheet or
+                            // dialog is pushed above this route, and reading it
+                            // here makes that push rebuild the bar.
+                            dimmed: !(ModalRoute.of(context)?.isCurrent ?? true),
+                            onSelect: onSelectDestination,
+                            onFocusDestination: onFocusDestination,
+                            // DOWN out of the bar is the one press that means
+                            // "put me in the content"; `_focusContent` arms the
+                            // intent, and whatever can satisfy it consumes it —
+                            // now if the destination is ready, later if it is
+                            // still waiting on a server (P2).
+                            onNavigateDown: () => onFocusContent(restorePreviousFocus: true),
+                            onOpenProfiles: onOpenProfiles,
+                            // Hoofdstuk 18.4. Read here rather than passed down
+                            // from `MainScreen` so the bar is the only thing that
+                            // rebuilds when a token expires, and read through a
+                            // selector on the *auth* flag specifically: a server
+                            // merely going offline is not something the viewer
+                            // can act on, and marking it would train them to
+                            // ignore the dot that means they can.
+                            // Nullable: this shell is also mounted in tests and
+                            // in early startup frames that have no registry yet,
+                            // and "no provider" is not "attention required".
+                            needsAttention: context.select<MultiServerProvider?, bool>(
+                              (p) => p?.hasAuthErrorServers ?? false,
+                            ),
                           ),
                         ),
                       ),
@@ -283,7 +293,11 @@ class TvRootShell extends StatelessWidget {
                             // is built for the active destination only, so a
                             // destination switch does tear it down — see
                             // [child] on where its place is kept instead.
+                            final topBand = TvShellSurface.topBandHeightOf(context);
+                            final scale = TvLayoutConstants.scaleOf(context);
                             return Stack(
+                              // A collapsible route runs up behind the bar.
+                              clipBehavior: Clip.none,
                               children: [
                                 // Offstage rather than removed, for the reason
                                 // above; `TickerMode` stops its animations from
@@ -341,19 +355,36 @@ class TvRootShell extends StatelessWidget {
                                 // `ExcludeFocus` so it is not reachable, and
                                 // `TickerMode` so it does not animate behind
                                 // the route on top of it.
+                                //
+                                // DEC-115: a collapsible route is given the
+                                // whole window, up behind the bar, the same
+                                // way Home's hero is (DEC-095). Positioned
+                                // here rather than by moving the content box,
+                                // so the destination roots underneath keep
+                                // their box and showing or hiding the bar
+                                // moves nothing.
                                 for (var i = 0; i < stack.length; i++)
-                                  ExcludeFocus(
-                                    excluding: i != stack.length - 1,
-                                    child: Offstage(
-                                      offstage: i != stack.length - 1,
-                                      child: TickerMode(
-                                        enabled: i == stack.length - 1,
-                                        child: TvNestedSurface(
-                                          key: stack[i].surfaceKey,
-                                          route: stack[i],
-                                          dismiss: dismissNestedRoute,
-                                          covered: i != stack.length - 1,
-                                          child: Builder(builder: stack[i].builder),
+                                  Positioned(
+                                    top: stack[i].topNav == TvTopNavPresentation.collapsible ? -topBand : 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    child: ExcludeFocus(
+                                      excluding: i != stack.length - 1,
+                                      child: Offstage(
+                                        offstage: i != stack.length - 1,
+                                        child: TickerMode(
+                                          enabled: i == stack.length - 1,
+                                          child: TvNestedSurface(
+                                            key: stack[i].surfaceKey,
+                                            route: stack[i],
+                                            dismiss: dismissNestedRoute,
+                                            covered: i != stack.length - 1,
+                                            topInset: stack[i].topNav == TvTopNavPresentation.collapsible
+                                                ? TvTopNavLayout.topInset * scale
+                                                : 0,
+                                            child: Builder(builder: stack[i].builder),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -371,6 +402,43 @@ class TvRootShell extends StatelessWidget {
             },
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The bar, as it sits above a [TvNestedRoute] (DEC-115).
+///
+/// Over a persistent route this is the bar and nothing else. Over a
+/// collapsible one the route runs up behind it, so the bar gets a scrim to stay
+/// readable against artwork, and it slides out of view while [hidden]. Sliding
+/// is a paint translation: the bar's measured height, and with it the band Home
+/// bleeds its hero into, stays what it was.
+class _TvCollapsibleNav extends StatelessWidget {
+  const _TvCollapsibleNav({required this.overlay, required this.hidden, required this.child});
+
+  final bool overlay;
+  final bool hidden;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    return AnimatedSlide(
+      offset: hidden ? const Offset(0, -1) : Offset.zero,
+      duration: TvTopNavLayout.focusDuration,
+      curve: Curves.easeOut,
+      child: DecoratedBox(
+        decoration: overlay
+            ? BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [tk.bg.withValues(alpha: 0.85), tk.bg.withValues(alpha: 0)],
+                ),
+              )
+            : const BoxDecoration(),
+        child: child,
       ),
     );
   }

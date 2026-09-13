@@ -1710,6 +1710,12 @@ class _MainScreenState extends State<MainScreen>
       // — pulling the viewer out of the bar they had deliberately walked back
       // to (P2).
       _tvContentFocus.cancel();
+      // The same rule for a nested route still retrying its focus entry
+      // (`TvNestedSurface`, up to five seconds while content lands late):
+      // left running, its next tick pulls the remote straight back out of the
+      // bar. Under a collapsible bar (DEC-115) that reads as the bar opening and
+      // snapping shut again.
+      _tvNav.activeNestedRoute?.surfaceKey.currentState?.cancelPendingEntry();
       _focus.focusSidebar(
         focusActiveItem: () {
           if (!mounted) return;

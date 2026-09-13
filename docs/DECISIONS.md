@@ -2624,3 +2624,47 @@ omdat dat een wijziging in het gedeelde railwidget voor alle aanroepers zou zijn
 Widgettests (`test/screens/libraries/mobile_libraries_screen_test.dart`) dekken het kaartraster, de
 serverfilterchips, verborgen bibliotheken, "Bewerken", de terugknop en de tik-naar-`LibrariesScreen`
 overdracht. Geen ios-sim Verify-run tegen `15-bibliotheken.png` vastgelegd deze sessie.
+
+## DEC-115: Film- en seriedetail openen met een ingeklapte topnav, en detail reserveert onder de shell geen eigen bovenmarge meer
+
+**Date:** 2026-09-13
+**Status:** accepted
+
+**Context:** DET3 in `docs/tvos-fysieke-correctieronde.md`. Op House S8E5 in de tvOS-simulator kreeg
+de informatieband van seriedetail 127 px, terwijl titel, metaregel, genres, actierij en bronregel
+samen al 151 px vragen. Een extra synopsistier (`fb7ceefe`) helpt daar niet: de ruimte is op voordat
+de tiers aan de beurt zijn. Er lopen twee bovenreserveringen over elkaar heen. De topnav-band neemt
+~83 px (28 inset, 33 balk, 22 gap op 1080). Daaronder zet `_buildTvDetailScreen` nog
+`spotlightTop`, 8% van de box en minstens 44 px, wat onder de shell ~80 px is. Die marge stamt uit
+de tijd dat detail als volledige push het hele venster had en zelf de overscan moest bewaken.
+
+PB-1 van `docs/tvos-redesign-implementatiecontract.md` legde vast dat de topnav zichtbaar blijft op
+film- en seriedetail. Michel koos op 13 september expliciet voor een ingeklapte topnav op die twee
+schermen, met de dubbele marge als deel van hetzelfde contract.
+
+**Decision:** Een geneste TV-route draagt een `TvTopNavPresentation`. De default is `persistent`,
+het gedrag van vóór dit besluit. Alleen de detailopener in `media_navigation_helper.dart` (film en
+serie) vraagt `collapsible`; collectie, persoon, instellingen en de catalogus blijven persistent.
+
+Onder een collapsible route bovenop de actieve bestemming:
+
+- de route krijgt het hele venster als box, doordat de shell hem met dezelfde `-topBand`-uitloop
+  positioneert die de Home-hero al gebruikt (DEC-095). De destination-roots eronder houden hun
+  contentbox, dus openen en sluiten verschuift niets onder water;
+- de topnav schuift weg zolang `isNavFocused` onwaar is, en schuift over het detail heen terug zodra
+  de focus in de balk staat. De focusauthority (`SidebarFocusCoordinator`) is daarmee de enige bron:
+  een ingeklapte balk kan geen focus hebben, en de box van de route verandert niet bij UP of DOWN;
+- de shell publiceert via `MediaQuery.padding.top` welke bovenrand de route zelf moet respecteren:
+  0 onder een persistente balk (die heeft de overscan al besteed), `TvTopNavLayout.topInset` onder
+  een collapsible balk.
+
+`_buildTvDetailScreen` leest onder `TvShellSurface` die padding als `spotlightTop`. Zonder shell
+(goldens, losse widgettests, een push op de profielnavigator) blijft de oude 8%-formule staan.
+
+UP, DOWN, LEFT/RIGHT in de balk en de back-keten lopen via de bestaande callbacks
+(`onFocusNav`, `onNavigateDown`, `onFocusDestination`, `tvBackStep`); daar verandert niets aan.
+
+**Consequences:** PB-1 is voor film- en seriedetail aangescherpt: de shell blijft eigenaar en de
+topnav blijft bereikbaar, maar hij staat daar standaard ingeklapt. Een geopende balk ligt tijdelijk
+over de bovenrand van het detail, zonder eigen achtergrond behalve een scrim voor leesbaarheid. Een
+volgend scherm dat dit gedrag wil, kiest het bij de opener; de shell kent geen schermnamen.

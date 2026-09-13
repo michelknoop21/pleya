@@ -14,6 +14,7 @@ import '../automation/pleya_verify.dart';
 import '../navigation/profile_navigation_scope.dart';
 import '../navigation/tv/tv_content_route_registry.dart';
 import '../navigation/tv/tv_nested_surface.dart';
+import 'tv/tv_root_shell.dart';
 import '../services/device_performance.dart';
 import '../services/image_cache_service.dart';
 import 'package:flutter/services.dart';
@@ -3948,7 +3949,15 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         // `scaleForSize(size)` read the box and floored to 0.85 well before
         // the panel itself would, overshooting every measurement below.
         final detailScale = TvLayoutConstants.scaleOf(context);
-        final spotlightTop = (size.height * 0.08).clamp(44.0 * detailScale, 110.0 * detailScale).toDouble();
+        // DEC-115: under the shell the top edge belongs to the shell, and it
+        // says how much this route has to keep clear itself through
+        // `MediaQuery.padding.top` (0 under a persistent bar, the bar's own
+        // overscan inset under a collapsible one). The 8% band is the frame of
+        // a standalone, full-window detail and stacked on top of the bar's
+        // band when nested.
+        final spotlightTop = TvShellSurface.isPresent(context)
+            ? MediaQuery.paddingOf(context).top
+            : (size.height * 0.08).clamp(44.0 * detailScale, 110.0 * detailScale).toDouble();
         final spotlightLeft = (24 * detailScale).clamp(18.0, 40.0).toDouble();
         // Same box `_buildTvDetailForeground`'s own `Positioned` below gives
         // it, computed here too so the genre-line measurement in the

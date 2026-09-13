@@ -299,6 +299,18 @@ class TvDestinationFocusMemory {
   String toString() => 'TvDestinationFocusMemory(element: $focusedElementId, group: $groupId, offset: $scrollOffset)';
 }
 
+/// How the top navigation sits above a [TvNestedRoute] (DEC-115).
+enum TvTopNavPresentation {
+  /// The bar stays on screen and the route gets the box below it (PB-1).
+  persistent,
+
+  /// The route gets the whole window and the bar is hidden while the focus is
+  /// in the content. UP into the bar slides it back in *over* the route, so the
+  /// route's box never changes and nothing underneath it jumps. Film and series
+  /// detail open this way.
+  collapsible,
+}
+
 /// A screen shown inside a destination, above its root, with the top navigation
 /// still on screen.
 ///
@@ -324,12 +336,23 @@ class TvDestinationFocusMemory {
 /// here now includes content. Callers reach it through
 /// `tv_content_route_registry.dart` rather than by finding a navigator.
 class TvNestedRoute {
-  TvNestedRoute({required this.id, required this.builder, this.restoreFocusKey, this.screenKey});
+  TvNestedRoute({
+    required this.id,
+    required this.builder,
+    this.restoreFocusKey,
+    this.screenKey,
+    this.topNav = TvTopNavPresentation.persistent,
+  });
 
   /// Stable identity, used to recognise a re-push of the same screen.
   final String id;
 
   final WidgetBuilder builder;
+
+  /// How the top navigation behaves while this route is on top. See
+  /// [TvTopNavPresentation]; the default is the bar every route had before
+  /// DEC-115.
+  final TvTopNavPresentation topNav;
 
   /// The focus key to return to when this route pops (hoofdstuk 7.6).
   final String? restoreFocusKey;
