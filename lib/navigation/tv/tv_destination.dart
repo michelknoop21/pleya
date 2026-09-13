@@ -73,7 +73,7 @@ enum TvDestinationId {
 /// [NavRailConditions] is one: the destination list is what the whole focus
 /// contract is indexed by, so it has to be testable without mounting a shell.
 class TvNavConditions {
-  const TvNavConditions({required this.hasLiveTv});
+  const TvNavConditions({required this.hasLiveTv, this.isOffline = false});
 
   /// Whether this profile has Live TV.
   ///
@@ -84,6 +84,12 @@ class TvNavConditions {
   /// sibling destination jump sideways whenever a DVR blinks, which is the
   /// failure this parameter's name is chosen to prevent.
   final bool hasLiveTv;
+
+  /// Whether the shell is currently rendering offline mode (PB-12).
+  ///
+  /// Defaults to false so every existing call site and test that only cares
+  /// about Live TV keeps building the online bar it always built.
+  final bool isOffline;
 }
 
 /// The TV top navigation's destinations, left to right.
@@ -92,12 +98,18 @@ class TvNavConditions {
 /// Mijn Pleya is unconditional (hoofdstuk 18.3: "Mijn Pleya zelf verdwijnt
 /// nooit") — it is the only route to Settings, Servers and Sign out on TV, so a
 /// condition that could hide it would be a condition that could strand someone.
+///
+/// Offline (PB-12), every other destination drops out: Search, Home, Series,
+/// Films and Live TV all resolve to [NavigationTab.onlineOnly] tabs
+/// ([NavigationTab.getVisibleTabs] already hides them from the screens list
+/// `MainScreen` builds), so leaving their pills in the bar would draw a
+/// focusable destination whose Select does nothing.
 List<TvDestinationId> buildTvDestinations(TvNavConditions c) => [
-  TvDestinationId.search,
-  TvDestinationId.home,
-  TvDestinationId.series,
-  TvDestinationId.movies,
-  if (c.hasLiveTv) TvDestinationId.liveTv,
+  if (!c.isOffline) TvDestinationId.search,
+  if (!c.isOffline) TvDestinationId.home,
+  if (!c.isOffline) TvDestinationId.series,
+  if (!c.isOffline) TvDestinationId.movies,
+  if (c.hasLiveTv && !c.isOffline) TvDestinationId.liveTv,
   TvDestinationId.myPleya,
 ];
 

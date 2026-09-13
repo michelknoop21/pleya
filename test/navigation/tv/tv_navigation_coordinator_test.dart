@@ -172,6 +172,33 @@ void main() {
       expect(coordinator.focusedDestination, isNot(TvDestinationId.liveTv));
       expect(coordinator.focusedDestination, coordinator.active);
     });
+
+    // MOC-23a: before this leaf `TvNavConditions` had no offline field, so an
+    // offline flip never reached the coordinator and Home/Series/Films/Search
+    // stayed in the bar as focusable pills that led nowhere.
+    test('going offline while home was active moves active to my pleya', () {
+      final coordinator = TvNavigationCoordinator();
+      addTearDown(coordinator.dispose);
+      coordinator.activate(TvDestinationId.home);
+
+      final result = coordinator.updateConditions(const TvNavConditions(hasLiveTv: false, isOffline: true));
+
+      expect(result, TvDestinationId.myPleya);
+      expect(coordinator.active, TvDestinationId.myPleya);
+      expect(coordinator.destinations, [TvDestinationId.myPleya]);
+    });
+
+    test('coming back online restores the full bar without forcing active off my pleya', () {
+      final coordinator = TvNavigationCoordinator();
+      addTearDown(coordinator.dispose);
+      coordinator.updateConditions(const TvNavConditions(hasLiveTv: true, isOffline: true));
+      expect(coordinator.active, TvDestinationId.myPleya);
+
+      coordinator.updateConditions(const TvNavConditions(hasLiveTv: true, isOffline: false));
+
+      expect(coordinator.destinations, contains(TvDestinationId.home));
+      expect(coordinator.active, TvDestinationId.myPleya, reason: 'a destination that is still present does not move');
+    });
   });
 
   group('content focus memory', () {
