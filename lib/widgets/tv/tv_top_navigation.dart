@@ -37,6 +37,7 @@ import '../../profiles/profile_avatar.dart';
 import '../../theme/mono_theme.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
+import 'tv_reconnect_item.dart';
 import 'tv_unified_layout.dart';
 
 class TvTopNavigation extends StatelessWidget {
@@ -158,7 +159,7 @@ class TvTopNavigation extends StatelessWidget {
                   onSelect: onOpenProfiles,
                   onNavigateDown: onNavigateDown,
                   onNavigateRight: showReconnect
-                      ? () => _focusKey(_reconnectFocusKey)
+                      ? () => _focusKey(tvReconnectFocusKey)
                       : (destinations.isEmpty ? null : () => _focus(destinations.first)),
                 ),
               ),
@@ -166,8 +167,8 @@ class TvTopNavigation extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (showReconnect) ...[
-                    _ReconnectItem(
-                      node: nodes.get(_reconnectFocusKey, debugLabel: _reconnectFocusKey),
+                    TvReconnectItem(
+                      node: nodes.get(tvReconnectFocusKey, debugLabel: tvReconnectFocusKey),
                       scale: scale,
                       isReconnecting: isReconnecting,
                       onSelect: onReconnect!,
@@ -206,7 +207,7 @@ class TvTopNavigation extends StatelessWidget {
                       // one, otherwise to the profile chip, the only other
                       // thing to its left; the last simply stops.
                       onNavigateLeft: i == 0
-                          ? () => _focusKey(showReconnect ? _reconnectFocusKey : _profileFocusKey)
+                          ? () => _focusKey(showReconnect ? tvReconnectFocusKey : _profileFocusKey)
                           : () => _focus(destinations[i - 1]),
                       onNavigateRight: i == destinations.length - 1 ? null : () => _focus(destinations[i + 1]),
                     ),
@@ -249,104 +250,6 @@ class TvTopNavigation extends StatelessWidget {
 /// navigator and never becomes an active destination, so it has no pill state
 /// and no tab behind it.
 const String _profileFocusKey = 'tvNav_profile';
-
-/// The reconnect item's focus key. Not a [TvDestinationId] for the same
-/// reason as the profile chip above: it triggers an action rather than
-/// selecting a tab, so it carries no `.tab` and never becomes `active`.
-const String _reconnectFocusKey = 'tvNav_reconnect';
-
-/// OFF-1: the TV bar's only offline affordance before this was Mijn Pleya
-/// itself (Servers, reachable from there). Mirrors [SideNavigationRail]'s
-/// `_buildReconnectItem` — same icon swap, same label, same disabled-while-
-/// reconnecting tap — drawn as one more pill in the bar rather than a new
-/// kind of control, so it inherits the bar's existing focus ring and D-pad
-/// contract for free.
-class _ReconnectItem extends StatelessWidget {
-  const _ReconnectItem({
-    required this.node,
-    required this.scale,
-    required this.isReconnecting,
-    required this.onSelect,
-    required this.onNavigateDown,
-    required this.onNavigateLeft,
-    required this.onNavigateRight,
-  });
-
-  final FocusNode node;
-  final double scale;
-  final bool isReconnecting;
-  final VoidCallback onSelect;
-  final VoidCallback onNavigateDown;
-  final VoidCallback? onNavigateLeft;
-  final VoidCallback? onNavigateRight;
-
-  @override
-  Widget build(BuildContext context) {
-    final tk = tokens(context);
-    const shape = StadiumBorder();
-
-    return FocusableWrapper(
-      focusNode: node,
-      // No-op while reconnecting, same contract as the rail's item: Select
-      // must not fire a second reconnect attempt on top of the one in flight.
-      onSelect: isReconnecting ? null : onSelect,
-      automationId: AutomationIds.navReconnect,
-      automationRole: 'nav',
-      onNavigateDown: onNavigateDown,
-      onNavigateLeft: onNavigateLeft,
-      onNavigateRight: onNavigateRight,
-      focusShapeBorder: shape,
-      disableScale: true,
-      semanticLabel: t.common.reconnect,
-      child: ExcludeSemantics(
-        child: Padding(
-          padding: EdgeInsets.all(TvTopNavLayout.focusRingGap * scale),
-          child: DecoratedBox(
-            decoration: const ShapeDecoration(shape: shape, color: Colors.transparent),
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: TvTopNavLayout.pillPaddingHorizontal * scale,
-                vertical: TvTopNavLayout.pillPaddingVertical * scale,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isReconnecting)
-                    SizedBox(
-                      width: TvTopNavLayout.searchIconSize * scale,
-                      height: TvTopNavLayout.searchIconSize * scale,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: tk.text.withValues(alpha: TvTopNavLayout.inactiveInk),
-                      ),
-                    )
-                  else
-                    Icon(
-                      Symbols.wifi_rounded,
-                      size: TvTopNavLayout.searchIconSize * scale,
-                      color: tk.text.withValues(alpha: TvTopNavLayout.inactiveInk),
-                    ),
-                  SizedBox(width: TvTopNavLayout.focusRingGap * 2 * scale),
-                  Text(
-                    t.common.reconnect,
-                    maxLines: 1,
-                    overflow: TextOverflow.clip,
-                    softWrap: false,
-                    style: TextStyle(
-                      fontSize: TvTopNavLayout.itemFontSize * scale,
-                      fontWeight: FontWeight.w500,
-                      color: tk.text.withValues(alpha: TvTopNavLayout.inactiveInk),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _NavItem extends StatelessWidget {
   const _NavItem({
