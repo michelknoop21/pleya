@@ -10,16 +10,19 @@ import '../providers/download_provider.dart';
 import '../utils/app_logger.dart';
 import '../utils/dialogs.dart';
 import '../utils/download_utils.dart';
+import '../utils/media_navigation_helper.dart';
 import '../utils/platform_detector.dart';
 import '../utils/media_server_http_client.dart';
 import '../utils/snackbar_helper.dart';
 import '../widgets/desktop_app_bar.dart';
 import '../widgets/notice/notice_controller.dart';
+import '../widgets/tv/tv_source_row_descriptor.dart' show backendDisplayLabel;
 import '../i18n/strings.g.dart';
 import 'base_media_list_detail_screen.dart';
 import 'focusable_detail_screen_mixin.dart';
 import '../mixins/grid_focus_node_mixin.dart';
 import '../services/playlist_items_loader.dart';
+import 'tv/tv_collection_screen.dart';
 import '../utils/error_message_utils.dart';
 
 /// Screen to display the contents of a collection
@@ -38,6 +41,16 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
         FocusableDetailScreenMixin<CollectionDetailScreen>,
         PaginatedItemLoader<MediaItem, CollectionDetailScreen> {
   static const int _pageSize = 200;
+
+  /// Tracked separately from [PaginatedItemLoader]'s private loading state:
+  /// `ensureIndexLoaded` is fire-and-forget, so this is reset from
+  /// [onPageLoaded] rather than awaited.
+  bool _isLoadingMoreOnTv = false;
+
+  @override
+  void onPageLoaded(int start, List<MediaItem> items) {
+    if (_isLoadingMoreOnTv) setState(() => _isLoadingMoreOnTv = false);
+  }
 
   @override
   MediaItem get mediaItem => widget.collection;
@@ -234,6 +247,8 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
 
   @override
   Widget build(BuildContext context) {
+    if (PlatformDetector.isAppleTV()) return _buildTvCollection(context);
+
     return buildDetailScaffold(
       slivers: [
         CustomAppBar(title: Text(widget.collection.title!), actions: buildFocusableAppBarActions()),
@@ -249,5 +264,64 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
           ),
       ],
     );
+  }
+
+  /// MOC-24 (PB-13): see `tv/tv_collection_screen.dart` for the composition.
+  /// This screen keeps owning the data and the actions; only presentation
+  /// moves to the TV widget, the same split `MediaDetailScreen` uses for its
+  /// own `_buildTvDetailScreen`.
+  Widget _buildTvCollection(BuildContext context) {
+    // PaginatedItemLoader only ever fetches sequentially here (initial page,
+    // then `_loadMoreOnTv` appending at the end), so `loadedItems` is dense
+    // from 0 and this is never sparse.
+    final loadedList = [for (var i = 0; i < loadedItems.length; i++) loadedItems[i]!];
+
+    return TvCollectionScreen(
+      collection: widget.collection,
+      items: loadedList,
+      totalSize: totalSize,
+      isLoading: isLoading,
+      isLoadingMore: _isLoadingMoreOnTv,
+      errorMessage: errorMessage,
+      client: mediaClient,
+      backendLabel: backendDisplayLabel(mediaClient.backend),
+      onRetry: loadItems,
+      onLoadMore: _loadMoreOnTv,
+      onPlay: playItems,
+      onShuffle: shufflePlayItems,
+      onDelete: _deleteCollection,
+      onSelectItem: (item) => navigateToMediaItem(context, item, onRefresh: updateItem),
+      onRemoveItem: _removeItemOnTv,
+    );
+  }
+
+  void _loadMoreOnTv() {
+    if (_isLoadingMoreOnTv || loadedItems.length >= totalSize) return;
+    setState(() => _isLoadingMoreOnTv = true);
+    ensureIndexLoaded(loadedItems.length, pageSize: _pageSize);
+  }
+
+  Future<void> _removeItemOnTv(MediaItem item) async {
+    final confirmed = await showDeleteConfirmation(
+      context,
+      title: t.collections.removeFromCollection,
+      message: t.collections.removeFromCollectionConfirm(title: item.displayTitle),
+    );
+    if (!confirmed || !mounted) return;
+
+    try {
+      final success = await mediaClient.removeFromCollection(collectionId: widget.collection.id, item: item);
+      if (!mounted) return;
+      if (success) {
+        final index = loadedItems.entries.firstWhere((e) => e.value.id == item.id).key;
+        setState(() => removeLoadedItemAndShift(index));
+        showSuccessSnackBar(context, t.collections.removedFromCollection);
+      } else {
+        showErrorSnackBar(context, t.collections.removeFromCollectionFailed);
+      }
+    } catch (e) {
+      appLogger.e('Failed to remove item from collection', error: e);
+      if (mounted) showErrorSnackBar(context, t.collections.removeFromCollectionFailed);
+    }
   }
 }

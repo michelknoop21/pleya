@@ -3283,6 +3283,12 @@ class TranslationsCollectionsEn {
 	/// en: 'Collection is empty'
 	String get empty => 'Collection is empty';
 
+	/// en: 'Add titles to this collection to see them here.'
+	String get emptyBody => 'Add titles to this collection to see them here.';
+
+	/// en: 'In this collection'
+	String get inThisCollection => 'In this collection';
+
 	/// en: 'Cannot delete: Unknown library section'
 	String get unknownLibrarySection => 'Cannot delete: Unknown library section';
 
@@ -8094,6 +8100,8 @@ extension on Translations {
 			'collections.title' => 'Collections',
 			'collections.collection' => 'Collection',
 			'collections.empty' => 'Collection is empty',
+			'collections.emptyBody' => 'Add titles to this collection to see them here.',
+			'collections.inThisCollection' => 'In this collection',
 			'collections.unknownLibrarySection' => 'Cannot delete: Unknown library section',
 			'collections.deleteCollection' => 'Delete Collection',
 			'collections.deleteConfirm' => ({required Object title}) => 'Delete "${title}"? This can\'t be undone.',
@@ -8568,10 +8576,10 @@ extension on Translations {
 			'seerr.requestAgain' => 'Request',
 			'seerr.processing' => 'Processing',
 			'seerr.partiallyAvailable' => 'Partially available',
-			'seerr.available' => 'Available',
-			'seerr.alreadyRequested' => 'Already requested',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.available' => 'Available',
+			'seerr.alreadyRequested' => 'Already requested',
 			'seerr.pending' => 'Pending',
 			'seerr.approved' => 'Approved',
 			'seerr.declined' => 'Declined',
