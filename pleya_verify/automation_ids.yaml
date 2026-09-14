@@ -54,6 +54,9 @@ ids:
   - id: nav.profile
     role: nav
     instanceable: false
+  - id: nav.reconnect
+    role: nav
+    instanceable: false
   - id: nav.bar
     role: nav
     instanceable: false

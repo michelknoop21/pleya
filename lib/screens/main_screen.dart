@@ -67,6 +67,7 @@ import '../providers/hidden_libraries_provider.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/playback_state_provider.dart';
 import '../widgets/settings_builder.dart';
+import '../widgets/tv/tv_reconnect_item.dart' show tvReconnectFocusKey;
 import '../widgets/tv_virtual_keyboard.dart';
 import '../services/api_cache.dart';
 import '../services/multi_server_manager.dart';
@@ -133,6 +134,14 @@ bool shouldRenderMainScreenOffline({
   required bool hasVisibleConnectedServers,
 }) {
   return providerOffline || (startupOfflineUntilConnected && !hasVisibleConnectedServers);
+}
+
+/// OFF-1 follow-up: whether the TV top nav's focus needs recovering after an
+/// offline→online transition. True only when the remote was left on the
+/// reconnect pill right as it disappeared from the bar.
+@visibleForTesting
+bool shouldRecoverTvTopNavFocusAfterReconnect({required bool reconnectItemWasFocused, required bool isOfflineNow}) {
+  return reconnectItemWasFocused && !isOfflineNow;
 }
 
 /// Destinations with no bar slot of their own, and where that slot went.
@@ -1645,6 +1654,14 @@ class _MainScreenState extends State<MainScreen>
 
     final previousTab = _currentTab;
     final wasOffline = _isOffline;
+    // Captured before the rebuild below: coming back online prunes the TV
+    // bar's reconnect item (`TvTopNavigation.showReconnect` goes false), and
+    // unlike a `TvDestinationId` disappearing, `TvNavigationCoordinator`
+    // never tracked this node, so nothing else notices it just went away
+    // with the remote's focus on it. Codex challenge, OFF-1 follow-up: the
+    // remote would be left on a focus stop that no longer exists, so arrow
+    // presses would have nothing to move.
+    final reconnectWasFocused = _isTvShell && _tvNavNodes.isFocused(tvReconnectFocusKey);
     setState(() {
       _isReconnecting = false;
       _isOffline = newOffline;
@@ -1683,6 +1700,15 @@ class _MainScreenState extends State<MainScreen>
 
     // Refresh sidebar focus after rebuilding navigation
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (shouldRecoverTvTopNavFocusAfterReconnect(
+        reconnectItemWasFocused: reconnectWasFocused,
+        isOfflineNow: _isOffline,
+      )) {
+        // The item the remote was on just left the tree; land it on the bar's
+        // own current item instead of leaving it with nothing focused.
+        _focusSidebar();
+        return;
+      }
       _sideNavKey.currentState?.focusActiveItem();
     });
 
@@ -2635,6 +2661,11 @@ class _MainScreenState extends State<MainScreen>
       selectLibrary: _selectLibrary,
       openSettings: _openSettings,
       dismissNestedRoute: _popTvNestedRoute,
+      // OFF-1: same props the rail (line ~2850) and the bottom nav bar's
+      // reconnect strip (line ~2897) already get.
+      isOfflineMode: _isOffline,
+      isReconnecting: _isReconnecting,
+      onReconnect: _triggerReconnect,
       child: _buildTickerAwareStack(),
     );
   }

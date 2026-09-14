@@ -80,6 +80,9 @@ class TvRootShell extends StatelessWidget {
     required this.openSettings,
     required this.dismissNestedRoute,
     required this.child,
+    this.isOfflineMode = false,
+    this.isReconnecting = false,
+    this.onReconnect,
   });
 
   final TvNavigationCoordinator coordinator;
@@ -151,6 +154,14 @@ class TvRootShell extends StatelessWidget {
   /// loaded pages — is registered above this shell in the profile subtree and
   /// is not restarted by a rebuild of the screen that reads it.
   final Widget child;
+
+  /// OFF-1: same three props [SideNavigationRail] already takes, so the bar
+  /// can grow the reconnect item the rail and the mobile bottom bar already
+  /// have. `MainScreen` owns the value, same as `isOfflineMode` does for
+  /// [TvNavConditions] via `_syncTvDestinations`.
+  final bool isOfflineMode;
+  final bool isReconnecting;
+  final VoidCallback? onReconnect;
 
   @override
   Widget build(BuildContext context) {
@@ -269,6 +280,9 @@ class TvRootShell extends StatelessWidget {
                             needsAttention: context.select<MultiServerProvider?, bool>(
                               (p) => p?.hasAuthErrorServers ?? false,
                             ),
+                            isOfflineMode: isOfflineMode,
+                            isReconnecting: isReconnecting,
+                            onReconnect: onReconnect,
                           ),
                         ),
                       ),

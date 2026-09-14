@@ -21,6 +21,12 @@ class AutomationIds {
   /// has to be able to name where the leftmost hop lands.
   static const String navProfile = 'nav.profile';
 
+  /// OFF-1: the TV bar's reconnect item, shown only while offline. Not a
+  /// [NavigationTabId] for the same reason [navProfile] isn't — it triggers
+  /// an action instead of selecting a tab — but still a focus stop a walk
+  /// over the bar has to be able to name.
+  static const String navReconnect = 'nav.reconnect';
+
   static const String screenMain = 'screen.main';
   static const String screenDiscover = 'screen.discover';
   static const String screenLibraries = 'screen.libraries';
@@ -391,6 +397,7 @@ class AutomationIds {
     {'id': screenMediaDetail, 'role': 'screen', 'instanceable': false},
     for (final tab in NavigationTabId.values) {'id': navTab(tab), 'role': 'nav', 'instanceable': false},
     {'id': navProfile, 'role': 'nav', 'instanceable': false},
+    {'id': navReconnect, 'role': 'nav', 'instanceable': false},
     {'id': navBar, 'role': 'nav', 'instanceable': false},
     {'id': sidebarRail, 'role': 'sidebar', 'instanceable': false},
     {'id': sidebarLibraryRow, 'role': 'nav.item', 'instanceable': true},

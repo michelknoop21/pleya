@@ -31,6 +31,7 @@ void main() {
   late List<TvDestinationId> ringMoves;
   late int downCalls;
   late int profileCalls;
+  late int reconnectCalls;
 
   setUp(() {
     nodes = FocusMemoryTracker(debugLabelPrefix: 'tvNav');
@@ -38,6 +39,7 @@ void main() {
     ringMoves = [];
     downCalls = 0;
     profileCalls = 0;
+    reconnectCalls = 0;
   });
 
   tearDown(() => nodes.dispose());
@@ -62,6 +64,12 @@ void main() {
     bool needsAttention = false,
     bool dimmed = false,
     TextDirection? directionality,
+    bool isOfflineMode = false,
+    bool isReconnecting = false,
+    bool hasOnReconnect = false,
+    // The reconnecting state draws a CircularProgressIndicator, whose
+    // animation never settles — pumpAndSettle would time out waiting for it.
+    bool settle = true,
   }) async {
     tester.view.physicalSize = const Size(1280, 720);
     tester.view.devicePixelRatio = 1.0;
@@ -106,6 +114,9 @@ void main() {
                       onFocusDestination: ringMoves.add,
                       onNavigateDown: () => downCalls++,
                       onOpenProfiles: () => profileCalls++,
+                      isOfflineMode: isOfflineMode,
+                      isReconnecting: isReconnecting,
+                      onReconnect: hasOnReconnect ? () => reconnectCalls++ : null,
                     );
                     return directionality == null ? bar : Directionality(textDirection: directionality, child: bar);
                   },
@@ -116,7 +127,11 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      await tester.pump();
+    }
   }
 
   List<TvDestinationId> withoutLiveTv() => buildTvDestinations(const TvNavConditions(hasLiveTv: false));
@@ -409,6 +424,95 @@ void main() {
       expect(identical(nodes.get(TvDestinationId.myPleya.focusKey), before), isTrue);
       expect(focusedLabel(), TvDestinationId.myPleya.focusKey);
       expect(find.text(t.navigation.liveTv), findsOneWidget);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // OFF-1: the bar's reconnect affordance (docs/tvos-fysieke-correctieronde.md)
+  // ---------------------------------------------------------------------------
+
+  group('OFF-1 reconnect affordance', () {
+    List<TvDestinationId> offlineDestinations() =>
+        buildTvDestinations(const TvNavConditions(hasLiveTv: false, isOffline: true));
+
+    testWidgets('shows only when offline mode is on and a callback is given', (tester) async {
+      await pump(
+        tester,
+        destinations: offlineDestinations(),
+        active: TvDestinationId.myPleya,
+        isOfflineMode: true,
+        hasOnReconnect: true,
+      );
+      expect(find.text(t.common.reconnect), findsOneWidget);
+    });
+
+    testWidgets('stays hidden offline without a callback, same contract as the rail', (tester) async {
+      await pump(tester, destinations: offlineDestinations(), active: TvDestinationId.myPleya, isOfflineMode: true);
+      expect(find.text(t.common.reconnect), findsNothing);
+    });
+
+    testWidgets('stays hidden while online even if a callback is given', (tester) async {
+      await pump(tester, destinations: withoutLiveTv(), active: TvDestinationId.home, hasOnReconnect: true);
+      expect(find.text(t.common.reconnect), findsNothing);
+    });
+
+    testWidgets('sits between the profile chip and Mijn Pleya in the walk', (tester) async {
+      await pump(
+        tester,
+        destinations: offlineDestinations(),
+        active: TvDestinationId.myPleya,
+        isOfflineMode: true,
+        hasOnReconnect: true,
+      );
+
+      focus('tvNav_profile');
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), 'tvNav_reconnect');
+
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), TvDestinationId.myPleya.focusKey);
+
+      await press(tester, LogicalKeyboardKey.arrowLeft);
+      expect(focusedLabel(), 'tvNav_reconnect');
+
+      await press(tester, LogicalKeyboardKey.arrowLeft);
+      expect(focusedLabel(), 'tvNav_profile');
+    });
+
+    testWidgets('Select triggers reconnect, not a destination select', (tester) async {
+      await pump(
+        tester,
+        destinations: offlineDestinations(),
+        active: TvDestinationId.myPleya,
+        isOfflineMode: true,
+        hasOnReconnect: true,
+      );
+
+      focus('tvNav_reconnect');
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.select);
+
+      expect(reconnectCalls, 1);
+      expect(selected, isEmpty);
+    });
+
+    testWidgets('Select is a no-op while a reconnect is already in flight', (tester) async {
+      await pump(
+        tester,
+        destinations: offlineDestinations(),
+        active: TvDestinationId.myPleya,
+        isOfflineMode: true,
+        hasOnReconnect: true,
+        isReconnecting: true,
+        settle: false,
+      );
+
+      focus('tvNav_reconnect');
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.select);
+
+      expect(reconnectCalls, 0);
     });
   });
 

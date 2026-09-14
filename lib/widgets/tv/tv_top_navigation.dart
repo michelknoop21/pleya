@@ -37,6 +37,7 @@ import '../../profiles/profile_avatar.dart';
 import '../../theme/mono_theme.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
+import 'tv_reconnect_item.dart';
 import 'tv_unified_layout.dart';
 
 class TvTopNavigation extends StatelessWidget {
@@ -52,6 +53,9 @@ class TvTopNavigation extends StatelessWidget {
     required this.onOpenProfiles,
     this.dimmed = false,
     this.profile,
+    this.isOfflineMode = false,
+    this.isReconnecting = false,
+    this.onReconnect,
   });
 
   /// Left to right, as [buildTvDestinations] ordered them.
@@ -94,9 +98,28 @@ class TvTopNavigation extends StatelessWidget {
 
   final Profile? profile;
 
+  /// Whether the shell is currently rendering offline mode (PB-12, OFF-1).
+  ///
+  /// Mirrors [SideNavigationRail.isOfflineMode]: TV had the same offline
+  /// state as desktop and mobile but no affordance to act on it — the rail
+  /// and the mobile bottom bar both grew a reconnect control, the bar never
+  /// did.
+  final bool isOfflineMode;
+
+  /// Mirrors [SideNavigationRail.isReconnecting].
+  final bool isReconnecting;
+
+  /// Null hides the reconnect item even when [isOfflineMode] is true, same
+  /// contract as the rail's `onReconnect`.
+  final VoidCallback? onReconnect;
+
   @override
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
+    // Same gate as [NavRailDestination.reconnect]'s `c.isOfflineMode &&
+    // c.canReconnect`: a null callback hides the item rather than wiring a
+    // dead Select.
+    final showReconnect = isOfflineMode && onReconnect != null;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -135,12 +158,27 @@ class TvTopNavigation extends StatelessWidget {
                   scale: scale,
                   onSelect: onOpenProfiles,
                   onNavigateDown: onNavigateDown,
-                  onNavigateRight: destinations.isEmpty ? null : () => _focus(destinations.first),
+                  onNavigateRight: showReconnect
+                      ? () => _focusKey(tvReconnectFocusKey)
+                      : (destinations.isEmpty ? null : () => _focus(destinations.first)),
                 ),
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (showReconnect) ...[
+                    TvReconnectItem(
+                      node: nodes.get(tvReconnectFocusKey, debugLabel: tvReconnectFocusKey),
+                      scale: scale,
+                      isReconnecting: isReconnecting,
+                      onSelect: onReconnect!,
+                      onNavigateDown: onNavigateDown,
+                      onNavigateLeft: () => _focusKey(_profileFocusKey),
+                      onNavigateRight: destinations.isEmpty ? null : () => _focus(destinations.first),
+                    ),
+                    if (destinations.isNotEmpty)
+                      SizedBox(key: const ValueKey('reconnect_gap'), width: TvTopNavLayout.itemGap * scale),
+                  ],
                   for (var i = 0; i < destinations.length; i++) ...[
                     if (i > 0)
                       SizedBox(key: ValueKey('${destinations[i].focusKey}_gap'), width: TvTopNavLayout.itemGap * scale),
@@ -165,9 +203,12 @@ class TvTopNavigation extends StatelessWidget {
                       onFocused: () => onFocusDestination(destinations[i]),
                       onNavigateDown: onNavigateDown,
                       // No wrap at either end (hoofdstuk 7.2). The first item
-                      // hands Left to the profile chip, which is the only thing
-                      // to its left; the last simply stops.
-                      onNavigateLeft: i == 0 ? () => _focusKey(_profileFocusKey) : () => _focus(destinations[i - 1]),
+                      // hands Left to the reconnect item when offline shows
+                      // one, otherwise to the profile chip, the only other
+                      // thing to its left; the last simply stops.
+                      onNavigateLeft: i == 0
+                          ? () => _focusKey(showReconnect ? tvReconnectFocusKey : _profileFocusKey)
+                          : () => _focus(destinations[i - 1]),
                       onNavigateRight: i == destinations.length - 1 ? null : () => _focus(destinations[i + 1]),
                     ),
                   ],

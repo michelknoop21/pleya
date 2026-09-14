@@ -342,7 +342,7 @@ Hier staan ze bij de werkstroom die ze bezit.
 | PNL-1 | Infopaneel gooit secundaire spoorlabels weg, `tv_audio_subtitle_tabs.dart:105, 375, 407` | MOC-33 | FIXED, Mac-run open |
 | LIVE-1 | `PlatformDetector.shouldUseSideNavigation` waar op TV: twee navigatiebalken in Live TV | MOC-17 | OPEN |
 | ACT-2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | MOC-16, SYS-1 | FIXED, hardware open, `4598e1ea` |
-| OFF-1 | Geen reconnect-affordance op TV | MOC-23 | OPEN |
+| OFF-1 | Geen reconnect-affordance op TV | MOC-23 | FIXED, hardware open, `a749bf18`, `587750af` |
 | OFF-2 | Offline topnav toont dode pills | MOC-23, SYS-1 | FIXED, hardware open, `472233db`, `267e6dc1` |
 | FOC-1 | Verdwijnende gefocuste TV-topnav-pil (Live TV, of offline sinds `472233db`) verplaatst de logische focus wel maar niet de echte `FocusNode` | MOC-23, SYS-1 | OPEN |
 | OVR1b | Legacy `MediaContextMenu`, rating-sheet, kijklijst-item-sheet en Live TV-sheets vallen op tvOS in een 400x400 bottom sheet | SYS-3b | DONE, `96f2d45` |
