@@ -89,7 +89,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | WL2 | Kijklijst end-to-end in Pleya Verify | GEBLOKKEERD op het fixture, niet op de code | n.v.t. | De kijklijst is gebouwd (CAT11, mockup 34) en draagt sinds die bouw de automation-ids `tv.catalog.grid[watchlist]`, `tv.catalog.grid.item[watchlist.N]`, `tv.catalog.rail[watchlist]`, `tv.catalog.rail.row[watchlist.*]` en `tv.catalog.state[watchlist.*]`, dus het scherm is meetbaar. Wat ontbreekt is een fixture die een kijklijst kán dragen: `WatchlistSourceFactory` bouwt uitsluitend een Plex-accountwatchlist en Jellyfin-favorieten, en de fixture-server spreekt `/v1/*`. Op `catalog.mixed.v1` is `hasWatchlist` dus false en tekent Mijn Pleya de tegel niet eens, zoals `tvos.my-pleya.walk-grid.yaml` al vastlegde. Een scenario dat hier tegenaan loopt zou niet falen maar nooit kunnen slagen, en dat is precies de fout die `tvos.library.sort` een ronde eerder maakte. Sluit hem zodra er een fixture is die favorieten voert, of leg vast dat de dekking op een echte Jellyfin-aanmelding hoort |
 | REQ1 | Aanvragen end-to-end in Pleya Verify | FIXED, simulator geverifieerd | `f72466f2`, `39f266be`, `df3dab65`, `2be95338` | `SeerrFakeServer` (apiKey-only, `/seerr/*` op dezelfde fixture-poort) sluit het fixturegat: Seerr praat toch al tegen een eigen geconfigureerde URL, los van elke mediaserververbinding, dus dit hoefde niet via het Pleya-protocol. Onderweg twee losstaande bevindingen. Eén TV-focusbug: `SeerrSettingsScreen`/`TautulliSettingsScreen` gaven de afstandsbediening nooit initiële focus (CAT13's bevinding op het naburige aanvragenscherm gold hier ook), en geen enkel formulierveld of -knop had een eigen `AutomationNode`-`focusNode`, dus elke assertie zag "niets gefocust" ook nadat de echte focus er al stond. Eén fixturebug: de eerste versie van `seerr.requests.v1` gebruikte verzonnen statuscodes die niet bij `SeerrRequestStatus`'s eigen encoding pasten, en toonde "Mislukt" waar "In behandeling" bedoeld was. `tvos.my-pleya.requests-discover.yaml` drijft het apiKey-verbindingsformulier met echte remote-presses (tvOS heeft geen aanraakvlak, C2) en bewijst dat Alle aanvragen daarna gevuld is |
 | MYP1 | Regressiebewijs voor het Mijn Pleya-werk | OPEN | n.v.t. |
-| ACT1 | Activiteit is niet te verifiëren | ACCEPTANCE GAP | n.v.t. |
+| ACT1 | Activiteit is niet te verifiëren | ACCEPTANCE GAP, fake Tautulli-server klaar (`f72466f2`, `0aa71164`) | n.v.t. | zie de sectie hieronder voor het geactualiseerde onderzoek van 14 september: `isOwnerOrAdmin` blokkeert de tegel voor elk profiel dat uitsluitend via Pleya Server verbindt, los van de fixture |
 | VER2 | Automation-ids escapen geen blokhaken | DEFERRED | n.v.t. |
 | HERO1 | Framing van het hero-beeld op Home: op hardware staan halve beelden in de hero, Plex snijdt gecentreerd vóórdat de widget iets kan kiezen | FIXED, hardware open | `d4ec1fe` |
 | HERO2 | De titelband van de hero is de clearlogo-hoogte, dus een tweeregelige titel wordt op de baseline afgesneden | FIXED | `0ad49ec` |
@@ -1049,6 +1049,25 @@ fixture betekent dus een fake Plex-server plus een fake Tautulli-server in
 seeden: allebei nieuwe infrastructuur op de schaal van `PleyaFakeServer`
 zelf, geen losse fixture-case in `named_fixtures.dart`. Blijft `ACCEPTANCE
 GAP` tot die keuze gemaakt is.
+
+**14 september 2026, T3a-onderzoek.** Een fake Tautulli-server (apiKey-only,
+`/tautulli/*` op de bestaande fixture-poort) is gebouwd en getest: `f72466f2`
+liet zien dat `NowWatchingProvider.isAvailable` inderdaad geen echte Plex-
+verbinding nodig heeft, alleen een gepaarde Tautulli-client en een eigen
+server. Wat dat traject blootlegde is een tweede, dieperliggende poort:
+`MultiServerManager.isOwnerOrAdmin` (`lib/services/multi_server_manager.dart:281-289`)
+geeft expliciet `false` terug voor alles behalve `PlexClient`/`JellyfinClient`,
+dus zowel de Tautulli-instellingentegel als de Activiteit-tegel in de Mijn
+Pleya-hub blijven onbereikbaar voor een profiel dat uitsluitend via Pleya
+Server verbindt, met of zonder Tautulli-fixture. Dat is precies wat deze
+bevinding hierboven al waarschuwde: niet oplossen door het productpredicaat
+te versoepelen. `isOwnerOrAdmin` bewust niet aangeraakt: die poort dicht
+zetten voor Pleya Server raakt ook `lib/widgets/media_context_menu.dart`'s
+beheerder-alleen acties, en is een productbesluit dat bij PS-9's nog te
+bouwen gebruikers- en rechtenmodel hoort, niet iets voor een fixture-taak om
+stilzwijgend te beslissen. De Tautulli-fake-server (`f72466f2`) en
+`{{fixture_tautulli}}` (`0aa71164`) blijven staan als klaarstaand
+gereedschap voor zodra die poort een besluit krijgt. Blijft `ACCEPTANCE GAP`.
 
 ### HERO1, alleen op hardware
 
