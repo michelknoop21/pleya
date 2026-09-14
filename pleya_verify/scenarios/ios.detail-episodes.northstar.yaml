@@ -1,0 +1,29 @@
+name: ios.detail-episodes.northstar
+target: ios-sim
+# Seriedetail met afleveringen (northstar 07, iOS Unified 2026 workitem I6,
+# docs/unified-2026-closure.md §5 rij 5), tegen
+# `docs/assets/ios-unified/northstar/07-serie-afleveringen.png`. Reached via de
+# Series-landing -> "Alle series" -> een postertegel, dezelfde weg als
+# `ios.detail.northstar` maar dan de series-catalogus. `catalog.mixed.v1`'s Driftwood
+# heeft één seizoen met 3 afleveringen (`named_fixtures.dart`), genoeg om de
+# Afleveringen-tab in `mobile_episodes_tab.dart` te tonen zonder een seizoenwissel nodig
+# te hebben. Geen eigen automation-ids op de nieuwe compositie, dus observatiescenario:
+# bereiken en een snapshot, geen assertions op de tabs/seizoenkiezer zelf.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - open: screen.series
+steps:
+  - wait_until: {id: screen.series, timeout: 15000}
+  - settle: 3500
+  - assert: {id: "landing.view_all[series]", insideViewport: true}
+  - tap: {id: "landing.view_all[series]"}
+  - wait_until: {id: screen.catalog_series, timeout: 15000}
+  - settle: 500
+  - assert: {id: "catalog.grid.item[series.0]", insideViewport: true}
+  - tap: {id: "catalog.grid.item[series.0]"}
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - settle: 2000
+  - snapshot: detail-series-episodes-northstar

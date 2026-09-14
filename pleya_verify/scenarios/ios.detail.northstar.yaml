@@ -1,0 +1,28 @@
+name: ios.detail.northstar
+target: ios-sim
+# Filmdetail (northstar 06, iOS Unified 2026 workitem I6, docs/unified-2026-closure.md
+# §5 rij 5), tegen `docs/assets/ios-unified/northstar/06-film-detail.png`. Reached zoals
+# een gebruiker dat doet: Films-landing -> "Alle films" -> een postertegel, dezelfde weg
+# als `ios.catalog.northstar` tot aan de grid, met precies één tik verder de detailpagina
+# in. `mobile_detail_view.dart` draagt geen eigen automation-ids (alleen het bestaande
+# `screen.media_detail` op de omvattende `AutomationScreen`), dus dit is een
+# observatiescenario: bereiken en een snapshot vastleggen voor visuele vergelijking, geen
+# assertions op de nieuwe compositie zelf.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - open: screen.movies
+steps:
+  - wait_until: {id: screen.movies, timeout: 15000}
+  - settle: 3500
+  - assert: {id: "landing.view_all[movies]", insideViewport: true}
+  - tap: {id: "landing.view_all[movies]"}
+  - wait_until: {id: screen.catalog_movies, timeout: 15000}
+  - settle: 500
+  - assert: {id: "catalog.grid.item[movies.0]", insideViewport: true}
+  - tap: {id: "catalog.grid.item[movies.0]"}
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - settle: 2000
+  - snapshot: detail-film-northstar
