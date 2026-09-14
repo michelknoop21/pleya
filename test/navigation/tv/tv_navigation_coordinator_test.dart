@@ -176,28 +176,43 @@ void main() {
     // MOC-23a: before this leaf `TvNavConditions` had no offline field, so an
     // offline flip never reached the coordinator and Home/Series/Films/Search
     // stayed in the bar as focusable pills that led nowhere.
-    test('going offline while home was active moves active to my pleya', () {
+    //
+    // MOC-23 (PB-12): Home itself no longer disappears offline — it has a
+    // real offline candidate to show (reconnect, last-known servers) — so
+    // going offline while Home was active does not displace it any more.
+    test('going offline while home was active leaves it active', () {
       final coordinator = TvNavigationCoordinator();
       addTearDown(coordinator.dispose);
       coordinator.activate(TvDestinationId.home);
 
       final result = coordinator.updateConditions(const TvNavConditions(hasLiveTv: false, isOffline: true));
 
-      expect(result, TvDestinationId.myPleya);
-      expect(coordinator.active, TvDestinationId.myPleya);
-      expect(coordinator.destinations, [TvDestinationId.myPleya]);
+      expect(result, isNull);
+      expect(coordinator.active, TvDestinationId.home);
+      expect(coordinator.destinations, [TvDestinationId.home, TvDestinationId.myPleya]);
     });
 
-    test('coming back online restores the full bar without forcing active off my pleya', () {
+    test('going offline while a destination that does drop out was active still falls back', () {
+      final coordinator = TvNavigationCoordinator();
+      addTearDown(coordinator.dispose);
+      coordinator.activate(TvDestinationId.movies);
+
+      final result = coordinator.updateConditions(const TvNavConditions(hasLiveTv: false, isOffline: true));
+
+      expect(result, tvRootDestination);
+      expect(coordinator.active, tvRootDestination);
+    });
+
+    test('coming back online restores the full bar without moving active off home', () {
       final coordinator = TvNavigationCoordinator();
       addTearDown(coordinator.dispose);
       coordinator.updateConditions(const TvNavConditions(hasLiveTv: true, isOffline: true));
-      expect(coordinator.active, TvDestinationId.myPleya);
+      expect(coordinator.active, TvDestinationId.home);
 
       coordinator.updateConditions(const TvNavConditions(hasLiveTv: true, isOffline: false));
 
-      expect(coordinator.destinations, contains(TvDestinationId.home));
-      expect(coordinator.active, TvDestinationId.myPleya, reason: 'a destination that is still present does not move');
+      expect(coordinator.destinations, contains(TvDestinationId.movies));
+      expect(coordinator.active, TvDestinationId.home, reason: 'a destination that is still present does not move');
     });
   });
 
@@ -327,8 +342,10 @@ void main() {
     test('a destination disappearing from the bar completes and drops its nested routes', () async {
       final coordinator = TvNavigationCoordinator();
       addTearDown(coordinator.dispose);
-      coordinator.activate(TvDestinationId.home);
-      final pushed = coordinator.pushNested(TvDestinationId.home, route('collection_42'));
+      // Home no longer disappears offline (MOC-23), so this uses Movies —
+      // still an `onlineOnly` destination — to exercise the same invariant.
+      coordinator.activate(TvDestinationId.movies);
+      final pushed = coordinator.pushNested(TvDestinationId.movies, route('collection_42'));
 
       coordinator.updateConditions(const TvNavConditions(hasLiveTv: false, isOffline: true));
       final result = await pushed.result.timeout(
@@ -336,7 +353,7 @@ void main() {
         onTimeout: () => throw StateError('a caller awaiting the route must not hang'),
       );
 
-      expect(coordinator.nestedRoutesFor(TvDestinationId.home), isEmpty);
+      expect(coordinator.nestedRoutesFor(TvDestinationId.movies), isEmpty);
       expect(result, isNull);
     });
 

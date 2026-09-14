@@ -99,14 +99,16 @@ class TvNavConditions {
 /// nooit") — it is the only route to Settings, Servers and Sign out on TV, so a
 /// condition that could hide it would be a condition that could strand someone.
 ///
-/// Offline (PB-12), every other destination drops out: Search, Home, Series,
-/// Films and Live TV all resolve to [NavigationTab.onlineOnly] tabs
-/// ([NavigationTab.getVisibleTabs] already hides them from the screens list
-/// `MainScreen` builds), so leaving their pills in the bar would draw a
-/// focusable destination whose Select does nothing.
+/// Offline (PB-12), Search, Series, Films and Live TV drop out: they resolve
+/// to [NavigationTab.onlineOnly] tabs ([NavigationTab.getVisibleTabs] already
+/// hides them from the screens list `MainScreen` builds), so leaving their
+/// pills in the bar would draw a focusable destination whose Select does
+/// nothing. Home stays — [NavigationTab.getVisibleTabs] keeps its tab visible
+/// on TV specifically, because offline Home still has something to show: a
+/// reconnect affordance and the last-known server list.
 List<TvDestinationId> buildTvDestinations(TvNavConditions c) => [
   if (!c.isOffline) TvDestinationId.search,
-  if (!c.isOffline) TvDestinationId.home,
+  TvDestinationId.home,
   if (!c.isOffline) TvDestinationId.series,
   if (!c.isOffline) TvDestinationId.movies,
   if (c.hasLiveTv && !c.isOffline) TvDestinationId.liveTv,

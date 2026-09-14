@@ -96,6 +96,7 @@ import 'downloads/downloads_screen.dart';
 import 'settings/settings_screen.dart';
 import 'profile/profile_switch_screen.dart';
 import 'tv/tv_movies_landing_screen.dart';
+import 'tv/tv_offline_home_screen.dart';
 import 'tv/tv_series_landing_screen.dart';
 import '../services/system_shelf_service.dart';
 import '../watch_together/watch_together.dart';
@@ -1447,6 +1448,16 @@ class _MainScreenState extends State<MainScreen>
           // opens Zoeken from the iPhone Home header (iOS Unified 2026
           // fase 2, DEC-104); both callbacks coexist since Home renders on
           // every form factor.
+          // MOC-23 (PB-12): offline, TV's Home keeps its tab (see
+          // `NavigationTab.getVisibleTabs`) but swaps in the offline
+          // candidate instead of `DiscoverScreen`, which has nothing to show
+          // without a server. Every other platform still loses Home offline
+          // entirely, so this branch never runs there.
+          NavigationTabId.discover when _isTvShell && offline => TvOfflineHomeScreen(
+            isReconnecting: _isReconnecting,
+            onReconnect: _triggerReconnect,
+            onManageServers: () => _selectTab(NavigationTabId.settings),
+          ),
           NavigationTabId.discover => DiscoverScreen(
             key: _discoverKey,
             onManageServers: () => _selectTab(NavigationTabId.settings),

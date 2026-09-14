@@ -151,10 +151,14 @@ void main() {
     });
   });
 
-  group('buildTvDestinations offline (MOC-23a)', () {
-    test('every online-only pill drops out, my pleya stays', () {
+  group('buildTvDestinations offline (MOC-23a, MOC-23)', () {
+    test('search, series and movies drop out; home and my pleya stay', () {
+      // MOC-23 (PB-12): Home keeps its pill offline — the offline candidate
+      // has something to show (reconnect, last-known servers) even without a
+      // discovery snapshot. Search, Series and Movies still resolve to
+      // `onlineOnly` tabs with nothing to render, so they still drop out.
       final destinations = buildTvDestinations(const TvNavConditions(hasLiveTv: true, isOffline: true));
-      expect(destinations, [TvDestinationId.myPleya]);
+      expect(destinations, [TvDestinationId.home, TvDestinationId.myPleya]);
     });
 
     test('live tv drops out offline even when the capability is remembered', () {

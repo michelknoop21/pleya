@@ -240,7 +240,14 @@ class NavigationTab {
     bool isPhone = false,
   }) {
     return allNavigationTabs.where((tab) {
-      if (isOffline && tab.onlineOnly) return false;
+      if (isOffline && tab.onlineOnly) {
+        // MOC-23 (PB-12): TV gets a real offline Home — reconnect affordance
+        // and the last-known server list, no discovery data — instead of
+        // losing the tab entirely. Every other platform's Home still needs a
+        // server to show anything at all, so it stays hidden there.
+        final keepsOfflineHomeOnTv = tab.id == NavigationTabId.discover && PlatformDetector.isTV();
+        if (!keepsOfflineHomeOnTv) return false;
+      }
       if (tab.id == NavigationTabId.liveTv && !hasLiveTv) return false;
       if (tab.id == NavigationTabId.requests && !hasSeerr) return false;
       if (tab.id == NavigationTabId.watchlist && !hasWatchlist) return false;
