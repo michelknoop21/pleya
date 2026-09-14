@@ -165,6 +165,7 @@ under `Notes`.
 - geef de offline TV-topnav een reconnect-affordance (OFF-1)
 - sluit drie gaten die de Codex-challenge in OFF-1 vond
 - leg de OFF-1 focus-recovery-beslissing vast als pure helper
+- hero-CTA's niet over de topnav op een gescrolde Home (HERO6)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
