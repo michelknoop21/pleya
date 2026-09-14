@@ -89,20 +89,22 @@ class SeerrFakeServer {
   }
 
   Map<String, dynamic> _requestCounts() {
-    var pending = 0, approved = 0, available = 0, processing = 0;
+    var pending = 0, approved = 0, available = 0;
     for (final r in requests) {
       switch (r['status']) {
         case 1:
           pending++;
         case 2:
           approved++;
-        case 4:
-          processing++;
         case 5:
           available++;
       }
     }
-    return {'total': requests.length, 'pending': pending, 'approved': approved, 'available': available, 'processing': processing};
+    // `processing` has no fixture data behind it — real Overseerr derives it
+    // from an approved request whose *media* isn't available yet, a second
+    // axis (`SeerrMediaStatus`) this fixture doesn't model. The one screen
+    // that reads counts (`TvSeerrRequestsView._countFor`) never asks for it.
+    return {'total': requests.length, 'pending': pending, 'approved': approved, 'available': available, 'processing': 0};
   }
 
   Map<String, dynamic> _requestPage(Map<String, String> query) {
@@ -116,10 +118,13 @@ class SeerrFakeServer {
     };
   }
 
+  /// `SeerrRequestStatus`'s own encoding (`lib/services/seerr/seerr_constants.dart`):
+  /// 1 pending, 2 approved, 3 declined, 4 failed, 5 completed. The client's
+  /// `filter` query names its "completed" bucket `available` instead.
   String _statusName(int status) => switch (status) {
     1 => 'pending',
     2 => 'approved',
-    4 => 'processing',
+    3 => 'declined',
     5 => 'available',
     _ => 'unavailable',
   };
@@ -128,8 +133,8 @@ class SeerrFakeServer {
     return {'page': int.tryParse(query['page'] ?? '1') ?? 1, 'totalPages': 1, 'results': items};
   }
 
-  /// Registers one request row. [status] follows Overseerr's own encoding:
-  /// 1 pending, 2 approved, 3 declined, 4 processing, 5 available.
+  /// Registers one request row. [status] is `SeerrRequestStatus`'s encoding:
+  /// 1 pending, 2 approved, 3 declined, 4 failed, 5 completed.
   void addRequest({
     required int id,
     required String mediaType,

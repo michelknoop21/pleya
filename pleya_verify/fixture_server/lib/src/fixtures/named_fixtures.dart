@@ -318,8 +318,8 @@ void _applyCatalogLongRailsV1(PleyaFakeServer server) {
   server.hubs['recently_added']!.addAll(ids);
 }
 
-/// Five requests across four Overseerr statuses (pending, approved,
-/// processing, available) for "Alle aanvragen", plus a handful of titles in
+/// Five requests across four `SeerrRequestStatus` values (pending, approved,
+/// declined, completed) for "Alle aanvragen", plus a handful of titles in
 /// each of the five discover buckets `SeerrDiscoverScreen` fetches (trending,
 /// movies, tv, upcoming movies, upcoming tv) for "Ontdekken". Every request's
 /// `media` object carries its own title/year/poster, so the client's
@@ -331,7 +331,7 @@ void _applySeerrRequestsV1(SeerrFakeServer seerr) {
   const requests = <({int id, String type, int tmdbId, String title, int year, int status})>[
     (id: 1, type: 'movie', tmdbId: 101, title: 'Aurora Drift', year: 2024, status: 1),
     (id: 2, type: 'tv', tmdbId: 102, title: 'Basalt Coast', year: 2023, status: 2),
-    (id: 3, type: 'movie', tmdbId: 103, title: 'Cascade Point', year: 2022, status: 4),
+    (id: 3, type: 'movie', tmdbId: 103, title: 'Cascade Point', year: 2022, status: 3),
     (id: 4, type: 'tv', tmdbId: 104, title: 'Driftwood Bay', year: 2021, status: 5),
     (id: 5, type: 'movie', tmdbId: 105, title: 'Ember Field', year: 2025, status: 1),
   ];
