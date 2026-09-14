@@ -173,6 +173,20 @@ class AutomationIds {
   /// is a state assertion instead of a screenshot.
   static const String myPleyaLogRow = 'my_pleya.log_row';
 
+  /// A text field on a connect-a-service settings screen, suffixed with the
+  /// service and the field (`settings.form.field[seerr.url]`,
+  /// `settings.form.field[tautulli.apiKey]`). One shared id rather than a
+  /// Seerr-specific and a Tautulli-specific one: both screens are the same
+  /// URL-plus-credential-plus-Test-then-Save form, and a scenario driving
+  /// either types into the field it names, not into a service-specific
+  /// widget it has to know the shape of.
+  static const String settingsFormField = 'settings.form.field';
+
+  /// A button on the same kind of connect-a-service form: the auth-mode
+  /// selector, Test, or Save (`settings.form.button[seerr.mode.apiKey]`,
+  /// `settings.form.button[tautulli.test]`, `settings.form.button[seerr.save]`).
+  static const String settingsFormButton = 'settings.form.button';
+
   /// The library page's heading, carrying which library is actually open.
   ///
   /// Hoofdstuk 16's contract is that concrete libraries are visible and
@@ -424,6 +438,8 @@ class AutomationIds {
     {'id': myPleyaSectionTile, 'role': 'grid.item', 'instanceable': true},
     {'id': myPleyaChip, 'role': 'button', 'instanceable': true},
     {'id': myPleyaLogRow, 'role': 'list.item', 'instanceable': true},
+    {'id': settingsFormField, 'role': 'field', 'instanceable': true},
+    {'id': settingsFormButton, 'role': 'button', 'instanceable': true},
     {'id': playerSurface, 'role': 'surface', 'instanceable': false},
     {'id': playerTitle, 'role': 'region', 'instanceable': false},
     {'id': playerTimeline, 'role': 'region', 'instanceable': false},
