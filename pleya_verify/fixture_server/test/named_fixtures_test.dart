@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:pleya_verify_fixture_server/named_fixtures.dart';
 import 'package:pleya_verify_fixture_server/pleya_fake_server.dart';
 import 'package:pleya_verify_fixture_server/seerr_fake_server.dart';
+import 'package:pleya_verify_fixture_server/tautulli_fake_server.dart';
 import 'package:test/test.dart';
 
 Future<http.Response> _post(PleyaFakeServer server, String path, Object body) {
@@ -175,6 +176,17 @@ void main() {
       applyNamedFixture(server, 'seerr.requests.v1', seerr: seerr);
 
       expect(server.libraries, isNotEmpty, reason: 'seeding seerr must not reset the catalog');
+    });
+  });
+
+  group('activity.active-session.v1', () {
+    test('returns false without a tautulli server, seeds one when given', () {
+      final server = PleyaFakeServer();
+      expect(applyNamedFixture(server, 'activity.active-session.v1'), isFalse);
+
+      final tautulli = TautulliFakeServer();
+      expect(applyNamedFixture(server, 'activity.active-session.v1', tautulli: tautulli), isTrue);
+      expect(tautulli.sessions, hasLength(1));
     });
   });
 

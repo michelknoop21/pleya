@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 
 import '../pleya_fake_server.dart';
 import '../seerr_fake_server.dart';
+import '../tautulli_fake_server.dart';
 import 'deterministic_png.dart';
 
 /// The named fixtures Pleya Verify scenarios seed by name (`seed {fixture}`
@@ -14,11 +15,11 @@ import 'deterministic_png.dart';
 /// A `catalog.*` branch replaces the *catalog* only
 /// ([PleyaFakeServer.resetCatalog]), never the whole server: seeding after
 /// `sign_in` is a legal scenario order and must not invalidate the session
-/// that step just created. A `seerr.*` branch seeds [seerr] instead, and
-/// never touches [server] — a scenario that needs both issues two `seed:`
-/// steps, one per fixture name, and [seerr] is `null` for a run that never
-/// needs it.
-bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? seerr}) {
+/// that step just created. A `seerr.*`/`activity.*` branch seeds [seerr]/
+/// [tautulli] instead, and never touches [server] — a scenario that needs
+/// more than one issues one `seed:` step per fixture name, and [seerr]/
+/// [tautulli] are `null` for a run that never needs them.
+bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? seerr, TautulliFakeServer? tautulli}) {
   switch (name) {
     case 'catalog.shows.v1':
       _applyCatalogShowsV1(server);
@@ -38,6 +39,10 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
     case 'seerr.requests.v1':
       if (seerr == null) return false;
       _applySeerrRequestsV1(seerr);
+      return true;
+    case 'activity.active-session.v1':
+      if (tautulli == null) return false;
+      _applyActivityActiveSessionV1(tautulli);
       return true;
     default:
       return false;
@@ -359,4 +364,18 @@ void _applySeerrRequestsV1(SeerrFakeServer seerr) {
       );
     }
   }
+}
+
+/// One active session for ACT1 (`docs/tvos-fysieke-correctieronde.md`):
+/// `NowWatchingProvider.isAvailable` only needs a paired Tautulli client and
+/// an owned server (`lib/providers/now_watching_provider.dart:86`,
+/// `profile_session_screen.dart:200-202`) — neither check is Plex-specific,
+/// so a Tautulli-only fixture is enough to prove the Activiteit surface
+/// renders real session data. `artworkClient` still resolves to null (it
+/// needs a real Plex client to turn Tautulli's Plex-shaped thumb paths into a
+/// URL), so the session card falls back to a placeholder; that is accepted,
+/// not a gap this fixture tries to close.
+void _applyActivityActiveSessionV1(TautulliFakeServer tautulli) {
+  tautulli.reset();
+  tautulli.addSession(sessionKey: '1', user: 'verify-viewer', title: 'Aurora Drift', mediaType: 'movie');
 }
