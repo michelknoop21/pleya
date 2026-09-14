@@ -69,6 +69,10 @@ under `Notes`.
 - build Bibliotheken picker for I7 child 15 (northstar 15)
 - herindeel Instellingen naar northstar 14 (I7 child 14)
 - mobiele film-/seriedetail northstar 06/07
+- fake Seerr-server voor seerr.requests.v1
+- automation-ids op het Seerr-verbindingsformulier
+- fake Tautulli-server voor activity.active-session.v1
+- {{fixture_tautulli}} placeholder, ACT1 blijft open
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
@@ -165,6 +169,11 @@ under `Notes`.
 - geef de offline TV-topnav een reconnect-affordance (OFF-1)
 - sluit drie gaten die de Codex-challenge in OFF-1 vond
 - leg de OFF-1 focus-recovery-beslissing vast als pure helper
+- geef een hub het type dat zijn items dragen
+- geef insideViewport/notClipped een subpixel-tolerantie
+- geef het Seerr/Tautulli-verbindingsformulier initiële focus
+- initiële focus en automation-ids op het Tautulli-formulier
+- correct hub classification and Tautulli initial focus
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
