@@ -144,8 +144,8 @@ bool shouldRecoverTvTopNavFocusAfterReconnect({required bool reconnectItemWasFoc
   return reconnectItemWasFocused && !isOfflineNow;
 }
 
-/// MOC-23/OFF2: whether opening a Mijn Pleya section on TV should cancel the
-/// pending "restore the old online tab" latch ([_MainScreenState._autoSwitchedToDownloads]).
+/// Whether opening a Mijn Pleya section on TV should cancel the pending
+/// "restore the old online tab" latch ([_MainScreenState._autoSwitchedToDownloads]).
 ///
 /// `_selectTab`'s own `isUserInitiated`/`previousTab != tab` guard already does
 /// this for every root tab, but on TV, Bibliotheken/Kijklijst/Aanvragen/
@@ -155,6 +155,13 @@ bool shouldRecoverTvTopNavFocusAfterReconnect({required bool reconnectItemWasFoc
 /// auto-opened Downloads screen was silently undone the moment the connection
 /// came back: `_handleOfflineStatusChanged` still saw the stale latch and
 /// restored the pre-offline tab over the section the viewer had just chosen.
+///
+/// Reachable on Android TV and in the debug forced-TV mode, not on a physical
+/// Apple TV: `NavigationTab.getVisibleTabs` strips `NavigationTabId.downloads`
+/// unconditionally whenever `PlatformDetector.isAppleTV()` is true
+/// (`navigation_tabs.dart`), so `autoSwitchedToDownloads` can never become true
+/// there in the first place. See the OFF2 row in
+/// `docs/tvos-fysieke-correctieronde.md` for the full trace.
 ///
 /// `autoSwitchedToDownloads` is true only while Downloads is the section on
 /// screen because of that auto-switch (it is set alongside `_currentTab ==
