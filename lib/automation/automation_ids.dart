@@ -187,6 +187,12 @@ class AutomationIds {
   /// `settings.form.button[tautulli.test]`, `settings.form.button[seerr.save]`).
   static const String settingsFormButton = 'settings.form.button';
 
+  /// One active-stream row in `NowWatchingPanel` (ACT1), suffixed by
+  /// `WatchSession.id` (`activity.row[<sessionId>]`). Shared by the desktop
+  /// overlay, the mobile sheet and the TV Activiteit screen — the same panel
+  /// mounts on all three, so one id family covers it everywhere.
+  static const String activityRow = 'activity.row';
+
   /// The library page's heading, carrying which library is actually open.
   ///
   /// Hoofdstuk 16's contract is that concrete libraries are visible and
@@ -440,6 +446,7 @@ class AutomationIds {
     {'id': myPleyaLogRow, 'role': 'list.item', 'instanceable': true},
     {'id': settingsFormField, 'role': 'field', 'instanceable': true},
     {'id': settingsFormButton, 'role': 'button', 'instanceable': true},
+    {'id': activityRow, 'role': 'list.item', 'instanceable': true},
     {'id': playerSurface, 'role': 'surface', 'instanceable': false},
     {'id': playerTitle, 'role': 'region', 'instanceable': false},
     {'id': playerTimeline, 'role': 'region', 'instanceable': false},

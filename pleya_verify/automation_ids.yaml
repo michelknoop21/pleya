@@ -141,6 +141,9 @@ ids:
   - id: settings.form.button
     role: button
     instanceable: true
+  - id: activity.row
+    role: list.item
+    instanceable: true
   - id: player.surface
     role: surface
     instanceable: false
