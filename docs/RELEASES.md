@@ -18,7 +18,8 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### New
+- MOC-23 offline TV Home, scoped without the discovery snapshot
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 280 · 14 September 2026
