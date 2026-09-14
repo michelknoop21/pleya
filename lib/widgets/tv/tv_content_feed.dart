@@ -524,7 +524,12 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
                             clientFor: _clientFor,
                             autoplayEnabled: _autoplayEnabled,
                             // 33.2: the hero's text fades once a row has the focus.
-                            textOpacity: _rowHasFocus ? 0 : 1,
+                            // HERO6: and whenever the feed is scrolled. The CTA row
+                            // then sits at y=19 under the top navigation, and Menu
+                            // from a row puts the ring on that bar without touching
+                            // the scroll. [_revealHero] brings `_atTop` back the
+                            // moment a CTA takes the ring, so the text follows.
+                            textOpacity: _rowHasFocus || !_atTop ? 0 : 1,
                             hideSpoilers: SettingsService.instance.read(SettingsService.hideSpoilers),
                             initialGroupId: _heroGroupId,
                             onActiveGroupChanged: (id) => _heroGroupId = id,
