@@ -144,6 +144,32 @@ bool shouldRecoverTvTopNavFocusAfterReconnect({required bool reconnectItemWasFoc
   return reconnectItemWasFocused && !isOfflineNow;
 }
 
+/// MOC-23/OFF2: whether opening a Mijn Pleya section on TV should cancel the
+/// pending "restore the old online tab" latch ([_MainScreenState._autoSwitchedToDownloads]).
+///
+/// `_selectTab`'s own `isUserInitiated`/`previousTab != tab` guard already does
+/// this for every root tab, but on TV, Bibliotheken/Kijklijst/Aanvragen/
+/// Downloads/Instellingen all live under the single `NavigationTabId.myPleya`
+/// root tab (hoofdstuk 18.2), so `_currentTab` never changes between them and
+/// that guard never fires. Without this, picking Kijklijst while parked on the
+/// auto-opened Downloads screen was silently undone the moment the connection
+/// came back: `_handleOfflineStatusChanged` still saw the stale latch and
+/// restored the pre-offline tab over the section the viewer had just chosen.
+///
+/// `autoSwitchedToDownloads` is true only while Downloads is the section on
+/// screen because of that auto-switch (it is set alongside `_currentTab ==
+/// NavigationTabId.downloads` and cleared by every other path that moves away
+/// from it), so any different section picked while it holds is by definition
+/// a real, explicit choice.
+@visibleForTesting
+bool shouldCancelAutoSwitchedToDownloads({
+  required bool isOffline,
+  required bool autoSwitchedToDownloads,
+  required TvMyPleyaSection nextSection,
+}) {
+  return isOffline && autoSwitchedToDownloads && nextSection != TvMyPleyaSection.downloads;
+}
+
 /// Destinations with no bar slot of their own, and where that slot went.
 ///
 /// `phoneOnly: false` — every mobile shell drops it in favour of Mijn Pleya,
@@ -2227,6 +2253,13 @@ class _MainScreenState extends State<MainScreen>
   /// destination — it is built by the `IndexedStack` this call is about to
   /// switch to — so the open is deferred by a frame rather than dropped.
   void _openTvMyPleyaSection(TvMyPleyaSection section) {
+    if (shouldCancelAutoSwitchedToDownloads(
+      isOffline: _isOffline,
+      autoSwitchedToDownloads: _autoSwitchedToDownloads,
+      nextSection: section,
+    )) {
+      _autoSwitchedToDownloads = false;
+    }
     _selectTab(NavigationTabId.myPleya);
     _tvNav.pushNested(
       TvDestinationId.myPleya,
