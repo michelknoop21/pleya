@@ -22,6 +22,7 @@ import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../widgets/collapsible_text.dart';
 import '../widgets/rating_bottom_sheet.dart';
 
@@ -136,6 +137,8 @@ import '../navigation/main_screen_scope.dart';
 import '../utils/error_message_utils.dart';
 
 part 'media_detail/action_buttons.dart';
+part 'media_detail/mobile_detail_view.dart';
+part 'media_detail/mobile_episodes_tab.dart';
 part 'media_detail/synopsis_panel.dart';
 part 'media_detail/tv_season_chips.dart';
 
@@ -3675,6 +3678,14 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
     if (isTv) {
       return _buildTvDetailScreen(context, metadata, _handleMediaDetailBackKey);
+    }
+
+    // Northstar 06/07 (iOS Unified 2026 workitem 5/I6). Phone only: the iPad
+    // keeps its existing presentation (DEC-103), and desktop is out of scope
+    // for this workitem.
+    if (PlatformDetector.isPhone(context)) {
+      _scheduleInitialMobileDetailFocus(metadata);
+      return _buildMobileDetailScreen(context, metadata);
     }
 
     _scheduleInitialMobileDetailFocus(metadata);

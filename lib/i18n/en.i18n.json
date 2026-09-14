@@ -59,6 +59,7 @@
     "play": "Play",
     "pause": "Pause",
     "resume": "Resume",
+    "share": "Share",
     "error": "Error",
     "search": "Search",
     "home": "Home",
@@ -826,6 +827,7 @@
     "readMore": "Read more",
     "readMoreSemantic": "Read the full overview",
     "cast": "Cast",
+    "episodeCountWatched": "${count} episodes · ${watched} watched",
     "extras": "Trailers & Extras",
     "studio": "Studio",
     "rating": "Rating",
@@ -1267,6 +1269,7 @@
   },
   "downloads": {
     "title": "Downloads",
+    "downloadAction": "Download",
     "manage": "Manage",
     "tvShows": "TV Shows",
     "movies": "Movies",

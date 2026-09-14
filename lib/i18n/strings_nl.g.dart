@@ -189,6 +189,7 @@ class _TranslationsCommonNl extends TranslationsCommonEn {
 	@override String get play => 'Afspelen';
 	@override String get pause => 'Pauzeren';
 	@override String get resume => 'Hervatten';
+	@override String get share => 'Delen';
 	@override String get error => 'Fout';
 	@override String get search => 'Zoeken';
 	@override String get home => 'Home';
@@ -1010,6 +1011,7 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get readMore => 'Meer lezen';
 	@override String get readMoreSemantic => 'Volledig overzicht lezen';
 	@override String get cast => 'Acteurs';
+	@override String episodeCountWatched({required Object count, required Object watched}) => '${count} afleveringen · ${watched} bekeken';
 	@override String get extras => 'Trailers & Extra\'s';
 	@override String get studio => 'Studio';
 	@override String get rating => 'Leeftijd';
@@ -1519,6 +1521,7 @@ class _TranslationsDownloadsNl extends TranslationsDownloadsEn {
 
 	// Translations
 	@override String get title => 'Downloads';
+	@override String get downloadAction => 'Downloaden';
 	@override String get manage => 'Beheren';
 	@override String get tvShows => 'Series';
 	@override String get movies => 'Films';
@@ -3037,6 +3040,7 @@ extension on TranslationsNl {
 			'common.play' => 'Afspelen',
 			'common.pause' => 'Pauzeren',
 			'common.resume' => 'Hervatten',
+			'common.share' => 'Delen',
 			'common.error' => 'Fout',
 			'common.search' => 'Zoeken',
 			'common.home' => 'Home',
@@ -3495,9 +3499,9 @@ extension on TranslationsNl {
 			'videoControls.tracksButton' => 'Audio en ondertitels',
 			'videoControls.chaptersButton' => 'Hoofdstukken',
 			'videoControls.versionsButton' => 'Videoversies',
-			'videoControls.versionQualityButton' => 'Versie en kwaliteit',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.versionQualityButton' => 'Versie en kwaliteit',
 			'videoControls.versionColumnHeader' => 'Versie',
 			'videoControls.qualityColumnHeader' => 'Kwaliteit',
 			'videoControls.qualityOriginal' => 'Origineel',
@@ -3760,6 +3764,7 @@ extension on TranslationsNl {
 			'discover.readMore' => 'Meer lezen',
 			'discover.readMoreSemantic' => 'Volledig overzicht lezen',
 			'discover.cast' => 'Acteurs',
+			'discover.episodeCountWatched' => ({required Object count, required Object watched}) => '${count} afleveringen · ${watched} bekeken',
 			'discover.extras' => 'Trailers & Extra\'s',
 			'discover.studio' => 'Studio',
 			'discover.rating' => 'Leeftijd',
@@ -4008,10 +4013,10 @@ extension on TranslationsNl {
 			'liveTv.watchLive' => 'Live kijken',
 			'liveTv.goToLive' => 'Ga naar live',
 			'liveTv.record' => 'Opnemen',
-			'liveTv.recordEpisode' => 'Aflevering opnemen',
-			'liveTv.recordSeries' => 'Serie opnemen',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.recordEpisode' => 'Aflevering opnemen',
+			'liveTv.recordSeries' => 'Serie opnemen',
 			'liveTv.recordOptions' => 'Opnameopties',
 			'liveTv.recordings' => 'Opnames',
 			'liveTv.scheduledRecordings' => 'Gepland',
@@ -4158,6 +4163,7 @@ extension on TranslationsNl {
 			'watchTogether.noRecentRooms' => 'Nog geen sessies',
 			'watchTogether.noRecentRoomsHint' => 'Een sessie die je maakt of waaraan je deelneemt verschijnt hier',
 			'downloads.title' => 'Downloads',
+			'downloads.downloadAction' => 'Downloaden',
 			'downloads.manage' => 'Beheren',
 			'downloads.tvShows' => 'Series',
 			'downloads.movies' => 'Films',
@@ -4521,11 +4527,11 @@ extension on TranslationsNl {
 			'trackers.libraryFilter.title' => 'Bibliotheekfilter',
 			'trackers.libraryFilter.subtitleAllSyncing' => 'Alle bibliotheken synchroniseren',
 			'trackers.libraryFilter.subtitleNoneSyncing' => 'Niets wordt gesynchroniseerd',
+			_ => null,
+		} ?? switch (path) {
 			'trackers.libraryFilter.subtitleBlocked' => ({required Object count}) => '${count} geblokkeerd',
 			'trackers.libraryFilter.subtitleAllowed' => ({required Object count}) => '${count} toegestaan',
 			'trackers.libraryFilter.mode' => 'Filtermodus',
-			_ => null,
-		} ?? switch (path) {
 			'trackers.libraryFilter.modeBlacklist' => 'Zwarte lijst',
 			'trackers.libraryFilter.modeWhitelist' => 'Witte lijst',
 			'trackers.libraryFilter.modeHintBlacklist' => 'Synchroniseer alle bibliotheken behalve die hieronder aangevinkt zijn.',
