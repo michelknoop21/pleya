@@ -312,6 +312,12 @@ class AutomationIds {
   static const String screenSeries = 'screen.series';
   static const String screenMovies = 'screen.movies';
 
+  /// The iPhone Aanvragen page (northstar 19).
+  static const String screenRequests = 'screen.requests';
+
+  /// One row of "Mijn aanvragen" on that page, by position (`requests.mine.item[0]`).
+  static const String requestsMineItem = 'requests.mine.item';
+
   /// A landing's header, title line, "Alle series"/"Alle films" action and one
   /// of its rails. All four are instanceable and all four carry the landing's
   /// kind, because Home, Series and Films are children of the same

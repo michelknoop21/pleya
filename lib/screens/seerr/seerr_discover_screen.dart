@@ -4,10 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_screen.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
 import '../../models/seerr/seerr_media.dart';
+import '../../models/seerr/seerr_request.dart';
+import '../../widgets/desktop_app_bar.dart';
+import 'mobile_seerr_discover_view.dart';
 import '../../navigation/main_screen_scope.dart';
 import '../../navigation/tv/tv_content_route_registry.dart';
 import '../../providers/seerr_provider.dart';
@@ -66,7 +71,11 @@ List<Widget> seerrDiscoverAppBarActions({required VoidCallback onOpenRequests}) 
 ];
 
 class SeerrDiscoverScreen extends StatefulWidget {
-  const SeerrDiscoverScreen({super.key, this.initialQuery});
+  const SeerrDiscoverScreen({super.key, this.initialQuery, this.onBack});
+
+  /// Back to Mijn Pleya on the phone, where this is a tab body that never pops (same
+  /// reason as `MobileLibrariesScreen.onBack`). Null on a pushed route.
+  final VoidCallback? onBack;
 
   /// A term to open on, already typed. Mockup 36 C's "Zoek op Aanvragen" hands
   /// the query Zoeken found nothing for straight over, so the viewer does not
@@ -479,6 +488,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     }
 
     if (PlatformDetector.isTV()) return _buildTv();
+    if (PlatformDetector.isPhone(context)) return _buildPhone();
 
     return FocusedScrollScaffold(
       title: Text(t.seerr.discoverTitle),
@@ -488,6 +498,79 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         SliverToBoxAdapter(child: _buildFilterBar()),
         ..._query.isEmpty ? _buildDiscoverSlivers() : _buildSearchSlivers(),
       ],
+    );
+  }
+
+  /// Aanvragen on the iPhone (northstar 19): search, type pills, the viewer's own
+  /// requests, then the same discover rows desktop shows.
+  Widget _buildPhone() {
+    return AutomationScreen(
+      id: AutomationIds.screenRequests,
+      readiness: () => _query.isEmpty && !_allLoaded
+          ? const AutomationReadiness.loading('requests')
+          : const AutomationReadiness.ready(),
+      child: Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            DesktopSliverAppBar(
+              title: Text(t.seerr.title),
+              leading: widget.onBack == null ? null : BackButton(onPressed: widget.onBack),
+              actions: seerrDiscoverAppBarActions(onOpenRequests: _openRequests),
+            ),
+            SliverToBoxAdapter(child: _buildSearchField()),
+            SliverToBoxAdapter(
+              child: MobileSeerrTypeChips(
+                type: _type,
+                genres: _query.isEmpty ? _activeGenres : const [],
+                genreId: _genreId,
+                onTypeSelected: _onTypeSelected,
+                onPickGenre: () => showSeerrGenrePicker(
+                  context,
+                  genres: _activeGenres,
+                  selectedId: _genreId,
+                  onPicked: _onGenreSelected,
+                ),
+              ),
+            ),
+            if (_query.isEmpty)
+              SliverToBoxAdapter(
+                child: MobileSeerrMyRequestsSection(
+                  load: _loadMyRequests,
+                  onOpenAll: _openRequests,
+                  onOpenRequest: _openRequestDetail,
+                ),
+              ),
+            ..._query.isEmpty ? _buildDiscoverSlivers() : _buildSearchSlivers(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Always the viewer's own requests, also for a manager. Same privacy rule as
+  /// `SeerrRequestsScreen._load`: without a user id a null `requestedBy` returns everyone's.
+  Future<({List<SeerrRequest> items, int totalPages})> _loadMyRequests() async {
+    final provider = context.read<SeerrProvider>();
+    final client = provider.client;
+    final userId = provider.session?.userId;
+    if (client == null || userId == null) return (items: const <SeerrRequest>[], totalPages: 1);
+    final page = await client.getRequests(requestedBy: userId, take: MobileSeerrMyRequestsSection.visibleCount);
+    return (items: await client.hydrateRequests(page.items), totalPages: page.totalPages);
+  }
+
+  void _openRequestDetail(SeerrRequest request) {
+    final tmdbId = request.tmdbId;
+    if (tmdbId == null) return;
+    _openDetail(
+      SeerrMedia(
+        tmdbId: tmdbId,
+        mediaType: request.mediaType,
+        title: request.mediaTitle ?? '',
+        year: request.mediaYear,
+        posterPath: request.posterPath,
+        backdropPath: request.backdropPath,
+        status: request.mediaStatus,
+      ),
     );
   }
 
@@ -1089,7 +1172,13 @@ class _SeerrRowView extends StatelessWidget {
               children: [
                 Expanded(child: Text(row.title, style: seerrRowHeaderStyle(context))),
                 if (onShowAll != null)
-                  FocusableFilterChip(label: t.seerr.showAll, icon: Symbols.grid_view_rounded, onPressed: onShowAll!),
+                  PlatformDetector.isPhone(context)
+                      ? MobileSeerrSeeAllLink(onPressed: onShowAll!)
+                      : FocusableFilterChip(
+                          label: t.seerr.showAll,
+                          icon: Symbols.grid_view_rounded,
+                          onPressed: onShowAll!,
+                        ),
               ],
             ),
           ),

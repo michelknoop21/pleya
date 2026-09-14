@@ -1512,6 +1512,9 @@ class _MainScreenState extends State<MainScreen>
             onManageServers: () => _selectTab(NavigationTabId.settings),
             onBack: _isPhone ? _closeSearch : null,
           ),
+          NavigationTabId.requests when _isPhone => SeerrDiscoverScreen(
+            onBack: () => _selectTab(NavigationTabId.myPleya),
+          ),
           NavigationTabId.requests => const SeerrDiscoverScreen(),
           NavigationTabId.downloads => DownloadsScreen(key: _downloadsKey),
           NavigationTabId.settings => SettingsScreen(key: _settingsKey),
