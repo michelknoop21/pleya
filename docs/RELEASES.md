@@ -18,167 +18,78 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
+Nothing user-facing since the last published build.
+<!-- END GENERATED -->
+
+## 2.8.0 · build 280 · 14 September 2026
+
+<!-- commit: 4364327 -->
+
 ### New
-- identiteit en bronmodel over servers heen
-- resolver, dekking en de k-way merge-engine
-- activatiebeslissing en de onthouden bronkeuze
-- projectie naar rijen, en de providers eromheen
-- bekeken markeren geldt voor alle bronnen
-- het wordmark-lockup als gedeelde merkweergave
-- films en series als route-identiteit
-- het backendmerkje deelt de gegenereerde logo-bron
-- Unified 2026 fase 1, de iPhone-Home als eigen scherm
-- een geneste route krijgt de contentbox als MediaQuery (SYS-1c)
-- detail, collectie en persoon over het geneste routecontract (SYS-1b)
-- Series en Films krijgen een tabslot op de iPhone
-- MobileLandingScreen voor Series en Films
-- het zoekicoon op Home opent Zoeken
-- Bibliotheken als rij in Mijn Pleya
-- de chip filtert Home, de tab opent de landing
-- CAT5, de catalogusacties naar een inklapbare rail links van het raster
-- het infopaneel als enige spelermenu op TV, gebouwd naar mockup 33 (PLR2, PLR3, AUD1, AUD2, PNL2, STR1, STR2, PNL1)
-- ROW1, een eigen Home-rij uit een bewaard filter
-- ROW1, Home aanpassen vanaf Home zelf
-- automation-ids en i18n-sleutel voor de catalogusschermen
-- filter- en sorteersheet voor de catalogusschermen
-- MobileCatalogScreen (Alle films/Alle series)
-- de handler onder de landing-actie "Alle films/series ›"
-- tap op automation-id in de Verify-engine
-- eigen Home-rijen ook op desktop/mobiel
-- "Alle N"-tegel als laatste kaart van een eigen rij
-- een waarderij van het spelerpaneel wordt eerst aangeklikt, en pas dan stappen links en rechts (PLR5, DEC-102)
-- de kijklijst in de catalogustaal (DEC-108, mockup 34)
-- Aanvragen en Ontdekken in de catalogustaal (DEC-108, mockup 35)
-- Zoeken in de catalogustaal, en de kop die SEARCH1 sluit (DEC-108, mockup 36)
-- MOC-10 seizoenchips met één actieve afleveringenrail (PB-4)
-- loudness-proef met fixtures, onafhankelijke meter en kandidatentabel
-- canoniek loudnessbewijs, gain-planner en vaste programmaketen
-- loudnessbewijs koppelen aan speler en audiotrack
-- Android-loudnessketen in Media3, met compressor op FFmpeg-tempo
-- I4 mobiele Zoeken-secties en SRCH-2 persoonzoeken
-- DEC-111 (6) en (7), true-peak-cap met reden en bewijs per titel
-- I4 Zoeken automation-IDs, playlist routing fix, full group coverage
-- add /v1/input/text endpoint for ios-sim/macOS
-- loudnessplan als Verify-state, LOUD1-scenario
-- mobiele contextmenu op unified groepssemantiek (I5, mockup 09)
-- mobiele bronkeuze, Wijzigen en playback-failure re-entry (I5, mockup 08)
-- Bibliotheken wordt bronbeheer op TV (LIB7, DEC-092)
-- MOC-11 backend-icoonwel op elke bronrij
-- MOC-12 unified contextmenu met navigatie en posterkop
-- rebuild Mijn Pleya hub to northstar 18 (I7 child 18)
-- build Bibliotheken picker for I7 child 15 (northstar 15)
-- herindeel Instellingen naar northstar 14 (I7 child 14)
-- mobiele film-/seriedetail northstar 06/07
-- fake Seerr-server voor seerr.requests.v1
-- automation-ids op het Seerr-verbindingsformulier
-- fake Tautulli-server voor activity.active-session.v1
-- {{fixture_tautulli}} placeholder, ACT1 blijft open
+
+- **Film and series detail pages get a top-to-bottom redesign on Apple TV.** They always open
+  full screen, a season's episodes sit in a single scrollable rail with your place on the
+  current season remembered when you switch, and a long cast or extras row no longer runs into
+  the fixed information band above it.
+- **The player's info panel on Apple TV is now the one place for audio, subtitles, and
+  quality**, redesigned to match the rest of the app. Each source line shows which backend it
+  plays from. Rating a title needs a press to open the row before left and right can change the
+  score, so a stray remote press can no longer change a rating by accident.
+- **A single context menu on Apple TV poster tiles** now covers resume, play from the
+  beginning, jump to the info page, and switching source, with the poster shown at the top of
+  the menu.
+- **Libraries doubles as source management on Apple TV**: manage your Plex, Jellyfin, and Pleya
+  Server connections from the same screen you already browse them in.
+- **Watchlist, Requests, and Search on Apple TV use the same catalog layout as the rest of the
+  app**, filters included. Search keeps its results heading on screen instead of losing it while
+  you scroll, and a request keeps showing its real status from Seerr or Overseerr.
+- **Activity on Apple TV shows what is actually playing right now**, and only appears for
+  accounts allowed to see it.
+- **Audio loudness is measured and matched across titles and sources**, on Apple TV and Android,
+  so volume no longer jumps between an old film mixed quietly and a new episode mixed loud.
+- **iPhone gets the same unified Home, catalog, and detail redesign Apple TV already had.**
+  Films and Series are landing pages of their own, with a dedicated "all films" / "all series"
+  catalog behind the "›" button and its own filter and sort sheet.
+- **Custom rows on Home**: save any filter you can build (a genre, a studio, anything else) as
+  its own row, and reorder your rows without leaving Home. A row now survives exporting and
+  reimporting your settings.
+- **A title available on more than one of your servers now shows once**, with the source you
+  last watched it from remembered, and marking it watched applies to every source it exists on,
+  not only the one you played.
+- **Search on iPhone has dedicated sections for films, series, and people**, matching the
+  redesigned catalog.
+- My Pleya and Settings are reorganized on iPhone to match the new design.
 
 ### Improved
-- één UnifiedHubKind.singleKindSurface i.p.v. drie switches
-- één tabel voor bar-slot-beleid i.p.v. twee losse sets
-- _getBottomNavigationTabs leest de gecachte _isMobile/_isPhone
-- geen hero-autoscroll-timers meer op de telefoon
-- gedeelde shell voor Home en de landings, geen kopie meer
-- mobileFeatured deelt de wide-box-tak i.p.v. hem te kopiëren
-- hergebruik bestaande source-helpers i.p.v. ze te kopiëren
-- de catalogustegel en het catalogusraster los van de unified catalog
+
+- Home and the catalog landing screens share one underlying layout instead of separate copies,
+  so scrolling and rows behave the same way everywhere.
+- The hero banner on mobile Home no longer keeps auto-scrolling while you are reading it.
+- Catalog tiles use the same code as the rest of the catalog, so filters and sorting stay
+  consistent between screens.
 
 ### Fixed
-- de nieuwe route-ids afhandelen in de bestaande shells
-- de opstartsplash tekent de lockup ook via PleyaWordmark
-- fase-1 acceptance, de iPad houdt zijn eigen tabbalk
-- drie reviewbevindingen op het geneste routecontract
-- schaalcorrectie terug naar de ene grootheid die echt mismatchte
-- de linterwaarschuwingen die Code Analysis blokkeerden, per stuk beoordeeld (CI1)
-- Play geeft nooit een nooit-afgespeelde bron uit voor "Current source"
-- tik op de al-gekozen chip schakelt terug naar Home
-- hero-carrousel herstart bij late groepen en stopt buiten beeld
-- de vijf bevindingen uit de review op het spelerpaneel
-- "Play on ${server}" loopt door i18n in plaats van vast Engels
-- dode onAvatarTap weg uit MobilePageHeader, rol wordt image
-- Zoeken onthoudt herkomst-tab; _selectTab geeft een echt resultaat
-- _isMobile/_isPhone en _screens raken niet meer een frame uit de pas
-- ROW1, wat de schermafbeeldingen lieten zien
-- eigen Home-rijen overleven een export niet, en dat was stil
-- DOWN off de paneelknoppen viel uit het focusraster
-- de rijwizard opende met de ring op Annuleren
-- een nieuwe eigen rij landde onderaan zodra er ooit versleept was
-- een bronwijziging tijdens een lopende rijlaad ging verloren
-- een eigen rij gaf een trage bibliotheek geen kans, en zweeg erover
-- een Plex-server die niet parseert verdwijnt niet meer zonder logregel (SRC1)
-- een leeg Home liet je niet meer bij je eigen rijen
-- na Verwijderen bleef de ring op een rij staan die er niet meer was
-- het paneel vraagt zelf een frame aan als het de focus verplaatst (PNL3)
-- de geleende focusnode had geen eigenaar en geen doel
-- twee kleine gaten, één in het contextmenu en één in de bronbewaking
-- negen gegenereerde bestanden terug op build_runner-canonieke vorm
-- Provider<UnifiedCatalogs>-registratie en clearForProfileScope-aanroeper
-- elf gegenereerde modelbestanden terug op de generatorbreedte
-- zes Containers in een Padding worden een Container met margin (avoid-wrapping-in-padding)
-- de macOS+iOS-job kan groen: ad-hoc signing op de runner en de hero-scenario's bewijzen de DEC-097-fallback (VER-CI)
-- PREF1, export/import vraagt nu de PreferenceSyncPolicyRegistry
-- twee analyzer-fouten uit de merge, buiten de tekstuele conflicten
-- een vers, correct token krijgt niet meer instant "unreachable" van een oudere poging (SRC1)
-- retryRecentFailures ook op de twee synchrone fallback-aanroepen (SRC1, review)
-- drie dubbele imports in profile_session_screen.dart uit de merge
-- zeventien gegenereerde bestanden terug op de generatorbreedte
-- de mobiele Home draagt discover.continue_watching en reserveert geen lege hero-band
-- de hoogtekap van het spelerpaneel volgt de title-safe band en niet meer een vaste fractie (PLR4)
-- de vastloop in mobile_catalog_screen_test was een zonekruising, geen omgeving
-- de chips op Alle films openen hun sheet weer, want het scherm draagt nu zijn eigen overlay-host (CAT9)
-- het Home-aanpaspaneel spreekt Nederlands, en een test bewaakt de rest (ROW1q)
-- een wrapper die een andere focusnode krijgt neemt diens staat over (ROW1p)
-- het catalogusraster houdt de focusring heel na een scroll (CAT10)
-- ongebruikte import uit de CAT10-test
-- een lege catalogus laat de afstandsbediening nergens op staan (CAT14)
-- acht bevindingen uit een onafhankelijke Codex-challenge (CAT16)
-- de zijbalk blijft bereikbaar na een sorteerkeuze (CAT17)
-- het spelerpaneel op de gedeelde typeladder (PLR7)
-- de drie rake punten uit de Codex-challenge op CAT17 en PLR7
-- OVR1a op filmdetail, en de volledige synopsis (DEC-109)
-- LIB5 spotlight title clears the TV library chooser row
-- STR3-5 hardcoded English strings on tvOS surfaces
-- I18N1-4 and I18N6, translate the remaining 64 nl gaps
-- LAND5 restore onto a scrolled-away card falls back to first
-- VER3 first discovery tile's focus ring clears the safe zone
-- VER5 media-detail.episode-refresh reaches Bibliotheken via Mijn Pleya
-- GOLD2 regenerate tv_home_production references
-- titelbewijs resetten en paritybewijs gelijktrekken
-- Zoeken opent Aanvragen binnen de shell, ook met resultaten
-- toon servernaam bij personenresultaten (build 270)
-- LIB7 review findings — focus race, stale-node fallback, reorder clamp, error copy
-- HTTP-client blijft niet hangen na een suspend-freeze
-- MOC-09/MOC-10 compositie tegen mockup 37 A/C
-- expliciete restart vanaf begin respecteren ondanks details-instelling
-- hard-close cancel niet onbeheerd laten falen, deadline niet resetten
-- sluit gaten uit de I7-child-14-review (TV-bereikbaarheid, focus, dispose-race)
-- keep the detail info band above a tall rail reservation
-- MOC-16a, Activiteit-zichtbaarheid naar capability + echte data (PB-7) (#11)
-- give the detail synopsis a one-line tier and let genres wrap
-- MOC-16b, Activiteit TV-presentatie + ACT2/ACT3 (PB-7) (#12)
-- collapse the topnav on film and series detail (DEC-115)
-- DET6, filmdetail synopsis viel terug op 1 regel (Mayday)
-- MOC-20, Uiterlijk krijgt vier echte voorkeuren (PB-10)
-- MOC-21, Profiel kiezen krijgt de mockup-21-compositie op TV (beeld)
-- DET7, film- en seriedetail altijd volledig scherm
-- MOC-23a, offline drops dead pills from the TV top nav (#18)
-- MOC-23a follow-up, close two regressions from the offline fix (#19)
-- CAT18, het catalogusraster houdt alleen posters rond de focus vast
-- CAT19, LEFT vanuit de filterrail springt niet meer naar Series
-- geef de offline TV-topnav een reconnect-affordance (OFF-1)
-- sluit drie gaten die de Codex-challenge in OFF-1 vond
-- leg de OFF-1 focus-recovery-beslissing vast als pure helper
-- geef een hub het type dat zijn items dragen
-- geef insideViewport/notClipped een subpixel-tolerantie
-- hero-CTA's niet over de topnav op een gescrolde Home (HERO6)
-- geef het Seerr/Tautulli-verbindingsformulier initiële focus
-- initiële focus en automation-ids op het Tautulli-formulier
-- correct hub classification and Tautulli initial focus
-- focusherstel na een geneste route via TvFocusRestoreHost (HERO7)
-- avoid setState via a synchronous call in SeerrDiscoverScreen.initState
-- stub discover-fetch methods on golden test's _FakeClient
-<!-- END GENERATED -->
+
+- Marking a title as played no longer credits a source you never actually watched it from.
+- Tapping an already-selected filter chip on Home switches back to the default view instead of
+  doing nothing.
+- "Play on [server name]" is translated instead of always showing in English.
+- Search remembers which tab you searched from when you come back to it.
+- The down button on the player panel no longer falls out of the remote's focus order, and the
+  panel asks for its own redraw when it moves focus instead of waiting on something else to.
+- A new custom Home row no longer lands at the bottom the moment you have ever reordered rows,
+  and a source change made while a row is still loading no longer gets lost.
+- A slow library now gets a fair chance to load into a custom row instead of being silently
+  skipped, and a Plex server that fails to parse is logged instead of disappearing without a
+  trace.
+- An empty Home screen no longer blocks access to your own custom rows, and the selection ring
+  no longer lingers on a row you just deleted.
+- The catalog grid keeps its focus ring after scrolling, and the filter sidebar stays reachable
+  after picking a sort order.
+- An empty catalog leaves the remote on a control you can actually use, and stepping left out of
+  the filter rail no longer jumps you to the wrong catalog.
+- Offline mode on Apple TV drops its dead navigation tabs and offers to reconnect once you are
+  back online.
 
 ## 2.8.0 · build 262 · 5 September 2026
 
