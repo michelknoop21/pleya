@@ -302,8 +302,8 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     // the same on this backend as on the other two.
     final key = libraryId == null ? 'home' : 'library.$libraryId';
     final (identifier, title, type) = switch (hub) {
-      PleyaHubId.recentlyAdded => ('$key.recent', t.discover.recentlyAdded, 'mixed'),
-      PleyaHubId.continueWatching => ('$key.continue', t.discover.continueWatching, 'mixed'),
+      PleyaHubId.recentlyAdded => ('$key.recent', t.discover.recentlyAdded, _hubItemsType(page.items)),
+      PleyaHubId.continueWatching => ('$key.continue', t.discover.continueWatching, _hubItemsType(page.items)),
       PleyaHubId.nextUp => ('$key.nextup', t.discover.nextUp, 'episode'),
     };
     return MediaHub(
@@ -318,6 +318,25 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       serverId: serverId.toString(),
       serverName: serverName,
     );
+  }
+
+  /// `movie` or `show` when every item in the page agrees, `mixed` otherwise
+  /// (including the empty page). Plex and Jellyfin report a hub's kind
+  /// themselves; the protocol does not, so without this every Pleya Server hub
+  /// came back `mixed` regardless of content, and [UnifiedHubKind.singleKindSurface]
+  /// excludes `mixed` from both the Films and the Series landing — recently
+  /// added and continue watching could never appear on either, no matter what
+  /// was in the library.
+  String _hubItemsType(List<MediaItem> items) {
+    if (items.isEmpty) return 'mixed';
+    final kinds = items.map((item) => item.kind).toSet();
+    if (kinds.length > 1) return 'mixed';
+    return switch (kinds.single) {
+      MediaKind.movie => 'movie',
+      MediaKind.show => 'show',
+      MediaKind.episode => 'episode',
+      _ => 'mixed',
+    };
   }
 
   ({PleyaHubId hub, String? libraryId})? _parseHubKey(String hubId) {

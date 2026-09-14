@@ -290,6 +290,20 @@ void main() {
       }
     });
 
+    test('recently added is typed movie when every item in it is a movie', () async {
+      client = await connected(server);
+      final hubs = await client.fetchGlobalHubs();
+      expect(hubs.single.type, 'movie');
+    });
+
+    test('recently added is typed mixed when the items disagree', () async {
+      server.addItem(id: 'show-1', kind: 'show', title: 'A Show', libraryId: 'lib-series');
+      server.hubs['recently_added']!.add('show-1');
+      client = await connected(server);
+      final hubs = await client.fetchGlobalHubs();
+      expect(hubs.single.type, 'mixed');
+    });
+
     test('recently added comes back as a home row', () async {
       client = await connected(server);
       final hubs = await client.fetchGlobalHubs();
