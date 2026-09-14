@@ -297,6 +297,9 @@ class TranslationsCommonEn {
 	/// en: 'Resume'
 	String get resume => 'Resume';
 
+	/// en: 'Share'
+	String get share => 'Share';
+
 	/// en: 'Error'
 	String get error => 'Error';
 
@@ -2414,6 +2417,9 @@ class TranslationsDiscoverEn {
 	/// en: 'Cast'
 	String get cast => 'Cast';
 
+	/// en: '${count} episodes · ${watched} watched'
+	String episodeCountWatched({required Object count, required Object watched}) => '${count} episodes · ${watched} watched';
+
 	/// en: 'Trailers & Extras'
 	String get extras => 'Trailers & Extras';
 
@@ -3638,6 +3644,9 @@ class TranslationsDownloadsEn {
 
 	/// en: 'Downloads'
 	String get title => 'Downloads';
+
+	/// en: 'Download'
+	String get downloadAction => 'Download';
 
 	/// en: 'Manage'
 	String get manage => 'Manage';
@@ -7055,6 +7064,7 @@ extension on Translations {
 			'common.play' => 'Play',
 			'common.pause' => 'Pause',
 			'common.resume' => 'Resume',
+			'common.share' => 'Share',
 			'common.error' => 'Error',
 			'common.search' => 'Search',
 			'common.home' => 'Home',
@@ -7513,9 +7523,9 @@ extension on Translations {
 			'videoControls.tracksButton' => 'Audio & Subtitles',
 			'videoControls.chaptersButton' => 'Chapters',
 			'videoControls.versionsButton' => 'Video versions',
-			'videoControls.versionQualityButton' => 'Version & Quality',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.versionQualityButton' => 'Version & Quality',
 			'videoControls.versionColumnHeader' => 'Version',
 			'videoControls.qualityColumnHeader' => 'Quality',
 			'videoControls.qualityOriginal' => 'Original',
@@ -7778,6 +7788,7 @@ extension on Translations {
 			'discover.readMore' => 'Read more',
 			'discover.readMoreSemantic' => 'Read the full overview',
 			'discover.cast' => 'Cast',
+			'discover.episodeCountWatched' => ({required Object count, required Object watched}) => '${count} episodes · ${watched} watched',
 			'discover.extras' => 'Trailers & Extras',
 			'discover.studio' => 'Studio',
 			'discover.rating' => 'Rating',
@@ -8026,10 +8037,10 @@ extension on Translations {
 			'liveTv.watchLive' => 'Watch Live',
 			'liveTv.goToLive' => 'Go to Live',
 			'liveTv.record' => 'Record',
-			'liveTv.recordEpisode' => 'Record Episode',
-			'liveTv.recordSeries' => 'Record Series',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.recordEpisode' => 'Record Episode',
+			'liveTv.recordSeries' => 'Record Series',
 			'liveTv.recordOptions' => 'Record Options',
 			'liveTv.recordings' => 'Recordings',
 			'liveTv.scheduledRecordings' => 'Scheduled',
@@ -8176,6 +8187,7 @@ extension on Translations {
 			'watchTogether.noRecentRooms' => 'No sessions yet',
 			'watchTogether.noRecentRoomsHint' => 'A session you create or join appears here',
 			'downloads.title' => 'Downloads',
+			'downloads.downloadAction' => 'Download',
 			'downloads.manage' => 'Manage',
 			'downloads.tvShows' => 'TV Shows',
 			'downloads.movies' => 'Movies',
@@ -8539,11 +8551,11 @@ extension on Translations {
 			'seerr.partiallyAvailable' => 'Partially available',
 			'seerr.available' => 'Available',
 			'seerr.alreadyRequested' => 'Already requested',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.pending' => 'Pending',
 			'seerr.approved' => 'Approved',
 			'seerr.declined' => 'Declined',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.failed' => 'Failed',
 			'seerr.completed' => 'Completed',
 			'seerr.requestConfirm' => ({required Object title}) => 'Request "${title}"?',

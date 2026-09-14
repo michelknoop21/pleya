@@ -53,6 +53,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/widgets/collapsible_text.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
@@ -1058,11 +1059,20 @@ void main() {
       String? initialSeasonId,
       int? initialSeasonIndex,
       String? initialEpisodeId,
+      // PlatformDetector.isPhone's diagonal-size heuristic assumes a real
+      // device's devicePixelRatio (it divides by devicePixelRatio * 160/2.54
+      // to get the physical size); at the default devicePixelRatio 1 every
+      // existing caller here uses, that heuristic reads any normal phone
+      // viewport as a tablet and I6's northstar mobile branch never renders.
+      // Tests that specifically need the northstar branch pass a realistic
+      // phone size/ratio; every other caller keeps today's values unchanged.
+      Size viewSize = const Size(1100, 2400),
+      double devicePixelRatio = 1,
     }) async {
       TvDetectionService.debugSetAppleTVOverride(false);
       await SettingsService.getInstance();
-      tester.view.physicalSize = const Size(1100, 2400);
-      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = viewSize;
+      tester.view.devicePixelRatio = devicePixelRatio;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
@@ -1520,6 +1530,84 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('Episode S1E3'), findsNothing);
       expect(client.childrenPageCalls.where((c) => c.parentId == season1.id).length, pageCallsBeforeSecondResume);
+    });
+
+    group('I6 northstar mobile layout (docs/unified-2026-closure.md §5 row 5)', () {
+      // isPhone's diagonal check needs a realistic devicePixelRatio (see
+      // pumpPhoneDetail's comment); this is an iPhone-class logical viewport
+      // (390x844 at DPR 3), the actual condition media_detail_screen.dart's
+      // _buildInner gates the new mobile view on.
+      const phoneViewSize = Size(1170, 2532);
+      const phoneDevicePixelRatio = 3.0;
+
+      testWidgets('tapping the truncated synopsis reveals the full text', (tester) async {
+        final longSummary =
+            'Paul Atreides verenigt zich met Chani en de Fremen en zint op wraak op de samenzweerders '
+            'die zijn familie vernietigden. Voor de keuze tussen de liefde van zijn leven en het lot van '
+            'het universum moet hij een weg vinden om de duisternis te voorkomen die volgens zijn visioenen '
+            'YXCV_FULL_SYNOPSIS_TAIL_MARKER staat te wachten als hij het pad van wraak volgt.';
+        final movie = MediaItem(
+          id: 'movie_full_synopsis',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Dune: Part Two',
+          summary: longSummary,
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+        await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        expect(find.byType(CollapsibleText), findsOneWidget, reason: 'the northstar mobile view must be showing');
+        expect(
+          find.textContaining('YXCV_FULL_SYNOPSIS_TAIL_MARKER'),
+          findsNothing,
+          reason: 'six lines at phone width should truncate before the tail marker',
+        );
+
+        await tester.tap(find.byType(CollapsibleText));
+        await tester.pump();
+
+        expect(find.textContaining('YXCV_FULL_SYNOPSIS_TAIL_MARKER'), findsOneWidget);
+      });
+
+      testWidgets('switching season on the season-picker chip survives an unrelated rebuild', (tester) async {
+        final show = buildShow();
+        final season1 = buildSeason(show, 1);
+        final season2 = buildSeason(show, 2);
+        final episode1 = buildEpisode(show, season1, 1);
+        final episode2 = buildEpisode(show, season2, 1);
+        final client = _FakeMediaServerClient(
+          show: show,
+          childrenByParent: {
+            show.id: [season1, season2],
+            season1.id: [episode1],
+            season2.id: [episode2],
+          },
+        );
+
+        await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        expect(find.text('Episode S1E1'), findsOneWidget);
+        expect(find.text('Episode S2E1'), findsNothing);
+
+        await tester.tap(find.byType(PopupMenuButton<int>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Season 2').last);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(find.text('Episode S2E1'), findsOneWidget);
+        expect(find.text('Episode S1E1'), findsNothing);
+
+        // A rebuild from something entirely unrelated to season selection
+        // (a watch-state event on the show) must not reset _selectedSeasonIndex.
+        await emit(tester, () => WatchStateNotifier().notifyWatched(item: show, isNowWatched: false));
+
+        expect(find.text('Episode S2E1'), findsOneWidget);
+        expect(find.text('Episode S1E1'), findsNothing);
+      });
     });
   });
 
@@ -2247,7 +2335,10 @@ void main() {
         popObserver: popObserver,
       );
 
-      expect(find.text('Back Suppression Movie'), findsOneWidget);
+      // findsWidgets, not findsOneWidget: the northstar mobile layout
+      // (I6, mobile_detail_view.dart) repeats the title in the compact app
+      // bar and the body headline, both real on phone layout.
+      expect(find.text('Back Suppression Movie'), findsWidgets);
 
       // Stand-in for the video player, pushed on top of media-detail.
       unawaited(
@@ -2280,7 +2371,7 @@ void main() {
       await tester.pump();
 
       expect(popObserver.popped, ['player']);
-      expect(find.text('Back Suppression Movie'), findsOneWidget);
+      expect(find.text('Back Suppression Movie'), findsWidgets);
     });
 
     testWidgets('a fresh Menu press right after an automatic player return pops media-detail immediately', (
@@ -2315,7 +2406,7 @@ void main() {
       await tester.pump();
 
       expect(popObserver.popped, ['player']);
-      expect(find.text('Back Suppression Movie'), findsOneWidget);
+      expect(find.text('Back Suppression Movie'), findsWidgets);
 
       // The user's own, brand-new Menu press right after landing back on the
       // detail screen must work on the first try, not be eaten by leftover

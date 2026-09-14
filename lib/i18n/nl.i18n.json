@@ -59,6 +59,7 @@
     "play": "Afspelen",
     "pause": "Pauzeren",
     "resume": "Hervatten",
+    "share": "Delen",
     "error": "Fout",
     "search": "Zoeken",
     "home": "Home",
@@ -826,6 +827,7 @@
     "readMore": "Meer lezen",
     "readMoreSemantic": "Volledig overzicht lezen",
     "cast": "Acteurs",
+    "episodeCountWatched": "${count} afleveringen · ${watched} bekeken",
     "extras": "Trailers & Extra's",
     "studio": "Studio",
     "rating": "Leeftijd",
@@ -1267,6 +1269,7 @@
   },
   "downloads": {
     "title": "Downloads",
+    "downloadAction": "Downloaden",
     "manage": "Beheren",
     "tvShows": "Series",
     "movies": "Films",
