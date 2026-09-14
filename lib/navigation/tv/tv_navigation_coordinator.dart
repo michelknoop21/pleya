@@ -77,10 +77,11 @@ class TvNavigationCoordinator extends ChangeNotifier {
   /// one testable place.
   ///
   /// The fallback is [tvRootDestination] when it survived the recompute, and
-  /// [TvDestinationId.myPleya] when it did not (MOC-23a: offline drops Home
-  /// itself, which every case before it left standing). Mijn Pleya is the one
-  /// destination [buildTvDestinations] never removes, so it is always a valid
-  /// landing spot.
+  /// [TvDestinationId.myPleya] when it did not. Since MOC-23 (PB-12), offline
+  /// no longer removes Home itself, so this only bites when Live TV was
+  /// active and drops out; Mijn Pleya is the one destination
+  /// [buildTvDestinations] never removes, so it is always a valid landing
+  /// spot.
   ///
   /// A destination that disappears takes its nested stack with it: any
   /// [TvNestedRoute] pushed under it completes with `null` (same contract as

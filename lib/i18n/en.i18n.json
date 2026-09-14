@@ -2131,6 +2131,11 @@
     },
     "libraryCount": "${count} libraries"
   },
+  "tvOfflineHome": {
+    "title": "No server reachable",
+    "body": "None of your servers are answering right now. Reconnect once one is back online — My Pleya and Settings stay reachable while you wait.",
+    "manageServers": "Manage servers"
+  },
   "tvContextMenu": {
     "title": "Actions",
     "menuSemantics": "Action ${index} of ${count}: ${label}",
