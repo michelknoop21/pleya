@@ -79,9 +79,22 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
     // remote has nowhere to land when this screen opens.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final target = context.read<TautulliProvider>().isConfigured ? _saveFocus : _urlFocus;
+      final target = _initialFocusTarget(context.read<TautulliProvider>());
       if (target.canRequestFocus) target.requestFocus();
     });
+  }
+
+  /// The first genuinely mounted, usable control for this build of the
+  /// screen. `_saveFocus` only ever mounts inside `_buildForm`, after a
+  /// successful Test — never in `_buildConnectedCard` — so aiming initial
+  /// focus at it while already configured landed on nothing. The connected
+  /// card's own first control depends on whether the admin history switch
+  /// is showing: [TautulliProvider.adminStatus] loads asynchronously, so a
+  /// session that has not resolved it yet by the first frame falls back to
+  /// the disconnect button, which is always mounted once configured.
+  FocusNode _initialFocusTarget(TautulliProvider provider) {
+    if (!provider.isConfigured) return _urlFocus;
+    return provider.adminStatus != null ? _historyPolicyFocus : _testFocus;
   }
 
   /// Carry the address and the mode into the form. Deliberately not the token:
