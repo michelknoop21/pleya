@@ -65,6 +65,12 @@ class TautulliFakeServer {
 
   /// Registers one active session, shaped per a real `get_activity` capture
   /// (`test/fixtures/tautulli/activity_movie_direct_play.json`).
+  ///
+  /// [ratingKey] defaults to [sessionKey] rather than staying absent: a real
+  /// session always carries one (`TautulliStream.ratingKey` reads
+  /// `rating_key` off every row), and `WatchSession.ratingKey` is what lets a
+  /// tap on the Activiteit card navigate to the item actually playing. A
+  /// session with no rating key can render but never activate.
   void addSession({
     required String sessionKey,
     required String user,
@@ -77,9 +83,11 @@ class TautulliFakeServer {
     int viewOffsetMs = 600000,
     int durationMs = 5400000,
     String state = 'playing',
+    String? ratingKey,
   }) {
     sessions.add({
       'session_key': sessionKey,
+      'rating_key': ratingKey ?? sessionKey,
       'user': user,
       'friendly_name': user,
       'user_id': sessionKey.hashCode.abs() % 1000000,

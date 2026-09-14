@@ -49,6 +49,29 @@ void main() {
     expect(data['stream_count_direct_play'], 1);
   });
 
+  test('a seeded session carries a rating_key and is therefore activatable', () async {
+    // WatchSession.ratingKey (lib/media/watch_session.dart) is what a tap on
+    // the Activiteit card navigates with; a session with none can render but
+    // never be acted on.
+    final server = TautulliFakeServer(apiKey: 'verify-key');
+    server.addSession(sessionKey: '7', ratingKey: 'aurora-drift-1', user: 'verify-viewer', title: 'Aurora Drift');
+
+    final response = await _get(server, {'apikey': 'verify-key', 'cmd': 'get_activity'});
+    final session = (jsonDecode(response.body)['response']['data']['sessions'] as List).single as Map;
+
+    expect(session['rating_key'], 'aurora-drift-1');
+  });
+
+  test('a session seeded without an explicit rating_key still gets a usable one', () async {
+    final server = TautulliFakeServer(apiKey: 'verify-key');
+    server.addSession(sessionKey: '7', user: 'verify-viewer', title: 'Aurora Drift');
+
+    final response = await _get(server, {'apikey': 'verify-key', 'cmd': 'get_activity'});
+    final session = (jsonDecode(response.body)['response']['data']['sessions'] as List).single as Map;
+
+    expect(session['rating_key'], '7');
+  });
+
   test('reset clears every session', () async {
     final server = TautulliFakeServer(apiKey: 'verify-key');
     server.addSession(sessionKey: '1', user: 'verify-viewer', title: 'Aurora Drift');

@@ -33,7 +33,11 @@ void main() {
     expect(jsonDecode(me.body), {'id': 1, 'displayName': 'verify-admin', 'permissions': 2});
   });
 
-  test('a seeded request round-trips with its embedded media', () async {
+  test('a seeded request comes back without its title, like real Overseerr', () async {
+    // The title/poster a caller passes to addRequest must not leak straight
+    // onto the request row — SeerrClient.needsDisplayData only ever fires the
+    // /movie or /tv hydration round-trip when the row itself lacks them, and a
+    // fixture that skips that round-trip cannot catch a regression in it.
     final server = SeerrFakeServer(apiKey: 'verify-key');
     server.addRequest(id: 1, mediaType: 'movie', tmdbId: 101, title: 'Aurora Drift', year: 2024, status: 1);
 
@@ -43,7 +47,44 @@ void main() {
     final list = await _get(server, '/seerr/api/v1/request', apiKey: 'verify-key', query: const {'filter': 'all'});
     final results = jsonDecode(list.body)['results'] as List;
     expect(results, hasLength(1));
-    expect(results.single['media']['title'], 'Aurora Drift');
+    final media = results.single['media'] as Map;
+    expect(media.containsKey('title'), isFalse);
+    expect(media.containsKey('posterPath'), isFalse);
+    expect(media['tmdbId'], 101);
+  });
+
+  test('the title a request was seeded with answers the hydration round-trip', () async {
+    final server = SeerrFakeServer(apiKey: 'verify-key');
+    server.addRequest(
+      id: 1,
+      mediaType: 'movie',
+      tmdbId: 101,
+      title: 'Aurora Drift',
+      year: 2024,
+      posterPath: '/aurora.jpg',
+    );
+
+    final movie = await _get(server, '/seerr/api/v1/movie/101', apiKey: 'verify-key');
+    final body = jsonDecode(movie.body) as Map<String, dynamic>;
+    expect(body['title'], 'Aurora Drift');
+    expect(body['releaseDate'], '2024-01-01');
+    expect(body['posterPath'], '/aurora.jpg');
+  });
+
+  test('a tv request hydrates through name/firstAirDate, not title/releaseDate', () async {
+    final server = SeerrFakeServer(apiKey: 'verify-key');
+    server.addRequest(id: 2, mediaType: 'tv', tmdbId: 202, title: 'Basalt Coast', year: 2023);
+
+    final tv = await _get(server, '/seerr/api/v1/tv/202', apiKey: 'verify-key');
+    final body = jsonDecode(tv.body) as Map<String, dynamic>;
+    expect(body['name'], 'Basalt Coast');
+    expect(body['firstAirDate'], '2023-01-01');
+  });
+
+  test('an id with no registered request is a 404, not a stale fixture default', () async {
+    final server = SeerrFakeServer(apiKey: 'verify-key');
+    final response = await _get(server, '/seerr/api/v1/movie/999', apiKey: 'verify-key');
+    expect(response.statusCode, 404);
   });
 
   test('a discover bucket answers a page of results the client can parse', () async {

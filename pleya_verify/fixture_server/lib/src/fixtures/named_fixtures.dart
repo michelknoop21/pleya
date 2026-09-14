@@ -326,10 +326,11 @@ void _applyCatalogLongRailsV1(PleyaFakeServer server) {
 /// Five requests across four `SeerrRequestStatus` values (pending, approved,
 /// declined, completed) for "Alle aanvragen", plus a handful of titles in
 /// each of the five discover buckets `SeerrDiscoverScreen` fetches (trending,
-/// movies, tv, upcoming movies, upcoming tv) for "Ontdekken". Every request's
-/// `media` object carries its own title/year/poster, so the client's
-/// best-effort hydration round-trip never has to fire for this fixture to
-/// display correctly.
+/// movies, tv, upcoming movies, upcoming tv) for "Ontdekken". A request's
+/// `media` object never carries title/year/poster — [SeerrFakeServer.addRequest]
+/// seeds those into `/movie/{id}`/`/tv/{id}` instead — so this fixture only
+/// displays correctly when `SeerrClient.hydrateRequests`'s round-trip
+/// actually fires, the same as production.
 void _applySeerrRequestsV1(SeerrFakeServer seerr) {
   seerr.reset();
 
@@ -375,7 +376,18 @@ void _applySeerrRequestsV1(SeerrFakeServer seerr) {
 /// needs a real Plex client to turn Tautulli's Plex-shaped thumb paths into a
 /// URL), so the session card falls back to a placeholder; that is accepted,
 /// not a gap this fixture tries to close.
+///
+/// `ratingKey` is explicit rather than left to `addSession`'s default so a
+/// scenario can assert on it directly: the goal for Activiteit is a session a
+/// viewer can actually act on, not just one that renders, and
+/// `WatchSession.ratingKey` is what a tap on the card navigates with.
 void _applyActivityActiveSessionV1(TautulliFakeServer tautulli) {
   tautulli.reset();
-  tautulli.addSession(sessionKey: '1', user: 'verify-viewer', title: 'Aurora Drift', mediaType: 'movie');
+  tautulli.addSession(
+    sessionKey: '1',
+    ratingKey: 'verify-aurora-drift',
+    user: 'verify-viewer',
+    title: 'Aurora Drift',
+    mediaType: 'movie',
+  );
 }
