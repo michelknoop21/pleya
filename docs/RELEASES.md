@@ -177,6 +177,7 @@ under `Notes`.
 - correct hub classification and Tautulli initial focus
 - focusherstel na een geneste route via TvFocusRestoreHost (HERO7)
 - avoid setState via a synchronous call in SeerrDiscoverScreen.initState
+- stub discover-fetch methods on golden test's _FakeClient
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026

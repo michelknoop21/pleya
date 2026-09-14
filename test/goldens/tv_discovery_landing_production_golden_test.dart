@@ -210,6 +210,15 @@ class _FakeClient implements MediaServerClient {
   Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds();
 
   @override
+  Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async => const [];
+
+  @override
+  Future<List<MediaItem>> fetchRecentlyAddedShows({int limit = 50}) async => const [];
+
+  @override
+  Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async => const [];
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
