@@ -31,6 +31,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/unified/unified_media_group.dart';
+import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/providers/discover_provider.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
@@ -878,6 +879,70 @@ void main() {
       expect(tester.state<TvContentFeedState>(find.byType(TvContentFeed)).focusRestored(), isTrue);
       await tester.pump();
       expect(FocusManager.instance.primaryFocus?.debugLabel, left);
+    });
+
+    testWidgets('HERO7: restoreTvFocus puts the ring on the rowId+groupId a pushed route was opened from', (
+      tester,
+    ) async {
+      // Simulates the shell's own resolver (`main_screen.dart._restoreTvFocus`)
+      // after a detail route pops: it does not touch the ambient
+      // `contentFocusScope` at all, it asks this host directly with the target
+      // the card recorded at push time.
+      await boot(
+        tester,
+        latestMovies: twoRecentFilms(),
+        hubs: [
+          _hub('top-picks', 'Top Picks', [_film('tp1', title: 'Quarry Road'), _film('tp2', title: 'Arcade Midnight')]),
+        ],
+      );
+      final row = rows(tester).first;
+      final target = TvFocusRestoreTarget(itemId: row.hub.groups[1].groupId, containerId: row.hub.hubId);
+
+      // Flutter's own fallback after a scope's history goes empty: the first
+      // focusable descendant, `tvHeroPlay` — the exact HERO7 symptom.
+      heroNode(tester, 'tvHeroPlay').requestFocus();
+      await tester.pump();
+
+      final restored = tester.state<TvContentFeedState>(find.byType(TvContentFeed)).restoreTvFocus(target);
+      await tester.pump();
+
+      expect(restored, isTrue);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_${target.itemId}');
+    });
+
+    testWidgets('HERO7 negative: a target whose whole row is gone reports false, not a wrong card', (tester) async {
+      await boot(
+        tester,
+        latestMovies: twoRecentFilms(),
+        hubs: [
+          _hub('top-picks', 'Top Picks', [_film('tp1', title: 'Quarry Road'), _film('tp2', title: 'Arcade Midnight')]),
+          _hub('hidden-gems', 'Hidden Gems', [_film('hg1', title: 'Wintering')]),
+        ],
+      );
+      final goneRow = rows(tester).firstWhere((r) => r.hub.title == 'Top Picks');
+      final target = TvFocusRestoreTarget(itemId: goneRow.hub.groups[1].groupId, containerId: goneRow.hub.hubId);
+
+      // The row the route was opened from is gone entirely by the time it
+      // pops — its server went offline, or the viewer hid it — same
+      // re-projection technique the "DOWN out of the hero lands on the first
+      // row on screen" test above uses to avoid rebuilding the whole tree.
+      aggregation.hubs = [
+        _hub('hidden-gems', 'Hidden Gems', [_film('hg1', title: 'Wintering')]),
+      ];
+      await discover.load();
+      for (var i = 0; i < 80 && projection.isProjecting; i++) {
+        await Future<void>.value();
+      }
+      await tester.pumpAndSettle();
+      expect(rows(tester).map((r) => r.hub.title), isNot(contains('Top Picks')), reason: 'sanity: the row is gone');
+
+      final restored = tester.state<TvContentFeedState>(find.byType(TvContentFeed)).restoreTvFocus(target);
+
+      expect(
+        restored,
+        isFalse,
+        reason: 'a gone row must not be approximated to another one — the caller decides the further fallback',
+      );
     });
 
     testWidgets('DOWN out of the hero lands on the first row on screen, not the first row ever built', (tester) async {

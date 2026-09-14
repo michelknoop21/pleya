@@ -56,6 +56,7 @@ import '../mixins/refreshable.dart';
 import '../mixins/tab_visibility_aware.dart';
 import '../i18n/strings.g.dart';
 import '../navigation/navigation_tabs.dart';
+import '../navigation/tv/tv_navigation_coordinator.dart';
 import '../utils/app_logger.dart';
 import '../utils/home_hero_layout.dart';
 import '../utils/media_navigation_helper.dart';
@@ -112,7 +113,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         TabVisibilityAware,
         FocusableTab,
         WidgetsBindingObserver,
-        TvDiscoveryActivationMixin {
+        TvDiscoveryActivationMixin
+    implements TvFocusRestoreHost {
   static const Duration _heroAutoScrollDuration = Duration(seconds: 8);
   static const Duration _indicatorUpdateInterval = Duration(milliseconds: 200);
   // Home rows are a touch shorter than the shared compact scale so the billboard
@@ -767,6 +769,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     }
     _focusTopBoundary();
   }
+
+  /// HERO7: delegates to the feed, the actual owner of Home's row/card focus.
+  @override
+  bool restoreTvFocus(TvFocusRestoreTarget target) => _tvFeedKey.currentState?.restoreTvFocus(target) ?? false;
 
   /// Takes the shell's pending content-focus intent, if there is one.
   ///

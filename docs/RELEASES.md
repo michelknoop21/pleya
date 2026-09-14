@@ -175,6 +175,7 @@ under `Notes`.
 - geef het Seerr/Tautulli-verbindingsformulier initiële focus
 - initiële focus en automation-ids op het Tautulli-formulier
 - correct hub classification and Tautulli initial focus
+- focusherstel na een geneste route via TvFocusRestoreHost (HERO7)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026

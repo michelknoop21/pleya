@@ -2345,9 +2345,34 @@ class _MainScreenState extends State<MainScreen>
         _tvMyPleya?.focusKey(key);
         return;
       }
+      final target = popped.restoreTarget;
+      if (target != null && _restoreTvFocus(target)) return;
       _focusContent(restorePreviousFocus: true);
     });
     return true;
+  }
+
+  /// HERO7: the surface a pop reveals resolves its own stable focus origin,
+  /// instead of the shared `contentFocusScope` restoring "whatever it last
+  /// remembered" — proven unreliable the moment a route between push and pop
+  /// owns its own focus-bearing scope (`MediaDetailScreen`'s related-rail
+  /// wipes the ambient history on the way out; see
+  /// docs/tvos-fysieke-correctieronde.md HERO7). Tried in the order the stack
+  /// actually reveals: a route still underneath first — a detail popped off
+  /// the complete catalog leaves the catalog, not the destination root — then
+  /// the destination root itself.
+  bool _restoreTvFocus(TvFocusRestoreTarget target) {
+    final stillNested = _tvNav.activeNestedRoute;
+    if (stillNested != null) {
+      if (stillNested.screenKey?.currentState case final TvFocusRestoreHost host) {
+        return host.restoreTvFocus(target);
+      }
+      return false;
+    }
+    if (_screenKeyFor(_currentTab)?.currentState case final TvFocusRestoreHost host) {
+      return host.restoreTvFocus(target);
+    }
+    return false;
   }
 
   /// Handle library selection from side navigation rail

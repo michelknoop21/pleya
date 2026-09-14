@@ -353,6 +353,18 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     if (node != null && node.canRequestFocus) node.requestFocus();
   }
 
+  /// Puts the focus on one named card, or reports that it could not — same
+  /// contract as [TvDiscoveryRailState.focusGroup]: a card scrolled out of a
+  /// virtualized range has no node yet, and the caller decides what a false
+  /// means (for restoration, a further fallback).
+  bool focusItem(String id) {
+    final node = _nodes[id];
+    if (node == null || !node.canRequestFocus) return false;
+    _focusedId = id;
+    node.requestFocus();
+    return true;
+  }
+
   bool get hasFocusableCard => _nodes.values.any((node) => node.canRequestFocus);
 
   FocusNode _nodeFor(String id) => _nodes.putIfAbsent(id, () => FocusNode(debugLabel: '${widget.nodeDebugLabel}($id)'));

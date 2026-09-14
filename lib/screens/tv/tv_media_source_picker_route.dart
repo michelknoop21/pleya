@@ -55,6 +55,7 @@ import '../../media/unified/source_coverage_state.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_source.dart';
 import '../../media/unified/unified_route_context.dart';
+import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../navigation/tv/tv_nested_surface.dart';
 import '../../services/unified_catalog/preferred_server_store.dart';
 import '../../services/unified_catalog/source_preference_store.dart';
@@ -132,6 +133,7 @@ Future<UnifiedActivationOutcome> activateUnifiedMediaGroup(
   void Function(String)? onRefresh,
   ValueChanged<MediaItem>? onPlaybackReturned,
   String? traceId,
+  TvFocusRestoreTarget? restoreTarget,
 }) async {
   const coordinator = UnifiedActivationCoordinator();
   final preferredSourceKey = await SourcePreferenceStore.read(group.identity);
@@ -164,6 +166,7 @@ Future<UnifiedActivationOutcome> activateUnifiedMediaGroup(
         onRefresh: onRefresh,
         onPlaybackReturned: onPlaybackReturned,
         traceId: traceId,
+        restoreTarget: restoreTarget,
       );
 
     case ShowSourcePicker(
@@ -199,6 +202,7 @@ Future<UnifiedActivationOutcome> activateUnifiedMediaGroup(
         onRefresh: onRefresh,
         onPlaybackReturned: onPlaybackReturned,
         traceId: traceId,
+        restoreTarget: restoreTarget,
       );
 
     // Hoofdstuk 14.7. The rows are still shown — "which server is down" is
@@ -239,6 +243,7 @@ Future<UnifiedActivationOutcome> _acceptChoice(
   required void Function(String)? onRefresh,
   required ValueChanged<MediaItem>? onPlaybackReturned,
   required String? traceId,
+  TvFocusRestoreTarget? restoreTarget,
 }) async {
   const coordinator = UnifiedActivationCoordinator();
   SelectTraceRecorder.instance.noteSourceSelection(traceId, detail: 'user picked ${chosen.sourceKey}');
@@ -265,6 +270,7 @@ Future<UnifiedActivationOutcome> _acceptChoice(
     onRefresh: onRefresh,
     onPlaybackReturned: onPlaybackReturned,
     traceId: traceId,
+    restoreTarget: restoreTarget,
   );
 }
 
@@ -284,6 +290,7 @@ Future<UnifiedActivationOutcome> _routeToSource(
   required void Function(String)? onRefresh,
   required ValueChanged<MediaItem>? onPlaybackReturned,
   required String? traceId,
+  TvFocusRestoreTarget? restoreTarget,
 }) async {
   var playbackInitFailed = false;
 
@@ -298,6 +305,7 @@ Future<UnifiedActivationOutcome> _routeToSource(
     onPlaybackReturned: onPlaybackReturned,
     unifiedRouteContext: routeContext,
     onPlaybackInitFailed: () => playbackInitFailed = true,
+    restoreTarget: restoreTarget,
     onChangeSource: routeContext.hasAlternativeSources
         ? (detailContext) => _changeSourceFromDetail(
             detailContext,
