@@ -7,10 +7,17 @@ import 'package:http/http.dart' as http;
 
 import 'fixtures/named_fixtures.dart';
 import 'pleya_fake_server.dart';
+import 'seerr_fake_server.dart';
+import 'tautulli_fake_server.dart';
 
 /// A real, loopback-only `dart:io` HTTP server around a [PleyaFakeServer]:
 /// `/pleya/v1/*` goes straight to [PleyaFakeServer.handle], `/__verify/*` is
-/// a separate control plane for scenario setup/mutation/assertion.
+/// a separate control plane for scenario setup/mutation/assertion,
+/// `/seerr/*` goes to [SeerrFakeServer.handle], and `/tautulli/*` goes to
+/// [TautulliFakeServer.handle] — two further, unrelated fake services on the
+/// same loopback port, exactly what a scenario's Seerr/Tautulli settings
+/// screens are pointed at (`http://127.0.0.1:<port>/seerr`,
+/// `http://127.0.0.1:<port>/tautulli`).
 ///
 /// Auth is a single, unambiguous contract: [controlToken] is required as
 /// `Authorization: Bearer <token>` on every `/__verify/*` request. The
@@ -18,10 +25,18 @@ import 'pleya_fake_server.dart';
 /// (`at-N` access tokens minted by `POST /auth/refresh`) — the control token
 /// is never accepted there, and vice versa.
 class FixtureHttpServer {
-  FixtureHttpServer({required this.server, required this.controlToken});
+  FixtureHttpServer({
+    required this.server,
+    required this.controlToken,
+    SeerrFakeServer? seerr,
+    TautulliFakeServer? tautulli,
+  }) : seerr = seerr ?? SeerrFakeServer(),
+       tautulli = tautulli ?? TautulliFakeServer();
 
   final PleyaFakeServer server;
   final String controlToken;
+  final SeerrFakeServer seerr;
+  final TautulliFakeServer tautulli;
 
   HttpServer? _bound;
 
@@ -46,6 +61,10 @@ class FixtureHttpServer {
     try {
       if (request.uri.path.startsWith('/__verify')) {
         await _handleControlPlane(request);
+      } else if (request.uri.path.startsWith('/seerr')) {
+        await _handleSeerrApi(request);
+      } else if (request.uri.path.startsWith('/tautulli')) {
+        await _handleTautulliApi(request);
       } else {
         await _handlePleyaApi(request);
       }
@@ -80,6 +99,34 @@ class FixtureHttpServer {
     await request.response.close();
   }
 
+  Future<void> _handleSeerrApi(HttpRequest request) async {
+    final body = await utf8.decoder.bind(request).join();
+    final outbound = http.Request(request.method, request.requestedUri)..body = body;
+    request.headers.forEach((name, values) {
+      if (values.isNotEmpty) outbound.headers[name] = values.first;
+    });
+
+    final response = await seerr.handle(outbound);
+    request.response.statusCode = response.statusCode;
+    response.headers.forEach((name, value) => request.response.headers.set(name, value));
+    request.response.add(response.bodyBytes);
+    await request.response.close();
+  }
+
+  Future<void> _handleTautulliApi(HttpRequest request) async {
+    final body = await utf8.decoder.bind(request).join();
+    final outbound = http.Request(request.method, request.requestedUri)..body = body;
+    request.headers.forEach((name, values) {
+      if (values.isNotEmpty) outbound.headers[name] = values.first;
+    });
+
+    final response = await tautulli.handle(outbound);
+    request.response.statusCode = response.statusCode;
+    response.headers.forEach((name, value) => request.response.headers.set(name, value));
+    request.response.add(response.bodyBytes);
+    await request.response.close();
+  }
+
   Future<void> _handleControlPlane(HttpRequest request) async {
     final auth = request.headers.value(HttpHeaders.authorizationHeader);
     if (auth != 'Bearer $controlToken') {
@@ -91,6 +138,8 @@ class FixtureHttpServer {
     switch (request.uri.path) {
       case '/__verify/reset':
         server.reset();
+        seerr.reset();
+        tautulli.reset();
         await _json(request, {'ok': true});
       case '/__verify/requests':
         final since = int.tryParse(request.uri.queryParameters['since'] ?? '') ?? 0;
@@ -107,7 +156,7 @@ class FixtureHttpServer {
       case '/__verify/seed':
         final body = await _readJsonBody(request);
         final fixture = body['fixture'] as String?;
-        if (fixture == null || !applyNamedFixture(server, fixture)) {
+        if (fixture == null || !applyNamedFixture(server, fixture, seerr: seerr, tautulli: tautulli)) {
           request.response.statusCode = HttpStatus.badRequest;
           await _json(request, {'error': 'unknown fixture', 'fixture': fixture});
           return;

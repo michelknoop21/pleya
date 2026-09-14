@@ -135,6 +135,15 @@ ids:
   - id: my_pleya.log_row
     role: list.item
     instanceable: true
+  - id: settings.form.field
+    role: field
+    instanceable: true
+  - id: settings.form.button
+    role: button
+    instanceable: true
+  - id: activity.row
+    role: list.item
+    instanceable: true
   - id: player.surface
     role: surface
     instanceable: false

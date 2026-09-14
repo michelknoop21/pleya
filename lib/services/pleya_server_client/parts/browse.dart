@@ -273,7 +273,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   }) async {
     final parsed = _parseHubKey(hubId);
     if (parsed == null) return const LibraryPage(items: [], totalCount: 0);
-    return _walkPage(
+    final page = await _walkPage(
       path: '/hubs/${parsed.hub.wire}',
       ledgerKey: PleyaServerCursorLedger.key(
         scope: 'hub:${parsed.hub.wire}:${parsed.libraryId ?? ''}',
@@ -285,6 +285,15 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       libraryId: parsed.libraryId,
       abort: abort,
     );
+    // `_hub()` types Next Up as `episode` unconditionally (it is always a
+    // per-episode queue, never classified from its content like the other
+    // two hubs), so paging further into it must hold to that same kind —
+    // otherwise a stray non-episode item would ride into a row every reader
+    // downstream, from `UnifiedHubKind` to the Next Up card layout, has been
+    // told only ever holds episodes.
+    if (parsed.hub != PleyaHubId.nextUp) return page;
+    final filtered = page.items.where((item) => item.kind == MediaKind.episode).toList();
+    return filtered.length == page.items.length ? page : page.copyWith(items: filtered);
   }
 
   Future<LibraryPage<MediaItem>> _hubPage(PleyaHubId hub, {required int limit, String? libraryId}) => _walkPage(
@@ -302,8 +311,8 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     // the same on this backend as on the other two.
     final key = libraryId == null ? 'home' : 'library.$libraryId';
     final (identifier, title, type) = switch (hub) {
-      PleyaHubId.recentlyAdded => ('$key.recent', t.discover.recentlyAdded, 'mixed'),
-      PleyaHubId.continueWatching => ('$key.continue', t.discover.continueWatching, 'mixed'),
+      PleyaHubId.recentlyAdded => ('$key.recent', t.discover.recentlyAdded, _hubItemsType(page.items)),
+      PleyaHubId.continueWatching => ('$key.continue', t.discover.continueWatching, _hubItemsType(page.items)),
       PleyaHubId.nextUp => ('$key.nextup', t.discover.nextUp, 'episode'),
     };
     return MediaHub(
@@ -318,6 +327,29 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       serverId: serverId.toString(),
       serverName: serverName,
     );
+  }
+
+  /// `movie` when every item is a movie, `show` when every item is
+  /// show-related (`show`, `season` or `episode` — [MediaKind.isShowRelated]),
+  /// `mixed` otherwise (including the empty page and a genuine movie/show
+  /// mix). Plex and Jellyfin report a hub's kind themselves; the protocol does
+  /// not, so without this every Pleya Server hub came back `mixed` regardless
+  /// of content, and [UnifiedHubKind.singleKindSurface] excludes `mixed` from
+  /// both the Films and the Series landing — recently added and continue
+  /// watching could never appear on either, no matter what was in the
+  /// library.
+  ///
+  /// An all-episode page (Continue Watching part-way through a season, a
+  /// library's Recently Added stopping at the latest episodes) is grouped
+  /// under `show`, not left as its own bucket: [MediaKind.episode] carries no
+  /// `singleKindSurface` of its own, and treating it as neither-Films-nor-
+  /// Series would make such a hub vanish from Series, which is exactly the
+  /// destination its episodes belong to.
+  String _hubItemsType(List<MediaItem> items) {
+    if (items.isEmpty) return 'mixed';
+    if (items.every((item) => item.kind == MediaKind.movie)) return 'movie';
+    if (items.every((item) => item.kind.isShowRelated)) return 'show';
+    return 'mixed';
   }
 
   ({PleyaHubId hub, String? libraryId})? _parseHubKey(String hubId) {

@@ -19,16 +19,19 @@ target: tvos-sim
 # width and slides everything after it.
 setup:
   - reset_app
-  - seed: catalog.mixed.v1
+  - seed: catalog.long-rails.v1
   - launch
   - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
 steps:
   - wait_until: {id: screen.discover, timeout: 30000}
   - settle: 3500
 
-  # To Films. The bar keeps the focus through a destination switch (P2), so the
-  # landing behind it is at rest with nothing in it focused — which is exactly
-  # the state this scenario needs.
+  # To Films: two RIGHTs from Home, since the bar order is Home, Series, Films,
+  # Mijn Pleya. The bar keeps the focus through a destination switch (P2), so
+  # the landing behind it is at rest with nothing in it focused — which is
+  # exactly the state this scenario needs.
+  - press: right
+  - settle: 500
   - press: right
   - settle: 800
   - press: select

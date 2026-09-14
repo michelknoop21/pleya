@@ -53,6 +53,13 @@ class GeometryVerdict {
   String toString() => '${ok ? 'PASS' : 'FAIL'}: $message';
 }
 
+/// Below this, an "overflow" is floating-point noise, not a measurement: two
+/// edges meant to land on the same pixel arrive from independent chains of
+/// division and multiplication (a scale factor, a fraction of a rail width),
+/// and rarely cancel to exactly 0.0. A real clip/overscan defect is at least
+/// a fraction of a logical pixel, never 1e-9 of one.
+const double _edgeTolerance = 0.05;
+
 GeometryVerdict _fullyContains(GeoRect outer, GeoRect inner, {required String outerName}) {
   final overflowLeft = outer.left - inner.left;
   final overflowTop = outer.top - inner.top;
@@ -60,10 +67,10 @@ GeometryVerdict _fullyContains(GeoRect outer, GeoRect inner, {required String ou
   final overflowBottom = inner.bottom - outer.bottom;
 
   final overflows = <String, double>{
-    if (overflowLeft > 0) 'left': overflowLeft,
-    if (overflowTop > 0) 'top': overflowTop,
-    if (overflowRight > 0) 'right': overflowRight,
-    if (overflowBottom > 0) 'bottom': overflowBottom,
+    if (overflowLeft > _edgeTolerance) 'left': overflowLeft,
+    if (overflowTop > _edgeTolerance) 'top': overflowTop,
+    if (overflowRight > _edgeTolerance) 'right': overflowRight,
+    if (overflowBottom > _edgeTolerance) 'bottom': overflowBottom,
   };
 
   if (overflows.isEmpty) {

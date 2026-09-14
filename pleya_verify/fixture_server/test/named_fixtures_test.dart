@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:pleya_verify_fixture_server/named_fixtures.dart';
 import 'package:pleya_verify_fixture_server/pleya_fake_server.dart';
+import 'package:pleya_verify_fixture_server/seerr_fake_server.dart';
+import 'package:pleya_verify_fixture_server/tautulli_fake_server.dart';
 import 'package:test/test.dart';
 
 Future<http.Response> _post(PleyaFakeServer server, String path, Object body) {
@@ -152,6 +154,50 @@ void main() {
       expect(server.items.values.where((i) => i['kind'] == 'movie'), hasLength(3));
       expect(server.hubs['recently_added'], isNotEmpty);
       expect(server.hubs['continue_watching'], isNotEmpty);
+    });
+  });
+
+  group('seerr.requests.v1', () {
+    test('returns false without a seerr server, seeds one when given', () {
+      final server = PleyaFakeServer();
+      expect(applyNamedFixture(server, 'seerr.requests.v1'), isFalse);
+
+      final seerr = SeerrFakeServer();
+      expect(applyNamedFixture(server, 'seerr.requests.v1', seerr: seerr), isTrue);
+      expect(seerr.requests, hasLength(5));
+      expect(seerr.discover.values.every((bucket) => bucket.length == 6), isTrue);
+    });
+
+    test('does not touch the pleya server catalog', () {
+      final server = PleyaFakeServer();
+      applyNamedFixture(server, 'catalog.mixed.v1');
+      final seerr = SeerrFakeServer();
+
+      applyNamedFixture(server, 'seerr.requests.v1', seerr: seerr);
+
+      expect(server.libraries, isNotEmpty, reason: 'seeding seerr must not reset the catalog');
+    });
+  });
+
+  group('activity.active-session.v1', () {
+    test('returns false without a tautulli server, seeds one when given', () {
+      final server = PleyaFakeServer();
+      expect(applyNamedFixture(server, 'activity.active-session.v1'), isFalse);
+
+      final tautulli = TautulliFakeServer();
+      expect(applyNamedFixture(server, 'activity.active-session.v1', tautulli: tautulli), isTrue);
+      expect(tautulli.sessions, hasLength(1));
+    });
+  });
+
+  group('catalog.long-rails.v1', () {
+    test('recently_added carries twelve movies', () {
+      final server = PleyaFakeServer();
+      final applied = applyNamedFixture(server, 'catalog.long-rails.v1');
+
+      expect(applied, isTrue);
+      expect(server.hubs['recently_added'], hasLength(12));
+      expect(server.items.values.where((i) => i['kind'] == 'movie'), hasLength(12));
     });
   });
 
