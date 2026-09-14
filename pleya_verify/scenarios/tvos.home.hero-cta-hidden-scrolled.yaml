@@ -1,0 +1,53 @@
+name: tvos.home.hero-cta-hidden-scrolled
+target: tvos-sim
+# HERO6. Back on Home from a rail, with the ring on the top navigation and the
+# feed still scrolled: the hero's CTA row sits at y=19, and it used to fade back
+# in there, straight through the bar, because only a focused *row* hid it.
+#
+# The counterpart of `tvos.home.hero-return-from-route`, which ends by pressing
+# UP into the hero. This one ends on the bar instead, the state photographed on
+# hardware on 14 September.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  # IntroGate's cold-start splash paints over an already-ready screen.
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - assert: {id: discover.hero, insideViewport: true, state: {textVisible: true}}
+  - snapshot: 00-home-rest
+
+  # Afspelen, then the first rail: the second press scrolls the billboard off.
+  - press: down
+  - settle: 1000
+  - assert: {id: discover.hero.play, focused: true}
+  - press: down
+  - settle: 1200
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
+  - assert: {id: discover.hero, state: {textVisible: false}}
+
+  # Off the rail onto the top navigation, without touching the scroll. A detail
+  # page in between is not needed: reproduced on 14 September with this press
+  # alone, the CTAs faded back in straight through the bar.
+  - press: menu
+  - settle: 1500
+  - assert: {id: discover.hero, state: {textVisible: false}}
+  - snapshot: 01-nav-focused-scrolled
+
+  # DOWN from the bar restores the remembered tile, not the hero
+  # (`onFocusContent(restorePreviousFocus: true)`), so the text stays hidden.
+  - press: down
+  - settle: 1500
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
+  - assert: {id: discover.hero, state: {textVisible: false}}
+
+  # UP from that rail brings the billboard back, and its CTAs with it.
+  - press: up
+  - settle: 1500
+  - assert: {id: discover.hero, insideViewport: true, state: {textVisible: true}}
+  - assert: {id: discover.hero.play, focused: true}
+  - assert: {id: discover.hero.play, below: nav.discover}
+  - snapshot: 02-hero-recovered

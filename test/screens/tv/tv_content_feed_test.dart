@@ -826,6 +826,32 @@ void main() {
       expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
       expect(offset(tester), 0, reason: 'the CTA holds the ring, so the billboard is under it');
     });
+
+    testWidgets('HERO6: a scrolled feed keeps the hero text hidden when the focus leaves the rows', (tester) async {
+      // The other half of HERO4. There the CTA took the ring on a scrolled
+      // feed; here nothing in the feed has it (the ring went to the top
+      // navigation), and the text faded back in on the row the scroll had
+      // moved to y=19, straight through the bar.
+      double textOpacity() => tester.widget<TvHeroBillboardCard>(find.byType(TvHeroBillboardCard)).textOpacity;
+      await bootTallFeed(tester);
+
+      heroNode(tester, 'tvHeroPlay').requestFocus();
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(offset(tester), greaterThan(0), reason: 'the feed has to be scrolled for this case to exist');
+
+      // Focus leaves for the top navigation, which lives outside this widget.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      expect(offset(tester), greaterThan(0), reason: 'leaving the rows keeps the scroll position (9.6)');
+      expect(textOpacity(), 0, reason: 'a hero scrolled out of view does not draw its CTAs over the bar');
+
+      heroNode(tester, 'tvHeroPlay').requestFocus();
+      await tester.pumpAndSettle();
+      expect(offset(tester), 0);
+      expect(textOpacity(), 1, reason: 'back in view, the CTAs are back with it');
+    });
   });
 
   group('restoration (hoofdstuk 7.6 / fase-8 brief §19)', () {

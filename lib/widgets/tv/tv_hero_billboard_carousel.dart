@@ -342,6 +342,9 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
       id: AutomationIds.discoverHero,
       role: 'hero',
       label: heroTitleFor(group),
+      // HERO6: whether the title and CTAs are drawn, read off the value the
+      // card renders from, so a scenario can tell "mounted" from "visible".
+      state: () => {'textVisible': widget.textOpacity > 0},
       child: Semantics(
         container: true,
         label: widget.groups.length > 1
