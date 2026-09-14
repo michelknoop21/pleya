@@ -24,6 +24,9 @@ bool applyNamedFixture(PleyaFakeServer server, String name) {
     case 'catalog.hero-artwork.v1':
       _applyCatalogHeroArtworkV1(server);
       return true;
+    case 'catalog.long-rails.v1':
+      _applyCatalogLongRailsV1(server);
+      return true;
     case 'catalog.empty.v1':
       server.resetCatalog();
       return true;
@@ -272,4 +275,36 @@ void _applyCatalogHeroArtworkV1(PleyaFakeServer server) {
 
   server.hubs['recently_added']!.addAll(ids);
   server.hubs['continue_watching']!.add(ids.first);
+}
+
+/// Twelve movies in `recently_added`, the hub the movies landing's first rail
+/// (`discover.rail[0]`) draws on (`PleyaFakeServer.hubs`'s insertion order
+/// puts it first, and it is the only hub every one of these fixtures fills).
+/// Every other named fixture tops out at three or four items per hub, which
+/// is enough tiles to fill a row but not enough for a row to ever need to
+/// scroll — see VER4 in `docs/tvos-fysieke-correctieronde.md`.
+void _applyCatalogLongRailsV1(PleyaFakeServer server) {
+  const fixture = 'catalog.long-rails.v1';
+  server.resetCatalog();
+
+  final libraryId = _mintId(server, fixture, 'library', 'movies');
+  server.addLibrary(id: libraryId, title: 'Movies', kind: 'movies', itemCount: 12);
+
+  final movieSlugs = List.generate(12, (i) => 'longrail-${(i + 1).toString().padLeft(2, '0')}')..sort();
+  final ids = <String>[];
+  for (final slug in movieSlugs) {
+    final movieId = _mintId(server, fixture, 'movie', slug);
+    ids.add(movieId);
+    server.addItem(
+      id: movieId,
+      kind: 'movie',
+      title: slug,
+      libraryId: libraryId,
+      year: 2010 + ids.length,
+      durationMs: 5400000 + ids.length * 60000,
+      posterId: _registerArtwork(server, movieId),
+    );
+  }
+
+  server.hubs['recently_added']!.addAll(ids);
 }

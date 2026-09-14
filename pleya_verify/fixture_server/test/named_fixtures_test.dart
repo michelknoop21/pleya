@@ -155,6 +155,17 @@ void main() {
     });
   });
 
+  group('catalog.long-rails.v1', () {
+    test('recently_added carries twelve movies', () {
+      final server = PleyaFakeServer();
+      final applied = applyNamedFixture(server, 'catalog.long-rails.v1');
+
+      expect(applied, isTrue);
+      expect(server.hubs['recently_added'], hasLength(12));
+      expect(server.items.values.where((i) => i['kind'] == 'movie'), hasLength(12));
+    });
+  });
+
   group('catalog.empty.v1', () {
     test('leaves the server with no libraries and no items', () {
       final server = PleyaFakeServer();
