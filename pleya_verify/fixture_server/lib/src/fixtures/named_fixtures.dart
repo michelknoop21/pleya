@@ -3,17 +3,22 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 import '../pleya_fake_server.dart';
+import '../seerr_fake_server.dart';
 import 'deterministic_png.dart';
 
-/// The three fixtures Pleya Verify scenarios seed by name (`seed
-/// {fixture}` in the control plane — see `FixtureHttpServer`). Unknown
-/// names are the caller's problem, not this function's: it returns `false`
-/// rather than throwing, so the control-plane route can answer 400.
+/// The named fixtures Pleya Verify scenarios seed by name (`seed {fixture}`
+/// in the control plane — see `FixtureHttpServer`). Unknown names are the
+/// caller's problem, not this function's: it returns `false` rather than
+/// throwing, so the control-plane route can answer 400.
 ///
-/// Each branch replaces the *catalog* only ([PleyaFakeServer.resetCatalog]),
-/// never the whole server: seeding after `sign_in` is a legal scenario
-/// order and must not invalidate the session that step just created.
-bool applyNamedFixture(PleyaFakeServer server, String name) {
+/// A `catalog.*` branch replaces the *catalog* only
+/// ([PleyaFakeServer.resetCatalog]), never the whole server: seeding after
+/// `sign_in` is a legal scenario order and must not invalidate the session
+/// that step just created. A `seerr.*` branch seeds [seerr] instead, and
+/// never touches [server] — a scenario that needs both issues two `seed:`
+/// steps, one per fixture name, and [seerr] is `null` for a run that never
+/// needs it.
+bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? seerr}) {
   switch (name) {
     case 'catalog.shows.v1':
       _applyCatalogShowsV1(server);
@@ -29,6 +34,10 @@ bool applyNamedFixture(PleyaFakeServer server, String name) {
       return true;
     case 'catalog.empty.v1':
       server.resetCatalog();
+      return true;
+    case 'seerr.requests.v1':
+      if (seerr == null) return false;
+      _applySeerrRequestsV1(seerr);
       return true;
     default:
       return false;
@@ -307,4 +316,47 @@ void _applyCatalogLongRailsV1(PleyaFakeServer server) {
   }
 
   server.hubs['recently_added']!.addAll(ids);
+}
+
+/// Five requests across four Overseerr statuses (pending, approved,
+/// processing, available) for "Alle aanvragen", plus a handful of titles in
+/// each of the five discover buckets `SeerrDiscoverScreen` fetches (trending,
+/// movies, tv, upcoming movies, upcoming tv) for "Ontdekken". Every request's
+/// `media` object carries its own title/year/poster, so the client's
+/// best-effort hydration round-trip never has to fire for this fixture to
+/// display correctly.
+void _applySeerrRequestsV1(SeerrFakeServer seerr) {
+  seerr.reset();
+
+  const requests = <({int id, String type, int tmdbId, String title, int year, int status})>[
+    (id: 1, type: 'movie', tmdbId: 101, title: 'Aurora Drift', year: 2024, status: 1),
+    (id: 2, type: 'tv', tmdbId: 102, title: 'Basalt Coast', year: 2023, status: 2),
+    (id: 3, type: 'movie', tmdbId: 103, title: 'Cascade Point', year: 2022, status: 4),
+    (id: 4, type: 'tv', tmdbId: 104, title: 'Driftwood Bay', year: 2021, status: 5),
+    (id: 5, type: 'movie', tmdbId: 105, title: 'Ember Field', year: 2025, status: 1),
+  ];
+  for (final r in requests) {
+    seerr.addRequest(id: r.id, mediaType: r.type, tmdbId: r.tmdbId, title: r.title, year: r.year, status: r.status);
+  }
+
+  const buckets = <(String bucket, String type)>[
+    ('trending', 'movie'),
+    ('movies', 'movie'),
+    ('tv', 'tv'),
+    ('movies-upcoming', 'movie'),
+    ('tv-upcoming', 'tv'),
+  ];
+  var tmdbId = 2000;
+  for (final (bucket, type) in buckets) {
+    for (var i = 1; i <= 6; i++) {
+      tmdbId++;
+      seerr.addDiscoverItem(
+        bucket,
+        tmdbId: tmdbId,
+        mediaType: type,
+        title: '${bucket[0].toUpperCase()}${bucket.substring(1)} title $i',
+        year: 2020 + i,
+      );
+    }
+  }
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:pleya_verify_fixture_server/named_fixtures.dart';
 import 'package:pleya_verify_fixture_server/pleya_fake_server.dart';
+import 'package:pleya_verify_fixture_server/seerr_fake_server.dart';
 import 'package:test/test.dart';
 
 Future<http.Response> _post(PleyaFakeServer server, String path, Object body) {
@@ -152,6 +153,28 @@ void main() {
       expect(server.items.values.where((i) => i['kind'] == 'movie'), hasLength(3));
       expect(server.hubs['recently_added'], isNotEmpty);
       expect(server.hubs['continue_watching'], isNotEmpty);
+    });
+  });
+
+  group('seerr.requests.v1', () {
+    test('returns false without a seerr server, seeds one when given', () {
+      final server = PleyaFakeServer();
+      expect(applyNamedFixture(server, 'seerr.requests.v1'), isFalse);
+
+      final seerr = SeerrFakeServer();
+      expect(applyNamedFixture(server, 'seerr.requests.v1', seerr: seerr), isTrue);
+      expect(seerr.requests, hasLength(5));
+      expect(seerr.discover.values.every((bucket) => bucket.length == 6), isTrue);
+    });
+
+    test('does not touch the pleya server catalog', () {
+      final server = PleyaFakeServer();
+      applyNamedFixture(server, 'catalog.mixed.v1');
+      final seerr = SeerrFakeServer();
+
+      applyNamedFixture(server, 'seerr.requests.v1', seerr: seerr);
+
+      expect(server.libraries, isNotEmpty, reason: 'seeding seerr must not reset the catalog');
     });
   });
 

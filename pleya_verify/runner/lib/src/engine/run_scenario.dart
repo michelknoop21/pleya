@@ -77,6 +77,11 @@ Future<ScenarioRunResult> runScenario({
       if (value == '{{fixture}}') {
         return fixture?.baseUrl ?? (throw StateError('"{{fixture}}" used but no fixture server is running'));
       }
+      if (value == '{{fixture_seerr}}') {
+        return fixture != null
+            ? '${fixture.baseUrl}/seerr'
+            : throw StateError('"{{fixture_seerr}}" used but no fixture server is running');
+      }
       if (value == '{{fixture_setup_code}}') {
         return setupCode ?? (throw StateError('"{{fixture_setup_code}}" used but no fixture server is running'));
       }
@@ -245,7 +250,12 @@ Future<ScenarioRunResult> runScenario({
           await driver.tap(x, y);
         case 'type':
           record['input_route'] = driver.inputRoute;
-          await _recordInput(driver, record, () => driver.typeText(step.args as String));
+          // `{{fixture}}`/`{{fixture_seerr}}` resolve here too: a scenario
+          // typing a fixture URL into a settings field is the same need
+          // `sign_in`'s `base_url` already has, just through the keyboard
+          // instead of the control plane.
+          final text = resolvePlaceholders(step.args, fixture, null) as String;
+          await _recordInput(driver, record, () => driver.typeText(text));
         default:
           throw UnsupportedError('the run-scenario engine does not implement verb "${step.verb}" yet');
       }
