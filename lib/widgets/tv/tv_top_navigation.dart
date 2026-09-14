@@ -52,6 +52,9 @@ class TvTopNavigation extends StatelessWidget {
     required this.onOpenProfiles,
     this.dimmed = false,
     this.profile,
+    this.isOfflineMode = false,
+    this.isReconnecting = false,
+    this.onReconnect,
   });
 
   /// Left to right, as [buildTvDestinations] ordered them.
@@ -94,9 +97,28 @@ class TvTopNavigation extends StatelessWidget {
 
   final Profile? profile;
 
+  /// Whether the shell is currently rendering offline mode (PB-12, OFF-1).
+  ///
+  /// Mirrors [SideNavigationRail.isOfflineMode]: TV had the same offline
+  /// state as desktop and mobile but no affordance to act on it — the rail
+  /// and the mobile bottom bar both grew a reconnect control, the bar never
+  /// did.
+  final bool isOfflineMode;
+
+  /// Mirrors [SideNavigationRail.isReconnecting].
+  final bool isReconnecting;
+
+  /// Null hides the reconnect item even when [isOfflineMode] is true, same
+  /// contract as the rail's `onReconnect`.
+  final VoidCallback? onReconnect;
+
   @override
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
+    // Same gate as [NavRailDestination.reconnect]'s `c.isOfflineMode &&
+    // c.canReconnect`: a null callback hides the item rather than wiring a
+    // dead Select.
+    final showReconnect = isOfflineMode && onReconnect != null;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -135,12 +157,27 @@ class TvTopNavigation extends StatelessWidget {
                   scale: scale,
                   onSelect: onOpenProfiles,
                   onNavigateDown: onNavigateDown,
-                  onNavigateRight: destinations.isEmpty ? null : () => _focus(destinations.first),
+                  onNavigateRight: showReconnect
+                      ? () => _focusKey(_reconnectFocusKey)
+                      : (destinations.isEmpty ? null : () => _focus(destinations.first)),
                 ),
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (showReconnect) ...[
+                    _ReconnectItem(
+                      node: nodes.get(_reconnectFocusKey, debugLabel: _reconnectFocusKey),
+                      scale: scale,
+                      isReconnecting: isReconnecting,
+                      onSelect: onReconnect!,
+                      onNavigateDown: onNavigateDown,
+                      onNavigateLeft: () => _focusKey(_profileFocusKey),
+                      onNavigateRight: destinations.isEmpty ? null : () => _focus(destinations.first),
+                    ),
+                    if (destinations.isNotEmpty)
+                      SizedBox(key: const ValueKey('reconnect_gap'), width: TvTopNavLayout.itemGap * scale),
+                  ],
                   for (var i = 0; i < destinations.length; i++) ...[
                     if (i > 0)
                       SizedBox(key: ValueKey('${destinations[i].focusKey}_gap'), width: TvTopNavLayout.itemGap * scale),
@@ -165,9 +202,12 @@ class TvTopNavigation extends StatelessWidget {
                       onFocused: () => onFocusDestination(destinations[i]),
                       onNavigateDown: onNavigateDown,
                       // No wrap at either end (hoofdstuk 7.2). The first item
-                      // hands Left to the profile chip, which is the only thing
-                      // to its left; the last simply stops.
-                      onNavigateLeft: i == 0 ? () => _focusKey(_profileFocusKey) : () => _focus(destinations[i - 1]),
+                      // hands Left to the reconnect item when offline shows
+                      // one, otherwise to the profile chip, the only other
+                      // thing to its left; the last simply stops.
+                      onNavigateLeft: i == 0
+                          ? () => _focusKey(showReconnect ? _reconnectFocusKey : _profileFocusKey)
+                          : () => _focus(destinations[i - 1]),
                       onNavigateRight: i == destinations.length - 1 ? null : () => _focus(destinations[i + 1]),
                     ),
                   ],
@@ -209,6 +249,104 @@ class TvTopNavigation extends StatelessWidget {
 /// navigator and never becomes an active destination, so it has no pill state
 /// and no tab behind it.
 const String _profileFocusKey = 'tvNav_profile';
+
+/// The reconnect item's focus key. Not a [TvDestinationId] for the same
+/// reason as the profile chip above: it triggers an action rather than
+/// selecting a tab, so it carries no `.tab` and never becomes `active`.
+const String _reconnectFocusKey = 'tvNav_reconnect';
+
+/// OFF-1: the TV bar's only offline affordance before this was Mijn Pleya
+/// itself (Servers, reachable from there). Mirrors [SideNavigationRail]'s
+/// `_buildReconnectItem` — same icon swap, same label, same disabled-while-
+/// reconnecting tap — drawn as one more pill in the bar rather than a new
+/// kind of control, so it inherits the bar's existing focus ring and D-pad
+/// contract for free.
+class _ReconnectItem extends StatelessWidget {
+  const _ReconnectItem({
+    required this.node,
+    required this.scale,
+    required this.isReconnecting,
+    required this.onSelect,
+    required this.onNavigateDown,
+    required this.onNavigateLeft,
+    required this.onNavigateRight,
+  });
+
+  final FocusNode node;
+  final double scale;
+  final bool isReconnecting;
+  final VoidCallback onSelect;
+  final VoidCallback onNavigateDown;
+  final VoidCallback? onNavigateLeft;
+  final VoidCallback? onNavigateRight;
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    const shape = StadiumBorder();
+
+    return FocusableWrapper(
+      focusNode: node,
+      // No-op while reconnecting, same contract as the rail's item: Select
+      // must not fire a second reconnect attempt on top of the one in flight.
+      onSelect: isReconnecting ? null : onSelect,
+      automationId: AutomationIds.navReconnect,
+      automationRole: 'nav',
+      onNavigateDown: onNavigateDown,
+      onNavigateLeft: onNavigateLeft,
+      onNavigateRight: onNavigateRight,
+      focusShapeBorder: shape,
+      disableScale: true,
+      semanticLabel: t.common.reconnect,
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: EdgeInsets.all(TvTopNavLayout.focusRingGap * scale),
+          child: DecoratedBox(
+            decoration: const ShapeDecoration(shape: shape, color: Colors.transparent),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: TvTopNavLayout.pillPaddingHorizontal * scale,
+                vertical: TvTopNavLayout.pillPaddingVertical * scale,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isReconnecting)
+                    SizedBox(
+                      width: TvTopNavLayout.searchIconSize * scale,
+                      height: TvTopNavLayout.searchIconSize * scale,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: tk.text.withValues(alpha: TvTopNavLayout.inactiveInk),
+                      ),
+                    )
+                  else
+                    Icon(
+                      Symbols.wifi_rounded,
+                      size: TvTopNavLayout.searchIconSize * scale,
+                      color: tk.text.withValues(alpha: TvTopNavLayout.inactiveInk),
+                    ),
+                  SizedBox(width: TvTopNavLayout.focusRingGap * 2 * scale),
+                  Text(
+                    t.common.reconnect,
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                    softWrap: false,
+                    style: TextStyle(
+                      fontSize: TvTopNavLayout.itemFontSize * scale,
+                      fontWeight: FontWeight.w500,
+                      color: tk.text.withValues(alpha: TvTopNavLayout.inactiveInk),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _NavItem extends StatelessWidget {
   const _NavItem({

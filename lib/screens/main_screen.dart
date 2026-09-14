@@ -2635,6 +2635,11 @@ class _MainScreenState extends State<MainScreen>
       selectLibrary: _selectLibrary,
       openSettings: _openSettings,
       dismissNestedRoute: _popTvNestedRoute,
+      // OFF-1: same props the rail (line ~2850) and the bottom nav bar's
+      // reconnect strip (line ~2897) already get.
+      isOfflineMode: _isOffline,
+      isReconnecting: _isReconnecting,
+      onReconnect: _triggerReconnect,
       child: _buildTickerAwareStack(),
     );
   }
