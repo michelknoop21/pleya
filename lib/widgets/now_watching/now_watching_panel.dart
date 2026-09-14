@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../focus/focus_theme.dart';
 import '../../focus/key_event_utils.dart';
 import '../../i18n/strings.g.dart';
@@ -37,10 +39,16 @@ class NowWatchingPanel extends StatelessWidget {
         _Header(now: now, large: large),
         Divider(height: 1, color: theme.dividerColor),
         for (final session in now.sessions)
-          _Tappable(
-            key: ValueKey(session.id),
-            onTap: session.ratingKey == null || onOpenSession == null ? null : () => onOpenSession!(session),
-            child: NowWatchingRow(session: session, large: large),
+          AutomationNode(
+            id: AutomationIds.activityRow,
+            instance: session.id,
+            role: 'list.item',
+            label: session.title,
+            child: _Tappable(
+              key: ValueKey(session.id),
+              onTap: session.ratingKey == null || onOpenSession == null ? null : () => onOpenSession!(session),
+              child: NowWatchingRow(session: session, large: large),
+            ),
           ),
       ],
     );

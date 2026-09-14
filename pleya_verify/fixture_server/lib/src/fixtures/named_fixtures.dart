@@ -3,17 +3,23 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 import '../pleya_fake_server.dart';
+import '../seerr_fake_server.dart';
+import '../tautulli_fake_server.dart';
 import 'deterministic_png.dart';
 
-/// The three fixtures Pleya Verify scenarios seed by name (`seed
-/// {fixture}` in the control plane — see `FixtureHttpServer`). Unknown
-/// names are the caller's problem, not this function's: it returns `false`
-/// rather than throwing, so the control-plane route can answer 400.
+/// The named fixtures Pleya Verify scenarios seed by name (`seed {fixture}`
+/// in the control plane — see `FixtureHttpServer`). Unknown names are the
+/// caller's problem, not this function's: it returns `false` rather than
+/// throwing, so the control-plane route can answer 400.
 ///
-/// Each branch replaces the *catalog* only ([PleyaFakeServer.resetCatalog]),
-/// never the whole server: seeding after `sign_in` is a legal scenario
-/// order and must not invalidate the session that step just created.
-bool applyNamedFixture(PleyaFakeServer server, String name) {
+/// A `catalog.*` branch replaces the *catalog* only
+/// ([PleyaFakeServer.resetCatalog]), never the whole server: seeding after
+/// `sign_in` is a legal scenario order and must not invalidate the session
+/// that step just created. A `seerr.*`/`activity.*` branch seeds [seerr]/
+/// [tautulli] instead, and never touches [server] — a scenario that needs
+/// more than one issues one `seed:` step per fixture name, and [seerr]/
+/// [tautulli] are `null` for a run that never needs them.
+bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? seerr, TautulliFakeServer? tautulli}) {
   switch (name) {
     case 'catalog.shows.v1':
       _applyCatalogShowsV1(server);
@@ -24,8 +30,19 @@ bool applyNamedFixture(PleyaFakeServer server, String name) {
     case 'catalog.hero-artwork.v1':
       _applyCatalogHeroArtworkV1(server);
       return true;
+    case 'catalog.long-rails.v1':
+      _applyCatalogLongRailsV1(server);
+      return true;
     case 'catalog.empty.v1':
       server.resetCatalog();
+      return true;
+    case 'seerr.requests.v1':
+      if (seerr == null) return false;
+      _applySeerrRequestsV1(seerr);
+      return true;
+    case 'activity.active-session.v1':
+      if (tautulli == null) return false;
+      _applyActivityActiveSessionV1(tautulli);
       return true;
     default:
       return false;
@@ -272,4 +289,105 @@ void _applyCatalogHeroArtworkV1(PleyaFakeServer server) {
 
   server.hubs['recently_added']!.addAll(ids);
   server.hubs['continue_watching']!.add(ids.first);
+}
+
+/// Twelve movies in `recently_added`, the hub the movies landing's first rail
+/// (`discover.rail[0]`) draws on (`PleyaFakeServer.hubs`'s insertion order
+/// puts it first, and it is the only hub every one of these fixtures fills).
+/// Every other named fixture tops out at three or four items per hub, which
+/// is enough tiles to fill a row but not enough for a row to ever need to
+/// scroll — see VER4 in `docs/tvos-fysieke-correctieronde.md`.
+void _applyCatalogLongRailsV1(PleyaFakeServer server) {
+  const fixture = 'catalog.long-rails.v1';
+  server.resetCatalog();
+
+  final libraryId = _mintId(server, fixture, 'library', 'movies');
+  server.addLibrary(id: libraryId, title: 'Movies', kind: 'movies', itemCount: 12);
+
+  final movieSlugs = List.generate(12, (i) => 'longrail-${(i + 1).toString().padLeft(2, '0')}')..sort();
+  final ids = <String>[];
+  for (final slug in movieSlugs) {
+    final movieId = _mintId(server, fixture, 'movie', slug);
+    ids.add(movieId);
+    server.addItem(
+      id: movieId,
+      kind: 'movie',
+      title: slug,
+      libraryId: libraryId,
+      year: 2010 + ids.length,
+      durationMs: 5400000 + ids.length * 60000,
+      posterId: _registerArtwork(server, movieId),
+    );
+  }
+
+  server.hubs['recently_added']!.addAll(ids);
+}
+
+/// Five requests across four `SeerrRequestStatus` values (pending, approved,
+/// declined, completed) for "Alle aanvragen", plus a handful of titles in
+/// each of the five discover buckets `SeerrDiscoverScreen` fetches (trending,
+/// movies, tv, upcoming movies, upcoming tv) for "Ontdekken". A request's
+/// `media` object never carries title/year/poster — [SeerrFakeServer.addRequest]
+/// seeds those into `/movie/{id}`/`/tv/{id}` instead — so this fixture only
+/// displays correctly when `SeerrClient.hydrateRequests`'s round-trip
+/// actually fires, the same as production.
+void _applySeerrRequestsV1(SeerrFakeServer seerr) {
+  seerr.reset();
+
+  const requests = <({int id, String type, int tmdbId, String title, int year, int status})>[
+    (id: 1, type: 'movie', tmdbId: 101, title: 'Aurora Drift', year: 2024, status: 1),
+    (id: 2, type: 'tv', tmdbId: 102, title: 'Basalt Coast', year: 2023, status: 2),
+    (id: 3, type: 'movie', tmdbId: 103, title: 'Cascade Point', year: 2022, status: 3),
+    (id: 4, type: 'tv', tmdbId: 104, title: 'Driftwood Bay', year: 2021, status: 5),
+    (id: 5, type: 'movie', tmdbId: 105, title: 'Ember Field', year: 2025, status: 1),
+  ];
+  for (final r in requests) {
+    seerr.addRequest(id: r.id, mediaType: r.type, tmdbId: r.tmdbId, title: r.title, year: r.year, status: r.status);
+  }
+
+  const buckets = <(String bucket, String type)>[
+    ('trending', 'movie'),
+    ('movies', 'movie'),
+    ('tv', 'tv'),
+    ('movies-upcoming', 'movie'),
+    ('tv-upcoming', 'tv'),
+  ];
+  var tmdbId = 2000;
+  for (final (bucket, type) in buckets) {
+    for (var i = 1; i <= 6; i++) {
+      tmdbId++;
+      seerr.addDiscoverItem(
+        bucket,
+        tmdbId: tmdbId,
+        mediaType: type,
+        title: '${bucket[0].toUpperCase()}${bucket.substring(1)} title $i',
+        year: 2020 + i,
+      );
+    }
+  }
+}
+
+/// One active session for ACT1 (`docs/tvos-fysieke-correctieronde.md`):
+/// `NowWatchingProvider.isAvailable` only needs a paired Tautulli client and
+/// an owned server (`lib/providers/now_watching_provider.dart:86`,
+/// `profile_session_screen.dart:200-202`) — neither check is Plex-specific,
+/// so a Tautulli-only fixture is enough to prove the Activiteit surface
+/// renders real session data. `artworkClient` still resolves to null (it
+/// needs a real Plex client to turn Tautulli's Plex-shaped thumb paths into a
+/// URL), so the session card falls back to a placeholder; that is accepted,
+/// not a gap this fixture tries to close.
+///
+/// `ratingKey` is explicit rather than left to `addSession`'s default so a
+/// scenario can assert on it directly: the goal for Activiteit is a session a
+/// viewer can actually act on, not just one that renders, and
+/// `WatchSession.ratingKey` is what a tap on the card navigates with.
+void _applyActivityActiveSessionV1(TautulliFakeServer tautulli) {
+  tautulli.reset();
+  tautulli.addSession(
+    sessionKey: '1',
+    ratingKey: 'verify-aurora-drift',
+    user: 'verify-viewer',
+    title: 'Aurora Drift',
+    mediaType: 'movie',
+  );
 }

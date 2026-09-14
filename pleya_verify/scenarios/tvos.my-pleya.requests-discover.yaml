@@ -1,0 +1,91 @@
+name: tvos.my-pleya.requests-discover
+target: tvos-sim
+# REQ1 (docs/tvos-fysieke-correctieronde.md): Alle aanvragen and Ontdekken are
+# built and carry automation ids since CAT11, but no scenario could ever seed
+# them — the fixture server speaks only the Pleya protocol, and Seerr is a
+# completely separate integration `SeerrClient` reaches over its own
+# configured URL. `seerr.requests.v1` fixes that: a small fake Seerr server on
+# the same fixture process, seeded independently of the Pleya catalog.
+#
+# This scenario drives the connect form itself (apiKey mode, the smallest of
+# the three auth modes to automate — no Plex token, no cookie), then proves
+# the requests grid the connection unlocks is populated. tvOS has no touch
+# surface (C2), so every step is a remote press; `type` reaches whichever
+# field currently has focus.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: seerr.requests.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  # To Mijn Pleya, then Instellingen, same choreography
+  # tvos.settings.language-preferences.yaml already uses: two DOWNs from the
+  # hub's opening tile (Profiel wisselen) lands on Instellingen.
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - press: down
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
+
+  # The settings grid is two columns; Requests sits three rows down in the
+  # right column (Weergave, Indeling van Home, Video afspelen / Taal en
+  # ondertitels, Ondertitel opmaak / Trackers, Aanvragen).
+  - press: down
+  - press: down
+  - press: down
+  - press: right
+  - wait_until: {focused: "my_pleya.section.tile[settings.requests]", timeout: 8000}
+  - snapshot: 00-requests-tile-focused
+
+  - press: select
+  - wait_until: {focused: "settings.form.field[seerr.url]", timeout: 15000}
+  - settle: 500
+  - type: "{{fixture_seerr}}"
+  - settle: 300
+
+  # Down past the two other auth-mode rows to API key, the third.
+  - press: down
+  - press: down
+  - press: down
+  - wait_until: {focused: "settings.form.button[seerr.mode.apiKey]", timeout: 5000}
+  - press: select
+  - settle: 500
+  - snapshot: 01-apikey-mode-selected
+
+  - press: down
+  - wait_until: {focused: "settings.form.field[seerr.apiKey]", timeout: 5000}
+  - type: "verify-seerr-key"
+  - settle: 300
+  - snapshot: 02-form-filled
+
+  - press: down
+  - wait_until: {focused: "settings.form.button[seerr.test]", timeout: 5000}
+  - press: select
+  # A successful test moves the remote onto Save itself (SeerrSettingsScreen
+  # requests focus there in a post-frame callback), so no extra DOWN.
+  - wait_until: {focused: "settings.form.button[seerr.save]", timeout: 15000}
+  - snapshot: 03-tested
+
+  - press: select
+  # Save and "view requests" share one FocusNode (the widget reuses
+  # `_saveFocus` across the form and the connected card on purpose), so the
+  # remote should already be there once the card replaces the form.
+  - wait_until: {focused: "settings.form.button[seerr.viewRequests]", timeout: 15000}
+  - snapshot: 04-connected
+
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[requests]", timeout: 15000}
+  - settle: 1000
+  - assert: {id: "tv.catalog.grid[requests]", insideViewport: true}
+  - assert: {id: "tv.catalog.grid.item[requests.0]", insideViewport: true}
+  - snapshot: 05-requests-grid

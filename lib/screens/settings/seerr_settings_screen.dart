@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../focus/focusable_button.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
@@ -40,18 +42,46 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
   late final _apiKeyController = createTextEditingController();
 
   final _urlFocus = FocusNode(debugLabel: 'Seerr:Url');
+  final _apiKeyFocus = FocusNode(debugLabel: 'Seerr:ApiKey');
   final _testFocus = FocusNode(debugLabel: 'Seerr:Test');
   final _saveFocus = FocusNode(debugLabel: 'Seerr:Save');
   final _formKey = GlobalKey<FormState>();
+
+  // One stable node per auth mode, so `AutomationNode` (and the remote's own
+  // focus traversal) has something real to point at — `_buildModeSelector`
+  // rebuilds the button list fresh every frame, so a node created there
+  // would never survive to be requested a second time.
+  final Map<SeerrAuthMode, FocusNode> _modeFocus = {
+    for (final mode in SeerrAuthMode.values) mode: FocusNode(debugLabel: 'Seerr:Mode:${mode.name}'),
+  };
 
   SeerrAuthMode _mode = SeerrAuthMode.plex;
   SeerrTestResult? _testResult;
 
   @override
+  void initState() {
+    super.initState();
+    // FocusedScrollScaffold's automatic nextFocus() is keyboard-mode only
+    // (CAT13's finding on the neighbouring requests screen), so without this
+    // the remote has nothing to land on when this screen opens: `autofocus`
+    // on the URL field never fires, because nothing above it ever hands the
+    // scope a primary focus to begin traversal from.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final target = context.read<SeerrProvider>().isConfigured ? _saveFocus : _urlFocus;
+      if (target.canRequestFocus) target.requestFocus();
+    });
+  }
+
+  @override
   void dispose() {
     _urlFocus.dispose();
+    _apiKeyFocus.dispose();
     _testFocus.dispose();
     _saveFocus.dispose();
+    for (final node in _modeFocus.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -184,17 +214,23 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
           ),
         ),
         const SizedBox(height: 16),
-        FocusableButton(
+        AutomationNode(
+          id: AutomationIds.settingsFormButton,
+          instance: 'seerr.viewRequests',
+          role: 'button',
           focusNode: _saveFocus,
-          onPressed: busy
-              ? null
-              : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SeerrRequestsScreen())),
-          child: FilledButton.icon(
+          child: FocusableButton(
+            focusNode: _saveFocus,
             onPressed: busy
                 ? null
                 : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SeerrRequestsScreen())),
-            icon: const AppIcon(Symbols.receipt_long_rounded, fill: 1),
-            label: Text(provider.canManageRequests ? t.seerr.allRequests : t.seerr.myRequests),
+            child: FilledButton.icon(
+              onPressed: busy
+                  ? null
+                  : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SeerrRequestsScreen())),
+              icon: const AppIcon(Symbols.receipt_long_rounded, fill: 1),
+              label: Text(provider.canManageRequests ? t.seerr.allRequests : t.seerr.myRequests),
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -220,24 +256,30 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
     return [
       Text(t.seerr.hubSubtitle, style: theme.textTheme.bodyMedium?.copyWith(color: muted)),
       const SizedBox(height: 16),
-      FocusableTextFormField(
-        controller: _urlController,
+      AutomationNode(
+        id: AutomationIds.settingsFormField,
+        instance: 'seerr.url',
+        role: 'field',
         focusNode: _urlFocus,
-        autofocus: true,
-        tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
-        keyboardType: TextInputType.url,
-        autocorrect: false,
-        enableSuggestions: false,
-        enabled: !busy,
-        onChanged: (_) {
-          if (_testResult != null) setState(() => _testResult = null);
-        },
-        decoration: InputDecoration(
-          labelText: t.seerr.serverUrl,
-          hintText: t.seerr.serverUrlHint,
-          prefixIcon: const AppIcon(Symbols.link_rounded, fill: 1),
+        child: FocusableTextFormField(
+          controller: _urlController,
+          focusNode: _urlFocus,
+          autofocus: true,
+          tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
+          keyboardType: TextInputType.url,
+          autocorrect: false,
+          enableSuggestions: false,
+          enabled: !busy,
+          onChanged: (_) {
+            if (_testResult != null) setState(() => _testResult = null);
+          },
+          decoration: InputDecoration(
+            labelText: t.seerr.serverUrl,
+            hintText: t.seerr.serverUrlHint,
+            prefixIcon: const AppIcon(Symbols.link_rounded, fill: 1),
+          ),
+          validator: (v) => (v == null || v.trim().isEmpty) ? t.seerr.errorNetwork : null,
         ),
-        validator: (v) => (v == null || v.trim().isEmpty) ? t.seerr.errorNetwork : null,
       ),
       const SizedBox(height: 16),
       Text(t.seerr.authMode, style: theme.textTheme.titleSmall),
@@ -254,26 +296,38 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
         Text(t.seerr.setupOnDesktopNote, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
       ],
       const SizedBox(height: 20),
-      FocusableButton(
+      AutomationNode(
+        id: AutomationIds.settingsFormButton,
+        instance: 'seerr.test',
+        role: 'button',
         focusNode: _testFocus,
-        onPressed: busy ? null : _test,
-        child: FilledButton.icon(
+        child: FocusableButton(
+          focusNode: _testFocus,
           onPressed: busy ? null : _test,
-          icon: busy ? const LoadingIndicatorBox() : const AppIcon(Symbols.wifi_tethering_rounded, fill: 1),
-          label: Text(t.seerr.testConnection),
+          child: FilledButton.icon(
+            onPressed: busy ? null : _test,
+            icon: busy ? const LoadingIndicatorBox() : const AppIcon(Symbols.wifi_tethering_rounded, fill: 1),
+            label: Text(t.seerr.testConnection),
+          ),
         ),
       ),
       if (_testResult != null) ...[
         const SizedBox(height: 16),
         _buildTestResultCard(theme, _testResult!),
         const SizedBox(height: 12),
-        FocusableButton(
+        AutomationNode(
+          id: AutomationIds.settingsFormButton,
+          instance: 'seerr.save',
+          role: 'button',
           focusNode: _saveFocus,
-          onPressed: busy ? null : _save,
-          child: FilledButton.icon(
+          child: FocusableButton(
+            focusNode: _saveFocus,
             onPressed: busy ? null : _save,
-            icon: const AppIcon(Symbols.check_rounded, fill: 1),
-            label: Text(t.seerr.save),
+            child: FilledButton.icon(
+              onPressed: busy ? null : _save,
+              icon: const AppIcon(Symbols.check_rounded, fill: 1),
+              label: Text(t.seerr.save),
+            ),
           ),
         ),
       ],
@@ -295,27 +349,35 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
         for (final (mode, label) in modes)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: FocusableButton(
-              onPressed: busy
-                  ? null
-                  : () => setState(() {
-                      _mode = mode;
-                      _testResult = null;
-                    }),
-              child: _mode == mode
-                  ? FilledButton(
-                      onPressed: busy ? null : () {},
-                      child: Align(alignment: Alignment.centerLeft, child: Text(label)),
-                    )
-                  : OutlinedButton(
-                      onPressed: busy
-                          ? null
-                          : () => setState(() {
-                              _mode = mode;
-                              _testResult = null;
-                            }),
-                      child: Align(alignment: Alignment.centerLeft, child: Text(label)),
-                    ),
+            child: AutomationNode(
+              id: AutomationIds.settingsFormButton,
+              instance: 'seerr.mode.${mode.name}',
+              role: 'button',
+              focusNode: _modeFocus[mode],
+              state: () => {'selected': _mode == mode},
+              child: FocusableButton(
+                focusNode: _modeFocus[mode],
+                onPressed: busy
+                    ? null
+                    : () => setState(() {
+                        _mode = mode;
+                        _testResult = null;
+                      }),
+                child: _mode == mode
+                    ? FilledButton(
+                        onPressed: busy ? null : () {},
+                        child: Align(alignment: Alignment.centerLeft, child: Text(label)),
+                      )
+                    : OutlinedButton(
+                        onPressed: busy
+                            ? null
+                            : () => setState(() {
+                                _mode = mode;
+                                _testResult = null;
+                              }),
+                        child: Align(alignment: Alignment.centerLeft, child: Text(label)),
+                      ),
+              ),
             ),
           ),
       ],
@@ -359,18 +421,25 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
         ];
       case SeerrAuthMode.apiKey:
         return [
-          FocusableTextFormField(
-            controller: _apiKeyController,
-            obscureText: true,
-            autocorrect: false,
-            enableSuggestions: false,
-            enabled: !busy,
-            decoration: InputDecoration(
-              labelText: t.seerr.apiKey,
-              hintText: t.seerr.apiKeyHint,
-              prefixIcon: const AppIcon(Symbols.key_rounded, fill: 1),
+          AutomationNode(
+            id: AutomationIds.settingsFormField,
+            instance: 'seerr.apiKey',
+            role: 'field',
+            focusNode: _apiKeyFocus,
+            child: FocusableTextFormField(
+              controller: _apiKeyController,
+              focusNode: _apiKeyFocus,
+              obscureText: true,
+              autocorrect: false,
+              enableSuggestions: false,
+              enabled: !busy,
+              decoration: InputDecoration(
+                labelText: t.seerr.apiKey,
+                hintText: t.seerr.apiKeyHint,
+                prefixIcon: const AppIcon(Symbols.key_rounded, fill: 1),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty) ? t.seerr.errorAuth : null,
             ),
-            validator: (v) => (v == null || v.trim().isEmpty) ? t.seerr.errorAuth : null,
           ),
         ];
     }

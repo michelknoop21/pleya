@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../focus/focusable_button.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
@@ -44,10 +46,18 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
   late final _tokenController = createTextEditingController();
 
   final _urlFocus = FocusNode(debugLabel: 'Tautulli:Url');
+  final _tokenFocus = FocusNode(debugLabel: 'Tautulli:Token');
   final _testFocus = FocusNode(debugLabel: 'Tautulli:Test');
   final _saveFocus = FocusNode(debugLabel: 'Tautulli:Save');
   final _historyPolicyFocus = FocusNode(debugLabel: 'Tautulli:HistoryPolicy');
   final _formKey = GlobalKey<FormState>();
+
+  // One stable node per auth mode — see SeerrSettingsScreen's `_modeFocus`
+  // for why: `_buildModeSelector` rebuilds the button list fresh every
+  // frame, so a node created there would never survive a second request.
+  final Map<TautulliAuthMode, FocusNode> _modeFocus = {
+    for (final mode in TautulliAuthMode.values) mode: FocusNode(debugLabel: 'Tautulli:Mode:${mode.name}'),
+  };
 
   TautulliAuthMode _mode = TautulliAuthMode.device;
   TautulliTestResult? _testResult;
@@ -63,6 +73,28 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
     // exists; _disconnect does the same on its way out.
     final session = context.read<TautulliProvider>().session;
     if (session != null) _seedFrom(session);
+
+    // Same gap as SeerrSettingsScreen, same fix: FocusedScrollScaffold's
+    // automatic nextFocus() is keyboard-mode only, so without this the
+    // remote has nowhere to land when this screen opens.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final target = _initialFocusTarget(context.read<TautulliProvider>());
+      if (target.canRequestFocus) target.requestFocus();
+    });
+  }
+
+  /// The first genuinely mounted, usable control for this build of the
+  /// screen. `_saveFocus` only ever mounts inside `_buildForm`, after a
+  /// successful Test — never in `_buildConnectedCard` — so aiming initial
+  /// focus at it while already configured landed on nothing. The connected
+  /// card's own first control depends on whether the admin history switch
+  /// is showing: [TautulliProvider.adminStatus] loads asynchronously, so a
+  /// session that has not resolved it yet by the first frame falls back to
+  /// the disconnect button, which is always mounted once configured.
+  FocusNode _initialFocusTarget(TautulliProvider provider) {
+    if (!provider.isConfigured) return _urlFocus;
+    return provider.adminStatus != null ? _historyPolicyFocus : _testFocus;
   }
 
   /// Carry the address and the mode into the form. Deliberately not the token:
@@ -76,9 +108,13 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
   @override
   void dispose() {
     _urlFocus.dispose();
+    _tokenFocus.dispose();
     _testFocus.dispose();
     _historyPolicyFocus.dispose();
     _saveFocus.dispose();
+    for (final node in _modeFocus.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -276,26 +312,32 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
     return [
       Text(t.tautulli.subtitle, style: theme.textTheme.bodyMedium?.copyWith(color: muted)),
       const SizedBox(height: 16),
-      FocusableTextFormField(
-        controller: _urlController,
+      AutomationNode(
+        id: AutomationIds.settingsFormField,
+        instance: 'tautulli.url',
+        role: 'field',
         focusNode: _urlFocus,
-        autofocus: true,
-        tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
-        keyboardType: TextInputType.url,
-        autocorrect: false,
-        enableSuggestions: false,
-        enabled: !busy,
-        onChanged: (_) {
-          if (_testResult != null) setState(() => _testResult = null);
-        },
-        decoration: InputDecoration(
-          labelText: t.tautulli.serverUrl,
-          // Tautulli's default is 8181, but a reverse-proxied subdomain on 443
-          // is just as common, so the hint shows both rather than teaching one.
-          hintText: t.tautulli.serverUrlHint,
-          prefixIcon: const AppIcon(Symbols.link_rounded, fill: 1),
+        child: FocusableTextFormField(
+          controller: _urlController,
+          focusNode: _urlFocus,
+          autofocus: true,
+          tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
+          keyboardType: TextInputType.url,
+          autocorrect: false,
+          enableSuggestions: false,
+          enabled: !busy,
+          onChanged: (_) {
+            if (_testResult != null) setState(() => _testResult = null);
+          },
+          decoration: InputDecoration(
+            labelText: t.tautulli.serverUrl,
+            // Tautulli's default is 8181, but a reverse-proxied subdomain on 443
+            // is just as common, so the hint shows both rather than teaching one.
+            hintText: t.tautulli.serverUrlHint,
+            prefixIcon: const AppIcon(Symbols.link_rounded, fill: 1),
+          ),
+          validator: (v) => (v == null || v.trim().isEmpty) ? t.tautulli.errorUrlRequired : null,
         ),
-        validator: (v) => (v == null || v.trim().isEmpty) ? t.tautulli.errorUrlRequired : null,
       ),
       const SizedBox(height: 16),
       Text(t.tautulli.authMode, style: theme.textTheme.titleSmall),
@@ -307,46 +349,65 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
         style: theme.textTheme.bodySmall?.copyWith(color: muted),
       ),
       const SizedBox(height: 16),
-      FocusableTextFormField(
-        controller: _tokenController,
-        obscureText: true,
-        autocorrect: false,
-        enableSuggestions: false,
-        enabled: !busy,
-        onChanged: (_) {
-          if (_testResult != null) setState(() => _testResult = null);
-        },
-        decoration: InputDecoration(
-          labelText: _mode == TautulliAuthMode.device ? t.tautulli.deviceToken : t.tautulli.apiKey,
-          prefixIcon: const AppIcon(Symbols.key_rounded, fill: 1),
+      AutomationNode(
+        id: AutomationIds.settingsFormField,
+        instance: 'tautulli.token',
+        role: 'field',
+        focusNode: _tokenFocus,
+        child: FocusableTextFormField(
+          controller: _tokenController,
+          focusNode: _tokenFocus,
+          obscureText: true,
+          autocorrect: false,
+          enableSuggestions: false,
+          enabled: !busy,
+          onChanged: (_) {
+            if (_testResult != null) setState(() => _testResult = null);
+          },
+          decoration: InputDecoration(
+            labelText: _mode == TautulliAuthMode.device ? t.tautulli.deviceToken : t.tautulli.apiKey,
+            prefixIcon: const AppIcon(Symbols.key_rounded, fill: 1),
+          ),
+          validator: (v) => (v == null || v.trim().isEmpty) ? t.tautulli.errorTokenRequired : null,
         ),
-        validator: (v) => (v == null || v.trim().isEmpty) ? t.tautulli.errorTokenRequired : null,
       ),
       if (PlatformDetector.isTV()) ...[
         const SizedBox(height: 8),
         Text(t.tautulli.setupOnDesktopNote, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
       ],
       const SizedBox(height: 20),
-      FocusableButton(
+      AutomationNode(
+        id: AutomationIds.settingsFormButton,
+        instance: 'tautulli.test',
+        role: 'button',
         focusNode: _testFocus,
-        onPressed: busy ? null : _test,
-        child: FilledButton.icon(
+        child: FocusableButton(
+          focusNode: _testFocus,
           onPressed: busy ? null : _test,
-          icon: busy ? const LoadingIndicatorBox() : const AppIcon(Symbols.wifi_tethering_rounded, fill: 1),
-          label: Text(t.tautulli.testConnection),
+          child: FilledButton.icon(
+            onPressed: busy ? null : _test,
+            icon: busy ? const LoadingIndicatorBox() : const AppIcon(Symbols.wifi_tethering_rounded, fill: 1),
+            label: Text(t.tautulli.testConnection),
+          ),
         ),
       ),
       if (_testResult != null) ...[
         const SizedBox(height: 16),
         _buildTestResultCard(theme, _testResult!),
         const SizedBox(height: 12),
-        FocusableButton(
+        AutomationNode(
+          id: AutomationIds.settingsFormButton,
+          instance: 'tautulli.save',
+          role: 'button',
           focusNode: _saveFocus,
-          onPressed: busy ? null : _save,
-          child: FilledButton.icon(
+          child: FocusableButton(
+            focusNode: _saveFocus,
             onPressed: busy ? null : _save,
-            icon: const AppIcon(Symbols.check_rounded, fill: 1),
-            label: Text(t.tautulli.save),
+            child: FilledButton.icon(
+              onPressed: busy ? null : _save,
+              icon: const AppIcon(Symbols.check_rounded, fill: 1),
+              label: Text(t.tautulli.save),
+            ),
           ),
         ),
       ],
@@ -367,17 +428,25 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
         for (final (mode, label) in modes)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: FocusableButton(
-              onPressed: busy ? null : () => _selectMode(mode),
-              child: _mode == mode
-                  ? FilledButton(
-                      onPressed: busy ? null : () {},
-                      child: Align(alignment: Alignment.centerLeft, child: Text(label)),
-                    )
-                  : OutlinedButton(
-                      onPressed: busy ? null : () => _selectMode(mode),
-                      child: Align(alignment: Alignment.centerLeft, child: Text(label)),
-                    ),
+            child: AutomationNode(
+              id: AutomationIds.settingsFormButton,
+              instance: 'tautulli.mode.${mode.name}',
+              role: 'button',
+              focusNode: _modeFocus[mode],
+              state: () => {'selected': _mode == mode},
+              child: FocusableButton(
+                focusNode: _modeFocus[mode],
+                onPressed: busy ? null : () => _selectMode(mode),
+                child: _mode == mode
+                    ? FilledButton(
+                        onPressed: busy ? null : () {},
+                        child: Align(alignment: Alignment.centerLeft, child: Text(label)),
+                      )
+                    : OutlinedButton(
+                        onPressed: busy ? null : () => _selectMode(mode),
+                        child: Align(alignment: Alignment.centerLeft, child: Text(label)),
+                      ),
+              ),
             ),
           ),
       ],

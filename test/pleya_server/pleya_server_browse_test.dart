@@ -290,6 +290,60 @@ void main() {
       }
     });
 
+    test('recently added is typed movie when every item in it is a movie', () async {
+      client = await connected(server);
+      final hubs = await client.fetchGlobalHubs();
+      expect(hubs.single.type, 'movie');
+    });
+
+    test('recently added is typed mixed when the items disagree', () async {
+      server.addItem(id: 'show-1', kind: 'show', title: 'A Show', libraryId: 'lib-series');
+      server.hubs['recently_added']!.add('show-1');
+      client = await connected(server);
+      final hubs = await client.fetchGlobalHubs();
+      expect(hubs.single.type, 'mixed');
+    });
+
+    test('an all-episode hub is typed show, so it still surfaces on Series', () async {
+      // Continue Watching part-way through a season is every bit episodes;
+      // MediaKind.episode carries no singleKindSurface of its own, so without
+      // grouping it under `show` a row like this vanished from both Films and
+      // Series no matter what it held.
+      server.addItem(
+        id: 'show-1',
+        kind: 'show',
+        title: 'A Show',
+        libraryId: 'lib-series',
+        childCount: 1,
+        episodeCount: 1,
+      );
+      server.addItem(id: 'season-1', kind: 'season', title: 'Season 1', parentId: 'show-1', index: 1);
+      server.addItem(id: 'ep-1', kind: 'episode', title: 'Episode 1', parentId: 'season-1', index: 1, durationMs: 1000);
+      server.hubs['recently_added']!.clear();
+      server.hubs['recently_added']!.add('ep-1');
+      client = await connected(server);
+      final hubs = await client.fetchGlobalHubs();
+      expect(hubs.single.type, 'show');
+    });
+
+    test('a show and its episode together are still typed show, not mixed', () async {
+      server.addItem(
+        id: 'show-1',
+        kind: 'show',
+        title: 'A Show',
+        libraryId: 'lib-series',
+        childCount: 1,
+        episodeCount: 1,
+      );
+      server.addItem(id: 'season-1', kind: 'season', title: 'Season 1', parentId: 'show-1', index: 1);
+      server.addItem(id: 'ep-1', kind: 'episode', title: 'Episode 1', parentId: 'season-1', index: 1, durationMs: 1000);
+      server.hubs['recently_added']!.clear();
+      server.hubs['recently_added']!.addAll(['show-1', 'ep-1']);
+      client = await connected(server);
+      final hubs = await client.fetchGlobalHubs();
+      expect(hubs.single.type, 'show');
+    });
+
     test('recently added comes back as a home row', () async {
       client = await connected(server);
       final hubs = await client.fetchGlobalHubs();
@@ -359,6 +413,21 @@ void main() {
       final more = await client.fetchMoreHubItems('home.recent', limit: 2);
       expect(more, hasLength(2));
       expect(await client.fetchMoreHubItems('home.nonsense'), isEmpty);
+    });
+
+    test('next up never hands out an item of a kind it did not promise', () async {
+      // Next Up is typed `episode` unconditionally in `_hub()` (it is a
+      // per-episode queue, never classified from its content like the other
+      // two hubs), so every reader downstream — UnifiedHubKind, the Next Up
+      // card layout — was told this row only ever holds episodes. Paging
+      // further into it must hold to that, or a stray item of another kind
+      // would leak into a row nothing downstream expected to see one in.
+      server.addItem(id: 'ep-1', kind: 'episode', title: 'Episode 1', durationMs: 1000);
+      server.addItem(id: 'movie-stray', kind: 'movie', title: 'Not An Episode', durationMs: 1000);
+      server.hubs['next_up']!.addAll(['ep-1', 'movie-stray']);
+      client = await connected(server);
+      final page = await client.fetchMoreHubItemsPage('home.nextup');
+      expect(page.items.map((i) => i.id), ['ep-1']);
     });
 
     test('recently added shows filters to shows without a second call', () async {
