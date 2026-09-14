@@ -68,6 +68,7 @@ under `Notes`.
 - rebuild Mijn Pleya hub to northstar 18 (I7 child 18)
 - build Bibliotheken picker for I7 child 15 (northstar 15)
 - herindeel Instellingen naar northstar 14 (I7 child 14)
+- mobiele film-/seriedetail northstar 06/07
 
 ### Improved
 - één UnifiedHubKind.singleKindSurface i.p.v. drie switches
