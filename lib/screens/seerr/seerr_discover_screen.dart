@@ -180,8 +180,13 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       // Through the controller rather than straight into `_runSearch`, so the
       // field shows the term as well as searching for it — the page must not
       // read as if it decided on its own what to look for.
+      // Fields are set directly, not via `_onSearchChanged`: that method
+      // calls `setState`, which is unnecessary this early — the first build
+      // already reflects whatever these fields hold once `initState` returns.
       _searchController.text = initial;
-      _onSearchChanged(initial);
+      _query = initial;
+      _searching = true;
+      _searchDebounce.run(() => unawaited(_runSearch(initial)));
     }
   }
 
