@@ -63,6 +63,15 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
     // exists; _disconnect does the same on its way out.
     final session = context.read<TautulliProvider>().session;
     if (session != null) _seedFrom(session);
+
+    // Same gap as SeerrSettingsScreen, same fix: FocusedScrollScaffold's
+    // automatic nextFocus() is keyboard-mode only, so without this the
+    // remote has nowhere to land when this screen opens.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final target = context.read<TautulliProvider>().isConfigured ? _saveFocus : _urlFocus;
+      if (target.canRequestFocus) target.requestFocus();
+    });
   }
 
   /// Carry the address and the mode into the form. Deliberately not the token:

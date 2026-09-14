@@ -42,18 +42,46 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
   late final _apiKeyController = createTextEditingController();
 
   final _urlFocus = FocusNode(debugLabel: 'Seerr:Url');
+  final _apiKeyFocus = FocusNode(debugLabel: 'Seerr:ApiKey');
   final _testFocus = FocusNode(debugLabel: 'Seerr:Test');
   final _saveFocus = FocusNode(debugLabel: 'Seerr:Save');
   final _formKey = GlobalKey<FormState>();
+
+  // One stable node per auth mode, so `AutomationNode` (and the remote's own
+  // focus traversal) has something real to point at — `_buildModeSelector`
+  // rebuilds the button list fresh every frame, so a node created there
+  // would never survive to be requested a second time.
+  final Map<SeerrAuthMode, FocusNode> _modeFocus = {
+    for (final mode in SeerrAuthMode.values) mode: FocusNode(debugLabel: 'Seerr:Mode:${mode.name}'),
+  };
 
   SeerrAuthMode _mode = SeerrAuthMode.plex;
   SeerrTestResult? _testResult;
 
   @override
+  void initState() {
+    super.initState();
+    // FocusedScrollScaffold's automatic nextFocus() is keyboard-mode only
+    // (CAT13's finding on the neighbouring requests screen), so without this
+    // the remote has nothing to land on when this screen opens: `autofocus`
+    // on the URL field never fires, because nothing above it ever hands the
+    // scope a primary focus to begin traversal from.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final target = context.read<SeerrProvider>().isConfigured ? _saveFocus : _urlFocus;
+      if (target.canRequestFocus) target.requestFocus();
+    });
+  }
+
+  @override
   void dispose() {
     _urlFocus.dispose();
+    _apiKeyFocus.dispose();
     _testFocus.dispose();
     _saveFocus.dispose();
+    for (final node in _modeFocus.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -186,17 +214,23 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
           ),
         ),
         const SizedBox(height: 16),
-        FocusableButton(
+        AutomationNode(
+          id: AutomationIds.settingsFormButton,
+          instance: 'seerr.viewRequests',
+          role: 'button',
           focusNode: _saveFocus,
-          onPressed: busy
-              ? null
-              : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SeerrRequestsScreen())),
-          child: FilledButton.icon(
+          child: FocusableButton(
+            focusNode: _saveFocus,
             onPressed: busy
                 ? null
                 : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SeerrRequestsScreen())),
-            icon: const AppIcon(Symbols.receipt_long_rounded, fill: 1),
-            label: Text(provider.canManageRequests ? t.seerr.allRequests : t.seerr.myRequests),
+            child: FilledButton.icon(
+              onPressed: busy
+                  ? null
+                  : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SeerrRequestsScreen())),
+              icon: const AppIcon(Symbols.receipt_long_rounded, fill: 1),
+              label: Text(provider.canManageRequests ? t.seerr.allRequests : t.seerr.myRequests),
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -226,6 +260,7 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
         id: AutomationIds.settingsFormField,
         instance: 'seerr.url',
         role: 'field',
+        focusNode: _urlFocus,
         child: FocusableTextFormField(
           controller: _urlController,
           focusNode: _urlFocus,
@@ -265,6 +300,7 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
         id: AutomationIds.settingsFormButton,
         instance: 'seerr.test',
         role: 'button',
+        focusNode: _testFocus,
         child: FocusableButton(
           focusNode: _testFocus,
           onPressed: busy ? null : _test,
@@ -283,6 +319,7 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
           id: AutomationIds.settingsFormButton,
           instance: 'seerr.save',
           role: 'button',
+          focusNode: _saveFocus,
           child: FocusableButton(
             focusNode: _saveFocus,
             onPressed: busy ? null : _save,
@@ -316,8 +353,10 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
               id: AutomationIds.settingsFormButton,
               instance: 'seerr.mode.${mode.name}',
               role: 'button',
+              focusNode: _modeFocus[mode],
               state: () => {'selected': _mode == mode},
               child: FocusableButton(
+                focusNode: _modeFocus[mode],
                 onPressed: busy
                     ? null
                     : () => setState(() {
@@ -386,8 +425,10 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
             id: AutomationIds.settingsFormField,
             instance: 'seerr.apiKey',
             role: 'field',
+            focusNode: _apiKeyFocus,
             child: FocusableTextFormField(
               controller: _apiKeyController,
+              focusNode: _apiKeyFocus,
               obscureText: true,
               autocorrect: false,
               enableSuggestions: false,
