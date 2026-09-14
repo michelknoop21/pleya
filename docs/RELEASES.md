@@ -147,7 +147,7 @@ under `Notes`.
 - titelbewijs resetten en paritybewijs gelijktrekken
 - Zoeken opent Aanvragen binnen de shell, ook met resultaten
 - toon servernaam bij personenresultaten (build 270)
-- LIB7 review findings: focus race, stale-node fallback, reorder clamp, error copy
+- LIB7 review findings — focus race, stale-node fallback, reorder clamp, error copy
 - HTTP-client blijft niet hangen na een suspend-freeze
 - MOC-09/MOC-10 compositie tegen mockup 37 A/C
 - expliciete restart vanaf begin respecteren ondanks details-instelling
@@ -171,10 +171,10 @@ under `Notes`.
 - leg de OFF-1 focus-recovery-beslissing vast als pure helper
 - geef een hub het type dat zijn items dragen
 - geef insideViewport/notClipped een subpixel-tolerantie
+- hero-CTA's niet over de topnav op een gescrolde Home (HERO6)
 - geef het Seerr/Tautulli-verbindingsformulier initiële focus
 - initiële focus en automation-ids op het Tautulli-formulier
 - correct hub classification and Tautulli initial focus
-- hero-CTA's niet over de topnav op een gescrolde Home (HERO6)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 262 · 5 September 2026
