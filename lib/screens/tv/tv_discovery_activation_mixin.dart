@@ -27,6 +27,7 @@ import '../../media/ids.dart';
 import '../../media/media_backend.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_route_context.dart';
+import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../providers/hidden_libraries_provider.dart';
 import '../../providers/discover_provider.dart';
@@ -55,6 +56,10 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
     UnifiedActivationIntent intent = UnifiedActivationIntent.details,
     bool playDirectly = false,
     bool restartFromBeginning = false,
+    // HERO7: the row this card sits in, so a pop back from the route this
+    // opens can put the remote back on it (`TvFocusRestoreTarget.containerId`).
+    // Null for a surface with no rows of its own to disambiguate.
+    String? containerId,
   }) async {
     await activateUnifiedMediaGroup(
       context,
@@ -62,6 +67,7 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
       intent: intent,
       playDirectly: playDirectly,
       restartFromBeginning: restartFromBeginning,
+      restoreTarget: TvFocusRestoreTarget(itemId: group.groupId, containerId: containerId),
       environment: _buildEnvironment(group, onManageServers: onManageServers),
       // I19: the existing post-edit refresh path — `DiscoverProvider.updateItem`
       // re-fetches one item and swaps it into on-deck/hubs, then notifies —

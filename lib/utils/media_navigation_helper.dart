@@ -241,6 +241,7 @@ Future<MediaNavigationResult> navigateToMediaItem(
   UnifiedMediaRouteContext? unifiedRouteContext,
   UnifiedSourceChangeCallback? onChangeSource,
   VoidCallback? onPlaybackInitFailed,
+  TvFocusRestoreTarget? restoreTarget,
 }) async {
   final recorder = SelectTraceRecorder.instance;
   if (item is MediaPlaylist) {
@@ -291,6 +292,7 @@ Future<MediaNavigationResult> navigateToMediaItem(
       // wherever no shell is listening, which is the signal to push as before.
       final nested = openTvContentRoute(
         id: 'tvCollection_${mi.globalKey}',
+        restoreTarget: restoreTarget,
         builder: (_) => CollectionDetailScreen(collection: mi),
       );
       final result = nested == null
@@ -343,6 +345,7 @@ Future<MediaNavigationResult> navigateToMediaItem(
           traceId: traceId,
           unifiedRouteContext: unifiedRouteContext,
           onChangeSource: onChangeSource,
+          restoreTarget: restoreTarget,
         );
       }
       recorder.close(traceId, SelectTraceOutcome.player);
@@ -387,6 +390,7 @@ Future<MediaNavigationResult> navigateToMediaItem(
         traceId: traceId,
         unifiedRouteContext: unifiedRouteContext,
         onChangeSource: onChangeSource,
+        restoreTarget: restoreTarget,
       );
 
     case MediaKind.season:
@@ -399,6 +403,7 @@ Future<MediaNavigationResult> navigateToMediaItem(
         traceId: traceId,
         unifiedRouteContext: unifiedRouteContext,
         onChangeSource: onChangeSource,
+        restoreTarget: restoreTarget,
       );
 
     default:
@@ -411,6 +416,7 @@ Future<MediaNavigationResult> navigateToMediaItem(
         traceId: traceId,
         unifiedRouteContext: unifiedRouteContext,
         onChangeSource: onChangeSource,
+        restoreTarget: restoreTarget,
       );
   }
 }
@@ -444,6 +450,7 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   String? traceId,
   UnifiedMediaRouteContext? unifiedRouteContext,
   UnifiedSourceChangeCallback? onChangeSource,
+  TvFocusRestoreTarget? restoreTarget,
 }) async {
   final target = mediaDetailNavigationTargetFor(mi, metadataOverride: metadataOverride);
   // The route boundary, not the activation site: comparing this against the
@@ -470,6 +477,7 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   final nested = openTvContentRoute(
     id: tvDetailRouteId(target),
     topNav: TvTopNavPresentation.collapsible,
+    restoreTarget: restoreTarget,
     builder: (_) => mediaDetailPage(
       metadata: target.metadata,
       isOffline: isOffline,

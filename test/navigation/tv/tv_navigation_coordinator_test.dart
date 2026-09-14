@@ -352,6 +352,52 @@ void main() {
     });
   });
 
+  group('restoreTarget (HERO7)', () {
+    TvNestedRoute route(String id, {TvFocusRestoreTarget? restoreTarget}) =>
+        TvNestedRoute(id: id, builder: (_) => const SizedBox.shrink(), restoreTarget: restoreTarget);
+
+    test('the target attached at push survives the pop on the popped route', () {
+      final coordinator = TvNavigationCoordinator();
+      addTearDown(coordinator.dispose);
+      coordinator.activate(TvDestinationId.movies);
+      const target = TvFocusRestoreTarget(itemId: 'group-1', containerId: 'rail-1');
+
+      coordinator.pushNested(TvDestinationId.movies, route('detail_1', restoreTarget: target));
+      final popped = coordinator.popNested();
+
+      expect(popped?.restoreTarget, target);
+    });
+
+    test('a route with no restore target pops with a null one', () {
+      final coordinator = TvNavigationCoordinator();
+      addTearDown(coordinator.dispose);
+      coordinator.activate(TvDestinationId.myPleya);
+
+      coordinator.pushNested(TvDestinationId.myPleya, route('settings'));
+
+      expect(coordinator.popNested()?.restoreTarget, isNull);
+    });
+
+    test('a detail pushed on top of the complete catalog leaves the catalog as activeNestedRoute after the pop', () {
+      final coordinator = TvNavigationCoordinator();
+      addTearDown(coordinator.dispose);
+      coordinator.activate(TvDestinationId.movies);
+      coordinator.pushNested(TvDestinationId.movies, route('all_movies'));
+      coordinator.pushNested(
+        TvDestinationId.movies,
+        route('detail_1', restoreTarget: const TvFocusRestoreTarget(itemId: 'group-1')),
+      );
+
+      coordinator.popNested();
+
+      expect(
+        coordinator.activeNestedRoute?.id,
+        'all_movies',
+        reason: 'the catalog underneath is still nested, not the destination root',
+      );
+    });
+  });
+
   group('syncToTab', () {
     test('syncing to a tab with no pill of its own lights up my pleya', () {
       final coordinator = TvNavigationCoordinator();

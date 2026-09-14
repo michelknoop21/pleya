@@ -165,7 +165,7 @@ class TvUnifiedCatalogScreen extends StatefulWidget {
   State<TvUnifiedCatalogScreen> createState() => _TvUnifiedCatalogScreenState();
 }
 
-class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> implements FocusableTab {
+class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> implements FocusableTab, TvFocusRestoreHost {
   final _gridKey = GlobalKey<TvUnifiedMediaGridState>();
   final _scrollController = ScrollController();
   final _sourcesFocus = FocusNode(debugLabel: 'TvCatalogRailSources');
@@ -418,6 +418,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       intent: intent,
       playDirectly: playDirectly,
       restartFromBeginning: restartFromBeginning,
+      restoreTarget: TvFocusRestoreTarget(itemId: group.groupId),
       environment: _buildEnvironment(group),
       // I19: player return re-reads the concrete item that played and folds
       // it back into its group in place — no re-page, no lost scroll
@@ -670,6 +671,18 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     if (!mounted) return;
     _wantsEntryFocus = true;
     _tryEntryFocus();
+  }
+
+  /// HERO7: this screen stays mounted underneath a pushed detail route (a
+  /// nested route inside its own nested route), so on pop the grid still has
+  /// the card's `FocusNode` — no rebuild needed, unlike [restoreFrom] which
+  /// only ever applies at construction time. `containerId` is ignored: this
+  /// grid is a single flat run of groups (see [TvDestinationFocusMemory]).
+  @override
+  bool restoreTvFocus(TvFocusRestoreTarget target) {
+    final restored = _gridKey.currentState?.focusItem(target.itemId) ?? false;
+    if (restored) _focusedGroupId = target.itemId;
+    return restored;
   }
 
   /// Puts the remote on the content, once there is content to put it on.
