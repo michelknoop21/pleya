@@ -82,6 +82,11 @@ Future<ScenarioRunResult> runScenario({
             ? '${fixture.baseUrl}/seerr'
             : throw StateError('"{{fixture_seerr}}" used but no fixture server is running');
       }
+      if (value == '{{fixture_tautulli}}') {
+        return fixture != null
+            ? '${fixture.baseUrl}/tautulli'
+            : throw StateError('"{{fixture_tautulli}}" used but no fixture server is running');
+      }
       if (value == '{{fixture_setup_code}}') {
         return setupCode ?? (throw StateError('"{{fixture_setup_code}}" used but no fixture server is running'));
       }
