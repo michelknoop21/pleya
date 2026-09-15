@@ -697,12 +697,26 @@ class AppleTvRemoteTouchService {
   /// press, and the touch stream carries no event between the two pairs.
   ///
   /// The signal that does separate them exists one layer down. Log `wa6v9`
-  /// (build 255) pinned it: both pairs carry the same `UIPress`, one in phase
-  /// `.began` and one in `.ended`, because the engine fork synthesizes a whole
-  /// pair per phase for arrows. `PleyaFlutterViewController.isDuplicateArrowPhase`
-  /// in `tvos/Runner/AppDelegate.swift` drops the second phase, so nothing
-  /// reaches Dart that needs guessing about. Do not reintroduce a timing rule
-  /// here; it cannot be made correct with what this layer can see.
+  /// (build 255) pinned NAV1's actual cause: landing on the Home tab enables
+  /// the Menu passthrough, which makes the engine release every key it still
+  /// holds (`releaseAllSynthesizedPresses`), and the arrow's own `.ended` then
+  /// re-taps the released key as a fresh pair (`tapIfMissingKeyDown:YES`): one
+  /// press, two steps. A phase filter in `AppDelegate.swift` was tried and
+  /// measured worse than the defect on both sides (swallowing a phase hangs
+  /// the engine's repeat timer, build 257; forwarding one crashes UIKit's
+  /// `_verifyTrackingPresses:`, build 256) and is gone (`5c0db0a1`). The
+  /// shipped fix sits at the sender instead: `TvosSystemNavigationService`
+  /// parks the passthrough enable until `HardwareKeyboard.physicalKeysPressed`
+  /// is empty (`7786a952`), so the release this comment describes has nothing
+  /// left to re-tap by the time it goes out.
+  ///
+  /// That fix does not cover every path that can leave a stale entry in the
+  /// engine's `synthesizedPressedKeys`; see `docs/tvos-remote-input-authority.md`
+  /// for a fourth, still-open candidate (RAIL2) with no channel message
+  /// involved at all. Do not reintroduce a timing rule here regardless; it
+  /// cannot be made correct with what this layer can see, and a fix for
+  /// whatever RAIL2 turns out to be belongs at the layer the evidence points
+  /// to, not as a heuristic added to this function.
   bool _shouldConsumeNativeDirectional(KeyEvent event) {
     if (_currentDirectionalOwner() == _DirectionalOwner.swipe) {
       _log(
