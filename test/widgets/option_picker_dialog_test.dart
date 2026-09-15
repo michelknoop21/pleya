@@ -5,6 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/utils/dialogs.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/app_icon.dart';
 import 'package:pleya/widgets/focusable_list_tile.dart';
 
 void main() {
@@ -99,7 +100,8 @@ void main() {
                 onPressed: () => showOptionPickerDialog<String>(
                   context,
                   title: 'Download',
-                  options: [(icon: null, label: 'All Episodes', value: 'all')],
+                  toggle: (label: 'Include Specials', icon: Symbols.star_rounded, value: true, onChanged: (_) {}),
+                  options: [(icon: Symbols.download_rounded, label: 'All Episodes', value: 'all')],
                 ),
                 child: const Text('Open'),
               ),
@@ -118,10 +120,27 @@ void main() {
     final dialog = tester.widget<SimpleDialog>(find.byType(SimpleDialog));
     expect(dialog.insetPadding, EdgeInsets.symmetric(horizontal: 8 * scale, vertical: 24 * scale));
     expect(dialog.constraints, BoxConstraints(minWidth: 304 * scale));
+    // Finding 5 (docs/density-audit-2026-09.md): the panel's own contentPadding
+    // was the one dimension in this dialog still on the raw 1.85x-only path.
+    expect(dialog.contentPadding, EdgeInsets.symmetric(vertical: 8 * scale));
 
-    final row = tester.widget<FocusableListTile>(find.byType(FocusableListTile).first);
-    expect(row.contentPadding, EdgeInsets.symmetric(horizontal: 12 * scale, vertical: 4 * scale));
-    expect(row.horizontalTitleGap, 8.0 * scale);
-    expect(row.minLeadingWidth, 24.0 * scale);
+    // The toggle row is the first FocusableListTile (children[0], wrapped in
+    // MergeSemantics); the option row is the last. Only the option row sets
+    // horizontalTitleGap/minLeadingWidth, so pin it by position, not `.first`.
+    final optionRow = tester.widget<FocusableListTile>(find.byType(FocusableListTile).last);
+    expect(optionRow.contentPadding, EdgeInsets.symmetric(horizontal: 12 * scale, vertical: 4 * scale));
+    expect(optionRow.horizontalTitleGap, 8.0 * scale);
+    expect(optionRow.minLeadingWidth, 24.0 * scale);
+
+    // Finding 5: the toggle row's icon and the option row's icon were the
+    // other raw-literal survivors — fixed size 24 while the padding around
+    // them shrank, which changed the icon:padding proportion on TV.
+    final icons = tester.widgetList<AppIcon>(
+      find.descendant(of: find.byType(SimpleDialog), matching: find.byType(AppIcon)),
+    );
+    expect(icons, hasLength(2), reason: 'the toggle icon and the one option icon');
+    for (final icon in icons) {
+      expect(icon.size, 24.0 * scale, reason: 'every option-picker icon must follow the same TV scale as its row');
+    }
   });
 }

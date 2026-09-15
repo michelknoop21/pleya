@@ -541,6 +541,14 @@ class _OptionPickerDialogState<T> extends State<_OptionPickerDialog<T>> {
     // custom-built row) keeps every proportion exactly as already tuned off
     // TV, and TV now simply lands where the tokened path would. Off TV
     // `scale` is 1.0, so nothing here changes.
+    //
+    // Finding 5, review round: the first pass left the panel's own
+    // `contentPadding` and both row icons (toggle + option) on this raw
+    // path, so the icon:padding proportion still drifted on TV even though
+    // everything around it now scaled — the one part of the "every
+    // proportion" claim above that wasn't yet true. Scaled to match, since
+    // the dialog's own contract (this comment, DENS1's original wording) was
+    // already "every literal", not "every literal except the icon".
     final scale = PlatformDetector.isTV() ? TvLayoutConstants.scaleOf(context) : 1.0;
     final rowPadding = EdgeInsets.symmetric(horizontal: 12 * scale, vertical: 4 * scale);
     final rowHorizontalTitleGap = 8.0 * scale;
@@ -555,7 +563,7 @@ class _OptionPickerDialogState<T> extends State<_OptionPickerDialog<T>> {
       title: Text(widget.title),
       insetPadding: EdgeInsets.symmetric(horizontal: 8 * scale, vertical: 24 * scale),
       constraints: BoxConstraints(minWidth: 304 * scale),
-      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+      contentPadding: EdgeInsets.symmetric(vertical: 8 * scale),
       children: [
         if (toggle != null)
           MergeSemantics(
@@ -563,7 +571,7 @@ class _OptionPickerDialogState<T> extends State<_OptionPickerDialog<T>> {
               title: Row(
                 children: [
                   if (toggle.icon != null) ...[
-                    AppIcon(toggle.icon!, fill: 1, size: 24),
+                    AppIcon(toggle.icon!, fill: 1, size: 24 * scale),
                     SizedBox(width: rowHorizontalTitleGap),
                   ],
                   Expanded(
@@ -589,7 +597,7 @@ class _OptionPickerDialogState<T> extends State<_OptionPickerDialog<T>> {
           final icon = option.icon;
           return FocusableListTile(
             focusNode: index == 0 && widget.focusFirstItem ? _initialFocusNode : null,
-            leading: icon != null ? AppIcon(icon, fill: 1, size: 24) : null,
+            leading: icon != null ? AppIcon(icon, fill: 1, size: 24 * scale) : null,
             title: Text(option.label, style: Theme.of(context).textTheme.bodyLarge),
             contentPadding: rowPadding,
             horizontalTitleGap: rowHorizontalTitleGap,
