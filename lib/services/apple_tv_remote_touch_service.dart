@@ -41,8 +41,8 @@ class AppleTvRemoteTouchService {
 
   /// NAV2 (docs/tvos-fysieke-correctieronde.md): station 3 of
   /// docs/tvos-remote-press-pipeline.md as an app-log line. `AppDelegate`'s
-  /// `tvosHandlePress(fromUIEvent:)` sends one message per call — read-only,
-  /// no reply, no filtering — because its NSLog line never reaches a relay
+  /// `tvosHandlePress(fromUIEvent:)` sends one message per call: read-only,
+  /// no reply, no filtering, because its NSLog line never reaches a relay
   /// log.
   static const String _pressDiagChannelName = 'nl.michelknoop.pleya/tvos_press_diag';
   static const double defaultSwipeThreshold = 180;
@@ -281,7 +281,7 @@ class AppleTvRemoteTouchService {
     return _duplicateInputGuard.handleNativeKeyEvent(event);
   }
 
-  /// NAV2: logs station 3 of the press pipeline into the app log. Read-only —
+  /// NAV2: logs station 3 of the press pipeline into the app log. Read-only:
   /// no state changes, nothing consumed, no reply.
   Future<dynamic> _handlePressDiagnostic(dynamic arguments) async {
     if (arguments is! Map) return null;

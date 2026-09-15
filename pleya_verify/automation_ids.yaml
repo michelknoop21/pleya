@@ -171,6 +171,9 @@ ids:
   - id: tvos.menu_passthrough
     role: service
     instanceable: false
+  - id: tvos.native_text_entry
+    role: service
+    instanceable: false
   - id: home.header
     role: region
     instanceable: false

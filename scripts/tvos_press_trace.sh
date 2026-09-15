@@ -5,10 +5,10 @@
 #
 #   EARLY-KEYUP    keyup of a key within 40 ms of its keydown while the press
 #                  is still held: the engine released it (releaseAllSynthesizedPresses).
-#                  Menu (escape) never counts here — tvOS delivers it on release,
+#                  Menu (escape) never counts here: tvOS delivers it on release,
 #                  which is expected, not a defect (NAV2).
 #   KEYUP-ONLY     a keyup with no keydown seen for that key: a lost click
-#                  (SEL2, log ijqxp 23:07:33.053 — Select stuck from the
+#                  (SEL2, log ijqxp 23:07:33.053: Select stuck from the
 #                  keyboard session ate the next real press).
 #   RE-TAP         a fresh keydown of the same key within 400 ms of an early keyup:
 #                  the .ended phase re-tapped it (tapIfMissingKeyDown:YES), a second step.

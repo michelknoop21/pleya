@@ -55,6 +55,15 @@ class AutomationIds {
   /// the engine's own half of that defect is out of the simulator's reach.
   static const String tvosMenuPassthrough = 'tvos.menu_passthrough';
 
+  /// `AppleTvNativeTextEntry` as `TvosSystemNavigationService`'s sibling: no
+  /// widget, no bounds, only `state`. Published so a scenario can prove that a
+  /// native text-entry session did not open while a Siri Remote key was still
+  /// held (SEL2, docs/tvos-fysieke-correctieronde.md): the Select key-up that
+  /// opens the keyboard reaches UIKit through the session tab of
+  /// `tvosHandlePress`, not the engine's synthesis path, so it never reaches
+  /// Dart while the session is up.
+  static const String tvosNativeTextEntry = 'tvos.native_text_entry';
+
   /// The Discover hero billboard as a whole.
   static const String discoverHero = 'discover.hero';
 
@@ -456,6 +465,7 @@ class AutomationIds {
     {'id': playerPanelRow, 'role': 'list.item', 'instanceable': true},
     {'id': playerSettingsButton, 'role': 'button', 'instanceable': false},
     {'id': tvosMenuPassthrough, 'role': 'service', 'instanceable': false},
+    {'id': tvosNativeTextEntry, 'role': 'service', 'instanceable': false},
     {'id': homeHeader, 'role': 'region', 'instanceable': false},
     {'id': homeHeaderSearch, 'role': 'button', 'instanceable': false},
     {'id': homeHeaderAvatar, 'role': 'image', 'instanceable': false},
