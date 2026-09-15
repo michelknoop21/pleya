@@ -5,6 +5,7 @@ import '../../../media/ids.dart';
 import '../../../media/media_item.dart';
 import '../../../mpv/mpv.dart';
 import '../../../utils/formatters.dart';
+import '../../../utils/player_utils.dart';
 import '../../../utils/provider_extensions.dart';
 import '../../app_icon.dart';
 import '../../tv/tv_unified_layout.dart';
@@ -35,13 +36,11 @@ class _TvInformationTabState extends State<TvInformationTab> {
   }
 
   Future<void> _loadVideoProps() async {
-    final height = await widget.player.getProperty('height');
-    final codec = await widget.player.getProperty('video-codec');
+    final quality = await readLiveVideoQuality(widget.player);
     if (!mounted) return;
-    final h = int.tryParse(height ?? '');
     setState(() {
-      _resolution = h != null && h > 0 ? '${h}p' : null;
-      _videoCodec = (codec != null && codec.trim().isNotEmpty) ? codec.trim().toUpperCase() : null;
+      _resolution = quality.resolution;
+      _videoCodec = quality.videoCodec;
     });
   }
 
@@ -56,21 +55,11 @@ class _TvInformationTabState extends State<TvInformationTab> {
 
     final selectedAudio = widget.player.state.track.audio;
     final channels = selectedAudio?.channelsCount;
-    if (channels != null && channels > 0) parts.add(_channelLabel(channels));
+    if (channels != null && channels > 0) parts.add(audioChannelLabel(channels));
 
     final rating = widget.metadata.contentRating;
     if (rating != null && rating.isNotEmpty) parts.add(rating);
     return parts;
-  }
-
-  String _channelLabel(int channels) {
-    return switch (channels) {
-      1 => 'Mono',
-      2 => 'Stereo',
-      6 => '5.1',
-      8 => '7.1',
-      _ => '$channels ch',
-    };
   }
 
   @override
