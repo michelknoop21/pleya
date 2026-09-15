@@ -1,11 +1,21 @@
 # Density-audit Pleya, september 2026
 
+**Status: CODE CLOSED · TARGETED VERIFY PASS · CROSS-PLATFORM VISUAL VERIFY OPEN.** De drie fixes
+staan, met gerichte tests groen en een eerste externe review erop; de verplichte crosscheck met de
+gelijktijdig actieve `desktop-density-scroll-architecture-fix`-sessie is uitgevoerd en toont geen
+overlap (zie onderaan). Wat nog ontbreekt vóór dit als "density klaar" telt: een echte
+simulatorscreenshot van de nieuwe iPad-header (portret én landschap) en macOS op de drie gevraagde
+venstermaten. Niet gepusht.
+
 Gemeten op 15 september 2026, tegen commit `792da906` op branch `density-review`. Aanleiding:
 Michel ervaart de app op elk toestel als opgeblazen, het sterkst op tvOS bij 2160p, ondanks
 DEC-028 (wrapper-schaal 2,00 naar 1,85), DEC-087 (railhoogte 270 naar 220) en DEC-109 (detail).
 Deze audit meet waar de ruimte heen gaat in plaats van nog een keer op gevoel aan de globale
 schaal te draaien, en levert er een eerste, kleine fixronde bij: F-D1, F-D2 en F-TV1 zijn
-geïmplementeerd en getest; F-TV2 bleek niet nodig (zie onderaan).
+geïmplementeerd en getest; F-TV2 bleek niet nodig (zie onderaan). De widgettests bewijzen de
+arithmetiek (dat de nieuwe caps precies uitkomen op de bedoelde getallen); ze bewijzen niet dat de
+nieuwe iPad-header visueel prettig is of dat metadata/actierij niet alsnog overlappen op een echt
+toestel. Dat is precies het "cross-platform visual verify"-gat hierboven.
 
 ## Uitgangspunt
 
@@ -361,9 +371,17 @@ over de nieuw toegevoegde code zelf.
 - Niet gepusht. Drie losse commits op `density-review`:
   `a2587806` (F-D1), `05edee22` (F-D2), `792da906` (F-TV1).
 
-## Losse waarneming tijdens deze sessie
+## Crosscheck vóór push: `desktop-density-scroll-architecture-fix`, uitgevoerd
 
-`ListAgents` toonde tijdens deze audit een andere, gelijktijdig actieve sessie,
-`desktop-density-scroll-architecture-fix`, kennelijk ook met dichtheid bezig. Deze audit draaide op
-een eigen worktree/branch (`density-review`) en heeft geen bestanden gedeeld met die sessie voor
-zover hier zichtbaar was; het is het vermelden waard voor wie de twee resultaten samenvoegt.
+`ListAgents` toonde tijdens deze audit een andere, gelijktijdig actieve sessie met een naam die op
+overlappend werk leek: `desktop-density-scroll-architecture-fix`. Een externe review op een eerdere
+versie van dit rapport maakte de crosscheck expliciet verplicht vóór push, niet optioneel: twee
+takken die allebei desktop-density aanpakken kunnen elk voor zich correct zijn en na samenvoegen
+alsnog dezelfde eigenaar (`MediaQuery`/viewportsizing, de detailheader, grid-/railspacing,
+scrollcontainers, gedeelde layoutconstanten) tegenstrijdig laten.
+
+Rechtstreeks aangeschreven en geantwoord: die sessie werkt in **ProspectFlow**
+(`/Volumes/SSD/Projects/ProspectFlow`, worktree `/Volumes/SSD/Projects/pf-wt/density-fix`, branch
+`wt/density-fix`), een los Python/FastAPI + Jinja2/HTMX-project, geen Pleya, geen gedeelde
+repository, geen gedeeld bestand. De naamsovereenkomst was toeval. **Geen overlap, geen blocker
+voor push op dat punt.**
