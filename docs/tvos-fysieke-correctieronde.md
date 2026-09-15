@@ -35,12 +35,15 @@ Eén item tegelijk, in de volgorde van de tabel hieronder. Per item:
    nieuwe hash en dan klopt het nummer dat je er net in zette alweer niet.
 
 Statussen: `OPEN`, `IN PROGRESS`, `FIXED`, `VERIFIED`, `NOT REPRODUCED`,
-`DEFERRED`, `ACCEPTANCE GAP`, `HARDWARE ONLY`.
+`DEFERRED`, `ACCEPTANCE GAP`, `HARDWARE ONLY`, `HARDWARE VALIDATION PENDING`.
 
 `FIXED` betekent groen in de testsuite. `VERIFIED` vraagt daarnaast bewijs uit
 Pleya Verify of van hardware. Een bevinding die alleen op een toestel te toetsen
 is krijgt `HARDWARE ONLY` en wacht op een device-run, niet op een simulatorrun
-die het antwoord niet kan geven.
+die het antwoord niet kan geven. `HARDWARE VALIDATION PENDING` is smaller dan dat:
+de classificatie, de instrumentatie en de code-analyse zijn af, en er ontbreekt
+precies één genoemde meting op een toestel voordat een fix gebouwd mag worden.
+Geen fix bouwen op de werkhypothese totdat die meting er is (zie RAIL2).
 
 De SDK komt uit `.fvmrc`. Draai `dart format` nooit met een andere Dart dan die,
 want de uitvoer verschilt per versie en dan herformatteert hij bestanden waar je
@@ -203,7 +206,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | DET7 | Film- en seriedetail gebruiken altijd het volledige scherm: geen overscanmarge onder de rail, ook niet bij een lichte titel waar de infoband wel past (Michel, 13 september: "Rand moet nooit blijven staan altijd volledig scherm"). Productbesluit dat voor dit scherm afwijkt van DEC-087's `TvCatalogLayout.bottomSafeInset`. `_buildTvDetailScreen` houdt geen inset meer onder de rail, de rail staat op `bottom: -railBottomPadding` (zijn eigen ondermarge valt buiten beeld) en `reserveFor` geeft alleen nog de peek terug. Negatieve controle "the detail rail always runs to the bottom edge, also when the info band has room to spare" stond rood (rail-onderkant 520,6 van 584 op een lichte titel), nu groen; `media_detail_screen_test.dart` 46/46, `ci_checks.sh` groen. tvOS-simulator, The Whisper Man: de trailerkaart loopt door tot rij 2140 van 2160 (`det7-detail-fullscreen.png` in `docs/responsive-audit/2026-09-13/shots/`). Hardwarebevestiging staat open | FIXED, hardware open | `d7d538eb` |
 | DET6 | Filmdetail: ook los van DET5 is er te weinig ruimte voor de synopsis, die weer op 1 regel staat net als vóór DET3 (Michel, hardware, 13 september). Gereproduceerd op de tvOS-simulator met dezelfde titel ("Mayday", 8 acteurs + Trailers & Extra's): geen hardware-only bug. Twee aparte oorzaken gevonden en allebei gefixt. (1) De echte root cause: `_tvDetailIdealForegroundHeight` en de regelteller-lus in `_buildTvDetailForeground` berekenen `minLogoHeight` via twee verschillende optelvolgordes van dezelfde termen, en bij een exacte fit (Mayday's geval) viel dat een paar ULP's uit elkaar (`remainingForLogo=50.99999999999997` tegen `minLogoHeight=51.0`, gemeten via een simulator-devicelog), waardoor de vergelijking een prima passende 2-regelige synopsis alsnog afkeurde. Fix: `_tvDetailEpsilon`-tolerantie op die vergelijking. (2) Michels productvoorstel (rail iets kleiner i.p.v. de synopsis opofferen) is ook gebouwd, als vangnet voor écht krappe gevallen (bv. genest onder de ingeklapte topnav) waar geen ULP-toeval maar een reëel tekort speelt: `_tvDetailRailShrinkFractions` verkleint `tallPosterScale` én `widePosterScale` samen (beide kunnen de hoogtebepalende hub zijn, DET2) tot de 2-regelige ideale hoogte past, vóór de bestaande terugval naar 1 regel. Negatieve controle voor (1) kon niet op deze hostruntime worden gereproduceerd (de widget-testarithmetic rondt hier de andere kant op af, gedocumenteerd in de testcommentaar); het simulator-devicelog is het bewijs. 45 tests groen, `flutter analyze` schoon | FIXED | `4020547e` |
 | CAT19 | Bij Alle films/series: filterrail openen, LEFT drukken sprong door naar de topnav, en een verdere LEFT liep zijwaarts de bar in naar Series, zonder enige visuele aankondiging (Michel, 13 september: "als je bij alle films naar links gaat dus de filter opent en dan verder naar links dan ga je door naar series dat is niet de bedoeling"). Root cause: LEFT uit een railrij was gebonden aan dezelfde `_leaveRailUpwards()` als UP, en die functie is letterlijk gedupliceerd over vier TV-catalogusachtige schermen. De rail is de meest linkse inhoud op de pagina, dus LEFT hoort een no-op te zijn, niet een uitgang naar de topnav. Gefixt in alle vier de dragers: `tv_unified_catalog_screen.dart` (Alle films/series), `tv_watchlist_view.dart` (Kijklijst), `tv_seerr_requests_view.dart` (Aanvragen) en `tv_seerr_discover_view.dart` (Ontdekken), door LEFT aan de al bestaande `_railEdge()`-no-op te binden, hetzelfde patroon dat DOWN aan de onderkant van de rail al gebruikte; UP blijft ongewijzigd naar de topnav gaan. Negatieve controle: de bestaande test "LEFT from every rail row reaches for the top navigation" in `tv_unified_catalog_focus_test.dart` beschreef het oude, ongewenste gedrag en is herschreven naar het nieuwe contract (rail blijft open, focus blijft staan, geen bar-aanroep); stond rood op de oude implementatie, nu groen. Hardwarebevestiging staat open | FIXED, hardware open | `b7f57fef` |
-| RAIL2 | Op Home lijkt de focus in een rail bij herhaald RIGHT, en volgens Michels aanvulling ook bij LEFT, af en toe een positie over te slaan en meteen een aantal tegels verder te landen (Michel, hardware, build 272, log `h6ocl`: "Ik heb ook af en toe bij home in de rails met naar rechts klikken meerdere malen dat hij soms een positie lijkt over te slaan dus gelijk naar een aantal items verder schiet. Ook bij left lijkt het te gebeuren"). Build 272 is ouder dan de branch waar CAT18/CAT19 op zitten, dus vermoedelijk een apart focus-/traversalprobleem, geen uitloper van die twee. Nog niet onderzocht: het log is niet opgehaald, er is geen code gelezen, geen hypothese en geen eigenaar vastgesteld | OPEN | n.v.t. |
+| RAIL2 | Op Home lijkt de focus in een rail bij herhaald RIGHT, en volgens Michels aanvulling ook bij LEFT, af en toe een positie over te slaan en meteen een aantal tegels verder te landen (Michel, hardware, build 272, log `h6ocl`: "Ik heb ook af en toe bij home in de rails met naar rechts klikken meerdere malen dat hij soms een positie lijkt over te slaan dus gelijk naar een aantal items verder schiet. Ook bij left lijkt het te gebeuren"). `h6ocl` en `ijqxp` (build 280) opgehaald en getraceerd: drie van de zes RE-TAP-omgevingen tonen een fantoom keydown+keyup-paar (0-19 ms gat, 0-1 ms vasthoudtijd) direct na een normale druk op Home-landende arrows, zonder dat een kanaalbericht het verklaart. Zie "RAIL2, classificatie op de twee beschikbare logs". Werkhypothese ENGINE_DUPLICATE (zijdeur 4, dubbele swizzle-hop dispatch op `.ended`, `docs/tvos-remote-input-authority.md` §2-3), maar geen van beide logs bevat de `uipress`-identiteit om dat te bevestigen: beide builds gaan aan `nl.michelknoop.pleya/tvos_press_diag` vooraf | HARDWARE VALIDATION PENDING | n.v.t. |
 | AGG1 | Verifiëren of het multi-server discovery-landingsscherm (Recently Added/Top Picks/Because You Watched, multi-source badge) tegen levende servers hetzelfde oplevert als de OFF3-fixture tekent, want sinds `MediaServerClient` in juli de drie discover-fetchmethodes kreeg was dat nooit via een groene test gezien. Mergefunctie opgespoord: `HomeProjectionService.projectHubs` (`lib/services/unified_catalog/home_projection_service.dart:59`), die via `groupUnifiedMediaSources` (`grouping_service.dart`) loopt en wordt aangeroepen door de echte `TvDiscoveryLandingProvider._project()`, exact het pad dat de golden test zelf claimt te dekken. Op de tvOS-simulator (live sessie, profiel Michel/PlexFlixNetwork) draaien de Because-You-Watched- en Recently-Added-rijen van de Films-landing zichtbaar tegen twee live servers (Plex "G-Plexflix" en Pleya Server "Pleya") zonder crash, maar dat paar kan de multi-source badge niet bewijzen: `_neverMergedBackends` (`grouping_service.dart:30`, DEC-063) sluit `pleyaServer` bewust uit van cross-backend-merge zolang PS-7 (external-id-ondersteuning) niet gebouwd is. Jellyfin-demo (`demo.pleya.app`) is via `scripts/tvos_sim.sh login` als tweede, wél poolable bron aan hetzelfde profiel gekoppeld (`ConnectionRegistry: upserted jellyfin/...`) om een echte Plex+Jellyfin-mergecase te krijgen. **Productbesluit van Michel, 14 september:** Pleya Server en Pleya Share horen op termijn wel mee te doen in het unified-mergeconcept, dit is geen permanente uitsluiting. Beide lopen via `MediaBackend.local`/`pleyaServer` in `_neverMergedBackends` (`grouping_service.dart:30`), en de weg terug is PS-7's external-id-ondersteuning voor Pleya Server; Pleya Share erft dat automatisch mee zodra `local` van de uitsluitingslijst af mag. PS-7 zelf staat al als eigen fase op de Pleya Server-roadmap (`docs/pleya-server-masterplan-proposal.md` e.a.); hier genoteerd zodat de aantekening niet verdwijnt zonder een eindstatus. **Eindstand van de live ronde:** met Plex + Jellyfin-demo online laadt de Films-landing (Because You Watched, Recently Added, Top films in History) zichtbaar en foutloos content van beide backends door elkaar (`DiscoverProvider: 15 on-deck items, 12 hubs`, een nieuwe titel uit de Jellyfin-bibliotheek verscheen naast Plex-titels in dezelfde "Verder kijken"-rij); "Alle films" toont beide bibliotheken alfabetisch dooreen. Geen enkele geopende titel toonde een multi-source-badge: de gedeelde openfilmtitels tussen deze twee specifieke live bibliotheken (Big Buck Bunny, Caminandes e.a.) hebben kennelijk geen matchende sterke identity-token (open Blender-films dragen doorgaans geen TMDB/TVDB-id), dus geen van de twee kon in deze sessie het echte mergepad met een zichtbare badge bevestigen. De mergefunctie zelf is via code-tracing bevestigd als hetzelfde gedeelde identity-pad dat catalogus en zoeken al langer in productie bewijzen; het enige wat nog los staat is een visuele badge-bevestiging met een titel die wél een gedeelde externe id heeft | IN PROGRESS, badge-bevestiging open | n.v.t. |
 
 ## Wat er per item bekend is
@@ -4122,3 +4125,102 @@ blijven groen (`tv_browse_rail.dart`'s wijziging is additief, elke bestaande aan
 behoudt zijn default). `scripts/ci_checks.sh` groen. Golden `tv_detail_source_line`
 faalt op dit platform ook op `0aa808dc` (vóór deze fix), dus dat is bestaande
 platform-staleness, geen regressie van deze wijziging.
+
+### RAIL2, classificatie op de twee beschikbare logs
+
+`h6ocl` (build 272) en `ijqxp` (build 280) opgehaald van `ice.pleya.app/logs/` en gedraaid
+door `scripts/tvos_press_trace.sh` na het porten van `797ab55e`
+(`nl.michelknoop.pleya/tvos_press_diag`, zie `docs/tvos-remote-input-authority.md`). Beide
+builds gaan aan die instrumentatie vooraf, dus elk `RE-TAP` komt terug als `verdict=unknown`;
+er is geen `uipress`-identiteit om `same-uipress` tegen `new-uipress` te toetsen. Dit is
+daarom een classificatie op timing en context, niet op het harde bewijs dat de opzet
+uiteindelijk vereist.
+
+**Tellingen, zoals eerder al vastgelegd (NAV2-rij op `feat/t3a-mijn-pleya-fixtures`, hier
+opnieuw gemeten):** `h6ocl` EARLY-KEYUP=3, KEYUP-ONLY=4, RE-TAP=2. `ijqxp` EARLY-KEYUP=4,
+KEYUP-ONLY=3, RE-TAP=4.
+
+**Het patroon dat in vier van de zes RE-TAP-omgevingen zichtbaar is, met de ruwe logregels
+ernaast:**
+
+```
+h6ocl  22:49:05.209  keyup   arrowLeft   (231 ms hold, normale druk)
+h6ocl  22:49:05.209  keydown arrowLeft   (0 ms na de vorige regel)
+h6ocl  22:49:05.209  keyup   arrowLeft   (0 ms hold)
+
+ijqxp  23:06:31.177  keyup   arrowLeft   (164 ms hold, normale druk; landt op Home)
+ijqxp  23:06:31.178  keydown arrowLeft   (1 ms later)
+ijqxp  23:06:31.179  keyup   arrowLeft   (1 ms hold)
+
+ijqxp  23:07:26.837  keyup   arrowLeft   (118 ms hold, normale druk; landt op Home)
+ijqxp  23:07:26.856  keydown arrowLeft   (19 ms later)
+ijqxp  23:07:26.857  keyup   arrowLeft   (1 ms hold)
+```
+
+Drie eigenschappen die samen dit patroon onderscheiden van een tweede, echte druk:
+
+1. het gat tussen de vorige loslaat en de nieuwe indruk is 0 tot 19 ms, tegen 60 tot 165 ms
+   voor elke andere druk van dezelfde gebruiker in dezelfde log;
+2. de vasthoudtijd van het tweede paar is 0 tot 1 ms, fysiek niet haalbaar voor een
+   Siri Remote-klik (de kortste onbetwist echte druk in beide logs is 19 ms, gemeten op de
+   volgende bullet's uitzondering);
+3. in `ijqxp` 23:06:31 wordt het patroon voorafgegaan door een geflushte
+   `menuPassthroughEnabled=true` (`TvosSystemNavigationService: keys released, sending the
+   parked enable`), maar de toets is op dat moment al uit `synthesizedPressedKeys` verwijderd
+   door de eigen `.ended` van die druk (de reguliere Up ging al uit). Een `enable` die niets
+   meer aantreft in de set doet niets in `releaseAllSynthesizedPresses`, dus deze specifieke
+   flush kan het fantoompaar niet verklaard hebben. `h6ocl` 22:49:05 en `ijqxp` 23:07:26
+   hebben zelfs geen enkel kanaalbericht in de buurt: dat bevestigt wat de NAV2-rij al zei
+   ("twee van de vier hebben geen kanaalbericht, dus dit is niet de NAV1-trigger") en laat
+   zien dat het ook geldt voor het geval mét bericht.
+
+Dit patroon is precies wat `docs/tvos-remote-input-authority.md` §2 als kandidaatmechanisme
+beschrijft: beide swizzel-hops (`UIApplication` en `UIWindow`) leveren dezelfde `.ended`-fase
+van hetzelfde `UIPress`-object af bij `tvosHandlePressFromUIEvent:`. De eerste aanroep
+verwijdert de toets uit `synthesizedPressedKeys` en stuurt de echte Up. De tweede aanroep,
+voor diezelfde fase, vindt de toets niet meer en `tapIfMissingKeyDown:YES` synthetiseert een
+fantoom Down gevolgd door zijn eigen Up, allebei binnen enkele milliseconden. Werkende naam:
+zijdeur 4.
+
+**Waarom dit geen bewezen `same-uipress` is.** De trace bevat geen `uipress`-veld voor deze
+logs, dus het bewijs hierboven is timing en context, niet identiteit. Een tweede, extreem
+snelle fysieke herhaling (twee klikken binnen 20 ms, elk 0 tot 1 ms vastgehouden) is voor een
+mens niet uitvoerbaar op een Siri Remote-ring, dus `PLATFORM_MULTIPLE_PRESS_OBJECTS` is voor
+deze drie gevallen feitelijk uitgesloten door de vasthoudtijd zelf. Maar de tussenstap die de
+opzet eist (`.began`/`.ended`-levenscyclus van beide objecten via hun `uipress`-hash
+vergelijken) is met deze twee logs niet te zetten. Classificatie: **ENGINE_DUPLICATE als
+werkhypothese, `UNKNOWN_HARDWARE_EVIDENCE_REQUIRED` als formele status** tot een log ná de
+instrumentatie van deze branch een `native press=` regel naast elk van deze paren laat zien
+met gelijke `uipress`-waarde.
+
+**Het vierde, andere geval: `ijqxp` 23:09:18, catalogus.** Twee RE-TAPs op `arrowUp`, in een
+reeks van acht drukken tussen 23:09:17.050 en 23:09:18.615. Op dit scherm heeft
+`FocusableWrapper` geen enkele richting gebonden (`onNav(up=false,down=false,left=false,
+right=false)` op elke regel): omhoog doet hier niets, ongeacht wat er native gebeurt. Drie van
+de acht paren hebben een vasthoudtijd van 41 tot 53 ms met gaten van 0 tot 28 ms, korter dan
+de overige vijf (120 tot 165 ms) maar niet in de buurt van de 0 tot 1 ms uit de drie gevallen
+hierboven. Dit past beter bij een gebruiker die snel en herhaald op een schijnbaar dode knop
+klikt dan bij een synthesefout, en heeft sowieso geen zichtbaar gevolg: geen enkele druk in
+deze reeks verplaatst focus. Classificatie: **INTENTIONAL_REPEAT, geen RAIL2-instantie** (geen
+focusverplaatsing om te verklaren).
+
+**Wat dit oplevert voor fase 3 van deze opdracht.** Geen van de zes onderzochte gevallen
+levert het bewijs dat een softwarefix rechtvaardigt. De drie sterkste gevallen wijzen
+consistent naar zijdeur 4 in de engine, niet naar een Dart-laag: er is dus geen
+`DART_DUPLICATE`- of `FOCUS_TRAVERSAL`-fix te bouwen op basis van dit bewijs, en een fix in de
+patchreeks zonder bevestigde `uipress`-identiteit zou een gok zijn op precies het mechanisme
+dat deze opdracht verbiedt. RAIL2 blijft **HARDWARE VALIDATION PENDING**: de ontbrekende
+meting is één toestellog, gemaakt op een build van deze branch (met
+`nl.michelknoop.pleya/tvos_press_diag` erin), tijdens herhaald snel links/rechts klikken op
+Home-rails, gelezen met `scripts/tvos_press_trace.sh` voor een `same-uipress`/`new-uipress`
+oordeel op elke `RE-TAP`.
+
+**Kanttekening bij het meetinstrument zelf.** De trace markeert een keydown als `RE-TAP` zodra
+hij binnen 400 ms na een vroege keyup valt; `ijqxp` 23:07:26.997 (160 ms vasthoudtijd, 140 ms
+na het fantoompaar hierboven) valt in dat venster en krijgt dezelfde vlag als het fantoompaar
+zelf, terwijl zijn eigen duur een gewone druk beschrijft. Het venster vindt dus het fantoompaar
+correct, maar kan er een daaropvolgende echte druk aan vastplakken. Een scherpere vlag (gat
+onder ~20 ms én vasthoudtijd onder ~5 ms) zou het fantoompaar specifiek isoleren zonder deze
+bijvangst; niet doorgevoerd in deze ronde omdat het geen van de classificaties hierboven
+verandert en buiten de sterk verkleinde fase 5-scope van deze opdracht valt. Vastgelegd hier
+als follow-up voor wie `scripts/tvos_press_trace.sh` de volgende keer aanraakt.
