@@ -530,9 +530,9 @@ wijziging erbovenop was nu meer kans op ruis dan winst.
 
 ### Openstaand vóór push
 
-Finding 1 is afgerond (behouden + vastgelegd). Het resterende deel van finding 4
-(`media_detail_screen.dart`/`library_browse_tab.dart` boven de regelgrens) staat nog open: Michel
-moet beslissen of dat een eigen vervolgronde wordt vóór push, of dat de huidige staat (`dialogs.dart`
-compliant, de twee grote bestanden niet) voor nu volstaat. Daarna: een nieuwe, onafhankelijke review
-op de uiteindelijke diff, zoals Michels eigen laatste stap in de opdracht voorschreef. Zie de handoff
-in `~/.claude/handoffs/` voor de volledige stand.
+Finding 1 is afgerond (behouden + vastgelegd). Michel heeft op 15 september 2026 expliciet besloten
+het resterende deel van finding 4 (`media_detail_screen.dart`/`library_browse_tab.dart` boven de
+regelgrens) niet vóór deze push op te pakken: een eigen, apart geplande extractieronde volgt later.
+Deze push landt dus met `dialogs.dart` compliant en de twee grote bestanden nog boven de grens.
+Daarna: een nieuwe, onafhankelijke review op de uiteindelijke diff, zoals Michels eigen laatste stap
+in de opdracht voorschreef. Zie de handoff in `~/.claude/handoffs/` voor de volledige stand.
