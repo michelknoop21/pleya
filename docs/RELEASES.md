@@ -21,8 +21,12 @@ under `Notes`.
 ### New
 - MOC-23 offline TV Home, scoped without the discovery snapshot
 - MOC-24 collection as a TV-native surface
+- log press-diagnostic station 3 to the app log, sharpen the trace
 - MOC-25 person as a TV-native surface
 - add the persistent quality/source line to the player OSD (MOC-18)
+
+### Fixed
+- open the native text-entry session only after keys release
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 280 · 14 September 2026
