@@ -70,12 +70,18 @@ leeg is. Een disable laat in de engine niets los en gaat direct.
 | Crash op elke pijl, `_UIFocusMovementPressGestureRecognizer _verifyTrackingPresses:` | station 2: een `.ended` aan UIKit gegeven na een `.began` die de engine claimde | build 256 |
 | Navigeren werkt, klikken op het systeemtoetsenbord niet | station 3: de sessietak (DEC-019) | 2026-08 |
 | Echte snelle drukken verdwijnen | station 9: een timing-heuristiek in Dart | build 254, log `ld1t1` |
+| Een klik doet niets, een toets blijft in Dart vastzitten na het systeemtoetsenbord | station 3: de sessietak levert de eigen keyup van de druk die de sessie opende nooit aan de engine's synthesepad (SEL2) | build 280, log `ijqxp` |
+| Een echte keyup, dan binnen 1-20 ms een down+up-paar met 1-2 ms ertussen, zonder kanaalbericht in de buurt | zijdeur 2: `tapIfMissingKeyDown:YES` op een `.ended`/`.cancelled` voor een toets die niet meer in `synthesizedPressedKeys` zit (NAV2) | build 272-280, logs `h6ocl` en `ijqxp` |
 
 ## Meetprotocol
 
 Wat een log moet bevatten voordat er een build wordt gemaakt:
 
-- per druk de **fase en het `UIPress`-adres** vanuit station 3 (`pressLog` in `AppDelegate`);
+- per druk de **fase en het `UIPress`-adres** vanuit station 3 (`pressLog` in `AppDelegate`).
+  Sinds NAV2 gaat dit ook naar de app-log: `[PleyaTvosPress]` is alleen NSLog en haalt geen
+  relaylog, dus `tvosHandlePress` stuurt hetzelfde ook over
+  `nl.michelknoop.pleya/tvos_press_diag` naar `AppleTvRemoteTouchService`, die het als
+  `native press=… phase=… uipress=… t=…` logt;
 - per keydown en keyup in Dart de **logische toets en het tijdstip** (`native keydown` in
   `AppleTvRemoteTouchService`);
 - de **kanaalberichten** die de app in datzelfde venster verstuurt. Een keyup binnen enkele
@@ -84,7 +90,8 @@ Wat een log moet bevatten voordat er een build wordt gemaakt:
   `7786a952` op debug-niveau.
 
 Log `wa6v9` had de eerste twee. Het derde ontbrak, en daarmee is drie uur in fasen gezocht die
-in orde waren.
+in orde waren. Log `ijqxp` (build 280, NAV2/SEL2) had geen van de `native press=` regels: die
+build lag vóór die uitbreiding, dus elke `RE-TAP` erin komt terug als `verdict=unknown`.
 
 Het beoordelen is geautomatiseerd:
 
@@ -92,11 +99,17 @@ Het beoordelen is geautomatiseerd:
 scripts/tvos_press_trace.sh wa6v9        # of een bestandspad
 ```
 
-De trace print elke relevante regel met het verschil in milliseconden en zet drie vlaggen:
-`EARLY-KEYUP` (keyup binnen 40 ms na de keydown, zijdeur 1), `RE-TAP` (verse keydown binnen
-400 ms na zo'n keyup, zijdeur 2) en `ENABLE-HELD` (een passthrough-enable terwijl een toets
-vastzit). Exit 2 zodra er één staat. Op `wa6v9` geeft hij acht `EARLY-KEYUP` en acht `RE-TAP`,
-één paar per druk die op Home landde; op `3zsde` (build 252) twaalf en achttien.
+De trace print elke relevante regel met het verschil in milliseconden en zet vier vlaggen:
+`EARLY-KEYUP` (keyup binnen 40 ms na de keydown, zijdeur 1; Menu telt niet mee, want tvOS levert
+Menu altijd bij het loslaten), `KEYUP-ONLY` (een keyup zonder eigen keydown: ofwel helemaal
+geen keydown gezien, ofwel een keydown die meer dan 2 s oud is en dus een verweesde stand uit
+een eerdere druk, SEL2), `RE-TAP` (verse keydown binnen 400 ms na een `EARLY-KEYUP`, zijdeur 2,
+met een `same-uipress`/`new-uipress`/`unknown`-oordeel uit de dichtstbijzijnde `native
+press=`-regels) en `ENABLE-HELD` (een passthrough-enable terwijl een toets vastzit). Exit 2
+zodra er één staat. Op `wa6v9` geeft hij acht `EARLY-KEYUP` en acht `RE-TAP`, één paar per druk
+die op Home landde; op `3zsde` (build 252) twaalf en achttien; op `ijqxp` (build 280) vier
+`EARLY-KEYUP`, drie `KEYUP-ONLY` en vier `RE-TAP`; op `h6ocl` (build 272, RAIL2) drie
+`EARLY-KEYUP`, vier `KEYUP-ONLY` en twee `RE-TAP`.
 
 ## Bewijs met Pleya Verify: wat de simulator raakt en wat niet
 
