@@ -1,5 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/utils/layout_constants.dart';
+import 'package:pleya/utils/platform_detector.dart';
 
 void main() {
   group('ScreenBreakpoints boundaries', () {
@@ -84,6 +86,56 @@ void main() {
       final at1000 = TvLayoutConstants.scaleForHeight(1000);
       expect(at1000, closeTo(1000 / 1080, 0.0001));
       expect(at1000, greaterThan(0.85));
+    });
+  });
+
+  group('scaleOf: contract is TV-only, deterministic 1.0 everywhere else', () {
+    tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+    testWidgets('off TV, scaleOf is 1.0 regardless of viewport height', (tester) async {
+      double? scale900;
+      double? scale1440;
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(size: Size(1200, 900)),
+          child: Builder(
+            builder: (context) {
+              scale900 = TvLayoutConstants.scaleOf(context);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(size: Size(1200, 1440)),
+          child: Builder(
+            builder: (context) {
+              scale1440 = TvLayoutConstants.scaleOf(context);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      expect(scale900, 1.0, reason: 'a non-TV widget must not drift with window height');
+      expect(scale1440, 1.0, reason: 'a non-TV widget must not drift with window height');
+    });
+
+    testWidgets('on TV, scaleOf still floors/clamps against the viewport height', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      double? scale;
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(size: Size(1037.84, 583.78)),
+          child: Builder(
+            builder: (context) {
+              scale = TvLayoutConstants.scaleOf(context);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      expect(scale, closeTo(0.85, 0.0001), reason: 'TV behavior must be unchanged by the off-TV guard');
     });
   });
 }

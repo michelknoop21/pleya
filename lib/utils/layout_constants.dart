@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import 'platform_detector.dart';
+
 /// Layout and sizing constants used throughout the application
 /// Screen width breakpoints for responsive design
 class ScreenBreakpoints {
@@ -93,8 +95,16 @@ class TvLayoutConstants {
   /// property of the panel someone is sitting in front of, which no amount of
   /// chrome above the content changes. Off TV, and in any test that did not
   /// mount the shell, nothing is published and this is `MediaQuery` as before.
+  ///
+  /// Deterministically 1.0 off TV (density-audit finding 3): every call site
+  /// that reaches this from outside `TvRootShell` is either a widget that
+  /// only ever applies the result behind its own `isTV()` branch (harmless,
+  /// the guard here is then redundant but cheap), or was a genuine bug —
+  /// `TvLayoutConstants.scaleOf` read off a non-TV window height and drifted
+  /// TV-tuned spacing with it. Guarding here closes that whole bug class at
+  /// its one shared root instead of at each call site as it turns up.
   static double scaleOf(BuildContext context) =>
-      scaleForSize(TvDisplayMetrics.maybeOf(context) ?? MediaQuery.sizeOf(context));
+      PlatformDetector.isTV() ? scaleForSize(TvDisplayMetrics.maybeOf(context) ?? MediaQuery.sizeOf(context)) : 1.0;
 }
 
 /// The size of the whole TV display, published once by the shell.

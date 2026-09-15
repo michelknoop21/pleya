@@ -1552,7 +1552,12 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       final maxExtent = GridSizeCalculator.getMaxCrossAxisExtent(context, density);
       final columnCount = GridSizeCalculator.getColumnCount(screenSize.width, maxExtent);
       final itemWidth = screenSize.width / columnCount;
-      final scale = TvLayoutConstants.scaleForSize(screenSize);
+      // F-D2 sibling leak, found in the density-audit review round
+      // (docs/density-audit-2026-09.md, finding 3): the same off-TV
+      // `scaleForSize` drift as `_gridTopPadding` below, just feeding the
+      // prefetch-size estimate instead of a paint value. TV keeps its real
+      // scale; everywhere else this is scale 1.
+      final scale = PlatformDetector.isTV() ? TvLayoutConstants.scaleForSize(screenSize) : 1.0;
       final rowHeight =
           MediaCardGridLayout.cellHeightFor(
             context,

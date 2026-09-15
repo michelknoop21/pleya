@@ -237,11 +237,23 @@ class _ReadRow extends StatelessWidget {
           ),
         ),
         SizedBox(width: 12 * scale),
-        Text(
-          globalValue,
-          style: TextStyle(
-            fontSize: TvSourcePickerLayout.subtitleFontSize * scale,
-            color: mono.text.withValues(alpha: TvSourcePickerLayout.inkTertiary),
+        // Finding 3, density-audit review round (docs/density-audit-2026-09.md):
+        // this row read `TvLayoutConstants.scaleOf` with no `isTV()` guard, so
+        // off TV it was scaled by the buggy pre-fix window-height drift
+        // instead of a flat 1.0. At the drift's smaller end that accidentally
+        // shrank this row enough to hide an unrelated overflow; at a true 1.0
+        // scale, `label` + `value` + this tertiary value can outgrow the
+        // sheet's width. `globalValue` is the least essential of the three
+        // (lowest ink alpha already signals that), so it is the one that
+        // yields with an ellipsis rather than throwing a layout assertion.
+        Flexible(
+          child: Text(
+            globalValue,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: TvSourcePickerLayout.subtitleFontSize * scale,
+              color: mono.text.withValues(alpha: TvSourcePickerLayout.inkTertiary),
+            ),
           ),
         ),
       ],
