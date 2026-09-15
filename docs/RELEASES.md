@@ -21,6 +21,9 @@ under `Notes`.
 ### New
 - MOC-23 offline TV Home, scoped without the discovery snapshot
 - MOC-24 collection as a TV-native surface
+
+### Fixed
+- reset select ownership across native input sessions
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 280 · 14 September 2026
