@@ -61,6 +61,17 @@ werkvolgorde.
 | mijn-pleya-comp | Mijn Pleya | OPEN | | | 8 (I7) |
 | IOS-HOME-AB | secundaire hero-CTA en carouselindicator volgens DEC-110 | OPEN | A staat al op `moreInfo` (`mobile_hero_actions.dart:25`); B staat op `persistentDots` (`mobile_hero_indicator.dart:30`) en moet naar de segmentindicator | n.v.t. | 14 |
 
+Twee rijen uit `docs/density-audit-2026-09.md` staan hieronder, met een uitzondering op de eigen
+regel van dit register: ze raken de iPad en desktop, niet de iPhone, en horen dus strikt genomen
+niet bij een iPhone-implementatieregister. Ze staan hier omdat het de dichtstbijzijnde iOS-brede
+tracker is en er geen apart desktop/iPad-register bestaat; ze veranderen niets aan de iPhone-schermen
+hierboven.
+
+| ID | Onderwerp | Status | CODE | VERIFY/SIM | Closure |
+|---|---|---|---|---|---|
+| F-D1 | Detailheader op desktop en iPad/tablet was een vlakke `size.height * 0.6`, dus hij groeide onbegrensd mee met het venster terwijl de titel/actierij onderaan verankerd blijft: 864pt op 2560x1440, 826pt op een liggende 13" iPad. `detailHeaderHeight()` klemt per size class, met een eigen plafond per klasse en een 16:9-plafond op de vensterbreedte | FIXED | `a2587806`, `lib/utils/detail_header_layout.dart`, `media_detail_screen.dart` | `test/screens/media_detail_desktop_header_density_test.dart` (5 tests, viewport in de testnaam), bestaande detailsuite (58 tests) blijft groen | n.v.t. |
+| F-D2 | `MediaGridDelegate.spacingFor` en `LibraryBrowseTab._gridTopPadding` lazen `TvLayoutConstants.scaleOf` ongeacht platform, dus de posterspatiëring op desktop/iPad dreef mee met de vensterhoogte (10,2 bij 900pt, 16 bij 1440pt) zonder dat er een tienvoetscherm in het spel was. Beide gaten nu op `PlatformDetector.isTV()`; TV ongewijzigd, elders vast op schaal 1 | FIXED | `05edee22`, `lib/widgets/media_grid_delegate.dart`, `library_browse_tab.dart` | `test/widgets/media_grid_delegate_spacing_test.dart` (7 tests, TV en niet-TV apart), grid-regressiesuite blijft groen | n.v.t. |
+
 ## Bijhouden
 
 Een rij verandert alleen met een SHA en het bewijs per soort erbij, volgens de bewijsregel in de
