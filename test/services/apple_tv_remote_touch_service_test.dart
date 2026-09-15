@@ -631,15 +631,14 @@ void main() {
   group('AppleTvRemoteTouchService select ownership across a native session (SEL1)', () {
     // A native Select key-down sets `_nativeSelectPressed`. When the native
     // text-entry session opens before that press's own key-up arrives, the
-    // key-up is routed to `_releaseSelectForNativeSession()` instead of
-    // `_shouldConsumeNativeSelectDuplicate` — the only place that would
-    // normally clear the flag. `_releaseSelectForNativeSession()` only
-    // released the *click*-driven half (`_selectPressedFromClick`), so a
-    // native press left `_nativeSelectPressed` latched for the rest of the
-    // app run: every later Select then logged
-    // `native-select-already-down`/`suppressed-native-select-down` and did
-    // nothing. Only an app restart recovered it
-    // (docs/tvos-fysieke-correctieronde.md:194, SEL1).
+    // key-up is routed to `_releaseSelectOwnershipForNativeSession()` instead
+    // of `_shouldConsumeNativeSelectDuplicate`, the only other place that
+    // clears the flag. Before the fix, that release only covered the
+    // *click*-driven half (`_selectPressedFromClick`), so a native press left
+    // `_nativeSelectPressed` latched for the rest of the app run: every later
+    // Select then logged `native-select-already-down` /
+    // `suppressed-native-select-down` and did nothing. Only an app restart
+    // recovered it (docs/tvos-fysieke-correctieronde.md:194, SEL1).
     tearDown(NativeInputSession.debugReset);
 
     test('a completed press-release before the session opens is unaffected', () async {

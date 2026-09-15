@@ -254,7 +254,7 @@ class AppleTvRemoteTouchService {
     // never receives a key event to gate. The one exception is the tail of the
     // press that opened the keyboard: its key-down came before the session
     // existed, and the key-up arrives here afterwards. That is also why
-    // `_releaseSelectForNativeSession()` below still has work to do.
+    // `_releaseSelectOwnershipForNativeSession()` below still has work to do.
     //
     // Anything beyond that means the hook stopped yielding, and then this is
     // only a first line anyway: answering "handled" here does not stop
@@ -262,7 +262,7 @@ class AppleTvRemoteTouchService {
     // the press is the early key handler in AppleTvNativeTextEntry, which logs
     // the same failure.
     if (NativeInputSession.isActive) {
-      _releaseSelectForNativeSession();
+      _releaseSelectOwnershipForNativeSession();
       _log('consume native key reason=native-input-session');
       return true;
     }
@@ -310,7 +310,7 @@ class AppleTvRemoteTouchService {
     // navigation, and the native side forwards it during a session too.
     if (NativeInputSession.isActive && type != 'play_pause') {
       _log('ignore message reason=native-input-session type=$type');
-      _releaseSelectForNativeSession();
+      _releaseSelectOwnershipForNativeSession();
       _resetTouch();
       return;
     }
@@ -517,18 +517,32 @@ class AppleTvRemoteTouchService {
     _simulateKeyDown(LogicalKeyboardKey.enter);
   }
 
-  /// Close out the select press that opened the native surface.
+  /// Releases whichever half of select ownership was in flight when a native
+  /// surface took over the remote — the click-driven synthetic press and the
+  /// native-press burst-tracking flags are separate state machines, and a
+  /// session can interrupt either one.
   ///
-  /// The press arrives as `click_s` → key-down → the button opens the keyboard,
-  /// and the matching `click_e` then lands with the session already active and
-  /// gets dropped. Without this, `_selectPressedFromClick` stays true and
-  /// `_shouldConsumeNativeSelectDuplicate` eats the *next* real select as an
-  /// in-flight duplicate — so the first press after every session did nothing.
-  /// The synthetic key-up itself is swallowed by the gate in
-  /// [key_sim.simulateKeyUp]; only the bookkeeping matters here.
-  void _releaseSelectForNativeSession() {
-    if (!_selectPressedFromClick) return;
-    _releaseSelectFromClick(source: 'native-input-session');
+  /// A click-driven press arrives as `click_s` → key-down → the button opens
+  /// the keyboard, and the matching `click_e` then lands with the session
+  /// already active and gets dropped; without releasing it,
+  /// `_selectPressedFromClick` stays true and `_shouldConsumeNativeSelectDuplicate`
+  /// eats the *next* real select as an in-flight duplicate. The synthetic
+  /// key-up itself is swallowed by the gate in [key_sim.simulateKeyUp]; only
+  /// the bookkeeping matters here.
+  ///
+  /// A native press (SEL1, `docs/tvos-fysieke-correctieronde.md:194`) sets
+  /// `_nativeSelectPressed` on its key-down. If the session opens before that
+  /// press's own key-up arrives, the up is routed here instead of to
+  /// `_shouldConsumeNativeSelectDuplicate` — the only other place that clears
+  /// the flag — so without resetting the native burst state too,
+  /// `_nativeSelectPressed` stayed latched for the rest of the app run: every
+  /// later Select logged `native-select-already-down` and did nothing until
+  /// an app restart.
+  void _releaseSelectOwnershipForNativeSession() {
+    if (_selectPressedFromClick) {
+      _releaseSelectFromClick(source: 'native-input-session');
+    }
+    _resetNativeSelectBurstState();
   }
 
   void _releaseSelectFromClick({required String source}) {
