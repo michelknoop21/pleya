@@ -109,7 +109,7 @@ class AppleTvNativeTextEntry {
   ///
   /// ponytail: a fixed timeout rather than tracking down every other path
   /// that could leave a key held. Upgrade path is finding that source if this
-  /// bound ever fires on hardware — [sessionsStartedWhileKeysHeld] in
+  /// bound ever fires on hardware: [sessionsStartedWhileKeysHeld] in
   /// [automationState] is the tell.
   static const _keyReleaseTimeout = Duration(seconds: 1);
 
@@ -137,15 +137,6 @@ class AppleTvNativeTextEntry {
     );
   }
 
-  /// Test-only: clears the counters so a test can assert on them regardless
-  /// of what an earlier test in the same isolate already drove through this
-  /// singleton.
-  @visibleForTesting
-  void debugResetAutomationCounters() {
-    _parkedStarts = 0;
-    _sessionsStartedWhileKeysHeld = 0;
-  }
-
   /// Whether the native surface has been written off *for this app run*. Set by
   /// the watchdog codes so a broken surface is never shown twice in a session;
   /// every caller then takes its existing fallback.
@@ -169,7 +160,7 @@ class AppleTvNativeTextEntry {
   /// The Select key-down that leads to this call opens the session, but its
   /// own key-up reaches UIKit through the session tab of
   /// `PleyaFlutterViewController.tvosHandlePress`, not through the engine's
-  /// synthesis path — so it never reaches `HardwareKeyboard` while the
+  /// synthesis path, so it never reaches `HardwareKeyboard` while the
   /// session is active. Installing the key gate before that key-up arrives
   /// left Select stuck in both the engine's `synthesizedPressedKeys` and
   /// Dart's `physicalKeysPressed` for the whole session: the next real press

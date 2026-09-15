@@ -58,7 +58,7 @@ class AutomationIds {
   /// `AppleTvNativeTextEntry` as `TvosSystemNavigationService`'s sibling: no
   /// widget, no bounds, only `state`. Published so a scenario can prove that a
   /// native text-entry session did not open while a Siri Remote key was still
-  /// held (SEL2, docs/tvos-fysieke-correctieronde.md) — the Select key-up that
+  /// held (SEL2, docs/tvos-fysieke-correctieronde.md): the Select key-up that
   /// opens the keyboard reaches UIKit through the session tab of
   /// `tvosHandlePress`, not the engine's synthesis path, so it never reaches
   /// Dart while the session is up.

@@ -176,7 +176,7 @@ void main() {
   // SEL2 (docs/tvos-fysieke-correctieronde.md): the Select key-down that opens
   // the keyboard reaches UIKit through the session tab of `tvosHandlePress`,
   // not the engine's synthesis path, so its own key-up never reached Dart
-  // while the session was already active — Select stayed stuck for the rest
+  // while the session was already active: Select stayed stuck for the rest
   // of the session. The fix waits for the key to lift before opening.
   testWidgets('a session waits for a held key to release before opening', (tester) async {
     final calls = <String>[];
