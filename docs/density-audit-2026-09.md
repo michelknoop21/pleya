@@ -1,12 +1,14 @@
 # Density-audit Pleya, september 2026
 
-**Status: CODE CLOSED · TARGETED VERIFY PASS · CROSS-PLATFORM VISUAL VERIFY: iPad/macOS BEWUST
-BUITEN SCOPE.** De drie fixes staan, met gerichte tests groen en een eerste externe review erop; de
-verplichte crosscheck met de gelijktijdig actieve `desktop-density-scroll-architecture-fix`-sessie
-is uitgevoerd en toont geen overlap (zie onderaan). Een iPad-portret/landschap-screenshot en macOS
-op de drie gevraagde venstermaten zijn geprobeerd (zie Dekking); Michel heeft ze expliciet
-geschrapt als eis voor "density klaar": iPad en macOS hebben nog geen redesign gehad, dus de
-widgettests blijven het enige bewijs voor die twee platforms. Niet gepusht.
+**Status: CHANGES NEEDED · zie "Reviewronde, 15 september" onderaan.** Twee onafhankelijke reviews
+op de volledige branchdiff bevestigden 7 bevindingen; Michel trok de eerdere PASS in en triageerde
+ze. 5 van de 7 zijn afgehandeld (findings 2, 3, 4-gedeeltelijk, 5, 6); finding 1 (artwork-selectie op
+iPad) wacht op Michels visuele beoordeling, finding 4 is alleen compleet voor `dialogs.dart`. De
+oorspronkelijke conclusie blijft overeind: geen globale density/schaalfout, DEC-028 en de 0,85-klem
+blijven met rust. Niet gepusht.
+
+De onderstaande paragrafen (t/m "Crosscheck vóór push") zijn de oorspronkelijke rapportage van vóór
+de reviewronde en zijn met opzet niet herschreven; de reviewronde staat als eigen sectie onderaan.
 
 Gemeten op 15 september 2026, tegen commit `792da906` op branch `density-review`. Aanleiding:
 Michel ervaart de app op elk toestel als opgeblazen, het sterkst op tvOS bij 2160p, ondanks
@@ -203,6 +205,20 @@ toepassing hier: dit is de desktop/iPad-tak, geen TV)
 | Desktop 2560x1440 | 864,0 | 680,0 | -184pt (-21,3%) |
 | iPad portret 1032x1376 | 825,6 | 580,5 | -245,1pt (-29,7%) |
 | iPad landschap 1376x1032 | 619,2 | 600,0 | -19,2pt (-3,1%) |
+
+**Nagekomen bevinding, externe review, verwerkt op 15 september 2026.** De vloer (400 desktop /
+360 tablet) had geen eigen bovengrens ten opzichte van de vensterhoogte: op een venster korter dan
+de vloer zelf kon de header letterlijk hoger uitkomen dan het venster. Er bestaat nergens een
+minimale vensterhoogte (`setMinimumSize` heeft nul treffers onder `lib/`, `macos/`, `windows/`,
+`linux/`), dus een willekeurig kort venster is bereikbaar. `detailHeaderHeight` klemt de vloer nu
+ook op `screenHeight * 0,7`: ruim boven de ongeklemde 60%-basislijn (de vloer blijft dus doen
+waarvoor hij bedoeld is op een licht te kort venster), en ruim onder de 75% die deze audit al
+aanwees als het slechtste dichtheidsvoorbeeld in de app (`homeHeroHeight` op 900/1080pt, zie
+hieronder, bewust buiten deze fixronde gelaten, maar de vloer hier mag dat surface niet
+overtreffen). Bewijs: `test/utils/detail_header_layout_test.dart`, 13 tests, waaronder een sweep die
+`headerHeight < screenHeight` afdwingt van 1440 tot 1pt, en een expliciete 550pt-case (72,7% zonder
+klem, ≤70% erna). Geen van de vijf metingen in de tabel hierboven verandert: bij die vijf viewports
+bepaalt altijd het plafond of de ongeklemde basislijn het resultaat, nooit de vloer.
 
 Eigenaar: `MediaDetailScreen._buildInner` (`media_detail_screen.dart:3677`), nieuwe pure functie in
 `lib/utils/detail_header_layout.dart`. Klasse C (rauw pad, hier niet TV maar een vlakke fractie
@@ -401,3 +417,114 @@ Rechtstreeks aangeschreven en geantwoord: die sessie werkt in **ProspectFlow**
 `wt/density-fix`), een los Python/FastAPI + Jinja2/HTMX-project, geen Pleya, geen gedeelde
 repository, geen gedeeld bestand. De naamsovereenkomst was toeval. **Geen overlap, geen blocker
 voor push op dat punt.**
+
+## Reviewronde, 15 september 2026
+
+Na de eerste fixronde (bovenstaand rapport, commits t/m `f0068c1a`) zijn twee onafhankelijke,
+read-only reviews gedraaid op de volledige branchdiff, elk gevolgd door een verificatiestap die elke
+bevinding zelf tegen de repository controleerde in plaats van op gezag over te nemen. Eén claim
+werd daarbij afgewezen (een beweerde compilefout in `detailHeaderHeight`'s `clamp`-aanroep, weerlegd
+door `flutter analyze` op dat bestand: "No issues found!"). Dart staat de impliciete `num`→`double`-
+downcast toe zolang `strict-casts` niet aanstaat, wat hier het geval is). De overige 7 bevindingen
+zijn stuk voor stuk bevestigd via directe code-inspectie (`grep`/`sed`/`git log`, niet alleen gelezen
+in het reviewrapport) en vervolgens door Michel getriageerd. Die triage is leidend geweest voor wat
+hieronder wel en niet is opgepakt.
+
+### Finding 1: artwork-selectiewissel op iPad (OPEN, wacht op Michels visuele oordeel)
+
+`media_detail_screen.dart:5196` (`containerAspect = size.width / headerHeight`) voedt
+`heroArtCandidates(containerAspectRatio: ...)` in `lib/media/media_item.dart:801`, met omslagpunt
+`billboardNarrowAspectRatioThreshold = 1.39` (`media_item.dart:900`). Op de iPad-portret-viewport uit
+de F-D1-tabel hierboven (1032x1376): de oude vlakke header gaf aspect 1,25 (<1,39, vierkant art
+eerst), de nieuwe gecapte header (580,5pt) geeft aspect 1,78 (≥1,39, backdrop art eerst). Dit stond
+nergens vermeld of beoordeeld toen F-D1 landde.
+
+Michel heeft expliciet gevraagd dit niet automatisch te "repareren": de wissel kan correct gedrag
+zijn (de container is immers echt veranderd) of een ongewenst neveneffect. Vereist een visuele
+beoordeling van de nieuwe iPad-header met backdrop-art vóór een van de twee routes gekozen wordt
+(behouden + documenteren, of artworkselectie loskoppelen van de gecapte hoogte). Niet opgepakt deze
+ronde: dit vraagt Michels eigen blik, niet een agent-beslissing.
+
+### Finding 2: header floor > korte viewport (FIXED, `c4f0ce4e`)
+
+Zie het nagekomen-blok in de F-D1-sectie hierboven. `detailHeaderHeight`'s vloer is nu ook geklemd
+op 70% van `screenHeight`: ruim boven de ongeklemde 60%-basislijn, ruim onder de 75% die deze audit
+al aanwees als het slechtste dichtheidsvoorbeeld in de app (Home-hero, zie de gerangschikte-ingrepen-
+sectie). Invariant `headerHeight < screenHeight` bewezen met een sweep van 1440pt tot 1pt in
+`test/utils/detail_header_layout_test.dart` (13 tests); geen van de vijf eerder gemeten viewports
+verandert, want bij die vijf bepaalde altijd het plafond of de basislijn het resultaat, nooit de
+vloer.
+
+### Finding 3: onbewaakte `scaleOf`-paden buiten TV (FIXED, `3ca70a11`)
+
+Volledige inventarisatie van alle `scaleOf`/`scaleForSize`/`tvPageInset`-aanroepen (~90 treffers,
+`grep -rn` over `lib/`). Bevinding: het contract is overal hetzelfde, TV-layoutschaal, en buiten TV
+hoort het altijd 1,0 te zijn. Van de ~90 call sites zijn er ~85 TV-only by construction (genest onder
+`TvRootShell`, of expliciet `isTV()`-gegate op de aanroepplek), een handvol berekent de schaal
+onvoorwaardelijk maar past hem alleen toe achter een `isTv ? ... : ...`-ternary (onschuldig, de
+guard hieronder is daar overbodig maar goedkoop), en drie waren echte lekken:
+`series_language_sheet.dart:97` (onbewaakt, bereikbaar buiten TV), `library_browse_tab.dart:1555`
+(`_calculateInitialFetchSize`, een zusje van de al gefixte F-D2-spacing-lek in hetzelfde bestand,
+zelf ook nu gefixt met dezelfde `isTV() ? ... : 1.0`-guard), en `desktop_video_controls.dart:838-839`
+(gratis meegefixed door de centrale wijziging). De guard is gecentraliseerd in
+`TvLayoutConstants.scaleOf` zelf (`lib/utils/layout_constants.dart`) in plaats van bij losse
+call sites gepatcht: bewezen veilig voor alle ~90 call sites (`test/utils/layout_constants_test.dart`,
+13 tests), inclusief een sweep die aantoont dat geen enkele bestaande call site ooit een niet-1,0
+waarde buiten TV nodig had.
+
+Het dichten van deze drift onthulde een echte, tot dan toe gemaskeerde overflowbug in
+`series_language_sheet.dart`'s `_ReadRow`: bij de correcte schaal 1,0 (voorheen stilzwijgend op 0,85
+gevloerd door de bug) kon de rij's tertiaire "Pleya profile: X"-waarde de Row laten overflowen. De
+waarde is nu `Flexible` met een ellipsis in plaats van een harde layout-assertion.
+
+### Finding 4: >500-regelregel (DEELS FIXED, `13c53c69`)
+
+`dialogs.dart` (618 regels) is mechanisch gesplitst: `OptionPickerToggle`,
+`showOptionPickerDialog`, `_OptionPickerDialog` en `_OptionPickerDialogState` verhuisden ongewijzigd
+naar `lib/utils/option_picker_dialog.dart`, met een `export`-regel in `dialogs.dart` zodat alle negen
+bestaande call sites (`import '.../dialogs.dart'`) ongewijzigd bleven werken. `dialogs.dart`: 618 →
+458 regels, onder de grens. Volledige option-picker/context-menu/quality-preset-regressiesuite (30
+tests) en elk callerbestand analyseren identiek vóór en na.
+
+`media_detail_screen.dart` (5540 regels) en `library_browse_tab.dart` (2024 regels) zijn **niet**
+gesplitst deze ronde. Bij beide is de dichtheidsgerelateerde code (de headerhoogte-berekening resp.
+`_gridTopPadding`/`_calculateInitialFetchSize`) instance-state van één grote klasse, verweven met
+scroll- en focusnavigatie die dezelfde private velden en methodes deelt. Een veilige, mechanische
+extractie van alleen het "grid/layout-concern" uit `library_browse_tab.dart` zou hooguit een paar
+tientallen regels schelen (geen zinvolle stap richting de 500-grens) en een grotere, betekenisvolle
+extractie (de hele grid-opbouw, inclusief de sliver/delegate-constructie) raakt de scroll- en
+focuslogica te direct om deze ronde risicovrij te bewijzen: precies het "brede refactor, groter
+regressierisico" dat Michel expliciet heeft uitgesloten. Beide bestanden blijven open, en vragen een
+eigen, apart geplande extractieronde met eigen scope en eigen bewijsvoering, niet een gehaaste stap
+binnen deze reviewronde.
+
+### Finding 5: option-picker F-TV1 incompleet (FIXED, `d30644c7`)
+
+`_OptionPickerDialogState.build`'s `contentPadding` en beide `AppIcon`-iconen (toggle + optie) waren
+de twee resterende rauwe literals terwijl de rest van de dialoog al schaalde. Meegeschaald,
+overeenkomstig Michels voorkeur en het bestaande F-TV1/DENS1-contract ("elke literal"). Bestaande
+TV-widgettest uitgebreid om `contentPadding` en beide `AppIcon.size`-waarden te pinnen tegen de
+echte schaal, dezelfde bewijslat als de oorspronkelijke vijf F-TV1-waarden. Rood zonder de fix
+bevestigd (`contentPadding` bleef 8 i.p.v. 6,8, `icon.size` bleef `null` in de eerste testversie vóór
+een `.first`/`.last`-selectorfout in de test zelf werd gecorrigeerd), groen ermee.
+
+### Finding 6: registerrijen achteraf toegevoegd (vastgelegd, geen functionele impact)
+
+`git log --oneline --reverse a2587806^..8b13e923` bevestigt: de drie fix-commits landen vóór de
+docs-commit die de DENS1-t/m-DENS4-registerrijen toevoegt. Procesafwijking: de rijen hadden vooraf in
+de tabel moeten staan, niet achteraf ingevuld. Geen geschiedenis herschreven om dit te verbloemen.
+Functioneel geen impact (alles landde vóór push, op dezelfde branch). Vanaf de volgende
+correctieronde weer vooraf registreren.
+
+### Finding 7: clamp-simplificatie (niet opgepakt, style only)
+
+`math.max(floor, math.min(ceiling, sixteenNineCap))` + `.clamp()` is wiskundig gelijk aan
+`base.clamp(floor, sixteenNineCap.clamp(floor, ceiling))`. Niet doorgevoerd: geen bug, en finding 2
+heeft de functie's clamp-logica toch al aangeraakt met de 70%-vloer, dus een tweede cosmetische
+wijziging erbovenop was nu meer kans op ruis dan winst.
+
+### Openstaand vóór push
+
+Finding 1 (Michels visuele oordeel) en het resterende deel van finding 4
+(`media_detail_screen.dart`/`library_browse_tab.dart` boven de regelgrens) staan open. Zie de
+handoff in `~/.claude/handoffs/` voor de volledige stand en de eerstvolgende actie.
