@@ -1193,6 +1193,34 @@ class TvTopNavLayout {
   static const Duration focusDuration = Duration(milliseconds: 160);
 }
 
+/// Geometry of the fixed header on the TV search destination.
+///
+/// Box measurements are fractions of the 1920x1080 reference surface, like
+/// [TvCatalogGrid]. The header lives in the content box below [TvTopNavLayout],
+/// so it does not repeat the top navigation's inset or content gap.
+class TvSearchLayout {
+  const TvSearchLayout._();
+
+  static const double _referenceWidth = 1920;
+  static const double _referenceHeight = 1080;
+
+  /// Mockup 36 B's 900x84 query field.
+  static const double _referenceFieldWidth = 900;
+  static const double _referenceFieldHeight = 84;
+
+  /// Space between the query field and the independent result count.
+  static const double resultCountGap = 18;
+
+  /// Together with [TvCatalogLayout.headerContentGap] above the first section
+  /// heading, this preserves mockup 36 B's separation between chrome and
+  /// results without putting page spacing inside the input itself.
+  static const double headerBottomGap = 12;
+
+  static double fieldWidth(Size displaySize) => displaySize.width * (_referenceFieldWidth / _referenceWidth);
+
+  static double fieldHeight(Size displaySize) => displaySize.height * (_referenceFieldHeight / _referenceHeight);
+}
+
 /// Mijn Pleya on TV (hoofdstuk 18.1 and north star 08).
 class TvMyPleyaLayout {
   const TvMyPleyaLayout._();

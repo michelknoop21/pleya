@@ -201,6 +201,22 @@ void main() {
     });
   });
 
+  group('catalog.search-scroll.v1', () {
+    test('provides stable few- and many-result search queries', () {
+      final server = PleyaFakeServer();
+      final applied = applyNamedFixture(server, 'catalog.search-scroll.v1');
+
+      expect(applied, isTrue);
+      expect(server.searchResults['atlas'], hasLength(15));
+      expect(server.searchResults['solo'], hasLength(1));
+      expect(server.searchResults['atlas']!.map((id) => server.items[id]!['kind']).toSet(), {
+        'movie',
+        'show',
+        'episode',
+      });
+    });
+  });
+
   group('catalog.empty.v1', () {
     test('leaves the server with no libraries and no items', () {
       final server = PleyaFakeServer();

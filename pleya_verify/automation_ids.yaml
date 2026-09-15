@@ -225,6 +225,18 @@ ids:
   - id: search.results.item
     role: list.item
     instanceable: true
+  - id: search.header
+    role: region
+    instanceable: false
+  - id: search.input
+    role: button
+    instanceable: false
+  - id: search.result_count
+    role: region
+    instanceable: false
+  - id: search.results.viewport
+    role: region
+    instanceable: false
   - id: sheet.source_picker
     role: sheet
     instanceable: false

@@ -109,6 +109,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(client.queries, ['movie']);
     expect(find.text('Movie 1'), findsOneWidget);
+    expect(find.text(t.search.oneResult), findsOneWidget);
+    expect(
+      find.ancestor(of: find.text(t.search.oneResult), matching: find.byType(InputDecorator)),
+      findsNothing,
+      reason: 'the total belongs to the TV search-header hierarchy, not to the input decoration',
+    );
 
     await tester.tap(_keyboardDoneKey());
     await tester.pumpAndSettle();

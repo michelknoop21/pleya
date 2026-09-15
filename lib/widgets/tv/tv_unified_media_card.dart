@@ -63,6 +63,7 @@ class TvUnifiedMediaCard extends StatelessWidget {
     this.clientFor,
     this.focusNode,
     this.autofocus = false,
+    this.autoScroll = true,
     this.onNavigateUp,
     this.onNavigateDown,
     this.onNavigateLeft,
@@ -95,6 +96,7 @@ class TvUnifiedMediaCard extends StatelessWidget {
 
   final FocusNode? focusNode;
   final bool autofocus;
+  final bool autoScroll;
   final VoidCallback? onNavigateUp;
   final VoidCallback? onNavigateDown;
   final VoidCallback? onNavigateLeft;
@@ -149,6 +151,7 @@ class TvUnifiedMediaCard extends StatelessWidget {
       onContextMenu: onContextMenu,
       focusNode: focusNode,
       autofocus: autofocus,
+      autoScroll: autoScroll,
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
       onNavigateLeft: onNavigateLeft,

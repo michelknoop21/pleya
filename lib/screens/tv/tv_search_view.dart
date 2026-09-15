@@ -37,6 +37,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
+import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../widgets/tv/tv_catalog_card_grid.dart';
 import '../../widgets/tv/tv_catalog_card_rail.dart';
@@ -48,6 +49,8 @@ import '../../widgets/tv/tv_unified_layout.dart';
 
 /// What this page is called in `tv.catalog.*` automation ids (SEARCH1).
 const String tvSearchSurface = 'search';
+const Key tvSearchHeaderKey = ValueKey('tv_search_header');
+const Key tvSearchResultsViewportKey = ValueKey('tv_search_results_viewport');
 
 /// One band of results under one heading.
 ///
@@ -98,6 +101,7 @@ class TvSearchView extends StatefulWidget {
   const TvSearchView({
     super.key,
     required this.searchField,
+    this.compactSearchField = false,
     required this.sections,
     required this.hasQuery,
     required this.isSearching,
@@ -113,6 +117,11 @@ class TvSearchView extends StatefulWidget {
   /// The pill (and, where the native path is broken, the inline keyboard) as
   /// `SearchScreen` builds it.
   final Widget searchField;
+
+  /// Apple TV's native-entry pill follows mockup 36 B's compact width. Other
+  /// TV platforms can expose the inline D-pad keyboard below it and therefore
+  /// keep the full row width that keyboard requires.
+  final bool compactSearchField;
 
   /// The bands, in hoofdstuk 16.1's order. Empty with [hasQuery] false means
   /// nothing has been opened from a search yet; empty with it true means the
@@ -152,16 +161,44 @@ class TvSearchView extends StatefulWidget {
 
 class TvSearchViewState extends State<TvSearchView> {
   final _railKeys = <String, GlobalKey<TvCatalogCardRailState>>{};
+  final _sectionKeys = <String, GlobalKey>{};
+  final _resultsViewportKey = GlobalKey(debugLabel: 'TvSearchResultsViewport');
+  final _verticalScroll = ScrollController();
   final _stateActionFocus = FocusNode(debugLabel: 'TvSearchStateAction');
 
   @override
   void dispose() {
+    _verticalScroll.dispose();
     _stateActionFocus.dispose();
     super.dispose();
   }
 
   GlobalKey<TvCatalogCardRailState> _railKeyFor(String id) =>
       _railKeys.putIfAbsent(id, () => GlobalKey<TvCatalogCardRailState>(debugLabel: 'TvSearchBand($id)'));
+
+  GlobalKey _sectionKeyFor(String id) =>
+      _sectionKeys.putIfAbsent(id, () => GlobalKey(debugLabel: 'TvSearchSection($id)'));
+
+  void _revealBand(int index, VoidCallback focusBand) {
+    if (index < 0 || index >= widget.sections.length) return;
+    if (!_verticalScroll.hasClients) {
+      focusBand();
+      return;
+    }
+    final sectionBox = _sectionKeyFor(widget.sections[index].id).currentContext?.findRenderObject() as RenderBox?;
+    final viewportBox = _resultsViewportKey.currentContext?.findRenderObject() as RenderBox?;
+    if (sectionBox == null || viewportBox == null) {
+      focusBand();
+      return;
+    }
+    final sectionTop = sectionBox.localToGlobal(Offset.zero, ancestor: viewportBox).dy;
+    final position = _verticalScroll.position;
+    final target = (position.pixels + sectionTop).clamp(position.minScrollExtent, position.maxScrollExtent);
+    if ((target - position.pixels).abs() >= 0.5) {
+      _verticalScroll.jumpTo(target);
+    }
+    focusBand();
+  }
 
   /// DOWN off the search field, and the target every "focus the first result"
   /// call site on this screen already had.
@@ -171,8 +208,12 @@ class TvSearchViewState extends State<TvSearchView> {
   /// skeleton, and the caller keeps the focus on the field rather than dropping
   /// it into a page that has nowhere to put it.
   bool focusFirstResult() {
-    for (final section in widget.sections) {
-      if (_railKeyFor(section.id).currentState?.focusRail() ?? false) return true;
+    for (var i = 0; i < widget.sections.length; i++) {
+      final rail = _railKeyFor(widget.sections[i].id).currentState;
+      if (rail != null) {
+        _revealBand(i, rail.focusRail);
+        return true;
+      }
     }
     // `context != null` is the attachment test, and the reason it is here
     // rather than a bare `canRequestFocus`: that property is true on a node
@@ -190,7 +231,8 @@ class TvSearchViewState extends State<TvSearchView> {
   /// action above it — where the band's own memory is the right answer.
   void _restoreBand(int index) {
     if (index < 0 || index >= widget.sections.length) return;
-    _railKeyFor(widget.sections[index].id).currentState?.focusRail();
+    final rail = _railKeyFor(widget.sections[index].id).currentState;
+    if (rail != null) _revealBand(index, rail.focusRail);
   }
 
   /// Moves between bands, keeping the column (LAND4).
@@ -201,25 +243,101 @@ class TvSearchViewState extends State<TvSearchView> {
   /// however far right Series was parked.
   void _focusBand(int index, int column) {
     if (index < 0 || index >= widget.sections.length) return;
-    _railKeyFor(widget.sections[index].id).currentState?.focusColumn(column);
+    final rail = _railKeyFor(widget.sections[index].id).currentState;
+    if (rail != null) _revealBand(index, () => rail.focusColumn(column));
   }
 
   @override
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
+    final width = MediaQuery.sizeOf(context).width;
+    final geometry = TvCatalogGrid.forWidth(width, scale: scale);
+    final headingInset = geometry.inset + TvCatalogLayout.cardContentInset(scale);
+    final countLabel = resultCountLabel(
+      hasQuery: widget.hasQuery,
+      isSearching: widget.isSearching,
+      total: widget.totalResultCount,
+    );
+    final countText = countLabel == null
+        ? null
+        : AutomationNode(
+            id: AutomationIds.searchResultCount,
+            role: 'region',
+            label: countLabel,
+            child: Text(
+              countLabel,
+              maxLines: 1,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: TvCatalogLayout.inkTertiary),
+              ),
+            ),
+          );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        widget.searchField,
-        Expanded(child: _buildBody(scale)),
+        AutomationNode(
+          key: tvSearchHeaderKey,
+          id: AutomationIds.searchHeader,
+          role: 'region',
+          child: ColoredBox(
+            color: tokens(context).bg,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(headingInset, 0, headingInset, TvSearchLayout.headerBottomGap * scale),
+              child: widget.compactSearchField
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Flexible(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: TvSearchLayout.fieldWidth(
+                                TvDisplayMetrics.maybeOf(context) ?? MediaQuery.sizeOf(context),
+                              ),
+                            ),
+                            child: SizedBox(width: double.infinity, child: widget.searchField),
+                          ),
+                        ),
+                        if (countText != null) ...[
+                          SizedBox(width: TvSearchLayout.resultCountGap * scale),
+                          SizedBox(
+                            height: TvSearchLayout.fieldHeight(
+                              TvDisplayMetrics.maybeOf(context) ?? MediaQuery.sizeOf(context),
+                            ),
+                            child: Center(child: countText),
+                          ),
+                        ],
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        widget.searchField,
+                        if (countText != null)
+                          Padding(
+                            padding: EdgeInsets.only(top: TvSearchLayout.resultCountGap * scale),
+                            child: Align(alignment: Alignment.centerRight, child: countText),
+                          ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: AutomationNode(
+            key: tvSearchResultsViewportKey,
+            id: AutomationIds.searchResultsViewport,
+            role: 'region',
+            child: ClipRect(key: _resultsViewportKey, child: _buildBody(scale)),
+          ),
+        ),
       ],
     );
   }
 
   /// The count beside the pill, or null when there is nothing to count yet.
   ///
-  /// Public and pure so `SearchScreen` can put it *inside* its own pill without
-  /// this view having to reach into the field it was handed.
+  /// Public and pure so the header can state the query total independently of
+  /// the input widget `SearchScreen` hands it.
   static String? resultCountLabel({required bool hasQuery, required bool isSearching, required int? total}) {
     if (!hasQuery || isSearching || total == null) return null;
     if (total == 0) return t.search.noResultsShort;
@@ -289,58 +407,77 @@ class TvSearchViewState extends State<TvSearchView> {
 
     final onRequests = widget.onSearchOnRequests;
 
-    return SingleChildScrollView(
-      // Not the default clip: a focused card grows past its band's box, and the
-      // page must not shear the ring off at the viewport edge.
-      clipBehavior: Clip.none,
-      padding: EdgeInsets.only(bottom: geometry.bottomSafeMargin),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < widget.sections.length; i++) ...[
-            Padding(
-              padding: EdgeInsets.fromLTRB(headingInset, TvCatalogLayout.headerContentGap * scale, headingInset, 0),
-              // The count lives in the heading, not in the band: that is what
-              // closes SEARCH1. It states how many results the section has and
-              // does not move when the focus does.
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TvSectionHeader(title: widget.sections[i].title, count: widget.sections[i].count),
-                  ),
-                  if (widget.sections[i].hasAction)
-                    TvViewAllAction(
-                      label: widget.sections[i].actionLabel!,
-                      semanticLabel: widget.sections[i].actionLabel!,
-                      focusNode: widget.sections[i].actionFocusNode,
-                      onSelect: widget.sections[i].onAction!,
-                      onNavigateUp: i == 0 ? widget.onExitTop : () => _restoreBand(i - 1),
-                      onNavigateDown: () => _restoreBand(i),
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        controller: _verticalScroll,
+        // The outer ClipRect owns the fixed header boundary. This inner scroll
+        // stays unclipped so each horizontal rail can use its reserved focus
+        // headroom without shearing the ring against the band's own box.
+        clipBehavior: Clip.none,
+        // A band is the vertical navigation unit. One viewport of trailing
+        // room lets even the final band align at the top before its card takes
+        // focus, instead of leaving the previous card sliced under the header.
+        padding: EdgeInsets.only(bottom: constraints.maxHeight + geometry.bottomSafeMargin),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < widget.sections.length; i++)
+              KeyedSubtree(
+                key: _sectionKeyFor(widget.sections[i].id),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        headingInset,
+                        TvCatalogLayout.headerContentGap * scale,
+                        headingInset,
+                        0,
+                      ),
+                      // The count lives in the heading, not in the band: that is
+                      // what closes SEARCH1. It states how many results the
+                      // section has and does not move when the focus does.
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TvSectionHeader(title: widget.sections[i].title, count: widget.sections[i].count),
+                          ),
+                          if (widget.sections[i].hasAction)
+                            TvViewAllAction(
+                              label: widget.sections[i].actionLabel!,
+                              semanticLabel: widget.sections[i].actionLabel!,
+                              focusNode: widget.sections[i].actionFocusNode,
+                              onSelect: widget.sections[i].onAction!,
+                              onNavigateUp: i == 0 ? widget.onExitTop : () => _restoreBand(i - 1),
+                              onNavigateDown: () => _restoreBand(i),
+                            ),
+                        ],
+                      ),
                     ),
-                ],
-              ),
-            ),
-            _buildBand(scale, i, isLast: i == widget.sections.length - 1 && onRequests != null),
-          ],
-          // REQ2/REQ3: a query that did find something still has a way into
-          // Aanvragen — DOWN off the last band, not only off the CAT14 empty
-          // state above. `_stateActionFocus` is free here: nothing else in the
-          // results view uses it.
-          if (onRequests != null)
-            Padding(
-              padding: EdgeInsets.fromLTRB(headingInset, TvCatalogLayout.headerContentGap * scale, headingInset, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: TvViewAllAction(
-                  label: t.search.searchOnRequests,
-                  semanticLabel: t.search.searchOnRequests,
-                  focusNode: _stateActionFocus,
-                  onSelect: onRequests,
-                  onNavigateUp: () => _restoreBand(widget.sections.length - 1),
+                    _buildBand(scale, i, isLast: i == widget.sections.length - 1 && onRequests != null),
+                  ],
                 ),
               ),
-            ),
-        ],
+            // REQ2/REQ3: a query that did find something still has a way into
+            // Aanvragen — DOWN off the last band, not only off the CAT14 empty
+            // state above. `_stateActionFocus` is free here: nothing else in the
+            // results view uses it.
+            if (onRequests != null)
+              Padding(
+                padding: EdgeInsets.fromLTRB(headingInset, TvCatalogLayout.headerContentGap * scale, headingInset, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: TvViewAllAction(
+                    label: t.search.searchOnRequests,
+                    semanticLabel: t.search.searchOnRequests,
+                    focusNode: _stateActionFocus,
+                    onSelect: onRequests,
+                    onNavigateUp: () => _restoreBand(widget.sections.length - 1),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

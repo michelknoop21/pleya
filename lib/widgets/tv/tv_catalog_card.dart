@@ -56,6 +56,7 @@ class TvCatalogCard extends StatefulWidget {
     this.onContextMenu,
     this.focusNode,
     this.autofocus = false,
+    this.autoScroll = true,
     this.onNavigateUp,
     this.onNavigateDown,
     this.onNavigateLeft,
@@ -112,6 +113,7 @@ class TvCatalogCard extends StatefulWidget {
 
   final FocusNode? focusNode;
   final bool autofocus;
+  final bool autoScroll;
   final VoidCallback? onNavigateUp;
   final VoidCallback? onNavigateDown;
   final VoidCallback? onNavigateLeft;
@@ -158,6 +160,7 @@ class _TvCatalogCardState extends State<TvCatalogCard> {
       child: FocusableWrapper(
         focusNode: widget.focusNode,
         autofocus: widget.autofocus,
+        autoScroll: widget.autoScroll,
         onSelect: widget.onSelect,
         onLongPress: widget.onContextMenu,
         enableLongPress: widget.onContextMenu != null,
