@@ -30,6 +30,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
 import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
@@ -316,5 +317,80 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
     await tester.pumpAndSettle();
     expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('TvCatalogRail'));
+  });
+
+  group('HERO7: restoreTvFocus resolves a card directly', () {
+    // This screen stays mounted underneath a pushed detail route (it is
+    // itself a `TvNestedRoute`, and the detail is pushed on top of it, not in
+    // its place — see `docs/tvos-fysieke-correctieronde.md` HERO7), so on pop
+    // the grid still holds the card's own `FocusNode`. No rebuild, and no
+    // dependency on the shared ambient `contentFocusScope`.
+    Future<UnifiedCatalogProvider> bootCatalog(WidgetTester tester, List<MediaItem> movies) async {
+      resetSharedPreferencesForTest();
+      SettingsService.resetForTesting();
+      await SettingsService.getInstance();
+      LocaleSettings.setLocaleSync(AppLocale.en);
+
+      final client = _FakeLibraryClient(movies);
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final multiServer = MultiServerProvider(manager, DataAggregationService(manager));
+      final libraries = LibrariesProvider()
+        ..debugSetLibraries([
+          MediaLibrary(
+            id: '1',
+            backend: MediaBackend.plex,
+            title: 'Films',
+            kind: MediaKind.movie,
+            serverId: 'nas',
+            serverName: 'nas',
+          ),
+        ]);
+      final hiddenLibraries = HiddenLibrariesProvider();
+      final catalog = UnifiedCatalogProvider(
+        multiServer: multiServer,
+        libraries: libraries,
+        hiddenLibraries: hiddenLibraries,
+        kind: MediaKind.movie,
+      );
+      addTearDown(catalog.dispose);
+      addTearDown(libraries.dispose);
+      addTearDown(hiddenLibraries.dispose);
+      addTearDown(multiServer.dispose);
+
+      await catalog.ensureStarted();
+
+      setGoldenSurfaceSize(tester);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<MultiServerProvider>.value(
+          value: multiServer,
+          child: _shell(TvUnifiedCatalogScreen(catalog: catalog, title: t.unifiedCatalog.moviesTitle)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return catalog;
+    }
+
+    testWidgets('puts the ring back on the groupId a pushed detail route was opened from', (tester) async {
+      final movies = [_movie('m1', title: 'Alpha'), _movie('m2', title: 'Beta'), _movie('m3', title: 'Gamma')];
+      final catalog = await bootCatalog(tester, movies);
+      final target = TvFocusRestoreTarget(itemId: catalog.snapshot.groups[1].groupId);
+
+      final host = tester.state(find.byType(TvUnifiedCatalogScreen)) as TvFocusRestoreHost;
+      final restored = host.restoreTvFocus(target);
+      await tester.pump();
+
+      expect(restored, isTrue);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvUnifiedCard(${target.itemId})');
+    });
+
+    testWidgets('a groupId no longer in the catalog reports false, not a wrong card', (tester) async {
+      final movies = [_movie('m1', title: 'Alpha'), _movie('m2', title: 'Beta')];
+      await bootCatalog(tester, movies);
+
+      final host = tester.state(find.byType(TvUnifiedCatalogScreen)) as TvFocusRestoreHost;
+      final restored = host.restoreTvFocus(const TvFocusRestoreTarget(itemId: 'gone-forever'));
+
+      expect(restored, isFalse, reason: 'a removed card must not be approximated to a neighbour');
+    });
   });
 }

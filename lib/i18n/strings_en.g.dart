@@ -99,6 +99,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsUnifiedCatalogEn unifiedCatalog = TranslationsUnifiedCatalogEn.internal(_root);
 	late final TranslationsTvNavigationEn tvNavigation = TranslationsTvNavigationEn.internal(_root);
 	late final TranslationsTvMyPleyaEn tvMyPleya = TranslationsTvMyPleyaEn.internal(_root);
+	late final TranslationsTvOfflineHomeEn tvOfflineHome = TranslationsTvOfflineHomeEn.internal(_root);
 	late final TranslationsTvContextMenuEn tvContextMenu = TranslationsTvContextMenuEn.internal(_root);
 	late final TranslationsLanguageSettingsEn languageSettings = TranslationsLanguageSettingsEn.internal(_root);
 }
@@ -3282,6 +3283,12 @@ class TranslationsCollectionsEn {
 	/// en: 'Collection is empty'
 	String get empty => 'Collection is empty';
 
+	/// en: 'Add titles to this collection to see them here.'
+	String get emptyBody => 'Add titles to this collection to see them here.';
+
+	/// en: 'In this collection'
+	String get inThisCollection => 'In this collection';
+
 	/// en: 'Cannot delete: Unknown library section'
 	String get unknownLibrarySection => 'Cannot delete: Unknown library section';
 
@@ -5583,6 +5590,24 @@ class TranslationsTvMyPleyaEn {
 
 	/// en: '${count} libraries'
 	String libraryCount({required Object count}) => '${count} libraries';
+}
+
+// Path: tvOfflineHome
+class TranslationsTvOfflineHomeEn {
+	TranslationsTvOfflineHomeEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'No server reachable'
+	String get title => 'No server reachable';
+
+	/// en: 'None of your servers are answering right now. Reconnect once one is back online — My Pleya and Settings stay reachable while you wait.'
+	String get body => 'None of your servers are answering right now. Reconnect once one is back online — My Pleya and Settings stay reachable while you wait.';
+
+	/// en: 'Manage servers'
+	String get manageServers => 'Manage servers';
 }
 
 // Path: tvContextMenu
@@ -8075,6 +8100,8 @@ extension on Translations {
 			'collections.title' => 'Collections',
 			'collections.collection' => 'Collection',
 			'collections.empty' => 'Collection is empty',
+			'collections.emptyBody' => 'Add titles to this collection to see them here.',
+			'collections.inThisCollection' => 'In this collection',
 			'collections.unknownLibrarySection' => 'Cannot delete: Unknown library section',
 			'collections.deleteCollection' => 'Delete Collection',
 			'collections.deleteConfirm' => ({required Object title}) => 'Delete "${title}"? This can\'t be undone.',
@@ -8549,10 +8576,10 @@ extension on Translations {
 			'seerr.requestAgain' => 'Request',
 			'seerr.processing' => 'Processing',
 			'seerr.partiallyAvailable' => 'Partially available',
-			'seerr.available' => 'Available',
-			'seerr.alreadyRequested' => 'Already requested',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.available' => 'Available',
+			'seerr.alreadyRequested' => 'Already requested',
 			'seerr.pending' => 'Pending',
 			'seerr.approved' => 'Approved',
 			'seerr.declined' => 'Declined',
@@ -8964,6 +8991,9 @@ extension on Translations {
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
 			'tvMyPleya.libraryCount' => ({required Object count}) => '${count} libraries',
+			'tvOfflineHome.title' => 'No server reachable',
+			'tvOfflineHome.body' => 'None of your servers are answering right now. Reconnect once one is back online — My Pleya and Settings stay reachable while you wait.',
+			'tvOfflineHome.manageServers' => 'Manage servers',
 			'tvContextMenu.title' => 'Actions',
 			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Action ${index} of ${count}: ${label}',
 			'tvContextMenu.noUsableSource' => 'No source is currently reachable, so this cannot be changed right now.',

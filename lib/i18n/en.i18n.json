@@ -1151,6 +1151,8 @@
     "title": "Collections",
     "collection": "Collection",
     "empty": "Collection is empty",
+    "emptyBody": "Add titles to this collection to see them here.",
+    "inThisCollection": "In this collection",
     "unknownLibrarySection": "Cannot delete: Unknown library section",
     "deleteCollection": "Delete Collection",
     "deleteConfirm": "Delete \"${title}\"? This can't be undone.",
@@ -2130,6 +2132,11 @@
       "tileWithCount": "${title}. ${subtitle}. ${count}"
     },
     "libraryCount": "${count} libraries"
+  },
+  "tvOfflineHome": {
+    "title": "No server reachable",
+    "body": "None of your servers are answering right now. Reconnect once one is back online — My Pleya and Settings stay reachable while you wait.",
+    "manageServers": "Manage servers"
   },
   "tvContextMenu": {
     "title": "Actions",

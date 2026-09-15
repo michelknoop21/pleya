@@ -77,10 +77,11 @@ class TvNavigationCoordinator extends ChangeNotifier {
   /// one testable place.
   ///
   /// The fallback is [tvRootDestination] when it survived the recompute, and
-  /// [TvDestinationId.myPleya] when it did not (MOC-23a: offline drops Home
-  /// itself, which every case before it left standing). Mijn Pleya is the one
-  /// destination [buildTvDestinations] never removes, so it is always a valid
-  /// landing spot.
+  /// [TvDestinationId.myPleya] when it did not. Since MOC-23 (PB-12), offline
+  /// no longer removes Home itself, so this only bites when Live TV was
+  /// active and drops out; Mijn Pleya is the one destination
+  /// [buildTvDestinations] never removes, so it is always a valid landing
+  /// spot.
   ///
   /// A destination that disappears takes its nested stack with it: any
   /// [TvNestedRoute] pushed under it completes with `null` (same contract as
@@ -321,6 +322,51 @@ class TvDestinationFocusMemory {
   String toString() => 'TvDestinationFocusMemory(element: $focusedElementId, group: $groupId, offset: $scrollOffset)';
 }
 
+/// HERO7: the stable origin of a card that opened a [TvNestedRoute] — where
+/// the remote should land if that route is popped.
+///
+/// **Why not the ambient `contentFocusScope` history.** Restoring "whatever
+/// the shared `FocusScope` last remembered" broke the moment a route between
+/// push and pop owned its own focus-bearing scope: `MediaDetailScreen`'s
+/// related-rail (`TvBrowseRail`) overwrites the scope's history with its own,
+/// and wipes it clean the instant it leaves the tree on the way out — proven
+/// with a runtime trace in the HERO7 investigation
+/// (`docs/tvos-fysieke-correctieronde.md`). So the surface a pop reveals
+/// resolves its own focus from a stable id instead, via [TvFocusRestoreHost].
+@immutable
+class TvFocusRestoreTarget {
+  const TvFocusRestoreTarget({required this.itemId, this.containerId});
+
+  /// `UnifiedMediaGroup.groupId` — the card itself, stable across paging and a
+  /// late server joining.
+  final String itemId;
+
+  /// The row/hub the card sits in, for a surface with more than one rail
+  /// (Home, a discovery landing). Null for a complete catalog's single flat
+  /// grid, which has nothing to disambiguate.
+  final String? containerId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TvFocusRestoreTarget && other.itemId == itemId && other.containerId == containerId;
+
+  @override
+  int get hashCode => Object.hash(itemId, containerId);
+
+  @override
+  String toString() => 'TvFocusRestoreTarget(item: $itemId, container: $containerId)';
+}
+
+/// Implemented by the surface a [TvNestedRoute] pop reveals — a destination
+/// root (Home) or the route still underneath it (the complete catalog) — so
+/// it can put the remote back on the card that opened the route.
+abstract interface class TvFocusRestoreHost {
+  /// Resolves [target] and moves the focus there, returning whether it could.
+  /// `false` means the card is no longer reachable (filtered out, the rail
+  /// gone) — the caller's signal to fall back further, not an error.
+  bool restoreTvFocus(TvFocusRestoreTarget target);
+}
+
 /// How the top navigation sits above a [TvNestedRoute] (DEC-115).
 enum TvTopNavPresentation {
   /// The bar stays on screen and the route gets the box below it (PB-1).
@@ -362,6 +408,7 @@ class TvNestedRoute {
     required this.id,
     required this.builder,
     this.restoreFocusKey,
+    this.restoreTarget,
     this.screenKey,
     this.topNav = TvTopNavPresentation.persistent,
   });
@@ -376,8 +423,16 @@ class TvNestedRoute {
   /// DEC-115.
   final TvTopNavPresentation topNav;
 
-  /// The focus key to return to when this route pops (hoofdstuk 7.6).
+  /// The focus key to return to when this route pops (hoofdstuk 7.6). Mijn
+  /// Pleya's own mechanism, untouched by HERO7's [restoreTarget]: the two
+  /// coexist because Mijn Pleya's sections are not media cards.
   final String? restoreFocusKey;
+
+  /// HERO7: where this route was opened from, so a pop can put the remote
+  /// back there through [TvFocusRestoreHost] instead of the ambient
+  /// `contentFocusScope`. Null for a route that was not opened from a card —
+  /// Mijn Pleya's sections use [restoreFocusKey] instead.
+  final TvFocusRestoreTarget? restoreTarget;
 
   /// Reaches the pushed screen's `State`, so the shell can ask it where its
   /// focus belongs the way it asks a destination — a route that opens with

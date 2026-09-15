@@ -148,6 +148,9 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
   /// [TvCatalogCardGridState.focusGrid].
   void focusGrid() => _gridKey.currentState?.focusGrid();
 
+  /// Focuses one named card directly. See [TvCatalogCardGridState.focusItem].
+  bool focusItem(String id) => _gridKey.currentState?.focusItem(id) ?? false;
+
   bool get hasFocusableCard => _gridKey.currentState?.hasFocusableCard ?? false;
 
   @override

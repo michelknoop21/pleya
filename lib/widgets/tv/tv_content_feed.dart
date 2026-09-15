@@ -65,6 +65,7 @@ import '../../screens/tv/tv_discovery_activation_mixin.dart';
 import '../../screens/tv/tv_root_shell.dart' show TvShellSurface;
 import '../../screens/tv/tv_unified_catalog_screen.dart';
 import '../../media/unified/unified_route_context.dart';
+import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../services/settings_service.dart';
 import '../../services/unified_catalog/home_custom_row_view_all.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
@@ -95,7 +96,9 @@ class TvContentFeed extends StatefulWidget {
   State<TvContentFeed> createState() => TvContentFeedState();
 }
 
-class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivationMixin, WidgetsBindingObserver {
+class TvContentFeedState extends State<TvContentFeed>
+    with TvDiscoveryActivationMixin, WidgetsBindingObserver
+    implements TvFocusRestoreHost {
   final _scroll = ScrollController();
   final _heroKey = GlobalKey<TvHeroBillboardCarouselState>();
 
@@ -323,8 +326,22 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
 
   bool get _routeIsCurrent => ModalRoute.of(context)?.isCurrent ?? true;
 
-  Future<void> _activate(UnifiedMediaGroup group) =>
-      activateDiscoveryGroup(group, onManageServers: widget.onManageServers);
+  Future<void> _activate(UnifiedMediaGroup group, {String? containerId}) =>
+      activateDiscoveryGroup(group, onManageServers: widget.onManageServers, containerId: containerId);
+
+  /// HERO7: resolves a card by its stable rowId+groupId directly, instead of
+  /// the ambient `contentFocusScope` history a detail route's own related-rail
+  /// wipes on the way out. `false` (row gone, or the card scrolled out of a
+  /// virtualized range) is the caller's cue to fall back further — see
+  /// [TvDiscoveryRailState.focusGroup].
+  @override
+  bool restoreTvFocus(TvFocusRestoreTarget target) {
+    final containerId = target.containerId;
+    if (containerId == null) return false;
+    final restored = _rowStack.keyFor(containerId).currentState?.focusGroup(target.itemId) ?? false;
+    if (restored) _focusedGroupIdByRowId[containerId] = target.itemId;
+    return restored;
+  }
 
   /// Hoofdstuk 23's menu on a Home row.
   ///
@@ -590,7 +607,7 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
                               clientFor: _clientFor,
                               initialFocusedGroupId: _focusedGroupIdByRowId[rows[i].hubId],
                               onFocusedGroupChanged: (id) => _focusedGroupIdByRowId[rows[i].hubId] = id,
-                              onActivate: _activate,
+                              onActivate: (group) => _activate(group, containerId: rows[i].hubId),
                               onContextMenu: (group) =>
                                   _openContextMenu(group, isInContinueWatching: rows[i].hubId == continueWatchingHubId),
                               // Row to row, at the column the step leaves from
