@@ -430,7 +430,7 @@ zijn stuk voor stuk bevestigd via directe code-inspectie (`grep`/`sed`/`git log`
 in het reviewrapport) en vervolgens door Michel getriageerd. Die triage is leidend geweest voor wat
 hieronder wel en niet is opgepakt.
 
-### Finding 1: artwork-selectiewissel op iPad (OPEN, wacht op Michels visuele oordeel)
+### Finding 1: artwork-selectiewissel op iPad (FIXED, behouden + vastgelegd)
 
 `media_detail_screen.dart:5196` (`containerAspect = size.width / headerHeight`) voedt
 `heroArtCandidates(containerAspectRatio: ...)` in `lib/media/media_item.dart:801`, met omslagpunt
@@ -439,11 +439,16 @@ de F-D1-tabel hierboven (1032x1376): de oude vlakke header gaf aspect 1,25 (<1,3
 eerst), de nieuwe gecapte header (580,5pt) geeft aspect 1,78 (≥1,39, backdrop art eerst). Dit stond
 nergens vermeld of beoordeeld toen F-D1 landde.
 
-Michel heeft expliciet gevraagd dit niet automatisch te "repareren": de wissel kan correct gedrag
-zijn (de container is immers echt veranderd) of een ongewenst neveneffect. Vereist een visuele
-beoordeling van de nieuwe iPad-header met backdrop-art vóór een van de twee routes gekozen wordt
-(behouden + documenteren, of artworkselectie loskoppelen van de gecapte hoogte). Niet opgepakt deze
-ronde: dit vraagt Michels eigen blik, niet een agent-beslissing.
+Michel heeft de nieuwe header op 15 september 2026 visueel beoordeeld tegen een echte iPad Air
+11"-simulator, ingelogd op de Jellyfin-demoserver (`demo.pleya.app`), op de detailpagina van
+"Elephants Dream" (screenshot gedeeld in de sessie): backdrop-art over de kortere header leest goed,
+geen ongewenst neveneffect. Besluit: **behouden**, geen loskoppeling van artworkselectie en
+`headerHeight`. Vastgelegd in `test/screens/media_detail_desktop_header_density_test.dart`
+("Reviewronde finding 1"-groep): de test rekent `tabletDetailHeaderHeight(1032, 1376)` en de
+resulterende `containerAspect` uit, bevestigt dat die over de 1,39-grens ligt, en pint dat
+`heroArtCandidates` daar backdrop art (`/art`) vóór vierkant art (`/square`) teruggeeft. Rood zonder
+de juiste volgorde bevestigd (tijdelijk omgedraaid naar `['/square', '/art']`, faalde zoals
+verwacht), groen met de juiste volgorde.
 
 ### Finding 2: header floor > korte viewport (FIXED, `c4f0ce4e`)
 
@@ -525,6 +530,9 @@ wijziging erbovenop was nu meer kans op ruis dan winst.
 
 ### Openstaand vóór push
 
-Finding 1 (Michels visuele oordeel) en het resterende deel van finding 4
-(`media_detail_screen.dart`/`library_browse_tab.dart` boven de regelgrens) staan open. Zie de
-handoff in `~/.claude/handoffs/` voor de volledige stand en de eerstvolgende actie.
+Finding 1 is afgerond (behouden + vastgelegd). Het resterende deel van finding 4
+(`media_detail_screen.dart`/`library_browse_tab.dart` boven de regelgrens) staat nog open: Michel
+moet beslissen of dat een eigen vervolgronde wordt vóór push, of dat de huidige staat (`dialogs.dart`
+compliant, de twee grote bestanden niet) voor nu volstaat. Daarna: een nieuwe, onafhankelijke review
+op de uiteindelijke diff, zoals Michels eigen laatste stap in de opdracht voorschreef. Zie de handoff
+in `~/.claude/handoffs/` voor de volledige stand.

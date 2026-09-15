@@ -147,4 +147,32 @@ void main() {
       expect(height, closeTo(600, 20));
     });
   });
+
+  group('Reviewronde finding 1: F-D1s cap verschuift welk art-type de header wint', () {
+    test('1032x1376 iPad: de gecapte header duwt containerAspect over de 1,39-grens naar backdrop art', () {
+      final headerHeight = tabletDetailHeaderHeight(1032, 1376);
+      final containerAspect = 1032 / headerHeight;
+
+      // Bevestigt de aspect uit het reviewrapport zelf (Finding 1,
+      // docs/density-audit-2026-09.md): 580,5pt -> aspect 1,78, over de
+      // billboardNarrowAspectRatioThreshold van 1,39.
+      expect(headerHeight, closeTo(580.5, 0.5));
+      expect(containerAspect, greaterThanOrEqualTo(billboardNarrowAspectRatioThreshold));
+
+      final withBoth = MediaItem(
+        id: 'movie_1',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'Sintel',
+        artPath: '/art',
+        backgroundSquarePath: '/square',
+      );
+      // Michel heeft dit op 15 september 2026 visueel beoordeeld tegen een
+      // echte iPad-simulator (Jellyfin-demo-content, film "Elephants Dream")
+      // en behouden: dit is bedoeld gedrag, geen bug in `heroArtCandidates`
+      // zelf (die was al los getest, zie media_item_test.dart). De vergrote
+      // container kiest terecht backdrop-art boven vierkant art.
+      expect(withBoth.heroArtCandidates(containerAspectRatio: containerAspect), ['/art', '/square']);
+    });
+  });
 }
