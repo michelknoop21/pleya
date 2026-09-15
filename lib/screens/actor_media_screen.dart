@@ -9,7 +9,9 @@ import '../media/media_server_client.dart';
 import '../mixins/paginated_item_loader.dart';
 import '../utils/app_logger.dart';
 import '../utils/error_message_utils.dart';
+import '../utils/media_navigation_helper.dart';
 import '../utils/media_server_http_client.dart';
+import '../utils/platform_detector.dart';
 import '../utils/provider_extensions.dart';
 import '../widgets/desktop_app_bar.dart';
 import '../widgets/optimized_media_image.dart';
@@ -19,6 +21,7 @@ import 'base_media_list_detail_screen.dart';
 import 'focusable_detail_screen_mixin.dart';
 import '../mixins/grid_focus_node_mixin.dart';
 import '../focus/focusable_action_bar.dart';
+import 'tv/tv_person_screen.dart';
 
 /// Screen to browse all media featuring a specific actor.
 class ActorMediaScreen extends StatefulWidget {
@@ -51,6 +54,17 @@ class _ActorMediaScreenState extends BaseMediaListDetailScreen<ActorMediaScreen>
         FocusableDetailScreenMixin<ActorMediaScreen>,
         PaginatedItemLoader<MediaItem, ActorMediaScreen> {
   static const int _pageSize = 200;
+
+  /// Tracked separately from [PaginatedItemLoader]'s private loading state,
+  /// same split MOC-24's `CollectionDetailScreen` uses: `ensureIndexLoaded`
+  /// is fire-and-forget, so this is reset from [onPageLoaded] rather than
+  /// awaited.
+  bool _isLoadingMoreOnTv = false;
+
+  @override
+  void onPageLoaded(int start, List<MediaItem> items) {
+    if (_isLoadingMoreOnTv) setState(() => _isLoadingMoreOnTv = false);
+  }
 
   @override
   MediaItem get mediaItem => MediaItem(
@@ -186,6 +200,8 @@ class _ActorMediaScreenState extends BaseMediaListDetailScreen<ActorMediaScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (PlatformDetector.isAppleTV()) return _buildTvPerson(context);
+
     return buildDetailScaffold(
       slivers: [
         CustomAppBar(title: Text(widget.actorName), pinned: true, actions: buildFocusableAppBarActions()),
@@ -200,5 +216,37 @@ class _ActorMediaScreenState extends BaseMediaListDetailScreen<ActorMediaScreen>
           ),
       ],
     );
+  }
+
+  /// MOC-25 (PB-14): see `tv/tv_person_screen.dart` for the composition and
+  /// for what it deliberately leaves out. This screen keeps owning the data
+  /// (paginated filmography); only presentation moves to the TV widget, the
+  /// same split MOC-24's `CollectionDetailScreen._buildTvCollection` uses.
+  Widget _buildTvPerson(BuildContext context) {
+    // PaginatedItemLoader only ever fetches sequentially here (initial page,
+    // then `_loadMoreOnTv` appending at the end), so `loadedItems` is dense
+    // from 0 and this is never sparse.
+    final loadedList = [for (var i = 0; i < loadedItems.length; i++) loadedItems[i]!];
+
+    return TvPersonScreen(
+      actorName: widget.actorName,
+      actorThumb: widget.actorThumb,
+      characterName: widget.characterName,
+      items: loadedList,
+      totalSize: totalSize,
+      isLoading: isLoading,
+      isLoadingMore: _isLoadingMoreOnTv,
+      errorMessage: errorMessage,
+      client: _mediaClient,
+      onRetry: loadItems,
+      onLoadMore: _loadMoreOnTv,
+      onSelectItem: (item) => navigateToMediaItem(context, item, onRefresh: updateItem),
+    );
+  }
+
+  void _loadMoreOnTv() {
+    if (_isLoadingMoreOnTv || loadedItems.length >= totalSize) return;
+    setState(() => _isLoadingMoreOnTv = true);
+    ensureIndexLoaded(loadedItems.length, pageSize: _pageSize);
   }
 }

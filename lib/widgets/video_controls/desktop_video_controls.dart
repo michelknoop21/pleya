@@ -31,6 +31,7 @@ import 'widgets/first_frame_guard.dart';
 import 'widgets/play_pause_stream_builder.dart';
 import 'widgets/video_controls_header.dart';
 import 'widgets/video_timeline_bar.dart';
+import 'widgets/tv_quality_summary_line.dart';
 import 'widgets/volume_control.dart';
 import 'widgets/track_chapter_controls.dart';
 
@@ -911,29 +912,44 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     final tvInset = PlatformDetector.isTV() ? tvPageInset(context) : null;
     final topBar = Padding(
       padding: .only(left: tvInset ?? leftPadding, right: tvInset ?? 16),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: .start,
+        mainAxisSize: .min,
         children: [
-          Expanded(
-            child: AutomationNode(
-              id: AutomationIds.playerTitle,
-              role: 'region',
-              child: VideoControlsHeader(
-                metadata: widget.metadata,
-                style: Platform.isMacOS ? VideoHeaderStyle.singleLine : VideoHeaderStyle.multiLine,
-                onBack: widget.onBack,
+          Row(
+            children: [
+              Expanded(
+                child: AutomationNode(
+                  id: AutomationIds.playerTitle,
+                  role: 'region',
+                  child: VideoControlsHeader(
+                    metadata: widget.metadata,
+                    style: Platform.isMacOS ? VideoHeaderStyle.singleLine : VideoHeaderStyle.multiLine,
+                    onBack: widget.onBack,
+                  ),
+                ),
               ),
-            ),
+              if (_isLive && (widget.captureBuffer == null || widget.isAtLiveEdge)) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.all(Radius.circular(4)),
+                  ),
+                  child: Text(
+                    t.liveTv.live,
+                    style: const TextStyle(color: Colors.white, fontWeight: .bold, fontSize: 12),
+                  ),
+                ),
+              ],
+            ],
           ),
-          if (_isLive && (widget.captureBuffer == null || widget.isAtLiveEdge)) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: const BoxDecoration(color: Colors.red, borderRadius: BorderRadius.all(Radius.circular(4))),
-              child: Text(
-                t.liveTv.live,
-                style: const TextStyle(color: Colors.white, fontWeight: .bold, fontSize: 12),
-              ),
-            ),
+          // Quality/source line (mockup 18): TV only, source data does not
+          // apply to a live channel.
+          if (PlatformDetector.isTV() && !_isLive) ...[
+            const SizedBox(height: 4),
+            TvQualitySummaryLine(player: widget.player, isTranscoding: _trackControlsState.isTranscoding),
           ],
         ],
       ),

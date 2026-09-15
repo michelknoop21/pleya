@@ -1,5 +1,31 @@
 import '../mpv/mpv.dart';
 
+/// Live video resolution and codec, read from mpv rather than the
+/// server-declared `MediaVersion`: a transcode can change what actually
+/// reaches the player, so only the live properties are guaranteed to match
+/// what is on screen right now.
+Future<({String? resolution, String? videoCodec})> readLiveVideoQuality(Player player) async {
+  final height = await player.getProperty('height');
+  final codec = await player.getProperty('video-codec');
+  final h = int.tryParse(height ?? '');
+  return (
+    resolution: h != null && h > 0 ? '${h}p' : null,
+    videoCodec: (codec != null && codec.trim().isNotEmpty) ? codec.trim().toUpperCase() : null,
+  );
+}
+
+/// Friendly label for a channel count, shared by the TV info panel and the
+/// player's persistent quality line.
+String audioChannelLabel(int channels) {
+  return switch (channels) {
+    1 => 'Mono',
+    2 => 'Stereo',
+    6 => '5.1',
+    8 => '7.1',
+    _ => '$channels ch',
+  };
+}
+
 const restartBeforePreviousItemThreshold = Duration(seconds: 3);
 const plexTranscodeSeekRangeStartTolerance = Duration(milliseconds: 500);
 const plexTranscodeSeekRangeEndGuard = Duration(milliseconds: 500);

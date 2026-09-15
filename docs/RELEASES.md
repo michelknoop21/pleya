@@ -21,6 +21,8 @@ under `Notes`.
 ### New
 - MOC-23 offline TV Home, scoped without the discovery snapshot
 - MOC-24 collection as a TV-native surface
+- MOC-25 person as a TV-native surface
+- add the persistent quality/source line to the player OSD (MOC-18)
 
 ### Fixed
 - reset select ownership across native input sessions
