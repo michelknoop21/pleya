@@ -38,6 +38,13 @@ class AppleTvRemotePlayPauseAction {
 /// focus-tree key events Plezy already handles for D-pad navigation.
 class AppleTvRemoteTouchService {
   static const String _channelName = 'flutter/gamepadtouchevent';
+
+  /// NAV2 (docs/tvos-fysieke-correctieronde.md): station 3 of
+  /// docs/tvos-remote-press-pipeline.md as an app-log line. `AppDelegate`'s
+  /// `tvosHandlePress(fromUIEvent:)` sends one message per call — read-only,
+  /// no reply, no filtering — because its NSLog line never reaches a relay
+  /// log.
+  static const String _pressDiagChannelName = 'nl.michelknoop.pleya/tvos_press_diag';
   static const double defaultSwipeThreshold = 180;
   static const double defaultAxisSwitchDominanceRatio = 1.5;
   // Min time between accepted swipe-moves. Too low and one continuous trackpad
@@ -62,6 +69,7 @@ class AppleTvRemoteTouchService {
   static final AppleTvRemoteTouchService instance = AppleTvRemoteTouchService();
 
   final BasicMessageChannel<dynamic> _channel;
+  final BasicMessageChannel<dynamic> _pressDiagChannel;
   final void Function(LogicalKeyboardKey logicalKey) _simulateKeyPress;
   final void Function(LogicalKeyboardKey logicalKey) _simulateKeyDown;
   final void Function(LogicalKeyboardKey logicalKey) _simulateKeyUp;
@@ -115,6 +123,7 @@ class AppleTvRemoteTouchService {
 
   AppleTvRemoteTouchService({
     BasicMessageChannel<dynamic>? channel,
+    BasicMessageChannel<dynamic>? pressDiagChannel,
     void Function(LogicalKeyboardKey logicalKey)? simulateKeyPress,
     void Function(LogicalKeyboardKey logicalKey)? simulateKeyDown,
     void Function(LogicalKeyboardKey logicalKey)? simulateKeyUp,
@@ -132,6 +141,8 @@ class AppleTvRemoteTouchService {
     this.nativeSwipeClassifyDistance = defaultNativeSwipeClassifyDistance,
   }) : assert(axisSwitchDominanceRatio >= 1),
        _channel = channel ?? const BasicMessageChannel<dynamic>(_channelName, JSONMessageCodec()),
+       _pressDiagChannel =
+           pressDiagChannel ?? const BasicMessageChannel<dynamic>(_pressDiagChannelName, JSONMessageCodec()),
        _simulateKeyPress = simulateKeyPress ?? key_sim.simulateKeyPress,
        _simulateKeyDown = simulateKeyDown ?? key_sim.simulateKeyDown,
        _simulateKeyUp = simulateKeyUp ?? key_sim.simulateKeyUp,
@@ -164,6 +175,7 @@ class AppleTvRemoteTouchService {
   void start() {
     if (_listening) return;
     _channel.setMessageHandler(handleMessage);
+    _pressDiagChannel.setMessageHandler(_handlePressDiagnostic);
     _registerNativeKeyHandler();
     _listening = true;
     appLogger.i('AppleTvRemoteTouchService: Listening for tvOS touch remote events');
@@ -172,6 +184,7 @@ class AppleTvRemoteTouchService {
   void stop() {
     if (!_listening) return;
     _channel.setMessageHandler(null);
+    _pressDiagChannel.setMessageHandler(null);
     _unregisterNativeKeyHandler();
     _duplicateInputGuard.clear();
     _resetNativeSelectBurstState();
@@ -266,6 +279,17 @@ class AppleTvRemoteTouchService {
       if (event is KeyDownEvent) _tagNativeDirectionalAttribution(event.logicalKey);
     }
     return _duplicateInputGuard.handleNativeKeyEvent(event);
+  }
+
+  /// NAV2: logs station 3 of the press pipeline into the app log. Read-only —
+  /// no state changes, nothing consumed, no reply.
+  Future<dynamic> _handlePressDiagnostic(dynamic arguments) async {
+    if (arguments is! Map) return null;
+    _log(
+      'native press=${arguments['press']} phase=${arguments['phase']} '
+      'uipress=${arguments['uipress']} t=${arguments['systemUptimeMs']}',
+    );
+    return null;
   }
 
   Future<void> handleMessage(dynamic arguments) async {

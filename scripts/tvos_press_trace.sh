@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
 # Reads a Pleya app log (a file, or a log id from https://ice.pleya.app/logs/<id>)
 # and prints the Siri Remote press trace with millisecond deltas, flagging the
-# three shapes that mean the engine, not the viewer, produced an event:
+# shapes that mean the engine, not the viewer, produced an event:
 #
 #   EARLY-KEYUP    keyup of a key within 40 ms of its keydown while the press
-#                  is still held: the engine released it (releaseAllSynthesizedPresses)
+#                  is still held: the engine released it (releaseAllSynthesizedPresses).
+#                  Menu (escape) never counts here — tvOS delivers it on release,
+#                  which is expected, not a defect (NAV2).
+#   KEYUP-ONLY     a keyup with no keydown seen for that key: a lost click
+#                  (SEL2, log ijqxp 23:07:33.053 — Select stuck from the
+#                  keyboard session ate the next real press).
 #   RE-TAP         a fresh keydown of the same key within 400 ms of an early keyup:
-#                  the .ended phase re-tapped it (tapIfMissingKeyDown:YES), a second step
+#                  the .ended phase re-tapped it (tapIfMissingKeyDown:YES), a second step.
+#                  Judged same-uipress (side door 2, the engine re-tapped the same
+#                  UIPress) or new-uipress (UIKit delivered a real second press)
+#                  from the nearest `native press=` diagnostic lines (NAV2); unknown
+#                  when the build predates that channel.
 #   ENABLE-HELD    a menuPassthroughEnabled=true sent while a key is down: the
 #                  message that triggers the release (needs 7786a952 or later to be logged)
 #
@@ -35,21 +44,36 @@ import re, sys
 path = sys.argv[1]
 ts_re = re.compile(r'^\[(\d\d):(\d\d):(\d\d)\.(\d\d\d)\]')
 interesting = re.compile(
-    r'press-diag|native key(down|up)|TvosSystemNavigationService|NativeInputSession|native-input-session|'
-    r'reason=onNavigate|consume native|swallow|yield to UIKit'
+    r'press-diag|native press=|native key(down|up)|TvosSystemNavigationService|NativeInputSession|'
+    r'native-input-session|reason=onNavigate|consume native|swallow|yield to UIKit'
 )
 keydown = re.compile(r'native keydown logical=(\w+)')
 keyup = re.compile(r'native keyup logical=(\w+)')
 enable = re.compile(r'send menuPassthroughEnabled=true')
+pressdiag = re.compile(r'native press=(\w+) phase=(-?\d+) uipress=([0-9a-fA-F]+)')
+
+MENU_KEY = 'escape'  # tvOS delivers Menu on release; expected, not a defect (NAV2)
+RETAP_WINDOW_MS = 400
+NEAREST_DIAG_WINDOW_MS = 30
+# A keyup whose tracked keydown is older than this is not that keydown's
+# release: no button stays physically down for seconds. It is the tell that
+# the *real* keydown for this keyup was swallowed by the engine ("negeert een
+# .began voor een toets die al in de set staat", SEL2) while a stale entry
+# from an earlier, unrelated press was still sitting in down_at.
+STALE_KEYDOWN_MS = 2000
 
 def ms(m):
     h, mi, s, f = (int(x) for x in m.groups())
     return ((h * 60 + mi) * 60 + s) * 1000 + f
 
+def uipress_ids_near(diag_events, t, window=NEAREST_DIAG_WINDOW_MS):
+    return {u for (dt, u) in diag_events if abs(dt - t) <= window}
+
 down_at = {}          # key -> time of last keydown still held
 early_up_at = {}      # key -> time of last early keyup
 retap = set()         # keys whose current keydown was a re-tap; their keyup is part of it
-flags = {'EARLY-KEYUP': 0, 'RE-TAP': 0, 'ENABLE-HELD': 0}
+diag_events = []      # (time, uipress) from `native press=` diagnostic lines (NAV2)
+flags = {'EARLY-KEYUP': 0, 'KEYUP-ONLY': 0, 'RE-TAP': 0, 'ENABLE-HELD': 0}
 prev = None
 
 with open(path, errors='replace') as fh:
@@ -63,12 +87,23 @@ with open(path, errors='replace') as fh:
         prev = t
         tags = []
 
+        pd = pressdiag.search(line)
         kd = keydown.search(line)
         ku = keyup.search(line)
-        if kd:
+        if pd:
+            diag_events.append((t, pd.group(3)))
+        elif kd:
             k = kd.group(1)
-            if k in early_up_at and t - early_up_at[k] <= 400:
-                tags.append('RE-TAP')
+            if k in early_up_at and t - early_up_at[k] <= RETAP_WINDOW_MS:
+                ids_before = uipress_ids_near(diag_events, early_up_at[k])
+                ids_after = uipress_ids_near(diag_events, t)
+                if not ids_before or not ids_after:
+                    verdict = 'unknown'
+                elif ids_before & ids_after:
+                    verdict = 'same-uipress'
+                else:
+                    verdict = 'new-uipress'
+                tags.append(f'RE-TAP({verdict})')
                 flags['RE-TAP'] += 1
                 retap.add(k)
             else:
@@ -80,9 +115,13 @@ with open(path, errors='replace') as fh:
                 tags.append('re-tap pair closes')
                 retap.discard(k)
             elif k in down_at and t - down_at[k] <= 40:
-                tags.append('EARLY-KEYUP')
-                flags['EARLY-KEYUP'] += 1
-                early_up_at[k] = t
+                if k != MENU_KEY:
+                    tags.append('EARLY-KEYUP')
+                    flags['EARLY-KEYUP'] += 1
+                    early_up_at[k] = t
+            elif k not in down_at or t - down_at[k] > STALE_KEYDOWN_MS:
+                tags.append('KEYUP-ONLY')
+                flags['KEYUP-ONLY'] += 1
             down_at.pop(k, None)
         elif enable.search(line) and down_at:
             tags.append('ENABLE-HELD(' + ','.join(down_at) + ')')

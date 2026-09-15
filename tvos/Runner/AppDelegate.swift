@@ -13,6 +13,17 @@ import wakelock_plus
     codec: FlutterJSONMessageCodec.sharedInstance()
   )
 
+  // NAV2 (docs/tvos-fysieke-correctieronde.md): station 3 of the pipeline
+  // (docs/tvos-remote-press-pipeline.md) as an app-log line instead of only
+  // NSLog, because `[PleyaTvosPress]` never reaches a relay log. Read-only:
+  // this channel carries no reply and changes no behaviour, it only lets
+  // `AppleTvRemoteTouchService` log what this hook already computes.
+  private lazy var tvosPressDiagChannel = FlutterBasicMessageChannel(
+    name: "nl.michelknoop.pleya/tvos_press_diag",
+    binaryMessenger: binaryMessenger,
+    codec: FlutterJSONMessageCodec.sharedInstance()
+  )
+
   /// Debug level on purpose. This fires for every press of every session and
   /// twice per press (see below), so at default level it would push everything
   /// else out of the log buffer during normal remote use. Read it with
@@ -87,6 +98,12 @@ import wakelock_plus
     NSLog(
       "[PleyaTvosPress] press=%@ phase=%ld uipress=%lx", Self.pressName(press), press.phase.rawValue,
       ObjectIdentifier(press).hashValue & 0xffff)
+    tvosPressDiagChannel.sendMessage([
+      "press": Self.pressName(press),
+      "phase": press.phase.rawValue,
+      "uipress": ObjectIdentifier(press).hashValue & 0xffff,
+      "systemUptimeMs": Int(ProcessInfo.processInfo.systemUptime * 1000),
+    ])
     guard NativeInputSession.isActive else {
       return super.tvosHandlePress(fromUIEvent: press)
     }
