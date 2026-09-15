@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../automation/automation_ids.dart';
+import '../automation/automation_registry.dart';
 import '../utils/app_logger.dart';
 import '../utils/native_input_session.dart';
 import 'gamepad_service.dart';
@@ -101,6 +103,49 @@ class AppleTvNativeTextEntry {
   bool _sessionActive = false;
   bool _unavailable = false;
 
+  /// Bound on [_waitForKeysReleased] (SEL2): a session must still open if a
+  /// key is stuck for some other reason, or Search becomes permanently
+  /// unopenable.
+  ///
+  /// ponytail: a fixed timeout rather than tracking down every other path
+  /// that could leave a key held. Upgrade path is finding that source if this
+  /// bound ever fires on hardware — [sessionsStartedWhileKeysHeld] in
+  /// [automationState] is the tell.
+  static const _keyReleaseTimeout = Duration(seconds: 1);
+
+  /// Sessions that had to wait for a held key before opening.
+  int _parkedStarts = 0;
+
+  /// Sessions that opened anyway because [_keyReleaseTimeout] ran out. Stays
+  /// zero on hardware unless something else is holding a key stuck.
+  int _sessionsStartedWhileKeysHeld = 0;
+
+  int? _automationToken;
+
+  /// What `/v1/ui_tree` reports under [AutomationIds.tvosNativeTextEntry].
+  @visibleForTesting
+  Map<String, Object?> automationState() => {
+    'sessionActive': _sessionActive,
+    'parkedStarts': _parkedStarts,
+    'sessionsStartedWhileKeysHeld': _sessionsStartedWhileKeysHeld,
+  };
+
+  void _ensureAutomationNode() {
+    if (_automationToken != null) return;
+    _automationToken = AutomationRegistry.instance.register(
+      AutomationDeclaredNode(id: AutomationIds.tvosNativeTextEntry, role: 'service', state: automationState),
+    );
+  }
+
+  /// Test-only: clears the counters so a test can assert on them regardless
+  /// of what an earlier test in the same isolate already drove through this
+  /// singleton.
+  @visibleForTesting
+  void debugResetAutomationCounters() {
+    _parkedStarts = 0;
+    _sessionsStartedWhileKeysHeld = 0;
+  }
+
   /// Whether the native surface has been written off *for this app run*. Set by
   /// the watchdog codes so a broken surface is never shown twice in a session;
   /// every caller then takes its existing fallback.
@@ -117,6 +162,49 @@ class AppleTvNativeTextEntry {
 
   @visibleForTesting
   void debugResetAvailability() => _unavailable = false;
+
+  /// Waits for every Siri Remote key to lift before the native session opens
+  /// (SEL2, docs/tvos-fysieke-correctieronde.md).
+  ///
+  /// The Select key-down that leads to this call opens the session, but its
+  /// own key-up reaches UIKit through the session tab of
+  /// `PleyaFlutterViewController.tvosHandlePress`, not through the engine's
+  /// synthesis path — so it never reaches `HardwareKeyboard` while the
+  /// session is active. Installing the key gate before that key-up arrives
+  /// left Select stuck in both the engine's `synthesizedPressedKeys` and
+  /// Dart's `physicalKeysPressed` for the whole session: the next real press
+  /// then landed as a keyup with no keydown (log `ijqxp`, 23:07:33.053), and
+  /// the deferred-enable flush in `TvosSystemNavigationService` never ran
+  /// because it waits on the same empty-set signal.
+  ///
+  /// Mirrors `TvosSystemNavigationService._flushDeferredEnableOnRelease`:
+  /// hook a raw [HardwareKeyboard] handler rather than [FocusManager], since
+  /// the gate this installs a few lines later would otherwise swallow the
+  /// very key-up being waited for.
+  Future<void> _waitForKeysReleased() async {
+    if (HardwareKeyboard.instance.physicalKeysPressed.isEmpty) return;
+    _parkedStarts++;
+    final completer = Completer<void>();
+    bool onKey(KeyEvent event) {
+      if (event is KeyUpEvent && HardwareKeyboard.instance.physicalKeysPressed.isEmpty && !completer.isCompleted) {
+        completer.complete();
+      }
+      return false;
+    }
+
+    HardwareKeyboard.instance.addHandler(onKey);
+    try {
+      await completer.future.timeout(
+        _keyReleaseTimeout,
+        onTimeout: () {
+          _sessionsStartedWhileKeysHeld++;
+          appLogger.d('AppleTvNativeTextEntry: opening session while a key is still held (SEL2 bound reached)');
+        },
+      );
+    } finally {
+      HardwareKeyboard.instance.removeHandler(onKey);
+    }
+  }
 
   /// Opens the native tvOS system keyboard. While it is up, the Siri Remote mic
   /// button dictates into it and iPhone Continuity typing streams through
@@ -167,6 +255,8 @@ class AppleTvNativeTextEntry {
     }
 
     _sessionActive = true;
+    _ensureAutomationNode();
+    await _waitForKeysReleased();
     _activeOnTextChanged = onTextChanged;
     _installKeyGate();
     // Synchronous, before the await: an async flag would leave a window in

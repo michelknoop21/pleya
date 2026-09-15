@@ -173,6 +173,56 @@ void main() {
     expect(second.hasPrimaryFocus, isTrue, reason: 'the remote must work again after a failed session');
   });
 
+  // SEL2 (docs/tvos-fysieke-correctieronde.md): the Select key-down that opens
+  // the keyboard reaches UIKit through the session tab of `tvosHandlePress`,
+  // not the engine's synthesis path, so its own key-up never reached Dart
+  // while the session was already active — Select stayed stuck for the rest
+  // of the session. The fix waits for the key to lift before opening.
+  testWidgets('a session waits for a held key to release before opening', (tester) async {
+    final calls = <String>[];
+    messenger.setMockMethodCallHandler(channel, (call) {
+      calls.add(call.method);
+      return Future<dynamic>.value(<String, dynamic>{'text': '', 'submitted': false});
+    });
+
+    await simulateKeyDownEvent(LogicalKeyboardKey.select);
+    addTearDown(() => simulateKeyUpEvent(LogicalKeyboardKey.select));
+
+    final entry = AppleTvNativeTextEntry(channel: channel);
+    final session = entry.edit(text: '');
+    await tester.pump();
+    expect(calls, isEmpty, reason: 'the select that opened the keyboard is still held');
+
+    await simulateKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    await session;
+
+    expect(calls, ['edit']);
+    expect(entry.automationState(), {'sessionActive': false, 'parkedStarts': 1, 'sessionsStartedWhileKeysHeld': 0});
+  });
+
+  // The upper bound: a key stuck by something unrelated must not make Search
+  // permanently unopenable.
+  testWidgets('a session opens anyway once the release bound elapses', (tester) async {
+    final calls = <String>[];
+    messenger.setMockMethodCallHandler(channel, (call) {
+      calls.add(call.method);
+      return Future<dynamic>.value(<String, dynamic>{'text': '', 'submitted': false});
+    });
+
+    await simulateKeyDownEvent(LogicalKeyboardKey.select);
+    addTearDown(() => simulateKeyUpEvent(LogicalKeyboardKey.select));
+
+    final entry = AppleTvNativeTextEntry(channel: channel);
+    final session = entry.edit(text: '');
+    await tester.pump(const Duration(seconds: 1, milliseconds: 50));
+
+    expect(calls, ['edit']);
+    expect(entry.automationState()['sessionsStartedWhileKeysHeld'], 1);
+
+    await session;
+  });
+
   testWidgets('a rejected second session leaves the live one alone', (tester) async {
     await pumpTwoFocusables(tester);
 
