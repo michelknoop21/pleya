@@ -28,6 +28,7 @@ under `Notes`.
 ### Fixed
 - open the native text-entry session only after keys release
 - reset select ownership across native input sessions
+- dedupe the duplicate UIPress delivery that caused RAIL2
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 280 · 14 September 2026
