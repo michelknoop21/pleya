@@ -19,6 +19,23 @@ import 'dart:math' as math;
 /// more of it — mirroring the reasoning `homeHeroHeight` already uses for the
 /// Home hero, without reusing its own 900pt cap (a different surface with a
 /// different content column).
+/// How far [floor] may lift the header past the un-clamped 60% baseline on a
+/// short window, as a fraction of `screenHeight`.
+///
+/// Finding 2, review round on `docs/density-audit-2026-09.md`: no minimum
+/// window height exists anywhere in the app (`setMinimumSize` has zero hits
+/// under `lib/`, `macos/`, `windows/`, `linux/`), so a floor pursued
+/// regardless of window height can dominate a short one — at the limit
+/// (`screenHeight` under the floor itself) the header could exceed the
+/// window that asked for it. 0.7 is not arbitrary: it sits meaningfully
+/// above the 60% baseline, so the floor still lifts a marginally short
+/// window the way it always has, and meaningfully under the 75% this same
+/// audit already flagged as the worst density offender in the app
+/// (`homeHeroHeight` at 900/1080pt, its biggest MEDIA-tagged finding, left
+/// out of this fixronde on Michel's own instruction) — the floor must never
+/// make this surface worse than the one the audit already called out.
+const double _maxHeaderViewportFraction = 0.7;
+
 double detailHeaderHeight({
   required double screenWidth,
   required double screenHeight,
@@ -30,7 +47,9 @@ double detailHeaderHeight({
   // max() first: on a very narrow window sixteenNineCap can fall under floor,
   // and clamp() throws if its upper bound is below its lower one.
   final upper = math.max(floor, math.min(ceiling, sixteenNineCap));
-  return base.clamp(floor, upper);
+  final effectiveFloor = math.min(floor, screenHeight * _maxHeaderViewportFraction);
+  final effectiveUpper = math.max(effectiveFloor, upper);
+  return base.clamp(effectiveFloor, effectiveUpper);
 }
 
 /// Desktop (macOS/Windows/Linux) tier: `PlatformDetector.isDesktop`.
