@@ -1,11 +1,12 @@
 # Density-audit Pleya, september 2026
 
-**Status: CODE CLOSED · TARGETED VERIFY PASS · CROSS-PLATFORM VISUAL VERIFY OPEN.** De drie fixes
-staan, met gerichte tests groen en een eerste externe review erop; de verplichte crosscheck met de
-gelijktijdig actieve `desktop-density-scroll-architecture-fix`-sessie is uitgevoerd en toont geen
-overlap (zie onderaan). Wat nog ontbreekt vóór dit als "density klaar" telt: een echte
-simulatorscreenshot van de nieuwe iPad-header (portret én landschap) en macOS op de drie gevraagde
-venstermaten. Niet gepusht.
+**Status: CODE CLOSED · TARGETED VERIFY PASS · CROSS-PLATFORM VISUAL VERIFY: iPad/macOS BEWUST
+BUITEN SCOPE.** De drie fixes staan, met gerichte tests groen en een eerste externe review erop; de
+verplichte crosscheck met de gelijktijdig actieve `desktop-density-scroll-architecture-fix`-sessie
+is uitgevoerd en toont geen overlap (zie onderaan). Een iPad-portret/landschap-screenshot en macOS
+op de drie gevraagde venstermaten zijn geprobeerd (zie Dekking); Michel heeft ze expliciet
+geschrapt als eis voor "density klaar": iPad en macOS hebben nog geen redesign gehad, dus de
+widgettests blijven het enige bewijs voor die twee platforms. Niet gepusht.
 
 Gemeten op 15 september 2026, tegen commit `792da906` op branch `density-review`. Aanleiding:
 Michel ervaart de app op elk toestel als opgeblazen, het sterkst op tvOS bij 2160p, ondanks
@@ -15,7 +16,8 @@ schaal te draaien, en levert er een eerste, kleine fixronde bij: F-D1, F-D2 en F
 geïmplementeerd en getest; F-TV2 bleek niet nodig (zie onderaan). De widgettests bewijzen de
 arithmetiek (dat de nieuwe caps precies uitkomen op de bedoelde getallen); ze bewijzen niet dat de
 nieuwe iPad-header visueel prettig is of dat metadata/actierij niet alsnog overlappen op een echt
-toestel. Dat is precies het "cross-platform visual verify"-gat hierboven.
+toestel. Voor tvOS is dat met echte simulatorschermafbeeldingen wél gedekt (zie Dekking); voor
+iPad/macOS is dat bewust geaccepteerd zolang die twee nog op de oude ontwerptaal draaien.
 
 ## Uitgangspunt
 
@@ -121,15 +123,29 @@ geen widget gepompt). Een rij zonder methode is niet gemeten deze ronde.
   `tvos.sidebar.collapse`: alle vier rood op een assert/wait_until die niets met dichtheid te maken
   heeft (een node die niet klaarstaat, of een focuswissel die niet aankomt binnen de timeout). Niet
   onderzocht: dat is scenario-onderhoud, geen dichtheidsbevinding.
-- iPad: geen Pleya Verify-driver bestaat voor dit target (bekend gat, genoemd in de opdracht zelf).
-  Geen handmatige `simctl`/`idb`-sessie gedraaid deze ronde; de iPad-cijfers in dit rapport komen
-  uitsluitend uit de widgettestharness op de Apple-opgegeven puntmaten, niet uit een screenshot van
-  de echte simulator.
+- iPad: er bestaat geen Pleya Verify-scenario/driver-pad naar de iPad-detailpagina (`screen.movies`/
+  `screen.series` zijn DEC-103 bewust iPhone-only, dus `ios.detail.northstar` bestaat niet voor dit
+  target). Met een los, niet-gecommit hulpscript (fixture + `IosSimulatorDriver` met
+  `PLEYA_VERIFY_IOS_UDID` op een iPad-simulator) is de detailpagina alsnog bereikt en portret
+  gescreenshot: header en gridspacing zien er visueel correct uit. Landschap lukte niet: het
+  `Rotate Right`-commando (zowel als sneltoets als rechtstreekse menu-click via System Events) had
+  geen enkel effect op deze simulator, bevestigd doordat `/v1/viewport` en zelfs het Home Scherm na
+  het commando in portret bleven staan. Michel heeft hierna vastgesteld dat iPad nog geen redesign
+  heeft gehad, dus deze visuele stap is geen eis meer voor "density klaar"; de widgettestharness
+  blijft het bewijs.
 - macOS op de drie gevraagde venstermaten (1440x900, 1920x1080, 2560x1440): de Verify-macOS-driver
-  meet het venster maar zet het niet (`macos_driver.dart:362-375`), dus een live app-run op precies
-  die maten is niet mogelijk zonder eerst een aparte venster-resize-stap aan de driver toe te
-  voegen. Niet gebouwd deze ronde (testinfrastructuur, geen dichtheidsfix); de cijfers op die maten
-  komen uit de widgettestharness.
+  meet het venster maar zet het niet (`macos_driver.dart:362-375`). Met hetzelfde soort los
+  hulpscript is het venster via System Events wél verzet, maar dit ontwikkelmachine-scherm is zelf
+  maar 1728x1117pt (3456x2234 fysiek): een venster van 2560x1440 wordt door macOS geclipt tot het
+  scherm past, dus het venster kwam nooit boven ~1728x1084 uit en de header-cap (die pas bij
+  0,6×hoogte > 680 daadwerkelijk klemt) werd op dit scherm niet zichtbaar getriggerd. Ook hier heeft
+  Michel vastgesteld dat macOS nog geen redesign heeft gehad; verder onderzoek (een groter scherm,
+  of de systeembrede schermresolutie tijdelijk aanpassen) is niet gedaan en niet nodig gebleken.
+  Bijvangst tijdens deze twee pogingen: `/v1/ui_tree` geeft consistent 500 zodra de bladeren-grid
+  met echte items rendert, op zowel iPad als macOS (`AutomationRegistry.snapshot()` in
+  `lib/automation/automation_registry.dart` gooit een exceptie, vermoedelijk in een node zijn
+  `state`-closure), niet onderzocht, niet gefixt, geen van de vier fixes raakt dat bestand. Losse
+  bevinding voor een volgende Verify-onderhoudsronde, geen dichtheidsbevinding.
 - Sheets, dialogen buiten de vier gefixte of gemeten oppervlakken, en de volledige instellingen-
   boom op iPhone/iPad/macOS: niet stuk voor stuk doorgemeten. `settings_section.dart`'s
   `kSettingRowPadding`/`SettingsIconBadge`/`SegmentedSetting` zijn wel gevonden als raw-literal
