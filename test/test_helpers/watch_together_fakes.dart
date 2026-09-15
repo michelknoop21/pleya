@@ -168,6 +168,14 @@ class FakeSyncPlayer implements Player {
     _state = _state.copyWith(completed: completed);
   }
 
+  /// Answers null by default, same as a subclass would choose for a property
+  /// it does not model; overriding `getProperty` per property is the point,
+  /// but any widget tree pumped through this fake (e.g. one that reads a live
+  /// mpv property in `initState`) needs a safe default rather than
+  /// `noSuchMethod`'s throw.
+  @override
+  Future<String?> getProperty(String name) async => null;
+
   @override
   bool get disposed => _disposed;
 
