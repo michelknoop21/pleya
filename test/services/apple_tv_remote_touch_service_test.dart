@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/diagnostics/select_trace_recorder.dart';
 import 'package:pleya/services/apple_tv_remote_touch_service.dart';
+import 'package:pleya/utils/native_input_session.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -624,6 +625,84 @@ void main() {
       await harness.send('move', x: 380, y: 500);
 
       expect(harness.keys, [LogicalKeyboardKey.arrowLeft]);
+    });
+  });
+
+  group('AppleTvRemoteTouchService select ownership across a native session (SEL1)', () {
+    // A native Select key-down sets `_nativeSelectPressed`. When the native
+    // text-entry session opens before that press's own key-up arrives, the
+    // key-up is routed to `_releaseSelectOwnershipForNativeSession()` instead
+    // of `_shouldConsumeNativeSelectDuplicate`, the only other place that
+    // clears the flag. Before the fix, that release only covered the
+    // *click*-driven half (`_selectPressedFromClick`), so a native press left
+    // `_nativeSelectPressed` latched for the rest of the app run: every later
+    // Select then logged `native-select-already-down` /
+    // `suppressed-native-select-down` and did nothing. Only an app restart
+    // recovered it (docs/tvos-fysieke-correctieronde.md:194, SEL1).
+    tearDown(NativeInputSession.debugReset);
+
+    test('a completed press-release before the session opens is unaffected', () async {
+      final harness = _Harness();
+
+      expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.select)), isFalse);
+      expect(harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.select)), isFalse);
+
+      NativeInputSession.begin();
+      NativeInputSession.end();
+
+      harness.advance(const Duration(milliseconds: 500));
+      expect(
+        harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.select)),
+        isFalse,
+        reason: 'the press before the session completed on its own; the session never touched it',
+      );
+    });
+
+    test('a session that opens between down and up releases select ownership', () async {
+      final harness = _Harness();
+
+      // The native down that will open the session.
+      expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.select)), isFalse);
+
+      // The session takes over before the matching up arrives.
+      NativeInputSession.begin();
+      expect(
+        harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.select)),
+        isTrue,
+        reason: 'the session owns input now, so this up is swallowed here rather than reaching the tree',
+      );
+      NativeInputSession.end();
+
+      harness.advance(const Duration(milliseconds: 500));
+      expect(
+        harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.select)),
+        isFalse,
+        reason: 'select ownership must not still be latched from the press that opened the session (SEL1)',
+      );
+      expect(harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.select)), isFalse);
+    });
+
+    test('repeated session begin/end cycles with no select in flight stay clean', () async {
+      final harness = _Harness();
+
+      for (var i = 0; i < 3; i++) {
+        NativeInputSession.begin();
+        NativeInputSession.end();
+      }
+
+      harness.advance(const Duration(milliseconds: 500));
+      expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.select)), isFalse);
+    });
+
+    test('a session boundary with nothing open generates no synthetic activation', () async {
+      final harness = _Harness();
+
+      NativeInputSession.begin();
+      NativeInputSession.end();
+
+      expect(harness.keys, isEmpty);
+      expect(harness.keyDowns, isEmpty);
+      expect(harness.keyUps, isEmpty);
     });
   });
 

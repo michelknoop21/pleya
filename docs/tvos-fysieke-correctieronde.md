@@ -35,12 +35,15 @@ Eén item tegelijk, in de volgorde van de tabel hieronder. Per item:
    nieuwe hash en dan klopt het nummer dat je er net in zette alweer niet.
 
 Statussen: `OPEN`, `IN PROGRESS`, `FIXED`, `VERIFIED`, `NOT REPRODUCED`,
-`DEFERRED`, `ACCEPTANCE GAP`, `HARDWARE ONLY`.
+`DEFERRED`, `ACCEPTANCE GAP`, `HARDWARE ONLY`, `HARDWARE VALIDATION PENDING`.
 
 `FIXED` betekent groen in de testsuite. `VERIFIED` vraagt daarnaast bewijs uit
 Pleya Verify of van hardware. Een bevinding die alleen op een toestel te toetsen
 is krijgt `HARDWARE ONLY` en wacht op een device-run, niet op een simulatorrun
-die het antwoord niet kan geven.
+die het antwoord niet kan geven. `HARDWARE VALIDATION PENDING` is smaller dan dat:
+de classificatie, de instrumentatie en de code-analyse zijn af, en er ontbreekt
+precies één genoemde meting op een toestel voordat een fix gebouwd mag worden.
+Geen fix bouwen op de werkhypothese totdat die meting er is (zie RAIL2).
 
 De SDK komt uit `.fvmrc`. Draai `dart format` nooit met een andere Dart dan die,
 want de uitvoer verschilt per versie en dan herformatteert hij bestanden waar je
@@ -191,7 +194,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | DET1 | Filmdetail: de synopsis wordt afgekapt zonder dat hij te openen is, en de pagina voelt opgeblazen (Michel, 7 september, hardware). Root cause is OVR1a (SYS-3a) op een tweede oppervlak: `detailScale` in `media_detail_screen.dart` las de contentbox van deze route in plaats van `TvDisplayMetrics`, tegen INV-1 in. Mockup 37 (DEC-109) legt de correctie en de nieuwe "Meer lezen"-affordance vast; de mockup-vergelijking op het echte apparaat is niet in deze ronde herhaald | FIXED, hardware open | `dc989713`, DEC-109 |
 | UNI0 | Het Pleya Unified 2026 closure-plan is vastgelegd: werkvolgorde, statusladder, releasegate en het protocol van de fysieke eindronde staan voortaan in `docs/unified-2026-closure.md`, en zijn niet meer verspreid over `DESIGN-INDEX.md` en losse plannen. De SHA van de definitieve hardwareronde volgt bij stap 17 van die closure, en wordt dan hier bijgeschreven. Bij PLR6 hierboven: de hardwarebevestiging van die bevinding valt in dezelfde eindronde, niet in een losse tussenstap | VASTGELEGD | zie `unified-2026-closure.md` |
 | LOUD1 | Loudness (DEC-111) op Apple aantoonbaar maken zonder serverbewijs (Michel, 11 september): Android staat in het plan stil, iOS/tvOS gaan door. Drie delen: de realtime-keten (`loudnorm`) en de uitschakeling onder passthrough als runtimebewijs op de tvOS-simulator; de loudnessdiagnostiek van `AudioOutputCoordinator` als state op een automation-node, zodat een Verify-scenario `plan` en `af` kan toetsen (stap G van het loudnessplan); daarna een luisterronde op de Apple TV. Productiebewijs per titel wacht op E1 en D5. Gebouwd: `Player.effectiveLoudness` en de state op `player.surface` (`Video._loudnessState`); `pleya_verify/scenarios/tvos.player.loudness.yaml` pauzeert de fixtureclip, toetst `off` met een lege keten, zet Volume gelijkmaken aan in het paneel en toetst `realtime` met `af=loudnorm=I=-22:TP=-2:LRA=9`, en weer uit. Simulator met Sintel (AC-3 5.1 naar stereo-PCM): mpv leest `af=loudnorm=I=-22:TP=-2:LRA=9, loudness=realtime` terug; met passthrough geforceerd gaat `af` leeg vóór `audio-spdif` en komt terug na de terugval naar PCM. Luisterronde op de Apple TV 4K met build 270 (`1cc68b63`): "lijkt allemaal te werken" (Michel, 11 september). Los open, niet van loudness: in de simulator leegde iets de spdif na 300 ms zonder melding bij geforceerde passthrough (DEC-013-terrein) | VERIFIED | `af0e69df` |
-| SEL1 | Na het versturen van het systeemtoetsenbord met Return (simulator, idb) is Select in de hele app dood: elke druk logt `consume native keydown logical=enter reason=native-select-already-down`, en de release `suppressed-native-select-down`. De KeyDown van de Return bereikte `AppleTvRemoteTouchService` en zette `_nativeSelectPressed`, de KeyUp ging naar de tekstinvoersessie, en niets wist de vlag daarna (`apple_tv_remote_touch_service.dart:573-632`). Alleen een herstart van de app herstelt het. Gezien tijdens LOUD1 op 11 september; nog niet vastgesteld of hetzelfde op hardware kan, waar de engine een press tijdens een native invoersessie niet synthetiseert | OPEN | n.v.t. |
+| SEL1 | Na het versturen van het systeemtoetsenbord met Return (simulator, idb) is Select in de hele app dood: elke druk logt `consume native keydown logical=enter reason=native-select-already-down`, en de release `suppressed-native-select-down`. De KeyDown van de Return bereikte `AppleTvRemoteTouchService` en zette `_nativeSelectPressed`, de KeyUp ging naar de tekstinvoersessie, en niets wist de vlag daarna (`apple_tv_remote_touch_service.dart:573-632`). Alleen een herstart van de app herstelt het. Gezien tijdens LOUD1 op 11 september; nog niet vastgesteld of hetzelfde op hardware kan, waar de engine een press tijdens een native invoersessie niet synthetiseert. **Gefixed:** `_releaseSelectForNativeSession()` releasede alleen de click-gedreven helft (`_selectPressedFromClick`); hernoemd naar `_releaseSelectOwnershipForNativeSession()` en laat hem ook `_resetNativeSelectBurstState()` aanroepen, zodat een native druk die de sessie opent dezelfde reset krijgt. Negatieve controle vooraf rood (`test/services/apple_tv_remote_touch_service_test.dart`, groep "select ownership across a native session (SEL1)"), na de fix groen, volledige servicesuite (50/50) en de aanverwante native-text-entry/tvos-system-navigation/native-input-session suites blijven groen. Simulator/idb-bevestiging staat hiermee, de open vraag over hardware-reproduceerbaarheid (DEC-019: de engine synthetiseert geen press tijdens een sessie) blijft onbeantwoord. Onafhankelijk herverifieerd bij het landen op `remote-controller` (`834a8012`): `flutter test test/services/apple_tv_remote_touch_service_test.dart` opnieuw 50/50 groen, `flutter analyze` op de geraakte bestanden schoon. **CODE CLOSED**: de fix staat en is dubbel bevestigd; hardware-reproduceerbaarheid van het symptoom zelf is geen blocker voor die sluiting, want de fix repareert de release-mechaniek, niet de reproductieroute | CODE CLOSED, hardware-reproductie niet blokkerend | `f0d7f576`, `51091834` |
 | REQ2 | Zoeken op TV, dan "Zoek in aanvragen": er opent een aanvraagvenster in light mode waar je alleen uitkomt door de app af te sluiten (Michel, 11 september, hardware, build 270). `search_screen.dart` pushte `SeerrDiscoverScreen` met een kale `MaterialPageRoute` op `Navigator.of(context)`, buiten de TV-shellroute (`openTvContentRoute`). Gebouwd: `SeerrDiscoverScreen.open(context, {initialQuery})`, één plek die `openTvContentRoute` probeert en pas bij `null` op `Navigator.push` terugvalt; `search_screen.dart` en `seerr_requests_screen.dart` gaan er nu allebei doorheen. Hardware-bevestiging na de fix staat nog open | FIXED, hardware-bevestiging open | n.v.t. |
 | REQ3 | Zodra Zoeken op TV resultaten vindt, is de balk "Zoek in aanvragen" niet meer te zien; zoeken in aanvragen kan dan niet meer (Michel, 11 september, hardware, build 270). `tv_search_view.dart` tekende de actie alleen in de CAT14-lege-staat, nooit onder echte resultaten. Gebouwd: een `TvViewAllAction`-rij onder de laatste band, die `_stateActionFocus` hergebruikt; DOWN vanaf de laatste band gaat er nu naartoe, UP terug naar de band. Regressietest `tv_search_view_test.dart` "a way down from the last band opens Zoek in aanvragen" stond rood op de oude implementatie. Hardware-bevestiging na de fix staat nog open | FIXED, hardware-bevestiging open | n.v.t. |
 | WL3 | Regressie van WL1: `watchlist_screen_test.dart` "removing the card the remote is on leaves the remote on a card" faalt op `github/main` zelf (`6be0efca`), dus onafhankelijk van deze taak en niet door de merge veroorzaakt. `Expected: true, Actual: false` op "the slot is kept, so the card that slid up into the empty cell takes the ring". Niet opgepakt zonder opdracht | OPEN | n.v.t. |
@@ -203,7 +206,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | DET7 | Film- en seriedetail gebruiken altijd het volledige scherm: geen overscanmarge onder de rail, ook niet bij een lichte titel waar de infoband wel past (Michel, 13 september: "Rand moet nooit blijven staan altijd volledig scherm"). Productbesluit dat voor dit scherm afwijkt van DEC-087's `TvCatalogLayout.bottomSafeInset`. `_buildTvDetailScreen` houdt geen inset meer onder de rail, de rail staat op `bottom: -railBottomPadding` (zijn eigen ondermarge valt buiten beeld) en `reserveFor` geeft alleen nog de peek terug. Negatieve controle "the detail rail always runs to the bottom edge, also when the info band has room to spare" stond rood (rail-onderkant 520,6 van 584 op een lichte titel), nu groen; `media_detail_screen_test.dart` 46/46, `ci_checks.sh` groen. tvOS-simulator, The Whisper Man: de trailerkaart loopt door tot rij 2140 van 2160 (`det7-detail-fullscreen.png` in `docs/responsive-audit/2026-09-13/shots/`). Hardwarebevestiging staat open | FIXED, hardware open | `d7d538eb` |
 | DET6 | Filmdetail: ook los van DET5 is er te weinig ruimte voor de synopsis, die weer op 1 regel staat net als vóór DET3 (Michel, hardware, 13 september). Gereproduceerd op de tvOS-simulator met dezelfde titel ("Mayday", 8 acteurs + Trailers & Extra's): geen hardware-only bug. Twee aparte oorzaken gevonden en allebei gefixt. (1) De echte root cause: `_tvDetailIdealForegroundHeight` en de regelteller-lus in `_buildTvDetailForeground` berekenen `minLogoHeight` via twee verschillende optelvolgordes van dezelfde termen, en bij een exacte fit (Mayday's geval) viel dat een paar ULP's uit elkaar (`remainingForLogo=50.99999999999997` tegen `minLogoHeight=51.0`, gemeten via een simulator-devicelog), waardoor de vergelijking een prima passende 2-regelige synopsis alsnog afkeurde. Fix: `_tvDetailEpsilon`-tolerantie op die vergelijking. (2) Michels productvoorstel (rail iets kleiner i.p.v. de synopsis opofferen) is ook gebouwd, als vangnet voor écht krappe gevallen (bv. genest onder de ingeklapte topnav) waar geen ULP-toeval maar een reëel tekort speelt: `_tvDetailRailShrinkFractions` verkleint `tallPosterScale` én `widePosterScale` samen (beide kunnen de hoogtebepalende hub zijn, DET2) tot de 2-regelige ideale hoogte past, vóór de bestaande terugval naar 1 regel. Negatieve controle voor (1) kon niet op deze hostruntime worden gereproduceerd (de widget-testarithmetic rondt hier de andere kant op af, gedocumenteerd in de testcommentaar); het simulator-devicelog is het bewijs. 45 tests groen, `flutter analyze` schoon | FIXED | `4020547e` |
 | CAT19 | Bij Alle films/series: filterrail openen, LEFT drukken sprong door naar de topnav, en een verdere LEFT liep zijwaarts de bar in naar Series, zonder enige visuele aankondiging (Michel, 13 september: "als je bij alle films naar links gaat dus de filter opent en dan verder naar links dan ga je door naar series dat is niet de bedoeling"). Root cause: LEFT uit een railrij was gebonden aan dezelfde `_leaveRailUpwards()` als UP, en die functie is letterlijk gedupliceerd over vier TV-catalogusachtige schermen. De rail is de meest linkse inhoud op de pagina, dus LEFT hoort een no-op te zijn, niet een uitgang naar de topnav. Gefixt in alle vier de dragers: `tv_unified_catalog_screen.dart` (Alle films/series), `tv_watchlist_view.dart` (Kijklijst), `tv_seerr_requests_view.dart` (Aanvragen) en `tv_seerr_discover_view.dart` (Ontdekken), door LEFT aan de al bestaande `_railEdge()`-no-op te binden, hetzelfde patroon dat DOWN aan de onderkant van de rail al gebruikte; UP blijft ongewijzigd naar de topnav gaan. Negatieve controle: de bestaande test "LEFT from every rail row reaches for the top navigation" in `tv_unified_catalog_focus_test.dart` beschreef het oude, ongewenste gedrag en is herschreven naar het nieuwe contract (rail blijft open, focus blijft staan, geen bar-aanroep); stond rood op de oude implementatie, nu groen. Hardwarebevestiging staat open | FIXED, hardware open | `b7f57fef` |
-| RAIL2 | Op Home lijkt de focus in een rail bij herhaald RIGHT, en volgens Michels aanvulling ook bij LEFT, af en toe een positie over te slaan en meteen een aantal tegels verder te landen (Michel, hardware, build 272, log `h6ocl`: "Ik heb ook af en toe bij home in de rails met naar rechts klikken meerdere malen dat hij soms een positie lijkt over te slaan dus gelijk naar een aantal items verder schiet. Ook bij left lijkt het te gebeuren"). Build 272 is ouder dan de branch waar CAT18/CAT19 op zitten, dus vermoedelijk een apart focus-/traversalprobleem, geen uitloper van die twee. Vermoedelijk dezelfde oorzaak als NAV2 hieronder: `h6ocl` toont dezelfde re-tap-handtekening (echte keyup, dan binnen 1-20 ms een down+up-paar met 1-2 ms ertussen) als log `ijqxp` | OPEN | n.v.t. |
+| RAIL2 | Op Home lijkt de focus in een rail bij herhaald RIGHT, en volgens Michels aanvulling ook bij LEFT, af en toe een positie over te slaan en meteen een aantal tegels verder te landen (Michel, hardware, build 272, log `h6ocl`: "Ik heb ook af en toe bij home in de rails met naar rechts klikken meerdere malen dat hij soms een positie lijkt over te slaan dus gelijk naar een aantal items verder schiet. Ook bij left lijkt het te gebeuren"). `h6ocl` en `ijqxp` (build 280) opgehaald en getraceerd: drie van de zes RE-TAP-omgevingen tonen een fantoom keydown+keyup-paar (0-19 ms gat, 0-1 ms vasthoudtijd) direct na een normale druk op Home-landende arrows, zonder dat een kanaalbericht het verklaart. Zie "RAIL2, classificatie op de twee beschikbare logs". Werkhypothese ENGINE_DUPLICATE (zijdeur 4, dubbele swizzle-hop dispatch op `.ended`, `docs/tvos-remote-input-authority.md` §2-3), maar geen van beide logs bevat de `uipress`-identiteit om dat te bevestigen: beide builds gaan aan `nl.michelknoop.pleya/tvos_press_diag` vooraf. Formele status **UNKNOWN_HARDWARE_EVIDENCE_REQUIRED**: ENGINE_DUPLICATE is een werkhypothese, geen bewezen classificatie, en er wordt geen fix gebouwd voordat de ontbrekende meting er is. Referentiebuild voor de closure-run: **281 (`a7d5d3c7`)**, niet wijzigen vóór die meting. Closure-run en beslisregels: `docs/tvos-remote-input-authority.md` §6 | HARDWARE VALIDATION PENDING / UNKNOWN_HARDWARE_EVIDENCE_REQUIRED | n.v.t. |
 | NAV2 | Pijl-re-tap in topnav en catalogus: een echte keyup gevolgd door, binnen 1 tot 20 ms, een down+up-paar met 1 à 2 ms ertussen. Dat is de handtekening van zijdeur 2 in de engine-fork (`tapIfMissingKeyDown:YES` op een `.ended`/`.cancelled` voor een toets die niet meer in de `synthesizedPressedKeys`-set zit). Vier keer in log `ijqxp` (build 280, 23:06:31 topnav direct na een geflushte Menu-enable, 23:07:15 en 23:07:26 topnav zonder enig kanaalbericht, 23:09:18 catalogus); twee keer in `h6ocl` (build 272, zie RAIL2). Twee van de vier hebben geen kanaalbericht, dus dit is niet de NAV1-trigger. Welke fase de engine opnieuw raakt is niet zichtbaar: `[PleyaTvosPress]` is alleen NSLog en haalt de relaylog niet, dus het meetprotocol uit `docs/tvos-remote-press-pipeline.md` was voor relaylogs kapot. `tvosHandlePress` stuurt hetzelfde nu ook naar de app-log (`nl.michelknoop.pleya/tvos_press_diag`), en `scripts/tvos_press_trace.sh` geeft een `RE-TAP` sindsdien een `same-uipress`/`new-uipress`/`unknown`-oordeel; op `ijqxp` en `h6ocl` zelf blijft dat `unknown`, want die builds gingen eraan vooraf. Een toestellog van ná deze instrumentatie moet eerst het oordeel geven voordat hier een fix hoort | IN PROGRESS, meting gebouwd, oordeel nog niet gemeten | `797ab55e` |
 | SEL2 | Select blijft na het systeemtoetsenbord (zoekveld) in de engine en in Dart vastzitten: de KeyDown die `openKeyboard()` opent gaat via de sessietak van `PleyaFlutterViewController.tvosHandlePress` naar UIKit in plaats van via het synthese-pad, dus `synthesizedPressedKeys` (engine) en `physicalKeysPressed` (Dart) houden Select vast na het sluiten van het toetsenbord. Log `ijqxp` (build 280): 23:06:48.159 en 23:07:33.053 komen als keyup zonder voorafgaande keydown binnen (de klik die niets doet), en van 23:07:14 tot 23:07:33 staat `keys held: null,null` zodat de geparkeerde Menu-enable van `TvosSystemNavigationService` nooit flusht. Fix: `AppleTvNativeTextEntry.edit` wacht tot `HardwareKeyboard.instance.physicalKeysPressed` leeg is voor hij de sessie start, zie "SEL2, sessie start pas als de toetsen los zijn". De Dart-helft is gebouwd en getest in de simulator; de engine-helft (of een toestellog na het toetsenbord geen `keyup zonder keydown` meer toont) is `HARDWARE ONLY` | FIXED (Dart), hardware open | `e1d09702` |
 | CAT20 | Alle films toont niet alle servers: G-Plexflix verloor bij de koude start de endpoint-race (`bound 1/2`, kwam pas om 23:06:27.157 binnen met `merged 4 libraries`, ná de eerste opvraging door Home en de Films-landing). Log `ijqxp` (build 280): de catalogusscreen (23:07:36-23:08:25) vroeg alleen secties op bij 192-x-x-135. Vermoedelijke eigenaar: het opgeslagen, al ingekorte bronfilter in `tv_unified_catalog_screen.dart:319-329` of `source_cursor.dart:62-86`. Volgens Michel op 15 september al opgelost; niet door deze ronde geverifieerd, niet verder onderzocht op zijn verzoek | Michel meldt opgelost, niet geverifieerd | n.v.t. |
@@ -4125,3 +4128,102 @@ blijven groen (`tv_browse_rail.dart`'s wijziging is additief, elke bestaande aan
 behoudt zijn default). `scripts/ci_checks.sh` groen. Golden `tv_detail_source_line`
 faalt op dit platform ook op `0aa808dc` (vóór deze fix), dus dat is bestaande
 platform-staleness, geen regressie van deze wijziging.
+
+### RAIL2, classificatie op de twee beschikbare logs
+
+`h6ocl` (build 272) en `ijqxp` (build 280) opgehaald van `ice.pleya.app/logs/` en gedraaid
+door `scripts/tvos_press_trace.sh` na het porten van `797ab55e`
+(`nl.michelknoop.pleya/tvos_press_diag`, zie `docs/tvos-remote-input-authority.md`). Beide
+builds gaan aan die instrumentatie vooraf, dus elk `RE-TAP` komt terug als `verdict=unknown`;
+er is geen `uipress`-identiteit om `same-uipress` tegen `new-uipress` te toetsen. Dit is
+daarom een classificatie op timing en context, niet op het harde bewijs dat de opzet
+uiteindelijk vereist.
+
+**Tellingen, zoals eerder al vastgelegd (NAV2-rij op `feat/t3a-mijn-pleya-fixtures`, hier
+opnieuw gemeten):** `h6ocl` EARLY-KEYUP=3, KEYUP-ONLY=4, RE-TAP=2. `ijqxp` EARLY-KEYUP=4,
+KEYUP-ONLY=3, RE-TAP=4.
+
+**Het patroon dat in vier van de zes RE-TAP-omgevingen zichtbaar is, met de ruwe logregels
+ernaast:**
+
+```
+h6ocl  22:49:05.209  keyup   arrowLeft   (231 ms hold, normale druk)
+h6ocl  22:49:05.209  keydown arrowLeft   (0 ms na de vorige regel)
+h6ocl  22:49:05.209  keyup   arrowLeft   (0 ms hold)
+
+ijqxp  23:06:31.177  keyup   arrowLeft   (164 ms hold, normale druk; landt op Home)
+ijqxp  23:06:31.178  keydown arrowLeft   (1 ms later)
+ijqxp  23:06:31.179  keyup   arrowLeft   (1 ms hold)
+
+ijqxp  23:07:26.837  keyup   arrowLeft   (118 ms hold, normale druk; landt op Home)
+ijqxp  23:07:26.856  keydown arrowLeft   (19 ms later)
+ijqxp  23:07:26.857  keyup   arrowLeft   (1 ms hold)
+```
+
+Drie eigenschappen die samen dit patroon onderscheiden van een tweede, echte druk:
+
+1. het gat tussen de vorige loslaat en de nieuwe indruk is 0 tot 19 ms, tegen 60 tot 165 ms
+   voor elke andere druk van dezelfde gebruiker in dezelfde log;
+2. de vasthoudtijd van het tweede paar is 0 tot 1 ms, fysiek niet haalbaar voor een
+   Siri Remote-klik (de kortste onbetwist echte druk in beide logs is 19 ms, gemeten op de
+   volgende bullet's uitzondering);
+3. in `ijqxp` 23:06:31 wordt het patroon voorafgegaan door een geflushte
+   `menuPassthroughEnabled=true` (`TvosSystemNavigationService: keys released, sending the
+   parked enable`), maar de toets is op dat moment al uit `synthesizedPressedKeys` verwijderd
+   door de eigen `.ended` van die druk (de reguliere Up ging al uit). Een `enable` die niets
+   meer aantreft in de set doet niets in `releaseAllSynthesizedPresses`, dus deze specifieke
+   flush kan het fantoompaar niet verklaard hebben. `h6ocl` 22:49:05 en `ijqxp` 23:07:26
+   hebben zelfs geen enkel kanaalbericht in de buurt: dat bevestigt wat de NAV2-rij al zei
+   ("twee van de vier hebben geen kanaalbericht, dus dit is niet de NAV1-trigger") en laat
+   zien dat het ook geldt voor het geval mét bericht.
+
+Dit patroon is precies wat `docs/tvos-remote-input-authority.md` §2 als kandidaatmechanisme
+beschrijft: beide swizzel-hops (`UIApplication` en `UIWindow`) leveren dezelfde `.ended`-fase
+van hetzelfde `UIPress`-object af bij `tvosHandlePressFromUIEvent:`. De eerste aanroep
+verwijdert de toets uit `synthesizedPressedKeys` en stuurt de echte Up. De tweede aanroep,
+voor diezelfde fase, vindt de toets niet meer en `tapIfMissingKeyDown:YES` synthetiseert een
+fantoom Down gevolgd door zijn eigen Up, allebei binnen enkele milliseconden. Werkende naam:
+zijdeur 4.
+
+**Waarom dit geen bewezen `same-uipress` is.** De trace bevat geen `uipress`-veld voor deze
+logs, dus het bewijs hierboven is timing en context, niet identiteit. Een tweede, extreem
+snelle fysieke herhaling (twee klikken binnen 20 ms, elk 0 tot 1 ms vastgehouden) is voor een
+mens niet uitvoerbaar op een Siri Remote-ring, dus `PLATFORM_MULTIPLE_PRESS_OBJECTS` is voor
+deze drie gevallen feitelijk uitgesloten door de vasthoudtijd zelf. Maar de tussenstap die de
+opzet eist (`.began`/`.ended`-levenscyclus van beide objecten via hun `uipress`-hash
+vergelijken) is met deze twee logs niet te zetten. Classificatie: **ENGINE_DUPLICATE als
+werkhypothese, `UNKNOWN_HARDWARE_EVIDENCE_REQUIRED` als formele status** tot een log ná de
+instrumentatie van deze branch een `native press=` regel naast elk van deze paren laat zien
+met gelijke `uipress`-waarde.
+
+**Het vierde, andere geval: `ijqxp` 23:09:18, catalogus.** Twee RE-TAPs op `arrowUp`, in een
+reeks van acht drukken tussen 23:09:17.050 en 23:09:18.615. Op dit scherm heeft
+`FocusableWrapper` geen enkele richting gebonden (`onNav(up=false,down=false,left=false,
+right=false)` op elke regel): omhoog doet hier niets, ongeacht wat er native gebeurt. Drie van
+de acht paren hebben een vasthoudtijd van 41 tot 53 ms met gaten van 0 tot 28 ms, korter dan
+de overige vijf (120 tot 165 ms) maar niet in de buurt van de 0 tot 1 ms uit de drie gevallen
+hierboven. Dit past beter bij een gebruiker die snel en herhaald op een schijnbaar dode knop
+klikt dan bij een synthesefout, en heeft sowieso geen zichtbaar gevolg: geen enkele druk in
+deze reeks verplaatst focus. Classificatie: **INTENTIONAL_REPEAT, geen RAIL2-instantie** (geen
+focusverplaatsing om te verklaren).
+
+**Wat dit oplevert voor fase 3 van deze opdracht.** Geen van de zes onderzochte gevallen
+levert het bewijs dat een softwarefix rechtvaardigt. De drie sterkste gevallen wijzen
+consistent naar zijdeur 4 in de engine, niet naar een Dart-laag: er is dus geen
+`DART_DUPLICATE`- of `FOCUS_TRAVERSAL`-fix te bouwen op basis van dit bewijs, en een fix in de
+patchreeks zonder bevestigde `uipress`-identiteit zou een gok zijn op precies het mechanisme
+dat deze opdracht verbiedt. RAIL2 blijft **HARDWARE VALIDATION PENDING**: de ontbrekende
+meting is één toestellog, gemaakt op een build van deze branch (met
+`nl.michelknoop.pleya/tvos_press_diag` erin), tijdens herhaald snel links/rechts klikken op
+Home-rails, gelezen met `scripts/tvos_press_trace.sh` voor een `same-uipress`/`new-uipress`
+oordeel op elke `RE-TAP`.
+
+**Kanttekening bij het meetinstrument zelf.** De trace markeert een keydown als `RE-TAP` zodra
+hij binnen 400 ms na een vroege keyup valt; `ijqxp` 23:07:26.997 (160 ms vasthoudtijd, 140 ms
+na het fantoompaar hierboven) valt in dat venster en krijgt dezelfde vlag als het fantoompaar
+zelf, terwijl zijn eigen duur een gewone druk beschrijft. Het venster vindt dus het fantoompaar
+correct, maar kan er een daaropvolgende echte druk aan vastplakken. Een scherpere vlag (gat
+onder ~20 ms én vasthoudtijd onder ~5 ms) zou het fantoompaar specifiek isoleren zonder deze
+bijvangst; niet doorgevoerd in deze ronde omdat het geen van de classificaties hierboven
+verandert en buiten de sterk verkleinde fase 5-scope van deze opdracht valt. Vastgelegd hier
+als follow-up voor wie `scripts/tvos_press_trace.sh` de volgende keer aanraakt.

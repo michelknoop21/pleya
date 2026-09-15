@@ -27,6 +27,7 @@ under `Notes`.
 
 ### Fixed
 - open the native text-entry session only after keys release
+- reset select ownership across native input sessions
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 280 · 14 September 2026
