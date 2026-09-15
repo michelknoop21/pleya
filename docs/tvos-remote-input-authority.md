@@ -1,5 +1,11 @@
 # tvOS remote input: autoriteitsgrenzen
 
+**Status: CODE CLOSED** (15 september 2026, `834a8012` op `remote-controller`). Het autoriteitsmodel
+in §1 en de levenscyclus in §2-4 staan vast; SEL1 is dicht (`docs/tvos-fysieke-correctieronde.md`).
+RAIL2 blijft `HARDWARE VALIDATION PENDING` tot de meting in §6 is gedraaid. Vóór die meting: geen
+wijzigingen aan build 281 (`a7d5d3c7`, de referentiebuild) en geen wijzigingen aan de
+`tvos_press_diag`-diagnostiek of `scripts/tvos_press_trace.sh`.
+
 Dit document legt vast welke laag welke staat mag bezitten in het pad van een Siri Remote-druk
 naar een Pleya-navigatie, en waarom. Het volgt uit het lezen van de gepinde engine-fork
 (`scripts/tvos_engine_source.sh`, `tvos/engine.version` = `3.44.0+3`) en de bestaande Dart-kant
@@ -167,3 +173,35 @@ platform-press-levenscycli laten zien. Zonder dat bewijs is de juiste uitkomst
 - Bestaande, op toestel getunede swipe-parameters (`nativeSwipeClassifyDistance`, de
   as-hysterese, de afstand-naar-stappenlogica, de 190 ms-cooldown) worden benoemd, niet
   herkalibreerd.
+
+## 6. RAIL2 closure-run: protocol en beslisregels
+
+De ontbrekende meting, en niets ervoor in de plaats. Referentiebuild: **281 (`a7d5d3c7`)**, niet
+wijzigen voor deze run; de diagnostiek erin is al bevestigd te compileren, alleen nog niet bevestigd
+daadwerkelijk berichten te versturen.
+
+**Stappen.**
+
+1. Installeer exact build 281 op het toestel.
+2. Bewijs eerst dat `nl.michelknoop.pleya/tvos_press_diag` daadwerkelijk in de relaylog verschijnt,
+   vóór er iets over RAIL2 geconcludeerd wordt.
+3. Reproduceer zowel snelle als normale LEFT/RIGHT-drukken op een Home-rail.
+4. Analyseer het log met `scripts/tvos_press_trace.sh`.
+5. Classificeer iedere relevante `RE-TAP` op basis van de `uipress`-identiteit en de
+   `.began`/`.ended`-levenscyclus van de betrokken `UIPress`-objecten (§4: `new-uipress` alleen is
+   geen bewijs van twee fysieke drukken).
+6. Beslis pas dáárna of een softwarefix gerechtvaardigd is.
+
+**Beslisregels.**
+
+- `same-uipress` op een fantoom Down/Up-paar → **ENGINE_DUPLICATE** bevestigd; een
+  engine-lifecyclepatch (de asymmetrie in `tapIfMissingKeyDown` wegnemen, of de tweede dispatch voor
+  dezelfde fase van hetzelfde `UIPress`-object herkennen) is dan gerechtvaardigd.
+- `new-uipress` → betekent niet automatisch een defecte remote of een tweede fysieke druk (§4); eerst
+  de volledige press-levenscycli van beide objecten vergelijken (`systemUptimeMs`, richting,
+  volgorde, overlap, kanaal- en keydata-delivery, focusmoves) voordat `PLATFORM_MULTIPLE_PRESS_OBJECTS`
+  geclaimd wordt.
+- Eén inputevent maar meerdere focusmoves in de widget-laag → **FOCUS_TRAVERSAL**, een andere laag
+  en een andere fix dan ENGINE_DUPLICATE.
+- Onvoldoende bewijs, ook na deze meting → open laten als `UNKNOWN_HARDWARE_EVIDENCE_REQUIRED`, niet
+  gokken en geen fix bouwen op de werkhypothese alleen.
