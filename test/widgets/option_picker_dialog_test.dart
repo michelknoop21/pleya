@@ -3,8 +3,13 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/utils/dialogs.dart';
+import 'package:pleya/utils/layout_constants.dart';
+import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/focusable_list_tile.dart';
 
 void main() {
+  tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
   testWidgets('toggle label stays on one line in narrow option picker dialog', (tester) async {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(320, 640);
@@ -69,5 +74,54 @@ void main() {
 
     expect(selected, 'all');
     expect(find.byType(SimpleDialog), findsNothing);
+  });
+
+  // F-TV1 (docs/density-audit-2026-09.md): on TV every row/panel dimension in
+  // this dialog used to be a raw literal, so only the global 1.85x wrapper
+  // touched it and it rendered ~18% roomier than the tokened TV panels
+  // (TvCatalogSortPanel/TvCatalogFilterPanel) at the same nominal size.
+  testWidgets('on TV, the panel and its rows scale with TvLayoutConstants.scaleOf', (tester) async {
+    TvDetectionService.debugSetAppleTVOverride(true);
+    tester.view.devicePixelRatio = 1.0;
+    // 1038x584 is the logical size Apple TV's own _AppleTvScale wrapper
+    // hands the app (1920x1080 screen space / 1.85) — scaleOf clamps its
+    // height-derived scale to 0.85 there, below the reference 1.0.
+    tester.view.physicalSize = const Size(1038, 584);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            return Scaffold(
+              body: TextButton(
+                onPressed: () => showOptionPickerDialog<String>(
+                  context,
+                  title: 'Download',
+                  options: [(icon: null, label: 'All Episodes', value: 'all')],
+                ),
+                child: const Text('Open'),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    final scale = TvLayoutConstants.scaleForSize(const Size(1038, 584));
+    expect(scale, 0.85);
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    final dialog = tester.widget<SimpleDialog>(find.byType(SimpleDialog));
+    expect(dialog.insetPadding, EdgeInsets.symmetric(horizontal: 8 * scale, vertical: 24 * scale));
+    expect(dialog.constraints, BoxConstraints(minWidth: 304 * scale));
+
+    final row = tester.widget<FocusableListTile>(find.byType(FocusableListTile).first);
+    expect(row.contentPadding, EdgeInsets.symmetric(horizontal: 12 * scale, vertical: 4 * scale));
+    expect(row.horizontalTitleGap, 8.0 * scale);
+    expect(row.minLeadingWidth, 24.0 * scale);
   });
 }

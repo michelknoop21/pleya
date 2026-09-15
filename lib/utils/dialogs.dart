@@ -10,6 +10,8 @@ import '../mixins/controller_disposer_mixin.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/dialog_action_button.dart';
 import '../widgets/focusable_list_tile.dart';
+import 'layout_constants.dart';
+import 'platform_detector.dart';
 import 'focus_utils.dart';
 
 const _buttonPadding = EdgeInsets.symmetric(horizontal: 18, vertical: 14);
@@ -529,9 +531,20 @@ class _OptionPickerDialogState<T> extends State<_OptionPickerDialog<T>> {
 
   @override
   Widget build(BuildContext context) {
-    const rowPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 4);
-    const rowHorizontalTitleGap = 8.0;
-    const rowMinLeadingWidth = 24.0;
+    // F-TV1 (docs/density-audit-2026-09.md): this dialog is a shared owner —
+    // phone, desktop and TV all reach it — and used to size every row and
+    // the panel itself with raw literals that only the global 1.85x TV
+    // wrapper ever touched, never `TvLayoutConstants.scaleOf`. That left this
+    // dialog ~18% roomier on TV than a tokened panel at the same nominal
+    // values. Scaling the existing literals (rather than swapping in
+    // `TvCatalogLayout`'s own option-row tokens, tuned for a different,
+    // custom-built row) keeps every proportion exactly as already tuned off
+    // TV, and TV now simply lands where the tokened path would. Off TV
+    // `scale` is 1.0, so nothing here changes.
+    final scale = PlatformDetector.isTV() ? TvLayoutConstants.scaleOf(context) : 1.0;
+    final rowPadding = EdgeInsets.symmetric(horizontal: 12 * scale, vertical: 4 * scale);
+    final rowHorizontalTitleGap = 8.0 * scale;
+    final rowMinLeadingWidth = 24.0 * scale;
     final toggle = widget.toggle;
     void updateToggle(bool value) {
       setState(() => _toggleValue = value);
@@ -540,8 +553,8 @@ class _OptionPickerDialogState<T> extends State<_OptionPickerDialog<T>> {
 
     return SimpleDialog(
       title: Text(widget.title),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 24),
-      constraints: const BoxConstraints(minWidth: 304),
+      insetPadding: EdgeInsets.symmetric(horizontal: 8 * scale, vertical: 24 * scale),
+      constraints: BoxConstraints(minWidth: 304 * scale),
       contentPadding: const EdgeInsets.symmetric(vertical: 8),
       children: [
         if (toggle != null)
@@ -551,7 +564,7 @@ class _OptionPickerDialogState<T> extends State<_OptionPickerDialog<T>> {
                 children: [
                   if (toggle.icon != null) ...[
                     AppIcon(toggle.icon!, fill: 1, size: 24),
-                    const SizedBox(width: rowHorizontalTitleGap),
+                    SizedBox(width: rowHorizontalTitleGap),
                   ],
                   Expanded(
                     child: Text(
@@ -561,7 +574,7 @@ class _OptionPickerDialogState<T> extends State<_OptionPickerDialog<T>> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(width: rowHorizontalTitleGap),
+                  SizedBox(width: rowHorizontalTitleGap),
                   ExcludeFocus(
                     child: Switch(value: _toggleValue, onChanged: updateToggle),
                   ),
