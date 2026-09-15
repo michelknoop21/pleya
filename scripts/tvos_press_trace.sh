@@ -12,10 +12,11 @@
 #                  keyboard session ate the next real press).
 #   RE-TAP         a fresh keydown of the same key within 400 ms of an early keyup:
 #                  the .ended phase re-tapped it (tapIfMissingKeyDown:YES), a second step.
-#                  Judged same-uipress (side door 2, the engine re-tapped the same
-#                  UIPress) or new-uipress (UIKit delivered a real second press)
-#                  from the nearest `native press=` diagnostic lines (NAV2); unknown
-#                  when the build predates that channel.
+#                  Judged same-uipress (side door 4, the same UIPress object dispatched
+#                  twice via both swizzle hops, see docs/tvos-remote-input-authority.md
+#                  §3) or new-uipress (UIKit delivered a real second press) from the
+#                  nearest `native press=` diagnostic lines (NAV2); unknown when the
+#                  build predates that channel.
 #   ENABLE-HELD    a menuPassthroughEnabled=true sent while a key is down: the
 #                  message that triggers the release (needs 7786a952 or later to be logged)
 #
@@ -50,7 +51,7 @@ interesting = re.compile(
 keydown = re.compile(r'native keydown logical=(\w+)')
 keyup = re.compile(r'native keyup logical=(\w+)')
 enable = re.compile(r'send menuPassthroughEnabled=true')
-pressdiag = re.compile(r'native press=(\w+) phase=(-?\d+) uipress=([0-9a-fA-F]+)')
+pressdiag = re.compile(r'native press=(\w+)(?:\(\d+\))? phase=(-?\d+) uipress=([0-9a-fA-F]+)')
 
 MENU_KEY = 'escape'  # tvOS delivers Menu on release; expected, not a defect (NAV2)
 RETAP_WINDOW_MS = 400
@@ -74,6 +75,7 @@ early_up_at = {}      # key -> time of last early keyup
 retap = set()         # keys whose current keydown was a re-tap; their keyup is part of it
 diag_events = []      # (time, uipress) from `native press=` diagnostic lines (NAV2)
 flags = {'EARLY-KEYUP': 0, 'KEYUP-ONLY': 0, 'RE-TAP': 0, 'ENABLE-HELD': 0}
+same_uipress_retaps = 0
 prev = None
 
 with open(path, errors='replace') as fh:
@@ -101,6 +103,7 @@ with open(path, errors='replace') as fh:
                     verdict = 'unknown'
                 elif ids_before & ids_after:
                     verdict = 'same-uipress'
+                    same_uipress_retaps += 1
                 else:
                     verdict = 'new-uipress'
                 tags.append(f'RE-TAP({verdict})')
@@ -135,6 +138,10 @@ with open(path, errors='replace') as fh:
 
 print()
 print('summary: ' + ', '.join(f'{k}={v}' for k, v in flags.items()))
+if same_uipress_retaps:
+    print(f'verdict: {same_uipress_retaps} RE-TAP(same-uipress) — side door 4 confirmed (same UIPress '
+          'object dispatched twice), see docs/tvos-remote-input-authority.md §3')
+    sys.exit(2)
 if any(flags.values()):
     print('verdict: the engine produced events the viewer did not; start at side door 1-3 in docs/tvos-remote-press-pipeline.md')
     sys.exit(2)

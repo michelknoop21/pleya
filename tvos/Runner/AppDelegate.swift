@@ -30,6 +30,15 @@ import wakelock_plus
   /// `log stream --level debug --predicate 'processImagePath CONTAINS "Runner"'`.
   private static let pressLog = Logger(subsystem: "nl.michelknoop.pleya", category: "PleyaTvosPress")
 
+  // RAIL2 (zijdeur 4): the (press, phase) pair last forwarded to `super`, and
+  // what `super` returned for it. `UIPress` keeps the same identity across its
+  // `.began`/`.changed`/`.ended` lifecycle, and a new physical press gets a new
+  // object, so identity plus phase pins the exact delivery. Weak: the press
+  // object is UIKit's, not ours to retain.
+  private weak var lastForwardedPress: UIPress?
+  private var lastForwardedPhase: UIPress.Phase?
+  private var lastForwardedResult = false
+
   // Stepping aside for a native session is the whole fix: while one is up this
   // controller must not hold first responder, or every press is delivered here
   // and swallowed by the engine before the presented controller sees it.
@@ -83,8 +92,13 @@ import wakelock_plus
   /// session is up, UIKit owns the remote outright.
   ///
   /// Both swizzled hops (`UIApplication` and `UIWindow`) land here, so this runs
-  /// twice per press. It reads a flag and logs; no counters, no state, nothing
-  /// a second call could double.
+  /// twice per press, and until RAIL2 that second call could double something
+  /// after all: forwarding it to `super` both times let the same `.ended`
+  /// phase reach the engine's `tapIfMissingKeyDown:YES` path twice, and the
+  /// second call finds the key `super` already removed, mistakes that for a
+  /// missed `.began`, and synthesizes a phantom Down/Up pair (build 281, log
+  /// `8x94u`, 15 sep 2026; `docs/tvos-remote-input-authority.md` §3). See
+  /// `lastForwardedPress` below.
   ///
   /// Menu needs no exception. The engine's `shouldPassMenuPressToSystem:` sits
   /// ahead of this point, and with the session branch returning `false` Menu
@@ -105,7 +119,14 @@ import wakelock_plus
       "systemUptimeMs": Int(ProcessInfo.processInfo.systemUptime * 1000),
     ])
     guard NativeInputSession.isActive else {
-      return super.tvosHandlePress(fromUIEvent: press)
+      if press === lastForwardedPress, press.phase == lastForwardedPhase {
+        return lastForwardedResult
+      }
+      let result = super.tvosHandlePress(fromUIEvent: press)
+      lastForwardedPress = press
+      lastForwardedPhase = press.phase
+      lastForwardedResult = result
+      return result
     }
     Self.pressLog.debug("\(Self.pressName(press), privacy: .public) -> yield to UIKit")
     return false
@@ -113,9 +134,11 @@ import wakelock_plus
 
   // NAV1, the second half: one arrow press that moved the focus twice.
   //
-  // Nothing is filtered here on purpose. The double step was never a phase
-  // problem: `super` posts one keydown on `.began` and one keyup on `.ended`,
-  // exactly as it should. What doubled it was the Menu passthrough. The
+  // No *phase* is filtered here on purpose (RAIL2 above dedupes a *duplicate
+  // delivery* of the same phase, which is a different thing). The double step
+  // was never a phase problem: `super` posts one keydown on `.began` and one
+  // keyup on `.ended`, exactly as it should. What doubled it was the Menu
+  // passthrough. The
   // engine answers an *enable* on `flutter/tvos_system_navigation` with
   // `releaseAllSynthesizedPresses` (a synthetic keyup for every remote key it
   // still holds), and `.ended` then re-taps the released arrow as a fresh

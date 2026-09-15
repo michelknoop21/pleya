@@ -2,9 +2,14 @@
 
 **Status: CODE CLOSED** (15 september 2026, `834a8012` op `remote-controller`). Het autoriteitsmodel
 in §1 en de levenscyclus in §2-4 staan vast; SEL1 is dicht (`docs/tvos-fysieke-correctieronde.md`).
-RAIL2 blijft `HARDWARE VALIDATION PENDING` tot de meting in §6 is gedraaid. Vóór die meting: geen
-wijzigingen aan build 281 (`a7d5d3c7`, de referentiebuild) en geen wijzigingen aan de
-`tvos_press_diag`-diagnostiek of `scripts/tvos_press_trace.sh`.
+RAIL2: **FIXED** (`3408f061`, hardware bevestigd op build 282, log `scvdm`, 15 september 2026).
+De meting in §6 leverde eerst **ENGINE_DUPLICATE bevestigd**, zijdeur 4 (§3): drie onafhankelijke
+fantoompaar-instanties, elk `same-uipress` (build 281, log `8x94u`). De daarmee gerechtvaardigde
+fix dedupeert de tweede swizzel-hop-dispatch van dezelfde `UIPress`-fase in
+`PleyaFlutterViewController.tvosHandlePress(fromUIEvent:)`; build 282 op hetzelfde toestel, met
+dezelfde reproductiestappen, gaf nul `RE-TAP`s over 76 keydown/keyup-paren. Zie
+`docs/tvos-fysieke-correctieronde.md`, rij RAIL2, voor de volledige classificatie en het
+hardwarebewijs.
 
 Dit document legt vast welke laag welke staat mag bezitten in het pad van een Siri Remote-druk
 naar een Pleya-navigatie, en waarom. Het volgt uit het lezen van de gepinde engine-fork
@@ -148,8 +153,11 @@ aankomende `.ended`. Uit §2 volgt een vierde, die niet via een kanaalbericht lo
 > synthetiseert de tweede aanroep, via `tapIfMissingKeyDown`, een fantoom Down/Up-paar omdat de
 > eerste aanroep de key al verwijderd had.
 
-Deze hoort in `docs/tvos-remote-press-pipeline.md` en in `scripts/tvos_press_trace.sh` zodra RAIL2
-`same-uipress` oplevert; zie de correctieronde-rij voor de classificatie-uitkomst per log.
+Bevestigd op 15 september 2026 (build 281, log `8x94u`): drie fantoompaar-instanties, alle drie
+`same-uipress`. Opgenomen als vierde zijdeur in `docs/tvos-remote-press-pipeline.md`; het
+`RE-TAP(same-uipress)`-verdict in `scripts/tvos_press_trace.sh` verwijst er sindsdien expliciet
+naar. Zie de correctieronde-rij (`docs/tvos-fysieke-correctieronde.md`, RAIL2) voor de volledige
+classificatie per log.
 
 ## 4. `new-uipress` is geen bewijs van twee fysieke drukken
 
@@ -174,11 +182,35 @@ platform-press-levenscycli laten zien. Zonder dat bewijs is de juiste uitkomst
   as-hysterese, de afstand-naar-stappenlogica, de 190 ms-cooldown) worden benoemd, niet
   herkalibreerd.
 
-## 6. RAIL2 closure-run: protocol en beslisregels
+## 6. RAIL2 closure-run: protocol, beslisregels, en uitkomst
 
-De ontbrekende meting, en niets ervoor in de plaats. Referentiebuild: **281 (`a7d5d3c7`)**, niet
-wijzigen voor deze run; de diagnostiek erin is al bevestigd te compileren, alleen nog niet bevestigd
-daadwerkelijk berichten te versturen.
+**Gedraaid op 15 september 2026, build 281 (`a7d5d3c7`), log `8x94u`.** Stap 2 bevestigd: de
+diagnostiek verstuurt daadwerkelijk berichten (524 `native press=`/`native key*`-regels in de log).
+Stap 3-5: snelle en normale LEFT/RIGHT-drukken op een Home-rail reproduceerden drie onafhankelijke
+fantoompaar-instanties (arrowRight bij 20:29:51.971→52.026 en 20:29:57.345→57.406, arrowLeft bij
+20:30:23.345→23.425; hold ≤40 ms, gat ≤80 ms), plus twee bijvangst-`RE-TAP`s binnen hetzelfde
+400 ms-venster (zie de kanttekening bij het meetinstrument in `docs/tvos-fysieke-correctieronde.md`).
+Alle zes `RE-TAP`s zijn `same-uipress`: `8705` voor beide arrowRight-instanties, `62021` voor de
+arrowLeft-instantie. Stap 6, beslisregel toegepast: **ENGINE_DUPLICATE bevestigd**.
+
+`scripts/tvos_press_trace.sh` had tot deze run een regex-bug die de `uipress`-waarde nooit las
+zodra het richtingstoken een ordinal droeg (`right(3)` in plaats van `right`), waardoor elke
+`RE-TAP` als `unknown` terugkwam. Gefixt in dezelfde sessie (optioneel `(?:\(\d+\))?` na de
+richtingsnaam); de classificatie hierboven staat op de gefixte versie.
+
+**Fix en hardwarebewijs, zelfde dag.** `3408f061` dedupeert in
+`PleyaFlutterViewController.tvosHandlePress(fromUIEvent:)` de tweede swizzel-hop-dispatch van
+dezelfde `(press, phase)`-combinatie: de eerste aanroep gaat ongewijzigd naar `super`, een
+tweede aanroep met exact dezelfde combinatie speelt het eerder geretourneerde resultaat terug
+in plaats van `super` opnieuw aan te roepen. Build 282 (`444fb0ee`) op hetzelfde toestel, met
+dezelfde reproductiestappen (snel en normaal LEFT/RIGHT op een Home-rail), log `scvdm`: nul
+`RE-TAP`s en nul `EARLY-KEYUP`s over 76 keydown/keyup-paren, onafhankelijk bevestigd met een
+losse telling van vasthoudtijden. Volledig bewijs: `docs/tvos-fysieke-correctieronde.md`, rij
+RAIL2, sectie "RAIL2, hardwarebewijs op build 282".
+
+Protocol en beslisregels hieronder blijven van kracht voor een volgende RAIL2-achtige meting.
+Referentiebuild voor déze run was **281 (`a7d5d3c7`)**; een volgende meting kiest zijn eigen
+referentiebuild.
 
 **Stappen.**
 
