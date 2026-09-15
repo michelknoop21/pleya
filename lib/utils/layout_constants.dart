@@ -101,8 +101,11 @@ class TvLayoutConstants {
   /// only ever applies the result behind its own `isTV()` branch (harmless,
   /// the guard here is then redundant but cheap), or was a genuine bug —
   /// `TvLayoutConstants.scaleOf` read off a non-TV window height and drifted
-  /// TV-tuned spacing with it. Guarding here closes that whole bug class at
-  /// its one shared root instead of at each call site as it turns up.
+  /// TV-tuned spacing with it. Guarding here closes that bug class for every
+  /// caller of `scaleOf` itself, not for `scaleForSize`/`scaleForHeight`
+  /// (context-free by design, no `isTV()` to gate on here): those still need
+  /// an `isTV()` guard at the call site, as the three existing call sites
+  /// outside `TvRootShell` already do.
   static double scaleOf(BuildContext context) =>
       PlatformDetector.isTV() ? scaleForSize(TvDisplayMetrics.maybeOf(context) ?? MediaQuery.sizeOf(context)) : 1.0;
 }
