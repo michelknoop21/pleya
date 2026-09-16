@@ -47,9 +47,10 @@ double detailHeaderHeight({
   // max() first: on a very narrow window sixteenNineCap can fall under floor,
   // and clamp() throws if its upper bound is below its lower one.
   final upper = math.max(floor, math.min(ceiling, sixteenNineCap));
+  // effectiveFloor <= floor <= upper always, so clamp()'s upper bound is
+  // just upper itself — no separate effectiveUpper to compute.
   final effectiveFloor = math.min(floor, screenHeight * _maxHeaderViewportFraction);
-  final effectiveUpper = math.max(effectiveFloor, upper);
-  return base.clamp(effectiveFloor, effectiveUpper);
+  return base.clamp(effectiveFloor, upper);
 }
 
 /// Desktop (macOS/Windows/Linux) tier: `PlatformDetector.isDesktop`.
