@@ -41,6 +41,7 @@ under `Notes`.
 - finish scaling the option-picker dialog (finding 5)
 - lock in backdrop art on the capped iPad header (finding 1)
 - re-arm the nested-route type-scale regression test
+- dedupe the duplicate UIPress delivery that caused RAIL2
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 280 · 14 September 2026

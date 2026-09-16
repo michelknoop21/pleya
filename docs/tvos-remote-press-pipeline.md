@@ -44,9 +44,9 @@ Station 3 krijgt de druk twee keer (beide swizzles), leest daarom alleen een vla
 de app op dat niveau met een fase doet, is beperkt tot drie antwoorden, en twee daarvan zijn op
 het toestel bewezen fout (zie de tabel hieronder).
 
-## De drie zijdeuren in de engine
+## De vier zijdeuren in de engine
 
-Het pad hierboven is symmetrisch. Wat asymmetrie veroorzaakt zit in drie extra regels.
+Het pad hierboven is symmetrisch. Wat asymmetrie veroorzaakt zit in vier extra regels.
 
 1. **`setMenuPressPassthroughEnabled:YES` roept `releaseAllSynthesizedPresses`.** Elke toets
    die de engine op dat moment vasthoudt krijgt een synthetische keyup. De app zet die vlag via
@@ -57,6 +57,16 @@ Het pad hierboven is symmetrisch. Wat asymmetrie veroorzaakt zit in drie extra r
    combinatie met zijdeur 1 is het een tweede stap.
 3. **De herhaaltimer loopt zolang de toets in de set staat.** Bereikt een `.ended` de engine
    niet, dan blijft de richting herhalen tot de app opnieuw start.
+4. **Dezelfde fase van hetzelfde `UIPress`-object bereikt `tvosHandlePressFromUIEvent:` twee
+   keer**, via de twee swizzels op `UIApplication` en `UIWindow`. Op `.ended`/`.cancelled`
+   verwijdert de eerste aanroep de toets uit `synthesizedPressedKeys` en stuurt de echte Up; de
+   tweede aanroep vindt de toets niet meer en `tapIfMissingKeyDown:YES` synthetiseert een
+   fantoom Down/Up-paar, binnen enkele milliseconden na de echte Up. Van buiten is dit zijdeur 2
+   met een specifieke oorzaak: dezelfde `UIPress`-identiteit (`uipress`-hash in
+   `tvos_press_diag`) vóór en ná het fantoompaar. Bevestigd op een toestel op 15 september 2026
+   (build 281, log `8x94u`, `docs/tvos-remote-input-authority.md` §3 en §6): drie onafhankelijke
+   fantoompaar-instanties (arrowRight ×2, arrowLeft ×1), elk `same-uipress`. Zie
+   `docs/tvos-fysieke-correctieronde.md`, rij RAIL2, voor de volledige classificatie.
 
 `TvosSystemNavigationService` parkeert sinds `7786a952` een enable tot `physicalKeysPressed`
 leeg is. Een disable laat in de engine niets los en gaat direct.
@@ -71,7 +81,7 @@ leeg is. Een disable laat in de engine niets los en gaat direct.
 | Navigeren werkt, klikken op het systeemtoetsenbord niet | station 3: de sessietak (DEC-019) | 2026-08 |
 | Echte snelle drukken verdwijnen | station 9: een timing-heuristiek in Dart | build 254, log `ld1t1` |
 | Een klik doet niets, een toets blijft in Dart vastzitten na het systeemtoetsenbord | station 3: de sessietak levert de eigen keyup van de druk die de sessie opende nooit aan de engine's synthesepad (SEL2) | build 280, log `ijqxp` |
-| Een echte keyup, dan binnen 1-20 ms een down+up-paar met 1-2 ms ertussen, zonder kanaalbericht in de buurt | zijdeur 2: `tapIfMissingKeyDown:YES` op een `.ended`/`.cancelled` voor een toets die niet meer in `synthesizedPressedKeys` zit (NAV2) | build 272-280, logs `h6ocl` en `ijqxp` |
+| Een echte keyup, dan binnen 1-20 ms een down+up-paar met 1-2 ms ertussen, zonder kanaalbericht in de buurt | zijdeur 4: dezelfde `UIPress`-fase twee keer afgeleverd, `tapIfMissingKeyDown:YES` vindt de toets al weg (bevestigd `same-uipress`) | build 272-280, logs `h6ocl`/`ijqxp` (timing/context); bevestigd met `uipress`-identiteit op build 281, log `8x94u` (15 sep 2026) |
 
 ## Meetprotocol
 
