@@ -25,9 +25,22 @@ under `Notes`.
 - MOC-25 person as a TV-native surface
 - add the persistent quality/source line to the player OSD (MOC-18)
 
+### Improved
+- extract the option-picker into its own file (finding 4)
+- drop detailHeaderHeight's dead effectiveUpper
+
 ### Fixed
 - open the native text-entry session only after keys release
 - reset select ownership across native input sessions
+- cap desktop/iPad header height per size class (F-D1)
+- stop poster grid spacing drifting with window height off TV (F-D2)
+- scale the shared option-picker dialog on TV (F-TV1)
+- close scaleOf contract for non-TV call sites (finding 3)
+- bound the header floor to the viewport height (finding 2)
+- repair search header scrolling
+- finish scaling the option-picker dialog (finding 5)
+- lock in backdrop art on the capped iPad header (finding 1)
+- re-arm the nested-route type-scale regression test
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 280 · 14 September 2026
