@@ -420,7 +420,7 @@ voor push op dat punt.**
 
 ## Reviewronde, 15 september 2026
 
-Na de eerste fixronde (bovenstaand rapport, commits t/m `f0068c1a`) zijn twee onafhankelijke,
+Na de eerste fixronde (bovenstaand rapport, commits t/m `dfd386a9`) zijn twee onafhankelijke,
 read-only reviews gedraaid op de volledige branchdiff, elk gevolgd door een verificatiestap die elke
 bevinding zelf tegen de repository controleerde in plaats van op gezag over te nemen. Eén claim
 werd daarbij afgewezen (een beweerde compilefout in `detailHeaderHeight`'s `clamp`-aanroep, weerlegd
@@ -450,7 +450,7 @@ resulterende `containerAspect` uit, bevestigt dat die over de 1,39-grens ligt, e
 de juiste volgorde bevestigd (tijdelijk omgedraaid naar `['/square', '/art']`, faalde zoals
 verwacht), groen met de juiste volgorde.
 
-### Finding 2: header floor > korte viewport (FIXED, `c4f0ce4e`)
+### Finding 2: header floor > korte viewport (FIXED, `a8b904a2`)
 
 Zie het nagekomen-blok in de F-D1-sectie hierboven. `detailHeaderHeight`'s vloer is nu ook geklemd
 op 70% van `screenHeight`: ruim boven de ongeklemde 60%-basislijn, ruim onder de 75% die deze audit
@@ -460,7 +460,7 @@ sectie). Invariant `headerHeight < screenHeight` bewezen met een sweep van 1440p
 verandert, want bij die vijf bepaalde altijd het plafond of de basislijn het resultaat, nooit de
 vloer.
 
-### Finding 3: onbewaakte `scaleOf`-paden buiten TV (FIXED, `3ca70a11`)
+### Finding 3: onbewaakte `scaleOf`-paden buiten TV (FIXED, `4d632ba5`)
 
 Volledige inventarisatie van alle `scaleOf`/`scaleForSize`/`tvPageInset`-aanroepen (~90 treffers,
 `grep -rn` over `lib/`). Bevinding: het contract is overal hetzelfde, TV-layoutschaal, en buiten TV
@@ -482,7 +482,7 @@ Het dichten van deze drift onthulde een echte, tot dan toe gemaskeerde overflowb
 gevloerd door de bug) kon de rij's tertiaire "Pleya profile: X"-waarde de Row laten overflowen. De
 waarde is nu `Flexible` met een ellipsis in plaats van een harde layout-assertion.
 
-### Finding 4: >500-regelregel (DEELS FIXED, `13c53c69`)
+### Finding 4: >500-regelregel (DEELS FIXED, `43083a1b`)
 
 `dialogs.dart` (618 regels) is mechanisch gesplitst: `OptionPickerToggle`,
 `showOptionPickerDialog`, `_OptionPickerDialog` en `_OptionPickerDialogState` verhuisden ongewijzigd
@@ -503,7 +503,7 @@ regressierisico" dat Michel expliciet heeft uitgesloten. Beide bestanden blijven
 eigen, apart geplande extractieronde met eigen scope en eigen bewijsvoering, niet een gehaaste stap
 binnen deze reviewronde.
 
-### Finding 5: option-picker F-TV1 incompleet (FIXED, `d30644c7`)
+### Finding 5: option-picker F-TV1 incompleet (FIXED, `1bb5ae45`)
 
 `_OptionPickerDialogState.build`'s `contentPadding` en beide `AppIcon`-iconen (toggle + optie) waren
 de twee resterende rauwe literals terwijl de rest van de dialoog al schaalde. Meegeschaald,
