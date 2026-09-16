@@ -18,18 +18,31 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
+Nothing user-facing since the last published build.
+<!-- END GENERATED -->
+
+## 2.8.0 · build 282 · 16 September 2026
+
+<!-- commit: 69da51d -->
+
 ### New
-- MOC-23 offline TV Home, scoped without the discovery snapshot
-- MOC-24 collection as a TV-native surface
-- log press-diagnostic station 3 to the app log, sharpen the trace
-- MOC-25 person as a TV-native surface
-- add the persistent quality/source line to the player OSD (MOC-18)
+
+- **Collections open in the same redesigned look as the rest of the catalog on Apple TV**, with
+  the same hero artwork, cards, and grid you already browse the rest of your library in.
+- **An actor or crew member's page on Apple TV now matches the new design**, with a circular
+  photo at the top and their other titles laid out as browsable cards below.
+- **The Apple TV player shows resolution, codec, and audio and subtitle language under the
+  title**, along with whether it is playing directly or transcoding.
+- **Apple TV Home works again when the server is unreachable**, showing the servers this device
+  knows about with a status for each, a way to reconnect, and a path into Settings.
 
 ### Fixed
-- open the native text-entry session only after keys release
-- reset select ownership across native input sessions
-- dedupe the duplicate UIPress delivery that caused RAIL2
-<!-- END GENERATED -->
+
+- **The on-screen keyboard on Apple TV could leave Select dead across the whole app** until you
+  force-quit and reopened it.
+- **Typing on the Apple TV keyboard and pressing Select right after could get eaten** instead of
+  submitting what you typed.
+- **A double press on Apple TV could close a menu or panel you had just opened.**
 
 ## 2.8.0 · build 280 · 14 September 2026
 
