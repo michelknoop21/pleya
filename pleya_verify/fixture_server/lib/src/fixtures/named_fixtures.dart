@@ -33,6 +33,9 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
     case 'catalog.long-rails.v1':
       _applyCatalogLongRailsV1(server);
       return true;
+    case 'catalog.search-scroll.v1':
+      _applyCatalogSearchScrollV1(server);
+      return true;
     case 'catalog.empty.v1':
       server.resetCatalog();
       return true;
@@ -203,6 +206,86 @@ void _applyCatalogMixedV1(PleyaFakeServer server) {
 
   server.hubs['recently_added']!.addAll([...movieIds, showId]);
   server.hubs['continue_watching']!.add(movieIds.first);
+}
+
+/// Three search bands plus a one-result query for SEARCH2's fixed-header
+/// geometry and focus walk. Explicit query maps keep the counts stable even if
+/// the fixture's titles gain descriptive suffixes later.
+void _applyCatalogSearchScrollV1(PleyaFakeServer server) {
+  const fixture = 'catalog.search-scroll.v1';
+  server.resetCatalog();
+
+  final moviesLibraryId = _mintId(server, fixture, 'library', 'movies');
+  final showsLibraryId = _mintId(server, fixture, 'library', 'shows');
+  server.addLibrary(id: moviesLibraryId, title: 'Movies', kind: 'movies', itemCount: 9);
+  server.addLibrary(id: showsLibraryId, title: 'Shows', kind: 'shows', itemCount: 1);
+
+  final atlasIds = <String>[];
+  for (var i = 1; i <= 8; i++) {
+    final id = _mintId(server, fixture, 'movie', 'atlas-$i');
+    atlasIds.add(id);
+    server.addItem(
+      id: id,
+      kind: 'movie',
+      title: 'Atlas Movie $i',
+      libraryId: moviesLibraryId,
+      year: 2010 + i,
+      durationMs: 5400000 + i * 60000,
+      posterId: _registerArtwork(server, id),
+    );
+  }
+
+  final showId = _mintId(server, fixture, 'show', 'atlas-show');
+  atlasIds.add(showId);
+  server.addItem(
+    id: showId,
+    kind: 'show',
+    title: 'Atlas Show',
+    libraryId: showsLibraryId,
+    year: 2026,
+    childCount: 1,
+    episodeCount: 6,
+    posterId: _registerArtwork(server, showId),
+  );
+
+  final seasonId = _mintId(server, fixture, 'season', 'atlas-show-s01');
+  server.addItem(
+    id: seasonId,
+    kind: 'season',
+    title: 'Atlas Season 1',
+    parentId: showId,
+    index: 1,
+    childCount: 6,
+    episodeCount: 6,
+    posterId: _registerArtwork(server, seasonId),
+  );
+  for (var i = 1; i <= 6; i++) {
+    final id = _mintId(server, fixture, 'episode', 'atlas-show-s01e$i');
+    atlasIds.add(id);
+    server.addItem(
+      id: id,
+      kind: 'episode',
+      title: 'Atlas Episode $i',
+      parentId: seasonId,
+      index: i,
+      durationMs: 1500000 + i * 1000,
+      posterId: _registerArtwork(server, id),
+    );
+  }
+
+  final soloId = _mintId(server, fixture, 'movie', 'solo');
+  server.addItem(
+    id: soloId,
+    kind: 'movie',
+    title: 'Solo Result',
+    libraryId: moviesLibraryId,
+    year: 2025,
+    durationMs: 5700000,
+    posterId: _registerArtwork(server, soloId),
+  );
+
+  server.searchResults['atlas'] = atlasIds;
+  server.searchResults['solo'] = [soloId];
 }
 
 /// Five films whose backdrops differ only in the two things the Home hero has

@@ -32,6 +32,7 @@ class TvCatalogItemCard extends StatelessWidget {
     required this.onSelect,
     this.clientFor,
     this.focusNode,
+    this.autoScroll = true,
     this.onNavigateUp,
     this.onNavigateDown,
     this.onNavigateLeft,
@@ -52,6 +53,7 @@ class TvCatalogItemCard extends StatelessWidget {
   final MediaServerClient? Function(String serverId)? clientFor;
 
   final FocusNode? focusNode;
+  final bool autoScroll;
   final VoidCallback? onNavigateUp;
   final VoidCallback? onNavigateDown;
   final VoidCallback? onNavigateLeft;
@@ -88,6 +90,7 @@ class TvCatalogItemCard extends StatelessWidget {
       meta: tvCatalogMetaLine(item),
       onSelect: onSelect,
       focusNode: focusNode,
+      autoScroll: autoScroll,
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
       onNavigateLeft: onNavigateLeft,

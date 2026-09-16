@@ -1039,9 +1039,11 @@ class _AppleTvScale extends StatelessWidget {
       builder: (context, constraints) {
         final logicalSize = Size(constraints.maxWidth / _scale, constraints.maxHeight / _scale);
         final outerQ = MediaQuery.of(context);
-        // tvOS reports conservative overscan insets (~60pt top/bottom,
-        // ~90pt left/right). Modern TVs don't overscan, so treat them as
-        // dead margin and zero them out — the UI can use the full surface.
+        // tvOS reports conservative overscan insets: measured live on the
+        // "Pleya Verify Apple TV 4K" simulator as EdgeInsets(80, 60, 80, 60)
+        // (left, top, right, bottom) — docs/density-audit-2026-09.md, TV
+        // schaalcontract. Modern TVs don't overscan, so treat them as dead
+        // margin and zero them out below; the UI can use the full surface.
         return Transform.scale(
           scale: _scale,
           alignment: .topLeft,

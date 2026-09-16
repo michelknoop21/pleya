@@ -1,0 +1,84 @@
+name: tvos.search.header-scroll
+target: tvos-sim
+# SEARCH2. The physical Apple TV 4K photo showed three related defects:
+# uncontracted header geometry, the total inside the query pill, and result
+# cards painting through the fixed header/top navigation while moving between
+# bands. This scenario drives the real remote path and records every vertical
+# state that can expose the paint leak.
+setup:
+  - reset_app
+  - seed: catalog.search-scroll.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  # Search is immediately left of Home. Focusing a destination activates it.
+  - press: left
+  - wait_until: {id: search.header, timeout: 15000}
+  - assert: {id: search.header, below: nav.search, insideViewport: true}
+  - assert: {id: search.results.viewport, below: search.header, insideViewport: true}
+  - snapshot: 00-search-top
+
+  # Enter the native Apple TV field and stream a query with three result bands.
+  - press: down
+  - wait_until: {focused: search.input, timeout: 8000}
+  - assert: {id: search.input, leftInset: 68.49}
+  - assert: {id: search.input, notClipped: search.header}
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {active: true}, timeout: 8000}
+  - type: "atlas"
+  - settle: 1200
+  - press: menu
+  - wait_until: {id: "tv.catalog.grid[search.movies]", timeout: 15000}
+  - assert: {id: search.result_count, rightOf: search.input, notOverlapping: search.input}
+  - assert: {id: "tv.catalog.grid.item[search.movies.0]", below: search.header, notClipped: search.results.viewport}
+  - snapshot: 10-many-results-top
+
+  # First item, horizontal move, then one and multiple bands down.
+  - press: down
+  - wait_until: {focused: "tv.catalog.grid.item[search.movies.0]", timeout: 8000}
+  - assert: {id: "tv.catalog.grid.item[search.movies.0]", below: search.header}
+  - snapshot: 11-first-item
+  - press: right
+  - wait_until: {focused: "tv.catalog.grid.item[search.movies.1]", timeout: 8000}
+  - assert: {id: "tv.catalog.grid.item[search.movies.1]", below: search.header}
+  - snapshot: 12-first-row-right
+  - press: down
+  - wait_until: {focused: "tv.catalog.grid.item[search.shows.0]", timeout: 8000}
+  - settle: 500
+  - assert: {id: "tv.catalog.grid.item[search.shows.0]", below: search.header, notClipped: search.results.viewport}
+  - assert: {id: "tv.catalog.grid.item[search.movies.0]", above: search.results.viewport, notOverlapping: search.results.viewport}
+  - snapshot: 13-one-row-down
+  - press: down
+  - wait_until: {focused: "tv.catalog.grid.item[search.episodes.0]", timeout: 8000}
+  - settle: 500
+  - assert: {id: "tv.catalog.grid.item[search.episodes.0]", below: search.header, notClipped: search.results.viewport}
+  - assert: {id: "tv.catalog.grid.item[search.shows.0]", above: search.results.viewport, notOverlapping: search.results.viewport}
+  - snapshot: 14-multiple-rows-down
+
+  # Return through the same focus graph to the fixed header.
+  - press: up
+  - press: up
+  - press: up
+  - wait_until: {focused: search.input, timeout: 8000}
+  - assert: {id: search.input, notClipped: search.header}
+  - snapshot: 15-returned-to-header
+
+  # Replace the query with the fixture's one-result case. Header geometry and
+  # focus remain the same while the total changes from two digits to one.
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {active: true}, timeout: 8000}
+  - press: delete
+  - press: delete
+  - press: delete
+  - press: delete
+  - press: delete
+  - type: "solo"
+  - settle: 1200
+  - press: menu
+  - wait_until: {id: "tv.catalog.grid[search.movies]", timeout: 15000}
+  - assert: {id: search.result_count, rightOf: search.input, notOverlapping: search.input}
+  - assert: {id: "tv.catalog.grid.item[search.movies.0]", below: search.header, notClipped: search.results.viewport}
+  - snapshot: 20-few-results

@@ -12,11 +12,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/screens/tv/tv_search_view.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv/tv_catalog_card.dart';
 import 'package:pleya/widgets/tv/tv_catalog_card_rail.dart';
 import 'package:pleya/widgets/tv/tv_catalog_empty_state.dart';
 import 'package:pleya/widgets/tv/tv_section_header.dart';
+import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 TvSearchSection _band(String id, String title, int count, {String? actionLabel, VoidCallback? onAction}) =>
     TvSearchSection(
@@ -33,6 +35,7 @@ TvSearchSection _band(String id, String title, int count, {String? actionLabel, 
         meta: '2024  ·  Sciencefiction',
         onSelect: () {},
         focusNode: cell.focusNode,
+        autoScroll: false,
         onFocusChange: cell.onFocusChange,
         onNavigateUp: cell.onNavigateUp,
         onNavigateDown: cell.onNavigateDown,
@@ -52,6 +55,7 @@ void main() {
     List<TvSearchSection> sections = const [],
     bool hasQuery = true,
     bool isSearching = false,
+    bool compactSearchField = true,
     int? totalResultCount,
     String? error,
     VoidCallback? onRetry,
@@ -68,7 +72,11 @@ void main() {
           home: Scaffold(
             body: TvSearchView(
               key: key,
-              searchField: const SizedBox(height: 60, key: Key('field')),
+              compactSearchField: compactSearchField,
+              searchField: Builder(
+                builder: (context) =>
+                    SizedBox(height: TvSearchLayout.fieldHeight(MediaQuery.sizeOf(context)), key: const Key('field')),
+              ),
               sections: sections,
               hasQuery: hasQuery,
               isSearching: isSearching,
@@ -94,6 +102,14 @@ void main() {
       expect(find.byType(TvCatalogCardRail), findsNWidgets(2));
       expect(find.byType(TvCatalogCard), findsNWidgets(6));
       expect(find.byType(TvSectionHeader), findsNWidgets(2));
+    });
+
+    testWidgets('the fallback keyboard column keeps its full width when the result count appears', (tester) async {
+      await pumpView(tester, compactSearchField: false);
+      final widthWithoutCount = tester.getSize(find.byKey(const Key('field'))).width;
+
+      await pumpView(tester, compactSearchField: false, totalResultCount: 101);
+      expect(tester.getSize(find.byKey(const Key('field'))).width, widthWithoutCount);
     });
 
     testWidgets('and the heading carries the count, which the focus does not move', (tester) async {
@@ -122,6 +138,33 @@ void main() {
       expect(label(0), t.search.noResultsShort, reason: '36 C says "geen resultaten" in the pill, not a zero');
       expect(label(14, isSearching: true), isNull, reason: 'a running query has nothing to count yet');
       expect(label(null, hasQuery: false), isNull);
+    });
+
+    testWidgets('the total is a stable sibling of the search field on the same visual line', (tester) async {
+      await pumpView(tester, sections: [_band('movies', 'Films', 4)], totalResultCount: 101);
+
+      final field = tester.getRect(find.byKey(const Key('field')));
+      final count = tester.getRect(find.text(t.search.resultCount(count: 101)));
+      expect(count.left, greaterThan(field.right));
+      expect(count.center.dy, closeTo(field.center.dy, 0.5));
+
+      final widthWithCount = field.width;
+      await pumpView(tester, sections: [_band('movies', 'Films', 4)], totalResultCount: null);
+      expect(tester.getSize(find.byKey(const Key('field'))).width, widthWithCount);
+    });
+
+    testWidgets('the vertical results viewport clips content at the fixed header boundary', (tester) async {
+      await pumpView(tester, sections: [_band('movies', 'Films', 8), _band('shows', 'Series', 8)]);
+
+      final resultsScroll = find.byType(SingleChildScrollView);
+      final header = tester.getRect(find.byKey(tvSearchHeaderKey));
+      final viewport = tester.getRect(find.byKey(tvSearchResultsViewportKey));
+      expect(viewport.top, header.bottom);
+      expect(
+        find.ancestor(of: resultsScroll, matching: find.byType(ClipRect)),
+        findsOneWidget,
+        reason: 'vertical result content must not paint through the fixed search header',
+      );
     });
   });
 
@@ -237,6 +280,27 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pumpAndSettle();
     expect(exits, 1);
+  });
+
+  testWidgets('moving to a lower band scrolls its focused card fully below the fixed header', (tester) async {
+    await pumpView(tester, sections: [_band('movies', 'Films', 4), _band('shows', 'Series', 4)]);
+
+    final cards = tester.widgetList<TvCatalogCard>(find.byType(TvCatalogCard)).toList();
+    cards.first.focusNode!.requestFocus();
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSearchCard(shows)(shows-0)');
+    final viewport = tester.getRect(find.byKey(tvSearchResultsViewportKey));
+    final sectionHeading = tester.getRect(find.widgetWithText(TvSectionHeader, 'Series'));
+    final focusedCard = tester.getRect(find.widgetWithText(TvCatalogCard, 'Series 0'));
+    expect(
+      sectionHeading.top,
+      closeTo(viewport.top + TvCatalogLayout.headerContentGap * TvLayoutConstants.scaleForHeight(600), 0.5),
+    );
+    expect(focusedCard.top, greaterThanOrEqualTo(viewport.top));
+    expect(focusedCard.bottom, lessThanOrEqualTo(viewport.bottom));
   });
 
   group('LEFT off the one action an error or no-results state has', () {

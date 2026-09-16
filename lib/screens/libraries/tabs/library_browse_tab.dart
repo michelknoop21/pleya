@@ -1552,7 +1552,12 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       final maxExtent = GridSizeCalculator.getMaxCrossAxisExtent(context, density);
       final columnCount = GridSizeCalculator.getColumnCount(screenSize.width, maxExtent);
       final itemWidth = screenSize.width / columnCount;
-      final scale = TvLayoutConstants.scaleForSize(screenSize);
+      // F-D2 sibling leak, found in the density-audit review round
+      // (docs/density-audit-2026-09.md, finding 3): the same off-TV
+      // `scaleForSize` drift as `_gridTopPadding` below, just feeding the
+      // prefetch-size estimate instead of a paint value. TV keeps its real
+      // scale; everywhere else this is scale 1.
+      final scale = PlatformDetector.isTV() ? TvLayoutConstants.scaleForSize(screenSize) : 1.0;
       final rowHeight =
           MediaCardGridLayout.cellHeightFor(
             context,
@@ -1804,8 +1809,11 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   /// The grid's own row gap, so the first row breathes the same as every row
   /// after it. It used to be a flat 6, which put the posters right under the
   /// line and made the header and the grid read as one block.
+  // F-D2 (docs/density-audit-2026-09.md): the same off-TV `scaleOf` drift as
+  // `MediaGridDelegate.spacingFor` — see that doc comment. TV keeps its real
+  // scale; everywhere else this is scale 1.
   double _gridTopPadding(BuildContext context) =>
-      GridLayoutConstants.posterGridSpacingForScale(TvLayoutConstants.scaleOf(context));
+      GridLayoutConstants.posterGridSpacingForScale(PlatformDetector.isTV() ? TvLayoutConstants.scaleOf(context) : 1.0);
 
   /// Width of the alpha jump bar widget
   static const double _alphaJumpBarWidth = 20.0;

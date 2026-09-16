@@ -304,6 +304,12 @@ class AutomationIds {
   /// `<family>.<index>` shape [landingRailItem]/[discoverRailItem] use.
   static const String searchResultsItem = 'search.results.item';
 
+  /// Fixed chrome and vertical viewport of the TV search destination.
+  static const String searchHeader = 'search.header';
+  static const String searchInput = 'search.input';
+  static const String searchResultCount = 'search.result_count';
+  static const String searchResultsViewport = 'search.results.viewport';
+
   /// The mobile source-picker sheet as a whole.
   static const String sheetSourcePicker = 'sheet.source_picker';
 
@@ -483,6 +489,10 @@ class AutomationIds {
     {'id': landingRailItem, 'role': 'grid.item', 'instanceable': true},
     {'id': searchResultsSection, 'role': 'region', 'instanceable': true},
     {'id': searchResultsItem, 'role': 'list.item', 'instanceable': true},
+    {'id': searchHeader, 'role': 'region', 'instanceable': false},
+    {'id': searchInput, 'role': 'button', 'instanceable': false},
+    {'id': searchResultCount, 'role': 'region', 'instanceable': false},
+    {'id': searchResultsViewport, 'role': 'region', 'instanceable': false},
     {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
     {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},

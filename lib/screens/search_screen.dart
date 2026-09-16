@@ -65,6 +65,7 @@ import '../utils/media_navigation_helper.dart';
 import 'actor_media_screen.dart';
 
 import '../utils/focus_utils.dart';
+import '../utils/layout_constants.dart';
 import 'main_screen.dart';
 
 /// Client-side result type filter over whatever [searchAcrossServers] returns.
@@ -708,17 +709,14 @@ class _SearchScreenState extends State<SearchScreen>
     }
   }
 
-  /// D-pad down past the keyboard's bottom row: land on whatever sits below —
-  /// filter chips, first result, recent-search chips, or the Seerr tile.
+  /// D-pad down from TV search: land on the first result/state action.
   void _handleTvKeyboardNavigateDown() {
     // While searching, the results area is skeletons with nothing focusable —
     // moving down would silently drop focus and strand the user. Keep focus on
     // the keyboard until there is something real to land on.
     if (_isSearching) return;
-    if (FocusScope.of(context).focusInDirection(TraversalDirection.down)) return;
-    if (_searchResults.isNotEmpty) {
-      _focusFirstResult();
-    }
+    if (_tvSearchKey.currentState?.focusFirstResult() ?? false) return;
+    FocusScope.of(context).focusInDirection(TraversalDirection.down);
   }
 
   /// Zoeken on TV (DEC-108, mockup 36 A, B and C).
@@ -737,7 +735,8 @@ class _SearchScreenState extends State<SearchScreen>
       body: SafeArea(
         child: TvSearchView(
           key: _tvSearchKey,
-          searchField: _buildTvSearchField(context, total),
+          searchField: _buildTvSearchField(context),
+          compactSearchField: _usesNativeTvSearchField,
           sections: sections,
           hasQuery: _hasSearched,
           isSearching: _isSearching,
@@ -802,6 +801,7 @@ class _SearchScreenState extends State<SearchScreen>
             width: cell.width,
             clientFor: clientFor,
             focusNode: cell.focusNode,
+            autoScroll: false,
             onSelect: () => _openConcrete(_recentItems[cell.index]),
             onFocusChange: cell.onFocusChange,
             onNavigateUp: cell.onNavigateUp,
@@ -825,6 +825,7 @@ class _SearchScreenState extends State<SearchScreen>
         width: cell.width,
         clientFor: clientFor,
         focusNode: cell.focusNode,
+        autoScroll: false,
         // Activation goes through the fase-4 coordinator, never a
         // representative-source shortcut (hoofdstuk 4.4). Unchanged from the
         // rail this replaces; only the tile it hangs on is different.
@@ -851,6 +852,7 @@ class _SearchScreenState extends State<SearchScreen>
             width: cell.width,
             clientFor: clientFor,
             focusNode: cell.focusNode,
+            autoScroll: false,
             onSelect: () => (onSelect ?? _openConcrete)(items[cell.index]),
             onFocusChange: cell.onFocusChange,
             onNavigateUp: cell.onNavigateUp,
@@ -942,13 +944,11 @@ class _SearchScreenState extends State<SearchScreen>
   /// D-pad keyboard only renders as fallback when the native path is broken.
   /// Everywhere else the pill stays read-only and the inline keyboard is the
   /// input.
-  Widget _buildTvSearchField(BuildContext context, int? total) {
-    final nativePill = PlatformDetector.isAppleTV() && !_nativeEntryUnavailable;
-    final countLabel = TvSearchViewState.resultCountLabel(
-      hasQuery: _hasSearched,
-      isSearching: _isSearching,
-      total: total,
-    );
+  bool get _usesNativeTvSearchField => PlatformDetector.isAppleTV() && !_nativeEntryUnavailable;
+
+  Widget _buildTvSearchField(BuildContext context) {
+    final nativePill = _usesNativeTvSearchField;
+    final fieldHeight = TvSearchLayout.fieldHeight(TvDisplayMetrics.maybeOf(context) ?? MediaQuery.sizeOf(context));
     final pill = ListenableBuilder(
       listenable: _searchController,
       builder: (context, _) {
@@ -958,81 +958,72 @@ class _SearchScreenState extends State<SearchScreen>
             context,
             hintText: t.search.hint,
             prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
-            // 36 B puts "14 resultaten" inside the pill, at tertiary ink. It is
-            // a statement about the query, so it belongs to the field that
-            // holds the query rather than to a line above the first band.
-            suffixIcon: countLabel == null
-                ? null
-                : Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: Text(
-                      countLabel,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: TvCatalogLayout.inkTertiary),
-                      ),
-                    ),
-                  ),
           ),
           isEmpty: text.isEmpty,
           child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
         );
       },
     );
-    return Padding(
-      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (nativePill)
-            FocusableButton(
-              focusNode: _searchFocusNode,
-              onPressed: _openNativeSearchEntry,
-              onNavigateLeft: _navigateToSidebar,
-              onNavigateDown: _handleTvKeyboardNavigateDown,
-              onBack: _handleTvKeyboardClose,
-              child: pill,
-            )
-          else
-            pill,
-          // Apple TV gets no mic button: the mic is on the remote and dictates
-          // the moment the system keyboard is up, which selecting the pill
-          // already does. Android TV needs one — there the mic opens
-          // RecognizerIntent.
-          if (_voiceSearchSupported && !PlatformDetector.isAppleTV())
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Center(
-                child: FocusableButton(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (nativePill)
+          AutomationNode(
+            id: AutomationIds.searchInput,
+            role: 'button',
+            focusNode: _searchFocusNode,
+            child: SizedBox(
+              height: fieldHeight,
+              child: FocusableButton(
+                focusNode: _searchFocusNode,
+                onPressed: _openNativeSearchEntry,
+                onNavigateLeft: _navigateToSidebar,
+                onNavigateDown: _handleTvKeyboardNavigateDown,
+                onBack: _handleTvKeyboardClose,
+                child: pill,
+              ),
+            ),
+          )
+        else
+          SizedBox(height: fieldHeight, child: pill),
+        // Apple TV gets no mic button: the mic is on the remote and dictates
+        // the moment the system keyboard is up, which selecting the pill
+        // already does. Android TV needs one — there the mic opens
+        // RecognizerIntent.
+        if (_voiceSearchSupported && !PlatformDetector.isAppleTV())
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Center(
+              child: FocusableButton(
+                onPressed: _openNativeSearchEntry,
+                child: TextButton.icon(
                   onPressed: _openNativeSearchEntry,
-                  child: TextButton.icon(
-                    onPressed: _openNativeSearchEntry,
-                    icon: const AppIcon(Symbols.mic_rounded, fill: 1),
-                    label: Text(t.search.voiceSearch),
-                  ),
+                  icon: const AppIcon(Symbols.mic_rounded, fill: 1),
+                  label: Text(t.search.voiceSearch),
                 ),
               ),
             ),
-          if (!nativePill)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Center(
-                child: TvVirtualKeyboardPanel(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  hintText: t.search.hint,
-                  textInputAction: TextInputAction.search,
-                  autofocus: false,
-                  showPreview: false,
-                  showCancelKey: false,
-                  dismissOnPhysicalKeyboardInput: false,
-                  onSubmitted: (_) => _handleSearchSubmit(),
-                  onClose: _handleTvKeyboardClose,
-                  onNavigateDown: _handleTvKeyboardNavigateDown,
-                ),
+          ),
+        if (!nativePill)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Center(
+              child: TvVirtualKeyboardPanel(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                hintText: t.search.hint,
+                textInputAction: TextInputAction.search,
+                autofocus: false,
+                showPreview: false,
+                showCancelKey: false,
+                dismissOnPhysicalKeyboardInput: false,
+                onSubmitted: (_) => _handleSearchSubmit(),
+                onClose: _handleTvKeyboardClose,
+                onNavigateDown: _handleTvKeyboardNavigateDown,
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 

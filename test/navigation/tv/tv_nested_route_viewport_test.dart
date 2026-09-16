@@ -30,6 +30,7 @@ import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/screens/tv/tv_root_shell.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/layout_constants.dart';
+import 'package:pleya/utils/platform_detector.dart';
 
 /// What a screen inside the shell can observe about the space it was given.
 class _Reading {
@@ -71,6 +72,13 @@ void main() {
   late FocusScopeNode contentScope;
 
   setUp(() {
+    // TvLayoutConstants.scaleOf now guards on PlatformDetector.isTV()
+    // (docs/density-audit-2026-09.md, Reviewronde finding 3): without this
+    // override isTV() is false in a widget test, scaleOf returns the flat 1.0
+    // fallback for both readings below, and "does not shrink the ten-foot
+    // type scale" passes vacuously regardless of whether the real
+    // TvDisplayMetrics-before-MediaQuery correction still works.
+    TvDetectionService.debugSetAppleTVOverride(true);
     coordinator = TvNavigationCoordinator()..updateConditions(const TvNavConditions(hasLiveTv: false));
     nodes = FocusMemoryTracker(debugLabelPrefix: 'tvNav');
     navScope = FocusScopeNode(debugLabel: 'nav');
@@ -78,6 +86,7 @@ void main() {
   });
 
   tearDown(() {
+    TvDetectionService.debugSetAppleTVOverride(null);
     coordinator.dispose();
     nodes.dispose();
     navScope.dispose();

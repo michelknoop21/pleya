@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/grid_size_calculator.dart';
 import '../focus/focus_theme.dart';
 import '../utils/layout_constants.dart';
+import '../utils/platform_detector.dart';
 import 'media_card_grid_layout.dart';
 
 /// Shared grid delegate configuration for media item grids
@@ -66,8 +67,14 @@ class MediaGridDelegate {
     return maxCrossAxisExtent;
   }
 
+  /// F-D2 (docs/density-audit-2026-09.md): off TV this used to read
+  /// [TvLayoutConstants.scaleOf] unconditionally, so a plain desktop/iPad
+  /// grid's own poster spacing drifted with the window's height (10.2 at
+  /// 900pt, 16 at 1440pt) even though nothing there is a ten-foot surface.
+  /// TV keeps its real scale; everywhere else this is scale 1 — the same
+  /// value `scaleOf` already returns at the 1080-reference height.
   static double spacingFor({required BuildContext context, bool fullBleedImage = false}) {
-    final scale = TvLayoutConstants.scaleOf(context);
+    final scale = PlatformDetector.isTV() ? TvLayoutConstants.scaleOf(context) : 1.0;
     if (!fullBleedImage) return GridLayoutConstants.posterGridSpacingForScale(scale);
     return GridLayoutConstants.fullCardGridSpacingForScale(scale);
   }
