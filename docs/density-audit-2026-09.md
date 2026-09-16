@@ -1,9 +1,10 @@
 # Density-audit Pleya, september 2026
 
-**Status: CHANGES NEEDED · zie "Reviewronde, 15 september" onderaan.** Twee onafhankelijke reviews
-op de volledige branchdiff bevestigden 7 bevindingen; Michel trok de eerdere PASS in en triageerde
-ze. 5 van de 7 zijn afgehandeld (findings 2, 3, 4-gedeeltelijk, 5, 6); finding 1 (artwork-selectie op
-iPad) wacht op Michels visuele beoordeling, finding 4 is alleen compleet voor `dialogs.dart`. De
+**Status: klaar voor push, wacht op Michels akkoord · zie "Reviewronde, 15 september" onderaan.**
+Twee onafhankelijke reviewrondes op de volledige branchdiff bevestigden in totaal 10 bevindingen;
+Michel triageerde ze allebei. Alle bevindingen zijn afgehandeld op finding 4's restant na
+(`media_detail_screen.dart`/`library_browse_tab.dart` boven de 500-regelgrens, `dialogs.dart` zelf is
+compliant): Michel heeft expliciet besloten dat een eigen, latere ronde vóór push niet nodig is. De
 oorspronkelijke conclusie blijft overeind: geen globale density/schaalfout, DEC-028 en de 0,85-klem
 blijven met rust. Niet gepusht.
 
@@ -528,11 +529,69 @@ correctieronde weer vooraf registreren.
 heeft de functie's clamp-logica toch al aangeraakt met de 70%-vloer, dus een tweede cosmetische
 wijziging erbovenop was nu meer kans op ruis dan winst.
 
+## Tweede reviewronde, 15/16 september 2026
+
+Na finding 1's afronding is, zoals Michels eigen laatste stap in de opdracht voorschreef, een nieuwe
+onafhankelijke review gedraaid op de bijgewerkte branchdiff. Bevindingen buiten de eigen scope van
+deze branch (o.a. in `lib/screens/tv/tv_search_view.dart`, dat van een andere, gelijktijdig actieve sessie
+in dezelfde worktree is) zijn niet opgepakt en aan Michel voorgelegd, niet aan de eigenaar van dat
+bestand doorgezet.
+
+### Finding 8: nested-route type-scale-test werd zinledig (FIXED)
+
+`TvLayoutConstants.scaleOf`'s finding-3-guard (`PlatformDetector.isTV() ? ... : 1.0`) maakte
+`test/navigation/tv/tv_nested_route_viewport_test.dart`'s "does not shrink the ten-foot type scale"
+zinledig buiten een echte TV-build: zonder `debugSetAppleTVOverride(true)` is `isTV()` daar `false`,
+dus beide gemeten waarden vielen terug op de vlakke 1,0 en de test bewees niets meer over de
+onderliggende `TvDisplayMetrics`-vóór-`MediaQuery`-correctie. `debugSetAppleTVOverride(true)`/`(null)`
+toegevoegd aan `setUp`/`tearDown`, zoals ~96 andere TV-tests al doen. Alle 4 tests in het bestand
+blijven groen, nu om de juiste reden.
+
+### Finding 9: overclaim in `scaleOf`'s doc-comment (FIXED, doc only)
+
+Dezelfde doc-comment beweerde dat de guard "closes that whole bug class at its one shared root".
+Klopt niet voor `scaleForSize`/`scaleForHeight` zelf: die blijven bewust context-vrij (geen
+`BuildContext` nodig) en dus ongegat, en drie bestaande call sites (`library_recommended_tab.dart`,
+`media_detail_screen.dart`, `tv_browse_rail.dart`) blijven zonder eigen `isTV()`-guard, veilig alleen
+omdat ze vandaag toevallig binnen TV-only paden zitten. Comment gecorrigeerd om dat expliciet te
+maken.
+
+### Finding 10: dood `effectiveUpper` in `detailHeaderHeight` (FIXED)
+
+`effectiveUpper = math.max(effectiveFloor, upper)` is wiskundig altijd gelijk aan `upper`
+(`effectiveFloor <= floor <= upper` voor elke input), dus de `max()` koos nooit de andere kant.
+Verwijderd, `clamp()` neemt `upper` nu direct. Gedragsgelijk bewezen: alle 18 bestaande tests
+(`detail_header_layout_test.dart` + `media_detail_desktop_header_density_test.dart`) ongewijzigd
+groen.
+
+### Finding 11: gedeelde vorm met `home_hero_layout.dart` (vastgelegd, geen code-actie)
+
+`detailHeaderHeight` en `homeHeroHeight` implementeren onafhankelijk dezelfde "klem aan
+viewport-fractie, geplafonneerd op 16:9"-vorm. Michel: alleen de doc-comment verduidelijken, geen
+gedeelde helper extraheren, want dat raakt `home_hero_layout.dart` en Home-hero staat op zijn eigen
+instructie buiten deze fixronde. Doc-comment op `detailHeaderHeight` uitgebreid met een expliciete
+kruisverwijzing, geen wijziging in `home_hero_layout.dart` zelf.
+
+### Procesbevinding: AI-co-authorship-trailers in de commitgeschiedenis
+
+Twee ongepushte commits in deze branch bevatten een trailer die CLAUDE.md's "Geen
+vendor-/modelvermelding"-regel verbiedt: de toenmalige `f0068c1a` (Co-Authored-By: Claude Sonnet 5 +
+Claude-Session) en `9761ea09` (Co-authored-by: Copilot, van de andere sessie in deze worktree).
+Michel koos voor direct herschrijven. Uitgevoerd met `git filter-branch --msg-filter` (geen `-i`,
+geen `--force` nodig want niets gepusht), gescopet op precies de tien commits sinds de vorige
+fixronde. Geverifieerd: `git diff` tussen de oude en nieuwe boom is leeg (alleen messages
+veranderden, geen bestandsinhoud), en geen enkele commit-message in de branchdiff noemt nog een
+AI-/modelnaam. Alle SHA's ná `f0068c1a` zijn daardoor veranderd; de vijf directe SHA-verwijzingen in
+`docs/density-audit-2026-09.md`, `docs/ios-unified-implementation-register.md` en
+`docs/tvos-fysieke-correctieronde.md` zijn bijgewerkt naar de nieuwe hashes. De andere sessie is
+via een bericht op de hoogte gebracht van haar eigen gewijzigde SHA (`9761ea09` → `2a467531`).
+
 ### Openstaand vóór push
 
-Finding 1 is afgerond (behouden + vastgelegd). Michel heeft op 15 september 2026 expliciet besloten
-het resterende deel van finding 4 (`media_detail_screen.dart`/`library_browse_tab.dart` boven de
-regelgrens) niet vóór deze push op te pakken: een eigen, apart geplande extractieronde volgt later.
-Deze push landt dus met `dialogs.dart` compliant en de twee grote bestanden nog boven de grens.
-Daarna: een nieuwe, onafhankelijke review op de uiteindelijke diff, zoals Michels eigen laatste stap
-in de opdracht voorschreef. Zie de handoff in `~/.claude/handoffs/` voor de volledige stand.
+Alleen het resterende deel van finding 4 staat nog open: Michel heeft op 15 september 2026 expliciet
+besloten `media_detail_screen.dart`/`library_browse_tab.dart` (boven de 500-regelgrens) niet vóór
+deze push op te pakken. Een eigen, apart geplande extractieronde volgt later. Deze push landt dus met
+`dialogs.dart` compliant en de twee grote bestanden nog boven de grens. Verder is alles afgerond:
+beide reviewrondes zijn getriageerd en verwerkt, de volledige testsuite is groen op het bekende,
+onveranderde falenpatroon na (17 bestanden, nul overlap met de wijzigingen van deze branch). Wacht op
+Michels expliciete akkoord om te pushen.
