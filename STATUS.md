@@ -1,10 +1,42 @@
 # STATUS · Pleya
 
-_Laatst bijgewerkt: 2026-09-01. `main` staat op `183d694` op zowel `origin` (gitea) als `github`,
-SHA-parity bevestigd: Pleya Verify Core 1.0 is volledig gemerged. `feat/pleyaserver` is nog los,
-gedivergeerd, en zit midden in de DEC-064-hardwareronde (zie hieronder) voordat hij naar `main` mag._
+_Laatst bijgewerkt: 2026-09-07. `main` staat op `42986a14`, build 268 op TestFlight. DEC-108
+(kijklijst, aanvragen en zoeken in de catalogustaal) is voorgedragen, goedgekeurd én gebouwd in
+één dag. `feat/pleyaserver` staat ongewijzigd sinds 2026-09-01 nog steeds los en gedivergeerd,
+en zit nog steeds midden in de DEC-064-hardwareronde (zie verderop) voordat hij naar `main` mag._
 
 ## Waar was ik
+
+**7 september: DEC-108 van voordracht tot gebouwd, in drie sessies.** Michel vroeg om bij alle
+series-rijen omlaag en weer omhoog te navigeren om focusgedrag te controleren, en dat leverde
+meteen vier nieuwe hardwarebevindingen op (CAT10, CAT11, ROW1p, ROW1r) naast de bestaande CAT9
+(iOS-chips die niets deden op Alle films). CAT11 (de aanvraag- en zoekvensters gebruikten veel
+grotere kaarten dan de rest van de catalogustaal) bleek geen bugfix maar een ontwerpvraag: mockup
+34 (kijklijst), 35 (aanvragen) en 36 (zoeken) zijn dezelfde dag voorgedragen en goedgekeurd als
+DEC-108, met "Alle aanvragen" als raster in plaats van lijst. Daarna gebouwd in drie stappen:
+`TvWatchlistView` (mockup 34, met de gedeelde `TvCatalogCardGrid`/`TvCatalogCard`), `TvSeerrRequestsView`
++ `TvSeerrDiscoverView` (mockup 35, met `TvCatalogCardRail` als de horizontale broer van het
+raster), en `TvSearchView` (mockup 36, sluit ook SEARCH1). Een onafhankelijke Codex-challenge over
+de hele DEC-108-diff vond daarna nog acht bevindingen in de gedeelde primitives, vooral
+losgekoppelde `FocusNode`'s die `canRequestFocus` bleven teruggeven nadat de `ListView` ze
+virtualiseerde, en die zijn dezelfde sessie gesloten (CAT16). Build 268 staat op TestFlight; alle
+nieuwe schermen dragen `FIXED, hardware open`, want de bevindingen zelf kwamen van hardwarefoto's
+maar de fixes zijn alleen in de simulator nagemeten.
+
+**Wat er nog open staat uit die ronde.** ROW1r (rijenlijst van het Home-aanpaspaneel lijkt onder de
+paneelrand door te lopen) is `NOT REPRODUCED`: het is geen bug maar een ontbrekend fade/scroll-hint
+signaal, en gaat als ontwerpvraag mee in een volgende mockupronde. GOLD2 (de golden voor de
+vertaalde voetregel) staat `OPEN, wacht op een runner-run`, want lokaal bijwerken kan niet: macOS
+rasteriseert tekst anders dan de Linux-CI-runner. I18N6 (64 resterende Engelse strings in
+`nl.i18n.json`, van de 119 die ROW1q blootlegde) staat als eigen werklijst met een baseline-test die
+alleen mag krimpen. LIB7 (Bibliotheken naar bronbeheer, mockup 27, DEC-092) is goedgekeurd maar nog
+niet gebouwd. En PLR6 (Menu sluit het spelerpaneel niet op hardware) staat nog steeds
+`HARDWARE ONLY, blokkerend`, met een aantoonbaar groene Dart-kant, dus de verdachte zit in het
+native drukpad.
+
+**`feat/pleyaserver` is ongewijzigd sinds 2026-09-01.** Er is deze week niet aan gewerkt; de
+DEC-064-hardwareronde (zie "Volgende stap") staat nog open op precies dezelfde vier testtitels als
+vorige week.
 
 **Pleya Verify Core 1.0 is klaar en zit nu in `main`.** Vijftien fasen, afgesloten met een tweede
 hardening-pass ([DEC-068](docs/DECISIONS.md#dec-068)) en de documentatielaag
@@ -176,7 +208,22 @@ geeft 24 treffers zonder seizoen, `kind=season` levert ze alsnog, en zonder toke
 
 ## Volgende stap
 
-**Niet PS-5 vanaf `main` beginnen: die fase bestaat al, compleet en getest, op `feat/pleyaserver`.**
+**Eerst de DEC-108-hardwareronde: build 268 op de fysieke Apple TV langs kijklijst, aanvragen en
+zoeken.** Alle drie zijn gebouwd en simulator-geverifieerd, maar `FIXED, hardware open` is de
+status van bijna elke regel uit deze week. Loop CAT10 (focusring rij 1 na scroll), CAT11/CAT12/CAT13
+(rail openen en sluiten op elke nieuwe pagina, ook op een lege of gefilterde staat), CAT14 (lege
+catalogus op Alle films/series), CAT15 (verticale navigatie tussen gestapelde rails), CAT16 (acht
+Codex-bevindingen, onder meer weggescrolde kaarten die de focus claimen) en ROW1p/ROW1q (het
+Home-aanpaspaneel) na op het toestel, en werk de tabel in `docs/tvos-fysieke-correctieronde.md` bij
+van "hardware open" naar `VERIFIED` per regel die standhoudt. Daarna GOLD2: de golden opnieuw
+genereren via `workflow_dispatch` op `.github/workflows/goldens.yml` en het artifact terugcommitten,
+want lokaal bijwerken kan niet op macOS. I18N6 (64 resterende Engelse strings) en LIB7 (Bibliotheken
+naar bronbeheer, mockup 27 al goedgekeurd) staan daarna in de rij, in die volgorde uit
+`docs/tvos-fysieke-correctieronde.md`. PLR6 blijft `HARDWARE ONLY, blokkerend` en heeft een eigen
+devicerun nodig met de console meelezend, zie `docs/tvos-remote-press-pipeline.md`.
+
+**Daarna, ongewijzigd sinds 2026-09-01: niet PS-5 vanaf `main` beginnen, die fase bestaat al,
+compleet en getest, op `feat/pleyaserver`.**
 Dat was de aanname tot 2026-09-01; de integratie-gereedheidsaudit die dag wees uit dat die branch al
 verder is dan `main` zelf weet. De echte volgende stap is de DEC-064-hardwareronde afmaken (zie "Waar
 was ik" hierboven): op de macOS-release-build en de tvOS-build op de echte Apple TV, per toestel vier
@@ -254,10 +301,22 @@ Nieuw erbij op deze build: op een echt toestel met trackpad of muis de zijbalk n
 
 ## Blockers
 
-- [ ] **Er is geen iOS-build 240 bij App Store Connect**: `fastlane notes build:240` wachtte de volle
-  1800 seconden en `notes_show` bevestigt het los met `ios: build 240 niet gevonden`. tvOS en macOS
-  dragen de tekst wel, allebei teruggelezen op 2041 tekens. De upload is nooit aangekomen of nooit
-  VALID geworden; zodra de build er staat is de lane opnieuw draaien genoeg, hij is idempotent.
+- [ ] **DEC-108 (kijklijst, aanvragen, zoeken in de catalogustaal) is niet op een toestel gezien**:
+  build 268 draagt `TvWatchlistView`, `TvSeerrRequestsView`, `TvSeerrDiscoverView` en `TvSearchView`,
+  simulator-geverifieerd maar `hardware open` op elke regel: CAT10, CAT11, CAT12, CAT13, CAT14,
+  CAT15, CAT16 en ROW1p/ROW1q in `docs/tvos-fysieke-correctieronde.md`.
+- [ ] **GOLD2**: de golden voor de vertaalde Home-voetregel (`tv_home_production_long_titles.png`)
+  staat nog op de oude Engelse tekst. Regenereren kan alleen via `workflow_dispatch` op
+  `.github/workflows/goldens.yml`, niet lokaal op macOS.
+- [ ] **I18N6**: 64 Engelse strings in `nl.i18n.json` staan nog open, bewaakt door
+  `test/i18n/nl_locale_parity_test.dart`'s krimpende baseline.
+- [ ] **LIB7**: Bibliotheken naar bronbeheer (mockup 27, DEC-092 goedgekeurd) heeft nog geen
+  bouwronde gehad.
+- [ ] **PLR6, blokkerend**: Menu sluit het spelerpaneel niet op een echte Apple TV, dwingt de app af
+  te sluiten. De Dart-kant is aantoonbaar niet de oorzaak (contracttest groen); verdachte is het
+  native drukpad. Vraagt een devicerun met Xcode's console meelezend.
+- [x] ~~**Er is geen iOS-build 240 bij App Store Connect**~~ achterhaald: build 268 staat inmiddels
+  op alle drie de platforms op TestFlight, ruim voorbij 240.
 - [ ] **De client verzwijgt een mislukte schrijving**: `_postJson` in
   `lib/services/pleya_server_client.dart` vangt elke fout af en geeft `null` terug, dus een `POST
   /watch-state` die op een 404, een 5xx of een verbindingsweigering strandt, komt als geslaagd terug
@@ -297,12 +356,14 @@ Nieuw erbij op deze build: op een echt toestel met trackpad of muis de zijbalk n
 - [ ] **De NEW-badge leest de verkeerde bron**: `lib/widgets/new_content_badge.dart:36` bepaalt het label voor films en afleveringen met `(item.viewCount ?? 0) == 0`, dus een titel die half bekeken is maar nooit uitgekeken toont "NEW". De juiste bron is de afgeleide kijkstatus. Gevonden tijdens het Pleya Server-onderzoek en daar bewust niet gerepareerd, want dat spoor was document-only.
 - [ ] **Twee tests falen op de Linux-runner en niet lokaal op macOS**: `side_navigation_rail_test.dart: Apple TV D-pad focus skips hidden downloads item` (verwacht `NavigationTabId.settings`, krijgt `null`) en `pleya_share_pair_any_test.dart: pairAny pairs via a later candidate when the first IP is dead`. Aantoonbaar niet van het dependency-werk: de controle-run op `main` van vóór die branch geeft exact dezelfde twee (branch [32031692723](https://github.com/michelknoop21/pleya/actions/runs/32031692723), controle op main [32032784299](https://github.com/michelknoop21/pleya/actions/runs/32032784299)). Ze zijn nooit eerder gezien omdat GitHub Actions op deze repo nog nooit had gedraaid; `origin` is een Gitea-instance. Bewust niet gerepareerd in de dependency-ronde.
 - [ ] **`softprops/action-gh-release@v3` is niet in een echte run bewezen**: `build.yml` leidt `tag_name` af uit een tag-ref, en een `workflow_dispatch` op een branch heeft die niet, dus de stap faalt met `Missing tag_name parameter` voordat de actie iets doet. Dat is een eigenschap van het dispatchen, niet van de versiebump. Alle andere bijgewerkte actions zijn wél groen gedraaid, inclusief de artefact-heenweg `upload-artifact@v7` naar `download-artifact@v8` (Build-run [32031695034](https://github.com/michelknoop21/pleya/actions/runs/32031695034), alleen Linux). Er is daardoor ook geen draft release aangemaakt om op te ruimen.
-- [ ] **Kijklijst op een toestel**: alles is unit- en widget-gedekt (3264 tests), maar de TV-focusronde, de profielwissel tussen twee Plex Home-gebruikers, het verwijderen van een gemergde entry en de offline-ronde zijn alleen op een toestel te zien. **Build 221 bestaat niet in App Store Connect**: het hoogste nummer is op alle drie de platforms 220 van 15 augustus, en dat is vóór het kijklijstwerk. Er moet dus eerst een nieuwe upload draaien.
+- [x] ~~**Kijklijst op een toestel**~~ achterhaald: dit betrof de oude, niet-TV-catalogustaal
+  implementatie. De kijklijst is 7 september herbouwd als `TvWatchlistView` (DEC-108, mockup 34);
+  de hardwareverificatie staat nu onder de DEC-108-blocker hierboven.
 
 - [ ] **`textTheme.copyWith` vervangt vier stijlen volledig**: `mono_theme.dart:149-156` zet `displayLarge`, `titleMedium`, `bodyMedium` en `bodySmall` met een kale `TextStyle` in `copyWith`, wat de stijl vervángt in plaats van aanvult. Alle vier verliezen `fontSize` en `height` uit `Typography.englishLike2021`; `displayLarge` en `titleMedium` verliezen daarbij ook de kleur uit `.apply()`. Oplossing per stijl: `Typography.englishLike2021.<stijl>.copyWith(...)`. Losse opruiming, bewust niet tijdens de densityronde gedaan omdat typografie dan tegelijk met de schaal verandert.
 - [x] ~~**Twee tests falen op de Linux-runner en niet lokaal op macOS**~~ opgelost 2026-08-18 in `c00ab9d`. De railtest drukte drie keer omlaag terwijl er met Downloads verborgen op Apple TV maar drie items staan; op Windows en Linux zet `_showFullscreenToggle` er een vierde achter Settings, dus de focus schoof daarheen en Enter bereikte `onDestinationSelected` nooit. Twee stappen is het juiste aantal en bewijst pas echt dat Downloads is overgeslagen. De dode host in de share-test was `127.0.0.2`, wat Linux gewoon beantwoordt; nu `192.0.2.1` uit TEST-NET-1. Blijft staan als voetnoot: `_showFullscreenToggle` leest `dart:io Platform` rechtstreeks (`side_navigation_rail.dart`) en is voor een test niet te overrulen, dus een volgende test die stappen telt voorbij Instellingen loopt opnieuw per platform uiteen.
 - [ ] **`softprops/action-gh-release@v3` is nog niet in een echte run bewezen**: de oorzaak is weg. De stap kreeg helemaal geen `tag_name` mee en leunde op een tag-ref, die een `workflow_dispatch` op een branch niet heeft, dus hij faalde met `Missing tag_name parameter` voordat de actie iets deed. Sinds 19 augustus staat er een expliciete `tag_name` uit de pubspec-versie die dezelfde stap al leest, dezelfde waarde waar de appcast-enclosures naar wijzen. Een groene run heeft dat nog niet bevestigd. Dat is een eigenschap van het dispatchen, niet van de versiebump. Alle andere bijgewerkte actions zijn wél groen gedraaid, inclusief de artefact-heenweg `upload-artifact@v7` naar `download-artifact@v8` (Build-run [32031695034](https://github.com/michelknoop21/pleya/actions/runs/32031695034), alleen Linux). Er is daardoor ook geen draft release aangemaakt om op te ruimen.
-- [ ] **Kijklijst op een toestel**: alles is unit- en widget-gedekt, maar de TV-focusronde, de profielwissel tussen twee Plex Home-gebruikers, het verwijderen van een gemergde entry en de offline-ronde zijn alleen op een toestel te zien. De blokkade dat er geen build was is weg: 226 tot en met 229 staan in App Store Connect.
+- [x] ~~**Kijklijst op een toestel**~~ achterhaald, zelfde reden als hierboven.
 - [ ] **De scope van `favoriteChannels` is niet gemeten**: dit Plex-account heeft geen provider met het `livetv`-protocol, dus er bestaat geen geldige `source` en een synthetische regel wordt geweigerd met 400. Of die lijst per account of per Home-gebruiker is, blijft daarmee open. De proef die het beslist: een account met een echte tuner, favoriet zetten als gebruiker A, teruglezen als B. Het meetscript kan dat al zodra er een tuner is. Geen blocker voor de gedichte credentialgrens, wel voor de vraag of de gekozen profielscope semantisch klopt met wat Plex opslaat.
 - [ ] **Live TV-favorieten zijn niet te verifiëren zonder tuner**: dezelfde reden. Bewuste achteruitgang die daarbij hoort: een Home-gebruiker van wie de binding nog loopt ziet geen favorieten, waar de servertoken vandaag wél een antwoord gaf. Zie [DEC-021](docs/DECISIONS.md#dec-021).
 - [ ] **Regressieronde op de fysieke Apple TV**: de vijf fixes van 14 augustus zitten inmiddels in tvOS build 219 en zijn unit- en widget-gedekt, maar de Siri Remote is niet te simuleren. Het toetsenbord is los bevestigd (zie hierboven); de skip-knoppen, autoplay en het scrubben nog niet.
@@ -347,6 +408,33 @@ xcrun devicectl device process launch --console --terminate-existing \
 ```
 
 ## Recente sessies
+
+### 2026-09-07
+- Bevindingsronde op verzoek van Michel (bij elke series-rij van rij 1 naar rij 2 navigeren en
+  terug): leverde CAT10 (focusring afgeknipt na scroll, `57b6e611`), CAT11 (aanvraag/zoek-kaarten
+  te groot, geen bug maar een ontwerpvraag), ROW1p (focusindicator blijft op een oude node hangen na
+  een keyless lijstherschikking, `87e5c7c9`) en ROW1r (rijenlijst lijkt onder de paneelrand door te
+  lopen, `NOT REPRODUCED`, ontwerpvraag) op.
+- Mockup 34 (kijklijst), 35 (aanvragen) en 36 (zoeken) voorgedragen in
+  `docs/assets/tvos-unified/mockups-2026-09-07/` en dezelfde dag goedgekeurd als DEC-108
+  (`docs/tvos-redesign-34-36-approved.md`). Bij Alle aanvragen gekozen voor het raster (C1).
+- Gebouwd in drie stappen: `TvWatchlistView` (`81db408d`), `TvSeerrRequestsView` +
+  `TvSeerrDiscoverView` (`110ee763`), `TvSearchView` (`30aae55b`). Onderweg CAT12 (rail sluiten op
+  een lege pagina laat de focus nergens staan), CAT13 (gepushte catalogustaalpagina komt zonder
+  gefocust item op) en CAT14 (lege catalogus op Alle films/series had niets om op te staan) gevonden
+  en gesloten, en `be482a24` haalde de catalogustegel en het catalogusraster los van de unified
+  catalog zodat de nieuwe schermen ze konden hergebruiken.
+- ROW1q gesloten (`06c7148a`): het Home-aanpaspaneel bleek voor 55 zichtbare sleutels Engels te
+  tonen op een Nederlandstalige app, gevonden met een volledige sleutelvergelijking tussen `en` en
+  `nl` (119 gaten in totaal). De overige 64 staan als I18N6 met een baseline-test die alleen mag
+  krimpen (`test/i18n/nl_locale_parity_test.dart`). GOLD2 (de golden voor de vertaalde voetregel)
+  staat open en wacht op een `workflow_dispatch`-run.
+- Een onafhankelijke Codex-challenge over de hele DEC-108-diff (`ab2b6d7a..HEAD`) vond acht
+  bevindingen in de gedeelde primitives, waaronder losgekoppelde `FocusNode`'s in
+  `TvCatalogCardRail` die na virtualisatie nog `canRequestFocus: true` gaven. Alle acht gesloten
+  dezelfde sessie als CAT16 (`2fbf3ac6`).
+- Build 268 naar TestFlight, releasenotes bijgewerkt. `flutter analyze` en de gerichte tests groen
+  op elke stap; geen enkele regel uit deze ronde heeft nog een hardwarebevestiging.
 
 ### 2026-09-01
 - Integratie-gereedheidsaudit van `feat/pleyaserver` (read-only, geen schrijfacties): de vijf lokale
@@ -399,21 +487,5 @@ xcrun devicectl device process launch --console --terminate-existing \
 - Besluit: de matrix blijft ongewijzigd tot PS-2 sluit, want onderhoudsregel 1 verspringt de status bij het afsluiten van een fase en PS-2 loopt nog. Geen bestand gewijzigd, geen commit.
 - `docs/CHANGELOG.md` liep tot 3 juli terug en stond op 740 regels. Alles van vóór 10 augustus staat nu in [docs/archive/CHANGELOG-tot-2026-08-06.md](docs/archive/CHANGELOG-tot-2026-08-06.md); het hoofdbestand houdt 569 regels over.
 
-### 2026-08-18 en 2026-08-19
-- De aanvragen-schermen in zeven commits van `02d5b71` tot `da1bbab`: echte titel en poster per regel via `SeerrClient.hydrateRequests`, de kaart herschikt met samengevatte seizoenen, filterbalk en zoekveld rechtgezet, kwaliteitsprofiel en rootmap toegevoegd, en de posterbadge binnen zijn kaart.
-- Vier losse meldingen erbij: het zwarte scherm bij sorteren in de kijklijst (`02d5b71`, een sheet die `MainScreen` onder zichzelf vandaan popte), de onzichtbare selectie in elke segmented instelling (`1717a44`), de skip-intro-knop bij films (`5e6d5e0`) en de filterbalk van de kijklijst (`d0678c7`).
-- Het taalgeheugen van de ondertiteling op 19 augustus, drie commits: alleen direct play schreef naar de opslag, transcoding niet (`cb2f486`), de keuze moest ook op de serie (`0b25734`), en een onafhankelijke review vond een race die in de fix zelf zat (`05a9179`).
-- Builds 228 en 229 naar TestFlight op alle drie de platforms; 230 draait. 3583 tests groen, `scripts/ci_checks.sh` schoon.
-- Het Tautulli-werk van een parallelle sessie vastgelegd in `6e595f1`, zodat de builds naar een commit verwijzen in plaats van naar een werkboom.
-- Op 19 augustus daarna twee UI-rondes. `6247253`: Filters, Sorteren en Groepering openen viewportbewust in plaats van bij de muis, via een presentatiestand op `OverlaySheetHost` en een pure `resolveOverlaySheetGeometry`; in dezelfde commit kreeg de Seerr-filterbalk de echte `LibraryHeaderBar`, van 92px naar 42px. Zie [DEC-054](docs/DECISIONS.md#dec-054).
-- `29431f9`: een klik op de zijbalk kon de hero eronder starten. Twee races tussen een boolean die direct omslaat en een breedte die 200 ms animeert. De balk bezit zijn band nu via de getekende breedte, en het billboard opent details in plaats van af te spelen. Acht nieuwe tests, drie ervan vóór de fix aantoonbaar rood. Zie [DEC-055](docs/DECISIONS.md#dec-055) en de twee gotchas in `CLAUDE.md` (`7aae62b`).
-- `40658ed`: de band uit `29431f9` lag te breed. Eigendom hoort verdiend te worden door over de ingeklapte balk binnen te komen, niet vooraf gereserveerd omdat content binnen de toekomstige uitgeklapte breedte valt. `owned` (max van getekend en doel) drukte die regel al uit, maar alleen laag 1 las hem; de hover-MouseRegion stond op `Positioned.fill` over de vaste 220. Die volgt nu `owned`. Nieuwe test was vóór de fix rood.
-- 3631 tests groen, `scripts/ci_checks.sh` schoon. De tvOS-variant van de zijbalkbug is onderzocht in de simulator en niet aangetoond.
-- Releasenotes van 229 tot en met 231 samengevoegd tot één sectie voor build 231, met de drie deviceronde-checks erin als *Worth checking*. Vier handleidinghoofdstukken bij: Aanvragen (geavanceerde opties, de aanvraaglijst, de nieuwe header), Ondertitels en audio (wat er bij inbranden nodig is), het beginscherm (het billboard opent details) en de kijklijst (sorteren en filteren).
-
-### 2026-08-18
-- Architectuurontwerp voor Pleya Server opgeleverd als [docs/pleya-server-architecture.md](docs/pleya-server-architecture.md): 24 hoofdstukken, een roadmap van dertien fasen met per fase een expliciete scope en drift check, en acht voorgestelde DEC-besluiten (DEC-030 tot en met DEC-037). Document-only, geen commit, geen regel code.
-- Het onderzoek keerde de opdracht om. De neutrale laag bestaat al en draagt vier backends; het gat zit in de playbackbeslissing, waar de client op elk toestel dezelfde hardgecodeerde profielen stuurt. `DeviceCapabilities` en `PlaybackPlan` staan daarom vóór metadata in de roadmap.
-- Reviewronde erachteraan met acht blokkerende aanscherpingen: fase 1 specificeert alleen het oppervlak tot en met fase 4, `capabilities` wint van `feature_level`, scan-signature los van identiteit, `detectionStatus` in plaats van `confidence`, planner als filter met score, reden als domeincode, bootstrap-identiteit los van multi-user, streamtokens niet eenmalig, `ETag` zonder verplichte contenthash, en geen `transcode_workers` in v1. Plus een anti-driftregel en twee nieuwe open vragen.
-- Geverifieerd na de laatste ronde: 16 regelverwijzingen tegen de code (twee gecorrigeerd), 6 Mermaid-blokken parsen, 64 interne ankers resolven, `anti-slop-check.sh` schoon.
-- Eerder op de dag geland op `main` (`34f2c5f` tot `8e84f3a`): de publieke releasenotes gaan als "What to Test" mee op elke TestFlight-build, met `verify_build_notes` die terugleest wat er daadwerkelijk op de build staat, plus zeven bijgewerkte hoofdstukken van de handleiding.
+De sessies van 18 en 19 augustus staan in
+[docs/archive/CHANGELOG-2026-08-07-tot-19.md](docs/archive/CHANGELOG-2026-08-07-tot-19.md).

@@ -4,6 +4,64 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-07] DEC-108: kijklijst, aanvragen en zoeken in de catalogustaal
+
+Een navigatieronde over de series-rijen op hardware leverde vier nieuwe bevindingen op (CAT10,
+CAT11, ROW1p, ROW1r). CAT11, dat de aanvraag- en zoekvensters veel grotere kaarten gebruikten dan
+Alle films en Alle series, bleek geen bugfix maar een ontbrekend ontwerp: mockup 34 (kijklijst), 35
+(aanvragen) en 36 (zoeken) zijn dezelfde dag voorgedragen en goedgekeurd als
+[DEC-108](DECISIONS.md#dec-108-kijklijst-aanvragen-en-zoeken-krijgen-de-catalogustaal-en-alle-aanvragen-wordt-een-raster).
+
+### Added
+- **`TvWatchlistView`** vervangt de TV-tak van de kijklijst door de gedeelde `TvCatalogCardGrid`/
+  `TvCatalogCard`, met de CAT5-rail (Soort, Beschikbaarheid, Sortering, geen Bronnen) en de melding
+  bij onvolledige serverdekking uit mockup 34 C.
+- **`TvSeerrRequestsView`** maakt van Alle aanvragen een raster met een statuscapsule per kaart en de
+  statusfilter als railsubview; **`TvSeerrDiscoverView`** tekent Ontdekken als rijen catalogustegels.
+  **`TvCatalogCardRail`** is de horizontale broer van het raster.
+- **`TvSearchView`** vervangt de hele TV-tak van `search_screen.dart`: resultaten in banden van
+  `TvCatalogCardRail`, de vier bronconcrete secties (collecties, afspeellijsten, personen, overig)
+  via `TvCatalogItemCard`, en `services/search_recents.dart` voor de geopende titels uit een
+  zoekopdracht (mockup 36 A), los van de bestaande getypte-zoektermen-geschiedenis.
+
+### Fixed
+- **CAT9**: op iOS deed geen enkele chip (Bronnen, Filters, Sorteren) iets op Alle films.
+  `MobileCatalogScreen` werd gepusht op de navigator boven `MainScreen`, terwijl `OverlaySheetHost`
+  juist in `MainScreen.build` zit; de gepushte route was een broer van de host-eigenaar, nooit een
+  afstammeling. Het scherm draagt nu zijn eigen host, met de sheetopeners op een context uit een
+  `Builder` daaronder.
+- **CAT10**: de focusring om een kaart in rij 1 werd na DOWN-en-UP aan de bovenkant afgeknipt.
+  `TvCatalogGrid.focusHeadroom` reserveerde ruimte die `keepVisibleAtStart` zelf weer uit beeld
+  scrolde. Het raster klemt de toegestane offset nu aan beide uiteinden, ná het frame waarin de
+  traversal zijn zin heeft gehad.
+- **CAT12/CAT13/CAT14**: drie focusvallen in de nieuwe catalogustaalpagina's zelf, gevonden tijdens
+  het bouwen. Een rail sluiten boven een lege of gefilterd-lege pagina liet de focus nergens staan
+  (`TvCatalogEmptyState` kreeg een `onActionFocusNode` als terugvalbestemming); een gepushte pagina
+  kwam op met de pagina zelf gefocust in plaats van het raster; en de lege-catalogus-staat op Alle
+  films/series tekende alleen zijn knop conditioneel, waardoor er soms niets focusbaars stond.
+- **CAT15**: `TvCatalogCardRail` beantwoordde verticale navigatie met zijn eigen focusgeheugen
+  (`focusRail()`) in plaats van de vertrekkende kolom mee te nemen, wat LAND4 (geheugen mag UP/DOWN
+  niet bepalen) brak op elke pagina die de rail stapelt.
+- **CAT16**: een onafhankelijke Codex-challenge over de hele DEC-108-diff vond acht bevindingen in de
+  gedeelde primitives. De zwaarste: `TvCatalogCardRail`'s knopen misten een attachment-toets, dus een
+  weggescrolde, gevirtualiseerde kaart claimde de focus zonder hem te verplaatsen.
+- **ROW1p**: het Home-aanpaspaneel liet meerdere focusindicators tegelijk zien na een keyless
+  lijstherschikking. `FocusableWrapper.didUpdateWidget` nam nu de focustoestand van een gewisselde
+  node over, uitgesteld tot na het frame.
+- **ROW1q**: het Home-aanpaspaneel stond deels in het Engels. `unifiedCatalog.homeRows` (48 sleutels)
+  ontbrak volledig in `nl.i18n.json`. Van de 119 ontbrekende sleutels die een volledige vergelijking
+  blootlegde zijn de 55 zichtbare op TV vertaald; de overige 64 staan als I18N6.
+
+### Notes
+- ROW1r (rijenlijst lijkt onder de paneelrand door te lopen) is `NOT REPRODUCED`: geen defect, wel
+  een ontbrekend scroll-hint signaal. Gaat als ontwerpvraag mee in een volgende mockupronde, niet als
+  bugfix.
+- GOLD2 (golden voor de vertaalde voetregel) staat open en wacht op een `workflow_dispatch`-run op
+  `.github/workflows/goldens.yml`; lokaal bijwerken kan niet, macOS rasteriseert tekst anders dan de
+  Linux-CI-runner.
+- Alles in deze ronde is simulator-geverifieerd, niets op een fysieke Apple TV. Build 268 staat op
+  TestFlight.
+
 ## [2026-09-06] iOS Unified 2026 fase 3: Alle films, Alle series en de filtersheet
 
 Fase 2 liet een getekende, inerte "Alle films ›"/"Alle series ›"-actie achter op de landing. Fase 3
