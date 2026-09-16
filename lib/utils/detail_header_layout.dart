@@ -19,6 +19,14 @@ import 'dart:math' as math;
 /// more of it — mirroring the reasoning `homeHeroHeight` already uses for the
 /// Home hero, without reusing its own 900pt cap (a different surface with a
 /// different content column).
+///
+/// Review round, `docs/density-audit-2026-09.md`: this means the generic
+/// "clamp to a viewport fraction, capped by 16:9" shape now exists twice,
+/// independently tuned, in this file and in `home_hero_layout.dart`. Left
+/// that way on purpose — `homeHeroHeight` is out of scope for this fixronde
+/// on Michel's own instruction — but a future tuning pass on either side
+/// should check the other for the same shape before assuming it is the only
+/// place this logic lives.
 /// How far [floor] may lift the header past the un-clamped 60% baseline on a
 /// short window, as a fraction of `screenHeight`.
 ///
