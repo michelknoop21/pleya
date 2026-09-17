@@ -1,7 +1,11 @@
-# Mockup 37, detailcorrectie, voorgedragen op 7 september 2026
+# Mockup 37, detailcorrectie, goedgekeurd op 7 september 2026
 
-**Status: KANDIDAAT.** Nog niet goedgekeurd. Deze set hoort bij MOC-09 en MOC-10, die allebei
-nog op OPEN staan in `docs/tvos-redesign-register.md`.
+**Status: APPROVED DESIGN TARGET.** Deze set is goedgekeurd onder DEC-109. Het canonical
+approval-manifest is [docs/tvos-redesign-37-approved.md](../../../tvos-redesign-37-approved.md).
+Dit README beschrijft de inhoud van de set; bij een statusconflict wint het approval-manifest.
+
+De set hoort bij MOC-09 en MOC-10. 09 en 10 blijven de compositie-authority voor alles wat
+37 niet expliciet corrigeert.
 
 ## Waar deze set vandaan komt
 
@@ -26,10 +30,11 @@ halen de eigen tokens niet, en die zijn hier rechtgetrokken:
 - Beide eindigen ongeveer zes pixels van de onderrand, tegen hoofdstuk 8.1 (56) en DEC-087
   (`bottomSafeInset` 81) in. De informatiegroep en de rail zijn daarom omhoog geschoven.
 
-## Wat er nieuw is en dus een eigen besluit vraagt
+## Wat er nieuw is
 
 In 09 noch 10 staat een affordance om de volledige synopsis te lezen. 37 B en 37 D leggen die
-vast en horen daarom onder een eigen DEC-nummer, voorgesteld als DEC-109.
+vast onder DEC-109: een compacte focusbare "Meer lezen"-actie die alleen bij echte overflow
+bestaat, en een scrollbaar paneel dat hem opent.
 
 ## In welke taal deze set staat
 
@@ -52,6 +57,15 @@ De informatiegroep is onderaan verankerd, zoals de code hem tekent (`Align(botto
 een extra regel omhoog groeit en de rail blijft staan. De rail piept, precies zoals mockup 30 A1
 dat goedgekeurd doet: label en kaarten staan in beeld, het bijschrift valt onder de vouw en DOWN
 scrolt door.
+
+## Gedragspunt uit de bouw
+
+In 37 C valt de synopsis van de gefocuste aflevering onder de schermrand, met de hero op
+serieniveau. De letterlijke bouw daarvan met focus-afhankelijke hoogte op de gedeelde
+`TvBrowseRail` is niet doorgezet. De hero swapt al naar titel, metaregel en synopsis van de
+gefocuste episode (`_tvDetailFocusedEpisode`), functioneel gelijkwaardig zonder een nieuw
+component op een gedeelde focus-kritieke widget. Dit productbesluit is bij de bouw van MOC-10
+op 12 september 2026 vastgelegd en getest in `test/screens/media_detail_screen_test.dart`.
 
 ## De art-map
 
