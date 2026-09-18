@@ -140,9 +140,15 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
       return _buildEmptyOrLoading(discover);
     }
 
-    return Builder(
-      builder: (context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
         final scale = TvLayoutConstants.scaleOf(context);
+        // LAND7. The height of this screen's own content box, the one
+        // `TvShellSurface`'s Column already leaves below the top navigation.
+        // Not `MediaQuery.sizeOf(context).height`, which is the full window
+        // and would put the anchor at the wrong fraction of this viewport.
+        // Same source Home's feed reads at `tv_content_feed.dart:508`.
+        final viewportHeight = constraints.maxHeight;
         // Hoofdstuk 33.3: the peeking poster tops at the bottom edge fade into
         // the page rather than being cut off flat. `dstIn` over the whole list
         // rather than a gradient box on top of it, because the thing that has
@@ -245,6 +251,12 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
                     // to Flutter, which correctly does nothing.
                     onNavigateUp: _rails.up(i, whenExhausted: _focusViewAll),
                     onNavigateDown: _rails.down(i),
+                    // LAND7. The same anchor Home has used since DEC-095: the
+                    // focused rail's label lands under the top navigation, for
+                    // every rail alike. The old default (0.5) centred every
+                    // tile in the viewport instead, so a rail further down the
+                    // page left a growing empty band above it once focused.
+                    tileScrollAlignment: TvHomeLayout.rowTileScrollAlignment(viewportHeight, scale),
                   ),
                 ),
               ],
@@ -326,7 +338,22 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
         onAction: () => unawaited(_discover.load()),
       );
     }
-    return _LandingMessage(title: t.unifiedCatalog.discovery.emptyTitle, body: t.unifiedCatalog.discovery.emptyBody);
+    return _LandingMessage(
+      title: t.unifiedCatalog.discovery.emptyTitle,
+      body: t.unifiedCatalog.discovery.emptyBody,
+      // LAND6. De rails zijn de enige andere ingang naar de complete catalogus,
+      // en die zijn er hier niet. Dat "geen hubs" is niet hetzelfde als "geen
+      // inhoud": de bevinding kwam van een simulator waar Bibliotheken een
+      // Jellyfin-bibliotheek met zes films toonde terwijl de hubs van een
+      // offline Pleya Server moesten komen. Dezelfde actie als boven de rails,
+      // dus dezelfde route: `_openAllScreen` kent het shell-contract al.
+      //
+      // De knop is bovendien het enige focusbare ding op deze pagina. Zonder
+      // hem opent de landing met de focus op de modal scope en geen item eronder
+      // (CAT12, CAT14), en op tvOS is dat een eindstation.
+      actionLabel: widget.allTitle,
+      onAction: _openAllScreen,
+    );
   }
 }
 

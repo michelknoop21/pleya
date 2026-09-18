@@ -252,6 +252,26 @@ void main() {
     expect(landing.seriesRails.single.groups.single.representativeSource.item.title, 'Kite Street');
   });
 
+  test('REV1: a Jellyfin-only setup fills the Films landing', () async {
+    // Proves the chain once the client types the hub correctly, not the
+    // defect itself: the defect lived in JellyfinClient always emitting
+    // type 'mixed', which never reached this provider in the first place.
+    aggregation.hubsResult = () => [
+      _hub(
+        'home.recent',
+        type: 'movie',
+        items: [_movie('m1', title: 'Harbourlight')],
+      ),
+    ];
+    await discover.load();
+
+    final landing = makeLanding();
+    addTearDown(landing.dispose);
+    await _settle(landing);
+
+    expect(landing.movieRails, isNotEmpty);
+  });
+
   test('DEC-086: neither landing carries a Continue Watching row, however full on-deck is', () async {
     aggregation.onDeckResult = () => [
       _movie('cw-movie', title: 'The Long Harbour'),

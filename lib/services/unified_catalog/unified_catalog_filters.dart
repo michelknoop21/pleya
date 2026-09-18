@@ -391,3 +391,47 @@ UnifiedCatalogQuery buildUnifiedCatalogQuery({
     years: filters.years.isEmpty ? null : (filters.years.toList()..sort()),
   );
 }
+
+/// A screen's `_restorePreferences` step, factored out so the TV and mobile
+/// catalog screens share one answer instead of two (CAT20).
+///
+/// [boundServerIds]/[boundLibraryKeys] are what [UnifiedCatalogFilterSelection.
+/// withKnownSources] has always pruned against: the libraries actually bound
+/// right now. That set alone cannot tell a server that no longer exists from
+/// one that simply has not finished connecting yet: a cold start can still be
+/// waiting on a slow server's endpoint race when the first read happens. This
+/// widens the known-server set with [registeredServerIds], every server the
+/// active profile is configured for, bound or not, which only the caller
+/// (backed by [MultiServerProvider.expectedServerIds]) can supply.
+///
+/// [shouldPersist] is true only once every registered server has actually
+/// bound: writing the prune back while one is still connecting would freeze
+/// that half-arrived snapshot into the store, which is the bug this exists to
+/// avoid.
+///
+/// The same race applies one level down, at the library key: a stored key for
+/// a library on a server that has not finished connecting yet is not known to
+/// be gone either, only unproven so far. A registered-but-unbound server's own
+/// stored library keys are kept provisionally instead of pruned, since there
+/// is no library list yet to check them against; a bound server's keys are
+/// still pruned against what it actually reports.
+({UnifiedCatalogPreferences preferences, bool shouldPersist}) pruneStoredSourceFilter({
+  required UnifiedCatalogPreferences stored,
+  required Set<String> boundServerIds,
+  required Set<String> boundLibraryKeys,
+  required Set<String> registeredServerIds,
+}) {
+  final pendingServerIds = registeredServerIds.difference(boundServerIds);
+  final provisionalLibraryKeys = stored.filters.libraryKeys.where((key) {
+    final parsed = parseGlobalKey(key);
+    return parsed != null && pendingServerIds.contains(parsed.serverId);
+  }).toSet();
+  final pruned = stored.copyWith(
+    filters: stored.filters.withKnownSources(
+      knownServerIds: boundServerIds.union(registeredServerIds),
+      knownLibraryKeys: boundLibraryKeys.union(provisionalLibraryKeys),
+    ),
+  );
+  final complete = registeredServerIds.every(boundServerIds.contains);
+  return (preferences: pruned, shouldPersist: pruned != stored && complete);
+}

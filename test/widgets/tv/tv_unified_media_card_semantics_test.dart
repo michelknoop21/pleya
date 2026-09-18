@@ -286,6 +286,21 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets('AGG1: a two-source group draws the multi-source badge', (tester) async {
+      final group = _group(title: 'Arrival', sources: 2);
+      await pumpCard(tester, group);
+
+      expect(find.byKey(tvUnifiedMediaCardSourceBadgeKey), findsOneWidget);
+    });
+
+    testWidgets('AGG1: a one-source group draws none', (tester) async {
+      // "1 bron" is not a fact worth a capsule (hoofdstuk 10.3).
+      final group = _group(title: 'Arrival');
+      await pumpCard(tester, group);
+
+      expect(find.byKey(tvUnifiedMediaCardSourceBadgeKey), findsNothing);
+    });
+
     // Not proven here, and deliberately not pinned either: hoofdstuk 25 quotes
     // one reading per card ("Dune, 2021, ..., 3 bronnen"), while the node today
     // also carries the merged title and context line after it, so the title and

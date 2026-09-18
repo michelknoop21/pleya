@@ -260,10 +260,25 @@ class JellyfinMappers {
   /// against the connection's baseUrl/token can run. The mapper may return
   /// `null` (matching [mediaItem]'s contract for missing-`Id` rows); those
   /// entries are dropped from the hub.
+  ///
+  /// [type] is optional. Jellyfin has no server-reported hub kind (unlike
+  /// Plex), so when the caller omits it, it is derived from the already-mapped
+  /// items via [_hubItemsType] rather than the raw JSON, so it can never drift
+  /// from what the hub actually ends up containing. REV1: every call site used
+  /// to pass a hardcoded `'mixed'`, which [UnifiedHubKind.singleKindSurface]
+  /// excludes from both the Films and the Series landing, so a Jellyfin
+  /// household never saw those rows on either screen no matter what was in
+  /// them. The two next-up rows still pass `'episode'` explicitly, because
+  /// that is what they are by definition, not something to infer. One other
+  /// call site, `fetchRelatedHubs`'s "more like this" row, also still passes
+  /// a hardcoded `'mixed'`: it feeds an item-detail page, not the Films-/
+  /// Series-landing gate this fix closes, and inheriting the item-derived
+  /// type would silently change unrelated rendering elsewhere (see REV1's own
+  /// task notes for the reasoning).
   static MediaHub syntheticHub({
     required String identifier,
     required String title,
-    required String type,
+    String? type,
     required List<Map<String, dynamic>> items,
     required ServerId serverId,
     String? serverName,
@@ -276,13 +291,31 @@ class JellyfinMappers {
       id: identifier,
       identifier: identifier,
       title: title,
-      type: type,
+      type: type ?? _hubItemsType(mappedItems),
       items: mappedItems,
       size: mappedItems.length,
       more: previewLimit != null && items.length >= previewLimit,
       serverId: serverId,
       serverName: serverName,
     );
+  }
+
+  /// `movie` when every item is a movie, `show` when every item is
+  /// show-related (`show`, `season` or `episode`, see [MediaKind.isShowRelated]),
+  /// `mixed` otherwise (including the empty list and a genuine movie/show
+  /// mix).
+  ///
+  /// Duplicated from `PleyaServerClient`'s identical `_hubItemsType`
+  /// (`lib/services/pleya_server_client/parts/browse.dart`) rather than
+  /// shared: Plex and Jellyfin are parallel backend implementations with no
+  /// shared interface (see CLAUDE.md), and coupling two independent client
+  /// modules together for four lines of pure classification logic costs more
+  /// than the duplication does.
+  static String _hubItemsType(List<MediaItem> items) {
+    if (items.isEmpty) return 'mixed';
+    if (items.every((item) => item.kind == MediaKind.movie)) return 'movie';
+    if (items.every((item) => item.kind.isShowRelated)) return 'show';
+    return 'mixed';
   }
 
   static MediaKind _libraryKindFromCollectionType(String? collectionType, String? type) {

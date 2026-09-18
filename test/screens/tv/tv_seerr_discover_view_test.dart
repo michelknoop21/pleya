@@ -20,6 +20,7 @@ import 'package:pleya/widgets/seerr_poster_card.dart';
 import 'package:pleya/widgets/tv/tv_catalog_card.dart';
 import 'package:pleya/widgets/tv/tv_catalog_card_rail.dart';
 import 'package:pleya/widgets/tv/tv_catalog_filter_rail.dart';
+import 'package:pleya/widgets/tv/tv_catalog_rail_scaffold.dart';
 import 'package:pleya/widgets/tv/tv_catalog_selection_tags.dart';
 import 'package:pleya/widgets/tv/tv_seerr_card.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
@@ -359,5 +360,61 @@ void main() {
       rails.last.widget.itemIds[1],
       reason: 'DOWN must reach the Series shelf, not park on Films or land nowhere',
     );
+  });
+
+  // ---------------------------------------------------------------------------
+  // SEARCH2b: this shelf viewport carries the same construction as Zoeken's
+  // SEARCH2, and the same defect. See tv_search_view_test.dart's SEARCH2 group.
+  // ---------------------------------------------------------------------------
+
+  group('SEARCH2b, the shelf viewport', () {
+    testWidgets('clips at its own top edge', (tester) async {
+      tester.view.physicalSize = const Size(1280, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await pumpView(tester, shelves: [_shelf('films', count: 12), _shelf('series', count: 12)]);
+
+      final viewport = tester.widget<SingleChildScrollView>(
+        find.descendant(of: find.byType(TvCatalogRailScaffold), matching: find.byType(SingleChildScrollView)),
+      );
+
+      // Clip.none switches clipping off on every edge, not just the two the
+      // focus ring needs. The header bar and search field sit above this
+      // viewport in the same Column and paint first, so a shelf scrolled past
+      // the top edge paints over them.
+      expect(viewport.clipBehavior, isNot(Clip.none));
+    });
+
+    testWidgets('the clip starts exactly where the search field ends, leaving no seam to scroll through', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await pumpView(tester, shelves: [_shelf('films', count: 12), _shelf('series', count: 12)]);
+
+      final scrollViewFinder = find.descendant(
+        of: find.byType(TvCatalogRailScaffold),
+        matching: find.byType(SingleChildScrollView),
+      );
+      final field = tester.getRect(find.byKey(const ValueKey('searchField')));
+      final viewport = tester.getRect(scrollViewFinder);
+
+      // A card's own position does not move when clipBehavior changes:
+      // clipping is a paint-time effect, not a layout one. The actual
+      // guarantee is structural: the viewport that owns the clip has to start
+      // exactly where the search field ends, with no gap a scrolled shelf
+      // could paint through.
+      expect(viewport.top, field.bottom);
+
+      // The interaction itself still has to hold up: scrolling a shelf list
+      // long enough to run its first shelf clean off the top must not throw
+      // or leave the tree broken.
+      expect(find.byType(TvCatalogCard), findsWidgets);
+      await tester.drag(scrollViewFinder, const Offset(0, -600));
+      await tester.pumpAndSettle();
+    });
   });
 }

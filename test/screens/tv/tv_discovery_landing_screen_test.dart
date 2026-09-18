@@ -499,6 +499,143 @@ void main() {
     expect(action.left, greaterThanOrEqualTo(title.right), reason: 'no overlap');
     expect(tester.takeException(), isNull, reason: 'and no overflow');
   });
+
+  // ---------------------------------------------------------------------------
+  // LAND6: een lege landing verbergt de catalogus niet
+  // ---------------------------------------------------------------------------
+
+  group('LAND6, an empty landing', () {
+    testWidgets('still offers the route into the complete catalog', (tester) async {
+      await pumpLanding(tester, hubs: const []);
+
+      expect(find.text(t.unifiedCatalog.discovery.emptyTitle), findsOneWidget);
+      // The rails are the only other way in, and there are none. Without this
+      // action the complete catalog is unreachable from this screen even when
+      // Bibliotheken shows a library with content in it, which is the case the
+      // finding came off the simulator with.
+      expect(find.text(t.unifiedCatalog.discovery.allMovies), findsOneWidget);
+    });
+
+    testWidgets('puts the remote on that action', (tester) async {
+      await pumpLanding(tester, hubs: const []);
+      await tester.pumpAndSettle();
+
+      // A tvOS page with the focus and nothing focused on it is one the remote
+      // can neither move within nor leave (CAT12, CAT14). The error branch
+      // already had an autofocusing button; the empty branch had nothing.
+      expect(FocusManager.instance.primaryFocus?.hasPrimaryFocus, isTrue);
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        isNot(contains('ModalScope')),
+        reason: 'the focus must be on the action, not on the page scope',
+      );
+    });
+
+    testWidgets('opens it through the shell when one is listening', (tester) async {
+      var opened = 0;
+      await pumpLanding(tester, hubs: const [], onOpenAll: () => opened++);
+      await tester.pumpAndSettle();
+
+      // The action is a TvPanelButton (FocusableWrapper): Select, not a tap,
+      // is how the remote activates it, same as every other tvOS control.
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      // SYS-1a's contract: the shell callback, not a bare Navigator.push that
+      // would draw over the top navigation.
+      expect(opened, 1);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // LAND7: de actieve rail komt op een vaste verticale positie
+  // ---------------------------------------------------------------------------
+
+  group('LAND7, the active rail', () {
+    List<MediaItem> movies(String prefix, int count) => [
+      for (var i = 0; i < count; i++) _movie('$prefix$i', '$prefix $i'),
+    ];
+
+    MediaHub hub(String id, String title, List<MediaItem> items) => MediaHub(
+      id: id,
+      identifier: id,
+      title: title,
+      type: 'movie',
+      items: items,
+      size: items.length,
+      serverId: 'server_1',
+      serverName: 'Server',
+    );
+
+    // Three rails to test, ten tiles deep each, so the page genuinely scrolls
+    // (VER4): a fixture that cannot scroll proves nothing about a scroll
+    // anchor. A fourth, untested rail follows them: without trailing content
+    // the third rail *is* the last item in the list, and no scrollable has
+    // room to carry the last item's heading past its own tail end. This
+    // matches why Home's own DEC-095 test keeps a row after the one it
+    // measures: it is a property of any finite list, not something a scroll
+    // anchor can fix, so the fixture gives the assertion room to mean
+    // something.
+    List<MediaHub> threeRails() => [
+      hub('rail-0', 'Rail Zero', movies('a', 10)),
+      hub('rail-1', 'Rail One', movies('b', 10)),
+      hub('rail-2', 'Rail Two', movies('c', 10)),
+      hub('rail-3', 'Rail Three', movies('d', 10)),
+    ];
+
+    const railTitles = ['Rail Zero', 'Rail One', 'Rail Two'];
+    String railTitle(int index) => railTitles[index];
+
+    // By title, not by position: the page `ListView` keeps only the rails near
+    // its own viewport built, so a rail further down the list is not at a
+    // fixed index in `find.byType(TvDiscoveryRail)` once an earlier one has
+    // scrolled out of the cache extent.
+    Future<void> focusRail(WidgetTester tester, int index) async {
+      final rails = tester.stateList<TvDiscoveryRailState>(find.byType(TvDiscoveryRail)).toList();
+      final rail = rails.firstWhere((r) => r.widget.title == railTitle(index));
+      expect(rail.focusGroup(rail.widget.groups.first.groupId), isTrue);
+    }
+
+    // The page's own ListView, not a rail's: a rail is a horizontal
+    // `ListView.builder` and only the page scrolls vertically.
+    final pageListFinder = find.byWidgetPredicate((w) => w is ListView && w.scrollDirection == Axis.vertical);
+
+    double scrollOffset(WidgetTester tester) => tester.widget<ListView>(pageListFinder).controller!.offset;
+
+    testWidgets('lands on the same anchor whichever rail takes the focus', (tester) async {
+      await pumpLanding(tester, hubs: threeRails());
+      final viewport = tester.getRect(pageListFinder);
+
+      Future<double> headingTopAfterFocusing(int rail) async {
+        await focusRail(tester, rail);
+        await tester.pumpAndSettle();
+        return tester.getRect(find.text(railTitle(rail))).top - viewport.top;
+      }
+
+      final first = await headingTopAfterFocusing(0);
+      final second = await headingTopAfterFocusing(1);
+      final third = await headingTopAfterFocusing(2);
+
+      // One anchor, not three. Without it the third rail's heading sits far
+      // below the first one's, which is the black band the finding describes.
+      expect((second - first).abs(), lessThan(8));
+      expect((third - first).abs(), lessThan(8));
+    });
+
+    testWidgets('horizontal movement does not move the page', (tester) async {
+      await pumpLanding(tester, hubs: threeRails());
+      await focusRail(tester, 1);
+      await tester.pumpAndSettle();
+
+      final before = scrollOffset(tester);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+
+      // LAND7's own acceptance: LEFT/RIGHT changes the card, never the page.
+      expect(scrollOffset(tester), before);
+    });
+  });
 }
 
 /// Mounts the landing with two movie rails, settled — the shape the DEC-068
@@ -515,6 +652,10 @@ pumpLanding(
   /// landings are one implementation with this callback swapped, so a contract
   /// that has to hold on both is proved by pumping both.
   List<UnifiedMediaHub> Function(TvDiscoveryLandingProvider)? railsOf,
+
+  /// SYS-1a's shell hook. Null (the default) exercises the standalone fallback
+  /// a golden or a plain mount uses; LAND6 needs the shell path itself.
+  VoidCallback? onOpenAll,
 }) async {
   resetSharedPreferencesForTest();
   SettingsService.resetForTesting();
@@ -584,6 +725,7 @@ pumpLanding(
                 viewAllSemanticLabel: t.unifiedCatalog.discovery.semantics.viewAllMovies,
                 railsOf: railsOf ?? (landing) => landing.movieRails,
                 buildAllScreen: () => const Scaffold(body: Center(child: Text('All Movies'))),
+                onOpenAll: onOpenAll,
               ),
             ),
           ),

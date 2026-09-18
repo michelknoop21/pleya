@@ -130,11 +130,19 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
         // No snackbar on success: the card leaves the grid, and that is the
         // confirmation. A failure still speaks, because there nothing moves.
         //
-        // Nothing is done about the focus here any more. The card the remote
-        // was on is about to be disposed, and `TvCatalogCardGrid` already
-        // rescues that: it walks outward from the old position, forward first,
-        // so the card that slides up into the empty cell takes the ring, and an
-        // emptied grid falls back to whatever `onExitTop` points at.
+        // TvCatalogCardGrid's reconcile rescues the ring, walking outward from
+        // the old position so a neighbour takes it. But the rescue only moves
+        // focus when the disappearing card is actually holding it at that
+        // moment (WL3), and by the time Verwijderen is pressed here it is
+        // not: Select opened this sheet first, the sheet has held the ring
+        // since, and the card only disappears once Verwijderen is pressed
+        // inside it. The grid cannot tell "a sheet borrowed my focus" from
+        // "focus left for good" from inside its own reconcile, so a shared
+        // fix there would have to trust every caller's modal to give the
+        // ring back, which the grid has no way to verify. The sheet is the
+        // one that borrowed it, so the sheet is the one that returns it:
+        // hand the ring back to the grid before the card disappears.
+        _tvKey.currentState?.focusContent();
         await WatchlistUiActions.remove(context, entry);
       case WatchlistSheetAction.cancel:
         break;

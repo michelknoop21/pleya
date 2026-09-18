@@ -316,15 +316,23 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     // a capability-suppressed filter, because a key naming a removed server has
     // no row left in the panel to untick it with — except for an override,
     // which has no stored row to begin with.
-    final pruned = stored.copyWith(
-      filters: stored.filters.withKnownSources(knownServerIds: _knownServerIds, knownLibraryKeys: _knownLibraryKeys),
+    //
+    // CAT20: pruned against the server registry, not just the libraries bound
+    // right now, so a server that has merely not finished connecting is not
+    // mistaken for one that is gone (see [pruneStoredSourceFilter]).
+    final pruning = pruneStoredSourceFilter(
+      stored: stored,
+      boundServerIds: _knownServerIds,
+      boundLibraryKeys: _knownLibraryKeys,
+      registeredServerIds: context.read<MultiServerProvider>().expectedServerIds.toSet(),
     );
+    final pruned = pruning.preferences;
     setState(() {
       _preferences = pruned;
       _preferencesLoaded = true;
     });
     if (_wantsEntryFocus) WidgetsBinding.instance.addPostFrameCallback((_) => _tryEntryFocus());
-    if (override == null && pruned != stored) {
+    if (override == null && pruning.shouldPersist) {
       unawaited(UnifiedCatalogQueryStore.write(widget.catalog.query.kind, pruned));
     }
     _scheduleRestore();

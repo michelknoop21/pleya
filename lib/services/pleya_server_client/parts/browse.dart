@@ -330,14 +330,15 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   }
 
   /// `movie` when every item is a movie, `show` when every item is
-  /// show-related (`show`, `season` or `episode` — [MediaKind.isShowRelated]),
+  /// show-related (`show`, `season` or `episode`, see [MediaKind.isShowRelated]),
   /// `mixed` otherwise (including the empty page and a genuine movie/show
-  /// mix). Plex and Jellyfin report a hub's kind themselves; the protocol does
-  /// not, so without this every Pleya Server hub came back `mixed` regardless
-  /// of content, and [UnifiedHubKind.singleKindSurface] excludes `mixed` from
-  /// both the Films and the Series landing — recently added and continue
-  /// watching could never appear on either, no matter what was in the
-  /// library.
+  /// mix). Only Plex reports a hub's kind itself; neither the protocol nor
+  /// Jellyfin does (see REV1's identical fix on the Jellyfin side, in
+  /// `JellyfinMappers._hubItemsType`), so without this every Pleya Server hub
+  /// came back `mixed` regardless of content, and
+  /// [UnifiedHubKind.singleKindSurface] excludes `mixed` from both the Films
+  /// and the Series landing, so recently added and continue watching could
+  /// never appear on either, no matter what was in the library.
   ///
   /// An all-episode page (Continue Watching part-way through a season, a
   /// library's Recently Added stopping at the latest episodes) is grouped

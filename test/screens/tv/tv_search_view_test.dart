@@ -41,6 +41,14 @@ TvSearchSection _band(String id, String title, int count, {String? actionLabel, 
       ),
     );
 
+// Three bands of a dozen cards each: enough to overflow a 1280x720 viewport
+// and actually scroll vertically, which is what SEARCH2 needs to reproduce.
+List<TvSearchSection> manySections() => [
+  _band('movies', 'Films', 12),
+  _band('shows', 'Series', 12),
+  _band('recent', 'Onlangs', 12),
+];
+
 void main() {
   setUp(() => TvDetectionService.debugSetAppleTVOverride(true));
   tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
@@ -267,6 +275,59 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       await tester.pumpAndSettle();
       expect(exits, 1);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // SEARCH2: weggescrolde resultaten mogen niet over de header heen tekenen
+  // ---------------------------------------------------------------------------
+
+  group('SEARCH2, the results viewport', () {
+    testWidgets('clips at its own top edge', (tester) async {
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await pumpView(tester, sections: manySections());
+
+      final viewport = tester.widget<SingleChildScrollView>(
+        find.descendant(of: find.byType(TvSearchView), matching: find.byType(SingleChildScrollView)),
+      );
+
+      // Clip.none switches clipping off on every edge, not just the two the
+      // focus ring needs. The header sits above this viewport in the same
+      // Column and paints first, so anything scrolled past the top edge paints
+      // over it.
+      expect(viewport.clipBehavior, isNot(Clip.none));
+    });
+
+    testWidgets('the clip starts exactly where the search field ends, leaving no seam to scroll through', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await pumpView(tester, sections: manySections());
+
+      final field = tester.getRect(find.byKey(const Key('field')));
+      final viewport = tester.getRect(find.byType(SingleChildScrollView));
+
+      // A card's own position does not move when clipBehavior changes:
+      // clipping is a paint-time effect, not a layout one, so a scrolled
+      // card's `top` stays identical whether or not it is being clipped away.
+      // The actual guarantee is structural: the viewport that owns the clip
+      // has to start exactly where the search field ends, with no gap a
+      // scrolled band could paint through.
+      expect(viewport.top, field.bottom);
+
+      // The interaction itself still has to hold up: scrolling a results list
+      // long enough to run its first band clean off the top must not throw or
+      // leave the tree broken.
+      final firstCard = find.byType(TvCatalogCard).first;
+      expect(firstCard, findsOneWidget);
+      await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -600));
+      await tester.pumpAndSettle();
     });
   });
 }

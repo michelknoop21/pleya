@@ -1,10 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_stream.dart';
 import 'package:pleya/services/jellyfin_mappers.dart';
 import 'package:pleya/services/settings_service.dart' show EpisodePosterMode;
+
+Map<String, dynamic> _movieJson(String id) => {'Id': id, 'Name': id, 'Type': 'Movie'};
+Map<String, dynamic> _episodeJson(String id) => {'Id': id, 'Name': id, 'Type': 'Episode'};
 
 const _serverId = 'jf-machine-1';
 
@@ -530,6 +534,30 @@ void main() {
         JellyfinMappers.library({'Name': 'Library', 'CollectionType': 'movies'}, serverId: ServerId(_serverId)),
         isNull,
       );
+    });
+  });
+
+  group('JellyfinMappers.syntheticHub type derivation', () {
+    MediaHub hubOf(List<Map<String, dynamic>> items) => JellyfinMappers.syntheticHub(
+      identifier: 'home.recent',
+      title: 'Recently Added',
+      items: items,
+      serverId: ServerId(_serverId),
+    );
+
+    test('REV1: a recently added hub of films types itself as movie', () {
+      expect(hubOf([_movieJson('m1'), _movieJson('m2')]).type, 'movie');
+    });
+
+    test('REV1: an all-episode hub types itself as show', () {
+      // 'mixed' has no singleKindSurface, so a hub typed that way is dropped by
+      // both the Films and the Series landing no matter what is in it. That is
+      // what Apple Review saw: Home full, Films and Series empty.
+      expect(hubOf([_episodeJson('e1')]).type, 'show');
+    });
+
+    test('REV1: a genuine mix stays mixed', () {
+      expect(hubOf([_movieJson('m1'), _episodeJson('e1')]).type, 'mixed');
     });
   });
 }
