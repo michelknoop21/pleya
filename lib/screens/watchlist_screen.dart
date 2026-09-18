@@ -484,6 +484,9 @@ class _FilterBarState extends State<_FilterBar> {
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: FocusableFilterChip(
+                        variant: PlatformDetector.isPhone(context)
+                            ? FilterChipVariant.scope
+                            : FilterChipVariant.outlined,
                         key: _chipKeys[value],
                         focusNode: value == options.first.$1 ? widget.firstChipFocusNode : null,
                         label: label,

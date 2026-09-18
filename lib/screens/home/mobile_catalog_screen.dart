@@ -405,21 +405,22 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
               instance: widget.kind.automationInstance,
               role: 'button',
               child: FocusableFilterChip(
+                variant: FilterChipVariant.filled,
                 icon: Symbols.dns_rounded,
                 label: _sourcesLabel(filters),
-                selected: filters.restrictsSources,
                 onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.servers),
               ),
             ),
             const SizedBox(width: 8),
-            _FilterChipWithBadge(
-              automationId: AutomationIds.catalogChipFilters,
-              automationInstance: widget.kind.automationInstance,
-              badgeCount: filters.activeCount,
-              chip: FocusableFilterChip(
+            AutomationNode(
+              id: AutomationIds.catalogChipFilters,
+              instance: widget.kind.automationInstance,
+              role: 'button',
+              child: FocusableFilterChip(
+                variant: FilterChipVariant.filled,
                 icon: Symbols.filter_list_rounded,
                 label: t.unifiedCatalog.filters.title,
-                selected: !filters.isEmpty,
+                badgeCount: filters.activeCount,
                 onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.status),
               ),
             ),
@@ -429,6 +430,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
               instance: widget.kind.automationInstance,
               role: 'button',
               child: FocusableFilterChip(
+                variant: FilterChipVariant.filled,
                 icon: Symbols.swap_vert_rounded,
                 label: mobileCatalogSortLabel(_preferences.sort),
                 onPressed: () => _openSort(sheetContext),
@@ -554,55 +556,6 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-/// A [FocusableFilterChip] with a small badge on top, for the Filters chip's
-/// active count (mockup 03). `FocusableFilterChip` itself has no badge
-/// parameter and is reused too widely elsewhere to grow one for this single
-/// caller, so the badge is a local composition rather than a shared-widget
-/// change.
-class _FilterChipWithBadge extends StatelessWidget {
-  const _FilterChipWithBadge({
-    required this.automationId,
-    required this.automationInstance,
-    required this.badgeCount,
-    required this.chip,
-  });
-
-  final String automationId;
-  final String automationInstance;
-  final int badgeCount;
-  final Widget chip;
-
-  @override
-  Widget build(BuildContext context) {
-    return AutomationNode(
-      id: automationId,
-      instance: automationInstance,
-      role: 'button',
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          chip,
-          if (badgeCount > 0)
-            Positioned(
-              right: -4,
-              top: -4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                alignment: Alignment.center,
-                child: Text(
-                  '$badgeCount',
-                  style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }

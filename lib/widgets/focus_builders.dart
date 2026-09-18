@@ -33,29 +33,55 @@ class FocusBuilders {
     required Color backgroundColor,
     double borderRadius = 20,
     Color? borderColor,
+    // Only StadiumBorder/RoundedRectangleBorder etc. — an OutlinedBorder can
+    // carry `borderColor` as its own `side`, so filled/scope chips still get
+    // a ring without a second decoration layer.
+    OutlinedBorder? shape,
+    HitTestBehavior hitTestBehavior = HitTestBehavior.deferToChild,
+    // Keeps a visually small chip's tap target at platform minimum without
+    // inflating the drawn shape: the ConstrainedBox adds hit-testable space
+    // around the AnimatedContainer, it does not paint anything itself.
+    double? minTapHeight,
     required Widget child,
   }) {
     final duration = FocusTheme.getAnimationDuration(context);
 
-    return Focus(
-      focusNode: focusNode,
-      onKeyEvent: onKeyEvent,
-      child: ClickableCursor(
-        child: GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: duration,
-            curve: Curves.easeOutCubic,
-            padding: padding,
-            decoration: BoxDecoration(
+    final decoratedChild = AnimatedContainer(
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      padding: padding,
+      decoration: shape != null
+          ? ShapeDecoration(
+              color: backgroundColor,
+              shape: borderColor == null ? shape : shape.copyWith(side: BorderSide(color: borderColor)),
+            )
+          : BoxDecoration(
               color: backgroundColor,
               borderRadius: BorderRadius.circular(borderRadius),
               border: borderColor == null ? null : Border.all(color: borderColor),
             ),
-            child: child,
-          ),
-        ),
-      ),
+      child: child,
+    );
+
+    final tappable = GestureDetector(
+      behavior: hitTestBehavior,
+      onTap: onTap,
+      child: minTapHeight == null
+          ? decoratedChild
+          : ConstrainedBox(
+              constraints: BoxConstraints(minHeight: minTapHeight),
+              // heightFactor/widthFactor force Center to hug the child's own
+              // size instead of its default "fill all available space when
+              // bounded" behavior — without it, this silently stretched the
+              // whole chip to its row's height everywhere it was used.
+              child: Center(heightFactor: 1, widthFactor: 1, child: decoratedChild),
+            ),
+    );
+
+    return Focus(
+      focusNode: focusNode,
+      onKeyEvent: onKeyEvent,
+      child: ClickableCursor(child: tappable),
     );
   }
 
