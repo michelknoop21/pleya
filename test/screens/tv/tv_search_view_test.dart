@@ -301,7 +301,9 @@ void main() {
       expect(viewport.clipBehavior, isNot(Clip.none));
     });
 
-    testWidgets('a scrolled result does not reach the search field', (tester) async {
+    testWidgets('the clip starts exactly where the search field ends, leaving no seam to scroll through', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1280, 720);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -309,17 +311,23 @@ void main() {
       await pumpView(tester, sections: manySections());
 
       final field = tester.getRect(find.byKey(const Key('field')));
+      final viewport = tester.getRect(find.byType(SingleChildScrollView));
+
+      // A card's own position does not move when clipBehavior changes:
+      // clipping is a paint-time effect, not a layout one, so a scrolled
+      // card's `top` stays identical whether or not it is being clipped away.
+      // The actual guarantee is structural: the viewport that owns the clip
+      // has to start exactly where the search field ends, with no gap a
+      // scrolled band could paint through.
+      expect(viewport.top, field.bottom);
+
+      // The interaction itself still has to hold up: scrolling a results list
+      // long enough to run its first band clean off the top must not throw or
+      // leave the tree broken.
       final firstCard = find.byType(TvCatalogCard).first;
       expect(firstCard, findsOneWidget);
-
       await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -600));
       await tester.pumpAndSettle();
-
-      // The card either scrolled out of the tree or is below the field. What it
-      // must not be is painted across it.
-      if (tester.any(firstCard)) {
-        expect(tester.getRect(firstCard).top, greaterThanOrEqualTo(field.bottom));
-      }
     });
   });
 }

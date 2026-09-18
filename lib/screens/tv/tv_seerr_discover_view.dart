@@ -625,10 +625,14 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
     final headingInset = geometry.inset + geometry.leading + TvCatalogLayout.cardContentInset(scale);
 
     return SingleChildScrollView(
-      // Not the default clip: a focused card grows past its rail's box, and the
-      // page must not shear the ring off at the viewport edge.
-      clipBehavior: Clip.none,
-      padding: EdgeInsets.only(bottom: geometry.bottomSafeMargin),
+      // SEARCH2b, the same fix as SEARCH2 in tv_search_view.dart. `Clip.none`
+      // gave the focus ring its room by clipping no edge at all, and that cost
+      // the top edge: the search field and the top nav sit in the same Column
+      // above this viewport and paint first, so a shelf scrolled past the top
+      // painted over them. The ring only needs room where a card grows, and
+      // that's inside the viewport: padding gives it that, and clipBehavior
+      // keeps the page intact.
+      padding: EdgeInsets.only(top: TvCatalogLayout.cardFocusRingGap * scale, bottom: geometry.bottomSafeMargin),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
