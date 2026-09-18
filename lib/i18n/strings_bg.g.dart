@@ -61,6 +61,7 @@ class TranslationsBg extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsProfilesBg profiles = _TranslationsProfilesBg._(_root);
 	@override late final _TranslationsConnectionsBg connections = _TranslationsConnectionsBg._(_root);
 	@override late final _TranslationsDiscoverBg discover = _TranslationsDiscoverBg._(_root);
+	@override late final _TranslationsMobileDetailBg mobileDetail = _TranslationsMobileDetailBg._(_root);
 	@override late final _TranslationsErrorsBg errors = _TranslationsErrorsBg._(_root);
 	@override late final _TranslationsNoticesBg notices = _TranslationsNoticesBg._(_root);
 	@override late final _TranslationsLibrariesBg libraries = _TranslationsLibrariesBg._(_root);
@@ -897,6 +898,17 @@ class _TranslationsDiscoverBg extends TranslationsDiscoverEn {
 	@override String get tvShow => 'ТВ сериал';
 	@override String minutesLeft({required Object minutes}) => 'Остават ${minutes} мин';
 	@override String get moreLikeThis => 'Подобно на това';
+}
+
+// Path: mobileDetail
+class _TranslationsMobileDetailBg extends TranslationsMobileDetailEn {
+	_TranslationsMobileDetailBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get similarTab => 'Подобни';
+	@override String get extrasTab => 'Екстри';
 }
 
 // Path: errors
@@ -2908,6 +2920,8 @@ extension on TranslationsBg {
 			'discover.tvShow' => 'ТВ сериал',
 			'discover.minutesLeft' => ({required Object minutes}) => 'Остават ${minutes} мин',
 			'discover.moreLikeThis' => 'Подобно на това',
+			'mobileDetail.similarTab' => 'Подобни',
+			'mobileDetail.extrasTab' => 'Екстри',
 			'errors.searchFailed' => 'Търсенето е неуспешно',
 			'errors.connectionTimeout' => ({required Object context}) => 'Изтече времето за връзка при зареждане на ${context}',
 			'errors.connectionFailed' => 'Не може да се осъществи връзка с медиен сървър',
@@ -3289,10 +3303,10 @@ extension on TranslationsBg {
 			'companionRemote.session.stopServer' => 'Спри сървър',
 			'companionRemote.session.minimize' => 'Минимизирай',
 			'companionRemote.pairing.discoveryDescription' => 'Pleya устройства със същия Plex акаунт се показват тук',
-			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Свързване...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
+			'companionRemote.pairing.connecting' => 'Свързване...',
 			'companionRemote.pairing.searchingForDevices' => 'Търсене на устройства...',
 			'companionRemote.pairing.noDevicesFound' => 'Не са намерени устройства във вашата мрежа',
 			'companionRemote.pairing.noDevicesHint' => 'Отворете Pleya на настолен компютър и използвайте същия WiFi',

@@ -690,6 +690,10 @@
     "minutesLeft": "${minutes} min igjen",
     "moreLikeThis": "Mer som dette"
   },
+  "mobileDetail": {
+    "similarTab": "Lignende",
+    "extrasTab": "Ekstra"
+  },
   "errors": {
     "searchFailed": "Søk mislyktes",
     "connectionTimeout": "Tidsavbrudd ved lasting av ${context}",

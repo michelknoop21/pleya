@@ -24,6 +24,18 @@ import 'package:material_symbols_icons/symbols.dart';
 /// everywhere else, and no non-TV platform changes behaviour.
 bool showsVisibleBackAffordance() => !PlatformDetector.isTV();
 
+/// Diameter of the drawn back-button disc, in logical pixels.
+///
+/// Fixed, never derived from the parent's height. A plain
+/// `Container(margin: EdgeInsets.all(8), width: 40, height: 40)` is still
+/// bound by its incoming constraints: inside an app bar shorter than 56pt the
+/// 16pt of margin ate into the box, the 40 collapsed, and `BoxShape.circle`
+/// quietly drew a 28pt circle in a 40x28 box. In the 44pt mobile detail bar
+/// that measured exactly 40x28. The [OverflowBox] below pins the painted box,
+/// so a parent with too little room overflows visibly instead of deforming
+/// the disc into a smaller one.
+const double _backButtonDiameter = 40;
+
 /// Defines the visual style of the back button
 enum BackButtonStyle {
   /// Back button with circular semi-transparent background (used in detail screens)
@@ -157,19 +169,28 @@ class _AppBarBackButtonState extends State<AppBarBackButton> with TickerProvider
       onExit: (_) => _onHoverChange(false),
       child: GestureDetector(
         onTap: _handlePressed,
-        child: AnimatedBuilder(
-          animation: _backgroundAnimation,
-          builder: (context, child) {
-            final currentColor = Color.lerp(baseColor, hoverColor, _backgroundAnimation.value);
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: SizedBox.square(
+            dimension: _backButtonDiameter,
+            child: OverflowBox(
+              minWidth: _backButtonDiameter,
+              maxWidth: _backButtonDiameter,
+              minHeight: _backButtonDiameter,
+              maxHeight: _backButtonDiameter,
+              child: AnimatedBuilder(
+                animation: _backgroundAnimation,
+                builder: (context, child) {
+                  final currentColor = Color.lerp(baseColor, hoverColor, _backgroundAnimation.value);
 
-            return Container(
-              margin: const EdgeInsets.all(8),
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(color: currentColor, shape: BoxShape.circle),
-              child: AppIcon(Symbols.arrow_back_rounded, fill: 1, color: effectiveColor, size: 20),
-            );
-          },
+                  return DecoratedBox(
+                    decoration: BoxDecoration(color: currentColor, shape: BoxShape.circle),
+                    child: AppIcon(Symbols.arrow_back_rounded, fill: 1, color: effectiveColor, size: 20),
+                  );
+                },
+              ),
+            ),
+          ),
         ),
       ),
     );

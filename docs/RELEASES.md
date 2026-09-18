@@ -21,6 +21,8 @@ under `Notes`.
 ### Fixed
 - add filled and scope chip variants for the mobile northstar
 - pin the northstar control pill to an exact 32pt surface
+- breng het mobiele detailscherm terug naar northstar 06/07
+- eigen tablabels voor de mobiele detailtabs (mockup 07)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 282 · 16 September 2026

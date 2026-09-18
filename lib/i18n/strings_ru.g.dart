@@ -61,6 +61,7 @@ class TranslationsRu extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsProfilesRu profiles = _TranslationsProfilesRu._(_root);
 	@override late final _TranslationsConnectionsRu connections = _TranslationsConnectionsRu._(_root);
 	@override late final _TranslationsDiscoverRu discover = _TranslationsDiscoverRu._(_root);
+	@override late final _TranslationsMobileDetailRu mobileDetail = _TranslationsMobileDetailRu._(_root);
 	@override late final _TranslationsErrorsRu errors = _TranslationsErrorsRu._(_root);
 	@override late final _TranslationsNoticesRu notices = _TranslationsNoticesRu._(_root);
 	@override late final _TranslationsLibrariesRu libraries = _TranslationsLibrariesRu._(_root);
@@ -897,6 +898,17 @@ class _TranslationsDiscoverRu extends TranslationsDiscoverEn {
 	@override String get tvShow => 'Сериал';
 	@override String minutesLeft({required Object minutes}) => 'Осталось ${minutes} мин';
 	@override String get moreLikeThis => 'Похожее';
+}
+
+// Path: mobileDetail
+class _TranslationsMobileDetailRu extends TranslationsMobileDetailEn {
+	_TranslationsMobileDetailRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get similarTab => 'Похожее';
+	@override String get extrasTab => 'Доп. материалы';
 }
 
 // Path: errors
@@ -2908,6 +2920,8 @@ extension on TranslationsRu {
 			'discover.tvShow' => 'Сериал',
 			'discover.minutesLeft' => ({required Object minutes}) => 'Осталось ${minutes} мин',
 			'discover.moreLikeThis' => 'Похожее',
+			'mobileDetail.similarTab' => 'Похожее',
+			'mobileDetail.extrasTab' => 'Доп. материалы',
 			'errors.searchFailed' => 'Ошибка поиска',
 			'errors.connectionTimeout' => ({required Object context}) => 'Таймаут подключения при загрузке ${context}',
 			'errors.connectionFailed' => 'Не удалось подключиться к медиасерверу',
@@ -3289,10 +3303,10 @@ extension on TranslationsRu {
 			'companionRemote.session.stopServer' => 'Остановить сервер',
 			'companionRemote.session.minimize' => 'Свернуть',
 			'companionRemote.pairing.discoveryDescription' => 'Устройства Pleya с тем же аккаунтом Plex появятся здесь',
-			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Подключение...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
+			'companionRemote.pairing.connecting' => 'Подключение...',
 			'companionRemote.pairing.searchingForDevices' => 'Поиск устройств...',
 			'companionRemote.pairing.noDevicesFound' => 'Устройства в вашей сети не найдены',
 			'companionRemote.pairing.noDevicesHint' => 'Откройте Pleya на компьютере и используйте тот же WiFi',
