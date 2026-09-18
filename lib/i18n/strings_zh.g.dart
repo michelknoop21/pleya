@@ -61,6 +61,7 @@ class TranslationsZh extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsProfilesZh profiles = _TranslationsProfilesZh._(_root);
 	@override late final _TranslationsConnectionsZh connections = _TranslationsConnectionsZh._(_root);
 	@override late final _TranslationsDiscoverZh discover = _TranslationsDiscoverZh._(_root);
+	@override late final _TranslationsMobileDetailZh mobileDetail = _TranslationsMobileDetailZh._(_root);
 	@override late final _TranslationsErrorsZh errors = _TranslationsErrorsZh._(_root);
 	@override late final _TranslationsNoticesZh notices = _TranslationsNoticesZh._(_root);
 	@override late final _TranslationsLibrariesZh libraries = _TranslationsLibrariesZh._(_root);
@@ -897,6 +898,17 @@ class _TranslationsDiscoverZh extends TranslationsDiscoverEn {
 	@override String get tvShow => '电视剧';
 	@override String minutesLeft({required Object minutes}) => '剩余 ${minutes} 分钟';
 	@override String get moreLikeThis => '更多类似内容';
+}
+
+// Path: mobileDetail
+class _TranslationsMobileDetailZh extends TranslationsMobileDetailEn {
+	_TranslationsMobileDetailZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get similarTab => '相似';
+	@override String get extrasTab => '花絮';
 }
 
 // Path: errors
@@ -2908,6 +2920,8 @@ extension on TranslationsZh {
 			'discover.tvShow' => '电视剧',
 			'discover.minutesLeft' => ({required Object minutes}) => '剩余 ${minutes} 分钟',
 			'discover.moreLikeThis' => '更多类似内容',
+			'mobileDetail.similarTab' => '相似',
+			'mobileDetail.extrasTab' => '花絮',
 			'errors.searchFailed' => '搜索失败',
 			'errors.connectionTimeout' => ({required Object context}) => '加载 ${context} 时连接超时',
 			'errors.connectionFailed' => '无法连接到媒体服务器',
@@ -3289,10 +3303,10 @@ extension on TranslationsZh {
 			'companionRemote.session.stopServer' => '停止服务器',
 			'companionRemote.session.minimize' => '最小化',
 			'companionRemote.pairing.discoveryDescription' => '使用同一 Plex 账号的 Pleya 设备会显示在这里',
-			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => '正在连接...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
+			'companionRemote.pairing.connecting' => '正在连接...',
 			'companionRemote.pairing.searchingForDevices' => '正在搜索设备...',
 			'companionRemote.pairing.noDevicesFound' => '未在网络上找到设备',
 			'companionRemote.pairing.noDevicesHint' => '在桌面端打开 Pleya 并使用同一 WiFi',

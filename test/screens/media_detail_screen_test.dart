@@ -1698,6 +1698,32 @@ void main() {
         expect(decoration.color, tk.surfaceElevated);
         expect(decoration.color, isNot(tk.surface));
       });
+
+      testWidgets('NL tab strip reads Afleveringen · Vergelijkbaar · Extra\'s · Details (mockup 07)', (tester) async {
+        // nl is a deferred library (slang lazy loading): loading it for real
+        // needs the real event loop, not testWidgets' fake-async zone.
+        await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.nl));
+        addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+
+        final show = buildShow();
+        final season1 = buildSeason(show, 1);
+        final client = _FakeMediaServerClient(
+          show: show,
+          childrenByParent: {
+            show.id: [season1],
+            season1.id: [buildEpisode(show, season1, 1)],
+          },
+        );
+
+        await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        // The global Discover labels ("Meer zoals dit" / "Trailers & Extra's")
+        // are too long for this tab strip and must not appear here — only
+        // the mobileDetail-scoped, tab-length translations.
+        final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+        final labels = tabBar.tabs.map((tab) => (tab as Tab).text).toList();
+        expect(labels, ['Afleveringen', 'Vergelijkbaar', "Extra's", 'Details']);
+      });
     });
   });
 

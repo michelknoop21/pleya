@@ -8,7 +8,15 @@ part of '../media_detail_screen.dart';
 /// (`_seasonEpisodePager`) stays intact when switching seasons here.
 extension _MobileEpisodesTab on _MediaDetailScreenState {
   Widget _buildMobileEpisodesTabs(BuildContext context, MediaItem metadata) {
-    final tabs = [t.libraries.groupings.episodes, t.discover.moreLikeThis, t.discover.extras, t.common.details];
+    // The mobile tab strip needs shorter labels than the global Discover
+    // section's "More Like This"/"Trailers & Extras" (those stay unchanged
+    // for their own screens): mockup 07 shows "Vergelijkbaar"/"Extra's".
+    final tabs = [
+      t.libraries.groupings.episodes,
+      t.mobileDetail.similarTab,
+      t.mobileDetail.extrasTab,
+      t.common.details,
+    ];
 
     return DefaultTabController(
       length: tabs.length,

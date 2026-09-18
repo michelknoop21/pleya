@@ -690,6 +690,10 @@
     "minutesLeft": "Остават ${minutes} мин",
     "moreLikeThis": "Подобно на това"
   },
+  "mobileDetail": {
+    "similarTab": "Подобни",
+    "extrasTab": "Екстри"
+  },
   "errors": {
     "searchFailed": "Търсенето е неуспешно",
     "connectionTimeout": "Изтече времето за връзка при зареждане на ${context}",

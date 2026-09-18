@@ -62,6 +62,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsProfilesNl profiles = _TranslationsProfilesNl._(_root);
 	@override late final _TranslationsConnectionsNl connections = _TranslationsConnectionsNl._(_root);
 	@override late final _TranslationsDiscoverNl discover = _TranslationsDiscoverNl._(_root);
+	@override late final _TranslationsMobileDetailNl mobileDetail = _TranslationsMobileDetailNl._(_root);
 	@override late final _TranslationsErrorsNl errors = _TranslationsErrorsNl._(_root);
 	@override late final _TranslationsNoticesNl notices = _TranslationsNoticesNl._(_root);
 	@override late final _TranslationsLibrariesNl libraries = _TranslationsLibrariesNl._(_root);
@@ -1036,6 +1037,17 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String statsWatchTime({required Object duration}) => '${duration} bekeken';
 	@override String statsRecent({required Object count}) => '${count} in de laatste 30 dagen';
 	@override String watchingSeriesBy({required Object names}) => 'Kijken deze serie: ${names}';
+}
+
+// Path: mobileDetail
+class _TranslationsMobileDetailNl extends TranslationsMobileDetailEn {
+	_TranslationsMobileDetailNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get similarTab => 'Vergelijkbaar';
+	@override String get extrasTab => 'Extra\'s';
 }
 
 // Path: errors
@@ -3789,6 +3801,8 @@ extension on TranslationsNl {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} bekeken',
 			'discover.statsRecent' => ({required Object count}) => '${count} in de laatste 30 dagen',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Kijken deze serie: ${names}',
+			'mobileDetail.similarTab' => 'Vergelijkbaar',
+			'mobileDetail.extrasTab' => 'Extra\'s',
 			'errors.searchFailed' => 'Zoeken mislukt',
 			'errors.connectionTimeout' => ({required Object context}) => 'Verbinding time-out tijdens laden ${context}',
 			'errors.connectionFailed' => 'Kan geen verbinding maken met mediaserver',
@@ -4011,10 +4025,10 @@ extension on TranslationsNl {
 			'liveTv.joinSession' => 'Deelnemen aan lopende sessie',
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Kijk vanaf het begin (${minutes} min geleden)',
 			'liveTv.watchLive' => 'Live kijken',
-			'liveTv.goToLive' => 'Ga naar live',
-			'liveTv.record' => 'Opnemen',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.goToLive' => 'Ga naar live',
+			'liveTv.record' => 'Opnemen',
 			'liveTv.recordEpisode' => 'Aflevering opnemen',
 			'liveTv.recordSeries' => 'Serie opnemen',
 			'liveTv.recordOptions' => 'Opnameopties',
@@ -4525,10 +4539,10 @@ extension on TranslationsNl {
 			'trackers.oauthProxy.openToSignIn' => ({required Object service}) => '${service} openen om aan te melden',
 			'trackers.oauthProxy.urlCopied' => 'URL gekopieerd',
 			'trackers.libraryFilter.title' => 'Bibliotheekfilter',
-			'trackers.libraryFilter.subtitleAllSyncing' => 'Alle bibliotheken synchroniseren',
-			'trackers.libraryFilter.subtitleNoneSyncing' => 'Niets wordt gesynchroniseerd',
 			_ => null,
 		} ?? switch (path) {
+			'trackers.libraryFilter.subtitleAllSyncing' => 'Alle bibliotheken synchroniseren',
+			'trackers.libraryFilter.subtitleNoneSyncing' => 'Niets wordt gesynchroniseerd',
 			'trackers.libraryFilter.subtitleBlocked' => ({required Object count}) => '${count} geblokkeerd',
 			'trackers.libraryFilter.subtitleAllowed' => ({required Object count}) => '${count} toegestaan',
 			'trackers.libraryFilter.mode' => 'Filtermodus',

@@ -690,6 +690,10 @@
     "minutesLeft": "${minutes} min restantes",
     "moreLikeThis": "Mais como este"
   },
+  "mobileDetail": {
+    "similarTab": "Similares",
+    "extrasTab": "Extras"
+  },
   "errors": {
     "searchFailed": "Falha na busca",
     "connectionTimeout": "Tempo de conexão esgotado ao carregar ${context}",

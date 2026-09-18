@@ -853,6 +853,10 @@
     "statsRecent": "${count} in de laatste 30 dagen",
     "watchingSeriesBy": "Kijken deze serie: ${names}"
   },
+  "mobileDetail": {
+    "similarTab": "Vergelijkbaar",
+    "extrasTab": "Extra's"
+  },
   "errors": {
     "searchFailed": "Zoeken mislukt",
     "connectionTimeout": "Verbinding time-out tijdens laden ${context}",

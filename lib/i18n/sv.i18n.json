@@ -690,6 +690,10 @@
     "minutesLeft": "${minutes} min kvar",
     "moreLikeThis": "Mer som detta"
   },
+  "mobileDetail": {
+    "similarTab": "Liknande",
+    "extrasTab": "Extra"
+  },
   "errors": {
     "searchFailed": "Sökning misslyckades",
     "connectionTimeout": "Anslutnings-timeout vid laddning ${context}",

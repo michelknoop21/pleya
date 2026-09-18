@@ -690,6 +690,10 @@
     "minutesLeft": "Осталось ${minutes} мин",
     "moreLikeThis": "Похожее"
   },
+  "mobileDetail": {
+    "similarTab": "Похожее",
+    "extrasTab": "Доп. материалы"
+  },
   "errors": {
     "searchFailed": "Ошибка поиска",
     "connectionTimeout": "Таймаут подключения при загрузке ${context}",
