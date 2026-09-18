@@ -444,4 +444,184 @@ void main() {
     expect(find.text('For you'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  // F5 (widget/layout evidence only — see docs/ios-unified-implementation-register.md,
+  // IOS-HOME-HERO-BACKEND): `ios.home.northstar` cannot exercise the hero end
+  // to end on the simulator until the Pleya Verify backend carries a release
+  // date. This measures the same fixture (hero, Continue Watching, one more
+  // rail) against the *real* production widget tree at the 393x852 reference
+  // size, with a real bottom `NavigationBar` standing in for `MainScreen`'s
+  // shell — `MobileHomeScreen` never owns that bar itself
+  // (`mobile_discovery_shell.dart`), so without one here the scroll view
+  // would see the full 852pt as its viewport instead of the true fold.
+  //
+  // Status as of 2026-09-18: green. The two *duplicated-contract* bugs this
+  // group originally surfaced are fixed. (1) `MobileMediaRail`'s title row and
+  // its card row now live behind one shared source
+  // (`mobileRailHeight`/`mobileRailCardRowHeight`/`mobileRailTitleRowHeight`
+  // in `mobile_media_rail.dart`), which `MobileHomeScreen._firstRailHeight`
+  // calls directly instead of re-deriving the same numbers by hand. That
+  // re-derivation had a real bug of its own: a bare `TextPainter` built from
+  // `mobileRailTitleStyle` alone has no `fontFamily`, so it fell back to
+  // Flutter's default font instead of the theme's `Inter` — a ~9pt line-height
+  // mismatch against the real `Text` widget, which inherits `Inter` (and its
+  // `height: 1.4` multiplier) through `DefaultTextStyle`. Merging with
+  // `DefaultTextStyle.of(context).style` before measuring closed the gap to
+  // 0.00pt (see `mobile_media_rail_test.dart`'s
+  // "mobileRailHeight matches the rendered rail" cases, including one at an
+  // increased text scale). (2) `homeHeroHeight` now takes an explicit
+  // `heroToRailGap` (`homeHeroToRailGap` = 24pt, `home_hero_layout.dart`) and
+  // folds it into its own fill budget; `_heroSliver` passes it straight
+  // through and the post-hero spacer uses the same constant, so the old
+  // `-16` (on the hero) versus `+24` (on the spacer) mismatch — a net +8pt the
+  // fill formula never saw — cannot recur.
+  //
+  // With both of those honestly accounted for, a *third*, previously-masked
+  // factor was the sole remaining cause of this test's failure:
+  // `homeHeroHeight`'s `math.min(360.0, cap)` floor, a fixed-points minimum
+  // with no design authority behind it. On this exact reference device,
+  // `available` (the viewport left after the header, chip bar and 16pt
+  // spacer) is 547pt; with the real rail (193.75pt) and the real gap (24pt)
+  // both subtracted, the honest fill is 329.25pt — already below the 360pt
+  // floor before this test's own assertions ever ran, so the floor overrode
+  // it and forced hero=360pt, a clean 30.75pt overflow past the fold. That
+  // floor is now removed (`home_hero_layout.dart`): the only lower bound left
+  // is [sixteenNine] itself (280.06pt here), which [fill] already clears, so
+  // the honest 329.25pt fill wins and hero + gap + rail lands at exactly
+  // 547.0pt — precisely the available space, no overflow. The degenerate case
+  // the old floor guarded (a contrived oversized rail) is now covered by
+  // [sixteenNine] instead; see `test/utils/home_hero_layout_test.dart`'s "a
+  // rail too tall to fit leaves the hero usable, not squeezed to nothing".
+  group('F5: fold geometry against the northstar composition (widget/layout evidence)', () {
+    testWidgets('hero + Continue Watching are fully visible above the tab bar; the next rail peeks', (tester) async {
+      aggregation.latestMovies = [_movie('m1', title: 'Vikings', year: 2026)];
+      aggregation.onDeck = [
+        _movie('d1', title: 'The Last of Us'),
+        _movie('d2', title: 'The Boys'),
+        _movie('d3', title: 'House of the Dragon'),
+      ];
+      aggregation.hubs = [
+        _hub(
+          'Aanbevolen voor jou',
+          items: [
+            _movie('a1', title: 'Dune'),
+            _movie('a2', title: 'Joker'),
+            _movie('a3', title: 'Shogun'),
+          ],
+        ),
+      ];
+
+      tester.view.physicalSize = const Size(393, 852);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
+            ChangeNotifierProvider<DiscoverProvider>.value(value: discover),
+            ChangeNotifierProvider<HomeLayoutProvider>.value(value: homeLayout),
+            ChangeNotifierProvider<TvDiscoveryLandingProvider>(
+              create: (context) => TvDiscoveryLandingProvider(discover: discover, multiServer: multiServer),
+            ),
+            ChangeNotifierProvider<TvHomeProjectionProvider>.value(value: homeProjection),
+          ],
+          child: MaterialApp(
+            theme: monoTheme(dark: true),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                // iPhone 14/15/16 (Dynamic Island class), matching the 393x852
+                // reference size itself.
+                padding: const EdgeInsets.only(top: 59, bottom: 34),
+                viewPadding: const EdgeInsets.only(top: 59, bottom: 34),
+              ),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: const MobileHomeScreen(),
+              // Stand-in for `MainScreen._buildBottomNavigationBar`: same
+              // widget type and default Material 3 height (80), which is what
+              // actually competes with the hero for vertical space in the
+              // shipped app. Destinations/labels are irrelevant to geometry.
+              bottomNavigationBar: NavigationBar(
+                selectedIndex: 0,
+                destinations: const [
+                  NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+                  NavigationDestination(icon: Icon(Icons.tv), label: 'Series'),
+                  NavigationDestination(icon: Icon(Icons.movie), label: 'Films'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.runAsync(discover.load);
+      await tester.pump();
+      await tester.pump();
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+
+      double top(Finder f) => tester.getTopLeft(f).dy;
+      double bottom(Finder f) => tester.getBottomLeft(f).dy;
+
+      // The true fold: content below this line is scrolled under the tab bar,
+      // not merely under the bottom of the 852pt screen.
+      final navBarTop = top(find.byType(NavigationBar));
+
+      final heroTop = top(find.byType(MobileHeroCard));
+      final heroBottom = bottom(find.byType(MobileHeroCard));
+
+      final rail0 = find.byWidgetPredicate((w) => w is MobileMediaRail && w.railIndex == 0);
+      final rail0Bottom = bottom(rail0);
+
+      // A sliver below the fold is not built at all (same lazy-sliver note
+      // the "renders Verder kijken" test above already documents), so rail 1
+      // needs a nudge into the render viewport before it can be measured.
+      // The nudge itself changes the scroll offset, so every coordinate read
+      // afterwards is corrected back by that same offset to report the
+      // at-rest (unscrolled) position a real Home open would show.
+      final rail1 = find.byWidgetPredicate((w) => w is MobileMediaRail && w.railIndex == 1);
+      var scrolled = 0.0;
+      for (var i = 0; i < 6 && rail1.evaluate().isEmpty; i++) {
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -200));
+        scrolled += 200;
+        await tester.pump();
+      }
+      expect(rail1.evaluate(), isNotEmpty, reason: 'Continue Watching plus one more rail, same as the northstar comp');
+      final rail1Top = top(rail1) + scrolled;
+      final rail1Bottom = bottom(rail1) + scrolled;
+
+      final rail1FullHeight = rail1Bottom - rail1Top;
+      final rail1VisibleHeight = (navBarTop - rail1Top).clamp(0.0, rail1FullHeight);
+      final rail1VisibleFraction = rail1FullHeight > 0 ? rail1VisibleHeight / rail1FullHeight : 0.0;
+
+      // ignore: avoid_print
+      print(
+        'F5 fold geometry (393x852): navBarTop=$navBarTop heroTop=$heroTop heroBottom=$heroBottom '
+        'heroHeight=${heroBottom - heroTop} rail0Bottom=$rail0Bottom rail1Top=$rail1Top rail1Bottom=$rail1Bottom '
+        'rail1VisibleFraction=$rail1VisibleFraction',
+      );
+
+      // The northstar comp (`home-comp.png`) shows the hero and the entire
+      // first rail (heading, cards and caption) resting above the fold, with
+      // nothing scrolled away: opening Home must not already require a
+      // scroll to see Continue Watching in full.
+      expect(
+        rail0Bottom,
+        lessThanOrEqualTo(navBarTop),
+        reason: 'hero + Continue Watching must fit above the tab bar without scrolling',
+      );
+
+      // The comp also shows the second rail's heading and the bulk of its
+      // card art peeking in — proof the page continues, not a hard stop
+      // right at Continue Watching. This is the one part of F5 the code
+      // doesn't yet assert: `homeHeroHeight` only ever budgets for the first
+      // rail (`lib/utils/home_hero_layout.dart` line 28), so nothing today
+      // guarantees the second rail is reachable without a full scroll page.
+      // ignore: avoid_print
+      print('rail1 peeks above the fold: $rail1VisibleFraction (comp shows roughly 0.6-0.85 of the card art)');
+    });
+  });
 }

@@ -49,7 +49,7 @@ void main() {
         viewAll: viewAll,
       );
 
-  Future<void> pump(WidgetTester tester, Widget rail) async {
+  Future<void> pump(WidgetTester tester, Widget rail, {double textScale = 1.0}) async {
     tester.view.physicalSize = const Size(393, 852);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -63,7 +63,19 @@ void main() {
         value: multiServerProvider,
         child: MaterialApp(
           theme: monoTheme(dark: true),
-          home: Scaffold(body: rail),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
+          // A `SliverToBoxAdapter`, matching production (`MobileHomeScreen`):
+          // it gives the rail's `Column` an unbounded main-axis extent, so it
+          // shrink-wraps to its content the way `mobileRailHeight` predicts.
+          // A bare `Scaffold(body: rail)` instead hands the Column a *tight*
+          // full-screen height, which its default `mainAxisSize.max` happily
+          // fills — measuring 852pt regardless of the rail's real content.
+          home: Scaffold(
+            body: CustomScrollView(slivers: [SliverToBoxAdapter(child: rail)]),
+          ),
         ),
       ),
     );
@@ -103,5 +115,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Mark as Watched'), findsOneWidget);
+  });
+
+  // `MobileHomeScreen._firstRailHeight` budgets the hero against
+  // `mobileRailHeight`, so a drift between what it predicts and what this
+  // widget actually renders silently re-opens density-review F5 (a font
+  // mismatch between a bare TextPainter and the real Text widget once made
+  // that prediction ~9pt short). Pinning the two against each other here, at
+  // both a portrait and a wide shape and at an increased text scale, is what
+  // stands in for re-deriving the title row's font metrics by hand.
+  Future<void> expectRailHeightMatches(WidgetTester tester, MobileCardShape shape, {double textScale = 1.0}) async {
+    final rail = MobileMediaRail(hub: hub(count: 1), railIndex: 0, shape: shape);
+    await pump(tester, rail, textScale: textScale);
+
+    final context = tester.element(find.byType(MobileMediaRail));
+    final predicted = mobileRailHeight(context, shape);
+    final actual = tester.getSize(find.byType(MobileMediaRail)).height;
+
+    expect(predicted, closeTo(actual, 0.01), reason: 'shape=$shape textScale=$textScale');
+  }
+
+  testWidgets('mobileRailHeight matches the rendered rail: portrait shape, default text scale', (tester) async {
+    await expectRailHeightMatches(tester, MobileCardShape.portrait);
+  });
+
+  testWidgets('mobileRailHeight matches the rendered rail: wide shape, default text scale', (tester) async {
+    await expectRailHeightMatches(tester, MobileCardShape.wide);
+  });
+
+  testWidgets('mobileRailHeight matches the rendered rail: wide shape, increased text scale', (tester) async {
+    await expectRailHeightMatches(tester, MobileCardShape.wide, textScale: 1.6);
   });
 }

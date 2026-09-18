@@ -12,6 +12,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/widgets/mobile/mobile_hero_actions.dart';
 import 'package:pleya/widgets/mobile/mobile_hero_card.dart';
 import 'package:pleya/widgets/mobile/mobile_hero_indicator.dart';
 import 'package:provider/provider.dart';
@@ -114,6 +115,59 @@ void main() {
 
     await tester.tap(find.text('Play'));
     expect(played?.groupId, 'i1');
+  });
+
+  testWidgets('F5: at the real 393x852 hero height (no more 360pt floor), title/meta/actions are not clipped', (
+    tester,
+  ) async {
+    // 329.25 is `homeHeroHeight`'s own real result for the 393x852
+    // reference device (see home_hero_layout_test.dart and the F5 group in
+    // mobile_home_screen_test.dart) — shorter than the 220 every other case
+    // in this file uses, since removing the 360pt floor let the honest fill
+    // win. A summary exercises the tallest column this slide draws without
+    // progress (title, meta, summary, play/more-info pill) — a separate,
+    // pre-existing horizontal overflow in `MobileHeroActions`'s "minutes
+    // left" label at this width is not this finding's concern.
+    final source = UnifiedMediaSource.fromItem(
+      MediaItem(
+        id: 'i1',
+        backend: .plex,
+        kind: MediaKind.movie,
+        title: 'Dune',
+        serverId: 'nas',
+        serverName: 'NAS',
+        summary: 'A noble family becomes embroiled in a war for control of the galaxy\'s most valuable asset.',
+        contentRating: '16',
+      ),
+    );
+    final withProgress = UnifiedMediaGroup(
+      groupId: 'i1',
+      identity: CanonicalMediaIdentity.movie(title: 'Dune', year: null),
+      sources: [source],
+      representativeSourceKey: source.sourceKey,
+      watchState: UnifiedWatchState(representativeSourceKey: source.sourceKey),
+    );
+
+    await pump(
+      tester,
+      MobileHeroCard(groups: [withProgress], width: 361, height: 329.25, onPlay: (_) {}, onSecondaryAction: (_) {}),
+    );
+
+    expect(tester.takeException(), isNull);
+
+    final cardTop = tester.getTopLeft(find.byType(MobileHeroCard)).dy;
+    final cardBottom = tester.getBottomLeft(find.byType(MobileHeroCard)).dy;
+
+    expect(find.text('Dune'), findsOneWidget, reason: 'title must actually render, not just fit');
+    expect(find.textContaining('noble family'), findsOneWidget, reason: 'summary must render');
+    expect(find.byType(MobileHeroActions), findsOneWidget);
+
+    for (final finder in [find.text('Dune'), find.textContaining('noble family'), find.byType(MobileHeroActions)]) {
+      final top = tester.getTopLeft(finder).dy;
+      final bottom = tester.getBottomLeft(finder).dy;
+      expect(top, greaterThanOrEqualTo(cardTop), reason: '$finder must not be pushed above the card');
+      expect(bottom, lessThanOrEqualTo(cardBottom), reason: '$finder must not be pushed past the card, i.e. clipped');
+    }
   });
 
   testWidgets('an empty group list renders an empty box without throwing', (tester) async {
