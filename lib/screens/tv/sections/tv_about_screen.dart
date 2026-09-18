@@ -20,6 +20,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../focus/focus_memory_tracker.dart';
 import '../../../i18n/strings.g.dart';
+import '../../../navigation/tv/tv_content_route_registry.dart';
 import '../../../utils/layout_constants.dart';
 import '../../../widgets/tv/tv_menu_grid.dart';
 import '../../../widgets/tv/tv_page_surface.dart';
@@ -62,6 +63,19 @@ class _TvAboutScreenState extends State<TvAboutScreen> {
   Future<void> _open(String url) async {
     final uri = Uri.tryParse(url);
     if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  // SYS-1e: `TvAboutScreen` is mounted through `tvMyPleyaNestedRoute`, which
+  // has no `Navigator` of its own, so a bare `Navigator.push` resolves to the
+  // profile navigator above the shell and draws over the top bar entirely.
+  // Same fix as SYS-1d's catalog opener: route through the shell when one is
+  // listening, fall back to the plain push everywhere else (off TV, tests).
+  void _openLicenses() {
+    Widget builder(BuildContext _) => const LicensesScreen();
+    final nested = openTvContentRoute(id: 'tvAboutLicenses', builder: builder);
+    if (nested == null) {
+      Navigator.push(context, MaterialPageRoute<void>(builder: builder));
+    }
   }
 
   @override
@@ -107,8 +121,7 @@ class _TvAboutScreenState extends State<TvAboutScreen> {
                   icon: Symbols.description_rounded,
                   title: t.about.openSourceLicenses,
                   subtitle: t.about.viewLicensesDescription,
-                  onSelect: () =>
-                      Navigator.push(context, MaterialPageRoute<void>(builder: (context) => const LicensesScreen())),
+                  onSelect: _openLicenses,
                 ),
               ],
             ),

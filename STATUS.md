@@ -1,11 +1,37 @@
 # STATUS · Pleya
 
-_Laatst bijgewerkt: 2026-09-07. `main` staat op `42986a14`, build 268 op TestFlight. DEC-108
-(kijklijst, aanvragen en zoeken in de catalogustaal) is voorgedragen, goedgekeurd én gebouwd in
-één dag. `feat/pleyaserver` staat ongewijzigd sinds 2026-09-01 nog steeds los en gedivergeerd,
-en zit nog steeds midden in de DEC-064-hardwareronde (zie verderop) voordat hij naar `main` mag._
+_Laatst bijgewerkt: 2026-09-18. TV0, de administratieve reconciliatie van de tvOS-closure-werkstroom,
+is afgerond op `feat/superpowers-tvos-redesign`; geen coderegel gewijzigd. De feiten over `main` en
+`feat/pleyaserver` hieronder zijn ongewijzigd overgenomen uit de vorige sessie-update (7 september)
+en in deze sessie niet opnieuw geverifieerd._
 
 ## Waar was ik
+
+**18 september: TV0, de administratieve reconciliatie van de tvOS-closure-werkstroom.** Twaalf
+taken losten de tegenstrijdigheden op tussen de correctieronde, het implementatieregister en de
+closure-spec (`docs/superpowers/specs/2026-09-18-tvos-redesign-closure-design.md`): MOC-09 t/m 12
+kregen één status (`CODE/SIM CLOSED · HARDWARE OPEN`), de drie contextmenu-gaten kregen eigen ID's
+(CTX1-3), de offline-tab-routingbug werd OFF5, de verouderde REQ1-noot bij MOC-15 is geschrapt, de
+PS-9F-verwijzing naar een nooit bestaand voorstel is uit de closure gehaald, de drie umbrella's
+SYS-1/5/6 zijn per kind beoordeeld (SYS-5 gesloten, SYS-6 enkel TOK2 open), LANG1 is gelijkgetrokken
+met MOC-31, de koppeltekenconventie tussen register en correctieronde is vastgelegd (21 alias-paren),
+VER2 is bevestigd als DEFERRED, en CTA1/HTTP1 zijn als cross-platform gate debt naar GATE0
+geclassificeerd. Geen codewijziging.
+
+De laatste twee taken legden de gereconcilieerde open-set naast hoofdstuk 3 van de closure-spec en
+draaiden de eindcontrole. Dat leverde twee nieuwe vondsten op. De controle op SYS-1 vond een
+aangetoond defect: twee tvOS-contentroutes openen `TvUnifiedCatalogScreen` met een kaal
+`Navigator.push` in plaats van via de content-route-registry
+(`lib/screens/tv/sections/tv_libraries_screen.dart:220` en `lib/widgets/tv/tv_content_feed.dart:369`).
+Vastgelegd als SYS-1d en toegewezen aan TV1, terwijl SYS-1's drie oorspronkelijke kinderen wel
+`DONE` blijven. De dubbele-ID-controle ving daarnaast een echte botsing op: twee verschillende
+bevindingen droegen allebei het ID FOC1, de overlay-focusring uit de eerste correctieronde en de
+verdwijnende topnav-bestemming uit een latere ronde. De topnav-bevinding hield het nummer (register
+FOC-1, gepland in TV1), de oudere en al gesloten overlaybevinding is hernoemd naar FOC2. De
+eindcontrole raakte ook twee vals-positieve controleregels uit de eigen brief: de
+`MOC-(09|10|11|12)…IN PROGRESS`-grep matcht ook losstaand proza binnen een andere rij (MOC-12's
+tekst noemt SYS-3a's status), en `fixture-blocked` matcht ook WL2's eigen, actuele status, niet
+alleen de al-gecorrigeerde REQ1-noot. Beide beoordeeld en geen defect.
 
 **7 september: DEC-108 van voordracht tot gebouwd, in drie sessies.** Michel vroeg om bij alle
 series-rijen omlaag en weer omhoog te navigeren om focusgedrag te controleren, en dat leverde

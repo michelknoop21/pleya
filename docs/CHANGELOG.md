@@ -4,6 +4,50 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-18] TV0: reconciliatie van de tvOS-closure-administratie
+
+Twaalf taken maakten de drie tvOS-administratiedocumenten (`docs/tvos-fysieke-correctieronde.md`,
+`docs/tvos-redesign-register.md`, `docs/unified-2026-closure.md`) en de closure-spec
+(`docs/superpowers/specs/2026-09-18-tvos-redesign-closure-design.md`) onderling consistent, als
+laatste stap vóór TV1 begint. Geen coderegel gewijzigd.
+
+### Fixed (documentatie)
+- **MOC-09 t/m MOC-12**: het register noemde ze `IN PROGRESS`, de closure noemde dezelfde vier
+  `CODE/SIM CLOSED`. Naar `CODE/SIM CLOSED · HARDWARE OPEN`, met de SHA's erbij.
+- **CTX1, CTX2, CTX3**: MOC-12's drie visuele gaten (metadata-subregel, resterende tijd, icoon per
+  actierij) stonden alleen in proza. Eigen ID's, toegewezen aan TV3.
+- **OFF5**: de offline-tab-routingbug deelde het ID OFF2 met de dode-pills-bevinding. Eén ID kan
+  geen twee problemen dragen; de routingbug is OFF5 geworden.
+- **REQ1-noot bij MOC-15**: het register zei nog "fixture-blocked", terwijl REQ1 al `FIXED,
+  simulator geverifieerd` stond. Noot geschrapt.
+- **PS-9F-verwijzing**: closure §5 verwees naar `docs/pleya-server-ps9f-favorites-proposal.md`, een
+  pad dat in geen enkele branch heeft bestaan. Verwijzing geschrapt, geen PS-9F-werk gepland.
+- **SYS-1, SYS-5, SYS-6**: drie umbrella's stonden open terwijl hun kinderen een eindstatus droegen.
+  SYS-5 gesloten (elf kinderen `FIXED`, verse sweep op nieuwe hardcoded strings leverde niets op).
+  SYS-6 blijft open met alleen TOK2 als kind. SYS-1 blijft bewust `IN PROGRESS`: een gerichte
+  controle op contentroutes die buiten `tv_content_route_registry.dart` om pushen vond een
+  aangetoond defect (SYS-1d, twee kale `Navigator.push`-aanroepen naar `TvUnifiedCatalogScreen` in
+  `lib/screens/tv/sections/tv_libraries_screen.dart:220` en `lib/widgets/tv/tv_content_feed.dart:369`),
+  toegewezen aan TV1.
+- **LANG1**: stond op `OPEN` terwijl de rij zelf een groen Verify-scenario meldde. Gelijkgetrokken
+  met register-alias MOC-31 (`CODE/SIM CLOSED · HARDWARE OPEN`).
+- **FOC1-duplicaat**: de correctieronde droeg het ID FOC1 voor twee verschillende bevindingen (de
+  overlay-focusring uit de eerste ronde, en de verdwijnende topnav-bestemming uit een latere ronde).
+  De topnav-bevinding hield het nummer, de oudere en al gesloten bevinding is FOC2 geworden.
+
+### Notes
+- De koppeltekenconventie tussen register (`FOC-1`) en correctieronde (`FOC1`) is vastgelegd in de
+  register-kop: 21 alias-paren, geen hernoeming.
+- VER2 (automation-ids escapen geen blokhaken) is bevestigd als `DEFERRED`.
+- CTA1 en HTTP1 (twee falende tests op `main`, geen tvOS-werk) zijn geclassificeerd als
+  cross-platform gate debt en gaan naar GATE0, parallel aan TV1.
+- De closure-spec's hoofdstuk 3 (de gereconcilieerde open-set) is tegen de actuele documenten
+  nagelopen; SYS-1d is de enige toevoeging die nodig bleek.
+- De eindcontrole vond twee vals-positieve controleregels: de grep op `MOC-(09|10|11|12)…IN
+  PROGRESS` matcht ook losstaand proza binnen MOC-12's eigen tekst (die SYS-3a's status noemt), en
+  `fixture-blocked` matcht ook WL2's eigen actuele status naast de al-gecorrigeerde REQ1-noot. Beide
+  beoordeeld, geen van beide is een defect.
+
 ## [2026-09-07] DEC-108: kijklijst, aanvragen en zoeken in de catalogustaal
 
 Een navigatieronde over de series-rijen op hardware leverde vier nieuwe bevindingen op (CAT10,

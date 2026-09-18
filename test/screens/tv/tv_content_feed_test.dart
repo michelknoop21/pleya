@@ -31,16 +31,28 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/unified/unified_media_group.dart';
+import 'package:pleya/navigation/tv/tv_content_focus_authority.dart';
+import 'package:pleya/navigation/tv/tv_content_route_registry.dart';
+import 'package:pleya/navigation/tv/tv_destination.dart';
 import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
+import 'package:pleya/focus/focus_memory_tracker.dart';
 import 'package:pleya/providers/discover_provider.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
+import 'package:pleya/providers/home_custom_rows_provider.dart';
+import 'package:pleya/providers/home_layout_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/offline_mode_provider.dart';
 import 'package:pleya/providers/tv_home_projection_provider.dart';
+import 'package:pleya/providers/unified_catalogs.dart';
+import 'package:pleya/screens/tv/tv_root_shell.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/unified_catalog/home_custom_row.dart';
+import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
+import 'package:pleya/services/unified_catalog/home_custom_row_view_all.dart';
+import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/platform_detector.dart';
@@ -51,11 +63,13 @@ import 'package:pleya/widgets/tv/tv_expandable_media_tile.dart';
 import 'package:pleya/widgets/tv/tv_hero_billboard_card.dart';
 import 'package:pleya/widgets/tv/tv_section_header.dart';
 import 'package:pleya/widgets/tv/tv_hero_billboard_carousel.dart';
+import 'package:pleya/widgets/tv/tv_top_navigation.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/golden.dart';
 import '../../test_helpers/prefs.dart';
+import '../../test_helpers/tv_discovery_fixtures.dart';
 
 const _servers = [
   (id: 'nas', name: 'NAS', backend: MediaBackend.plex),
@@ -203,6 +217,21 @@ class _FakeClient implements MediaServerClient {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// A [HomeCustomRowLoader] that answers a saved row with [groups] straight
+/// away: SYS-1d only needs a non-empty custom row to draw its "Alle N" tile,
+/// not a real merge. Mutable so a test can simulate a background reload
+/// (ROW1i) landing a different [HomeCustomRowContent.loadedCount] between two
+/// presses on the same tile.
+class _ImmediateRowLoader implements HomeCustomRowLoader {
+  _ImmediateRowLoader(this.groups);
+
+  List<UnifiedMediaGroup> groups;
+
+  @override
+  Future<HomeCustomRowContent> load(HomeCustomRow row, {required int limit}) async =>
+      HomeCustomRowContent(groups: groups, isExact: true);
 }
 
 void main() {
@@ -1199,6 +1228,212 @@ void main() {
         header.top - feed.top,
         closeTo(0, 1.0),
         reason: 'DEC-095 (4): one anchor for every row, so the rail below the focused one is wholly on screen',
+      );
+    });
+  });
+
+  group('SYS-1d: a custom row\'s "Alle N" keeps the TV shell mounted', () {
+    late TvNavigationCoordinator coordinator;
+    late HomeLayoutProvider layout;
+    late HomeCustomRowsProvider customRows;
+    late _ImmediateRowLoader loader;
+    late FocusMemoryTracker navNodes;
+    late FocusScopeNode navScope;
+    late FocusScopeNode contentScope;
+
+    setUp(() {
+      coordinator = TvNavigationCoordinator()..updateConditions(const TvNavConditions(hasLiveTv: false));
+      navNodes = FocusMemoryTracker(debugLabelPrefix: 'sys1dNav');
+      navScope = FocusScopeNode(debugLabel: 'nav');
+      contentScope = FocusScopeNode(debugLabel: 'content');
+    });
+
+    tearDown(() {
+      coordinator.dispose();
+      layout.dispose();
+      customRows.dispose();
+      navNodes.dispose();
+      navScope.dispose();
+      contentScope.dispose();
+    });
+
+    // What `main_screen.dart`'s `_pushTvContentRoute` does once attached: open
+    // the route inside the destination that is already active.
+    Future<Object?> pushViaRegistry(TvNestedRoute route) {
+      final destination = coordinator.active;
+      return coordinator.pushNested(destination, route).result;
+    }
+
+    Future<void> bootInShell(WidgetTester tester) async {
+      resetSharedPreferencesForTest();
+      SettingsService.resetForTesting();
+      await SettingsService.getInstance();
+      LocaleSettings.setLocaleSync(AppLocale.en);
+
+      manager = MultiServerManager();
+      for (final server in _servers) {
+        manager.debugRegisterClientForTesting(_FakeClient(serverId: server.id, backend: server.backend));
+      }
+      aggregation = _FakeAggregation(manager);
+      multiServer = MultiServerProvider(manager, aggregation);
+      final hiddenLibraries = HiddenLibrariesProvider();
+      final libraries = LibrariesProvider();
+      discover = DiscoverProvider(multiServer, hiddenLibraries, libraries, isProfileBinding: () => false);
+      addTearDown(discover.dispose);
+      addTearDown(libraries.dispose);
+      addTearDown(hiddenLibraries.dispose);
+      addTearDown(multiServer.dispose);
+      await discover.load();
+
+      projection = TvHomeProjectionProvider(
+        discover: discover,
+        multiServer: multiServer,
+        continueWatchingTitle: t.discover.continueWatching,
+        latestMoviesTitle: t.discover.recentlyReleased,
+      );
+      addTearDown(projection.dispose);
+      for (var i = 0; i < 80 && projection.isProjecting; i++) {
+        await Future<void>.value();
+      }
+
+      layout = HomeLayoutProvider();
+      await layout.ensureInitialized();
+      const row = HomeCustomRow(id: 'r1', kind: MediaKind.movie, preferences: UnifiedCatalogPreferences.defaults);
+      await layout.saveCustomRow(row);
+
+      loader = _ImmediateRowLoader([
+        tvDiscoveryGroup('row1-item', [_film('row1-item', title: 'Row One Item')]),
+      ]);
+      customRows = HomeCustomRowsProvider(
+        layout: layout,
+        multiServer: multiServer,
+        libraries: libraries,
+        hiddenLibraries: hiddenLibraries,
+        loader: loader,
+      );
+      // Not `pumpEventQueue()`: it schedules through a zero-duration `Timer`,
+      // which the fake clock `testWidgets` installs never fires on its own.
+      // `tester.pump()` is what actually drains the microtasks and lets the
+      // loader's answer land.
+      await tester.pump();
+
+      setGoldenSurfaceSize(tester);
+      final offlineMode = OfflineModeProvider(manager, multiServerProvider: multiServer);
+      addTearDown(offlineMode.dispose);
+
+      final catalogs = UnifiedCatalogs(
+        multiServer: multiServer,
+        libraries: libraries,
+        hiddenLibraries: hiddenLibraries,
+      );
+      addTearDown(catalogs.dispose);
+
+      tvContentRouteRegistry.attach(pushViaRegistry);
+      addTearDown(() => tvContentRouteRegistry.detach(pushViaRegistry));
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
+            ChangeNotifierProvider<DiscoverProvider>.value(value: discover),
+            ChangeNotifierProvider<TvHomeProjectionProvider>.value(value: projection),
+            ChangeNotifierProvider<OfflineModeProvider>.value(value: offlineMode),
+            ChangeNotifierProvider<HomeLayoutProvider>.value(value: layout),
+            ChangeNotifierProvider<HomeCustomRowsProvider>.value(value: customRows),
+            Provider<UnifiedCatalogs>.value(value: catalogs),
+          ],
+          child: TranslationProvider(
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: monoTheme(dark: true),
+              home: InputModeTracker(
+                child: TvRootShell(
+                  coordinator: coordinator,
+                  contentFocus: TvContentFocusAuthority(),
+                  navNodes: navNodes,
+                  navFocusScope: navScope,
+                  contentFocusScope: contentScope,
+                  isNavFocused: false,
+                  profile: null,
+                  onSelectDestination: (_) {},
+                  onFocusDestination: coordinator.activate,
+                  onFocusContent: ({bool restorePreviousFocus = true}) {},
+                  onFocusNav: () {},
+                  onOpenProfiles: () {},
+                  onOverlaySheetOpenChanged: (_) {},
+                  onKeyEvent: (_) => KeyEventResult.ignored,
+                  selectLibrary: null,
+                  openSettings: null,
+                  dismissNestedRoute: ([_]) {},
+                  child: const TvContentFeed(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('opening a custom row\'s Alle N tile keeps the TV shell mounted', (tester) async {
+      await bootInShell(tester);
+
+      final viewAllNode = heroNode(tester, 'tvDiscoveryViewAllTile');
+      viewAllNode.requestFocus();
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      // Hoofdstuk 33's shared shell is binding on all eight references; a
+      // kale Navigator.push draws a new route over TvRootShell entirely and
+      // takes the bar with it, which is exactly SYS-1's symptom.
+      expect(find.byType(TvTopNavigation), findsOneWidget);
+    });
+
+    testWidgets('a repeated press after the row reloads does not stack a second route', (tester) async {
+      await bootInShell(tester);
+
+      // The row's real `onViewAll` callback, exactly as `TvDiscoveryViewAllTile`
+      // calls it on Select (`tv_content_row.dart:144`), invoked directly here
+      // so the assertion is about the route id `_openViewAll` derives, not
+      // about winning a race against `TvNestedSurface`'s focus exclusion once
+      // a route is already on top (which a synthetic second key press would
+      // have to fight and does not reliably reach the same tile).
+      final row = tester.widget<TvContentRow>(find.byType(TvContentRow));
+      final onViewAll = row.onViewAll!;
+      final target = row.viewAllTarget!;
+
+      onViewAll(target);
+      await tester.pumpAndSettle();
+
+      expect(
+        coordinator.nestedRoutesFor(coordinator.active),
+        hasLength(1),
+        reason: 'sanity: the first press opened exactly one nested route',
+      );
+
+      // The row answers with more cards in the background (ROW1i) before the
+      // next press on the same tile: `HomeCustomRowViewAllTarget.count` is
+      // `content.loadedCount`, what has loaded so far, not a fixed row
+      // property, so the target the tile hands to `_openViewAll` differs.
+      final reloadedTarget = HomeCustomRowViewAllTarget(
+        kind: target.kind,
+        filters: target.filters,
+        sort: target.sort,
+        count: target.count + 1,
+      );
+      onViewAll(reloadedTarget);
+      await tester.pumpAndSettle();
+
+      // `openTvContentRoute`'s whole dedup contract (`pushNested` discards a
+      // re-push of the id already on top) exists so a second Select on a
+      // tile that is already open costs one Back, not two. A route id that
+      // bakes in `target.count` breaks that the moment the row reloads
+      // between two presses on the same tile.
+      expect(
+        coordinator.nestedRoutesFor(coordinator.active),
+        hasLength(1),
+        reason: 'a second press on the same "Alle N" tile must not stack a second screen',
       );
     });
   });

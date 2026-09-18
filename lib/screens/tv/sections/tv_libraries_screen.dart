@@ -33,6 +33,7 @@ import '../../../media/media_backend.dart';
 import '../../../media/media_kind.dart';
 import '../../../media/media_library.dart';
 import '../../../mixins/refreshable.dart';
+import '../../../navigation/tv/tv_content_route_registry.dart';
 import '../../../providers/hidden_libraries_provider.dart';
 import '../../../providers/libraries_provider.dart';
 import '../../../providers/unified_catalogs.dart';
@@ -217,17 +218,21 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
   void _openInCatalog(MediaLibrary library) {
     final catalogs = context.read<UnifiedCatalogs>();
     final kind = library.kind == MediaKind.show ? MediaKind.show : MediaKind.movie;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => TvUnifiedCatalogScreen(
-          catalog: catalogs.forKind(kind),
-          title: kind == MediaKind.show ? t.unifiedCatalog.discovery.allSeries : t.unifiedCatalog.discovery.allMovies,
-          initialFilterOverride: UnifiedCatalogPreferences(
-            filters: UnifiedCatalogFilterSelection(libraryKeys: {library.globalKey}),
-          ),
-        ),
+    Widget builder(BuildContext _) => TvUnifiedCatalogScreen(
+      catalog: catalogs.forKind(kind),
+      title: kind == MediaKind.show ? t.unifiedCatalog.discovery.allSeries : t.unifiedCatalog.discovery.allMovies,
+      initialFilterOverride: UnifiedCatalogPreferences(
+        filters: UnifiedCatalogFilterSelection(libraryKeys: {library.globalKey}),
       ),
     );
+    // SYS-1d: on TV this keeps the shell/top navigation, the same registry
+    // path `media_navigation_helper.dart`'s collection opener uses. Off TV,
+    // or in a test that never mounted the shell, `openTvContentRoute` answers
+    // null and this falls back to the plain push it always did.
+    final nested = openTvContentRoute(id: 'tvLibraryCatalog_${library.globalKey}', builder: builder);
+    if (nested == null) {
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: builder));
+    }
   }
 
   Future<void> _confirmAndRun({
