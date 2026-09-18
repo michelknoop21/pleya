@@ -546,6 +546,83 @@ void main() {
       expect(opened, 1);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // LAND7: de actieve rail komt op een vaste verticale positie
+  // ---------------------------------------------------------------------------
+
+  group('LAND7, the active rail', () {
+    List<MediaItem> movies(String prefix, int count) => [
+      for (var i = 0; i < count; i++) _movie('$prefix$i', '$prefix $i'),
+    ];
+
+    MediaHub hub(String id, String title, List<MediaItem> items) => MediaHub(
+      id: id,
+      identifier: id,
+      title: title,
+      type: 'movie',
+      items: items,
+      size: items.length,
+      serverId: 'server_1',
+      serverName: 'Server',
+    );
+
+    // Three rails, ten tiles deep each, so the page genuinely scrolls (VER4):
+    // a fixture that cannot scroll proves nothing about a scroll anchor.
+    List<MediaHub> threeRails() => [
+      hub('rail-0', 'Rail Zero', movies('a', 10)),
+      hub('rail-1', 'Rail One', movies('b', 10)),
+      hub('rail-2', 'Rail Two', movies('c', 10)),
+    ];
+
+    const railTitles = ['Rail Zero', 'Rail One', 'Rail Two'];
+    String railTitle(int index) => railTitles[index];
+
+    Future<void> focusRail(WidgetTester tester, int index) async {
+      final rails = tester.stateList<TvDiscoveryRailState>(find.byType(TvDiscoveryRail)).toList();
+      expect(rails[index].focusGroup(rails[index].widget.groups.first.groupId), isTrue);
+    }
+
+    // The page's own ListView, not a rail's: a rail is a horizontal
+    // `ListView.builder` and only the page scrolls vertically.
+    final pageListFinder = find.byWidgetPredicate((w) => w is ListView && w.scrollDirection == Axis.vertical);
+
+    double scrollOffset(WidgetTester tester) => tester.widget<ListView>(pageListFinder).controller!.offset;
+
+    testWidgets('lands on the same anchor whichever rail takes the focus', (tester) async {
+      await pumpLanding(tester, hubs: threeRails());
+      final viewport = tester.getRect(pageListFinder);
+
+      Future<double> headingTopAfterFocusing(int rail) async {
+        await focusRail(tester, rail);
+        await tester.pumpAndSettle();
+        return tester.getRect(find.text(railTitle(rail))).top - viewport.top;
+      }
+
+      final first = await headingTopAfterFocusing(0);
+      final second = await headingTopAfterFocusing(1);
+      final third = await headingTopAfterFocusing(2);
+
+      // One anchor, not three. Without it the third rail's heading sits far
+      // below the first one's, which is the black band the finding describes.
+      expect((second - first).abs(), lessThan(8));
+      expect((third - first).abs(), lessThan(8));
+    });
+
+    testWidgets('horizontal movement does not move the page', (tester) async {
+      await pumpLanding(tester, hubs: threeRails());
+      await focusRail(tester, 1);
+      await tester.pumpAndSettle();
+
+      final before = scrollOffset(tester);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+
+      // LAND7's own acceptance: LEFT/RIGHT changes the card, never the page.
+      expect(scrollOffset(tester), before);
+    });
+  });
 }
 
 /// Mounts the landing with two movie rails, settled — the shape the DEC-068
