@@ -240,36 +240,7 @@ class TvRootShell extends StatelessWidget {
                       child: ListenableBuilder(
                         listenable: coordinator,
                         builder: (context, _) {
-                          // FOC1. The bar owns nodes for the destinations it renders;
-                          // when a destination leaves, its node has to go with it.
-                          // Disposing the node that holds focus hands primary focus
-                          // back to the enclosing scope, which leaves the bar
-                          // focused with no item on it: a bar the remote can neither
-                          // move within nor leave.
-                          //
-                          // In build, like the rail does: this is the one place
-                          // that runs on every coordinator change, and
-                          // `updateConditions` has by then already chosen a
-                          // surviving replacement. So there is no index arithmetic
-                          // to do here, unlike the rail. The coordinator's answer
-                          // is the target.
-                          final prunedFocusedKey = navNodes.pruneExcept(
-                            tvTopNavFocusKeys(
-                              destinations: coordinator.destinations,
-                              showReconnect: isOfflineMode && onReconnect != null,
-                            ),
-                          );
-                          if (prunedFocusedKey != null) {
-                            // Only fires when the pruned node actually held the
-                            // focus, so the "remote was in the content" case needs
-                            // no guard of its own. Scheduling twice in one frame is
-                            // harmless: both callbacks aim at the same
-                            // coordinator-chosen destination.
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              final node = navNodes.get(coordinator.focusedDestination.focusKey);
-                              if (node.canRequestFocus && !node.hasFocus) node.requestFocus();
-                            });
-                          }
+                          _pruneNavFocusAndScheduleRestore();
                           return _TvCollapsibleNav(
                             // DEC-115. Derived from the focus authority, never
                             // stored: a hidden bar is by definition one the
@@ -450,6 +421,42 @@ class TvRootShell extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // FOC1. The bar owns nodes for the destinations it renders;
+  // when a destination leaves, its node has to go with it.
+  // Disposing the node that holds focus hands primary focus
+  // back to the enclosing scope, which leaves the bar
+  // focused with no item on it: a bar the remote can neither
+  // move within nor leave.
+  //
+  // In build, like the rail does: this is the one place
+  // that runs on every coordinator change, and
+  // `updateConditions` has by then already chosen a
+  // surviving replacement. So there is no index arithmetic
+  // to do here, unlike the rail. The coordinator's answer
+  // is the target.
+  void _pruneNavFocusAndScheduleRestore() {
+    final prunedFocusedKey = navNodes.pruneExcept(
+      tvTopNavFocusKeys(destinations: coordinator.destinations, showReconnect: isOfflineMode && onReconnect != null),
+    );
+    if (prunedFocusedKey != null) {
+      // Only fires when the pruned node actually held the
+      // focus, so the "remote was in the content" case needs
+      // no guard of its own. Scheduling twice in one frame is
+      // harmless: both callbacks aim at the same
+      // coordinator-chosen destination.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Guards against a late callback overwriting newer state: if the
+        // remote has since moved into the content (same reason
+        // `_recoverFocusAfterPrune` in `side_navigation_rail.dart` guards on
+        // `isSidebarFocused`), pulling it back to the bar would undo a
+        // legitimate move the viewer already made.
+        if (!isNavFocused) return;
+        final node = navNodes.get(coordinator.focusedDestination.focusKey);
+        if (node.canRequestFocus && !node.hasFocus) node.requestFocus();
+      });
+    }
   }
 }
 

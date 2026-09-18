@@ -58,6 +58,7 @@ void main() {
     Widget? content,
     VoidCallback? onFocusNav,
     ValueChanged<bool>? onOverlaySheetOpenChanged,
+    bool isNavFocused = false,
   }) async {
     tester.view.physicalSize = const Size(1280, 720);
     tester.view.devicePixelRatio = 1.0;
@@ -75,7 +76,7 @@ void main() {
               navNodes: nodes,
               navFocusScope: navScope,
               contentFocusScope: contentScope,
-              isNavFocused: false,
+              isNavFocused: isNavFocused,
               profile: null,
               onSelectDestination: selected.add,
               // What `MainScreen._focusTvDestination` does: the ring landing on
@@ -445,7 +446,9 @@ void main() {
       // capability check, which is exactly the case the correctieronde
       // reported. Offline does the same since 472233db.
       coordinator.updateConditions(const TvNavConditions(hasLiveTv: true));
-      await pump(tester);
+      // The ring is genuinely in the bar, so the guard added for the reopened
+      // gap must not block the restore this test exists to prove.
+      await pump(tester, isNavFocused: true);
 
       final liveTvNode = nodes.get(TvDestinationId.liveTv.focusKey);
       liveTvNode.requestFocus();
@@ -470,7 +473,7 @@ void main() {
 
     testWidgets('leaves exactly one focused node in the bar', (tester) async {
       coordinator.updateConditions(const TvNavConditions(hasLiveTv: true));
-      await pump(tester);
+      await pump(tester, isNavFocused: true);
 
       nodes.get(TvDestinationId.liveTv.focusKey).requestFocus();
       await tester.pumpAndSettle();
@@ -502,6 +505,37 @@ void main() {
           if (nodes.isFocused(destination.focusKey)) destination.focusKey,
       ];
       expect(focusedKeys, isEmpty);
+    });
+
+    testWidgets('does not pull focus back to the bar once the remote has legitimately moved to content', (
+      tester,
+    ) async {
+      // The ring starts genuinely in the bar, on the node that is about to be
+      // pruned.
+      coordinator.updateConditions(const TvNavConditions(hasLiveTv: true));
+      await pump(tester, isNavFocused: true);
+
+      final liveTvNode = nodes.get(TvDestinationId.liveTv.focusKey);
+      liveTvNode.requestFocus();
+      await tester.pumpAndSettle();
+      expect(liveTvNode.hasFocus, isTrue, reason: 'precondition: the ring is on Live TV');
+
+      // Before the destination disappears, the host reports the remote moved
+      // into the content: the case the reopened gap missed, where a late
+      // post-frame callback must not overwrite that with a pull back to the
+      // bar.
+      await pump(tester, isNavFocused: false);
+
+      coordinator.updateConditions(const TvNavConditions(hasLiveTv: false));
+      await tester.pumpAndSettle();
+
+      final replacement = coordinator.focusedDestination;
+      final replacementNode = nodes.get(replacement.focusKey);
+      expect(
+        replacementNode.hasFocus,
+        isFalse,
+        reason: 'the guard must not pull real focus back into the bar once the remote left it for the content',
+      );
     });
   });
 }
