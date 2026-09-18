@@ -75,7 +75,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | CAT3 | Bron, filters en sortering staan verkeerd gepositioneerd | FIXED | `675fc2f` |
 | CAT4 | Bron, filters en sortering mogelijk onbereikbaar | FIXED | `ac040fd` |
 | OVR1 | Detail- en contextmenu valt buiten beeld en voelt te groot | GESPLITST in OVR1a en OVR1b | n.v.t. |
-| OVR1a | `scaleForHeight` heeft ondergrens 0,85, en die is onjuist voor inhoud binnen een TV-paneel: de inhoud wordt ongeveer 1,5 keer te groot | NOT REPRODUCED | n.v.t. |
+| OVR1a | `scaleForHeight` heeft ondergrens 0,85, en die is onjuist voor inhoud binnen een TV-paneel: de inhoud wordt ongeveer 1,5 keer te groot. Alias van register-ID SYS-3a | GESLOTEN als koepel, OPGESPLITST in SYS-3c en SYS-3d | `docs/tvos-sys3a-schaalinventarisatie.md`: 63 van 67 bestanden scheiden displayschaal en paneelgeometrie al correct (inclusief de DET1-fix hierboven, die dit op `media_detail_screen.dart` sloot). Twee bestanden doen dat niet, zie rijen SYS-3c en SYS-3d verderop |
 | OVR1b | TV-sheets zonder expliciete `presentation` vallen terug op de 400x400-geometrie | FIXED | `96f2d45` |
 | OVR2 | Expliciete TV sheet-presentation wordt door de OVR1b-panelgeometrie overschreven | FIXED | `cf4b6c7` |
 | BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | FIXED, hardware open | `f00e2fe` |
