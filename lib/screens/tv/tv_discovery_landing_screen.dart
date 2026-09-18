@@ -326,7 +326,22 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
         onAction: () => unawaited(_discover.load()),
       );
     }
-    return _LandingMessage(title: t.unifiedCatalog.discovery.emptyTitle, body: t.unifiedCatalog.discovery.emptyBody);
+    return _LandingMessage(
+      title: t.unifiedCatalog.discovery.emptyTitle,
+      body: t.unifiedCatalog.discovery.emptyBody,
+      // LAND6. De rails zijn de enige andere ingang naar de complete catalogus,
+      // en die zijn er hier niet. Dat "geen hubs" is niet hetzelfde als "geen
+      // inhoud": de bevinding kwam van een simulator waar Bibliotheken een
+      // Jellyfin-bibliotheek met zes films toonde terwijl de hubs van een
+      // offline Pleya Server moesten komen. Dezelfde actie als boven de rails,
+      // dus dezelfde route: `_openAllScreen` kent het shell-contract al.
+      //
+      // De knop is bovendien het enige focusbare ding op deze pagina. Zonder
+      // hem opent de landing met de focus op de modal scope en geen item eronder
+      // (CAT12, CAT14), en op tvOS is dat een eindstation.
+      actionLabel: widget.allTitle,
+      onAction: _openAllScreen,
+    );
   }
 }
 

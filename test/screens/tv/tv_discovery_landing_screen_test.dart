@@ -534,8 +534,11 @@ void main() {
     testWidgets('opens it through the shell when one is listening', (tester) async {
       var opened = 0;
       await pumpLanding(tester, hubs: const [], onOpenAll: () => opened++);
+      await tester.pumpAndSettle();
 
-      await tester.tap(find.text(t.unifiedCatalog.discovery.allMovies));
+      // The action is a TvPanelButton (FocusableWrapper): Select, not a tap,
+      // is how the remote activates it, same as every other tvOS control.
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
       await tester.pumpAndSettle();
 
       // SYS-1a's contract: the shell callback, not a bare Navigator.push that
