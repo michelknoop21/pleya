@@ -33,8 +33,8 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | SYS-3a | OVR1a: de schaalbasis van paneelinhoud op TV | PB-5 | IN PROGRESS | `dc989713`: alleen op de detailroute gesloten (DET1, DEC-109); de systemische eigenaar `scaleForHeight` zelf staat nog open voor de overige TV-oppervlakken |
 | SYS-3b | OVR1b: sheets zonder expliciete `presentation` vallen op 400x400 | PB-5 | DONE | `96f2d45` |
 | SYS-4 | Gedeelde staat- en lege-presentatie schaalt op TV | audit | OPEN, geauditeerd | zie onder |
-| SYS-5 | i18n-gaten en hardcoded strings | audit | OPEN | |
-| SYS-6 | Tokenafwijkingen per stuk beoordeeld, met regressiebeelden | tokenaudit | OPEN | |
+| SYS-5 | i18n-gaten en hardcoded strings | audit | GESLOTEN via I18N1-6 en STR1-5 | TV0 (18 september): alle elf kinderen staan op FIXED in `docs/tvos-fysieke-correctieronde.md` (I18N1 t/m I18N6, STR1 t/m STR5). Verse sweep op nieuwe hardcoded strings in `lib/screens/tv` en `lib/widgets/tv` leverde geen treffers op |
+| SYS-6 | Tokenafwijkingen per stuk beoordeeld, met regressiebeelden | tokenaudit | OPEN, alleen TOK-2 | TV0 (18 september): TOK-1 (`5cb5c33`) en TOK-3 (DEC-108) staan op FIXED. TOK-2 (serverstip `#3FBF5F` in `tv_my_pleya_screen.dart:830`) staat nog OPEN en is toegewezen aan TV1 (Task 4, `docs/plans/2026-09-18-tv1-systemische-fundering.md`) |
 | SYS-7 | Automation-ids en Pleya Verify-journeys per heringericht oppervlak | werkwijze | OPEN | |
 
 ## DETAIL
