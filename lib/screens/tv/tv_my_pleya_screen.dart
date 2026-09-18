@@ -823,6 +823,7 @@ class _ServerStatusList extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
+                  key: ValueKey('tv.my-pleya.server-dot.${row.online ? 'online' : 'offline'}'),
                   width: TvMyPleyaLayout.serverDotSize * scale,
                   height: TvMyPleyaLayout.serverDotSize * scale,
                   decoration: BoxDecoration(
@@ -830,7 +831,10 @@ class _ServerStatusList extends StatelessWidget {
                     // Red here is a status dot on a status list, not navigation
                     // chrome — hoofdstuk 33 reserves the brand red for the
                     // progress line and small semantic marks, and this is one.
-                    color: row.online ? const Color(0xFF3FBF5F) : kAccent,
+                    // Groen komt uit dezelfde autoriteit als rood: `kSuccess` in
+                    // mono_theme.dart. Hier stond `#3FBF5F`, de laatste losse
+                    // statuskleur in lib (TOK2, na TOK-1 en TOK-3).
+                    color: row.online ? kSuccess : kAccent,
                   ),
                 ),
                 SizedBox(width: TvMyPleyaLayout.serverRowGap * scale),

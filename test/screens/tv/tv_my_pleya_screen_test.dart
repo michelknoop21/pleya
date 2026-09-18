@@ -284,6 +284,16 @@ void main() {
       expect(switchProfileCalls, 1);
     });
 
+    testWidgets('TOK2: the server dot uses the shared status colour', (tester) async {
+      // A dot that is almost kSuccess but not quite is the failure mode TOK-1
+      // already had: two greens that look the same until one theme moves.
+      await pump(tester, full: true);
+
+      final dot = tester.widget<Container>(find.byKey(const ValueKey('tv.my-pleya.server-dot.online')));
+      final decoration = dot.decoration! as BoxDecoration;
+      expect(decoration.color, kSuccess);
+    });
+
     testWidgets('Down from the top navigation lands on the profile action', (tester) async {
       await pump(tester);
 
