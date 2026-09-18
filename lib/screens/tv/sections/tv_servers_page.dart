@@ -21,6 +21,7 @@ import '../../../connection/connection.dart';
 import '../../../connection/connection_registry.dart';
 import '../../../focus/focus_memory_tracker.dart';
 import '../../../i18n/strings.g.dart';
+import '../../../navigation/tv/tv_content_route_registry.dart';
 import '../../../profiles/active_profile_provider.dart';
 import '../../../profiles/profile.dart';
 import '../../../providers/libraries_provider.dart';
@@ -92,23 +93,14 @@ class _TvServersPageState extends State<TvServersPage> {
                       subtitle: active == null
                           ? t.connections.addConnectionSubtitleNoProfile
                           : t.connections.addConnectionSubtitleScoped(displayName: active.displayName),
-                      onSelect: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (_) =>
-                              AddConnectionScreen(targetProfile: context.read<ActiveProfileProvider>().active),
-                        ),
-                      ),
+                      onSelect: _openAddConnection,
                     ),
                     TvMenuItem(
                       key: 'servers_share',
                       icon: Symbols.share_rounded,
                       title: t.pleyaShare.hostTitle,
                       subtitle: t.pleyaShare.hostDescription,
-                      onSelect: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(builder: (_) => const PleyaShareHostScreen()),
-                      ),
+                      onSelect: _openPleyaShare,
                     ),
                   ],
                 ),
@@ -173,4 +165,25 @@ class _TvServersPageState extends State<TvServersPage> {
   Future<void> _disconnect(PleyaServerConnection server) => ConnectionsRemoval.disconnectPleyaServer(context, server);
 
   Future<void> _removeSource(Connection source) => ConnectionsRemoval.removeLocalSource(context, source);
+
+  // SYS-1e: `TvServersPage` is mounted through `tvMyPleyaNestedRoute`, which
+  // has no `Navigator` of its own, so a bare `Navigator.push` resolves to the
+  // profile navigator above the shell and draws over the top bar entirely.
+  // Same fix as SYS-1d's catalog opener: route through the shell when one is
+  // listening, fall back to the plain push everywhere else (off TV, tests).
+  void _openAddConnection() {
+    Widget builder(BuildContext _) => AddConnectionScreen(targetProfile: context.read<ActiveProfileProvider>().active);
+    final nested = openTvContentRoute(id: 'tvServersAddConnection', builder: builder);
+    if (nested == null) {
+      Navigator.push(context, MaterialPageRoute<void>(builder: builder));
+    }
+  }
+
+  void _openPleyaShare() {
+    Widget builder(BuildContext _) => const PleyaShareHostScreen();
+    final nested = openTvContentRoute(id: 'tvServersShareHost', builder: builder);
+    if (nested == null) {
+      Navigator.push(context, MaterialPageRoute<void>(builder: builder));
+    }
+  }
 }

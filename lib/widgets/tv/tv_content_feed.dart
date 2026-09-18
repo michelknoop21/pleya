@@ -65,6 +65,7 @@ import '../../screens/tv/tv_discovery_activation_mixin.dart';
 import '../../screens/tv/tv_root_shell.dart' show TvShellSurface;
 import '../../screens/tv/tv_unified_catalog_screen.dart';
 import '../../media/unified/unified_route_context.dart';
+import '../../navigation/tv/tv_content_route_registry.dart';
 import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../services/settings_service.dart';
 import '../../services/unified_catalog/home_custom_row_view_all.dart';
@@ -364,20 +365,32 @@ class TvContentFeedState extends State<TvContentFeed>
   /// catalog with that row's exact filter and sort already applied, for this
   /// visit only (Michel, 6 September 2026) — see
   /// [TvUnifiedCatalogScreen.initialFilterOverride].
-  Future<void> _openViewAll(HomeCustomRowViewAllTarget target) {
+  ///
+  /// [hubId] is the row's own [UnifiedMediaHub.hubId] (the same key the
+  /// caller already matched `target` against in `viewAllTargets`), used only
+  /// for the route id below. `HomeCustomRowViewAllTarget` itself carries no
+  /// row id (see `home_custom_row_view_all.dart`) and its `count` is
+  /// `content.loadedCount`, what has loaded so far and not a fixed row
+  /// property, so keying the id on `target.hashCode` gave a second press on
+  /// the same tile a new id the moment a background reload changed the count
+  /// between two presses.
+  Future<void> _openViewAll(String hubId, HomeCustomRowViewAllTarget target) {
     final catalogs = context.read<UnifiedCatalogs>();
-    return Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TvUnifiedCatalogScreen(
-          catalog: catalogs.forKind(target.kind),
-          title: target.kind == MediaKind.movie
-              ? t.unifiedCatalog.discovery.allMovies
-              : t.unifiedCatalog.discovery.allSeries,
-          onManageServers: widget.onManageServers,
-          initialFilterOverride: UnifiedCatalogPreferences(sort: target.sort, filters: target.filters),
-        ),
-      ),
+    Widget builder(BuildContext _) => TvUnifiedCatalogScreen(
+      catalog: catalogs.forKind(target.kind),
+      title: target.kind == MediaKind.movie
+          ? t.unifiedCatalog.discovery.allMovies
+          : t.unifiedCatalog.discovery.allSeries,
+      onManageServers: widget.onManageServers,
+      initialFilterOverride: UnifiedCatalogPreferences(sort: target.sort, filters: target.filters),
     );
+    // SYS-1d: same registry path `media_navigation_helper.dart`'s collection
+    // opener uses, so the shell/top navigation stays up rather than a bare
+    // push covering it. Off TV, or a test that never mounted the shell,
+    // `openTvContentRoute` answers null and this falls back as before.
+    final nested = openTvContentRoute(id: 'tvHomeRowViewAll_$hubId', builder: builder);
+    if (nested != null) return nested.then((_) {});
+    return Navigator.of(context).push(MaterialPageRoute(builder: builder));
   }
 
   /// Refreshes every source [group] carries after a hoofdstuk-23 write landed.
@@ -626,7 +639,7 @@ class TvContentFeedState extends State<TvContentFeed>
                               tileScrollAlignment: TvHomeLayout.rowTileScrollAlignment(viewportHeight, scale),
                               automationRailIndex: i,
                               viewAllTarget: viewAllTargets[rows[i].hubId],
-                              onViewAll: _openViewAll,
+                              onViewAll: (t) => _openViewAll(rows[i].hubId, t),
                             ),
                           ),
                         ],
@@ -671,6 +684,10 @@ class TvContentFeedState extends State<TvContentFeed>
   /// unreachable, exactly when a viewer would want to go and look at them.
   /// Without saved rows there is nothing to customise and the bare message
   /// stays bare.
+  /// SYS-4: same fixed-size bug as `StateView` (`widgets/state_view.dart`),
+  /// same fix, and the same reasoning: `TvLayoutConstants.scaleOf` alone, no
+  /// extra multiplier (fix-round 1 removed a flat `2.0` that had no basis).
+  /// Being TV-only code, this needs no `PlatformDetector.isTV()` gate.
   Widget _emptyOrLoading(DiscoverProvider discover, {required bool hasSavedRows}) {
     if (discover.isLoading || discover.areHubsLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -683,16 +700,26 @@ class TvContentFeedState extends State<TvContentFeed>
       );
     }
     final tk = tokens(context);
+    final scale = TvLayoutConstants.scaleOf(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Symbols.movie_rounded, fill: 1, size: 64, color: tk.text.withValues(alpha: 0.3)),
-          const SizedBox(height: 16),
-          Text(t.discover.noContentAvailable, style: TextStyle(color: tk.text)),
-          const SizedBox(height: 8),
-          Text(t.discover.addMediaToLibraries, style: TextStyle(color: tk.textMuted)),
+          Icon(Symbols.movie_rounded, fill: 1, size: 64 * scale, color: tk.text.withValues(alpha: 0.3)),
+          SizedBox(height: 16 * scale),
+          Text(
+            t.discover.noContentAvailable,
+            style: TextStyle(color: tk.text, fontSize: (DefaultTextStyle.of(context).style.fontSize ?? 14.0) * scale),
+          ),
+          SizedBox(height: 8 * scale),
+          Text(
+            t.discover.addMediaToLibraries,
+            style: TextStyle(
+              color: tk.textMuted,
+              fontSize: (DefaultTextStyle.of(context).style.fontSize ?? 14.0) * scale,
+            ),
+          ),
           if (hasSavedRows) ...[
             SizedBox(height: TvDiscoveryLayout.sectionGap * TvLayoutConstants.scaleOf(context)),
             TvHomeCustomizeFooter(

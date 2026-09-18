@@ -239,52 +239,55 @@ class TvRootShell extends StatelessWidget {
                       node: navFocusScope,
                       child: ListenableBuilder(
                         listenable: coordinator,
-                        builder: (context, _) => _TvCollapsibleNav(
-                          // DEC-115. Derived from the focus authority, never
-                          // stored: a hidden bar is by definition one the
-                          // remote is not in, so the ring can never sit on an
-                          // item nobody can see.
-                          overlay: coordinator.activeNestedRoute?.topNav == TvTopNavPresentation.collapsible,
-                          hidden:
-                              coordinator.activeNestedRoute?.topNav == TvTopNavPresentation.collapsible &&
-                              !isNavFocused,
-                          child: TvTopNavigation(
-                            destinations: coordinator.destinations,
-                            active: coordinator.active,
-                            nodes: navNodes,
-                            profile: profile,
-                            // Audit divergentie 13, mockup 30 E: the bar dims
-                            // under an overlay. `isCurrent` flips when a sheet or
-                            // dialog is pushed above this route, and reading it
-                            // here makes that push rebuild the bar.
-                            dimmed: !(ModalRoute.of(context)?.isCurrent ?? true),
-                            onSelect: onSelectDestination,
-                            onFocusDestination: onFocusDestination,
-                            // DOWN out of the bar is the one press that means
-                            // "put me in the content"; `_focusContent` arms the
-                            // intent, and whatever can satisfy it consumes it —
-                            // now if the destination is ready, later if it is
-                            // still waiting on a server (P2).
-                            onNavigateDown: () => onFocusContent(restorePreviousFocus: true),
-                            onOpenProfiles: onOpenProfiles,
-                            // Hoofdstuk 18.4. Read here rather than passed down
-                            // from `MainScreen` so the bar is the only thing that
-                            // rebuilds when a token expires, and read through a
-                            // selector on the *auth* flag specifically: a server
-                            // merely going offline is not something the viewer
-                            // can act on, and marking it would train them to
-                            // ignore the dot that means they can.
-                            // Nullable: this shell is also mounted in tests and
-                            // in early startup frames that have no registry yet,
-                            // and "no provider" is not "attention required".
-                            needsAttention: context.select<MultiServerProvider?, bool>(
-                              (p) => p?.hasAuthErrorServers ?? false,
+                        builder: (context, _) {
+                          _pruneNavFocusAndScheduleRestore();
+                          return _TvCollapsibleNav(
+                            // DEC-115. Derived from the focus authority, never
+                            // stored: a hidden bar is by definition one the
+                            // remote is not in, so the ring can never sit on an
+                            // item nobody can see.
+                            overlay: coordinator.activeNestedRoute?.topNav == TvTopNavPresentation.collapsible,
+                            hidden:
+                                coordinator.activeNestedRoute?.topNav == TvTopNavPresentation.collapsible &&
+                                !isNavFocused,
+                            child: TvTopNavigation(
+                              destinations: coordinator.destinations,
+                              active: coordinator.active,
+                              nodes: navNodes,
+                              profile: profile,
+                              // Audit divergentie 13, mockup 30 E: the bar dims
+                              // under an overlay. `isCurrent` flips when a sheet or
+                              // dialog is pushed above this route, and reading it
+                              // here makes that push rebuild the bar.
+                              dimmed: !(ModalRoute.of(context)?.isCurrent ?? true),
+                              onSelect: onSelectDestination,
+                              onFocusDestination: onFocusDestination,
+                              // DOWN out of the bar is the one press that means
+                              // "put me in the content"; `_focusContent` arms the
+                              // intent, and whatever can satisfy it consumes it —
+                              // now if the destination is ready, later if it is
+                              // still waiting on a server (P2).
+                              onNavigateDown: () => onFocusContent(restorePreviousFocus: true),
+                              onOpenProfiles: onOpenProfiles,
+                              // Hoofdstuk 18.4. Read here rather than passed down
+                              // from `MainScreen` so the bar is the only thing that
+                              // rebuilds when a token expires, and read through a
+                              // selector on the *auth* flag specifically: a server
+                              // merely going offline is not something the viewer
+                              // can act on, and marking it would train them to
+                              // ignore the dot that means they can.
+                              // Nullable: this shell is also mounted in tests and
+                              // in early startup frames that have no registry yet,
+                              // and "no provider" is not "attention required".
+                              needsAttention: context.select<MultiServerProvider?, bool>(
+                                (p) => p?.hasAuthErrorServers ?? false,
+                              ),
+                              isOfflineMode: isOfflineMode,
+                              isReconnecting: isReconnecting,
+                              onReconnect: onReconnect,
                             ),
-                            isOfflineMode: isOfflineMode,
-                            isReconnecting: isReconnecting,
-                            onReconnect: onReconnect,
-                          ),
-                        ),
+                          );
+                        },
                       ),
                     ),
                     content: (topBandHeight) => FocusScope(
@@ -418,6 +421,42 @@ class TvRootShell extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // FOC1. The bar owns nodes for the destinations it renders;
+  // when a destination leaves, its node has to go with it.
+  // Disposing the node that holds focus hands primary focus
+  // back to the enclosing scope, which leaves the bar
+  // focused with no item on it: a bar the remote can neither
+  // move within nor leave.
+  //
+  // In build, like the rail does: this is the one place
+  // that runs on every coordinator change, and
+  // `updateConditions` has by then already chosen a
+  // surviving replacement. So there is no index arithmetic
+  // to do here, unlike the rail. The coordinator's answer
+  // is the target.
+  void _pruneNavFocusAndScheduleRestore() {
+    final prunedFocusedKey = navNodes.pruneExcept(
+      tvTopNavFocusKeys(destinations: coordinator.destinations, isOfflineMode: isOfflineMode, onReconnect: onReconnect),
+    );
+    if (prunedFocusedKey != null) {
+      // Only fires when the pruned node actually held the
+      // focus, so the "remote was in the content" case needs
+      // no guard of its own. Scheduling twice in one frame is
+      // harmless: both callbacks aim at the same
+      // coordinator-chosen destination.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Guards against a late callback overwriting newer state: if the
+        // remote has since moved into the content (same reason
+        // `_recoverFocusAfterPrune` in `side_navigation_rail.dart` guards on
+        // `isSidebarFocused`), pulling it back to the bar would undo a
+        // legitimate move the viewer already made.
+        if (!isNavFocused) return;
+        final node = navNodes.get(coordinator.focusedDestination.focusKey);
+        if (node.canRequestFocus && !node.hasFocus) node.requestFocus();
+      });
+    }
   }
 }
 

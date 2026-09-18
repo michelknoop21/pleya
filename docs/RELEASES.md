@@ -18,11 +18,24 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
+### Improved
+- bereken showReconnect op één plek in tvTopNavFocusKeys
+
 ### Fixed
+- de echte focus volgt een verdwijnende TV-bestemming (FOC1)
+- de serverstip leest kSuccess (TOK2)
 - add filled and scope chip variants for the mobile northstar
+- gedeelde staat- en lege-presentatie op TV-maat (SYS-4)
 - pin the northstar control pill to an exact 32pt surface
+- SYS-4 fix-ronde 1, geen verzonnen schaalfactor meer
+- FOC1 post-frame focus restore mist een focus-guard
+- TOK2 serverstip-key botst bij meerdere online servers
 - breng het mobiele detailscherm terug naar northstar 06/07
 - eigen tablabels voor de mobiele detailtabs (mockup 07)
+- catalogus-openers in Bibliotheken en Home via de content-route-registry (SYS-1d)
+- SYS-1d review, Alle-N route-id op hubId in plaats van target.hashCode
+- route drie resterende TV-shell-bypasses via openTvContentRoute
+- comment overclaimde showReconnect-consolidatie corrigeren
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 282 · 16 September 2026

@@ -12,18 +12,29 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/focus/focus_memory_tracker.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
+import 'package:pleya/navigation/tv/tv_content_focus_authority.dart';
+import 'package:pleya/navigation/tv/tv_content_route_registry.dart';
+import 'package:pleya/navigation/tv/tv_destination.dart';
+import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
+import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/providers/unified_catalogs.dart';
 import 'package:pleya/screens/tv/sections/tv_libraries_screen.dart';
+import 'package:pleya/screens/tv/tv_root_shell.dart';
+import 'package:pleya/services/data_aggregation_service.dart';
+import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/tv/tv_panel_primitives.dart';
+import 'package:pleya/widgets/tv/tv_top_navigation.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -246,6 +257,134 @@ void main() {
       await pump(tester, [movie]);
 
       expect(find.text(t.libraries.reorder), findsNothing);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // SYS-1d: the catalog opener stays inside the TV shell
+  // ---------------------------------------------------------------------------
+
+  group('SYS-1d: opening the catalog from a library keeps the TV shell mounted', () {
+    late LibrariesProvider libraries;
+    late HiddenLibrariesProvider hidden;
+    late TvNavigationCoordinator coordinator;
+    late FocusMemoryTracker navNodes;
+    late FocusScopeNode navScope;
+    late FocusScopeNode contentScope;
+
+    final movie = _lib('m1', serverId: ServerId('srv'), serverName: 'Pleya', title: 'Films');
+
+    setUp(() {
+      resetSharedPreferencesForTest();
+      coordinator = TvNavigationCoordinator()..updateConditions(const TvNavConditions(hasLiveTv: false));
+      navNodes = FocusMemoryTracker(debugLabelPrefix: 'sys1dNav');
+      navScope = FocusScopeNode(debugLabel: 'nav');
+      contentScope = FocusScopeNode(debugLabel: 'content');
+    });
+
+    tearDown(() {
+      libraries.dispose();
+      hidden.dispose();
+      coordinator.dispose();
+      navNodes.dispose();
+      navScope.dispose();
+      contentScope.dispose();
+    });
+
+    // What `main_screen.dart`'s `_pushTvContentRoute` does once attached: open
+    // the route inside the destination that is already active.
+    Future<Object?> pushViaRegistry(TvNestedRoute route) {
+      final destination = coordinator.active;
+      return coordinator.pushNested(destination, route).result;
+    }
+
+    Future<void> pumpInShell(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.runAsync(() async {
+        await StorageService.getInstance();
+        libraries = LibrariesProvider();
+        hidden = HiddenLibrariesProvider();
+        await libraries.updateLibraryOrder([movie]);
+      });
+
+      final manager = MultiServerManager();
+      final multiServer = MultiServerProvider(manager, DataAggregationService(manager));
+      final catalogs = UnifiedCatalogs(multiServer: multiServer, libraries: libraries, hiddenLibraries: hidden);
+      addTearDown(catalogs.dispose);
+      addTearDown(multiServer.dispose);
+
+      tvContentRouteRegistry.attach(pushViaRegistry);
+      addTearDown(() => tvContentRouteRegistry.detach(pushViaRegistry));
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<LibrariesProvider>.value(value: libraries),
+              ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hidden),
+              ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
+              Provider<UnifiedCatalogs>.value(value: catalogs),
+            ],
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: monoTheme(dark: true),
+              home: InputModeTracker(
+                child: TvRootShell(
+                  coordinator: coordinator,
+                  contentFocus: TvContentFocusAuthority(),
+                  navNodes: navNodes,
+                  navFocusScope: navScope,
+                  contentFocusScope: contentScope,
+                  isNavFocused: false,
+                  profile: null,
+                  onSelectDestination: (_) {},
+                  onFocusDestination: coordinator.activate,
+                  onFocusContent: ({bool restorePreviousFocus = true}) {},
+                  onFocusNav: () {},
+                  onOpenProfiles: () {},
+                  onOverlaySheetOpenChanged: (_) {},
+                  onKeyEvent: (_) => KeyEventResult.ignored,
+                  selectLibrary: null,
+                  openSettings: null,
+                  dismissNestedRoute: ([_]) {},
+                  child: const TvLibrariesScreen(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    /// `TvCatalogOptionRow` is `FocusableWrapper`-based, not a
+    /// `GestureDetector` — same "find it, focus it, press Select" shape the
+    /// rest of this file already uses for `TvPanelButton`.
+    Future<void> activateByLabel(WidgetTester tester, String label) async {
+      final focus = Focus.maybeOf(tester.element(find.text(label)), scopeOk: true)!;
+      focus.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('opening the catalog from Libraries keeps the TV shell mounted', (tester) async {
+      await pumpInShell(tester);
+
+      tester.state<TvLibrariesScreenState>(find.byType(TvLibrariesScreen)).loadLibraryByKey(movie.globalKey);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      await activateByLabel(tester, t.libraries.openInAllMovies);
+
+      // Hoofdstuk 33's shared shell is binding on all eight references; a
+      // kale Navigator.push draws a new route over TvRootShell entirely and
+      // takes the bar with it, which is exactly SYS-1's symptom.
+      expect(find.byType(TvTopNavigation), findsOneWidget);
     });
   });
 }
