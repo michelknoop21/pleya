@@ -18,6 +18,9 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
+### Improved
+- bereken showReconnect op één plek in tvTopNavFocusKeys
+
 ### Fixed
 - de echte focus volgt een verdwijnende TV-bestemming (FOC1)
 - de serverstip leest kSuccess (TOK2)
@@ -27,6 +30,8 @@ under `Notes`.
 - TOK2 serverstip-key botst bij meerdere online servers
 - catalogus-openers in Bibliotheken en Home via de content-route-registry (SYS-1d)
 - SYS-1d review, Alle-N route-id op hubId in plaats van target.hashCode
+- route drie resterende TV-shell-bypasses via openTvContentRoute
+- comment overclaimde showReconnect-consolidatie corrigeren
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 282 · 16 September 2026
