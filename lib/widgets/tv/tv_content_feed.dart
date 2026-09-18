@@ -65,6 +65,7 @@ import '../../screens/tv/tv_discovery_activation_mixin.dart';
 import '../../screens/tv/tv_root_shell.dart' show TvShellSurface;
 import '../../screens/tv/tv_unified_catalog_screen.dart';
 import '../../media/unified/unified_route_context.dart';
+import '../../navigation/tv/tv_content_route_registry.dart';
 import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../services/settings_service.dart';
 import '../../services/unified_catalog/home_custom_row_view_all.dart';
@@ -366,18 +367,25 @@ class TvContentFeedState extends State<TvContentFeed>
   /// [TvUnifiedCatalogScreen.initialFilterOverride].
   Future<void> _openViewAll(HomeCustomRowViewAllTarget target) {
     final catalogs = context.read<UnifiedCatalogs>();
-    return Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TvUnifiedCatalogScreen(
-          catalog: catalogs.forKind(target.kind),
-          title: target.kind == MediaKind.movie
-              ? t.unifiedCatalog.discovery.allMovies
-              : t.unifiedCatalog.discovery.allSeries,
-          onManageServers: widget.onManageServers,
-          initialFilterOverride: UnifiedCatalogPreferences(sort: target.sort, filters: target.filters),
-        ),
-      ),
+    Widget builder(BuildContext _) => TvUnifiedCatalogScreen(
+      catalog: catalogs.forKind(target.kind),
+      title: target.kind == MediaKind.movie
+          ? t.unifiedCatalog.discovery.allMovies
+          : t.unifiedCatalog.discovery.allSeries,
+      onManageServers: widget.onManageServers,
+      initialFilterOverride: UnifiedCatalogPreferences(sort: target.sort, filters: target.filters),
     );
+    // SYS-1d: same registry path `media_navigation_helper.dart`'s collection
+    // opener uses, so the shell/top navigation stays up rather than a bare
+    // push covering it. Off TV, or a test that never mounted the shell,
+    // `openTvContentRoute` answers null and this falls back as before.
+    // `target` has value equality (kind, filters, sort, count), so its
+    // `hashCode` is a stable identity for "this exact row's Alle N" without a
+    // row id to key on — the class carries none (see
+    // `home_custom_row_view_all.dart`).
+    final nested = openTvContentRoute(id: 'tvHomeRowViewAll_${target.hashCode}', builder: builder);
+    if (nested != null) return nested.then((_) {});
+    return Navigator.of(context).push(MaterialPageRoute(builder: builder));
   }
 
   /// Refreshes every source [group] carries after a hoofdstuk-23 write landed.
