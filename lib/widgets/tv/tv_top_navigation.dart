@@ -262,9 +262,11 @@ const String tvNavProfileFocusKey = 'tvNav_profile';
 /// and a pruner working from a stale list disposes a node that is on screen.
 ///
 /// Takes the raw [isOfflineMode]/[onReconnect] inputs rather than a
-/// pre-computed `showReconnect`, so [TvTopNavigation.build] and the pruner in
-/// `tv_root_shell.dart` derive the same gate from one expression instead of
-/// each recomputing `isOfflineMode && onReconnect != null` independently.
+/// pre-computed `showReconnect`, so the pruner in `tv_root_shell.dart` no
+/// longer carries its own copy of `isOfflineMode && onReconnect != null` at
+/// the call site. [TvTopNavigation.build] still evaluates that same
+/// expression locally for its own render logic (chip visibility, focus-key
+/// selection), which this function does not replace.
 Set<String> tvTopNavFocusKeys({
   required List<TvDestinationId> destinations,
   required bool isOfflineMode,
