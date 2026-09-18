@@ -18,14 +18,20 @@ double homeHeroHeight({
   required double screenWidth,
   required double statusBarHeight,
   required double firstRailHeight,
+  double heroToRailGap = 0,
 }) {
   // Desktop and tablet keep a fixed slice: there the rails sit beside the hero
   // or well below the fold, so filling to the first rail would overshoot.
   if (useSideNav) return (screenHeight * 0.75).clamp(480.0, 900.0);
 
-  // Fill whatever the first rail doesn't need, so opening the page shows the
-  // hero and that one rail and nothing else.
-  final fill = viewportExtent - firstRailHeight;
+  // Fill whatever the first rail (plus the gap above it) doesn't need, so
+  // opening the page shows the hero, that gap and that one rail and nothing
+  // else. [heroToRailGap] is the caller's own post-hero spacer, budgeted here
+  // rather than left for the caller to reconcile by hand — a hero sized to
+  // this result and a spacer sized to [heroToRailGap] can never together
+  // overshoot [firstRailHeight]'s budget the way an unrelated hero shrink and
+  // an unrelated spacer once silently did (density-review F5).
+  final fill = viewportExtent - firstRailHeight - heroToRailGap;
 
   // Floor: on a wide window (a Mac running the iOS build, an iPad in landscape)
   // the full 16:9 frame can be taller than what's left over, and sizing off the
@@ -43,17 +49,16 @@ double homeHeroHeight({
   // pass sizes the hero for real.
   if (cap <= 0) return 0;
 
-  // The cap wins when the viewport is too short to honour the floor: the hero
-  // can never be taller than the space it is drawn in. Ordering these the
-  // other way round is not a rounding detail — `clamp` throws when its lower
-  // bound exceeds its upper one, and a throw inside the layout builder costs
-  // the whole billboard: release builds swap it for a blank error box, so the
-  // home screen loses its artwork, title and play button at once. That is
-  // reachable in normal use, because the home tab stays laid out inside the
-  // IndexedStack while the search keyboard shrinks the viewport under it.
-  final floor = math.min(360.0, cap);
-
-  return math.max(fill, sixteenNine).clamp(floor, cap);
+  // No hard minimum beyond [sixteenNine] itself: a fixed points floor (360pt,
+  // removed here) is not an accepted iOS design authority, and on the phone
+  // reference sizes it silently overrode an honest [fill] that already had
+  // the real rail and the real gap subtracted, forcing overflow past the fold
+  // (density-review F5). [sixteenNine] already keeps a degenerate case (a
+  // rail so tall [fill] goes negative or near-zero) from squeezing the hero
+  // to nothing — see the "rail too tall" case in home_hero_layout_test.dart —
+  // so nothing else needs to. The cap is still the upper bound, unconditional,
+  // so this can never throw: clamp's lower bound here is a literal `0.0`.
+  return math.max(fill, sixteenNine).clamp(0.0, cap);
 }
 
 /// Geometry for the hero's two artwork layers: a full-hero ambient wash and a
@@ -534,6 +539,13 @@ const double _railHeaderTopPadding = 4.0;
 /// constant. [HomeHeroContentMetrics.paginationBottomInset] still carries it
 /// so the metrics object stays self-describing.
 const double homeHeroPaginationBottomInset = 16.0;
+
+/// Gap between the phone hero's own bottom edge and the first rail below it
+/// (`Verder kijken`'s title row), matching the spacing `home-comp.png` shows
+/// between the hero card and that heading. Passed to [homeHeroHeight] as
+/// [homeHeroHeight]'s `heroToRailGap` so the fill budget and the sliver that
+/// actually draws the gap can never disagree on its size.
+const double homeHeroToRailGap = 24.0;
 
 /// Verticale ritmiek van de overlaid home-appbar, gedeeld met de hero zodat de
 /// scherpe laag onder de bedieningsrij kan beginnen zonder een RenderBox te meten.

@@ -155,10 +155,13 @@ class FakeDriver implements VerificationDriver {
   @override
   Future<void> typeText(String text) async {}
 
-  final List<(double, double)> tapPoints = [];
+  /// Every tap this driver was asked for, in order — x/y plus the hold in
+  /// milliseconds (null for an ordinary tap).
+  final List<({double x, double y, int? holdMs})> tapPoints = [];
 
   @override
-  Future<void> tap(double x, double y) async => tapPoints.add((x, y));
+  Future<void> tap(double x, double y, {Duration? hold}) async =>
+      tapPoints.add((x: x, y: y, holdMs: hold?.inMilliseconds));
 }
 
 /// A row of focusables and a remote that moves through it, so the walk
@@ -371,7 +374,25 @@ void main() {
     final result = await runScenario(scenario: scenario, scenarioSource: 'source', driver: driver, repoRoot: repoRoot);
 
     expect(result.passed, isTrue);
-    expect(driver.tapPoints, [(12.0, 34.0)]);
+    expect(driver.tapPoints, [(x: 12.0, y: 34.0, holdMs: null)]);
+  });
+
+  test('tap: {x, y, holdMs} reaches the driver as a held tap and is recorded in the manifest', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.tap_hold\ntarget: macos\nsetup:\n  - launch\nsteps:\n  - tap: {x: 12, y: 34, holdMs: 600}\n',
+      sourcePath: 'inline.yaml',
+    );
+    final driver = FakeDriver();
+
+    final result = await runScenario(scenario: scenario, scenarioSource: 'source', driver: driver, repoRoot: repoRoot);
+
+    expect(result.passed, isTrue);
+    expect(driver.tapPoints, [(x: 12.0, y: 34.0, holdMs: 600)]);
+
+    final manifest =
+        jsonDecode(File('${result.bundleDir.path}/manifest.json').readAsStringSync()) as Map<String, Object?>;
+    final tap = (manifest['steps'] as List).cast<Map<String, Object?>>().firstWhere((s) => s['verb'] == 'tap');
+    expect(tap['hold_ms'], 600);
   });
 
   test('tap: {id} resolves to the node\'s centre via the live ui_tree, not a hardcoded point', () async {
@@ -385,7 +406,7 @@ void main() {
 
     expect(result.passed, isTrue);
     // bounds x:0 y:0 width:200 height:800 -> centre (100, 400).
-    expect(driver.tapPoints, [(100.0, 400.0)]);
+    expect(driver.tapPoints, [(x: 100.0, y: 400.0, holdMs: null)]);
   });
 
   test('tap: {id} on a node with no bounds fails the run rather than tapping (0, 0)', () async {

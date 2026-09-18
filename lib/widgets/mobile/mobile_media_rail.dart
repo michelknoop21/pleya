@@ -34,6 +34,49 @@ const double mobileRailWideCardWidth = 220;
 const double mobileRailGutter = 12;
 const double mobileRailInset = 16;
 
+/// The rail title's style, shared with `MobileHomeScreen._firstRailHeight`
+/// so the reserved space and the drawn text measure the same font.
+const TextStyle mobileRailTitleStyle = TextStyle(fontSize: 20, fontWeight: FontWeight.w700);
+
+/// The gap between the title row and the card row below it.
+const double mobileRailTitleGap = 8;
+
+/// Height of a rail's card row for [shape]: the artwork at its own aspect
+/// ratio plus the caption block `MediaCardGridLayout.textExtentFor` reserves.
+/// Shared between [MobileMediaRail]'s own card row and
+/// `MobileHomeScreen._firstRailHeight` so the two can never compute two
+/// different heights for the same shape.
+double mobileRailCardRowHeight(BuildContext context, MobileCardShape shape) {
+  final cardWidth = shape == MobileCardShape.wide ? mobileRailWideCardWidth : mobileRailCardWidth;
+  final aspect = shape == MobileCardShape.wide ? 16 / 9 : 2 / 3;
+  return cardWidth / aspect + MediaCardGridLayout.textExtentFor(context);
+}
+
+/// Height of the rail's title row: one line of [mobileRailTitleStyle].
+///
+/// Merged with the ambient [DefaultTextStyle] so this matches what the real
+/// [Text] below actually renders: a bare [TextPainter] built from
+/// [mobileRailTitleStyle] alone (which sets no `fontFamily`) falls back to
+/// Flutter's default font instead of the theme's `Inter`, and that font
+/// mismatch was silently producing a ~9pt gap between this estimate and the
+/// rail's real rendered height.
+double mobileRailTitleRowHeight(BuildContext context) {
+  final style = DefaultTextStyle.of(context).style.merge(mobileRailTitleStyle);
+  final painter = TextPainter(
+    text: TextSpan(text: 'M', style: style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout();
+  return painter.height;
+}
+
+/// Total rendered height of a [MobileMediaRail] for [shape]: the title row,
+/// the gap beneath it, and the card row. The one number `MobileHomeScreen`
+/// budgets the hero against, so it can never drift from what this widget
+/// actually draws.
+double mobileRailHeight(BuildContext context, MobileCardShape shape) =>
+    mobileRailTitleRowHeight(context) + mobileRailTitleGap + mobileRailCardRowHeight(context, shape);
+
 class MobileMediaRail extends StatelessWidget {
   final UnifiedMediaHub hub;
   final int railIndex;
@@ -76,8 +119,7 @@ class MobileMediaRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardWidth = shape == MobileCardShape.wide ? mobileRailWideCardWidth : mobileRailCardWidth;
-    final aspect = shape == MobileCardShape.wide ? 16 / 9 : 2 / 3;
-    final cardHeight = cardWidth / aspect + MediaCardGridLayout.textExtentFor(context);
+    final cardHeight = mobileRailCardRowHeight(context, shape);
 
     return AutomationNode(
       id: automationId,
@@ -91,12 +133,7 @@ class MobileMediaRail extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    hub.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                  ),
+                  child: Text(hub.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: mobileRailTitleStyle),
                 ),
                 if (onViewAll != null)
                   TextButton(
@@ -109,7 +146,7 @@ class MobileMediaRail extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: mobileRailTitleGap),
           SizedBox(
             height: cardHeight,
             child: ListView.builder(

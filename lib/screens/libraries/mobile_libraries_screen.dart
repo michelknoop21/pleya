@@ -23,6 +23,9 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
+import '../../automation/automation_screen.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
 import '../../media/library_query.dart';
@@ -132,72 +135,77 @@ class _MobileLibrariesScreenState extends State<MobileLibrariesScreen> {
     final filtered = _selectedServerId == null ? visible : (grouped.byServer[_selectedServerId] ?? const []);
     final recentLibrary = filtered.where(_isCatalogable).firstOrNull;
 
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // `CustomAppBar.onBackPressed` only shows a leading button when the
-          // surrounding route itself can pop (`DesktopTopBar`'s own
-          // `canPop` gate) — but this screen is a tab body inside
-          // `MainScreen`'s single root route, which never pops. `SearchScreen`
-          // hits the exact same problem for the same reason (I4) and solves it
-          // by drawing its own unconditional `leading` on `DesktopSliverAppBar`
-          // instead; this follows that precedent rather than inventing a
-          // second one.
-          DesktopSliverAppBar(
-            title: Text(t.libraries.title),
-            leading: BackButton(onPressed: widget.onBack),
-            actions: [TextButton(onPressed: _manageLibraries, child: Text(t.common.edit))],
-          ),
-          if (grouped.serverOrder.length > 1)
-            SliverToBoxAdapter(
-              child: _ServerFilterChips(
-                groups: grouped,
-                selectedServerId: _selectedServerId,
-                onSelected: (serverId) => setState(() => _selectedServerId = serverId),
-              ),
+    return AutomationScreen(
+      id: AutomationIds.screenLibraryPicker,
+      readiness: () => const AutomationReadiness.ready(),
+      child: Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            // `CustomAppBar.onBackPressed` only shows a leading button when the
+            // surrounding route itself can pop (`DesktopTopBar`'s own
+            // `canPop` gate) — but this screen is a tab body inside
+            // `MainScreen`'s single root route, which never pops. `SearchScreen`
+            // hits the exact same problem for the same reason (I4) and solves it
+            // by drawing its own unconditional `leading` on `DesktopSliverAppBar`
+            // instead; this follows that precedent rather than inventing a
+            // second one.
+            DesktopSliverAppBar(
+              title: Text(t.libraries.title),
+              leading: BackButton(onPressed: widget.onBack),
+              actions: [TextButton(onPressed: _manageLibraries, child: Text(t.common.edit))],
             ),
-          if (allLibraries.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: EmptyStateWidget(message: t.libraries.noLibrariesFound, icon: Symbols.video_library_rounded),
-            )
-          else if (filtered.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: EmptyStateWidget(
-                message: t.libraries.allLibrariesHidden,
-                icon: Symbols.visibility_off_rounded,
-                onAction: _manageLibraries,
-                actionLabel: t.libraries.manageLibraries,
-                actionIcon: Symbols.edit_rounded,
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.92,
+            if (grouped.serverOrder.length > 1)
+              SliverToBoxAdapter(
+                child: _ServerFilterChips(
+                  groups: grouped,
+                  selectedServerId: _selectedServerId,
+                  onSelected: (serverId) => setState(() => _selectedServerId = serverId),
                 ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => _LibraryPickerCard(
-                    library: filtered[index],
-                    itemCount: _counts[filtered[index].globalKey],
-                    onTap: () => _openLibrary(filtered[index]),
+              ),
+            if (allLibraries.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: EmptyStateWidget(message: t.libraries.noLibrariesFound, icon: Symbols.video_library_rounded),
+              )
+            else if (filtered.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: EmptyStateWidget(
+                  message: t.libraries.allLibrariesHidden,
+                  icon: Symbols.visibility_off_rounded,
+                  onAction: _manageLibraries,
+                  actionLabel: t.libraries.manageLibraries,
+                  actionIcon: Symbols.edit_rounded,
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.92,
                   ),
-                  childCount: filtered.length,
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _LibraryPickerCard(
+                      library: filtered[index],
+                      index: index,
+                      itemCount: _counts[filtered[index].globalKey],
+                      onTap: () => _openLibrary(filtered[index]),
+                    ),
+                    childCount: filtered.length,
+                  ),
                 ),
               ),
-            ),
-          if (recentLibrary != null)
-            SliverToBoxAdapter(
-              child: _RecentlyAddedSection(library: recentLibrary, onOpenLibrary: () => _openLibrary(recentLibrary)),
-            ),
-          const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
-        ],
+            if (recentLibrary != null)
+              SliverToBoxAdapter(
+                child: _RecentlyAddedSection(library: recentLibrary, onOpenLibrary: () => _openLibrary(recentLibrary)),
+              ),
+            const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
+          ],
+        ),
       ),
     );
   }
@@ -247,9 +255,10 @@ class _ServerFilterChips extends StatelessWidget {
 /// One card: icon tile, title, and a source line with an online/offline dot —
 /// northstar 15's own shape, distinct from [MobileMediaCard]'s poster cards.
 class _LibraryPickerCard extends StatelessWidget {
-  const _LibraryPickerCard({required this.library, required this.itemCount, required this.onTap});
+  const _LibraryPickerCard({required this.library, required this.index, required this.itemCount, required this.onTap});
 
   final MediaLibrary library;
+  final int index;
   final int? itemCount;
   final VoidCallback onTap;
 
@@ -265,53 +274,58 @@ class _LibraryPickerCard extends StatelessWidget {
         ? t.libraries.oneItem
         : t.libraries.itemCount(count: '$itemCount');
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: tokens(context).surfaceElevated,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: settingsOutlineColor(context)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(color: tokens(context).surface, borderRadius: BorderRadius.circular(10)),
-                child: Center(child: AppIcon(ContentTypeHelper.getLibraryIcon(library.kind.id), size: 32)),
+    return AutomationNode(
+      id: AutomationIds.libraryPickerCard,
+      instance: '$index',
+      role: 'grid.item',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: tokens(context).surfaceElevated,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: settingsOutlineColor(context)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(color: tokens(context).surface, borderRadius: BorderRadius.circular(10)),
+                  child: Center(child: AppIcon(ContentTypeHelper.getLibraryIcon(library.kind.id), size: 32)),
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              library.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(color: isOnline ? Colors.green : Colors.red, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    [?library.serverName, ?countText].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(color: tokens(context).textMuted),
+              const SizedBox(height: 10),
+              Text(
+                library.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(color: isOnline ? Colors.green : Colors.red, shape: BoxShape.circle),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      [?library.serverName, ?countText].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(color: tokens(context).textMuted),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

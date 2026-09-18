@@ -18,6 +18,18 @@ ids:
   - id: screen.media_detail
     role: screen
     instanceable: false
+  - id: screen.library_picker
+    role: screen
+    instanceable: false
+  - id: library.picker.card
+    role: grid.item
+    instanceable: true
+  - id: screen.settings
+    role: screen
+    instanceable: false
+  - id: settings.tile
+    role: list.item
+    instanceable: true
   - id: nav.discover
     role: nav
     instanceable: false
@@ -229,6 +241,12 @@ ids:
     role: sheet
     instanceable: false
   - id: sheet.source_picker.row
+    role: list.item
+    instanceable: true
+  - id: sheet.context_menu
+    role: sheet
+    instanceable: false
+  - id: sheet.context_menu.item
     role: list.item
     instanceable: true
   - id: screen.catalog_movies

@@ -126,6 +126,38 @@ void main() {
     });
   });
 
+  group('tap holdMs', () {
+    Scenario tapWithHold(String target, Object holdMs) => parseScenarioString(
+      'name: t\ntarget: $target\nsteps:\n  - tap: {x: 1, y: 2, holdMs: $holdMs}\n',
+      sourcePath: 'test.yaml',
+    );
+
+    test('a positive holdMs on macOS/iOS is fine — unlike press, tap has no per-target restriction', () {
+      expect(validateScenario(tapWithHold('macos', 600), catalog), isEmpty);
+      expect(validateScenario(tapWithHold('ios-sim', 600), catalog), isEmpty);
+    });
+
+    test('a zero or negative holdMs is rejected', () {
+      final errors = validateScenario(tapWithHold('macos', 0), catalog);
+      expect(errors, hasLength(1));
+      expect(errors.single.message, contains('positive whole number'));
+    });
+
+    test('a non-integer holdMs is rejected', () {
+      final errors = validateScenario(tapWithHold('macos', '"soon"'), catalog);
+      expect(errors, hasLength(1));
+      expect(errors.single.message, contains('positive whole number'));
+    });
+
+    test('tap without holdMs is unaffected', () {
+      final scenario = parseScenarioString(
+        'name: t\ntarget: macos\nsteps:\n  - tap: {x: 1, y: 2}\n',
+        sourcePath: 'test.yaml',
+      );
+      expect(validateScenario(scenario, catalog), isEmpty);
+    });
+  });
+
   test('every verb setupVerbs/stepVerbs advertise has a real case in the engine switch', () {
     // A verb that validates but has no engine case only fails after a full
     // build, install and launch (see `run_scenario_test.dart`'s "verbs that

@@ -32,6 +32,30 @@ class AutomationIds {
   static const String screenLibraries = 'screen.libraries';
   static const String screenMediaDetail = 'screen.media_detail';
 
+  /// Northstar 15's phone-only picker landing (`MobileLibrariesScreen`), the
+  /// grid of library cards a real user reaches by tapping `my_pleya.tile
+  /// [libraries]`. Distinct from [screenLibraries]: that id stays on the
+  /// shared `LibrariesScreen` a card push into, never on this landing itself.
+  static const String screenLibraryPicker = 'screen.library_picker';
+
+  /// One card in [screenLibraryPicker]'s grid. Instanceable by index, the
+  /// same convention [libraryGridItem] already uses for its own grid.
+  static const String libraryPickerCard = 'library.picker.card';
+
+  /// The non-TV `SettingsScreen` (northstar 14). Never mounted alongside the
+  /// separate `_buildTvSettings()` branch the same class draws on Apple TV,
+  /// so this id and the TV-only page never collide.
+  static const String screenSettings = 'screen.settings';
+
+  /// One top-level `SettingNavigationTile` row on [screenSettings].
+  /// Instanceable, suffixed with a stable per-tile slug (`appearance`,
+  /// `home_layout`, `playback`, `language`, `subtitle_styling`, `downloads`,
+  /// `trackers`, `requests`, `profiles`, `servers`) rather than an index:
+  /// several of these rows are conditionally shown (`if (!isAppleTV)`,
+  /// tracker/requests gating), so a slot index would shift under those
+  /// conditions in a way a real user's route never depends on.
+  static const String settingsTile = 'settings.tile';
+
   /// The nav rail as a whole — bounds for collapse/expand geometry checks.
   static const String sidebarRail = 'sidebar.rail';
 
@@ -310,6 +334,18 @@ class AutomationIds {
   /// One row in [sheetSourcePicker]. Instanceable: suffixed `[<index>]`.
   static const String sheetSourcePickerRow = 'sheet.source_picker.row';
 
+  /// The mobile unified context menu as a whole (`showMobileUnifiedContextMenu`,
+  /// mockup 09) — its title is the tapped item's, so a scenario needs this
+  /// id to confirm the *menu* opened rather than reading the title alone.
+  static const String sheetContextMenu = 'sheet.context_menu';
+
+  /// One action row in [sheetContextMenu] (markeer bekeken, aan kijklijst,
+  /// …). Instanceable: suffixed `[<index>]`, same shape as
+  /// [sheetSourcePickerRow] — the action itself, not a stable id per
+  /// `UnifiedGroupAction`, because which actions are offered (and in which
+  /// order) already varies with the group's own state.
+  static const String sheetContextMenuItem = 'sheet.context_menu.item';
+
   /// The Alle films/Alle series catalogue screens (iOS Unified 2026 fase 3,
   /// `docs/ios-unified-2026-fase3-plan.md`). Two separate consts rather than
   /// one instanceable id, the same choice [screenSeries]/[screenMovies] made:
@@ -371,6 +407,8 @@ class AutomationIds {
   static const Set<String> instanceableIds = {
     sidebarLibraryRow,
     libraryGridItem,
+    libraryPickerCard,
+    settingsTile,
     mediaDetailEpisodeListItem,
     mediaDetailSeasonChip,
     discoverRail,
@@ -395,6 +433,7 @@ class AutomationIds {
     searchResultsSection,
     searchResultsItem,
     sheetSourcePickerRow,
+    sheetContextMenuItem,
     catalogHeader,
     catalogHeaderSearch,
     catalogChipSources,
@@ -424,6 +463,10 @@ class AutomationIds {
     {'id': screenDiscover, 'role': 'screen', 'instanceable': false},
     {'id': screenLibraries, 'role': 'screen', 'instanceable': false},
     {'id': screenMediaDetail, 'role': 'screen', 'instanceable': false},
+    {'id': screenLibraryPicker, 'role': 'screen', 'instanceable': false},
+    {'id': libraryPickerCard, 'role': 'grid.item', 'instanceable': true},
+    {'id': screenSettings, 'role': 'screen', 'instanceable': false},
+    {'id': settingsTile, 'role': 'list.item', 'instanceable': true},
     for (final tab in NavigationTabId.values) {'id': navTab(tab), 'role': 'nav', 'instanceable': false},
     {'id': navProfile, 'role': 'nav', 'instanceable': false},
     {'id': navReconnect, 'role': 'nav', 'instanceable': false},
@@ -485,6 +528,8 @@ class AutomationIds {
     {'id': searchResultsItem, 'role': 'list.item', 'instanceable': true},
     {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
+    {'id': sheetContextMenu, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetContextMenuItem, 'role': 'list.item', 'instanceable': true},
     {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},
     {'id': screenCatalogSeries, 'role': 'screen', 'instanceable': false},
     {'id': catalogHeader, 'role': 'region', 'instanceable': true},
