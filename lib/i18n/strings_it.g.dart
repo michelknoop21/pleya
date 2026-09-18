@@ -61,6 +61,7 @@ class TranslationsIt extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsProfilesIt profiles = _TranslationsProfilesIt._(_root);
 	@override late final _TranslationsConnectionsIt connections = _TranslationsConnectionsIt._(_root);
 	@override late final _TranslationsDiscoverIt discover = _TranslationsDiscoverIt._(_root);
+	@override late final _TranslationsMobileDetailIt mobileDetail = _TranslationsMobileDetailIt._(_root);
 	@override late final _TranslationsErrorsIt errors = _TranslationsErrorsIt._(_root);
 	@override late final _TranslationsNoticesIt notices = _TranslationsNoticesIt._(_root);
 	@override late final _TranslationsLibrariesIt libraries = _TranslationsLibrariesIt._(_root);
@@ -897,6 +898,17 @@ class _TranslationsDiscoverIt extends TranslationsDiscoverEn {
 	@override String get tvShow => 'Serie TV';
 	@override String minutesLeft({required Object minutes}) => '${minutes} minuti rimanenti';
 	@override String get moreLikeThis => 'Altri contenuti simili';
+}
+
+// Path: mobileDetail
+class _TranslationsMobileDetailIt extends TranslationsMobileDetailEn {
+	_TranslationsMobileDetailIt._(TranslationsIt root) : this._root = root, super.internal(root);
+
+	final TranslationsIt _root; // ignore: unused_field
+
+	// Translations
+	@override String get similarTab => 'Simili';
+	@override String get extrasTab => 'Extra';
 }
 
 // Path: errors
@@ -2908,6 +2920,8 @@ extension on TranslationsIt {
 			'discover.tvShow' => 'Serie TV',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} minuti rimanenti',
 			'discover.moreLikeThis' => 'Altri contenuti simili',
+			'mobileDetail.similarTab' => 'Simili',
+			'mobileDetail.extrasTab' => 'Extra',
 			'errors.searchFailed' => 'Ricerca fallita',
 			'errors.connectionTimeout' => ({required Object context}) => 'Timeout connessione durante caricamento di ${context}',
 			'errors.connectionFailed' => 'Impossibile connettersi al server multimediale',
@@ -3289,10 +3303,10 @@ extension on TranslationsIt {
 			'companionRemote.session.stopServer' => 'Arresta server',
 			'companionRemote.session.minimize' => 'Riduci',
 			'companionRemote.pairing.discoveryDescription' => 'I dispositivi Pleya con lo stesso account Plex appaiono qui',
-			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Connessione...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
+			'companionRemote.pairing.connecting' => 'Connessione...',
 			'companionRemote.pairing.searchingForDevices' => 'Ricerca dispositivi...',
 			'companionRemote.pairing.noDevicesFound' => 'Nessun dispositivo trovato nella tua rete',
 			'companionRemote.pairing.noDevicesHint' => 'Apri Pleya su desktop e usa lo stesso WiFi',

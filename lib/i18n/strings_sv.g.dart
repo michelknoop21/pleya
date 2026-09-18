@@ -61,6 +61,7 @@ class TranslationsSv extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsProfilesSv profiles = _TranslationsProfilesSv._(_root);
 	@override late final _TranslationsConnectionsSv connections = _TranslationsConnectionsSv._(_root);
 	@override late final _TranslationsDiscoverSv discover = _TranslationsDiscoverSv._(_root);
+	@override late final _TranslationsMobileDetailSv mobileDetail = _TranslationsMobileDetailSv._(_root);
 	@override late final _TranslationsErrorsSv errors = _TranslationsErrorsSv._(_root);
 	@override late final _TranslationsNoticesSv notices = _TranslationsNoticesSv._(_root);
 	@override late final _TranslationsLibrariesSv libraries = _TranslationsLibrariesSv._(_root);
@@ -897,6 +898,17 @@ class _TranslationsDiscoverSv extends TranslationsDiscoverEn {
 	@override String get tvShow => 'TV-serie';
 	@override String minutesLeft({required Object minutes}) => '${minutes} min kvar';
 	@override String get moreLikeThis => 'Mer som detta';
+}
+
+// Path: mobileDetail
+class _TranslationsMobileDetailSv extends TranslationsMobileDetailEn {
+	_TranslationsMobileDetailSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get similarTab => 'Liknande';
+	@override String get extrasTab => 'Extra';
 }
 
 // Path: errors
@@ -2908,6 +2920,8 @@ extension on TranslationsSv {
 			'discover.tvShow' => 'TV-serie',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min kvar',
 			'discover.moreLikeThis' => 'Mer som detta',
+			'mobileDetail.similarTab' => 'Liknande',
+			'mobileDetail.extrasTab' => 'Extra',
 			'errors.searchFailed' => 'Sökning misslyckades',
 			'errors.connectionTimeout' => ({required Object context}) => 'Anslutnings-timeout vid laddning ${context}',
 			'errors.connectionFailed' => 'Kan inte ansluta till mediaserver',
@@ -3289,10 +3303,10 @@ extension on TranslationsSv {
 			'companionRemote.session.stopServer' => 'Stoppa server',
 			'companionRemote.session.minimize' => 'Minimera',
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheter med samma Plex-konto visas här',
-			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Ansluter...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
+			'companionRemote.pairing.connecting' => 'Ansluter...',
 			'companionRemote.pairing.searchingForDevices' => 'Söker efter enheter...',
 			'companionRemote.pairing.noDevicesFound' => 'Inga enheter hittades i ditt nätverk',
 			'companionRemote.pairing.noDevicesHint' => 'Öppna Pleya på desktop och använd samma WiFi',

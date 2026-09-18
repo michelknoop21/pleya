@@ -1298,6 +1298,7 @@ class _SearchScreenState extends State<SearchScreen>
 
   Widget _filterChip(BuildContext context, _SearchFilter filter, String label) {
     return FocusableFilterChip(
+      variant: PlatformDetector.isPhone(context) ? FilterChipVariant.scope : FilterChipVariant.outlined,
       label: label,
       selected: _activeFilter == filter,
       onPressed: () => setStateIfMounted(() => _activeFilter = filter),

@@ -48,12 +48,14 @@ class MobileChipBar extends StatelessWidget {
         child: Row(
           children: [
             FocusableFilterChip(
+              variant: FilterChipVariant.scope,
               label: t.unifiedCatalog.seriesTitle,
               selected: selected == MobileHomeChip.series,
               onPressed: () => select(MobileHomeChip.series),
             ),
             const SizedBox(width: 8),
             FocusableFilterChip(
+              variant: FilterChipVariant.scope,
               label: t.unifiedCatalog.moviesTitle,
               selected: selected == MobileHomeChip.movies,
               onPressed: () => select(MobileHomeChip.movies),

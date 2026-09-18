@@ -47,18 +47,34 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
                               child: Column(
                                 crossAxisAlignment: .start,
                                 children: [
-                                  _buildMobilePreviewCard(context, metadata, client),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    metadata.displayTitle,
-                                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: .bold),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  _buildMobileTagsRow(context, metadata),
-                                  const SizedBox(height: 16),
+                                  // Mockup 07 opens a series on the Hervatten
+                                  // capsule and goes straight into the tabs:
+                                  // no 16:9 preview, no second title under the
+                                  // app bar's, no tags row, and no full-width
+                                  // Downloaden CTA (download lives per episode
+                                  // row instead). Those belong to 06, the film
+                                  // detail, which keeps them unchanged below.
+                                  if (!metadata.isShow) ...[
+                                    _buildMobilePreviewCard(context, metadata, client),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      metadata.displayTitle,
+                                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: .bold),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildMobileTagsRow(context, metadata),
+                                    const SizedBox(height: 16),
+                                  ],
                                   _buildMobilePrimaryCta(context, metadata),
-                                  const SizedBox(height: 10),
-                                  _buildMobileDownloadCta(context, metadata),
+                                  if (!metadata.isShow) ...[
+                                    const SizedBox(height: 10),
+                                    _buildMobileDownloadCta(context, metadata),
+                                  ],
+                                  // Kept for a series too: this is the only way
+                                  // to change source from the detail page, and
+                                  // it already draws nothing unless the item
+                                  // actually has alternative sources
+                                  // (`hasAlternativeSources`, action_buttons.dart).
                                   _buildUnifiedSourceLine(),
                                   const SizedBox(height: 16),
                                   if (metadata.isShow)
@@ -106,10 +122,10 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
       child: Row(
         children: [
           DesktopAppBarHelper.buildAdjustedLeading(
-            AppBarBackButton(
-              style: BackButtonStyle.circular,
-              onPressed: () => Navigator.pop(context, _watchStateChanged),
-            ),
+            // Mockups 06 and 07 draw a bare arrow on the page background, not
+            // a disc: the circular style belongs over artwork (the hero
+            // overlay, the player), not on this flat 44pt bar.
+            AppBarBackButton(style: BackButtonStyle.plain, onPressed: () => Navigator.pop(context, _watchStateChanged)),
             context: context,
           )!,
           Expanded(
@@ -304,7 +320,17 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
             height: 48,
             child: FilledButton.tonalIcon(
               onPressed: () => unawaited(_handleDownloadButtonPressed(metadata)),
-              style: FilledButton.styleFrom(shape: const StadiumBorder()),
+              // The tonal variant's own defaults never reach this button:
+              // monoTheme's `filledButtonTheme` sets `backgroundColor: c.text`
+              // for every FilledButton, and a theme style outranks a variant
+              // default, so this rendered pure white — the same capsule as the
+              // primary CTA right above it. The mockup has a grey secondary
+              // under a white primary, so name the surface explicitly.
+              style: FilledButton.styleFrom(
+                shape: const StadiumBorder(),
+                backgroundColor: tokens(context).surfaceElevated,
+                foregroundColor: tokens(context).text,
+              ),
               icon: Icon(icon),
               label: Text(label, style: const TextStyle(fontWeight: .w700)),
             ),

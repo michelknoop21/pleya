@@ -8,7 +8,15 @@ part of '../media_detail_screen.dart';
 /// (`_seasonEpisodePager`) stays intact when switching seasons here.
 extension _MobileEpisodesTab on _MediaDetailScreenState {
   Widget _buildMobileEpisodesTabs(BuildContext context, MediaItem metadata) {
-    final tabs = [t.libraries.groupings.episodes, t.discover.moreLikeThis, t.discover.extras, t.common.details];
+    // The mobile tab strip needs shorter labels than the global Discover
+    // section's "More Like This"/"Trailers & Extras" (those stay unchanged
+    // for their own screens): mockup 07 shows "Vergelijkbaar"/"Extra's".
+    final tabs = [
+      t.libraries.groupings.episodes,
+      t.mobileDetail.similarTab,
+      t.mobileDetail.extrasTab,
+      t.common.details,
+    ];
 
     return DefaultTabController(
       length: tabs.length,
@@ -113,20 +121,23 @@ extension _MobileEpisodesTab on _MediaDetailScreenState {
             for (int i = 0; i < _seasons.length; i++)
               PopupMenuItem<int>(value: i, child: Text(_seasons[i].title ?? '')),
           ],
+          // Mono tokens, not the Material container roles: monoTheme maps
+          // secondaryContainer (and primaryContainer, surfaceContainerHighest,
+          // surfaceBright) onto c.surface, the exact colour of the page behind
+          // this chip, so the pill the mockup shows was drawn in the
+          // background colour and could not be seen at all. Same trap as
+          // DEC-053.
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(999),
-            ),
+            decoration: BoxDecoration(color: tokens(context).surfaceElevated, borderRadius: BorderRadius.circular(999)),
             child: Row(
               mainAxisSize: .min,
               children: [
                 Text(
                   current.title ?? '',
-                  style: TextStyle(fontWeight: .w700, color: theme.colorScheme.onSecondaryContainer),
+                  style: TextStyle(fontWeight: .w700, color: tokens(context).text),
                 ),
-                Icon(Icons.expand_more_rounded, color: theme.colorScheme.onSecondaryContainer, size: 20),
+                Icon(Icons.expand_more_rounded, color: tokens(context).text, size: 20),
               ],
             ),
           ),

@@ -690,6 +690,10 @@
     "minutesLeft": "残り${minutes}分",
     "moreLikeThis": "似ている作品"
   },
+  "mobileDetail": {
+    "similarTab": "関連作品",
+    "extrasTab": "エクストラ"
+  },
   "errors": {
     "searchFailed": "検索に失敗しました",
     "connectionTimeout": "${context}の読み込み中に接続がタイムアウトしました",
