@@ -40,7 +40,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | SYS-3b | OVR1b: sheets zonder expliciete `presentation` vallen op 400x400 | PB-5 | DONE | `96f2d45` |
 | SYS-3c | `tv_browse_rail.dart` leest zijn hele schaal, inclusief zes lettergroottes, rechtstreeks uit `MediaQuery.sizeOf(context)` in plaats van via `TvLayoutConstants.scaleOf`/`TvDisplayMetrics` | PB-5 | OPEN | Zie `tvos-fysieke-correctieronde.md`, rij SYS-3c: hoge zekerheid op een echte tekstschaal-mismatch, want de rail wordt gemount op `media_detail_screen.dart:4145`, een route die DET1/DEC-109 al bewezen heeft genest onder de topnav. Toegewezen aan TV3, niet aan TV1 |
 | SYS-3d | `library_recommended_tab.dart` doet hetzelfde als SYS-3c in `_buildTvContent` | PB-5 | OPEN | Zie `tvos-fysieke-correctieronde.md`, rij SYS-3d: lagere zekerheid dan SYS-3c, nesting van dit scherm is niet bevestigd. Toegewezen aan het plan dat `library_recommended_tab.dart`/de bibliotheektabs bezit, niet aan TV1 |
-| SYS-4 | Gedeelde staat- en lege-presentatie schaalt op TV | audit | OPEN, geauditeerd | zie onder |
+| SYS-4 | Gedeelde staat- en lege-presentatie schaalt op TV | audit | CODE CLOSED · VERIFY/SIM OPEN | `cd1f5e8a`, `4319b09f` (fix-ronde 1: geen losse schaalfactor, alleen `scaleOf`), zie onder |
 | SYS-5 | i18n-gaten en hardcoded strings | audit | GESLOTEN via I18N1-6 en STR1-5 | TV0 (18 september): alle elf kinderen staan op FIXED in `docs/tvos-fysieke-correctieronde.md` (I18N1 t/m I18N6, STR1 t/m STR5). Verse sweep op nieuwe hardcoded strings in `lib/screens/tv` en `lib/widgets/tv` leverde geen treffers op |
 | SYS-6 | Tokenafwijkingen per stuk beoordeeld, met regressiebeelden | tokenaudit | OPEN, alleen TOK-2 | TV0 (18 september): TOK-1 (`5cb5c33`) en TOK-3 (DEC-108) staan op FIXED. TOK-2 (serverstip `#3FBF5F` in `tv_my_pleya_screen.dart:833`) staat nog OPEN en is toegewezen aan TV1 (Task 4, `docs/plans/2026-09-18-tv1-systemische-fundering.md`) |
 | SYS-7 | Automation-ids en Pleya Verify-journeys per heringericht oppervlak | werkwijze | OPEN | |
@@ -354,7 +354,7 @@ Hier staan ze bij de werkstroom die ze bezit.
 | OFF-2 | Offline topnav toont dode pills | MOC-23, SYS-1 | FIXED, hardware open, `472233db`, `267e6dc1` |
 | FOC-1 | Verdwijnende gefocuste TV-topnav-pil (Live TV, of offline sinds `472233db`) verplaatst de logische focus wel maar niet de echte `FocusNode` | MOC-23, SYS-1 | CODE CLOSED · VERIFY/SIM OPEN, `tvTopNavFocusKeys()` + prune-in-build op `TvRootShell`, negatieve controle rood/groen bevestigd, fix-ronde 1 voegde de ontbrekende `isNavFocused`-guard toe (een late post-frame-callback trok anders focus terug naar de bar nadat de remote legitiem naar de content was verhuisd), hardwareronde nog niet gedraaid, `da0693d2`, `cbc87def`, `8d5fa38a` |
 | OVR1b | Legacy `MediaContextMenu`, rating-sheet, kijklijst-item-sheet en Live TV-sheets vallen op tvOS in een 400x400 bottom sheet | SYS-3b | DONE, `96f2d45` |
-| STA-1 | `StateView` en `EmptyStateWidget` schalen niet op TV | SYS-4 | OPEN |
+| STA-1 | `StateView` en `EmptyStateWidget` schalen niet op TV | SYS-4 | CODE CLOSED · VERIFY/SIM OPEN, `cd1f5e8a`, `4319b09f` |
 | SRCH-2 | `people` wordt nooit aan `searchProjection` meegegeven | MOC-13 | FIXED, `b5b8f0e8`, hardware open (DEC-112) |
 | ACT-3 | `tvMyPleya.activitySubtitle` belooft samen kijken en remote die de tegel niet levert | MOC-16 | FIXED, hardware open, `4598e1ea` |
 
