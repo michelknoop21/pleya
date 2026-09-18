@@ -37,6 +37,24 @@ enum _StateKind { plain, empty, error, offline }
 /// spec forbids. So `StateView` reads `PlatformDetector.isTV()` and
 /// `TvLayoutConstants.scaleOf` itself and scales its own constants; off TV,
 /// [_tvFactor] is `1.0` and nothing changes.
+///
+/// The literal SYS-4 defect is that `StateView` never read the TV scale at
+/// all: the same 48/32px icon rendered whether the TV's logical panel
+/// matched the 1080 reference or was far taller or shorter, exactly as if it
+/// were a phone. The fix gives it the same panel-size responsiveness
+/// `TvCatalogEmptyState` already has (`scaleOf`, clamped between 0.85 and
+/// 1.35). It deliberately does **not** copy `TvCatalogEmptyState`'s 42px
+/// icon. That value is mockup-approved for one specific role: a small
+/// affordance sitting inline next to a catalog's own chrome (filters, a
+/// page title, potentially a rail). `StateView`'s non-`compact` default is
+/// used almost everywhere as the opposite: a fullscreen placeholder with
+/// nothing else on screen to anchor against (see the consumer inventory in
+/// `task-5-report.md`), so it keeps its own base size rather than one tuned
+/// for a different widget's different job. `compact` is the one `StateView`
+/// mode that genuinely plays `TvCatalogEmptyState`'s inline role (used only
+/// for a section embedded in `media_detail_screen`'s episode list, next to
+/// the rest of the detail page), and its base size (32) already sits close
+/// to that reference without needing to match it exactly.
 class StateView extends StatelessWidget {
   final IconData icon;
   final String? title;
@@ -96,16 +114,13 @@ class StateView extends StatelessWidget {
 
   String? _resolvedMessage() => message ?? (_kind == _StateKind.offline ? t.states.offlineMessage : null);
 
-  /// The desktop/mobile constants below read as roughly half of what
-  /// ten-foot viewing distance needs (SYS-4). `TvLayoutConstants.scaleOf`
-  /// alone doesn't cover that: it only adjusts for a TV panel being taller or
-  /// shorter than the 1080 reference (0.85..1.35), and is `1.0` exactly at
-  /// that reference. This is the flat multiplier on top of it that actually
-  /// closes the gap the audit found.
-  static const double _tvScaleFactor = 2.0;
-
-  double _tvFactor(BuildContext context) =>
-      PlatformDetector.isTV() ? _tvScaleFactor * TvLayoutConstants.scaleOf(context) : 1.0;
+  /// `TvLayoutConstants.scaleOf` alone, no extra multiplier: fix-round 1
+  /// removed an earlier flat `2.0` factor that had no basis beyond "the
+  /// audit called the old constants too small" and didn't hold up against
+  /// `TvCatalogEmptyState.iconSize` (42, a mockup-approved value for a
+  /// different, inline role, see the class doc above). Off TV this is
+  /// `1.0`, so nothing changes there.
+  double _tvFactor(BuildContext context) => PlatformDetector.isTV() ? TvLayoutConstants.scaleOf(context) : 1.0;
 
   double? _scaledFontSize(double? base, double factor) => base == null ? null : base * factor;
 

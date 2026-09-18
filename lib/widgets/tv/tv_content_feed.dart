@@ -672,12 +672,9 @@ class TvContentFeedState extends State<TvContentFeed>
   /// Without saved rows there is nothing to customise and the bare message
   /// stays bare.
   /// SYS-4: same fixed-size bug as `StateView` (`widgets/state_view.dart`),
-  /// same fix. This is the third hand-rolled copy of the shape the audit
-  /// found (icon 64, unscaled gaps and text) and, being TV-only code, needs
-  /// no `PlatformDetector.isTV()` gate: just the flat multiplier and
-  /// `TvLayoutConstants.scaleOf` directly.
-  static const double _emptyStateScaleFactor = 2.0;
-
+  /// same fix, and the same reasoning: `TvLayoutConstants.scaleOf` alone, no
+  /// extra multiplier (fix-round 1 removed a flat `2.0` that had no basis).
+  /// Being TV-only code, this needs no `PlatformDetector.isTV()` gate.
   Widget _emptyOrLoading(DiscoverProvider discover, {required bool hasSavedRows}) {
     if (discover.isLoading || discover.areHubsLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -690,7 +687,7 @@ class TvContentFeedState extends State<TvContentFeed>
       );
     }
     final tk = tokens(context);
-    final scale = _emptyStateScaleFactor * TvLayoutConstants.scaleOf(context);
+    final scale = TvLayoutConstants.scaleOf(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

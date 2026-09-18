@@ -18,6 +18,15 @@ import '../../utils/platform_detector.dart';
 /// slot for. Scaling in place keeps every caller's variant working; on TV
 /// this reads `PlatformDetector.isTV()` and `TvLayoutConstants.scaleOf` and
 /// multiplies its own constants, off TV [_tvFactor] is `1.0`.
+///
+/// Unlike `StateView`, [iconSize] is a per-caller parameter, not a fixed
+/// widget constant: `sync_rules_screen.dart` deliberately passes `80` instead
+/// of the `64` default for a more prominent glyph on that one screen.
+/// Replacing that with a single fixed TV reference (the way `StateView`
+/// reasons about `TvCatalogEmptyState.iconSize`) would erase exactly the
+/// per-caller weighting the parameter exists for. So this scales whatever
+/// value the caller already chose, which keeps their relative sizing intact
+/// on TV while adding the panel-size responsiveness the audit found missing.
 class StateMessageWidget extends StatelessWidget {
   /// The main message/title to display
   final String message;
@@ -63,13 +72,10 @@ class StateMessageWidget extends StatelessWidget {
     this.actionIcon,
   });
 
-  /// See `StateView._tvScaleFactor` (`widgets/state_view.dart`): the flat
-  /// multiplier that, together with `TvLayoutConstants.scaleOf`, closes the
-  /// SYS-4 gap between these fixed constants and what ten-foot viewing needs.
-  static const double _tvScaleFactor = 2.0;
-
-  double _tvFactor(BuildContext context) =>
-      PlatformDetector.isTV() ? _tvScaleFactor * TvLayoutConstants.scaleOf(context) : 1.0;
+  /// `TvLayoutConstants.scaleOf` alone, no extra multiplier: see the class
+  /// doc above and `StateView._tvFactor` (`widgets/state_view.dart`) for why
+  /// fix-round 1's flat `2.0` factor was removed. Off TV this is `1.0`.
+  double _tvFactor(BuildContext context) => PlatformDetector.isTV() ? TvLayoutConstants.scaleOf(context) : 1.0;
 
   @override
   Widget build(BuildContext context) {
