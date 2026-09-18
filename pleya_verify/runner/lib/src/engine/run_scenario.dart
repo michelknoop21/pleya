@@ -252,7 +252,9 @@ Future<ScenarioRunResult> runScenario({
           record['input_route'] = driver.inputRoute;
           final args = step.args as Map<String, Object?>;
           final (x, y) = await _resolveTapPoint(args, driver);
-          await driver.tap(x, y);
+          final holdMs = args['holdMs'] as int?;
+          if (holdMs != null) record['hold_ms'] = holdMs;
+          await driver.tap(x, y, hold: holdMs == null ? null : Duration(milliseconds: holdMs));
         case 'type':
           record['input_route'] = driver.inputRoute;
           // `{{fixture}}`/`{{fixture_seerr}}` resolve here too: a scenario

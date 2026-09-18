@@ -18,6 +18,11 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
+### New
+- automation-ids op de mobiele My Pleya, Verify voor 18
+- automation-ids op de mobiele Bibliotheken-picker, Verify voor 15
+- automation-ids op de mobiele Instellingen, Verify voor 14
+
 ### Improved
 - bereken showReconnect op één plek in tvTopNavFocusKeys
 
@@ -34,6 +39,7 @@ under `Notes`.
 - eigen tablabels voor de mobiele detailtabs (mockup 07)
 - catalogus-openers in Bibliotheken en Home via de content-route-registry (SYS-1d)
 - SYS-1d review, Alle-N route-id op hubId in plaats van target.hashCode
+- echte long-press-input in Pleya Verify, sluit 09 Contextmenu-sheet
 - route drie resterende TV-shell-bypasses via openTvContentRoute
 - comment overclaimde showReconnect-consolidatie corrigeren
 <!-- END GENERATED -->

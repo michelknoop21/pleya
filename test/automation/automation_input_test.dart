@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,10 +43,10 @@ void main() {
     expect(dispatchAutomationKey('doubleclick'), AutomationInputResult.unknownKey);
   });
 
-  test('blocked while a native input session owns the remote', () {
+  test('blocked while a native input session owns the remote', () async {
     NativeInputSession.begin();
     expect(dispatchAutomationKey('select'), AutomationInputResult.blockedByNativeSession);
-    expect(dispatchAutomationPointerTap(Offset.zero), AutomationInputResult.blockedByNativeSession);
+    expect(await dispatchAutomationPointerTap(Offset.zero), AutomationInputResult.blockedByNativeSession);
   });
 
   testWidgets('a pointer tap goes through the real hit-test pipeline and activates a button', (tester) async {
@@ -64,11 +65,35 @@ void main() {
     );
 
     final center = tester.getCenter(find.byType(ElevatedButton));
-    final result = dispatchAutomationPointerTap(center);
+    final result = await dispatchAutomationPointerTap(center);
     await tester.pump();
 
     expect(result, AutomationInputResult.dispatched);
     expect(pressed, isTrue);
+  });
+
+  testWidgets('a held pointer down triggers a real onLongPress recognizer, not a synthetic callback', (tester) async {
+    var longPressed = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onLongPress: () => longPressed = true,
+            child: const SizedBox(width: 100, height: 100),
+          ),
+        ),
+      ),
+    );
+
+    final center = tester.getCenter(find.byType(GestureDetector));
+    final hold = kLongPressTimeout + const Duration(milliseconds: 50);
+    final future = dispatchAutomationPointerTap(center, hold: hold);
+    await tester.pump(hold); // fake-clock advance resolves both the internal delay and the recognizer's own timer
+    await future;
+
+    expect(longPressed, isTrue, reason: 'held between down and up for at least kLongPressTimeout');
   });
 
   testWidgets('text inserts into the focused field through its own controller', (tester) async {

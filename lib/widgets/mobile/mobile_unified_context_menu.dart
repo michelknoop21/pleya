@@ -14,6 +14,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../media/unified/source_availability.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_source.dart';
@@ -51,16 +53,33 @@ Future<void> showMobileUnifiedContextMenu(
   final chosen = await OverlaySheetController.showAdaptive<UnifiedGroupAction>(
     context,
     showDragHandle: true,
-    builder: (sheetContext) => AppMenuSheet<UnifiedGroupAction>(
-      title: representative.displayTitle,
-      entries: [
-        for (final action in actions)
-          AppMenuItem<UnifiedGroupAction>(
-            value: action,
-            icon: _iconForUnifiedGroupAction(action),
-            label: labelForUnifiedGroupAction(action),
-          ),
-      ],
+    // AutomationNode wraps the sheet and, via `child:` (AppMenuItem's own
+    // label-override slot, not a shared-widget change), each row's label —
+    // AppMenuList/AppMenuItemTile stay untouched, so icon/trailing/styling
+    // are exactly what they'd be without this. Needed because the sheet's
+    // title is just the tapped item's own title: without an id naming the
+    // sheet itself, a scenario can't tell "the context menu opened" apart
+    // from any other overlay that happens to show the same title.
+    builder: (sheetContext) => AutomationNode(
+      id: AutomationIds.sheetContextMenu,
+      role: 'sheet',
+      child: AppMenuSheet<UnifiedGroupAction>(
+        title: representative.displayTitle,
+        entries: [
+          for (var i = 0; i < actions.length; i++)
+            AppMenuItem<UnifiedGroupAction>(
+              value: actions[i],
+              icon: _iconForUnifiedGroupAction(actions[i]),
+              label: labelForUnifiedGroupAction(actions[i]),
+              child: AutomationNode(
+                id: AutomationIds.sheetContextMenuItem,
+                instance: '$i',
+                role: 'list.item',
+                child: Text(labelForUnifiedGroupAction(actions[i])),
+              ),
+            ),
+        ],
+      ),
     ),
   );
   if (chosen == null || !context.mounted) return;

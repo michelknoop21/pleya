@@ -177,7 +177,10 @@ class VerifyClient {
 
   Future<Map<String, Object?>> inputKey(String key) => _postJson('/v1/input/key', {'key': key});
 
-  Future<Map<String, Object?>> inputPointer(double x, double y) => _postJson('/v1/input/pointer', {'x': x, 'y': y});
+  /// [holdMs] makes this a long press: the app-side dispatch waits that long
+  /// between PointerDown and PointerUp instead of firing them back to back.
+  Future<Map<String, Object?>> inputPointer(double x, double y, {int? holdMs}) =>
+      _postJson('/v1/input/pointer', {'x': x, 'y': y, if (holdMs != null) 'hold_ms': holdMs});
 
   Future<Map<String, Object?>> inputText(String text) => _postJson('/v1/input/text', {'text': text});
 

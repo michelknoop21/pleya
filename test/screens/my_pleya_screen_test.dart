@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_registry.dart';
+import 'package:pleya/automation/automation_screen.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/navigation/navigation_tabs.dart';
 import 'package:pleya/profiles/active_profile_provider.dart';
@@ -54,6 +57,9 @@ class _RouteRecorder extends NavigatorObserver {
 }
 
 Profile _profile(String name) => Profile.local(id: name, displayName: name, createdAt: DateTime.utc(2026, 8, 17));
+
+const bool _verifyOn = bool.fromEnvironment('PLEYA_VERIFY');
+const String _skipReason = 'run with --dart-define=PLEYA_VERIFY=true';
 
 void main() {
   late _FakeActiveProfile activeProfile;
@@ -178,4 +184,27 @@ void main() {
     expect(find.text('Zonder foto'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  group('de mobiele My Pleya draagt dezelfde automation ids als de TV-hub', () {
+    testWidgets('screen.my_pleya wordt ready, en de Downloads-tegel is het als node te vinden', (tester) async {
+      await pumpScreen(tester);
+
+      final screens = AutomationScreenRegistry.instance.snapshot();
+      final screen = screens.firstWhere(
+        (s) => s['id'] == AutomationIds.screenMyPleya,
+        orElse: () => throw StateError('screen.my_pleya ontbreekt op de mobiele My Pleya'),
+      );
+      expect(screen['ready'], isTrue);
+
+      // Downloads is de enige structurele tegel deze harness altijd toont
+      // (`showDownloads: true` is hardcoded, ongeacht providers): Watchlist,
+      // Aanvragen en Activiteit hangen af van providers die hier niet
+      // geregistreerd zijn.
+      final declared = (AutomationRegistry.instance.snapshot()['declared'] as List).cast<Map<String, Object?>>();
+      declared.firstWhere(
+        (n) => n['id'] == '${AutomationIds.myPleyaTile}[downloads]',
+        orElse: () => throw StateError('my_pleya.tile[downloads] ontbreekt op de mobiele My Pleya'),
+      );
+    });
+  }, skip: _verifyOn ? false : _skipReason);
 }

@@ -256,7 +256,19 @@ class AutomationServer {
           await request.response.close();
           return;
         }
-        await _respondInputResult(request, dispatchAutomationPointerTap(Offset(x, y)));
+        // Optional: makes this a long press instead of a tap. Bounded at
+        // 5s — long enough for any real onLongPress recognizer, short enough
+        // that a scenario typo doesn't hang a run.
+        final holdMsRaw = body['hold_ms'];
+        if (holdMsRaw != null && (holdMsRaw is! int || holdMsRaw <= 0 || holdMsRaw > 5000)) {
+          request.response.statusCode = HttpStatus.badRequest;
+          await _respondJson(request, {
+            'error': 'hold_ms must be a positive whole number of milliseconds, at most 5000',
+          });
+          return;
+        }
+        final hold = holdMsRaw == null ? null : Duration(milliseconds: holdMsRaw as int);
+        await _respondInputResult(request, await dispatchAutomationPointerTap(Offset(x, y), hold: hold));
       case '/v1/input/text':
         final body = await _readJsonBody(request);
         await _respondInputResult(request, dispatchAutomationText(body['text'] as String? ?? ''));
