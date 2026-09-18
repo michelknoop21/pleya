@@ -178,10 +178,20 @@ class MyPleyaScreen extends StatelessWidget {
               ),
             if (tileFor[TvMyPleyaSection.settings] case final tile?)
               SliverToBoxAdapter(
-                child: _SectionRow(
-                  icon: tile.icon,
-                  label: tile.title,
-                  onTap: () => onOpenTab(NavigationTabId.settings),
+                // Same id/instance convention `_MyPleyaCard` uses
+                // (`myPleyaTile[<section name>]`): Settings has no card
+                // elsewhere on this screen, so there is no collision, unlike
+                // Watchlist's row above, which would double up with its own
+                // card in the first `_MyPleyaCardRow`.
+                child: AutomationNode(
+                  id: AutomationIds.myPleyaTile,
+                  instance: tile.section?.name ?? 'settings',
+                  role: 'list.item',
+                  child: _SectionRow(
+                    icon: tile.icon,
+                    label: tile.title,
+                    onTap: () => onOpenTab(NavigationTabId.settings),
+                  ),
                 ),
               ),
             if (tileFor[TvMyPleyaSection.about] case final tile?)

@@ -9,6 +9,9 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
+import '../../automation/automation_screen.dart';
 import '../../focus/focus_memory_tracker.dart';
 import '../../media/ids.dart';
 import '../../focus/focusable_text_field.dart';
@@ -193,6 +196,14 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     // the rows become tiles.
     if (PlatformDetector.isTV()) return _buildTvSettings(context);
 
+    return AutomationScreen(
+      id: AutomationIds.screenSettings,
+      readiness: () => const AutomationReadiness.ready(),
+      child: _buildSettingsScaffold(context),
+    );
+  }
+
+  Widget _buildSettingsScaffold(BuildContext context) {
     return Scaffold(
       body: Focus(
         onKeyEvent: _handleKeyEvent,
@@ -545,12 +556,17 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         pref: settings.SettingsService.libraryDensity,
         builder: (context, libraryDensity, _) {
           final summary = '${themeProvider.themeModeDisplayName} · ${t.settings.libraryDensity} $libraryDensity';
-          return SettingNavigationTile(
-            focusNode: _focusTracker.get(_kAppearance),
-            icon: Symbols.palette_rounded,
-            title: t.settings.appearance,
-            subtitle: summary,
-            destinationBuilder: (context) => const AppearanceSettingsScreen(),
+          return AutomationNode(
+            id: AutomationIds.settingsTile,
+            instance: 'appearance',
+            role: 'list.item',
+            child: SettingNavigationTile(
+              focusNode: _focusTracker.get(_kAppearance),
+              icon: Symbols.palette_rounded,
+              title: t.settings.appearance,
+              subtitle: summary,
+              destinationBuilder: (context) => const AppearanceSettingsScreen(),
+            ),
           );
         },
       ),
@@ -568,22 +584,32 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   }
 
   Widget _buildHomeLayoutTile() {
-    return SettingNavigationTile(
-      focusNode: _focusTracker.get(_kHomeLayout),
-      icon: Symbols.dashboard_customize_rounded,
-      title: t.settings.homeLayout,
-      subtitle: t.settings.homeLayoutDescription,
-      destinationBuilder: (context) => const HomeLayoutScreen(),
+    return AutomationNode(
+      id: AutomationIds.settingsTile,
+      instance: 'home_layout',
+      role: 'list.item',
+      child: SettingNavigationTile(
+        focusNode: _focusTracker.get(_kHomeLayout),
+        icon: Symbols.dashboard_customize_rounded,
+        title: t.settings.homeLayout,
+        subtitle: t.settings.homeLayoutDescription,
+        destinationBuilder: (context) => const HomeLayoutScreen(),
+      ),
     );
   }
 
   Widget _buildPlaybackTile() {
-    return SettingNavigationTile(
-      focusNode: _focusTracker.get(_kPlayback),
-      icon: Symbols.play_circle_rounded,
-      title: t.settings.videoPlayback,
-      subtitle: t.settings.videoPlaybackDescription,
-      destinationBuilder: (context) => const PlaybackSettingsScreen(),
+    return AutomationNode(
+      id: AutomationIds.settingsTile,
+      instance: 'playback',
+      role: 'list.item',
+      child: SettingNavigationTile(
+        focusNode: _focusTracker.get(_kPlayback),
+        icon: Symbols.play_circle_rounded,
+        title: t.settings.videoPlayback,
+        subtitle: t.settings.videoPlaybackDescription,
+        destinationBuilder: (context) => const PlaybackSettingsScreen(),
+      ),
     );
   }
 
@@ -591,12 +617,17 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   /// (DEC-096 lid 9), next to Afspelen because a viewer who wonders why a
   /// series starts in English looks under language rather than under playback.
   Widget _buildLanguageTile() {
-    return SettingNavigationTile(
-      focusNode: _focusTracker.get(_kLanguage),
-      icon: Symbols.translate_rounded,
-      title: t.languageSettings.title,
-      subtitle: t.languageSettings.description,
-      destinationBuilder: (context) => const LanguageSettingsScreen(),
+    return AutomationNode(
+      id: AutomationIds.settingsTile,
+      instance: 'language',
+      role: 'list.item',
+      child: SettingNavigationTile(
+        focusNode: _focusTracker.get(_kLanguage),
+        icon: Symbols.translate_rounded,
+        title: t.languageSettings.title,
+        subtitle: t.languageSettings.description,
+        destinationBuilder: (context) => const LanguageSettingsScreen(),
+      ),
     );
   }
 
@@ -605,12 +636,17 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   /// destination and copy `PlaybackSettingsScreen` used, removed there so
   /// there is exactly one way in.
   Widget _buildSubtitleStylingTile() {
-    return SettingNavigationTile(
-      focusNode: _focusTracker.get(_kSubtitleStyling),
-      icon: Symbols.subtitles_rounded,
-      title: t.settings.subtitleStyling,
-      subtitle: t.settings.subtitleStylingDescription,
-      destinationBuilder: (_) => const SubtitleStylingScreen(),
+    return AutomationNode(
+      id: AutomationIds.settingsTile,
+      instance: 'subtitle_styling',
+      role: 'list.item',
+      child: SettingNavigationTile(
+        focusNode: _focusTracker.get(_kSubtitleStyling),
+        icon: Symbols.subtitles_rounded,
+        title: t.settings.subtitleStyling,
+        subtitle: t.settings.subtitleStylingDescription,
+        destinationBuilder: (_) => const SubtitleStylingScreen(),
+      ),
     );
   }
 
@@ -618,12 +654,17 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   /// in their own unlabelled card; northstar 14 draws "Downloads" as one row
   /// with a summary, like every other entry in this group.
   Widget _buildDownloadsTile() {
-    return SettingNavigationTile(
-      focusNode: _focusTracker.get(_kDownloadLocation),
-      icon: Symbols.download_rounded,
-      title: t.settings.downloads,
-      subtitle: t.settings.downloadsDescription,
-      destinationBuilder: (_) => const DownloadsSettingsScreen(),
+    return AutomationNode(
+      id: AutomationIds.settingsTile,
+      instance: 'downloads',
+      role: 'list.item',
+      child: SettingNavigationTile(
+        focusNode: _focusTracker.get(_kDownloadLocation),
+        icon: Symbols.download_rounded,
+        title: t.settings.downloads,
+        subtitle: t.settings.downloadsDescription,
+        destinationBuilder: (_) => const DownloadsSettingsScreen(),
+      ),
     );
   }
 
@@ -637,12 +678,17 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           if (trackers.isSimklConnected) t.trackers.services.simkl,
         ];
         final subtitle = connectedNames.isEmpty ? t.settings.trackersDescription : connectedNames.join(' · ');
-        return SettingNavigationTile(
-          focusNode: _focusTracker.get(_kTrackers),
-          icon: Symbols.sync_rounded,
-          title: t.settings.trackers,
-          subtitle: subtitle,
-          destinationBuilder: (_) => const TrackersSettingsScreen(),
+        return AutomationNode(
+          id: AutomationIds.settingsTile,
+          instance: 'trackers',
+          role: 'list.item',
+          child: SettingNavigationTile(
+            focusNode: _focusTracker.get(_kTrackers),
+            icon: Symbols.sync_rounded,
+            title: t.settings.trackers,
+            subtitle: subtitle,
+            destinationBuilder: (_) => const TrackersSettingsScreen(),
+          ),
         );
       },
     );
@@ -651,12 +697,17 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   Widget _buildRequestsTile() {
     return Consumer<SeerrProvider>(
       builder: (context, seerr, _) {
-        return SettingNavigationTile(
-          focusNode: _focusTracker.get(_kRequests),
-          icon: Symbols.playlist_add_rounded,
-          title: t.settings.requests,
-          subtitle: seerr.isConfigured ? (seerr.host ?? t.settings.requests) : t.settings.requestsDescription,
-          destinationBuilder: (_) => const SeerrSettingsScreen(),
+        return AutomationNode(
+          id: AutomationIds.settingsTile,
+          instance: 'requests',
+          role: 'list.item',
+          child: SettingNavigationTile(
+            focusNode: _focusTracker.get(_kRequests),
+            icon: Symbols.playlist_add_rounded,
+            title: t.settings.requests,
+            subtitle: seerr.isConfigured ? (seerr.host ?? t.settings.requests) : t.settings.requestsDescription,
+            destinationBuilder: (_) => const SeerrSettingsScreen(),
+          ),
         );
       },
     );
@@ -707,13 +758,18 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         return SettingsGroup(
           title: t.connections.sectionTitle,
           children: [
-            SettingNavigationTile(
-              focusNode: _focusTracker.get(_kServers),
-              icon: Symbols.dns_rounded,
-              title: t.tvMyPleya.servers,
-              subtitle: subtitle,
-              needsAttention: servers.hasAuthErrorServers,
-              destinationBuilder: (_) => const ServersScreen(),
+            AutomationNode(
+              id: AutomationIds.settingsTile,
+              instance: 'servers',
+              role: 'list.item',
+              child: SettingNavigationTile(
+                focusNode: _focusTracker.get(_kServers),
+                icon: Symbols.dns_rounded,
+                title: t.tvMyPleya.servers,
+                subtitle: subtitle,
+                needsAttention: servers.hasAuthErrorServers,
+                destinationBuilder: (_) => const ServersScreen(),
+              ),
             ),
           ],
         );
@@ -735,14 +791,19 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
             : (activeName != null
                   ? t.profiles.summaryMultipleWithActive(count: count, activeName: activeName)
                   : t.profiles.summaryMultiple(count: count));
-        return SettingNavigationTile(
-          icon: Symbols.group_rounded,
-          title: t.profiles.sectionTitle,
-          subtitle: subtitle,
-          onTap: () => Navigator.of(
-            context,
-            rootNavigator: true,
-          ).push(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen())),
+        return AutomationNode(
+          id: AutomationIds.settingsTile,
+          instance: 'profiles',
+          role: 'list.item',
+          child: SettingNavigationTile(
+            icon: Symbols.group_rounded,
+            title: t.profiles.sectionTitle,
+            subtitle: subtitle,
+            onTap: () => Navigator.of(
+              context,
+              rootNavigator: true,
+            ).push(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen())),
+          ),
         );
       },
     );

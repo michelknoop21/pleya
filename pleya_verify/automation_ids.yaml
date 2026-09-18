@@ -24,6 +24,12 @@ ids:
   - id: library.picker.card
     role: grid.item
     instanceable: true
+  - id: screen.settings
+    role: screen
+    instanceable: false
+  - id: settings.tile
+    role: list.item
+    instanceable: true
   - id: nav.discover
     role: nav
     instanceable: false
