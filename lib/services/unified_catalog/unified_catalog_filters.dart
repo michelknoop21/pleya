@@ -391,3 +391,35 @@ UnifiedCatalogQuery buildUnifiedCatalogQuery({
     years: filters.years.isEmpty ? null : (filters.years.toList()..sort()),
   );
 }
+
+/// A screen's `_restorePreferences` step, factored out so the TV and mobile
+/// catalog screens share one answer instead of two (CAT20).
+///
+/// [boundServerIds]/[boundLibraryKeys] are what [UnifiedCatalogFilterSelection.
+/// withKnownSources] has always pruned against: the libraries actually bound
+/// right now. That set alone cannot tell a server that no longer exists from
+/// one that simply has not finished connecting yet: a cold start can still be
+/// waiting on a slow server's endpoint race when the first read happens. This
+/// widens the known-server set with [registeredServerIds], every server the
+/// active profile is configured for, bound or not, which only the caller
+/// (backed by [MultiServerProvider.expectedServerIds]) can supply.
+///
+/// [shouldPersist] is true only once every registered server has actually
+/// bound: writing the prune back while one is still connecting would freeze
+/// that half-arrived snapshot into the store, which is the bug this exists to
+/// avoid.
+({UnifiedCatalogPreferences preferences, bool shouldPersist}) pruneStoredSourceFilter({
+  required UnifiedCatalogPreferences stored,
+  required Set<String> boundServerIds,
+  required Set<String> boundLibraryKeys,
+  required Set<String> registeredServerIds,
+}) {
+  final pruned = stored.copyWith(
+    filters: stored.filters.withKnownSources(
+      knownServerIds: boundServerIds.union(registeredServerIds),
+      knownLibraryKeys: boundLibraryKeys,
+    ),
+  );
+  final complete = registeredServerIds.every(boundServerIds.contains);
+  return (preferences: pruned, shouldPersist: pruned != stored && complete);
+}

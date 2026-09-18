@@ -155,14 +155,21 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   Future<void> _restorePreferences() async {
     final stored = await UnifiedCatalogQueryStore.read(widget.kind.mediaKind);
     if (!mounted) return;
-    final pruned = stored.copyWith(
-      filters: stored.filters.withKnownSources(knownServerIds: _knownServerIds, knownLibraryKeys: _knownLibraryKeys),
+    // CAT20: pruned against the server registry, not just the libraries bound
+    // right now, so a server that has merely not finished connecting is not
+    // mistaken for one that is gone (see [pruneStoredSourceFilter]).
+    final pruning = pruneStoredSourceFilter(
+      stored: stored,
+      boundServerIds: _knownServerIds,
+      boundLibraryKeys: _knownLibraryKeys,
+      registeredServerIds: context.read<MultiServerProvider>().expectedServerIds.toSet(),
     );
+    final pruned = pruning.preferences;
     setState(() {
       _preferences = pruned;
       _preferencesLoaded = true;
     });
-    if (pruned != stored) unawaited(UnifiedCatalogQueryStore.write(widget.kind.mediaKind, pruned));
+    if (pruning.shouldPersist) unawaited(UnifiedCatalogQueryStore.write(widget.kind.mediaKind, pruned));
     await _applyQuery(startIfNeeded: true);
   }
 
