@@ -365,7 +365,16 @@ class TvContentFeedState extends State<TvContentFeed>
   /// catalog with that row's exact filter and sort already applied, for this
   /// visit only (Michel, 6 September 2026) — see
   /// [TvUnifiedCatalogScreen.initialFilterOverride].
-  Future<void> _openViewAll(HomeCustomRowViewAllTarget target) {
+  ///
+  /// [hubId] is the row's own [UnifiedMediaHub.hubId] (the same key the
+  /// caller already matched `target` against in `viewAllTargets`), used only
+  /// for the route id below. `HomeCustomRowViewAllTarget` itself carries no
+  /// row id (see `home_custom_row_view_all.dart`) and its `count` is
+  /// `content.loadedCount`, what has loaded so far and not a fixed row
+  /// property, so keying the id on `target.hashCode` gave a second press on
+  /// the same tile a new id the moment a background reload changed the count
+  /// between two presses.
+  Future<void> _openViewAll(String hubId, HomeCustomRowViewAllTarget target) {
     final catalogs = context.read<UnifiedCatalogs>();
     Widget builder(BuildContext _) => TvUnifiedCatalogScreen(
       catalog: catalogs.forKind(target.kind),
@@ -379,11 +388,7 @@ class TvContentFeedState extends State<TvContentFeed>
     // opener uses, so the shell/top navigation stays up rather than a bare
     // push covering it. Off TV, or a test that never mounted the shell,
     // `openTvContentRoute` answers null and this falls back as before.
-    // `target` has value equality (kind, filters, sort, count), so its
-    // `hashCode` is a stable identity for "this exact row's Alle N" without a
-    // row id to key on — the class carries none (see
-    // `home_custom_row_view_all.dart`).
-    final nested = openTvContentRoute(id: 'tvHomeRowViewAll_${target.hashCode}', builder: builder);
+    final nested = openTvContentRoute(id: 'tvHomeRowViewAll_$hubId', builder: builder);
     if (nested != null) return nested.then((_) {});
     return Navigator.of(context).push(MaterialPageRoute(builder: builder));
   }
@@ -634,7 +639,7 @@ class TvContentFeedState extends State<TvContentFeed>
                               tileScrollAlignment: TvHomeLayout.rowTileScrollAlignment(viewportHeight, scale),
                               automationRailIndex: i,
                               viewAllTarget: viewAllTargets[rows[i].hubId],
-                              onViewAll: _openViewAll,
+                              onViewAll: (t) => _openViewAll(rows[i].hubId, t),
                             ),
                           ),
                         ],

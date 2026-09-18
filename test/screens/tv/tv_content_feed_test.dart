@@ -51,6 +51,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
+import 'package:pleya/services/unified_catalog/home_custom_row_view_all.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
@@ -219,12 +220,14 @@ class _FakeClient implements MediaServerClient {
 }
 
 /// A [HomeCustomRowLoader] that answers a saved row with [groups] straight
-/// away — SYS-1d only needs a non-empty custom row to draw its "Alle N" tile,
-/// not a real merge.
+/// away: SYS-1d only needs a non-empty custom row to draw its "Alle N" tile,
+/// not a real merge. Mutable so a test can simulate a background reload
+/// (ROW1i) landing a different [HomeCustomRowContent.loadedCount] between two
+/// presses on the same tile.
 class _ImmediateRowLoader implements HomeCustomRowLoader {
   _ImmediateRowLoader(this.groups);
 
-  final List<UnifiedMediaGroup> groups;
+  List<UnifiedMediaGroup> groups;
 
   @override
   Future<HomeCustomRowContent> load(HomeCustomRow row, {required int limit}) async =>
@@ -1233,6 +1236,7 @@ void main() {
     late TvNavigationCoordinator coordinator;
     late HomeLayoutProvider layout;
     late HomeCustomRowsProvider customRows;
+    late _ImmediateRowLoader loader;
     late FocusMemoryTracker navNodes;
     late FocusScopeNode navScope;
     late FocusScopeNode contentScope;
@@ -1297,17 +1301,18 @@ void main() {
       const row = HomeCustomRow(id: 'r1', kind: MediaKind.movie, preferences: UnifiedCatalogPreferences.defaults);
       await layout.saveCustomRow(row);
 
+      loader = _ImmediateRowLoader([
+        tvDiscoveryGroup('row1-item', [_film('row1-item', title: 'Row One Item')]),
+      ]);
       customRows = HomeCustomRowsProvider(
         layout: layout,
         multiServer: multiServer,
         libraries: libraries,
         hiddenLibraries: hiddenLibraries,
-        loader: _ImmediateRowLoader([
-          tvDiscoveryGroup('row1-item', [_film('row1-item', title: 'Row One Item')]),
-        ]),
+        loader: loader,
       );
       // Not `pumpEventQueue()`: it schedules through a zero-duration `Timer`,
-      // which the fake clock `testWidgets` installs never fires on its own —
+      // which the fake clock `testWidgets` installs never fires on its own.
       // `tester.pump()` is what actually drains the microtasks and lets the
       // loader's answer land.
       await tester.pump();
@@ -1383,6 +1388,53 @@ void main() {
       // kale Navigator.push draws a new route over TvRootShell entirely and
       // takes the bar with it, which is exactly SYS-1's symptom.
       expect(find.byType(TvTopNavigation), findsOneWidget);
+    });
+
+    testWidgets('a repeated press after the row reloads does not stack a second route', (tester) async {
+      await bootInShell(tester);
+
+      // The row's real `onViewAll` callback, exactly as `TvDiscoveryViewAllTile`
+      // calls it on Select (`tv_content_row.dart:144`), invoked directly here
+      // so the assertion is about the route id `_openViewAll` derives, not
+      // about winning a race against `TvNestedSurface`'s focus exclusion once
+      // a route is already on top (which a synthetic second key press would
+      // have to fight and does not reliably reach the same tile).
+      final row = tester.widget<TvContentRow>(find.byType(TvContentRow));
+      final onViewAll = row.onViewAll!;
+      final target = row.viewAllTarget!;
+
+      onViewAll(target);
+      await tester.pumpAndSettle();
+
+      expect(
+        coordinator.nestedRoutesFor(coordinator.active),
+        hasLength(1),
+        reason: 'sanity: the first press opened exactly one nested route',
+      );
+
+      // The row answers with more cards in the background (ROW1i) before the
+      // next press on the same tile: `HomeCustomRowViewAllTarget.count` is
+      // `content.loadedCount`, what has loaded so far, not a fixed row
+      // property, so the target the tile hands to `_openViewAll` differs.
+      final reloadedTarget = HomeCustomRowViewAllTarget(
+        kind: target.kind,
+        filters: target.filters,
+        sort: target.sort,
+        count: target.count + 1,
+      );
+      onViewAll(reloadedTarget);
+      await tester.pumpAndSettle();
+
+      // `openTvContentRoute`'s whole dedup contract (`pushNested` discards a
+      // re-push of the id already on top) exists so a second Select on a
+      // tile that is already open costs one Back, not two. A route id that
+      // bakes in `target.count` breaks that the moment the row reloads
+      // between two presses on the same tile.
+      expect(
+        coordinator.nestedRoutesFor(coordinator.active),
+        hasLength(1),
+        reason: 'a second press on the same "Alle N" tile must not stack a second screen',
+      );
     });
   });
 }
