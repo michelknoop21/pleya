@@ -36,6 +36,14 @@ under `Notes`.
 - SYS-1d review, Alle-N route-id op hubId in plaats van target.hashCode
 - route drie resterende TV-shell-bypasses via openTvContentRoute
 - comment overclaimde showReconnect-consolidatie corrigeren
+- de resultatenviewport op Zoeken clipt weer aan zijn bovenrand (SEARCH2)
+- een lege landing houdt de route naar de complete catalogus (LAND6)
+- de actieve rail op een landing krijgt het anker dat Home al had (LAND7)
+- een verwijderde kijklijstkaart geeft de ring door (WL3)
+- een Jellyfin-hub leidt zijn type af uit zijn items (REV1)
+- em-dash in twee REV1-docstrings vervangen (anti-slop)
+- een trage server verdwijnt niet uit het opgeslagen bronfilter (CAT20)
+- whole-branch review findings, CAT20 library keys, LAND7/REV1a docs
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 282 · 16 September 2026
