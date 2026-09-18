@@ -37,9 +37,9 @@ under `Notes`.
 - TOK2 serverstip-key botst bij meerdere online servers
 - breng het mobiele detailscherm terug naar northstar 06/07
 - eigen tablabels voor de mobiele detailtabs (mockup 07)
-- echte long-press-input in Pleya Verify, sluit 09 Contextmenu-sheet
 - catalogus-openers in Bibliotheken en Home via de content-route-registry (SYS-1d)
 - SYS-1d review, Alle-N route-id op hubId in plaats van target.hashCode
+- echte long-press-input in Pleya Verify, sluit 09 Contextmenu-sheet
 - route drie resterende TV-shell-bypasses via openTvContentRoute
 - comment overclaimde showReconnect-consolidatie corrigeren
 <!-- END GENERATED -->
