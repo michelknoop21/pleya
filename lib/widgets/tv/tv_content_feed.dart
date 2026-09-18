@@ -671,6 +671,13 @@ class TvContentFeedState extends State<TvContentFeed>
   /// unreachable, exactly when a viewer would want to go and look at them.
   /// Without saved rows there is nothing to customise and the bare message
   /// stays bare.
+  /// SYS-4: same fixed-size bug as `StateView` (`widgets/state_view.dart`),
+  /// same fix. This is the third hand-rolled copy of the shape the audit
+  /// found (icon 64, unscaled gaps and text) and, being TV-only code, needs
+  /// no `PlatformDetector.isTV()` gate: just the flat multiplier and
+  /// `TvLayoutConstants.scaleOf` directly.
+  static const double _emptyStateScaleFactor = 2.0;
+
   Widget _emptyOrLoading(DiscoverProvider discover, {required bool hasSavedRows}) {
     if (discover.isLoading || discover.areHubsLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -683,16 +690,26 @@ class TvContentFeedState extends State<TvContentFeed>
       );
     }
     final tk = tokens(context);
+    final scale = _emptyStateScaleFactor * TvLayoutConstants.scaleOf(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Symbols.movie_rounded, fill: 1, size: 64, color: tk.text.withValues(alpha: 0.3)),
-          const SizedBox(height: 16),
-          Text(t.discover.noContentAvailable, style: TextStyle(color: tk.text)),
-          const SizedBox(height: 8),
-          Text(t.discover.addMediaToLibraries, style: TextStyle(color: tk.textMuted)),
+          Icon(Symbols.movie_rounded, fill: 1, size: 64 * scale, color: tk.text.withValues(alpha: 0.3)),
+          SizedBox(height: 16 * scale),
+          Text(
+            t.discover.noContentAvailable,
+            style: TextStyle(color: tk.text, fontSize: (DefaultTextStyle.of(context).style.fontSize ?? 14.0) * scale),
+          ),
+          SizedBox(height: 8 * scale),
+          Text(
+            t.discover.addMediaToLibraries,
+            style: TextStyle(
+              color: tk.textMuted,
+              fontSize: (DefaultTextStyle.of(context).style.fontSize ?? 14.0) * scale,
+            ),
+          ),
           if (hasSavedRows) ...[
             SizedBox(height: TvDiscoveryLayout.sectionGap * TvLayoutConstants.scaleOf(context)),
             TvHomeCustomizeFooter(
