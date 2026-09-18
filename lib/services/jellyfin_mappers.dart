@@ -269,7 +269,12 @@ class JellyfinMappers {
   /// excludes from both the Films and the Series landing, so a Jellyfin
   /// household never saw those rows on either screen no matter what was in
   /// them. The two next-up rows still pass `'episode'` explicitly, because
-  /// that is what they are by definition, not something to infer.
+  /// that is what they are by definition, not something to infer. One other
+  /// call site, `fetchRelatedHubs`'s "more like this" row, also still passes
+  /// a hardcoded `'mixed'`: it feeds an item-detail page, not the Films-/
+  /// Series-landing gate this fix closes, and inheriting the item-derived
+  /// type would silently change unrelated rendering elsewhere (see REV1's own
+  /// task notes for the reasoning).
   static MediaHub syntheticHub({
     required String identifier,
     required String title,

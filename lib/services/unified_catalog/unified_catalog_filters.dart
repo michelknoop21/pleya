@@ -408,16 +408,28 @@ UnifiedCatalogQuery buildUnifiedCatalogQuery({
 /// bound: writing the prune back while one is still connecting would freeze
 /// that half-arrived snapshot into the store, which is the bug this exists to
 /// avoid.
+///
+/// The same race applies one level down, at the library key: a stored key for
+/// a library on a server that has not finished connecting yet is not known to
+/// be gone either, only unproven so far. A registered-but-unbound server's own
+/// stored library keys are kept provisionally instead of pruned, since there
+/// is no library list yet to check them against; a bound server's keys are
+/// still pruned against what it actually reports.
 ({UnifiedCatalogPreferences preferences, bool shouldPersist}) pruneStoredSourceFilter({
   required UnifiedCatalogPreferences stored,
   required Set<String> boundServerIds,
   required Set<String> boundLibraryKeys,
   required Set<String> registeredServerIds,
 }) {
+  final pendingServerIds = registeredServerIds.difference(boundServerIds);
+  final provisionalLibraryKeys = stored.filters.libraryKeys.where((key) {
+    final parsed = parseGlobalKey(key);
+    return parsed != null && pendingServerIds.contains(parsed.serverId);
+  }).toSet();
   final pruned = stored.copyWith(
     filters: stored.filters.withKnownSources(
       knownServerIds: boundServerIds.union(registeredServerIds),
-      knownLibraryKeys: boundLibraryKeys,
+      knownLibraryKeys: boundLibraryKeys.union(provisionalLibraryKeys),
     ),
   );
   final complete = registeredServerIds.every(boundServerIds.contains);

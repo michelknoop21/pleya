@@ -132,6 +132,54 @@ void main() {
     });
   });
 
+  // ---------------------------------------------------------------------------
+  // CAT20: a server that has merely not finished connecting yet must not lose
+  // its stored library keys either, the same race withKnownSources's plain
+  // server-id prune already survives. Caught by whole-branch review: the first
+  // CAT20 fix widened only the server set, so a viewer's next filter/sort
+  // change wrote the slow server's library selection away permanently, one
+  // level below what the original bug report and its own test covered.
+  // ---------------------------------------------------------------------------
+
+  group('pruneStoredSourceFilter, CAT20', () {
+    const stored = UnifiedCatalogPreferences(
+      filters: UnifiedCatalogFilterSelection(serverIds: {'plexflix', 'nas'}, libraryKeys: {'plexflix:7', 'nas:1'}),
+    );
+
+    test('a library on a server that has not bound yet is not pruned out', () {
+      final pruning = pruneStoredSourceFilter(
+        stored: stored,
+        boundServerIds: {'nas'},
+        boundLibraryKeys: {'nas:1'},
+        registeredServerIds: {'plexflix', 'nas'},
+      );
+
+      expect(pruning.preferences.filters.serverIds, contains('plexflix'));
+      expect(
+        pruning.preferences.filters.libraryKeys,
+        contains('plexflix:7'),
+        reason: 'plexflix has not bound yet, so its stored library is unproven, not gone',
+      );
+      expect(pruning.shouldPersist, isFalse, reason: 'the source list is not complete yet');
+    });
+
+    test('a library on a bound server that no longer reports it is pruned', () {
+      final pruning = pruneStoredSourceFilter(
+        stored: stored,
+        boundServerIds: {'plexflix', 'nas'},
+        boundLibraryKeys: {'nas:1'},
+        registeredServerIds: {'plexflix', 'nas'},
+      );
+
+      expect(
+        pruning.preferences.filters.libraryKeys,
+        isNot(contains('plexflix:7')),
+        reason: 'plexflix is fully bound and did not report this library, so it really is gone',
+      );
+      expect(pruning.shouldPersist, isTrue, reason: 'the source list is now complete');
+    });
+  });
+
   group('active count is per narrowing, not per value', () {
     test('three genres are one filter', () {
       const selection = UnifiedCatalogFilterSelection(genres: {'Drama', 'Comedy', 'Horror'});
