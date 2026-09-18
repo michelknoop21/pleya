@@ -1,0 +1,37 @@
+name: ios.mypleya.northstar
+target: ios-sim
+# The iPhone My Pleya hub (northstar 18, iOS Unified 2026 workitem 8 (I7),
+# docs/unified-2026-closure.md §5 row 8, register row 18), tegen
+# `docs/assets/ios-unified/northstar/18-mijn-pleya-volledig.png`. Reached
+# zoals een gebruiker dat doet: Home laden, dan de echte tik op de
+# `nav.myPleya`-tabbladknop. `screen.my_pleya` en `my_pleya.tile[<section>]`
+# bestonden al voor TV; dit scenario draait op de eerste keer dat die ids
+# ook op de telefoon gewired zijn (`my_pleya_screen.dart`), dus dit is geen
+# observatiescenario zonder risico: het bewijst voor het eerst dat de tap
+# de juiste screen opent.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  # Not discover.hero: catalog.mixed.v1 renders Home without a hero at all
+  # (no featured item in the fixture), see ios.contextmenu.northstar.yaml's
+  # own note about this.
+  - wait_until: {id: "home.rail.item[0.0]", timeout: 15000}
+  - settle: 2000
+  - tap: {id: nav.myPleya}
+  # A screen id backs `AutomationScreenRegistry` (readiness only, `GET
+  # /v1/screens`), not a node with bounds, proven by reaching `ready` here,
+  # not by a geometry assert, same as every other `screen.*` wait in this
+  # repo's scenarios.
+  - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - settle: 1000
+  # Downloads/Libraries/Servers are structural tiles (`showDownloads: true`
+  # is hardcoded, libraries/servers never gate on fixture data), unlike
+  # Watchlist/Requests/Activity, which depend on what the fixture profile
+  # has, reliable targets on any fixture, not just this one.
+  - assert: {id: "my_pleya.tile[downloads]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: "my_pleya.tile[libraries]", insideViewport: true, minimumTapTarget: 44}
+  - snapshot: mypleya-northstar
