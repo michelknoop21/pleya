@@ -260,9 +260,18 @@ const String tvNavProfileFocusKey = 'tvNav_profile';
 /// The one place that answers "which nodes does this bar own right now". A
 /// second list somewhere else would drift the moment a destination is added,
 /// and a pruner working from a stale list disposes a node that is on screen.
-Set<String> tvTopNavFocusKeys({required List<TvDestinationId> destinations, required bool showReconnect}) => {
+///
+/// Takes the raw [isOfflineMode]/[onReconnect] inputs rather than a
+/// pre-computed `showReconnect`, so [TvTopNavigation.build] and the pruner in
+/// `tv_root_shell.dart` derive the same gate from one expression instead of
+/// each recomputing `isOfflineMode && onReconnect != null` independently.
+Set<String> tvTopNavFocusKeys({
+  required List<TvDestinationId> destinations,
+  required bool isOfflineMode,
+  required VoidCallback? onReconnect,
+}) => {
   tvNavProfileFocusKey,
-  if (showReconnect) tvReconnectFocusKey,
+  if (isOfflineMode && onReconnect != null) tvReconnectFocusKey,
   for (final destination in destinations) destination.focusKey,
 };
 

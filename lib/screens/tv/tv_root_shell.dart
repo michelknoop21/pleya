@@ -438,7 +438,7 @@ class TvRootShell extends StatelessWidget {
   // is the target.
   void _pruneNavFocusAndScheduleRestore() {
     final prunedFocusedKey = navNodes.pruneExcept(
-      tvTopNavFocusKeys(destinations: coordinator.destinations, showReconnect: isOfflineMode && onReconnect != null),
+      tvTopNavFocusKeys(destinations: coordinator.destinations, isOfflineMode: isOfflineMode, onReconnect: onReconnect),
     );
     if (prunedFocusedKey != null) {
       // Only fires when the pruned node actually held the
