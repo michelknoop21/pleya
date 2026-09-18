@@ -53,6 +53,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/widgets/collapsible_text.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/utils/layout_constants.dart';
@@ -1607,6 +1608,95 @@ void main() {
 
         expect(find.text('Episode S2E1'), findsOneWidget);
         expect(find.text('Episode S1E1'), findsNothing);
+      });
+
+      MediaItem buildMovie() => MediaItem(
+        id: 'movie_header',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'Dune: Part Two',
+        serverId: 'server_1',
+        serverName: 'Server',
+      );
+
+      /// The colour the capsule actually paints.
+      Color? capsuleColour(WidgetTester tester, Finder button) =>
+          tester.widgetList<Material>(find.descendant(of: button, matching: find.byType(Material))).last.color;
+
+      testWidgets('a series opens on the capsule, without the film header (mockup 07)', (tester) async {
+        final show = buildShow();
+        final season1 = buildSeason(show, 1);
+        final client = _FakeMediaServerClient(
+          show: show,
+          childrenByParent: {
+            show.id: [season1],
+            season1.id: [buildEpisode(show, season1, 1)],
+          },
+        );
+
+        await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        // The app bar carries the title; mockup 07 has no second one beneath it.
+        expect(find.text('The Show'), findsOneWidget);
+        // On a series, downloading is per episode row — not a full-width CTA.
+        expect(find.widgetWithText(FilledButton, 'Download'), findsNothing);
+        // What follows the capsule is the tab row.
+        expect(find.byType(TabBar), findsOneWidget);
+      });
+
+      testWidgets('a film keeps its preview, second title and Download capsule (mockup 06)', (tester) async {
+        final movie = buildMovie();
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+        await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        // App bar title plus the headline under the preview card.
+        expect(find.text('Dune: Part Two'), findsNWidgets(2));
+        expect(find.widgetWithText(FilledButton, 'Download'), findsOneWidget);
+        expect(find.byType(TabBar), findsNothing);
+      });
+
+      testWidgets('the Download capsule is a grey surface, not the primary white', (tester) async {
+        final movie = buildMovie();
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+        await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        final tk = tokens(tester.element(find.text('Dune: Part Two').first));
+        final primary = capsuleColour(tester, find.widgetWithText(FilledButton, 'Play'));
+        final download = capsuleColour(tester, find.widgetWithText(FilledButton, 'Download'));
+
+        // monoTheme's filledButtonTheme paints every FilledButton c.text, so
+        // the tonal variant used to come out pure white — the same capsule as
+        // the primary directly above it.
+        expect(primary, tk.text);
+        expect(download, tk.surfaceElevated);
+        expect(download, isNot(primary));
+      });
+
+      testWidgets('the season pill sits on an elevated surface, not the page colour', (tester) async {
+        final show = buildShow();
+        final season1 = buildSeason(show, 1);
+        final season2 = buildSeason(show, 2);
+        final client = _FakeMediaServerClient(
+          show: show,
+          childrenByParent: {
+            show.id: [season1, season2],
+            season1.id: [buildEpisode(show, season1, 1)],
+            season2.id: [buildEpisode(show, season2, 1)],
+          },
+        );
+
+        await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        final pill = find.descendant(of: find.byType(PopupMenuButton<int>), matching: find.byType(Container)).first;
+        final decoration = tester.widget<Container>(pill).decoration as BoxDecoration;
+        final tk = tokens(tester.element(pill));
+
+        // secondaryContainer collapses onto c.surface under monoTheme, which
+        // drew this pill in the exact colour of the page behind it.
+        expect(decoration.color, tk.surfaceElevated);
+        expect(decoration.color, isNot(tk.surface));
       });
     });
   });

@@ -113,20 +113,23 @@ extension _MobileEpisodesTab on _MediaDetailScreenState {
             for (int i = 0; i < _seasons.length; i++)
               PopupMenuItem<int>(value: i, child: Text(_seasons[i].title ?? '')),
           ],
+          // Mono tokens, not the Material container roles: monoTheme maps
+          // secondaryContainer (and primaryContainer, surfaceContainerHighest,
+          // surfaceBright) onto c.surface, the exact colour of the page behind
+          // this chip, so the pill the mockup shows was drawn in the
+          // background colour and could not be seen at all. Same trap as
+          // DEC-053.
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(999),
-            ),
+            decoration: BoxDecoration(color: tokens(context).surfaceElevated, borderRadius: BorderRadius.circular(999)),
             child: Row(
               mainAxisSize: .min,
               children: [
                 Text(
                   current.title ?? '',
-                  style: TextStyle(fontWeight: .w700, color: theme.colorScheme.onSecondaryContainer),
+                  style: TextStyle(fontWeight: .w700, color: tokens(context).text),
                 ),
-                Icon(Icons.expand_more_rounded, color: theme.colorScheme.onSecondaryContainer, size: 20),
+                Icon(Icons.expand_more_rounded, color: tokens(context).text, size: 20),
               ],
             ),
           ),
