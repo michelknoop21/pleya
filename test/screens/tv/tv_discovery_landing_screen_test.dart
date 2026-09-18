@@ -499,6 +499,50 @@ void main() {
     expect(action.left, greaterThanOrEqualTo(title.right), reason: 'no overlap');
     expect(tester.takeException(), isNull, reason: 'and no overflow');
   });
+
+  // ---------------------------------------------------------------------------
+  // LAND6: een lege landing verbergt de catalogus niet
+  // ---------------------------------------------------------------------------
+
+  group('LAND6, an empty landing', () {
+    testWidgets('still offers the route into the complete catalog', (tester) async {
+      await pumpLanding(tester, hubs: const []);
+
+      expect(find.text(t.unifiedCatalog.discovery.emptyTitle), findsOneWidget);
+      // The rails are the only other way in, and there are none. Without this
+      // action the complete catalog is unreachable from this screen even when
+      // Bibliotheken shows a library with content in it, which is the case the
+      // finding came off the simulator with.
+      expect(find.text(t.unifiedCatalog.discovery.allMovies), findsOneWidget);
+    });
+
+    testWidgets('puts the remote on that action', (tester) async {
+      await pumpLanding(tester, hubs: const []);
+      await tester.pumpAndSettle();
+
+      // A tvOS page with the focus and nothing focused on it is one the remote
+      // can neither move within nor leave (CAT12, CAT14). The error branch
+      // already had an autofocusing button; the empty branch had nothing.
+      expect(FocusManager.instance.primaryFocus?.hasPrimaryFocus, isTrue);
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        isNot(contains('ModalScope')),
+        reason: 'the focus must be on the action, not on the page scope',
+      );
+    });
+
+    testWidgets('opens it through the shell when one is listening', (tester) async {
+      var opened = 0;
+      await pumpLanding(tester, hubs: const [], onOpenAll: () => opened++);
+
+      await tester.tap(find.text(t.unifiedCatalog.discovery.allMovies));
+      await tester.pumpAndSettle();
+
+      // SYS-1a's contract: the shell callback, not a bare Navigator.push that
+      // would draw over the top navigation.
+      expect(opened, 1);
+    });
+  });
 }
 
 /// Mounts the landing with two movie rails, settled — the shape the DEC-068
@@ -515,6 +559,10 @@ pumpLanding(
   /// landings are one implementation with this callback swapped, so a contract
   /// that has to hold on both is proved by pumping both.
   List<UnifiedMediaHub> Function(TvDiscoveryLandingProvider)? railsOf,
+
+  /// SYS-1a's shell hook. Null (the default) exercises the standalone fallback
+  /// a golden or a plain mount uses; LAND6 needs the shell path itself.
+  VoidCallback? onOpenAll,
 }) async {
   resetSharedPreferencesForTest();
   SettingsService.resetForTesting();
@@ -584,6 +632,7 @@ pumpLanding(
                 viewAllSemanticLabel: t.unifiedCatalog.discovery.semantics.viewAllMovies,
                 railsOf: railsOf ?? (landing) => landing.movieRails,
                 buildAllScreen: () => const Scaffold(body: Center(child: Text('All Movies'))),
+                onOpenAll: onOpenAll,
               ),
             ),
           ),
