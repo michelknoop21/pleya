@@ -350,7 +350,7 @@ Hier staan ze bij de werkstroom die ze bezit.
 | ACT-2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | MOC-16, SYS-1 | FIXED, hardware open, `4598e1ea` |
 | OFF-1 | Geen reconnect-affordance op TV | MOC-23 | FIXED, hardware open, `a749bf18`, `587750af`, `main@83b8f5fc` |
 | OFF-2 | Offline topnav toont dode pills | MOC-23, SYS-1 | FIXED, hardware open, `472233db`, `267e6dc1` |
-| FOC-1 | Verdwijnende gefocuste TV-topnav-pil (Live TV, of offline sinds `472233db`) verplaatst de logische focus wel maar niet de echte `FocusNode` | MOC-23, SYS-1 | OPEN |
+| FOC-1 | Verdwijnende gefocuste TV-topnav-pil (Live TV, of offline sinds `472233db`) verplaatst de logische focus wel maar niet de echte `FocusNode` | MOC-23, SYS-1 | CODE CLOSED · VERIFY/SIM OPEN, `tvTopNavFocusKeys()` + prune-in-build op `TvRootShell`, negatieve controle rood/groen bevestigd, hardwareronde nog niet gedraaid, `da0693d2`, `cbc87def` |
 | OVR1b | Legacy `MediaContextMenu`, rating-sheet, kijklijst-item-sheet en Live TV-sheets vallen op tvOS in een 400x400 bottom sheet | SYS-3b | DONE, `96f2d45` |
 | STA-1 | `StateView` en `EmptyStateWidget` schalen niet op TV | SYS-4 | OPEN |
 | SRCH-2 | `people` wordt nooit aan `searchProjection` meegegeven | MOC-13 | FIXED, `b5b8f0e8`, hardware open (DEC-112) |
