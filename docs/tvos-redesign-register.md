@@ -346,7 +346,7 @@ Hier staan ze bij de werkstroom die ze bezit.
 | STR-4 | Hardcoded tagline in `auth_screen.dart:341` | SYS-5, MOC-22 | FIXED, hardware open, `5fb4e66c` |
 | STR-5 | Hardcoded "Incorrect PIN" in `profile_activation.dart:57` | SYS-5, MOC-21 | FIXED, hardware open, `5fb4e66c` |
 | TOK-1 | `TvPanelTheme.accent #F42B1F` naast `kAccent` | SYS-6 | FIXED, hardware open, `5cb5c33` (MOC-33) |
-| TOK-2 | Serverstip `#3FBF5F` hardcoded in `tv_my_pleya_screen.dart:833` | SYS-6 | OPEN |
+| TOK-2 | Serverstip `#3FBF5F` hardcoded in `tv_my_pleya_screen.dart:833` | SYS-6 | CODE CLOSED · VERIFY/SIM OPEN, `kSuccess` vervangt de hardcoded kleur, dot-key op `row.id` na fix-ronde 1 (was `online`/`offline`, botste bij twee online servers), `5fbe2c7b`, `cadd11bb`, golden-regeneratie (Linux-CI) blijft open |
 | PNL-1 | Infopaneel gooit secundaire spoorlabels weg, `tv_audio_subtitle_tabs.dart:105, 375, 407` | MOC-33 | FIXED, Mac-run open |
 | LIVE-1 | `PlatformDetector.shouldUseSideNavigation` waar op TV: twee navigatiebalken in Live TV | MOC-17 | OPEN |
 | ACT-2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | MOC-16, SYS-1 | FIXED, hardware open, `4598e1ea` |
