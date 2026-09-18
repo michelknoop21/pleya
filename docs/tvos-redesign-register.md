@@ -9,6 +9,11 @@ Statussen: `OPEN`, `IN PROGRESS`, `DONE`, `DEFERRED`, `BLOCKED`. Een item krijgt
 SHA en de bewijsregel erbij. Een item verdwijnt alleen door een eindstatus, nooit doordat er
 later iets urgenters bijkwam.
 
+**Koppeltekens.** De correctieronde schrijft historisch `FOC1`, dit register `FOC-1`. Dat zijn
+aliassen van hetzelfde werkitem, geen aparte ID's; op 18 september gold dat voor 21 ID-paren. Er
+wordt niet hernoemd: een renaming-diff over 21 ID's levert alleen het risico van verweesde
+verwijzingen op. Een nieuw ID volgt de schrijfwijze van het document waar het in ontstaat.
+
 ## Volgorde
 
 De werkvolgorde voor de tvOS-workitems in dit register staat vanaf 11 september 2026 in
