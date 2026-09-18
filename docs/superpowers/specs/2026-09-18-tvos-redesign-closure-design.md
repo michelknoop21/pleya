@@ -167,7 +167,7 @@ geparkeerd voor closure §7.
 
 | Item | Plan | Opmerking |
 |---|---|---|
-| SYS-3a (OVR1a), SYS-4 (STA-1), TOK2, FOC1 | TV1 | systemische fundering |
+| SYS-3a (OVR1a), SYS-4 (STA-1), TOK2, FOC1, SYS-1d | TV1 | systemische fundering; SYS-1d is het aangetoonde defect uit 2.6, gevonden tijdens TV0's controle op SYS-1 |
 | SEARCH2, LAND6, LAND7, WL3, WL2, REV1, AGG1, CAT20 | TV2 | CAT20 eerst reproduceren tegen de huidige baseline |
 | DET4, CTX1, CTX2, CTX3, MOC-11-goldens | TV3 | de CTX-rijen komen uit TV0 |
 | MOC-17, LIVE1 | TV4 | Live TV |
