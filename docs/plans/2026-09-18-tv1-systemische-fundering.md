@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** De drie systemische TV-gebreken sluiten die onder alle latere plannen liggen: de echte focus die achterblijft bij een verdwenen bestemming (FOC1), gedeelde staat- en lege-presentatie die op TV half zo groot is als tien voet vraagt (SYS-4), en de laatste hardcoded statuskleur (TOK2). Plus een besluit over de schaalklem (SYS-3a) dat op inventarisatie rust in plaats van op gevoel.
+**Goal:** De systemische TV-gebreken sluiten die onder alle latere plannen liggen: de echte focus die achterblijft bij een verdwenen bestemming (FOC1), gedeelde staat- en lege-presentatie die op TV half zo groot is als tien voet vraagt (SYS-4), de laatste hardcoded statuskleur (TOK2), en twee catalogus-openers die de shell omzeilen (SYS-1d). Plus een besluit over de schaalklem (SYS-3a) dat op inventarisatie rust in plaats van op gevoel.
 
 **Architecture:** Geen nieuwe infrastructuur. FOC1 gebruikt `FocusMemoryTracker.pruneExcept`, dat al bestaat en al door `side_navigation_rail.dart`, `libraries_screen.dart` en `watch_together_screen.dart` gebruikt wordt; de TV-topnav is de enige van de vier die hem niet aanroept. SYS-4 trekt de gedeelde staten naar het patroon dat `TvCatalogEmptyState` al heeft (`TvLayoutConstants.scaleOf` plus de referentiematen uit `tv_unified_layout.dart`), en maakt geen vierde lege-staat-widget. TOK2 gebruikt `kSuccess`, dat al in `mono_theme.dart` staat. SYS-3a wijzigt in dit plan geen enkele schaalwaarde.
 
@@ -10,7 +10,10 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-18-tvos-redesign-closure-design.md`, hoofdstuk 4, TV1.
 
-**Voorwaarde:** TV0 is uitgevoerd, geverifieerd en gecommit. Dit plan begint met een verse preflight tegen die HEAD en neemt geen enkele aanname uit de pre-TV0-administratie over.
+**Voorwaarde:** TV0 is uitgevoerd, geverifieerd en gecommit (`91afd26a..ed36b1c4`). Dit plan begint
+met een verse preflight tegen die HEAD en neemt geen enkele aanname uit de pre-TV0-administratie
+over. Task 6 (SYS-1d) is tijdens TV0's uitvoering bijgekomen en stond niet in de eerste versie van
+dit plan; de spec-mapping is leidend.
 
 ---
 
@@ -527,7 +530,88 @@ volgen het patroon dat TvCatalogEmptyState al heeft."
 
 ---
 
-## Task 6: SYS-3a, inventariseren en besluiten
+## Task 6: SYS-1d, route de twee resterende catalogus-openers via de registry
+
+TV0 vond deze bevinding tijdens het reconciliëren van de SYS-1-umbrella; hij bestond niet toen dit
+plan geschreven werd. De spec-mapping (`docs/superpowers/specs/2026-09-18-tvos-redesign-closure-design.md`,
+hoofdstuk 3) en `docs/tvos-redesign-register.md`'s `SYS-1d`-rij wijzen hem aan TV1 toe.
+
+**Files:**
+- Modify: `lib/screens/tv/sections/tv_libraries_screen.dart:217-228` (`_openInCatalog`)
+- Modify: `lib/widgets/tv/tv_content_feed.dart:367-380` (`_openViewAll`)
+- Test: `test/screens/tv/tv_libraries_screen_test.dart`, `test/widgets/tv/tv_content_feed_test.dart`
+
+**Step 1: Reproduceer eerst**
+
+TV0's controle was statisch (code lezen), geen widgettest. Voordat je iets wijzigt: schrijf de
+negatieve controle die aantoont dat deze twee call sites de shell/topnav daadwerkelijk omzeilen.
+
+`lib/screens/main_screen.dart:2312` (`_openTvCompleteCatalog`) is het correcte precedent: die bouwt
+een `TvNestedRoute` via `_openTvNestedRoute` → `TvNavigationCoordinator.pushNested`, wat de bar in
+de boom houdt en de content-focus-authority erover informeert. `_openInCatalog` en `_openViewAll`
+doen in plaats daarvan een kale `Navigator.of(context).push(MaterialPageRoute(...))`, wat een geheel
+nieuwe route boven de shell zet.
+
+```dart
+testWidgets('SYS-1d: opening the catalog from Libraries keeps the TV shell mounted', (tester) async {
+  // Pump de productie-TvRootShell met TvLibrariesScreen als content, net als
+  // tv_root_shell_test.dart dat voor FOC1 deed.
+  await pump(tester);
+
+  await tester.tap(find.byKey(const ValueKey('tv.libraries.open-in-catalog')));
+  await tester.pumpAndSettle();
+
+  // De bar moet in de boom blijven; een kale Navigator.push tekent hem eroverheen weg.
+  expect(find.byType(TvTopNavigation), findsOneWidget);
+});
+```
+
+Pas het testkey en de opstelling aan zodra je de echte productie-harness gelezen hebt; dit is de
+vorm, niet de letterlijke tekst. Draai de test en bevestig dat hij faalt vóór je iets wijzigt.
+
+**Step 2: De fix per call site**
+
+Vervang de kale `Navigator.push` door het registry-pad. `_openInCatalog` en `_openViewAll` hebben
+geen `TvDestinationId` en geen `TvNavigationCoordinator` bij de hand zoals `main_screen.dart` dat
+wel heeft: lees eerst hoe `openTvContentRoute` (`lib/navigation/tv/tv_content_route_registry.dart:63`)
+aangeroepen wordt vanuit een content-scherm dat zelf geen `MainScreen`-state is, en volg dat patroon.
+Geen nieuwe infrastructuur: als de registry vandaag alleen vanuit `MainScreen` bereikbaar is, is de
+kleinste fix een callback die `MainScreen` doorgeeft aan `TvLibrariesScreen` en `TvContentFeed`, niet
+een nieuwe globale toegang tot de coordinator.
+
+**Step 3: Draai de tests**
+
+```bash
+flutter test test/screens/tv/tv_libraries_screen_test.dart test/widgets/tv/tv_content_feed_test.dart
+flutter test test/screens/tv/ test/widgets/tv/ 2>&1 | tail -5
+flutter analyze
+```
+
+Vergelijk met de nulmeting uit Task 0 stap 5.
+
+**Step 4: Commit**
+
+```bash
+git add lib/screens/tv/sections/tv_libraries_screen.dart lib/widgets/tv/tv_content_feed.dart test/screens/tv/tv_libraries_screen_test.dart test/widgets/tv/tv_content_feed_test.dart
+git commit -m "fix: catalogus-openers in Bibliotheken en Home via de content-route-registry (SYS-1d)
+
+_openInCatalog en _openViewAll openden TvUnifiedCatalogScreen met een kale
+Navigator.push(MaterialPageRoute(...)), buiten tvContentRouteRegistry om,
+terwijl main_screen.dart:_openTvCompleteCatalog voor hetzelfde scherm wel via
+de registry gaat. Dat dekte de shell/topnav af, precies SYS-1's symptoom.
+
+Gevonden tijdens TV0's SYS-1-umbrella-controle, geen onderdeel van het
+oorspronkelijke plan."
+```
+
+**Step 5: Werk de status bij**
+
+`SYS-1d` in `docs/tvos-fysieke-correctieronde.md` en `docs/tvos-redesign-register.md` naar
+`CODE CLOSED · VERIFY/SIM OPEN`, met de SHA, in een aparte commit.
+
+---
+
+## Task 7: SYS-3a, inventariseren en besluiten
 
 **Dit plan wijzigt geen enkele schaalwaarde.** SYS-3a eindigt in een besluit met een inventarisatie eronder, of in een opsplitsing met bewijs. Een klem verschuiven zonder te weten wie eraan hangt is precies de brede regressie die de correctieronde bij `FocusableWrapper` wél vermeed.
 
@@ -593,7 +677,7 @@ Geen schaalwaarde gewijzigd."
 
 ---
 
-## Task 7: TV1 exit
+## Task 8: TV1 exit
 
 **Step 1: De volledige relevante suite**
 
@@ -623,22 +707,27 @@ Per gesloten item de SHA in `docs/tvos-fysieke-correctieronde.md` en `docs/tvos-
 | FOC1 / FOC-1 | `CODE CLOSED · VERIFY/SIM OPEN`, met de SHA uit Task 3 |
 | TOK2 / TOK-2 | `CODE CLOSED · VERIFY/SIM OPEN`, met de goldenregeneratie als open punt |
 | SYS-4 | `CODE CLOSED · VERIFY/SIM OPEN`, met de SHA uit Task 5 |
+| SYS-1d | `CODE CLOSED · VERIFY/SIM OPEN`, met de SHA uit Task 6 |
 | SYS-3a | `GESLOTEN` met de inventarisatie, of umbrella met de nieuwe kind-ID's |
 
 **Step 4: Exit-criteria**
 
-Alle zes waar:
+Alle zeven waar:
 
 1. FOC1 is gesloten met een negatieve controle die aantoonbaar rood was op de commit ervoor.
 2. TOK2 is gesloten en `grep -rn '0xFF3FBF5F' lib` is leeg.
 3. SYS-4 is gesloten zonder dat er een vierde lege-staat-widget is bijgekomen.
-4. SYS-3a heeft een besluit met de inventarisatie eronder, en er is geen schaalwaarde gewijzigd.
-5. SYS-5 en SYS-6 staan zoals TV0 ze achterliet.
-6. `flutter analyze` is schoon en er is geen test rood die in Task 0 groen was.
+4. SYS-1d is gesloten met een negatieve controle die aantoonbaar rood was, en gaat via de registry.
+5. SYS-3a heeft een besluit met de inventarisatie eronder, en er is geen schaalwaarde gewijzigd.
+6. SYS-5 en SYS-6 staan zoals TV0 ze achterliet.
+7. `flutter analyze` is schoon en er is geen test rood die in Task 0 groen was.
 
 **Step 5: De Verify-stap hoort hier niet**
 
-FOC1 is focusgedrag en vraagt dus een journey. Die hoort bij TV8, want FOC1 is een historisch gat in een gebouwd oppervlak, niet een oppervlak dat TV1 zelf bouwt. Zet hem in de spec-mapping onder TV8 als hij er nog niet staat, met de SHA uit Task 3 erbij, zodat TV8 weet welke commit het scenario moet dekken.
+FOC1 en SYS-1d zijn allebei navigatiegedrag en vragen dus een journey. Die hoort bij TV8, want
+allebei zijn een historisch gat in een gebouwd oppervlak, geen oppervlak dat TV1 zelf bouwt. Zet ze
+in de spec-mapping onder TV8 als ze er nog niet staan, met de SHA's uit Task 3 en Task 6 erbij, zodat
+TV8 weet welke commit elk scenario moet dekken.
 
 ---
 
