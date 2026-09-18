@@ -20,6 +20,7 @@ under `Notes`.
 <!-- BEGIN GENERATED -->
 ### Fixed
 - add filled and scope chip variants for the mobile northstar
+- pin the northstar control pill to an exact 32pt surface
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 282 · 16 September 2026
