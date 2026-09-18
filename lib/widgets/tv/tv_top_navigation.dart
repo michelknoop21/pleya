@@ -154,7 +154,7 @@ class TvTopNavigation extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: _ProfileChip(
                   profile: profile,
-                  node: nodes.get(_profileFocusKey, debugLabel: 'tvNav_profile'),
+                  node: nodes.get(tvNavProfileFocusKey, debugLabel: 'tvNav_profile'),
                   scale: scale,
                   onSelect: onOpenProfiles,
                   onNavigateDown: onNavigateDown,
@@ -173,7 +173,7 @@ class TvTopNavigation extends StatelessWidget {
                       isReconnecting: isReconnecting,
                       onSelect: onReconnect!,
                       onNavigateDown: onNavigateDown,
-                      onNavigateLeft: () => _focusKey(_profileFocusKey),
+                      onNavigateLeft: () => _focusKey(tvNavProfileFocusKey),
                       onNavigateRight: destinations.isEmpty ? null : () => _focus(destinations.first),
                     ),
                     if (destinations.isNotEmpty)
@@ -207,7 +207,7 @@ class TvTopNavigation extends StatelessWidget {
                       // one, otherwise to the profile chip, the only other
                       // thing to its left; the last simply stops.
                       onNavigateLeft: i == 0
-                          ? () => _focusKey(showReconnect ? tvReconnectFocusKey : _profileFocusKey)
+                          ? () => _focusKey(showReconnect ? tvReconnectFocusKey : tvNavProfileFocusKey)
                           : () => _focus(destinations[i - 1]),
                       onNavigateRight: i == destinations.length - 1 ? null : () => _focus(destinations[i + 1]),
                     ),
@@ -249,7 +249,22 @@ class TvTopNavigation extends StatelessWidget {
 /// [TvDestinationId] value: the chip opens the profile picker on the *root*
 /// navigator and never becomes an active destination, so it has no pill state
 /// and no tab behind it.
-const String _profileFocusKey = 'tvNav_profile';
+///
+/// Public since FOC1: [TvRootShell] prunes [FocusMemoryTracker] against the
+/// keys this bar actually renders, and the chip is one of them.
+const String tvNavProfileFocusKey = 'tvNav_profile';
+
+/// Every focus key [TvTopNavigation] renders for [destinations], in the order
+/// the bar walks them.
+///
+/// The one place that answers "which nodes does this bar own right now". A
+/// second list somewhere else would drift the moment a destination is added,
+/// and a pruner working from a stale list disposes a node that is on screen.
+Set<String> tvTopNavFocusKeys({required List<TvDestinationId> destinations, required bool showReconnect}) => {
+  tvNavProfileFocusKey,
+  if (showReconnect) tvReconnectFocusKey,
+  for (final destination in destinations) destination.focusKey,
+};
 
 class _NavItem extends StatelessWidget {
   const _NavItem({
