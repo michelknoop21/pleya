@@ -803,6 +803,7 @@ class _ServerStatusList extends StatelessWidget {
     final rows = servers.serverIds
         .map(
           (id) => (
+            id: id,
             name: servers.serverManager.serverDisplayName(ServerId(id)),
             online: servers.onlineServerIds.contains(id),
           ),
@@ -823,7 +824,9 @@ class _ServerStatusList extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  key: ValueKey('tv.my-pleya.server-dot.${row.online ? 'online' : 'offline'}'),
+                  // Keyed on the server id, not the name: two servers can share a
+                  // display name, and a rename must not orphan this key (TOK2).
+                  key: ValueKey('tv.my-pleya.server-dot.${row.id}.${row.online ? 'online' : 'offline'}'),
                   width: TvMyPleyaLayout.serverDotSize * scale,
                   height: TvMyPleyaLayout.serverDotSize * scale,
                   decoration: BoxDecoration(

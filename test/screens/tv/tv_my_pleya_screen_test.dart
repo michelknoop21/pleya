@@ -289,9 +289,22 @@ void main() {
       // already had: two greens that look the same until one theme moves.
       await pump(tester, full: true);
 
-      final dot = tester.widget<Container>(find.byKey(const ValueKey('tv.my-pleya.server-dot.online')));
+      final dot = tester.widget<Container>(find.byKey(const ValueKey('tv.my-pleya.server-dot.nas.online')));
       final decoration = dot.decoration! as BoxDecoration;
       expect(decoration.color, kSuccess);
+    });
+
+    testWidgets('TOK2: two online servers each keep their own dot key', (tester) async {
+      // The bug this reopened: the key carried only online/offline, so a
+      // second online server collided with the first one's dot instead of
+      // getting a widget of its own. Two different ids, same display name on
+      // purpose, to prove the id is what makes the key unique, not the name.
+      manager.debugRegisterClientForTesting(OnlinePlexClientDouble('nas1', 'Server'));
+      manager.debugRegisterClientForTesting(OnlinePlexClientDouble('nas2', 'Server'));
+      await pump(tester);
+
+      expect(find.byKey(const ValueKey('tv.my-pleya.server-dot.nas1.online')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tv.my-pleya.server-dot.nas2.online')), findsOneWidget);
     });
 
     testWidgets('Down from the top navigation lands on the profile action', (tester) async {
