@@ -103,7 +103,12 @@ abstract class VerificationDriver {
 
   Future<void> typeText(String text);
 
-  Future<void> tap(double x, double y);
+  /// One pointer tap at [x], [y]. [hold] makes it a real long press — the
+  /// pointer stays down for that duration between PointerDown and PointerUp
+  /// — through the same real gesture pipeline a tap uses, not a synthetic
+  /// callback. Supported wherever [tap] itself is (every driver but tvOS,
+  /// which has no pointer route at all; [C2]).
+  Future<void> tap(double x, double y, {Duration? hold});
 
   /// The driver's own operational log (build/launch/terminate events,
   /// captured process stdout/stderr) — `driver.log` in the evidence

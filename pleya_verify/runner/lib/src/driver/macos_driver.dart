@@ -454,8 +454,8 @@ class MacosDriver implements VerificationDriver {
   }
 
   @override
-  Future<void> tap(double x, double y) async {
-    await _requireClient().inputPointer(x, y);
+  Future<void> tap(double x, double y, {Duration? hold}) async {
+    await _requireClient().inputPointer(x, y, holdMs: hold?.inMilliseconds);
   }
 
   VerifyClient _requireClient() {

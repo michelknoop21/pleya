@@ -310,6 +310,18 @@ class AutomationIds {
   /// One row in [sheetSourcePicker]. Instanceable: suffixed `[<index>]`.
   static const String sheetSourcePickerRow = 'sheet.source_picker.row';
 
+  /// The mobile unified context menu as a whole (`showMobileUnifiedContextMenu`,
+  /// mockup 09) — its title is the tapped item's, so a scenario needs this
+  /// id to confirm the *menu* opened rather than reading the title alone.
+  static const String sheetContextMenu = 'sheet.context_menu';
+
+  /// One action row in [sheetContextMenu] (markeer bekeken, aan kijklijst,
+  /// …). Instanceable: suffixed `[<index>]`, same shape as
+  /// [sheetSourcePickerRow] — the action itself, not a stable id per
+  /// `UnifiedGroupAction`, because which actions are offered (and in which
+  /// order) already varies with the group's own state.
+  static const String sheetContextMenuItem = 'sheet.context_menu.item';
+
   /// The Alle films/Alle series catalogue screens (iOS Unified 2026 fase 3,
   /// `docs/ios-unified-2026-fase3-plan.md`). Two separate consts rather than
   /// one instanceable id, the same choice [screenSeries]/[screenMovies] made:
@@ -395,6 +407,7 @@ class AutomationIds {
     searchResultsSection,
     searchResultsItem,
     sheetSourcePickerRow,
+    sheetContextMenuItem,
     catalogHeader,
     catalogHeaderSearch,
     catalogChipSources,
@@ -485,6 +498,8 @@ class AutomationIds {
     {'id': searchResultsItem, 'role': 'list.item', 'instanceable': true},
     {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
+    {'id': sheetContextMenu, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetContextMenuItem, 'role': 'list.item', 'instanceable': true},
     {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},
     {'id': screenCatalogSeries, 'role': 'screen', 'instanceable': false},
     {'id': catalogHeader, 'role': 'region', 'instanceable': true},

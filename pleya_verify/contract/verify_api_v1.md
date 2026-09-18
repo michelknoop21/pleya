@@ -272,17 +272,28 @@ endpoint nooit aan.
 
 ### `POST /v1/input/pointer`
 
-Body: `{"x": 100.0, "y": 200.0}` (logische pixels). Synthetiseert een tap
-(down + up) via `GestureBinding.handlePointerEvent`, door de echte hit-test-
-pipeline — geen directe callback-aanroep. Forceert eerst pointer-mode via
+Body: `{"x": 100.0, "y": 200.0, "hold_ms": 600}` (`hold_ms` optioneel,
+logische pixels voor `x`/`y`). Synthetiseert een tap (down + up) via
+`GestureBinding.handlePointerEvent`, door de echte hit-test-pipeline — geen
+directe callback-aanroep. Forceert eerst pointer-mode via
 `AutomationInput.onPointerModeRequested` (`InputModeTracker`'s hook, naar het
 model van `GamepadService.onGamepadInput`), anders zou de app-brede
 `IgnorePointer` tijdens D-pad-navigatie de tap slikken.
 
+Zonder `hold_ms`: `PointerDownEvent` en `PointerUpEvent` volgen synchroon op
+elkaar, zoals altijd. Met `hold_ms`: de pointer blijft die tijd ingedrukt
+tussen down en up — dezelfde pijplijn, alleen een echte wachttijd ertussen —
+en dat is precies wat een `GestureDetector.onLongPress` nodig heeft om te
+herkennen; down-direct-gevolgd-door-up kan die nooit triggeren. Moet een
+positief geheel getal zijn, hoogstens 5000; een scenariostap die groter vraagt
+of een niet-numerieke waarde geeft krijgt 400 in plaats van een run die
+minutenlang hangt op een tikfout.
+
 200 `{"result": "dispatched"}`; 409 bij een actieve native invoersessie; 400
-wanneer `x`/`y` ontbreken. Geen pointer-equivalent op tvOS (geen aanraakvlak
-in de zin van deze API) — het endpoint bestaat er wel, maar een scenario-stap
-roept het net als `/v1/input/key` nooit aan op een tvOS-target.
+wanneer `x`/`y` ontbreken of `hold_ms` ongeldig is. Geen pointer-equivalent op
+tvOS (geen aanraakvlak in de zin van deze API) — het endpoint bestaat er wel,
+maar een scenario-stap roept het net als `/v1/input/key` nooit aan op een
+tvOS-target.
 
 ### `POST /v1/input/text`
 

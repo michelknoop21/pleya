@@ -55,7 +55,14 @@ int _nextPointerId = 1;
 /// `POST /v1/input/pointer`. Synthesizes a tap (down + up) at [position] in
 /// logical pixels, going through the real gesture-binding hit-test pipeline
 /// rather than calling a widget's callback directly.
-AutomationInputResult dispatchAutomationPointerTap(Offset position) {
+///
+/// [hold] makes it a real long press — the pointer stays down for that
+/// duration between [PointerDownEvent] and [PointerUpEvent] — which is what
+/// separates a `GestureDetector.onLongPress` recognition from an ordinary
+/// tap; down-immediately-followed-by-up (the default, [hold] null) can never
+/// trigger one. Same pipeline either way, just a real wait inserted between
+/// the two events instead of a second, unrelated activation.
+Future<AutomationInputResult> dispatchAutomationPointerTap(Offset position, {Duration? hold}) async {
   if (NativeInputSession.isActive) return AutomationInputResult.blockedByNativeSession;
   AutomationInput.onPointerModeRequested?.call();
   scheduleFrameIfIdle();
@@ -64,9 +71,15 @@ AutomationInputResult dispatchAutomationPointerTap(Offset position) {
   final binding = GestureBinding.instance;
   binding.handlePointerEvent(PointerAddedEvent(position: position));
   binding.handlePointerEvent(PointerDownEvent(pointer: pointer, position: position));
+  if (hold != null) await Future<void>.delayed(hold);
   binding.handlePointerEvent(PointerUpEvent(pointer: pointer, position: position));
   binding.handlePointerEvent(PointerRemovedEvent(position: position));
-  AutomationEventLog.instance.emit('input.received', {'source': 'transport', 'x': position.dx, 'y': position.dy});
+  AutomationEventLog.instance.emit('input.received', {
+    'source': 'transport',
+    'x': position.dx,
+    'y': position.dy,
+    if (hold != null) 'hold_ms': hold.inMilliseconds,
+  });
   return AutomationInputResult.dispatched;
 }
 

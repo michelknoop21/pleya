@@ -69,6 +69,9 @@ List<ScenarioError> validateScenario(Scenario scenario, AutomationIdCatalog cata
     if (step.verb == 'press') {
       _validatePress(step, scenario, errors);
     }
+    if (step.verb == 'tap') {
+      _validateTap(step, scenario, errors);
+    }
     if (step.verb == 'assert') {
       _validateAssert(step, scenario, errors);
     }
@@ -175,6 +178,28 @@ void _validatePress(ScenarioStep step, Scenario scenario, List<ScenarioError> er
 }
 
 bool _isTvosTarget(String target) => target.contains('tvos');
+
+/// `tap: {id: ...}`/`{x, y}` may carry an optional `holdMs` to make it a real
+/// long press. Unlike `press`'s `holdMs` ([_validatePress]), this needs no
+/// per-target restriction: `tap` itself is already rejected on tvOS above
+/// (no touch surface at all), and every remaining target taps through the
+/// same real pointer-down/up pipeline, which a held pointer degrades
+/// gracefully on — the only failure mode worth catching here is a malformed
+/// value.
+void _validateTap(ScenarioStep step, Scenario scenario, List<ScenarioError> errors) {
+  final args = step.args;
+  if (args is! Map || !args.containsKey('holdMs')) return;
+  final holdMs = args['holdMs'];
+  if (holdMs is! int || holdMs <= 0) {
+    errors.add(
+      ScenarioError(
+        sourcePath: scenario.sourcePath,
+        line: step.line,
+        message: "tap holdMs must be a positive whole number of milliseconds, got '$holdMs'",
+      ),
+    );
+  }
+}
 
 /// Every key an `assert:` step may carry at the top level.
 Set<String> get _assertKeys => {'id', ...geometryPredicates, ...nodeFieldPredicates};
