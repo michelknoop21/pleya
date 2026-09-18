@@ -61,6 +61,7 @@ class TranslationsKo extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsProfilesKo profiles = _TranslationsProfilesKo._(_root);
 	@override late final _TranslationsConnectionsKo connections = _TranslationsConnectionsKo._(_root);
 	@override late final _TranslationsDiscoverKo discover = _TranslationsDiscoverKo._(_root);
+	@override late final _TranslationsMobileDetailKo mobileDetail = _TranslationsMobileDetailKo._(_root);
 	@override late final _TranslationsErrorsKo errors = _TranslationsErrorsKo._(_root);
 	@override late final _TranslationsNoticesKo notices = _TranslationsNoticesKo._(_root);
 	@override late final _TranslationsLibrariesKo libraries = _TranslationsLibrariesKo._(_root);
@@ -897,6 +898,17 @@ class _TranslationsDiscoverKo extends TranslationsDiscoverEn {
 	@override String get tvShow => 'TV 시리즈';
 	@override String minutesLeft({required Object minutes}) => '${minutes}분 남음';
 	@override String get moreLikeThis => '비슷한 콘텐츠';
+}
+
+// Path: mobileDetail
+class _TranslationsMobileDetailKo extends TranslationsMobileDetailEn {
+	_TranslationsMobileDetailKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get similarTab => '관련 작품';
+	@override String get extrasTab => '부가영상';
 }
 
 // Path: errors
@@ -2908,6 +2920,8 @@ extension on TranslationsKo {
 			'discover.tvShow' => 'TV 시리즈',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes}분 남음',
 			'discover.moreLikeThis' => '비슷한 콘텐츠',
+			'mobileDetail.similarTab' => '관련 작품',
+			'mobileDetail.extrasTab' => '부가영상',
 			'errors.searchFailed' => '검색 실패',
 			'errors.connectionTimeout' => ({required Object context}) => '${context} 로드 중 연결 시간 초과',
 			'errors.connectionFailed' => '미디어 서버에 연결할 수 없습니다',
@@ -3289,10 +3303,10 @@ extension on TranslationsKo {
 			'companionRemote.session.stopServer' => '서버 중지',
 			'companionRemote.session.minimize' => '최소화',
 			'companionRemote.pairing.discoveryDescription' => '같은 Plex 계정의 Pleya 기기가 여기에 표시됩니다',
-			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => '연결 중...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
+			'companionRemote.pairing.connecting' => '연결 중...',
 			'companionRemote.pairing.searchingForDevices' => '기기 검색 중...',
 			'companionRemote.pairing.noDevicesFound' => '네트워크에서 기기를 찾을 수 없습니다',
 			'companionRemote.pairing.noDevicesHint' => '데스크톱에서 Pleya를 열고 같은 WiFi를 사용하세요',

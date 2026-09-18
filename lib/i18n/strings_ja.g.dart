@@ -61,6 +61,7 @@ class TranslationsJa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsProfilesJa profiles = _TranslationsProfilesJa._(_root);
 	@override late final _TranslationsConnectionsJa connections = _TranslationsConnectionsJa._(_root);
 	@override late final _TranslationsDiscoverJa discover = _TranslationsDiscoverJa._(_root);
+	@override late final _TranslationsMobileDetailJa mobileDetail = _TranslationsMobileDetailJa._(_root);
 	@override late final _TranslationsErrorsJa errors = _TranslationsErrorsJa._(_root);
 	@override late final _TranslationsNoticesJa notices = _TranslationsNoticesJa._(_root);
 	@override late final _TranslationsLibrariesJa libraries = _TranslationsLibrariesJa._(_root);
@@ -897,6 +898,17 @@ class _TranslationsDiscoverJa extends TranslationsDiscoverEn {
 	@override String get tvShow => 'テレビ番組';
 	@override String minutesLeft({required Object minutes}) => '残り${minutes}分';
 	@override String get moreLikeThis => '似ている作品';
+}
+
+// Path: mobileDetail
+class _TranslationsMobileDetailJa extends TranslationsMobileDetailEn {
+	_TranslationsMobileDetailJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get similarTab => '関連作品';
+	@override String get extrasTab => 'エクストラ';
 }
 
 // Path: errors
@@ -2908,6 +2920,8 @@ extension on TranslationsJa {
 			'discover.tvShow' => 'テレビ番組',
 			'discover.minutesLeft' => ({required Object minutes}) => '残り${minutes}分',
 			'discover.moreLikeThis' => '似ている作品',
+			'mobileDetail.similarTab' => '関連作品',
+			'mobileDetail.extrasTab' => 'エクストラ',
 			'errors.searchFailed' => '検索に失敗しました',
 			'errors.connectionTimeout' => ({required Object context}) => '${context}の読み込み中に接続がタイムアウトしました',
 			'errors.connectionFailed' => 'メディアサーバーに接続できません',
@@ -3289,10 +3303,10 @@ extension on TranslationsJa {
 			'companionRemote.session.stopServer' => 'サーバーを停止',
 			'companionRemote.session.minimize' => '最小化',
 			'companionRemote.pairing.discoveryDescription' => '同じPlexアカウントのPleyaデバイスがここに表示されます',
-			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => '接続中...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
+			'companionRemote.pairing.connecting' => '接続中...',
 			'companionRemote.pairing.searchingForDevices' => 'デバイスを検索中...',
 			'companionRemote.pairing.noDevicesFound' => 'ネットワーク上にデバイスが見つかりません',
 			'companionRemote.pairing.noDevicesHint' => 'デスクトップでPleyaを開き、同じWiFiを使用してください',

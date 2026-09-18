@@ -690,6 +690,10 @@
     "minutesLeft": "${minutes}분 남음",
     "moreLikeThis": "비슷한 콘텐츠"
   },
+  "mobileDetail": {
+    "similarTab": "관련 작품",
+    "extrasTab": "부가영상"
+  },
   "errors": {
     "searchFailed": "검색 실패",
     "connectionTimeout": "${context} 로드 중 연결 시간 초과",

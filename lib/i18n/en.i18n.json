@@ -853,6 +853,10 @@
     "statsRecent": "${count} in the last 30 days",
     "watchingSeriesBy": "Watching this show: ${names}"
   },
+  "mobileDetail": {
+    "similarTab": "Similar",
+    "extrasTab": "Extras"
+  },
   "errors": {
     "searchFailed": "Search failed",
     "connectionTimeout": "Connection timeout while loading ${context}",

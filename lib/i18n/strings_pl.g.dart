@@ -61,6 +61,7 @@ class TranslationsPl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsProfilesPl profiles = _TranslationsProfilesPl._(_root);
 	@override late final _TranslationsConnectionsPl connections = _TranslationsConnectionsPl._(_root);
 	@override late final _TranslationsDiscoverPl discover = _TranslationsDiscoverPl._(_root);
+	@override late final _TranslationsMobileDetailPl mobileDetail = _TranslationsMobileDetailPl._(_root);
 	@override late final _TranslationsErrorsPl errors = _TranslationsErrorsPl._(_root);
 	@override late final _TranslationsNoticesPl notices = _TranslationsNoticesPl._(_root);
 	@override late final _TranslationsLibrariesPl libraries = _TranslationsLibrariesPl._(_root);
@@ -897,6 +898,17 @@ class _TranslationsDiscoverPl extends TranslationsDiscoverEn {
 	@override String get tvShow => 'Serial TV';
 	@override String minutesLeft({required Object minutes}) => '${minutes} min pozostało';
 	@override String get moreLikeThis => 'Więcej podobnych';
+}
+
+// Path: mobileDetail
+class _TranslationsMobileDetailPl extends TranslationsMobileDetailEn {
+	_TranslationsMobileDetailPl._(TranslationsPl root) : this._root = root, super.internal(root);
+
+	final TranslationsPl _root; // ignore: unused_field
+
+	// Translations
+	@override String get similarTab => 'Podobne';
+	@override String get extrasTab => 'Dodatki';
 }
 
 // Path: errors
@@ -2908,6 +2920,8 @@ extension on TranslationsPl {
 			'discover.tvShow' => 'Serial TV',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min pozostało',
 			'discover.moreLikeThis' => 'Więcej podobnych',
+			'mobileDetail.similarTab' => 'Podobne',
+			'mobileDetail.extrasTab' => 'Dodatki',
 			'errors.searchFailed' => 'Wyszukiwanie nie powiodło się',
 			'errors.connectionTimeout' => ({required Object context}) => 'Limit czasu połączenia przy ładowaniu ${context}',
 			'errors.connectionFailed' => 'Nie można połączyć się z serwerem multimediów',
@@ -3289,10 +3303,10 @@ extension on TranslationsPl {
 			'companionRemote.session.stopServer' => 'Zatrzymaj serwer',
 			'companionRemote.session.minimize' => 'Minimalizuj',
 			'companionRemote.pairing.discoveryDescription' => 'Urządzenia Pleya z tym samym kontem Plex pojawią się tutaj',
-			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Łączenie...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
+			'companionRemote.pairing.connecting' => 'Łączenie...',
 			'companionRemote.pairing.searchingForDevices' => 'Szukanie urządzeń...',
 			'companionRemote.pairing.noDevicesFound' => 'Nie znaleziono urządzeń w sieci',
 			'companionRemote.pairing.noDevicesHint' => 'Otwórz Pleya na komputerze i użyj tego samego WiFi',

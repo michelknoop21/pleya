@@ -61,6 +61,7 @@ class TranslationsNb extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsProfilesNb profiles = _TranslationsProfilesNb._(_root);
 	@override late final _TranslationsConnectionsNb connections = _TranslationsConnectionsNb._(_root);
 	@override late final _TranslationsDiscoverNb discover = _TranslationsDiscoverNb._(_root);
+	@override late final _TranslationsMobileDetailNb mobileDetail = _TranslationsMobileDetailNb._(_root);
 	@override late final _TranslationsErrorsNb errors = _TranslationsErrorsNb._(_root);
 	@override late final _TranslationsNoticesNb notices = _TranslationsNoticesNb._(_root);
 	@override late final _TranslationsLibrariesNb libraries = _TranslationsLibrariesNb._(_root);
@@ -897,6 +898,17 @@ class _TranslationsDiscoverNb extends TranslationsDiscoverEn {
 	@override String get tvShow => 'TV-serie';
 	@override String minutesLeft({required Object minutes}) => '${minutes} min igjen';
 	@override String get moreLikeThis => 'Mer som dette';
+}
+
+// Path: mobileDetail
+class _TranslationsMobileDetailNb extends TranslationsMobileDetailEn {
+	_TranslationsMobileDetailNb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get similarTab => 'Lignende';
+	@override String get extrasTab => 'Ekstra';
 }
 
 // Path: errors
@@ -2908,6 +2920,8 @@ extension on TranslationsNb {
 			'discover.tvShow' => 'TV-serie',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min igjen',
 			'discover.moreLikeThis' => 'Mer som dette',
+			'mobileDetail.similarTab' => 'Lignende',
+			'mobileDetail.extrasTab' => 'Ekstra',
 			'errors.searchFailed' => 'Søk mislyktes',
 			'errors.connectionTimeout' => ({required Object context}) => 'Tidsavbrudd ved lasting av ${context}',
 			'errors.connectionFailed' => 'Kan ikke koble til medieserver',
@@ -3289,10 +3303,10 @@ extension on TranslationsNb {
 			'companionRemote.session.stopServer' => 'Stopp server',
 			'companionRemote.session.minimize' => 'Minimer',
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheter med samme Plex-konto vises her',
-			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
-			'companionRemote.pairing.connecting' => 'Kobler til...',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
+			'companionRemote.pairing.connecting' => 'Kobler til...',
 			'companionRemote.pairing.searchingForDevices' => 'Søker etter enheter...',
 			'companionRemote.pairing.noDevicesFound' => 'Ingen enheter funnet på nettverket ditt',
 			'companionRemote.pairing.noDevicesHint' => 'Åpne Pleya på desktop og bruk samme WiFi',

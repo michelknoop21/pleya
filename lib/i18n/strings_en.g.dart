@@ -63,6 +63,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsProfilesEn profiles = TranslationsProfilesEn.internal(_root);
 	late final TranslationsConnectionsEn connections = TranslationsConnectionsEn.internal(_root);
 	late final TranslationsDiscoverEn discover = TranslationsDiscoverEn.internal(_root);
+	late final TranslationsMobileDetailEn mobileDetail = TranslationsMobileDetailEn.internal(_root);
 	late final TranslationsErrorsEn errors = TranslationsErrorsEn.internal(_root);
 	late final TranslationsNoticesEn notices = TranslationsNoticesEn.internal(_root);
 	late final TranslationsLibrariesEn libraries = TranslationsLibrariesEn.internal(_root);
@@ -2492,6 +2493,21 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Watching this show: ${names}'
 	String watchingSeriesBy({required Object names}) => 'Watching this show: ${names}';
+}
+
+// Path: mobileDetail
+class TranslationsMobileDetailEn {
+	TranslationsMobileDetailEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Similar'
+	String get similarTab => 'Similar';
+
+	/// en: 'Extras'
+	String get extrasTab => 'Extras';
 }
 
 // Path: errors
@@ -7838,6 +7854,8 @@ extension on Translations {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} watched',
 			'discover.statsRecent' => ({required Object count}) => '${count} in the last 30 days',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Watching this show: ${names}',
+			'mobileDetail.similarTab' => 'Similar',
+			'mobileDetail.extrasTab' => 'Extras',
 			'errors.searchFailed' => 'Search failed',
 			'errors.connectionTimeout' => ({required Object context}) => 'Connection timeout while loading ${context}',
 			'errors.connectionFailed' => 'Unable to connect to media server',
@@ -8060,10 +8078,10 @@ extension on Translations {
 			'liveTv.joinSession' => 'Join Session in Progress',
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Watch from start (${minutes} min ago)',
 			'liveTv.watchLive' => 'Watch Live',
-			'liveTv.goToLive' => 'Go to Live',
-			'liveTv.record' => 'Record',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.goToLive' => 'Go to Live',
+			'liveTv.record' => 'Record',
 			'liveTv.recordEpisode' => 'Record Episode',
 			'liveTv.recordSeries' => 'Record Series',
 			'liveTv.recordOptions' => 'Record Options',
@@ -8574,10 +8592,10 @@ extension on Translations {
 			'seerr.request' => 'Request',
 			'seerr.requested' => 'Requested',
 			'seerr.requestAgain' => 'Request',
-			'seerr.processing' => 'Processing',
-			'seerr.partiallyAvailable' => 'Partially available',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.processing' => 'Processing',
+			'seerr.partiallyAvailable' => 'Partially available',
 			'seerr.available' => 'Available',
 			'seerr.alreadyRequested' => 'Already requested',
 			'seerr.pending' => 'Pending',

@@ -690,6 +690,10 @@
     "minutesLeft": "剩余 ${minutes} 分钟",
     "moreLikeThis": "更多类似内容"
   },
+  "mobileDetail": {
+    "similarTab": "相似",
+    "extrasTab": "花絮"
+  },
   "errors": {
     "searchFailed": "搜索失败",
     "connectionTimeout": "加载 ${context} 时连接超时",

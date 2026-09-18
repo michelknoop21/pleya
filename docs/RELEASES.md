@@ -27,6 +27,10 @@ under `Notes`.
 - TOK2 serverstip-key botst bij meerdere online servers
 - catalogus-openers in Bibliotheken en Home via de content-route-registry (SYS-1d)
 - SYS-1d review, Alle-N route-id op hubId in plaats van target.hashCode
+- add filled and scope chip variants for the mobile northstar
+- pin the northstar control pill to an exact 32pt surface
+- breng het mobiele detailscherm terug naar northstar 06/07
+- eigen tablabels voor de mobiele detailtabs (mockup 07)
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 282 · 16 September 2026
