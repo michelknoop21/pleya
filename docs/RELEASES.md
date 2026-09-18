@@ -42,6 +42,7 @@ under `Notes`.
 - echte long-press-input in Pleya Verify, sluit 09 Contextmenu-sheet
 - route drie resterende TV-shell-bypasses via openTvContentRoute
 - comment overclaimde showReconnect-consolidatie corrigeren
+- sluit F5 - phone-heldenvloer forceerde overflow op de fold
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 282 · 16 September 2026
