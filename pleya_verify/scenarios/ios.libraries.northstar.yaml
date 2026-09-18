@@ -1,0 +1,38 @@
+name: ios.libraries.northstar
+target: ios-sim
+# The iPhone Bibliotheken picker (northstar 15, iOS Unified 2026 workitem 8
+# (I7), docs/unified-2026-closure.md §5 row 8, register row 15), against
+# `docs/assets/ios-unified/northstar/15-bibliotheken.png`. Reached the way a
+# user does: Home, tap the `nav.myPleya` tab, then tap the Bibliotheken tile
+# on My Pleya (`my_pleya.tile[libraries]`), which is the real
+# `onOpenTab(NavigationTabId.libraries)` hand-off `main_screen.dart` wires to
+# `MobileLibrariesScreen` on the phone (DEC-114). `screen.library_picker` and
+# `library.picker.card` did not exist before this scenario: this is the first
+# proof that the tap actually lands on the picker grid, not just that the
+# screen class compiles.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - wait_until: {id: "home.rail.item[0.0]", timeout: 15000}
+  - settle: 2000
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - settle: 1000
+  - tap: {id: "my_pleya.tile[libraries]"}
+  # A screen id backs `AutomationScreenRegistry` (readiness only, `GET
+  # /v1/screens`), not a node with bounds, same convention every other
+  # `screen.*` wait in this repo's scenarios follows.
+  - wait_until: {id: screen.library_picker, timeout: 10000}
+  - settle: 1000
+  # catalog.mixed.v1 has exactly two libraries (Movies, Shows) on one server,
+  # so both picker cards are always present and the server-filter chips never
+  # render (the fixture has nothing to filter). Asserting both proves the
+  # 2-column grid the mockup shows, without encoding a pixel value from the
+  # PNG itself.
+  - assert: {id: "library.picker.card[0]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: "library.picker.card[1]", insideViewport: true, minimumTapTarget: 44}
+  - snapshot: libraries-northstar

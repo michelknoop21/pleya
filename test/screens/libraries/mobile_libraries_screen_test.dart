@@ -8,6 +8,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_registry.dart';
+import 'package:pleya/automation/automation_screen.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -24,6 +27,9 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
+
+const bool _verifyOn = bool.fromEnvironment('PLEYA_VERIFY');
+const String _skipReason = 'run with --dart-define=PLEYA_VERIFY=true';
 
 MediaLibrary _lib(
   String id, {
@@ -166,4 +172,25 @@ void main() {
     final storage = await StorageService.getInstance();
     expect(storage.getSelectedLibraryKey(), seriesNas.globalKey);
   });
+
+  group('de picker draagt de automation ids die het northstar-scenario nodig heeft', () {
+    testWidgets('screen.library_picker wordt ready, en elke kaart is als node te vinden', (tester) async {
+      await pump(tester, [filmsNas, seriesNas]);
+
+      final screens = AutomationScreenRegistry.instance.snapshot();
+      final screen = screens.firstWhere(
+        (s) => s['id'] == AutomationIds.screenLibraryPicker,
+        orElse: () => throw StateError('screen.library_picker ontbreekt op de mobiele Bibliotheken-picker'),
+      );
+      expect(screen['ready'], isTrue);
+
+      final declared = (AutomationRegistry.instance.snapshot()['declared'] as List).cast<Map<String, Object?>>();
+      for (var index = 0; index < 2; index++) {
+        declared.firstWhere(
+          (n) => n['id'] == '${AutomationIds.libraryPickerCard}[$index]',
+          orElse: () => throw StateError('library.picker.card[$index] ontbreekt op de picker'),
+        );
+      }
+    });
+  }, skip: _verifyOn ? false : _skipReason);
 }

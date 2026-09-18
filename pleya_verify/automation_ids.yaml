@@ -18,6 +18,12 @@ ids:
   - id: screen.media_detail
     role: screen
     instanceable: false
+  - id: screen.library_picker
+    role: screen
+    instanceable: false
+  - id: library.picker.card
+    role: grid.item
+    instanceable: true
   - id: nav.discover
     role: nav
     instanceable: false

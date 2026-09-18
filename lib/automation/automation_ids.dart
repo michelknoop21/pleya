@@ -32,6 +32,16 @@ class AutomationIds {
   static const String screenLibraries = 'screen.libraries';
   static const String screenMediaDetail = 'screen.media_detail';
 
+  /// Northstar 15's phone-only picker landing (`MobileLibrariesScreen`), the
+  /// grid of library cards a real user reaches by tapping `my_pleya.tile
+  /// [libraries]`. Distinct from [screenLibraries]: that id stays on the
+  /// shared `LibrariesScreen` a card push into, never on this landing itself.
+  static const String screenLibraryPicker = 'screen.library_picker';
+
+  /// One card in [screenLibraryPicker]'s grid. Instanceable by index, the
+  /// same convention [libraryGridItem] already uses for its own grid.
+  static const String libraryPickerCard = 'library.picker.card';
+
   /// The nav rail as a whole — bounds for collapse/expand geometry checks.
   static const String sidebarRail = 'sidebar.rail';
 
@@ -383,6 +393,7 @@ class AutomationIds {
   static const Set<String> instanceableIds = {
     sidebarLibraryRow,
     libraryGridItem,
+    libraryPickerCard,
     mediaDetailEpisodeListItem,
     mediaDetailSeasonChip,
     discoverRail,
@@ -437,6 +448,8 @@ class AutomationIds {
     {'id': screenDiscover, 'role': 'screen', 'instanceable': false},
     {'id': screenLibraries, 'role': 'screen', 'instanceable': false},
     {'id': screenMediaDetail, 'role': 'screen', 'instanceable': false},
+    {'id': screenLibraryPicker, 'role': 'screen', 'instanceable': false},
+    {'id': libraryPickerCard, 'role': 'grid.item', 'instanceable': true},
     for (final tab in NavigationTabId.values) {'id': navTab(tab), 'role': 'nav', 'instanceable': false},
     {'id': navProfile, 'role': 'nav', 'instanceable': false},
     {'id': navReconnect, 'role': 'nav', 'instanceable': false},
