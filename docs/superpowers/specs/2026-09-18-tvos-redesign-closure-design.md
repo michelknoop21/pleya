@@ -94,16 +94,21 @@ hoort." Die tweeweg-exit blijft staan.
 Actie: de verwijzing uit closure §5 stap 7 schrappen. Er wordt geen PS-9F-document aangemaakt en
 geen PS-9F-functionaliteit gebouwd.
 
-### 2.6 SYS-1 lijkt een niet-gesloten umbrella, geen resterend codewerk
+### 2.6 SYS-1, SYS-5 en SYS-6 zijn niet-gesloten umbrella's, geen resterend codewerk
 
-De correctieronde zet `SYS-1` (gepushte TV-contentroutes dekken de shell af) op `IN PROGRESS`,
-zonder SHA en zonder notitie. Het register noemt SYS-1a (`5cafc10`, DEC-091), SYS-1b (`bb79a82`)
-en SYS-1c (`ad8c456`) alledrie `DONE`.
+Drie werkitems staan open terwijl hun kinderen een eindstatus dragen:
 
-TV0 bepaalt of 1a, 1b en 1c samen de bevinding dekken en SYS-1 dus alleen administratief hoeft te
-sluiten. Alleen als discovery een concrete contentroute vindt die PB-1 nog schendt, gaat die
-concrete bevinding als eigen rij naar TV1. Een brede route-refactor zonder aangetoond defect is
-hier uitgesloten.
+| Umbrella | Kinderen | Stand op `9342ab7c` |
+|---|---|---|
+| SYS-1 `IN PROGRESS` | SYS-1a `5cafc10` (DEC-091), SYS-1b `bb79a82`, SYS-1c `ad8c456` | alledrie `DONE` |
+| SYS-5 `OPEN` | I18N1 tot en met I18N6, STR1 tot en met STR5 | alle elf `FIXED` |
+| SYS-6 `OPEN` | TOK1, TOK2, TOK3 | TOK1 en TOK3 `FIXED`, alleen TOK2 open |
+
+TV0 bepaalt per umbrella of de kinderen de bevinding dekken en hij dus alleen administratief hoeft
+te sluiten, met één gerichte controle als tegenwicht: een route die PB-1 nog schendt voor SYS-1,
+een verse sweep op hardcoded strings voor SYS-5. Alleen een aangetoond defect gaat als eigen rij
+naar TV1. Een brede refactor zonder defect is uitgesloten. SYS-6 heeft geen controle nodig: TOK2 is
+zijn enige open kind en staat al bij TV1.
 
 ### 2.7 LANG1 en MOC-31 staan op verschillende statussen
 
@@ -162,7 +167,7 @@ geparkeerd voor closure §7.
 
 | Item | Plan | Opmerking |
 |---|---|---|
-| SYS-3a (OVR1a), SYS-4 (STA-1), SYS-5, SYS-6, TOK2, FOC1 | TV1 | systemische fundering; SYS-1 alleen als TV0 een echt defect vindt |
+| SYS-3a (OVR1a), SYS-4 (STA-1), TOK2, FOC1 | TV1 | systemische fundering |
 | SEARCH2, LAND6, LAND7, WL3, WL2, REV1, AGG1, CAT20 | TV2 | CAT20 eerst reproduceren tegen de huidige baseline |
 | DET4, CTX1, CTX2, CTX3, MOC-11-goldens | TV3 | de CTX-rijen komen uit TV0 |
 | MOC-17, LIVE1 | TV4 | Live TV |
@@ -172,7 +177,7 @@ geparkeerd voor closure §7.
 | SYS-2 (BACK1), SYS-7, MOC-09/10 Verify, MOC-13/14/15/16 Verify, filters en sorteren | TV8 | de historische Verify-gaten; nieuw werk brengt zijn eigen scenario mee |
 | CTA1, HTTP1 | GATE0, parallel aan TV1 | cross-platform gate debt, zie 2.9 |
 | PLR6, SEL1, LIB7-hardware, TOK-1, CAT8, LANG1 (MOC-31), de 51 hardware-open rijen | closure §7 | known deferred-to-§7 dependencies |
-| VER2, SYS-1, de LANG1-status | TV0 | administratief reconciliëren, zie 2.6 tot en met 2.8 en 2.10 |
+| VER2, SYS-1, SYS-5, SYS-6, de LANG1-status | TV0 | administratief reconciliëren, zie 2.6 tot en met 2.8 en 2.10; een aangetoond defect gaat alsnog naar TV1 |
 
 De §7-rij staat er expliciet in zodat TV8 hem niet aanziet voor ontbrekende simulatorclosure.
 PLR6 is `HARDWARE ONLY, blokkerend`, SEL1 is `CODE CLOSED, hardware-reproductie niet blokkerend`,
@@ -241,13 +246,12 @@ catalogusprimitieven gebruiken, en geen derde set TV-empty-widgets naast `TvCata
 TOK2 koppelt `Color(0xFF3FBF5F)` aan de bestaande statuskleur-authority, en vervangt hem niet door
 een ander magic number.
 
-SYS-5 en SYS-6 horen hier omdat ze allebei over de hele TV-oppervlakte lopen: i18n-gaten en
-hardcoded strings, en tokenafwijkingen met regressiebeelden. SYS-1 komt alleen hierheen als TV0 een
-concrete route vindt die PB-1 nog schendt, zie 2.6.
+SYS-1, SYS-5 en SYS-6 komen alleen hierheen als TV0 een aangetoond defect vindt, zie 2.6. Hun
+kinderen zijn gesloten, dus zonder zo'n bevinding is er niets te bouwen. TOK2 is de uitzondering:
+hij is SYS-6's enige open kind en staat hierboven al.
 
 Exit: FOC1, SYS-4 en TOK2 gesloten; SYS-3a gesloten of met bewijs opgesplitst, met de
-consumer-inventarisatie erbij; SYS-5 en SYS-6 geauditeerd met een afgeronde lijst; shell- en
-goldentests groen.
+consumer-inventarisatie erbij; shell- en goldentests groen.
 
 ### TV2: zoeken, landings, catalogus en kijklijst
 
