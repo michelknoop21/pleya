@@ -79,7 +79,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | OVR1b | TV-sheets zonder expliciete `presentation` vallen terug op de 400x400-geometrie | FIXED | `96f2d45` |
 | OVR2 | Expliciete TV sheet-presentation wordt door de OVR1b-panelgeometrie overschreven | FIXED | `cf4b6c7` |
 | BACK1 | Zichtbare terugknop die de afstandsbediening niet bereikt | FIXED, hardware open | `f00e2fe` |
-| FOC1 | Focusring valt buiten de viewport in overlays | FIXED, hardware open | `3b0da2e` |
+| FOC2 | Focusring valt buiten de viewport in overlays (heette tot 18 september ook FOC1, naast de topnav-focusbevinding hieronder; hernoemd in TV0 omdat één ID niet twee problemen kan dragen) | FIXED, hardware open | `3b0da2e` |
 | ART1 | Achtergrondbeeld op detail voelt te ver ingezoomd | FIXED, hardware open | `f42e3fd` |
 | LIB1 | Blanco Bibliotheken-pagina als de selectie verdwijnt | FIXED, hardware open | `f9b2167` |
 | LIB2 | Race bij snel wisselen van bibliotheek | FIXED | `f2ea980` |
@@ -1391,7 +1391,7 @@ het niet leveren: het enige scenario dat de detailpagina bereikt is
 controlerun op `88d9868` faalt identiek, met dezelfde focus-trace, dus dat is
 geen gevolg van deze wijziging. Het staat als VER5 in de tabel.
 
-### FOC1, geometrie en niet clipping
+### FOC2, geometrie en niet clipping
 
 Een focusring die buiten beeld valt heeft twee mogelijke oorzaken die op een
 foto niet uit elkaar te houden zijn. Of de ring wordt op een plek getekend die
@@ -1949,14 +1949,14 @@ belooft.
 **BACK1.** De detailpagina van een film heeft geen terugknop linksboven. De vier
 actieknoppen staan onder de samenvatting en verder niets.
 
-**FOC1.** Twee overlays gedragen zich verschillend, en dat verschil is nieuw
+**FOC2.** Twee overlays gedragen zich verschillend, en dat verschil is nieuw
 gemeten. Het sorteerpaneel op Alle films staat verticaal gecentreerd, met marge
 boven en onder, en de focusring om de bovenste regel is rondom compleet. Het
 contextmenu op de detailpagina staat dat niet: het paneel loopt tot de onderrand
 van het canvas door, en de gefocuste onderste regel eindigt op ongeveer dertig
 pixels van 2160. Op een simulator zonder overscan valt die regel dus binnen, maar
 een televisie die drie procent wegneemt snijdt hem af. Dat is precies de maat die
-alleen op hardware te toetsen is, en het is het scherpste argument om FOC1 niet op
+alleen op hardware te toetsen is, en het is het scherpste argument om FOC2 niet op
 simulatorbewijs te sluiten.
 
 **ART1.** De backdrop op detail is scherp, zonder de zachtheid van een te kleine
