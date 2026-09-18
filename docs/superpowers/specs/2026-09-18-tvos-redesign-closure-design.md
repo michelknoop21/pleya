@@ -408,6 +408,7 @@ eerdere plannen al groen opleverden.
 | alle iOS-implementatiewerk | closure §5 stappen 2, 4, 5, 8, 10 tot en met 14, 17 |
 | de hardware-eindronde | closure §7, één SHA samen met iOS |
 | TestFlight | closure §8 |
+| TA-1 t/m TA-13 tokenbacklog | nog niet beoordeelde auditbevindingen onder `docs/tvos-redesign-register.md`'s "Tokenafwijkingen uit de audit"; promoveren tot workitem is een scopebesluit dat buiten TV0's mandaat (documentatie reconciliëren) valt |
 
 CTA1 wordt niet in tvOS-code opgelost. De fix ligt in `mobile_detail_view.dart` of in de
 `allowed`-lijst van de test met een reden erbij, en dat is een mobiel besluit.

@@ -58,8 +58,8 @@ Op 3 september 2026 zijn de mockups 09 tot en met 25 goedgekeurd
 code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak staat in
 `docs/tvos-redesign-register.md`; deze tabel blijft de masterlijst voor de bevindingen zelf.
 
-| ID | Bevinding | Status | SHA |
-|----|-----------|--------|-----|
+| ID | Bevinding | Status | SHA | Notitie |
+|----|-----------|--------|-----|---------|
 | LOG1 | Pijltjes op een lege logreader gooien een assertie | FIXED | `614fc08` |
 | WT1 | Focus strandt na het vergeten van een kamer in Samen Kijken | FIXED | `614fc08` |
 | VER1 | Een assert met een verkeerd YAML-type eindigt groen | FIXED | `9d36bb5` |

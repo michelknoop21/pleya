@@ -34,6 +34,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | SYS-1a | Routecontract: een TV-contentroute opent in de shell in plaats van erboven | PB-1 | DONE | `5cafc10`, DEC-091 |
 | SYS-1b | Detail, collectie en persoon over dat contract | PB-1 | DONE | `bb79a82`, testdelta onder |
 | SYS-1c | Geneste routes krijgen de contentbox als `MediaQuery`, nodig voor de detailgeometrie | PB-1, INV-1 | DONE | `ad8c456`, testdelta onder |
+| SYS-1d | Twee TV-contentroutes pushen buiten `tvContentRouteRegistry` om (`tv_libraries_screen.dart:220`, `tv_content_feed.dart:369`) | PB-1 | OPEN | zie `tvos-fysieke-correctieronde.md:113`, toegewezen aan TV1 |
 | SYS-2 | BACK1, geen zichtbare onbereikbare terugknop op TV | PB-2 | CODE CLOSED · VERIFY/SIM OPEN | `f00e2fea`, `test/screens/tv/tv_back_affordance_test.dart`; geen Pleya Verify-scenario, hardwareronde open |
 | SYS-3a | OVR1a: de schaalbasis van paneelinhoud op TV | PB-5 | IN PROGRESS | `dc989713`: alleen op de detailroute gesloten (DET1, DEC-109); de systemische eigenaar `scaleForHeight` zelf staat nog open voor de overige TV-oppervlakken |
 | SYS-3b | OVR1b: sheets zonder expliciete `presentation` vallen op 400x400 | PB-5 | DONE | `96f2d45` |
