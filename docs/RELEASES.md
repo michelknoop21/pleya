@@ -18,11 +18,17 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
+### New
+- automation-ids op de mobiele My Pleya, Verify voor 18
+- automation-ids op de mobiele Bibliotheken-picker, Verify voor 15
+- automation-ids op de mobiele Instellingen, Verify voor 14
+
 ### Fixed
 - add filled and scope chip variants for the mobile northstar
 - pin the northstar control pill to an exact 32pt surface
 - breng het mobiele detailscherm terug naar northstar 06/07
 - eigen tablabels voor de mobiele detailtabs (mockup 07)
+- echte long-press-input in Pleya Verify, sluit 09 Contextmenu-sheet
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 282 · 16 September 2026
