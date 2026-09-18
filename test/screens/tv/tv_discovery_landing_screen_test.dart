@@ -567,20 +567,33 @@ void main() {
       serverName: 'Server',
     );
 
-    // Three rails, ten tiles deep each, so the page genuinely scrolls (VER4):
-    // a fixture that cannot scroll proves nothing about a scroll anchor.
+    // Three rails to test, ten tiles deep each, so the page genuinely scrolls
+    // (VER4): a fixture that cannot scroll proves nothing about a scroll
+    // anchor. A fourth, untested rail follows them: without trailing content
+    // the third rail *is* the last item in the list, and no scrollable has
+    // room to carry the last item's heading past its own tail end. This
+    // matches why Home's own DEC-095 test keeps a row after the one it
+    // measures: it is a property of any finite list, not something a scroll
+    // anchor can fix, so the fixture gives the assertion room to mean
+    // something.
     List<MediaHub> threeRails() => [
       hub('rail-0', 'Rail Zero', movies('a', 10)),
       hub('rail-1', 'Rail One', movies('b', 10)),
       hub('rail-2', 'Rail Two', movies('c', 10)),
+      hub('rail-3', 'Rail Three', movies('d', 10)),
     ];
 
     const railTitles = ['Rail Zero', 'Rail One', 'Rail Two'];
     String railTitle(int index) => railTitles[index];
 
+    // By title, not by position: the page `ListView` keeps only the rails near
+    // its own viewport built, so a rail further down the list is not at a
+    // fixed index in `find.byType(TvDiscoveryRail)` once an earlier one has
+    // scrolled out of the cache extent.
     Future<void> focusRail(WidgetTester tester, int index) async {
       final rails = tester.stateList<TvDiscoveryRailState>(find.byType(TvDiscoveryRail)).toList();
-      expect(rails[index].focusGroup(rails[index].widget.groups.first.groupId), isTrue);
+      final rail = rails.firstWhere((r) => r.widget.title == railTitle(index));
+      expect(rail.focusGroup(rail.widget.groups.first.groupId), isTrue);
     }
 
     // The page's own ListView, not a rail's: a rail is a horizontal
