@@ -296,7 +296,7 @@ class JellyfinMappers {
   }
 
   /// `movie` when every item is a movie, `show` when every item is
-  /// show-related (`show`, `season` or `episode` — [MediaKind.isShowRelated]),
+  /// show-related (`show`, `season` or `episode`, see [MediaKind.isShowRelated]),
   /// `mixed` otherwise (including the empty list and a genuine movie/show
   /// mix).
   ///
