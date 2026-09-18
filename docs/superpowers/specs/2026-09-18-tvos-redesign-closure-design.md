@@ -122,13 +122,13 @@ hardwarebewijs, en dat hoort bij closure §7.
 
 ### 2.8 De koppeltekenvarianten zijn aliassen, geen aparte ID's
 
-Tweeëntwintig ID's staan in beide documenten met alleen een koppeltekenverschil. Een steekproef op
+Eenentwintig ID's staan in beide documenten met alleen een koppeltekenverschil. Een steekproef op
 zeven paren (`SYS-4`, `OFF-2`, `SRCH-2`, `ACT-2`, `ACT-3`, `PNL-1`, `OVR1b`) laat zien dat het
 telkens hetzelfde werkitem is: de correctieronde schrijft `FOC1`, het register schrijft `FOC-1`.
 `SYS-4` staat in beide vormen identiek en betekent in beide "gedeelde staat- en lege-presentatie
 schaalt niet op TV".
 
-Hier wordt niets hernoemd. Een renaming-diff over 22 ID's levert alleen risico op verweesde
+Hier wordt niets hernoemd. Een renaming-diff over 21 ID's levert alleen risico op verweesde
 verwijzingen. TV0 legt de conventie vast in de register-kop:
 
 > De correctieronde schrijft historisch `FOC1`, het register `FOC-1`. Dat zijn aliassen van
