@@ -39,7 +39,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | SYS-3b | OVR1b: sheets zonder expliciete `presentation` vallen op 400x400 | PB-5 | DONE | `96f2d45` |
 | SYS-4 | Gedeelde staat- en lege-presentatie schaalt op TV | audit | OPEN, geauditeerd | zie onder |
 | SYS-5 | i18n-gaten en hardcoded strings | audit | GESLOTEN via I18N1-6 en STR1-5 | TV0 (18 september): alle elf kinderen staan op FIXED in `docs/tvos-fysieke-correctieronde.md` (I18N1 t/m I18N6, STR1 t/m STR5). Verse sweep op nieuwe hardcoded strings in `lib/screens/tv` en `lib/widgets/tv` leverde geen treffers op |
-| SYS-6 | Tokenafwijkingen per stuk beoordeeld, met regressiebeelden | tokenaudit | OPEN, alleen TOK-2 | TV0 (18 september): TOK-1 (`5cb5c33`) en TOK-3 (DEC-108) staan op FIXED. TOK-2 (serverstip `#3FBF5F` in `tv_my_pleya_screen.dart:830`) staat nog OPEN en is toegewezen aan TV1 (Task 4, `docs/plans/2026-09-18-tv1-systemische-fundering.md`) |
+| SYS-6 | Tokenafwijkingen per stuk beoordeeld, met regressiebeelden | tokenaudit | OPEN, alleen TOK-2 | TV0 (18 september): TOK-1 (`5cb5c33`) en TOK-3 (DEC-108) staan op FIXED. TOK-2 (serverstip `#3FBF5F` in `tv_my_pleya_screen.dart:833`) staat nog OPEN en is toegewezen aan TV1 (Task 4, `docs/plans/2026-09-18-tv1-systemische-fundering.md`) |
 | SYS-7 | Automation-ids en Pleya Verify-journeys per heringericht oppervlak | werkwijze | OPEN | |
 
 ## DETAIL
@@ -343,7 +343,7 @@ Hier staan ze bij de werkstroom die ze bezit.
 | STR-4 | Hardcoded tagline in `auth_screen.dart:341` | SYS-5, MOC-22 | FIXED, hardware open, `5fb4e66c` |
 | STR-5 | Hardcoded "Incorrect PIN" in `profile_activation.dart:57` | SYS-5, MOC-21 | FIXED, hardware open, `5fb4e66c` |
 | TOK-1 | `TvPanelTheme.accent #F42B1F` naast `kAccent` | SYS-6 | FIXED, hardware open, `5cb5c33` (MOC-33) |
-| TOK-2 | Serverstip `#3FBF5F` hardcoded in `tv_my_pleya_screen.dart:830` | SYS-6 | OPEN |
+| TOK-2 | Serverstip `#3FBF5F` hardcoded in `tv_my_pleya_screen.dart:833` | SYS-6 | OPEN |
 | PNL-1 | Infopaneel gooit secundaire spoorlabels weg, `tv_audio_subtitle_tabs.dart:105, 375, 407` | MOC-33 | FIXED, Mac-run open |
 | LIVE-1 | `PlatformDetector.shouldUseSideNavigation` waar op TV: twee navigatiebalken in Live TV | MOC-17 | OPEN |
 | ACT-2 | `now_watching_screen.dart:63-70` popt via `Navigator` binnen een `TvNestedRoute` | MOC-16, SYS-1 | FIXED, hardware open, `4598e1ea` |
