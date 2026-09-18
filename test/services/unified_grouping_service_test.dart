@@ -40,7 +40,7 @@ void main() {
       expect(groupUnifiedMediaSources(const []), isEmpty);
     });
 
-    test('C1: the same TMDB id across two servers merges into one group with both sources', () {
+    test('AGG1/C1: the same TMDB id across two servers merges into one group with both sources', () {
       final duneA = serverACandidates().firstWhere((c) => c.item.id == 'a-dune-2021');
       final duneB = serverBCandidates().firstWhere((c) => c.item.id == 'b-dune-2021');
 
@@ -101,7 +101,7 @@ void main() {
       expect(groups.single.sources, hasLength(2));
     });
 
-    test('DEC-063: a Pleya Server source never merges with Plex/Jellyfin, even with matching strong evidence', () {
+    test('AGG1/DEC-063: a Pleya Server source never merges with Plex/Jellyfin, even with matching strong evidence', () {
       final duneA = serverACandidates().firstWhere((c) => c.item.id == 'a-dune-2021');
       final duneC = serverCCandidates().firstWhere((c) => c.item.id == 'c-dune-2021');
 

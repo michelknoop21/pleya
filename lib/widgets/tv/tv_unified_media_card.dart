@@ -53,6 +53,13 @@ import 'tv_catalog_meta.dart';
 
 export 'tv_catalog_card.dart' show tvCatalogPosterKey;
 
+/// The multi-source capsule (hoofdstuk 10.3, `sources.length > 1`).
+///
+/// A key rather than a text matcher, because the label is
+/// `t.unifiedCatalog.sources(count: ...)` and breaks the first time a
+/// translation changes its wording.
+const Key tvUnifiedMediaCardSourceBadgeKey = ValueKey('tvUnifiedMediaCardSourceBadge');
+
 class TvUnifiedMediaCard extends StatelessWidget {
   const TvUnifiedMediaCard({
     super.key,
@@ -125,7 +132,10 @@ class TvUnifiedMediaCard extends StatelessWidget {
       // Hoofdstuk 10.3: only above one known source, and never a server
       // name or logo.
       topLeftMarker: group.hasMultipleSources
-          ? TvCatalogArtworkBadge(label: t.unifiedCatalog.sources(count: group.sources.length))
+          ? TvCatalogArtworkBadge(
+              key: tvUnifiedMediaCardSourceBadgeKey,
+              label: t.unifiedCatalog.sources(count: group.sources.length),
+            )
           : null,
       // Opposite corner from the source badge, so a title that is both
       // duplicated and watched carries two markers that never collide.
