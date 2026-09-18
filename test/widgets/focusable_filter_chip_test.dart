@@ -10,7 +10,7 @@ import 'package:pleya/widgets/focusable_filter_chip.dart';
 /// are separate from `outlined`, which stays byte-for-byte for shared
 /// TV/desktop/iPad surfaces.
 void main() {
-  Future<MonoTokens> pumpChip(WidgetTester tester, {required Widget chip}) async {
+  Future<MonoTokens> pumpChip(WidgetTester tester, {required Widget chip, double textScale = 1.0}) async {
     late MonoTokens tk;
     await tester.pumpWidget(
       MaterialApp(
@@ -20,7 +20,10 @@ void main() {
             child: Builder(
               builder: (context) {
                 tk = tokens(context);
-                return chip;
+                return MediaQuery(
+                  data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+                  child: chip,
+                );
               },
             ),
           ),
@@ -38,20 +41,37 @@ void main() {
   ShapeDecoration shapeDecoration(WidgetTester tester) => shapedContainer(tester).decoration as ShapeDecoration;
 
   group('filled', () {
-    testWidgets('draws roughly the 32pt control-pill height, badge is 18pt', (tester) async {
+    testWidgets('draws exactly 32pt, badge exactly 18x18', (tester) async {
       await pumpChip(
         tester,
         chip: FocusableFilterChip(variant: FilterChipVariant.filled, label: 'Filters', badgeCount: 2, onPressed: () {}),
       );
 
-      final pillHeight = tester.getSize(find.byWidget(shapedContainer(tester))).height;
-      expect(pillHeight, closeTo(32, 4));
+      expect(tester.getSize(find.byWidget(shapedContainer(tester))).height, 32.0);
 
-      final badge = find.ancestor(of: find.text('2'), matching: find.byType(Container)).first;
-      expect(tester.getSize(badge).height, closeTo(18, 1));
+      final badge = find.ancestor(of: find.text('2'), matching: find.byType(SizedBox)).first;
+      expect(tester.getSize(badge), const Size(18, 18));
     });
 
-    testWidgets('has a minimum 44pt tap target even though it draws smaller', (tester) async {
+    testWidgets('height is independent of typography', (tester) async {
+      await pumpChip(
+        tester,
+        textScale: 2.0,
+        chip: FocusableFilterChip(
+          variant: FilterChipVariant.filled,
+          label: 'Filters',
+          badgeCount: 12,
+          onPressed: () {},
+        ),
+      );
+
+      expect(tester.getSize(find.byWidget(shapedContainer(tester))).height, 32.0);
+
+      final badge = find.ancestor(of: find.text('12'), matching: find.byType(SizedBox)).first;
+      expect(tester.getSize(badge), const Size(18, 18));
+    });
+
+    testWidgets('44pt tap target wraps the 32pt surface without enlarging it', (tester) async {
       var taps = 0;
       await pumpChip(
         tester,
@@ -62,10 +82,11 @@ void main() {
       expect(chipRect.height, greaterThanOrEqualTo(44));
 
       final pillRect = tester.getRect(find.byWidget(shapedContainer(tester)));
-      expect(pillRect.height, lessThan(chipRect.height));
+      expect(pillRect.height, 32.0);
 
-      // A few px in from the top of the 44pt target, outside the drawn pill.
-      await tester.tapAt(Offset(chipRect.center.dx, chipRect.top + 2));
+      // Above the drawn pill, inside the tap target: still activates.
+      expect(chipRect.top, lessThan(pillRect.top));
+      await tester.tapAt(Offset(chipRect.center.dx, (chipRect.top + pillRect.top) / 2));
       expect(taps, 1);
     });
 

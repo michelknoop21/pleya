@@ -7,6 +7,13 @@ import 'focus_builders.dart';
 import '../theme/mono_shapes.dart';
 import '../theme/mono_tokens.dart';
 
+/// Drawn height of the [FilterChipVariant.filled] control pill, in logical
+/// pixels. Fixed by the northstar, not derived from the label.
+const double _filledPillHeight = 32;
+
+/// Diameter of the count badge inside the control pill.
+const double _badgeDiameter = 18;
+
 /// How a [FocusableFilterChip] draws itself.
 enum FilterChipVariant {
   /// Outlined pill with an icon. For chip rows that stand on their own, like
@@ -199,6 +206,12 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
 
   /// The control pill: gray filled stadium, no border, no accent tint — the
   /// active count is carried by [badgeCount], not by [selected].
+  ///
+  /// The drawn surface is exactly [_filledPillHeight] tall. No vertical
+  /// padding, a fixed-height content box: the northstar pill is a geometric
+  /// shape, so its height must not drift with the label's font metrics or the
+  /// platform text scale. The 44pt tap target lives in the wrapper around this
+  /// surface (see `minTapHeight`) and does not enlarge it.
   Widget _buildFilled(BuildContext context, bool showFocus) {
     final tk = tokens(context);
     final foregroundColor = showFocus ? tk.text : tk.textMuted;
@@ -209,13 +222,13 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
       focusNode: focusNode,
       onKeyEvent: _handleKeyEvent,
       onTap: widget.onPressed,
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 13),
       shape: MonoShapes.cta,
       hitTestBehavior: HitTestBehavior.opaque,
       minTapHeight: 44,
       borderColor: borderColor,
       backgroundColor: tk.surfaceElevated,
-      child: _buildContent(context, foregroundColor),
+      child: SizedBox(height: _filledPillHeight, child: _buildContent(context, foregroundColor)),
     );
   }
 
@@ -276,9 +289,14 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
   }
 }
 
-/// The 18pt white circle with a bold black count, folded into
+/// The white circle with a bold black count, folded into
 /// [FilterChipVariant.filled] after the label — the active-count badge from
 /// the iOS northstar control pill.
+///
+/// Exactly [_badgeDiameter] square, like the pill it sits in: a circle whose
+/// diameter followed the digit's font metrics would go oval as soon as the
+/// count reached two digits or the text scale went up. The digit scales down
+/// inside it instead of pushing it wider.
 class _FilterChipBadge extends StatelessWidget {
   const _FilterChipBadge({required this.count});
 
@@ -286,20 +304,21 @@ class _FilterChipBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-      // Not Container's `alignment:` shortcut — inside a Row (bounded cross
-      // axis) that resolves to a plain Align, which fills all available
-      // height instead of hugging the digit. Same class of bug as the
-      // chip's own minTapHeight wrapper in focus_builders.dart.
-      child: Center(
-        widthFactor: 1,
-        heightFactor: 1,
-        child: Text(
-          '$count',
-          style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w700),
+    return SizedBox.square(
+      dimension: _badgeDiameter,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '$count',
+                style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
         ),
       ),
     );
