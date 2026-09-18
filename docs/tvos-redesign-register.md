@@ -60,7 +60,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 | ID | Werkitem | Besluit | Status | SHA / bewijs |
 |----|----------|---------|--------|--------------|
 | MOC-13 | Zoeken, permanente resultaattitel, SEARCH1 sluiten | PB-6, DEC-108 | CODE CLOSED · VERIFY/SIM OPEN | CODE `30aae55b`; geen groene Verify- of simulatorrun met bundel vastgelegd |
-| MOC-14 | Kijklijst | PB-3, DEC-108 | CODE CLOSED · VERIFY/SIM OPEN | CODE `81db408d`; WL2 is fixture-blocked, zie T3a in `unified-2026-closure.md` |
+| MOC-14 | Kijklijst | PB-3, DEC-108 | CODE CLOSED · VERIFY/SIM OPEN | CODE `81db408d`; WL2 is ACCEPTANCE GAP: geen featuregat maar een bevroren `/v1`-transport zonder watchlist/favorieten, dus de dekking hoort op een echte Jellyfin-aanmelding, zie de WL2-rij in `tvos-fysieke-correctieronde.md` en T3a in `unified-2026-closure.md` |
 | MOC-15 | Aanvragen, Seerr-status blijft Seerr-state | PB-3, DEC-108 | CODE CLOSED · VERIFY/SIM OPEN | CODE `110ee763`; REQ1 is gesloten op de simulator (`f72466f2`, `39f266be`, `df3dab65`, `2be95338`): `SeerrFakeServer` vulde het fixturegat omdat Seerr toch al tegen een eigen geconfigureerde URL praat |
 | MOC-16 | Activiteit, scope en capability-predicaat | PB-7 | CODE CLOSED · VERIFY/SIM OPEN, HARDWARE OPEN | `f4d6ad61`: capability-predicaat (`NowWatchingProvider.isAvailable`); `4598e1ea` (MOC-16b): eigen `TvNowWatchingScreen`, ACT2, ACT3; zie `docs/tvos-fysieke-correctieronde.md` ACT1 voor waarom de fixture-helft een apart besluit vraagt |
 
