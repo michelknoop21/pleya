@@ -18,7 +18,15 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### Fixed
+- de echte focus volgt een verdwijnende TV-bestemming (FOC1)
+- de serverstip leest kSuccess (TOK2)
+- gedeelde staat- en lege-presentatie op TV-maat (SYS-4)
+- SYS-4 fix-ronde 1, geen verzonnen schaalfactor meer
+- FOC1 post-frame focus restore mist een focus-guard
+- TOK2 serverstip-key botst bij meerdere online servers
+- catalogus-openers in Bibliotheken en Home via de content-route-registry (SYS-1d)
+- SYS-1d review, Alle-N route-id op hubId in plaats van target.hashCode
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 282 · 16 September 2026
