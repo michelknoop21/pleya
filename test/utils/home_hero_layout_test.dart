@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart' show kMinInteractiveDimension;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_item.dart' show BillboardArtKind;
@@ -51,6 +53,32 @@ void main() {
       expect(withPosters + _posterRail, closeTo(height - chrome, 0.5));
     });
 
+    test('heroToRailGap is reserved out of the fill, not added on top of it', () {
+      // iPhone 16 Pro again, comfortably clear of the floor/cap so the fill
+      // formula itself is what's under test here.
+      const height = 874.0, width = 402.0, chrome = 114.0;
+      const viewport = height - chrome;
+      const gap = 24.0;
+
+      final withoutGap = phoneHero(screenHeight: height, screenWidth: width, bottomChrome: chrome);
+      final withGap = homeHeroHeight(
+        useSideNav: false,
+        viewportExtent: viewport,
+        screenHeight: height,
+        screenWidth: width,
+        statusBarHeight: 59,
+        firstRailHeight: _episodeRail,
+        heroToRailGap: gap,
+      );
+
+      expect(withGap, closeTo(withoutGap - gap, 0.001));
+      expect(
+        withGap + gap + _episodeRail,
+        closeTo(viewport, 0.5),
+        reason: 'hero, the gap and the rail together should still land exactly on the fold',
+      );
+    });
+
     test('holds up across phone sizes', () {
       // SE-class, standard, and Max-class — the fill must track the viewport
       // rather than a fraction that only looks right on one of them.
@@ -66,21 +94,24 @@ void main() {
 
     test('a rail too tall to fit leaves the hero usable, not squeezed to nothing', () {
       // Contrived: a rail that would eat almost the whole viewport, so there is
-      // no height left to fill. The floor wins over the leftover here — a 84pt
-      // hero would be worse than letting the rail run past the fold.
+      // no height left to fill. There is no fixed-points floor to fall back on
+      // (see home_hero_layout.dart) — [sixteenNine] is what keeps the hero from
+      // collapsing to the 84pt leftover here.
       const viewport = 667.0 - 83.0;
       final hero = phoneHero(screenHeight: 667, screenWidth: 375, bottomChrome: 83, rail: 500);
 
-      expect(hero, 360);
+      expect(hero, closeTo(269.9375, 0.001));
       expect(hero, lessThanOrEqualTo(viewport * 0.82));
       expect(viewport - hero, greaterThan(0), reason: 'part of the rail still shows, so the page reads as scrollable');
     });
 
     test('survives the viewport the search keyboard leaves behind', () {
       // The home tab keeps being laid out inside the IndexedStack while the
-      // search tab has focus, so its viewport shrinks by the keyboard. Below
-      // ~439pt the floor used to exceed the cap and the whole billboard threw,
-      // which a release build renders as an empty box that never recovers.
+      // search tab has focus, so its viewport shrinks by the keyboard. There is
+      // no fixed-points floor any more to exceed the cap and throw — the cap
+      // (`viewportExtent * 0.82`) is still the unconditional upper bound, and
+      // the lower bound is a literal 0.0, so `clamp` can never see a lower
+      // bound above its upper one, whatever the viewport.
       for (final viewport in [438.0, 400.0, 300.0, 120.0]) {
         final hero = homeHeroHeight(
           useSideNav: false,
@@ -91,7 +122,11 @@ void main() {
           firstRailHeight: _episodeRail,
         );
 
-        expect(hero, closeTo(viewport * 0.82, 0.001), reason: 'viewport=$viewport');
+        // [sixteenNine] for this fixed 402x874 pair is 285.125 — the floor
+        // this case actually lands on once the viewport shrinks enough that
+        // [fill] no longer wins, but before the cap itself drops below it.
+        final expected = math.min(285.125, viewport * 0.82);
+        expect(hero, closeTo(expected, 0.001), reason: 'viewport=$viewport');
         expect(hero, lessThan(viewport), reason: 'viewport=$viewport');
       }
     });
@@ -137,6 +172,52 @@ void main() {
       for (final c in cases) {
         final hero = phoneHero(screenHeight: c.screenHeight, screenWidth: c.width, bottomChrome: c.chrome);
         expect(hero, closeTo(c.expected, 0.01), reason: 'width=${c.width}');
+      }
+    });
+  });
+
+  group('iPad portrait (useSideNav: false — same path as phone)', () {
+    // `PlatformDetector.shouldUseSideNavigation` is desktop/TV only
+    // (`platform_detector.dart`), so `DiscoverScreen` calls `homeHeroHeight`
+    // for an iPad held in portrait with `useSideNav: false`, the exact same
+    // branch as `MobileHomeScreen` on a phone — removing the phone-only 360pt
+    // floor (density-review F5) therefore had to be checked here too before
+    // that fix could land as a shared, not phone-scoped, change.
+    //
+    // It cannot regress anything: [sixteenNine] (`screenWidth * 9 / 16 +
+    // statusBarHeight`) is already 493.125pt at 834x1194 — comfortably above
+    // the removed 360pt floor — and only grows with screen width, so
+    // `math.max(fill, sixteenNine)` never falls anywhere near where that
+    // floor used to bind on a phone. Confirmed against a manual
+    // re-derivation of the old (floored) formula across a sweep of iPad
+    // widths and viewport extents, from a keyboard-shrunk sliver up to the
+    // full screen.
+    test('removing the 360pt floor changes nothing at iPad-portrait widths', () {
+      const ipadPortraitSizes = [(768.0, 1024.0), (834.0, 1194.0), (1024.0, 1366.0)];
+      const statusBar = 24.0;
+      const rail = 300.0; // a representative 2:3 poster row on iPad.
+
+      for (final (width, screenHeight) in ipadPortraitSizes) {
+        final sixteenNine = math.min(width * 9 / 16, screenHeight * 0.8) + statusBar;
+        expect(sixteenNine, greaterThan(360), reason: 'width=$width: the removed floor was never the binding one here');
+
+        for (final viewportExtent in [screenHeight, screenHeight * 0.6, 400.0]) {
+          final actual = homeHeroHeight(
+            useSideNav: false,
+            viewportExtent: viewportExtent,
+            screenHeight: screenHeight,
+            screenWidth: width,
+            statusBarHeight: statusBar,
+            firstRailHeight: rail,
+          );
+
+          final fill = viewportExtent - rail;
+          final cap = viewportExtent * 0.82;
+          final oldFloor = math.min(360.0, cap);
+          final expected = math.max(fill, sixteenNine).clamp(oldFloor, cap);
+
+          expect(actual, closeTo(expected, 0.001), reason: 'width=$width viewportExtent=$viewportExtent');
+        }
       }
     });
   });

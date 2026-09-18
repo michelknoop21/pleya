@@ -31,7 +31,6 @@ import '../../screens/tv/tv_unified_activation.dart';
 import '../../services/unified_catalog/home_row_layout.dart';
 import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../../utils/home_hero_layout.dart';
-import '../../widgets/media_card_grid_layout.dart';
 import '../../widgets/mobile/mobile_chip_bar.dart';
 import '../../widgets/mobile/mobile_discovery_shell.dart';
 import '../../widgets/mobile/mobile_hero_card.dart';
@@ -95,12 +94,8 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
   /// The rail directly under the hero, so the hero-plus-first-rail viewport
   /// fill (`homeHeroHeight`) budgets against the right shape. Verder kijken
   /// (16:9) when it exists, else the first hub's shape (portrait 2:3).
-  double _firstRailHeight(BuildContext context, {required bool wide}) {
-    final cardWidth = wide ? mobileRailWideCardWidth : mobileRailCardWidth;
-    final aspect = wide ? 16 / 9 : 2 / 3;
-    const titleRowHeight = 28.0; // MobileMediaRail's title row + its gap.
-    return titleRowHeight + cardWidth / aspect + MediaCardGridLayout.textExtentFor(context);
-  }
+  double _firstRailHeight(BuildContext context, {required bool wide}) =>
+      mobileRailHeight(context, wide ? MobileCardShape.wide : MobileCardShape.portrait);
 
   Widget _heroSliver(BuildContext context, SliverConstraints constraints, TvHomeProjectionProvider homeProjection) {
     final width = MediaQuery.sizeOf(context).width - 32;
@@ -111,16 +106,15 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
     // exists to prevent.
     final available = constraints.viewportMainAxisExtent - constraints.precedingScrollExtent;
     final hasContinueWatching = homeProjection.continueWatching?.isEmpty == false;
-    final height =
-        homeHeroHeight(
-          useSideNav: false,
-          viewportExtent: available,
-          screenHeight: MediaQuery.sizeOf(context).height,
-          screenWidth: MediaQuery.sizeOf(context).width,
-          statusBarHeight: MediaQuery.paddingOf(context).top,
-          firstRailHeight: _firstRailHeight(context, wide: hasContinueWatching),
-        ) -
-        16;
+    final height = homeHeroHeight(
+      useSideNav: false,
+      viewportExtent: available,
+      screenHeight: MediaQuery.sizeOf(context).height,
+      screenWidth: MediaQuery.sizeOf(context).width,
+      statusBarHeight: MediaQuery.paddingOf(context).top,
+      firstRailHeight: _firstRailHeight(context, wide: hasContinueWatching),
+      heroToRailGap: homeHeroToRailGap,
+    );
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -204,9 +198,10 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
         // rail. That is exactly the state DEC-097 point 3 describes (no
         // recently released film, so no hero and Continue Watching first), and
         // reserving the space there contradicts it.
-        if (heroVisible)
+        if (heroVisible) ...[
           SliverLayoutBuilder(builder: (context, constraints) => _heroSliver(context, constraints, homeProjection)),
-        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          const SliverToBoxAdapter(child: SizedBox(height: homeHeroToRailGap)),
+        ],
         if (isLoading) mobileHubRowsSkeletonSliver,
         if (errorMessage != null) SliverErrorState(message: errorMessage, onRetry: discover.load),
         if (!isLoading && errorMessage == null) ...[
