@@ -141,6 +141,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | FOC1 | Als de gefocuste TV-topnav-pil verdwijnt (Live TV die wegvalt, of sinds `472233db` elke offline-flip), zet `TvNavigationCoordinator` de logische `_focused`/`_active` wel om, maar niets roept `FocusNode.requestFocus()` aan op de vervangende pil. `_focus`/`_focusKey` in `tv_top_navigation.dart` lopen alleen op een expliciete D-pad-stap (`onNavigateLeft`/`onNavigateRight`), niet op een balkherberekening. Gevonden door een Codex-challenge op `472233db`; bestond al voor de Live TV-casus, offline maakt hem alleen vaker bereikbaar. **Gefixed:** `_profileFocusKey` in `tv_top_navigation.dart` publiek gemaakt als `tvNavProfileFocusKey`, plus een nieuwe `tvTopNavFocusKeys()` die alle sleutels teruggeeft die de bar op dit moment tekent. `TvRootShell` pruned `FocusMemoryTracker` daartegen in `build`, zoals `side_navigation_rail.dart:816` voor de rail al deed, en herstelt de focus post-frame op de bestemming die `updateConditions` al gekozen had. Negatieve controle in `tv_root_shell_test.dart` (groep FOC1, drie tests) was rood tegen de export vóór de fix er stond, groen erna; de export en de fix zijn samen gecommit omdat de project-CI geen tijdelijk ongebruikte export toelaat. Bredere sanity-check (`test/screens/tv/`, `test/widgets/tv/`) ongewijzigd: 603 groen, 1 rood, dezelfde vooraf bevestigde bestaande faler (`tv_top_navigation_test.dart`, OFF-1). **CODE CLOSED**: de fix staat en de negatieve controle bewijst hem. Geen widgettest construeert vandaag `MainScreen` samen met `TvRootShell`, dus het reconnect-samenspel (`main_screen.dart:1714`) is los bevestigd via `test/screens/tv_offline_focus_recovery_test.dart` (3/3 groen); een fysieke-hardwareronde op een echte Apple TV heeft dit niet bevestigd. Een adversarial `/code-review high` op de volledige werkboom vond dat de post-frame-callback geen `isNavFocused`-guard had, tegen het rail-precedent (`side_navigation_rail.dart:362`) in: een late callback trok focus terug naar de bar ook als de remote intussen legitiem naar de content was verhuisd. Gefixed met dezelfde guard plus extractie van de prune-en-herstel-body naar `_pruneNavFocusAndScheduleRestore()`, gedrag-gelijk op de guard na. Vierde test bewijst de rode fase (guard verwijderd: `hasFocus` bleef `true` waar `false` verwacht werd) en de groene fase erna | CODE CLOSED · VERIFY/SIM OPEN | `da0693d2`, `cbc87def`, `8d5fa38a` |
 | SRCH2 | `people` wordt nooit aan `searchProjection` meegegeven | FIXED, testrun groen, hardware open | `b5b8f0e8` | Gebouwd binnen I4 (iOS Zoeken), zie DEC-112. Nieuwe `PersonSearchClient`-fanout in Plex en Jellyfin vult `people` nu. TV's eigen people-rij riep voorheen `_openConcrete` aan op een lege lijst en is nu gekoppeld aan `_openPerson`. Jellyfin-pad live bevestigd in de iOS-simulator tegen de Pleya Demo-server; Plex `/hubs/search` blijft ongeverifieerd tegen een echte server, en de TV-rij zelf is niet op fysieke hardware bekeken |
 | REV1 | Apple Review Jellyfin: Home toont content, Films/Series leeg en concrete library niet zichtbaar (Apple Review, release-kritiek). Root cause: elke synthetische Jellyfin-hub droeg een hardgecodeerd type `mixed` (next-up `episode`), en `UnifiedHubKind.singleKindSurface` sluit beide uit van de Films- en de Serieslanding. Gesloten door `JellyfinMappers.syntheticHub` het type te laten afleiden uit de al gemapte items via `_hubItemsType`, zelfde aanpak als VER4 bij de Pleya-protocolclient | FIXED | `ce8648ae`, `ee117859` |
+| REV1b | Tweede helft van REV1: een concrete, zichtbare Jellyfin-library lijkt niet bereikbaar via Mijn Pleya > Bibliotheken. De voorgeschreven keten is afgelopen: `_libraryKindFromCollectionType` mapt een onbekend `CollectionType` op `MediaKind.unknown` (jellyfin_mappers.dart:316-333), en `eligibleCatalogLibraries` laat `MediaKind.unknown` expliciet door ongeacht de gevraagde kind (source_cursor.dart:70). De "niet eligible"-hypothese valt daarmee af. De Jellyfin-mapper zet `hidden` bovendien altijd hardcoded op `false` (jellyfin_mappers.dart:248), dus een serverzijdige hidden-vlag kan de library ook niet laten vallen. Wat overblijft, `isServerVisible` (per-profiel zichtbare-serverslijst) en `hiddenLibraryKeys` (lokale per-profiel hide-lijst uit `HiddenLibrariesProvider`), is lokale profielstaat op het geteste toestel, niet iets dat uit de servertopologie of de code alleen volgt. `.env` ontbreekt in deze worktree (`scripts/tvos_sim.sh doctor` meldt `demo-login: ontbreekt in .env`), dus een geautoriseerde `/Users/{userId}/Views`-call kon niet gezet worden; `System/Info/Public` op `demo.pleya.app` bevestigt wel een bereikbare, echte Jellyfin-server (12.1.0, `Pleya Demo`). Geen enkele schakel uit de keten wijst een defect aan | HARDWARE ONLY | n.v.t. |
 | REV1-SIZE | `lib/services/jellyfin_client/parts/browse.dart` staat op 1855 regels, ruim over de eigen richtlijn van ~400-500. Niet gesplitst in REV1: de fix verving alleen argumenten en een splitsing zou de gedragswijziging in een onleesbare diff hebben verstopt. Opsplitsen is een eigen ronde met eigen bewijs, zoals LIB1/LIB2 al vaststelden voor `libraries_screen.dart` | DEFERRED | n.v.t. |
 | LAND7 | Actieve discovery-rail krijgt geen vaste verticale focuspositie op de Films-/Series-landing en Zoeken. TV2-preflight (18 september, `330a51e4`): Home is geen probleemoppervlak meer, `tv_content_feed.dart:639` geeft `TvHomeLayout.rowTileScrollAlignment(...)` door aan `tv_content_row.dart:65` (default `0.5`, geen andere aanroeper), dus Home heeft het canonieke anker al sinds HOME1/DEC-095 | OPEN, oppervlak beperkt tot landings en Zoeken | n.v.t. |
 | LANG1 | Taalcontinuïteit binnen series: hiërarchie, terugvalcontract en beheer van serievoorkeuren (sectie G). Ontwerp goedgekeurd, DEC-096 accepted. Data- en resolutielaag op eae19cb4, de pagina 31 A, de sheet 31 B en de toasts 31 C/D op a9a50ad9, de layout- en meldingscorrecties uit de simulatorronde op a5730f35. Het Verify-scenario is groen; de hardwareronde staat open. TV0 (18 september): gelijkgetrokken met register MOC-31. Het scenario is groen op `a5730f35` en `git log a5730f35..HEAD` op de geraakte bestanden is leeg. Er is geen implementatiewerk meer; de hardware-acceptatie hoort bij closure §7 | CODE/SIM CLOSED · HARDWARE OPEN | eae19cb4, a9a50ad9, a5730f35 |
@@ -1876,6 +1877,39 @@ paging/no-preload-contract niet breken, geen UI-maskering.
 
 Na de fix moet het tvOS-reviewpad bewijsbaar zijn: Home → Films → Series →
 Mijn Pleya → Bibliotheken → concrete Jellyfin-library → item → detail → Back.
+
+**REV1b, tweede helft (18 september, TV2-taak 6).** De hub-typering die Films
+en Series leeg liet is gesloten met een eigen SHA, zie de REV1-rij. De tweede
+helft van de melding, dat een concrete bibliotheek niet bereikbaar lijkt via
+Mijn Pleya, is nu afzonderlijk afgelopen langs de voorgeschreven keten.
+`_libraryKindFromCollectionType` (`jellyfin_mappers.dart:316-333`) mapt een
+onbekend `CollectionType` op `MediaKind.unknown`, en `eligibleCatalogLibraries`
+(`source_cursor.dart:70`) laat `MediaKind.unknown` expliciet door ongeacht de
+gevraagde kind. De "niet eligible"-hypothese valt daarmee af, precies zoals
+deze sectie hierboven al voorschreef. `hidden` staat in dezelfde mapper
+bovendien hardcoded op `false` (`jellyfin_mappers.dart:248`), dus een
+serverzijdige hidden-vlag kan een library evenmin laten vallen. Wat overblijft,
+`isServerVisible` (`multi_server_manager.dart:192`) en `hiddenLibraryKeys`
+(`hidden_libraries_provider.dart`), is lokale per-profielstaat op het geteste
+toestel: geen enkele van de twee volgt uit de servertopologie of uit statische
+code alleen.
+
+Deze worktree heeft geen `.env`: `scripts/tvos_sim.sh doctor` meldt
+`demo-login: ontbreekt in .env`, dus een geauthenticeerde
+`/Users/{userId}/Views`-call was niet te zetten. `System/Info/Public` op
+`demo.pleya.app` bevestigt wel een bereikbare, echte Jellyfin-server
+(`ProductName: Jellyfin Server`, versie 12.1.0, `ServerName: Pleya Demo`); de
+werkelijke view-topologie (id, naam, `CollectionType`, zichtbaarheid, user
+access, content) blijft daarmee onbekend. Nodig om hem alsnog vast te leggen:
+`PLEYA_DEMO_USER`/`PLEYA_DEMO_PASS` in `.env`, waarna `scripts/tvos_sim.sh
+login` en een geauthenticeerde `Views`-call het antwoord geven.
+
+Geen schakel uit de keten wijst een concreet defect aan; de code laat een
+`unknown`-library al bewust door. REV1b verhuist daarom naar `HARDWARE ONLY`
+(zie de REV1b-rij) met als sluitende meting het al bestaande acceptatiecriterium
+hierboven: het tvOS-reviewpad Home → Films → Series → Mijn Pleya →
+Bibliotheken → concrete Jellyfin-library → item → detail → Back, op een build
+die Task 5's SHA (`ee117859`) bevat.
 
 ### LAND7, de actieve discovery-rail mist een vaste verticale focuspositie
 
