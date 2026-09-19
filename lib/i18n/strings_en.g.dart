@@ -3218,8 +3218,14 @@ class TranslationsLiveTvEn {
 	/// en: '${title} will no longer be recorded.'
 	String cancelRecordingMessage({required Object title}) => '${title} will no longer be recorded.';
 
+	/// en: '${count} channels'
+	String channelCount({required Object count}) => '${count} channels';
+
 	/// en: 'Delete rule'
 	String get deleteRule => 'Delete rule';
+
+	/// en: 'one channel'
+	String get oneChannel => 'one channel';
 
 	/// en: 'Delete recording rule?'
 	String get deleteRuleTitle => 'Delete recording rule?';
@@ -8094,7 +8100,9 @@ extension on Translations {
 			'liveTv.cancelRecording' => 'Cancel recording',
 			'liveTv.cancelRecordingTitle' => 'Cancel this recording?',
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} will no longer be recorded.',
+			'liveTv.channelCount' => ({required Object count}) => '${count} channels',
 			'liveTv.deleteRule' => 'Delete rule',
+			'liveTv.oneChannel' => 'one channel',
 			'liveTv.deleteRuleTitle' => 'Delete recording rule?',
 			'liveTv.deleteRuleMessage' => ({required Object title}) => 'Future episodes of ${title} will not be recorded.',
 			'liveTv.recordingScheduled' => 'Recording scheduled',
@@ -8590,10 +8598,10 @@ extension on Translations {
 			'seerr.permissionManage' => 'Can approve requests',
 			'seerr.permissionRequest' => 'Can request',
 			'seerr.request' => 'Request',
-			'seerr.requested' => 'Requested',
-			'seerr.requestAgain' => 'Request',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.requested' => 'Requested',
+			'seerr.requestAgain' => 'Request',
 			'seerr.processing' => 'Processing',
 			'seerr.partiallyAvailable' => 'Partially available',
 			'seerr.available' => 'Available',

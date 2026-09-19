@@ -99,6 +99,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsUnifiedCatalogNl unifiedCatalog = _TranslationsUnifiedCatalogNl._(_root);
 	@override late final _TranslationsTvNavigationNl tvNavigation = _TranslationsTvNavigationNl._(_root);
 	@override late final _TranslationsTvMyPleyaNl tvMyPleya = _TranslationsTvMyPleyaNl._(_root);
+	@override late final _TranslationsTvOfflineHomeNl tvOfflineHome = _TranslationsTvOfflineHomeNl._(_root);
 	@override late final _TranslationsTvContextMenuNl tvContextMenu = _TranslationsTvContextMenuNl._(_root);
 	@override late final _TranslationsLanguageSettingsNl languageSettings = _TranslationsLanguageSettingsNl._(_root);
 }
@@ -1361,7 +1362,9 @@ class _TranslationsLiveTvNl extends TranslationsLiveTvEn {
 	@override String get cancelRecording => 'Opname annuleren';
 	@override String get cancelRecordingTitle => 'Deze opname annuleren?';
 	@override String cancelRecordingMessage({required Object title}) => '${title} wordt niet meer opgenomen.';
+	@override String channelCount({required Object count}) => '${count} zenders';
 	@override String get deleteRule => 'Regel verwijderen';
+	@override String get oneChannel => 'één zender';
 	@override String get deleteRuleTitle => 'Opnameregel verwijderen?';
 	@override String deleteRuleMessage({required Object title}) => 'Toekomstige afleveringen van ${title} worden niet opgenomen.';
 	@override String get recordingScheduled => 'Opname gepland';
@@ -1394,6 +1397,8 @@ class _TranslationsCollectionsNl extends TranslationsCollectionsEn {
 	@override String get title => 'Collecties';
 	@override String get collection => 'Collectie';
 	@override String get empty => 'Collectie is leeg';
+	@override String get emptyBody => 'Voeg titels toe aan deze collectie om ze hier te zien.';
+	@override String get inThisCollection => 'In deze collectie';
 	@override String get unknownLibrarySection => 'Kan niet verwijderen: onbekende bibliotheeksectie';
 	@override String get deleteCollection => 'Collectie verwijderen';
 	@override String deleteConfirm({required Object title}) => '"${title}" verwijderen? Dit kan niet ongedaan worden gemaakt.';
@@ -2312,6 +2317,18 @@ class _TranslationsTvMyPleyaNl extends TranslationsTvMyPleyaEn {
 	@override String get logoutSubtitle => 'Afmelden op dit apparaat';
 	@override late final _TranslationsTvMyPleyaSemanticsNl semantics = _TranslationsTvMyPleyaSemanticsNl._(_root);
 	@override String libraryCount({required Object count}) => '${count} bibliotheken';
+}
+
+// Path: tvOfflineHome
+class _TranslationsTvOfflineHomeNl extends TranslationsTvOfflineHomeEn {
+	_TranslationsTvOfflineHomeNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Geen server bereikbaar';
+	@override String get body => 'Geen van je servers reageert nu. Verbind opnieuw als een van hen weer online is – Mijn Pleya en Instellingen blijven bereikbaar terwijl je wacht.';
+	@override String get manageServers => 'Servers beheren';
 }
 
 // Path: tvContextMenu
@@ -4041,7 +4058,9 @@ extension on TranslationsNl {
 			'liveTv.cancelRecording' => 'Opname annuleren',
 			'liveTv.cancelRecordingTitle' => 'Deze opname annuleren?',
 			'liveTv.cancelRecordingMessage' => ({required Object title}) => '${title} wordt niet meer opgenomen.',
+			'liveTv.channelCount' => ({required Object count}) => '${count} zenders',
 			'liveTv.deleteRule' => 'Regel verwijderen',
+			'liveTv.oneChannel' => 'één zender',
 			'liveTv.deleteRuleTitle' => 'Opnameregel verwijderen?',
 			'liveTv.deleteRuleMessage' => ({required Object title}) => 'Toekomstige afleveringen van ${title} worden niet opgenomen.',
 			'liveTv.recordingScheduled' => 'Opname gepland',
@@ -4065,6 +4084,8 @@ extension on TranslationsNl {
 			'collections.title' => 'Collecties',
 			'collections.collection' => 'Collectie',
 			'collections.empty' => 'Collectie is leeg',
+			'collections.emptyBody' => 'Voeg titels toe aan deze collectie om ze hier te zien.',
+			'collections.inThisCollection' => 'In deze collectie',
 			'collections.unknownLibrarySection' => 'Kan niet verwijderen: onbekende bibliotheeksectie',
 			'collections.deleteCollection' => 'Collectie verwijderen',
 			'collections.deleteConfirm' => ({required Object title}) => '"${title}" verwijderen? Dit kan niet ongedaan worden gemaakt.',
@@ -4535,12 +4556,12 @@ extension on TranslationsNl {
 			'trackers.deviceCode.waitingForAuthorization' => 'Wachten op autorisatie…',
 			'trackers.deviceCode.codeCopied' => 'Code gekopieerd',
 			'trackers.oauthProxy.title' => ({required Object service}) => 'Aanmelden bij ${service}',
+			_ => null,
+		} ?? switch (path) {
 			'trackers.oauthProxy.body' => 'Scan deze QR-code of open de URL op een apparaat.',
 			'trackers.oauthProxy.openToSignIn' => ({required Object service}) => '${service} openen om aan te melden',
 			'trackers.oauthProxy.urlCopied' => 'URL gekopieerd',
 			'trackers.libraryFilter.title' => 'Bibliotheekfilter',
-			_ => null,
-		} ?? switch (path) {
 			'trackers.libraryFilter.subtitleAllSyncing' => 'Alle bibliotheken synchroniseren',
 			'trackers.libraryFilter.subtitleNoneSyncing' => 'Niets wordt gesynchroniseerd',
 			'trackers.libraryFilter.subtitleBlocked' => ({required Object count}) => '${count} geblokkeerd',
@@ -4954,6 +4975,9 @@ extension on TranslationsNl {
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
 			'tvMyPleya.libraryCount' => ({required Object count}) => '${count} bibliotheken',
+			'tvOfflineHome.title' => 'Geen server bereikbaar',
+			'tvOfflineHome.body' => 'Geen van je servers reageert nu. Verbind opnieuw als een van hen weer online is – Mijn Pleya en Instellingen blijven bereikbaar terwijl je wacht.',
+			'tvOfflineHome.manageServers' => 'Servers beheren',
 			'tvContextMenu.title' => 'Acties',
 			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Actie ${index} van ${count}: ${label}',
 			'tvContextMenu.noUsableSource' => 'Er is momenteel geen bron bereikbaar, dus dit kan nu niet worden gewijzigd.',

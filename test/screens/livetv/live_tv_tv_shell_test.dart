@@ -126,8 +126,13 @@ Widget mountLiveTv({required bool inShell, required MultiServerProvider provider
 /// synchronous.
 MultiServerProvider buildProvider() {
   final manager = MultiServerManager()..debugRegisterClientForTesting(_FakeLiveTvClient());
-  return MultiServerProvider(manager, DataAggregationService(manager))
-    ..debugSetLiveTvServersForTesting([LiveTvServerInfo(serverId: _serverId, dvrKey: 'dvr-1')]);
+  return MultiServerProvider(manager, DataAggregationService(manager))..debugSetLiveTvServersForTesting([
+    LiveTvServerInfo(
+      serverId: _serverId,
+      dvrKey: 'dvr-1',
+      dvrs: [LiveTvDvr(key: 'dvr-1', uuid: 'dvr-1', lineupTitle: 'Plex thuis')],
+    ),
+  ]);
 }
 
 void main() {
@@ -281,5 +286,24 @@ void main() {
     if (bars.evaluate().isEmpty) return; // leeg scherm, geen rij: ook goed
     final bar = tester.widget<TvPageChipBar>(bars);
     expect([for (final c in bar.chips) c.key], isNot(contains('liveTvTab_recordings')));
+  });
+
+  testWidgets('MOC-17: the heading carries a source and channel-count line', (tester) async {
+    final provider = buildProvider();
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(mountLiveTv(inShell: true, provider: provider));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // Twee zenders in de fixture, en beide komen van dezelfde bron, dus de
+    // bron staat er één keer.
+    expect(find.text('Plex thuis · ${t.liveTv.channelCount(count: 2)}'), findsOneWidget);
+  });
+
+  testWidgets('MOC-17: one channel says one channel, not "1 channels"', (tester) async {
+    // Slang's plural gaat over de count-parameter; dit legt vast dat de
+    // aanroepplek het sleutelpaar gebruikt en niet één sleutel met een getal.
+    expect(t.liveTv.oneChannel, isNot(contains('1 ')));
   });
 }

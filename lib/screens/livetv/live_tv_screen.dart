@@ -26,12 +26,14 @@ import '../../widgets/settings_builder.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/desktop_window_padding.dart';
 import '../../utils/error_message_utils.dart';
+import '../../utils/formatters.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../widgets/tv/tv_page_chip_bar.dart';
+import '../../widgets/tv/tv_page_surface.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import '../tv/tv_root_shell.dart';
 import 'live_tv_favorites.dart';
@@ -769,6 +771,30 @@ class _LiveTvScreenState extends State<LiveTvScreen>
     return 'liveTvAction_refresh';
   }
 
+  /// Mockup 17's stille regel onder de titel: waar de zenders vandaan komen,
+  /// en hoeveel het er zijn.
+  ///
+  /// De bronnamen komen uit de zenders zelf (`liveTvSourceTitle`, gezet in
+  /// `_loadChannels`), niet uit een tweede bevraging van de servers: het is
+  /// dezelfde informatie en een tweede bron ervoor zou een tweede antwoord
+  /// kunnen geven. De teller telt wat de gids werkelijk toont, dus met het
+  /// favorietenfilter aan telt hij de gefilterde lijst.
+  ///
+  /// Null wanneer er niets te melden valt. Nul zenders is geen "0 zenders" maar
+  /// een lege staat, en die tekent `_buildLiveTvBody` al.
+  String? _tvHeaderSubtitle() {
+    final channels = _filteredChannels;
+    if (channels.isEmpty) return null;
+    final sources = <String>{
+      for (final channel in channels)
+        if (channel.liveTvSourceTitle != null && channel.liveTvSourceTitle!.isNotEmpty) channel.liveTvSourceTitle!,
+    };
+    return toBulletedString([
+      ...sources,
+      channels.length == 1 ? t.liveTv.oneChannel : t.liveTv.channelCount(count: channels.length),
+    ]);
+  }
+
   /// De kop van mockup 17: de paginanaam op de tokens die elke andere
   /// TV-pagina gebruikt, links uitgelijnd op de canonieke pagina-inset.
   ///
@@ -780,6 +806,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
   Widget _buildTvPageHeader(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
     final tk = tokens(context);
+    final subtitle = _tvHeaderSubtitle();
     return Padding(
       padding: EdgeInsets.fromLTRB(
         TvTopNavLayout.pageInset * scale,
@@ -791,16 +818,26 @@ class _LiveTvScreenState extends State<LiveTvScreen>
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: Text(
-              t.liveTv.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: tk.text,
-                fontSize: TvMyPleyaLayout.pageTitleFontSize * scale,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.2,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.liveTv.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: tk.text,
+                    fontSize: TvMyPleyaLayout.pageTitleFontSize * scale,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  SizedBox(height: TvMyPleyaLayout.tileTitleSubtitleGap * scale),
+                  Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: tvPageBodyStyle(context)),
+                ],
+              ],
             ),
           ),
           _buildTvChipBar(context),
