@@ -28,6 +28,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
 import '../../media/media_item.dart';
@@ -652,18 +654,29 @@ class _ActionMenuPanel extends StatelessWidget {
 
     Widget navRow(UnifiedNavigationAction action) {
       final label = navigationLabel(action);
-      final row = TvCatalogOptionRow(
-        key: ValueKey(action),
-        label: label,
-        // CTX2: alleen de hervat-rij. "Afspelen vanaf het begin" heeft per
-        // definitie de hele film voor zich, en "Meer info" en "Bron wijzigen"
-        // gaan helemaal niet over tijd.
-        secondary: action == UnifiedNavigationAction.playOrResume ? resumeRemaining : null,
-        leadingIcon: iconForUnifiedNavigationAction(action),
-        semanticLabel: t.tvContextMenu.menuSemantics(index: rowIndex + 1, count: totalRows, label: label),
-        isSelected: false,
-        scale: scale,
-        onPressed: () => onChooseNavigation(action),
+      // CTX2: alleen de hervat-rij. "Afspelen vanaf het begin" heeft per
+      // definitie de hele film voor zich, en "Meer info" en "Bron wijzigen"
+      // gaan helemaal niet over tijd.
+      final secondary = action == UnifiedNavigationAction.playOrResume ? resumeRemaining : null;
+      // `state` is een closure die pas bij het uitlezen draait, en `rowIndex`
+      // is dan allang doorgeteld: het lokale `index` bevriest de waarde op
+      // het moment dat deze rij zelf wordt opgebouwd.
+      final index = rowIndex;
+      final row = AutomationNode(
+        id: AutomationIds.sheetContextMenuItem,
+        instance: '$index',
+        role: 'list.item',
+        state: () => {'label': label, 'secondary': secondary},
+        child: TvCatalogOptionRow(
+          key: ValueKey(action),
+          label: label,
+          secondary: secondary,
+          leadingIcon: iconForUnifiedNavigationAction(action),
+          semanticLabel: t.tvContextMenu.menuSemantics(index: index + 1, count: totalRows, label: label),
+          isSelected: false,
+          scale: scale,
+          onPressed: () => onChooseNavigation(action),
+        ),
       );
       rowIndex++;
       return row;
@@ -675,77 +688,89 @@ class _ActionMenuPanel extends StatelessWidget {
       // Translated into sixteen locales and, until now, called from nowhere:
       // this panel contained no `Semantics(` at all and the row's only
       // accessibility output was the bare action name.
-      final row = TvCatalogOptionRow(
-        key: ValueKey(action),
-        label: label,
-        leadingIcon: iconForUnifiedGroupAction(action),
-        semanticLabel: t.tvContextMenu.menuSemantics(index: rowIndex + 1, count: totalRows, label: label),
-        // Nothing here is a setting, so nothing is "the current answer". A
-        // selected tint on an action row would read as "this one is already
-        // on".
-        isSelected: false,
-        scale: scale,
-        onPressed: () => onChoose(action),
+      final index = rowIndex;
+      final row = AutomationNode(
+        id: AutomationIds.sheetContextMenuItem,
+        instance: '$index',
+        role: 'list.item',
+        state: () => {'label': label, 'secondary': null},
+        child: TvCatalogOptionRow(
+          key: ValueKey(action),
+          label: label,
+          leadingIcon: iconForUnifiedGroupAction(action),
+          semanticLabel: t.tvContextMenu.menuSemantics(index: index + 1, count: totalRows, label: label),
+          // Nothing here is a setting, so nothing is "the current answer". A
+          // selected tint on an action row would read as "this one is already
+          // on".
+          isSelected: false,
+          scale: scale,
+          onPressed: () => onChoose(action),
+        ),
       );
       rowIndex++;
       return row;
     }
 
-    return DecoratedBox(
-      decoration: tvPanelDecoration(mono, radius),
-      child: Padding(
-        padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _MenuHeader(scale: scale, title: title, year: year, artwork: artwork, metaLine: metaLine),
-            SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (final (i, action) in leadingNav.indexed) ...[
-                      if (i > 0) SizedBox(height: TvSourcePickerLayout.rowGap * scale),
-                      navRow(action),
+    return AutomationNode(
+      id: AutomationIds.sheetContextMenu,
+      role: 'sheet',
+      state: () => {'row_count': totalRows},
+      child: DecoratedBox(
+        decoration: tvPanelDecoration(mono, radius),
+        child: Padding(
+          padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _MenuHeader(scale: scale, title: title, year: year, artwork: artwork, metaLine: metaLine),
+              SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final (i, action) in leadingNav.indexed) ...[
+                        if (i > 0) SizedBox(height: TvSourcePickerLayout.rowGap * scale),
+                        navRow(action),
+                      ],
+                      if (leadingNav.isNotEmpty && actions.isNotEmpty) divider(),
+                      for (final (i, action) in actions.indexed) ...[
+                        if (i > 0) SizedBox(height: TvSourcePickerLayout.rowGap * scale),
+                        writeRow(action),
+                      ],
+                      if (hasChangeSource) ...[
+                        if (leadingNav.isNotEmpty || actions.isNotEmpty) divider(),
+                        navRow(UnifiedNavigationAction.changeSource),
+                      ],
+                      if (extraActionLabel != null) ...[
+                        divider(),
+                        TvCatalogOptionRow(
+                          key: const ValueKey('tvContextMenuExtraAction'),
+                          label: extraActionLabel!,
+                          // Vandaag is dit alleen "Home aanpassen" (ROW1).
+                          // tune_rounded is de enige uit de gecheckte set die
+                          // "stel dit scherm in" zegt zonder een tweede
+                          // betekenis te dragen. Komt er een tweede extra-actie
+                          // bij, dan hoort het icoon in TvContextMenuExtraAction
+                          // te gaan, niet hier hardcoded.
+                          leadingIcon: Symbols.tune_rounded,
+                          isSelected: false,
+                          scale: scale,
+                          onPressed: onChooseExtra!,
+                        ),
+                      ],
                     ],
-                    if (leadingNav.isNotEmpty && actions.isNotEmpty) divider(),
-                    for (final (i, action) in actions.indexed) ...[
-                      if (i > 0) SizedBox(height: TvSourcePickerLayout.rowGap * scale),
-                      writeRow(action),
-                    ],
-                    if (hasChangeSource) ...[
-                      if (leadingNav.isNotEmpty || actions.isNotEmpty) divider(),
-                      navRow(UnifiedNavigationAction.changeSource),
-                    ],
-                    if (extraActionLabel != null) ...[
-                      divider(),
-                      TvCatalogOptionRow(
-                        key: const ValueKey('tvContextMenuExtraAction'),
-                        label: extraActionLabel!,
-                        // Vandaag is dit alleen "Home aanpassen" (ROW1).
-                        // tune_rounded is de enige uit de gecheckte set die
-                        // "stel dit scherm in" zegt zonder een tweede
-                        // betekenis te dragen. Komt er een tweede extra-actie
-                        // bij, dan hoort het icoon in TvContextMenuExtraAction
-                        // te gaan, niet hier hardcoded.
-                        leadingIcon: Symbols.tune_rounded,
-                        isSelected: false,
-                        scale: scale,
-                        onPressed: onChooseExtra!,
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-            SizedBox(height: TvSourcePickerLayout.footerGap * scale),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [TvPanelButton(scale: scale, label: t.common.close, onPressed: onClose, primary: false)],
-            ),
-          ],
+              SizedBox(height: TvSourcePickerLayout.footerGap * scale),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [TvPanelButton(scale: scale, label: t.common.close, onPressed: onClose, primary: false)],
+              ),
+            ],
+          ),
         ),
       ),
     );

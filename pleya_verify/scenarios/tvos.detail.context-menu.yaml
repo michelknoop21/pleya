@@ -1,0 +1,66 @@
+name: tvos.detail.context-menu
+target: tvos-sim
+# CTX1 through CTX3, in the order a viewer sees them: the menu opens on a
+# card, the header carries a second line, and the rows say what they do.
+# What this adds over the widget tests is that all three sit on one render,
+# over a real group with real sources, where the row count comes from the
+# aggregation and not from a factory in the test.
+#
+# DET4 has no step here on purpose. It is a glyph artifact that a simulator
+# screenshot cannot reliably separate from the capture's own scaling step;
+# the measurement that closes it lives in its own row in the correction
+# round.
+#
+# CTX1's second header line (metaLine) is not exposed through any
+# AutomationNode.state today, so this scenario cannot assert its text: the
+# screenshot after the menu opens is the evidence for it, the same way the
+# mobile northstar scenario leans on a screenshot for what a node does not
+# publish as state.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  # IntroGate's cold-start splash paints over an already-ready screen.
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+
+  # The ring starts on the top bar after a cold start. DOWN out of the bar
+  # lands on the hero's own Play pill, not on a rail card (tvos.home.walk-rails
+  # documents this as a deliberate landing, not a bug), so it takes two DOWNs
+  # to reach the first rail card a long press can open a menu on.
+  - press: down
+  - settle: 800
+  - press: down
+  - settle: 800
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
+
+  # A long press opens the context menu. The duration is well above
+  # FocusableWrapper's 500ms long-press threshold, with margin for HID
+  # injection through idb.
+  - press: {key: select, holdMs: 900}
+  - wait_until: {id: sheet.context_menu, timeout: 8000}
+  - settle: 600
+  - snapshot: context-menu-open
+
+  # CTX3: the menu reports how many rows it has (leadingNav, the write
+  # actions, and the Home-only "Home aanpassen" row this card carries, since
+  # it opened from a Home rail: 3 + 3 + 1), and the first two rows each carry
+  # their own instance in the tree, wired to sheet.context_menu.item exactly
+  # as the mobile variant already does for the same two ids. Row 6, "Home
+  # aanpassen", is not part of this wiring: it renders inline without a
+  # navRow/writeRow call and so has no instance of its own, which row_count
+  # still counts.
+  - assert: {id: sheet.context_menu, insideViewport: true}
+  - assert: {id: sheet.context_menu, state: {row_count: 7}}
+  - assert: {id: "sheet.context_menu.item[0]", insideViewport: true}
+  - assert: {id: "sheet.context_menu.item[1]", insideViewport: true}
+
+  # Menu closes, and the ring returns to the card that opened it
+  # (restoreLauncherFocus).
+  - press: menu
+  - settle: 800
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
+  - snapshot: context-menu-closed
