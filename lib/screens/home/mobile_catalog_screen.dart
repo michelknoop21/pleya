@@ -401,51 +401,56 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     );
   }
 
+  /// Sources, Filters and Sort on one line, onto a second one when they no
+  /// longer fit. A horizontally scrolling row let the third pill run off the
+  /// screen edge instead, sliced in half: Films ("Alle bronnen" + "Recent
+  /// toegevoegd") overruns an iPhone by some 18pt, where Series with its
+  /// shorter labels happened to fit, and the two screens are the same widget.
+  /// Wrapping degrades the same way at any text scale and in any language —
+  /// squeezing the sort pill instead would have it lose its label first and
+  /// its tap target next, exactly when the text is largest.
   Widget _buildChips(BuildContext sheetContext, UnifiedCatalogFilterSelection filters) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: mobileRailInset),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            AutomationNode(
-              id: AutomationIds.catalogChipSources,
-              instance: widget.kind.automationInstance,
-              role: 'button',
-              child: FocusableFilterChip(
-                variant: FilterChipVariant.filled,
-                icon: Symbols.dns_rounded,
-                label: _sourcesLabel(filters),
-                onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.servers),
-              ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          AutomationNode(
+            id: AutomationIds.catalogChipSources,
+            instance: widget.kind.automationInstance,
+            role: 'button',
+            child: FocusableFilterChip(
+              variant: FilterChipVariant.filled,
+              icon: Symbols.dns_rounded,
+              label: _sourcesLabel(filters),
+              onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.servers),
             ),
-            const SizedBox(width: 8),
-            AutomationNode(
-              id: AutomationIds.catalogChipFilters,
-              instance: widget.kind.automationInstance,
-              role: 'button',
-              child: FocusableFilterChip(
-                variant: FilterChipVariant.filled,
-                icon: Symbols.filter_list_rounded,
-                label: t.unifiedCatalog.filters.title,
-                badgeCount: filters.activeCount,
-                onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.status),
-              ),
+          ),
+          AutomationNode(
+            id: AutomationIds.catalogChipFilters,
+            instance: widget.kind.automationInstance,
+            role: 'button',
+            child: FocusableFilterChip(
+              variant: FilterChipVariant.filled,
+              icon: Symbols.filter_list_rounded,
+              label: t.unifiedCatalog.filters.title,
+              badgeCount: filters.activeCount,
+              onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.status),
             ),
-            const SizedBox(width: 8),
-            AutomationNode(
-              id: AutomationIds.catalogChipSort,
-              instance: widget.kind.automationInstance,
-              role: 'button',
-              child: FocusableFilterChip(
-                variant: FilterChipVariant.filled,
-                icon: Symbols.swap_vert_rounded,
-                label: mobileCatalogSortLabel(_preferences.sort),
-                onPressed: () => _openSort(sheetContext),
-              ),
+          ),
+          AutomationNode(
+            id: AutomationIds.catalogChipSort,
+            instance: widget.kind.automationInstance,
+            role: 'button',
+            child: FocusableFilterChip(
+              variant: FilterChipVariant.filled,
+              icon: Symbols.swap_vert_rounded,
+              label: mobileCatalogSortLabel(_preferences.sort),
+              onPressed: () => _openSort(sheetContext),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
