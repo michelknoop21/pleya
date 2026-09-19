@@ -65,8 +65,8 @@ class VideoFilterManager {
   /// subtitles inside the visible rect while cropped or zoomed.
   final int Function()? subtitleBasePosition;
 
-  /// Whether the platform scales the whole layer (video *and* OSD) outside of
-  /// mpv (iOS/tvOS Core Animation transform). On other mpv backends the crop
+  /// Whether the platform scales the video outside of mpv (iOS/tvOS Core
+  /// Animation transform on the video layer). On other mpv backends the crop
   /// happens inside mpv via panscan, so compensation is aspect-based instead.
   final bool useLayerScaleCompensation;
 
@@ -109,9 +109,13 @@ class VideoFilterManager {
   }
 
   /// The scale the Apple VO applies to the video layer, mirroring
-  /// `updateVideoGravityIfNeeded` in MpvPlayerCoreBase.swift. On iOS/tvOS zoom
-  /// and panscan are a centered Core Animation transform on the layer that also
-  /// carries the OSD, so mpv's own subtitle placement is unaware of it.
+  /// `updateVideoGravityIfNeeded` in MpvPlayerCoreBase.swift: on iOS/tvOS zoom
+  /// and panscan become a centered Core Animation transform on the video layer.
+  ///
+  /// That transform reaches the video only. mpv parents its OSD layer to the
+  /// video layer's *superlayer* (a sibling, `zPosition + 1`) and its resize
+  /// tracking observes `bounds`/`contentsScale`, never `transform`, so
+  /// subtitles neither scale nor move with this factor.
   static double effectiveLayerScale({
     required double zoomScale,
     required bool coverMode,
