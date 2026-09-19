@@ -117,6 +117,15 @@ Future<void> showTvUnifiedContextMenu(
   final navigationActions = _availableNavigationActions(group);
   final hasResumeProgress = group.watchState.hasActiveProgress;
 
+  // CTX2. `hasActiveProgress` bepaalt het woord op de rij, en deze twee velden
+  // bepalen het getal eronder. Ze komen uit dezelfde representatieve bron, dus
+  // ze kunnen niet uiteenlopen: als de kaart "Hervatten" zegt, gaat de tijd
+  // eronder over precies de cut waarop die keuze rust.
+  final resumeItem = group.representativeSource.item;
+  final resumeRemaining = hasResumeProgress
+      ? formatRemainingTime(resumeItem.durationMs, resumeItem.viewOffsetMs)
+      : null;
+
   // Run *after* the sheet is gone rather than from inside it: the extra entry
   // (and now a navigation action) opens another panel or pushes a route, and
   // doing that from the builder context of the sheet still closing puts two
@@ -133,6 +142,7 @@ Future<void> showTvUnifiedContextMenu(
       year: representative.year,
       artwork: artwork,
       metaLine: unifiedContextMenuMetaLine(group),
+      resumeRemaining: resumeRemaining,
       navigationActions: navigationActions,
       navigationLabel: (action) => labelForUnifiedNavigationAction(action, hasResumeProgress: hasResumeProgress),
       actions: actions,
@@ -546,6 +556,7 @@ class _ActionMenuPanel extends StatelessWidget {
     required this.year,
     required this.artwork,
     required this.metaLine,
+    required this.resumeRemaining,
     required this.navigationActions,
     required this.navigationLabel,
     required this.actions,
@@ -564,6 +575,11 @@ class _ActionMenuPanel extends StatelessWidget {
   /// `navigationLabel`: dit paneel krijgt platte waarden en kent de
   /// [UnifiedMediaGroup] niet.
   final String? metaLine;
+
+  /// CTX2. Alleen gevuld wanneer er werkelijk iets te hervatten valt, en dan
+  /// alleen op de rij die "Hervatten" heet. Net als [metaLine] berekend door de
+  /// aanroeper: dit paneel kent de groep niet.
+  final String? resumeRemaining;
   final List<UnifiedNavigationAction> navigationActions;
   final String Function(UnifiedNavigationAction) navigationLabel;
   final List<UnifiedGroupAction> actions;
@@ -610,6 +626,10 @@ class _ActionMenuPanel extends StatelessWidget {
       final row = TvCatalogOptionRow(
         key: ValueKey(action),
         label: label,
+        // CTX2: alleen de hervat-rij. "Afspelen vanaf het begin" heeft per
+        // definitie de hele film voor zich, en "Meer info" en "Bron wijzigen"
+        // gaan helemaal niet over tijd.
+        secondary: action == UnifiedNavigationAction.playOrResume ? resumeRemaining : null,
         semanticLabel: t.tvContextMenu.menuSemantics(index: rowIndex + 1, count: totalRows, label: label),
         isSelected: false,
         scale: scale,

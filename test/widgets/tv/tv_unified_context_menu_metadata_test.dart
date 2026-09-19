@@ -23,6 +23,7 @@ import 'package:pleya/screens/tv/tv_unified_context_menu.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/formatters.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
+import 'package:pleya/widgets/tv/tv_catalog_sort_panel.dart';
 
 MediaItem _item({
   required String id,
@@ -142,5 +143,37 @@ void main() {
 
     expect(find.text('Dune (2021)'), findsOneWidget);
     expect(find.text(t.unifiedCatalog.oneSource), findsOneWidget);
+  });
+
+  // ---------------------------------------------------------------------------
+  // CTX2: de hervat-rij zegt hoeveel er nog te gaan is
+  // ---------------------------------------------------------------------------
+
+  testWidgets('the resume row carries the remaining time as its second line', (tester) async {
+    await openMenu(tester, _group(durationMs: 9360000, viewOffsetMs: 3600000));
+
+    final rows = tester.widgetList<TvCatalogOptionRow>(find.byType(TvCatalogOptionRow)).toList();
+    final resume = rows.firstWhere((r) => r.label == t.common.resume);
+
+    expect(resume.secondary, t.nowWatching.remaining(time: formatDurationTextual(9360000 - 3600000)));
+  });
+
+  testWidgets('a title with no progress says Play and carries no second line', (tester) async {
+    await openMenu(tester, _group(durationMs: 9360000));
+
+    final rows = tester.widgetList<TvCatalogOptionRow>(find.byType(TvCatalogOptionRow)).toList();
+    final play = rows.firstWhere((r) => r.label == t.common.play);
+
+    expect(play.secondary, isNull, reason: 'nothing watched means nothing remaining');
+  });
+
+  testWidgets('only the resume row gets it, not every navigation row', (tester) async {
+    await openMenu(tester, _group(durationMs: 9360000, viewOffsetMs: 3600000));
+
+    final rows = tester.widgetList<TvCatalogOptionRow>(find.byType(TvCatalogOptionRow)).toList();
+    final withSecondary = rows.where((r) => r.secondary != null).toList();
+
+    expect(withSecondary, hasLength(1));
+    expect(withSecondary.single.label, t.common.resume);
   });
 }
