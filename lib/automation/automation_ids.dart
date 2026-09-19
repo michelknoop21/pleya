@@ -32,6 +32,11 @@ class AutomationIds {
   static const String screenLibraries = 'screen.libraries';
   static const String screenMediaDetail = 'screen.media_detail';
 
+  /// Live TV as a screen. Its own id, for the same reason `screen.my_pleya`
+  /// has one: `screen.main` stays mounted for the whole session and says
+  /// nothing about which destination is on show.
+  static const String screenLiveTv = 'screen.live_tv';
+
   /// Northstar 15's phone-only picker landing (`MobileLibrariesScreen`), the
   /// grid of library cards a real user reaches by tapping `my_pleya.tile
   /// [libraries]`. Distinct from [screenLibraries]: that id stays on the
@@ -463,6 +468,7 @@ class AutomationIds {
     {'id': screenDiscover, 'role': 'screen', 'instanceable': false},
     {'id': screenLibraries, 'role': 'screen', 'instanceable': false},
     {'id': screenMediaDetail, 'role': 'screen', 'instanceable': false},
+    {'id': screenLiveTv, 'role': 'screen', 'instanceable': false},
     {'id': screenLibraryPicker, 'role': 'screen', 'instanceable': false},
     {'id': libraryPickerCard, 'role': 'grid.item', 'instanceable': true},
     {'id': screenSettings, 'role': 'screen', 'instanceable': false},

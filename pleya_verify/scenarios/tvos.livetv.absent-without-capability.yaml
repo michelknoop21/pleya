@@ -1,0 +1,57 @@
+name: tvos.livetv.absent-without-capability
+target: tvos-sim
+# Wat deze fixture over Live TV kan zeggen, en waarom dat niet de journey is
+# die TV4's spec vraagt.
+#
+# De Verify-fixture is een Pleya Server, en die heeft geen Live TV: het
+# bevroren /v1-contract kent `live_tv` alleen als capability-boolean en heeft
+# geen enkel Live TV-endpoint, en de client geeft NoopLiveTvSupport terug. De
+# gevraagde journey (Live TV openen, Nu op TV, Gids, Opnames, een kanaal
+# openen) kan tegen deze fixture dus niet slagen, en een scenario dat nooit
+# kan slagen herhaalt de tvos.library.sort-fout. Zie de TV4-rij in
+# docs/tvos-fysieke-correctieronde.md.
+#
+# Wat hier wel in zit is hoofdstuk 19's andere helft: zonder capability staat
+# de pil niet in de bar, en de bar houdt exact de breedte die tvos.nav.walk
+# vastlegt. Die regel was nergens bewaakt, en hij is de reden dat
+# TvLiveTvCapabilityStore bestaat.
+#
+# Wat deze runner niet kan zeggen. De DSL heeft geen id-afwezigheidsverb: het
+# enige verb dat een id opzoekt is `assert`, en die faalt juist als het id
+# niet klaar/aanwezig is (er is geen `present: false`-vorm en geen
+# `assert_ui_tree`). Dat een pil "niet in de bar staat" wordt hier dus niet
+# rechtstreeks beweerd, maar bewezen door de exacte-volgorde-walk hieronder:
+# `walk.expect` faalt op de eerste hop die niet overeenkomt, dus een pil die
+# ongemerkt tussen twee bestaande stops zou verschijnen laat deze walk op die
+# hop vastlopen in plaats van op de volgende genoemde stop te landen. Dat
+# `screen.live_tv` nergens gemonteerd is, is met de huidige DSL niet los te
+# bewijzen: dat blijft een bekende beperking, geen beweerde dekking.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  # IntroGate's cold-start splash paint over een al klaar scherm.
+  - settle: 3500
+  - assert: {id: nav.discover, focused: true, state: {active: true}}
+  - snapshot: 00-cold-start
+
+  # Eerst naar het linkerend van de bar, zoals tvos.nav.walk ook doet: de
+  # walk hieronder telt de stops vanaf de profielchip, dus de startpositie
+  # moet daar staan, niet op waar de cold start toevallig focust.
+  - walk: {direction: left, expect: [nav.search, nav.profile], timeout: 20000, settle: 800}
+  - assert: {id: nav.profile, focused: true}
+
+  # De breedte van de bar is onveranderd: zes stops, profiel niet meegerekend.
+  # Zelfde loop als tvos.nav.walk, zodat een pil die er stilzwijgend bij komt
+  # hier omvalt op de hop waar hij zou landen, in plaats van in een scenario
+  # dat over iets anders gaat.
+  - walk:
+      direction: right
+      expect: [nav.search, nav.discover, nav.series, nav.movies, nav.myPleya]
+      timeout: 40000
+      settle: 800
+  - assert: {id: nav.myPleya, focused: true}
+  - snapshot: 01-bar-width-unchanged

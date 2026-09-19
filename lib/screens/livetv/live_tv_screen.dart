@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_screen.dart';
 import '../../focus/focus_memory_tracker.dart';
 import '../../focus/focusable_action_bar.dart';
 import '../../focus/focusable_button.dart';
@@ -857,14 +859,18 @@ class _LiveTvScreenState extends State<LiveTvScreen>
     // waar de tabs, de tegels en elke `InkWell` eronder op rekenen, en hem
     // weghalen zou een tweede, grotere wijziging zijn dan deze taak vraagt.
     if (_framedByShell) {
-      return Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildTvPageHeader(context),
-            Expanded(child: _buildLiveTvBody(theme, useSideNav, drawTabRow: false)),
-          ],
+      return AutomationScreen(
+        id: AutomationIds.screenLiveTv,
+        readiness: () => _isLoading ? const AutomationReadiness.loading('channels') : const AutomationReadiness.ready(),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildTvPageHeader(context),
+              Expanded(child: _buildLiveTvBody(theme, useSideNav, drawTabRow: false)),
+            ],
+          ),
         ),
       );
     }
