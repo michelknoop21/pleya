@@ -56,6 +56,7 @@ under `Notes`.
 - whole-branch review findings, CAT20 library keys, LAND7/REV1a docs
 - de seizoenchiprij reserveert de hoogte die een chip echt vraagt (DET4)
 - de detailrail leest dezelfde schaal als het scherm eronder (SYS-3c)
+- whole-branch review findings, meta line and Resume row can disagree
 <!-- END GENERATED -->
 
 ### New
