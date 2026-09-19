@@ -335,11 +335,18 @@ void main() {
     await tester.pumpWidget(mountLiveTv(inShell: true, provider: provider));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    // `_loadPrograms()` calls `focusContent()` from a post-frame callback,
+    // whose `setState()` only reaches this widget tree on the next pump.
+    // Without this one, the band's own state is already correct but the
+    // element tree still holds the pre-focus `program: null` it was built
+    // with, and an unscoped text search would pass anyway: "Nieuwsuur" is
+    // also the always-visible schedule-grid tile for this program.
+    await tester.pump();
 
     // Zonder een druk op Right staat de ring nog op de kanaalkolom, de
     // toestand die de parity-audit als focus-instap voor mockup 17 noemt.
     // De band moet er dan al staan, niet pas na een tweede stap de gids in.
     expect(find.byType(GuideDetailBand), findsOneWidget);
-    expect(find.text('Nieuwsuur'), findsWidgets);
+    expect(find.descendant(of: find.byType(GuideDetailBand), matching: find.text('Nieuwsuur')), findsOneWidget);
   });
 }
