@@ -24,6 +24,16 @@ extension _VideoPlayerPipMethods on VideoPlayerScreenState {
   Future<void> _initVideoFilterAndPip() async {
     final currentPlayer = player;
     if (!mounted || currentPlayer == null) return;
+    if (_videoFilterManager != null && _videoFilterManager!.player != currentPlayer) {
+      // A retry after an init error disposes the old player and creates a new
+      // one in place without disposing this screen, so the manager's cached
+      // `_appliedProps`/`_appliedVideoZoom` still say "already applied" for a
+      // player that's gone. Left alone, every future write (including zoom)
+      // silently no-ops against the disposed player. Rebuild against the new one.
+      _videoFilterManager!.dispose();
+      _videoFilterManager = null;
+      _videoPIPManager = null;
+    }
     if (_videoFilterManager != null && _videoPIPManager != null) {
       _attachPipStateListener();
       return;
