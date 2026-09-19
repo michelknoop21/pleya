@@ -3196,6 +3196,116 @@ void main() {
       expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // DET4: de seizoenchiprij reserveert de hoogte die een chip werkelijk vraagt
+  // ---------------------------------------------------------------------------
+
+  testWidgets('DET4: a season chip fits inside the band the row reserves for it', (tester) async {
+    await SettingsService.getInstance();
+
+    // Dezelfde show/seizoen/aflevering-opbouw als 'TV detail completes adjacent
+    // prefetch after focus moves to that season'. Twee seizoenen, want
+    // `_tvDetailShowsSeasonChips` vraagt `_seasons.length > 1`.
+    final show = MediaItem(
+      id: 'show_1',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.show,
+      title: 'The Show',
+      serverId: 'server_1',
+      serverName: 'Server',
+    );
+    final season1 = MediaItem(
+      id: 'season_1',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.season,
+      title: 'Season 1',
+      index: 1,
+      parentId: show.id,
+      serverId: show.serverId,
+      serverName: show.serverName,
+    );
+    final season2 = MediaItem(
+      id: 'season_2',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.season,
+      title: 'Season 2',
+      index: 2,
+      parentId: show.id,
+      serverId: show.serverId,
+      serverName: show.serverName,
+    );
+    final client = _FakeMediaServerClient(
+      show: show,
+      childrenByParent: {
+        show.id: [season1, season2],
+        season1.id: const <MediaItem>[],
+      },
+    );
+    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+    final provider = MultiServerProvider(manager, DataAggregationService(manager));
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: ChangeNotifierProvider<MultiServerProvider>.value(
+          value: provider,
+          child: MaterialApp(
+            builder: withNoticeLayer(),
+            theme: monoTheme(dark: true),
+            home: withProfileNavigationScope(
+              child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final band = find.byWidgetPredicate((w) => w is AutomationNode && w.id == AutomationIds.mediaDetailSeasonChips);
+    expect(band, findsOneWidget);
+
+    // De band die de rij krijgt, en de hoogte die de eerste chip werkelijk
+    // oplevert. `_tvDetailSeasonChipContentHeight` meet alleen tekst plus de
+    // verticale padding: niet de 1px border van de chip zelf, en niet de
+    // 2.5px border die `FocusTheme.focusDecoration` onvoorwaardelijk om het
+    // kind legt, ook ongefocust en ook transparant.
+    final bandHeight = tester.getSize(band).height;
+    final chipFinder = find.descendant(of: band, matching: find.byType(FocusableWrapper)).first;
+    final chipHeight = tester.getSize(chipFinder).height;
+
+    expect(
+      chipHeight,
+      lessThanOrEqualTo(bandHeight),
+      reason:
+          'the rendered size stays clamped to the band by construction (Row/SizedBox); this only '
+          'guards that clamp still holding, it cannot prove the chip actually fits, see the '
+          'intrinsic-height assertion below for that',
+    );
+
+    // `tester.getSize` reads the chip's *rendered* size, which the `SizedBox`
+    // around the row's `Row` already clamps to `bandHeight` via a tight
+    // cross-axis constraint (RenderFlex hands every child a loose constraint
+    // capped at that same maxHeight). A chip that wants more height than the
+    // reservation would silently report the same clamped number as a chip
+    // that genuinely fits, so `chipHeight == bandHeight` above cannot by
+    // itself distinguish the two. `getMaxIntrinsicHeight` asks the chip's
+    // render tree what height it wants with no ceiling at all, which the
+    // clamp above cannot mask.
+    final chipIntrinsicHeight = tester.renderObject<RenderBox>(chipFinder).getMaxIntrinsicHeight(double.infinity);
+
+    expect(
+      chipIntrinsicHeight,
+      lessThanOrEqualTo(bandHeight),
+      reason:
+          'the chip\'s true, unclamped desired height must fit the band; a clamped '
+          'tester.getSize comparison alone cannot tell a fit from a squeeze',
+    );
+  });
 }
 
 Future<void> _press(WidgetTester tester, LogicalKeyboardKey key) async {

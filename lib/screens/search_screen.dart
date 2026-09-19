@@ -43,6 +43,7 @@ import '../services/apple_tv_native_text_entry.dart';
 import '../services/settings_service.dart';
 import '../services/speech_search_service.dart';
 import '../utils/app_logger.dart';
+import '../utils/formatters.dart';
 import '../utils/native_input_session.dart';
 import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
@@ -1154,9 +1155,7 @@ class _SearchScreenState extends State<SearchScreen>
     return _mobileResultTile(
       context,
       item: item,
-      trailingLabel: group.sources.length == 1
-          ? t.unifiedCatalog.oneSource
-          : t.unifiedCatalog.sources(count: group.sources.length),
+      trailingLabel: formatSourceCount(group.sources.length),
       onTap: () => _openMobileGroupDetails(group),
     );
   }

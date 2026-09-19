@@ -81,6 +81,7 @@ import '../../services/unified_catalog/source_resolver.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../theme/mono_tokens.dart';
+import '../../utils/formatters.dart';
 import '../../utils/global_key_utils.dart';
 import '../../utils/layout_constants.dart';
 import '../../widgets/tv/tv_catalog_empty_state.dart';
@@ -874,7 +875,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   String? _sourcesLabel(UnifiedCatalogFilterSelection filters) {
     if (!filters.restrictsSources) return null;
     final count = widget.catalog.participatingLibraries.map((l) => l.serverId.value).toSet().length;
-    return count == 1 ? t.unifiedCatalog.oneSource : t.unifiedCatalog.sources(count: count);
+    return formatSourceCount(count);
   }
 
   Widget _buildBody() {

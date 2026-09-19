@@ -21,23 +21,45 @@ extension _MediaDetailTvSeasonChips on _MediaDetailScreenState {
   static const double _tvSeasonChipGap = 10;
   static const double _tvSeasonChipRowBottomGap = 14;
 
+  /// De randen die per constructie altijd meetellen, gefocust of niet.
+  ///
+  /// De chip tekent zelf een `Border.all(width: 1)`, en `FocusableWrapper`
+  /// legt er in `FocusIndicatorMode.ring` zonder `focusShapeBorder` een
+  /// `FocusTheme.focusDecoration` omheen met `focusBorderWidth`. Allebei zijn
+  /// het `BoxDecoration`-borders, en een `Container` legt de dimensies van
+  /// zijn border als padding om het kind: transparant of niet, ze kosten
+  /// hoogte. Ze schalen niet mee, want geen van beide breedtes doet dat.
+  static const double _tvSeasonChipBorderInset = 2 * (1 + FocusTheme.focusBorderWidth);
+
   /// The chip row's own height, excluding the gap to whatever sits below it.
   /// Measured, not guessed, for the same reason `_unifiedSourceLineHeight`
   /// gives: a guessed line-height multiplier and the real render drift apart,
   /// and this number feeds a height *reservation* that must not undershoot.
+  ///
+  /// The style comes from `Theme.of(context).textTheme.bodyMedium`, not
+  /// `DefaultTextStyle.of(context).style`: `context` here is
+  /// `_MediaDetailScreenState`'s own `BuildContext`, which sits *above* the
+  /// `Scaffold` this same State's `build` constructs a few calls down. That
+  /// `Scaffold` is a descendant of this context, never an ancestor, so
+  /// `DefaultTextStyle.of` here resolves Flutter's fallback debug style
+  /// (48px monospace, no line-height multiplier) instead of the app's real
+  /// themed text style the live chip's `Text` actually renders with several
+  /// layers further down, where a `Material` (the same `Scaffold`) is an
+  /// ancestor. `Theme.of` does not depend on that ancestry, and returns the
+  /// same `bodyMedium` a `Material` descendant's `DefaultTextStyle` is built
+  /// from, so a measurement taken from either context agrees.
   double _tvDetailSeasonChipContentHeight(double scale) {
+    final style = Theme.of(context).textTheme.bodyMedium ?? DefaultTextStyle.of(context).style;
     final painter = TextPainter(
       text: TextSpan(
         text: 'Mg',
-        style: DefaultTextStyle.of(
-          context,
-        ).style.copyWith(fontSize: _tvSeasonChipFontSize * scale, fontWeight: FontWeight.w600),
+        style: style.copyWith(fontSize: _tvSeasonChipFontSize * scale, fontWeight: FontWeight.w600),
       ),
       textDirection: Directionality.of(context),
     )..layout();
     final textHeight = painter.height;
     painter.dispose();
-    return textHeight + (2 * _tvSeasonChipPaddingVertical * scale);
+    return textHeight + (2 * _tvSeasonChipPaddingVertical * scale) + _tvSeasonChipBorderInset;
   }
 
   /// The full band this row occupies above the rail, gap included — what a

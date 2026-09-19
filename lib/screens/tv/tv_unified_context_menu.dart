@@ -26,7 +26,10 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
 import '../../media/media_item.dart';
@@ -44,6 +47,7 @@ import '../../services/unified_action_outcome.dart';
 import '../../services/watch_actions.dart';
 import '../../services/watchlist_ui_actions.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/formatters.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/provider_extensions.dart';
 import '../../widgets/overlay_sheet.dart';
@@ -116,6 +120,20 @@ Future<void> showTvUnifiedContextMenu(
   final navigationActions = _availableNavigationActions(group);
   final hasResumeProgress = group.watchState.hasActiveProgress;
 
+  // CTX2. `hasActiveProgress` bepaalt het woord op de rij: hij komt uit
+  // `group.watchState`, een selectie die onafhankelijk is van
+  // `group.representativeSource` (`selectRepresentativeWatchState` tegenover
+  // `selectRepresentativeSource`), dus de twee kunnen op een meerbronnengroep
+  // naar een andere bron wijzen. `resumeRemaining` wordt daarom hier één keer
+  // berekend en aan zowel de rij als de kop (metaLine, CTX1) doorgegeven, in
+  // plaats van dat elk hem apart uit `group.representativeSource.item` leest:
+  // dat zou tijd kunnen tonen op een rij die "Afspelen" zegt, of een getal dat
+  // niet bij de bron hoort waarvan `hasActiveProgress` afkomt.
+  final resumeItem = group.representativeSource.item;
+  final resumeRemaining = hasResumeProgress
+      ? formatRemainingTime(resumeItem.durationMs, resumeItem.viewOffsetMs)
+      : null;
+
   // Run *after* the sheet is gone rather than from inside it: the extra entry
   // (and now a navigation action) opens another panel or pushes a route, and
   // doing that from the builder context of the sheet still closing puts two
@@ -131,6 +149,8 @@ Future<void> showTvUnifiedContextMenu(
       title: representative.displayTitle,
       year: representative.year,
       artwork: artwork,
+      metaLine: unifiedContextMenuMetaLine(group, resumeRemaining: resumeRemaining),
+      resumeRemaining: resumeRemaining,
       navigationActions: navigationActions,
       navigationLabel: (action) => labelForUnifiedNavigationAction(action, hasResumeProgress: hasResumeProgress),
       actions: actions,
@@ -272,6 +292,34 @@ String labelForUnifiedGroupAction(UnifiedGroupAction action) => switch (action) 
   UnifiedGroupAction.removeFromContinueWatching => t.mediaMenu.removeFromContinueWatching,
 };
 
+/// Het icoon bij [labelForUnifiedGroupAction], gedeeld door de TV- en de
+/// mobiele variant van hetzelfde menu.
+///
+/// Stond in `mobile_unified_context_menu.dart` en verhuisde hierheen toen de
+/// TV-variant hem ook nodig had (CTX3). Naast het label, want een actie die
+/// hier een regel krijgt en daar niet levert een menu op waarin één rij geen
+/// icoon heeft.
+IconData iconForUnifiedGroupAction(UnifiedGroupAction action) => switch (action) {
+  UnifiedGroupAction.markWatched => Symbols.check_circle_outline_rounded,
+  UnifiedGroupAction.markUnwatched => Symbols.remove_circle_outline_rounded,
+  UnifiedGroupAction.addToWatchlist => Symbols.bookmark_add_rounded,
+  UnifiedGroupAction.removeFromWatchlist => Symbols.bookmark_remove_rounded,
+  UnifiedGroupAction.rate => Symbols.star_rounded,
+  UnifiedGroupAction.removeFromContinueWatching => Symbols.close_rounded,
+};
+
+/// Het icoon bij [labelForUnifiedNavigationAction].
+///
+/// Hervatten en Afspelen delen er een: het is dezelfde actie met een ander
+/// startpunt, en `replay` naast `play_arrow` zou suggereren dat Hervatten
+/// opnieuw begint, wat juist is wat "Afspelen vanaf het begin" doet.
+IconData iconForUnifiedNavigationAction(UnifiedNavigationAction action) => switch (action) {
+  UnifiedNavigationAction.playOrResume => Symbols.play_arrow_rounded,
+  UnifiedNavigationAction.playFromBeginning => Symbols.replay_rounded,
+  UnifiedNavigationAction.moreInfo => Symbols.info_rounded,
+  UnifiedNavigationAction.changeSource => Symbols.swap_horiz_rounded,
+};
+
 /// [hasResumeProgress] picks "Afspelen" or "Hervatten" for
 /// [UnifiedNavigationAction.playOrResume] — the same rule the TV Home hero
 /// pill uses (`resumeFractionFor`/`UnifiedWatchState.hasActiveProgress`), so
@@ -284,6 +332,38 @@ String labelForUnifiedNavigationAction(UnifiedNavigationAction action, {required
       UnifiedNavigationAction.moreInfo => t.tvContextMenu.moreInfo,
       UnifiedNavigationAction.changeSource => t.tvContextMenu.changeSource,
     };
+
+/// Mockup 12's stille regel onder de titel: genre, duur, bronnen, kijktijd.
+///
+/// Elk deel komt uit de helper die de rest van de app er al voor gebruikt, en
+/// een deel zonder waarde verdwijnt in plaats van leeg mee te doen. Eén genre,
+/// niet de hele lijst: de kop is twee regels breed naast een poster van 74
+/// logische pixels, en een film met zes genres zou de duur en het
+/// bronnenaantal eruit duwen.
+///
+/// [resumeRemaining] is de al berekende waarde die de hervat-rij ook krijgt
+/// (CTX2), niet een eigen herberekening: `group.watchState.hasActiveProgress`
+/// en `group.representativeSource` zijn twee onafhankelijke selecties
+/// (`selectRepresentativeWatchState` tegenover `selectRepresentativeSource`,
+/// zie `grouping_service.dart`), dus een tweede berekening hier zou op een
+/// meerbronnengroep een ander getal kunnen geven dan de rij toont, of tijd
+/// tonen terwijl de rij nog "Afspelen" zegt. Dezelfde waarde doorgeven maakt
+/// dat structureel onmogelijk in plaats van toevallig gelijk.
+///
+/// Geeft nooit null: een groep zonder bron bestaat niet, dus het
+/// bronnenaantal is er altijd. Het retourtype is toch nullable zodat een
+/// latere wijziging aan die aanname niet stilzwijgend een lege regel tekent.
+String? unifiedContextMenuMetaLine(UnifiedMediaGroup group, {String? resumeRemaining}) {
+  final item = group.representativeSource.item;
+  final genres = item.genres;
+  final parts = <String>[
+    if (genres != null && genres.isNotEmpty) genres.first,
+    if (item.durationMs != null && item.durationMs! > 0) formatDurationTextual(item.durationMs!),
+    formatSourceCount(group.sources.length),
+    ?resumeRemaining,
+  ];
+  return parts.isEmpty ? null : toBulletedString(parts);
+}
 
 /// Runs [action] against every source in [sources] and reports honestly.
 ///
@@ -520,6 +600,8 @@ class _ActionMenuPanel extends StatelessWidget {
     required this.title,
     required this.year,
     required this.artwork,
+    required this.metaLine,
+    required this.resumeRemaining,
     required this.navigationActions,
     required this.navigationLabel,
     required this.actions,
@@ -533,6 +615,16 @@ class _ActionMenuPanel extends StatelessWidget {
   final String title;
   final int? year;
   final Widget? artwork;
+
+  /// CTX1. Door de aanroeper berekend en niet hier, om dezelfde reden als
+  /// `navigationLabel`: dit paneel krijgt platte waarden en kent de
+  /// [UnifiedMediaGroup] niet.
+  final String? metaLine;
+
+  /// CTX2. Alleen gevuld wanneer er werkelijk iets te hervatten valt, en dan
+  /// alleen op de rij die "Hervatten" heet. Net als [metaLine] berekend door de
+  /// aanroeper: dit paneel kent de groep niet.
+  final String? resumeRemaining;
   final List<UnifiedNavigationAction> navigationActions;
   final String Function(UnifiedNavigationAction) navigationLabel;
   final List<UnifiedGroupAction> actions;
@@ -576,13 +668,29 @@ class _ActionMenuPanel extends StatelessWidget {
 
     Widget navRow(UnifiedNavigationAction action) {
       final label = navigationLabel(action);
-      final row = TvCatalogOptionRow(
-        key: ValueKey(action),
-        label: label,
-        semanticLabel: t.tvContextMenu.menuSemantics(index: rowIndex + 1, count: totalRows, label: label),
-        isSelected: false,
-        scale: scale,
-        onPressed: () => onChooseNavigation(action),
+      // CTX2: alleen de hervat-rij. "Afspelen vanaf het begin" heeft per
+      // definitie de hele film voor zich, en "Meer info" en "Bron wijzigen"
+      // gaan helemaal niet over tijd.
+      final secondary = action == UnifiedNavigationAction.playOrResume ? resumeRemaining : null;
+      // `state` is een closure die pas bij het uitlezen draait, en `rowIndex`
+      // is dan allang doorgeteld: het lokale `index` bevriest de waarde op
+      // het moment dat deze rij zelf wordt opgebouwd.
+      final index = rowIndex;
+      final row = AutomationNode(
+        id: AutomationIds.sheetContextMenuItem,
+        instance: '$index',
+        role: 'list.item',
+        state: () => {'label': label, 'secondary': secondary},
+        child: TvCatalogOptionRow(
+          key: ValueKey(action),
+          label: label,
+          secondary: secondary,
+          leadingIcon: iconForUnifiedNavigationAction(action),
+          semanticLabel: t.tvContextMenu.menuSemantics(index: index + 1, count: totalRows, label: label),
+          isSelected: false,
+          scale: scale,
+          onPressed: () => onChooseNavigation(action),
+        ),
       );
       rowIndex++;
       return row;
@@ -594,69 +702,89 @@ class _ActionMenuPanel extends StatelessWidget {
       // Translated into sixteen locales and, until now, called from nowhere:
       // this panel contained no `Semantics(` at all and the row's only
       // accessibility output was the bare action name.
-      final row = TvCatalogOptionRow(
-        key: ValueKey(action),
-        label: label,
-        semanticLabel: t.tvContextMenu.menuSemantics(index: rowIndex + 1, count: totalRows, label: label),
-        // Nothing here is a setting, so nothing is "the current answer". A
-        // selected tint on an action row would read as "this one is already
-        // on".
-        isSelected: false,
-        scale: scale,
-        onPressed: () => onChoose(action),
+      final index = rowIndex;
+      final row = AutomationNode(
+        id: AutomationIds.sheetContextMenuItem,
+        instance: '$index',
+        role: 'list.item',
+        state: () => {'label': label, 'secondary': null},
+        child: TvCatalogOptionRow(
+          key: ValueKey(action),
+          label: label,
+          leadingIcon: iconForUnifiedGroupAction(action),
+          semanticLabel: t.tvContextMenu.menuSemantics(index: index + 1, count: totalRows, label: label),
+          // Nothing here is a setting, so nothing is "the current answer". A
+          // selected tint on an action row would read as "this one is already
+          // on".
+          isSelected: false,
+          scale: scale,
+          onPressed: () => onChoose(action),
+        ),
       );
       rowIndex++;
       return row;
     }
 
-    return DecoratedBox(
-      decoration: tvPanelDecoration(mono, radius),
-      child: Padding(
-        padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _MenuHeader(scale: scale, title: title, year: year, artwork: artwork),
-            SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (final (i, action) in leadingNav.indexed) ...[
-                      if (i > 0) SizedBox(height: TvSourcePickerLayout.rowGap * scale),
-                      navRow(action),
+    return AutomationNode(
+      id: AutomationIds.sheetContextMenu,
+      role: 'sheet',
+      state: () => {'row_count': totalRows},
+      child: DecoratedBox(
+        decoration: tvPanelDecoration(mono, radius),
+        child: Padding(
+          padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _MenuHeader(scale: scale, title: title, year: year, artwork: artwork, metaLine: metaLine),
+              SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final (i, action) in leadingNav.indexed) ...[
+                        if (i > 0) SizedBox(height: TvSourcePickerLayout.rowGap * scale),
+                        navRow(action),
+                      ],
+                      if (leadingNav.isNotEmpty && actions.isNotEmpty) divider(),
+                      for (final (i, action) in actions.indexed) ...[
+                        if (i > 0) SizedBox(height: TvSourcePickerLayout.rowGap * scale),
+                        writeRow(action),
+                      ],
+                      if (hasChangeSource) ...[
+                        if (leadingNav.isNotEmpty || actions.isNotEmpty) divider(),
+                        navRow(UnifiedNavigationAction.changeSource),
+                      ],
+                      if (extraActionLabel != null) ...[
+                        divider(),
+                        TvCatalogOptionRow(
+                          key: const ValueKey('tvContextMenuExtraAction'),
+                          label: extraActionLabel!,
+                          // Vandaag is dit alleen "Home aanpassen" (ROW1).
+                          // tune_rounded is de enige uit de gecheckte set die
+                          // "stel dit scherm in" zegt zonder een tweede
+                          // betekenis te dragen. Komt er een tweede extra-actie
+                          // bij, dan hoort het icoon in TvContextMenuExtraAction
+                          // te gaan, niet hier hardcoded.
+                          leadingIcon: Symbols.tune_rounded,
+                          isSelected: false,
+                          scale: scale,
+                          onPressed: onChooseExtra!,
+                        ),
+                      ],
                     ],
-                    if (leadingNav.isNotEmpty && actions.isNotEmpty) divider(),
-                    for (final (i, action) in actions.indexed) ...[
-                      if (i > 0) SizedBox(height: TvSourcePickerLayout.rowGap * scale),
-                      writeRow(action),
-                    ],
-                    if (hasChangeSource) ...[
-                      if (leadingNav.isNotEmpty || actions.isNotEmpty) divider(),
-                      navRow(UnifiedNavigationAction.changeSource),
-                    ],
-                    if (extraActionLabel != null) ...[
-                      divider(),
-                      TvCatalogOptionRow(
-                        key: const ValueKey('tvContextMenuExtraAction'),
-                        label: extraActionLabel!,
-                        isSelected: false,
-                        scale: scale,
-                        onPressed: onChooseExtra!,
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-            SizedBox(height: TvSourcePickerLayout.footerGap * scale),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [TvPanelButton(scale: scale, label: t.common.close, onPressed: onClose, primary: false)],
-            ),
-          ],
+              SizedBox(height: TvSourcePickerLayout.footerGap * scale),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [TvPanelButton(scale: scale, label: t.common.close, onPressed: onClose, primary: false)],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -668,12 +796,22 @@ class _ActionMenuPanel extends StatelessWidget {
 /// source picker's own header, and this menu is not asking "where", only
 /// "what next".
 class _MenuHeader extends StatelessWidget {
-  const _MenuHeader({required this.scale, required this.title, required this.year, required this.artwork});
+  const _MenuHeader({
+    required this.scale,
+    required this.title,
+    required this.year,
+    required this.artwork,
+    required this.metaLine,
+  });
 
   final double scale;
   final String title;
   final int? year;
   final Widget? artwork;
+
+  /// CTX1: mockup 12's subregel. Null wanneer er niets over de titel te zeggen
+  /// valt, en dan tekent de kop precies wat hij ervoor tekende.
+  final String? metaLine;
 
   @override
   Widget build(BuildContext context) {
@@ -702,17 +840,36 @@ class _MenuHeader extends StatelessWidget {
         ),
         SizedBox(width: TvSourcePickerLayout.headerGap * scale),
         Expanded(
-          child: Text(
-            year == null ? title : '$title ($year)',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: mono.text.withValues(alpha: TvSourcePickerLayout.inkPrimary),
-              fontSize: TvSourcePickerLayout.titleFontSize * scale,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.1,
-              height: 1.1,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                year == null ? title : '$title ($year)',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: mono.text.withValues(alpha: TvSourcePickerLayout.inkPrimary),
+                  fontSize: TvSourcePickerLayout.titleFontSize * scale,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.1,
+                  height: 1.1,
+                ),
+              ),
+              if (metaLine != null) ...[
+                SizedBox(height: TvSourcePickerLayout.rowLineGap * scale),
+                Text(
+                  metaLine!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: mono.text.withValues(alpha: TvSourcePickerLayout.inkSecondary),
+                    fontSize: TvSourcePickerLayout.subtitleFontSize * scale,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ],

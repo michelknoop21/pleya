@@ -10,7 +10,6 @@
 /// `representativeSource`).
 library;
 
-import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -69,7 +68,7 @@ Future<void> showMobileUnifiedContextMenu(
           for (var i = 0; i < actions.length; i++)
             AppMenuItem<UnifiedGroupAction>(
               value: actions[i],
-              icon: _iconForUnifiedGroupAction(actions[i]),
+              icon: iconForUnifiedGroupAction(actions[i]),
               label: labelForUnifiedGroupAction(actions[i]),
               child: AutomationNode(
                 id: AutomationIds.sheetContextMenuItem,
@@ -92,12 +91,3 @@ Future<void> showMobileUnifiedContextMenu(
     onChanged: onChanged,
   );
 }
-
-IconData _iconForUnifiedGroupAction(UnifiedGroupAction action) => switch (action) {
-  UnifiedGroupAction.markWatched => Symbols.check_circle_outline_rounded,
-  UnifiedGroupAction.markUnwatched => Symbols.remove_circle_outline_rounded,
-  UnifiedGroupAction.addToWatchlist => Symbols.bookmark_add_rounded,
-  UnifiedGroupAction.removeFromWatchlist => Symbols.bookmark_remove_rounded,
-  UnifiedGroupAction.rate => Symbols.star_rounded,
-  UnifiedGroupAction.removeFromContinueWatching => Symbols.close_rounded,
-};
