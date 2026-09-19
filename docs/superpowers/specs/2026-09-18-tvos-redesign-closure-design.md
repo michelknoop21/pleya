@@ -377,7 +377,7 @@ TV8 bezit de historische Verify-gaten, niet de journeys van vers werk. Dat onder
 omvang: wat TV2 tot en met TV7 bouwen brengt zijn eigen scenario mee, TV8 haalt in wat al gebouwd
 was toen er nog geen journey bij hoorde.
 
-Ook zo blijft het een bouwronde. Er zijn vandaag 47 tvOS-scenario's in `pleya_verify/scenarios/`,
+Ook zo blijft het een bouwronde. Er zijn vandaag 35 tvOS-scenario's in `pleya_verify/scenarios/`,
 waaronder `tvos.detail.context-menu.yaml` (TV3, CTX1 tot en met CTX3). Detail zelf, zoeken, filters,
 sorteren, kijklijst, aanvragen, activiteit, collectie, persoon en bronkeuze hebben nog geen enkele.
 Het plan dat hieruit volgt breekt dat op in losse taken per oppervlak.
