@@ -164,6 +164,7 @@ class TvCatalogOptionRow extends StatefulWidget {
     required this.scale,
     required this.onPressed,
     this.secondary,
+    this.leadingIcon,
     this.enabled = true,
     this.focusNode,
     this.onNavigateUp,
@@ -190,6 +191,15 @@ class TvCatalogOptionRow extends StatefulWidget {
 
   /// A quieter second line — the server a library belongs to, for instance.
   final String? secondary;
+
+  /// Een icoon vóór het label.
+  ///
+  /// CTX3: de rijen van het hoofdstuk-23-contextmenu dragen er een, het
+  /// sorteer- en het filterpaneel niet. Daar is een rij een antwoord op een
+  /// vraag en zegt het vinkje rechts al welk antwoord geldt; een icoon links
+  /// zou daar een tweede statusas suggereren die er niet is. Default null, dus
+  /// die twee aanroepers blijven letterlijk gelijk.
+  final IconData? leadingIcon;
 
   final bool isSelected;
   final bool enabled;
@@ -255,6 +265,16 @@ class _TvCatalogOptionRowState extends State<TvCatalogOptionRow> {
         ),
         child: Row(
           children: [
+            if (widget.leadingIcon != null) ...[
+              Icon(
+                widget.leadingIcon,
+                // Dezelfde maat als het vinkje rechts, zodat een rij met beide
+                // symmetrisch leest.
+                size: TvSourcePickerLayout.rowPrimaryFontSize * scale * 1.15,
+                color: mono.text.withValues(alpha: ink),
+              ),
+              SizedBox(width: TvSourcePickerLayout.rowBadgeGap * scale),
+            ],
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,

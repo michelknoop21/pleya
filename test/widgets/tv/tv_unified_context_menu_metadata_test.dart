@@ -19,6 +19,7 @@ import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
+import 'package:pleya/screens/tv/tv_unified_context_actions.dart';
 import 'package:pleya/screens/tv/tv_unified_context_menu.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/formatters.dart';
@@ -175,5 +176,59 @@ void main() {
 
     expect(withSecondary, hasLength(1));
     expect(withSecondary.single.label, t.common.resume);
+  });
+
+  // ---------------------------------------------------------------------------
+  // CTX3: elke actierij draagt een icoon
+  // ---------------------------------------------------------------------------
+
+  testWidgets('every row in the menu carries a leading icon', (tester) async {
+    await openMenu(tester, _group(sourceCount: 2));
+
+    final rows = tester.widgetList<TvCatalogOptionRow>(find.byType(TvCatalogOptionRow)).toList();
+    expect(rows, isNotEmpty);
+
+    for (final row in rows) {
+      expect(
+        row.leadingIcon,
+        isNotNull,
+        reason: 'a menu where one row has an icon and the next does not reads as broken, not as quiet',
+      );
+    }
+  });
+
+  testWidgets('the navigation rows use the icons their action means', (tester) async {
+    await openMenu(tester, _group(sourceCount: 2));
+
+    final rows = tester.widgetList<TvCatalogOptionRow>(find.byType(TvCatalogOptionRow)).toList();
+
+    expect(
+      rows.firstWhere((r) => r.label == t.common.play).leadingIcon,
+      iconForUnifiedNavigationAction(UnifiedNavigationAction.playOrResume),
+    );
+    expect(
+      rows.firstWhere((r) => r.label == t.tvContextMenu.changeSource).leadingIcon,
+      iconForUnifiedNavigationAction(UnifiedNavigationAction.changeSource),
+    );
+  });
+
+  testWidgets('the sort panel row is unchanged and carries none', (tester) async {
+    // Dezelfde widget, andere aanroeper. CTX3 mag het sorteer- en filterpaneel
+    // niet meenemen: daar is een rij een antwoord op een vraag, geen actie.
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: InputModeTracker(
+            child: Scaffold(
+              body: TvCatalogOptionRow(label: 'Titel A tot Z', isSelected: true, scale: 1, onPressed: () {}),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TvCatalogOptionRow>(find.byType(TvCatalogOptionRow)).leadingIcon, isNull);
   });
 }

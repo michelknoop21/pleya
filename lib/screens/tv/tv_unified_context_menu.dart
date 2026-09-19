@@ -26,6 +26,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
@@ -282,6 +283,34 @@ String labelForUnifiedGroupAction(UnifiedGroupAction action) => switch (action) 
   UnifiedGroupAction.removeFromWatchlist => t.watchlist.remove,
   UnifiedGroupAction.rate => t.mediaMenu.rate,
   UnifiedGroupAction.removeFromContinueWatching => t.mediaMenu.removeFromContinueWatching,
+};
+
+/// Het icoon bij [labelForUnifiedGroupAction], gedeeld door de TV- en de
+/// mobiele variant van hetzelfde menu.
+///
+/// Stond in `mobile_unified_context_menu.dart` en verhuisde hierheen toen de
+/// TV-variant hem ook nodig had (CTX3). Naast het label, want een actie die
+/// hier een regel krijgt en daar niet levert een menu op waarin één rij geen
+/// icoon heeft.
+IconData iconForUnifiedGroupAction(UnifiedGroupAction action) => switch (action) {
+  UnifiedGroupAction.markWatched => Symbols.check_circle_outline_rounded,
+  UnifiedGroupAction.markUnwatched => Symbols.remove_circle_outline_rounded,
+  UnifiedGroupAction.addToWatchlist => Symbols.bookmark_add_rounded,
+  UnifiedGroupAction.removeFromWatchlist => Symbols.bookmark_remove_rounded,
+  UnifiedGroupAction.rate => Symbols.star_rounded,
+  UnifiedGroupAction.removeFromContinueWatching => Symbols.close_rounded,
+};
+
+/// Het icoon bij [labelForUnifiedNavigationAction].
+///
+/// Hervatten en Afspelen delen er een: het is dezelfde actie met een ander
+/// startpunt, en `replay` naast `play_arrow` zou suggereren dat Hervatten
+/// opnieuw begint, wat juist is wat "Afspelen vanaf het begin" doet.
+IconData iconForUnifiedNavigationAction(UnifiedNavigationAction action) => switch (action) {
+  UnifiedNavigationAction.playOrResume => Symbols.play_arrow_rounded,
+  UnifiedNavigationAction.playFromBeginning => Symbols.replay_rounded,
+  UnifiedNavigationAction.moreInfo => Symbols.info_rounded,
+  UnifiedNavigationAction.changeSource => Symbols.swap_horiz_rounded,
 };
 
 /// [hasResumeProgress] picks "Afspelen" or "Hervatten" for
@@ -630,6 +659,7 @@ class _ActionMenuPanel extends StatelessWidget {
         // definitie de hele film voor zich, en "Meer info" en "Bron wijzigen"
         // gaan helemaal niet over tijd.
         secondary: action == UnifiedNavigationAction.playOrResume ? resumeRemaining : null,
+        leadingIcon: iconForUnifiedNavigationAction(action),
         semanticLabel: t.tvContextMenu.menuSemantics(index: rowIndex + 1, count: totalRows, label: label),
         isSelected: false,
         scale: scale,
@@ -648,6 +678,7 @@ class _ActionMenuPanel extends StatelessWidget {
       final row = TvCatalogOptionRow(
         key: ValueKey(action),
         label: label,
+        leadingIcon: iconForUnifiedGroupAction(action),
         semanticLabel: t.tvContextMenu.menuSemantics(index: rowIndex + 1, count: totalRows, label: label),
         // Nothing here is a setting, so nothing is "the current answer". A
         // selected tint on an action row would read as "this one is already
@@ -693,6 +724,13 @@ class _ActionMenuPanel extends StatelessWidget {
                       TvCatalogOptionRow(
                         key: const ValueKey('tvContextMenuExtraAction'),
                         label: extraActionLabel!,
+                        // Vandaag is dit alleen "Home aanpassen" (ROW1).
+                        // tune_rounded is de enige uit de gecheckte set die
+                        // "stel dit scherm in" zegt zonder een tweede
+                        // betekenis te dragen. Komt er een tweede extra-actie
+                        // bij, dan hoort het icoon in TvContextMenuExtraAction
+                        // te gaan, niet hier hardcoded.
+                        leadingIcon: Symbols.tune_rounded,
                         isSelected: false,
                         scale: scale,
                         onPressed: onChooseExtra!,
