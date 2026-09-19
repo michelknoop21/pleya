@@ -35,11 +35,23 @@ if [ -z "$current" ]; then
   exit 1
 fi
 
-# Highest vX.Y.Z tag by version order, not lexical order (v1.0.9 < v1.0.10).
-latest="$(git ls-remote --tags --refs "$REPO" 2>/dev/null |
-  sed -n 's#.*refs/tags/v##p' | sort -V | tail -1)"
-if [ -z "$latest" ]; then
-  echo "Could not reach $REPO to list tags." >&2
+# Releases historically used vX.Y.Z and now use X.Y.Z. Normalize the
+# version for project files, but retain the actual tag spelling for compare
+# and ref lookups so a tag-style change cannot hide a newer release.
+tag_rows="$(git ls-remote --tags --refs "$REPO" 2>/dev/null |
+  sed 's#.*refs/tags/##' |
+  awk '/^v?[0-9]+(\.[0-9]+)*$/ { tag=$0; ver=$0; sub(/^v/, "", ver); print ver "|" tag }' |
+  sort -t '|' -k1,1V)"
+latest_line="$(printf '%s\n' "$tag_rows" | tail -1)"
+latest="${latest_line%%|*}"
+latest_tag="${latest_line#*|}"
+current_tag="$(printf '%s\n' "$tag_rows" | awk -F '|' -v v="$current" '$1 == v { print $2; exit }')"
+if [ -z "$latest" ] || [ -z "$latest_tag" ]; then
+  echo "Could not reach $REPO to list version tags." >&2
+  exit 1
+fi
+if [ -z "$current_tag" ]; then
+  echo "Could not resolve the pinned MPVKit version $current to a repository tag." >&2
   exit 1
 fi
 
@@ -52,10 +64,10 @@ if [ "$current" = "$latest" ]; then
 fi
 
 echo
-echo "Changes since v$current:"
+echo "Changes since $current_tag:"
 # The compare payload also carries base/merge-base commits; take only the
 # commit list, so the range reads as the changes actually being pulled in.
-curl -fsSL "https://api.github.com/repos/edde746/MPVKit/compare/v$current...v$latest" 2>/dev/null |
+curl -fsSL "https://api.github.com/repos/edde746/MPVKit/compare/$current_tag...$latest_tag" 2>/dev/null |
   python3 -c 'import json,sys
 for c in json.load(sys.stdin).get("commits", []):
     print("  - " + c["commit"]["message"].splitlines()[0])' ||
@@ -63,13 +75,13 @@ for c in json.load(sys.stdin).get("commits", []):
 
 if [ "$BUMP" -eq 0 ]; then
   echo
-  echo "Run 'scripts/check_mpvkit_update.sh --bump' to move the pin to v$latest."
+  echo "Run 'scripts/check_mpvkit_update.sh --bump' to move the pin to $latest_tag."
   exit 1
 fi
 
-rev="$(git ls-remote --tags --refs "$REPO" "refs/tags/v$latest" | cut -f1)"
+rev="$(git ls-remote --tags --refs "$REPO" "refs/tags/$latest_tag" | cut -f1)"
 if [ -z "$rev" ]; then
-  echo "Could not resolve the commit for v$latest." >&2
+  echo "Could not resolve the commit for $latest_tag." >&2
   exit 1
 fi
 
@@ -86,4 +98,4 @@ while IFS= read -r f; do
 done < <(find . -path ./build -prune -o -name Package.resolved -print | grep -v '/build/')
 
 echo
-echo "Pin moved to v$latest. Resolve packages in Xcode and verify playback."
+echo "Pin moved to $latest_tag. Resolve packages in Xcode and verify playback."

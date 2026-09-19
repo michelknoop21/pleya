@@ -40,20 +40,26 @@ sources.each do |src|
   puts "[add ] #{src[:name]}"
 end
 
-# Swift Package: MPVKit.
+# Swift Package: MPVKit. The iOS project is the source of truth for the
+# exact release. Re-running this wiring script must never downgrade tvOS to a
+# stale commit revision after a dependency bump.
 pkg_url = 'https://github.com/edde746/MPVKit'
-pkg_revision = '1fc33029bc0317583866c62811dc0ab2aa2415b6'
+ios_pbxproj_path = File.expand_path('../../ios/Runner.xcodeproj/project.pbxproj', __dir__)
+ios_pbxproj = File.read(ios_pbxproj_path)
+pkg_version = ios_pbxproj[/XCRemoteSwiftPackageReference "MPVKit".*?kind = exactVersion;.*?version = ([0-9.]+);/m, 1]
+raise "Could not read the exact MPVKit version from #{ios_pbxproj_path}" unless pkg_version
+
 existing_pkg = project.root_object.package_references.find do |p|
   p.repositoryURL == pkg_url rescue false
 end
 
 if existing_pkg
-  existing_pkg.requirement = { 'kind' => 'revision', 'revision' => pkg_revision }
-  puts "[set ] MPVKit SPM package revision"
+  existing_pkg.requirement = { 'kind' => 'exactVersion', 'version' => pkg_version }
+  puts "[set ] MPVKit SPM package exact version #{pkg_version}"
 else
   pkg = project.new(Xcodeproj::Project::Object::XCRemoteSwiftPackageReference)
   pkg.repositoryURL = pkg_url
-  pkg.requirement = { 'kind' => 'revision', 'revision' => pkg_revision }
+  pkg.requirement = { 'kind' => 'exactVersion', 'version' => pkg_version }
   project.root_object.package_references << pkg
 
   product = project.new(Xcodeproj::Project::Object::XCSwiftPackageProductDependency)
