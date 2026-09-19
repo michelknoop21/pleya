@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../focus/focus_memory_tracker.dart';
 import '../../focus/focusable_action_bar.dart';
 import '../../focus/focusable_button.dart';
 import '../../i18n/strings.g.dart';
@@ -30,6 +31,7 @@ import '../../utils/platform_detector.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/overlay_sheet.dart';
+import '../../widgets/tv/tv_page_chip_bar.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import '../tv/tv_root_shell.dart';
 import 'live_tv_favorites.dart';
@@ -64,6 +66,13 @@ class _LiveTvScreenState extends State<LiveTvScreen>
 
   // App bar action bar
   final _actionBarKey = GlobalKey<FocusableActionBarState>();
+
+  /// Eigendom van de State, niet van de rij.
+  ///
+  /// `TvPageChipBar` zegt het zelf: een chiprij herbouwt bij elke
+  /// filterwissel en bij elke binnenkomende gidspagina, en een node die onder
+  /// de remote wordt herbouwd is een remote die nergens landt.
+  final _chipNodes = FocusMemoryTracker();
 
   List<LiveTvChannel> _channels = [];
   bool _isLoading = true;
@@ -191,6 +200,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
     _guideTabFocusNode.dispose();
     _whatsOnTabFocusNode.dispose();
     _recordingsTabFocusNode.dispose();
+    _chipNodes.dispose();
     disposeTabNavigation();
     super.dispose();
   }
@@ -686,6 +696,79 @@ class _LiveTvScreenState extends State<LiveTvScreen>
     ];
   }
 
+  /// De ene secundaire laag van PB-8, in de capsuletaal van mockup 17.
+  ///
+  /// Drie tabs en vier acties op één rij. De tabs dragen `selected` op de
+  /// actieve; de acties dragen hem alleen wanneer ze een aan-uitstand hebben,
+  /// en dat is er precies één: het favorietenfilter. Een outline op
+  /// "Herladen" zou lezen als "herladen staat aan".
+  ///
+  /// De acties komen uit `_actionBarActions`, dezelfde lijst die de desktop-app
+  /// bar krijgt, zodat de condities niet op twee plekken uit elkaar kunnen
+  /// lopen. Alleen de presentatie verschilt.
+  Widget _buildTvChipBar(BuildContext context) {
+    final isRecordings = _currentTab == LiveTvTab.recordings;
+
+    final chips = <TvPageChip>[
+      for (var i = 0; i < _visibleTabs.length; i++)
+        TvPageChip(
+          key: 'liveTvTab_${_visibleTabs[i].name}',
+          label: _getTabLabel(_visibleTabs[i]),
+          selected: tabController.index == i,
+          onSelect: () {
+            if (tabController.index == i) {
+              _focusCurrentTab();
+              return;
+            }
+            setState(() => tabController.index = i);
+          },
+        ),
+      for (final action in _actionBarActions(isRecordings))
+        TvPageChip(
+          key: _chipKeyForAction(action),
+          label: action.tooltip ?? '',
+          icon: action.icon,
+          // `_toggleFavoritesFilter` is de enige actie met een stand, en de
+          // stand staat al in `_showFavoritesOnly`.
+          selected: action.onPressed == _toggleFavoritesFilter && _showFavoritesOnly,
+          onSelect: action.onPressed,
+        ),
+    ];
+
+    // De rij is bijgewerkt voordat de nodes zijn opgeruimd, dus een chip die
+    // net verdween neemt zijn node mee. Een gefocuste node weggooien geeft de
+    // primaire focus terug aan de omsluitende scope: een rij waar de remote
+    // niet in kan bewegen en niet uit kan komen. Dezelfde reden waarom
+    // TvRootShell en de bibliothekenkiezer allebei prunen.
+    _chipNodes.pruneExcept({for (final chip in chips) chip.key});
+
+    return SizedBox(
+      height: TvPageChipBar.heightFor(context),
+      child: TvPageChipBar(
+        singleLine: true,
+        nodes: _chipNodes,
+        automationInstance: 'liveTv',
+        chips: chips,
+        // UP uit de rij is de weg naar de topnav, en dat is dezelfde weg die
+        // `onTabBarBack` altijd al liep: op TV betekent `focusSidebar` de
+        // topnav (zie de doc van TvRootShell).
+        onExitUp: onTabBarBack,
+        onExitDown: _focusCurrentTab,
+      ),
+    );
+  }
+
+  /// Een stabiele sleutel per actie, afgeleid van wat de actie doet en niet van
+  /// zijn positie. De rij krimpt en groeit met de condities, en een
+  /// indexsleutel zou de focusnode van de ene actie aan de andere geven.
+  String _chipKeyForAction(FocusableAction action) {
+    final handler = action.onPressed;
+    if (handler == _toggleFavoritesFilter) return 'liveTvAction_favorites';
+    if (handler == _showReorderFavorites) return 'liveTvAction_reorder';
+    if (handler == _processRecordingRules) return 'liveTvAction_rules';
+    return 'liveTvAction_refresh';
+  }
+
   /// De kop van mockup 17: de paginanaam op de tokens die elke andere
   /// TV-pagina gebruikt, links uitgelijnd op de canonieke pagina-inset.
   ///
@@ -720,10 +803,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
               ),
             ),
           ),
-          // Task 3 zet hier de capsulerij neer. Tot dan houdt de bestaande
-          // tabchiprij deze plek, zodat het scherm tussen twee commits door
-          // niet onbedienbaar is.
-          Row(mainAxisSize: MainAxisSize.min, children: _buildTabChipItems()),
+          _buildTvChipBar(context),
         ],
       ),
     );

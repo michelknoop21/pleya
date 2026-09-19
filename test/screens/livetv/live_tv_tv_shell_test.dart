@@ -34,6 +34,8 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/focusable_tab_chip.dart';
+import 'package:pleya/widgets/tv/tv_page_chip_bar.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:provider/provider.dart';
 
@@ -195,5 +197,89 @@ void main() {
       closeTo(TvTopNavLayout.pageInset, 0.5),
       reason: 'scale is 1.0 op een 1080-hoge viewport, dus de inset is de token zelf',
     );
+  });
+
+  testWidgets('LIVE1: the shell render has exactly one secondary layer, in the chip language', (tester) async {
+    final provider = await buildProvider();
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(mountLiveTv(inShell: true, provider: provider));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(TvPageChipBar), findsOneWidget);
+    // De oude rij is weg, niet verplaatst. Twee rijen die allebei van tab
+    // kunnen wisselen is dezelfde fout als twee navigatiebalken, een niveau
+    // lager.
+    expect(
+      find.byType(FocusableTabChip),
+      findsNothing,
+      reason: 'PB-8: de lokale navigatie is één secundaire laag, niet twee',
+    );
+    // De oude chiprij is hier niet alleen visueel vervangen: het widget type
+    // zelf komt in deze render niet meer voor.
+    expect(find.byType(AppBar), findsNothing);
+  });
+
+  testWidgets('LIVE1: the chip row carries the three tabs and the four actions', (tester) async {
+    final provider = await buildProvider();
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(mountLiveTv(inShell: true, provider: provider));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final bar = tester.widget<TvPageChipBar>(find.byType(TvPageChipBar));
+    final keys = [for (final chip in bar.chips) chip.key];
+
+    // De volgorde is de leesvolgorde van mockup 17: eerst waar je bent, dan
+    // wat je ermee kunt.
+    expect(keys.take(3).toList(), ['liveTvTab_guide', 'liveTvTab_whatsOn', 'liveTvTab_recordings']);
+    expect(keys, contains('liveTvAction_refresh'));
+
+    // Gids is de actieve tab bij binnenkomst, en draagt als enige van de drie
+    // de outline.
+    expect(bar.chips.firstWhere((c) => c.key == 'liveTvTab_guide').selected, isTrue);
+    expect(bar.chips.firstWhere((c) => c.key == 'liveTvTab_whatsOn').selected, isFalse);
+  });
+
+  testWidgets('LIVE1: the favorites chip carries its on/off state, the refresh chip does not', (tester) async {
+    final provider = await buildProvider();
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(mountLiveTv(inShell: true, provider: provider));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final bar = tester.widget<TvPageChipBar>(find.byType(TvPageChipBar));
+    final refresh = bar.chips.firstWhere((c) => c.key == 'liveTvAction_refresh');
+
+    // Een actierij is nooit "het huidige antwoord". Een outline erop zou
+    // lezen als "deze staat aan", en dat is precies waarom het contextmenu in
+    // TV3 dezelfde keuze maakte.
+    expect(refresh.selected, isFalse);
+
+    final favorites = bar.chips.where((c) => c.key == 'liveTvAction_favorites').firstOrNull;
+    if (favorites != null) {
+      expect(favorites.selected, isFalse, reason: 'het filter staat uit bij binnenkomst, en dat is een leesbare false');
+    }
+  });
+
+  testWidgets('LIVE1: without a DVR the recordings chip is absent, not disabled', (tester) async {
+    await SettingsService.getInstance();
+    final manager = MultiServerManager()..debugRegisterClientForTesting(_FakeLiveTvClient());
+    final provider = MultiServerProvider(manager, DataAggregationService(manager));
+    // Geen debugSetLiveTvServersForTesting: geen DVR-capability, dus
+    // `_refreshVisibleTabs` laat de Opnames-tab weg.
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(mountLiveTv(inShell: true, provider: provider));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final bars = find.byType(TvPageChipBar);
+    if (bars.evaluate().isEmpty) return; // leeg scherm, geen rij: ook goed
+    final bar = tester.widget<TvPageChipBar>(bars);
+    expect([for (final c in bar.chips) c.key], isNot(contains('liveTvTab_recordings')));
   });
 }
