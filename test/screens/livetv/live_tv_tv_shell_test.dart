@@ -34,6 +34,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -161,5 +162,38 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.byType(AppBar), findsOneWidget, reason: 'desktop keeps the bar it always had');
+  });
+
+  testWidgets('LIVE1: the page heading sits on the canonical TV page inset', (tester) async {
+    // The 1920x1080 `SizedBox` in `mountLiveTv` only constrains layout; it does
+    // not drive `MediaQuery.sizeOf`, which flutter_test otherwise reports at
+    // its default 800x600. `TvLayoutConstants.scaleOf` falls back to
+    // `MediaQuery.sizeOf` whenever no `TvDisplayMetrics` is published (the
+    // lightweight `TvShellSurface` marker used here does not publish one,
+    // only the full `TvRootShell` does), so without this the scale clamps to
+    // its 0.85 floor and the assertion below is comparing against the wrong
+    // number, exactly the "1080-hoge viewport" the reason string assumes.
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final provider = buildProvider();
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(mountLiveTv(inShell: true, provider: provider));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final heading = find.text(t.liveTv.title);
+    expect(heading, findsOneWidget);
+
+    // Dezelfde linkerrand als elke andere TV-pagina. Een kop die zijn eigen
+    // inset kiest is precies wat de audit van 2 september 2026 twaalf keer
+    // mat, en wat `TvPageSurface` bestaat om te voorkomen.
+    expect(
+      tester.getTopLeft(heading).dx,
+      closeTo(TvTopNavLayout.pageInset, 0.5),
+      reason: 'scale is 1.0 op een 1080-hoge viewport, dus de inset is de token zelf',
+    );
   });
 }
