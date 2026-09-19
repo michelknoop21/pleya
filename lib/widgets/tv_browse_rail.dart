@@ -1266,7 +1266,7 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     );
   }
 
-  double _scale(BuildContext context) => TvBrowseRailLayout.scaleForSize(MediaQuery.sizeOf(context));
+  double _scale(BuildContext context) => TvLayoutConstants.scaleOf(context);
 
   double _horizontalInset(BuildContext context) => TvBrowseRailLayout.horizontalInsetForScale(_scale(context));
 
