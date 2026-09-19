@@ -97,6 +97,10 @@ void main() {
   }
 
   test('the meta line names genre, runtime, sources and remaining time, in that order', () {
+    // resumeRemaining is passed in exactly as showTvUnifiedContextMenu
+    // computes it, not recomputed here from the group's own item: the header
+    // and the resume row must read the same value, never two independent
+    // ones.
     final line = unifiedContextMenuMetaLine(
       _group(
         genres: const ['Science fiction', 'Adventure'],
@@ -104,6 +108,7 @@ void main() {
         viewOffsetMs: 3600000, // 1h in
         sourceCount: 2,
       ),
+      resumeRemaining: t.nowWatching.remaining(time: formatDurationTextual(9360000 - 3600000)),
     );
 
     expect(line, isNotNull);
@@ -127,6 +132,32 @@ void main() {
     // Er is altijd minstens één bron, dus dit kan niet null worden. De test
     // legt vast dat de functie dat weet en geen ' ·  · ' teruggeeft.
     expect(unifiedContextMenuMetaLine(_group()), isNot(contains('·')));
+  });
+
+  test('the header shows no remaining time when nothing is passed in, even with a stale offset', () {
+    // group.watchState.hasActiveProgress and group.representativeSource zijn
+    // twee onafhankelijke selecties (selectRepresentativeWatchState tegenover
+    // selectRepresentativeSource). Deze groep zet dat verschil expliciet op:
+    // de weergegeven bron draagt een viewOffsetMs alsof hij hervat kan worden,
+    // maar de groep zelf zegt "geen actieve voortgang". Geeft de functie hier
+    // zelf een resterende tijd terug in plaats van precies wat er is
+    // meegegeven, dan kan de kop tijd tonen op een kaart waarvan de rij
+    // "Afspelen" zegt.
+    final source = UnifiedMediaSource.fromItem(
+      _item(id: 'i0', serverId: 'nas0', durationMs: 9360000, viewOffsetMs: 3600000),
+    );
+    final group = UnifiedMediaGroup(
+      groupId: 'g1',
+      identity: CanonicalMediaIdentity.movie(title: 'Dune', year: 2021),
+      sources: [source],
+      representativeSourceKey: source.sourceKey,
+      watchState: UnifiedWatchState(representativeSourceKey: source.sourceKey, hasActiveProgress: false),
+    );
+
+    // Duur en bronnenaantal komen wel door, kijktijd niet: dat deel is niet
+    // meegegeven, en de functie berekent het niet zelf terug uit het
+    // (potentieel stale) veld op de bron.
+    expect(unifiedContextMenuMetaLine(group), '${formatDurationTextual(9360000)} · ${t.unifiedCatalog.oneSource}');
   });
 
   testWidgets('the menu draws the meta line under the title', (tester) async {

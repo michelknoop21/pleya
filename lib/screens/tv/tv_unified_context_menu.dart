@@ -120,10 +120,15 @@ Future<void> showTvUnifiedContextMenu(
   final navigationActions = _availableNavigationActions(group);
   final hasResumeProgress = group.watchState.hasActiveProgress;
 
-  // CTX2. `hasActiveProgress` bepaalt het woord op de rij, en deze twee velden
-  // bepalen het getal eronder. Ze komen uit dezelfde representatieve bron, dus
-  // ze kunnen niet uiteenlopen: als de kaart "Hervatten" zegt, gaat de tijd
-  // eronder over precies de cut waarop die keuze rust.
+  // CTX2. `hasActiveProgress` bepaalt het woord op de rij: hij komt uit
+  // `group.watchState`, een selectie die onafhankelijk is van
+  // `group.representativeSource` (`selectRepresentativeWatchState` tegenover
+  // `selectRepresentativeSource`), dus de twee kunnen op een meerbronnengroep
+  // naar een andere bron wijzen. `resumeRemaining` wordt daarom hier één keer
+  // berekend en aan zowel de rij als de kop (metaLine, CTX1) doorgegeven, in
+  // plaats van dat elk hem apart uit `group.representativeSource.item` leest:
+  // dat zou tijd kunnen tonen op een rij die "Afspelen" zegt, of een getal dat
+  // niet bij de bron hoort waarvan `hasActiveProgress` afkomt.
   final resumeItem = group.representativeSource.item;
   final resumeRemaining = hasResumeProgress
       ? formatRemainingTime(resumeItem.durationMs, resumeItem.viewOffsetMs)
@@ -144,7 +149,7 @@ Future<void> showTvUnifiedContextMenu(
       title: representative.displayTitle,
       year: representative.year,
       artwork: artwork,
-      metaLine: unifiedContextMenuMetaLine(group),
+      metaLine: unifiedContextMenuMetaLine(group, resumeRemaining: resumeRemaining),
       resumeRemaining: resumeRemaining,
       navigationActions: navigationActions,
       navigationLabel: (action) => labelForUnifiedNavigationAction(action, hasResumeProgress: hasResumeProgress),
@@ -336,17 +341,26 @@ String labelForUnifiedNavigationAction(UnifiedNavigationAction action, {required
 /// logische pixels, en een film met zes genres zou de duur en het
 /// bronnenaantal eruit duwen.
 ///
+/// [resumeRemaining] is de al berekende waarde die de hervat-rij ook krijgt
+/// (CTX2), niet een eigen herberekening: `group.watchState.hasActiveProgress`
+/// en `group.representativeSource` zijn twee onafhankelijke selecties
+/// (`selectRepresentativeWatchState` tegenover `selectRepresentativeSource`,
+/// zie `grouping_service.dart`), dus een tweede berekening hier zou op een
+/// meerbronnengroep een ander getal kunnen geven dan de rij toont, of tijd
+/// tonen terwijl de rij nog "Afspelen" zegt. Dezelfde waarde doorgeven maakt
+/// dat structureel onmogelijk in plaats van toevallig gelijk.
+///
 /// Geeft nooit null: een groep zonder bron bestaat niet, dus het
 /// bronnenaantal is er altijd. Het retourtype is toch nullable zodat een
 /// latere wijziging aan die aanname niet stilzwijgend een lege regel tekent.
-String? unifiedContextMenuMetaLine(UnifiedMediaGroup group) {
+String? unifiedContextMenuMetaLine(UnifiedMediaGroup group, {String? resumeRemaining}) {
   final item = group.representativeSource.item;
   final genres = item.genres;
   final parts = <String>[
     if (genres != null && genres.isNotEmpty) genres.first,
     if (item.durationMs != null && item.durationMs! > 0) formatDurationTextual(item.durationMs!),
     formatSourceCount(group.sources.length),
-    ?formatRemainingTime(item.durationMs, item.viewOffsetMs),
+    ?resumeRemaining,
   ];
   return parts.isEmpty ? null : toBulletedString(parts);
 }

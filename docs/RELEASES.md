@@ -66,6 +66,14 @@ under `Notes`.
   you are resuming.
 - **Every row in the Apple TV context menu now has an icon**, matching the phone version.
 
+### Fixed
+
+- **Season selector labels on Apple TV series pages no longer render with a shifted or doubled
+  line of text** on the unselected seasons.
+- **The row of extras below an Apple TV series or movie page now sizes its text and spacing
+  consistently with the rest of the screen**, instead of running slightly smaller when the page
+  is nested under the top bar.
+
 ## 2.8.0 · build 282 · 16 September 2026
 
 <!-- commit: 69da51d -->

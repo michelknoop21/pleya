@@ -3281,7 +3281,10 @@ void main() {
     expect(
       chipHeight,
       lessThanOrEqualTo(bandHeight),
-      reason: 'a chip that does not fit its band is laid out squeezed and paints outside it',
+      reason:
+          'the rendered size stays clamped to the band by construction (Row/SizedBox); this only '
+          'guards that clamp still holding, it cannot prove the chip actually fits, see the '
+          'intrinsic-height assertion below for that',
     );
 
     // `tester.getSize` reads the chip's *rendered* size, which the `SizedBox`
