@@ -18,6 +18,9 @@ ids:
   - id: screen.media_detail
     role: screen
     instanceable: false
+  - id: screen.live_tv
+    role: screen
+    instanceable: false
   - id: screen.library_picker
     role: screen
     instanceable: false

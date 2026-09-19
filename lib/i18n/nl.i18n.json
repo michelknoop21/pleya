@@ -1129,7 +1129,9 @@
     "cancelRecording": "Opname annuleren",
     "cancelRecordingTitle": "Deze opname annuleren?",
     "cancelRecordingMessage": "${title} wordt niet meer opgenomen.",
+    "channelCount": "${count} zenders",
     "deleteRule": "Regel verwijderen",
+    "oneChannel": "één zender",
     "deleteRuleTitle": "Opnameregel verwijderen?",
     "deleteRuleMessage": "Toekomstige afleveringen van ${title} worden niet opgenomen.",
     "recordingScheduled": "Opname gepland",
@@ -1155,6 +1157,8 @@
     "title": "Collecties",
     "collection": "Collectie",
     "empty": "Collectie is leeg",
+    "emptyBody": "Voeg titels toe aan deze collectie om ze hier te zien.",
+    "inThisCollection": "In deze collectie",
     "unknownLibrarySection": "Kan niet verwijderen: onbekende bibliotheeksectie",
     "deleteCollection": "Collectie verwijderen",
     "deleteConfirm": "\"${title}\" verwijderen? Dit kan niet ongedaan worden gemaakt.",
@@ -2134,6 +2138,11 @@
       "tileWithCount": "${title}. ${subtitle}. ${count}"
     },
     "libraryCount": "${count} bibliotheken"
+  },
+  "tvOfflineHome": {
+    "title": "Geen server bereikbaar",
+    "body": "Geen van je servers reageert nu. Verbind opnieuw zodra een van hen weer online is. Mijn Pleya en Instellingen blijven ondertussen bereikbaar.",
+    "manageServers": "Servers beheren"
   },
   "tvContextMenu": {
     "title": "Acties",

@@ -23,6 +23,7 @@ import '../../../utils/formatters.dart';
 import '../../../utils/live_tv_grouping.dart';
 import '../../../utils/live_tv_matching.dart';
 import '../../../utils/media_image_helper.dart';
+import '../../../utils/layout_constants.dart';
 import '../../../utils/live_tv_player_navigation.dart';
 import '../../../utils/platform_detector.dart';
 import '../../../widgets/app_icon.dart';
@@ -33,6 +34,65 @@ import '../../../widgets/optimized_media_image.dart';
 import '../../../theme/mono_theme.dart';
 import '../program_details_sheet.dart';
 import '../../../widgets/skeletons.dart';
+import '../../../widgets/tv/tv_unified_layout.dart';
+import '../../tv/tv_root_shell.dart';
+import 'guide_detail_band.dart';
+
+/// De maten van het gidsraster.
+///
+/// Eén record in plaats van vijf constanten, omdat ze samen één beslissing
+/// zijn: de dichtheid van het raster. Een van de vijf los aanpassen geeft een
+/// raster dat niet meer klopt met zichzelf, en dat is wat er gebeurt zodra de
+/// getallen op vijftien aanroepplekken staan.
+typedef GuideMetrics = ({
+  double slotWidth,
+  double channelColumnWidth,
+  double rowHeight,
+  double timeHeaderHeight,
+  double sourceHeaderRowHeight,
+});
+
+/// Desktopdichtheid: de maten die dit raster sinds zijn eerste versie had.
+const GuideMetrics _desktopGuideMetrics = (
+  slotWidth: 180,
+  channelColumnWidth: 132,
+  rowHeight: 64,
+  timeHeaderHeight: 40,
+  sourceHeaderRowHeight: 40,
+);
+
+/// Tien voet: vijf zenderrijen in de hoogte die de shell overlaat, en een
+/// kanaalkolom die de zendernaam naast het nummer en de ster kwijt kan.
+///
+/// Niet afgeleid uit de desktopmaten met een factor. Mockup 17 tekent een
+/// raster met andere verhoudingen, niet hetzelfde raster groter: de
+/// kanaalkolom groeit harder dan de rijhoogte, omdat er een logo-badge, een
+/// nummer, een naam en een ster naast elkaar in moeten.
+const GuideMetrics _tvGuideMetrics = (
+  slotWidth: 300,
+  channelColumnWidth: 300,
+  rowHeight: 108,
+  timeHeaderHeight: 56,
+  sourceHeaderRowHeight: 56,
+);
+
+/// De maten voor [context].
+///
+/// `TvShellSurface.isPresent` en niet `PlatformDetector.isTV()`, om dezelfde
+/// reden als in `live_tv_screen.dart`: de vraag is of er een tien-voet-frame om
+/// dit raster staat, en dat weet de shell. Een golden of een focustest zonder
+/// shell krijgt de desktopmaten en verandert dus niet.
+GuideMetrics guideMetricsFor(BuildContext context) {
+  if (!TvShellSurface.isPresent(context)) return _desktopGuideMetrics;
+  final scale = TvLayoutConstants.scaleOf(context);
+  return (
+    slotWidth: _tvGuideMetrics.slotWidth * scale,
+    channelColumnWidth: _tvGuideMetrics.channelColumnWidth * scale,
+    rowHeight: _tvGuideMetrics.rowHeight * scale,
+    timeHeaderHeight: _tvGuideMetrics.timeHeaderHeight * scale,
+    sourceHeaderRowHeight: _tvGuideMetrics.sourceHeaderRowHeight * scale,
+  );
+}
 
 class GuideTab extends StatefulWidget {
   final List<LiveTvChannel> channels;
@@ -85,11 +145,6 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
   /// behaviour and allow the toggle.
   bool _canToggleFavorite(LiveTvChannel channel) => widget.canToggleFavorite?.call(channel) ?? true;
 
-  static const _slotWidth = 180.0;
-  static const _channelColumnWidth = 132.0;
-  static const _rowHeight = 64.0;
-  static const _sourceHeaderRowHeight = 40.0;
-  static const _timeHeaderHeight = 40.0;
   static const _minutesPerSlot = 30;
   static const _longPressDuration = Duration(milliseconds: 500);
 
@@ -133,6 +188,19 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
   bool _pendingFocus = false;
   bool _isProgramSelectKeyDown = false;
 
+  /// De zender op de rij waar de ring staat.
+  ///
+  /// `_gridChannelIndex` is een index in `widget.channels`, niet in
+  /// `_guideRows`: elke `_GuideChannelRow.channelIndex` wordt met precies
+  /// die index gevuld (zie `_guideRows`), en `_handleGridKey` leest en
+  /// klemt hem op dezelfde manier. `_guideRows` bevat daarnaast bronkoppen
+  /// zodra er meer dan één bron is, dus die lijst positioneel indexeren met
+  /// `_gridChannelIndex` zou bij twee bronnen de verkeerde rij pakken.
+  LiveTvChannel? get _focusedChannel {
+    if (_gridChannelIndex < 0 || _gridChannelIndex >= widget.channels.length) return null;
+    return widget.channels[_gridChannelIndex];
+  }
+
   /// Focus into the guide content (called from tab bar navigation or initial load).
   void focusContent() {
     if (!InputModeTracker.isKeyboardMode(context)) return;
@@ -148,7 +216,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
         _focusZone = _GuideZone.grid;
         _gridColumn = 0;
         _gridChannelIndex = 0;
-        _focusedProgram = null;
+        _focusedProgram = _findCurrentProgram(_gridChannelIndex);
       } else {
         _focusZone = _GuideZone.timeNav;
         _timeNavIndex = 1;
@@ -363,8 +431,10 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
         _scheduledRecordingKeys = scheduledRecordingKeys;
         _isLoading = false;
         // Focus tracking compares by identity, so a reload orphans the
-        // focused program — re-resolve it against the fresh list.
-        if (_focusZone == _GuideZone.grid && _gridColumn == 1 && _focusedProgram != null) {
+        // focused program. Re-resolve it against the fresh list. This now
+        // applies in both grid columns: the channel column also carries a
+        // `_focusedProgram`, to feed the detail band.
+        if (_focusZone == _GuideZone.grid && _focusedProgram != null) {
           final focused = _focusedProgram;
           if (!_programs.any((p) => identical(p, focused))) {
             _focusedProgram = _findCurrentProgram(_gridChannelIndex);
@@ -522,9 +592,10 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
   }
 
   double _guideRowHeight(_GuideRow row) {
+    final metrics = guideMetricsFor(context);
     return switch (row) {
-      _GuideSourceHeaderRow() => _sourceHeaderRowHeight,
-      _GuideChannelRow() => _rowHeight,
+      _GuideSourceHeaderRow() => metrics.sourceHeaderRowHeight,
+      _GuideChannelRow() => metrics.rowHeight,
     };
   }
 
@@ -542,14 +613,14 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
       if (row is _GuideChannelRow && row.channelIndex == channelIndex) return top;
       top += _guideRowHeight(row);
     }
-    return channelIndex * _rowHeight;
+    return channelIndex * guideMetricsFor(context).rowHeight;
   }
 
   void _scrollToNow() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final now = DateTime.now();
       final minutesSinceStart = now.difference(_gridStart).inMinutes;
-      final offset = (minutesSinceStart / _minutesPerSlot) * _slotWidth;
+      final offset = (minutesSinceStart / _minutesPerSlot) * guideMetricsFor(context).slotWidth;
       if (_gridHorizontalController.hasClients) {
         _gridHorizontalController.jumpTo(
           (offset - MediaQuery.sizeOf(context).width / 3).clamp(0, _gridHorizontalController.position.maxScrollExtent),
@@ -565,7 +636,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
 
   double _totalGridWidth() {
     final totalMinutes = _gridEnd.difference(_gridStart).inMinutes;
-    return (totalMinutes / _minutesPerSlot) * _slotWidth;
+    return (totalMinutes / _minutesPerSlot) * guideMetricsFor(context).slotWidth;
   }
 
   Future<void> _tuneChannel(LiveTvChannel channel) async {
@@ -695,7 +766,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
         setState(() {
           _focusZone = _GuideZone.grid;
           _gridColumn = 0;
-          _focusedProgram = null;
+          _focusedProgram = _findCurrentProgram(_gridChannelIndex);
         });
         _scrollToChannel(_gridChannelIndex);
       }
@@ -724,7 +795,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
       if (_gridChannelIndex > 0) {
         setState(() {
           _gridChannelIndex--;
-          if (_gridColumn == 1) _focusedProgram = _findCurrentProgram(_gridChannelIndex);
+          _focusedProgram = _findCurrentProgram(_gridChannelIndex);
         });
         _scrollToChannel(_gridChannelIndex);
       } else {
@@ -739,7 +810,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
       if (_gridChannelIndex < widget.channels.length - 1) {
         setState(() {
           _gridChannelIndex++;
-          if (_gridColumn == 1) _focusedProgram = _findCurrentProgram(_gridChannelIndex);
+          _focusedProgram = _findCurrentProgram(_gridChannelIndex);
         });
         _scrollToChannel(_gridChannelIndex);
       }
@@ -767,7 +838,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
         if (!_navigateToAdjacentProgram(_gridChannelIndex, forward: false)) {
           setState(() {
             _gridColumn = 0;
-            _focusedProgram = null;
+            _focusedProgram = _findCurrentProgram(_gridChannelIndex);
           });
         }
       } else {
@@ -839,7 +910,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
   void _scrollToChannel(int index) {
     if (!_gridVerticalController.hasClients) return;
     final targetTop = _rowTopForChannelIndex(index);
-    final targetBottom = targetTop + _rowHeight;
+    final targetBottom = targetTop + guideMetricsFor(context).rowHeight;
     final viewportTop = _gridVerticalController.offset;
     final viewportBottom = viewportTop + _gridVerticalController.position.viewportDimension;
 
@@ -870,7 +941,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
     final gridEndEpoch = _gridEnd.millisecondsSinceEpoch ~/ 1000;
     final progStart = (program.beginsAt ?? gridStartEpoch).clamp(gridStartEpoch, gridEndEpoch);
     final startOffset = progStart - gridStartEpoch;
-    final left = (startOffset / (_minutesPerSlot * 60)) * _slotWidth;
+    final left = (startOffset / (_minutesPerSlot * 60)) * guideMetricsFor(context).slotWidth;
 
     final viewportWidth = _gridHorizontalController.position.viewportDimension;
     final currentOffset = _gridHorizontalController.offset;
@@ -884,6 +955,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final metrics = guideMetricsFor(context);
 
     if (_isLoading) {
       return ListView(
@@ -897,12 +969,12 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
         focusNode: _guideFocusNode,
         onFocusChange: _handleGuideFocusChange,
         onKeyEvent: _handleKeyEvent,
-        child: _buildGuideGrid(theme),
+        child: _buildGuideGrid(theme, metrics),
       ),
     );
   }
 
-  Widget _buildGuideGrid(ThemeData theme) {
+  Widget _buildGuideGrid(ThemeData theme, GuideMetrics metrics) {
     return ValueListenableBuilder<bool>(
       valueListenable: _hasFocusNotifier,
       builder: (context, hasFocus, child) {
@@ -920,7 +992,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
                   children: [
                     Row(
                       children: [
-                        const SizedBox(width: _channelColumnWidth, height: _timeHeaderHeight),
+                        SizedBox(width: metrics.channelColumnWidth, height: metrics.timeHeaderHeight),
                         Expanded(
                           child: SingleChildScrollView(
                             controller: _headerHorizontalController,
@@ -928,8 +1000,8 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
                             physics: const ClampingScrollPhysics(),
                             child: SizedBox(
                               width: _totalGridWidth(),
-                              height: _timeHeaderHeight,
-                              child: _buildTimeHeader(theme),
+                              height: metrics.timeHeaderHeight,
+                              child: _buildTimeHeader(theme, metrics),
                             ),
                           ),
                         ),
@@ -939,7 +1011,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
                       child: Row(
                         children: [
                           SizedBox(
-                            width: _channelColumnWidth,
+                            width: metrics.channelColumnWidth,
                             child: ListView.builder(
                               controller: _channelVerticalController,
                               physics: const NeverScrollableScrollPhysics(),
@@ -951,6 +1023,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
                                   _GuideChannelRow(:final channel, :final channelIndex) => _buildChannelCell(
                                     channel,
                                     theme,
+                                    metrics,
                                     index: channelIndex,
                                   ),
                                 };
@@ -980,11 +1053,16 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
                                     itemBuilder: (context, index) {
                                       final row = rows[index];
                                       return switch (row) {
-                                        _GuideSourceHeaderRow(:final label) => _buildSourceHeaderGridRow(label, theme),
+                                        _GuideSourceHeaderRow(:final label) => _buildSourceHeaderGridRow(
+                                          label,
+                                          theme,
+                                          metrics,
+                                        ),
                                         _GuideChannelRow(:final channel, :final channelIndex) => _buildProgramRow(
                                           channel,
                                           _getProgramsForChannel(channel),
                                           theme,
+                                          metrics,
                                           channelIndex: channelIndex,
                                         ),
                                       };
@@ -1001,6 +1079,17 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
                 ),
               ),
             ),
+            // De balk staat alleen binnen de shell. Op desktop is er ruimte
+            // noch aanleiding voor: daar zijn tooltip en contextmenu de weg
+            // naar dezelfde informatie.
+            if (TvShellSurface.isPresent(context)) ...[
+              SizedBox(height: TvCatalogLayout.headerContentGap * TvLayoutConstants.scaleOf(context)),
+              GuideDetailBand(
+                channel: _focusedChannel,
+                program: _focusedProgram,
+                isRecordingScheduled: _focusedProgram == null ? false : _isRecordingScheduled(_focusedProgram!),
+              ),
+            ],
           ],
         );
       },
@@ -1008,19 +1097,20 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
   }
 
   Widget _buildNowIndicatorOverlay(ThemeData _) {
+    final metrics = guideMetricsFor(context);
     final now = DateTime.now();
     if (now.isBefore(_gridStart) || now.isAfter(_gridEnd)) {
       return const SizedBox.shrink();
     }
     final minutesSinceStart = now.difference(_gridStart).inMinutes.toDouble();
-    final nowOffset = (minutesSinceStart / _minutesPerSlot) * _slotWidth;
+    final nowOffset = (minutesSinceStart / _minutesPerSlot) * metrics.slotWidth;
     final scrollOffset = _gridHorizontalController.hasClients ? _gridHorizontalController.offset : 0.0;
-    final left = _channelColumnWidth + nowOffset - scrollOffset;
+    final left = metrics.channelColumnWidth + nowOffset - scrollOffset;
 
     // Hide when scrolled behind the channel column
-    if (left < _channelColumnWidth) return const SizedBox.shrink();
+    if (left < metrics.channelColumnWidth) return const SizedBox.shrink();
 
-    final gridHeight = _timeHeaderHeight + _guideContentHeight(_guideRows);
+    final gridHeight = metrics.timeHeaderHeight + _guideContentHeight(_guideRows);
 
     return Positioned(
       left: left,
@@ -1227,7 +1317,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
     );
   }
 
-  Widget _buildTimeHeader(ThemeData theme) {
+  Widget _buildTimeHeader(ThemeData theme, GuideMetrics metrics) {
     final is24Hour = MediaQuery.alwaysUse24HourFormatOf(context);
     final slots = <Widget>[];
     var current = _gridStart;
@@ -1236,7 +1326,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
       final timeStr = formatClockTime(current, is24Hour: is24Hour);
       slots.add(
         SizedBox(
-          width: _slotWidth,
+          width: metrics.slotWidth,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Align(
@@ -1256,8 +1346,9 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
   }
 
   Widget _buildSourceHeaderCell(String label, ThemeData theme) {
+    final metrics = guideMetricsFor(context);
     return Container(
-      height: _sourceHeaderRowHeight,
+      height: metrics.sourceHeaderRowHeight,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
@@ -1276,9 +1367,9 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
     );
   }
 
-  Widget _buildSourceHeaderGridRow(String label, ThemeData theme) {
+  Widget _buildSourceHeaderGridRow(String label, ThemeData theme, GuideMetrics metrics) {
     return Container(
-      height: _sourceHeaderRowHeight,
+      height: metrics.sourceHeaderRowHeight,
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
         border: Border(bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.3))),
@@ -1311,7 +1402,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
     );
   }
 
-  Widget _buildChannelCell(LiveTvChannel channel, ThemeData theme, {required int index}) {
+  Widget _buildChannelCell(LiveTvChannel channel, ThemeData theme, GuideMetrics metrics, {required int index}) {
     final multiServer = context.read<MultiServerProvider>();
     final serverId = serverIdOrNull(channel.serverId);
     final client = serverId == null ? null : multiServer.getClientForServer(serverId);
@@ -1319,8 +1410,8 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
     final isFocused = _hasFocus && _focusZone == _GuideZone.grid && _gridColumn == 0 && _gridChannelIndex == index;
 
     return _ChannelCell(
-      rowHeight: _rowHeight,
-      channelColumnWidth: _channelColumnWidth,
+      rowHeight: metrics.rowHeight,
+      channelColumnWidth: metrics.channelColumnWidth,
       channelThumb: channel.thumb,
       client: client,
       channel: channel,
@@ -1359,12 +1450,13 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
   Widget _buildProgramRow(
     LiveTvChannel channel,
     List<LiveTvProgram> programs,
-    ThemeData theme, {
+    ThemeData theme,
+    GuideMetrics metrics, {
     required int channelIndex,
   }) {
     if (programs.isEmpty) {
       return Container(
-        height: _rowHeight,
+        height: metrics.rowHeight,
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.3))),
         ),
@@ -1395,8 +1487,8 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
 
       final startOffset = progStart - gridStartEpoch;
       final duration = progEnd - progStart;
-      final left = (startOffset / (_minutesPerSlot * 60)) * _slotWidth;
-      final width = (duration / (_minutesPerSlot * 60)) * _slotWidth;
+      final left = (startOffset / (_minutesPerSlot * 60)) * metrics.slotWidth;
+      final width = (duration / (_minutesPerSlot * 60)) * metrics.slotWidth;
       final clampedWidth = width.clamp(2.0, double.infinity);
 
       blocks.add(
@@ -1420,7 +1512,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
     }
 
     return Container(
-      height: _rowHeight,
+      height: metrics.rowHeight,
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.3))),
       ),
@@ -1515,6 +1607,23 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
                           style: theme.textTheme.labelSmall?.copyWith(color: subtitleColor),
                           maxLines: 1,
                           overflow: .ellipsis,
+                        ),
+                      // De voortgang van een lopend programma, als de lijn die
+                      // de rest van het product ervoor gebruikt. kAccent, want
+                      // dat is de enige plek waar rood in de goedgekeurde taal
+                      // mag staan: als voortgang en op de opnamemarkering.
+                      if (isCurrentlyAiring)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(1),
+                            child: LinearProgressIndicator(
+                              value: program.progress,
+                              minHeight: 2,
+                              backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.18),
+                              valueColor: const AlwaysStoppedAnimation<Color>(kAccent),
+                            ),
+                          ),
                         ),
                     ],
                   ),

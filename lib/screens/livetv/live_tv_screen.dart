@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_screen.dart';
+import '../../focus/focus_memory_tracker.dart';
 import '../../focus/focusable_action_bar.dart';
 import '../../focus/focusable_button.dart';
 import '../../i18n/strings.g.dart';
@@ -20,14 +23,21 @@ import '../../profiles/active_profile_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../services/livetv/plex_favorite_channels_service.dart';
 import '../../services/settings_service.dart';
+import '../../theme/mono_tokens.dart';
 import '../../widgets/settings_builder.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/desktop_window_padding.dart';
 import '../../utils/error_message_utils.dart';
+import '../../utils/formatters.dart';
+import '../../utils/layout_constants.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/overlay_sheet.dart';
+import '../../widgets/tv/tv_page_chip_bar.dart';
+import '../../widgets/tv/tv_page_surface.dart';
+import '../../widgets/tv/tv_unified_layout.dart';
+import '../tv/tv_root_shell.dart';
 import 'live_tv_favorites.dart';
 import 'reorder_favorites_sheet.dart';
 import 'tabs/guide_tab.dart';
@@ -60,6 +70,13 @@ class _LiveTvScreenState extends State<LiveTvScreen>
 
   // App bar action bar
   final _actionBarKey = GlobalKey<FocusableActionBarState>();
+
+  /// Eigendom van de State, niet van de rij.
+  ///
+  /// `TvPageChipBar` zegt het zelf: een chiprij herbouwt bij elke
+  /// filterwissel en bij elke binnenkomende gidspagina, en een node die onder
+  /// de remote wordt herbouwd is een remote die nergens landt.
+  final _chipNodes = FocusMemoryTracker();
 
   List<LiveTvChannel> _channels = [];
   bool _isLoading = true;
@@ -99,6 +116,16 @@ class _LiveTvScreenState extends State<LiveTvScreen>
   /// no user-scoped Plex identity, and then Plex favorites are simply absent:
   /// no store, no star, no write.
   PlexFavoriteChannelsService? get _plexFavorites => context.read<PlexFavoriteChannelsService?>();
+
+  /// Of de unified TV-shell al root-chrome boven dit scherm tekent.
+  ///
+  /// Niet `PlatformDetector.shouldUseSideNavigation`. Die vraagt "gebruikt dit
+  /// platform zijnavigatie", en dat is op desktop nog steeds het juiste
+  /// antwoord: daar hoort de app bar te blijven staan. De vraag die Live TV
+  /// moet stellen is of er al een balk boven hem staat, en dat weet alleen de
+  /// shell. `TvUnifiedCatalogScreen` (`:744`) en `TvCatalogHeaderBar` (`:72`)
+  /// stellen hem al op precies deze manier.
+  bool get _framedByShell => TvShellSurface.isPresent(context);
 
   /// The store for [client], wherever it lives. Jellyfin owns its own; Plex
   /// borrows one from the profile-scoped service.
@@ -177,6 +204,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
     _guideTabFocusNode.dispose();
     _whatsOnTabFocusNode.dispose();
     _recordingsTabFocusNode.dispose();
+    _chipNodes.dispose();
     disposeTabNavigation();
     super.dispose();
   }
@@ -672,10 +700,180 @@ class _LiveTvScreenState extends State<LiveTvScreen>
     ];
   }
 
+  /// De ene secundaire laag van PB-8, in de capsuletaal van mockup 17.
+  ///
+  /// Drie tabs en vier acties op één rij. De tabs dragen `selected` op de
+  /// actieve; de acties dragen hem alleen wanneer ze een aan-uitstand hebben,
+  /// en dat is er precies één: het favorietenfilter. Een outline op
+  /// "Herladen" zou lezen als "herladen staat aan".
+  ///
+  /// De acties komen uit `_actionBarActions`, dezelfde lijst die de desktop-app
+  /// bar krijgt, zodat de condities niet op twee plekken uit elkaar kunnen
+  /// lopen. Alleen de presentatie verschilt.
+  Widget _buildTvChipBar(BuildContext context) {
+    final isRecordings = _currentTab == LiveTvTab.recordings;
+
+    final chips = <TvPageChip>[
+      for (var i = 0; i < _visibleTabs.length; i++)
+        TvPageChip(
+          key: 'liveTvTab_${_visibleTabs[i].name}',
+          label: _getTabLabel(_visibleTabs[i]),
+          selected: tabController.index == i,
+          onSelect: () {
+            if (tabController.index == i) {
+              _focusCurrentTab();
+              return;
+            }
+            setState(() => tabController.index = i);
+          },
+        ),
+      for (final action in _actionBarActions(isRecordings))
+        TvPageChip(
+          key: _chipKeyForAction(action),
+          label: action.tooltip ?? '',
+          icon: action.icon,
+          // `_toggleFavoritesFilter` is de enige actie met een stand, en de
+          // stand staat al in `_showFavoritesOnly`.
+          selected: action.onPressed == _toggleFavoritesFilter && _showFavoritesOnly,
+          onSelect: action.onPressed,
+        ),
+    ];
+
+    // De rij is bijgewerkt voordat de nodes zijn opgeruimd, dus een chip die
+    // net verdween neemt zijn node mee. Een gefocuste node weggooien geeft de
+    // primaire focus terug aan de omsluitende scope: een rij waar de remote
+    // niet in kan bewegen en niet uit kan komen. Dezelfde reden waarom
+    // TvRootShell en de bibliothekenkiezer allebei prunen.
+    _chipNodes.pruneExcept({for (final chip in chips) chip.key});
+
+    return SizedBox(
+      height: TvPageChipBar.heightFor(context),
+      child: TvPageChipBar(
+        singleLine: true,
+        nodes: _chipNodes,
+        automationInstance: 'liveTv',
+        chips: chips,
+        // UP uit de rij is de weg naar de topnav, en dat is dezelfde weg die
+        // `onTabBarBack` altijd al liep: op TV betekent `focusSidebar` de
+        // topnav (zie de doc van TvRootShell).
+        onExitUp: onTabBarBack,
+        onExitDown: _focusCurrentTab,
+      ),
+    );
+  }
+
+  /// Een stabiele sleutel per actie, afgeleid van wat de actie doet en niet van
+  /// zijn positie. De rij krimpt en groeit met de condities, en een
+  /// indexsleutel zou de focusnode van de ene actie aan de andere geven.
+  String _chipKeyForAction(FocusableAction action) {
+    final handler = action.onPressed;
+    if (handler == _toggleFavoritesFilter) return 'liveTvAction_favorites';
+    if (handler == _showReorderFavorites) return 'liveTvAction_reorder';
+    if (handler == _processRecordingRules) return 'liveTvAction_rules';
+    return 'liveTvAction_refresh';
+  }
+
+  /// Mockup 17's stille regel onder de titel: waar de zenders vandaan komen,
+  /// en hoeveel het er zijn.
+  ///
+  /// De bronnamen komen uit de zenders zelf (`liveTvSourceTitle`, gezet in
+  /// `_loadChannels`), niet uit een tweede bevraging van de servers: het is
+  /// dezelfde informatie en een tweede bron ervoor zou een tweede antwoord
+  /// kunnen geven. De teller telt wat de gids werkelijk toont, dus met het
+  /// favorietenfilter aan telt hij de gefilterde lijst.
+  ///
+  /// Null wanneer er niets te melden valt. Nul zenders is geen "0 zenders" maar
+  /// een lege staat, en die tekent `_buildLiveTvBody` al.
+  String? _tvHeaderSubtitle() {
+    final channels = _filteredChannels;
+    if (channels.isEmpty) return null;
+    final sources = <String>{
+      for (final channel in channels)
+        if (channel.liveTvSourceTitle != null && channel.liveTvSourceTitle!.isNotEmpty) channel.liveTvSourceTitle!,
+    };
+    return toBulletedString([
+      ...sources,
+      channels.length == 1 ? t.liveTv.oneChannel : t.liveTv.channelCount(count: channels.length),
+    ]);
+  }
+
+  /// De kop van mockup 17: de paginanaam op de tokens die elke andere
+  /// TV-pagina gebruikt, links uitgelijnd op de canonieke pagina-inset.
+  ///
+  /// Geen `TvPageSurface`. Die wikkelt zijn kind in een `SingleChildScrollView`
+  /// of geeft het `Expanded`, en stempelt `AutomationIds.myPleyaSectionContent`
+  /// op de kolom: alle drie horen bij een geneste Mijn Pleya-pagina en Live TV
+  /// is een bestemmingsroot. Wat wel gedeeld wordt zijn de tokens, zodat de kop
+  /// op dezelfde regel begint als die van Films, Series en Mijn Pleya.
+  Widget _buildTvPageHeader(BuildContext context) {
+    final scale = TvLayoutConstants.scaleOf(context);
+    final tk = tokens(context);
+    final subtitle = _tvHeaderSubtitle();
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        TvTopNavLayout.pageInset * scale,
+        TvTopNavLayout.contentGap * scale,
+        TvTopNavLayout.pageInset * scale,
+        TvMyPleyaLayout.titleGap * scale,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.liveTv.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: tk.text,
+                    fontSize: TvMyPleyaLayout.pageTitleFontSize * scale,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  SizedBox(height: TvMyPleyaLayout.tileTitleSubtitleGap * scale),
+                  Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: tvPageBodyStyle(context)),
+                ],
+              ],
+            ),
+          ),
+          _buildTvChipBar(context),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
+
+    // LIVE1. Binnen de unified TV-shell tekent de topnav de root-chrome, en
+    // een tweede balk eronder is precies het defect. De `Scaffold` blijft
+    // staan, transparant en zonder app bar: hij is de `Material`-voorouder
+    // waar de tabs, de tegels en elke `InkWell` eronder op rekenen, en hem
+    // weghalen zou een tweede, grotere wijziging zijn dan deze taak vraagt.
+    if (_framedByShell) {
+      return AutomationScreen(
+        id: AutomationIds.screenLiveTv,
+        readiness: () => _isLoading ? const AutomationReadiness.loading('channels') : const AutomationReadiness.ready(),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildTvPageHeader(context),
+              Expanded(child: _buildLiveTvBody(theme, useSideNav, drawTabRow: false)),
+            ],
+          ),
+        ),
+      );
+    }
 
     final isRecordings = _currentTab == LiveTvTab.recordings;
     return Scaffold(
@@ -686,40 +884,46 @@ class _LiveTvScreenState extends State<LiveTvScreen>
             key: _actionBarKey,
             onNavigateLeft: () => getTabChipFocusNode(tabCount - 1).requestFocus(),
             onNavigateDown: _focusCurrentTab,
-            actions: [
-              // No store means no favorites anywhere, so the filter would only
-              // ever empty the guide.
-              if (!isRecordings && _anyFavoritesCapable)
-                FocusableAction(
-                  icon: _showFavoritesOnly ? Symbols.star_rounded : Symbols.star_outline_rounded,
-                  iconFill: _showFavoritesOnly ? 1.0 : 0.0,
-                  tooltip: t.liveTv.favorites,
-                  onPressed: _toggleFavoritesFilter,
-                ),
-              if (!isRecordings && _anyFavoritesCapable && _showFavoritesOnly && _favoriteChannels.length > 1)
-                FocusableAction(
-                  icon: Symbols.swap_vert_rounded,
-                  tooltip: t.liveTv.reorderFavorites,
-                  onPressed: _showReorderFavorites,
-                ),
-              if (isRecordings)
-                FocusableAction(
-                  icon: Symbols.bolt_rounded,
-                  tooltip: t.liveTv.processRecordingRules,
-                  onPressed: _processRecordingRules,
-                ),
-              FocusableAction(
-                icon: Symbols.refresh_rounded,
-                tooltip: isRecordings ? t.common.refresh : t.liveTv.reloadGuide,
-                onPressed: _onRefresh,
-              ),
-            ],
+            actions: _actionBarActions(isRecordings),
           ),
         ]),
       ),
       body: _buildLiveTvBody(theme, useSideNav),
     );
   }
+
+  /// De vier app bar-acties, als lijst in plaats van inline.
+  ///
+  /// Hier uitgelicht omdat Task 3 dezelfde vier in de capsulerij nodig heeft
+  /// en twee kopieën van dezelfde condities uit elkaar gaan lopen.
+  List<FocusableAction> _actionBarActions(bool isRecordings) => [
+    // Geen store betekent nergens favorieten, dus het filter zou de gids
+    // alleen maar leegmaken.
+    if (!isRecordings && _anyFavoritesCapable)
+      FocusableAction(
+        icon: _showFavoritesOnly ? Symbols.star_rounded : Symbols.star_outline_rounded,
+        iconFill: _showFavoritesOnly ? 1.0 : 0.0,
+        tooltip: t.liveTv.favorites,
+        onPressed: _toggleFavoritesFilter,
+      ),
+    if (!isRecordings && _anyFavoritesCapable && _showFavoritesOnly && _favoriteChannels.length > 1)
+      FocusableAction(
+        icon: Symbols.swap_vert_rounded,
+        tooltip: t.liveTv.reorderFavorites,
+        onPressed: _showReorderFavorites,
+      ),
+    if (isRecordings)
+      FocusableAction(
+        icon: Symbols.bolt_rounded,
+        tooltip: t.liveTv.processRecordingRules,
+        onPressed: _processRecordingRules,
+      ),
+    FocusableAction(
+      icon: Symbols.refresh_rounded,
+      tooltip: isRecordings ? t.common.refresh : t.liveTv.reloadGuide,
+      onPressed: _onRefresh,
+    ),
+  ];
 
   Widget _buildTabContent(LiveTvTab tab, List<LiveTvChannel> guideChannels) {
     return switch (tab) {
@@ -742,7 +946,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
     };
   }
 
-  Widget _buildLiveTvBody(ThemeData theme, bool useSideNav) {
+  Widget _buildLiveTvBody(ThemeData theme, bool useSideNav, {bool drawTabRow = true}) {
     if (_isLoading) {
       return ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -779,7 +983,10 @@ class _LiveTvScreenState extends State<LiveTvScreen>
 
     return Column(
       children: [
-        if (!useSideNav)
+        // De rij staat hier alleen waar de kop hem niet al draagt: op mobiel
+        // (geen zijnavigatie, dus de app bar-title is de paginanaam) en niet
+        // binnen de shell, waar `_buildTvPageHeader` hem meeneemt.
+        if (drawTabRow && !useSideNav)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             alignment: .centerLeft,
