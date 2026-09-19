@@ -67,6 +67,8 @@ under `Notes`.
 - showschema sluit correct af binnen de TV-shell (LIVE1d)
 - en-dash als gedachtestreepje uit de nieuwe tvOfflineHome-vertaling
 - _focusedChannel las de verkeerde lijst bij meer dan één bron
+- de detailbalk voedt zich ook op de kanaalkolom, niet pas na Right (MOC-17)
+- de nieuwe MOC-17-regressietest scopen en de gemiste pump toevoegen
 <!-- END GENERATED -->
 
 ### New
