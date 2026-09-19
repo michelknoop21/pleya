@@ -34,7 +34,9 @@ import '../../../widgets/optimized_media_image.dart';
 import '../../../theme/mono_theme.dart';
 import '../program_details_sheet.dart';
 import '../../../widgets/skeletons.dart';
+import '../../../widgets/tv/tv_unified_layout.dart';
 import '../../tv/tv_root_shell.dart';
+import 'guide_detail_band.dart';
 
 /// De maten van het gidsraster.
 ///
@@ -185,6 +187,19 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
   LiveTvProgram? _focusedProgram;
   bool _pendingFocus = false;
   bool _isProgramSelectKeyDown = false;
+
+  /// De zender op de rij waar de ring staat.
+  ///
+  /// `_gridChannelIndex` is een index in `_guideRows`, en die lijst bevat ook
+  /// bronkoppen zodra er meer dan één bron is. Vandaar de typecontrole in
+  /// plaats van `widget.channels[_gridChannelIndex]`: dat las bij twee bronnen
+  /// de verkeerde zender.
+  LiveTvChannel? get _focusedChannel {
+    final rows = _guideRows;
+    if (_gridChannelIndex < 0 || _gridChannelIndex >= rows.length) return null;
+    final row = rows[_gridChannelIndex];
+    return row is _GuideChannelRow ? row.channel : null;
+  }
 
   /// Focus into the guide content (called from tab bar navigation or initial load).
   void focusContent() {
@@ -1062,6 +1077,17 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
                 ),
               ),
             ),
+            // De balk staat alleen binnen de shell. Op desktop is er ruimte
+            // noch aanleiding voor: daar zijn tooltip en contextmenu de weg
+            // naar dezelfde informatie.
+            if (TvShellSurface.isPresent(context)) ...[
+              SizedBox(height: TvCatalogLayout.headerContentGap * TvLayoutConstants.scaleOf(context)),
+              GuideDetailBand(
+                channel: _focusedChannel,
+                program: _focusedProgram,
+                isRecordingScheduled: _focusedProgram == null ? false : _isRecordingScheduled(_focusedProgram!),
+              ),
+            ],
           ],
         );
       },

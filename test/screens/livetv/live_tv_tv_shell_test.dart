@@ -306,4 +306,24 @@ void main() {
     // aanroepplek het sleutelpaar gebruikt en niet één sleutel met een getal.
     expect(t.liveTv.oneChannel, isNot(contains('1 ')));
   });
+
+  testWidgets('MOC-17: mounting the detail band leaves the focused node where it was', (tester) async {
+    final provider = buildProvider();
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(mountLiveTv(inShell: true, provider: provider));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final before = FocusManager.instance.primaryFocus;
+    // Eén frame verder, waarin de band opnieuw is gebouwd met de inhoud die
+    // de eerste focuswissel eraan gaf.
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(
+      FocusManager.instance.primaryFocus,
+      same(before),
+      reason: 'PB-8: het detailgebied voedt zich met de focus en steelt hem niet',
+    );
+  });
 }
