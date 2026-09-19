@@ -438,6 +438,16 @@ class MpvPlayerCoreBase: NSObject {
 
     updateVideoGravityIfNeeded(name: name, value: value)
 
+    // On iOS/tvOS viewer zoom is presentation geometry owned by the host
+    // AVSampleBufferDisplayLayer. Forwarding the same value into mpv's
+    // AVFoundation VO gives zoom two owners and forces a per-frame geometry
+    // render for nonzero video-zoom. Keep the decoded sample untouched and let
+    // the layer transform be the sole Apple mobile/TV zoom path.
+    if !Self.shouldForwardVideoGeometryPropertyToMpv(name) {
+      completion(.success(()))
+      return
+    }
+
     if name == "pause" {
       setCachedPaused(value == "yes" || value == "true" || value == "1")
     }
@@ -461,6 +471,14 @@ class MpvPlayerCoreBase: NSObject {
     }
 
     setRawStringPropertyAsync(name, value: value, completion: completion)
+  }
+
+  static func shouldForwardVideoGeometryPropertyToMpv(_ name: String) -> Bool {
+    #if os(iOS) || os(tvOS)
+      return name != "video-zoom"
+    #else
+      return true
+    #endif
   }
 
   private func parseBoolProperty(_ value: String) -> Bool {
