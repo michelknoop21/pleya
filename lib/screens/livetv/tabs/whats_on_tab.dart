@@ -27,9 +27,19 @@ import '../../../widgets/overlay_sheet.dart';
 import '../../../utils/scroll_utils.dart';
 import '../../../widgets/horizontal_scroll_with_arrows.dart';
 import '../../../widgets/optimized_media_image.dart';
+import '../../../navigation/tv/tv_content_route_registry.dart';
 import '../live_tv_actions_mixin.dart';
 import '../live_tv_show_schedule_screen.dart';
 import '../../../widgets/skeletons.dart';
+
+/// De route-identiteit van een showschema: de show op zijn server.
+///
+/// Publiek zodat hij los te toetsen is. `pushNested` gooit een herhaalde push
+/// van de id die al bovenop ligt weg, dus een tweede Select op dezelfde show
+/// opent één scherm en vraagt één Back. De server hoort erin: dezelfde
+/// showtitel op twee servers is twee pagina's.
+String liveTvScheduleRouteId({required String serverId, required String showTitle}) =>
+    'tvLiveTvSchedule_${serverId}_$showTitle';
 
 class WhatsOnTab extends StatefulWidget {
   final List<LiveTvChannel> channels;
@@ -148,16 +158,23 @@ class WhatsOnTabState extends State<WhatsOnTab> with LiveTvActionsMixin<WhatsOnT
       // Live → play directly
       tuneChannel(channel);
     } else if (entry.metadata.isShow && serverIdOrNull(entry.metadata.serverId) != null) {
-      // Show with upcoming episodes → show full schedule
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => LiveTvShowScheduleScreen(
-            showTitle: entry.metadata.displayTitle,
-            serverId: entry.metadata.serverId!,
-            channels: widget.channels,
-          ),
-        ),
-      );
+      // Show met komende afleveringen: het volledige schema.
+      //
+      // PB-1/LIVE1: het schema houdt de topnav, dus op TV opent het binnen de
+      // shell. `openTvContentRoute` antwoordt null off TV en overal waar geen
+      // shell luistert, en dat is het signaal om te pushen zoals altijd.
+      final serverId = entry.metadata.serverId!;
+      final showTitle = entry.metadata.displayTitle;
+      Widget buildSchedule(BuildContext _) =>
+          LiveTvShowScheduleScreen(showTitle: showTitle, serverId: serverId, channels: widget.channels);
+      if (openTvContentRoute(
+            id: liveTvScheduleRouteId(serverId: serverId, showTitle: showTitle),
+            builder: buildSchedule,
+          ) !=
+          null) {
+        return;
+      }
+      Navigator.of(context).push(MaterialPageRoute(builder: buildSchedule));
     } else {
       // Individual program (episode, movie, etc.) → bottom sheet
       showProgramDetails(
