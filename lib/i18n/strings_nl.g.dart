@@ -2327,7 +2327,7 @@ class _TranslationsTvOfflineHomeNl extends TranslationsTvOfflineHomeEn {
 
 	// Translations
 	@override String get title => 'Geen server bereikbaar';
-	@override String get body => 'Geen van je servers reageert nu. Verbind opnieuw als een van hen weer online is – Mijn Pleya en Instellingen blijven bereikbaar terwijl je wacht.';
+	@override String get body => 'Geen van je servers reageert nu. Verbind opnieuw zodra een van hen weer online is. Mijn Pleya en Instellingen blijven ondertussen bereikbaar.';
 	@override String get manageServers => 'Servers beheren';
 }
 
@@ -4976,7 +4976,7 @@ extension on TranslationsNl {
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
 			'tvMyPleya.libraryCount' => ({required Object count}) => '${count} bibliotheken',
 			'tvOfflineHome.title' => 'Geen server bereikbaar',
-			'tvOfflineHome.body' => 'Geen van je servers reageert nu. Verbind opnieuw als een van hen weer online is – Mijn Pleya en Instellingen blijven bereikbaar terwijl je wacht.',
+			'tvOfflineHome.body' => 'Geen van je servers reageert nu. Verbind opnieuw zodra een van hen weer online is. Mijn Pleya en Instellingen blijven ondertussen bereikbaar.',
 			'tvOfflineHome.manageServers' => 'Servers beheren',
 			'tvContextMenu.title' => 'Acties',
 			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Actie ${index} van ${count}: ${label}',

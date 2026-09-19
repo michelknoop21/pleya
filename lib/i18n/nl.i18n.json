@@ -2141,7 +2141,7 @@
   },
   "tvOfflineHome": {
     "title": "Geen server bereikbaar",
-    "body": "Geen van je servers reageert nu. Verbind opnieuw als een van hen weer online is – Mijn Pleya en Instellingen blijven bereikbaar terwijl je wacht.",
+    "body": "Geen van je servers reageert nu. Verbind opnieuw zodra een van hen weer online is. Mijn Pleya en Instellingen blijven ondertussen bereikbaar.",
     "manageServers": "Servers beheren"
   },
   "tvContextMenu": {
