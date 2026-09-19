@@ -94,6 +94,28 @@ void main() {
     expect(find.text(t.liveTv.unknownProgram), findsNothing);
   });
 
+  testWidgets('a channel with no schedule data stays blank too, it does not fall back to a bare channel name', (
+    tester,
+  ) async {
+    // `guide_tab.dart` feeds a program alongside the channel for every real
+    // focus position (see `_findCurrentProgram`), so this is not the normal
+    // focus-entry state, it is the narrower case of a channel with nothing
+    // in the EPG at all. Documented here so a future change to that fallback
+    // is a deliberate choice, not a silent regression.
+    await tester.pumpWidget(
+      _host(
+        GuideDetailBand(
+          channel: LiveTvChannel(key: 'ch-2', title: 'NPO 2', number: '2'),
+          program: null,
+          isRecordingScheduled: false,
+        ),
+      ),
+    );
+
+    expect(find.text('NPO 2'), findsNothing);
+    expect(find.byType(GuideDetailBand), findsOneWidget);
+  });
+
   testWidgets('a scheduled recording says so, and says how to manage it', (tester) async {
     await initializeDateFormatting('en');
     await tester.pumpWidget(

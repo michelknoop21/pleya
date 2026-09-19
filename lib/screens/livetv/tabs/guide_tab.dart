@@ -216,7 +216,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
         _focusZone = _GuideZone.grid;
         _gridColumn = 0;
         _gridChannelIndex = 0;
-        _focusedProgram = null;
+        _focusedProgram = _findCurrentProgram(_gridChannelIndex);
       } else {
         _focusZone = _GuideZone.timeNav;
         _timeNavIndex = 1;
@@ -431,8 +431,10 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
         _scheduledRecordingKeys = scheduledRecordingKeys;
         _isLoading = false;
         // Focus tracking compares by identity, so a reload orphans the
-        // focused program — re-resolve it against the fresh list.
-        if (_focusZone == _GuideZone.grid && _gridColumn == 1 && _focusedProgram != null) {
+        // focused program. Re-resolve it against the fresh list. This now
+        // applies in both grid columns: the channel column also carries a
+        // `_focusedProgram`, to feed the detail band.
+        if (_focusZone == _GuideZone.grid && _focusedProgram != null) {
           final focused = _focusedProgram;
           if (!_programs.any((p) => identical(p, focused))) {
             _focusedProgram = _findCurrentProgram(_gridChannelIndex);
@@ -764,7 +766,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
         setState(() {
           _focusZone = _GuideZone.grid;
           _gridColumn = 0;
-          _focusedProgram = null;
+          _focusedProgram = _findCurrentProgram(_gridChannelIndex);
         });
         _scrollToChannel(_gridChannelIndex);
       }
@@ -793,7 +795,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
       if (_gridChannelIndex > 0) {
         setState(() {
           _gridChannelIndex--;
-          if (_gridColumn == 1) _focusedProgram = _findCurrentProgram(_gridChannelIndex);
+          _focusedProgram = _findCurrentProgram(_gridChannelIndex);
         });
         _scrollToChannel(_gridChannelIndex);
       } else {
@@ -808,7 +810,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
       if (_gridChannelIndex < widget.channels.length - 1) {
         setState(() {
           _gridChannelIndex++;
-          if (_gridColumn == 1) _focusedProgram = _findCurrentProgram(_gridChannelIndex);
+          _focusedProgram = _findCurrentProgram(_gridChannelIndex);
         });
         _scrollToChannel(_gridChannelIndex);
       }
@@ -836,7 +838,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
         if (!_navigateToAdjacentProgram(_gridChannelIndex, forward: false)) {
           setState(() {
             _gridColumn = 0;
-            _focusedProgram = null;
+            _focusedProgram = _findCurrentProgram(_gridChannelIndex);
           });
         }
       } else {

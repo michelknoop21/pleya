@@ -28,6 +28,7 @@ import 'package:pleya/models/livetv_dvr.dart';
 import 'package:pleya/models/livetv_program.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/screens/livetv/live_tv_screen.dart';
+import 'package:pleya/screens/livetv/tabs/guide_detail_band.dart';
 import 'package:pleya/screens/tv/tv_root_shell.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -325,5 +326,20 @@ void main() {
       same(before),
       reason: 'PB-8: het detailgebied voedt zich met de focus en steelt hem niet',
     );
+  });
+
+  testWidgets('MOC-17: the detail band shows the channel it is on, not just the program column', (tester) async {
+    final provider = buildProvider();
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(mountLiveTv(inShell: true, provider: provider));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // Zonder een druk op Right staat de ring nog op de kanaalkolom, de
+    // toestand die de parity-audit als focus-instap voor mockup 17 noemt.
+    // De band moet er dan al staan, niet pas na een tweede stap de gids in.
+    expect(find.byType(GuideDetailBand), findsOneWidget);
+    expect(find.text('Nieuwsuur'), findsWidgets);
   });
 }
