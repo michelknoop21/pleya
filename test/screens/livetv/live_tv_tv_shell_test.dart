@@ -200,7 +200,7 @@ void main() {
   });
 
   testWidgets('LIVE1: the shell render has exactly one secondary layer, in the chip language', (tester) async {
-    final provider = await buildProvider();
+    final provider = buildProvider();
     addTearDown(provider.dispose);
 
     await tester.pumpWidget(mountLiveTv(inShell: true, provider: provider));
@@ -222,7 +222,7 @@ void main() {
   });
 
   testWidgets('LIVE1: the chip row carries the three tabs and the four actions', (tester) async {
-    final provider = await buildProvider();
+    final provider = buildProvider();
     addTearDown(provider.dispose);
 
     await tester.pumpWidget(mountLiveTv(inShell: true, provider: provider));
@@ -244,7 +244,7 @@ void main() {
   });
 
   testWidgets('LIVE1: the favorites chip carries its on/off state, the refresh chip does not', (tester) async {
-    final provider = await buildProvider();
+    final provider = buildProvider();
     addTearDown(provider.dispose);
 
     await tester.pumpWidget(mountLiveTv(inShell: true, provider: provider));
