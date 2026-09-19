@@ -46,6 +46,7 @@ import '../../services/unified_catalog/unified_artwork_prefetcher.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../theme/mono_tokens.dart';
+import '../../utils/formatters.dart';
 import '../../utils/global_key_utils.dart';
 import '../../widgets/app_icon.dart';
 import '../../utils/platform_detector.dart';
@@ -263,7 +264,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   String _sourcesLabel(UnifiedCatalogFilterSelection filters) {
     if (!filters.restrictsSources) return t.unifiedCatalog.allSources;
     final count = _catalog.participatingLibraries.map((l) => l.serverId.value).toSet().length;
-    return count == 1 ? t.unifiedCatalog.oneSource : t.unifiedCatalog.sources(count: count);
+    return formatSourceCount(count);
   }
 
   /// The right-hand half of the count row: what is actively narrowing the

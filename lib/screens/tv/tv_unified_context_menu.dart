@@ -44,6 +44,7 @@ import '../../services/unified_action_outcome.dart';
 import '../../services/watch_actions.dart';
 import '../../services/watchlist_ui_actions.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/formatters.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/provider_extensions.dart';
 import '../../widgets/overlay_sheet.dart';
@@ -131,6 +132,7 @@ Future<void> showTvUnifiedContextMenu(
       title: representative.displayTitle,
       year: representative.year,
       artwork: artwork,
+      metaLine: unifiedContextMenuMetaLine(group),
       navigationActions: navigationActions,
       navigationLabel: (action) => labelForUnifiedNavigationAction(action, hasResumeProgress: hasResumeProgress),
       actions: actions,
@@ -284,6 +286,29 @@ String labelForUnifiedNavigationAction(UnifiedNavigationAction action, {required
       UnifiedNavigationAction.moreInfo => t.tvContextMenu.moreInfo,
       UnifiedNavigationAction.changeSource => t.tvContextMenu.changeSource,
     };
+
+/// Mockup 12's stille regel onder de titel: genre, duur, bronnen, kijktijd.
+///
+/// Elk deel komt uit de helper die de rest van de app er al voor gebruikt, en
+/// een deel zonder waarde verdwijnt in plaats van leeg mee te doen. Eén genre,
+/// niet de hele lijst: de kop is twee regels breed naast een poster van 74
+/// logische pixels, en een film met zes genres zou de duur en het
+/// bronnenaantal eruit duwen.
+///
+/// Geeft nooit null: een groep zonder bron bestaat niet, dus het
+/// bronnenaantal is er altijd. Het retourtype is toch nullable zodat een
+/// latere wijziging aan die aanname niet stilzwijgend een lege regel tekent.
+String? unifiedContextMenuMetaLine(UnifiedMediaGroup group) {
+  final item = group.representativeSource.item;
+  final genres = item.genres;
+  final parts = <String>[
+    if (genres != null && genres.isNotEmpty) genres.first,
+    if (item.durationMs != null && item.durationMs! > 0) formatDurationTextual(item.durationMs!),
+    formatSourceCount(group.sources.length),
+    ?formatRemainingTime(item.durationMs, item.viewOffsetMs),
+  ];
+  return parts.isEmpty ? null : toBulletedString(parts);
+}
 
 /// Runs [action] against every source in [sources] and reports honestly.
 ///
@@ -520,6 +545,7 @@ class _ActionMenuPanel extends StatelessWidget {
     required this.title,
     required this.year,
     required this.artwork,
+    required this.metaLine,
     required this.navigationActions,
     required this.navigationLabel,
     required this.actions,
@@ -533,6 +559,11 @@ class _ActionMenuPanel extends StatelessWidget {
   final String title;
   final int? year;
   final Widget? artwork;
+
+  /// CTX1. Door de aanroeper berekend en niet hier, om dezelfde reden als
+  /// `navigationLabel`: dit paneel krijgt platte waarden en kent de
+  /// [UnifiedMediaGroup] niet.
+  final String? metaLine;
   final List<UnifiedNavigationAction> navigationActions;
   final String Function(UnifiedNavigationAction) navigationLabel;
   final List<UnifiedGroupAction> actions;
@@ -617,7 +648,7 @@ class _ActionMenuPanel extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _MenuHeader(scale: scale, title: title, year: year, artwork: artwork),
+            _MenuHeader(scale: scale, title: title, year: year, artwork: artwork, metaLine: metaLine),
             SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
             Flexible(
               child: SingleChildScrollView(
@@ -668,12 +699,22 @@ class _ActionMenuPanel extends StatelessWidget {
 /// source picker's own header, and this menu is not asking "where", only
 /// "what next".
 class _MenuHeader extends StatelessWidget {
-  const _MenuHeader({required this.scale, required this.title, required this.year, required this.artwork});
+  const _MenuHeader({
+    required this.scale,
+    required this.title,
+    required this.year,
+    required this.artwork,
+    required this.metaLine,
+  });
 
   final double scale;
   final String title;
   final int? year;
   final Widget? artwork;
+
+  /// CTX1: mockup 12's subregel. Null wanneer er niets over de titel te zeggen
+  /// valt, en dan tekent de kop precies wat hij ervoor tekende.
+  final String? metaLine;
 
   @override
   Widget build(BuildContext context) {
@@ -702,17 +743,36 @@ class _MenuHeader extends StatelessWidget {
         ),
         SizedBox(width: TvSourcePickerLayout.headerGap * scale),
         Expanded(
-          child: Text(
-            year == null ? title : '$title ($year)',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: mono.text.withValues(alpha: TvSourcePickerLayout.inkPrimary),
-              fontSize: TvSourcePickerLayout.titleFontSize * scale,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.1,
-              height: 1.1,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                year == null ? title : '$title ($year)',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: mono.text.withValues(alpha: TvSourcePickerLayout.inkPrimary),
+                  fontSize: TvSourcePickerLayout.titleFontSize * scale,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.1,
+                  height: 1.1,
+                ),
+              ),
+              if (metaLine != null) ...[
+                SizedBox(height: TvSourcePickerLayout.rowLineGap * scale),
+                Text(
+                  metaLine!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: mono.text.withValues(alpha: TvSourcePickerLayout.inkSecondary),
+                    fontSize: TvSourcePickerLayout.subtitleFontSize * scale,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ],

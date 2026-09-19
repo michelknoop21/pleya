@@ -219,3 +219,24 @@ String formatAbbreviatedDate(String dateString) {
     return dateString;
   }
 }
+
+/// "1 bron" of "N bronnen", over de twee sleutels die de catalogus al draagt.
+///
+/// Stond woordelijk op drie plekken (`search_screen.dart`,
+/// `mobile_catalog_screen.dart`, `tv_unified_catalog_screen.dart`) voordat het
+/// contextmenu de vierde had geworden.
+String formatSourceCount(int count) => count == 1 ? t.unifiedCatalog.oneSource : t.unifiedCatalog.sources(count: count);
+
+/// De resterende speeltijd als leesbare regel, of null wanneer er niets te
+/// hervatten valt.
+///
+/// Null bij drie dingen die alle drie "geen resterende tijd" betekenen en geen
+/// van drieën een fout zijn: geen bekende duur, niets gekeken, en een offset
+/// die de duur haalt of voorbijloopt. De laatste komt echt voor, want een
+/// speler die tot de aftiteling doorloopt schrijft een offset die de duur
+/// evenaart.
+String? formatRemainingTime(int? durationMs, int? viewOffsetMs) {
+  final offset = viewOffsetMs ?? 0;
+  if (durationMs == null || offset <= 0 || durationMs <= offset) return null;
+  return t.nowWatching.remaining(time: formatDurationTextual(durationMs - offset));
+}

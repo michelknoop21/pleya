@@ -268,9 +268,9 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
         ' ${t.discover.playEpisode(season: resumeTarget.parentIndex.toString(), episode: resumeTarget.index.toString())}',
       );
     }
-    final durationMs = resumeTarget.durationMs;
-    if (isResuming && durationMs != null && durationMs > viewOffsetMs) {
-      label.write(' · ${t.nowWatching.remaining(time: formatDurationTextual(durationMs - viewOffsetMs))}');
+    final remaining = isResuming ? formatRemainingTime(resumeTarget.durationMs, viewOffsetMs) : null;
+    if (remaining != null) {
+      label.write(' · $remaining');
     }
 
     return SizedBox(
