@@ -3275,12 +3275,32 @@ void main() {
     // 2.5px border die `FocusTheme.focusDecoration` onvoorwaardelijk om het
     // kind legt, ook ongefocust en ook transparant.
     final bandHeight = tester.getSize(band).height;
-    final chipHeight = tester.getSize(find.descendant(of: band, matching: find.byType(FocusableWrapper)).first).height;
+    final chipFinder = find.descendant(of: band, matching: find.byType(FocusableWrapper)).first;
+    final chipHeight = tester.getSize(chipFinder).height;
 
     expect(
       chipHeight,
       lessThanOrEqualTo(bandHeight),
       reason: 'a chip that does not fit its band is laid out squeezed and paints outside it',
+    );
+
+    // `tester.getSize` reads the chip's *rendered* size, which the `SizedBox`
+    // around the row's `Row` already clamps to `bandHeight` via a tight
+    // cross-axis constraint (RenderFlex hands every child a loose constraint
+    // capped at that same maxHeight). A chip that wants more height than the
+    // reservation would silently report the same clamped number as a chip
+    // that genuinely fits, so `chipHeight == bandHeight` above cannot by
+    // itself distinguish the two. `getMaxIntrinsicHeight` asks the chip's
+    // render tree what height it wants with no ceiling at all, which the
+    // clamp above cannot mask.
+    final chipIntrinsicHeight = tester.renderObject<RenderBox>(chipFinder).getMaxIntrinsicHeight(double.infinity);
+
+    expect(
+      chipIntrinsicHeight,
+      lessThanOrEqualTo(bandHeight),
+      reason:
+          'the chip\'s true, unclamped desired height must fit the band; a clamped '
+          'tester.getSize comparison alone cannot tell a fit from a squeeze',
     );
   });
 }
