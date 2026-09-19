@@ -22,6 +22,9 @@ under `Notes`.
 - automation-ids op de mobiele My Pleya, Verify voor 18
 - automation-ids op de mobiele Bibliotheken-picker, Verify voor 15
 - automation-ids op de mobiele Instellingen, Verify voor 14
+- metadata-subregel in het unified contextmenu (CTX1)
+- de hervat-rij toont de resterende tijd (CTX2)
+- icoon per actierij in het unified contextmenu (CTX3)
 
 ### Improved
 - bereken showReconnect op één plek in tvTopNavFocusKeys
@@ -51,7 +54,17 @@ under `Notes`.
 - em-dash in twee REV1-docstrings vervangen (anti-slop)
 - een trage server verdwijnt niet uit het opgeslagen bronfilter (CAT20)
 - whole-branch review findings, CAT20 library keys, LAND7/REV1a docs
+- de seizoenchiprij reserveert de hoogte die een chip echt vraagt (DET4)
+- de detailrail leest dezelfde schaal als het scherm eronder (SYS-3c)
 <!-- END GENERATED -->
+
+### New
+
+- **The Apple TV context menu now shows a line under the title with genre, runtime, sources,
+  and remaining time**, the same summary you already see on other screens.
+- **The context menu's Resume row now shows how much time is left** on the episode or movie
+  you are resuming.
+- **Every row in the Apple TV context menu now has an icon**, matching the phone version.
 
 ## 2.8.0 · build 282 · 16 September 2026
 
