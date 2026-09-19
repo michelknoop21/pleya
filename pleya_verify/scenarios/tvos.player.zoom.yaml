@@ -1,0 +1,107 @@
+name: tvos.player.zoom
+target: tvos-sim
+# PLR8: on iOS/tvOS `video-zoom` is no longer forwarded to mpv, because a
+# nonzero value flips mpv's AVFoundation VO to a per-frame Core Image
+# re-render (`should_apply_video_geometry` in `vo_avfoundation.m`) that hands
+# the display layer a freshly rendered RGB buffer instead of the decoded
+# VideoToolbox surface. The host `AVSampleBufferDisplayLayer` transform in
+# `updateVideoGravityIfNeeded` is the only zoom owner now.
+#
+# That removes the pixel-level zoom, so this scenario exists to prove the
+# remaining path still works: stepping the zoom row must change the reported
+# value and leave a visibly scaled picture behind, without losing the panel or
+# the player. The walk into the panel is the one `tvos.player.panel` measured.
+#
+# What this scenario deliberately cannot prove: subtitle placement (the
+# fixture carries no subtitle stream, `subtitle_streams: const []`), HDR
+# behaviour, and the green/near-black collapse itself. The simulator has no
+# HDMI dynamic-range mode and forces `hwdec=no`, so the darkening and the
+# crash stay hardware-only.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - press: down
+  - settle: 800
+  - press: down
+  - settle: 800
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 20000}
+  - settle: 1500
+  - press: select
+  - wait_until: {id: player.surface, timeout: 25000}
+  - settle: 200
+
+  # Pause before the clip runs out; the player opens with its controls up and
+  # play/pause focused, so Select pauses. A paused frame still carries the
+  # layer transform, which is the thing this scenario looks at.
+  - press: select
+  - settle: 400
+  - snapshot: 00-paused
+
+  # Over to the tune button: RIGHT walks every mounted transport button before
+  # it falls through to the first track control (same walk as
+  # `tvos.player.loudness`).
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 300
+  - assert: {id: player.settings_button, focused: true}
+  - press: select
+  - wait_until: {id: player.panel, timeout: 5000}
+  - settle: 400
+  - assert: {id: "player.panel.row[aspect_ratio]", focused: true}
+
+  # Zoom is the row under aspect ratio, and starts at 100%.
+  - press: down
+  - settle: 300
+  - assert: {id: "player.panel.row[zoom]", focused: true}
+  - assert: {id: "player.panel.row[zoom]", state: {value: "100%"}}
+  - snapshot: 01-zoom-100
+
+  # A value row is entered before it steps (DEC-107): Select enters it, and
+  # only then do LEFT and RIGHT reach the row instead of the traversal.
+  - press: select
+  - settle: 400
+
+  # RIGHT steps through kTvPanelZoomPresets: 1.0 -> 1.1 -> 1.2 -> 1.3. The
+  # fixture draws a solid pillarboxed block, so the snapshots carry the real
+  # answer: the block has to grow, and shrink back, on the layer transform
+  # alone now that mpv never sees `video-zoom`.
+  - press: right
+  - settle: 900
+  - snapshot: 02-zoom-step1
+  - press: right
+  - settle: 900
+  - snapshot: 03-zoom-step2
+  - press: right
+  - settle: 900
+  - assert: {id: "player.panel.row[zoom]", focused: true}
+  - snapshot: 04-zoom-step3
+
+  # Back down must restore the exact starting framing.
+  - press: left
+  - settle: 700
+  - press: left
+  - settle: 700
+  - press: left
+  - settle: 900
+  - snapshot: 05-zoom-back-to-100
+
+  # The panel and the player both survive the round trip.
+  - assert: {id: player.panel, state: {tab: video, subView: none}}
+  - press: menu
+  - settle: 600
+  - press: up
+  - settle: 400
+  - assert: {id: player.title, insideViewport: true}
+  - snapshot: 04-back-to-player

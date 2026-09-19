@@ -256,20 +256,27 @@ void main() {
     expect(subPosWrites.single.value, VideoFilterManager.subtitlePositionForScale(100, 1.33).toString());
   });
 
-  test('effective layer scale mirrors the native zoom and panscan transform', () {
-    expect(
-      VideoFilterManager.effectiveLayerScale(zoomScale: 1.0, coverMode: false, aspectOverrideActive: false),
-      closeTo(1.0, 0.0001),
-    );
-    expect(
-      VideoFilterManager.effectiveLayerScale(zoomScale: 1.0, coverMode: true, aspectOverrideActive: false),
-      closeTo(1.33, 0.0001),
-    );
+  test('effective layer scale mirrors only the mpv-forwarded panscan crop', () {
+    expect(VideoFilterManager.effectiveLayerScale(coverMode: false, aspectOverrideActive: false), closeTo(1.0, 0.0001));
+    expect(VideoFilterManager.effectiveLayerScale(coverMode: true, aspectOverrideActive: false), closeTo(1.33, 0.0001));
     // Stretch mode overrides the aspect natively, so panscan is not applied.
-    expect(
-      VideoFilterManager.effectiveLayerScale(zoomScale: 1.5, coverMode: true, aspectOverrideActive: true),
-      closeTo(1.5, 0.0001),
-    );
+    expect(VideoFilterManager.effectiveLayerScale(coverMode: true, aspectOverrideActive: true), closeTo(1.0, 0.0001));
+  });
+
+  test('PLR8: pinch-zoom alone does not compensate sub-pos on the layer-owned path', () async {
+    // video-zoom is layer-owned on iOS/tvOS (never forwarded to mpv), so
+    // mpv's own OSD placement never sees it: compensating sub-pos for it
+    // would misplace subtitles that mpv never moved in the first place.
+    final player = _RecordingPlayer();
+    final manager = VideoFilterManager(player: player, subtitleBasePosition: () => 80, useLayerScaleCompensation: true);
+    addTearDown(manager.dispose);
+
+    manager.setZoomScale(2.0);
+    await Future<void>.delayed(Duration.zero);
+
+    final subPosWrites = player.writes.where((write) => write.key == 'sub-pos').toList();
+    expect(subPosWrites, isNotEmpty);
+    expect(subPosWrites.last.value, '80');
   });
 }
 

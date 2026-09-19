@@ -69,6 +69,9 @@ under `Notes`.
 - _focusedChannel las de verkeerde lijst bij meer dan één bron
 - de detailbalk voedt zich ook op de kanaalkolom, niet pas na Right (MOC-17)
 - de nieuwe MOC-17-regressietest scopen en de gemiste pump toevoegen
+- keep Apple viewer zoom on the display layer
+- review-correcties op het layer-owned zoompad
+- drop stale sub-pos zoom compensation and rebuild filter state after a player retry
 <!-- END GENERATED -->
 
 ### New

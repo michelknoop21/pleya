@@ -65,8 +65,8 @@ class VideoFilterManager {
   /// subtitles inside the visible rect while cropped or zoomed.
   final int Function()? subtitleBasePosition;
 
-  /// Whether the platform scales the whole layer (video *and* OSD) outside of
-  /// mpv (iOS/tvOS Core Animation transform). On other mpv backends the crop
+  /// Whether the platform scales the video outside of mpv (iOS/tvOS Core
+  /// Animation transform on the video layer). On other mpv backends the crop
   /// happens inside mpv via panscan, so compensation is aspect-based instead.
   final bool useLayerScaleCompensation;
 
@@ -108,18 +108,18 @@ class VideoFilterManager {
     return math.log(normalized) / math.ln2;
   }
 
-  /// The scale the Apple VO applies to the video layer, mirroring
-  /// `updateVideoGravityIfNeeded` in MpvPlayerCoreBase.swift. On iOS/tvOS zoom
-  /// and panscan are a centered Core Animation transform on the layer that also
-  /// carries the OSD, so mpv's own subtitle placement is unaware of it.
-  static double effectiveLayerScale({
-    required double zoomScale,
-    required bool coverMode,
-    required bool aspectOverrideActive,
-  }) {
-    var scale = normalizeZoomScale(zoomScale);
-    if (coverMode && !aspectOverrideActive) scale *= 1.0 + 0.33;
-    return scale;
+  /// The crop factor mpv's own OSD placement (`vo_get_src_dst_rects`) still
+  /// applies on iOS/tvOS: `panscan`, mirrored onto a centered Core Animation
+  /// transform in `updateVideoGravityIfNeeded` for the visible crop, stays
+  /// mpv-forwarded, so it also shifts where mpv thinks the video/OSD rect is.
+  ///
+  /// `video-zoom` is deliberately excluded: it is layer-owned only (never
+  /// forwarded to mpv, see `shouldForwardVideoGeometryPropertyToMpv` in
+  /// MpvPlayerCoreBase.swift), so `vo_get_src_dst_rects` never sees it and
+  /// subtitles neither scale nor move with it. Compensating `sub-pos` for a
+  /// factor mpv is unaware of would just misplace subtitles on pinch-zoom.
+  static double effectiveLayerScale({required bool coverMode, required bool aspectOverrideActive}) {
+    return coverMode && !aspectOverrideActive ? 1.0 + 0.33 : 1.0;
   }
 
   /// The factor by which cover mode (panscan=1) blows the video up to fill the
@@ -302,20 +302,18 @@ class VideoFilterManager {
       await _applyProperty('panscan', coverMode ? '1.0' : '0');
       await _applyProperty('video-zoom', videoZoomPropertyForScale(zoomScale).toString());
 
-      // libass places subtitles relative to the video frame, so cropping (via
-      // layer transform on iOS/tvOS, panscan on mpv-native) pushes them off
-      // the visible area. Compensate by pulling sub-pos inward; contain mode
-      // resolves to scale 1.0 which resets to the user's base position.
+      // libass places subtitles relative to the video frame mpv itself knows
+      // about, so cropping that mpv actually sees (panscan, on both iOS/tvOS
+      // and mpv-native) pushes them off the visible area. Compensate by
+      // pulling sub-pos inward; contain mode resolves to scale 1.0 which
+      // resets to the user's base position.
       final basePosition = subtitleBasePosition?.call();
       if (basePosition != null) {
         double? scale;
         if (useLayerScaleCompensation) {
-          // iOS/tvOS scale the whole layer (video *and* OSD) outside of mpv.
-          scale = effectiveLayerScale(
-            zoomScale: zoomScale,
-            coverMode: coverMode,
-            aspectOverrideActive: boxFitMode == 2,
-          );
+          // iOS/tvOS: only panscan reaches mpv's own OSD placement; video-zoom
+          // is layer-owned and never gets there (see effectiveLayerScale).
+          scale = effectiveLayerScale(coverMode: coverMode, aspectOverrideActive: boxFitMode == 2);
         } else if (!Platform.isAndroid) {
           // mpv-native (macOS/Windows/Linux): panscan crops inside mpv, and
           // zoom scales around the center; both hide the bottom band.
