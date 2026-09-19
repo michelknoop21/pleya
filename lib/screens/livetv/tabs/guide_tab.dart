@@ -190,15 +190,15 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
 
   /// De zender op de rij waar de ring staat.
   ///
-  /// `_gridChannelIndex` is een index in `_guideRows`, en die lijst bevat ook
-  /// bronkoppen zodra er meer dan één bron is. Vandaar de typecontrole in
-  /// plaats van `widget.channels[_gridChannelIndex]`: dat las bij twee bronnen
-  /// de verkeerde zender.
+  /// `_gridChannelIndex` is een index in `widget.channels`, niet in
+  /// `_guideRows`: elke `_GuideChannelRow.channelIndex` wordt met precies
+  /// die index gevuld (zie `_guideRows`), en `_handleGridKey` leest en
+  /// klemt hem op dezelfde manier. `_guideRows` bevat daarnaast bronkoppen
+  /// zodra er meer dan één bron is, dus die lijst positioneel indexeren met
+  /// `_gridChannelIndex` zou bij twee bronnen de verkeerde rij pakken.
   LiveTvChannel? get _focusedChannel {
-    final rows = _guideRows;
-    if (_gridChannelIndex < 0 || _gridChannelIndex >= rows.length) return null;
-    final row = rows[_gridChannelIndex];
-    return row is _GuideChannelRow ? row.channel : null;
+    if (_gridChannelIndex < 0 || _gridChannelIndex >= widget.channels.length) return null;
+    return widget.channels[_gridChannelIndex];
   }
 
   /// Focus into the guide content (called from tab bar navigation or initial load).
