@@ -34,7 +34,9 @@ import 'package:pleya/services/unified_catalog/unified_catalog_query_store.dart'
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
+import 'package:pleya/widgets/focusable_filter_chip.dart';
 import 'package:pleya/widgets/mobile/mobile_catalog_sort_sheet.dart';
+import 'package:pleya/widgets/mobile/mobile_media_rail.dart' show mobileRailInset;
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:provider/provider.dart';
 
@@ -171,8 +173,9 @@ void main() {
     WidgetTester tester, {
     MobileCatalogKind kind = MobileCatalogKind.movies,
     bool useEmpty = false,
+    double width = 393,
   }) async {
-    tester.view.physicalSize = const Size(393, 852);
+    tester.view.physicalSize = Size(width, 852);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -257,10 +260,9 @@ void main() {
     await tester.pump();
   }
 
-  /// Taps [finder], scrolling the chip row into view first: three chips at
-  /// full label width do not all fit inside a 393pt viewport, so the row
-  /// scrolls horizontally the same way the mockup's own chip row would on a
-  /// real phone.
+  /// Taps [finder]. The `ensureVisible` is a no-op for the chip row itself,
+  /// which fits the viewport by construction, and is kept for the chips that
+  /// a sheet puts inside a scrollable.
   Future<void> tapChip(WidgetTester tester, Finder finder) async {
     await tester.ensureVisible(finder);
     await tester.pump();
@@ -385,6 +387,49 @@ void main() {
     await settle(tester);
 
     expect(find.text(mobileCatalogSortLabel(UnifiedCatalogSort.recentlyAdded)), findsOneWidget);
+  });
+
+  // Michel op iOS, build 280: bij Alle films sneed de schermrand de derde pil
+  // doormidden, terwijl Alle series er netjes uitzag. Geen verschil in code —
+  // beide schermen zijn dezelfde widget — maar wel in labellengte: "Alle
+  // bronnen" plus "Recent toegevoegd" is breder dan een iPhone, en de rij
+  // scrolde horizontaal, dus de derde pil lag half buiten beeld. Hij zakt nu
+  // naar een tweede regel in plaats van door de rand te worden afgesneden.
+  testWidgets('no chip is cut off by the screen edge when the labels run long', (tester) async {
+    await tester.runAsync(
+      () => UnifiedCatalogQueryStore.write(
+        MediaKind.movie,
+        UnifiedCatalogPreferences.defaults.copyWith(sort: UnifiedCatalogSort.recentlyAdded),
+      ),
+    );
+
+    const width = 393.0;
+    await pumpCatalog(tester, width: width);
+    await settle(tester);
+
+    for (final chip in tester.widgetList<FocusableFilterChip>(find.byType(FocusableFilterChip))) {
+      final finder = find.byWidget(chip);
+      expect(
+        tester.getTopRight(finder).dx,
+        lessThanOrEqualTo(width - mobileRailInset + 0.5),
+        reason: 'chip "${chip.label}" runs past the right edge',
+      );
+    }
+  });
+
+  // The other half of the same rule: wrapping is what happens when there is no
+  // room, not a second line the screen grows by default. Series' short labels
+  // (`1 bron`, `Recent bekeken`) stay on one line, and so does everything else
+  // that fits.
+  testWidgets('chips that fit stay on a single line', (tester) async {
+    await pumpCatalog(tester, width: 1200);
+    await settle(tester);
+
+    final tops = tester
+        .widgetList<FocusableFilterChip>(find.byType(FocusableFilterChip))
+        .map((chip) => tester.getTopLeft(find.byWidget(chip)).dy)
+        .toSet();
+    expect(tops, hasLength(1));
   });
 
   testWidgets('a stored library restriction naming a library that no longer exists is dropped on open', (tester) async {
