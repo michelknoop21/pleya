@@ -9,6 +9,7 @@ import '../../i18n/strings.g.dart';
 import '../../models/livetv_channel.dart';
 import '../../mixins/mounted_set_state_mixin.dart';
 import '../../models/livetv_program.dart';
+import '../../navigation/tv/tv_nested_surface.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/formatters.dart';
@@ -18,6 +19,19 @@ import '../../widgets/loading_indicator_box.dart';
 import '../../widgets/overlay_sheet.dart';
 import 'live_tv_actions_mixin.dart';
 import 'livetv_recording_actions.dart';
+
+/// Dismisses the schedule screen whether it was nested via `openTvContentRoute`
+/// (LIVE1c) or pushed as a real route. `TvNestedRouteScope.of(context) == null`
+/// is the signal it was not nested this time; a bare `Navigator.pop` would
+/// otherwise be ambiguous once nested, per `TvNestedRouteScope`'s own docs.
+void _dismissSchedule(BuildContext context) {
+  final nested = TvNestedRouteScope.of(context);
+  if (nested != null) {
+    nested.dismiss();
+    return;
+  }
+  Navigator.pop(context);
+}
 
 /// Shows all upcoming airings of a show, matching the Plex "upcoming episodes" view.
 class LiveTvShowScheduleScreen extends StatefulWidget {
@@ -161,7 +175,7 @@ class _LiveTvShowScheduleScreenState extends State<LiveTvShowScheduleScreen>
                   mode: FocusIndicatorMode.fill,
                   disableScale: true,
                   onSelect: onTap,
-                  onBack: () => Navigator.pop(context),
+                  onBack: () => _dismissSchedule(context),
                   child: _ScheduleListTile(program: program, channel: channel, onTap: onTap),
                 );
               }, childCount: _programs.length),
