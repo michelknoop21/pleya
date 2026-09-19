@@ -25,6 +25,10 @@ under `Notes`.
 - metadata-subregel in het unified contextmenu (CTX1)
 - de hervat-rij toont de resterende tijd (CTX2)
 - icoon per actierij in het unified contextmenu (CTX3)
+- Live TV krijgt op tvOS één secundaire laag in de capsuletaal (MOC-17, LIVE1)
+- bronregel en zenderteller onder de Live TV-kop (MOC-17)
+- de Live TV-gids krijgt binnen de shell tien-voet-dichtheid (MOC-17)
+- blijvende detailbalk onder de Live TV-gids (MOC-17)
 
 ### Improved
 - bereken showReconnect op één plek in tvTopNavFocusKeys
@@ -57,6 +61,12 @@ under `Notes`.
 - de seizoenchiprij reserveert de hoogte die een chip echt vraagt (DET4)
 - de detailrail leest dezelfde schaal als het scherm eronder (SYS-3c)
 - whole-branch review findings, meta line and Resume row can disagree
+- Live TV tekent binnen de unified shell geen tweede navigatiebalk (LIVE1)
+- overbodige await op buildProvider() weghalen (analyzer-lint)
+- het Live TV-showschema opent binnen de TV-shell (LIVE1)
+- showschema sluit correct af binnen de TV-shell (LIVE1d)
+- en-dash als gedachtestreepje uit de nieuwe tvOfflineHome-vertaling
+- _focusedChannel las de verkeerde lijst bij meer dan één bron
 <!-- END GENERATED -->
 
 ### New
@@ -66,6 +76,13 @@ under `Notes`.
 - **The context menu's Resume row now shows how much time is left** on the episode or movie
   you are resuming.
 - **Every row in the Apple TV context menu now has an icon**, matching the phone version.
+- **Live TV on Apple TV now sits inside the same one-bar navigation as the rest of the app**,
+  with Guide, What's On, Recordings and your channel actions gathered in a single row under the
+  page title. Opening a show's schedule now stays on that same screen instead of covering it.
+- **The Apple TV guide is denser and built for ten-foot viewing**: five channel rows sized to
+  read comfortably from the couch, with a progress line under whatever is airing now.
+- **A detail bar under the Apple TV guide always shows what's focused**: the title, channel,
+  time, and a short synopsis, without taking the remote's focus away from the guide itself.
 
 ### Fixed
 
