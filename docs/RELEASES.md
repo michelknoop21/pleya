@@ -19,6 +19,34 @@ under `Notes`.
 
 <!-- BEGIN GENERATED -->
 ### New
+- DeviceCapabilities-model met vier lagen en een expliciete confidence
+- detectie per laag, met de host als injecteerbaar argument
+- overrides op het model, plus display_max_resolution
+- Jellyfin-DeviceProfile uit het model, gedragsneutraal
+- Plex-transcoderequest uit het model, gedragsneutraal
+- TrueHD in de Jellyfin direct-play-lijst op mpv-platforms
+- de resolutiecap van de gebruiker bereikt de Jellyfin-profielcondities
+- respijtvenster op refreshtokenrotatie (DEC-063)
+- token bucket op de relay, en meldingen die vouwen in plaats van stapelen
+- compacte sessieregel, en de commit-sha in elke TestFlight-build
+- migratie 0007, sessie-scoped tokenketen en begrensde loginlimiter (PS-9-stap 2)
+- scope watch state to authenticated users
+- PS-9 AC2, volledige autorisatiematrix en DEC-065-alignment
+- PS-9 stap 4 en 6, gebruikersbeheer en sessie-intrekking
+- PS-9-clientkant, een eigen profielsoort voor Pleya Server
+- S0.6, de NAS-migratiefixture op schema 7
+- S0.7 en poort P9, de contractdekking wordt afgeleid in plaats van bijgehouden
+- venster 1 verruimt het foutdomein, en de controle meet twee kanten op
+- S1.1, recovery, lichaamslimiet en securityheaders op de API
+- S1.2, serverinstellingen met een grens en hot reload
+- S1.3, serverdiagnostiek met een ringbuffer en één doel
+- S1.4, lopende streams, de eigen gebruiker en een code die uitlegt
+- S1.5, API-tokens als sessies en een auditlog dat verder kijkt dan mutaties
+- S1.8, de refreshcookie buiten het bereik van JavaScript en een origin dat vastligt
+- S1.6, de laatste drie rijen van venster 1, en het venster dicht
+- S2.1, managed en scaninstellingen op libraries
+- S2.2, CRUD op libraries en protocolvenster 2 open
+- S2.3, GET /storage/roots uit de mounts en de recheck
 - automation-ids op de mobiele My Pleya, Verify voor 18
 - automation-ids op de mobiele Bibliotheken-picker, Verify voor 15
 - automation-ids op de mobiele Instellingen, Verify voor 14
@@ -31,9 +59,19 @@ under `Notes`.
 - blijvende detailbalk onder de Live TV-gids (MOC-17)
 
 ### Improved
+- semantische bronaudit op codec- en containerlijsten
 - bereken showReconnect op één plek in tvTopNavFocusKeys
 
 ### Fixed
+- "Opnieuw aanmelden" probeert eerst één echte refresh
+- Nederlands compleet tegen Engels, met een test die dat afdwingt
+- cloudflared blijvend op het netwerk van de Pleya Server
+- verify-local.sh's drift check kende PS-9's eigen tabellen niet
+- schema.d.ts liep achter op de PS-9-protocoltoevoegingen
+- continue_watching en next_up leverden onvoorwaardelijk niets
+- de merge liet twee capability-fixtures en de gegenereerde client achter
+- drie bevindingen uit de codex-challenge op de merge
+- vijf codex-bevindingen op /libraries vóór S2.3
 - de echte focus volgt een verdwijnende TV-bestemming (FOC1)
 - de serverstip leest kSuccess (TOK2)
 - add filled and scope chip variants for the mobile northstar
@@ -72,6 +110,7 @@ under `Notes`.
 - keep Apple viewer zoom on the display layer
 - review-correcties op het layer-owned zoompad
 - drop stale sub-pos zoom compensation and rebuild filter state after a player retry
+- harden completion integration after review
 <!-- END GENERATED -->
 
 ### New
