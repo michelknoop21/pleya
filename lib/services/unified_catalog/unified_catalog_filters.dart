@@ -151,6 +151,7 @@ bool _executesWatchFilter(MediaBackend backend) => backend == MediaBackend.plex 
 class UnifiedCatalogFilterSelection {
   /// Genre names, OR-ed within the field by both backends.
   final Set<String> genres;
+  final Set<String> audioLanguages;
 
   final Set<int> years;
   final UnifiedWatchFilter watchState;
@@ -166,6 +167,7 @@ class UnifiedCatalogFilterSelection {
 
   const UnifiedCatalogFilterSelection({
     this.genres = const {},
+    this.audioLanguages = const {},
     this.years = const {},
     this.watchState = UnifiedWatchFilter.all,
     this.serverIds = const {},
@@ -181,6 +183,7 @@ class UnifiedCatalogFilterSelection {
   /// after two clicks.
   int get activeCount =>
       (genres.isEmpty ? 0 : 1) +
+      (audioLanguages.isEmpty ? 0 : 1) +
       (years.isEmpty ? 0 : 1) +
       (watchState == UnifiedWatchFilter.all ? 0 : 1) +
       (serverIds.isEmpty ? 0 : 1) +
@@ -198,7 +201,10 @@ class UnifiedCatalogFilterSelection {
   /// sections in it and hoofdstuk 10.6 puts the count on the panel's own
   /// button.
   int get itemFilterCount =>
-      (genres.isEmpty ? 0 : 1) + (years.isEmpty ? 0 : 1) + (watchState == UnifiedWatchFilter.all ? 0 : 1);
+      (genres.isEmpty ? 0 : 1) +
+      (audioLanguages.isEmpty ? 0 : 1) +
+      (years.isEmpty ? 0 : 1) +
+      (watchState == UnifiedWatchFilter.all ? 0 : 1);
 
   /// Whether anything here narrows *which sources take part*, as opposed to
   /// which items they return. Drives the "Alle bronnen" action's own label.
@@ -206,12 +212,14 @@ class UnifiedCatalogFilterSelection {
 
   UnifiedCatalogFilterSelection copyWith({
     Set<String>? genres,
+    Set<String>? audioLanguages,
     Set<int>? years,
     UnifiedWatchFilter? watchState,
     Set<String>? serverIds,
     Set<String>? libraryKeys,
   }) => UnifiedCatalogFilterSelection(
     genres: genres ?? this.genres,
+    audioLanguages: audioLanguages ?? this.audioLanguages,
     years: years ?? this.years,
     watchState: watchState ?? this.watchState,
     serverIds: serverIds ?? this.serverIds,
@@ -237,6 +245,7 @@ class UnifiedCatalogFilterSelection {
   /// row left in the panel to untick it with. That is [withKnownSources].
   UnifiedCatalogFilterSelection constrainedTo(UnifiedFilterCapabilities capabilities) => UnifiedCatalogFilterSelection(
     genres: capabilities.supportsMetadataFilters ? genres : const {},
+    audioLanguages: capabilities.supportsMetadataFilters ? audioLanguages : const {},
     years: capabilities.supportsMetadataFilters ? years : const {},
     watchState: capabilities.supportsWatchFilter ? watchState : UnifiedWatchFilter.all,
     serverIds: serverIds,
@@ -278,6 +287,7 @@ class UnifiedCatalogFilterSelection {
       identical(this, other) ||
       other is UnifiedCatalogFilterSelection &&
           _setEquals(other.genres, genres) &&
+          _setEquals(other.audioLanguages, audioLanguages) &&
           _setEquals(other.years, years) &&
           other.watchState == watchState &&
           _setEquals(other.serverIds, serverIds) &&
@@ -286,6 +296,7 @@ class UnifiedCatalogFilterSelection {
   @override
   int get hashCode => Object.hash(
     Object.hashAllUnordered(genres),
+    Object.hashAllUnordered(audioLanguages),
     Object.hashAllUnordered(years),
     watchState,
     Object.hashAllUnordered(serverIds),
@@ -333,6 +344,7 @@ class UnifiedCatalogPreferences {
   Map<String, dynamic> toJson() => {
     'sort': sort.name,
     if (filters.genres.isNotEmpty) 'genres': filters.genres.toList()..sort(),
+    if (filters.audioLanguages.isNotEmpty) 'audioLanguages': filters.audioLanguages.toList()..sort(),
     if (filters.years.isNotEmpty) 'years': filters.years.toList()..sort(),
     if (filters.watchState != UnifiedWatchFilter.all) 'watch': filters.watchState.name,
     if (filters.serverIds.isNotEmpty) 'servers': filters.serverIds.toList()..sort(),
@@ -350,6 +362,7 @@ class UnifiedCatalogPreferences {
     sort: UnifiedCatalogSort.byName(json['sort'] as String?) ?? UnifiedCatalogSort.titleAsc,
     filters: UnifiedCatalogFilterSelection(
       genres: _stringSet(json['genres']),
+      audioLanguages: _stringSet(json['audioLanguages']),
       years: _intSet(json['years']),
       watchState: json['watch'] == UnifiedWatchFilter.unwatched.name
           ? UnifiedWatchFilter.unwatched
@@ -388,6 +401,7 @@ UnifiedCatalogQuery buildUnifiedCatalogQuery({
     sortDirection: preferences.sort.direction,
     includeWatched: filters.watchState == UnifiedWatchFilter.all,
     genres: filters.genres.isEmpty ? null : (filters.genres.toList()..sort()),
+    audioLanguages: filters.audioLanguages.isEmpty ? null : (filters.audioLanguages.toList()..sort()),
     years: filters.years.isEmpty ? null : (filters.years.toList()..sort()),
   );
 }

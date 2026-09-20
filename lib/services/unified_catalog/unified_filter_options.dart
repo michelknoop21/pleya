@@ -28,17 +28,26 @@ import '../../media/ids.dart';
 import '../../media/media_filter.dart';
 import '../../media/media_server_client.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/language_codes.dart';
 import '../plex_client.dart';
 import 'source_cursor.dart';
 
 /// The choices one filter panel offers, already unioned and ordered.
+class UnifiedFilterValue {
+  const UnifiedFilterValue({required this.value, required this.label});
+
+  final String value;
+  final String label;
+}
+
 class UnifiedFilterOptions {
-  const UnifiedFilterOptions({this.genres = const [], this.years = const []});
+  const UnifiedFilterOptions({this.genres = const [], this.audioLanguages = const [], this.years = const []});
 
   /// Genre names, alphabetically. The value a backend filters on *is* the name
   /// for both Plex and Jellyfin (`genre=Drama`, `Genres=Drama`), so there is no
   /// id to carry alongside it.
   final List<String> genres;
+  final List<UnifiedFilterValue> audioLanguages;
 
   /// Years, newest first — which is the order someone scanning for "last year"
   /// reads, and the opposite of the order a server returns them in.
@@ -46,7 +55,7 @@ class UnifiedFilterOptions {
 
   static const empty = UnifiedFilterOptions();
 
-  bool get isEmpty => genres.isEmpty && years.isEmpty;
+  bool get isEmpty => genres.isEmpty && audioLanguages.isEmpty && years.isEmpty;
 }
 
 /// Loads the options for [libraries].
@@ -61,21 +70,27 @@ Future<UnifiedFilterOptions> loadUnifiedFilterOptions({
   required MediaServerClient? Function(ServerId serverId) clientFor,
 }) async {
   final genres = <String>{};
+  final audioLanguages = <String, String>{};
   final years = <int>{};
 
   await Future.wait([
-    for (final library in libraries) _collectFor(library: library, clientFor: clientFor, genres: genres, years: years),
+    for (final library in libraries)
+      _collectFor(library: library, clientFor: clientFor, genres: genres, audioLanguages: audioLanguages, years: years),
   ]);
 
   final sortedGenres = genres.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
   final sortedYears = years.toList()..sort((a, b) => b.compareTo(a));
-  return UnifiedFilterOptions(genres: sortedGenres, years: sortedYears);
+  final sortedAudioLanguages = [
+    for (final entry in audioLanguages.entries) UnifiedFilterValue(value: entry.key, label: entry.value),
+  ]..sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
+  return UnifiedFilterOptions(genres: sortedGenres, audioLanguages: sortedAudioLanguages, years: sortedYears);
 }
 
 Future<void> _collectFor({
   required CatalogLibrary library,
   required MediaServerClient? Function(ServerId serverId) clientFor,
   required Set<String> genres,
+  required Map<String, String> audioLanguages,
   required Set<int> years,
 }) async {
   final client = clientFor(library.serverId);
@@ -84,10 +99,12 @@ Future<void> _collectFor({
     final result = await client.fetchLibraryFiltersWithValues(library.libraryId);
     final cachedGenres = result.cachedValues[_genreKey];
     final cachedYears = result.cachedValues[_yearKey];
+    final cachedAudioLanguages = result.cachedValues[_audioLanguageKey];
 
-    if (cachedGenres != null || cachedYears != null) {
+    if (cachedGenres != null || cachedYears != null || cachedAudioLanguages != null) {
       _addGenres(cachedGenres, genres);
       _addYears(cachedYears, years);
+      _addAudioLanguages(cachedAudioLanguages, audioLanguages);
       return;
     }
 
@@ -98,13 +115,12 @@ Future<void> _collectFor({
     if (client is! PlexClient) return;
     await Future.wait([
       for (final filter in result.filters)
-        if (filter.filter == _genreKey || filter.filter == _yearKey)
-          client
-              .getFilterValues(filter.key)
-              .then(
-                (values) => filter.filter == _genreKey ? _addGenres(values, genres) : _addYears(values, years),
-                onError: (Object e) => appLogger.d('Unified filter values failed for ${filter.filter}: $e'),
-              ),
+        if (filter.filter == _genreKey || filter.filter == _yearKey || filter.filter == _audioLanguageKey)
+          client.getFilterValues(filter.key).then((values) {
+            if (filter.filter == _genreKey) return _addGenres(values, genres);
+            if (filter.filter == _yearKey) return _addYears(values, years);
+            _addAudioLanguages(values, audioLanguages);
+          }, onError: (Object e) => appLogger.d('Unified filter values failed for ${filter.filter}: $e')),
     ]);
   } catch (e) {
     appLogger.d('Unified filter options failed for ${library.libraryTitle}: $e');
@@ -113,6 +129,16 @@ Future<void> _collectFor({
 
 const String _genreKey = 'genre';
 const String _yearKey = 'year';
+const String _audioLanguageKey = 'audioLanguage';
+
+void _addAudioLanguages(List<MediaFilterValue>? values, Map<String, String> into) {
+  for (final value in values ?? const <MediaFilterValue>[]) {
+    final code = value.key.trim();
+    if (code.isEmpty) continue;
+    final title = value.title.trim();
+    into.putIfAbsent(code, () => languageDisplayName(code) ?? (title.isEmpty ? code : title));
+  }
+}
 
 void _addGenres(List<MediaFilterValue>? values, Set<String> into) {
   for (final value in values ?? const <MediaFilterValue>[]) {

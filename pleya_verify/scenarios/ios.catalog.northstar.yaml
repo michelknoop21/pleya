@@ -46,6 +46,7 @@ steps:
   - assert: {id: sheet.catalog_filters, insideViewport: true}
   - assert: {id: "sheet.catalog_filters.category[status]", insideViewport: true}
   - assert: {id: "sheet.catalog_filters.category[genre]", insideViewport: true}
+  - assert: {id: "sheet.catalog_filters.category[audioLanguage]", insideViewport: true}
   - assert: {id: sheet.catalog_filters.apply, insideViewport: true, minimumTapTarget: 44}
   - snapshot: catalog-filters-sheet-northstar
   - tap: {id: sheet.catalog_filters.apply}

@@ -142,6 +142,18 @@ class TrackControlsState {
   bool get canUseSourceSubtitles =>
       isTranscoding && sourceSubtitleTracks.isNotEmpty && onSwitchSubtitleStreamId != null;
 
+  /// Use the server's audio streams when playback needs a source reload, or
+  /// when the native player did not expose every embedded track. The latter
+  /// happens on iOS for some direct-play containers: the server still knows
+  /// about both languages, while the player reports only the active one.
+  bool shouldUseSourceAudio(Tracks? tracks) {
+    if (sourceAudioTracks.length <= 1 || onSwitchAudioStreamId == null) return false;
+    final playerAudioTracks = TrackFilterHelper.extractAndFilterTracks<AudioTrack>(tracks, (t) => t?.audio ?? []);
+    final playerExposesAlternatives = playerAudioTracks.length > 1;
+    final hasExternalSourceAudio = sourceAudioTracks.any((track) => track.isExternal);
+    return isTranscoding || hasExternalSourceAudio || !playerExposesAlternatives;
+  }
+
   /// External subtitle search needs both a searchable media item and a server
   /// that can proxy the OpenSubtitles request.
   bool get canSearchSubtitles =>

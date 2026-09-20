@@ -48,6 +48,7 @@ import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/formatters.dart';
 import '../../utils/global_key_utils.dart';
+import '../../utils/language_codes.dart';
 import '../../widgets/app_icon.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/focusable_filter_chip.dart';
@@ -274,6 +275,10 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   String? _filterSummary(UnifiedCatalogFilterSelection filters) {
     final parts = <String>[];
     if (filters.genres.isNotEmpty) parts.add((filters.genres.toList()..sort()).join(', '));
+    if (filters.audioLanguages.isNotEmpty) {
+      final languages = filters.audioLanguages.map((code) => languageDisplayName(code) ?? code).toList()..sort();
+      parts.add(languages.join(', '));
+    }
     if (filters.years.isNotEmpty) {
       final years = filters.years.toList()..sort();
       parts.add(years.length == 1 ? '${years.first}' : '${years.first}-${years.last}');

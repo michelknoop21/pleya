@@ -16,6 +16,7 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
   Widget _buildMobileDetailScreen(BuildContext context, MediaItem metadata) {
     final theme = Theme.of(context);
     final client = _getMediaClientForMetadata(context);
+    _scheduleDetailAudioTracksLoad(metadata);
     // Same shell the pre-northstar mobile layout used: OverlaySheetHost owns
     // the back-pop suppression while a sheet (source picker, context menu,
     // rating) is open, and Focus(onKeyEvent: _handleMediaDetailBackKey) is
@@ -76,6 +77,10 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
                                   // actually has alternative sources
                                   // (`hasAlternativeSources`, action_buttons.dart).
                                   _buildUnifiedSourceLine(),
+                                  if (_detailAudioTracks.isNotEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    _buildMobileAudioSelector(),
+                                  ],
                                   const SizedBox(height: 16),
                                   if (metadata.isShow)
                                     _buildMobileEpisodesTabs(context, metadata)

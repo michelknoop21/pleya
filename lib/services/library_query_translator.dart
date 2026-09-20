@@ -72,6 +72,9 @@ class PlexLibraryQueryTranslator implements LibraryQueryTranslator {
     if (query.genres != null && query.genres!.isNotEmpty) {
       filters['genre'] = query.genres!.join(',');
     }
+    if (query.audioLanguages != null && query.audioLanguages!.isNotEmpty) {
+      filters['audioLanguage'] = query.audioLanguages!.join(',');
+    }
     if (query.officialRatings != null && query.officialRatings!.isNotEmpty) {
       filters['contentRating'] = query.officialRatings!.join(',');
     }
@@ -127,6 +130,7 @@ LibraryQuery libraryQueryFromPlexMap({
 }) {
   const knownKeys = {
     'genre',
+    'audioLanguage',
     'year',
     'contentRating',
     'tag',
@@ -171,6 +175,7 @@ LibraryQuery libraryQueryFromPlexMap({
     nameStartsWith: nonEmpty(map['alphaPrefix']),
     search: nonEmpty(map['title']),
     genres: singleton(nonEmpty(map['genre'])),
+    audioLanguages: singleton(nonEmpty(map['audioLanguage'])),
     officialRatings: singleton(nonEmpty(map['contentRating'])),
     tags: singleton(nonEmpty(map['tag'])),
     years: (years == null || years.isEmpty) ? null : years,
@@ -235,6 +240,9 @@ class JellyfinLibraryQueryTranslator implements LibraryQueryTranslator {
     if (query.genres != null && query.genres!.isNotEmpty) {
       // Jellyfin uses `|` as the multi-value separator for Genres.
       params['Genres'] = query.genres!.join('|');
+    }
+    if (query.audioLanguages != null && query.audioLanguages!.isNotEmpty) {
+      params['AudioLanguages'] = query.audioLanguages!.join('|');
     }
     if (query.officialRatings != null && query.officialRatings!.isNotEmpty) {
       params['OfficialRatings'] = query.officialRatings!.join('|');

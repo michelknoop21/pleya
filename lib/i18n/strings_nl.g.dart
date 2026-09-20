@@ -2555,6 +2555,7 @@ class _TranslationsLibrariesFilterCategoriesNl extends TranslationsLibrariesFilt
 
 	// Translations
 	@override String get genre => 'Genre';
+	@override String get audioLanguage => 'Audiotaal';
 	@override String get year => 'Jaar';
 	@override String get contentRating => 'Leeftijdsclassificatie';
 	@override String get tag => 'Tag';
@@ -3910,6 +3911,7 @@ extension on TranslationsNl {
 			'libraries.groupings.episodes' => 'Afleveringen',
 			'libraries.groupings.folders' => 'Mappen',
 			'libraries.filterCategories.genre' => 'Genre',
+			'libraries.filterCategories.audioLanguage' => 'Audiotaal',
 			'libraries.filterCategories.year' => 'Jaar',
 			'libraries.filterCategories.contentRating' => 'Leeftijdsclassificatie',
 			'libraries.filterCategories.tag' => 'Tag',
@@ -4041,9 +4043,9 @@ extension on TranslationsNl {
 			'liveTv.favoritesSaveFailed' => 'Kon je favoriete kanalen niet opslaan',
 			'liveTv.joinSession' => 'Deelnemen aan lopende sessie',
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Kijk vanaf het begin (${minutes} min geleden)',
-			'liveTv.watchLive' => 'Live kijken',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.watchLive' => 'Live kijken',
 			'liveTv.goToLive' => 'Ga naar live',
 			'liveTv.record' => 'Opnemen',
 			'liveTv.recordEpisode' => 'Aflevering opnemen',
@@ -4555,9 +4557,9 @@ extension on TranslationsNl {
 			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Open ${service} om te activeren',
 			'trackers.deviceCode.waitingForAuthorization' => 'Wachten op autorisatie…',
 			'trackers.deviceCode.codeCopied' => 'Code gekopieerd',
-			'trackers.oauthProxy.title' => ({required Object service}) => 'Aanmelden bij ${service}',
 			_ => null,
 		} ?? switch (path) {
+			'trackers.oauthProxy.title' => ({required Object service}) => 'Aanmelden bij ${service}',
 			'trackers.oauthProxy.body' => 'Scan deze QR-code of open de URL op een apparaat.',
 			'trackers.oauthProxy.openToSignIn' => ({required Object service}) => '${service} openen om aan te melden',
 			'trackers.oauthProxy.urlCopied' => 'URL gekopieerd',

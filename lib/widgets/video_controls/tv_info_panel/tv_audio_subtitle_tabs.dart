@@ -119,11 +119,7 @@ class TvAudioTab extends StatelessWidget {
   }
 
   List<Widget> _trackRows(Tracks? tracks, TrackSelection? selection, FocusNode? Function() nodeFor) {
-    final hasExternalSourceAudio = state.sourceAudioTracks.any((track) => track.isExternal);
-    final useSourceAudio =
-        (state.isTranscoding || hasExternalSourceAudio) &&
-        state.sourceAudioTracks.length > 1 &&
-        state.onSwitchAudioStreamId != null;
+    final useSourceAudio = state.shouldUseSourceAudio(tracks);
     final rows = <Widget>[];
     if (useSourceAudio) {
       final selectedId = _selectedSourceAudioId();

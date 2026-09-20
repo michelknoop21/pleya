@@ -40,11 +40,12 @@ import '../overlay_sheet.dart';
 
 /// Which category the sheet opens on. [servers] is what "Alle bronnen"
 /// promises; the other four are all reachable from "Filters".
-enum MobileCatalogFilterSection { status, genre, year, servers, libraries }
+enum MobileCatalogFilterSection { status, genre, audioLanguage, year, servers, libraries }
 
 const List<MobileCatalogFilterSection> _railOrder = [
   MobileCatalogFilterSection.status,
   MobileCatalogFilterSection.genre,
+  MobileCatalogFilterSection.audioLanguage,
   MobileCatalogFilterSection.year,
   MobileCatalogFilterSection.servers,
   MobileCatalogFilterSection.libraries,
@@ -123,7 +124,9 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
 
   bool _supports(MobileCatalogFilterSection section) => switch (section) {
     MobileCatalogFilterSection.status => widget.capabilities.supportsWatchFilter,
-    MobileCatalogFilterSection.genre || MobileCatalogFilterSection.year => widget.capabilities.supportsMetadataFilters,
+    MobileCatalogFilterSection.genre ||
+    MobileCatalogFilterSection.audioLanguage ||
+    MobileCatalogFilterSection.year => widget.capabilities.supportsMetadataFilters,
     MobileCatalogFilterSection.servers || MobileCatalogFilterSection.libraries => true,
   };
 
@@ -146,6 +149,9 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
   }
 
   void _toggleGenre(String genre) => setState(() => _draft = _draft.copyWith(genres: _toggled(_draft.genres, genre)));
+
+  void _toggleAudioLanguage(String language) =>
+      setState(() => _draft = _draft.copyWith(audioLanguages: _toggled(_draft.audioLanguages, language)));
 
   void _toggleYear(int year) => setState(() => _draft = _draft.copyWith(years: _toggled(_draft.years, year)));
 
@@ -192,6 +198,14 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
       for (final genre in _options.genres)
         _OptionRowSpec(label: genre, isSelected: _draft.genres.contains(genre), onPressed: () => _toggleGenre(genre)),
     ],
+    MobileCatalogFilterSection.audioLanguage => [
+      for (final language in _options.audioLanguages)
+        _OptionRowSpec(
+          label: language.label,
+          isSelected: _draft.audioLanguages.contains(language.value),
+          onPressed: () => _toggleAudioLanguage(language.value),
+        ),
+    ],
     MobileCatalogFilterSection.year => [
       for (final year in _options.years)
         _OptionRowSpec(label: '$year', isSelected: _draft.years.contains(year), onPressed: () => _toggleYear(year)),
@@ -218,6 +232,7 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
   int _activeCountFor(MobileCatalogFilterSection section) => switch (section) {
     MobileCatalogFilterSection.status => _draft.watchState == UnifiedWatchFilter.all ? 0 : 1,
     MobileCatalogFilterSection.genre => _draft.genres.length,
+    MobileCatalogFilterSection.audioLanguage => _draft.audioLanguages.length,
     MobileCatalogFilterSection.year => _draft.years.length,
     MobileCatalogFilterSection.servers => _draft.serverIds.length,
     MobileCatalogFilterSection.libraries => _draft.libraryKeys.length,
@@ -226,6 +241,7 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
   String _labelFor(MobileCatalogFilterSection section) => switch (section) {
     MobileCatalogFilterSection.status => t.unifiedCatalog.filters.status,
     MobileCatalogFilterSection.genre => t.unifiedCatalog.filters.genre,
+    MobileCatalogFilterSection.audioLanguage => t.libraries.filterCategories.audioLanguage,
     MobileCatalogFilterSection.year => t.unifiedCatalog.filters.year,
     MobileCatalogFilterSection.servers => t.unifiedCatalog.filters.servers,
     MobileCatalogFilterSection.libraries => t.unifiedCatalog.filters.libraries,

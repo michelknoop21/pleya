@@ -57,6 +57,11 @@ void main() {
       expect(params['unwatched'], '1');
     });
 
+    test('audio languages use Plex audioLanguage filter', () {
+      final params = translator.toQueryParameters(const LibraryQuery(audioLanguages: ['eng', 'nld']));
+      expect(params['audioLanguage'], 'eng,nld');
+    });
+
     test('arbitrary filter clauses pass through verbatim', () {
       final params = translator.toQueryParameters(
         const LibraryQuery(
@@ -115,6 +120,11 @@ void main() {
     test('genres joined with pipe separator', () {
       final params = translator.toQueryParameters(const LibraryQuery(genres: ['Action', 'Drama']));
       expect(params['Genres'], 'Action|Drama');
+    });
+
+    test('audio languages use Jellyfin AudioLanguages with pipe separator', () {
+      final params = translator.toQueryParameters(const LibraryQuery(audioLanguages: ['eng', 'nld']));
+      expect(params['AudioLanguages'], 'eng|nld');
     });
 
     test('years joined with comma separator', () {
@@ -307,6 +317,10 @@ void main() {
       expect(roundTrip(input), {'contentRating': 'PG-13', 'tag': 'Christmas', 'alphaPrefix': 'A'});
     });
 
+    test('audioLanguage round-trips', () {
+      expect(roundTrip({'audioLanguage': 'eng,nld'}), {'audioLanguage': 'eng,nld'});
+    });
+
     test('unwatched=1 round-trips (LibraryQuery.includeWatched=false → unwatched=1)', () {
       final input = {'unwatched': '1'};
       expect(roundTrip(input), {'unwatched': '1'});
@@ -343,6 +357,7 @@ void main() {
     test('full realistic browse-tab map round-trips byte-for-byte', () {
       final input = {
         'genre': 'Comedy',
+        'audioLanguage': 'eng',
         'year': '2024',
         'contentRating': 'PG-13',
         'tag': 'Christmas',

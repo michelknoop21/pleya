@@ -281,8 +281,8 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     return LibraryPage<MediaItem>(items: _mapItems(items), totalCount: total, offset: offset);
   }
 
-  /// Jellyfin's `/Items/Filters` returns Genres / OfficialRatings / Tags /
-  /// Categories + values from `/Items/Filters` in a single call. The unwatched
+  /// Jellyfin's `/Items/Filters` returns Genres / AudioLanguages /
+  /// OfficialRatings / Tags / Categories + values in a single call. The unwatched
   /// boolean is synthetic because Jellyfin exposes it as an `/Items` query
   /// filter, not a filter-listing category. Keys are translated to Plex's
   /// filter naming so the existing filter-param map round-trips through
@@ -309,6 +309,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
 
     final raw = <String, List<String>>{
       'genre': stringList(data['Genres']),
+      'audioLanguage': stringList(data['AudioLanguages']),
       'contentRating': stringList(data['OfficialRatings']),
       'tag': stringList(data['Tags']),
       'year': (data['Years'] is List)
@@ -316,9 +317,10 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
           : const <String>[],
     };
 
-    const order = ['genre', 'year', 'contentRating', 'tag'];
+    const order = ['genre', 'audioLanguage', 'year', 'contentRating', 'tag'];
     final titles = {
       'genre': t.libraries.filterCategories.genre,
+      'audioLanguage': t.libraries.filterCategories.audioLanguage,
       'year': t.libraries.filterCategories.year,
       'contentRating': t.libraries.filterCategories.contentRating,
       'tag': t.libraries.filterCategories.tag,

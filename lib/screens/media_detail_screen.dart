@@ -45,6 +45,10 @@ import '../services/media_watch_stats_service.dart';
 import 'media_detail/watch_stats_row.dart';
 import '../media/library_query.dart';
 import '../media/media_hub.dart';
+import '../media/media_file_info.dart';
+import '../media/media_source_info.dart';
+import '../media/track_language_choice.dart';
+import '../mpv/models.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/plex_season_display.dart';
 import '../diagnostics/select_trace.dart';
@@ -76,6 +80,7 @@ import '../services/download_storage_service.dart';
 import '../utils/download_version_utils.dart';
 import '../utils/download_utils.dart';
 import '../services/settings_service.dart';
+import '../services/track_preference_store.dart';
 import '../services/rating_actions.dart';
 import '../services/unified_action_outcome.dart';
 import '../services/watch_actions.dart';
@@ -127,6 +132,7 @@ import '../widgets/focusable_tab_chip.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/ios_status_bar_tap_scroll_to_top.dart';
 import '../widgets/loading_indicator_box.dart';
+import '../widgets/mobile/mobile_audio_track_picker_sheet.dart';
 import '../widgets/tv/tv_media_source_picker.dart';
 import '../widgets/tv/tv_panel_primitives.dart';
 import '../widgets/tv/tv_unified_layout.dart';
@@ -137,6 +143,7 @@ import '../navigation/main_screen_scope.dart';
 import '../utils/error_message_utils.dart';
 
 part 'media_detail/action_buttons.dart';
+part 'media_detail/audio_selector.dart';
 part 'media_detail/mobile_detail_view.dart';
 part 'media_detail/mobile_episodes_tab.dart';
 part 'media_detail/synopsis_panel.dart';
@@ -324,6 +331,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   MediaWatchStats? _watchStats;
   MediaItem? _onDeckEpisode;
   bool _isLoadingMetadata = true;
+  String? _detailAudioTargetId;
+  MediaItem? _detailAudioTarget;
+  List<MediaAudioTrack> _detailAudioTracks = const [];
+  int? _selectedDetailAudioTrackId;
+  bool _detailAudioLoadInFlight = false;
+
+  void _updateDetailAudioState(VoidCallback update) => setState(update);
 
   /// F19/A14: the metadata fetch itself threw (network/server error), as
   /// distinct from succeeding with a fallback. [_loadFullMetadata]'s "no

@@ -957,6 +957,7 @@
     },
     "filterCategories": {
       "genre": "Genre",
+      "audioLanguage": "Audiotaal",
       "year": "Jaar",
       "contentRating": "Leeftijdsclassificatie",
       "tag": "Tag",

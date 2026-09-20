@@ -64,6 +64,7 @@ sealed class LibraryQuery with _$LibraryQuery {
     /// take multiple values (Jellyfin) AND/intersect; those that take one
     /// (Plex's existing flow) consult `filters` instead.
     List<String>? genres,
+    List<String>? audioLanguages,
     List<String>? officialRatings,
     List<int>? years,
     List<String>? tags,

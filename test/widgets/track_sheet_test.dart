@@ -151,6 +151,35 @@ void main() {
       expect(state.hasSubtitleControls(const Tracks(subtitle: [SubtitleTrack(id: 's1')])), isTrue);
     });
   });
+
+  group('TrackControlsState.shouldUseSourceAudio', () {
+    final sourceTracks = [
+      MediaAudioTrack(id: 1, languageCode: 'eng', selected: true),
+      MediaAudioTrack(id: 2, languageCode: 'nld', selected: false),
+    ];
+
+    test('falls back to server tracks when the player exposes only the active iOS track', () {
+      final state = TrackControlsState(sourceAudioTracks: sourceTracks, onSwitchAudioStreamId: (_) {});
+
+      expect(state.shouldUseSourceAudio(const Tracks(audio: [AudioTrack(id: '1')])), isTrue);
+    });
+
+    test('keeps direct player selection when the player exposes all alternatives', () {
+      final state = TrackControlsState(sourceAudioTracks: sourceTracks, onSwitchAudioStreamId: (_) {});
+
+      expect(
+        state.shouldUseSourceAudio(
+          const Tracks(
+            audio: [
+              AudioTrack(id: '1'),
+              AudioTrack(id: '2'),
+            ],
+          ),
+        ),
+        isFalse,
+      );
+    });
+  });
 }
 
 Future<void> _pumpTrackSheet(

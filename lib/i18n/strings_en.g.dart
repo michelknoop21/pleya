@@ -6147,6 +6147,9 @@ class TranslationsLibrariesFilterCategoriesEn {
 	/// en: 'Genre'
 	String get genre => 'Genre';
 
+	/// en: 'Audio language'
+	String get audioLanguage => 'Audio language';
+
 	/// en: 'Year'
 	String get year => 'Year';
 
@@ -7952,6 +7955,7 @@ extension on Translations {
 			'libraries.groupings.episodes' => 'Episodes',
 			'libraries.groupings.folders' => 'Folders',
 			'libraries.filterCategories.genre' => 'Genre',
+			'libraries.filterCategories.audioLanguage' => 'Audio language',
 			'libraries.filterCategories.year' => 'Year',
 			'libraries.filterCategories.contentRating' => 'Content Rating',
 			'libraries.filterCategories.tag' => 'Tag',
@@ -8083,9 +8087,9 @@ extension on Translations {
 			'liveTv.favoritesSaveFailed' => 'Could not save your favorite channels',
 			'liveTv.joinSession' => 'Join Session in Progress',
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Watch from start (${minutes} min ago)',
-			'liveTv.watchLive' => 'Watch Live',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.watchLive' => 'Watch Live',
 			'liveTv.goToLive' => 'Go to Live',
 			'liveTv.record' => 'Record',
 			'liveTv.recordEpisode' => 'Record Episode',
@@ -8597,9 +8601,9 @@ extension on Translations {
 			'seerr.permissionAdmin' => 'Administrator',
 			'seerr.permissionManage' => 'Can approve requests',
 			'seerr.permissionRequest' => 'Can request',
-			'seerr.request' => 'Request',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.request' => 'Request',
 			'seerr.requested' => 'Requested',
 			'seerr.requestAgain' => 'Request',
 			'seerr.processing' => 'Processing',

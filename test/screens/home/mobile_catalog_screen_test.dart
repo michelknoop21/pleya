@@ -293,6 +293,7 @@ void main() {
     await tapChip(tester, find.text(t.unifiedCatalog.filters.title));
     await tester.pumpAndSettle();
     expect(find.text(t.unifiedCatalog.filters.genre), findsOneWidget, reason: 'the Filters chip must open its sheet');
+    expect(find.text(t.libraries.filterCategories.audioLanguage), findsOneWidget);
     await tester.tap(find.text(t.unifiedCatalog.filters.apply));
     await settle(tester);
 

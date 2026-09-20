@@ -957,6 +957,7 @@
     },
     "filterCategories": {
       "genre": "Genre",
+      "audioLanguage": "Audio language",
       "year": "Year",
       "contentRating": "Content Rating",
       "tag": "Tag",

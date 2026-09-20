@@ -40,11 +40,7 @@ class TrackSheet extends StatelessWidget {
         );
 
         final state = trackControlsState;
-        final hasExternalSourceAudio = state.sourceAudioTracks.any((track) => track.isExternal);
-        final useSourceAudio =
-            (state.isTranscoding || hasExternalSourceAudio) &&
-            state.sourceAudioTracks.length > 1 &&
-            state.onSwitchAudioStreamId != null;
+        final useSourceAudio = state.shouldUseSourceAudio(tracks);
         final useSourceSubtitles = state.canUseSourceSubtitles;
         final showAudio = useSourceAudio || playerAudioTracks.length > 1;
         final showSubtitles = state.hasSubtitleControls(tracks);

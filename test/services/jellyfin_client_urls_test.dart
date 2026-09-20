@@ -1581,6 +1581,7 @@ void main() {
           return http.Response(
             jsonEncode({
               'Genres': ['Drama', 'Action'],
+              'AudioLanguages': ['nld', 'eng'],
               'OfficialRatings': ['PG-13'],
               'Tags': ['Holiday'],
               'Years': [2024, 1999],
@@ -1598,12 +1599,20 @@ void main() {
       expect(captured!.path, '/Items/Filters');
       expect(captured!.queryParameters['ParentId'], 'lib-1');
       expect(captured!.queryParameters['userId'], 'user-1');
-      expect(result.filters.map((filter) => filter.filter), ['unwatched', 'genre', 'year', 'contentRating', 'tag']);
+      expect(result.filters.map((filter) => filter.filter), [
+        'unwatched',
+        'genre',
+        'audioLanguage',
+        'year',
+        'contentRating',
+        'tag',
+      ]);
       expect(result.filters.first.filterType, 'boolean');
       expect(result.filters.first.key, 'jellyfin:unwatched');
       expect(result.filters.first.title, 'Unwatched');
       expect(result.cachedValues.containsKey('unwatched'), isFalse);
       expect(result.cachedValues['genre']!.map((value) => value.key), ['Action', 'Drama']);
+      expect(result.cachedValues['audioLanguage']!.map((value) => value.key), ['eng', 'nld']);
       expect(result.cachedValues['year']!.map((value) => value.key), ['2024', '1999']);
     });
 
