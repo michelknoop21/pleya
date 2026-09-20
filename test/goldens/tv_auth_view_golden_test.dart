@@ -12,7 +12,6 @@ import 'package:pleya/services/plex_auth_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
-import 'package:pleya/widgets/pleya_logo.dart';
 
 import '../test_helpers/golden.dart';
 

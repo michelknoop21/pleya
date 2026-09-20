@@ -16,6 +16,9 @@ class AutomationIds {
   /// [authChoice]'s `enabled` state instead.
   static const String screenAuth = 'screen.auth';
 
+  /// The visible first-start heading in the left column.
+  static const String authHeading = 'auth.heading';
+
   /// One of the two first-start authentication choices, suffixed with the
   /// backend (`auth.choice[plex]` or `auth.choice[jellyfin]`). The id lives on
   /// the focusable row itself so automation observes the same bounds and
@@ -485,6 +488,7 @@ class AutomationIds {
   /// the full, screen-independent set.
   static List<Map<String, Object?>> catalog() => [
     {'id': screenAuth, 'role': 'screen', 'instanceable': false},
+    {'id': authHeading, 'role': 'heading', 'instanceable': false},
     {'id': authChoice, 'role': 'button', 'instanceable': true},
     {'id': authPanel, 'role': 'region', 'instanceable': false},
     {'id': authRetry, 'role': 'button', 'instanceable': false},

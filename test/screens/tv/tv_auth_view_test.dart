@@ -192,6 +192,16 @@ void main() {
     }
   });
 
+  testWidgets('the visible page heading owns the auth heading automation node', (tester) async {
+    await pumpView(tester);
+
+    final heading = tester.widget<AutomationNode>(
+      find.byWidgetPredicate((widget) => widget is AutomationNode && widget.id == AutomationIds.authHeading),
+    );
+    expect(heading.role, 'heading');
+    expect(find.descendant(of: find.byWidget(heading), matching: find.text(t.auth.chooseHowToSignIn)), findsOneWidget);
+  });
+
   testWidgets('long German authentication labels do not overflow the canonical surface', (tester) async {
     await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.de));
     addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));

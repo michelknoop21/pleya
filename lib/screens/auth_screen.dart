@@ -450,7 +450,7 @@ class _AuthScreenState extends State<AuthScreen> {
         const PleyaLogo(size: 96),
         const SizedBox(height: 22),
         Text(
-          'LEYA',
+          PlatformDetector.isAppleTV() ? 'LEYA' : 'PLEYA',
           textAlign: TextAlign.center,
           style: TextStyle(color: textColor, fontSize: 24, fontWeight: .w800, letterSpacing: 9.6),
         ),

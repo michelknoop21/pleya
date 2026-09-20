@@ -44,7 +44,7 @@ void main() {
     );
   });
 
-  test('auth exposes one closed four-id domain and only choices are instanceable', () {
+  test('auth exposes one closed five-id domain and only choices are instanceable', () {
     final authCatalog = AutomationIds.catalog().where((entry) {
       final id = entry['id']! as String;
       return id == AutomationIds.screenAuth || id.startsWith('auth.');
@@ -52,6 +52,7 @@ void main() {
 
     expect(authCatalog, [
       {'id': AutomationIds.screenAuth, 'role': 'screen', 'instanceable': false},
+      {'id': AutomationIds.authHeading, 'role': 'heading', 'instanceable': false},
       {'id': AutomationIds.authChoice, 'role': 'button', 'instanceable': true},
       {'id': AutomationIds.authPanel, 'role': 'region', 'instanceable': false},
       {'id': AutomationIds.authRetry, 'role': 'button', 'instanceable': false},

@@ -523,6 +523,8 @@ void main() {
         await tester.pump();
 
         expect(find.byType(TvAuthView), findsNothing);
+        expect(find.text('PLEYA'), findsOneWidget);
+        expect(find.text('LEYA'), findsNothing);
         expect(
           find.ancestor(of: find.text(t.auth.signInWithPlex), matching: find.byType(FilledButton)),
           findsOneWidget,

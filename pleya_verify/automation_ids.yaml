@@ -9,6 +9,9 @@ ids:
   - id: screen.auth
     role: screen
     instanceable: false
+  - id: auth.heading
+    role: heading
+    instanceable: false
   - id: auth.choice
     role: button
     instanceable: true

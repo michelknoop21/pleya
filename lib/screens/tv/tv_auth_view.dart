@@ -98,15 +98,19 @@ class TvAuthView extends StatelessWidget {
                     children: [
                       brand,
                       const Spacer(),
-                      Text(
-                        t.auth.chooseHowToSignIn,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: mono.text,
-                          fontSize: TvAuthLayout.headingFontSize * scale,
-                          fontWeight: FontWeight.w700,
-                          height: 1.08,
+                      AutomationNode(
+                        id: AutomationIds.authHeading,
+                        role: 'heading',
+                        child: Text(
+                          t.auth.chooseHowToSignIn,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: mono.text,
+                            fontSize: TvAuthLayout.headingFontSize * scale,
+                            fontWeight: FontWeight.w700,
+                            height: 1.08,
+                          ),
                         ),
                       ),
                       SizedBox(height: TvAuthLayout.headingGap * scale),
