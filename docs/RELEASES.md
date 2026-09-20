@@ -33,6 +33,7 @@ under `Notes`.
 - bouw de eerste-startcompositie
 - verbind authstatussen met de TV-compositie
 - unify mobile catalog filters
+- add audio language selection and filters
 
 ### Improved
 - bereken showReconnect op één plek in tvTopNavFocusKeys
