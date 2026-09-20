@@ -70,9 +70,15 @@ check "spaties, quotes, komma en unicode" "$(has_attr "$odd")" "no"
 echo "==> prune-contract"
 mkdir -p "$root/prune/node_modules/pkg" "$root/prune/.git/objects" \
          "$root/prune/.dart_tool" "$root/prune/.fvm" "$root/prune/.claude/worktrees/other/build" \
+         "$root/prune/.build/evidence" "$root/prune/android/app" "$root/prune/docs/assets" \
+         "$root/prune/test/widgets" "$root/prune/pleya_verify/runner" "$root/prune/tvos/Runner" \
+         "$root/prune/build/macos/Runner.app" \
          "$root/prune/lib/deep" \
          "$root/prune/build/ios"
-for p in node_modules/pkg/f .git/objects/f .dart_tool/f .fvm/f .claude/worktrees/other/build/f lib/deep/f build/ios/f; do
+for p in node_modules/pkg/f .git/objects/f .fvm/f .dart_tool/f .claude/worktrees/other/build/f \
+         .build/evidence/f android/app/f docs/assets/f test/widgets/f pleya_verify/runner/f tvos/Runner/f \
+         build/macos/Runner.app/f \
+         lib/deep/f build/ios/f; do
   : > "$root/prune/$p"; set_attr "$root/prune/$p"
 done
 "$SHIM" -r -d "$ATTR" "$root/prune"
@@ -82,6 +88,14 @@ check ".dart_tool blijft"    "$(has_attr "$root/prune/.dart_tool/f")"       "yes
 check ".fvm blijft"          "$(has_attr "$root/prune/.fvm/f")"             "yes"
 check ".claude-worktrees blijven" \
                              "$(has_attr "$root/prune/.claude/worktrees/other/build/f")" "yes"
+check ".build-bewijs blijft" "$(has_attr "$root/prune/.build/evidence/f")" "yes"
+check "Android blijft"       "$(has_attr "$root/prune/android/app/f")"      "yes"
+check "docs blijven"         "$(has_attr "$root/prune/docs/assets/f")"     "yes"
+check "tests blijven"        "$(has_attr "$root/prune/test/widgets/f")"    "yes"
+check "Verify blijft"        "$(has_attr "$root/prune/pleya_verify/runner/f")" "yes"
+check "tvOS blijft"          "$(has_attr "$root/prune/tvos/Runner/f")"      "yes"
+check "niet-iOS builduitvoer blijft" \
+                             "$(has_attr "$root/prune/build/macos/Runner.app/f")" "yes"
 check "lib wordt geschoond"  "$(has_attr "$root/prune/lib/deep/f")"         "no"
 check "build wordt geschoond, want die gaat de bundel in" \
                              "$(has_attr "$root/prune/build/ios/f")"        "no"
