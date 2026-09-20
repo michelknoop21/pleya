@@ -17,5 +17,5 @@ Fill one row per task, then stop. Use brief observations, not transcripts. Token
 | Task | Unnecessary reads / avoidable duplicate checks / process documents | Tokens, if measured |
 | --- | --- | --- |
 | Apple TV-crash bij Verderkijken | De volledige Flutter-testsuite was een vermijdbare extra controle: bestaande, ongerelateerde golden failures vertroebelden de bruikbare gerichte test-, CI- en device-evidence. | not measured |
-| Pending 2 | — | — |
+| iOS Aanvragen-review en Verify-afsluiting | De volledige simulatorbuild is na de fixturecorrectie terecht herhaald; het langdurig wachten op een parallelle test in dezelfde checkout was vermijdbare procesfrictie en maakte één bewijsbundle niet aan een stabiele HEAD toewijsbaar. | not measured |
 | Pending 3 | — | — |

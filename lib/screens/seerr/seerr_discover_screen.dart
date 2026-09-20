@@ -106,6 +106,10 @@ class SeerrDiscoverScreen extends StatefulWidget {
 
 class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with ControllerDisposerMixin {
   SeerrClient? _client;
+
+  // Read by the phone's readiness, and bumped when the viewer comes back from a pushed screen.
+  int _myRequestsInFlight = 0;
+  int _myRequestsRefresh = 0;
   late final List<_SeerrRow> _rows;
   late final TextEditingController _searchController;
   final _searchFocusNode = FocusNode(debugLabel: 'SeerrSearchInput');
@@ -382,12 +386,22 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   SeerrErrorKind get _dominantErrorKind =>
       dominantSeerrErrorKind(_visibleRows.where((r) => r.errored).map((r) => r.errorKind));
 
-  void _openDetail(SeerrMedia media) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => SeerrMediaDetailScreen(media: media)));
+  Future<void> _openDetail(SeerrMedia media) async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SeerrMediaDetailScreen(media: media)));
+    _refreshMyRequests();
   }
 
-  void _openRequests() {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SeerrRequestsScreen()));
+  /// [mineOnly]: the phone's "Mijn aanvragen" header, which opens the viewer's own list even
+  /// for a manager. The app bar action keeps opening the full one.
+  Future<void> _openRequests({bool mineOnly = false}) async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SeerrRequestsScreen(mineOnly: mineOnly)));
+    _refreshMyRequests();
+  }
+
+  /// Requesting a title or approving one changes "Mijn aanvragen": ask it to load again once
+  /// the pushed screen is gone.
+  void _refreshMyRequests() {
+    if (mounted) setState(() => _myRequestsRefresh++);
   }
 
   // ---------------------------------------------------------------------------
@@ -506,7 +520,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   Widget _buildPhone() {
     return AutomationScreen(
       id: AutomationIds.screenRequests,
-      readiness: () => _query.isEmpty && !_allLoaded
+      readiness: () => _query.isEmpty && (!_allLoaded || _myRequestsInFlight > 0)
           ? const AutomationReadiness.loading('requests')
           : const AutomationReadiness.ready(),
       child: Scaffold(
@@ -536,7 +550,9 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
               SliverToBoxAdapter(
                 child: MobileSeerrMyRequestsSection(
                   load: _loadMyRequests,
-                  onOpenAll: _openRequests,
+                  identity: context.watch<SeerrProvider>().session,
+                  refresh: _myRequestsRefresh,
+                  onOpenAll: () => unawaited(_openRequests(mineOnly: true)),
                   onOpenRequest: _openRequestDetail,
                 ),
               ),
@@ -554,8 +570,16 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     final client = provider.client;
     final userId = provider.session?.userId;
     if (client == null || userId == null) return (items: const <SeerrRequest>[], totalPages: 1);
-    final page = await client.getRequests(requestedBy: userId, take: MobileSeerrMyRequestsSection.visibleCount);
-    return (items: await client.hydrateRequests(page.items), totalPages: page.totalPages);
+    // The section is part of what this screen is ready with: the counter is what the
+    // readiness above reads, and the rebuild in `finally` is what lets `screen.ready` fire.
+    _myRequestsInFlight++;
+    try {
+      final page = await client.getRequests(requestedBy: userId, take: MobileSeerrMyRequestsSection.visibleCount);
+      return (items: await client.hydrateRequests(page.items), totalPages: page.totalPages);
+    } finally {
+      _myRequestsInFlight--;
+      if (mounted) setState(() {});
+    }
   }
 
   void _openRequestDetail(SeerrRequest request) {

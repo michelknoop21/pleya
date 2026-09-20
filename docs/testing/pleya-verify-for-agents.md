@@ -18,7 +18,7 @@ Before running anything against a real target, check whether the target can actu
 
 Everything below assumes the working directory is `pleya_verify/runner/` (every subcommand resolves
 `../scenarios`, `../automation_ids.yaml`, and `../..` for the repo root relative to that directory),
-and that the Flutter SDK pinned in `.fvmrc` is on `PATH` (see CLAUDE.md, dependency section, for why
+and that the Flutter SDK pinned in `.fvmrc` is on `PATH` (see `docs/agents/dependencies.md`, for why
 a different SDK silently breaks formatting/codegen expectations elsewhere in this repo).
 
 ## Running an existing scenario
@@ -104,7 +104,7 @@ function/argument table before guessing a shape.
 ## Never do this
 
 - **Never drive tvOS input through `/v1/input/*`.** The gated engine fork claims every remote press
-  before UIKit's responder chain runs (see CLAUDE.md, Gotchas section); a press synthesized over the
+  before UIKit's responder chain runs (see `docs/agents/ui-and-tv.md`, Known failure modes section); a press synthesized over the
   automation transport does not exercise that path and proves nothing about a real Siri Remote.
   `TvosSimulatorDriver` only ever sends input through `scripts/tvos_sim.sh` (idb HID); do not add a
   tvOS scenario step or a driver change that routes around that.

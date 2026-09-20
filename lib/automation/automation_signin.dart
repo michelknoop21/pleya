@@ -208,13 +208,18 @@ Future<Map<String, Object?>> handleAutomationSeedSeerr(Map<String, Object?> body
   if (rejectedBaseUrl != null) return {'ok': false, 'error': rejectedBaseUrl};
 
   final context = await _waitForProfileContext();
-  if (context == null) {
+  if (context == null || !context.mounted) {
     return {'ok': false, 'error': 'no profile session is mounted yet — sign in first'};
   }
 
-  final provider = context.read<SeerrProvider>();
   try {
+    // Inside the try: a session tree without a SeerrProvider is a failed seed, answered
+    // like every other failure of this endpoint, not an empty 500.
+    final provider = context.read<SeerrProvider>();
     final result = await provider.test(baseUrl: baseUrl, mode: SeerrAuthMode.apiKey, apiKey: apiKey);
+    // The test is a network round trip; committing to a provider whose session went away
+    // during it would store the credentials for a profile nobody is looking at.
+    if (!context.mounted) return {'ok': false, 'error': 'profile session unmounted during the seerr test'};
     await provider.commit(result.session);
   } on Exception catch (e) {
     return {'ok': false, 'error': 'seerr connect failed: $e'};
@@ -322,8 +327,11 @@ Future<Map<String, Object?>> handleAutomationOpen(Map<String, Object?> body) asy
   final screen = body['screen'] as String?;
   if (screen == null) return {'ok': false, 'error': 'screen is required'};
 
-  final context = profileNavigationRegistry.navigator?.context;
-  if (context == null || !context.mounted) {
+  // `/v1/signin` returns before `ProfileSessionScreen` has attached its navigator, so a
+  // scenario that opens a screen straight after signing in has to wait for it, exactly like
+  // `/v1/seerr/seed` does.
+  final timeoutMs = (body['timeoutMs'] as num?)?.toInt() ?? 5000;
+  if (await _waitForProfileContext(timeout: Duration(milliseconds: timeoutMs)) == null) {
     return {'ok': false, 'error': 'no profile session is mounted yet — sign in first'};
   }
 
@@ -341,13 +349,13 @@ Future<Map<String, Object?>> handleAutomationOpen(Map<String, Object?> body) asy
     }
   }
 
-  final timeoutMs = (body['timeoutMs'] as num?)?.toInt() ?? 5000;
   final deadline = DateTime.now().add(Duration(milliseconds: timeoutMs));
   while (true) {
     final entry = AutomationScreenRegistry.instance.snapshot().firstWhereOrNull((s) => s['id'] == screen);
     if (entry != null && entry['ready'] == true) return {'ok': true, 'screen': screen};
-    if (DateTime.now().isAfter(deadline))
+    if (DateTime.now().isAfter(deadline)) {
       return {'ok': false, 'error': 'timeout waiting for "$screen" to become ready'};
+    }
     await Future<void>.delayed(const Duration(milliseconds: 100));
   }
 }

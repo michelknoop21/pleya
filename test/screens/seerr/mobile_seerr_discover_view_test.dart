@@ -3,6 +3,8 @@
 /// seam (see `seerr_discover_tv_test.dart`).
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
@@ -64,6 +66,14 @@ void main() {
       );
       expect(status.label, '${t.seerr.approved} · ${t.seerr.processing}');
       expect(status.tone, MobileSeerrRequestTone.inProgress);
+    });
+
+    test('a pending request stays pending while its title is already downloading', () {
+      // Someone else's approved request can be fetching the same title; this one still waits
+      // for a manager, and must not read as approved.
+      final status = mobileSeerrRequestStatus(_request(1, media: SeerrMediaStatus.processing));
+      expect(status.label, t.seerr.pending);
+      expect(status.tone, MobileSeerrRequestTone.waiting);
     });
 
     test('a pending request waits', () {
@@ -151,17 +161,126 @@ void main() {
       expect(find.textContaining(header()), findsNothing);
     });
 
-    testWidgets('draws nothing when loading fails', (tester) async {
+    testWidgets('says so and loads again on tap when loading fails', (tester) async {
+      var calls = 0;
       await _pump(
         tester,
         MobileSeerrMyRequestsSection(
-          load: () async => throw Exception('offline'),
+          load: () async {
+            if (calls++ == 0) throw Exception('offline');
+            return (items: [_request(1)], totalPages: 1);
+          },
           onOpenAll: () {},
           onOpenRequest: (_) {},
         ),
       );
-      expect(find.textContaining(header()), findsNothing);
-      expect(tester.takeException(), isNull);
+      // Not the silence of "no requests": the viewer is told and can retry.
+      expect(find.text(t.seerr.errorGeneric), findsOneWidget);
+      expect(find.text('Request 1'), findsNothing);
+
+      await tester.tap(find.text(t.seerr.errorGeneric));
+      await tester.pumpAndSettle();
+      expect(find.text('Request 1'), findsOneWidget);
+      expect(find.text(t.seerr.errorGeneric), findsNothing);
+    });
+
+    testWidgets('shows at most the visible count, whatever the server returns', (tester) async {
+      await _pump(
+        tester,
+        MobileSeerrMyRequestsSection(
+          load: () async => (items: [for (var i = 1; i <= 5; i++) _request(i)], totalPages: 1),
+          onOpenAll: () {},
+          onOpenRequest: (_) {},
+        ),
+      );
+      expect(find.text('Request 3'), findsOneWidget);
+      expect(find.text('Request 4'), findsNothing);
+      expect(find.text('Request 5'), findsNothing);
+    });
+
+    group('reloading', () {
+      Widget host(
+        ValueNotifier<({Object identity, int refresh})> state,
+        Future<({List<SeerrRequest> items, int totalPages})> Function(Object identity) load,
+      ) => ValueListenableBuilder(
+        valueListenable: state,
+        builder: (_, s, _) => MobileSeerrMyRequestsSection(
+          identity: s.identity,
+          refresh: s.refresh,
+          load: () => load(s.identity),
+          onOpenAll: () {},
+          onOpenRequest: (_) {},
+        ),
+      );
+
+      testWidgets('another identity drops the old rows and ignores a late answer for them', (tester) async {
+        final state = ValueNotifier<({Object identity, int refresh})>((identity: 'a', refresh: 0));
+        addTearDown(state.dispose);
+        final lateAnswer = Completer<({List<SeerrRequest> items, int totalPages})>();
+        var aCalls = 0;
+        await _pump(
+          tester,
+          host(state, (identity) {
+            if (identity == 'b') return Future.value((items: [_request(2)], totalPages: 1));
+            return aCalls++ == 0 ? Future.value((items: [_request(1)], totalPages: 1)) : lateAnswer.future;
+          }),
+        );
+        expect(find.text('Request 1'), findsOneWidget);
+
+        // Back to "a" (its load stays in flight), then on to "b": the answer "a" gives after
+        // that is for an account nobody is looking at.
+        state.value = (identity: 'b', refresh: 0);
+        await tester.pumpAndSettle();
+        expect(find.text('Request 1'), findsNothing);
+        expect(find.text('Request 2'), findsOneWidget);
+
+        state.value = (identity: 'a', refresh: 0);
+        await tester.pump();
+        state.value = (identity: 'b', refresh: 0);
+        await tester.pumpAndSettle();
+        lateAnswer.complete((items: [_request(1)], totalPages: 1));
+        await tester.pumpAndSettle();
+        expect(find.text('Request 1'), findsNothing);
+        expect(find.text('Request 2'), findsOneWidget);
+      });
+
+      testWidgets('a refresh keeps the rows up while the new list loads', (tester) async {
+        final state = ValueNotifier<({Object identity, int refresh})>((identity: 'a', refresh: 0));
+        addTearDown(state.dispose);
+        final next = Completer<({List<SeerrRequest> items, int totalPages})>();
+        var calls = 0;
+        await _pump(
+          tester,
+          host(state, (_) => calls++ == 0 ? Future.value((items: [_request(1)], totalPages: 1)) : next.future),
+        );
+        expect(find.text('Request 1'), findsOneWidget);
+
+        state.value = (identity: 'a', refresh: 1);
+        await tester.pump();
+        expect(find.text('Request 1'), findsOneWidget);
+
+        next.complete((items: [_request(1), _request(2)], totalPages: 1));
+        await tester.pumpAndSettle();
+        expect(find.text('Request 2'), findsOneWidget);
+      });
+
+      testWidgets('a refresh that fails leaves the rows as they were', (tester) async {
+        final state = ValueNotifier<({Object identity, int refresh})>((identity: 'a', refresh: 0));
+        addTearDown(state.dispose);
+        var calls = 0;
+        await _pump(
+          tester,
+          host(state, (_) async {
+            if (calls++ == 0) return (items: [_request(1)], totalPages: 1);
+            throw Exception('offline');
+          }),
+        );
+
+        state.value = (identity: 'a', refresh: 1);
+        await tester.pumpAndSettle();
+        expect(find.text('Request 1'), findsOneWidget);
+        expect(find.text(t.seerr.errorGeneric), findsNothing);
+      });
     });
   });
 

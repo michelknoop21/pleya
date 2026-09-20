@@ -84,7 +84,7 @@ Eén `VerificationDriver`-implementatie per target (`pleya_verify/runner/lib/src
 `eventsSince`, `logs`, `viewport`) loopt voor alle drie via dezelfde `VerifyClient` tegen `/v1/*`.
 
 Invoer niet. Op tvOS claimt de gepinde engine-fork elke druk vóórdat UIKit's responder chain ooit
-begint (zie CLAUDE.md, sectie Gotchas, voor de swizzle-details), dus een druk die via
+begint (zie `docs/agents/ui-and-tv.md`, sectie Known failure modes, voor de swizzle-details), dus een druk die via
 `/v1/input/key` synthetisch bij Flutter binnenkomt, bewijst niets over wat een echte Siri Remote
 zou doen: die twee paden zijn aantoonbaar niet hetzelfde gedrag. `TvosSimulatorDriver.press()` /
 `.typeText()` / `.tap()` bevatten daarom géén verwijzing naar `VerifyClient` of `package:http`, en

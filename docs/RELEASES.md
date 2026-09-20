@@ -86,6 +86,7 @@ under `Notes`.
 - paginate Seerr requests fixture
 - sluit TV5-reviewbevindingen
 - serialize mpv teardown before player exit
+- close requests review findings
 <!-- END GENERATED -->
 
 ### New
