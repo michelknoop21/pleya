@@ -10,6 +10,12 @@ import '../navigation/navigation_tab_id.dart';
 class AutomationIds {
   AutomationIds._();
 
+  /// One of the two first-start authentication choices, suffixed with the
+  /// backend (`auth.choice[plex]` or `auth.choice[jellyfin]`). The id lives on
+  /// the focusable row itself so automation observes the same bounds and
+  /// enabled state as the viewer operating it.
+  static const String authChoice = 'auth.choice';
+
   /// `nav.<NavigationTabId.name>` — derived from the enum itself, not a
   /// second hand-written list that could drift out of sync with it.
   static String navTab(NavigationTabId id) => 'nav.${id.name}';
@@ -410,6 +416,7 @@ class AutomationIds {
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
   static const Set<String> instanceableIds = {
+    authChoice,
     sidebarLibraryRow,
     libraryGridItem,
     libraryPickerCard,
@@ -464,6 +471,7 @@ class AutomationIds {
   /// holds whatever screen happens to be on screen, while a scenario needs
   /// the full, screen-independent set.
   static List<Map<String, Object?>> catalog() => [
+    {'id': authChoice, 'role': 'button', 'instanceable': true},
     {'id': screenMain, 'role': 'screen', 'instanceable': false},
     {'id': screenDiscover, 'role': 'screen', 'instanceable': false},
     {'id': screenLibraries, 'role': 'screen', 'instanceable': false},
