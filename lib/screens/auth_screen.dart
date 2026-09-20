@@ -32,6 +32,7 @@ import '../widgets/pleya_logo.dart';
 import 'auth/plex_pin_auth_flow.dart';
 import 'profile/profile_switch_screen.dart';
 import 'settings/add_jellyfin_screen.dart';
+import 'tv/tv_auth_view.dart';
 
 /// Recovery-oriented auth failure states. When set, the auth screen shows
 /// a structured recovery widget instead of a bare error string, giving the
@@ -39,7 +40,16 @@ import 'settings/add_jellyfin_screen.dart';
 enum _AuthRecoveryState { noServersFound, networkError }
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, this.plexPinAuthServiceFactory, this.plexConnectAuthServiceFactory, this.jellyfinRoute});
+
+  @visibleForTesting
+  final Future<PlexAuthService> Function()? plexPinAuthServiceFactory;
+
+  @visibleForTesting
+  final Future<PlexAuthService> Function()? plexConnectAuthServiceFactory;
+
+  @visibleForTesting
+  final Future<bool?> Function(BuildContext context)? jellyfinRoute;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -62,7 +72,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _initVerifyService() async {
-    final svc = await PlexAuthService.create();
+    final svc = await (widget.plexConnectAuthServiceFactory ?? PlexAuthService.create)();
     if (!mounted) {
       svc.dispose();
       return;
@@ -122,7 +132,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
     final connectionRegistry = context.read<ConnectionRegistry>();
     final plexHome = context.read<PlexHomeService>();
-    final svc = await PlexAuthService.create();
+    final svc = await (widget.plexConnectAuthServiceFactory ?? PlexAuthService.create)();
 
     try {
       final userInfo = await svc.getUserInfo(plexToken);
@@ -218,7 +228,9 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _connectToJellyfin() async {
-    final added = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const AddJellyfinScreen()));
+    final added =
+        await (widget.jellyfinRoute?.call(context) ??
+            Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const AddJellyfinScreen())));
     if (!mounted || added != true) return;
     // The connection persisted and the manager registered the client; move
     // straight to the main screen. [MainScreen] reads the active client
@@ -237,6 +249,89 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (PlatformDetector.isAppleTV()) {
+      return _buildAppleTvAuthScreen();
+    }
+
+    return _buildExistingAuthScreen();
+  }
+
+  Widget _buildAppleTvAuthScreen() {
+    return Focus(
+      canRequestFocus: false,
+      onKeyEvent: (_, event) => handleBackKeyNavigation(context, event),
+      child: Scaffold(
+        body: PlexPinAuthFlow(
+          onTokenReceived: _connectToAllServersAndNavigate,
+          autoStartQrOnTV: false,
+          onSwitchToJellyfin: _connectToJellyfin,
+          authServiceFactory: widget.plexPinAuthServiceFactory,
+          shellBuilder: (context, scope) {
+            final blocked = _isAuthenticating || _recoveryState != null;
+            return TvAuthView(
+              brand: _buildBrandHeader(context),
+              content: _buildAppleTvPanel(scope),
+              state: _appleTvPanelState(scope),
+              plexEnabled: !blocked && !scope.busy,
+              jellyfinEnabled: !blocked && !scope.busy,
+              onPlexSelected: scope.startQr,
+              onJellyfinSelected: scope.switchToJellyfin!,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  TvAuthPanelState _appleTvPanelState(PlexPinAuthShellScope scope) {
+    if (_isAuthenticating) return TvAuthPanelState.authenticating;
+    if (_recoveryState != null) {
+      return switch (_recoveryState!) {
+        _AuthRecoveryState.noServersFound => TvAuthPanelState.noServersFound,
+        _AuthRecoveryState.networkError => TvAuthPanelState.networkError,
+      };
+    }
+    return switch (scope.state) {
+      PlexPinAuthVisualState.initial => TvAuthPanelState.initial,
+      PlexPinAuthVisualState.waiting => TvAuthPanelState.waiting,
+      PlexPinAuthVisualState.qr => TvAuthPanelState.qr,
+      PlexPinAuthVisualState.error => TvAuthPanelState.plexError,
+      PlexPinAuthVisualState.timedOut => TvAuthPanelState.timedOut,
+    };
+  }
+
+  Widget _buildAppleTvPanel(PlexPinAuthShellScope scope) {
+    if (_isAuthenticating) {
+      return Column(
+        mainAxisSize: .min,
+        crossAxisAlignment: .start,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 24),
+          Text(t.auth.waitingForAuth, style: Theme.of(context).textTheme.headlineSmall),
+        ],
+      );
+    }
+    if (_recoveryState != null) {
+      return _AuthRecoveryView(
+        state: _recoveryState!,
+        onRetry: () => setState(() => _recoveryState = null),
+        onConnectJellyfin: _connectToJellyfin,
+      );
+    }
+    if (scope.activeBody case final activeBody?) return activeBody;
+    return Column(
+      mainAxisSize: .min,
+      crossAxisAlignment: .start,
+      children: [
+        Text(t.auth.chooseHowToSignIn, style: Theme.of(context).textTheme.headlineMedium),
+        const SizedBox(height: 16),
+        Text(t.auth.chooseHowToSignInDescription, style: Theme.of(context).textTheme.bodyLarge),
+      ],
+    );
+  }
+
+  Widget _buildExistingAuthScreen() {
     // Use two-column layout on desktop, single column on mobile
     final isDesktop = MediaQuery.sizeOf(context).width > 700;
 
@@ -323,6 +418,7 @@ class _AuthScreenState extends State<AuthScreen> {
       autoStartQrOnTV: false,
       initialButtonsBuilder: _buildInitialButtons,
       onSwitchToJellyfin: _connectToJellyfin,
+      authServiceFactory: widget.plexPinAuthServiceFactory,
     );
   }
 
