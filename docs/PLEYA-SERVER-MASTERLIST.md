@@ -179,7 +179,7 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S3.1 | Migratie `0010`, `publications`, `publication_files`, soort `books` | `[ ]` | | |
+| S3.1 | Migratie `0011`, `publications`, `publication_files`, soort `books` | `[ ]` | | |
 | S3.2 | EPUB-analyser met zip- en XML-grenzen | `[ ]` | | |
 | S3.3 | Scannerdispatch per bibliotheeksoort, bestaande scannertests ongewijzigd groen | `[ ]` | | |
 | S3.4 | `/ebooks`-resources, `item_count`, `library.wrong_kind` | `[ ]` | | |
