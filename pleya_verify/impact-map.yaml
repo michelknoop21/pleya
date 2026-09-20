@@ -5,6 +5,12 @@
 default_suite: smoke
 
 rules:
+  - pattern: "lib/screens/auth_screen.dart"
+    tags: [auth, tvos-focus]
+  - pattern: "lib/screens/auth/**"
+    tags: [auth]
+  - pattern: "lib/screens/tv/tv_auth_view.dart"
+    tags: [auth, tvos-focus]
   - pattern: "lib/screens/discover_screen.dart"
     tags: [discover]
   - pattern: "lib/focus/**"

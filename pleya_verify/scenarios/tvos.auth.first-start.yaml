@@ -1,0 +1,19 @@
+name: tvos.auth.first-start
+target: tvos-sim
+setup:
+  - reset_app
+  - launch
+steps:
+  - wait_until: {id: screen.auth, timeout: 30000}
+  - wait_until: {focused: "auth.choice[plex]", timeout: 15000}
+  - assert: {id: "auth.choice[plex]", focused: true, insideViewport: true}
+  - assert: {id: "auth.choice[jellyfin]", insideViewport: true}
+  - settle: 3500
+  - snapshot: 00-first-start
+  - press: select
+  - wait_until: {id: auth.panel, timeout: 15000}
+  - assert: {id: auth.panel, insideViewport: true, state: {state: qr}}
+  - assert: {id: auth.retry, insideViewport: true}
+  - assert: {id: "auth.choice[jellyfin]", insideViewport: true}
+  - settle: 800
+  - snapshot: 01-plex-qr
