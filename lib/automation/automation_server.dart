@@ -71,6 +71,7 @@ const Map<String, String> _kRouteMethods = {
   '/v1/screenshot': 'GET',
   '/v1/signin': 'POST',
   '/v1/connections/seed': 'POST',
+  '/v1/seerr/seed': 'POST',
   '/v1/open': 'POST',
 };
 
@@ -297,6 +298,9 @@ class AutomationServer {
       case '/v1/connections/seed':
         final body = await _readJsonBody(request);
         await _respondAutomationResult(request, await handleAutomationConnectionsSeed(body));
+      case '/v1/seerr/seed':
+        final body = await _readJsonBody(request);
+        await _respondAutomationResult(request, await handleAutomationSeedSeerr(body));
       case '/v1/open':
         final body = await _readJsonBody(request);
         await _respondAutomationResult(request, await handleAutomationOpen(body));

@@ -219,6 +219,12 @@ ids:
   - id: screen.movies
     role: screen
     instanceable: false
+  - id: screen.requests
+    role: screen
+    instanceable: false
+  - id: requests.mine.item
+    role: list.item
+    instanceable: true
   - id: landing.header
     role: region
     instanceable: true

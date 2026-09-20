@@ -233,6 +233,9 @@ class VerifyClient {
   Future<Map<String, Object?>> open(String screen, {int timeoutMs = 5000}) =>
       _postJson('/v1/open', {'screen': screen, 'timeoutMs': timeoutMs});
 
+  Future<Map<String, Object?>> seedSeerr({required String baseUrl, required String apiKey}) =>
+      _postJson('/v1/seerr/seed', {'base_url': baseUrl, 'api_key': apiKey});
+
   void close() => _http.close();
 
   /// Every endpoint `pleya_verify/contract/verify_api_v1.md` documents,
@@ -260,6 +263,7 @@ class VerifyClient {
     (method: 'GET', path: '/v1/screenshot'),
     (method: 'POST', path: '/v1/signin'),
     (method: 'POST', path: '/v1/connections/seed'),
+    (method: 'POST', path: '/v1/seerr/seed'),
     (method: 'POST', path: '/v1/open'),
   ];
 }

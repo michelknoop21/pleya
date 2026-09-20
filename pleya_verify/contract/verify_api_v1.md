@@ -382,6 +382,22 @@ alleen in hoe de connection gebouwd wordt.
 
 200/400-vorm gelijk aan `/v1/signin`.
 
+### `POST /v1/seerr/seed`
+
+Body: `{"base_url": "...", "api_key": "..."}`. De snelle route voor een
+scenario dat een geconfigureerde Seerr-verbinding nodig heeft zonder het
+connect-formulier in Instellingen opnieuw te bewijzen: roept
+`SeerrProvider.test()` en daarna `.commit()` aan, dezelfde methodes als de
+Test- en Save-knoppen op dat formulier. `NavigationTab.getVisibleTabs`
+verbergt Aanvragen zolang geen Seerr-server geconfigureerd is.
+
+Gebruikt `profileNavigationRegistry`'s context omdat `SeerrProvider` binnen
+de profielsessie wordt aangemaakt; `/v1/signin` moet dus eerst zijn gelukt.
+
+200 `{"ok": true}`; 400 `{"ok": false, "error": "..."}` op ontbrekende
+velden, een niet-loopback-URL, een ontbrekende profielsessie of een falende
+test/commit.
+
 ### `POST /v1/open`
 
 Body: `{"screen": "screen.discover", "timeoutMs": 5000}`. `screen` is een id

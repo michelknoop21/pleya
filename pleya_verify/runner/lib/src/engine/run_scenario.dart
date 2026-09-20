@@ -27,7 +27,7 @@ class ScenarioRunResult {
 
 /// Setup/step verbs whose dispatch needs a fixture server running —
 /// [runScenario] only spawns one when a scenario actually uses one.
-const Set<String> _fixtureVerbs = {'seed', 'sign_in', 'fixture_mutate'};
+const Set<String> _fixtureVerbs = {'seed', 'sign_in', 'seed_seerr', 'fixture_mutate'};
 
 bool _needsFixture(Scenario scenario) =>
     [...scenario.setup, ...scenario.steps].any((s) => _fixtureVerbs.contains(s.verb));
@@ -144,6 +144,15 @@ Future<ScenarioRunResult> runScenario({
           );
           if (signinResult['ok'] != true) {
             throw StateError('sign_in failed: ${signinResult['error']} (full response: $signinResult)');
+          }
+        case 'seed_seerr':
+          final args = resolvePlaceholders(step.args, fixture, null) as Map<String, Object?>;
+          final seedResult = await _requireClient(
+            driver,
+            'seed_seerr',
+          ).seedSeerr(baseUrl: args['base_url'] as String, apiKey: args['api_key'] as String);
+          if (seedResult['ok'] != true) {
+            throw StateError('seed_seerr failed: ${seedResult['error']} (full response: $seedResult)');
           }
         case 'seed':
           if (step.args case final String fixtureName) {

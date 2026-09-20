@@ -294,5 +294,14 @@ void main() {
       expect(result['ok'], isFalse);
       expect(result['error'], contains('scheme'));
     });
+
+    test('handleAutomationSeedSeerr rejects a non-loopback base_url', () async {
+      final result = await handleAutomationSeedSeerr({
+        'base_url': 'http://169.254.169.254/latest/meta-data/',
+        'api_key': 'not-sent',
+      });
+      expect(result['ok'], isFalse);
+      expect(result['error'], contains('loopback'));
+    });
   });
 }
