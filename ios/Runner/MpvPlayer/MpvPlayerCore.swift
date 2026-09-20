@@ -785,11 +785,14 @@ class MpvPlayerCore: MpvPlayerCoreBase {
     }
   #endif
 
-  func dispose(preserveDisplayCriteria: Bool = false) {
+  func dispose(preserveDisplayCriteria: Bool = false, completion: (() -> Void)? = nil) {
     // Guard double-dispose: the plugin calls dispose() then drops the
     // strong ref, which fires deinit → dispose() again. The second call
     // would re-enter and crash on weak-ref formation during dealloc.
-    guard !isDisposed else { return }
+    guard !isDisposed else {
+      completion?()
+      return
+    }
     isDisposed = true
 
     #if os(tvOS)
@@ -821,8 +824,6 @@ class MpvPlayerCore: MpvPlayerCoreBase {
     #if os(iOS)
       ExternalDisplayManager.shared.detach(core: self)
     #endif
-    disposeSharedState(destroySynchronously: false)
-
     videoLayer?.removeFromSuperlayer()
     videoLayer = nil
     containerView?.removeFromSuperview()
@@ -831,7 +832,10 @@ class MpvPlayerCore: MpvPlayerCoreBase {
     mainBlankView = nil
     isInitialized = false
 
-    Self.log("Disposed")
+    disposeSharedState(destroySynchronously: false) {
+      Self.log("Disposed")
+      completion?()
+    }
   }
 
   deinit {
