@@ -10,8 +10,8 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 )
 
-// De gebruikersbeheer-API van stap 4 (DEC-100), plus matrixregel 14 uit
-// DEC-105. Het onderscheid dat deze tests bewaken is niet "werkt het endpoint"
+// De gebruikersbeheer-API van stap 4 (DEC-121), plus matrixregel 14 uit
+// DEC-126. Het onderscheid dat deze tests bewaken is niet "werkt het endpoint"
 // maar "kan een tweede gebruiker werkelijk bestaan en inloggen zonder
 // handmatige SQL": dat is de voorwaarde die AC1 en het stopcriterium van PS-9
 // stellen, en de fixtures van authorize_test.go slaan hem juist over.
@@ -86,7 +86,7 @@ func TestSecondUserCanBeCreatedAndLogIn(t *testing.T) {
 		t.Fatalf("het token draagt subject %s, verwacht %s", claims.Subject, created.ID)
 	}
 	if claims.Sid == "" {
-		t.Fatal("het token draagt geen sid; de sessieketen van DEC-102 is dan niet gesloten")
+		t.Fatal("het token draagt geen sid; de sessieketen van DEC-123 is dan niet gesloten")
 	}
 }
 
@@ -183,8 +183,38 @@ func TestUserAdminEndpointsAreInvisibleToMember(t *testing.T) {
 	e.loginAs("sanne", "een-heel-ander-wachtwoord", http.StatusOK)
 }
 
+// Een gebruiker mag zijn eigen wachtwoord beheren, maar die uitzondering mag
+// de rolpoort niet openen. Anders is member -> admin één PATCH en bestaat de
+// hele beheergrens alleen op papier.
+func TestMemberCannotPromoteItselfToAdmin(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	member := e.createUserViaAPI("sanne", "nog-een-lang-wachtwoord", "member", http.StatusOK)
+	access := e.loginAs("sanne", "nog-een-lang-wachtwoord", http.StatusOK)
+
+	rec := e.do(http.MethodPatch, "/pleya/v1/users/"+member.ID,
+		map[string]string{"role": "admin"}, asUser(access))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("een member promoveerde zichzelf: %d %s", rec.Code, rec.Body.String())
+	}
+	e.expectCode(rec, api.CodeUserNotFound)
+
+	selfRec := e.do(http.MethodGet, "/pleya/v1/users/me", nil, asUser(access))
+	if selfRec.Code != http.StatusOK {
+		t.Fatalf("GET /users/me na geweigerde promotie gaf %d: %s", selfRec.Code, selfRec.Body.String())
+	}
+	var self api.UserWire
+	if err := json.Unmarshal(selfRec.Body.Bytes(), &self); err != nil {
+		t.Fatal(err)
+	}
+	if self.Role != "member" {
+		t.Fatalf("de geweigerde rolwijziging liet rol %q achter", self.Role)
+	}
+}
+
 // TestRestrictedDoesNotManageOwnPassword is het tweede van de drie verschillen
-// uit DEC-098 §3. Het derde (nooit manage) staat hieronder, het eerste (alleen
+// uit DEC-119 §3. Het derde (nooit manage) staat hieronder, het eerste (alleen
 // zichzelf zien) in TestListUsersFiltersForMemberAndRestricted.
 func TestRestrictedDoesNotManageOwnPassword(t *testing.T) {
 	e := newEnv(t)
@@ -246,6 +276,36 @@ func TestOwnerIsImmutable(t *testing.T) {
 		t.Fatalf("een tweede owner aanmaken gaf %d, verwacht 409: %s", rec.Code, rec.Body.String())
 	}
 	e.expectCode(rec, api.CodeOwnerImmutable)
+}
+
+func TestAdminCannotChangeOwnerPassword(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	admin := e.createUserViaAPI("beheerder", "nog-een-lang-wachtwoord", "admin", http.StatusOK)
+	var users api.UserListWire
+	e.getJSON("/pleya/v1/users", "", http.StatusOK, &users)
+	var ownerID string
+	for _, user := range users.Items {
+		if user.Role == "owner" {
+			ownerID = user.ID
+			break
+		}
+	}
+	if ownerID == "" {
+		t.Fatal("owner ontbreekt")
+	}
+
+	access := e.loginAs(admin.Username, "nog-een-lang-wachtwoord", http.StatusOK)
+	rec := e.do(http.MethodPatch, "/pleya/v1/users/"+ownerID,
+		map[string]string{"password": "een-ander-lang-wachtwoord"}, asUser(access))
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("een admin wijzigde het owner-wachtwoord: %d %s", rec.Code, rec.Body.String())
+	}
+	e.expectCode(rec, api.CodeOwnerImmutable)
+
+	e.loginAs("michel", "een-lang-genoeg-wachtwoord", http.StatusOK)
+	e.loginAs("michel", "een-ander-lang-wachtwoord", http.StatusUnauthorized)
 }
 
 // TestUsernameTaken dekt de unieke index als contractantwoord.
@@ -327,7 +387,7 @@ func TestSetPermissionsReplacesTheWholeList(t *testing.T) {
 	}
 }
 
-// TestRestrictedNeverGetsManage is het derde verschil uit DEC-098 §3, en het
+// TestRestrictedNeverGetsManage is het derde verschil uit DEC-119 §3, en het
 // bewijs dat de trigger uit migratie 0007 meedoet in plaats van alleen in de UI
 // te bestaan.
 func TestRestrictedNeverGetsManage(t *testing.T) {
@@ -381,11 +441,11 @@ func TestRestrictedNeverGetsManage(t *testing.T) {
 		t.Fatal(err)
 	}
 	if permission == "manage" {
-		t.Fatal("een gedegradeerde gebruiker houdt manage; DEC-098 §3 verbiedt dat voor restricted")
+		t.Fatal("een gedegradeerde gebruiker houdt manage; DEC-119 §3 verbiedt dat voor restricted")
 	}
 }
 
-// TestDeleteUserCascades dekt het cascadegedrag uit DEC-098 §5: alles wat aan
+// TestDeleteUserCascades dekt het cascadegedrag uit DEC-119 §5: alles wat aan
 // de gebruiker hangt gaat mee, en de kijkstatus van een ander blijft staan.
 func TestDeleteUserCascades(t *testing.T) {
 	e := newEnv(t)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -15,7 +16,7 @@ import (
 )
 
 // unknownDeviceName is de vaste plaatshouder voor een sessie zonder bekend
-// toestel (DEC-102): geen capability, of een client die niets stuurt.
+// toestel (DEC-123): geen capability, of een client die niets stuurt.
 const unknownDeviceName = "Unknown device"
 
 // deviceID geeft nil wanneer de client geen toestel-id meestuurde.
@@ -74,7 +75,7 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			Downloads:           false,
 			LiveTV:              false,
 			Realtime:            false,
-			// Users: de vijf endpoints uit DEC-100 staan er sinds stap 4, en
+			// Users: de vijf endpoints uit DEC-121 staan er sinds stap 4, en
 			// login kent sindsdien elke rij in users en niet alleen de owner.
 			Users: true,
 			// Sessions: aan sinds stap 6. Het schema en de tokenketen kwamen in
@@ -260,7 +261,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Sleutel per gebruikersnaam (DEC-102-aangrenzend): met meerdere
+	// Sleutel per gebruikersnaam (DEC-123-aangrenzend): met meerdere
 	// gebruikers zou een gedeelde "login"-sleutel betekenen dat iemand die
 	// zijn eigen wachtwoord vijf keer verkeerd typt de login van een
 	// huisgenoot blokkeert. De gebruikersnaam hoeft hier niet te bestaan; de
@@ -288,7 +289,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Sinds stap 4 van PS-9 logt elke rij in users in, niet alleen de owner
-	// (DEC-100). Een onbekende gebruikersnaam en een verkeerd wachtwoord geven
+	// (DEC-121). Een onbekende gebruikersnaam en een verkeerd wachtwoord geven
 	// hetzelfde antwoord, en kosten hetzelfde: bij een onbekende naam wordt het
 	// wachtwoord alsnog tegen de owner-hash geverifieerd en de uitkomst
 	// weggegooid. Een antwoord dat meteen terugkomt verraadt net zo goed dat de
@@ -400,9 +401,12 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		// zijn.
 		s.log.Info("rotatie-antwoord verloren; herhaling binnen het respijt bediend")
 	case auth.RefreshReused:
-		// De hele keten van DEZE sessie is nu ongeldig (DEC-102, sessie-scoped
+		// De hele keten van DEZE sessie is nu ongeldig (DEC-123, sessie-scoped
 		// sinds PS-9). Een van de twee partijen die dit token droeg is de
 		// aanvaller, en welke dat is valt niet vast te stellen.
+		if sid != id.Nil {
+			s.opts.Revocations.Revoke(sid, now)
+		}
 		s.log.Warn("refreshtoken hergebruikt; de tokens van deze sessie zijn ingetrokken")
 		writeError(w, s.log, CodeRefreshTokenReused, "refresh token reused", nil)
 		return
@@ -541,7 +545,7 @@ func (s *Server) handleStreamSession(w http.ResponseWriter, r *http.Request) {
 }
 
 // issueTokens opent een sessie en geeft een vers paar uit na setup of login
-// (DEC-102). deviceID is nil zonder capability of zonder een toestel-id van de
+// (DEC-123). deviceID is nil zonder capability of zonder een toestel-id van de
 // client; deviceName draagt in dat geval al de vaste plaatshouder.
 func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.ID, deviceID *string, deviceName string, operation, mode string) {
 	now := s.now().UTC()
@@ -706,7 +710,7 @@ func (s *Server) clearRefreshCookie(w http.ResponseWriter) {
 // auth.Store.OwnerUserID op, wat correct was zolang er geen tweede gebruiker
 // bestond om mee te verwarren; met een echte member/restricted-gebruiker zou
 // dat het streamtoken of de streamsessie altijd op de owner binden, ongeacht
-// wie de aanvraag werkelijk deed (DEC-105, hoofdstuk 16.4 regel 10 en 11).
+// wie de aanvraag werkelijk deed (DEC-126, hoofdstuk 16.4 regel 10 en 11).
 func (s *Server) currentSessionSubject(r *http.Request) (sid id.ID, subject id.ID, err error) {
 	claims, ok := claimsFromContext(r.Context())
 	if !ok {
@@ -753,7 +757,10 @@ func (s *Server) decodeBody(w http.ResponseWriter, r *http.Request, target any, 
 	dec.DisallowUnknownFields()
 
 	if err := dec.Decode(target); err != nil {
-		writeError(w, s.log, code, "request body invalid: "+err.Error(), nil)
+		if s.log != nil {
+			s.log.Warn("request body invalid", slog.String("error", err.Error()))
+		}
+		writeError(w, s.log, code, "request body invalid", nil)
 		return false
 	}
 	return true

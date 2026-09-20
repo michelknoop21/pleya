@@ -12,9 +12,9 @@ import (
 )
 
 // Sessiebeheer, stap 6 van de PS-9-implementatievolgorde. De endpoints
-// eromheen staan in DEC-103; de sessieketen zelf in DEC-102, en het register
+// eromheen staan in DEC-124; de sessieketen zelf in DEC-123, en het register
 // dat de latentiegarantie van acceptatiecriterium 3 draagt in revocation.go.
-// Session is één toestel van één gebruiker (DEC-102). Sessies zijn de
+// Session is één toestel van één gebruiker (DEC-123). Sessies zijn de
 // ankerentiteit van de tokenketen: sid loopt van login tot streambytes.
 type Session struct {
 	ID         id.ID
@@ -95,7 +95,7 @@ func (s *Store) SessionOwner(ctx context.Context, sessionID id.ID) (id.ID, error
 	return userID, nil
 }
 
-// RevokeSession trekt één sessie in, met alles wat eraan hangt (DEC-103).
+// RevokeSession trekt één sessie in, met alles wat eraan hangt (DEC-124).
 //
 // De cascade staat hier en niet in het schema: de foreign keys zijn ON DELETE
 // CASCADE en intrekken is geen verwijderen. Een refreshtoken of een
@@ -158,7 +158,7 @@ func (s *Store) TouchSession(ctx context.Context, sessionID id.ID, now time.Time
 // weer laten inloggen, en dat is het tegenovergestelde van wat een beheerder
 // bedoelt die zijn sleutel roteert.
 //
-// De teruggegeven ids gaan naar het intrekkingsregister (DEC-099), zodat de
+// De teruggegeven ids gaan naar het intrekkingsregister (DEC-120), zodat de
 // grens van twee seconden ook hier geldt voor een stream die al liep.
 func (s *Store) RevokeAllSessions(ctx context.Context, now time.Time) ([]id.ID, error) {
 	tx, err := s.pool.Begin(ctx)

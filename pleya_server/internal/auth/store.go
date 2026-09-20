@@ -40,7 +40,7 @@ var ErrNoOwner = errors.New("er is nog geen eigenaar aangemaakt")
 // ErrUserNotFound betekent dat er geen rij in users staat met dit id.
 var ErrUserNotFound = errors.New("gebruiker bestaat niet")
 
-// Role is de waarde van users.role. Vier stuks (migratie 0007, DEC-098): owner
+// Role is de waarde van users.role. Vier stuks (migratie 0007, DEC-119): owner
 // precies één, admin/member/restricted nul of meer. De ladder in
 // library_permissions (view < download < manage) is er los van: owner en
 // admin krijgen daar nooit een rij, hun toegang volgt uit de rol zelf.
@@ -183,9 +183,9 @@ func (s *Store) CompleteSetup(ctx context.Context, code, username, passwordHash 
 //
 // Setup, login en refresh lossen hun subject hiermee op, in plaats van met de
 // vaste "owner"-string van vóór PS-9, want watch_states.subject en
-// stream_sessions.subject zijn nu een echte FK naar users(id) (DEC-098) en
+// stream_sessions.subject zijn nu een echte FK naar users(id) (DEC-119) en
 // accepteren die string niet meer. Elders (handlers_watch.go, authorize.go)
-// loopt Claims.Subject inmiddels rechtstreeks door de context (DEC-102,
+// loopt Claims.Subject inmiddels rechtstreeks door de context (DEC-123,
 // stap 3); dat gebruikt deze functie niet meer, want daar staat het
 // aanvragende subject al vast.
 func (s *Store) OwnerUserID(ctx context.Context) (id.ID, error) {
@@ -205,7 +205,7 @@ func (s *Store) OwnerUserID(ctx context.Context) (id.ID, error) {
 // userID en niet "de owner": sinds stap 4 van PS-9 logt elke rij in users in,
 // dus de herhash moet naar de gebruiker die zojuist inlogde en niet naar de
 // enige die er vroeger was. users.password_hash is de bron van waarheid
-// (DEC-098); auth_owner blijft ernaast bestaan als compatibiliteitstabel zolang
+// (DEC-119); auth_owner blijft ernaast bestaan als compatibiliteitstabel zolang
 // LoadOwner er nog rechtstreeks uit leest (specificatie 6.5), en loopt daarom
 // voor de owner in dezelfde transactie mee. Schrijf je alleen users, dan
 // verifieert de volgende LoadOwner-lezing nog tegen de oude hash; schrijf je
@@ -240,7 +240,7 @@ func (s *Store) UpdatePasswordHash(ctx context.Context, userID id.ID, hash strin
 }
 
 // StoreRefreshToken legt een uitgegeven refreshtoken vast, gebonden aan de
-// sessie waarvoor hij is uitgegeven (DEC-102). Elke nieuwe rij draagt vanaf
+// sessie waarvoor hij is uitgegeven (DEC-123). Elke nieuwe rij draagt vanaf
 // PS-9 een sessie; alleen historische rijen van vóór migratie 0007 kunnen er
 // nog zonder zitten.
 func (s *Store) StoreRefreshToken(ctx context.Context, hash []byte, sessionID id.ID, expiresAt time.Time) error {
@@ -253,7 +253,7 @@ func (s *Store) StoreRefreshToken(ctx context.Context, hash []byte, sessionID id
 	return nil
 }
 
-// CreateSession opent een nieuwe sessie voor een gebruiker (DEC-102).
+// CreateSession opent een nieuwe sessie voor een gebruiker (DEC-123).
 //
 // device_id is het PreferenceDeviceId van de client, of nil zonder de
 // capability of zonder een ondersteunende client; device_name draagt dan een
@@ -291,7 +291,7 @@ const (
 	// aanvrager krijgt een verse rotatie.
 	RefreshReplayed
 	// RefreshSessionRevoked: het token zelf was nog geldig, maar de sessie
-	// waarbij het hoort is ingetrokken (DEC-102). Vóór stap 6 (het
+	// waarbij het hoort is ingetrokken (DEC-123). Vóór stap 6 (het
 	// intrekkingsendpoint) kan dit nog niet voorkomen; de controle hoort in
 	// dezelfde commit als het schema thuis, niet in een opruimronde erna.
 	RefreshSessionRevoked
@@ -308,7 +308,7 @@ const (
 // nooit-geziene opvolger gaat eruit en de aanvrager krijgt een verse rotatie
 // (RefreshReplayed). Alles daarbuiten — een gebruikte opvolger, of een
 // herhaling buiten het venster — trekt de refreshketens van DIE SESSIE in
-// (DEC-102): sessie-scoped sinds PS-9, want zonder apparaatkolom zou
+// (DEC-123): sessie-scoped sinds PS-9, want zonder apparaatkolom zou
 // hergebruik door één toestel elk toestel van dezelfde gebruiker uitloggen.
 //
 // Het venster rekt niet op: revoked_at van het oude token blijft de
@@ -317,7 +317,8 @@ const (
 //
 // Geeft naast de uitkomst de sid en de gebruiker van de sessie terug waarbij
 // dit token hoort, zodat de aanroeper het volgende accesstoken met dezelfde
-// sid kan minten. Alleen betekenisvol bij RefreshOK en RefreshReplayed.
+// sid kan minten. Bij RefreshReused komt alleen de sid terug, zodat de
+// aanroeper ook reeds uitgegeven credentials onmiddellijk kan intrekken.
 func (s *Store) RotateRefreshToken(ctx context.Context, oldHash, newHash []byte, newExpires, now time.Time, grace time.Duration) (RefreshOutcome, id.ID, id.ID, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -361,8 +362,23 @@ func (s *Store) RotateRefreshToken(ctx context.Context, oldHash, newHash []byte,
 			now, sessionID); err != nil {
 			return RefreshUnknown, id.Nil, id.Nil, err
 		}
+		if sessionID != nil {
+			if _, err := tx.Exec(ctx, `
+				UPDATE sessions SET revoked_at = $1
+				WHERE id = $2 AND revoked_at IS NULL`, now, *sessionID); err != nil {
+				return RefreshUnknown, id.Nil, id.Nil, fmt.Errorf("sessie na refreshtokenhergebruik intrekken: %w", err)
+			}
+			if _, err := tx.Exec(ctx, `
+				UPDATE stream_sessions SET revoked_at = $1
+				WHERE session_id = $2 AND revoked_at IS NULL`, now, *sessionID); err != nil {
+				return RefreshUnknown, id.Nil, id.Nil, fmt.Errorf("streamsessies na refreshtokenhergebruik intrekken: %w", err)
+			}
+		}
 		if err := tx.Commit(ctx); err != nil {
 			return RefreshUnknown, id.Nil, id.Nil, err
+		}
+		if sessionID != nil {
+			return RefreshReused, *sessionID, id.Nil, nil
 		}
 		return RefreshReused, id.Nil, id.Nil, nil
 	}

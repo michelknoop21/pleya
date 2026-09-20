@@ -7,9 +7,10 @@
 # op 4 september 2026 gebeurd met CLAUDE.md (128 regels weg, waaronder de stand dat
 # PS-9 gesloten is) en met docs/RELEASES.md (14 releasenote-regels weg).
 #
-# De controle: voor elk authority-bestand waar BEIDE ouders van de laatste merge van
-# de merge-base afwijken, mag het bestand in de werkboom niet byte-identiek zijn aan
-# één van die ouders. Is het dat wel, dan is er niet gemergd maar gekozen.
+# De controle: voor elke merge in BASE..HEAD en elk authority-bestand waar BEIDE
+# ouders van de eigen merge-base afwijken, mag het bestand in de mergecommit niet
+# byte-identiek zijn aan één van die ouders. Is het dat wel, dan is er niet
+# gemergd maar gekozen.
 #
 # Dit is geen stijlregel maar een feitencontrole, en hij geneest vanzelf: zodra de
 # merge alsnog goed is opgelost, is het bestand van beide ouders verschillend.
@@ -48,21 +49,19 @@ pass() { printf '  PASS  %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf '  FAIL  %s\n' "$1"; FAIL=$((FAIL + 1)); }
 skip() { printf '  ....  %s\n' "$1"; }
 
-MERGE="$(git rev-list --merges -1 HEAD 2>/dev/null || true)"
-if [ -z "$MERGE" ]; then
-  echo "geen merge in de geschiedenis van HEAD; niets te controleren"
-  exit 0
+RANGE_BASE="${1:-}"
+if [ -z "$RANGE_BASE" ]; then
+  if git rev-parse --verify --quiet refs/remotes/origin/main >/dev/null; then
+    RANGE_BASE="$(git merge-base HEAD refs/remotes/origin/main)"
+  else
+    echo "geen base opgegeven en origin/main ontbreekt; gebruik: $0 <base>" >&2
+    exit 2
+  fi
 fi
-
-P1="$(git rev-parse "$MERGE^1")"
-P2="$(git rev-parse "$MERGE^2" 2>/dev/null || true)"
-if [ -z "$P2" ]; then
-  echo "de laatste merge heeft één ouder; niets te controleren"
-  exit 0
+if ! git rev-parse --verify --quiet "$RANGE_BASE^{commit}" >/dev/null; then
+  echo "ongeldige authority-base: $RANGE_BASE" >&2
+  exit 2
 fi
-BASE="$(git merge-base "$P1" "$P2")"
-
-echo "==> laatste merge $(git rev-parse --short "$MERGE") ($(git rev-parse --short "$P1") + $(git rev-parse --short "$P2"))"
 
 # `git rev-parse <rev>:<pad>` echoot bij een onbekend pad zijn eigen argument naar
 # stdout en faalt daarna met 128. In een commandosubstitutie levert `|| echo "-"`
@@ -72,36 +71,64 @@ echo "==> laatste merge $(git rev-parse --short "$MERGE") ($(git rev-parse --sho
 # `--verify --quiet` zwijgt en faalt wel meteen.
 blob() { git rev-parse --verify --quiet "$1:$2" || echo "-"; }
 
-for f in "${FILES[@]}"; do
-  for allowed in ${ALLOW[@]+"${ALLOW[@]}"}; do
-    if [ "${allowed%% *}" = "$f" ]; then
-      skip "$f (uitzondering: ${allowed#*# })"
-      continue 2
-    fi
-  done
-
-  [ -f "$f" ] || { skip "$f (bestaat niet)"; continue; }
-
-  b_base="$(blob "$BASE" "$f")"
-  b_p1="$(blob "$P1" "$f")"
-  b_p2="$(blob "$P2" "$f")"
-
-  # Alleen interessant als beide kanten het bestand hebben aangeraakt. Raakte er
-  # maar één kant aan, dan is "gelijk aan die kant" precies de goede uitkomst.
-  if [ "$b_p1" = "$b_base" ] || [ "$b_p2" = "$b_base" ] || [ "$b_base" = "-" ]; then
-    skip "$f (maar één kant wijzigde hem)"
+MERGES=0
+while IFS= read -r MERGE; do
+  [ -n "$MERGE" ] || continue
+  MERGES=$((MERGES + 1))
+  P1="$(git rev-parse "$MERGE^1")"
+  P2="$(git rev-parse "$MERGE^2" 2>/dev/null || true)"
+  if [ -z "$P2" ]; then
+    skip "$(git rev-parse --short "$MERGE") heeft minder dan twee ouders"
     continue
   fi
+  BASE="$(git merge-base "$P1" "$P2")"
 
-  b_now="$(git hash-object "$f")"
-  if [ "$b_now" = "$b_p1" ]; then
-    fail "$f is byte-identiek aan $(git rev-parse --short "$P1"), terwijl beide kanten hem wijzigden"
-  elif [ "$b_now" = "$b_p2" ]; then
-    fail "$f is byte-identiek aan $(git rev-parse --short "$P2"), terwijl beide kanten hem wijzigden"
-  else
-    pass "$f draagt beide kanten"
-  fi
-done
+  echo "==> merge $(git rev-parse --short "$MERGE") ($(git rev-parse --short "$P1") + $(git rev-parse --short "$P2"))"
+
+  for f in "${FILES[@]}"; do
+    allowed_file=false
+    for allowed in ${ALLOW[@]+"${ALLOW[@]}"}; do
+      if [ "${allowed%% *}" = "$f" ]; then
+        skip "$f (uitzondering: ${allowed#*# })"
+        allowed_file=true
+        break
+      fi
+    done
+    [ "$allowed_file" = false ] || continue
+
+    b_base="$(blob "$BASE" "$f")"
+    b_p1="$(blob "$P1" "$f")"
+    b_p2="$(blob "$P2" "$f")"
+    b_now="$(blob "$MERGE" "$f")"
+
+    # Een authority die bij deze geschiedenis hoorde mag niet stil uit het
+    # merge-resultaat verdwijnen, ook niet wanneer één ouder hem al verwijderde.
+    if [ "$b_base" != "-" ] && [ "$b_now" = "-" ]; then
+      fail "$f is verwijderd, maar bestond in de merge-base"
+      continue
+    fi
+
+    # Alleen interessant als beide kanten het bestand hebben aangeraakt. Raakte
+    # er maar één kant aan, dan is "gelijk aan die kant" precies de goede uitkomst.
+    if [ "$b_p1" = "$b_base" ] || [ "$b_p2" = "$b_base" ] || [ "$b_base" = "-" ]; then
+      skip "$f (maar één kant wijzigde hem)"
+      continue
+    fi
+
+    if [ "$b_now" = "$b_p1" ]; then
+      fail "$f is byte-identiek aan $(git rev-parse --short "$P1"), terwijl beide kanten hem wijzigden"
+    elif [ "$b_now" = "$b_p2" ]; then
+      fail "$f is byte-identiek aan $(git rev-parse --short "$P2"), terwijl beide kanten hem wijzigden"
+    else
+      pass "$f draagt beide kanten"
+    fi
+  done
+done < <(git rev-list --reverse --merges "$RANGE_BASE..HEAD")
+
+if [ "$MERGES" -eq 0 ]; then
+  echo "geen merges in $(git rev-parse --short "$RANGE_BASE")..HEAD; niets te controleren"
+  exit 0
+fi
 
 echo
 if [ "$FAIL" -gt 0 ]; then

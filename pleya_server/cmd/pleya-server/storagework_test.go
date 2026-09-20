@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -89,5 +90,51 @@ func TestStorageRecheckHandlerHonorsInodeTrustOverride(t *testing.T) {
 	}
 	if got.TrustSource != "config_override" {
 		t.Errorf("TrustSource = %q, verwacht config_override", got.TrustSource)
+	}
+}
+
+func TestStorageRecheckHandlerPreservesLastMeasurementWhileRootIsOffline(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	root := t.TempDir()
+	if _, err := store.CreateLibrary(ctx, "Documentaires", "movies", []string{root}); err != nil {
+		t.Fatalf("CreateLibrary: %v", err)
+	}
+	if err := store.UpdateStorageLocationMeasurement(ctx, root, "btrfs", true, "measured"); err != nil {
+		t.Fatalf("bestaande meting vastleggen: %v", err)
+	}
+	lastSeen := time.Date(2026, time.September, 1, 12, 0, 0, 0, time.UTC)
+	if _, err := pool.Exec(ctx,
+		`UPDATE storage_locations SET last_seen_at = $2 WHERE root_path = $1`, root, lastSeen); err != nil {
+		t.Fatalf("last_seen_at vastzetten: %v", err)
+	}
+	if err := os.Remove(root); err != nil {
+		t.Fatalf("tijdelijke root offline halen: %v", err)
+	}
+
+	handler := storageRecheckHandler(store, &config.Config{}, testLogger())
+	if err := handler(ctx, jobs.Job{Kind: api.JobStorageRecheckRoots}); err != nil {
+		t.Fatalf("storageRecheckHandler: %v", err)
+	}
+
+	var fsType, source string
+	var trusted bool
+	var gotLastSeen time.Time
+	if err := pool.QueryRow(ctx, `
+		SELECT coalesce(fs_type, ''), inode_trusted, inode_trust_source, last_seen_at
+		FROM storage_locations WHERE root_path = $1`, root).
+		Scan(&fsType, &trusted, &source, &gotLastSeen); err != nil {
+		t.Fatalf("bewaarde meting lezen: %v", err)
+	}
+	if fsType != "btrfs" || !trusted || source != "measured" {
+		t.Fatalf("offline root overschreef de meting: fs=%q trusted=%v source=%q", fsType, trusted, source)
+	}
+	if !gotLastSeen.Equal(lastSeen) {
+		t.Fatalf("last_seen_at werd %s, verwacht onveranderd %s", gotLastSeen, lastSeen)
 	}
 }

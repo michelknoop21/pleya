@@ -31,7 +31,7 @@ void main() {
   /// below all belong to the management surface: creating a household member,
   /// setting their library permissions, and looking at or ending the sessions
   /// of a device. PS-9 deliberately ships that as an API plus a documented
-  /// `curl` recipe and no screen at all (DEC-100); the screen is PS-11A, and
+  /// `curl` recipe and no screen at all (DEC-121); the screen is PS-11A, and
   /// building a Dart type for a response nothing renders would be exactly the
   /// kind of pulled-forward work the phase rules forbid.
   ///
@@ -39,7 +39,6 @@ void main() {
   /// `capabilities.sessions` in `pleya_wire_contract_test` below, and the
   /// device fields on login in `pleya_server_sessions_test.dart`.
   const deferredSchemas = <String>{
-    'User',
     'UserList',
     'CreateUserRequest',
     'UpdateUserRequest',
@@ -63,10 +62,8 @@ void main() {
     // answers "who is watching right now on which device", which is an admin
     // screen (S10) and not something a living-room client renders.
     //
-    // `GET /users/me` arrives in the same slice and adds no line here: it
-    // answers with `User`, which the eight PS-9 entries above already defer.
-    // The app will read it once it stops identifying itself by name, and that
-    // is the phase that removes `User` from this list.
+    // `GET /users/me` is intentionally not deferred: sign-in reads `User.id`
+    // to keep two accounts on one server in separate connection rows.
     'StreamSessionList',
     // S1.5 adds API tokens and the audit log. Both belong to the same web admin
     // screen (S10.6 for the token list, S10.5 for diagnostics), and an agent
@@ -108,6 +105,7 @@ void main() {
     },
     'ServerDetail': (json) => PleyaServerDetail.fromJson(json),
     'TokenPair': (json) => PleyaTokenPair.fromJson(json),
+    'User': (json) => PleyaUser.fromJson(json),
     'StreamToken': (json) => PleyaStreamToken.fromJson(json),
     'ErrorEnvelope': (json) => PleyaError.fromJson(json),
     'LibraryList': (json) => PleyaLibrary.listFromJson(json),
@@ -144,8 +142,8 @@ void main() {
       );
     });
 
-    test('covers the 72 fixtures the contract ships', () {
-      expect(fixtures, hasLength(72));
+    test('covers the 73 fixtures the contract ships', () {
+      expect(fixtures, hasLength(73));
     });
 
     for (final fixture in fixtures) {
@@ -361,7 +359,7 @@ void main() {
       expect(error.retryable, isFalse);
     });
 
-    // Window 1 widens the error domain to seven (DEC-110 and DEC-111). The
+    // Window 1 widens the error domain to seven (DEC-130 and DEC-131). The
     // compatibility argument under that decision is a claim about this class:
     // the code is carried as a String and nothing branches on the domain. A
     // claim about code belongs in a test, not only in the decision.

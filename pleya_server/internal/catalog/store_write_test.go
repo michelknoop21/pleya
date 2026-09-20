@@ -333,6 +333,54 @@ func TestUpdateLibraryReplacesRootPaths(t *testing.T) {
 	}
 }
 
+func TestUpdateLibraryPreservesFilesForUnchangedRoot(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	lib, err := store.CreateLibrary(ctx, "Films", "movies", []string{"/media/films"})
+	if err != nil {
+		t.Fatalf("CreateLibrary: %v", err)
+	}
+	roots, err := store.StorageLocations(ctx, lib.ID)
+	if err != nil || len(roots) != 1 {
+		t.Fatalf("StorageLocations: roots=%+v err=%v", roots, err)
+	}
+	originalRootID := roots[0].ID
+	fileID := id.New()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO media_files (
+			id, storage_location_id, relative_path, role, size_bytes, mtime_unix
+		) VALUES ($1, $2, 'film.mkv', 'media', 1024, 1)`, fileID, originalRootID); err != nil {
+		t.Fatalf("mediafile vastleggen: %v", err)
+	}
+
+	title := "Films hernoemd"
+	if _, err := store.UpdateLibrary(ctx, lib.ID, catalog.LibraryUpdate{
+		Title: &title, RootPaths: []string{"/media/films"},
+	}); err != nil {
+		t.Fatalf("UpdateLibrary: %v", err)
+	}
+
+	roots, err = store.StorageLocations(ctx, lib.ID)
+	if err != nil || len(roots) != 1 {
+		t.Fatalf("StorageLocations na update: roots=%+v err=%v", roots, err)
+	}
+	if roots[0].ID != originalRootID {
+		t.Fatalf("ongewijzigde root kreeg id %s, verwacht behoud van %s", roots[0].ID, originalRootID)
+	}
+	var exists bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM media_files WHERE id = $1)`, fileID).Scan(&exists); err != nil {
+		t.Fatal(err)
+	}
+	if !exists {
+		t.Fatal("een titelwijziging met ongewijzigde root_paths wiste het mediabestand")
+	}
+}
+
 // TestLibraryIsEmptyReflectsMediaItems dekt de voorwaarde voor S2.2's
 // kind-wissel: leeg is leeg op elk niveau, niet alleen op het bovenste.
 func TestLibraryIsEmptyReflectsMediaItems(t *testing.T) {

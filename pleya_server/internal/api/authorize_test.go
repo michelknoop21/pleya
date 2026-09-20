@@ -785,8 +785,8 @@ func TestSubtitleWrongScopeTokenIsIndistinguishableFromNonexistent(t *testing.T)
 // die codex challenge naar boven haalde: VerifyStreamSession controleerde
 // stream_sessions.revoked_at, maar nooit sessions.revoked_at via de
 // session_id-FK, terwijl CreateStreamSession precies daarvoor session_id
-// draagt (DEC-102). Vandaag zet niets sessions.revoked_at (dat komt met
-// DEC-103), dus deze test trekt de auth-sessie rechtstreeks in, zoals
+// draagt (DEC-123). Vandaag zet niets sessions.revoked_at (dat komt met
+// DEC-124), dus deze test trekt de auth-sessie rechtstreeks in, zoals
 // grantLibrary/revokeLibrary elders in dit bestand ook buiten het protocol om
 // werken.
 func TestStreamSessionRejectedWhenAuthSessionRevoked(t *testing.T) {

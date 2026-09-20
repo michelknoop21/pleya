@@ -21,7 +21,7 @@ var when = time.Date(2026, 8, 21, 20, 0, 0, 0, time.UTC)
 //
 // Niet via een endpoint: het gebruikersbeheer-API van stap 4 bestaat hier nog
 // niet, en watch_states.subject is sinds migratie 0007 een echte FK naar
-// users(id) (DEC-098), dus elke test die een subject nodig heeft moet een
+// users(id) (DEC-119), dus elke test die een subject nodig heeft moet een
 // echte rij hebben om naar te verwijzen.
 func createUser(t *testing.T, pool *pgxpool.Pool, username, role string) string {
 	t.Helper()

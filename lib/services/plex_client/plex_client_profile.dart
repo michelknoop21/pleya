@@ -28,10 +28,10 @@ List<String> buildPlexProfileExtraClauses(DeviceCapabilities capabilities, Trans
   final clauses = <String>['add-settings(DirectPlayStreamSelection=true)'];
 
   // For non-original presets a bitrate limitation caps the video codec; with
-  // `replace=true` it overrides any default limit. The ceiling comes from the
-  // connection layer, which is where the quality preset now lives; an unknown
-  // ceiling falls back to the preset itself, which is what produced the number
-  // before PS-5.
+  // `replace=true` it overrides any default limit. The playback preset is the
+  // requested bitrate; a real connection observation may cap it. A global
+  // default is itself represented as an override and must not overrule the
+  // explicit choice made in the player.
   final ceilingKbps = plexMaxVideoBitrateKbps(capabilities, preset);
   if (!preset.isOriginal && ceilingKbps != null) {
     clauses.add(
@@ -67,11 +67,19 @@ String plexProfileLocation(DeviceCapabilities capabilities) =>
 
 /// The bitrate ceiling for one request, in kbit/s.
 ///
-/// The connection layer owns it, which is where the quality preset now lives.
-/// An unknown ceiling falls back to the preset itself, which is exactly what
-/// produced this number before PS-5.
-int? plexMaxVideoBitrateKbps(DeviceCapabilities capabilities, TranscodeQualityPreset preset) =>
-    capabilities.connection.maxBitrateKbps.value ?? preset.videoBitrateKbps;
+/// The preset passed for this playback is the request. The connection layer
+/// can only lower it with an observed ceiling. Its effective value may instead
+/// be the global default quality preset, marked as an override; using that
+/// value would make an in-player quality change appear to do nothing.
+int? plexMaxVideoBitrateKbps(DeviceCapabilities capabilities, TranscodeQualityPreset preset) {
+  final requested = preset.videoBitrateKbps;
+  if (requested == null) return null;
+
+  final connection = capabilities.connection.maxBitrateKbps;
+  final ceiling = connection.isOverride ? connection.observedValue : connection.value;
+  if (ceiling == null || requested <= ceiling) return requested;
+  return ceiling;
+}
 
 String _encodeList(String commaSeparated) => commaSeparated.replaceAll(',', '%2C');
 

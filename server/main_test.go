@@ -1048,6 +1048,28 @@ func postLog(t *testing.T, baseURL, ip string, body []byte) *http.Response {
 	return resp
 }
 
+type gatedLogBody struct {
+	entered chan<- struct{}
+	release <-chan struct{}
+	data    []byte
+	once    sync.Once
+	sent    bool
+}
+
+func (b *gatedLogBody) Read(p []byte) (int, error) {
+	b.once.Do(func() {
+		b.entered <- struct{}{}
+		<-b.release
+	})
+	if b.sent {
+		return 0, io.EOF
+	}
+	b.sent = true
+	return copy(p, b.data), nil
+}
+
+func (b *gatedLogBody) Close() error { return nil }
+
 // postLogAndGetID uploads a log and returns the generated id, asserting the
 // POST succeeded.
 func postLogAndGetID(t *testing.T, baseURL, ip string, body []byte) string {
@@ -1161,6 +1183,64 @@ func TestLogsUploadBurstThenRateLimited(t *testing.T) {
 	other.Body.Close()
 	if other.StatusCode != http.StatusOK {
 		t.Fatalf("other ip status=%d", other.StatusCode)
+	}
+}
+
+func TestLogsConcurrentUploadsReserveTheirRateLimitTokenBeforeReading(t *testing.T) {
+	h := newRelayHarness(t)
+	const extra = 10
+	total := logRateBurst + extra
+	entered := make(chan struct{}, total)
+	release := make(chan struct{})
+	results := make(chan int, total)
+
+	for i := 0; i < total; i++ {
+		go func() {
+			req := httptest.NewRequest(http.MethodPost, "/logs", &gatedLogBody{
+				entered: entered,
+				release: release,
+				data:    []byte("diagnostic"),
+			})
+			req.Header.Set("X-Forwarded-For", "7.0.0.20")
+			recorder := httptest.NewRecorder()
+			h.srv.handlePostLogs(recorder, req)
+			results <- recorder.Code
+		}()
+	}
+
+	// Before any body may finish, every handler must either own one of the
+	// burst tokens and be reading, or already have returned 429. The old
+	// check-then-spend path let all handlers enter Read at once.
+	enteredCount := 0
+	statuses := make([]int, 0, total)
+	for enteredCount+len(statuses) < total {
+		select {
+		case <-entered:
+			enteredCount++
+		case status := <-results:
+			statuses = append(statuses, status)
+		case <-time.After(5 * time.Second):
+			t.Fatal("parallelle uploads bereikten noch body-read noch antwoord")
+		}
+	}
+	close(release)
+	for len(statuses) < total {
+		statuses = append(statuses, <-results)
+	}
+
+	accepted, limited := 0, 0
+	for _, status := range statuses {
+		switch status {
+		case http.StatusOK:
+			accepted++
+		case http.StatusTooManyRequests:
+			limited++
+		default:
+			t.Fatalf("onverwachte status %d", status)
+		}
+	}
+	if accepted != logRateBurst || limited != extra {
+		t.Fatalf("accepted=%d limited=%d, verwacht %d en %d", accepted, limited, logRateBurst, extra)
 	}
 }
 

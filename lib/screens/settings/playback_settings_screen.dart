@@ -6,8 +6,10 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/device_display_capabilities.dart' show DisplayResolutionCap;
 import '../../models/transcode_quality_preset.dart';
+import '../../mpv/models.dart' show AudioLoudness;
 import '../../mpv/player/platform/player_android.dart';
-import '../../utils/quality_preset_labels.dart';
+import '../../services/audio_output_coordinator.dart';
+import '../../services/audio_output_decision.dart';
 import '../../services/companion_remote/companion_remote_host_controller.dart';
 import '../../services/device_capabilities_service.dart';
 import '../../services/device_capability_overrides.dart';
@@ -15,6 +17,7 @@ import '../../services/discord_rpc_service.dart';
 import '../../services/keyboard_shortcuts_service.dart';
 import '../../services/settings_service.dart';
 import '../../utils/platform_detector.dart';
+import '../../utils/quality_preset_labels.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../widgets/setting_tile.dart';
 import '../../widgets/settings_builder.dart';
@@ -24,6 +27,22 @@ import 'external_player_screen.dart';
 import 'language_settings_screen.dart';
 import 'mpv_config_screen.dart';
 import 'settings_utils.dart';
+
+/// Rebuilds the capability source when Android switches player engines.
+///
+/// The decoder shape is derived from the engine baked into the platform probe,
+/// so merely persisting `use_exoplayer` leaves Plex and Jellyfin planning
+/// against the previous backend until restart. Configuration and detection are
+/// one operation here so the settings callback cannot perform only half.
+Future<void> refreshDeviceCapabilitiesForPlayerBackend(
+  bool useExoPlayer, {
+  DeviceCapabilitiesService Function(bool useExoPlayer)? configure,
+  DeviceCapabilityOverrides? overrides,
+}) async {
+  final service = configure?.call(useExoPlayer) ?? DeviceCapabilitiesService.configure(useExoPlayer: useExoPlayer);
+  await service.refresh(overrides: overrides ?? DeviceCapabilityOverrides.fromSettings());
+  service.watchAudioRoute();
+}
 
 class PlaybackSettingsScreen extends StatefulWidget {
   const PlaybackSettingsScreen({super.key});
@@ -156,7 +175,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
             onAfterWrite: (v) => applyCompanionRemoteServerSetting(context, v),
           ),
         // The two language switches moved to Instellingen ▸ Taal en ondertitels
-        // with LANG1: DEC-109 lid 9 makes that page their only owner, and their
+        // with LANG1: DEC-096 lid 9 makes that page their only owner, and their
         // storage had already moved to the Pleya profile in `eae19cb4`, so this
         // is a pure relocation. This row is what is left of them here.
         SettingNavigationTile(
@@ -236,6 +255,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     ],
     decode: (s) => s,
     encode: (s) => s,
+    onAfterWrite: refreshDeviceCapabilitiesForPlayerBackend,
   );
 
   Widget _externalPlayerTile() => SettingsBuilder(

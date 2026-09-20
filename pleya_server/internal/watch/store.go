@@ -214,7 +214,7 @@ func decodeCursor(raw string) (*cursor, error) {
 // bij te trekken zonder de hele catalogus op te halen.
 //
 // visibleLibraryIDs is catalog.Store.VisibleLibraries van de aanroeper
-// (DEC-105 regel 13): nil betekent geen beperking (owner/admin), anders wordt
+// (DEC-126 regel 13): nil betekent geen beperking (owner/admin), anders wordt
 // de filter hier in de query toegepast, vóór de cursor-paginering en niet
 // erna in Go. Een rij bestaat onveranderd door: wie een bibliotheekrecht
 // verliest houdt zijn kijkstatus, hij wordt alleen onzichtbaar zolang het

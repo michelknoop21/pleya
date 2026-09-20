@@ -99,7 +99,7 @@ var Definitions = []Definition{
 	{Key: KeyServerName, Kind: KindString, MinLen: 1, MaxLen: 64},
 
 	// De vijf grenzen uit K rij 14. Ze zijn geen smaak: een accesstoken dat een
-	// dag geldig is maakt de intrekkingslatentie uit DEC-099 waardeloos, en een
+	// dag geldig is maakt de intrekkingslatentie uit DEC-120 waardeloos, en een
 	// refreshtoken van tien jaar maakt uitloggen op afstand een illusie.
 	{Key: KeyAccessTokenTTL, Kind: KindDuration, MinDuration: time.Minute, MaxDuration: 60 * time.Minute},
 	{Key: KeyRefreshTokenTTL, Kind: KindDuration, MinDuration: 24 * time.Hour, MaxDuration: 90 * 24 * time.Hour},

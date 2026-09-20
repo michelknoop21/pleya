@@ -114,44 +114,37 @@ func TestLimiterBucketsAreCardinalityBoundedWithinOneWindow(t *testing.T) {
 	}
 }
 
-// TestLimiterOverflowDoesNotEvictAnExistingBucket bewaakt de andere kant van
-// dezelfde grens: een volle kaart weigert een nieuwe sleutel, maar verdringt
-// nooit een bestaande. Zonder die garantie zou een aanvaller een specifieke
-// huisgenoot kunnen targeten: de kaart vullen tot zijn emmer eruit valt, en
-// daarmee diens ratelimiet resetten alsof hij nooit een poging had gedaan.
-func TestLimiterOverflowDoesNotEvictAnExistingBucket(t *testing.T) {
+// TestLimiterOverflowEvictsTheOldestBucket bewaakt dat de cardinaliteitsgrens
+// geen globale accountlockout wordt. Een aanvaller mag de kaart vullen, maar
+// een nieuwe login moet dan de langst ongebruikte emmer vervangen.
+func TestLimiterOverflowEvictsTheOldestBucket(t *testing.T) {
 	clock := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
 	l := &limiter{buckets: map[string]*bucket{}, now: func() time.Time { return clock }}
 
-	// Het slachtoffer bestaat het eerst en verbruikt meteen een token, zodat
-	// er iets te vergelijken valt na de overloop.
-	if ok, _ := l.allow("login:slachtoffer"); !ok {
-		t.Fatal("de eerste poging van het slachtoffer werd al geweigerd")
-	}
-	before := *l.buckets["login:slachtoffer"]
-
-	// De kaart vullen tot exact de grens, zonder het slachtoffer te raken.
-	for i := 0; i < limiterMaxBuckets-1; i++ {
+	for i := 0; i < limiterMaxBuckets; i++ {
 		l.allow(fmt.Sprintf("login:vuller-%d", i))
+		clock = clock.Add(time.Millisecond)
 	}
 	if len(l.buckets) != limiterMaxBuckets {
 		t.Fatalf("kaart staat op %d emmers na het vullen, wil precies %d", len(l.buckets), limiterMaxBuckets)
 	}
 
-	// De kaart zit nu vol. Honderden nieuwe sleutels erbovenop mogen geen
-	// bestaande emmer verdringen.
-	for i := 0; i < 500; i++ {
-		if ok, wait := l.allow(fmt.Sprintf("login:overloop-%d", i)); ok || wait != limiterOverflowWait {
-			t.Fatalf("overloopsleutel %d kreeg (%v, %v), wil (false, %v)", i, ok, wait, limiterOverflowWait)
-		}
+	// Maak de op één na oudste emmer recent; de echte oudste blijft vuller-0.
+	if ok, _ := l.allow("login:vuller-1"); !ok {
+		t.Fatal("een bestaande emmer werd onverwacht geweigerd")
 	}
 
-	after, exists := l.buckets["login:slachtoffer"]
-	if !exists {
-		t.Fatal("de emmer van het slachtoffer werd door de overloop verdrongen")
+	if ok, wait := l.allow("login:legitiem"); !ok || wait != 0 {
+		t.Fatalf("nieuwe sleutel op volle kaart kreeg (%v, %v), verwacht toegang", ok, wait)
 	}
-	if after.tokens != before.tokens || !after.lastFill.Equal(before.lastFill) {
-		t.Fatalf("de emmer van het slachtoffer veranderde door de overloop: was %+v, is %+v", before, *after)
+	if _, exists := l.buckets["login:vuller-0"]; exists {
+		t.Fatal("de langst ongebruikte emmer bleef staan na overloop")
+	}
+	if _, exists := l.buckets["login:vuller-1"]; !exists {
+		t.Fatal("een recent gebruikte emmer werd in plaats van de oudste verwijderd")
+	}
+	if _, exists := l.buckets["login:legitiem"]; !exists {
+		t.Fatal("de nieuwe sleutel kreeg geen emmer")
 	}
 	if len(l.buckets) != limiterMaxBuckets {
 		t.Fatalf("de kaart groeide voorbij de grens: %d emmers, wil %d", len(l.buckets), limiterMaxBuckets)

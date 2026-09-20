@@ -508,7 +508,7 @@ de precieze reden.
 Codes zijn gegroepeerd per domein. Uitbreiden mag; de betekenis van een bestaande code wijzigen niet.
 
 De domeinlijst zelf is ook niet gesloten, maar groeit alleen wanneer een protocolvenster dat met
-zoveel woorden zegt. `settings` en `server` kwamen erbij met venster 1 (DEC-110 en DEC-111). Een
+zoveel woorden zegt. `settings` en `server` kwamen erbij met venster 1 (DEC-130 en DEC-131). Een
 client die een domein niet kent behandelt de code als onbekend en toont een generieke melding; hij
 takt nooit op het domein. Codes die een client zelf verzint horen niet in dit register: de webclient
 draagt `client.transport` en `client.malformed_response`, die komen nooit over de lijn, en het
@@ -550,6 +550,7 @@ contract keurt ze af.
 | `server.internal` | 500 | nee | de handler liep op een fout die hij niet had voorzien; `details.request_id` verwijst naar de logregel. `nee` en niet `ja`: het contract dwingt een boolean af waar "onbekend" het eerlijke antwoord is, en een deterministische panic die als herhaalbaar binnenkomt levert een client op die precies het verzoek blijft sturen dat de server omver duwde |
 | `library.slug_taken` | 409 | nee | `POST /libraries`: de titel vereenvoudigt tot een slug die al bestaat, van een andere aanvraag of van een bibliotheek uit `PLEYA_SERVER_LIBRARIES` (S2.2) |
 | `library.not_empty` | 409 | nee | `PATCH /libraries/{id}`: `kind` mag alleen wisselen als de bibliotheek geen enkel item draagt (S2.2) |
+| `library.config_managed` | 409 | nee | `PATCH` of `DELETE /libraries/{id}`: de bibliotheek komt uit `PLEYA_SERVER_LIBRARIES` en moet via die configuratie worden gewijzigd; de API mag haar catalogusdata niet losmaken of wissen |
 | `library.confirm_mismatch` | 409 | nee | `DELETE /libraries/{id}` zonder of met een foute `confirm`; `details.expected` draagt de titel die er had moeten staan. Een eigen code naast `server.confirm_mismatch` (die blijft voor `POST /server/rotate-signing-key`), zodat een client niet op het pad hoeft te kijken om te weten welk woord verwacht wordt (K rij 16, S2.2) |
 | `storage.root_not_offered` | 400 | nee | `POST` en `PATCH /libraries`: een `root_path` overlapt met een bestaande root of met een andere root in dezelfde aanvraag, valt niet onder een van de mounts uit `PLEYA_SERVER_MEDIA_DIRS` (S2.3, hoofdstuk 17e.4), of de aanvraagbody zelf is onleesbaar |
 
@@ -1128,7 +1129,7 @@ gewoon was.
 ### 16.4 De autorisatiematrix
 
 Dertig regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien
-zijn de bindende matrix van DEC-105; elke slice die daarna een endpoint toevoegt zet zijn eigen
+zijn de bindende matrix van DEC-126; elke slice die daarna een endpoint toevoegt zet zijn eigen
 regel erbij en sluit niet zonder (K.3 van het securityplan).
 
 | # | Endpoint | Lekvector | Vereiste controle |
@@ -1251,7 +1252,7 @@ hun sessie ingetrokken is.
 ## 17a. Serverinstellingen
 
 `GET /pleya/v1/settings` en `PATCH /pleya/v1/settings` zijn klasse `admin`. Ze kwamen met S1.2,
-binnen protocolvenster 1 (DEC-110 en DEC-111).
+binnen protocolvenster 1 (DEC-130 en DEC-131).
 
 ### 17a.1 Twee lagen, en de bron staat erbij
 

@@ -76,7 +76,11 @@ String _join(Set<String>? known, String fallback) => known == null || known.isEm
 /// The decoder conditions cannot fire in PS-5. They are written out so the
 /// shape is settled rather than invented later under time pressure.
 List<Map<String, Object?>> _codecProfilesFor(DeviceDecoderCapabilities decoder, DeviceDisplayCapabilities display) {
-  final capped = display.maxWidth.isOverride && display.maxHeight.isOverride;
+  // One overridden axis proves a resolution cap was applied. The other axis
+  // may already equal the cap (2560x1080 capped to 1920x1080), in which case
+  // `_capped` deliberately leaves that observation untouched. Both values
+  // still belong on the wire as the requested rectangular limit.
+  final capped = display.maxWidth.isOverride || display.maxHeight.isOverride;
   final conditions = <Map<String, Object?>>[
     if (capped) ...[
       {'Condition': 'LessThanEqual', 'Property': 'Width', 'Value': '${display.maxWidth.value}', 'IsRequired': false},

@@ -23,12 +23,9 @@ import (
 //   - limiterMaxBuckets begrenst wat er binnen één venster kan binnenkomen: een
 //     aanvaller die sneller dan limiterIdleTTL duizenden andere usernames
 //     stuurt, mag geen duizenden emmers tegelijk claimen. Bij een volle kaart
-//     weigert allow() een nieuwe sleutel zonder een emmer te reserveren
-//     (fail-closed) en zonder een bestaande emmer te verdringen: een
-//     bestaande emmer verdwijnt alleen via sweep() (idle) of reset() (na een
-//     geslaagde login), nooit om plaats te maken voor een andere sleutel. Een
-//     aanvaller kan zo geen huisgenoot met een actieve emmer uit de kaart
-//     zetten om diens ratelimiet te resetten.
+//     vervangt een nieuwe sleutel de langst ongebruikte emmer. Zo blijft het
+//     geheugen begrensd zonder dat aanvallergekozen namen alle nog onbekende
+//     gebruikers globaal buitensluiten.
 type limiter struct {
 	mu        sync.Mutex
 	buckets   map[string]*bucket
@@ -64,12 +61,6 @@ const limiterSweepInterval = limiterIdleTTL
 // paar duizend emmers is verwaarloosbaar, tien miljoen niet.
 const limiterMaxBuckets = 1024
 
-// limiterOverflowWait is de terugvalwaarde voor een geweigerde sleutel die
-// geen emmer kreeg omdat de kaart vol zat. Geen berekening op een emmer die
-// niet bestaat; gewoon een korte, eerlijke uitnodiging om het zo meteen
-// opnieuw te proberen.
-const limiterOverflowWait = time.Second
-
 func newLimiter() *limiter {
 	return &limiter{buckets: map[string]*bucket{}, now: time.Now}
 }
@@ -85,10 +76,17 @@ func (l *limiter) allow(key string) (bool, time.Duration) {
 	b, ok := l.buckets[key]
 	if !ok {
 		if len(l.buckets) >= limiterMaxBuckets {
-			// Vol: geen nieuwe emmer, geen bestaande verdringen. Zie het
-			// pakketcommentaar boven limiter voor waarom dit fail-closed is en
-			// geen eviction-strategie.
-			return false, limiterOverflowWait
+			var oldestKey string
+			var oldestAt time.Time
+			first := true
+			for candidate, existing := range l.buckets {
+				if first || existing.lastFill.Before(oldestAt) {
+					oldestKey = candidate
+					oldestAt = existing.lastFill
+					first = false
+				}
+			}
+			delete(l.buckets, oldestKey)
 		}
 		b = &bucket{tokens: limiterBurst, lastFill: now}
 		l.buckets[key] = b

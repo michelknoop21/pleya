@@ -27,16 +27,17 @@ if [ -n "${PLEYA_TEST_FFPROBE_MOUNT:-}" ]; then
   extra+=(-v "${PLEYA_TEST_FFPROBE_MOUNT}:/usr/local/bin/ffprobe:ro")
 fi
 
-# De repository-wortel gaat alleen-lezen mee. Eén test heeft hem nodig:
-# internal/logging toetst de redactie tegen pleya_verify/redact/cases.json,
-# hetzelfde bestand dat de app en de Verify-runner lezen (K rij 11). Zonder deze
-# koppeling zou die test een kopie meten, en dan zegt hij niets meer over de
-# vraag of de drie implementaties nog gelijk redigeren.
+# Alleen de twee authority-bronnen die Go-tests lezen gaan alleen-lezen mee.
+# De hele repository mounten zou ook gitignored .env- en signingbestanden aan
+# de testcontainer blootstellen.
 REPO_ROOT="$(cd .. && pwd)"
+REDACT_CASES_DIR="$REPO_ROOT/pleya_verify/redact"
+PROTOCOL_SPEC="$REPO_ROOT/docs/pleya-protocol-v1.md"
 
 exec docker run --rm \
   -v "$PWD:/src" \
-  -v "$REPO_ROOT:/repo:ro" \
+  -v "$REDACT_CASES_DIR:/repo/pleya_verify/redact:ro" \
+  -v "$PROTOCOL_SPEC:/repo/docs/pleya-protocol-v1.md:ro" \
   -v "$MODCACHE/mod:/go/pkg/mod" \
   -v "$MODCACHE/build:/root/.cache/go-build" \
   -w /src \

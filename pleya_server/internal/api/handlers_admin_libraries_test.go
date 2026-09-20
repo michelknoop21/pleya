@@ -197,6 +197,50 @@ func TestUpdateLibraryKindAllowedWhenEmpty(t *testing.T) {
 	}
 }
 
+func TestUpdateConfigManagedLibraryIsRejected(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	lib := e.libs[0]
+	rec := e.do(http.MethodPatch, "/pleya/v1/libraries/"+lib.ID.String(), map[string]any{
+		"title": "Niet uit de API",
+	})
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("PATCH op config-managed bibliotheek gaf %d, verwacht 409: %s", rec.Code, rec.Body.String())
+	}
+	if code := errorCode(t, rec); code != "library.config_managed" {
+		t.Fatalf("PATCH op config-managed bibliotheek gaf code %q", code)
+	}
+	e.recordVariant("ErrorEnvelope", "config_managed", http.MethodPatch, "/pleya/v1/libraries/{library_id}", rec)
+
+	current, err := e.store.Library(t.Context(), lib.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current.Title != lib.Title {
+		t.Fatalf("geweigerde PATCH wijzigde de titel in %q", current.Title)
+	}
+}
+
+func TestDeleteConfigManagedLibraryIsRejected(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	lib := e.libs[0]
+	rec := e.do(http.MethodDelete, "/pleya/v1/libraries/"+lib.ID.String(), map[string]string{
+		"confirm": lib.Title,
+	})
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("DELETE op config-managed bibliotheek gaf %d, verwacht 409: %s", rec.Code, rec.Body.String())
+	}
+	if code := errorCode(t, rec); code != "library.config_managed" {
+		t.Fatalf("DELETE op config-managed bibliotheek gaf code %q", code)
+	}
+	if _, err := e.store.Library(t.Context(), lib.ID); err != nil {
+		t.Fatalf("geweigerde DELETE verwijderde de bibliotheek: %v", err)
+	}
+}
+
 func TestDeleteLibraryRequiresExactConfirm(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())

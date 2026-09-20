@@ -38,7 +38,7 @@ func (s *Server) handleLibraries(w http.ResponseWriter, r *http.Request) {
 	// Een lege lijst is [] en nooit null.
 	out := LibraryList{Items: make([]Library, 0, len(libs))}
 	for _, l := range libs {
-		if req.isAdmin() && req.scopeReachesAdmin() {
+		if req.canAdminister() {
 			out.Items = append(out.Items, adminLibraryWire(l))
 			continue
 		}

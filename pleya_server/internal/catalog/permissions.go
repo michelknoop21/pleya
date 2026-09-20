@@ -10,7 +10,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
-// Permission is één trede van de ladder uit DEC-098 §4: view < download <
+// Permission is één trede van de ladder uit DEC-119 §4: view < download <
 // manage, opgeslagen als tekst en niet als drie booleans. download impliceert
 // view, manage impliceert beide, per constructie via permissionsAtLeast en
 // niet als afspraak die elders afgedwongen moet worden.
@@ -35,7 +35,7 @@ func permissionsAtLeast(need Permission) []string {
 }
 
 // roleBypassesPermissions zegt of een rol nooit een library_permissions-rij
-// nodig heeft (DEC-098 §2): owner en admin volgen uit de rol zelf, want
+// nodig heeft (DEC-119 §2): owner en admin volgen uit de rol zelf, want
 // bibliotheken ontstaan tot PS-11A uit configuratie plus een herstart, zonder
 // beheerscherm om ze expliciet toe te kennen.
 func roleBypassesPermissions(role string) bool {
@@ -43,7 +43,7 @@ func roleBypassesPermissions(role string) bool {
 }
 
 // userRole leest users.role rechtstreeks, zonder via internal/auth te gaan:
-// dit is autorisatiebeleid over catalogusresources (DEC-098 §2), niet
+// dit is autorisatiebeleid over catalogusresources (DEC-119 §2), niet
 // identiteitsbeheer, en de enige vraag die het hier nodig heeft is "omzeilt
 // deze rol de bibliotheekrechten".
 func (s *Store) userRole(ctx context.Context, userID id.ID) (string, error) {
@@ -58,8 +58,8 @@ func (s *Store) userRole(ctx context.Context, userID id.ID) (string, error) {
 	return role, nil
 }
 
-// MayAccess zegt of userID libraryID minimaal met need mag benaderen (DEC-098,
-// DEC-105). Dit is DE controle uit AC2: een bibliotheek die de aanvrager niet
+// MayAccess zegt of userID libraryID minimaal met need mag benaderen (DEC-119,
+// DEC-126). Dit is DE controle uit AC2: een bibliotheek die de aanvrager niet
 // mag zien bestaat voor hem niet, dus de aanroeper zet false om in 404 en
 // nooit in 403.
 func (s *Store) MayAccess(ctx context.Context, userID, libraryID id.ID, need Permission) (bool, error) {
@@ -118,7 +118,7 @@ func (s *Store) VisibleLibraries(ctx context.Context, userID id.ID) ([]id.ID, er
 }
 
 // ItemLibrary geeft de bibliotheek waar een item toe hoort, voor autorisatie
-// vóór een kijkstatusevent wordt toegepast (AC2, PS-9, DEC-105 regel 12) —
+// vóór een kijkstatusevent wordt toegepast (AC2, PS-9, DEC-126 regel 12) —
 // lichter dan Item(), die ook versies, artwork en aantallen ophaalt.
 func (s *Store) ItemLibrary(ctx context.Context, itemID id.ID) (id.ID, error) {
 	var libraryID id.ID

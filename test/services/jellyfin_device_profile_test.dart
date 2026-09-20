@@ -167,6 +167,20 @@ void main() {
       ]);
     });
 
+    test('a 1080p cap reaches Jellyfin on a 2560x1080 ultrawide display', () {
+      final capped = nothingKnown.copyWith(
+        display: DeviceDisplayCapabilities(
+          maxWidth: const Capability<int>.inferred(2560).overriddenWith(1920),
+          maxHeight: const Capability<int>.inferred(1080),
+        ),
+      );
+
+      expect(conditions(capped), [
+        {'Condition': 'LessThanEqual', 'Property': 'Width', 'Value': '1920', 'IsRequired': false},
+        {'Condition': 'LessThanEqual', 'Property': 'Height', 'Value': '1080', 'IsRequired': false},
+      ]);
+    });
+
     test('HDR stays off the wire entirely in PS-5', () {
       final profile = buildJellyfinDeviceProfile(appleTvHd);
 

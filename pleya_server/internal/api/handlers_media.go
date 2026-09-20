@@ -111,7 +111,7 @@ func (s *Server) handleSubtitle(w http.ResponseWriter, r *http.Request, versionS
 			// bestaand-maar-verboden id gaf 401, en die twee statuscodes samen
 			// waren een oracle waarmee elke geldige streamtoken (voor om het even
 			// welke versie) het bestaan van elk subtitle_id in de hele catalogus
-			// kon aftasten, ongeacht bibliotheekrecht. DEC-105 regel 8 eist
+			// kon aftasten, ongeacht bibliotheekrecht. DEC-126 regel 8 eist
 			// expliciet "anders 404, ook met een geldig streamtoken"; dezelfde
 			// respons als writeStoreError(catalog.ErrNotFound) hieronder maakt
 			// bestaat-niet en mag-niet weer ononderscheidbaar.
@@ -119,7 +119,7 @@ func (s *Server) handleSubtitle(w http.ResponseWriter, r *http.Request, versionS
 			return
 		}
 		// Een streamtoken of -sessie is al op het aanvraagpad gecontroleerd, in
-		// streamAuthorized/streamSessionScope (DEC-105, hoofdstuk 16.4 regel 8),
+		// streamAuthorized/streamSessionScope (DEC-126, hoofdstuk 16.4 regel 8),
 		// vóórdat deze handler draait — tegen het subject van het token of de
 		// sessie, niet alleen bij het minten.
 	} else if !s.authorizeLibrary(w, r, libraryID) {

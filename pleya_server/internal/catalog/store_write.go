@@ -12,6 +12,7 @@ import (
 
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/mounts"
 )
 
 // ItemRef beschrijft het item waar een bestand aan gehangen moet worden.
@@ -540,19 +541,34 @@ func existingRootConflicts(ctx context.Context, tx pgx.Tx, excludeLibraryID id.I
 // CreateLibrary voegt een door de API beheerde bibliotheek toe (S2.2, managed
 // = db: dit is het enige pad dat dat ooit zet).
 //
-// Geen enkel bestand wordt aangeraakt: root_paths komen letterlijk uit de
-// aanvraag, en tot S2.3 de opsomming uit de mounts bouwt is er niets om ze
-// veilig tegen te toetsen (mounts.Inspect doet ook een schrijfprobe, en die op
-// een door de client verzonnen pad loslaten zou K rij 10 juist schenden). Een
-// aanroeper met een pad buiten de mounts krijgt dus vandaag geen weigering
-// daarop; dat komt met S2.3. fs_type en inode_trusted blijven op hun
-// kolomdefault staan tot een latere scan of S2.3 ze meet.
+// De API heeft de roots vóór deze aanroep al tegen MediaRoots getoetst. Een
+// root die werkelijk bereikbaar is wordt meteen gemeten, zodat bijvoorbeeld
+// NTFS niet tot de eerstvolgende recheck de onveilige kolomdefault `true`
+// draagt. Een tijdelijk onbereikbare root houdt de defaults; de recheck meet
+// hem zodra hij terugkomt.
 func (s *Store) CreateLibrary(ctx context.Context, title, kind string, rootPaths []string) (Library, error) {
 	for i, a := range rootPaths {
 		for _, b := range rootPaths[i+1:] {
 			if rootsOverlap(a, b) {
 				return Library{}, ErrRootNotOffered
 			}
+		}
+	}
+	type rootMeasurement struct {
+		fsType  string
+		trusted bool
+		source  string
+		seen    bool
+	}
+	measurements := make(map[string]rootMeasurement, len(rootPaths))
+	for _, root := range rootPaths {
+		info := mounts.Inspect(root)
+		if info.Exists {
+			measurements[root] = rootMeasurement{
+				fsType: info.FSType, trusted: mounts.InodeTrustDefault(info.FSType), source: "measured", seen: true,
+			}
+		} else {
+			measurements[root] = rootMeasurement{trusted: true, source: "fstype_default"}
 		}
 	}
 
@@ -582,9 +598,12 @@ func (s *Store) CreateLibrary(ctx context.Context, title, kind string, rootPaths
 	}
 
 	for _, root := range rootPaths {
+		measurement := measurements[root]
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO storage_locations (id, library_id, root_path)
-			VALUES ($1, $2, $3)`, id.New(), lib.ID, root); err != nil {
+			INSERT INTO storage_locations
+				(id, library_id, root_path, fs_type, inode_trusted, inode_trust_source, last_seen_at)
+			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE NULL END)`,
+			id.New(), lib.ID, root, nullString(measurement.fsType), measurement.trusted, measurement.source, measurement.seen); err != nil {
 			if isUniqueViolation(err) {
 				return Library{}, ErrRootNotOffered
 			}
@@ -684,10 +703,46 @@ func (s *Store) UpdateLibrary(ctx context.Context, libraryID id.ID, patch Librar
 		}
 	}
 	if patch.RootPaths != nil {
-		if _, err := tx.Exec(ctx, `DELETE FROM storage_locations WHERE library_id = $1`, libraryID); err != nil {
-			return Library{}, fmt.Errorf("oude roots wissen: %w", err)
+		rows, err := tx.Query(ctx, `
+			SELECT root_path FROM storage_locations
+			WHERE library_id = $1
+			FOR UPDATE`, libraryID)
+		if err != nil {
+			return Library{}, fmt.Errorf("bestaande roots lezen: %w", err)
+		}
+		currentRoots := make(map[string]struct{})
+		for rows.Next() {
+			var root string
+			if err := rows.Scan(&root); err != nil {
+				rows.Close()
+				return Library{}, fmt.Errorf("bestaande root lezen: %w", err)
+			}
+			currentRoots[root] = struct{}{}
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return Library{}, fmt.Errorf("bestaande roots lezen: %w", err)
+		}
+		rows.Close()
+
+		wantedRoots := make(map[string]struct{}, len(patch.RootPaths))
+		for _, root := range patch.RootPaths {
+			wantedRoots[root] = struct{}{}
+		}
+		for root := range currentRoots {
+			if _, keep := wantedRoots[root]; keep {
+				continue
+			}
+			if _, err := tx.Exec(ctx, `
+				DELETE FROM storage_locations
+				WHERE library_id = $1 AND root_path = $2`, libraryID, root); err != nil {
+				return Library{}, fmt.Errorf("oude root %s wissen: %w", root, err)
+			}
 		}
 		for _, root := range patch.RootPaths {
+			if _, exists := currentRoots[root]; exists {
+				continue
+			}
 			if _, err := tx.Exec(ctx, `
 				INSERT INTO storage_locations (id, library_id, root_path)
 				VALUES ($1, $2, $3)`, id.New(), libraryID, root); err != nil {

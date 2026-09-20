@@ -90,16 +90,26 @@ void main() {
     test('returns the token pair and the probed info', () async {
       final service = PleyaServerAuthService(
         httpClientFactory: () => MockClient((request) async {
-          if (request.url.path.endsWith('/info')) return json(infoBody);
-          expect(request.url.path, '/pleya/v1/auth/login');
-          expect(jsonDecode(request.body), {'username': 'michel', 'password': 'hunter22'});
-          return json(tokenPair('at-1', 'rt-1'));
+          if (request.url.path.endsWith('/info')) {
+            return json({
+              ...infoBody,
+              'capabilities': {...infoBody['capabilities']!, 'users': true},
+            });
+          }
+          if (request.url.path.endsWith('/auth/login')) {
+            expect(jsonDecode(request.body), {'username': 'michel', 'password': 'hunter22'});
+            return json(tokenPair('at-1', 'rt-1'));
+          }
+          expect(request.url.path, '/pleya/v1/users/me');
+          expect(request.headers['authorization'], 'Bearer at-1');
+          return json(const {'id': 'user-1', 'username': 'michel', 'role': 'owner'});
         }),
       );
       final result = await service.login(baseUrl: 'http://nas.lan:8832', username: 'michel', password: 'hunter22');
       expect(result.tokens.accessToken, 'at-1');
       expect(result.tokens.refreshToken, 'rt-1');
       expect(result.userName, 'michel');
+      expect(result.userId, 'user-1');
       expect(result.baseUrl, 'http://nas.lan:8832');
       expect(result.info.serverId, 'srv-1');
     });

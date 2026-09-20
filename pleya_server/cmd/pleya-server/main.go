@@ -151,6 +151,13 @@ func run() int {
 		startup.Error("bibliotheken inrichten", slog.String("error", err.Error()))
 		return config.ExitConfig
 	}
+	// SyncLibraries retourneert alleen de configuratiebibliotheken. De planner
+	// moet ook API-beheerde rijen meenemen die een herstart overleefden.
+	libs, err = catalogStore.Libraries(ctx)
+	if err != nil {
+		startup.Error("bibliotheken voor scanplanning lezen", slog.String("error", err.Error()))
+		return config.ExitConfig
+	}
 
 	prober := ffprobe.New(cfg.FFprobePath, cfg.FFprobeTimeout)
 	var ffprobeStatus api.FFprobeStatus
@@ -187,7 +194,7 @@ func run() int {
 		startup.Info("lopende jobs teruggezet in de wachtrij", slog.Int64("count", n))
 	}
 
-	// Het intrekkingsregister uit DEC-099 wordt bij het opstarten uit de
+	// Het intrekkingsregister uit DEC-120 wordt bij het opstarten uit de
 	// database gevuld. Zonder die stap zou een herstart elke intrekking
 	// vergeten, en dan overleeft een streamtoken van een ingetrokken sessie het
 	// herstartmoment.
@@ -210,7 +217,7 @@ func run() int {
 	go func() { defer workers.Done(); runner.Run(workCtx) }()
 	go func() {
 		defer workers.Done()
-		schedule(workCtx, runner, libs, cfg.ScanInterval, logging.Component(log, "scanner"))
+		schedule(workCtx, runner, catalogStore, cfg.ScanInterval, logging.Component(log, "scanner"))
 	}()
 	go func() {
 		defer workers.Done()
@@ -218,7 +225,7 @@ func run() int {
 	}()
 
 	if cfg.ScanOnStart {
-		enqueueScans(ctx, runner, libs, "startup", logging.Component(log, "scanner"))
+		enqueueStartupScans(ctx, runner, libs, logging.Component(log, "scanner"))
 	}
 
 	// De beheerbare instellingen (S1.2). De omgeving is de onderste laag en de

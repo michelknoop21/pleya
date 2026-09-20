@@ -87,22 +87,32 @@ void main() {
     });
 
     test('the connection layer is the one thing that does reach it', () {
-      expect(macOsDesktop.connection.maxBitrateKbps.value, 20000);
-      expect(params(macOsDesktop)['maxVideoBitrate'], '20000');
+      final constrained = macOsDesktop.copyWith(
+        connection: const DeviceConnectionCapabilities(maxBitrateKbps: Capability<int>.detected(2000)),
+      );
+      expect(params(constrained)['maxVideoBitrate'], '2000');
     });
   });
 
-  group('the bitrate ceiling comes from the connection layer', () {
-    test('a preset override reaches both the limitation and maxVideoBitrate', () {
-      final capped = nothingKnown.copyWith(
-        connection: DeviceConnectionCapabilities(maxBitrateKbps: const Capability<int>.unknown().overriddenWith(2000)),
+  group('the playback preset is capped only by the observed connection ceiling', () {
+    test('a playback choice replaces the global default stored as an override', () {
+      final defaultThreeMbps = nothingKnown.copyWith(
+        connection: DeviceConnectionCapabilities(maxBitrateKbps: const Capability<int>.unknown().overriddenWith(3000)),
       );
 
-      expect(params(capped)['maxVideoBitrate'], '2000');
+      expect(params(defaultThreeMbps, preset: TranscodeQualityPreset.p1080_10mbps)['maxVideoBitrate'], '10000');
       expect(
-        buildPlexProfileExtraClauses(capped, TranscodeQualityPreset.p720_3mbps),
-        contains(contains('&name=video.bitrate&value=2000&')),
+        buildPlexProfileExtraClauses(defaultThreeMbps, TranscodeQualityPreset.p1080_10mbps),
+        contains(contains('&name=video.bitrate&value=10000&')),
       );
+    });
+
+    test('an observed connection ceiling caps the playback choice', () {
+      final measuredSixMbps = nothingKnown.copyWith(
+        connection: const DeviceConnectionCapabilities(maxBitrateKbps: Capability<int>.detected(6000)),
+      );
+
+      expect(params(measuredSixMbps, preset: TranscodeQualityPreset.p1080_10mbps)['maxVideoBitrate'], '6000');
     });
 
     test('an unknown ceiling falls back to the preset, which is what produced it before', () {

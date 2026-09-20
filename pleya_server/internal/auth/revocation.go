@@ -9,7 +9,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
-// Revocations is het intrekkingsregister uit DEC-099: de in-process invulling
+// Revocations is het intrekkingsregister uit DEC-120: de in-process invulling
 // van "onmiddellijk ongeldig" uit acceptatiecriterium 3 van PS-9.
 //
 // Waarom in het geheugen en niet met LISTEN/NOTIFY of een pub/sub-laag: er is
@@ -29,17 +29,32 @@ type Revocations struct {
 	retain  time.Duration
 }
 
+// RevocationRetentionMargin dekt klokverschil en een opruimronde die precies
+// op de credentialgrens valt.
+const RevocationRetentionMargin = 5 * time.Minute
+
+// RevocationRetention leidt de bewaartermijn af uit alle credentials die een
+// sessie-id dragen. Het langstlevende credential bepaalt de ondergrens.
+func RevocationRetention(lifetimes ...time.Duration) time.Duration {
+	longest := time.Duration(0)
+	for _, lifetime := range lifetimes {
+		if lifetime > longest {
+			longest = lifetime
+		}
+	}
+	return longest + RevocationRetentionMargin
+}
+
 // DefaultRevocationRetention is hoe lang een ingetrokken sessie in het register
-// blijft staan.
+// blijft staan bij de maximale beheerbare levensduren.
 //
 // Het register hoeft alleen de credentials te dekken die géén databaseronde
 // doen: het accesstoken, het streamtoken en de browserstreamsessie. Het
 // refreshtoken leest zijn sessie sowieso uit de database (RotateRefreshToken
-// joint op sessions.revoked_at), dus dat pad hangt hier niet van af. Een uur is
-// ruim boven de langste van die drie levensduren, en het houdt de set klein
-// genoeg om nooit een geheugenpost te worden: een huishouden trekt geen
-// duizenden sessies per uur in.
-const DefaultRevocationRetention = time.Hour
+// joint op sessions.revoked_at), dus dat pad hangt hier niet van af. De maxima
+// zijn access 60 minuten, streamtoken 15 minuten en browserstreamsessie 120
+// minuten; de marge voorkomt een gat op precies die laatste grens.
+var DefaultRevocationRetention = RevocationRetention(60*time.Minute, 15*time.Minute, 120*time.Minute)
 
 // NewRevocations bouwt een leeg register. retain <= 0 neemt de standaard.
 func NewRevocations(retain time.Duration) *Revocations {

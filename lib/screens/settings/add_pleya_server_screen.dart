@@ -164,7 +164,7 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
     if (!mounted) return;
 
     final connection = PleyaServerConnection(
-      id: 'pleyaServer.${result.info.serverId}',
+      id: pleyaServerConnectionId(serverId: result.info.serverId, userId: result.userId),
       baseUrl: baseUrl,
       serverId: result.info.serverId,
       serverName: detail?.name.isNotEmpty == true ? detail!.name : 'Pleya Server',

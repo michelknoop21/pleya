@@ -504,9 +504,9 @@ func (e *env) grantLibrary(userID, libraryID id.ID, permission string) {
 
 // revokeLibrary trekt een eerder toegekend recht in, rechtstreeks op de tabel:
 // er bestaat nog geen endpoint om een library_permissions-rij te verwijderen
-// (dat is DEC-100, niet deze fase). Voor het bewijs dat een streamtoken of
+// (dat is DEC-121, niet deze fase). Voor het bewijs dat een streamtoken of
 // -sessie het recht op het aanvraagpad toetst en niet alleen bij het minten
-// (DEC-105, hoofdstuk 16.4 regel 9), moet een test het recht na het minten
+// (DEC-126, hoofdstuk 16.4 regel 9), moet een test het recht na het minten
 // weg kunnen halen.
 func (e *env) revokeLibrary(userID, libraryID id.ID) {
 	e.t.Helper()

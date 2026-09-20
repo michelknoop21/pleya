@@ -60,7 +60,7 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request, versionSco
 		return
 	}
 	// Een streamtoken of -sessie is al op het aanvraagpad gecontroleerd, in
-	// streamAuthorized/streamSessionScope (DEC-105, hoofdstuk 16.4 regel 9):
+	// streamAuthorized/streamSessionScope (DEC-126, hoofdstuk 16.4 regel 9):
 	// dat gebeurt vóórdat deze handler draait, tegen het subject dat bij het
 	// token of de sessie hoort, niet alleen bij het minten. Alleen het gewone
 	// accesstoken (versionScope == nil) draagt claims en vraagt hier nog om de
@@ -225,7 +225,7 @@ func parseSingleRange(spec string, size int64) (int64, int64, bool) {
 // streamBlockBytes is hoeveel bytes copyRange in één keer doorgeeft voordat hij
 // het intrekkingsregister opnieuw raadpleegt.
 //
-// 64 KiB is het compromis dat DEC-099 vraagt: klein genoeg dat de
+// 64 KiB is het compromis dat DEC-120 vraagt: klein genoeg dat de
 // revocatielatentie ruim onder de vastgelegde twee seconden blijft, groot
 // genoeg dat de lus zelf niets kost (een mapopzoeking en een syscallpaar per
 // blok, en bij honderd megabyte per seconde zijn dat een paar duizend rondes).
@@ -241,7 +241,7 @@ const streamBlockBytes = 64 * 1024
 // io.CopyN over de hele range, zoals hier tot PS-9 stond, laat een lopende
 // stream doorlopen tot het bestand op is: een ingetrokken sessie zou dan pas
 // merkbaar worden bij de volgende seek. De lus per blok is de invulling die
-// DEC-099 vastlegt, met een in-process register en zonder databaseronde.
+// DEC-120 vastlegt, met een in-process register en zonder databaseronde.
 func (s *Server) copyRange(w http.ResponseWriter, r *http.Request, f *os.File, start, length int64, path string) {
 	if _, err := f.Seek(start, io.SeekStart); err != nil {
 		// De header is al de deur uit; er valt geen foutvorm meer te sturen.

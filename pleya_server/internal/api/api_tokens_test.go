@@ -301,6 +301,79 @@ func TestAPITokenScopeCapsTheAdminClass(t *testing.T) {
 	}
 }
 
+// Een beperkt token erft de identiteit van zijn eigenaar, niet diens volledige
+// beheerklasse. Dat onderscheid moet ook gelden op routes die voor gewone
+// gebruikers een eigen antwoord hebben en alleen conditioneel naar beheer
+// uitbreiden; die lopen niet via requireAdmin.
+func TestReadScopedAdminTokenCannotUseConditionalAdminPrivileges(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	other := e.createUserViaAPI("sanne", "nog-een-lang-wachtwoord", "member", http.StatusOK)
+	e.loginAs("sanne", "nog-een-lang-wachtwoord", http.StatusOK)
+	otherSessions := e.sessionsOf("user_id="+other.ID, "", http.StatusOK)
+	if len(otherSessions.Items) == 0 {
+		t.Fatal("de andere gebruiker heeft geen sessie voor de intrekkingsprobe")
+	}
+	e.createToken(map[string]any{
+		"name": "token van sanne", "scope": "read", "user_id": other.ID,
+	}, http.StatusCreated)
+
+	var users api.UserListWire
+	e.getJSON("/pleya/v1/users", "", http.StatusOK, &users)
+	var ownerID string
+	for _, user := range users.Items {
+		if user.Role == "owner" {
+			ownerID = user.ID
+		}
+	}
+	if ownerID == "" {
+		t.Fatal("owner ontbreekt")
+	}
+
+	read := e.createToken(map[string]any{"name": "leesagent", "scope": "read"}, http.StatusCreated)
+	limited := asToken(read.Secret)
+
+	// GET /users blijft leesbaar, maar de conditionele adminuitbreiding niet.
+	rec := e.do(http.MethodGet, "/pleya/v1/users", nil, limited)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /users met leestoken gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	var mine api.UserListWire
+	if err := json.Unmarshal(rec.Body.Bytes(), &mine); err != nil {
+		t.Fatal(err)
+	}
+	if len(mine.Items) != 1 || mine.Items[0].ID != ownerID {
+		t.Fatalf("een leestoken zag andere gebruikers: %+v", mine.Items)
+	}
+
+	for _, tc := range []struct {
+		method string
+		path   string
+		body   any
+		code   string
+	}{
+		{http.MethodPatch, "/pleya/v1/users/" + ownerID,
+			map[string]string{"password": "een-ander-lang-wachtwoord"}, api.CodeUserNotFound},
+		{http.MethodPatch, "/pleya/v1/users/" + other.ID, map[string]string{"role": "admin"}, api.CodeUserNotFound},
+		{http.MethodGet, "/pleya/v1/sessions?user_id=" + other.ID, nil, api.CodeUserNotFound},
+		{http.MethodDelete, "/pleya/v1/sessions/" + otherSessions.Items[0].ID, nil, api.CodeSessionNotFound},
+		{http.MethodGet, apiTokensPath + "?user_id=" + other.ID, nil, api.CodeUserNotFound},
+	} {
+		got := e.do(tc.method, tc.path, tc.body, limited)
+		if got.Code != http.StatusNotFound {
+			t.Errorf("%s %s ontsnapte aan de scopegrens: %d %s", tc.method, tc.path, got.Code, got.Body.String())
+			continue
+		}
+		e.expectCode(got, tc.code)
+	}
+
+	detail := e.serverDetail(http.StatusOK, limited)
+	if detail.Listen != nil || detail.Database != nil || detail.Health != nil {
+		t.Fatalf("een leestoken ontving beheerdiagnostiek: %+v", detail)
+	}
+}
+
 // Een token onder bereik `admin` mint geen tokens.
 //
 // Dit staat in geen enkel plan en is hier gevonden. ScopeWithinRole toetst het

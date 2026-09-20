@@ -167,11 +167,14 @@ class PleyaServerAuthService {
       if (response.statusCode != 200) throw _authFailure(response);
       final data = response.data;
       if (data is! Map<String, dynamic>) throw const MediaServerAuthException('Auth response was not JSON');
+      final tokens = PleyaTokenPair.fromJson(data);
+      final user = info.capabilities.users ? await _fetchCurrentUser(client, tokens.accessToken) : null;
       return PleyaAuthResult(
         baseUrl: normalised,
         info: info,
-        tokens: PleyaTokenPair.fromJson(data),
-        userName: username,
+        tokens: tokens,
+        userId: user?.id,
+        userName: user?.username ?? username,
       );
     } on PleyaWireFormatException catch (e) {
       throw MediaServerAuthException('Auth response did not match the contract: ${e.message}');
@@ -180,6 +183,25 @@ class PleyaServerAuthService {
     } finally {
       client.close();
     }
+  }
+
+  Future<PleyaUser> _fetchCurrentUser(MediaServerHttpClient client, String accessToken) async {
+    final response = await client.get(
+      '/users/me',
+      headers: {'Authorization': 'Bearer $accessToken'},
+      timeout: MediaServerTimeouts.interactive,
+    );
+    if (response.statusCode != 200) {
+      throw MediaServerAuthException(
+        'Signed in, but could not read the account identity',
+        statusCode: response.statusCode,
+      );
+    }
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw const MediaServerAuthException('Account identity response was not JSON');
+    }
+    return PleyaUser.fromJson(data);
   }
 
   /// Exchange a refresh token for a new pair.
@@ -275,12 +297,19 @@ class PleyaServerAuthService {
 /// What a successful setup or login yields: where the server is, what it says
 /// it can do, and the token pair to say it with.
 class PleyaAuthResult {
-  const PleyaAuthResult({required this.baseUrl, required this.info, required this.tokens, required this.userName});
+  const PleyaAuthResult({
+    required this.baseUrl,
+    required this.info,
+    required this.tokens,
+    required this.userName,
+    this.userId,
+  });
 
   final String baseUrl;
   final PleyaInfo info;
   final PleyaTokenPair tokens;
   final String userName;
+  final String? userId;
 }
 
 /// A rejection Pleya itself spoke: a 401 or 403 carrying an `auth.*` code from

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/audit"
@@ -123,7 +124,7 @@ type Options struct {
 	// verandert.
 	WatchLease time.Duration
 
-	// Revocations is het intrekkingsregister uit DEC-099: de invulling van
+	// Revocations is het intrekkingsregister uit DEC-120: de invulling van
 	// "onmiddellijk ongeldig" uit acceptatiecriterium 3. Nil is toegestaan en
 	// betekent geen latentiegarantie, niet minder controle; zie
 	// auth.Revocations.IsRevoked.
@@ -145,6 +146,7 @@ type Server struct {
 	limiter *limiter
 	mux     *http.ServeMux
 	now     func() time.Time
+	missingTrustedProxyWarning sync.Once
 }
 
 // New bouwt de router.
@@ -290,7 +292,7 @@ func (s *Server) routeTable() []route {
 		{"POST " + p + "/watch-state", s.authenticated(s.handleWatchStateReport)},
 		{"GET " + p + "/watch-state", s.authenticated(s.handleWatchStateList)},
 
-		// Gebruikersbeheer (DEC-100, stap 4). De autorisatieklasse staat in de
+		// Gebruikersbeheer (DEC-121, stap 4). De autorisatieklasse staat in de
 		// handler en niet in de route: "admin, of owner op zichzelf" is per
 		// endpoint anders, en een middleware per klasse zou dat verschil verbergen.
 		{"POST " + p + "/users", s.authenticated(s.handleCreateUser)},
@@ -335,7 +337,7 @@ func (s *Server) routeTable() []route {
 		// antwoord voor wie de handelingen zelf niet mag doen.
 		{"GET " + p + "/audit", s.authenticated(s.handleAudit)},
 
-		// Sessies (DEC-103, stap 6). logout staat bij auth omdat hij over de eigen
+		// Sessies (DEC-124, stap 6). logout staat bij auth omdat hij over de eigen
 		// sessie gaat; de twee endpoints eronder gaan over sessies als resource.
 		{"POST " + p + "/auth/logout", s.authenticated(s.handleLogout)},
 		{"GET " + p + "/sessions", s.authenticated(s.handleListSessions)},
@@ -421,7 +423,7 @@ func withSessionID(ctx context.Context, sessionID id.ID) context.Context {
 }
 
 // sessionIDFromContext geeft de sid van deze aanvraag, of id.Nil. Gebruikt door
-// copyRange om per blok het intrekkingsregister te raadplegen (DEC-099).
+// copyRange om per blok het intrekkingsregister te raadplegen (DEC-120).
 func sessionIDFromContext(ctx context.Context) id.ID {
 	sessionID, ok := ctx.Value(sessionContextKey{}).(id.ID)
 	if !ok {
@@ -524,7 +526,7 @@ func (s *Server) authenticatedByAPIToken(w http.ResponseWriter, r *http.Request,
 	next(w, r.WithContext(ctx))
 }
 
-// sessionLives is de O(1)-controle uit DEC-099: draagt dit credential een sid
+// sessionLives is de O(1)-controle uit DEC-120: draagt dit credential een sid
 // die is ingetrokken, dan is het credential dood, ongeacht zijn eigen
 // vervalmoment.
 //
@@ -607,7 +609,7 @@ func (s *Server) streamAuthorized(next func(w http.ResponseWriter, r *http.Reque
 			writeInternal(w, s.log, fmt.Errorf("subject in streamtoken is geen geldig id: %w", err))
 			return
 		}
-		// Aanvraagpad, niet alleen mint-moment (DEC-105, hoofdstuk 16.4 regel 8
+		// Aanvraagpad, niet alleen mint-moment (DEC-126, hoofdstuk 16.4 regel 8
 		// en 9): een streamtoken leeft tot vijf minuten zelfstandig na het
 		// minten, dus een ingetrokken bibliotheekrecht moet hier meteen gelden
 		// en niet pas wanneer het token vanzelf verloopt.
@@ -667,7 +669,7 @@ func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawS
 		return nil, id.Nil, false
 	}
 
-	// Aanvraagpad, niet alleen mint-moment (DEC-105, hoofdstuk 16.4 regel 9):
+	// Aanvraagpad, niet alleen mint-moment (DEC-126, hoofdstuk 16.4 regel 9):
 	// het geheim en de versie kloppen, maar dat bewijst niet dat subject nog
 	// recht heeft op de bibliotheek erachter. Een streamsessie leeft tot 30
 	// minuten zelfstandig na het minten, dus een ingetrokken recht moet hier

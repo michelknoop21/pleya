@@ -143,6 +143,10 @@ func (s *Server) handleUpdateLibrary(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err)
 		return
 	}
+	if current.Managed == catalog.ManagedConfig {
+		writeError(w, s.log, CodeLibraryConfigManaged, "config-managed library cannot be changed", nil)
+		return
+	}
 
 	var req UpdateLibraryRequest
 	if !s.decodeBody(w, r, &req, CodeStorageRootNotOffered) {
@@ -256,6 +260,10 @@ func (s *Server) handleDeleteLibrary(w http.ResponseWriter, r *http.Request) {
 	lib, err := s.opts.Catalog.Library(r.Context(), libraryID)
 	if err != nil {
 		s.writeStoreError(w, err)
+		return
+	}
+	if lib.Managed == catalog.ManagedConfig {
+		writeError(w, s.log, CodeLibraryConfigManaged, "config-managed library cannot be changed", nil)
 		return
 	}
 

@@ -6,7 +6,7 @@ import 'package:http/testing.dart';
 import 'package:pleya/models/pleya_server/pleya_wire.dart';
 import 'package:pleya/services/pleya_server_auth_service.dart';
 
-/// The client half of DEC-102: a session on a Pleya Server is one device, not
+/// The client half of DEC-123: a session on a Pleya Server is one device, not
 /// one user, and the two fields that make that possible are negotiated rather
 /// than assumed.
 ///

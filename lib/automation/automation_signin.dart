@@ -123,7 +123,7 @@ Future<Map<String, Object?>> handleAutomationSignIn(Map<String, Object?> body) a
     if (!context.mounted) return {'ok': false, 'error': 'context unmounted mid-signin'};
 
     final connection = PleyaServerConnection(
-      id: 'pleyaServer.${authResult.info.serverId}',
+      id: pleyaServerConnectionId(serverId: authResult.info.serverId, userId: authResult.userId),
       baseUrl: baseUrl,
       serverId: authResult.info.serverId,
       serverName: detail?.name.isNotEmpty == true ? detail!.name : 'Pleya Server',
@@ -140,7 +140,7 @@ Future<Map<String, Object?>> handleAutomationSignIn(Map<String, Object?> body) a
   }
 }
 
-/// `POST /v1/connections/seed` body: `{"base_url", "server_id",
+/// `POST /v1/connections/seed` body: `{"base_url", "server_id", "user_id",
 /// "server_name", "user_name", "refresh_token"}`. The fast path for a
 /// scenario that only needs *a* connection to exist and doesn't care to
 /// re-prove the sign-in UI on every run: skips the probe/login HTTP round
@@ -154,6 +154,7 @@ Future<Map<String, Object?>> handleAutomationConnectionsSeed(Map<String, Object?
   final serverId = body['server_id'] as String?;
   final serverName = body['server_name'] as String?;
   final userName = body['user_name'] as String?;
+  final userId = body['user_id'] as String?;
   final refreshToken = body['refresh_token'] as String?;
   if (baseUrl == null || serverId == null || serverName == null || userName == null || refreshToken == null) {
     return {'ok': false, 'error': 'base_url, server_id, server_name, user_name and refresh_token are required'};
@@ -167,7 +168,7 @@ Future<Map<String, Object?>> handleAutomationConnectionsSeed(Map<String, Object?
   }
 
   final connection = PleyaServerConnection(
-    id: 'pleyaServer.$serverId',
+    id: pleyaServerConnectionId(serverId: serverId, userId: userId),
     baseUrl: baseUrl,
     serverId: serverId,
     serverName: serverName,

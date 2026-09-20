@@ -58,7 +58,7 @@ func (s StreamSession) CookieName() string { return StreamCookiePrefix + s.ID.St
 
 // CreateStreamSession opent een sessie voor één subject en één versie.
 //
-// sid is de auth-sessie (DEC-102) waarvan dit verzoek werd gedaan; hij komt in
+// sid is de auth-sessie (DEC-123) waarvan dit verzoek werd gedaan; hij komt in
 // stream_sessions.session_id te staan zodat intrekking van die sessie ook deze
 // browserstreamsessie meeneemt.
 //
@@ -115,10 +115,10 @@ func (s *Store) CreateStreamSession(ctx context.Context, subject id.ID, sid id.I
 	return StreamSession{ID: sessionID, Secret: secret, ExpiresAt: expires}, nil
 }
 
-// VerifyStreamSession controleert de vijf dingen uit DEC-051 en DEC-102 die
+// VerifyStreamSession controleert de vijf dingen uit DEC-051 en DEC-123 die
 // zonder een onafhankelijk bekend subject te toetsen zijn: de sessie bestaat,
 // het geheim klopt in een constant-time vergelijking, de binding aan de versie
-// klopt, hij is niet verlopen of ingetrokken, en de auth-sessie (DEC-102)
+// klopt, hij is niet verlopen of ingetrokken, en de auth-sessie (DEC-123)
 // waarvan hij is uitgegeven is dat evenmin. Geeft bij succes het subject
 // terug waaraan de sessie gebonden is.
 //
@@ -126,7 +126,7 @@ func (s *Store) CreateStreamSession(ctx context.Context, subject id.ID, sid id.I
 // stream_sessions.session_id juist opdat intrekking van de auth-sessie deze
 // browserstreamsessie meeneemt, maar die FK werd hier nooit gelezen. Zonder
 // de LEFT JOIN bleef een browserstream geldig nadat de sessie waaruit hij
-// ontstond was ingetrokken. Vandaag zet nog niets sessions.revoked_at (DEC-103
+// ontstond was ingetrokken. Vandaag zet nog niets sessions.revoked_at (DEC-124
 // levert dat pas), dus dit gat is nu latent; het moet dicht staan voordat er
 // een intrekkingspad bijkomt. session_id is nullable (bestaande rijen droegen
 // nooit een sessie, migratie 0007-stap 5), dus de LEFT JOIN en niet een INNER
@@ -141,7 +141,7 @@ func (s *Store) CreateStreamSession(ctx context.Context, subject id.ID, sid id.I
 // gevalideerde rij is hier het enige gezaghebbende antwoord op "wie is dit",
 // en het teruggegeven subject is wat de aanroeper gebruikt om de
 // bibliotheekrechten opnieuw te toetsen op het aanvraagpad, niet alleen bij
-// het minten (DEC-105, hoofdstuk 16.4 regel 9). Een subject dat de aanroeper
+// het minten (DEC-126, hoofdstuk 16.4 regel 9). Een subject dat de aanroeper
 // zelf aandraagt zou hier niets bewijzen: iedereen kan een uuid verzinnen.
 //
 // Het geheim staat niet in de database; er staat een SHA-256 van, net als bij een
@@ -149,7 +149,7 @@ func (s *Store) CreateStreamSession(ctx context.Context, subject id.ID, sid id.I
 //
 // Naast het subject komt de auth-sessie mee waaraan deze browserstreamsessie
 // hangt. Die is nodig op het streampad: copyRange raadpleegt per blok het
-// intrekkingsregister (DEC-099), en zonder die sid zou een lopende
+// intrekkingsregister (DEC-120), en zonder die sid zou een lopende
 // browserstream de enige van de drie credentials zijn die een intrekking pas
 // bij de volgende aanvraag ziet. Nil-sid (een rij van vóór migratie 0007) geeft
 // id.Nil, en het register kent die nooit.

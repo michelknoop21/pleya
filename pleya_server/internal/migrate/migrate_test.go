@@ -63,6 +63,46 @@ func TestRunAppliesAndIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestExpiredRefreshSuccessorCanBePurgedBeforeItsPredecessor(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+
+	now := time.Now().UTC()
+	predecessor := auth.HashOpaque("langlevende-voorganger")
+	successor := auth.HashOpaque("kortlevende-opvolger")
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO auth_refresh_tokens (token_hash, issued_at, expires_at)
+		VALUES ($1, $3, $4), ($2, $3, $5)`,
+		predecessor, successor, now.Add(-2*time.Hour), now.Add(24*time.Hour), now.Add(-time.Hour)); err != nil {
+		t.Fatalf("rotatieketen neerzetten: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`UPDATE auth_refresh_tokens SET replaced_by = $2 WHERE token_hash = $1`, predecessor, successor); err != nil {
+		t.Fatalf("rotatiekoppeling neerzetten: %v", err)
+	}
+
+	purged, err := auth.NewStore(pool).PurgeExpiredRefreshTokens(ctx, now)
+	if err != nil {
+		t.Fatalf("verlopen opvolger opruimen: %v", err)
+	}
+	if purged != 1 {
+		t.Fatalf("%d tokens opgeruimd, verwacht 1", purged)
+	}
+
+	var replacedBy []byte
+	if err := pool.QueryRow(ctx,
+		`SELECT replaced_by FROM auth_refresh_tokens WHERE token_hash = $1`, predecessor).
+		Scan(&replacedBy); err != nil {
+		t.Fatalf("voorganger lezen: %v", err)
+	}
+	if replacedBy != nil {
+		t.Fatalf("replaced_by bleef staan na het verwijderen van de opvolger: %x", replacedBy)
+	}
+}
+
 // Elke tabel die het schema aanmaakt hoort hier te staan, en elke tabel die hier
 // staat hoort in het schema. Dat is de drift check uit hoofdstuk 23.1 in
 // testvorm: een users- of watch_states-tabel die er stiekem bij komt valt hier om.
@@ -90,7 +130,7 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		// PS-4, uit DEC-049 en DEC-051.
 		"watch_states":    true,
 		"stream_sessions": true,
-		// PS-9, uit DEC-098, DEC-102 en DEC-104. Wat er nog steeds NIET staat is
+		// PS-9, uit DEC-119, DEC-123 en DEC-125. Wat er nog steeds NIET staat is
 		// even belangrijk: geen play_history, geen play_sessions en geen
 		// transcode_sessions. De lijst hieronder is uitputtend, dus een tabel
 		// die vooruitgebouwd wordt valt hier om.
@@ -176,7 +216,7 @@ func TestChangedMigrationIsRefused(t *testing.T) {
 	}
 }
 
-// TestMigration0007MigratesLegacySessions dekt DEC-104: elke actieve
+// TestMigration0007MigratesLegacySessions dekt DEC-125: elke actieve
 // refreshketen krijgt zijn eigen legacy-sessie, gebonden aan de overgezette
 // owner, met device_id NULL en een vaste plaatshouder als naam. Een verlopen
 // keten krijgt bewust geen sessie; dat is geschiedenis.
@@ -268,7 +308,7 @@ func TestMigration0007MigratesLegacySessions(t *testing.T) {
 	}
 }
 
-// TestLegacySessionReuseIsIsolated dekt de kern van DEC-102: de
+// TestLegacySessionReuseIsIsolated dekt de kern van DEC-123: de
 // reuse-intrekking op een refreshketen is sessie-scoped. Vóór PS-9 trok
 // hergebruik van een keten ALLE refreshtokens in (er was geen apparaatkolom);
 // met een sessie per keten raakt hergebruik van A keten B niet meer.

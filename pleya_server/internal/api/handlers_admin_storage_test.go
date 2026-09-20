@@ -148,11 +148,11 @@ func TestRootOfferedRejectsTraversalAndForeignPaths(t *testing.T) {
 	e.setup(e.putSetupCode())
 
 	cases := []string{
-		"/etc/passwd",           // buiten elke aangeboden mount
-		"/media/../etc/passwd",  // ../ die na Clean buiten /media uitkomt
-		"relatief/pad",          // geen absoluut pad
-		"/media/docs/",          // trailing slash: filepath.Clean(pad) != pad
-		"/media//docs",          // dubbele slash: idem
+		"/etc/passwd",          // buiten elke aangeboden mount
+		"/media/../etc/passwd", // ../ die na Clean buiten /media uitkomt
+		"relatief/pad",         // geen absoluut pad
+		"/media/docs/",         // trailing slash: filepath.Clean(pad) != pad
+		"/media//docs",         // dubbele slash: idem
 	}
 	for _, root := range cases {
 		t.Run(root, func(t *testing.T) {

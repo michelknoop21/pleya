@@ -73,11 +73,9 @@ sealed class Profile with _$Profile {
     /// makes the credential resolution unambiguous.
     String? pleyaConnectionId,
 
-    /// The username this profile signs in with on that server. The account's
-    /// server-side id is deliberately not stored: it lives inside the access
-    /// token, and the protocol says a client never has to read that (chapter
-    /// 6.3). The username is what the person typed and what the connection
-    /// row already carries.
+    /// The username this profile signs in with on that server. The stable
+    /// server-side id is part of [pleyaConnectionId]; the name remains here
+    /// for display and interactive re-login.
     String? pleyaUsername,
     @Default(0) int sortOrder,
     required DateTime createdAt,

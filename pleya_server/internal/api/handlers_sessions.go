@@ -11,7 +11,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
-// De sessie-endpoints uit DEC-103, stap 6 van de PS-9-implementatievolgorde,
+// De sessie-endpoints uit DEC-124, stap 6 van de PS-9-implementatievolgorde,
 // plus matrixregel 15. Drie handlers met drie verschillende autorisatieregels:
 // ze delen het intrekkingsmechanisme maar niet de scope.
 //
@@ -43,7 +43,7 @@ type SessionListWire struct {
 
 // currentSessionID leest de sid van het accesstoken van deze aanvraag.
 //
-// Alleen te gebruiken achter authenticated(): sinds DEC-102 draagt elk token
+// Alleen te gebruiken achter authenticated(): sinds DEC-123 draagt elk token
 // een sid, dus het ontbreken ervan is een programmeerfout en geen clientfout.
 func (s *Server) currentSessionID(r *http.Request) (id.ID, error) {
 	claims, ok := claimsFromContext(r.Context())
@@ -70,7 +70,7 @@ func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 		}
 		// Een user_id van een ander, gevraagd door wie geen admin is, geeft 404
 		// en geen 403: het bestaan van die gebruiker lekt dan niet.
-		if parsed != req.id && !req.isAdmin() {
+		if parsed != req.id && !req.canAdminister() {
 			writeError(w, s.log, CodeUserNotFound, "not found", nil)
 			return
 		}
@@ -133,7 +133,7 @@ func (s *Server) handleRevokeSession(w http.ResponseWriter, r *http.Request) {
 		writeInternal(w, s.log, err)
 		return
 	}
-	if owner != req.id && !req.isAdmin() {
+	if owner != req.id && !req.canAdminister() {
 		writeError(w, s.log, CodeSessionNotFound, "not found", nil)
 		return
 	}

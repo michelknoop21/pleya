@@ -45,7 +45,7 @@ var (
 // hij is, van welke sessie, en tot wanneer; een streamtoken daarnaast één
 // resource, want hij mag niets anders openen.
 //
-// Sid is geen protocolwijziging (DEC-102): Claims is de inhoud van een
+// Sid is geen protocolwijziging (DEC-123): Claims is de inhoud van een
 // ondoorzichtige string en het protocol zegt uitdrukkelijk dat de client hem
 // nooit hoeft te lezen. Na intrekking van sessie A faalt elk credential met
 // sid = A; sessie B van dezelfde gebruiker blijft geldig.

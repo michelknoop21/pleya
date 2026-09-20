@@ -71,27 +71,79 @@ func enqueueScans(ctx context.Context, runner *jobs.Runner, libs []catalog.Libra
 	}
 }
 
+func enqueueStartupScans(ctx context.Context, runner *jobs.Runner, libs []catalog.Library, log *slog.Logger) {
+	selected := make([]catalog.Library, 0, len(libs))
+	for _, lib := range libs {
+		if lib.ScanOnStart {
+			selected = append(selected, lib)
+		}
+	}
+	enqueueScans(ctx, runner, selected, "startup", log)
+}
+
+func effectiveScanInterval(lib catalog.Library, fallback time.Duration) time.Duration {
+	if lib.ScanIntervalSeconds != nil {
+		return time.Duration(*lib.ScanIntervalSeconds) * time.Second
+	}
+	return fallback
+}
+
 // schedule laat de periodieke ronde lopen naast de gebeurtenissen.
 //
 // Hoofdstuk 7.3: events zijn een versnelling, nooit de enige bron, want een
 // gemiste event mag niet betekenen dat een bestand permanent onzichtbaar blijft.
 // PS-2 heeft nog geen events, dus dit is voorlopig de enige bron.
-func schedule(ctx context.Context, runner *jobs.Runner, libs []catalog.Library, every time.Duration, log *slog.Logger) {
-	if every <= 0 {
-		log.Info("geen periodieke scanronde; PLEYA_SERVER_SCAN_INTERVAL staat op 0")
-		return
+func schedule(ctx context.Context, runner *jobs.Runner, store *catalog.Store, fallback time.Duration, log *slog.Logger) {
+	const refresh = 30 * time.Second
+	type state struct {
+		next     time.Time
+		interval time.Duration
 	}
-
-	ticker := time.NewTicker(every)
-	defer ticker.Stop()
+	states := map[string]state{}
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			enqueueScans(ctx, runner, libs, "schedule", log)
+		case <-timer.C:
 		}
+
+		libs, err := store.Libraries(ctx)
+		if err != nil {
+			log.Error("scanplanning verversen mislukt", slog.String("error", err.Error()))
+			timer.Reset(refresh)
+			continue
+		}
+
+		now := time.Now()
+		wakeAfter := refresh
+		active := make(map[string]state, len(libs))
+		for _, lib := range libs {
+			interval := effectiveScanInterval(lib, fallback)
+			if interval <= 0 {
+				continue
+			}
+			key := lib.ID.String()
+			current, ok := states[key]
+			if !ok || current.interval != interval {
+				current = state{next: now.Add(interval), interval: interval}
+			}
+			if !current.next.After(now) {
+				enqueueScans(ctx, runner, []catalog.Library{lib}, "schedule", log)
+				current.next = now.Add(interval)
+			}
+			active[key] = current
+			if wait := time.Until(current.next); wait < wakeAfter {
+				wakeAfter = wait
+			}
+		}
+		states = active
+		if wakeAfter < time.Millisecond {
+			wakeAfter = time.Millisecond
+		}
+		timer.Reset(wakeAfter)
 	}
 }
 
@@ -117,7 +169,7 @@ func housekeeping(ctx context.Context, runner *jobs.Runner, authStore interface 
 			} else if n > 0 {
 				log.Info("afgeronde jobs opgeruimd", slog.Int64("count", n))
 			}
-			// Het intrekkingsregister (DEC-099) houdt een sid net zo lang vast
+			// Het intrekkingsregister (DEC-120) houdt een sid net zo lang vast
 			// als het langstlevende credential dat hem kan dragen. Daarna is
 			// hij geheugen zonder functie.
 			if n := revocations.Purge(time.Now().UTC()); n > 0 {

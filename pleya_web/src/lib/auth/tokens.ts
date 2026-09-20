@@ -117,6 +117,8 @@ export class TokenStore {
       this.#session?.setItem(ACCESS_KEY, JSON.stringify(this.#memoryAccess));
       if (pair.refresh_token) {
         this.#persistent?.setItem(REFRESH_KEY, pair.refresh_token);
+      } else {
+        this.#persistent?.removeItem(REFRESH_KEY);
       }
     } catch {
       // Opslag geweigerd: de sessie blijft in het geheugen bestaan.

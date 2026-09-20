@@ -233,6 +233,16 @@ func TestRefreshTokenIsNotStored(t *testing.T) {
 	}
 }
 
+func TestRevocationRetentionUsesLongestCredentialLifetimePlusMargin(t *testing.T) {
+	got := auth.RevocationRetention(60*time.Minute, 15*time.Minute, 120*time.Minute)
+	if got != 125*time.Minute {
+		t.Fatalf("retentie = %s, verwacht 120 minuten plus 5 minuten marge", got)
+	}
+	if auth.DefaultRevocationRetention != got {
+		t.Fatalf("standaardretentie = %s, verwacht afgeleide %s", auth.DefaultRevocationRetention, got)
+	}
+}
+
 func mustSigner(t *testing.T) *auth.Signer {
 	t.Helper()
 	signer, err := auth.NewSigner([]byte(strings.Repeat("k", 32)))

@@ -32,6 +32,24 @@ SCHEMA_REF = "#/components/schemas/"
 RESPONSE_REF = "#/components/responses/"
 
 
+def schema_component_refs(schema: object):
+    """Yield component schema names reachable through response wrappers."""
+    if isinstance(schema, list):
+        for child in schema:
+            yield from schema_component_refs(child)
+        return
+    if not isinstance(schema, dict):
+        return
+
+    ref = schema.get("$ref", "")
+    if isinstance(ref, str) and ref.startswith(SCHEMA_REF):
+        yield ref[len(SCHEMA_REF):]
+
+    for keyword in ("allOf", "oneOf", "anyOf", "items"):
+        if keyword in schema:
+            yield from schema_component_refs(schema[keyword])
+
+
 def contract_response_schemas(document: dict) -> dict[str, list[str]]:
     """Elk schema dat openapi.yaml als JSON-antwoordlichaam noemt.
 
@@ -59,9 +77,8 @@ def contract_response_schemas(document: dict) -> dict[str, list[str]]:
                 for content_type, media in (response.get("content") or {}).items():
                     if content_type != "application/json" and not content_type.endswith("+json"):
                         continue
-                    schema_ref = (media.get("schema") or {}).get("$ref", "")
-                    if schema_ref.startswith(SCHEMA_REF):
-                        name = schema_ref[len(SCHEMA_REF):]
+                    schema = media.get("schema") or {}
+                    for name in dict.fromkeys(schema_component_refs(schema)):
                         found.setdefault(name, []).append(f"{method.upper()} {path} {status}")
     return found
 
@@ -88,6 +105,20 @@ def check_derivation() -> None:
                 "get": {"responses": {
                     "200": {"content": {"application/json": {
                         "schema": {"$ref": "#/components/schemas/DingList"}}}},
+                    "206": {"content": {"application/json": {
+                        "schema": {"allOf": [
+                            {"$ref": "#/components/schemas/Samengesteld"},
+                            {"oneOf": [
+                                {"$ref": "#/components/schemas/VariantA"},
+                                {"$ref": "#/components/schemas/VariantB"},
+                            ]},
+                        ]}}}},
+                    "207": {"content": {"application/json": {
+                        "schema": {"type": "array", "items": {"anyOf": [
+                            {"$ref": "#/components/schemas/RijA"},
+                            {"type": "array", "items": {
+                                "$ref": "#/components/schemas/RijB"}},
+                        ]}}}}},
                     "401": {"$ref": "#/components/responses/Error"},
                 }},
                 "parameters": [{"name": "x"}],
@@ -101,8 +132,13 @@ def check_derivation() -> None:
     cases = [
         ("een gewoon JSON-antwoord telt mee", "DingList" in found),
         ("een verwijzing naar components/responses wordt opgelost", "ErrorEnvelope" in found),
-        ("een binair lichaam telt niet mee", len(found) == 2),
+        ("allOf en oneOf worden recursief gelezen",
+         {"Samengesteld", "VariantA", "VariantB"}.issubset(found)),
+        ("array-items en anyOf worden recursief gelezen",
+         {"RijA", "RijB"}.issubset(found)),
+        ("een binair lichaam telt niet mee", len(found) == 7),
         ("de vindplaats staat erbij", found.get("DingList") == ["GET /dingen 200"]),
+        ("een genest schema houdt zijn vindplaats", found.get("RijB") == ["GET /dingen 207"]),
         ("parameters naast de methoden verwarren de afleiding niet", "x" not in found),
         ("een leeg contract levert niets", contract_response_schemas({"paths": {}}) == {}),
     ]

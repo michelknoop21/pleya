@@ -384,16 +384,18 @@ func (b *logBucket) refill(now time.Time) float64 {
 	return b.tokens
 }
 
-// allowUpload zegt of dit IP nu mag uploaden. Zo niet, dan draagt het eerste
-// resultaat het aantal hele seconden tot het volgende token. Kijkt alleen; het
-// token wordt pas afgeschreven met [spendUploadToken], ná de validatie van de
-// body. Aan te roepen met ls.mu vast.
-func (ls *logStore) allowUpload(ip string, now time.Time) (waitSeconds int, ok bool) {
+// reserveUploadToken reserveert atomair één upload voor dit IP. Zo niet, dan
+// draagt het eerste resultaat het aantal hele seconden tot het volgende token.
+// Aan te roepen met ls.mu vast; een later afgekeurde body geeft de reservering
+// terug met [refundUploadToken].
+func (ls *logStore) reserveUploadToken(ip string, now time.Time) (waitSeconds int, ok bool) {
 	bucket := ls.rateLimit[ip]
 	if bucket == nil {
-		return 0, true
+		bucket = &logBucket{tokens: logRateBurst, lastSeen: now}
+		ls.rateLimit[ip] = bucket
 	}
 	if bucket.refill(now) >= 1 {
+		bucket.tokens--
 		return 0, true
 	}
 	wait := time.Duration((1 - bucket.tokens) * float64(logRateRefill))
@@ -404,17 +406,17 @@ func (ls *logStore) allowUpload(ip string, now time.Time) (waitSeconds int, ok b
 	return seconds, false
 }
 
-// spendUploadToken schrijft één token af voor dit IP. Aan te roepen met ls.mu
-// vast, en alleen nadat [allowUpload] ja zei.
-func (ls *logStore) spendUploadToken(ip string, now time.Time) {
+// refundUploadToken geeft een reservering van een afgekeurde of afgebroken
+// upload terug. Aan te roepen met ls.mu vast.
+func (ls *logStore) refundUploadToken(ip string, now time.Time) {
 	bucket := ls.rateLimit[ip]
 	if bucket == nil {
-		bucket = &logBucket{tokens: logRateBurst, lastSeen: now}
-		ls.rateLimit[ip] = bucket
+		return
 	}
 	bucket.refill(now)
-	if bucket.tokens >= 1 {
-		bucket.tokens--
+	bucket.tokens++
+	if bucket.tokens > logRateBurst {
+		bucket.tokens = logRateBurst
 	}
 }
 
@@ -1062,7 +1064,7 @@ func (s *Server) handlePostLogs(w http.ResponseWriter, r *http.Request) {
 
 	ip := clientIP(r)
 	s.logs.mu.Lock()
-	if wait, ok := s.logs.allowUpload(ip, time.Now()); !ok {
+	if wait, ok := s.logs.reserveUploadToken(ip, time.Now()); !ok {
 		s.logs.mu.Unlock()
 		// De client parseert beide RFC 9110-vormen van Retry-After; tot deze
 		// header bestond viel hij noodgedwongen terug op een eigen gok van
@@ -1072,6 +1074,14 @@ func (s *Server) handlePostLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.logs.mu.Unlock()
+	reserved := true
+	defer func() {
+		if reserved {
+			s.logs.mu.Lock()
+			s.logs.refundUploadToken(ip, time.Now())
+			s.logs.mu.Unlock()
+		}
+	}()
 
 	body, err := io.ReadAll(io.LimitReader(r.Body, maxLogSize+1))
 	if err != nil {
@@ -1093,11 +1103,6 @@ func (s *Server) handlePostLogs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Log store full", http.StatusServiceUnavailable)
 		return
 	}
-	// Pas hier kost de upload een token. Een afgekeurde poging (te groot,
-	// leeg, store vol) hoort de volgende diagnose-upload niet te belasten:
-	// het oude ontwerp stempelde vóór de validatie en liet een 413 de hele
-	// minuut opeten.
-	s.logs.spendUploadToken(ip, time.Now())
 	s.logs.mu.Unlock()
 
 	id := generateLogID()
@@ -1112,6 +1117,7 @@ func (s *Server) handlePostLogs(w http.ResponseWriter, r *http.Request) {
 		Size:      len(body),
 		ExpiresAt: time.Now().Add(logMaxAge),
 	}
+	reserved = false
 	s.logs.mu.Unlock()
 
 	log.Printf("logs: stored %s (%d bytes) from %s", id, len(body), ip)

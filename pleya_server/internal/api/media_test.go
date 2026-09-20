@@ -257,7 +257,7 @@ func TestStreamTokenNeedsAnExistingVersion(t *testing.T) {
 // test is de tegenhanger van de tabelcontrole in internal/migrate: daar staat
 // welke tabellen er niet horen te zijn, hier welke routes.
 //
-// /users staat er sinds stap 4 van PS-9 wel (DEC-100) en is daarom uit deze
+// /users staat er sinds stap 4 van PS-9 wel (DEC-121) en is daarom uit deze
 // lijst gehaald; matrixregel 14 in authorize_test.go bewaakt hem verder.
 func TestScopeBoundaryAfterPS4(t *testing.T) {
 	e := newEnv(t)

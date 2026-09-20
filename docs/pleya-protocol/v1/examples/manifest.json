@@ -329,6 +329,11 @@
       "note": "S2.2: kind-wissel op een bibliotheek die nog items draagt"
     },
     {
+      "file": "error_library_config_managed.json",
+      "schema": "ErrorEnvelope",
+      "note": "Een config-managed bibliotheek kan niet via PATCH of DELETE worden gewijzigd"
+    },
+    {
       "file": "error_library_confirm_mismatch.json",
       "schema": "ErrorEnvelope",
       "note": "S2.2: DELETE /libraries/{id} zonder de juiste titel als confirm"

@@ -14,8 +14,8 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 )
 
-// Stap 6 van de PS-9-implementatievolgorde: de sessie-endpoints uit DEC-103,
-// matrixregel 15, en de gemeten bovengrens van twee seconden uit DEC-099.
+// Stap 6 van de PS-9-implementatievolgorde: de sessie-endpoints uit DEC-124,
+// matrixregel 15, en de gemeten bovengrens van twee seconden uit DEC-120.
 //
 // De laatste is de enige test in deze suite die een echte HTTP-server opzet.
 // Dat is geen voorkeur maar noodzaak: httptest.ResponseRecorder buffert het
@@ -46,7 +46,7 @@ func (e *env) sessionsOf(query, token string, want int) api.SessionListWire {
 	return list
 }
 
-// TestSessionListMarksTheCurrentOne dekt de inzage uit DEC-103.
+// TestSessionListMarksTheCurrentOne dekt de inzage uit DEC-124.
 func TestSessionListMarksTheCurrentOne(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())
@@ -132,7 +132,7 @@ func TestSessionScopeIsMatrixRule15(t *testing.T) {
 	}
 
 	// Tims token is nu dood, dat van sanne leeft. Dat is het hele punt van
-	// device-scoped intrekking (DEC-102).
+	// device-scoped intrekking (DEC-123).
 	if rec := e.do(http.MethodGet, "/pleya/v1/libraries", nil, asUser(timToken)); rec.Code != http.StatusUnauthorized {
 		t.Fatalf("tims accesstoken gaf %d na de intrekking, verwacht 401", rec.Code)
 	}
@@ -142,7 +142,7 @@ func TestSessionScopeIsMatrixRule15(t *testing.T) {
 }
 
 // TestLogoutEndsOnlyTheCurrentSession is de grens tussen /auth/logout en
-// DELETE /sessions/{id} uit DEC-103: het eerste is "log mij hier uit" en
+// DELETE /sessions/{id} uit DEC-124: het eerste is "log mij hier uit" en
 // vervangt het tweede niet.
 func TestLogoutEndsOnlyTheCurrentSession(t *testing.T) {
 	e := newEnv(t)
@@ -165,7 +165,7 @@ func TestLogoutEndsOnlyTheCurrentSession(t *testing.T) {
 	}
 }
 
-// TestRevokedSessionKillsEveryCredential is de symmetrie die DEC-099 eist: het
+// TestRevokedSessionKillsEveryCredential is de symmetrie die DEC-120 eist: het
 // accesstoken, het streamtoken en de browserstreamsessie dragen alle drie sid en
 // falen alle drie zodra hun sessie in het register staat.
 func TestRevokedSessionKillsEveryCredential(t *testing.T) {
@@ -239,7 +239,7 @@ func TestRevokedSessionKillsEveryCredential(t *testing.T) {
 }
 
 // TestRevocationStopsRunningStreamWithinTwoSeconds is acceptatiecriterium 3,
-// gemeten en niet booleaans afgevinkt (DEC-099).
+// gemeten en niet booleaans afgevinkt (DEC-120).
 //
 // De opzet moet drie dingen tegelijk waarmaken. De stream moet echt lopen
 // (httptest.NewServer, geen recorder), hij moet lang genoeg duren om er
@@ -304,7 +304,7 @@ func TestRevocationStopsRunningStreamWithinTwoSeconds(t *testing.T) {
 		time.Sleep(60 * time.Millisecond)
 	}
 
-	// Intrekken. De grens uit DEC-099 gaat over de server: hoe lang blijft hij
+	// Intrekken. De grens uit DEC-120 gaat over de server: hoe lang blijft hij
 	// bytes leveren nadat de sessie is ingetrokken. Wat de client daarna nog
 	// binnenkrijgt is die latentie plús het leeglopen van de buffers die al
 	// onderweg waren, en dat tweede stuk is netwerkgedrag en geen
@@ -337,7 +337,7 @@ func TestRevocationStopsRunningStreamWithinTwoSeconds(t *testing.T) {
 	latency := stoppedAt.Sub(revokedAt)
 
 	if latency > 2*time.Second {
-		t.Fatalf("de server stopte pas %s na de intrekking; DEC-099 legt de bovengrens op twee seconden", latency)
+		t.Fatalf("de server stopte pas %s na de intrekking; DEC-120 legt de bovengrens op twee seconden", latency)
 	}
 	t.Logf("revocatielatentie tegen een lopende stream: %s (de client las daarna nog %d bytes uit de buffers, %s lang)",
 		latency, after, drain)
@@ -379,7 +379,7 @@ type zeroes struct{}
 
 func (zeroes) Read(p []byte) (int, error) { return len(p), nil }
 
-// TestRevocationRegisterSurvivesRestart dekt de laadstap uit DEC-099: zonder
+// TestRevocationRegisterSurvivesRestart dekt de laadstap uit DEC-120: zonder
 // die stap zou een herstart elke intrekking vergeten, en dan overleeft een
 // streamtoken van een ingetrokken sessie het herstartmoment.
 func TestRevocationRegisterSurvivesRestart(t *testing.T) {

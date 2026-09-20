@@ -168,7 +168,11 @@ func (s *Server) requesterIsAdmin(r *http.Request) bool {
 			slog.String("error", err.Error()))
 		return false
 	}
-	return requester{id: userID, role: role}.isAdmin()
+	req := requester{id: userID, role: role}
+	if scope, ok := apiScopeFromContext(r.Context()); ok {
+		req.scope, req.viaAPIToken = scope, true
+	}
+	return req.canAdminister()
 }
 
 func (s *Server) fillServerAdminDetail(r *http.Request, detail *ServerDetail) {

@@ -1,7 +1,7 @@
 -- 0007 PS-9: gebruikers, sessies, bibliotheekrechten.
 --
--- Volgt DEC-098 (rollen en rechten), DEC-102 (sessie- en tokenketen) en
--- DEC-104 (migratie van bestaande refreshketens). Specificatie 6.5 zei dat een
+-- Volgt DEC-119 (rollen en rechten), DEC-123 (sessie- en tokenketen) en
+-- DEC-125 (migratie van bestaande refreshketens). Specificatie 6.5 zei dat een
 -- users- en een sessions-tabel PS-9 zijn; dit is die migratie.
 --
 -- Eén bestand, één transactie, zoals elke migratie hier. De volgorde hieronder
@@ -11,7 +11,7 @@
 
 -- 1. Gebruikers. Precies één owner, afgedwongen met een partiële unieke index
 -- en niet met applicatiecode: twee owners maakt de vraag "wie degradeert wie"
--- onbeantwoordbaar (DEC-098).
+-- onbeantwoordbaar (DEC-119).
 CREATE TABLE users (
     id             uuid        PRIMARY KEY,
     username       text        NOT NULL UNIQUE,
@@ -24,9 +24,9 @@ CREATE TABLE users (
 CREATE UNIQUE INDEX users_single_owner_idx ON users ((role)) WHERE role = 'owner';
 
 COMMENT ON TABLE users IS
-    'Vier rollen (DEC-098): owner precies een, admin/member/restricted nul of meer.';
+    'Vier rollen (DEC-119): owner precies een, admin/member/restricted nul of meer.';
 
--- 2. Sessies. Een toestel, niet een gebruiker (DEC-102): sid loopt door de
+-- 2. Sessies. Een toestel, niet een gebruiker (DEC-123): sid loopt door de
 -- volledige tokenketen, zodat intrekking van sessie A niet elk toestel van
 -- dezelfde gebruiker uitlogt.
 CREATE TABLE sessions (
@@ -45,7 +45,7 @@ COMMENT ON TABLE sessions IS
     'device_id is PreferenceDeviceId van de client, NULL zonder de capability. device_name draagt dan een vaste plaatshouder.';
 
 -- 3. Bibliotheekrechten, als geordende ladder in een kolom en niet als drie
--- booleans (DEC-098): view < download < manage, per constructie in plaats van
+-- booleans (DEC-119): view < download < manage, per constructie in plaats van
 -- als afspraak die elders afgedwongen moet worden. owner en admin krijgen hier
 -- geen rijen; hun toegang volgt uit de rol.
 CREATE TABLE library_permissions (
@@ -62,7 +62,7 @@ BEGIN
     IF NEW.permission = 'manage' AND EXISTS (
         SELECT 1 FROM users WHERE id = NEW.user_id AND role = 'restricted'
     ) THEN
-        RAISE EXCEPTION 'restricted mag geen manage krijgen (DEC-098)'
+        RAISE EXCEPTION 'restricted mag geen manage krijgen (DEC-119)'
             USING ERRCODE = 'check_violation';
     END IF;
     RETURN NEW;
@@ -106,12 +106,12 @@ ALTER TABLE stream_sessions
     ADD CONSTRAINT stream_sessions_subject_fkey FOREIGN KEY (subject) REFERENCES users (id) ON DELETE CASCADE;
 
 -- stream_sessions.session_id: additief, zodat intrekking van een sessie ook de
--- browserstreamsessies meeneemt (DEC-102). Nullable: een bestaande rij (op de
+-- browserstreamsessies meeneemt (DEC-123). Nullable: een bestaande rij (op de
 -- NAS in de praktijk altijd al verlopen) droeg nooit een sessie, en die
 -- geschiedenis wordt niet verzonnen.
 ALTER TABLE stream_sessions ADD COLUMN session_id uuid NULL REFERENCES sessions (id) ON DELETE CASCADE;
 
--- 6. Legacy-sessies voor bestaande actieve refreshketens (DEC-104). Een sessie
+-- 6. Legacy-sessies voor bestaande actieve refreshketens (DEC-125). Een sessie
 -- per keten en niet een gedeelde: twee oude toestellen delen dan geen
 -- revoke-domein, en hergebruik van de ene raakt de andere niet. Ingetrokken en
 -- verlopen rijen houden session_id NULL; dat is geschiedenis en hoeft geen

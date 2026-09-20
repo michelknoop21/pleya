@@ -40,7 +40,7 @@ const (
 	CodeSetupCodeInvalid      = "auth.setup_code_invalid"
 	CodeRateLimited           = "auth.rate_limited"
 
-	// De vier codes van PS-9 (DEC-101, protocolwijziging 7). user_not_found en
+	// De vier codes van PS-9 (DEC-122, protocolwijziging 7). user_not_found en
 	// session_not_found volgen de 404-regel van hoofdstuk 7.1: een gebruiker of
 	// sessie die de aanvrager niet mag zien bestaat voor hem niet.
 	CodeUserNotFound    = "auth.user_not_found"
@@ -50,7 +50,7 @@ const (
 
 	// CodePermissionNotAllowed is de code die venster 1 toevoegt voor een
 	// rechtencombinatie die de rol van het doel verbiedt (J.2 rij 11): manage
-	// voor een restricted (DEC-098 paragraaf 3). Tot nu toe droeg dat geval
+	// voor een restricted (DEC-119 paragraaf 3). Tot nu toe droeg dat geval
 	// auth.user_not_found, en dat was de minst onjuiste van wat er stond.
 	//
 	// Hij hoort bij de 409's en niet bij de 404's, en dat is de uitzondering
@@ -105,10 +105,15 @@ const (
 	// kind-wissel terwijl de bibliotheek nog items draagt (J.3, S2.2).
 	CodeLibraryNotEmpty = "library.not_empty"
 
+	// CodeLibraryConfigManaged bewaakt bibliotheken waarvan de configuratie de
+	// bron is. Een API-mutatie zou bij de volgende sync worden teruggedraaid en
+	// kan ondertussen gekoppelde catalogusdata verwijderen.
+	CodeLibraryConfigManaged = "library.config_managed"
+
 	// CodeLibraryConfirmMismatch is het antwoord van DELETE /libraries/{id} op
 	// een ontbrekende of foute confirm (J.3, K rij 16, S2.2). Een eigen code in
 	// het domein library en niet server.confirm_mismatch: die laatste bestaat
-	// al voor POST /server/rotate-signing-key (DEC-111), en een tweede
+	// al voor POST /server/rotate-signing-key (DEC-131), en een tweede
 	// handeling die dezelfde code deelt zou een client dwingen op het pad te
 	// kijken om te weten welk woord er verwacht wordt.
 	CodeLibraryConfirmMismatch = "library.confirm_mismatch"
@@ -144,7 +149,7 @@ const (
 
 	// CodeInternal is het antwoord op een fout die de handler zelf niet had
 	// voorzien: de recovery-laag vangt een panic af en maakt er een envelop van
-	// in plaats van een verbroken verbinding (J.2 rij 17, DEC-110 en DEC-111).
+	// in plaats van een verbroken verbinding (J.2 rij 17, DEC-130 en DEC-131).
 	// `details.request_id` verwijst naar de logregel met de stack; de stack
 	// zelf verlaat de server niet.
 	//
@@ -161,7 +166,7 @@ const (
 	//
 	// Een eigen code en geen settings.invalid_value: dit is geen waarde buiten
 	// een grens maar een handeling die niet is bevestigd, en 409 zegt dat ook
-	// in de status. Hij staat in het domein server, dat DEC-111 met venster 1
+	// in de status. Hij staat in het domein server, dat DEC-131 met venster 1
 	// heeft toegevoegd; het foutpatroon in het contract draagt hem daarmee al,
 	// dus er is geen schemawijziging voor nodig.
 	//
@@ -203,6 +208,7 @@ var errorTable = map[string]struct {
 	CodeVersionMultifile:       {http.StatusConflict, false},
 	CodeSlugTaken:              {http.StatusConflict, false},
 	CodeLibraryNotEmpty:        {http.StatusConflict, false},
+	CodeLibraryConfigManaged:   {http.StatusConflict, false},
 	CodeLibraryConfirmMismatch: {http.StatusConflict, false},
 
 	CodeVersionUnavailable:  {http.StatusConflict, true},
@@ -248,7 +254,7 @@ func writeError(w http.ResponseWriter, log *slog.Logger, code, message string, d
 // contract en de status komt daaruit, niet uit een eigen keuze; tot venster 1
 // had het register geen code voor een fout die de server zichzelf aandoet, en
 // toen was storage.unavailable de minst onjuiste van wat er stond. Sinds
-// DEC-111 staat server.internal erin en is die reden weg.
+// DEC-131 staat server.internal erin en is die reden weg.
 //
 // Het verschil is niet cosmetisch. storage.unavailable is een 503 met
 // retryable=true en zegt tegen een client: de opslag is even weg, probeer het

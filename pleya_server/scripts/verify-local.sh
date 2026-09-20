@@ -53,6 +53,17 @@ mkdir -p testdata/media data/config data/cache data/transcode
 echo "dit bestand staat er zodat de read-only test iets te lezen heeft" > testdata/media/leesbaar.txt
 ok "testmappen gereed"
 
+# De release-tag embedt Pleya Web en een schone checkout bevat alleen de
+# PLACEHOLDER. Bouw de bundel vóór de eerste image, zodat deze gate werkelijk
+# van broncode naar een draaiende stack gaat en niet van lokaal bouwresidu
+# afhankelijk is.
+if ../pleya_web/scripts/build-into-server.sh; then
+  ok "Pleya Web gebouwd voor de release-image"
+else
+  fail "Pleya Web bouwen mislukte; release-images kunnen niet worden geverifieerd"
+  exit 1
+fi
+
 # Een echte bibliotheek, gemaakt met de ffmpeg uit de image zelf. Een verzonnen
 # bestand bewijst niets over de analyse, en juist daar zit het punt waar een
 # mediaserver stil fout gaat (hoofdstuk 7.4).
@@ -157,7 +168,7 @@ if [ "${tables:-0}" -ge 14 ]; then ok "schema gemigreerd ($tables tabellen)"; el
 #
 # watch_states en stream_sessions staan sinds PS-4 in het schema (DEC-049 en
 # DEC-051); users, sessions en library_permissions sinds PS-9, migratie 0007
-# (DEC-098, DEC-102). Alle vijf zijn daarom uit deze lijst gehaald. play_history
+# (DEC-119, DEC-123). Alle vijf zijn daarom uit deze lijst gehaald. play_history
 # en play_sessions staan er nadrukkelijk nog wel in: die horen bij PS-9P, en
 # PS-9 mag daar niet van afhangen.
 forbidden="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT coalesce(string_agg(table_name, ','), '') FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('play_history','play_sessions','user_item_data','transcode_sessions','external_ids','metadata_candidates')" 2>/dev/null | tr -d '\r')"

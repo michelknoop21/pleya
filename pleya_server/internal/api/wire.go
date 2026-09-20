@@ -63,7 +63,7 @@ type Capabilities struct {
 	LiveTV       bool `json:"live_tv"`
 	Realtime     bool `json:"realtime"`
 
-	// Users (DEC-100). Aan sinds stap 4 van PS-9: de vijf endpoints onder
+	// Users (DEC-121). Aan sinds stap 4 van PS-9: de vijf endpoints onder
 	// /users bestaan, en /auth/login verifieert tegen users en niet meer tegen
 	// alleen de owner-rij. Een client die deze vlag ziet mag ervan uitgaan dat
 	// een tweede gebruiker kan bestaan en kan inloggen.
@@ -76,11 +76,11 @@ type Capabilities struct {
 	WatchStateOwnership bool `json:"watch_state_ownership"`
 	StreamSessions      bool `json:"stream_sessions"`
 
-	// Sessions (DEC-102, DEC-103). Aan sinds stap 6 van PS-9. De vlag zegt drie
+	// Sessions (DEC-123, DEC-124). Aan sinds stap 6 van PS-9. De vlag zegt drie
 	// dingen tegelijk: de client mag device_id en device_name meesturen bij
 	// login en setup, GET/DELETE /sessions en POST /auth/logout bestaan, en een
 	// ingetrokken sessie is binnen twee seconden ongeldig, ook voor een lopende
-	// stream (DEC-099).
+	// stream (DEC-120).
 	Sessions bool `json:"sessions"`
 
 	// APITokens (RB-20, J.2 rij 12 en 13). Aan sinds S1.5. De vlag zegt dat

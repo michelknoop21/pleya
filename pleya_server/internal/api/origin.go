@@ -31,6 +31,14 @@ func (s *Server) requestIsSecure(r *http.Request) bool {
 		return true
 	}
 	if !config.RemoteAddrIsTrustedProxy(s.opts.TrustedProxies, r.RemoteAddr) {
+		if len(s.opts.TrustedProxies) == 0 && strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")) != "" {
+			s.missingTrustedProxyWarning.Do(func() {
+				if s.log != nil {
+					s.log.Warn("X-Forwarded-Proto genegeerd zonder vertrouwde proxy",
+						"config", "PLEYA_SERVER_TRUSTED_PROXIES")
+				}
+			})
+		}
 		return false
 	}
 	return strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https")
@@ -115,16 +123,14 @@ const corsMaxAge = "600"
 // browser een pagina HTML geven waar hij headers verwacht.
 func (s *Server) cors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Ook het antwoord zonder Origin hangt van die header af: een gedeelde
+		// cache mag het niet later als CORS-antwoord hergebruiken.
+		w.Header().Add("Vary", "Origin")
 		origin := strings.TrimSpace(r.Header.Get("Origin"))
 		if origin == "" {
 			next.ServeHTTP(w, r)
 			return
 		}
-
-		// Vary staat er ook wanneer de origin niet is toegestaan. Het antwoord
-		// hángt van de Origin-header af, en een cache die dat niet weet zou het
-		// antwoord voor de ene origin aan de andere kunnen geven.
-		w.Header().Add("Vary", "Origin")
 
 		if s.originAllowed(r, origin) && origin != s.requestOrigin(r) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)

@@ -189,7 +189,7 @@ class PleyaCapabilities {
   /// `/stream`. For browsers; this app authorises its player with a header.
   final bool streamSessions;
 
-  /// The server binds a session to a device (DEC-102): `device_id` and
+  /// The server binds a session to a device (DEC-123): `device_id` and
   /// `device_name` are accepted on login and setup, `GET`/`DELETE /sessions`
   /// and `POST /auth/logout` exist, and revoking a session takes effect within
   /// two seconds even for a stream already in flight.
@@ -310,6 +310,18 @@ class PleyaTokenPair {
     refreshToken: str(json, 'refresh_token'),
     expiresInMs: integer(json, 'expires_in_ms'),
   );
+}
+
+/// `User`, as returned by `GET /users/me`.
+class PleyaUser {
+  const PleyaUser({required this.id, required this.username, required this.role});
+
+  final String id;
+  final String username;
+  final String role;
+
+  factory PleyaUser.fromJson(Map<String, dynamic> json) =>
+      PleyaUser(id: str(json, 'id'), username: str(json, 'username'), role: str(json, 'role'));
 }
 
 /// `StreamToken`. Short-lived, bound to one media resource, and explicitly not

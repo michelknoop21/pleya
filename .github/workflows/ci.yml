@@ -55,15 +55,14 @@ jobs:
       - name: Verify formatting
         run: |
           # Find all Dart files excluding generated files
-          find lib $([ -d test ] && echo test) -name "*.dart" ! -name "*.g.dart" ! -name "*.freezed.dart" -type f 2>/dev/null | while IFS= read -r file; do
-            files_found=true
-            break
-          done
-          if [ "$files_found" != "true" ]; then
+          search_roots=(lib)
+          [ ! -d test ] || search_roots+=(test)
+          files_found="$(find "${search_roots[@]}" -name "*.dart" ! -name "*.g.dart" ! -name "*.freezed.dart" -type f -print -quit 2>/dev/null)"
+          if [ -z "$files_found" ]; then
             echo "No Dart files found to format"
             exit 0
           fi
-          find lib $([ -d test ] && echo test) -name "*.dart" ! -name "*.g.dart" ! -name "*.freezed.dart" -type f 2>/dev/null -print0 | xargs -0 dart format --output=none --set-exit-if-changed
+          find "${search_roots[@]}" -name "*.dart" ! -name "*.g.dart" ! -name "*.freezed.dart" -type f 2>/dev/null -print0 | xargs -0 dart format --output=none --set-exit-if-changed
       - name: Analyze code
         run: |
           # Run flutter analyze
@@ -251,15 +250,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
-          # De controle leest de ouders en de merge-base van de laatste merge, dus
-          # een ondiepe checkout ziet niets en zou stilzwijgend groen zijn.
+          # De controle loopt alle merges sinds de branch-base af. Een ondiepe
+          # checkout ziet die geschiedenis niet en zou stilzwijgend groen zijn.
           fetch-depth: 0
+
+      - name: Fetch authority base
+        run: git fetch --no-tags origin main:refs/remotes/origin/main
 
       - name: Self-test the authority merge gate
         run: scripts/check_authority_merge_test.sh
 
       - name: Verify no authority file was reverted to one merge parent
-        run: scripts/check_authority_merge.sh
+        env:
+          AUTHORITY_BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$GITHUB_REF_NAME" = "main" ] && [ -n "$AUTHORITY_BEFORE" ] && ! printf '%s' "$AUTHORITY_BEFORE" | grep -Eq '^0+$'; then
+            base="$AUTHORITY_BEFORE"
+          else
+            base="$(git merge-base HEAD refs/remotes/origin/main)"
+          fi
+          scripts/check_authority_merge.sh "$base"
 
   protocol:
     name: Protocol Contract

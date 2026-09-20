@@ -6,7 +6,7 @@ import 'preferences/preference_device_id.dart';
 /// What this installation calls itself when it opens a session on a Pleya
 /// Server.
 ///
-/// A session on that server is one device, not one user (DEC-102): revoking
+/// A session on that server is one device, not one user (DEC-123): revoking
 /// the session on a lost phone must not log the household's television out.
 /// That only works if the server can tell two devices apart, and the only
 /// honest source for that is the client — an IP address or a User-Agent

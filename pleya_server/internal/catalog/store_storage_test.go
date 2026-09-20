@@ -6,6 +6,7 @@ import (
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
+	"github.com/edde746/plezy/pleya_server/internal/mounts"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
 )
 
@@ -57,6 +58,33 @@ func TestAllStorageLocationsJoinsLibraryTitle(t *testing.T) {
 	}
 	if got.TrustSource != "fstype_default" {
 		t.Errorf("TrustSource = %q, verwacht fstype_default", got.TrustSource)
+	}
+}
+
+func TestCreateLibraryMeasuresAnExistingRootImmediately(t *testing.T) {
+	store, ctx := newStorageTestStore(t)
+	root := t.TempDir()
+	measured := mounts.Inspect(root)
+	if !measured.Exists || measured.FSType == "" {
+		t.Fatalf("testroot leverde geen bestandssysteemmeting op: %+v", measured)
+	}
+
+	if _, err := store.CreateLibrary(ctx, "Documentaires", "movies", []string{root}); err != nil {
+		t.Fatalf("CreateLibrary: %v", err)
+	}
+	locations, err := store.AllStorageLocations(ctx)
+	if err != nil {
+		t.Fatalf("AllStorageLocations: %v", err)
+	}
+	got := locations[0]
+	if got.FSType != measured.FSType {
+		t.Errorf("FSType = %q, verwacht %q", got.FSType, measured.FSType)
+	}
+	if got.InodeTrusted != mounts.InodeTrustDefault(measured.FSType) {
+		t.Errorf("InodeTrusted = %v, past niet bij %q", got.InodeTrusted, measured.FSType)
+	}
+	if got.TrustSource != "measured" {
+		t.Errorf("TrustSource = %q, verwacht measured", got.TrustSource)
 	}
 }
 

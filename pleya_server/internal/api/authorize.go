@@ -21,7 +21,7 @@ func (s *Server) subjectID(r *http.Request) (id.ID, error) {
 	return id.Parse(claims.Subject)
 }
 
-// authorizeLibraryFor is DE controle uit AC2 (DEC-105): een bibliotheek die
+// authorizeLibraryFor is DE controle uit AC2 (DEC-126): een bibliotheek die
 // subject niet mag zien bestaat voor hem niet, dus 404 en geen 403 (hoofdstuk
 // 3, catalog.ErrNotFound). subject moet al buiten twijfel vaststaan —
 // bearer-claims, streamtoken-claims, of het teruggegeven subject van een

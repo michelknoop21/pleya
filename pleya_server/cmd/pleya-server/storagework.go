@@ -28,6 +28,14 @@ func storageRecheckHandler(store *catalog.Store, cfg *config.Config, log *slog.L
 
 		for _, loc := range locations {
 			info := mounts.Inspect(loc.RootPath)
+			if !info.Exists {
+				// Een tijdelijk losgekoppelde NAS-share is geen nieuwe meting. De
+				// laatst bekende fstype/inode-eigenschappen en last_seen_at blijven
+				// staan totdat de root werkelijk opnieuw gezien is.
+				log.Warn("root niet bereikbaar; bestaande meting behouden",
+					slog.String("root", loc.RootPath))
+				continue
+			}
 			trusted := mounts.InodeTrustDefault(info.FSType)
 			source := "fstype_default"
 

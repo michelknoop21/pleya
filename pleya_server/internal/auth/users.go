@@ -13,11 +13,11 @@ import (
 )
 
 // Gebruikersbeheer, stap 4 van de PS-9-implementatievolgorde (hoofdstuk 23,
-// fase 9). De vijf endpoints eromheen staan in DEC-100; de rollen en de
-// rechtenladder in DEC-098.
+// fase 9). De vijf endpoints eromheen staan in DEC-121; de rollen en de
+// rechtenladder in DEC-119.
 //
 // Waarom dit in internal/auth staat en niet in internal/catalog, terwijl
-// library_permissions daar gelezen wordt: DEC-098 §2 zet precies twee
+// library_permissions daar gelezen wordt: DEC-119 §2 zet precies twee
 // rechtenfuncties in de catalogus, VisibleLibraries en MayAccess, en die gaan
 // over autoriseren. Rijen aanmaken en vervangen is gebruikersbeheer en hoort
 // bij de identiteit, niet bij de catalogus. De scheiding is lezen-om-te-
@@ -38,7 +38,7 @@ var ErrOwnerImmutable = errors.New("de owner kan niet verwijderd of gedegradeerd
 // enige die het nog ziet.
 var ErrLibraryNotFound = errors.New("bibliotheek bestaat niet")
 
-// ErrRestrictedCannotManage is de trigger uit migratie 0007 (DEC-098 §3).
+// ErrRestrictedCannotManage is de trigger uit migratie 0007 (DEC-119 §3).
 var ErrRestrictedCannotManage = errors.New("restricted mag geen manage krijgen")
 
 // User is de identiteit zoals gebruikersbeheer hem kent. Zonder hash: die komt
@@ -157,7 +157,14 @@ func (s *Store) UserForLogin(ctx context.Context, username string) (User, string
 // De owner degraderen wordt hier geweigerd en niet aan de database overgelaten:
 // de partiële unieke index laat nul owners toe, dus zonder deze controle zou
 // een installatie stil zonder owner kunnen komen te staan.
-func (s *Store) UpdateUser(ctx context.Context, userID id.ID, role *Role, passwordHash *string, now time.Time) (User, error) {
+func (s *Store) UpdateUser(
+	ctx context.Context,
+	requesterID id.ID,
+	userID id.ID,
+	role *Role,
+	passwordHash *string,
+	now time.Time,
+) (User, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return User{}, err
@@ -206,6 +213,9 @@ func (s *Store) UpdateUser(ctx context.Context, userID id.ID, role *Role, passwo
 	}
 
 	if passwordHash != nil {
+		if current == RoleOwner && requesterID != userID {
+			return User{}, ErrOwnerImmutable
+		}
 		if _, err := tx.Exec(ctx,
 			`UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3`,
 			*passwordHash, now, userID); err != nil {
@@ -256,7 +266,7 @@ func (s *Store) DeleteUser(ctx context.Context, userID id.ID) error {
 // ListPermissions geeft de bibliotheekrechten van een gebruiker.
 //
 // Voor owner en admin is dat altijd leeg, en dat is geen bug: hun toegang volgt
-// uit de rol en niet uit rijen (DEC-098 §2).
+// uit de rol en niet uit rijen (DEC-119 §2).
 func (s *Store) ListPermissions(ctx context.Context, userID id.ID) ([]LibraryPermission, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT library_id, permission FROM library_permissions

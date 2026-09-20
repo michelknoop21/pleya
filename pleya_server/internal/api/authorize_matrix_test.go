@@ -16,7 +16,7 @@ import (
 
 // De samenvattende ronde over de autorisatiematrix (S1.7, K rij 2 en K.3).
 //
-// Dit bestand is de uitbreiding van authorize_test.go die DEC-105 vraagt; het
+// Dit bestand is de uitbreiding van authorize_test.go die DEC-126 vraagt; het
 // staat er los van omdat dat bestand al bijna negenhonderd regels telt en één
 // bestand één verantwoordelijkheid houdt. authorize_test.go bewijst de
 // matrixregels 1 tot en met 13 op de bibliotheekketen, elk met zijn eigen
@@ -496,7 +496,7 @@ func originLabel(origin string) string {
 // die eis, mechanisch.
 //
 // Vanaf regel 16 en niet vanaf regel 1: de eerste vijftien zijn de bindende
-// matrix van DEC-105 en worden in authorize_test.go, users_test.go en
+// matrix van DEC-126 en worden in authorize_test.go, users_test.go en
 // sessions_test.go bewezen, elk met een opstelling die niet in deze vorm past.
 // Wat S1 heeft toegevoegd begint bij 16, en elke latere slice zet erachteraan.
 //

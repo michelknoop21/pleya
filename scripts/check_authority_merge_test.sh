@@ -28,6 +28,7 @@ setup() {
   cp "$GATE" scripts/check_authority_merge.sh
   printf 'basis\n' > CLAUDE.md
   git add -A && git commit -qm base
+  BASE_COMMIT="$(git rev-parse HEAD)"
 
   git checkout -q -b zijtak
   printf 'basis\nbranch\n' > CLAUDE.md
@@ -45,7 +46,7 @@ setup
 git merge -q zijtak --no-commit 2>/dev/null || true
 printf 'basis\nmain\nbranch\n' > CLAUDE.md
 git add -A && git commit -qm merge
-set +e; out="$(scripts/check_authority_merge.sh 2>&1)"; rc=$?; set -e
+set +e; out="$(scripts/check_authority_merge.sh "$BASE_COMMIT" 2>&1)"; rc=$?; set -e
 check "eenzijdig bestand valt in de skip" "$rc" "0"
 check "en wordt als skip gemeld" "$(printf '%s' "$out" | grep -c 'MASTERLIST.md (maar één kant')" "1"
 
@@ -55,9 +56,37 @@ setup
 git merge -q zijtak --no-commit 2>/dev/null || true
 git checkout --theirs CLAUDE.md 2>/dev/null || git show zijtak:CLAUDE.md > CLAUDE.md
 git add -A && git commit -qm merge
-set +e; out="$(scripts/check_authority_merge.sh 2>&1)"; rc=$?; set -e
+set +e; out="$(scripts/check_authority_merge.sh "$BASE_COMMIT" 2>&1)"; rc=$?; set -e
 check "een --ours-merge wordt nog steeds gevangen" "$rc" "1"
 check "en noemt het bestand" "$(printf '%s' "$out" | grep -c 'FAIL  CLAUDE.md')" "1"
+
+# Geval 3: een authority-bestand bestond in de merge-base, maar de merge wist
+# het. Dat is verlies van authority en hoort nooit als "bestaat niet" te worden
+# overgeslagen.
+setup
+git merge -q zijtak --no-commit 2>/dev/null || true
+git rm -q CLAUDE.md
+git commit -qm 'merge met verwijderde authority'
+set +e; out="$(scripts/check_authority_merge.sh "$BASE_COMMIT" 2>&1)"; rc=$?; set -e
+check "een verwijderde authority wordt gevangen" "$rc" "1"
+check "en wordt als verwijdering gemeld" "$(printf '%s' "$out" | grep -c 'FAIL  CLAUDE.md is verwijderd')" "1"
+
+# Geval 4: de foute merge zit binnen de featurebranch. Een latere buitenste
+# merge is zelf legitiem en maskeert de fout wanneer alleen de laatste merge
+# wordt bekeken. De poort moet daarom elke merge in BASE..HEAD controleren.
+setup
+git checkout -q zijtak
+git merge -q main --no-commit 2>/dev/null || true
+git checkout --ours CLAUDE.md 2>/dev/null || git show HEAD:CLAUDE.md > CLAUDE.md
+git add -A && git commit -qm 'foute innerlijke merge'
+git checkout -q main
+mkdir -p docs
+printf 'buitenste merge\n' > docs/outer.txt
+git add -A && git commit -qm 'main gaat verder'
+git merge -q --no-ff zijtak -m 'buitenste merge'
+set +e; out="$(scripts/check_authority_merge.sh "$BASE_COMMIT" 2>&1)"; rc=$?; set -e
+check "een gemaskeerde innerlijke merge wordt gevangen" "$rc" "1"
+check "en controleert meer dan alleen de laatste merge" "$(printf '%s' "$out" | grep -c '^==> merge ')" "2"
 
 echo
 [ "$FAILED" = 0 ] && { echo "alle controles groen"; exit 0; }

@@ -10,12 +10,12 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
-// De vijf gebruikersbeheer-endpoints uit DEC-100, stap 4 van de
+// De vijf gebruikersbeheer-endpoints uit DEC-121, stap 4 van de
 // PS-9-implementatievolgorde. Zonder deze set is het enige pad naar een tweede
 // gebruiker handmatige SQL, en dat is geen ondersteund productpad; AC1 en het
 // stopcriterium van PS-9 vragen om twee echte gebruikers.
 //
-// Er komt hier geen scherm bij. Dat is PS-11A (DEC-100) en wordt niet
+// Er komt hier geen scherm bij. Dat is PS-11A (DEC-121) en wordt niet
 // vooruitgebouwd; het ondersteunde pad in deze fase is de API plus het
 // curl-recept in README.md.
 
@@ -70,6 +70,12 @@ func (r requester) scopeReachesAdmin() bool {
 	return r.scope == auth.APIScopeAdmin
 }
 
+// canAdminister is de volledige adminklasse: zowel de rol van de eigenaar als
+// het bereik van het gebruikte credential moeten haar halen. Gebruik isAdmin
+// alleen wanneer uitsluitend de accountrol wordt beschreven; een routebesluit
+// op isAdmin alleen laat een beperkt API-token anders door de scopegrens.
+func (r requester) canAdminister() bool { return r.isAdmin() && r.scopeReachesAdmin() }
+
 // resolveRequester leest id en rol van de aanvrager.
 //
 // Een gebruiker die niet meer bestaat krijgt 404 en geen 500: dat is een
@@ -117,7 +123,7 @@ func (s *Server) requireAdmin(w http.ResponseWriter, r *http.Request) (requester
 	if !ok {
 		return requester{}, false
 	}
-	if !req.isAdmin() || !req.scopeReachesAdmin() {
+	if !req.canAdminister() {
 		writeError(w, s.log, CodeUserNotFound, "not found", nil)
 		return requester{}, false
 	}
@@ -247,7 +253,7 @@ func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !req.isAdmin() {
+	if !req.canAdminister() {
 		self, err := s.opts.Auth.GetUser(r.Context(), req.id)
 		if err != nil {
 			writeInternal(w, s.log, err)
@@ -289,7 +295,7 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !req.isAdmin() && req.id != targetID {
+	if !req.canAdminister() && (req.viaAPIToken || req.id != targetID) {
 		writeError(w, s.log, CodeUserNotFound, "not found", nil)
 		return
 	}
@@ -305,6 +311,10 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	var role *auth.Role
 	if body.Role != nil {
+		if !req.canAdminister() {
+			writeError(w, s.log, CodeUserNotFound, "not found", nil)
+			return
+		}
 		if !auth.ValidRole(*body.Role) {
 			writeError(w, s.log, CodeUserNotFound, "unknown role", nil)
 			return
@@ -319,11 +329,11 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 			writeError(w, s.log, CodeUserNotFound, "password too short", nil)
 			return
 		}
-		// restricted beheert zijn eigen wachtwoord niet (DEC-098 §3): alleen
+		// restricted beheert zijn eigen wachtwoord niet (DEC-119 §3): alleen
 		// owner en admin zetten het. De rolcontrole hierboven laat een gebruiker
 		// zijn eigen id passeren, dus deze regel is de enige die het verschil
 		// tussen member en restricted maakt.
-		if !req.isAdmin() && req.role == auth.RoleRestricted {
+		if !req.canAdminister() && req.role == auth.RoleRestricted {
 			writeError(w, s.log, CodeUserNotFound, "not found", nil)
 			return
 		}
@@ -335,13 +345,13 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		hash = &h
 	}
 
-	user, err := s.opts.Auth.UpdateUser(r.Context(), targetID, role, hash, s.now().UTC())
+	user, err := s.opts.Auth.UpdateUser(r.Context(), req.id, targetID, role, hash, s.now().UTC())
 	switch {
 	case errors.Is(err, auth.ErrUserNotFound):
 		writeError(w, s.log, CodeUserNotFound, "not found", nil)
 		return
 	case errors.Is(err, auth.ErrOwnerImmutable):
-		writeError(w, s.log, CodeOwnerImmutable, "owner cannot be demoted", nil)
+		writeError(w, s.log, CodeOwnerImmutable, "owner cannot be changed", nil)
 		return
 	case err != nil:
 		writeInternal(w, s.log, err)
@@ -423,7 +433,7 @@ func (s *Server) handleSetPermissions(w http.ResponseWriter, r *http.Request) {
 		writeError(w, s.log, CodeNotFound, "not found", nil)
 		return
 	case errors.Is(err, auth.ErrRestrictedCannotManage):
-		// DEC-098 §3 verbiedt manage voor restricted. Tot venster 1 had het
+		// DEC-119 §3 verbiedt manage voor restricted. Tot venster 1 had het
 		// coderegister daar geen code voor en stond hier auth.user_not_found,
 		// met de aantekening dat een eigen code in het eerstvolgende
 		// protocolvenster hoorde. Dat is dit venster (J.2 rij 11), en de code

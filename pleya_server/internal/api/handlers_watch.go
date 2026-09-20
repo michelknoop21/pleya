@@ -58,7 +58,7 @@ func (s *Server) handleWatchStateReport(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// DEC-105 regel 12: het item bestaat voor deze aanvrager niet zonder view op
+	// DEC-126 regel 12: het item bestaat voor deze aanvrager niet zonder view op
 	// zijn bibliotheek, en een niet-bestaand item geeft dezelfde 404 als een
 	// bestaand item in een verboden bibliotheek (authorizeLibraryFor). Dit staat
 	// vóór Apply en niet erna: watch.Store kent geen bibliotheekrechten, alleen
@@ -146,7 +146,7 @@ func (s *Server) handleWatchStateList(w http.ResponseWriter, r *http.Request) {
 	}
 	subject := userID.String()
 
-	// DEC-105 regel 13: kijkstatus blijft bestaan na een ingetrokken
+	// DEC-126 regel 13: kijkstatus blijft bestaan na een ingetrokken
 	// bibliotheekrecht, maar wordt onzichtbaar. De filter staat hier in de
 	// query en niet als naloop in Go, anders zou pagineren op een grotere
 	// verborgen verzameling gaten en verkeerde cursors opleveren.

@@ -11,7 +11,33 @@ import (
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
+	"github.com/edde746/plezy/pleya_server/internal/id"
 )
+
+func TestInvalidJSONBodyDoesNotExposeDecoderInternals(t *testing.T) {
+	e := newEnv(t)
+	since := time.Now()
+	rec := e.do(http.MethodPost, "/pleya/v1/auth/login", map[string]string{}, withoutAuth,
+		rawBody(`{"username":123,"password":false}`))
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, verwacht 401: %s", rec.Code, rec.Body.String())
+	}
+	var envelope struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if envelope.Error.Message != "request body invalid" {
+		t.Fatalf("publieke fout = %q, verwacht vaste boodschap", envelope.Error.Message)
+	}
+	if _, ok := e.logs.firstAfter("request body invalid", since); !ok {
+		t.Fatal("decoderdetail is niet intern gelogd")
+	}
+}
 
 // setup wisselt de setupcode in en zet het tokenpaar in de omgeving.
 func (e *env) setup(code string) api.TokenPair {
@@ -232,6 +258,76 @@ func TestLoginAndRefreshRotation(t *testing.T) {
 		map[string]string{"refresh_token": rotated.RefreshToken}, withoutAuth)
 	if staleSuccessor.Code == http.StatusOK {
 		t.Fatal("de door de replay vervangen opvolger hoort niet meer te werken")
+	}
+}
+
+func TestRefreshTokenReuseRevokesWholeSession(t *testing.T) {
+	e := newEnv(t)
+	pair := e.setup(e.putSetupCode())
+
+	refresh := func(secret string) api.TokenPair {
+		t.Helper()
+		rec := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+			map[string]string{"refresh_token": secret}, withoutAuth)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("refresh gaf %d: %s", rec.Code, rec.Body.String())
+		}
+		var next api.TokenPair
+		if err := json.Unmarshal(rec.Body.Bytes(), &next); err != nil {
+			t.Fatal(err)
+		}
+		return next
+	}
+
+	first := refresh(pair.RefreshToken)
+	second := refresh(first.RefreshToken)
+	claims, err := e.signer.Verify(second.AccessToken, auth.TokenAccess)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessionID, err := id.Parse(claims.Sid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	subjectID, err := id.Parse(claims.Subject)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var versionID id.ID
+	if err := e.pool.QueryRow(t.Context(), `SELECT id FROM media_versions LIMIT 1`).Scan(&versionID); err != nil {
+		t.Fatal(err)
+	}
+	streamSession, err := e.auth.CreateStreamSession(t.Context(), subjectID, sessionID, versionID,
+		30*time.Minute, auth.MaxActiveStreamSessions, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reused := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+		map[string]string{"refresh_token": pair.RefreshToken}, withoutAuth)
+	if reused.Code != http.StatusUnauthorized {
+		t.Fatalf("hergebruik gaf %d, verwacht 401: %s", reused.Code, reused.Body.String())
+	}
+	e.expectCode(reused, api.CodeRefreshTokenReused)
+
+	access := e.do(http.MethodGet, "/pleya/v1/users/me", nil, asUser(second.AccessToken))
+	if access.Code != http.StatusUnauthorized {
+		t.Fatalf("access token uit hergebruikte sessie bleef werken: %d %s", access.Code, access.Body.String())
+	}
+	if !e.revocations.IsRevoked(sessionID) {
+		t.Fatal("de hergebruikte sessie ontbreekt in het intrekkingsregister")
+	}
+	var sessionRevoked, streamRevoked bool
+	if err := e.pool.QueryRow(t.Context(), `SELECT revoked_at IS NOT NULL FROM sessions WHERE id = $1`, sessionID).
+		Scan(&sessionRevoked); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.pool.QueryRow(t.Context(), `SELECT revoked_at IS NOT NULL FROM stream_sessions WHERE id = $1`, streamSession.ID).
+		Scan(&streamRevoked); err != nil {
+		t.Fatal(err)
+	}
+	if !sessionRevoked || !streamRevoked {
+		t.Fatalf("hergebruik liet sessie actief: session_revoked=%v stream_revoked=%v", sessionRevoked, streamRevoked)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
@@ -571,10 +572,10 @@ func TestCORSPreflightIsAnsweredBeforeTheMux(t *testing.T) {
 	}
 }
 
-// Een aanvraag zonder Origin blijft precies wat hij was: geen Vary, geen
-// CORS-header, en geen verandering in het antwoord. De Flutter-clients sturen
-// geen Origin, en die mogen door deze laag niets merken.
-func TestARequestWithoutOriginIsUntouched(t *testing.T) {
+// Ook een antwoord op een aanvraag zonder Origin kan door een gedeelde cache
+// later voor een browseraanvraag worden hergebruikt. Daarom moet Vary er altijd
+// op staan; alleen de eigenlijke CORS-toestemming blijft afwezig.
+func TestARequestWithoutOriginStillVariesByOrigin(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())
 
@@ -582,7 +583,23 @@ func TestARequestWithoutOriginIsUntouched(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /libraries gaf %d", rec.Code)
 	}
-	if rec.Header().Get("Vary") != "" || rec.Header().Get("Access-Control-Allow-Origin") != "" {
-		t.Errorf("een aanvraag zonder Origin kreeg CORS-headers: %v", rec.Header())
+	if !strings.Contains(rec.Header().Get("Vary"), "Origin") {
+		t.Errorf("Vary = %q, wil Origin erin", rec.Header().Get("Vary"))
+	}
+	if rec.Header().Get("Access-Control-Allow-Origin") != "" {
+		t.Errorf("een aanvraag zonder Origin kreeg Allow-Origin: %v", rec.Header())
+	}
+}
+
+func TestForwardedProtoWithoutTrustedProxiesWarnsAboutBrokenCookieMode(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	since := time.Now()
+
+	e.loginCookieMode("michel", "een-lang-genoeg-wachtwoord", sameOrigin, http.StatusOK,
+		withHeader("X-Forwarded-Proto", "https"))
+
+	if _, ok := e.logs.firstAfter("X-Forwarded-Proto genegeerd zonder vertrouwde proxy", since); !ok {
+		t.Fatal("een onbeheerde TLS-proxyconfiguratie gaf geen waarschuwing")
 	}
 }

@@ -209,7 +209,7 @@ func (s *Server) apiTokenSubject(w http.ResponseWriter, req requester, raw *stri
 		writeError(w, s.log, CodeUserNotFound, "not found", nil)
 		return id.Nil, false
 	}
-	if parsed != req.id && !req.isAdmin() {
+	if parsed != req.id && !req.canAdminister() {
 		writeError(w, s.log, CodeUserNotFound, "not found", nil)
 		return id.Nil, false
 	}
