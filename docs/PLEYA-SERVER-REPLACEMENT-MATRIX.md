@@ -592,6 +592,6 @@ Dit bestand is de bron voor de vraag of iets nog bij het eindproduct hoort. Drie
 3. **Een gat wordt nooit stil gesloten.** Een roadmap gap verdwijnt uit hoofdstuk 7 zodra een
    Roadmap deviation proposal is goedgekeurd en de capability een Phase ID heeft, en niet eerder.
 
-Zie ook de sectie Pleya Server in [CLAUDE.md](../CLAUDE.md) voor de werkregels per sessie, en
+Zie ook [de Pleya Server-werkregels](agents/server.md) voor de werkregels per sessie, en
 [hoofdstuk 25](pleya-server-architecture.md#25-definition-of-done-pleya-server-als-zelfstandig-mediaserverproduct)
 van de architectuur voor de definitie van "volwaardig".

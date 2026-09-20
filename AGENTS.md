@@ -1,66 +1,45 @@
 # AGENTS.md
 
-## Snapshot
-- Pleya is a Flutter app for Plex + Jellyfin across desktop, mobile, and TV. User-facing name is `Pleya`; package/repo history still uses `pleya` / `plezy` in code and upstream links.
-- Toolchain in repo config: Flutter `3.44.0` in CI, Dart SDK `>=3.12.0 <4.0.0` in `pubspec.yaml`.
-- This repo has no `AGENTS.md`/OpenCode config yet; `CLAUDE.md` is the main existing instruction source and matches current scripts/CI.
+Shared instructions for all agents working on Pleya, a Flutter media app for desktop, mobile and TV. Use **Pleya** in user-facing text; historical package/repo names may use `pleya` / `plezy`. Flutter is pinned in `.fvmrc`; Dart constraints live in `pubspec.yaml`.
 
-## First Commands
-- `flutter pub get`
-- `scripts/codegen.sh` after first sync or after any model/i18n change.
-- `scripts/ci_checks.sh` is the closest local mirror of CI and the best default verification command before finishing.
+## Work proportional to risk
 
-## Required Verification Order
-- CI effectively enforces: generated files up to date -> Dart formatting -> `flutter analyze` with warnings treated as failures -> unused code/files checks -> tests -> native formatting.
-- For local work, use `scripts/ci_checks.sh` first because it mirrors the analyze/format/unused-code gates and strips leaked git hook env vars that can break Flutter version detection.
-- If you touched tests or behavior, also run `flutter test` or a focused test command; `ci_checks.sh` does not run tests.
+- For small, bounded tasks, explicitly skip extensive skill workflows: no mandatory brainstorming document, separate implementation plan, subagents or agent review. Inspect the relevant code and tests, implement, verify and report briefly. This is the user's approved repo workflow.
+- Use a deeper investigation and a concise plan for architecture decisions, migrations, authentication, shared playback logic, unclear causes or broad impact. Ask only questions that materially change the solution. Domain-specific evidence and approval rules below still apply.
+- Start with the relevant symbols, callers and tests using `rg`. Read bounded file/log excerpts. Expand only when dependencies, uncertainty or findings warrant it; do not load every linked document or rediscover established decisions.
+- Keep decisions and verification results in the task context. Create a short handoff only when transferring work: changes, evidence and remaining work. Existing domain work registers remain required.
+- Preserve unrelated working-tree changes. Keep full verification logs/evidence outside tracked source; inspect summaries first and relevant details on failure. UI verification still requires reading the evidence bundle and relevant screenshots.
 
-## Focused Commands
-- Full local gate: `scripts/ci_checks.sh`
-- All tests: `flutter test`
-- Single file: `flutter test test/path/to/foo_test.dart`
-- Single test name: `flutter test test/foo_test.dart --plain-name "desc"`
-- Regenerate translations only: `dart run slang`
-- Regenerate translations + build_runner outputs: `scripts/codegen.sh`
-- Check/fix native formatting: `scripts/format_native.sh --check` / `scripts/format_native.sh --fix`
-- Install repo git hooks: `scripts/setup_hooks.sh`
+## Setup and verification
 
-## Codegen And Generated Files
-- `scripts/codegen.sh` runs `dart run slang` and then `build_runner build --delete-conflicting-outputs`.
-- CI fails if a source in `lib/` is newer than its matching `.g.dart` or `.freezed.dart`, even if generated files still compile.
-- `analysis_options.yaml` excludes generated Dart files from analysis/formatting checks.
+- Run `flutter pub get` only when dependencies are missing or changed. Run `scripts/codegen.sh` (slang + build_runner) after changes to Freezed/JSON/Drift models or translation sources, or when generated output is missing/stale. No unconditional setup or codegen on each task.
+- During development, run tests focused on changed behavior: `flutter test test/path/to/foo_test.dart`, optionally `--plain-name "desc"`. Expand coverage when shared impact or failures justify it.
+- Before finishing code changes, run `scripts/ci_checks.sh`, then applicable tests. This gate checks SDK pin, Dart formatting, codegen freshness, native formatting, analyzer warnings/errors and unused code/files; it strips leaked git-hook variables. It does **not** run tests.
+- Do not separately repeat checks already covered by a successful gate, including `scripts/format_native.sh --check` for native changes. Repeat successful checks only after changes or findings invalidate their evidence. Hooks and CI remain enabled; do not bypass them to avoid a repeat.
+- Documentation-only tasks require a diff, link and instruction-consistency check, not Flutter builds/tests. Do not describe unrelated code changes in the worktree as verified.
+- Relevant UI/focus/navigation/layout changes require matching Pleya Verify assertions **and visual evidence**. If the environment provably cannot run a supported target, state exactly which evidence is missing; do not claim full verification. Pure backend changes need no UI scenario. Hardware-only findings require a device run.
+- Dependency updates follow the additional evidence rings in the reference below; release gates are unchanged.
 
-## Linting / Formatting Quirks
-- `flutter analyze` warnings are treated as CI failures, not just errors.
-- Repo uses `dart_code_linter` in addition to `flutter_lints`; CI also fails on `check-unused-code` and `check-unused-files` for `lib/`.
-- Dart formatter width is `120`.
-- Native formatting is repo-managed: Kotlin via downloaded `ktlint 1.5.0`, Swift via `swift-format`/`swift format`, C-family via `clang-format`.
-- `scripts/format_native.sh` intentionally skips generated/plugin files under Flutter/platform-generated directories.
+## Read only for the affected domain
 
-## Architecture That Matters
-- `lib/main.dart` is the real wiring entrypoint: startup/bootstrap, cache init, and the root `MultiProvider` live there.
-- State management is `provider`/`ChangeNotifier`, not Riverpod/Bloc. Prefer extending existing providers under `lib/providers/`.
-- Plex and Jellyfin are parallel backends, not one shared abstraction layer. For feature work, expect mirrored changes across `services/plex_*` / `plex_mappers` and `services/jellyfin_*` / `jellyfin_mappers`.
-- Shared UI models live in `lib/models/`; backend-specific responses are mapped into those models.
-- Connection/bootstrap flow matters for cross-server work: `lib/connection/`, `lib/services/server_registry.dart`, `lib/services/multi_server_manager.dart`, `lib/services/data_aggregation_service.dart`, and `lib/providers/multi_server_provider.dart`.
-- Playback-related work is centered around `lib/mpv/`; offline/download persistence is in `lib/database/` plus offline providers/services.
-- TV/D-pad behavior is handled separately in `lib/focus/`; do not assume touch-only interactions when editing screens/widgets.
-- `pleya_verify/` is the end-to-end verification layer (real scenarios against a real macOS/iOS-sim/tvOS-sim build). See `docs/architecture/pleya-verify.md` for the design and `docs/testing/pleya-verify-for-agents.md` for how to run or write a scenario.
+These references retain binding domain rules. Read the relevant sections before working in that domain; the lightweight workflow does not waive them. Inline code paths in references are repo-relative.
 
-## Repo-Specific Gotchas
-- Many dependencies are pinned to `edde746/*` git forks in `pubspec.yaml`; do not casually replace them with pub.dev versions.
-- Brand assets are generated by `scripts/gen_brand_assets.py`; do not hand-edit the generated platform PNGs.
-- Release automation bumps `pubspec.yaml` version and tags from GitHub Actions in `.github/workflows/release.yml`; avoid inventing a separate local release flow.
-- Builds in CI use `flutter pub get --enforce-lockfile --no-example`; keep `pubspec.lock` consistent with dependency edits.
+| Task touches | Read |
+| --- | --- |
+| Providers, backend mapping, profiles/connections, offline storage or playback | [Client architecture](docs/agents/architecture.md) |
+| Dependencies, SDK, generators or native formatting tooling | [Dependencies and codegen](docs/agents/dependencies.md) |
+| UI, navigation, focus or TV | [UI and TV rules](docs/agents/ui-and-tv.md); for scenario execution/writing, [Pleya Verify guide](docs/testing/pleya-verify-for-agents.md) |
+| Pleya Server or its client protocol | [Server phase rules](docs/agents/server.md), plus `pleya_server/CLAUDE.md` for work in that directory |
+| Apple builds, release/signing or brand assets | [Build and brand rules](docs/agents/build-and-brand.md) |
+| Setup or translation contribution instructions | Relevant sections of [README](README.md) / [CONTRIBUTING](CONTRIBUTING.md) |
 
-## iOS / Native Build Trap
-- After `flutter clean` or `flutter pub get`, Flutter can regenerate `ios/Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage/Package.swift` with `.iOS("13.0")`.
-- `background_downloader` needs newer iOS deployment support, so direct Xcode/CLI iOS builds can fail before Flutter auto-fixes it.
-- Run `scripts/fix_ios_spm.sh` after a clean if you need a direct iOS/Xcode build. Fastlane/release lanes already handle this.
+## Always retain
 
-## Working Rules For Future Agents
-- If you touch `@freezed` models, Drift models, or translation sources, assume codegen is required and verify by rerunning `scripts/codegen.sh`.
-- If you touch native code under `android/`, `ios/`, `macos/`, `tvos/`, `linux/`, `windows/`, or `shared/`, run `scripts/format_native.sh --check`.
-- If you add a feature in one media backend path, check whether Plex and Jellyfin both need equivalent support before stopping.
-- In user-facing docs/strings/comments about the product, use `Pleya`, not `Plezy`.
-- A relevant UI/focus change is not fully verified without matching Pleya Verify assertions and visual evidence, unless the environment provably cannot run a supported target; in that case, report exactly what evidence is missing instead of calling the change verified. This is not a heavy gate for pure backend code.
+- Prefer existing `provider` / `ChangeNotifier` state; root wiring is in `lib/main.dart`. Shared UI models are in `lib/models/`. Check both Plex and Jellyfin paths for backend feature changes.
+- TV has D-pad/focus behavior under `lib/focus/`; do not assume touch-only interactions.
+- Keep pinned git forks and lockfiles consistent. Do not replace forks casually. Generate brand assets with `scripts/gen_brand_assets.py`; do not hand-edit generated platform PNGs.
+- Codegen freshness can fail when source timestamps are newer than `.g.dart` / `.freezed.dart`, even if compilation succeeds. Analyzer warnings fail the gate.
+
+## Short evaluation period
+
+At completion of each of the next three tasks, add one short observation to [workflow evaluation](docs/agents/workflow-evaluation.md): unnecessary reads, duplicate checks and process documents; actual token counts only if available. Stop after three entries. Do not launch a session audit or claim a savings percentage without measurement.

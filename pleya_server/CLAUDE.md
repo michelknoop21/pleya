@@ -4,7 +4,7 @@ Deze map is de Go-mediaserver. `README.md` ernaast beschrijft installeren, bedie
 NAS gemeten is; dat wordt hier niet herhaald. Dit bestand gaat over wat je moet weten voordat je een
 regel in deze map wijzigt.
 
-De werkregels per fase staan in de sectie Pleya Server van [../CLAUDE.md](../CLAUDE.md) en gelden
+De werkregels per fase staan in [de Pleya Server-werkregels](../docs/agents/server.md) en gelden
 onverkort: lees hoofdstuk 23 plus je eigen fase, blijf binnen de Phase ID, bouw niets uit een latere
 fase vooruit, en schrijf geen latere productvereiste weg. **De huidige fase is PS-4.**
 
