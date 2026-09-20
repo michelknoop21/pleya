@@ -1,8 +1,9 @@
 import '../navigation/navigation_tab_id.dart';
 
 /// Stable, agent-addressable automation IDs on a closed set of domains:
-/// `screen`, `nav`, `sidebar`, `library`, `discover`, `detail`, `player`,
-/// `search`, `settings`, `dialog`, `sheet`, `hub`, `profile`, `overlay`.
+/// `screen`, `auth`, `nav`, `sidebar`, `library`, `discover`, `detail`,
+/// `player`, `search`, `settings`, `dialog`, `sheet`, `hub`, `profile`,
+/// `overlay`.
 ///
 /// Every automation ID in the app is either a literal here, or the output of
 /// [navTab] — never a raw string literal at the call site. Enforced by
@@ -10,11 +11,23 @@ import '../navigation/navigation_tab_id.dart';
 class AutomationIds {
   AutomationIds._();
 
+  /// The first-start authentication composition. Ready as soon as the
+  /// composition is mounted; backend service readiness lives on
+  /// [authChoice]'s `enabled` state instead.
+  static const String screenAuth = 'screen.auth';
+
   /// One of the two first-start authentication choices, suffixed with the
   /// backend (`auth.choice[plex]` or `auth.choice[jellyfin]`). The id lives on
   /// the focusable row itself so automation observes the same bounds and
   /// enabled state as the viewer operating it.
   static const String authChoice = 'auth.choice';
+
+  /// The right-hand first-start state panel. Its state is the exact
+  /// `TvAuthPanelState.name` being rendered and never contains credentials.
+  static const String authPanel = 'auth.panel';
+
+  /// The visible retry control for a failed or timed-out auth attempt.
+  static const String authRetry = 'auth.retry';
 
   /// `nav.<NavigationTabId.name>` — derived from the enum itself, not a
   /// second hand-written list that could drift out of sync with it.
@@ -471,7 +484,10 @@ class AutomationIds {
   /// holds whatever screen happens to be on screen, while a scenario needs
   /// the full, screen-independent set.
   static List<Map<String, Object?>> catalog() => [
+    {'id': screenAuth, 'role': 'screen', 'instanceable': false},
     {'id': authChoice, 'role': 'button', 'instanceable': true},
+    {'id': authPanel, 'role': 'region', 'instanceable': false},
+    {'id': authRetry, 'role': 'button', 'instanceable': false},
     {'id': screenMain, 'role': 'screen', 'instanceable': false},
     {'id': screenDiscover, 'role': 'screen', 'instanceable': false},
     {'id': screenLibraries, 'role': 'screen', 'instanceable': false},

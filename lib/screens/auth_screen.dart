@@ -3,7 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
+import '../automation/automation_ids.dart';
 import '../automation/automation_navigation_hooks.dart';
+import '../automation/automation_node.dart';
+import '../automation/automation_screen.dart';
 import '../automation/pleya_verify.dart';
 import '../connection/connection.dart';
 import '../connection/connection_registry.dart';
@@ -258,11 +261,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (PlatformDetector.isAppleTV()) {
-      return _buildAppleTvAuthScreen();
-    }
-
-    return _buildExistingAuthScreen();
+    final composition = PlatformDetector.isAppleTV() ? _buildAppleTvAuthScreen() : _buildExistingAuthScreen();
+    return AutomationScreen(
+      id: AutomationIds.screenAuth,
+      readiness: () => const AutomationReadiness.ready(),
+      child: composition,
+    );
   }
 
   Widget _buildAppleTvAuthScreen() {
@@ -638,13 +642,17 @@ class _AuthRecoveryView extends StatelessWidget {
           style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
         ),
         const SizedBox(height: 24),
-        FocusableButton(
-          autofocus: true,
-          onPressed: onRetry,
-          child: FilledButton.icon(
+        AutomationNode(
+          id: AutomationIds.authRetry,
+          role: 'button',
+          child: FocusableButton(
+            autofocus: true,
             onPressed: onRetry,
-            icon: const Icon(Symbols.refresh_rounded),
-            label: Text(t.auth.tryAgain),
+            child: FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Symbols.refresh_rounded),
+              label: Text(t.auth.tryAgain),
+            ),
           ),
         ),
         if (state == _AuthRecoveryState.noServersFound) ...[

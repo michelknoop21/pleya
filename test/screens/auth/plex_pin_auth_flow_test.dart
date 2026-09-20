@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/screens/auth/plex_pin_auth_flow.dart';
 import 'package:pleya/services/plex_auth_service.dart';
@@ -73,6 +75,13 @@ void main() {
     await pumpPollingFlow(tester, onSwitchToJellyfin: () {});
 
     expect(find.text(t.auth.usingJellyfinInstead), findsOneWidget);
+    final escape = tester.widget<AutomationNode>(
+      find.byWidgetPredicate(
+        (widget) => widget is AutomationNode && widget.id == AutomationIds.authChoice && widget.instance == 'jellyfin',
+      ),
+    );
+    expect(escape.role, 'button');
+    expect(escape.state?.call(), {'enabled': true});
     // Proves it is the polling-state hint, not the post-timeout error block.
     expect(find.text(t.auth.authenticationTimeout), findsNothing);
     expect(find.text(t.auth.tryAgain), findsNothing);

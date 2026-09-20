@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../exceptions/media_server_exceptions.dart';
 import '../../i18n/strings.g.dart';
 import '../../services/plex_auth_service.dart';
@@ -307,12 +309,16 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
         ),
         if (_timedOut) ...[
           const SizedBox(height: 16),
-          FocusableButton(
-            onPressed: _retry,
-            child: FilledButton(
+          AutomationNode(
+            id: AutomationIds.authRetry,
+            role: 'button',
+            child: FocusableButton(
               onPressed: _retry,
-              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
-              child: Text(t.auth.tryAgain),
+              child: FilledButton(
+                onPressed: _retry,
+                style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                child: Text(t.auth.tryAgain),
+              ),
             ),
           ),
           if (includeJellyfinEscape && widget.onSwitchToJellyfin != null) ...[
@@ -341,12 +347,18 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
     if (widget.onSwitchToJellyfin == null) return null;
     return Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: FocusableButton(
-        onPressed: _switchToJellyfin,
-        child: TextButton.icon(
+      child: AutomationNode(
+        id: AutomationIds.authChoice,
+        instance: 'jellyfin',
+        role: 'button',
+        state: () => {'enabled': true},
+        child: FocusableButton(
           onPressed: _switchToJellyfin,
-          icon: const BackendBadge(backend: MediaBackend.jellyfin, size: 16),
-          label: Text(t.auth.usingJellyfinInstead, textAlign: TextAlign.center),
+          child: TextButton.icon(
+            onPressed: _switchToJellyfin,
+            icon: const BackendBadge(backend: MediaBackend.jellyfin, size: 16),
+            label: Text(t.auth.usingJellyfinInstead, textAlign: TextAlign.center),
+          ),
         ),
       ),
     );
@@ -473,12 +485,16 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
           ),
         ),
         const SizedBox(height: 24),
-        FocusableButton(
-          onPressed: _retry,
-          child: OutlinedButton(
+        AutomationNode(
+          id: AutomationIds.authRetry,
+          role: 'button',
+          child: FocusableButton(
             onPressed: _retry,
-            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24)),
-            child: Text(t.common.retry),
+            child: OutlinedButton(
+              onPressed: _retry,
+              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24)),
+              child: Text(t.common.retry),
+            ),
           ),
         ),
         ?jellyfinEscape,
@@ -500,12 +516,16 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
           style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
         ),
         const SizedBox(height: 16),
-        FocusableButton(
-          onPressed: _retry,
-          child: OutlinedButton(
+        AutomationNode(
+          id: AutomationIds.authRetry,
+          role: 'button',
+          child: FocusableButton(
             onPressed: _retry,
-            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24)),
-            child: Text(t.common.retry),
+            child: OutlinedButton(
+              onPressed: _retry,
+              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24)),
+              child: Text(t.common.retry),
+            ),
           ),
         ),
         ?jellyfinEscape,

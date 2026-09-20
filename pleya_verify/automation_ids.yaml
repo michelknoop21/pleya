@@ -6,9 +6,18 @@
 # `id[instance]` (e.g. `library.grid.item[3]`) — see the Pleya Verify plan's
 # Fase 5 instance-ID semantics.
 ids:
+  - id: screen.auth
+    role: screen
+    instanceable: false
   - id: auth.choice
     role: button
     instanceable: true
+  - id: auth.panel
+    role: region
+    instanceable: false
+  - id: auth.retry
+    role: button
+    instanceable: false
   - id: screen.main
     role: screen
     instanceable: false

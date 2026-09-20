@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -175,6 +176,19 @@ void main() {
 
     for (final forbidden in ['Pleya Share', 'local folder', 'camera', 'text code', 'countdown']) {
       expect(find.textContaining(forbidden, findRichText: true), findsNothing);
+    }
+  });
+
+  testWidgets('the panel renderowner publishes the exact rendered TvAuthPanelState', (tester) async {
+    for (final state in TvAuthPanelState.values) {
+      await pumpView(tester, state: state);
+
+      final panel = tester.widget<AutomationNode>(
+        find.byWidgetPredicate((widget) => widget is AutomationNode && widget.id == AutomationIds.authPanel),
+      );
+      expect(panel.role, 'region');
+      expect(panel.state?.call(), {'state': state.name});
+      expect(find.byKey(ValueKey('tv-auth-panel-${state.name}')), findsOneWidget);
     }
   });
 

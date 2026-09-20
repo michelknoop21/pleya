@@ -3,6 +3,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
 import '../../theme/mono_tokens.dart';
@@ -142,14 +143,19 @@ class TvAuthView extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: geometry.columnGap),
-                Container(
-                  key: ValueKey('tv-auth-panel-${state.name}'),
-                  width: geometry.panelSize.width,
-                  height: geometry.panelSize.height,
-                  padding: EdgeInsets.all(TvAuthLayout.panelPadding * scale),
-                  decoration: tvPanelDecoration(mono, TvAuthLayout.panelRadius * scale),
-                  alignment: Alignment.topLeft,
-                  child: content,
+                AutomationNode(
+                  id: AutomationIds.authPanel,
+                  role: 'region',
+                  state: () => {'state': state.name},
+                  child: Container(
+                    key: ValueKey('tv-auth-panel-${state.name}'),
+                    width: geometry.panelSize.width,
+                    height: geometry.panelSize.height,
+                    padding: EdgeInsets.all(TvAuthLayout.panelPadding * scale),
+                    decoration: tvPanelDecoration(mono, TvAuthLayout.panelRadius * scale),
+                    alignment: Alignment.topLeft,
+                    child: content,
+                  ),
                 ),
               ],
             ),

@@ -7,6 +7,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_node.dart';
+import 'package:pleya/automation/automation_screen.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
@@ -135,6 +138,9 @@ void main() {
     testWidgets('Apple TV owns the full viewport outside the legacy max-width container', (tester) async {
       await pumpAuthScreen(tester, appleTv: true);
 
+      final screen = tester.widget<AutomationScreen>(find.byType(AutomationScreen));
+      expect(screen.id, AutomationIds.screenAuth);
+      expect(screen.readiness().isReady, isTrue);
       expect(find.byType(TvAuthView), findsOneWidget);
       expect(
         find.ancestor(
@@ -479,6 +485,10 @@ void main() {
       await tester.pump();
 
       expect(find.byKey(const ValueKey('tv-auth-panel-timedOut')), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((widget) => widget is AutomationNode && widget.id == AutomationIds.authRetry),
+        findsOneWidget,
+      );
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('tv-auth-panel-timedOut')),
