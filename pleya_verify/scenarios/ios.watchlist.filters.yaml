@@ -1,0 +1,35 @@
+name: ios.watchlist.filters
+target: ios-sim
+# Build a real one-title watchlist through the existing mobile context menu,
+# then verify that Kijklijst exposes the same compact filter/sort controls and
+# filter-sheet structure as the Movies and Series catalogues.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - wait_until: {id: "home.rail.item[0.0]", timeout: 15000}
+  - settle: 2500
+  - tap: {id: "home.rail.item[0.0]", holdMs: 600}
+  - wait_until: {id: sheet.context_menu, timeout: 10000}
+  # Mark watched/unwatched is row 0; add to watchlist is row 1 for an online
+  # title that is not on the list yet.
+  - tap: {id: "sheet.context_menu.item[1]"}
+  - settle: 1500
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - wait_until: {id: "my_pleya.tile[watchlist]", timeout: 10000}
+  - tap: {id: "my_pleya.tile[watchlist]"}
+  - wait_until: {id: "catalog.chip.filters[watchlist]", timeout: 10000}
+  - assert: {id: "catalog.chip.filters[watchlist]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: "catalog.chip.sort[watchlist]", insideViewport: true, minimumTapTarget: 44}
+  - snapshot: watchlist-catalog-controls
+  - tap: {id: "catalog.chip.filters[watchlist]"}
+  - wait_until: {id: sheet.catalog_filters, timeout: 10000}
+  - assert: {id: "sheet.catalog_filters.category[kind]", insideViewport: true}
+  - assert: {id: "sheet.catalog_filters.category[availability]", insideViewport: true}
+  - assert: {id: "sheet.catalog_filters.option[kind.0]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: sheet.catalog_filters.apply, insideViewport: true, minimumTapTarget: 44}
+  - snapshot: watchlist-filter-sheet

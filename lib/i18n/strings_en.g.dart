@@ -1449,6 +1449,9 @@ class TranslationsMediaMenuEn {
 	/// en: 'Failed to delete media item'
 	String get mediaFailedToDelete => 'Failed to delete media item';
 
+	/// en: 'Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.'
+	String get plexDeletionDisabled => 'Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.';
+
 	/// en: 'Rate'
 	String get rate => 'Rate';
 
@@ -7506,6 +7509,7 @@ extension on Translations {
 			'mediaMenu.deleteMultipleWarning' => 'This includes all episodes and their files.',
 			'mediaMenu.mediaDeletedSuccessfully' => 'Media item deleted successfully',
 			'mediaMenu.mediaFailedToDelete' => 'Failed to delete media item',
+			'mediaMenu.plexDeletionDisabled' => 'Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.',
 			'mediaMenu.rate' => 'Rate',
 			'mediaMenu.playFromBeginning' => 'Play from Beginning',
 			'mediaMenu.playVersion' => 'Play Version...',
@@ -7572,9 +7576,9 @@ extension on Translations {
 			'videoControls.settingsButton' => 'Playback Settings',
 			'videoControls.tracksButton' => 'Audio & Subtitles',
 			'videoControls.chaptersButton' => 'Chapters',
-			'videoControls.versionsButton' => 'Video versions',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.versionsButton' => 'Video versions',
 			'videoControls.versionQualityButton' => 'Version & Quality',
 			'videoControls.versionColumnHeader' => 'Version',
 			'videoControls.qualityColumnHeader' => 'Quality',
@@ -8086,9 +8090,9 @@ extension on Translations {
 			'liveTv.reorderFavorites' => 'Reorder Favorites',
 			'liveTv.favoritesSaveFailed' => 'Could not save your favorite channels',
 			'liveTv.joinSession' => 'Join Session in Progress',
-			'liveTv.watchFromStart' => ({required Object minutes}) => 'Watch from start (${minutes} min ago)',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.watchFromStart' => ({required Object minutes}) => 'Watch from start (${minutes} min ago)',
 			'liveTv.watchLive' => 'Watch Live',
 			'liveTv.goToLive' => 'Go to Live',
 			'liveTv.record' => 'Record',
@@ -8600,9 +8604,9 @@ extension on Translations {
 			'seerr.serverVersion' => ({required Object version}) => 'Server version ${version}',
 			'seerr.permissionAdmin' => 'Administrator',
 			'seerr.permissionManage' => 'Can approve requests',
-			'seerr.permissionRequest' => 'Can request',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.permissionRequest' => 'Can request',
 			'seerr.request' => 'Request',
 			'seerr.requested' => 'Requested',
 			'seerr.requestAgain' => 'Request',

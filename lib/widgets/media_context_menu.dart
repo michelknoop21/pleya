@@ -13,6 +13,7 @@ import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_playlist.dart';
 import '../media/media_server_client.dart';
+import '../exceptions/media_server_exceptions.dart';
 import '../metadata_edit/metadata_edit_adapters.dart';
 import '../media/media_version.dart';
 import '../mixins/controller_disposer_mixin.dart';
@@ -82,6 +83,13 @@ bool isAdminActionAllowedForMediaItem({
   final blockedByPlexHomeRole =
       itemBackend == MediaBackend.plex && activeProfile != null && activeProfile.isPlexHome && !activeProfile.plexAdmin;
   return isOwnerOrAdmin && !blockedByPlexHomeRole;
+}
+
+String mediaDeletionFailureMessage(Object error, MediaBackend? backend) {
+  if (backend == MediaBackend.plex && error is MediaServerHttpException && error.statusCode == 400) {
+    return t.mediaMenu.plexDeletionDisabled;
+  }
+  return t.mediaMenu.mediaFailedToDelete;
 }
 
 /// A reusable wrapper widget that adds a context menu (long press / right click)
@@ -1558,7 +1566,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
     } catch (e) {
       appLogger.e(t.mediaMenu.mediaFailedToDelete, error: e);
       if (context.mounted) {
-        showErrorSnackBar(context, t.mediaMenu.mediaFailedToDelete);
+        showErrorSnackBar(context, mediaDeletionFailureMessage(e, item.backend));
       }
     }
   }

@@ -469,6 +469,7 @@
     "deleteMultipleWarning": "This includes all episodes and their files.",
     "mediaDeletedSuccessfully": "Media item deleted successfully",
     "mediaFailedToDelete": "Failed to delete media item",
+    "plexDeletionDisabled": "Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.",
     "rate": "Rate",
     "playFromBeginning": "Play from Beginning",
     "playVersion": "Play Version..."

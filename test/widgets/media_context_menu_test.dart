@@ -13,6 +13,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/watchlist_entry.dart';
 import 'package:pleya/media/watchlist_scope.dart';
 import 'package:pleya/media/watchlist_source.dart';
+import 'package:pleya/exceptions/media_server_exceptions.dart';
 import 'package:pleya/metadata_edit/metadata_edit_adapters.dart';
 import 'package:pleya/models/plex/plex_home_user.dart';
 import 'package:pleya/profiles/profile.dart';
@@ -83,6 +84,21 @@ void main() {
       expect(supportsMetadataEdit(client, MediaKind.movie), isTrue);
       expect(supportsMetadataEdit(client, MediaKind.show), isTrue);
       expect(supportsMetadataEdit(client, MediaKind.track), isFalse);
+    });
+  });
+
+  group('mediaDeletionFailureMessage', () {
+    test('explains Plex HTTP 400 as the server deletion setting', () {
+      final error = MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 400);
+
+      expect(mediaDeletionFailureMessage(error, MediaBackend.plex), t.mediaMenu.plexDeletionDisabled);
+    });
+
+    test('keeps the generic message for other failures', () {
+      final error = MediaServerHttpException(type: MediaServerHttpErrorType.connectionError);
+
+      expect(mediaDeletionFailureMessage(error, MediaBackend.plex), t.mediaMenu.mediaFailedToDelete);
+      expect(mediaDeletionFailureMessage(error, MediaBackend.jellyfin), t.mediaMenu.mediaFailedToDelete);
     });
   });
 

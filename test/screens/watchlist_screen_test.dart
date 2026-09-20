@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -17,6 +18,7 @@ import 'package:pleya/providers/watchlist_provider.dart';
 import 'package:pleya/mixins/refreshable.dart';
 import 'package:pleya/navigation/main_screen_scope.dart';
 import 'package:pleya/screens/watchlist_screen.dart';
+import 'package:pleya/screens/media_detail_screen.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -30,6 +32,7 @@ import 'package:pleya/focus/card_focus_scope.dart';
 import 'package:pleya/widgets/media_card_grid_layout.dart';
 import 'package:pleya/widgets/focusable_filter_chip.dart';
 import 'package:pleya/widgets/watchlist_sort_sheet.dart';
+import 'package:pleya/widgets/watchlist_filter_sheet.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:pleya/widgets/tv/tv_catalog_card.dart';
@@ -41,6 +44,7 @@ import 'package:pleya/widgets/watchlist_card.dart';
 
 import '../test_helpers/prefs.dart';
 import '../test_helpers/notice_layer.dart';
+import '../test_helpers/profile_navigation.dart';
 
 final scope = WatchlistScopeId(profileId: 'p1', backend: MediaBackend.plex, accountId: 'a', userId: 'u');
 
@@ -179,41 +183,48 @@ void main() {
     await tester.runAsync(() => provider.load());
     await tester.pumpWidget(
       TranslationProvider(
-        child: MaterialApp(
-          theme: monoTheme(dark: true),
-          builder: withNoticeLayer(
-            textScaler == null
-                ? null
-                : (context, child) => MediaQuery(
-                    data: MediaQuery.of(context).copyWith(textScaler: textScaler),
-                    child: child!,
-                  ),
-          ),
-          // Without an OfflineModeProvider the screen reads absent as online,
-          // which is the state most of these tests are about.
-          home: MultiProvider(
-            providers: [
-              ChangeNotifierProvider<WatchlistProvider>.value(value: provider),
-              ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
-              if (offline) ChangeNotifierProvider<OfflineModeProvider>(create: (_) => _OfflineProvider()),
-            ],
-            // The real app always has an OverlaySheetHost above this screen
-            // (MainScreen installs one), so sheets open as overlays rather than
-            // routes. Pumping without it sent showAdaptive down the
-            // showModalBottomSheet fallback, where a plain Navigator.pop is
-            // correct -- which is exactly why the sort sheet could pop the whole
-            // screen in the app while these tests stayed green.
-            child: OverlaySheetHost(
-              child: MainScreenFocusScope(
-                focusSidebar: focusSidebar ?? () {},
-                focusContent: () {},
-                isSidebarFocused: false,
-                sideNavigationWidth: 0,
-                foregroundLeft: 0,
-                foregroundWidth: 1280,
-                viewportWidth: 1280,
-                child: WatchlistScreen(key: watchlistKey),
+        // Providers and profile navigation live above the Navigator in the
+        // app, so detail routes pushed from the watchlist inherit both.
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider<WatchlistProvider>.value(value: provider),
+            ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
+            if (offline) ChangeNotifierProvider<OfflineModeProvider>(create: (_) => _OfflineProvider()),
+          ],
+          child: MaterialApp(
+            theme: monoTheme(dark: true),
+            builder: withNoticeLayer(
+              (context, child) => withProfileNavigationScope(
+                child: textScaler == null
+                    ? child!
+                    : MediaQuery(
+                        data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+                        child: child!,
+                      ),
               ),
+            ),
+            // Without an OfflineModeProvider the screen reads absent as online,
+            // which is the state most of these tests are about.
+            home: Builder(
+              builder: (context) =>
+                  // The real app always has an OverlaySheetHost above this screen
+                  // (MainScreen installs one), so sheets open as overlays rather than
+                  // routes. Pumping without it sent showAdaptive down the
+                  // showModalBottomSheet fallback, where a plain Navigator.pop is
+                  // correct -- which is exactly why the sort sheet could pop the whole
+                  // screen in the app while these tests stayed green.
+                  OverlaySheetHost(
+                    child: MainScreenFocusScope(
+                      focusSidebar: focusSidebar ?? () {},
+                      focusContent: () {},
+                      isSidebarFocused: false,
+                      sideNavigationWidth: 0,
+                      foregroundLeft: 0,
+                      foregroundWidth: 1280,
+                      viewportWidth: 1280,
+                      child: WatchlistScreen(key: watchlistKey),
+                    ),
+                  ),
             ),
           ),
         ),
@@ -225,6 +236,21 @@ void main() {
     await tester.pump();
     await tester.pump();
     await tester.pump();
+  }
+
+  Finder filterButton() =>
+      find.byWidgetPredicate((widget) => widget is FocusableFilterChip && widget.icon == Symbols.filter_list_rounded);
+
+  Finder sortButton() =>
+      find.byWidgetPredicate((widget) => widget is FocusableFilterChip && widget.icon == Symbols.swap_vert_rounded);
+
+  Future<void> pickFilter(WidgetTester tester, String option) async {
+    await tester.tap(filterButton());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(option));
+    await tester.pump();
+    await tester.tap(find.text(t.unifiedCatalog.filters.apply));
+    await tester.pumpAndSettle();
   }
 
   testWidgets('renders one card per title', (tester) async {
@@ -241,9 +267,7 @@ void main() {
     expect(find.text(t.watchlist.emptyBody), findsOneWidget);
 
     await pumpScreen(tester, [entry(key: 'a', kind: MediaKind.movie)]);
-    await tester.tap(find.text(t.watchlist.filterShows));
-    await tester.pump();
-    await tester.pump();
+    await pickFilter(tester, t.watchlist.filterShows);
 
     expect(find.text(t.watchlist.emptyFiltered), findsOneWidget);
     expect(find.text(t.watchlist.empty), findsNothing);
@@ -254,9 +278,7 @@ void main() {
     expect(find.widgetWithText(FocusableButton, t.watchlist.retry), findsOneWidget);
 
     await pumpScreen(tester, [entry(key: 'a')]);
-    await tester.tap(find.text(t.watchlist.filterShows));
-    await tester.pump();
-    await tester.pump();
+    await pickFilter(tester, t.watchlist.filterShows);
 
     expect(find.widgetWithText(FocusableButton, t.watchlist.filterAll), findsOneWidget);
   });
@@ -267,15 +289,11 @@ void main() {
       entry(key: 'show', title: 'A Show', kind: MediaKind.show),
     ]);
 
-    await tester.tap(find.text(t.watchlist.filterMovies));
-    await tester.pump();
-    await tester.pump();
+    await pickFilter(tester, t.watchlist.filterMovies);
     expect(find.text('A Movie'), findsOneWidget);
     expect(find.text('A Show'), findsNothing);
 
-    await tester.tap(find.text(t.watchlist.filterShows));
-    await tester.pump();
-    await tester.pump();
+    await pickFilter(tester, t.watchlist.filterShows);
     expect(find.text('A Show'), findsOneWidget);
     expect(find.text('A Movie'), findsNothing);
   });
@@ -567,9 +585,8 @@ void main() {
   });
 
   group('filter bar', () {
-    // The screenshots showed "Alles" cut off at the left edge and the last chip
-    // erased mid-word by a fade, on a bar that used a raw Material ChoiceChip
-    // found nowhere else in the app.
+    // The watchlist uses the same compact filled controls as Movies and Series;
+    // the individual answers live in the sheet instead of crowding this row.
     testWidgets('the sort control names the order it is in', (tester) async {
       await pumpScreen(tester, [entry(key: 'a')]);
 
@@ -578,46 +595,43 @@ void main() {
       expect(find.byType(Tooltip), findsNothing);
     });
 
-    testWidgets('the chips are the app\'s own, not a bare Material chip', (tester) async {
+    testWidgets('the toolbar uses the same two filled controls as the catalog', (tester) async {
       await pumpScreen(tester, [entry(key: 'a')]);
 
       expect(find.byType(ChoiceChip), findsNothing);
-      expect(find.byType(FocusableFilterChip), findsWidgets);
+      final controls = tester.widgetList<FocusableFilterChip>(find.byType(FocusableFilterChip)).toList();
+      expect(controls, hasLength(2));
+      expect(controls.every((chip) => chip.variant == FilterChipVariant.filled), isTrue);
+      expect(filterButton(), findsOneWidget);
+      expect(sortButton(), findsOneWidget);
     });
 
-    testWidgets('no chip starts or ends outside the viewport', (tester) async {
+    testWidgets('the compact controls use one horizontally scrollable row on a narrow phone', (tester) async {
       tester.view.physicalSize = const Size(360, 780);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       await pumpScreen(tester, [entry(key: 'a')]);
 
-      for (final label in [t.watchlist.filterAll, t.watchlist.filterMovies, t.watchlist.filterShows]) {
-        final chip = find.ancestor(of: find.text(label), matching: find.byType(FocusableFilterChip)).first;
-        final rect = tester.getRect(chip);
-        expect(rect.left, greaterThanOrEqualTo(0), reason: '$label starts off-screen');
-        expect(rect.width, greaterThan(0));
-      }
+      expect(filterButton(), findsOneWidget);
+      expect(sortButton(), findsOneWidget);
+      expect(find.byType(SingleChildScrollView), findsWidgets);
+      expect(tester.getRect(filterButton()).left, greaterThanOrEqualTo(0));
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('the strip keeps an inset, so the first chip is never flush left', (tester) async {
       await pumpScreen(tester, [entry(key: 'a')]);
 
-      final chip = find
-          .ancestor(of: find.text(t.watchlist.filterAll), matching: find.byType(FocusableFilterChip))
-          .first;
-      expect(tester.getRect(chip).left, greaterThan(0));
+      expect(tester.getRect(filterButton()).left, greaterThan(0));
     });
 
-    testWidgets('picking a filter keeps it selected and readable', (tester) async {
+    testWidgets('picking a filter closes the sheet and increments the badge', (tester) async {
       await pumpScreen(tester, [entry(key: 'a'), entry(key: 'show', kind: MediaKind.show)]);
 
-      await tester.tap(find.text(t.watchlist.filterShows));
-      await tester.pumpAndSettle();
+      await pickFilter(tester, t.watchlist.filterShows);
 
-      final chip = tester.widget<FocusableFilterChip>(
-        find.ancestor(of: find.text(t.watchlist.filterShows), matching: find.byType(FocusableFilterChip)).first,
-      );
-      expect(chip.selected, isTrue);
+      expect(find.byType(WatchlistFilterSheet), findsNothing);
+      expect(tester.widget<FocusableFilterChip>(filterButton()).badgeCount, 1);
       expect(tester.takeException(), isNull);
     });
   });
@@ -627,7 +641,7 @@ void main() {
         tester.widgetList<WatchlistCard>(find.byType(WatchlistCard)).map((card) => card.entry.key).toList();
 
     Future<void> pick(WidgetTester tester, String option) async {
-      await tester.tap(find.text(t.libraries.sort));
+      await tester.tap(sortButton());
       await tester.pumpAndSettle();
       await tester.tap(find.text(option));
       await tester.pumpAndSettle();
@@ -671,7 +685,7 @@ void main() {
     testWidgets('picking an order closes the sheet and leaves the screen standing', (tester) async {
       await pumpScreen(tester, threeFilms());
 
-      await tester.tap(find.text(t.libraries.sort));
+      await tester.tap(sortButton());
       await tester.pumpAndSettle();
       expect(find.text(t.libraries.sortBy), findsOneWidget);
 
@@ -690,8 +704,7 @@ void main() {
         entry(key: 'a', title: 'Alien', year: 1979, position: 2),
       ]);
 
-      await tester.tap(find.text(t.watchlist.filterMovies));
-      await tester.pumpAndSettle();
+      await pickFilter(tester, t.watchlist.filterMovies);
       await pick(tester, t.watchlist.sortTitle);
 
       expect(cardOrder(tester), ['a', 'c'], reason: 'the show is filtered out and the two films are sorted');
@@ -704,22 +717,24 @@ void main() {
 
       await pumpScreen(tester, threeFilms());
 
-      // A Row that did not fit would throw here rather than reflow, so simply
-      // arriving with the button on screen is the assertion.
-      final button = find.text(t.libraries.sort);
-      expect(button, findsOneWidget);
-      expect(tester.getTopRight(button).dx, lessThanOrEqualTo(360));
-
-      // The chips share the row with the button instead of pushing it off.
-      expect(tester.getTopRight(find.text(t.watchlist.filterAll)).dx, lessThan(tester.getTopLeft(button).dx));
+      // Catalog toolbars remain one row and scroll horizontally when the
+      // localized labels need more room.
+      expect(filterButton(), findsOneWidget);
+      expect(sortButton(), findsOneWidget);
+      expect(tester.getTopLeft(filterButton()).dy, moreOrLessEquals(tester.getTopLeft(sortButton()).dy, epsilon: 0.5));
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('offline the order can still be changed, but Available cannot be picked', (tester) async {
       await pumpScreen(tester, threeFilms(), offline: true);
 
       // Availability needs live servers; order does not.
+      await tester.tap(filterButton());
+      await tester.pumpAndSettle();
       expect(find.text(t.watchlist.filterAvailable), findsNothing);
-      expect(find.text(t.libraries.sort), findsOneWidget);
+      await tester.tap(find.text(t.unifiedCatalog.filters.apply));
+      await tester.pumpAndSettle();
+      expect(sortButton(), findsOneWidget);
 
       await pick(tester, t.watchlist.sortTitle);
 
@@ -866,6 +881,56 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Film C'), findsWidgets, reason: 'the sheet is about the card the remote was on');
+    });
+
+    testWidgets('Select on a playable card opens its normal detail page', (tester) async {
+      await pumpScreen(
+        tester,
+        [
+          entry(
+            key: 'a',
+            title: 'Film A',
+            match: playableMatch('a', title: 'Film A'),
+          ),
+        ],
+        tv: true,
+        serversOnline: true,
+      );
+      nodeFor(tester, 'a').requestFocus();
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(MediaDetailScreen), findsOneWidget);
+      expect(find.text(t.watchlist.remove), findsNothing);
+    });
+
+    testWidgets('long Select on a playable card keeps removal available', (tester) async {
+      await pumpScreen(
+        tester,
+        [
+          entry(
+            key: 'a',
+            title: 'Film A',
+            match: playableMatch('a', title: 'Film A'),
+          ),
+        ],
+        tv: true,
+        serversOnline: true,
+      );
+      nodeFor(tester, 'a').requestFocus();
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      expect(find.text(t.watchlist.remove), findsOneWidget);
+      expect(find.byType(MediaDetailScreen), findsNothing);
     });
 
     testWidgets('an availability flip leaves the focus exactly where it was', (tester) async {

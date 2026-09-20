@@ -388,7 +388,7 @@ class AutomationIds {
   static const String sheetContextMenuItem = 'sheet.context_menu.item';
 
   /// The Alle films/Alle series catalogue screens and the matching Aanvragen
-  /// phone catalog (iOS Unified 2026 fase 3,
+  /// and Kijklijst phone controls (iOS Unified 2026 fase 3,
   /// `docs/ios-unified-2026-fase3-plan.md`). Two separate consts rather than
   /// one instanceable id, the same choice [screenSeries]/[screenMovies] made:
   /// each screen is pushed on its own, kind is the whole identity. Aanvragen
