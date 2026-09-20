@@ -1,0 +1,12 @@
+name: tvos.auth.first-profile-handoff
+target: tvos-sim
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - assert: {id: screen.discover}
+  - settle: 800
+  - snapshot: 00-first-profile-ready

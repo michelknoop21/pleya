@@ -239,7 +239,14 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
       mainAxisSize: .min,
       children: [
         if (icon != null) ...[AppIcon(icon, fill: 1, size: 16, color: foregroundColor), const SizedBox(width: 6)],
-        Text(widget.label, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: foregroundColor)),
+        Flexible(
+          child: Text(
+            widget.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(color: foregroundColor),
+          ),
+        ),
         if (widget.trailingIcon != null) ...[
           const SizedBox(width: 2),
           AppIcon(widget.trailingIcon, fill: 1, size: 16, color: foregroundColor),

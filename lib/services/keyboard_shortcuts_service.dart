@@ -22,7 +22,6 @@ class KeyboardShortcutsService extends ChangeNotifier {
   Map<String, HotKey> _hotkeys = {}; // New HotKey objects
   int _seekTimeSmall = 10; // Default, loaded from settings
   int _seekTimeLarge = 30; // Default, loaded from settings
-  int _maxVolume = 100; // Default, loaded from settings (100-300%)
 
   KeyboardShortcutsService._();
 
@@ -57,7 +56,6 @@ class KeyboardShortcutsService extends ChangeNotifier {
     bind(SettingsService.keyboardHotkeys);
     bind(SettingsService.seekTimeSmall);
     bind(SettingsService.seekTimeLarge);
-    bind(SettingsService.maxVolume);
   }
 
   void _onSettingsChanged() => _syncFromSettings();
@@ -67,20 +65,17 @@ class KeyboardShortcutsService extends ChangeNotifier {
     final hotkeys = _settingsService.read(SettingsService.keyboardHotkeys);
     final seekTimeSmall = _settingsService.read(SettingsService.seekTimeSmall);
     final seekTimeLarge = _settingsService.read(SettingsService.seekTimeLarge);
-    final maxVolume = _settingsService.read(SettingsService.maxVolume);
 
     final changed =
         !mapEquals(_shortcuts, shortcuts) ||
         !_hotkeyMapsEqual(_hotkeys, hotkeys) ||
         _seekTimeSmall != seekTimeSmall ||
-        _seekTimeLarge != seekTimeLarge ||
-        _maxVolume != maxVolume;
+        _seekTimeLarge != seekTimeLarge;
 
     _shortcuts = Map<String, String>.from(shortcuts);
     _hotkeys = Map<String, HotKey>.from(hotkeys);
     _seekTimeSmall = seekTimeSmall;
     _seekTimeLarge = seekTimeLarge;
-    _maxVolume = maxVolume;
 
     if (notify && changed) notifyListeners();
   }
@@ -96,7 +91,10 @@ class KeyboardShortcutsService extends ChangeNotifier {
 
   Map<String, String> get shortcuts => Map.from(_shortcuts);
   Map<String, HotKey> get hotkeys => Map.from(_hotkeys);
-  int get maxVolume => _maxVolume;
+
+  /// Normal volume stops at unity; the boost is a stage of the filter chain
+  /// now, not a higher ceiling on this one ([SettingsService.volumeBoost]).
+  static const maxVolume = kNormalVolumeMax;
 
   String getShortcut(String action) {
     return _shortcuts[action] ?? '';
@@ -331,13 +329,13 @@ class KeyboardShortcutsService extends ChangeNotifier {
       // fell back to PCM has a working volume again.
       case 'volume_up':
         if (AudioOutputCoordinator.bitstreamActive.value) break;
-        final newVolume = (player.state.volume + 10).clamp(0.0, _maxVolume.toDouble());
+        final newVolume = (player.state.volume + 10).clamp(0.0, maxVolume.toDouble());
         player.setVolume(newVolume);
         _settingsService.write(SettingsService.volume, newVolume);
         break;
       case 'volume_down':
         if (AudioOutputCoordinator.bitstreamActive.value) break;
-        final newVolume = (player.state.volume - 10).clamp(0.0, _maxVolume.toDouble());
+        final newVolume = (player.state.volume - 10).clamp(0.0, maxVolume.toDouble());
         player.setVolume(newVolume);
         _settingsService.write(SettingsService.volume, newVolume);
         break;

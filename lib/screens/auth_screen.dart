@@ -3,7 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
+import '../automation/automation_ids.dart';
 import '../automation/automation_navigation_hooks.dart';
+import '../automation/automation_node.dart';
+import '../automation/automation_screen.dart';
 import '../automation/pleya_verify.dart';
 import '../connection/connection.dart';
 import '../connection/connection_registry.dart';
@@ -32,6 +35,7 @@ import '../widgets/pleya_logo.dart';
 import 'auth/plex_pin_auth_flow.dart';
 import 'profile/profile_switch_screen.dart';
 import 'settings/add_jellyfin_screen.dart';
+import 'tv/tv_auth_view.dart';
 
 /// Recovery-oriented auth failure states. When set, the auth screen shows
 /// a structured recovery widget instead of a bare error string, giving the
@@ -39,7 +43,25 @@ import 'settings/add_jellyfin_screen.dart';
 enum _AuthRecoveryState { noServersFound, networkError }
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({
+    super.key,
+    this.plexPinAuthServiceFactory,
+    this.plexConnectAuthServiceFactory,
+    this.jellyfinRoute,
+    this.plexPollTimeout = const Duration(minutes: 5),
+  });
+
+  @visibleForTesting
+  final Future<PlexAuthService> Function()? plexPinAuthServiceFactory;
+
+  @visibleForTesting
+  final Future<PlexAuthService> Function()? plexConnectAuthServiceFactory;
+
+  @visibleForTesting
+  final Future<bool?> Function(BuildContext context)? jellyfinRoute;
+
+  @visibleForTesting
+  final Duration plexPollTimeout;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -62,7 +84,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _initVerifyService() async {
-    final svc = await PlexAuthService.create();
+    final svc = await (widget.plexConnectAuthServiceFactory ?? PlexAuthService.create)();
     if (!mounted) {
       svc.dispose();
       return;
@@ -122,7 +144,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
     final connectionRegistry = context.read<ConnectionRegistry>();
     final plexHome = context.read<PlexHomeService>();
-    final svc = await PlexAuthService.create();
+    final svc = await (widget.plexConnectAuthServiceFactory ?? PlexAuthService.create)();
 
     try {
       final userInfo = await svc.getUserInfo(plexToken);
@@ -188,7 +210,7 @@ class _AuthScreenState extends State<AuthScreen> {
           context,
         ).push<bool>(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen(requireSelection: true)));
         if (!mounted) return;
-        if (selected != true || activeProfiles.active == null) {
+        if (!shouldContinueAfterInitialProfileSelection(selected: selected, activeProfile: activeProfiles.active)) {
           setState(() => _isAuthenticating = false);
           return;
         }
@@ -218,7 +240,9 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _connectToJellyfin() async {
-    final added = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const AddJellyfinScreen()));
+    final added =
+        await (widget.jellyfinRoute?.call(context) ??
+            Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const AddJellyfinScreen())));
     if (!mounted || added != true) return;
     // The connection persisted and the manager registered the client; move
     // straight to the main screen. [MainScreen] reads the active client
@@ -237,6 +261,95 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final composition = PlatformDetector.isAppleTV() ? _buildAppleTvAuthScreen() : _buildExistingAuthScreen();
+    return AutomationScreen(
+      id: AutomationIds.screenAuth,
+      readiness: () => const AutomationReadiness.ready(),
+      child: composition,
+    );
+  }
+
+  Widget _buildAppleTvAuthScreen() {
+    return Focus(
+      canRequestFocus: false,
+      onKeyEvent: (_, event) => handleBackKeyNavigation(context, event),
+      child: Scaffold(
+        body: PlexPinAuthFlow(
+          onTokenReceived: _connectToAllServersAndNavigate,
+          // The tvOS render surface is scaled 1.85x after Flutter layout. The
+          // desktop default (300) therefore becomes a 555 px QR code and
+          // pushes the retry action through the fixed-height state panel.
+          desktopQrSize: 160,
+          autoStartQrOnTV: false,
+          onSwitchToJellyfin: _connectToJellyfin,
+          authServiceFactory: widget.plexPinAuthServiceFactory,
+          pollTimeout: widget.plexPollTimeout,
+          shellBuilder: (context, scope) {
+            final blocked = _isAuthenticating || _recoveryState != null;
+            return TvAuthView(
+              brand: _buildBrandHeader(context),
+              content: _buildAppleTvPanel(scope),
+              state: _appleTvPanelState(scope),
+              plexEnabled: !blocked && !scope.busy,
+              jellyfinEnabled: !blocked && !scope.busy,
+              onPlexSelected: scope.startQr,
+              onJellyfinSelected: scope.switchToJellyfin!,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  TvAuthPanelState _appleTvPanelState(PlexPinAuthShellScope scope) {
+    if (_isAuthenticating) return TvAuthPanelState.authenticating;
+    if (_recoveryState != null) {
+      return switch (_recoveryState!) {
+        _AuthRecoveryState.noServersFound => TvAuthPanelState.noServersFound,
+        _AuthRecoveryState.networkError => TvAuthPanelState.networkError,
+      };
+    }
+    return switch (scope.state) {
+      PlexPinAuthVisualState.initial => TvAuthPanelState.initial,
+      PlexPinAuthVisualState.waiting => TvAuthPanelState.waiting,
+      PlexPinAuthVisualState.qr => TvAuthPanelState.qr,
+      PlexPinAuthVisualState.error => TvAuthPanelState.plexError,
+      PlexPinAuthVisualState.timedOut => TvAuthPanelState.timedOut,
+    };
+  }
+
+  Widget _buildAppleTvPanel(PlexPinAuthShellScope scope) {
+    if (_isAuthenticating) {
+      return Column(
+        mainAxisSize: .min,
+        crossAxisAlignment: .start,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 24),
+          Text(t.auth.waitingForAuth, style: Theme.of(context).textTheme.headlineSmall),
+        ],
+      );
+    }
+    if (_recoveryState != null) {
+      return _AuthRecoveryView(
+        state: _recoveryState!,
+        onRetry: () => setState(() => _recoveryState = null),
+        onConnectJellyfin: _connectToJellyfin,
+      );
+    }
+    if (scope.activeBody case final activeBody?) return activeBody;
+    return Column(
+      mainAxisSize: .min,
+      crossAxisAlignment: .start,
+      children: [
+        Text(t.auth.chooseHowToSignIn, style: Theme.of(context).textTheme.headlineMedium),
+        const SizedBox(height: 16),
+        Text(t.auth.chooseHowToSignInDescription, style: Theme.of(context).textTheme.bodyLarge),
+      ],
+    );
+  }
+
+  Widget _buildExistingAuthScreen() {
     // Use two-column layout on desktop, single column on mobile
     final isDesktop = MediaQuery.sizeOf(context).width > 700;
 
@@ -323,11 +436,13 @@ class _AuthScreenState extends State<AuthScreen> {
       autoStartQrOnTV: false,
       initialButtonsBuilder: _buildInitialButtons,
       onSwitchToJellyfin: _connectToJellyfin,
+      authServiceFactory: widget.plexPinAuthServiceFactory,
+      pollTimeout: widget.plexPollTimeout,
     );
   }
 
-  /// Brand block per the app-intro mockup: logo mark, the PLEYA wordmark and
-  /// the tagline.
+  /// Brand block per the app-intro mockup: the P mark plus LEYA form the
+  /// complete PLEYA wordmark, followed by the tagline.
   Widget _buildBrandHeader(BuildContext context) {
     final textColor = Theme.of(context).colorScheme.onSurface;
     return Column(
@@ -335,7 +450,7 @@ class _AuthScreenState extends State<AuthScreen> {
         const PleyaLogo(size: 96),
         const SizedBox(height: 22),
         Text(
-          'PLEYA',
+          PlatformDetector.isAppleTV() ? 'LEYA' : 'PLEYA',
           textAlign: TextAlign.center,
           style: TextStyle(color: textColor, fontSize: 24, fontWeight: .w800, letterSpacing: 9.6),
         ),
@@ -487,6 +602,11 @@ bool shouldPromptForInitialProfileSelection({
   return requireProfileSelectionOnOpen || (activeProfile == null && (hasProfiles || accountHasHomeUsers));
 }
 
+@visibleForTesting
+bool shouldContinueAfterInitialProfileSelection({required bool? selected, required Profile? activeProfile}) {
+  return selected == true && activeProfile != null;
+}
+
 /// Recovery-oriented error view shown when the initial Plex sign-in succeeds
 /// but yields no usable servers, or when the server-fetch call fails. Instead
 /// of a bare error string, the user gets a title, a plain-language explanation,
@@ -526,13 +646,17 @@ class _AuthRecoveryView extends StatelessWidget {
           style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
         ),
         const SizedBox(height: 24),
-        FocusableButton(
-          autofocus: true,
-          onPressed: onRetry,
-          child: FilledButton.icon(
+        AutomationNode(
+          id: AutomationIds.authRetry,
+          role: 'button',
+          child: FocusableButton(
+            autofocus: true,
             onPressed: onRetry,
-            icon: const Icon(Symbols.refresh_rounded),
-            label: Text(t.auth.tryAgain),
+            child: FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Symbols.refresh_rounded),
+              label: Text(t.auth.tryAgain),
+            ),
           ),
         ),
         if (state == _AuthRecoveryState.noServersFound) ...[

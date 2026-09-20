@@ -2701,3 +2701,57 @@ UP, DOWN, LEFT/RIGHT in de balk en de back-keten lopen via de bestaande callback
 topnav blijft bereikbaar, maar hij staat daar standaard ingeklapt. Een geopende balk ligt tijdelijk
 over de bovenrand van het detail, zonder eigen achtergrond behalve een scrim voor leesbaarheid. Een
 volgend scherm dat dit gedrag wil, kiest het bij de opener; de shell kent geen schermnamen.
+
+## DEC-117: De volumeversterking is een gain-stage in de loudnessketen, niet mpv's softwarevolume
+
+**Date:** 2026-09-20
+**Status:** accepted
+
+**Context:** AUD3 in `docs/tvos-fysieke-correctieronde.md`. Michel hoorde op een fysieke Apple TV
+vals geluid met Volumeversterking aan en leverde log `5r9eo` van build 289. De versterking schreef
+tot nu toe mpv's `volume` en `volume-max` (`TvAudioTab.applyVolumeBoost`, AUD1). Dat is een
+softwaregain die mpv in `ao_post_process_data` toepast, ná elk filter inclusief de limiter, en hij
+schaalt cubisch: de log rekent +50% voor als `ao_gain=3.375 (+10,57 dBFS)`, met een clipdrempel van
+-10,57 dBFS terwijl `loudnorm` tevreden is op -2 dBTP. +200% is +28,6 dB. De versterking deelde
+daarbij één instelling met het normale volume, dus een boost verzette ook de volumeschuif.
+
+Dezelfde log legde een tweede ding bloot. MPVKit 1.0.26 levert veertien audiofilters en
+`acompressor`, `alimiter` en `astats` zitten er geen van drieën bij; `nm -gU` op de tvos-, ios- en
+macos-slice van `Libavfilter.xcframework` geeft alle drie de platformen dezelfde lijst. mpv weigert
+een `af`-string in zijn geheel om één onbekend filter, dus elke `af`-schrijf in die log kwam terug
+met -4 en liet `af=none` achter. De programmaketen van [DEC-111](#dec-111) en "harde geluiden
+dempen" zijn daarmee op Apple nooit hoorbaar geweest, en het meetprotocol waar die log uit voortkomt
+mat in werkelijkheid alleen 100% tegen 150%.
+
+**Decision:**
+(1) **De versterking is een stage van de keten.** `AudioLoudness.boostPercent` draagt hem, en hij
+staat ná de vaste gain en de compressor en vóór de limiter: dat is waar de limiter hem nog ziet.
+mpv's `volume-max` blijft op 100 en `volume` is het normale volume, niets anders.
+(2) **De percentages zijn lineair.** 150% is 1,5x, +3,52 dB; 300% is +9,54 dB. De rij op TV en de
+instelling op desktop houden hun stappen, maar ze betekenen nu wat ze zeggen. Cubisch was een
+eigenschap van mpv's softvol, geen productkeuze.
+(3) **In de realtime-keten verhoogt de versterking het `loudnorm`-doel** in plaats van er een
+`volume`-stage achter te hangen. Single-pass `loudnorm` limiteert op `TP` nadat het `I` heeft
+gehaald, dus een hoger `I` is een luider programma onder hetzelfde plafond; een stage erachter zou
+juist voorbij de enige limiter in die keten staan. `I=-22` wordt `I=-18.48` bij +50%.
+(4) **De versterking is audioverwerking.** `isEnabled` telt hem mee, dus de arbiter behandelt hem
+als de rest van de keten: hij vraagt gedecodeerde PCM en een lopende bitstream schort hem op
+([DEC-013](#dec-013)), met dezelfde melding.
+(5) **Een geweigerde keten wordt niet stilzwijgend geslikt.** `PlayerNative.applyNormalization`
+leest `af` terug en valt bij een lege terugmelding terug op de keten zonder `acompressor` en
+`alimiter`, met een waarschuwing in de log. Dat is slechter geluid dan bedoeld, maar hoorbaar en
+zichtbaar, in plaats van drie instellingen die samen uitvallen. De structurele oplossing is een
+MPVKit met die filters erin; zolang die er niet is, is dit de vangrail.
+(6) **Android krijgt dezelfde stage.** `LoudnessDsp.Params.boostDb` gaat over de wire en wordt in
+`process()` tussen de compressor en de limiter toegepast. Dat sluit een tweede gat: ExoPlayer's
+eigen volume is op 1,0 geklemd (`ExoPlayerCore.setVolume`), dus een versterking boven 100% kwam daar
+nooit aan.
+
+**Consequences:** AUD1 uit de correctieronde is hiermee vervangen; zijn test bewaakte precies het
+gedrag dat hier verdwijnt en is herschreven. Een opgeslagen `volume` boven 100 uit de oude opzet
+wordt bij het lezen op 100 geklemd, en de volumeschuif loopt niet langer tot 300% met een
+100%-markering. De sleutel `max_volume` blijft, want de opgeslagen getallen betekenen nog hetzelfde;
+alleen het Dart-symbool heet nu `volumeBoost`. Negatieve controle voor (1): met de boost ná de
+limiter meet `theLimiterStillHoldsAboveTheBoost` een true peak van 2,37, +7,5 dBFS; ervóór blijft
+hij onder -2 dBTP. Open: `scripts/loudness/prove.sh` rendert de ketens zonder versterking, dus de
+gemeten proef dekt (1) en (3) nog niet, en de hoorbaarheid op de Apple TV is HARDWARE ONLY.

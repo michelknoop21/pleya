@@ -174,6 +174,7 @@ void main() {
     MobileCatalogKind kind = MobileCatalogKind.movies,
     bool useEmpty = false,
     double width = 393,
+    double textScale = 1,
   }) async {
     tester.view.physicalSize = Size(width, 852);
     tester.view.devicePixelRatio = 1.0;
@@ -187,6 +188,10 @@ void main() {
         ],
         child: MaterialApp(
           theme: monoTheme(dark: true),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
           home: OverlaySheetHost(
             child: MobileCatalogScreen(
               kind: kind,
@@ -413,6 +418,22 @@ void main() {
         tester.getTopRight(finder).dx,
         lessThanOrEqualTo(width - mobileRailInset + 0.5),
         reason: 'chip "${chip.label}" runs past the right edge',
+      );
+    }
+  });
+
+  testWidgets('every chip stays within the screen at large accessibility text scales', (tester) async {
+    const width = 393.0;
+    await pumpCatalog(tester, width: width, textScale: 3);
+    await settle(tester);
+
+    expect(tester.takeException(), isNull);
+    for (final chip in tester.widgetList<FocusableFilterChip>(find.byType(FocusableFilterChip))) {
+      final finder = find.byWidget(chip);
+      expect(
+        tester.getTopRight(finder).dx,
+        lessThanOrEqualTo(width - mobileRailInset + 0.5),
+        reason: 'chip "${chip.label}" runs past the right edge at 300% text',
       );
     }
   });

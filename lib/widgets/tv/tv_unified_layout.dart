@@ -34,6 +34,32 @@ import 'package:flutter/painting.dart';
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
 
+/// Density tokens for the first-start authentication composition.
+///
+/// Box composition belongs to `TvAuthGeometry`, which has the live viewport.
+/// These values describe only things that need to stay readable and operable
+/// from ten feet away, so callers multiply them by [TvLayoutConstants.scaleOf].
+class TvAuthLayout {
+  const TvAuthLayout._();
+
+  static const double headingFontSize = 29;
+  static const double bodyFontSize = 14.5;
+  static const double choiceTitleFontSize = 16.5;
+  static const double choiceSubtitleFontSize = 12.5;
+  static const double choiceMinHeight = 68;
+  static const double choicePaddingHorizontal = 18;
+  static const double choicePaddingVertical = 11;
+  static const double choiceRadius = 11;
+  static const double choiceGap = 9;
+  static const double choiceLineGap = 3;
+  static const double choiceIconSize = 19;
+  static const double focusRingGap = 3;
+  static const double headingGap = 8;
+  static const double choicesTopGap = 22;
+  static const double panelPadding = 30;
+  static const double panelRadius = 18;
+}
+
 /// Base metrics for the source picker of hoofdstuk 14. Multiply by
 /// [TvLayoutConstants.scaleOf] at the use site.
 class TvSourcePickerLayout {

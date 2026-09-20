@@ -7,6 +7,18 @@ List<NavigationTabId> _ids(List<NavigationTab> tabs) => tabs.map((tab) => tab.id
 
 void main() {
   group('startup bind recovery', () {
+    test('partial startup remains online when at least one visible server binds', () {
+      expect(shouldEnterOfflineModeAfterStartupBind(bindingSucceeded: false, hasOnlineServers: true), isFalse);
+    });
+
+    test('failed startup enters offline only when no server is online', () {
+      expect(shouldEnterOfflineModeAfterStartupBind(bindingSucceeded: false, hasOnlineServers: false), isTrue);
+    });
+
+    test('successful bind with zero manager servers is not reclassified as failure', () {
+      expect(shouldEnterOfflineModeAfterStartupBind(bindingSucceeded: true, hasOnlineServers: false), isFalse);
+    });
+
     test('enters offline mode only when initial bind failed with no online servers', () {
       expect(shouldEnterOfflineModeAfterStartupBind(bindingSucceeded: false, hasOnlineServers: false), isTrue);
       expect(shouldEnterOfflineModeAfterStartupBind(bindingSucceeded: true, hasOnlineServers: false), isFalse);

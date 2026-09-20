@@ -1,5 +1,6 @@
 import '../../media/loudness_evidence.dart';
 import '../../mpv/models.dart' show AudioLoudness, ProgrammeGainLimit;
+import '../settings_service.dart';
 
 /// The canonical gain policy. Kotlin's `LoudnessDsp` carries the same numbers;
 /// `scripts/loudness/prove.sh` is the proof that both land in the same place.
@@ -83,7 +84,22 @@ AudioLoudness planLoudness(AudioLoudness prefs, LoudnessEvidence? evidence) {
   return AudioLoudness(
     levelVolume: prefs.levelVolume,
     reduceLoudSounds: prefs.reduceLoudSounds,
+    boostPercent: prefs.boostPercent,
     programmeGainDb: programme?.gainDb,
     gainLimit: programme?.limit ?? ProgrammeGainLimit.none,
+  );
+}
+
+/// The user's three audio-processing choices as one request.
+///
+/// One reader for all of them, because the boost is a stage of the same chain
+/// as the two switches: a caller that pushed the switches and forgot the boost
+/// would write a chain that silently drops it.
+AudioLoudness audioLoudnessPrefs([SettingsService? service]) {
+  final settings = service ?? SettingsService.instance;
+  return AudioLoudness(
+    levelVolume: settings.read(SettingsService.audioLevelVolume),
+    reduceLoudSounds: settings.read(SettingsService.audioReduceLoudSounds),
+    boostPercent: settings.read(SettingsService.volumeBoost),
   );
 }

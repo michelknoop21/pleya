@@ -2812,14 +2812,19 @@ class ExoPlayerCore(private val activity: Activity) : Player.Listener {
    * [profileVersion] has to match [LoudnessDsp.PROFILE_VERSION] or the two
    * sides disagree about what the chain does.
    */
-  fun setLoudness(mode: String?, gainDb: Double?, drc: Boolean, profileVersion: Int) {
-    val params = LoudnessDsp.Params(LoudnessDsp.Mode.parse(mode), gainDb ?: 0.0, drc, profileVersion)
+  fun setLoudness(mode: String?, gainDb: Double?, drc: Boolean, profileVersion: Int, boostDb: Double) {
+    val params =
+      LoudnessDsp.Params(LoudnessDsp.Mode.parse(mode), gainDb ?: 0.0, drc, profileVersion, boostDb)
     if (profileVersion != LoudnessDsp.PROFILE_VERSION) {
       emitLog("warn", "loudness", "Profile version $profileVersion from Dart, ${LoudnessDsp.PROFILE_VERSION} here")
     }
     loudnessParams = params
     renderersFactory?.loudnessProcessor?.params = params
-    emitLog("info", "loudness", "Loudness ${params.mode.wire}, gain=${gainDb ?: "none"} dB, drc=$drc")
+    emitLog(
+      "info",
+      "loudness",
+      "Loudness ${params.mode.wire}, gain=${gainDb ?: "none"} dB, drc=$drc, boost=$boostDb dB"
+    )
 
     val enabled = params.mode != LoudnessDsp.Mode.OFF
     if (audioNormalizationEnabled == enabled) return

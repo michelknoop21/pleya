@@ -5,7 +5,6 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../models/transcode_quality_preset.dart';
-import '../../mpv/models.dart' show AudioLoudness;
 import '../../mpv/player/platform/player_android.dart';
 import '../../services/audio_output_coordinator.dart';
 import '../../services/audio_output_decision.dart';
@@ -13,6 +12,7 @@ import '../../utils/quality_preset_labels.dart';
 import '../../services/companion_remote/companion_remote_host_controller.dart';
 import '../../services/discord_rpc_service.dart';
 import '../../services/keyboard_shortcuts_service.dart';
+import '../../services/loudness/loudness_planner.dart';
 import '../../services/settings_service.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/snackbar_helper.dart';
@@ -127,7 +127,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
           max: 240,
         ),
         SettingNumberTile(
-          pref: SettingsService.maxVolume,
+          pref: SettingsService.volumeBoost,
           icon: Symbols.volume_up_rounded,
           title: t.settings.maxVolume,
           subtitleBuilder: (v) => t.settings.maxVolumePercent(percent: v.toString()),
@@ -135,6 +135,9 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
           suffixText: '%',
           min: 100,
           max: 300,
+          // The boost is part of the filter chain now, so a running player has
+          // to be told; it used to be an mpv property the next title read back.
+          onAfterWrite: (_) => _pushLoudness(),
         ),
 
         SettingsSectionHeader(t.settings.behavior),
@@ -402,13 +405,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
   /// Takes effect on the running player too, not just the next title. The
   /// coordinator is the handle on the playback session currently on screen.
   Future<void> _pushLoudness() async {
-    final settings = SettingsService.instance;
-    await AudioOutputCoordinator.current?.player.setAudioNormalization(
-      AudioLoudness(
-        levelVolume: settings.read(SettingsService.audioLevelVolume),
-        reduceLoudSounds: settings.read(SettingsService.audioReduceLoudSounds),
-      ),
-    );
+    await AudioOutputCoordinator.current?.player.setAudioNormalization(audioLoudnessPrefs());
   }
 
   Widget _audioSyncOffsetTile() => SettingNumberTile(

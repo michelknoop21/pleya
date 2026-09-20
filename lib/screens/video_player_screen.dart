@@ -62,6 +62,7 @@ import '../services/playback_source_resolver.dart';
 import '../services/offline_watch_sync_service.dart';
 import '../services/display_mode_service.dart';
 import '../services/audio_output_coordinator.dart';
+import '../services/loudness/loudness_planner.dart';
 import '../services/settings_service.dart';
 import '../services/sleep_timer_service.dart';
 import '../services/track_manager.dart';
@@ -1018,10 +1019,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
       // previous title left behind. Writing it before the output path is what
       // keeps `af` from landing after `audio-spdif`, which mpv reports as a
       // passthrough failure.
-      final loudness = AudioLoudness(
-        levelVolume: settingsService.read(SettingsService.audioLevelVolume),
-        reduceLoudSounds: settingsService.read(SettingsService.audioReduceLoudSounds),
-      );
+      final loudness = audioLoudnessPrefs(settingsService);
       await currentPlayer.setAudioNormalization(loudness);
 
       // Audio output path: Dolby bitstream, multichannel PCM or stereo. Runs
@@ -1068,11 +1066,11 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         }
       }
 
-      final maxVolume = settingsService.read(SettingsService.maxVolume);
-      await currentPlayer.setProperty('volume-max', maxVolume.toString());
-
-      final savedVolume = settingsService.read(SettingsService.volume).clamp(0.0, maxVolume.toDouble());
-      await currentPlayer.setVolume(savedVolume);
+      // Unity, always. A boost above it is a gain stage in the loudness chain
+      // (`AudioLoudness.boostPercent`), where the limiter can still see it;
+      // mpv's software volume sits behind every filter and scales cubically.
+      await currentPlayer.setProperty('volume-max', kNormalVolumeMax.toString());
+      await currentPlayer.setVolume(settingsService.read(SettingsService.volume));
 
       if (!mounted || player != currentPlayer) return;
 
