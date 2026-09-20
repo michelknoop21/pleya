@@ -78,6 +78,7 @@ under `Notes`.
 - de pillenrij op Alle films/Alle series wrapt in plaats van door de schermrand te lopen
 - de volumeversterking wordt een gain-stage in de loudnessketen
 - pas QR en woordmerk in authpaneel
+- sluit TV5-reviewbevindingen
 <!-- END GENERATED -->
 
 ### New
