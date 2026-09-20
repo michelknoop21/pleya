@@ -1,0 +1,48 @@
+<!-- widths: 1600, 1280, 393 -->
+{{shell:admin|nav=Serverbeheer|navAction=}}
+<div class="admin">
+  {{admin:overview|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer</div>
+    <h1 class="page-title" style="margin-top:0"><span>Pleya-server</span><span class="status"><span class="dot"></span>Online · versie 0.9.0 · 6 dagen actief</span></h1>
+
+    <div class="alert" style="margin-bottom:16px">{{icon:alert}}<div><b>Opslagroot niet bereikbaar.</b> <span class="mono">/volume1/media/Boeken</span> is sinds 07:12 niet gemount. De bibliotheek Boeken blijft zichtbaar met de laatst bekende inhoud; er wordt niets als ontbrekend gemarkeerd tot de root terug is.</div><a class="btn ghost sm a" href="#">Bekijk opslag</a></div>
+
+    <div class="stats">
+      <div class="stat">{{icon:folder}}<div class="k">Bibliotheken</div><div class="v">4</div><div class="s">Films 461 · Series 97 · Kids 5 · Boeken 38</div></div>
+      <div class="stat">{{icon:drive}}<div class="k">Opslag</div><div class="v">3,2 TB vrij</div><div class="s">van 16 TB over 3 roots · 1 niet gemount</div></div>
+      <div class="stat">{{icon:activity}}<div class="k">Scan</div><div class="v">bezig · 62%</div><div class="s">Series · 3.104 van 5.012 bestanden</div></div>
+      <div class="stat">{{icon:play}}<div class="k">Nu aan het kijken</div><div class="v">2</div><div class="s">Apple TV woonkamer · iPhone van Sanne</div></div>
+    </div>
+
+    <div class="cols-3" style="margin-top:16px">
+      <section class="panel">
+        <h3>Activiteit <a class="all" href="#">Alles bekijken</a></h3>
+        <table class="table">
+          <tr><td><div class="t">Scan Series</div><div class="s">gestart 14:02 · <span class="mono">/volume1/media/Series/Severance/Season 02</span></div></td><td class="r" style="width:180px"><div class="bar acc"><i style="width:62%"></i></div><div class="s" style="text-align:right">3.104 / 5.012 · 41 geanalyseerd</div></td><td class="r" style="width:70px"><div class="act"><a class="btn ghost icon" href="#" title="Afbreken">{{icon:stop}}</a></div></td></tr>
+          <tr><td><div class="t">Scan Films</div><div class="s">vandaag 08:00 · 12 min · 3 nieuwe titels</div></td><td class="r"><span class="pill ok">{{icon:check}} klaar</span></td><td></td></tr>
+          <tr><td><div class="t">Scan Boeken</div><div class="s">vandaag 08:00 · overgeslagen, root niet gemount</div></td><td class="r"><span class="pill warn">overgeslagen</span></td><td></td></tr>
+          <tr><td><div class="t">Analyse mislukt</div><div class="s"><span class="mono">…/Films/Nosferatu (2024)/Nosferatu.mkv</span> · ffprobe gaf na 60 s geen antwoord · 3 pogingen</div></td><td class="r"><span class="pill err">fout</span></td><td class="r"><div class="act"><a class="btn ghost icon" href="#" title="Opnieuw">{{icon:refresh}}</a></div></td></tr>
+        </table>
+      </section>
+      <div>
+        <section class="panel">
+          <h3>Server</h3>
+          <dl class="kv" style="grid-template-columns:110px 1fr">
+            <dt>Naam</dt><dd>Pleya-server</dd>
+            <dt>Adres</dt><dd class="mono">https://web.pleya.app</dd>
+            <dt>Versie</dt><dd>0.9.0 · protocol v1, feature level 1</dd>
+            <dt>Database</dt><dd>Postgres 18.6 · schema 8</dd>
+            <dt>Gebruikers</dt><dd>3 · 5 ingelogde toestellen</dd>
+          </dl>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Nu aan het kijken</h3>
+          <div class="row" style="padding:8px 0">{{icon:tv}}<div class="body"><div class="t">Michel · Apple TV woonkamer</div><div class="s">Severance S2 · A3 · direct play · 4K</div></div><span class="pill run">42%</span></div>
+          <div class="row" style="padding:8px 0">{{icon:wifi}}<div class="body"><div class="t">Sanne · iPhone</div><div class="s">Bluey S3 · A11 · direct play</div></div><span class="pill run">18%</span></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 20 Serverbeheer overzicht · alles uit bestaande tabellen (scan_runs, jobs, storage_locations, sessions, watch_states) via nieuwe admin-endpoints (PS-11A)</div>

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -12,16 +13,25 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
+	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
+	"github.com/edde746/plezy/pleya_server/internal/config"
+	"github.com/edde746/plezy/pleya_server/internal/diag"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
+	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/jobs"
+	"github.com/edde746/plezy/pleya_server/internal/logging"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
+	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
 	"github.com/edde746/plezy/pleya_server/internal/watch"
+	"github.com/edde746/plezy/pleya_server/internal/web"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -48,6 +58,66 @@ type captureEntry struct {
 	Status int    `json:"status"`
 }
 
+// logCapture legt de logregels van de server vast, met hun tijdstip.
+//
+// Nodig voor precies één meting: acceptatiecriterium 3 van PS-9 legt een
+// bovengrens op de tijd tussen een intrekking en het moment dat de server
+// stopt met leveren, en dat moment is aan de clientkant niet te zien. Wat een
+// trage lezer daar meet is de intrekkingslatentie plús het leeglopen van de
+// buffers die al onderweg waren, en dat tweede stuk zegt niets over de server.
+//
+// Foutregels gaan daarnaast gewoon naar stderr, zodat een falende test nog
+// steeds vertelt wat er misging.
+type logCapture struct {
+	mu      sync.Mutex
+	records []logRecord
+	stderr  slog.Handler
+}
+
+type logRecord struct {
+	at      time.Time
+	message string
+}
+
+func newLogCapture() *logCapture {
+	return &logCapture{stderr: slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})}
+}
+
+func (c *logCapture) Enabled(_ context.Context, level slog.Level) bool {
+	return level >= slog.LevelInfo
+}
+
+func (c *logCapture) Handle(ctx context.Context, r slog.Record) error {
+	c.mu.Lock()
+	c.records = append(c.records, logRecord{at: time.Now(), message: r.Message})
+	c.mu.Unlock()
+	if r.Level >= slog.LevelError {
+		return c.stderr.Handle(ctx, r)
+	}
+	return nil
+}
+
+func (c *logCapture) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &logCapture{stderr: c.stderr.WithAttrs(attrs)}
+}
+
+func (c *logCapture) WithGroup(name string) slog.Handler {
+	return &logCapture{stderr: c.stderr.WithGroup(name)}
+}
+
+// firstAfter geeft het tijdstip van de eerste regel met dit bericht na since,
+// of de nulwaarde zolang hij er niet is.
+func (c *logCapture) firstAfter(message string, since time.Time) (time.Time, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, r := range c.records {
+		if r.message == message && r.at.After(since) {
+			return r.at, true
+		}
+	}
+	return time.Time{}, false
+}
+
 type env struct {
 	t       *testing.T
 	server  *api.Server
@@ -60,9 +130,43 @@ type env struct {
 	refresh string
 	cap     *capture
 	libs    []catalog.Library
+	argon2  auth.Argon2Params
+	signer  *auth.Signer
+	logs    *logCapture
+	ring    *logging.Ring
+	environ []string
+	config  string
+	log     *slog.Logger
+	probes  *probeLog
+	audit   *audit.Store
+
+	revocations *auth.Revocations
+
+	// settings is dezelfde cache als die de server leest. Een test die de
+	// tabel rechtstreeks vult moet hem kunnen herladen, want de server doet dat
+	// alleen na een geslaagde PATCH.
+	settings *settings.Cache
 }
 
-func newEnv(t *testing.T) *env {
+// envOption past api.Options aan vóór de server gebouwd wordt.
+//
+// Voor het handjevol eigenschappen dat niet via een endpoint te zetten is en
+// wel gedrag bepaalt: de vertrouwde proxy's, bijvoorbeeld, waarvan K rij 8 zegt
+// dat ze de Secure-vlag op een cookie bepalen. Zonder deze haak zou zo'n test
+// een tweede, half opgetuigde server moeten bouwen, en dan bewijst hij iets over
+// die server en niet over deze.
+type envOption func(*api.Options)
+
+func withTrustedProxies(t *testing.T, raw string) envOption {
+	t.Helper()
+	proxies, err := config.ParseTrustedProxies(raw)
+	if err != nil {
+		t.Fatalf("vertrouwde proxy's %q: %v", raw, err)
+	}
+	return func(o *api.Options) { o.TrustedProxies = proxies }
+}
+
+func newEnv(t *testing.T, opts ...envOption) *env {
 	t.Helper()
 	testsupport.HasFFmpeg(t)
 
@@ -110,29 +214,189 @@ func newEnv(t *testing.T) *env {
 	light := auth.Argon2Params{Memory: 8 * 1024, Iterations: 1, Parallelism: 1, SaltLength: 16, KeyLength: 32}
 
 	watchStore := watch.NewStore(pool)
+	logs := newLogCapture()
 
-	srv := api.New(api.Options{
-		Catalog:          store,
-		Auth:             authStore,
-		Watch:            watchStore,
-		Signer:           signer,
-		Logger:           slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})),
-		Ready:            func() bool { return true },
-		ServerID:         serverID,
-		Name:             "Zolder",
-		Version:          "0.2.0-test",
-		StartedAt:        time.Date(2026, 8, 18, 19, 25, 33, 0, time.UTC),
-		AccessTokenTTL:   15 * time.Minute,
-		RefreshTokenTTL:  24 * time.Hour,
-		StreamTokenTTL:   5 * time.Minute,
-		SetupCodeTTL:     30 * time.Minute,
-		StreamSessionTTL: 30 * time.Minute,
-		WatchLease:       watch.MinLease,
-		Argon2:           light,
-	})
+	// De ringbuffer achter GET /server/log, met dezelfde keten als in
+	// productie: alles wat de server logt gaat er in, geredigeerd, en gaat
+	// daarnaast door naar de handler eronder.
+	ring := logging.NewRing(0)
+	logger := slog.New(ring.Handler(logs))
+
+	// Een eigen configmap, want POST /server/rotate-signing-key schrijft de
+	// ondertekensleutel weg. t.TempDir ruimt hem op.
+	configDir := t.TempDir()
+
+	// Elke uitgaande aanvraag van POST /server/connectivity-check gaat langs
+	// deze transport. K rij 13 belooft dat de check maar één adres kent, en
+	// dat is alleen te bewijzen door te tellen wat er werkelijk uitgaat.
+	probes := newProbeLog()
+
+	// Een omgeving die de test bepaalt. os.Environ zou de test laten afhangen
+	// van wat er toevallig in de shell stond, en dan bewijst "er lekt niets"
+	// alleen iets over deze machine.
+	environ := []string{
+		"DATABASE_URL=postgres://pleya:zeergeheim@db:5432/pleya?sslmode=disable",
+		"PLEYA_SERVER_HTTP_ADDR=:8080",
+		"PLEYA_SERVER_ACCESS_TOKEN_TTL=15m",
+		"PLEYA_SERVER_TRANSCODE_DIR=/transcode",
+		"HOME=/root",
+		"PATH=/usr/local/bin",
+	}
+
+	// De instellingen met hun tabel erachter, zoals in productie. Een cache
+	// zonder opslag zou PATCH /settings ongetest laten en de hot reload
+	// hieronder tot een geheugentruc maken.
+	settingsCache := settings.NewCache(settings.Base{
+		ServerName:        "Zolder",
+		AccessTokenTTL:    15 * time.Minute,
+		RefreshTokenTTL:   24 * time.Hour,
+		StreamTokenTTL:    5 * time.Minute,
+		StreamSessionTTL:  30 * time.Minute,
+		MaxStreamSessions: auth.MaxActiveStreamSessions,
+	}, settings.NewStore(pool), logger)
+	if err := settingsCache.Reload(ctx); err != nil {
+		t.Fatalf("instellingen laden: %v", err)
+	}
+
+	// admin_audit met zijn echte tabel eronder (S1.5). Een nep-store zou de
+	// schrijfhaak toetsen zonder de vraag te beantwoorden of er werkelijk een
+	// rij ontstaat.
+	auditStore := audit.NewStore(pool)
+
+	// Het intrekkingsregister als eigen variabele, zodat een test hem kan
+	// legen. Dat is de enige manier om te toetsen dat een leespad ook zonder
+	// register de intrekking ziet, en zonder die toets is een implementatie die
+	// alleen het register raadpleegt niet te onderscheiden van een die het
+	// goed doet.
+	revocations := auth.NewRevocations(0)
+
+	options := api.Options{
+		Catalog:            store,
+		Auth:               authStore,
+		Watch:              watchStore,
+		Signer:             signer,
+		Logger:             logger,
+		Ready:              func() bool { return true },
+		ServerID:           serverID,
+		Name:               "Zolder",
+		Version:            "0.2.0-test",
+		StartedAt:          time.Date(2026, 8, 18, 19, 25, 33, 0, time.UTC),
+		AccessTokenTTL:     15 * time.Minute,
+		RefreshTokenTTL:    24 * time.Hour,
+		RefreshGraceWindow: 2 * time.Minute,
+		StreamTokenTTL:     5 * time.Minute,
+		SetupCodeTTL:       30 * time.Minute,
+		StreamSessionTTL:   30 * time.Minute,
+		Settings:           settingsCache,
+		WatchLease:         watch.MinLease,
+		Argon2:             light,
+		Revocations:        revocations,
+		Diag:               diag.NewStore(pool),
+		Audit:              auditStore,
+		Log:                ring,
+		Listen:             ":8080",
+		Build:              "0.2.0-test (go-test, linux/amd64)",
+		FFprobe:            api.FFprobeStatus{Found: true, Version: "8.0"},
+		ConfigDir:          configDir,
+		Environ:            func() []string { return environ },
+		// Alles onder /media is aangeboden (S2.3): de fixtures in dit bestand
+		// en de meeste testbestanden verzinnen hun root_paths onder /media
+		// zonder dat ze werkelijk bestaan, en dat is precies wat rootOffered
+		// toestaat (een pad- en prefixcontrole, geen bestandssysteemaanroep).
+		MediaRoots: []string{"/media"},
+		// Dezelfde pool als de store, zodat POST /storage/roots/recheck
+		// werkelijk een rij in jobs wegschrijft en niet tegen nil valt.
+		Jobs: jobs.New(jobs.Options{Pool: pool, Logger: logger, Instance: "test"}),
+		// Dezelfde client als in productie, met alleen een tellende transport
+		// eronder: het omleidingsbeleid dat de test toetst is daarmee dat van
+		// de server en niet dat van de test.
+		ProbeClient: api.NewProbeClient(probes),
+
+		// Een echte bundel met één bestand erin. De rangecontrole van
+		// POST /server/connectivity-check meet op http.ServeContent, en zonder
+		// bundel zou hij op de melding "geen bundel" meten en altijd false
+		// geven: een test die dan groen staat bewijst het tegenovergestelde
+		// van wat hij beweert.
+		Web: web.HandlerFor(web.Options{FS: fstest.MapFS{
+			web.IndexFile: &fstest.MapFile{Data: []byte(strings.Repeat("pleya web bundel\n", 8))},
+		}}),
+	}
+	for _, opt := range opts {
+		opt(&options)
+	}
+	srv := api.New(options)
 
 	return &env{t: t, server: srv, store: store, auth: authStore, watch: watchStore, pool: pool,
-		root: root, libs: libs, cap: shared}
+		root: root, libs: libs, cap: shared, argon2: light, signer: signer, logs: logs,
+		settings: settingsCache, ring: ring, environ: environ, config: configDir,
+		log: logger, probes: probes, audit: auditStore, revocations: revocations}
+}
+
+// freshRevocations leegt het intrekkingsregister, zoals na een herstart van het
+// proces. Purge met een tijdstip ver vooruit haalt elke inschrijving eruit; een
+// eigen Reset op het productietype zou een methode zijn die alleen een test
+// gebruikt.
+func (e *env) freshRevocations() {
+	e.t.Helper()
+	e.revocations.Purge(time.Now().Add(24 * time.Hour))
+	if n := e.revocations.Len(); n != 0 {
+		e.t.Fatalf("het register is niet leeg: %d inschrijvingen", n)
+	}
+}
+
+// logger geeft de logger die de server zelf gebruikt, inclusief de
+// ringbuffer erachter. Een test die GET /server/log toetst moet er iets in
+// kunnen zetten dat van de server had kunnen komen.
+func (e *env) logger() *slog.Logger { return e.log }
+
+// probeLog telt wat POST /server/connectivity-check naar buiten stuurt, en
+// koppelt een verzonnen naam aan een testserver.
+//
+// Die koppeling is geen truc om de validatie te omzeilen maar precies het
+// gedrag dat config.PublicURLIsPrivate beschrijft: hij weigert een letterlijk
+// privé-adres en zoekt een naam niet op, want de aanvrager beheert de zone en
+// kan hem na de controle toch verzetten. Een testserver luistert op 127.0.0.1,
+// dus zonder naam zou er geen enkel adres zijn waarmee deze endpoints te
+// toetsen zijn.
+type probeLog struct {
+	mu      sync.Mutex
+	targets []string
+	hosts   map[string]string
+}
+
+func newProbeLog() *probeLog { return &probeLog{hosts: map[string]string{}} }
+
+// publish geeft de URL waarop server onder deze naam bereikbaar is.
+func (p *probeLog) publish(name string, server *httptest.Server) string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.hosts[name+":80"] = strings.TrimPrefix(server.URL, "http://")
+	return "http://" + name
+}
+
+func (p *probeLog) RoundTrip(r *http.Request) (*http.Response, error) {
+	p.mu.Lock()
+	p.targets = append(p.targets, r.URL.String())
+	p.mu.Unlock()
+
+	transport := &http.Transport{DialContext: p.dial}
+	defer transport.CloseIdleConnections()
+	return transport.RoundTrip(r)
+}
+
+func (p *probeLog) dial(ctx context.Context, network, addr string) (net.Conn, error) {
+	p.mu.Lock()
+	if mapped, ok := p.hosts[addr]; ok {
+		addr = mapped
+	}
+	p.mu.Unlock()
+	return (&net.Dialer{}).DialContext(ctx, network, addr)
+}
+
+func (p *probeLog) seen() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return append([]string{}, p.targets...)
 }
 
 // scanAll draait één volledige scanronde over elke bibliotheek.
@@ -200,6 +464,84 @@ func (e *env) expireStreamSession(sessionID string) {
 		sessionID); err != nil {
 		e.t.Fatalf("sessie laten verlopen: %v", err)
 	}
+}
+
+// createUser legt rechtstreeks een gebruiker vast, buiten het protocol om.
+//
+// Sinds stap 4 bestaat POST /users wel, dus dit is een keuze en geen gebrek:
+// de autorisatiematrix toetst de bibliotheekcontrole en niet de inlogstroom, en
+// een fixture die per test een gebruiker aanmaakt, rechten zet en inlogt zou
+// bij elke matrixregel drie dingen tegelijk kunnen laten falen.
+//
+// Die keuze is alleen houdbaar zolang iets ánders het echte pad bewijst. Dat is
+// users_test.go: TestSecondUserCanBeCreatedAndLogIn gaat wél door POST /users
+// en /auth/login. Zonder die test bewijzen de matrixtests hier hooguit dat de
+// autorisatie klopt voor gebruikers die nooit hadden kunnen bestaan.
+func (e *env) createUser(role, username string) id.ID {
+	e.t.Helper()
+	uid := id.New()
+	hash, err := auth.HashPassword("een-lang-genoeg-wachtwoord", e.argon2)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	if _, err := e.pool.Exec(context.Background(), `
+		INSERT INTO users (id, username, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, now(), now())`, uid, username, hash, role); err != nil {
+		e.t.Fatalf("gebruiker %s aanmaken: %v", username, err)
+	}
+	return uid
+}
+
+// grantLibrary legt een library_permissions-rij vast.
+func (e *env) grantLibrary(userID, libraryID id.ID, permission string) {
+	e.t.Helper()
+	if _, err := e.pool.Exec(context.Background(), `
+		INSERT INTO library_permissions (user_id, library_id, permission) VALUES ($1, $2, $3)`,
+		userID, libraryID, permission); err != nil {
+		e.t.Fatalf("bibliotheekrecht toekennen: %v", err)
+	}
+}
+
+// revokeLibrary trekt een eerder toegekend recht in, rechtstreeks op de tabel:
+// er bestaat nog geen endpoint om een library_permissions-rij te verwijderen
+// (dat is DEC-100, niet deze fase). Voor het bewijs dat een streamtoken of
+// -sessie het recht op het aanvraagpad toetst en niet alleen bij het minten
+// (DEC-105, hoofdstuk 16.4 regel 9), moet een test het recht na het minten
+// weg kunnen halen.
+func (e *env) revokeLibrary(userID, libraryID id.ID) {
+	e.t.Helper()
+	if _, err := e.pool.Exec(context.Background(),
+		`DELETE FROM library_permissions WHERE user_id = $1 AND library_id = $2`,
+		userID, libraryID); err != nil {
+		e.t.Fatalf("bibliotheekrecht intrekken: %v", err)
+	}
+}
+
+// tokenFor mint rechtstreeks een accesstoken voor userID, buiten login om: de
+// autorisatiematrix test de bibliotheekcontrole en niet de inlogstroom.
+//
+// De sid draagt een echte sessions-rij en geen losse uuid: stream-session
+// (stream_sessions.session_id) heeft een FK naar sessions(id), dus een
+// verzonnen sid laat elke POST /auth/stream-session voor deze gebruiker op een
+// foreign-key-violation stuklopen in plaats van op de rechtencontrole die de
+// test wil bewijzen.
+func (e *env) tokenFor(userID id.ID) string {
+	e.t.Helper()
+	sessionID, err := e.auth.CreateSession(context.Background(), userID, nil, "test device", time.Now().UTC())
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	access, _, err := e.signer.Mint(userID.String(), sessionID.String(), auth.TokenAccess, 15*time.Minute, "")
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	return access
+}
+
+// asUser overschrijft de Authorization-header van deze ene aanvraag, voor een
+// verzoek namens een andere gebruiker dan e.access.
+func asUser(token string) func(*http.Request) {
+	return func(r *http.Request) { r.Header.Set("Authorization", "Bearer "+token) }
 }
 
 // shared is één opvangpunt voor alle tests in dit pakket.
@@ -305,16 +647,35 @@ func (e *env) record(schema, method, path string, rec *httptest.ResponseRecorder
 	if e.cap == nil || schema == "" {
 		return
 	}
-	e.cap.add(e.t, schema, method, path, rec)
+	e.cap.add(e.t, schema, "", method, path, rec)
 }
 
-func (c *capture) add(t *testing.T, schema, method, path string, rec *httptest.ResponseRecorder) {
+// recordVariant legt een tweede vorm van hetzelfde antwoord vast.
+//
+// Eén endpoint kan meer dan één lichaam teruggeven waar het contract over gaat:
+// POST /auth/login antwoordt met en zonder refresh_token, afhankelijk van
+// credential_mode (S1.8). De ontdubbeling hieronder gaat op schema, methode, pad
+// en status, dus zonder label zou de tweede vorm stil wegvallen, en zou het van
+// de volgorde van de tests afhangen wélke van de twee de contractpoort te zien
+// krijgt. Het label raakt alleen de bestandsnaam; de manifestregel blijft zeggen
+// wat er werkelijk is opgehaald.
+func (e *env) recordVariant(schema, variant, method, path string, rec *httptest.ResponseRecorder) {
+	if e.cap == nil || schema == "" {
+		return
+	}
+	e.cap.add(e.t, schema, variant, method, path, rec)
+}
+
+func (c *capture) add(t *testing.T, schema, variant, method, path string, rec *httptest.ResponseRecorder) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	// Dezelfde endpoint met dezelfde status komt in meerdere tests langs. Eén
 	// bestand per combinatie is genoeg; twee keer valideren voegt niets toe.
 	name := sanitize(schema + "_" + method + "_" + path + "_" + itoa(rec.Code))
+	if variant != "" {
+		name += "_" + sanitize(variant)
+	}
 	for _, existing := range c.entries {
 		if existing.File == name+".json" {
 			return

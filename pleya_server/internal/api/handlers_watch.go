@@ -52,6 +52,30 @@ func (s *Server) handleWatchStateReport(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	userID, err := s.subjectID(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	// DEC-105 regel 12: het item bestaat voor deze aanvrager niet zonder view op
+	// zijn bibliotheek, en een niet-bestaand item geeft dezelfde 404 als een
+	// bestaand item in een verboden bibliotheek (authorizeLibraryFor). Dit staat
+	// vóór Apply en niet erna: watch.Store kent geen bibliotheekrechten, alleen
+	// subjects en items.
+	libraryID, err := s.opts.Catalog.ItemLibrary(r.Context(), itemID)
+	if err != nil {
+		if errors.Is(err, catalog.ErrNotFound) {
+			writeError(w, s.log, CodeNotFound, "not found", nil)
+			return
+		}
+		writeInternal(w, s.log, err)
+		return
+	}
+	if !s.authorizeLibraryFor(w, r, userID, libraryID) {
+		return
+	}
+
 	ev := watch.Event{
 		SessionID:    req.SessionID,
 		PositionMs:   req.PositionMs,
@@ -63,7 +87,9 @@ func (s *Server) handleWatchStateReport(w http.ResponseWriter, r *http.Request) 
 		Backlog:      req.Backlog,
 	}
 
-	outcome, err := s.opts.Watch.Apply(r.Context(), SubjectOwner, itemID, ev, s.now().UTC(), s.opts.WatchLease)
+	subject := userID.String()
+
+	outcome, err := s.opts.Watch.Apply(r.Context(), subject, itemID, ev, s.now().UTC(), s.opts.WatchLease)
 	if err != nil {
 		if errors.Is(err, watch.ErrItemNotFound) {
 			writeError(w, s.log, CodeNotFound, "item not found", nil)
@@ -113,8 +139,25 @@ func (s *Server) handleWatchStateList(w http.ResponseWriter, r *http.Request) {
 		since = &parsed
 	}
 
-	page, err := s.opts.Watch.List(r.Context(), SubjectOwner, since, limit,
-		strings.TrimSpace(r.URL.Query().Get("cursor")))
+	userID, err := s.subjectID(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+	subject := userID.String()
+
+	// DEC-105 regel 13: kijkstatus blijft bestaan na een ingetrokken
+	// bibliotheekrecht, maar wordt onzichtbaar. De filter staat hier in de
+	// query en niet als naloop in Go, anders zou pagineren op een grotere
+	// verborgen verzameling gaten en verkeerde cursors opleveren.
+	visibleLibraryIDs, err := s.opts.Catalog.VisibleLibraries(r.Context(), userID)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	page, err := s.opts.Watch.List(r.Context(), subject, since, limit,
+		strings.TrimSpace(r.URL.Query().Get("cursor")), visibleLibraryIDs)
 	if err != nil {
 		if errors.Is(err, watch.ErrCursorInvalid) {
 			writeError(w, s.log, CodeCursorInvalid, "cursor is invalid", nil)
@@ -213,7 +256,13 @@ func (s *Server) hydrateItems(r *http.Request, items []Item) {
 		ids = append(ids, parsed)
 	}
 
-	states, err := s.opts.Watch.ForItems(r.Context(), SubjectOwner, ids)
+	userID, err := s.subjectID(r)
+	if err != nil {
+		s.log.Warn("kijkstatus bij items ophalen mislukt", slog.String("error", err.Error()))
+		return
+	}
+
+	states, err := s.opts.Watch.ForItems(r.Context(), userID.String(), ids)
 	if err != nil {
 		s.log.Warn("kijkstatus bij items ophalen mislukt", slog.String("error", err.Error()))
 		return

@@ -10,7 +10,9 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/models/transcode_quality_preset.dart';
+import 'package:pleya/services/device_capabilities_service.dart';
 import 'package:pleya/services/jellyfin_client.dart';
+import 'package:pleya/services/jellyfin_client/jellyfin_device_profile.dart';
 import 'package:pleya/services/playback_initialization_types.dart';
 
 JellyfinConnection _conn({String accessToken = 'tok-abc', String baseUrl = 'https://jf.example.com'}) =>
@@ -1125,6 +1127,10 @@ void main() {
       expect(capturedUri.toString(), contains('/Items/folder%2Fitem%20%231%3Fx/PlaybackInfo'));
     });
 
+    // The shape of the profile is a table test on the builder in
+    // jellyfin_device_profile_test.dart. What this one proves is the seam: the
+    // request body carries what that builder produced, for the capabilities
+    // this device reports.
     test('getPlaybackInfo advertises external subtitle support', () async {
       Uri? capturedUri;
       String? capturedBody;
@@ -1170,6 +1176,16 @@ void main() {
         containsAll(['srt', 'ass', 'ssa', 'vtt', 'pgssub', 'dvdsub', 'dvbsub']),
       );
       expect(subtitleProfiles.every((profile) => (profile as Map<String, dynamic>)['Method'] == 'External'), isTrue);
+
+      expect(
+        profile,
+        jsonDecode(
+          jsonEncode(
+            buildJellyfinDeviceProfile(DeviceCapabilitiesService.currentSnapshot, maxStreamingBitrate: 5000000),
+          ),
+        ),
+        reason: 'the body has to be the builder output, not a second copy of it',
+      );
     });
 
     test('path-encodes reserved ids for browse and watch-state endpoints', () async {

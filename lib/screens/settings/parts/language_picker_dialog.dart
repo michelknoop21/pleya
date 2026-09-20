@@ -23,7 +23,7 @@ import '../../../widgets/focusable_list_tile.dart';
 ///
 /// Three states, not a nullable string: "no preference", "the original
 /// language" and a concrete language are three different intentions, and the
-/// audio row can express all three (DEC-096 lid 3).
+/// audio row can express all three (DEC-109 lid 3).
 class LanguageChoiceValue {
   const LanguageChoiceValue._(this.code, this.isOriginal);
 

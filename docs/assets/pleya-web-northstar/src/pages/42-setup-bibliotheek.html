@@ -1,0 +1,32 @@
+<!-- widths: 1600, 393 -->
+<style>
+.setup { min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 60px 24px; }
+.setup .box { width: 100%; max-width: 620px; }
+.setup .box > img { height: 36px; margin-bottom: 26px; }
+.setup h1 { font-size: 28px; font-weight: 700; letter-spacing: -.01em; }
+.setup .sub { color: var(--ink-2); margin-top: 6px; font-size: 15px; line-height: 1.45; }
+.setup .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; }
+.kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 6px; }
+.kinds .choice { flex-direction: column; align-items: flex-start; gap: 10px; }
+.kinds .choice .ic { width: 24px; height: 24px; }
+@media (max-width: 899px) { .setup { padding: 24px 16px 40px; } .kinds { grid-template-columns: 1fr; } .kinds .choice { flex-direction: row; align-items: center; } }
+</style>
+<div class="setup"><div class="box">
+  <img src="../assets/pleya_wordmark.png" alt="Pleya">
+  <div class="steps"><div class="st done"><span class="n">{{icon:check}}</span><span>Eigenaar</span></div><div class="ln"></div><div class="st done"><span class="n">{{icon:check}}</span><span>Opslag</span></div><div class="ln"></div><div class="st on"><span class="n">3</span><span>Bibliotheek</span></div><div class="ln"></div><div class="st"><span class="n">4</span><span>Scannen</span></div></div>
+  <h1>Je eerste bibliotheek</h1>
+  <p class="sub">Een bibliotheek is één soort inhoud op een of meer mappen. Meer bibliotheken kun je straks toevoegen in Serverbeheer.</p>
+  <label class="label">Soort</label>
+  <div class="kinds">
+    <div class="choice on">{{icon:film}}<div class="body"><div class="t">Films</div><div class="s">één film per map of bestand</div></div></div>
+    <div class="choice">{{icon:show}}<div class="body"><div class="t">Series</div><div class="s">serie ▸ seizoen ▸ aflevering</div></div></div>
+    <div class="choice">{{icon:bookline}}<div class="body"><div class="t">Boeken</div><div class="s">EPUB-bestanden</div></div></div>
+  </div>
+  <label class="label">Naam</label>
+  <div class="field focus">Films<span class="caret"></span></div>
+  <p class="help">Zo heet de bibliotheek in de apps. De interne slug <span class="mono">films</span> wordt afgeleid en verandert daarna niet meer.</p>
+  <label class="label">Mappen</label>
+  <div class="choice on"><span class="checkbox on">{{icon:check}}</span><div class="body"><div class="t mono">/volume1/media/Films</div></div></div>
+  <div class="foot"><a class="btn ghost" href="#">{{icon:chevl}} Terug</a><a class="btn primary" href="#">Bibliotheek maken {{icon:chev}}</a></div>
+</div></div>
+<div class="note">NORTHSTAR · 42 Setup stap 3 · drie soorten (PS-14 maakt Boeken de derde), roots uit stap 2</div>

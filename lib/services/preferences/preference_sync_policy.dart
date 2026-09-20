@@ -233,7 +233,7 @@ class PreferenceSyncPolicyRegistry {
 
   /// The Pleya profile's language preference: which audio and subtitles the
   /// viewer wants everywhere, plus the two switches that used to sit under
-  /// Afspelen (DEC-096 lid 5 and lid 9).
+  /// Afspelen (DEC-109 lid 5 and lid 9).
   ///
   /// Profile-scoped, and the scope lives inside the map's keys rather than in
   /// the pref name — the same shape as the series preferences it sits next to.
@@ -417,6 +417,7 @@ class PreferenceSyncPolicyRegistry {
     'match_refresh_rate': _deviceLocalPref,
     'match_content_frame_rate': _deviceLocalPref,
     'match_dynamic_range': _deviceLocalPref,
+    'display_max_resolution': _deviceLocalPref,
     'display_switch_delay': _deviceLocalPref,
     'start_in_fullscreen': _deviceLocalPref,
     'exit_fullscreen_on_player_close': _deviceLocalPref,
@@ -494,7 +495,7 @@ class PreferenceSyncPolicyRegistry {
     // activation preference and lives elsewhere.
     'unified_catalog_preferences': _unifiedCatalogViewPref,
 
-    // -- The Pleya profile's global audio/subtitle preference (DEC-096).
+    // -- The Pleya profile's global audio/subtitle preference (DEC-109).
     'pleya_profile_language_preferences': _profileLanguagePref,
 
     // -- Secrets.

@@ -1,0 +1,32 @@
+<!-- widths: 1600, 393 -->
+<style>
+.auth { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+.auth .art { position: relative; overflow: hidden; }
+.auth .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 30%; }
+.auth .art .scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20,20,20,0) 60%, var(--bg) 100%), linear-gradient(0deg, rgba(20,20,20,.7), rgba(20,20,20,0) 50%); }
+.auth .art .cap { position: absolute; left: 40px; bottom: 36px; right: 120px; }
+.auth .art .cap b { font-size: 22px; font-weight: 700; display: block; }
+.auth .art .cap span { font-size: 14px; color: var(--ink-2); }
+.auth .pane { display: flex; align-items: center; justify-content: center; padding: 40px; }
+.auth .box { width: 100%; max-width: 380px; }
+.auth .box img { height: 36px; margin-bottom: 28px; }
+.auth h1 { font-size: 28px; font-weight: 700; letter-spacing: -.01em; }
+.auth .sub { color: var(--ink-2); margin-top: 6px; font-size: 14px; }
+@media (max-width: 899px) { .auth { grid-template-columns: 1fr; } .auth .art { height: 260px; } .auth .art .cap { left: 16px; bottom: 16px; right: 16px; } .auth .pane { padding: 24px 16px 40px; align-items: flex-start; } }
+</style>
+<div class="auth">
+  <div class="art"><img src="{{art:dune2-backdrop}}" alt=""><div class="scrim"></div><div class="cap"><b>Pleya-server</b><span>web.pleya.app · 4 bibliotheken · 601 titels</span></div></div>
+  <div class="pane"><div class="box">
+    <img src="../assets/pleya_wordmark.png" alt="Pleya">
+    <h1>Inloggen</h1>
+    <p class="sub">Met het account dat de beheerder van deze server voor je heeft aangemaakt.</p>
+    <label class="label">Gebruikersnaam</label>
+    <div class="field">michel</div>
+    <label class="label">Wachtwoord</label>
+    <div class="field focus err">••••••••<span class="caret"></span><span class="dim" style="margin-left:auto">{{icon:eye}}</span></div>
+    <p class="help err">Gebruikersnaam en wachtwoord passen niet bij elkaar. Na vijf pogingen wacht de server twaalf seconden per poging.</p>
+    <a class="btn primary full" href="#" style="margin-top:22px">Inloggen</a>
+    <p class="help" style="margin-top:18px">Wachtwoord vergeten? Een beheerder kan het opnieuw instellen via Serverbeheer ▸ Gebruikers. Deze server verstuurt geen e-mail.</p>
+  </div></div>
+</div>
+<div class="note">NORTHSTAR · 12 Inloggen · foutstaat na een afgewezen poging; rate limit uit de server benoemd</div>

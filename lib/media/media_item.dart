@@ -50,7 +50,7 @@ sealed class MediaItem with _$MediaItem {
     /// [guid] is the episode's own and, per `identity_evidence.dart`, is never
     /// evidence about the show. Used by `TrackPreferenceStore` to key a
     /// language preference on the logical series instead of one server's
-    /// ratingKey (DEC-096 lid 7). Null is normal and simply means the
+    /// ratingKey (DEC-109 lid 7). Null is normal and simply means the
     /// preference falls back to the per-server key.
     String? grandparentGuid,
     String? grandparentTitle,

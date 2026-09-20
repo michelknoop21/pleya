@@ -207,11 +207,19 @@ func decodeCursor(raw string) (*cursor, error) {
 	return &c, nil
 }
 
-// List levert de items die deze identiteit heeft aangeraakt.
+// List levert de items die deze identiteit heeft aangeraakt en nu nog mag
+// zien.
 //
 // updatedSince is wat de offline-laag gebruikt om na een periode zonder netwerk
 // bij te trekken zonder de hele catalogus op te halen.
-func (s *Store) List(ctx context.Context, subject string, updatedSince *time.Time, limit int, rawCursor string) (Page, error) {
+//
+// visibleLibraryIDs is catalog.Store.VisibleLibraries van de aanroeper
+// (DEC-105 regel 13): nil betekent geen beperking (owner/admin), anders wordt
+// de filter hier in de query toegepast, vóór de cursor-paginering en niet
+// erna in Go. Een rij bestaat onveranderd door: wie een bibliotheekrecht
+// verliest houdt zijn kijkstatus, hij wordt alleen onzichtbaar zolang het
+// recht ontbreekt.
+func (s *Store) List(ctx context.Context, subject string, updatedSince *time.Time, limit int, rawCursor string, visibleLibraryIDs []id.ID) (Page, error) {
 	var page Page
 
 	cur, err := decodeCursor(rawCursor)
@@ -221,6 +229,10 @@ func (s *Store) List(ctx context.Context, subject string, updatedSince *time.Tim
 
 	args := []any{subject, limit + 1}
 	where := "subject = $1"
+	if visibleLibraryIDs != nil {
+		args = append(args, visibleLibraryIDs)
+		where += fmt.Sprintf(" AND item_id IN (SELECT id FROM media_items WHERE library_id = ANY($%d))", len(args))
+	}
 	if updatedSince != nil {
 		args = append(args, *updatedSince)
 		where += fmt.Sprintf(" AND updated_at > $%d", len(args))

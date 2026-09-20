@@ -1,4 +1,4 @@
-/// LANG1 / DEC-096, negatieve controles O tot en met R: de pagina Taal en
+/// LANG1 / DEC-109, negatieve controles O tot en met R: de pagina Taal en
 /// ondertitels (31 A) en de serievoorkeur-sheet (31 B).
 ///
 /// Verwijst naar `LanguageSettingsScreen`, die vóór deze bouwronde niet
@@ -120,7 +120,7 @@ void main() {
     expect(find.text('Original language'), findsOneWidget);
     expect(find.text('Dutch'), findsOneWidget);
     expect(find.text('English'), findsOneWidget);
-    // The two switches moved here from Instellingen ▸ Afspelen (DEC-096 lid 9).
+    // The two switches moved here from Instellingen ▸ Afspelen (DEC-109 lid 9).
     expect(find.byType(Switch), findsNWidgets(2));
   });
 

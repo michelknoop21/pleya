@@ -1,4 +1,4 @@
-/// LANG1 / DEC-096, negatieve controle S: de toast van mockup 31 C en 31 D.
+/// LANG1 / DEC-109, negatieve controle S: de toast van mockup 31 C en 31 D.
 ///
 /// De tweede regel en de amberstip bestaan vóór deze bouwronde niet — de pil
 /// had één regel en 1,2 seconde — dus dit bestand compileert niet op de code

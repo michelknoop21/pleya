@@ -99,7 +99,15 @@ export class TokenStore {
     }
   }
 
-  set(pair: { access_token: string; refresh_token: string; expires_in_ms?: number }): void {
+  /**
+   * `refresh_token` is optioneel omdat het contract het sinds S1.8 weglaat
+   * wanneer de aanvraag `credential_mode: cookie` droeg: het credential zit dan
+   * in een HttpOnly-cookie en de pagina hoort het niet te zien. Deze client
+   * vraagt daar nog niet om, dus in de praktijk staat het er altijd; wat hier
+   * telt is dat een antwoord zonder dat veld geen `undefined` in `localStorage`
+   * schrijft en daarna als bewaard token terugleest.
+   */
+  set(pair: { access_token: string; refresh_token?: string; expires_in_ms?: number }): void {
     const lifetime = typeof pair.expires_in_ms === 'number' ? pair.expires_in_ms : 0;
     this.#memoryAccess = {
       token: pair.access_token,
@@ -107,7 +115,9 @@ export class TokenStore {
     };
     try {
       this.#session?.setItem(ACCESS_KEY, JSON.stringify(this.#memoryAccess));
-      this.#persistent?.setItem(REFRESH_KEY, pair.refresh_token);
+      if (pair.refresh_token) {
+        this.#persistent?.setItem(REFRESH_KEY, pair.refresh_token);
+      }
     } catch {
       // Opslag geweigerd: de sessie blijft in het geheugen bestaan.
     }

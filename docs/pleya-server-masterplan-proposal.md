@@ -1648,8 +1648,24 @@ uitbreidingen staan in 16.4.
 | **Phase ID** | PS-4W |
 | **Doel** | een film starten, hervatten en uitkijken in de browser |
 | **Gebruikerswaarde** | Pleya Server is bruikbaar zonder dat er een app geïnstalleerd is, precies zoals Plex Web dat is |
-| **Afhankelijkheden** | PS-4. Poort 5 is dan al gesloten en in PS-4 geïmplementeerd, want de sessieparameter zit op `GET /stream` (11.5) |
+| **Afhankelijkheden** | PS-4. Poort 5 is dan al gesloten en in PS-4 geïmplementeerd, want de sessieparameter zit op `GET /stream` (11.5). Sinds [DEC-106](DECISIONS.md) ook PS-4E, dat de rijen en de voortgangsbalk eerder aflevert |
 | **Eerstvolgende fase** | geen; PS-4W hangt naast PS-4 zoals PS-3W naast PS-3 |
+
+**Geknipt op 24 augustus 2026.** Twee scope-items zijn naar PS-4E verhuisd, vastgelegd in
+[docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) onderdeel 4.3 en in
+[DEC-106](DECISIONS.md). Phase ID, doel en de rest van de scope blijven staan. De grens tussen de
+twee fasen:
+
+> PS-4E leest bestaande watch state en toont die waar de app dat ook doet. PS-4E introduceert geen
+> nieuwe watch-state-writes vanuit de browser. PS-4W is en blijft verantwoordelijk voor seek- en
+> playbackrapportage en voor het bijwerken van die state tijdens browserplayback.
+
+Reden: een voortgangsbalk is presentatie van `user_state`, dat al op elk item- en hubantwoord
+meekomt via `hydrateItems`, zonder één regel spelercode. Aan de speler vastgebonden zou een
+gebruiker die alleen bladert in de browser en kijkt in de app zijn voortgang nooit op de webclient
+zien. Bovendien stond PS-4W's eigen "Backendwijzigingen: geen" op gespannen voet met
+acceptatiecriterium 5, dat leunde op een hub die vandaag leeg is; die reparatie hoort bij PS-4 en is
+daar als defect gecorrigeerd.
 
 **Scope.** Een spelerroute `/items/[id]/play` met een eigen schil (geen zijbalk, geen bottom
 bar). Direct play met een native `<video>` op `GET /stream/{version_id}`, geautoriseerd volgens
@@ -1658,8 +1674,7 @@ fullscreen, en een toetsenbordlaag (spatie, pijlen, `f`, `m`, cijfers voor perce
 Kijkstatus rapporteren als gebeurtenis met een client-gegenereerd `session_id`, op een interval
 en bij elke toestandswisseling, met `playback_started` bij de start en `base_revision` uit de
 laatst gelezen toestand (12.1). Hervatten vanaf `user_state.position_ms`. Externe ondertitels via
-de conversieroute hieronder. De rijen Verder kijken en Nieuwe afleveringen op Home,
-en voortgangsbalken op `MediaCard`. De Media Session API voor toetsenbord- en systeembediening.
+de conversieroute hieronder. De Media Session API voor toetsenbord- en systeembediening.
 Foutstaten: onbereikbaar, formaat niet ondersteund, versie met meer dan één bestand.
 
 **Expliciet out of scope.** Geen transcoding en geen HLS: een MKV die de browser niet speelt
@@ -1696,9 +1711,9 @@ PS-4W en tonen een zichtbare reden op het spoor in plaats van een stil ontbreken
 **Protocol en API.** Geen. De browser playback session uit 11.5 is onderdeel van PS-4; PS-4W
 gebruikt hem alleen.
 
-**Webfrontend.** Nieuwe primitives: `Player`, `PlayerControls`, `Timeline`, `VolumeControl`,
-`SubtitleMenu`, `ProgressBar`. Uitbreiding van `MediaCard` met een voortgangsbalk, en van
-`HubRail` met twee rijen.
+**Webfrontend.** Nieuwe primitives: `Player`, `PlayerControls`, `Timeline`, `VolumeControl` en
+`SubtitleMenu`. `ProgressBar`, de voortgangsbalk op `MediaCard` en de twee extra `HubRail`-rijen
+komen uit PS-4E en worden hier alleen bijgewerkt tijdens playback.
 
 **Flutter-clientimpact.** Geen.
 
@@ -1729,13 +1744,27 @@ autorisatievorm.
 3. Een seek na meer dan tien minuten afspelen slaagt, aangetoond in een end-to-end-test die de
    klok vooruit zet.
 4. Een bestand dat de browser niet speelt geeft een melding met een reden, geen spinner.
-5. De rijen Verder kijken en Nieuwe afleveringen vullen zich na een kijksessie.
+5. De rijen Verder kijken en Nieuwe afleveringen, die PS-4E al heeft neergezet, werken bij na een
+   kijksessie in de browser. PS-4W bewijst de bijwerking, niet het bestaan van de rijen.
 6. Elke spelerbediening is met het toetsenbord bereikbaar, zonder axe-overtreding.
 7. Een extern SRT-spoor toont cues met de juiste timing in Chrome, Firefox en Safari.
 8. Een ASS-spoor levert een zichtbare reden op het spoor en geen leeg ondertitelmenu.
 
+**Browser-playability-poort.** Vóór het stopcriterium als gehaald geldt, moet er een read-only
+meting op de echte NAS-bibliotheek liggen met minstens: containerverdeling, videocodec, audiocodec,
+ondertitelformaat, en de indeling in vier emmers (direct afspeelbaar, video wel maar audio niet,
+container niet compatibel, overig), apart voor films en voor afleveringen. Er is geen harde
+percentagegrens, wel een harde regel:
+
+> PS-4W wordt niet afgesloten met de claim "Pleya Web kan media afspelen" zonder dat percentage
+> gemeten en gerapporteerd te hebben.
+
+Valt het aandeel direct afspeelbare media laag uit, dan is dat een terugmelding vóór verdere
+implementatie dat de productmijlpaal zonder een deel van PS-6 of PS-8 niet haalbaar is. Het is geen
+reden om de speler alsnog op te leveren en het probleem in productie te laten opvallen.
+
 **Stopcriterium.** Iemand kijkt een film uit in een browser, sluit het tabblad, en hervat de
-volgende dag op de plek waar hij bleef.
+volgende dag op de plek waar hij bleef, met de poort hierboven gemeten en gerapporteerd.
 
 **Risico's.** Poort 5 verkeerd beslissen levert een speler op die bij lange films breekt en pas
 in productie opvalt. Criterium 3 is daar de gate op. Het tweede risico is uitdijen richting
@@ -2863,8 +2892,9 @@ blijft staan als plan.
 | Poort 3, het conflictmodel | dicht, [DEC-049](DECISIONS.md), en geïmplementeerd in `pleya_server/internal/watch/` |
 | Poort 4, de validator | dicht, [DEC-050](DECISIONS.md). De belofte is uit het contract, de validator is zwak, `If-Range` levert `200` |
 | Poort 5, de browser playback session | dicht, [DEC-051](DECISIONS.md), inclusief het endpoint en de grens van acht |
-| PS-4, de fase zelf | opgeleverd en ter goedkeuring. Zeven acceptatiecriteria, waarvan zes gehaald; criterium 1 vraagt een ronde op drie vormfactoren die nog niet gedaan is |
+| PS-4, de fase zelf | gesloten op 21 augustus 2026. Alle zeven acceptatiecriteria gehaald, inclusief de ronde op drie vormfactoren: desktop, mobiel en TV op echte hardware, met een kijkpositie die van een Mac via een iPhone naar een Apple TV meereisde |
 | De acht nieuwe fasen | niet begonnen. Ze staan in hoofdstuk 16 en wachten op de fase ervoor |
+| De uitvoeringsvolgorde na PS-4 | PS-5, PS-9, PS-11A, en daarna PS-6, PS-7, PS-8. Een geldige doorloop van dezelfde graaf; vastgelegd in [docs/pleya-server-phase-order-deviation.md](pleya-server-phase-order-deviation.md) |
 
 **Eén correctie op dit plan is tijdens de uitvoering doorgevoerd.** Regel 2 van poort 3 schreef een
 niet-canoniek voortgangsevent naar `play_history`, en die tabel hoort bij PS-9P. PS-4 correct laten

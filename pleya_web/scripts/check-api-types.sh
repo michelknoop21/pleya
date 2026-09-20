@@ -16,7 +16,11 @@ before=$(cat "$OUT")
 after=$(cat "$OUT")
 
 if [ "$before" != "$after" ]; then
-  printf '%s' "$before" > "$OUT"
+  # Met een newline, want $(cat) eet de laatste op en de generator zet hem er
+  # wel. Zonder die \n laat een gefaalde controle het bestand een byte korter
+  # achter dan hij hem aantrof, en dan meldt de volgende run drift die deze run
+  # zelf heeft gemaakt.
+  printf '%s\n' "$before" > "$OUT"
   echo "✗ $OUT loopt achter op docs/pleya-protocol/v1/openapi.yaml" >&2
   echo "  Draai: pleya_web/scripts/gen-api-types.sh" >&2
   exit 1

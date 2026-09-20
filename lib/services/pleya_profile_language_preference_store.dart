@@ -1,5 +1,5 @@
 /// Reads and writes the Pleya profile's global audio/subtitle preference
-/// (DEC-096 lid 5).
+/// (DEC-109 lid 5).
 ///
 /// No new storage family: the exact shape of [TrackPreferenceStore] and
 /// `SourcePreferenceStore` — a `SettingsService` `JsonPref` map keyed by
@@ -120,7 +120,7 @@ class PleyaProfileLanguagePreferenceStore {
 
   /// Derive an initial preference from a server profile, once.
   ///
-  /// DEC-096 lid 3 allows the fallback language to be seeded from the ranked
+  /// DEC-109 lid 3 allows the fallback language to be seeded from the ranked
   /// list a server profile already carries. Seeding is not ownership: it runs
   /// only while the profile has no preference of its own ([isUnset]) and only
   /// once ([PleyaProfileLanguagePreferences.seeded]), so a second server
@@ -165,7 +165,7 @@ class PleyaProfileLanguagePreferenceStore {
   ///
   /// [SettingsService.rememberTrackSelections] and
   /// [SettingsService.writeSeriesLanguageToServer] were single booleans for the
-  /// whole device. DEC-096 lid 5 makes them fields of the profile preference,
+  /// whole device. DEC-109 lid 5 makes them fields of the profile preference,
   /// and lid 9 makes this page their only owner, so the old prefs become the
   /// migration source and nothing else.
   ///

@@ -30,6 +30,12 @@ services:
   # Publiceert ice.pleya.app zonder inkomende poorten: cloudflared belt naar
   # buiten. De koppeling hostname -> http://relay:8080 staat in het Cloudflare-
   # dashboard bij de tunnel zelf, niet hier.
+  #
+  # Dezelfde tunnel bedient ook web.pleya.app -> http://pleya-server:8080, en
+  # die naam leeft in het netwerk van de Pleya Server-stack. Vandaar twee
+  # netwerken hieronder. Zodra een service `networks:` expliciet noemt vervalt
+  # de impliciete default, dus `default` staat er met opzet bij: zonder die
+  # regel verliest cloudflared juist `relay` en gaat ice.pleya.app plat.
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: pleya-tunnel
@@ -38,6 +44,9 @@ services:
     depends_on:
       - relay
     command: tunnel --no-autoupdate run
+    networks:
+      - default
+      - pleya-server
     environment:
       # Bewust geen `:?`-guard: die wordt bij het parsen geëvalueerd en zou ook
       # `up relay` en het vps-profile blokkeren. deploy-nas.sh controleert hem.
@@ -68,6 +77,20 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+networks:
+  # Het privenetwerk van de Pleya Server-stack, die een eigen compose heeft in
+  # pleya_server/. Compose leidt de naam af van de projectnaam, en die komt op
+  # de NAS van de map /volume1/docker/pleya-server. Vandaar de expliciete
+  # `name:`, zodat de verwijzing niet meeverandert met de projectnaam hier.
+  #
+  # Dit stond tot 24 augustus 2026 nergens en was met de hand gelegd met
+  # `docker network connect`. Elke `docker compose up -d --build` bouwde relay
+  # opnieuw, nam via depends_on ook cloudflared mee, en dan was de koppeling
+  # weg: web.pleya.app gaf 502 terwijl de server zelf gezond was.
+  pleya-server:
+    external: true
+    name: pleya-server_default
 
 volumes:
   logs:

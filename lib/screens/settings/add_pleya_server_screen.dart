@@ -17,6 +17,7 @@ import '../../profiles/profile.dart';
 import '../../profiles/profile_connection.dart';
 import '../../profiles/profile_registry.dart';
 import '../../services/pleya_server_auth_service.dart';
+import '../../services/pleya_server_device_identity.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/loading_indicator_box.dart';
 import 'async_form_state_mixin.dart';
@@ -133,14 +134,27 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
 
     final result = await runAsync<PleyaAuthResult>(() async {
       final auth = _auth();
+      // The session this login opens belongs to this device, not to this user
+      // (DEC-102). The auth service drops both fields again when the server
+      // does not advertise `capabilities.sessions`, so an older server sees
+      // exactly the request it saw before.
+      final device = await pleyaServerDeviceIdentity();
       final authResult = _needsSetup
           ? await auth.completeSetup(
               baseUrl: baseUrl,
               setupCode: _setupCodeController.text.trim(),
               username: username,
               password: password,
+              deviceId: device?.id,
+              deviceName: device?.name,
             )
-          : await auth.login(baseUrl: baseUrl, username: username, password: password);
+          : await auth.login(
+              baseUrl: baseUrl,
+              username: username,
+              password: password,
+              deviceId: device?.id,
+              deviceName: device?.name,
+            );
       return authResult;
     }, errorMapper: _describe);
     if (result == null || !mounted) return;
@@ -173,10 +187,19 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
     if (boundProfile == null) {
       // First run with no Plex account: a Pleya Server sign-in is enough to
       // deserve a profile of its own, the same way a Jellyfin-only sign-in is.
+      //
+      // Since PS-9 that profile is a `pleyaServer` one and no longer a `local`
+      // one. The difference is not cosmetic: a local profile is a label this
+      // device puts on itself, while this profile *is* an account on that
+      // server, with a role and its own library permissions. Storing it as
+      // local made the two indistinguishable, and credential resolution then
+      // had no way to refuse to answer with the wrong identity.
       final now = DateTime.now();
-      final profile = Profile.local(
-        id: 'local-${const Uuid().v4()}',
+      final profile = Profile.pleyaServer(
+        id: 'pleyaServer-${const Uuid().v4()}',
         displayName: connection.userName.isNotEmpty ? connection.userName : connection.serverName,
+        pleyaConnectionId: connection.id,
+        pleyaUsername: connection.userName,
         sortOrder: now.millisecondsSinceEpoch,
         createdAt: now,
       );
@@ -198,7 +221,14 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
         // The refresh token is the only credential there is; the access token
         // is minted per session and would be stale before the next launch.
         userToken: connection.refreshToken,
-        userIdentifier: connection.serverId,
+        // The identity on this connection is the account, not the server. It
+        // used to be `connection.serverId`, which made two accounts on the
+        // same server carry the same identifier and turned the join row into
+        // a statement about the machine instead of about who is signed in
+        // (architecture 4.4). The username is what the person typed and what
+        // the connection row already carries; the account's server-side id
+        // lives inside the access token and a client never has to read that.
+        userIdentifier: connection.userName.isNotEmpty ? connection.userName : connection.serverId,
         tokenAcquiredAt: DateTime.now(),
       ),
       addToManager: null,

@@ -140,6 +140,12 @@ class PleyaServerClient
   @override
   PleyaServerConnection get connection => _session.connection;
 
+  /// Let a revoked session spend its stored refresh token one more time.
+  /// Only ever driven by an explicit user action; see
+  /// [PleyaServerSession.retryAfterRejection] for why a timer must not call
+  /// this.
+  void retrySessionAfterRejection() => _session.retryAfterRejection();
+
   /// Raw protocol capabilities as the server last reported them. The client's
   /// own calls gate on this; [capabilities] is the app-facing translation and
   /// is narrower by design.

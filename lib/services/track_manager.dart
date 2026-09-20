@@ -82,7 +82,7 @@ class TrackManager {
   MediaSourceInfo? mediaInfo;
 
   /// What the viewer changed by hand earlier in this playback session — layer 1
-  /// of DEC-096.
+  /// of DEC-109.
   ///
   /// Owned by the player screen rather than by this manager: a manager is
   /// rebuilt per item, and the whole point of the session layer is that it
@@ -265,7 +265,7 @@ class TrackManager {
       if (!isActive()) return;
 
       // The global layer is the Pleya profile and applies to every backend
-      // alike — Plex, Jellyfin, Pleya Server, offline (DEC-096 lid 5). Read
+      // alike — Plex, Jellyfin, Pleya Server, offline (DEC-109 lid 5). Read
       // per item for the same reason the series preference is: it may have
       // arrived from another device via iCloud since the last one started.
       //
@@ -376,7 +376,7 @@ class TrackManager {
 
   /// Handle an audio track becoming active.
   ///
-  /// [userInitiated] is the whole distinction of DEC-096 lid 1. True means a
+  /// [userInitiated] is the whole distinction of DEC-109 lid 1. True means a
   /// person picked this track, so it becomes the session intent and — with
   /// "Onthoud keuzes per serie" on — the series preference. False means
   /// automatic resolution landed here, and then only the source is told which
@@ -481,7 +481,7 @@ class TrackManager {
 
     // The session layer holds regardless of the remember switch: turning
     // "Onthoud keuzes per serie" off means the choice stops at this playback,
-    // not that it stops at this episode (DEC-096 lid 3).
+    // not that it stops at this episode (DEC-109 lid 3).
     sessionIntent = _mergeSessionIntent(audioLanguage: language, audioTitle: track.title);
 
     await TrackPreferenceStore.saveAudio(metadata, language: language, title: track.title);
@@ -519,7 +519,7 @@ class TrackManager {
   ///
   /// Says which of the two promises was actually made: with "Onthoud keuzes per
   /// serie" on the choice became the series preference, and with it off it
-  /// holds for this playback and nothing was stored (DEC-096 lid 3). Naming the
+  /// holds for this playback and nothing was stored (DEC-109 lid 3). Naming the
   /// wrong one would be the toast lying about what is on disk.
   ///
   /// The unchanged global preference is part of the sentence because that is

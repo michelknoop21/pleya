@@ -35,16 +35,23 @@ void showSnackBar(
   SnackBarType type = SnackBarType.info,
   Duration? duration,
   bool? dismissible,
+  String? groupKey,
 }) {
-  noticeController.show(Notice(level: _levelFor(type), title: message, groupKey: message, durationOverride: duration));
+  // Zonder eigen sleutel is de tekst de identiteit. Dat is goed genoeg voor
+  // een statische melding, maar een tekst met een aftelgetal erin wisselt
+  // elke seconde van identiteit en stapelt dus in plaats van te vouwen; die
+  // aanroepers geven een stabiele [groupKey] mee.
+  noticeController.show(
+    Notice(level: _levelFor(type), title: message, groupKey: groupKey ?? message, durationOverride: duration),
+  );
 }
 
 void showAppSnackBar(BuildContext context, String message, {Duration? duration}) {
   showSnackBar(context, message, type: SnackBarType.info, duration: duration);
 }
 
-void showErrorSnackBar(BuildContext context, String message) {
-  showSnackBar(context, message, type: SnackBarType.error);
+void showErrorSnackBar(BuildContext context, String message, {String? groupKey}) {
+  showSnackBar(context, message, type: SnackBarType.error, groupKey: groupKey);
 }
 
 /// Shows an info notice. Used to route through the main-screen

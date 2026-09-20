@@ -21,8 +21,9 @@ stopcriterium van deze fase en tegelijk de maatstaf waaraan elke zin hier is afg
 
 ## 1. Wat deze versie wel en niet dekt
 
-Deze specificatie beschrijft **uitsluitend het oppervlak dat nodig is tot en met PS-4**: ontdekken,
-authenticeren, bladeren, zoeken, artwork, streamen en kijkstatus.
+Deze specificatie beschrijft **het oppervlak dat nodig is tot en met PS-9**: ontdekken,
+authenticeren, bladeren, zoeken, artwork, streamen, kijkstatus, en gebruikers, rollen,
+bibliotheekrechten en sessiebeheer.
 
 Wat er bewust niet in staat, met de fase die het introduceert:
 
@@ -30,7 +31,6 @@ Wat er bewust niet in staat, met de fase die het introduceert:
 | --- | --- |
 | `POST /playback/plan` en de vorm van een afspeelplan | PS-6 |
 | Transcode-sessies openen, pingen, verplaatsen, sluiten | PS-8 |
-| Gebruikers, rollen en bibliotheekrechten | PS-9 |
 | Downloads | PS-10 |
 | Verzamelingen en afspeellijsten | PS-9C |
 | Kijkgeschiedenis, favorieten en waarderingen | PS-9P |
@@ -164,10 +164,10 @@ kent mag het".
 | `owner` | de eigenaar van de betrokken resource of sessie |
 | `admin` | een beheerder |
 
-Tot PS-9 bestaat er precies één identiteit, de server-owner. `authenticated`, `owner` en `admin`
-vallen daarmee vandaag samen. Ze staan nu al uit elkaar omdat de betekenis van een endpoint niet mag
-veranderen wanneer het gebruikersmodel er in PS-9 bijkomt; dat zou regel 3 uit hoofdstuk 3
-breken.
+Vóór PS-9 bestond er precies één identiteit, de server-owner, en vielen de vier klassen daarmee
+samen. Vanaf PS-9 zijn ze echt uit elkaar: zie hoofdstuk 16 voor de vier rollen (`owner`, `admin`,
+`member`, `restricted`) die achter `owner` en `admin` in deze tabel schuilgaan, en hoofdstuk 17 voor
+sessies en intrekking.
 
 ---
 
@@ -183,22 +183,54 @@ Precies daarom staat er zo weinig in.
 ```json
 {
   "protocol": { "major": 1, "feature_level": 1, "profile": "full" },
-  "server": { "id": "0198f2a1-7c3e-7b21-9f44-1c2d3e4f5a6b" },
+  "server": {
+    "id": "0198f2a1-7c3e-7b21-9f44-1c2d3e4f5a6b",
+    "setup_accepts_name": true
+  },
   "capabilities": {
     "browse": true,
     "search": true,
     "artwork": true,
     "watch_state": true,
+    "watch_state_ownership": true,
+    "stream_sessions": true,
+    "sessions": true,
+    "api_tokens": true,
+    "cookie_auth": true,
+    "administration": true,
+    "mcp": false,
     "playback_plan": false,
     "transcode": false,
     "downloads": false,
     "live_tv": false,
     "realtime": false,
-    "users": false
+    "users": true
   },
   "auth": { "methods": ["password"], "setup_required": false }
 }
 ```
+
+`capabilities.users` staat aan zodra de server echte gebruikers kent (hoofdstuk 16);
+`capabilities.sessions` staat aan zodra hij device-scoped sessies kent (hoofdstuk 17) en dus
+`device_id`/`device_name` op `/auth/login` en `/auth/setup` verstaat.
+
+`capabilities.administration` staat aan zodra het beheeroppervlak bestaat: `GET`/`PATCH /settings`
+(17a), de vier routes onder `/server` (17b), `GET /stream-sessions` (17b.6) en `GET /audit` (17c.3).
+Eén vlag voor die zes en niet zes vlaggen, want ze kwamen samen en het antwoord zou zes keer
+hetzelfde zijn. De vlag is netheid en geen beveiliging: een client die hem niet ziet toont geen
+beheer, en de server weigert los daarvan met `404` voor wie er niet bij mag (16.4, regel 16 tot en
+met 26).
+
+`capabilities.mcp` staat aan zodra er een MCP-endpoint is waarmee een agent deze server kan beheren.
+Zolang hij uit staat draagt `Server.mcp` de vorm met `enabled: false`, en dat is een ander antwoord
+dan een afwezig object: het eerste zegt dat de laag bestaat en uit staat, het tweede dat deze server
+de vraag niet kent.
+
+`server.setup_accepts_name` staat naast `server.id` en niet in `capabilities`, want het is geen
+functie die aan of uit staat maar een eigenschap van één endpoint: `POST /auth/setup` neemt dan
+`server_name` aan (6.1). Het staat op `Info` omdat het het enige veld is dat een client vóór het
+inloggen moet weten, en het hangt aan de opslag: zonder `server_settings` is er niets om de naam in
+te bewaren.
 
 `server.id` is er om de server te herkennen tussen opgeslagen verbindingen. Verder staat er geen
 gebruikersgegeven in, geen padnaam, en **geen servernaam, versie of buildnummer**. Die drie zijn
@@ -231,10 +263,22 @@ De eerste start van een server drukt een eenmalige setupcode af op de console. E
 standaardwachtwoord en geen ingebouwd account.
 
 ```json
-{ "setup_code": "K7M-2QX-91B", "username": "michel", "password": "..." }
+{ "setup_code": "K7M-2QX-91B", "username": "michel", "password": "...", "server_name": "Kelder" }
 ```
 
 Antwoord: hetzelfde tokenpaar als 6.2. Een tweede aanroep geeft `auth.setup_already_completed`.
+
+`server_name` is optioneel en alleen te sturen wanneer `info.server.setup_accepts_name` waar is; deze
+body is gesloten, dus een oudere server wijst het veld af in plaats van het te negeren. Het is
+dezelfde instelling als `Settings.server_name`, met dezelfde grenzen (17a.2): de server schrijft hem
+weg, `GET /server` toont hem, en `GET /settings` noemt hem daarna met bron `db`. Zonder het veld
+blijft de omgevingswaarde gelden, met bron `env`.
+
+Het bestaat omdat setup het enige moment is waarop er nog geen beheerder is die `PATCH /settings` kan
+doen, en een server die "Pleya" heet tot iemand hem hernoemt is precies het soort ding dat niemand
+hernoemt. De naam wordt getoetst **vóór** de setupcode wordt ingewisseld: die code is eenmalig, dus
+een naam die door de grens zakt mag hem niet opbranden. Een naam buiten zijn grens geeft
+`settings.invalid_value` met het veld en de grens erbij.
 
 ### 6.2 `POST /pleya/v1/auth/login`
 
@@ -256,6 +300,22 @@ Klasse: **`public`**.
 Een onbekende gebruiker en een verkeerd wachtwoord geven hetzelfde antwoord, `auth.invalid_credentials`,
 zodat het bestaan van een account niet lekt.
 
+**`device_id` en `device_name` zijn optioneel op zowel `/auth/login` als `/auth/setup`**, en alleen te
+sturen wanneer `capabilities.sessions` waar is (hoofdstuk 17):
+
+```json
+{ "username": "michel", "password": "...",
+  "device_id": "b3f1c9e0-...", "device_name": "iPhone van Michel" }
+```
+
+`device_id` is het `PreferenceDeviceId` van de client: stabiel, niet gesynchroniseerd, en geen
+Plex-clientidentifier. Stuurt een client geen van beide, of kent hij de capability niet, dan krijgt de
+sessie `device_id NULL` en een vaste plaatshouder als naam, hetzelfde gedrag als vóór PS-9.
+
+`credential_mode` is een tweede optioneel veld, alleen te sturen wanneer `capabilities.cookie_auth`
+waar is. Het bepaalt waar het refreshcredential heen gaat: in het antwoordlichaam, of in een
+`HttpOnly`-cookie die JavaScript niet kan lezen. Hoofdstuk 17d beschrijft het volledig.
+
 ### 6.3 `POST /pleya/v1/auth/refresh`
 
 Klasse: **`public`**, want het refreshtoken is zelf het bewijs.
@@ -267,6 +327,10 @@ Klasse: **`public`**, want het refreshtoken is zelf het bewijs.
 Het antwoord is een nieuw paar. **Het refreshtoken roteert bij elk gebruik** en het oude vervalt
 onmiddellijk. Een tweede aanroep met hetzelfde refreshtoken geeft `auth.refresh_token_reused`, en de
 server mag de hele keten dan ongeldig maken.
+
+Ook hier bestaat `credential_mode`. Draagt de aanvraag `{"credential_mode": "cookie"}`, dan komt het
+oude refreshcredential uit de cookie en gaat het nieuwe er weer in, en blijft `refresh_token` uit
+lichaam en antwoord. Zie 17d.
 
 ### 6.4 `POST /pleya/v1/auth/stream-token`
 
@@ -347,19 +411,29 @@ versleuteling en wordt hier ook niet als zodanig gepresenteerd.
 Het streamtoken uit 6.4 verdwijnt hiermee niet. Externe spelers delen geen cookiejar met de browser;
 de twee mechanismen staan naast elkaar en bedienen twee verschillende clients.
 
+### 6.4b `POST /pleya/v1/auth/logout`
+
+Klasse: **`authenticated`**.
+
+Geen aanvraagbody en geen antwoordbody: `204 No Content`. Trekt uitsluitend de sessie in waarvan het
+accesstoken op deze aanvraag de `sid` draagt, dus **alleen het huidige toestel**.
+
+Dit is nadrukkelijk geen vervanging van `DELETE /pleya/v1/sessions/{id}` uit hoofdstuk 17: een ander
+toestel uitloggen kan met dit endpoint niet.
+
 ### 6.5 De bootstrap-identiteit
 
-Tot PS-9 bestaat er **precies één identiteit**: de server-owner, aangemaakt met de setupcode. Er zijn
-geen gebruikers, geen profielen, geen rollen en geen bibliotheekrechten.
+**Vóór PS-9** bestond er precies één identiteit: de server-owner, aangemaakt met de setupcode. Er
+waren geen gebruikers, geen profielen, geen rollen en geen bibliotheekrechten.
 
 Op de lijn is die identiteit zichtbaar als een `subject`: een ondoorzichtige string die in het
-accesstoken zit en die de client nooit hoeft te lezen. Een client stuurt hem nergens mee. Zodra PS-9
-echte gebruikers introduceert verandert er aan deze specificatie niets: dezelfde tokens, dezelfde
-endpoints, en `subject` wijst dan naar een rij in plaats van naar de enige identiteit. Dat is de
-reden dat de vier autorisatieklassen uit hoofdstuk 4 nu al uit elkaar staan.
+accesstoken zit en die de client nooit hoeft te lezen. Een client stuurt hem nergens mee. **Vanaf
+PS-9** wijst `subject` naar een rij in de `users`-tabel (hoofdstuk 16) in plaats van naar de enige
+identiteit, zonder dat er aan deze specificatie iets verandert: dezelfde tokens, dezelfde endpoints.
+Dat is de reden dat de vier autorisatieklassen uit hoofdstuk 4 al vóór PS-9 uit elkaar stonden.
 
-**Welke persistente auth-state een server hiervoor mag hebben.** Deze specificatie schrijft geen
-tabellen voor, maar wel het minimum en het maximum, zodat een implementatie het contract kan
+**Welke persistente auth-state een server tot PS-9 mocht hebben.** Deze specificatie schreef geen
+tabellen voor, maar wel het minimum en het maximum, zodat een implementatie het contract kon
 waarmaken zonder alsnog protocol te ontwerpen:
 
 | Nodig | Waarom |
@@ -369,12 +443,11 @@ waarmaken zonder alsnog protocol te ontwerpen:
 | per uitgegeven refreshtoken: een identificatie, een vervalmoment en een ingetrokken-vlag | om rotatie en hergebruikdetectie te kunnen doen |
 | de setupcode, niet leesbaar bewaard, plus de vlag of setup al gedaan is | om `setup_required` te kunnen beantwoorden |
 
-Meer niet. **Geen `users`-tabel en geen `sessions`-tabel**: die dragen rollen, rechten en
-apparaatbeheer, en dat is PS-9. Eén credential met één refreshtokenketen vraagt daar niet om, en ze
-alvast aanleggen omdat er toch tokens nodig zijn is precies de drift die hoofdstuk 23.1 verbiedt.
-
-**Vier eigenschappen die een implementatie niet zelf mag invullen.** Ze bepalen de opslagvorm, dus na
-PS-2 zijn ze alleen met een migratie te wijzigen.
+Meer niet, tot PS-9. **Geen `users`-tabel en geen `sessions`-tabel** vóór die fase: die dragen rollen,
+rechten en apparaatbeheer, en die alvast aanleggen omdat er toch tokens nodig waren was precies de
+drift die hoofdstuk 23.1 verbiedt. Vanaf PS-9 bestaan beide tabellen wel, en hoofdstuk 16 en 17
+beschrijven wat ze op de lijn betekenen; de vier eigenschappen hieronder blijven onveranderd gelden,
+ook met die twee tabellen erbij.
 
 1. **De setupcode is kortlevend en eenmalig.** Hij vervalt bij de eerste geslaagde inwisseling, en
    daarnaast na een korte tijd vanzelf. Zolang hij persistent staat, staat hij er niet leesbaar in:
@@ -434,6 +507,13 @@ de precieze reden.
 
 Codes zijn gegroepeerd per domein. Uitbreiden mag; de betekenis van een bestaande code wijzigen niet.
 
+De domeinlijst zelf is ook niet gesloten, maar groeit alleen wanneer een protocolvenster dat met
+zoveel woorden zegt. `settings` en `server` kwamen erbij met venster 1 (DEC-110 en DEC-111). Een
+client die een domein niet kent behandelt de code als onbekend en toont een generieke melding; hij
+takt nooit op het domein. Codes die een client zelf verzint horen niet in dit register: de webclient
+draagt `client.transport` en `client.malformed_response`, die komen nooit over de lijn, en het
+contract keurt ze af.
+
 ### 7.1 Coderegister
 
 | Code | HTTP | `retryable` | Betekenis |
@@ -458,14 +538,44 @@ Codes zijn gegroepeerd per domein. Uitbreiden mag; de betekenis van een bestaand
 | `storage.full` | 507 | nee | de server kan niet schrijven |
 | `session.invalid` | 400 | nee | onbekende of afgesloten kijksessie |
 | `session.stream_session_limit` | 429 | nee | er staan al acht actieve streamsessies voor dit subject |
+| `auth.user_not_found` | 404 | nee | de gebruiker bestaat niet, of niet voor u; zie hoofdstuk 16 |
+| `auth.username_taken` | 409 | nee | die gebruikersnaam is al in gebruik |
+| `auth.owner_immutable` | 409 | nee | de owner kan niet verwijderd of gedegradeerd worden |
+| `auth.session_not_found` | 404 | nee | de sessie bestaat niet, of niet voor u; zie hoofdstuk 17 |
+| `auth.permission_not_allowed` | 409 | nee | de rol van het doel verbiedt deze trede: `restricted` krijgt nooit `manage`. `details` draagt `permission` en `role` |
+| `auth.scope_exceeds_role` | 400 | nee | het gevraagde bereik van een API-token komt boven de rol van de eigenaar uit; `details` draagt `scope` en `role`. `400` en geen `409`: er is geen toestand die dit verzoek in de weg zit en later anders kan zijn, het verzoek zelf klopt niet |
+| `auth.origin_rejected` | 403 | nee | een aanvraag in cookiemodus komt van een origin die deze server niet toestaat, of draagt helemaal geen `Origin`. Alleen op `POST /auth/login` en `POST /auth/refresh`, en alleen op het cookiepad; zie 17d.4 |
+| `settings.invalid_value` | 400 | nee | een waarde in `PATCH /settings` valt buiten zijn grens; `details` draagt veld en grens |
+| `server.confirm_mismatch` | 409 | nee | een destructieve handeling zonder de juiste bevestiging; `details.expected` zegt welk woord er moet staan. Voor S1.3 is dat `POST /server/rotate-signing-key` met `confirm: "rotate"` |
+| `server.internal` | 500 | nee | de handler liep op een fout die hij niet had voorzien; `details.request_id` verwijst naar de logregel. `nee` en niet `ja`: het contract dwingt een boolean af waar "onbekend" het eerlijke antwoord is, en een deterministische panic die als herhaalbaar binnenkomt levert een client op die precies het verzoek blijft sturen dat de server omver duwde |
+| `library.slug_taken` | 409 | nee | `POST /libraries`: de titel vereenvoudigt tot een slug die al bestaat, van een andere aanvraag of van een bibliotheek uit `PLEYA_SERVER_LIBRARIES` (S2.2) |
+| `library.not_empty` | 409 | nee | `PATCH /libraries/{id}`: `kind` mag alleen wisselen als de bibliotheek geen enkel item draagt (S2.2) |
+| `library.confirm_mismatch` | 409 | nee | `DELETE /libraries/{id}` zonder of met een foute `confirm`; `details.expected` draagt de titel die er had moeten staan. Een eigen code naast `server.confirm_mismatch` (die blijft voor `POST /server/rotate-signing-key`), zodat een client niet op het pad hoeft te kijken om te weten welk woord verwacht wordt (K rij 16, S2.2) |
+| `storage.root_not_offered` | 400 | nee | `POST` en `PATCH /libraries`: een `root_path` overlapt met een bestaande root of met een andere root in dezelfde aanvraag, valt niet onder een van de mounts uit `PLEYA_SERVER_MEDIA_DIRS` (S2.3, hoofdstuk 17e.4), of de aanvraagbody zelf is onleesbaar |
 
-**`library.not_found` en niet `403`.** Een resource die u niet mag zien bestaat voor u niet, ook niet
-in zoekresultaten en ook niet als u het id raadt. Dat is vandaag nog theoretisch, want er is één
-identiteit, maar de regel staat er nu zodat PS-9 hem niet hoeft te introduceren.
+`auth.permission_not_allowed` is de ene code in het `auth.`-domein die geen `404` is, en dat is geen
+gat in de regel hieronder. Die regel verbergt het bestaan van iets dat de aanvrager niet mag zien;
+hier mag de aanvrager, een beheerder, de gebruiker en de bibliotheek allebei al zien, en is alleen de
+combinatie verboden. Zie 16.3.
 
-Het domein `session.` is gereserveerd. In deze versie draagt het `session.invalid` voor de kijksessie
-uit hoofdstuk 12 en `session.stream_session_limit` voor de browser-streamsessie uit 6.4a;
-transcode-sessies komen in PS-8.
+`auth.origin_rejected` is de tweede uitzondering, en op een andere grond. De regel hieronder
+verbergt het bestaan van een **resource**; hier is de resource `POST /auth/refresh`, klasse `public`,
+en het bestaan ervan staat in deze specificatie. Er valt niets te verbergen. Wat geweigerd wordt is
+niet een identiteit maar een **herkomst**, en die weigering moet leesbaar zijn: een `404` zou een
+legitieme webclient met een verkeerd ingestelde `web_origin` vertellen dat het endpoint niet bestaat,
+en dan zoekt een beheerder in de verkeerde helft van zijn opstelling. Zie 17d.4.
+
+**`404` en niet `403`, overal.** Een resource die u niet mag zien bestaat voor u niet, ook niet in
+zoekresultaten en ook niet als u het id raadt. Dat gold vóór PS-9 al als regel, hoewel er toen nog
+maar één identiteit was; vanaf PS-9 is de regel voor het eerst echt te toetsen, en `auth.user_not_found`
+en `auth.session_not_found` volgen hem net zo goed als `library.not_found`. De volledige
+autorisatiematrix staat in hoofdstuk 16.4.
+
+Het domein `session.` is gereserveerd voor de **kijksessie** (hoofdstuk 14, `session_id` in
+`WatchStateEvent`) en de **browser-streamsessie** (6.4a): `session.invalid` en
+`session.stream_session_limit`. De sessies uit hoofdstuk 17 (login/device-sessies) zijn een ander
+begrip en gebruiken daarom bewust het domein `auth.`, niet `session.`, om verwarring tussen de twee
+te voorkomen.
 
 ---
 
@@ -882,11 +992,798 @@ de aanbevelingslogica zit al in de client en werkt voor elke backend, en een ser
 voorschrijft zou die logica doubleren.
 
 **Een server zonder kijkstatus levert lege lijsten voor `continue_watching` en `next_up`**, geen
-fout. Dat is de normale toestand van een catalogusserver die nog niet kan afspelen.
+fout. Dat is de toestand van een catalogusserver die nog niet kan afspelen. Zodra
+`capabilities.watch_state` waar is, is het omgekeerde de norm: dan zijn de twee hubs gevuld met wat
+hieronder staat, en is een lege lijst alleen nog het antwoord op "u bent nergens aan begonnen".
+
+#### De inhoud van `continue_watching`
+
+Films en afleveringen waar deze identiteit aan begonnen is en die zij niet heeft uitgekeken:
+`watched` is onwaar en `position_ms` is groter dan nul. Series en seizoenen staan er niet in, want
+die dragen geen positie. Aflopend gesorteerd op wanneer de kijkstatus voor het laatst wijzigde.
+
+Een item dat op `mark_unwatched` is gezet staat op positie nul en valt hier dus uit. Dat is opzet:
+dat is niet verder kijken maar opnieuw beginnen, en voor een aflevering is het precies het geval dat
+in `next_up` thuishoort.
+
+#### De inhoud van `next_up`, normatief
+
+Per serie precies één aflevering, en nooit meer dan één. Welke, in drie stappen:
+
+1. **Wat meetelt.** Alleen afleveringen met een `item_index` in een seizoen met `item_index >= 1`.
+   Specials (seizoen `item_index = 0`) en ongenummerde afleveringen tellen niet mee, niet als
+   kandidaat en niet in stap 2. Wie een special kijkt schuift zijn serie dus niet op.
+2. **Het ankerpunt.** De hoogst genummerde aflevering van die serie waar deze identiteit kijkstatus
+   op heeft, geordend op `(seizoen, aflevering)`. Heeft een serie nergens kijkstatus, dan heeft zij
+   geen ankerpunt en staat zij niet in de hub. Een serie verschijnt hier dus nooit voordat er iets
+   mee gebeurd is.
+3. **De keuze.** De laagst genummerde aflevering vanaf het ankerpunt die ongekeken is en waar niemand
+   aan begonnen is: `watched` onwaar én `position_ms` nul. Is die er niet, dan is de serie uit en
+   staat zij niet in de hub.
+
+Vanaf het ankerpunt en niet erna, zodat een aflevering die zojuist op `mark_unwatched` is gezet de
+volgende is in plaats van uit beide hubs te vallen. De eis dat er nog niet aan begonnen is houdt de
+twee hubs uit elkaar: **`continue_watching` en `next_up` leveren nooit hetzelfde item.** Een
+halfgekeken aflevering staat in de eerste, haar opvolger in de tweede.
+
+Series onderling zijn aflopend geordend op de laatste kijkactiviteit binnen die serie, en niet op de
+kijkstatus van het ankerpunt. Wie vandaag de eerste aflevering als bekeken markeert nadat hij vorig
+jaar tot halverwege seizoen twee keek, ziet die serie bovenaan.
+
+Beide hubs zijn gepagineerd met dezelfde cursorvorm als de rest van hoofdstuk 9.4. Een cursor hoort
+bij de hub die hem uitgaf; hem op de andere hub aanbieden levert `library.cursor_invalid`.
 
 ---
 
-## 16. Endpointoverzicht
+## 16. Gebruikers en rechten
+
+Beschikbaar wanneer `capabilities.users` waar is. Introduceert vier rollen en een geordende
+rechtenladder per bibliotheek.
+
+### 16.1 Vier rollen
+
+| Rol | Aantal | Bevoegdheden |
+| --- | --- | --- |
+| `owner` | precies één | alles van `admin`, plus: niet te verwijderen of te degraderen |
+| `admin` | nul of meer | gebruikers aanmaken, rollen toekennen, bibliotheekrechten toekennen, wachtwoorden van anderen zetten, sessies van anderen intrekken |
+| `member` | nul of meer | eigen wachtwoord, eigen sessies, krijgt bibliotheekrechten toegewezen |
+| `restricted` | nul of meer | als `member`, met drie verschillen: kan nooit `manage` krijgen, beheert zijn eigen wachtwoord niet, en ziet in `GET /users` alleen zichzelf |
+
+`owner` en `admin` omzeilen bibliotheekrechten via de rol: ze hebben geen rijen in de rechtentabel en
+zien elke bibliotheek die de server kent.
+
+### 16.2 De rechtenladder
+
+```
+view  <  download  <  manage
+```
+
+Eén waarde per `(gebruiker, bibliotheek)`, nooit drie losse vlaggen: `download` impliceert `view`,
+`manage` impliceert beide. `view` en `download` worden in deze fase gehandhaafd; `manage` wordt
+opgeslagen en teruggegeven, maar handhaaft pas iets zodra metadata-bewerken en bibliotheekbeheer
+bestaan (latere fasen).
+
+### 16.3 De endpoints
+
+| Methode en pad | Klasse |
+| --- | --- |
+| `POST /pleya/v1/users` | `admin` |
+| `GET /pleya/v1/users` | `authenticated`, gefilterd |
+| `GET /pleya/v1/users/me` | `authenticated`, altijd zichzelf |
+| `PATCH /pleya/v1/users/{id}` | `admin`, of `owner` op zichzelf |
+| `DELETE /pleya/v1/users/{id}` | `admin` |
+| `PUT /pleya/v1/users/{id}/permissions` | `admin` |
+
+`POST /pleya/v1/users`:
+
+```json
+{ "username": "sanne", "password": "...", "role": "member" }
+```
+
+```json
+{ "id": "0198f2c0-...", "username": "sanne", "role": "member" }
+```
+
+`role` mag bij aanmaken nooit `owner` zijn; die rol ontstaat uitsluitend via `/auth/setup`.
+
+`GET /pleya/v1/users`: `owner` en `admin` zien iedereen; `member` en `restricted` zien in dit antwoord
+uitsluitend zichzelf.
+
+`GET /pleya/v1/users/me` geeft één `User`: die van de aanvrager. Elke rol krijgt `200`, want het doel
+is de aanvrager zelf en er staat geen id in het pad. Beschikbaar wanneer `capabilities.users` waar is;
+`administration` is er niet voor nodig, en een lid dat zijn eigen rol wil weten hoeft geen beheerder
+te zijn. Een oudere server kent de route niet en antwoordt `404`; een client valt dan terug op de naam
+waarmee hij inlogde, en dat is precies wat er misgaat zodra iemand hernoemd wordt. `me` botst niet met
+een id: er is geen `GET /pleya/v1/users/{id}`.
+
+`PATCH /pleya/v1/users/{id}` accepteert `role`, `password`, of beide; minimaal één veld is verplicht.
+Een poging om de owner te degraderen geeft `auth.owner_immutable`.
+
+`DELETE /pleya/v1/users/{id}`: de owner verwijderen geeft `auth.owner_immutable`.
+
+`PUT /pleya/v1/users/{id}/permissions` vervangt de volledige rechtenlijst van die gebruiker:
+
+```json
+{ "permissions": [
+  { "library_id": "0198f2a1-...", "permission": "view" },
+  { "library_id": "0198f2a2-...", "permission": "download" }
+] }
+```
+
+```json
+{ "items": [
+  { "library_id": "0198f2a1-...", "permission": "view" },
+  { "library_id": "0198f2a2-...", "permission": "download" }
+] }
+```
+
+`manage` voor een `restricted` wordt geweigerd met `auth.permission_not_allowed` (`409`), en de hele
+lijst gaat er dan af, ook de treden die op zichzelf wel mochten. Dit is de ene weigering op dit
+endpoint die geen `404` is, en dat volgt uit de regel in plaats van er een uitzondering op te maken:
+`404` verbergt het bestaan van iets dat de aanvrager niet mag zien, en de aanvrager is hier per
+definitie een beheerder die de gebruiker en de bibliotheek allebei al mag zien. Er is niets te
+verbergen, alleen iets uit te leggen, en een `404` liet een beheerder zoeken naar een gebruiker die er
+gewoon was.
+
+### 16.4 De autorisatiematrix
+
+Dertig regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien
+zijn de bindende matrix van DEC-105; elke slice die daarna een endpoint toevoegt zet zijn eigen
+regel erbij en sluit niet zonder (K.3 van het securityplan).
+
+| # | Endpoint | Lekvector | Vereiste controle |
+| --- | --- | --- | --- |
+| 1 | `GET /libraries` | lijst | filter op zichtbare bibliotheken |
+| 2 | `GET /libraries/{library_id}/items` | direct id | recht op de bibliotheek, anders `404` |
+| 3 | `GET /items/{item_id}` | direct id | bibliotheek van het item, anders `404` |
+| 4 | `GET /items/{item_id}/children` | direct id | idem |
+| 5 | `GET /search` | resultaten | filter; een verborgen titel komt niet terug |
+| 6 | `GET /hubs/{hub_id}` | resultaten **en** `?library_id=` | filter, plus `404` op een verboden `library_id` |
+| 7 | `GET /artwork/{artwork_id}` | direct id | via het item, anders `404` |
+| 8 | `GET /subtitles/{subtitle_id}` | direct id, **plus streamtokenpad** | anders `404`, ook met een geldig streamtoken |
+| 9 | `GET /stream/{version_id}` | direct id, **plus streamtoken en streamsessie** | anders `404`, op alle drie de paden |
+| 10 | `POST /auth/stream-token` | `version_id` in de body | `404` bij geen recht, zodat het bestaan niet lekt |
+| 11 | `POST /auth/stream-session` | `version_id` in de body | idem |
+| 12 | `POST /watch-state` | `item_id` in de body | `404` bij geen recht |
+| 13 | `GET /watch-state` | lijst met item-ids | filter op nu zichtbare items, niet alleen op de gebruiker |
+| 14 | `GET /users` | lijst | `member`/`restricted` zien alleen zichzelf |
+| 15 | `GET /sessions`, `DELETE /sessions/{id}` | sessie-id | eigen sessies, of `admin`; anders `404` |
+| 16 | `GET /settings`, `PATCH /settings` | het bestaan van het beheeroppervlak | klasse `admin`; `member` en `restricted` krijgen `404` met dezelfde body als een beheerhandeling op een ander (S1.2) |
+| 17 | `GET /server` | hoe de server draait | de beheervelden (17b.1) alleen voor klasse `admin`; een lid krijgt `200` met precies het antwoord dat het altijd kreeg. De regel telt ze niet op: het waren er acht bij S1.3, negen na `web_origin` (S1.8) en tien na `mcp` (S1.6), en een aantal in deze kolom veroudert stil bij elke slice die er een bij zet |
+| 18 | `GET /server/environment` | omgeving en credentials | klasse `admin`, `404` voor de rest; alleen `PLEYA_SERVER_*` plus een gemaskeerde `DATABASE_URL`, en een naam die een geheim aankondigt gaat er in zijn geheel af |
+| 19 | `GET /server/log` | logregels met paden, adressen en tokens | klasse `admin`, `404` voor de rest; uit een ringbuffer in het geheugen en nooit uit een bestand, geredigeerd op de weg erin |
+| 20 | `POST /server/connectivity-check` | de server als prober van het interne netwerk | klasse `admin`, `404` voor de rest; geen aanvraagbody, doel is altijd het eigen `public_url`, vaste time-out, geen omleidingen, en een letterlijk privé-adres komt niet door `PATCH /settings` |
+| 21 | `POST /server/rotate-signing-key` | elke sessie van het huishouden | klasse `admin`, `404` voor de rest; `confirm: "rotate"` verplicht, en het antwoord draagt de nieuwe sleutel niet |
+| 22 | `GET /users/me` | niets | klasse `authenticated`, en de enige regel waar élke rol `200` krijgt: het doel is de aanvrager zelf, er staat geen id in het pad en er is geen parameter, dus er valt niets te raden. Het antwoord bevat nooit een andere gebruiker (S1.4) |
+| 23 | `GET /stream-sessions` | wie er kijkt, op welk toestel, en waarnaar | klasse `admin`, `404` voor de rest; geen geheim van de streamsessie en geen token in het antwoord, en de lijst bevat uitsluitend sessies die op dit moment nog bytes kunnen ophalen (S1.4) |
+| 24 | `POST /auth/api-tokens` | een credential met te veel bereik of te lange geldigheid | klasse `authenticated` op zichzelf, `admin` met `user_id` van een ander. Het bereik wordt getoetst tegen de rol van de **eigenaar** en niet die van de aanvrager, anders is `user_id` een manier om een lid beheerrechten te geven zonder zijn rol te wijzigen. Een aanvraag die zelf met een API-token binnenkomt mag alleen minten met bereik `admin`; anders `404`, byte-gelijk aan een beheerroute (S1.5) |
+| 25 | `GET /auth/api-tokens` | het bestaan van andermans agents | klasse `authenticated` op zichzelf, `admin` met `?user_id=`; anders `404`. Nooit een geheim, en nooit de hash ervan (S1.5) |
+| 26 | `GET /audit` | wie wat wanneer deed, inclusief mislukte logins | klasse `admin`, `404` voor de rest. Niet "de eigen regels voor iedereen": de lijst is niet per gebruiker te filteren zonder de regels zonder gebruiker, juist de mislukte logins, ergens te laten vallen, en een auditlog met stille gaten is erger dan geen (S1.5) |
+| 27 | `POST /auth/login`, `POST /auth/refresh` in cookiemodus | een vreemde pagina die de refreshcookie van de browser laat meeliften | klasse `public`, dus de drie rollen zeggen hier niets; wat er wél op past is de **herkomst**. Alleen same-origin, `web_origin` of een waarde uit `cors_origins`; iets anders of geen `Origin` geeft `403` `auth.origin_rejected`. De cookie draagt `Path=/pleya/v1/auth/refresh` en `SameSite=Strict`, dus hij bereikt geen andere route en reist niet cross-site (S1.8, hoofdstuk 17d) |
+| 28 | `POST /libraries` | het bestaan van het beheeroppervlak | klasse `admin`, `404` voor de rest; gesloten body (S2.2) |
+| 29 | `PATCH /libraries/{id}` | direct id | klasse `admin`, `404` voor de rest, ook op een bestaande bibliotheek waar de aanvrager alleen `view` op heeft: een bibliotheekrecht is geen beheerrol (S2.2) |
+| 30 | `DELETE /libraries/{id}` | direct id, plus de bevestiging | klasse `admin`, `404` voor de rest; de bevestiging (`confirm: "<title>"`) wordt pas getoetst ná de rolcontrole, dus een lid krijgt nooit `409` (K rij 16, S2.2) |
+| 31 | `GET /storage/roots` | welke mediamounts en bibliotheken deze installatie kent | klasse `admin`, `404` voor de rest (S2.3) |
+| 32 | `POST /storage/roots/recheck` | een meetronde forceren op elke geclaimde root | klasse `admin`, `404` voor de rest; geen aanvraagbody, en het antwoord draagt geen gevoelige data terug (S2.3) |
+
+**Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
+zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
+`404` krijgt. Op login en refresh is er per definitie nog geen identiteit: het endpoint bestaat juist
+om er een te maken. De lekvector zit dan niet in wie het vraagt maar in wat de browser er
+automatisch bij doet, en de enige controle die daarop past is die op de origin. Hij staat in deze
+matrix en niet ernaast omdat K.3 van het securityplan geen uitzondering kent: elke slice die een
+autorisatiebeslissing toevoegt zet zijn regel erbij, ook wanneer die beslissing niet over een rol
+gaat.
+
+Regel 22 is de enige waar geen enkele rol wordt geweigerd, en hij staat er juist daarom: een
+implementatie die hem per ongeluk achter `requireAdmin` zet blijft voor `owner` en `admin` groen op
+elke andere controle, en breekt alleen voor de twee rollen die niemand handmatig probeert.
+
+Regel 24 en 25 lijken daarop maar zijn het niet: zonder `user_id` antwoorden ze elke rol, mét
+`user_id` van een ander zijn ze een beheerhandeling. Dat is dezelfde vorm als regel 15, en met opzet
+geen admin-only oppervlak. Een lid dat een leestoken voor zijn eigen bibliotheek wil, zou anders een
+beheerder moeten vragen die alleen een token met de rechten van dat lid kán maken: hetzelfde token,
+met een mens ertussen. En was elk API-token een beheerding, dan zou `auth.scope_exceeds_role` een
+dode code zijn, want een beheerder overschrijdt zijn eigen rol nooit.
+
+**Het bereik van een API-token begrenst de adminklasse, ook wanneer de rol hem haalt.** Een token met
+bereik `read` of `maintenance` zakt door dezelfde poort als een lid, met dezelfde 404: het
+beheeroppervlak hoort net zomin te bestaan voor een credential dat er niet bij mag als voor een
+gebruiker die er niet bij mag. Onder die klasse verandert het bereik niets, want daar zijn het de
+eigen rechten van de eigenaar, en die worden per aanvraag opnieuw gelezen.
+
+Regel 17 tot en met 21 en regel 23 hebben één ding gemeen dat de eerste zestien niet hebben: ze lekken
+niets uit de bibliotheek maar uit de installatie. Een lijst omgevingsvariabelen, een logregel met een pad of
+een adres, en de vraag of de server via een proxy draait zijn samen genoeg om te weten waar hij
+staat en waar hij aan hangt. Vandaar dat regel 17 de enige is waar het endpoint zelf gewoon
+antwoordt en alleen de velden meebewegen met de klasse.
+
+Regel 8 tot en met 11 zijn de subtiele: een streamtoken of streamsessie leeft twee tot vijf minuten
+zelfstandig nadat hij is uitgegeven. De rechtencontrole staat daarom op het **aanvraagpad**, niet
+alleen op het mint-moment; anders overleeft een ingetrokken recht precies zo lang als het token.
+Regel 13 is de gemakkelijkst vergetene: kijkstatus is per gebruiker gescheiden, maar een rij blijft
+bestaan nadat het recht op de bijbehorende bibliotheek is ingetrokken.
+
+---
+
+## 17. Sessies en intrekking
+
+Beschikbaar wanneer `capabilities.sessions` waar is. Een sessie is één toestel, niet één gebruiker:
+intrekking van sessie A logt niet de andere toestellen van dezelfde gebruiker uit.
+
+### 17.1 Inzage en intrekking
+
+| Methode en pad | Klasse |
+| --- | --- |
+| `GET /pleya/v1/sessions` | `owner` op eigen sessies, `?user_id=` voor `owner`/`admin` |
+| `DELETE /pleya/v1/sessions/{id}` | `owner` op eigen sessies, `admin` op elke sessie |
+
+```json
+{ "items": [
+  { "id": "0198f2d0-...", "device_name": "iPhone van Sanne",
+    "created_at": "2026-08-24T09:12:00Z", "last_seen_at": "2026-08-24T10:41:22Z",
+    "current": true },
+  { "id": "0198f2d0-...", "device_name": "Legacy device",
+    "created_at": "2026-08-10T18:03:00Z", "last_seen_at": "2026-08-23T21:00:05Z",
+    "current": false }
+] }
+```
+
+`current: true` markeert de sessie die de aanvraag zelf doet. Een sessie-id dat niet van de
+aanvrager is en waar de aanvrager geen recht op heeft geeft `404` (`auth.session_not_found`), dezelfde
+regel als overal.
+
+`DELETE /pleya/v1/sessions/{id}` geeft `204`, zet `revoked_at`, en trekt daarmee ook de refreshtokens
+en browserstreamsessies van die sessie in.
+
+`POST /pleya/v1/auth/logout` (6.4b) doet uitsluitend de eigen, huidige sessie en vervangt dit endpoint
+niet: een ander toestel intrekken kan alleen met `DELETE /sessions/{id}`.
+
+### 17.2 De maximale revocatielatentie is twee seconden
+
+Een ingetrokken sessie is binnen **ten hoogste twee seconden** ongeldig, ook voor een lopende
+`GET /stream`-aanvraag met een streamtoken die op het intrekkingsmoment al onderweg was. Dit geldt
+symmetrisch voor het accesstoken, het streamtoken en de browser-streamsessie: alle drie falen zodra
+hun sessie ingetrokken is.
+
+---
+
+## 17a. Serverinstellingen
+
+`GET /pleya/v1/settings` en `PATCH /pleya/v1/settings` zijn klasse `admin`. Ze kwamen met S1.2,
+binnen protocolvenster 1 (DEC-110 en DEC-111).
+
+### 17a.1 Twee lagen, en de bron staat erbij
+
+Een instelling komt uit de omgeving waarmee de server startte, of uit de tabel `server_settings`.
+Een ontbrekende rij betekent "neem de omgeving", dus de tabel bevat alleen wat een beheerder
+werkelijk gewijzigd heeft. Elke sleutel in het antwoord draagt daarom `source`: `env` of `db`.
+Zonder dat veld zou een beheerder niet kunnen zien of hij naar een default kijkt of naar zijn eigen
+keuze, en dat verschil bepaalt of terugzetten iets doet.
+
+De set is altijd volledig. Een sleutel die niemand ooit heeft gewijzigd staat er met zijn
+omgevingswaarde en `source: env`, en niet als ontbrekend veld.
+
+### 17a.2 Elke sleutel heeft een grens
+
+| Sleutel | Vorm | Grens |
+| --- | --- | --- |
+| `server_name` | tekst | 1 tot 64 tekens |
+| `access_token_ttl` | duur | `1m` tot `60m` |
+| `refresh_token_ttl` | duur | `24h` tot `2160h` |
+| `stream_token_ttl` | duur | `1m` tot `15m` |
+| `stream_session_ttl` | duur | `5m` tot `120m` |
+| `max_stream_sessions` | geheel getal | 1 tot 32 |
+| `public_url` | tekst | absolute `http`- of `https`-URL, geen inloggegevens, geen querystring, geen fragment, geen letterlijk privé-adres; leeg is toegestaan |
+| `web_origin` | tekst | een origin: `schema://host[:poort]`, `http` of `https`, geen pad, geen inloggegevens, geen querystring, geen fragment; een privé-adres is hier wél toegestaan; leeg is toegestaan |
+| `cors_origins` | lijst van tekst | ten hoogste 16 origins in dezelfde vorm als `web_origin`, elk uniek, geen `*`; de lege lijst is de default |
+
+Een duur heeft dezelfde vorm als de omgevingsvariabele ernaast (`15m`, `720h`), zodat een beheerder
+niet twee notaties hoeft te kennen voor dezelfde instelling. Wat eruit komt kun je zo weer
+insturen.
+
+Een waarde buiten de grens geeft `400` met `settings.invalid_value`, en `details` draagt `field`,
+`minimum` en `maximum`. De body is gesloten: een onbekende sleutel is een fout en geen veld dat stil
+wegvalt (regel 5 van hoofdstuk 3). Een patch met een geldige en een ongeldige sleutel wijzigt er
+nul; half doorgevoerd beheer laat een antwoord achter dat niet klopt met wat er staat.
+
+`public_url` kwam met S1.3 en heeft geen lengtegrens maar een vormgrens. De reden is dat hij het
+enige doel is dat `POST /server/connectivity-check` aanroept: een waarde die naar `169.254.169.254`
+of naar de buren wijst maakt van een beheerknop een scanner van het interne netwerk. Een **naam**
+wordt niet opgezocht, want wie de zone beheert kan hem na de controle toch verzetten; wat de
+controle koopt is dat een beheerder de server niet met één `PATCH` op een metadata-endpoint kan
+richten.
+
+De omgevingslaag valt daar bewust buiten. `PLEYA_SERVER_PUBLIC_URL` komt van wie de container
+draait, en op een thuisnetwerk ís `192.168.x.y` het juiste publieke adres. De grens ligt bij wat er
+over de API binnenkomt, niet bij wat de operator zelf instelt.
+
+`web_origin` en `cors_origins` kwamen met S1.8 en dragen die privé-grens níét. Ze zijn geen doel dat
+de server aanroept maar een verwachting over wie hém aanroept, dus de aanval uit K rij 13 bestaat er
+niet. Het omgekeerde geldt wel: `http://nas:8832` en `http://192.168.1.10:8832` zijn precies de
+waarden die een thuisopstelling nodig heeft, en die weigeren zou de instelling onbruikbaar maken op
+het netwerk waar Pleya Server thuishoort. Wat er wél af gaat is alles wat een origin niet is: een
+pad, een querystring, een fragment, inloggegevens, en `*`.
+
+### 17a.3 Wat geen instelling is
+
+Bindadres, vertrouwde proxy's, de schrijfbare paden en de ondertekensleutel staan hier bewust niet
+tussen. Wie het bindadres over de API kan zetten kan de server van het netwerk halen of hem juist
+openzetten, en dat hoort bij het draaien van de container en niet bij beheer in de app.
+
+### 17a.4 Een wijziging geldt meteen
+
+Een geslaagde `PATCH` geldt vanaf het eerstvolgende verzoek: het eerstvolgende accesstoken draagt de
+nieuwe TTL, `GET /server` toont de nieuwe naam, en de negende streamsessie volgt de nieuwe grens.
+Zonder die eigenschap zou een beheerscherm een instelling tonen die niet draait tot iemand de
+container herstart.
+
+---
+
+## 17b. Serverdiagnostiek
+
+Vijf endpoints van klasse `admin`, plus tien velden die `GET /pleya/v1/server` er voor een
+beheerder bij krijgt. De eerste vier endpoints plus acht van de velden kwamen met S1.3, het overzicht
+van lopende streams (17b.6) met S1.4, `web_origin` met S1.8 en `mcp` met S1.6, allemaal binnen
+hetzelfde protocolvenster 1.
+
+### 17b.1 `GET /server` groeit met de klasse en niet met een parameter
+
+Een lid krijgt `id`, `name`, `version` en `started_at`, precies zoals sinds PS-2. Een beheerder
+krijgt daarnaast `public_url`, `web_origin`, `listen`, `behind_proxy`, `trusted_proxies[]`, `build`,
+`database{version, schema}`, `ffprobe{found, version}`, `health{ready, jobs_running, jobs_failed}` en
+`mcp{enabled, url, tool_count}`.
+
+`mcp` is de enige van de tien die nu nog niets meet: `enabled` is `false` en `tool_count` is `0`
+zolang `capabilities.mcp` uit staat. Het object staat er toch, omdat de vorm bij dit protocolvenster
+hoort en de laag zelf bij een latere slice; een afwezig object zou straks iets anders betekenen dan
+nu, terwijl het antwoord hetzelfde blijft.
+
+Geen `?fields=` en geen tweede endpoint. Wie de velden krijgt is een beheerder, en wie ze niet
+krijgt heeft geen manier om te zien dat ze bestaan. Een client leest daar meteen uit of hij het
+beheeroppervlak moet tonen.
+
+`behind_proxy` gaat over **deze aanvraag** en niet over de configuratie: hij is waar wanneer de
+tegenpartij in `trusted_proxies` staat én er werkelijk een forwarding-header op stond. Zonder de
+eerste voorwaarde zou elke client zelf bepalen wat de server hier antwoordt.
+
+`ffprobe` is gemeten bij het opstarten. Een subprocess starten om een beheerscherm te vullen is een
+prijs per verzoek voor een antwoord dat in een container niet verandert.
+
+### 17b.2 Het log komt uit het geheugen
+
+`GET /pleya/v1/server/log?level=&limit=` geeft de laatste vijfhonderd regels uit een ringbuffer,
+nieuwste eerst. Nooit uit een bestand: een endpoint dat een pad opent is een bestandsbrowser met een
+filter ervoor, en er is geen versie van dat idee die veilig blijft zodra iemand het pad mag
+beïnvloeden.
+
+De regels zijn geredigeerd op de weg de buffer **in**. Daardoor bestaat er geen leespad dat de
+redactie kan overslaan, en staat een token dat per ongeluk in een logregel belandde ook niet in het
+geheugen van het proces te wachten op een lezer. De denylist is dezelfde als die van de app; de
+gedeelde testvectoren staan in `pleya_verify/redact/cases.json`.
+
+`level` is unknown-safe: een waarde die deze server niet kent is geen fout maar geen filter. `limit`
+loopt van 1 tot 500, en een hogere waarde wordt daarheen teruggebracht in plaats van geweigerd; de
+bovengrens is de capaciteit van de buffer, dus een grotere zou een belofte zijn die niet waar te
+maken is.
+
+`message` draagt het bericht met zijn attributen erachter. Zonder die attributen zou de helft van
+elke regel wegvallen: een fout staat niet in het bericht maar in het veld ernaast, en "interne fout"
+zonder `error=` is een aankondiging en geen logregel.
+
+### 17b.3 De omgeving, gemaskeerd
+
+`GET /pleya/v1/server/environment` toont `PLEYA_SERVER_*` plus een gemaskeerde `DATABASE_URL`, en
+verder niets. De rest van de procesomgeving hoort bij de container en kan credentials van heel
+andere diensten dragen.
+
+Een variabele waarvan de naam een geheim aankondigt (`PASSWORD`, `SECRET`, `KEY`, `TOKEN`, en
+verwanten, per woord en niet per deelstring) gaat er in zijn geheel af, ook wanneer de waarde er
+geen is. `PLEYA_SERVER_ACCESS_TOKEN_TTL` komt dus als `[REDACTED]` terug. Dat kost niets, want de
+TTL staat met zijn bron en zijn grens in `GET /settings`, en het houdt de regel op één vraag die
+niet per variabele opnieuw beoordeeld hoeft te worden.
+
+`redacted` zegt per regel of de getoonde waarde de echte is. Zonder dat veld zou een beheerder een
+gemaskeerde DSN voor de werkelijke instelling aanzien.
+
+### 17b.4 De bereikbaarheidscontrole kent één doel
+
+`POST /pleya/v1/server/connectivity-check` heeft geen aanvraagbody, en dat is de beveiliging: het
+doel is altijd het eigen `public_url`, dus er is niets aan de aanvrager om het ergens anders heen te
+richten. Vaste time-out, geen omleidingen volgen.
+
+Twee metingen. `public_url_reachable` vraagt `/pleya/v1/info` op en zegt of het adres van buitenaf
+terugkomt bij deze server. `range_intact` vraagt zestien bytes van de meegeleverde bundel met een
+`Range`-header en eist `206` met een `Content-Range`. Een tussenliggende proxy die ranges wegbuffert
+antwoordt `200` met het hele bestand; dat is in HTTP-termen geen fout, maar het breekt direct play
+en is aan de clientkant een speler die bij elke seek hapert.
+
+Zonder ingesteld `public_url` zijn beide `false`. Dat is het eerlijke antwoord op een vraag die
+nergens heen kan, en geen fout.
+
+### 17b.5 Sleutelrotatie trekt alles in
+
+`POST /pleya/v1/server/rotate-signing-key` vraagt `confirm: "rotate"` en antwoordt `204`. Een fout
+of ontbrekend woord geeft `409 server.confirm_mismatch`.
+
+De volgorde ligt vast: **eerst elke sessie intrekken, dan pas de sleutel vervangen**. Een nieuwe
+sleutel maakt op zichzelf alleen de ondertekende tokens ongeldig; het refreshtoken is een
+ondoorzichtige string die gehasht in de database staat en van geen sleutel afhangt. Zou de sleutel
+eerst gaan en de schrijfactie mislukken, dan blijft er een server over waarvan de accesstokens dood
+zijn en de refreshtokens leven, en dan logt elke client zichzelf meteen weer in met precies de keten
+die de beheerder wilde verbreken. Deze volgorde faalt de veilige kant op: iedereen uitgelogd, de
+sleutel ongewijzigd.
+
+Ook het token van de aanvrager is hierna dood. Opnieuw inloggen hoort erbij, en is het bewijs dat de
+rotatie gewerkt heeft. Het antwoord draagt de nieuwe sleutel niet.
+
+### 17b.6 Lopende streams
+
+`GET /pleya/v1/stream-sessions` geeft de browser-streamsessies (6.4a) die op dit moment nog bytes
+kunnen ophalen, met de gebruiker, het toestel, het item en de positie erbij.
+
+```json
+{ "items": [
+  { "id": "0198f2d0-...", "user_id": "0198f2d0-...", "username": "michel",
+    "device_name": "Apple TV woonkamer",
+    "item_id": "0198f2d0-...", "item_title": "A3", "item_kind": "episode",
+    "position_ms": 1830000, "duration_ms": 4380000,
+    "started_at": "2026-09-05T20:04:11Z", "last_used_at": "2026-09-05T20:31:48Z",
+    "expires_at": "2026-09-05T21:01:48Z" }
+] }
+```
+
+**Actief betekent hier precies wat het streampad accepteert**, en geen haar breder: niet ingetrokken,
+niet verlopen, en de auth-sessie waaruit de streamsessie is uitgegeven evenmin ingetrokken. Die derde
+voorwaarde is de gemakkelijkst te vergeten, want de rij van de streamsessie ziet er dan ongeschonden
+uit. Een overzicht dat ruimer telt toont iemand die op zijn eerstvolgende aanvraag een `401` krijgt,
+en daar gaat een beheerder naar handelen.
+
+`position_ms` komt uit de kijkstatus van diezelfde gebruiker op datzelfde item, niet uit de sessie:
+die weet alleen welke versie er open staat. Zolang er niets is gerapporteerd ontbreken `position_ms`
+en `duration_ms` allebei, en dat is iets anders dan positie nul.
+
+Ongepagineerd, want het aantal is per gebruiker begrensd door `max_stream_sessions` (17a.2) en groeit
+dus met het huishouden en niet met de bibliotheek. Er staat geen geheim in: het geheim van een
+streamsessie leeft uitsluitend in de cookie `pleya_ss_<id>`, en de id zelf is niet geheim.
+
+Wat er niet in staat is de stamboom van een aflevering. Wie "serie S2 · A3" wil tonen haalt dat met
+`item_id` uit `GET /pleya/v1/items/{item_id}`; een tweede, denormaliseerde kopie hier zou een tweede
+bron maken voor dezelfde vraag.
+
+---
+
+## 17c. API-tokens en het auditlog
+
+Beschikbaar wanneer `capabilities.api_tokens` waar is. Het auditlog hoort bij het beheeroppervlak en
+onderhandelt over `administration`.
+
+### 17c.1 Een API-token is een sessie
+
+Een agent kan de refreshflow niet lopen. Die vraagt een client die een antwoord bewaart, opnieuw
+aanbiedt en op een rotatie reageert; wat een agent wel kan is één bearer meesturen. Dat token is een
+gewone rij in `sessions` met `kind: api` en de tokennaam als `device_name`.
+
+Dat is de hele architectuurkeuze, en hij is er een van weglaten. Er is één intrekkingspad
+(`DELETE /sessions/{id}`), één register, één overzicht. Een apart tokenmodel ernaast zou twee
+intrekkingspaden opleveren, en dan is de vraag "is dit credential nog geldig" op twee plekken te
+beantwoorden en op één plek te vergeten.
+
+| Methode en pad | Klasse |
+| --- | --- |
+| `POST /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` met `user_id` van een ander |
+| `GET /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` met `?user_id=` |
+
+```json
+{ "token": { "id": "0198f2d0-...", "user_id": "0198f2d0-...",
+             "name": "Home Assistant", "scope": "read",
+             "created_at": "2026-09-05T09:00:00Z",
+             "last_seen_at": "2026-09-05T09:00:00Z",
+             "expires_at": "2026-12-04T09:00:00Z" },
+  "secret": "plyat1_..." }
+```
+
+**Het geheim staat precies één keer in een antwoord.** De server bewaart alleen de SHA-256 ervan, net
+als bij een refreshtoken, dus een tweede kans bestaat niet en een databasedump levert geen bruikbaar
+token op. Het voorvoegsel `plyat1_` is geen versiering: het laat de server zonder gokken kiezen welk
+verificatiepad hij loopt, en het maakt een gelekt geheim vindbaar in een logbestand of een
+repository, precies de plek waar een langlevend token belandt.
+
+**Standaard negentig dagen, en "nooit" bestaat niet.** `expires_in_days` mag tussen 1 en 3650. Een
+token zonder vervaldatum is de vorm die jaren later nog in een oude configuratie meeloopt en die
+niemand mist tot iemand hem vindt.
+
+### 17c.2 Het bereik ligt nooit boven de rol
+
+`scope` is een ladder: `read`, `maintenance`, `admin`. `admin` haalt de adminklasse en vraagt dus rol
+`owner` of `admin` bij de **eigenaar** van het token; de andere twee vragen niets wat een gewone
+gebruiker niet al heeft. Een aanvraag die de rol overschrijdt krijgt `auth.scope_exceeds_role` met
+het bereik en de rol in `details`.
+
+`maintenance` is gereserveerd voor de operationele handelingen die later komen (back-up,
+onderhoudsmodus, herstel) en onderscheidt zich vandaag in geen enkele operatie van `read`. Dat staat
+hier expliciet, want een bereik dat een naam heeft maar geen gedrag is anders alleen aan de code te
+zien.
+
+Wat het bereik wél doet zodra het token bestaat, staat in 16.4: het begrenst de adminklasse, ook
+wanneer de rol hem haalt. En één regel die uit de bouw kwam en in geen enkel plan stond: **een token
+mint alleen tokens wanneer het zelf bereik `admin` heeft.** Zonder die regel toetst
+`auth.scope_exceeds_role` het bereik tegen de rol, is de rol van een leestoken van een beheerder
+`admin`, en mint een leestoken een beheertoken. Dat is rechtenverhoging via het endpoint dat er juist
+een grens op moest zetten.
+
+### 17c.3 Het auditlog
+
+`GET /pleya/v1/audit?source=&limit=&cursor=`, klasse `admin`, nieuwste eerst.
+
+```json
+{ "items": [
+  { "id": "0198f2d0-...", "at": "2026-09-05T12:00:00Z",
+    "user_id": "0198f2d0-...", "session_id": "0198f2d0-...",
+    "source": "http", "operation": "createApiToken",
+    "target": "0198f2d0-...", "outcome": "ok" },
+  { "id": "0198f2d0-...", "at": "2026-09-05T11:58:12Z",
+    "source": "http", "operation": "login", "outcome": "denied" }
+], "next_cursor": null }
+```
+
+**Het bereik is ruimer dan mutaties op beheerendpoints.** Erin: beheer- en datamutaties, geslaagde en
+mislukte logins, het aanmaken en intrekken van tokens en sessies, rol- en rechtenwijzigingen,
+sleutelrotatie, en de configuratie die de beveiliging raakt. Eruit: catalogusreads, playbackticks en
+leesvoortgang. Een log dat alleen wijzigingen ziet, mist de vraag die na een incident als eerste
+gesteld wordt: wie is er wanneer binnengekomen, en met welk credential. Een log dat álles ziet wordt
+niet gelezen.
+
+`operation` is de `operationId` uit dit contract en niet het pad. Een pad verandert mee met een
+route-refactor en breekt dan de leesbaarheid van een log dat jaren teruggaat.
+
+`user_id` en `session_id` mogen ontbreken, en bij een mislukte login ontbreken ze allebei: er is dan
+geen vastgestelde identiteit. De naam die geprobeerd is staat in de tabel maar niet in het antwoord;
+hem als identiteit koppelen zou een gebruiker impliceren die er niet is, of het account van een ander
+een mislukte login in de schoenen schuiven.
+
+`detail` uit de tabel staat niet in het antwoord. Het bestaat voor de context die een beheerder na een
+incident nodig heeft, maar het is vrije vorm, en vrije vorm in een antwoord is de weg waarlangs er
+ooit iets in belandt dat er niet in hoort.
+
+**Negentig dagen, en dat is geen instelling.** Een bewaartermijn die een beheerder kan verlagen, kan
+een aanvaller met beheerrechten verlagen, en dan is de eerste handeling na het binnenkomen het wissen
+van het spoor ernaartoe.
+
+---
+
+## 17d. De refreshcookie en het origin-model
+
+Beschikbaar wanneer `capabilities.cookie_auth` waar is. Kwam met S1.8, binnen protocolvenster 1.
+
+Een browser heeft geen veilige bewaarplaats voor een langlevend credential. `localStorage` is
+leesbaar voor elk stukje JavaScript dat op de pagina draait, dus één XSS levert een refreshtoken op
+dat maanden geldig is en op elk ander toestel opnieuw in te wisselen. Een `HttpOnly`-cookie is dat
+niet: hij reist mee zonder dat de pagina hem kan lezen. Dat is de hele winst, en het is er één van
+schade beperken en niet van XSS voorkomen.
+
+### 17d.1 `credential_mode`, en wat het niet verandert
+
+`POST /auth/login` en `POST /auth/refresh` accepteren één nieuw optioneel veld:
+
+```json
+{ "username": "michel", "password": "...", "credential_mode": "cookie" }
+```
+
+Twee waarden, `token` en `cookie`. Afwezig betekent `token`, en `token` is exact het gedrag van
+vandaag: het refreshcredential staat in het antwoordlichaam als `refresh_token`, er wordt geen cookie
+gezet, en er is geen origin-controle.
+
+Bij `cookie` verandert er precies drie dingen. Het antwoord draagt **geen** `refresh_token` meer. De
+server zet in plaats daarvan `Set-Cookie: pleya_refresh=<geheim>; HttpOnly; SameSite=Strict;
+Path=/pleya/v1/auth/refresh`, met `Secure` erbij wanneer de aanvraag over TLS binnenkwam. En de
+aanvraag moet een toegestane `Origin` dragen (17d.4). Het accesstoken blijft in het lichaam, want dat
+is kortlevend en hoort in het geheugen van de pagina.
+
+Het credential zelf is hetzelfde ondoorzichtige refreshtoken als altijd, met dezelfde rotatie,
+hetzelfde respijtvenster en dezelfde hergebruikdetectie uit 6.3. Er is geen tweede soort credential
+en geen tweede tabel; alleen het vervoermiddel verschilt.
+
+**De toets aan de zes regels uit hoofdstuk 3**, want dit raakt twee gesloten aanvraagbodies en één
+antwoordschema.
+
+| Regel | Uitkomst |
+| --- | --- |
+| 1, nieuw optioneel antwoordveld | niet van toepassing; er komt geen veld bij |
+| 2, niets hernoemen of verwijderen | `refresh_token` blijft bestaan op `TokenPair` en op `RefreshRequest`, met dezelfde naam en dezelfde betekenis. Wat verandert is dat hij niet meer `required` is. Voor elke client die vandaag bestaat verandert er niets: die stuurt `credential_mode` niet, en krijgt het veld dus altijd. Het veld is niet weg, het is voorwaardelijk, en de voorwaarde staat volledig bij de client |
+| 3, geen betekeniswijziging | `refresh_token` betekent nog steeds hetzelfde. `token_type` en `expires_in_ms` ook |
+| 4, geen nieuw verplicht aanvraagveld | `credential_mode` is optioneel met een gedocumenteerde default (`token`) die het oude gedrag reproduceert. `RefreshRequest.refresh_token` gaat van verplicht naar optioneel, en dat is verruimen: een oude client blijft hem sturen en wordt bediend |
+| 5, gesloten aanvraagbody | precies daarom staat `credential_mode` achter `capabilities.cookie_auth`. Een oudere server wijst het veld af in plaats van het stil te laten vallen, en dat is de bedoeling: een client die om een cookie vraagt en er geen krijgt, hoort dat te weten |
+| 6, enumwaarde | `credential_mode` is een nieuw enum-veld in een **aanvraag**, dus gesloten aan de kant van de client (`x-unknown-safe: false`). Een derde waarde erbij zou geen enkele client breken, minder accepteren wel |
+
+De vorm die regel 2 het dichtst nadert is `TokenPair.refresh_token`. Een alternatief was een tweede
+antwoordschema achter een `oneOf`, en dat is afgewogen: het houdt `TokenPair` letterlijk ongemoeid,
+maar het maakt van het antwoord van `/auth/login` een unie in elke gegenereerde client, inclusief de
+clients die cookiemodus nooit zullen gebruiken. Eén voorwaardelijk veld met de voorwaarde erbij is
+kleiner en eerlijker dan een unie die iedereen moet uitpakken.
+
+### 17d.2 De cookie autoriseert één endpoint, en niets anders
+
+De openingsregel van hoofdstuk 6 en K rij 7 van het securityplan zijn er duidelijk over: **de API
+accepteert alleen `Authorization: Bearer`.** Er is geen enkele route onder `/pleya/v1` die een
+identiteit uit een cookie afleidt. Die regel blijft precies zoals hij was, en de refreshcookie is er geen uitzondering
+op, want hij autoriseert geen identiteit maar één handeling.
+
+Dat is geen belofte maar een `Path`. `pleya_refresh` draagt `Path=/pleya/v1/auth/refresh`, dus de
+browser stuurt hem uitsluitend naar dat ene endpoint mee. Op `GET /libraries`, op `POST /users`, op
+`GET /stream` en op elke andere route bestaat hij eenvoudigweg niet: hij komt niet aan. Wat hij op
+`/auth/refresh` oplevert is geen sessie maar een nieuw tokenpaar, en pas dat accesstoken opent de
+rest van de API.
+
+Er zijn daarmee twee cookies in dit protocol, en ze zijn allebei van dezelfde soort. `pleya_ss_<id>`
+uit 6.4a autoriseert `GET /stream` en `GET /subtitles` en niets anders; `pleya_refresh` autoriseert
+`POST /auth/refresh` en niets anders. Geen van beide is een sessiecookie in de gebruikelijke zin, en
+geen van beide vervangt de bearer-header ergens.
+
+Anders dan bij `pleya_ss_<id>` doet `Path` hier wél securitywerk, en dat verschil is de moeite van
+het benoemen waard. Daar is `Path` een leesbaarheidskeuze, want de cookienaam draagt de sessie-id en
+dát is het mechanisme. Hier is het pad de enige reden dat een cookie die maanden geldig is niet bij
+elke aanvraag op de lijn staat.
+
+`SameSite=Strict`, en dat is een keuze met gevolgen. Een browser stuurt zo'n cookie niet mee op een
+cross-site aanvraag, ook niet vanaf een origin die in `cors_origins` staat. Cookiemodus werkt
+daarmee alleen wanneer web en server dezelfde site zijn: de meegeleverde bundel op de server zelf,
+of een reverse proxy die beide onder één hostnaam hangt. Dat is precies de opstelling die RB-29 als
+voorkeur noemt, en het sluit de opstelling die RB-29 uitsluit ook werkelijk uit: een ontwerp dat
+leunt op third-party cookies tussen `web.pleya.app` en een willekeurige Pleya Server is met deze
+cookie niet te bouwen. Een webclient op een andere site gebruikt `credential_mode: token` met een
+bearer, of krijgt een expliciet ontworpen BFF-flow, en die staat niet in deze versie.
+
+### 17d.3 Drie adressen, en waarom het er geen vier zijn
+
+| Sleutel | Beantwoordt | Wie leest hem |
+| --- | --- | --- |
+| `public_url` | waar is déze server van buiten bereikbaar | `POST /server/connectivity-check`, en de beheerder |
+| `web_origin` | welke webclient hoort canoniek bij deze server | de origin-controle in 17d.4 |
+| `cors_origins[]` | welke andere origins mogen deze API aanroepen | de CORS-laag in 17d.5, en de origin-controle |
+
+Alle drie zijn **instellingen** in `server_settings`, met hun grens in 17a.2, en alle drie zijn
+klasse `admin` op `GET`/`PATCH /settings`.
+
+**Er komt geen aparte `external_url`.** De plannen noemen die naam, en het is dezelfde vraag als
+`public_url`: het externe basisadres van deze server. Die sleutel bestaat sinds S1.3 en heeft al een
+lezer. Een tweede sleutel met dezelfde betekenis zou de vraag "waar sta ik" op twee plekken
+beantwoordbaar maken en op één plek te vergeten, en dan wijst de bereikbaarheidscontrole naar het ene
+adres terwijl het beheerscherm het andere toont.
+
+`web_origin` staat daarnaast als optioneel veld op `ServerDetail`, voor klasse `admin`, naast
+`public_url`. Die twee samen beantwoorden de vraag van het netwerkscherm: waar sta ik, en welke
+webclient hoort bij mij. `cors_origins` staat er níét bij, en dat is geen slordigheid: het is beleid
+en geen adres, en een lijst vertrouwde origins op een endpoint dat elke geauthenticeerde identiteit
+mag opvragen vertelt precies welke herkomst het proberen waard is.
+
+`cors_origins` is de eerste instelling met een lijst als waarde. Hij staat als JSON-array in de
+`jsonb`-kolom, en niet als tekst met scheidingstekens: een gescheiden tekstwaarde zou een origin met
+een komma erin stil in tweeën knippen, en de vorm die eruit komt zou niet meer die zijn die je erin
+kunt sturen. De grens is per element dezelfde vorm als `web_origin`, plus een maximum van zestien en
+geen dubbele.
+
+### 17d.4 De origin-controle
+
+Op het cookiepad, en alleen daar, eist de server een `Origin`-header die hij toestaat. Toegestaan is:
+
+1. de origin van de aanvraag zelf, afgeleid uit `Host` en het schema (same-origin);
+2. `web_origin`, wanneer die is ingesteld;
+3. elke waarde in `cors_origins`.
+
+Alles anders, en ook een aanvraag zonder `Origin`, geeft `403` met `auth.origin_rejected`.
+
+**Waarom een ontbrekende `Origin` ook wordt geweigerd.** Cookiemodus bestaat voor browsers, en een
+browser zet `Origin` op elke `POST`, ook op een same-origin `POST`. Een aanvraag zonder die header
+komt dus niet van een browser, en een client die geen browser is heeft geen cookiejar en geen baat
+bij deze modus. Hem toelaten zou de controle in één regel curl te omzeilen maken, en dan beschermt hij
+niets.
+
+**Waarom de controle niet op de hele API staat.** Een aanvraag met een bearer-header draagt geen
+ambient authority: een pagina op een vreemde origin kan die header niet zetten zonder dat de browser
+er eerst CORS voor vraagt. Er valt daar dus niets te vervalsen. De cookie is het enige credential dat
+een browser uit zichzelf meestuurt, dus de cookiemodus is ook het enige pad waar CSRF bestaat.
+
+Een geweigerde **login** gaat het auditlog in als `login` met uitkomst `denied` en de geweigerde
+origin in `detail`; die haak bestaat al voor een mislukte inlogpoging en dit is er één. Een geweigerde
+**refresh** gaat naar het log en niet naar het auditlog: het auditbereik is met S1.5 uitputtend
+vastgelegd en `refresh` staat er niet in, en dat bereik oprekken hoort bij een besluit en niet bij
+deze wijziging. De regel komt daarmee wel in de ringbuffer achter `GET /server/log` terecht, dus een
+beheerder ziet het patroon.
+
+Een `credential_mode` met een waarde die deze server niet kent wordt afgewezen zoals elke andere body
+die hij niet kan bedienen: `auth.invalid_credentials` op login, `auth.token_invalid` op refresh. Geen
+nieuwe status en geen stille terugval op `token`, want een client die om een cookie vraagt en er geen
+krijgt hoort dat te merken (regel 5 van hoofdstuk 3).
+
+### 17d.5 CORS
+
+Draagt een aanvraag een `Origin` die in `cors_origins` staat of gelijk is aan `web_origin`, dan
+antwoordt de server met `Access-Control-Allow-Origin: <die origin>` en `Vary: Origin`. Een
+`OPTIONS`-preflight op een pad onder `/pleya/v1` wordt met `204` beantwoord, met de toegestane
+methoden en `Authorization` plus `Content-Type` als toegestane headers.
+
+**`Access-Control-Allow-Credentials` staat er niet bij, en dat is opzet.** Zonder die header is
+cross-origin toegang bearer-only, en dat is precies wat hoofdstuk 4 en K rij 7 zeggen. Samen met
+`SameSite=Strict` op de refreshcookie betekent het dat cookiemodus per constructie same-site is en
+dat er geen weg is waarlangs iemand er per ongeluk een third-party-cookie-ontwerp op bouwt.
+
+Een origin die de server niet kent krijgt geen `Access-Control-Allow-Origin`. Er komt geen fout uit:
+de browser blokkeert het antwoord zelf, en een server die daar een eigen status van maakt zou een
+origin-lijst prijsgeven aan wie hem afloopt.
+
+---
+
+### 17e.1 `managed` zegt wie een bibliotheek onderhoudt
+
+Een bibliotheek uit `PLEYA_SERVER_LIBRARIES` draagt `managed: config`; een bibliotheek die
+`POST /libraries` aanmaakt draagt `managed: db`. Het onderscheid bestaat omdat de config-sync bij
+elke herstart de bibliotheken uit de omgeving opnieuw wegschrijft: zonder dit veld zou die sync een
+via de API bewerkte bibliotheek bij de volgende herstart overschrijven met wat er op dat moment in
+de omgeving staat. Vandaag raakt de sync uitsluitend `config`-rijen aan; hoe een `db`-rij bewust naar
+`config` terug kan (of andersom, via `POST /libraries/{id}/adopt`) is S2.5.
+
+`managed`, `scan_interval_seconds` en `scan_on_start` gaan alleen mee voor klasse `admin` (matrixregel
+1 blijft ongewijzigd: elke rol met recht op de bibliotheek ziet hem in de lijst, alleen deze drie
+velden bewegen mee met de klasse van de aanvrager, net als de acht beheervelden op `GET /server`
+sinds S1.3).
+
+### 17e.2 Een slug wordt afgeleid, nooit gestuurd
+
+`POST /libraries` accepteert geen `slug`-veld. De server leidt hem af van `title` (kleine letters,
+cijfers en koppeltekens; een titel zonder een enkel bruikbaar teken valt terug op `library`) en
+weigert met `library.slug_taken` zodra die afleiding samenvalt met een bestaande bibliotheek, ook een
+`config`-beheerde. Twee titels die tot dezelfde slug vereenvoudigen ("Films!" en "Films?") botsen
+dus op elkaar, net zo goed als op een bibliotheek uit de omgeving.
+
+`root_paths` worden structureel gevalideerd (geen overlap met een bestaande root en geen overlap
+binnen dezelfde aanvraag, in `internal/catalog`) en, sinds S2.3, tegen de opsomming uit
+`PLEYA_SERVER_MEDIA_DIRS` (hoofdstuk 17e.4). Geen van beide endpoints raakt hiervoor het
+bestandssysteem aan. `storage.root_not_offered` is de enige 400 die `POST`/`PATCH /libraries` kennen.
+
+`kind` mag op `PATCH /libraries/{id}` alleen wisselen zolang de bibliotheek geen enkel item draagt
+(`library.not_empty` anders), op elk niveau: een serie zonder afleveringen is net zo leeg als een
+bibliotheek zonder series.
+
+### 17e.3 Verwijderen is database-only, met een verplichte bevestiging
+
+`DELETE /libraries/{id}` verwijdert de bibliotheek en alles wat eronder hangt uitsluitend in de
+database (cascade via de foreign keys uit hoofdstuk 17.2); geen bestand op de mediamount wordt
+aangeraakt. De bevestiging volgt K rij 16: `confirm` moet letterlijk de titel van de bibliotheek
+zijn, en een ontbrekende of foute waarde geeft `library.confirm_mismatch` met de verwachte titel in
+`details.expected`. Dat is een eigen code naast `server.confirm_mismatch` (die blijft voor
+`POST /server/rotate-signing-key`): twee verschillende handelingen die hetzelfde codepad delen zouden
+een client dwingen op het pad te kijken om te weten welk woord er verwacht wordt.
+
+### 17e.4 Een root is aangeboden of hij bestaat niet voor de aanvrager
+
+`GET /storage/roots` somt de mounts op die `PLEYA_SERVER_MEDIA_DIRS` declareert, aangevuld met elke
+root die al aan een bibliotheek hangt (zodat een root die uit de instelling is verdwenen zichtbaar
+blijft met `mounted: false` in plaats van stilzwijgend te verdwijnen). Voor een geclaimde root komt
+`fs_type`, `inode_trusted` en `inode_trust_source` uit de laatste meting in `storage_locations`; voor
+een nog niet geclaimde kandidaat is dat de live soort-standaard, dezelfde regel als bij het opstarten.
+`mounted`, `free_bytes` en `total_bytes` zijn altijd live.
+
+`root_paths` op `POST`/`PATCH /libraries` worden tegen dezelfde lijst getoetst, en dat is een pad- en
+prefixcontrole tegen `PLEYA_SERVER_MEDIA_DIRS` en niets anders: geen normalisatie van invoer (een pad
+dat na `filepath.Clean` verandert, zoals een `../` of een dubbele slash, is per definitie geen
+letterlijke match), geen bestandsbrowser, en geen enkele aanroep naar het bestandssysteem op wat de
+client instuurt (K rij 10). Een offered root dekt zichzelf en elke submap eronder: de NAS-installatie
+hangt drie bibliotheken onder één mount (`/media/library/Films`, `/media/library/Kids`,
+`/media/library/Series`), en dat blijft zo. `CreateLibrary` en `UpdateLibrary` in `internal/catalog`
+veranderen hierdoor niet: zij bleven sinds S2.2 al structureel (geen overlap), en deze controle staat
+ervóór in de handler.
+
+`POST /storage/roots/recheck` beantwoordt met `202` en meet daarna, buiten de aanvraag om, elke
+geclaimde root opnieuw (bestandssysteemtype, en of de scanner de inodes ervan mag vertrouwen) en
+schrijft de uitkomst in `storage_locations`. Dat gebeurt via de bestaande jobwachtrij (hoofdstuk
+17.1) en niet synchroon in de aanvraag: een write-probe op een trage of tijdelijk niet reagerende NAS-
+of USB-mount hoort de aanvrager niet te laten wachten. Een tweede rechecktik terwijl de eerste nog
+loopt wordt gededupliceerd, dezelfde regel als bij een scanronde.
+
+---
+
+## 18. Endpointoverzicht
 
 | Methode en pad | Klasse | Gepagineerd |
 | --- | --- | --- |
@@ -896,8 +1793,14 @@ fout. Dat is de normale toestand van een catalogusserver die nog niet kan afspel
 | `POST /pleya/v1/auth/refresh` | `public` | nee |
 | `POST /pleya/v1/auth/stream-token` | `authenticated` | nee |
 | `POST /pleya/v1/auth/stream-session` | `authenticated` | nee |
+| `POST /pleya/v1/auth/logout` | `authenticated` | nee |
 | `GET /pleya/v1/server` | `authenticated` | nee |
-| `GET /pleya/v1/libraries` | `authenticated` | nee |
+| `GET /pleya/v1/libraries` | `authenticated`; drie velden erbij voor `admin` | nee |
+| `POST /pleya/v1/libraries` | `admin` | nee |
+| `PATCH /pleya/v1/libraries/{id}` | `admin` | nee |
+| `DELETE /pleya/v1/libraries/{id}` | `admin` | nee |
+| `GET /pleya/v1/storage/roots` | `admin` | nee |
+| `POST /pleya/v1/storage/roots/recheck` | `admin` | nee |
 | `GET /pleya/v1/libraries/{id}/items` | `authenticated` | ja |
 | `GET /pleya/v1/items/{id}` | `authenticated` | nee |
 | `GET /pleya/v1/items/{id}/children` | `authenticated` | ja |
@@ -908,19 +1811,51 @@ fout. Dat is de normale toestand van een catalogusserver die nog niet kan afspel
 | `GET /pleya/v1/stream/{version_id}` | `authenticated`, streamtoken of streamsessie | nee |
 | `POST /pleya/v1/watch-state` | `authenticated` | nee |
 | `GET /pleya/v1/watch-state` | `authenticated` | ja |
+| `POST /pleya/v1/users` | `admin` | nee |
+| `GET /pleya/v1/users` | `authenticated`, gefilterd | nee |
+| `GET /pleya/v1/users/me` | `authenticated`, altijd zichzelf | nee |
+| `PATCH /pleya/v1/users/{id}` | `admin`, of `owner` op zichzelf | nee |
+| `DELETE /pleya/v1/users/{id}` | `admin` | nee |
+| `PUT /pleya/v1/users/{id}/permissions` | `admin` | nee |
+| `GET /pleya/v1/sessions` | `owner`, of `admin` via `?user_id=` | nee |
+| `DELETE /pleya/v1/sessions/{id}` | `owner`, of `admin` op elke sessie | nee |
+| `GET /pleya/v1/settings` | `admin` | nee |
+| `PATCH /pleya/v1/settings` | `admin` | nee |
+| `GET /pleya/v1/server/environment` | `admin` | nee |
+| `GET /pleya/v1/server/log` | `admin` | nee |
+| `POST /pleya/v1/server/connectivity-check` | `admin` | nee |
+| `POST /pleya/v1/server/rotate-signing-key` | `admin` | nee |
+| `GET /pleya/v1/stream-sessions` | `admin` | nee |
+| `POST /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` via `user_id` | nee |
+| `GET /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` via `?user_id=` | nee |
+| `GET /pleya/v1/audit` | `admin` | ja |
 
-Achttien endpoints. Elk ervan wordt door PS-2, PS-3 of PS-4 gebruikt; er staat er geen in die alleen
-later nodig is. Het achttiende is `POST /auth/stream-session`, toegevoegd bij het sluiten van poort 5
-omdat de queryparameter die eruit volgt op `GET /stream` zit en dat endpoint PS-4 is.
+Tweeënveertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
+twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
+uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
+17b.6 (S1.4), de drie daarna de API-tokens en het auditlog uit hoofdstuk 17c (S1.5), de drie daarna de
+bibliotheek-CRUD van S2.2, en de laatste twee `GET /storage/roots` en `POST /storage/roots/recheck`
+van S2.3 (samen J.3, venster 2, rijen 7 en 8).
+`GET /pleya/v1/server` en `GET /pleya/v1/libraries` staan er elk maar één keer in en groeien met de
+klasse van de aanvrager, niet met een tweede regel. De rest van venster 2 landt bij de commitgrens
+die hem bedient.
+
+**S1.8 voegt er geen operatie aan toe.** De refreshcookie uit hoofdstuk 17d is een modus op twee
+bestaande endpoints en geen derde endpoint ernaast; die telling bleef dus op zevenendertig staan tot
+S2.2. De `OPTIONS`-preflight uit 17d.5 staat er ook niet tussen: die is HTTP-infrastructuur die elke
+CORS-sprekende server voert, geen operatie van dit protocol, en hij draagt geen lichaam waar een
+client iets uit leest.
 
 ---
 
-## 17. Wat er bewust niet in zit
+## 19. Wat er bewust niet in zit
 
 Geen afspeelplan en geen `delivery_mode`. Geen transcode-sessies. Geen device-capabilities. Geen
-gebruikers, rollen of bibliotheekrechten. Geen downloads. Geen verzamelingen, afspeellijsten,
-kijkgeschiedenis, favorieten of waarderingen. Geen metadata-providers, geen match-correctie, geen
-artwork-upload. Geen websockets en geen server-sent events. Geen Live TV.
+downloads. Geen verzamelingen, afspeellijsten, kijkgeschiedenis, favorieten of waarderingen. Geen
+metadata-providers, geen match-correctie, geen artwork-upload. Geen websockets en geen
+server-sent events. Geen Live TV. Geen beheerscherm voor gebruikers of bibliotheekrechten: hoofdstuk
+16 levert de API, niet het scherm.
 
 Voor elk daarvan geldt hetzelfde: het wordt gespecificeerd door de fase die het introduceert, binnen
 de regels uit hoofdstuk 3. Een client die vandaag tegen deze specificatie bouwt hoeft daarvoor

@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "settings.invalid_value",
+    "message": "access_token_ttl out of range",
+    "retryable": false,
+    "details": {
+      "field": "access_token_ttl",
+      "minimum": "1m",
+      "maximum": "24h"
+    }
+  }
+}

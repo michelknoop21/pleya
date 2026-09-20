@@ -18,11 +18,11 @@ import (
 // een inhoudshash in de naam, en een gewoon statisch bestand.
 func bundle() fs.FS {
 	return fstest.MapFS{
-		"index.html":                          {Data: []byte("<!doctype html><title>Pleya</title>")},
-		"_app/immutable/entry/app.abc123.js":  {Data: []byte("export default 1")},
-		"_app/version.json":                   {Data: []byte(`{"version":"1"}`)},
-		"fonts/Inter-Regular.woff2":           {Data: []byte("woff2")},
-		"icons/nav/home.svg":                  {Data: []byte("<svg/>")},
+		"index.html":                         {Data: []byte("<!doctype html><title>Pleya</title>")},
+		"_app/immutable/entry/app.abc123.js": {Data: []byte("export default 1")},
+		"_app/version.json":                  {Data: []byte(`{"version":"1"}`)},
+		"fonts/Inter-Regular.woff2":          {Data: []byte("woff2")},
+		"icons/nav/home.svg":                 {Data: []byte("<svg/>")},
 	}
 }
 

@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../media/device_display_capabilities.dart' show DisplayResolutionCap;
 import '../../models/transcode_quality_preset.dart';
-import '../../mpv/models.dart' show AudioLoudness;
 import '../../mpv/player/platform/player_android.dart';
-import '../../services/audio_output_coordinator.dart';
-import '../../services/audio_output_decision.dart';
 import '../../utils/quality_preset_labels.dart';
 import '../../services/companion_remote/companion_remote_host_controller.dart';
+import '../../services/device_capabilities_service.dart';
+import '../../services/device_capability_overrides.dart';
 import '../../services/discord_rpc_service.dart';
 import '../../services/keyboard_shortcuts_service.dart';
 import '../../services/settings_service.dart';
@@ -65,6 +65,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         _dvConversionModeTile(),
         _bufferSizeTile(),
         _defaultQualityTile(),
+        _displayMaxResolutionTile(),
 
         // Ondertitel opmaak moved to the top-level Settings list (northstar
         // 14, next to "Taal en ondertitels"), so there is exactly one way in
@@ -74,8 +75,8 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         SettingsSectionHeader(t.settings.advanced),
         _mpvConfigTile(),
 
-        // These three used to live only inside the player's settings sheet,
-        // which meant they could not be set before playback started.
+        // These controls must retain the live loudness/passthrough behavior
+        // from main; the re-baseline branch's extracted section predates it.
         SettingsSectionHeader(t.settings.audio),
         if (PlatformDetector.supportsAudioPassthrough()) _audioOutputModeTile(),
         if (PlatformDetector.supportsAudioPassthrough()) _audioPriorityTile(),
@@ -155,7 +156,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
             onAfterWrite: (v) => applyCompanionRemoteServerSetting(context, v),
           ),
         // The two language switches moved to Instellingen ▸ Taal en ondertitels
-        // with LANG1: DEC-096 lid 9 makes that page their only owner, and their
+        // with LANG1: DEC-109 lid 9 makes that page their only owner, and their
         // storage had already moved to the Pleya profile in `eae19cb4`, so this
         // is a pure relocation. This row is what is left of them here.
         SettingNavigationTile(
@@ -421,7 +422,6 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     min: -5000,
     max: 5000,
   );
-
   Widget _dvConversionModeTile() => SettingValueBuilder<bool>(
     pref: SettingsService.useExoPlayer,
     builder: (_, useExo, _) {
@@ -480,7 +480,54 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         .toList(),
     decode: (p) => p,
     encode: (p) => p,
+    // The bandwidth meaning of the preset is the connection layer of
+    // DeviceCapabilities. Its second role, deciding whether a downloaded copy
+    // beats the server stream, stays where it is in playback_source_resolver.
+    onAfterWrite: (_) => DeviceCapabilitiesService.instance.applyOverrides(DeviceCapabilityOverrides.fromSettings()),
   );
+
+  /// The override the model needs on the display layer, in the shape the audio
+  /// output tile already uses: the chosen value next to what was actually
+  /// detected, so an override reads as an override.
+  Widget _displayMaxResolutionTile() => SettingSelectionTile<DisplayResolutionCap, DisplayResolutionCap>(
+    pref: SettingsService.displayMaxResolution,
+    icon: Symbols.aspect_ratio_rounded,
+    title: t.settings.displayMaxResolutionTitle,
+    subtitleBuilder: _displayMaxResolutionSubtitle,
+    options: DisplayResolutionCap.values
+        .map(
+          (c) => DialogOption(
+            value: c,
+            title: _displayCapLabel(c),
+            subtitle: switch (c) {
+              DisplayResolutionCap.auto => t.settings.displayMaxResolutionOptionDescriptions.auto,
+              DisplayResolutionCap.hd1080 => t.settings.displayMaxResolutionOptionDescriptions.hd1080,
+              DisplayResolutionCap.uhd2160 => t.settings.displayMaxResolutionOptionDescriptions.uhd2160,
+            },
+          ),
+        )
+        .toList(),
+    decode: (c) => c,
+    encode: (c) => c,
+    onAfterWrite: (_) => DeviceCapabilitiesService.instance.applyOverrides(DeviceCapabilityOverrides.fromSettings()),
+  );
+
+  /// "1080p (detected: 3840x2160)" where the display could be read, plain
+  /// "1080p" where it could not. Same form as `"Auto (now: Dolby Atmos)"` in
+  /// the player's settings sheet.
+  String _displayMaxResolutionSubtitle(DisplayResolutionCap cap) {
+    final detected = DeviceCapabilitiesService.instance.detected.display;
+    final width = detected.maxWidth.value;
+    final height = detected.maxHeight.value;
+    if (width == null || height == null) return _displayCapLabel(cap);
+    return '${_displayCapLabel(cap)} · ${t.settings.displayMaxResolutionNow(resolution: '${width}x$height')}';
+  }
+
+  String _displayCapLabel(DisplayResolutionCap cap) => switch (cap) {
+    DisplayResolutionCap.auto => t.settings.displayMaxResolutionOptions.auto,
+    DisplayResolutionCap.hd1080 => t.settings.displayMaxResolutionOptions.hd1080,
+    DisplayResolutionCap.uhd2160 => t.settings.displayMaxResolutionOptions.uhd2160,
+  };
 
   Widget _mpvConfigTile() => SettingValueBuilder<bool>(
     pref: SettingsService.useExoPlayer,

@@ -17,6 +17,20 @@ func New(level slog.Level, w io.Writer) *slog.Logger {
 	return slog.New(slog.NewJSONHandler(w, &slog.HandlerOptions{Level: level}))
 }
 
+// NewWithRing is New met de ringbuffer van GET /server/log ernaast.
+//
+// De buffer vervangt stdout niet en kan dat ook niet: hij houdt vijfhonderd
+// geredigeerde regels vast voor een beheerscherm, terwijl stdout de volledige
+// stroom is die een operator wegschrijft. Wie de twee door elkaar haalt gaat op
+// zoek naar een stacktrace in een endpoint dat hem met opzet niet toont.
+func NewWithRing(level slog.Level, w io.Writer, ring *Ring) *slog.Logger {
+	inner := slog.NewJSONHandler(w, &slog.HandlerOptions{Level: level})
+	if ring == nil {
+		return slog.New(inner)
+	}
+	return slog.New(ring.Handler(inner))
+}
+
 // Component geeft een afgeleide logger die elk bericht aan een subsysteem hangt.
 func Component(l *slog.Logger, name string) *slog.Logger {
 	return l.With(slog.String("component", name))

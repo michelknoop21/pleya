@@ -22,10 +22,11 @@ type Info struct {
 	IsDir     bool
 	Readable  bool
 	Writable  bool
-	ReadOnly  bool   // het bestandssysteem is read-only gemount
-	FSType    string // btrfs, ext4, fuseblk, overlay, ...
-	FreeBytes uint64
-	Err       string
+	ReadOnly   bool   // het bestandssysteem is read-only gemount
+	FSType     string // btrfs, ext4, fuseblk, overlay, ...
+	FreeBytes  uint64
+	TotalBytes uint64
+	Err        string
 }
 
 // LogValue laat slog het geheel als één gestructureerd veld opnemen.
@@ -41,6 +42,7 @@ func (i Info) LogValue() slog.Value {
 			slog.Bool("mounted_read_only", i.ReadOnly),
 			slog.String("fstype", i.FSType),
 			slog.Uint64("free_bytes", i.FreeBytes),
+			slog.Uint64("total_bytes", i.TotalBytes),
 		)
 	}
 	if i.Err != "" {
@@ -65,12 +67,13 @@ func Inspect(path string) Info {
 	info.Readable = canRead(path, info.IsDir)
 	info.Writable = canWrite(path)
 
-	if fsType, readOnly, free, err := statfs(path); err != nil {
+	if fsType, readOnly, free, total, err := statfs(path); err != nil {
 		info.Err = err.Error()
 	} else {
 		info.FSType = fsType
 		info.ReadOnly = readOnly
 		info.FreeBytes = free
+		info.TotalBytes = total
 	}
 
 	return info

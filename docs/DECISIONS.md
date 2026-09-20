@@ -2701,3 +2701,941 @@ UP, DOWN, LEFT/RIGHT in de balk en de back-keten lopen via de bestaande callback
 topnav blijft bereikbaar, maar hij staat daar standaard ingeklapt. Een geopende balk ligt tijdelijk
 over de bovenrand van het detail, zonder eigen achtergrond behalve een scrim voor leesbaarheid. Een
 volgend scherm dat dit gedrag wil, kiest het bij de opener; de shell kent geen schermnamen.
+
+## DEC-117: Refreshtokenrotatie krijgt een respijtvenster voor een verloren antwoord
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** `RotateRefreshToken` trok het oude token in vóór het antwoord de client bereikte, in dezelfde transactie die de opvolger uitgaf. Een antwoord dat verloren ging (timeout, achtergrondwissel, netwerkwissel) liet de client dus met het oude token achter, en de eerstvolgende poging was per definitie hergebruik: de reuse-detectie legde de hele keten om, voor elk apparaat tegelijk, want `auth_refresh_tokens` draagt bewust geen apparaatkolom tot PS-9. Log jv19q op build 242 liet het gevolg zien: "Sessie verlopen voor Zolder" na een rotatie die niemand had ingetrokken, met een volledige herlogin als enige uitweg. De app verdubbelde de kans door direct na elke login nóg een rotatie te doen.
+
+**Decision:** Migratie 6 voegt `replaced_by` toe: elke geslaagde rotatie wijst naar zijn opvolger. Biedt een client een ingetrokken token aan waarvan de opvolger *nooit is gebruikt* en de rotatie korter dan `PLEYA_SERVER_REFRESH_GRACE_WINDOW` (default twee minuten) terug ligt, dan is dat de vingerafdruk van een verloren antwoord en geen aanval: wie het antwoord wél ontving zou de opvolger uitgeven. De nooit-geziene opvolger wordt ingetrokken en de aanvrager krijgt een verse rotatie (`RefreshReplayed`, met een eigen logregel zodat de frequentie meetbaar is). De server bewaart alleen hashes, dus de oorspronkelijke opvolger opnieuw uitgeven kán niet; vervangen is het enige dat de hash-only-opslag toelaat. Het venster rekt niet op: `revoked_at` blijft het moment van de oorspronkelijke rotatie. Alles daarbuiten — een gebruikte opvolger, een herhaling buiten het venster, of het aanbieden van een nooit-uitgeleverde opvolger zelf — blijft de bestaande ketenintrekking.
+
+**Consequences:** Een verloren rotatie-antwoord herstelt zichzelf in plaats van een herlogin op elk apparaat te kosten. De aanvalsruimte die erbij komt is smal en benoemd: een dief van het oude token moet binnen twee minuten na de rotatie toeslaan én de echte client mag het antwoord dan net niet ontvangen hebben; daarbuiten verandert er niets aan de detectie. De bestaande api-test kon niet blijven staan zoals hij was, want het scenario dat hij als hergebruik bestempelde ís het verloren-antwoord-scenario; hij toetst nu beide kanten, inclusief dat het aanbieden van de vervangen opvolger de keten alsnog omlegt.
+
+## DEC-118: het openstaande hardwarecriterium van PS-5 blokkeert PS-9 niet
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** PS-5 (`DeviceCapabilities` in de client) is code complete: vier van de vijf acceptatiecriteria zijn gehaald, met build 242 al op TestFlight voor alle drie de platforms. Alleen criterium 4 staat open, geen regressie op bestaand afspeelgedrag bij Plex en Jellyfin, aangetoond op echte hardware voor minimaal tvOS plus één desktopplatform, en die ronde is nu bewust uitgesteld wegens gebrek aan tijd, niet gefaald of overgeslagen. Hoofdstuk 23.1 zegt dat een fase pas klaar is als alle acceptatiecriteria gehaald zijn, maar laat in het midden of het openstaan van één hardwarecriterium ook het starten van een latere fase blokkeert. Dat onderscheid bestond al impliciet: PS-4 bleef "opgeleverd, niet gesloten" met acceptatiecriterium 1 open toen PS-5 begon, zonder dat dat ooit als regel is vastgelegd. `docs/pleya-server-phase-order-deviation.md` maakt bovendien **Afhankelijkheden** bindend boven **Eerstvolgende fase**, en PS-9 hangt in de fasetabel alleen aan PS-4, niet aan PS-5.
+
+**Decision:** Een acceptatiecriterium van een fase dat uitsluitend met fysieke hardware te bewijzen is, blokkeert het starten van een latere fase niet, mits alle vier volgende voorwaarden gelden: de afhankelijkheidsgraaf uit hoofdstuk 23.2 vraagt het openstaande criterium niet als invoer voor de latere fase; elk ander acceptatiecriterium van de eerdere fase is wel gehaald, de fase is met andere woorden code complete; het openstaande criterium blijft zichtbaar open in de fasetabel en in `STATUS.md`, in plaats van stilzwijgend te verdwijnen; en het starten van de latere fase wordt nergens gelezen of vermeld als bewijs dat de hardwareronde van de eerdere fase geslaagd is.
+
+Voor PS-5 concreet: acceptatiecriterium 4 blijft **open** en **niet gehaald**. PS-9 mag beginnen. Deze afwijking dekt uitsluitend het starten van PS-9; ze sluit PS-5 niet af, verandert niets aan wat PS-5 moet bewijzen, en geldt niet automatisch voor een volgende keer dat dit patroon zich voordoet. Elke herhaling wordt opnieuw langs deze vier voorwaarden getoetst. De hardwareronde blijft schuld: ze moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of PS-9-gedrag meeneemt alsnog gedraaid worden, een TestFlight-indiening naar App Review of een merge van `feat/pleyaserver` naar `main`, wat zich het eerst voordoet.
+
+**Consequences:** PS-9 kan starten zonder op de deviceronde te wachten. `docs/pleya-server-architecture.md` en `STATUS.md` blijven PS-5's status tonen als "opgeleverd, niet gesloten" met criterium 4 expliciet open, en verwijzen hiernaartoe. Wie de PS-5-hardwareronde later draait en hem laat slagen, sluit PS-5 formeel af zoals elke andere fase: met een Roadmap Drift Check. Faalt de ronde, dan is dat een regressie op bestaand afspeelgedrag en gaat de reparatie voor PS-9-werk, ongeacht hoever PS-9 dan gevorderd is.
+
+## DEC-119: Rollen- en rechtenmodel voor PS-9, vier rollen, een ladder, precies één owner
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** Drie documenten claimden al "vier rollen, drie rechten" zonder ze ooit te definiëren: het
+masterplan (gemarkeerd **VASTGELEGD**), de replacement matrix, en de PS-9-fasetabel zelf. Zonder een
+opgeschreven model is elke schemakeuze in migratie 0007 een aanname. Vier vragen moesten beantwoord
+worden: welke rollen bestaan er en wat mogen ze; omzeilen `owner` en `admin` de bibliotheekrechten of
+krijgen ze rijen zoals iedereen; wat is het functionele verschil tussen `member` en `restricted`; en
+impliceren `view`, `download` en `manage` elkaar.
+
+**Decision:**
+
+1. **Vier rollen.** `owner` (precies één, afgedwongen met een partiële unieke index
+   `CREATE UNIQUE INDEX users_single_owner_idx ON users ((role)) WHERE role = 'owner'`, kan niet
+   verwijderd of gedegradeerd worden), `admin` (nul of meer, kan door de owner worden teruggedraaid),
+   `member` (nul of meer, eigen wachtwoord en sessies), `restricted` (nul of meer, als `member` met
+   drie verschillen).
+2. **`owner` en `admin` omzeilen bibliotheekrechten via de rol en krijgen geen permission-rijen.**
+   Bibliotheken ontstaan tot PS-11A uit `PLEYA_SERVER_LIBRARIES` en een herstart, zonder beheerscherm;
+   expliciete rijen zouden een nieuwe bibliotheek onzichtbaar maken voor de owner zelf, op een server
+   zonder UI om dat recht te zetten. `internal/catalog` krijgt daarom precies twee rechtenfuncties,
+   `VisibleLibraries(ctx, user)` en `MayAccess(ctx, user, libraryID, need)`, en elke query en handler
+   gaat daarlangs. Geen tweede plek mag deze beslissing herhalen.
+3. **`member` versus `restricted`, drie functionele verschillen:** `restricted` kan nooit `manage`
+   krijgen (een CHECK op de permission-rij, niet alleen UI), `restricted` beheert zijn eigen
+   wachtwoord niet (alleen `owner`/`admin` zet het, het Plex Home-kinderprofiel), en `restricted` ziet
+   in `GET /users` alleen zichzelf. `member` is de gewone huisgenoot.
+4. **Rechten vormen een geordende ladder**, niet drie booleans: `view < download < manage`, opgeslagen
+   als één kolom `permission text NOT NULL CHECK (permission IN ('view','download','manage'))` per
+   `(user_id, library_id)`. `download` impliceert `view`, `manage` impliceert beide, per constructie
+   in plaats van als afspraak die elders afgedwongen moet worden. `view` en `download` krijgen in PS-9
+   een echt handhavingspunt; `manage` wordt opgeslagen en teruggegeven maar handhaaft pas iets bij
+   metadata-bewerken (PS-7) en bibliotheekbeheer (PS-11A), dezelfde vooruitgedragen-kolom-redenering
+   als `watch_states.subject` in PS-4 (`0004_watch.sql:19-21`).
+5. **Cascadegedrag:** bibliotheek of gebruiker weg → permission-rijen weg (`ON DELETE CASCADE` op
+   beide FK's); gebruiker weg → sessies, refreshtokens (via sessions), kijkstatus en
+   browserstreamsessies weg (`watch_states.subject` en `stream_sessions.subject` worden `uuid` met FK
+   `ON DELETE CASCADE`, precedent: `watch_states.item_id` in `0004_watch.sql:22`); `owner` verwijderen
+   wordt geweigerd door de partiële unieke index plus een expliciete controle in de handler.
+
+**Consequences:** Migratie 0007 kan gebouwd worden tegen een vastliggend model in plaats van een
+aanname. De rol-gebaseerde bypass voor `owner`/`admin` betekent dat een audit van bibliotheekrechten
+altijd via de rol én de permission-tabel moet lezen, nooit via de tabel alleen; dat staat als
+verwachting in de testmatrix (hoofdstuk 8, autorisatiematrix). `manage` bestaat vanaf PS-9 in het
+schema maar handhaaft niets tot PS-7/PS-11A; de Roadmap Drift Check voor PS-9 bewaakt dat expliciet
+zodat niemand die kolom per ongeluk als "af" leest.
+
+## DEC-120: AC3 ("onmiddellijk ongeldig") wordt een in-process intrekkingsregister met een grens van twee seconden
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** AC3 van PS-9 eist dat een ingetrokken sessie onmiddellijk ongeldig is, ook voor een
+lopende stream met een streamtoken. "Onmiddellijk" was niet ingevuld: een generieke propagatielaag
+(`LISTEN`/`NOTIFY`, pub/sub) is een andere klasse oplossing dan een booleaanse check per aanvraag, en
+de keuze bepaalt of `copyRange` (`handlers_stream.go:216-227`) herschreven moet worden of niet.
+`pleya_server/compose.yaml` draagt één `pleya-server`-service zonder `replicas` of `deploy`, en de
+bestaande rate limiter is al "in het geheugen en per proces" (`README.md:308-310`); er is nergens in
+de huidige deployment een aanname van meerdere instanties.
+
+**Decision:** AC3 blijft ongewijzigd. De invulling is een in-process register: een set van
+ingetrokken, nog niet verlopen sessie-ids in het geheugen, gevuld bij het opstarten uit de database en
+bijgewerkt bij elke intrekking, met een O(1)-lookup zonder databaseronde per aanvraag. Geen
+`LISTEN`/`NOTIFY`, geen pub/sub-laag; dat is de opvolger zodra er een tweede instantie komt, en past
+dan binnen DEC-033 (Postgres als enige verplichte dependency). `copyRange` wordt een lus die per blok
+het register raadpleegt en de context annuleert zodra de sessie ingetrokken is. **De maximale
+revocatielatentie is vastgelegd op ten hoogste twee seconden**, gemeten met een tijdmeting in de test
+(stap 6 van hoofdstuk 8), niet met een booleaanse assert. Dit geldt symmetrisch voor het accesstoken
+(`sid`-check), het streamtoken en de browserstreamsessie: alle drie dragen `sid` en falen zodra hun
+sessie in het register staat.
+
+**Consequences:** Geen nieuwe infrastructuurdependency. Het risico dat dit ontwerp bewust niet oplost
+, revocatie over meerdere serverinstanties, staat als vraag in de Roadmap Drift Check van PS-9: "Is
+er een revocatiemechanisme gebouwd dat verder gaat dan sessie- en streamtokenintrekking? Een generieke
+pub/sub-laag is PS-11 of later." Een tweede instantie zonder die opvolger zou intrekking onbetrouwbaar
+maken; dat is voor nu een geaccepteerde grens van de huidige één-instantie-deployment, niet een gat dat
+onopgemerkt zou blijven.
+
+## DEC-121: PS-9 levert een gebruikersbeheer-API; het scherm is PS-11A
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** `/admin/users` komt twee keer voor in het masterplan (`:803`, `:949`), beide keren als
+Pleya Web-route in de doelarchitectuur van de webclient, nooit als endpoint in het protocol. Het
+protocol kent nergens een route onder `/users` (`pleya-protocol-v1.md:893-910`, achttien endpoints op
+dat moment). AC1 en het stopcriterium van PS-9 eisen twee echte gebruikers op de NAS; zonder API is de
+enige weg handmatige SQL, wat geen ondersteund productpad is.
+
+**Decision:** PS-9 levert de minimale gebruikersbeheer-API:
+
+- `POST /pleya/v1/users` (`admin`): gebruiker aanmaken met `username`, `password`, `role`.
+- `GET /pleya/v1/users` (`authenticated`): `owner`/`admin` zien iedereen, `member`/`restricted` zien
+  alleen zichzelf.
+- `PATCH /pleya/v1/users/{id}` (`admin`, of `owner` op zichzelf): rol wijzigen, wachtwoord zetten.
+- `DELETE /pleya/v1/users/{id}` (`admin`): gebruiker verwijderen; de owner weigeren.
+- `PUT /pleya/v1/users/{id}/permissions` (`admin`): bibliotheekrechten zetten als lijst van
+  `(library_id, permission)`.
+
+Een `member` die het id van een ander opvraagt krijgt `404`, dezelfde regel als overal
+(`internal/catalog/store.go:25-29`). De sessie-endpoints (`GET/DELETE /pleya/v1/sessions` en
+`POST /pleya/v1/auth/logout`) staan los van deze set en zijn vastgelegd in DEC-124.
+
+Het ondersteunde pad in PS-9 is de API plus een gedocumenteerd `curl`-recept in
+`pleya_server/README.md`, in dezelfde vorm als de bestaande recepten voor bladeren, zoeken en setup.
+Er komt in PS-9 geen scherm, geen navigatie en geen beheeroverzicht; dat is PS-11A en wordt hier niet
+vooruitgebouwd.
+
+**Consequences:** AC1 is uitvoerbaar zonder handmatige SQL. De endpoints landen in het protocol als
+wijziging 4 en 5 uit hoofdstuk 3 van het PS-9-ontwerp, onder het contractvenster van DEC-122. PS-11A
+erft een werkende API en bouwt er alleen het scherm boven; PS-9 mag dat scherm niet vooruitbouwen
+(Roadmap Drift Check).
+
+## DEC-122: het protocolvenster gaat open voor PS-9 en de vriezingsformulering ontkoppelt van PS-5
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** `CLAUDE.md` en `docs/pleya-server-gates.md:26` zeiden allebei dat
+`docs/pleya-protocol/v1/openapi.yaml` bevroren is "zolang PS-5 loopt". PS-5 is met DEC-118 bewust
+opengelaten op alleen zijn hardwarecriterium en loopt dus voor onbepaalde tijd door, terwijl PS-9 zeven
+protocoltoevoegingen nodig heeft: `capabilities.users` van `false` naar `true`, een nieuw
+`capabilities.sessions`-veld op `/info`, optionele `device_id`/`device_name` op `LoginRequest` en
+`SetupRequest` (DEC-123), de gebruikers-endpoints (DEC-121), de sessie-endpoints (DEC-124),
+`POST /auth/logout` (DEC-124), en nieuwe foutcodes voor rolconflicten. Elk van de zeven is getoetst aan de zes
+compatibiliteitsregels uit hoofdstuk 3 van de specificatie: geen enkele hernoemt, verwijdert of
+verandert de betekenis van een bestaand veld; de nieuwe aanvraagvelden zijn optioneel en staan achter
+een capability-vlag, met `watch_state_ownership` (`openapi.yaml:774-782`) als precedent voor exact dit
+patroon. Zonder een expliciet besluit staat "bevroren zolang PS-5 loopt" en "PS-9 heeft
+protocolwijzigingen nodig" tegenover elkaar.
+
+**Decision:** Het contractvenster gaat open voor **precies de zeven wijzigingen** hierboven, op
+dezelfde manier als het venster dat één keer eerder openging bij het sluiten van PS-3 voor de drie
+poortbesluiten (DEC-049/050/051). Zodra `openapi.yaml`, `pleya-protocol-v1.md` en de fixtures zijn
+bijgewerkt (stap 1 van de PS-9-implementatievolgorde) en `scripts/check_protocol.sh` slaagt, sluit het
+venster weer.
+
+Tegelijk wordt de vriezingsformulering losgekoppeld van een specifiek fasenummer: "bevroren zolang
+PS-5 loopt" wordt "bevroren zolang de huidige ontwikkelfase loopt". PS-5's anker klopte al niet meer
+sinds `faef53a` (PS-9 vrijgegeven met PS-5 nog open); een vriezing die aan een vast fasenummer hangt in
+plaats van aan "de fase die nu loopt" veroudert stilzwijgend bij elke volgende fasewissel met een
+opengelaten voorganger.
+
+**Consequences:** `CLAUDE.md` en `docs/pleya-server-gates.md` zijn bijgewerkt: de vriezing volgt de
+lopende fase, niet PS-5. `docs/pleya-server-gates.md` krijgt een zesde regel voor het PS-9-venster,
+analoog aan de PS-3-sluiting. Elke toekomstige fase die protocoltoevoegingen nodig heeft, doorloopt
+dezelfde procedure: expliciet venster, toetsing aan de zes regels, sluiten zodra `check_protocol.sh`
+slaagt, geen stilzwijgende heropening. De volledige set PS-9-besluiten die dit venster invult staat in
+DEC-119 (rollenmodel), DEC-120 (revocatie-architectuur en de 2-secondengrens), DEC-121
+(gebruikersbeheer-API), DEC-123 (sessieketen en toestel-id), DEC-124 (sessie-inzage en -intrekking) en
+DEC-125 (migratie van bestaande refreshketens); DEC-126 legt de autorisatiematrix vast die dit venster
+moet dekken.
+
+## DEC-123: `sid` loopt door de volledige authketen; sessie-intrekking wordt device-scoped
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** `subject` identificeert de gebruiker, niet het toestel. Een intrekking die alleen op
+`subject` kan controleren zet elk toestel van die gebruiker buiten de deur; dat is uitloggen op alle
+apparaten, niet de sessie-intrekking die AC3 vraagt. `internal/auth/store.go:226` trekt vandaag een
+refreshketen in met `UPDATE auth_refresh_tokens SET revoked_at = $1 WHERE revoked_at IS NULL`, zonder
+enige scope, en DEC-117 noemt dat zelf al PS-9-werk: *"want er is geen apparaatkolom"*
+(`0006_refresh_grace.sql:3-4`). Er moest daarom expliciet vastliggen hoe een stabiele sessie-identiteit
+door elke stap van login tot streambytes reist, en hoe een toestel aan die sessie gekoppeld wordt.
+
+**Decision:** Een nieuwe tabel `sessions` (`id`, `user_id`, `device_id`, `device_name`, `created_at`,
+`last_seen_at`, `revoked_at`) is de ankerentiteit. `sid` loopt door de volledige keten:
+
+| Stap | Draagt `sid` via |
+| --- | --- |
+| login / setup | maakt de `sessions`-rij aan |
+| accesstoken | `Mint` krijgt een parameter erbij; `Claims` krijgt `sid` naast `sub` |
+| refreshtoken | `auth_refresh_tokens.session_id uuid NOT NULL REFERENCES sessions(id) ON DELETE CASCADE` |
+| refresh | zoekt het token op, leest `session_id`, **weigert als de sessie ingetrokken is**, roteert binnen dezelfde sessie, mint met dezelfde `sid` |
+| streamtoken | `Mint` met `sub`, `sid` en `res` = version_id |
+| browserstreamsessie | `stream_sessions.session_id` als FK, zodat intrekking van de sessie ook de browsersessies meeneemt |
+
+`sid` in `Claims` is geen protocolwijziging: `Claims` is de inhoud van een ondoorzichtige string en
+het protocol zegt uitdrukkelijk dat de client hem nooit hoeft te lezen (`pleya-protocol-v1.md:355-359`).
+Na intrekking van sessie A faalt elk credential met `sid = A`: accesstoken, streamtoken en
+browserstreamsessie. Sessie B van dezelfde gebruiker blijft geldig, want die draagt een andere `sid`.
+De reuse-intrekking op `internal/auth/store.go:226` wordt daarom sessie-scoped:
+`... WHERE revoked_at IS NULL AND session_id = $2`, in dezelfde commit als het schema, niet in een
+opruimronde erna.
+
+**Het toestel-id.** De client heeft al een stabiel, niet-Plex, niet-gesynchroniseerd toestel-id,
+`PreferenceDeviceId` (`lib/services/preferences/preference_device_id.dart`), en dat wordt hergebruikt.
+Een IP-adres of User-Agent is geen toestelidentiteit en wordt niet gebruikt. `device_id` en
+`device_name` zijn optionele velden op `LoginRequest` en `SetupRequest`, alleen gestuurd wanneer
+`capabilities.sessions` waar is (protocolwijziging 2 en 3 van DEC-122). Capability negotiation vóór
+login bestaat al structureel: `GET /info` is `public` en draagt `capabilities`, en de client roept hem
+vandaag al aan vóór elke login (`add_pleya_server_screen.dart:88-103` → `_findServer`/`probe` vóór
+`_submit`/`login` op `:135-144`). Ontbreekt de capability, of stuurt een oudere client niets, dan maakt
+de server een sessie met `device_id IS NULL` en `device_name` op een vaste plaatshouder, wat het oude
+gedrag reproduceert (compatibiliteitsregel 4).
+
+**Consequences:** Sessie-intrekking is vanaf PS-9 een echte device-scoped operatie in plaats van een
+impliciete user-wide logout. Elke aanroeper van `Mint` krijgt een verplichte `sid`-parameter; er is
+geen pad meer waarop een token zonder sessiebinding wordt uitgegeven. Migratie 0007 moet bestaande
+actieve refreshketens van een sessie voorzien voordat deze keten geldt; dat is DEC-125.
+
+## DEC-124: Sessie-identificatie, -inzage en -intrekking krijgen een eigen API; `logout` vervangt dat niet
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** AC3 test "trek B's sessie in", maar zonder een API is er geen ondersteunde manier om dat
+te doen. De sessieketen uit DEC-123 maakt sessies identificeerbaar; dit besluit legt vast hoe een
+gebruiker en een beheerder daar via het protocol bij komen, en scheidt dat expliciet van
+`POST /auth/logout`, dat een ander, kleiner doel dient.
+
+**Decision:** Sessies zijn `sessions.id` (uuid).
+
+- **Inzage:** `GET /pleya/v1/sessions` geeft per sessie `id`, `device_name`, `created_at`,
+  `last_seen_at`, en `current: true` voor de sessie die de aanvraag zelf doet. Een gebruiker ziet zijn
+  eigen sessies; `owner` en `admin` kunnen die van een ander opvragen met `?user_id=`.
+- **Intrekken van precies één sessie:** `DELETE /pleya/v1/sessions/{id}`. Autorisatie: een gebruiker
+  mag zijn eigen sessies intrekken, `owner` en `admin` die van iedereen. Een sessie-id dat niet van de
+  aanvrager is en waar de aanvrager geen recht op heeft geeft `404`, dezelfde regel als overal
+  (`internal/catalog/store.go:25-29`). Intrekken zet `revoked_at`, cascadeert naar de refreshtokens en
+  de browserstreamsessies van die sessie, en meldt het id aan het intrekkingsregister uit DEC-120.
+- **`POST /auth/logout` doet uitsluitend de huidige sessie.** Het is het gemak-endpoint voor "log mij
+  hier uit" en vervangt `DELETE /pleya/v1/sessions/{id}` nadrukkelijk niet: een ander toestel intrekken
+  kan er niet mee. Het stond in het masterplan als **voorstel** (`:764-768`), niet als vastgelegd
+  besluit, en valt onder het contractvenster van DEC-122.
+
+**Consequences:** De sessie-API landt als protocolwijziging 5 en 6 van DEC-122. `GET/DELETE
+/pleya/v1/sessions/{id}` en `POST /pleya/v1/auth/logout` zijn drie afzonderlijke handlers met drie
+afzonderlijke autorisatieregels; ze delen het intrekkingsmechanisme van DEC-120 maar niet de scope.
+Regel 15 van de autorisatiematrix (DEC-126) toetst dit expliciet.
+
+## DEC-125: Bestaande actieve refreshketens krijgen elk een eigen `legacy`-sessie
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** DEC-123 maakt `session_id` verplicht op elke refreshketen, maar de bestaande rijen in
+`auth_refresh_tokens` dragen geen toestelidentiteit, en die wordt niet verzonnen. Migratie 0007 moet
+dus een regel hebben voor wat er met de rijen gebeurt die al bestaan, zonder een van beide fouten te
+maken: bestaande sessies stuk laten lopen, of twee onafhankelijke toestellen stilzwijgend hetzelfde
+revoke-domein laten delen.
+
+**Decision:** Elke actieve tokenketen krijgt zijn **eigen** `legacy`-sessie. Voor elke rij met
+`revoked_at IS NULL AND expires_at > now()` komt er één `sessions`-rij met `device_id = NULL` en
+`device_name` op een vaste plaatshouder, en de tokenrij krijgt die `session_id`. Ingetrokken en
+verlopen rijen houden `session_id NULL`; dat is geschiedenis en hoeft geen sessie. Eén sessie per
+keten, niet één gedeelde sessie, is het hele punt: twee oude clients delen daarmee geen revoke-domein,
+en hergebruik van de ene keten raakt de andere niet.
+
+De koppeling aan een echt toestel volgt bij de eerstvolgende geslaagde refresh: stuurt de client dan
+een `device_id` (capability-gated, zie DEC-123), dan vult de server `device_id` en `device_name` op de
+bestaande sessierij in. Een client die niets stuurt houdt zijn `legacy`-sessie, en die blijft gewoon
+werken. Gemeten op de NAS op 24 augustus 2026: 191 tokenrijen, waarvan 1 actief; in de praktijk is dit
+dus één legacy-sessie, maar het ontwerp is algemeen en gaat over elk aantal actieve ketens.
+
+**Consequences:** Migratie 0007 kan niet los van deze regel getest worden. De testmatrix voor stap 2
+van de implementatievolgorde (hoofdstuk 8) vraagt drie dingen op een fixture-DB met een bestaande
+`auth_owner`-rij: bestaande geldige clients kunnen na 0007 doorgaan, twee oude actieve ketens krijgen
+twee aparte sessies, en reuse van de ene keten trekt de andere niet in. Zonder deze drie tests bewijst
+een groene migratietest niets over het scenario dat er werkelijk toe doet.
+
+## DEC-126: De endpoint- en autorisatiematrix is de bindende testmatrix, niet een beschrijving
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** AC2 noemt expliciet "ook op stream- en plan-endpoints", en het risico dat autorisatie
+alleen op lijstniveau zit (gefilterde catalogusquery) terwijl een direct id nog steeds toegang geeft is
+de meest voorkomende fout in dit soort ontwerpen. Zonder een uitputtende, vooraf vastgelegde lijst is
+"de catalogus is gefilterd, dus klaar" een aanname die niet getoetst wordt, en juist de subtiele paden
+(streamtoken, streamsessie, kijkstatus na rechtverlies) worden dan gemist.
+
+**Decision:** Onderstaande vijftien regels zijn de bindende autorisatiematrix voor PS-9 en tegelijk de
+testmatrix: elke regel krijgt minimaal één test met een gebruiker zonder recht.
+
+| # | Endpoint | Lekvector | Vereiste controle |
+| --- | --- | --- | --- |
+| 1 | `GET /libraries` | lijst | filter op `VisibleLibraries` |
+| 2 | `GET /libraries/{library_id}/items` | direct id | `MayAccess(view)`, anders `404` |
+| 3 | `GET /items/{item_id}` | direct id | bibliotheek van het item, anders `404` |
+| 4 | `GET /items/{item_id}/children` | direct id | idem |
+| 5 | `GET /search` | resultaten | filter; een verborgen titel komt niet terug |
+| 6 | `GET /hubs/{hub_id}` | resultaten **en** `?library_id=` | filter, plus `404` op een verboden `library_id` |
+| 7 | `GET /artwork/{artwork_id}` | direct id | via het item, anders `404` |
+| 8 | `GET /subtitles/{subtitle_id}` | direct id, **plus streamtokenpad** | anders `404`, ook met een geldig streamtoken |
+| 9 | `GET /stream/{version_id}` | direct id, **plus streamtoken en streamsessie** | anders `404`, op alle drie de paden |
+| 10 | `POST /auth/stream-token` | `version_id` in de body | `404` bij geen recht, zodat het bestaan niet lekt |
+| 11 | `POST /auth/stream-session` | `version_id` in de body | idem |
+| 12 | `POST /watch-state` | `item_id` in de body | `404` bij geen recht |
+| 13 | `GET /watch-state` | lijst met item-ids | filter op nu zichtbare items, niet alleen op `subject` |
+| 14 | `GET /users` | lijst | `member`/`restricted` zien alleen zichzelf |
+| 15 | `GET /sessions`, `DELETE /sessions/{id}` | sessie-id | eigen sessies, of `admin`; anders `404` |
+
+Regel 8, 9, 10 en 11 zijn de subtiele: een streamtoken wordt gemint terwijl het recht bestaat en leeft
+daarna twee tot vijf minuten zelfstandig. De rechtencontrole moet dus op het **aanvraagpad** staan, niet
+alleen op het mint-moment, anders overleeft een ingetrokken recht precies zo lang als het token. Regel
+13 is de gemakkelijkst vergetene: `GET /watch-state` is vandaag al per `subject` gescheiden, maar een
+gebruiker die het recht op een bibliotheek verliest houdt zijn oude kijkstatusrijen, die item-ids uit
+een voor hem niet meer bestaande bibliotheek dragen.
+
+Plan-endpoints (`POST /playback/plan`) bestaan nog niet; die zijn PS-6 en geven vandaag `404`. De regel
+uit AC2 blijft voor hen staan zodra ze er komen, en dat wordt vastgelegd in de PS-6-fasetabel, niet
+hier vooruitgebouwd.
+
+**Consequences:** Stap 5 van de implementatievolgorde (hoofdstuk 8) mag pas als voltooid gelden wanneer
+alle vijftien regels een eigen test hebben, niet wanneer de catalogusfilter werkt en de rest impliciet
+wordt aangenomen. Een nieuw endpoint dat een library-, item-, version-, file- of stream-identiteit
+blootlegt en niet in deze tabel staat is een gat in dit besluit en moet er expliciet aan toegevoegd
+worden voordat het endpoint als PS-9-compleet geldt.
+
+## DEC-127: PS-4E, PS-7N en PS-7A komen erbij, PS-4W wordt geknipt, en de lege hubs zijn een PS-4-defect
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** PS-3W-voorstel 5.4 belooft dat Pleya Web de primaire beheerinterface wordt, maar geen
+enkele fase pakt die belofte op. De aanname eronder was dat webfunctionaliteit vanzelf meekomt met
+latere fasen die de webclient toch al raken. Vijf bevindingen ondergraven die aanname, en ze staan
+uitgeschreven in `docs/pleya-server-ps4e-proposal.md`. Twee ervan sturen dit besluit.
+
+De eerste is een defect in een gesloten fase. `handleHub` (`internal/api/handlers_library.go`) geeft
+voor `continue_watching` en `next_up` onvoorwaardelijk een lege `ItemPage`, met een commentaar dat
+uitlegt dat dit de normale toestand is van een catalogusserver die nog niet kan afspelen. Dat
+commentaar dateert van vóór PS-4. Sinds PS-4 gesloten is staat `capabilities.watch_state` op `true`
+zodra de watch-store bestaat (`handlers_auth.go:65`), en dat is in elke productieconfiguratie het
+geval. De server adverteert dus een capability die hij op dit ene punt niet levert.
+`docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md:160` zet "Verder kijken" al op Technisch gereed,
+vooruitlopend op precies dat. In de Flutter-app valt de rij weg omdat `fetchGlobalHubs` lege hubs
+filtert (`lib/services/pleya_server_client/parts/browse.dart:239`).
+
+De tweede is een grensprobleem in PS-4W. Dat masterplanfase zet "de rijen Verder kijken en Nieuwe
+afleveringen op Home, en voortgangsbalken op `MediaCard`" in zijn scope, naast de browserspeler, en
+belooft tegelijk "Backendwijzigingen: geen". Acceptatiecriterium 5 van PS-4W ("de rijen vullen zich
+na een kijksessie") is vandaag onhaalbaar zonder de bovenstaande reparatie, die qua onderwerp bij
+PS-4 hoort en niet bij PS-4W. Een voortgangsbalk is bovendien presentatie van bestaande watch state
+die al meekomt op elke item- en hubresponse via `hydrateItems`; wie op de webclient alleen bladert
+en in de Flutter-app kijkt, zou zijn voortgang anders nooit in de browser zien.
+
+**Decision:** Drie fasen komen erbij, één fase wordt geknipt, en één gat wordt als defect
+gecorrigeerd.
+
+**PS-4E (Pleya Web: app-paritaire beleving)** krijgt de schil, de hero-carrousel, de kaarten en de
+detailpagina, plus het **tonen** van bestaande watch state. Afhankelijk van PS-3W en PS-4. **PS-7N**
+is een uitsnede van PS-7 voor `summary`, `genres` en `content_rating` uit lokale sidecars,
+voorwaardelijk op de coverage-gate uit 4.4 van het voorstel. **PS-7A** maakt `?width=` werkend.
+
+**PS-4W behoudt zijn Phase ID en zijn doel.** Twee scope-items verhuizen naar PS-4E, en de grens is:
+PS-4E leest bestaande watch state en toont die waar de app dat ook doet, en introduceert geen nieuwe
+watch-state-writes vanuit de browser; PS-4W blijft verantwoordelijk voor seek- en playbackrapportage
+en voor het bijwerken van die state tijdens browserplayback. Daarbovenop krijgt PS-4W een voorwaarde
+die er nog niet was: zonder een gemeten percentage direct afspeelbare media op de echte bibliotheek
+wordt de fase niet afgesloten met de claim dat Pleya Web media kan afspelen.
+
+**De hub-implementatie is een defectcorrectie in PS-4, geen nieuwe fase.** Ze landt met haar eigen
+tests en met de matrixcorrectie in dezelfde commit, conform onderhoudsregel 3 van de matrix.
+
+**Het contractvenster gaat open voor precies één wijziging:** de `description` van `/hubs/{hub_id}`
+in `docs/pleya-protocol/v1/openapi.yaml`, plus de bijbehorende normatieve tekst in hoofdstuk 15 van
+`docs/pleya-protocol-v1.md`. Er verandert geen schema, geen enum, geen veld en geen statuscode.
+Getoetst aan de zes compatibiliteitsregels uit hoofdstuk 3: geen ervan wordt geraakt, want een
+`description` beschrijft gedrag dat het contract vandaag helemaal niet vastlegt. Het venster sluit
+zodra `scripts/check_protocol.sh` daarna slaagt. Dit is dezelfde procedure als DEC-122, en de reden
+dat een tekstwijziging hem doorloopt is dat de betekenis van een hub wél deel van het contract is:
+web en Flutter-client mogen `next_up` nooit verschillend lezen.
+
+De vastgelegde semantiek: per serie precies één rij, de laagst genummerde aflevering **vanaf** de
+hoogst genummerde aflevering waar deze identiteit kijkstatus op heeft, die ongekeken is en waaraan
+nog niet begonnen is. Specials (een seizoen met `item_index` nul) en ongenummerde afleveringen
+tellen niet mee, niet als kandidaat en niet als ankerpunt. Een serie zonder enige kijkactiviteit
+staat niet in de hub, en een serie die uit is verdwijnt eruit. `continue_watching` en `next_up` zijn
+daarmee disjunct: een halfgekeken aflevering staat in de eerste, haar opvolger in de tweede, nooit
+dezelfde in allebei.
+
+**Gecorrigeerd tijdens de implementatie, 24 augustus 2026.** Dit besluit zei eerst "na" in plaats
+van "vanaf", en noemde alleen `watched` als voorwaarde. Dat liet een gat vallen dat pas bij het
+schrijven van de query zichtbaar werd: `applyExplicit` (`internal/watch/watch.go:239`) zet
+`mark_unwatched` op `watched = false` met `position_ms = 0`. Zo'n aflevering is meteen het hoogst
+genummerde ankerpunt, en met "strikt na" is zij dus zelf geen kandidaat meer. Zij viel daarmee uit
+`continue_watching` (de positie is nul) én uit `next_up` (zij is het anker), terwijl iemand die iets
+op ongekeken zet precies dat wil terugzien. "Vanaf", plus de eis dat er nog niet aan begonnen is,
+sluit dat gat zonder de disjunctie tussen de twee hubs op te geven. De correctie staat hier en niet
+alleen in de code, want deze alinea is de normatieve tekst.
+
+**Consequences:** `docs/pleya-server-architecture.md` hoofdstuk 23 krijgt de drie fasen en het
+diagram in 23.2 de vijf nieuwe pijlen. `docs/pleya-server-masterplan-proposal.md` 16.3 krijgt de
+knip. De matrix krijgt de correctie plus nieuwe regels voor wat PS-4E, PS-7N en PS-7A afleveren.
+
+Eén regel gaat expliciet **niet** mee. "Volgende aflevering bij een serie" (`:162`) blijft In
+roadmap: de bewijskolom van die regel noemt het detailscherm, en dat is een per-item on-deck dat het
+protocol niet kent en dat `fetchItemWithOnDeck` nog steeds als `null` beantwoordt. De hub krijgt een
+eigen regel. Ze omkatten zou het gat onzichtbaar maken in plaats van sluiten.
+
+PS-7N heeft later een eigen venster nodig voor zijn drie velden, met een eigen DEC eronder; dit
+besluit opent dat venster niet. `pleya_web/src/lib/api/schema.d.ts` wordt uit de gewijzigde YAML
+opnieuw gegenereerd (`pleya_web/scripts/gen-api-types.sh`), want `check-api-types.sh` slaat anders
+aan op een achterlopend bestand.
+
+---
+
+## DEC-128: e-books worden een contentdomein van Pleya Server, als PS-14 en PS-15
+
+**Date:** 2026-09-03
+**Status:** accepted
+
+**Context:** Op `feat/ebooks` staat sinds 3 september 2026 een goedgekeurd clientbesluit over de
+mobiele primaire navigatie, met een vierde tabslot dat Boeken wint zodra het actieve profiel een
+toegankelijke e-bookbibliotheek heeft, plus een goedgekeurde golden en een bindende twaalfpanelen-comp.
+Aan de serverkant bestaat daar niets voor: `epub`, `ebook` en `boeken` komen niet voor in de
+architectuurbaseline en niet in de replacement matrix, geen fase draagt boeken, en volgens
+onderhoudsregel 2 van de matrix bestaat een functie zonder matrixregel voor de gate niet. De
+navigatiepolicy stelt dus een vraag die niemand kan beantwoorden.
+
+Plex levert geen e-books. De driedeling uit matrixhoofdstuk 3 (eigen equivalent, bewust anders
+opgelost, bewust buiten scope) is daarom niet toepasbaar: er is geen Plex-verantwoordelijkheid om
+over te nemen. Dit is een uitbreiding van de productscope zelf.
+
+Een code-audit legde twee dingen vast die het besluit sturen. `LibraryKind` draagt in
+`docs/pleya-protocol/v1/openapi.yaml` `x-unknown-safe: true` met de tekst dat er binnen v1 een soort
+bij mag komen, dus `books` is geen breuk op compatibiliteitsregel 6. De clientkant voert die belofte
+alleen niet uit: `PleyaLibraryKind.tryParse` geeft `null`, `libraryKindOf` maakt daar
+`MediaKind.unknown` van (`lib/services/pleya_server_mappers.dart:61-65`), en dat is elders een
+zichtbare bibliotheeksoort. Serverzijdig behandelt `handlers_library.go:87-90` elke soort die geen
+`shows` is als `movies`.
+
+> **Correctie van 3 september 2026, na verificatie. De tweede bevinding van die code-audit is
+> onjuist, en was dat al toen dit besluit geschreven werd.** De clientkant voert de belofte wél uit:
+> `fetchLibraries` filtert `library.kind != null` vóór de mapper
+> (`lib/services/pleya_server_client/parts/browse.dart:36-51`), staat sinds `8342a8b` (19 augustus
+> 2026) op `main`, en heeft als enige productieaanroeper van `PleyaServerMappers.library` geen
+> tweede route naast zich; `pleya_server_api_cache.dart` cachet items en geen bibliotheken.
+> `test/pleya_server/pleya_server_browse_test.dart:44` legt dat al vast met de fictieve soort
+> `music`. De tak `null => MediaKind.unknown` is onbereikbaar via die route. De audit las de mapper
+> en niet de aanroeper.
+>
+> De eerste bevinding en de serverzijdige bevinding blijven staan. De punten 1 tot en met 8 hieronder
+> zijn ongewijzigd van kracht; wat verandert is de verwachte uitkomst van de poort in punt 7 en het
+> vervallen van het werk onder de aanvulling hieronder.
+
+**Decision:**
+
+1. E-books horen tot het einddoel van Pleya Server, als contentdomein naast film en serie. De
+   productscope is daarmee breder dan de Plex-vervanging.
+2. Er komen twee fasen bij: **PS-14** (e-bookcatalogus en inhoud, afhankelijk van PS-2 en PS-9) en
+   **PS-15** (reader en leesvoortgang, afhankelijk van PS-14). **PS-16** wordt begrensd tot offline
+   EPUB-lezen en bladwijzers, en is niet vrijgegeven en niet ontworpen. Leesvoortgang zit bewust in
+   PS-15 en niet in PS-14: de vorm van een leespositie volgt uit de readerengine, en dat veld eerder
+   vastleggen is een datamodel afdwingen met kennis die PS-15 nog moet opleveren.
+3. `libraries`, `storage_locations`, gebruikers, sessies, rechten en de scanprimitieven zijn
+   generiek en worden hergebruikt. De `media_*`-tabellen blijven audiovisueel: geen `book` in
+   `media_items.kind`, geen e-books in `media_versions` of `media_streams`, en geen tweede scanner
+   naast de eerste.
+4. De replacement matrix krijgt een sectie **"Buiten de Plex-vervanging"** (hoofdstuk 11) in plaats
+   van een regel met bestemming A en een lege bronkolom. Die sectie telt niet mee in de Plex-off
+   gate en niet in de telling in 9.1, en draagt verder dezelfde onderhoudsdiscipline: Phase ID,
+   status, DEC-nummer en afhankelijkheden per regel. Dat staat als vierde onderhoudsregel in
+   matrixhoofdstuk 10.
+5. De mobiele beperking is clientgedrag en geen beveiligingsgrens. De server levert feiten
+   (welke bibliotheken bestaan, van welke soort, en of deze gebruiker erbij mag via `MayAccess` en
+   `library_permissions`); de client beslist over presentatie. Er komt **geen** zelfgerapporteerd
+   platform- of readerveld aan login of `sessions`.
+6. Een boekenserie is bibliografische metadata van het e-bookdomein en hoort bij PS-14, niet bij de
+   collecties van PS-9C. `play_history` blijft audiovisueel: een boek krijgt in PS-15 een actuele
+   leesstatus, en een volledige leesgeschiedenis valt buiten scope tot een eigen besluit.
+7. Het protocolvenster voor PS-14 gaat pas open bij de uitvoering van PS-14, met een eigen DEC. Er
+   hangt een poort vóór dat venster: er moet aantoonbaar vaststaan hoe bestaande clients een nieuwe
+   unknown-safe `LibraryKind` daadwerkelijk behandelen, niet alleen hoe het schema zegt dat ze hem
+   zouden moeten behandelen. Een pre-books client mag een `books`-bibliotheek nooit tonen als lege
+   movie-bibliotheek of als zichtbare unknown-bibliotheek.
+8. PS-14 bouwt geen infrastructuur vooruit voor PS-15 of PS-16 tenzij PS-14 die zelf aantoonbaar
+   nodig heeft. Punt 2 legt de zichtbare grens (leesvoortgang hoort in PS-15), en de Roadmap Drift
+   Check van PS-14 vraagt naar diezelfde zichtbare functie. De laag eronder valt door beide heen: een
+   kolom, een tabel, een interface of een endpoint dat pas betekenis krijgt zodra er een reader is,
+   ziet er tijdens PS-14 uit als vooruitziend ontwerp. De toets is niet of iets later van pas komt,
+   maar of een acceptatiecriterium van PS-14 er vandaag om vraagt.
+
+**Consequences:** PS-9 blijft de lopende fase; dit besluit voegt PS-14 en PS-15 aan de roadmap toe
+en geeft ze niet vrij. Het vrijgeven van PS-14 is een apart besluit, en tot dat moment is
+e-bookservercode te vroeg. PS-11A moet drie bibliotheeksoorten leren kennen in plaats van twee, en
+PS-12 moet boeken uitsluiten van de Plex-migratie omdat er geen Plex-bron is. PS-16 mag de
+PS-8-afhankelijkheid van PS-10 niet erven: een offline boek vraagt geen transcodering.
+
+Een DEC-audit over alle branches op 3 september 2026 liet 23 nummers zien die twee of drie
+verschillende besluiten dragen (DEC-030 tot en met DEC-039, DEC-049, DEC-117 tot en met DEC-127 en
+DEC-091), veroorzaakt door drie lijnen die onafhankelijk vanaf dezelfde basis doortelden. Dit
+besluit krijgt daarom DEC-128, het eerste nummer dat op geen enkele branch voorkomt. De bestaande
+Pleya Server-DEC-123 blijft staan; de mobiele-navigatie-DEC op `feat/ebooks` (gecommit als
+`f60f940`) wordt op die branch hernummerd, met een nieuwe audit op dat moment.
+
+De client op `feat/ebooks` heeft voor `BooksLibraryProvider.available` een echt servercontract
+nodig. Gaat die branch verder dan mockups en het navigatieskelet voordat PS-14 ontworpen is, dan
+ontstaat er tijdelijke providerlogica die daarna weer weg moet.
+
+**Aanvulling van 3 september 2026, na het ontwerp van PS-14.** Het ontwerp staat in
+[docs/pleya-server-ps14-proposal.md](pleya-server-ps14-proposal.md) en is goedgekeurd met zeven
+bindende beslissingen. Drie ervan raken dit besluit rechtstreeks:
+
+- **PS-14 is goedgekeurd en niet actief.** De status is "goedgekeurd, geblokkeerd op PS-9" en
+  uitdrukkelijk niet "vrijgegeven voor uitvoering". Er komt geen PS-14-productiecode voordat PS-9
+  formeel gesloten is.
+- **De clientkant die punt 7 aanwijst is een defect van het gesloten PS-3 en geen PS-14-werk.** Dat
+  `libraryKindOf` een onbekende soort tot `MediaKind.unknown` maakt in plaats van hem te verbergen,
+  is waar met of zonder e-books, en het spreekt de doc-comment in `pleya_wire.dart` tegen. De fix
+  loopt onder hetzelfde precedent als de lege hubs in [DEC-127](DECISIONS.md) en mag landen vóór
+  PS-14 en vóór het sluiten van PS-9. De regressietest gebruikt een fictieve toekomstige soort en
+  niet `books`, zodat er unknown-safety wordt gerepareerd in plaats van e-booklogica vooruitgebouwd.
+
+  > **Correctie van 3 september 2026, na verificatie. Dit punt vervalt en blijft zichtbaar staan
+  > omdat het bij de aanvulling is vastgelegd.** Er is geen PS-3-defect: de bibliotheek wordt al
+  > verborgen, één laag hoger dan waar de audit keek, en de generieke regressietest met een fictieve
+  > soort bestaat al. Zie de correctie in de Context hierboven. Er komt dus geen fix en geen commit
+  > onder het DEC-127-precedent uit voort, en er is met dit besluit geen toegestane codewijziging.
+  > De poort uit punt 7 blijft bestaan en verandert alleen van verwachting: de meting bevestigt
+  > naar verwachting dat een uitgeleverde build een `books`-bibliotheek werkelijk verbergt, in
+  > plaats van dat zij een defect blootlegt. Serverzijdig blijft `handlers_library.go:87-90` staan
+  > waar het staat, als acceptatiecriterium 4 van PS-14.
+- **De DEC onder de sterke validator van de boekroute krijgt zijn nummer pas bij het committen.**
+  Gezien de branchdrift hierboven is DEC-094 niet gereserveerd. Landt dat besluit eerder dan de
+  hernummering van de mobiele-navigatie-DEC op `feat/ebooks`, dan schuift die laatste door.
+
+## DEC-129: PS-11A is de eerstvolgende fase, PS-14 blijft gesloten en loopt er niet naast
+
+**Date:** 2026-09-04
+**Status:** accepted
+
+**Context:** PS-9 is gesloten op 4 september 2026. De vastgelegde doorloop noemt PS-11A als
+volgende fase, maar het sluiten van een fase geeft de volgende niet vrij; dat is een apart besluit,
+en taak S0.8 van de masterlijst vraagt er expliciet om. Tegelijk staat PS-14 (boekencatalogus) sinds
+[DEC-128](#dec-128-e-books-worden-een-contentdomein-van-pleya-server-als-ps-14-en-ps-15) als fase in
+de roadmap, ook niet vrijgegeven. Er is dus een reële verleiding om beide tegelijk te openen: de
+serverkant van boeken raakt scanner en catalogus, de beheerlaag raakt de API, en ze lijken elkaar
+niet in de weg te zitten.
+
+Ze zitten elkaar wel in de weg, en niet in de code. De branch is vanavond na 196 commits
+achterstand weer met `main` samengevoegd, en die merge liet zien hoe duur het is als de
+projectwaarheid en de werkelijkheid uit elkaar lopen: een verkeerd opgelost conflict zette
+`CLAUDE.md` terug naar een stand waarin PS-5 de volgende fase was, en niets meldde dat. Twee fasen
+tegelijk openzetten zou diezelfde waarheid meteen weer vertroebelen, deze keer met opzet.
+
+**Decision:** PS-11A is de eerstvolgende vrijgegeven ontwikkelfase, en wordt gestart nadat alle
+blokkerende S0-poorten groen zijn. PS-14 blijft gesloten en mag niet parallel aan PS-11A worden
+gestart. Na afronding en integratievalidatie van PS-11A volgt een afzonderlijk vrijgavebesluit voor
+PS-14.
+
+De volgorde die daaruit volgt, en die bindend is:
+
+1. S0.6, de NAS-migratiefixture.
+2. S0.7, de contractdekking, als poort P9 in de masterlijst.
+3. S0 volledig groen.
+4. PS-11A.
+5. Integratiebewijs op PS-11A.
+6. Pas daarna een nieuw besluit over PS-14.
+
+**Consequences:** Serverwerk aan de boekencatalogus is tot dat besluit te vroeg, ook wanneer het
+klein lijkt of wanneer een PS-11A-taak er langs schuurt. De twee open S0-items zijn daarmee de
+enige weg vooruit: zolang S0.6 en P9 rood staan, start PS-11A niet. Dit besluit verandert niets aan
+de grenzen uit DEC-128 zelf: de `media_*`-tabellen blijven audiovisueel en de mobiele beperking
+blijft clientgedrag.
+
+Afgewezen: PS-14 vast openzetten met de afspraak dat er nog niets gecommit wordt. Een fase die open
+staat maar niet gebruikt mag worden is geen fase maar een uitnodiging, en precies het soort
+afspraak dat een volgende sessie leest als toestemming.
+
+---
+
+## DEC-130: het protocolvenster gaat open voor S1, en `server` wordt het zesde foutdomein
+
+**Date:** 2026-09-05
+**Status:** accepted
+
+**Context:** S0 is gesloten en PS-11A is vrijgegeven ([DEC-129](#dec-129-ps-11a-is-de-eerstvolgende-fase-ps-14-blijft-gesloten-en-loopt-er-niet-naast)).
+De eerste slice ervan, S1 in `docs/pleya-server-rebaseline/I-master-implementation-plan.md`, is
+beheer-basis, en die kan geen regel opleveren zonder het contract aan te raken: beheerendpoints
+bestaan niet, de capability `administration` bestaat niet, en zelfs de eerste commitgrens
+("recovery, limiet, headers") loopt er tegenaan, want een panic hoort volgens
+`docs/pleya-server-rebaseline/J-api-schema-migratie.md` J.2 als `server.internal` terug te komen en
+`server` is vandaag geen geldig foutdomein. Het venster staat dicht, en er is geen moment waarop het
+vanzelf opengaat.
+
+De zeventien wijzigingen van venster 1 staan al beschreven in J.2, met per wijziging het gedrag van
+een oude client tegen een nieuwe server en omgekeerd. Dit besluit voegt daar niets aan toe; het opent
+het venster voor precies die zeventien en legt de toetsing aan de zes compatibiliteitsregels uit
+[hoofdstuk 12.3](pleya-server-architecture.md#123-versionering-en-compatibiliteitsregels) vast.
+
+**De toetsing.** Zestien van de zeventien zijn nieuwe optionele antwoordvelden, nieuwe endpoints of
+nieuwe optionele aanvraagvelden achter een capability. Regel 1 staat het eerste toe, regel 4 en 5 de
+rest zolang het aanvraagveld optioneel is en de client het pas stuurt als een capability zegt dat de
+server het kent; J.2 zet die vlag per regel in de kolom "Onderhandeling". Geen enkele van de
+zeventien hernoemt een veld (regel 2), verandert de betekenis van een bestaand veld (regel 3) of
+voegt een enum-waarde toe aan een veld dat niet unknown-safe is (regel 6). Twee gevallen verdienen
+hun eigen redenering.
+
+`SetupRequest.server_name` raakt regel 5 recht in het gezicht: de aanvraagbody is gesloten, dus een
+oude server wijst een nieuwe client af die het veld stuurt. J.2 lost dat op met een nieuw optioneel
+`setup_accepts_name` op `Info`, waar de client naar kijkt voordat hij het veld stuurt. Dat is exact
+het patroon dat `watch_state_ownership` al gebruikt, en het is de reden dat regel 5 en regel 1 samen
+werken in plaats van elkaar tegen te spreken.
+
+`server.internal` is de enige wijziging die aan een bestaande regel zelf komt. Het patroon op
+`ErrorEnvelope.error.code` is vandaag `^(auth|library|playback|session|storage)\\.[a-z0-9_]+$` en
+krijgt `server` erbij. Dat is geen enum en dus geen regel 6, maar het is wel een verruiming van iets
+dat bestond, en dat vraagt bewijs in plaats van een aanname. Het bewijs is dat beide clients een
+onbekende code generiek afhandelen en er niet op takken. In Dart draagt `PleyaError` de code als
+`String` en is `domain` niets meer dan de helft voor de punt (`pleya_wire.dart`); de enige plek die
+op een domein test is `pleya_server_auth_service.dart`, die `startsWith('auth.')` vraagt en anders
+doorvalt naar de generieke fout. Aan de webkant geeft `describeError` in `pleya_web/src/lib/api/errors.ts`
+voor een onbekende code "Something went wrong (code)" terug. Datzelfde bestand draagt bovendien al
+`client.transport` en `client.malformed_response`, twee codes in een domein dat het contract niet
+kent: de client synthetiseert ze zelf, ze komen nooit over de lijn, en ze bewijzen dat het foutpad
+een onbekend domein aankan zonder te breken.
+
+**Decision:** Het contractvenster gaat open voor **precies de zeventien wijzigingen uit J.2**, op
+dezelfde manier als bij het sluiten van PS-3 (DEC-049/050/051) en bij PS-9
+([DEC-122](#dec-122-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5)).
+`ErrorEnvelope.error.code` krijgt `server` als zesde domein. Zodra `openapi.yaml`, de fixtures en de
+gegenereerde webclient zijn bijgewerkt en `scripts/check_protocol.sh` slaagt, sluit het venster weer;
+dat is taak S1.6 in de masterlijst. Wijzigingen die niet in J.2 staan vallen buiten dit venster, ook
+wanneer ze tijdens S1 handig blijken.
+
+Twee dingen die bij het openen meteen mee moeten, omdat ze anders stil verouderen. De docstring van
+`PleyaError.domain` noemt vandaag vijf domeinen bij naam en moet er zes worden. En
+`scripts/check_protocol.py` heeft een negatieve controle "een foutcode buiten de vijf domeinen"; die
+hoort mee te schuiven naar zes en een echt ongeldig domein te blijven weigeren, want een controle die
+met het contract meebeweegt zonder te blijven bijten is geen controle.
+
+**Consequences:** S1 kan starten. `docs/pleya-server-gates.md` krijgt een zevende regel voor dit
+venster, analoog aan PS-3 en PS-9. De vriezing zelf verandert niet: buiten dit venster blijft
+`openapi.yaml` bevroren, en venster 2 (S2, bibliotheken en scans) vraagt een eigen besluit ook al
+staat het al beschreven in J.3. `feature_level` gaat niet omhoog; venster 1 is additief en
+onderhandelt per capability, precies zoals hoofdstuk 12.3 dat bedoelt.
+
+Afgewezen: het venster in één keer openzetten voor J.2 tot en met J.7. Dat zou het venster tot het
+einde van het traject openhouden, waarmee het geen venster meer is maar een afgeschafte regel.
+
+Geaccepteerd door Michel op 5 september 2026.
+
+*Gecorrigeerd op één punt door [DEC-131](#dec-131-venster-1-voegt-twee-foutdomeinen-toe-niet-een-settings-komt-er-naast-server-bij):
+venster 1 voegt twee foutdomeinen toe en niet één. `settings.invalid_value` uit rij 2 van J.2 vraagt
+`settings` naast `server`. De rest van dit besluit blijft ongewijzigd van kracht.*
+
+---
+
+## DEC-131: venster 1 voegt twee foutdomeinen toe, niet één; `settings` komt er naast `server` bij
+
+**Date:** 2026-09-05
+**Status:** accepted
+
+**Context:** [DEC-130](#dec-130-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein)
+opent het venster voor precies de zeventien wijzigingen uit J.2 en zegt daarbij dat
+`ErrorEnvelope.error.code` er één domein bij krijgt: `server`. Diezelfde beslissing noemt
+`server.internal` "de enige wijziging die aan een bestaande regel zelf komt". Bij het uitvoeren van
+S1 bleek dat niet te kloppen. Rij 2 van J.2 schrijft voor `PATCH /settings` de foutcode
+`settings.invalid_value` voor, met veld en grens erbij, en `settings` staat net zomin in het patroon
+als `server`. `docs/pleya-server-rebaseline/K-security.md` regel 33 noemt dezelfde code als toets op
+regel 13, de SSRF-grens op `public_url`.
+
+Dat is geen wijziging buiten het venster: de code stond al in de zeventien. Het is een ondertelling
+in de tekst van DEC-130. De toetsing daar redeneerde over `server.internal`, zag terecht dat dat de
+enige rij is die aan een bestaande regel raakt, en trok de conclusie voor het patroon te smal.
+
+**De toetsing, opnieuw en nu voor beide.** Het patroon is geen enum, dus regel 6 is niet aan de orde
+en de vraag is regel 3: verandert de betekenis van een bestaand veld. Nee. Het bewijs dat DEC-130
+voor `server` gaf geldt woordelijk voor `settings`, want het gaat niet over de code maar over het
+foutpad eromheen. `PleyaError` draagt de code als `String` en takt er niet op; de enige domeintest in
+de app vraagt `startsWith('auth.')` in `pleya_server_auth_service.dart` en valt anders door naar de
+generieke fout; `describeError` in `pleya_web/src/lib/api/errors.ts` geeft voor een onbekende code
+"Something went wrong (code)". Een client die `settings.invalid_value` niet kent gedraagt zich dus
+precies als een client die `server.internal` niet kent.
+
+**Waarom dit een besluit vraagt en geen correctie is.** De domeinlijst is de enige plek in het
+contract waar een venster iets verruimt in plaats van iets toevoegt. Stilzwijgend een zevende domein
+bijschrijven omdat het zo uitkwam is precies wat hoofdstuk 3 verbiedt, ook wanneer de code zelf al
+was goedgekeurd.
+
+**Decision:** Venster 1 voegt **twee** foutdomeinen toe. Het patroon wordt
+`^(auth|library|playback|session|settings|storage|server)\.[a-z0-9_]+$`. De zin in DEC-130 dat
+`server` het zesde en enige nieuwe domein is, is hiermee gecorrigeerd; de rest van DEC-130 blijft
+ongewijzigd van kracht, inclusief de begrenzing tot de zeventien rijen en het sluitmoment op S1.6.
+
+De domeinlijst is daarmee expliciet niet gesloten. J.3 brengt `job.not_cancellable` mee en J.5
+`reading.locator_invalid`, dus venster 2 en venster 4 staan voor dezelfde vraag. De regel die hier
+wordt vastgelegd: **een venster dat een foutdomein toevoegt zegt dat met zoveel woorden in zijn eigen
+besluit, met de compatibiliteitstoets erbij.** Een venster dat er niets over zegt voegt er geen toe.
+
+**De controle moet twee kanten op meten.** DEC-130 vroeg de negatieve controle in
+`scripts/check_protocol.py` mee te schuiven en te blijven bijten. Dat is nodig maar niet genoeg:
+`plex.not_found` blijft afgekeurd of het patroon nu vijf, zes of zeven domeinen kent, dus een venster
+dat een domein toevoegt zonder het patroon te verruimen zou daar niet in opvallen. Er komt daarom een
+tweede controle bij, `check_error_domains`, die van elk erkend domein eist dat het er ook echt
+doorheen komt, met de lijst met de hand geschreven zodat hij niet met het patroon meebeweegt.
+Bewezen: met het patroon teruggezet op vijf domeinen faalt hij met twee regels, `settings` en
+`server`. De afkeuringsronde krijgt er ook een geval bij, `client.transport`: een code die de
+webclient zelf verzint en die het contract nooit mag accepteren.
+
+**Consequences:** `openapi.yaml` draagt zeven domeinen en twee fixtures die ze vastleggen
+(`error_server_internal.json`, `error_settings_invalid_value.json`). De docstring van
+`PleyaError.domain` noemt er zeven in plaats van de zes die DEC-130 vroeg, en zegt er nu bij dat de
+lijst niet gesloten is. `docs/pleya-protocol-v1.md` hoofdstuk 7.1 krijgt beide codes in het
+coderegister. `docs/pleya-server-gates.md` sectie 7 vermeldt beide domeinen in plaats van één.
+`feature_level` gaat niet omhoog, om dezelfde reden als in DEC-130.
+
+Afgewezen: `server.settings_invalid_value`, waarmee het venster op zes domeinen zou blijven en
+DEC-130 letterlijk waar. Dat verplaatst het probleem twee vensters verderop naar `job` en `reading`,
+en het maakt de code een samenstelling die niets meer over de resource zegt. Ook afgewezen: de code
+weglaten tot een later venster, want dan is S1.2 niet af en kan het venster niet sluiten op S1.6.
+
+Geaccepteerd door Michel op 5 september 2026, in de keuzeronde over het foutdomein van
+`PATCH /settings`.
+
+---
+
+## DEC-132: protocolvenster 1 gaat dicht; de laatste drie rijen en wat ze wel en niet vastleggen
+
+**Date:** 2026-09-05
+**Status:** accepted
+
+**Context:** [DEC-130](#dec-130-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein)
+opende het venster voor precies de zeventien wijzigingen uit J.2 van het re-baseline-pakket, met het
+sluitmoment op S1.6. [DEC-131](#dec-131-venster-1-voegt-twee-foutdomeinen-toe-niet-een-settings-komt-er-naast-server-bij)
+corrigeerde die opening op één punt. Veertien van de zeventien rijen zijn geland in S1.1 tot en met
+S1.5 en S1.8. Dit besluit landt de laatste drie en sluit het venster.
+
+De drie zijn rij 1 (`capabilities.administration`), rij 10 (`SetupRequest.server_name` plus
+`Info.server.setup_accepts_name`) en rij 15 (`capabilities.mcp` plus
+`Server.mcp{enabled, url, tool_count}`).
+
+**De compatibiliteitstoets langs de zes regels van hoofdstuk 3.**
+
+Regel 1, een nieuw optioneel antwoordveld: `administration`, `mcp`, `setup_accepts_name` en
+`Server.mcp` zijn alle vier antwoordvelden en geen ervan is verplicht om te lezen. `Capabilities`
+draagt geen `additionalProperties: false`, `Info.server` en `ServerDetail` evenmin. Een client die
+ze negeert werkt door; dat is gemeten en niet aangenomen, met een fixture die de Dart-wiretypes
+parseren zonder dat `PleyaCapabilities` een veld erbij krijgt.
+
+Regel 2 en 3: er wordt niets hernoemd, verwijderd of van betekenis veranderd. `Server.name` blijft
+wat het was; `server_name` bij setup zet die naam en verandert hem niet van betekenis.
+
+Regel 4, een nieuw verplicht aanvraagveld: `server_name` is optioneel, en de default reproduceert het
+oude gedrag letterlijk. Zonder het veld blijft de omgevingswaarde gelden met bron `env`, precies
+zoals vóór deze wijziging. Dat is getoetst met een test die de bron leest en niet alleen de waarde,
+want een implementatie die bij elke setup de omgevingswaarde wegschrijft zou op de waarde groen staan
+en de instelling voorgoed op `db` zetten.
+
+Regel 5, de gesloten aanvraagbody: `SetupRequest` houdt `additionalProperties: false`, en daarom
+bestaat `info.server.setup_accepts_name`. Een client stuurt `server_name` pas als die vlag waar is.
+De vlag staat op `Info` en niet in `capabilities`, want het is geen functie die aan of uit staat maar
+een eigenschap van één endpoint, en `Info` is wat een client vóór het inloggen ziet.
+
+Regel 6, enums: geen van de drie rijen voegt een enumwaarde toe.
+
+**Twee dingen die dit besluit expliciet niet doet.**
+
+`capabilities.mcp` staat op `false` en `Server.mcp` draagt `enabled: false` met `tool_count: 0`. Er
+komt geen MCP-endpoint bij, geen tool en geen route. De laag is slice S16, en die bouwen omdat de
+vlag er nu staat zou vooruitbouwen zijn. Wat hier wél gebeurt is de **vorm** vastleggen, en dat is de
+enige reden dat het in dit venster hoort: het contract is bevroren zodra dit venster sluit, en een
+boolean plus een object van drie velden zou anders een eigen venster kosten. Het object staat er
+daarom altijd voor een beheerder en niet pas wanneer de laag aanstaat: een afwezig object zegt "deze
+server kent de vraag niet", en dat wordt straks onwaar terwijl het antwoord hetzelfde blijft.
+
+`capabilities.administration` is één vlag voor zes routes en niet zes vlaggen. De routes kwamen in
+vier slices maar binnen één venster, en een client die ze los zou moeten onderhandelen krijgt zes
+vragen met altijd hetzelfde antwoord. De vlag is bovendien netheid en geen beveiliging: hij zegt of
+een client een beheerscherm toont, en de server weigert daar los van met `404` voor wie er niet bij
+mag (hoofdstuk 16.4, regel 16 tot en met 26).
+
+**Waarom `server_name` bij setup gedrag krijgt en niet alleen een schema.** J.2 rij 10 noemt het veld
+zonder te zeggen wat de server ermee doet. Een schema zonder gedrag is een belofte die niemand
+nakomt, en de contractpoort zou hem doorlaten omdat hij alleen naar de vorm kijkt. De keuze is
+daarom dat setup de instelling `server_name` werkelijk wegschrijft, met dezelfde grenzen als
+`PATCH /settings` en via dezelfde parser, zodat de twee niet uit elkaar kunnen lopen. De controle
+staat **vóór** het inwisselen van de setupcode: die code is eenmalig, dus een naam van
+vijfenzestig tekens zou hem anders opbranden en een eigenaar zonder naam achterlaten.
+
+Het bestaansrecht van het veld is dat setup het enige moment is waarop er nog geen beheerder is die
+`PATCH /settings` kan doen. Een server die "Pleya" heet tot iemand hem hernoemt is precies het soort
+ding dat niemand hernoemt.
+
+**Decision:** protocolvenster 1 is **gesloten**. `docs/pleya-protocol/v1/openapi.yaml` is weer
+bevroren tot een besluit een volgend venster expliciet opent, en de zeventien rijen van J.2 zijn
+alle zeventien geland. Een wijziging die hierna nodig blijkt is een nieuw venster met een eigen
+besluit en een eigen toetsing langs de zes regels, ook wanneer hij klein is en ook wanneer hij bij
+S1 hoort.
+
+`feature_level` blijft 1, om dezelfde reden als in DEC-130 en DEC-131: het niveau zegt wat de
+implementatie begrijpt, en `capabilities` blijft leidend voor wat er werkelijk is.
+
+**Consequences:** `openapi.yaml` draagt `Capabilities.administration` en `Capabilities.mcp`,
+`Info.server.setup_accepts_name`, `SetupRequest.server_name` en `ServerDetail.mcp`. Twee fixtures
+komen erbij (`info_administration.json`, `setup_request_with_name.json`) en
+`server_detail_admin.json` draagt het mcp-object; de manifestlijst gaat van 62 naar 64, en de
+telling in `test/pleya_server/pleya_wire_contract_test.dart` mee. `SetupRequest` komt op de lijst van
+uitgestelde schema's in dat bestand: de Flutter-app stelt zijn setupbody als een letterlijke map
+samen en heeft er geen wiretype voor, en op web hoort het veld bij de setup-wizard van slice S11.
+De gegenereerde TypeScript maakt beide capability-vlaggen verplicht, dus de fixtures in
+`Navigation.test.ts` en `navItems.test.ts` dragen ze. `docs/pleya-protocol-v1.md` hoofdstuk 5 toont
+de drie nieuwe velden met hun uitleg, 6.1 beschrijft `server_name` met zijn volgorde-eis, en 17b
+telt tien beheervelden in plaats van acht: `web_origin` was er met S1.8 al bij gekomen zonder dat de
+prozatelling meebewoog, en regel 17 van de autorisatiematrix telt ze daarom niet meer op.
+
+Afgewezen: `capabilities.mcp` pas met slice S16 toevoegen. Dat is verdedigbaar op scope maar duur op
+proces: het kost een heel protocolvenster, met besluit en compatibiliteitstoets, voor één boolean en
+één object waarvan de vorm nu al vastligt. Ook afgewezen: `server_name` als schema zonder handler,
+waarbij S11 het gedrag zou bouwen. Dan staat er tot die slice een veld in het contract dat de server
+aanneemt en weggooit, en dat is erger dan geen veld.
+
+Geaccepteerd door Michel op 5 september 2026, met het vrijgeven van S1.6 als sluitstuk van S1.
+
+---
+
+## DEC-133: het protocolvenster gaat open voor S2, en `job` wordt het achtste foutdomein
+
+**Date:** 2026-09-06
+**Status:** accepted
+
+**Context:** S1 is dicht en protocolvenster 1 is gesloten met [DEC-132](#dec-132-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen).
+De eerstvolgende slice, S2 (bibliotheken, opslag, scans), kan geen regel opleveren zonder het
+contract aan te raken: al de eerste commit die dit venster nodig heeft (S2.2, CRUD op `/libraries`)
+breidt `Library` uit en voegt drie endpoints toe. Het venster staat dicht, en er is geen moment
+waarop het vanzelf opengaat.
+
+De tien wijzigingen van venster 2 staan al beschreven in
+`docs/pleya-server-rebaseline/J-api-schema-migratie.md` J.3, met per wijziging het gedrag van een
+oude client tegen een nieuwe server. Dit besluit voegt daar niets aan toe; het opent het venster voor
+precies die tien, op dezelfde manier als bij S1 (DEC-130): in één keer voor de hele tabel, ook al
+landt de implementatie verspreid over S2.2 tot en met S2.6.
+
+**De toetsing.** Alle tien zijn nieuwe optionele antwoordvelden, nieuwe endpoints of nieuwe optionele
+aanvraagvelden achter de bestaande capability `administration` (regel 1, 4 en 5). Geen enkele
+hernoemt een veld (regel 2), verandert de betekenis van een bestaand veld (regel 3) of voegt een
+enum-waarde toe aan een veld dat niet unknown-safe is (regel 6): `Library.managed` en
+`Scan.state`/`Job.state` zijn dat expliciet wel, met `x-unknown-safe: true`, precies zoals
+`LibraryKind` dat al deed.
+
+`POST /libraries` raakt regel 5 (gesloten aanvraagbody) recht: `title`, `kind`, `root_paths[]` en de
+twee optionele scanvelden, en niets anders. `PATCH /libraries/{id}` is dezelfde vorm met alles
+optioneel. Geen van beide voegt een verplicht veld toe aan een bestaande body (er is geen bestaande
+POST/PATCH op `/libraries`), dus regel 4 is hier niet van toepassing in plaats van geschonden.
+
+**`job` is het enige nieuwe foutdomein.** Het patroon op `ErrorEnvelope.error.code` gaat van
+`^(auth|library|playback|session|settings|storage|server)\.[a-z0-9_]+$` naar diezelfde zeven plus
+`job`. De overige nieuwe codes vallen binnen bestaande domeinen: `library.slug_taken`,
+`library.not_empty`, `library.confirm_mismatch` en `library.not_config_managed` in `library`
+(dat laatste komt met S2.5, adopt), `storage.root_not_offered` in `storage` (beide bestonden al
+sinds vóór venster 1). Alleen `job.not_cancellable` (S2.4) opent het nieuwe domein. Dat is dezelfde
+soort verruiming als `server` bij DEC-130: geen enum en dus geen regel 6, maar wel bewijsplichtig.
+Het bewijs is identiek aan dat van DEC-130: beide clients behandelen een onbekend domein generiek
+(`PleyaError.domain` in Dart is niets meer dan de helft vóór de punt, en `describeError` op web geeft
+voor een onbekende code een generieke melding) en takken nergens op het domein zelf.
+
+Een tweede geval verdient zijn eigen redenering: `library.scan_in_progress` staat al sinds vóór dit
+venster in het register (het is de "dode code" die S2.4 zijn zender geeft, `POST
+/libraries/{id}/scan`). Dat is geen contractwijziging: de code bestond al, alleen zonder route die
+hem ooit stuurde, en dus geen aparte regel in deze toetsing.
+
+**Decision:** Het contractvenster gaat open voor **precies de tien wijzigingen uit J.3**, op dezelfde
+manier als bij S1 (DEC-130) en bij PS-3 en PS-9 daarvoor. `ErrorEnvelope.error.code` krijgt `job` als
+achtste domein, pas van kracht zodra S2.4 `job.not_cancellable` daadwerkelijk stuurt.
+`scripts/check_protocol.py` en de docstring van `PleyaError.domain` schuiven van zeven naar acht
+domeinen mee op het moment dat die code landt, niet eerder: een domein reserveren vóór er een code in
+zit zou de negatieve controle "een foutcode buiten de domeinen" een domein laten doorlaten dat het
+register nog niet kent. Zodra `openapi.yaml`, de fixtures en de gegenereerde webclient zijn
+bijgewerkt en `scripts/check_protocol.sh` slaagt voor de laatste van de tien, sluit het venster weer;
+dat is taak S2.6 in de masterlijst. Wijzigingen die niet in J.3 staan vallen buiten dit venster, ook
+wanneer ze tijdens S2 handig blijken.
+
+`feature_level` gaat niet omhoog: venster 2 is additief en onderhandelt per capability, en de
+bestaande `administration`-vlag dekt het hele oppervlak al sinds venster 1. Er komt geen nieuwe
+capability bij; S2 voegt beheeroppervlak toe aan een klasse die al bestaat, net zoals gebruikersbeheer
+en instellingen dat bij S1 deden.
+
+**Consequences:** `docs/pleya-server-gates.md` krijgt een achtste regel voor dit venster, analoog aan
+S1. De vriezing zelf verandert niet: buiten dit venster blijft `openapi.yaml` bevroren, en venster 3
+(S3, boeken) vraagt een eigen besluit ook al staat het al beschreven in J.4.
+
+Afgewezen: het venster per commitgrens apart openen (één besluit voor S2.2, één voor S2.3, enzovoort).
+Dat zou zes besluiten kosten voor tien wijzigingen die J.3 al als één samenhangende tabel beschrijft,
+en het is precies de reden dat DEC-130 het venster voor S1 ook in één keer opende.
+
+Geaccepteerd door Michel op 6 september 2026, met het vrijgeven van S2.2 als eerste landing.
+
+---
+---
+
+## Hernummering bij de completion-re-baseline van 20 september 2026
+
+De serverintegratiebranch gebruikte DEC-096 tot en met DEC-113 terwijl het actuele `main` die
+nummers inmiddels eveneens had uitgegeven. `main` blijft de nummerauthority. De dubbele
+serverkopie van het taalbesluit (oud DEC-109) is niet opnieuw opgenomen; die verwijst voortaan
+naar het oorspronkelijke DEC-096. De zeventien unieke serverbesluiten zijn als volgt verplaatst:
+
+| Oude server-DEC | Nieuwe DEC | Onderwerp |
+| --- | --- | --- |
+| 096 | 117 | refreshtokenrotatie met respijtvenster |
+| 097 | 118 | open PS-5-hardwarecriterium blokkeert PS-9 niet |
+| 098 | 119 | rollen- en rechtenmodel voor PS-9 |
+| 099 | 120 | intrekkingsregister |
+| 100 | 121 | gebruikersbeheer-API |
+| 101 | 122 | protocolvenster PS-9 |
+| 102 | 123 | `sid` door de authketen |
+| 103 | 124 | sessie-inzage en -intrekking |
+| 104 | 125 | legacy-sessies |
+| 105 | 126 | endpoint- en autorisatiematrix |
+| 106 | 127 | PS-4E, PS-7N en PS-7A |
+| 107 | 128 | e-books als serverdomein |
+| 108 | 129 | PS-11A vóór PS-14 |
+| 109 | 096 | taalvoorkeuren; duplicaat van `main` verwijderd |
+| 110 | 130 | protocolvenster S1 open |
+| 111 | 131 | foutdomeinen van venster 1 |
+| 112 | 132 | protocolvenster 1 dicht |
+| 113 | 133 | protocolvenster S2 open |

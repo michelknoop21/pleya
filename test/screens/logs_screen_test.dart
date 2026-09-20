@@ -226,12 +226,16 @@ void main() {
     expect(relay.requests, hasLength(1));
   });
 
-  testWidgets('a 429 blocks the next press instead of asking again', (tester) async {
+  testWidgets('a 429 with Retry-After blocks the next press instead of asking again', (tester) async {
     // The in-flight guard only catches a press that overlaps a request, and a
     // refusal comes back in about sixty milliseconds. During the PS-4 round
     // that produced eleven POSTs and eleven 429s in seven seconds, one per
-    // press (log kzq7c, 21:53:39 to 21:53:46).
-    final relay = await pumpAndUpload(tester, _answering(429, 'Rate limited: 1 upload per minute\n'));
+    // press (log kzq7c, 21:53:39 to 21:53:46). The relay names its own window
+    // on every refusal now, and only a named window is enforced ahead of time.
+    final relay = await pumpAndUpload(
+      tester,
+      _answering(429, 'Rate limited\n', headers: const {'content-type': 'text/plain', 'retry-after': '60'}),
+    );
     expect(relay.requests, hasLength(1));
     expect(find.text(t.messages.logsUploadRateLimited(seconds: 60)), findsOneWidget);
 
@@ -265,7 +269,7 @@ void main() {
     var status = 429;
     final relay = _Relay(
       (_) async => status == 429
-          ? http.Response('Rate limited\n', 429, headers: const {'content-type': 'text/plain'})
+          ? http.Response('Rate limited\n', 429, headers: const {'content-type': 'text/plain', 'retry-after': '60'})
           : http.Response('{"id":"abc12345"}', 200, headers: const {'content-type': 'application/json'}),
     );
 
@@ -288,28 +292,24 @@ void main() {
     expect(find.text('abc12345'), findsOneWidget);
   });
 
-  testWidgets('a relay that refuses without saying for how long gets asked less often', (tester) async {
-    // No `Retry-After` means the minute is a guess. A refusal on the far side
-    // of that guess says the guess was wrong, so the next one is longer —
-    // bounded, so it cannot grow into never asking again.
+  testWidgets('a 429 without Retry-After is shown but not enforced ahead of time', (tester) async {
+    // Only the server's own number starts a pre-emptive block. A 429 without
+    // one is an intermediary guessing, and the old behaviour — enforcing a
+    // doubling guess — walked a user up to a five-minute wait the relay never
+    // asked for. The guess is still what the message shows.
     var now = DateTime(2026, 8, 21, 21, 53, 39);
     final relay = _answering(429, 'Rate limited\n');
 
     await pumpAndUpload(tester, relay, clock: () => now);
     expect(relay.requests, hasLength(1));
+    expect(find.text(t.messages.logsUploadRateLimited(seconds: 60)), findsOneWidget);
 
-    now = now.add(const Duration(seconds: 61));
+    now = now.add(const Duration(seconds: 1));
     await tester.tap(find.byTooltip(t.logs.uploadLogs), warnIfMissed: false);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(relay.requests, hasLength(2));
+    expect(relay.requests, hasLength(2), reason: 'no named window, so the press may ask again');
     expect(find.text(t.messages.logsUploadRateLimited(seconds: 120)), findsOneWidget);
-
-    now = now.add(const Duration(seconds: 61));
-    await tester.tap(find.byTooltip(t.logs.uploadLogs), warnIfMissed: false);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(relay.requests, hasLength(2), reason: 'the doubled window has not passed yet');
   });
 
   testWidgets('names a refused upload as a refusal', (tester) async {

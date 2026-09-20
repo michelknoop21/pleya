@@ -614,7 +614,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   }
 
   /// Taal en ondertitels — the single place a language preference is managed
-  /// (DEC-096 lid 9), next to Afspelen because a viewer who wonders why a
+  /// (DEC-109 lid 9), next to Afspelen because a viewer who wonders why a
   /// series starts in English looks under language rather than under playback.
   Widget _buildLanguageTile() {
     return AutomationNode(

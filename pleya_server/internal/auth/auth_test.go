@@ -74,11 +74,11 @@ func TestVerifyRefusesGarbage(t *testing.T) {
 func TestTokenRoundTrip(t *testing.T) {
 	signer := mustSigner(t)
 
-	token, claims, err := signer.Mint("owner", auth.TokenAccess, time.Minute, "")
+	token, claims, err := signer.Mint("owner", "sessie-1", auth.TokenAccess, time.Minute, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if claims.Subject != "owner" || claims.Type != auth.TokenAccess {
+	if claims.Subject != "owner" || claims.Sid != "sessie-1" || claims.Type != auth.TokenAccess {
 		t.Fatalf("claims zijn %+v", claims)
 	}
 
@@ -86,8 +86,8 @@ func TestTokenRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("het eigen token werd afgekeurd: %v", err)
 	}
-	if back.Subject != "owner" {
-		t.Fatalf("subject is %q", back.Subject)
+	if back.Subject != "owner" || back.Sid != "sessie-1" {
+		t.Fatalf("subject/sid zijn %q/%q", back.Subject, back.Sid)
 	}
 }
 
@@ -96,7 +96,7 @@ func TestTokenRoundTrip(t *testing.T) {
 func TestTokenTypesDoNotCross(t *testing.T) {
 	signer := mustSigner(t)
 
-	stream, _, err := signer.Mint("owner", auth.TokenStream, time.Minute, "een-versie")
+	stream, _, err := signer.Mint("owner", "sessie-1", auth.TokenStream, time.Minute, "een-versie")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestTokenTypesDoNotCross(t *testing.T) {
 		t.Fatal("een streamtoken werd als accesstoken geaccepteerd")
 	}
 
-	access, _, err := signer.Mint("owner", auth.TokenAccess, time.Minute, "")
+	access, _, err := signer.Mint("owner", "sessie-1", auth.TokenAccess, time.Minute, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestTokenTypesDoNotCross(t *testing.T) {
 func TestTamperedTokenIsRefused(t *testing.T) {
 	signer := mustSigner(t)
 
-	token, _, err := signer.Mint("owner", auth.TokenAccess, time.Minute, "")
+	token, _, err := signer.Mint("owner", "sessie-1", auth.TokenAccess, time.Minute, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestExpiredTokenIsRefused(t *testing.T) {
 	now := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 	signer.SetClock(func() time.Time { return now })
 
-	token, _, err := signer.Mint("owner", auth.TokenAccess, time.Minute, "")
+	token, _, err := signer.Mint("owner", "sessie-1", auth.TokenAccess, time.Minute, "")
 	if err != nil {
 		t.Fatal(err)
 	}

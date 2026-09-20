@@ -49,6 +49,24 @@ AudioOutputDecision dolbyFirst(AudioOutputMode mode, AppleAudioRoute route, Stri
     decide(mode, route, codec, codecs: codecs, priority: AudioPriority.originalDolby);
 
 void main() {
+  // The mpv `audio-spdif` strings used to live in player_native.dart and
+  // player_android.dart as their own constants, in a spelling that had already
+  // drifted (`dts-hd` there, `dtshd` here). These two rows are what let both
+  // read the sets above instead.
+  group('spdifCodecList', () {
+    test('renders the Apple set exactly as player_native sent it', () {
+      expect(spdifCodecList(appleBitstreamCodecs), 'ac3,eac3');
+    });
+
+    test('renders the desktop set exactly as player_native and player_android sent it', () {
+      expect(spdifCodecList(desktopBitstreamCodecs), 'ac3,eac3,dts,dts-hd,truehd');
+    });
+
+    test('an empty set clears the property', () {
+      expect(spdifCodecList(const <String>{}), '');
+    });
+  });
+
   group('normalizeAudioCodec', () {
     test('folds the spellings the backends and mpv each use', () {
       expect(normalizeAudioCodec('EAC3'), 'eac3');

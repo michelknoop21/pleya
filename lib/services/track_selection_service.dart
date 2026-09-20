@@ -336,7 +336,7 @@ bool _titlesMatch(String? mpvTitle, String? plexTitle, String? plexDisplayTitle)
 
 int _mediaTrackStreamIndex(int id, int? index) => index ?? id;
 
-/// Which layer of DEC-096 produced a selection.
+/// Which layer of DEC-109 produced a selection.
 ///
 /// The first three are *intent* — what the viewer wants — and the rest are
 /// *source*: what this file and this server happen to offer. A source-layer
@@ -355,7 +355,7 @@ enum TrackSelectionPriority {
   /// A concrete track carried in by a same-item reload. Below every intent
   /// layer on purpose: it is a resolved track, not a wish, and letting it
   /// outrank the layers above is what made a one-episode fallback permanent
-  /// (DEC-096 lid 1).
+  /// (DEC-109 lid 1).
   navigation,
 
   /// Layer 4a: the source's own pre-selected stream.
@@ -368,7 +368,7 @@ enum TrackSelectionPriority {
   profile,
 
   /// Layer 4d: the profile's subtitle fallback language, used only after every
-  /// wanted language missed (DEC-096 lid 3).
+  /// wanted language missed (DEC-109 lid 3).
   fallbackLanguage,
 
   /// Layer 4e: the file's own default track.
@@ -395,11 +395,11 @@ class TrackSelectionService {
   final MediaSourceInfo? plexMediaInfo;
 
   /// The language this user last picked by hand for this series or movie, or
-  /// null when they never did. Layer 2 of DEC-096.
+  /// null when they never did. Layer 2 of DEC-109.
   final TrackLanguageChoice? stickyChoice;
 
   /// The Pleya profile's global preference — layer 3, and the owner of the
-  /// global layer (DEC-096 lid 5). Applies to every backend alike: Plex,
+  /// global layer (DEC-109 lid 5). Applies to every backend alike: Plex,
   /// Jellyfin, Pleya Server and offline playback. Null means the profile has
   /// no opinion and resolution falls through to the source.
   final PleyaProfileLanguagePreferences? globalPreferences;
@@ -420,7 +420,7 @@ class TrackSelectionService {
     this.sessionIntent,
   });
 
-  /// The intent layers of DEC-096 in order, most specific first.
+  /// The intent layers of DEC-109 in order, most specific first.
   late final List<PlaybackLanguageIntent> _intentLayers = PlaybackLanguageIntent.layers(
     session: sessionIntent,
     series: stickyChoice,
@@ -445,7 +445,7 @@ class TrackSelectionService {
   /// track the container marks default either. Track order says nothing about
   /// what a thing was made in, and guessing is how a Japanese show starts in
   /// its English dub. Null means unknown, which sends "Originele taal" through
-  /// to the source's own default — exactly the fallback DEC-096 lid 3
+  /// to the source's own default — exactly the fallback DEC-109 lid 3
   /// prescribes, and exactly what the row's own subtitle in mockup 31 A
   /// promises the viewer.
   String? get _originalAudioLanguage => null;
@@ -730,7 +730,7 @@ class TrackSelectionService {
     return matches.where((t) => getTitle(t) == title).firstOrNull ?? matches.first;
   }
 
-  /// Select the best audio track along the four layers of DEC-096:
+  /// Select the best audio track along the four layers of DEC-109:
   ///
   /// 1. the viewer's own action in this playback, then the series preference,
   ///    then the Pleya profile — all three as *intent*, resolved fresh against
@@ -856,13 +856,13 @@ class TrackSelectionService {
         _matchByLanguage<SubtitleTrack>(availableTracks, language, title, (t) => t.language, (t) => t.title);
   }
 
-  /// Select the best subtitle track along the four layers of DEC-096.
+  /// Select the best subtitle track along the four layers of DEC-109.
   ///
   /// Same cascade as [selectAudioTrack], with one rule of its own: when every
   /// intent layer named a language this episode does not have, the profile's
   /// **subtitle fallback language** gets a turn, and only when that misses too
   /// do subtitles go off. Never "the first available track" — a viewer who
-  /// asked for English does not want Hungarian (DEC-096 lid 3).
+  /// asked for English does not want Hungarian (DEC-109 lid 3).
   ///
   /// A fallback is temporary by construction: it returns a source-layer
   /// priority, and only the intent layers are ever written back as a
@@ -1009,7 +1009,7 @@ class TrackSelectionService {
   ///
   /// Reads the outcome, not the intent: a [priority] on one of the three intent
   /// layers means the wish was met, and everything below it means this episode
-  /// could not honour it. That is the same line DEC-096 lid 1 draws between an
+  /// could not honour it. That is the same line DEC-109 lid 1 draws between an
   /// intent and a resolution, so there is one definition of "fell back" in the
   /// product rather than a second one written for the toast.
   PlaybackLanguageNotice? fallbackNotice({
@@ -1054,7 +1054,7 @@ class TrackSelectionService {
     // automatic resolution, so the callback may tell the server which stream is
     // now playing but must never write a preference: that is the difference
     // between a resolution and an intent, and blurring it is what let a
-    // one-episode fallback overwrite a series preference (DEC-096 lid 1).
+    // one-episode fallback overwrite a series preference (DEC-109 lid 1).
     Future<void> Function(AudioTrack, {required bool userInitiated})? onAudioTrackChanged,
     Future<void> Function(SubtitleTrack, {required bool userInitiated})? onSubtitleTrackChanged,
     // Fires at most twice per item — once for audio, once for subtitles — and

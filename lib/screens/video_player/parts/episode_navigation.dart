@@ -119,7 +119,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       // Stream ids are per-part: the previous episode's audio id is
       // meaningless on the new item, so let preferences pick the track.
       useCurrentAudioStreamSelection: false,
-      // False, and this is the fix behind LANG1 (DEC-096 lid 1). Carrying the
+      // False, and this is the fix behind LANG1 (DEC-109 lid 1). Carrying the
       // *playing* tracks across an item change hands the next episode a
       // resolution and calls it a preference: an episode that lacked English
       // and fell back to Dutch made Dutch the wish, and the episode after it
@@ -190,7 +190,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       // No remember-switch check here any more: `TrackPreferenceStore` owns it,
       // and the session intent below is set either way — with the switch off a
       // deliberate choice still holds for the rest of this playback, it just
-      // does not become a series override (DEC-096 lid 3).
+      // does not become a series override (DEC-109 lid 3).
       if (subtitleStreamId != null) {
         if (subtitleStreamId == 0) {
           // Turning subtitles off here is as much a decision as picking one.

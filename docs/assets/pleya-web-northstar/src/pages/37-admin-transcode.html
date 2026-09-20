@@ -1,0 +1,57 @@
+<!-- widths: 1600, 393 -->
+{{shell:admin|nav=Transcode-sessies|navAction=}}
+<div class="admin">
+  {{admin:media|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Media en streaming ▸ Transcode-sessies</div>
+    <h1 class="page-title" style="margin-top:0"><span>Transcode-sessies</span><span class="btn-row"><a class="btn ghost sm" href="#">{{icon:refresh}} Verversen</a></span></h1>
+
+    <div class="stats">
+      <div class="stat"><div class="n">2</div><div class="l">Nu bezig</div></div>
+      <div class="stat"><div class="n">2</div><div class="l">Maximum</div></div>
+      <div class="stat"><div class="n">6,1 GB</div><div class="l">Transcodemap van 20 GB</div></div>
+      <div class="stat"><div class="n">VAAPI</div><div class="l">Actieve backend</div></div>
+    </div>
+
+    <div class="alert" style="margin-top:14px">{{icon:alert}}<div><b>De server draait op zijn maximum.</b> Een derde aanvraag krijgt <span class="mono">playback.transcode_busy</span> en valt terug op direct play of wacht. De server zet niemand stil op een lagere kwaliteit.</div><a class="btn ghost sm a" href="#">Maximum aanpassen</a></div>
+
+    <section class="panel" style="margin-top:14px;padding:6px 8px">
+      <h3 style="padding:10px 12px 4px">Lopend</h3>
+      <table class="table stack">
+        <tr><th>Titel</th><th>Gebruiker en toestel</th><th>Omzetting</th><th style="width:170px">Voortgang</th><th>Snelheid</th><th class="r"></th></tr>
+        <tr>
+          <td><div class="t">Bluey · S3 · A11</div><div class="s">begonnen 20:14 · 8 min geleden</div></td>
+          <td><div class="t">Sanne</div><div class="s">iPhone 15 · Pleya 2.8.0</div></td>
+          <td><div class="t">HEVC 4K naar H.264 720p</div><div class="s">VAAPI · ondertitel ingebrand (PGS)</div></td>
+          <td><div class="bar"><i style="width:64%"></i></div><div class="s">64% · nog 3 min</div></td>
+          <td><div class="t">1,3×</div><div class="s">realtime</div></td>
+          <td class="r"><div class="act"><a class="btn ghost sm" href="#">{{icon:stop}} Stoppen</a></div></td>
+        </tr>
+        <tr>
+          <td><div class="t">Furiosa</div><div class="s">begonnen 20:19 · 3 min geleden</div></td>
+          <td><div class="t">Michel</div><div class="s">deze browser · Safari 19</div></td>
+          <td><div class="t">HEVC 1080p naar H.264 1080p</div><div class="s">VAAPI · WebVTT ernaast</div></td>
+          <td><div class="bar warn"><i style="width:21%"></i></div><div class="s">21% · nog 14 min</div></td>
+          <td><div class="t">0,8×</div><div class="s">trager dan realtime</div></td>
+          <td class="r"><div class="act"><a class="btn ghost sm" href="#">{{icon:stop}} Stoppen</a></div></td>
+        </tr>
+      </table>
+      <p class="help" style="padding:8px 12px 10px">Trager dan realtime betekent dat de kijker gaat bufferen. Stoppen beëindigt de sessie en de client krijgt een foutcode; hij begint dan zelf opnieuw, meestal op een lagere trede.</p>
+    </section>
+
+    <section class="panel" style="margin-top:14px;padding:6px 8px">
+      <h3 style="padding:10px 12px 4px">Vandaag afgelopen <span class="all">laatste 6 van 41</span></h3>
+      <table class="table stack">
+        <tr><th>Titel</th><th>Gebruiker</th><th>Omzetting</th><th>Duur</th><th class="r">Einde</th></tr>
+        <tr><td class="t">The Bear · S1 · A1</td><td>Sanne</td><td>HEVC naar H.264 720p</td><td>26 min</td><td class="r"><span class="pill ok">uitgekeken</span></td></tr>
+        <tr><td class="t">Wicked</td><td>Kids</td><td>HEVC naar H.264 480p</td><td>12 min</td><td class="r"><span class="pill">gestopt door kijker</span></td></tr>
+        <tr><td class="t">Nosferatu</td><td>Michel</td><td>AV1 naar H.264 1080p</td><td>4 min</td><td class="r"><span class="pill err">transcoder gecrasht</span></td></tr>
+        <tr><td class="t">Silo · S2 · A6</td><td>Michel</td><td>HEVC naar H.264 1080p</td><td>51 min</td><td class="r"><span class="pill ok">uitgekeken</span></td></tr>
+        <tr><td class="t">Poor Things</td><td>Sanne</td><td>HEVC naar H.264 720p</td><td>2 min</td><td class="r"><span class="pill">geen heartbeat</span></td></tr>
+        <tr><td class="t">Arcane · S2 · A3</td><td>Kids</td><td>HEVC naar H.264 480p</td><td>39 min</td><td class="r"><span class="pill ok">uitgekeken</span></td></tr>
+      </table>
+      <p class="help" style="padding:8px 12px 10px">Een sessie zonder geldige heartbeat verloopt na 60 seconden en ruimt zichzelf op. De artefacten in de transcodemap blijven tot er ruimte nodig is; wat speelt raakt de opruimer nooit aan.</p>
+    </section>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 37 Transcode-sessies (PS-8) · S18 · wie kijkt wat, waarnaar, hoe snel, en wat je ermee kunt</div>

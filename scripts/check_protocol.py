@@ -204,9 +204,14 @@ def check_validator_bites(document: dict) -> None:
              "updated_at": "2026-08-18T20:12:44Z"},
         ),
         (
-            "een foutcode buiten de vijf domeinen",
+            "een foutcode buiten de zeven domeinen",
             "ErrorEnvelope",
             {"error": {"code": "plex.not_found", "message": "x", "retryable": False}},
+        ),
+        (
+            "een code die de client zelf verzint en nooit over de lijn komt",
+            "ErrorEnvelope",
+            {"error": {"code": "client.transport", "message": "x", "retryable": True}},
         ),
         (
             "een versie zonder file_count",
@@ -236,6 +241,46 @@ def check_validator_bites(document: dict) -> None:
             report(FAIL, f"NIET afgekeurd: {description}")
 
 
+def check_error_domains(document: dict) -> None:
+    """De domeinlijst groeit per protocolvenster, dus hij moet twee kanten op meten.
+
+    De afkeuringsronde hierboven bewijst dat het patroon iets tegenhoudt. Dat is
+    de helft: een venster dat een domein toevoegt zonder het patroon te verruimen
+    zou daar niet in opvallen, want `plex.not_found` blijft dan gewoon
+    afgekeurd. Deze controle eist daarom van elk domein dat het contract erkent
+    dat het er ook echt door komt.
+
+    De lijst staat hier met opzet met de hand. Hem uit het patroon lezen zou hem
+    met het patroon mee laten bewegen, en dan meet hij niets meer.
+    """
+    print("\n==> foutdomeinen")
+    from jsonschema import Draft202012Validator
+    from referencing import Registry, Resource
+    from referencing.jsonschema import DRAFT202012
+
+    resource = Resource.from_contents(document, default_specification=DRAFT202012)
+    registry = Registry().with_resource("urn:pleya:openapi", resource)
+    validator = Draft202012Validator(
+        {"$ref": "urn:pleya:openapi#/components/schemas/ErrorEnvelope"},
+        registry=registry,
+    )
+
+    # auth, library, playback, session en storage droegen v1 tot en met PS-9.
+    # settings en server kwamen erbij met venster 1 (DEC-110, DEC-111).
+    expected = ["auth", "library", "playback", "session", "settings", "storage", "server"]
+    missing = []
+    for domain in expected:
+        payload = {"error": {"code": f"{domain}.iets", "message": "x", "retryable": False}}
+        if list(validator.iter_errors(payload)):
+            missing.append(domain)
+
+    if missing:
+        for domain in missing:
+            report(FAIL, f"het contract erkent {domain} niet als foutdomein")
+    else:
+        report(PASS, f"alle {len(expected)} foutdomeinen komen door het patroon")
+
+
 def main() -> int:
     document = load_openapi()
     check_structure(document)
@@ -243,6 +288,7 @@ def main() -> int:
     check_enum_markings(document)
     check_fixtures(document)
     check_validator_bites(document)
+    check_error_domains(document)
 
     print()
     if failures:

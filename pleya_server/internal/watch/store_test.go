@@ -15,16 +15,34 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/watch"
 )
 
-const subject = "owner"
-
 var when = time.Date(2026, 8, 21, 20, 0, 0, 0, time.UTC)
 
-// fixture zet een gemigreerde database met één film erin neer.
+// createUser zet rechtstreeks een gebruikersrij neer.
+//
+// Niet via een endpoint: het gebruikersbeheer-API van stap 4 bestaat hier nog
+// niet, en watch_states.subject is sinds migratie 0007 een echte FK naar
+// users(id) (DEC-098), dus elke test die een subject nodig heeft moet een
+// echte rij hebben om naar te verwijzen.
+func createUser(t *testing.T, pool *pgxpool.Pool, username, role string) string {
+	t.Helper()
+
+	uid := id.New()
+	if _, err := pool.Exec(context.Background(),
+		`INSERT INTO users (id, username, password_hash, role) VALUES ($1, $2, 'x', $3)`,
+		uid, username, role); err != nil {
+		t.Fatalf("gebruiker %q aanmaken: %v", username, err)
+	}
+	return uid.String()
+}
+
+// fixture zet een gemigreerde database met één film en één gebruiker erin
+// neer.
 //
 // De item-rij is echt en geen losse uuid: watch_states heeft een foreign key
 // naar media_items, en een test die die sleutel omzeilt bewijst niets over het
-// gedrag dat de server straks vertoont.
-func fixture(t *testing.T) (*pgxpool.Pool, *watch.Store, id.ID) {
+// gedrag dat de server straks vertoont. Hetzelfde geldt sinds migratie 0007
+// voor het subject.
+func fixture(t *testing.T) (*pgxpool.Pool, *watch.Store, id.ID, string) {
 	t.Helper()
 
 	pool := testsupport.Pool(t)
@@ -48,14 +66,16 @@ func fixture(t *testing.T) (*pgxpool.Pool, *watch.Store, id.ID) {
 	if err != nil {
 		t.Fatalf("item: %v", err)
 	}
-	return pool, watch.NewStore(pool), itemID
+
+	subject := createUser(t, pool, "wietske", "owner")
+	return pool, watch.NewStore(pool), itemID, subject
 }
 
 func rev(v int64) *int64 { return &v }
 
 // TestApplyPersistsAndReadsBack is de ronde die elke andere test aanneemt.
 func TestApplyPersistsAndReadsBack(t *testing.T) {
-	_, store, itemID := fixture(t)
+	_, store, itemID, subject := fixture(t)
 	ctx := context.Background()
 
 	out, err := store.Apply(ctx, subject, itemID, watch.Event{
@@ -93,7 +113,7 @@ func TestApplyPersistsAndReadsBack(t *testing.T) {
 // TestApplyOnUnknownItemIsNotFound: de foreign key mag nooit de foutmelding zijn
 // die een client te zien krijgt.
 func TestApplyOnUnknownItemIsNotFound(t *testing.T) {
-	_, store, _ := fixture(t)
+	_, store, _, subject := fixture(t)
 
 	_, err := store.Apply(context.Background(), subject, id.New(), watch.Event{
 		SessionID: "tv", Action: watch.ActionPlaybackStarted, Cause: watch.CauseUserStarted,
@@ -106,7 +126,7 @@ func TestApplyOnUnknownItemIsNotFound(t *testing.T) {
 // TestRejectedEventLeavesNoRow: een geweigerd event op een onaangeraakt item
 // laat geen lege rij achter, en telt dus niet mee in GET /watch-state.
 func TestRejectedEventLeavesNoRow(t *testing.T) {
-	_, store, itemID := fixture(t)
+	_, store, itemID, subject := fixture(t)
 	ctx := context.Background()
 
 	out, err := store.Apply(ctx, subject, itemID, watch.Event{
@@ -136,7 +156,7 @@ func TestRejectedEventLeavesNoRow(t *testing.T) {
 // ze er allebei eentje bij op, en dan is de causaliteitsclaim uit regel 3
 // waardeloos.
 func TestConcurrentEventsSerialiseOnTheRow(t *testing.T) {
-	_, store, itemID := fixture(t)
+	_, store, itemID, subject := fixture(t)
 	ctx := context.Background()
 
 	if _, err := store.Apply(ctx, subject, itemID, watch.Event{
@@ -181,7 +201,7 @@ func TestConcurrentEventsSerialiseOnTheRow(t *testing.T) {
 
 // TestListPagesAndFilters dekt de leeskant met cursor en updated_since.
 func TestListPagesAndFilters(t *testing.T) {
-	pool, store, first := fixture(t)
+	pool, store, first, subject := fixture(t)
 	ctx := context.Background()
 
 	// Nog twee items, zodat er iets te pagineren valt.
@@ -209,7 +229,7 @@ func TestListPagesAndFilters(t *testing.T) {
 		}
 	}
 
-	page, err := store.List(ctx, subject, nil, 2, "")
+	page, err := store.List(ctx, subject, nil, 2, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +240,7 @@ func TestListPagesAndFilters(t *testing.T) {
 		t.Fatal("de lijst staat niet op updated_at aflopend")
 	}
 
-	second, err := store.List(ctx, subject, nil, 2, page.NextCursor)
+	second, err := store.List(ctx, subject, nil, 2, page.NextCursor, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +260,7 @@ func TestListPagesAndFilters(t *testing.T) {
 	}
 
 	since := when.Add(30 * time.Second)
-	filtered, err := store.List(ctx, subject, &since, 10, "")
+	filtered, err := store.List(ctx, subject, &since, 10, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +268,7 @@ func TestListPagesAndFilters(t *testing.T) {
 		t.Fatalf("updated_since leverde %d regels, wil 2", len(filtered.Entries))
 	}
 
-	if _, err := store.List(ctx, subject, nil, 10, "geen-geldige-cursor"); err != watch.ErrCursorInvalid {
+	if _, err := store.List(ctx, subject, nil, 10, "geen-geldige-cursor", nil); err != watch.ErrCursorInvalid {
 		t.Fatalf("een kapotte cursor gaf %v", err)
 	}
 }
@@ -256,7 +276,7 @@ func TestListPagesAndFilters(t *testing.T) {
 // TestForItemsIsOneRound dekt de weg waarlangs elk itemantwoord zijn kijkstatus
 // krijgt.
 func TestForItemsIsOneRound(t *testing.T) {
-	_, store, itemID := fixture(t)
+	_, store, itemID, subject := fixture(t)
 	ctx := context.Background()
 
 	if _, err := store.Apply(ctx, subject, itemID, watch.Event{
@@ -274,5 +294,49 @@ func TestForItemsIsOneRound(t *testing.T) {
 	}
 	if _, ok := states[itemID]; !ok {
 		t.Fatal("het aangeraakte item ontbreekt")
+	}
+}
+
+// TestSubjectsAreIsolated is de test die stap 3 nieuw maakt: twee gebruikers
+// die hetzelfde item kijken krijgen elk hun eigen (subject, item_id)-rij, en
+// geen van beide ziet de kijkstatus van de ander.
+func TestSubjectsAreIsolated(t *testing.T) {
+	pool, store, itemID, first := fixture(t)
+	ctx := context.Background()
+	second := createUser(t, pool, "huisgenoot", "member")
+
+	if _, err := store.Apply(ctx, first, itemID, watch.Event{
+		SessionID: "tv", Action: watch.ActionPlaybackStarted, Cause: watch.CauseUserStarted,
+	}, when, watch.MinLease); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Apply(ctx, second, itemID, watch.Event{
+		SessionID: "telefoon", PositionMs: 42_000, Action: watch.ActionPlaybackStarted, Cause: watch.CauseUserStarted,
+	}, when.Add(time.Minute), watch.MinLease); err != nil {
+		t.Fatal(err)
+	}
+
+	gotFirst, err := store.Get(ctx, first, itemID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !gotFirst.Exists || gotFirst.PositionMs != 0 || gotFirst.OwnerSessionID != "tv" {
+		t.Fatalf("eerste subject: %+v", gotFirst)
+	}
+
+	gotSecond, err := store.Get(ctx, second, itemID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !gotSecond.Exists || gotSecond.PositionMs != 42_000 || gotSecond.OwnerSessionID != "telefoon" {
+		t.Fatalf("tweede subject: %+v", gotSecond)
+	}
+
+	firstList, err := store.List(ctx, first, nil, 10, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(firstList.Entries) != 1 {
+		t.Fatalf("eerste subject ziet %d regels, wil 1 (zijn eigen)", len(firstList.Entries))
 	}
 }

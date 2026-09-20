@@ -19,9 +19,11 @@ import (
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
+	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/database"
+	"github.com/edde746/plezy/pleya_server/internal/diag"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/httpserver"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
@@ -29,11 +31,22 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/mounts"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
+	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/watch"
 )
 
 // version wordt bij het bouwen gezet met -ldflags "-X main.version=...".
 var version = "dev"
+
+// buildLine is het veld build in GET /server voor klasse admin.
+//
+// Versie, Go-versie en platform, want dat is precies wat een melding bruikbaar
+// maakt: welke binary draait er, op welke toolchain, op welke architectuur. Wat
+// er niet in staat is het pad van de build of de naam van de machine; dat zegt
+// iets over waar hij gebouwd is en niets over wat er draait.
+func buildLine() string {
+	return fmt.Sprintf("%s (%s, %s/%s)", version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+}
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
@@ -49,7 +62,13 @@ func run() int {
 		return config.ExitUsage
 	}
 
-	log := logging.New(cfg.LogLevel, os.Stdout)
+	// De ringbuffer hangt naast de gewone logger en is wat GET /server/log
+	// teruggeeft (S1.3, K rij 11). Hij staat hier en niet dieper omdat elk
+	// subsysteem zijn logger van deze afleidt: een buffer die later wordt
+	// aangehaakt mist precies de opstartregels waar een storingsonderzoek mee
+	// begint.
+	logRing := logging.NewRing(0)
+	log := logging.NewWithRing(cfg.LogLevel, os.Stdout, logRing)
 	startup := logging.Component(log, "startup")
 
 	startup.Info("pleya server start",
@@ -134,6 +153,7 @@ func run() int {
 	}
 
 	prober := ffprobe.New(cfg.FFprobePath, cfg.FFprobeTimeout)
+	var ffprobeStatus api.FFprobeStatus
 	if ffprobeVersion, err := prober.Available(ctx); err != nil {
 		// Zonder ffprobe komt er geen enkele versie in de catalogus. Dat is een
 		// waarschuwing en geen startfout: bladeren door wat er al staat blijft
@@ -141,6 +161,7 @@ func run() int {
 		startup.Warn("ffprobe is niet bereikbaar; scannen levert niets op",
 			slog.String("path", cfg.FFprobePath), slog.String("error", err.Error()))
 	} else {
+		ffprobeStatus = api.FFprobeStatus{Found: true, Version: ffprobeVersion}
 		startup.Info("ffprobe gereed", slog.String("version", ffprobeVersion))
 	}
 
@@ -158,6 +179,7 @@ func run() int {
 		Instance: serverID.String()[:8],
 	})
 	runner.Register(JobScanLibrary, scanHandler(catalogStore, sc, logging.Component(log, "scanner")))
+	runner.Register(api.JobStorageRecheckRoots, storageRecheckHandler(catalogStore, cfg, logging.Component(log, "storage")))
 
 	if n, err := runner.Requeue(ctx); err != nil {
 		startup.Warn("lopende jobs terugzetten mislukt", slog.String("error", err.Error()))
@@ -165,8 +187,23 @@ func run() int {
 		startup.Info("lopende jobs teruggezet in de wachtrij", slog.Int64("count", n))
 	}
 
+	// Het intrekkingsregister uit DEC-099 wordt bij het opstarten uit de
+	// database gevuld. Zonder die stap zou een herstart elke intrekking
+	// vergeten, en dan overleeft een streamtoken van een ingetrokken sessie het
+	// herstartmoment.
+	revocations := auth.NewRevocations(0)
+	if err := authStore.LoadRevocations(ctx, revocations, time.Now().UTC()); err != nil {
+		startup.Warn("intrekkingsregister vullen mislukt", slog.String("error", err.Error()))
+	} else if n := revocations.Len(); n > 0 {
+		startup.Info("intrekkingsregister gevuld", slog.Int("sessies", n))
+	}
+
 	workCtx, stopWork := context.WithCancel(ctx)
 	defer stopWork()
+
+	// admin_audit (S1.5). Eén store voor de schrijfhaak in de API en voor de
+	// opruimronde in housekeeping, zodat de bewaartermijn op één plek staat.
+	auditStore := audit.NewStore(pool)
 
 	workers := &sync.WaitGroup{}
 	workers.Add(3)
@@ -177,30 +214,63 @@ func run() int {
 	}()
 	go func() {
 		defer workers.Done()
-		housekeeping(workCtx, runner, authStore, logging.Component(log, "housekeeping"))
+		housekeeping(workCtx, runner, authStore, revocations, auditStore, logging.Component(log, "housekeeping"))
 	}()
 
 	if cfg.ScanOnStart {
 		enqueueScans(ctx, runner, libs, "startup", logging.Component(log, "scanner"))
 	}
 
+	// De beheerbare instellingen (S1.2). De omgeving is de onderste laag en de
+	// tabel legt er de opgeslagen sleutels overheen; lukt dat lezen niet, dan
+	// start de server op de omgeving en zegt hij dat. Weigeren te starten zou
+	// een beheerder buitensluiten uit precies het scherm waarmee hij het had
+	// kunnen rechtzetten.
+	settingsCache := settings.NewCache(settings.Base{
+		ServerName:        cfg.ServerName,
+		AccessTokenTTL:    cfg.AccessTokenTTL,
+		RefreshTokenTTL:   cfg.RefreshTokenTTL,
+		StreamTokenTTL:    cfg.StreamTokenTTL,
+		StreamSessionTTL:  cfg.StreamSessionTTL,
+		MaxStreamSessions: auth.MaxActiveStreamSessions,
+		PublicURL:         cfg.PublicURL,
+		WebOrigin:         cfg.WebOrigin,
+		CORSOrigins:       cfg.CORSOrigins,
+	}, settings.NewStore(pool), logging.Component(log, "settings"))
+	if err := settingsCache.Reload(ctx); err != nil {
+		startup.Warn("instellingen lezen mislukt, de omgeving blijft gelden", slog.String("error", err.Error()))
+	}
+
 	apiServer := api.New(api.Options{
-		Catalog:          catalogStore,
-		Auth:             authStore,
-		Watch:            watch.NewStore(pool),
-		Signer:           signer,
-		Logger:           logging.Component(log, "http"),
-		Ready:            ready.ok,
-		ServerID:         serverID,
-		Name:             cfg.ServerName,
-		Version:          version,
-		StartedAt:        startedAt,
-		AccessTokenTTL:   cfg.AccessTokenTTL,
-		RefreshTokenTTL:  cfg.RefreshTokenTTL,
-		StreamTokenTTL:   cfg.StreamTokenTTL,
-		SetupCodeTTL:     cfg.SetupCodeTTL,
-		StreamSessionTTL: cfg.StreamSessionTTL,
-		WatchLease:       cfg.WatchLease,
+		Catalog:            catalogStore,
+		Auth:               authStore,
+		Watch:              watch.NewStore(pool),
+		MediaRoots:         cfg.MediaDirs,
+		Jobs:               runner,
+		Signer:             signer,
+		Logger:             logging.Component(log, "http"),
+		Ready:              ready.ok,
+		ServerID:           serverID,
+		Name:               cfg.ServerName,
+		Version:            version,
+		StartedAt:          startedAt,
+		AccessTokenTTL:     cfg.AccessTokenTTL,
+		RefreshTokenTTL:    cfg.RefreshTokenTTL,
+		RefreshGraceWindow: cfg.RefreshGraceWindow,
+		StreamTokenTTL:     cfg.StreamTokenTTL,
+		SetupCodeTTL:       cfg.SetupCodeTTL,
+		StreamSessionTTL:   cfg.StreamSessionTTL,
+		WatchLease:         cfg.WatchLease,
+		Revocations:        revocations,
+		Settings:           settingsCache,
+		Diag:               diag.NewStore(pool),
+		Audit:              auditStore,
+		Log:                logRing,
+		Listen:             cfg.HTTPAddr,
+		TrustedProxies:     cfg.TrustedProxies,
+		Build:              buildLine(),
+		FFprobe:            ffprobeStatus,
+		ConfigDir:          cfg.ConfigDir,
 	})
 
 	srv := httpserver.New(httpserver.Options{

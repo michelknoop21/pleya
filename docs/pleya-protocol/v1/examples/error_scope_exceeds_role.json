@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "auth.scope_exceeds_role",
+    "message": "scope exceeds the role of the token owner",
+    "retryable": false,
+    "details": {
+      "scope": "admin",
+      "role": "member"
+    }
+  }
+}

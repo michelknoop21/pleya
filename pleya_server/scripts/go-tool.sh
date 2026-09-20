@@ -27,13 +27,22 @@ if [ -n "${PLEYA_TEST_FFPROBE_MOUNT:-}" ]; then
   extra+=(-v "${PLEYA_TEST_FFPROBE_MOUNT}:/usr/local/bin/ffprobe:ro")
 fi
 
+# De repository-wortel gaat alleen-lezen mee. Eén test heeft hem nodig:
+# internal/logging toetst de redactie tegen pleya_verify/redact/cases.json,
+# hetzelfde bestand dat de app en de Verify-runner lezen (K rij 11). Zonder deze
+# koppeling zou die test een kopie meten, en dan zegt hij niets meer over de
+# vraag of de drie implementaties nog gelijk redigeren.
+REPO_ROOT="$(cd .. && pwd)"
+
 exec docker run --rm \
   -v "$PWD:/src" \
+  -v "$REPO_ROOT:/repo:ro" \
   -v "$MODCACHE/mod:/go/pkg/mod" \
   -v "$MODCACHE/build:/root/.cache/go-build" \
   -w /src \
   -e GOFLAGS \
   -e CGO_ENABLED=0 \
+  -e PLEYA_REPO_ROOT=/repo \
   -e PLEYA_TEST_DATABASE_URL \
   -e PLEYA_RESPONSE_DIR \
   ${extra[@]+"${extra[@]}"} \

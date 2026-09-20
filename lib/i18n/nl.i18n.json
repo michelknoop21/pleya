@@ -88,7 +88,8 @@
     "increaseValue": "$label verhogen",
     "timedOut": "Dit duurde te lang. Probeer het opnieuw.",
     "online": "Online",
-    "offline": "Offline"
+    "offline": "Offline",
+    "timedOut": "Dit duurde te lang. Probeer het opnieuw."
   },
   "screens": {
     "licenses": "Licenties",
@@ -194,6 +195,19 @@
     "bufferSizeWarning": "${heap}MB geheugen beschikbaar. Een buffer van ${size}MB kan afspelen beïnvloeden.",
     "defaultQualityTitle": "Standaardkwaliteit",
     "defaultQualityDescription": "Wordt gebruikt bij het starten van de weergave. Lagere waarden verminderen de bandbreedte.",
+    "displayMaxResolutionTitle": "Maximale resolutie",
+    "displayMaxResolutionDescription": "Begrenst wat dit apparaat aan een server vraagt, ook als het bestand groter is.",
+    "displayMaxResolutionNow": "gedetecteerd: ${resolution}",
+    "displayMaxResolutionOptions": {
+      "auto": "Automatisch",
+      "hd1080": "1080p",
+      "uhd2160": "4K"
+    },
+    "displayMaxResolutionOptionDescriptions": {
+      "auto": "Volg het scherm waar de app het kan uitlezen",
+      "hd1080": "Vraag nooit meer dan 1920x1080",
+      "uhd2160": "Vraag nooit meer dan 3840x2160"
+    },
     "subtitleStyling": "Ondertitel opmaak",
     "subtitleStylingDescription": "Pas ondertitel uiterlijk aan",
     "smallSkipDuration": "Korte skip duur",

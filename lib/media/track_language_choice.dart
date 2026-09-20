@@ -159,7 +159,7 @@ class TrackChoiceProvenance {
   final String? posterPath;
 
   /// The server the choice was made on. Not part of the key — the preference
-  /// deliberately outlives one server (DEC-096 lid 7) — but the only way to
+  /// deliberately outlives one server (DEC-109 lid 7) — but the only way to
   /// resolve [posterPath] back into an image.
   final String? serverId;
 

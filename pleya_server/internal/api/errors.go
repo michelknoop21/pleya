@@ -40,11 +40,78 @@ const (
 	CodeSetupCodeInvalid      = "auth.setup_code_invalid"
 	CodeRateLimited           = "auth.rate_limited"
 
+	// De vier codes van PS-9 (DEC-101, protocolwijziging 7). user_not_found en
+	// session_not_found volgen de 404-regel van hoofdstuk 7.1: een gebruiker of
+	// sessie die de aanvrager niet mag zien bestaat voor hem niet.
+	CodeUserNotFound    = "auth.user_not_found"
+	CodeUsernameTaken   = "auth.username_taken"
+	CodeOwnerImmutable  = "auth.owner_immutable"
+	CodeSessionNotFound = "auth.session_not_found"
+
+	// CodePermissionNotAllowed is de code die venster 1 toevoegt voor een
+	// rechtencombinatie die de rol van het doel verbiedt (J.2 rij 11): manage
+	// voor een restricted (DEC-098 paragraaf 3). Tot nu toe droeg dat geval
+	// auth.user_not_found, en dat was de minst onjuiste van wat er stond.
+	//
+	// Hij hoort bij de 409's en niet bij de 404's, en dat is de uitzondering
+	// die de regel bevestigt: de 404-regel verbergt het bestaan van iets dat de
+	// aanvrager niet mag zien, maar de aanvrager is hier per definitie een
+	// beheerder die de gebruiker en de bibliotheek allebei al mag zien. Er valt
+	// niets te verbergen, alleen iets uit te leggen, en een 404 zou dan een
+	// beheerder laten zoeken naar een gebruiker die er gewoon is.
+	CodePermissionNotAllowed = "auth.permission_not_allowed"
+
+	// CodeScopeExceedsRole is het antwoord van POST /auth/api-tokens op een
+	// bereik dat boven de rol van de eigenaar uitkomt (J.2 rij 12, K rij 22).
+	//
+	// 400 en geen 409: er is geen toestand die dit verzoek in de weg zit en die
+	// later anders zou kunnen zijn, het verzoek zelf klopt niet. details draagt
+	// het gevraagde bereik en de rol, zodat een beheerscherm kan zeggen wat er
+	// mis is zonder de tekst te lezen.
+	//
+	// De rol in het antwoord is die van de toekomstige eigenaar en niet die van
+	// de aanvrager. Dat lekt niets: wie hier komt is de eigenaar zelf, of een
+	// beheerder die de rol van zijn gebruikers sowieso ziet in GET /users.
+	CodeScopeExceedsRole = "auth.scope_exceeds_role"
+
+	// CodeOriginRejected is het antwoord op een aanvraag in cookiemodus vanaf
+	// een origin die deze server niet toestaat, of zonder Origin-header
+	// (J.2 rij 16, K rij 20). Alleen op POST /auth/login en POST /auth/refresh,
+	// en alleen op het cookiepad.
+	//
+	// 403 en geen 404, en dat is na auth.permission_not_allowed de tweede
+	// uitzondering op de 404-regel. Die regel verbergt het bestaan van een
+	// resource die de aanvrager niet mag zien; hier is de resource klasse public
+	// en staat zijn bestaan in de specificatie. Wat geweigerd wordt is geen
+	// identiteit maar een herkomst, en die weigering moet leesbaar zijn: een 404
+	// zou een legitieme webclient met een verkeerd ingestelde web_origin
+	// vertellen dat het endpoint niet bestaat, en dan zoekt een beheerder in de
+	// verkeerde helft van zijn opstelling.
+	CodeOriginRejected = "auth.origin_rejected"
+
 	CodeNotFound         = "library.not_found"
 	CodeScanInProgress   = "library.scan_in_progress"
 	CodeCursorInvalid    = "library.cursor_invalid"
 	CodeSearchQueryEmpty = "library.search_query_empty"
 	CodeVersionMultifile = "library.version_multifile"
+
+	// CodeSlugTaken is het antwoord van POST /libraries op een titel die naar
+	// een slug afrondt die al bestaat (J.3, S2.2): twee titels die tot dezelfde
+	// slug vereenvoudigen, of een titel die toevallig samenvalt met de slug van
+	// een bibliotheek uit PLEYA_SERVER_LIBRARIES.
+	CodeSlugTaken = "library.slug_taken"
+
+	// CodeLibraryNotEmpty is het antwoord van PATCH /libraries/{id} op een
+	// kind-wissel terwijl de bibliotheek nog items draagt (J.3, S2.2).
+	CodeLibraryNotEmpty = "library.not_empty"
+
+	// CodeLibraryConfirmMismatch is het antwoord van DELETE /libraries/{id} op
+	// een ontbrekende of foute confirm (J.3, K rij 16, S2.2). Een eigen code in
+	// het domein library en niet server.confirm_mismatch: die laatste bestaat
+	// al voor POST /server/rotate-signing-key (DEC-111), en een tweede
+	// handeling die dezelfde code deelt zou een client dwingen op het pad te
+	// kijken om te weten welk woord er verwacht wordt.
+	CodeLibraryConfirmMismatch = "library.confirm_mismatch"
 
 	CodeVersionUnavailable  = "playback.version_unavailable"
 	CodeRangeNotSatisfiable = "playback.range_not_satisfiable"
@@ -53,12 +120,56 @@ const (
 	CodeStorageUnavailable = "storage.unavailable"
 	CodeStorageFull        = "storage.full"
 
+	// CodeStorageRootNotOffered is het antwoord van POST en PATCH /libraries op
+	// een root_path die niet uniek beschikbaar is (J.3, K rij 10, S2.2): hij
+	// overlapt met een root van een andere bibliotheek of met een andere root
+	// in dezelfde aanvraag, is geen absoluut pad, of de body zelf is onleesbaar.
+	// Dit is voorlopig de enige 400 die deze twee endpoints kennen; S2.3 breidt
+	// de controle uit met de echte opsomming uit de mounts, zonder dat de code
+	// verandert.
+	CodeStorageRootNotOffered = "storage.root_not_offered"
+
 	CodeSessionInvalid = "session.invalid"
+
+	// CodeSettingsInvalidValue is het antwoord van PATCH /settings op een waarde
+	// buiten zijn grens en op een sleutel die niet bestaat (J.2 rij 2, K rij
+	// 14). details draagt het veld en de grens, zodat een beheerscherm kan
+	// zeggen wat er mis is zonder de tekst te lezen.
+	CodeSettingsInvalidValue = "settings.invalid_value"
 
 	// CodeStreamSessionLimit is de negende actieve streamsessie (DEC-051). Een
 	// stabiele code en geen generieke 429: de client moet het verschil zien met
 	// een rate limiter, want hier helpt wachten niet maar een stream sluiten wel.
 	CodeStreamSessionLimit = "session.stream_session_limit"
+
+	// CodeInternal is het antwoord op een fout die de handler zelf niet had
+	// voorzien: de recovery-laag vangt een panic af en maakt er een envelop van
+	// in plaats van een verbroken verbinding (J.2 rij 17, DEC-110 en DEC-111).
+	// `details.request_id` verwijst naar de logregel met de stack; de stack
+	// zelf verlaat de server niet.
+	//
+	// retryable is false en niet true. Het contract dwingt een boolean af waar
+	// "onbekend" het eerlijke antwoord zou zijn, en van de twee is false de
+	// veilige: een deterministische panic die als retryable binnenkomt levert
+	// een client op die de server blijft raken op precies het verzoek dat hem
+	// omver duwde.
+	CodeInternal = "server.internal"
+
+	// CodeConfirmMismatch is het antwoord op een destructieve handeling waarvan
+	// de bevestiging ontbreekt of niet klopt (K rij 16). Voor S1.3 is dat
+	// POST /server/rotate-signing-key met confirm: "rotate".
+	//
+	// Een eigen code en geen settings.invalid_value: dit is geen waarde buiten
+	// een grens maar een handeling die niet is bevestigd, en 409 zegt dat ook
+	// in de status. Hij staat in het domein server, dat DEC-111 met venster 1
+	// heeft toegevoegd; het foutpatroon in het contract draagt hem daarmee al,
+	// dus er is geen schemawijziging voor nodig.
+	//
+	// De aanleiding voor het bestaan is een gat tussen twee plannen: J.2 laat
+	// de foutkolom van rotate-signing-key leeg, terwijl K rij 16 een 409 op een
+	// ontbrekende of foute confirm eist. Van die twee is K de specifiekere en
+	// de veiligste, en die is hier gevolgd.
+	CodeConfirmMismatch = "server.confirm_mismatch"
 )
 
 // httpStatus koppelt elke code aan zijn status en aan retryable. Het staat in
@@ -77,21 +188,37 @@ var errorTable = map[string]struct {
 	CodeSetupCodeInvalid:      {http.StatusUnauthorized, false},
 	CodeRateLimited:           {http.StatusTooManyRequests, true},
 
-	CodeNotFound:         {http.StatusNotFound, false},
-	CodeScanInProgress:   {http.StatusConflict, true},
-	CodeCursorInvalid:    {http.StatusBadRequest, false},
-	CodeSearchQueryEmpty: {http.StatusBadRequest, false},
-	CodeVersionMultifile: {http.StatusConflict, false},
+	CodeUserNotFound:         {http.StatusNotFound, false},
+	CodeUsernameTaken:        {http.StatusConflict, false},
+	CodeOwnerImmutable:       {http.StatusConflict, false},
+	CodeSessionNotFound:      {http.StatusNotFound, false},
+	CodePermissionNotAllowed: {http.StatusConflict, false},
+	CodeScopeExceedsRole:     {http.StatusBadRequest, false},
+	CodeOriginRejected:       {http.StatusForbidden, false},
+
+	CodeNotFound:               {http.StatusNotFound, false},
+	CodeScanInProgress:         {http.StatusConflict, true},
+	CodeCursorInvalid:          {http.StatusBadRequest, false},
+	CodeSearchQueryEmpty:       {http.StatusBadRequest, false},
+	CodeVersionMultifile:       {http.StatusConflict, false},
+	CodeSlugTaken:              {http.StatusConflict, false},
+	CodeLibraryNotEmpty:        {http.StatusConflict, false},
+	CodeLibraryConfirmMismatch: {http.StatusConflict, false},
 
 	CodeVersionUnavailable:  {http.StatusConflict, true},
 	CodeRangeNotSatisfiable: {http.StatusRequestedRangeNotSatisfiable, false},
 	CodeNotPlayable:         {http.StatusUnsupportedMediaType, false},
 
-	CodeStorageUnavailable: {http.StatusServiceUnavailable, true},
-	CodeStorageFull:        {http.StatusInsufficientStorage, false},
+	CodeStorageUnavailable:    {http.StatusServiceUnavailable, true},
+	CodeStorageFull:           {http.StatusInsufficientStorage, false},
+	CodeStorageRootNotOffered: {http.StatusBadRequest, false},
 
-	CodeSessionInvalid:      {http.StatusBadRequest, false},
-	CodeStreamSessionLimit:  {http.StatusTooManyRequests, false},
+	CodeSessionInvalid:       {http.StatusBadRequest, false},
+	CodeSettingsInvalidValue: {http.StatusBadRequest, false},
+	CodeStreamSessionLimit:   {http.StatusTooManyRequests, false},
+
+	CodeInternal:        {http.StatusInternalServerError, false},
+	CodeConfirmMismatch: {http.StatusConflict, false},
 }
 
 // writeError stuurt de foutvorm met de status en retryable die bij de code horen.
@@ -117,15 +244,23 @@ func writeError(w http.ResponseWriter, log *slog.Logger, code, message string, d
 
 // writeInternal verbergt de oorzaak voor de client en laat hem in het log.
 //
-// De status komt uit het coderegister en niet uit een eigen keuze. Een 500 met
-// storage.unavailable erin zou de tabel in hoofdstuk 7.1 tegenspreken, en dan
-// leest een client iets anders uit de status dan uit de code. Het register is
-// het contract, dus dat wint.
+// De code is server.internal en niet storage.unavailable. Het register is het
+// contract en de status komt daaruit, niet uit een eigen keuze; tot venster 1
+// had het register geen code voor een fout die de server zichzelf aandoet, en
+// toen was storage.unavailable de minst onjuiste van wat er stond. Sinds
+// DEC-111 staat server.internal erin en is die reden weg.
+//
+// Het verschil is niet cosmetisch. storage.unavailable is een 503 met
+// retryable=true en zegt tegen een client: de opslag is even weg, probeer het
+// zo nog eens. Een nil-pointer in een handler gaat bij elke poging opnieuw
+// stuk, en dan blijft een client de server raken op precies het verzoek dat
+// hem omver duwde. storage.unavailable blijft voor het geval waar de opslag
+// werkelijk niet bereikbaar is.
 func writeInternal(w http.ResponseWriter, log *slog.Logger, err error) {
 	if log != nil {
 		log.Error("interne fout", slog.String("error", err.Error()))
 	}
-	writeError(w, nil, CodeStorageUnavailable, "internal error", nil)
+	writeError(w, nil, CodeInternal, "internal error", nil)
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {

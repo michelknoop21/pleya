@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/edde746/plezy/pleya_server/internal/audit"
+	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
@@ -96,7 +98,7 @@ func schedule(ctx context.Context, runner *jobs.Runner, libs []catalog.Library, 
 // housekeeping ruimt periodiek op wat niemand meer nodig heeft.
 func housekeeping(ctx context.Context, runner *jobs.Runner, authStore interface {
 	PurgeExpiredRefreshTokens(context.Context, time.Time) (int64, error)
-}, log *slog.Logger) {
+}, revocations *auth.Revocations, auditStore *audit.Store, log *slog.Logger) {
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
 
@@ -114,6 +116,23 @@ func housekeeping(ctx context.Context, runner *jobs.Runner, authStore interface 
 				log.Warn("afgeronde jobs opruimen mislukt", slog.String("error", err.Error()))
 			} else if n > 0 {
 				log.Info("afgeronde jobs opgeruimd", slog.Int64("count", n))
+			}
+			// Het intrekkingsregister (DEC-099) houdt een sid net zo lang vast
+			// als het langstlevende credential dat hem kan dragen. Daarna is
+			// hij geheugen zonder functie.
+			if n := revocations.Purge(time.Now().UTC()); n > 0 {
+				log.Info("verlopen intrekkingen uit het register gehaald", slog.Int("count", n))
+			}
+			// admin_audit bewaart 90 dagen (VRAGENLIJST 23, S1.5). Zonder deze
+			// ronde is de bewaartermijn een zin in een tabelcommentaar en groeit
+			// de tabel zonder bovengrens; een auditlog dat een schijf vol laat
+			// lopen neemt de server mee die hij moest bewaken.
+			if auditStore != nil {
+				if n, err := auditStore.Purge(ctx, time.Now().UTC().Add(-audit.Retention)); err != nil {
+					log.Warn("auditregels opruimen mislukt", slog.String("error", err.Error()))
+				} else if n > 0 {
+					log.Info("verlopen auditregels opgeruimd", slog.Int64("count", n))
+				}
 			}
 		}
 	}

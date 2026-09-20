@@ -5,7 +5,7 @@ order: 17
 group: Devices and settings
 icon: settings
 summary: Every settings group, what each option changes, and which ones matter most.
-updated: 2026-08-22
+updated: 2026-08-23
 ---
 
 # Settings reference
@@ -34,6 +34,7 @@ Settings sit in the navigation on desktop and Apple TV, and inside
 |---|---|
 | **Player backend** | ExoPlayer (recommended) or mpv, on Android |
 | **Default quality** | The ceiling on stream quality; lower uses less bandwidth |
+| **Maximum Resolution** | Caps what the app asks a server for, even when the file is larger: Auto, 1080p or 4K |
 | **Hardware decoding** | Smoother playback; leave it on unless you are debugging |
 | **Auto skip intro / credits** | Skips them without asking. Intro skipping acts on episodes only. |
 | **Small / large skip duration** | How far the skip buttons jump |
@@ -61,6 +62,10 @@ Settings sit in the navigation on desktop and Apple TV, and inside
 
 Add and remove servers, add a Plex account, add a local folder, and set which libraries are
 visible. This is also where a server that is no longer reachable gets removed.
+
+A Pleya Server sits in its own block here rather than among the sources on this device, since it
+is an account on a server elsewhere. Its row shows who you are signed in as, and **Disconnect**
+removes it from this device even while the server is offline or its sign-in has expired.
 
 ## Integrations
 
