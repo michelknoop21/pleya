@@ -42,7 +42,7 @@ tussen 24 augustus en 4 september: migratie `0007_users_sessions.sql`, `handlers
 
 **Flutter-clients op deze branch.** `lib/profiles/profile.dart` kreeg `Profile.pleyaServer` en
 `ProfileKind.pleyaServer` (alleen hier, niet op `main`), `pleya_wire.dart` kreeg
-`PleyaCapabilities.sessions`, `pleya_server_device_identity.dart` is nieuw (DEC-102).
+`PleyaCapabilities.sessions`, `pleya_server_device_identity.dart` is nieuw (DEC-123).
 
 **Flutter-clients op `main` sinds de merge-base**, in vijf blokken: Pleya Verify Core 1.0 (merge
 `839cbf2`, hele `pleya_verify/`-boom en `lib/automation/`), Pleya Unified TV 2026 fase 0 tot 9
@@ -68,10 +68,10 @@ integratierisico en de reden dat dit pakket nergens een nieuw DEC-nummer claimt.
 | Branch | Hoogste | Eigen reeks |
 | --- | --- | --- |
 | `main` | DEC-091 (090 en 092 ontbreken) | 063 tot 091: TV Unified, Verify, brand |
-| `feat/pleyaserver` | DEC-107 | 063 tot 073 server (PS-9, DEC-106), 093 e-books |
+| `feat/pleyaserver` | DEC-128 | 063 tot 073 server (PS-9, DEC-127), 093 e-books |
 | `feat/netflix-mobile` | DEC-095 | 090 tot 095 iOS Unified |
 | `feat/ebooks` | DEC-094 | 094 mobiele navigatie (was 069, al één keer hernummerd) |
-| `github/claude/peaceful-keller-rmjwfy` | DEC-103 | TV-lijn vóór hernummering |
+| `github/claude/peaceful-keller-rmjwfy` | DEC-124 | TV-lijn vóór hernummering |
 
 Harde dubbelen op dit moment: 063 tot 073 (main tegenover server), 091 (main tegenover iOS), 093
 (server tegenover iOS), 094 (ebooks tegenover iOS). De eerste nummers die op geen enkele branch
@@ -98,10 +98,10 @@ Waar code en documentatie botsen geldt in dit pakket de code plus de goedgekeurd
 
 | Gate | Stand | Bewijs |
 | --- | --- | --- |
-| PS-5 criterium 4 (hardware) | open, uitgesteld met startvoorwaarden | `docs/qa/ps5-hardware-round.md` (ongecommit), DEC-097 |
+| PS-5 criterium 4 (hardware) | open, uitgesteld met startvoorwaarden | `docs/qa/ps5-hardware-round.md` (ongecommit), DEC-118 |
 | PS-9 | gesloten 4 september | `STATUS.md` "Volgende stap", NAS-ronde met `POST /users`, `PUT /users/{id}/permissions`, `DELETE /sessions/{id}` |
-| Protocolvenster | dicht | laatste opening DEC-101 voor PS-9; `scripts/check_protocol.sh` is de poortwachter |
-| PS-14 | goedgekeurd, niet vrijgegeven | DEC-107 en ps14-proposal beslissing 6; nul Go-code |
+| Protocolvenster | dicht | laatste opening DEC-122 voor PS-9; `scripts/check_protocol.sh` is de poortwachter |
+| PS-14 | goedgekeurd, niet vrijgegeven | DEC-128 en ps14-proposal beslissing 6; nul Go-code |
 | CI voor `pleya_server` en `pleya_web` | afwezig | geen workflow in `.github/workflows/` noemt een van beide; alle verificatie is `scripts/verify-local.sh` (72 controles) en handmatig |
 
 ## A.6 Wat een volgende sessie niet opnieuw hoeft te meten

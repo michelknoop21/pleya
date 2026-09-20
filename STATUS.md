@@ -1,11 +1,39 @@
 # STATUS · Pleya
 
+## Pauzestand 20 september 2026
+
+De completionbasis staat op `integration/pleya-server-completion` als mergecommit `0b9699ec`; de
+26 afgeronde reviewfixes staan in `3734e399`. De verplichte lokale CI-check was vóór die tweede
+commit groen. De re-baseline-review telt 29 bevindingen. L26 en L27 hebben een bewust rode
+regressietest maar nog geen productfix, en L29 is nog niet begonnen. De duurzame tabel en het exacte hervatpunt staan in
+[`docs/pleya-server-rebaseline/P-review-recovery-2026-09-20.md`](docs/pleya-server-rebaseline/P-review-recovery-2026-09-20.md).
+
+Na die drie punten moeten de gedragssuites en overige brede gates opnieuw worden gedraaid en de
+release- en authority-controles worden gesloten. Daarna volgen de veiliggestelde S2.4- en
+loudnesswijzigingen. Voor dezelfde worktree is de enige juiste startprompt: `/handoff verder`.
+Er is geen rollout gedaan en de huidige werkboom is niet releaseklaar.
+
+_Laatst bijgewerkt: 2026-09-20. De nieuwe Pleya Server-authority
+`integration/pleya-server-completion` wordt vanaf actueel `main` (`bc6bff47`) opgebouwd. Het lokale
+S2.4-werk is veiliggesteld op `rescue/pleya-server-s2.4-2026-09-20` (`6047fb00`); de oude
+integratie- en featurebranches blijven behouden. De merge van
+`integration/pleya-server-rebaseline` is inhoudelijk opgelost en wordt opnieuw geverifieerd voordat
+S2.4 en de loudnesscommits worden overgenomen. De volledige productscope en volgorde staan in
+`docs/PLEYA-SERVER-MASTERLIST.md` en `docs/pleya-server-rebaseline/`._
+
 _Laatst bijgewerkt: 2026-09-18. TV0, de administratieve reconciliatie van de tvOS-closure-werkstroom,
 is afgerond op `feat/superpowers-tvos-redesign`; geen coderegel gewijzigd. De feiten over `main` en
 `feat/pleyaserver` hieronder zijn ongewijzigd overgenomen uit de vorige sessie-update (7 september)
 en in deze sessie niet opnieuw geverifieerd._
 
 ## Waar was ik
+
+**20 september: Pleya Server completion-re-baseline, R0.** `origin/main`, lokaal `main` en de
+bronbranch van de nieuwe authority wezen bij de start alle drie naar `bc6bff47`. De oude
+integratiebranch stond 663 commits achter en 94 vóór `main`; `feat/pleyaserver` 875 achter en 54
+vóór. De re-baseline bewaart eerst het onvoltooide S2.4-werk, merge daarna het eerder bewezen
+beheerfundament en herstelt vervolgens codegen, DEC-nummers, migratienummers en de clean-checkoutgate.
+Er is nog geen productie- of NAS-rollout uitgevoerd.
 
 **18 september: TV0, de administratieve reconciliatie van de tvOS-closure-werkstroom.** Twaalf
 taken losten de tegenstrijdigheden op tussen de correctieronde, het implementatieregister en de

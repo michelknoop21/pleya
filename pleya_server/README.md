@@ -72,7 +72,7 @@ Achttien tabellen, in negen migraties.
 | Werk | `jobs`, `scan_runs` | duurzame jobs en meetbare scanvoortgang |
 | Kijkstatus | `watch_states` | het conflictmodel uit DEC-049, met de eigenaar in de rij |
 | Streamsessies | `stream_sessions` | de browserkant van autorisatie uit DEC-051 |
-| Gebruikers en rechten | `users`, `sessions`, `library_permissions` | vier rollen en de sessieketen uit PS-9 (DEC-098, DEC-102) |
+| Gebruikers en rechten | `users`, `sessions`, `library_permissions` | vier rollen en de sessieketen uit PS-9 (DEC-119, DEC-123) |
 | Beheer | `server_settings`, `admin_audit` | instellingen met een grens (S1.2); `admin_audit` wordt gevuld sinds S1.5 en bewaart negentig dagen |
 
 Drie keuzes die uitleg verdienen, en die als [DEC-040](../docs/DECISIONS.md#dec-040-grouping-key-en-identiteit-zijn-twee-dingen-in-het-catalogusschema)

@@ -1,6 +1,6 @@
 # Roadmap deviation proposal: PS-4E, PS-7N, PS-7A, en de knip in PS-4W
 
-**Status:** goedgekeurd 24 augustus 2026, vastgelegd als [DEC-106](DECISIONS.md)
+**Status:** goedgekeurd 24 augustus 2026, vastgelegd als [DEC-127](DECISIONS.md)
 **Auteur:** Michel Knoop
 **Betreft:** [docs/pleya-server-architecture.md](pleya-server-architecture.md) hoofdstuk 23,
 [docs/pleya-server-masterplan-proposal.md](pleya-server-masterplan-proposal.md) 16.3 (PS-4W),
@@ -164,7 +164,7 @@ serie precies één rij, de laagst genummerde aflevering vanaf de hoogst genumme
 deze identiteit kijkstatus op heeft die ongekeken is en waaraan nog niet begonnen is, met
 `season.item_index >= 1` en een niet-lege `item_index`, dus met specials en ongenummerde
 afleveringen uitgesloten als kandidaat én als ankerpunt. Een serie zonder kijkactiviteit staat niet
-in de hub. Waarom "vanaf" en niet "na" staat in DEC-106; dat is een correctie die tijdens de
+in de hub. Waarom "vanaf" en niet "na" staat in DEC-127; dat is een correctie die tijdens de
 implementatie boven kwam.
 
 Die tekst is vóór implementatie getoetst aan wat de Flutter-client vandaag al van `next_up` verwacht,
@@ -223,16 +223,16 @@ goed onderhouden filmbibliotheek mag een kaal gebleven seriebibliotheek niet weg
 diagram in 23.2 aangevuld: `P3W --> P4E`, `P4 --> P4E`, `P4E --> P4W`, `P2 --> P7N`, `P2 --> P7A`.
 `docs/pleya-server-masterplan-proposal.md` 16.3 wordt bijgewerkt met de knip uit 4.3 hierboven; de
 rest van PS-4W blijft ongewijzigd staan. `docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md` krijgt de correctie
-uit 4.2 en nieuwe regels voor wat PS-4E, PS-7N en PS-7A afleveren. `docs/DECISIONS.md` krijgt DEC-106
+uit 4.2 en nieuwe regels voor wat PS-4E, PS-7N en PS-7A afleveren. `docs/DECISIONS.md` krijgt DEC-127
 voor dit voorstel en voor het protocolvenster van 4.2; dat nummer volgt op de PS-9-reeks, die op
-DEC-105 eindigde.
+DEC-126 eindigde.
 
 ### 4.6 Het protocolvenster voor PS-7N
 
 `summary`, `genres` en `content_rating` zijn nieuwe optionele velden in een bestaand antwoord, en dat
 is regel 1 van hoofdstuk 3: toegestaan, want een client die ze negeert blijft correct werken. Geen van
 de andere vijf compatibiliteitsregels wordt geraakt. Maar het contract is bevroren zolang de lopende
-fase loopt, en het PS-9-venster (DEC-101) is open voor precies zeven wijzigingen en sluit zodra
+fase loopt, en het PS-9-venster (DEC-122) is open voor precies zeven wijzigingen en sluit zodra
 `check_protocol.sh` daarna slaagt. **PS-7N heeft daarom een eigen venster nodig, met een eigen DEC
 eronder**, te openen bij de uitvoering van stap 5 uit het bijbehorende implementatieplan en te sluiten
 zodra `check_protocol.sh` na die drie velden weer slaagt.

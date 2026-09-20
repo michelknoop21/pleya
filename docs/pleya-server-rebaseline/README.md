@@ -30,6 +30,11 @@ De stand van de ontwikkeling staat in [`docs/PLEYA-SERVER-MASTERLIST.md`](../PLE
 één regel per taak, met status, bewijs en datum, bijgewerkt in dezelfde commit als het werk.
 Dit pakket zegt wat en waarom; de masterlijst zegt hoever.
 
+De actuele pauzestand van de integratie- en reviewherstelronde van 20 september staat in
+[`P-review-recovery-2026-09-20.md`](P-review-recovery-2026-09-20.md). Die gaat vóór de historische
+startvolgorde in `HANDOFF.md`: 26 van 29 bevindingen zijn gericht groen, twee staan bewust RED en
+één is nog open. Gebruik `/handoff verder` om exact op dat punt te hervatten.
+
 ## Leesvolgorde
 
 | Deel | Bestand | Wat erin staat |

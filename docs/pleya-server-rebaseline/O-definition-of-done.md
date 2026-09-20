@@ -111,7 +111,7 @@ die samen "af" betekenen. Beide moeten groen zijn.
 - [ ] `main` bevat de integratiebranch; `feat/pleyaserver` en `worktree-pleya-web-ps4e`
       verwijderd.
 - [ ] NAS uitgerold en gemeten; MCP-koppeling vanaf de Mac werkt met een beheertoken.
-- [ ] PS-5-hardwareronde gedaan vóór de eerste publieke release met dit gedrag (DEC-097).
+- [ ] PS-5-hardwareronde gedaan vóór de eerste publieke release met dit gedrag (DEC-118).
 - [ ] Twee TestFlight-gates gehaald: één aan het einde van S14 als eerste geïntegreerde
       contractvalidatie, en één na de definitieve geïntegreerde serverboom tegen exact de
       releasecandidate.
@@ -121,7 +121,7 @@ die samen "af" betekenen. Beide moeten groen zijn.
 Plex-migratie (PS-12) is een keuzefase na afronding en start nooit automatisch; externe
 transcode-workers (PS-13) en offline boeken met bladwijzers (PS-16) blijven buiten scope; de
 app-reader blijft op `feat/ebooks` onder PS-15; een metadata-provider voor boeken is een eigen
-besluit (DEC-107); ondertitels zoeken via de server (B8) en scrubvoorbeelden (B6) zijn latere
+besluit (DEC-128); ondertitels zoeken via de server (B8) en scrubvoorbeelden (B6) zijn latere
 uitbreidingen op dezelfde providerlaag; Live TV en DVR (B9, B10) blijven buiten de productscope.
 Een tweede webreaderengine hoort er ook niet bij: epub.js is een gedocumenteerde contingency na
 een spike met een aantoonbare blocker, geen runtimefallback naast Readium. Alles wat hier niet staat en in de replacement matrix als (A) aan een fase

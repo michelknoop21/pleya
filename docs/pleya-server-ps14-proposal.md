@@ -6,10 +6,10 @@ formeel gesloten is. "Goedgekeurd" is hier uitdrukkelijk niet "vrijgegeven voor 
 **Datum:** 3 september 2026
 **Auteur:** Michel Knoop
 **Betreft:** vrijgave van **PS-14**, vastgelegd als fase in
-[DEC-107](DECISIONS.md#dec-107-e-books-worden-een-contentdomein-van-pleya-server-als-ps-14-en-ps-15)
+[DEC-128](DECISIONS.md#dec-128-e-books-worden-een-contentdomein-van-pleya-server-als-ps-14-en-ps-15)
 en onderbouwd in [docs/pleya-server-ebooks-proposal.md](pleya-server-ebooks-proposal.md)
 
-DEC-107 heeft e-books tot productscope gemaakt en er twee fasen voor aangemaakt. Dat besluit sluit af
+DEC-128 heeft e-books tot productscope gemaakt en er twee fasen voor aangemaakt. Dat besluit sluit af
 met de zin dat het vrijgeven van PS-14 een apart besluit is, en dat daarvoor eerst de fase zelf
 ontworpen moet zijn: scope, acceptatiecriteria, stopcriterium en de poort uit 4.4 als expliciete
 voorwaarde. Dit document is dat ontwerp.
@@ -77,7 +77,7 @@ Uit de fasetabel: leesvoortgang, bladwijzers, annotaties, de reader, offline boe
 boekmetadata uit externe providers, andere formaten dan EPUB, boeken in `/search` en in de hubs, en
 bibliotheekbeheer via een scherm.
 
-Daar komt de regel bij die op 3 september 2026 aan de fasetabel en aan DEC-107 punt 8 is toegevoegd:
+Daar komt de regel bij die op 3 september 2026 aan de fasetabel en aan DEC-128 punt 8 is toegevoegd:
 
 > PS-14 bouwt geen infrastructuur vooruit voor PS-15 of PS-16 tenzij PS-14 die zelf aantoonbaar nodig
 > heeft.
@@ -96,7 +96,7 @@ de praktijk omheen groeit is dat niet. Uitdrukkelijk buiten PS-14, ook als het o
 Dat is de PS-16-onderlaag, en die wordt hier niet vooruitgebouwd. Wat er wel komt staat in
 [hoofdstuk 8](#8-de-bytes-cover-en-epub).
 
-Twee grenzen uit DEC-107 gelden onverkort en zijn hier niet opnieuw afgewogen: `media_*` blijft
+Twee grenzen uit DEC-128 gelden onverkort en zijn hier niet opnieuw afgewogen: `media_*` blijft
 audiovisueel, en de mobiele beperking is clientgedrag zonder platformveld op login of `sessions`.
 
 ---
@@ -137,7 +137,7 @@ van 80 procent uit PS-7N gaat over `.nfo`-sidecars bij film en serie en zegt nie
 
 **Waarom PS-8 en PS-10 geen afhankelijkheid zijn.** Een EPUB wordt niet getranscodeerd en niet
 opnieuw verpakt. De afhankelijkheid van PS-10 op PS-8 bestaat wegens vooraf getranscodeerde varianten
-en mag door PS-16 niet geërfd worden; DEC-107 zegt dat al, en PS-14 raakt die route helemaal niet.
+en mag door PS-16 niet geërfd worden; DEC-128 zegt dat al, en PS-14 raakt die route helemaal niet.
 
 ---
 
@@ -178,7 +178,7 @@ zichtbaar voor dat profiel" is. Zie [hoofdstuk 9](#9-protocolwijzigingen).
 
 **Een boekcover past niet op de bestaande artworkroute.** `ArtworkFile` joint `media_items`
 (`internal/catalog/store_read.go:427-432`). Zolang boeken daar niet in staan, en dat is grens 2 uit
-DEC-107, kan `/artwork/{id}` een boekcover niet oplossen.
+DEC-128, kan `/artwork/{id}` een boekcover niet oplossen.
 
 **Een gewijzigde soort in de configuratie overschrijft de bestaande.** `SyncLibraries` doet
 `ON CONFLICT (slug) DO UPDATE SET ... kind = EXCLUDED.kind` (`store.go:68-70`). Met twee soorten was
@@ -245,7 +245,7 @@ een groeperingssleutel doet één ding.
 
 - Een **publicatie** is één boek in één bibliotheek, met de bibliografische velden die het protocol
   toont, plus de reeksnaam en het nummer daarin. Een boekenreeks is bibliografische metadata en geen
-  collectie; dat is DEC-107 punt 6 en het scheelt een tabel.
+  collectie; dat is DEC-128 punt 6 en het scheelt een tabel.
 - Een **publicatiebestand** is één pad onder een `storage_location`, met dezelfde goedkope detectie
   als `media_files`: grootte, mtime, inode, signatuur, generatie, en de drieslag eerst gezien, laatst
   gezien, ontbrekend sinds.
@@ -302,7 +302,7 @@ bestand op schijf openen, en het is de reden om hem niet in de bestaande handler
 op artwork. Een boekenraster heeft dezelfde behoefte als een posterraster, maar de coverroute van
 PS-14 levert de cover zoals hij is. De parameter, de cache en de afmetingenlogica horen bij PS-7A, en
 die fase moet dan twee routes dekken in plaats van één. Dit is dezelfde soort uitbreiding downstream
-als PS-11A en PS-12 al van DEC-107 kregen, en het hoort in de matrix bijgewerkt te worden op het
+als PS-11A en PS-12 al van DEC-128 kregen, en het hoort in de matrix bijgewerkt te worden op het
 moment dat PS-14 sluit.
 
 **Het EPUB-bestand gaat niet via `/stream`.** Dat is beslist in het e-booksvoorstel: het streamtoken,
@@ -472,7 +472,7 @@ werkelijk bereikbaar maakt. Met twee soorten was `films=shows:...` een typefout 
 
 ## 11. De poort vóór het protocolvenster
 
-DEC-107 punt 7 zet er een harde voorwaarde voor de eerste protocolwijziging:
+DEC-128 punt 7 zet er een harde voorwaarde voor de eerste protocolwijziging:
 
 > Er moet aantoonbaar vaststaan hoe bestaande clients een nieuwe unknown-safe `LibraryKind`
 > daadwerkelijk behandelen, niet alleen hoe het schema zegt dat ze hem zouden moeten behandelen. Een
@@ -584,7 +584,7 @@ eigen beheer, is dat een uitrolafspraak en geen protocolmechanisme.
 ### 11.4 De fix is een PS-3-defect, en hij is generiek
 
 Beslissing 1: dit is een bestaand defect in het gesloten PS-3 en geen PS-14-werk. De code spreekt
-zijn eigen doc-comment tegen, en dat is waar met of zonder e-books. DEC-106 heeft dat onderscheid al
+zijn eigen doc-comment tegen, en dat is waar met of zonder e-books. DEC-127 heeft dat onderscheid al
 gemaakt voor de lege hubs `continue_watching` en `next_up`, aangemerkt als defect in het gesloten
 PS-4 en gerepareerd terwijl PS-9 liep (commit `64efddd`). Dezelfde redenering, dezelfde uitkomst: de
 fix mag landen vóór PS-14 en vóór het sluiten van PS-9.
@@ -610,7 +610,7 @@ soort niet meer onbekend. Dezelfde behandeling geldt voor de webkant in
 > repareren zonder `books` vooruit te bouwen. De redenering over het verschil tussen een generieke
 > test en een `books`-test blijft geldig; alleen is zij al toegepast en niet meer uit te voeren werk.
 >
-> Het DEC-106-precedent is daarmee niet nodig, en er komt geen commit uit deze beslissing voort. De
+> Het DEC-127-precedent is daarmee niet nodig, en er komt geen commit uit deze beslissing voort. De
 > webkant erft die behandeling niet: regel 22 kiest een icoon en beslist niets over zichtbaarheid,
 > en de webbundel is lockstep met de binary. Wat daar moet gebeuren hoort bij PS-14 zelf, in de
 > commit die `books` invoert. Zie de aanvulling in [hoofdstuk 5](#5-wat-de-code-vandaag-doet-en-waar-een-boek-doorheen-valt).
@@ -671,7 +671,7 @@ Genomen bij de review van 3 september 2026. Ze zijn hierboven in de tekst verwer
 korte vorm, niet een tweede versie ernaast.
 
 **1. De onbekende bibliotheeksoort in de client is een bestaand PS-3-defect, geen PS-14-werk.**
-Repareren onder het precedent van DEC-106, los van PS-14. De regressietest is generiek en gebruikt
+Repareren onder het precedent van DEC-127, los van PS-14. De regressietest is generiek en gebruikt
 een fictieve toekomstige soort, niet `books`, zodat er unknown-safety wordt gerepareerd en geen
 e-booklogica vooruitgebouwd. Deze fix mag landen vóór PS-14 en vóór het sluiten van PS-9. Uitwerking
 in [11.4](#114-de-fix-is-een-ps-3-defect-en-hij-is-generiek).
@@ -681,7 +681,7 @@ in [11.4](#114-de-fix-is-een-ps-3-defect-en-hij-is-generiek).
 > de client verbergt een onbekende bibliotheeksoort al vóór de mapper (`browse.dart:36-51`, op
 > `main` sinds `8342a8b`), en de generieke regressietest met een fictieve soort bestaat al
 > (`test/pleya_server/pleya_server_browse_test.dart:44`). Er is dus geen PS-3-defect, geen fix onder
-> het DEC-106-precedent, en met dit voorstel geen toegestane codewijziging. De overige zes
+> het DEC-127-precedent, en met dit voorstel geen toegestane codewijziging. De overige zes
 > beslissingen zijn ongewijzigd van kracht.
 
 **2. Acceptatiecriterium 3 blijft in PS-14, met een sterke validator en een eigen DEC.** Niet
@@ -737,7 +737,7 @@ beslissing 1). PS-14 zelf wacht op het sluiten van PS-9. Het protocolvenster gaa
 ## 15. Roadmap Drift Check op dit voorstel zelf
 
 **Is er iets gebouwd dat niet in scope stond?** Nee. De enige wijzigingen in de repository zijn dit
-bestand, de PS-14-fasetabel en DEC-107. Er is geen migratie, geen Go, geen Dart, en `openapi.yaml`
+bestand, de PS-14-fasetabel en DEC-128. Er is geen migratie, geen Go, geen Dart, en `openapi.yaml`
 is niet aangeraakt. De defectfix uit beslissing 1 was toegestaan maar nog niet gemaakt; op
 3 september 2026 bleek er niets te repareren, zodat er nu geen toegestane codewijziging is.
 

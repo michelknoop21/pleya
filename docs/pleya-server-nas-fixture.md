@@ -17,7 +17,7 @@ psql-sessie zelf. Geen enkele productietabel is aangeraakt.
 Bij het ophalen is de structuur van de draaiende database vergeleken met wat `0001` tot en met `0007`
 opleveren. Ze zijn gelijk. Het enige verschil is de tabel `schema_migrations`, die de migratierunner
 zelf aanmaakt en dus niet in de SQL-bestanden staat, plus een commentaarregel die op de NAS nog
-DEC-065 noemt waar de code inmiddels DEC-098 zegt; dat is de hernummering van diezelfde dag en geen
+DEC-065 noemt waar de code inmiddels DEC-119 zegt; dat is de hernummering van diezelfde dag en geen
 drift.
 
 ## Waarom een steekproef en geen volledige dump
@@ -38,7 +38,7 @@ Wat er bewust in zit, met de reden:
 | versies met 1, 2, 3, 4, 5, 6 en 8 bestanden | de fan-out van versie naar bestand, tot en met het geval dat `409 library.version_multifile` uitlokt |
 | de twee bestanden met `missing_since` | de enige rijen op het systeem die een verdwenen bestand beschrijven |
 | alle vier de kijkstatussen | de server is er eigenaar van (DEC-049), dus een migratie mag er geen kwijtraken |
-| alle 219 refreshtokens | inclusief ingetrokken tokens en de `replaced_by`-ketens uit DEC-096 |
+| alle 219 refreshtokens | inclusief ingetrokken tokens en de `replaced_by`-ketens uit DEC-117 |
 | alle sessies, jobs en scanruns | klein genoeg om volledig te zijn |
 
 De ouderafsluiting draait twee ronden, zodat een aflevering die om een andere reden in de steekproef

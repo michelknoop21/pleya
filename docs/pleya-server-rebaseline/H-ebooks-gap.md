@@ -95,9 +95,9 @@ Cover: uit het zip gelezen via `cover_href`; ontbreekt die, dan de eerste afbeel
 | Onderdeel op `feat/ebooks` | Besluit | Waarom |
 | --- | --- | --- |
 | `lib/books/book.dart` (plain model, `BookArtwork` met vormen) | **aanpassen**: wordt `@freezed` met `fromJson` zodra `PleyaServerBooksSource` bestaat; `BookArtwork` blijft als fallback-tekening wanneer de cover niet laadt | de notitie in het bestand zegt dit zelf |
-| `lib/books/books_source.dart` (`BooksSource`, `EmptyBooksSource`, `DemoBooksSource` achter `PLEYA_BOOKS`) | **behouden** als seam; **toevoegen** `PleyaServerBooksSource` die `GET /ebooks` en `/reading-state` spreekt; `DemoBooksSource` blijft voor goldens en Verify | precies de seam die DEC-107 vroeg |
+| `lib/books/books_source.dart` (`BooksSource`, `EmptyBooksSource`, `DemoBooksSource` achter `PLEYA_BOOKS`) | **behouden** als seam; **toevoegen** `PleyaServerBooksSource` die `GET /ebooks` en `/reading-state` spreekt; `DemoBooksSource` blijft voor goldens en Verify | precies de seam die DEC-128 vroeg |
 | `lib/books/book_filter.dart`, `book_search.dart` (client-side filteren en zoeken) | **vervangen** door serverparameters (`subject`, `author`, `state`, `q`) zodra de bron Pleya Server is; blijven werken op de demo-bron | client-side zoeken over een gecursorde lijst is het foute antwoord (matrix h7) |
-| `providers/books_home_provider.dart`, `books_library_provider.dart` | **aanpassen**: `available` volgt `capabilities.ebooks` en minstens één zichtbare `books`-bibliotheek; rijen uit de server | DEC-107 punt over `BooksLibraryProvider.available` |
+| `providers/books_home_provider.dart`, `books_library_provider.dart` | **aanpassen**: `available` volgt `capabilities.ebooks` en minstens één zichtbare `books`-bibliotheek; rijen uit de server | DEC-128 punt over `BooksLibraryProvider.available` |
 | Schermen 01b tot 05 (Home, Alle boeken, Filters, Zoeken, Detail) | **behouden**; ze zijn tegen goedgekeurde goldens gebouwd | de webset volgt hun inhoud |
 | `PrimaryMobileDestinationPolicy` en `navigation_tab_id.dart` | **behouden**; het mergeconflict met `feat/netflix-mobile` is hun zaak, niet die van dit traject | DEC-094 |
 | Reader, inhoudsopgave, readerinstellingen, zoeken in boek, downloads (panelen 6 tot 12 van de comp) | **niet in dit traject** aan de app-kant; de server levert wat ze nodig hebben (bestand, manifest, `reading_state` met de Readium Locator) | PS-15 app-kant blijft op `feat/ebooks` |
@@ -116,7 +116,7 @@ serverbron landt, en niet eerder, zodat de goldens intussen groen blijven.
    `text`) plus de publicatie-revisie, gedeeld met de app-reader op `feat/ebooks`.
 3. `PleyaLibraryKind.books` en de mapping naar een `MediaKind` die `libraries_provider` niet
    wegfiltert op tvOS, macOS en desktop maar wél verbergt als bestemming (client-gedrag uit
-   DEC-107 4.5; de bibliotheek mag in Mijn Pleya ▸ Bibliotheken zichtbaar zijn met een telling).
+   DEC-128 4.5; de bibliotheek mag in Mijn Pleya ▸ Bibliotheken zichtbaar zijn met een telling).
 4. `PleyaServerBooksSource` in `lib/services/pleya_server_client/parts/ebooks.dart` met
    mappers naar `Book`.
 5. De `_postJson`-fout uit backlog 24.3 (fouten stil op `null`) moet dicht vóór `POST
@@ -126,7 +126,7 @@ serverbron landt, en niet eerder, zodat de goldens intussen groen blijven.
 
 Boeken doen mee in verzamelingen (een verzameling mag publicaties bevatten), in geschiedenis
 (uit `reading_states`), in favorieten en waarderingen, en in realtime (leesvoortgang van een
-ander toestel). Metadata-providers voor boeken blijven buiten scope (DEC-107 sluit een
+ander toestel). Metadata-providers voor boeken blijven buiten scope (DEC-128 sluit een
 boekenprovider uit tot een eigen besluit); de OPF blijft de bron.
 
 ## H.6 Definition of Done voor de boekenketen

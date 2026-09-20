@@ -110,7 +110,7 @@ een iPhone naar een Apple TV meereisde.
 **PS-9 is gesloten** op 4 september 2026: vier van de vijf acceptatiecriteria met tests, en het
 stopcriterium op de draaiende NAS in plaats van alleen in een container. De volgende fase in de
 vastgelegde doorloop is **PS-11A**. Dat aparte vrijgavebesluit is inmiddels genomen
-([DEC-108](docs/DECISIONS.md)): PS-11A is vrijgegeven, maar start pas wanneer alle blokkerende
+([DEC-129](docs/DECISIONS.md)): PS-11A is vrijgegeven, maar start pas wanneer alle blokkerende
 S0-poorten uit `docs/PLEYA-SERVER-MASTERLIST.md` groen zijn, en dat zijn er op dit moment nog twee
 (S0.6, de NAS-migratiefixture, en S0.7 als poort P9, de contractdekking). **PS-14 blijft gesloten en
 mag niet naast PS-11A lopen**; daarover volgt een eigen besluit pas na afronding en
@@ -156,9 +156,9 @@ ontwikkelfase loopt", en dat liet een gat vallen op het moment dat een fase sloo
 niet gestart was: geen lopende fase las dan als geen vriezing. Er is geen moment waarop het contract
 vanzelf open staat. Het venster ging tot nu toe drie keer open: bij het sluiten van
 PS-3, voor precies de drie poortbesluiten die eronder staan; voor PS-9, voor precies de zeven
-wijzigingen uit [DEC-101](docs/DECISIONS.md#dec-101-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5);
+wijzigingen uit [DEC-122](docs/DECISIONS.md#dec-122-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5);
 en op 5 september 2026 voor S1 van PS-11A, voor precies de zeventien wijzigingen uit J.2 van het
-re-baselinepakket, met [DEC-110](docs/DECISIONS.md#dec-110-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein).
+re-baselinepakket, met [DEC-130](docs/DECISIONS.md#dec-130-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein).
 Dat derde venster staat nog open en sluit bij taak S1.6. Buiten die zeventien is het contract ook nu
 bevroren. Legt een latere fase een echt probleem bloot, dan is dat een
 protocolwijziging die eerst langs de zes compatibiliteitsregels uit hoofdstuk 3 van de specificatie

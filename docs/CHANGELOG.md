@@ -4,6 +4,18 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-20] Pleya Server completion-re-baseline gestart
+
+De onvoltooide S2.4-migratie is eerst zonder herschrijven vastgelegd op
+`rescue/pleya-server-s2.4-2026-09-20` (`6047fb00`). Daarna is
+`integration/pleya-server-completion` vanaf actueel `main` (`bc6bff47`) aangemaakt en is de oude
+integratiebranch samengebracht. `main` blijft authority voor de huidige app, tvOS-registers en
+besluitnummers; de unieke serverbesluiten zijn zonder inhoudsverlies naar DEC-117 tot en met
+DEC-133 verplaatst. De mergebasis staat in `0b9699ec`; 26 van 29 onafhankelijke reviewbevindingen
+zijn test-first hersteld in `3734e399`, waarvoor de lokale CI-check groen was. Twee bevindingen
+staan bewust RED en één is nog open. Gedragssuites, overige brede gates en het overnemen van
+S2.4/loudness volgen binnen R0 en R1; dit is geen release- of productieclaim.
+
 ## [2026-09-18] TV0: reconciliatie van de tvOS-closure-administratie
 
 Twaalf taken maakten de drie tvOS-administratiedocumenten (`docs/tvos-fysieke-correctieronde.md`,

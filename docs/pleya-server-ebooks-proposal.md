@@ -1,7 +1,7 @@
 # Roadmap deviation proposal: e-books als contentdomein in Pleya Server
 
 **Status:** goedgekeurd 3 september 2026 met bindende correcties, vastgelegd als
-[DEC-107](DECISIONS.md)
+[DEC-128](DECISIONS.md)
 **Auteur:** Michel Knoop
 **Betreft:** [docs/pleya-server-architecture.md](pleya-server-architecture.md) hoofdstuk 1.1, 23.1 en
 23.2, [docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md](PLEYA-SERVER-REPLACEMENT-MATRIX.md) hoofdstuk 3 en
@@ -106,7 +106,7 @@ in een bestaande build dus zichtbaar worden als gemengde bibliotheek, en leeg bl
 > in de Jellyfin-code staat klopt, maar een Pleya Server-bibliotheek komt daar nooit met een
 > onbekende soort aan.
 >
-> De bewering was al onjuist op het moment dat [DEC-107](DECISIONS.md) werd geschreven. De audit
+> De bewering was al onjuist op het moment dat [DEC-128](DECISIONS.md) werd geschreven. De audit
 > eronder las de mapper en niet de aanroeper.
 
 **De serverkant faalt vandaag op twee verschillende manieren voor een onbekende soort, en één ervan
@@ -118,7 +118,7 @@ opleveren zonder fout.
 
 **De rechtenlaag is wel al generiek.** `MayAccess` en `VisibleLibraries`
 (`internal/catalog/permissions.go:65,93`) werken op `libraries.id` en `library_permissions`, met de
-ladder view < download < manage uit DEC-098 §4 en de rolomzeiling voor owner en admin uit §2. Er zit
+ladder view < download < manage uit DEC-119 §4 en de rolomzeiling voor owner en admin uit §2. Er zit
 niets audiovisueels in.
 
 ## 3. Waarom de huidige roadmap daardoor niet meer klopt
@@ -141,7 +141,7 @@ boeken een productbesluit vermomd als implementatiedetail, en dat is de vorm van
 verbiedt.
 
 **De protocolvriezing hangt aan de lopende fase, dus het venster moet expliciet bij een fase horen.**
-Het PS-9-venster is open voor precies de zeven wijzigingen uit DEC-101 en sluit daarna. Een achtste
+Het PS-9-venster is open voor precies de zeven wijzigingen uit DEC-122 en sluit daarna. Een achtste
 wijziging erbij schuiven omdat het zo uitkomt is exact wat de vriezing tegenhoudt.
 
 ## 4. De concrete voorgestelde wijziging
@@ -425,7 +425,7 @@ reader opent een heel bestand en niet een venster erin, dus de leesroute is inho
 bestandsoverdracht en geen streamsessie. Het streamtoken, de streamsessie met cookie uit DEC-051 en
 de `Range`-semantiek van een speler lossen alle drie een probleem op dat een boek niet heeft.
 
-**Een eigen `ebook_permissions`.** Dat zou de ladder uit DEC-098 §4 dupliceren, met twee plekken
+**Een eigen `ebook_permissions`.** Dat zou de ladder uit DEC-119 §4 dupliceren, met twee plekken
 waar owner en admin een rol omzeilen en twee plekken waar een niet-toegankelijke bibliotheek als
 niet-bestaand behandeld moet worden. De bestaande laag doet dit al, en boeken hebben er geen extra
 trede bij nodig.
@@ -499,13 +499,13 @@ Pleya Server-lijn, de TV- en mobiele designlijn, en de Pleya Verify-lijn.
 
 Daaruit volgt het nummerbesluit bij de goedkeuring:
 
-- de bestaande Pleya Server-**DEC-102** (`sid` door de authketen) **blijft staan**; er hangen
+- de bestaande Pleya Server-**DEC-123** (`sid` door de authketen; destijds DEC-102) **blijft staan**; er hangen
   verwijzingen en migratiecommentaar aan, en dat besluit is onderdeel van lopend PS-9-werk;
 - de mobiele-navigatie-DEC op `feat/ebooks` wordt **hernummerd**. Die staat daar gecommit
   (`f60f940`), dus dat is een commit op die branch en geen werkboomwijziging, en hij hoort daarom
   niet thuis in dit voorstel of op deze branch;
-- dit roadmapbesluit krijgt **DEC-107**, het eerste nummer dat op geen enkele branch voorkomt
-  (hoogste gebruikte is DEC-092 op `feat/netflix-mobile`, zonder gaten eronder);
+- dit roadmapbesluit kreeg destijds **DEC-107** en is bij de completion-re-baseline hernummerd
+  naar **DEC-128**;
 - voor de hernummering op `feat/ebooks` is **geen nummer gereserveerd**. Bij de goedkeuring van het
   PS-14-ontwerp op 3 september 2026 is vastgelegd dat ook de DEC onder de sterke validator van de
   boekroute zijn nummer pas bij het committen krijgt, na een verse audit. Wie het eerst commit krijgt

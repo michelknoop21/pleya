@@ -19,7 +19,7 @@ bundel, `frame-ancestors 'none'`.
 | # | Dreiging | Antwoord | Acceptatietest | Slice |
 | --- | --- | --- | --- | --- |
 | 1 | Ongeauthenticeerde beheeractie | elke beheerroute achter `authenticated` én `requireAdmin`; de publieke lijst is één regel in `server.go` en één test | test enumereert alle routes uit de mux en asserteert dat alleen `/info`, `/auth/setup`, `/auth/login`, `/auth/refresh`, `/healthz`, `/readyz` en de bundel zonder token antwoorden | S1 |
-| 2 | Lid of beperkt bereikt een beheerresource | 404, nooit 403; tabelgedreven test met drie rollen per route (uitbreiding van `authorize_test.go`, DEC-105) | per nieuwe route: owner 2xx, member 404, restricted 404, en de body is byte-gelijk aan die van een niet-bestaand id | S1, S2, S3, S5, S6 |
+| 2 | Lid of beperkt bereikt een beheerresource | 404, nooit 403; tabelgedreven test met drie rollen per route (uitbreiding van `authorize_test.go`, DEC-126) | per nieuwe route: owner 2xx, member 404, restricted 404, en de body is byte-gelijk aan die van een niet-bestaand id | S1, S2, S3, S5, S6 |
 | 3 | Privilege-escalatie via rechten | `restricted` krijgt nooit `manage` (trigger bestaat); een admin kan de owner niet wijzigen of verwijderen (bestaat); een admin kan zichzelf niet tot owner maken | tests: admin `PATCH /users/{owner}` 404; admin `PATCH /users/{self}` met `role: owner` 400; de partiële index op één owner | S1 |
 | 4 | IDOR op boeken, leesvoortgang, scans, jobs | elke resource loopt via `MayAccess` op de bibliotheek of via `requireAdmin`; `reading_states` altijd gescoped op de aanroeper | tests met twee gebruikers en twee bibliotheken op elk nieuw endpoint; `GET /reading-state` van een ander geeft nooit rijen | S3, S6 |
 | 5 | Token- of sessiemisbruik na intrekking | bestaand; erbij: sleutelrotatie trekt alles in, en `GET /stream-sessions` toont geen geheimen | test: na rotatie geeft elk oud token 401 binnen 2 s; het antwoord van `/stream-sessions` bevat geen `ss`-geheim of token | S1 |
@@ -72,7 +72,7 @@ mee, en de server weigert een cookiemodus-aanvraag met een origin die hij niet t
 
 ## K.3 Bewijs dat elke slice levert
 
-Een slice met een nieuw endpoint sluit niet zonder de rij in de autorisatiematrix (DEC-105) en de
+Een slice met een nieuw endpoint sluit niet zonder de rij in de autorisatiematrix (DEC-126) en de
 drie-rollen-test. Een slice die iets schrijft naar het bestandssysteem (alleen S4 met de
 artworkcache) bewijst dat alleen `CacheDir` geraakt wordt. Een slice met een migratie bewijst
 dat een gebruiker zonder recht na de migratie nog steeds 404 krijgt op wat hij niet mag zien

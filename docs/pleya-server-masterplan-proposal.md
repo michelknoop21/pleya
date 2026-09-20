@@ -1648,12 +1648,12 @@ uitbreidingen staan in 16.4.
 | **Phase ID** | PS-4W |
 | **Doel** | een film starten, hervatten en uitkijken in de browser |
 | **Gebruikerswaarde** | Pleya Server is bruikbaar zonder dat er een app geïnstalleerd is, precies zoals Plex Web dat is |
-| **Afhankelijkheden** | PS-4. Poort 5 is dan al gesloten en in PS-4 geïmplementeerd, want de sessieparameter zit op `GET /stream` (11.5). Sinds [DEC-106](DECISIONS.md) ook PS-4E, dat de rijen en de voortgangsbalk eerder aflevert |
+| **Afhankelijkheden** | PS-4. Poort 5 is dan al gesloten en in PS-4 geïmplementeerd, want de sessieparameter zit op `GET /stream` (11.5). Sinds [DEC-127](DECISIONS.md) ook PS-4E, dat de rijen en de voortgangsbalk eerder aflevert |
 | **Eerstvolgende fase** | geen; PS-4W hangt naast PS-4 zoals PS-3W naast PS-3 |
 
 **Geknipt op 24 augustus 2026.** Twee scope-items zijn naar PS-4E verhuisd, vastgelegd in
 [docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) onderdeel 4.3 en in
-[DEC-106](DECISIONS.md). Phase ID, doel en de rest van de scope blijven staan. De grens tussen de
+[DEC-127](DECISIONS.md). Phase ID, doel en de rest van de scope blijven staan. De grens tussen de
 twee fasen:
 
 > PS-4E leest bestaande watch state en toont die waar de app dat ook doet. PS-4E introduceert geen

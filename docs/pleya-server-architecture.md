@@ -130,7 +130,7 @@ anders opgelost, of aantoonbaar buiten de productscope. Die laatste categorie is
 voor wat moeilijk bleek.
 
 **De productscope is sinds 3 september 2026 breder dan de Plex-vervanging.** E-books zijn met
-[DEC-107](DECISIONS.md) een contentdomein van Pleya Server geworden, naast film en serie. Plex
+[DEC-128](DECISIONS.md) een contentdomein van Pleya Server geworden, naast film en serie. Plex
 levert geen boeken, dus die uitbreiding is met de driedeling hierboven niet te beschrijven: er is
 geen verantwoordelijkheid om over te nemen, anders op te lossen of buiten scope te verklaren. Zulke
 uitbreidingen staan in een eigen sectie van de replacement matrix, buiten de Plex-off gate en met
@@ -1600,7 +1600,7 @@ achter een nieuwe `ConnectionKind` naast de bestaande vier.
 
 PS-4E, PS-7N en PS-7A zijn er op 24 augustus 2026 bij gekomen, vastgelegd in
 [docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) en
-[DEC-106](DECISIONS.md). Alle drie hangen ze aan fasen die al gesloten zijn, en geen ervan voegt een
+[DEC-127](DECISIONS.md). Alle drie hangen ze aan fasen die al gesloten zijn, en geen ervan voegt een
 afhankelijkheid toe aan PS-9 of PS-11A. PS-4E tilt de webbeleving naar app-pariteit en zet zich
 tussen PS-3W en PS-4W; PS-7N en PS-7A zijn uitsnedes van PS-7 die alleen PS-2 nodig hebben. PS-4W
 verliest daarbij twee scope-items aan PS-4E, en die knip staat in
@@ -1609,7 +1609,7 @@ PS-3W behouden PS-1 tot en met PS-13 hun nummer.
 
 PS-14 en PS-15 zijn er op 3 september 2026 bij gekomen, vastgelegd in
 [docs/pleya-server-ebooks-proposal.md](pleya-server-ebooks-proposal.md) en
-[DEC-107](DECISIONS.md). Ze dragen e-books als contentdomein en zijn de eerste fasen die niet uit de
+[DEC-128](DECISIONS.md). Ze dragen e-books als contentdomein en zijn de eerste fasen die niet uit de
 Plex-vervanging voortkomen: Plex levert geen boeken, dus er is geen verantwoordelijkheid over te
 nemen. PS-14 hangt aan PS-2 en PS-9 en voegt aan geen enkele andere fase een afhankelijkheid toe;
 de doorloop PS-5, PS-9, PS-11A, daarna PS-6 tot en met PS-8 verandert er niet door. PS-16 staat
@@ -2324,7 +2324,7 @@ PS-4 mag daar niet van afhangen, dus zo'n event wordt beantwoord en gelogd en ni
 
 Toegevoegd als goedgekeurde afwijking, vastgelegd in
 [docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) en
-[DEC-106](DECISIONS.md). PS-1 tot en met PS-13 behouden hun nummer, doel, scope en stopcriterium.
+[DEC-127](DECISIONS.md). PS-1 tot en met PS-13 behouden hun nummer, doel, scope en stopcriterium.
 
 Het doel staat expliciet in twee helften, omdat elke helft zonder de andere een geslaagde oplevering
 zou lijken zonder er een te zijn:
@@ -2379,7 +2379,7 @@ staat, en op de hero. End-to-end tegen de echte binary met een kijkstatus die vo
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-5 |
-| Status | **opgeleverd 23 augustus 2026, nog niet gesloten**: acht commits, `lib/media/device_*.dart`, `lib/services/device_capabilities_service.dart` en de twee builders. Acceptatiecriterium 4 vraagt hardware en is open, bewust uitgesteld wegens gebrek aan tijd. Blokkeert het starten van PS-9 niet, zie [DEC-097](DECISIONS.md#dec-097-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet) |
+| Status | **opgeleverd 23 augustus 2026, nog niet gesloten**: acht commits, `lib/media/device_*.dart`, `lib/services/device_capabilities_service.dart` en de twee builders. Acceptatiecriterium 4 vraagt hardware en is open, bewust uitgesteld wegens gebrek aan tijd. Blokkeert het starten van PS-9 niet, zie [DEC-118](DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet) |
 | Doel | de client stelt vast wat dit toestel aankan, en stuurt dat naar elke backend |
 | Bijdrage aan einddoel | dit is de ontbrekende abstractie uit de samenvatting; hij is zelfstandig waardevol, ook zonder Pleya Server |
 | Afhankelijkheden | PS-4 (voor de Pleya Server-kant), verder geen |
@@ -2444,7 +2444,7 @@ bron bij.
 | 1 | twee toestellen, aantoonbaar verschillende capabilities, in een test met een gemocked platform | gehaald. `test/media/device_capabilities_fixtures.dart` draagt vijf toestellen, en `device_capabilities_service_test.dart` draait de detectie met de host als argument in plaats van uit `Platform.is…` |
 | 2 | de Jellyfin- en Plex-profielen komen uit het model, de oude constanten bestaan niet meer | gehaald. `buildJellyfinDeviceProfile` en `buildPlexTranscodeParams` zijn pure functies; de constante in `jellyfin_client/parts/playback.dart` en de clause-lijst in `plex_client.dart` zijn weg |
 | 3 | een override is zichtbaar als override, en de gedetecteerde waarde blijft bekend | gehaald. `Capability.observed` houdt de waarneming vast, `isOverride` maakt hem zichtbaar, en de confidence blijft die van de waarneming: een override van een `inferred` waarde wordt geen meting |
-| 4 | geen regressie op bestaand afspeelgedrag, aangetoond op echte hardware voor tvOS plus één desktopplatform | **open, bewust uitgesteld.** Build 242 staat al op TestFlight voor alle drie de platforms; alleen de ronde op toestellen ontbreekt, en daar is nu geen tijd voor. Blokkeert PS-9 niet, zie [DEC-097](DECISIONS.md#dec-097-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet). Moet alsnog gedraaid worden vóór de eerstvolgende publieke release die PS-5- of PS-9-gedrag meeneemt |
+| 4 | geen regressie op bestaand afspeelgedrag, aangetoond op echte hardware voor tvOS plus één desktopplatform | **open, bewust uitgesteld.** Build 242 staat al op TestFlight voor alle drie de platforms; alleen de ronde op toestellen ontbreekt, en daar is nu geen tijd voor. Blokkeert PS-9 niet, zie [DEC-118](DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet). Moet alsnog gedraaid worden vóór de eerstvolgende publieke release die PS-5- of PS-9-gedrag meeneemt |
 | 5 | (stopcriterium) het model is de enige bron voor alle drie de profielen | gehaald voor de twee die bestaan. Het derde profiel is het Pleya Server-oppervlak, en dat is PS-6-scope: het protocol kent geen `DeviceCapabilities`-schema en is niet aangeraakt |
 
 **Twee bewuste gedragswijzigingen, elk in een eigen commit.** `truehd` in de Jellyfin
@@ -2557,7 +2557,7 @@ staat de server straks te wachten op een externe API tijdens een gebruikersaanvr
 
 Toegevoegd als goedgekeurde afwijking, vastgelegd in
 [docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) en
-[DEC-106](DECISIONS.md).
+[DEC-127](DECISIONS.md).
 
 **Voorwaardelijk.** PS-7N wordt pas uitgevoerd nadat de coverage-gate uit onderdeel 4.4 van het
 voorstel gemeten is: het percentage films en series per bibliotheek met een geldige, parsebare `.nfo`
@@ -2587,7 +2587,7 @@ hier vastgelegd en niet vooruitgebouwd.
 
 Toegevoegd als goedgekeurde afwijking, vastgelegd in
 [docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) en
-[DEC-106](DECISIONS.md).
+[DEC-127](DECISIONS.md).
 
 **Scope.** De parameter staat al in het contract en wordt vandaag bewust genegeerd; de doc-comment op
 `handleArtwork` legt uit waarom. PS-7A maakt hem waar: schalen, een cache op schijf, single-flight
@@ -2682,15 +2682,15 @@ leeftijdsgrenzen. Geen herstructurering van `UserProfileProvider` voor Plex of J
 daar de gate op. De `clientScopeId`-ambiguïteit uit [hoofdstuk 4.4](#44-cachescope-neemt-de-server-als-eenheid)
 wordt hier scherper, en de migratie die scope expliciet maakt hoort in deze fase. Drie risico's kwamen
 pas bij het PS-9-ontwerp scherp in beeld, vastgelegd in
-[DEC-098](DECISIONS.md#dec-098-rollen--en-rechtenmodel-voor-ps-9-vier-rollen-een-ladder-precies-één-owner)
+[DEC-119](DECISIONS.md#dec-119-rollen--en-rechtenmodel-voor-ps-9-vier-rollen-een-ladder-precies-één-owner)
 tot en met
-[DEC-105](DECISIONS.md#dec-105-de-endpoint--en-autorisatiematrix-is-de-bindende-testmatrix-niet-een-beschrijving):
+[DEC-126](DECISIONS.md#dec-126-de-endpoint--en-autorisatiematrix-is-de-bindende-testmatrix-niet-een-beschrijving):
 
 - **Server-globale state die per gebruiker of per sessie had gemoeten.** De reuse-intrekking op
   refreshtokens (`internal/auth/store.go:226`) en de rate limiter draaiden tot nu toe met precies één
   identiteit in gedachten. Dat wordt pas zichtbaar met een tweede echte gebruiker, niet door een test
   die met één identiteit blijft testen.
-- **De haalbaarheid van AC3 tegen een lopende `io.CopyN`.** DEC-099 legt de bovengrens vast op twee
+- **De haalbaarheid van AC3 tegen een lopende `io.CopyN`.** DEC-120 legt de bovengrens vast op twee
   seconden, gemeten, niet booleaans afgevinkt; `copyRange` moet daarvoor een onderbreekbare lus worden.
 - **De migratie van actieve refreshketens op de live NAS.** Het risico is "iedereen moet opnieuw
   inloggen", niet "de migratie faalt": elke actieve keten krijgt een eigen `legacy`-sessie, zodat
@@ -2700,20 +2700,20 @@ tot en met
 autorisatiematrix, hoofdstuk 8). Migratietest op de scope-kolommen met bestaande rijen, inclusief een
 fixture-DB met twee actieve refreshketens en een limitertest met twee sleutels.
 
-**Implementatievolgorde.** Zes stappen, in deze volgorde. DEC-099, DEC-104 en DEC-105 verwijzen
+**Implementatievolgorde.** Zes stappen, in deze volgorde. DEC-120, DEC-125 en DEC-126 verwijzen
 ernaar als "hoofdstuk 8". Dat was de nummering van het PS-9-ontwerpdocument; de inhoud daarvan is
-geland in DEC-098 tot en met DEC-105 en in hoofdstuk 16 van de protocolspecificatie, maar de
+geland in DEC-119 tot en met DEC-126 en in hoofdstuk 16 van de protocolspecificatie, maar de
 volgorde zelf stond nergens en is op 3 september 2026 uit commit-onderwerpen en codecommentaar
 gereconstrueerd. Zij staat hier zodat die drie verwijzingen ergens naartoe wijzen.
 
 | Stap | Inhoud | Klaar wanneer |
 | --- | --- | --- |
-| 1 | `openapi.yaml`, `pleya-protocol-v1.md` en de fixtures voor de zeven wijzigingen uit DEC-101 | `scripts/check_protocol.sh` slaagt; het contractvenster sluit weer |
-| 2 | Migratie 0007, de sessie-scoped tokenketen uit DEC-102, en een loginlimiter met een sleutel per gebruikersnaam | de drie DEC-104-tests op een fixture-DB met twee actieve refreshketens zijn groen |
+| 1 | `openapi.yaml`, `pleya-protocol-v1.md` en de fixtures voor de zeven wijzigingen uit DEC-122 | `scripts/check_protocol.sh` slaagt; het contractvenster sluit weer |
+| 2 | Migratie 0007, de sessie-scoped tokenketen uit DEC-123, en een loginlimiter met een sleutel per gebruikersnaam | de drie DEC-125-tests op een fixture-DB met twee actieve refreshketens zijn groen |
 | 3 | Kijkstatus per geauthenticeerde gebruiker in plaats van per server | twee gebruikers schrijven aantoonbaar in gescheiden rijen |
-| 4 | De gebruikersbeheer-API uit DEC-100, en een inlogpad dat niet meer alleen de owner kent | een tweede gebruiker ontstaat en logt in zonder handmatige SQL; `capabilities.users` gaat aan |
-| 5 | De autorisatiematrix uit DEC-105 | alle vijftien regels hebben een eigen test met een gebruiker zonder recht |
-| 6 | Het intrekkingsregister uit DEC-099, de onderbreekbare `copyRange`, en de sessie-endpoints uit DEC-103 | de gemeten revocatielatentie tegen een lopende stream blijft onder twee seconden; `capabilities.sessions` gaat aan |
+| 4 | De gebruikersbeheer-API uit DEC-121, en een inlogpad dat niet meer alleen de owner kent | een tweede gebruiker ontstaat en logt in zonder handmatige SQL; `capabilities.users` gaat aan |
+| 5 | De autorisatiematrix uit DEC-126 | alle vijftien regels hebben een eigen test met een gebruiker zonder recht |
+| 6 | Het intrekkingsregister uit DEC-120, de onderbreekbare `copyRange`, en de sessie-endpoints uit DEC-124 | de gemeten revocatielatentie tegen een lopende stream blijft onder twee seconden; `capabilities.sessions` gaat aan |
 
 De volgorde is niet vrij. Stap 1 gaat voorop omdat het contractvenster erop sluit, stap 2 omdat elke
 latere stap een `sessions`-rij nodig heeft om aan te hangen, en stap 4 vóór stap 5 en 6 omdat regel
@@ -2724,7 +2724,7 @@ de laatste twee niet.
 **Roadmap Drift Check.** Is er een rechtenmodel gebouwd dat verder gaat dan bibliotheekniveau? Dat is
 niet gevraagd en maakt het model moeilijker uitlegbaar. Is er een revocatiemechanisme gebouwd dat
 verder gaat dan sessie- en streamtokenintrekking? Een generieke pub/sub-laag is PS-11 of later, zie
-DEC-099. Handhaaft `manage` iets binnen PS-9? Dat hoort bij PS-7 en PS-11A; in PS-9 wordt hij alleen
+DEC-120. Handhaaft `manage` iets binnen PS-9? Dat hoort bij PS-7 en PS-11A; in PS-9 wordt hij alleen
 opgeslagen en teruggegeven.
 
 Op 4 september 2026 zijn die drie vragen tegen de code beantwoord en niet tegen de bedoeling.
@@ -2923,7 +2923,7 @@ Terugdraaien.
 | --- | --- |
 | Status | **ontwerp goedgekeurd 3 september 2026, uitvoering niet vrijgegeven.** Het ontwerp staat in [docs/pleya-server-ps14-proposal.md](pleya-server-ps14-proposal.md), met zeven bindende beslissingen. De formulering hing eerst aan het sluiten van PS-9, en dat is op 4 september 2026 gebeurd; dat sluiten haalt de afhankelijkheid weg en is uitdrukkelijk geen vrijgave. Vrijgeven is een apart besluit dat niet genomen is, dus er komt tot dat besluit geen PS-14-productiecode |
 | Doel | een `books`-bibliotheek wordt gescand, gecatalogiseerd en via het protocol ontsloten, inclusief cover en het EPUB-bestand zelf |
-| Bijdrage aan einddoel | e-books horen sinds [DEC-107](DECISIONS.md) tot de productscope; zonder servercatalogus is er geen bron waar een lezer boeken vandaan haalt |
+| Bijdrage aan einddoel | e-books horen sinds [DEC-128](DECISIONS.md) tot de productscope; zonder servercatalogus is er geen bron waar een lezer boeken vandaan haalt |
 | Afhankelijkheden | PS-2, PS-9 |
 | Eerstvolgende fase | PS-15 |
 
@@ -2978,7 +2978,7 @@ kolom, een tabel, een interface of een endpoint dat pas betekenis krijgt zodra e
 er in PS-14 uit als vooruitziend ontwerp in plaats van als drift. De toets is niet of iets later van
 pas komt, maar of een acceptatiecriterium van PS-14 er vandaag om vraagt. Dat is dezelfde regel als
 in [23.1](#231-de-roadmap-is-een-contract): bouw voor uitbreidbaarheid, bouw de uitbreiding niet vast
-vooruit. Vastgelegd op 3 september 2026, zie [DEC-107](DECISIONS.md) punt 8.
+vooruit. Vastgelegd op 3 september 2026, zie [DEC-128](DECISIONS.md) punt 8.
 
 De regel is bij de goedkeuring van het ontwerp toegepast op de sterke validator uit
 acceptatiecriterium 3. Die validator hoort erbij, want het criterium vraagt erom. Wat er niet bij
@@ -3092,13 +3092,13 @@ een sessie en een levenscyclus. fMP4 en HLS op het transcode-pad, geen DASH.
 server correct werkt achter HTTPS en achter een omgekeerde proxy; hoe die proxy tot stand komt is een
 deploymentrecept en staat in de documentatie, niet in de binary.
 
-`DEC-098` tot en met `DEC-105` **zijn geschreven** op 24 augustus 2026, bij het ontwerpen van fase 9,
-en sluiten alle blokkerende gaten van het PS-9-ontwerp: het rollen- en rechtenmodel (DEC-098), de
-revocatie-architectuur voor AC3 (DEC-099), de gebruikersbeheer-API (DEC-100), het protocolvenster voor
-PS-9 met de ontkoppeling van de vriezing van PS-5 (DEC-101), de sessie-, device- en tokenketen
-(DEC-102), de sessie-inzage- en -intrekkings-API (DEC-103), de migratie van bestaande refreshketens
-naar `legacy`-sessies (DEC-104), en de endpoint- en autorisatiematrix als bindende testmatrix
-(DEC-105). Zie [docs/DECISIONS.md](DECISIONS.md) voor de volledige tekst.
+`DEC-119` tot en met `DEC-126` **zijn geschreven** op 24 augustus 2026, bij het ontwerpen van fase 9,
+en sluiten alle blokkerende gaten van het PS-9-ontwerp: het rollen- en rechtenmodel (DEC-119), de
+revocatie-architectuur voor AC3 (DEC-120), de gebruikersbeheer-API (DEC-121), het protocolvenster voor
+PS-9 met de ontkoppeling van de vriezing van PS-5 (DEC-122), de sessie-, device- en tokenketen
+(DEC-123), de sessie-inzage- en -intrekkings-API (DEC-124), de migratie van bestaande refreshketens
+naar `legacy`-sessies (DEC-125), en de endpoint- en autorisatiematrix als bindende testmatrix
+(DEC-126). Zie [docs/DECISIONS.md](DECISIONS.md) voor de volledige tekst.
 
 ### 24.2 Open vragen
 

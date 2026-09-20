@@ -77,7 +77,7 @@ geen squash.
    serverboom. De eerste is een TestFlight-build uit `main` (build 249 of hoger, per toestel een eigen nummer
    zoals `424c43e` invoerde) met S14 erin; de PS-5-hardwareronde uit `docs/qa/ps5-hardware-round.md`
    is een voorwaarde vóór de eerste publieke release die PS-5-, PS-9- of S14-gedrag bevat
-   (DEC-097), met de drie startvoorwaarden uit dat document. Een oude build (248) tegen de nieuwe
+   (DEC-118), met de drie startvoorwaarden uit dat document. Een oude build (248) tegen de nieuwe
    server blijft werken (L.4).
 3. **Releasenotes** via de pre-push hook en `/update-docs`; de Engelse notes onder
    `END GENERATED`.

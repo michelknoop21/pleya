@@ -7,7 +7,7 @@ regel in deze map wijzigt.
 De werkregels per fase staan in de sectie Pleya Server van [../CLAUDE.md](../CLAUDE.md) en gelden
 onverkort: lees hoofdstuk 23 plus je eigen fase, blijf binnen de Phase ID, bouw niets uit een latere
 fase vooruit, en schrijf geen latere productvereiste weg. **PS-9 is gesloten op 4 september 2026** en
-**PS-11A loopt sindsdien**, vrijgegeven met [DEC-108](../docs/DECISIONS.md). De uitvoering gaat per
+**PS-11A loopt sindsdien**, vrijgegeven met [DEC-129](../docs/DECISIONS.md). De uitvoering gaat per
 slice en per commitgrens; welke er open staat leest `docs/PLEYA-SERVER-MASTERLIST.md`. Werk buiten de
 lopende commitgrens is te vroeg, ook binnen dezelfde fase.
 
@@ -16,7 +16,7 @@ en het plan in [../docs/pleya-server-rebaseline/](../docs/pleya-server-rebaselin
 vink dan af in dezelfde commit.
 
 Eén stuk werk loopt daar bewust naast: de lege hubs `continue_watching` en `next_up` in `handleHub`
-zijn met [DEC-106](../docs/DECISIONS.md) aangemerkt als defect in het gesloten PS-4, en worden als
+zijn met [DEC-127](../docs/DECISIONS.md) aangemerkt als defect in het gesloten PS-4, en worden als
 zodanig gecorrigeerd. Datzelfde besluit voegt PS-4E, PS-7N en PS-7A toe aan de roadmap; geen van
 drieën is begonnen.
 
@@ -90,12 +90,12 @@ internal/testsupport/  wegwerpschema en mediabestanden voor tests
 ## Regels die je stil kunt breken
 
 **Het wire-contract ligt vast.** `../docs/pleya-protocol/v1/openapi.yaml` is bevroren tot een besluit
-het venster expliciet opent, en is niet aan een vast fasenummer gehangen (DEC-101): een anker op een
+het venster expliciet opent, en is niet aan een vast fasenummer gehangen (DEC-122): een anker op een
 specifiek nummer veroudert stilzwijgend zodra die fase een opengelaten voorganger heeft. Het anker op
 "de lopende fase" had een eigen gat, zichtbaar geworden bij het sluiten van PS-9: tussen twee fasen
 in loopt er geen fase, en dat is geen open venster. Het venster ging twee
 keer eerder open: bij het sluiten van PS-3, voor de drie poortbesluiten (DEC-049, DEC-050, DEC-051),
-en voor PS-9, voor precies de zeven wijzigingen uit DEC-101 (gebruikers-, sessie- en
+en voor PS-9, voor precies de zeven wijzigingen uit DEC-122 (gebruikers-, sessie- en
 logout-endpoints, `device_id`/`device_name`, `capabilities.sessions`, nieuwe foutcodes). Dat venster
 is na stap 1 van de PS-9-implementatievolgorde alweer gesloten. Een probleem daarin is een
 protocolwijziging langs de zes compatibiliteitsregels uit hoofdstuk 3 van de specificatie, en niet een
@@ -107,7 +107,7 @@ een client mag er nooit op matchen.
 
 **Endpoints die er niet horen te zijn, blijven weg.** Sinds PS-4 antwoorden `stream/{version_id}`,
 beide kijkstatus-endpoints en `POST /auth/stream-session`; sinds PS-9 de vijf routes onder `/users`
-(DEC-100), `GET`/`DELETE /sessions` en `POST /auth/logout` (DEC-103). `capabilities.watch_state`,
+(DEC-121), `GET`/`DELETE /sessions` en `POST /auth/logout` (DEC-124). `capabilities.watch_state`,
 `watch_state_ownership`, `stream_sessions`, `users` en `sessions` staan daarmee alle vijf op `true`.
 Sinds S1.2 en S1.3 staat het eerste stuk beheer erbij: `GET`/`PATCH /settings`, en de
 serverdiagnostiek `GET /server/environment`, `GET /server/log`, `POST /server/connectivity-check` en
@@ -123,7 +123,7 @@ in S1.5). `verify-local.sh` en `TestScopeBoundaryAfterPS4` controleren dat.
 (`internal/auth/revocation.go`) is een set ingetrokken sessie-ids, gevuld bij het opstarten uit
 `sessions` en geraadpleegd door elk accesstoken, elk streamtoken, elke browserstreamsessie en elk
 blok van `copyRange`. Geen `LISTEN`/`NOTIFY`, geen pub/sub: er is nergens in deze deployment een
-aanname van meerdere instanties (DEC-099). Een tweede instantie zonder opvolger maakt intrekking
+aanname van meerdere instanties (DEC-120). Een tweede instantie zonder opvolger maakt intrekking
 onbetrouwbaar; dat is een geaccepteerde grens en geen gat. `copyRange` is daarom een lus met blokken
 van 64 KiB en geen `io.CopyN` over de hele range: de gemeten bovengrens van twee seconden hangt aan
 die blokgrootte, en `TestRevocationStopsRunningStreamWithinTwoSeconds` meet hem tegen een echte
@@ -144,8 +144,8 @@ bytes aan elkaar te plakken.
 
 **Tabellen uit latere fasen bestaan niet.** Geen `play_history`, `play_sessions`, `user_item_data`,
 `external_ids`, `metadata_candidates` of `transcode_sessions`. `watch_states` en `stream_sessions`
-staan er sinds PS-4; `users`, `sessions` en `library_permissions` sinds migratie 0007 (PS-9, DEC-098
-en DEC-102). De lijst in hoofdstuk 17.2 (die van het protocol; het schema staat in hoofdstuk 16 en
+staan er sinds PS-4; `users`, `sessions` en `library_permissions` sinds migratie 0007 (PS-9, DEC-119
+en DEC-123). De lijst in hoofdstuk 17.2 (die van het protocol; het schema staat in hoofdstuk 16 en
 17 van [de specificatie](../docs/pleya-protocol-v1.md)) beschrijft het hele v1-product en niet deze
 fase; `verify-local.sh` en `internal/migrate/migrate_test.go` controleren allebei welke tabellen er
 staan.

@@ -17,7 +17,7 @@ blokkade), **design-authority** (bepaalt hoe iets eruitziet, niet wat de server 
 | tvOS 10-foot design authority | in `main`, `docs/tvos-unified-experience.md`, mockups 09-26 | nee | nee | nee | nee | gedeelde tokens en TV-conventies (topnav, hero, chips) | design-authority | web-northstar volgt de TV-topnav op ≥900 (RB-1) |
 | Pleya Verify | in `main`, `pleya_verify/` | consument: `pleya_fake_server.dart` spreekt `/pleya/v1` | nee | consument | nee | elke protocolwijziging moet in de fake mee | hard (één richting) | S0: contracttest fake-server tegen `openapi.yaml`; L: Verify voor cross-client |
 | Navigatieregistry (`tv_content_route_registry`, DEC-091 main) | in `main` | nee | nee | nee | nee | `feat/ebooks` splitst `navigation_tab_id.dart`, netflix-mobile voegt `mobile_shell_scope` toe | conflictrisico | buiten dit traject; S14 raakt navigatie niet |
-| PS-5 DeviceCapabilities | in `feat/pleyaserver`, code complete | nee | nee | nee (spec h19) | nee | criterium 4 open, DEC-097 | zacht, open releasegate | N: hardwareronde vóór publieke release; blokkeert de slices niet |
+| PS-5 DeviceCapabilities | in `feat/pleyaserver`, code complete | nee | nee | nee (spec h19) | nee | criterium 4 open, DEC-118 | zacht, open releasegate | N: hardwareronde vóór publieke release; blokkeert de slices niet |
 | CarPlay | bestaat niet | nee | nee | nee | nee | zou `MediaServerClient` en hubs hergebruiken | onafhankelijk | niets |
 | Relay `server/` | in beide | andere server (`ice.pleya.app`) | nee | nee | nee | los | onafhankelijk | niets |
 | `worktree-pleya-web-ps4e` | `4368635` | subset | subset | subset | subset | ingehaald | onafhankelijk | opruimen |
@@ -40,12 +40,12 @@ tijd is, en wat dat voor het masterplan betekent.
 | Users | PS-9 API, scherm in PS-11A | 5 endpoints, per request rol uit DB, 404 voor alles wat je niet mag zien | northstar 26 en 27 | S10 bouwt de schermen; geen API-wijziging behalve "eigen account-id" (deel J) |
 | Libraries | env-only, CRUD in PS-11A | `syncLibraries` uit `PLEYA_SERVER_LIBRARIES`, `kind IN ('movies','shows')` | Boeken als derde soort; northstar 21, 22, 42 | S2 (CRUD, `managed`), S3 (`books`) |
 | Storage locations | intern, `mounts`-pakket meet inodevertrouwen | tabel plus `statfs_linux.go`; niet over HTTP | northstar 24, 41 | S2: `GET /storage/roots` uit de mounts, nooit uit invoer |
-| Catalogus | file, version, item, streams | zoals ontworpen; `content_fingerprint` dood | boeken passen niet in `media_*` (DEC-107) | S3: `publications` en `publication_files`; `media_*` blijft audiovisueel |
+| Catalogus | file, version, item, streams | zoals ontworpen; `content_fingerprint` dood | boeken passen niet in `media_*` (DEC-128) | S3: `publications` en `publication_files`; `media_*` blijft audiovisueel |
 | Scanner | drie lagen, inode en signatuur | zoals ontworpen; `probe_attempts` wordt niet gelezen; geen `.nfo` | EPUB-analyse per bibliotheeksoort; sidecars | S3 dispatch per soort; S4 sidecars; S2 begrensde backoff |
 | Search | ILIKE, meten eerst | ILIKE zonder index, geen scores, geen soortveld | northstar 06 sectioneert per soort incl. Boeken en Auteurs | S5: `pg_trgm`, `/ebooks?q=`; geen gedeelde projectie op de server (RB-5) |
 | Artwork | PS-7A uitgesteld | `width` niet gelezen, geen cache, `CacheDir` ongebruikt | 8-koloms raster op 1600, DPR 2 op 393 | S4: PS-7A verplicht (RB-7) |
 | Streaming | direct play, range, streamsessies | zoals ontworpen; verlopen `stream_sessions` worden nooit opgeruimd | browserspeler (PS-4W) | S13 speler; S15 opruimjob |
-| Watch-state | DEC-049 lease en revisie | zoals ontworpen | leesvoortgang is geen kijkstatus (DEC-107) | S6: eigen `reading_states` (RB-4) |
+| Watch-state | DEC-049 lease en revisie | zoals ontworpen | leesvoortgang is geen kijkstatus (DEC-128) | S6: eigen `reading_states` (RB-4) |
 | Continue watching, next up | leeg tot PS-4-defect | gerepareerd in `2c214fd`, `store_hubs.go` | web-e2e asserteert nog de lege staat | S8: PS-4E, test omdraaien |
 | Capabilities | 13 vlaggen, alle eerlijk | klopt (deel F, 11) | `administration`, `ebooks`, `filters`, `reading_state` | deel J; `feature_level` blijft 1 |
 | Webbundel | embed in de binary | `//go:embed all:dist`, releasebuild faalt zonder bundel | ongewijzigd | S7 bouwt in dezelfde `dist/` |
@@ -61,7 +61,7 @@ tijd is, en wat dat voor het masterplan betekent.
 | PS-0 tot PS-4, PS-3W, PS-9 | gesloten | klaar; blijven bevroren |
 | PS-5 | code complete, criterium 4 open | zacht; hardwareronde hoort bij release (N) |
 | PS-4E | niet gestart | opgaan in S8 met de northstar als authority in plaats van app-screenshots |
-| PS-4W | niet gestart, geknipt door DEC-106 | S13, met één extra mockup (speler) vóór de bouw |
+| PS-4W | niet gestart, geknipt door DEC-127 | S13, met één extra mockup (speler) vóór de bouw |
 | PS-7N | niet gestart, gate 80% | S4; de gate wordt zichtbaar in beheer (northstar 29) |
 | PS-7A | niet gestart, uitgesteld | S4, verplicht (RB-7); dekt ook boekcovers |
 | PS-7 | niet gestart | S22: providerladder met TMDB, automatisch matchen en automatisch inladen van metadata en artwork; handmatige correctie overleeft drie rondes |

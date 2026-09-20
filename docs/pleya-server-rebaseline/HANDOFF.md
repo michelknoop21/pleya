@@ -1,5 +1,11 @@
 # Handoff: stand van 4 september 2026, avond
 
+> **Historisch document.** Begin niet meer bij hoofdstuk 4 hieronder. De integratie is op
+> 20 september opnieuw vanaf actueel `main` opgebouwd. De mergebasis staat in `0b9699ec` en 26
+> reviewfixes in `3734e399`; drie bevindingen blijven open. De actuele repo-stand staat in
+> [`P-review-recovery-2026-09-20.md`](P-review-recovery-2026-09-20.md); hervat de actieve
+> pauze-handoff met `/handoff verder`.
+
 Dit bestand is het overdrachtspunt van de sessie die het re-baseline-pakket schreef. Het zegt
 wat er ligt, wat Michel heeft besloten, wat daardoor in de andere delen achterhaald is, en
 waar de volgende sessie begint. Alles in deze map en in `docs/assets/pleya-web-northstar/` is

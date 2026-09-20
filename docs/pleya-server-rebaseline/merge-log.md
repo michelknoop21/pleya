@@ -1,5 +1,11 @@
 # Merge-log: `feat/pleyaserver` naar `main`
 
+> **Actuele stand, 20 september 2026.** De eerdere integratiegeschiedenis hieronder blijft als
+> bewijs staan. De nieuwe completionmerge vanaf `bc6bff47` met ouder `d4af0122` is vastgelegd als
+> `0b9699ec`; 26 reviewfixes volgen in `3734e399`, met een groene lokale CI-check. Drie bevindingen
+> en de gedragssuites/overige brede gates blijven open. Zie `P-review-recovery-2026-09-20.md` en
+> hervat met `/handoff verder`.
+
 Dit bestand is de meting en het stappenplan voor slice S0. Het legt vast wat een proefmerge
 werkelijk oplevert, welke conflicten er zijn, en in welke volgorde ze worden opgelost. Het is
 geen verslag achteraf: taak S0.3 wordt afgevinkt tegen de lijst hieronder.

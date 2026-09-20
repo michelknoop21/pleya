@@ -130,14 +130,12 @@ staat in C.3 en hoort bij S7.
 
 ## C.9 Bekende afwijking in de goedgekeurde set
 
-`src/pages/16-kaartstaten.html` regel 16 schrijft bij de amberstip "DEC-096 op main". Dat nummer
-klopt op deze tak niet meer: de hernummering van S0.4 gaf 096 aan de refreshtokenrotatie, en het
-besluit dat `main` als 096 uitgaf staat hier als [DEC-109](../DECISIONS.md). De verwijzing is dus
-stale, en verder niets: hij staat in een bijschrift, verandert geen pixel, en geen enkele controle
-leest hem. `check_authority_merge.sh` kijkt naar authority-bestanden en een merge-vingerafdruk, en
-raakt de northstar-bronnen niet aan.
+`src/pages/16-kaartstaten.html` regel 16 schrijft bij de amberstip "DEC-096 op main". Dat nummer is
+na de completion-re-baseline weer correct: `main` bezit DEC-096 voor de taalvoorkeuren en de
+serverbesluiten zijn naar DEC-117 tot en met DEC-133 verplaatst. De tijdelijke DEC-109-kopie uit de
+oude integratiebranch is verwijderd.
 
-Hij blijft daarom staan tot een bewuste northstar-revisie. De set is op 4 september 2026
+De set is op 4 september 2026
 goedgekeurd en met `SHA256SUMS` vastgelegd; één bijschrift herstellen betekent dat beeld opnieuw
 renderen en de lijst opnieuw hashen, en dan is een goedgekeurde referentie gewijzigd voor iets wat
 geen visueel of functioneel verschil maakt. Wie de set om een andere reden opnieuw genereert, neemt

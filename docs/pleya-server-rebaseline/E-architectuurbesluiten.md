@@ -27,7 +27,7 @@ als eigen slice
 
 De webclient toont het Boeken-slot zodra een zichtbare boekenbibliotheek bestaat, en levert
 landing, alle boeken, detail, download en de weergave van leesvoortgang. De webreader is slice
-S12 en start pas nadat het locatormodel van PS-15 vastligt. Reden: DEC-107 legt de mobiele
+S12 en start pas nadat het locatormodel van PS-15 vastligt. Reden: DEC-128 legt de mobiele
 beperking vast als clientgedrag; de webclient is het primaire beheer- en desktoppad en er is
 geen productreden om boeken daar te verbergen. De reader hangt aan een locatorbesluit dat de
 app-reader op `feat/ebooks` nog niet genomen heeft. Afgewezen: web zonder boeken (de admin moet
@@ -196,7 +196,7 @@ DEC-082 op `main` trok dezelfde grens voor Pleya Verify (dunne adapter, geen twe
 implementatie), en DEC-046 zegt dat een client via het protocol nooit meer rechten krijgt dan
 het protocol geeft. Afgewezen: een losse stdio-adapter (onbruikbaar op een NAS voor een agent
 op een ander toestel) en een eigen toolset met "handige" samengestelde acties (een tweede
-API-oppervlak dat de matrix van DEC-105 ontloopt). Capability `mcp`; uitschakelbaar in
+API-oppervlak dat de matrix van DEC-126 ontloopt). Capability `mcp`; uitschakelbaar in
 Beveiliging; de HTTP-API blijft dan werken.
 
 ## RB-20 API-tokens zijn sessies

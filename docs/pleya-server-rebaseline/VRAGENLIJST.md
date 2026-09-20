@@ -15,7 +15,7 @@ hoofdstuk 8.
 | 1 | Is de slice-volgorde uit deel I akkoord, met de kritieke lijn S0 → S1 → S14 → S17 → S18 → S23 → S15 en de webslices parallel? | akkoord; web (S7 tot S10) start direct na S0 naast de backend | I |
 | 2 | Blijven PS-13 (externe transcode-workers) en PS-16 (offline boeken, bladwijzers) buiten dit plan? | ja | O |
 | 3 | Blijft de app-reader (PS-15 aan de appkant) op `feat/ebooks` en buiten dit plan? | ja; de server levert alles wat hij nodig heeft (S3, S6) | H |
-| 4 | Komt er een metadata-provider voor boeken (Open Library, Google Books)? | nee in dit plan; de OPF blijft de bron, eigen besluit later (DEC-107) | S22 |
+| 4 | Komt er een metadata-provider voor boeken (Open Library, Google Books)? | nee in dit plan; de OPF blijft de bron, eigen besluit later (DEC-128) | S22 |
 | 5 | Ondertitels zoeken en downloaden via de server (B8)? | niet in dit plan; na S22 als losse uitbreiding op de providerlaag | E, O |
 | 6 | Scrubvoorbeelden (B6)? | niet in dit plan | O |
 | 7 | Intro en aftiteling overslaan (B7)? | hoofdstukmarkeringen uit het bestand gebruiken waar ze bestaan (S4 leest ze mee), geen eigen detectie | S4, S18 |

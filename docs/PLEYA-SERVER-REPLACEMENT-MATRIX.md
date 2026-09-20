@@ -623,9 +623,9 @@ is, want Plex leverde ze nooit.
 
 | # | Capability | Bestemming | Fase | Status | Besluit | Afhankelijkheden |
 | --- | --- | --- | --- | --- | --- | --- |
-| X1 | E-bookbibliotheek: scannen, catalogiseren, cover en EPUB ontsluiten | eigen Pleya-functionaliteit | PS-14 | `In roadmap` | [DEC-107](DECISIONS.md) | PS-2, PS-9 |
-| X2 | E-books lezen in de mobiele app, met leespositie tussen toestellen | eigen Pleya-functionaliteit | PS-15 | `In roadmap` | [DEC-107](DECISIONS.md) | PS-14 |
-| X3 | Offline e-books en gesynchroniseerde bladwijzers | eigen Pleya-functionaliteit | PS-16 | `Niet ontworpen` | [DEC-107](DECISIONS.md) | PS-15 |
+| X1 | E-bookbibliotheek: scannen, catalogiseren, cover en EPUB ontsluiten | eigen Pleya-functionaliteit | PS-14 | `In roadmap` | [DEC-128](DECISIONS.md) | PS-2, PS-9 |
+| X2 | E-books lezen in de mobiele app, met leespositie tussen toestellen | eigen Pleya-functionaliteit | PS-15 | `In roadmap` | [DEC-128](DECISIONS.md) | PS-14 |
+| X3 | Offline e-books en gesynchroniseerde bladwijzers | eigen Pleya-functionaliteit | PS-16 | `Niet ontworpen` | [DEC-128](DECISIONS.md) | PS-15 |
 
 X3 is begrensd en niet ontworpen: het reservaat is offline EPUB-lezen en bladwijzers, en PDF, DRM,
 annotaties, markeringen en aankopen horen daar uitdrukkelijk niet stilzwijgend bij. De volledige
