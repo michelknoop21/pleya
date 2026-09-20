@@ -465,9 +465,13 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
         padding: const EdgeInsets.symmetric(horizontal: mobileRailInset),
         child: Row(
           children: [
-            Text(
-              t.unifiedCatalog.titlesLoaded(count: _catalog.snapshot.groups.length),
-              style: TextStyle(color: tokens(context).textMuted),
+            Flexible(
+              child: Text(
+                t.unifiedCatalog.titlesLoaded(count: _catalog.snapshot.groups.length),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: tokens(context).textMuted),
+              ),
             ),
             if (summary != null) ...[
               const Spacer(),

@@ -470,6 +470,55 @@ void main() {
       );
     });
 
+    test('MPV replaces a stale fallback when a changed filter chain is refused', () async {
+      final calls = <MethodCall>[];
+      var appliedAf = '';
+
+      await _withMockChannels(
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
+        methodHandler: (call) async {
+          calls.add(call);
+          switch (call.method) {
+            case 'initialize':
+              return true;
+            case 'setProperty':
+              final arguments = Map<Object?, Object?>.from(call.arguments as Map);
+              if (arguments['name'] == 'af') {
+                final requested = arguments['value'] as String;
+                // MPVKit rejects chains containing alimiter and leaves the
+                // previously applied filter untouched.
+                if (!requested.contains('alimiter')) appliedAf = requested;
+              }
+              return null;
+            case 'getProperty':
+              final arguments = Map<Object?, Object?>.from(call.arguments as Map);
+              return arguments['name'] == 'af' ? appliedAf : null;
+            default:
+              return null;
+          }
+        },
+        testBody: () async {
+          final player = PlayerNative();
+          try {
+            await player.setAudioNormalization(const AudioLoudness(boostPercent: 150));
+            expect(appliedAf, 'volume=3.52dB:precision=float');
+
+            await player.setAudioNormalization(const AudioLoudness(boostPercent: 200));
+
+            expect(appliedAf, 'volume=6.02dB:precision=float');
+            final afWrites = calls
+                .where((call) => call.method == 'setProperty' && _setPropertyName(call) == 'af')
+                .map(_setPropertyValue)
+                .toList();
+            expect(afWrites.last, 'volume=6.02dB:precision=float');
+          } finally {
+            await player.dispose();
+          }
+        },
+      );
+    });
+
     test('MPV disables subtitles before loading media', () async {
       final calls = <MethodCall>[];
 
