@@ -20,6 +20,7 @@ import '../../../services/apple_audio_session_service.dart';
 import '../../../services/audio_output_coordinator.dart';
 import '../../../services/audio_output_decision.dart';
 import '../../../services/file_picker_service.dart';
+import '../../../services/loudness/loudness_planner.dart';
 import '../../../services/settings_service.dart';
 import '../../settings_builder.dart';
 import '../../../services/shader_service.dart';
@@ -300,13 +301,7 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
   /// Pushes both loudness switches at once, because the filter chain is built
   /// from the pair and neither means anything on its own.
   Future<void> _pushLoudness() async {
-    final settings = SettingsService.instance;
-    await widget.player.setAudioNormalization(
-      AudioLoudness(
-        levelVolume: settings.read(SettingsService.audioLevelVolume),
-        reduceLoudSounds: settings.read(SettingsService.audioReduceLoudSounds),
-      ),
-    );
+    await widget.player.setAudioNormalization(audioLoudnessPrefs());
     // A running bitstream outranks the loudness stage (DEC-013). Without this
     // the switch flips in the UI and changes nothing anyone can hear.
     if (mounted && widget.player.consumeNormalizationSuspendedNotice()) {

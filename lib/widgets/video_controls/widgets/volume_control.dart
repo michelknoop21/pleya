@@ -80,7 +80,7 @@ class _VolumeControlState extends State<VolumeControl> {
   Future<void> _adjustVolume(double delta) async {
     if (_volumeIsExternal) return;
     final currentVolume = widget.player.state.volume;
-    final maxVolume = _settings.read(SettingsService.maxVolume).toDouble();
+    const maxVolume = kNormalVolumeMax * 1.0;
     final newVolume = (currentVolume + delta).clamp(0.0, maxVolume);
     await widget.player.setVolume(newVolume);
     await _settings.write(SettingsService.volume, newVolume);
@@ -141,9 +141,8 @@ class _VolumeControlState extends State<VolumeControl> {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<bool>(
       valueListenable: AudioOutputCoordinator.bitstreamActive,
-      builder: (context, external, _) => ValueListenableBuilder<int>(
-        valueListenable: _settings.listenable(SettingsService.maxVolume),
-        builder: (context, maxVolume, _) {
+      builder: (context, external, _) => Builder(
+        builder: (context) {
           return StreamBuilder<double>(
             stream: widget.player.streams.volume,
             initialData: widget.player.state.volume,
@@ -195,7 +194,7 @@ class _VolumeControlState extends State<VolumeControl> {
                   else
                     muteButton,
                   const SizedBox(width: 8),
-                  _buildVolumeSlider(volume, maxVolume, external),
+                  _buildVolumeSlider(volume, external),
                 ],
               );
 
@@ -213,13 +212,8 @@ class _VolumeControlState extends State<VolumeControl> {
     );
   }
 
-  Widget _buildVolumeSlider(double volume, int maxVolume, bool external) {
-    final maxVolumeDouble = maxVolume.toDouble();
-
-    // Calculate 100% marker position as fraction of slider width
-    // Only show marker if max volume > 100
-    final showMarker = maxVolume > 100;
-    final markerPosition = showMarker ? (100.0 / maxVolumeDouble) : 0.0;
+  Widget _buildVolumeSlider(double volume, bool external) {
+    const maxVolumeDouble = kNormalVolumeMax * 1.0;
 
     return Listener(
       onPointerSignal: (event) {
@@ -236,18 +230,6 @@ class _VolumeControlState extends State<VolumeControl> {
         child: Stack(
           alignment: .centerLeft,
           children: [
-            if (showMarker)
-              Positioned(
-                left: 100 * markerPosition - 1, // Adjust for marker width
-                child: Container(
-                  width: 2,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    borderRadius: const BorderRadius.all(Radius.circular(1)),
-                  ),
-                ),
-              ),
             SliderTheme(
               data: SliderTheme.of(context).copyWith(
                 trackHeight: 8,

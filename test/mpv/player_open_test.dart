@@ -151,7 +151,7 @@ void main() {
             );
             await player.setAudioNormalization(const AudioLoudness(levelVolume: true, reduceLoudSounds: true));
             final sent = calls.lastWhere((c) => c.method == 'setLoudness').arguments as Map;
-            expect(sent, {'mode': 'programme', 'gainDb': 5.0, 'drc': true, 'profileVersion': 1});
+            expect(sent, {'mode': 'programme', 'gainDb': 5.0, 'drc': true, 'boostDb': 0.0, 'profileVersion': 1});
           } finally {
             await player.dispose();
           }

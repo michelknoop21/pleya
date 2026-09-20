@@ -651,13 +651,14 @@ class ExoPlayerPlugin :
     }
     val gainDb = call.argument<Double>("gainDb")
     val drc = call.argument<Boolean>("drc") ?: false
+    val boostDb = call.argument<Double>("boostDb") ?: 0.0
     if (usingMpvFallback) {
       // mpv applies the same chain via the 'af' property the Dart layer also sends.
       result.success(true)
       return
     }
     activity?.runOnUiThread {
-      playerCore?.setLoudness(mode, gainDb, drc, profileVersion)
+      playerCore?.setLoudness(mode, gainDb, drc, profileVersion, boostDb)
       result.success(true)
     } ?: result.error("NO_ACTIVITY", "Activity not available", null)
   }

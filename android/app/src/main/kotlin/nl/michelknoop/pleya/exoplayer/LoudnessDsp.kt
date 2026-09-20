@@ -37,7 +37,19 @@ class LoudnessDsp(val sampleRate: Int, val channels: Int) {
     }
   }
 
-  data class Params(val mode: Mode, val gainDb: Double, val drc: Boolean, val profileVersion: Int) {
+  /**
+   * [boostDb] is the user's volume boost, read as a linear percentage in Dart
+   * (`AudioLoudness.boostPercent`) and applied here between the compressor and
+   * the limiter, so the ceiling still holds above it. ExoPlayer's own volume
+   * is clamped to unity and can never carry it.
+   */
+  data class Params(
+    val mode: Mode,
+    val gainDb: Double,
+    val drc: Boolean,
+    val profileVersion: Int,
+    val boostDb: Double = 0.0
+  ) {
     companion object {
       val OFF = Params(Mode.OFF, 0.0, false, PROFILE_VERSION)
     }
@@ -192,6 +204,7 @@ class LoudnessDsp(val sampleRate: Int, val channels: Int) {
   fun process(buf: FloatArray, frames: Int, params: Params) {
     if (params.mode == Mode.OFF) return
     val fixedLin = dbToLin(params.gainDb)
+    val boostLin = if (params.boostDb > 0.0) dbToLin(params.boostDb) else 1.0
     for (f in 0 until frames) {
       val base = f * channels
 
@@ -217,6 +230,13 @@ class LoudnessDsp(val sampleRate: Int, val channels: Int) {
         compEnv += (if (power > compEnv) compAttack else compRelease) * (power - compEnv)
         val reduction = dbToLin(compressorGainDb(10.0 * log10(compEnv + 1e-20)))
         for (c in 0 until channels) buf[base + c] = (buf[base + c] * reduction).toFloat()
+      }
+
+      // After the normalisation and the compressor, before the limiter: the
+      // boost is what the user asked to hear, and the limiter is what keeps it
+      // under the ceiling.
+      if (boostLin != 1.0) {
+        for (c in 0 until channels) buf[base + c] = (buf[base + c] * boostLin).toFloat()
       }
 
       limit(buf, base)
@@ -263,6 +283,7 @@ class LoudnessDsp(val sampleRate: Int, val channels: Int) {
     "mode" to params.mode.wire,
     "profileVersion" to params.profileVersion,
     "gainDb" to if (params.mode == Mode.REALTIME) realtimeTargetDb else params.gainDb,
+    "boostDb" to params.boostDb,
     "appliedGainDb" to appliedGainDb,
     "drc" to params.drc,
     "limiterReductionDb" to limiterReductionDb,

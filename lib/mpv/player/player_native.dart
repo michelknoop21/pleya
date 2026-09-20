@@ -302,6 +302,29 @@ class PlayerNative extends PlayerBase {
     await command(args);
   }
 
+  /// Writes the chain and checks that mpv kept it.
+  ///
+  /// mpv answers an `af` it cannot build with an error code the method channel
+  /// does not carry, and leaves the property empty. It rejects the string as a
+  /// whole, so one filter the build lacks takes the rest of the chain with it:
+  /// MPVKit 1.0.26 ships fourteen audio filters, without `acompressor` or
+  /// `alimiter`, and on Apple that silently disabled levelling, reducing loud
+  /// sounds and the boost all at once. Reading `af` back is the one signal
+  /// available here, and an empty readback after a non-empty write is the
+  /// failure. The fallback drops the two dynamics filters and keeps the gain,
+  /// which is worse audio than intended, but audible and honest in the log.
+  @override
+  Future<void> applyNormalization(AudioLoudness loudness) async {
+    final chain = loudness.mpvFilter;
+    await setProperty('af', chain);
+    if (chain.isEmpty) return;
+    final applied = await getProperty('af');
+    if (applied != null && applied.isNotEmpty) return;
+    final fallback = loudness.mpvFilterWithoutDynamics;
+    appLogger.w('mpv refused the audio filter chain "$chain"; retrying as "$fallback"');
+    if (fallback != chain) await setProperty('af', fallback);
+  }
+
   @override
   Future<void> setVolume(double volume) async {
     await setProperty('volume', volume.toString());
