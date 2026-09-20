@@ -73,6 +73,16 @@ Future<BuildContext?> _waitForRootContext({Duration timeout = const Duration(sec
   }
 }
 
+Future<BuildContext?> _waitForProfileContext({Duration timeout = const Duration(seconds: 5)}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (true) {
+    final context = profileNavigationRegistry.navigator?.context;
+    if (context != null && context.mounted) return context;
+    if (DateTime.now().isAfter(deadline)) return null;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  }
+}
+
 /// `POST /v1/signin` body: `{"base_url", "username", "password",
 /// "setup_code"?}`. Drives the exact chain
 /// `lib/screens/settings/add_pleya_server_screen.dart`'s `_submit()`/
@@ -197,8 +207,8 @@ Future<Map<String, Object?>> handleAutomationSeedSeerr(Map<String, Object?> body
   final rejectedBaseUrl = rejectNonLoopbackBaseUrl(baseUrl);
   if (rejectedBaseUrl != null) return {'ok': false, 'error': rejectedBaseUrl};
 
-  final context = profileNavigationRegistry.navigator?.context;
-  if (context == null || !context.mounted) {
+  final context = await _waitForProfileContext();
+  if (context == null) {
     return {'ok': false, 'error': 'no profile session is mounted yet — sign in first'};
   }
 

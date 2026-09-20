@@ -16,8 +16,11 @@ import 'package:pleya/profiles/plex_home_service.dart';
 import 'package:pleya/profiles/profile_connection_registry.dart';
 import 'package:pleya/profiles/profile_registry.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/seerr/seerr_constants.dart';
+import 'package:pleya/services/seerr/seerr_session.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya_verify_fixture_server/http_adapter.dart';
 import 'package:pleya_verify_fixture_server/pleya_fake_server.dart';
@@ -80,6 +83,37 @@ class _TestProfileNavigatorState extends State<_TestProfileNavigator> {
         onGenerateRoute: (settings) => MaterialPageRoute<void>(builder: (_) => const SizedBox()),
       ),
     );
+  }
+}
+
+class _FakeSeerrProvider extends SeerrProvider {
+  static const expectedBaseUrl = 'http://127.0.0.1:47500/seerr';
+  static const expectedApiKey = 'verify-seerr-key';
+  static const testedSession = SeerrSession(
+    baseUrl: expectedBaseUrl,
+    authMode: SeerrAuthMode.apiKey,
+    apiKey: expectedApiKey,
+    permissions: SeerrPermission.admin,
+  );
+
+  @override
+  Future<SeerrTestResult> test({
+    required String baseUrl,
+    required SeerrAuthMode mode,
+    String? apiKey,
+    String? email,
+    String? password,
+    String? plexToken,
+  }) async {
+    if (baseUrl != expectedBaseUrl || mode != SeerrAuthMode.apiKey || apiKey != expectedApiKey) {
+      throw StateError('unexpected Seerr test arguments');
+    }
+    return (version: '1.33.2', displayName: 'verify-admin', permissions: SeerrPermission.admin, session: testedSession);
+  }
+
+  @override
+  Future<void> commit(SeerrSession session) async {
+    if (!identical(session, testedSession)) throw StateError('unexpected Seerr session');
   }
 }
 
@@ -232,6 +266,47 @@ void main() {
     expect(openAfter['ok'], isFalse);
     expect(openAfter['error'], contains('timeout'), reason: openAfter.toString());
     expect(profileNavigationRegistry.navigator, isNotNull);
+  });
+
+  testWidgets('seed_seerr waits for the first profile session to mount after sign-in', (tester) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<ConnectionRegistry>.value(value: connections),
+          Provider<ProfileRegistry>.value(value: profiles),
+          Provider<ProfileConnectionRegistry>.value(value: profileConnections),
+          ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfile),
+          Provider<ActiveProfileBinder>.value(value: binder),
+          ChangeNotifierProvider<SeerrProvider>(create: (_) => _FakeSeerrProvider()),
+        ],
+        child: MaterialApp(navigatorKey: rootNavigatorKey, home: const _ProfileGate()),
+      ),
+    );
+    await tester.pump();
+
+    late Map<String, Object?> signinResult;
+    await tester.runAsync(() async {
+      signinResult = await handleAutomationSignIn({
+        'base_url': 'http://127.0.0.1:${fixtureAdapter.port}',
+        'username': 'verify-owner',
+        'password': 'verify-password',
+        'setup_code': fakeServer.setupCode,
+      });
+    });
+    expect(signinResult['ok'], isTrue, reason: signinResult.toString());
+    expect(profileNavigationRegistry.navigator, isNull);
+
+    final seedFuture = handleAutomationSeedSeerr({
+      'base_url': _FakeSeerrProvider.expectedBaseUrl,
+      'api_key': _FakeSeerrProvider.expectedApiKey,
+    });
+    await tester.pump();
+    expect(profileNavigationRegistry.navigator, isNotNull);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    late Map<String, Object?> seedResult;
+    await tester.runAsync(() async => seedResult = await seedFuture);
+    expect(seedResult['ok'], isTrue, reason: seedResult.toString());
   });
 
   group('rejectNonLoopbackBaseUrl', () {
