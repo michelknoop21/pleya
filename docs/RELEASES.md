@@ -80,6 +80,7 @@ under `Notes`.
 - await profile before Seerr seed
 - paginate Seerr requests fixture
 - serialize mpv teardown before player exit
+- close requests review findings
 <!-- END GENERATED -->
 
 ### New
