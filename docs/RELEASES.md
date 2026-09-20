@@ -79,6 +79,7 @@ under `Notes`.
 - await profile before Seerr seed
 - paginate Seerr requests fixture
 - serialize mpv teardown before player exit
+- de pillenrij op Alle films/Alle series wrapt in plaats van door de schermrand te lopen
 <!-- END GENERATED -->
 
 ### New
