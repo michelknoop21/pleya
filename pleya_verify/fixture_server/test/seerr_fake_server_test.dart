@@ -53,6 +53,25 @@ void main() {
     expect(media['tmdbId'], 101);
   });
 
+  test('request listing honors take and skip', () async {
+    final server = SeerrFakeServer(apiKey: 'verify-key');
+    for (var id = 1; id <= 5; id++) {
+      server.addRequest(id: id, mediaType: 'movie', tmdbId: 100 + id, title: 'Request $id');
+    }
+
+    final response = await _get(
+      server,
+      '/seerr/api/v1/request',
+      apiKey: 'verify-key',
+      query: const {'filter': 'all', 'take': '2', 'skip': '2'},
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final results = body['results'] as List;
+
+    expect(results.map((item) => item['id']), [3, 4]);
+    expect(body['pageInfo'], {'pages': 3});
+  });
+
   test('the title a request was seeded with answers the hydration round-trip', () async {
     final server = SeerrFakeServer(apiKey: 'verify-key');
     server.addRequest(
