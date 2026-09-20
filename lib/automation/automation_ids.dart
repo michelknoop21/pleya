@@ -231,6 +231,14 @@ class AutomationIds {
   /// mounts on all three, so one id family covers it everywhere.
   static const String activityRow = 'activity.row';
 
+  /// The presence control in the mobile Home header that opens I7-21's
+  /// approved Activiteit sheet.
+  static const String activityButton = 'activity.button';
+
+  /// I7-21's mobile Activiteit sheet. The stream rows inside it keep using
+  /// [activityRow], shared with desktop and TV.
+  static const String activitySheet = 'activity.sheet';
+
   /// The library page's heading, carrying which library is actually open.
   ///
   /// Hoofdstuk 16's contract is that concrete libraries are visible and
@@ -505,6 +513,8 @@ class AutomationIds {
     {'id': settingsFormField, 'role': 'field', 'instanceable': true},
     {'id': settingsFormButton, 'role': 'button', 'instanceable': true},
     {'id': activityRow, 'role': 'list.item', 'instanceable': true},
+    {'id': activityButton, 'role': 'button', 'instanceable': false},
+    {'id': activitySheet, 'role': 'sheet', 'instanceable': false},
     {'id': playerSurface, 'role': 'surface', 'instanceable': false},
     {'id': playerTitle, 'role': 'region', 'instanceable': false},
     {'id': playerTimeline, 'role': 'region', 'instanceable': false},

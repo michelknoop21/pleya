@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:http/http.dart' as http;
+import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/media/watch_session.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/providers/now_watching_provider.dart';
@@ -101,6 +102,26 @@ void main() {
       await _pump(tester, provider, const NowWatchingButton());
 
       expect(find.text('2'), findsOneWidget);
+    });
+
+    testWidgets('the mobile trigger and its sheet expose stable automation nodes', (tester) async {
+      final provider = await _providerWith(NowWatching(sessions: [_session()]));
+      addTearDown(provider.dispose);
+
+      await _pump(tester, provider, const NowWatchingButton(), platform: TargetPlatform.iOS);
+
+      Finder node(String id) => find.byWidgetPredicate((widget) => widget is AutomationNode && widget.id == id);
+      expect(node('activity.button'), findsOneWidget);
+      expect(node('activity.sheet'), findsNothing);
+
+      await tester.tap(node('activity.button'));
+      await tester.pumpAndSettle();
+
+      expect(node('activity.sheet'), findsOneWidget);
+      expect(node('activity.row'), findsOneWidget);
+
+      Navigator.of(tester.element(node('activity.sheet'))).pop();
+      await tester.pumpAndSettle();
     });
 
     // The overlay lives in the Overlay, not under the button, so it does not go

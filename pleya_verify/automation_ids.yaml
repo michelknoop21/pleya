@@ -159,6 +159,12 @@ ids:
   - id: activity.row
     role: list.item
     instanceable: true
+  - id: activity.button
+    role: button
+    instanceable: false
+  - id: activity.sheet
+    role: sheet
+    instanceable: false
   - id: player.surface
     role: surface
     instanceable: false
