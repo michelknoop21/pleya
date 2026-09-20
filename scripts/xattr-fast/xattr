@@ -21,10 +21,13 @@ set -uo pipefail
 
 REAL=/usr/bin/xattr
 
-# Takken die nooit in een ondertekende bundel terechtkomen. build/ staat er
-# bewust niet bij: dat is bouwuitvoer die wél in de bundel belandt, en juist
-# daar moeten de attributen weg.
-PRUNE_NAMES=(.git node_modules .dart_tool .fvm)
+# Takken die nooit in een ondertekende bundel terechtkomen. `.claude` bevat
+# host-beheerde worktrees en hun volledige build-uitvoer; op deze checkout is
+# dat ruim twee derde van de projectboom, maar geen byte ervan kan in de build
+# van deze worktree belanden. build/ staat er bewust niet bij: dat is de
+# bouwuitvoer van déze checkout die wél in de bundel belandt, en juist daar
+# moeten de attributen weg.
+PRUNE_NAMES=(.git node_modules .dart_tool .fvm .claude)
 
 # Niet-onderschept: exact doorgeven. Dit dekt -l, -p, -w, -c, losse bestanden,
 # en ook Flutter's eigen `xattr -w com.apple.xcode.CreatedByBuildSystem`.

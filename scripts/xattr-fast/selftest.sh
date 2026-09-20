@@ -69,9 +69,10 @@ check "spaties, quotes, komma en unicode" "$(has_attr "$odd")" "no"
 
 echo "==> prune-contract"
 mkdir -p "$root/prune/node_modules/pkg" "$root/prune/.git/objects" \
-         "$root/prune/.dart_tool" "$root/prune/.fvm" "$root/prune/lib/deep" \
+         "$root/prune/.dart_tool" "$root/prune/.fvm" "$root/prune/.claude/worktrees/other/build" \
+         "$root/prune/lib/deep" \
          "$root/prune/build/ios"
-for p in node_modules/pkg/f .git/objects/f .dart_tool/f .fvm/f lib/deep/f build/ios/f; do
+for p in node_modules/pkg/f .git/objects/f .dart_tool/f .fvm/f .claude/worktrees/other/build/f lib/deep/f build/ios/f; do
   : > "$root/prune/$p"; set_attr "$root/prune/$p"
 done
 "$SHIM" -r -d "$ATTR" "$root/prune"
@@ -79,6 +80,8 @@ check "node_modules blijft"  "$(has_attr "$root/prune/node_modules/pkg/f")" "yes
 check ".git blijft"          "$(has_attr "$root/prune/.git/objects/f")"     "yes"
 check ".dart_tool blijft"    "$(has_attr "$root/prune/.dart_tool/f")"       "yes"
 check ".fvm blijft"          "$(has_attr "$root/prune/.fvm/f")"             "yes"
+check ".claude-worktrees blijven" \
+                             "$(has_attr "$root/prune/.claude/worktrees/other/build/f")" "yes"
 check "lib wordt geschoond"  "$(has_attr "$root/prune/lib/deep/f")"         "no"
 check "build wordt geschoond, want die gaat de bundel in" \
                              "$(has_attr "$root/prune/build/ios/f")"        "no"
