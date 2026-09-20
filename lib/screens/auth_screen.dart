@@ -40,7 +40,13 @@ import 'tv/tv_auth_view.dart';
 enum _AuthRecoveryState { noServersFound, networkError }
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, this.plexPinAuthServiceFactory, this.plexConnectAuthServiceFactory, this.jellyfinRoute});
+  const AuthScreen({
+    super.key,
+    this.plexPinAuthServiceFactory,
+    this.plexConnectAuthServiceFactory,
+    this.jellyfinRoute,
+    this.plexPollTimeout = const Duration(minutes: 5),
+  });
 
   @visibleForTesting
   final Future<PlexAuthService> Function()? plexPinAuthServiceFactory;
@@ -50,6 +56,9 @@ class AuthScreen extends StatefulWidget {
 
   @visibleForTesting
   final Future<bool?> Function(BuildContext context)? jellyfinRoute;
+
+  @visibleForTesting
+  final Duration plexPollTimeout;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -198,7 +207,7 @@ class _AuthScreenState extends State<AuthScreen> {
           context,
         ).push<bool>(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen(requireSelection: true)));
         if (!mounted) return;
-        if (selected != true || activeProfiles.active == null) {
+        if (!shouldContinueAfterInitialProfileSelection(selected: selected, activeProfile: activeProfiles.active)) {
           setState(() => _isAuthenticating = false);
           return;
         }
@@ -266,6 +275,7 @@ class _AuthScreenState extends State<AuthScreen> {
           autoStartQrOnTV: false,
           onSwitchToJellyfin: _connectToJellyfin,
           authServiceFactory: widget.plexPinAuthServiceFactory,
+          pollTimeout: widget.plexPollTimeout,
           shellBuilder: (context, scope) {
             final blocked = _isAuthenticating || _recoveryState != null;
             return TvAuthView(
@@ -419,6 +429,7 @@ class _AuthScreenState extends State<AuthScreen> {
       initialButtonsBuilder: _buildInitialButtons,
       onSwitchToJellyfin: _connectToJellyfin,
       authServiceFactory: widget.plexPinAuthServiceFactory,
+      pollTimeout: widget.plexPollTimeout,
     );
   }
 
@@ -581,6 +592,11 @@ bool shouldPromptForInitialProfileSelection({
   required bool requireProfileSelectionOnOpen,
 }) {
   return requireProfileSelectionOnOpen || (activeProfile == null && (hasProfiles || accountHasHomeUsers));
+}
+
+@visibleForTesting
+bool shouldContinueAfterInitialProfileSelection({required bool? selected, required Profile? activeProfile}) {
+  return selected == true && activeProfile != null;
 }
 
 /// Recovery-oriented error view shown when the initial Plex sign-in succeeds
