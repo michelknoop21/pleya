@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -195,38 +197,26 @@ class _SeerrDiscoverFilterBarState extends State<SeerrDiscoverFilterBar> {
 }
 
 /// Opens the genre list in the shell's overlay host, or as a bottom sheet on a route that
-/// has no host (the phone's Aanvragen, northstar 19).
+/// has no host (the phone's Aanvragen when it is pushed, northstar 19).
 void showSeerrGenrePicker(
   BuildContext context, {
   required List<SeerrDiscoverGenre> genres,
   required int? selectedId,
   required ValueChanged<int?> onPicked,
 }) {
-  final controller = OverlaySheetController.maybeOf(context);
-  if (controller == null) {
-    showModalBottomSheet<void>(
-      context: context,
+  unawaited(
+    OverlaySheetController.showAdaptive<void>(
+      context,
+      presentation: OverlaySheetPresentation.panel,
       isScrollControlled: true,
       builder: (sheetContext) => _GenrePicker(
         genres: genres,
         selectedId: selectedId,
         onPicked: (id) {
-          Navigator.of(sheetContext).pop();
+          OverlaySheetController.closeAdaptive(sheetContext);
           onPicked(id);
         },
       ),
-    );
-    return;
-  }
-  controller.show<Object?>(
-    presentation: OverlaySheetPresentation.panel,
-    builder: (sheetContext) => _GenrePicker(
-      genres: genres,
-      selectedId: selectedId,
-      onPicked: (id) {
-        controller.close();
-        onPicked(id);
-      },
     ),
   );
 }

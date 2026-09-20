@@ -39,6 +39,11 @@ enum MobileSeerrRequestTone { available, inProgress, waiting, problem }
       label: t.seerr.partiallyAvailable,
       tone: MobileSeerrRequestTone.available,
     ),
+    // Someone else's approved request can already be downloading the title: this one is still waiting.
+    (SeerrRequestStatus.pending, SeerrMediaStatus.processing) => (
+      label: t.seerr.pending,
+      tone: MobileSeerrRequestTone.waiting,
+    ),
     (_, SeerrMediaStatus.processing) => (
       label: '${t.seerr.approved} · ${t.seerr.processing}',
       tone: MobileSeerrRequestTone.inProgress,
@@ -119,11 +124,21 @@ class MobileSeerrMyRequestsSection extends StatefulWidget {
     required this.load,
     required this.onOpenAll,
     required this.onOpenRequest,
+    this.identity,
+    this.refresh = 0,
   });
 
   static const int visibleCount = 3;
 
   final Future<({List<SeerrRequest> items, int totalPages})> Function() load;
+
+  /// Who [load] answers for. A change drops the rows shown and loads again: they belong to
+  /// another account or server.
+  final Object? identity;
+
+  /// Bumped when the viewer comes back from a screen that may have changed their requests.
+  /// The rows stay up while the fresh list loads.
+  final int refresh;
   final VoidCallback onOpenAll;
   final ValueChanged<SeerrRequest> onOpenRequest;
 
@@ -134,6 +149,10 @@ class MobileSeerrMyRequestsSection extends StatefulWidget {
 class _MobileSeerrMyRequestsSectionState extends State<MobileSeerrMyRequestsSection> {
   List<SeerrRequest> _items = const [];
   int _totalPages = 1;
+  bool _failed = false;
+
+  // Bumped per load so a slow answer for an earlier identity cannot land over a newer one.
+  int _loadGen = 0;
 
   @override
   void initState() {
@@ -141,23 +160,42 @@ class _MobileSeerrMyRequestsSectionState extends State<MobileSeerrMyRequestsSect
     unawaited(_load());
   }
 
+  @override
+  void didUpdateWidget(MobileSeerrMyRequestsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final otherIdentity = widget.identity != oldWidget.identity;
+    if (otherIdentity) {
+      _items = const [];
+      _totalPages = 1;
+    }
+    if (otherIdentity || widget.refresh != oldWidget.refresh) unawaited(_load());
+  }
+
   Future<void> _load() async {
+    final gen = ++_loadGen;
     try {
       final result = await widget.load();
-      if (!mounted) return;
+      if (!mounted || gen != _loadGen) return;
       setState(() {
         _items = result.items;
         _totalPages = result.totalPages;
+        _failed = false;
       });
     } catch (e, st) {
-      // A preview above discover: a failure hides the section, not the page.
+      // A preview above discover: a failure costs the section, not the page. Without rows
+      // it says so and offers a retry, so a bad response is not read as "no requests".
       appLogger.w('Seerr: own requests failed to load', error: e, stackTrace: st);
+      if (!mounted || gen != _loadGen) return;
+      setState(() => _failed = true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_items.isEmpty) return const SizedBox.shrink();
+    if (_items.isEmpty) {
+      return _failed ? _RetryRow(onTap: () => unawaited(_load())) : const SizedBox.shrink();
+    }
+    final shown = _items.take(MobileSeerrMyRequestsSection.visibleCount).toList();
     final tk = tokens(context);
     final title = t.seerr.myRequests.toUpperCase();
     return Padding(
@@ -193,12 +231,12 @@ class _MobileSeerrMyRequestsSectionState extends State<MobileSeerrMyRequestsSect
               color: tk.surface,
               child: Column(
                 children: [
-                  for (var i = 0; i < _items.length; i++) ...[
+                  for (var i = 0; i < shown.length; i++) ...[
                     if (i > 0) Divider(height: 1, thickness: 1, color: tk.outline.withValues(alpha: 0.4)),
                     _RequestRow(
                       index: i,
-                      request: _items[i],
-                      onTap: _items[i].tmdbId == null ? null : () => widget.onOpenRequest(_items[i]),
+                      request: shown[i],
+                      onTap: shown[i].tmdbId == null ? null : () => widget.onOpenRequest(shown[i]),
                     ),
                   ],
                 ],
@@ -206,6 +244,37 @@ class _MobileSeerrMyRequestsSectionState extends State<MobileSeerrMyRequestsSect
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RetryRow extends StatelessWidget {
+  const _RetryRow({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Pressable(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  t.seerr.errorGeneric,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: tk.textMuted),
+                ),
+              ),
+              AppIcon(Symbols.refresh_rounded, size: 20, color: tk.textMuted),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -231,7 +300,7 @@ class _RequestRow extends StatelessWidget {
     return AutomationNode(
       id: AutomationIds.requestsMineItem,
       instance: '$index',
-      role: 'button',
+      role: 'list.item',
       label: displayTitle,
       child: Pressable(
         onTap: onTap,

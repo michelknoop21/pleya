@@ -31,7 +31,12 @@ import '../../models/seerr/seerr_media.dart';
 /// filter chips, page-append pagination, and per-row approve / decline / cancel
 /// actions. Fully d-pad focusable for TV.
 class SeerrRequestsScreen extends StatefulWidget {
-  const SeerrRequestsScreen({super.key});
+  /// [mineOnly] scopes the list to the viewer's own requests, also for a manager. The
+  /// phone's "Mijn aanvragen" header opens it that way; the header must not promise the
+  /// viewer's own requests and then show everyone's.
+  const SeerrRequestsScreen({super.key, this.mineOnly = false});
+
+  final bool mineOnly;
 
   @override
   State<SeerrRequestsScreen> createState() => _SeerrRequestsScreenState();
@@ -115,8 +120,9 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     }
     // A non-manager may only see their own requests; without a known userId
     // a null requestedBy would return everyone's requests (privacy leak).
-    final requestedBy = provider.canManageRequests ? null : provider.session?.userId;
-    if (!provider.canManageRequests && requestedBy == null) {
+    final ownOnly = widget.mineOnly || !provider.canManageRequests;
+    final requestedBy = ownOnly ? provider.session?.userId : null;
+    if (ownOnly && requestedBy == null) {
       setState(() {
         _items = const [];
         _loading = false;
@@ -175,7 +181,9 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
 
   Future<void> _loadCounts() async {
     final client = context.read<SeerrProvider>().client;
-    if (client == null) return;
+    // The counts endpoint has no requester filter: next to the viewer's own list they would
+    // be everyone's, so that list shows its tabs without a number.
+    if (client == null || widget.mineOnly) return;
     final counts = await client.getRequestCounts();
     if (mounted) setState(() => _counts = counts);
   }
@@ -251,7 +259,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     if (PlatformDetector.isTV()) return _buildTv(canManage);
 
     return FocusedScrollScaffold(
-      title: Text(canManage ? t.seerr.allRequests : t.seerr.myRequests),
+      title: Text(canManage && !widget.mineOnly ? t.seerr.allRequests : t.seerr.myRequests),
       slivers: [
         SliverToBoxAdapter(child: _filterRow()),
         SliverToBoxAdapter(child: _discoverBar()),
@@ -269,7 +277,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   Widget _buildTv(bool canManage) {
     return TvSeerrRequestsView(
       key: _tvKey,
-      title: canManage ? t.seerr.allRequests : t.seerr.myRequests,
+      title: canManage && !widget.mineOnly ? t.seerr.allRequests : t.seerr.myRequests,
       requests: _items,
       filter: _filter,
       onFilterChanged: _onFilter,
