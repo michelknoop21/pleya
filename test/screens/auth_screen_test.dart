@@ -16,7 +16,9 @@ import 'package:pleya/profiles/plex_home_service.dart';
 import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/profiles/profile_connection_registry.dart';
 import 'package:pleya/screens/auth_screen.dart';
+import 'package:pleya/screens/settings/add_jellyfin_screen.dart';
 import 'package:pleya/screens/tv/tv_auth_view.dart';
+import 'package:pleya/services/apple_tv_native_text_entry.dart';
 import 'package:pleya/services/plex_auth_service.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
@@ -282,6 +284,66 @@ void main() {
       expect(find.byType(AuthScreen), findsOneWidget);
       expect(find.byType(TvAuthView), findsOneWidget);
       expect(tester.binding.focusManager.primaryFocus?.hasFocus, isTrue);
+      expect(tester.binding.takeException(), isNull);
+    });
+
+    testWidgets('real Jellyfin route returns to auth and URL SELECT uses native Apple TV text entry', (tester) async {
+      const nativeChannel = MethodChannel('com.pleya/native_text_entry');
+      final nativeCalls = <MethodCall>[];
+      AppleTvNativeTextEntry.instance.debugResetAvailability();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(nativeChannel, (
+        call,
+      ) async {
+        nativeCalls.add(call);
+        return <String, dynamic>{'text': 'https://jellyfin.example.com', 'submitted': false};
+      });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(nativeChannel, null);
+        AppleTvNativeTextEntry.instance.debugResetAvailability();
+      });
+
+      await pumpAuthScreen(tester, appleTv: true);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(AddJellyfinScreen), findsOneWidget);
+      expect(tester.binding.focusManager.primaryFocus?.debugLabel, 'AddJellyfin:Url');
+      expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsNothing);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(AddJellyfinScreen), findsNothing);
+      expect(find.byType(AuthScreen), findsOneWidget);
+      expect(tester.binding.focusManager.primaryFocus?.hasFocus, isTrue);
+      expect(
+        tester.binding.focusManager.primaryFocus?.debugLabel,
+        anyOf(t.auth.signInWithPlex, t.auth.connectToJellyfin),
+      );
+
+      if (tester.binding.focusManager.primaryFocus?.debugLabel == t.auth.signInWithPlex) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      }
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(AddJellyfinScreen), findsOneWidget);
+      expect(tester.binding.focusManager.primaryFocus?.debugLabel, 'AddJellyfin:Url');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      await tester.pump();
+
+      final editCall = nativeCalls.singleWhere((call) => call.method == 'edit');
+      expect((editCall.arguments as Map)['keyboardType'], 'url');
+      expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsNothing);
       expect(tester.binding.takeException(), isNull);
     });
   });
