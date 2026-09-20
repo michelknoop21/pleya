@@ -89,6 +89,7 @@ under `Notes`.
 - sluit TV5-reviewbevindingen
 - serialize mpv teardown before player exit
 - close requests review findings
+- align watchlist filters and tv actions
 <!-- END GENERATED -->
 
 ### New
