@@ -136,9 +136,15 @@ class SeerrFakeServer {
     final filtered = filter == 'all'
         ? requests
         : requests.where((r) => _statusName(r['status'] as int) == filter).toList();
+    final requestedTake = int.tryParse(query['take'] ?? '');
+    final take = requestedTake != null && requestedTake > 0 ? requestedTake : 20;
+    final requestedSkip = int.tryParse(query['skip'] ?? '');
+    final skip = requestedSkip != null && requestedSkip > 0 ? requestedSkip : 0;
+    final page = filtered.skip(skip).take(take).toList();
+    final pageCount = (filtered.length / take).ceil();
     return {
-      'results': filtered,
-      'pageInfo': {'pages': 1},
+      'results': page,
+      'pageInfo': {'pages': pageCount == 0 ? 1 : pageCount},
     };
   }
 

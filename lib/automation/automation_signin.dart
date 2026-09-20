@@ -13,8 +13,10 @@ import '../profiles/active_profile_provider.dart';
 import '../profiles/profile.dart';
 import '../profiles/profile_connection.dart';
 import '../profiles/profile_registry.dart';
+import '../providers/seerr_provider.dart';
 import '../screens/settings/connection_persistence.dart';
 import '../services/pleya_server_auth_service.dart';
+import '../services/seerr/seerr_constants.dart';
 import 'automation_ids.dart';
 import 'automation_navigation_hooks.dart';
 import 'automation_screen.dart';
@@ -65,6 +67,16 @@ Future<BuildContext?> _waitForRootContext({Duration timeout = const Duration(sec
   final deadline = DateTime.now().add(timeout);
   while (true) {
     final context = rootNavigatorKey.currentContext;
+    if (context != null && context.mounted) return context;
+    if (DateTime.now().isAfter(deadline)) return null;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  }
+}
+
+Future<BuildContext?> _waitForProfileContext({Duration timeout = const Duration(seconds: 5)}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (true) {
+    final context = profileNavigationRegistry.navigator?.context;
     if (context != null && context.mounted) return context;
     if (DateTime.now().isAfter(deadline)) return null;
     await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -182,6 +194,34 @@ Future<Map<String, Object?>> handleAutomationConnectionsSeed(Map<String, Object?
   return _persistConnectionAndBindProfile(context, connection);
 }
 
+/// `POST /v1/seerr/seed`: connects the active profile's [SeerrProvider] to a
+/// fixture Seerr server without driving the Settings form. It deliberately
+/// calls the same test/commit pair as that form; this only makes the
+/// Seerr-gated Aanvragen destination reachable to a touch scenario.
+Future<Map<String, Object?>> handleAutomationSeedSeerr(Map<String, Object?> body) async {
+  final baseUrl = body['base_url'] as String?;
+  final apiKey = body['api_key'] as String?;
+  if (baseUrl == null || apiKey == null) {
+    return {'ok': false, 'error': 'base_url and api_key are required'};
+  }
+  final rejectedBaseUrl = rejectNonLoopbackBaseUrl(baseUrl);
+  if (rejectedBaseUrl != null) return {'ok': false, 'error': rejectedBaseUrl};
+
+  final context = await _waitForProfileContext();
+  if (context == null) {
+    return {'ok': false, 'error': 'no profile session is mounted yet — sign in first'};
+  }
+
+  final provider = context.read<SeerrProvider>();
+  try {
+    final result = await provider.test(baseUrl: baseUrl, mode: SeerrAuthMode.apiKey, apiKey: apiKey);
+    await provider.commit(result.session);
+  } on Exception catch (e) {
+    return {'ok': false, 'error': 'seerr connect failed: $e'};
+  }
+  return {'ok': true};
+}
+
 /// Shared tail of `/v1/signin` and `/v1/connections/seed`: persist
 /// [connection], creating the first local profile if none is active yet
 /// (mirrors `add_pleya_server_screen.dart`'s `_persist()`), then
@@ -263,6 +303,7 @@ const Map<String, NavigationTabId> _screenToTab = {
   // coordinates that shift the moment the tabset changes.
   AutomationIds.screenSeries: NavigationTabId.series,
   AutomationIds.screenMovies: NavigationTabId.movies,
+  AutomationIds.screenRequests: NavigationTabId.requests,
 };
 
 /// `POST /v1/open` body: `{"screen": "screen.discover", "timeoutMs"?}`.

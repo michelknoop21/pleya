@@ -231,6 +231,14 @@ class AutomationIds {
   /// mounts on all three, so one id family covers it everywhere.
   static const String activityRow = 'activity.row';
 
+  /// The presence control in the mobile Home header that opens I7-21's
+  /// approved Activiteit sheet.
+  static const String activityButton = 'activity.button';
+
+  /// I7-21's mobile Activiteit sheet. The stream rows inside it keep using
+  /// [activityRow], shared with desktop and TV.
+  static const String activitySheet = 'activity.sheet';
+
   /// The library page's heading, carrying which library is actually open.
   ///
   /// Hoofdstuk 16's contract is that concrete libraries are visible and
@@ -303,6 +311,12 @@ class AutomationIds {
   /// The Series and Films landing screens (iOS Unified 2026 fase 2, DEC-104).
   static const String screenSeries = 'screen.series';
   static const String screenMovies = 'screen.movies';
+
+  /// The iPhone Aanvragen page (northstar 19).
+  static const String screenRequests = 'screen.requests';
+
+  /// One row of "Mijn aanvragen" on that page, by position (`requests.mine.item[0]`).
+  static const String requestsMineItem = 'requests.mine.item';
 
   /// A landing's header, title line, "Alle series"/"Alle films" action and one
   /// of its rails. All four are instanceable and all four carry the landing's
@@ -426,6 +440,7 @@ class AutomationIds {
     myPleyaLogRow,
     playerPanelTab,
     playerPanelRow,
+    requestsMineItem,
     homeRail,
     homeRailItem,
     landingHeader,
@@ -505,6 +520,8 @@ class AutomationIds {
     {'id': settingsFormField, 'role': 'field', 'instanceable': true},
     {'id': settingsFormButton, 'role': 'button', 'instanceable': true},
     {'id': activityRow, 'role': 'list.item', 'instanceable': true},
+    {'id': activityButton, 'role': 'button', 'instanceable': false},
+    {'id': activitySheet, 'role': 'sheet', 'instanceable': false},
     {'id': playerSurface, 'role': 'surface', 'instanceable': false},
     {'id': playerTitle, 'role': 'region', 'instanceable': false},
     {'id': playerTimeline, 'role': 'region', 'instanceable': false},
@@ -523,6 +540,8 @@ class AutomationIds {
     {'id': homeRailItem, 'role': 'grid.item', 'instanceable': true},
     {'id': screenSeries, 'role': 'screen', 'instanceable': false},
     {'id': screenMovies, 'role': 'screen', 'instanceable': false},
+    {'id': screenRequests, 'role': 'screen', 'instanceable': false},
+    {'id': requestsMineItem, 'role': 'list.item', 'instanceable': true},
     {'id': landingHeader, 'role': 'region', 'instanceable': true},
     {'id': landingHeaderSearch, 'role': 'button', 'instanceable': true},
     {'id': landingHeaderAvatar, 'role': 'image', 'instanceable': true},

@@ -21,10 +21,24 @@ set -uo pipefail
 
 REAL=/usr/bin/xattr
 
-# Takken die nooit in een ondertekende bundel terechtkomen. build/ staat er
-# bewust niet bij: dat is bouwuitvoer die wél in de bundel belandt, en juist
-# daar moeten de attributen weg.
-PRUNE_NAMES=(.git node_modules .dart_tool .fvm)
+# Takken die nooit in een ondertekende bundel terechtkomen. De eerste groep
+# geldt op elke diepte (dependency/build-metadata); de tweede groep alleen aan
+# de projectroot. Dat onderscheid voorkomt dat bijvoorbeeld een toekomstige
+# assetmap met de naam `docs` per ongeluk wordt overgeslagen.
+#
+# `.claude` bevat host-beheerde worktrees en hun volledige build-uitvoer. De
+# root-only groep bevat de overige platforms en ontwikkelartefacten. De iOS-
+# build kan uitsluitend uit de niet-geprunede bronbomen komen: ios/, lib/,
+# assets/, plugins/, shared/ en build/, plus losse rootbestanden uit pubspec.
+# Van build/ blijft daarom alleen build/ios in de scan. Uitvoer voor macOS,
+# tests en release packaging kan niet in de iOS-bundel belanden; build/ios zelf
+# wordt juist wél geschoond.
+PRUNE_NAMES=(.git node_modules .dart_tool .fvm .claude)
+ROOT_PRUNE_NAMES=(
+  .build .context .githooks .github .serena .unlazy Casks
+  android docs fastlane linux macos pleya_server pleya_verify pleya_web
+  scripts server share_server test tool tvos website windows
+)
 
 # Niet-onderschept: exact doorgeven. Dit dekt -l, -p, -w, -c, losse bestanden,
 # en ook Flutter's eigen `xattr -w com.apple.xcode.CreatedByBuildSystem`.
@@ -70,7 +84,10 @@ find_args=()
 for name in "${PRUNE_NAMES[@]}"; do
   find_args+=(-name "$name" -o)
 done
-unset 'find_args[${#find_args[@]}-1]'
+for name in "${ROOT_PRUNE_NAMES[@]}"; do
+  find_args+=(-path "$root/$name" -o)
+done
+find_args+=(-path "$root/build/*" ! -path "$root/build/*/*" ! -path "$root/build/ios")
 
 find "$root" \( "${find_args[@]}" \) -prune -o -print0 \
   > "$tmp/paths" 2> "$tmp/find.err"
@@ -118,6 +135,7 @@ esac
 # sowieso geen informatie.
 grep -v 'No such xattr' "$tmp/xattr.err" \
   | grep -v 'No such file' \
+  | grep -v '^xattr:[[:space:]]*$' \
   | grep -v '^[[:space:]]*$' > "$tmp/real.err" || true
 
 if [ -s "$tmp/real.err" ]; then

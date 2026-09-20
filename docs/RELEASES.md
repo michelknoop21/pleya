@@ -29,9 +29,11 @@ under `Notes`.
 - bronregel en zenderteller onder de Live TV-kop (MOC-17)
 - de Live TV-gids krijgt binnen de shell tien-voet-dichtheid (MOC-17)
 - blijvende detailbalk onder de Live TV-gids (MOC-17)
+- expose mobile activity sheet to Verify (I7-21)
 
 ### Improved
 - bereken showReconnect op één plek in tvTopNavFocusKeys
+- bound iOS xattr scan to bundle inputs
 
 ### Fixed
 - de echte focus volgt een verdwijnende TV-bestemming (FOC1)
@@ -73,6 +75,11 @@ under `Notes`.
 - review-correcties op het layer-owned zoompad
 - drop stale sub-pos zoom compensation and rebuild filter state after a player retry
 - de pillenrij op Alle films/Alle series wrapt in plaats van door de schermrand te lopen
+- skip nested worktrees in iOS xattr scan
+- build the phone Aanvragen page for northstar 19
+- await profile before Seerr seed
+- paginate Seerr requests fixture
+- serialize mpv teardown before player exit
 <!-- END GENERATED -->
 
 ### New

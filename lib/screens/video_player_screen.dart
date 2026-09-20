@@ -1181,6 +1181,15 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     return exitPosition;
   }
 
+  Future<void> _disposePlayerBeforeRoutePop() async {
+    final playerToDispose = player;
+    player = null;
+    _isPlayerInitialized = false;
+    if (playerToDispose == null) return;
+
+    await playerToDispose.dispose();
+  }
+
   /// Handle back button press
   /// For non-host participants in Watch Together, shows leave session confirmation
   Future<void> _handleBackButton() async {
@@ -1216,6 +1225,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
               unawaited(_sendStoppedProgressOnce(positionOverride: exitPosition));
               await _restoreSystemUiAndOrientation();
               if (!mounted) return;
+              await _disposePlayerBeforeRoutePop();
+              if (!mounted) return;
               navigator.pop(true);
             }
           }
@@ -1233,6 +1244,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         // Fired, not awaited — same reason as the leave-session path above.
         unawaited(_sendStoppedProgressOnce(positionOverride: exitPosition));
         await _restoreSystemUiAndOrientation();
+        if (!mounted) return;
+        await _disposePlayerBeforeRoutePop();
         if (!mounted) return;
         navigator.pop(true);
       }
