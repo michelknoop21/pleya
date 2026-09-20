@@ -18,6 +18,7 @@ import 'package:pleya/models/plex/plex_home_user.dart';
 import 'package:pleya/profiles/plex_home_service.dart';
 import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/profiles/profile_connection_registry.dart';
+import 'package:pleya/screens/auth/plex_pin_auth_flow.dart';
 import 'package:pleya/screens/auth_screen.dart';
 import 'package:pleya/screens/settings/add_jellyfin_screen.dart';
 import 'package:pleya/screens/tv/tv_auth_view.dart';
@@ -141,6 +142,9 @@ void main() {
       final screen = tester.widget<AutomationScreen>(find.byType(AutomationScreen));
       expect(screen.id, AutomationIds.screenAuth);
       expect(screen.readiness().isReady, isTrue);
+      expect(tester.widget<PlexPinAuthFlow>(find.byType(PlexPinAuthFlow)).desktopQrSize, 160);
+      expect(find.text('LEYA'), findsOneWidget);
+      expect(find.text('PLEYA'), findsNothing);
       expect(find.byType(TvAuthView), findsOneWidget);
       expect(
         find.ancestor(

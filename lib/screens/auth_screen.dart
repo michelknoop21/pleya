@@ -276,6 +276,10 @@ class _AuthScreenState extends State<AuthScreen> {
       child: Scaffold(
         body: PlexPinAuthFlow(
           onTokenReceived: _connectToAllServersAndNavigate,
+          // The tvOS render surface is scaled 1.85x after Flutter layout. The
+          // desktop default (300) therefore becomes a 555 px QR code and
+          // pushes the retry action through the fixed-height state panel.
+          desktopQrSize: 160,
           autoStartQrOnTV: false,
           onSwitchToJellyfin: _connectToJellyfin,
           authServiceFactory: widget.plexPinAuthServiceFactory,
@@ -437,8 +441,8 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  /// Brand block per the app-intro mockup: logo mark, the PLEYA wordmark and
-  /// the tagline.
+  /// Brand block per the app-intro mockup: the P mark plus LEYA form the
+  /// complete PLEYA wordmark, followed by the tagline.
   Widget _buildBrandHeader(BuildContext context) {
     final textColor = Theme.of(context).colorScheme.onSurface;
     return Column(
@@ -446,7 +450,7 @@ class _AuthScreenState extends State<AuthScreen> {
         const PleyaLogo(size: 96),
         const SizedBox(height: 22),
         Text(
-          'PLEYA',
+          'LEYA',
           textAlign: TextAlign.center,
           style: TextStyle(color: textColor, fontSize: 24, fontWeight: .w800, letterSpacing: 9.6),
         ),
