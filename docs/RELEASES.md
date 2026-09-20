@@ -29,9 +29,12 @@ under `Notes`.
 - bronregel en zenderteller onder de Live TV-kop (MOC-17)
 - de Live TV-gids krijgt binnen de shell tien-voet-dichtheid (MOC-17)
 - blijvende detailbalk onder de Live TV-gids (MOC-17)
+- bouw de eerste-startcompositie
+- verbind authstatussen met de TV-compositie
 
 ### Improved
 - bereken showReconnect op één plek in tvTopNavFocusKeys
+- make Plex flow TV-shellable
 
 ### Fixed
 - de echte focus volgt een verdwijnende TV-bestemming (FOC1)
@@ -73,6 +76,8 @@ under `Notes`.
 - review-correcties op het layer-owned zoompad
 - drop stale sub-pos zoom compensation and rebuild filter state after a player retry
 - de pillenrij op Alle films/Alle series wrapt in plaats van door de schermrand te lopen
+- de volumeversterking wordt een gain-stage in de loudnessketen
+- pas QR en woordmerk in authpaneel
 <!-- END GENERATED -->
 
 ### New
