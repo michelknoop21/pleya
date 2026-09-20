@@ -20,6 +20,26 @@ import '../../utils/app_logger.dart';
 import '../../utils/error_message_utils.dart';
 import '../../utils/platform_detector.dart';
 
+enum PlexPinAuthVisualState { initial, waiting, qr, error, timedOut }
+
+class PlexPinAuthShellScope {
+  const PlexPinAuthShellScope({
+    required this.state,
+    required this.busy,
+    required this.activeBody,
+    required this.startQr,
+    required this.switchToJellyfin,
+  });
+
+  final PlexPinAuthVisualState state;
+  final bool busy;
+  final Widget? activeBody;
+  final VoidCallback startQr;
+  final VoidCallback? switchToJellyfin;
+}
+
+typedef PlexPinAuthShellBuilder = Widget Function(BuildContext context, PlexPinAuthShellScope scope);
+
 /// Self-contained Plex PIN/QR auth flow.
 ///
 /// Renders the polling UI (QR code or browser-waiting spinner) once an
@@ -80,10 +100,20 @@ class PlexPinAuthFlow extends StatefulWidget {
   /// passes nothing and keeps its current behaviour.
   final VoidCallback? onSwitchToJellyfin;
 
+  /// Optional presentation shell for surfaces that own their surrounding
+  /// actions. The callbacks remain wired to this flow so callers cannot start
+  /// a second PIN state machine or bypass attempt cancellation.
+  final PlexPinAuthShellBuilder? shellBuilder;
+
   /// Injection seam for widget tests that need to drive the polling UI
   /// without reaching plex.tv. Production always gets [PlexAuthService.create].
   @visibleForTesting
   final Future<PlexAuthService> Function()? authServiceFactory;
+
+  /// Keeps the real five-minute Plex window in production while allowing
+  /// widget tests to reach the timeout presentation deterministically.
+  @visibleForTesting
+  final Duration pollTimeout;
 
   const PlexPinAuthFlow({
     super.key,
@@ -94,7 +124,9 @@ class PlexPinAuthFlow extends StatefulWidget {
     this.initialUseQr,
     this.initialButtonsBuilder,
     this.onSwitchToJellyfin,
+    this.shellBuilder,
     this.authServiceFactory,
+    this.pollTimeout = const Duration(minutes: 5),
   });
 
   @override
@@ -177,7 +209,11 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
         }
       }
 
-      final token = await svc.pollPinUntilClaimed(pinId, shouldCancel: () => attemptId != _attemptId);
+      final token = await svc.pollPinUntilClaimed(
+        pinId,
+        timeout: widget.pollTimeout,
+        shouldCancel: () => attemptId != _attemptId,
+      );
       if (!_isCurrentAttempt(attemptId)) return;
 
       if (token == null) {
@@ -259,7 +295,7 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
   /// the user gets a retry and — when the parent offered one — a route to the
   /// other backend, because "the PIN was never claimed" usually means they were
   /// never going to succeed on Plex in the first place.
-  Widget _buildErrorBlock(ThemeData theme) {
+  Widget _buildErrorBlock(ThemeData theme, {bool includeJellyfinEscape = true}) {
     return Column(
       mainAxisSize: .min,
       crossAxisAlignment: .stretch,
@@ -279,7 +315,7 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
               child: Text(t.auth.tryAgain),
             ),
           ),
-          if (widget.onSwitchToJellyfin != null) ...[
+          if (includeJellyfinEscape && widget.onSwitchToJellyfin != null) ...[
             const SizedBox(height: 8),
             FocusableButton(
               onPressed: _switchToJellyfin,
@@ -327,6 +363,43 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final shellBuilder = widget.shellBuilder;
+
+    if (shellBuilder != null) {
+      final isDesktop = MediaQuery.sizeOf(context).width > 700;
+      final Widget? activeBody;
+      final PlexPinAuthVisualState state;
+      if (_isPolling) {
+        if (_useQr && _qrAuthUrl != null) {
+          activeBody = _buildQr(
+            theme,
+            isDesktop ? widget.desktopQrSize : widget.mobileQrSize,
+            includeJellyfinEscape: false,
+          );
+          state = PlexPinAuthVisualState.qr;
+        } else {
+          activeBody = _buildBrowserWaiting(theme, includeJellyfinEscape: false);
+          state = PlexPinAuthVisualState.waiting;
+        }
+      } else if (_errorMessage != null) {
+        activeBody = _buildErrorBlock(theme, includeJellyfinEscape: false);
+        state = _timedOut ? PlexPinAuthVisualState.timedOut : PlexPinAuthVisualState.error;
+      } else {
+        activeBody = null;
+        state = PlexPinAuthVisualState.initial;
+      }
+
+      return shellBuilder(
+        context,
+        PlexPinAuthShellScope(
+          state: state,
+          busy: _authService == null,
+          activeBody: activeBody,
+          startQr: () => _start(useQr: true),
+          switchToJellyfin: widget.onSwitchToJellyfin == null ? null : _switchToJellyfin,
+        ),
+      );
+    }
 
     if (_isPolling) {
       final isDesktop = MediaQuery.sizeOf(context).width > 700;
@@ -371,8 +444,8 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
     );
   }
 
-  Widget _buildQr(ThemeData theme, double qrSize) {
-    final jellyfinEscape = _buildJellyfinEscape();
+  Widget _buildQr(ThemeData theme, double qrSize, {bool includeJellyfinEscape = true}) {
+    final jellyfinEscape = includeJellyfinEscape ? _buildJellyfinEscape() : null;
     return Column(
       mainAxisSize: .min,
       children: [
@@ -414,8 +487,8 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
     );
   }
 
-  Widget _buildBrowserWaiting(ThemeData theme) {
-    final jellyfinEscape = _buildJellyfinEscape();
+  Widget _buildBrowserWaiting(ThemeData theme, {bool includeJellyfinEscape = true}) {
+    final jellyfinEscape = includeJellyfinEscape ? _buildJellyfinEscape() : null;
     return Column(
       mainAxisSize: .min,
       children: [
