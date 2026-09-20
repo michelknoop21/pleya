@@ -33,6 +33,7 @@ class _SeerrRowGridScreenState extends State<SeerrRowGridScreen> {
   int _totalPages = 1;
   bool _loading = true;
   bool _loadingMore = false;
+  bool _loadMoreFailed = false;
   bool _errored = false;
   SeerrErrorKind _errorKind = SeerrErrorKind.generic;
 
@@ -57,7 +58,10 @@ class _SeerrRowGridScreenState extends State<SeerrRowGridScreen> {
       });
     } else {
       if (_loadingMore || !_hasMore) return;
-      setState(() => _loadingMore = true);
+      setState(() {
+        _loadingMore = true;
+        _loadMoreFailed = false;
+      });
     }
     try {
       final next = reset ? 1 : _page + 1;
@@ -69,12 +73,14 @@ class _SeerrRowGridScreenState extends State<SeerrRowGridScreen> {
         _totalPages = result.totalPages;
         _loading = false;
         _loadingMore = false;
+        _loadMoreFailed = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _loading = false;
         _loadingMore = false;
+        _loadMoreFailed = !reset;
         if (reset) {
           _errored = true;
           _errorKind = seerrErrorKindOf(e);
@@ -118,6 +124,7 @@ class _SeerrRowGridScreenState extends State<SeerrRowGridScreen> {
             onTap: _openDetail,
             hasMore: _hasMore,
             loadingMore: _loadingMore,
+            loadMoreFailed: _loadMoreFailed,
             onLoadMore: () => unawaited(_load()),
           ),
       ],

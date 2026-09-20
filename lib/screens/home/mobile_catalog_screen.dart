@@ -401,20 +401,14 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     );
   }
 
-  /// Sources, Filters and Sort on one line, onto a second one when they no
-  /// longer fit. A horizontally scrolling row let the third pill run off the
-  /// screen edge instead, sliced in half: Films ("Alle bronnen" + "Recent
-  /// toegevoegd") overruns an iPhone by some 18pt, where Series with its
-  /// shorter labels happened to fit, and the two screens are the same widget.
-  /// Wrapping degrades the same way at any text scale and in any language —
-  /// squeezing the sort pill instead would have it lose its label first and
-  /// its tap target next, exactly when the text is largest.
+  /// Sources, Filters and Sort use the same compact line for Movies and Series.
+  /// Long labels scroll as a group instead of making one catalogue two rows
+  /// high while the other stays one row high.
   Widget _buildChips(BuildContext sheetContext, UnifiedCatalogFilterSelection filters) {
-    return Padding(
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: mobileRailInset),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+      child: Row(
         children: [
           AutomationNode(
             id: AutomationIds.catalogChipSources,
@@ -427,6 +421,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
               onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.servers),
             ),
           ),
+          const SizedBox(width: 8),
           AutomationNode(
             id: AutomationIds.catalogChipFilters,
             instance: widget.kind.automationInstance,
@@ -439,6 +434,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
               onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.status),
             ),
           ),
+          const SizedBox(width: 8),
           AutomationNode(
             id: AutomationIds.catalogChipSort,
             instance: widget.kind.automationInstance,

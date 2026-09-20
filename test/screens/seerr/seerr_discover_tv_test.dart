@@ -249,5 +249,61 @@ void main() {
 
       expect(tester.getRect(find.byType(SeerrPosterCard).first).left, closeTo(8, 0.5));
     });
+
+    testWidgets('a phone shows three posters per row', (tester) async {
+      tester.view.physicalSize = const Size(1179, 2556);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            theme: monoTheme(dark: true).copyWith(platform: TargetPlatform.iOS),
+            home: Scaffold(
+              body: CustomScrollView(
+                slivers: [
+                  buildSeerrGridSliver(items: [for (var i = 0; i < 6; i++) _media(i)], onTap: (_) {}),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final cards = find.byType(SeerrPosterCard);
+      expect(tester.getTopLeft(cards.at(0)).dy, tester.getTopLeft(cards.at(2)).dy);
+      expect(tester.getTopLeft(cards.at(3)).dy, greaterThan(tester.getTopLeft(cards.at(0)).dy));
+    });
+
+    testWidgets('building the trailing grid row requests the next page automatically', (tester) async {
+      var loads = 0;
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            theme: monoTheme(dark: true),
+            home: Scaffold(
+              body: CustomScrollView(
+                slivers: [
+                  buildSeerrGridSliver(
+                    items: [for (var i = 0; i < 3; i++) _media(i)],
+                    onTap: (_) {},
+                    hasMore: true,
+                    onLoadMore: () => loads++,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(loads, 1);
+      expect(find.byType(SeerrLoadMoreTile), findsNothing, reason: 'normal pagination no longer needs a button');
+
+      await tester.pump();
+      expect(loads, 1, reason: 'the same sentinel must not start duplicate requests');
+    });
   });
 }

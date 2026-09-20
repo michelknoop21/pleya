@@ -51,6 +51,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   int _totalPages = 1;
   bool _loading = true;
   bool _loadingMore = false;
+  bool _loadMoreFailed = false;
   bool _initialized = false;
   String? _error;
 
@@ -138,6 +139,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
         _error = null;
       } else {
         _loadingMore = true;
+        _loadMoreFailed = false;
       }
     });
     try {
@@ -149,6 +151,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
         _totalPages = result.totalPages;
         _loading = false;
         _loadingMore = false;
+        _loadMoreFailed = false;
         _error = null;
       });
 
@@ -167,6 +170,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
       setState(() {
         _loading = false;
         _loadingMore = false;
+        _loadMoreFailed = !reset;
         _error = _errorText(e);
       });
     } catch (_) {
@@ -174,6 +178,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
       setState(() {
         _loading = false;
         _loadingMore = false;
+        _loadMoreFailed = !reset;
         _error = t.seerr.errorGeneric;
       });
     }
@@ -447,8 +452,15 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     final showLoadMore = _page < _totalPages && !_loading;
     return [
       SliverList.builder(
-        itemCount: _items.length,
+        itemCount: _items.length + (showLoadMore ? 1 : 0),
         itemBuilder: (context, index) {
+          if (index == _items.length) {
+            return SeerrAutoLoadMoreListTile(
+              loading: _loadingMore,
+              failed: _loadMoreFailed,
+              onLoadMore: () => unawaited(_load()),
+            );
+          }
           final req = _items[index];
           final isOwn = ownUserId != null && req.requestedById == ownUserId;
           final actionable = canManage && req.isPending;
@@ -460,16 +472,6 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
           );
         },
       ),
-      if (showLoadMore)
-        SliverToBoxAdapter(
-          child: FocusableListTile(
-            leading: _loadingMore
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : const AppIcon(Symbols.expand_more_rounded),
-            title: Text(t.seerr.loadMore),
-            onTap: _loadingMore ? null : () => _load(),
-          ),
-        ),
     ];
   }
 
@@ -481,6 +483,46 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
           child: Text(message, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
         ),
       ),
+    );
+  }
+}
+
+/// Starts the next request page when its trailing row enters the viewport.
+/// A failed attempt becomes an explicit retry action and never loops by itself.
+class SeerrAutoLoadMoreListTile extends StatefulWidget {
+  const SeerrAutoLoadMoreListTile({super.key, required this.loading, required this.failed, required this.onLoadMore});
+
+  final bool loading;
+  final bool failed;
+  final VoidCallback onLoadMore;
+
+  @override
+  State<SeerrAutoLoadMoreListTile> createState() => _SeerrAutoLoadMoreListTileState();
+}
+
+class _SeerrAutoLoadMoreListTileState extends State<SeerrAutoLoadMoreListTile> {
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.loading && !widget.failed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onLoadMore();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.failed) {
+      return FocusableListTile(
+        leading: const AppIcon(Symbols.refresh_rounded),
+        title: Text(t.common.retry),
+        onTap: widget.onLoadMore,
+      );
+    }
+    return const Padding(
+      padding: EdgeInsets.all(20),
+      child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
     );
   }
 }

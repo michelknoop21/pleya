@@ -176,17 +176,32 @@ class SeerrClient {
 
   /// [watchProvider] is a TMDB provider id (Netflix, Disney+, …). It only means
   /// anything together with [watchRegion], because availability is per country.
-  Future<SeerrMediaPage> discoverMovies({int page = 1, int? genre, int? watchProvider, String? watchRegion}) =>
-      _mediaPage('/discover/movies', {
-        'page': page,
-        'genre': ?genre,
-        'watchProviders': ?watchProvider?.toString(),
-        'watchRegion': ?watchRegion,
-      });
-  Future<SeerrMediaPage> discoverTv({int page = 1, int? genre, int? watchProvider, String? watchRegion}) => _mediaPage(
-    '/discover/tv',
-    {'page': page, 'genre': ?genre, 'watchProviders': ?watchProvider?.toString(), 'watchRegion': ?watchRegion},
-  );
+  Future<SeerrMediaPage> discoverMovies({
+    int page = 1,
+    int? genre,
+    int? watchProvider,
+    String? watchRegion,
+    String? sortBy,
+  }) => _mediaPage('/discover/movies', {
+    'page': page,
+    'genre': ?genre,
+    'watchProviders': ?watchProvider?.toString(),
+    'watchRegion': ?watchRegion,
+    'sortBy': ?sortBy,
+  });
+  Future<SeerrMediaPage> discoverTv({
+    int page = 1,
+    int? genre,
+    int? watchProvider,
+    String? watchRegion,
+    String? sortBy,
+  }) => _mediaPage('/discover/tv', {
+    'page': page,
+    'genre': ?genre,
+    'watchProviders': ?watchProvider?.toString(),
+    'watchRegion': ?watchRegion,
+    'sortBy': ?sortBy,
+  });
 
   /// `GET /watchproviders/{movies|tv}` — the streaming services this region has,
   /// ordered by TMDB display priority. Empty list on any hiccup: the row simply

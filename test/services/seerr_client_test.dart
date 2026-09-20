@@ -202,6 +202,32 @@ void main() {
       await client.getRequests();
       expect(seen!.queryParameters.containsKey('requestedBy'), isFalse);
     });
+
+    test('discover threads filters and server-side sort into movie and TV queries', () async {
+      final seen = <Uri>[];
+      final client = SeerrClient(
+        _session(),
+        httpClient: MockClient((request) async {
+          seen.add(request.url);
+          return _json({'page': 1, 'totalPages': 1, 'results': []}, 200);
+        }),
+      );
+
+      await client.discoverMovies(genre: 28, watchProvider: 337, watchRegion: 'NL', sortBy: 'vote_average.desc');
+      await client.discoverTv(genre: 18, sortBy: 'first_air_date.desc');
+
+      expect(seen[0].path, endsWith('/discover/movies'));
+      expect(seen[0].queryParameters, {
+        'page': '1',
+        'genre': '28',
+        'watchProviders': '337',
+        'watchRegion': 'NL',
+        'sortBy': 'vote_average.desc',
+      });
+      expect(seen[1].path, endsWith('/discover/tv'));
+      expect(seen[1].queryParameters['genre'], '18');
+      expect(seen[1].queryParameters['sortBy'], 'first_air_date.desc');
+    });
   });
 
   group('service server detail', () {

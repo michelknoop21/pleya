@@ -14,7 +14,11 @@ setup:
 steps:
   - wait_until: {id: screen.requests, timeout: 15000}
   - settle: 2000
-  - assert: {id: "requests.mine.item[0]", insideViewport: true}
-  - assert: {id: "requests.mine.item[1]", insideViewport: true}
-  - assert: {id: "requests.mine.item[2]", insideViewport: true}
+  - assert: {id: "catalog.chip.sources[requests]", insideViewport: true}
+  - assert: {id: "catalog.chip.filters[requests]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: "catalog.chip.sort[requests]", insideViewport: true}
+  - assert: {id: "requests.mine.item[entry]", insideViewport: true}
+  - assert: {id: "catalog.count[requests]", insideViewport: true}
+  - assert: {id: "catalog.grid.item[requests.0]", insideViewport: true, sameRow: "catalog.grid.item[requests.1]"}
+  - assert: {id: "catalog.grid.item[requests.1]", sameRow: "catalog.grid.item[requests.2]"}
   - snapshot: requests-northstar

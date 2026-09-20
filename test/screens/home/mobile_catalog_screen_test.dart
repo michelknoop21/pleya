@@ -36,7 +36,6 @@ import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/widgets/focusable_filter_chip.dart';
 import 'package:pleya/widgets/mobile/mobile_catalog_sort_sheet.dart';
-import 'package:pleya/widgets/mobile/mobile_media_rail.dart' show mobileRailInset;
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:provider/provider.dart';
 
@@ -394,13 +393,7 @@ void main() {
     expect(find.text(mobileCatalogSortLabel(UnifiedCatalogSort.recentlyAdded)), findsOneWidget);
   });
 
-  // Michel op iOS, build 280: bij Alle films sneed de schermrand de derde pil
-  // doormidden, terwijl Alle series er netjes uitzag. Geen verschil in code —
-  // beide schermen zijn dezelfde widget — maar wel in labellengte: "Alle
-  // bronnen" plus "Recent toegevoegd" is breder dan een iPhone, en de rij
-  // scrolde horizontaal, dus de derde pil lag half buiten beeld. Hij zakt nu
-  // naar een tweede regel in plaats van door de rand te worden afgesneden.
-  testWidgets('no chip is cut off by the screen edge when the labels run long', (tester) async {
+  testWidgets('long catalog controls stay on one horizontally scrollable line', (tester) async {
     await tester.runAsync(
       () => UnifiedCatalogQueryStore.write(
         MediaKind.movie,
@@ -412,14 +405,21 @@ void main() {
     await pumpCatalog(tester, width: width);
     await settle(tester);
 
-    for (final chip in tester.widgetList<FocusableFilterChip>(find.byType(FocusableFilterChip))) {
-      final finder = find.byWidget(chip);
-      expect(
-        tester.getTopRight(finder).dx,
-        lessThanOrEqualTo(width - mobileRailInset + 0.5),
-        reason: 'chip "${chip.label}" runs past the right edge',
-      );
-    }
+    final chips = tester.widgetList<FocusableFilterChip>(find.byType(FocusableFilterChip)).toList();
+    final tops = chips.map((chip) => tester.getTopLeft(find.byWidget(chip)).dy).toSet();
+    expect(tops, hasLength(1), reason: 'Movies and Series use one compact control line');
+
+    final scroller = find.ancestor(
+      of: find.byType(FocusableFilterChip).first,
+      matching: find.byType(SingleChildScrollView),
+    );
+    expect(scroller, findsOneWidget);
+
+    final first = find.byWidget(chips.first);
+    final before = tester.getTopLeft(first).dx;
+    await tester.drag(scroller, const Offset(-80, 0));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(first).dx, lessThan(before));
   });
 
   testWidgets('every chip stays within the screen at large accessibility text scales', (tester) async {
@@ -428,14 +428,11 @@ void main() {
     await settle(tester);
 
     expect(tester.takeException(), isNull);
-    for (final chip in tester.widgetList<FocusableFilterChip>(find.byType(FocusableFilterChip))) {
-      final finder = find.byWidget(chip);
-      expect(
-        tester.getTopRight(finder).dx,
-        lessThanOrEqualTo(width - mobileRailInset + 0.5),
-        reason: 'chip "${chip.label}" runs past the right edge at 300% text',
-      );
-    }
+    final tops = tester
+        .widgetList<FocusableFilterChip>(find.byType(FocusableFilterChip))
+        .map((chip) => tester.getTopLeft(find.byWidget(chip)).dy)
+        .toSet();
+    expect(tops, hasLength(1));
   });
 
   // The other half of the same rule: wrapping is what happens when there is no

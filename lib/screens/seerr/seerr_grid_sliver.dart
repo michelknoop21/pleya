@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../models/seerr/seerr_media.dart';
 import '../../services/settings_service.dart';
+import '../../utils/platform_detector.dart';
 import '../../widgets/media_grid_delegate.dart';
 import '../../widgets/seerr_poster_card.dart';
 import '../../widgets/settings_builder.dart';
@@ -26,10 +29,12 @@ Widget buildSeerrGridSliver({
   required ValueChanged<SeerrMedia> onTap,
   bool hasMore = false,
   bool loadingMore = false,
+  bool loadMoreFailed = false,
   VoidCallback? onLoadMore,
   FocusNode? firstItemFocusNode,
   VoidCallback? onExitLeft,
   VoidCallback? onExitTop,
+  String? automationInstance,
 }) {
   return SliverPadding(
     padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
@@ -46,7 +51,7 @@ Widget buildSeerrGridSliver({
               usePaddingAware: true,
               horizontalPadding: 16,
             );
-            final cols = geometry.columnCount;
+            final cols = PlatformDetector.isPhone(context) ? 3 : geometry.columnCount;
             final w = (crossAxisExtent - geometry.spacing * (cols - 1)) / cols;
             final cellHeight = w * 3 / 2 + seerrCardTextExtent;
             return SliverGrid(
@@ -58,18 +63,28 @@ Widget buildSeerrGridSliver({
               ),
               delegate: SliverChildBuilderDelegate((context, index) {
                 if (index >= items.length) {
-                  return SeerrLoadMoreTile(loading: loadingMore, onActivate: onLoadMore ?? () {}, width: w);
+                  return _SeerrAutoLoadMoreTile(
+                    loading: loadingMore,
+                    failed: loadMoreFailed,
+                    onLoadMore: onLoadMore ?? () {},
+                    width: w,
+                  );
                 }
                 final media = items[index];
-                return SeerrPosterCard(
-                  media: media,
-                  width: w,
-                  focusNode: index == 0 ? firstItemFocusNode : null,
-                  onTap: () => onTap(media),
-                  // A guaranteed way out of the grid's top-left corner, kept
-                  // for the keyboard-driven desktop layouts this still serves.
-                  onNavigateLeft: index % cols == 0 ? onExitLeft : null,
-                  onNavigateUp: index < cols ? onExitTop : null,
+                return AutomationNode(
+                  id: automationInstance == null ? null : AutomationIds.catalogGridItem,
+                  instance: automationInstance == null ? null : '$automationInstance.$index',
+                  role: 'grid.item',
+                  child: SeerrPosterCard(
+                    media: media,
+                    width: w,
+                    focusNode: index == 0 ? firstItemFocusNode : null,
+                    onTap: () => onTap(media),
+                    // A guaranteed way out of the grid's top-left corner, kept
+                    // for the keyboard-driven desktop layouts this still serves.
+                    onNavigateLeft: index % cols == 0 ? onExitLeft : null,
+                    onNavigateUp: index < cols ? onExitTop : null,
+                  ),
                 );
               }, childCount: items.length + (hasMore ? 1 : 0)),
             );
@@ -78,4 +93,62 @@ Widget buildSeerrGridSliver({
       },
     ),
   );
+}
+
+class _SeerrAutoLoadMoreTile extends StatefulWidget {
+  const _SeerrAutoLoadMoreTile({
+    required this.loading,
+    required this.failed,
+    required this.onLoadMore,
+    required this.width,
+  });
+
+  final bool loading;
+  final bool failed;
+  final VoidCallback onLoadMore;
+  final double width;
+
+  @override
+  State<_SeerrAutoLoadMoreTile> createState() => _SeerrAutoLoadMoreTileState();
+}
+
+class _SeerrAutoLoadMoreTileState extends State<_SeerrAutoLoadMoreTile> {
+  bool _requested = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _requestOnceVisible();
+  }
+
+  void _requestOnceVisible() {
+    if (_requested || widget.loading || widget.failed) return;
+    _requested = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onLoadMore();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _SeerrAutoLoadMoreTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A client-side availability filter can hide every item in a fetched page.
+    // The sentinel then stays at the same grid index, so explicitly arm it for
+    // the following page once the previous request has finished.
+    if (oldWidget.loading && !widget.loading && !widget.failed) {
+      _requested = false;
+      _requestOnceVisible();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.failed) {
+      return SeerrLoadMoreTile(loading: false, onActivate: widget.onLoadMore, width: widget.width);
+    }
+    return SizedBox(
+      width: widget.width,
+      child: const Center(child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2))),
+    );
+  }
 }

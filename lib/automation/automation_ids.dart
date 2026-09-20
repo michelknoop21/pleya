@@ -387,10 +387,12 @@ class AutomationIds {
   /// order) already varies with the group's own state.
   static const String sheetContextMenuItem = 'sheet.context_menu.item';
 
-  /// The Alle films/Alle series catalogue screens (iOS Unified 2026 fase 3,
+  /// The Alle films/Alle series catalogue screens and the matching Aanvragen
+  /// phone catalog (iOS Unified 2026 fase 3,
   /// `docs/ios-unified-2026-fase3-plan.md`). Two separate consts rather than
   /// one instanceable id, the same choice [screenSeries]/[screenMovies] made:
-  /// each screen is pushed on its own, kind is the whole identity.
+  /// each screen is pushed on its own, kind is the whole identity. Aanvragen
+  /// reuses the instanceable catalog controls with the `requests` instance.
   static const String screenCatalogMovies = 'screen.catalog_movies';
   static const String screenCatalogSeries = 'screen.catalog_series';
 
