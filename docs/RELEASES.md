@@ -32,6 +32,7 @@ under `Notes`.
 - expose mobile activity sheet to Verify (I7-21)
 - bouw de eerste-startcompositie
 - verbind authstatussen met de TV-compositie
+- unify mobile catalog filters
 
 ### Improved
 - bereken showReconnect op één plek in tvTopNavFocusKeys
