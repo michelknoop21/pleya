@@ -99,7 +99,7 @@ packages:
       path: "."
       ref: b4d36f88bb365faaf308ff26be7ade49bbaec859
       resolved-ref: b4d36f88bb365faaf308ff26be7ade49bbaec859
-      url: "https://github.com/edde746/background_downloader"
+      url: "https://github.com/michelknoop21/background_downloader"
     source: git
     version: "9.5.4"
   boolean_selector:
