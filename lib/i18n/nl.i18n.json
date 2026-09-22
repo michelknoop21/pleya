@@ -1332,6 +1332,7 @@
     "syncRuleUpdated": "Synchronisatieregel bijgewerkt",
     "syncRuleRemoved": "Synchronisatieregel verwijderd",
     "syncedNewEpisodes": "${count} nieuwe afleveringen gesynchroniseerd voor ${title}",
+    "syncedNewEpisodesAcrossShows": "${count} nieuwe afleveringen gesynchroniseerd voor ${shows} series",
     "activeSyncRules": "Synchronisatieregels",
     "noSyncRules": "Geen synchronisatieregels",
     "manageSyncRule": "Synchronisatie beheren",

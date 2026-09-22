@@ -601,21 +601,28 @@ class MediaContextMenuState extends State<MediaContextMenu> {
           final watched = selected == 'watch';
           final item = mediaItem;
           if (item == null) break;
-          final isOffline = context.read<OfflineModeProvider>().isOffline;
-          if (isOffline && item.serverId != null) {
-            // Queue for later sync — the offline provider emits the WatchStateEvent.
-            await WatchActions.setWatched(context, item, watched: watched, offline: true);
-            if (context.mounted) {
-              showAppSnackBar(
-                context,
-                watched ? t.messages.markedAsWatchedOffline : t.messages.markedAsUnwatchedOffline,
-              );
-              _notifyRefresh(item.id);
+          // The offline/online decision belongs to [WatchActions]: it is per
+          // server. Answering it here as well, app-wide, is how a mark for a
+          // server that was down was sent to that server anyway and lost
+          // whenever some other server happened to be up.
+          try {
+            final outcome = await WatchActions.setWatched(context, item, watched: watched);
+            if (!context.mounted) break;
+            switch (outcome) {
+              case WatchMarkOutcome.queuedOffline:
+                showAppSnackBar(
+                  context,
+                  watched ? t.messages.markedAsWatchedOffline : t.messages.markedAsUnwatchedOffline,
+                );
+                _notifyRefresh(item.id);
+              case WatchMarkOutcome.marked:
+                showSuccessSnackBar(context, watched ? t.messages.markedAsWatched : t.messages.markedAsUnwatched);
+                _notifyRefresh(item.id);
+              case WatchMarkOutcome.skipped:
+                break;
             }
-          } else {
-            await _executeAction(context, () async {
-              await WatchActions.setWatched(context, item, watched: watched, offline: false);
-            }, watched ? t.messages.markedAsWatched : t.messages.markedAsUnwatched);
+          } catch (e) {
+            if (context.mounted) showErrorSnackBar(context, friendlyError(e));
           }
           break;
 
@@ -796,21 +803,6 @@ class MediaContextMenuState extends State<MediaContextMenu> {
           destructive: action.destructive,
         ),
     ];
-  }
-
-  /// Execute an action with error handling and refresh
-  Future<void> _executeAction(BuildContext context, Future<void> Function() action, String successMessage) async {
-    try {
-      await action();
-      if (context.mounted) {
-        showSuccessSnackBar(context, successMessage);
-        _notifyRefresh(_itemId());
-      }
-    } catch (e) {
-      if (context.mounted) {
-        showErrorSnackBar(context, friendlyError(e));
-      }
-    }
   }
 
   /// Plex-only: an item is unmatched when its [MediaItem.guid] is missing or

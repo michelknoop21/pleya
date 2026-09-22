@@ -100,6 +100,21 @@ class PleyaProfileLanguagePreferenceStore {
     });
   }
 
+  /// A write the viewer made on the language page, which closes the seed.
+  ///
+  /// From that edit the rows are theirs, including a deliberate "use the
+  /// global preference" that puts one back to empty.
+  /// [PleyaProfileLanguagePreferences.isUnset] cannot tell that apart from
+  /// never-touched, so the latch has to be set at the edit itself. Without
+  /// this, a viewer who cleared every row and a server account signing in
+  /// months later look identical to [seedFromServerProfile], and it overwrites
+  /// the deliberate "no opinion".
+  static Future<void> updateFromViewer(
+    PleyaProfileLanguagePreferences Function(PleyaProfileLanguagePreferences current) apply,
+  ) {
+    return update((current) => apply(current).copyWith(seeded: true));
+  }
+
   /// Bring this profile's preference up to date once: move the two legacy
   /// device switches onto it, then seed the language rows from a server profile
   /// if one happens to be available.
@@ -133,12 +148,18 @@ class PleyaProfileLanguagePreferenceStore {
   static Future<void> seedFromServerProfile(MediaServerUserProfile? profile) {
     return update((current) {
       if (current.seeded) return current;
-      // No server profile to seed from — a Pleya-Server-only setup, or an
-      // offline start. Still mark the profile as initialised: the question is
-      // "has this profile been through its one-time setup", not "did that setup
-      // find something", and leaving it open would let a Plex account signing
-      // in months later overwrite rows the viewer had edited by hand.
-      if (profile == null || !current.isUnset) return current.copyWith(seeded: true);
+      // Nothing to seed *from* is not the same as having been seeded. The
+      // settings page calls this with whatever `UserProfileProvider` holds at
+      // that moment, which is null on an offline start, while the fetch is in
+      // flight, and after it failed. Closing the seed there spent the single
+      // chance without taking anything over, and no later call gives it back:
+      // both doors are guarded on this flag. The viewer kept the app defaults
+      // instead of the languages their server profile already carried.
+      if (profile == null) return current;
+      // The viewer has set something of their own. That outranks any server,
+      // and the seed's job is over: a Plex account signing in months later must
+      // not overwrite rows edited by hand.
+      if (!current.isUnset) return current.copyWith(seeded: true);
 
       final audio = _firstNonEmpty([profile.defaultAudioLanguage, ...?profile.defaultAudioLanguages]);
       final subtitles = _firstNonEmpty([profile.defaultSubtitleLanguage, ...?profile.defaultSubtitleLanguages]);
@@ -169,16 +190,23 @@ class PleyaProfileLanguagePreferenceStore {
   /// and lid 9 makes this page their only owner, so the old prefs become the
   /// migration source and nothing else.
   ///
-  /// Runs at most once per profile, keyed on the same [seeded] flag as the
-  /// server-profile seed: both answer "has this profile been initialised", and
-  /// splitting them would let a re-run undo a deliberate change.
+  /// Runs at most once per profile, on its own latch
+  /// ([PleyaProfileLanguagePreferences.migratedLegacySwitches]).
+  ///
+  /// It used to share the seed's flag, on the reasoning that both answer "has
+  /// this profile been initialised". They do not: this one is finished the
+  /// first time it runs, while the seed cannot finish until a server profile
+  /// exists. A re-run here would put a legacy device pref back over a switch
+  /// the viewer has since changed on the page, which is exactly what the shared
+  /// flag was protecting against.
   static Future<void> migrateLegacySwitches() {
     return update((current) {
-      if (current.seeded) return current;
+      if (current.migratedLegacySwitches) return current;
       final settings = SettingsService.instance;
       return current.copyWith(
         rememberPerSeries: settings.read(SettingsService.rememberTrackSelections),
         mirrorToPlex: settings.read(SettingsService.writeSeriesLanguageToServer),
+        migratedLegacySwitches: true,
       );
     });
   }

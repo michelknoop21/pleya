@@ -40,6 +40,7 @@ import 'services/native_window_service.dart';
 import 'services/fullscreen_state_manager.dart';
 import 'services/icloud_sync_service.dart';
 import 'services/settings_service.dart';
+import 'services/sync_rule_executor.dart';
 import 'utils/platform_detector.dart';
 import 'services/apple_tv_remote_touch_service.dart';
 import 'services/discord_rpc_service.dart';
@@ -694,19 +695,37 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
           if (!downloadProvider.hasSyncRule(key)) continue;
           final result = await downloadProvider.executeSyncRuleFor(key, _serverManager);
           if (result != null && result.queuedCount > 0) {
-            final title = result.title ?? t.common.unknown;
-            showMainSnackBar(t.downloads.syncedNewEpisodes(count: '1', title: '$title (${result.queuedCount})'));
+            _announceSyncedEpisodes(summariseSyncRuleResults([result]));
           }
         }
       } else {
-        final synced = await downloadProvider.executeSyncRules(_serverManager, force: force);
-        if (synced.isNotEmpty) {
-          showMainSnackBar(t.downloads.syncedNewEpisodes(count: synced.length.toString(), title: synced.first));
-        }
+        _announceSyncedEpisodes(
+          summariseSyncRuleResults(await downloadProvider.executeSyncRules(_serverManager, force: force)),
+        );
       }
     } finally {
       _isAutoDeleteRunning = false;
     }
+  }
+
+  /// One sentence about what a sync-rule pass queued.
+  ///
+  /// A title is only named when a single rule produced everything; with several
+  /// shows involved, naming the first of them and counting the rules instead of
+  /// the episodes was wrong twice over.
+  void _announceSyncedEpisodes(SyncRuleSummary summary) {
+    if (summary.episodes == 0) return;
+    showMainSnackBar(
+      summary.rules == 1
+          ? t.downloads.syncedNewEpisodes(
+              count: summary.episodes.toString(),
+              title: summary.soleTitle ?? t.common.unknown,
+            )
+          : t.downloads.syncedNewEpisodesAcrossShows(
+              count: summary.episodes.toString(),
+              shows: summary.rules.toString(),
+            ),
+    );
   }
 
   @override
