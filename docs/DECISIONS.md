@@ -2755,3 +2755,50 @@ alleen het Dart-symbool heet nu `volumeBoost`. Negatieve controle voor (1): met 
 limiter meet `theLimiterStillHoldsAboveTheBoost` een true peak van 2,37, +7,5 dBFS; ervóór blijft
 hij onder -2 dBTP. Open: `scripts/loudness/prove.sh` rendert de ketens zonder versterking, dus de
 gemeten proef dekt (1) en (3) nog niet, en de hoorbaarheid op de Apple TV is HARDWARE ONLY.
+
+## DEC-118: De `background_downloader`-pin wijst naar een eigen spiegel van dezelfde commit, niet naar een nieuwe revisie
+
+**Date:** 2026-09-22
+**Status:** accepted
+
+**Context:** `edde746/background_downloader` heeft zijn `main` op 17 september 2026 gerebased
+(`1bcc9978 fix: post-rebase merge corrections`). Daarmee werd `b4d36f88`, de revisie waar
+`pubspec.yaml` op pinde, vanaf geen enkele branch of tag meer bereikbaar. Pub haalt geadverteerde
+refs op en doet daarna `rev-parse`; een losse `git fetch <sha>` slaagt nog wel, maar pub gebruikt
+die route niet. Vanaf 19 september, toen een losse pubspec-wijziging de `actions/cache`-sleutel
+brak en de warme pub-cache in CI verviel, faalde daardoor elke Flutter-job op
+`Could not find a file named "pubspec.yaml"`: Code Analysis, Unit Tests, Dependency Validation,
+Verify - macOS + iOS simulator en de wekelijkse Dependency health. Die laatste stierf op dezelfde
+regel en kwam dus niet eens toe aan zijn eigen fork-rapport.
+
+Meepinnen met de rebase kan niet zonder een tweede beslissing: elke revisie op de `main` van die
+fork eist inmiddels Flutter >= 3.47.0, terwijl `.fvmrc` 3.44.0 pint, en het is bovendien een sprong
+van 9.5.4 naar 9.6.2 (153 bestanden, ruim 17.000 regels, nieuwe transfer-widgets en mTLS). De
+branches die 3.24.0 nog toestaan (`V8`, `dev`) dragen de patches van de fork niet: `V8` staat op
+V8.9.5 van maart 2025.
+
+**Decision:** De commit blijft ongewijzigd en wordt bereikbaar gemaakt onder eigen beheer.
+`michelknoop21/background_downloader` is een GitHub-fork van `edde746/background_downloader` met
+precies één extra ref: de lichte tag `pleya-pin-b4d36f88` op `b4d36f88`. In `pubspec.yaml` en
+`pubspec.lock` verandert alleen de `url`; `ref` en `resolved-ref` blijven de volle SHA.
+
+**Consequences:** De opgeloste code is dezelfde: een koude `flutter pub get --enforce-lockfile`
+geeft exit 0 met een ongewijzigde `resolved-ref`, en een `diff -r` van de oude en de nieuwe
+uitgecheckte boom verschilt alleen in Xcode's lokale `xcuserdata`. Wat beschermt is de SHA en niet
+de tag: wordt de tag verplaatst, dan faalt pub luid op `bad object` in plaats van stil andere code
+te trekken. Wat wél kwetsbaar is, is beschikbaarheid: de tag verwijderen of de fork verwijderen
+herhaalt de storing, nu onder een eigen account. GitHub ruimt het object niet op zolang de ref
+bestaat, want forks delen hun objectopslag.
+
+`scripts/check_updates.sh` blijft bewust upstream volgen: nieuw werk landt bij `edde746`, de
+spiegel draagt alleen deze commit. De regel heeft daar een comment gekregen zodat de url niet voor
+een fout wordt aangezien. Wat deze beslissing níét regelt, en wat dit gat liet bestaan:
+`check_forks` vergelijkt de pin met de head van de gevolgde ref en meldt dus alleen "loopt achter",
+nooit "niet meer oplosbaar", en `scripts/classify_lock_diff.sh` sluit `url` uit zijn
+vergelijkingssleutel uit, dus een repo-wissel in de lock passeert die controle zonder melding.
+Beide horen bij de gate-ronde, niet hier.
+
+De spiegel is een tussenstap, geen eindstand. `docs/upstream-decoupling-plan.md` noemt het
+spiegelen van exacte commits expliciet als voorkeursstap en het vendoren naar `plugins/` als
+eindbeeld; dat laatste haalt de laatste externe host uit het buildpad en heeft in deze repo al een
+precedent in `plugins/pleya_aware`.
