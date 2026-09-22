@@ -6,6 +6,10 @@ fixronde kwamen vijf problemen boven water die al vóór de wijzigingen bestonde
 vastgelegd en bewust niet meegenomen: de fixcommit raakte al negentien bestanden, en er nog
 bestaande problemen bij trekken maakt hem moeilijker te beoordelen zonder dat het risico daalt.
 
+Een zesde punt kwam er bij de merge-review bij en staat hieronder als P3. Dat is geen ouder
+probleem maar een gat in een regel die de fixronde zelf introduceert, zonder dat het gedrag
+slechter wordt dan het was.
+
 Herkomst per punt: adversariële review over de uncommitte diff, plus een tweede onafhankelijke
 codereview. Beide vonden onafhankelijk van elkaar dezelfde gestrande spinner in de Seerr-sheet,
 die wel in de fixronde is meegegaan omdat hij door die ronde was veroorzaakt. De vijf hieronder
@@ -76,7 +80,30 @@ zien.
 Wat een oplossing kost: de lijst filteren op `server.is4k == _is4k`, of de niet-passende servers
 tonen met een waarschuwing erbij.
 
-## P3. Een markering zonder server geeft geen antwoord
+## P3. De uitzondering voor een afgewezen token dekt het geval zonder client niet
+
+`WatchActions.setWatched` maakt sinds de fixronde een uitzondering voor een server waarvan het
+token is afgewezen: die markering gaat niet naar de wachtrij, want geen reconnect repareert hem, en
+de 401 moet de aanroeper bereiken zodat de herinlogmelding verschijnt. Die uitzondering staat in
+`lib/services/watch_actions.dart` ná de controle op een ontbrekende client, en werkt dus alleen
+wanneer er een client is.
+
+`markPlexConnectionAuthError` (`lib/profiles/active_profile_binder.dart:585`, `:656`, `:846`)
+markeert een Plex-server als afgewezen zonder dat er een client bestaat. De eigen documentatie van
+die methode zegt waarom: een auth-fout bij het opstarten gebeurt voordat een client kan bestaan.
+Markeert de kijker daarna een item uit de nog gecachete rij als bekeken, dan is er geen client, gaat
+de markering alsnog de wachtrij in, en leest de melding "offline gemarkeerd" terwijl de app online
+is. Uit die handeling volgt geen herinlogsignaal.
+
+Dit is geen verslechtering. Vóór de fixronde gaf dit pad `WatchMarkOutcome.skipped`, waarna het
+contextmenu een succesmelding toonde voor iets dat niet was gebeurd en de markering verdween. Hij is
+nu duurzaam. Het is wel een gat in een regel die de fixronde zelf introduceert, en het pad is niet
+getest: de bestaande test registreert eerst een client en markeert die daarna pas als afgewezen.
+
+Wat een oplossing kost: `authErrorServerIds` toetsen vóór de controle op een ontbrekende client, of
+in die tak dezelfde uitzondering maken. Plus een testgeval zonder client.
+
+## P4. Een markering zonder server geeft geen antwoord
 
 `media_context_menu.dart` doet niets bij `WatchMarkOutcome.skipped`. Die uitkomst treedt alleen op
 wanneer `item.serverId` leeg is. De oude code toonde daar een succesmelding voor iets dat niet
