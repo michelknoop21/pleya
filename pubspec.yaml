@@ -60,9 +60,16 @@ dependencies:
   web_socket_channel: ^3.0.1
   dart_discord_presence: ^1.2.0
   flutter_svg: ^2.2.3
+  # Mirror of edde746/background_downloader. That fork's main branch was
+  # rebased on 17 Sep 2026, which left this revision unreachable from any
+  # branch or tag, and pub resolves a git ref only against advertised refs.
+  # Same commit, kept reachable by the tag pleya-pin-b4d36f88. Point this back
+  # at the upstream fork once a reachable revision is adopted; every revision on
+  # its main now requires Flutter >= 3.47.0, and the branches that still allow
+  # 3.24.0 (V8, dev) do not carry the fork's patches.
   background_downloader:
     git:
-      url: https://github.com/edde746/background_downloader
+      url: https://github.com/michelknoop21/background_downloader
       ref: b4d36f88bb365faaf308ff26be7ade49bbaec859
   sentry_flutter:
     git:

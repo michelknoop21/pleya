@@ -18,6 +18,7 @@ import 'package:pleya/widgets/video_controls/models/track_controls_state.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel/tv_audio_subtitle_tabs.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel/tv_panel_widgets.dart';
+import 'package:pleya/widgets/video_controls/tv_info_panel/tv_video_tab.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:pleya/widgets/video_controls/widgets/track_chapter_controls.dart';
 
@@ -397,6 +398,11 @@ Future<_Harness> _pumpFullVideoTab(
 }) async {
   final shaderPlayer = _PanelPlayer();
   addTearDown(shaderPlayer.dispose);
+  // The HDR row is platform-gated, so without this the Linux CI runner renders
+  // ten rows where a Mac renders eleven, and PLR4 measures a shorter tab than
+  // the one it is about.
+  TvVideoTab.debugSetHdrSupported(true);
+  addTearDown(() => TvVideoTab.debugSetHdrSupported(null));
   return _pumpPanel(
     tester,
     initial: TvInfoPanelRequest.video,

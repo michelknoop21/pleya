@@ -302,6 +302,8 @@ FORKS=(
   "connectivity_plus|https://github.com/edde746/plus_plugins|refs/heads/main|3|netwerkdetectie met platformcode op elk doel"
   "os_media_controls|https://github.com/edde746/media_controls|refs/heads/main|3|native mediasessie-integratie"
   "wakelock_plus|https://github.com/edde746/wakelock_plus|refs/heads/main|3|platformcode voor schermwaak"
+  # Bewust upstream en niet de mirror uit pubspec.yaml: nieuw werk landt bij
+  # edde746, de mirror draagt alleen de gepinde commit. Zie DEC-118.
   "background_downloader|https://github.com/edde746/background_downloader|refs/heads/main|3|achtergronddownloads, iOS 14-eis"
   "sentry_flutter|https://github.com/edde746/sentry-dart|refs/heads/build/fetch-native-zip|3|fork-branch die de native zip ophaalt in plaats van meebouwt; sentry (pure Dart) beweegt hier atomair mee"
   "auto_updater|https://github.com/edde746/auto_updater|refs/heads/main|3|Sparkle/WinSparkle-integratie op desktop"
