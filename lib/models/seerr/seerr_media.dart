@@ -247,6 +247,22 @@ class SeerrServiceServer {
   }
 }
 
+/// The Radarr/Sonarr instance a request for [is4k] should target, or null when
+/// none of [servers] is of that kind.
+///
+/// Mirrors Overseerr's own resolution: it looks for `isDefault && is4k ===
+/// entity.is4k`, and an explicit `serverId` on the request then overrides that
+/// **unconditionally**, without checking the override's own 4K-ness. So a
+/// stale id is not a harmless hint; it is the final answer, and one that puts
+/// a 4K request into the SD library.
+///
+/// Null rather than a mismatched server, for the same reason: no id lets
+/// Overseerr apply its own rule, a wrong id silences it.
+SeerrServiceServer? preferredSeerrServer(List<SeerrServiceServer> servers, {required bool is4k}) {
+  final matching = servers.where((s) => s.is4k == is4k);
+  return matching.where((s) => s.isDefault).firstOrNull ?? matching.firstOrNull;
+}
+
 /// One Radarr/Sonarr quality profile. Only reachable through the per-server
 /// detail endpoint (`/service/radarr/{id}`); the server list does not carry it.
 class SeerrQualityProfile {

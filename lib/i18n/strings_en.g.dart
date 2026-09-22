@@ -3836,6 +3836,9 @@ class TranslationsDownloadsEn {
 	/// en: 'Synced ${count} new episodes for ${title}'
 	String syncedNewEpisodes({required Object count, required Object title}) => 'Synced ${count} new episodes for ${title}';
 
+	/// en: 'Synced ${count} new episodes across ${shows} shows'
+	String syncedNewEpisodesAcrossShows({required Object count, required Object shows}) => 'Synced ${count} new episodes across ${shows} shows';
+
 	/// en: 'Sync rules'
 	String get activeSyncRules => 'Sync rules';
 
@@ -8301,6 +8304,7 @@ extension on Translations {
 			'downloads.syncRuleUpdated' => 'Sync rule updated',
 			'downloads.syncRuleRemoved' => 'Sync rule removed',
 			'downloads.syncedNewEpisodes' => ({required Object count, required Object title}) => 'Synced ${count} new episodes for ${title}',
+			'downloads.syncedNewEpisodesAcrossShows' => ({required Object count, required Object shows}) => 'Synced ${count} new episodes across ${shows} shows',
 			'downloads.activeSyncRules' => 'Sync rules',
 			'downloads.noSyncRules' => 'No sync rules',
 			'downloads.manageSyncRule' => 'Manage sync',
@@ -8603,9 +8607,9 @@ extension on Translations {
 			'seerr.connectedAs' => ({required Object name}) => 'Signed in as ${name}',
 			'seerr.serverVersion' => ({required Object version}) => 'Server version ${version}',
 			'seerr.permissionAdmin' => 'Administrator',
-			'seerr.permissionManage' => 'Can approve requests',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.permissionManage' => 'Can approve requests',
 			'seerr.permissionRequest' => 'Can request',
 			'seerr.request' => 'Request',
 			'seerr.requested' => 'Requested',

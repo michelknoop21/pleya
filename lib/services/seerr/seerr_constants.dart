@@ -124,8 +124,20 @@ class SeerrPermission {
   static const int request4k = 1024;
   static const int request4kMovie = 2048;
   static const int request4kTv = 4096;
-  static const int anyRequest4k = request4k | request4kMovie | request4kTv;
 
   /// True when [permissions] grants [flag] (or is ADMIN).
   static bool has(int permissions, int flag) => (permissions & admin) != 0 || (permissions & flag) != 0;
+
+  /// Whether [permissions] may request the 4K version of a movie
+  /// ([isMovie]) or of a series.
+  ///
+  /// Overseerr asks this per media type: `hasPermission([REQUEST_4K,
+  /// REQUEST_4K_MOVIE], {type: 'or'})` for a movie and `[REQUEST_4K,
+  /// REQUEST_4K_TV]` for a series. The umbrella flag, or the one for that type.
+  ///
+  /// The union of all three is a different question and the wrong one. Someone
+  /// holding only REQUEST_4K_TV passed it, so the 4K switch appeared on films,
+  /// and the request came back 403 once they had filled the sheet in.
+  static bool canRequest4k(int permissions, {required bool isMovie}) =>
+      has(permissions, request4k | (isMovie ? request4kMovie : request4kTv));
 }

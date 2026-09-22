@@ -1332,6 +1332,7 @@
     "syncRuleUpdated": "Sync rule updated",
     "syncRuleRemoved": "Sync rule removed",
     "syncedNewEpisodes": "Synced ${count} new episodes for ${title}",
+    "syncedNewEpisodesAcrossShows": "Synced ${count} new episodes across ${shows} shows",
     "activeSyncRules": "Sync rules",
     "noSyncRules": "No sync rules",
     "manageSyncRule": "Manage sync",

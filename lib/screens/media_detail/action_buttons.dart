@@ -494,6 +494,12 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       if (!mounted) return;
       switch (outcome) {
         case WatchMarkOutcome.queuedOffline:
+          // The queue applies the mark locally and emits the event, so the
+          // state this screen was opened from is stale either way. Since the
+          // outcome widened from "the app is offline" to "this item's server
+          // is", leaving the flag unset meant popping with `false` and a rail
+          // that kept showing the old state.
+          _watchStateChanged = true;
           showAppSnackBar(context, isWatched ? t.messages.markedAsUnwatchedOffline : t.messages.markedAsWatchedOffline);
         case WatchMarkOutcome.marked:
           _watchStateChanged = true;

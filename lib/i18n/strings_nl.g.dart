@@ -1592,6 +1592,7 @@ class _TranslationsDownloadsNl extends TranslationsDownloadsEn {
 	@override String get syncRuleUpdated => 'Synchronisatieregel bijgewerkt';
 	@override String get syncRuleRemoved => 'Synchronisatieregel verwijderd';
 	@override String syncedNewEpisodes({required Object count, required Object title}) => '${count} nieuwe afleveringen gesynchroniseerd voor ${title}';
+	@override String syncedNewEpisodesAcrossShows({required Object count, required Object shows}) => '${count} nieuwe afleveringen gesynchroniseerd voor ${shows} series';
 	@override String get activeSyncRules => 'Synchronisatieregels';
 	@override String get noSyncRules => 'Geen synchronisatieregels';
 	@override String get manageSyncRule => 'Synchronisatie beheren';
@@ -4255,6 +4256,7 @@ extension on TranslationsNl {
 			'downloads.syncRuleUpdated' => 'Synchronisatieregel bijgewerkt',
 			'downloads.syncRuleRemoved' => 'Synchronisatieregel verwijderd',
 			'downloads.syncedNewEpisodes' => ({required Object count, required Object title}) => '${count} nieuwe afleveringen gesynchroniseerd voor ${title}',
+			'downloads.syncedNewEpisodesAcrossShows' => ({required Object count, required Object shows}) => '${count} nieuwe afleveringen gesynchroniseerd voor ${shows} series',
 			'downloads.activeSyncRules' => 'Synchronisatieregels',
 			'downloads.noSyncRules' => 'Geen synchronisatieregels',
 			'downloads.manageSyncRule' => 'Synchronisatie beheren',
@@ -4557,9 +4559,9 @@ extension on TranslationsNl {
 			'trackers.deviceCode.title' => ({required Object service}) => 'Pleya activeren op ${service}',
 			'trackers.deviceCode.body' => ({required Object url}) => 'Ga naar ${url} en voer deze code in:',
 			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Open ${service} om te activeren',
-			'trackers.deviceCode.waitingForAuthorization' => 'Wachten op autorisatie…',
 			_ => null,
 		} ?? switch (path) {
+			'trackers.deviceCode.waitingForAuthorization' => 'Wachten op autorisatie…',
 			'trackers.deviceCode.codeCopied' => 'Code gekopieerd',
 			'trackers.oauthProxy.title' => ({required Object service}) => 'Aanmelden bij ${service}',
 			'trackers.oauthProxy.body' => 'Scan deze QR-code of open de URL op een apparaat.',
