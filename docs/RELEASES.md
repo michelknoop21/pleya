@@ -91,6 +91,7 @@ under `Notes`.
 - close requests review findings
 - align watchlist filters and tv actions
 - close functional audit findings F1, F3-F7
+- restore the background_downloader pin behind a reachable ref
 <!-- END GENERATED -->
 
 ### New
