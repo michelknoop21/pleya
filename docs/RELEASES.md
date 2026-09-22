@@ -90,6 +90,7 @@ under `Notes`.
 - serialize mpv teardown before player exit
 - close requests review findings
 - align watchlist filters and tv actions
+- close functional audit findings F1, F3-F7
 <!-- END GENERATED -->
 
 ### New
