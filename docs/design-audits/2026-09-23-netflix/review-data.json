@@ -2,7 +2,7 @@
   {
     "id": "01-mijn-pleya",
     "title": "Mijn Pleya",
-    "before": "../../../.build/pleya-verify/tvos-ux23-current-surfaces-1790183928286/screenshots/02-hub-entry.png",
+    "before": "current/02-hub-entry.png",
     "status": "Actuele simulator · één Pleya Server",
     "desc": "Collecties en Afspeellijsten krijgen hun eigen ingang. De getekende Kijklijst, Aanvragen en Activiteit horen bij een rijker voorbeeldprofiel; hun afwezigheid in de fixture is geen bewijs van een productbug.",
     "keep": "Profiel wisselen, serverstatus, bibliotheken, servers, Samen Kijken, instellingen, logs, Over, uitloggen en versie blijven aanwezig."
@@ -10,7 +10,7 @@
   {
     "id": "02-uiterlijk",
     "title": "Uiterlijk",
-    "before": "../../../.build/pleya-verify/tvos-ux23-settings-depth-1790184222009/screenshots/01-appearance.png",
+    "before": "current/01-appearance.png",
     "status": "Actuele simulator · Uiterlijk · 23 september",
     "desc": "TV-lijst met herkenbare categorieën, vaste waarde-kolom en een witte focusring. Klik categorieën; gebruik Page Down/Up voor de rest van een lange groep. Het is een ontwerpstudie, geen werkende voorkeurenopslag.",
     "keep": "Alle bestaande TV-voorkeuren worden gekoppeld aan de inventaris. Oude zijbalkopties eerst op effect controleren; niet stilzwijgend verwijderen."
@@ -18,7 +18,7 @@
   {
     "id": "03-home-indeling",
     "title": "Home-indeling",
-    "before": "../../../.build/pleya-verify/tvos-ux23-settings-followup-1790184518723/screenshots/01-home-layout.png",
+    "before": "current/01-home-layout.png",
     "status": "Actuele simulator · Home-indeling · 23 september",
     "desc": "De huidige pagina toont twee gelijknamige rijen met dezelfde servernaam en controles vlak bij de rechterrand. Het voorstel maakt rij-identiteit en acties herkenbaar. Hero en Verder kijken blijven vast; de voorbeeldlabels gebruiken media-soort waar bekend.",
     "keep": "Eigen rijen, verborgen rijen en broninformatie blijven terugvindbaar. Na verplaatsen volgt focus dezelfde rij."
@@ -26,7 +26,7 @@
   {
     "id": "04-verbinding",
     "title": "Verbinding toevoegen",
-    "before": "../../../.build/pleya-verify/tvos-ux23-forms-1790184701187/screenshots/03-add-connection.png",
+    "before": "current/03-add-connection.png",
     "status": "Actuele simulator · Verbinding toevoegen · 23 september",
     "desc": "De bestaande zes keuzes in dezelfde tegeltaal als Servers. Dit is verbinding toevoegen binnen een profiel, niet het eerste-startscherm. Beschikbaarheid en werking per optie op tvOS nog te toetsen.",
     "keep": "Plex, Jellyfin, Pleya Server, lokale map, Pleya Share en lenen uit een ander profiel. Annuleren en de bestaande authflows blijven behouden."

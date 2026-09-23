@@ -14,6 +14,8 @@ De huidige tvOS-build is gebouwd en door Pleya Verify bediend met idb/HID. `tvos
 
 Bewijs: `.build/pleya-verify/tvos-ux23-current-surfaces-1790183928286/`. De eerste run van het oude `tvos.my-pleya.styling-audit` faalde omdat twee keer DOWN nu op Instellingen landt in plaats van Bibliotheken. De beelden en UI-tree bevestigen verouderde choreografie. De aparte auditroute is aan de huidige hub aangepast; productcode en bestaande tests zijn niet gewijzigd.
 
+Het [reviewbord](index.html) gebruikt geselecteerde kopieën van de actuele simulatorbeelden in `current/`, zodat de vergelijking ook in een schone checkout zichtbaar is. De volledige Verify-bundels met rapporten en UI-trees blijven buiten tracked source onder `.build/`.
+
 De fixture bevat één Pleya Server, drie films en één serie; Home valt terug op een Verder kijken-item. De groene artworkvlakken zijn fixturebeelden, geen aangetoonde artworkbug. Deze run bewijst niet hoeveel hero-items een echt Plex/Jellyfin-profiel krijgt. Kijklijst, aanvragen, actieve sessies, Live TV en backendafhankelijke acties vereisen aanvullend bewijs. De volledige app is dus **niet** visueel afgetekend.
 
 De vervolgrun `tvos.ux23.settings-depth` leverde vijf actuele beelden, waaronder Uiterlijk. De run is FAILED door een onjuiste onderzoeksaanname: thema opent geen picker maar is een inline segmentkeuze. Select wijzigde de geïsoleerde fixturevoorkeur naar Systeem. Eén Menu keerde correct terug naar de Uiterlijk-tegel; de tweede keerde naar Mijn Pleya terug. Dit is geen aangetoonde Back-bug. Bewijs: `.build/pleya-verify/tvos-ux23-settings-depth-1790184222009/`.
