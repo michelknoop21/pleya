@@ -33,6 +33,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../media/media_item.dart';
@@ -43,8 +44,34 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/formatters.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/media_image_helper.dart' show ImageType;
+import '../app_icon.dart';
 import '../optimized_media_image.dart';
 import 'tv_unified_layout.dart';
+import 'tv_unified_media_card.dart' show resumeFractionFor;
+
+const Key tvHeroWatchStatusKey = ValueKey('tvHeroWatchStatus');
+
+String heroWatchStatusValueFor(UnifiedMediaGroup group) {
+  if (group.watchState.isWatched) return 'watched';
+  if (group.watchState.hasActiveProgress) return 'inProgress';
+  return 'unwatched';
+}
+
+int? heroWatchProgressPercentFor(UnifiedMediaGroup group) {
+  final fraction = resumeFractionFor(group);
+  return fraction == null ? null : (fraction * 100).round();
+}
+
+String heroWatchStatusLabelFor(UnifiedMediaGroup group) {
+  if (group.watchState.isWatched) return t.unifiedCatalog.semantics.watched;
+  if (group.watchState.hasActiveProgress) {
+    final percent = heroWatchProgressPercentFor(group);
+    return percent == null
+        ? t.unifiedCatalog.semantics.inProgress
+        : '${t.unifiedCatalog.semantics.inProgress} · $percent%';
+  }
+  return t.unifiedCatalog.filters.unwatched;
+}
 
 /// The hero's one metadata line: kind, genre, year, runtime, and — only when
 /// there is more than one — the source count.
@@ -359,24 +386,7 @@ class _HeroText extends StatelessWidget {
         SizedBox(height: TvHomeLayout.heroTitleMetaGap * scale),
         // Pinned to one line's budget: a meta line that wrapped would push the
         // CTA row down by the height of a line, mid-carousel.
-        column(
-          SizedBox(
-            height: TvHomeLayout.heroMetaFontSize * TvHomeLayout.heroLineHeight * scale,
-            child: Text(
-              heroMetaLineFor(group),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                // H20: dimmed ink reads as secondary on dark artwork but washed
-                // out on light — `onArtworkInk`'s own doc — so light keeps more
-                // ink than dark rather than sharing one alpha.
-                color: tokens.onArtworkInk(dark: TvHomeLayout.inkSecondary, light: 0.92),
-                fontSize: TvHomeLayout.heroMetaFontSize * scale,
-                height: TvHomeLayout.heroLineHeight,
-              ),
-            ),
-          ),
-        ),
+        column(_metadataLine(context)),
         SizedBox(height: TvHomeLayout.heroMetaSynopsisGap * scale),
         column(
           SizedBox(
@@ -403,6 +413,66 @@ class _HeroText extends StatelessWidget {
         SizedBox(height: TvHomeLayout.heroSynopsisActionsGap * scale),
         actions,
       ],
+    );
+  }
+
+  Widget _metadataLine(BuildContext context) {
+    final lineHeight = TvHomeLayout.heroMetaFontSize * TvHomeLayout.heroLineHeight * scale;
+    final ink = tokens.onArtworkInk(dark: TvHomeLayout.inkSecondary, light: 0.92);
+    final status = heroWatchStatusValueFor(group);
+    final icon = switch (status) {
+      'watched' => Symbols.check_circle_rounded,
+      'inProgress' => Symbols.play_circle_rounded,
+      _ => Symbols.radio_button_unchecked_rounded,
+    };
+
+    return SizedBox(
+      height: lineHeight,
+      child: Row(
+        children: [
+          Semantics(
+            label: heroWatchStatusLabelFor(group),
+            child: Container(
+              key: tvHeroWatchStatusKey,
+              height: lineHeight,
+              padding: EdgeInsets.symmetric(horizontal: 8 * scale),
+              decoration: BoxDecoration(
+                color: tokens.artworkScrim.withValues(alpha: 0.54),
+                borderRadius: BorderRadius.circular(lineHeight / 2),
+                border: Border.all(color: ink.withValues(alpha: 0.24)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppIcon(icon, fill: status == 'unwatched' ? 0 : 1, color: ink, size: 14 * scale),
+                  SizedBox(width: 5 * scale),
+                  Text(
+                    heroWatchStatusLabelFor(group),
+                    maxLines: 1,
+                    style: TextStyle(color: ink, fontSize: 13.5 * scale, height: 1, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(width: 9 * scale),
+          Expanded(
+            child: Text(
+              heroMetaLineFor(group),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                // H20: dimmed ink reads as secondary on dark artwork but washed
+                // out on light — `onArtworkInk`'s own doc — so light keeps more
+                // ink than dark rather than sharing one alpha.
+                color: ink,
+                fontSize: TvHomeLayout.heroMetaFontSize * scale,
+                height: TvHomeLayout.heroLineHeight,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -30,13 +30,10 @@ steps:
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
 
-  # Into the hub: DOWN lands on the profile header, DOWN again on the first
+  # The hub enters on the profile switch control; DOWN lands on the first
   # tile. Left/right then walks the flat page order, so RIGHT is the whole
   # traversal for the rest of this scenario.
-  # One DOWN, not two: Select on the pill already moves the ring into the
-  # page, onto the profile header, and Bibliotheken is the next group under
-  # it in this fixture (no watchlist or Seerr, so "Mijn content" is absent,
-  # hoofdstuk 33.8). TV8's full suite found this file still pressing past it.
+  - snapshot: 00-hub
   - press: down
   - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
 

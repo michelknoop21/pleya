@@ -17,6 +17,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/providers/libraries_provider.dart';
+import 'package:pleya/providers/personal_media_provider.dart';
+import 'package:pleya/media/media_library.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/providers/now_watching_provider.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_sections.dart';
@@ -42,6 +47,8 @@ void main() {
       bool hasSeerr = true,
       bool showDownloads = true,
       bool showActivity = true,
+      bool showCollections = true,
+      bool showPlaylists = true,
       int? watchlistCount,
       int? downloadCount,
     }) => buildTvMyPleyaGroups(
@@ -49,6 +56,8 @@ void main() {
       hasSeerr: hasSeerr,
       showDownloads: showDownloads,
       showActivity: showActivity,
+      showCollections: showCollections,
+      showPlaylists: showPlaylists,
       watchlistCount: watchlistCount,
       downloadCount: downloadCount,
     );
@@ -90,8 +99,32 @@ void main() {
       expect(sectionsIn(groups(showActivity: false)), isNot(contains(TvMyPleyaSection.activity)));
     });
 
+    test('Collecties and Afspeellijsten are independent capability-gated entries', () {
+      expect(
+        sectionsIn(groups()),
+        containsAll(<TvMyPleyaSection>[TvMyPleyaSection.collections, TvMyPleyaSection.playlists]),
+      );
+      expect(sectionsIn(groups(showCollections: false)), isNot(contains(TvMyPleyaSection.collections)));
+      expect(sectionsIn(groups(showPlaylists: false)), isNot(contains(TvMyPleyaSection.playlists)));
+    });
+
+    test('personal media belongs with the collection, not server management', () {
+      final grouped = groups();
+      expect(
+        grouped.first.tiles.map((tile) => tile.section),
+        containsAll(<TvMyPleyaSection>[TvMyPleyaSection.collections, TvMyPleyaSection.playlists]),
+      );
+      expect(grouped[1].tiles.map((tile) => tile.section), isNot(contains(TvMyPleyaSection.collections)));
+    });
+
     test('a group whose every tile is conditional disappears rather than leaving a heading over nothing', () {
-      final bare = groups(hasWatchlist: false, hasSeerr: false, showDownloads: false);
+      final bare = groups(
+        hasWatchlist: false,
+        hasSeerr: false,
+        showDownloads: false,
+        showCollections: false,
+        showPlaylists: false,
+      );
       expect(bare.map((group) => group.label), isNot(contains(t.tvMyPleya.groupContent)));
       // Hoofdstuk 33.8: the conditional tiles "vallen weg zonder gat in de
       // groepsstructuur" — the groups that remain are still whole.
@@ -102,7 +135,14 @@ void main() {
       // Hoofdstuk 18.3: "Mijn Pleya zelf verdwijnt nooit". Settings, Servers and
       // sign out are only reachable here on TV, so a condition that could empty
       // this screen would be a condition that strands someone.
-      final bare = groups(hasWatchlist: false, hasSeerr: false, showDownloads: false, showActivity: false);
+      final bare = groups(
+        hasWatchlist: false,
+        hasSeerr: false,
+        showDownloads: false,
+        showActivity: false,
+        showCollections: false,
+        showPlaylists: false,
+      );
       expect(sectionsIn(bare), containsAll(<TvMyPleyaSection>[TvMyPleyaSection.settings, TvMyPleyaSection.servers]));
     });
 
@@ -151,8 +191,11 @@ void main() {
       WidgetTester tester, {
       bool full = false,
       bool nowWatchingAvailable = false,
+      bool personalMediaAvailable = false,
+      bool appleTv = true,
       Size size = const Size(1280, 720),
     }) async {
+      TvDetectionService.debugSetAppleTVOverride(appleTv);
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -176,12 +219,31 @@ void main() {
         nowWatching = AvailableNowWatchingDouble();
         addTearDown(nowWatching.dispose);
       }
+      LibrariesProvider? libraries;
+      PersonalMediaProvider? personalMedia;
+      if (personalMediaAvailable) {
+        manager.debugRegisterClientForTesting(OnlinePlexClientDouble('personal', 'Personal'));
+        libraries = LibrariesProvider()
+          ..debugSetLibraries(const [
+            MediaLibrary(
+              id: 'movies',
+              backend: MediaBackend.plex,
+              title: 'Movies',
+              kind: MediaKind.movie,
+              serverId: 'personal',
+            ),
+          ]);
+        personalMedia = PersonalMediaProvider(multiServer: servers, libraries: libraries);
+        addTearDown(personalMedia.dispose);
+        addTearDown(libraries.dispose);
+      }
 
       await tester.pumpWidget(
         TranslationProvider(
           child: MultiProvider(
             providers: [
               ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
+              if (personalMedia != null) ChangeNotifierProvider<PersonalMediaProvider>.value(value: personalMedia),
               if (watchlist != null) ChangeNotifierProvider<WatchlistProvider>.value(value: watchlist),
               if (seerr != null) ChangeNotifierProvider<SeerrProvider>.value(value: seerr),
               if (nowWatching != null) ChangeNotifierProvider<NowWatchingProvider>.value(value: nowWatching),
@@ -409,6 +471,37 @@ void main() {
       await press(tester, LogicalKeyboardKey.arrowDown);
 
       expect(focusedLabel(), TvMyPleyaSection.logs.tileFocusKey);
+    });
+
+    testWidgets('five content tiles wrap to two rows and remote focus follows those rows', (tester) async {
+      await pump(tester, full: true, personalMediaAvailable: true, appleTv: false);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text(t.collections.title), findsOneWidget);
+      expect(find.text(t.playlists.title), findsOneWidget);
+
+      state(tester).focusKey(TvMyPleyaSection.watchlist.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), TvMyPleyaSection.downloads.tileFocusKey);
+
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), TvMyPleyaSection.libraries.tileFocusKey);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('both personal media tiles activate their own section', (tester) async {
+      await pump(tester, personalMediaAvailable: true);
+
+      state(tester).focusKey(TvMyPleyaSection.collections.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.select);
+      expect(opened, [TvMyPleyaSection.collections]);
+
+      state(tester).focusKey(TvMyPleyaSection.playlists.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.select);
+      expect(opened, [TvMyPleyaSection.collections, TvMyPleyaSection.playlists]);
     });
 
     // Hoofdstuk 18.3 allows every conditional tile at once, and that page is

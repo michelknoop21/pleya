@@ -18,82 +18,7 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### New
-- automation-ids op de mobiele My Pleya, Verify voor 18
-- automation-ids op de mobiele Bibliotheken-picker, Verify voor 15
-- automation-ids op de mobiele Instellingen, Verify voor 14
-- metadata-subregel in het unified contextmenu (CTX1)
-- de hervat-rij toont de resterende tijd (CTX2)
-- icoon per actierij in het unified contextmenu (CTX3)
-- Live TV krijgt op tvOS één secundaire laag in de capsuletaal (MOC-17, LIVE1)
-- bronregel en zenderteller onder de Live TV-kop (MOC-17)
-- de Live TV-gids krijgt binnen de shell tien-voet-dichtheid (MOC-17)
-- blijvende detailbalk onder de Live TV-gids (MOC-17)
-- expose mobile activity sheet to Verify (I7-21)
-- bouw de eerste-startcompositie
-- verbind authstatussen met de TV-compositie
-- unify mobile catalog filters
-- add audio language selection and filters
-
-### Improved
-- bereken showReconnect op één plek in tvTopNavFocusKeys
-- make Plex flow TV-shellable
-- bound iOS xattr scan to bundle inputs
-
-### Fixed
-- de echte focus volgt een verdwijnende TV-bestemming (FOC1)
-- de serverstip leest kSuccess (TOK2)
-- add filled and scope chip variants for the mobile northstar
-- gedeelde staat- en lege-presentatie op TV-maat (SYS-4)
-- pin the northstar control pill to an exact 32pt surface
-- SYS-4 fix-ronde 1, geen verzonnen schaalfactor meer
-- FOC1 post-frame focus restore mist een focus-guard
-- TOK2 serverstip-key botst bij meerdere online servers
-- breng het mobiele detailscherm terug naar northstar 06/07
-- eigen tablabels voor de mobiele detailtabs (mockup 07)
-- catalogus-openers in Bibliotheken en Home via de content-route-registry (SYS-1d)
-- SYS-1d review, Alle-N route-id op hubId in plaats van target.hashCode
-- echte long-press-input in Pleya Verify, sluit 09 Contextmenu-sheet
-- route drie resterende TV-shell-bypasses via openTvContentRoute
-- comment overclaimde showReconnect-consolidatie corrigeren
-- de resultatenviewport op Zoeken clipt weer aan zijn bovenrand (SEARCH2)
-- een lege landing houdt de route naar de complete catalogus (LAND6)
-- de actieve rail op een landing krijgt het anker dat Home al had (LAND7)
-- een verwijderde kijklijstkaart geeft de ring door (WL3)
-- sluit F5 - phone-heldenvloer forceerde overflow op de fold
-- een Jellyfin-hub leidt zijn type af uit zijn items (REV1)
-- em-dash in twee REV1-docstrings vervangen (anti-slop)
-- een trage server verdwijnt niet uit het opgeslagen bronfilter (CAT20)
-- whole-branch review findings, CAT20 library keys, LAND7/REV1a docs
-- de seizoenchiprij reserveert de hoogte die een chip echt vraagt (DET4)
-- de detailrail leest dezelfde schaal als het scherm eronder (SYS-3c)
-- whole-branch review findings, meta line and Resume row can disagree
-- Live TV tekent binnen de unified shell geen tweede navigatiebalk (LIVE1)
-- overbodige await op buildProvider() weghalen (analyzer-lint)
-- het Live TV-showschema opent binnen de TV-shell (LIVE1)
-- showschema sluit correct af binnen de TV-shell (LIVE1d)
-- en-dash als gedachtestreepje uit de nieuwe tvOfflineHome-vertaling
-- _focusedChannel las de verkeerde lijst bij meer dan één bron
-- de detailbalk voedt zich ook op de kanaalkolom, niet pas na Right (MOC-17)
-- de nieuwe MOC-17-regressietest scopen en de gemiste pump toevoegen
-- keep Apple viewer zoom on the display layer
-- review-correcties op het layer-owned zoompad
-- drop stale sub-pos zoom compensation and rebuild filter state after a player retry
-- de pillenrij op Alle films/Alle series wrapt in plaats van door de schermrand te lopen
-- de volumeversterking wordt een gain-stage in de loudnessketen
-- skip nested worktrees in iOS xattr scan
-- build the phone Aanvragen page for northstar 19
-- pas QR en woordmerk in authpaneel
-- await profile before Seerr seed
-- paginate Seerr requests fixture
-- sluit TV5-reviewbevindingen
-- serialize mpv teardown before player exit
-- close requests review findings
-- align watchlist filters and tv actions
-- close functional audit findings F1, F3-F7
-- restore the background_downloader pin behind a reachable ref
-- keep the filter rail whole and stop the source picker freezing a blank badge
-- houd de balk gelijk met het herstelde tabblad na offline
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
 ### New
@@ -118,6 +43,38 @@ under `Notes`.
 - **The row of extras below an Apple TV series or movie page now sizes its text and spacing
   consistently with the rest of the screen**, instead of running slightly smaller when the page
   is nested under the top bar.
+
+## 2.8.0 · build 294 · 23 September 2026 · Apple TV
+
+<!-- commit: 3e46c035 -->
+
+### New
+
+- **Home can feature up to twelve recent films**, and each hero title shows whether it is
+  unwatched, in progress (with a percentage), or watched.
+- **Collections and Playlists have their own entries in My Pleya** where the connected Plex or
+  Jellyfin server provides them. Each overview keeps its source visible.
+
+### Improved
+
+- **Appearance settings are grouped into four TV-friendly categories** while keeping the
+  existing options and saved preferences.
+- **Home layout makes similar recent rows easier to tell apart** by naming the media type and
+  keeps their existing ordering and visibility controls.
+- **Add Connection shows all six existing routes in a two-column TV picker** with remote focus
+  and a clear way back to Servers.
+
+### Worth checking
+
+- On Apple TV, move through the Home hero with the remote and compare unwatched, in-progress,
+  and watched titles. Check that Play, Resume, and Details stay reachable.
+- Open Collections, Playlists, Appearance, Home layout, and Add Connection from My Pleya; use
+  Back to confirm focus returns to the tile you came from.
+
+### Notes
+
+- This build is for Apple TV. The connection forms and other remaining windows are still being
+  redesigned; their existing routes and actions remain available.
 
 ## 2.8.0 · build 282 · 16 September 2026
 
