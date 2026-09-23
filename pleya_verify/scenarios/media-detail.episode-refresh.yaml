@@ -39,11 +39,10 @@ steps:
 
   # `screen.libraries` readiness only tracks the library *list* fetch; a
   # freshly selected library lands on `LibraryTabType.recommended` (index
-  # 0 of `LibraryTabType.values`), not `browse`. The retired
-  # `tvos.library.sort.yaml` hit the same finding. There, the
-  # library's Recommended tab has hub content, so focus after Select lands
-  # *inside* that content and Menu is needed first to reach the tab bar.
-  # Here `catalog.shows.v1`'s single show has nothing to recommend, so
+  # 0 of `LibraryTabType.values`), not `browse`. When that tab has hub
+  # content, focus after Select lands *inside* it and Menu is needed first
+  # to reach the tab bar (the retired `tvos.library.sort.yaml` did exactly
+  # that; it is in git history before TV6). Here `catalog.shows.v1`'s single show has nothing to recommend, so
   # `LibraryRecommendedTab` has no focusable content of its own and focus
   # lands directly on the tab bar's Recommended chip — the focus-trace
   # confirms it (`Content -> tab_chip_recommended` on the very Select that

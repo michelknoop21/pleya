@@ -8,8 +8,9 @@ target: tvos-sim
 #
 # `tvos.my-pleya.library-chooser` and `tvos.library.sort` exercised the
 # tab/chooser/grid contract this decision removes on TV. TV6 retired both:
-# this file replaces the chooser, and `tvos.catalog.rail-sort-focus` covers
-# sorting where it now lives, in the catalog rail.
+# this file replaces the chooser. Sorting lives in the catalog rail now;
+# `tvos.catalog.rail-sort-focus` covers its focus, and the order it produces
+# is TV8's "filters en sorteren" row.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
