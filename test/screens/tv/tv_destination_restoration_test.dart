@@ -724,5 +724,16 @@ void main() {
       expect(route.restoreFocusKey, TvMyPleyaSection.settings.tileFocusKey);
       expect(route.screenKey, isNotNull, reason: 'without a key the shell cannot ask the section to take focus');
     });
+
+    testWidgets('personal media routes restore focus to their distinct source tiles', (tester) async {
+      final collectionsKey = GlobalKey(debugLabel: 'collections');
+      final playlistsKey = GlobalKey(debugLabel: 'playlists');
+      for (final section in <TvMyPleyaSection>[TvMyPleyaSection.collections, TvMyPleyaSection.playlists]) {
+        final route = tvMyPleyaNestedRoute(section, collectionsKey: collectionsKey, playlistsKey: playlistsKey);
+        expect(route.id, 'tvMyPleya_${section.name}');
+        expect(route.restoreFocusKey, section.tileFocusKey);
+        expect(route.screenKey, section == TvMyPleyaSection.collections ? collectionsKey : playlistsKey);
+      }
+    });
   });
 }

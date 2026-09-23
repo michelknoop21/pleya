@@ -35,6 +35,7 @@ import '../../profiles/profile_avatar.dart';
 import '../../providers/download_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/now_watching_provider.dart';
+import '../../providers/personal_media_provider.dart';
 import '../../providers/seerr_provider.dart';
 import '../../providers/watchlist_provider.dart';
 import '../../theme/mono_theme.dart';
@@ -87,8 +88,12 @@ List<TvMyPleyaGroup> buildTvMyPleyaGroups({
   required bool hasSeerr,
   required bool showDownloads,
   required bool showActivity,
+  required bool showCollections,
+  required bool showPlaylists,
   int? watchlistCount,
   int? downloadCount,
+  int? collectionCount,
+  int? playlistCount,
 }) {
   // A tile reading "0" is a tile that should not carry a count at all, so the
   // rule lives here rather than at the call site — one place, and the same
@@ -107,6 +112,22 @@ List<TvMyPleyaGroup> buildTvMyPleyaGroups({
             title: t.watchlist.title,
             subtitle: t.tvMyPleya.watchlistSubtitle,
             count: watchlist,
+          ),
+        if (showCollections)
+          TvMyPleyaTile(
+            section: TvMyPleyaSection.collections,
+            icon: Symbols.collections_bookmark_rounded,
+            title: t.collections.title,
+            subtitle: t.tvMyPleya.collectionsSubtitle,
+            count: shown(collectionCount),
+          ),
+        if (showPlaylists)
+          TvMyPleyaTile(
+            section: TvMyPleyaSection.playlists,
+            icon: Symbols.playlist_play_rounded,
+            title: t.playlists.title,
+            subtitle: t.tvMyPleya.playlistsSubtitle,
+            count: shown(playlistCount),
           ),
         if (hasSeerr)
           TvMyPleyaTile(
@@ -135,7 +156,7 @@ List<TvMyPleyaGroup> buildTvMyPleyaGroups({
           // differ — "Bibliotheken" against "Media" — and the audit of
           // 2 September 2026 counted that as one of three names on one place.
           title: t.libraries.title,
-          subtitle: t.tvMyPleya.librariesSubtitle,
+          subtitle: t.tvMyPleya.libraryManagementSubtitle,
         ),
         TvMyPleyaTile(
           section: TvMyPleyaSection.servers,
@@ -268,6 +289,7 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
     final servers = context.watch<MultiServerProvider>();
     final watchlist = context.watch<WatchlistProvider?>();
     final downloads = context.watch<DownloadProvider?>();
+    final personalMedia = context.watch<PersonalMediaProvider?>();
 
     final groups = buildTvMyPleyaGroups(
       hasWatchlist: watchlist?.hasWatchlist ?? false,
@@ -281,8 +303,12 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
       // supported source today; Watch Together and Pleya Remote are separate
       // product concepts and stay out (docs/tvos-redesign-implementatiecontract.md).
       showActivity: context.watch<NowWatchingProvider?>()?.isAvailable ?? false,
+      showCollections: personalMedia?.supportsCollections ?? false,
+      showPlaylists: personalMedia?.supportsPlaylists ?? false,
       watchlistCount: watchlist?.entriesByRecentlyAdded.length,
       downloadCount: downloads == null ? null : downloads.downloadedMovies.length + downloads.downloadedShows.length,
+      collectionCount: personalMedia?.state == PersonalMediaLoadState.loaded ? personalMedia?.collections.length : null,
+      playlistCount: personalMedia?.state == PersonalMediaLoadState.loaded ? personalMedia?.playlists.length : null,
     );
 
     // A flat, ordered list of every focusable key on the page, so UP out of the
@@ -411,8 +437,8 @@ class _TileRow extends StatelessWidget {
   final FocusMemoryTracker nodes;
   final List<String> keys;
 
-  /// Every group on the page, in order. One group is one visual row, which is
-  /// what up/down has to move by — see [_verticalNeighbour].
+  /// Every group on the page, in order. A group can span more than one visual
+  /// row once it has over [TvMyPleyaLayout.tilesPerRow] tiles.
   final List<TvMyPleyaGroup> groups;
   final void Function(String? key) onFocusKey;
   final ValueChanged<TvMyPleyaTile> onOpen;
@@ -430,32 +456,37 @@ class _TileRow extends StatelessWidget {
         // rather than a fixed height, because the height that matters is the
         // tallest tile's, and that depends on the locale. Four children at
         // most, so the second pass costs nothing worth measuring.
-        return IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < tiles.length; i++) ...[
-                if (i > 0) SizedBox(width: gap),
-                SizedBox(
-                  width: trackWidth,
-                  child: _Tile(
-                    tile: tiles[i],
-                    scale: scale,
-                    node: nodes.get(tiles[i].focusKey, debugLabel: tiles[i].focusKey),
-                    onSelect: () => onOpen(tiles[i]),
-                    onNavigateLeft: () => onFocusKey(_neighbour(tiles[i].focusKey, -1)),
-                    onNavigateRight: () => onFocusKey(_neighbour(tiles[i].focusKey, 1)),
-                    onNavigateUp: () => onFocusKey(_verticalNeighbour(tiles[i].focusKey, -1)),
-                    onNavigateDown: () => onFocusKey(_verticalNeighbour(tiles[i].focusKey, 1)),
-                  ),
+        return Column(
+          children: [
+            for (var start = 0; start < tiles.length; start += TvMyPleyaLayout.tilesPerRow) ...[
+              if (start > 0) SizedBox(height: gap),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = start; i < (start + TvMyPleyaLayout.tilesPerRow).clamp(0, tiles.length); i++) ...[
+                      if (i > start) SizedBox(width: gap),
+                      SizedBox(
+                        width: trackWidth,
+                        child: _Tile(
+                          tile: tiles[i],
+                          scale: scale,
+                          node: nodes.get(tiles[i].focusKey, debugLabel: tiles[i].focusKey),
+                          onSelect: () => onOpen(tiles[i]),
+                          onNavigateLeft: () => onFocusKey(_neighbour(tiles[i].focusKey, -1)),
+                          onNavigateRight: () => onFocusKey(_neighbour(tiles[i].focusKey, 1)),
+                          onNavigateUp: () => onFocusKey(_verticalNeighbour(tiles[i].focusKey, -1)),
+                          onNavigateDown: () => onFocusKey(_verticalNeighbour(tiles[i].focusKey, 1)),
+                        ),
+                      ),
+                    ],
+                    if (tiles.length - start < TvMyPleyaLayout.tilesPerRow)
+                      SizedBox(width: (trackWidth + gap) * (TvMyPleyaLayout.tilesPerRow - (tiles.length - start))),
+                  ],
                 ),
-              ],
-              // The remaining tracks stay empty rather than letting three tiles
-              // stretch across four columns.
-              if (tiles.length < TvMyPleyaLayout.tilesPerRow)
-                SizedBox(width: (trackWidth + gap) * (TvMyPleyaLayout.tilesPerRow - tiles.length)),
+              ),
             ],
-          ),
+          ],
         );
       },
     );
@@ -480,20 +511,24 @@ class _TileRow extends StatelessWidget {
   /// reproducible on the simulator — DOWN from Servers, the second tile of a
   /// three-tile row, landed on Over, the *third* tile of the row below.
   ///
-  /// A row is a group, so the column is the tile's index within its own group
-  /// and the neighbour is the same column in the adjacent group, clamped to
-  /// that group's width. From the top row UP lands on the profile header,
+  /// A visual row is a four-tile slice of a group, so the column is the tile's
+  /// position in its slice. From the top row UP lands on the profile header,
   /// whose own handler continues up to the top navigation; from the bottom row
   /// DOWN stays put rather than snapping to the last tile of the page, which
   /// is what clamping to [keys.last] used to do from any column.
   String? _verticalNeighbour(String key, int direction) {
-    for (var g = 0; g < groups.length; g++) {
-      final column = groups[g].tiles.indexWhere((tile) => tile.focusKey == key);
+    final rows = <List<TvMyPleyaTile>>[
+      for (final group in groups)
+        for (var start = 0; start < group.tiles.length; start += TvMyPleyaLayout.tilesPerRow)
+          group.tiles.sublist(start, (start + TvMyPleyaLayout.tilesPerRow).clamp(0, group.tiles.length)),
+    ];
+    for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      final column = rows[rowIndex].indexWhere((tile) => tile.focusKey == key);
       if (column < 0) continue;
-      final target = g + direction;
+      final target = rowIndex + direction;
       if (target < 0) return keys.first;
-      if (target >= groups.length) return null;
-      final row = groups[target].tiles;
+      if (target >= rows.length) return null;
+      final row = rows[target];
       if (row.isEmpty) return null;
       return row[column < row.length ? column : row.length - 1].focusKey;
     }

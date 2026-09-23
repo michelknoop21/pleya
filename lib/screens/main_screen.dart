@@ -89,6 +89,7 @@ import 'libraries/library_quick_picker_sheet.dart';
 import 'libraries/libraries_screen.dart';
 import 'libraries/mobile_libraries_screen.dart';
 import 'tv/sections/tv_libraries_screen.dart';
+import 'tv/sections/tv_personal_media_overview_screens.dart';
 import 'livetv/live_tv_screen.dart';
 import 'search_screen.dart';
 import 'seerr/seerr_discover_screen.dart';
@@ -581,6 +582,8 @@ class _MainScreenState extends State<MainScreen>
   /// gave TV its own bronbeheer screen; the shared class still backs
   /// [_librariesKey] above for desktop and mobile.
   final GlobalKey<State<TvLibrariesScreen>> _tvLibrariesKey = GlobalKey();
+  final GlobalKey<State<TvCollectionsOverviewScreen>> _tvCollectionsKey = GlobalKey();
+  final GlobalKey<State<TvPlaylistsOverviewScreen>> _tvPlaylistsKey = GlobalKey();
 
   /// The remembered Live TV capability for this profile. See
   /// [TvLiveTvCapabilityStore] for why a poll may not clear it.
@@ -2244,7 +2247,13 @@ class _MainScreenState extends State<MainScreen>
     _selectTab(NavigationTabId.myPleya);
     _tvNav.pushNested(
       TvDestinationId.myPleya,
-      tvMyPleyaNestedRoute(section, librariesKey: _tvLibrariesKey, watchlistKey: _tvWatchlistKey),
+      tvMyPleyaNestedRoute(
+        section,
+        librariesKey: _tvLibrariesKey,
+        watchlistKey: _tvWatchlistKey,
+        collectionsKey: _tvCollectionsKey,
+        playlistsKey: _tvPlaylistsKey,
+      ),
     );
     _focusContent(restorePreviousFocus: false);
   }

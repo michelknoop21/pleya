@@ -84,6 +84,8 @@ class MyPleyaScreen extends StatelessWidget {
       hasSeerr: hasSeerr && !isOffline,
       showDownloads: true,
       showActivity: servers?.hasOnlinePlexServers ?? false,
+      showCollections: false,
+      showPlaylists: false,
       watchlistCount: watchlist?.entriesByRecentlyAdded.length,
       downloadCount: downloads == null ? null : downloads.downloadedMovies.length + downloads.downloadedShows.length,
     );
