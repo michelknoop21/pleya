@@ -340,6 +340,87 @@ void main() {
       return result;
     }
 
+    // FILT1. `TvCatalogLayout.filterZoneRows` fixes the zone height so the panel
+    // stops resizing as focus walks the rail, and its whole justification is
+    // that the number stays above what a full rail needs, so the rail is never
+    // the half that scrolls. That is not self-enforcing: the audio-language
+    // section made the rail six categories and the constant stayed at what five
+    // needed, which silently pushed `Status` off the top of its own viewport,
+    // count chip and all, on a rail the user had no reason to suspect scrolled.
+    //
+    // Asserted through the scroll extent rather than through a height
+    // comparison: a category row is taller than `optionRowMinHeight` once its
+    // label and chip are laid out, so arithmetic on the constants is exactly
+    // the reasoning that went wrong. Zero extent is the property that matters.
+    testWidgets('a full rail never scrolls', (tester) async {
+      tester.view.physicalSize = const Size(1038, 584);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      // With counts on, so the rail carries the chips this is protecting and not
+      // just the labels: a category scrolling away is only a defect because the
+      // chip goes with it.
+      await openPanel(
+        tester,
+        selection: const UnifiedCatalogFilterSelection(
+          serverIds: {'nas', 'attic'},
+          libraryKeys: {'nas:1'},
+          watchState: UnifiedWatchFilter.unwatched,
+        ),
+      );
+
+      final labels = [
+        t.unifiedCatalog.filters.status,
+        t.unifiedCatalog.filters.genre,
+        t.libraries.filterCategories.audioLanguage,
+        t.unifiedCatalog.filters.year,
+        t.unifiedCatalog.filters.servers,
+        t.unifiedCatalog.filters.libraries,
+      ];
+      // The fixture has to actually produce the full rail, otherwise this test
+      // passes by having nothing to clip.
+      expect(labels.length, TvCatalogFilterSection.values.length);
+      for (final label in labels) {
+        expect(find.text(label), findsOneWidget, reason: 'category "$label" missing from the rail');
+      }
+
+      final rail = tester.state<ScrollableState>(
+        find.ancestor(of: find.text(labels.first), matching: find.byType(Scrollable)).first,
+      );
+      expect(
+        rail.position.maxScrollExtent,
+        0,
+        reason: 'the category rail scrolls, so at least one category and its active count sit off screen',
+      );
+    });
+
+    // The other half of FILT1. `filterZoneRows` only decides the height where
+    // the surface has room for it: `_zoneHeight` clamps to what it is given, and
+    // `setForceTv` puts this panel on windows far shorter than a television. On
+    // those the rail overflows whatever the constant says, so the rail carries
+    // the same fade the options column has, and this is the case that proves it
+    // is wired up rather than merely present in the tree.
+    testWidgets('a rail with no room to fit says so instead of cutting flat', (tester) async {
+      tester.view.physicalSize = const Size(1038, 460);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await openPanel(tester);
+
+      final status = find.text(t.unifiedCatalog.filters.status);
+      final rail = tester.state<ScrollableState>(find.ancestor(of: status, matching: find.byType(Scrollable)).first);
+      expect(
+        rail.position.maxScrollExtent,
+        greaterThan(0),
+        reason: 'the surface has to be genuinely too short, otherwise this proves nothing',
+      );
+      expect(
+        find.ancestor(of: status, matching: find.byType(ShaderMask)),
+        findsOneWidget,
+        reason: 'an overflowing rail cut flat reads as a rendering fault, not as "there is more here"',
+      );
+    });
+
     testWidgets('a tick alone changes nothing until Apply', (tester) async {
       await openPanel(tester);
       await _activateByLabel(tester, t.unifiedCatalog.filters.unwatched);

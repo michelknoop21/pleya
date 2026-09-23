@@ -450,13 +450,34 @@ class TvCatalogLayout {
   /// user was only moving between two labels. The footer moved under the
   /// pointer of attention every press.
   ///
-  /// Six is chosen against both zones, not just one: it is taller than a full
-  /// five-category rail (5 * 38 + 4 * 7 = 218 against 263), so the rail never
-  /// sets the height and the split never reflows, and it leaves the short
-  /// categories with quiet space under them rather than a cramped box. Longer
-  /// lists keep scrolling under [_FadingEdges], which is the affordance that
-  /// already says "there is more below".
-  static const int filterZoneRows = 6;
+  /// Chosen against both zones, not just one, and the rail is the binding half.
+  /// The zone has to stay taller than a full rail, otherwise the rail scrolls,
+  /// and a rail that scrolls hides a category together with the count chip that
+  /// is the only sign its filter is on.
+  ///
+  /// This number went stale once. It was set at what a five-category rail
+  /// needed; the audio-language section made the rail six and the number stayed
+  /// put, which left the rail a 254px viewport for 294px of content and pushed
+  /// `Status`, the category the Filters capsule opens on, off the top of a rail
+  /// nothing suggested could scroll (FILT1). Note that six option rows do not
+  /// hold six categories: a laid-out category row runs past
+  /// [optionRowMinHeight], so arithmetic on these constants is exactly the
+  /// reasoning that produced the gap.
+  ///
+  /// Seven covers the widest rail the panel can build, since
+  /// `TvCatalogFilterSection` has six values and the rail lists all six. It is
+  /// not a comfortable margin: at the canonical surface seven rows give 297.5px
+  /// against 293.75px of rail, so 3.75px in total. That is why the invariant is
+  /// pinned by a test in `tv_catalog_foundation_test.dart` that measures the
+  /// rail's scroll extent rather than by trusting these numbers to stay put. A
+  /// change in row metrics is meant to turn that test red, not to be absorbed
+  /// silently.
+  ///
+  /// The options column is untouched by that ceiling: a longer list keeps
+  /// scrolling under `_FadingEdges`, which is the affordance that already says
+  /// "there is more below", and the short categories keep quiet space under
+  /// them rather than a cramped box.
+  static const int filterZoneRows = 7;
 
   /// The count chip on a category that has active selections.
   static const double filterCountFontSize = 10.5;
@@ -477,7 +498,7 @@ class TvCatalogLayout {
   static const double filterActiveCategoryOutline = 0.2;
 
   /// Ink on an inactive category. Below [inkSecondary]: the rail is an index,
-  /// and four of its five entries should sit behind the list they point at.
+  /// and five of its six entries should sit behind the list they point at.
   static const double filterIdleCategoryInk = 0.55;
 
   /// The multi-source badge of hoofdstuk 10.3.
