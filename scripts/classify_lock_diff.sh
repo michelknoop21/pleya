@@ -75,6 +75,16 @@ fi
 # Een lockfile heeft een strakke, voorspelbare vorm. Alles wat daarvan afwijkt
 # is een harde fout: liever geen rapport dan een rapport dat pakketten mist en
 # de rest als ring 1 afvinkt.
+#
+# Elke regel hierbeneden gaat als tab-gescheiden tekst naar classify_pair, dat
+# hem met `IFS=$'\t' read` uitelkaar trekt. Tab telt voor bash's `read` als
+# IFS-witruimte, dus opeenvolgende tabs (een echt lege waarde tussen twee
+# gevulde velden) vallen samen tot één scheiding en schuiven de rest van de
+# regel op. Voor een git-bron is dat in de praktijk onschadelijk: pub schrijft
+# voor `path` altijd minstens "." weg, ook als pubspec.yaml geen `path:` heeft
+# — dus een echte lockfile levert hier nooit een leeg middenveld. Een
+# handgeschreven testfixture die dat "." weglaat, doet dat wel; zie
+# test/fixtures/lock_diff/git_url_only_change voor het gevolg.
 read_lock() {
   python3 - "$1" <<'PY'
 import sys
@@ -301,10 +311,41 @@ classify_pair() {
   local from to
   if [ -n "$old_line" ]; then from="$(identity_of "$name" "$o_src" "$o_ver" "$o_ref")"; else from="(afwezig)"; fi
   if [ -n "$new_line" ]; then to="$(identity_of "$name" "$n_src" "$n_ver" "$n_ref")"; else to="(verwijderd)"; fi
-  [ "$from" = "$to" ] && return 0
 
   local generator=false
   is_generator "$name" && generator=true
+
+  if [ "$from" = "$to" ]; then
+    # identity_of kijkt voor git alleen naar resolved-ref, nooit naar url. Dat
+    # liet de pin-fix van DEC-118 (dezelfde commit, andere host) hier
+    # onzichtbaar: from == to, dus dit script zag "niets gewijzigd" over
+    # precies de regel die de PR wijzigde. Eerst dus checken of de bron zelf
+    # hetzelfde bleef, maar alleen voor git: bij een hosted pakket zijn
+    # resolved-ref én path allebei altijd leeg, en `IFS=$'\t' read` (tab is
+    # IFS-witruimte) smelt twee opeenvolgende lege velden samen tot één
+    # scheiding. Daardoor schuift de echte url in $o_ref/$n_ref en blijven
+    # $o_url/$n_url voor ieder hosted pakket altijd leeg — een vergelijking
+    # daarop zou daar altijd "gelijk" zeggen, ook als de url wél veranderde,
+    # en dat is precies zo'n stil gat als deze check moet dichten. Voor git
+    # heeft path altijd minstens "." (zie de toelichting bij read_lock
+    # hierboven), dus daar smelt niets samen en is de vergelijking wél
+    # betrouwbaar.
+    if [ "${o_src:-}" = git ] && [ "${n_src:-}" = git ] && [ "${o_url:-}" != "${n_url:-}" ]; then
+      # Ref gelijk, url anders: geen ring op basis van plugin/native-diff,
+      # want de pub-cache benoemt een git-checkout naar
+      # <repo-basisnaam>-<ref>. Twee url's met dezelfde basisnaam en dezelfde
+      # ref wijzen naar hetzelfde cachepad, precies
+      # michelknoop21/background_downloader en
+      # edde746/background_downloader. native_diff zou dan "identical" melden
+      # zonder ooit de nieuwe url te hebben opgehaald, en dat is toeval in de
+      # naamgeving, geen bewijs. UNKNOWN is hier het eerlijke antwoord; wie
+      # dit ziet, verifieert met twee koude checkouts en `diff -r`, zoals de
+      # pin-fix zelf deed.
+      emit "$name" "$from (op ${o_url:-?})" "$to (op ${n_url:-?})" UNKNOWN n/a "$generator" \
+        "n/a (alleen url gewijzigd, resolved-ref ongewijzigd — niet aantoonbaar via de pub-cache)" "n/a"
+    fi
+    return 0
+  fi
 
   # SDK-pakketten (flutter, flutter_test, sky_engine) bewegen alleen mee met een
   # SDK-bump. Die is per definitie ring 3 en wordt daar ook getest.

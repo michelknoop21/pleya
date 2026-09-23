@@ -92,6 +92,7 @@ under `Notes`.
 - align watchlist filters and tv actions
 - close functional audit findings F1, F3-F7
 - restore the background_downloader pin behind a reachable ref
+- stop constructing Response from a cross-realm Blob in a test mock
 <!-- END GENERATED -->
 
 ### New

@@ -597,6 +597,8 @@ void main() {
       final rail1VisibleHeight = (navBarTop - rail1Top).clamp(0.0, rail1FullHeight);
       final rail1VisibleFraction = rail1FullHeight > 0 ? rail1VisibleHeight / rail1FullHeight : 0.0;
 
+      // De gemeten geometrie hoort in de testuitvoer: bij een rode run is dit
+      // het enige wat vertelt welke pixels niet klopten.
       // ignore: avoid_print
       print(
         'F5 fold geometry (393x852): navBarTop=$navBarTop heroTop=$heroTop heroBottom=$heroBottom '

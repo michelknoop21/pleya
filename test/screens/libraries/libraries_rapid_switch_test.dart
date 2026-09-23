@@ -90,7 +90,11 @@ class _Harness {
   void install() {
     BaseSharedPreferencesService.onMutation = (mutation) async {
       if (!mutation.key.endsWith('selected_library_key')) return;
-      final gate = _gates.remove(mutation.value);
+      // `value` is Object?, en de sleutels hier zijn String. Zonder deze
+      // controle zoekt `remove` op een type dat nooit kan matchen.
+      final value = mutation.value;
+      if (value is! String) return;
+      final gate = _gates.remove(value);
       if (gate != null) await gate.future;
     };
   }

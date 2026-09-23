@@ -47,6 +47,14 @@ dart_code_linter:
     - prefer-enums-by-name
     - prefer-commenting-analyzer-ignores
 
+    # Zelfde reden, andere rol: deze rule kijkt alleen of er een `expect` in
+    # het lichaam van een `test()` staat. Alle 26 treffers in deze suite zijn
+    # tests waarvan de assertie in een hulpfunctie zit (`expectNoLeak`) of die
+    # bewijzen dat een aanroep niets doet. Nul echte vondsten, dus als gate
+    # meet hij niets; als advies blijft hij leesbaar.
+    - missing-test-assertion:
+        severity: info
+
     # Reported as advice, not as a gate. dart_code_linter gives this rule
     # Severity.warning, and `flutter analyze` in CI treats a warning as a
     # failure. It fires 183 times, almost all of them on callbacks whose
@@ -86,8 +94,22 @@ dart_code_linter:
     source-lines-of-code: 500
 
   anti-patterns:
+    # long-method alleen: een testbestand is één `main()` met tientallen
+    # `testWidgets` erin, de vorm die het testframework voorschrijft, niet een
+    # functie die te lang geworden is. Gemeten op 23 september 2026: acht
+    # testbestanden overschreden deze grens al, tot 2612 regels met code,
+    # terwijl geen enkel bestand in lib/ eroverheen ging. Ze waren in CI nooit
+    # zichtbaar (`flutter analyze` laadt de plugin daar niet) en lokaal laadt
+    # hij hem wisselend, dus de pre-commit-gate viel soms om op code die
+    # niemand had aangeraakt. Alleen dit ene anti-pattern is hier gemeten als
+    # ongeschikt voor test/**; de overige metrics (cyclomatic-complexity,
+    # halstead-volume, long-parameter-list, …) blijven op test/** gelden — een
+    # testhelper met een echt te ingewikkelde vertakking is nog steeds een
+    # signaal, en er is geen bewijs dat die ooit vals afgaat.
     - long-method:
         lines-of-code: 500
+        exclude:
+          - test/**
     - long-parameter-list:
         number-of-parameters: 25
 

@@ -2792,11 +2792,36 @@ bestaat, want forks delen hun objectopslag.
 
 `scripts/check_updates.sh` blijft bewust upstream volgen: nieuw werk landt bij `edde746`, de
 spiegel draagt alleen deze commit. De regel heeft daar een comment gekregen zodat de url niet voor
-een fout wordt aangezien. Wat deze beslissing níét regelt, en wat dit gat liet bestaan:
-`check_forks` vergelijkt de pin met de head van de gevolgde ref en meldt dus alleen "loopt achter",
-nooit "niet meer oplosbaar", en `scripts/classify_lock_diff.sh` sluit `url` uit zijn
-vergelijkingssleutel uit, dus een repo-wissel in de lock passeert die controle zonder melding.
-Beide horen bij de gate-ronde, niet hier.
+een fout wordt aangezien.
+
+**Update 2026-09-23: de twee toolinggaten zijn gesloten.** `check_forks` vergeleek de pin alleen
+met de head van de gevolgde ref en meldde dus "loopt achter", nooit "niet meer oplosbaar", terwijl
+dat laatste precies de vraag was die deze hele storing veroorzaakte. `scripts/check_updates.sh`
+heeft nu een aparte `check_pin_reachability` (`--only pins`) die voor elke fork de eigen
+`url`+`resolved-ref` uit `pubspec.lock` haalt en echt fetcht: een `git fetch` van alle branches en
+tags gevolgd door `git cat-file -e <sha>^{commit}`, niet de blinde `git fetch <sha>` die pub zelf
+ook niet gebruikt. Onbereikbaar levert UNKNOWN op, altijd exit 2, ongeacht
+`--strict-through-ring`: een kapotte pin is geen "er is een nieuwere versie" en mag dus nooit
+stilvallen achter een ring.
+
+`scripts/classify_lock_diff.sh` sloot `url` inderdaad uit zijn identiteitssleutel: `identity_of`
+keek voor git alleen naar `resolved-ref`, dus de pin-fix hierboven (dezelfde commit, andere host)
+was voor dat script onzichtbaar. `from == to`, en de vergelijking stopte voor er ooit een ring werd
+toegekend. `identity_of` zelf blijft ongewijzigd; `classify_pair` doet er nu, ná die vergelijking,
+een aparte controle bovenop, met opzet beperkt tot git. Blijft de ref bij een git-pakket gelijk
+terwijl de url verandert, dan classificeert het script dat bewust als UNKNOWN in plaats van via de
+gewone plugin/native-diff-weg: de pub-cache benoemt een git-checkout naar
+`<repo-basisnaam>-<ref>`, en twee url's met dezelfde basisnaam en dezelfde ref, precies
+`edde746/background_downloader` en `michelknoop21/background_downloader`, wijzen naar hetzelfde
+cachepad. Een `nativeDiff: identical` zou daar toeval in de naamgeving meten, geen bewijs; wie dit
+ziet, verifieert zelf met twee koude checkouts en `diff -r`, zoals deze pin-fix zelf deed.
+
+Voor een hosted pakket (pub.dev) blijft een url-wijziging bij gelijkblijvende versie onopgemerkt:
+`resolved-ref` en `path` zijn daar in de lock allebei altijd leeg, en bash's `IFS=$'\t' read` smelt
+twee opeenvolgende lege velden samen tot één scheiding, waardoor de echte url in het ref-veld
+terechtkomt en niet betrouwbaar af te lezen is. Dat is bewust geen automatisch gecontroleerd geval:
+een verkeerde detectie op basis van verschoven velden zou erger zijn dan geen detectie. Een hosted
+pakket dat van registry wisselt zonder versiewijziging blijft dus een handmatig te herkennen geval.
 
 De spiegel is een tussenstap, geen eindstand. `docs/upstream-decoupling-plan.md` noemt het
 spiegelen van exacte commits expliciet als voorkeursstap en het vendoren naar `plugins/` als

@@ -91,4 +91,22 @@ void main() {
     expect(result.stderr.toString(), contains("mist 'source'"));
     expect(result.stdout.toString(), isNot(contains('summary:')));
   });
+
+  // DEC-118: identity_of keek voor git alleen naar resolved-ref, nooit naar
+  // url. Dat maakte de pin-fix zelf (dezelfde commit, andere host) onzichtbaar
+  // voor dit script — from == to, dus "niets gewijzigd" over precies de regel
+  // die de PR wijzigde.
+  test('een gewijzigde git-url bij dezelfde resolved-ref is UNKNOWN, niet "ongewijzigd"', () {
+    final result = classify('git_url_only_change');
+    expect(result.exitCode, 0, reason: result.stderr.toString());
+    final out = result.stdout as String;
+    expect(ringOf(out, 'background_downloader'), 'UNKNOWN');
+    expect(out, contains('edde746/background_downloader'));
+    expect(out, contains('michelknoop21/background_downloader'));
+    expect(
+      out,
+      contains('summary: 1 gewijzigd'),
+      reason: 'moet als wijziging tellen, niet als "geen gewijzigde pakketten"',
+    );
+  });
 }

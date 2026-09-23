@@ -13,6 +13,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT"
 
+# check-unused-code en check-unused-files kosten samen ruim anderhalve minuut
+# (gemeten 23 sep 2026: 50 s en 41 s), en ze kunnen per definitie niets vinden
+# dat aan de commit zelf ligt: ze beoordelen de hele lib-boom, niet de diff.
+# In CI draaien ze onverkort door, dus de dekking verandert niet; hier zijn ze
+# opt-in zodat een commit niet elke keer op een boombrede scan wacht.
+WITH_UNUSED=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --with-unused) WITH_UNUSED=1; shift ;;
+    -h|--help)
+      echo "gebruik: scripts/ci_checks.sh [--with-unused]"
+      echo "  --with-unused  draai ook check-unused-code en check-unused-files (CI doet dit altijd)"
+      exit 0 ;;
+    *) echo "ci_checks: onbekend argument: $1" >&2; exit 64 ;;
+  esac
+done
+
 if [ -t 1 ]; then
   BOLD=$'\e[1m'; RED=$'\e[31m'; GRN=$'\e[32m'; DIM=$'\e[2m'; RST=$'\e[0m'
 else
@@ -129,7 +146,9 @@ rm -f "$out"
 
 # 4. Unused code (mirrors ci.yml "Check for unused code")
 section "dart_code_linter: unused code"
-if ! have_dart_code_linter; then
+if [ "$WITH_UNUSED" -eq 0 ]; then
+  skip "boombrede scan, draait in CI — lokaal met --with-unused"
+elif ! have_dart_code_linter; then
   skip "dart_code_linter unresolved — run 'flutter pub get'"
 else
   out="$(mktemp)"
@@ -146,7 +165,9 @@ fi
 
 # 5. Unused files (mirrors ci.yml "Check for unused files")
 section "dart_code_linter: unused files"
-if ! have_dart_code_linter; then
+if [ "$WITH_UNUSED" -eq 0 ]; then
+  skip "boombrede scan, draait in CI — lokaal met --with-unused"
+elif ! have_dart_code_linter; then
   skip "dart_code_linter unresolved — run 'flutter pub get'"
 else
   out="$(mktemp)"

@@ -332,7 +332,10 @@ describe('artwork', () => {
     let auth: string | null = null;
     const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       auth = new Headers(init?.headers).get('Authorization');
-      return new Response(new Blob(['bytes'], { type: 'image/jpeg' }), { status: 200 });
+      // Een kale string als body: Response.blob() bouwt daar zelf een Blob uit,
+      // en dat vermijdt een Blob die uit een ander realm komt dan de Response die
+      // hem in ontvangst neemt (jsdom's fetch-polyfill versus de host-runtime).
+      return new Response('bytes', { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
     }) as unknown as FetchLike;
 
     const { client } = clientWith(fetchImpl);
@@ -347,7 +350,7 @@ describe('artwork', () => {
     let url = '';
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       url = String(input);
-      return new Response(new Blob(['b']), { status: 200 });
+      return new Response('b', { status: 200 });
     }) as unknown as FetchLike;
 
     const { client } = clientWith(fetchImpl);

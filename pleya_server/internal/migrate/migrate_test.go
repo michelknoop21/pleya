@@ -89,8 +89,8 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		// belangrijk: geen users, geen sessions, geen play_history, geen
 		// play_sessions en geen transcode_sessions. De lijst hieronder is
 		// uitputtend, dus een tabel die vooruitgebouwd wordt valt hier om.
-		"watch_states":        true,
-		"stream_sessions":     true,
+		"watch_states":    true,
+		"stream_sessions": true,
 	}
 
 	rows, err := pool.Query(ctx, `

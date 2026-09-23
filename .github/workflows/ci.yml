@@ -35,9 +35,7 @@ jobs:
           key: ${{ runner.os }}-pub-v3-${{ hashFiles('**/pubspec.yaml', '**/pubspec.lock') }}
 
       - name: Install dependencies
-        run: |
-
-          flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Verify generated files committed
         run: |
@@ -127,9 +125,7 @@ jobs:
           key: ${{ runner.os }}-pub-v3-${{ hashFiles('**/pubspec.yaml', '**/pubspec.lock') }}
 
       - name: Install dependencies
-        run: |
-          flutter clean
-          flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Run tests
         run: |
@@ -156,33 +152,3 @@ jobs:
 
       - name: Verify native formatting
         run: scripts/format_native.sh --check
-
-  dependency-check:
-    name: Dependency Validation
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
-        with:
-          channel: "stable"
-          flutter-version-file: .fvmrc
-          cache: true
-          pub-cache: false
-
-      - name: Cache Pub dependencies
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.pub-cache
-          key: ${{ runner.os }}-pub-v3-${{ hashFiles('**/pubspec.yaml', '**/pubspec.lock') }}
-
-      - name: Verify dependencies
-        run: |
-          flutter clean
-          flutter pub get
-          flutter pub outdated
