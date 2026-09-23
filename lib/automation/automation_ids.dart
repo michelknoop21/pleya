@@ -170,6 +170,10 @@ class AutomationIds {
   /// One chip in [mediaDetailSeasonChips]. Instanceable: suffixed `[<index>]`.
   static const String mediaDetailSeasonChip = 'media-detail.season-chip';
 
+  /// The play button in the media-detail action row. On TV the page opens
+  /// with the ring here, and Menu from the detail rail comes back to it.
+  static const String mediaDetailPlay = 'media-detail.play';
+
   /// The Mijn Pleya hub as a screen. Its own `AutomationScreen`, because
   /// `screen.main` is mounted for the whole session and says nothing about
   /// which destination is on show.
@@ -554,6 +558,7 @@ class AutomationIds {
     {'id': mediaDetailEpisodeListItem, 'role': 'list.item', 'instanceable': true},
     {'id': mediaDetailSeasonChips, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailSeasonChip, 'role': 'chip', 'instanceable': true},
+    {'id': mediaDetailPlay, 'role': 'button', 'instanceable': false},
     {'id': screenMyPleya, 'role': 'screen', 'instanceable': false},
     {'id': myPleyaTile, 'role': 'grid.item', 'instanceable': true},
     {'id': myPleyaSection, 'role': 'region', 'instanceable': true},

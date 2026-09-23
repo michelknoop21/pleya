@@ -878,6 +878,17 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     return formatSourceCount(count);
   }
 
+  /// Names a non-content state (`empty`, `filtered_empty`, `error`) so a
+  /// scenario can tell them apart without reading the words, the same way the
+  /// kijklijst and Zoeken do.
+  Widget _state(String which, Widget child) => AutomationNode(
+    id: AutomationIds.tvCatalogState,
+    instance: '$_surface.$which',
+    role: 'region',
+    focusNode: _stateActionFocus,
+    child: child,
+  );
+
   Widget _buildBody() {
     final catalog = widget.catalog;
     final snapshot = catalog.snapshot;
@@ -893,25 +904,31 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     // all. Anything that loaded stays on screen, however many libraries failed.
     if (snapshot.groups.isEmpty) {
       if (snapshot.initialLoadFailed || catalog.loadFailed) {
-        return TvCatalogEmptyState(
-          title: t.unifiedCatalog.states.errorTitle,
-          body: t.unifiedCatalog.states.errorBody,
-          actionLabel: t.common.retry,
-          onActionFocusNode: _stateActionFocus,
-          onAction: catalog.refresh,
-          onActionNavigateLeft: _openRail,
+        return _state(
+          'error',
+          TvCatalogEmptyState(
+            title: t.unifiedCatalog.states.errorTitle,
+            body: t.unifiedCatalog.states.errorBody,
+            actionLabel: t.common.retry,
+            onActionFocusNode: _stateActionFocus,
+            onAction: catalog.refresh,
+            onActionNavigateLeft: _openRail,
+          ),
         );
       }
       // An empty *filtered* result is a different situation from an empty
       // catalog, and needs a different way out (hoofdstuk 29).
       if (!_effectiveFilters.isEmpty) {
-        return TvCatalogEmptyState(
-          title: t.unifiedCatalog.states.filterEmptyTitle,
-          body: t.unifiedCatalog.states.filterEmptyBody,
-          actionLabel: t.unifiedCatalog.states.clearFilters,
-          onActionFocusNode: _stateActionFocus,
-          onAction: _clearFilters,
-          onActionNavigateLeft: _openRail,
+        return _state(
+          'filtered_empty',
+          TvCatalogEmptyState(
+            title: t.unifiedCatalog.states.filterEmptyTitle,
+            body: t.unifiedCatalog.states.filterEmptyBody,
+            actionLabel: t.unifiedCatalog.states.clearFilters,
+            onActionFocusNode: _stateActionFocus,
+            onAction: _clearFilters,
+            onActionNavigateLeft: _openRail,
+          ),
         );
       }
       // The third state carries an action for the same reason the other two do,
@@ -922,13 +939,16 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       // it landed the focus nowhere — the CAT12 hole, in the one state CAT12's
       // fix did not reach. Verversen is also the honest offer here: an empty
       // catalog is usually a scan that has not finished.
-      return TvCatalogEmptyState(
-        title: t.unifiedCatalog.states.emptyTitle,
-        body: t.unifiedCatalog.states.emptyBody,
-        actionLabel: t.common.retry,
-        onActionFocusNode: _stateActionFocus,
-        onAction: catalog.refresh,
-        onActionNavigateLeft: _openRail,
+      return _state(
+        'empty',
+        TvCatalogEmptyState(
+          title: t.unifiedCatalog.states.emptyTitle,
+          body: t.unifiedCatalog.states.emptyBody,
+          actionLabel: t.common.retry,
+          onActionFocusNode: _stateActionFocus,
+          onAction: catalog.refresh,
+          onActionNavigateLeft: _openRail,
+        ),
       );
     }
 
@@ -956,6 +976,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         // (CAT17).
         onBack: _railExpanded ? _closeRail : null,
         reservedLeading: _railLeading(MediaQuery.sizeOf(context).width),
+        automationSurface: _surface,
         clientFor: (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
         footer: TvUnifiedGridFooter(
           loadedCount: snapshot.groups.length,

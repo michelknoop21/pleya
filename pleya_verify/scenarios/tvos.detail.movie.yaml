@@ -1,0 +1,40 @@
+name: tvos.detail.movie
+target: tvos-sim
+# MOC-09 (film detail) and SYS-2/BACK1, on one path a viewer takes: a card on
+# Home, Select, the detail page, Menu back to the same card.
+#
+# What this proves:
+#   1. the detail page opens with the ring on Play, inside the viewport
+#      (DET1: the action row sits above `TvCatalogLayout.bottomSafeInset`);
+#   2. back is the remote's Menu, not a drawn arrow (BACK1): Menu leaves the
+#      page and the ring lands on the card that opened it.
+# The absence of the old back arrow cannot be asserted (the DSL has no absence
+# predicate); `00-detail` is the evidence for it.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+
+  # Bar, hero Play, first rail card (same route as tvos.detail.context-menu).
+  - press: down
+  - settle: 800
+  - press: down
+  - settle: 800
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
+
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - wait_until: {focused: media-detail.play, timeout: 8000}
+  - settle: 1500
+  - assert: {id: media-detail.play, insideViewport: true}
+  - snapshot: 00-detail
+
+  - press: menu
+  - wait_until: {focused: "discover.rail.item[0.0]", timeout: 8000}
+  - settle: 800
+  - snapshot: 01-back-on-card

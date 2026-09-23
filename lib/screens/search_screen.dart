@@ -716,6 +716,11 @@ class _SearchScreenState extends State<SearchScreen>
     // moving down would silently drop focus and strand the user. Keep focus on
     // the keyboard until there is something real to land on.
     if (_isSearching) return;
+    // Apple TV's pill has nothing under it but the results (no mic, and the
+    // inline keyboard only on fallback), and a directional search from a
+    // full-width pill lands on the card nearest its centre, the second or
+    // third, not the first. Reading order starts at the first result.
+    if (PlatformDetector.isAppleTV() && (_tvSearchKey.currentState?.focusFirstResult() ?? false)) return;
     if (FocusScope.of(context).focusInDirection(TraversalDirection.down)) return;
     if (_searchResults.isNotEmpty) {
       _focusFirstResult();

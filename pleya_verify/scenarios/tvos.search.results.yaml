@@ -1,0 +1,56 @@
+name: tvos.search.results
+target: tvos-sim
+# MOC-13 (TV search with a permanent result title) and SEARCH2 (a band that
+# scrolls up under the search bar is clipped, it does not paint over the
+# search bar and the top navigation).
+#
+# The query goes in through the Apple TV system keyboard, the primary input
+# on tvOS: Select on the search pill opens it, `type` sends the text through
+# idb, Menu closes it and the results stay.
+#
+# The query is "as". Search starts at two characters (a single letter fans
+# out to every server for nothing useful, `_onSearchChanged`), and in
+# `catalog.mixed.v1` "as" matches the films Basalt and Cascade and nothing
+# else: one Films band, two cards. No two-letter query reaches both a film
+# and the show Driftwood in this fixture, so the band-over-band scroll of
+# SEARCH2 stays with its widget test; this run is the on-device evidence that
+# the band sits under the bar and the ring moves through it.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: left
+  - wait_until: {focused: nav.search, timeout: 5000}
+  - press: select
+  - settle: 2000
+  - snapshot: 00-search-empty
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 8000}
+  - settle: 1000
+  - type: "as"
+  - settle: 2500
+  - snapshot: 01-keyboard-typed
+  # Menu closes the keyboard and keeps the text (`finish submitted=false`
+  # returns the current value), so the debounced search still runs.
+  - press: menu
+  - wait_until: {id: "tv.catalog.grid[search.movies]", timeout: 10000}
+  - assert: {id: "tv.catalog.grid.item[search.movies.0]"}
+  - assert: {id: "tv.catalog.grid.item[search.movies.1]"}
+  - settle: 1000
+  - snapshot: 02-results
+
+  - press: down
+  - wait_until: {focused: "tv.catalog.grid.item[search.movies.0]", timeout: 5000}
+  - assert: {id: "tv.catalog.grid[search.movies]", below: nav.search, insideViewport: true}
+  - settle: 800
+  - snapshot: 03-first-card
+
+  - press: right
+  - wait_until: {focused: "tv.catalog.grid.item[search.movies.1]", timeout: 5000}
+  - assert: {id: "tv.catalog.grid.item[search.movies.1]", rightOf: "tv.catalog.grid.item[search.movies.0]", insideViewport: true}
+  - settle: 800
+  - snapshot: 04-second-card

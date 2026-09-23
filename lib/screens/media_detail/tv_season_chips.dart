@@ -108,6 +108,7 @@ extension _MediaDetailTvSeasonChips on _MediaDetailScreenState {
                     instance: '$i',
                     role: 'chip',
                     state: () => {'selected': i == _selectedSeasonIndex},
+                    focusNode: _seasonTabFocusNodes.length > i ? _seasonTabFocusNodes[i] : null,
                     child: _TvSeasonChip(
                       label: _seasons[i].title?.isNotEmpty == true
                           ? _seasons[i].title!

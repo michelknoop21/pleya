@@ -33,6 +33,9 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
     case 'catalog.long-rails.v1':
       _applyCatalogLongRailsV1(server);
       return true;
+    case 'catalog.seasons.v1':
+      _applyCatalogSeasonsV1(server);
+      return true;
     case 'catalog.empty.v1':
       server.resetCatalog();
       return true;
@@ -321,6 +324,62 @@ void _applyCatalogLongRailsV1(PleyaFakeServer server) {
   }
 
   server.hubs['recently_added']!.addAll(ids);
+}
+
+/// One show with four seasons of three episodes each, for the TV series
+/// detail's season chips (MOC-10, DET4). Every other fixture's show has one
+/// season, and the chip row only appears from two up; four gives the ring
+/// room to walk over at least three chips and still have one left over.
+void _applyCatalogSeasonsV1(PleyaFakeServer server) {
+  const fixture = 'catalog.seasons.v1';
+  server.resetCatalog();
+
+  final libraryId = _mintId(server, fixture, 'library', 'shows');
+  server.addLibrary(id: libraryId, title: 'Shows', kind: 'shows', itemCount: 1);
+
+  final showId = _mintId(server, fixture, 'show', 'harbor');
+  server.addItem(
+    id: showId,
+    kind: 'show',
+    title: 'Harbor',
+    libraryId: libraryId,
+    year: 2022,
+    childCount: 4,
+    episodeCount: 14,
+    posterId: _registerArtwork(server, showId),
+  );
+
+  // Season n has n + 1 episodes, so an episode rail that failed to swap on a
+  // chip change still reports the previous season's count and the scenario
+  // goes red.
+  for (var season = 1; season <= 4; season++) {
+    final episodes = season + 1;
+    final seasonId = _mintId(server, fixture, 'season', 'harbor-s0$season');
+    server.addItem(
+      id: seasonId,
+      kind: 'season',
+      title: 'Season $season',
+      parentId: showId,
+      index: season,
+      childCount: episodes,
+      episodeCount: episodes,
+      posterId: _registerArtwork(server, seasonId),
+    );
+    for (var episode = 1; episode <= episodes; episode++) {
+      final episodeId = _mintId(server, fixture, 'episode', 'harbor-s0${season}e$episode');
+      server.addItem(
+        id: episodeId,
+        kind: 'episode',
+        title: 'S0${season}E$episode',
+        parentId: seasonId,
+        index: episode,
+        durationMs: 1400000 + episode * 1000,
+        posterId: _registerArtwork(server, episodeId),
+      );
+    }
+  }
+
+  server.hubs['recently_added']!.add(showId);
 }
 
 /// Five requests across four `SeerrRequestStatus` values (pending, approved,

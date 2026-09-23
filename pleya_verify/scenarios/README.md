@@ -29,9 +29,10 @@ to prove yet. `tvos.library.sort.yaml` used to exercise the library
 header's Sort control in its place, including the reordered result; it was
 retired in TV6 because LIB7 (DEC-092) removed that header on TV. Sorting now
 lives in the catalog rail. `tvos.catalog.rail-sort-focus.yaml` proves the
-rail keeps focus through a sort, not the order it produces: the Films/Series
-grid items carry no automation id yet. A scenario that asserts the order is
-TV8's "filters en sorteren" row.
+rail keeps focus through a sort; `tvos.catalog.sort-order.yaml` (TV8) proves
+the order it produces. Each Films/Series card registers as
+`tv.catalog.grid.item[<surface>.<i>]` with its title in `state`, so Titel
+A-Z and Titel Z-A are asserted card by card.
 
 `tvos.library.filters` is formally **DEFERRED: blocked by Pleya Server
 catalog/filter contract G13** ([DEC-080](../../docs/DECISIONS.md#dec-080-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)).
