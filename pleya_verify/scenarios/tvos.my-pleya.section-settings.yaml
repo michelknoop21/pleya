@@ -30,10 +30,7 @@ steps:
   - wait_until: {id: screen.my_pleya, timeout: 15000}
   - press: down
   - press: down
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
-  - press: right
-  - press: right
-  - press: right
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - assert: {id: "my_pleya.tile[settings]", focused: true}
   - snapshot: 00-tile-focused
 
