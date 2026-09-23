@@ -39,8 +39,8 @@ steps:
 
   # `screen.libraries` readiness only tracks the library *list* fetch; a
   # freshly selected library lands on `LibraryTabType.recommended` (index
-  # 0 of `LibraryTabType.values`), not `browse` — see
-  # `tvos.library.sort.yaml`'s own note on the same finding. There, the
+  # 0 of `LibraryTabType.values`), not `browse`. The retired
+  # `tvos.library.sort.yaml` hit the same finding. There, the
   # library's Recommended tab has hub content, so focus after Select lands
   # *inside* that content and Menu is needed first to reach the tab bar.
   # Here `catalog.shows.v1`'s single show has nothing to recommend, so
