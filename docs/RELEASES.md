@@ -34,6 +34,7 @@ under `Notes`.
 - verbind authstatussen met de TV-compositie
 - unify mobile catalog filters
 - add audio language selection and filters
+- extend hero and add personal media overviews
 
 ### Improved
 - bereken showReconnect op één plek in tvTopNavFocusKeys
