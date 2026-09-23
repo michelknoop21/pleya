@@ -160,9 +160,16 @@ void main() {
       expect(find.byType(TvOfflineHomeScreen), findsOneWidget, reason: 'MOC-23: offline Home is what is shown');
       expect(find.byType(DownloadsScreen), findsNothing, reason: 'the Downloads auto-pick does not survive on TV');
 
+      // The remote on the bar when the connection returns: the ring the
+      // coordinator draws and the node that holds the focus must move together.
+      h.shell.onFocusNav();
+      await h.settle();
+      expect(h.shell.navNodes.isFocused(TvDestinationId.home.focusKey), isTrue, reason: 'offline: remote on Home');
+
       h.offline.set(false);
       await h.settle();
       expect(h.shell.coordinator.active, restored, reason: 'back online: the lit pill');
+      expect(h.shell.navNodes.isFocused(restored.focusKey), isTrue, reason: 'back online: the focused pill');
       expect(
         find.byType(TvMoviesLandingScreen),
         restored == TvDestinationId.movies ? findsOneWidget : findsNothing,

@@ -1,0 +1,55 @@
+name: tvos.offline.home
+target: tvos-sim
+# MOC-23 (PB-12): the TV Home when no server answers, and the way back.
+#
+# The app decides it is offline from a health probe (`checkHealth`: `/info`
+# plus `/server`), which runs when a connection is added at start, on resume,
+# on a connectivity change and on Reconnect. Nothing probes a running session
+# on a timer, so the fixture going down mid-session changes nothing on screen.
+# The scenario therefore takes the fixture down (`/__verify/offline`, every
+# Pleya request answers 502 until it is turned off) and cold-starts the app
+# against it: the second `launch` reinstalls and relaunches, and the start-up
+# probe finds the server unreachable, which is exactly what an unplugged NAS
+# looks like when you turn the TV on.
+#
+# What this proves:
+#   1. offline, Home keeps its tab and shows `TvOfflineHomeScreen`: Reconnect
+#      (focused), Manage servers beside it, and the server list;
+#   2. with the server back, Select on Reconnect brings the normal Home back.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - fixture_mutate: {op: offline, enabled: true}
+  # A second launch in one run is a cold restart of the installed app.
+  - launch
+steps:
+  - wait_until: {id: "offline_home.action[reconnect]", timeout: 30000}
+  - settle: 3500
+  - assert: {id: "offline_home.action[reconnect]", insideViewport: true}
+  - assert: {id: "offline_home.action[manage_servers]", rightOf: "offline_home.action[reconnect]"}
+  - assert: {id: "offline_home.action[manage_servers]", sameRow: "offline_home.action[reconnect]"}
+  - assert: {id: nav.discover, state: {active: true}}
+  - snapshot: 00-offline-home
+  # The known server is listed, and says it is offline (the value line also
+  # carries the fixture's port, which changes per run, so only the title is
+  # pinned; the screenshot shows the status).
+  - assert: {id: "my_pleya.section.tile[offline_home.servers.offlineHome_server_pleyaServer.srv-1]", state: {title: Zolder}}
+  - assert: {id: "my_pleya.section.tile[offline_home.servers.offlineHome_server_pleyaServer.srv-1]", below: "offline_home.action[reconnect]"}
+  - assert: {id: nav.reconnect, insideViewport: true}
+
+  # The shell starts with the ring on the bar's Home pill; DOWN hands it to the
+  # page, onto Reconnect.
+  - press: down
+  - wait_until: {focused: "offline_home.action[reconnect]", timeout: 5000}
+  - snapshot: 01-reconnect-focused
+
+  # Server back, Select on Reconnect: the normal Home returns.
+  - fixture_mutate: {op: offline, enabled: false}
+  - press: select
+  - wait_until: {id: discover.hero, timeout: 30000}
+  - settle: 2500
+  - assert: {id: discover.hero, insideViewport: true}
+  - assert: {id: nav.discover, state: {active: true}}
+  - snapshot: 02-online-home

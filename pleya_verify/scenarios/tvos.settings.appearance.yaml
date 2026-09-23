@@ -1,0 +1,100 @@
+name: tvos.settings.appearance
+target: tvos-sim
+# MOC-20 (PB-10): Instellingen ▸ Uiterlijk carries the four TV preferences
+# mockup 20 asks for (titles under posters, hero clearlogo, hero auto-rotate,
+# reduce motion; commit 7e0b2935), each a real `BoolPref`. The rows publish
+# the value they draw as `my_pleya.section.tile[setting.<pref key>].state.value`.
+#
+# What this proves:
+#   1. Uiterlijk is reachable from Mijn Pleya ▸ Instellingen with the remote;
+#   2. all four prefs are rows on the page, with their shipped defaults, and
+#      the remote reaches each of them;
+#   3. Select flips "titels onder posters" and the row reports the new value,
+#      a second Select flips it back (so the run leaves no changed pref behind);
+#   4. Menu leaves the page onto the settings tile it came from, and Menu again
+#      lands on the hub's Instellingen tile.
+#
+# Reduce motion is deliberately not toggled: it restarts the app
+# (`onAfterWrite: _restartApp`), which would end the driven session.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # Same walk as `tvos.settings.language-preferences`: the hub opens on
+  # Profiel wisselen, two DOWNs is Instellingen.
+  - press: down
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
+  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
+  - snapshot: 00-settings-appearance-tile
+
+  - press: select
+  - wait_until: {id: "my_pleya.section.tile[setting.tv_show_titles_under_posters]", timeout: 15000}
+  - settle: 800
+  - snapshot: 01-appearance-opened
+
+  # Two of the four MOC-20 prefs are mounted on open, at their shipped
+  # defaults. The page is a lazy list, so the hero pair is asserted once the
+  # walk below has scrolled it into existence.
+  - assert: {id: "my_pleya.section.tile[setting.tv_show_titles_under_posters]", state: {value: true}}
+  - assert: {id: "my_pleya.section.tile[setting.tv_reduce_motion]", state: {value: false}}
+
+  # Down the Weergave card onto "titels onder posters": theme, language,
+  # density, view mode, episode poster mode, full card, focus glow, titles.
+  - press: down
+  - settle: 250
+  - press: down
+  - settle: 250
+  - press: down
+  - settle: 250
+  - press: down
+  - settle: 250
+  - press: down
+  - settle: 250
+  - press: down
+  - settle: 250
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[setting.tv_show_titles_under_posters]", timeout: 5000}
+  - assert: {id: "my_pleya.section.tile[setting.tv_show_titles_under_posters]", insideViewport: true}
+
+  # Select flips it, and the row says so; Select again restores the default.
+  - press: select
+  - settle: 600
+  - assert: {id: "my_pleya.section.tile[setting.tv_show_titles_under_posters]", focused: true, state: {value: false}}
+  - snapshot: 02-titles-off
+  - press: select
+  - settle: 600
+  - assert: {id: "my_pleya.section.tile[setting.tv_show_titles_under_posters]", state: {value: true}}
+
+  # On down the page to the Home-screen card: reduce motion, episode number,
+  # then the hero clearlogo and hero auto-rotate rows.
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[setting.tv_reduce_motion]", timeout: 5000}
+  - press: down
+  - settle: 250
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[setting.tv_hero_clear_logo]", timeout: 5000}
+  - assert: {id: "my_pleya.section.tile[setting.tv_hero_clear_logo]", insideViewport: true, state: {value: true}}
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[setting.tv_hero_auto_advance]", timeout: 5000}
+  - assert: {id: "my_pleya.section.tile[setting.tv_hero_auto_advance]", insideViewport: true, state: {value: true}}
+  - snapshot: 02b-hero-rows
+
+  # Menu out: onto the tile it came from, then onto the hub's tile.
+  - press: menu
+  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
+  - snapshot: 03-back-on-tile
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}

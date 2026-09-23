@@ -26,9 +26,12 @@ contract carries no filter parameter or endpoint at all (G13 in
 `docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md`, not scheduled before a catalog
 phase or a contract question ahead of PS-7), so there is no real filter path
 to prove yet. `tvos.library.sort.yaml` used to exercise the library
-header's Sort control in its place; it was retired in TV6 because LIB7
-(DEC-092) removed that header on TV, and sorting there is now the catalog
-rail's, proven by `tvos.catalog.rail-sort-focus.yaml`.
+header's Sort control in its place, including the reordered result; it was
+retired in TV6 because LIB7 (DEC-092) removed that header on TV. Sorting now
+lives in the catalog rail. `tvos.catalog.rail-sort-focus.yaml` proves the
+rail keeps focus through a sort, not the order it produces: the Films/Series
+grid items carry no automation id yet. A scenario that asserts the order is
+TV8's "filters en sorteren" row.
 
 `tvos.library.filters` is formally **DEFERRED: blocked by Pleya Server
 catalog/filter contract G13** ([DEC-080](../../docs/DECISIONS.md#dec-080-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)).

@@ -74,11 +74,15 @@ class TvPanelButton extends StatefulWidget {
     this.onNavigateRight,
     this.onNavigateUp,
     this.onNavigateDown,
+    this.automationId,
+    this.automationInstance,
   });
 
   final double scale;
   final String label;
   final VoidCallback onPressed;
+  final String? automationId;
+  final String? automationInstance;
   final bool primary;
   final IconData? icon;
   final FocusNode? focusNode;
@@ -121,6 +125,9 @@ class _TvPanelButtonState extends State<TvPanelButton> {
       onNavigateRight: widget.onNavigateRight,
       onNavigateUp: widget.onNavigateUp,
       onNavigateDown: widget.onNavigateDown,
+      automationId: widget.automationId,
+      automationInstance: widget.automationInstance,
+      automationRole: 'button',
       onSelect: () {
         SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
         widget.onPressed();

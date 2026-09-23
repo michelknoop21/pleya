@@ -303,6 +303,18 @@ class AutomationIds {
   /// reaches the panel on a simulator that cannot swipe.
   static const String playerSettingsButton = 'player.settings_button';
 
+  /// The play/pause button in the player bar; `state.playing` mirrors the
+  /// icon it draws. On TV the player opens with this button focused.
+  static const String playerPlayPause = 'player.play_pause';
+
+  /// An action button on the TV offline Home (`TvOfflineHomeScreen`),
+  /// suffixed `reconnect` or `manage_servers`.
+  static const String offlineHomeAction = 'offline_home.action';
+
+  /// One profile on the profile picker, suffixed by its position
+  /// (`profile.tile[0]`); `state` carries the name and whether it is active.
+  static const String profileTile = 'profile.tile';
+
   /// The mobile bottom navigation bar as a whole (bounds, not per-tab). The
   /// per-tab nodes are [navTab], mounted on both the side rail and this bar.
   static const String navBar = 'nav.bar';
@@ -495,6 +507,8 @@ class AutomationIds {
     tvCatalogRail,
     tvCatalogRailRow,
     tvCatalogState,
+    offlineHomeAction,
+    profileTile,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -607,5 +621,8 @@ class AutomationIds {
     {'id': tvCatalogRail, 'role': 'region', 'instanceable': true},
     {'id': tvCatalogRailRow, 'role': 'list.item', 'instanceable': true},
     {'id': tvCatalogState, 'role': 'region', 'instanceable': true},
+    {'id': playerPlayPause, 'role': 'button', 'instanceable': false},
+    {'id': offlineHomeAction, 'role': 'button', 'instanceable': true},
+    {'id': profileTile, 'role': 'grid.item', 'instanceable': true},
   ];
 }

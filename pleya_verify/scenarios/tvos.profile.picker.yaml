@@ -1,0 +1,39 @@
+name: tvos.profile.picker
+target: tvos-sim
+# MOC-21: Profiel kiezen, opened the way the remote opens it, from the avatar
+# at the left end of the top bar (`nav.profile`).
+#
+# What nav.profile opens is `ProfileSwitchScreen()` without
+# `requireSelection`, which is the switch-and-manage list. The mockup-21
+# composition (`TvProfileGate`, "Wie is er aan het kijken?") is the launch
+# gate: it only appears with `requireSelection: true`, which the app pushes at
+# start when there is no active profile or when "profiel kiezen bij openen" is
+# on with more than one profile. This fixture signs in one profile, so the gate
+# is not reachable here; `test/screens/tv/tv_profile_gate_test.dart` covers it.
+#
+# What this proves:
+#   1. the avatar in the bar opens the picker, with the ring on the first
+#      profile tile, which is the active one;
+#   2. Menu leaves the picker and puts the ring back on the avatar.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  # The bar starts on Home; the avatar is two stops left of it (search between).
+  - press: left
+  - press: left
+  - wait_until: {focused: nav.profile, timeout: 5000}
+  - snapshot: 00-avatar-focused
+  - press: select
+  - wait_until: {focused: "profile.tile[0]", timeout: 10000}
+  - settle: 600
+  - assert: {id: "profile.tile[0]", insideViewport: true, state: {active: true}}
+  - snapshot: 01-picker
+
+  - press: menu
+  - wait_until: {focused: nav.profile, timeout: 8000}
+  - snapshot: 02-back-on-avatar

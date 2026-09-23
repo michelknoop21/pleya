@@ -173,9 +173,12 @@ omgevingsschakelaar die `/v1/*` zonder auth laat draaien.
 
 - **`tvos.library.filters`** is `DEFERRED: blocked by Pleya Server catalog/filter contract G13`
   ([DEC-080](../DECISIONS.md#dec-080-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)).
-  De scenariogrammatica kan het dragen zodra het productcontract bestaat. Sorteren zelf bewijst
-  `tvos.catalog.rail-sort-focus.yaml` in de catalogusrail; `tvos.library.sort.yaml` deed dat op de
-  oude bibliotheekkop en is in TV6 ingetrokken, omdat LIB7 die kop op TV heeft vervangen.
+  De scenariogrammatica kan het dragen zodra het productcontract bestaat. `tvos.library.sort.yaml`
+  bewees sorteren inclusief de nieuwe volgorde op de oude bibliotheekkop en is in TV6 ingetrokken,
+  omdat LIB7 die kop op TV heeft vervangen. `tvos.catalog.rail-sort-focus.yaml` bewijst in de
+  catalogusrail alleen dat de focus een sortering overleeft, niet de volgorde: de rasteritems van
+  Films en Series hebben nog geen automation-id. Die assertie hoort bij de TV8-rij "filters en
+  sorteren".
 - **`macos.smoke.boot` in CI** faalt op een GitHub-hosted runner door een signing-beperking, niet
   door een fout in Verify zelf ([DEC-083](../DECISIONS.md#dec-083-pleya-verify-ci-drie-gescheiden-gates-geen-tweede-execution-path)).
   `discover.hero.layout` op hetzelfde target heeft wél een reproduceerbaar bewezen PASS.

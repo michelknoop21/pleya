@@ -245,8 +245,17 @@ class TvosSimulatorDriver implements VerificationDriver {
     await _boot(udid);
     await _run('xcrun', ['simctl', 'terminate', udid, verifyBundleId]);
     await _run('xcrun', ['simctl', 'uninstall', udid, verifyBundleId]);
+    _installed = false;
     _log('installFresh: uninstalled $verifyBundleId from $udid');
   }
+
+  /// Set once this run has installed the isolated copy. A second `launch` in
+  /// the same run is then a cold restart of the installed app, not another
+  /// install: reinstalling the ad-hoc re-signed copy leaves the app unable to
+  /// read its own stored connections (`SecretBoxAuthenticationError` on every
+  /// `pleyaServer.*` row, straight back to sign-in), which is not what a
+  /// restart of an installed app does.
+  bool _installed = false;
 
   @override
   Future<void> launch({Duration timeout = const Duration(seconds: 20)}) async {
@@ -256,10 +265,16 @@ class TvosSimulatorDriver implements VerificationDriver {
     final udid = await _resolveDevice();
     await _boot(udid);
 
-    _log('installing ${isolatedAppDir.path} on $udid');
-    final install = await _run('xcrun', ['simctl', 'install', udid, isolatedAppDir.path]);
-    if (install.exitCode != 0) {
-      throw StateError('simctl install failed (exit ${install.exitCode}): ${install.stderr}');
+    if (_installed) {
+      _log('relaunching $verifyBundleId on $udid (already installed this run)');
+      await _run('xcrun', ['simctl', 'terminate', udid, verifyBundleId]);
+    } else {
+      _log('installing ${isolatedAppDir.path} on $udid');
+      final install = await _run('xcrun', ['simctl', 'install', udid, isolatedAppDir.path]);
+      if (install.exitCode != 0) {
+        throw StateError('simctl install failed (exit ${install.exitCode}): ${install.stderr}');
+      }
+      _installed = true;
     }
 
     // The simulator shares this Mac's loopback stack, so the base port can

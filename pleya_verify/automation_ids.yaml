@@ -345,3 +345,12 @@ ids:
   - id: tv.catalog.state
     role: region
     instanceable: true
+  - id: player.play_pause
+    role: button
+    instanceable: false
+  - id: offline_home.action
+    role: button
+    instanceable: true
+  - id: profile.tile
+    role: grid.item
+    instanceable: true

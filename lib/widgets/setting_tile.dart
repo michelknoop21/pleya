@@ -50,6 +50,8 @@ class SettingSwitchTile extends StatelessWidget {
         enabled: enabled,
         focusNode: focusNode,
         onSelect: () => _write(svc, !value),
+        automationInstance: 'setting.${pref.key}',
+        automationState: () => {'value': value},
         child: ClickableCursor(
           enabled: enabled,
           child: SwitchListTile(
