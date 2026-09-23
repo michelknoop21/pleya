@@ -383,8 +383,8 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
   /// Moving through the rail swaps the options column under the focus.
   ///
   /// Focus-driven rather than press-driven on purpose: on a remote, walking a
-  /// five-item rail with a Select on every stop to see what is in it is four
-  /// presses more than walking it. Select and RIGHT then both mean the same
+  /// rail with a Select on every stop to see what is in it costs a press at
+  /// every one of its six stops on top of walking it. Select and RIGHT then both mean the same
   /// thing — go into the list you are already looking at.
   void _showSection(TvCatalogFilterSection section) {
     if (_active == section) return;
@@ -507,28 +507,41 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
   }
 
   /// The left zone: one row per available category.
+  ///
+  /// [TvCatalogLayout.filterZoneRows] is sized so this never scrolls, which is
+  /// the arrangement that matters: a hidden category takes its active-count
+  /// chip with it, and the chip is the only thing on screen saying that filter
+  /// is on. That promise is only as good as the room the panel is given,
+  /// though. `_zoneHeight` clamps to what the surface has, so under roughly 555
+  /// logical pixels of panel height the rail overflows again, and `setForceTv`
+  /// puts the TV catalogue on windows that short. The fade is what covers that
+  /// case, for the same reason the options column has one: cut flat, the last
+  /// visible category reads as a rendering fault rather than as "there is more
+  /// here".
   Widget _buildRail(List<TvCatalogFilterSection> sections, double scale) {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < sections.length; i++) ...[
-            if (i > 0) SizedBox(height: TvCatalogLayout.optionRowGap * scale),
-            _CategoryRow(
-              label: _labelFor(sections[i]),
-              count: _activeCountFor(sections[i]),
-              isActive: sections[i] == _active,
-              scale: scale,
-              // Stable per category for the panel's life. The opening category's
-              // node is the one the host was handed, so "Alle bronnen" lands on
-              // Servers and "Filters" on the first available category.
-              focusNode: _railNodeFor(sections[i]),
-              onFocused: () => _showSection(sections[i]),
-              onEnter: _enterOptions,
-            ),
+    return _FadingEdges(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < sections.length; i++) ...[
+              if (i > 0) SizedBox(height: TvCatalogLayout.optionRowGap * scale),
+              _CategoryRow(
+                label: _labelFor(sections[i]),
+                count: _activeCountFor(sections[i]),
+                isActive: sections[i] == _active,
+                scale: scale,
+                // Stable per category for the panel's life. The opening category's
+                // node is the one the host was handed, so "Alle bronnen" lands on
+                // Servers and "Filters" on the first available category.
+                focusNode: _railNodeFor(sections[i]),
+                onFocused: () => _showSection(sections[i]),
+                onEnter: _enterOptions,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -547,7 +560,7 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
     // void.
     return _FadingEdges(
       // A category can hold far more rows than the panel is tall — ten genres
-      // against a five-entry rail is the ordinary case, not the extreme one —
+      // against a six-entry rail is the ordinary case, not the extreme one —
       // so the list is cut by the panel's bottom edge. Cut flat, the last
       // visible row is a half-height rectangle that reads as a rendering fault
       // rather than as "there is more below this". The fade is the affordance,

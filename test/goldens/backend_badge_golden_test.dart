@@ -56,10 +56,12 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(loadAppFontsForGoldens);
 
-  /// Both the PNG and the two SVGs decode asynchronously, and a golden taken
-  /// before they land is a row of blanks that still passes on the next run.
-  /// `precacheImage` covers the PNG; the SVGs have no equivalent hook, so the
-  /// real elapsed pause inside `runAsync` is what lets their loaders finish.
+  /// The PNG goes through the engine codec, which the test binding's fake clock
+  /// never drives, and a golden taken before it lands is a blank that still
+  /// passes on the next run. `precacheImage` inside `runAsync` is what covers
+  /// it. The SVGs decode in pure Dart and do not need the pause; it stays
+  /// because these two goldens were captured with it, and `flutter_svg` offers
+  /// no precache hook to replace it with something exact.
   Future<void> settleAssets(WidgetTester tester) async {
     await tester.runAsync(() async {
       await precacheImage(const AssetImage('assets/branding/pleya_logo.png'), tester.element(find.byType(Scaffold)));
