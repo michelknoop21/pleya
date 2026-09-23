@@ -11,6 +11,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -96,6 +98,17 @@ UnifiedMediaGroup _groupFromItem(String id, MediaItem item) {
     sources: [source],
     representativeSourceKey: source.sourceKey,
     watchState: selectRepresentativeWatchState({source.sourceKey: item}),
+  );
+}
+
+UnifiedMediaGroup _groupFromItems(String id, List<MediaItem> items) {
+  final sources = items.map(UnifiedMediaSource.fromItem).toList();
+  return UnifiedMediaGroup(
+    groupId: id,
+    identity: canonicalIdentityOf(items.first) ?? CanonicalMediaIdentity.opaque(),
+    sources: sources,
+    representativeSourceKey: sources.first.sourceKey,
+    watchState: selectRepresentativeWatchState({for (final source in sources) source.sourceKey: source.item}),
   );
 }
 
@@ -529,6 +542,12 @@ void main() {
 
       expect(find.text(t.common.play), findsOneWidget);
       expect(find.text(t.common.resume), findsNothing, reason: 'a finished title restarts, it does not resume');
+      expect(find.text(t.unifiedCatalog.semantics.watched), findsOneWidget);
+
+      final heroNode = tester
+          .widgetList<AutomationNode>(find.byType(AutomationNode))
+          .singleWhere((node) => node.id == AutomationIds.discoverHero);
+      expect(heroNode.state?.call(), containsPair('watchStatus', 'watched'));
     });
 
     testWidgets('H11: an in-progress title reads "Resume", matching its own offset/duration fraction', (tester) async {
@@ -542,6 +561,58 @@ void main() {
 
       expect(find.text(t.common.resume), findsOneWidget);
       expect(find.text(t.common.play), findsNothing);
+      expect(find.text('${t.unifiedCatalog.semantics.inProgress} · 40%'), findsOneWidget);
+
+      final heroNode = tester
+          .widgetList<AutomationNode>(find.byType(AutomationNode))
+          .singleWhere((node) => node.id == AutomationIds.discoverHero);
+      expect(
+        heroNode.state?.call(),
+        allOf(containsPair('watchStatus', 'inProgress'), containsPair('watchProgressPercent', 40)),
+      );
+    });
+
+    testWidgets('HERO8: an untouched title explicitly reads "Unwatched"', (tester) async {
+      final group = _groupFromItem('g1', _film('m1', 'Dune'));
+
+      await pump(tester, [group]);
+
+      expect(find.text(t.unifiedCatalog.filters.unwatched), findsOneWidget);
+
+      final heroNode = tester
+          .widgetList<AutomationNode>(find.byType(AutomationNode))
+          .singleWhere((node) => node.id == AutomationIds.discoverHero);
+      expect(heroNode.state?.call(), containsPair('watchStatus', 'unwatched'));
+    });
+
+    testWidgets('HERO8: unified watch-state wins when the artwork source is still unwatched', (tester) async {
+      final group = _groupFromItems('g1', [
+        _film('m1', 'Dune', serverId: 'artwork', lastViewedAt: 1600000000),
+        _film('m2', 'Dune', serverId: 'watched', viewCount: 1, lastViewedAt: 1700000000),
+      ]);
+      expect(group.representativeSource.item.isWatched, isFalse);
+      expect(group.watchState.isWatched, isTrue);
+
+      await pump(tester, [group]);
+
+      expect(find.text(t.unifiedCatalog.semantics.watched), findsOneWidget);
+      expect(find.text(t.unifiedCatalog.filters.unwatched), findsNothing);
+    });
+
+    testWidgets('HERO8: changing watch-state never moves the CTA row', (tester) async {
+      await pump(tester, [_groupFromItem('g1', _film('m1', 'Dune'))]);
+      final unwatchedTop = tester.getTopLeft(find.text(t.common.play)).dy;
+
+      await pump(tester, [_groupFromItem('g1', _film('m1', 'Dune', viewCount: 1, lastViewedAt: 1700000000))]);
+      final watchedTop = tester.getTopLeft(find.text(t.common.play)).dy;
+
+      await pump(tester, [
+        _groupFromItem('g1', _film('m1', 'Dune', viewOffsetMs: 40 * 60 * 1000, lastViewedAt: 1700000000)),
+      ]);
+      final inProgressTop = tester.getTopLeft(find.text(t.common.resume)).dy;
+
+      expect(watchedTop, unwatchedTop);
+      expect(inProgressTop, unwatchedTop);
     });
   });
 

@@ -5593,6 +5593,15 @@ class TranslationsTvMyPleyaEn {
 	/// en: 'Media, collections, playlists'
 	String get librariesSubtitle => 'Media, collections, playlists';
 
+	/// en: 'Manage media libraries'
+	String get libraryManagementSubtitle => 'Manage media libraries';
+
+	/// en: 'Browse collections across libraries'
+	String get collectionsSubtitle => 'Browse collections across libraries';
+
+	/// en: 'Playlists from connected servers'
+	String get playlistsSubtitle => 'Playlists from connected servers';
+
 	/// en: 'Connections and local sources'
 	String get serversSubtitle => 'Connections and local sources';
 
@@ -9019,6 +9028,9 @@ extension on Translations {
 			'tvMyPleya.requestsSubtitle' => 'Requests and discovery',
 			'tvMyPleya.downloadsSubtitle' => 'Offline and sync rules',
 			'tvMyPleya.librariesSubtitle' => 'Media, collections, playlists',
+			'tvMyPleya.libraryManagementSubtitle' => 'Manage media libraries',
+			'tvMyPleya.collectionsSubtitle' => 'Browse collections across libraries',
+			'tvMyPleya.playlistsSubtitle' => 'Playlists from connected servers',
 			'tvMyPleya.serversSubtitle' => 'Connections and local sources',
 			'tvMyPleya.activitySubtitle' => 'Now watching',
 			'tvMyPleya.watchTogetherSubtitle' => 'Watch in sync with friends',

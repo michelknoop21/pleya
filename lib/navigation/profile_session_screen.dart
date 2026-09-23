@@ -23,6 +23,7 @@ import '../providers/home_custom_rows_provider.dart';
 import '../providers/home_layout_provider.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/multi_server_provider.dart';
+import '../providers/personal_media_provider.dart';
 import '../providers/playback_state_provider.dart';
 import '../providers/unified_catalogs.dart';
 import '../providers/seerr_provider.dart';
@@ -238,6 +239,13 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   storageService: context.read<StorageService>(),
                   multiServer: context.read<MultiServerProvider>(),
                 ),
+              ),
+              ChangeNotifierProvider(
+                create: (context) => PersonalMediaProvider(
+                  multiServer: context.read<MultiServerProvider>(),
+                  libraries: context.read<LibrariesProvider>(),
+                ),
+                lazy: true,
               ),
               // ROW1/DEC-100: the content of the rows this profile defined
               // itself. Registered after LibrariesProvider because it reads
