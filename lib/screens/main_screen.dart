@@ -1710,6 +1710,11 @@ class _MainScreenState extends State<MainScreen>
     // left Home/Series/Films/Search as focusable pills whose Select did
     // nothing, because the bar was never told the mode changed (MOC-23a).
     _syncTvDestinations();
+    // Coming back online can restore the tab the offline flip displaced (the
+    // `_autoSwitchedToDownloads` branch above). That assignment bypasses
+    // `_selectTab`, so the bar has to be told here, or it keeps lighting Home
+    // over the restored Films landing (OFF5).
+    if (_isTvShell) _tvNav.syncToTab(_currentTab);
     _updateTvosMenuPassthrough();
 
     // Refresh sidebar focus after rebuilding navigation

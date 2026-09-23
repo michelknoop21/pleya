@@ -93,6 +93,7 @@ under `Notes`.
 - close functional audit findings F1, F3-F7
 - restore the background_downloader pin behind a reachable ref
 - keep the filter rail whole and stop the source picker freezing a blank badge
+- houd de balk gelijk met het herstelde tabblad na offline
 <!-- END GENERATED -->
 
 ### New

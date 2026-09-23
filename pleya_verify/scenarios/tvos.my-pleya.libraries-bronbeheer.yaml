@@ -7,9 +7,9 @@ target: tvos-sim
 # and Select opens the action sheet, not a tab bar with content.
 #
 # `tvos.my-pleya.library-chooser` and `tvos.library.sort` exercised the
-# tab/chooser/grid contract this decision removes on TV; they were not
-# rewritten here (out of LIB7's own scope) and are expected to fail against
-# this build until they are retired or rebuilt against bronbeheer.
+# tab/chooser/grid contract this decision removes on TV. TV6 retired both:
+# this file replaces the chooser, and `tvos.catalog.rail-sort-focus` covers
+# sorting where it now lives, in the catalog rail.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
