@@ -102,4 +102,33 @@ void main() {
     expect(withRing('2').exitCode, 0);
     expect(withRing('3').exitCode, 1);
   });
+
+  // DEC-118: de background_downloader-pin werd vier weken lang niet gesignaleerd
+  // omdat niets hier ooit vroeg "bestaat de gepinde commit nog", alleen "lopen we
+  // achter op wat we volgen" (dat is check_forks, een andere vraag). Deze twee
+  // tests dekken het gat dat die stilte mogelijk maakte.
+  ProcessResult runPins({required String upstream, required String root}) => Process.runSync(
+    'bash',
+    ['scripts/check_updates.sh', '--only', 'pins', '--root', '$fixtures/roots/$root'],
+    environment: {'PLEYA_UPDATE_FIXTURES': '$fixtures/$upstream'},
+  );
+
+  test('alle gepinde forks bereikbaar op hun eigen url is CURRENT', () {
+    final r = runPins(upstream: 'pins_all_reachable', root: 'pins_ok');
+    expect(r.stdout, contains('pin-reachability'));
+    expect(r.stdout, contains('CURRENT'));
+    expect(r.exitCode, 0);
+  });
+
+  test('een commit die van geen enkele branch of tag bereikbaar is, is UNKNOWN met exit 2', () {
+    final r = runPins(upstream: 'pins_one_unreachable', root: 'pins_broken');
+    expect(r.stdout, contains('background_downloader'));
+    expect(r.stdout, contains('niet bereikbaar vanaf'));
+    expect(r.stdout, contains('UNKNOWN'));
+    expect(r.stdout, isNot(contains('CURRENT')));
+    // Nooit OUTDATED: dat zou de uitkomst laten afhangen van --strict-through-ring,
+    // terwijl een onbereikbare pin altijd moet blokkeren, op elke ring.
+    expect(r.stdout, isNot(contains('OUTDATED')));
+    expect(r.exitCode, 2);
+  });
 }

@@ -15,6 +15,60 @@ on:
     - cron: "17 4 * * 1"
 
 jobs:
+  # Levert één antwoord waar de Apple-gate hieronder op stuurt. Bewust een
+  # eigen job en geen `on.pull_request.paths`: zodra die gate required wordt,
+  # zou een paths-filter op workflowniveau de status helemaal laten verdwijnen
+  # en wacht GitHub eindeloos op iets dat nooit komt. Zo bestaat de checknaam
+  # altijd, en bepaalt de inhoud of er werk te doen is.
+  #
+  # De gate hieronder draait met `if: always()` en valt open: alleen een
+  # succesvolle run van deze job mét expliciet "false" slaat het echte werk
+  # over. Faalt deze job, of levert hij niets op, dan draait de simulatorrun
+  # gewoon door — anders zou GitHub de check "skipped" zien en dat als groen
+  # tellen, precies op het moment dat het filter zelf stuk is.
+  changes:
+    name: Bereik bepalen
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      apple: ${{ steps.filter.outputs.apple }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Raakt deze verandering de app zelf?
+        id: filter
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          files="$(scripts/ci_changed_files.sh "$BASE" "${HEAD:-HEAD}")"
+          # head sluit de pijp na 50 regels; bij meer bestanden dan dat krijgt
+          # echo een SIGPIPE en breekt de stap af onder pipefail. Alleen om te
+          # tonen, dus een falende preview mag de uitkomst niet meenemen.
+          printf '%s\n' "$files" | head -50 || true
+          # Alleen deze mappen kunnen de gebouwde app aantoonbaar niet raken.
+          # Alles daarbuiten, en elke twijfel, laat de simulatorrun doorgaan.
+          #
+          # Bewust een here-string, geen pijp: `grep -qv` stopt zodra hij zijn
+          # antwoord heeft en sluit dan zijn leeskant, en een schrijvende
+          # printf die nog niet klaar was krijgt daardoor SIGPIPE (141). Onder
+          # pipefail wordt dat de uitkomst van de hele pijp, en `if` leest 141
+          # als "onwaar" — dus een echte match werd hier stilzwijgend
+          # apple=false. Geverifieerd tegen de git-ls-files-fallback van deze repo
+          # (3260 bestanden): met de pijp apple=false, met de here-string
+          # apple=true, wat hier het enige juiste antwoord is.
+          if grep -qvE '^(docs/|test/|pleya_server/|pleya_web/|\.githooks/|[^/]*\.md$)' <<< "$files"; then
+            echo "apple=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "apple=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
   # Required-candidate gate. Pure Dart, no simulator, no Xcode, no secrets.
   # Covers pleya_verify/{fixture_server,runner,mcp} unit tests plus a
   # portable schema check (list + validate) over every scenario file, all
@@ -84,13 +138,16 @@ jobs:
   # the simulator through `xcrun simctl` directly). Genuinely runs the
   # existing CLI end to end (build -> install -> launch -> assert ->
   # evidence) via `verify run`, exactly as a contributor would locally.
-  # Kept out of branch-protection required status (none is configured on
-  # this repository, see DEC-083) because Fase 13 already found a
-  # window-scoped `screencapture` permission failure in a real session on
-  # this exact code path; whether GitHub's hosted macOS runner behaves
-  # differently is exactly what this job exists to find out, honestly.
+  #
+  # Bewust nog geen required check: op 23 september viel `discover.layout` om
+  # op een timeout van 15 s op `screen.discover`, terwijl dezelfde job op een
+  # byte-identieke boom in de PR slaagde en de herstart groen was. Een
+  # simulator die af en toe traag start hoort een product-PR niet te blokkeren;
+  # de job blijft wel zichtbaar draaien. Zie ook DEC-083.
   macos-verify:
     name: Verify - macOS + iOS simulator
+    needs: changes
+    if: always()
     runs-on: macos-26
     permissions:
       contents: read
@@ -109,10 +166,12 @@ jobs:
       FLUTTER_XCODE_DEVELOPMENT_TEAM: ""
       FLUTTER_XCODE_PROVISIONING_PROFILE_SPECIFIER: ""
     steps:
-      - name: Checkout code
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.apple != 'false' }}
+        name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Setup Flutter
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.apple != 'false' }}
+        name: Setup Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: "stable"
@@ -120,14 +179,16 @@ jobs:
           cache: true
           pub-cache: false
 
-      - name: Cache Pub dependencies
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.apple != 'false' }}
+        name: Cache Pub dependencies
         uses: actions/cache@v6
         with:
           path: |
             ~/.pub-cache
           key: ${{ runner.os }}-${{ runner.arch }}-pub-v2-${{ hashFiles('pubspec.yaml', 'pubspec.lock') }}
 
-      - name: Cache CocoaPods
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.apple != 'false' }}
+        name: Cache CocoaPods
         uses: actions/cache@v6
         with:
           path: |
@@ -138,24 +199,27 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pods-
 
-      - name: Install app dependencies
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.apple != 'false' }}
+        name: Install app dependencies
         run: flutter pub get --enforce-lockfile
 
-      - name: runner dependencies
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.apple != 'false' }}
+        name: runner dependencies
         working-directory: pleya_verify/runner
         run: dart pub get
 
-      - name: macos.smoke.boot (target macos)
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.apple != 'false' }}
+        name: macos.smoke.boot (target macos)
         working-directory: pleya_verify/runner
         run: dart run bin/verify.dart run ../scenarios/macos.smoke.boot.yaml --json
 
-      - name: discover.layout (target ios-sim)
-        if: always()
+      - if: ${{ always() && (needs.changes.result != 'success' || needs.changes.outputs.apple != 'false') }}
+        name: discover.layout (target ios-sim)
         working-directory: pleya_verify/runner
         run: dart run bin/verify.dart run ../scenarios/discover.layout.yaml --json
 
-      - name: Upload evidence bundles
-        if: always()
+      - if: ${{ always() && (needs.changes.result != 'success' || needs.changes.outputs.apple != 'false') }}
+        name: Upload evidence bundles
         uses: actions/upload-artifact@v7
         with:
           name: pleya-verify-macos-evidence-${{ github.run_id }}
@@ -168,6 +232,14 @@ jobs:
             !.build/pleya-verify/*-app
           if-no-files-found: warn
           retention-days: 14
+
+      - if: ${{ needs.changes.result == 'success' && needs.changes.outputs.apple == 'false' }}
+        name: Niets te draaien
+        run: |
+          echo "Deze verandering raakt lib/, de platformmappen, pubspec of"
+          echo "pleya_verify niet, dus er valt op de simulator niets te meten."
+          echo "De check bestaat en slaagt; dat is met opzet, zodat branch"
+          echo "protection nooit op een status wacht die niet komt."
 
   # tvOS gate: the only driver that needs idb (Siri-Remote HID input has no
   # transport-level equivalent, see CONTRIBUTING.md). Deliberately NOT on

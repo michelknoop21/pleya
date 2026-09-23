@@ -25,8 +25,19 @@ jobs:
           channel: stable
           cache: true
 
+      # Mag falen, en dat is het punt. Toen de background_downloader-pin in
+      # september onbereikbaar raakte, stierf deze stap eraan en kwam het
+      # rapport dat die rot had moeten melden er niet meer. De controles die
+      # geen opgeloste pakketten nodig hebben (pins, forks, engine, MPVKit,
+      # Actions) draaien hier nu sowieso; wat wél resolutie nodig heeft, valt
+      # verderop vanzelf om in UNKNOWN en dat faalt de run alsnog.
+      #
+      # Bewust geen --enforce-lockfile: dat voegt hier alleen een faalwijze
+      # toe (pubspec.yaml gewijzigd zonder de lock te regenereren) die niets
+      # met dependency-gezondheid te maken heeft en die ci.yml al hard afvangt.
       - name: flutter pub get
         run: flutter pub get
+        continue-on-error: true
 
       # --strict-through-ring 1: alleen ring 1 mag deze run laten falen. MPVKit,
       # de tvOS-engine en libass horen bewust op een releasecyclus te wachten, en
