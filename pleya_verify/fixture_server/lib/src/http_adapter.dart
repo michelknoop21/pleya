@@ -199,6 +199,12 @@ class FixtureHttpServer {
           errorCode: body['error_code'] as String? ?? 'storage.unavailable',
         );
         await _json(request, {'ok': true});
+      case '/__verify/offline':
+        // Sustained, unlike fail_next: every Pleya request answers the way
+        // `unreachable` does until a second call with `enabled: false`.
+        final body = await _readJsonBody(request);
+        server.unreachable = body['enabled'] != false;
+        await _json(request, {'ok': true, 'offline': server.unreachable});
       case '/__verify/latency':
         final body = await _readJsonBody(request);
         server.queueLatency(

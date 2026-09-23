@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../automation/automation_ids.dart';
 import '../../i18n/strings.g.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../profiles/profile.dart';
@@ -89,6 +90,7 @@ class TvProfileGate extends StatelessWidget {
                 children: [
                   for (var i = 0; i < profiles.length; i++)
                     _TvProfileGateTile(
+                      index: i,
                       profile: profiles[i],
                       autofocus: i == 0,
                       focusNode: focusNodeFor(profiles[i]),
@@ -117,6 +119,7 @@ class TvProfileGate extends StatelessWidget {
 /// other surface uses) with the name below and a white ring on focus.
 class _TvProfileGateTile extends StatelessWidget {
   const _TvProfileGateTile({
+    required this.index,
     required this.profile,
     required this.autofocus,
     required this.focusNode,
@@ -124,6 +127,7 @@ class _TvProfileGateTile extends StatelessWidget {
     required this.onSelect,
   });
 
+  final int index;
   final Profile profile;
   final bool autofocus;
   final FocusNode focusNode;
@@ -144,6 +148,10 @@ class _TvProfileGateTile extends StatelessWidget {
           focusNode: focusNode,
           autofocus: autofocus,
           onSelect: onSelect,
+          automationId: AutomationIds.profileTile,
+          automationInstance: '$index',
+          automationRole: 'grid.item',
+          automationState: () => {'name': profile.displayName},
           borderRadius: tileRadius + ringGap,
           semanticLabel: profile.displayName,
           child: Padding(

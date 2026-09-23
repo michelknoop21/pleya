@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../automation/automation_ids.dart';
 import '../focus/card_focus_scope.dart';
 import '../focus/focus_theme.dart';
 import '../focus/focusable_wrapper.dart';
@@ -157,7 +158,20 @@ class SettingRowFocus extends StatelessWidget {
   final FocusNode? focusNode;
   final bool enabled;
 
-  const SettingRowFocus({super.key, required this.child, required this.onSelect, this.focusNode, this.enabled = true});
+  /// Registers the row as `my_pleya.section.tile[<automationInstance>]` for
+  /// Pleya Verify, the id every other TV settings row already uses.
+  final String? automationInstance;
+  final Object? Function()? automationState;
+
+  const SettingRowFocus({
+    super.key,
+    required this.child,
+    required this.onSelect,
+    this.focusNode,
+    this.enabled = true,
+    this.automationInstance,
+    this.automationState,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -173,6 +187,10 @@ class SettingRowFocus extends StatelessWidget {
       // no ring at all.
       mode: FocusIndicatorMode.delegated,
       onSelect: enabled ? onSelect : null,
+      automationId: automationInstance == null ? null : AutomationIds.myPleyaSectionTile,
+      automationInstance: automationInstance,
+      automationRole: 'grid.item',
+      automationState: automationState,
       child: _SettingRowSurface(child: child),
     );
   }

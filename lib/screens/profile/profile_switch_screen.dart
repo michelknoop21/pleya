@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
 import '../../connection/connection_registry.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
@@ -433,6 +434,10 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
             autofocus: isFirstSelectable,
             focusNode: profileFocusNode,
             disableScale: true,
+            automationId: AutomationIds.profileTile,
+            automationInstance: '$index',
+            automationRole: 'grid.item',
+            automationState: () => {'name': profile.displayName, 'active': isActive},
             enableLongPress: hasMenu,
             onLongPress: hasMenu ? () => _openProfileMenu(profile) : null,
             onNavigateRight: hasMenu ? () => menuFocusNode.requestFocus() : null,

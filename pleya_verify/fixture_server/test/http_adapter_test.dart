@@ -187,6 +187,18 @@ void main() {
     expect(second.statusCode, HttpStatus.ok);
   });
 
+  test('/__verify/offline keeps every Pleya request failing until it is turned off again', () async {
+    final on = await verify('POST', '/__verify/offline', body: {'enabled': true});
+    expect(await jsonBody(on), {'ok': true, 'offline': true});
+
+    expect((await pleyaApi('GET', '/info')).statusCode, HttpStatus.badGateway);
+    expect((await pleyaApi('GET', '/info')).statusCode, HttpStatus.badGateway, reason: 'offline is not one-shot');
+
+    final off = await verify('POST', '/__verify/offline', body: {'enabled': false});
+    expect(await jsonBody(off), {'ok': true, 'offline': false});
+    expect((await pleyaApi('GET', '/info')).statusCode, HttpStatus.ok);
+  });
+
   test('/__verify/latency adds real, measurable delay to the next response', () async {
     final latencyResponse = await verify('POST', '/__verify/latency', body: {'ms': 40, 'count': 1});
     expect(latencyResponse.statusCode, HttpStatus.ok);
