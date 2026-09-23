@@ -159,6 +159,9 @@ ids:
   - id: my_pleya.section.tile
     role: grid.item
     instanceable: true
+  - id: settings.appearance.category
+    role: button
+    instanceable: true
   - id: my_pleya.chip
     role: button
     instanceable: true

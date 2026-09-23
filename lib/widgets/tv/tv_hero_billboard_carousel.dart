@@ -91,7 +91,7 @@ class TvHeroBillboardCarousel extends StatefulWidget {
   });
 
   /// `TvHomeProjectionProvider.heroGroups`, already deduplicated, already
-  /// ordered by release date, already capped at hoofdstuk 9.5's eight. This
+  /// ordered by release date, already capped at the approved twelve. This
   /// widget selects nothing and pads nothing (DEC-067): if the projection
   /// produced three slides, three is the answer.
   final List<UnifiedMediaGroup> groups;
@@ -326,6 +326,7 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
     final scale = TvLayoutConstants.scaleOf(context);
     final item = group.representativeSource.item;
     final client = widget.clientFor?.call(item.serverId ?? '');
+    final watchProgressPercent = heroWatchProgressPercentFor(group);
 
     return AutomationNode(
       // The existing `discover.hero` id, adopted on TV.
@@ -344,13 +345,18 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
       label: heroTitleFor(group),
       // HERO6: whether the title and CTAs are drawn, read off the value the
       // card renders from, so a scenario can tell "mounted" from "visible".
-      state: () => {'textVisible': widget.textOpacity > 0},
+      state: () => {
+        'textVisible': widget.textOpacity > 0,
+        'watchStatus': heroWatchStatusValueFor(group),
+        if (watchProgressPercent != null) 'watchProgressPercent': watchProgressPercent,
+      },
       child: Semantics(
         container: true,
         label: widget.groups.length > 1
             ? '${t.unifiedCatalog.home.featured}: ${heroTitleFor(group)}, '
-                  '${t.unifiedCatalog.discovery.semantics.position(position: _index + 1, count: widget.groups.length)}'
-            : '${t.unifiedCatalog.home.featured}: ${heroTitleFor(group)}',
+                  '${t.unifiedCatalog.discovery.semantics.position(position: _index + 1, count: widget.groups.length)}, '
+                  '${heroWatchStatusLabelFor(group)}'
+            : '${t.unifiedCatalog.home.featured}: ${heroTitleFor(group)}, ${heroWatchStatusLabelFor(group)}',
         child: Stack(
           children: [
             TvHeroBillboardCard(

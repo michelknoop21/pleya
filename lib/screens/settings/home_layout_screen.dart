@@ -8,9 +8,13 @@ import '../../providers/discover_provider.dart';
 import '../../providers/home_custom_rows_provider.dart';
 import '../../providers/home_layout_provider.dart';
 import '../../services/unified_catalog/home_row_layout.dart';
+import '../../theme/mono_tokens.dart';
 import '../../utils/home_custom_row_labels.dart';
+import '../../utils/layout_constants.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/settings_page.dart';
+import '../../widgets/tv/tv_page_surface.dart';
+import '../../widgets/tv/tv_unified_layout.dart';
 
 /// Lets the user reorder and hide the home screen rows. The hero and Continue
 /// Watching rows are fixed and deliberately absent here.
@@ -39,6 +43,11 @@ class HomeLayoutScreen extends StatelessWidget {
     }
     final ids = rows.keys.toList();
 
+    final isTv = PlatformDetector.isTV();
+
+    if (ids.isEmpty && isTv) {
+      return TvPageSurface(title: t.settings.homeLayout, children: [Text(t.settings.homeLayoutEmpty)]);
+    }
     if (ids.isEmpty) {
       return SettingsPage(
         title: Text(t.settings.homeLayout),
@@ -53,24 +62,36 @@ class HomeLayoutScreen extends StatelessWidget {
       layout.setOrder(next);
     }
 
-    // A remote has no drag gesture, so the drag handle is unreachable on TV and
-    // only the visibility switch can be focused. Swap it for D-pad-operable
-    // move buttons there; pointer platforms keep the drag-to-reorder list.
-    final isTv = PlatformDetector.isTV();
-
+    // A remote has no drag gesture, so TV gets focusable move buttons beside
+    // the visibility switch. Pointer platforms keep drag-to-reorder.
     Widget buildTile(int index) {
       final id = ids[index];
       final hub = rows[id]!;
       final hidden = layout.isRowHidden(id);
+      final mediaLabel = switch (hub.type) {
+        'movie' => t.search.filters.movies,
+        'show' || 'season' || 'episode' => t.search.filters.shows,
+        _ => null,
+      };
+      final needsTypeContext =
+          hub.serverName != null || rows.values.any((other) => !identical(other, hub) && other.title == hub.title);
+      final contextParts = [
+        if (needsTypeContext && mediaLabel != null) mediaLabel,
+        if (hub.serverName != null) hub.serverName!,
+      ];
       return Material(
         key: ValueKey(id),
-        type: MaterialType.transparency,
+        type: isTv ? MaterialType.canvas : MaterialType.transparency,
+        color: isTv ? tokens(context).text.withValues(alpha: TvMyPleyaLayout.tileFillAlpha) : null,
+        borderRadius: isTv
+            ? BorderRadius.circular(TvMyPleyaLayout.tileRadius * TvLayoutConstants.scaleOf(context))
+            : null,
         child: ListTile(
           leading: isTv
               ? null
               : ReorderableDragStartListener(index: index, child: const Icon(Symbols.drag_handle_rounded)),
           title: Text(hub.title),
-          subtitle: hub.serverName != null ? Text(hub.serverName!) : null,
+          subtitle: contextParts.isNotEmpty ? Text(contextParts.join(' · ')) : null,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -93,17 +114,30 @@ class HomeLayoutScreen extends StatelessWidget {
       );
     }
 
+    if (isTv) {
+      final scale = TvLayoutConstants.scaleOf(context);
+      return TvPageSurface(
+        title: t.settings.homeLayout,
+        automationInstance: 'home_layout',
+        children: const [],
+        expanded: ListView.builder(
+          itemCount: ids.length,
+          itemBuilder: (context, index) => Padding(
+            padding: EdgeInsets.only(bottom: TvMyPleyaLayout.tileGap * scale),
+            child: buildTile(index),
+          ),
+        ),
+      );
+    }
+
     return SettingsPage.slivers(
       title: Text(t.settings.homeLayout),
       slivers: [
-        if (isTv)
-          SliverList.builder(itemCount: ids.length, itemBuilder: (context, index) => buildTile(index))
-        else
-          SliverReorderableList(
-            itemCount: ids.length,
-            onReorderItem: (oldIndex, newIndex) => move(oldIndex, newIndex),
-            itemBuilder: (context, index) => buildTile(index),
-          ),
+        SliverReorderableList(
+          itemCount: ids.length,
+          onReorderItem: (oldIndex, newIndex) => move(oldIndex, newIndex),
+          itemBuilder: (context, index) => buildTile(index),
+        ),
       ],
     );
   }

@@ -13,6 +13,8 @@ enum TvMyPleyaSection {
   requests,
   downloads,
   libraries,
+  collections,
+  playlists,
   servers,
   activity,
   // Fase 8: Watch Together's only entry point was the Home billboard's overlaid
@@ -47,6 +49,8 @@ enum TvMyPleyaSection {
     // Bibliotheken. The rail keeps its own short label; the tile takes the
     // name of the thing it opens.
     TvMyPleyaSection.libraries => t.libraries.title,
+    TvMyPleyaSection.collections => t.collections.title,
+    TvMyPleyaSection.playlists => t.playlists.title,
     TvMyPleyaSection.servers => t.tvMyPleya.servers,
     TvMyPleyaSection.activity => t.tvMyPleya.activity,
     TvMyPleyaSection.watchTogether => t.watchTogether.title,
