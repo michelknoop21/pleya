@@ -47,8 +47,10 @@ steps:
   - settle: 800
   - snapshot: 02-hub-entry
 
-  - press: down
-  - snapshot: 03-hub-profile-focused
+  # Select on the pill already put the ring on the profile header, so
+  # 02-hub-entry is the profile-focused frame and one DOWN reaches
+  # Bibliotheken ("Mijn content" is absent in this fixture, hoofdstuk 33.8).
+  # TV8's full suite found this file still pressing past it.
   - press: down
   - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
   - snapshot: 04-hub-tile-focused

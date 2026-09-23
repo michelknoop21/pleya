@@ -78,18 +78,34 @@ steps:
   - settle: 600
   - assert: {id: "my_pleya.section.tile[setting.tv_show_titles_under_posters]", state: {value: true}}
 
-  # On down the page to the Home-screen card: reduce motion, episode number,
-  # then the hero clearlogo and hero auto-rotate rows.
+  # The hero rows live in the Home category since the category redesign
+  # (`7e3af503`): LEFT back to the category rail, DOWN to Home, Select, and
+  # RIGHT into its controls, the route `tvos.settings.appearance-categories`
+  # also takes. On TV, Home opens with the hero clearlogo row. LEFT is
+  # pressed from the top row: from a row lower than the last category card
+  # a spatial LEFT finds nothing beside it (APP1 in
+  # `tvos-fysieke-correctieronde.md`).
+  - press: up
+  - press: up
+  - press: up
+  - press: up
+  - press: up
+  - press: up
+  - press: up
+  - settle: 400
+  - press: left
+  - wait_until: {focused: "settings.appearance.category[0]", timeout: 5000}
   - press: down
-  - wait_until: {focused: "my_pleya.section.tile[setting.tv_reduce_motion]", timeout: 5000}
-  - press: down
-  - settle: 250
-  - press: down
-  - wait_until: {focused: "my_pleya.section.tile[setting.tv_hero_clear_logo]", timeout: 5000}
-  - assert: {id: "my_pleya.section.tile[setting.tv_hero_clear_logo]", insideViewport: true, state: {value: true}}
-  - press: down
+  - wait_until: {focused: "settings.appearance.category[1]", timeout: 5000}
+  - press: select
+  # RIGHT is spatial as well: from the second category card it lands on the
+  # row level with it, the auto-advance row, and the clearlogo row is one UP.
+  - press: right
   - wait_until: {focused: "my_pleya.section.tile[setting.tv_hero_auto_advance]", timeout: 5000}
   - assert: {id: "my_pleya.section.tile[setting.tv_hero_auto_advance]", insideViewport: true, state: {value: true}}
+  - press: up
+  - wait_until: {focused: "my_pleya.section.tile[setting.tv_hero_clear_logo]", timeout: 5000}
+  - assert: {id: "my_pleya.section.tile[setting.tv_hero_clear_logo]", insideViewport: true, state: {value: true}}
   - snapshot: 02b-hero-rows
 
   # Menu out: onto the tile it came from, then onto the hub's tile.
