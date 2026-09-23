@@ -80,15 +80,18 @@ camera, dus die kant is daar principieel niet te testen.
 Loop dit één keer af op een fysiek toestel vóór de eerstvolgende upload. Het is
 een smoketest, geen regressiesuite; hij duurt een paar minuten.
 
-- [ ] Pleya Share openen en de scanner starten.
-- [ ] De camera-permissievraag verschijnt en toestaan werkt.
-- [ ] Een geldige Pleya-pair-QR scannen; de pairing gaat door.
-- [ ] `barcode.rawValue` levert de verwachte `pleya://`-URI (log meelezen via
+- [x] Pleya Share openen en de scanner starten.
+- [x] De camera-permissievraag verschijnt en toestaan werkt.
+- [x] Een geldige Pleya-pair-QR scannen; de pairing gaat door.
+- [x] `barcode.rawValue` levert de verwachte `pleya://`-URI (log meelezen via
       de debug-pref, of het gedrag afleiden uit een geslaagde pairing).
-- [ ] Een onleesbare of niet-Pleya QR aanbieden: de scanner blijft doorzoeken
+- [x] Een onleesbare of niet-Pleya QR aanbieden: de scanner blijft doorzoeken
       in plaats van te stoppen of te crashen.
-- [ ] Scanner sluiten en opnieuw openen; de camera komt terug.
-- [ ] Eén ronde bij matig licht.
+- [x] Scanner sluiten en opnieuw openen; de camera komt terug.
+- [x] Eén ronde bij matig licht.
+
+Afgerond op 20 september 2026 op een fysieke iPhone 16 Pro met de releasebuild
+van `a08dc6f4`; de volledige smoketest was groen.
 
 Faalt hier iets, dan is dat een blokkade voor de upload en niet iets voor de
 volgende ronde: QR-pairing is de enige manier om een host te koppelen.
