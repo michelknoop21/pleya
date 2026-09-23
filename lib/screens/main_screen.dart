@@ -1676,6 +1676,8 @@ class _MainScreenState extends State<MainScreen>
     // remote would be left on a focus stop that no longer exists, so arrow
     // presses would have nothing to move.
     final reconnectWasFocused = _isTvShell && _tvNavNodes.isFocused(tvReconnectFocusKey);
+    final barWasFocused = _isTvShell && _tvNavNodes.hasFocus;
+    NavigationTabId? restoredTab;
     setState(() {
       _isReconnecting = false;
       _isOffline = newOffline;
@@ -1697,8 +1699,11 @@ class _MainScreenState extends State<MainScreen>
       } else {
         // Coming back online: restore the last online tab if we forced a switch to Downloads.
         if (_autoSwitchedToDownloads) {
-          final restoredTab = _lastOnlineTabId ?? NavigationTabId.discover;
-          _currentTab = _normalizeTabForMode(restoredTab, _isOffline);
+          // Applied through `_selectTab` below, after the bar has its online
+          // destinations back: a bare `_currentTab` assignment here skipped
+          // `onTabHidden`, the Verify route state and the bar (OFF5b).
+          _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
+          restoredTab = _normalizeTabForMode(_lastOnlineTabId ?? NavigationTabId.discover, _isOffline);
         } else {
           _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
         }
@@ -1710,19 +1715,18 @@ class _MainScreenState extends State<MainScreen>
     // left Home/Series/Films/Search as focusable pills whose Select did
     // nothing, because the bar was never told the mode changed (MOC-23a).
     _syncTvDestinations();
-    // Coming back online can restore the tab the offline flip displaced (the
-    // `_autoSwitchedToDownloads` branch above). That assignment bypasses
-    // `_selectTab`, so the bar has to be told here, or it keeps lighting Home
-    // over the restored Films landing (OFF5).
-    if (_isTvShell) _tvNav.syncToTab(_currentTab);
+    if (restoredTab case final tab? when tab != _currentTab) _selectTab(tab, isUserInitiated: false);
     _updateTvosMenuPassthrough();
 
     // Refresh sidebar focus after rebuilding navigation
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // A restore moves the bar's ring to the restored destination; the node
+      // the remote is on has to follow, or the ring and the page disagree.
       if (shouldRecoverTvTopNavFocusAfterReconnect(
-        reconnectItemWasFocused: reconnectWasFocused,
-        isOfflineNow: _isOffline,
-      )) {
+            reconnectItemWasFocused: reconnectWasFocused,
+            isOfflineNow: _isOffline,
+          ) ||
+          (restoredTab != null && barWasFocused)) {
         // The item the remote was on just left the tree; land it on the bar's
         // own current item instead of leaving it with nothing focused.
         _focusSidebar();

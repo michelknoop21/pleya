@@ -36,6 +36,9 @@ class FocusMemoryTracker {
   /// Check if a key is currently focused
   bool isFocused(String key) => _focused.contains(key);
 
+  /// Whether any tracked node currently has focus.
+  bool get hasFocus => _focused.isNotEmpty;
+
   /// Get a node without creating it (returns null if not found)
   FocusNode? nodeFor(String key) => _nodes[key];
 
