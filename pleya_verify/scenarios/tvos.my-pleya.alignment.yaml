@@ -27,8 +27,11 @@ steps:
   - settle: 3500
 
   # Home is the reference the nested pages are measured against, so it is
-  # asserted in the same run rather than quoted from a different one.
-  - assert: {id: discover.hero, leftInset: 75.48}
+  # asserted in the same run rather than quoted from a different one. Since
+  # HOME1 (`eed2a795`, 4 September) the hero surface is full-bleed and starts
+  # at 0, so the edge is read from its content: the Play button. TV8's full
+  # suite found this file still measuring the surface.
+  - assert: {id: discover.hero.play, leftInset: 75.48}
 
   - press: right
   - press: right
