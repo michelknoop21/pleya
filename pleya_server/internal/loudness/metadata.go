@@ -40,8 +40,8 @@ type TagReader struct {
 }
 
 // ReadOpusR128 leest R128_TRACK_GAIN voor één Opus-stream. Alles buiten de
-// allowlist — een andere codec, een ontbrekende tag, een tag die niet als
-// Q7.8 signed 16-bit parseert — komt terug als een MeasureError wiens Reason
+// allowlist, een andere codec, een ontbrekende tag, een tag die niet als
+// Q7.8 signed 16-bit parseert, komt terug als een MeasureError wiens Reason
 // veilig is om als stream_loudness.reject_reason op te slaan.
 func (r *TagReader) ReadOpusR128(ctx context.Context, path string, streamIndex int, codec string) (TagResult, error) {
 	if codec != "opus" {

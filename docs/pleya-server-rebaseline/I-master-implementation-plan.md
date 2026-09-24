@@ -147,7 +147,7 @@ overname, (6) venster dicht.
 `internal/api/handlers_ebooks.go` (nieuw), `internal/scanner/scanner.go`, `walk.go`,
 `nameparse/classify.go`, `internal/catalog/store.go` (`item_count`), `handlers_library.go`
 (`wrong_kind`), `wire.go`.
-**Migraties.** `0010_books.sql`.
+**Migraties.** `0012_books.sql`.
 **API.** Venster 3, precies de vijf wijzigingen uit ps14 hoofdstuk 9.
 **Frontend.** Geen.
 **Tests.** Scannertests van vandaag (`scanner_test.go`, `library_test.go`, 921 regels)
@@ -176,7 +176,7 @@ Cache-Control.
 **Bestanden.** `internal/sidecar/` (nieuw), `internal/artwork/` (nieuw),
 `internal/api/handlers_media.go`, `handlers_ebooks.go`, `internal/scanner/sidecars.go`,
 `internal/catalog/store_write.go`, `wire.go`.
-**Migraties.** `0011_item_metadata.sql`.
+**Migraties.** `0013_item_metadata.sql`.
 **API.** Additief zonder nieuwe resource (velden op `Item`, `?width=` bestaat al); wel de
 capability `artwork_sizes` en het coverage-endpoint; landt in venster 2 of 3, welk het eerst
 open is.
@@ -202,7 +202,7 @@ FTS plus `pg_trgm` plus prefixmatch met één deterministische ranking over tite
 **Afhankelijk van.** S3, S4.
 **Bestanden.** `internal/catalog/store_read.go`, `cursor.go`, `handlers_library.go`,
 `internal/ebooks/store_read.go`, `handlers_ebooks.go`.
-**Migraties.** `0012_search_indexes.sql` (`CREATE EXTENSION IF NOT EXISTS pg_trgm`, GIN op
+**Migraties.** `0014_search_indexes.sql` (`CREATE EXTENSION IF NOT EXISTS pg_trgm`, GIN op
 titels, index op `genres`, `year`, `unnest(authors)`).
 **API.** Venster 4 deel 1.
 **Frontend.** Geen.
@@ -225,7 +225,7 @@ NAS met 461 films; zoeken op `sea` blijft 24 treffers zonder seizoenen.
 **Afhankelijk van.** S3; het locatorbesluit (RB-12) als DEC vóór de eerste commit.
 **Bestanden.** `internal/reading/` (nieuw, pure functie plus store, naar het voorbeeld van
 `internal/watch/`), `handlers_reading.go`, `handlers_ebooks.go` (hydratie), `wire.go`.
-**Migraties.** `0013_reading_states.sql`.
+**Migraties.** `0015_reading_states.sql`.
 **API.** Venster 4 deel 2.
 **Frontend.** Geen.
 **Tests.** Revisieconflict (oudere `base_revision` verliest, antwoord draagt de actuele staat);
@@ -433,7 +433,7 @@ gedrag van vóór PS-5. **Acceptatie.** PS-6 criteria uit hoofdstuk 23.
 **Scope.** Remux en transcode als sessie (start, heartbeat, stop, opruimen), fMP4 en HLS,
 hwaccel-detectie bij opstarten voor VAAPI, QSV en NVENC, kwaliteitsladder, maximum en quotum uit settings met grenzen, ondertitelmatrix (bitmap en niet-vertaalbare ASS ingebrand, tekst als WebVTT), `/transcode-sessions`
 voor beheer, browserspeler met hls.js, scherm 28 en 20 uitgebreid; capability `transcode`.
-**Afhankelijk van.** S17. **Migraties.** `0014_transcode_sessions.sql`. **API.** Venster 5.
+**Afhankelijk van.** S17. **Migraties.** `0016_transcode_sessions.sql`. **API.** Venster 5.
 **Tests.** Een MKV/HEVC-fixture speelt in Chromium via HLS; sessie ruimt op na een gesimuleerde
 crash van de client; een derde sessie krijgt `playback.transcode_busy`; ffmpeg-argumenten zijn
 een vaste lijst (test op afwezigheid van invoer in argv).
@@ -444,7 +444,7 @@ een vaste lijst (test op afwezigheid van invoer in argv).
 
 **Scope.** Tabellen, CRUD, zichtbaarheid, volgorde, kaartmenu "Toevoegen aan", schermen 17 en 18,
 app-implementatie van de bestaande `MediaServerClient`-members; capabilities `collections`,
-`playlists`. **Afhankelijk van.** S1. **Migraties.** `0015_collections_playlists.sql`.
+`playlists`. **Afhankelijk van.** S1. **Migraties.** `0017_collections_playlists.sql`.
 **API.** Venster 6. **Tests.** Zichtbaarheid per gebruiker (404 buiten zicht), herordenen
 atomair, verwijderen van een item uit de catalogus laat de lijst consistent.
 **Commitgrens.** (1) migratie, (2) endpoints, (3) web, (4) app, (5) venster.
@@ -454,7 +454,7 @@ atomair, verwijderen van een item uit de catalogus laat de lijst consistent.
 **Scope.** `play_history` uit de watch-state-events, favorieten, waarderingen,
 spoorvoorkeuren; `/history`, `/favorites`, `/ratings`, `/track-preferences`; scherm 19;
 "Bekeken door" op detail; app-members `setFavorite`, `rate`, spoorkeuze; capabilities.
-**Afhankelijk van.** S6 (boeken in geschiedenis). **Migraties.** `0016_personal.sql`.
+**Afhankelijk van.** S6 (boeken in geschiedenis). **Migraties.** `0018_personal.sql`.
 **API.** Venster 6. **Tests.** Eén geschiedenisrij per afspeelsessie; spoorkeuze reist tussen twee
 clients; favorieten overleven een profielwissel.
 **Commitgrens.** (1) migratie, (2) geschiedenis, (3) favorieten en waarderingen, (4) sporen,
@@ -478,7 +478,7 @@ regie, beoordelingen en artwork (poster, backdrop, logo) naar de cache op de lad
 (bevestigen, afwijzen, fix-match, artwork kiezen met pin, per-field overrides met provenance en reset), attributie op elk scherm, providerinstellingen
 in `/settings` (API-sleutel als geheim, nooit teruggelezen), scherm 29 uitgebreid plus één
 mockup voor match en artworkkeuze, extra's uit de bestandsboom; capabilities `metadata_provider`,
-`ratings_external`. **Afhankelijk van.** S4. **Migraties.** `0017_metadata_candidates.sql`
+`ratings_external`. **Afhankelijk van.** S4. **Migraties.** `0019_metadata_candidates.sql`
 (`metadata_candidates`, `metadata_corrections`, `artwork_candidates`, `external_ids`).
 **API.** Venster 8. **Tests.** Matchtests met opgenomen providerantwoorden incl. ambigue gevallen;
 een correctie overleeft drie rondes; canoniek record herbouwbaar uit kandidaten plus correcties;
@@ -492,7 +492,7 @@ matchpercentage. **Commitgrens.** (1) abstractie en kandidaten, (2) TMDB, (3) ma
 **Scope.** `downloads` tabel, `POST /downloads`, bestand met digest (origineel of trede via S18),
 opruimen, recht `download`, app-implementatie op de bestaande downloadwachtrij en sync-back,
 downloads op Mijn Pleya (web toont wat de app heeft, downloadt zelf niet buiten boeken);
-capability `downloads`. **Afhankelijk van.** S18. **Migraties.** `0018_downloads.sql`.
+capability `downloads`. **Afhankelijk van.** S18. **Migraties.** `0020_downloads.sql`.
 **API.** Venster 5. **Tests.** Digest klopt over het samengestelde bestand; hervatten alleen bij
 gelijke digest; offline kijkstatus komt terug via `backlog`. **Acceptatie.** PS-10 criteria.
 **Commitgrens.** (1) migratie en endpoint, (2) levering, (3) app, (4) venster.
@@ -509,7 +509,7 @@ metric `delivery_mode` klopt met een gecontroleerde sessie. **Acceptatie.** PS-1
 
 **Scope.** `internal/backup/`, back-updoel, tijdstip en retentie als instellingen (default `/backups`, 03:30, 14), failure-domain-waarschuwing, geplande en handmatige back-up inclusief config- en sleutelstate met verpakte secrets, hersteltest in een geïsoleerde tijdelijke database die migraties en kernqueries draait, restore met onderhoudsmodus en bevestiging, upgrade-guard (back-up vóór de
 eerste migratie, weigering op een nieuwere database), de vier faalpaden met foutcodes en één
-settest, scherm 35. **Afhankelijk van.** S2. **Migraties.** `0019_backups.sql` (registratie van
+settest, scherm 35. **Afhankelijk van.** S2. **Migraties.** `0021_backups.sql` (registratie van
 back-ups en hersteltests). **API.** Venster 7. **Tests.** Back-up terugzetten op een lege server
 geeft dezelfde catalogus en kijkstatus; upgrade over twee schemaversies slaagt; terugrollen
 weigert luid; elk faalpad geeft zijn code. **Acceptatie.** Matrix 5.13 rijen back-up, restore,

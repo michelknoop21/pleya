@@ -1,6 +1,6 @@
 # Roadmap deviation proposal: een eigen werkpakket "loudnessmeting" naast PS-11A
 
-**Status:** goedgekeurd, 11 september 2026 (D0 uit `~/.claude/plans/pleya-unified-loudness-engine-steady-moon.md`)
+**Status:** goedgekeurd, 11 september 2026 (D0)
 **Auteur:** Michel Knoop
 **Betreft:** [docs/pleya-server-architecture.md](pleya-server-architecture.md) hoofdstuk 23 en 24,
 [docs/pleya-server-gates.md](pleya-server-gates.md) secties 7-8, `CLAUDE.md`

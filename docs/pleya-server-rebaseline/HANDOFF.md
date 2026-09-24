@@ -49,7 +49,7 @@ op dit moment **ongecommit** op `feat/pleyaserver` `5eebb83`.
 | E | RB-18 (scope-grens) | herschrijven naar de totale scope; nieuwe RB's voor PlaybackPlan en transcode (architectuur h10 en h11), downloads met digest, verzamelingen, persoonlijke laag, realtime met volgnummers (h14), back-up en restore (h17.3, h22), providerladder (h8, TMDB eerst, productbesluiten B1 t/m B4 en B8 uit de replacement matrix als aanbeveling ingevuld) |
 | F, G, H | ontbrekende domeinen: transcode, downloads, verzamelingen, geschiedenis, realtime, back-up, providers | rijen per domein erbij |
 | I | S15 als sluitstuk na S16 | nieuwe slices S17 en verder in de DAG; kritieke lijn opnieuw bepalen |
-| J | vier vensters, migraties tot 0013 | extra vensters en migraties 0014 en verder |
+| J | vier vensters, migraties tot 0015 | extra vensters en migraties 0016 en verder |
 | K | dreigingen 1 tot 23 | erbij: transcoderproces en ffmpeg-argumenten, websocket-auth en per-gebruiker events, back-upbestanden en hun rechten, providerantwoorden valideren, SSRF naar providers |
 | L | journeys 1 tot 8 | erbij: transcode op een toestel dat het bestand niet aankan, download en sync-back, verzameling delen, realtime scanvoortgang, back-up en restore, metadata-match met correctie die drie rondes overleeft |
 | M | DEC-lijst | nieuwe DEC's voor elk nieuw domein |
