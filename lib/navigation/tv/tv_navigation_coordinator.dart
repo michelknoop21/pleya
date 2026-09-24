@@ -227,6 +227,18 @@ class TvNavigationCoordinator extends ChangeNotifier {
     return popped;
   }
 
+  /// Drops the nested stack of [id] only, completing its routes with `null`
+  /// like [clearNestedRoutes] does. OFF6: a section that disappears after a
+  /// rebind of the same profile goes; the other destinations keep theirs.
+  void clearNestedRoutesFor(TvDestinationId id) {
+    final stack = _nested.remove(id);
+    if (stack == null) return;
+    for (final route in stack) {
+      route.completeResult(null);
+    }
+    notifyListeners();
+  }
+
   /// Drops every nested stack. Used on a profile switch for the same reason
   /// [clearFocusMemory] is: a route built for one profile has no business
   /// staying on screen for the next.
