@@ -20,8 +20,10 @@ import 'storage_service.dart';
 /// movie, so the next episode does not fall back to the server default.
 ///
 /// Sits on [SettingsService.trackLanguagePreferences], a global map registered
-/// with the `profileKeyedMap` merge family (DEC-131): the Plex Home profile's
-/// entries reach the user's other Apple devices, a local profile's stay here.
+/// with the `trackLanguageMap` merge family ([mergeFamily], DEC-131): the
+/// `profileKeyedMap` merge with this store's cap after it. The Plex Home
+/// profile's entries reach the user's other Apple devices, a local profile's
+/// stay here.
 ///
 /// Serialises every write through a Completer chain. The stored value is one
 /// map holding every title, and the audio and the subtitle write for the same
@@ -70,7 +72,7 @@ class TrackPreferenceStore {
   /// (kvs_footprint_test), a live entry costs up to about 490 bytes and a
   /// tombstone about 120, so 250 live entries alone already passed the
   /// ceiling, and tombstones had no bound but their lifetime. 100 of each is
-  /// about 61 KB, which leaves room for titles in scripts that take three
+  /// about 59 KB, which leaves room for titles in scripts that take three
   /// bytes a character.
   static const int maxEntries = 100;
 
@@ -391,19 +393,19 @@ class TrackPreferenceStore {
   }
 
   /// The sync family for this map: `profileKeyedMap`, with [_capped] run over
-  /// every inbound union.
+  /// every union, inbound and outbound.
   ///
   /// Each device caps its own writes, but the union of two capped maps holds
   /// up to twice the cap. A device that only receives would keep that union
-  /// and push it back, over the store's ceiling, until its own next write. The
-  /// cap stays out of the shared merge, which also serves the profile language
-  /// map.
+  /// and push it back, over the store's ceiling, until its own next write; a
+  /// push that races the remote event would send it. The cap stays out of the
+  /// shared merge, which also serves the profile language map.
   static PreferenceMergeFamily mergeFamily() {
     final shared = buildProfileKeyedMapFamily();
     return PreferenceMergeFamily(
       name: PreferenceMergeFamilies.trackLanguageMap,
       inbound: (local, remote) => _cappedRaw(shared.inbound(local, remote)),
-      outbound: shared.outbound,
+      outbound: (local, remote) => _cappedRaw(shared.outbound!(local, remote)),
       removed: shared.removed,
     );
   }

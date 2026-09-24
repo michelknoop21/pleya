@@ -19,7 +19,7 @@ Plan: `docs/superpowers/plans/2026-09-24-icloud-sync-repair.md`.
 | B7 | status bij uitgelogd iCloud | OPEN | | |
 | B8 | quota-melding overleeft een reconcile | OPEN | | |
 | B9 | accountwissel leest eerst; grens: een uitgelogd gemaakte wijziging verliest bij de volgende aanmelding (zelfde of ander account) van de store voor sleutels die de store heeft, een sleutel die de store mist houdt de lokale waarde | OPEN | | |
-| B10 | taalvoorkeur op de juiste sleutel | OPEN | | |
+| B10 | taalvoorkeur op de juiste sleutel; de seriekaart houdt 100 levende uitzonderingen (was 250) en 100 tombstones, een verwijdering buiten die 100 tombstones kan terugkomen van een lang offline toestel; op een toestel dat alleen ontvangt kan de cap een oudere lokale keuze (een niet-draagbare scope) laten vallen zonder tombstone, net als bij een eigen write | OPEN | | |
 | B11 | acht stille sleutels en de guard | OPEN | | |
 | B12 | profielscope Jellyfin en Pleya Server | DEFERRED | | DEC-131, Consequences |
 | B13 | lokale write tijdens remote batch | OPEN | | |

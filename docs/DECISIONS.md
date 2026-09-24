@@ -2979,7 +2979,11 @@ Home-profiel-id `plex-home-plex.<accountUuid>-<homeUuid>` is, met twee uuids van
 een home-uuid van 36 tekens herkent); `local-<uuid>`, leeg en een accountverbinding die terugviel op
 de client-id van het toestel blijven thuis. Samenvoegen gaat per entry op tijdstempel `u`, in beide
 richtingen als vereniging; een verwijdering reist als tombstone (een lege keuze met alleen `u`) die
-na 180 dagen vervalt. Een taalvoorkeur die onder de vorige build is geïmporteerd, landde op de dode
+na 180 dagen vervalt. De seriekaart `track_language_preferences` heeft een eigen familie
+`trackLanguageMap`: dezelfde merge met daarna de cap van `TrackPreferenceStore`, inkomend en
+uitgaand. Die cap staat op 100 levende serie-uitzonderingen (was 250) plus hoogstens 100
+tombstones; gemeten op de draad is dat in het slechtste geval 59 KB van de 100 KB per waarde, en de
+groottegrens telt UTF-8-bytes. Een taalvoorkeur die onder de vorige build is geïmporteerd, landde op de dode
 sleutel `user_<scope>_pleya_profile_language_preferences` en is weg tot ze opnieuw wordt
 geïmporteerd. (10) De registratieguard gebruikt `Pref(?:<[^()]*>)?\(\s*'`. Nieuw geregistreerd:
 `keyboard_shortcuts` en `keyboard_hotkeys` als global; `media_version_preferences`,
@@ -2998,7 +3002,9 @@ Server-profielen (`local-<uuid>` is per toestel; `hidden_libraries`, `library_or
 en de taalvoorkeur reizen voor die profielen niet), een per-account-scheiding van lokale
 voorkeuren, een serverId-gefilterde familie voor `unified_source_preferences` en
 `preferred_unified_server`. Bekende grenzen: een toestel dat langer dan 180 dagen offline was, kan
-een gewiste serie-uitzondering terugbrengen omdat de tombstone dan vervallen is; het lokale revisieblob groeit tot
+een gewiste serie-uitzondering terugbrengen omdat de tombstone dan vervallen is, en dat geldt ook
+voor een verwijdering die buiten de 100 nieuwste tombstones van de seriekaart valt; wie meer dan 100
+serie-uitzonderingen had, verliest de oudste; het lokale revisieblob groeit tot
 één entry per ooit geziene sleutel (op het zware account uit `kvs_footprint_test` 654 sleutels,
 circa 40 KB); een tombstone wordt nooit opgeruimd en een reset schrijft er een voor elke resetbare
 voorkeur, ook een die nooit gezet was, dus het aantal sleutels in de store groeit monotoon met elke

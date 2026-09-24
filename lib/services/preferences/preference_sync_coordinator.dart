@@ -314,7 +314,7 @@ class PreferenceSyncCoordinator {
       }
       final encoded = encodeStampedRecord(entry, _revisionStore.stampOf(baseKey));
       final cap = transport.maxValueBytes;
-      if (cap != null && encoded.length > cap) {
+      if (cap != null && utf8.encode(encoded).length > cap) {
         // Oversize is reported, not swallowed. It also must not become a
         // removal: leaving the older cloud value in place is strictly better
         // than deleting it because the newer one did not fit.
@@ -858,7 +858,7 @@ class PreferenceSyncCoordinator {
         }
         final encoded = encodeStampedRecord(entry, local);
         final cap = transport.maxValueBytes;
-        if (cap != null && encoded.length > cap) {
+        if (cap != null && utf8.encode(encoded).length > cap) {
           oversize++;
           continue;
         }

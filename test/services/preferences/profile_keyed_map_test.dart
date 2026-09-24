@@ -430,6 +430,42 @@ void main() {
         expect(liveIn(m(family.inbound(deviceB, enc(sent)))), lessThanOrEqualTo(cap));
       });
 
+      test('a push that races the remote event stays within the cap and under 100 KB', () async {
+        const cap = TrackPreferenceStore.maxEntries;
+        // Entries of the size kvs_footprint_test measures as the worst case.
+        Map<String, Object?> big(String lang, int u) => TrackLanguageChoice(
+          audioLanguage: lang,
+          audioTitle: 'English (Dolby TrueHD Atmos 7.1)',
+          subtitleLanguage: 'nld',
+          subtitleTitle: 'Nederlands (SDH, forced songs)',
+          provenance: const TrackChoiceProvenance(
+            title: 'The Lord of the Rings: The Rings of Power (2022)',
+            posterPath: '/library/metadata/1234567/thumb/1758700000',
+            serverId: '0123456789abcdef0123456789abcdef01234567',
+            seasonNumber: 12,
+            episodeNumber: 123,
+            deviceName: 'Woonkamer Apple TV 4K (3e generatie)',
+          ),
+          updatedAt: u,
+        ).toJson();
+        // Both devices at the cap, and A has not applied B's record yet.
+        final deviceA = enc({for (var i = 0; i < cap; i++) '$home|show:guid:plex://show/a$i': big('nld', t0 + i)});
+        final deviceB = enc({
+          for (var i = 0; i < cap; i++) '$home|show:guid:plex://show/b$i': big('eng', t0 + 1000 + i),
+        });
+
+        final sent = TrackPreferenceStore.mergeFamily().outbound!(deviceA, deviceB)! as String;
+
+        expect(liveIn(m(sent)), cap);
+        final wire = json.encode({
+          'type': 'string',
+          'value': sent,
+          't': t0,
+          'd': '6f1d2b3c-4e5a-4b7c-8d9e-0f1a2b3c4d5e',
+        });
+        expect(utf8.encode(wire).length, lessThan(100 * 1024));
+      });
+
       test('a device that only receives caps the union it applies', () async {
         const cap = TrackPreferenceStore.maxEntries;
         final coordinator = await build();
@@ -464,17 +500,20 @@ void main() {
         expect(liveIn(sent), lessThanOrEqualTo(cap));
       });
 
-      test('the profile language map is not capped by the series store', () async {
-        final coordinator = await build();
-        expect(
-          coordinator.mergeRegistry.familyFor('pleya_profile_language_preferences')?.name,
-          PreferenceMergeFamilies.profileKeyedMap,
-        );
-        expect(
-          coordinator.mergeRegistry.familyFor('track_language_preferences')?.name,
-          PreferenceMergeFamilies.trackLanguageMap,
-        );
-      });
+      test(
+        'the coordinator registers the plain family for the profile map and the capped one for the series map',
+        () async {
+          final coordinator = await build();
+          expect(
+            coordinator.mergeRegistry.familyFor('pleya_profile_language_preferences')?.name,
+            PreferenceMergeFamilies.profileKeyedMap,
+          );
+          expect(
+            coordinator.mergeRegistry.familyFor('track_language_preferences')?.name,
+            PreferenceMergeFamilies.trackLanguageMap,
+          );
+        },
+      );
 
       test('tombstones are kept up to the cap, newest first', () async {
         await signIn();

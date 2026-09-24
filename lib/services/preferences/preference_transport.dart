@@ -46,7 +46,8 @@ abstract class PreferenceTransport {
   /// Remote changes, including the reasons that carry no key list.
   Stream<RemotePreferenceChange> get changes;
 
-  /// Per-value size limit, or null when the transport has none.
+  /// Per-value size limit in UTF-8 bytes, or null when the transport has none.
+  /// Not String.length: a CJK character is one code unit but three bytes.
   int? get maxValueBytes;
 
   Future<void> dispose();
