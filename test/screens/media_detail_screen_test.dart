@@ -1644,6 +1644,9 @@ void main() {
         expect(find.byType(TabBar), findsNothing);
         expect(find.text('Share'), findsOneWidget);
         expect(find.text('Episodes'), findsOneWidget);
+        // The season pill and its count show for a one-season series too.
+        expect(find.byType(PopupMenuButton<int>), findsOneWidget);
+        expect(find.text('Season 1'), findsOneWidget);
         expect(find.text('Episode S1E1'), findsOneWidget);
       });
 
@@ -1700,6 +1703,51 @@ void main() {
         // drew this pill in the exact colour of the page behind it.
         expect(decoration.color, tk.surfaceElevated);
         expect(decoration.color, isNot(tk.surface));
+      });
+
+      testWidgets('a series shows its description and the information around it on the page (DEC-131)', (tester) async {
+        final show = MediaItem(
+          id: 'show_info',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.show,
+          title: 'The Show',
+          year: 2022,
+          childCount: 2,
+          leafCount: 4,
+          viewedLeafCount: 1,
+          summary: 'Mark leidt een team dat hun werkherinneringen chirurgisch heeft laten scheiden.',
+          genres: const ['Drama', 'Mysterie'],
+          studio: 'Apple TV+',
+          directors: const ['Ben Stiller'],
+          roles: const [
+            MediaRole(tag: 'Adam Scott', role: 'Mark'),
+            MediaRole(tag: 'Britt Lower', role: 'Helly'),
+          ],
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+        final season1 = buildSeason(show, 1);
+        final client = _FakeMediaServerClient(
+          show: show,
+          childrenByParent: {
+            show.id: [season1],
+            season1.id: [buildEpisode(show, season1, 1)],
+          },
+        );
+
+        await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        // Nothing sits behind a tab: description, genres, cast, director,
+        // studio and the seasons chip are on the page as it opens.
+        expect(find.byType(TabBar), findsNothing);
+        expect(find.textContaining('werkherinneringen'), findsOneWidget);
+        expect(find.text('Drama · Mysterie'), findsOneWidget);
+        expect(find.textContaining('Adam Scott, Britt Lower'), findsOneWidget);
+        expect(find.textContaining('Ben Stiller'), findsOneWidget);
+        expect(find.textContaining('Apple TV+'), findsOneWidget);
+        expect(find.text('2 seasons'), findsOneWidget);
+        // Rating lives in the action row only, not doubled as a chip in the tags.
+        expect(find.text('Rate'), findsOneWidget);
       });
 
       testWidgets('NL: the episodes block reads Afleveringen and no tab labels are left (DEC-131)', (tester) async {

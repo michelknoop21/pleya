@@ -1136,7 +1136,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   /// Build all rating chips for the metadata.
   /// When both critic and audience ratings are from Rotten Tomatoes,
   /// they are combined into a single badge.
-  List<Widget> _buildRatingChips(MediaItem metadata) {
+  List<Widget> _buildRatingChips(MediaItem metadata, {bool includeUserRating = true}) {
     final chips = <Widget>[];
     // Plex-only fields (audienceRating / ratingImage / audienceRatingImage)
     // — Jellyfin lacks rating-source attribution. Pull them via a typed
@@ -1163,7 +1163,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     }
 
     // User rating chip (tappable)
-    if (!widget.isOffline) {
+    if (includeUserRating && !widget.isOffline) {
       chips.add(_buildUserRatingChip(metadata));
     }
 

@@ -26,7 +26,14 @@ extension _MobileEpisodesSection on _MediaDetailScreenState {
     return Column(
       crossAxisAlignment: .start,
       children: [
-        if (!showFlattened && _seasons.length > 1) ...[_buildMobileSeasonPicker(context), const SizedBox(height: 12)],
+        // Mockup 07 always shows the season pill with its "x afleveringen ·
+        // y bekeken" count, also for a series with a single season, which
+        // this screen otherwise flattens (`_showEpisodesDirectly`). Michel,
+        // 24 September: it went missing on a one-season show.
+        if (!metadata.isSeason && _seasons.isNotEmpty) ...[
+          _buildMobileSeasonPicker(context),
+          const SizedBox(height: 12),
+        ],
         if (showFlattened) ...[
           if (_isLoadingSeasons || _isLoadingEpisodes)
             _MediaDetailScreenState._sectionLoading

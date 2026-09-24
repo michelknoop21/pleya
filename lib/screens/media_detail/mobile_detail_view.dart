@@ -260,11 +260,20 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
   /// the title. Reuses [_buildMetadataChip] and [buildMediaQualityLabels]
   /// unchanged; only the row composition is new.
   Widget _buildMobileTagsRow(BuildContext context, MediaItem metadata) {
+    final seasonCount = metadata.isShow ? metadata.childCount : null;
     final chips = <Widget>[
       if (metadata.year != null) _buildMetadataChip('${metadata.year}'),
       if (metadata.contentRating != null) _buildMetadataChip(formatContentRating(metadata.contentRating)),
       if (metadata.durationMs != null) _buildMetadataChip(formatDurationTextual(metadata.durationMs!)),
+      // A series says how many seasons it has where a film says how long it
+      // is. Only from two up: the string is plural, and a single season is
+      // already named by the season pill below.
+      if (seasonCount != null && seasonCount > 1)
+        _buildMetadataChip('$seasonCount ${t.libraries.groupings.seasons.toLowerCase()}'),
       for (final label in buildMediaQualityLabels(metadata)) _buildMetadataChip(label),
+      // Critic and audience ratings, the chips the tablet header shows. The own
+      // rating is not repeated here: "Beoordelen" sits in the action row.
+      ..._buildRatingChips(metadata, includeUserRating: false),
     ];
     if (chips.isEmpty) return const SizedBox.shrink();
     return Wrap(spacing: 8, runSpacing: 8, children: chips);
@@ -378,43 +387,41 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     final summary = metadata.summary;
     final roles = metadata.roles;
     final directors = metadata.directors;
+    final genres = metadata.genres;
+    final studio = metadata.studio;
     final mutedStyle = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+
+    Widget labelled(String label, String value) => Text.rich(
+      TextSpan(
+        style: mutedStyle,
+        children: [
+          TextSpan(
+            text: '$label: ',
+            style: mutedStyle?.copyWith(fontWeight: .w600),
+          ),
+          TextSpan(text: value),
+        ],
+      ),
+    );
 
     return Column(
       crossAxisAlignment: .start,
       children: [
+        // The genre line the TV detail draws under its metadata.
+        if (genres != null && genres.isNotEmpty) ...[
+          Text(genres.join(' · '), style: mutedStyle?.copyWith(fontWeight: .w600)),
+          const SizedBox(height: 8),
+        ],
         if (summary != null && summary.isNotEmpty) ...[
           CollapsibleText(text: summary, maxLines: 6, style: theme.textTheme.bodyLarge?.copyWith(height: 1.5)),
           const SizedBox(height: 12),
         ],
-        if (roles != null && roles.isNotEmpty)
-          Text.rich(
-            TextSpan(
-              style: mutedStyle,
-              children: [
-                TextSpan(
-                  text: '${t.discover.cast}: ',
-                  style: mutedStyle?.copyWith(fontWeight: .w600),
-                ),
-                TextSpan(text: roles.take(3).map((r) => r.tag).join(', ')),
-              ],
-            ),
-          ),
+        if (roles != null && roles.isNotEmpty) labelled(t.discover.cast, roles.take(3).map((r) => r.tag).join(', ')),
         if (directors != null && directors.isNotEmpty) ...[
           const SizedBox(height: 4),
-          Text.rich(
-            TextSpan(
-              style: mutedStyle,
-              children: [
-                TextSpan(
-                  text: '${t.metadataEdit.director}: ',
-                  style: mutedStyle?.copyWith(fontWeight: .w600),
-                ),
-                TextSpan(text: directors.join(', ')),
-              ],
-            ),
-          ),
+          labelled(t.metadataEdit.director, directors.join(', ')),
         ],
+        if (studio != null && studio.isNotEmpty) ...[const SizedBox(height: 4), labelled(t.discover.studio, studio)],
       ],
     );
   }
@@ -442,30 +449,32 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     Widget action({
       required IconData icon,
       required String label,
-      required VoidCallback? onPressed,
+      required void Function(BuildContext buttonContext)? onPressed,
       bool active = false,
     }) {
       final color = active ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface;
       final effectiveColor = onPressed == null ? color.withValues(alpha: 0.4) : color;
       return Expanded(
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: effectiveColor),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: .ellipsis,
-                  textAlign: .center,
-                  style: TextStyle(fontSize: 12, color: effectiveColor),
-                ),
-              ],
+        child: Builder(
+          builder: (buttonContext) => InkWell(
+            onTap: onPressed == null ? null : () => onPressed(buttonContext),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: effectiveColor),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: .ellipsis,
+                    textAlign: .center,
+                    style: TextStyle(fontSize: 12, color: effectiveColor),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -477,27 +486,47 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
         action(
           icon: onWatchlist ? Icons.bookmark_added_rounded : Icons.add_rounded,
           label: onWatchlist ? t.watchlist.remove : t.watchlist.add,
-          onPressed: canOfferWatchlist ? () => unawaited(WatchlistUiActions.toggle(context, metadata)) : null,
+          onPressed: canOfferWatchlist ? (_) => unawaited(WatchlistUiActions.toggle(context, metadata)) : null,
         ),
         action(
           icon: isNumericRating ? Icons.star_rounded : Icons.thumb_up_rounded,
           label: t.mediaMenu.rate,
           active: hasRating,
-          onPressed: widget.isOffline ? null : () => unawaited(_showRatingDialog(context, metadata)),
+          onPressed: widget.isOffline ? null : (_) => unawaited(_showRatingDialog(context, metadata)),
         ),
         action(
           icon: metadata.isWatched ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
           label: metadata.isWatched ? t.tooltips.markAsUnwatched : t.tooltips.markAsWatched,
           active: metadata.isWatched,
-          onPressed: () => unawaited(_handleWatchedTogglePressed(metadata)),
+          onPressed: (_) => unawaited(_handleWatchedTogglePressed(metadata)),
         ),
         action(
           icon: Icons.send_rounded,
           label: t.common.share,
-          onPressed: () => unawaited(SharePlus.instance.share(ShareParams(text: metadata.displayTitle))),
+          onPressed: (buttonContext) => unawaited(_shareMobileItem(buttonContext, metadata)),
         ),
       ],
     );
+  }
+
+  /// The iOS share sheet anchored to the tapped button. share_plus needs
+  /// `sharePositionOrigin` for the popover (required on iPad, and without it
+  /// the sheet could fail to appear or leave the UI unresponsive); Michel saw
+  /// exactly that on 24 September ("delen werkt niet"). A failure to present
+  /// the sheet is shown, a dismissed sheet is not.
+  Future<void> _shareMobileItem(BuildContext buttonContext, MediaItem metadata) async {
+    final box = buttonContext.findRenderObject() as RenderBox?;
+    final origin = box == null ? null : box.localToGlobal(Offset.zero) & box.size;
+    final year = metadata.year;
+    final text = year == null ? metadata.displayTitle : '${metadata.displayTitle} ($year)';
+    try {
+      await SharePlus.instance.share(
+        ShareParams(text: text, subject: metadata.displayTitle, sharePositionOrigin: origin),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      showErrorSnackBar(context, t.errors.failedToLoad(context: t.common.share));
+    }
   }
 
   /// Section heading over the inline episodes, extras and cast blocks: the
