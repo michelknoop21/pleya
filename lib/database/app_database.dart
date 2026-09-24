@@ -460,13 +460,14 @@ class AppDatabase extends _$AppDatabase {
     return {for (final row in rows) ?row.read(mediaInteractions.sourceEventId)};
   }
 
-  /// Timestamps of positive *local* playback interactions for the given items
-  /// inside a time window, grouped by global key.
+  /// Timestamps and weights of positive *local* playback interactions for the
+  /// given items inside a time window, grouped by global key.
   ///
   /// One bundled query per import page instead of one per row. The
   /// `event_weight > 0` clause is the point: a dismissal must never be treated
-  /// as "we already saw this play" and swallow a completed Tautulli view.
-  Future<Map<String, List<int>>> localPositiveInteractionsIn(
+  /// as "we already saw this play" and swallow a completed Tautulli view. The
+  /// weight lets the caller tell a local partial from a local completed view.
+  Future<Map<String, List<({int at, double weight})>>> localPositiveInteractionsIn(
     String profileId,
     Set<String> globalKeys,
     int fromMs,
@@ -483,11 +484,29 @@ class AppDatabase extends _$AppDatabase {
                   t.occurredAt.isBetweenValues(fromMs, toMs),
             ))
             .get();
-    final out = <String, List<int>>{};
+    final out = <String, List<({int at, double weight})>>{};
     for (final row in rows) {
-      out.putIfAbsent(row.globalKey, () => []).add(row.occurredAt);
+      out.putIfAbsent(row.globalKey, () => []).add((at: row.occurredAt, weight: row.eventWeight));
     }
     return out;
+  }
+
+  /// Whether a positive row for [globalKey] exists at or after [sinceMs].
+  /// Any source counts: a Tautulli row imported an hour ago is as much proof
+  /// of the view as a local one.
+  Future<bool> hasPositiveInteractionSince(String profileId, String globalKey, int sinceMs) async {
+    final row =
+        await (select(mediaInteractions)
+              ..where(
+                (t) =>
+                    t.profileId.equals(profileId) &
+                    t.globalKey.equals(globalKey) &
+                    t.eventWeight.isBiggerThanValue(0) &
+                    t.occurredAt.isBiggerOrEqualValue(sinceMs),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return row != null;
   }
 
   Future<void> upsertAffinitySnapshot(AffinitySnapshotsCompanion entry) =>

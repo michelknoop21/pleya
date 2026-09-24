@@ -11,16 +11,18 @@ import '../../media/media_server_client.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/global_key_utils.dart';
 import '../../utils/watch_state_notifier.dart';
+import 'tautulli_history_importer.dart' show kCrossSourceWindow, kPartialPercent, kPartialWeight;
 
 /// Records watch interactions into the local [MediaInteractions] store so the
 /// on-device recommendation engine can learn taste. Subscribes to
 /// [WatchStateNotifier] (same pattern as `TraktSyncService`), scoped to one
 /// profile; dispose on profile switch. All data stays on-device.
 ///
-/// Only two clean, non-double-counting signals are recorded today:
-/// a finished item (weight +1.0) and a Continue-Watching dismissal
-/// (weight -0.3). Partial/abandoned tracking can be layered on later from
-/// playback-stop events without touching the scorer.
+/// Three signals are recorded: a finished item (weight +1.0), a
+/// Continue-Watching dismissal (weight -0.3), and a partial view
+/// ([kPartialWeight]) when a playback session ends between [kPartialPercent]
+/// and the watched threshold, at most once per title per [kCrossSourceWindow].
+/// An abandoned play below that percentage records nothing.
 class InteractionRecorder {
   final AppDatabase _db;
   final String _profileId;
@@ -58,8 +60,8 @@ class InteractionRecorder {
       final (String type, double weight)? mapped = switch (event.changeType) {
         WatchStateChangeType.watched => ('completed', 1.0),
         WatchStateChangeType.removedFromContinueWatching => ('skipped', -0.3),
-        // progressUpdate/unwatched carry no clean taste signal on their own.
-        _ => null,
+        WatchStateChangeType.progressUpdate => await _partialSignal(event),
+        WatchStateChangeType.unwatched => null,
       };
       if (mapped == null) return;
 
@@ -88,6 +90,23 @@ class InteractionRecorder {
     } catch (e, s) {
       appLogger.w('InteractionRecorder: failed to record interaction', error: e, stackTrace: s);
     }
+  }
+
+  /// A final stop between [kPartialPercent] and the client's watched threshold
+  /// is evidence the title held attention. Below it nothing is recorded, as
+  /// with the imported history (DEC-062). At or above the threshold the
+  /// `watched` event carries the row, so nothing is written here either. One
+  /// row per title per [kCrossSourceWindow], so pausing and resuming over an
+  /// evening does not stack.
+  Future<(String, double)?> _partialSignal(WatchStateEvent event) async {
+    final duration = event.durationMs;
+    final offset = event.viewOffset;
+    if (!event.isFinal || duration == null || duration <= 0 || offset == null) return null;
+    if (event.isNowWatched == true) return null;
+    if (offset * 100 ~/ duration < kPartialPercent) return null;
+    final since = DateTime.now().millisecondsSinceEpoch - kCrossSourceWindow.inMilliseconds;
+    if (await _db.hasPositiveInteractionSince(_profileId, event.globalKey, since)) return null;
+    return ('partial', kPartialWeight);
   }
 
   Future<_Features?> _resolveFeatures(WatchStateEvent event) async {

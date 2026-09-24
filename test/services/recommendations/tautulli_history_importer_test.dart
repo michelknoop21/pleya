@@ -1043,6 +1043,43 @@ void main() {
       expect(TautulliHistoryImporter.errorCategory(Exception('bad apikey parameter format')), 'isMalformed');
     });
   });
+
+  group('cross-source window and weights', () {
+    Future<void> local(String globalKey, double weight, {String type = 'completed'}) => db.insertMediaInteraction(
+      MediaInteractionsCompanion.insert(
+        profileId: _profile,
+        globalKey: globalKey,
+        mediaKind: 'movie',
+        eventType: type,
+        eventWeight: weight,
+        occurredAt: _now - Duration.millisecondsPerHour,
+      ),
+      profileId: _profile,
+    );
+
+    test('a local partial does not swallow a completed Tautulli view', () async {
+      await local('$_machine:1', 0.4, type: 'partial');
+      final access = _FakeAccess(rows: [_entry(rowId: 1, daysAgo: 0)]);
+      final outcome = await importer(access, _FakeClient({'1': _item('1')})).sync();
+      expect(outcome!.imported, 1);
+      expect(outcome.deduplicated, 0);
+    });
+
+    test('a local completed does swallow it', () async {
+      await local('$_machine:1', 1.0);
+      final access = _FakeAccess(rows: [_entry(rowId: 1, daysAgo: 0)]);
+      final outcome = await importer(access, _FakeClient({'1': _item('1')})).sync();
+      expect(outcome!.imported, 0);
+      expect(outcome.deduplicated, 1);
+    });
+
+    test('a local partial does swallow a partial Tautulli view', () async {
+      await local('$_machine:1', 0.4, type: 'partial');
+      final access = _FakeAccess(rows: [_entry(rowId: 1, daysAgo: 0, watchedStatus: 0, percentComplete: 60)]);
+      final outcome = await importer(access, _FakeClient({'1': _item('1')})).sync();
+      expect(outcome!.deduplicated, 1);
+    });
+  });
 }
 
 /// Counts the bundled cross-source lookups so "one query per page" is a
@@ -1054,7 +1091,7 @@ class _CountingDatabase extends AppDatabase {
   _CountingDatabase(this._inner) : super.forTesting(NativeDatabase.memory());
 
   @override
-  Future<Map<String, List<int>>> localPositiveInteractionsIn(
+  Future<Map<String, List<({int at, double weight})>>> localPositiveInteractionsIn(
     String profileId,
     Set<String> globalKeys,
     int fromMs,

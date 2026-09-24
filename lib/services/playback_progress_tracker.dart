@@ -469,6 +469,7 @@ class PlaybackProgressTracker {
       viewOffset: position.inMilliseconds,
       duration: duration.inMilliseconds,
       watchedThreshold: client?.watchedThreshold ?? 0.9,
+      isFinal: isFinal,
     );
   }
 

@@ -47,6 +47,9 @@ const Duration kCrossSourceWindow = Duration(hours: 6);
 const int kCompletedPercent = 85;
 const int kPartialPercent = 50;
 
+/// Weight of a partial view, local or imported.
+const double kPartialWeight = 0.4;
+
 /// Backfill resumes once retention has aged the profile back below this
 /// fraction of the cap. The gap keeps it from flapping on the boundary.
 const double kBackfillResumeFraction = 0.9;
@@ -660,7 +663,7 @@ class TautulliHistoryImporter {
     }
     final windowMs = kCrossSourceWindow.inMilliseconds;
     final localPlays = candidates.isEmpty
-        ? const <String, List<int>>{}
+        ? const <String, List<({int at, double weight})>>{}
         : await _db.localPositiveInteractionsIn(
             _target.activeProfileId,
             candidates,
@@ -682,14 +685,16 @@ class TautulliHistoryImporter {
       final globalKey = _globalKeyFor(e);
       final atMs = e.date! * 1000;
       final matchKey = _localMatchKeyFor(e);
+      final signal = _signalFor(e)!;
       final nearbyLocal = matchKey == null ? null : localPlays[matchKey];
-      if (nearbyLocal != null && nearbyLocal.any((t) => (t - atMs).abs() <= windowMs)) {
-        // Pleya already recorded this same view. A rewatch days later falls
-        // outside the window and is kept.
+      if (nearbyLocal != null && nearbyLocal.any((l) => (l.at - atMs).abs() <= windowMs && l.weight >= signal.weight)) {
+        // Pleya already recorded this view with at least this much weight. A
+        // local partial is not proof of a completed view elsewhere, so it does
+        // not count here; a rewatch days later falls outside the window.
         deduplicated++;
         continue;
       }
-      rows.add(_companionFor(e, item, globalKey));
+      rows.add(_companionFor(e, item, globalKey, signal));
     }
 
     if (rows.isNotEmpty) {
@@ -705,8 +710,12 @@ class TautulliHistoryImporter {
     );
   }
 
-  MediaInteractionsCompanion _companionFor(TautulliHistoryEntry e, MediaItem item, String globalKey) {
-    final signal = _signalFor(e)!;
+  MediaInteractionsCompanion _companionFor(
+    TautulliHistoryEntry e,
+    MediaItem item,
+    String globalKey,
+    ({String type, double weight}) signal,
+  ) {
     final isEpisode = e.mediaType == 'episode';
     final seriesKey = isEpisode ? globalKey : null;
     return MediaInteractionsCompanion.insert(
@@ -780,7 +789,7 @@ class TautulliHistoryImporter {
     if (e.watchedStatus >= 1 || e.percentComplete >= kCompletedPercent) {
       return (type: 'completed', weight: 1.0);
     }
-    if (e.percentComplete >= kPartialPercent) return (type: 'partial', weight: 0.4);
+    if (e.percentComplete >= kPartialPercent) return (type: 'partial', weight: kPartialWeight);
     // An abandoned play is not a dislike. Imported history never turns
     // negative; only an explicit action in Pleya does.
     return null;
