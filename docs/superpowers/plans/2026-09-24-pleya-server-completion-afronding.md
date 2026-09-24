@@ -23,7 +23,7 @@
 - Werkt een gate rood, dan is de oorzaak zoeken en herstellen onderdeel van de taak. Een gate afzwakken of skippen is geen optie.
 - Elke taak commit alleen zijn eigen bestanden. `.serena/` blijft untracked.
 - De bewust rode tests L26 en L27 in de werkboom mogen niet afgezwakt of weggegooid worden; ze worden groen door de productfix.
-- Model per taak: taken met een UI-, screenshot- of visueel oordeel (gemarkeerd **Model: opus**) draaien op Opus. Overige taken volgen de standaardkeuze van de SDD-skill.
+- Uitvoering per taak: taken met een UI-, screenshot- of visueel oordeel (gemarkeerd **Zwaar oordeel**) krijgen het zwaarste uitvoeringsniveau. Overige taken volgen de standaardkeuze.
 - Pushen naar de gedeelde branch gebeurt alleen in de laatste taak en na expliciete bevestiging.
 
 - **Minimaal (Michel, 24 september):** niet overengineren en geen grootschalige testsets. Per taak alleen de test die het acceptatiecriterium of een Review Focus-regel rood-groen bewijst, plus wat een bestaande gate afdwingt (autorisatiematrix, responsecaptures). Geen extra helpers, geen tests "voor de volledigheid". Waar een taak hieronder een **Minimaal**-blok heeft, gaat dat blok voor de teststappen van die taak.
@@ -70,7 +70,7 @@ git commit -m "docs: plan voor completion-afronding en S2.4"
 
 ### Task 1: L26, de offline-snackbar noemt de juiste server
 
-**Model: opus** (Flutter-widget met zichtbaar gedrag)
+**Zwaar oordeel** (Flutter-widget met zichtbaar gedrag)
 
 **Files:**
 - Modify: `lib/widgets/auth_error_banner.dart:114-139`
@@ -338,7 +338,7 @@ git commit -m "docs: L26, L27 en L29 gesloten in het reviewregister"
 
 Deze taak wijzigt geen product. Werkt een gate rood, dan hoort de oorzaak en de fix bij deze taak (eigen commit per fix, met de rode uitvoer in het commitbericht). Leg per gate de laatste regels van de uitvoer vast in `.superpowers/sdd/<workspace>/gates-ronde-1.md`.
 
-**Model: opus** voor het onderdeel Pleya Verify (screenshots beoordelen); de rest standaard.
+**Zwaar oordeel** voor het onderdeel Pleya Verify (screenshots beoordelen); de rest standaard.
 
 - [ ] **Stap 1: codegen met lege gegenereerde diff**
 
@@ -2264,7 +2264,7 @@ Voeg na de bestaande gebruikersronde drie controles toe in de stijl van de secti
 
 - [ ] **Stap 3: gates ronde 2**
 
-Herhaal alle stappen van Taak 5 (codegen, `ci_checks.sh`, `flutter test`, Go volledig zonder SKIP, relay, `check_protocol.sh`, `verify-protocol.sh`, web check/api:check/test/build, Pleya Verify CI-set, `verify-local.sh`) en leg de uitvoer vast in `.superpowers/sdd/<workspace>/gates-ronde-2.md`. **Model: opus** voor het Verify-onderdeel.
+Herhaal alle stappen van Taak 5 (codegen, `ci_checks.sh`, `flutter test`, Go volledig zonder SKIP, relay, `check_protocol.sh`, `verify-protocol.sh`, web check/api:check/test/build, Pleya Verify CI-set, `verify-local.sh`) en leg de uitvoer vast in `.superpowers/sdd/<workspace>/gates-ronde-2.md`. **Zwaar oordeel** voor het Verify-onderdeel.
 
 - [ ] **Stap 4: releasenotes, STATUS, CHANGELOG, authority-gate**
 
