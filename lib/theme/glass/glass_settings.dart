@@ -6,19 +6,29 @@ import '../../utils/platform_detector.dart';
 
 /// How a glass surface should render.
 ///
-/// - [off]: the setting is disabled, or the device is a tablet (glass reads
-///   worse at that size and iPad has no real-glass renderer target anyway).
+/// - [off]: the setting is disabled, or [glassAppliesTo] rules the device out
+///   (the iPad: glass reads worse at that size and it has no real-glass
+///   renderer target anyway; TV is never ruled out here).
 /// - [real]: `liquid_glass_renderer` on Impeller: handheld iOS only, and
 ///   only when the device isn't on the reduced-performance tier.
 /// - [fake]: every other case, including tvOS and Skia fallbacks. The hand
 ///   rolled `BackdropFilter` stack in [GlassSurface]: never a package widget.
 enum GlassTier { real, fake, off }
 
+/// Whether glass renders at all on this device, regardless of the setting.
+///
+/// TV always wins the tablet check: [PlatformDetector.isTablet]'s
+/// diagonal-inches heuristic reads a real TV resolution (e.g. 1920x1080) as a
+/// giant tablet, which silently turned every tvOS glass surface off before
+/// this guard existed (Fixronde 1). Once TV is ruled out, only the iPad is
+/// excluded.
+bool glassAppliesTo(BuildContext context) => PlatformDetector.isTV() || !PlatformDetector.isTablet(context);
+
 /// Resolves the tier for the current [context]. See [GlassTier] for the
 /// rules; they are load-bearing for every glass surface in the app.
 GlassTier glassTierFor(BuildContext context) {
   final enabled = SettingsService.instance.read(SettingsService.liquidGlass);
-  if (!enabled || PlatformDetector.isTablet(context)) return GlassTier.off;
+  if (!enabled || !glassAppliesTo(context)) return GlassTier.off;
   if (PlatformDetector.isHandheldIOS(context) && !PlatformDetector.isTV() && !DevicePerformance.isReduced) {
     return GlassTier.real;
   }

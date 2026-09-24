@@ -83,12 +83,11 @@ void main() {
   testWidgets('tile aanwezig op Apple TV', (tester) async {
     TvDetectionService.debugSetAppleTVOverride(true);
     addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
-    // Phone-sized surface, same reason as glass_surface_test.dart: isTV() is
-    // driven by the override above, but isTablet() is screen-diagonal based,
-    // and a real TV-sized viewport (e.g. 1920x1080) would misread as a tablet
-    // and hide the tile regardless of the setting under test.
-    tester.view.physicalSize = const Size(750, 1334);
-    tester.view.devicePixelRatio = 2;
+    // The real tv resolution: PlatformDetector.isTablet reads this as a ~35"
+    // tablet, but glassAppliesTo (Fixronde 1) puts isTV() first, so the tile
+    // still shows.
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.runAsync(() => SettingsService.getInstance());
 
