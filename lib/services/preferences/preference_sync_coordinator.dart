@@ -365,7 +365,10 @@ class PreferenceSyncCoordinator {
 
   late final PreferenceReconcileScheduler _scheduler = PreferenceReconcileScheduler(
     run: (triggers) => _exclusively(() => _runReconcile(triggers)),
-    onError: (e) => appLogger.w('preference sync: reconcile failed (${_errorCategory(e)})'),
+    onError: (e) {
+      _setStatus(status.value.raise(PreferenceSyncHealth.error, errorCategory: _errorCategory(e)));
+      appLogger.w('preference sync: reconcile failed (${_errorCategory(e)})');
+    },
   );
 
   /// The tail of the queue a reconcile run and a remote event take turns on.
@@ -376,17 +379,30 @@ class PreferenceSyncCoordinator {
   /// A reconcile reads the store once and decides from that snapshot. A remote
   /// event applied in the middle would change local state under it, and the
   /// event's own read would race the reconcile's writes, so the two queue.
+  ///
+  /// Each turn gets [turnTimeout] from the moment it starts, so turns behind a
+  /// hung one are released one at a time, and a hung reconcile frees the
+  /// scheduler instead of holding it for the rest of the session.
   Future<void> _exclusively(Future<void> Function() body) {
-    // ponytail: a bounded wait, not cancellation. A turn that hangs (a native
-    // readAll that never answers) is left running and the next one starts
-    // after [turnTimeout], so the two can overlap in that rare case. Cancel
-    // the transport call instead if that overlap ever shows up.
-    final run = _turn.timeout(turnTimeout, onTimeout: () {}).then((_) => body());
+    // ponytail: a bounded turn, not cancellation. A turn that hangs (a native
+    // call that never answers) is left running in the background while the
+    // queue moves on, so it can still land late. Cancel the transport call
+    // instead if that ever shows up.
+    final run = _turn.then(
+      (_) => body().timeout(
+        turnTimeout,
+        onTimeout: () {
+          _setStatus(status.value.raise(PreferenceSyncHealth.error, errorCategory: 'timeout'));
+          appLogger.w('preference sync: a sync turn did not finish in time');
+        },
+      ),
+    );
     _turn = run.catchError((Object _) {});
     return run;
   }
 
-  /// How long a reconcile run or remote event waits for the one before it.
+  /// How long one reconcile run or remote event may take before the queue
+  /// moves on without it.
   @visibleForTesting
   Duration turnTimeout = const Duration(seconds: 30);
 
@@ -789,8 +805,10 @@ class PreferenceSyncCoordinator {
         final local = _revisionStore.stampOf(baseKey);
         // A value held under a removal stamp (a family's local-only entries)
         // is not a change of its own; sending it would carry the tombstone's
-        // stamp on a live record.
-        if (local.deleted) continue;
+        // stamp on a live record. A legacy removal (the old build's bare
+        // remove, stamp 0) orders nothing, so a value under it counts as
+        // unstamped and travels like one.
+        if (local.deleted && local.at != legacyRevisionAt) continue;
         final family = _merges.familyFor(baseKey);
         final raw = remote[cloudKey];
         final record = raw == null ? null : decodeStampedRecord(raw);

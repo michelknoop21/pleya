@@ -422,7 +422,7 @@ void main() {
       expect(settings.prefs.getString('theme_mode'), 'dark', reason: 'the event ran after the reconcile');
     });
 
-    test('a reconcile that hangs holds an event back for a bounded time only', () async {
+    test('a reconcile that hangs holds events and later reconciles back for a bounded time only', () async {
       final gated = _ReadGate(); // its gate never opens: a native read that never answers
       final coordinator = await build(shared: gated);
       coordinator.turnTimeout = const Duration(milliseconds: 50);
@@ -438,8 +438,81 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 200));
 
       expect(settings.prefs.getString('theme_mode'), 'dark');
+      expect(coordinator.scheduler.runCount, 1, reason: 'the hung run was let go');
+      expect(coordinator.status.value.state, PreferenceSyncState.error, reason: 'and not left on syncing');
+
+      await coordinator.requestReconcile(ReconcileTrigger.foreground);
+
+      expect(coordinator.scheduler.runCount, 2, reason: 'the next reconcile runs');
+    });
+
+    test('turns waiting behind a hung one start one at a time', () async {
+      final slow = _SlowReads(); // the first read hangs, every later one takes 40 ms
+      final coordinator = await build(shared: slow);
+      coordinator.turnTimeout = const Duration(milliseconds: 50);
+      coordinator.listen();
+      final theme = coordinator.cloudKeyFor('theme_mode')!;
+      final subtitle = coordinator.cloudKeyFor('subtitle_font_size')!;
+
+      unawaited(coordinator.requestReconcile(ReconcileTrigger.foreground));
+      while (slow.reads == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      slow.controller.add(RemotePreferenceChange(reason: RemoteChangeReason.serverChange, changedKeys: [theme]));
+      slow.controller.add(RemotePreferenceChange(reason: RemoteChangeReason.serverChange, changedKeys: [subtitle]));
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+
+      expect(slow.reads, 3, reason: 'both events ran');
+      expect(slow.mostAtOnce, 1, reason: 'the two queued events never overlapped');
     });
   });
+
+  group('a value under a removal stamp', () {
+    Future<(PreferenceSyncCoordinator, String)> holding(Map<String, Object> stamp) async {
+      final coordinator = await build();
+      await settings.prefs.setInt('subtitle_font_size', 44);
+      await settings.prefs.setString(
+        PreferenceSyncCoordinator.revisionStoreKey,
+        json.encode({'subtitle_font_size': stamp}),
+      );
+      return (coordinator, coordinator.cloudKeyFor('subtitle_font_size')!);
+    }
+
+    test('under a legacy removal travels like an unstamped value', () async {
+      final (coordinator, cloudKey) = await holding({'t': 0, 'd': '', 'x': true});
+
+      await coordinator.reconcile();
+
+      expect(decode(transport.store[cloudKey]!)['value'], 44);
+    });
+
+    test('under a real removal stays home, so the removal does not flip', () async {
+      final (coordinator, cloudKey) = await holding({'t': 5000, 'd': 'macbook', 'x': true});
+
+      await coordinator.reconcile();
+
+      expect(transport.store.containsKey(cloudKey), isFalse);
+    });
+  });
+}
+
+/// A transport whose first read never answers and whose later reads each take
+/// a while, counting how many of those later reads run at once.
+class _SlowReads extends FakeTransport {
+  int reads = 0;
+  int _active = 0;
+  int mostAtOnce = 0;
+
+  @override
+  Future<Map<String, String>?> readAll() async {
+    reads++;
+    if (reads == 1) return Completer<Map<String, String>?>().future;
+    _active++;
+    if (_active > mostAtOnce) mostAtOnce = _active;
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    _active--;
+    return super.readAll();
+  }
 }
 
 /// A transport whose first store read takes its snapshot and then waits until
