@@ -310,6 +310,7 @@ func newMatrixFixture(e *env) *matrixFixture {
 	// Een bestaande bibliotheek voor de PATCH/DELETE-probes van S2.2 (regel 29
 	// en 30): e.libs[0] is "films", door newEnv zelf gesynct.
 	f.libraryID = e.libs[0].ID.String()
+	e.markDBManaged(e.t, f.libraryID)
 	return f
 }
 

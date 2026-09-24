@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -169,6 +170,7 @@ func TestUpdateLibraryKindRejectedWhenNotEmpty(t *testing.T) {
 
 	// e.libs[0] is "films" (movies), gevuld door newEnv's scanAll.
 	filmsID := e.libs[0].ID.String()
+	e.markDBManaged(t, filmsID)
 	rec := e.do(http.MethodPatch, "/pleya/v1/libraries/"+filmsID, map[string]any{"kind": "shows"})
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("kind-wissel op een gevulde bibliotheek gaf %d, verwacht 409: %s", rec.Code, rec.Body.String())
@@ -378,6 +380,7 @@ func TestUpdateLibraryRepeatingCurrentKindSkipsNotEmptyCheck(t *testing.T) {
 
 	// e.libs[0] is "films" (movies), gevuld door newEnv's scanAll: dus niet leeg.
 	filmsID := e.libs[0].ID.String()
+	e.markDBManaged(t, filmsID)
 	rec := e.do(http.MethodPatch, "/pleya/v1/libraries/"+filmsID, map[string]any{
 		"title": "Films Hernoemd", "kind": "movies",
 	})
@@ -439,4 +442,16 @@ func (e *env) createLibraryViaAPI(t *testing.T, title, kind string, rootPaths []
 		t.Fatal(err)
 	}
 	return lib
+}
+
+// markDBManaged zet een door newEnv gesyncte (en dus gevulde) bibliotheek op
+// managed 'db'. Een config-beheerde bibliotheek weigert PATCH en DELETE met
+// library.config_managed; tests die de db-paden op een gevulde bibliotheek
+// bewijzen hebben een db-beheerde nodig, en adopt komt pas met S2.5.
+func (e *env) markDBManaged(t *testing.T, libraryID string) {
+	t.Helper()
+	if _, err := e.pool.Exec(context.Background(),
+		`UPDATE libraries SET managed = 'db' WHERE id = $1`, libraryID); err != nil {
+		t.Fatalf("bibliotheek %s op db-beheer zetten: %v", libraryID, err)
+	}
 }
