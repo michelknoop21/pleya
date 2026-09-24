@@ -164,7 +164,11 @@ verdwijnt dan uit de configuratie bij herstart, dus de migratietest bewaakt dat 
 een bibliotheek verwijdert en dat een `.env`-opstelling na 0009 dezelfde ids houdt (PS-11A
 criterium 2).
 
-### 0010 boeken
+### 0011 boeken
+
+Verschoven van `0010` naar `0011`: S2.4 claimt `0010` voor `jobs.cancel_requested_at` en de
+`scan_runs`-CHECK-uitbreiding (annuleren, retry en backoff op `probe_attempts`), en elke migratie
+erna schuift met deze reservering mee.
 
 `libraries.kind` CHECK opnieuw met `books`. `publications` en `publication_files` zoals H.2, met
 `publications_library_added_idx (library_id, added_at DESC)`, `publications_grouping_uidx
@@ -175,14 +179,14 @@ geteld en gelogd wordt), `publication_id` CASCADE, `storage_location_id` RESTRIC
 Terugdraaien: tabellen droppen en de CHECK terugzetten, alleen als er geen `books`-rij is; de
 migratietest weigert anders.
 
-### 0011 itemmetadata
+### 0012 itemmetadata
 
 `media_items ADD summary text NULL, genres text[] NOT NULL DEFAULT '{}', genres_key text[] NOT NULL DEFAULT '{}' (casefold, trim), content_rating text
 NULL, people jsonb NULL, sidecar_seen_at timestamptz NULL`. Index `media_items_genres_gin` (GIN
 op `genres`), `media_items_library_year_idx (library_id, year)`. Backfill: geen; de eerstvolgende
 scan vult ze. Terugdraaien: kolommen droppen, geen dataverlies buiten de sidecarvelden.
 
-### 0012 zoekindexen
+### 0013 zoekindexen
 
 `CREATE EXTENSION IF NOT EXISTS pg_trgm` (vereist dat de databaserol dat mag; op de NAS-image is
 dat zo, en de migratie meldt een duidelijke fout als het niet mag), GIN-trigramindex op
@@ -190,27 +194,27 @@ dat zo, en de migratie meldt een duidelijke fout als het niet mag), GIN-trigrami
 expressie-index of een hulpkolom `authors_text`. Terugdraaien: indexen droppen; de query blijft
 correct, alleen trager.
 
-### 0013 leesvoortgang
+### 0014 leesvoortgang
 
 `reading_states` met `locator jsonb` in Readium-vorm (`href`, `type`, `locations{progression, totalProgression, position, partialCfi}`, `text?`) plus `publication_digest`, met `reading_states_user_updated_idx (user_id, updated_at DESC)
 WHERE finished = false`. FK's: `user_id` CASCADE (gebruiker weg is voortgang weg, zoals
 `watch_states`), `publication_id` CASCADE, `last_session_id` SET NULL. Terugdraaien: droppen.
 
-### 0014 tot 0019 (uitgebreide scope)
+### 0015 tot 0020 (uitgebreide scope)
 
-`0014_transcode_sessions` (sessie, versie, gebruiker, sessie-id, hwaccel, laatste heartbeat,
-map; index op heartbeat), `0015_collections_playlists` (`collections`, `collection_items`,
+`0015_transcode_sessions` (sessie, versie, gebruiker, sessie-id, hwaccel, laatste heartbeat,
+map; index op heartbeat), `0016_collections_playlists` (`collections`, `collection_items`,
 `collection_grants`, `playlists`, `playlist_items` met `position`; FK's cascade op eigenaar en
-item), `0016_personal` (`play_history`, `favorites`, `ratings`, `track_preferences`; alle op
-`user_id` cascade), `0017_metadata_candidates` (`metadata_candidates`, `metadata_corrections`,
+item), `0017_personal` (`play_history`, `favorites`, `ratings`, `track_preferences`; alle op
+`user_id` cascade), `0018_metadata_candidates` (`metadata_candidates`, `metadata_corrections`,
 `metadata_overrides` per veld met provenance, `artwork_candidates` met `pinned`, `external_ids`; `media_items` krijgt `studio`, `tagline`, `metadata_source`),
-`0018_downloads`, `0019_backups`. Elke migratie: geen backfill behalve `play_history` uit bestaande
+`0019_downloads`, `0020_backups`. Elke migratie: geen backfill behalve `play_history` uit bestaande
 `watch_states` (één rij per item met `watched = true`, gemarkeerd `source = 'backfill'`),
 terugdraaien door droppen, en de migratietest uit J.7 groen op de NAS-fixture.
 
 ## J.7 Migratietest
 
 `internal/migrate/migrate_test.go` krijgt een test die de NAS-fixture (schema 7, geanonimiseerd,
-461 films, 97 series, 3 gebruikers) laadt, 0008 tot 0013 toepast, en daarna asserteert: dezelfde
+461 films, 97 series, 3 gebruikers) laadt, 0008 tot 0014 toepast, en daarna asserteert: dezelfde
 `libraries.id` en `slug`, `managed = 'config'`, alle `watch_states` intact, `item_count` gelijk,
 `readyz` groen. Dezelfde test draait in CI op elke migratiecommit.
