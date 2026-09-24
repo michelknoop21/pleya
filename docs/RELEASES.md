@@ -18,7 +18,12 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### Fixed
+- VIS1, VIS2 en PLR10 naar mockup 36 B, 37 C en 33
+- APP1, Uiterlijk-categorieën met semantische focusovergangen
+- OFF6, een rebind van hetzelfde profiel houdt de open sectie
+- PROF1, de profielknop opent de poort uit mockup 21
+- VIS1, de hint in de zoekpil blijft op één regel
 <!-- END GENERATED -->
 
 ### New
