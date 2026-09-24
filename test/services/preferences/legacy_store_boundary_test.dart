@@ -32,6 +32,7 @@ String enc(String type, Object? value) => json.encode({'type': type, 'value': va
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const channel = MethodChannel('com.pleya/icloud_kvs');
+  const eventsChannel = MethodChannel('com.pleya/icloud_kvs/events');
   final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
   late Map<String, String> kvs;
@@ -58,11 +59,13 @@ void main() {
       }
       return null;
     });
+    messenger.setMockMethodCallHandler(eventsChannel, (call) async => null); // 'listen' and 'cancel'
   });
 
   tearDown(() {
     ICloudSyncService.debugReset();
     messenger.setMockMethodCallHandler(channel, null);
+    messenger.setMockMethodCallHandler(eventsChannel, null);
   });
 
   group('the legacy store namespace never reaches the cloud', () {
@@ -73,6 +76,7 @@ void main() {
       await settings.prefs.setString('flutter.local_progress_srv1', '{"item":42}');
       await settings.prefs.setInt('flutter.subtitle_font_size', 30);
       await settings.prefs.setInt('subtitle_font_size', 44);
+      await settings.write(SettingsService.icloudSyncEnabled, true);
 
       final svc = ICloudSyncService.debugCreate(settings: settings, activeUserScope: () => 'someone');
       await svc.pushAll();
@@ -109,6 +113,7 @@ void main() {
       await settings.prefs.setString('local_progress_folder1', '{"a":10}');
       await settings.prefs.setString('local_watched_folder1', '{"a":true}');
       await settings.prefs.setString('local_server_match_v1', '{"cached":true}');
+      await settings.write(SettingsService.icloudSyncEnabled, true);
 
       final svc = ICloudSyncService.debugCreate(settings: settings, activeUserScope: () => 'someone');
       await svc.pushAll();
@@ -125,6 +130,7 @@ void main() {
       await settings.prefs.setString('pleya_share_guests', '[{"id":"g"}]');
       await settings.prefs.setString('pleya_share_relay_host_id', 'host-abc');
       await settings.prefs.setString('pleya_share_watch_pair1', '{"p":1}');
+      await settings.write(SettingsService.icloudSyncEnabled, true);
 
       final svc = ICloudSyncService.debugCreate(settings: settings, activeUserScope: () => 'someone');
       await svc.pushAll();

@@ -132,34 +132,39 @@ class PreferenceSyncStatus {
     errorCategory: errorCategory ?? this.errorCategory,
   );
 
-  /// A pass started.
+  /// A pass started. `disabled` is promoted to `ready` because a pass only
+  /// starts while the toggle is on, so that value is stale; `unavailable` is
+  /// not, because a write to a signed-out store succeeds locally and proves
+  /// nothing.
   PreferenceSyncStatus starting(DateTime at) => copyWith(
     activity: PreferenceSyncActivity.syncing,
     lastAttempt: at,
-    availability: PreferenceSyncAvailability.ready,
+    availability: availability == PreferenceSyncAvailability.unavailable
+        ? PreferenceSyncAvailability.unavailable
+        : PreferenceSyncAvailability.ready,
   );
 
-  /// One value left the device. Says nothing about health: a single write
-  /// succeeding does not mean the quota stop or the failed reconcile before it
-  /// went away.
-  PreferenceSyncStatus writeSucceeded(DateTime at) => copyWith(
-    availability: PreferenceSyncAvailability.ready,
-    activity: PreferenceSyncActivity.idle,
-    lastSuccess: at,
-    pushed: pushed + 1,
-  );
+  /// One value left the device. Says nothing about health or availability: a
+  /// single write succeeding does not mean the quota stop or the failed
+  /// reconcile before it went away, and it does not mean anyone is signed in.
+  PreferenceSyncStatus writeSucceeded(DateTime at) =>
+      copyWith(activity: PreferenceSyncActivity.idle, lastSuccess: at, pushed: pushed + 1);
 
   /// A full pass finished. This is the only thing entitled to clear health: it
-  /// looked at everything, so what it did not find is genuinely gone.
+  /// looked at everything, so what it did not find is genuinely gone. Quota is
+  /// the exception: the store reports a violation and never reports that it
+  /// was lifted, so only a restart or the toggle clears it.
   PreferenceSyncStatus reconcileSucceeded(
     DateTime at, {
     required int pushedCount,
     required int skippedCount,
     required int oversizeCount,
   }) => PreferenceSyncStatus(
-    availability: PreferenceSyncAvailability.ready,
+    availability: availability,
     activity: PreferenceSyncActivity.idle,
-    health: oversizeCount > 0 ? PreferenceSyncHealth.warning : PreferenceSyncHealth.healthy,
+    health: oversizeCount > 0
+        ? PreferenceSyncHealth.warning
+        : (health == PreferenceSyncHealth.quota ? PreferenceSyncHealth.quota : PreferenceSyncHealth.healthy),
     legacyPeerDetected: legacyPeerDetected,
     lastAttempt: lastAttempt,
     lastSuccess: at,

@@ -260,6 +260,12 @@ class PreferenceSyncCoordinator {
     if (!_enabled()) return;
     final transport = _transport;
     if (transport == null) return;
+    if (status.value.availability == PreferenceSyncAvailability.unavailable) {
+      // Signed out. The change is stamped above, so the first reconcile after
+      // signing back in carries it; writing now would only produce a "last
+      // sent" time for a value that went nowhere.
+      return;
+    }
 
     final cloudKey = cloudKeyFor(mutation.key);
     if (cloudKey == null) return;
@@ -433,6 +439,10 @@ class PreferenceSyncCoordinator {
     // deliberate bulk acts.
     const ambient = {ReconcileTrigger.foreground, ReconcileTrigger.accountChanged, ReconcileTrigger.profileChanged};
     if (triggers.every(ambient.contains) && !_enabled()) return;
+    // The store may have gone away while we were suspended; the status has to
+    // say so before this pass pretends to have sent anything.
+    await refreshAvailability();
+    if (status.value.availability != PreferenceSyncAvailability.ready) return;
     final needsBootstrap = triggers.contains(ReconcileTrigger.boot) || triggers.contains(ReconcileTrigger.enabled);
     final localIsTheSource = triggers.every((t) => t == ReconcileTrigger.imported || t == ReconcileTrigger.reset);
 

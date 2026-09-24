@@ -70,12 +70,17 @@ class ICloudSyncService {
 
   bool get _enabled => _settings.read(SettingsService.icloudSyncEnabled);
 
-  /// Wire the mutation pipeline and, if the toggle is on, subscribe and merge.
-  /// Safe to call on any platform; no-ops off Apple platforms.
+  /// Wire the mutation pipeline, subscribe to the transport and, if the toggle
+  /// is on, reconcile. Safe to call on any platform; no-ops off Apple platforms.
+  ///
+  /// [transport] exists so a test can drive this exact path with a fake. It
+  /// was the missing piece of DEC-131's B1: the listener was only ever attached
+  /// by tests calling `coordinator.listen()` themselves.
   static Future<void> start({
     required SettingsService settings,
     required StorageService storage,
     VoidCallback? onRemoteChangesApplied,
+    @visibleForTesting PreferenceTransport? transport,
   }) async {
     if (!_supported || _instance != null) return;
     // A dedicated id, not the Plex client identifier: that one is sent to
@@ -86,13 +91,11 @@ class ICloudSyncService {
       activeProfileId: storage.getActiveProfileId,
       enabled: () => settings.read(SettingsService.icloudSyncEnabled),
       deviceId: deviceId,
-      transport: ICloudKvsTransport(),
+      transport: transport ?? ICloudKvsTransport(),
       onRemoteChangesApplied: onRemoteChangesApplied,
       onLocalStateChanged: settings.refreshListenables,
     )..onRuntimeRefresh = PreferenceRefreshBus.instance.invalidate;
-    final svc = ICloudSyncService._(settings, coordinator);
-    _instance = svc;
-    BaseSharedPreferencesService.onMutation = coordinator.apply;
+    final svc = _wire(settings, coordinator);
     // A key-value store can change while the process is suspended, and the
     // notification for that change can be delivered to nobody. Coming back to
     // the foreground is therefore a reconcile trigger, not a hope.
@@ -101,6 +104,20 @@ class ICloudSyncService {
     );
     await coordinator.refreshAvailability();
     if (svc._enabled) await coordinator.requestReconcile(ReconcileTrigger.boot);
+  }
+
+  /// Everything a live instance needs, shared by [start] and [debugCreate] so
+  /// a test of the fake path proves the production one.
+  ///
+  /// The subscription is unconditional. The coordinator drops events while the
+  /// toggle is off, and a subscription that only exists after `enable()` is
+  /// how it came to exist nowhere at all.
+  static ICloudSyncService _wire(SettingsService settings, PreferenceSyncCoordinator coordinator) {
+    final svc = ICloudSyncService._(settings, coordinator);
+    _instance = svc;
+    BaseSharedPreferencesService.onMutation = coordinator.apply;
+    coordinator.listen();
+    return svc;
   }
 
   AppLifecycleListener? _lifecycle;
@@ -122,14 +139,15 @@ class ICloudSyncService {
   Future<void> enable() async {
     await _settings.write(SettingsService.icloudSyncEnabled, true);
     await _coordinator.refreshAvailability();
+    _coordinator.listen();
     await _coordinator.requestReconcile(ReconcileTrigger.enabled);
   }
 
-  /// Turn sync off: persist the toggle and stop listening. Store contents are
-  /// left intact so re-enabling later still merges.
+  /// Turn sync off: persist the toggle. The transport and the subscription
+  /// stay; the coordinator ignores events and writes while the toggle is off,
+  /// and tearing them down here left `enable()` with nothing to re-enable.
   Future<void> disable() async {
     await _settings.write(SettingsService.icloudSyncEnabled, false);
-    await _coordinator.dispose();
     await _coordinator.refreshAvailability();
   }
 
@@ -196,10 +214,7 @@ class ICloudSyncService {
       onRemoteChangesApplied: onRemoteChangesApplied,
       onLocalStateChanged: settings.refreshListenables,
     )..onRuntimeRefresh = PreferenceRefreshBus.instance.invalidate;
-    final svc = ICloudSyncService._(settings, coordinator);
-    _instance = svc;
-    BaseSharedPreferencesService.onMutation = coordinator.apply;
-    return svc;
+    return _wire(settings, coordinator);
   }
 
   /// Drive the remote-event path directly (fakes an EventChannel emission).
