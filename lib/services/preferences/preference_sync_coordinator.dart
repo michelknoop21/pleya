@@ -433,14 +433,12 @@ class PreferenceSyncCoordinator {
   /// import or a reset changed *local* state, so pulling first would be a good
   /// way to undo what the user just did.
   Future<void> _runReconcile(Set<ReconcileTrigger> triggers) async {
-    // An ambient trigger fires whether or not anybody asked for sync, so it is
-    // gated here. The explicit ones come from a caller that already decided:
-    // the enable path is what turns the toggle on, and import and reset are
-    // deliberate bulk acts.
-    const ambient = {ReconcileTrigger.foreground, ReconcileTrigger.accountChanged, ReconcileTrigger.profileChanged};
-    if (triggers.every(ambient.contains) && !_enabled()) return;
-    // The store may have gone away while we were suspended; the status has to
-    // say so before this pass pretends to have sent anything.
+    // One gate for every trigger. `disabled` means the toggle is off (no
+    // channel call is made to find that out), `unavailable` means nobody is
+    // signed in, and the store may have gone away while we were suspended. In
+    // each case the status has to say so before this pass pretends to have
+    // sent anything. The enable path writes the toggle first, and import and
+    // reset only call in through `pushAllIfEnabled`.
     await refreshAvailability();
     if (status.value.availability != PreferenceSyncAvailability.ready) return;
     final needsBootstrap = triggers.contains(ReconcileTrigger.boot) || triggers.contains(ReconcileTrigger.enabled);
@@ -460,7 +458,7 @@ class PreferenceSyncCoordinator {
   /// problem in the app.
   Future<void> refreshAvailability() async {
     if (!_enabled()) {
-      _setStatus(status.value.copyWith(availability: PreferenceSyncAvailability.disabled));
+      _setStatus(status.value.switchedOff());
       return;
     }
     final available = await _transport?.isAvailable() ?? false;

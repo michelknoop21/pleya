@@ -62,8 +62,8 @@ class PreferenceSyncStatus {
   /// writes v1 nor merges it, so an older Apple device keeps working but stops
   /// exchanging settings with this one. That boundary is deliberate, and this
   /// flag is what makes it visible instead of silent. It is a fact about the
-  /// account, so it survives every success; it clears when the engine is torn
-  /// down, not when a write happens to go well.
+  /// account, so it survives every success; it clears when sync is switched
+  /// off or the app restarts, not when a write happens to go well.
   final bool legacyPeerDetected;
 
   final DateTime? lastAttempt;
@@ -193,6 +193,21 @@ class PreferenceSyncStatus {
   );
 
   PreferenceSyncStatus sawLegacyPeer() => copyWith(legacyPeerDetected: true);
+
+  /// The toggle is off. Every condition belonged to the session that just
+  /// ended: quota and the legacy peer are never reported as lifted, so this
+  /// and a restart are the only ways they go. Counters and times stay.
+  PreferenceSyncStatus switchedOff() => PreferenceSyncStatus(
+    availability: PreferenceSyncAvailability.disabled,
+    activity: activity,
+    lastAttempt: lastAttempt,
+    lastSuccess: lastSuccess,
+    lastRemoteChange: lastRemoteChange,
+    pushed: pushed,
+    applied: applied,
+    skipped: skipped,
+    oversize: oversize,
+  );
 
   /// The store spoke to us, so it is neither switched off nor signed out.
   PreferenceSyncStatus sawRemoteChange(DateTime at) =>

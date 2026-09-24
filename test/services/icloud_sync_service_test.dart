@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
@@ -241,9 +242,10 @@ void main() {
     expect(settings.read(SettingsService.subtitleFontSize), 61, reason: 'the production wiring must listen');
   });
 
-  test('disable followed by enable keeps syncing in the same session', () async {
+  test('disable followed by enable keeps syncing in the same session, both ways', () async {
     final settings = await SettingsService.getInstance();
-    final svc = ICloudSyncService.debugCreate(settings: settings);
+    final fake = FakeTransport();
+    final svc = ICloudSyncService.debugCreate(settings: settings, transport: fake);
     await svc.enable();
     await svc.disable();
     await svc.enable();
@@ -252,6 +254,64 @@ void main() {
     await pumpEventQueue();
 
     expect(svc.status.value.availability, PreferenceSyncAvailability.ready);
-    expect(valueOf(kvs[g('subtitle_font_size')]), 52);
+    expect(valueOf(fake.store[g('subtitle_font_size')]), 52, reason: 'outgoing still reaches the store');
+
+    fake.store[g('subtitle_font_size')] = enc('int', 63);
+    fake.controller.add(
+      RemotePreferenceChange(reason: RemoteChangeReason.serverChange, changedKeys: [g('subtitle_font_size')]),
+    );
+    await pumpEventQueue();
+
+    expect(settings.read(SettingsService.subtitleFontSize), 63, reason: 'incoming still reaches this device');
   });
+
+  test('switching sync off clears a quota stop, so the next session starts clean', () async {
+    final settings = await SettingsService.getInstance();
+    final fake = FakeTransport();
+    final svc = ICloudSyncService.debugCreate(settings: settings, transport: fake);
+    await svc.enable();
+    fake.controller.add(const RemotePreferenceChange(reason: RemoteChangeReason.quotaExceeded));
+    await pumpEventQueue();
+    expect(svc.status.value.state, PreferenceSyncState.quota);
+
+    await svc.disable();
+    await svc.enable();
+
+    expect(svc.status.value.state, PreferenceSyncState.success);
+  });
+
+  test('a write during start-up cannot report a send from a signed-out device', () async {
+    final settings = await SettingsService.getInstance();
+    final storage = await StorageService.getInstance();
+    await settings.write(SettingsService.icloudSyncEnabled, true);
+    final fake = _GatedTransport()..available = false;
+    ICloudSyncService.debugForceSupported = true;
+
+    final starting = ICloudSyncService.start(settings: settings, storage: storage, transport: fake);
+    // Park start() inside its first availability check, then write.
+    while (!fake.asked) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    await settings.write(SettingsService.subtitleFontSize, 47);
+    fake.gate.complete();
+    await starting;
+    await pumpEventQueue();
+
+    expect(fake.writes, isEmpty);
+    expect(ICloudSyncService.instance!.status.value.lastSuccess, isNull);
+    expect(ICloudSyncService.instance!.status.value.state, PreferenceSyncState.unavailable);
+  });
+}
+
+/// A transport whose first availability answer waits until the test says so.
+class _GatedTransport extends FakeTransport {
+  final Completer<void> gate = Completer<void>();
+  bool asked = false;
+
+  @override
+  Future<bool> isAvailable() async {
+    asked = true;
+    await gate.future;
+    return available;
+  }
 }
