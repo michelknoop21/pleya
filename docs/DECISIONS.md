@@ -2871,3 +2871,33 @@ MCP-tests en docs die hem als voorbeeld noemen gaan naar het nieuwe scenario.
 
 **Consequences:** De false-PASS-matrix van DEC-081 blijft geldig; die hangt aan de runner, niet aan
 het scenario. Een nieuwe sabotageronde draait tegen de `active`-state van de navigatiepillen.
+
+## DEC-130: TV-instellingen en detail volgen Apple's tvOS-HIG in punten
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** Michel noemde de instellingenvensters, seriedetail en filmdetail op zijn 77 inch tv
+"nog steeds enorm opgeblazen" (DENS1) en vroeg om eerdere eigen keuzes los te laten en te doen wat
+voorgeschreven wordt. De oorzaak is één getal: `TvLayoutConstants.scaleOf` klemt op 0,85, terwijl
+Flutter op een Apple TV een paneel van 584 logische pixels ziet (de wrapper vermenigvuldigt met
+1,85). Alles wat door die schaal gaat, komt op het scherm 1,57 keer zijn nominale waarde uit. De
+getallen tegen Apple's Human Interface Guidelines (Typography, Layout, Designing for games; ook via
+Context7): tvOS-tekst is standaard 29 pt en nooit onder 23 pt, Title 1 is 76 pt, een tvOS-knop is
+minstens 56x56 pt. Gemeten in de app: een instellingenrij van 138 pt rond 26/22 pt tekst, een
+indextegel van 160 pt met een waarderegel van 19 pt, een detailtitel van 88 pt, een actieknop van
+72 pt rond een label van 27 pt en een bronregel van 20 pt.
+
+**Decision:** `TvHig` (`lib/utils/tv_hig.dart`) zet Apple's punten één op één om: `TvHig.of`
+is de ongeklemde paneelhoogte gedeeld door 1080. De instellingenrijen (via `TvSettingsDensity` in
+`TvPageSurface` en `SettingsPage`), de indextegels van `TvMenuGrid`, de categoriekolom van
+Uiterlijk en het informatieblok en de actierij van seriedetail en filmdetail rekenen in die punten:
+Body 29 pt voor titels en labels, Caption 1 25 pt voor waarde- en metadataregels, Caption 2 23 pt
+voor de kleinste regel, Title 1 76 pt voor de detailtitel, knoppen van 60 pt. Mockups 20 en 37
+zijn voor deze maten niet meer leidend; waar ze kleiner tekenden dan 23 pt wint de HIG.
+
+**Consequences:** Rijen en tegels worden lager en de tekst erin wordt op een paar plekken groter
+(instellingen van 26 naar 29 pt), zodat een instellingenpagina ongeveer twee keer zoveel rijen
+toont. De globale klem van 0,85 blijft voor de rest van de app staan; de rails, catalogus en Home
+zijn niet omgezet. Wie die schermen op dezelfde manier wil corrigeren, rekent ze om naar `TvHig`
+in plaats van de klem te verlagen, want de klem verplaatst elk scherm tegelijk.

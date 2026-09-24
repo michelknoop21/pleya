@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../../automation/automation_ids.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../theme/mono_tokens.dart';
-import '../../utils/layout_constants.dart';
+import '../../utils/tv_hig.dart';
 import '../settings_section.dart';
 import 'tv_page_surface.dart';
 
@@ -85,7 +85,9 @@ class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
     if (currentTitle != null) sections.add((title: currentTitle, rows: currentRows));
     if (sections.isEmpty) return TvPageSurface(title: widget.title, children: const []);
     final selected = _selected.clamp(0, sections.length - 1);
-    final scale = TvLayoutConstants.scaleOf(context);
+    // DENS1: HIG points. Body (29 pt) labels in a 68 pt card, the height of a
+    // tvOS tab bar, where `scaleOf` drew 35 pt labels in 110 pt cards.
+    final pt = TvHig.of(context);
     final tk = tokens(context);
 
     return TvPageSurface(
@@ -95,12 +97,12 @@ class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 300 * scale,
+            width: 400 * pt,
             child: ListView(
               children: [
                 for (var index = 0; index < sections.length; index++)
                   Padding(
-                    padding: EdgeInsets.only(bottom: 10 * scale, right: 14 * scale),
+                    padding: EdgeInsets.only(bottom: 12 * pt, right: TvHig.itemSpacing * pt),
                     child: FocusableWrapper(
                       automationId: AutomationIds.settingsAppearanceCategory,
                       automationInstance: index.toString(),
@@ -113,7 +115,7 @@ class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
                       child: GestureDetector(
                         onTap: () => setState(() => _selected = index),
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 22 * scale, vertical: 18 * scale),
+                          padding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 16 * pt),
                           decoration: BoxDecoration(
                             color: selected == index ? tk.surfaceElevated : tk.surface,
                             borderRadius: BorderRadius.circular(tk.radiusMd),
@@ -123,7 +125,7 @@ class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
                             sections[index].title,
                             style: TextStyle(
                               color: tk.text,
-                              fontSize: 22 * scale,
+                              fontSize: TvHig.body * pt,
                               fontWeight: selected == index ? FontWeight.w700 : FontWeight.w500,
                             ),
                           ),

@@ -87,6 +87,7 @@ import '../services/watch_actions.dart';
 import '../widgets/settings_builder.dart';
 import '../utils/grid_size_calculator.dart';
 import '../utils/layout_constants.dart';
+import '../utils/tv_hig.dart';
 import '../providers/download_provider.dart';
 import '../providers/multi_server_provider.dart';
 import 'media_detail/now_watching_line.dart';
@@ -154,7 +155,10 @@ const double _tvDetailTallPosterScale = TvBrowseRailLayout.compactTallPosterScal
 // pre-DEC-087 compact 0.8 scale: DEC-087's 615-wide card is the default
 // (`widePosterScale: 1.0`), and 37 C never shrinks it.
 const double _tvDetailEpisodeThumbnailScale = 1.0;
-const double _tvDetailActionSize = 46;
+
+/// Height of the TV action row in HIG points (DENS1): above tvOS's 56 pt
+/// minimum for a button, where the old `46 * scaleOf` came out at 72 pt.
+const double _tvDetailActionPt = 60;
 const double _tvDetailActionRailGap = 4;
 // DET6: tolerance for the exact-fit comparison in `_buildTvDetailForeground`'s
 // line-count loop, where `remainingForLogo` and `minLogoHeight` are the same
@@ -4261,23 +4265,26 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   })
   _tvDetailForegroundBaseMetrics(BuildContext context, MediaItem metadata, double scale, double foregroundWidth) {
     final genres = metadata.genres ?? const <String>[];
+    final pt = TvHig.of(context);
     final genreGap = 6 * scale;
-    final genreLineHeight = 22 * scale;
+    final genreLineHeight = TvHig.caption1Leading * pt;
     final genreLineCount = _tvDetailGenreLineCount(context, genres, scale, foregroundWidth);
     return (
       minLogoHeight: 60 * scale,
       logoMetadataGap: 10 * scale,
-      metadataLineHeight: 22 * scale,
+      metadataLineHeight: TvHig.caption1Leading * pt,
       genreBlockHeight: genres.isEmpty ? 0.0 : genreGap + (genreLineHeight * genreLineCount),
       summaryGap: 6 * scale,
       actionGap: 12 * scale,
-      actionHeight: _tvDetailActionSize * scale,
+      actionHeight: _tvDetailActionPt * pt,
       sourceLineHeight: _unifiedSourceLineHeight(context),
     );
   }
 
-  TextStyle _tvDetailGenreTextStyle(double scale) =>
-      TextStyle(fontSize: 16 * scale, fontWeight: FontWeight.w600, letterSpacing: 0.1);
+  // DENS1: HIG Caption 1 (25 pt), the size the old `16 * scaleOf` already
+  // landed on, now stated in points.
+  TextStyle _tvDetailGenreTextStyle(BuildContext context) =>
+      TextStyle(fontSize: TvHig.caption1 * TvHig.of(context), fontWeight: FontWeight.w600, letterSpacing: 0.1);
 
   /// How many lines the genre line needs at [foregroundWidth], capped at 2
   /// (the `Text` below carries the same cap via `maxLines`): a genre list
@@ -4290,7 +4297,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   int _tvDetailGenreLineCount(BuildContext context, List<String> genres, double scale, double foregroundWidth) {
     if (genres.isEmpty || foregroundWidth <= 0) return 1;
     final painter = TextPainter(
-      text: TextSpan(text: genres.join('  •  '), style: _tvDetailGenreTextStyle(scale)),
+      text: TextSpan(text: genres.join('  •  '), style: _tvDetailGenreTextStyle(context)),
       maxLines: 1,
       textDirection: Directionality.of(context),
     )..layout(maxWidth: foregroundWidth);
@@ -4403,8 +4410,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     required int lines,
   }) {
     final m = _tvDetailForegroundBaseMetrics(context, metadata, scale, foregroundWidth);
-    const largerSummaryFontSize = 18.0;
-    final summaryLineHeight = largerSummaryFontSize * scale * 1.35;
+    final summaryLineHeight = TvHig.body * TvHig.of(context) * 1.35;
     return _tvDetailMandatoryForegroundHeight(context, metadata, scale, foregroundWidth) +
         m.summaryGap +
         (summaryLineHeight * lines) +
@@ -4438,14 +4444,16 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         final metadataLineHeight = metrics.metadataLineHeight;
         final logoMetadataGap = metrics.logoMetadataGap;
         final summaryGap = metrics.summaryGap;
-        final summaryFontSize = availableHeight < 260 * scale ? 16.2 * scale : 18 * scale;
+        // DENS1: HIG Body (29 pt), Caption 1 (25 pt) on a cramped band.
+        final pt = TvHig.of(context);
+        final summaryFontSize = availableHeight < 260 * scale ? TvHig.caption1 * pt : TvHig.body * pt;
         final summaryLineHeight = summaryFontSize * 1.35;
         final descriptionStyle = (theme.textTheme.bodyLarge ?? const TextStyle()).copyWith(
           color: mutedForegroundColor,
           fontSize: summaryFontSize,
           height: 1.35,
         );
-        // `_buildActionButtons` draws the row at `_tvDetailActionSize * scale`
+        // `_buildActionButtons` draws the row at `_tvDetailActionPt` HIG points
         // (same `TvLayoutConstants.scaleOf` now that `scale` is that value, see
         // DEC-109), so this reserve agrees with what actually gets drawn.
         final actionHeight = metrics.actionHeight;
@@ -4456,7 +4464,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         // stays stable as episode rows gain focus.
         final genres = metadata.genres ?? const <String>[];
         final genreGap = 6 * scale;
-        final genreLineHeight = 22 * scale;
+        final genreLineHeight = TvHig.caption1Leading * pt;
         final genreLineCount = _tvDetailGenreLineCount(context, genres, scale, constraints.maxWidth);
         final genreBlockHeight = metrics.genreBlockHeight;
         // DEC-109: `TvViewAllAction`'s real rendered height, reserved only for
@@ -4538,7 +4546,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                         titleBuilder: (context, title) => _buildDetailTitle(
                           context,
                           title,
-                          fontSize: 56 * scale,
+                          // DENS1: HIG Title 1 (76 pt); `56 * scaleOf` was 88.
+                          fontSize: TvHig.title1 * pt,
                           fontWeight: .w800,
                           shadowBlur: 12,
                           color: foregroundColor,
@@ -4561,7 +4570,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                             genres.join('  •  '),
                             maxLines: genreLineCount,
                             overflow: .ellipsis,
-                            style: _tvDetailGenreTextStyle(scale).copyWith(color: mutedForegroundColor),
+                            style: _tvDetailGenreTextStyle(context).copyWith(color: mutedForegroundColor),
                           ),
                         ),
                       ),
@@ -4689,8 +4698,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     final qualityLabels = buildMediaQualityLabels(lineMetadata);
     final textStyle = TextStyle(
       color: _tvDetailForegroundColor(context),
-      fontSize: 18 * scale,
-      fontWeight: .w700,
+      // DENS1: HIG Caption 1 (25 pt); `18 * scaleOf` bold was 28.
+      fontSize: TvHig.caption1 * TvHig.of(context),
+      fontWeight: .w600,
       letterSpacing: 0.1,
     );
     final children = <Widget>[];

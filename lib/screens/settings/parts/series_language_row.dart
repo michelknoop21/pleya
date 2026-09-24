@@ -150,7 +150,7 @@ class SeriesLanguageRow extends StatelessWidget {
     return SettingRowFocus(
       onSelect: onSelect,
       child: ListTile(
-        contentPadding: kSettingRowPadding,
+        contentPadding: settingRowPadding(),
         leading: SeriesPoster(provenance: entry.choice.provenance, width: 40, height: 60),
         title: Text(seriesDisplayTitle(entry)),
         subtitle: Column(
