@@ -4,7 +4,8 @@
 -- `cancel_requested_at` is een spoor en geen staat. De job zelf schrijft
 -- `state = 'cancelled'`, deze kolom onderscheidt alleen "een beheerder vroeg
 -- erom" van "de server ging uit terwijl hij liep" bij een herstart.
--- S2.4 gebruikt deze kolom: de scanner leest hem per walk-stap en Requeue zet een lopende job met een annuleringsverzoek op cancelled. Beide volgen in de S2.4-commits.
+-- De scanner leest deze kolom per walk-stap, en Requeue zet een lopende job
+-- met een annuleringsverzoek op cancelled (S2.4).
 --
 -- Geen wijziging aan `claim()` is hiervoor nodig. Een gestempelde `running`-rij
 -- kan zijn stempel nooit meer kwijtraken zonder via Cancel of Requeue naar

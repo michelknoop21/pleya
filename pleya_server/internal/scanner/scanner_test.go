@@ -558,6 +558,30 @@ func TestCancelStopsTheScanWithinOneWalkStep(t *testing.T) {
 	}
 }
 
+// Annuleert de aanroeper vóór BeginQueuedScanRun (bijvoorbeeld de scanjob is
+// al gecancelled terwijl de scanner de ronde nog niet heeft geadopteerd), dan
+// mag de queued rij niet voor altijd queued blijven staan (S2.4 M-1).
+func TestCancelBeforeAdoptionCancelsTheQueuedRun(t *testing.T) {
+	h := newHarness(t, "movies")
+	bg := context.Background()
+	runID, err := h.store.CreateQueuedScanRun(bg, h.lib.ID, "manual")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancelCause(bg)
+	cancel(jobs.ErrCancelled)
+	if _, err := h.sc.ScanLibraryRun(ctx, h.lib, "manual", runID); err == nil {
+		t.Fatal("verwacht een fout bij een al geannuleerde ctx")
+	}
+	run, err := h.store.ScanRun(bg, runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.State != "cancelled" || run.FinishedAt == nil {
+		t.Fatalf("queued rij staat op %q, finished_at %v; verwacht cancelled met tijdstip", run.State, run.FinishedAt)
+	}
+}
+
 func TestQueuedScanRunIsAdoptedByTheScan(t *testing.T) {
 	h := newHarness(t, "movies")
 	runID, err := h.store.CreateQueuedScanRun(context.Background(), h.lib.ID, "manual")

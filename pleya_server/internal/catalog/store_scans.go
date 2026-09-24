@@ -74,6 +74,17 @@ func (s *Store) BeginQueuedScanRun(ctx context.Context, runID id.ID) error {
 	return nil
 }
 
+// CancelQueuedScanRun zet een queued rij op cancelled. Hij raakt een rij die
+// al running of afgerond is niet aan (I-1, M-1): die is al eigendom van de
+// scanner of de retry die hem heeft opgevolgd.
+func (s *Store) CancelQueuedScanRun(ctx context.Context, runID id.ID) (bool, error) {
+	tag, err := s.pool.Exec(ctx, `UPDATE scan_runs SET state = 'cancelled', finished_at = now() WHERE id = $1 AND state = 'queued'`, runID)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
 func (s *Store) DeleteQueuedScanRun(ctx context.Context, runID id.ID) error {
 	tag, err := s.pool.Exec(ctx, `DELETE FROM scan_runs WHERE id = $1 AND state = 'queued'`, runID)
 	if err != nil {

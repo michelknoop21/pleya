@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync/atomic"
@@ -18,7 +19,7 @@ import (
 )
 
 // scanHandler voert een scanjob uit.
-func scanHandler(store *catalog.Store, sc *scanner.Scanner, log *slog.Logger) jobs.Handler {
+func scanHandler(store *catalog.Store, sc *scanner.Scanner, runner *jobs.Runner, log *slog.Logger) jobs.Handler {
 	return func(ctx context.Context, job jobs.Job) error {
 		var args api.ScanJobArgs
 		if err := json.Unmarshal(job.Args, &args); err != nil {
@@ -30,11 +31,6 @@ func scanHandler(store *catalog.Store, sc *scanner.Scanner, log *slog.Logger) jo
 			return fmt.Errorf("bibliotheek-id onleesbaar: %w", err)
 		}
 
-		lib, err := store.Library(ctx, libraryID)
-		if err != nil {
-			return fmt.Errorf("bibliotheek %s: %w", args.LibraryID, err)
-		}
-
 		// Zonder ScanRunID (startup, schedule) maakt de scanner zelf een rij.
 		runID := id.Nil
 		if args.ScanRunID != "" {
@@ -42,8 +38,31 @@ func scanHandler(store *catalog.Store, sc *scanner.Scanner, log *slog.Logger) jo
 				return fmt.Errorf("scanronde-id onleesbaar: %w", err)
 			}
 		}
-		_, err = sc.ScanLibraryRun(ctx, lib, args.Trigger, runID)
-		return err
+
+		lib, err := store.Library(ctx, libraryID)
+		if err != nil {
+			// store.Library() ligt vóór ScanLibraryRun's eigen BeginQueuedScanRun:
+			// faalt dit door een annulering, dan zou de rij anders voor altijd
+			// queued blijven staan, want de scanner heeft haar nooit geadopteerd.
+			if runID != id.Nil && errors.Is(context.Cause(ctx), jobs.ErrCancelled) {
+				if _, cerr := store.CancelQueuedScanRun(context.WithoutCancel(ctx), runID); cerr != nil {
+					log.Warn("queued scanronde annuleren na afgebroken opzet mislukt", slog.String("error", cerr.Error()))
+				}
+			}
+			return fmt.Errorf("bibliotheek %s: %w", args.LibraryID, err)
+		}
+
+		stats, scanErr := sc.ScanLibraryRun(ctx, lib, args.Trigger, runID)
+		// Na een herstart kan de scanner een verse rij hebben gebruikt (de
+		// queued rij was niet meer queued). Job.scan_id moet die rij volgen,
+		// anders wijst de API voortaan naar de gefaalde rij van vóór de shutdown.
+		if runID != id.Nil && stats.RunID != id.Nil && stats.RunID != runID {
+			args.ScanRunID = stats.RunID.String()
+			if uerr := runner.UpdateArgs(context.WithoutCancel(ctx), job.ID, args); uerr != nil {
+				log.Warn("scan_run_id in jobargumenten bijwerken mislukt", slog.String("error", uerr.Error()))
+			}
+		}
+		return scanErr
 	}
 }
 

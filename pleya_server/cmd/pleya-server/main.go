@@ -185,7 +185,7 @@ func run() int {
 		Workers:  cfg.JobWorkers,
 		Instance: serverID.String()[:8],
 	})
-	runner.Register(api.JobScanLibrary, scanHandler(catalogStore, sc, logging.Component(log, "scanner")))
+	runner.Register(api.JobScanLibrary, scanHandler(catalogStore, sc, runner, logging.Component(log, "scanner")))
 	runner.Register(api.JobStorageRecheckRoots, storageRecheckHandler(catalogStore, cfg, logging.Component(log, "storage")))
 
 	if n, err := runner.Requeue(ctx); err != nil {

@@ -1,4 +1,4 @@
--- 0010 D1: het canonieke loudnessbewijs per audiostroom.
+-- 0011 D1: het canonieke loudnessbewijs per audiostroom.
 --
 -- Volgt `docs/pleya-server-loudness-measurement-proposal.md` (D0, goedgekeurd) en het canonieke
 -- bewijsmodel uit het implementatieplan, hetzelfde objectvorm als de client's `LoudnessEvidence`

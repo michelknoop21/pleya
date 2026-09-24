@@ -104,6 +104,11 @@ type Stats struct {
 	InodesSeen      int64
 	InodesDistinct  int64
 	InodeMismatches int64
+
+	// RunID is de scan_runs-rij die deze ronde uiteindelijk heeft gebruikt. Bij
+	// een herstart na een shutdown wijkt hij af van de runID die is meegegeven:
+	// die rij was niet meer queued en is vervangen door een nieuwe (S2.4 M-2).
+	RunID id.ID
 }
 
 // ScanLibrary leest één bibliotheek volledig in.
@@ -117,6 +122,7 @@ func (s *Scanner) ScanLibrary(ctx context.Context, lib catalog.Library, trigger 
 func (s *Scanner) ScanLibraryRun(ctx context.Context, lib catalog.Library, trigger string, runID id.ID) (Stats, error) {
 	roots, err := s.store.StorageLocations(ctx, lib.ID)
 	if err != nil {
+		s.cancelQueuedRunOnSetupFailure(ctx, runID)
 		return Stats{}, err
 	}
 
@@ -131,10 +137,12 @@ func (s *Scanner) ScanLibraryRun(ctx context.Context, lib catalog.Library, trigg
 		}
 	}
 	if err != nil {
+		s.cancelQueuedRunOnSetupFailure(ctx, runID)
 		return Stats{}, err
 	}
 
 	var stats Stats
+	stats.RunID = run
 	tracker := newProgress(ctx, s.store, run, &stats, s.progressEvery)
 	defer tracker.stop()
 
@@ -207,6 +215,19 @@ func (s *Scanner) ScanLibraryRun(ctx context.Context, lib catalog.Library, trigg
 		slog.Int64("inode_mismatches", stats.InodeMismatches),
 	)
 	return stats, scanErr
+}
+
+// cancelQueuedRunOnSetupFailure zet een queued scan_runs-rij op cancelled
+// wanneer de opzet vóór BeginQueuedScanRun mislukt door een annulering.
+// Zonder dit blijft de rij voor altijd queued: de scanner heeft hem dan nooit
+// geadopteerd en niemand anders raakt hem nog aan.
+func (s *Scanner) cancelQueuedRunOnSetupFailure(ctx context.Context, runID id.ID) {
+	if runID == id.Nil || !errors.Is(context.Cause(ctx), jobs.ErrCancelled) {
+		return
+	}
+	if _, err := s.store.CancelQueuedScanRun(context.WithoutCancel(ctx), runID); err != nil {
+		s.log.Warn("queued scanronde annuleren na afgebroken opzet mislukt", slog.String("error", err.Error()))
+	}
 }
 
 // action is wat er met een aangetroffen bestand moet gebeuren.

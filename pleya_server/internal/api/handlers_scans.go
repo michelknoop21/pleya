@@ -44,8 +44,8 @@ type ScanPage struct {
 }
 
 const (
-	defaultScanLimit = 50
-	maxScanLimit     = 200
+	defaultScanLimit = 100
+	maxScanLimit     = 500
 )
 
 // clampLimit leest ?limit= en houdt hem tussen 1 en max. Jobs.List en

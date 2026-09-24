@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/audit"
-	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 )
@@ -152,7 +151,7 @@ func (s *Server) handleCancelJob(w http.ResponseWriter, r *http.Request) {
 		} else if args.ScanRunID != "" {
 			if runID, perr = id.Parse(args.ScanRunID); perr != nil {
 				s.log.Warn("scanjob na cancel heeft een onleesbare scanronde-id", slog.String("job", jobID.String()), slog.String("error", perr.Error()))
-			} else if err := s.opts.Catalog.FinishScanRun(r.Context(), runID, "cancelled", catalog.ScanCounters{}); err != nil {
+			} else if _, err := s.opts.Catalog.CancelQueuedScanRun(r.Context(), runID); err != nil {
 				s.log.Warn("queued scan afsluiten na cancel mislukt", slog.String("error", err.Error()))
 			}
 		}

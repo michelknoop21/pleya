@@ -412,6 +412,20 @@ func (r *Runner) Retry(ctx context.Context, jobID id.ID, args any) (Record, erro
 	return r.Get(ctx, jobID)
 }
 
+// UpdateArgs herschrijft de argumenten van een job zonder de rest van zijn
+// staat te raken. De scanjob gebruikt dit om een verse scan_run_id vast te
+// leggen wanneer een herstart de queued rij door een nieuwe heeft vervangen
+// (S2.4 M-2): zonder dit blijft Job.scan_id in de API naar de gefaalde rij
+// wijzen.
+func (r *Runner) UpdateArgs(ctx context.Context, jobID id.ID, args any) error {
+	payload, err := json.Marshal(args)
+	if err != nil {
+		return fmt.Errorf("jobargumenten serialiseren: %w", err)
+	}
+	_, err = r.pool.Exec(ctx, `UPDATE jobs SET args = $2, updated_at = now() WHERE id = $1`, jobID, payload)
+	return err
+}
+
 // cursor is de ondoorzichtige positie in de lijst, net als bij de auditlijst.
 type cursor struct {
 	At string `json:"c"`
