@@ -116,6 +116,7 @@ void main() {
       v2 += bytesOf('${profilePrefix}library_grouping_$lib', enveloped('string', 'movies'));
       v2 += bytesOf('${profilePrefix}library_tab_$lib', enveloped('string', 'Recommended'));
     }
+    // Printed so the number is in the record, not only in an assertion.
     // ignore: avoid_print
     print('KVS footprint with envelope: v2 ${v2 ~/ 1024} KB, plus frozen v1 ${v1Footprint() ~/ 1024} KB');
     expect(v1Footprint() + v2, lessThan(kvsTotalBytes ~/ 2));
@@ -154,10 +155,26 @@ void main() {
       add('${profilePrefix}library_tab_$lib', gone ? tombstone : enveloped('string', 'Recommended'));
     }
 
+    // Printed so the number is in the record, not only in an assertion.
     // ignore: avoid_print
     print('KVS footprint with tombstones: $keys keys, ${bytes ~/ 1024} KB');
     expect(keys, lessThan(1024), reason: 'the store caps the number of keys at 1024');
     expect(bytes + v1Footprint(), lessThan(kvsTotalBytes ~/ 2));
+  });
+
+  test('the key count on a heavy account with four profiles stays under the 1024-key limit', () {
+    const profiles = 4;
+    const kvsMaxKeys = 1024;
+    final perProfile = 2 + libraryKeys().length * 3; // hidden, order, plus sort/grouping/tab per library
+    final total = globalPrefs + 1 + profiles * perProfile; // +1 for the meta record
+    // Frozen v1 keys share the same 1024-key budget: one flat set, no profile.
+    final v1Keys = globalPrefs + 2 + libraryKeys().length * 3;
+    // A reset tombstone reuses its key's slot. A vanished library's tombstones
+    // do not: they keep three keys each, which this figure leaves out.
+    // ignore: avoid_print
+    print('KVS key count: $total of $kvsMaxKeys, plus $v1Keys frozen v1 keys = ${total + v1Keys}');
+    expect(total, lessThan(kvsMaxKeys));
+    expect(total + v1Keys, lessThan(kvsMaxKeys));
   });
 
   test('the v2 key prefix is what grows, and the growth is bounded', () {
@@ -220,6 +237,7 @@ void main() {
     ));
     final bytes = utf8.encode(wire).length;
 
+    // Printed so the number is in the record, not only in an assertion.
     // ignore: avoid_print
     print('track_language_preferences worst case: $cap live + $cap tombstones = ${bytes ~/ 1024} KB of 100 KB');
     expect(bytes, lessThan(perValueCap * 3 ~/ 4), reason: 'a quarter of the ceiling left for longer, non-Latin titles');

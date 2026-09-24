@@ -100,11 +100,13 @@ branches.
 `storeDidChangeExternally` starts with `guard let sink = eventSink else { return }`, so a
 notification that arrives before the Dart side subscribes is dropped, and there is no buffer.
 
-That looks like a hole and is not one. Every path that subscribes also reconciles: `listen()` runs
-inside the boot and enable triggers, and both end in `applyAllRemote()` followed by `reconcile()`.
-A change missed during startup is therefore read from the store moments later by a pass that does
-not depend on having seen the event. Adding a buffer would add a queue, a flush and an ordering
-question, to re-deliver information the next read already carries.
+That looks like a hole and is not one, provided the subscription exists. Until DEC-131 it did not:
+`listen()` was defined and never called outside tests, so every notification was dropped and the
+engine was poll-on-foreground. Since DEC-131 `ICloudSyncService._wire` subscribes unconditionally
+at start, and `enable()` re-arms it. Every path that subscribes also reconciles, so a change missed
+during startup is read from the store moments later by a pass that does not depend on having seen
+the event. Adding a buffer would add a queue, a flush and an ordering question, to re-deliver
+information the next read already carries.
 
 Recorded rather than built. If a device test ever shows a change that startup reconciliation does
 not pick up, this is the first place to look, and then the buffer has evidence behind it.
@@ -115,6 +117,17 @@ Registration happens at app start whether or not iCloud sync is switched on. The
 arrives at a Dart handler whose first line is `if (!_enabled()) return;`. The cost is one ignored
 callback; gating the native side would add a second switch that has to be kept in step with the
 first.
+
+## Changed in DEC-131: the sink is called on the main queue
+
+Both observers (`storeDidChangeExternally` and `ubiquityIdentityDidChange`) now hand their payload
+to `emit`, which calls the sink inside `DispatchQueue.main.async`. `NotificationCenter` delivers on
+the posting thread and Apple documents no thread for these two notifications, while Flutter channel
+traffic has to happen on the platform thread. The sink is read inside the hop, so a cancel that
+raced the notification is honoured. Same change in `ios/`, `macos/` and
+`tvos/Runner/ICloudKvsPlugin.swift` (commit a2c86a0e). Verified by `scripts/format_native.sh --check`
+and by debug builds for macOS, the iOS simulator and the tvOS simulator on 25 September 2026, each
+compiling `ICloudKvsPlugin.swift`; not observed on hardware.
 
 ## What this audit does not prove
 

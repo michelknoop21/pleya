@@ -102,17 +102,17 @@ class PreferenceSyncCoordinator {
   /// Whether the cloud content has been migrated to the scoped, enveloped v2
   /// format.
   ///
-  /// Off by design: the coordinator, the policy, the scope and the envelope all
-  /// exist, but nothing writes a v2 record or deletes a v1 one until profile
-  /// ownership and rolling-client safety have been signed off. Flipping this is
-  /// the whole of that change.
+  /// On in every build since the v2 cutover: nothing writes a flat v1 key any
+  /// more. Since DEC-131 v2 records also carry the revision envelope, and a
+  /// removal travels as a tombstone.
   ///
   /// The two formats differ in more than the key shape, which is why the switch
   /// is readable per instance rather than only as a constant. Under v1 the
   /// cloud key carries no profile identity, so an incoming profile-scoped
-  /// record cannot be applied at all: it goes to [PreferenceQuarantine] instead
-  /// of being handed to whichever profile happens to be active. Under v2 the
-  /// profile is in the key, so the same record applies normally.
+  /// record cannot be applied at all: `preference_remote_apply.dart` hands it
+  /// to `PreferenceQuarantine` instead of to whichever profile happens to be
+  /// active. Under v2 the profile is in the key, so the same record applies
+  /// normally.
   static const bool v2CloudFormatEnabled = true;
 
   /// This instance's format. Equals [v2CloudFormatEnabled] in the app; tests

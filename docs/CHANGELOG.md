@@ -4,6 +4,16 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-24] iCloud-voorkeurensync: herstelronde DEC-131
+
+Acht taken in `fix/icloud-sync`. De KVS-listener is in productie aangesloten, de revisie-envelop
+reist mee en beslist bij het toepassen, verwijderingen reizen als tombstone en de prune verdwijnt
+onder v2, de status meldt geen verzending bij een uitgelogd iCloud en laat een quota-melding staan,
+een accountwissel leest eerst, de taalvoorkeuren van het Pleya-profiel reizen als
+profiel-gesleutelde map, acht `JsonPref`-sleutels zijn geregistreerd en acht toestelgebonden
+instellingen synchroniseren niet meer. Bewijs: unit tegen `FakeTransport`; hardware open, recept in
+de spec. Zie DEC-131 en `docs/icloud-sync-repair-register.md`.
+
 ## [2026-09-18] TV0: reconciliatie van de tvOS-closure-administratie
 
 Twaalf taken maakten de drie tvOS-administratiedocumenten (`docs/tvos-fysieke-correctieronde.md`,
