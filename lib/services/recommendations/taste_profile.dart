@@ -224,7 +224,7 @@ class AffinityVector {
       final e = events[i];
       final ageDays = math.max(0, nowMs - e.occurredAtMs) / Duration.millisecondsPerDay;
       final w = e.weight * math.pow(0.5, ageDays / halfLifeDays);
-      decayed.add((event: e, weight: w, key: e.evidenceKey.isEmpty ? ' $i' : e.evidenceKey));
+      decayed.add((event: e, weight: w, key: e.evidenceKey.isEmpty ? '\u0000$i' : e.evidenceKey));
     }
 
     // Net evidence per title decides warmth: a title watched once and then

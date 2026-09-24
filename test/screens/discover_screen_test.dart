@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logger/logger.dart';
@@ -307,6 +308,60 @@ void main() {
       expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
     });
   });
+
+  // DEC-132: a seed row explains itself through its rail label. Short, very
+  // long and non-Latin titles, in both locales that carry the strings; the
+  // long one must truncate inside the rail instead of overflowing.
+  group('seed row title (TV)', () {
+    MediaItem movie(String id, {String? title, int viewCount = 0}) => MediaItem(
+      id: id,
+      backend: MediaBackend.plex,
+      kind: MediaKind.movie,
+      title: title ?? id,
+      serverId: 'server_1',
+      serverName: 'Server',
+      viewCount: viewCount,
+    );
+    final related = MediaHub(
+      id: 'rel',
+      title: 'Related',
+      type: 'movie',
+      items: [movie('a'), movie('b'), movie('c'), movie('d')],
+      size: 4,
+      serverId: 'server_1',
+    );
+    const longTitle =
+        'The Extraordinarily Long and Winding Chronicle of a Title That Never Seems to End Across Several Seasons';
+    const nonLatin = '千と千尋の神隠し';
+
+    for (final locale in [AppLocale.en, AppLocale.nl]) {
+      for (final seedTitle in ['Severance', longTitle, nonLatin]) {
+        testWidgets(
+          'a seed row shows its reason as the rail label (${locale.languageCode}, ${seedTitle.length} chars)',
+          (tester) async {
+            await tester.runAsync(() => LocaleSettings.setLocale(locale));
+            final harness = await _pumpTvDiscoverScreen(
+              tester,
+              recentlyWatched: [movie('seed', title: seedTitle, viewCount: 1)],
+              related: [related],
+            );
+            addTearDown(harness.disposeAll);
+            await tester.pumpAndSettle();
+
+            final label = t.discover.becauseYouWatched(title: seedTitle);
+            expect(find.text(label), findsOneWidget);
+            expect(find.text(seedTitle), findsNothing, reason: 'the seed itself is not in its own row');
+            expect(tester.takeException(), isNull, reason: 'no overflow from the label');
+            expect(
+              tester.renderObject<RenderParagraph>(find.text(label)).didExceedMaxLines,
+              seedTitle == longTitle,
+              reason: 'only the long title is cut, on one line with an ellipsis',
+            );
+          },
+        );
+      }
+    }
+  });
 }
 
 /// Bundle of everything a pumped [DiscoverScreen] test harness needs to keep
@@ -354,7 +409,11 @@ class _TvDiscoverHarness {
 /// title — which is exactly the shape these baselines were written against.
 /// Reused by the Home-focus baseline tests so they exercise the real focus
 /// wiring instead of a hand-rolled substitute.
-Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(WidgetTester tester) async {
+Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(
+  WidgetTester tester, {
+  List<MediaItem> recentlyWatched = const [],
+  List<MediaHub> related = const [],
+}) async {
   final settings = await SettingsService.getInstance();
   await settings.write(SettingsService.libraryDensity, LibraryDensity.max);
   tester.view.devicePixelRatio = 1.0;
@@ -373,7 +432,7 @@ Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(WidgetTester tester) async {
     serverName: 'Server',
   );
   final hub = MediaHub(id: 'hub_1', title: 'Recommended', type: 'movie', items: [item], size: 1);
-  final client = _FakeMediaServerClient(hubs: [hub]);
+  final client = _FakeMediaServerClient(hubs: [hub], recentlyWatched: recentlyWatched, related: related);
   final manager = MultiServerManager()..debugRegisterClientForTesting(client);
   final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
   final hiddenLibrariesProvider = HiddenLibrariesProvider();
@@ -468,8 +527,10 @@ Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(WidgetTester tester) async {
 
 class _FakeMediaServerClient implements MediaServerClient {
   final List<MediaHub> hubs;
+  final List<MediaItem> recentlyWatched;
+  final List<MediaHub> related;
 
-  _FakeMediaServerClient({required this.hubs});
+  _FakeMediaServerClient({required this.hubs, this.recentlyWatched = const [], this.related = const []});
 
   @override
   ServerId get serverId => ServerId('server_1');
@@ -494,7 +555,10 @@ class _FakeMediaServerClient implements MediaServerClient {
   Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async => const [];
 
   @override
-  Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async => const [];
+  Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async => recentlyWatched.take(limit).toList();
+
+  @override
+  Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async => related;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
