@@ -146,8 +146,8 @@ heten, en welke gepersonaliseerde rijen er kunnen zijn.
 | Seed, nog bezig | `home.becauseyouwatched` | een film uit het log met gewicht 0,4 (`partial`), of een serie met nog ongeziene afleveringen, ook als de laatste aflevering is uitgekeken | Omdat je `X` kijkt | Because you're watching `X` | `discover.becauseYouAreWatching` (nieuw) |
 | Top Picks | `home.toppicks` | altijd zodra de pool vier ongeziene items heeft, ook koud | Aanbevolen voor jou | Top Picks for You | `discover.topPicksForYou` (bestaat) |
 | Genre | `home.becauselike.<genre>` | warm, genregewicht >= 0,5, minimaal vier treffers | Omdat je van `Genre` houdt | Because you like `Genre` | `discover.becauseYouLike` (bestaat) |
-| Acteur | `home.becauselike.actor.<slug>` | warm, acteurgewicht >= 0,7, minimaal vier treffers | Meer met `Naam` | More with `Name` | `discover.moreWithActor` (nieuw) |
-| Regisseur | `home.becauselike.director.<slug>` | warm, regisseurgewicht >= 0,7, minimaal vier treffers | Meer van `Naam` | More from `Name` | `discover.moreFromDirector` (nieuw) |
+| Acteur | `home.becauselike.actor.<slug>` | warm, acteurgewicht >= 0,7, minstens drie titels en 15 procent van de titels die het model warm maakten, minimaal vier treffers | Meer met `Naam` | More with `Name` | `discover.moreWithActor` (nieuw) |
+| Regisseur | `home.becauselike.director.<slug>` | warm, regisseurgewicht >= 0,7, minstens drie titels en 15 procent van de titels die het model warm maakten, minimaal vier treffers | Meer van `Naam` | More from `Name` | `discover.moreFromDirector` (nieuw) |
 | Verborgen parels | `home.hiddengems` | rating >= 7,5, ouder dan 90 dagen, niet in Top Picks, minimaal vier | Verborgen parels | Hidden Gems | `discover.hiddenGems` (bestaat) |
 
 Genre-, acteur- en regisseurrijen delen samen twee plekken (`kMaxAffinityRows = 2`). De
@@ -156,8 +156,17 @@ dan regisseur. Het gevolg in gewone woorden: een sterk gezicht wint van een zwak
 een profiel krijgt nooit meer gepersonaliseerde rijen dan vandaag (Top Picks, twee affiniteitsrijen,
 Verborgen parels). Kanttekening die in de code als commentaar terugkomt: de gewichten zijn per
 dimensie genormaliseerd op de sterkste feature, dus de sterkste acteur en het sterkste genre staan
-beide op 1,0 ongeacht de hoeveelheid bewijs eronder. De drempel van 0,7 voor personen en de
-voorrang voor genre bij gelijkspel zijn de compensatie daarvoor.
+beide op 1,0 ongeacht de hoeveelheid bewijs eronder. De drempel van 0,7 houdt daarom alleen iets
+tegen na een veto door een penalty. De compensatie is een bewijsvloer op de ruwe telling, vóór de
+normalisatie: een persoon komt pas in aanmerking met minstens drie onderscheiden positieve titels
+(`kPersonMinTitles`) én minstens 15 procent van de titels die het model warm maakten
+(`kPersonMinTitleShare`). Een acteur uit twee van twintig titels wint dus niet van een sterk tweede
+genre; bij gelijk gewicht gaat het genre voor. Gelijke gewichten binnen een dimensie worden op naam
+gesorteerd, zodat dezelfde rij bij elke load terugkomt.
+
+De cap is een maximum, geen quotum. Elke rij heeft vier ongeziene treffers nodig die nog niet in een
+eerdere affiniteitsrij staan; een acteur wiens films allemaal al in een genre-rij zitten krijgt geen
+rij, en zijn plek gaat naar de volgende kandidaat.
 
 Koude start (minder dan acht onderscheiden titels met positief bewijs, `kWarmDistinctTitles`):
 Top Picks op kwaliteit en nieuwheid, plus seed-rijen zodra er één seed is. Levert het log geen

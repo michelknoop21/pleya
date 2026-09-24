@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../media/media_hub.dart';
 import '../../media/media_item.dart';
 import '../../media/media_role.dart';
@@ -26,9 +28,11 @@ class PersonalizedRowTitles {
 const int kMaxAffinityRows = 2;
 
 /// Persons need more than genres. The vector normalizes each dimension to its
-/// strongest feature, so the top actor and the top genre both read 1.0 no
-/// matter how much evidence sits under them; the higher bar and the tie-break
-/// towards genre are the compensation.
+/// strongest feature, so the top actor reads 1.0 no matter how much evidence
+/// sits under him, and this threshold alone only bites after a penalty veto.
+/// The guard against a weak person is the raw evidence floor
+/// ([AffinityVector.hasPersonEvidence]); the tie-break towards genre covers
+/// the rest.
 const double kPersonFeatureThreshold = 0.7;
 
 /// Builds synthesized home rows from a taste vector and a candidate pool.
@@ -90,10 +94,8 @@ List<MediaHub> buildPersonalizedRows(
         <({String dim, String feature, double weight})>[
           for (final g in taste.topFeatures('genre', threshold: 0.5, limit: 2))
             (dim: 'genre', feature: g, weight: taste.of('genre', g)),
-          for (final a in taste.topFeatures('actor', threshold: kPersonFeatureThreshold, limit: 1))
-            (dim: 'actor', feature: a, weight: taste.of('actor', a)),
-          for (final d in taste.topFeatures('director', threshold: kPersonFeatureThreshold, limit: 1))
-            (dim: 'director', feature: d, weight: taste.of('director', d)),
+          for (final dim in const ['actor', 'director'])
+            for (final p in _topPerson(taste, dim)) (dim: dim, feature: p, weight: taste.of(dim, p)),
         ]..sort((a, b) {
           final byWeight = b.weight.compareTo(a.weight);
           return byWeight != 0 ? byWeight : _dimRank(a.dim).compareTo(_dimRank(b.dim));
@@ -143,6 +145,13 @@ List<MediaHub> buildPersonalizedRows(
 
 String _titleCase(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
+/// The strongest person above the threshold that also clears the evidence
+/// floor; a thinly evidenced top actor steps aside for the next one.
+Iterable<String> _topPerson(AffinityVector taste, String dim) => taste
+    .topFeatures(dim, threshold: kPersonFeatureThreshold, limit: taste.dims[dim]?.length ?? 0)
+    .where((p) => taste.hasPersonEvidence(dim, p))
+    .take(1);
+
 int _dimRank(String dim) => switch (dim) {
   'genre' => 0,
   'actor' => 1,
@@ -157,7 +166,25 @@ bool _matches(MediaItem item, String dim, String feature) => switch (dim) {
   _ => (item.directors ?? const []).any((d) => _n(d) == feature),
 };
 
-String _slug(String feature) => feature.replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+$'), '');
+/// ASCII slug for the row id, which is also the hide key. A name that loses
+/// non-ASCII characters on the way (Japanese, Cyrillic, Björk) gets a stable
+/// hash of the full name, so hiding one person never hides another.
+String _slug(String feature) {
+  final ascii = feature.replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+$'), '');
+  if (!RegExp(r'[^\x00-\x7f]').hasMatch(feature)) return ascii;
+  final hash = _fnv1a(feature).toRadixString(36);
+  return ascii.isEmpty ? hash : '$ascii-$hash';
+}
+
+/// 32-bit FNV-1a over UTF-8. Not [String.hashCode], which is not stable across
+/// runs.
+int _fnv1a(String s) {
+  var h = 0x811c9dc5;
+  for (final b in utf8.encode(s)) {
+    h = ((h ^ b) * 0x01000193) & 0xffffffff;
+  }
+  return h;
+}
 
 /// The name as the server spells it, from the first item that carries it.
 /// The vector only knows the lowercased key.
