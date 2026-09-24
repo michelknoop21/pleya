@@ -551,11 +551,12 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     try {
       final clients = _multiServer.serverManager.onlineClients.values.toList();
 
-      // Items already on screen (Continue Watching + loaded hubs + seed rows)
-      // are free candidates and, via [excludeKeys], must not be echoed by the
-      // personalized rows below them.
+      // Items already on screen (Continue Watching, Recently Added Shows,
+      // loaded hubs, seed rows) are free candidates and, via [excludeKeys],
+      // must not be echoed by the personalized rows below them.
       final onScreen = <MediaItem>[
         ..._onDeck,
+        ...?_latestShowsHub?.items,
         for (final hub in _hubs) ...hub.items,
         for (final hub in _seedHubs) ...hub.items,
       ];

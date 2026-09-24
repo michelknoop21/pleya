@@ -85,10 +85,13 @@ class SeedRowsLoader {
   }
 
   /// One seed per title and kind: a film and a series that share a name are
-  /// two seeds. An episode counts as its series.
+  /// two seeds. An episode counts as its series; any other item keeps its
+  /// own title.
   static String _identity(MediaItem item) {
-    final kind = item.grandparentTitle != null ? MediaKind.show : item.kind;
-    return '${kind.name}:${(item.grandparentTitle ?? item.title ?? item.id).toLowerCase()}';
+    final (kind, title) = item.kind == MediaKind.episode
+        ? (MediaKind.show, item.grandparentTitle ?? item.title)
+        : (item.kind, item.title);
+    return '${kind.name}:${(title ?? item.id).toLowerCase()}';
   }
 
   /// The pre-log path: what each server itself says was watched last. Kept as

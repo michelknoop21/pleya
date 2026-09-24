@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logger/logger.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
@@ -22,6 +23,7 @@ import 'package:pleya/services/recommendations/personalized_rows_builder.dart';
 import 'package:pleya/services/recommendations/recommendation_service.dart';
 import 'package:pleya/services/recommendations/tautulli_history_importer.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/utils/watch_state_notifier.dart';
 
 import '../test_helpers/prefs.dart';
@@ -201,6 +203,7 @@ class _FakeClient implements MediaServerClient {
   Map<String, MediaItem> itemsById = {};
   final List<String> fetchedIds = [];
   List<MediaItem> recentlyWatched = const [];
+  List<MediaItem> recentlyAddedShows = const [];
   Map<String, List<MediaHub>> relatedByItem = const {};
   Set<String> relatedFailsFor = const {};
   final List<String> relatedFetchedIds = [];
@@ -243,7 +246,7 @@ class _FakeClient implements MediaServerClient {
   Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async => const [];
 
   @override
-  Future<List<MediaItem>> fetchRecentlyAddedShows({int limit = 50}) async => const [];
+  Future<List<MediaItem>> fetchRecentlyAddedShows({int limit = 50}) async => recentlyAddedShows.take(limit).toList();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -259,6 +262,15 @@ void main() {
   late LibrariesProvider libraries;
   late DiscoverProvider provider;
   bool isBinding = false;
+
+  // The provider logs expected failures (no ApiCache in tests, the empty
+  // aggregation paths); keep the test output to test results.
+  late Logger previousLogger;
+  setUpAll(() {
+    previousLogger = appLogger;
+    appLogger = Logger(level: Level.off);
+  });
+  tearDownAll(() => appLogger = previousLogger);
 
   setUp(() async {
     resetSharedPreferencesForTest();
@@ -1057,6 +1069,87 @@ void main() {
         t.discover.becauseYouWatched(title: 'Dune'),
         t.discover.becauseYouAreWatching(title: 'Dune'),
       ]);
+    });
+
+    test('an episode shares its series identity on the fallback path', () async {
+      MediaItem episode(String id, String series) => MediaItem(
+        id: id,
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        title: 'Episode $id',
+        grandparentTitle: series,
+        serverId: 'server_1',
+        serverName: 'Server',
+        viewCount: 1,
+      );
+      client.recentlyWatched = [
+        episode('e2', 'Severance'),
+        episode('e1', 'severance'),
+        movie('Severance', viewCount: 1),
+      ];
+      client.relatedByItem = {
+        for (final id in ['e2', 'e1', 'Severance'])
+          id: [
+            _hub('rel-$id', items: [movie('$id-a')]),
+          ],
+      };
+      final p = await loadWith(_FakeRecommendationService(), [client]);
+      addTearDown(p.dispose);
+
+      expect(seedRows(p), hasLength(2), reason: 'two episodes of one series are one seed, the film is its own');
+      expect(client.relatedFetchedIds, containsAll(['e2', 'Severance']));
+      expect(client.relatedFetchedIds, isNot(contains('e1')));
+    });
+
+    test('a non-episode with a grandparent title keeps its own identity', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      MediaItem grouped(String id) => MediaItem(
+        id: id,
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: id,
+        grandparentTitle: 'Shared',
+        serverId: 'server_1',
+        serverName: 'Server',
+      );
+      client.itemsById = {'a': grouped('a'), 'b': grouped('b')};
+      client.relatedByItem = {
+        for (final id in ['a', 'b'])
+          id: [
+            _hub('rel-$id', items: [movie('$id-x')]),
+          ],
+      };
+      final service = _FakeRecommendationService()
+        ..seeds = [
+          RecommendationSeed(globalKey: 'server_1:a', completed: true, occurredAtMs: now),
+          RecommendationSeed(globalKey: 'server_1:b', completed: true, occurredAtMs: now - 1),
+        ];
+      final p = await loadWith(service, [client]);
+      addTearDown(p.dispose);
+
+      expect(seedRows(p).map((h) => h.title), [
+        t.discover.becauseYouWatched(title: 'a'),
+        t.discover.becauseYouWatched(title: 'b'),
+      ]);
+    });
+
+    test('Recently Added Shows items are excluded from the personalized rows', () async {
+      client.recentlyAddedShows = [
+        MediaItem(
+          id: 'new-show',
+          backend: MediaBackend.plex,
+          kind: MediaKind.show,
+          title: 'New show',
+          serverId: 'server_1',
+          serverName: 'Server',
+        ),
+      ];
+      final service = _FakeRecommendationService();
+      final p = await loadWith(service, [client]);
+      addTearDown(p.dispose);
+
+      expect(p.hubs.any((h) => h.identifier == 'home.latestshows'), isTrue);
+      expect(service.lastExcludeKeys, contains('server_1:new-show'));
     });
 
     test('seeds four to six feed the candidate pool, not the rows', () async {

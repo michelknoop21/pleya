@@ -3,6 +3,7 @@ import 'package:pleya/media/ids.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logger/logger.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
@@ -36,6 +37,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/watch_together/watch_together.dart';
 import 'package:pleya/widgets/side_navigation_rail.dart';
@@ -47,6 +49,15 @@ import '../test_helpers/prefs.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  // The TV focus path traces every key through the debug logger; keep the
+  // test output to test results.
+  late Logger previousLogger;
+  setUpAll(() {
+    previousLogger = appLogger;
+    appLogger = Logger(level: Level.off);
+  });
+  tearDownAll(() => appLogger = previousLogger);
 
   setUp(() {
     resetSharedPreferencesForTest();
