@@ -104,10 +104,11 @@ De blur is in beide gevallen een sigma in logische pixels; CSS `blur(12px)` is
 
 - LG-02 zet de hero over de volle breedte en achter de statusbalk, omdat de knoppen anders niet
   over het artwork liggen. De kijklijstknop verhuist van de actierij naar een ronde knop naast
-  Download. Beide zijn keuzes die bij goedkeuring apart bevestigd moeten worden.
-- LG-06 laat topbalk en zoekpil op hun plek staan terwijl de resultaten scrollen. Als de pil in de
-  app meescrollt, ligt het glas altijd op `#141414` en is het nauwelijks van een donkere pil te
-  onderscheiden.
+  Download. Beide zijn met DEC-122 goedgekeurd.
+- LG-06 toont de ruststand. Een eerdere versie had de resultaten omhoog gescrold zodat posters
+  onder de pil lagen; dat oogde als een verkeerd geplaatste zoekbalk en is teruggedraaid. Scrollt
+  de pil in de app mee, dan ligt het glas altijd op `#141414` en is het nauwelijks van een donkere
+  pil te onderscheiden; blijft hij staan, dan komt het glas pas bij scrollen tot zijn recht.
 - In de glazen topbalk van LG-04 is de focus een witte pil die 1,08 keer vergroot met een schaduw.
   De witte ring uit `tv.css` valt direct om een witte pil weg.
 - Drie posters (Sintel, Coffee Run, The Daily Dweebs) hadden in de bron een bekeken-vinkje. Dat is
