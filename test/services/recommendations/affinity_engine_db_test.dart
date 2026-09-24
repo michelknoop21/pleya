@@ -155,6 +155,16 @@ void main() {
       ], reason: 'the show once, the dismissal, the old row and the other profile never');
     });
 
+    test('two rows at the same moment always come back in the same order', () async {
+      // Tautulli timestamps are whole seconds, so ties are real.
+      await db.insertMediaInteraction(_row('p1', 's:first', occurredAt: now), profileId: 'p1');
+      await db.insertMediaInteraction(_row('p1', 's:second', occurredAt: now), profileId: 'p1');
+
+      final rows = await db.recentPositiveInteractions('p1', sinceMs: now - 30 * day, minWeight: 0.4, limit: 1);
+
+      expect(rows.map((r) => r.globalKey), ['s:second'], reason: 'the later insert wins the tie');
+    });
+
     test('an imported row on a disabled server is not a seed', () async {
       await db.insertMediaInteraction(
         MediaInteractionsCompanion.insert(

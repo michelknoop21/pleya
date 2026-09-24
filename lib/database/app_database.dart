@@ -58,6 +58,10 @@ enum OfflineActionType {
 const int kProfileInteractionCap = 5000;
 const int kInteractionRetentionDays = 365;
 
+/// Most rows [AppDatabase.recentPositiveInteractions] reads before it dedupes
+/// to one per title.
+const int kRecentPositiveRowCap = 500;
+
 /// [MediaInteractions.source] values.
 const String kInteractionSourceLocal = 'local';
 const String kInteractionSourceTautulli = 'tautulli';
@@ -391,7 +395,13 @@ class AppDatabase extends _$AppDatabase {
                     t.occurredAt.isBiggerOrEqualValue(sinceMs) &
                     _scoringScope(enabledImportServerIds),
               )
-              ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)]))
+              // The id breaks ties: imported timestamps are whole seconds.
+              ..orderBy([(t) => OrderingTerm.desc(t.occurredAt), (t) => OrderingTerm.desc(t.id)])
+              // ponytail: fixed row cap instead of a GROUP BY on the evidence
+              // key. Only a profile with 500 positive rows in the window from
+              // fewer than [limit] titles loses a seed; group in SQL if that
+              // ever shows up.
+              ..limit(kRecentPositiveRowCap))
             .get();
     final seen = <String>{};
     final out = <MediaInteractionRow>[];

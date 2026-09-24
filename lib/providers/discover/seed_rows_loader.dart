@@ -2,8 +2,10 @@ import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
 import '../../media/media_hub.dart';
 import '../../media/media_item.dart';
+import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
 import '../../services/recommendations/recommendation_service.dart';
+import '../../utils/global_key_utils.dart';
 
 /// A seed and how it was earned. [completed] picks the title: a finished
 /// title reads "Because you watched X", one still in progress "Because you're
@@ -22,7 +24,8 @@ class SeedRowsLoader {
   /// Up to three seed rows from [clients], which the caller has already
   /// narrowed to sources that answer related hubs. Seeds come from this
   /// profile's own interaction log; when that yields nothing, from what the
-  /// servers report as recently watched. [candidates] is empty for now.
+  /// servers report as recently watched, which is also the path when no log
+  /// seed resolves. [candidates] is empty for now.
   Future<({List<MediaHub> rows, List<MediaItem> candidates})> load({
     required List<MediaServerClient> clients,
     required Set<String> alreadyShown,
@@ -37,25 +40,37 @@ class SeedRowsLoader {
     return (rows: [for (final row in rows) ?row], candidates: const <MediaItem>[]);
   }
 
-  /// Seeds from this profile's own interaction log, newest first. A key that
-  /// belongs to no eligible client is skipped without a fetch.
+  /// Seeds from this profile's own interaction log, newest first, up to six:
+  /// the first three build rows, the rest are for the candidate layer. A key
+  /// that belongs to no eligible client is skipped without a fetch; the
+  /// fetches run in parallel and keep the log's order.
   Future<List<_Seed>> _seedsFromLog(List<MediaServerClient> clients) async {
     final service = _recommendations;
     if (service == null) return const [];
+    final byServer = {for (final c in clients) c.serverId: c};
     final seeds = await service.recentSeeds(limit: 6);
-    final out = <_Seed>[];
-    for (final seed in seeds) {
-      final client = clients.where((c) => seed.globalKey.startsWith('${c.serverId}:')).firstOrNull;
-      if (client == null) continue;
-      final itemId = seed.globalKey.substring('${client.serverId}:'.length);
-      final item = await client.fetchItem(itemId).catchError((Object _) => null);
-      if (item == null || item.title == null) continue;
-      out.add((item: item, completed: seed.completed));
-      // Only three rows are built; resolving more costs round trips for nothing.
-      if (out.length >= 3) break;
-    }
-    return out;
+    final resolved = await Future.wait([for (final seed in seeds) _resolve(seed, byServer)]);
+    // The same title on two servers is one seed, the newest; same identity
+    // as the server path.
+    final usedIdentities = <String>{};
+    return [
+      for (final seed in resolved)
+        if (seed != null && usedIdentities.add(_identity(seed.item))) seed,
+    ];
   }
+
+  Future<_Seed?> _resolve(RecommendationSeed seed, Map<ServerId, MediaServerClient> byServer) async {
+    final key = parseGlobalKey(seed.globalKey);
+    final client = key == null ? null : byServer[key.serverId];
+    if (key == null || client == null) return null;
+    final item = await client.fetchItem(key.ratingKey).catchError((Object _) => null);
+    if (item == null || item.title == null) return null;
+    // A series is still being watched until every episode is seen, whatever
+    // the newest row says: finishing episode four of ten is not finishing it.
+    return (item: item, completed: item.kind == MediaKind.show ? item.isWatched : seed.completed);
+  }
+
+  static String _identity(MediaItem item) => (item.grandparentTitle ?? item.title ?? item.id).toLowerCase();
 
   /// The pre-log path: what each server itself says was watched last. Kept as
   /// the cold-start fallback so a fresh profile on an old server still gets
@@ -72,8 +87,7 @@ class SeedRowsLoader {
     final usedIdentities = <String>{};
     for (final item in merged) {
       if (item.serverId == null || item.title == null) continue;
-      final identity = (item.grandparentTitle ?? item.title ?? item.id).toLowerCase();
-      if (!usedIdentities.add(identity)) continue;
+      if (!usedIdentities.add(_identity(item))) continue;
       seeds.add((item: item, completed: true));
       if (seeds.length >= 3) break;
     }

@@ -142,8 +142,8 @@ heten, en welke gepersonaliseerde rijen er kunnen zijn.
 
 | Rij | Identifier | Wanneer | Titel nl | Titel en | i18n-sleutel |
 | --- | --- | --- | --- | --- | --- |
-| Seed, afgekeken | `home.becauseyouwatched` | een seed uit het log met gewicht 1,0, of de fallback | Omdat je `X` gekeken hebt | Because you watched `X` | `discover.becauseYouWatched` (bestaat) |
-| Seed, nog bezig | `home.becauseyouwatched` | een seed uit het log met gewicht 0,4 (`partial`) | Omdat je `X` kijkt | Because you're watching `X` | `discover.becauseYouAreWatching` (nieuw) |
+| Seed, afgekeken | `home.becauseyouwatched` | een film uit het log met gewicht 1,0, een serie waarvan alle afleveringen gezien zijn (`isWatched`), of de fallback | Omdat je `X` gekeken hebt | Because you watched `X` | `discover.becauseYouWatched` (bestaat) |
+| Seed, nog bezig | `home.becauseyouwatched` | een film uit het log met gewicht 0,4 (`partial`), of een serie met nog ongeziene afleveringen, ook als de laatste aflevering is uitgekeken | Omdat je `X` kijkt | Because you're watching `X` | `discover.becauseYouAreWatching` (nieuw) |
 | Top Picks | `home.toppicks` | altijd zodra de pool vier ongeziene items heeft, ook koud | Aanbevolen voor jou | Top Picks for You | `discover.topPicksForYou` (bestaat) |
 | Genre | `home.becauselike.<genre>` | warm, genregewicht >= 0,5, minimaal vier treffers | Omdat je van `Genre` houdt | Because you like `Genre` | `discover.becauseYouLike` (bestaat) |
 | Acteur | `home.becauselike.actor.<slug>` | warm, acteurgewicht >= 0,7, minimaal vier treffers | Meer met `Naam` | More with `Name` | `discover.moreWithActor` (nieuw) |
@@ -160,8 +160,8 @@ beide op 1,0 ongeacht de hoeveelheid bewijs eronder. De drempel van 0,7 voor per
 voorrang voor genre bij gelijkspel zijn de compensatie daarvoor.
 
 Koude start (minder dan acht onderscheiden titels met positief bewijs, `kWarmDistinctTitles`):
-Top Picks op kwaliteit en nieuwheid, plus seed-rijen zodra er één seed is. Is het log leeg, dan
-blijft het huidige pad via `fetchRecentlyWatched` de fallback, zodat een vers profiel op een oude
+Top Picks op kwaliteit en nieuwheid, plus seed-rijen zodra er één seed is. Levert het log geen
+bruikbare seed op, dan blijft het huidige pad via `fetchRecentlyWatched` de fallback, zodat een vers profiel op een oude
 Plex-server niet slechter af is dan vandaag. Warm: alles uit de tabel.
 
 ### 2.2 Hoe een rij zichzelf uitlegt
@@ -216,7 +216,9 @@ aanmerking; een seed op een andere bron neemt geen plek in (sluit D2). Een `part
 titel "Omdat je X kijkt", een `completed`-seed de bestaande titel (sluit D3). Wijziging één ten
 opzichte van de audit: geen voorrang van `partial` boven `completed` op dezelfde dag, gewoon
 recency; de regel is simpeler uit te leggen en het verschil is zelden zichtbaar. Wijziging twee: de
-seed-rij filtert voortaan `isWatched`. Fallback bij een leeg log: het huidige `fetchRecentlyWatched`-pad.
+seed-rij filtert voortaan `isWatched`. Fallback als het log geen bruikbare seed oplevert (leeg, of
+alleen titels op bronnen zonder `relatedHubs` of die niet meer op te halen zijn): het huidige
+`fetchRecentlyWatched`-pad.
 
 **(2) Lokaal partieel signaal bij stoppen: geaccepteerd.** `WatchStateEvent` krijgt `durationMs`
 en `isFinal`; `WatchStateNotifier.notifyProgress` krijgt `isFinal` en

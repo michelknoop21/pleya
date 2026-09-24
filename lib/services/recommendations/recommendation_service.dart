@@ -40,8 +40,9 @@ class RecommendationSeed {
   /// The series key for an episode, the item's own global key otherwise.
   final String globalKey;
 
-  /// False when the strongest recent evidence is a partial view: the title is
-  /// still being watched and the row says so.
+  /// False when the newest row for this title is a partial view. The feed
+  /// overrides this for a series with its own watched state, because an
+  /// episode finished to the end does not make the series finished.
   final bool completed;
   final int occurredAtMs;
   const RecommendationSeed({required this.globalKey, required this.completed, required this.occurredAtMs});

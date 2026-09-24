@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -327,6 +328,50 @@ void main() {
 
     test('no clients yields no rows', () async {
       expect(await service().buildRows([]), isEmpty);
+    });
+  });
+
+  group('recentSeeds', () {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    const day = Duration.millisecondsPerDay;
+
+    Future<void> insert(String globalKey, {String? seriesKey, double weight = 1.0, required int at}) =>
+        db.insertMediaInteraction(
+          MediaInteractionsCompanion.insert(
+            profileId: 'p1',
+            globalKey: globalKey,
+            seriesKey: Value(seriesKey),
+            mediaKind: seriesKey == null ? 'movie' : 'episode',
+            eventType: weight >= 1.0 ? 'completed' : 'partial',
+            eventWeight: weight,
+            occurredAt: at,
+          ),
+          profileId: 'p1',
+        );
+
+    test('maps an episode to its series, a movie to itself, and the weight to completed', () async {
+      await insert('pms:ep7', seriesKey: 'pms:show', at: now - 1 * day);
+      await insert('pms:film', weight: 0.4, at: now - 2 * day);
+
+      final seeds = await service().recentSeeds(nowMs: now);
+
+      expect(seeds.map((s) => s.globalKey), ['pms:show', 'pms:film']);
+      expect(seeds.map((s) => s.completed), [true, false]);
+      expect(seeds.first.occurredAtMs, now - 1 * day);
+    });
+
+    test('the window is measured from nowMs', () async {
+      await insert('pms:film', at: now - 10 * day);
+
+      expect(await service().recentSeeds(nowMs: now), hasLength(1));
+      expect(await service().recentSeeds(nowMs: now + 25 * day), isEmpty, reason: 'now 35 days old');
+    });
+
+    test('the settings gate yields no seeds', () async {
+      await insert('pms:film', at: now);
+      await SettingsService.instance.write(SettingsService.personalizedRecommendations, false);
+
+      expect(await service().recentSeeds(nowMs: now), isEmpty);
     });
   });
 }

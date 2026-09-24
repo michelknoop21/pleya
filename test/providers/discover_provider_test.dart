@@ -226,6 +226,17 @@ class _FakeClient implements MediaServerClient {
   @override
   Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async => relatedByItem[id] ?? const [];
 
+  // Catalogue calls the candidate pool and the latest-shows row make; empty so
+  // the test output carries no NoSuchMethodError noise.
+  @override
+  Future<List<MediaLibrary>> fetchLibraries() async => const [];
+
+  @override
+  Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async => const [];
+
+  @override
+  Future<List<MediaItem>> fetchRecentlyAddedShows({int limit = 50}) async => const [];
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -905,6 +916,97 @@ void main() {
 
       expect(seedRows(p), hasLength(1));
       expect(seedRows(p).single.title, t.discover.becauseYouWatched(title: 'old'));
+    });
+
+    test('a log whose seeds all fail to resolve falls back to the servers own list', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final pleya = _FakeClient(id: 'pleya_1')..caps = ServerCapabilities.local;
+      client.recentlyWatched = [movie('old', viewCount: 1)];
+      client.relatedByItem = {
+        'old': [
+          _hub('rel', items: [movie('d'), movie('e'), movie('f')]),
+        ],
+      };
+      final service = _FakeRecommendationService()
+        ..seeds = [RecommendationSeed(globalKey: 'pleya_1:42', completed: true, occurredAtMs: now)];
+      final p = await loadWith(service, [client, pleya]);
+      addTearDown(p.dispose);
+
+      expect(seedRows(p).map((h) => h.title), [t.discover.becauseYouWatched(title: 'old')]);
+    });
+
+    test('a series still in progress reads "watching" even when its newest episode was finished', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      client.itemsById = {
+        'sev': MediaItem(
+          id: 'sev',
+          backend: MediaBackend.plex,
+          kind: MediaKind.show,
+          title: 'sev',
+          serverId: 'server_1',
+          serverName: 'Server',
+          leafCount: 10,
+          viewedLeafCount: 4,
+        ),
+      };
+      client.relatedByItem = {
+        'sev': [
+          _hub('rel', items: [movie('d'), movie('e'), movie('f')]),
+        ],
+      };
+      final service = _FakeRecommendationService()
+        ..seeds = [RecommendationSeed(globalKey: 'server_1:sev', completed: true, occurredAtMs: now)];
+      final p = await loadWith(service, [client]);
+      addTearDown(p.dispose);
+
+      expect(seedRows(p).map((h) => h.title), [t.discover.becauseYouAreWatching(title: 'sev')]);
+    });
+
+    test('up to six seeds resolve, in order, and the first three build rows', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final ids = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7'];
+      client.itemsById = {for (final id in ids) id: movie(id)};
+      client.relatedByItem = {
+        for (final id in ids)
+          id: [
+            _hub('rel-$id', items: [movie('$id-a')]),
+          ],
+      };
+      final service = _FakeRecommendationService()
+        ..seeds = [
+          for (final (i, id) in ids.indexed)
+            RecommendationSeed(globalKey: 'server_1:$id', completed: true, occurredAtMs: now - i),
+        ];
+      final p = await loadWith(service, [client]);
+      addTearDown(p.dispose);
+
+      expect(client.fetchedIds, ['m1', 'm2', 'm3', 'm4', 'm5', 'm6']);
+      expect(seedRows(p).map((h) => h.title), [
+        for (final id in ['m1', 'm2', 'm3']) t.discover.becauseYouWatched(title: id),
+      ]);
+    });
+
+    test('the same title on two servers seeds one row', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final other = _FakeClient(id: 'server_2');
+      client.itemsById = {'sev': movie('Severance')};
+      other.itemsById = {'sev': movie('Severance', server: 'server_2')};
+      for (final c in [client, other]) {
+        c.relatedByItem = {
+          'Severance': [
+            _hub('rel', items: [movie('d', server: c.id)]),
+          ],
+        };
+      }
+      final service = _FakeRecommendationService()
+        ..seeds = [
+          RecommendationSeed(globalKey: 'server_1:sev', completed: false, occurredAtMs: now),
+          RecommendationSeed(globalKey: 'server_2:sev', completed: false, occurredAtMs: now - 1),
+        ];
+      final p = await loadWith(service, [client, other]);
+      addTearDown(p.dispose);
+
+      expect(seedRows(p).map((h) => h.title), [t.discover.becauseYouAreWatching(title: 'Severance')]);
     });
   });
 }
