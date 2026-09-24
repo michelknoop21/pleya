@@ -5,7 +5,7 @@
 S2.4 is gereed op `integration/pleya-server-completion`: scans en jobs over HTTP (zes endpoints), annuleren
 binnen één walk-stap, retry, `job.not_cancellable` als achtste foutdomein en backoff op
 `probe_attempts`. De rescue-migratie is als `0010` geland en de loudness-migratie als `0011`. De
-rondes-2-gates zijn gedraaid op `3f724b23`: codegen, `ci_checks.sh`, `flutter test test/pleya_server/`,
+rondes-2-gates zijn gedraaid op `9c5ee266`: codegen, `ci_checks.sh`, `flutter test test/pleya_server/`,
 Go volledig zonder FAIL of SKIP, de relaysuite, `check_protocol.sh`, `verify-protocol.sh`, de webgates
 en `verify-local.sh`. Bewijs staat in `.superpowers/sdd/2026-09-24-pleya-server-completion-afronding/gates-ronde-2.md`. Pleya Verify en de volledige
 `flutter test` zijn bewust niet gedraaid: dit werk raakt geen UI. Er is geen rollout gedaan.

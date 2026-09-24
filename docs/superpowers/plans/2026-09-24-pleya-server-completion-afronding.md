@@ -463,7 +463,7 @@ git commit -m "docs: releasenotes en stand na sluiten van de reviewronde"
 ### Task 7: rescue-commits terug, migraties 0010 en 0011
 
 **Files:**
-- Merge: `rescue/pleya-server-s2.4-2026-09-20` (`6047fb00`) en `feat/loudness-server-analysis` (`2095b52a`)
+- Merge: `rescue/pleya-server-s2.4-2026-09-20` (`6047fb00`) en `feat/loudness-server-analysis` (`4af6978a`)
 - Rename: `pleya_server/internal/migrate/sql/0010_loudness.sql` naar `0011_loudness.sql`
 - Modify: `pleya_server/internal/migrate/sql/0010_jobs_cancel.sql` (kopcommentaar), `docs/pleya-server-rebaseline/J-api-schema-migratie.md`, `docs/PLEYA-SERVER-MASTERLIST.md`, `docs/pleya-server-loudness-measurement-proposal.md` (DEC-verwijzing)
 - Test: `pleya_server/internal/migrate/migrate_test.go`, `pleya_server/internal/migrate/nas_fixture_test.go`, `pleya_server/internal/loudness/...`
