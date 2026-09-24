@@ -7,15 +7,15 @@ TestFlight gaat. Vraagt een punt hieronder een codewijziging, dan gaat de gate w
 
 ## Build-identiteit
 
-Wordt in fase 3 ingevuld, vóór de installatie.
+Ingevuld op 24 september, vóór de upload naar TestFlight.
 
 | Veld | Waarde |
 |---|---|
-| SHA op `main` | |
-| Versie en buildnummer | |
-| Configuratie en compile-time flags | Release |
-| SHA-256 van de `.xcarchive` | |
-| Binary markers geteld | |
+| SHA op `main` | `3bd976dff2579c436e4145c1958df993a6af7b41` |
+| Versie en buildnummer | 2.8.0 (299), TestFlight tvOS |
+| Configuratie en compile-time flags | Release, `tvos_archive`-lane (geen extra `--dart-define`) |
+| SHA-256 van de `.xcarchive` | `433bb27ab73f795697f88bc00141551bff808a25d21e170c35b7b35e054a0176` (`Pleya-tvOS-299-3bd976df.xcarchive`) |
+| Binary markers geteld | 5 van 5: `tv.search.pill` (VIS1), `media-detail.season-chips` (VIS2), `appearance.rows` (APP1), `TvHig` en `TvSettingsDensity` (DENS1); Verify-ids uit de registerlijst zitten niet in een Release-binary |
 
 ## 1. PLR6 eerst
 
