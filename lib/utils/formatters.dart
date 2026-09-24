@@ -61,7 +61,8 @@ String formatDurationTextual(int milliseconds, {bool abbreviated = true}) {
     abbreviated: abbreviated,
     locale: durationLocale,
     delimiter: abbreviated ? ' ' : ', ',
-    spacer: '',
+    // "1h 23m" packs the unit against the number; the full words need the space.
+    spacer: abbreviated ? '' : ' ',
     tersity: DurationTersity.minute,
   );
 }

@@ -17,9 +17,11 @@ extension _MediaDetailTvSeasonChips on _MediaDetailScreenState {
   static const double _tvSeasonChipFontSize = 17;
   static const double _tvSeasonChipPaddingHorizontal = 22;
   static const double _tvSeasonChipPaddingVertical = 11;
-  static const double _tvSeasonChipRadius = 10;
-  static const double _tvSeasonChipGap = 10;
-  static const double _tvSeasonChipRowBottomGap = 14;
+  // A pill: larger than half of any chip height this row renders.
+  static const double _tvSeasonChipRadius = 40;
+  static const double _tvSeasonChipGap = 12;
+  static const double _tvSeasonChipHeadingGap = 20;
+  static const double _tvSeasonChipTopGap = 20;
 
   /// De randen die per constructie altijd meetellen, gefocust of niet.
   ///
@@ -62,10 +64,23 @@ extension _MediaDetailTvSeasonChips on _MediaDetailScreenState {
     return textHeight + (2 * _tvSeasonChipPaddingVertical * scale) + _tvSeasonChipBorderInset;
   }
 
-  /// The full band this row occupies above the rail, gap included — what a
-  /// caller reserving vertical space for it needs.
-  double _tvDetailSeasonChipRowHeight(double scale) =>
-      _tvDetailSeasonChipContentHeight(scale) + (_tvSeasonChipRowBottomGap * scale);
+  /// VIS2/37 C: the row takes the season rail's own header line, so
+  /// "Afleveringen", the chips and the count read as one line. A chip is
+  /// taller than that strip, so the row ends where the strip ends minus the
+  /// room a focused card grows into; centered on the strip, the selected chip
+  /// sat on the first episode's focus ring. This is where the row's top
+  /// lands, measured from the rail's top.
+  double _tvDetailSeasonChipRowTop(double scale) =>
+      TvBrowseRailLayout.railTopPaddingForScale(scale) +
+      TvBrowseRailLayout.hubStripHeightForScale(scale) -
+      TvBrowseRailLayout.railInteractionExpansionForScale(scale) -
+      _tvDetailSeasonChipContentHeight(scale);
+
+  /// What the row needs reserved on top of the rail's own height: how far it
+  /// sticks out above the rail, plus the gap 37 C keeps between the action
+  /// row and this line. Without that gap the pills touched the action row.
+  double _tvDetailSeasonChipOverhang(double scale) =>
+      (-_tvDetailSeasonChipRowTop(scale)).clamp(0.0, double.infinity).toDouble() + _tvSeasonChipTopGap * scale;
 
   /// Switches to [seasonIndex] if it isn't already selected. Identical to
   /// what the mobile season tab's `onSelect`/`onNavigateLeft`/`onNavigateRight`
@@ -95,50 +110,92 @@ extension _MediaDetailTvSeasonChips on _MediaDetailScreenState {
       state: () => {'child_count': _seasons.length, 'selected_index': _selectedSeasonIndex},
       child: SizedBox(
         height: _tvDetailSeasonChipContentHeight(scale),
-        child: SingleChildScrollView(
-          controller: _seasonTabsScrollController,
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (var i = 0; i < _seasons.length; i++)
-                Padding(
-                  padding: EdgeInsets.only(right: i == _seasons.length - 1 ? 0 : _tvSeasonChipGap * scale),
-                  child: AutomationNode(
-                    id: AutomationIds.mediaDetailSeasonChip,
-                    instance: '$i',
-                    role: 'chip',
-                    state: () => {'selected': i == _selectedSeasonIndex},
-                    focusNode: _seasonTabFocusNodes.length > i ? _seasonTabFocusNodes[i] : null,
-                    child: _TvSeasonChip(
-                      label: _seasons[i].title?.isNotEmpty == true
-                          ? _seasons[i].title!
-                          : (_seasons[i].displaySubtitle ?? _seasons[i].displayTitle),
-                      isSelected: i == _selectedSeasonIndex,
-                      scale: scale,
-                      focusNode: _seasonTabFocusNodes.length > i ? _seasonTabFocusNodes[i] : null,
-                      onSelect: () => _tvSelectSeason(i),
-                      onNavigateLeft: i > 0
-                          ? () {
-                              _tvSelectSeason(i - 1);
-                              _seasonTabFocusNodes[i - 1].requestFocus();
-                              _scrollSeasonTabIntoView(i - 1);
-                            }
-                          : null,
-                      onNavigateRight: i < _seasons.length - 1
-                          ? () {
-                              _tvSelectSeason(i + 1);
-                              _seasonTabFocusNodes[i + 1].requestFocus();
-                              _scrollSeasonTabIntoView(i + 1);
-                            }
-                          : null,
-                      onNavigateUp: _focusTvDetailActionRow,
-                      onNavigateDown: () => _tvDetailRailKey.currentState?.requestFocus(),
-                    ),
-                  ),
+        child: Row(
+          children: [
+            // The rail's header strip draws nothing for this hub; this is its
+            // title, in the rail's own active-header style.
+            Text(
+              t.libraries.groupings.episodes,
+              maxLines: 1,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 18 * scale,
+                height: 1,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(width: _tvSeasonChipHeadingGap * scale),
+            Flexible(child: _buildTvDetailSeasonChipScroller(scale)),
+            if (_tvDetailSelectedSeasonCountLabel() case final count?) ...[
+              SizedBox(width: _tvSeasonChipHeadingGap * scale),
+              Text(
+                count,
+                maxLines: 1,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: tokens(context).onArtworkInk(dark: 0.60, light: 0.85),
+                  fontSize: 17 * scale,
                 ),
+              ),
             ],
-          ),
+          ],
         ),
+      ),
+    );
+  }
+
+  /// "10 afleveringen · 6 bekeken" for the selected season, from the same
+  /// season fields the phone's episode tab counts with.
+  String? _tvDetailSelectedSeasonCountLabel() {
+    if (_seasons.isEmpty) return null;
+    final season = _seasons[_selectedSeasonIndex.clamp(0, _seasons.length - 1)];
+    final total = season.leafCount ?? _episodes.length;
+    if (total <= 0) return null;
+    return t.discover.episodeCountWatched(count: total, watched: season.viewedLeafCount ?? 0);
+  }
+
+  Widget _buildTvDetailSeasonChipScroller(double scale) {
+    return SingleChildScrollView(
+      controller: _seasonTabsScrollController,
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (var i = 0; i < _seasons.length; i++)
+            Padding(
+              padding: EdgeInsets.only(right: i == _seasons.length - 1 ? 0 : _tvSeasonChipGap * scale),
+              child: AutomationNode(
+                id: AutomationIds.mediaDetailSeasonChip,
+                instance: '$i',
+                role: 'chip',
+                state: () => {'selected': i == _selectedSeasonIndex},
+                focusNode: _seasonTabFocusNodes.length > i ? _seasonTabFocusNodes[i] : null,
+                child: _TvSeasonChip(
+                  label: _seasons[i].title?.isNotEmpty == true
+                      ? _seasons[i].title!
+                      : (_seasons[i].displaySubtitle ?? _seasons[i].displayTitle),
+                  isSelected: i == _selectedSeasonIndex,
+                  scale: scale,
+                  focusNode: _seasonTabFocusNodes.length > i ? _seasonTabFocusNodes[i] : null,
+                  onSelect: () => _tvSelectSeason(i),
+                  onNavigateLeft: i > 0
+                      ? () {
+                          _tvSelectSeason(i - 1);
+                          _seasonTabFocusNodes[i - 1].requestFocus();
+                          _scrollSeasonTabIntoView(i - 1);
+                        }
+                      : null,
+                  onNavigateRight: i < _seasons.length - 1
+                      ? () {
+                          _tvSelectSeason(i + 1);
+                          _seasonTabFocusNodes[i + 1].requestFocus();
+                          _scrollSeasonTabIntoView(i + 1);
+                        }
+                      : null,
+                  onNavigateUp: _focusTvDetailActionRow,
+                  onNavigateDown: () => _tvDetailRailKey.currentState?.requestFocus(),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -185,13 +242,13 @@ class _TvSeasonChipState extends State<_TvSeasonChip> {
     final mono = tokens(context);
     final scale = widget.scale;
     final isSelected = widget.isSelected;
-    final backgroundColor = isSelected
-        ? mono.surfaceElevated
-        : (_isFocused ? mono.surfaceElevated.withValues(alpha: 0.6) : Colors.transparent);
-    final foregroundColor = isSelected || _isFocused ? mono.text : mono.textMuted;
-    final borderColor = _isFocused
-        ? mono.text.withValues(alpha: 0.75)
-        : (isSelected ? mono.outline.withValues(alpha: 0.9) : Colors.transparent);
+    // 37 C: every chip is a filled pill, the selected one solid in text ink.
+    // A transparent idle chip read as a gap, and the row as unevenly spaced
+    // words. The focus ring is `FocusableWrapper`'s, on top of either state.
+    final backgroundColor = isSelected ? mono.text : mono.text.withValues(alpha: _isFocused ? 0.22 : 0.10);
+    final foregroundColor = isSelected ? mono.bg : mono.text.withValues(alpha: _isFocused ? 1 : 0.85);
+    // Kept, transparent: its width is part of the height DET4 measures.
+    const borderColor = Colors.transparent;
 
     return FocusableWrapper(
       focusNode: widget.focusNode,

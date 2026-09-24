@@ -976,7 +976,7 @@ class _MainScreenState extends State<MainScreen>
     // sidebar reflects the new server set without an app restart.
     if (action == ProfileInvalidationAction.invalidateNow) {
       _wasBindingPrev = isBindingNow;
-      unawaited(_invalidateAllScreens());
+      unawaited(_invalidateAllScreens(sameProfileRebind: true));
       return;
     }
     _wasBindingPrev = isBindingNow;
@@ -1888,7 +1888,8 @@ class _MainScreenState extends State<MainScreen>
   Future<void> _openProfilesFromShell() async {
     _isShowingProfileSelection = true;
     _setTvosMenuPassthrough(false);
-    await AccountUiActions.openProfiles(context);
+    // PROF1: on TV the switch is mockup 21's gate, not the management list.
+    await AccountUiActions.openProfiles(context, asGate: true);
     if (!mounted) return;
     _isShowingProfileSelection = false;
     _updateTvosMenuPassthrough();
@@ -2091,7 +2092,12 @@ class _MainScreenState extends State<MainScreen>
   /// The [ActiveProfileBinder] has already pushed fresh per-server tokens
   /// into [MultiServerManager], so this just clears UI caches and refreshes
   /// the visible screens.
-  Future<void> _invalidateAllScreens() async {
+  ///
+  /// [sameProfileRebind] is a rebind of the profile that was already active
+  /// (a reconnect, a borrowed or removed connection). The viewer stays where
+  /// they are then (OFF6): the nested routes and the focus memory belong to
+  /// this same profile, so the privacy rule below does not apply.
+  Future<void> _invalidateAllScreens({bool sameProfileRebind = false}) async {
     appLogger.d('Invalidating screen data after profile switch');
 
     // Hoofdstuk 7.6: "profielwissel → geheugen volledig wissen". A remembered
@@ -2100,9 +2106,12 @@ class _MainScreenState extends State<MainScreen>
     // odd jump. The Live TV capability is per profile in storage, so it is
     // re-read rather than carried over.
     if (_isTvShell) {
-      _tvNav.clearFocusMemory();
-      _tvNav.clearNestedRoutes();
-      _tvLiveTvRemembered = false;
+      if (!sameProfileRebind) {
+        _tvNav.clearFocusMemory();
+        _tvNav.clearNestedRoutes();
+        _tvLiveTvRemembered = false;
+      }
+      // A rebind can change the server set, and Live TV with it.
       unawaited(_loadTvLiveTvCapability());
     }
 
@@ -2150,6 +2159,27 @@ class _MainScreenState extends State<MainScreen>
     if (mounted) {
       unawaited(context.userProfile.refreshProfileSettings());
     }
+    if (sameProfileRebind && _isTvShell) _closeUnavailableTvMyPleyaSection();
+  }
+
+  /// OFF6: after a rebind of the same profile the open Mijn Pleya section
+  /// stays, unless its tile is gone from the hub (a Seerr or a Tautulli that
+  /// went with the connection). Then the hub comes back with the focus on it.
+  ///
+  /// ponytail: checked once, after the refresh above has settled. A provider
+  /// that only reports its capability later cannot close the section; the
+  /// section then shows its own empty or error state, as it does today.
+  void _closeUnavailableTvMyPleyaSection() {
+    final stack = _tvNav.nestedRoutesFor(TvDestinationId.myPleya);
+    if (stack.isEmpty) return;
+    const prefix = 'tvMyPleya_';
+    final id = stack.first.id;
+    if (!id.startsWith(prefix)) return;
+    final section = TvMyPleyaSection.values.asNameMap()[id.substring(prefix.length)];
+    final available = _tvMyPleyaKey.currentState?.availableSections;
+    if (section == null || available == null || available.contains(section)) return;
+    _tvNav.clearNestedRoutesFor(TvDestinationId.myPleya);
+    if (_tvNav.active == TvDestinationId.myPleya) _focusContent(restorePreviousFocus: false);
   }
 
   /// `false` when [tab] is not visible in the current mode: the tab is
