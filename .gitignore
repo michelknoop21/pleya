@@ -67,6 +67,8 @@ duplication-report/
 .env
 !.env.example
 
+scripts/asc/.venv/
+
 **/fastlane/**/
 **/fastlane/report.xml
 

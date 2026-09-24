@@ -145,7 +145,7 @@ Per platform moet het versierecord hebben:
 | Beschrijving, keywords, support-URL | ja, `appStoreVersionLocalizations` | |
 | Reviewnotities, demo-account, contactpersoon | ja, `appStoreReviewDetail` | demo-account is `applereview` op `demo.pleya.app` |
 | Copyright | ja, `appStoreVersions.copyright` | jaartal **plus** rechthebbende, dus `2026 Michel Knoop`; alleen een naam wordt geweigerd |
-| Screenshots | ja, maar omslachtig | minimaal één per platform, en tvOS en macOS erven die van iOS **niet** |
+| Screenshots | ja, via `scripts/asc/screenshots.py` | minimaal één per platform, en tvOS en macOS erven die van iOS **niet** |
 
 Copyright zetten of controleren:
 
@@ -162,6 +162,18 @@ De version-id's van 2.8.0: iOS `c5f974ea-55e7-46fb-8258-5f534cf03a35`, tvOS
 `f885b8de-2677-4034-ae7f-07ee7c1a9e45`, macOS
 `b185cff8-3c5e-4913-9cdb-cbb85df97b47`. Een nieuwe versie krijgt nieuwe id's;
 haal ze op met `GET /v1/apps/6787464031/appStoreVersions`.
+
+Screenshotsets opvragen en vervangen gaat via `scripts/asc/screenshots.py`
+(zie de setup en het argument-overzicht in dat bestand zelf):
+
+```bash
+python3 scripts/asc/screenshots.py sets --version c5f974ea-55e7-46fb-8258-5f534cf03a35
+python3 scripts/asc/screenshots.py replace --set <setId> --dir screenshots/ipad
+```
+
+Herindienen na een afwijzing gaat via `scripts/asc/submit.py version` (status
+en gekoppelde build tonen) en `scripts/asc/submit.py submit ... --confirm`
+(zonder `--confirm` alleen een dry-run die de payloads print).
 
 ### Twee dingen die de API niet toont
 
