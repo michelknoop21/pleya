@@ -51,9 +51,16 @@
 /* ---------- page chrome ---------- */
 
 .docs-shell {
-  max-width: 84rem;
+  /* Same column as TopNav, so the wordmark and the page heading line up. */
+  max-width: 78rem;
   margin-inline: auto;
   padding: 2.5rem 1.25rem 4rem;
+}
+
+@media (min-width: 768px) {
+  .docs-shell {
+    padding-inline: 2rem;
+  }
 }
 
 .docs-lede {

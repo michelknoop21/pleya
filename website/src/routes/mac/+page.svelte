@@ -54,7 +54,7 @@
   <Feature kicker="Details" heading="Switch from 4K to 1080p while it plays." shots={[]}>
     <p class="lede">
       A title can exist on your server in more than one quality, for example a 4K file and a 1080p one. Pleya picks one
-      to start with. Version &amp; quality in the player switches during playback.
+      to start with. You can switch during playback through Version &amp; quality in the player.
     </p>
     <p class="lede">
       With a Tautulli server connected, a detail page also shows who has seen the title, how often it was played and how
