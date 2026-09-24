@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../automation/automation_ids.dart';
 import '../../focus/focusable_wrapper.dart';
@@ -21,6 +22,51 @@ class TvAppearanceCategories extends StatefulWidget {
 
 class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
   int _selected = 0;
+  final List<FocusNode> _categoryNodes = [];
+  final FocusNode _rowsNode = FocusNode(debugLabel: 'appearance.rows', skipTraversal: true);
+
+  @override
+  void dispose() {
+    for (final node in _categoryNodes) {
+      node.dispose();
+    }
+    _rowsNode.dispose();
+    super.dispose();
+  }
+
+  FocusNode _categoryNode(int index) {
+    while (_categoryNodes.length <= index) {
+      _categoryNodes.add(FocusNode(debugLabel: 'appearance.category.${_categoryNodes.length}'));
+    }
+    return _categoryNodes[index];
+  }
+
+  // APP1. The two columns used to be joined by geometry alone: LEFT only found
+  // the categories from a row level with one, and RIGHT landed on whatever row
+  // sat beside the category. Both moves are now semantic.
+
+  /// RIGHT from a category: that category, on its first row.
+  void _enterCategory(int index) {
+    setState(() => _selected = index);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final rows = _rowsNode.traversalDescendants.where((node) => node.canRequestFocus && node.context != null).toList()
+        ..sort((a, b) {
+          final byTop = a.rect.top.compareTo(b.rect.top);
+          return byTop != 0 ? byTop : a.rect.left.compareTo(b.rect.left);
+        });
+      if (rows.isNotEmpty) rows.first.requestFocus();
+    });
+  }
+
+  /// LEFT from any row a row did not use itself (a slider keeps its LEFT):
+  /// the active category.
+  KeyEventResult _handleRowsKey(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.arrowLeft) return KeyEventResult.ignored;
+    if (_categoryNodes.length <= _selected) return KeyEventResult.ignored;
+    _categoryNodes[_selected].requestFocus();
+    return KeyEventResult.handled;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,9 +105,11 @@ class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
                       automationId: AutomationIds.settingsAppearanceCategory,
                       automationInstance: index.toString(),
                       automationState: () => {'selected': selected == index},
+                      focusNode: _categoryNode(index),
                       autofocus: index == 0,
                       disableScale: true,
                       onSelect: () => setState(() => _selected = index),
+                      onNavigateRight: () => _enterCategory(index),
                       child: GestureDetector(
                         onTap: () => setState(() => _selected = index),
                         child: Container(
@@ -87,12 +135,16 @@ class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
             ),
           ),
           Expanded(
-            child: ListView(
-              key: ValueKey(selected),
-              children: [
-                TvPageGroupLabel(sections[selected].title),
-                SettingsGroup(children: sections[selected].rows),
-              ],
+            child: Focus(
+              focusNode: _rowsNode,
+              onKeyEvent: _handleRowsKey,
+              child: ListView(
+                key: ValueKey(selected),
+                children: [
+                  TvPageGroupLabel(sections[selected].title),
+                  SettingsGroup(children: sections[selected].rows),
+                ],
+              ),
             ),
           ),
         ],
