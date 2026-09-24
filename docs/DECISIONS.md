@@ -2872,6 +2872,31 @@ MCP-tests en docs die hem als voorbeeld noemen gaan naar het nieuwe scenario.
 **Consequences:** De false-PASS-matrix van DEC-081 blijft geldig; die hangt aan de runner, niet aan
 het scenario. Een nieuwe sabotageronde draait tegen de `active`-state van de navigatiepillen.
 
+## DEC-122: Liquid Glass wordt de oppervlaktestijl op iPhone en Apple TV
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** Apple's Liquid Glass is de systeemstijl van iOS 26 en tvOS 26. Flutter tekent hem niet
+zelf (flutter/flutter#170310). Het pakket `liquid_glass_renderer` levert op Impeller echt glas met
+breking; op tvOS bestaat dat niet en is alleen blur met tint en lichtlijn haalbaar. De acht
+mockups in `docs/assets/liquid-glass/mockups-2026-09-24/` tonen beide gradaties, met de layout van
+de iOS-northstar (DEC-090) en de goedgekeurde tvOS-mockups 30, 33 en 36.
+
+**Decision:** De richting is goedgekeurd. Tabbalk, zoekveld, knoppen en spelerbediening worden
+glas: echt glas op iPhone via `liquid_glass_renderer`, nepglas (BackdropFilter met tint en
+lichtlijn) op Apple TV en als terugval op Skia. De twee layoutwijzigingen in LG-02 (hero over de
+volle breedte achter de statusbalk, kijklijst als ronde knop naast Download) horen bij de
+goedkeuring. LG-06 geldt in ruststand: zoekpil onder de topbalk, resultaten eronder. Eis bij de
+goedkeuring: goed contrast, uitgewerkt in de sectie Contrast van
+[liquid-glass-mockups-2026-09.md](liquid-glass-mockups-2026-09.md); tekst op glas haalt 4,5:1 op
+de lichtste scène.
+
+**Consequences:** De bouw begint met een proefversie achter een instelling (tabbalk en speler op
+iPhone), met een toesteltest op prestaties voordat de rest van de app volgt. De iPad houdt zijn
+presentatie tot een eigen northstar bestaat (DEC-103). DEC-121 is op `feat/unified-desktop-ipad`
+in gebruik; daarom krijgt dit besluit nummer 122.
+
 ## DEC-130: TV-instellingen en detail volgen Apple's tvOS-HIG in punten
 
 **Date:** 2026-09-24
