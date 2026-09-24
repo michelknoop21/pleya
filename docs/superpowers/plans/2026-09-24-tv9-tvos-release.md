@@ -98,6 +98,22 @@ en filmdetail in Apple's tvOS-punten (`TvHig`). Tests die op de oude code falen,
 voor en na, goldens, ci_checks, PR en merge. De volledige Verify-suite uit fase 2 draait pas daarna,
 op de SHA met DENS1 erin.
 
+## Uitkomst fase 2 (24 september)
+
+- Volledige testsuite zonder goldens: groen, op `search_screen_test` "TV OSK search key moves focus to
+  the first result" na, die alleen onder de belasting van de hele suite faalt en los drie keer groen
+  is; CI's Unit Tests zijn op dezelfde code groen. Goldens via `goldens.yml`: bij DENS1 twee bewust
+  vernieuwd (`tv_detail_source_line`, `tv_detail_no_source_line`), verder ongewijzigd.
+- tvOS-Verify, alle 51 scenario's op `3ad702d3`: 48 PASS. `tvos.home.walk-rails` faalde op een
+  vals "passing over" door de automation-node van de zoekpil (VIS1) zonder focusinformatie; opgelost
+  door de focusnode mee te geven. `tvos.my-pleya.explore` en `tvos.nav.held-press-lands-once`
+  strandden op een buildfout (exit 65) doordat ik tijdens de suite een `flutter test` draaide. Alle
+  drie en `tvos.search.results` daarna PASS op de fix.
+- Route-uitweg (stap 5) en de MOC-afwijkingen: in `docs/tvos-hardware-eindronde.md`. Twaalf van de
+  twintig routes hebben een journey met Menu terug, acht staan als `HARDWARE ONLY` op de lijst.
+- PLR11 (zwarte hoekjes in de focusrand van witte spelerknoppen) is overgedragen aan de Liquid
+  Glass-lijn en staat op de checklist.
+
 ## Fase 3: release-identiteit en archive
 
 1. Nieuwe branch voor de lane: `tvos_beta` bouwt en uploadt nu in één stap, en dat botst met §8.
