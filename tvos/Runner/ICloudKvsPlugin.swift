@@ -88,16 +88,25 @@ final class ICloudKvsPlugin: NSObject, FlutterPlugin {
   /// The iCloud account itself changed. Reported under the store's own
   /// account-change reason, so the Dart side needs no second vocabulary for it.
   @objc private func ubiquityIdentityDidChange(_ notification: Notification) {
-    guard let sink = eventSink else { return }
-    sink(["reason": NSUbiquitousKeyValueStoreAccountChange, "changedKeys": [String]()])
+    emit(["reason": NSUbiquitousKeyValueStoreAccountChange, "changedKeys": [String]()])
   }
 
   @objc private func storeDidChangeExternally(_ notification: Notification) {
-    guard let sink = eventSink else { return }
     let info = notification.userInfo ?? [:]
     let reason = (info[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int) ?? -1
     let changedKeys = (info[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String]) ?? []
-    sink(["reason": reason, "changedKeys": changedKeys])
+    emit(["reason": reason, "changedKeys": changedKeys])
+  }
+
+  /// Channel traffic has to happen on the platform thread; NotificationCenter
+  /// delivers on the posting thread, and Apple documents none for these two
+  /// notifications. The sink is read inside the hop so a cancel that raced the
+  /// notification is honoured.
+  private func emit(_ payload: [String: Any]) {
+    DispatchQueue.main.async { [weak self] in
+      guard let sink = self?.eventSink else { return }
+      sink(payload)
+    }
   }
 }
 
