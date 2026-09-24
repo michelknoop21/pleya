@@ -11,6 +11,7 @@ import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/auth_error_banner.dart';
 
+import '../test_helpers/notice_layer.dart';
 import '../test_helpers/prefs.dart';
 
 class _StubClient implements MediaServerClient {
@@ -33,17 +34,26 @@ class _StubClient implements MediaServerClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _RetryManager extends MultiServerManager {
+  final Map<ServerId, HealthStatus?> retryResults = {};
+
+  @override
+  Future<HealthStatus?> retryPleyaServerAuth(ServerId serverId) async => retryResults[serverId];
+}
+
 void main() {
   setUp(resetSharedPreferencesForTest);
+  setUp(resetNotices);
 
   Future<({MultiServerManager manager, MultiServerProvider provider, FocusNode content})> pumpBanner(
     WidgetTester tester, {
     bool appleTv = false,
+    MultiServerManager? manager,
   }) async {
     TvDetectionService.debugSetAppleTVOverride(appleTv ? true : null);
     addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
 
-    final manager = MultiServerManager();
+    manager ??= MultiServerManager();
     final provider = MultiServerProvider(manager, DataAggregationService(manager));
     addTearDown(provider.dispose);
 
@@ -56,6 +66,7 @@ void main() {
           value: provider,
           child: MaterialApp(
             theme: monoTheme(dark: true),
+            builder: noticeLayer,
             home: Scaffold(
               body: Column(
                 children: [
@@ -152,5 +163,23 @@ void main() {
 
     expect(find.text(t.connections.sessionExpiredOne(name: 'Zolder')), findsOneWidget);
     expect(harness.provider.onlineServerIds, contains('srv-ok'));
+  });
+
+  testWidgets('an offline retry names the server that was actually unreachable', (tester) async {
+    final manager = _RetryManager();
+    final harness = await pumpBanner(tester, manager: manager);
+    harness.manager.debugRegisterClientForTesting(_StubClient('srv-first', 'Zolder'), online: false);
+    harness.manager.debugRegisterClientForTesting(_StubClient('srv-offline', 'Schuur'), online: false);
+    harness.manager.debugMarkAuthErrorForTesting(ServerId('srv-first'));
+    harness.manager.debugMarkAuthErrorForTesting(ServerId('srv-offline'));
+    manager.retryResults[ServerId('srv-first')] = HealthStatus.online;
+    manager.retryResults[ServerId('srv-offline')] = HealthStatus.offline;
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(t.connections.signInAgain));
+    await tester.pump();
+
+    expect(find.text(t.notices.connectionFailedBody(serverName: 'Schuur')), findsOneWidget);
+    expect(find.text(t.notices.connectionFailedBody(serverName: 'Zolder')), findsNothing);
   });
 }

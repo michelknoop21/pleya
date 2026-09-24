@@ -114,7 +114,7 @@ class _AuthErrorBannerState extends State<AuthErrorBanner> {
   Future<void> _retryThenReauth(BuildContext context, List<({ServerId serverId, String displayName})> entries) async {
     setState(() => _retrying = true);
     var needsSignIn = false;
-    var unreachable = false;
+    String? unreachableServerName;
     try {
       final manager = context.read<MultiServerProvider>().serverManager;
       for (final entry in entries) {
@@ -122,7 +122,7 @@ class _AuthErrorBannerState extends State<AuthErrorBanner> {
         if (health == null || health == HealthStatus.authError) {
           needsSignIn = true;
         } else if (health == HealthStatus.offline) {
-          unreachable = true;
+          unreachableServerName ??= entry.displayName;
         }
       }
     } finally {
@@ -131,8 +131,8 @@ class _AuthErrorBannerState extends State<AuthErrorBanner> {
     if (!context.mounted) return;
     if (needsSignIn) {
       await _openReauth(context);
-    } else if (unreachable) {
-      showErrorSnackBar(context, t.notices.connectionFailedBody(serverName: entries.first.displayName));
+    } else if (unreachableServerName != null) {
+      showErrorSnackBar(context, t.notices.connectionFailedBody(serverName: unreachableServerName));
     }
     // A retry that came back online needs nothing more: _applyHealth already
     // cleared the auth-error state and this banner rebuilds itself away.
