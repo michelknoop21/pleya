@@ -23,11 +23,13 @@ fi
 
 DO_CLEAN=0
 LANE=""
+# Alles na de lane zijn lane-opties, zoals `archive:<pad>` voor tvos_upload.
+LANE_OPTS=()
 for arg in "$@"; do
   case "$arg" in
     --clean) DO_CLEAN=1 ;;
     -*) echo "onbekende optie: $arg" >&2; exit 2 ;;
-    *) LANE="$arg" ;;
+    *) if [[ -z "$LANE" ]]; then LANE="$arg"; else LANE_OPTS+=("$arg"); fi ;;
   esac
 done
 LANE="${LANE:-beta}"
@@ -91,7 +93,7 @@ fi
 # gaat het script alsnog stuk op deze code, dus het gedrag naar buiten blijft
 # gelijk: een mislukte lane commit geen buildnummer.
 set +e
-fastlane "$LANE"
+fastlane "$LANE" "${LANE_OPTS[@]}"
 fastlane_status=$?
 set -e
 

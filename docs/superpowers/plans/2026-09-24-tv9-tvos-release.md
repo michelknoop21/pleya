@@ -184,3 +184,12 @@ Afleveringen / Vergelijkbaar / Extra's / Details. Northstar 06 (film) is de refe
 (serie) tekent nog tabs en wijkt daar op Michels aanwijzing van af: seizoenkiezer en afleveringen
 inline onder de beschrijving, vergelijkbaar en extra's als rijen daaronder. Eigen branch, eigen
 PR, iOS-simulator-screenshots als bewijs; los van de tvOS-archive.
+
+## Uitkomst fase 3 en 5 (24 september, 22:29)
+
+Archive `Pleya-tvOS-299-3bd976df.xcarchive` van SHA `3bd976df`, build 2.8.0 (299), Release,
+SHA-256 `433bb27a…e054a0176`, 5 van 5 TV9-markers in de binary. Met `tvos_upload` geëxporteerd
+en geüpload naar App Store Connect (interne TestFlight-groep, gekoppeld aan het versierecord).
+Twee lane-fouten onderweg: het releasescript gaf lane-opties niet door (nu `LANE_OPTS`), en gym
+wil ook voor een export-only run de workspace en het scheme. Fase 4 (hardware, Michel) loopt op
+deze TestFlight-build volgens `docs/tvos-hardware-eindronde.md`.
