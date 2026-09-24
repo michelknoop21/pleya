@@ -239,7 +239,7 @@ void main() {
 
     Future<void> checkTimer(WidgetTester tester, _RecordingDiscoverProvider recording, State screen) async {
       await tester.pump(kHomeRefreshInterval);
-      expect(recording.requests, [kHomeRefreshInterval], reason: 'Home active and resumed: the timer fires');
+      expect(recording.requests, [kHomeRefreshOnReturn], reason: 'Home active and resumed: the timer fires');
 
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
@@ -252,7 +252,7 @@ void main() {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       recording.requests.clear();
       await tester.pump(kHomeRefreshInterval);
-      expect(recording.requests, [kHomeRefreshInterval], reason: 'resumed again: the timer is back');
+      expect(recording.requests, [kHomeRefreshOnReturn], reason: 'resumed again: the timer is back');
 
       (screen as TabVisibilityAware).onTabHidden();
       recording.requests.clear();
@@ -261,7 +261,7 @@ void main() {
 
       (screen as TabVisibilityAware).onTabShown();
       await tester.pump(kHomeRefreshInterval);
-      expect(recording.requests, [kHomeRefreshInterval]);
+      expect(recording.requests, [kHomeRefreshOnReturn]);
     }
 
     testWidgets('TV: a silent refresh every interval while Home is active and the app resumed', (tester) async {

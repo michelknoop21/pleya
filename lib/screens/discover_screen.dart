@@ -186,7 +186,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   /// Silent periodic refresh while Home is on screen and the app is in the
   /// foreground, on every platform. Background refresh of a suspended app is
   /// left to the resume path: iOS gives a suspended app no reliable run time.
-  late final _refreshTicker = HomeRefreshTicker(() => unawaited(_discover.refreshIfStale()));
+  ///
+  /// The tick asks with the return threshold, not the interval: the timer
+  /// restarts on every return to Home, right before that return's own load,
+  /// so a tick exactly one interval later always finds data a few
+  /// milliseconds younger than the interval and would skip every other tick.
+  late final _refreshTicker = HomeRefreshTicker(
+    () => unawaited(_discover.refreshIfStale(maxAge: kHomeRefreshOnReturn)),
+  );
   void _syncRefreshTicker() => _refreshTicker.update(active: _isTabVisible && _appResumed);
 
   /// Cached in didChangeDependencies rather than read via
