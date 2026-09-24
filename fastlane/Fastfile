@@ -586,6 +586,10 @@ lane :tvos_beta do
   # en herschrijft Generated.xcconfig — daarom ná ensure_build_number, want het
   # neemt het buildnummer uit pubspec.yaml over.
   sh("cd #{PROJECT_ROOT} && tvos/scripts/fetch_engine.sh")
+  # Op een verse worktree ontbreekt tvos/Pods; de archive faalt dan op een
+  # ontbrekende xcfilelist. pod install kan pas na fetch_engine.sh, dat
+  # Generated.xcconfig schrijft waar de Podfile op leunt.
+  sh("cd #{PROJECT_ROOT} && tvos/scripts/pod_install.sh") unless Dir.exist?(File.join(PROJECT_ROOT, "tvos/Pods"))
   build_app(
     workspace: File.join(PROJECT_ROOT, "tvos/Runner.xcworkspace"),
     scheme: "Runner",
