@@ -236,6 +236,11 @@ class TvMyPleyaScreen extends StatefulWidget {
 }
 
 class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTab {
+  /// The sections that have a tile as of the last build. OFF6: the shell
+  /// asks this after a rebind, to close a section that no longer exists.
+  Set<TvMyPleyaSection> get availableSections => _availableSections;
+  Set<TvMyPleyaSection> _availableSections = const {};
+
   /// Owned by the state, not rebuilt per frame: a watchlist count arriving or a
   /// server going offline must not dispose the node the remote is standing on.
   final FocusMemoryTracker nodes = FocusMemoryTracker(debugLabelPrefix: 'tvMyPleya');
@@ -310,6 +315,12 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
       collectionCount: personalMedia?.state == PersonalMediaLoadState.loaded ? personalMedia?.collections.length : null,
       playlistCount: personalMedia?.state == PersonalMediaLoadState.loaded ? personalMedia?.playlists.length : null,
     );
+
+    _availableSections = {
+      for (final group in groups)
+        for (final tile in group.tiles)
+          if (tile.section case final section?) section,
+    };
 
     // A flat, ordered list of every focusable key on the page, so UP out of the
     // first row and the tile-to-tile walk are derived from one sequence rather

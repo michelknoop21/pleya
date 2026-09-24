@@ -3305,6 +3305,14 @@ void main() {
           'the chip\'s true, unclamped desired height must fit the band; a clamped '
           'tester.getSize comparison alone cannot tell a fit from a squeeze',
     );
+
+    // VIS2/37 C: the heading and the chips are one line, and the rail under
+    // it does not name the season hub a second time.
+    final heading = find.descendant(of: band, matching: find.text(t.libraries.groupings.episodes));
+    expect(heading, findsOneWidget);
+    expect(find.text(t.libraries.groupings.episodes), findsOneWidget);
+    expect(tester.getCenter(heading).dy, moreOrLessEquals(tester.getCenter(chipFinder).dy, epsilon: 1));
+    expect(tester.getTopLeft(chipFinder).dx, greaterThan(tester.getTopRight(heading).dx));
   });
 }
 

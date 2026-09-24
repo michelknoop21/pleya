@@ -41,11 +41,11 @@ class AccountUiActions {
   /// Returns when the picker is closed, so a caller that has to bracket the
   /// visit — the TV shell hands tvOS's Menu button back and forth around it —
   /// can await it instead of guessing.
-  static Future<void> openProfiles(BuildContext context) {
+  static Future<void> openProfiles(BuildContext context, {bool asGate = false}) {
     return Navigator.of(
       context,
       rootNavigator: true,
-    ).push(MaterialPageRoute(builder: (context) => const ProfileSwitchScreen()));
+    ).push(MaterialPageRoute(builder: (context) => ProfileSwitchScreen(presentAsGate: asGate)));
   }
 
   /// Confirm, then clear every trace of the session and return to sign-in.

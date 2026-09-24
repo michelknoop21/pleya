@@ -410,7 +410,7 @@ class TvBrowseRail extends StatefulWidget {
 
   /// Optional per-hub leading icon. When null, headers render text-only
   /// (Netflix-style home). Other callers still pass an icon.
-  final IconData Function(MediaHub hub, int index)? iconForHub;
+  final IconData? Function(MediaHub hub, int index)? iconForHub;
 
   /// Whether to show each hub's originating server name in its header. Used when
   /// the loaded hubs span more than one connected server so their origin stays

@@ -676,6 +676,57 @@ void main() {
     }
   });
 
+  testWidgets('a collapsed rail hides server header names and keeps only the icons', (tester) async {
+    await SettingsService.getInstance();
+
+    final librariesProvider = LibrariesProvider();
+    await librariesProvider.updateLibraryOrder([
+      _library(id: '1', title: 'Films A', serverId: ServerId('server-a'), serverName: 'Server A'),
+      _library(id: '1', title: 'Films B', serverId: ServerId('server-b'), serverName: 'Server B'),
+    ]);
+    addTearDown(librariesProvider.dispose);
+    final hiddenLibrariesProvider = HiddenLibrariesProvider();
+    await hiddenLibrariesProvider.ensureInitialized();
+    addTearDown(hiddenLibrariesProvider.dispose);
+    final manager = MultiServerManager();
+    final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+    addTearDown(multiServerProvider.dispose);
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider<LibrariesProvider>.value(value: librariesProvider),
+            ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibrariesProvider),
+            ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
+          ],
+          child: MaterialApp(
+            theme: ThemeData(extensions: const [_testTokens]),
+            home: Scaffold(
+              body: SideNavigationRail(
+                selectedTab: NavigationTabId.discover,
+                isSidebarFocused: false,
+                alwaysExpanded: false,
+                onDestinationSelected: (_) {},
+                onLibrarySelected: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Library rows already fade their label out; the server header used to
+    // paint its name and chevron regardless, clipped to "Ser" in the 80px rail.
+    for (final name in ['Server A', 'Server B']) {
+      final label = find.text(name);
+      expect(label, findsOneWidget);
+      final fade = find.ancestor(of: label, matching: find.byType(AnimatedOpacity)).first;
+      expect(tester.widget<AnimatedOpacity>(fade).opacity, 0);
+    }
+  });
+
   group('pointer ownership: the band between the collapsed and expanded rail', () {
     // x=150 sits in the strip that is menu when the rail is open and content
     // when it is shut. Who owns it must follow from what the user can see, not
