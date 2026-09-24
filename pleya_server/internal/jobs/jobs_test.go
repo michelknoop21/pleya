@@ -6,10 +6,13 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
@@ -280,4 +283,106 @@ func waitFor(t *testing.T, condition func() bool, message string) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal(message)
+}
+
+func TestCancelRunningJobStopsTheHandler(t *testing.T) {
+	runner, _ := newRunner(t)
+	started := make(chan struct{})
+	causes := make(chan error, 1)
+	runner.Register("blok", func(ctx context.Context, job jobs.Job) error {
+		close(started)
+		<-ctx.Done()
+		causes <- context.Cause(ctx)
+		return ctx.Err()
+	})
+	jobID, _, _ := runner.Enqueue(context.Background(), "blok", nil, "", time.Time{})
+	runCtx, stop := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { runner.Run(runCtx); close(done) }()
+	<-started
+
+	if _, err := runner.Cancel(context.Background(), jobID); err != nil {
+		t.Fatalf("Cancel: %v", err)
+	}
+	waitFor(t, func() bool {
+		rec, _ := runner.Get(context.Background(), jobID)
+		return rec.State == "cancelled"
+	}, "job wordt cancelled")
+	if cause := <-causes; !errors.Is(cause, jobs.ErrCancelled) {
+		t.Fatalf("handler zag oorzaak %v, verwacht ErrCancelled", cause)
+	}
+	stop()
+	<-done
+}
+
+func TestCancelFinishedJobIsRefused(t *testing.T) {
+	runner, _ := newRunner(t)
+	runner.Register("klaar", func(context.Context, jobs.Job) error { return nil })
+	jobID, _, _ := runner.Enqueue(context.Background(), "klaar", nil, "", time.Time{})
+	runCtx, stop := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { runner.Run(runCtx); close(done) }()
+	waitFor(t, func() bool {
+		rec, _ := runner.Get(context.Background(), jobID)
+		return rec.State == "succeeded"
+	}, "job slaagt")
+	stop()
+	<-done
+	if _, err := runner.Cancel(context.Background(), jobID); !errors.Is(err, jobs.ErrNotCancellable) {
+		t.Fatalf("Cancel op succeeded gaf %v, verwacht ErrNotCancellable", err)
+	}
+	if _, err := runner.Cancel(context.Background(), id.New()); !errors.Is(err, jobs.ErrNotFound) {
+		t.Fatalf("Cancel op onbekend id gaf %v, verwacht ErrNotFound", err)
+	}
+}
+
+func TestRetryFailedJobRunsAgainFromZero(t *testing.T) {
+	runner, pool := newRunner(t)
+	var calls atomic.Int32
+	runner.Register("wisselend", func(context.Context, jobs.Job) error {
+		if calls.Add(1) <= 3 {
+			return errors.New("nog niet")
+		}
+		return nil
+	})
+	jobID, _, _ := runner.Enqueue(context.Background(), "wisselend", nil, "", time.Time{})
+	runCtx, stop := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { runner.Run(runCtx); close(done) }()
+	waitFor(t, func() bool {
+		// De backoff (2 s, 4 s) haalt anders de wachttijd van waitFor niet.
+		_, _ = pool.Exec(context.Background(), `UPDATE jobs SET run_at = now() WHERE state = 'pending'`)
+		rec, _ := runner.Get(context.Background(), jobID)
+		return rec.State == "failed"
+	}, "job faalt na max_attempts")
+	rec, err := runner.Retry(context.Background(), jobID, map[string]string{"opnieuw": "ja"})
+	if err != nil {
+		t.Fatalf("Retry: %v", err)
+	}
+	if rec.State != "pending" || rec.Attempts != 0 || rec.LastError != "" || !strings.Contains(string(rec.Args), "opnieuw") {
+		t.Fatalf("na retry: %+v", rec)
+	}
+	waitFor(t, func() bool {
+		rec, _ := runner.Get(context.Background(), jobID)
+		return rec.State == "succeeded"
+	}, "job slaagt na retry")
+	stop()
+	<-done
+}
+
+func TestRequeueCancelsAJobWithACancelRequest(t *testing.T) {
+	runner, pool := newRunner(t)
+	jobID := id.New()
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO jobs (id, kind, state, locked_at, locked_by, cancel_requested_at)
+		VALUES ($1, 'x', 'running', now(), 'dood#0', now())`, jobID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runner.Requeue(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	rec, _ := runner.Get(context.Background(), jobID)
+	if rec.State != "cancelled" {
+		t.Fatalf("Requeue liet een aangevraagde annulering op %q staan", rec.State)
+	}
 }
