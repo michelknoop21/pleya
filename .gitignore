@@ -68,6 +68,7 @@ duplication-report/
 !.env.example
 
 **/fastlane/**/
+!**/fastlane/test/
 **/fastlane/report.xml
 
 pleya_verify/**/.dart_tool/

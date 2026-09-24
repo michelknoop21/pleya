@@ -552,8 +552,9 @@ end
 # zonder sha en moest de herkomst achteraf uit buildtijden gereconstrueerd
 # worden; Android en CI geven hem al jaren mee.
 def git_commit_define
-  sha = `git -C #{PROJECT_ROOT} rev-parse --short HEAD`.strip
-  sha.empty? ? "" : " --dart-define=GIT_COMMIT=#{sha}"
+  sha = sh("git", "-C", PROJECT_ROOT, "rev-parse", "--short", "HEAD", log: false).strip
+  UI.user_error!("git rev-parse gaf geen sha terug voor #{PROJECT_ROOT}") if sha.empty?
+  " --dart-define=GIT_COMMIT=#{sha}"
 end
 
 desc "iOS → TestFlight"
