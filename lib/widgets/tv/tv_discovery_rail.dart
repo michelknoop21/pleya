@@ -261,6 +261,9 @@ class TvDiscoveryRail extends StatefulWidget {
   State<TvDiscoveryRail> createState() => TvDiscoveryRailState();
 }
 
+/// Tags a rail slot's list key, kept apart from the tile's own group-id key.
+const _slot = #tvDiscoveryRailSlot;
+
 class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   final _nodes = <String, FocusNode>{};
   final _scroll = ScrollController();
@@ -673,6 +676,16 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
       // so a rail of forty groups costs the images of the six on screen
       // (hoofdstuk 42).
       itemCount: widget.groups.length + (widget.viewAll == null ? 0 : 1),
+      // Tiles are keyed on their group id; without this a title that moved to
+      // another index gets a fresh tile state, so a focused card loses its
+      // ring and wide artwork while its node still holds the focus.
+      findChildIndexCallback: (key) {
+        if (key case ValueKey<(Object, String)>(value: (_slot, final groupId))) {
+          final index = widget.groups.indexWhere((g) => g.groupId == groupId);
+          return index < 0 ? null : index;
+        }
+        return null;
+      },
       itemBuilder: (context, index) {
         // Hard stops at both ends of the row, on every branch below. Left as
         // `null` these fall through to Flutter's geometric traversal, and on a
@@ -719,6 +732,8 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
 
         final group = widget.groups[index];
         return Padding(
+          // The list child's own key, so `findChildIndexCallback` can move it.
+          key: ValueKey((_slot, group.groupId)),
           // Between tiles only, so the row's outer edges stay on the page inset.
           padding: EdgeInsets.only(right: index == _lastIndex ? 0 : TvDiscoveryLayout.itemGap * scale),
           child: TvExpandableMediaTile(

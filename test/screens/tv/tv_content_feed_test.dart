@@ -1030,6 +1030,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_$third');
       final xBefore = tester.getTopLeft(tile(third)).dx;
+      final widthBefore = tester.getSize(tile(third)).width;
 
       aggregation.hubs = [
         _hub('recent', 'Recently Added', [_film('brand-new', title: 'Brand New'), ...films]),
@@ -1047,6 +1048,11 @@ void main() {
       expect(groups.indexWhere((g) => g.groupId == third), 3, reason: 'sanity: the focused title moved one place');
       expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_$third');
       expect(tester.getTopLeft(tile(third)).dx, moreOrLessEquals(xBefore, epsilon: 0.5));
+      // The card keeps its focused look, not only the focus node: on the
+      // simulator the ring and the wide artwork were gone while the node
+      // still held the focus, because the tile's state was rebuilt at its new
+      // index instead of moved there.
+      expect(tester.getSize(tile(third)).width, moreOrLessEquals(widthBefore, epsilon: 0.5));
     });
 
     testWidgets('rows keep their own state identity across a re-projection', (tester) async {
