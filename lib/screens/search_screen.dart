@@ -969,6 +969,7 @@ class _SearchScreenState extends State<SearchScreen>
           TvSearchPill(
             controller: _searchController,
             countLabel: countLabel,
+            focusNode: nativePill ? _searchFocusNode : null,
             wrap: nativePill
                 ? (pill) => FocusableButton(
                     focusNode: _searchFocusNode,
