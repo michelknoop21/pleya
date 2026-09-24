@@ -19,7 +19,7 @@ typedef PreferenceValueMerge = Object? Function(Object? local, Object? remote);
 /// value is a map of independently edited entries cannot be settled by
 /// last-writer-wins without losing the entries the other device edited.
 class PreferenceMergeFamily {
-  const PreferenceMergeFamily({required this.name, required this.inbound, this.outbound});
+  const PreferenceMergeFamily({required this.name, required this.inbound, this.outbound, this.removed});
 
   final String name;
 
@@ -34,6 +34,11 @@ class PreferenceMergeFamily {
   /// merge only ever ran inbound, so an outgoing write pushed the raw local
   /// value over entries another device owned.
   final PreferenceValueMerge? outbound;
+
+  /// A newer tombstone arrived. Returns what this device keeps of [local], or
+  /// null to remove the value. Null when the family has nothing to keep, which
+  /// makes the tombstone a plain removal.
+  final Object? Function(Object? local)? removed;
 
   bool get mergesOutgoing => outbound != null;
 }
@@ -96,6 +101,12 @@ PreferenceMergeFamily buildServerScopedListFamily(IsServerIdPortable isServerIdP
     final foreign = PreferenceValuePortability.localOnlyEntries(remoteEntries, isServerIdPortable);
     final seen = mine.toSet();
     return json.encode(<String>[...mine, ...foreign.where(seen.add)]);
+  },
+  // The sender removed the list it could see. This device's local-folder
+  // entries were never in it, so they stay.
+  removed: (local) {
+    final keep = PreferenceValuePortability.localOnlyEntries(decodeStringList(local) ?? const [], isServerIdPortable);
+    return keep.isEmpty ? null : json.encode(keep);
   },
 );
 

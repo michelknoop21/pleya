@@ -57,9 +57,11 @@ void main() {
   group('the trigger decides what the run does', () {
     test('an import does not pull the store first: local is what the user just chose', () async {
       final coordinator = await build();
-      // The store still holds an old value for a key the import replaced.
-      transport.store[coordinator.cloudKeyFor('theme_mode')!] = enc('string', 'dark');
+      // The import wrote and stamped 'light'; the store still holds the old
+      // value, written back by a build that does not stamp.
       await settings.prefs.setString('theme_mode', 'light');
+      await coordinator.apply(const PreferenceMutation.set('theme_mode', 'light', source: PreferenceSource.import));
+      transport.store[coordinator.cloudKeyFor('theme_mode')!] = enc('string', 'dark');
 
       await coordinator.requestReconcile(ReconcileTrigger.imported);
 

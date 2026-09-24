@@ -84,8 +84,8 @@ void main() {
 
       expect(kvs.keys.where((k) => k.startsWith('flutter.')), isEmpty);
       expect(
-        kvs['__pleya_pref_v2/global/subtitle_font_size'],
-        enc('int', 44),
+        (json.decode(kvs['__pleya_pref_v2/global/subtitle_font_size']!) as Map)['value'],
+        44,
         reason: 'the real key still syncs, now under the v2 namespace',
       );
     });
@@ -124,8 +124,8 @@ void main() {
         expect(kvs.containsKey(key), isFalse, reason: key);
       }
       expect(
-        kvs['__pleya_pref_v2/global/subtitle_font_size'],
-        enc('int', 44),
+        (json.decode(kvs['__pleya_pref_v2/global/subtitle_font_size']!) as Map)['value'],
+        44,
         reason: 'the pass really ran: an eligible key did reach the store',
       );
     });
@@ -145,8 +145,8 @@ void main() {
 
       expect(kvs.keys.where((k) => k.startsWith('pleya_share_')), isEmpty);
       expect(
-        kvs['__pleya_pref_v2/global/subtitle_font_size'],
-        enc('int', 44),
+        (json.decode(kvs['__pleya_pref_v2/global/subtitle_font_size']!) as Map)['value'],
+        44,
         reason: 'the pass really ran: an eligible key did reach the store',
       );
     });

@@ -18,7 +18,7 @@ import 'preferences/fake_transport.dart';
 // The native KVS plugin is faked with an in-memory store behind a mock method
 // channel. These tests exercise the pure Dart logic: eligibility filtering,
 // typed encode/decode, remote-apply (with no echo back to KVS), the enable
-// merge order, and stale-key pruning in pushAll.
+// merge order, and that pushAll prunes nothing under v2.
 
 String enc(String type, Object? value) => json.encode({'type': type, 'value': value});
 
@@ -227,11 +227,11 @@ void main() {
     expect(valueOf(kvs[g('seek_time_small')]), 8);
   });
 
-  test('pushAll removes KVS keys that no longer exist locally, keeps meta and foreign keys', () async {
+  test('pushAll leaves keys this device lacks in the store, and keeps meta and foreign keys', () async {
     final settings = await SettingsService.getInstance();
     await settings.prefs.setInt('seek_time_small', 8);
-    // A registered preference that is genuinely gone locally: this is what the
-    // prune is for.
+    // A registered preference this device does not hold. Since DEC-131 a
+    // removal travels as a tombstone, so absence here means "not seen yet".
     kvs[g('theme_mode')] = enc('string', 'dark');
     // A key nobody registered. It might belong to another feature or a newer
     // Pleya; deleting it because we do not recognise it is not the coordinator's
@@ -244,7 +244,11 @@ void main() {
     await svc.pushAll();
     await pumpEventQueue();
 
-    expect(kvs.containsKey(g('theme_mode')), isFalse);
+    expect(
+      kvs.containsKey(g('theme_mode')),
+      isTrue,
+      reason: 'an import is local-first, and nothing is pruned since DEC-131',
+    );
     expect(kvs.containsKey('stale_key'), isTrue);
     expect(valueOf(kvs[g('seek_time_small')]), 8);
     expect(kvs.containsKey(PreferenceSyncCoordinator.v2MetaVersionKey), isTrue);
@@ -351,6 +355,10 @@ void main() {
     expect(stamp, isNotNull, reason: 'an unstamped value would lose to any stamped remote record');
     expect(stamp!.updatedAt, greaterThan(PreferenceSyncCoordinator.legacyRevisionAt));
     expect(valueOf(fake.store[g('subtitle_font_size')]), 47, reason: 'the boot reconcile carries it');
+    expect(fake.writes, contains(g('subtitle_font_size')));
+    final sent = json.decode(fake.store[g('subtitle_font_size')]!) as Map;
+    expect(sent['t'], stamp.updatedAt, reason: 'the held-back send goes out with its stamp');
+    expect(sent['d'], stamp.deviceId);
   });
 }
 

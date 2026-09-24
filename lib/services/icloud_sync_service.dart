@@ -28,9 +28,9 @@ import 'storage_service.dart';
 ///   ever propagated a delete;
 /// - syncability is decided by an explicit registry instead of an
 ///   allow-by-default denylist, so a new preference no longer opts itself in;
-/// - a value that outgrows the transport cap is skipped *and* held back from
-///   the prune. It used to be deleted from the store, because the prune worked
-///   on absence from the push set;
+/// - a value that outgrows the transport cap is skipped, and the older copy
+///   stays in the store. It used to be deleted, because the prune worked on
+///   absence from the push set; under v2 there is no prune (DEC-131);
 /// - the write is awaited, so a transport failure lands in the status instead
 ///   of an unawaited future.
 ///

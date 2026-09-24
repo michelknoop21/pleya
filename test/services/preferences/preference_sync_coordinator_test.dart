@@ -54,8 +54,7 @@ void main() {
 
       await coordinator.apply(const PreferenceMutation.remove('subtitle_font_size'));
 
-      expect(transport.removes, contains(cloudKey));
-      expect(transport.store.containsKey(cloudKey), isFalse);
+      expect(json.decode(transport.store[cloudKey]!)['x'], isTrue);
     });
 
     test('a removal of a device-local key is not sent anywhere', () async {
@@ -69,7 +68,7 @@ void main() {
       final coordinator = await build();
       await coordinator.apply(const PreferenceMutation.remove('theme_mode', source: PreferenceSource.reset));
 
-      expect(transport.removes, contains(coordinator.cloudKeyFor('theme_mode')));
+      expect(json.decode(transport.store[coordinator.cloudKeyFor('theme_mode')!]!)['x'], isTrue);
     });
   });
 
@@ -233,14 +232,15 @@ void main() {
       expect(transport.store['volume'], enc('double', 50.0), reason: 'frozen v1: left alone, not deleted');
     });
 
-    test('a key that is genuinely gone locally is still pruned', () async {
+    test('a record this device never had is adopted on the next pull, not deleted', () async {
       final coordinator = await build();
       final cloudKey = coordinator.cloudKeyFor('theme_mode')!;
       transport.store[cloudKey] = enc('string', 'dark');
 
       await coordinator.reconcile();
 
-      expect(transport.removes, contains(cloudKey), reason: 'absent locally means removed');
+      expect(transport.removes, isEmpty, reason: 'absent locally means not seen yet, since DEC-131');
+      expect(transport.store.containsKey(cloudKey), isTrue);
     });
 
     test('a key the registry does not allow is neither pushed nor left behind locally', () async {

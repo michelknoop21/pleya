@@ -202,14 +202,15 @@ void main() {
       expect(transport.store.containsKey(cloudKey), isTrue);
     });
 
-    test('a key that is genuinely gone locally is still pruned', () async {
+    test('a record this device never had is adopted on the next pull, not deleted', () async {
       final coordinator = await build();
       final cloudKey = coordinator.cloudKeyFor('subtitle_font_size')!;
       transport.store[cloudKey] = json.encode({'type': 'int', 'value': 44});
 
       await coordinator.reconcile();
 
-      expect(transport.removes, contains(cloudKey));
+      expect(transport.removes, isEmpty, reason: 'absent locally means not seen yet, since DEC-131');
+      expect(transport.store.containsKey(cloudKey), isTrue);
     });
   });
 }
