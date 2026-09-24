@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart' show Value;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../database/app_database.dart';
 import '../../media/media_item.dart';
@@ -256,7 +257,7 @@ class TautulliHistoryImporter {
       );
       return outcome;
     } catch (e, s) {
-      appLogger.w('TautulliHistoryImporter: sync failed (${_errorCategory(e)})', stackTrace: s);
+      appLogger.w('TautulliHistoryImporter: sync failed (${errorCategory(e)})', stackTrace: s);
       return const TautulliImportOutcome(partial: true);
     } finally {
       _inFlight.remove(_lockKey);
@@ -830,7 +831,7 @@ class TautulliHistoryImporter {
 
   /// Whether an error is worth retrying rather than recording a verdict on.
   ///
-  /// String matching, like [_errorCategory] next to it, because the clients
+  /// String matching, like [errorCategory] next to it, because the clients
   /// throw a mix of `SocketException`, `TimeoutException`, `http.ClientException`
   /// and their own exception types, and the alternative is importing four
   /// packages here to catch what one substring already tells us.
@@ -896,7 +897,10 @@ class TautulliHistoryImporter {
 
   static String _shortIdentifier(String value) => value.length <= 6 ? value : '${value.substring(0, 6)}…';
 
-  static String _errorCategory(Object e) {
+  /// The log label for a failed sync. Never the message itself, which may
+  /// carry a URL.
+  @visibleForTesting
+  static String errorCategory(Object e) {
     if (e is TautulliException && e.isAuth) return 'isAuth';
     final text = e.toString().toLowerCase();
     if (text.contains('unauthorized') || text.contains('forbidden')) return 'isAuth';

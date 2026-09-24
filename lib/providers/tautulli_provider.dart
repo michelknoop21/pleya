@@ -135,9 +135,10 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// Which registered server the paired Tautulli watches, or null when that is
   /// not decidable. Same rule as the artwork client in the profile session.
   ServerId? get monitoredServerId {
-    if (_session == null) return null;
+    final session = _session;
+    if (session == null) return null;
     return tautulliMonitoredServer(
-      machineIdentifier: _session?.machineIdentifier,
+      machineIdentifier: session.machineIdentifier,
       serverIds: _serverIds(),
       isOwnerOrAdmin: _isOwnerOrAdmin,
     );

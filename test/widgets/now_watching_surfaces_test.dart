@@ -222,6 +222,14 @@ void main() {
       expect(find.textContaining('user67'), findsNothing);
     });
 
+    testWidgets('a provider that cannot name the monitored server draws no line', (tester) async {
+      final provider = await _providerWith(NowWatching(sessions: [_session(ratingKey: '57752')]));
+      addTearDown(provider.dispose);
+      expect(provider.monitoredServerId, isNull);
+      await _pump(tester, provider, NowWatchingLine(ratingKey: '57752', serverId: ServerId('server-a')));
+      expect(find.byType(WatcherAvatar), findsNothing);
+    });
+
     testWidgets('a title on a server Tautulli does not monitor gets no line', (tester) async {
       final provider = await _providerWith(
         NowWatching(sessions: [_session(ratingKey: '57752')]),

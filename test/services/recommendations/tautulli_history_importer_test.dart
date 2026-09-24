@@ -11,6 +11,7 @@ import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/models/tautulli/tautulli_models.dart';
 import 'package:pleya/services/recommendations/tautulli_history_importer.dart';
 import 'package:pleya/services/recommendations/tautulli_import_binding.dart';
+import 'package:pleya/services/tautulli/tautulli_client.dart';
 import 'package:pleya/services/tautulli/tautulli_import_access.dart';
 
 const _profile = 'profile-a';
@@ -1029,6 +1030,17 @@ void main() {
       await job.sync();
       // Two pages of twenty rows: two lookups, not forty.
       expect(counting.localLookups, 2);
+    });
+  });
+
+  group('the log label for a failed sync', () {
+    test('a typed auth failure is an auth failure whatever its message says', () {
+      expect(TautulliHistoryImporter.errorCategory(TautulliException.http(401)), 'isAuth');
+      expect(TautulliHistoryImporter.errorCategory(const TautulliException('session expired', isAuth: true)), 'isAuth');
+    });
+
+    test('a message that merely mentions an api key is no longer read as auth', () {
+      expect(TautulliHistoryImporter.errorCategory(Exception('bad apikey parameter format')), 'isMalformed');
     });
   });
 }
