@@ -516,7 +516,8 @@ class PreferenceSyncPolicyRegistry {
     'keyboard_hotkeys': _globalPref,
     // The chosen version index depends on what the server offers this device.
     'media_version_preferences': _deviceLocalPref,
-    // Both name a server id; a portable-server filter is a follow-up, not a fix.
+    // Both name a server id; a portable-server filter is a follow-up, not a fix
+    // (row F2 in docs/icloud-sync-repair-register.md).
     'unified_source_preferences': _deviceLocalPref,
     'preferred_unified_server': _deviceLocalPref,
     // GPU-bound, like global_shader_preset.

@@ -2973,11 +2973,15 @@ leest de engine de store (die wint alles wat hij heeft) en duwt alleen wat het n
 met stempel 0. Niets lokaal wordt gewist. Een `initialSync`-notificatie wordt gevolgd door een
 reconcile onder de nieuwe trigger `ReconcileTrigger.initialSync`. (9)
 `pleya_profile_language_preferences` en `track_language_preferences` zijn `global` met de
-merge-familie `profileKeyedMap`: draagbaar is een mapsleutel waarvan de scope een uuid is (de Plex
-Home-uuid uit `StorageService.activeUserScope()`); `local-<uuid>` en leeg blijven thuis. Inkomend
-behoudt het toestel niet-draagbare entries en entries van scopes die de zender niet kent; voor
-gedeelde scopes vervangt de zender de set; bij een entry aan beide kanten met `updatedAt` wint de
-hoogste. (10) De registratieguard gebruikt `Pref(?:<[^()]*>)?\(\s*'`. Nieuw geregistreerd:
+merge-familie `profileKeyedMap`: draagbaar is een mapsleutel waarvan de scope het volledige Plex
+Home-profiel-id `plex-home-plex.<accountUuid>-<homeUuid>` is, met twee uuids van 16 hex-tekens (wat
+`StorageService.activeUserScope()` in de praktijk teruggeeft, omdat `parsePlexHomeProfileId` alleen
+een home-uuid van 36 tekens herkent); `local-<uuid>`, leeg en een accountverbinding die terugviel op
+de client-id van het toestel blijven thuis. Samenvoegen gaat per entry op tijdstempel `u`, in beide
+richtingen als vereniging; een verwijdering reist als tombstone (een lege keuze met alleen `u`) die
+na 180 dagen vervalt. Een taalvoorkeur die onder de vorige build is geïmporteerd, landde op de dode
+sleutel `user_<scope>_pleya_profile_language_preferences` en is weg tot ze opnieuw wordt
+geïmporteerd. (10) De registratieguard gebruikt `Pref(?:<[^()]*>)?\(\s*'`. Nieuw geregistreerd:
 `keyboard_shortcuts` en `keyboard_hotkeys` als global; `media_version_preferences`,
 `unified_source_preferences`, `preferred_unified_server` en `custom_shader_presets` als
 device-local; `tv_live_tv_capability` als runtime cache. `live_tv_default_favorites` wordt global.
@@ -2993,8 +2997,8 @@ volgt over toestellen heen. Wat niet is gebouwd: profielscope voor Jellyfin- en 
 Server-profielen (`local-<uuid>` is per toestel; `hidden_libraries`, `library_order`, `library_*`
 en de taalvoorkeur reizen voor die profielen niet), een per-account-scheiding van lokale
 voorkeuren, een serverId-gefilterde familie voor `unified_source_preferences` en
-`preferred_unified_server`. Bekende grenzen: verwijdert een toestel de laatste entry van een scope
-in een `profileKeyedMap`, dan reist die ene verwijdering niet; het lokale revisieblob groeit tot
+`preferred_unified_server`. Bekende grenzen: een toestel dat langer dan 180 dagen offline was, kan
+een gewiste serie-uitzondering terugbrengen omdat de tombstone dan vervallen is; het lokale revisieblob groeit tot
 één entry per ooit geziene sleutel (op het zware account uit `kvs_footprint_test` 654 sleutels,
 circa 40 KB); een tombstone wordt nooit opgeruimd en een reset schrijft er een voor elke resetbare
 voorkeur, ook een die nooit gezet was, dus het aantal sleutels in de store groeit monotoon met elke

@@ -208,20 +208,30 @@ gemaakt heeft. Hetzelfde geldt voor de export: `isUserScopedBaseKey` gebruikt de
 ook een import landde tot nu toe op de dode sleutel.
 
 De familie kent de vorm `{profileScope}` of `{profileScope}|{rest}` van de mapsleutels.
-Draagbaarheid van een scope: `StorageService.activeUserScope()` is de Plex Home-uuid voor een Plex
-Home-profiel en anders het volledige profiel-id, en dat is `local-<uuid>` (per toestel gegenereerd)
-of leeg (uitgelogd). Draagbaar is dus precies "ziet eruit als een uuid". Inkomend behoudt het toestel
-zijn niet-draagbare entries en de entries van scopes die de zender niet kent; voor scopes die beide
-kennen vervangt de zender de set (een gewiste serie-uitzondering bereikt zo het andere toestel).
-Uitgaand vertrekken alleen draagbare entries, aangevuld met de entries in de store van scopes die
-dit toestel niet heeft. Hebben beide kanten een entry onder dezelfde sleutel en dragen beide een
-`updatedAt`, dan wint de hoogste; `PleyaProfileLanguagePreferences` stempelt dat veld al bij elke
-schrijfactie, waardoor de profielvoorkeur per entry deterministisch is en niet op aankomstvolgorde.
+Draagbaarheid van een scope: de scope is `StorageService.activeUserScope()`. De eerste versie van
+deze paragraaf nam aan dat dat voor een Plex Home-profiel de Plex Home-uuid is. Op echte data klopt
+dat niet: Plex geeft account- en home-uuids van 16 hex-tekens
+(`test/fixtures/plex_detail/home_users.json`), `parsePlexHomeProfileId` herkent alleen een
+home-uuid van 36 tekens, en dus is de scope het volledige profiel-id
+`plex-home-plex.<accountUuid>-<homeUuid>` (zo ook aangetroffen in een echte macOS-container). Dat id
+is op elk toestel van het account gelijk, behalve wanneer de accountverbinding terugviel op de
+client-id van het toestel (een v4-uuid met streepjes) omdat de Plex-account-uuid onbekend was.
+Draagbaar is dus precies `^plex-home-plex\.[0-9a-f]{16}-[0-9a-f]{16}$`; `local-<uuid>`, leeg en de
+client-id-terugval blijven thuis. `parsePlexHomeProfileId` blijft ongewijzigd: aanpassen verandert
+`activeUserScope()` en laat elke `user_<scope>_`-sleutel verweesd achter. De mismatch staat als
+aparte bevinding in het herstelregister.
 
-Bekende grens, vastgelegd in DEC-131: verwijdert een toestel de láátste entry van een scope, dan
-verdwijnt die scope uit zijn lokale map en ziet de ontvanger de store-entries als "scope die de
-zender niet kent"; die ene verwijdering reist niet. Voor de profielvoorkeur (één entry per profiel,
-nooit gewist) speelt dit niet; voor serie-uitzonderingen alleen bij de laatste van een profiel.
+Samenvoegen gaat per entry, niet per scope. Beide richtingen nemen de vereniging van de twee maps
+en beslechten een sleutel die aan beide kanten staat op de tijdstempel van de entry (`u`, zoals
+`TrackLanguageChoice` en `PleyaProfileLanguagePreferences` hem schrijven; `updatedAt` wordt ook
+gelezen). Bij gelijke tijdstempel wint de grootste encodering, zodat twee toestellen gelijk
+uitkomen. Een verwijdering reist als tombstone: `TrackPreferenceStore` schrijft voor een draagbare
+scope een lege keuze met alleen `u` in plaats van de sleutel te wissen, en de lezers slaan lege
+keuzes al over. Een tombstone vervalt na 180 dagen. Inkomend negeert het toestel de niet-draagbare
+entries van de zender en houdt het zijn eigen; uitgaand vertrekken alleen draagbare entries. Een
+tombstone op het hele record houdt de niet-draagbare entries. Zo overleeft bij de eerste reconcile
+na de upgrade elke nooit verzonden serie-uitzondering van beide toestellen, en verdwijnt de eerdere
+grens dat het wissen van de laatste entry van een scope niet reisde.
 
 ### B11: de acht stille sleutels en de guard
 

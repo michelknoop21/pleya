@@ -113,51 +113,68 @@ PreferenceMergeFamily buildServerScopedListFamily(IsServerIdPortable isServerIdP
 
 /// Maps keyed by profile scope, where a device speaks for the profiles it has.
 ///
-/// Inbound keeps this device's non-portable entries and the entries of scopes
-/// the sender does not know; for a scope both know, the sender's set replaces
-/// this device's, so a removed series override travels. Outbound sends the
-/// portable entries and carries the store's entries for scopes this device
-/// lacks. An entry present on both sides is settled by its timestamp when both
-/// carry one, otherwise the side doing the merge keeps its own.
+/// Every entry stands on its own: both directions take the union of the two
+/// maps and settle a key present on both sides by the entry's timestamp, so a
+/// series override one device set never erases another's for the same
+/// profile. A removal travels as an entry too: the store writes a tombstone
+/// (an entry with a timestamp and nothing else, which its readers already
+/// skip) in place of deleting the key, and the newer timestamp wins as usual.
+/// Tombstones expire after [profileKeyedMapTombstoneLifetime].
 ///
-/// Known limit (DEC-131): a device that removes the last entry of a scope no
-/// longer "knows" that scope, so that final removal does not travel.
+/// Only portable scopes travel. Inbound keeps this device's non-portable
+/// entries and ignores the sender's; outbound leaves them out and sends null
+/// when nothing portable is left. A whole-record tombstone keeps the
+/// non-portable entries too, for the same reason.
 PreferenceMergeFamily buildProfileKeyedMapFamily() => PreferenceMergeFamily(
   name: PreferenceMergeFamilies.profileKeyedMap,
   inbound: (local, remote) {
     final theirs = decodeStringMap(remote);
     if (theirs == null) return local;
-    final mine = decodeStringMap(local) ?? const <String, dynamic>{};
-    final theirScopes = theirs.keys.map(profileScopeOfMapKey).toSet();
-    final merged = <String, dynamic>{
-      for (final e in mine.entries)
-        if (!PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(e.key)) ||
-            !theirScopes.contains(profileScopeOfMapKey(e.key)))
-          e.key: e.value,
-      for (final e in theirs.entries)
-        if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(e.key)))
-          e.key: _newerEntry(e.value, mine[e.key]),
-    };
-    return json.encode(merged);
+    final merged = decodeStringMap(local) ?? <String, dynamic>{};
+    for (final e in theirs.entries) {
+      if (!_isPortableMapKey(e.key)) continue;
+      merged[e.key] = merged.containsKey(e.key) ? _newerEntry(e.value, merged[e.key]) : e.value;
+    }
+    return json.encode(merged..removeWhere((_, v) => _isExpiredTombstone(v)));
   },
   outbound: (local, remote) {
     final mine = decodeStringMap(local);
     if (mine == null) return local;
-    final myScopes = mine.keys.map(profileScopeOfMapKey).toSet();
-    final theirs = decodeStringMap(remote) ?? const <String, dynamic>{};
     final out = <String, dynamic>{
       for (final e in mine.entries)
-        if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(e.key)))
-          e.key: _newerEntry(e.value, theirs[e.key]),
-      for (final e in theirs.entries)
-        if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(e.key)) &&
-            !myScopes.contains(profileScopeOfMapKey(e.key)))
-          e.key: e.value,
+        if (_isPortableMapKey(e.key)) e.key: e.value,
     };
     if (out.isEmpty) return null;
-    return json.encode(out);
+    for (final e in (decodeStringMap(remote) ?? const <String, dynamic>{}).entries) {
+      if (!_isPortableMapKey(e.key)) continue;
+      out[e.key] = out.containsKey(e.key) ? _newerEntry(out[e.key], e.value) : e.value;
+    }
+    out.removeWhere((_, v) => _isExpiredTombstone(v));
+    return out.isEmpty ? null : json.encode(out);
+  },
+  removed: (local) {
+    final keep = <String, dynamic>{
+      for (final e in (decodeStringMap(local) ?? const <String, dynamic>{}).entries)
+        if (!_isPortableMapKey(e.key)) e.key: e.value,
+    };
+    return keep.isEmpty ? null : json.encode(keep);
   },
 );
+
+bool _isPortableMapKey(String key) => PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(key));
+
+/// How long a [buildProfileKeyedMapFamily] tombstone is kept. Past this, a
+/// device that stayed offline the whole time can bring the removed entry back;
+/// the bound is what keeps a map of removals from growing into the store's
+/// 100 KB ceiling.
+const Duration profileKeyedMapTombstoneLifetime = Duration(days: 180);
+
+/// A tombstone is an entry holding its timestamp and nothing else.
+bool _isExpiredTombstone(Object? entry) {
+  if (entry is! Map || entry.length != 1) return false;
+  final u = entry['u'];
+  return u is num && u < DateTime.now().millisecondsSinceEpoch - profileKeyedMapTombstoneLifetime.inMilliseconds;
+}
 
 /// The `{profileScope}` half of a map key: everything before the first `|`,
 /// or the whole key when there is none.
@@ -166,14 +183,19 @@ String profileScopeOfMapKey(String key) {
   return pipe < 0 ? key : key.substring(0, pipe);
 }
 
-/// Prefer [preferred] unless both are maps carrying a timestamp and [other]'s
-/// is higher. The stores write it as `u` (`TrackLanguageChoice.toJson`,
-/// `PleyaProfileLanguagePreferences.toJson`); `updatedAt` is accepted too.
+/// The newer of two versions of one entry, by timestamp. The stores write it
+/// as `u` (`TrackLanguageChoice.toJson`, `PleyaProfileLanguagePreferences.toJson`);
+/// `updatedAt` is accepted too. Equal timestamps fall to the larger encoding,
+/// so two devices settle a tie the same way. Without a timestamp on both
+/// sides, [preferred] stays.
 Object? _newerEntry(Object? preferred, Object? other) {
   if (preferred is Map && other is Map) {
     final a = preferred['u'] ?? preferred['updatedAt'];
     final b = other['u'] ?? other['updatedAt'];
-    if (a is num && b is num && b > a) return other;
+    if (a is num && b is num) {
+      if (a != b) return b > a ? other : preferred;
+      return json.encode(other).compareTo(json.encode(preferred)) > 0 ? other : preferred;
+    }
   }
   return preferred;
 }

@@ -27,6 +27,8 @@ Plan: `docs/superpowers/plans/2026-09-24-icloud-sync-repair.md`.
 | A2 | reconcile na de initiële download | OPEN | | |
 | A3 | sleutelaantal gemeten | OPEN | | |
 | A4 | revisieblob begrensd | DEFERRED | | DEC-131, Consequences |
+| F1 | `parsePlexHomeProfileId` (`lib/profiles/profile.dart`) herkent alleen een home-uuid van 36 tekens; Plex geeft 16 hex (`test/fixtures/plex_detail/home_users.json`), dus `activeUserScope()` is het volledige profiel-id. Vervolgbevinding van de B10-review, raakt Plex Home-detectie elders; niet in deze reparatie aanpassen, want dat laat elke `user_<scope>_`-sleutel verweesd achter | OPEN | | review Task 6 |
+| F2 | serverId-gefilterde familie voor `unified_source_preferences` en `preferred_unified_server`; tot dan device-local | DEFERRED | | DEC-131, Consequences |
 
 ## Hardwareronde
 

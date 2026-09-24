@@ -8,6 +8,8 @@ import '../media/track_language_choice.dart';
 import '../media/unified/identity_evidence.dart';
 import '../utils/app_logger.dart';
 import 'pleya_share/pleya_share_device_name.dart';
+import 'preferences/preference_merge_strategies.dart';
+import 'preferences/preference_sync_scope.dart';
 import 'pleya_profile_language_preference_store.dart';
 import 'settings_service.dart';
 import 'storage_service.dart';
@@ -216,9 +218,11 @@ class TrackPreferenceStore {
         final scope = await _scope();
         final stored = settings.read(SettingsService.trackLanguagePreferences);
         final next = Map<String, TrackLanguageChoice>.from(stored);
+        final now = DateTime.now().millisecondsSinceEpoch;
         var removed = false;
         for (final key in _candidateKeys(metadata)) {
-          if (next.remove('$scope|$key') != null) removed = true;
+          if (next['$scope|$key']?.isEmpty == false) removed = true;
+          _remove(next, '$scope|$key', now);
         }
         if (!removed) return;
         await settings.write(SettingsService.trackLanguagePreferences, next);
@@ -242,8 +246,9 @@ class TrackPreferenceStore {
         final settings = await SettingsService.getInstance();
         final scope = await _scope();
         final stored = settings.read(SettingsService.trackLanguagePreferences);
-        if (!stored.containsKey('$scope|$seriesKey')) return;
-        final next = Map<String, TrackLanguageChoice>.from(stored)..remove('$scope|$seriesKey');
+        if (stored['$scope|$seriesKey']?.isEmpty != false) return;
+        final next = Map<String, TrackLanguageChoice>.from(stored);
+        _remove(next, '$scope|$seriesKey', DateTime.now().millisecondsSinceEpoch);
         await settings.write(SettingsService.trackLanguagePreferences, next);
       } catch (e) {
         appLogger.w('Failed to clear a remembered track language', error: e);
@@ -312,10 +317,12 @@ class TrackPreferenceStore {
 
         final next = Map<String, TrackLanguageChoice>.from(stored);
         for (final candidate in candidates) {
-          if ('$scope|$candidate' != key) next.remove('$scope|$candidate');
+          if ('$scope|$candidate' != key && next.containsKey('$scope|$candidate')) {
+            _remove(next, '$scope|$candidate', now);
+          }
         }
         if (updated.isEmpty) {
-          next.remove(key);
+          _remove(next, key, now);
         } else {
           next[key] = updated;
         }
@@ -326,10 +333,27 @@ class TrackPreferenceStore {
     });
   }
 
-  /// Drops the least recently written entries once the map exceeds [maxEntries].
+  /// Remove the entry under [key]. For a scope that syncs, the removal has to
+  /// reach the other devices, so it becomes a tombstone: an empty choice
+  /// stamped [now], which every reader here already skips and the
+  /// `profileKeyedMap` merge settles by timestamp like any other entry
+  /// (DEC-131). A scope that never leaves this device just loses the key.
+  static void _remove(Map<String, TrackLanguageChoice> entries, String key, int now) {
+    if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(key))) {
+      entries[key] = TrackLanguageChoice(updatedAt: now);
+    } else {
+      entries.remove(key);
+    }
+  }
+
+  /// Drops the least recently written live entries once they exceed
+  /// [maxEntries]. Tombstones do not count towards the cap, so a burst of
+  /// removals cannot push out the choices still in use; the merge family
+  /// expires them (`profileKeyedMapTombstoneLifetime`).
   static Map<String, TrackLanguageChoice> _capped(Map<String, TrackLanguageChoice> entries) {
-    if (entries.length <= maxEntries) return entries;
-    final byAge = entries.entries.toList()..sort((a, b) => b.value.updatedAt.compareTo(a.value.updatedAt));
-    return Map.fromEntries(byAge.take(maxEntries));
+    final live = entries.entries.where((e) => !e.value.isEmpty).toList();
+    if (live.length <= maxEntries) return entries;
+    live.sort((a, b) => b.value.updatedAt.compareTo(a.value.updatedAt));
+    return Map.fromEntries([...live.take(maxEntries), ...entries.entries.where((e) => e.value.isEmpty)]);
   }
 }

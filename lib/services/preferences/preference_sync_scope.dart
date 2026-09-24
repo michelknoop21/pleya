@@ -103,15 +103,24 @@ class PreferenceSyncScope {
   /// Whether a `{profileScope}` inside a map key names the same profile on
   /// another device.
   ///
-  /// `StorageService.activeUserScope()` is the Plex Home uuid for a Plex Home
-  /// profile and the full profile id otherwise, and every other profile kind
-  /// is minted as `local-<uuid>` on the device that created it
-  /// (`add_jellyfin_screen.dart`, `add_pleya_server_screen.dart`,
-  /// `add_local_profile_screen.dart`). Empty is signed out. So "looks like a
-  /// uuid" is the whole test, and it fails closed.
-  static bool isPortableProfileScope(String scope) => _uuid.hasMatch(scope);
+  /// The scope is `StorageService.activeUserScope()`. For a Plex Home profile
+  /// that is, in practice, the full profile id
+  /// `plex-home-plex.<accountUuid>-<homeUserUuid>`: Plex issues both uuids as
+  /// 16 hex characters (`test/fixtures/plex_detail/home_users.json`), and
+  /// `parsePlexHomeProfileId` only recognises a 36-character home uuid, so it
+  /// never strips the id down (a separate finding in the repair register).
+  /// That id is the same on every device of the account, unless the account
+  /// connection fell back to this device's client identifier (a v4 uuid with
+  /// hyphens; `connection_bootstrap.dart`, `auth_screen.dart`,
+  /// `add_plex_account_screen.dart`) because the Plex account uuid was
+  /// unknown. Every other profile kind is minted as `local-<uuid>` on the
+  /// device that created it (`add_jellyfin_screen.dart`,
+  /// `add_pleya_server_screen.dart`, `add_local_profile_screen.dart`), and
+  /// empty is signed out. So only the real Plex Home shape travels, and
+  /// anything else fails closed.
+  static bool isPortableProfileScope(String scope) => _plexHomeScope.hasMatch(scope);
 
-  static final RegExp _uuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+  static final RegExp _plexHomeScope = RegExp(r'^plex-home-plex\.[0-9a-fA-F]{16}-[0-9a-fA-F]{16}$');
 
   /// Inverse of [cloudKey]: the scope a v2 record belongs to and the base key
   /// inside it, or null when the key is not one of ours or is malformed.
