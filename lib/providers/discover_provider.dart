@@ -21,16 +21,12 @@ import '../utils/error_message_utils.dart';
 import '../utils/global_key_utils.dart';
 import '../utils/media_hub_ordering.dart';
 import '../utils/watch_state_notifier.dart';
+import 'discover/seed_rows_loader.dart';
 import 'hidden_libraries_provider.dart';
 import 'libraries_provider.dart';
 import 'multi_server_provider.dart';
 
 enum DiscoverLoadState { initial, loading, loaded, error }
-
-/// A seed and how it was earned. [completed] picks the title: a finished
-/// title reads "Because you watched X", one still in progress "Because you're
-/// watching X".
-typedef _Seed = ({MediaItem item, bool completed});
 
 /// Owns the Discover tab's data: the Continue Watching row and the home hub
 /// list, including the refresh policy that used to live in the screen —
@@ -86,6 +82,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// bound; when present it supplies "Top Picks"/"Because you like…" rows,
   /// built off the counted aggregation paths so the fetch contract holds.
   final RecommendationService? recommendations;
+
+  late final SeedRowsLoader _seedRowsLoader = SeedRowsLoader(
+    recommendations: recommendations,
+    clientFor: _multiServer.getClientForServer,
+  );
 
   StreamSubscription<WatchStateEvent>? _watchStateSubscription;
 
@@ -497,12 +498,10 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     }
   }
 
-  /// Build up to three "Because you watched X" rows, each paired with its
-  /// related hub on the owning server. Seeds come from this profile's own
-  /// interaction log; when that yields nothing, from what the servers report
-  /// as recently watched. Fully fault-tolerant: any failure or empty step
-  /// simply leaves rows out (or keeps the previous set). Recomputed on full
-  /// loads only, entirely off the counted aggregation paths.
+  /// Build up to three "Because you watched X" rows via [SeedRowsLoader].
+  /// Fully fault-tolerant: any failure or empty step simply leaves rows out
+  /// (or keeps the previous set). Recomputed on full loads only, entirely off
+  /// the counted aggregation paths.
   Future<void> _loadBecauseYouWatched() async {
     try {
       // Only sources that can answer with related titles may seed; a seed on
@@ -519,16 +518,9 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
           for (final item in hub.items) item.globalKey,
       };
 
-      var seeds = await _seedsFromLog(clients);
-      if (seeds.isEmpty) seeds = await _seedsFromServers(clients);
-      final rows = seeds.isEmpty
-          ? const <MediaHub?>[]
-          : await Future.wait([
-              for (final seed in seeds.take(3)) _relatedRowForSeed(seed, alreadyShown).catchError((Object _) => null),
-            ]);
+      final newSeedHubs = (await _seedRowsLoader.load(clients: clients, alreadyShown: alreadyShown)).rows;
       if (isDisposed || generation != _loadGeneration) return;
 
-      final newSeedHubs = [for (final row in rows) ?row];
       // Assign even when empty so cleared history / changed watch state drops
       // stale "Because you watched…" rows instead of stranding them.
       if (_seedHubs.isEmpty && newSeedHubs.isEmpty) return;
@@ -538,77 +530,6 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       // Transient failure: keep whatever rows were already shown.
       appLogger.w('DiscoverProvider: because-you-watched rows failed (keeping previous)', error: e);
     }
-  }
-
-  /// Seeds from this profile's own interaction log, newest first. A key that
-  /// belongs to no eligible client is skipped without a fetch.
-  Future<List<_Seed>> _seedsFromLog(List<MediaServerClient> clients) async {
-    final service = recommendations;
-    if (service == null) return const [];
-    final seeds = await service.recentSeeds(limit: 6);
-    final out = <_Seed>[];
-    for (final seed in seeds) {
-      final client = clients.where((c) => seed.globalKey.startsWith('${c.serverId}:')).firstOrNull;
-      if (client == null) continue;
-      final itemId = seed.globalKey.substring('${client.serverId}:'.length);
-      final item = await client.fetchItem(itemId).catchError((Object _) => null);
-      if (item == null || item.title == null) continue;
-      out.add((item: item, completed: seed.completed));
-      // Only three rows are built; resolving more costs round trips for nothing.
-      if (out.length >= 3) break;
-    }
-    return out;
-  }
-
-  /// The pre-log path: what each server itself says was watched last. Kept as
-  /// the cold-start fallback so a fresh profile on an old server still gets
-  /// its rows.
-  Future<List<_Seed>> _seedsFromServers(List<MediaServerClient> clients) async {
-    final recents = await Future.wait([
-      for (final client in clients) client.fetchRecentlyWatched(limit: 5).catchError((Object _) => const <MediaItem>[]),
-    ]);
-    // Most-recent-first, then keep up to 3 distinct show/movie seeds so the
-    // rows don't all come from the same binge.
-    final merged = recents.expand((items) => items).toList()
-      ..sort((a, b) => b.recencySortKey.compareTo(a.recencySortKey));
-    final seeds = <_Seed>[];
-    final usedIdentities = <String>{};
-    for (final item in merged) {
-      if (item.serverId == null || item.title == null) continue;
-      final identity = (item.grandparentTitle ?? item.title ?? item.id).toLowerCase();
-      if (!usedIdentities.add(identity)) continue;
-      seeds.add((item: item, completed: true));
-      if (seeds.length >= 3) break;
-    }
-    return seeds;
-  }
-
-  /// Resolves a single seed row from the owning server's related hub, or null
-  /// when nothing usable comes back. Finished titles are left out.
-  Future<MediaHub?> _relatedRowForSeed(_Seed seed, Set<String> alreadyShown) async {
-    final serverId = seed.item.serverId;
-    final seedTitle = seed.item.title;
-    if (serverId == null || seedTitle == null) return null;
-    final client = _multiServer.getClientForServer(ServerId(serverId));
-    if (client == null) return null;
-    final relatedHubs = await client.fetchRelatedHubs(seed.item.id);
-    for (final hub in relatedHubs) {
-      final items = hub.items
-          .where(
-            (item) =>
-                item.globalKey != seed.item.globalKey && !item.isWatched && !alreadyShown.contains(item.globalKey),
-          )
-          .toList();
-      if (items.isEmpty) continue;
-      return hub.copyWith(
-        identifier: 'home.becauseyouwatched',
-        title: seed.completed
-            ? t.discover.becauseYouWatched(title: seedTitle)
-            : t.discover.becauseYouAreWatching(title: seedTitle),
-        items: items,
-      );
-    }
-    return null;
   }
 
   /// Build the on-device personalized rows (Top Picks, Because you like…,
