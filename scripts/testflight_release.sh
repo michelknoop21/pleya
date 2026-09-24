@@ -93,7 +93,8 @@ fi
 # gaat het script alsnog stuk op deze code, dus het gedrag naar buiten blijft
 # gelijk: een mislukte lane commit geen buildnummer.
 set +e
-fastlane "$LANE" "${LANE_OPTS[@]}"
+# `${arr[@]+"${arr[@]}"}`: an empty array is "unbound" under `set -u` on macOS bash 3.2.
+fastlane "$LANE" ${LANE_OPTS[@]+"${LANE_OPTS[@]}"}
 fastlane_status=$?
 set -e
 
