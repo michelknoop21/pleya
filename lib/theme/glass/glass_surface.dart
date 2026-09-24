@@ -7,8 +7,8 @@ import 'glass_settings.dart';
 
 /// A single glass plate. Renders [legacy] (or [child] if [legacy] is null)
 /// when glass is [GlassTier.off]; real `liquid_glass_renderer` glass inside a
-/// [GlassLayer] on [GlassTier.real]; a hand-rolled `BackdropFilter` stack —
-/// never a package widget — on [GlassTier.fake].
+/// [GlassLayer] on [GlassTier.real]; a hand-rolled `BackdropFilter` stack,
+/// never a package widget, on [GlassTier.fake].
 class GlassSurface extends StatelessWidget {
   const GlassSurface({
     super.key,
@@ -41,8 +41,8 @@ class GlassSurface extends StatelessWidget {
     }
 
     // The blur and the saturate/dim matrix are composed into one ImageFilter
-    // and handed to BackdropFilter itself — the Flutter equivalent of CSS's
-    // chained `backdrop-filter: blur() saturate() brightness()` — so they
+    // and handed to BackdropFilter itself: the Flutter equivalent of CSS's
+    // chained `backdrop-filter: blur() saturate() brightness()`: so they
     // apply to the real backdrop (the poster/scene behind the plate), not to
     // [child]. A ColorFiltered *wrapping* [child] (a literal reading of "> ")
     // would desaturate/dim the plate's own text and icons along with it,
@@ -78,7 +78,7 @@ class GlassLayer extends StatelessWidget {
     return LiquidGlassLayer(
       settings: LiquidGlassSettings(
         blur: t.blur,
-        glassColor: Color.fromRGBO(255, 255, 255, t.tint),
+        glassColor: t.tint,
         saturation: t.saturation,
         thickness: 18,
         refractiveIndex: 1.3,
@@ -88,11 +88,18 @@ class GlassLayer extends StatelessWidget {
   }
 }
 
-/// Tint gradient + light rim for the fake-tier plate. Arbitrary [ShapeBorder]s
-/// render without a rim (a rim needs an [OutlinedBorder.side]); every shape
-/// used by this module today (`StadiumBorder`, rounded rects, circles) is one.
+/// A touch of white blended into [GlassTokens.tint] for the plate's top edge,
+/// independent of whether the tint itself is dark (phone/tv, Fixronde 1) or
+/// white (prominent). This, plus the rim, is what still reads as glass rather
+/// than a flat tinted chip.
+const _kTopHighlight = Color(0x1AFFFFFF);
+
+/// Tint fill + top highlight + light rim for the fake-tier plate. Arbitrary
+/// [ShapeBorder]s render without a rim (a rim needs an [OutlinedBorder.side]);
+/// every shape used by this module today (`StadiumBorder`, rounded rects,
+/// circles) is one.
 Decoration _fakeGlassDecoration(ShapeBorder shape, GlassTokens t) {
-  final tint = Color.fromRGBO(255, 255, 255, t.tint);
+  final highlighted = Color.alphaBlend(_kTopHighlight, t.tint);
   final rimmed = shape is OutlinedBorder && t.edge > 0
       ? shape.copyWith(
           side: BorderSide(color: Color.fromRGBO(255, 255, 255, t.edge), width: GlassSurface._edgeWidth),
@@ -103,13 +110,14 @@ Decoration _fakeGlassDecoration(ShapeBorder shape, GlassTokens t) {
     gradient: LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      colors: [tint, tint.withValues(alpha: 0)],
+      colors: [highlighted, t.tint, t.tint],
+      stops: const [0, 0.45, 1],
     ),
   );
 }
 
 /// Standard-luminance (0.213/0.715/0.072) saturation matrix, then its RGB
-/// rows are scaled by [dim] — the fake-tier stand-in for `backdrop-filter:
+/// rows are scaled by [dim]: the fake-tier stand-in for `backdrop-filter:
 /// saturate() brightness()` (De CSS-recepten in `docs/liquid-glass-mockups-2026-09.md`).
 List<double> _saturationDimMatrix(double saturation, double dim) {
   const lumR = 0.213, lumG = 0.715, lumB = 0.072;

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// WCAG contrast ratio between the text glyphs and the background of the
 /// nearest [textFinder] widget, measured on the rendered pixels via
-/// [captureImage] — the same primitive golden tests use, so this runs on the
+/// [captureImage]: the same primitive golden tests use, so this runs on the
 /// test renderer's Skia output (the fake glass tier; see
 /// `docs/liquid-glass-mockups-2026-09.md`, Contrast).
 ///
@@ -16,14 +16,14 @@ import 'package:flutter_test/flutter_test.dart';
 ///
 /// Runs the actual capture inside [WidgetTester.runAsync]: [captureImage] and
 /// [ui.Image.toByteData] settle through a real asynchronous gap that the fake
-/// test clock never fires — outside `runAsync` this hangs until the test
+/// test clock never fires: outside `runAsync` this hangs until the test
 /// harness kills the process, exactly like `flutter_test`'s own
 /// `matchesGoldenFile` does it internally.
 Future<double> minTextContrast(WidgetTester tester, Finder textFinder) async {
   final element = tester.element(textFinder);
   // captureImage renders the nearest RepaintBoundary's paintBounds at a 1:1
   // pixel ratio, in that boundary's local (== global, for a boundary that
-  // sits at the screen origin) logical coordinates — not scaled by
+  // sits at the screen origin) logical coordinates: not scaled by
   // devicePixelRatio. tester.getRect is already in that same coordinate
   // space, so it maps directly onto image pixels with no scaling.
   final rect = tester.getRect(textFinder);
