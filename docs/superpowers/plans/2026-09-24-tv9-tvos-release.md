@@ -129,6 +129,15 @@ op de SHA met DENS1 erin.
    wordt er niet geïnstalleerd.
 4. Installeren op de Apple TV 4K met `devicectl`.
 
+### Wijziging 24 september (Michel, na fase 2)
+
+Geen installatie op de Apple TV met `devicectl`; de archive gaat meteen naar TestFlight
+(`tvos_upload`), en Michel doet de hardware-eindronde uit `docs/tvos-hardware-eindronde.md` op de
+TestFlight-build. Fase 3 punt 4 en de lane `tvos_device_export` vervallen daarmee voor deze
+release; de lane blijft bestaan voor een latere ronde. Fase 5 gaat vóór fase 4: de upload gebeurt
+op de fase-3-SHA, en een bevinding uit fase 4 die code raakt geeft een nieuwe SHA en een nieuwe
+build volgens §7 punt 5.
+
 ## Fase 4: hardware-eindronde (Michel)
 
 Ik schrijf de checklist als `docs/tvos-hardware-eindronde.md`, in de volgorde van testen:
@@ -166,3 +175,12 @@ zichtbaar in TestFlight) en de release-notes onder het gegenereerde blok in `doc
 Er is één geplande stop: fase 4 vraagt Michel met de Apple TV in de hand. Verder stop ik alleen bij
 een echte blocker, zoals een DEC die een eerder besluit tegenspreekt of een CI-storing buiten de
 repo.
+
+## Fase 6: iOS-detail in één scroll (Michel, 24 september)
+
+Film- en seriedetail op iPhone opnieuw, "meer zoals tvOS maar dan mobiel": artwork, titel,
+metadata, Afspelen, bron, beschrijving, cast en de acties in één scrollende pagina, zonder de tabs
+Afleveringen / Vergelijkbaar / Extra's / Details. Northstar 06 (film) is de referentie; northstar 07
+(serie) tekent nog tabs en wijkt daar op Michels aanwijzing van af: seizoenkiezer en afleveringen
+inline onder de beschrijving, vergelijkbaar en extra's als rijen daaronder. Eigen branch, eigen
+PR, iOS-simulator-screenshots als bewijs; los van de tvOS-archive.
