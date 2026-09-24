@@ -388,18 +388,23 @@ class PreferenceSyncCoordinator {
     // call that never answers) is left running in the background while the
     // queue moves on, so it can still land late. Cancel the transport call
     // instead if that ever shows up.
-    final run = _turn.then(
-      (_) => body().timeout(
+    final run = _turn.then((_) {
+      _turnGeneration++;
+      return body().timeout(
         turnTimeout,
         onTimeout: () {
           _setStatus(status.value.raise(PreferenceSyncHealth.error, errorCategory: 'timeout'));
           appLogger.w('preference sync: a sync turn did not finish in time');
         },
-      ),
-    );
+      );
+    });
     _turn = run.catchError((Object _) {});
     return run;
   }
+
+  /// Bumped when a turn starts. A turn that timed out and answers late sees a
+  /// newer number and knows its snapshot is stale.
+  int _turnGeneration = 0;
 
   /// How long one reconcile run or remote event may take before the queue
   /// moves on without it.
@@ -429,7 +434,18 @@ class PreferenceSyncCoordinator {
     // reset only call in through `pushAllIfEnabled`.
     await refreshAvailability();
     if (status.value.availability != PreferenceSyncAvailability.ready) return;
-    final needsBootstrap = triggers.contains(ReconcileTrigger.boot) || triggers.contains(ReconcileTrigger.enabled);
+    if (triggers.contains(ReconcileTrigger.accountChanged)) {
+      // The stamps describe this device's edits against the previous account's
+      // history. Against another account they mean nothing, and keeping them
+      // would push the old account's values into the new one as "newer".
+      // Local values stay; the store is read first and wins what it holds.
+      await clearRevisions();
+      await PreferenceLegacyBootstrap.reset(_prefs);
+    }
+    final needsBootstrap =
+        triggers.contains(ReconcileTrigger.boot) ||
+        triggers.contains(ReconcileTrigger.enabled) ||
+        triggers.contains(ReconcileTrigger.accountChanged);
     final localIsTheSource = triggers.every((t) => t == ReconcileTrigger.imported || t == ReconcileTrigger.reset);
 
     if (needsBootstrap) await bootstrapFromLegacyV1();
@@ -474,7 +490,12 @@ class PreferenceSyncCoordinator {
 
   Future<void> _onRemoteChange(RemotePreferenceChange change) async {
     if (!_enabled()) return;
-    _setStatus(status.value.sawRemoteChange(DateTime.now()));
+    // Every other event is evidence of a live store. An account change is not:
+    // it fires on sign-out too, so it re-checks availability instead of
+    // claiming it, and a send cannot slip through while the check runs.
+    if (change.reason != RemoteChangeReason.accountChanged) {
+      _setStatus(status.value.sawRemoteChange(DateTime.now()));
+    }
     switch (change.reason) {
       case RemoteChangeReason.quotaExceeded:
         appLogger.w('preference sync: transport quota exceeded');
@@ -489,10 +510,17 @@ class PreferenceSyncCoordinator {
           await requestReconcile(ReconcileTrigger.accountChanged);
         }
       case RemoteChangeReason.serverChange:
+        if (change.changedKeys.isNotEmpty) await applyRemoteKeys(change.changedKeys);
       case RemoteChangeReason.initialSync:
         if (change.changedKeys.isNotEmpty) await applyRemoteKeys(change.changedKeys);
+        await requestReconcile(ReconcileTrigger.initialSync);
     }
   }
+
+  /// Drive the remote-event path without a stream. For tests and
+  /// `ICloudSyncService.debugHandleEvent`; not annotated `@visibleForTesting`
+  /// because that caller lives in `lib/`.
+  Future<void> handleRemoteChange(RemotePreferenceChange change) => _onRemoteChange(change);
 
   Future<void> applyAllRemote() async {
     final all = await _transport?.readAll();
@@ -501,7 +529,11 @@ class PreferenceSyncCoordinator {
 
   /// Apply the keys a remote event named. Queued behind a running reconcile.
   Future<void> applyRemoteKeys(List<String> keys) => _exclusively(() async {
+    final generation = _turnGeneration;
     final all = await _transport?.readAll();
+    // Timed out and answered after a newer turn ran: applying this snapshot
+    // now, a key it lacks would remove a value that turn just wrote.
+    if (generation != _turnGeneration) return;
     // null means the read failed. Absence only means "removed remotely" when
     // the read succeeded; inferring removals from a broken channel wipes local
     // settings on a transient error.

@@ -446,6 +446,31 @@ void main() {
       expect(coordinator.scheduler.runCount, 2, reason: 'the next reconcile runs');
     });
 
+    test('an event that timed out and lands late does not undo a newer turn', () async {
+      final gated = _ReadGate(); // the first read snapshots the store, then hangs past the timeout
+      final coordinator = await build(shared: gated);
+      coordinator.turnTimeout = const Duration(milliseconds: 50);
+      coordinator.listen();
+      final theme = coordinator.cloudKeyFor('theme_mode')!;
+
+      // The first event's snapshot has no record for the key: a bare removal.
+      gated.controller.add(RemotePreferenceChange(reason: RemoteChangeReason.serverChange, changedKeys: [theme]));
+      while (gated.reads == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      gated.store[theme] = stamped('string', 'dark', future(), 'appletv');
+      gated.controller.add(RemotePreferenceChange(reason: RemoteChangeReason.serverChange, changedKeys: [theme]));
+      await pumpEventQueue();
+      expect(settings.prefs.getString('theme_mode'), 'dark');
+
+      gated.gate.complete(); // the stale turn finally answers
+      await pumpEventQueue();
+
+      expect(settings.prefs.getString('theme_mode'), 'dark', reason: 'the stale snapshot was dropped');
+    });
+
     test('turns waiting behind a hung one start one at a time', () async {
       final slow = _SlowReads(); // the first read hangs, every later one takes 40 ms
       final coordinator = await build(shared: slow);

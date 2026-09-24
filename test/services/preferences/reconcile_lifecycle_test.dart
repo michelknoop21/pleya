@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/services/base_shared_preferences_service.dart';
+import 'package:pleya/services/preferences/preference_legacy_bootstrap.dart';
 import 'package:pleya/services/preferences/preference_mutation.dart';
 import 'package:pleya/services/preferences/preference_reconcile_scheduler.dart';
 import 'package:pleya/services/preferences/preference_sync_coordinator.dart';
@@ -187,6 +188,100 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(transport.store.containsKey(coordinator.cloudKeyFor('subtitle_font_size')!), isTrue);
+    });
+
+    test('the new account\'s values win, even over a fresher local stamp', () async {
+      final coordinator = await build();
+      coordinator.listen();
+      await settings.prefs.setInt('subtitle_font_size', 44);
+      await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 44));
+      final cloudKey = coordinator.cloudKeyFor('subtitle_font_size')!;
+      // Account B's store: an older stamp from another device.
+      transport.store.clear();
+      transport.store[cloudKey] = json.encode({'type': 'int', 'value': 99, 't': 1000, 'd': 'other-device'});
+
+      transport.controller.add(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(settings.prefs.getInt('subtitle_font_size'), 99, reason: 'the old account\'s stamps mean nothing here');
+      expect(coordinator.localRevision('subtitle_font_size')!.deviceId, 'other-device');
+    });
+
+    test('what the new account lacks is pushed with the oldest stamp, so its first real change wins', () async {
+      final coordinator = await build();
+      coordinator.listen();
+      await settings.prefs.setInt('seek_time_small', 5);
+      await coordinator.apply(const PreferenceMutation.set('seek_time_small', 5));
+      transport.store.clear();
+
+      transport.controller.add(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      final record = json.decode(transport.store[coordinator.cloudKeyFor('seek_time_small')!]!) as Map;
+      expect(record['value'], 5);
+      expect(record['t'], PreferenceSyncCoordinator.legacyRevisionAt);
+      expect(settings.prefs.getInt('seek_time_small'), 5, reason: 'nothing local is wiped');
+    });
+
+    test('a switch runs the v1 bootstrap again for the new account', () async {
+      final coordinator = await build();
+      coordinator.listen();
+      await settings.prefs.setBool(PreferenceLegacyBootstrap.completedKey, true);
+      transport.store['theme_mode'] = enc('string', 'dark'); // account B still has a v1 device
+
+      transport.controller.add(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(settings.prefs.getString('theme_mode'), 'dark');
+    });
+
+    test('a sign-out clears no stamps', () async {
+      final coordinator = await build();
+      coordinator.listen();
+      await settings.prefs.setInt('subtitle_font_size', 44);
+      await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 44));
+      transport.available = false;
+
+      transport.controller.add(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(coordinator.localRevision('subtitle_font_size'), isNotNull);
+    });
+
+    test('a sign-out does not pass for ready while availability is re-checked', () async {
+      final coordinator = await build();
+      transport.available = false;
+      await coordinator.refreshAvailability();
+
+      final handling = coordinator.handleRemoteChange(
+        const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged),
+      );
+      // Lands while the account change is still asking the transport.
+      await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 44));
+      await handling;
+
+      expect(coordinator.status.value.pushed, 0);
+      expect(coordinator.status.value.state, PreferenceSyncState.unavailable);
+    });
+  });
+
+  group('the initial download', () {
+    test('is followed by a reconcile, so a write the system discarded before it is sent again', () async {
+      final coordinator = await build();
+      coordinator.listen();
+      await settings.prefs.setInt('subtitle_font_size', 44);
+      await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 44));
+      final cloudKey = coordinator.cloudKeyFor('subtitle_font_size')!;
+      transport.store.remove(cloudKey); // what InitialSyncChange means: that write never landed
+
+      transport.controller.add(const RemotePreferenceChange(reason: RemoteChangeReason.initialSync));
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(transport.store.containsKey(cloudKey), isTrue);
     });
   });
 

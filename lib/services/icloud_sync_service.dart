@@ -224,19 +224,8 @@ class ICloudSyncService {
   /// Drive the remote-event path directly (fakes an EventChannel emission).
   @visibleForTesting
   Future<void> debugHandleEvent(Map<String, dynamic> event) async {
-    if (!_enabled) return;
     final change = ICloudKvsTransport.translateEvent(event);
-    if (change == null) return;
-    switch (change.reason) {
-      case RemoteChangeReason.quotaExceeded:
-        return;
-      case RemoteChangeReason.accountChanged:
-        await _coordinator.refreshAvailability();
-        await _coordinator.requestReconcile(ReconcileTrigger.accountChanged);
-      case RemoteChangeReason.serverChange:
-      case RemoteChangeReason.initialSync:
-        if (change.changedKeys.isNotEmpty) await _coordinator.applyRemoteKeys(change.changedKeys);
-    }
+    if (change != null) await _coordinator.handleRemoteChange(change);
   }
 
   @visibleForTesting
