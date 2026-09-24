@@ -39,7 +39,7 @@ enum TabBarPresentation {
 /// [TabBarPresentation.unified2026] there is no dot, every glyph sits on the
 /// same baseline, and the active one is drawn in [kAccent]; the matching label
 /// colour is a `NavigationBarTheme` override at the bar itself
-/// (`mobileTabBarTheme` in `main_screen.dart`), since the label is Material's,
+/// (`mobileTabBarTheme` in `screens/main/mobile_tab_bar.dart`), since the label is Material's,
 /// not this widget's. iOS Unified 2026 fase 1,
 /// `docs/ios-unified-2026-fase1-plan.md` stap 9.
 class _TabIcon extends StatelessWidget {

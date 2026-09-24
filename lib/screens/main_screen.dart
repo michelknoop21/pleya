@@ -25,7 +25,6 @@ import 'tv/tv_my_pleya_screen.dart';
 import 'tv/tv_my_pleya_sections.dart';
 import 'tv/tv_root_shell.dart';
 import '../navigation/sidebar_focus_coordinator.dart';
-import '../theme/mono_theme.dart' show kAccent;
 import 'dart:io' show Platform, exit;
 
 export '../navigation/main_screen_scope.dart'
@@ -230,23 +229,6 @@ NavigationTabId _ownSlotOr(NavigationTabId tab, List<NavigationTabId> barTabs, N
 /// `_normalizeTabForMode` has moved the selection. In those cases the first
 /// bar destination is the honest fallback, and it is the same thing the bar
 /// would have shown anyway, only now deliberately.
-/// The mobile bottom bar's own selected-slot colour: the active label turns
-/// [kAccent], matching the active glyph `_TabIcon` already draws. iOS Unified
-/// 2026 fase 1, `docs/ios-unified-2026-fase1-plan.md` stap 9.
-///
-/// Applied at the bar rather than in `monoTheme` on purpose: the theme's
-/// `navigationBarTheme` is inherited by every `NavigationBar` in the app, and
-/// this red is a decision about this one bar.
-NavigationBarThemeData mobileTabBarTheme(NavigationBarThemeData base) {
-  final baseLabel = base.labelTextStyle;
-  return base.copyWith(
-    labelTextStyle: WidgetStateProperty.resolveWith((states) {
-      final style = baseLabel?.resolve(states) ?? const TextStyle();
-      return states.contains(WidgetState.selected) ? style.copyWith(color: kAccent) : style;
-    }),
-  );
-}
-
 @visibleForTesting
 NavigationTabId mainScreenSelectedBarTab({
   required NavigationTabId currentTab,
@@ -2886,91 +2868,98 @@ class _MainScreenState extends State<MainScreen>
       },
       child: ScaffoldMessenger(
         key: ProfileNavigationScope.of(context).mainScaffoldMessengerKey,
-        child: Scaffold(
-          body: _buildTickerAwareStack(),
-          bottomNavigationBar: Column(
-            mainAxisSize: .min,
-            children: [
-              // Reconnect bar when offline
-              if (_isOffline)
-                Material(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: InkWell(
-                    onTap: _isReconnecting ? null : _triggerReconnect,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      child: Row(
-                        mainAxisAlignment: .center,
-                        children: [
-                          if (_isReconnecting)
-                            SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
+        // Rebuilds on the Liquid Glass toggle: with glass on, the body runs
+        // under the floating bar (extendBody), and the Scaffold hands the
+        // bar's height to the tab roots as MediaQuery bottom padding.
+        child: SettingValueBuilder<bool>(
+          pref: SettingsService.liquidGlass,
+          builder: (context, _, _) => Scaffold(
+            extendBody: mobileTabBarFloats(context),
+            body: _buildTickerAwareStack(),
+            bottomNavigationBar: Column(
+              mainAxisSize: .min,
+              children: [
+                // Reconnect bar when offline
+                if (_isOffline)
+                  Material(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    child: InkWell(
+                      onTap: _isReconnecting ? null : _triggerReconnect,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        child: Row(
+                          mainAxisAlignment: .center,
+                          children: [
+                            if (_isReconnecting)
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              )
+                            else
+                              Icon(Symbols.wifi_rounded, size: 18, color: Theme.of(context).colorScheme.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              t.common.reconnect,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: .w500,
                                 color: Theme.of(context).colorScheme.primary,
                               ),
-                            )
-                          else
-                            Icon(Symbols.wifi_rounded, size: 18, color: Theme.of(context).colorScheme.primary),
-                          const SizedBox(width: 8),
-                          Text(
-                            t.common.reconnect,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: .w500,
-                              color: Theme.of(context).colorScheme.primary,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
+                SettingValueBuilder<bool>(
+                  pref: SettingsService.showNavBarLabels,
+                  builder: (context, showNavBarLabels, _) {
+                    final hideLabels = !showNavBarLabels;
+                    final tabs = _getBottomNavigationTabs();
+                    final projected = mainScreenSelectedBarTab(
+                      currentTab: _currentTab,
+                      isOffline: _isOffline,
+                      barTabs: tabs.map((tab) => tab.id).toList(),
+                      searchOrigin: _searchOpenedFromTab,
+                    );
+                    final selectedIndex = tabs.indexWhere((tab) => tab.id == projected);
+
+                    // The one place the bar's presentation is decided, the same shape as
+                    // the Home boundary in `discover_screen.dart`: one `PlatformDetector`
+                    // call here, an explicit value passed down, and no platform check
+                    // inside the destinations. Fase 1 was an iPhone phase and this bar is
+                    // shared with the iPad, so the iPad keeps the presentation it had
+                    // before fase 1 (DEC-103).
+                    final presentation = PlatformDetector.isPhone(context)
+                        ? TabBarPresentation.unified2026
+                        : TabBarPresentation.classic;
+                    final isUnified = presentation == TabBarPresentation.unified2026;
+
+                    return NavigationBarTheme(
+                      data: NavigationBarTheme.of(context).copyWith(height: hideLabels ? 56 : null),
+                      child: MobileTabBar(
+                        tabs: tabs,
+                        currentIndex: selectedIndex,
+                        onDestinationSelected: (i) {
+                          if (i < 0 || i >= tabs.length) return;
+                          // Part of the fase-1 presentation, so it stays on the phone
+                          // side: the iPad's bar behaves exactly as it did before fase 1.
+                          if (isUnified && tabs[i].id != _currentTab) Haptics.light();
+                          _selectTab(tabs[i].id);
+                        },
+                        hideLabels: hideLabels,
+                        presentation: presentation,
+                        onLibraryLongPress: _showLibraryQuickPicker,
+                      ),
+                    );
+                  },
                 ),
-              SettingValueBuilder<bool>(
-                pref: SettingsService.showNavBarLabels,
-                builder: (context, showNavBarLabels, _) {
-                  final hideLabels = !showNavBarLabels;
-                  final tabs = _getBottomNavigationTabs();
-                  final projected = mainScreenSelectedBarTab(
-                    currentTab: _currentTab,
-                    isOffline: _isOffline,
-                    barTabs: tabs.map((tab) => tab.id).toList(),
-                    searchOrigin: _searchOpenedFromTab,
-                  );
-                  final selectedIndex = tabs.indexWhere((tab) => tab.id == projected);
-
-                  // The one place the bar's presentation is decided, the same shape as
-                  // the Home boundary in `discover_screen.dart`: one `PlatformDetector`
-                  // call here, an explicit value passed down, and no platform check
-                  // inside the destinations. Fase 1 was an iPhone phase and this bar is
-                  // shared with the iPad, so the iPad keeps the presentation it had
-                  // before fase 1 (DEC-103).
-                  final presentation = PlatformDetector.isPhone(context)
-                      ? TabBarPresentation.unified2026
-                      : TabBarPresentation.classic;
-                  final isUnified = presentation == TabBarPresentation.unified2026;
-
-                  return NavigationBarTheme(
-                    data: NavigationBarTheme.of(context).copyWith(height: hideLabels ? 56 : null),
-                    child: MobileTabBar(
-                      tabs: tabs,
-                      currentIndex: selectedIndex,
-                      onDestinationSelected: (i) {
-                        if (i < 0 || i >= tabs.length) return;
-                        // Part of the fase-1 presentation, so it stays on the phone
-                        // side: the iPad's bar behaves exactly as it did before fase 1.
-                        if (isUnified && tabs[i].id != _currentTab) Haptics.light();
-                        _selectTab(tabs[i].id);
-                      },
-                      hideLabels: hideLabels,
-                      presentation: presentation,
-                      onLibraryLongPress: _showLibraryQuickPicker,
-                    ),
-                  );
-                },
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

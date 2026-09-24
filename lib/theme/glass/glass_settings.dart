@@ -27,7 +27,9 @@ bool glassAppliesTo(BuildContext context) => PlatformDetector.isTV() || !Platfor
 /// Resolves the tier for the current [context]. See [GlassTier] for the
 /// rules; they are load-bearing for every glass surface in the app.
 GlassTier glassTierFor(BuildContext context) {
-  final enabled = SettingsService.instance.read(SettingsService.liquidGlass);
+  // Settings not loaded yet (a widget test without SettingsService) reads as
+  // the pref's default: off.
+  final enabled = SettingsService.instanceOrNull?.read(SettingsService.liquidGlass) ?? false;
   if (!enabled || !glassAppliesTo(context)) return GlassTier.off;
   if (PlatformDetector.isHandheldIOS(context) && !PlatformDetector.isTV() && !DevicePerformance.isReduced) {
     return GlassTier.real;

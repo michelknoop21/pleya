@@ -5,8 +5,62 @@ import 'package:flutter/material.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../navigation/navigation_tabs.dart';
+import '../../theme/glass/glass_settings.dart';
+import '../../theme/glass/glass_surface.dart';
+import '../../theme/glass/glass_text.dart';
 import '../../theme/mono_theme.dart' show kAccent;
-import '../main_screen.dart' show mobileTabBarTheme;
+
+/// The mobile bottom bar's own selected-slot colour: the active label turns
+/// [kAccent], matching the active glyph `_TabIcon` already draws. iOS Unified
+/// 2026 fase 1, `docs/ios-unified-2026-fase1-plan.md` stap 9.
+///
+/// Applied at the bar rather than in `monoTheme` on purpose: the theme's
+/// `navigationBarTheme` is inherited by every `NavigationBar` in the app, and
+/// this red is a decision about this one bar.
+NavigationBarThemeData mobileTabBarTheme(NavigationBarThemeData base) {
+  final baseLabel = base.labelTextStyle;
+  return base.copyWith(
+    labelTextStyle: WidgetStateProperty.resolveWith((states) {
+      final style = baseLabel?.resolve(states) ?? const TextStyle();
+      return states.contains(WidgetState.selected) ? style.copyWith(color: kAccent) : style;
+    }),
+  );
+}
+
+/// Fill of the active slot's capsule on the glass bar, see [MobileTabBar].
+const Color _kGlassActiveSlot = Color(0x80000000);
+
+/// Whether the bar floats as a glass capsule. The main Scaffold keys
+/// `extendBody` on this same answer, so the tab roots scroll under the bar
+/// and get its height back as `MediaQuery` bottom padding.
+bool mobileTabBarFloats(BuildContext context) => glassTierFor(context) != GlassTier.off;
+
+/// [mobileTabBarTheme] for the floating glass bar (mockup LG-01): inactive
+/// labels and glyphs full white with the glass drop shadow instead of the
+/// theme's 60% grey, the active slot opaque [kAccent]. The plate itself is
+/// the background, so the bar paints none of its own.
+NavigationBarThemeData mobileGlassTabBarTheme(NavigationBarThemeData base) {
+  final baseLabel = base.labelTextStyle;
+  final baseIcon = base.iconTheme;
+  return base.copyWith(
+    backgroundColor: Colors.transparent,
+    surfaceTintColor: Colors.transparent,
+    shadowColor: Colors.transparent,
+    indicatorColor: Colors.transparent,
+    elevation: 0,
+    height: 64,
+    labelTextStyle: WidgetStateProperty.resolveWith((states) {
+      final selected = states.contains(WidgetState.selected);
+      final style = baseLabel?.resolve(states) ?? const TextStyle();
+      final color = MobileTabBar.debugGlassLabelColor ?? (selected ? kAccent : Colors.white);
+      return glassText(style.copyWith(color: color));
+    }),
+    iconTheme: WidgetStateProperty.resolveWith((states) {
+      final icon = baseIcon?.resolve(states) ?? const IconThemeData();
+      return icon.copyWith(opacity: 1, color: Colors.white, shadows: kGlassIconShadows);
+    }),
+  );
+}
 
 /// The mobile bottom bar, extracted verbatim out of
 /// `_MainScreenState._buildBottomNavigationBar` (no behavior change). State
@@ -28,6 +82,12 @@ class MobileTabBar extends StatelessWidget {
   final bool hideLabels;
   final TabBarPresentation presentation;
   final void Function(BuildContext context) onLibraryLongPress;
+
+  /// Overrides the glass bar's label color. The contrast test paints the
+  /// labels transparent (shadows kept) to read the background under them;
+  /// see `textContrastOverBackground`.
+  @visibleForTesting
+  static Color? debugGlassLabelColor;
 
   /// Wraps one tab's icon/selectedIcon in [AutomationNode] so `nav.<id>`
   /// resolves on both the mobile bar and the desktop/TV rail
@@ -58,8 +118,12 @@ class MobileTabBar extends StatelessWidget {
           : NavigationDestinationLabelBehavior.alwaysShow,
       destinations: tabs.map((tab) => _withNavTabAutomation(tab, presentation)).toList(),
     );
-    final navigationBar = isUnified
-        ? NavigationBarTheme(data: mobileTabBarTheme(NavigationBarTheme.of(context)), child: bar)
+    final glassOn = mobileTabBarFloats(context);
+    final NavigationBarThemeData Function(NavigationBarThemeData) themed = glassOn
+        ? mobileGlassTabBarTheme
+        : mobileTabBarTheme;
+    final navigationBar = isUnified || glassOn
+        ? NavigationBarTheme(data: themed(NavigationBarTheme.of(context)), child: bar)
         : bar;
 
     // Netflix mobile: frosted near-black bar. Blur the content scrolling
@@ -70,10 +134,27 @@ class MobileTabBar extends StatelessWidget {
 
     Widget withNavBarAutomation(Widget bar) => AutomationNode(id: AutomationIds.navBar, role: 'nav', child: bar);
 
-    final librariesIndex = tabs.indexWhere((tab) => tab.id == NavigationTabId.libraries);
-    if (tabs.isEmpty) return frosted(withNavBarAutomation(navigationBar));
+    // Glass (LG-01): a floating capsule 16 from the sides and 10 above the
+    // home indicator, instead of the full-width frosted strip. The bar's own
+    // SafeArea is stripped, the Padding already carries the inset.
+    Widget shell(Widget bar) {
+      if (!glassOn) return frosted(bar);
+      return Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.paddingOf(context).bottom + 10),
+        child: GlassLayer(
+          child: GlassSurface(
+            shape: const StadiumBorder(),
+            tokens: const GlassTokens.phone(),
+            child: MediaQuery.removePadding(context: context, removeBottom: true, child: bar),
+          ),
+        ),
+      );
+    }
 
-    return frosted(
+    final librariesIndex = tabs.indexWhere((tab) => tab.id == NavigationTabId.libraries);
+    if (tabs.isEmpty) return shell(withNavBarAutomation(navigationBar));
+
+    return shell(
       withNavBarAutomation(
         LayoutBuilder(
           builder: (context, constraints) {
@@ -86,6 +167,23 @@ class MobileTabBar extends StatelessWidget {
 
             return Stack(
               children: [
+                // Glass: a darker capsule under the active slot, the LG-01
+                // selected-slot pill. Dark rather than LG-01's light one:
+                // kAccent tops out at 4.36:1 even on pure black, and on the
+                // bare plate over the Big Buck Bunny fixture the red label
+                // measured 2.33:1 (`mobile_tab_bar_glass_test.dart`).
+                if (glassOn && currentIndex >= 0)
+                  Positioned(
+                    left: itemLeft(currentIndex) + 4,
+                    top: 4,
+                    bottom: 4,
+                    width: itemWidth - 8,
+                    child: const IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: ShapeDecoration(shape: StadiumBorder(), color: _kGlassActiveSlot),
+                      ),
+                    ),
+                  ),
                 navigationBar,
                 // The classic bar's solid red indicator above the active icon.
                 // The unified bar has none: there the active slot itself is

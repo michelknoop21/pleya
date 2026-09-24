@@ -15,6 +15,8 @@ import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../profiles/profile.dart';
 import '../../profiles/profile_avatar.dart';
+import '../../theme/glass/glass_settings.dart';
+import '../../theme/glass/glass_surface.dart';
 import '../app_icon.dart';
 import '../pleya_wordmark.dart';
 
@@ -73,10 +75,18 @@ class MobilePageHeader extends StatelessWidget {
               id: searchAutomationId,
               instance: automationInstance,
               role: 'button',
-              child: IconButton(
-                onPressed: onSearchTap,
-                icon: const AppIcon(Symbols.search_rounded),
-                tooltip: t.common.search,
+              // LG-01: a glass circle with Liquid Glass on, the plain button
+              // otherwise (GlassSurface renders [child] as-is when off).
+              child: GlassLayer(
+                child: GlassSurface(
+                  shape: const CircleBorder(),
+                  tokens: const GlassTokens.phone(),
+                  child: IconButton(
+                    onPressed: onSearchTap,
+                    icon: const AppIcon(Symbols.search_rounded),
+                    tooltip: t.common.search,
+                  ),
+                ),
               ),
             ),
             AutomationNode(

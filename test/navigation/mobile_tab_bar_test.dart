@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/navigation/navigation_tabs.dart';
 import 'package:pleya/profiles/active_profile_provider.dart';
-import 'package:pleya/screens/main_screen.dart';
+import 'package:pleya/screens/main/mobile_tab_bar.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:provider/provider.dart';

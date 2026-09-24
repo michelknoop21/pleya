@@ -28,6 +28,10 @@ import 'package:flutter_test/flutter_test.dart';
 /// bright pocket of the scene) without letting one stray bright pixel (a
 /// literal max()) dominate the result.
 ///
+/// [boundary] picks the `RepaintBoundary` to capture from when [area] has a
+/// nearer one of its own (a `NavigationBar` label does): pass a finder for a
+/// boundary at the screen origin, so its pixels line up with global rects.
+///
 /// Runs the actual capture inside [WidgetTester.runAsync]: [captureImage] and
 /// [ui.Image.toByteData] settle through a real asynchronous gap that the fake
 /// test clock never fires; outside `runAsync` this hangs until the test
@@ -38,8 +42,9 @@ Future<double> textContrastOverBackground(
   required Finder area,
   required Color textColor,
   double percentile = 0.95,
+  Finder? boundary,
 }) async {
-  final element = tester.element(area);
+  final element = tester.element(boundary ?? area);
   // captureImage renders the nearest RepaintBoundary's paintBounds at a 1:1
   // pixel ratio, in that boundary's local (== global, for a boundary that
   // sits at the screen origin) logical coordinates: not scaled by
