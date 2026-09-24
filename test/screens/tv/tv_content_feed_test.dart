@@ -1013,6 +1013,42 @@ void main() {
       );
     });
 
+    testWidgets('a silent reload that adds a title in front keeps the focus on the same title, in place', (
+      tester,
+    ) async {
+      // Home refreshes itself now (tab return, resume, every five minutes).
+      // New titles land at the front of Recently Added while the remote may be
+      // standing on the third card: the ring must stay on that title, not on
+      // whatever now sits at index 2, and the card must not slide sideways.
+      final films = [for (var i = 0; i < 8; i++) _film('tp$i', title: 'Film $i')];
+      await boot(tester, hubs: [_hub('recent', 'Recently Added', films)]);
+      final third = rows(tester).single.hub.groups[2].groupId;
+      Finder tile(String groupId) =>
+          find.byWidgetPredicate((w) => w is TvExpandableMediaTile && w.group.groupId == groupId);
+
+      tileNode(tester, third).requestFocus();
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_$third');
+      final xBefore = tester.getTopLeft(tile(third)).dx;
+
+      aggregation.hubs = [
+        _hub('recent', 'Recently Added', [_film('brand-new', title: 'Brand New'), ...films]),
+      ];
+      await discover.refreshIfStale(maxAge: Duration.zero);
+      for (var i = 0; i < 80 && projection.isProjecting; i++) {
+        await Future<void>.value();
+      }
+      await tester.pump();
+      expect(tester.getTopLeft(tile(third)).dx, moreOrLessEquals(xBefore, epsilon: 0.5), reason: 'not even one frame');
+      await tester.pumpAndSettle();
+
+      final groups = rows(tester).single.hub.groups;
+      expect(groups.first.representativeSource.item.title, 'Brand New', reason: 'sanity: the new title is in front');
+      expect(groups.indexWhere((g) => g.groupId == third), 3, reason: 'sanity: the focused title moved one place');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_$third');
+      expect(tester.getTopLeft(tile(third)).dx, moreOrLessEquals(xBefore, epsilon: 0.5));
+    });
+
     testWidgets('rows keep their own state identity across a re-projection', (tester) async {
       await boot(
         tester,

@@ -338,7 +338,25 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     final current = _focused.value;
     if (current == null || !widget.groups.any((g) => g.groupId == current.groupId)) {
       _focused.value = _restoredOrFirst();
+      return;
     }
+    _keepFocusedTileInPlace(oldWidget.groups, current.groupId);
+  }
+
+  /// A silent Home reload can put a new title in front of the card the remote
+  /// stands on. The focus node follows the title (it is keyed on the group
+  /// id), but the band keeps its offset, so the card would slide sideways
+  /// under the ring. Moving the band by the same number of places keeps the
+  /// card where the viewer is looking. This frame's layout clamps the offset
+  /// to the new content extent, so no frame shows the card out of place.
+  void _keepFocusedTileInPlace(List<UnifiedMediaGroup> oldGroups, String groupId) {
+    if (!_holdsFocus.value || !_scroll.hasClients) return;
+    final oldIndex = oldGroups.indexWhere((g) => g.groupId == groupId);
+    final newIndex = widget.groups.indexWhere((g) => g.groupId == groupId);
+    if (oldIndex < 0 || oldIndex == newIndex) return;
+    final position = _scroll.position;
+    final target = position.pixels + (newIndex - oldIndex) * TvDiscoveryLayout.railPitch(_scale);
+    _scroll.jumpTo(target < position.minScrollExtent ? position.minScrollExtent : target);
   }
 
   UnifiedMediaGroup? _restoredOrFirst() {
