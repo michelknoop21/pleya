@@ -9,6 +9,7 @@
   import Faq from '$lib/components/home/Faq.svelte';
   import Final from '$lib/components/home/Final.svelte';
   import Footer from '$lib/components/Footer.svelte';
+  import TopNav from '$lib/components/TopNav.svelte';
   import { faqSchemaMainEntity } from '$lib/content/faqs';
   import { pageMotion } from '$lib/motion';
   import { startHomeMotion } from '$lib/components/home/motion';
@@ -54,6 +55,7 @@
 </svelte:head>
 
 <div class="home" use:pageMotion={startHomeMotion}>
+  <TopNav />
   <Hero />
   <main>
     <Unified />

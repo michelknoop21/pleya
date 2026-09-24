@@ -52,7 +52,7 @@ export const startHomeMotion = (root: HTMLElement) =>
         gsap.to(track, {
           x: () => -distance(),
           ease: 'none',
-          scrollTrigger: { trigger: q('#reel'), start: 'top top', end: () => '+=' + distance(), pin: true, scrub: 0.6, invalidateOnRefresh: true },
+          scrollTrigger: { trigger: q('#reel'), start: 'top top', end: () => '+=' + distance(), pin: true, scrub: 0.6, invalidateOnRefresh: true, refreshPriority: 1 },
         });
         return () => {
           viewport.style.overflowX = '';

@@ -1,24 +1,11 @@
 <script lang="ts">
   import PlexIcon from '~icons/simple-icons/plex';
   import JellyfinIcon from '~icons/simple-icons/jellyfin';
-  import wordmark from '$lib/assets/pleya_wordmark.png';
   import tvHome from '$lib/assets/home/tv-home.webp';
   import iosHome from '$lib/assets/home/ios-home.webp';
 
   import { cta } from '$lib/config';
 </script>
-
-<header class="top">
-  <div class="wrap">
-    <img src={wordmark} alt="Pleya" width="1452" height="659" />
-    <nav aria-label="Site">
-      <a href="#unified">One library</a>
-      <a href="#reel">Apple TV</a>
-      <a href="#share">Pleya Share</a>
-      <a href="/docs">Guide</a>
-    </nav>
-  </div>
-</header>
 
 <section class="hero" id="top">
   <div class="spill" aria-hidden="true"></div>

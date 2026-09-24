@@ -21,5 +21,6 @@
       </div>
       <div><h3>A profile per person</h3><p>Everyone in the house gets their own profile and history. Settings follow you through iCloud.</p></div>
     </div>
+    <p class="links" data-reveal><a href="/iphone">Pleya on iPhone</a><a href="/mac">Pleya on Mac</a></p>
   </div>
 </section>
