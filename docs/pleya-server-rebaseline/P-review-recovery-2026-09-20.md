@@ -34,30 +34,20 @@ De brede eindgates zijn na deze herstelronde nog niet opnieuw gedraaid.
 | L23 | Go-testcontainer ziet hele repo en `.env` | `[x]` | alleen benodigde redactiedata en protocoldoc gemount |
 | L24 | webclient bewaart oud refreshtoken | `[x]` | tokenpaar zonder refresh verwijdert bestaand token |
 | L25 | rauwe JSON-fout lekt naar loginclient | `[x]` | vaste clienttekst, detail alleen in log |
-| L26 | offline-melding noemt verkeerde server | `[>]` | regressietest staat RED; product gebruikt nog `entries.first` |
-| L27 | dubbele Nederlandse i18n-sleutel | `[>]` | ruwe duplicate-key-test staat RED; tweede `timedOut` staat er nog |
+| L26 | offline-melding noemt verkeerde server | `[x]` | eerste werkelijk offline entry wordt genoemd; bannertests groen |
+| L27 | dubbele Nederlandse i18n-sleutel | `[x]` | duplicate-key-test groen; `strings_nl.g.dart` ongewijzigd |
 | L28 | `Vary: Origin` ontbreekt zonder Origin | `[x]` | header wordt vóór de vroege return gezet |
-| L29 | mislukte git-aanroep laat commit stil weg | `[ ]` | nog geen wijziging of test |
+| L29 | mislukte git-aanroep laat commit stil weg | `[x]` | `sh`-argumentvorm faalt op non-zero; lege sha geeft `UI.user_error!`; minitest groen |
 
-Telling: **26 gericht groen, 2 bewust RED, 1 nog niet begonnen**.
+Telling: **29 gericht groen**.
 
 De completionbasis is gecommit als `0b9699ec`; de 26 afgeronde fixes en hun regressiedekking als
 `3734e399`. De lokale CI-check (`scripts/ci_checks.sh`) was voor `3734e399` volledig groen.
 
 ## Exact hervatpunt
 
-1. L26: wijzig in `lib/widgets/auth_error_banner.dart` de boolean `unreachable` in de naam van de
-   eerste werkelijk offline entry en gebruik die naam in de snackbar. De test
-   `an offline retry names the server that was actually unreachable` in
-   `test/widgets/auth_error_banner_test.dart` faalt nu met nul treffers voor `Schuur isn't responding`.
-2. L27: verwijder de tweede `common.timedOut` uit `lib/i18n/nl.i18n.json`; laat `offline` geldige
-   JSON zonder trailing comma houden. Draai daarna de volledige locale-completeness-test en
-   `scripts/codegen.sh`.
-3. L29: vervang de backtick-gitaanroep in `fastlane/Fastfile#git_commit_define` door een veilige
-   argumentaanroep die op non-zero of lege uitvoer faalt. Controleer minimaal met `ruby -c` en een
-   regressie op het faalpad.
-4. Formatteer uitsluitend gewijzigde bestanden, draai `git diff --check`, daarna eerst de gerichte
-   tests en pas vervolgens de brede gates uit de actieve pauze-handoff.
+Alle 29 bevindingen zijn gesloten in de commits na `ca595d68`; zie `git log ca595d68..` voor de
+drie herstelcommits.
 
 ## Wat na de 29 punten nog resteert
 
