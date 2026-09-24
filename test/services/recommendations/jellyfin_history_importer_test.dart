@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
@@ -232,6 +234,15 @@ void main() {
       expect(await db.getMediaInteractions(_profile), hasLength(1), reason: 'one partial, not two');
     });
 
+    test('a lastSyncAt in the future (clock set back) does not hold the sync', () async {
+      final source = _FakeSource(played: [_movie('m1', lastViewedDaysAgo: 1)]);
+      await importer(source).sync();
+      source.pageCalls = 0;
+      nowMs -= const Duration(hours: 2).inMilliseconds;
+      await importer(source).sync();
+      expect(source.pageCalls, 1);
+    });
+
     test('a second sync inside the interval makes no request at all', () async {
       final source = _FakeSource(played: [_movie('m1', lastViewedDaysAgo: 1)]);
       await importer(source).sync();
@@ -304,7 +315,10 @@ void main() {
       required Map<String, List<String>> profilesByConnection,
       Set<String> online = const {'c1'},
       bool current = true,
+      bool Function()? isCurrent,
+      Future<void> Function()? whenBound,
     }) => ownJellyfinHistoryImporters(
+      whenBound: whenBound,
       database: db,
       profileId: _profile,
       connectionsForProfile: (profileId) async => [
@@ -315,7 +329,7 @@ void main() {
         for (final p in profilesByConnection[connectionId] ?? const <String>[]) row(p, connectionId),
       ],
       onlineSource: (connectionId) => online.contains(connectionId) ? _FakeSource() : null,
-      isCurrentProfile: () => current,
+      isCurrentProfile: isCurrent ?? () => current,
     );
 
     test('an own connection gets an importer', () async {
@@ -358,6 +372,21 @@ void main() {
         ),
         isEmpty,
       );
+    });
+
+    test('a build that starts during binding waits for it and then imports', () async {
+      var binding = true;
+      final settled = Completer<void>();
+      final pending = build(
+        profilesByConnection: {
+          'c1': [_profile],
+        },
+        isCurrent: () => !binding,
+        whenBound: () => settled.future,
+      );
+      binding = false;
+      settled.complete();
+      expect(await pending, hasLength(1));
     });
 
     test('nothing is built while the profile is not current or still binding', () async {

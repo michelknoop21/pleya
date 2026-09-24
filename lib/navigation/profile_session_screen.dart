@@ -371,6 +371,9 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                         return manager.isClientOnline(client.serverId, clientScopeId: connectionId) ? client : null;
                       },
                       isCurrentProfile: () => activeProfile.activeId == profileId && !activeProfile.isBinding,
+                      // A load during binding waits for it (bounded) rather
+                      // than skipping the import until the next load.
+                      whenBound: () => activeProfile.awaitBindingSettle(),
                     ),
                   );
                 },

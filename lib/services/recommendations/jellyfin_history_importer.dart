@@ -45,8 +45,11 @@ const Duration kJellyfinSyncInterval = Duration(minutes: 15);
 ///
 /// Fails closed (DEC-062, DEC-132): a connection that more than one profile
 /// uses is borrowed, so its Jellyfin user is not this profile's and it imports
-/// nothing. Nothing is built while [isCurrentProfile] is false, which the
-/// session also holds false while the binder is still switching servers.
+/// nothing, for the borrower and the lender alike: that Jellyfin user carries
+/// both profiles' plays. [whenBound] is awaited first, so a Home load that
+/// starts while the binder is still switching servers imports once binding
+/// settles instead of skipping; nothing is built while [isCurrentProfile] is
+/// false after that.
 Future<List<JellyfinHistoryImporter>> ownJellyfinHistoryImporters({
   required AppDatabase database,
   required String profileId,
@@ -54,8 +57,11 @@ Future<List<JellyfinHistoryImporter>> ownJellyfinHistoryImporters({
   required Future<List<ProfileConnection>> Function(String connectionId) profilesForConnection,
   required JellyfinHistorySource? Function(String connectionId) onlineSource,
   required bool Function() isCurrentProfile,
+  Future<void> Function()? whenBound,
 }) async {
-  if (profileId.isEmpty || !isCurrentProfile()) return const [];
+  if (profileId.isEmpty) return const [];
+  await whenBound?.call();
+  if (!isCurrentProfile()) return const [];
   final importers = <JellyfinHistoryImporter>[];
   for (final pc in await connectionsForProfile(profileId)) {
     final source = onlineSource(pc.connectionId);
@@ -119,7 +125,11 @@ class JellyfinHistoryImporter implements HistoryImporter {
     bool stillOurs() => _isCurrentProfile() && AppDatabase.recommendationEpoch(_profileId) == epoch;
     try {
       final cursor = await _db.getHistorySyncCursor(_profileId, _serverId, _kSource);
-      if (cursor?.lastSyncAt case final last? when _nowMs() - last < kJellyfinSyncInterval.inMilliseconds) {
+      // A lastSyncAt in the future means the clock was set back; treat it as
+      // stale rather than holding the import until the clock catches up.
+      final last = cursor?.lastSyncAt;
+      final sinceLast = last == null ? null : _nowMs() - last;
+      if (sinceLast != null && sinceLast >= 0 && sinceLast < kJellyfinSyncInterval.inMilliseconds) {
         return const TautulliImportOutcome();
       }
       final watermarkMs = cursor?.forwardCursorAt ?? 0;

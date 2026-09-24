@@ -2962,8 +2962,9 @@ rij met minstens hetzelfde gewicht.
 
 *Jellyfin als tweede adapter op dezelfde tabel.* `source = 'jellyfin'`, eigen gebruikerstoken,
 geen adminbeleid, watermark op `LastPlayedDate`, geen backfill voorbij de retentiecap. Een
-geleende Jellyfin-verbinding, die meer dan één profiel deelt, importeert geen geschiedenis: dat
-token is niet de eigen login van dit profiel (DEC-062).
+Jellyfin-verbinding die meer dan één profiel gebruikt, importeert voor niemand geschiedenis. De
+lener niet, want dat token is niet zijn eigen login; de uitlener ook niet, want zijn
+Jellyfin-gebruiker draagt vanaf dat moment ook de plays van de lener (DEC-062).
 
 *Eén persoonsrij, gedeelde cap.* Genre-, acteur- en regisseursrijen delen twee plekken; sorteren
 op genormaliseerd gewicht, bij gelijkspel genre, dan acteur, dan regisseur. Persoonsdrempel 0,7.
