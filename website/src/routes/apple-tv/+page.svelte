@@ -59,9 +59,9 @@
       Press select on the search field and the tvOS system keyboard opens, with what you already typed still in it.
     </p>
     <p class="lede">
-      The Siri Remote's microphone dictates into the same keyboard, and a nearby iPhone can type into it too.
+      The Siri Remote's microphone dictates into the same keyboard, and a nearby iPhone can type into it too. If the
+      keyboard does not appear, Pleya switches to its own on-screen keyboard for the D-pad.
     </p>
-    <p class="lede">If the keyboard does not appear, Pleya switches to its own on-screen keyboard for the D-pad.</p>
   </Feature>
 
   <Feature
