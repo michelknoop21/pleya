@@ -18,12 +18,7 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### Fixed
-- VIS1, VIS2 en PLR10 naar mockup 36 B, 37 C en 33
-- APP1, Uiterlijk-categorieën met semantische focusovergangen
-- OFF6, een rebind van hetzelfde profiel houdt de open sectie
-- PROF1, de profielknop opent de poort uit mockup 21
-- VIS1, de hint in de zoekpil blijft op één regel
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
 ### New
@@ -48,6 +43,30 @@ under `Notes`.
 - **The row of extras below an Apple TV series or movie page now sizes its text and spacing
   consistently with the rest of the screen**, instead of running slightly smaller when the page
   is nested under the top bar.
+
+## 2.8.0 · build 298 · 24 September 2026 · Apple TV
+
+<!-- commit: 53e2704a -->
+
+### Improved
+
+- **Search on Apple TV has a new field.** It is narrower, starts on the same edge as the
+  results below it, and shows the result count in the middle. The hint text stays on one line.
+- **The season selector on a series page now sits on the "Episodes" heading line**, next to
+  the count of episodes and how many you have watched. The seasons are filled pills with the
+  active one in white, and the row steps aside when you move to the cast or extras below.
+- **The Appearance settings page has clearer focus movement.** Left from any row returns to the
+  active category, and right from a category opens it with the first row selected.
+
+### Fixed
+
+- **Reconnecting a server for the profile you are already using no longer throws you back to
+  the start of My Pleya.** The section you had open stays open. It only closes when the server
+  behind it (Seerr or Tautulli) went away.
+- **The profile button now opens the "Who's watching?" screen** instead of the plain profile
+  list. Menu closes it and returns to the button. Managing profiles still opens the list.
+- **Full durations now have a space between number and unit**, for example "5 minutes" in the
+  sleep timer.
 
 ## 2.8.0 · build 296 · 24 September 2026 · iPhone, iPad and Mac
 
