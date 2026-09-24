@@ -127,6 +127,7 @@ under `Notes`.
 - annulering tussen claim en registratie gaat niet meer verloren (S2.4)
 - shutdown geeft failed in plaats van cancelled en een herstarte scan krijgt een verse rij (S2.4)
 - retry laat geen wees-scanronde achter bij een gelijktijdige retry (S2.4)
+- queued scanrondes annuleren via één methode, stale scan_id, limiet naar contract
 <!-- END GENERATED -->
 
 ### New
