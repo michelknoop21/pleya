@@ -245,6 +245,12 @@ func (r *Runner) execute(ctx context.Context, job Job) {
 	r.mu.Lock()
 	r.running[job.ID] = cancel
 	r.mu.Unlock()
+	// Een Cancel tussen claim en registratie vond hierboven nog geen functie om
+	// te seinen. Het spoor staat wel in de rij, dus lees dat na het registreren.
+	var requested bool
+	if err := r.pool.QueryRow(ctx, `SELECT cancel_requested_at IS NOT NULL FROM jobs WHERE id = $1`, job.ID).Scan(&requested); err == nil && requested {
+		cancel(ErrCancelled)
+	}
 	defer func() {
 		cancel(nil)
 		r.mu.Lock()

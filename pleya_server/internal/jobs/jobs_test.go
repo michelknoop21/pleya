@@ -386,3 +386,35 @@ func TestRequeueCancelsAJobWithACancelRequest(t *testing.T) {
 		t.Fatalf("Requeue liet een aangevraagde annulering op %q staan", rec.State)
 	}
 }
+
+// Een Cancel die landt tussen claim en registratie van de cancelfunctie mag niet
+// verloren gaan: het spoor in de rij is dan het enige wat de handler nog stopt.
+func TestCancelRequestedBeforeRegistrationStillStopsTheHandler(t *testing.T) {
+	runner, pool := newRunner(t)
+	causes := make(chan error, 1)
+	runner.Register("blok", func(ctx context.Context, job jobs.Job) error {
+		select {
+		case <-ctx.Done():
+		case <-time.After(3 * time.Second):
+		}
+		causes <- context.Cause(ctx)
+		return ctx.Err()
+	})
+	jobID, _, _ := runner.Enqueue(context.Background(), "blok", nil, "", time.Now().Add(time.Hour))
+	if _, err := pool.Exec(context.Background(),
+		`UPDATE jobs SET cancel_requested_at = now(), run_at = now() WHERE id = $1`, jobID); err != nil {
+		t.Fatal(err)
+	}
+	runCtx, stop := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { runner.Run(runCtx); close(done) }()
+	waitFor(t, func() bool {
+		rec, _ := runner.Get(context.Background(), jobID)
+		return rec.State == "cancelled"
+	}, "job wordt cancelled")
+	if cause := <-causes; !errors.Is(cause, jobs.ErrCancelled) {
+		t.Fatalf("handler zag oorzaak %v, verwacht ErrCancelled", cause)
+	}
+	stop()
+	<-done
+}
