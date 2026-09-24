@@ -18,10 +18,9 @@ that library becomes watchable, at home or away from it.
 
 ## Where it runs
 
-Phone and tablet (iPhone, iPad, Android), computer (Mac, Windows, Linux) and television
-(Apple TV, Android TV). The interface is the same dark, cinematic one everywhere, adapted
-to how you are holding the thing: touch on a phone, pointer on a desktop, a five-way pad
-on a remote.
+Pleya runs on iPhone and iPad, Mac and Apple TV. It is in a private TestFlight beta. The
+interface is the same dark, cinematic one everywhere, adapted to how you are holding the
+thing: touch on a phone, pointer on a desktop, a five-way pad on a remote.
 
 ## What you can do with it
 
@@ -39,8 +38,8 @@ Pleya does not track you. Recommendations are computed on the device from what y
 and that profile never leaves it. There is no account with Pleya, no analytics call, and
 nothing to opt out of.
 
-It also does not cast to a Chromecast. Install Pleya on the TV instead (Apple TV or Android
-TV), or drive the TV app from your phone with the [Companion Remote](/docs/apple-tv-and-remotes).
+It also does not cast to a Chromecast. Install Pleya on the TV instead (Apple TV), or drive
+the TV app from your phone with the [Companion Remote](/docs/apple-tv-and-remotes).
 
 ## Two backends, one app
 

@@ -32,7 +32,7 @@ Settings sit in the navigation on desktop and Apple TV, and inside
 
 | Setting | What it changes |
 |---|---|
-| **Player backend** | ExoPlayer (recommended) or mpv, on Android |
+| **Player backend** | mpv |
 | **Default quality** | The ceiling on stream quality; lower uses less bandwidth |
 | **Hardware decoding** | Smoother playback; leave it on unless you are debugging |
 | **Auto skip intro / credits** | Skips them without asking. Intro skipping acts on episodes only. |

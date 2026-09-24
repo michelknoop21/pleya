@@ -9,13 +9,7 @@
  */
 export const PUBLIC_TESTFLIGHT_URL = '';
 
-/**
- * Webhook that receives waitlist sign-ups (a POST with { email } JSON body).
- * When empty, the waitlist form falls back to a pre-filled mailto: link.
- */
-export const WAITLIST_WEBHOOK_URL = '';
-
-/** Fallback inbox used when no waitlist webhook is configured. */
+/** Fallback inbox for the "Join the beta" waitlist mailto: link. */
 export const WAITLIST_FALLBACK_EMAIL = 'info@michelknoop.nl';
 
 /** Upstream open-source project Pleya is based on (GPL-3.0 attribution). */
