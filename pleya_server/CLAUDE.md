@@ -51,14 +51,12 @@ weer op, dus een test hoeft zelf niets te wissen. De schemateller staat achter g
 geen `t.Parallel()` bij. De scannertests maken hun eigen mediabestanden met ffmpeg: de analyse
 namaken bewijst niets over de analyse.
 
-## Geen enkele CI-poort dekt deze map
+## Wat CI wel en niet dekt
 
-Gecontroleerd: geen workflow in `.github/workflows/` noemt `pleya_server`, en `scripts/ci_checks.sh`
-(de pre-commit-gate) is Flutter en Dart. Go-wijzigingen komen dus ongetoetst door de hook heen. Wat
-er wel is, draai je zelf:
+`.github/workflows/ci.yml` heeft een job `pleya-server` (build, vet, `go test ./...` tegen een Postgres-service, en de antwoordvalidatie tegen `openapi.yaml`) een job `pleya-web` en een job `protocol` (`scripts/check_protocol.sh`). `scripts/ci_checks.sh` (de pre-commit-gate) is Flutter en Dart en raakt Go niet. De volledige lokale keten draai je zelf:
 
 ```sh
-scripts/verify-local.sh        # vijftien secties, 78 controles, van go vet tot een gebruikersronde
+scripts/verify-local.sh        # vijftien secties, 79 controles, van go vet tot een gebruikersronde
 scripts/verify-protocol.sh     # antwoorden van een draaiende server tegen openapi.yaml
 ../scripts/check_protocol.sh   # het contract zelf, in een gepinde Python-container
 ```

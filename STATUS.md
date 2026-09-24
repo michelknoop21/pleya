@@ -2,17 +2,26 @@
 
 ## Stand 24 september 2026
 
-De 29 bevindingen uit de re-baseline-review zijn gesloten (register:
-`docs/pleya-server-rebaseline/P-review-recovery-2026-09-20.md`). De brede gates zijn gedraaid en
-groen, met twee open punten die op een besluit wachten. Drie Fluttertests falen door bestanden die
-`main` inmiddels heeft hersteld (`http_lifecycle_test`, `no_local_cta_shape_override_test`,
-`tv_top_navigation_test`), en de 77 goldenfouten zijn op macOS niet te beoordelen: Linux-CI beslist.
-`scripts/check_authority_merge.sh 0b9699ec^1` geeft 6 pass en 5 fail: de merges `4e78b160` en
-`0b9699ec` namen `docs/RELEASES.md`, `docs/CHANGELOG.md` en `STATUS.md` (en `CLAUDE.md` bij
-`4e78b160`) van één ouder over. Uit de re-baseline-tak ontbreken daardoor onder meer 286 regels
-`STATUS.md` en 190 regels `docs/CHANGELOG.md`. Herstel gaat via een echte driewegmerge bij de
-main-sync, waarna de merge-base verschuift en deze twee merges buiten de controle vallen. Volgende
-stap: S2.4-migratie en loudness D1/D2 terugbrengen, daarna S2.4 bouwen. Er is geen rollout gedaan.
+S2.4 is gereed op `integration/pleya-server-completion`: scans en jobs over HTTP (zes endpoints), annuleren
+binnen één walk-stap, retry, `job.not_cancellable` als achtste foutdomein en backoff op
+`probe_attempts`. De rescue-migratie is als `0010` geland en de loudness-migratie als `0011`. De
+rondes-2-gates zijn gedraaid op `3f724b23`: codegen, `ci_checks.sh`, `flutter test test/pleya_server/`,
+Go volledig zonder FAIL of SKIP, de relaysuite, `check_protocol.sh`, `verify-protocol.sh`, de webgates
+en `verify-local.sh`. Bewijs staat in `.superpowers/sdd/2026-09-24-pleya-server-completion-afronding/gates-ronde-2.md`. Pleya Verify en de volledige
+`flutter test` zijn bewust niet gedraaid: dit werk raakt geen UI. Er is geen rollout gedaan.
+
+Twee punten staan bewust open en zijn geen resultaat van dit werk:
+
+- Drie Fluttertests falen door bestanden die `main` inmiddels heeft hersteld
+  (`http_lifecycle_test`, `no_local_cta_shape_override_test`, `tv_top_navigation_test`), en 77
+  goldens zijn op macOS niet te beoordelen; Linux-CI beslist.
+- `scripts/check_authority_merge.sh 0b9699ec^1` geeft 7 pass en 5 fail: de merges `4e78b160` en
+  `0b9699ec` namen `docs/RELEASES.md`, `docs/CHANGELOG.md` en `STATUS.md` (en `CLAUDE.md` bij
+  `4e78b160`) van één ouder over. De CI-job `authority-merge` blijft daardoor rood tot een echte
+  driewegmerge bij de main-sync de merge-base verschuift. Er zijn geen ALLOW-regels toegevoegd.
+
+Volgende stap: S2.5 (`.env`-overname met dezelfde id en slug), daarna S2.6 (migratietest op de
+NAS-fixture en sluiting van protocolvenster 2). PS-11A blijft geblokkeerd op S0.6 en S0.7.
 
 _Laatst bijgewerkt: 2026-09-20. De nieuwe Pleya Server-authority
 `integration/pleya-server-completion` wordt vanaf actueel `main` (`bc6bff47`) opgebouwd. Het lokale

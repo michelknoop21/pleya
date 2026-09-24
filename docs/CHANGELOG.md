@@ -4,6 +4,17 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-24] Pleya Server S2.4 gereed en gates ronde 2
+
+Op `integration/pleya-server-completion` zijn de rescue-migraties als `0010` (S2.4) en `0011`
+(loudness) geland, de runner kreeg `Cancel`, `Retry` en `List`, de scanner stopt binnen één walk-stap
+en na een mislukte probe geldt een backoff op `probe_attempts`. Protocolvenster 2 leverde zes
+endpoints (`POST /libraries/{id}/scan`, `GET /scans`, `/scans/{id}`, `/jobs`, `POST /jobs/{id}/cancel`,
+`/retry`) met matrixrijen 33-38 en `job` als achtste foutdomein; laatste commit `3f724b23`. Gates
+ronde 2 zijn gedraaid zonder Pleya Verify en zonder volledige `flutter test`. `verify-protocol.sh` en de
+CI-stap voor `./internal/api/` kregen `-timeout 30m`. Open: 3 Fluttertests van `main`, 77 goldens en de
+authority-gate (5 fail tot de main-sync).
+
 ## [2026-09-20] Pleya Server completion-re-baseline gestart
 
 De onvoltooide S2.4-migratie is eerst zonder herschrijven vastgelegd op

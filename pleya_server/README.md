@@ -110,11 +110,11 @@ een geweigerd event wordt beantwoord met de actuele toestand en gelogd, en verde
 
 ## Wat er op de lijn zit
 
-Veertig operaties op drieëndertig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
+Achtenveertig operaties op eenenveertig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
 daarna PS-9, de twee daarna de serverinstellingen van S1.2, de vier daarna de serverdiagnostiek
 van S1.3, de twee daarna `GET /users/me` en het overzicht van lopende streams uit S1.4, de
-drie daarna de API-tokens en het auditlog van S1.5, en de laatste drie de bibliotheek-CRUD van
-S2.2. S1.8 komt er niet bij: de refreshcookie is een modus op login en refresh en geen endpoint
+drie daarna de API-tokens en het auditlog van S1.5, de drie daarna de bibliotheek-CRUD van
+S2.2, de twee daarna de opslagroots van S2.3 en de laatste zes scans en jobs van S2.4. S1.8 komt er niet bij: de refreshcookie is een modus op login en refresh en geen endpoint
 ernaast.
 
 | Endpoint | Klasse |
@@ -142,6 +142,10 @@ ernaast.
 | `GET /pleya/v1/stream-sessions` | admin |
 | `POST`/`GET /pleya/v1/auth/api-tokens` | geauthenticeerd op zichzelf, admin met `user_id` |
 | `GET /pleya/v1/audit` | admin |
+| `GET /pleya/v1/storage/roots`, `POST /pleya/v1/storage/roots/recheck` | admin |
+| `POST /pleya/v1/libraries/{id}/scan` | admin; geeft 202 met de scan |
+| `GET /pleya/v1/scans`, `/scans/{id}`, `GET /pleya/v1/jobs` | admin |
+| `POST /pleya/v1/jobs/{id}/cancel`, `/jobs/{id}/retry` | admin |
 
 Buiten het protocol staat er nog één route: `GET /` en elk pad dat geen bestand en geen protocolroute is levert
 `index.html` van de webbundel. `/pleya/v1/*`, `/healthz` en `/readyz` houden altijd voorrang, en een
@@ -155,8 +159,7 @@ Zijn bereik (`read`, `maintenance`, `admin`) kan nooit boven de rol van de eigen
 adminklasse ook wanneer de rol hem wel haalt.
 
 Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), verzamelingen en
-afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer (bibliotheken, opslag en scans in
-S2). Die geven een 404, en
+afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer (S2.5 en S2.6). Die geven een 404, en
 `capabilities` in `/info` zegt hetzelfde: `browse`, `search`, `artwork`, `watch_state`,
 `watch_state_ownership`, `stream_sessions`, `users`, `sessions` en `api_tokens` staan op `true`, en
 capabilities is leidend. `administration` staat er nog niet bij: die vlag hoort bij S1.6, wanneer
@@ -347,6 +350,35 @@ krijgt ze haar eigen tokenpaar, haar eigen sessie en haar eigen kijkstatus.
 Een `restricted`-gebruiker is een `member` met drie verschillen: hij kan nooit `manage` krijgen, hij
 zet zijn eigen wachtwoord niet (alleen owner en admin doen dat), en hij ziet in `GET /users` alleen
 zichzelf. Dat is het Plex Home-kinderprofiel.
+
+### Scans en jobs
+
+Sinds S2.4 start je een scan over de API en volg je hem, en kun je een job annuleren of opnieuw
+proberen. Alle zes zijn klasse `admin`.
+
+```sh
+A=<access_token van owner of admin>
+B=http://127.0.0.1:8832/pleya/v1
+
+# Scan starten: 202 met de scan op status queued. Loopt er al een, dan 409 library.scan_in_progress.
+curl -s -X POST -H "Authorization: Bearer $A" $B/libraries/<id>/scan
+
+# Volgen. Nieuwste eerst, met cursor en limit; library_id filtert.
+curl -s -H "Authorization: Bearer $A" "$B/scans?library_id=<id>&limit=10"
+curl -s -H "Authorization: Bearer $A" $B/scans/<scan_id>
+curl -s -H "Authorization: Bearer $A" "$B/jobs?limit=10"
+
+# Annuleren stopt een lopende scan binnen één walk-stap. Een job die al klaar is geeft 409
+# job.not_cancellable met details.reason finished.
+curl -s -X POST -H "Authorization: Bearer $A" $B/jobs/<job_id>/cancel
+
+# Opnieuw in de wachtrij zetten na failed of cancelled. Staat dezelfde dedupe-sleutel al in de
+# wachtrij, dan 409 job.not_cancellable met details.reason duplicate_in_flight.
+curl -s -X POST -H "Authorization: Bearer $A" $B/jobs/<job_id>/retry
+```
+
+`job` is het achtste foutdomein. Na een mislukte probe van een bestand wacht de scanner volgens
+`probe_attempts` steeds langer voor hij het opnieuw probeert (`probeBackoff`).
 
 ### Serverinstellingen wijzigen
 
@@ -554,7 +586,7 @@ image die de container bouwt.
 
 ```sh
 scripts/go-tool.sh vet ./...
-scripts/verify-local.sh              # de hele keten, vijftien secties, 72 controles
+scripts/verify-local.sh              # de hele keten, vijftien secties, 79 controles
 ```
 
 De tests tegen een echte database en een echte ffprobe vragen twee dingen vooraf. Zonder die twee

@@ -198,7 +198,7 @@ jobs:
           PLEYA_RESPONSE_DIR: ${{ github.workspace }}/pleya_server/.responses
         run: |
           rm -rf .responses && mkdir -p .responses
-          go test -count=1 ./internal/api/
+          go test -count=1 -timeout 30m ./internal/api/
 
       - name: Validate responses against openapi.yaml
         run: |

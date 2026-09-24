@@ -47,6 +47,8 @@ under `Notes`.
 - S2.1, managed en scaninstellingen op libraries
 - S2.2, CRUD op libraries en protocolvenster 2 open
 - S2.3, GET /storage/roots uit de mounts en de recheck
+- D0 goedgekeurd, D1 canoniek loudnessbewijs per audiostroom
+- D2, package internal/loudness
 - automation-ids op de mobiele My Pleya, Verify voor 18
 - automation-ids op de mobiele Bibliotheken-picker, Verify voor 15
 - automation-ids op de mobiele Instellingen, Verify voor 14
@@ -57,6 +59,12 @@ under `Notes`.
 - bronregel en zenderteller onder de Live TV-kop (MOC-17)
 - de Live TV-gids krijgt binnen de shell tien-voet-dichtheid (MOC-17)
 - blijvende detailbalk onder de Live TV-gids (MOC-17)
+- rescue-migraties geland als 0010 (S2.4) en 0011 (loudness), docs hernummerd
+- jobs annuleren, opnieuw proberen en lezen in de runner (S2.4)
+- scanner stopt binnen één walk-stap en neemt een queued scan_runs-rij over (S2.4)
+- scans en jobs in venster 2, job als achtste foutdomein (S2.4)
+- scans en jobs over HTTP, annuleren en retry (S2.4)
+- backoff op probe_attempts na een mislukte probe (S2.4)
 
 ### Improved
 - semantische bronaudit op codec- en containerlijsten
@@ -116,6 +124,9 @@ under `Notes`.
 - git_commit_define stopt de lane bij een mislukte of lege git-aanroep (L29)
 - profile.freezed.dart opnieuw gegenereerd na de doc-wijziging uit 3734e399
 - schema.d.ts opnieuw gegenereerd na de contractwijziging uit 3734e399
+- annulering tussen claim en registratie gaat niet meer verloren (S2.4)
+- shutdown geeft failed in plaats van cancelled en een herstarte scan krijgt een verse rij (S2.4)
+- retry laat geen wees-scanronde achter bij een gelijktijdige retry (S2.4)
 <!-- END GENERATED -->
 
 ### New
