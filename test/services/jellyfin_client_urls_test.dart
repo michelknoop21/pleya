@@ -239,6 +239,37 @@ void main() {
       expect(capturedUri!.queryParameters['Fields']!.split(','), contains('MediaSources'));
     });
 
+    test('history import asks for its own user only, paged, with the taste fields', () async {
+      final requests = <Uri>[];
+      final scoped = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((request) async {
+          requests.add(request.url);
+          return http.Response(jsonEncode({'Items': <Object>[], 'TotalRecordCount': 0}), 200);
+        }),
+      );
+      addTearDown(scoped.close);
+
+      await scoped.fetchPlayedHistoryPage(startIndex: 400);
+      await scoped.fetchResumableItems();
+
+      final played = requests[0].queryParameters;
+      expect(requests[0].path, '/Items');
+      expect(played['userId'], 'user-1');
+      expect(played['Filters'], 'IsPlayed');
+      expect(played['SortBy'], 'DatePlayed');
+      expect(played['SortOrder'], 'Descending');
+      expect(played['IncludeItemTypes'], 'Movie,Episode');
+      expect(played['StartIndex'], '400');
+      expect(played['Limit'], '200');
+      expect(played['Fields']!.split(','), containsAll(['UserData', 'Genres', 'People', 'Studios']));
+
+      final resumable = requests[1].queryParameters;
+      expect(resumable['userId'], 'user-1');
+      expect(resumable['Filters'], 'IsResumable');
+      expect(resumable['Limit'], '100');
+    });
+
     test('reportPlaybackProgress sends media source and stream indexes', () async {
       Uri? capturedUri;
       String? capturedBody;

@@ -11,6 +11,7 @@ import '../../utils/app_logger.dart';
 import '../settings_service.dart';
 import 'affinity_engine.dart';
 import 'candidate_pool.dart';
+import 'history_importer.dart';
 import 'personalized_rows_builder.dart';
 import 'tautulli_history_importer.dart';
 
@@ -77,6 +78,11 @@ class RecommendationService {
 
   final TautulliImporterFactory? _importerFactory;
 
+  /// Importers that read the profile's own history over its own connection
+  /// (Jellyfin), built fresh per sync so a server that just came online is
+  /// picked up. No policy set gates them: the token is the profile's own.
+  final List<HistoryImporter> Function()? _historyImporters;
+
   /// The enabled set the last [buildRows] actually scored with, so a sync can
   /// tell whether the rows on screen were built before the answer was known.
   Set<String>? _scoredWith;
@@ -101,6 +107,7 @@ class RecommendationService {
     Set<String> Function()? enabledImportServerIds,
     this._importSourcesReady,
     this._importerFactory,
+    this._historyImporters,
   }) : _db = database,
        _affinity = AffinityEngine(database),
        _candidates = candidatePool ?? CandidatePool(),
@@ -211,7 +218,7 @@ class RecommendationService {
   Future<bool> _syncImportedHistory() async {
     if (!_enabled) return false;
     final factory = _importerFactory;
-    if (factory == null) return false;
+    if (factory == null && _historyImporters == null) return false;
 
     await _awaitImportSources();
 
@@ -222,9 +229,9 @@ class RecommendationService {
     final scored = _scoredWith;
     var changed = scored != null && !setEquals(scored, enabled);
 
-    for (final serverId in enabled) {
+    for (final serverId in factory == null ? const <String>{} : enabled) {
       try {
-        final importer = factory(profileId, ServerId(serverId));
+        final importer = factory!(profileId, ServerId(serverId));
         if (importer == null) continue;
         final outcome = await importer.sync();
         changed = changed || (outcome?.changedAnything ?? false);
@@ -232,6 +239,14 @@ class RecommendationService {
         // A failing import must never take Discover down, drop existing rows or
         // surface anything to the user.
         appLogger.w('RecommendationService: history sync failed', error: e, stackTrace: s);
+      }
+    }
+    for (final importer in _historyImporters?.call() ?? const <HistoryImporter>[]) {
+      try {
+        final outcome = await importer.sync();
+        changed = changed || (outcome?.changedAnything ?? false);
+      } catch (e, s) {
+        appLogger.w('RecommendationService: own-history sync failed', error: e, stackTrace: s);
       }
     }
     return changed;

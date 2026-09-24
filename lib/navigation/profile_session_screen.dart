@@ -39,7 +39,9 @@ import '../database/app_database.dart';
 import '../i18n/strings.g.dart';
 import '../screens/main_screen.dart';
 import '../services/livetv/plex_favorite_channels_service.dart';
+import '../services/jellyfin_client.dart';
 import '../services/recommendations/interaction_recorder.dart';
+import '../services/recommendations/jellyfin_history_importer.dart';
 import '../services/recommendations/personalized_rows_builder.dart';
 import '../services/recommendations/recommendation_service.dart';
 import '../services/recommendations/tautulli_history_importer.dart';
@@ -353,6 +355,19 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                         isCurrentProfile: () => activeProfile.activeId == importProfileId,
                       );
                     },
+                    // The profile's own Jellyfin logins: each client only ever
+                    // asks for its own user's history (DEC-062), and only
+                    // servers this profile can see are visited.
+                    historyImporters: () => [
+                      for (final MapEntry(key: id, value: client) in multiServer.serverManager.onlineClients.entries)
+                        if (client is JellyfinClient && multiServer.serverManager.isServerVisible(ServerId(id)))
+                          JellyfinHistoryImporter(
+                            database: database,
+                            profileId: profileId,
+                            source: client,
+                            isCurrentProfile: () => activeProfile.activeId == profileId,
+                          ),
+                    ],
                   );
                 },
               ),

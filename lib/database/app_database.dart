@@ -65,6 +65,7 @@ const int kRecentPositiveRowCap = 500;
 /// [MediaInteractions.source] values.
 const String kInteractionSourceLocal = 'local';
 const String kInteractionSourceTautulli = 'tautulli';
+const String kInteractionSourceJellyfin = 'jellyfin';
 
 /// Partial unique index; drift's `createAll()` has no way to express one.
 const String _sqlImportedInteractionUniqueIndex =

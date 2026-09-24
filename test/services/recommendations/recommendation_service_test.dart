@@ -153,6 +153,36 @@ void main() {
     });
   });
 
+  group('own-history importers', () {
+    test('run without a Tautulli factory or any enabled server', () async {
+      final own = _FakeImporter(outcome: const TautulliImportOutcome(imported: 2));
+      final result = await RecommendationService(
+        profileId: 'p1',
+        database: db,
+        titles: _titles,
+        historyImporters: () => [own],
+      ).syncImportedHistory();
+      expect(result, isTrue);
+      expect(own.syncs, 1);
+    });
+
+    test('a failing one never takes the Tautulli import or the next one down', () async {
+      final tautulli = _FakeImporter(outcome: const TautulliImportOutcome());
+      final next = _FakeImporter(outcome: const TautulliImportOutcome(imported: 1));
+      final result = await RecommendationService(
+        profileId: 'p1',
+        database: db,
+        titles: _titles,
+        enabledImportServerIds: () => const {'srvA'},
+        importerFactory: (_, _) => tautulli,
+        historyImporters: () => [_FakeImporter(throws: Exception('boom')), next],
+      ).syncImportedHistory();
+      expect(result, isTrue);
+      expect(tautulli.syncs, 1);
+      expect(next.syncs, 1);
+    });
+  });
+
   group('cold start', () {
     /// The whole point of the readiness seam, as one scenario: Discover wins
     /// the race against the integration store, so the first rows are built as

@@ -52,6 +52,11 @@ const _browseFields = 'RecursiveItemCount,ChildCount,UserData,PremiereDate,Origi
 /// queries because it is the heaviest item field Jellyfin returns.
 const _episodeRowFields = '$_browseFields,MediaSources';
 
+/// Watch-history import: the taste features (genres, cast, director, studio)
+/// come along on the page, so a film costs no separate item lookup. Only the
+/// background history sync asks for these, never a visible list.
+const _historyFields = '$_browseFields,Genres,People,Studios';
+
 /// Folder-tree field set for MEDIA children. The tree renders
 /// title/thumb/watch state plus default dto fields (year, runtime, ratings);
 /// it deliberately skips `RecursiveItemCount`/`ChildCount` — per-item COUNT
@@ -1644,6 +1649,37 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       'SortOrder': 'Descending',
       'Limit': limit.toString(),
       'Fields': _browseFields,
+      ...jellyfinImageQueryParameters,
+    });
+    return _mapItems(items);
+  }
+
+  /// [JellyfinHistorySource]: only this connection's own user, never another
+  /// account on the server (DEC-062).
+  Future<List<MediaItem>> fetchPlayedHistoryPage({required int startIndex, int limit = kJellyfinPageLength}) async {
+    final items = await _safeFetchItemsArray('/Items', {
+      'userId': connection.userId,
+      'Recursive': 'true',
+      'IncludeItemTypes': 'Movie,Episode',
+      'Filters': 'IsPlayed',
+      'SortBy': 'DatePlayed',
+      'SortOrder': 'Descending',
+      'StartIndex': startIndex.toString(),
+      'Limit': limit.toString(),
+      'Fields': _historyFields,
+      ...jellyfinImageQueryParameters,
+    });
+    return _mapItems(items);
+  }
+
+  Future<List<MediaItem>> fetchResumableItems({int limit = kJellyfinResumeLimit}) async {
+    final items = await _safeFetchItemsArray('/Items', {
+      'userId': connection.userId,
+      'Recursive': 'true',
+      'IncludeItemTypes': 'Movie,Episode',
+      'Filters': 'IsResumable',
+      'Limit': limit.toString(),
+      'Fields': _historyFields,
       ...jellyfinImageQueryParameters,
     });
     return _mapItems(items);

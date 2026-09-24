@@ -13,6 +13,7 @@ import '../../utils/app_logger.dart';
 import '../../utils/global_key_utils.dart';
 import '../tautulli/tautulli_client.dart';
 import '../tautulli/tautulli_import_access.dart';
+import 'history_importer.dart';
 import 'tautulli_import_binding.dart';
 
 /// Rows per API page. Tautulli serves these comfortably and it keeps the
@@ -121,7 +122,7 @@ class TautulliImportOutcome {
 /// watermark only advances over records that were actually processed, and the
 /// backfill window's upper bound is frozen at the start so a calendar day
 /// larger than one pass cannot re-anchor the cursor and stall.
-class TautulliHistoryImporter {
+class TautulliHistoryImporter implements HistoryImporter {
   final AppDatabase _db;
   final TautulliImportAccess _access;
   final TautulliImportTarget _target;
@@ -231,6 +232,7 @@ class TautulliHistoryImporter {
   /// Runs a forward pass and, when there is still room and older history to
   /// get, one bounded backfill pass. Returns null when another sync for the
   /// same profile and server is already running.
+  @override
   Future<TautulliImportOutcome?> sync() async {
     if (!_inFlight.add(_lockKey)) {
       appLogger.d('TautulliHistoryImporter: sync already running for this profile and server');
