@@ -5,7 +5,7 @@
 <section class="faq" id="faq">
   <div class="wrap">
     <p class="kicker">Before you join</p>
-    <div class="faq-list">
+    <div class="faq-list" data-reveal>
       {#each faqs as faq, i (faq.id)}
         <details open={i === 0}>
           <summary>{faq.question}</summary>

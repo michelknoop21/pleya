@@ -4024,10 +4024,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         // DET7 (Michel, 13 September): detail always uses the full screen, so
         // unlike `TvPageSurface` it keeps no `TvCatalogLayout.bottomSafeInset`
         // (DEC-087) under the rail. The rail's own bottom padding hangs off the
-        // edge too, at the scale `TvBrowseRail` reads it with.
-        final railBottomPadding = TvBrowseRailLayout.railBottomPaddingForScale(
-          TvBrowseRailLayout.scaleForSize(MediaQuery.sizeOf(context)),
-        );
+        // edge too, at the scale `TvBrowseRail` reads it with (SYS-3e).
+        final railBottomPadding = TvBrowseRailLayout.railBottomPaddingForScale(detailScale);
         final initialForegroundBottom =
             (railHeight - railTopPadding - railBottomPadding) + (_tvDetailActionRailGap * detailScale);
         final initialRailHeight = railHeight;
@@ -4809,6 +4807,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
       tallPosterScale: tallPosterScale,
       includeNextHubPeek: includeNextHubPeek,
+      scale: TvLayoutConstants.scaleOf(context),
     );
   }
 
@@ -4830,14 +4829,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     final railHeight = hubRailHeight > 0 ? hubRailHeight : _estimateTvDetailEmptyRailReserveHeight(size);
     if (!showSeasonChips) return railHeight;
     // PB-4/VIS2: the chip row sits on the rail's header strip and only needs
-    // what sticks out above it, on the same box-derived scale
-    // `_estimateTvDetailEmptyRailReserveHeight` already uses for this band.
-    return railHeight + _tvDetailSeasonChipOverhang(TvBrowseRailLayout.scaleForSize(size));
+    // what sticks out above it, at the panel scale the row renders at (SYS-3e).
+    return railHeight + _tvDetailSeasonChipOverhang(TvLayoutConstants.scaleOf(context));
   }
 
   double _estimateTvDetailEmptyRailReserveHeight(Size size) {
     final svc = SettingsService.instance;
-    final scale = TvBrowseRailLayout.scaleForSize(size);
+    final scale = TvLayoutConstants.scaleOf(context);
     final availableWidth = size.width - TvBrowseRailLayout.horizontalInsetForScale(scale);
     if (availableWidth <= 0) return 0;
 

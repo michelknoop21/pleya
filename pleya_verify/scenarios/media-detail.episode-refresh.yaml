@@ -7,112 +7,29 @@ setup:
   - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
 steps:
   - wait_until: {id: screen.discover, timeout: 30000}
-  # IntroGate's cold-start splash paints over an already-ready screen.
   - settle: 3500
 
-  # VER5: this used to reach "Shows" through the sidebar (`press: left`,
-  # `press: down`, `press: select`), the same path `tvos.sidebar.collapse`
-  # once proved landed on `screen.libraries`. That sidebar is gone: hoofdstuk
-  # 18.2 moved Bibliotheken (along with Kijklijst, Aanvragen and Instellingen)
-  # inside Mijn Pleya on TV, and the top nav (`nav.discover`, `nav.series`,
-  # `nav.movies`, `nav.myPleya`, `nav.search`) has no Libraries entry of its
-  # own to press Left or Down into. Confirmed on `catalog.shows.v1` with a
-  # probe run: three Rights from `tvNav_home` reach `nav.myPleya`, Select
-  # opens Mijn Pleya focused on "Wissel van profiel" (the profile card, not a
-  # tile), and Down moves onto `my_pleya.tile[libraries]` — the first tile of
-  # the "Bibliotheken en bronnen" group, which for this fixture (no watchlist,
-  # no Seerr, downloads hidden on tvOS) is the very first tile in the hub.
-  # Select on it opens `LibrariesScreen`, which auto-selects the fixture's one
-  # library exactly as it did when the sidebar handed it a click.
-  - press: right
-  - settle: 800
-  - press: right
-  - settle: 800
-  - press: right
-  - settle: 800
-  - press: select
-  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # VER8: the show is on Home's first rail, the same way in as
+  # `tvos.detail.series`. The old route went Mijn Pleya > Bibliotheken >
+  # library > grid; since LIB7 Bibliotheken on TV is source management and
+  # Select on a library opens its management sheet, not a grid.
+  - wait_until: {id: discover.hero, timeout: 15000}
   - press: down
   - settle: 800
-  - press: select
-  - wait_until: {id: screen.libraries, timeout: 15000}
-
-  # `screen.libraries` readiness only tracks the library *list* fetch; a
-  # freshly selected library lands on `LibraryTabType.recommended` (index
-  # 0 of `LibraryTabType.values`), not `browse`. When that tab has hub
-  # content, focus after Select lands *inside* it and Menu is needed first
-  # to reach the tab bar (the retired `tvos.library.sort.yaml` did exactly
-  # that; it is in git history before TV6). Here `catalog.shows.v1`'s single show has nothing to recommend, so
-  # `LibraryRecommendedTab` has no focusable content of its own and focus
-  # lands directly on the tab bar's Recommended chip — the focus-trace
-  # confirms it (`Content -> tab_chip_recommended` on the very Select that
-  # opened the library). A `press: menu` here overshoots past the tab bar
-  # to the sidebar (its own `onBack` escalates outward, same as any other
-  # already-topmost focus target, and Right from the sidebar just restores
-  # the remembered tab chip instead of switching tabs) — Right switches
-  # straight from Recommended to Browse while already on the tab bar,
-  # Select enters it.
-  - press: right
+  - press: down
   - settle: 800
-  - press: select
-  - wait_until: {event: library.items_loaded, timeout: 15000}
-  - settle: 1500
-  - assert: {id: library.grid, state: {child_count: 1}}
-
-  # `_loadItems`'s own `tryFocus()` already put focus on the grid's single
-  # item (Testserie) — Select opens it straight into its detail page.
-  # `_tvDetailHubs()`'s own doc comment: a single-season, flattened show
-  # (`_showEpisodesDirectly`) gets one `'detail_episodes'` hub with every
-  # episode, which is why this fixture (`named_fixtures.dart`'s own comment:
-  # "the base fixture for media-detail.episode-refresh") seeds exactly one
-  # season.
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
   - press: select
   - wait_until: {id: screen.media_detail, timeout: 15000}
 
-  # `screen.media_detail` becomes ready as soon as the screen mounts, before
-  # `_showEpisodesDirectly`'s own `_fetchAllEpisodes()` (a separate, awaited
-  # fetch that runs after the seasons-load `setState`, per
-  # `media_detail_screen.dart`'s own season-load method) resolves — until
-  # then the `'detail_episodes'` hub is empty and `media-detail.episode-list`
-  # is not in the tree at all, not merely at the wrong count (`isTv` returns
-  # `_buildTvDetailScreen()` from `_buildInner`, which builds this hub row
-  # through `TvBrowseRail`, not the desktop `_buildEpisodesList()` — see
-  # `_tvDetailAutomationIdForHub`). A fixed settle guessed wrong here; wait
-  # on the node's own presence instead.
   - wait_until: {id: media-detail.episode-list, timeout: 15000}
   - settle: 1500
   - assert: {id: media-detail.episode-list, state: {child_count: 10}}
   - snapshot: detail-10-episodes
 
-  # Reach S01E10 (item index 9) and play it. On tvOS, episodes are not a
-  # vertical `ListView` (that's the desktop/mobile `_buildEpisodesList()`
-  # layout, which `_buildInner` never reaches — `isTv` returns early into
-  # `_buildTvDetailScreen()`). They are one horizontal hub row inside
-  # `TvBrowseRail`, `detailHubs`'s first entry for a single-season,
-  # flattened show (`_tvDetailHubs()`): Down from the Play button enters the
-  # rail and lands on item index 0 of that row, then Right moves *within*
-  # the row (Down would move to the next hub instead), so nine more Rights
-  # reach index 9.
-  - press: down
-  - settle: 400
-  - press: right
-  - settle: 400
-  - press: right
-  - settle: 400
-  - press: right
-  - settle: 400
-  - press: right
-  - settle: 400
-  - press: right
-  - settle: 400
-  - press: right
-  - settle: 400
-  - press: right
-  - settle: 400
-  - press: right
-  - settle: 400
-  - press: right
-  - settle: 400
+  # A series opens with the ring on its episode rail; Select plays the
+  # episode under it.
+  - wait_until: {focused: media-detail.episode-list, timeout: 5000}
   - press: select
   - wait_until: {id: player.surface, timeout: 15000}
 
@@ -141,14 +58,22 @@ steps:
   # media-detail.episode-refresh needs".
   - fixture_mutate: {op: add_episode, parent_id: "{{fixture_id:season/testserie-s01}}"}
 
+  # The first Menu in the player only hides its controls while they are up;
+  # they hide on their own after five seconds on TV. Waiting that out makes
+  # the one Menu below the one that leaves the player (VER8). The clip runs
+  # fifteen seconds, so the player is still there.
+  - settle: 6500
+
   # Menu pops the player over idb HID — the real remote-press path ([C2]),
   # not a synthetic pop — landing back on the same `MediaDetailScreen`
   # instance rather than a freshly re-navigated one: nothing in this
-  # scenario ever leaves the sidebar-to-detail path a second time. Harmless
+  # scenario ever leaves the Home-to-detail path a second time. Harmless
   # if the clip already auto-returned on its own by this point (`onBack`'s
   # own suppression, or simply nothing left to pop for a stray press).
   - press: menu
-  - wait_until: {id: screen.media_detail, timeout: 15000}
+  # `screen.media_detail` stays mounted under the player, so the ring on the
+  # episode rail is what says the player is gone.
+  - wait_until: {focused: media-detail.episode-list, timeout: 15000}
   - settle: 2500
   - assert: {id: media-detail.episode-list, state: {child_count: 11}}
   - snapshot: detail-11-episodes

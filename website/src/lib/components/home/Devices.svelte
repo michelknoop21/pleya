@@ -13,13 +13,14 @@
       <img class="phone p1" src={iosMovies} width="603" height="1311" loading="lazy" alt="Pleya on iPhone: Movies, with a Because you watched row" />
       <img class="phone p2" src={iosDetail} width="603" height="1311" loading="lazy" alt="Pleya on iPhone: a film page with 4K, DV P8 and EAC3 Atmos labels and a Download button" />
     </figure>
-    <div class="trio">
+    <div class="trio" data-reveal>
       <div><h3>Downloads for the train</h3><p>Download films and episodes and watch them without a connection.</p></div>
       <div>
         <h3>Atmos on AirPods</h3>
-        <p>On iPhone, iPad and Apple TV Pleya asks for multichannel audio, which lets Dolby Atmos and spatial audio work on AirPods and receivers.</p>
+        <p>On iPhone and Apple TV Pleya asks for multichannel audio, which lets Dolby Atmos and spatial audio work on AirPods and receivers.</p>
       </div>
       <div><h3>A profile per person</h3><p>Everyone in the house gets their own profile and history. Settings follow you through iCloud.</p></div>
     </div>
+    <p class="links internal" data-reveal><a href="/iphone">Pleya on iPhone</a><a href="/mac">Pleya on Mac</a></p>
   </div>
 </section>

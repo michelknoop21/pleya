@@ -49,8 +49,7 @@ to raise it.
 ## Stuttering or blocky picture
 
 Too much quality for the connection, or too heavy a file for the device. Lower **Default
-quality** and confirm **Hardware decoding** is on. On older hardware, switching **Player
-backend** between ExoPlayer and mpv sometimes settles it.
+quality** and confirm **Hardware decoding** is on.
 
 ## No sound, or the wrong language
 

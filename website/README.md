@@ -15,9 +15,8 @@ bun run dev
 
 Outbound links and beta state live in `src/lib/config.ts`:
 
-- `PUBLIC_TESTFLIGHT_URL` — public TestFlight invite link. When empty, the "Join the beta" CTA renders a disabled "coming soon" state.
-- `WAITLIST_WEBHOOK_URL` — webhook that receives waitlist sign-ups (`POST` with `{ email }`). When empty, the form falls back to a `mailto:` link.
-- `SOURCE_REPO_URL` — upstream project for the GPL-3.0 attribution in the footer.
+- `PUBLIC_TESTFLIGHT_URL`: public TestFlight invite link. When empty, the "Join the beta" CTA renders a disabled "coming soon" state.
+- `SOURCE_REPO_URL`: upstream project for the GPL-3.0 attribution in the footer.
 
 ## Checks
 

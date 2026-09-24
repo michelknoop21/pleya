@@ -25,8 +25,8 @@ steps:
   # `discover.hero` and `discover.hero.play` are the ids the phone/desktop hero
   # already carried, now also registered by `TvHeroBillboardCarousel`. Before
   # that, `/v1/ui_tree` on this platform reported the bar and the rails and
-  # nothing of the billboard, which `tvos.sidebar.collapse` records in its own
-  # comments as the reason it can say nothing about the hero.
+  # nothing of the billboard, which the retired `tvos.sidebar.collapse` (DEC-120)
+  # recorded as the reason it could say nothing about the hero.
   - wait_until: {id: discover.hero, timeout: 15000}
   - assert: {id: discover.hero, insideViewport: true}
   - snapshot: home-rest
