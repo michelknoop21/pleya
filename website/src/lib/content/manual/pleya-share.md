@@ -21,7 +21,7 @@ after the beta.
 
 1. On the device holding the files, open **Settings**, then **Pleya Share**, then **Host**.
 2. Pick the folders to share.
-3. Leave the QR code on screen.
+3. Leave the QR code on screen. Next to it is a six-digit pairing code for typing by hand; it changes after each successful pairing.
 
 ![The host screen with its QR code](/docs-media/share-host.png)
 

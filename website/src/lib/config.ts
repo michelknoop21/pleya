@@ -5,11 +5,11 @@
 
 /**
  * Public TestFlight invite link (e.g. https://testflight.apple.com/join/XXXXXXXX).
- * When empty, the "Join the beta" CTA renders as a disabled "coming soon" state.
+ * When empty, the CTA falls back to the "Join the waitlist" mailto: link below.
  */
 export const PUBLIC_TESTFLIGHT_URL = '';
 
-/** Fallback inbox for the "Join the beta" waitlist mailto: link. */
+/** Inbox for the "Join the waitlist" mailto: link. */
 export const WAITLIST_FALLBACK_EMAIL = 'info@michelknoop.nl';
 
 /** Upstream open-source project Pleya is based on (GPL-3.0 attribution). */

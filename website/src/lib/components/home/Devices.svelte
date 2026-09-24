@@ -17,7 +17,7 @@
       <div><h3>Downloads for the train</h3><p>Download films and episodes and watch them without a connection.</p></div>
       <div>
         <h3>Atmos on AirPods</h3>
-        <p>On iPhone, iPad and Apple TV Pleya asks for multichannel audio, which lets Dolby Atmos and spatial audio work on AirPods and receivers.</p>
+        <p>On iPhone and Apple TV Pleya asks for multichannel audio, which lets Dolby Atmos and spatial audio work on AirPods and receivers.</p>
       </div>
       <div><h3>A profile per person</h3><p>Everyone in the house gets their own profile and history. Settings follow you through iCloud.</p></div>
     </div>
