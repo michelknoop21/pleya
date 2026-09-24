@@ -30,6 +30,7 @@ import '../providers/seerr_provider.dart';
 import '../providers/tautulli_provider.dart';
 import '../profiles/plex_home_service.dart';
 import '../profiles/plex_self_account.dart';
+import '../profiles/profile_connection_registry.dart';
 import '../providers/now_watching_provider.dart';
 import '../providers/trakt_account_provider.dart';
 import '../providers/trackers_provider.dart';
@@ -39,7 +40,6 @@ import '../database/app_database.dart';
 import '../i18n/strings.g.dart';
 import '../screens/main_screen.dart';
 import '../services/livetv/plex_favorite_channels_service.dart';
-import '../services/jellyfin_client.dart';
 import '../services/recommendations/interaction_recorder.dart';
 import '../services/recommendations/jellyfin_history_importer.dart';
 import '../services/recommendations/personalized_rows_builder.dart';
@@ -302,6 +302,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   // resolve which Plex account this profile is, and the binding
                   // then refuses with `ambiguousUser` instead of guessing.
                   final plexHome = context.read<PlexHomeService?>();
+                  final profileConnections = context.read<ProfileConnectionRegistry>();
                   final profileId = activeId ?? '';
 
                   return RecommendationService(
@@ -355,19 +356,22 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                         isCurrentProfile: () => activeProfile.activeId == importProfileId,
                       );
                     },
-                    // The profile's own Jellyfin logins: each client only ever
-                    // asks for its own user's history (DEC-062), and only
-                    // servers this profile can see are visited.
-                    historyImporters: () => [
-                      for (final MapEntry(key: id, value: client) in multiServer.serverManager.onlineClients.entries)
-                        if (client is JellyfinClient && multiServer.serverManager.isServerVisible(ServerId(id)))
-                          JellyfinHistoryImporter(
-                            database: database,
-                            profileId: profileId,
-                            source: client,
-                            isCurrentProfile: () => activeProfile.activeId == profileId,
-                          ),
-                    ],
+                    // Only the profile's own Jellyfin logins, never a borrowed
+                    // one (DEC-062, DEC-132), and nothing while the binder is
+                    // still swapping the previous profile's servers out.
+                    historyImporters: () => ownJellyfinHistoryImporters(
+                      database: database,
+                      profileId: profileId,
+                      connectionsForProfile: profileConnections.listForProfile,
+                      profilesForConnection: profileConnections.listForConnection,
+                      onlineSource: (connectionId) {
+                        final manager = multiServer.serverManager;
+                        final client = manager.getJellyfinClientByCompoundId(connectionId);
+                        if (client == null) return null;
+                        return manager.isClientOnline(client.serverId, clientScopeId: connectionId) ? client : null;
+                      },
+                      isCurrentProfile: () => activeProfile.activeId == profileId && !activeProfile.isBinding,
+                    ),
                   );
                 },
               ),

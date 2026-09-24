@@ -4,6 +4,7 @@ import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/profiles/profile_connection.dart';
 import 'package:pleya/services/recommendations/jellyfin_history_importer.dart';
 
 const _profile = 'profile-a';
@@ -16,6 +17,10 @@ class _FakeSource implements JellyfinHistorySource {
   List<MediaItem> resumable;
   final Map<String, MediaItem> items;
   int pageCalls = 0;
+
+  /// Runs between reading the pages and writing, to model a profile switch or
+  /// a wipe landing mid-sync.
+  void Function()? onResumable;
   _FakeSource({this.played = const [], this.resumable = const [], this.items = const {}});
 
   @override
@@ -28,7 +33,10 @@ class _FakeSource implements JellyfinHistorySource {
   }
 
   @override
-  Future<List<MediaItem>> fetchResumableItems({int limit = 100}) async => resumable.take(limit).toList();
+  Future<List<MediaItem>> fetchResumableItems({int limit = 100}) async {
+    onResumable?.call();
+    return resumable.take(limit).toList();
+  }
 
   @override
   Future<MediaItem?> fetchItem(String id, {bool useCache = true}) async => items[id];
@@ -60,17 +68,24 @@ MediaItem _episode(String id, {required String showId, required int lastViewedDa
 
 void main() {
   late AppDatabase db;
-  setUp(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
+  late int nowMs;
+  setUp(() {
+    db = AppDatabase.forTesting(NativeDatabase.memory());
+    nowMs = _now;
+  });
+  // Past the sync interval, so the next sync is not throttled.
+  void later() => nowMs += const Duration(minutes: 16).inMilliseconds;
   tearDown(() async => db.close());
 
-  JellyfinHistoryImporter importer(_FakeSource source, {int maxPagesFirstRun = 5}) => JellyfinHistoryImporter(
-    database: db,
-    profileId: _profile,
-    source: source,
-    isCurrentProfile: () => true,
-    clock: () => _now,
-    maxPagesFirstRun: maxPagesFirstRun,
-  );
+  JellyfinHistoryImporter importer(_FakeSource source, {int maxPagesFirstRun = 5, bool Function()? isCurrentProfile}) =>
+      JellyfinHistoryImporter(
+        database: db,
+        profileId: _profile,
+        source: source,
+        isCurrentProfile: isCurrentProfile ?? () => true,
+        clock: () => nowMs,
+        maxPagesFirstRun: maxPagesFirstRun,
+      );
 
   test('played films become completed rows with a stable event id', () async {
     final source = _FakeSource(played: [_movie('m1', lastViewedDaysAgo: 1), _movie('m2', lastViewedDaysAgo: 2)]);
@@ -87,6 +102,7 @@ void main() {
     final source = _FakeSource(played: [_movie('m1', lastViewedDaysAgo: 1)]);
     await importer(source).sync();
     source.pageCalls = 0;
+    later();
     final outcome = await importer(source).sync();
     expect(outcome!.imported, 0);
     expect(source.pageCalls, 1, reason: 'the first page already reaches the watermark');
@@ -118,7 +134,9 @@ void main() {
     source.resumable = [
       _movie('r1', lastViewedDaysAgo: 0, viewCount: 0, viewOffsetMs: 70 * 60000, durationMs: 100 * 60000),
     ];
+    later();
     await importer(source).sync();
+    later();
     await importer(source).sync();
     final rows = await db.getMediaInteractions(_profile);
     expect(rows, hasLength(1));
@@ -181,5 +199,177 @@ void main() {
     final outcome = await importer(source).sync();
     expect(outcome!.deduplicated, 1);
     expect(outcome.imported, 1, reason: 'another episode of the same show is its own view');
+  });
+
+  group('play time, throttle, guards and resolution', () {
+    MediaItem resumableAt(String id, int epochSeconds) => MediaItem.jellyfin(
+      id: id,
+      kind: MediaKind.movie,
+      serverId: _server,
+      title: id,
+      viewCount: 0,
+      lastViewedAt: epochSeconds,
+      viewOffsetMs: 60 * 60000,
+      durationMs: 100 * 60000,
+    );
+
+    test('a partial carries the play time, so a local partial eight hours ago dedups it', () async {
+      final playedAt = _now - 8 * Duration.millisecondsPerHour;
+      await db.insertMediaInteraction(
+        MediaInteractionsCompanion.insert(
+          profileId: _profile,
+          globalKey: '$_server:r1',
+          mediaKind: 'movie',
+          eventType: 'partial',
+          eventWeight: 0.4,
+          occurredAt: playedAt,
+        ),
+        profileId: _profile,
+      );
+      final source = _FakeSource(resumable: [resumableAt('r1', playedAt ~/ 1000)]);
+      final outcome = await importer(source).sync();
+      expect(outcome!.deduplicated, 1);
+      expect(await db.getMediaInteractions(_profile), hasLength(1), reason: 'one partial, not two');
+    });
+
+    test('a second sync inside the interval makes no request at all', () async {
+      final source = _FakeSource(played: [_movie('m1', lastViewedDaysAgo: 1)]);
+      await importer(source).sync();
+      source.pageCalls = 0;
+      nowMs += const Duration(minutes: 14).inMilliseconds;
+      final outcome = await importer(source).sync();
+      expect(outcome!.changedAnything, isFalse);
+      expect(source.pageCalls, 0);
+      later();
+      await importer(source).sync();
+      expect(source.pageCalls, 1, reason: 'the throttle is persisted in the cursor and lapses');
+    });
+
+    test('the watermark moves past a deduplicated play, so it is not handled again', () async {
+      await db.insertMediaInteraction(
+        MediaInteractionsCompanion.insert(
+          profileId: _profile,
+          globalKey: '$_server:m1',
+          mediaKind: 'movie',
+          eventType: 'completed',
+          eventWeight: 1.0,
+          occurredAt: _now - Duration.millisecondsPerHour,
+        ),
+        profileId: _profile,
+      );
+      final source = _FakeSource(played: [_movie('m1', lastViewedDaysAgo: 0)]);
+      expect((await importer(source).sync())!.deduplicated, 1);
+      later();
+      final second = await importer(source).sync();
+      expect(second!.fetched, 0);
+      expect(second.deduplicated, 0);
+    });
+
+    test('a profile switch before the write stores no rows and no cursor', () async {
+      var current = true;
+      final source = _FakeSource(played: [_movie('m1', lastViewedDaysAgo: 1)])..onResumable = () => current = false;
+      expect(await importer(source, isCurrentProfile: () => current).sync(), isNull);
+      expect(await db.getMediaInteractions(_profile), isEmpty);
+      expect(await db.getHistorySyncCursor(_profile, _server, 'jellyfin'), isNull);
+    });
+
+    test('a wipe of the taste data mid-sync stores no rows and no cursor', () async {
+      final source = _FakeSource(played: [_movie('m1', lastViewedDaysAgo: 1)])
+        ..onResumable = () => db.deleteRecommendationDataForProfile(_profile);
+      expect(await importer(source).sync(), isNull);
+      expect(await db.getMediaInteractions(_profile), isEmpty);
+      expect(await db.getHistorySyncCursor(_profile, _server, 'jellyfin'), isNull);
+    });
+
+    test('an episode whose series is gone is unresolvable, not a featureless row', () async {
+      final source = _FakeSource(played: [_episode('e1', showId: 'gone', lastViewedDaysAgo: 1)]);
+      final outcome = await importer(source).sync();
+      expect(outcome!.unresolvable, 1);
+      expect(await db.getMediaInteractions(_profile), isEmpty);
+    });
+
+    test('the same play on two pages counts once', () async {
+      final movie = _movie('m1', lastViewedDaysAgo: 1);
+      final source = _FakeSource(played: [for (var i = 0; i < 200; i++) movie, movie]);
+      final outcome = await importer(source).sync();
+      expect(outcome!.imported, 1);
+    });
+  });
+
+  group('ownJellyfinHistoryImporters', () {
+    ProfileConnection row(String profileId, String connectionId) =>
+        ProfileConnection(profileId: profileId, connectionId: connectionId, userIdentifier: 'u');
+
+    Future<List<JellyfinHistoryImporter>> build({
+      required Map<String, List<String>> profilesByConnection,
+      Set<String> online = const {'c1'},
+      bool current = true,
+    }) => ownJellyfinHistoryImporters(
+      database: db,
+      profileId: _profile,
+      connectionsForProfile: (profileId) async => [
+        for (final e in profilesByConnection.entries)
+          if (e.value.contains(profileId)) row(profileId, e.key),
+      ],
+      profilesForConnection: (connectionId) async => [
+        for (final p in profilesByConnection[connectionId] ?? const <String>[]) row(p, connectionId),
+      ],
+      onlineSource: (connectionId) => online.contains(connectionId) ? _FakeSource() : null,
+      isCurrentProfile: () => current,
+    );
+
+    test('an own connection gets an importer', () async {
+      expect(
+        await build(
+          profilesByConnection: {
+            'c1': [_profile],
+          },
+        ),
+        hasLength(1),
+      );
+    });
+
+    test('a borrowed connection, shared with another profile, imports nothing', () async {
+      expect(
+        await build(
+          profilesByConnection: {
+            'c1': [_profile, 'profile-b'],
+          },
+        ),
+        isEmpty,
+      );
+    });
+
+    test('an offline connection or another profile\'s connection gets none', () async {
+      expect(
+        await build(
+          profilesByConnection: {
+            'c1': [_profile],
+          },
+          online: const {},
+        ),
+        isEmpty,
+      );
+      expect(
+        await build(
+          profilesByConnection: {
+            'c1': ['profile-b'],
+          },
+        ),
+        isEmpty,
+      );
+    });
+
+    test('nothing is built while the profile is not current or still binding', () async {
+      expect(
+        await build(
+          profilesByConnection: {
+            'c1': [_profile],
+          },
+          current: false,
+        ),
+        isEmpty,
+      );
+    });
   });
 }

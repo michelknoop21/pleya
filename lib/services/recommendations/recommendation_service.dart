@@ -81,7 +81,7 @@ class RecommendationService {
   /// Importers that read the profile's own history over its own connection
   /// (Jellyfin), built fresh per sync so a server that just came online is
   /// picked up. No policy set gates them: the token is the profile's own.
-  final List<HistoryImporter> Function()? _historyImporters;
+  final Future<List<HistoryImporter>> Function()? _historyImporters;
 
   /// The enabled set the last [buildRows] actually scored with, so a sync can
   /// tell whether the rows on screen were built before the answer was known.
@@ -241,7 +241,8 @@ class RecommendationService {
         appLogger.w('RecommendationService: history sync failed', error: e, stackTrace: s);
       }
     }
-    for (final importer in _historyImporters?.call() ?? const <HistoryImporter>[]) {
+    final own = _historyImporters;
+    for (final importer in own == null ? const <HistoryImporter>[] : await _ownImporters(own)) {
       try {
         final outcome = await importer.sync();
         changed = changed || (outcome?.changedAnything ?? false);
@@ -250,6 +251,17 @@ class RecommendationService {
       }
     }
     return changed;
+  }
+
+  /// Building the own-history importers reads the profile's connections; a
+  /// failure there costs this pass, never Discover.
+  Future<List<HistoryImporter>> _ownImporters(Future<List<HistoryImporter>> Function() build) async {
+    try {
+      return await build();
+    } catch (e, s) {
+      appLogger.w('RecommendationService: listing own-history importers failed', error: e, stackTrace: s);
+      return const [];
+    }
   }
 
   /// Waits for the integration store, bounded, and never fails because of it.

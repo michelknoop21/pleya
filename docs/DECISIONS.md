@@ -2961,7 +2961,9 @@ cross-source-deduplicatie van de importer onderdrukt een geïmporteerd event all
 rij met minstens hetzelfde gewicht.
 
 *Jellyfin als tweede adapter op dezelfde tabel.* `source = 'jellyfin'`, eigen gebruikerstoken,
-geen adminbeleid, watermark op `LastPlayedDate`, geen backfill voorbij de retentiecap.
+geen adminbeleid, watermark op `LastPlayedDate`, geen backfill voorbij de retentiecap. Een
+geleende Jellyfin-verbinding, die meer dan één profiel deelt, importeert geen geschiedenis: dat
+token is niet de eigen login van dit profiel (DEC-062).
 
 *Eén persoonsrij, gedeelde cap.* Genre-, acteur- en regisseursrijen delen twee plekken; sorteren
 op genormaliseerd gewicht, bij gelijkspel genre, dan acteur, dan regisseur. Persoonsdrempel 0,7.

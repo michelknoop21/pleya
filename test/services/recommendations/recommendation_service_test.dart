@@ -160,7 +160,7 @@ void main() {
         profileId: 'p1',
         database: db,
         titles: _titles,
-        historyImporters: () => [own],
+        historyImporters: () async => [own],
       ).syncImportedHistory();
       expect(result, isTrue);
       expect(own.syncs, 1);
@@ -175,7 +175,7 @@ void main() {
         titles: _titles,
         enabledImportServerIds: () => const {'srvA'},
         importerFactory: (_, _) => tautulli,
-        historyImporters: () => [_FakeImporter(throws: Exception('boom')), next],
+        historyImporters: () async => [_FakeImporter(throws: Exception('boom')), next],
       ).syncImportedHistory();
       expect(result, isTrue);
       expect(tautulli.syncs, 1);

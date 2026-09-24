@@ -8,6 +8,7 @@ import '../../media/ids.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_role.dart';
+import '../../profiles/profile_connection.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/global_key_utils.dart';
 import 'history_importer.dart';
@@ -31,14 +32,57 @@ const String _kSource = kInteractionSourceJellyfin;
 const int kJellyfinPageLength = 200;
 const int kJellyfinResumeLimit = 100;
 
+/// Jellyfin marks an item played from 90 percent on (its own default), so a
+/// resumable item stays partial up to there, not up to [kCompletedPercent].
+const int kJellyfinPlayedPercent = 90;
+
+/// Shortest gap between two syncs of one profile and server. A history page
+/// carries `People`, which is heavy; a play in Pleya is recorded locally at
+/// once, so the import only has to catch up on plays elsewhere.
+const Duration kJellyfinSyncInterval = Duration(minutes: 15);
+
+/// One importer per Jellyfin login that is this profile's own.
+///
+/// Fails closed (DEC-062, DEC-132): a connection that more than one profile
+/// uses is borrowed, so its Jellyfin user is not this profile's and it imports
+/// nothing. Nothing is built while [isCurrentProfile] is false, which the
+/// session also holds false while the binder is still switching servers.
+Future<List<JellyfinHistoryImporter>> ownJellyfinHistoryImporters({
+  required AppDatabase database,
+  required String profileId,
+  required Future<List<ProfileConnection>> Function(String profileId) connectionsForProfile,
+  required Future<List<ProfileConnection>> Function(String connectionId) profilesForConnection,
+  required JellyfinHistorySource? Function(String connectionId) onlineSource,
+  required bool Function() isCurrentProfile,
+}) async {
+  if (profileId.isEmpty || !isCurrentProfile()) return const [];
+  final importers = <JellyfinHistoryImporter>[];
+  for (final pc in await connectionsForProfile(profileId)) {
+    final source = onlineSource(pc.connectionId);
+    if (source == null) continue;
+    final sharers = await profilesForConnection(pc.connectionId);
+    if (sharers.any((row) => row.profileId != profileId)) continue;
+    importers.add(
+      JellyfinHistoryImporter(
+        database: database,
+        profileId: profileId,
+        source: source,
+        isCurrentProfile: isCurrentProfile,
+      ),
+    );
+  }
+  return importers;
+}
+
 /// Imports one Jellyfin user's own history into [MediaInteractions].
 ///
-/// No admin credential and no binding: the connection is the profile's own
-/// login, so every row is the profile's and no other user on the server is
-/// ever asked for (DEC-062). A played item becomes `completed`, a resumable
-/// one between [kPartialPercent] and 90 percent becomes `partial` once (its
-/// event id has no position in it, so a title that keeps being resumed stays
-/// one row until it is finished).
+/// No admin credential and no binding: [ownJellyfinHistoryImporters] only
+/// hands in the profile's own login, so every row is the profile's and no
+/// other user on the server is ever asked for (DEC-062). A played item becomes
+/// `completed`, a resumable one between [kPartialPercent] and
+/// [kJellyfinPlayedPercent] becomes `partial` once (its event id has no
+/// position in it, so a title that keeps being resumed stays one row until it
+/// is finished).
 ///
 /// ponytail: forward-only. The watermark is the newest `LastPlayedDate` seen;
 /// every run reads at most `maxPagesFirstRun` pages. Anything older than that
@@ -75,6 +119,9 @@ class JellyfinHistoryImporter implements HistoryImporter {
     bool stillOurs() => _isCurrentProfile() && AppDatabase.recommendationEpoch(_profileId) == epoch;
     try {
       final cursor = await _db.getHistorySyncCursor(_profileId, _serverId, _kSource);
+      if (cursor?.lastSyncAt case final last? when _nowMs() - last < kJellyfinSyncInterval.inMilliseconds) {
+        return const TautulliImportOutcome();
+      }
       final watermarkMs = cursor?.forwardCursorAt ?? 0;
 
       final played = <MediaItem>[];
@@ -96,26 +143,34 @@ class JellyfinHistoryImporter implements HistoryImporter {
       }
       final resumable = await _source.fetchResumableItems(limit: kJellyfinResumeLimit);
 
+      // Offset paging on DatePlayed shifts when a play lands mid-sync, so the
+      // same event can arrive twice; the set keeps the counts honest.
+      final seen = <String>{};
       final candidates = <_Candidate>[
         for (final item in played)
           if (item.lastViewedAt case final at?)
-            _Candidate(
-              item: item,
-              type: 'completed',
-              weight: 1.0,
-              atMs: at * 1000,
-              eventId: '$_kSource:$_serverId:${item.id}:$at',
-            ),
+            if (seen.add('$_kSource:$_serverId:${item.id}:$at'))
+              _Candidate(
+                item: item,
+                type: 'completed',
+                weight: 1.0,
+                atMs: at * 1000,
+                eventId: '$_kSource:$_serverId:${item.id}:$at',
+              ),
         for (final item in resumable)
-          if (_partialPercent(item) case final percent? when percent >= kPartialPercent && percent < 90)
-            _Candidate(
-              item: item,
-              type: 'partial',
-              weight: kPartialWeight,
-              atMs: _nowMs(),
-              eventId: '$_kSource:$_serverId:${item.id}:resume',
-              completionPercent: percent,
-            ),
+          if (_partialPercent(item) case final percent?
+              when percent >= kPartialPercent && percent < kJellyfinPlayedPercent)
+            if (seen.add('$_kSource:$_serverId:${item.id}:resume'))
+              _Candidate(
+                item: item,
+                type: 'partial',
+                weight: kPartialWeight,
+                // The moment of the stop, so the cross-source window meets the
+                // local partial that the recorder wrote at that same stop.
+                atMs: item.lastViewedAt != null ? item.lastViewedAt! * 1000 : _nowMs(),
+                eventId: '$_kSource:$_serverId:${item.id}:resume',
+                completionPercent: percent,
+              ),
       ];
       // The watermark covers every play seen, also the ones deduplicated below,
       // so a suppressed play is not asked for again on the next run.
@@ -127,12 +182,14 @@ class JellyfinHistoryImporter implements HistoryImporter {
       final existing = await _db.existingImportedEventIds(_profileId, {for (final c in candidates) c.eventId});
       final fresh = candidates.where((c) => !existing.contains(c.eventId)).toList();
 
-      // Episodes resolve their series once, so a binge is one lookup.
-      final features = <String, MediaItem>{};
+      // Episodes resolve their series once, so a binge is one lookup. A series
+      // the server no longer knows maps to null: its rows are unresolvable,
+      // never stored with the episode's empty features.
+      final features = <String, MediaItem?>{};
       for (final c in fresh) {
         final key = c.featureItemId;
         if (features.containsKey(key)) continue;
-        features[key] = key == c.item.id ? c.item : (await _source.fetchItem(key) ?? c.item);
+        features[key] = key == c.item.id ? c.item : await _source.fetchItem(key);
       }
 
       // Keyed on the item itself, the key a local row carries for the same
@@ -149,15 +206,20 @@ class JellyfinHistoryImporter implements HistoryImporter {
             );
 
       var deduplicated = 0;
+      var unresolvable = 0;
       final rows = <MediaInteractionsCompanion>[];
       for (final c in fresh) {
+        final f = features[c.featureItemId];
+        if (f == null) {
+          unresolvable++;
+          continue;
+        }
         final nearby = localPlays[buildGlobalKey(serverId, c.item.id)];
         if (nearby != null && nearby.any((l) => (l.at - c.atMs).abs() <= windowMs && l.weight >= c.weight)) {
           deduplicated++;
           continue;
         }
         final globalKey = buildGlobalKey(serverId, c.featureItemId);
-        final f = features[c.featureItemId]!;
         final isEpisode = c.item.kind == MediaKind.episode;
         rows.add(
           MediaInteractionsCompanion.insert(
@@ -185,8 +247,14 @@ class JellyfinHistoryImporter implements HistoryImporter {
 
       if (!stillOurs()) return null;
       if (rows.isNotEmpty) await _db.insertImportedInteractions(rows, profileId: _profileId);
+      if (!stillOurs()) return null;
       await _saveCursor(newest);
-      return TautulliImportOutcome(fetched: candidates.length, imported: rows.length, deduplicated: deduplicated);
+      return TautulliImportOutcome(
+        fetched: candidates.length,
+        imported: rows.length,
+        deduplicated: deduplicated,
+        unresolvable: unresolvable,
+      );
     } catch (e, s) {
       appLogger.w('JellyfinHistoryImporter: sync failed', error: e, stackTrace: s);
       return const TautulliImportOutcome(partial: true);
