@@ -448,8 +448,32 @@ func (s *Scanner) judge(root catalog.StorageLocation, index *catalog.FileIndex, 
 		c.action = actionUnchanged
 		return c, nil
 	}
+	// Een bestand waarvan de probe faalde en dat zelf niet veranderde (zelfde
+	// grootte, mtime en inode) wacht zijn backoff af. Op laag 1 en niet op de
+	// signatuur: een nieuw bestand op een vertrouwde root krijgt zijn signatuur
+	// pas in laag 2, dus na de eerste mislukte poging staat die nog leeg. Het telt als ongewijzigd: het staat in
+	// seenPaths, dus het wordt niet als verdwenen aangemerkt.
+	if layerOneSame && !c.prev.IsAttached() &&
+		c.prev.LastProbeAt != nil && time.Now().Before(c.prev.LastProbeAt.Add(probeBackoff(c.prev.ProbeAttempts))) {
+		c.action = actionUnchanged
+		return c, nil
+	}
 	c.action = actionChanged
 	return c, nil
+}
+
+// probeBackoff is hoe lang een bestand na een mislukte probe met rust wordt
+// gelaten: één uur na de eerste, verdubbelend, hooguit een dag. Een bestand dat
+// zelf verandert (andere signatuur) wacht nooit.
+func probeBackoff(attempts int) time.Duration {
+	if attempts <= 0 {
+		return 0
+	}
+	hours := 1 << (attempts - 1)
+	if attempts > 5 || hours > 24 {
+		hours = 24
+	}
+	return time.Duration(hours) * time.Hour
 }
 
 func roleFor(kind nameparse.Kind) catalog.FileRole {

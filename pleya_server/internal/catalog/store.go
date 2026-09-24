@@ -204,7 +204,7 @@ func (s *Store) LoadFileIndex(ctx context.Context, locationID id.ID) (*FileIndex
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, storage_location_id, relative_path, role, version_id, item_id,
 		       part_index, coalesce(artwork_kind, ''), size_bytes, mtime_unix, inode,
-		       coalesce(scan_signature, ''), generation, missing_since
+		       coalesce(scan_signature, ''), generation, probe_attempts, last_probe_at, missing_since
 		FROM media_files WHERE storage_location_id = $1`, locationID)
 	if err != nil {
 		return nil, fmt.Errorf("bestandsstand lezen: %w", err)
@@ -220,7 +220,7 @@ func (s *Store) LoadFileIndex(ctx context.Context, locationID id.ID) (*FileIndex
 		var f File
 		if err := rows.Scan(&f.ID, &f.StorageLocationID, &f.RelativePath, &f.Role,
 			&f.VersionID, &f.ItemID, &f.PartIndex, &f.ArtworkKind, &f.SizeBytes,
-			&f.MtimeUnix, &f.Inode, &f.Signature, &f.Generation, &f.MissingSince); err != nil {
+			&f.MtimeUnix, &f.Inode, &f.Signature, &f.Generation, &f.ProbeAttempts, &f.LastProbeAt, &f.MissingSince); err != nil {
 			return nil, err
 		}
 		file := f

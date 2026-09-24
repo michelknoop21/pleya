@@ -73,6 +73,9 @@ type File struct {
 	Signature  string
 	Generation int64
 
+	ProbeAttempts int
+	LastProbeAt   *time.Time
+
 	MissingSince *time.Time
 }
 

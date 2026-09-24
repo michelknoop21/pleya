@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/id"
@@ -41,6 +43,7 @@ type harness struct {
 	t      *testing.T
 	root   string
 	store  *catalog.Store
+	pool   *pgxpool.Pool
 	sc     *scanner.Scanner
 	prober *countingProber
 	lib    catalog.Library
@@ -81,7 +84,7 @@ func newHarness(t *testing.T, kind string) *harness {
 	}
 
 	prober := &countingProber{inner: ffprobe.New("ffprobe", 60*time.Second)}
-	h := &harness{t: t, root: root, store: store, prober: prober, lib: libs[0]}
+	h := &harness{t: t, root: root, store: store, pool: pool, prober: prober, lib: libs[0]}
 	h.sc = scanner.New(scanner.Options{
 		Store:       store,
 		Prober:      prober,
@@ -439,6 +442,48 @@ func TestFailedProbeReleasesTheOldVersion(t *testing.T) {
 	if len(after) != 0 {
 		t.Fatalf("het item staat er nog met %d versies; een onanalyseerbaar bestand hoort zijn versie los te laten",
 			len(after[0].Versions))
+	}
+}
+
+// Een bestand waarvan de probe faalde wordt niet elke ronde opnieuw geprobed:
+// pas na de wachttijd, of zodra het bestand zelf verandert.
+func TestFailedProbeIsNotRepeatedBeforeTheBackoff(t *testing.T) {
+	h := newHarness(t, "movies")
+	broken := h.path("Kapot (2001)", "Kapot (2001).mkv")
+	if err := os.MkdirAll(filepath.Dir(broken), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(broken, []byte(strings.Repeat("dit is geen video\n", 64)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	h.scanAllowingErrors()
+	first := h.prober.calls.Load()
+	if first != 1 {
+		t.Fatalf("eerste ronde probede %d keer, verwacht 1", first)
+	}
+	h.scanAllowingErrors()
+	if got := h.prober.calls.Load(); got != first {
+		t.Fatalf("tweede ronde probede het kapotte bestand opnieuw binnen de wachttijd (%d calls)", got)
+	}
+
+	// Een uur is de wachttijd na één mislukte poging; twee uur terug is dus voorbij.
+	if _, err := h.pool.Exec(context.Background(),
+		`UPDATE media_files SET last_probe_at = now() - interval '2 hours' WHERE probe_attempts > 0`); err != nil {
+		t.Fatal(err)
+	}
+	h.scanAllowingErrors()
+	if got := h.prober.calls.Load(); got != first+1 {
+		t.Fatalf("na de wachttijd is niet precies één keer opnieuw geprobed: %d", got-first)
+	}
+
+	// Verandert het bestand zelf, dan wacht het niet, ook al is de poging vers.
+	if err := os.WriteFile(broken, []byte(strings.Repeat("nog steeds geen video\n", 80)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h.scanAllowingErrors()
+	if got := h.prober.calls.Load(); got != first+2 {
+		t.Fatalf("een gewijzigd bestand hoort direct opnieuw geprobed te worden: %d calls", got)
 	}
 }
 
