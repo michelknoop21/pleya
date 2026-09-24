@@ -4845,15 +4845,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     return hub.id.startsWith(_tvDetailSeasonHubIdPrefix) || hub.id == 'detail_episodes';
   }
 
-  /// Only the flattened `'detail_episodes'` hub gets the shared
-  /// [AutomationIds.mediaDetailEpisodeList] id — the desktop/mobile
-  /// `_buildEpisodesList()` counterpart addresses exactly one list too
-  /// (`(isShow && _showEpisodesDirectly) || isSeason`, one season at a
-  /// time). The per-season hubs from `_tvDetailHubs()`'s season-tabs branch
-  /// are all mounted simultaneously, so giving every one of them the same
-  /// id would register duplicates.
+  /// The episode rail gets the shared [AutomationIds.mediaDetailEpisodeList]
+  /// id, whether it is the flattened `'detail_episodes'` hub or the selected
+  /// season's hub. Since PB-4 `_tvDetailHubs()` mounts one season hub at a
+  /// time, so the id is never registered twice.
   String? _tvDetailAutomationIdForHub(MediaHub hub, int hubIndex) {
-    return hub.id == 'detail_episodes' ? AutomationIds.mediaDetailEpisodeList : null;
+    return _isTvDetailEpisodeHub(hub) ? AutomationIds.mediaDetailEpisodeList : null;
   }
 
   EpisodePosterMode _tvDetailEpisodePosterModeForHub(MediaHub hub) {

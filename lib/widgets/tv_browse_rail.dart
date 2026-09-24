@@ -1555,7 +1555,15 @@ class TvBrowseRailState extends State<TvBrowseRail> {
   Widget _wrapHubRailForAutomation({required MediaHub hub, required int hubIndex, required Widget child}) {
     final id = widget.automationIdForHub?.call(hub, hubIndex);
     if (id == null) return child;
-    return AutomationNode(id: id, role: 'list', state: () => {'child_count': hub.items.length}, child: child);
+    // The rail is one focus node over virtual cards, so `focused` on a hub's
+    // id means "the rail holds focus and this is its active hub".
+    return AutomationNode(
+      id: id,
+      role: 'list',
+      focusNode: hubIndex == _hubIndex ? _focusNode : null,
+      state: () => {'child_count': hub.items.length},
+      child: child,
+    );
   }
 
   Widget _buildHubRail({

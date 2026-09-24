@@ -144,6 +144,9 @@ ids:
   - id: media-detail.season-chip
     role: chip
     instanceable: true
+  - id: media-detail.play
+    role: button
+    instanceable: false
   - id: screen.my_pleya
     role: screen
     instanceable: false

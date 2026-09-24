@@ -1,0 +1,64 @@
+name: tvos.catalog.sort-order
+target: tvos-sim
+# TV8 "filters en sorteren": a sort chosen in the catalog rail changes the
+# order of the grid, read from the tree rather than from a screenshot.
+#
+# `tvos.catalog.rail-sort-focus` proves where the ring goes after a sort; this
+# file proves what the sort did. Each card registers as
+# `tv.catalog.grid.item[movies.<i>]` with its title in `state`, so the order
+# before and after is an assertion.
+#
+# `catalog.mixed.v1` seeds three films, Aurora, Basalt and Cascade. The
+# catalog opens on Titel A-Z (the default in `UnifiedCatalogFilters`), and
+# the sort panel opens with the ring on the sort in force, so one DOWN in the
+# panel is Titel Z-A.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, expect: [nav.series, nav.movies], timeout: 40000, settle: 800}
+  - press: select
+  - settle: 1500
+  # Films is a landing; its header action opens Alle films, the same route
+  # `tvos.catalog.rail-sort-focus` takes on Series.
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[movies]", timeout: 20000}
+  - wait_until: {id: "tv.catalog.grid.item[movies.2]", timeout: 10000}
+  - assert: {id: "tv.catalog.grid.item[movies.0]", state: {title: Aurora}}
+  - assert: {id: "tv.catalog.grid.item[movies.1]", state: {title: Basalt}}
+  - assert: {id: "tv.catalog.grid.item[movies.2]", state: {title: Cascade}}
+  - settle: 1000
+  - snapshot: 00-title-asc
+
+  - press: left
+  - settle: 800
+  - assert: {id: "tv.catalog.rail.row[movies.sources]", focused: true}
+  - press: down
+  - settle: 600
+  - press: down
+  - settle: 600
+  - assert: {id: "tv.catalog.rail.row[movies.sort]", focused: true}
+  - press: select
+  - settle: 1200
+  - press: down
+  - settle: 600
+  - press: select
+  # Two snapshots before the order is asserted. The first run of this file
+  # asserted straight after Select and read a mixed order while the grid was
+  # re-paging; its final tree showed A-Z again. Three runs since, with these
+  # settles, held Z-A at 1 s and at 4 s. The pair stays as the record that the
+  # order is stable, not only reached once.
+  - settle: 1000
+  - snapshot: 01a-after-1s
+  - settle: 3000
+  - snapshot: 01b-after-4s
+  - wait_until: {id: "tv.catalog.grid.item[movies.0]", state: {title: Cascade}, timeout: 10000}
+  - assert: {id: "tv.catalog.grid.item[movies.1]", state: {title: Basalt}}
+  - assert: {id: "tv.catalog.grid.item[movies.2]", state: {title: Aurora}}
+  - press: menu
+  - settle: 1000
+  - snapshot: 01-title-desc

@@ -161,7 +161,12 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       focusNode: _playButtonFocusNode,
       autofocus: isKeyboardMode,
       onPressed: onPlayPressed,
-      builder: (context, state) => playButton(state),
+      builder: (context, state) => AutomationNode(
+        id: AutomationIds.mediaDetailPlay,
+        role: 'button',
+        focusNode: _playButtonFocusNode,
+        child: playButton(state),
+      ),
     );
 
     final trailerAction = primaryTrailer == null

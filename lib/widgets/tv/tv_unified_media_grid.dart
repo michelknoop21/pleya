@@ -19,6 +19,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
@@ -48,6 +50,7 @@ class TvUnifiedMediaGrid extends StatefulWidget {
     this.onFocusedGroupChanged,
     this.precache,
     this.reservedLeading = 0,
+    this.automationSurface,
   });
 
   final List<UnifiedMediaGroup> groups;
@@ -105,6 +108,11 @@ class TvUnifiedMediaGrid extends StatefulWidget {
 
   /// Width held back before the first column, for CAT5's open controls rail.
   final double reservedLeading;
+
+  /// When set, every card registers as `tv.catalog.grid.item[<surface>.<i>]`
+  /// with its title as state, so a Verify scenario can read the order a sort
+  /// produced. Null keeps the cards out of the automation tree.
+  final String? automationSurface;
 
   @override
   State<TvUnifiedMediaGrid> createState() => TvUnifiedMediaGridState();
@@ -175,7 +183,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       nodeDebugLabel: 'TvUnifiedCard',
       itemBuilder: (context, cell) {
         final group = widget.groups[cell.index];
-        return TvUnifiedMediaCard(
+        final card = TvUnifiedMediaCard(
           key: ValueKey(group.groupId),
           group: group,
           width: cell.width,
@@ -189,6 +197,16 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
           onNavigateLeft: cell.onNavigateLeft,
           onNavigateRight: cell.onNavigateRight,
           onBack: cell.onBack,
+        );
+        final surface = widget.automationSurface;
+        if (surface == null) return card;
+        return AutomationNode(
+          id: AutomationIds.tvCatalogGridItem,
+          instance: '$surface.${cell.index}',
+          role: 'grid.item',
+          state: () => {'title': group.representativeSource.item.displayTitle},
+          focusNode: cell.focusNode,
+          child: card,
         );
       },
     );

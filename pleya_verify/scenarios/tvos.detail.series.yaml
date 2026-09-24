@@ -1,0 +1,73 @@
+name: tvos.detail.series
+target: tvos-sim
+# MOC-10 (series detail with season chips) and DET4 (the chip labels render
+# once, without a shifted second glyph row), over a show with four seasons.
+#
+# What this proves:
+#   1. the chip row lists every season and starts on the first;
+#   (`catalog.seasons.v1` gives season n n + 1 episodes, so each
+#   `child_count` below also proves the rail really swapped seasons.)
+#   2. the page opens with the ring on the episode rail (a movie opens on
+#      Play, a show on its episodes: `focusPrimaryAction: metadata.isMovie`),
+#      and UP from the rail lands on the selected chip;
+#   3. RIGHT walks the ring over three chips, each step selecting that season
+#      and swapping the one episode rail below it (PB-4: one active rail);
+#   4. UP from the chips reaches Play.
+# DET4 itself is a glyph artifact: the widget measurement in its own row is
+# the proof, the screenshots per chip here are the visual evidence on a real
+# render.
+setup:
+  - reset_app
+  - seed: catalog.seasons.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - press: down
+  - settle: 800
+  - press: down
+  - settle: 800
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
+
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - wait_until: {id: media-detail.season-chips, state: {child_count: 4}, timeout: 10000}
+  - assert: {id: media-detail.season-chips, state: {selected_index: 0}}
+  - wait_until: {id: media-detail.episode-list, state: {child_count: 2}, timeout: 10000}
+  - wait_until: {focused: media-detail.episode-list, timeout: 5000}
+  - settle: 1000
+  - snapshot: 00-detail
+
+  - press: up
+  - wait_until: {focused: "media-detail.season-chip[0]", timeout: 5000}
+  - settle: 600
+  - snapshot: 01-chip-0
+
+  - press: right
+  - wait_until: {focused: "media-detail.season-chip[1]", timeout: 5000}
+  - assert: {id: media-detail.season-chips, state: {selected_index: 1}}
+  - wait_until: {id: media-detail.episode-list, state: {child_count: 3}, timeout: 10000}
+  - settle: 600
+  - snapshot: 02-chip-1
+
+  - press: right
+  - wait_until: {focused: "media-detail.season-chip[2]", timeout: 5000}
+  - assert: {id: media-detail.season-chips, state: {selected_index: 2}}
+  - wait_until: {id: media-detail.episode-list, state: {child_count: 4}, timeout: 10000}
+  - settle: 600
+  - snapshot: 03-chip-2
+
+  - press: right
+  - wait_until: {focused: "media-detail.season-chip[3]", timeout: 5000}
+  - assert: {id: media-detail.season-chips, state: {selected_index: 3}}
+  - wait_until: {id: media-detail.episode-list, state: {child_count: 5}, timeout: 10000}
+  - assert: {id: "media-detail.season-chip[3]", insideViewport: true}
+  - settle: 600
+  - snapshot: 04-chip-3
+
+  - press: up
+  - wait_until: {focused: media-detail.play, timeout: 5000}
+  - settle: 600
+  - snapshot: 05-back-on-play

@@ -201,6 +201,26 @@ void main() {
     });
   });
 
+  group('catalog.seasons.v1', () {
+    test('one show with four seasons of two to five episodes, on the first rail', () {
+      final server = PleyaFakeServer();
+      final applied = applyNamedFixture(server, 'catalog.seasons.v1');
+
+      expect(applied, isTrue);
+      final shows = server.items.entries.where((e) => e.value['kind'] == 'show').toList();
+      expect(shows, hasLength(1));
+      expect(server.hubs['recently_added'], [shows.single.key]);
+
+      final seasons = server.items.entries.where((e) => e.value['kind'] == 'season').toList()
+        ..sort((a, b) => (a.value['index'] as int).compareTo(b.value['index'] as int));
+      expect([for (final s in seasons) s.value['index']], [1, 2, 3, 4]);
+      expect(
+        [for (final s in seasons) server.items.values.where((i) => i['parent_id'] == s.key).length],
+        [2, 3, 4, 5],
+      );
+    });
+  });
+
   group('catalog.empty.v1', () {
     test('leaves the server with no libraries and no items', () {
       final server = PleyaFakeServer();
