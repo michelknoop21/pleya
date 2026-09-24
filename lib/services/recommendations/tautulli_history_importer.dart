@@ -10,6 +10,7 @@ import '../../media/media_server_client.dart';
 import '../../models/tautulli/tautulli_models.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/global_key_utils.dart';
+import '../tautulli/tautulli_client.dart';
 import '../tautulli/tautulli_import_access.dart';
 import 'tautulli_import_binding.dart';
 
@@ -896,8 +897,9 @@ class TautulliHistoryImporter {
   static String _shortIdentifier(String value) => value.length <= 6 ? value : '${value.substring(0, 6)}…';
 
   static String _errorCategory(Object e) {
+    if (e is TautulliException && e.isAuth) return 'isAuth';
     final text = e.toString().toLowerCase();
-    if (text.contains('apikey') || text.contains('unauthorized') || text.contains('forbidden')) return 'isAuth';
+    if (text.contains('unauthorized') || text.contains('forbidden')) return 'isAuth';
     if (text.contains('socket') || text.contains('timeout') || text.contains('connection')) return 'isNetwork';
     return 'isMalformed';
   }

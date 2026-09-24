@@ -44,6 +44,16 @@ void main() {
       );
 
   group('who sees what', () {
+    test('the admin client is only handed out for the server Tautulli monitors', () async {
+      await seedIntegration();
+      final p = await provider(servers: const [_machine, 'pms-2']);
+      addTearDown(p.dispose);
+      expect(p.client, isNotNull, reason: 'the admin surface still has its client');
+      expect(p.clientForServer(ServerId(_machine)), isNotNull);
+      expect(p.clientForServer(ServerId('pms-2')), isNull, reason: 'rating keys on pms-2 are a different id space');
+      expect(p.monitoredServerId, ServerId(_machine));
+    });
+
     test('an admin profile gets the full admin surface', () async {
       await seedIntegration();
       final p = await provider();

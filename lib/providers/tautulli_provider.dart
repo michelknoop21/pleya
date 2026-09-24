@@ -11,6 +11,7 @@ import '../services/tautulli/tautulli_constants.dart';
 import '../services/tautulli/tautulli_import_access.dart';
 import '../services/tautulli/tautulli_integration_status.dart';
 import '../services/tautulli/tautulli_integration_store.dart';
+import '../services/tautulli/tautulli_server_binding.dart';
 import '../services/tautulli/tautulli_server_integration.dart';
 import '../services/tautulli/tautulli_session.dart';
 
@@ -130,6 +131,29 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   TautulliSession? get session => _session;
   TautulliClient? get client => _client;
+
+  /// Which registered server the paired Tautulli watches, or null when that is
+  /// not decidable. Same rule as the artwork client in the profile session.
+  ServerId? get monitoredServerId {
+    if (_session == null) return null;
+    return tautulliMonitoredServer(
+      machineIdentifier: _session?.machineIdentifier,
+      serverIds: _serverIds(),
+      isOwnerOrAdmin: _isOwnerOrAdmin,
+    );
+  }
+
+  /// The admin client, but only for the server Tautulli actually monitors.
+  ///
+  /// Rating keys are per-server integers. Handing this client to a detail page
+  /// on a second owned server made it answer with the watchers of whatever
+  /// title carries the same key on the monitored one, and an empty answer then
+  /// suppressed the Plex fallback too.
+  TautulliClient? clientForServer(ServerId serverId) {
+    final client = _client;
+    if (client == null) return null;
+    return monitoredServerId == serverId ? client : null;
+  }
 
   bool get isConfigured => _session != null;
 

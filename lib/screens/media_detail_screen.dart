@@ -2246,7 +2246,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
     final watchers = await const ItemWatchersService().resolve(
       _metadata,
-      tautulli: context.read<TautulliProvider?>()?.client,
+      tautulli: context.read<TautulliProvider?>()?.clientForServer(serverId),
       plex: plexClient,
       plexOwnerToken: ownerToken,
       selfPlexAccountId: _selfPlexAccountId(),
@@ -2259,7 +2259,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     // Tautulli-only, so this stays null (and the row absent) on servers without
     // it. Loaded after the watchers rather than alongside, because it is the
     // less interesting of the two and should not delay the avatars.
-    final tautulli = context.read<TautulliProvider?>()?.client;
+    final tautulli = context.read<TautulliProvider?>()?.clientForServer(serverId);
     if (tautulli == null) return;
     final stats = await const MediaWatchStatsService().resolve(_metadata, tautulli: tautulli);
     if (!mounted) return;
@@ -3873,7 +3873,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                               // it. All three are admin-only and all three
                               // arrive after the page, so each hides itself
                               // when empty.
-                              NowWatchingLine(ratingKey: _metadata.id),
+                              NowWatchingLine(ratingKey: _metadata.id, serverId: serverIdOrNull(_metadata.serverId)),
                               if (_watchers?.watchers.isNotEmpty ?? false)
                                 WatchedByRow(watchers: _watchers!.watchers, scope: _watchers!.scope),
                               if (_watchStats?.isNotEmpty ?? false) ...[
@@ -4606,7 +4606,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                     _buildUnifiedSourceLine(),
                     // Live viewer, then the "Watched by …" row (Plex, owned
                     // servers only).
-                    NowWatchingLine(ratingKey: _metadata.id),
+                    NowWatchingLine(ratingKey: _metadata.id, serverId: serverIdOrNull(_metadata.serverId)),
                     if (_watchers?.watchers.isNotEmpty ?? false) ...[
                       const SizedBox(height: 20),
                       WatchedByRow(watchers: _watchers!.watchers, scope: _watchers!.scope, avatarSize: 36),

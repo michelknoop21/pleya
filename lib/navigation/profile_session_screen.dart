@@ -214,6 +214,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   return NowWatchingProvider(
                     client: () => tautulli.client,
                     enabled: ownsAServer,
+                    monitoredServerId: monitoredServerId,
                     selfUserId: () => plexSelfAccountId(activeProfile.activeId, plexHome),
                     // Tautulli hands out Plex library paths for artwork, which
                     // only a Plex client can turn into a loadable URL.
