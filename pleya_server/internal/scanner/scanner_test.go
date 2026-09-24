@@ -533,3 +533,41 @@ func TestQueuedScanRunIsAdoptedByTheScan(t *testing.T) {
 		t.Fatalf("laatste ronde is %v (%v), verwacht de overgenomen rij", latest, err)
 	}
 }
+
+// Een shutdown is geen annulering: de rij wordt failed, en een rij die na de
+// shutdown niet meer queued is wordt bij de herstart vervangen door een nieuwe.
+func TestShutdownFailsTheRunAndRerunGetsAFreshRow(t *testing.T) {
+	h := newHarness(t, "movies")
+	for i := 0; i < 3; i++ {
+		name := fmt.Sprintf("Film %d (200%d)", i, i)
+		testsupport.MakeVideo(t, h.path(name, name+".mkv"), 1)
+	}
+	bg := context.Background()
+	runID, err := h.store.CreateQueuedScanRun(bg, h.lib.ID, "manual")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancelCause(bg)
+	h.walkOverride = func(wctx context.Context, root string, onEntry func(scanner.Entry) error, onProblem func(string, error)) error {
+		return scanner.Walk(wctx, root, func(e scanner.Entry) error {
+			cancel(context.Canceled)
+			return onEntry(e)
+		}, onProblem)
+	}
+	if _, err := h.sc.ScanLibraryRun(ctx, h.lib, "manual", runID); !errors.Is(err, context.Canceled) {
+		t.Fatalf("scan gaf %v, verwacht context.Canceled", err)
+	}
+	run, err := h.store.ScanRun(bg, runID)
+	if err != nil || run.State != "failed" || run.LastError == "" {
+		t.Fatalf("na shutdown staat de rij op %+v (%v), verwacht failed met last_error", run, err)
+	}
+
+	h.walkOverride = nil
+	if _, err := h.sc.ScanLibraryRun(bg, h.lib, "manual", runID); err != nil {
+		t.Fatalf("herstart met een niet-queued rij faalde: %v", err)
+	}
+	latest, state, _, err := h.store.LatestScanRun(bg, h.lib.ID)
+	if err != nil || latest == runID || state != "succeeded" {
+		t.Fatalf("herstart gaf rij %v state %q (%v), verwacht een nieuwe succeeded rij", latest, state, err)
+	}
+}

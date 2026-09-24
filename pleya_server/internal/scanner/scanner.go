@@ -14,6 +14,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/nameparse"
 )
 
@@ -124,6 +125,10 @@ func (s *Scanner) ScanLibraryRun(ctx context.Context, lib catalog.Library, trigg
 		run, err = s.store.StartScanRun(ctx, lib.ID, trigger)
 	} else {
 		run, err = runID, s.store.BeginQueuedScanRun(ctx, runID)
+		if errors.Is(err, catalog.ErrNotFound) {
+			// De job draait opnieuw na een shutdown: de rij is niet meer queued.
+			run, err = s.store.StartScanRun(ctx, lib.ID, trigger)
+		}
 	}
 	if err != nil {
 		return Stats{}, err
@@ -169,9 +174,13 @@ func (s *Scanner) ScanLibraryRun(ctx context.Context, lib catalog.Library, trigg
 
 	state := "succeeded"
 	if scanErr != nil {
-		state = "cancelled"
-		if !errors.Is(scanErr, context.Canceled) {
-			state = "failed"
+		// Alleen een beheerdersannulering is cancelled. Een shutdown of een echte
+		// fout is failed, want de runner zet die job terug in de wachtrij.
+		state = "failed"
+		if errors.Is(context.Cause(ctx), jobs.ErrCancelled) {
+			state = "cancelled"
+		} else if errors.Is(scanErr, context.Canceled) && stats.LastError == "" {
+			stats.LastError = "server afgesloten"
 		}
 	}
 	tracker.stop()

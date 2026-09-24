@@ -132,6 +132,9 @@ func decodeScanRunCursor(raw string) (time.Time, id.ID, bool, error) {
 // ListScanRuns geeft de nieuwste rondes eerst, optioneel van één bibliotheek.
 func (s *Store) ListScanRuns(ctx context.Context, libraryID *id.ID, limit int, rawCursor string) (ScanRunPage, error) {
 	var page ScanRunPage
+	if limit <= 0 {
+		limit = 50
+	}
 	at, cid, hasCursor, err := decodeScanRunCursor(rawCursor)
 	if err != nil {
 		return page, err
