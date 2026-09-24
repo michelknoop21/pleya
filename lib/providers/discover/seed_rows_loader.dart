@@ -25,19 +25,33 @@ class SeedRowsLoader {
   /// narrowed to sources that answer related hubs. Seeds come from this
   /// profile's own interaction log; when that yields nothing, from what the
   /// servers report as recently watched, which is also the path when no log
-  /// seed resolves. [candidates] is empty for now.
+  /// seed resolves. [candidates] are the unwatched related titles of seeds
+  /// four to six: free input for the personalized rows, never a row of their
+  /// own. Their related hubs load alongside the rows, at most three extra
+  /// calls, and a failing one only costs its own seed.
   Future<({List<MediaHub> rows, List<MediaItem> candidates})> load({
     required List<MediaServerClient> clients,
     required Set<String> alreadyShown,
   }) async {
     var seeds = await _seedsFromLog(clients);
     if (seeds.isEmpty) seeds = await _seedsFromServers(clients);
-    final rows = seeds.isEmpty
-        ? const <MediaHub?>[]
-        : await Future.wait([
-            for (final seed in seeds.take(3)) _relatedRowForSeed(seed, alreadyShown).catchError((Object _) => null),
-          ]);
-    return (rows: [for (final row in rows) ?row], candidates: const <MediaItem>[]);
+    final (rows, extraRelated) = await (
+      Future.wait([
+        for (final seed in seeds.take(3)) _relatedRowForSeed(seed, alreadyShown).catchError((Object _) => null),
+      ]),
+      Future.wait([
+        for (final seed in seeds.skip(3).take(3)) _relatedHubs(seed).catchError((Object _) => const <MediaHub>[]),
+      ]),
+    ).wait;
+    return (
+      rows: [for (final row in rows) ?row],
+      candidates: [
+        for (final hubs in extraRelated)
+          for (final hub in hubs)
+            for (final item in hub.items)
+              if (!item.isWatched) item,
+      ],
+    );
   }
 
   /// Seeds from this profile's own interaction log, newest first, up to six:
@@ -70,7 +84,12 @@ class SeedRowsLoader {
     return (item: item, completed: item.kind == MediaKind.show ? item.isWatched : seed.completed);
   }
 
-  static String _identity(MediaItem item) => (item.grandparentTitle ?? item.title ?? item.id).toLowerCase();
+  /// One seed per title and kind: a film and a series that share a name are
+  /// two seeds. An episode counts as its series.
+  static String _identity(MediaItem item) {
+    final kind = item.grandparentTitle != null ? MediaKind.show : item.kind;
+    return '${kind.name}:${(item.grandparentTitle ?? item.title ?? item.id).toLowerCase()}';
+  }
 
   /// The pre-log path: what each server itself says was watched last. Kept as
   /// the cold-start fallback so a fresh profile on an old server still gets
@@ -92,6 +111,12 @@ class SeedRowsLoader {
       if (seeds.length >= 3) break;
     }
     return seeds;
+  }
+
+  Future<List<MediaHub>> _relatedHubs(_Seed seed) async {
+    final serverId = seed.item.serverId;
+    final client = serverId == null ? null : _clientFor(ServerId(serverId));
+    return client?.fetchRelatedHubs(seed.item.id) ?? const <MediaHub>[];
   }
 
   /// Resolves a single seed row from the owning server's related hub, or null

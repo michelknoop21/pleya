@@ -108,6 +108,10 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// hub filtering can't touch them.
   List<MediaHub> _seedHubs = [];
 
+  /// Related titles of the seeds that did not get a row (positions four to
+  /// six). Free candidates for the personalized rows, never shown as a row.
+  List<MediaItem> _seedCandidates = [];
+
   /// "Recently Added Shows" row, synthesised as a hub so the home-layout
   /// screen can hide/reorder it like any other row. Held outside [_hubs] for
   /// the same reason as [_seedHubs].
@@ -509,7 +513,10 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       final clients = _multiServer.serverManager.onlineClients.values
           .where((client) => client.capabilities.relatedHubs)
           .toList();
-      if (clients.isEmpty) return;
+      if (clients.isEmpty) {
+        _seedCandidates = const [];
+        return;
+      }
       final generation = _loadGeneration;
       // Don't re-surface items already shown in Continue Watching or the hubs.
       final alreadyShown = <String>{
@@ -518,8 +525,10 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
           for (final item in hub.items) item.globalKey,
       };
 
-      final newSeedHubs = (await _seedRowsLoader.load(clients: clients, alreadyShown: alreadyShown)).rows;
+      final seeded = await _seedRowsLoader.load(clients: clients, alreadyShown: alreadyShown);
       if (isDisposed || generation != _loadGeneration) return;
+      _seedCandidates = seeded.candidates;
+      final newSeedHubs = seeded.rows;
 
       // Assign even when empty so cleared history / changed watch state drops
       // stale "Because you watched…" rows instead of stranding them.
@@ -554,7 +563,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
       final rows = clients.isEmpty
           ? const <MediaHub>[]
-          : await service.buildRows(clients, hubItems: onScreen, excludeKeys: excludeKeys);
+          : await service.buildRows(clients, hubItems: [...onScreen, ..._seedCandidates], excludeKeys: excludeKeys);
       if (isDisposed || generation != _loadGeneration) return;
       // Assign even when empty so disabling personalization or losing history
       // clears any previously-shown rows instead of stranding them.
