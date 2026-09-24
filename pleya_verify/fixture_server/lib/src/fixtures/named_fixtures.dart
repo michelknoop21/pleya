@@ -132,6 +132,10 @@ void _applyCatalogShowsV1(PleyaFakeServer server) {
       posterId: _registerArtwork(server, episodeId),
     );
   }
+  // Home's first rail, so a TV scenario reaches the show from Home. Since LIB7
+  // Bibliotheken on TV is source management and no longer opens a grid, which
+  // was the only other way in (VER8).
+  server.hubs['recently_added']!.add(showId);
 }
 
 /// A mix of both library kinds — three movies, one show with one season and

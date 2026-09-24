@@ -335,8 +335,8 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
       // whose own comment reads "TV runs through _buildTvContent, so this
       // section is phone/tablet/desktop" — so `/v1/ui_tree` on tvOS reported
       // the nav and the rails and nothing of the hero, on the platform where
-      // the hero *is* the landing. `tvos.sidebar.collapse` records that gap in
-      // its own comments; `tvos.home.hero-return` is the scenario that needs it
+      // the hero *is* the landing. The retired `tvos.sidebar.collapse` recorded
+      // that gap (DEC-120); `tvos.home.hero-return` is the scenario that needs it
       // closed, because "the billboard came back into view" is a statement
       // about a rect. No new id: the same one, on the second surface that draws
       // the thing it names.
