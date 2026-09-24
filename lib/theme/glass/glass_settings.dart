@@ -50,24 +50,25 @@ class GlassTokens {
     required this.edge,
   });
 
-  /// iPhone glass: blur 12, saturation 1.5, dim 0.78. Fixronde 1: the plate
-  /// tint went from white 14% to a dark fill (`Color(0xA6000000)`, black at
-  /// 65%): measured against the lightest real fixture (Big Buck Bunny's
-  /// sky/fur, see `test/fixtures/glass/`), white text on a *white*-tinted
-  /// plate over that scene doesn't clear 4.5:1 no matter how strong
-  /// `glassText`'s shadow is. Darkening the plate helps, but even 65% (the
-  /// agreed ceiling for this round) doesn't reach 4.5:1 either; see the task
-  /// report's Fixronde 1 section for the measured numbers and the open
-  /// decision. The white rim ([edge]) and the subtle top highlight
-  /// (`GlassSurface`'s own paint) stay: that's what still reads as glass
-  /// instead of a flat dark chip.
-  const GlassTokens.phone() : this(blur: 12, saturation: 1.5, dim: 0.78, tint: const Color(0xA6000000), edge: 0);
+  /// iPhone glass: blur 12, saturation 1.5, dim 0.78. Fixronde 1 replaced the
+  /// white 14% tint with a dark fill: white text on a *white*-tinted plate
+  /// over the lightest real fixture (Big Buck Bunny's sky/fur, see
+  /// `test/fixtures/glass/`) doesn't clear 4.5:1 no matter how strong
+  /// `glassText`'s shadow is. Fixronde 2 re-measured with a corrected
+  /// contrast meter (`textContrastOverBackground`, see the task report:
+  /// Fixronde 1's meter counted glyph anti-aliasing as background and
+  /// silently capped every reading) and found black 50% already clears
+  /// 4.5:1 on that fixture, so the tint stayed at the Fixronde 1 starting
+  /// point instead of climbing to the old ceiling. The white rim ([edge])
+  /// and the subtle top highlight (`GlassSurface`'s own paint) stay: that's
+  /// what still reads as glass instead of a flat dark chip.
+  const GlassTokens.phone() : this(blur: 12, saturation: 1.5, dim: 0.78, tint: const Color(0x80000000), edge: 0);
 
   /// Apple TV nepglas: blur 30, saturation 1.2, dim 0.80, the same dark plate
-  /// tint as [phone] (black 65%, Fixronde 1) for the same contrast reason,
+  /// tint as [phone] (black 50%, Fixronde 1/2) for the same contrast reason,
   /// plus the 1.5px white-40% rim ([edge] holds the 40% alpha; the 1.5px
   /// width is fixed in [GlassSurface], since only this token draws a rim).
-  const GlassTokens.tv() : this(blur: 30, saturation: 1.2, dim: 0.80, tint: const Color(0xA6000000), edge: 0.40);
+  const GlassTokens.tv() : this(blur: 30, saturation: 1.2, dim: 0.80, tint: const Color(0x80000000), edge: 0.40);
 
   /// Prominent white glass (e.g. the film-page Resume button): unchanged by
   /// Fixronde 1: same layers as [phone] but tint white 92% and no damping,

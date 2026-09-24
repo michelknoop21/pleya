@@ -1,34 +1,53 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// WCAG contrast ratio between the text glyphs and the background of the
-/// nearest [textFinder] widget, measured on the rendered pixels via
-/// [captureImage]: the same primitive golden tests use, so this runs on the
-/// test renderer's Skia output (the fake glass tier; see
-/// `docs/liquid-glass-mockups-2026-09.md`, Contrast).
+/// WCAG-style contrast between [textColor] and the background painted behind
+/// [area] (glass, blur, tint, shadows), read directly from pixels.
 ///
-/// Pixels inside the text's bounding rect with relative luminance above 0.8
-/// are treated as glyph pixels (anti-aliased white text is near-white at its
-/// core); the rest of the rect is background. The ratio is computed from the
-/// two groups' average relative luminance, per WCAG 2.x.
+/// This does not classify pixels as "text" vs "background" by luminance
+/// (Fixronde 1's approach): a glyph's anti-aliased edge sits at luminance
+/// 0.3..0.8, a no-man's-land that used to get counted as background and
+/// permanently capped the measured ratio around 3.3-3.7 regardless of the
+/// plate's actual tint (see the task report, Fixronde 2). Instead, the caller
+/// pumps the *same* layout with the target text painted fully transparent
+/// (`color: Colors.transparent` in its `TextStyle`, shadows left in place: a
+/// probe confirmed Flutter still paints `TextStyle.shadows` when `color` is
+/// transparent, so the glyph's own shadow is part of what gets measured as
+/// background, same as it would be with real text on top of it). [area] is
+/// the `Finder` for that invisible text, so its rect matches exactly what the
+/// real, visible text would occupy. Text luminance comes directly from
+/// [textColor]: a flat color has one relative luminance, no pixels to sample.
+///
+/// [percentile] (default 0.95) turns the sampled background pixels into one
+/// representative luminance: the value below which that fraction of pixels
+/// falls. 0.95 means the lightest 5% of the background sets the bar, a
+/// deliberately conservative pick for light text (worst case against a
+/// bright pocket of the scene) without letting one stray bright pixel (a
+/// literal max()) dominate the result.
 ///
 /// Runs the actual capture inside [WidgetTester.runAsync]: [captureImage] and
 /// [ui.Image.toByteData] settle through a real asynchronous gap that the fake
-/// test clock never fires: outside `runAsync` this hangs until the test
+/// test clock never fires; outside `runAsync` this hangs until the test
 /// harness kills the process, exactly like `flutter_test`'s own
 /// `matchesGoldenFile` does it internally.
-Future<double> minTextContrast(WidgetTester tester, Finder textFinder) async {
-  final element = tester.element(textFinder);
+Future<double> textContrastOverBackground(
+  WidgetTester tester, {
+  required Finder area,
+  required Color textColor,
+  double percentile = 0.95,
+}) async {
+  final element = tester.element(area);
   // captureImage renders the nearest RepaintBoundary's paintBounds at a 1:1
   // pixel ratio, in that boundary's local (== global, for a boundary that
   // sits at the screen origin) logical coordinates: not scaled by
   // devicePixelRatio. tester.getRect is already in that same coordinate
   // space, so it maps directly onto image pixels with no scaling.
-  final rect = tester.getRect(textFinder);
+  final rect = tester.getRect(area);
 
-  final result = await tester.runAsync<({int textCount, int bgCount, double textLumSum, double bgLumSum})>(() async {
+  final bgLuminances = await tester.runAsync<List<double>>(() async {
     final image = await captureImage(element);
     try {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
@@ -40,41 +59,31 @@ Future<double> minTextContrast(WidgetTester tester, Finder textFinder) async {
       final right = rect.right.ceil().clamp(left + 1, image.width);
       final bottom = rect.bottom.ceil().clamp(top + 1, image.height);
 
-      var textLumSum = 0.0;
-      var bgLumSum = 0.0;
-      var textCount = 0;
-      var bgCount = 0;
-
+      final values = <double>[];
       for (var y = top; y < bottom; y++) {
         for (var x = left; x < right; x++) {
           final i = (y * image.width + x) * 4;
-          final lum = _relativeLuminance(pixels[i] / 255, pixels[i + 1] / 255, pixels[i + 2] / 255);
-          if (lum > 0.8) {
-            textLumSum += lum;
-            textCount++;
-          } else {
-            bgLumSum += lum;
-            bgCount++;
-          }
+          values.add(_relativeLuminance(pixels[i] / 255, pixels[i + 1] / 255, pixels[i + 2] / 255));
         }
       }
-      return (textCount: textCount, bgCount: bgCount, textLumSum: textLumSum, bgLumSum: bgLumSum);
+      return values;
     } finally {
       image.dispose();
     }
   });
 
-  if (result == null) throw StateError('tester.runAsync returned no result (zone unsupported?)');
-  if (result.textCount == 0 || result.bgCount == 0) {
-    throw StateError(
-      'could not separate text (${result.textCount} px) from background (${result.bgCount} px) in the captured rect',
-    );
+  if (bgLuminances == null || bgLuminances.isEmpty) {
+    throw StateError('no background pixels captured in $rect');
   }
 
-  final textAvg = result.textLumSum / result.textCount;
-  final bgAvg = result.bgLumSum / result.bgCount;
-  final lighter = math.max(textAvg, bgAvg);
-  final darker = math.min(textAvg, bgAvg);
+  bgLuminances.sort();
+  final index = ((bgLuminances.length - 1) * percentile).round().clamp(0, bgLuminances.length - 1);
+  final bgLuminance = bgLuminances[index];
+
+  final textLuminance = _relativeLuminance(textColor.red / 255, textColor.green / 255, textColor.blue / 255);
+
+  final lighter = math.max(bgLuminance, textLuminance);
+  final darker = math.min(bgLuminance, textLuminance);
   return (lighter + 0.05) / (darker + 0.05);
 }
 
