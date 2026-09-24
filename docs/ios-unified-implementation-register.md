@@ -4,6 +4,9 @@ Aangelegd op 11 september 2026 (UNI0). Dit register houdt per iPhone-scherm bij 
 Volgorde, statusladder, bewijsregel en releasegate staan in
 [unified-2026-closure.md](unified-2026-closure.md) en worden hier niet herhaald.
 
+Sinds 24 september 2026 (DEC-119) gaat tvOS eerst naar TestFlight. I7 (11, 12, 13), I8, I9a, I9b,
+IOS-HOME-AB en I10 zijn daarna het volgende spoor.
+
 ## Autoriteit
 
 - [DEC-090](DECISIONS.md#dec-090): de 21 beelden in `docs/assets/ios-unified/northstar/` zijn de
