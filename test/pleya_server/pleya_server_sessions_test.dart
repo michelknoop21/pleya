@@ -49,6 +49,9 @@ void main() {
     final service = PleyaServerAuthService(
       httpClientFactory: () => MockClient((request) async {
         if (request.url.path == '/pleya/v1/info') return json(infoBody(sessions: serverKnowsSessions));
+        if (request.url.path.endsWith('/users/me')) {
+          return json(const {'id': 'u1', 'username': 'sanne', 'role': 'member'});
+        }
         expect(request.url.path, '/pleya/v1/auth/login');
         sent = jsonDecode(request.body) as Map<String, dynamic>;
         return json(tokenPair());
@@ -104,6 +107,9 @@ void main() {
       final service = PleyaServerAuthService(
         httpClientFactory: () => MockClient((request) async {
           if (request.url.path == '/pleya/v1/info') return json(infoBody(sessions: true));
+          if (request.url.path.endsWith('/users/me')) {
+            return json(const {'id': 'u1', 'username': 'sanne', 'role': 'member'});
+          }
           expect(request.url.path, '/pleya/v1/auth/setup');
           sent = jsonDecode(request.body) as Map<String, dynamic>;
           return json(tokenPair());
@@ -126,6 +132,9 @@ void main() {
       final service = PleyaServerAuthService(
         httpClientFactory: () => MockClient((request) async {
           if (request.url.path == '/pleya/v1/info') return json(infoBody(sessions: true));
+          if (request.url.path.endsWith('/users/me')) {
+            return json(const {'id': 'u1', 'username': 'sanne', 'role': 'member'});
+          }
           sent = jsonDecode(request.body) as Map<String, dynamic>;
           return json(tokenPair());
         }),
