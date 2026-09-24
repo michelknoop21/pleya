@@ -1114,8 +1114,12 @@ paths:
     post:
       tags: [administration]
       operationId: retryJob
-      summary: Zet een mislukte of geannuleerde job opnieuw in de wachtrij.
-      description: Klasse `admin`.
+      summary: Zet een job opnieuw in de wachtrij.
+      description: |
+        Klasse `admin`. Werkt op elke job die niet al `pending` of `running` is,
+        dus ook een `succeeded` job; niet beperkt tot `failed` of `cancelled`.
+        Staat de job nog op `pending` of `running`, dan verandert er niets en
+        komt dezelfde job ongewijzigd terug.
       parameters:
         - $ref: "#/components/parameters/JobId"
       responses:

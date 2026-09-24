@@ -8,7 +8,7 @@
 
 **Tech Stack:** Flutter 3.44.0 (gepind in `.fvmrc`), slang, Go 1.26 in Docker via `pleya_server/scripts/go-tool.sh`, Postgres-testcontainer `pleya-test-db`, OpenAPI 3.1 met `scripts/check_protocol.sh`, Bun/SvelteKit voor `pleya_web`, Fastlane (Ruby), Pleya Verify.
 
-**Spec:** de actieve pauze-handoff `~/.claude/handoffs/server-9559b8e7/20260920-150211-pleya-server-completion-na-eerste-push.md` (sectie "Klaar als"), het bevindingenregister `docs/pleya-server-rebaseline/P-review-recovery-2026-09-20.md`, en voor S2.4 `docs/pleya-server-rebaseline/I-master-implementation-plan.md` (S2) plus `docs/pleya-server-rebaseline/J-api-schema-migratie.md` (API-rijen en migraties). De masterlijst `docs/PLEYA-SERVER-MASTERLIST.md` is de afvinklijst en wordt in dezelfde commit als het werk bijgewerkt.
+**Spec:** de pauze-handoff van 20 september 2026, sectie "Klaar als", het bevindingenregister `docs/pleya-server-rebaseline/P-review-recovery-2026-09-20.md`, en voor S2.4 `docs/pleya-server-rebaseline/I-master-implementation-plan.md` (S2) plus `docs/pleya-server-rebaseline/J-api-schema-migratie.md` (API-rijen en migraties). De masterlijst `docs/PLEYA-SERVER-MASTERLIST.md` is de afvinklijst en wordt in dezelfde commit als het werk bijgewerkt.
 
 ## Global Constraints
 
@@ -49,7 +49,7 @@
 
 ```bash
 mkdir -p docs/superpowers/plans
-cp ~/.claude/plans/maak-een-plan-zodat-swirling-sonnet.md docs/superpowers/plans/2026-09-24-pleya-server-completion-afronding.md
+cp <pad van het goedgekeurde plan> docs/superpowers/plans/2026-09-24-pleya-server-completion-afronding.md
 ```
 
 - [ ] **Stap 2: controleer de omgeving**
@@ -2302,7 +2302,7 @@ git rev-list --left-right --count origin/integration/pleya-server-completion...H
 
 - [ ] **Stap 3: sluit de handoff**
 
-Schrijf een nieuwe handoff met `/handoff pauze` of `/handoff doorgaan` (S2.5 is de volgende slice) in `~/.claude/handoffs/server-9559b8e7/`, met de SHA's van deze ronde en de gemeten masterlijsttelling.
+Schrijf een nieuwe handoff met `/handoff pauze` of `/handoff doorgaan` (S2.5 is de volgende slice) in de handoff-map van deze worktree, met de SHA's van deze ronde en de gemeten masterlijsttelling.
 
 ---
 
