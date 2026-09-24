@@ -111,6 +111,11 @@ under `Notes`.
 - review-correcties op het layer-owned zoompad
 - drop stale sub-pos zoom compensation and rebuild filter state after a player retry
 - harden completion integration after review
+- offline-melding noemt de server die echt onbereikbaar was (L26)
+- dubbele common.timedOut uit nl verwijderd, parser bewaakt dubbele sleutels (L27)
+- git_commit_define stopt de lane bij een mislukte of lege git-aanroep (L29)
+- profile.freezed.dart opnieuw gegenereerd na de doc-wijziging uit 3734e399
+- schema.d.ts opnieuw gegenereerd na de contractwijziging uit 3734e399
 <!-- END GENERATED -->
 
 ### New

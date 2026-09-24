@@ -1,17 +1,18 @@
 # STATUS · Pleya
 
-## Pauzestand 20 september 2026
+## Stand 24 september 2026
 
-De completionbasis staat op `integration/pleya-server-completion` als mergecommit `0b9699ec`; de
-26 afgeronde reviewfixes staan in `3734e399`. De verplichte lokale CI-check was vóór die tweede
-commit groen. De re-baseline-review telt 29 bevindingen. L26 en L27 hebben een bewust rode
-regressietest maar nog geen productfix, en L29 is nog niet begonnen. De duurzame tabel en het exacte hervatpunt staan in
-[`docs/pleya-server-rebaseline/P-review-recovery-2026-09-20.md`](docs/pleya-server-rebaseline/P-review-recovery-2026-09-20.md).
-
-Na die drie punten moeten de gedragssuites en overige brede gates opnieuw worden gedraaid en de
-release- en authority-controles worden gesloten. Daarna volgen de veiliggestelde S2.4- en
-loudnesswijzigingen. Voor dezelfde worktree is de enige juiste startprompt: `/handoff verder`.
-Er is geen rollout gedaan en de huidige werkboom is niet releaseklaar.
+De 29 bevindingen uit de re-baseline-review zijn gesloten (register:
+`docs/pleya-server-rebaseline/P-review-recovery-2026-09-20.md`). De brede gates zijn gedraaid en
+groen, met twee open punten die op een besluit wachten. Drie Fluttertests falen door bestanden die
+`main` inmiddels heeft hersteld (`http_lifecycle_test`, `no_local_cta_shape_override_test`,
+`tv_top_navigation_test`), en de 77 goldenfouten zijn op macOS niet te beoordelen: Linux-CI beslist.
+`scripts/check_authority_merge.sh 0b9699ec^1` geeft 6 pass en 5 fail: de merges `4e78b160` en
+`0b9699ec` namen `docs/RELEASES.md`, `docs/CHANGELOG.md` en `STATUS.md` (en `CLAUDE.md` bij
+`4e78b160`) van één ouder over. Uit de re-baseline-tak ontbreken daardoor onder meer 286 regels
+`STATUS.md` en 190 regels `docs/CHANGELOG.md`. Herstel gaat via een echte driewegmerge bij de
+main-sync, waarna de merge-base verschuift en deze twee merges buiten de controle vallen. Volgende
+stap: S2.4-migratie en loudness D1/D2 terugbrengen, daarna S2.4 bouwen. Er is geen rollout gedaan.
 
 _Laatst bijgewerkt: 2026-09-20. De nieuwe Pleya Server-authority
 `integration/pleya-server-completion` wordt vanaf actueel `main` (`bc6bff47`) opgebouwd. Het lokale
