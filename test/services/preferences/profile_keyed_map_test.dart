@@ -262,11 +262,16 @@ void main() {
     tearDown(() => BaseSharedPreferencesService.onMutation = null);
 
     test('are global maps with the profile-keyed merge', () {
-      for (final key in ['pleya_profile_language_preferences', 'track_language_preferences']) {
+      final families = {
+        'pleya_profile_language_preferences': PreferenceMergeFamilies.profileKeyedMap,
+        // The same merge with the store's cap after it.
+        'track_language_preferences': PreferenceMergeFamilies.trackLanguageMap,
+      };
+      for (final MapEntry(:key, value: family) in families.entries) {
         final policy = PreferenceSyncPolicyRegistry.policyFor(key);
         expect(policy.scope, PreferenceScopeKind.global, reason: key);
         expect(policy.maySync, isTrue, reason: key);
-        expect(policy.mergeFamily, PreferenceMergeFamilies.profileKeyedMap, reason: key);
+        expect(policy.mergeFamily, family, reason: key);
         expect(PreferenceSyncPolicyRegistry.isProfileScoped(key), isFalse, reason: key);
       }
     });
@@ -413,13 +418,77 @@ void main() {
         await TrackPreferenceStore.saveAudio(movie, language: 'fra');
         final afterA = stored();
         expect(afterA.values.where((c) => !c.isEmpty).length, cap);
-        expect(afterA['$home|a0']!.isEmpty, isTrue);
-        expect(afterA['$home|a0']!.updatedAt, t0 + 1, reason: 'one past the evicted entry, not now');
+        // cap + 1 entries were evicted; the oldest tombstone (a0) is past the
+        // tombstone budget.
+        expect(afterA.containsKey('$home|a0'), isFalse);
+        expect(afterA['$home|a1']!.isEmpty, isTrue);
+        expect(afterA['$home|a1']!.updatedAt, t0 + 2, reason: 'one past the evicted entry, not now');
 
         // What A sends and what B then holds stay within the cap.
         final sent = m(family.outbound!(settings.prefs.getString('track_language_preferences'), deviceB));
         expect(liveIn(sent), lessThanOrEqualTo(cap));
         expect(liveIn(m(family.inbound(deviceB, enc(sent)))), lessThanOrEqualTo(cap));
+      });
+
+      test('a device that only receives caps the union it applies', () async {
+        const cap = TrackPreferenceStore.maxEntries;
+        final coordinator = await build();
+        const key = 'track_language_preferences';
+        await settings.prefs.setString(
+          key,
+          enc({
+            for (var i = 0; i < cap; i++)
+              '$home|a$i': TrackLanguageChoice(audioLanguage: 'nld', updatedAt: t0 + i).toJson(),
+            '$local|mine': TrackLanguageChoice(audioLanguage: 'nld', updatedAt: t0 + 5000).toJson(),
+          }),
+        );
+        transport.store[coordinator.cloudKeyFor(key)!] = record(
+          enc({
+            for (var i = 0; i < cap; i++)
+              '$home|b$i': TrackLanguageChoice(audioLanguage: 'eng', updatedAt: t0 + 1000 + i).toJson(),
+          }),
+          now() + 60000,
+          'appletv',
+        );
+
+        await coordinator.applyAllRemote();
+
+        final here = m(settings.prefs.getString(key));
+        expect(liveIn(here), cap, reason: 'no write of its own, and still within the cap');
+        expect(here['$local|mine']['a'], 'nld', reason: 'the newest entry stays, local or not');
+        expect(here['$home|b${cap - 1}']['a'], 'eng');
+        expect(here['$home|a${cap - 1}'], {'u': t0 + cap}, reason: 'an evicted entry travels as a tombstone');
+
+        // What it pushes next is the capped map, not the union.
+        final sent = m(family.outbound!(settings.prefs.getString(key), null));
+        expect(liveIn(sent), lessThanOrEqualTo(cap));
+      });
+
+      test('the profile language map is not capped by the series store', () async {
+        final coordinator = await build();
+        expect(
+          coordinator.mergeRegistry.familyFor('pleya_profile_language_preferences')?.name,
+          PreferenceMergeFamilies.profileKeyedMap,
+        );
+        expect(
+          coordinator.mergeRegistry.familyFor('track_language_preferences')?.name,
+          PreferenceMergeFamilies.trackLanguageMap,
+        );
+      });
+
+      test('tombstones are kept up to the cap, newest first', () async {
+        await signIn();
+        const cap = TrackPreferenceStore.maxEntries;
+        await settings.write(SettingsService.trackLanguagePreferences, {
+          for (var i = 0; i < cap + 20; i++) '$home|gone$i': TrackLanguageChoice(updatedAt: t0 - 100000 + i),
+        });
+
+        await TrackPreferenceStore.saveAudio(movie, language: 'fra');
+
+        final tombstones = stored().entries.where((e) => e.value.isEmpty).map((e) => e.key).toSet();
+        expect(tombstones.length, cap);
+        expect(tombstones.contains('$home|gone0'), isFalse, reason: 'the oldest go first');
+        expect(tombstones.contains('$home|gone${cap + 19}'), isTrue);
       });
 
       test('tombstones do not count towards the cap and expired ones are removed locally', () async {

@@ -1,7 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/media/track_language_choice.dart';
+import 'package:pleya/services/preferences/preference_revision_store.dart';
 import 'package:pleya/services/preferences/preference_sync_scope.dart';
+import 'package:pleya/services/settings_export_service.dart';
+import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/track_preference_store.dart';
 
 /// Does keeping v1 frozen alongside v2 fit in the key-value store?
 ///
@@ -174,6 +179,50 @@ void main() {
     final biggest = bytesOf('${prefix}profile/$homeUuid/hidden_libraries', typed('string', json.encode(libs)));
 
     expect(biggest, lessThan(perValueCap));
+  });
+
+  test('the series language map at its cap, tombstones included, stays well under the per-value cap', () {
+    // The worst case the store allows: the cap of live entries, each with long
+    // track and show titles and the full provenance, plus the cap of
+    // tombstones, all under a real Plex Home scope and a logical series key.
+    // Measured the way the coordinator sends it: typed, stamped, JSON inside
+    // JSON, so every quote in the map is escaped once more.
+    const perValueCap = 100 * 1024;
+    const cap = TrackPreferenceStore.maxEntries;
+    const scope = 'plex-home-plex.0123456789abcdef-fedcba9876543210';
+    String key(String kind, int i) =>
+        '$scope|show:guid:plex://show/5d9c086c46115600$kind${i.toString().padLeft(6, '0')}';
+    const live = TrackLanguageChoice(
+      audioLanguage: 'eng',
+      audioTitle: 'English (Dolby TrueHD Atmos 7.1)',
+      subtitleLanguage: 'nld',
+      subtitleTitle: 'Nederlands (SDH, forced songs)',
+      subtitleForced: true,
+      provenance: TrackChoiceProvenance(
+        title: 'The Lord of the Rings: The Rings of Power (2022)',
+        posterPath: '/library/metadata/1234567/thumb/1758700000',
+        serverId: plexMachineId,
+        seasonNumber: 12,
+        episodeNumber: 123,
+        deviceName: 'Woonkamer Apple TV 4K (3e generatie)',
+      ),
+      updatedAt: 1758700000000,
+    );
+    final map = {
+      for (var i = 0; i < cap; i++) key('aa', i): live,
+      for (var i = 0; i < cap; i++) key('bb', i): const TrackLanguageChoice(updatedAt: 1758700000000),
+    };
+    final typedValue = SettingsExportService.encodeValue(SettingsService.trackLanguagePreferences.encode(map))!;
+    final wire = encodeStampedRecord(typedValue, (
+      at: 1758700000000,
+      device: '6f1d2b3c-4e5a-4b7c-8d9e-0f1a2b3c4d5e',
+      deleted: false,
+    ));
+    final bytes = utf8.encode(wire).length;
+
+    // ignore: avoid_print
+    print('track_language_preferences worst case: $cap live + $cap tombstones = ${bytes ~/ 1024} KB of 100 KB');
+    expect(bytes, lessThan(perValueCap * 3 ~/ 4), reason: 'a quarter of the ceiling left for longer, non-Latin titles');
   });
 
   test('frozen v1 is bounded by what already exists, so it cannot grow after the cutover', () {

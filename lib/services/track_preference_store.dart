@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
@@ -9,6 +10,7 @@ import '../media/unified/identity_evidence.dart';
 import '../utils/app_logger.dart';
 import 'pleya_share/pleya_share_device_name.dart';
 import 'preferences/preference_merge_strategies.dart';
+import 'preferences/preference_sync_policy.dart';
 import 'preferences/preference_sync_scope.dart';
 import 'pleya_profile_language_preference_store.dart';
 import 'settings_service.dart';
@@ -59,16 +61,18 @@ class TrackPreferenceStore {
     _deviceName = null;
   }
 
-  /// Beyond this many titles the oldest entries are dropped. The whole map is
-  /// one iCloud KVS value with a 100 KB ceiling.
+  /// Beyond this many titles the oldest entries are dropped, and at most this
+  /// many tombstones are kept. The whole map is one iCloud KVS value with a
+  /// 100 KB ceiling, which the sync layer enforces by refusing the whole value.
   ///
-  /// Was 500 while an entry held languages alone at well under 100 bytes. The
-  /// provenance the management page shows — series title, poster path, server,
-  /// episode, device — roughly triples that, so the cap comes down to keep the
-  /// same headroom under the same ceiling. Nobody accumulates 250 series
-  /// preferences; the cap exists so that a decade of watching cannot silently
-  /// grow past a limit the sync layer enforces by refusing the whole value.
-  static const int maxEntries = 250;
+  /// Was 500 while an entry held languages alone, then 250 once the provenance
+  /// the management page shows arrived. Measured on the wire with long titles
+  /// (kvs_footprint_test), a live entry costs up to about 490 bytes and a
+  /// tombstone about 120, so 250 live entries alone already passed the
+  /// ceiling, and tombstones had no bound but their lifetime. 100 of each is
+  /// about 61 KB, which leaves room for titles in scripts that take three
+  /// bytes a character.
+  static const int maxEntries = 100;
 
   /// The *logical* series key, when this item carries evidence strong enough to
   /// name its show across sources — today the show's stable catalogue GUID
@@ -350,11 +354,12 @@ class TrackPreferenceStore {
     }
   }
 
-  /// Keeps the [maxEntries] most recently written live entries and drops
-  /// tombstones older than `profileKeyedMapTombstoneLifetime`.
+  /// Keeps the [maxEntries] most recently written live entries and as many of
+  /// the newest tombstones, and drops tombstones older than
+  /// `profileKeyedMapTombstoneLifetime`.
   ///
-  /// Tombstones do not count towards the cap, so a burst of removals cannot
-  /// push out the choices still in use. An evicted entry of a scope that syncs
+  /// Tombstones have a budget of their own, so a burst of removals cannot push
+  /// out the choices still in use. An evicted entry of a scope that syncs
   /// becomes a tombstone rather than vanishing: the merge is a union, so a key
   /// that simply disappeared here would come back from the store, and the map
   /// would grow to every device's history past the 100 KB ceiling. The
@@ -362,15 +367,57 @@ class TrackPreferenceStore {
   /// another device made since still wins.
   static Map<String, TrackLanguageChoice> _capped(Map<String, TrackLanguageChoice> entries) {
     final expiredBefore = DateTime.now().millisecondsSinceEpoch - profileKeyedMapTombstoneLifetime.inMilliseconds;
-    final live = entries.entries.where((e) => !e.value.isEmpty).toList()
-      ..sort((a, b) => b.value.updatedAt.compareTo(a.value.updatedAt));
-    return {
-      for (final e in live.take(maxEntries)) e.key: e.value,
+    final live = entries.entries.where((e) => !e.value.isEmpty).toList()..sort(_newestFirst);
+    // ponytail: a tombstone past the budget goes before its lifetime is up, so a
+    // device offline since that removal can bring the entry back, exactly as
+    // after expiry. Budgeting bytes instead of entries would keep more of them.
+    final tombstones = <String, TrackLanguageChoice>{
       for (final e in live.skip(maxEntries))
         if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(e.key)))
           e.key: TrackLanguageChoice(updatedAt: e.value.updatedAt + 1),
       for (final e in entries.entries)
         if (e.value.isEmpty && e.value.updatedAt >= expiredBefore) e.key: e.value,
+    }.entries.toList()..sort(_newestFirst);
+    return {
+      for (final e in live.take(maxEntries)) e.key: e.value,
+      for (final e in tombstones.take(maxEntries)) e.key: e.value,
     };
+  }
+
+  /// Newest first, ties by key, so every device keeps the same entries.
+  static int _newestFirst(MapEntry<String, TrackLanguageChoice> a, MapEntry<String, TrackLanguageChoice> b) {
+    final byTime = b.value.updatedAt.compareTo(a.value.updatedAt);
+    return byTime != 0 ? byTime : a.key.compareTo(b.key);
+  }
+
+  /// The sync family for this map: `profileKeyedMap`, with [_capped] run over
+  /// every inbound union.
+  ///
+  /// Each device caps its own writes, but the union of two capped maps holds
+  /// up to twice the cap. A device that only receives would keep that union
+  /// and push it back, over the store's ceiling, until its own next write. The
+  /// cap stays out of the shared merge, which also serves the profile language
+  /// map.
+  static PreferenceMergeFamily mergeFamily() {
+    final shared = buildProfileKeyedMapFamily();
+    return PreferenceMergeFamily(
+      name: PreferenceMergeFamilies.trackLanguageMap,
+      inbound: (local, remote) => _cappedRaw(shared.inbound(local, remote)),
+      outbound: shared.outbound,
+      removed: shared.removed,
+    );
+  }
+
+  /// [_capped] over a stored JSON value. A value this store cannot decode is
+  /// passed through untouched: capping is housekeeping, not a reason to fail
+  /// the apply.
+  static Object? _cappedRaw(Object? raw) {
+    if (raw is! String) return raw;
+    final pref = SettingsService.trackLanguagePreferences;
+    try {
+      return pref.encode(_capped(pref.decode(json.decode(raw))));
+    } catch (_) {
+      return raw;
+    }
   }
 }

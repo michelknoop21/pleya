@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/app_logger.dart';
 import '../settings_export_service.dart';
+import '../track_preference_store.dart';
 import 'preference_legacy_bootstrap.dart';
 import 'preference_merge_strategies.dart';
 import 'preference_mutation.dart';
@@ -190,6 +191,7 @@ class PreferenceSyncCoordinator {
     _merges.register(buildProgressMapFamily(watchedMap: false));
     _merges.register(buildProgressMapFamily(watchedMap: true));
     _merges.register(buildProfileKeyedMapFamily());
+    _merges.register(TrackPreferenceStore.mergeFamily());
   }
 
   /// The value as it may leave the device, or null when nothing may.

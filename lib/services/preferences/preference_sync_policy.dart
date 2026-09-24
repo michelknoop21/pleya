@@ -50,6 +50,10 @@ class PreferenceMergeFamilies {
   /// A JSON map whose keys are `{profileScope}` or `{profileScope}|{rest}`:
   /// the two language preferences (DEC-096, DEC-131).
   static const String profileKeyedMap = 'profileKeyedMap';
+
+  /// [profileKeyedMap] for `track_language_preferences`, with the store's cap
+  /// run over every inbound union. Built and owned by `TrackPreferenceStore`.
+  static const String trackLanguageMap = 'trackLanguageMap';
 }
 
 /// What the sync layer is allowed to do with one preference.
@@ -245,6 +249,14 @@ class PreferenceSyncPolicyRegistry {
     scope: PreferenceScopeKind.global,
     merge: PreferenceMergeStrategy.custom,
     mergeFamily: PreferenceMergeFamilies.profileKeyedMap,
+  );
+
+  /// The series map is capped by its store; the union of two capped maps is
+  /// not, so its family runs the cap after the merge.
+  static const PreferencePolicy _trackLanguageMapPref = PreferencePolicy(
+    scope: PreferenceScopeKind.global,
+    merge: PreferenceMergeStrategy.custom,
+    mergeFamily: PreferenceMergeFamilies.trackLanguageMap,
   );
 
   /// Bound to this device's hardware or installation, so it does not sync,
@@ -509,7 +521,7 @@ class PreferenceSyncPolicyRegistry {
 
     // -- The two language maps (DEC-096, DEC-131).
     'pleya_profile_language_preferences': _profileKeyedMapPref,
-    'track_language_preferences': _profileKeyedMapPref,
+    'track_language_preferences': _trackLanguageMapPref,
 
     // -- JsonPref maps the guard could not see until DEC-131 (10).
     'keyboard_shortcuts': _globalPref,
