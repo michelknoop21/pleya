@@ -620,6 +620,12 @@ class TranslationsSettingsEn {
 	/// en: 'Show each season's poster above its tab'
 	String get showSeasonPostersOnTabsDescription => 'Show each season\'s poster above its tab';
 
+	/// en: 'Liquid Glass'
+	String get liquidGlass => 'Liquid Glass';
+
+	/// en: 'Glass surfaces on the tab bar, player and buttons.'
+	String get liquidGlassDescription => 'Glass surfaces on the tab bar, player and buttons.';
+
 	/// en: 'Full TV Cards'
 	String get tvFullCardLayout => 'Full TV Cards';
 
@@ -7227,6 +7233,8 @@ extension on Translations {
 			'settings.showEpisodeNumberOnCardsDescription' => 'Show season and episode number on episode cards',
 			'settings.showSeasonPostersOnTabs' => 'Show Season Posters on Tabs',
 			'settings.showSeasonPostersOnTabsDescription' => 'Show each season\'s poster above its tab',
+			'settings.liquidGlass' => 'Liquid Glass',
+			'settings.liquidGlassDescription' => 'Glass surfaces on the tab bar, player and buttons.',
 			'settings.tvFullCardLayout' => 'Full TV Cards',
 			'settings.tvFullCardLayoutDescription' => 'Use image-only TV cards with actor names overlaid',
 			'settings.focusGlow' => 'Focus Glow',
@@ -7586,10 +7594,10 @@ extension on Translations {
 			'videoControls.muteButton' => 'Mute',
 			'videoControls.unmuteButton' => 'Unmute',
 			'videoControls.settingsButton' => 'Playback Settings',
-			'videoControls.tracksButton' => 'Audio & Subtitles',
-			'videoControls.chaptersButton' => 'Chapters',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.tracksButton' => 'Audio & Subtitles',
+			'videoControls.chaptersButton' => 'Chapters',
 			'videoControls.versionsButton' => 'Video versions',
 			'videoControls.versionQualityButton' => 'Version & Quality',
 			'videoControls.versionColumnHeader' => 'Version',
@@ -8100,10 +8108,10 @@ extension on Translations {
 			'liveTv.watchChannel' => 'Watch Channel',
 			'liveTv.favorites' => 'Favorites',
 			'liveTv.reorderFavorites' => 'Reorder Favorites',
-			'liveTv.favoritesSaveFailed' => 'Could not save your favorite channels',
-			'liveTv.joinSession' => 'Join Session in Progress',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.favoritesSaveFailed' => 'Could not save your favorite channels',
+			'liveTv.joinSession' => 'Join Session in Progress',
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Watch from start (${minutes} min ago)',
 			'liveTv.watchLive' => 'Watch Live',
 			'liveTv.goToLive' => 'Go to Live',
@@ -8614,10 +8622,10 @@ extension on Translations {
 			'seerr.disconnectConfirm' => 'Disconnect requests server?',
 			'seerr.disconnectConfirmBody' => 'Pleya will stop sending requests. You can reconnect any time.',
 			'seerr.connectedAs' => ({required Object name}) => 'Signed in as ${name}',
-			'seerr.serverVersion' => ({required Object version}) => 'Server version ${version}',
-			'seerr.permissionAdmin' => 'Administrator',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.serverVersion' => ({required Object version}) => 'Server version ${version}',
+			'seerr.permissionAdmin' => 'Administrator',
 			'seerr.permissionManage' => 'Can approve requests',
 			'seerr.permissionRequest' => 'Can request',
 			'seerr.request' => 'Request',

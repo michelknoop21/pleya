@@ -35,6 +35,13 @@ class AppearanceSettingsScreen extends StatelessWidget {
       _densitySelector(),
       _viewModeSelector(),
       _episodePosterModeSelector(),
+      if (!PlatformDetector.isTablet(context))
+        SettingSwitchTile(
+          pref: SettingsService.liquidGlass,
+          icon: Symbols.blur_on_rounded,
+          title: t.settings.liquidGlass,
+          subtitle: t.settings.liquidGlassDescription,
+        ),
       if (PlatformDetector.isTV())
         SettingSwitchTile(
           pref: SettingsService.tvFullCardLayout,

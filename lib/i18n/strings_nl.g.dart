@@ -316,6 +316,8 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get showEpisodeNumberOnCardsDescription => 'Toon seizoen- en afleveringsnummer op afleveringskaarten';
 	@override String get showSeasonPostersOnTabs => 'Toon seizoensposters op tabbladen';
 	@override String get showSeasonPostersOnTabsDescription => 'Toon de poster van elk seizoen boven het tabblad';
+	@override String get liquidGlass => 'Liquid Glass';
+	@override String get liquidGlassDescription => 'Glazen oppervlakken op de tabbalk, de speler en knoppen.';
 	@override String get tvFullCardLayout => 'Volledige tv-kaarten';
 	@override String get tvFullCardLayoutDescription => 'Gebruik tv-kaarten met alleen afbeeldingen en namen van acteurs als overlay';
 	@override String get focusGlow => 'Focusgloed';
@@ -3173,6 +3175,8 @@ extension on TranslationsNl {
 			'settings.showEpisodeNumberOnCardsDescription' => 'Toon seizoen- en afleveringsnummer op afleveringskaarten',
 			'settings.showSeasonPostersOnTabs' => 'Toon seizoensposters op tabbladen',
 			'settings.showSeasonPostersOnTabsDescription' => 'Toon de poster van elk seizoen boven het tabblad',
+			'settings.liquidGlass' => 'Liquid Glass',
+			'settings.liquidGlassDescription' => 'Glazen oppervlakken op de tabbalk, de speler en knoppen.',
 			'settings.tvFullCardLayout' => 'Volledige tv-kaarten',
 			'settings.tvFullCardLayoutDescription' => 'Gebruik tv-kaarten met alleen afbeeldingen en namen van acteurs als overlay',
 			'settings.focusGlow' => 'Focusgloed',
@@ -3532,10 +3536,10 @@ extension on TranslationsNl {
 			'videoControls.muteButton' => 'Dempen',
 			'videoControls.unmuteButton' => 'Dempen opheffen',
 			'videoControls.settingsButton' => 'Afspeelinstellingen',
-			'videoControls.tracksButton' => 'Audio en ondertitels',
-			'videoControls.chaptersButton' => 'Hoofdstukken',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.tracksButton' => 'Audio en ondertitels',
+			'videoControls.chaptersButton' => 'Hoofdstukken',
 			'videoControls.versionsButton' => 'Videoversies',
 			'videoControls.versionQualityButton' => 'Versie en kwaliteit',
 			'videoControls.versionColumnHeader' => 'Versie',
@@ -4046,10 +4050,10 @@ extension on TranslationsNl {
 			'liveTv.watchChannel' => 'Kanaal bekijken',
 			'liveTv.favorites' => 'Favorieten',
 			'liveTv.reorderFavorites' => 'Favorieten herordenen',
-			'liveTv.favoritesSaveFailed' => 'Kon je favoriete kanalen niet opslaan',
-			'liveTv.joinSession' => 'Deelnemen aan lopende sessie',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.favoritesSaveFailed' => 'Kon je favoriete kanalen niet opslaan',
+			'liveTv.joinSession' => 'Deelnemen aan lopende sessie',
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Kijk vanaf het begin (${minutes} min geleden)',
 			'liveTv.watchLive' => 'Live kijken',
 			'liveTv.goToLive' => 'Ga naar live',
@@ -4560,10 +4564,10 @@ extension on TranslationsNl {
 			'trackers.services.anilist' => 'AniList',
 			'trackers.services.simkl' => 'Simkl',
 			'trackers.deviceCode.title' => ({required Object service}) => 'Pleya activeren op ${service}',
-			'trackers.deviceCode.body' => ({required Object url}) => 'Ga naar ${url} en voer deze code in:',
-			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Open ${service} om te activeren',
 			_ => null,
 		} ?? switch (path) {
+			'trackers.deviceCode.body' => ({required Object url}) => 'Ga naar ${url} en voer deze code in:',
+			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Open ${service} om te activeren',
 			'trackers.deviceCode.waitingForAuthorization' => 'Wachten op autorisatie…',
 			'trackers.deviceCode.codeCopied' => 'Code gekopieerd',
 			'trackers.oauthProxy.title' => ({required Object service}) => 'Aanmelden bij ${service}',
