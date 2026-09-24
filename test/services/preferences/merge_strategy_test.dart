@@ -161,7 +161,7 @@ void main() {
       expect(coordinator.status.value.state, PreferenceSyncState.warning);
     });
 
-    test('reconcile holds a merge family back when the store cannot be read, and still pushes the rest', () async {
+    test('reconcile holds a merge family back when the store cannot be read, and the rest with it', () async {
       final coordinator = await build();
       await settings.prefs.setString(hiddenKey(), json.encode(['$mine:1']));
       await settings.prefs.setInt('subtitle_font_size', 44);
@@ -170,7 +170,11 @@ void main() {
       await coordinator.reconcile();
 
       expect(transport.store.containsKey(coordinator.cloudKeyFor(hiddenKey())!), isFalse);
-      expect(transport.store.containsKey(coordinator.cloudKeyFor('subtitle_font_size')!), isTrue);
+      expect(
+        transport.store.containsKey(coordinator.cloudKeyFor('subtitle_font_size')!),
+        isFalse,
+        reason: 'without a read nothing can be compared, so nothing is sent (DEC-131)',
+      );
     });
 
     test('a list with nothing portable in it sends nothing and deletes nothing', () async {

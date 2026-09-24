@@ -377,10 +377,18 @@ class PreferenceSyncCoordinator {
   /// event applied in the middle would change local state under it, and the
   /// event's own read would race the reconcile's writes, so the two queue.
   Future<void> _exclusively(Future<void> Function() body) {
-    final run = _turn.then((_) => body());
+    // ponytail: a bounded wait, not cancellation. A turn that hangs (a native
+    // readAll that never answers) is left running and the next one starts
+    // after [turnTimeout], so the two can overlap in that rare case. Cancel
+    // the transport call instead if that overlap ever shows up.
+    final run = _turn.timeout(turnTimeout, onTimeout: () {}).then((_) => body());
     _turn = run.catchError((Object _) {});
     return run;
   }
+
+  /// How long a reconcile run or remote event waits for the one before it.
+  @visibleForTesting
+  Duration turnTimeout = const Duration(seconds: 30);
 
   /// Test-facing view of the scheduler, so "one run, not three" is measurable.
   @visibleForTesting
@@ -570,10 +578,13 @@ class PreferenceSyncCoordinator {
         continue;
       }
       final family = _merges.familyFor(baseKey);
+      final local = _revisionStore.stampOf(baseKey);
       // A value in a merge family is merged, whatever its stamp. A tombstone
-      // is not a value to merge: it has to be newer than this device's own
-      // change, in every family, or an old removal wipes a newer choice.
-      if ((family == null || record.stamp.deleted) && !remoteStampWins(record.stamp, _revisionStore.stampOf(baseKey))) {
+      // on either side is not a value to merge: an incoming one has to be
+      // newer than this device's change, and a live record has to be newer
+      // than this device's own removal, or the two flip back and forth.
+      final stampDecides = family == null || record.stamp.deleted || local.deleted;
+      if (stampDecides && !remoteStampWins(record.stamp, local)) {
         skipped++;
         continue; // this device's change is newer, or the same
       }
@@ -609,7 +620,7 @@ class PreferenceSyncCoordinator {
       if (ok) {
         changed++;
         if (refresh != null) stale.add(refresh);
-        if (family == null) await _revisionStore.adopt(baseKey, record.stamp);
+        if (stampDecides) await _revisionStore.adopt(baseKey, record.stamp);
       } else {
         skipped++;
       }
@@ -666,8 +677,9 @@ class PreferenceSyncCoordinator {
   ///
   /// Under v2 the answer is always no. A removal travels as a tombstone since
   /// DEC-131, so a record this device does not hold is one it has not seen
-  /// yet, never one it deleted. The v1 path keeps its prune for the
-  /// rolling-upgrade test, which runs the released algorithm.
+  /// yet, never one it deleted. The v1 path keeps a prune for the
+  /// rolling-upgrade test. That path is not the released v1 algorithm any
+  /// more: it writes stamped records and compares before it writes.
   bool ownsCloudKey(String cloudKey) {
     if (_useV2CloudFormat) return false;
     if (cloudKey.startsWith('__')) return false;
@@ -755,9 +767,15 @@ class PreferenceSyncCoordinator {
 
     try {
       // The store is read before anything is written. A failed read is not an
-      // empty store: everything that can decide on its own is still pushed, and
-      // nothing is compared against a blank.
+      // empty store, and without it nothing can be compared: pushing blind
+      // could put an older value over a newer one whose author is no longer
+      // around to put it back. Nothing is sent; the next trigger tries again.
       final remote = await transport.readAll();
+      if (remote == null) {
+        _setStatus(status.value.raise(PreferenceSyncHealth.error, errorCategory: 'readFailed'));
+        appLogger.w('preference sync: reconcile held back, the store could not be read');
+        return;
+      }
 
       var pushed = 0;
       var skipped = 0;
@@ -768,13 +786,13 @@ class PreferenceSyncCoordinator {
         if (baseKey != null) known.add(baseKey);
         final cloudKey = cloudKeyFor(fullKey);
         if (cloudKey == null || baseKey == null) continue;
+        final local = _revisionStore.stampOf(baseKey);
+        // A value held under a removal stamp (a family's local-only entries)
+        // is not a change of its own; sending it would carry the tombstone's
+        // stamp on a live record.
+        if (local.deleted) continue;
         final family = _merges.familyFor(baseKey);
-        if ((family?.mergesOutgoing ?? false) && remote == null) {
-          // Merging blind would push over entries this device cannot account for.
-          skipped++;
-          continue;
-        }
-        final raw = remote?[cloudKey];
+        final raw = remote[cloudKey];
         final record = raw == null ? null : decodeStampedRecord(raw);
         final portableValue = portableValueFor(baseKey, _prefs.get(fullKey), remote: record?.value);
         if (portableValue == null) {
@@ -786,7 +804,6 @@ class PreferenceSyncCoordinator {
           skipped++;
           continue;
         }
-        final local = _revisionStore.stampOf(baseKey);
         final encoded = encodeStampedRecord(entry, local);
         final cap = transport.maxValueBytes;
         if (cap != null && encoded.length > cap) {
@@ -815,7 +832,7 @@ class PreferenceSyncCoordinator {
         if (localKey == null) continue;
         final cloudKey = cloudKeyFor(localKey);
         if (cloudKey == null) continue;
-        final raw = remote?[cloudKey];
+        final raw = remote[cloudKey];
         if (raw == null) continue;
         final record = decodeStampedRecord(raw);
         if (record == null || record.stamp.deleted) continue;
@@ -826,11 +843,11 @@ class PreferenceSyncCoordinator {
       }
 
       final metaRecord = json.encode({'type': 'int', 'value': _activeFormatVersion});
-      if (remote == null || remote[_activeMetaKey] != metaRecord) {
+      if (remote[_activeMetaKey] != metaRecord) {
         await transport.write(_activeMetaKey, metaRecord);
       }
 
-      if (!_useV2CloudFormat && remote != null) {
+      if (!_useV2CloudFormat) {
         // The v1 prune, kept for the rolling-upgrade test only. It deletes what
         // is genuinely gone locally and leaves what is present but no longer
         // eligible, so an older client that still syncs the key keeps it.

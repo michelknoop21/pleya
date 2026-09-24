@@ -116,6 +116,45 @@ void main() {
     expect(v1Footprint() + v2, lessThan(kvsTotalBytes ~/ 2));
   });
 
+  test('tombstones for everything a reset touched and every library ever seen still fit', () {
+    // Since DEC-131 a removal is a tombstone and nothing clears it. A reset
+    // tombstones every resettable preference, set or not, and a library that
+    // disappears keeps its per-library tombstones. So the store holds a key
+    // for every key the account ever saw: here the current libraries plus as
+    // many that are gone, each with their three per-library keys.
+    const prefix = PreferenceSyncScope.cloudNamespacePrefix;
+    final profilePrefix = '${prefix}profile/$homeUuid/';
+    final tombstone = json.encode({'x': true, 't': 1758700000000, 'd': '6f1d2b3c-4e5a-4b7c-8d9e-0f1a2b3c4d5e'});
+    final libs = libraryKeys();
+    final everSeen = [...libs, for (final lib in libs) '${lib}_gone'];
+
+    var keys = 0;
+    var bytes = 0;
+    void add(String key, String value) {
+      keys++;
+      bytes += bytesOf(key, value);
+    }
+
+    // The globals after a reset: all tombstones.
+    for (var i = 0; i < globalPrefs; i++) {
+      add('${prefix}global/a_reasonably_long_preference_name_$i', tombstone);
+    }
+    // The live per-library values of today, and tombstones for the gone ones.
+    add('${profilePrefix}hidden_libraries', enveloped('string', json.encode(libs)));
+    add('${profilePrefix}library_order', enveloped('string', json.encode(libs)));
+    for (final lib in everSeen) {
+      final gone = !libs.contains(lib);
+      add('${profilePrefix}library_sort_$lib', gone ? tombstone : enveloped('string', '{"key":"titleSort"}'));
+      add('${profilePrefix}library_grouping_$lib', gone ? tombstone : enveloped('string', 'movies'));
+      add('${profilePrefix}library_tab_$lib', gone ? tombstone : enveloped('string', 'Recommended'));
+    }
+
+    // ignore: avoid_print
+    print('KVS footprint with tombstones: $keys keys, ${bytes ~/ 1024} KB');
+    expect(keys, lessThan(1024), reason: 'the store caps the number of keys at 1024');
+    expect(bytes + v1Footprint(), lessThan(kvsTotalBytes ~/ 2));
+  });
+
   test('the v2 key prefix is what grows, and the growth is bounded', () {
     final v1 = v1Footprint();
     final v2 = v2Footprint();

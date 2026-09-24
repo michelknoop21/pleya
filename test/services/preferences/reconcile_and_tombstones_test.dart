@@ -256,34 +256,194 @@ void main() {
     });
   });
 
+  group('a removed family key against a live record', () {
+    late PreferenceSyncCoordinator coordinator;
+    late String key;
+    late String cloudKey;
+
+    Future<void> removeHeldList() async {
+      coordinator = await build();
+      coordinator.serverIdPortability = (id) => id == 'plex';
+      key = 'user_${homeUuid}_hidden_libraries';
+      cloudKey = coordinator.cloudKeyFor(key)!;
+      await settings.prefs.setString(key, json.encode(['plex:1']));
+      await coordinator.apply(PreferenceMutation.set(key, json.encode(['plex:1'])));
+      await settings.prefs.remove(key);
+      await coordinator.apply(PreferenceMutation.remove(key));
+    }
+
+    test('an older write-back does not flip the removal across two reconciles', () async {
+      await removeHeldList();
+      transport.store[cloudKey] = bare('string', json.encode(['plex:1'])); // the released build
+      transport.writes.clear();
+
+      await coordinator.requestReconcile(ReconcileTrigger.foreground);
+      await coordinator.requestReconcile(ReconcileTrigger.foreground);
+
+      expect(settings.prefs.getString(key), isNull);
+      expect(decode(transport.store[cloudKey]!)['x'], isTrue);
+      expect(transport.writes.where((k) => k == cloudKey).length, 1, reason: 'tombstoned again once, then quiet');
+    });
+
+    test('a newer live record beats the removal and its stamp is adopted', () async {
+      await removeHeldList();
+      final later = future();
+      transport.store[cloudKey] = stamped('string', json.encode(['plex:2']), later, 'appletv');
+
+      await coordinator.requestReconcile(ReconcileTrigger.foreground);
+
+      expect(settings.prefs.getString(key), json.encode(['plex:2']));
+      final stamp = coordinator.localRevision('hidden_libraries')!;
+      expect(stamp.updatedAt, later);
+      expect(stamp.deleted, isFalse);
+    });
+  });
+
+  group('a failed read', () {
+    test('sends nothing, reports an error, and the next trigger sends it', () async {
+      final coordinator = await build();
+      final cloudKey = coordinator.cloudKeyFor('subtitle_font_size')!;
+      await settings.prefs.setInt('subtitle_font_size', 44);
+      transport.failReadAll = true;
+
+      await coordinator.requestReconcile(ReconcileTrigger.foreground);
+
+      expect(transport.writes, isEmpty, reason: 'nothing can be compared against a read that failed');
+      expect(coordinator.status.value.state, PreferenceSyncState.error);
+
+      transport.failReadAll = false;
+      await coordinator.requestReconcile(ReconcileTrigger.foreground);
+
+      expect(transport.writes, contains(cloudKey));
+      expect(coordinator.status.value.state, isNot(PreferenceSyncState.error));
+    });
+  });
+
+  group('a device back after months offline', () {
+    test('pulls first, loses where others changed later, and sends only its own later change', () async {
+      final coordinator = await build(deviceId: 'appletv');
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      final monthsAgo = now - 90 * 24 * 60 * 60 * 1000;
+      final lastWeek = now - 7 * 24 * 60 * 60 * 1000;
+      final subtitle = coordinator.cloudKeyFor('subtitle_font_size')!;
+      final theme = coordinator.cloudKeyFor('theme_mode')!;
+      final seek = coordinator.cloudKeyFor('seek_time_small')!;
+      await settings.prefs.setInt('subtitle_font_size', 30);
+      await settings.prefs.setString('theme_mode', 'light');
+      await settings.prefs.setInt('seek_time_small', 15);
+      await settings.prefs.setString(
+        PreferenceSyncCoordinator.revisionStoreKey,
+        json.encode({
+          'subtitle_font_size': {'t': monthsAgo, 'd': 'appletv'},
+          'theme_mode': {'t': monthsAgo, 'd': 'appletv'},
+          'seek_time_small': {'t': future(), 'd': 'appletv'}, // changed after everyone else
+        }),
+      );
+      transport.store[subtitle] = stamped('int', 44, lastWeek, 'macbook');
+      transport.store[theme] = json.encode({'x': true, 't': lastWeek, 'd': 'macbook'});
+      transport.store[seek] = stamped('int', 5, lastWeek, 'macbook');
+
+      await coordinator.requestReconcile(ReconcileTrigger.foreground);
+
+      expect(settings.prefs.getInt('subtitle_font_size'), 44);
+      expect(settings.prefs.getString('theme_mode'), isNull, reason: 'the newer tombstone applied');
+      expect(settings.prefs.getInt('seek_time_small'), 15);
+      expect(transport.writes, isNot(contains(subtitle)));
+      expect(transport.writes, isNot(contains(theme)));
+      expect(decode(transport.store[seek]!)['value'], 15);
+    });
+  });
+
+  group('a released v2 client beside this build', () {
+    /// The released v2 reconcile, reduced to what it does to the store: it
+    /// pulls every record it can read (a tombstone has no type, so it skips
+    /// it), writes back everything it holds without a stamp, and prunes the
+    /// namespace keys it does not hold.
+    void releasedV2Reconcile(FakeTransport store, Map<String, (String, Object?)> held) {
+      for (final e in Map.of(store.store).entries) {
+        final m = decode(e.value);
+        if (m['type'] is String) held[e.key] = (m['type'] as String, m['value']);
+      }
+      for (final e in held.entries) {
+        store.store[e.key] = bare(e.value.$1, e.value.$2);
+      }
+      for (final k in store.store.keys.toList()) {
+        if (k.startsWith(PreferenceSyncScope.cloudNamespacePrefix) && !held.containsKey(k)) store.store.remove(k);
+      }
+    }
+
+    test('its bare write-backs lose, and this build restores its stamps and tombstones', () async {
+      final coordinator = await build();
+      final subtitle = coordinator.cloudKeyFor('subtitle_font_size')!;
+      final theme = coordinator.cloudKeyFor('theme_mode')!;
+      await settings.prefs.setInt('subtitle_font_size', 44);
+      await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 44));
+      await coordinator.apply(const PreferenceMutation.remove('theme_mode'));
+      // The old client saw 'dark' before the removal and never learns of it.
+      final held = <String, (String, Object?)>{theme: ('string', 'dark')};
+
+      releasedV2Reconcile(transport, held);
+      expect(decode(transport.store[subtitle]!).containsKey('t'), isFalse, reason: 'the old build strips the stamp');
+      expect(decode(transport.store[theme]!)['value'], 'dark');
+
+      await coordinator.requestReconcile(ReconcileTrigger.foreground);
+
+      expect(settings.prefs.getInt('subtitle_font_size'), 44);
+      expect(settings.prefs.getString('theme_mode'), isNull);
+      expect(decode(transport.store[subtitle]!)['t'], isNotNull, reason: 'the stamp is back');
+      expect(decode(transport.store[theme]!)['x'], isTrue, reason: 'and so is the tombstone');
+    });
+  });
+
   group('a remote event and a reconcile never overlap', () {
     test('an event that arrives mid-reconcile waits for it to finish', () async {
       final gated = _ReadGate();
       final coordinator = await build(shared: gated);
       coordinator.listen();
-      final cloudKey = coordinator.cloudKeyFor('subtitle_font_size')!;
-      gated.store[cloudKey] = stamped('int', 61, future(), 'appletv');
+      final theme = coordinator.cloudKeyFor('theme_mode')!;
 
       final reconciling = coordinator.requestReconcile(ReconcileTrigger.foreground);
       while (gated.reads == 0) {
         await Future<void>.delayed(Duration.zero);
       }
-      gated.controller.add(RemotePreferenceChange(reason: RemoteChangeReason.serverChange, changedKeys: [cloudKey]));
+      // Lands after the reconcile's pull read the store, so only the event can
+      // bring it to this device: the reconcile itself only pushes after that.
+      gated.store[theme] = stamped('string', 'dark', future(), 'appletv');
+      gated.controller.add(RemotePreferenceChange(reason: RemoteChangeReason.serverChange, changedKeys: [theme]));
       await pumpEventQueue();
 
       expect(gated.reads, 1, reason: 'the event may not read the store while the reconcile holds it');
+      expect(settings.prefs.getString('theme_mode'), isNull);
 
       gated.gate.complete();
       await reconciling;
       await pumpEventQueue();
 
-      expect(gated.reads, greaterThan(2), reason: 'the event ran after the reconcile');
-      expect(settings.prefs.getInt('subtitle_font_size'), 61);
+      expect(settings.prefs.getString('theme_mode'), 'dark', reason: 'the event ran after the reconcile');
+    });
+
+    test('a reconcile that hangs holds an event back for a bounded time only', () async {
+      final gated = _ReadGate(); // its gate never opens: a native read that never answers
+      final coordinator = await build(shared: gated);
+      coordinator.turnTimeout = const Duration(milliseconds: 50);
+      coordinator.listen();
+      final theme = coordinator.cloudKeyFor('theme_mode')!;
+
+      unawaited(coordinator.requestReconcile(ReconcileTrigger.foreground));
+      while (gated.reads == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      gated.store[theme] = stamped('string', 'dark', future(), 'appletv');
+      gated.controller.add(RemotePreferenceChange(reason: RemoteChangeReason.serverChange, changedKeys: [theme]));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      expect(settings.prefs.getString('theme_mode'), 'dark');
     });
   });
 }
 
-/// A transport whose first store read waits until the test says so.
+/// A transport whose first store read takes its snapshot and then waits until
+/// the test says so.
 class _ReadGate extends FakeTransport {
   final Completer<void> gate = Completer<void>();
   int reads = 0;
@@ -291,7 +451,8 @@ class _ReadGate extends FakeTransport {
   @override
   Future<Map<String, String>?> readAll() async {
     reads++;
+    final snapshot = await super.readAll();
     if (reads == 1) await gate.future;
-    return super.readAll();
+    return snapshot;
   }
 }

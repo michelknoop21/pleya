@@ -8,6 +8,7 @@ import 'package:pleya/services/preferences/preference_reconcile_scheduler.dart';
 import 'package:pleya/services/preferences/preference_sync_coordinator.dart';
 import 'package:pleya/services/preferences/preference_sync_scope.dart';
 import 'package:pleya/services/preferences/preference_transport.dart';
+import 'package:pleya/services/settings_export_service.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/storage_service.dart';
 
@@ -55,18 +56,32 @@ void main() {
   tearDown(() => BaseSharedPreferencesService.onMutation = null);
 
   group('the trigger decides what the run does', () {
-    test('an import does not pull the store first: local is what the user just chose', () async {
+    test('an import is stamped, so it survives the next pull over a stamped store record', () async {
       final coordinator = await build();
-      // The import wrote and stamped 'light'; the store still holds the old
-      // value, written back by a build that does not stamp.
-      await settings.prefs.setString('theme_mode', 'light');
-      await coordinator.apply(const PreferenceMutation.set('theme_mode', 'light', source: PreferenceSource.import));
-      transport.store[coordinator.cloudKeyFor('theme_mode')!] = enc('string', 'dark');
+      BaseSharedPreferencesService.onMutation = coordinator.apply;
+      final cloudKey = coordinator.cloudKeyFor('theme_mode')!;
+      // Another device chose 'dark' an hour ago, with a stamp.
+      final earlier = DateTime.now().toUtc().millisecondsSinceEpoch - 60 * 60 * 1000;
+      transport.store[cloudKey] = json.encode({'type': 'string', 'value': 'dark', 't': earlier, 'd': 'appletv'});
 
+      await SettingsExportService.applyImportMap(
+        {
+          'formatVersion': SettingsExportService.formatVersion,
+          'prefs': {
+            'theme_mode': {'type': 'string', 'value': 'light'},
+          },
+        },
+        settings.prefs,
+        currentUserUuid: uuidA,
+      );
       await coordinator.requestReconcile(ReconcileTrigger.imported);
+      await coordinator.requestReconcile(ReconcileTrigger.foreground);
 
-      expect(settings.prefs.getString('theme_mode'), 'light');
-      expect(json.decode(transport.store[coordinator.cloudKeyFor('theme_mode')!]!)['value'], 'light');
+      expect(settings.prefs.getString('theme_mode'), 'light', reason: 'the pull did not undo the import');
+      final sent = json.decode(transport.store[cloudKey]!) as Map;
+      expect(sent['value'], 'light');
+      expect(sent['t'], greaterThan(earlier), reason: 'the import carries a fresh stamp');
+      expect(sent['d'], 'macbook');
     });
 
     test('a foreground pulls the store before it pushes', () async {

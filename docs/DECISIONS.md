@@ -2957,7 +2957,11 @@ beide kanten ongestempeld dan wint de store, zoals bij inschakelen en bij de cut
 remote stempel wordt lokaal overgenomen. Merge-families blijven mergen; voor hen beslist de stempel
 niet. (4) `reconcile()` schrijft alleen wat lokaal strikt wint of in de store ontbreekt, en voor
 merge-families alleen bij een andere waarde. Een lokale `remove` schrijft een tombstone; reconcile
-herhaalt tombstones waar de store nog een ouder levend record heeft. (5) Onder v2 is er geen prune:
+herhaalt tombstones waar de store nog een ouder levend record heeft. Een tombstone aan een van beide
+kanten laat ook in een merge-familie de stempel beslissen: een inkomende tombstone moet nieuwer zijn
+dan de lokale wijziging, een levend record nieuwer dan de lokale verwijdering. Mislukt de lezing van
+de store, dan duwt reconcile niets, meldt een fout en herhaalt de volgende trigger de poging. Een
+settings-import stempelt elke geschreven sleutel met bron `import`. (5) Onder v2 is er geen prune:
 `ownsCloudKey` geeft `false`, de prune-lus draait alleen voor het v1-pad dat
 `icloud_rolling_upgrade_test` bewaart. Een sleutel die de store heeft en dit toestel niet, is "nog
 niet gehad" en wordt overgenomen. (6) De guard die een lokale write tijdens een remote batch liet
@@ -2992,7 +2996,10 @@ voorkeuren, een serverId-gefilterde familie voor `unified_source_preferences` en
 `preferred_unified_server`. Bekende grenzen: verwijdert een toestel de laatste entry van een scope
 in een `profileKeyedMap`, dan reist die ene verwijdering niet; het lokale revisieblob groeit tot
 één entry per ooit geziene sleutel (op het zware account uit `kvs_footprint_test` 654 sleutels,
-circa 40 KB); de uitgebrachte build prunet nog sleutels die hij niet kent en schrijft levende
+circa 40 KB); een tombstone wordt nooit opgeruimd en een reset schrijft er een voor elke resetbare
+voorkeur, ook een die nooit gezet was, dus het aantal sleutels in de store groeit monotoon met elke
+sleutel die het account ooit zag, per bibliotheek die ooit bestond, niet met de huidige staat
+(`kvs_footprint_test` telt dat mee); de uitgebrachte build prunet nog sleutels die hij niet kent en schrijft levende
 waarden over tombstones terug, dus tot alle Apple-toestellen deze build hebben wisselen oud en
 nieuw op die sleutels om, de releasevoorwaarde uit DEC-060 blijft. Een wijziging op een toestel met
 de vorige build wordt zonder stempel geschreven en verliest van elke sleutel die een nieuwer toestel
