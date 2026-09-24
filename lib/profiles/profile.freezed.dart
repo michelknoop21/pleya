@@ -218,7 +218,7 @@ return pleyaServer(_that.id,_that.displayName,_that.avatarThumbUrl,_that.pleyaCo
 
 class LocalProfile extends Profile {
   const LocalProfile({required this.id, required this.displayName, this.avatarThumbUrl, this.pinHash, this.sortOrder = 0, required this.createdAt, this.lastUsedAt}): super._();
-
+  
 
 @override final  String id;
 @override final  String displayName;
@@ -388,7 +388,7 @@ as DateTime?,
 
 class PleyaServerProfile extends Profile {
   const PleyaServerProfile({required this.id, required this.displayName, this.avatarThumbUrl, this.pleyaConnectionId, this.pleyaUsername, this.sortOrder = 0, required this.createdAt, this.lastUsedAt}): super._();
-
+  
 
 @override final  String id;
 @override final  String displayName;
@@ -397,11 +397,9 @@ class PleyaServerProfile extends Profile {
 /// connection carries exactly one account's refresh token, which is what
 /// makes the credential resolution unambiguous.
  final  String? pleyaConnectionId;
-/// The username this profile signs in with on that server. The account's
-/// server-side id is deliberately not stored: it lives inside the access
-/// token, and the protocol says a client never has to read that (chapter
-/// 6.3). The username is what the person typed and what the connection
-/// row already carries.
+/// The username this profile signs in with on that server. The stable
+/// server-side id is part of [pleyaConnectionId]; the name remains here
+/// for display and interactive re-login.
  final  String? pleyaUsername;
 @override@JsonKey() final  int sortOrder;
 @override final  DateTime createdAt;
