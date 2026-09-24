@@ -1,7 +1,7 @@
 # iCloud-voorkeurensync: herstelontwerp
 
 Vastgelegd op 24 september 2026 door Michel Knoop, op `github/main` = `3ad702d3`, in de worktree
-`fix/icloud-sync`. Input is de leesaudit `icloud-sync-audit.md` van dezelfde dag (geschreven tegen
+`fix/icloud-sync`. Input is de leesaudit [`docs/qa/icloud-sync-audit-2026-09-24.md`](../../qa/icloud-sync-audit-2026-09-24.md) van dezelfde dag (geschreven tegen
 `d23f6c9f` op `feat/unified-desktop-ipad`). Elke regelverwijzing hieronder is opnieuw nagelopen op
 `3ad702d3`; waar de audit afwijkt staat dat erbij. Het plan dat dit ontwerp uitvoert staat in
 `docs/superpowers/plans/2026-09-24-icloud-sync-repair.md`.

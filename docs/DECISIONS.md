@@ -2932,7 +2932,7 @@ in plaats van de klem te verlagen, want de klem verplaatst elk scherm tegelijk.
 **Date:** 2026-09-24
 **Status:** accepted
 
-**Context:** De leesaudit van 24 september (`icloud-sync-audit.md`) toonde dat van de vier beloften
+**Context:** De leesaudit van 24 september ([`qa/icloud-sync-audit-2026-09-24.md`](qa/icloud-sync-audit-2026-09-24.md)) toonde dat van de vier beloften
 van DEC-059 alleen de prune-bescherming bestond. `PreferenceSyncCoordinator.listen()` werd in
 productie nergens aangeroepen, dus geen `didChangeExternallyNotification` bereikte Dart en de
 engine was poll-on-foreground. De envelop werd lokaal gestempeld maar reisde niet en werd bij
