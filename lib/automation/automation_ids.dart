@@ -388,6 +388,10 @@ class AutomationIds {
   /// `<family>.<index>` shape [landingRailItem]/[discoverRailItem] use.
   static const String searchResultsItem = 'search.results.item';
 
+  /// The TV search pill (36 B). Its state carries the result count the pill
+  /// shows, or null while there is nothing to count.
+  static const String tvSearchPill = 'tv.search.pill';
+
   /// The mobile source-picker sheet as a whole.
   static const String sheetSourcePicker = 'sheet.source_picker';
 
@@ -563,6 +567,7 @@ class AutomationIds {
     {'id': mediaDetailSeasonChips, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailSeasonChip, 'role': 'chip', 'instanceable': true},
     {'id': mediaDetailPlay, 'role': 'button', 'instanceable': false},
+    {'id': tvSearchPill, 'role': 'field', 'instanceable': false},
     {'id': screenMyPleya, 'role': 'screen', 'instanceable': false},
     {'id': myPleyaTile, 'role': 'grid.item', 'instanceable': true},
     {'id': myPleyaSection, 'role': 'region', 'instanceable': true},

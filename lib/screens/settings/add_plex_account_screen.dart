@@ -13,6 +13,7 @@ import '../../profiles/active_profile_binder.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../profiles/plex_home_service.dart';
 import '../../profiles/profile.dart';
+import '../../profiles/profile_connection.dart';
 import '../../profiles/profile_connection_registry.dart';
 import '../../services/plex_auth_service.dart';
 import '../../utils/app_logger.dart';
@@ -23,6 +24,14 @@ import '../auth/plex_pin_auth_flow.dart';
 import '../profile/borrow_connection_screen.dart';
 import 'async_form_state_mixin.dart';
 import 'connection_persistence.dart';
+
+/// Whether [profile] already reaches the account behind [connectionId]:
+/// as a Plex Home profile of that account, or through one of its stored
+/// profile connections in [pcs].
+@visibleForTesting
+bool profileAlreadyUsesConnection(Profile profile, String connectionId, Iterable<ProfileConnection> pcs) =>
+    profile.parentConnectionId == connectionId ||
+    pcs.any((pc) => pc.profileId == profile.id && pc.connectionId == connectionId);
 
 /// Add a Plex account to the [ConnectionRegistry].
 ///
@@ -111,7 +120,19 @@ class _AddPlexAccountScreenState extends State<AddPlexAccountScreen> with AsyncF
           await context.read<PlexHomeService>().refresh(connection);
 
           if (!mounted) return false;
-          if (target != null) {
+          // A target that already owns this account (signing in again from
+          // its own Home profile) has nothing to borrow: the borrow screen
+          // filters every Home user of an owned account out, which used to
+          // leave an empty page and then a false "failed to register" error.
+          final targetOwnsAccount =
+              target != null &&
+              profileAlreadyUsesConnection(
+                target,
+                connection.id,
+                await context.read<ProfileConnectionRegistry>().listForProfile(target.id),
+              );
+          if (!mounted) return false;
+          if (target != null && !targetOwnsAccount) {
             final borrowed = await Navigator.of(context).push<bool>(
               MaterialPageRoute(builder: (_) => BorrowConnectionScreen(targetProfile: target, popOnSuccess: true)),
             );
@@ -147,12 +168,8 @@ class _AddPlexAccountScreenState extends State<AddPlexAccountScreen> with AsyncF
 
     final active = activeProvider.active;
     if (active == null) return;
-    var usesConnection = active.parentConnectionId == connectionId;
-    if (!usesConnection) {
-      final pcs = await context.read<ProfileConnectionRegistry>().listForProfile(active.id);
-      usesConnection = pcs.any((pc) => pc.connectionId == connectionId);
-    }
-    if (!mounted || !usesConnection) return;
+    final pcs = await context.read<ProfileConnectionRegistry>().listForProfile(active.id);
+    if (!mounted || !profileAlreadyUsesConnection(active, connectionId, pcs)) return;
     await context.read<ActiveProfileBinder>().rebindActive();
   }
 

@@ -1416,14 +1416,27 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                       children: [
                         leading ?? AppIcon(icon, fill: 1, size: iconSize, color: t.textMuted),
                         const SizedBox(width: 11),
+                        // Same rule as the nav items: the collapsed rail shows
+                        // the icon only, so name and chevron fade out together
+                        // instead of bleeding through the clip as "Ple" or "Zo".
                         Expanded(
-                          child: Text(label, style: labelStyle, overflow: .ellipsis),
-                        ),
-                        AppIcon(
-                          isExpanded ? Symbols.expand_less_rounded : Symbols.expand_more_rounded,
-                          fill: 1,
-                          size: 16,
-                          color: t.textMuted,
+                          child: AnimatedOpacity(
+                            opacity: isCollapsed ? 0.0 : 1.0,
+                            duration: reduceMotion(context, t.fast),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(label, style: labelStyle, overflow: .ellipsis),
+                                ),
+                                AppIcon(
+                                  isExpanded ? Symbols.expand_less_rounded : Symbols.expand_more_rounded,
+                                  fill: 1,
+                                  size: 16,
+                                  color: t.textMuted,
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),
