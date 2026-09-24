@@ -993,6 +993,146 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /libraries/{library_id}/scan:
+    post:
+      tags: [administration]
+      operationId: startScan
+      summary: Start een scan van een bibliotheek.
+      description: |
+        Klasse `admin`. Maakt een scanrij op `queued` en een scanjob aan.
+      parameters:
+        - $ref: "#/components/parameters/LibraryId"
+      responses:
+        "202":
+          description: De nieuwe scan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Scan" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: library.scan_in_progress.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /scans:
+    get:
+      tags: [administration]
+      operationId: listScans
+      summary: Lijst scans, nieuwste eerst.
+      description: Klasse `admin`.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: library_id
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/Id" }
+      responses:
+        "200":
+          description: Een pagina scans.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScanPage" }
+        "400":
+          description: library.cursor_invalid.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /scans/{scan_id}:
+    get:
+      tags: [administration]
+      operationId: getScan
+      summary: Lees een scan.
+      description: Klasse `admin`.
+      parameters:
+        - $ref: "#/components/parameters/ScanId"
+      responses:
+        "200":
+          description: De scan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Scan" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /jobs:
+    get:
+      tags: [administration]
+      operationId: listJobs
+      summary: Lijst jobs, nieuwste eerst.
+      description: Klasse `admin`.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Een pagina jobs.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobPage" }
+        "400":
+          description: library.cursor_invalid.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /jobs/{job_id}/cancel:
+    post:
+      tags: [administration]
+      operationId: cancelJob
+      summary: Annuleer een job.
+      description: Klasse `admin`.
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: De job.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: job.not_cancellable. details.reason is finished (de job is al klaar).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /jobs/{job_id}/retry:
+    post:
+      tags: [administration]
+      operationId: retryJob
+      summary: Zet een mislukte of geannuleerde job opnieuw in de wachtrij.
+      description: Klasse `admin`.
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: De job.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: job.not_cancellable. details.reason is duplicate_in_flight (dezelfde dedupe-sleutel staat al in de wachtrij).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /storage/roots:
     get:
       tags: [administration]
@@ -1462,6 +1602,16 @@ components:
       in: path
       required: true
       schema: { $ref: "#/components/schemas/Id" }
+    ScanId:
+      name: scan_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    JobId:
+      name: job_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
     ItemId:
       name: item_id
       in: path
@@ -1540,15 +1690,16 @@ components:
           properties:
             code:
               type: string
-              pattern: "^(auth|library|playback|session|settings|storage|server)\\.[a-z0-9_]+$"
+              pattern: "^(auth|library|playback|session|settings|storage|server|job)\\.[a-z0-9_]+$"
               description: |
                 Het contract. De client vertaalt codes en matcht nooit op message.
 
                 Het domein is de helft voor de punt. De lijst is niet gesloten
                 maar groeit per protocolvenster, en elke uitbreiding is een
                 besluit: `server` en `settings` kwamen erbij met venster 1
-                (DEC-130 en DEC-131). Een client die een code niet kent valt
-                terug op een generieke melding en takt niet op het domein.
+                (DEC-130 en DEC-131). `job` kwam erbij met venster 2 (DEC-133),
+                zodra S2.4 `job.not_cancellable` stuurde. Een client die een code
+                niet kent valt terug op een generieke melding en takt niet op het domein.
 
                 Codes die een client zelf verzint horen hier niet thuis. De
                 webclient draagt `client.transport` en
@@ -2371,6 +2522,78 @@ components:
             - { $ref: "#/components/schemas/UserState" }
             - { type: "null" }
 
+    ScanState:
+      type: string
+      enum: [queued, running, done, failed, cancelled]
+      x-unknown-safe: true
+    ScanTrigger:
+      type: string
+      enum: [startup, schedule, manual]
+      x-unknown-safe: true
+    Scan:
+      type: object
+      required: [id, library_id, trigger, state, started_at, finished_at, files_seen, files_new,
+                 files_renamed, files_changed, files_probed, files_missing, bytes_hashed,
+                 items_created, versions_created, error_count, last_error, current_path]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        library_id: { $ref: "#/components/schemas/Id" }
+        trigger: { $ref: "#/components/schemas/ScanTrigger" }
+        state: { $ref: "#/components/schemas/ScanState" }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        files_seen: { type: integer, minimum: 0 }
+        files_new: { type: integer, minimum: 0 }
+        files_renamed: { type: integer, minimum: 0 }
+        files_changed: { type: integer, minimum: 0 }
+        files_probed: { type: integer, minimum: 0 }
+        files_missing: { type: integer, minimum: 0 }
+        bytes_hashed: { type: integer, minimum: 0 }
+        items_created: { type: integer, minimum: 0 }
+        versions_created: { type: integer, minimum: 0 }
+        error_count: { type: integer, minimum: 0 }
+        last_error: { type: [string, "null"] }
+        current_path:
+          type: [string, "null"]
+          description: Afgekort tot de bestandsnaam met een ellipsis ervoor; nooit het volledige pad.
+    ScanPage:
+      allOf:
+        - { $ref: "#/components/schemas/Page" }
+        - type: object
+          required: [items]
+          properties:
+            items: { type: array, items: { $ref: "#/components/schemas/Scan" } }
+    JobState:
+      type: string
+      enum: [pending, running, succeeded, failed, cancelled]
+      x-unknown-safe: true
+    Job:
+      type: object
+      required: [id, kind, state, attempts, max_attempts, last_error, run_at, created_at, finished_at, cancel_requested_at]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        kind: { type: string }
+        state: { $ref: "#/components/schemas/JobState" }
+        attempts: { type: integer, minimum: 0 }
+        max_attempts: { type: integer, minimum: 1 }
+        last_error: { type: [string, "null"] }
+        run_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        cancel_requested_at: { type: [string, "null"], format: date-time }
+        library_id:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: Alleen voor jobs van soort scan_library.
+        scan_id:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: Alleen voor een scanjob die via POST /libraries/{id}/scan is gestart.
+    JobPage:
+      allOf:
+        - { $ref: "#/components/schemas/Page" }
+        - type: object
+          required: [items]
+          properties:
+            items: { type: array, items: { $ref: "#/components/schemas/Job" } }
     Page:
       type: object
       required: [items, next_cursor]

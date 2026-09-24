@@ -351,7 +351,7 @@ class PleyaError {
   final Map<String, dynamic>? details;
 
   /// Domain half of [code]: auth, library, playback, session, settings,
-  /// storage or server. The list is not closed. It grows one protocol
+  /// storage, server or job. The list is not closed. It grows one protocol
   /// window at a time, so treat an unfamiliar domain as an unfamiliar
   /// code and fall back to the generic message instead of branching.
   String get domain => code.split('.').first;

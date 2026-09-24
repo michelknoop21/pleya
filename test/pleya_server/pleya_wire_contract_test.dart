@@ -39,6 +39,9 @@ void main() {
   /// `capabilities.sessions` in `pleya_wire_contract_test` below, and the
   /// device fields on login in `pleya_server_sessions_test.dart`.
   const deferredSchemas = <String>{
+    // Beheer, geen Flutter-consument tot S10.
+    'Scan',
+    'Job',
     'UserList',
     'CreateUserRequest',
     'UpdateUserRequest',
@@ -142,8 +145,8 @@ void main() {
       );
     });
 
-    test('covers the 73 fixtures the contract ships', () {
-      expect(fixtures, hasLength(73));
+    test('covers the 76 fixtures the contract ships', () {
+      expect(fixtures, hasLength(76));
     });
 
     for (final fixture in fixtures) {

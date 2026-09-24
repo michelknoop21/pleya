@@ -342,6 +342,21 @@
       "file": "error_storage_root_not_offered.json",
       "schema": "ErrorEnvelope",
       "note": "S2.2: root_path niet uniek beschikbaar, geen absoluut pad, of onleesbare body"
+    },
+    {
+      "file": "scan.json",
+      "schema": "Scan",
+      "note": "S2.4: een lopende handmatige scan met afgekort current_path"
+    },
+    {
+      "file": "job.json",
+      "schema": "Job",
+      "note": "S2.4: een mislukte scanjob die naar zijn scan terugwijst"
+    },
+    {
+      "file": "error_job_not_cancellable.json",
+      "schema": "ErrorEnvelope",
+      "note": "S2.4: job.not_cancellable met details.reason finished"
     }
   ]
 }

@@ -204,7 +204,7 @@ def check_validator_bites(document: dict) -> None:
              "updated_at": "2026-08-18T20:12:44Z"},
         ),
         (
-            "een foutcode buiten de zeven domeinen",
+            "een foutcode buiten de acht domeinen",
             "ErrorEnvelope",
             {"error": {"code": "plex.not_found", "message": "x", "retryable": False}},
         ),
@@ -267,7 +267,8 @@ def check_error_domains(document: dict) -> None:
 
     # auth, library, playback, session en storage droegen v1 tot en met PS-9.
     # settings en server kwamen erbij met venster 1 (DEC-110, DEC-111).
-    expected = ["auth", "library", "playback", "session", "settings", "storage", "server"]
+    # job kwam erbij met venster 2 (DEC-133).
+    expected = ["auth", "library", "playback", "session", "settings", "storage", "server", "job"]
     missing = []
     for domain in expected:
         payload = {"error": {"code": f"{domain}.iets", "message": "x", "retryable": False}}

@@ -126,7 +126,7 @@ Een gesloten enum in een antwoord is een belofte: de client kent elke waarde die
 mag er een keuze op bouwen zonder restgeval. Die belofte is bruikbaar, en daarom kost hij ook iets.
 Een waarde toevoegen aan een gesloten enum breekt precies de clients die de belofte serieus namen.
 
-Deze vier velden zijn **unknown-safe**. Daar mag binnen v1 een waarde bij komen, en een client die
+Deze zes velden zijn **unknown-safe**. Daar mag binnen v1 een waarde bij komen, en een client die
 de waarde niet kent doet wat in de derde kolom staat in plaats van te falen.
 
 | Veld | Waar | Bij een onbekende waarde |
@@ -135,6 +135,8 @@ de waarde niet kent doet wat in de derde kolom staat in plaats van te falen.
 | `Library.kind` | bibliotheeklijst | de bibliotheek niet tonen |
 | `Item.kind` | items, zoekresultaten, hubs | het item niet tonen |
 | `SubtitleStream.format` | itemdetail | het spoor niet aanbieden |
+| `Scan.state` | scanlijst en scandetail (venster 2, DEC-133) | de scan tonen als "onbekend" |
+| `Job.state` | joblijst (venster 2, DEC-133) | de job tonen als "onbekend" |
 
 In `openapi.yaml` draagt elk enum-veld `x-unknown-safe`, met `true` of `false`, en
 `scripts/check_protocol.sh` weigert een enum zonder die markering. Een nieuw enum-veld dwingt zo een
@@ -508,7 +510,8 @@ de precieze reden.
 Codes zijn gegroepeerd per domein. Uitbreiden mag; de betekenis van een bestaande code wijzigen niet.
 
 De domeinlijst zelf is ook niet gesloten, maar groeit alleen wanneer een protocolvenster dat met
-zoveel woorden zegt. `settings` en `server` kwamen erbij met venster 1 (DEC-130 en DEC-131). Een
+zoveel woorden zegt. `settings` en `server` kwamen erbij met venster 1 (DEC-130 en DEC-131). `job` kwam erbij met
+venster 2 (DEC-133), toen S2.4 `job.not_cancellable` ging sturen. Een
 client die een domein niet kent behandelt de code als onbekend en toont een generieke melding; hij
 takt nooit op het domein. Codes die een client zelf verzint horen niet in dit register: de webclient
 draagt `client.transport` en `client.malformed_response`, die komen nooit over de lijn, en het
@@ -553,6 +556,7 @@ contract keurt ze af.
 | `library.config_managed` | 409 | nee | `PATCH` of `DELETE /libraries/{id}`: de bibliotheek komt uit `PLEYA_SERVER_LIBRARIES` en moet via die configuratie worden gewijzigd; de API mag haar catalogusdata niet losmaken of wissen |
 | `library.confirm_mismatch` | 409 | nee | `DELETE /libraries/{id}` zonder of met een foute `confirm`; `details.expected` draagt de titel die er had moeten staan. Een eigen code naast `server.confirm_mismatch` (die blijft voor `POST /server/rotate-signing-key`), zodat een client niet op het pad hoeft te kijken om te weten welk woord verwacht wordt (K rij 16, S2.2) |
 | `storage.root_not_offered` | 400 | nee | `POST` en `PATCH /libraries`: een `root_path` overlapt met een bestaande root of met een andere root in dezelfde aanvraag, valt niet onder een van de mounts uit `PLEYA_SERVER_MEDIA_DIRS` (S2.3, hoofdstuk 17e.4), of de aanvraagbody zelf is onleesbaar |
+| `job.not_cancellable` | 409 | nee | de job is al afgerond, of dezelfde dedupe-sleutel staat al in de wachtrij; `details.reason` zegt welke |
 
 `auth.permission_not_allowed` is de ene code in het `auth.`-domein die geen `404` is, en dat is geen
 gat in de regel hieronder. Die regel verbergt het bestaan van iets dat de aanvrager niet mag zien;
@@ -1166,6 +1170,12 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 30 | `DELETE /libraries/{id}` | direct id, plus de bevestiging | klasse `admin`, `404` voor de rest; de bevestiging (`confirm: "<title>"`) wordt pas getoetst ná de rolcontrole, dus een lid krijgt nooit `409` (K rij 16, S2.2) |
 | 31 | `GET /storage/roots` | welke mediamounts en bibliotheken deze installatie kent | klasse `admin`, `404` voor de rest (S2.3) |
 | 32 | `POST /storage/roots/recheck` | een meetronde forceren op elke geclaimde root | klasse `admin`, `404` voor de rest; geen aanvraagbody, en het antwoord draagt geen gevoelige data terug (S2.3) |
+| 33 | `POST /libraries/{id}/scan` | het bestaan van het beheeroppervlak en een scan die een schijf bezighoudt | klasse `admin`, `404` voor de rest (S2.4) |
+| 34 | `GET /scans` | welke bibliotheken en paden deze installatie scant | klasse `admin`, `404` voor de rest (S2.4) |
+| 35 | `GET /scans/{id}` | direct id, plus de laatste foutmelding en het pad in behandeling | klasse `admin`, `404` voor de rest (S2.4) |
+| 36 | `GET /jobs` | wat de server op de achtergrond doet | klasse `admin`, `404` voor de rest (S2.4) |
+| 37 | `POST /jobs/{id}/cancel` | direct id | klasse `admin`, `404` voor de rest (S2.4) |
+| 38 | `POST /jobs/{id}/retry` | direct id | klasse `admin`, `404` voor de rest (S2.4) |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -1782,6 +1792,10 @@ schrijft de uitkomst in `storage_locations`. Dat gebeurt via de bestaande jobwac
 of USB-mount hoort de aanvrager niet te laten wachten. Een tweede rechecktik terwijl de eerste nog
 loopt wordt gededupliceerd, dezelfde regel als bij een scanronde.
 
+### 17f. Scans en jobs
+
+Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries/{id}/scan` hem aanmaakt, `running` wordt wanneer de job hem claimt en eindigt op `done`, `failed` of `cancelled`. Annuleren gaat via de job (`Job.scan_id` wijst terug): de scanner stopt binnen één walk-stap en laat de tellers staan. Een retry zet `attempts` op nul en, voor een scanjob, ook `probe_attempts` van die bibliotheek. Een bestand waarvan de probe faalde wacht `min(2^(pogingen-1), 24)` uur voordat een volgende ronde het opnieuw analyseert, tenzij het bestand zelf veranderde. `current_path` is afgekort tot de bestandsnaam met een ellipsis ervoor en is nooit het volledige pad.
+
 ---
 
 ## 18. Endpointoverzicht
@@ -1802,6 +1816,12 @@ loopt wordt gededupliceerd, dezelfde regel als bij een scanronde.
 | `DELETE /pleya/v1/libraries/{id}` | `admin` | nee |
 | `GET /pleya/v1/storage/roots` | `admin` | nee |
 | `POST /pleya/v1/storage/roots/recheck` | `admin` | nee |
+| `POST /pleya/v1/libraries/{id}/scan` | `admin` | nee |
+| `GET /pleya/v1/scans` | `admin` | ja |
+| `GET /pleya/v1/scans/{id}` | `admin` | nee |
+| `GET /pleya/v1/jobs` | `admin` | ja |
+| `POST /pleya/v1/jobs/{id}/cancel` | `admin` | nee |
+| `POST /pleya/v1/jobs/{id}/retry` | `admin` | nee |
 | `GET /pleya/v1/libraries/{id}/items` | `authenticated` | ja |
 | `GET /pleya/v1/items/{id}` | `authenticated` | nee |
 | `GET /pleya/v1/items/{id}/children` | `authenticated` | ja |
@@ -1831,13 +1851,14 @@ loopt wordt gededupliceerd, dezelfde regel als bij een scanronde.
 | `GET /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` via `?user_id=` | nee |
 | `GET /pleya/v1/audit` | `admin` | ja |
 
-Tweeënveertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Achtenveertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
 17b.6 (S1.4), de drie daarna de API-tokens en het auditlog uit hoofdstuk 17c (S1.5), de drie daarna de
 bibliotheek-CRUD van S2.2, en de laatste twee `GET /storage/roots` en `POST /storage/roots/recheck`
-van S2.3 (samen J.3, venster 2, rijen 7 en 8).
+van S2.3 (samen J.3, venster 2, rijen 7 en 8), en de zes van S2.4: starten van een scan, de
+scanlijst en het scandetail, de joblijst, annuleren en opnieuw proberen (hoofdstuk 17f).
 `GET /pleya/v1/server` en `GET /pleya/v1/libraries` staan er elk maar één keer in en groeien met de
 klasse van de aanvrager, niet met een tweede regel. De rest van venster 2 landt bij de commitgrens
 die hem bedient.

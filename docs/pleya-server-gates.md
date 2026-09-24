@@ -378,7 +378,7 @@ er drie van de tien geland (`POST`/`PATCH`/`DELETE /libraries`, plus de `Library
 `POST /jobs/{id}/cancel` en `POST /jobs/{id}/retry`.
 
 **Eén nieuw foutdomein, en pas wanneer er ook echt een code in zit.** `job` komt erbij zodra
-`job.not_cancellable` landt (S2.4); tot dan blijft het patroon op zeven domeinen staan, dezelfde
+`job.not_cancellable` landt (S2.4); met S2.4 staat het patroon op acht domeinen, dezelfde
 discipline als bij `settings` en `server` in venster 1 (DEC-131). De overige nieuwe codes vallen in
 bestaande domeinen: `library.slug_taken`, `library.not_empty`, `library.confirm_mismatch` en
 `library.not_config_managed` (dat laatste komt met S2.5, adopt) in `library`,
