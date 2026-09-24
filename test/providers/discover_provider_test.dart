@@ -12,10 +12,15 @@ import 'package:pleya/media/media_library.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/providers/discover_provider.dart';
+import 'package:pleya/providers/discover_refresh_policy.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/services/api_cache.dart';
+import 'package:pleya/connection/connection.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
+import 'package:pleya/services/local_folder_client.dart';
+import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/recommendations/personalized_rows_builder.dart';
 import 'package:pleya/services/recommendations/recommendation_service.dart';
@@ -223,12 +228,14 @@ void main() {
   late LibrariesProvider libraries;
   late DiscoverProvider provider;
   bool isBinding = false;
+  late DateTime clock;
 
   setUp(() async {
     resetSharedPreferencesForTest();
     SettingsService.resetForTesting();
     await SettingsService.getInstance();
     isBinding = false;
+    clock = DateTime(2026, 9, 24, 12);
 
     client = _FakeClient();
     final manager = MultiServerManager()..debugRegisterClientForTesting(client);
@@ -236,7 +243,13 @@ void main() {
     multiServer = MultiServerProvider(manager, aggregation);
     hiddenLibraries = HiddenLibrariesProvider();
     libraries = LibrariesProvider();
-    provider = DiscoverProvider(multiServer, hiddenLibraries, libraries, isProfileBinding: () => isBinding);
+    provider = DiscoverProvider(
+      multiServer,
+      hiddenLibraries,
+      libraries,
+      isProfileBinding: () => isBinding,
+      now: () => clock,
+    );
   });
 
   test('updateItem refetches from the server that owns the item, not the first id match', () async {
@@ -776,4 +789,142 @@ void main() {
       expect(aggregation.hubCalls, 1);
     });
   });
+
+  group('refreshIfStale (Home ververst nieuwe titels)', () {
+    test('fresh data: no hub refetch, only Continue Watching', () async {
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      await provider.load();
+      final onDeckBefore = aggregation.onDeckCalls;
+      final hubsBefore = aggregation.hubCalls;
+
+      clock = clock.add(const Duration(minutes: 1));
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+
+      expect(aggregation.hubCalls, hubsBefore);
+      expect(aggregation.onDeckCalls, onDeckBefore + 1);
+    });
+
+    test('stale data: hubs are refetched silently and the new title lands', () async {
+      aggregation.onDeckResult = () => [_item('a')];
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      await provider.load();
+      await pumpEventQueue();
+      final hubsBefore = aggregation.hubCalls;
+      final generationBefore = provider.loadGeneration;
+
+      final observed = <String>[];
+      provider.addListener(() {
+        if (provider.hubs.isEmpty) observed.add('hubs empty');
+        if (provider.isLoading || provider.areHubsLoading) observed.add('loading state');
+        if (provider.isRefreshing) observed.add('refreshing indicator');
+      });
+
+      aggregation.hubsResult = () => [
+        _hub(
+          'hub-1',
+          items: [
+            _item('new-film', kind: MediaKind.movie),
+            _item('hub-1-item'),
+          ],
+        ),
+      ];
+      clock = clock.add(const Duration(minutes: 3));
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+      await pumpEventQueue();
+
+      expect(aggregation.hubCalls, hubsBefore + 1);
+      expect(provider.hubs.single.items.map((i) => i.id), contains('new-film'));
+      expect(observed, isEmpty, reason: 'a silent reload never shows a skeleton, spinner or empty row');
+      expect(provider.loadGeneration, generationBefore, reason: 'a background pass must not reset the hero');
+    });
+
+    test('a failure during the silent load keeps the old content', () async {
+      aggregation.onDeckResult = () => [_item('a')];
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      await provider.load();
+
+      // How the real aggregation reports a server that did not answer: no
+      // exception, just nothing from it and its id missing from the answer.
+      aggregation.onDeckResult = () => const [];
+      aggregation.onDeckSucceededServerIds = const {};
+      aggregation.hubsResult = () => const [];
+      aggregation.hubSucceededServerIds = const {};
+      clock = clock.add(const Duration(minutes: 3));
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+
+      expect(provider.hubs.map((h) => h.id), ['hub-1']);
+      expect(provider.onDeck.map((i) => i.id), ['a']);
+      expect(provider.errorMessage, isNull);
+      expect(provider.areHubsLoading, isFalse);
+
+      // Still stale, so the next trigger tries again.
+      final hubsBefore = aggregation.hubCalls;
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+      expect(aggregation.hubCalls, hubsBefore + 1);
+    });
+
+    test('two quick calls start one load', () async {
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      await provider.load();
+      final hubsBefore = aggregation.hubCalls;
+
+      clock = clock.add(const Duration(minutes: 3));
+      await Future.wait([
+        provider.refreshIfStale(maxAge: kHomeRefreshOnReturn),
+        provider.refreshIfStale(maxAge: kHomeRefreshOnReturn),
+      ]);
+
+      expect(aggregation.hubCalls, hubsBefore + 1);
+    });
+
+    test('the default threshold is the periodic interval', () async {
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      await provider.load();
+      final hubsBefore = aggregation.hubCalls;
+
+      clock = clock.add(kHomeRefreshInterval - const Duration(seconds: 1));
+      await provider.refreshIfStale();
+      expect(aggregation.hubCalls, hubsBefore);
+
+      clock = clock.add(const Duration(seconds: 2));
+      await provider.refreshIfStale();
+      expect(aggregation.hubCalls, hubsBefore + 1);
+    });
+
+    test('a stale reload invalidates the local-folder scan first', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      PlexApiCache.initialize(db);
+      final local = _SpyLocalFolderClient();
+      multiServer.serverManager.debugRegisterClientForTesting(local);
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      await provider.load();
+
+      clock = clock.add(const Duration(minutes: 1));
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+      expect(local.invalidations, 0, reason: 'fresh data leaves the scan alone');
+
+      clock = clock.add(const Duration(minutes: 3));
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+      expect(local.invalidations, 1);
+    });
+  });
+}
+
+class _SpyLocalFolderClient extends LocalFolderClient {
+  _SpyLocalFolderClient()
+    : super(
+        connection: LocalFolderConnection(
+          id: 'local-1',
+          directoryUri: '/tmp/none',
+          displayName: 'Local',
+          createdAt: DateTime(2026),
+        ),
+        cache: ApiCache.forBackend(MediaBackend.local),
+      );
+
+  int invalidations = 0;
+
+  @override
+  void invalidateScanCache() => invalidations++;
 }
