@@ -15,9 +15,9 @@ import 'storage_service.dart';
 /// Remembers the audio/subtitle language a user picked by hand, per series or
 /// movie, so the next episode does not fall back to the server default.
 ///
-/// Sits on [SettingsService.trackLanguagePreferences], which rides the existing
-/// allow-by-default iCloud key-value sync: nothing extra is needed for the
-/// choice to reach the user's other Apple devices.
+/// Sits on [SettingsService.trackLanguagePreferences], a global map registered
+/// with the `profileKeyedMap` merge family (DEC-131): the Plex Home profile's
+/// entries reach the user's other Apple devices, a local profile's stay here.
 ///
 /// Serialises every write through a Completer chain. The stored value is one
 /// map holding every title, and the audio and the subtitle write for the same

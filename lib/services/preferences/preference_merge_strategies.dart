@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'preference_sync_policy.dart';
+import 'preference_sync_scope.dart';
 import 'preference_value_portability.dart';
 
 /// Combine two versions of one preference value.
@@ -109,6 +110,84 @@ PreferenceMergeFamily buildServerScopedListFamily(IsServerIdPortable isServerIdP
     return keep.isEmpty ? null : json.encode(keep);
   },
 );
+
+/// Maps keyed by profile scope, where a device speaks for the profiles it has.
+///
+/// Inbound keeps this device's non-portable entries and the entries of scopes
+/// the sender does not know; for a scope both know, the sender's set replaces
+/// this device's, so a removed series override travels. Outbound sends the
+/// portable entries and carries the store's entries for scopes this device
+/// lacks. An entry present on both sides is settled by its timestamp when both
+/// carry one, otherwise the side doing the merge keeps its own.
+///
+/// Known limit (DEC-131): a device that removes the last entry of a scope no
+/// longer "knows" that scope, so that final removal does not travel.
+PreferenceMergeFamily buildProfileKeyedMapFamily() => PreferenceMergeFamily(
+  name: PreferenceMergeFamilies.profileKeyedMap,
+  inbound: (local, remote) {
+    final theirs = decodeStringMap(remote);
+    if (theirs == null) return local;
+    final mine = decodeStringMap(local) ?? const <String, dynamic>{};
+    final theirScopes = theirs.keys.map(profileScopeOfMapKey).toSet();
+    final merged = <String, dynamic>{
+      for (final e in mine.entries)
+        if (!PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(e.key)) ||
+            !theirScopes.contains(profileScopeOfMapKey(e.key)))
+          e.key: e.value,
+      for (final e in theirs.entries)
+        if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(e.key)))
+          e.key: _newerEntry(e.value, mine[e.key]),
+    };
+    return json.encode(merged);
+  },
+  outbound: (local, remote) {
+    final mine = decodeStringMap(local);
+    if (mine == null) return local;
+    final myScopes = mine.keys.map(profileScopeOfMapKey).toSet();
+    final theirs = decodeStringMap(remote) ?? const <String, dynamic>{};
+    final out = <String, dynamic>{
+      for (final e in mine.entries)
+        if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(e.key)))
+          e.key: _newerEntry(e.value, theirs[e.key]),
+      for (final e in theirs.entries)
+        if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(e.key)) &&
+            !myScopes.contains(profileScopeOfMapKey(e.key)))
+          e.key: e.value,
+    };
+    if (out.isEmpty) return null;
+    return json.encode(out);
+  },
+);
+
+/// The `{profileScope}` half of a map key: everything before the first `|`,
+/// or the whole key when there is none.
+String profileScopeOfMapKey(String key) {
+  final pipe = key.indexOf('|');
+  return pipe < 0 ? key : key.substring(0, pipe);
+}
+
+/// Prefer [preferred] unless both are maps carrying a timestamp and [other]'s
+/// is higher. The stores write it as `u` (`TrackLanguageChoice.toJson`,
+/// `PleyaProfileLanguagePreferences.toJson`); `updatedAt` is accepted too.
+Object? _newerEntry(Object? preferred, Object? other) {
+  if (preferred is Map && other is Map) {
+    final a = preferred['u'] ?? preferred['updatedAt'];
+    final b = other['u'] ?? other['updatedAt'];
+    if (a is num && b is num && b > a) return other;
+  }
+  return preferred;
+}
+
+/// Decode a JSON object, or null when the value is not one.
+Map<String, dynamic>? decodeStringMap(Object? raw) {
+  if (raw is! String) return null;
+  try {
+    final decoded = json.decode(raw);
+    return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+  } catch (_) {
+    return null;
+  }
+}
 
 /// The legacy progress maps: progress takes the maximum, watched ORs.
 ///

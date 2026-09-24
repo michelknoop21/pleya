@@ -189,6 +189,7 @@ class PreferenceSyncCoordinator {
     _merges.register(buildServerScopedListFamily((serverId) => _isServerIdPortable(serverId)));
     _merges.register(buildProgressMapFamily(watchedMap: false));
     _merges.register(buildProgressMapFamily(watchedMap: true));
+    _merges.register(buildProfileKeyedMapFamily());
   }
 
   /// The value as it may leave the device, or null when nothing may.

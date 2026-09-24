@@ -100,6 +100,19 @@ class PreferenceSyncScope {
   /// Whether [cloudKey] is a record this sync format owns.
   static bool ownsCloudKey(String cloudKey) => cloudKey.startsWith(cloudNamespacePrefix);
 
+  /// Whether a `{profileScope}` inside a map key names the same profile on
+  /// another device.
+  ///
+  /// `StorageService.activeUserScope()` is the Plex Home uuid for a Plex Home
+  /// profile and the full profile id otherwise, and every other profile kind
+  /// is minted as `local-<uuid>` on the device that created it
+  /// (`add_jellyfin_screen.dart`, `add_pleya_server_screen.dart`,
+  /// `add_local_profile_screen.dart`). Empty is signed out. So "looks like a
+  /// uuid" is the whole test, and it fails closed.
+  static bool isPortableProfileScope(String scope) => _uuid.hasMatch(scope);
+
+  static final RegExp _uuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+
   /// Inverse of [cloudKey]: the scope a v2 record belongs to and the base key
   /// inside it, or null when the key is not one of ours or is malformed.
   ///

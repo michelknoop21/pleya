@@ -172,7 +172,7 @@ void main() {
     // `home_custom_rows` was invisible here: it shipped unregistered, left in
     // an export anyway, and came back under a key nothing reads.
     final patterns = [
-      RegExp(r"Pref[a-zA-Z<>]*\(\s*'([a-z0-9_.]+)'"),
+      RegExp(r"Pref(?:<[^()]*>)?\(\s*'([a-z0-9_.]+)'"),
       RegExp(r"super\(\s*'([a-z0-9_.]+)'"),
       RegExp(r"static const String _(?:key|prefix)[A-Za-z0-9]* = '([a-z0-9_.]+)';"),
     ];
@@ -197,6 +197,51 @@ void main() {
           'default. That may well be correct, but it has to be written down: add each one with the '
           'scope and sensitivity it deserves.\n${unregistered.join('\n')}',
     );
+  });
+
+  test('the eight JsonPref maps that hid from the guard are registered', () {
+    for (final key in [
+      'keyboard_shortcuts',
+      'keyboard_hotkeys',
+      'media_version_preferences',
+      'track_language_preferences',
+      'unified_source_preferences',
+      'tv_live_tv_capability',
+      'preferred_unified_server',
+      'custom_shader_presets',
+    ]) {
+      expect(PreferenceSyncPolicyRegistry.isRegistered(key), isTrue, reason: key);
+    }
+    expect(PreferenceSyncPolicyRegistry.maySync('keyboard_shortcuts'), isTrue);
+    expect(PreferenceSyncPolicyRegistry.maySync('keyboard_hotkeys'), isTrue);
+    expect(PreferenceSyncPolicyRegistry.maySync('tv_live_tv_capability'), isFalse);
+    expect(PreferenceSyncPolicyRegistry.isExportable('tv_live_tv_capability'), isFalse);
+    for (final key in [
+      'media_version_preferences',
+      'unified_source_preferences',
+      'preferred_unified_server',
+      'custom_shader_presets',
+    ]) {
+      expect(PreferenceSyncPolicyRegistry.maySync(key), isFalse, reason: key);
+      expect(PreferenceSyncPolicyRegistry.isExportable(key), isFalse, reason: key);
+    }
+  });
+
+  test('device-bound playback configuration stops syncing but stays exportable', () {
+    for (final key in [
+      'default_quality_preset',
+      'buffer_size',
+      'mpv_config_text',
+      'mpv_config_presets',
+      'global_shader_preset',
+      'enable_discord_rpc',
+      'video_player_navigation_enabled',
+      'auto_check_updates_on_startup',
+    ]) {
+      expect(PreferenceSyncPolicyRegistry.maySync(key), isFalse, reason: key);
+      expect(PreferenceSyncPolicyRegistry.isExportable(key), isTrue, reason: key);
+    }
+    expect(PreferenceSyncPolicyRegistry.maySync('live_tv_default_favorites'), isTrue);
   });
 
   group('the Tautulli integration blob stays on the device', () {
