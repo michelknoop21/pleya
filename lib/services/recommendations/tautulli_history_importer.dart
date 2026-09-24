@@ -11,7 +11,7 @@ import '../../media/media_server_client.dart';
 import '../../models/tautulli/tautulli_models.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/global_key_utils.dart';
-import '../tautulli/tautulli_client.dart';
+import '../tautulli/tautulli_exception.dart';
 import '../tautulli/tautulli_import_access.dart';
 import 'history_importer.dart';
 import 'tautulli_import_binding.dart';
