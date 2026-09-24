@@ -160,6 +160,8 @@ class _CountingRecommendationService extends RecommendationService {
            topPicks: 'Top Picks',
            becauseYouLike: (g) => 'Because you like $g',
            hiddenGems: 'Hidden Gems',
+           moreWithActor: (n) => 'More with $n',
+           moreFromDirector: (n) => 'More from $n',
          ),
          enabledImportServerIds: enabledImportServerIds,
          importSourcesReady: importSourcesReady,

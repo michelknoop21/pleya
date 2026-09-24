@@ -844,6 +844,8 @@
     "somethingDifferent": "Eens iets anders",
     "topPicksForYou": "Aanbevolen voor jou",
     "becauseYouLike": "Omdat je van ${genre} houdt",
+    "moreWithActor": "Meer met ${name}",
+    "moreFromDirector": "Meer van ${name}",
     "hiddenGems": "Verborgen parels",
     "watchedBy": "Bekeken door ${names}",
     "watchedByYou": "Jij",

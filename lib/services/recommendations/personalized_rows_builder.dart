@@ -1,5 +1,6 @@
 import '../../media/media_hub.dart';
 import '../../media/media_item.dart';
+import '../../media/media_role.dart';
 import 'taste_profile.dart';
 
 /// Localized titles for the synthesized personalized rows, injected so the
@@ -8,16 +9,36 @@ class PersonalizedRowTitles {
   final String topPicks;
   final String Function(String genre) becauseYouLike;
   final String hiddenGems;
+  final String Function(String name) moreWithActor;
+  final String Function(String name) moreFromDirector;
 
-  const PersonalizedRowTitles({required this.topPicks, required this.becauseYouLike, required this.hiddenGems});
+  const PersonalizedRowTitles({
+    required this.topPicks,
+    required this.becauseYouLike,
+    required this.hiddenGems,
+    required this.moreWithActor,
+    required this.moreFromDirector,
+  });
 }
+
+/// Genre, actor and director rows share these slots, so a warm profile never
+/// gets more personalized rows than before this row existed.
+const int kMaxAffinityRows = 2;
+
+/// Persons need more than genres. The vector normalizes each dimension to its
+/// strongest feature, so the top actor and the top genre both read 1.0 no
+/// matter how much evidence sits under them; the higher bar and the tie-break
+/// towards genre are the compensation.
+const double kPersonFeatureThreshold = 0.7;
 
 /// Builds synthesized home rows from a taste vector and a candidate pool.
 /// Pure and side-effect-free: the same inputs always produce the same rows
 /// (modulo the scorer's deterministic daily jitter).
 ///
 /// - **Top Picks for You** — highest scoring unseen items overall.
-/// - **Because you like `<genre>`** — for the strongest 1-2 genres.
+/// - **Because you like `<genre>`**, **More with `<actor>`**, **More from
+///   `<director>`**: the strongest genres and persons share
+///   [kMaxAffinityRows] slots.
 /// - **Hidden Gems** — well-rated, unseen, older-than-90-day catalogue depth.
 ///
 /// Cold start (taste not warm): only Top Picks, ranked by the scorer's quality
@@ -62,19 +83,44 @@ List<MediaHub> buildPersonalizedRows(
   // What already headlines the feed should not fill the row underneath it too.
   final usedInTopPicks = {for (final i in topPicks) i.globalKey};
 
-  // Because you like <genre> — only when taste is warm enough to be meaningful.
+  // Affinity rows (genre, actor, director) — only when taste is warm enough
+  // to be meaningful.
   if (taste.isWarm) {
-    final usedInGenreRows = <String>{};
-    for (final genre in taste.topFeatures('genre', threshold: 0.5, limit: 2)) {
+    final candidates =
+        <({String dim, String feature, double weight})>[
+          for (final g in taste.topFeatures('genre', threshold: 0.5, limit: 2))
+            (dim: 'genre', feature: g, weight: taste.of('genre', g)),
+          for (final a in taste.topFeatures('actor', threshold: kPersonFeatureThreshold, limit: 1))
+            (dim: 'actor', feature: a, weight: taste.of('actor', a)),
+          for (final d in taste.topFeatures('director', threshold: kPersonFeatureThreshold, limit: 1))
+            (dim: 'director', feature: d, weight: taste.of('director', d)),
+        ]..sort((a, b) {
+          final byWeight = b.weight.compareTo(a.weight);
+          return byWeight != 0 ? byWeight : _dimRank(a.dim).compareTo(_dimRank(b.dim));
+        });
+
+    final usedInAffinityRows = <String>{};
+    var emitted = 0;
+    for (final c in candidates) {
+      if (emitted >= kMaxAffinityRows) break;
       final matches = byScore
-          .where(
-            (i) =>
-                (i.genres ?? const []).any((g) => g.trim().toLowerCase() == genre) && usedInGenreRows.add(i.globalKey),
-          )
+          .where((i) => _matches(i, c.dim, c.feature) && usedInAffinityRows.add(i.globalKey))
           .toList();
-      if (matches.length >= minRowItems) {
-        rows.add(row('home.becauselike.$genre', titles.becauseYouLike(_titleCase(genre)), matches));
-      }
+      if (matches.length < minRowItems) continue;
+      rows.add(switch (c.dim) {
+        'genre' => row('home.becauselike.${c.feature}', titles.becauseYouLike(_titleCase(c.feature)), matches),
+        'actor' => row(
+          'home.becauselike.actor.${_slug(c.feature)}',
+          titles.moreWithActor(_displayName(matches, c.feature)),
+          matches,
+        ),
+        _ => row(
+          'home.becauselike.director.${_slug(c.feature)}',
+          titles.moreFromDirector(_displayName(matches, c.feature)),
+          matches,
+        ),
+      });
+      emitted++;
     }
   }
 
@@ -96,3 +142,33 @@ List<MediaHub> buildPersonalizedRows(
 }
 
 String _titleCase(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+int _dimRank(String dim) => switch (dim) {
+  'genre' => 0,
+  'actor' => 1,
+  _ => 2,
+};
+
+String _n(String s) => s.trim().toLowerCase();
+
+bool _matches(MediaItem item, String dim, String feature) => switch (dim) {
+  'genre' => (item.genres ?? const []).any((g) => _n(g) == feature),
+  'actor' => (item.roles?.take(5) ?? const <MediaRole>[]).any((r) => _n(r.tag) == feature),
+  _ => (item.directors ?? const []).any((d) => _n(d) == feature),
+};
+
+String _slug(String feature) => feature.replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+$'), '');
+
+/// The name as the server spells it, from the first item that carries it.
+/// The vector only knows the lowercased key.
+String _displayName(List<MediaItem> matches, String feature) {
+  for (final item in matches) {
+    for (final r in item.roles ?? const <MediaRole>[]) {
+      if (_n(r.tag) == feature) return r.tag;
+    }
+    for (final d in item.directors ?? const []) {
+      if (_n(d) == feature) return d;
+    }
+  }
+  return feature;
+}

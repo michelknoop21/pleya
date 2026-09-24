@@ -312,6 +312,8 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                       topPicks: t.discover.topPicksForYou,
                       becauseYouLike: (genre) => t.discover.becauseYouLike(genre: genre),
                       hiddenGems: t.discover.hiddenGems,
+                      moreWithActor: (name) => t.discover.moreWithActor(name: name),
+                      moreFromDirector: (name) => t.discover.moreFromDirector(name: name),
                     ),
                     enabledImportServerIds: tautulli.enabledImportServerIds,
                     // The store load is asynchronous and Discover routinely

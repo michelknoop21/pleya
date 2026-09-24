@@ -1030,6 +1030,8 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get somethingDifferent => 'Eens iets anders';
 	@override String get topPicksForYou => 'Aanbevolen voor jou';
 	@override String becauseYouLike({required Object genre}) => 'Omdat je van ${genre} houdt';
+	@override String moreWithActor({required Object name}) => 'Meer met ${name}';
+	@override String moreFromDirector({required Object name}) => 'Meer van ${name}';
 	@override String get hiddenGems => 'Verborgen parels';
 	@override String watchedBy({required Object names}) => 'Bekeken door ${names}';
 	@override String get watchedByYou => 'Jij';
@@ -3817,6 +3819,8 @@ extension on TranslationsNl {
 			'discover.somethingDifferent' => 'Eens iets anders',
 			'discover.topPicksForYou' => 'Aanbevolen voor jou',
 			'discover.becauseYouLike' => ({required Object genre}) => 'Omdat je van ${genre} houdt',
+			'discover.moreWithActor' => ({required Object name}) => 'Meer met ${name}',
+			'discover.moreFromDirector' => ({required Object name}) => 'Meer van ${name}',
 			'discover.hiddenGems' => 'Verborgen parels',
 			'discover.watchedBy' => ({required Object names}) => 'Bekeken door ${names}',
 			'discover.watchedByYou' => 'Jij',
@@ -4047,10 +4051,10 @@ extension on TranslationsNl {
 			'liveTv.whatsOn' => 'Nu op TV',
 			'liveTv.watchChannel' => 'Kanaal bekijken',
 			'liveTv.favorites' => 'Favorieten',
-			'liveTv.reorderFavorites' => 'Favorieten herordenen',
-			'liveTv.favoritesSaveFailed' => 'Kon je favoriete kanalen niet opslaan',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.reorderFavorites' => 'Favorieten herordenen',
+			'liveTv.favoritesSaveFailed' => 'Kon je favoriete kanalen niet opslaan',
 			'liveTv.joinSession' => 'Deelnemen aan lopende sessie',
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Kijk vanaf het begin (${minutes} min geleden)',
 			'liveTv.watchLive' => 'Live kijken',
@@ -4561,10 +4565,10 @@ extension on TranslationsNl {
 			'trackers.services.mal' => 'MyAnimeList',
 			'trackers.services.anilist' => 'AniList',
 			'trackers.services.simkl' => 'Simkl',
-			'trackers.deviceCode.title' => ({required Object service}) => 'Pleya activeren op ${service}',
-			'trackers.deviceCode.body' => ({required Object url}) => 'Ga naar ${url} en voer deze code in:',
 			_ => null,
 		} ?? switch (path) {
+			'trackers.deviceCode.title' => ({required Object service}) => 'Pleya activeren op ${service}',
+			'trackers.deviceCode.body' => ({required Object url}) => 'Ga naar ${url} en voer deze code in:',
 			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Open ${service} om te activeren',
 			'trackers.deviceCode.waitingForAuthorization' => 'Wachten op autorisatie…',
 			'trackers.deviceCode.codeCopied' => 'Code gekopieerd',
