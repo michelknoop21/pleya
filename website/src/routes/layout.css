@@ -44,8 +44,10 @@ ul {
   margin: 0;
 }
 
+/* No scroll-behavior: smooth here. It turns SvelteKit's scroll reset on
+   navigation into an animation that Lenis on the next page interrupts, so a
+   page could open halfway down. Lenis does the smoothing where there is motion. */
 html {
-  scroll-behavior: smooth;
   background-color: var(--color-bg);
   color: var(--color-text);
 }

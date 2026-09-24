@@ -1,20 +1,20 @@
 /*
- * The documentation runs on the app's own tokens rather than the landing
- * page's, so /docs reads in the same visual language the app does. Values are
- * lifted from lib/theme/mono_theme.dart and lib/theme/mono_tokens.dart, in the
- * OLED variant, which is the theme most people run.
+ * The documentation uses the landing page's type (Bricolage Grotesque for
+ * headings, Hanken Grotesk for text) and its warm off-white, so /docs and
+ * /releases read as part of the same site. Surfaces, radii and the white focus
+ * ring still come from the app's OLED theme (lib/theme/mono_tokens.dart).
  *
- * The outer chrome (noise overlay, footer, gradient rules) stays the landing
- * page's, so the two halves of the site still belong together.
+ * The chrome around the pages (sticky TopNav, footer) is shared with the
+ * platform pages.
  */
 :root {
   --docs-bg: #000;
   --docs-surface: #141414;
   --docs-surface-elevated: #2f2f2f;
   --docs-outline: rgba(255, 255, 255, 0.122);
-  --docs-text: #fff;
-  --docs-text-muted: rgba(255, 255, 255, 0.7);
-  --docs-text-faint: rgba(255, 255, 255, 0.45);
+  --docs-text: #f4f1ec;
+  --docs-text-muted: rgba(244, 241, 236, 0.66);
+  --docs-text-faint: rgba(244, 241, 236, 0.42);
 
   --docs-accent: #e5140f;
   --docs-accent-alt: #ffb020;
@@ -29,8 +29,8 @@
   --docs-shadow-badge: 0 1px 6px rgba(0, 0, 0, 0.35);
   --docs-focus: 0 0 18px 1.5px rgba(255, 255, 255, 0.34), 0 0 34px rgba(255, 255, 255, 0.2);
 
-  --docs-font: 'Inter', var(--font-sans);
-  --docs-font-display: 'Archivo Black', var(--font-display);
+  --docs-font: var(--font-sans);
+  --docs-font-display: var(--font-display);
 }
 
 .docs {
@@ -50,55 +50,6 @@
 
 /* ---------- page chrome ---------- */
 
-.docs-bar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.875rem 1.25rem;
-  border-bottom: 1px solid var(--docs-outline);
-  background: color-mix(in srgb, var(--docs-bg) 82%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.docs-bar .home {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.docs-bar .home .mark {
-  display: block;
-  flex: none;
-  width: 1.5rem;
-}
-
-.docs-bar .home .mark img {
-  width: 100%;
-  height: auto;
-}
-
-.docs-bar nav {
-  display: flex;
-  gap: 1.25rem;
-  margin-left: auto;
-  font-size: 0.875rem;
-  color: var(--docs-text-muted);
-}
-
-.docs-bar nav a[aria-current='page'] {
-  color: var(--docs-text);
-}
-
-.docs-bar nav a:hover {
-  color: var(--docs-text);
-}
-
 .docs-shell {
   max-width: 84rem;
   margin-inline: auto;
@@ -112,9 +63,10 @@
 
 .docs-lede h1 {
   font-family: var(--docs-font-display);
-  font-size: clamp(2rem, 5vw, 3rem);
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+  font-size: clamp(2.6rem, 6vw, 4.5rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
   margin-bottom: 0.75rem;
 }
 
@@ -127,10 +79,10 @@
   display: block;
   margin-bottom: 0.75rem;
   font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 1.1px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--docs-text-faint);
+  color: #ffb020;
 }
 
 /* ---------- icon badge (SettingsIconBadge, 36x36, radius 8, 12% white) ---------- */
@@ -178,14 +130,13 @@
   display: flex;
   gap: 0.875rem;
   padding: 1rem;
-  border: 1px solid color-mix(in srgb, var(--docs-outline) 60%, transparent);
   border-radius: var(--docs-radius-md);
-  background: var(--docs-surface);
-  transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+  background: rgba(255, 255, 255, 0.035);
+  transition: background-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
 }
 
 .chapter-card:hover {
-  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.06);
   transform: translateY(-2px);
   box-shadow: var(--docs-shadow-lift);
 }
@@ -379,7 +330,7 @@
 
 .read-progress {
   position: sticky;
-  top: 3.5rem;
+  top: 4.25rem;
   z-index: 15;
   height: 4px;
   border-radius: 999px;
@@ -419,7 +370,7 @@
 
 .prose h2 {
   margin-top: 2.5rem;
-  font-family: var(--docs-font);
+  font-family: var(--docs-font-display);
   font-size: 1.375rem;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -569,8 +520,6 @@
   display: grid;
   gap: 0.75rem;
   margin-top: 3rem;
-  padding-top: 1.75rem;
-  border-top: 1px solid color-mix(in srgb, var(--docs-outline) 60%, transparent);
 }
 
 @media (min-width: 40rem) {
@@ -581,14 +530,13 @@
 
 .chapter-nav a {
   padding: 0.875rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--docs-outline) 60%, transparent);
   border-radius: var(--docs-radius-md);
-  background: var(--docs-surface);
-  transition: border-color 180ms ease;
+  background: rgba(255, 255, 255, 0.035);
+  transition: background-color 180ms ease;
 }
 
 .chapter-nav a:hover {
-  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .chapter-nav .direction {
