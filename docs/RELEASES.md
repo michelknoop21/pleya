@@ -44,6 +44,30 @@ Nothing user-facing since the last published build.
   consistently with the rest of the screen**, instead of running slightly smaller when the page
   is nested under the top bar.
 
+## 2.8.0 · build 295 · 24 September 2026 · iPhone and iPad
+
+<!-- commit: 81b8be59 -->
+
+### Improved
+
+- **Watchlist filters now open in one sheet**, so you can choose the type and availability together.
+- **Marking a title watched while its server is offline updates the screen immediately** and queues the change for that server.
+
+### Fixed
+
+- **A 4K request now picks a matching Overseerr server** instead of retaining the standard-quality server and its profile.
+- **Audio and subtitle language choices you set yourself stay saved**, even if server profile data arrives later.
+
+### Worth checking
+
+- On iPhone or iPad, filter the Watchlist, mark a title watched while one server is unavailable,
+  and switch a request between standard and 4K quality if your account supports it.
+
+### Notes
+
+- This iOS build includes shared reliability fixes. The latest Home hero and settings redesign
+  in build 294 is for Apple TV; the iPhone and iPad layout has not been changed to match it.
+
 ## 2.8.0 · build 294 · 23 September 2026 · Apple TV
 
 <!-- commit: 3e46c035 -->
