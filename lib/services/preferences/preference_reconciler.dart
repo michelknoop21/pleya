@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/app_logger.dart';
 import '../settings_export_service.dart';
-import 'preference_merge_strategies.dart';
+import 'preference_key_mapper.dart';
 import 'preference_remote_apply.dart';
 import 'preference_revision_store.dart';
 import 'preference_sync_policy.dart';
@@ -20,39 +20,18 @@ class PreferenceReconciler {
   PreferenceReconciler({
     required SharedPreferencesWithCache prefs,
     required PreferenceRevisionStore revisionStore,
-    required PreferenceMergeRegistry merges,
-    required bool v2Format,
-    required String? Function() activeProfileId,
-    required String? Function(String fullKey) baseKeyOf,
-    required String? Function(String fullKey) cloudKeyFor,
-    required String? Function(String baseKey) localKeyFor,
-    required Object? Function(String baseKey, Object? value, {Object? remote}) portableValueFor,
-    required bool Function(String cloudKey) ownsCloudKey,
+    required PreferenceKeyMapper keys,
     required PreferenceTransport? Function() transport,
     required ValueNotifier<PreferenceSyncStatus> status,
   }) : _prefs = prefs,
        _revisionStore = revisionStore,
-       _merges = merges,
-       _useV2CloudFormat = v2Format,
-       _activeProfileId = activeProfileId,
-       _baseKeyOf = baseKeyOf,
-       _cloudKeyFor = cloudKeyFor,
-       _localKeyFor = localKeyFor,
-       _portableValueFor = portableValueFor,
-       _ownsCloudKey = ownsCloudKey,
+       _keys = keys,
        _transport = transport,
        _status = status;
 
   final SharedPreferencesWithCache _prefs;
   final PreferenceRevisionStore _revisionStore;
-  final PreferenceMergeRegistry _merges;
-  final bool _useV2CloudFormat;
-  final String? Function() _activeProfileId;
-  final String? Function(String fullKey) _baseKeyOf;
-  final String? Function(String fullKey) _cloudKeyFor;
-  final String? Function(String baseKey) _localKeyFor;
-  final Object? Function(String baseKey, Object? value, {Object? remote}) _portableValueFor;
-  final bool Function(String cloudKey) _ownsCloudKey;
+  final PreferenceKeyMapper _keys;
   final PreferenceTransport? Function() _transport;
   final ValueNotifier<PreferenceSyncStatus> _status;
 
@@ -67,8 +46,8 @@ class PreferenceReconciler {
   static const String v2MetaVersionKey = '${PreferenceSyncScope.cloudNamespacePrefix}__meta/formatVersion';
   static const int v2FormatVersion = 2;
 
-  String get _activeMetaKey => _useV2CloudFormat ? v2MetaVersionKey : metaVersionKey;
-  int get _activeFormatVersion => _useV2CloudFormat ? v2FormatVersion : formatVersion;
+  String get _activeMetaKey => _keys.v2Format ? v2MetaVersionKey : metaVersionKey;
+  int get _activeFormatVersion => _keys.v2Format ? v2FormatVersion : formatVersion;
 
   /// Read the format version the store was last written with. v1 wrote this and
   /// never read it, which left no way to recognise a store from a newer client.
@@ -106,9 +85,9 @@ class PreferenceReconciler {
       var oversize = 0;
       final known = <String>{};
       for (final fullKey in _prefs.keys) {
-        final baseKey = _baseKeyOf(fullKey);
+        final baseKey = _keys.baseKeyOf(fullKey);
         if (baseKey != null) known.add(baseKey);
-        final cloudKey = _cloudKeyFor(fullKey);
+        final cloudKey = _keys.cloudKeyFor(fullKey);
         if (cloudKey == null || baseKey == null) continue;
         final local = _revisionStore.stampOf(baseKey);
         // A value held under a removal stamp (a family's local-only entries)
@@ -117,10 +96,10 @@ class PreferenceReconciler {
         // remove, stamp 0) orders nothing, so a value under it counts as
         // unstamped and travels like one.
         if (local.deleted && local.at != PreferenceRevisionStore.legacyAt) continue;
-        final family = _merges.familyFor(baseKey);
+        final family = _keys.merges.familyFor(baseKey);
         final raw = remote[cloudKey];
         final record = raw == null ? null : decodeStampedRecord(raw);
-        final portableValue = _portableValueFor(baseKey, _prefs.get(fullKey), remote: record?.value);
+        final portableValue = _keys.portableValueFor(baseKey, _prefs.get(fullKey), remote: record?.value);
         if (portableValue == null) {
           skipped++;
           continue;
@@ -154,9 +133,9 @@ class PreferenceReconciler {
       for (final e in _revisionStore.all().entries) {
         final meta = e.value;
         if (meta is! Map || meta['x'] != true) continue;
-        final localKey = _localKeyFor(e.key);
+        final localKey = _keys.localKeyFor(e.key);
         if (localKey == null) continue;
-        final cloudKey = _cloudKeyFor(localKey);
+        final cloudKey = _keys.cloudKeyFor(localKey);
         if (cloudKey == null) continue;
         final raw = remote[cloudKey];
         if (raw == null) continue;
@@ -173,13 +152,13 @@ class PreferenceReconciler {
         await transport.write(_activeMetaKey, metaRecord);
       }
 
-      if (!_useV2CloudFormat) {
+      if (!_keys.v2Format) {
         // The v1 prune, kept for the rolling-upgrade test only. It deletes what
         // is genuinely gone locally and leaves what is present but no longer
         // eligible, so an older client that still syncs the key keeps it.
-        final scope = PreferenceSyncScope.forProfile(_activeProfileId());
+        final scope = _keys.activeProfileScope;
         for (final k in remote.keys) {
-          if (!_ownsCloudKey(k)) continue;
+          if (!_keys.ownsCloudKey(k)) continue;
           if (known.contains(k)) continue;
           if (scope.id == null && PreferenceSyncPolicyRegistry.isProfileScoped(k)) continue;
           await transport.remove(k);

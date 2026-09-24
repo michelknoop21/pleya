@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_logger.dart';
 import '../settings_export_service.dart';
 import 'preference_legacy_bootstrap.dart';
-import 'preference_merge_strategies.dart';
+import 'preference_key_mapper.dart';
 import 'preference_quarantine.dart';
 import 'preference_refresh.dart';
 import 'preference_revision_store.dart';
@@ -22,29 +22,20 @@ class PreferenceRemoteApply {
   PreferenceRemoteApply({
     required SharedPreferencesWithCache prefs,
     required PreferenceRevisionStore revisionStore,
-    required PreferenceMergeRegistry merges,
-    required bool v2Format,
-    required String? Function() activeProfileId,
-    required String? Function(String baseKey) localKeyFor,
+    required PreferenceKeyMapper keys,
     required PreferenceTransport? Function() transport,
     required ValueNotifier<PreferenceSyncStatus> status,
     required void Function(Set<PreferenceRefreshFamily> stale) onChanged,
   }) : _prefs = prefs,
        _revisionStore = revisionStore,
-       _merges = merges,
-       _useV2CloudFormat = v2Format,
-       _activeProfileId = activeProfileId,
-       _localKeyFor = localKeyFor,
+       _keys = keys,
        _transport = transport,
        _status = status,
        _onChanged = onChanged;
 
   final SharedPreferencesWithCache _prefs;
   final PreferenceRevisionStore _revisionStore;
-  final PreferenceMergeRegistry _merges;
-  final bool _useV2CloudFormat;
-  final String? Function() _activeProfileId;
-  final String? Function(String baseKey) _localKeyFor;
+  final PreferenceKeyMapper _keys;
   final PreferenceTransport? Function() _transport;
   final ValueNotifier<PreferenceSyncStatus> _status;
 
@@ -64,7 +55,7 @@ class PreferenceRemoteApply {
       if (cloudKey.startsWith('__') && !PreferenceSyncScope.ownsCloudKey(cloudKey)) {
         continue; // transport meta, another feature, or a format we do not read
       }
-      if (_useV2CloudFormat && isLegacyV1Record(cloudKey)) {
+      if (_keys.v2Format && isLegacyV1Record(cloudKey)) {
         // A flat v1 key changing after the cutover means another device is
         // still writing that format. It is not merged into v2 under any
         // circumstances: v1 carries no revision, so there is no way to tell a
@@ -96,7 +87,7 @@ class PreferenceRemoteApply {
       // A v1 record for a profile-scoped key carries no profile identity: the
       // format stripped it. Handing it to whichever profile is active would
       // make the existing collision permanent, so it is recorded and left.
-      if (!_useV2CloudFormat && PreferenceSyncPolicyRegistry.isProfileScoped(baseKey)) {
+      if (!_keys.v2Format && PreferenceSyncPolicyRegistry.isProfileScoped(baseKey)) {
         await PreferenceQuarantine.quarantine(
           _prefs,
           baseKey,
@@ -107,7 +98,7 @@ class PreferenceRemoteApply {
         continue;
       }
 
-      final targetKey = _localKeyFor(baseKey);
+      final targetKey = _keys.localKeyFor(baseKey);
       if (targetKey == null) {
         skipped++;
         continue; // profile-scoped with no active profile to scope to
@@ -138,7 +129,7 @@ class PreferenceRemoteApply {
         skipped++;
         continue;
       }
-      final family = _merges.familyFor(baseKey);
+      final family = _keys.merges.familyFor(baseKey);
       final local = _revisionStore.stampOf(baseKey);
       // A value in a merge family is merged, whatever its stamp. A tombstone
       // on either side is not a value to merge: an incoming one has to be
@@ -196,11 +187,11 @@ class PreferenceRemoteApply {
   /// Under v2 that includes the profile check: a record under another profile's
   /// namespace is not "unknown", it belongs to somebody else and is skipped.
   String? _baseKeyFromCloudKey(String cloudKey) {
-    if (!_useV2CloudFormat) return cloudKey;
+    if (!_keys.v2Format) return cloudKey;
     final parsed = PreferenceSyncScope.parseCloudKey(cloudKey);
     if (parsed == null) return null;
     if (parsed.kind == PreferenceScopeKind.profile) {
-      final active = PreferenceSyncScope.forProfile(_activeProfileId());
+      final active = _keys.activeProfileScope;
       if (active.id == null || active.id != parsed.id) return null;
     }
     return parsed.baseKey;
@@ -231,7 +222,7 @@ class PreferenceRemoteApply {
   ///
   /// Runs at most once per installation, and writes nothing back to v1.
   Future<void> bootstrapFromLegacyV1() async {
-    if (!_useV2CloudFormat) return;
+    if (!_keys.v2Format) return;
     final transport = _transport();
     if (transport == null) return;
     if (PreferenceLegacyBootstrap.hasRun(_prefs)) return;

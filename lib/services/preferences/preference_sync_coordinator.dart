@@ -6,8 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/app_logger.dart';
 import '../settings_export_service.dart';
-import '../track_preference_store.dart';
 import 'preference_legacy_bootstrap.dart';
+import 'preference_key_mapper.dart';
 import 'preference_merge_strategies.dart';
 import 'preference_mutation.dart';
 import 'preference_reconcile_scheduler.dart';
@@ -56,32 +56,26 @@ class PreferenceSyncCoordinator {
     VoidCallback? onRemoteChangesApplied,
     VoidCallback? onLocalStateChanged,
   }) : _prefs = prefs,
-       _activeProfileId = activeProfileId,
+       _keys = PreferenceKeyMapper(
+         activeProfileId: activeProfileId,
+         v2Format: useV2CloudFormat ?? v2CloudFormatEnabled,
+         isServerIdPortable: isServerIdPortable ?? noServerIdIsPortable,
+       ),
        _enabled = enabled,
        _deviceId = deviceId,
-       _isServerIdPortable = isServerIdPortable ?? noServerIdIsPortable,
-       _useV2CloudFormat = useV2CloudFormat ?? v2CloudFormatEnabled,
        _transport = transport,
        onRemoteChangesApplied = onRemoteChangesApplied,
-       onLocalStateChanged = onLocalStateChanged {
-    _registerBuiltInMergeFamilies();
-  }
+       onLocalStateChanged = onLocalStateChanged;
 
   final SharedPreferencesWithCache _prefs;
-  final String? Function() _activeProfileId;
+
+  /// Key mapping, scope and merges. See [PreferenceKeyMapper].
+  final PreferenceKeyMapper _keys;
   final bool Function() _enabled;
   final String _deviceId;
 
-  /// Whether a server id identifies the same server on another device. Deny by
-  /// default: without the connection layer wired in, nothing is portable.
-  ///
-  /// Late-bindable, because the answer comes from the connection registry and
-  /// that only exists once the database is open, well after the engine starts.
-  /// Until it is supplied nothing library-scoped travels, which is the right
-  /// way round: a missing answer must not read as "yes".
-  IsServerIdPortable _isServerIdPortable;
-
-  set serverIdPortability(IsServerIdPortable predicate) => _isServerIdPortable = predicate;
+  /// See [PreferenceKeyMapper.isServerIdPortable].
+  set serverIdPortability(IsServerIdPortable predicate) => _keys.isServerIdPortable = predicate;
 
   PreferenceTransport? _transport;
 
@@ -121,114 +115,25 @@ class PreferenceSyncCoordinator {
   /// profile is in the key, so the same record applies normally.
   static const bool v2CloudFormatEnabled = true;
 
-  final bool _useV2CloudFormat;
-
   /// This instance's format. Equals [v2CloudFormatEnabled] in the app; tests
   /// drive both sides.
-  bool get usesV2CloudFormat => _useV2CloudFormat;
+  bool get usesV2CloudFormat => _keys.v2Format;
 
   // ---- Scope ----------------------------------------------------------------
 
-  PreferenceSyncScope scopeFor(String baseKey) {
-    final policy = PreferenceSyncPolicyRegistry.policyFor(baseKey);
-    return switch (policy.scope) {
-      PreferenceScopeKind.global => PreferenceSyncScope.global,
-      PreferenceScopeKind.deviceLocal => PreferenceSyncScope.deviceLocal,
-      PreferenceScopeKind.profile => PreferenceSyncScope.forProfile(_activeProfileId()),
-    };
-  }
+  PreferenceSyncScope scopeFor(String baseKey) => _keys.scopeFor(baseKey);
 
   /// The active profile's scope identifier, the value `StorageService` uses for
   /// its `user_<scope>_` prefixes.
-  String? get activeUserScope => PreferenceSyncScope.forProfile(_activeProfileId()).id;
+  String? get activeUserScope => _keys.activeProfileScope.id;
 
-  /// Full prefs key to the key it travels under, or null when it must not
-  /// travel: unregistered, sensitive, device-local, another profile's, or a
-  /// profile-scoped value with no portable profile behind it.
-  String? cloudKeyFor(String fullKey) {
-    final baseKey = baseKeyOf(fullKey);
-    if (baseKey == null) return null;
-    if (!PreferenceSyncPolicyRegistry.maySync(baseKey)) return null;
-    if (!_keyIdentityIsPortable(baseKey)) return null;
-    final scope = scopeFor(baseKey);
-    if (!scope.portable) return null;
-    return _useV2CloudFormat ? scope.cloudKey(baseKey) : baseKey;
-  }
+  /// See [PreferenceKeyMapper.cloudKeyFor].
+  String? cloudKeyFor(String fullKey) => _keys.cloudKeyFor(fullKey);
 
-  /// Per-library families put the identity in the key
-  /// (`library_sort_<serverId:libraryId>`), so there is nothing to filter out
-  /// of the value: the key travels whole or not at all.
-  bool _keyIdentityIsPortable(String baseKey) {
-    for (final prefix in perLibraryKeyPrefixes) {
-      if (baseKey.startsWith(prefix)) {
-        return PreferenceValuePortability.isPortableScopedKey(baseKey, prefix, _isServerIdPortable);
-      }
-    }
-    return true;
-  }
+  /// See [PreferenceKeyMapper.baseKeyOf].
+  String? baseKeyOf(String fullKey) => _keys.baseKeyOf(fullKey);
 
-  /// Families whose key carries a `serverId:libraryId`.
-  static const List<String> perLibraryKeyPrefixes = [
-    'library_filters_',
-    'library_sort_',
-    'library_grouping_',
-    'library_tab_',
-  ];
-
-  /// The merge behaviour per family, looked up by the name in the policy.
-  ///
-  /// The coordinator never learns what a value means. It asks the registry
-  /// whether this key's family has a merge and calls it. Before this there was
-  /// one hardcoded `if` on a key list, which is why nothing else could ever
-  /// need a merge.
-  final PreferenceMergeRegistry _merges = PreferenceMergeRegistry();
-
-  PreferenceMergeRegistry get mergeRegistry => _merges;
-
-  void _registerBuiltInMergeFamilies() {
-    // The closure reads the field rather than capturing it: the portability
-    // predicate arrives from the connection registry after the engine starts.
-    _merges.register(buildServerScopedListFamily((serverId) => _isServerIdPortable(serverId)));
-    _merges.register(buildProgressMapFamily(watchedMap: false));
-    _merges.register(buildProgressMapFamily(watchedMap: true));
-    _merges.register(buildProfileKeyedMapFamily());
-    _merges.register(TrackPreferenceStore.mergeFamily());
-  }
-
-  /// The value as it may leave the device, or null when nothing may.
-  ///
-  /// For a family with an outgoing merge this is where it runs. [remote] is the
-  /// value currently in the store, when the caller could read it; null means
-  /// "not available", and a family must then fall back to what it can decide on
-  /// its own — for the server-scoped lists, dropping the entries whose server id
-  /// is not portable. A device with one Plex server and one local folder still
-  /// syncs its Plex choices; the folder's simply never leave.
-  Object? portableValueFor(String baseKey, Object? value, {Object? remote}) {
-    final outbound = _merges.familyFor(baseKey)?.outbound;
-    if (outbound == null) return value;
-    return outbound(value, remote);
-  }
-
-  /// Strip the active profile's prefix. Returns null for a key belonging to
-  /// another profile, or for a reserved namespace.
-  String? baseKeyOf(String fullKey) {
-    for (final reserved in PreferenceSyncPolicyRegistry.reservedPrefixes) {
-      if (fullKey.startsWith(reserved)) return null;
-    }
-    final scope = PreferenceSyncScope.forProfile(_activeProfileId());
-    final prefix = scope.localPrefix;
-    if (prefix.isNotEmpty && fullKey.startsWith(prefix)) return fullKey.substring(prefix.length);
-    if (fullKey.startsWith(SettingsExportService.userPrefixRoot)) return null;
-    return fullKey;
-  }
-
-  /// Inverse of [baseKeyOf] for a base key that arrived from a transport.
-  String? localKeyFor(String baseKey) {
-    if (!PreferenceSyncPolicyRegistry.isProfileScoped(baseKey)) return baseKey;
-    final scope = PreferenceSyncScope.forProfile(_activeProfileId());
-    if (scope.id == null) return null;
-    return '${scope.localPrefix}$baseKey';
-  }
+  PreferenceMergeRegistry get mergeRegistry => _keys.merges;
 
   // ---- Mutation intake ------------------------------------------------------
 
@@ -248,7 +153,7 @@ class PreferenceSyncCoordinator {
     }
     if (!mutation.mayTravel) return;
 
-    final baseKey = baseKeyOf(mutation.key);
+    final baseKey = _keys.baseKeyOf(mutation.key);
     if (baseKey == null) return;
 
     // Stamped before any gate that holds the send back. An unstamped local
@@ -269,7 +174,7 @@ class PreferenceSyncCoordinator {
       return;
     }
 
-    final cloudKey = cloudKeyFor(mutation.key);
+    final cloudKey = _keys.cloudKeyFor(mutation.key);
     if (cloudKey == null) return;
 
     _setStatus(status.value.starting(DateTime.now()));
@@ -289,7 +194,7 @@ class PreferenceSyncCoordinator {
       // the write is held back rather than pushed over entries this device
       // cannot account for.
       Object? remoteValue;
-      if (_merges.familyFor(baseKey)?.mergesOutgoing ?? false) {
+      if (_keys.merges.familyFor(baseKey)?.mergesOutgoing ?? false) {
         final all = await transport.readAll();
         if (all == null) {
           _setStatus(status.value.countingSkipped(1).raise(PreferenceSyncHealth.warning));
@@ -300,7 +205,7 @@ class PreferenceSyncCoordinator {
         remoteValue = record == null ? null : decodeTypedRecord(record)?.$2;
       }
 
-      final portableValue = portableValueFor(baseKey, mutation.value, remote: remoteValue);
+      final portableValue = _keys.portableValueFor(baseKey, mutation.value, remote: remoteValue);
       if (portableValue == null) {
         // Everything in this list belongs to a non-portable backend. Nothing to
         // send, and nothing to delete either: the cloud copy belongs to the
@@ -355,7 +260,7 @@ class PreferenceSyncCoordinator {
     final device = entry['d'];
     if (at is! int || device is! String) return null;
     final deleted = entry['x'] == true;
-    final localKey = localKeyFor(baseKey);
+    final localKey = _keys.localKeyFor(baseKey);
     final value = deleted || localKey == null ? null : _prefs.get(localKey);
     if (!deleted && value == null) return null;
     return PreferenceRevision(value: value, updatedAt: at, deviceId: device, deleted: deleted);
@@ -547,10 +452,7 @@ class PreferenceSyncCoordinator {
   late final PreferenceRemoteApply _remoteApply = PreferenceRemoteApply(
     prefs: _prefs,
     revisionStore: _revisionStore,
-    merges: _merges,
-    v2Format: _useV2CloudFormat,
-    activeProfileId: _activeProfileId,
-    localKeyFor: localKeyFor,
+    keys: _keys,
     transport: () => _transport,
     status: status,
     onChanged: (stale) {
@@ -564,19 +466,8 @@ class PreferenceSyncCoordinator {
   /// [PreferenceRemoteApply.applyEntries].
   Future<void> applyEntries(Map<String, String?> entries) => _remoteApply.applyEntries(entries);
 
-  /// Whether a transport key is a record this coordinator, in its current
-  /// format, is entitled to delete.
-  ///
-  /// Under v2 the answer is always no. A removal travels as a tombstone since
-  /// DEC-131, so a record this device does not hold is one it has not seen
-  /// yet, never one it deleted. The v1 path keeps a prune for the
-  /// rolling-upgrade test. That path is not the released v1 algorithm any
-  /// more: it writes stamped records and compares before it writes.
-  bool ownsCloudKey(String cloudKey) {
-    if (_useV2CloudFormat) return false;
-    if (cloudKey.startsWith('__')) return false;
-    return PreferenceSyncPolicyRegistry.maySync(cloudKey);
-  }
+  /// See [PreferenceKeyMapper.ownsCloudKey].
+  bool ownsCloudKey(String cloudKey) => _keys.ownsCloudKey(cloudKey);
 
   /// Import unambiguously global v1 cloud values into v2, once. See
   /// [PreferenceRemoteApply.bootstrapFromLegacyV1].
@@ -595,14 +486,7 @@ class PreferenceSyncCoordinator {
   late final PreferenceReconciler _reconciler = PreferenceReconciler(
     prefs: _prefs,
     revisionStore: _revisionStore,
-    merges: _merges,
-    v2Format: _useV2CloudFormat,
-    activeProfileId: _activeProfileId,
-    baseKeyOf: baseKeyOf,
-    cloudKeyFor: cloudKeyFor,
-    localKeyFor: localKeyFor,
-    portableValueFor: portableValueFor,
-    ownsCloudKey: ownsCloudKey,
+    keys: _keys,
     transport: () => _transport,
     status: status,
   );
